@@ -53,6 +53,23 @@ import { CreateChecklistItemDto } from "./dto/create-checklist-item.dto";
 import { CreateTaskDto } from "./dto/create-task.dto";
 import { UpdateChecklistItemDto } from "./dto/update-checklist-item.dto";
 import { UpdateTaskDto } from "./dto/update-task.dto";
+import {
+  assignTask,
+  createChecklistItem,
+  createTask,
+  deleteChecklistItem,
+  deleteTask,
+  findChecklistItemById,
+  findChecklistItemWithTask,
+  findLivePlanTask,
+  findTaskById,
+  listLivePlanTasks,
+  listLiveTasksForSummary,
+  lockChecklistItemForUpdate,
+  lockTaskForUpdate,
+  updateChecklistItem,
+  updateTask,
+} from '../modules/tasks/infrastructure/task-work.repository';
 
 export interface TaskResponse {
   id: string;
@@ -132,10 +149,8 @@ export class TasksService {
         weddingPlanId,
         currentUser,
       );
-      const created = await tx.weddingTask.create({
-        data: {
+      const created = await createTask(tx, {
           weddingPlanId,
-          assigneeUserId: null,
           responsibleName: this.optionalText(dto.responsibleName),
           responsiblePhone: this.optionalText(dto.responsiblePhone),
           responsibleSource: this.optionalText(dto.responsibleSource),
@@ -146,7 +161,6 @@ export class TasksService {
           reminderAt: this.optionalDate(dto.reminderAt, "reminderAt"),
           status: dto.status ?? WeddingTaskStatus.TODO,
           priority: dto.priority ?? WeddingTaskPriority.MEDIUM,
-        },
       });
       await this.recordTaskContribution(tx, context, created, {
         action: ContributionAction.CREATED,
@@ -187,22 +201,14 @@ export class TasksService {
           currentUser.id,
           ["canManageTasks"],
         );
-        return tx.weddingTask.findMany({
-          where: {
-            weddingPlanId,
-            ...(contributorScope
-              ? {
-                  OR: [
-                    { assigneeUserId: currentUser.id },
-                    { id: { in: [...contributorScope] } },
-                  ],
-                }
-              : {}),
-            ...liveFilter,
-          },
-          orderBy: [{ dueDate: "asc" }, { createdAt: "asc" }],
-          ...pageArgs(query),
-        });
+        return listLivePlanTasks(
+          tx,
+          weddingPlanId,
+          currentUser.id,
+          contributorScope ? [...contributorScope] : null,
+          liveFilter,
+          query,
+        );
       },
       { isolationLevel: Prisma.TransactionIsolationLevel.RepeatableRead },
     );
@@ -243,21 +249,14 @@ export class TasksService {
           currentUser.id,
           ["canManageTasks"],
         );
-        return tx.weddingTask.findFirst({
-          where: {
-            id,
-            weddingPlanId: task.weddingPlanId,
-            ...(contributorScope
-              ? {
-                  OR: [
-                    { assigneeUserId: currentUser.id },
-                    { id: { in: [...contributorScope] } },
-                  ],
-                }
-              : {}),
-            ...liveFilter,
-          },
-        });
+        return findLivePlanTask(
+          tx,
+          id,
+          task.weddingPlanId,
+          currentUser.id,
+          contributorScope ? [...contributorScope] : null,
+          liveFilter,
+        );
       },
       { isolationLevel: Prisma.TransactionIsolationLevel.RepeatableRead },
     );
@@ -284,9 +283,7 @@ export class TasksService {
         existing.weddingPlanId,
       );
       await this.assertTaskInMutationScope(tx, context, currentUser.id, current);
-      const updated = await tx.weddingTask.update({
-        where: { id },
-        data: {
+      const updated = await updateTask(tx, id, {
           ...(dto.title !== undefined
             ? { title: this.requiredText(dto.title, "title") }
             : {}),
@@ -305,7 +302,6 @@ export class TasksService {
             : {}),
           ...(dto.status !== undefined ? { status: dto.status } : {}),
           ...(dto.priority !== undefined ? { priority: dto.priority } : {}),
-        },
       });
       const action = this.taskUpdateAction(current.status, updated.status);
       await this.recordTaskContribution(tx, context, updated, {
@@ -352,19 +348,7 @@ export class TasksService {
         currentUser.id,
         currentTask,
       );
-      const updated = await tx.weddingTask.update({
-        where: { id },
-        data: {
-          assigneeUserId,
-          ...(assigneeUserId
-            ? {
-                responsibleName: null,
-                responsiblePhone: null,
-                responsibleSource: null,
-              }
-          : {}),
-        },
-      });
+      const updated = await assignTask(tx, id, assigneeUserId);
       if (currentTask.assigneeUserId !== assigneeUserId) {
         const actorAction = assigneeUserId
           ? ContributionAction.ASSIGNED
@@ -458,14 +442,13 @@ export class TasksService {
         currentUser.id,
         currentTask,
       );
-      const created = await tx.weddingTaskChecklistItem.create({
-        data: {
-          taskId,
-          title: this.requiredText(dto.title, "title"),
-          isDone: dto.isDone ?? false,
-          sortOrder: dto.sortOrder ?? 0,
-        },
-      });
+      const created = await createChecklistItem(
+        tx,
+        taskId,
+        this.requiredText(dto.title, "title"),
+        dto.isDone ?? false,
+        dto.sortOrder ?? 0,
+      );
       await this.recordChecklistContribution(
         tx,
         context,
@@ -509,9 +492,7 @@ export class TasksService {
           taskId,
           itemId,
         );
-        const result = await tx.weddingTaskChecklistItem.update({
-          where: { id: itemId },
-          data: {
+        const result = await updateChecklistItem(tx, itemId, {
             ...(dto.title !== undefined
               ? { title: this.requiredText(dto.title, "title") }
               : {}),
@@ -519,7 +500,6 @@ export class TasksService {
             ...(dto.sortOrder !== undefined
               ? { sortOrder: dto.sortOrder }
               : {}),
-          },
         });
         const action =
           !currentItem.isDone && result.isDone
@@ -569,7 +549,7 @@ export class TasksService {
         currentItem,
         ContributionAction.DELETED,
       );
-      await tx.weddingTaskChecklistItem.delete({ where: { id: itemId } });
+      await deleteChecklistItem(tx, itemId);
     });
     return { id: itemId, deleted: true };
   }
@@ -595,25 +575,18 @@ export class TasksService {
         : await runRetryableTransaction(
             this.prisma,
             async (tx) =>
-              tx.weddingTask.findMany({
-                where: {
-                  weddingPlanId,
-                  ...(contributorScope
-                    ? {
-                        OR: [
-                          { assigneeUserId: currentUser.id },
-                          { id: { in: [...contributorScope] } },
-                        ],
-                      }
-                    : {}),
-                  ...(await this.permissions.liveAuthorizationFilter(
-                    tx,
-                    context,
-                    currentUser.id,
-                    ["canManageTasks"],
-                  )),
-                },
-              }),
+              listLiveTasksForSummary(
+                tx,
+                weddingPlanId,
+                currentUser.id,
+                contributorScope ? [...contributorScope] : null,
+                await this.permissions.liveAuthorizationFilter(
+                  tx,
+                  context,
+                  currentUser.id,
+                  ["canManageTasks"],
+                ),
+              ),
             { isolationLevel: Prisma.TransactionIsolationLevel.RepeatableRead },
           );
     const tasks = rows.filter(
@@ -709,13 +682,13 @@ export class TasksService {
         action: ContributionAction.DELETED,
         dedupeKey: `task:${current.id}:deleted:${current.updatedAt.toISOString()}`,
       });
-      await tx.weddingTask.delete({ where: { id } });
+      await deleteTask(tx, id);
     });
     return { id, deleted: true };
   }
 
   private async findTaskOrThrow(id: string): Promise<WeddingTask> {
-    const task = await this.prisma.weddingTask.findUnique({ where: { id } });
+    const task = await findTaskById(this.prisma, id);
 
     if (!task) {
       throw new NotFoundException("Task not found");
@@ -728,10 +701,7 @@ export class TasksService {
     taskId: string,
     itemId: string,
   ): Promise<WeddingTaskChecklistItem & { task: WeddingTask }> {
-    const item = await this.prisma.weddingTaskChecklistItem.findFirst({
-      where: { id: itemId, taskId },
-      include: { task: true },
-    });
+    const item = await findChecklistItemWithTask(this.prisma, taskId, itemId);
 
     if (!item) {
       throw new NotFoundException("Checklist item not found");
@@ -745,19 +715,10 @@ export class TasksService {
     id: string,
     weddingPlanId: string,
   ): Promise<WeddingTask> {
-    const locked = await tx.$queryRaw<Array<{ id: string }>>(
-      Prisma.sql`
-        SELECT "id"
-        FROM "WeddingTask"
-        WHERE "id" = ${id}
-          AND "weddingPlanId" = ${weddingPlanId}
-        FOR UPDATE
-      `,
-    );
-    if (locked.length !== 1) {
+    if (!(await lockTaskForUpdate(tx, id, weddingPlanId))) {
       throw new NotFoundException("Task not found");
     }
-    const task = await tx.weddingTask.findUnique({ where: { id } });
+    const task = await findTaskById(tx, id);
     if (!task) {
       throw new NotFoundException("Task not found");
     }
@@ -769,21 +730,10 @@ export class TasksService {
     taskId: string,
     itemId: string,
   ): Promise<WeddingTaskChecklistItem> {
-    const locked = await tx.$queryRaw<Array<{ id: string }>>(
-      Prisma.sql`
-        SELECT "id"
-        FROM "WeddingTaskChecklistItem"
-        WHERE "id" = ${itemId}
-          AND "taskId" = ${taskId}
-        FOR UPDATE
-      `,
-    );
-    if (locked.length !== 1) {
+    if (!(await lockChecklistItemForUpdate(tx, taskId, itemId))) {
       throw new NotFoundException("Checklist item not found");
     }
-    const item = await tx.weddingTaskChecklistItem.findUnique({
-      where: { id: itemId },
-    });
+    const item = await findChecklistItemById(tx, itemId);
     if (!item) {
       throw new NotFoundException("Checklist item not found");
     }

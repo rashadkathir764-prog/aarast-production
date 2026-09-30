@@ -14,6 +14,7 @@ import {
 } from "../modules/collaboration/public/collaboration-scope.port";
 import { runRetryableTransaction } from "../platform/database/serializable-transaction";
 import { PrismaService } from "../platform/database/prisma.service";
+import { loadMoneySummaryRows } from "../modules/finance/infrastructure/money-summary.repository";
 import {
   PLAN_READ_PORT,
   type PlanReadPort,
@@ -105,59 +106,9 @@ export async function buildMoneySummaryInTransaction(
   } | null = null,
 ) {
   const weddingPlanId = access.plan.id;
-  const [plan, categories, costs, payments, schedules] = await Promise.all([
+  const [plan, [categories, costs, payments, schedules]] = await Promise.all([
     plans.getPlan(tx, weddingPlanId),
-    tx.budgetCategory.findMany({
-      where: {
-        weddingPlanId,
-        ...(contributionScope
-          ? { id: { in: [...contributionScope.categoryIds] } }
-          : {}),
-      },
-      orderBy: [{ createdAt: "asc" }, { id: "asc" }],
-    }),
-    tx.weddingCost.findMany({
-      where: {
-        weddingPlanId,
-        ...(contributionScope
-          ? { id: { in: [...contributionScope.costIds] } }
-          : {}),
-        status: { not: WeddingCostStatus.CANCELLED },
-      },
-      select: {
-        id: true,
-        budgetCategoryId: true,
-        totalAmount: true,
-        title: true,
-      },
-    }),
-    tx.costPayment.findMany({
-      where: {
-        weddingCost: {
-          weddingPlanId,
-          ...(contributionScope
-            ? { id: { in: [...contributionScope.costIds] } }
-            : {}),
-          status: { not: WeddingCostStatus.CANCELLED },
-        },
-      },
-      select: { weddingCostId: true, amount: true, entryType: true },
-    }),
-    tx.paymentSchedule.findMany({
-      where: {
-        weddingCost: {
-          weddingPlanId,
-          ...(contributionScope
-            ? { id: { in: [...contributionScope.costIds] } }
-            : {}),
-          status: { not: WeddingCostStatus.CANCELLED },
-        },
-      },
-      include: {
-        weddingCost: { select: { budgetCategoryId: true } },
-      },
-      orderBy: [{ dueDate: "asc" }, { createdAt: "asc" }],
-    }),
+    loadMoneySummaryRows(tx, weddingPlanId, contributionScope),
   ]);
 
   if (!plan) {

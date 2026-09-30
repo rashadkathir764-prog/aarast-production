@@ -4,8 +4,8 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { MODULE_METADATA } from '@nestjs/common/constants';
 import type { Prisma } from '@prisma/client';
-import { PlanReadService } from '../src/modules/planning/internal/plan-read.service';
-import { PlanErasureService } from '../src/modules/planning/internal/plan-erasure.service';
+import { PlanReadService } from '../src/modules/planning/infrastructure/plan-read.service';
+import { PlanErasureService } from '../src/modules/planning/infrastructure/plan-erasure.service';
 import {
   PLAN_ERASURE_IMPLEMENTATION,
   PLAN_READ_IMPLEMENTATION,

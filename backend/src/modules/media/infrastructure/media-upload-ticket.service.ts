@@ -7,12 +7,12 @@ import {
   ServiceUnavailableException,
 } from '@nestjs/common';
 import { MediaUploadStatus, Prisma } from '@prisma/client';
-import { PrismaService } from '../platform/database/prisma.service';
-import { assertActiveMutationActorForUpdateInTransaction } from '../modules/identity/public/user-lifecycle-lock';
+import { PrismaService } from '../../../platform/database/prisma.service';
+import { assertActiveMutationActorForUpdateInTransaction } from '../../identity/public/user-lifecycle-lock';
 import type {
   MediaConsumptionTarget,
   MediaPurpose,
-} from '../modules/media/public/media-storage.port';
+} from '../public/media-storage.port';
 
 export interface MediaUploadVerificationClaim {
   alreadyVerified: boolean;

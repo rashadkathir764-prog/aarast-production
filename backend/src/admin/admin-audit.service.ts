@@ -1,19 +1,16 @@
-import { BadRequestException, Injectable } from '@nestjs/common';
-import type { AdminAuditPhase } from '@prisma/client';
-import { PrismaService } from '../platform/database/prisma.service';
+import { BadRequestException, Inject, Injectable } from '@nestjs/common';
+import {
+  ADMIN_AUDIT_LOG_PORT,
+  type AdminAuditLogPort,
+} from '../modules/backoffice/public/admin-audit-log.port';
 import { AdminAuditQueryDto } from './dto/admin-audit-query.dto';
-
-/** The audit-log filters the back office offers, over its own table. */
-interface AdminAuditLogWhere {
-  action?: { contains: string; mode: 'insensitive' };
-  actorUserId?: string;
-  phase?: AdminAuditPhase;
-  createdAt?: { gte?: Date; lte?: Date };
-}
 
 @Injectable()
 export class AdminAuditService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    @Inject(ADMIN_AUDIT_LOG_PORT)
+    private readonly auditLog: AdminAuditLogPort,
+  ) {}
 
   async list(query: AdminAuditQueryDto) {
     const page = this.positiveInteger(query.page ?? '1', 'page');
@@ -21,43 +18,7 @@ export class AdminAuditService {
       this.positiveInteger(query.limit ?? '20', 'limit'),
       100,
     );
-    const createdAt = {
-      ...(query.from ? { gte: new Date(query.from) } : {}),
-      ...(query.to ? { lte: new Date(query.to) } : {}),
-    };
-    const where: AdminAuditLogWhere = {
-      ...(query.action
-        ? { action: { contains: query.action.trim(), mode: 'insensitive' } }
-        : {}),
-      ...(query.actorUserId ? { actorUserId: query.actorUserId.trim() } : {}),
-      ...(query.phase ? { phase: query.phase } : {}),
-      ...(Object.keys(createdAt).length ? { createdAt } : {}),
-    };
-
-    const [total, items] = await this.prisma.$transaction([
-      this.prisma.adminAuditLog.count({ where }),
-      this.prisma.adminAuditLog.findMany({
-        where,
-        orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
-        skip: (page - 1) * limit,
-        take: limit,
-        select: {
-          id: true,
-          eventId: true,
-          actorUserId: true,
-          actorAdminRole: true,
-          action: true,
-          method: true,
-          route: true,
-          targetId: true,
-          phase: true,
-          statusCode: true,
-          errorType: true,
-          requestId: true,
-          createdAt: true,
-        },
-      }),
-    ]);
+    const { total, items } = await this.auditLog.list(query, page, limit);
 
     return {
       items,

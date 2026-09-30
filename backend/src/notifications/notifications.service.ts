@@ -83,6 +83,10 @@ import {
   type TasksPort,
 } from "../modules/tasks/public/tasks.port";
 import { purgeOutboxEventsForAggregatesInTransaction } from "../platform/outbox/outbox-purge";
+import {
+  NotificationsRepository,
+  type DueNotificationRow,
+} from "../modules/notifications/infrastructure/notifications.repository";
 
 type PlanParticipantNotificationInput = Omit<
   CreateNotificationInput,
@@ -110,6 +114,7 @@ type OwnedProviderLifecycle = {
 
 @Injectable()
 export class NotificationsService implements NotificationsPort {
+  private readonly repository = new NotificationsRepository();
   constructor(
     private readonly prisma: PrismaService,
     @Inject(COLLABORATION_PERMISSION_PORT)
@@ -148,23 +153,9 @@ export class NotificationsService implements NotificationsPort {
           provider,
           tx,
         );
-        const where = {
-          userId: currentUser.id,
-          archivedAt: null,
-          ...(type ? { type } : {}),
-          ...(unreadOnly ? { readAt: null } : {}),
-          ...(planId ? { weddingPlanId: planId } : {}),
-          AND: visibility,
-        } satisfies Prisma.NotificationWhereInput;
-        const [count, rows] = await Promise.all([
-          tx.notification.count({ where }),
-          tx.notification.findMany({
-            where,
-            orderBy: [{ createdAt: "desc" }, { id: "desc" }],
-            skip: (page - 1) * limit,
-            take: limit,
-          }),
-        ]);
+        const [count, rows] = await this.repository.listVisible(
+          tx, currentUser.id, planId, type, unreadOnly, visibility, page, limit,
+        );
         return { total: count, notifications: rows };
       },
     );
@@ -192,15 +183,7 @@ export class NotificationsService implements NotificationsPort {
         provider,
         tx,
       );
-      return tx.notification.count({
-        where: {
-          userId: currentUser.id,
-          readAt: null,
-          archivedAt: null,
-          ...(planId ? { weddingPlanId: planId } : {}),
-          AND: visibility,
-        },
-      });
+      return this.repository.countUnread(tx, currentUser.id, planId, visibility);
     });
 
     return { count };
@@ -224,10 +207,7 @@ export class NotificationsService implements NotificationsPort {
       const existing = await this.lockOwnedForMutation(tx, currentUser, id);
       if (existing.readAt) return this.toResponse(existing);
 
-      const notification = await tx.notification.update({
-        where: { id },
-        data: { readAt: new Date() },
-      });
+      const notification = await this.repository.markRead(tx, id, new Date());
       return this.toResponse(notification);
     });
   }
@@ -251,20 +231,9 @@ export class NotificationsService implements NotificationsPort {
       if (
         planId &&
         !accessiblePlanIds.includes(planId) &&
-        !(await tx.notification.findFirst({
-          where: {
-            userId: currentUser.id,
-            weddingPlanId: planId,
-            OR: [
-              {
-                type: NotificationType.SHARING_INVITATION,
-                entityType: "plan_invite",
-              },
-              ...(providerAudience ? [providerAudience] : []),
-            ],
-          },
-          select: { id: true },
-        }))
+        !(await this.repository.hasPlanAudience(
+          tx, currentUser.id, planId, providerAudience,
+        ))
       ) {
         throw new NotFoundException("Wedding plan not found");
       }
@@ -288,36 +257,22 @@ export class NotificationsService implements NotificationsPort {
                 : []),
             ],
           };
-      const where = {
-        userId: currentUser.id,
-        readAt: null,
-        archivedAt: null,
-        AND: [planVisibility, visibility],
-      } satisfies Prisma.NotificationWhereInput;
-      const seed = await tx.notification.findMany({
-        where,
-        select: { id: true },
-      });
+      const seed = await this.repository.unreadVisibleIds(
+        tx, currentUser.id, planVisibility, visibility,
+      );
       const ids = seed.map((notification) => notification.id).sort();
       if (ids.length === 0) return { updated: 0 };
 
       await this.lockNotificationRowsForUpdate(tx, ids);
-      const stillVisible = await tx.notification.findMany({
-        where: {
-          ...where,
-          id: { in: ids },
-        },
-        select: { id: true },
-      });
+      const stillVisible = await this.repository.recheckUnreadVisibleIds(
+        tx, currentUser.id, planVisibility, visibility, ids,
+      );
       const visibleIds = stillVisible
         .map((notification) => notification.id)
         .sort();
       if (visibleIds.length === 0) return { updated: 0 };
 
-      const result = await tx.notification.updateMany({
-        where: { id: { in: visibleIds } },
-        data: { readAt: new Date() },
-      });
+      const result = await this.repository.markVisibleIdsRead(tx, visibleIds, new Date());
       return { updated: result.count };
     });
   }
@@ -328,7 +283,7 @@ export class NotificationsService implements NotificationsPort {
   ): Promise<{ id: string; deleted: true }> {
     return runSerializableTransaction(this.prisma, async (tx) => {
       await this.lockOwnedForMutation(tx, currentUser, id);
-      await tx.notification.delete({ where: { id } });
+      await this.repository.deleteNotification(tx, id);
       return { id, deleted: true };
     });
   }
@@ -342,13 +297,9 @@ export class NotificationsService implements NotificationsPort {
       if (existing.archivedAt) return this.toResponse(existing);
 
       const now = new Date();
-      const notification = await tx.notification.update({
-        where: { id },
-        data: {
-          archivedAt: now,
-          readAt: existing.readAt ?? now,
-        },
-      });
+      const notification = await this.repository.archiveNotification(
+        tx, id, now, existing.readAt,
+      );
       return this.toResponse(notification);
     });
   }
@@ -357,9 +308,7 @@ export class NotificationsService implements NotificationsPort {
     input: CreateNotificationInput,
   ): Promise<NotificationResponse | null> {
     if (input.dedupeKey) {
-      const existing = await this.prisma.notification.findUnique({
-        where: { dedupeKey: input.dedupeKey },
-      });
+      const existing = await this.repository.findByDedupeKey(this.prisma, input.dedupeKey);
       if (existing) return this.toResponse(existing);
     }
 
@@ -373,9 +322,7 @@ export class NotificationsService implements NotificationsPort {
         error instanceof Prisma.PrismaClientKnownRequestError &&
         error.code === "P2002"
       ) {
-        const existing = await this.prisma.notification.findUnique({
-          where: { dedupeKey: input.dedupeKey },
-        });
+        const existing = await this.repository.findByDedupeKey(this.prisma, input.dedupeKey);
         if (existing) return this.toResponse(existing);
       }
       throw error;
@@ -395,34 +342,13 @@ export class NotificationsService implements NotificationsPort {
       if (recipient.length !== 1) {
         throw new NotFoundException("Notification recipient not found");
       }
-      const preference = await client.notificationPreference.findUnique({
-        where: { userId: input.userId },
-        select: {
-          taskRemindersEnabled: true,
-          paymentRemindersEnabled: true,
-          providerMessagesEnabled: true,
-        },
-      });
+      const preference = await this.repository.notificationPreference(client, input.userId);
       if (!this.preferenceEnabled(preferenceKey, preference)) {
         return null;
       }
     }
 
-    const created = await client.notification.create({
-      data: {
-        userId: input.userId,
-        weddingPlanId: input.weddingPlanId ?? null,
-        type: input.type,
-        priority: input.priority ?? NotificationPriority.NORMAL,
-        title: input.title,
-        body: input.body,
-        entityType: input.entityType ?? null,
-        entityId: input.entityId ?? null,
-        routeTarget: input.routeTarget ?? null,
-        data: input.data,
-        dedupeKey: input.dedupeKey,
-      },
-    });
+    const created = await this.repository.createNotification(client, input);
     await this.enqueueNotificationDelivery(client, created);
     return this.toResponse(created);
   }
@@ -433,29 +359,8 @@ export class NotificationsService implements NotificationsPort {
     weddingPlanId: string,
   ): Promise<PlanNotificationDashboard> {
     const visibility = await this.visibilityWhereForUser(userId, client);
-    const where = {
-      userId,
-      weddingPlanId,
-      archivedAt: null,
-      ...(visibility ? { AND: visibility } : {}),
-    } satisfies Prisma.NotificationWhereInput;
-    const important = {
-      in: [NotificationPriority.HIGH, NotificationPriority.URGENT],
-    };
     const [unreadCount, highPriorityCount, latest, latestImportant] =
-      await Promise.all([
-        client.notification.count({ where: { ...where, readAt: null } }),
-        client.notification.count({ where: { ...where, priority: important } }),
-        client.notification.findMany({
-          where,
-          orderBy: { createdAt: "desc" },
-          take: 3,
-        }),
-        client.notification.findFirst({
-          where: { ...where, priority: important },
-          orderBy: [{ priority: "desc" }, { createdAt: "desc" }],
-        }),
-      ]);
+      await this.repository.dashboard(client, userId, weddingPlanId, visibility);
     return { unreadCount, highPriorityCount, latest, latestImportant };
   }
 
@@ -464,10 +369,7 @@ export class NotificationsService implements NotificationsPort {
     userIds: readonly string[],
   ): Promise<ProviderMessagePreference[]> {
     if (userIds.length === 0) return [];
-    return client.notificationPreference.findMany({
-      where: { userId: { in: [...userIds] } },
-      select: { userId: true, providerMessagesEnabled: true },
-    });
+    return this.repository.providerMessagePreferences(client, userIds);
   }
 
   async resolveProviderUpdateRecipientInTransaction(
@@ -594,9 +496,7 @@ export class NotificationsService implements NotificationsPort {
           ? `${userId}:${input.dedupeKey}`
           : undefined;
         if (dedupeKey) {
-          const existing = await tx.notification.findUnique({
-            where: { dedupeKey },
-          });
+          const existing = await this.repository.findByDedupeKey(tx, dedupeKey);
           if (existing) {
             notifications.push(this.toResponse(existing));
             continue;
@@ -738,9 +638,7 @@ export class NotificationsService implements NotificationsPort {
   async generateDueNotifications(): Promise<number | null> {
     return this.prisma.$transaction(
       async (tx) => {
-        const [lock] = await tx.$queryRaw<Array<{ locked: boolean }>>`
-          SELECT pg_try_advisory_xact_lock(20260711, 3) AS locked
-        `;
+        const [lock] = await this.repository.tryLockDueScheduler(tx);
         if (!lock?.locked) return null;
 
         const today = startOfRiyadhDay();
@@ -831,15 +729,7 @@ export class NotificationsService implements NotificationsPort {
         const [tasks, paymentSchedules, preferences] = await Promise.all([
           this.tasks.listDueTasks(tx, { ...dueTasks, taskIds }),
           this.finance.listDuePaymentSchedules(tx, { ...dueTasks, scheduleIds }),
-          tx.notificationPreference.findMany({
-            where: { userId: { in: recipientUserIds } },
-            select: {
-              userId: true,
-              taskRemindersEnabled: true,
-              paymentRemindersEnabled: true,
-              providerMessagesEnabled: true,
-            },
-          }),
+          this.repository.dueReminderPreferences(tx, recipientUserIds),
         ]);
         // The provider a cost names is marketplace's row.
         const providerNames = new Map(
@@ -896,7 +786,7 @@ export class NotificationsService implements NotificationsPort {
         const preferencesByUserId = new Map(
           preferences.map((preference) => [preference.userId, preference]),
         );
-        const rows: Prisma.NotificationCreateManyInput[] = [];
+        const rows: DueNotificationRow[] = [];
         for (const task of tasks) {
           const plan = plansById.get(task.weddingPlanId);
           if (!plan || !task.dueDate) continue;
@@ -1012,10 +902,7 @@ export class NotificationsService implements NotificationsPort {
         }
 
         if (rows.length === 0) return 0;
-        const created = await tx.notification.createManyAndReturn({
-          data: rows,
-          skipDuplicates: true,
-        });
+        const created = await this.repository.createDueNotifications(tx, rows);
         for (const notification of created) {
           await this.enqueueNotificationDelivery(tx, notification);
         }
@@ -1083,14 +970,9 @@ export class NotificationsService implements NotificationsPort {
     userId: string,
     weddingPlanId: string,
   ): Promise<number> {
-    const notifications = await client.notification.findMany({
-      where: {
-        userId,
-        weddingPlanId,
-        entityType: "payment_schedule",
-      },
-      select: { id: true },
-    });
+    const notifications = await this.repository.moneyNotificationIds(
+      client, userId, weddingPlanId,
+    );
     const ids = notifications.map((notification) => notification.id);
     if (ids.length === 0) return 0;
 
@@ -1099,9 +981,7 @@ export class NotificationsService implements NotificationsPort {
       notificationIds: ids,
       conversationIds: [],
     });
-    const deleted = await client.notification.deleteMany({
-      where: { id: { in: ids } },
-    });
+    const deleted = await this.repository.deleteNotificationIds(client, ids);
     return deleted.count;
   }
 
@@ -1381,9 +1261,7 @@ export class NotificationsService implements NotificationsPort {
     currentUser: AuthenticatedUser,
     id: string,
   ): Promise<Notification> {
-    const seed = await tx.notification.findFirst({
-      where: { id, userId: currentUser.id },
-    });
+    const seed = await this.repository.findOwned(tx, id, currentUser.id);
     if (!seed) {
       throw new NotFoundException("Notification not found");
     }
@@ -1443,9 +1321,7 @@ export class NotificationsService implements NotificationsPort {
       provider = await this.lockOwnedProviderLifecycle(tx, currentUser.id);
     }
     await this.lockNotificationRowsForUpdate(tx, [id]);
-    const notification = await tx.notification.findFirst({
-      where: { id, userId: currentUser.id },
-    });
+    const notification = await this.repository.findOwned(tx, id, currentUser.id);
     if (
       !notification ||
       notification.weddingPlanId !== seed.weddingPlanId ||
@@ -1523,15 +1399,9 @@ export class NotificationsService implements NotificationsPort {
     currentUser: AuthenticatedUser,
     weddingPlanId: string | null = null,
   ): Promise<string[]> {
-    const notificationPlans = await tx.notification.findMany({
-      where: {
-        userId: currentUser.id,
-        readAt: null,
-        archivedAt: null,
-        weddingPlanId: weddingPlanId ?? { not: null },
-      },
-      select: { weddingPlanId: true },
-    });
+    const notificationPlans = await this.repository.unreadPlanIds(
+      tx, currentUser.id, weddingPlanId,
+    );
     const planIds = [
       ...new Set([
         ...(weddingPlanId ? [weddingPlanId] : []),
@@ -1590,15 +1460,7 @@ export class NotificationsService implements NotificationsPort {
   ): Promise<void> {
     const ids = [...new Set(notificationIds)].sort();
     if (ids.length === 0) return;
-    await tx.$queryRaw(
-      Prisma.sql`
-        SELECT "id"
-        FROM "Notification"
-        WHERE "id" IN (${Prisma.join(ids)})
-        ORDER BY "id" ASC
-        FOR UPDATE
-      `,
-    );
+    await this.repository.lockRowsForUpdate(tx, ids);
   }
 
   private isMoneyNotification(
@@ -1721,9 +1583,7 @@ export class NotificationsService implements NotificationsPort {
     client: Prisma.TransactionClient,
   ): Promise<Notification> {
     const [notification, provider] = await Promise.all([
-      client.notification.findFirst({
-        where: { id, userId: currentUser.id },
-      }),
+      this.repository.findOwned(client, id, currentUser.id),
       this.findOwnedProviderLifecycle(currentUser.id, client),
     ]);
 

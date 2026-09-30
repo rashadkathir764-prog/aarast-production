@@ -1,7 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { Interval } from '@nestjs/schedule';
 import { MediaStorageService } from './media-storage.service';
-import { MediaUploadTicketService } from './media-upload-ticket.service';
+import { MediaUploadTicketService } from '../modules/media/infrastructure/media-upload-ticket.service';
 import { mediaUploadCleanupBacklog } from '../platform/observability/metrics';
 
 const CLEANUP_INTERVAL_MS = 5 * 60 * 1_000;

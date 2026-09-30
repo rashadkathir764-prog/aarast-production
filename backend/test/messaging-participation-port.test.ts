@@ -4,15 +4,15 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { MODULE_METADATA } from '@nestjs/common/constants';
 import type { Prisma } from '@prisma/client';
-import { MessagingAdminService } from '../src/modules/messaging/internal/messaging-admin.service';
+import { MessagingAdminService } from '../src/modules/messaging/infrastructure/messaging-admin.service';
 import {
   MESSAGING_ADMIN_IMPLEMENTATION,
   MESSAGING_ERASURE_IMPLEMENTATION,
   MESSAGING_PARTICIPATION_IMPLEMENTATION,
   MessagingPortsInternalModule,
 } from '../src/modules/messaging/internal/messaging-ports.internal.module';
-import { MessagingErasureService } from '../src/modules/messaging/internal/messaging-erasure.service';
-import { MessagingParticipationService } from '../src/modules/messaging/internal/messaging-participation.service';
+import { MessagingErasureService } from '../src/modules/messaging/infrastructure/messaging-erasure.service';
+import { MessagingParticipationService } from '../src/modules/messaging/infrastructure/messaging-participation.service';
 import { MessagingParticipationPublicModule } from '../src/modules/messaging/public/messaging-participation-public.module';
 import { MESSAGING_PARTICIPATION_PORT } from '../src/modules/messaging/public/messaging-participation.port';
 

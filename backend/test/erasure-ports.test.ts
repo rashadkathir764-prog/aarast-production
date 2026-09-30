@@ -3,14 +3,14 @@ import 'reflect-metadata';
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { ContributionScopeStatus, type Prisma } from '@prisma/client';
-import { CollaborationErasureService } from '../src/modules/collaboration/internal/collaboration-erasure.service';
-import { FinancePortService } from '../src/modules/finance/internal/finance-port.service';
-import { GuestsPortService } from '../src/modules/guests/internal/guests-port.service';
-import { MarketplaceErasureService } from '../src/modules/marketplace/internal/marketplace-erasure.service';
-import { MessagingErasureService } from '../src/modules/messaging/internal/messaging-erasure.service';
-import { NotificationsErasureService } from '../src/modules/notifications/internal/notifications-erasure.service';
-import { PlanErasureService } from '../src/modules/planning/internal/plan-erasure.service';
-import { TasksPortService } from '../src/modules/tasks/internal/tasks-port.service';
+import { CollaborationErasureService } from '../src/modules/collaboration/infrastructure/collaboration-erasure.service';
+import { FinancePortService } from '../src/modules/finance/infrastructure/finance-port.service';
+import { GuestsPortService } from '../src/modules/guests/infrastructure/guests-port.service';
+import { MarketplaceErasureService } from '../src/modules/marketplace/infrastructure/marketplace-erasure.service';
+import { MessagingErasureService } from '../src/modules/messaging/infrastructure/messaging-erasure.service';
+import { NotificationsErasureService } from '../src/modules/notifications/infrastructure/notifications-erasure.service';
+import { PlanErasureService } from '../src/modules/planning/infrastructure/plan-erasure.service';
+import { TasksPortService } from '../src/modules/tasks/infrastructure/tasks-port.service';
 import {
   deleteApplicationIdempotencyKeysForUser,
   deleteIdempotencyKeysForUser,

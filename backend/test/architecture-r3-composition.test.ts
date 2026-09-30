@@ -258,7 +258,7 @@ test('Task 2 public tokens resolve to the exact single legacy instances', async 
   const {
     PUSH_CAPABILITY_PORT,
   } = require('../src/modules/notifications/public/push-capability.port');
-  const { PushDeliveryService } = require('../src/push/push-delivery.service');
+  const { PushDeliveryService } = require('../src/modules/notifications/infrastructure/push-delivery.service');
   const { FirebasePushClient } = require('../src/push/firebase-push.client');
 
   class Task2SingletonTestModule {}

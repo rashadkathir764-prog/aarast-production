@@ -144,9 +144,10 @@ test("database constraints protect budgets while payment schedules remain non-re
     reverseStart,
     reverseEnd < 0 ? undefined : reverseEnd,
   );
+  const costUpdate = reverseBody.indexOf("await updateWeddingCost(tx");
+  const scheduleUpdate = reverseBody.indexOf("await updatePaymentSchedule(tx");
   assert.ok(
-    reverseBody.indexOf("await tx.weddingCost.update") <
-      reverseBody.indexOf("await tx.paymentSchedule.update"),
+    costUpdate >= 0 && scheduleUpdate > costUpdate,
     "reversal must reopen the cost balance before writing a pending schedule",
   );
 });

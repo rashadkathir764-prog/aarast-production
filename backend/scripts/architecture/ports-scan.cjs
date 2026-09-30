@@ -26,8 +26,6 @@ const LEGACY_ROOT_TO_CONTEXT = new Map(
   [...BUSINESS_CONTEXTS].flatMap(([context, roots]) => roots.map((root) => [root, context])),
 );
 const RETIRED_PLATFORM_ROOTS = new Set(['common', 'outbox']);
-const BACKOFFICE_PERMISSION_CONTRACT =
-  'backend/src/modules/backoffice/domain/admin-permissions.ts';
 const RELOCATED_SAFE_USER = 'backend/src/modules/identity/public/safe-user.ts';
 const R5_BOOTSTRAP_JWT_SECRET_EDGE =
   'backend/src/main.ts|backend/src/modules/identity/internal/auth/jwt-secret.ts';
@@ -441,12 +439,6 @@ function collectImportDiagnostics(files, program, checker, repoRoot) {
         && source.context !== target.context
         && (source.future || target.future)
         && !(target.future && target.public)
-        && !(
-          targetPath === BACKOFFICE_PERMISSION_CONTRACT
-          && (repositoryPath.startsWith('backend/src/auth/')
-            || repositoryPath.startsWith('backend/src/catalogs/')
-            || repositoryPath === RELOCATED_SAFE_USER)
-        )
       ) {
         diagnostics.push(diagnostic(
           'non-public-cross-module-import',

@@ -20,14 +20,11 @@ const escape = (value) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 const contextPattern = ([name, roots]) =>
   `(?:${roots.map(escape).join('|')}|modules/${escape(name)})`;
 const allBusinessPaths = businessContexts.map(contextPattern).join('|');
-const backofficePermissionContract =
-  '^src/modules/backoffice/domain/admin-permissions\\.ts$';
 const relocatedSafeUser = '^src/modules/identity/public/safe-user\\.ts$';
 const makeContextRule = (
   name,
   ownRoots,
   sourceRoots,
-  extraAllowedTarget = null,
   includeFutureRoot = true,
   excludedSource = null,
 ) => {
@@ -49,7 +46,6 @@ const makeContextRule = (
       pathNot: [
         `^src/${ownPaths}(?:/|$)` ,
         '^src/modules/[^/]+/public(?:/|$)',
-        ...(extraAllowedTarget ? [extraAllowedTarget] : []),
       ],
     },
   };
@@ -57,17 +53,16 @@ const makeContextRule = (
 const contextRules = businessContexts.flatMap(([name, ownRoots]) => {
   if (name === 'identity') {
     return [
-      makeContextRule(name, ownRoots, ['auth'], backofficePermissionContract, false),
+      makeContextRule(name, ownRoots, ['auth'], false),
       makeContextRule(
         name,
         ownRoots,
         ownRoots.filter((root) => root !== 'auth'),
-        null,
         true,
         relocatedSafeUser,
       ),
       {
-        ...makeContextRule(name, ownRoots, [], backofficePermissionContract),
+        ...makeContextRule(name, ownRoots, []),
         name: 'context-identity-relocated-safe-user-cross-context',
         from: { path: relocatedSafeUser },
       },
@@ -75,7 +70,7 @@ const contextRules = businessContexts.flatMap(([name, ownRoots]) => {
   }
   if (name === 'catalog') {
     return [
-      makeContextRule(name, ownRoots, ['catalogs'], backofficePermissionContract, false),
+      makeContextRule(name, ownRoots, ['catalogs'], false),
       makeContextRule(name, ownRoots, []),
     ];
   }

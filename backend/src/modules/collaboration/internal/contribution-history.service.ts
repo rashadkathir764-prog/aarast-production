@@ -41,11 +41,13 @@ import {
   ContributionHistoryPageResponse,
 } from "./contribution-history.contracts";
 import { ListContributionsDto } from "../api/dto/list-contributions.dto";
+import { ContributionHistoryRepository } from "../infrastructure/contribution-history.repository";
 
 const PERMISSION_POLICY_VERSION = 1;
 
 @Injectable()
 export class ContributionHistoryService implements CollaborationHistoryPort {
+  private readonly repository = new ContributionHistoryRepository();
   constructor(
     private readonly prisma: PrismaService,
     @Inject(PLAN_READ_PORT) private readonly plans: PlanReadPort,
@@ -58,21 +60,11 @@ export class ContributionHistoryService implements CollaborationHistoryPort {
   ): Promise<ContributionEvent> {
     validateContributionSnapshot(input.snapshot);
     const snapshotHash = hashContributionSnapshot(input.snapshot);
-    const scope = await tx.contributorHistoryScope.findUnique({
-      where: { weddingPlanId: input.weddingPlanId },
-      select: { id: true },
-    });
+    const scope = await this.repository.getHistoryScopeId(tx, input.weddingPlanId);
     if (!scope) throw new NotFoundException("Contribution history scope not found");
 
     const actorReference = contributorActorReference(input.actorUserId);
-    const tenure = await tx.contributorTenure.findFirst({
-      where: {
-        historyScopeId: scope.id,
-        actorReference,
-        endedAt: null,
-      },
-      select: { id: true, actorReference: true },
-    });
+    const tenure = await this.repository.findActiveTenureId(tx, scope.id, actorReference);
     if (!tenure) throw new NotFoundException("Active contributor tenure not found");
 
     const fingerprint = contributionFingerprint(
@@ -81,36 +73,12 @@ export class ContributionHistoryService implements CollaborationHistoryPort {
       tenure.id,
       tenure.actorReference,
     );
-    const inserted = await tx.contributionEvent.createManyAndReturn({
-      data: [{
-        historyScopeId: scope.id,
-        contributorTenureId: tenure.id,
-        section: input.section,
-        entityType: input.entityType,
-        entityId: input.entityId ?? null,
-        action: input.action,
-        snapshot: input.snapshot,
-        snapshotHash,
-        snapshotVersion: 1,
-        dedupeKey: input.dedupeKey,
-        eventFingerprint: fingerprint,
-        provenance: input.provenance ?? ContributionProvenance.RUNTIME,
-        requiredPermission: input.requiredPermission ?? null,
-        permissionPolicyVersion:
-          input.permissionPolicyVersion ?? PERMISSION_POLICY_VERSION,
-        authorityVersion: input.authorityVersion,
-        occurredAt: input.occurredAt ?? null,
-      }],
-      skipDuplicates: true,
-    });
-    const event = inserted[0] ?? await tx.contributionEvent.findUnique({
-      where: {
-        contributorTenureId_dedupeKey: {
-          contributorTenureId: tenure.id,
-          dedupeKey: input.dedupeKey,
-        },
-      },
-    });
+    const inserted = await this.repository.insertContributionEvent(
+      tx, input, scope.id, tenure.id, snapshotHash, fingerprint, PERMISSION_POLICY_VERSION,
+    );
+    const event = inserted[0] ?? await this.repository.findContributionByDedupeKey(
+      tx, tenure.id, input.dedupeKey,
+    );
     if (!event) {
       throw new ConflictException("Contribution dedupe result missing");
     }
@@ -139,66 +107,25 @@ export class ContributionHistoryService implements CollaborationHistoryPort {
     tx: Prisma.TransactionClient,
     plan: Pick<WeddingPlan, "id" | "createdAt">,
   ): Promise<void> {
-    await tx.contributorHistoryScope.create({
-      data: {
-        weddingPlanId: plan.id,
-        status: ContributionScopeStatus.ACTIVE,
-        historyCoverageStartsAt: plan.createdAt,
-      },
-    });
+    await this.repository.createHistoryScope(tx, plan);
   }
 
   async archiveHistoryScopeInTransaction(
     tx: Prisma.TransactionClient,
     plan: Pick<WeddingPlan, "id" | "updatedAt">,
   ): Promise<void> {
-    await tx.contributorHistoryScope.upsert({
-      where: { weddingPlanId: plan.id },
-      create: {
-        weddingPlanId: plan.id,
-        status: ContributionScopeStatus.ARCHIVED,
-        archivedAt: plan.updatedAt,
-        historyCoverageStartsAt: plan.updatedAt,
-      },
-      update: {
-        status: ContributionScopeStatus.ARCHIVED,
-        archivedAt: plan.updatedAt,
-      },
-    });
+    await this.repository.archiveHistoryScope(tx, plan);
   }
 
   async ensureTenureInTransaction(
     tx: Prisma.TransactionClient,
     member: SharedMember,
   ): Promise<ContributorTenure> {
-    const scope = await tx.contributorHistoryScope.upsert({
-      where: { weddingPlanId: member.weddingPlanId },
-      create: {
-        weddingPlanId: member.weddingPlanId,
-        historyCoverageStartsAt: new Date(),
-      },
-      update: {},
-    });
+    const scope = await this.repository.ensureHistoryScope(tx, member.weddingPlanId);
     const actorReference = contributorActorReference(member.userId);
-    const existing = await tx.contributorTenure.findFirst({
-      where: {
-        historyScopeId: scope.id,
-        actorReference,
-        endedAt: null,
-      },
-    });
+    const existing = await this.repository.findOpenTenure(tx, scope.id, actorReference);
     if (existing) return existing;
-    return tx.contributorTenure.create({
-      data: {
-        historyScopeId: scope.id,
-        actorUserId: member.userId,
-        actorReference,
-        sharedMemberId: member.id,
-        joinedAt: member.createdAt,
-        trackingStartedAt: new Date(),
-        roleAtTrackingStart: member.role,
-      },
-    });
+    return this.repository.createTenure(tx, scope.id, actorReference, member);
   }
 
   async closeTenureInTransaction(
@@ -211,28 +138,15 @@ export class ContributionHistoryService implements CollaborationHistoryPort {
       endedAt?: Date;
     },
   ): Promise<ContributorTenure | null> {
-    const scope = await tx.contributorHistoryScope.findUnique({
-      where: { weddingPlanId: input.weddingPlanId },
-      select: { id: true },
-    });
+    const scope = await this.repository.getHistoryScopeId(tx, input.weddingPlanId);
     if (!scope) return null;
-    const tenure = await tx.contributorTenure.findFirst({
-      where: {
-        historyScopeId: scope.id,
-        actorReference: contributorActorReference(input.actorUserId),
-        endedAt: null,
-      },
-    });
+    const tenure = await this.repository.findOpenTenure(
+      tx, scope.id, contributorActorReference(input.actorUserId),
+    );
     if (!tenure) return null;
-    return tx.contributorTenure.update({
-      where: { id: tenure.id },
-      data: {
-        endedAt: input.endedAt ?? new Date(),
-        endReason: input.reason,
-        roleAtEnd: input.roleAtEnd ?? null,
-        sharedMemberId: null,
-      },
-    });
+    return this.repository.closeTenure(
+      tx, tenure.id, input.endedAt ?? new Date(), input.reason, input.roleAtEnd ?? null,
+    );
   }
 
   async qualifyingEntityIds(
@@ -246,17 +160,9 @@ export class ContributionHistoryService implements CollaborationHistoryPort {
     ],
   ): Promise<string[]> {
     const actorReference = contributorActorReference(actorUserId);
-    const events = await this.prisma.contributionEvent.findMany({
-      where: {
-        historyScope: { weddingPlanId },
-        contributorTenure: { actorReference },
-        entityType: { in: [...entityTypes] },
-        action: { in: [...actions] },
-        entityId: { not: null },
-      },
-      select: { entityId: true },
-      distinct: ["entityId"],
-    });
+    const events = await this.repository.qualifyingEntityIds(
+      this.prisma, weddingPlanId, actorReference, entityTypes, actions,
+    );
     return events.flatMap((event) => (event.entityId ? [event.entityId] : []));
   }
 
@@ -285,36 +191,16 @@ export class ContributionHistoryService implements CollaborationHistoryPort {
           access,
           currentUser.id,
         );
-        const scope = await tx.contributorHistoryScope.findFirst({
-          where: {
-            weddingPlanId,
-            ...liveFilter,
-          },
-        });
+        const scope = await this.repository.findVisibleHistoryScope(
+          tx, weddingPlanId, liveFilter,
+        );
         if (!scope) {
           throw new NotFoundException("Contribution history not found");
         }
 
-        const where = {
-          historyScope: { id: scope.id },
-          ...(contributorReference
-            ? { contributorTenure: { actorReference: contributorReference } }
-            : {}),
-          ...(query.section ? { section: query.section } : {}),
-          ...liveFilter,
-        } satisfies Prisma.ContributionEventWhereInput;
-        const [events, total] = await Promise.all([
-          tx.contributionEvent.findMany({
-            where,
-            orderBy: [{ capturedAt: "desc" }, { id: "desc" }],
-            take: query.limit ?? 50,
-            skip: query.offset ?? 0,
-            include: {
-              contributorTenure: { select: { actorReference: true } },
-            },
-          }),
-          tx.contributionEvent.count({ where }),
-        ]);
+        const [events, total] = await this.repository.listPageEvents(
+          tx, scope.id, contributorReference, query, liveFilter,
+        );
 
         return {
           historyCoverageStartsAt: scope.historyCoverageStartsAt.toISOString(),
@@ -358,17 +244,9 @@ export class ContributionHistoryService implements CollaborationHistoryPort {
           access,
           currentUser.id,
         );
-        return tx.contributionEvent.findMany({
-          where: {
-            historyScope: { weddingPlanId },
-            ...(contributorReference
-              ? { contributorTenure: { actorReference: contributorReference } }
-              : {}),
-            entityId: { not: null },
-            ...liveFilter,
-          },
-          select: { section: true, entityId: true },
-        });
+        return this.repository.summaryEvents(
+          tx, weddingPlanId, contributorReference, liveFilter,
+        );
       },
       { isolationLevel: Prisma.TransactionIsolationLevel.RepeatableRead },
     );
@@ -393,11 +271,7 @@ export class ContributionHistoryService implements CollaborationHistoryPort {
     if (plan.ownerUserId === currentUser.id) {
       return { plan, isOwner: true, sharedMember: null };
     }
-    const member = await client.sharedMember.findUnique({
-      where: {
-        weddingPlanId_userId: { weddingPlanId, userId: currentUser.id },
-      },
-    });
+    const member = await this.repository.getHistoryMember(client, weddingPlanId, currentUser.id);
     if (!member) throw new NotFoundException("Wedding plan not found");
     return { plan, isOwner: false, sharedMember: member };
   }

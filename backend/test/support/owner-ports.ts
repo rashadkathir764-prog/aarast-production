@@ -3,16 +3,16 @@
 // against whatever fake client the test passes in, so a fixture that stubbed
 // `tx.budgetCategory.createMany` keeps working after the call moved to the
 // owner (the R4 precedent for supplying a new owner collaborator).
-import { CatalogReadService } from '../../src/modules/catalog/internal/catalog-read.service';
+import { CatalogReadService } from '../../src/modules/catalog/infrastructure/catalog-read.service';
 import { ContributionHistoryService } from '../../src/modules/collaboration/internal/contribution-history.service';
 import { PermissionService } from '../../src/modules/collaboration/internal/permission.service';
-import { FinancePortService } from '../../src/modules/finance/internal/finance-port.service';
-import { GuestsPortService } from '../../src/modules/guests/internal/guests-port.service';
-import { IdentityUserPortService } from '../../src/modules/identity/internal/identity-user-port.service';
-import { ProviderReadService } from '../../src/modules/marketplace/internal/provider-read.service';
-import { QuoteReadService } from '../../src/modules/marketplace/internal/quote-read.service';
-import { PlanReadService } from '../../src/modules/planning/internal/plan-read.service';
-import { TasksPortService } from '../../src/modules/tasks/internal/tasks-port.service';
+import { FinancePortService } from '../../src/modules/finance/infrastructure/finance-port.service';
+import { GuestsPortService } from '../../src/modules/guests/infrastructure/guests-port.service';
+import { IdentityUserPortService } from '../../src/modules/identity/infrastructure/identity-user-port.service';
+import { ProviderReadService } from '../../src/modules/marketplace/infrastructure/provider-read.service';
+import { QuoteReadService } from '../../src/modules/marketplace/infrastructure/quote-read.service';
+import { PlanReadService } from '../../src/modules/planning/infrastructure/plan-read.service';
+import { TasksPortService } from '../../src/modules/tasks/infrastructure/tasks-port.service';
 
 export const ownerPorts = {
   plans: new PlanReadService(),
@@ -70,13 +70,13 @@ export const planningOwnerPorts = [
 // fixture's fake client).
 import { AuthService } from '../../src/modules/identity/internal/auth/auth.service';
 import { UsersService } from '../../src/modules/identity/internal/profile/users.service';
-import { MessagingErasureService } from '../../src/modules/messaging/internal/messaging-erasure.service';
-import { MarketplaceErasureService } from '../../src/modules/marketplace/internal/marketplace-erasure.service';
-import { NotificationsErasureService } from '../../src/modules/notifications/internal/notifications-erasure.service';
-import { CollaborationErasureService } from '../../src/modules/collaboration/internal/collaboration-erasure.service';
-import { PlanErasureService } from '../../src/modules/planning/internal/plan-erasure.service';
+import { MessagingErasureService } from '../../src/modules/messaging/infrastructure/messaging-erasure.service';
+import { MarketplaceErasureService } from '../../src/modules/marketplace/infrastructure/marketplace-erasure.service';
+import { NotificationsErasureService } from '../../src/modules/notifications/infrastructure/notifications-erasure.service';
+import { CollaborationErasureService } from '../../src/modules/collaboration/infrastructure/collaboration-erasure.service';
+import { PlanErasureService } from '../../src/modules/planning/infrastructure/plan-erasure.service';
 import { MediaStorageService } from '../../src/media/media-storage.service';
-import { MediaUploadTicketService } from '../../src/media/media-upload-ticket.service';
+import { MediaUploadTicketService } from '../../src/modules/media/infrastructure/media-upload-ticket.service';
 
 const realMediaStorage = new MediaStorageService(new MediaUploadTicketService({} as any));
 
@@ -140,7 +140,7 @@ export function authService(
 // the real owner ports are appended.
 import { InviteAccessService } from '../../src/modules/collaboration/internal/invite-access.service';
 import { SharingService } from '../../src/modules/collaboration/internal/sharing.service';
-import { MessagingParticipationService } from '../../src/modules/messaging/internal/messaging-participation.service';
+import { MessagingParticipationService } from '../../src/modules/messaging/infrastructure/messaging-participation.service';
 
 export const messagingParticipation = new MessagingParticipationService(
   ownerPorts.providers,
@@ -300,7 +300,7 @@ export function providerDashboardService(
 import { ConversationRelationsService } from '../../src/conversations/conversation-relations';
 import { ConversationsGateway } from '../../src/conversations/conversations.gateway';
 import { ConversationsService } from '../../src/conversations/conversations.service';
-import { IdentityRealtimeSessionService } from '../../src/modules/identity/internal/identity-realtime-session.service';
+import { IdentityRealtimeSessionService } from '../../src/modules/identity/infrastructure/identity-realtime-session.service';
 
 export function conversationRelations(client: unknown): ConversationRelationsService {
   return new ConversationRelationsService(
@@ -354,6 +354,7 @@ export function conversationsGateway(
 // provider and conversation rows the reminders and the visibility rules
 // read are the owners'; fixtures keep their three-argument list.
 import { NotificationsService } from '../../src/notifications/notifications.service';
+import { NotificationsRepository } from '../../src/modules/notifications/infrastructure/notifications.repository';
 import { ConversationLifecycleService } from '../../src/modules/messaging/internal/conversation-lifecycle.internal.module';
 
 export function notificationsService(
@@ -399,6 +400,7 @@ function completeNotifications<T extends object>(fake: T): T {
   if (typeof (fake as Record<string, unknown>).getPlanNotificationDashboard === 'function') return fake;
   return Object.assign(Object.create(fake), {
     getPlanNotificationDashboard: NotificationsService.prototype.getPlanNotificationDashboard,
+    repository: new NotificationsRepository(),
   });
 }
 
@@ -440,11 +442,11 @@ export function timelineService(
 // on the fixture client.
 import { AdminOwners } from '../../src/admin/admin-owners';
 import { AdminService } from '../../src/admin/admin.service';
-import { CatalogAdminService } from '../../src/modules/catalog/internal/catalog-admin.service';
-import { IdentityAdminService } from '../../src/modules/identity/internal/identity-admin.service';
+import { CatalogAdminService } from '../../src/modules/catalog/infrastructure/catalog-admin.service';
+import { IdentityAdminService } from '../../src/modules/identity/infrastructure/identity-admin.service';
 import { MarketplaceAdminService } from '../../src/modules/marketplace/internal/marketplace-admin.service';
-import { MessagingAdminService } from '../../src/modules/messaging/internal/messaging-admin.service';
-import { NotificationsAdminService } from '../../src/modules/notifications/internal/notifications-admin.service';
+import { MessagingAdminService } from '../../src/modules/messaging/infrastructure/messaging-admin.service';
+import { NotificationsAdminService } from '../../src/modules/notifications/infrastructure/notifications-admin.service';
 
 export const adminOwners = new AdminOwners(
   new IdentityAdminService(),

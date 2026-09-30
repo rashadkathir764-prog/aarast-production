@@ -1,3 +1,5 @@
+import * as quoteRepository from "../modules/marketplace/infrastructure/marketplace-quote-mutation.repository";
+import type { QuoteRequestCreateData } from "../modules/marketplace/infrastructure/marketplace-quote-mutation.repository";
 import { ConflictException, NotFoundException } from "@nestjs/common";
 import {
   ContributionAction,
@@ -39,23 +41,6 @@ import {
 // `QuoteRequestUncheckedCreateInput` also admits nested writes to the
 // offers, links and conversation events, so the ownership scan cannot prove
 // a write typed by it; the columns the service sets are declared exactly.
-interface QuoteRequestCreateData {
-  userId: string;
-  providerId: string;
-  weddingPlanId?: string | null;
-  serviceId?: string | null;
-  eventDate?: Date | null;
-  location?: Prisma.InputJsonValue | typeof Prisma.JsonNull;
-  cityId?: string | null;
-  guestCount?: number | null;
-  contactName?: string | null;
-  contactPhone?: string | null;
-  contactNormalizedPhone?: string | null;
-  message?: string | null;
-  budgetMin?: Prisma.Decimal | string | null;
-  budgetMax?: Prisma.Decimal | string | null;
-}
-
 interface CreateQuoteRequestTransactionInput {
   data: QuoteRequestCreateData;
   requesterId: string;
@@ -88,10 +73,7 @@ export function createQuoteRequestInTransaction(
       ReturnType<PermissionService["assertProviderManageableInTransaction"]>
     > | null = null;
     const providerSeed = guard
-      ? await tx.provider.findUnique({
-          where: { id: providerId },
-          select: { userId: true },
-        })
+      ? await quoteRepository.findProviderAccountForRequest(tx, providerId)
       : null;
     const planSeed =
       guard && weddingPlanId
@@ -131,12 +113,8 @@ export function createQuoteRequestInTransaction(
     } else {
       // Kept only for the isolated plan-less domain harness. Production calls
       // always provide the guard above and take User -> Plan -> Provider locks.
-      await tx.$queryRaw(
-        Prisma.sql`SELECT "id" FROM "Provider" WHERE "id" = ${providerId} FOR UPDATE`,
-      );
-      const activeProvider = await tx.provider.findFirst({
-        where: { id: providerId, status: ProviderStatus.ACTIVE },
-      });
+      await quoteRepository.lockProviderForRequestCreation(tx, providerId);
+      const activeProvider = await quoteRepository.findActiveProviderForRequest(tx, providerId);
       if (!activeProvider) throw new NotFoundException("Provider not found");
     }
 
@@ -152,30 +130,7 @@ export function createQuoteRequestInTransaction(
     // Logical identity: requester + provider + plan + service (including
     // null) + event date + city. Message, budget, contact and guest details
     // describe the same active lead and cannot bypass this domain guard.
-    const existing = await tx.quoteRequest.findFirst({
-      where: {
-        userId: input.requesterId,
-        providerId,
-        weddingPlanId,
-        serviceId,
-        eventDate,
-        cityId,
-        status: {
-          in: [
-            QuoteRequestStatus.SENT,
-            QuoteRequestStatus.VIEWED,
-            QuoteRequestStatus.RESPONDED,
-          ],
-        },
-      },
-      orderBy: { createdAt: "desc" },
-      include: {
-        offers: {
-          where: { status: QuoteOfferStatus.PENDING },
-          orderBy: { createdAt: "desc" },
-        },
-      },
-    });
+    const existing = await quoteRepository.findActiveRequestCycle(tx, input.requesterId, providerId, weddingPlanId, serviceId, eventDate, cityId);
     // Expiry is a derived terminal state for the response cycle, so the UI's
     // explicit "new request" action can start a new cycle without rewriting
     // historical persisted statuses.
@@ -194,10 +149,7 @@ export function createQuoteRequestInTransaction(
 
     const quote = await relations.attachQuoteRelation(
       tx,
-      await tx.quoteRequest.create({
-        data: { ...input.data, conversationId: conversation.id },
-        include: MARKETPLACE_QUOTE_INCLUDE,
-      }),
+      await quoteRepository.createQuoteRequest(tx, input.data, conversation.id),
     );
     if (planContext && guard?.history) {
       await guard.history.recordForContextInTransaction(tx, planContext, {

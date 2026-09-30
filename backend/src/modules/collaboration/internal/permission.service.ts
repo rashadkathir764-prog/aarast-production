@@ -28,6 +28,7 @@ import {
   TASK_PERMISSION_REVOKED_MESSAGE,
 } from "../public/collaboration-permission.port";
 import { PrismaService } from "../../../platform/database/prisma.service";
+import { PermissionRepository } from "../infrastructure/permission.repository";
 import {
   lockUserLifecycleRowsForUpdateInTransaction,
   lockUserLifecycleRowsInTransaction,
@@ -35,6 +36,7 @@ import {
 
 @Injectable()
 export class PermissionService implements CollaborationPermissionPort {
+  private readonly repository = new PermissionRepository();
   constructor(
     private readonly prisma: PrismaService,
     @Inject(PLAN_READ_PORT) private readonly plans: PlanReadPort,
@@ -65,14 +67,7 @@ export class PermissionService implements CollaborationPermissionPort {
     const isOwner = plan.ownerUserId === currentUser.id;
     const sharedMember = isOwner
       ? null
-      : await client.sharedMember.findUnique({
-          where: {
-            weddingPlanId_userId: {
-              weddingPlanId,
-              userId: currentUser.id,
-            },
-          },
-        });
+      : await this.repository.getMembership(client, weddingPlanId, currentUser.id);
 
     return { plan, isOwner, sharedMember };
   }
@@ -451,19 +446,13 @@ export class PermissionService implements CollaborationPermissionPort {
     if (!member || member.userId !== currentUserId) {
       throw new NotFoundException("Wedding plan not found");
     }
-    const requiredFlags: Partial<Record<LivePlanPermission, true>> = {};
-    for (const permission of requiredPermissions) {
-      requiredFlags[permission] = true;
-    }
-    const live = await client.sharedMember.findFirst({
-      where: {
-        id: member.id,
-        weddingPlanId: context.plan.id,
-        userId: currentUserId,
-        ...requiredFlags,
-      },
-      select: { id: true },
-    });
+    const live = await this.repository.findLiveMembershipWithPermissions(
+      client,
+      member.id,
+      context.plan.id,
+      currentUserId,
+      requiredPermissions,
+    );
     return live ? {} : NEVER_MATCHING_ROW_FILTER;
   }
 
@@ -471,10 +460,7 @@ export class PermissionService implements CollaborationPermissionPort {
     client: Prisma.TransactionClient,
     userId: string,
   ): Promise<string[]> {
-    const memberships = await client.sharedMember.findMany({
-      where: { userId },
-      select: { weddingPlanId: true },
-    });
+    const memberships = await this.repository.listMemberPlanIds(client, userId);
     return memberships.map((membership) => membership.weddingPlanId);
   }
 
@@ -483,16 +469,14 @@ export class PermissionService implements CollaborationPermissionPort {
     weddingPlanId: string,
     userId: string,
   ): Promise<SharedMember | null> {
-    return client.sharedMember.findUnique({
-      where: { weddingPlanId_userId: { weddingPlanId, userId } },
-    });
+    return this.repository.getMembership(client, weddingPlanId, userId);
   }
 
   async listMemberships(
     client: Prisma.TransactionClient,
     userId: string,
   ): Promise<SharedMember[]> {
-    return client.sharedMember.findMany({ where: { userId } });
+    return this.repository.listMemberships(client, userId);
   }
 
   async countPlanMembers(
@@ -500,14 +484,7 @@ export class PermissionService implements CollaborationPermissionPort {
     weddingPlanId: string,
     scope?: { userId: string; memberIds: readonly string[] } | null,
   ): Promise<number> {
-    return client.sharedMember.count({
-      where: {
-        weddingPlanId,
-        ...(scope
-          ? { OR: [{ userId: scope.userId }, { id: { in: [...scope.memberIds] } }] }
-          : {}),
-      },
-    });
+    return this.repository.countPlanMembers(client, weddingPlanId, scope);
   }
 
   async countLivePlanInvites(
@@ -516,16 +493,7 @@ export class PermissionService implements CollaborationPermissionPort {
     now: Date,
     inviteIds?: readonly string[] | null,
   ): Promise<number> {
-    return client.planInvite.count({
-      where: {
-        weddingPlanId,
-        ...(inviteIds ? { id: { in: [...inviteIds] } } : {}),
-        acceptedAt: null,
-        declinedAt: null,
-        revokedAt: null,
-        expiresAt: { gt: now },
-      },
-    });
+    return this.repository.countLivePlanInvites(client, weddingPlanId, now, inviteIds);
   }
 
   async listPlanMembers(
@@ -533,9 +501,7 @@ export class PermissionService implements CollaborationPermissionPort {
     weddingPlanIds: readonly string[],
   ): Promise<SharedMember[]> {
     if (weddingPlanIds.length === 0) return [];
-    return client.sharedMember.findMany({
-      where: { weddingPlanId: { in: [...weddingPlanIds] } },
-    });
+    return this.repository.listPlanMembers(client, weddingPlanIds);
   }
 
   async lockPlanMembershipsForShareInTransaction(
@@ -544,15 +510,7 @@ export class PermissionService implements CollaborationPermissionPort {
   ): Promise<void> {
     const sortedPlanIds = [...new Set(weddingPlanIds)].sort();
     if (sortedPlanIds.length === 0) return;
-    await tx.$queryRaw(
-      Prisma.sql`
-        SELECT "id"
-        FROM "SharedMember"
-        WHERE "weddingPlanId" = ANY(${sortedPlanIds}::text[])
-        ORDER BY "weddingPlanId" ASC, "id" ASC
-        FOR SHARE
-      `,
-    );
+    await this.repository.lockPlanMembershipsForShare(tx, sortedPlanIds);
   }
 
   async lockMembershipsForShareInTransaction(
@@ -562,16 +520,7 @@ export class PermissionService implements CollaborationPermissionPort {
   ): Promise<void> {
     const sortedUserIds = [...new Set(userIds)].sort();
     if (sortedUserIds.length === 0) return;
-    await tx.$queryRaw(
-      Prisma.sql`
-        SELECT "id"
-        FROM "SharedMember"
-        WHERE "weddingPlanId" = ${weddingPlanId}
-          AND "userId" = ANY(${sortedUserIds}::text[])
-        ORDER BY "userId" ASC
-        FOR SHARE
-      `,
-    );
+    await this.repository.lockMembershipsForShare(tx, weddingPlanId, sortedUserIds);
   }
 
   async lockMembershipForShareInTransaction(
@@ -579,15 +528,7 @@ export class PermissionService implements CollaborationPermissionPort {
     weddingPlanId: string,
     userId: string,
   ): Promise<SharedMember | null> {
-    await tx.$queryRaw(
-      Prisma.sql`
-        SELECT "id"
-        FROM "SharedMember"
-        WHERE "weddingPlanId" = ${weddingPlanId}
-          AND "userId" = ${userId}
-        FOR SHARE
-      `,
-    );
+    await this.repository.lockMembershipForShare(tx, weddingPlanId, userId);
     return this.getMembership(tx, weddingPlanId, userId);
   }
 
@@ -595,35 +536,14 @@ export class PermissionService implements CollaborationPermissionPort {
     client: Prisma.TransactionClient,
     lookup: LivePlanInviteLookup,
   ): Promise<LivePlanInviteSeed | null> {
-    return client.planInvite.findFirst({
-      where: {
-        ...(lookup.id === undefined ? {} : { id: lookup.id }),
-        tokenHash: lookup.tokenHash,
-        normalizedPhone: lookup.normalizedPhone,
-        ...(lookup.accepted === undefined
-          ? {}
-          : { acceptedAt: lookup.accepted ? { not: null } : null }),
-        declinedAt: null,
-        revokedAt: null,
-        expiresAt: { gt: lookup.now },
-      },
-      select: { id: true, acceptedAt: true, weddingPlanId: true },
-    });
+    return this.repository.findLivePlanInvite(client, lookup);
   }
 
   async lockPlanInviteForUpdateInTransaction(
     tx: Prisma.TransactionClient,
     planInviteId: string,
   ): Promise<boolean> {
-    const locked = await tx.$queryRaw<Array<{ id: string }>>(
-      Prisma.sql`
-        SELECT "id"
-        FROM "PlanInvite"
-        WHERE "id" = ${planInviteId}
-        FOR UPDATE
-      `,
-    );
-    return locked.length === 1;
+    return this.repository.lockPlanInviteForUpdate(tx, planInviteId);
   }
 
   async revokeLivePlanInvitesInTransaction(
@@ -631,16 +551,7 @@ export class PermissionService implements CollaborationPermissionPort {
     weddingPlanId: string,
     revokedAt: Date,
   ): Promise<void> {
-    await tx.planInvite.updateMany({
-      where: {
-        weddingPlanId,
-        acceptedAt: null,
-        declinedAt: null,
-        revokedAt: null,
-        expiresAt: { gt: revokedAt },
-      },
-      data: { revokedAt },
-    });
+    await this.repository.revokeLivePlanInvites(tx, weddingPlanId, revokedAt);
   }
 
   async revokeLiveInvitesIssuedByUserInTransaction(
@@ -648,16 +559,7 @@ export class PermissionService implements CollaborationPermissionPort {
     inviterUserId: string,
     revokedAt: Date,
   ): Promise<void> {
-    await tx.planInvite.updateMany({
-      where: {
-        inviterUserId,
-        acceptedAt: null,
-        declinedAt: null,
-        revokedAt: null,
-        expiresAt: { gt: revokedAt },
-      },
-      data: { revokedAt },
-    });
+    await this.repository.revokeLiveInvitesIssuedByUser(tx, inviterUserId, revokedAt);
   }
 
   private async getLockedPlanAccessContext(
@@ -699,23 +601,8 @@ export class PermissionService implements CollaborationPermissionPort {
     // FOR SHARE conflicts with permission updates/deletes. If revocation
     // commits first, this transaction sees the revoked row; if this lock wins,
     // the authorized quote transition serializes before the revocation.
-    await tx.$queryRaw(
-      Prisma.sql`
-        SELECT "id"
-        FROM "SharedMember"
-        WHERE "weddingPlanId" = ${weddingPlanId}
-          AND "userId" = ${currentUser.id}
-        FOR SHARE
-      `,
-    );
-    const sharedMember = await tx.sharedMember.findUnique({
-      where: {
-        weddingPlanId_userId: {
-          weddingPlanId,
-          userId: currentUser.id,
-        },
-      },
-    });
+    await this.repository.lockMembershipForShare(tx, weddingPlanId, currentUser.id);
+    const sharedMember = await this.repository.getMembership(tx, weddingPlanId, currentUser.id);
     return { plan, isOwner: false, sharedMember };
   }
 
@@ -747,23 +634,8 @@ export class PermissionService implements CollaborationPermissionPort {
       return { plan, isOwner: true, sharedMember: null };
     }
 
-    await tx.$queryRaw(
-      Prisma.sql`
-        SELECT "id"
-        FROM "SharedMember"
-        WHERE "weddingPlanId" = ${weddingPlanId}
-          AND "userId" = ${currentUser.id}
-        FOR SHARE
-      `,
-    );
-    const sharedMember = await tx.sharedMember.findUnique({
-      where: {
-        weddingPlanId_userId: {
-          weddingPlanId,
-          userId: currentUser.id,
-        },
-      },
-    });
+    await this.repository.lockMembershipForShare(tx, weddingPlanId, currentUser.id);
+    const sharedMember = await this.repository.getMembership(tx, weddingPlanId, currentUser.id);
     return { plan, isOwner: false, sharedMember };
   }
 

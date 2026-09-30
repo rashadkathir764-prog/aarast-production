@@ -3,6 +3,7 @@ import { AdminAuditService } from '../../../admin/admin-audit.service';
 import { AdminOwners } from '../../../admin/admin-owners';
 import { AdminService } from '../../../admin/admin.service';
 import { PrismaModule } from '../../../platform/database/prisma.module';
+import { AdminAuditLogPublicModule } from '../public/admin-audit-log-public.module';
 import { CatalogAdminPublicModule } from '../../catalog/public/catalog-admin-public.module';
 import { CatalogReadPublicModule } from '../../catalog/public/catalog-read-public.module';
 import { CollaborationPermissionPublicModule } from '../../collaboration/public/collaboration-permission-public.module';
@@ -21,6 +22,7 @@ import { PlanReadPublicModule } from '../../planning/public/plan-read-public.mod
 @Module({
   imports: [
     PrismaModule,
+    AdminAuditLogPublicModule,
     MessagingRealtimePublicModule,
     NotificationsPublicModule,
     IdentityAdminPublicModule,

@@ -5,8 +5,12 @@ import {
   Injectable,
   ServiceUnavailableException,
 } from "@nestjs/common";
-import { runRetryableTransaction } from "../../../../platform/database/serializable-transaction";
 import { PrismaService } from "../../../../platform/database/prisma.service";
+import {
+  clearLoginThrottleAttempt,
+  findLoginThrottleLock,
+  reserveLoginThrottleAttempt,
+} from '../../infrastructure/login-throttle.repository';
 
 export type LoginThrottleRealm = "application" | "admin";
 
@@ -21,10 +25,10 @@ export class LoginThrottleService {
     phone: string,
     realm: LoginThrottleRealm = "application",
   ): Promise<void> {
-    const record = await this.prisma.loginThrottle.findUnique({
-      where: { subjectHash: LoginThrottleService.subjectHash(phone, realm) },
-      select: { lockedUntil: true },
-    });
+    const record = await findLoginThrottleLock(
+      this.prisma,
+      LoginThrottleService.subjectHash(phone, realm),
+    );
     if (record?.lockedUntil && record.lockedUntil > new Date()) {
       throw new HttpException(
         "Too many failed login attempts. Try again later.",
@@ -40,45 +44,11 @@ export class LoginThrottleService {
     const subjectHash = LoginThrottleService.subjectHash(phone, realm);
     let outcome: "admitted" | "locked";
     try {
-      outcome = await runRetryableTransaction(
+      outcome = await reserveLoginThrottleAttempt(
         this.prisma,
-        async (tx) => {
-          const now = new Date();
-          // PostgreSQL's INSERT ... ON CONFLICT DO UPDATE acquires and keeps a
-          // row lock until this transaction commits. Every concurrent attempt
-          // therefore observes the count written by the previous transaction.
-          const existing = await tx.loginThrottle.upsert({
-            where: { subjectHash },
-            create: {
-              subjectHash,
-              failedCount: 0,
-              windowStartedAt: now,
-            },
-            update: { updatedAt: now },
-          });
-          if (existing.lockedUntil && existing.lockedUntil > now) {
-            return "locked" as const;
-          }
-
-          const windowExpired =
-            existing.lockedUntil !== null ||
-            existing.windowStartedAt.getTime() <=
-              now.getTime() - LoginThrottleService.windowMs;
-          const nextCount = windowExpired ? 1 : existing.failedCount + 1;
-          const shouldLock = nextCount >= LoginThrottleService.maxAttempts;
-          await tx.loginThrottle.update({
-            where: { subjectHash },
-            data: {
-              failedCount: shouldLock ? 0 : nextCount,
-              windowStartedAt: windowExpired ? now : existing.windowStartedAt,
-              lockedUntil: shouldLock
-                ? new Date(now.getTime() + LoginThrottleService.windowMs)
-                : null,
-            },
-          });
-          return "admitted" as const;
-        },
-        { maxAttempts: 4 },
+        subjectHash,
+        LoginThrottleService.maxAttempts,
+        LoginThrottleService.windowMs,
       );
     } catch {
       // Preserve the public fail-closed contract without exposing database
@@ -99,9 +69,10 @@ export class LoginThrottleService {
     phone: string,
     realm: LoginThrottleRealm = "application",
   ): Promise<void> {
-    await this.prisma.loginThrottle.deleteMany({
-      where: { subjectHash: LoginThrottleService.subjectHash(phone, realm) },
-    });
+    await clearLoginThrottleAttempt(
+      this.prisma,
+      LoginThrottleService.subjectHash(phone, realm),
+    );
   }
 
   static subjectHash(

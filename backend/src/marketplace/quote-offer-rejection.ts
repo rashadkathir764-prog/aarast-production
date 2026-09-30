@@ -1,3 +1,4 @@
+import * as quoteRepository from "../modules/marketplace/infrastructure/marketplace-quote-mutation.repository";
 import { ConflictException, NotFoundException } from "@nestjs/common";
 import {
   ContributionAction,
@@ -49,19 +50,7 @@ export async function rejectQuoteOfferInTransaction(
     let planContext: Awaited<
       ReturnType<PermissionService["assertProviderManageableInTransaction"]>
     > | null = null;
-    const seed = await tx.quoteOffer.findUnique({
-      where: { id },
-      select: {
-        providerId: true,
-        provider: { select: { userId: true } },
-        quoteRequest: {
-          select: {
-            userId: true,
-            weddingPlanId: true,
-          },
-        },
-      },
-    });
+    const seed = await quoteRepository.findOfferSeed(tx, id);
     if (!seed) {
       throw new NotFoundException("Quote offer not found");
     }
@@ -103,10 +92,7 @@ export async function rejectQuoteOfferInTransaction(
       throw new NotFoundException("Quote offer not found");
     }
 
-    const current = await tx.quoteOffer.findUnique({
-      where: { id },
-      include: { quoteRequest: true },
-    });
+    const current = await quoteRepository.findOfferForRejection(tx, id);
     if (!current) {
       throw new NotFoundException("Quote offer not found");
     }
@@ -137,24 +123,12 @@ export async function rejectQuoteOfferInTransaction(
     );
 
     const rejectedAt = new Date();
-    const offerTransition = await tx.quoteOffer.updateMany({
-      where: { id, status: QuoteOfferStatus.PENDING },
-      data: { status: QuoteOfferStatus.REJECTED },
-    });
+    const offerTransition = await quoteRepository.rejectPendingOffer(tx, id);
     if (offerTransition.count !== 1) {
       throw new ConflictException("Quote offer is not pending");
     }
 
-    const requestTransition = await tx.quoteRequest.updateMany({
-      where: {
-        id: current.quoteRequestId,
-        status: current.quoteRequest.status,
-      },
-      data: {
-        status: QuoteRequestStatus.REJECTED,
-        rejectedAt,
-      },
-    });
+    const requestTransition = await quoteRepository.rejectQuoteRequest(tx, current.quoteRequestId, current.quoteRequest.status, rejectedAt);
     if (requestTransition.count !== 1) {
       throw new ConflictException("Quote request cannot be rejected");
     }
@@ -197,10 +171,7 @@ export async function rejectQuoteOfferInTransaction(
       });
     }
 
-    const providerAccount = await tx.provider.findUnique({
-      where: { id: current.providerId },
-      select: { userId: true },
-    });
+    const providerAccount = await quoteRepository.findProviderAccountForOffer(tx, current.providerId);
     if (providerAccount?.userId && providerAccount.userId !== currentUser.id) {
       await notifications.createNotificationInTransaction(
         tx,
@@ -213,6 +184,6 @@ export async function rejectQuoteOfferInTransaction(
       );
     }
 
-    return tx.quoteOffer.findUniqueOrThrow({ where: { id } });
+    return quoteRepository.requireOfferAfterRejection(tx, id);
   });
 }

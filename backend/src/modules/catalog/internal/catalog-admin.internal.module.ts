@@ -1,5 +1,5 @@
 import { Module } from '@nestjs/common';
-import { CatalogAdminService } from './catalog-admin.service';
+import { CatalogAdminService } from '../infrastructure/catalog-admin.service';
 
 export const CATALOG_ADMIN_IMPLEMENTATION = Symbol('CATALOG_ADMIN_IMPLEMENTATION');
 

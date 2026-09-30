@@ -15,7 +15,7 @@ import { test } from "node:test";
 import { Prisma } from "@prisma/client";
 import { GuestsService } from "../src/guests/guests.service";
 import { marketplaceService } from "./support/owner-ports";
-import { FinancePortService } from "../src/modules/finance/internal/finance-port.service";
+import { FinancePortService } from "../src/modules/finance/infrastructure/finance-port.service";
 
 const user = (id: string) =>
   ({ id, name: "Tester", phone: "+967700000000" }) as any;

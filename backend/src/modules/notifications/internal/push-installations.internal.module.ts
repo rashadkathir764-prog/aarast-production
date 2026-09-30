@@ -1,5 +1,5 @@
 import { Module } from '@nestjs/common';
-import { PushInstallationsService } from '../../../push/push-installations.service';
+import { PushInstallationsService } from '../infrastructure/push-installations.service';
 import { PrismaModule } from '../../../platform/database/prisma.module';
 
 @Module({

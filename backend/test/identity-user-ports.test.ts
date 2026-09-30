@@ -12,9 +12,9 @@ import {
   PROVIDER_ACCOUNT_IMPLEMENTATION,
   USER_READ_IMPLEMENTATION,
 } from '../src/modules/identity/internal/identity-user.internal.module';
-import { IdentityAdminService } from '../src/modules/identity/internal/identity-admin.service';
-import { IdentityRealtimeSessionService } from '../src/modules/identity/internal/identity-realtime-session.service';
-import { IdentityUserPortService } from '../src/modules/identity/internal/identity-user-port.service';
+import { IdentityAdminService } from '../src/modules/identity/infrastructure/identity-admin.service';
+import { IdentityRealtimeSessionService } from '../src/modules/identity/infrastructure/identity-realtime-session.service';
+import { IdentityUserPortService } from '../src/modules/identity/infrastructure/identity-user-port.service';
 import { ActivePlanPublicModule } from '../src/modules/identity/public/active-plan-public.module';
 import { ACTIVE_PLAN_PORT } from '../src/modules/identity/public/active-plan.port';
 import { ProviderAccountPublicModule } from '../src/modules/identity/public/provider-account-public.module';

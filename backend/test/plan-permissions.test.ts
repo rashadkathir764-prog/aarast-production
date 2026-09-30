@@ -10,7 +10,7 @@ import {
 } from "@prisma/client";
 import { rolePermissionDefaults } from "../src/modules/collaboration/internal/plan-permissions";
 import { PermissionService } from "../src/modules/collaboration/internal/permission.service";
-import { PlanReadService } from "../src/modules/planning/internal/plan-read.service";
+import { PlanReadService } from "../src/modules/planning/infrastructure/plan-read.service";
 
 const archivedPlan = {
   id: "archived-plan",

@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { MODULE_METADATA } from '@nestjs/common/constants';
 import { AuthSessionScope, UserRole, UserStatus } from '@prisma/client';
-import { IdentityRealtimeSessionService } from '../src/modules/identity/internal/identity-realtime-session.service';
+import { IdentityRealtimeSessionService } from '../src/modules/identity/infrastructure/identity-realtime-session.service';
 import { IDENTITY_REALTIME_SESSION_IMPLEMENTATION } from '../src/modules/identity/internal/identity-user.internal.module';
 import { IdentityRealtimeSessionPublicModule } from '../src/modules/identity/public/identity-realtime-session-public.module';
 import { IDENTITY_REALTIME_SESSION_PORT } from '../src/modules/identity/public/identity-realtime-session.port';

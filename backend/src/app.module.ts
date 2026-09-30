@@ -26,6 +26,7 @@ import { CatalogModule } from "./modules/catalog/catalog.module";
 import { MediaModule } from "./modules/media/media.module";
 import { InsightsModule } from "./modules/insights/insights.module";
 import { BackofficeModule } from "./modules/backoffice/backoffice.module";
+import { AdminAuditLogPublicModule } from "./modules/backoffice/public/admin-audit-log-public.module";
 import { MessagingModule } from "./modules/messaging/messaging.module";
 import { NotificationsModule } from "./modules/notifications/notifications.module";
 
@@ -73,6 +74,7 @@ import { NotificationsModule } from "./modules/notifications/notifications.modul
     NotificationsModule,
     GuestsModule,
     BackofficeModule,
+    AdminAuditLogPublicModule,
     MessagingModule,
     MediaModule,
     MediaStoragePublicModule,

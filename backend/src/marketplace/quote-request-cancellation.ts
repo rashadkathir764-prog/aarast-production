@@ -1,3 +1,4 @@
+import * as quoteRepository from "../modules/marketplace/infrastructure/marketplace-quote-mutation.repository";
 import {
   ConflictException,
   ForbiddenException,
@@ -55,19 +56,7 @@ export function cancelQuoteRequestInTransaction(
   history?: ContributionHistoryService,
 ) {
   return runSerializableTransaction(prisma, async (tx) => {
-    const seed = await tx.quoteRequest.findFirst({
-      where:
-        access === "REQUESTER_ONLY"
-          ? { id, userId: currentUser.id }
-          : { id },
-      select: {
-        userId: true,
-        weddingPlanId: true,
-        providerId: true,
-        conversationId: true,
-        provider: { select: { userId: true } },
-      },
-    });
+    const seed = await quoteRepository.findRequestCancellationSeed(tx, id, access === "REQUESTER_ONLY" ? currentUser.id : undefined);
     if (!seed) {
       throw new NotFoundException("Quote request not found");
     }
@@ -142,16 +131,7 @@ export function cancelQuoteRequestInTransaction(
       throw new NotFoundException("Quote request not found");
     }
 
-    const existing = await tx.quoteRequest.findUnique({
-      where: { id },
-      select: {
-        userId: true,
-        weddingPlanId: true,
-        providerId: true,
-        conversationId: true,
-        status: true,
-      },
-    });
+    const existing = await quoteRepository.findRequestCancellationState(tx, id);
     if (!existing) {
       throw new NotFoundException("Quote request not found");
     }
@@ -172,20 +152,14 @@ export function cancelQuoteRequestInTransaction(
       "requester",
     );
     const cancelledAt = new Date();
-    const transition = await tx.quoteRequest.updateMany({
-      where: { id, status: existing.status },
-      data: { status: QuoteRequestStatus.CANCELLED, cancelledAt },
-    });
+    const transition = await quoteRepository.cancelQuoteRequest(tx, id, existing.status, cancelledAt);
     if (transition.count !== 1) {
       throw new ConflictException("Quote request cannot be cancelled");
     }
 
     const quote = await relations.attachQuoteRelation(
       tx,
-      await tx.quoteRequest.findUniqueOrThrow({
-        where: { id },
-        include: MARKETPLACE_QUOTE_INCLUDE,
-      }),
+      await quoteRepository.requireCancelledQuoteRequest(tx, id),
     );
     await lifecycle.recordConversationEvent(tx, {
       conversationId: existing.conversationId,

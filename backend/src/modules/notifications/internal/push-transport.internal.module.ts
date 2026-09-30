@@ -1,7 +1,7 @@
 import { Module } from '@nestjs/common';
 import { PrismaModule } from '../../../platform/database/prisma.module';
 import { FirebasePushClient } from '../../../push/firebase-push.client';
-import { PushDeliveryService } from '../../../push/push-delivery.service';
+import { PushDeliveryService } from '../infrastructure/push-delivery.service';
 
 export const PUSH_DELIVERY_IMPLEMENTATION = Symbol(
   'PUSH_DELIVERY_IMPLEMENTATION',

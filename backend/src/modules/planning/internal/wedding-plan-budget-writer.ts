@@ -4,6 +4,7 @@ import type {
   PlanningBudgetWritePort,
   UpdateWeddingPlanBudgetInput,
 } from '../public/planning-budget-write.port';
+import { updateWeddingPlanBudgetInTransaction } from '../infrastructure/wedding-plan.repository';
 
 @Injectable()
 export class WeddingPlanBudgetWriter implements PlanningBudgetWritePort {
@@ -11,12 +12,6 @@ export class WeddingPlanBudgetWriter implements PlanningBudgetWritePort {
     tx: Prisma.TransactionClient,
     input: UpdateWeddingPlanBudgetInput,
   ): Promise<void> {
-    await tx.weddingPlan.update({
-      where: { id: input.weddingPlanId },
-      data: {
-        estimatedBudget: input.estimatedBudget,
-        currency: input.currency,
-      },
-    });
+    await updateWeddingPlanBudgetInTransaction(tx, input);
   }
 }

@@ -10,17 +10,10 @@ import { Prisma } from '@prisma/client';
 import { PrismaService } from '../../../../platform/database/prisma.service';
 import { otpDeliveryUnavailableError } from '../../public/auth-error';
 import type { OtpDispatchContext } from '../../public/identity-auth.port';
-
-interface QuotaPolicy {
-  scope: string;
-  subject: string;
-  limit: number;
-  windowMs: number;
-}
-
-interface QuotaRow {
-  count: number;
-}
+import {
+  consumeOtpDispatchQuotaAttempt,
+  type OtpQuotaPolicy,
+} from '../../infrastructure/otp-dispatch-quota.repository';
 
 export const OTP_DISPATCH_NOW = Symbol('OTP_DISPATCH_NOW');
 
@@ -41,46 +34,11 @@ export class OtpDispatchQuotaService {
 
     for (let attempt = 0; attempt < 3; attempt += 1) {
       try {
-        await this.prisma.$transaction(
-          async (tx) => {
-            const now = this.now();
-            for (const policy of policies) {
-              const resetBefore = new Date(now.getTime() - policy.windowMs);
-              const subjectHash = OtpDispatchQuotaService.subjectHash(
-                policy.scope,
-                policy.subject,
-              );
-              const [row] = await tx.$queryRawUnsafe<QuotaRow[]>(
-                `
-                  INSERT INTO "OtpDispatchQuota"
-                    ("scope", "subjectHash", "count", "windowStartedAt", "updatedAt")
-                  VALUES ($1, $2, 1, $3, $3)
-                  ON CONFLICT ("scope", "subjectHash") DO UPDATE SET
-                    "count" = CASE
-                      WHEN "OtpDispatchQuota"."windowStartedAt" <= $4 THEN 1
-                      ELSE "OtpDispatchQuota"."count" + 1
-                    END,
-                    "windowStartedAt" = CASE
-                      WHEN "OtpDispatchQuota"."windowStartedAt" <= $4 THEN $3
-                      ELSE "OtpDispatchQuota"."windowStartedAt"
-                    END,
-                    "updatedAt" = $3
-                  RETURNING "count"
-                `,
-                policy.scope,
-                subjectHash,
-                now,
-                resetBefore,
-              );
-              if (!row || row.count > policy.limit) {
-                throw new HttpException(
-                  'طلبات رمز التحقق كثيرة. حاول لاحقًا.',
-                  HttpStatus.TOO_MANY_REQUESTS,
-                );
-              }
-            }
-          },
-          { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
+        await consumeOtpDispatchQuotaAttempt(
+          this.prisma,
+          policies,
+          this.now,
+          OtpDispatchQuotaService.subjectHash,
         );
         return;
       } catch (error) {
@@ -97,8 +55,8 @@ export class OtpDispatchQuotaService {
     }
   }
 
-  private policies(phone: string, rawIp?: string | null): QuotaPolicy[] {
-    const policies: QuotaPolicy[] = [
+  private policies(phone: string, rawIp?: string | null): OtpQuotaPolicy[] {
+    const policies: OtpQuotaPolicy[] = [
       {
         scope: 'PHONE_COOLDOWN',
         subject: phone,

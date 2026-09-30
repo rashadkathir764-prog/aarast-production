@@ -12,9 +12,10 @@ import {
   type IdentityAdminPort,
 } from '../modules/identity/public/identity-admin.port';
 import { AuthenticatedUser } from '../modules/identity/public/identity-session.types';
-import { AdminPermission } from '../modules/backoffice/domain/admin-permissions';
+import { AdminPermission } from '../modules/backoffice/public/admin-permission.port';
 import { runAuthorizedAdminMutation } from '../modules/backoffice/public/admin-mutation-gate';
 import { PrismaService } from '../platform/database/prisma.service';
+import { AdministrativeCatalogRepository } from '../modules/catalog/infrastructure/administrative-catalog.repository';
 import {
   AdminDistrictDto,
   AdminGovernorateDto,
@@ -23,61 +24,33 @@ import {
 
 @Injectable()
 export class AdministrativeCatalogService {
+  private readonly repository = new AdministrativeCatalogRepository();
   constructor(
     private readonly prisma: PrismaService,
     @Inject(IDENTITY_ADMIN_PORT) private readonly accounts: IdentityAdminPort,
   ) {}
 
   async listGovernorates() {
-    return this.prisma.governorate.findMany({
-      orderBy: [{ sortOrder: 'asc' }, { nameAr: 'asc' }],
-      include: { _count: { select: { districts: true } } },
-    });
+    return this.repository.listGovernorates(this.prisma);
   }
 
   async listDistricts(governorateId: string) {
     await this.requireGovernorate(governorateId, false);
-    return this.prisma.district.findMany({
-      where: { governorateId },
-      orderBy: [{ sortOrder: 'asc' }, { nameAr: 'asc' }],
-      include: { _count: { select: { localities: true } } },
-    });
+    return this.repository.listDistricts(this.prisma, governorateId);
   }
 
   async listLocalities(districtId: string) {
     await this.requireDistrict(districtId, false);
-    return this.prisma.administrativeLocality.findMany({
-      where: { districtId },
-      orderBy: [{ type: 'asc' }, { sortOrder: 'asc' }, { nameAr: 'asc' }],
-    });
+    return this.repository.listLocalities(this.prisma, districtId);
   }
 
   async listPublicLocalities(districtId: string) {
-    const district = await this.prisma.district.findFirst({
-      where: {
-        id: districtId,
-        isActive: true,
-        governorate: { isActive: true },
-      },
-      select: { id: true },
-    });
+    const district = await this.repository.findActiveDistrictWithGovernorate(
+      this.prisma,
+      districtId,
+    );
     if (!district) throw new NotFoundException('District not found');
-    return this.prisma.administrativeLocality.findMany({
-      where: { districtId, isActive: true },
-      orderBy: [{ type: 'asc' }, { sortOrder: 'asc' }, { nameAr: 'asc' }],
-      select: {
-        id: true,
-        districtId: true,
-        parentId: true,
-        code: true,
-        type: true,
-        nameAr: true,
-        nameEn: true,
-        latitude: true,
-        longitude: true,
-        sortOrder: true,
-      },
-    });
+    return this.repository.listActiveLocalities(this.prisma, districtId);
   }
 
   createGovernorate(
@@ -90,16 +63,14 @@ export class AdministrativeCatalogService {
     return this.authorizedMutation(currentUser, async (tx) => {
       await this.assertCodeAvailable(tx, code);
       try {
-        return await tx.governorate.create({
-          data: {
-            code,
-            nameAr,
-            nameEn,
-            latitude: dto.latitude,
-            longitude: dto.longitude,
-            sortOrder: dto.sortOrder ?? 0,
-            isActive: dto.isActive ?? true,
-          },
+        return await this.repository.createGovernorate(tx, {
+          code,
+          nameAr,
+          nameEn,
+          latitude: dto.latitude,
+          longitude: dto.longitude,
+          sortOrder: dto.sortOrder ?? 0,
+          isActive: dto.isActive ?? true,
         });
       } catch (error) {
         this.rethrowUnique(error);
@@ -113,26 +84,21 @@ export class AdministrativeCatalogService {
     dto: AdminGovernorateDto,
   ) {
     return this.authorizedMutation(currentUser, async (tx) => {
-      const current = await tx.governorate.findUnique({ where: { id } });
+      const current = await this.repository.getGovernorate(tx, id);
       if (!current) throw new NotFoundException('Governorate not found');
       this.assertCodeUnchanged(dto.code, current.code);
       try {
-        return await tx.governorate.update({
-          where: { id },
-          data: {
-            ...(dto.nameAr === undefined
-              ? {}
-              : { nameAr: this.requiredText(dto.nameAr, 'nameAr') }),
-            ...(dto.nameEn === undefined
-              ? {}
-              : { nameEn: this.requiredText(dto.nameEn, 'nameEn') }),
-            ...(dto.latitude === undefined ? {} : { latitude: dto.latitude }),
-            ...(dto.longitude === undefined
-              ? {}
-              : { longitude: dto.longitude }),
-            ...(dto.sortOrder === undefined ? {} : { sortOrder: dto.sortOrder }),
-            ...(dto.isActive === undefined ? {} : { isActive: dto.isActive }),
-          },
+        return await this.repository.updateGovernorate(tx, id, {
+          ...(dto.nameAr === undefined
+            ? {}
+            : { nameAr: this.requiredText(dto.nameAr, 'nameAr') }),
+          ...(dto.nameEn === undefined
+            ? {}
+            : { nameEn: this.requiredText(dto.nameEn, 'nameEn') }),
+          ...(dto.latitude === undefined ? {} : { latitude: dto.latitude }),
+          ...(dto.longitude === undefined ? {} : { longitude: dto.longitude }),
+          ...(dto.sortOrder === undefined ? {} : { sortOrder: dto.sortOrder }),
+          ...(dto.isActive === undefined ? {} : { isActive: dto.isActive }),
         });
       } catch (error) {
         this.rethrowUnique(error);
@@ -143,10 +109,7 @@ export class AdministrativeCatalogService {
   disableGovernorate(currentUser: AuthenticatedUser, id: string) {
     return this.authorizedMutation(currentUser, async (tx) => {
       await this.requireGovernorate(id, false, tx);
-      return tx.governorate.update({
-        where: { id },
-        data: { isActive: false },
-      });
+      return this.repository.disableGovernorate(tx, id);
     });
   }
 
@@ -165,17 +128,15 @@ export class AdministrativeCatalogService {
       }
       await this.assertCodeAvailable(tx, code);
       try {
-        return await tx.district.create({
-          data: {
-            governorateId,
-            code,
-            nameAr,
-            nameEn,
-            latitude: dto.latitude,
-            longitude: dto.longitude,
-            sortOrder: dto.sortOrder ?? 0,
-            isActive: dto.isActive ?? true,
-          },
+        return await this.repository.createDistrict(tx, {
+          governorateId,
+          code,
+          nameAr,
+          nameEn,
+          latitude: dto.latitude,
+          longitude: dto.longitude,
+          sortOrder: dto.sortOrder ?? 0,
+          isActive: dto.isActive ?? true,
         });
       } catch (error) {
         this.rethrowUnique(error);
@@ -189,17 +150,18 @@ export class AdministrativeCatalogService {
     dto: AdminDistrictDto,
   ) {
     return this.authorizedMutation(currentUser, async (tx) => {
-      const current = await tx.district.findUnique({ where: { id } });
+      const current = await this.repository.getDistrict(tx, id);
       if (!current) throw new NotFoundException('District not found');
       this.assertCodeUnchanged(dto.code, current.code);
       if (dto.governorateId && dto.governorateId !== current.governorateId) {
         throw new BadRequestException('District governorate is immutable');
       }
       try {
-        return await tx.district.update({
-          where: { id },
-          data: this.namedLocationUpdate(dto),
-        });
+        return await this.repository.updateDistrict(
+          tx,
+          id,
+          this.namedLocationUpdate(dto),
+        );
       } catch (error) {
         this.rethrowUnique(error);
       }
@@ -209,7 +171,7 @@ export class AdministrativeCatalogService {
   disableDistrict(currentUser: AuthenticatedUser, id: string) {
     return this.authorizedMutation(currentUser, async (tx) => {
       await this.requireDistrict(id, false, tx);
-      return tx.district.update({ where: { id }, data: { isActive: false } });
+      return this.repository.disableDistrict(tx, id);
     });
   }
 
@@ -229,19 +191,17 @@ export class AdministrativeCatalogService {
       await this.assertParent(tx, districtId, dto.parentId ?? null);
       await this.assertCodeAvailable(tx, code);
       try {
-        return await tx.administrativeLocality.create({
-          data: {
-            districtId,
-            parentId: dto.parentId ?? null,
-            code,
-            type,
-            nameAr,
-            nameEn: this.optionalText(dto.nameEn),
-            latitude: dto.latitude,
-            longitude: dto.longitude,
-            sortOrder: dto.sortOrder ?? 0,
-            isActive: dto.isActive ?? true,
-          },
+        return await this.repository.createLocality(tx, {
+          districtId,
+          parentId: dto.parentId ?? null,
+          code,
+          type,
+          nameAr,
+          nameEn: this.optionalText(dto.nameEn),
+          latitude: dto.latitude,
+          longitude: dto.longitude,
+          sortOrder: dto.sortOrder ?? 0,
+          isActive: dto.isActive ?? true,
         });
       } catch (error) {
         this.rethrowUnique(error);
@@ -255,9 +215,7 @@ export class AdministrativeCatalogService {
     dto: AdminLocalityDto,
   ) {
     return this.authorizedMutation(currentUser, async (tx) => {
-      const current = await tx.administrativeLocality.findUnique({
-        where: { id },
-      });
+      const current = await this.repository.getLocality(tx, id);
       if (!current) throw new NotFoundException('Locality not found');
       this.assertCodeUnchanged(dto.code, current.code);
       if (dto.districtId && dto.districtId !== current.districtId) {
@@ -267,16 +225,13 @@ export class AdministrativeCatalogService {
         await this.assertParent(tx, current.districtId, dto.parentId, id);
       }
       try {
-        return await tx.administrativeLocality.update({
-          where: { id },
-          data: {
-            ...this.namedLocationUpdate(dto),
-            ...(dto.nameEn === undefined
-              ? {}
-              : { nameEn: this.optionalText(dto.nameEn) }),
-            ...(dto.type === undefined ? {} : { type: dto.type }),
-            ...(dto.parentId === undefined ? {} : { parentId: dto.parentId }),
-          },
+        return await this.repository.updateLocality(tx, id, {
+          ...this.namedLocationUpdate(dto),
+          ...(dto.nameEn === undefined
+            ? {}
+            : { nameEn: this.optionalText(dto.nameEn) }),
+          ...(dto.type === undefined ? {} : { type: dto.type }),
+          ...(dto.parentId === undefined ? {} : { parentId: dto.parentId }),
         });
       } catch (error) {
         this.rethrowUnique(error);
@@ -286,14 +241,9 @@ export class AdministrativeCatalogService {
 
   disableLocality(currentUser: AuthenticatedUser, id: string) {
     return this.authorizedMutation(currentUser, async (tx) => {
-      const locality = await tx.administrativeLocality.findUnique({
-        where: { id },
-      });
+      const locality = await this.repository.getLocality(tx, id);
       if (!locality) throw new NotFoundException('Locality not found');
-      return tx.administrativeLocality.update({
-        where: { id },
-        data: { isActive: false },
-      });
+      return this.repository.disableLocality(tx, id);
     });
   }
 
@@ -343,10 +293,7 @@ export class AdministrativeCatalogService {
       }
       visited.add(cursor);
       const parent: { districtId: string; parentId: string | null } | null =
-        await tx.administrativeLocality.findUnique({
-          where: { id: cursor },
-          select: { districtId: true, parentId: true },
-        });
+        await this.repository.getLocalityParent(tx, cursor);
       if (!parent || parent.districtId !== districtId) {
         throw new BadRequestException('Parent must belong to the same district');
       }
@@ -358,15 +305,7 @@ export class AdministrativeCatalogService {
     tx: Prisma.TransactionClient,
     code: string,
   ): Promise<void> {
-    const [governorate, district, locality] = await Promise.all([
-      tx.governorate.findUnique({ where: { code }, select: { id: true } }),
-      tx.district.findUnique({ where: { code }, select: { id: true } }),
-      tx.administrativeLocality.findUnique({
-        where: { code },
-        select: { id: true },
-      }),
-    ]);
-    if (governorate || district || locality) {
+    if (await this.repository.isAdministrativeCodeTaken(tx, code)) {
       throw new ConflictException('Administrative code already exists');
     }
   }
@@ -376,9 +315,11 @@ export class AdministrativeCatalogService {
     activeOnly: boolean,
     client: Prisma.TransactionClient | PrismaService = this.prisma,
   ) {
-    const governorate = await client.governorate.findFirst({
-      where: { id, ...(activeOnly ? { isActive: true } : {}) },
-    });
+    const governorate = await this.repository.findGovernorate(
+      client,
+      id,
+      activeOnly,
+    );
     if (!governorate) throw new NotFoundException('Governorate not found');
     return governorate;
   }
@@ -388,9 +329,7 @@ export class AdministrativeCatalogService {
     activeOnly: boolean,
     client: Prisma.TransactionClient | PrismaService = this.prisma,
   ) {
-    const district = await client.district.findFirst({
-      where: { id, ...(activeOnly ? { isActive: true } : {}) },
-    });
+    const district = await this.repository.findDistrict(client, id, activeOnly);
     if (!district) throw new NotFoundException('District not found');
     return district;
   }

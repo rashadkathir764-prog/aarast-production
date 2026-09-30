@@ -45,6 +45,24 @@ import { CreateGuestGroupDto } from "./dto/create-guest-group.dto";
 import { CreateGuestDto } from "./dto/create-guest.dto";
 import { UpdateGuestGroupDto } from "./dto/update-guest-group.dto";
 import { UpdateGuestDto } from "./dto/update-guest.dto";
+import {
+  countGuestGroupsForSummary,
+  createGuest,
+  createGuestGroup,
+  deleteGuest,
+  deleteGuestGroup,
+  findDuplicateGuest,
+  findGuestById,
+  findGuestGroupById,
+  listGuestsForSummary,
+  listPlanGuestGroups,
+  listPlanGuests,
+  lockGuestForUpdate,
+  lockGuestGroupForShare,
+  lockGuestGroupForUpdate,
+  updateGuest,
+  updateGuestGroup,
+} from '../modules/guests/infrastructure/guests.repository';
 
 export interface GuestResponse {
   id: string;
@@ -140,14 +158,12 @@ export class GuestsService {
         ]);
         if (contributorScope !== null && !includePrivateDetails) return [];
 
-        const guests = await tx.guest.findMany({
-          where: {
-            weddingPlanId,
-            ...(contributorScope ? { id: { in: [...contributorScope] } } : {}),
-          },
-          orderBy: [{ createdAt: "desc" }],
-          ...pageArgs(query),
-        });
+        const guests = await listPlanGuests(
+          tx,
+          weddingPlanId,
+          contributorScope ? [...contributorScope] : null,
+          query,
+        );
 
         return guests
           .filter(
@@ -169,7 +185,7 @@ export class GuestsService {
     return runRetryableTransaction(
       this.prisma,
       async (tx) => {
-        const guest = await tx.guest.findUnique({ where: { id } });
+        const guest = await findGuestById(tx, id);
         if (!guest) throw new NotFoundException("Guest not found");
         const context = await this.permissions.assertPlanReadableInTransaction(
           tx,
@@ -327,9 +343,10 @@ export class GuestsService {
           excludeGuestId: current.id,
         });
 
-        const updated = await tx.guest.update({
-          where: { id },
-          data: {
+        const updated = await updateGuest(
+          tx,
+          id,
+          {
             ...(dto.name !== undefined
               ? {
                   name,
@@ -339,13 +356,7 @@ export class GuestsService {
             ...(dto.phone !== undefined
               ? { phone, normalizedPhone: phone }
               : {}),
-            ...(dto.groupId !== undefined
-              ? {
-                  group: groupId
-                    ? { connect: { id: groupId } }
-                    : { disconnect: true },
-                }
-              : {}),
+            ...(dto.groupId !== undefined ? { groupId } : {}),
             ...(dto.side !== undefined ? { side: dto.side } : {}),
             ...(dto.status !== undefined ? { status: dto.status } : {}),
             ...(dto.invitationStatus !== undefined
@@ -373,7 +384,7 @@ export class GuestsService {
               ? { notes: this.optionalText(dto.notes) }
               : {}),
           },
-        });
+        );
         const action = this.guestUpdateAction(current, updated);
         await this.recordGuestContribution(tx, context, updated, action);
         return updated;
@@ -411,7 +422,7 @@ export class GuestsService {
         current,
         ContributionAction.DELETED,
       );
-      await tx.guest.delete({ where: { id } });
+      await deleteGuest(tx, id);
     });
     return { id, deleted: true };
   }
@@ -435,13 +446,11 @@ export class GuestsService {
           currentUser.id,
         );
         if (contributorScope !== null && !includePrivateDetails) return [];
-        const groups = await tx.guestGroup.findMany({
-          where: {
-            weddingPlanId,
-            ...(contributorScope ? { id: { in: [...contributorScope] } } : {}),
-          },
-          orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }],
-        });
+        const groups = await listPlanGuestGroups(
+          tx,
+          weddingPlanId,
+          contributorScope ? [...contributorScope] : null,
+        );
         return groups
           .filter(
             (group) =>
@@ -465,13 +474,11 @@ export class GuestsService {
           weddingPlanId,
           currentUser,
         );
-        const created = await tx.guestGroup.create({
-          data: {
-            weddingPlanId,
-            name: this.requiredText(dto.name, "name"),
-            notes: this.optionalText(dto.notes),
-            sortOrder: dto.sortOrder ?? 0,
-          },
+        const created = await createGuestGroup(tx, {
+          weddingPlanId,
+          name: this.requiredText(dto.name, "name"),
+          notes: this.optionalText(dto.notes),
+          sortOrder: dto.sortOrder ?? 0,
         });
         await this.recordGuestGroupContribution(
           tx,
@@ -509,9 +516,10 @@ export class GuestsService {
           currentUser.id,
           current,
         );
-        const updated = await tx.guestGroup.update({
-          where: { id },
-          data: {
+        const updated = await updateGuestGroup(
+          tx,
+          id,
+          {
             ...(dto.name !== undefined
               ? { name: this.requiredText(dto.name, "name") }
               : {}),
@@ -522,7 +530,7 @@ export class GuestsService {
               ? { sortOrder: dto.sortOrder }
               : {}),
           },
-        });
+        );
         await this.recordGuestGroupContribution(
           tx,
           context,
@@ -563,7 +571,7 @@ export class GuestsService {
         current,
         ContributionAction.DELETED,
       );
-      await tx.guestGroup.delete({ where: { id } });
+      await deleteGuestGroup(tx, id);
     });
     return { id, deleted: true };
   }
@@ -589,19 +597,16 @@ export class GuestsService {
           guestScope !== null && !canManageGuests
             ? [[], 0]
             : await Promise.all([
-                tx.guest.findMany({
-                  where: {
-                    weddingPlanId,
-                    ...(guestScope ? { id: { in: [...guestScope] } } : {}),
-                  },
-                  include: { group: { select: { name: true } } },
-                }),
-                tx.guestGroup.count({
-                  where: {
-                    weddingPlanId,
-                    ...(groupScope ? { id: { in: [...groupScope] } } : {}),
-                  },
-                }),
+                listGuestsForSummary(
+                  tx,
+                  weddingPlanId,
+                  guestScope ? [...guestScope] : null,
+                ),
+                countGuestGroupsForSummary(
+                  tx,
+                  weddingPlanId,
+                  groupScope ? [...groupScope] : null,
+                ),
               ]);
         const guests = guestRows.filter(
           (guest) => guestScope === null || guestScope.has(guest.id),
@@ -867,8 +872,7 @@ export class GuestsService {
       normalizedPhone: phone,
     });
 
-    return tx.guest.create({
-      data: {
+    return createGuest(tx, {
         weddingPlanId,
         groupId: this.optionalId(dto.groupId),
         name,
@@ -887,12 +891,11 @@ export class GuestsService {
         seatsCount: dto.seatsCount ?? 1,
         companionsCount: dto.companionsCount ?? 0,
         notes: this.optionalText(dto.notes),
-      },
     });
   }
 
   private async findGuestOrThrow(id: string): Promise<Guest> {
-    const guest = await this.prisma.guest.findUnique({ where: { id } });
+    const guest = await findGuestById(this.prisma, id);
     if (!guest) {
       throw new NotFoundException("Guest not found");
     }
@@ -900,7 +903,7 @@ export class GuestsService {
   }
 
   private async findGroupOrThrow(id: string): Promise<GuestGroup> {
-    const group = await this.prisma.guestGroup.findUnique({ where: { id } });
+    const group = await findGuestGroupById(this.prisma, id);
     if (!group) {
       throw new NotFoundException("Guest group not found");
     }
@@ -912,19 +915,10 @@ export class GuestsService {
     id: string,
     weddingPlanId: string,
   ): Promise<Guest> {
-    const locked = await tx.$queryRaw<Array<{ id: string }>>(
-      Prisma.sql`
-        SELECT "id"
-        FROM "Guest"
-        WHERE "id" = ${id}
-          AND "weddingPlanId" = ${weddingPlanId}
-        FOR UPDATE
-      `,
-    );
-    if (locked.length !== 1) {
+    if (!(await lockGuestForUpdate(tx, id, weddingPlanId))) {
       throw new NotFoundException("Guest not found");
     }
-    const guest = await tx.guest.findUnique({ where: { id } });
+    const guest = await findGuestById(tx, id);
     if (!guest) {
       throw new NotFoundException("Guest not found");
     }
@@ -936,19 +930,10 @@ export class GuestsService {
     id: string,
     weddingPlanId: string,
   ): Promise<GuestGroup> {
-    const locked = await tx.$queryRaw<Array<{ id: string }>>(
-      Prisma.sql`
-        SELECT "id"
-        FROM "GuestGroup"
-        WHERE "id" = ${id}
-          AND "weddingPlanId" = ${weddingPlanId}
-        FOR UPDATE
-      `,
-    );
-    if (locked.length !== 1) {
+    if (!(await lockGuestGroupForUpdate(tx, id, weddingPlanId))) {
       throw new NotFoundException("Guest group not found");
     }
-    const group = await tx.guestGroup.findUnique({ where: { id } });
+    const group = await findGuestGroupById(tx, id);
     if (!group) {
       throw new NotFoundException("Guest group not found");
     }
@@ -991,14 +976,12 @@ export class GuestsService {
   ): Promise<void> {
     if (!normalizedPhone) return;
 
-    const duplicate = await tx.guest.findFirst({
-      where: {
-        weddingPlanId,
-        normalizedPhone,
-        ...(excludeGuestId ? { NOT: { id: excludeGuestId } } : {}),
-      },
-      select: { id: true },
-    });
+    const duplicate = await findDuplicateGuest(
+      tx,
+      weddingPlanId,
+      normalizedPhone,
+      excludeGuestId,
+    );
 
     if (duplicate) throw this.duplicateGuestConflict();
   }
@@ -1011,16 +994,7 @@ export class GuestsService {
     const normalizedId = this.optionalId(groupId);
     if (!normalizedId) return;
 
-    const locked = await tx.$queryRaw<Array<{ id: string }>>(
-      Prisma.sql`
-        SELECT "id"
-        FROM "GuestGroup"
-        WHERE "id" = ${normalizedId}
-          AND "weddingPlanId" = ${weddingPlanId}
-        FOR SHARE
-      `,
-    );
-    if (locked.length !== 1) {
+    if (!(await lockGuestGroupForShare(tx, normalizedId, weddingPlanId))) {
       throw new BadRequestException("groupId must belong to the wedding plan");
     }
   }

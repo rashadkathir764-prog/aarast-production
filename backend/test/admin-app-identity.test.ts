@@ -225,7 +225,7 @@ test("provider approval preserves an administrator database role", () => {
     /providerAccounts\.promoteToProviderInTransaction\(/,
   );
   const source = readFileSync(
-    "src/modules/identity/internal/identity-user-port.service.ts",
+    "src/modules/identity/infrastructure/identity-user-port.service.ts",
     "utf8",
   );
   assert.match(

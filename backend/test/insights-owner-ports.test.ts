@@ -15,12 +15,12 @@ import {
   WeddingTaskStatus,
 } from '@prisma/client';
 import { PermissionService } from '../src/modules/collaboration/internal/permission.service';
-import { FinancePortService } from '../src/modules/finance/internal/finance-port.service';
-import { GuestsPortService } from '../src/modules/guests/internal/guests-port.service';
-import { ProviderReadService } from '../src/modules/marketplace/internal/provider-read.service';
-import { QuoteReadService } from '../src/modules/marketplace/internal/quote-read.service';
-import { PlanReadService } from '../src/modules/planning/internal/plan-read.service';
-import { TasksPortService } from '../src/modules/tasks/internal/tasks-port.service';
+import { FinancePortService } from '../src/modules/finance/infrastructure/finance-port.service';
+import { GuestsPortService } from '../src/modules/guests/infrastructure/guests-port.service';
+import { ProviderReadService } from '../src/modules/marketplace/infrastructure/provider-read.service';
+import { QuoteReadService } from '../src/modules/marketplace/infrastructure/quote-read.service';
+import { PlanReadService } from '../src/modules/planning/infrastructure/plan-read.service';
+import { TasksPortService } from '../src/modules/tasks/infrastructure/tasks-port.service';
 import { notificationsService } from './support/owner-ports';
 
 // The dashboard and timeline (insights owns no tables) used to count and

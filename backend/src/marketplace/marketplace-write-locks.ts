@@ -13,6 +13,7 @@ import {
 } from "@prisma/client";
 import type { CatalogReadPort } from "../modules/catalog/public/catalog-read.port";
 import { lockUserLifecycleRowsInTransaction } from "../modules/identity/public/user-lifecycle-lock";
+import * as writeLockRepository from "../modules/marketplace/infrastructure/marketplace-write-lock.repository";
 
 export async function lockMarketplaceMutationUsers(
   tx: Prisma.TransactionClient,
@@ -37,37 +38,12 @@ export async function lockMarketplaceProvider(
   providerId: string,
   mode: "SHARE" | "UPDATE" = "SHARE",
 ): Promise<Pick<Provider, "id" | "userId" | "status" | "businessName">> {
-  const rows =
-    mode === "UPDATE"
-      ? await tx.$queryRaw<Array<{ id: string }>>(
-          Prisma.sql`
-            SELECT "id"
-            FROM "Provider"
-            WHERE "id" = ${providerId}
-            FOR UPDATE
-          `,
-        )
-      : await tx.$queryRaw<Array<{ id: string }>>(
-          Prisma.sql`
-            SELECT "id"
-            FROM "Provider"
-            WHERE "id" = ${providerId}
-            FOR SHARE
-          `,
-        );
+  const rows = await writeLockRepository.lockProviderRow(tx, providerId, mode);
   if (rows.length !== 1) {
     throw new NotFoundException("Provider not found");
   }
 
-  const provider = await tx.provider.findUnique({
-    where: { id: providerId },
-    select: {
-      id: true,
-      userId: true,
-      status: true,
-      businessName: true,
-    },
-  });
+  const provider = await writeLockRepository.findLockedProvider(tx, providerId);
   if (!provider) {
     throw new NotFoundException("Provider not found");
   }
@@ -100,27 +76,13 @@ export async function lockActiveProviderService(
   serviceId: string,
   providerId: string,
 ): Promise<ProviderService> {
-  const rows = await tx.$queryRaw<Array<{ id: string }>>(
-    Prisma.sql`
-      SELECT "id"
-      FROM "ProviderService"
-      WHERE "id" = ${serviceId}
-      FOR SHARE
-    `,
-  );
+  const rows = await writeLockRepository.lockProviderServiceRow(tx, serviceId);
   if (rows.length !== 1) {
     throw new BadRequestException(
       "serviceId must reference an active provider service",
     );
   }
-  const service = await tx.providerService.findFirst({
-    where: {
-      id: serviceId,
-      providerId,
-      isActive: true,
-      provider: { status: ProviderStatus.ACTIVE },
-    },
-  });
+  const service = await writeLockRepository.findActiveProviderService(tx, serviceId, providerId);
   if (!service) {
     throw new BadRequestException(
       "serviceId must reference an active provider service",

@@ -22,6 +22,7 @@ const read = (path: string) => readFileSync(join(root, path), "utf8");
 test("admin login requires a persisted password-bound MFA challenge", () => {
   const schema = readLivePrismaSchema();
   const service = read("src/modules/identity/internal/auth/auth.service.ts");
+  const repository = read("src/modules/identity/infrastructure/auth-challenge.repository.ts");
   const controller = read("src/modules/identity/api/auth.controller.ts");
 
   assert.match(schema, /model AdminLoginChallenge/);
@@ -30,7 +31,8 @@ test("admin login requires a persisted password-bound MFA challenge", () => {
   assert.match(schema, /expiresAt\s+DateTime/);
   assert.match(schema, /consumedAt\s+DateTime\?/);
   assert.match(service, /UserRole\.ADMIN/);
-  assert.match(service, /adminLoginChallenge\.create/);
+  assert.match(service, /challenges\.createAdminLogin\(tx/);
+  assert.match(repository, /adminLoginChallenge\.create/);
   assert.match(service, /OtpPurpose\.ADMIN_LOGIN/);
   assert.match(controller, /@Post\(["']admin\/login["']\)/);
   assert.match(controller, /@Post\(["']admin\/login\/complete["']\)/);
@@ -38,6 +40,7 @@ test("admin login requires a persisted password-bound MFA challenge", () => {
 
 test("admin MFA can securely verify a pre-MFA administrator phone", () => {
   const service = read("src/modules/identity/internal/auth/auth.service.ts");
+  const userRepository = read("src/modules/identity/infrastructure/auth-user.repository.ts");
   const startBlock = service.slice(
     service.indexOf("async startAdminLogin("),
     service.indexOf("async completeAdminLogin("),
@@ -54,10 +57,8 @@ test("admin MFA can securely verify a pre-MFA administrator phone", () => {
   assert.match(startBlock, /allowUnverifiedPhone:\s*true/);
   assert.match(completeBlock, /claimOtpCodeInTransaction/);
   assert.match(completeBlock, /runSerializableTransaction/);
-  assert.match(
-    completeBlock,
-    /phoneVerifiedAt:\s*challenge\.user\.phoneVerifiedAt\s*\?\?\s*now/,
-  );
+  assert.match(completeBlock, /users\.markAdminMfaLogin\(tx, challenge\.user, now\)/);
+  assert.match(userRepository, /phoneVerifiedAt: user\.phoneVerifiedAt \?\? at/);
   assert.match(
     credentialsBlock,
     /!user\.phoneVerifiedAt\s*&&\s*!options\.allowUnverifiedPhone/,
@@ -225,14 +226,18 @@ test("application and administrator sessions are persisted and revoked by scope"
   const schema = readLivePrismaSchema();
   const service = read("src/modules/identity/internal/auth/auth.service.ts");
   const strategy = read("src/modules/identity/internal/auth/jwt.strategy.ts");
+  const repository = read("src/modules/identity/infrastructure/auth-session.repository.ts");
 
   assert.match(schema, /enum AuthSessionScope/);
   assert.match(schema, /scope\s+AuthSessionScope\s+@default\(APPLICATION\)/);
-  assert.match(service, /scope:\s*AuthSessionScope\.APPLICATION/);
-  assert.match(service, /scope:\s*AuthSessionScope\.ADMIN/);
+  assert.match(service, /AuthSessionScope\.APPLICATION/);
+  assert.match(service, /AuthSessionScope\.ADMIN/);
+  assert.match(service, /sessions\.create\(/);
+  assert.match(repository, /client\.refreshToken\.create/);
+  assert.match(repository, /where: \{ userId, scope, revokedAt: null \}/);
   assert.match(
     service,
-    /logoutAdminRefreshToken[\s\S]*scope:\s*AuthSessionScope\.ADMIN/,
+    /logoutAdminRefreshToken[\s\S]*seed\.scope !== AuthSessionScope\.ADMIN/,
   );
   assert.match(strategy, /AuthSessionScope\.ADMIN/);
   assert.match(strategy, /AuthSessionScope\.APPLICATION/);
@@ -254,13 +259,16 @@ test("all access JWTs are bound to a live revocable server session", () => {
   assert.match(payload, /sid\?: string/);
   assert.match(payload, /scope: JwtSessionScope/);
   assert.match(service, /sid: sessionId/);
-  assert.match(service, /replacement\.id/);
+  assert.match(service, /replacementId/);
+  assert.match(read("src/modules/identity/infrastructure/auth-session.repository.ts"), /replacement\.id/);
   assert.match(strategy, /payload\.sid/);
-  assert.match(strategy, /refreshToken\.findFirst/);
+  assert.match(strategy, /findJwtSessionRows/);
+  assert.match(read("src/modules/identity/infrastructure/jwt-session.repository.ts"), /refreshToken\.findFirst/);
   assert.match(strategy, /AuthSessionScope\.APPLICATION/);
   assert.match(strategy, /AuthSessionScope\.ADMIN/);
-  assert.match(strategy, /revokedAt: null/);
-  assert.match(strategy, /expiresAt: \{ gt: new Date\(\) \}/);
+  const jwtRepository = read("src/modules/identity/infrastructure/jwt-session.repository.ts");
+  assert.match(jwtRepository, /revokedAt: null/);
+  assert.match(jwtRepository, /expiresAt: \{ gt: new Date\(\) \}/);
 });
 
 test("admin login completion rollback preserves OTP and follows canonical lock order", async () => {

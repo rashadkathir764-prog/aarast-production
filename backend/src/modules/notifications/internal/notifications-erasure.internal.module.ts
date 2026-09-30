@@ -1,5 +1,5 @@
 import { Module } from '@nestjs/common';
-import { NotificationsErasureService } from './notifications-erasure.service';
+import { NotificationsErasureService } from '../infrastructure/notifications-erasure.service';
 
 export const NOTIFICATIONS_ERASURE_IMPLEMENTATION = Symbol(
   'NOTIFICATIONS_ERASURE_IMPLEMENTATION',

@@ -1,7 +1,7 @@
 import { Module } from '@nestjs/common';
 import { PrismaModule } from '../../../platform/database/prisma.module';
 import { PlanReadPublicModule } from '../../planning/public/plan-read-public.module';
-import { CollaborationErasureService } from './collaboration-erasure.service';
+import { CollaborationErasureService } from '../infrastructure/collaboration-erasure.service';
 import { PermissionService } from './permission.service';
 
 export const COLLABORATION_PERMISSION_IMPLEMENTATION = Symbol(

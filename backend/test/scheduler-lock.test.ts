@@ -75,9 +75,9 @@ test('idempotency cleanup deletes only expired completed keys while holding the 
 test('scheduled jobs use distinct PostgreSQL advisory lock namespaces', () => {
   const schedulerSources = [
     'src/platform/idempotency/idempotency-cleanup.scheduler.ts',
-    'src/modules/identity/internal/auth/login-throttle-cleanup.scheduler.ts',
+    'src/modules/identity/infrastructure/auth-cleanup.repository.ts',
     'src/notifications/notifications.service.ts',
-    'src/media/media-upload-ticket.service.ts',
+    'src/modules/media/infrastructure/media-upload-ticket.service.ts',
     'src/platform/outbox/outbox-cleanup.scheduler.ts',
   ].map((path) => readFileSync(join(process.cwd(), path), 'utf8'));
   const lockKeys = schedulerSources.flatMap((source) =>
@@ -92,4 +92,15 @@ test('scheduled jobs use distinct PostgreSQL advisory lock namespaces', () => {
     lockKeys.length,
     `duplicate advisory scheduler lock: ${lockKeys.join(', ')}`,
   );
+  for (const [scheduler, delegate] of [
+    ['login-throttle-cleanup.scheduler.ts', 'removeExpiredLoginThrottleWindows'],
+    ['otp-dispatch-quota-cleanup.scheduler.ts', 'removeExpiredOtpQuotaWindows'],
+    ['auth-challenge-cleanup.scheduler.ts', 'removeExpiredAuthChallenges'],
+  ]) {
+    const source = readFileSync(
+      join(process.cwd(), 'src/modules/identity/internal/auth', scheduler),
+      'utf8',
+    );
+    assert.match(source, new RegExp(`${delegate}\\(\\s*this\\.prisma`));
+  }
 });

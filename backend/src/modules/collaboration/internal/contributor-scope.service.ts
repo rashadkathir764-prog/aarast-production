@@ -13,6 +13,11 @@ import {
   ContributionHistoryService,
   contributorActorReference,
 } from "./contribution-history.service";
+import {
+  findActorContributorEvents,
+  findPlanContributorEvents,
+  findQualifyingContributorEvents,
+} from '../infrastructure/contributor-scope.repository';
 
 @Injectable()
 export class ContributorScopeService implements CollaborationScopePort {
@@ -43,19 +48,13 @@ export class ContributorScopeService implements CollaborationScopePort {
       ContributionAction.PAYMENT_RECORDED,
     ],
   ): Promise<string[]> {
-    const events = await tx.contributionEvent.findMany({
-      where: {
-        historyScope: { weddingPlanId },
-        contributorTenure: {
-          actorReference: contributorActorReference(actorUserId),
-        },
-        entityType: { in: [...entityTypes] },
-        action: { in: [...actions] },
-        entityId: { not: null },
-      },
-      select: { entityId: true },
-      distinct: ["entityId"],
-    });
+    const events = await findPlanContributorEvents(
+      tx,
+      weddingPlanId,
+      contributorActorReference(actorUserId),
+      entityTypes,
+      actions,
+    );
     return events.flatMap((event) =>
       event.entityId ? [event.entityId] : [],
     );
@@ -70,23 +69,12 @@ export class ContributorScopeService implements CollaborationScopePort {
     if (weddingPlanIds.length === 0 || actorUserIds.length === 0 || rules.length === 0) {
       return [];
     }
-    const events = await tx.contributionEvent.findMany({
-      where: {
-        historyScope: { weddingPlanId: { in: [...weddingPlanIds] } },
-        contributorTenure: { actorUserId: { in: [...actorUserIds] } },
-        entityId: { not: null },
-        OR: rules.map((rule) => ({
-          entityType: rule.entityType,
-          action: { in: [...rule.actions] },
-        })),
-      },
-      select: {
-        entityId: true,
-        entityType: true,
-        historyScope: { select: { weddingPlanId: true } },
-        contributorTenure: { select: { actorUserId: true } },
-      },
-    });
+    const events = await findQualifyingContributorEvents(
+      tx,
+      weddingPlanIds,
+      actorUserIds,
+      rules,
+    );
     return events.flatMap((event) =>
       event.entityId &&
       event.historyScope.weddingPlanId &&
@@ -110,18 +98,13 @@ export class ContributorScopeService implements CollaborationScopePort {
     actions: readonly ContributionAction[],
     entityId?: string,
   ): Promise<string[]> {
-    const events = await tx.contributionEvent.findMany({
-      where: {
-        contributorTenure: {
-          actorReference: contributorActorReference(actorUserId),
-        },
-        entityType: { in: [...entityTypes] },
-        action: { in: [...actions] },
-        entityId: entityId ? entityId : { not: null },
-      },
-      select: { entityId: true },
-      distinct: ["entityId"],
-    });
+    const events = await findActorContributorEvents(
+      tx,
+      contributorActorReference(actorUserId),
+      entityTypes,
+      actions,
+      entityId,
+    );
     return events.flatMap((event) =>
       event.entityId ? [event.entityId] : [],
     );

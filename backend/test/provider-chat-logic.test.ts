@@ -84,17 +84,23 @@ test('authorization uses live plan ownership and explicit canManageProviders', (
     join(process.cwd(), 'src/conversations/conversations.service.ts'),
     'utf8',
   );
+  const repository = readFileSync(
+    join(process.cwd(), 'src/modules/messaging/infrastructure/conversations.repository.ts'),
+    'utf8',
+  );
   assert.match(service, /weddingPlan\.ownerUserId === currentUserId/);
   assert.match(service, /if \(!member\?\.canManageProviders\) return null/);
-  assert.match(service, /revokedAt: new Date\(\)/);
+  assert.match(service, /this\.repository\.revokeParticipant\([\s\S]*new Date\(\)/);
+  assert.match(repository, /revokeParticipant\([\s\S]*revokedAt: at/);
   assert.match(service, /assertActiveAccessInTransaction/);
   // The provider and membership rows are locked for share by their owners
   // (marketplace's and collaboration's ports) in the same lifecycle order.
   assert.match(service, /providers\.lockProviderRowsForShareInTransaction\(/);
   assert.match(service, /permissions\.lockMembershipsForShareInTransaction\(/);
   assert.match(service, /PROVIDER_NOT_JOINED/);
-  assert.match(service, /customerSideBlockedAt/);
-  assert.match(service, /providerSideBlockedAt/);
+  assert.match(service, /this\.repository\.setConversationBlocked\(/);
+  assert.match(repository, /customerSideBlockedAt/);
+  assert.match(repository, /providerSideBlockedAt/);
   assert.doesNotMatch(
     service,
     /data:\s*\{\s*lastReadAt,\s*revokedAt:\s*null\s*\}/,

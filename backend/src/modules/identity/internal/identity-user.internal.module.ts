@@ -1,8 +1,8 @@
 import { Module } from "@nestjs/common";
 import { PrismaModule } from "../../../platform/database/prisma.module";
-import { IdentityAdminService } from "./identity-admin.service";
-import { IdentityRealtimeSessionService } from "./identity-realtime-session.service";
-import { IdentityUserPortService } from "./identity-user-port.service";
+import { IdentityAdminService } from "../infrastructure/identity-admin.service";
+import { IdentityRealtimeSessionService } from "../infrastructure/identity-realtime-session.service";
+import { IdentityUserPortService } from "../infrastructure/identity-user-port.service";
 
 export const USER_READ_IMPLEMENTATION = Symbol("USER_READ_IMPLEMENTATION");
 export const ACTIVE_PLAN_IMPLEMENTATION = Symbol("ACTIVE_PLAN_IMPLEMENTATION");

@@ -5,7 +5,8 @@ import type {
   CompleteOnboardingInput,
 } from '../public/active-plan.port';
 import type { ProviderAccountPort } from '../public/provider-account.port';
-import { type SafeUser, toSafeUser } from '../public/safe-user';
+import { type SafeUser } from '../public/safe-user';
+import { toSafeUser } from '../internal/safe-user.presenter';
 import {
   type AppIdentity,
   appIdentitySelect,

@@ -17,7 +17,7 @@ import {
   PlanAccessContext,
 } from "../src/modules/collaboration/public/collaboration-permission.port";
 import { PermissionService } from "../src/modules/collaboration/internal/permission.service";
-import { PlanReadService } from "../src/modules/planning/internal/plan-read.service";
+import { PlanReadService } from "../src/modules/planning/infrastructure/plan-read.service";
 import { rolePermissionDefaults } from "../src/modules/collaboration/internal/plan-permissions";
 import { sharingService } from "./support/owner-ports";
 
@@ -1718,6 +1718,10 @@ test("invite create and reissue source contract stays transactional and authenti
     join(process.cwd(), "src/modules/collaboration/api/sharing.controller.ts"),
     "utf8",
   );
+  const repositorySource = readFileSync(
+    join(process.cwd(), "src/modules/collaboration/infrastructure/sharing.repository.ts"),
+    "utf8",
+  );
   const createBlock = serviceSource.slice(
     serviceSource.indexOf("async createInvite("),
     serviceSource.indexOf("async findInvitesForCurrentUser("),
@@ -1731,17 +1735,18 @@ test("invite create and reissue source contract stays transactional and authenti
   assert.match(createBlock, /assertMemberManageableInTransaction/);
   assert.match(createBlock, /createNotificationInTransaction\(tx/);
   assert.doesNotMatch(createBlock, /createNotification\(/);
-  assert.match(createBlock, /planInvite\.findFirst/);
-  assert.match(createBlock, /planInvite\.create/);
+  assert.match(createBlock, /this\.repository\.findPendingDuplicateInvite\(/);
+  assert.match(createBlock, /this\.repository\.createInvite\(tx/);
+  assert.match(repositorySource, /findPendingDuplicateInvite\([\s\S]*planInvite\.findFirst/);
+  assert.match(repositorySource, /createInvite\([\s\S]*planInvite\.create/);
   assert.match(createBlock, /recordForContextInTransaction\(\s*tx/);
   assert.match(createBlock, /ContributionAction\.INVITED/);
   assert.match(reissueBlock, /runSerializableTransaction/);
   assert.match(reissueBlock, /assertMemberManageableInTransaction/);
   assert.match(reissueBlock, /permissionDataForUpdate/);
   assert.match(reissueBlock, /assertPermissionCeiling/);
-  assert.match(reissueBlock, /tokenHash:\s*invite\.tokenHash/);
-  assert.match(reissueBlock, /acceptedAt:\s*null/);
-  assert.match(reissueBlock, /expiresAt:\s*\{\s*gt:\s*now/);
+  assert.match(reissueBlock, /this\.repository\.rotatePendingInvite\(/);
+  assert.match(repositorySource, /rotatePendingInvite\([\s\S]*tokenHash:\s*invite\.tokenHash[\s\S]*acceptedAt:\s*null[\s\S]*expiresAt:\s*\{\s*gt:\s*now/);
   assert.match(
     controllerSource,
     /@Post\(":inviteId\/reissue"\)[\s\S]*?reissueInvite\(/,

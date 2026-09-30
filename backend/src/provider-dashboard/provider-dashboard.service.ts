@@ -87,6 +87,7 @@ import {
   lockOwnedProviderForMutationInTransaction,
   lockProviderMutationUsersInTransaction,
 } from './provider-mutation-locks';
+import * as dashboardStore from '../modules/marketplace/infrastructure/provider-dashboard.repository';
 
 type ProviderProfile = Provider & {
   city: City;
@@ -146,14 +147,7 @@ export class ProviderDashboardService {
         throw new NotFoundException('User not found');
       }
 
-      const existingProviders = await tx.$queryRaw<Array<{ id: string }>>(
-        Prisma.sql`
-          SELECT "id"
-          FROM "Provider"
-          WHERE "userId" = ${currentUser.id}
-          FOR UPDATE
-        `,
-      );
+      const existingProviders = await dashboardStore.lockExistingApplication(tx, currentUser.id);
       if (existingProviders.length > 0) {
         throw new ConflictException(
           'Provider profile already exists for this user',
@@ -175,16 +169,13 @@ export class ProviderDashboardService {
         );
       }
 
-      const created = await tx.provider.create({
-        data: {
+      const created = await dashboardStore.createProviderApplication(tx, {
           userId: currentUser.id,
           cityId: dto.cityId,
           primaryCategoryId,
           businessName,
           phone,
           description,
-          status: ProviderStatus.PENDING,
-        },
       });
 
       return this.withProviderCatalog(tx, created);
@@ -266,9 +257,7 @@ export class ProviderDashboardService {
       }
       return this.withProviderCatalog(
         tx,
-        await tx.provider.update({
-          where: { id: provider.id },
-          data: {
+        await dashboardStore.updateProviderProfile(tx, provider.id, {
         ...(dto.businessName !== undefined
           ? { businessName: this.requiredText(dto.businessName, 'businessName') }
           : {}),
@@ -302,7 +291,6 @@ export class ProviderDashboardService {
           : {}),
         ...(dto.logoUrl !== undefined ? { logoUrl } : {}),
         ...(dto.coverUrl !== undefined ? { coverUrl } : {}),
-          },
         }),
       );
     });
@@ -317,16 +305,7 @@ export class ProviderDashboardService {
       activeServicesCount,
       quoteRequestsCount,
       newQuoteRequestsCount,
-    ] = await Promise.all([
-      this.prisma.providerService.count({ where: { providerId: provider.id } }),
-      this.prisma.providerService.count({
-        where: { providerId: provider.id, isActive: true },
-      }),
-      this.prisma.quoteRequest.count({ where: { providerId: provider.id } }),
-      this.prisma.quoteRequest.count({
-        where: { providerId: provider.id, status: QuoteRequestStatus.SENT },
-      }),
-    ]);
+    ] = await dashboardStore.countProviderDashboard(this.prisma, provider.id);
 
     return {
       servicesCount,
@@ -342,11 +321,7 @@ export class ProviderDashboardService {
     const provider = await this.findActiveOwnedProviderOrThrow(currentUser.id);
     const services = await this.relations.attachServiceCatalog(
       this.prisma,
-      await this.prisma.providerService.findMany({
-        where: { providerId: provider.id },
-        include: this.serviceInclude(),
-        orderBy: { createdAt: 'desc' },
-      }),
+      await dashboardStore.listOwnedServices(this.prisma, provider.id),
     );
 
     return services.map((service) => this.toServiceResponse(service));
@@ -370,8 +345,7 @@ export class ProviderDashboardService {
 
       return this.withServiceCatalog(
         tx,
-        await tx.providerService.create({
-          data: {
+        await dashboardStore.createProviderService(tx, {
             providerId: provider.id,
             categoryId: dto.categoryId,
             title: this.requiredText(dto.title, 'title'),
@@ -380,8 +354,6 @@ export class ProviderDashboardService {
             priceUnit: this.optionalText(dto.priceUnit),
             currency: this.optionalText(dto.currency) ?? 'YER',
             cityId: this.optionalText(dto.cityId),
-          },
-          include: this.serviceInclude(),
         }),
       );
     });
@@ -420,9 +392,7 @@ export class ProviderDashboardService {
 
       return this.withServiceCatalog(
         tx,
-        await tx.providerService.update({
-        where: { id },
-        data: {
+        await dashboardStore.updateProviderService(tx, id, {
           ...(dto.categoryId !== undefined ? { categoryId: dto.categoryId } : {}),
           ...(dto.title !== undefined
             ? { title: this.requiredText(dto.title, 'title') }
@@ -443,8 +413,6 @@ export class ProviderDashboardService {
             ? { cityId: this.optionalText(dto.cityId) }
             : {}),
           ...(dto.isActive !== undefined ? { isActive: dto.isActive } : {}),
-        },
-        include: this.serviceInclude(),
         }),
       );
     });
@@ -463,11 +431,7 @@ export class ProviderDashboardService {
       await this.lockOwnedServiceInTransaction(tx, provider.id, id, 'UPDATE');
       return this.withServiceCatalog(
         tx,
-        await tx.providerService.update({
-          where: { id },
-          data: { isActive: false },
-          include: this.serviceInclude(),
-        }),
+        await dashboardStore.deactivateProviderService(tx, id),
       );
     });
 
@@ -498,13 +462,11 @@ export class ProviderDashboardService {
         serviceId,
         'SHARE',
       );
-      const created = await tx.providerServiceImage.create({
-        data: {
+      const created = await dashboardStore.createServiceImage(tx, {
           serviceId,
           imageUrl,
           altText: this.optionalText(dto.altText),
           sortOrder: dto.sortOrder ?? 0,
-        },
       });
       await this.mediaStorage.consumePublicMediaUrl(
         currentUser,
@@ -571,15 +533,12 @@ export class ProviderDashboardService {
           tx,
         );
       }
-      return tx.providerServiceImage.update({
-        where: { id: imageId },
-        data: {
+      return dashboardStore.updateServiceImage(tx, imageId, {
           ...(dto.imageUrl !== undefined ? { imageUrl: imageUrl! } : {}),
           ...(dto.altText !== undefined
             ? { altText: this.optionalText(dto.altText) }
             : {}),
           ...(dto.sortOrder !== undefined ? { sortOrder: dto.sortOrder } : {}),
-        },
       });
     });
 
@@ -610,7 +569,7 @@ export class ProviderDashboardService {
         { type: 'SERVICE_IMAGE', id: imageId },
         tx,
       );
-      await tx.providerServiceImage.delete({ where: { id: imageId } });
+      await dashboardStore.deleteServiceImage(tx, imageId);
     });
 
     return { id: imageId, deleted: true };
@@ -618,11 +577,7 @@ export class ProviderDashboardService {
 
   async findPackages(currentUser: AuthenticatedUser) {
     const provider = await this.findActiveOwnedProviderOrThrow(currentUser.id);
-    const packages = await this.prisma.providerPackage.findMany({
-      where: { providerId: provider.id },
-      include: { service: true },
-      orderBy: { createdAt: 'desc' },
-    });
+    const packages = await dashboardStore.listOwnedPackages(this.prisma, provider.id);
 
     return packages.map((providerPackage) =>
       this.toPackageResponse(providerPackage),
@@ -652,8 +607,7 @@ export class ProviderDashboardService {
           );
         }
 
-        return tx.providerPackage.create({
-          data: {
+        return dashboardStore.createProviderPackage(tx, {
             providerId: provider.id,
             serviceId: this.optionalText(dto.serviceId),
             title: this.requiredText(dto.title, 'title'),
@@ -663,8 +617,6 @@ export class ProviderDashboardService {
             ...(dto.items !== undefined
               ? { items: dto.items as Prisma.InputJsonValue }
               : {}),
-          },
-          include: { service: true },
         });
       },
     );
@@ -701,9 +653,7 @@ export class ProviderDashboardService {
         }
         await this.lockOwnedPackageInTransaction(tx, provider.id, id);
 
-        return tx.providerPackage.update({
-          where: { id },
-          data: {
+        return dashboardStore.updateProviderPackage(tx, id, {
             ...(dto.serviceId !== undefined
               ? { serviceId: this.optionalText(dto.serviceId) }
               : {}),
@@ -723,8 +673,6 @@ export class ProviderDashboardService {
               ? { items: dto.items as Prisma.InputJsonValue }
               : {}),
             ...(dto.isActive !== undefined ? { isActive: dto.isActive } : {}),
-          },
-          include: { service: true },
         });
       },
     );
@@ -743,11 +691,7 @@ export class ProviderDashboardService {
           'OPERATIONAL',
         );
         await this.lockOwnedPackageInTransaction(tx, provider.id, id);
-        return tx.providerPackage.update({
-          where: { id },
-          data: { isActive: false },
-          include: { service: true },
-        });
+        return dashboardStore.deactivateProviderPackage(tx, id);
       },
     );
 
@@ -758,11 +702,7 @@ export class ProviderDashboardService {
     const provider = await this.findActiveOwnedProviderOrThrow(currentUser.id);
     const quotes = await this.relations.attachDashboardQuoteRelations(
       this.prisma,
-      await this.prisma.quoteRequest.findMany({
-        where: { providerId: provider.id },
-        include: this.quoteInclude(),
-        orderBy: { createdAt: 'desc' },
-      }),
+      await dashboardStore.listProviderQuoteRequests(this.prisma, provider.id),
     );
 
     return quotes.map((quote) => this.toQuoteResponse(quote));
@@ -771,10 +711,7 @@ export class ProviderDashboardService {
   async findQuoteRequest(currentUser: AuthenticatedUser, id: string) {
     const provider = await this.findActiveOwnedProviderOrThrow(currentUser.id);
     this.assertUuid(id, 'quoteRequestId');
-    const quoteRow = await this.prisma.quoteRequest.findFirst({
-      where: { id, providerId: provider.id },
-      include: this.quoteInclude(),
-    });
+    const quoteRow = await dashboardStore.findProviderQuoteRequest(this.prisma, id, provider.id);
 
     if (!quoteRow) {
       throw new NotFoundException('Quote request not found');
@@ -794,15 +731,7 @@ export class ProviderDashboardService {
   ) {
     this.assertUuid(id, 'quoteRequestId');
     const quote = await runSerializableTransaction(this.prisma, async (tx) => {
-      const seed = await tx.quoteRequest.findUnique({
-        where: { id },
-        select: {
-          providerId: true,
-          userId: true,
-          weddingPlanId: true,
-          conversationId: true,
-        },
-      });
+      const seed = await dashboardStore.findProviderQuoteMutationSeed(tx, id);
       if (!seed) {
         throw new NotFoundException('Quote request not found');
       }
@@ -814,34 +743,24 @@ export class ProviderDashboardService {
       if (!(await lockQuoteRequestTransitionRow(tx, this.lifecycle, id))) {
         throw new NotFoundException('Quote request not found');
       }
-      const existing = await tx.quoteRequest.findFirst({
-        where: { id, providerId: provider.id },
-      });
+      const existing = await dashboardStore.findLockedProviderQuoteRequest(tx, id, provider.id);
       if (!existing) {
         throw new NotFoundException('Quote request not found');
       }
       await this.assertQuotePlanWritable(tx, existing.weddingPlanId);
       assertQuoteRequestTransition(existing.status, dto.status, 'provider');
 
-      const transition = await tx.quoteRequest.updateMany({
-        where: { id, status: existing.status },
-        data: {
-          status: dto.status,
-          ...(dto.status === QuoteRequestStatus.REJECTED
-            ? { rejectedAt: new Date() }
-            : {}),
-        },
-      });
+      const transition = await dashboardStore.transitionProviderQuoteRequest(
+        tx, id, existing.status, dto.status,
+        dto.status === QuoteRequestStatus.REJECTED ? new Date() : undefined,
+      );
       if (transition.count !== 1) {
         throw new ConflictException('Quote request status changed');
       }
       const [updated] = await this.relations.attachDashboardQuoteRelations(
         tx,
         [
-          await tx.quoteRequest.findUniqueOrThrow({
-            where: { id },
-            include: this.quoteInclude(),
-          }),
+          await dashboardStore.requireProviderQuoteRequest(tx, id),
         ],
       );
       if (dto.status === QuoteRequestStatus.REJECTED) {
@@ -884,15 +803,7 @@ export class ProviderDashboardService {
     this.assertUuid(quoteRequestId, 'quoteRequestId');
     const amount = this.requiredPositiveMoneyAmount(dto.amount, 'amount');
     const offer = await runSerializableTransaction(this.prisma, async (tx) => {
-      const seed = await tx.quoteRequest.findUnique({
-        where: { id: quoteRequestId },
-        select: {
-          providerId: true,
-          userId: true,
-          weddingPlanId: true,
-          conversationId: true,
-        },
-      });
+      const seed = await dashboardStore.findProviderQuoteMutationSeed(tx, quoteRequestId);
       if (!seed) {
         throw new NotFoundException('Quote request not found');
       }
@@ -904,9 +815,9 @@ export class ProviderDashboardService {
       if (!(await lockQuoteRequestTransitionRow(tx, this.lifecycle, quoteRequestId))) {
         throw new NotFoundException('Quote request not found');
       }
-      const quote = await tx.quoteRequest.findFirst({
-        where: { id: quoteRequestId, providerId: provider.id },
-      });
+      const quote = await dashboardStore.findLockedProviderQuoteRequest(
+        tx, quoteRequestId, provider.id,
+      );
       if (!quote) {
         throw new NotFoundException('Quote request not found');
       }
@@ -919,10 +830,7 @@ export class ProviderDashboardService {
         QuoteRequestStatus.RESPONDED,
         'provider_offer',
       );
-      const existingOffer = await tx.quoteOffer.findFirst({
-        where: { quoteRequestId },
-        select: { id: true },
-      });
+      const existingOffer = await dashboardStore.findExistingQuoteOffer(tx, quoteRequestId);
       if (existingOffer) {
         throw new ConflictException({
           code: 'QUOTE_OFFER_ALREADY_EXISTS',
@@ -935,8 +843,7 @@ export class ProviderDashboardService {
         quotePlan?.currency,
       );
 
-      const created = await tx.quoteOffer.create({
-        data: {
+      const created = await dashboardStore.createQuoteOffer(tx, {
           quoteRequestId,
           providerId: provider.id,
           title: this.optionalText(dto.title),
@@ -944,13 +851,9 @@ export class ProviderDashboardService {
           amount,
           currency,
           validUntil: this.optionalDate(dto.validUntil, 'validUntil'),
-        },
       });
 
-      await tx.quoteRequest.update({
-        where: { id: quoteRequestId },
-        data: { status: QuoteRequestStatus.RESPONDED },
-      });
+      await dashboardStore.markQuoteRequestResponded(tx, quoteRequestId);
 
       await this.lifecycle.recordConversationEvent(tx, {
         conversationId: quote.conversationId,
@@ -998,19 +901,7 @@ export class ProviderDashboardService {
         ? this.requiredPositiveMoneyAmount(dto.amount, 'amount')
         : undefined;
     const offer = await runSerializableTransaction(this.prisma, async (tx) => {
-      const seed = await tx.quoteOffer.findUnique({
-        where: { id },
-        select: {
-          providerId: true,
-          quoteRequest: {
-            select: {
-              userId: true,
-              weddingPlanId: true,
-              conversationId: true,
-            },
-          },
-        },
-      });
+      const seed = await dashboardStore.findOfferMutationSeed(tx, id);
       if (!seed) {
         throw new NotFoundException('Quote offer not found');
       }
@@ -1027,12 +918,7 @@ export class ProviderDashboardService {
       if (!(await lockQuoteOfferTransitionRows(tx, this.lifecycle, id))) {
         throw new NotFoundException('Quote offer not found');
       }
-      const existing = await tx.quoteOffer.findFirst({
-        where: { id, providerId: provider.id },
-        include: {
-          quoteRequest: { select: { status: true, weddingPlanId: true } },
-        },
-      });
+      const existing = await dashboardStore.findLockedProviderOffer(tx, id, provider.id);
       if (!existing) {
         throw new NotFoundException('Quote offer not found');
       }
@@ -1057,9 +943,7 @@ export class ProviderDashboardService {
         offerPlan?.currency,
       );
 
-      const transition = await tx.quoteOffer.updateMany({
-        where: { id, status: QuoteOfferStatus.PENDING },
-        data: {
+      const transition = await dashboardStore.updatePendingQuoteOffer(tx, id, {
           ...(dto.title !== undefined
             ? { title: this.optionalText(dto.title) }
             : {}),
@@ -1073,12 +957,11 @@ export class ProviderDashboardService {
           ...(dto.validUntil !== undefined
             ? { validUntil: this.optionalDate(dto.validUntil, 'validUntil') }
             : {}),
-        },
       });
       if (transition.count !== 1) {
         throw new ConflictException('Only pending quote offers can be updated');
       }
-      return tx.quoteOffer.findUniqueOrThrow({ where: { id } });
+      return dashboardStore.requireQuoteOffer(tx, id);
     });
 
     return this.toQuoteOfferResponse(offer);
@@ -1088,10 +971,7 @@ export class ProviderDashboardService {
     const provider = await this.findActiveOwnedProviderOrThrow(currentUser.id);
     const reviews = await this.relations.attachReviewUsers(
       this.prisma,
-      await this.prisma.providerReview.findMany({
-        where: { providerId: provider.id },
-        orderBy: { createdAt: 'desc' },
-      }),
+      await dashboardStore.listProviderReviews(this.prisma, provider.id),
     );
 
     return reviews.map((review) => this.toReviewResponse(review));
@@ -1107,10 +987,7 @@ export class ProviderDashboardService {
       conversationId: string;
     },
   ): Promise<Provider> {
-    const preliminaryProvider = await tx.provider.findUnique({
-      where: { userId: actorUserId },
-      select: { id: true },
-    });
+    const preliminaryProvider = await dashboardStore.findPreliminaryProvider(tx, actorUserId);
     if (!preliminaryProvider || preliminaryProvider.id !== seed.providerId) {
       throw new NotFoundException('Quote request not found');
     }
@@ -1229,31 +1106,11 @@ export class ProviderDashboardService {
     serviceId: string,
     mode: 'SHARE' | 'UPDATE',
   ): Promise<ProviderDashboardServiceRecord> {
-    const rows =
-      mode === 'UPDATE'
-        ? await tx.$queryRaw<Array<{ id: string }>>(
-            Prisma.sql`
-              SELECT "id"
-              FROM "ProviderService"
-              WHERE "id" = ${serviceId} AND "providerId" = ${providerId}
-              FOR UPDATE
-            `,
-          )
-        : await tx.$queryRaw<Array<{ id: string }>>(
-            Prisma.sql`
-              SELECT "id"
-              FROM "ProviderService"
-              WHERE "id" = ${serviceId} AND "providerId" = ${providerId}
-              FOR SHARE
-            `,
-          );
+    const rows = await dashboardStore.lockOwnedServiceRow(tx, providerId, serviceId, mode);
     if (rows.length !== 1) {
       throw new NotFoundException('Provider service not found');
     }
-    const service = await tx.providerService.findUnique({
-      where: { id: serviceId },
-      include: this.serviceInclude(),
-    });
+    const service = await dashboardStore.findOwnedServiceAfterLock(tx, serviceId);
     if (!service || service.providerId !== providerId) {
       throw new NotFoundException('Provider service not found');
     }
@@ -1265,20 +1122,11 @@ export class ProviderDashboardService {
     serviceId: string,
     imageId: string,
   ): Promise<ProviderServiceImage> {
-    const rows = await tx.$queryRaw<Array<{ id: string }>>(
-      Prisma.sql`
-        SELECT "id"
-        FROM "ProviderServiceImage"
-        WHERE "id" = ${imageId} AND "serviceId" = ${serviceId}
-        FOR UPDATE
-      `,
-    );
+    const rows = await dashboardStore.lockOwnedImageRow(tx, serviceId, imageId);
     if (rows.length !== 1) {
       throw new NotFoundException('Service image not found');
     }
-    const image = await tx.providerServiceImage.findUnique({
-      where: { id: imageId },
-    });
+    const image = await dashboardStore.findOwnedImageAfterLock(tx, imageId);
     if (!image || image.serviceId !== serviceId) {
       throw new NotFoundException('Service image not found');
     }
@@ -1290,21 +1138,14 @@ export class ProviderDashboardService {
     providerId: string,
     packageId: string,
   ): Promise<void> {
-    const rows = await tx.$queryRaw<Array<{ id: string }>>(
-      Prisma.sql`
-        SELECT "id"
-        FROM "ProviderPackage"
-        WHERE "id" = ${packageId} AND "providerId" = ${providerId}
-        FOR UPDATE
-      `,
-    );
+    const rows = await dashboardStore.lockOwnedPackageRow(tx, providerId, packageId);
     if (rows.length !== 1) {
       throw new NotFoundException('Provider package not found');
     }
   }
 
   private async findOwnedProviderOrThrow(userId: string): Promise<Provider> {
-    const provider = await this.prisma.provider.findUnique({ where: { userId } });
+    const provider = await dashboardStore.findProviderByUserId(this.prisma, userId);
     if (!provider) {
       throw new NotFoundException('Provider profile not found');
     }
@@ -1322,9 +1163,7 @@ export class ProviderDashboardService {
   private async findOwnedProviderProfileOrThrow(
     userId: string,
   ): Promise<ProviderProfile> {
-    const provider = await this.prisma.provider.findUnique({
-      where: { userId },
-    });
+    const provider = await dashboardStore.findProviderByUserId(this.prisma, userId);
     if (!provider) {
       throw new NotFoundException('Provider profile not found');
     }
@@ -1337,10 +1176,7 @@ export class ProviderDashboardService {
   ): Promise<ProviderDashboardServiceRecord> {
     this.assertUuid(serviceId, 'serviceId');
     const provider = await this.findActiveOwnedProviderOrThrow(userId);
-    const service = await this.prisma.providerService.findFirst({
-      where: { id: serviceId, providerId: provider.id },
-      include: this.serviceInclude(),
-    });
+    const service = await dashboardStore.findOwnedService(this.prisma, serviceId, provider.id);
 
     if (!service) {
       throw new NotFoundException('Provider service not found');
@@ -1355,9 +1191,7 @@ export class ProviderDashboardService {
   ): Promise<ProviderPackage> {
     this.assertUuid(packageId, 'packageId');
     const provider = await this.findActiveOwnedProviderOrThrow(userId);
-    const providerPackage = await this.prisma.providerPackage.findFirst({
-      where: { id: packageId, providerId: provider.id },
-    });
+    const providerPackage = await dashboardStore.findOwnedPackage(this.prisma, packageId, provider.id);
     if (!providerPackage) {
       throw new NotFoundException('Provider package not found');
     }

@@ -22,7 +22,7 @@ import {
   WeddingPlanStatus,
 } from "@prisma/client";
 import { marketplaceService } from "./support/owner-ports";
-import { FinancePortService } from "../src/modules/finance/internal/finance-port.service";
+import { FinancePortService } from "../src/modules/finance/infrastructure/finance-port.service";
 import { contributorActorReference } from "../src/modules/collaboration/internal/contribution-history.service";
 
 const contributorAId = "11111111-1111-4111-8111-111111111111";

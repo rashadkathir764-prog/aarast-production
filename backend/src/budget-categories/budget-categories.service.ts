@@ -32,6 +32,15 @@ import {
 } from "../platform/database/serializable-transaction";
 import { PrismaService } from "../platform/database/prisma.service";
 import {
+  countBudgetCategoryCosts,
+  createBudgetCategory,
+  deleteBudgetCategory,
+  findBudgetCategory,
+  listBudgetCategories,
+  sumOtherBudgetCategoryAllocations,
+  updateBudgetCategory,
+} from "../modules/finance/infrastructure/budget-category.repository";
+import {
   COLLABORATION_PERMISSION_PORT,
   type CollaborationPermissionPort as PermissionService,
   type PlanAccessContext,
@@ -84,15 +93,9 @@ export class BudgetCategoriesService {
           context.plan.estimatedBudget,
           allocation,
         );
-        const category = await tx.budgetCategory.create({
-          data: {
-            weddingPlanId,
-            name,
-            normalizedName: this.normalizedName(name),
-            allocatedAmount: allocation,
-          },
-          include: { _count: { select: { weddingCosts: true } } },
-        });
+        const category = await createBudgetCategory(
+          tx, weddingPlanId, name, this.normalizedName(name), allocation,
+        );
         const history = this.historyForContext(context);
         if (history) await history.recordForContextInTransaction(
           tx,
@@ -153,22 +156,9 @@ export class BudgetCategoriesService {
                 ],
               ),
             ]);
-        const categories = await tx.budgetCategory.findMany({
-          where: {
-            weddingPlanId,
-            ...(categoryIds ? { id: { in: categoryIds } } : {}),
-          },
-          include: {
-            _count: {
-              select: {
-                weddingCosts: costIds
-                  ? { where: { id: { in: costIds } } }
-                  : true,
-              },
-            },
-          },
-          orderBy: [{ createdAt: "asc" }, { id: "asc" }],
-        });
+        const categories = await listBudgetCategories(
+          tx, weddingPlanId, categoryIds, costIds,
+        );
         return categories.map((category) => this.toResponse(category));
       },
       { isolationLevel: Prisma.TransactionIsolationLevel.RepeatableRead },
@@ -195,7 +185,7 @@ export class BudgetCategoriesService {
             currentUser,
           );
         await this.assertScopedCategoryInTransaction(tx, context, id);
-        const locked = await tx.budgetCategory.findUnique({ where: { id } });
+        const locked = await findBudgetCategory(tx, id);
         if (!locked || locked.weddingPlanId !== existing.weddingPlanId) {
           throw new NotFoundException("Budget category not found");
         }
@@ -227,23 +217,9 @@ export class BudgetCategoriesService {
                 ContributionAction.PAYMENT_RECORDED,
               ],
             );
-        const category = await tx.budgetCategory.update({
-          where: { id },
-          data: {
-            name,
-            normalizedName: this.normalizedName(name),
-            allocatedAmount: allocation,
-          },
-          include: {
-            _count: {
-              select: {
-                weddingCosts: scopedCostIds
-                  ? { where: { id: { in: scopedCostIds } } }
-                  : true,
-              },
-            },
-          },
-        });
+        const category = await updateBudgetCategory(
+          tx, id, name, this.normalizedName(name), allocation, scopedCostIds,
+        );
         const history = this.historyForContext(context);
         if (history) await history.recordForContextInTransaction(
           tx,
@@ -289,13 +265,11 @@ export class BudgetCategoriesService {
         currentUser,
       );
       await this.assertScopedCategoryInTransaction(tx, context, id);
-      const locked = await tx.budgetCategory.findUnique({ where: { id } });
+      const locked = await findBudgetCategory(tx, id);
       if (!locked || locked.weddingPlanId !== category.weddingPlanId) {
         throw new NotFoundException("Budget category not found");
       }
-      const costsCount = await tx.weddingCost.count({
-        where: { budgetCategoryId: id },
-      });
+      const costsCount = await countBudgetCategoryCosts(tx, id);
       if (costsCount > 0) {
         throw new ConflictException(
           "Move or delete this category costs before deleting the category",
@@ -318,7 +292,7 @@ export class BudgetCategoriesService {
           requiredPermission: ContributionPermission.MANAGE_MONEY,
         },
       );
-      await tx.budgetCategory.delete({ where: { id } });
+      await deleteBudgetCategory(tx, id);
     });
     return { id, deleted: true };
   }
@@ -335,23 +309,15 @@ export class BudgetCategoriesService {
         "Set the general budget before allocating money to categories",
       );
     }
-    const result = await tx.budgetCategory.aggregate({
-      where: {
-        weddingPlanId,
-        ...(excludeId ? { id: { not: excludeId } } : {}),
-      },
-      _sum: { allocatedAmount: true },
-    });
-    const sum = (result._sum.allocatedAmount ?? new Prisma.Decimal(0)).plus(
+    const allocated = await sumOtherBudgetCategoryAllocations(tx, weddingPlanId, excludeId);
+    const sum = (allocated ?? new Prisma.Decimal(0)).plus(
       allocation ?? 0,
     );
     raiseFinanceViolation(allocationWithinBudgetViolation(totalBudget, sum));
   }
 
   private async findCategoryOrThrow(id: string) {
-    const category = await this.prisma.budgetCategory.findUnique({
-      where: { id },
-    });
+    const category = await findBudgetCategory(this.prisma, id);
     if (!category) throw new NotFoundException("Budget category not found");
     return category;
   }

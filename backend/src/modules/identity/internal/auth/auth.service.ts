@@ -67,7 +67,8 @@ import {
   refreshTokenExpiry,
   RefreshTokenScope,
 } from "./refresh-token-policy";
-import { SafeUser, toSafeUser } from "../../public/safe-user";
+import { SafeUser } from "../../public/safe-user";
+import { toSafeUser } from "../safe-user.presenter";
 import {
   LoginThrottleRealm,
   LoginThrottleService,
@@ -84,9 +85,12 @@ import {
   lockUserLifecycleRowsForUpdateInTransaction,
 } from "../../public/user-lifecycle-lock";
 import {
-  enqueueSessionRevoked,
   enqueueUserSessionsRevoked,
 } from "../../../../platform/outbox/realtime-revocation";
+import { AuthUserRepository } from "../../infrastructure/auth-user.repository";
+import { AuthOtpRepository, type OtpClaimResult } from "../../infrastructure/auth-otp.repository";
+import { AuthChallengeRepository } from "../../infrastructure/auth-challenge.repository";
+import { AuthSessionRepository, type LockedRefreshTokenRow, type LockedRefreshTokenFamily } from "../../infrastructure/auth-session.repository";
 
 export interface AuthResponse {
   user: SafeUser;
@@ -155,28 +159,6 @@ type InviteOtpVerificationResult =
   | { error: ReturnType<typeof authError> }
   | { otpInvalid: true };
 
-type OtpClaimResult =
-  | { outcome: "verified"; otp: OtpCode }
-  | { outcome: "invalid" };
-
-interface LockedRefreshTokenRow {
-  id: string;
-  userId: string;
-  scope: AuthSessionScope;
-  expiresAt: Date;
-  revokedAt: Date | null;
-  replacedById: string | null;
-}
-
-interface LockedRefreshTokenFamily {
-  rows: LockedRefreshTokenRow[];
-  complete: boolean;
-}
-
-interface LockedRefreshTokenTraversalRow extends LockedRefreshTokenRow {
-  depth: number;
-}
-
 interface OtpChannelSelection {
   channel: OtpChannel;
   generateCode: () => string;
@@ -184,7 +166,10 @@ interface OtpChannelSelection {
 
 @Injectable()
 export class AuthService implements IdentityAuthPort {
-  private static readonly maxRefreshFamilyDepth = 4_096;
+  private readonly users = new AuthUserRepository();
+  private readonly otps = new AuthOtpRepository();
+  private readonly challenges = new AuthChallengeRepository();
+  private readonly sessions = new AuthSessionRepository();
   private static readonly otpDeliveryUncertainMessage =
     "قد يستغرق وصول الرمز لحظات. إذا وصلك الرمز فأدخله، وإن لم يصل فأعد الإرسال بعد انتهاء المهلة.";
   private static readonly dummyPasswordHash =
@@ -249,9 +234,7 @@ export class AuthService implements IdentityAuthPort {
             await lockUserLifecycleRowsForUpdateInTransaction(tx, [
               existing.id,
             ]);
-            existing = await tx.user.findUnique({
-              where: { id: existing.id },
-            });
+            existing = await this.users.findById(tx, existing.id);
           }
 
           if (existing?.status === "DISABLED") {
@@ -274,24 +257,9 @@ export class AuthService implements IdentityAuthPort {
                 ),
               };
             }
-            const claimed = await tx.user.updateMany({
-              where: {
-                id: existing.id,
-                role: UserRole.ADMIN,
-                status: "ACTIVE",
-                appPasswordHash: null,
-              },
-              data: {
-                appPasswordHash: passwordHash,
-                appPasswordConfiguredAt: now,
-                appName: dto.name,
-                appEmail: null,
-                appAvatarUrl: null,
-                phone,
-                phoneVerifiedAt: existing.phoneVerifiedAt ?? now,
-                lastLoginAt: now,
-              },
-            });
+            const claimed = await this.users.claimAdminApplicationRegistration(
+              tx, existing, phone, dto.name, passwordHash, now,
+            );
             if (claimed.count !== 1) {
               return {
                 error: authError(
@@ -301,9 +269,7 @@ export class AuthService implements IdentityAuthPort {
                 ),
               };
             }
-            const user = await tx.user.findUniqueOrThrow({
-              where: { id: existing.id },
-            });
+            const user = await this.users.requireById(tx, existing.id);
             return { auth: await this.createAuthResponse(user, false, tx) };
           }
 
@@ -317,22 +283,9 @@ export class AuthService implements IdentityAuthPort {
                 ),
               };
             }
-            const claimed = await tx.user.updateMany({
-              where: {
-                id: existing.id,
-                role: { in: [UserRole.USER, UserRole.PROVIDER] },
-                status: "ACTIVE",
-                phoneVerifiedAt: null,
-              },
-              data: {
-                name: dto.name,
-                phone,
-                passwordHash,
-                appPasswordConfiguredAt: now,
-                phoneVerifiedAt: now,
-                lastLoginAt: now,
-              },
-            });
+            const claimed = await this.users.claimApplicationRegistration(
+              tx, existing.id, phone, dto.name, passwordHash, now,
+            );
             if (claimed.count !== 1) {
               return {
                 error: authError(
@@ -342,23 +295,13 @@ export class AuthService implements IdentityAuthPort {
                 ),
               };
             }
-            const user = await tx.user.findUniqueOrThrow({
-              where: { id: existing.id },
-            });
+            const user = await this.users.requireById(tx, existing.id);
             return { auth: await this.createAuthResponse(user, false, tx) };
           }
 
-          const user = await tx.user.create({
-            data: {
-              name: dto.name,
-              phone,
-              email: null,
-              passwordHash,
-              appPasswordConfiguredAt: now,
-              phoneVerifiedAt: now,
-              lastLoginAt: now,
-            },
-          });
+          const user = await this.users.createApplicationUser(
+            tx, dto.name, phone, passwordHash, now,
+          );
           return { auth: await this.createAuthResponse(user, false, tx) };
         },
       );
@@ -405,23 +348,8 @@ export class AuthService implements IdentityAuthPort {
   async login(dto: LoginDto): Promise<AuthResponse> {
     const user = await this.validatePasswordCredentials(dto);
     return runSerializableTransaction(this.prisma, async (tx) => {
-      const credentialIdentity =
-        user.role === UserRole.ADMIN
-          ? { appPasswordHash: user.appPasswordHash! }
-          : { passwordHash: user.passwordHash! };
       const loginAt = new Date();
-      const eligible = await tx.user.updateMany({
-        where: {
-          id: user.id,
-          phone: user.phone,
-          role: user.role,
-          status: "ACTIVE",
-          phoneVerifiedAt: { not: null },
-          appPasswordConfiguredAt: { not: null },
-          ...credentialIdentity,
-        },
-        data: { lastLoginAt: loginAt },
-      });
+      const eligible = await this.users.markSuccessfulLogin(tx, user, loginAt);
       if (eligible.count !== 1) {
         throw authError(
           HttpStatus.UNAUTHORIZED,
@@ -429,9 +357,7 @@ export class AuthService implements IdentityAuthPort {
           "Invalid credentials",
         );
       }
-      const updatedUser = await tx.user.findUniqueOrThrow({
-        where: { id: user.id },
-      });
+      const updatedUser = await this.users.requireById(tx, user.id);
       return this.createAuthResponse(updatedUser, false, tx);
     });
   }
@@ -462,9 +388,7 @@ export class AuthService implements IdentityAuthPort {
       const lifecycleUsers =
         await lockUserLifecycleRowsForUpdateInTransaction(tx, [user.id]);
       await this.lockAdminLoginChallengesInTransaction(tx, user.id);
-      const currentUser = await tx.user.findUnique({
-        where: { id: user.id },
-      });
+      const currentUser = await this.users.findById(tx, user.id);
       if (
         lifecycleUsers[0]?.status !== "ACTIVE" ||
         !currentUser ||
@@ -478,25 +402,11 @@ export class AuthService implements IdentityAuthPort {
           "Invalid credentials",
         );
       }
-      const issuedOtp = await tx.otpCode.findUniqueOrThrow({
-        where: { id: otp.otpId },
-        select: { consumedAt: true },
-      });
+      const issuedOtp = await this.otps.issuedConsumedAt(tx, otp.otpId);
       const superseded = issuedOtp.consumedAt !== null;
-      if (!superseded) {
-        await tx.adminLoginChallenge.updateMany({
-          where: { userId: user.id, consumedAt: null },
-          data: { consumedAt: now },
-        });
-      }
-      await tx.adminLoginChallenge.create({
-        data: {
-          userId: user.id,
-          otpId: otp.otpId,
-          tokenHash: hashRefreshToken(challengeToken),
-          expiresAt,
-          ...(superseded ? { consumedAt: now } : {}),
-        },
+      await this.challenges.createAdminLogin(tx, {
+        userId: user.id, otpId: otp.otpId,
+        tokenHash: hashRefreshToken(challengeToken), expiresAt, superseded, now,
       });
     });
 
@@ -515,10 +425,9 @@ export class AuthService implements IdentityAuthPort {
     code: string,
   ): Promise<AuthResponse> {
     const now = new Date();
-    const challengeSeed = await this.prisma.adminLoginChallenge.findUnique({
-      where: { tokenHash: hashRefreshToken(challengeToken) },
-      select: { id: true, userId: true },
-    });
+    const challengeSeed = await this.challenges.findAdminLoginSeed(
+      this.prisma, hashRefreshToken(challengeToken),
+    );
     if (!challengeSeed) {
       throw new UnauthorizedException(
         "Admin login challenge is invalid or expired",
@@ -536,10 +445,7 @@ export class AuthService implements IdentityAuthPort {
             tx,
             challengeSeed.userId,
           );
-          const challenge = await tx.adminLoginChallenge.findUnique({
-            where: { id: challengeSeed.id },
-            include: { user: true, otp: true },
-          });
+          const challenge = await this.challenges.findAdminLogin(tx, challengeSeed.id);
           if (
             !challenge ||
             challenge.userId !== challengeSeed.userId ||
@@ -563,37 +469,20 @@ export class AuthService implements IdentityAuthPort {
             return { otpInvalid: true as const };
           }
 
-          const consumedChallenge = await tx.adminLoginChallenge.updateMany({
-            where: {
-              id: challenge.id,
-              consumedAt: null,
-              expiresAt: { gt: now },
-            },
-            data: { consumedAt: now },
-          });
+          const consumedChallenge = await this.challenges.consumeAdminLogin(
+            tx, challenge.id, now,
+          );
           if (consumedChallenge.count !== 1) {
             throw new UnauthorizedException(
               "Admin login challenge is invalid or expired",
             );
           }
 
-          const eligible = await tx.user.updateMany({
-            where: {
-              id: challenge.userId,
-              role: UserRole.ADMIN,
-              status: "ACTIVE",
-            },
-            data: {
-              lastLoginAt: now,
-              phoneVerifiedAt: challenge.user.phoneVerifiedAt ?? now,
-            },
-          });
+          const eligible = await this.users.markAdminMfaLogin(tx, challenge.user, now);
           if (eligible.count !== 1) {
             throw new UnauthorizedException("Admin access is required");
           }
-          const updatedUser = await tx.user.findUniqueOrThrow({
-            where: { id: challenge.userId },
-          });
+          const updatedUser = await this.users.requireById(tx, challenge.userId);
           return {
             auth: await this.createAuthResponse(updatedUser, true, tx),
           };
@@ -637,11 +526,9 @@ export class AuthService implements IdentityAuthPort {
     // A pre-normalization database may still contain both `7xxxxxxxx` and
     // `+9677xxxxxxxx`; one unordered `IN` query can otherwise authenticate
     // against an arbitrary duplicate and reject the correct password.
-    const user =
-      (await this.prisma.user.findFirst({ where: { phone } })) ??
-      (await this.prisma.user.findFirst({
-        where: { phone: { in: PhoneNormalizer.lookupVariants(phone) } },
-      }));
+    const user = await this.users.findByCanonicalPhone(
+      this.prisma, phone, PhoneNormalizer.lookupVariants(phone),
+    );
 
     const credentialHash =
       requiredRole === UserRole.ADMIN
@@ -685,15 +572,9 @@ export class AuthService implements IdentityAuthPort {
       bcryptjs.getRounds(credentialHash) < 12
     ) {
       const upgradedPasswordHash = await bcryptjs.hash(dto.password, 12);
-      const upgraded = await this.prisma.user.updateMany({
-        where: {
-          id: user.id,
-          passwordHash: credentialHash,
-          role: UserRole.ADMIN,
-          status: "ACTIVE",
-        },
-        data: { passwordHash: upgradedPasswordHash },
-      });
+      const upgraded = await this.users.upgradeAdminPasswordHash(
+        this.prisma, user.id, credentialHash, upgradedPasswordHash,
+      );
       if (upgraded.count !== 1) {
         throw authError(
           HttpStatus.UNAUTHORIZED,
@@ -701,9 +582,7 @@ export class AuthService implements IdentityAuthPort {
           "Invalid credentials",
         );
       }
-      const current = await this.prisma.user.findUnique({
-        where: { id: user.id },
-      });
+      const current = await this.users.findById(this.prisma, user.id);
       if (
         !current ||
         current.passwordHash !== upgradedPasswordHash ||
@@ -740,10 +619,7 @@ export class AuthService implements IdentityAuthPort {
     const now = new Date();
 
     const result = await runSerializableTransaction(this.prisma, async (tx) => {
-      const seed = await tx.refreshToken.findUnique({
-        where: { tokenHash },
-        select: { id: true, userId: true, scope: true },
-      });
+      const seed = await this.sessions.findSeed(tx, tokenHash);
       if (!seed || seed.scope !== sessionScope) {
         throw new UnauthorizedException("Session is invalid or expired");
       }
@@ -773,10 +649,7 @@ export class AuthService implements IdentityAuthPort {
       const family = lockedFamily.rows;
       const existingRow = family[0];
       const existing = existingRow
-        ? await tx.refreshToken.findUnique({
-            where: { id: existingRow.id },
-            include: { user: true },
-          })
+        ? await this.sessions.findWithUser(tx, existingRow.id)
         : null;
       if (
         !existing ||
@@ -815,28 +688,11 @@ export class AuthService implements IdentityAuthPort {
 
       const nextToken = createRefreshTokenValue(refreshScope);
       const nextExpiresAt = refreshTokenExpiry(now);
-      const replacement = await tx.refreshToken.create({
-        data: {
-          userId: existing.userId,
-          tokenHash: hashRefreshToken(nextToken),
-          scope: sessionScope,
-          expiresAt: nextExpiresAt,
-        },
+      const replacementId = await this.sessions.rotate(tx, {
+        id: existing.id, userId: existing.userId,
+        tokenHash: hashRefreshToken(nextToken), scope: sessionScope,
+        now, expiresAt: nextExpiresAt,
       });
-      const revoked = await tx.refreshToken.updateMany({
-        where: { id: existing.id, revokedAt: null, expiresAt: { gt: now } },
-        data: { revokedAt: now },
-      });
-      if (revoked.count !== 1) {
-        throw new UnauthorizedException("Session is invalid or expired");
-      }
-      await tx.refreshToken.update({
-        where: { id: existing.id },
-        data: { replacedById: replacement.id },
-      });
-      if (sessionScope === AuthSessionScope.APPLICATION) {
-        await enqueueSessionRevoked(tx, existing.id);
-      }
 
       return {
         user: toSafeUser(existing.user, requiredRole === UserRole.ADMIN),
@@ -844,7 +700,7 @@ export class AuthService implements IdentityAuthPort {
           existing.user.id,
           existing.user.phone,
           requiredRole === UserRole.ADMIN ? "admin" : "application",
-          replacement.id,
+          replacementId,
         ),
         refreshToken: nextToken,
         refreshTokenExpiresAt: nextExpiresAt,
@@ -885,10 +741,7 @@ export class AuthService implements IdentityAuthPort {
     const revokedCount = await runSerializableTransaction(
       this.prisma,
       async (tx) => {
-        const seed = await tx.refreshToken.findUnique({
-          where: { tokenHash },
-          select: { id: true, userId: true, scope: true },
-        });
+        const seed = await this.sessions.findSeed(tx, tokenHash);
         if (!seed || seed.scope !== AuthSessionScope.ADMIN) return 0;
 
         await lockUserLifecycleRowsForUpdateInTransaction(tx, [seed.userId]);
@@ -928,10 +781,7 @@ export class AuthService implements IdentityAuthPort {
     const revocation = await runSerializableTransaction(
       this.prisma,
       async (tx) => {
-        const seed = await tx.refreshToken.findUnique({
-          where: { tokenHash },
-          select: { id: true, userId: true, scope: true },
-        });
+        const seed = await this.sessions.findSeed(tx, tokenHash);
         if (
           !seed ||
           seed.userId !== userId ||
@@ -995,76 +845,7 @@ export class AuthService implements IdentityAuthPort {
     expectedUserId: string,
     expectedScope: AuthSessionScope,
   ): Promise<LockedRefreshTokenFamily> {
-    const traversed = await tx.$queryRaw<LockedRefreshTokenTraversalRow[]>(
-      Prisma.sql`
-        WITH RECURSIVE "RefreshFamily" AS (
-          SELECT
-            token."id",
-            token."userId",
-            token."scope",
-            token."expiresAt",
-            token."revokedAt",
-            token."replacedById",
-            1 AS "depth"
-          FROM "RefreshToken" AS token
-          WHERE token."id" = ${startId}
-
-          UNION ALL
-
-          SELECT
-            replacement."id",
-            replacement."userId",
-            replacement."scope",
-            replacement."expiresAt",
-            replacement."revokedAt",
-            replacement."replacedById",
-            family."depth" + 1
-          FROM "RefreshFamily" AS family
-          JOIN "RefreshToken" AS replacement
-            ON replacement."id" = family."replacedById"
-          WHERE family."depth" <= ${AuthService.maxRefreshFamilyDepth}
-        )
-        SELECT
-          family."id",
-          family."userId",
-          family."scope",
-          family."expiresAt",
-          family."revokedAt",
-          family."replacedById",
-          family."depth"
-        FROM "RefreshFamily" AS family
-        JOIN "RefreshToken" AS locked_token
-          ON locked_token."id" = family."id"
-        ORDER BY family."depth" ASC
-        FOR UPDATE OF locked_token
-      `,
-    );
-
-    const family: LockedRefreshTokenRow[] = [];
-    const visited = new Set<string>();
-    let expectedId: string | null = startId;
-    for (const current of traversed) {
-      if (
-        current.depth !== family.length + 1 ||
-        current.id !== expectedId ||
-        current.userId !== expectedUserId ||
-        current.scope !== expectedScope ||
-        visited.has(current.id) ||
-        family.length >= AuthService.maxRefreshFamilyDepth
-      ) {
-        return { rows: family, complete: false };
-      }
-      visited.add(current.id);
-      family.push(current);
-      expectedId = current.replacedById;
-    }
-    return {
-      rows: family,
-      complete:
-        family.length > 0 &&
-        expectedId === null &&
-        family.length <= AuthService.maxRefreshFamilyDepth,
-    };
+    return this.sessions.lockFamily(tx, startId, expectedUserId, expectedScope);
   }
 
   private async revokeRefreshScopeInTransaction(
@@ -1073,15 +854,7 @@ export class AuthService implements IdentityAuthPort {
     scope: AuthSessionScope,
     now: Date,
   ): Promise<number> {
-    await this.lockRefreshSessionsInTransaction(tx, userId, scope);
-    const revoked = await tx.refreshToken.updateMany({
-      where: { userId, scope, revokedAt: null },
-      data: { revokedAt: now },
-    });
-    if (revoked.count > 0 && scope === AuthSessionScope.APPLICATION) {
-      await enqueueUserSessionsRevoked(tx, userId);
-    }
-    return revoked.count;
+    return this.sessions.revokeScope(tx, userId, scope, now);
   }
 
   private async revokeRefreshSessionsInTransaction(
@@ -1090,41 +863,14 @@ export class AuthService implements IdentityAuthPort {
     now: Date,
     publishApplicationRevocations = false,
   ): Promise<string[]> {
-    const revokedSessionIds: string[] = [];
-    for (const session of sessions) {
-      if (session.revokedAt) continue;
-      const revoked = await tx.refreshToken.updateMany({
-        where: {
-          id: session.id,
-          userId: session.userId,
-          scope: session.scope,
-          revokedAt: null,
-        },
-        data: { revokedAt: now },
-      });
-      if (revoked.count !== 1) continue;
-      revokedSessionIds.push(session.id);
-      if (publishApplicationRevocations) {
-        await enqueueSessionRevoked(tx, session.id);
-      }
-    }
-    return revokedSessionIds;
+    return this.sessions.revokeFamily(tx, sessions, now, publishApplicationRevocations);
   }
 
   private async lockAdminLoginChallengesInTransaction(
     tx: Prisma.TransactionClient,
     userId: string,
   ): Promise<void> {
-    await tx.$queryRaw(
-      Prisma.sql`
-        SELECT "id"
-        FROM "AdminLoginChallenge"
-        WHERE "userId" = ${userId}
-          AND "consumedAt" IS NULL
-        ORDER BY "id" ASC
-        FOR UPDATE
-      `,
-    );
+    await this.challenges.lockAdminLogins(tx, userId);
   }
 
   private async lockAdminPasswordResetChallengesInTransaction(
@@ -1134,40 +880,7 @@ export class AuthService implements IdentityAuthPort {
       | { challengeId: string }
       | { subjectHash: string },
   ): Promise<void> {
-    if ("userId" in input) {
-      await tx.$queryRaw(
-        Prisma.sql`
-          SELECT "id"
-          FROM "AdminPasswordResetChallenge"
-          WHERE "userId" = ${input.userId}
-            AND "consumedAt" IS NULL
-          ORDER BY "id" ASC
-          FOR UPDATE
-        `,
-      );
-      return;
-    }
-    if ("subjectHash" in input) {
-      await tx.$queryRaw(
-        Prisma.sql`
-          SELECT "id"
-          FROM "AdminPasswordResetChallenge"
-          WHERE "subjectHash" = ${input.subjectHash}
-            AND "consumedAt" IS NULL
-          ORDER BY "id" ASC
-          FOR UPDATE
-        `,
-      );
-      return;
-    }
-    await tx.$queryRaw(
-      Prisma.sql`
-        SELECT "id"
-        FROM "AdminPasswordResetChallenge"
-        WHERE "id" = ${input.challengeId}
-        FOR UPDATE
-      `,
-    );
+    await this.challenges.lockAdminResets(tx, input);
   }
 
   private async lockRefreshSessionsInTransaction(
@@ -1175,17 +888,7 @@ export class AuthService implements IdentityAuthPort {
     userId: string,
     scope: AuthSessionScope,
   ): Promise<void> {
-    await tx.$queryRaw(
-      Prisma.sql`
-        SELECT "id"
-        FROM "RefreshToken"
-        WHERE "userId" = ${userId}
-          AND "scope" = ${scope}::"AuthSessionScope"
-          AND "revokedAt" IS NULL
-        ORDER BY "id" ASC
-        FOR UPDATE
-      `,
-    );
+    await this.sessions.lockActiveScope(tx, userId, scope);
   }
 
   async logoutAll(
@@ -1195,10 +898,7 @@ export class AuthService implements IdentityAuthPort {
     const result = await runSerializableTransaction(this.prisma, async (tx) => {
       await lockUserLifecycleRowsForUpdateInTransaction(tx, [userId]);
       await this.lockRefreshSessionsInTransaction(tx, userId, scope);
-      const revoked = await tx.refreshToken.updateMany({
-        where: { userId, scope, revokedAt: null },
-        data: { revokedAt: new Date() },
-      });
+      const revoked = await this.sessions.revokeActiveScope(tx, userId, scope, new Date());
       if (scope === AuthSessionScope.APPLICATION) {
         await enqueueUserSessionsRevoked(tx, userId);
       }
@@ -1311,10 +1011,7 @@ export class AuthService implements IdentityAuthPort {
           message: AuthService.otpDeliveryUncertainMessage,
         };
       } else {
-        await this.prisma.otpCode.updateMany({
-          where: { id: otp.id, consumedAt: null },
-          data: { consumedAt: new Date() },
-        });
+        await this.otps.consumeIfActive(this.prisma, otp.id, new Date());
         otpDeliveryOutcomesTotal.inc({ purpose, outcome: "rejected" });
         throw otpDeliveryUnavailableError();
       }
@@ -1403,7 +1100,7 @@ export class AuthService implements IdentityAuthPort {
         let user = await this.findUserByCanonicalPhone(tx, phone);
         if (user) {
           await lockUserLifecycleRowsForUpdateInTransaction(tx, [user.id]);
-          user = await tx.user.findUnique({ where: { id: user.id } });
+          user = await this.users.findById(tx, user.id);
         }
         const otpClaim = await this.claimOtpCodeInTransaction(tx, {
           phone,
@@ -1434,13 +1131,7 @@ export class AuthService implements IdentityAuthPort {
         }
 
         if (user) {
-          user = await tx.user.update({
-            where: { id: user.id },
-            data: {
-              phoneVerifiedAt: user.phoneVerifiedAt ?? now,
-              ...(purpose === OtpPurpose.LOGIN ? { lastLoginAt: now } : {}),
-            },
-          });
+          user = await this.users.markPhoneVerified(tx, user, purpose === OtpPurpose.LOGIN, now);
         }
 
         if (!user) {
@@ -1564,7 +1255,7 @@ export class AuthService implements IdentityAuthPort {
           let user = await this.findUserByCanonicalPhone(tx, phone);
           if (user) {
             await lockUserLifecycleRowsForUpdateInTransaction(tx, [user.id]);
-            user = await tx.user.findUnique({ where: { id: user.id } });
+            user = await this.users.findById(tx, user.id);
           }
           const inviteLocked =
             await this.collaboration.lockPlanInviteForUpdateInTransaction(
@@ -1634,39 +1325,14 @@ export class AuthService implements IdentityAuthPort {
           }
 
           if (!user) {
-            user = await tx.user.create({
-              data: {
-                name,
-                phone,
-                email: null,
-                passwordHash: passwordHash!,
-                appPasswordConfiguredAt: now,
-                phoneVerifiedAt: now,
-                lastLoginAt: now,
-              },
-            });
+            user = await this.users.createApplicationUser(tx, name, phone, passwordHash!, now);
           } else if (
             user.role === UserRole.ADMIN &&
             !user.appPasswordConfiguredAt
           ) {
-            const claimed = await tx.user.updateMany({
-              where: {
-                id: user.id,
-                role: UserRole.ADMIN,
-                status: "ACTIVE",
-                appPasswordConfiguredAt: null,
-              },
-              data: {
-                appPasswordHash: passwordHash!,
-                appPasswordConfiguredAt: now,
-                appName: name,
-                appEmail: null,
-                appAvatarUrl: null,
-                phone,
-                phoneVerifiedAt: user.phoneVerifiedAt ?? now,
-                lastLoginAt: now,
-              },
-            });
+            const claimed = await this.users.claimInviteAdminApplication(
+              tx, user, name, phone, passwordHash!, now,
+            );
             if (claimed.count !== 1) {
               return {
                 error: authError(
@@ -1676,29 +1342,16 @@ export class AuthService implements IdentityAuthPort {
                 ),
               };
             }
-            user = await tx.user.findUniqueOrThrow({
-              where: { id: user.id },
-            });
+            user = await this.users.requireById(tx, user.id);
           } else if (
             !user.phoneVerifiedAt ||
             !user.appPasswordConfiguredAt
           ) {
-            user = await tx.user.update({
-              where: { id: user.id },
-              data: {
-                name,
-                phone,
-                passwordHash: passwordHash!,
-                appPasswordConfiguredAt: now,
-                phoneVerifiedAt: now,
-                lastLoginAt: now,
-              },
-            });
+            user = await this.users.completeInviteAccountSetup(
+              tx, user.id, name, phone, passwordHash!, now,
+            );
           } else {
-            user = await tx.user.update({
-              where: { id: user.id },
-              data: { lastLoginAt: now },
-            });
+            user = await this.users.touchLastLogin(tx, user.id, now);
           }
 
           return {
@@ -1786,7 +1439,7 @@ export class AuthService implements IdentityAuthPort {
         );
         if (user) {
           await lockUserLifecycleRowsForUpdateInTransaction(tx, [user.id]);
-          user = await tx.user.findUnique({ where: { id: user.id } });
+          user = await this.users.findById(tx, user.id);
         }
         const otpClaim = await this.claimOtpCodeInTransaction(tx, {
           phone,
@@ -1825,26 +1478,8 @@ export class AuthService implements IdentityAuthPort {
           };
         }
 
-        await tx.user.update({
-          where: { id: user.id },
-          data: {
-            ...(user.role === UserRole.ADMIN
-              ? {
-                  appPasswordHash: passwordHash,
-                  appPasswordConfiguredAt: now,
-                }
-              : { passwordHash, appPasswordConfiguredAt: now }),
-            phoneVerifiedAt: user.phoneVerifiedAt ?? now,
-          },
-        });
-        await tx.refreshToken.updateMany({
-          where: {
-            userId: user.id,
-            scope: AuthSessionScope.APPLICATION,
-            revokedAt: null,
-          },
-          data: { revokedAt: now },
-        });
+        await this.users.resetApplicationPassword(tx, user, passwordHash, now);
+        await this.sessions.revokeActiveScope(tx, user.id, AuthSessionScope.APPLICATION, now);
         await enqueueUserSessionsRevoked(tx, user.id);
         return { reset: true as const, userId: user.id };
       });
@@ -1926,26 +1561,12 @@ export class AuthService implements IdentityAuthPort {
           subjectHash,
         });
       }
-      const issuedOtp = await tx.otpCode.findUniqueOrThrow({
-        where: { id: issued.otpId },
-        select: { consumedAt: true },
-      });
+      const issuedOtp = await this.otps.issuedConsumedAt(tx, issued.otpId);
       const superseded = issuedOtp.consumedAt !== null;
-      if (!superseded) {
-        await tx.adminPasswordResetChallenge.updateMany({
-          where: { subjectHash, consumedAt: null },
-          data: { consumedAt: now },
-        });
-      }
-      await tx.adminPasswordResetChallenge.create({
-        data: {
-          userId: admin?.id ?? null,
-          otpId: issued.otpId,
-          tokenHash: hashRefreshToken(challengeToken),
-          subjectHash,
-          expiresAt,
-          ...(superseded ? { consumedAt: now } : {}),
-        },
+      await this.challenges.createAdminReset(tx, {
+        userId: admin?.id ?? null, otpId: issued.otpId,
+        tokenHash: hashRefreshToken(challengeToken), subjectHash,
+        expiresAt, superseded, now,
       });
     });
 
@@ -1962,11 +1583,9 @@ export class AuthService implements IdentityAuthPort {
     dto: AdminPasswordResetConfirmDto,
   ): Promise<{ reset: true }> {
     const now = new Date();
-    const challengeSeed =
-      await this.prisma.adminPasswordResetChallenge.findUnique({
-        where: { tokenHash: hashRefreshToken(dto.challengeToken) },
-        select: { id: true, userId: true },
-      });
+    const challengeSeed = await this.challenges.findAdminResetSeed(
+      this.prisma, hashRefreshToken(dto.challengeToken),
+    );
     if (!challengeSeed) {
       await bcryptjs.compare(dto.code, AuthService.dummyPasswordHash);
       throw this.adminResetInvalid();
@@ -1995,11 +1614,7 @@ export class AuthService implements IdentityAuthPort {
             });
           }
 
-          const challenge =
-            await tx.adminPasswordResetChallenge.findUnique({
-              where: { id: challengeSeed.id },
-              include: { user: true, otp: true },
-            });
+          const challenge = await this.challenges.findAdminReset(tx, challengeSeed.id);
           if (
             !challenge ||
             challenge.consumedAt ||
@@ -2047,22 +1662,13 @@ export class AuthService implements IdentityAuthPort {
             challenge.user.status === "ACTIVE" &&
             challenge.user.phone === challenge.otp.phone;
           if (!eligibleAdmin) {
-            await tx.adminPasswordResetChallenge.updateMany({
-              where: { id: challenge.id, consumedAt: null },
-              data: { consumedAt: now },
-            });
+            await this.challenges.consumeAdminResetIfActive(tx, challenge.id, now);
             return { invalid: true as const, otpVerified: true as const };
           }
 
-          const claimed = await tx.adminPasswordResetChallenge.updateMany({
-            where: {
-              id: challenge.id,
-              consumedAt: null,
-              expiresAt: { gt: now },
-              attempts: { lt: challenge.maxAttempts },
-            },
-            data: { consumedAt: now },
-          });
+          const claimed = await this.challenges.claimAdminReset(
+            tx, challenge.id, challenge.maxAttempts, now,
+          );
           if (claimed.count !== 1) {
             return { invalid: true as const, otpVerified: true as const };
           }
@@ -2073,47 +1679,18 @@ export class AuthService implements IdentityAuthPort {
             AuthSessionScope.ADMIN,
           );
 
-          const updated = await tx.user.updateMany({
-            where: {
-              id: challenge.userId!,
-              role: UserRole.ADMIN,
-              status: "ACTIVE",
-            },
-            data: { passwordHash },
-          });
+          const updated = await this.users.resetAdministratorPassword(
+            tx, challenge.userId!, passwordHash,
+          );
           if (updated.count !== 1) {
             return { invalid: true as const, otpVerified: true as const };
           }
 
-          await tx.refreshToken.updateMany({
-            where: {
-              userId: challenge.userId!,
-              scope: AuthSessionScope.ADMIN,
-              revokedAt: null,
-            },
-            data: { revokedAt: now },
-          });
-          await tx.adminLoginChallenge.updateMany({
-            where: { userId: challenge.userId!, consumedAt: null },
-            data: { consumedAt: now },
-          });
-          await tx.adminPasswordResetChallenge.updateMany({
-            where: { userId: challenge.userId!, consumedAt: null },
-            data: { consumedAt: now },
-          });
-          await tx.otpCode.updateMany({
-            where: {
-              phone: challenge.user!.phone!,
-              purpose: {
-                in: [OtpPurpose.ADMIN_LOGIN, OtpPurpose.ADMIN_RESET_PASSWORD],
-              },
-              consumedAt: null,
-            },
-            data: { consumedAt: now },
-          });
-          await tx.loginThrottle.deleteMany({
-            where: { subjectHash: challenge.subjectHash },
-          });
+          await this.sessions.revokeActiveScope(tx, challenge.userId!, AuthSessionScope.ADMIN, now);
+          await this.challenges.consumeActiveAdminLogins(tx, challenge.userId!, now);
+          await this.challenges.consumeActiveAdminResetsByUser(tx, challenge.userId!, now);
+          await this.otps.consumeAdministratorCodes(tx, challenge.user!.phone!, now);
+          await this.sessions.clearLoginThrottle(tx, challenge.subjectHash);
           return { reset: true as const };
         },
       );
@@ -2142,7 +1719,7 @@ export class AuthService implements IdentityAuthPort {
   private async createAuthResponse(
     user: User,
     adminMfa = false,
-    client: Pick<Prisma.TransactionClient, "refreshToken"> = this.prisma,
+    client: PrismaService | Prisma.TransactionClient = this.prisma,
   ): Promise<AuthResponse> {
     if (
       user.status === "DISABLED" ||
@@ -2159,14 +1736,11 @@ export class AuthService implements IdentityAuthPort {
       adminMfa ? "admin" : "application",
     );
     const refreshTokenExpiresAt = refreshTokenExpiry();
-    const refreshSession = await client.refreshToken.create({
-      data: {
-        userId: user.id,
-        tokenHash: hashRefreshToken(refreshToken),
-        scope: adminMfa ? AuthSessionScope.ADMIN : AuthSessionScope.APPLICATION,
-        expiresAt: refreshTokenExpiresAt,
-      },
-    });
+    const refreshSession = await this.sessions.create(
+      client, user.id, hashRefreshToken(refreshToken),
+      adminMfa ? AuthSessionScope.ADMIN : AuthSessionScope.APPLICATION,
+      refreshTokenExpiresAt,
+    );
     return {
       user: toSafeUser(user, adminMfa),
       accessToken: this.signToken(
@@ -2181,14 +1755,11 @@ export class AuthService implements IdentityAuthPort {
   }
 
   private async findUserByCanonicalPhone(
-    client: Pick<Prisma.TransactionClient, "user">,
+    client: PrismaService | Prisma.TransactionClient,
     phone: string,
     variants = PhoneNormalizer.lookupVariants(phone),
   ): Promise<User | null> {
-    return (
-      (await client.user.findFirst({ where: { phone } })) ??
-      (await client.user.findFirst({ where: { phone: { in: variants } } }))
-    );
+    return this.users.findByCanonicalPhone(client, phone, variants);
   }
 
   private otpInvalid() {
@@ -2216,27 +1787,12 @@ export class AuthService implements IdentityAuthPort {
   }
 
   private async recordFailedAdminResetAttemptInTransaction(
-    tx: Pick<Prisma.TransactionClient, "adminPasswordResetChallenge">,
+    tx: Prisma.TransactionClient,
     challengeId: string,
     maxAttempts: number,
     now: Date,
   ): Promise<void> {
-    await tx.adminPasswordResetChallenge.updateMany({
-      where: {
-        id: challengeId,
-        consumedAt: null,
-        attempts: { lt: maxAttempts },
-      },
-      data: { attempts: { increment: 1 } },
-    });
-    await tx.adminPasswordResetChallenge.updateMany({
-      where: {
-        id: challengeId,
-        consumedAt: null,
-        attempts: { gte: maxAttempts },
-      },
-      data: { consumedAt: now },
-    });
+    await this.challenges.recordFailedAdminResetAttempt(tx, challengeId, maxAttempts, now);
   }
 
   private signToken(
@@ -2302,21 +1858,7 @@ export class AuthService implements IdentityAuthPort {
                 throw this.inviteNotFoundForPhone();
               }
             }
-            await tx.otpCode.updateMany({
-              where: {
-                phone: data.phone,
-                purpose: data.purpose,
-                planInviteId: data.planInviteId ?? null,
-                consumedAt: null,
-              },
-              data: { consumedAt: now },
-            });
-            return tx.otpCode.create({
-              data: {
-                ...data,
-                planInviteId: data.planInviteId ?? null,
-              },
-            });
+            return this.otps.replaceActive(tx, data, now);
           },
           { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
         );
@@ -2353,7 +1895,7 @@ export class AuthService implements IdentityAuthPort {
   }
 
   private async claimOtpCodeInTransaction(
-    tx: Pick<Prisma.TransactionClient, "otpCode">,
+    tx: Prisma.TransactionClient,
     input: {
       otpId?: string;
       phone: string;
@@ -2363,89 +1905,10 @@ export class AuthService implements IdentityAuthPort {
       now: Date;
     },
   ): Promise<OtpClaimResult> {
-    const { otpId, phone, purpose, code, now } = input;
-    const planInviteId = input.planInviteId ?? null;
-    if (this.getOtpMode() !== "dev" && code === this.getDevOtpCode()) {
+    if (this.getOtpMode() !== "dev" && input.code === this.getDevOtpCode()) {
       return { outcome: "invalid" };
     }
-    const otp = otpId
-      ? await tx.otpCode.findUnique({ where: { id: otpId } })
-      : await tx.otpCode.findFirst({
-          where: { phone, purpose, planInviteId, consumedAt: null },
-          orderBy: { createdAt: "desc" },
-        });
-    if (!otp) {
-      return { outcome: "invalid" };
-    }
-
-    const locked = await tx.otpCode.updateMany({
-      where: { id: otp.id },
-      data: { updatedAt: now },
-    });
-    if (locked.count !== 1) return { outcome: "invalid" };
-
-    const current = await tx.otpCode.findUnique({
-      where: { id: otp.id },
-    });
-    if (
-      !current ||
-      current.phone !== phone ||
-      current.purpose !== purpose ||
-      (current.planInviteId ?? null) !== planInviteId
-    ) {
-      return { outcome: "invalid" };
-    }
-    if (
-      current.consumedAt ||
-      current.expiresAt <= now ||
-      current.attempts >= current.maxAttempts
-    ) {
-      if (current && !current.consumedAt) {
-        await tx.otpCode.updateMany({
-          where: { id: current.id, consumedAt: null },
-          data: { consumedAt: now },
-        });
-      }
-      return { outcome: "invalid" };
-    }
-
-    const matches = await bcryptjs.compare(code, current.codeHash);
-    if (!matches) {
-      const nextAttempts = current.attempts + 1;
-      await tx.otpCode.updateMany({
-        where: {
-          id: current.id,
-          consumedAt: null,
-          expiresAt: { gt: now },
-          attempts: { lt: current.maxAttempts },
-        },
-        data: {
-          attempts: { increment: 1 },
-          ...(nextAttempts >= current.maxAttempts ? { consumedAt: now } : {}),
-        },
-      });
-      return { outcome: "invalid" };
-    }
-
-    const consumed = await tx.otpCode.updateMany({
-      where: {
-        id: current.id,
-        consumedAt: null,
-        expiresAt: { gt: now },
-        attempts: { lt: current.maxAttempts },
-      },
-      data: { consumedAt: now },
-    });
-    if (consumed.count !== 1) return { outcome: "invalid" };
-
-    return {
-      outcome: "verified",
-      otp: {
-        ...current,
-        consumedAt: now,
-        updatedAt: now,
-      },
-    };
+    return this.otps.claim(tx, input);
   }
 
   private getOtpMode(): "dev" | "whatsapp" | "openwa" | "disabled" {

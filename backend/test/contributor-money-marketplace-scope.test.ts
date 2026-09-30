@@ -24,10 +24,10 @@ import { marketplaceService } from "./support/owner-ports";
 import { contributorActorReference } from "../src/modules/collaboration/internal/contribution-history.service";
 import { buildMoneySummaryInTransaction } from "../src/money/money-summary.service";
 import { WeddingCostsService } from "../src/wedding-costs/wedding-costs.service";
-import { ProviderReadService } from "../src/modules/marketplace/internal/provider-read.service";
-import { QuoteReadService } from "../src/modules/marketplace/internal/quote-read.service";
-import { PlanReadService } from "../src/modules/planning/internal/plan-read.service";
-import { FinancePortService } from "../src/modules/finance/internal/finance-port.service";
+import { ProviderReadService } from "../src/modules/marketplace/infrastructure/provider-read.service";
+import { QuoteReadService } from "../src/modules/marketplace/infrastructure/quote-read.service";
+import { PlanReadService } from "../src/modules/planning/infrastructure/plan-read.service";
+import { FinancePortService } from "../src/modules/finance/infrastructure/finance-port.service";
 
 const contributorContext = {
   plan: {

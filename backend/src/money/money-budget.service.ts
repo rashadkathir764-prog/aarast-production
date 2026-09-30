@@ -32,6 +32,15 @@ import {
   buildMoneySummaryInTransaction,
   MoneySummaryResult,
 } from "./money-summary.service";
+import {
+  countWeddingPlanCosts,
+  createReplacementBudgetCategory,
+  deleteOmittedBudgetCategories,
+  findBudgetCategoriesForReplacement,
+  listReplacedBudgetCategories,
+  replaceBudgetCategoryValues,
+  temporarilyRekeyBudgetCategory,
+} from '../modules/finance/infrastructure/budget-category.repository';
 
 export interface MoneyBudgetCategoryResult {
   id: string;
@@ -87,9 +96,7 @@ export class MoneyBudgetService {
         if (!context.isOwner) {
           throw new NotFoundException("Wedding plan not found");
         }
-        const costsCount = await tx.weddingCost.count({
-          where: { weddingPlanId },
-        });
+        const costsCount = await countWeddingPlanCosts(tx, weddingPlanId);
         if (
           costsCount > 0 &&
           currency !== context.plan.currency.toUpperCase()
@@ -99,10 +106,7 @@ export class MoneyBudgetService {
           );
         }
 
-        const existing = await tx.budgetCategory.findMany({
-          where: { weddingPlanId },
-          include: { _count: { select: { weddingCosts: true } } },
-        });
+        const existing = await findBudgetCategoriesForReplacement(tx, weddingPlanId);
         const existingById = new Map(existing.map((item) => [item.id, item]));
         const submittedIds = new Set(
           categories.flatMap((item) => (item.id ? [item.id] : [])),
@@ -125,9 +129,7 @@ export class MoneyBudgetService {
           );
         }
         if (omitted.length > 0) {
-          await tx.budgetCategory.deleteMany({
-            where: { id: { in: omitted.map((item) => item.id) } },
-          });
+          await deleteOmittedBudgetCategories(tx, omitted.map((item) => item.id));
         }
 
         // Temporary unique keys allow atomic name swaps such as Hall <-> Dress.
@@ -135,30 +137,25 @@ export class MoneyBudgetService {
           (item): item is typeof item & { id: string } => Boolean(item.id),
         );
         for (const item of existingSubmitted) {
-          await tx.budgetCategory.update({
-            where: { id: item.id },
-            data: { normalizedName: `__money_budget_rekey__${item.id}` },
-          });
+          await temporarilyRekeyBudgetCategory(tx, item.id);
         }
         for (const item of existingSubmitted) {
-          await tx.budgetCategory.update({
-            where: { id: item.id },
-            data: {
-              name: item.name,
-              normalizedName: item.normalizedName,
-              allocatedAmount: item.allocatedAmount,
-            },
-          });
+          await replaceBudgetCategoryValues(
+            tx,
+            item.id,
+            item.name,
+            item.normalizedName,
+            item.allocatedAmount,
+          );
         }
         for (const item of categories.filter((category) => !category.id)) {
-          const created = await tx.budgetCategory.create({
-            data: {
-              weddingPlanId,
-              name: item.name,
-              normalizedName: item.normalizedName,
-              allocatedAmount: item.allocatedAmount,
-            },
-          });
+          const created = await createReplacementBudgetCategory(
+            tx,
+            weddingPlanId,
+            item.name,
+            item.normalizedName,
+            item.allocatedAmount,
+          );
           idMap[item.clientId!] = created.id;
         }
         await this.planningBudgetWriter.updateBudgetInTransaction(tx, {
@@ -166,11 +163,7 @@ export class MoneyBudgetService {
           estimatedBudget: totalBudget,
           currency,
         });
-        const savedCategories = await tx.budgetCategory.findMany({
-          where: { weddingPlanId },
-          include: { _count: { select: { weddingCosts: true } } },
-          orderBy: [{ createdAt: "asc" }, { id: "asc" }],
-        });
+        const savedCategories = await listReplacedBudgetCategories(tx, weddingPlanId);
         const summary = await buildMoneySummaryInTransaction(
           tx,
           this.permissions,

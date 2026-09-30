@@ -11,9 +11,9 @@ import {
 } from "../modules/collaboration/public/collaboration-permission.port";
 import type { CollaborationScopePort } from "../modules/collaboration/public/collaboration-scope.port";
 import type { MarketplaceRelationsService } from "./marketplace-relations";
+import { findLivePlanQuoteRequest } from '../modules/marketplace/infrastructure/plan-quote-read.repository';
 import {
   FULL_QUOTE_VISIBILITY,
-  MARKETPLACE_QUOTE_INCLUDE,
   type MyQuoteAccessWhere,
   type QuoteVisibility,
   type QuoteWithRelations,
@@ -105,14 +105,12 @@ export async function findAccessiblePlanQuoteRequest(
         : []),
     ],
   );
-  const quote = await client.quoteRequest.findFirst({
-    where: {
-      id: quoteRequestId,
-      weddingPlanId,
-      ...liveFilter,
-    },
-    include: MARKETPLACE_QUOTE_INCLUDE,
-  });
+  const quote = await findLivePlanQuoteRequest(
+    client,
+    quoteRequestId,
+    weddingPlanId,
+    liveFilter,
+  );
   if (!quote) throw new NotFoundException("Quote request not found");
   return ports.relations.attachQuoteRelation(client, quote);
 }

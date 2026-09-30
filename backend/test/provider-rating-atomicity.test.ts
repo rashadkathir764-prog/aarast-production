@@ -20,7 +20,7 @@ import {
   UserStatus,
 } from "@prisma/client";
 import { marketplaceService } from "./support/owner-ports";
-import { FinancePortService } from "../src/modules/finance/internal/finance-port.service";
+import { FinancePortService } from "../src/modules/finance/infrastructure/finance-port.service";
 
 const source = (relativePath: string) =>
   readFileSync(join(__dirname, "..", "src", relativePath), "utf8");
@@ -164,6 +164,7 @@ test("every product review mutation uses the shared locked aggregate boundary", 
   const admin = source("admin/admin-mutation-executor.ts");
   const accountDeletion = source("modules/identity/internal/profile/users.service.ts");
   const aggregate = source("modules/marketplace/public/provider-review-rating.ts");
+  const ratingRepository = source("modules/marketplace/infrastructure/provider-review-rating.repository.ts");
 
   assert.equal(
     (marketplace.match(/runProviderReviewMutation\(/g) ?? []).length,
@@ -179,12 +180,16 @@ test("every product review mutation uses the shared locked aggregate boundary", 
   assert.doesNotMatch(marketplace, /recalculateProviderRating/);
   assert.doesNotMatch(admin, /recalculateProviderRating/);
   assert.match(aggregate, /runSerializableTransaction/);
-  assert.match(aggregate, /ORDER BY "id" ASC\s+FOR UPDATE/);
+  assert.match(aggregate, /lockProviderRatingRowsInTransaction\(tx, providerIds\)/);
+  assert.match(aggregate, /refreshProviderRatingInTransaction\(tx, providerId\)/);
+  assert.match(ratingRepository, /ORDER BY "id" ASC\s+FOR UPDATE/);
+  assert.match(ratingRepository, /providerReview\.aggregate/);
+  assert.match(ratingRepository, /provider\.updateMany/);
   // The review purge is marketplace's row: account deletion calls the
   // marketplace erasure port, whose implementation runs the deleteMany.
   assert.match(accountDeletion, /marketplaceErasure\.deleteUserReviewsInTransaction/);
   assert.match(
-    source("modules/marketplace/internal/marketplace-erasure.service.ts"),
+    source("modules/marketplace/infrastructure/marketplace-erasure.service.ts"),
     /deleteUserReviewsInTransaction\([\s\S]*?providerReview\.deleteMany\(\{ where: \{ userId \} \}\)/,
   );
   assert.match(accountDeletion, /refreshProviderRating/);

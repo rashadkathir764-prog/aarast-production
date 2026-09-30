@@ -2,6 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { Interval } from '@nestjs/schedule';
 import { PrismaService } from '../../../../platform/database/prisma.service';
 import { OtpDispatchQuotaService } from './otp-dispatch-quota.service';
+import { removeExpiredOtpQuotaWindows } from '../../infrastructure/auth-cleanup.repository';
 
 const CLEANUP_INTERVAL_MS = 60 * 60 * 1_000;
 
@@ -13,20 +14,10 @@ export class OtpDispatchQuotaCleanupScheduler {
 
   @Interval(CLEANUP_INTERVAL_MS)
   async removeExpiredWindows(): Promise<number | null> {
-    const deleted = await this.prisma.$transaction(async (tx) => {
-      const [lock] = await tx.$queryRaw<Array<{ locked: boolean }>>`
-        SELECT pg_try_advisory_xact_lock(20260712, 7) AS locked
-      `;
-      if (!lock?.locked) return null;
-
-      const inactiveBefore = new Date(
-        Date.now() - OtpDispatchQuotaService.retentionMs,
-      );
-      return tx.$executeRaw`
-        DELETE FROM "OtpDispatchQuota"
-        WHERE "updatedAt" < ${inactiveBefore}
-      `;
-    });
+    const deleted = await removeExpiredOtpQuotaWindows(
+      this.prisma,
+      OtpDispatchQuotaService.retentionMs,
+    );
 
     if (deleted && deleted > 0) {
       this.logger.log(`Removed ${deleted} expired OTP quota row(s)`);

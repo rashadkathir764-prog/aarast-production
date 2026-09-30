@@ -10,7 +10,7 @@ import {
   SharedMemberRole,
 } from "@prisma/client";
 import { PermissionService } from "../src/modules/collaboration/internal/permission.service";
-import { PlanReadService } from "../src/modules/planning/internal/plan-read.service";
+import { PlanReadService } from "../src/modules/planning/infrastructure/plan-read.service";
 import { sharingService } from "./support/owner-ports";
 
 function memberLockWithoutPendingInvites(query: unknown, memberId: string) {

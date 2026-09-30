@@ -15,7 +15,7 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import { ConflictException } from "@nestjs/common";
 import { Prisma, QuoteRequestStatus } from "@prisma/client";
-import { FinancePortService } from "../src/modules/finance/internal/finance-port.service";
+import { FinancePortService } from "../src/modules/finance/infrastructure/finance-port.service";
 import { createQuoteRequestInTransaction } from "../src/marketplace/quote-request-creation";
 import { isQuoteOfferExpired } from "../src/marketplace/quote-offer-expiry";
 

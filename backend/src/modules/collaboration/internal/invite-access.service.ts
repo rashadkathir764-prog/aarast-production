@@ -15,6 +15,10 @@ import {
 } from "../../identity/public/user-read.port";
 import { RequestInviteOtpDto } from "../api/dto/request-invite-otp.dto";
 import { VerifyInviteOtpDto } from "../api/dto/verify-invite-otp.dto";
+import {
+  findInviteMembership,
+  findLiveInviteForOtp,
+} from '../infrastructure/invite-access.repository';
 
 @Injectable()
 export class InviteAccessService {
@@ -41,16 +45,12 @@ export class InviteAccessService {
       .update(cleanToken)
       .digest("hex");
     const now = new Date();
-    const invite = await this.prisma.planInvite.findFirst({
-      where: {
-        tokenHash: expectedTokenHash,
-        normalizedPhone: phone,
-        declinedAt: null,
-        revokedAt: null,
-        expiresAt: { gt: now },
-      },
-      select: { id: true, acceptedAt: true, weddingPlanId: true },
-    });
+    const invite = await findLiveInviteForOtp(
+      this.prisma,
+      expectedTokenHash,
+      phone,
+      now,
+    );
     if (!invite) throw this.inviteNotFound();
 
     // Whether the invited phone's account still needs its setup step is
@@ -63,15 +63,11 @@ export class InviteAccessService {
       if (!account || account.appPasswordConfigured) {
         throw this.inviteNotFound();
       }
-      const existingMembership = await this.prisma.sharedMember.findUnique({
-        where: {
-          weddingPlanId_userId: {
-            weddingPlanId: invite.weddingPlanId,
-            userId: account.id,
-          },
-        },
-        select: { id: true },
-      });
+      const existingMembership = await findInviteMembership(
+        this.prisma,
+        invite.weddingPlanId,
+        account.id,
+      );
       if (!existingMembership) throw this.inviteNotFound();
     }
     const accountSetupRequired = !account || account.accountSetupRequired;

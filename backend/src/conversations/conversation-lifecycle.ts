@@ -3,7 +3,6 @@ import {
   ConversationScope,
   Prisma,
 } from '@prisma/client';
-import { randomUUID } from 'crypto';
 import { OutboxEventTypes } from '../platform/outbox/outbox.constants';
 import { enqueueOutboxEventInTransaction } from '../platform/outbox/outbox.service';
 
@@ -14,6 +13,17 @@ import type {
 } from '../modules/messaging/public/conversation-lifecycle.port';
 import type { ProviderReadPort } from '../modules/marketplace/public/provider-read.port';
 import type { PlanReadPort } from '../modules/planning/public/plan-read.port';
+import {
+  addCoreConversationParticipants,
+  findConversationEventByDedupeKey,
+  findConversationProvider,
+  insertConversationEvent,
+  lockConversationRowForShare,
+  lockConversationRowForUpdate,
+  updateConversationActivity,
+  upsertAccountConversationContext,
+  upsertPlanConversationContext,
+} from '../modules/messaging/infrastructure/conversation-lifecycle.repository';
 
 /** The owners a new conversation's core participants are read from: planning for the plan owner, marketplace for the provider account. */
 export interface ConversationContextOwners {
@@ -31,36 +41,8 @@ export async function ensureConversationContext(
     ? ConversationScope.PLAN
     : ConversationScope.ACCOUNT;
   const rows = input.weddingPlanId
-    ? await tx.$queryRaw<Array<{ id: string }>>(Prisma.sql`
-        INSERT INTO "Conversation" (
-          "id", "scope", "weddingPlanId", "providerId", "createdByUserId",
-          "lastActivityAt", "createdAt", "updatedAt"
-        ) VALUES (
-          ${conversationId()}, 'PLAN'::"ConversationScope",
-          ${input.weddingPlanId}, ${input.providerId}, ${input.requesterUserId},
-          ${activityAt}, ${activityAt}, ${activityAt}
-        )
-        ON CONFLICT ("weddingPlanId", "providerId") WHERE "scope" = 'PLAN'
-        DO UPDATE SET
-          "lastActivityAt" = GREATEST("Conversation"."lastActivityAt", EXCLUDED."lastActivityAt"),
-          "updatedAt" = GREATEST("Conversation"."updatedAt", EXCLUDED."updatedAt")
-        RETURNING "id"
-      `)
-    : await tx.$queryRaw<Array<{ id: string }>>(Prisma.sql`
-        INSERT INTO "Conversation" (
-          "id", "scope", "accountRequesterUserId", "providerId", "createdByUserId",
-          "lastActivityAt", "createdAt", "updatedAt"
-        ) VALUES (
-          ${conversationId()}, 'ACCOUNT'::"ConversationScope",
-          ${input.requesterUserId}, ${input.providerId}, ${input.requesterUserId},
-          ${activityAt}, ${activityAt}, ${activityAt}
-        )
-        ON CONFLICT ("accountRequesterUserId", "providerId") WHERE "scope" = 'ACCOUNT'
-        DO UPDATE SET
-          "lastActivityAt" = GREATEST("Conversation"."lastActivityAt", EXCLUDED."lastActivityAt"),
-          "updatedAt" = GREATEST("Conversation"."updatedAt", EXCLUDED."updatedAt")
-        RETURNING "id"
-      `);
+    ? await upsertPlanConversationContext(tx, input, activityAt)
+    : await upsertAccountConversationContext(tx, input, activityAt);
   const conversation = rows[0];
   if (!conversation) {
     throw new Error('ConversationContextUpsertFailed');
@@ -76,14 +58,7 @@ export async function ensureConversationContext(
   }
   const provider = await owners.providers.getProvider(tx, input.providerId);
   if (provider?.userId) coreUserIds.add(provider.userId);
-  await tx.conversationParticipant.createMany({
-    data: [...coreUserIds].map((userId) => ({
-      conversationId: conversation.id,
-      userId,
-      joinedAt: activityAt,
-    })),
-    skipDuplicates: true,
-  });
+  await addCoreConversationParticipants(tx, conversation.id, [...coreUserIds], activityAt);
   return { id: conversation.id, scope };
 }
 
@@ -91,36 +66,21 @@ export async function lockConversationForUpdate(
   tx: ConversationLifecycleClient,
   conversationId: string,
 ): Promise<boolean> {
-  const rows = await tx.$queryRaw<Array<{ id: string }>>(Prisma.sql`
-    SELECT "id"
-    FROM "Conversation"
-    WHERE "id" = ${conversationId}
-    FOR UPDATE
-  `);
-  return rows.length === 1;
+  return lockConversationRowForUpdate(tx, conversationId);
 }
 
 export async function lockConversationForShare(
   tx: ConversationLifecycleClient,
   conversationId: string,
 ): Promise<boolean> {
-  const rows = await tx.$queryRaw<Array<{ id: string }>>(Prisma.sql`
-    SELECT "id"
-    FROM "Conversation"
-    WHERE "id" = ${conversationId}
-    FOR SHARE
-  `);
-  return rows.length === 1;
+  return lockConversationRowForShare(tx, conversationId);
 }
 
 export async function findConversationProviderId(
   client: ConversationLifecycleClient,
   conversationId: string,
 ): Promise<string | null> {
-  const conversation = await client.conversation.findUnique({
-    where: { id: conversationId },
-    select: { providerId: true },
-  });
+  const conversation = await findConversationProvider(client, conversationId);
   return conversation?.providerId ?? null;
 }
 
@@ -129,30 +89,11 @@ export async function recordConversationEvent(
   input: RecordConversationEventInput,
 ) {
   const occurredAt = input.occurredAt ?? new Date();
-  const inserted = await tx.conversationEvent.createMany({
-    data: [
-      {
-        conversationId: input.conversationId,
-        quoteRequestId: input.quoteRequestId ?? null,
-        quoteOfferId: input.quoteOfferId ?? null,
-        actorUserId: input.actorUserId ?? null,
-        type: input.type,
-        occurredAt,
-        dedupeKey: input.dedupeKey,
-        ...(input.data ? { data: input.data } : {}),
-      },
-    ],
-    skipDuplicates: true,
-  });
-  const event = await tx.conversationEvent.findUniqueOrThrow({
-    where: { dedupeKey: input.dedupeKey },
-  });
+  const inserted = await insertConversationEvent(tx, input, occurredAt);
+  const event = await findConversationEventByDedupeKey(tx, input.dedupeKey);
   if (inserted.count === 0) return { event, created: false };
 
-  await tx.conversation.update({
-    where: { id: input.conversationId },
-    data: { lastActivityAt: occurredAt },
-  });
+  await updateConversationActivity(tx, input.conversationId, occurredAt);
   await enqueueOutboxEventInTransaction(tx, {
     type: OutboxEventTypes.conversationActivityAvailable,
     aggregateType: 'conversation',
@@ -164,8 +105,4 @@ export async function recordConversationEvent(
     },
   });
   return { event, created: true };
-}
-
-function conversationId(): string {
-  return `conv_${randomUUID().replaceAll('-', '')}`;
 }

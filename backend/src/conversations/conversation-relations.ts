@@ -32,6 +32,7 @@ import {
   PLAN_READ_PORT,
   type PlanReadPort,
 } from '../modules/planning/public/plan-read.port';
+import { findConversationIdentitySeed } from '../modules/messaging/infrastructure/conversation-identity.repository';
 
 // The rows a conversation shows besides its own: the provider and its
 // account (marketplace, identity), the plan and its members (planning,
@@ -242,15 +243,7 @@ export class ConversationRelationsService {
     client: Prisma.TransactionClient,
     conversationId: string,
   ): Promise<ConversationIdentity | null> {
-    const row = await client.conversation.findUnique({
-      where: { id: conversationId },
-      select: {
-        scope: true,
-        weddingPlanId: true,
-        accountRequesterUserId: true,
-        providerId: true,
-      },
-    });
+    const row = await findConversationIdentitySeed(client, conversationId);
     if (!row) return null;
     const provider = await this.providers.getProvider(client, row.providerId);
     if (!provider) return null;

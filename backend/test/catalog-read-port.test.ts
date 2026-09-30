@@ -8,7 +8,7 @@ import {
   CATALOG_READ_IMPLEMENTATION,
   CatalogReadInternalModule,
 } from '../src/modules/catalog/internal/catalog-read.internal.module';
-import { CatalogReadService } from '../src/modules/catalog/internal/catalog-read.service';
+import { CatalogReadService } from '../src/modules/catalog/infrastructure/catalog-read.service';
 import { CatalogReadPublicModule } from '../src/modules/catalog/public/catalog-read-public.module';
 import { CATALOG_READ_PORT } from '../src/modules/catalog/public/catalog-read.port';
 

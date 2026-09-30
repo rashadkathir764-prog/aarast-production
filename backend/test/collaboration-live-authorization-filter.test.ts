@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { NotFoundException } from '@nestjs/common';
 import { PermissionService } from '../src/modules/collaboration/internal/permission.service';
-import { PlanReadService } from '../src/modules/planning/internal/plan-read.service';
+import { PlanReadService } from '../src/modules/planning/infrastructure/plan-read.service';
 import {
   NEVER_MATCHING_ROW_FILTER,
   type PlanAccessContext,

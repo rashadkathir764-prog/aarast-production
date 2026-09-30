@@ -14,7 +14,7 @@ import "reflect-metadata";
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { Prisma } from "@prisma/client";
-import { FinancePortService } from "../src/modules/finance/internal/finance-port.service";
+import { FinancePortService } from "../src/modules/finance/infrastructure/finance-port.service";
 import { acceptQuoteOfferInTransaction } from "../src/marketplace/quote-offer-acceptance";
 
 // عقد المرحلة الأولى: المورد طرف في الصفقة ويجب أن يُنبَّه عند وصول طلب جديد

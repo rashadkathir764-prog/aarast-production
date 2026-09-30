@@ -24,7 +24,7 @@ import {
   UserStatus,
 } from '@prisma/client';
 import { acceptQuoteOfferInTransaction } from '../src/marketplace/quote-offer-acceptance';
-import { FinancePortService } from '../src/modules/finance/internal/finance-port.service';
+import { FinancePortService } from '../src/modules/finance/infrastructure/finance-port.service';
 import { conversationsService, marketplaceRelations, providerDashboardService, withOwnerTables } from './support/owner-ports';
 
 const providerUserId = '11111111-1111-4111-8111-111111111111';

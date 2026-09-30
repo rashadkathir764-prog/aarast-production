@@ -24,7 +24,7 @@ import {
   UserStatus,
   WeddingPlanStatus,
 } from '@prisma/client';
-import { FinancePortService } from '../src/modules/finance/internal/finance-port.service';
+import { FinancePortService } from '../src/modules/finance/infrastructure/finance-port.service';
 import { WeddingPlansService } from '../src/wedding-plans/wedding-plans.service';
 import { collaborationHistory, collaborationPermissions, conversationsService, marketplaceService, planningOwnerPorts, providerDashboardService, sharingService } from './support/owner-ports';
 

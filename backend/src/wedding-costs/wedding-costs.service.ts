@@ -78,6 +78,33 @@ import {
   scheduledPaymentViolation,
   schedulesToCancelOnStatus,
 } from "../modules/finance/domain/payment-schedule-policy";
+import {
+  insertWeddingCost,
+  requireWeddingCost,
+  listWeddingCosts,
+  countWeddingCosts,
+  findVisibleWeddingCost,
+  findWeddingCost,
+  updateWeddingCost,
+  deleteWeddingCost,
+  insertCostPayment,
+  listCostPayments,
+  countCostPayments,
+  findVisibleCostPayment,
+  findActiveSchedulePayment,
+  findCostPayment,
+  insertPaymentSchedule,
+  listPaymentSchedules,
+  requirePaymentSchedule,
+  findPaymentSchedule,
+  updatePaymentSchedules,
+  updatePaymentSchedule,
+  deletePaymentSchedule,
+  lockBudgetCategoriesForCost,
+  lockWeddingCost,
+  lockCostPayment,
+  lockPaymentSchedule,
+} from "../modules/finance/infrastructure/wedding-costs.repository";
 import { raiseFinanceViolation } from "../modules/finance/internal/finance-violation.http";
 
 const paymentInclude = Prisma.validator<Prisma.CostPaymentInclude>()({
@@ -221,7 +248,7 @@ export class WeddingCostsService {
           partyName: dto.partyName,
           partyPhone: dto.partyPhone,
         });
-        const created = await tx.weddingCost.create({
+        const created = await insertWeddingCost(tx, {
           data: {
             weddingPlanId,
             budgetCategoryId: dto.budgetCategoryId.trim(),
@@ -238,7 +265,7 @@ export class WeddingCostsService {
           },
         });
         if (initialPayment.gt(0)) {
-          await tx.costPayment.create({
+          await insertCostPayment(tx, {
             data: {
               weddingCostId: created.id,
               amount: initialPayment,
@@ -262,7 +289,7 @@ export class WeddingCostsService {
           },
           occurredAt: created.createdAt,
         });
-        return tx.weddingCost.findUniqueOrThrow({
+        return requireWeddingCost(tx, {
           where: { id: created.id },
           include: weddingCostResponseInclude,
         });
@@ -328,14 +355,14 @@ export class WeddingCostsService {
           ...liveFilter,
         } satisfies Prisma.WeddingCostWhereInput;
         const [costs, total] = await Promise.all([
-          tx.weddingCost.findMany({
+          listWeddingCosts(tx, {
             where,
             include: weddingCostResponseInclude,
             orderBy: [{ createdAt: "desc" }, { id: "desc" }],
             skip: (page - 1) * pageSize,
             take: pageSize,
           }),
-          tx.weddingCost.count({ where }),
+          countWeddingCosts(tx, { where }),
         ]);
         return {
           items: await this.presentCosts(tx, costs),
@@ -376,7 +403,7 @@ export class WeddingCostsService {
           currentUser.id,
           ["canViewMoney"],
         );
-        const cost = await tx.weddingCost.findFirst({
+        const cost = await findVisibleWeddingCost(tx, {
           where: {
             id,
             weddingPlanId: identity.weddingPlanId,
@@ -407,7 +434,7 @@ export class WeddingCostsService {
             currentUser,
           );
         await this.assertScopedCostInTransaction(tx, context, id);
-        const snapshot = await tx.weddingCost.findUnique({ where: { id } });
+        const snapshot = await findWeddingCost(tx, { where: { id } });
         if (
           !snapshot ||
           snapshot.weddingPlanId !== current.weddingPlanId
@@ -481,7 +508,7 @@ export class WeddingCostsService {
           currentCostId: id,
         });
         const status = deriveCostStatus(totalAmount, locked.paidAmount);
-        const updated = await tx.weddingCost.update({
+        const updated = await updateWeddingCost(tx, {
           where: { id },
           data: {
             budgetCategoryId,
@@ -542,7 +569,7 @@ export class WeddingCostsService {
       );
       await this.assertScopedCostInTransaction(tx, context, id);
       const locked = await this.lockCost(tx, id);
-      const paymentsCount = await tx.costPayment.count({
+      const paymentsCount = await countCostPayments(tx, {
         where: { weddingCostId: id },
       });
       raiseFinanceViolation(
@@ -562,7 +589,7 @@ export class WeddingCostsService {
           relevantDate: locked.agreementDate,
         },
       });
-      await tx.weddingCost.delete({ where: { id } });
+      await deleteWeddingCost(tx, { where: { id } });
     });
     return { deleted: true };
   }
@@ -583,18 +610,18 @@ export class WeddingCostsService {
       if (locked.status === WeddingCostStatus.CANCELLED) {
         return this.presentCost(
           tx,
-          await tx.weddingCost.findUniqueOrThrow({
+          await requireWeddingCost(tx, {
             where: { id },
             include: weddingCostResponseInclude,
           }),
         );
       }
       raiseFinanceViolation(costCancellationViolation(locked.paidAmount));
-      await tx.paymentSchedule.updateMany({
+      await updatePaymentSchedules(tx, {
         where: { weddingCostId: id, status: PaymentScheduleStatus.PENDING },
         data: { status: PaymentScheduleStatus.CANCELLED },
       });
-      const cancelled = await tx.weddingCost.update({
+      const cancelled = await updateWeddingCost(tx, {
         where: { id },
         data: { status: WeddingCostStatus.CANCELLED },
         include: weddingCostResponseInclude,
@@ -640,7 +667,7 @@ export class WeddingCostsService {
         raiseFinanceViolation(
           paymentAmountViolation(amount, cost.totalAmount, cost.paidAmount),
         );
-        const payment = await tx.costPayment.create({
+        const payment = await insertCostPayment(tx, {
           data: {
             weddingCostId: costId,
             amount,
@@ -652,7 +679,7 @@ export class WeddingCostsService {
         });
         const paidAmount = cost.paidAmount.plus(amount);
         const status = deriveCostStatus(cost.totalAmount, paidAmount);
-        await tx.weddingCost.update({
+        await updateWeddingCost(tx, {
           where: { id: costId },
           data: {
             paidAmount,
@@ -710,7 +737,7 @@ export class WeddingCostsService {
           currentUser.id,
           ["canViewMoney"],
         );
-        const payments = await tx.costPayment.findMany({
+        const payments = await listCostPayments(tx, {
           where: {
             weddingCostId: costId,
             weddingCost: {
@@ -762,14 +789,14 @@ export class WeddingCostsService {
           ...liveFilter,
         } satisfies Prisma.CostPaymentWhereInput;
         const [payments, total] = await Promise.all([
-          tx.costPayment.findMany({
+          listCostPayments(tx, {
             where,
             include: paymentInclude,
             orderBy: [{ paidAt: "desc" }, { createdAt: "desc" }],
             skip: (page - 1) * pageSize,
             take: pageSize,
           }),
-          tx.costPayment.count({ where }),
+          countCostPayments(tx, { where }),
         ]);
         return {
           items: await this.presentPayments(tx, payments),
@@ -807,7 +834,7 @@ export class WeddingCostsService {
           currentUser.id,
           ["canViewMoney"],
         );
-        const payment = await tx.costPayment.findFirst({
+        const payment = await findVisibleCostPayment(tx, {
           where: {
             id,
             weddingCostId: identity.weddingCostId,
@@ -845,7 +872,7 @@ export class WeddingCostsService {
       );
       const cost = await this.lockCost(tx, current.weddingCostId);
       await this.lockPayment(tx, id);
-      const payment = await tx.costPayment.findUnique({
+      const payment = await findCostPayment(tx, {
         where: { id },
         include: paymentInclude,
       });
@@ -861,7 +888,7 @@ export class WeddingCostsService {
         ),
       );
       const paidAmount = cost.paidAmount.minus(payment.amount);
-      const reversal = await tx.costPayment.create({
+      const reversal = await insertCostPayment(tx, {
         data: {
           weddingCostId: cost.id,
           amount: payment.amount,
@@ -872,7 +899,7 @@ export class WeddingCostsService {
         },
         include: paymentInclude,
       });
-      await tx.weddingCost.update({
+      await updateWeddingCost(tx, {
         where: { id: cost.id },
         data: {
           paidAmount,
@@ -880,7 +907,7 @@ export class WeddingCostsService {
         },
       });
       if (payment.paymentScheduleId) {
-        await tx.paymentSchedule.update({
+        await updatePaymentSchedule(tx, {
           where: { id: payment.paymentScheduleId },
           data: { status: PaymentScheduleStatus.PENDING, paidAt: null },
         });
@@ -924,7 +951,7 @@ export class WeddingCostsService {
       raiseFinanceViolation(
         scheduleAmountViolation(amount, cost.totalAmount, cost.paidAmount),
       );
-      const schedule = await tx.paymentSchedule.create({
+      const schedule = await insertPaymentSchedule(tx, {
         data: {
           weddingCostId: costId,
           amount,
@@ -979,7 +1006,7 @@ export class WeddingCostsService {
           currentUser.id,
           ["canViewMoney"],
         );
-        const schedules = await tx.paymentSchedule.findMany({
+        const schedules = await listPaymentSchedules(tx, {
           where: {
             weddingCostId: costId,
             weddingCost: {
@@ -1023,7 +1050,7 @@ export class WeddingCostsService {
           currentUser.id,
           ["canViewMoney"],
         );
-        const schedules = await tx.paymentSchedule.findMany({
+        const schedules = await listPaymentSchedules(tx, {
           where: {
             weddingCost: {
               weddingPlanId,
@@ -1062,7 +1089,7 @@ export class WeddingCostsService {
       );
       const cost = await this.lockCost(tx, current.weddingCostId);
       await this.lockSchedule(tx, id);
-      const schedule = await tx.paymentSchedule.findUniqueOrThrow({
+      const schedule = await requirePaymentSchedule(tx, {
         where: { id },
       });
       if (schedule.status !== PaymentScheduleStatus.PENDING) {
@@ -1070,7 +1097,7 @@ export class WeddingCostsService {
           "Only pending payment schedules can be edited",
         );
       }
-      const paymentHistory = await tx.costPayment.count({
+      const paymentHistory = await countCostPayments(tx, {
         where: { paymentScheduleId: id },
       });
       if (paymentHistory > 0 && dto.amount !== undefined) {
@@ -1086,7 +1113,7 @@ export class WeddingCostsService {
       raiseFinanceViolation(
         scheduleAmountViolation(amount, cost.totalAmount, cost.paidAmount),
       );
-      const updated = await tx.paymentSchedule.update({
+      const updated = await updatePaymentSchedule(tx, {
         where: { id },
         data: {
           amount,
@@ -1136,7 +1163,7 @@ export class WeddingCostsService {
       );
       await this.lockCost(tx, current.weddingCostId);
       await this.lockSchedule(tx, id);
-      const schedule = await tx.paymentSchedule.findUniqueOrThrow({
+      const schedule = await requirePaymentSchedule(tx, {
         where: { id },
       });
       if (schedule.status !== PaymentScheduleStatus.PENDING) {
@@ -1144,7 +1171,7 @@ export class WeddingCostsService {
           "Only pending payment schedules can be deleted",
         );
       }
-      const paymentHistory = await tx.costPayment.count({
+      const paymentHistory = await countCostPayments(tx, {
         where: { paymentScheduleId: id },
       });
       if (paymentHistory > 0) {
@@ -1166,7 +1193,7 @@ export class WeddingCostsService {
           relevantDate: schedule.dueDate,
         },
       });
-      await tx.paymentSchedule.delete({ where: { id } });
+      await deletePaymentSchedule(tx, { where: { id } });
     });
     return { deleted: true };
   }
@@ -1189,13 +1216,13 @@ export class WeddingCostsService {
       );
       await this.lockCost(tx, current.weddingCostId);
       await this.lockSchedule(tx, id);
-      const schedule = await tx.paymentSchedule.findUniqueOrThrow({
+      const schedule = await requirePaymentSchedule(tx, {
         where: { id },
       });
       if (schedule.status === PaymentScheduleStatus.CANCELLED) {
         return this.presentSchedule(
           tx,
-          await tx.paymentSchedule.findUniqueOrThrow({
+          await requirePaymentSchedule(tx, {
             where: { id },
             include: scheduleInclude,
           }),
@@ -1206,7 +1233,7 @@ export class WeddingCostsService {
           "Reverse the payment before cancelling this payment schedule",
         );
       }
-      const activePayment = await tx.costPayment.findFirst({
+      const activePayment = await findActiveSchedulePayment(tx, {
         where: {
           paymentScheduleId: id,
           entryType: CostPaymentType.PAYMENT,
@@ -1219,7 +1246,7 @@ export class WeddingCostsService {
           "Reverse the payment before cancelling this payment schedule",
         );
       }
-      const cancelled = await tx.paymentSchedule.update({
+      const cancelled = await updatePaymentSchedule(tx, {
         where: { id },
         data: { status: PaymentScheduleStatus.CANCELLED, paidAt: null },
         include: scheduleInclude,
@@ -1262,10 +1289,10 @@ export class WeddingCostsService {
       );
       const cost = await this.lockCost(tx, current.weddingCostId);
       await this.lockSchedule(tx, id);
-      const schedule = await tx.paymentSchedule.findUnique({ where: { id } });
+      const schedule = await findPaymentSchedule(tx, { where: { id } });
       if (!schedule) throw new NotFoundException("Payment schedule not found");
       if (schedule.status === PaymentScheduleStatus.PAID) {
-        const existing = await tx.costPayment.findFirst({
+        const existing = await findActiveSchedulePayment(tx, {
           where: {
             paymentScheduleId: id,
             entryType: CostPaymentType.PAYMENT,
@@ -1278,7 +1305,7 @@ export class WeddingCostsService {
           throw new ConflictException(
             "Payment schedule ledger is inconsistent",
           );
-        const paidSchedule = await tx.paymentSchedule.findUniqueOrThrow({
+        const paidSchedule = await requirePaymentSchedule(tx, {
           where: { id },
           include: scheduleInclude,
         });
@@ -1293,7 +1320,7 @@ export class WeddingCostsService {
           "Cancelled payment schedules cannot be paid",
         );
       }
-      const activePayment = await tx.costPayment.findFirst({
+      const activePayment = await findActiveSchedulePayment(tx, {
         where: {
           paymentScheduleId: id,
           entryType: CostPaymentType.PAYMENT,
@@ -1315,7 +1342,7 @@ export class WeddingCostsService {
         ),
       );
       const paidAt = this.optionalDate(dto.paidAt, "paidAt") ?? new Date();
-      const payment = await tx.costPayment.create({
+      const payment = await insertCostPayment(tx, {
         data: {
           weddingCostId: cost.id,
           paymentScheduleId: schedule.id,
@@ -1326,14 +1353,14 @@ export class WeddingCostsService {
         },
         include: paymentInclude,
       });
-      const paidSchedule = await tx.paymentSchedule.update({
+      const paidSchedule = await updatePaymentSchedule(tx, {
         where: { id },
         data: { status: PaymentScheduleStatus.PAID, paidAt },
         include: scheduleInclude,
       });
       const paidAmount = cost.paidAmount.plus(schedule.amount);
       const status = deriveCostStatus(cost.totalAmount, paidAmount);
-      await tx.weddingCost.update({
+      await updateWeddingCost(tx, {
         where: { id: cost.id },
         data: {
           paidAmount,
@@ -1421,7 +1448,7 @@ export class WeddingCostsService {
           "totalAmount must match the accepted quote amount",
         );
       }
-      const linkedCosts = await tx.weddingCost.findMany({
+      const linkedCosts = await listWeddingCosts(tx, {
         where: { quoteOfferId: offer.id },
       });
       const otherCost = linkedCosts.find(
@@ -1512,45 +1539,23 @@ export class WeddingCostsService {
     const orderedIds = [
       ...new Set([normalizedId, ...additionalIds.map((item) => item.trim())]),
     ].sort();
-    const rows = await tx.$queryRaw<Array<{ id: string }>>(
-      Prisma.sql`
-        SELECT "id"
-        FROM "BudgetCategory"
-        WHERE "id" IN (${Prisma.join(orderedIds)})
-          AND "weddingPlanId" = ${weddingPlanId}
-        ORDER BY "id" ASC
-        FOR SHARE
-      `,
-    );
-    if (!rows.some((row) => row.id === normalizedId))
+    const lockedIds = await lockBudgetCategoriesForCost(tx, orderedIds, weddingPlanId);
+    if (!lockedIds.includes(normalizedId))
       throw new BadRequestException(
         "budgetCategoryId is invalid for this plan",
       );
   }
 
   private async lockCost(tx: Tx, id: string) {
-    const rows = await tx.$queryRaw<Array<{ id: string }>>(
-      Prisma.sql`SELECT "id" FROM "WeddingCost" WHERE "id" = ${id} FOR UPDATE`,
-    );
-    if (rows.length === 0)
-      throw new NotFoundException("Wedding cost not found");
-    return tx.weddingCost.findUniqueOrThrow({ where: { id } });
+    return lockWeddingCost(tx, id);
   }
 
   private async lockPayment(tx: Tx, id: string) {
-    const rows = await tx.$queryRaw<Array<{ id: string }>>(
-      Prisma.sql`SELECT "id" FROM "CostPayment" WHERE "id" = ${id} FOR UPDATE`,
-    );
-    if (rows.length === 0)
-      throw new NotFoundException("Cost payment not found");
+    return lockCostPayment(tx, id);
   }
 
   private async lockSchedule(tx: Tx, id: string) {
-    const rows = await tx.$queryRaw<Array<{ id: string }>>(
-      Prisma.sql`SELECT "id" FROM "PaymentSchedule" WHERE "id" = ${id} FOR UPDATE`,
-    );
-    if (rows.length === 0)
-      throw new NotFoundException("Payment schedule not found");
+    return lockPaymentSchedule(tx, id);
   }
 
   private async cancelPendingSchedulesWhenPaid(
@@ -1559,7 +1564,7 @@ export class WeddingCostsService {
     status: WeddingCostStatus,
   ) {
     if (!schedulesToCancelOnStatus(status)) return;
-    await tx.paymentSchedule.updateMany({
+    await updatePaymentSchedules(tx, {
       where: {
         weddingCostId: costId,
         status: PaymentScheduleStatus.PENDING,
@@ -1654,7 +1659,7 @@ export class WeddingCostsService {
   }
 
   private async costOrThrow(id: string) {
-    const cost = await this.prisma.weddingCost.findUnique({
+    const cost = await findWeddingCost(this.prisma, {
       where: { id },
       include: weddingCostResponseInclude,
     });
@@ -1663,7 +1668,7 @@ export class WeddingCostsService {
   }
 
   private async costIdentityOrThrow(id: string) {
-    const cost = await this.prisma.weddingCost.findUnique({
+    const cost = await findWeddingCost(this.prisma, {
       where: { id },
       select: { weddingPlanId: true },
     });
@@ -1672,7 +1677,7 @@ export class WeddingCostsService {
   }
 
   private async paymentOrThrow(id: string) {
-    const payment = await this.prisma.costPayment.findUnique({
+    const payment = await findCostPayment(this.prisma, {
       where: { id },
       include: paymentInclude,
     });
@@ -1681,7 +1686,7 @@ export class WeddingCostsService {
   }
 
   private async paymentIdentityOrThrow(id: string) {
-    const payment = await this.prisma.costPayment.findUnique({
+    const payment = await findCostPayment(this.prisma, {
       where: { id },
       select: {
         weddingCostId: true,
@@ -1696,7 +1701,7 @@ export class WeddingCostsService {
   }
 
   private async scheduleOrThrow(id: string) {
-    const schedule = await this.prisma.paymentSchedule.findUnique({
+    const schedule = await findPaymentSchedule(this.prisma, {
       where: { id },
       include: scheduleInclude,
     });
@@ -1724,7 +1729,7 @@ export class WeddingCostsService {
     weddingPlanId: string,
     search: string,
   ): Promise<string[]> {
-    const costs = await client.weddingCost.findMany({
+    const costs = await listWeddingCosts(client, {
       where: { weddingPlanId, providerId: { not: null } },
       select: { providerId: true },
       distinct: ["providerId"],

@@ -17,9 +17,9 @@ import { test } from "node:test";
 import { SharedMemberRole } from "@prisma/client";
 import { NotFoundException } from "@nestjs/common";
 import { marketplaceService } from "./support/owner-ports";
-import { FinancePortService } from "../src/modules/finance/internal/finance-port.service";
+import { FinancePortService } from "../src/modules/finance/infrastructure/finance-port.service";
 import { PermissionService } from "../src/modules/collaboration/internal/permission.service";
-import { PlanReadService } from "../src/modules/planning/internal/plan-read.service";
+import { PlanReadService } from "../src/modules/planning/infrastructure/plan-read.service";
 
 const backendRoot = join(__dirname, "..");
 
@@ -114,19 +114,19 @@ test("task, plan quote, and contribution-history final queries carry live DB aut
       "tasks/tasks.service.ts",
       "async findForPlan",
       "async findOne",
-      [/liveAuthorizationFilter\([\s\S]*\["canManageTasks"\]/, /\.\.\.liveFilter,/],
+      [/liveAuthorizationFilter\([\s\S]*\["canManageTasks"\]/, /liveFilter,/],
     ],
     [
       "marketplace/marketplace.service.ts",
       "async findPlanQuoteRequests",
       "async findQuoteRequestForCurrentUser",
-      [/liveAuthorizationFilter\([\s\S]*"canManageProviders"/, /\.\.\.liveFilter,/],
+      [/liveAuthorizationFilter\([\s\S]*"canManageProviders"/, /liveFilter\)/],
     ],
     [
       "modules/collaboration/internal/contribution-history.service.ts",
       "async list",
       "async summary",
-      [/liveAuthorizationFilter\(\s*tx/, /\.\.\.liveFilter/],
+      [/liveAuthorizationFilter\(\s*tx/, /liveFilter,/],
     ],
   ] as const;
 
@@ -137,6 +137,9 @@ test("task, plan quote, and contribution-history final queries carry live DB aut
     const method = source.slice(start, end);
     for (const pattern of patterns) assert.match(method, pattern, relative);
   }
+  assert.match(readFileSync(join(backendRoot, 'src/modules/tasks/infrastructure/task-work.repository.ts'), 'utf8'), /\.\.\.liveFilter/);
+  assert.match(readFileSync(join(backendRoot, 'src/modules/marketplace/infrastructure/marketplace-core.repository.ts'), 'utf8'), /\.\.\.liveFilter/);
+  assert.match(readFileSync(join(backendRoot, 'src/modules/collaboration/infrastructure/contribution-history.repository.ts'), 'utf8'), /liveFilter\.id/);
 });
 
 test("quote detail does not return the seed row and revalidates provider permission in its final SQL", () => {
@@ -169,16 +172,22 @@ test("quote detail does not return the seed row and revalidates provider permiss
     helperStart,
   );
   const helper = scopeSource.slice(helperStart, helperEnd);
+  const repository = readFileSync(
+    join(backendRoot, 'src', 'modules', 'marketplace', 'infrastructure', 'plan-quote-read.repository.ts'),
+    'utf8',
+  );
 
-  assert.match(method, /const quoteSeed = await this\.prisma\.quoteRequest\.findUnique/);
+  assert.match(method, /const quoteSeed = await core\.findQuoteRequestSeed\(this\.prisma, id\)/);
+  assert.match(readFileSync(join(backendRoot, 'src/modules/marketplace/infrastructure/marketplace-core.repository.ts'), 'utf8'), /quoteRequest\.findUnique/);
   assert.match(method, /findAccessiblePlanQuoteRequest/);
-  assert.match(helper, /quoteRequest\.findFirst/);
+  assert.match(helper, /findLivePlanQuoteRequest\([\s\S]*liveFilter/);
+  assert.match(repository, /quoteRequest\.findFirst/);
   // The live provider (and money) re-check is asked of the permission port
   // and spread into the quote table's own where.
   assert.match(helper, /liveAuthorizationFilter\([\s\S]*"canManageProviders"/);
   assert.match(helper, /permissions\.canViewMoney\(context\)/);
   assert.match(helper, /"canViewMoney"/);
-  assert.match(helper, /\.\.\.liveFilter,/);
+  assert.match(repository, /\.\.\.liveFilter,/);
   assert.doesNotMatch(method, /return \{\s*quote: quoteSeed/);
 });
 
@@ -257,20 +266,24 @@ test("member and invite list final queries carry current membership and stored m
   const invitesStart = source.indexOf("async findInvitesForPlan");
   const invitesEnd = source.indexOf("async cancelInvite", invitesStart);
   const invitesMethod = source.slice(invitesStart, invitesEnd);
+  const repository = readFileSync(join(backendRoot, 'src/modules/collaboration/infrastructure/sharing.repository.ts'), 'utf8');
 
   // The member and invite tables are collaboration's own; the live
   // membership/permission re-check is asked of the permission port and its
   // result spread into each final where.
   assert.match(membersMethod, /liveAuthorizationFilter\(/);
-  assert.match(membersMethod, /\.\.\.liveMembershipFilter,/);
+  assert.match(membersMethod, /liveMembershipFilter,/);
   assert.match(
     membersMethod,
     /liveAuthorizationFilter\([\s\S]*\["canInviteMembers"\]/,
   );
-  assert.match(membersMethod, /\.\.\.inviterAuthorityFilter,/);
+  assert.match(membersMethod, /inviterAuthorityFilter, liveMembershipFilter/);
   assert.match(
     invitesMethod,
     /liveAuthorizationFilter\([\s\S]*\["canInviteMembers"\]/,
   );
-  assert.match(invitesMethod, /\.\.\.liveFilter,/);
+  assert.match(invitesMethod, /liveFilter,/);
+  assert.match(repository, /\.\.\.liveMembershipFilter/);
+  assert.match(repository, /\.\.\.inviterAuthorityFilter/);
+  assert.match(repository, /\.\.\.liveFilter/);
 });

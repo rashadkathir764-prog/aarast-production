@@ -3,13 +3,13 @@
 // client or its transaction), exactly as the Nest wiring does.
 import { AdminOwners } from '../../../src/admin/admin-owners';
 import { AdminService } from '../../../src/admin/admin.service';
-import { CatalogAdminService } from '../../../src/modules/catalog/internal/catalog-admin.service';
-import { IdentityAdminService } from '../../../src/modules/identity/internal/identity-admin.service';
+import { CatalogAdminService } from '../../../src/modules/catalog/infrastructure/catalog-admin.service';
+import { IdentityAdminService } from '../../../src/modules/identity/infrastructure/identity-admin.service';
 import { MarketplaceAdminService } from '../../../src/modules/marketplace/internal/marketplace-admin.service';
-import { MessagingAdminService } from '../../../src/modules/messaging/internal/messaging-admin.service';
-import { NotificationsAdminService } from '../../../src/modules/notifications/internal/notifications-admin.service';
-import { CatalogReadService } from '../../../src/modules/catalog/internal/catalog-read.service';
-import { CollaborationErasureService } from '../../../src/modules/collaboration/internal/collaboration-erasure.service';
+import { MessagingAdminService } from '../../../src/modules/messaging/infrastructure/messaging-admin.service';
+import { NotificationsAdminService } from '../../../src/modules/notifications/infrastructure/notifications-admin.service';
+import { CatalogReadService } from '../../../src/modules/catalog/infrastructure/catalog-read.service';
+import { CollaborationErasureService } from '../../../src/modules/collaboration/infrastructure/collaboration-erasure.service';
 import { ContributionHistoryService } from '../../../src/modules/collaboration/internal/contribution-history.service';
 import { ContributorScopeService } from '../../../src/modules/collaboration/internal/contributor-scope.service';
 import { ConversationRelationsService } from '../../../src/conversations/conversation-relations';
@@ -17,21 +17,21 @@ import { ConversationLifecycleService } from '../../../src/modules/messaging/int
 import { NotificationsService } from '../../../src/notifications/notifications.service';
 import { PermissionService } from '../../../src/modules/collaboration/internal/permission.service';
 import { SharingService } from '../../../src/modules/collaboration/internal/sharing.service';
-import { FinancePortService } from '../../../src/modules/finance/internal/finance-port.service';
-import { GuestsPortService } from '../../../src/modules/guests/internal/guests-port.service';
-import { IdentityUserPortService } from '../../../src/modules/identity/internal/identity-user-port.service';
-import { MarketplaceErasureService } from '../../../src/modules/marketplace/internal/marketplace-erasure.service';
-import { ProviderReadService } from '../../../src/modules/marketplace/internal/provider-read.service';
-import { QuoteReadService } from '../../../src/modules/marketplace/internal/quote-read.service';
+import { FinancePortService } from '../../../src/modules/finance/infrastructure/finance-port.service';
+import { GuestsPortService } from '../../../src/modules/guests/infrastructure/guests-port.service';
+import { IdentityUserPortService } from '../../../src/modules/identity/infrastructure/identity-user-port.service';
+import { MarketplaceErasureService } from '../../../src/modules/marketplace/infrastructure/marketplace-erasure.service';
+import { ProviderReadService } from '../../../src/modules/marketplace/infrastructure/provider-read.service';
+import { QuoteReadService } from '../../../src/modules/marketplace/infrastructure/quote-read.service';
 import { MarketplaceRelationsService } from '../../../src/marketplace/marketplace-relations';
 import { MarketplaceService } from '../../../src/marketplace/marketplace.service';
 import { ProviderDashboardService } from '../../../src/provider-dashboard/provider-dashboard.service';
-import { MessagingErasureService } from '../../../src/modules/messaging/internal/messaging-erasure.service';
-import { MessagingParticipationService } from '../../../src/modules/messaging/internal/messaging-participation.service';
-import { NotificationsErasureService } from '../../../src/modules/notifications/internal/notifications-erasure.service';
-import { PlanErasureService } from '../../../src/modules/planning/internal/plan-erasure.service';
-import { PlanReadService } from '../../../src/modules/planning/internal/plan-read.service';
-import { TasksPortService } from '../../../src/modules/tasks/internal/tasks-port.service';
+import { MessagingErasureService } from '../../../src/modules/messaging/infrastructure/messaging-erasure.service';
+import { MessagingParticipationService } from '../../../src/modules/messaging/infrastructure/messaging-participation.service';
+import { NotificationsErasureService } from '../../../src/modules/notifications/infrastructure/notifications-erasure.service';
+import { PlanErasureService } from '../../../src/modules/planning/infrastructure/plan-erasure.service';
+import { PlanReadService } from '../../../src/modules/planning/infrastructure/plan-read.service';
+import { TasksPortService } from '../../../src/modules/tasks/infrastructure/tasks-port.service';
 
 export const ownerPorts = {
   plans: new PlanReadService(),

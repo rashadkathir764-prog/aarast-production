@@ -8,6 +8,7 @@ import { AuthenticatedUser } from '../../public/identity-session.types';
 import { JwtPayload } from '../../public/jwt-payload.interface';
 import { toAuthenticatedUser } from '../../public/safe-user';
 import { getJwtSecret } from './jwt-secret';
+import { findJwtSessionRows } from '../../infrastructure/jwt-session.repository';
 
 @Injectable()
 export class JwtStrategy extends PassportStrategy(Strategy) {
@@ -28,21 +29,12 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     const expectedSessionScope = isAdminSession
       ? AuthSessionScope.ADMIN
       : AuthSessionScope.APPLICATION;
-    const [user, session] = await Promise.all([
-      this.prisma.user.findUnique({
-        where: { id: payload.sub },
-      }),
-      this.prisma.refreshToken.findFirst({
-        where: {
-          id: payload.sid!,
-          userId: payload.sub,
-          scope: expectedSessionScope,
-          revokedAt: null,
-          expiresAt: { gt: new Date() },
-        },
-        select: { id: true },
-      }),
-    ]);
+    const [user, session] = await findJwtSessionRows(
+      this.prisma,
+      payload.sub,
+      payload.sid!,
+      expectedSessionScope,
+    );
 
     if (
       !user ||

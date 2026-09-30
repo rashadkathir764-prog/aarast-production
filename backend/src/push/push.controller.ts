@@ -11,7 +11,7 @@ import { AuthenticatedUser } from "../modules/identity/public/identity-session.t
 import { CurrentUser } from "../modules/identity/public/current-user.decorator";
 import { JwtAuthGuard } from "../modules/identity/public/jwt-auth.guard";
 import { PushInstallationDto } from "./dto/push-installation.dto";
-import { PushInstallationsService } from "./push-installations.service";
+import { PushInstallationsService } from "../modules/notifications/infrastructure/push-installations.service";
 
 @Controller("api/v1/push/installations")
 @UseGuards(JwtAuthGuard)

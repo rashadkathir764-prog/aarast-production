@@ -9,7 +9,7 @@ import {
   ReviewStatus,
   UserStatus,
 } from '@prisma/client';
-import { CatalogAdminService } from '../src/modules/catalog/internal/catalog-admin.service';
+import { CatalogAdminService } from '../src/modules/catalog/infrastructure/catalog-admin.service';
 import {
   CATALOG_ADMIN_IMPLEMENTATION,
   CatalogAdminInternalModule,
@@ -17,7 +17,7 @@ import {
 import { CatalogAdminPublicModule } from '../src/modules/catalog/public/catalog-admin-public.module';
 import { CATALOG_ADMIN_PORT } from '../src/modules/catalog/public/catalog-admin.port';
 import { PermissionService } from '../src/modules/collaboration/internal/permission.service';
-import { IdentityAdminService } from '../src/modules/identity/internal/identity-admin.service';
+import { IdentityAdminService } from '../src/modules/identity/infrastructure/identity-admin.service';
 import {
   IDENTITY_ADMIN_IMPLEMENTATION,
   IdentityUserInternalModule,
@@ -31,21 +31,21 @@ import {
 } from '../src/modules/marketplace/internal/marketplace-admin.internal.module';
 import { MarketplaceAdminPublicModule } from '../src/modules/marketplace/public/marketplace-admin-public.module';
 import { MARKETPLACE_ADMIN_PORT } from '../src/modules/marketplace/public/marketplace-admin.port';
-import { MessagingAdminService } from '../src/modules/messaging/internal/messaging-admin.service';
+import { MessagingAdminService } from '../src/modules/messaging/infrastructure/messaging-admin.service';
 import {
   MESSAGING_ADMIN_IMPLEMENTATION,
   MessagingPortsInternalModule,
 } from '../src/modules/messaging/internal/messaging-ports.internal.module';
 import { MessagingAdminPublicModule } from '../src/modules/messaging/public/messaging-admin-public.module';
 import { MESSAGING_ADMIN_PORT } from '../src/modules/messaging/public/messaging-admin.port';
-import { NotificationsAdminService } from '../src/modules/notifications/internal/notifications-admin.service';
+import { NotificationsAdminService } from '../src/modules/notifications/infrastructure/notifications-admin.service';
 import {
   NOTIFICATIONS_ADMIN_IMPLEMENTATION,
   NotificationsAdminInternalModule,
 } from '../src/modules/notifications/internal/notifications-admin.internal.module';
 import { NotificationsAdminPublicModule } from '../src/modules/notifications/public/notifications-admin-public.module';
 import { NOTIFICATIONS_ADMIN_PORT } from '../src/modules/notifications/public/notifications-admin.port';
-import { PlanReadService } from '../src/modules/planning/internal/plan-read.service';
+import { PlanReadService } from '../src/modules/planning/infrastructure/plan-read.service';
 
 // The back office used to read and write every owner's tables itself. Each
 // owner now performs the administrative statements on its own rows, on the

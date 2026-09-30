@@ -1,3 +1,4 @@
+import * as quoteRepository from "../modules/marketplace/infrastructure/marketplace-quote-mutation.repository";
 import {
   BadRequestException,
   ConflictException,
@@ -57,19 +58,7 @@ export async function acceptQuoteOfferInTransaction(
 ) {
   const { id, weddingPlanId } = input;
   return runSerializableTransaction(prisma, async (tx) => {
-    const offerSeed = await tx.quoteOffer.findUnique({
-      where: { id },
-      select: {
-        providerId: true,
-        provider: { select: { userId: true } },
-        quoteRequest: {
-          select: {
-            userId: true,
-            weddingPlanId: true,
-          },
-        },
-      },
-    });
+    const offerSeed = await quoteRepository.findOfferSeed(tx, id);
     if (!offerSeed) {
       throw new NotFoundException("Quote offer not found");
     }
@@ -102,14 +91,7 @@ export async function acceptQuoteOfferInTransaction(
       throw new NotFoundException("Quote offer not found");
     }
 
-    const providerLock = await tx.$queryRaw<Array<{ id: string }>>(
-      Prisma.sql`
-        SELECT "id"
-        FROM "Provider"
-        WHERE "id" = ${offerSeed.providerId}
-        FOR SHARE
-      `,
-    );
+    const providerLock = await quoteRepository.lockProviderForOfferAcceptance(tx, offerSeed.providerId);
     if (providerLock.length !== 1) {
       throw new NotFoundException("Provider not found");
     }
@@ -119,14 +101,7 @@ export async function acceptQuoteOfferInTransaction(
       throw new NotFoundException("Quote offer not found");
     }
 
-    const currentRow = await tx.quoteOffer.findUnique({
-      where: { id },
-      include: {
-        quoteRequest: { include: { service: true } },
-        provider: { select: { businessName: true, userId: true } },
-        providerLinks: { where: { weddingPlanId } },
-      },
-    });
+    const currentRow = await quoteRepository.findOfferForAcceptance(tx, id, weddingPlanId);
     if (!currentRow) throw new NotFoundException("Quote offer not found");
     // The plan currency and the service category are planning's and
     // catalog's rows, attached through their ports on this transaction.
@@ -211,10 +186,7 @@ export async function acceptQuoteOfferInTransaction(
       return { offer: current, cost, link, acceptedNow: false };
     }
 
-    const provider = await tx.provider.findUnique({
-      where: { id: current.providerId },
-      select: { status: true },
-    });
+    const provider = await quoteRepository.findProviderOperationalStatus(tx, current.providerId);
     if (!provider) {
       throw new NotFoundException("Provider not found");
     }
@@ -239,47 +211,17 @@ export async function acceptQuoteOfferInTransaction(
     let acceptedOffer = current;
     if (acceptedNow) {
       const acceptedAt = new Date();
-      const offerTransition = await tx.quoteOffer.updateMany({
-        where: { id, status: QuoteOfferStatus.PENDING },
-        data: { status: QuoteOfferStatus.ACCEPTED },
-      });
+      const offerTransition = await quoteRepository.acceptPendingOffer(tx, id);
       if (offerTransition.count !== 1) {
         throw new ConflictException("Quote offer cannot be accepted");
       }
       acceptedOffer = await relations.attachOfferContext(
         tx,
-        await tx.quoteOffer.findUniqueOrThrow({
-          where: { id },
-          include: {
-            quoteRequest: { include: { service: true } },
-            provider: { select: { businessName: true, userId: true } },
-            providerLinks: { where: { weddingPlanId } },
-          },
-        }),
+        await quoteRepository.requireOfferForAcceptance(tx, id, weddingPlanId),
       );
-      const rejectedOffers = await tx.quoteOffer.findMany({
-        where: {
-          quoteRequestId: current.quoteRequestId,
-          id: { not: id },
-          status: QuoteOfferStatus.PENDING,
-        },
-        select: { id: true },
-      });
-      await tx.quoteOffer.updateMany({
-        where: {
-          quoteRequestId: current.quoteRequestId,
-          id: { not: id },
-          status: QuoteOfferStatus.PENDING,
-        },
-        data: { status: QuoteOfferStatus.REJECTED },
-      });
-      const requestTransition = await tx.quoteRequest.updateMany({
-        where: {
-          id: current.quoteRequestId,
-          status: current.quoteRequest.status,
-        },
-        data: { status: QuoteRequestStatus.ACCEPTED, acceptedAt },
-      });
+      const rejectedOffers = await quoteRepository.listOtherPendingOffers(tx, current.quoteRequestId, id);
+      await quoteRepository.rejectOtherPendingOffers(tx, current.quoteRequestId, id);
+      const requestTransition = await quoteRepository.acceptQuoteRequest(tx, current.quoteRequestId, current.quoteRequest.status, acceptedAt);
       if (requestTransition.count !== 1) {
         throw new ConflictException("Quote request cannot be accepted");
       }
@@ -307,26 +249,7 @@ export async function acceptQuoteOfferInTransaction(
       });
     }
 
-    const link = await tx.planProviderLink.upsert({
-      where: {
-        weddingPlanId_providerId: {
-          weddingPlanId,
-          providerId: current.providerId,
-        },
-      },
-      update: {
-        quoteRequestId: current.quoteRequestId,
-        quoteOfferId: current.id,
-        status: PlanProviderLinkStatus.ACTIVE,
-      },
-      create: {
-        weddingPlanId,
-        providerId: current.providerId,
-        quoteRequestId: current.quoteRequestId,
-        quoteOfferId: current.id,
-        status: PlanProviderLinkStatus.ACTIVE,
-      },
-    });
+    const link = await quoteRepository.linkAcceptedProvider(tx, weddingPlanId, current.providerId, current.quoteRequestId, current.id);
 
     if (history) {
       const occurredAt = new Date();

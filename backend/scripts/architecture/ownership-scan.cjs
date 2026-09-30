@@ -226,6 +226,10 @@ function contextForRepositoryPath(repositoryPath, registry) {
   return matches.length === 1 ? matches[0] : 'unclassified';
 }
 
+function isOwnerInfrastructure(repositoryPath, owner) {
+  return repositoryPath.startsWith(`backend/src/modules/${owner}/infrastructure/`);
+}
+
 function readJson(file, label) {
   try {
     return JSON.parse(fs.readFileSync(file, 'utf8'));
@@ -1498,6 +1502,8 @@ function classifyOwnershipAccesses(options) {
         reason = 'unclassified-context';
       } else if (owner !== context) {
         reason = 'foreign-model';
+      } else if (owner !== 'platform' && !isOwnerInfrastructure(file, owner)) {
+        reason = 'outside-owner-infrastructure';
       }
       return {
         file,
@@ -1657,6 +1663,7 @@ const BASELINE_MODES = new Set(['read', 'write', 'unknown']);
 const BASELINE_SOURCES = new Set(['delegate', 'relation', 'sql']);
 const BASELINE_REASONS = new Set([
   'foreign-model',
+  'outside-owner-infrastructure',
   'unclassified-context',
   'unknown-model',
   'unknown-operation',
@@ -1845,6 +1852,13 @@ function validReasonShape(record) {
     return record.context === 'unclassified'
       && knownOwner !== null
       && record.owner === knownOwner;
+  }
+  if (record.reason === 'outside-owner-infrastructure') {
+    return knownOwner !== null
+      && knownOwner !== 'platform'
+      && record.context === knownOwner
+      && record.owner === knownOwner
+      && !isOwnerInfrastructure(record.file, knownOwner);
   }
   return record.reason === 'foreign-model'
     && record.context !== 'unclassified'

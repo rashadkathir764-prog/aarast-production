@@ -11,7 +11,7 @@ import {
 } from "@nestjs/common";
 import { MediaUploadStatus } from "@prisma/client";
 import { MediaUploadCleanupScheduler } from "../src/media/media-upload-cleanup.scheduler";
-import { MediaUploadTicketService } from "../src/media/media-upload-ticket.service";
+import { MediaUploadTicketService } from "../src/modules/media/infrastructure/media-upload-ticket.service";
 
 type Ticket = {
   key: string;
@@ -477,7 +477,7 @@ test("cleanup skips when another replica owns the lock", async () => {
 
 test("cleanup claim is atomic, race-safe, and retains quota tombstones", async () => {
   const source = readFileSync(
-    join(process.cwd(), "src/media/media-upload-ticket.service.ts"),
+    join(process.cwd(), "src/modules/media/infrastructure/media-upload-ticket.service.ts"),
     "utf8",
   );
   for (const required of [

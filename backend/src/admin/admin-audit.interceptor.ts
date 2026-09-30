@@ -1,6 +1,7 @@
 import {
   CallHandler,
   ExecutionContext,
+  Inject,
   Injectable,
   Logger,
   NestInterceptor,
@@ -21,7 +22,10 @@ import {
   requestRouteTemplate,
   safeClientRequestId,
 } from '../platform/observability/sanitize-request-target';
-import { PrismaService } from '../platform/database/prisma.service';
+import {
+  ADMIN_AUDIT_LOG_PORT,
+  type AdminAuditLogPort,
+} from '../modules/backoffice/public/admin-audit-log.port';
 
 interface AdminAuditRequest {
   baseUrl?: string;
@@ -38,7 +42,10 @@ const mutatingMethods = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
 export class AdminAuditInterceptor implements NestInterceptor {
   private readonly logger = new Logger(AdminAuditInterceptor.name);
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    @Inject(ADMIN_AUDIT_LOG_PORT)
+    private readonly auditLog: AdminAuditLogPort,
+  ) {}
 
   intercept(context: ExecutionContext, next: CallHandler): Observable<unknown> {
     const request = context.switchToHttp().getRequest<AdminAuditRequest>();
@@ -71,20 +78,16 @@ export class AdminAuditInterceptor implements NestInterceptor {
     // Fail closed before the mutation: if the ATTEMPT cannot be persisted,
     // no privileged write is allowed to proceed without audit evidence.
     return from(
-      this.prisma.adminAuditLog.create({
-        data: { ...base, phase: AdminAuditPhase.ATTEMPT },
-      }),
+      this.auditLog.append({ ...base, phase: AdminAuditPhase.ATTEMPT }),
     ).pipe(
       switchMap(() =>
         next.handle().pipe(
           switchMap((response) =>
             from(
-              this.prisma.adminAuditLog.create({
-                data: {
-                  ...base,
-                  phase: AdminAuditPhase.SUCCEEDED,
-                  statusCode: this.responseStatus(context, 200),
-                },
+              this.auditLog.append({
+                ...base,
+                phase: AdminAuditPhase.SUCCEEDED,
+                statusCode: this.responseStatus(context, 200),
               }),
             ).pipe(
               map(() => response),
@@ -98,13 +101,11 @@ export class AdminAuditInterceptor implements NestInterceptor {
           ),
           catchError((error) =>
             from(
-              this.prisma.adminAuditLog.create({
-                data: {
-                  ...base,
-                  phase: AdminAuditPhase.FAILED,
-                  statusCode: this.errorStatus(error),
-                  errorType: this.safeErrorType(error),
-                },
+              this.auditLog.append({
+                ...base,
+                phase: AdminAuditPhase.FAILED,
+                statusCode: this.errorStatus(error),
+                errorType: this.safeErrorType(error),
               }),
             ).pipe(
               catchError(() => {

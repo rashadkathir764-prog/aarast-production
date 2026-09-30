@@ -16,14 +16,14 @@ import {
   GUESTS_IMPLEMENTATION,
   GuestsPortInternalModule,
 } from '../src/modules/guests/internal/guests-port.internal.module';
-import { GuestsPortService } from '../src/modules/guests/internal/guests-port.service';
+import { GuestsPortService } from '../src/modules/guests/infrastructure/guests-port.service';
 import { GuestsPublicModule } from '../src/modules/guests/public/guests-public.module';
 import { GUESTS_PORT } from '../src/modules/guests/public/guests.port';
 import {
   TASKS_IMPLEMENTATION,
   TasksPortInternalModule,
 } from '../src/modules/tasks/internal/tasks-port.internal.module';
-import { TasksPortService } from '../src/modules/tasks/internal/tasks-port.service';
+import { TasksPortService } from '../src/modules/tasks/infrastructure/tasks-port.service';
 import { TasksPublicModule } from '../src/modules/tasks/public/tasks-public.module';
 import { TASKS_PORT } from '../src/modules/tasks/public/tasks.port';
 

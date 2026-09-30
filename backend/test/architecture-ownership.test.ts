@@ -21,6 +21,7 @@ type AccessMode = 'read' | 'write' | 'unknown';
 type AccessSource = 'delegate' | 'relation' | 'sql';
 type ViolationReason =
   | 'foreign-model'
+  | 'outside-owner-infrastructure'
   | 'unclassified-context'
   | 'unknown-model'
   | 'unknown-operation'
@@ -366,16 +367,43 @@ test('delegate roots use generated symbols and classify local and foreign access
   const accesses = classifyOwnershipAccesses(options);
   assertRecord(accesses, {
     file: 'backend/src/auth/root.ts', model: 'User', owner: 'identity', mode: 'read',
-    source: 'delegate', reason: null,
+    source: 'delegate', reason: 'outside-owner-infrastructure',
   });
   assertRecord(accesses, {
     file: 'backend/src/money/root.ts', model: 'WeddingCost', owner: 'finance', mode: 'write',
-    source: 'delegate', reason: null,
+    source: 'delegate', reason: 'outside-owner-infrastructure',
   });
   assertRecord(scanOwnershipViolations(options), {
     file: 'backend/src/money/root.ts', model: 'WeddingPlan', owner: 'planning', mode: 'write',
     source: 'delegate', reason: 'foreign-model',
   });
+});
+
+test('owner Prisma access requires its infrastructure while foreign access still fails', () => {
+  const userRead = prismaFixture('await prisma.user.findUnique({ where: { id: "u" } });');
+  const options = fixtureProject({
+    'auth/auth.service.ts': userRead,
+    'modules/identity/internal/deep.service.ts': userRead,
+    'modules/identity/infrastructure/legal.repository.ts': userRead,
+    'money/foreign.service.ts': userRead,
+  });
+  const violations = scanOwnershipViolations(options);
+  assertRecord(violations, {
+    file: 'backend/src/auth/auth.service.ts', model: 'User', owner: 'identity',
+    mode: 'read', source: 'delegate', reason: 'outside-owner-infrastructure',
+  });
+  assertRecord(violations, {
+    file: 'backend/src/modules/identity/internal/deep.service.ts', model: 'User',
+    owner: 'identity', mode: 'read', source: 'delegate',
+    reason: 'outside-owner-infrastructure',
+  });
+  assertRecord(violations, {
+    file: 'backend/src/money/foreign.service.ts', model: 'User',
+    owner: 'identity', mode: 'read', source: 'delegate', reason: 'foreign-model',
+  });
+  assert.equal(violations.some((record) =>
+    record.file === 'backend/src/modules/identity/infrastructure/legal.repository.ts'
+  ), false);
 });
 
 test('Prisma static element access and proven delegate aliases cannot bypass ownership', () => {
@@ -547,7 +575,7 @@ test('proven Prisma dynamic accesses fail closed while local homonyms and alias 
 
 test('nested delegate calls inside Prisma arguments and SQL interpolations are counted once', () => {
   const options = fixtureProject({
-    'money/nested-delegates.ts': prismaFixture([
+    'modules/finance/infrastructure/nested-delegates.ts': prismaFixture([
       'await prisma.weddingCost.findMany({',
       '  where: { id: { in: (await prisma.weddingPlan.findMany({ select: { id: true } })).map((plan) => plan.id) } },',
       '});',
@@ -558,11 +586,11 @@ test('nested delegate calls inside Prisma arguments and SQL interpolations are c
   });
   assertExactRecords(scanOwnershipViolations(options), [
     {
-      file: 'backend/src/money/nested-delegates.ts', model: 'WeddingPlan', owner: 'planning',
+      file: 'backend/src/modules/finance/infrastructure/nested-delegates.ts', model: 'WeddingPlan', owner: 'planning',
       operation: 'findMany', mode: 'read', source: 'delegate', reason: 'foreign-model', count: 1,
     },
     {
-      file: 'backend/src/money/nested-delegates.ts', model: 'WeddingPlan', owner: 'planning',
+      file: 'backend/src/modules/finance/infrastructure/nested-delegates.ts', model: 'WeddingPlan', owner: 'planning',
       operation: 'findUnique', mode: 'read', source: 'delegate', reason: 'foreign-model', count: 1,
     },
   ]);
@@ -650,7 +678,7 @@ test('logical relation filters, static array spreads, and scalar nested writes k
 // or inside a select is a field of the current model, never a nested write.
 test('a column named data inside a write or a select is a field, not the write container', () => {
   const options = fixtureProject({
-    'notifications/json-column.ts': prismaFixture([
+    'modules/notifications/infrastructure/json-column.ts': prismaFixture([
       'declare const payload: Prisma.InputJsonValue;',
       'await prisma.notification.create({ data: { userId: "u", type: "TASK_DUE_SOON", title: "t", body: "b", data: payload } });',
       'await prisma.notification.findMany({ where: { userId: "u" }, select: { id: true, data: true } });',
@@ -658,20 +686,20 @@ test('a column named data inside a write or a select is a field, not the write c
     ].join('\n')),
     // A nested to-many mutation keeps its `{ where, data }` wrapper: the
     // inner `data` is the write container of the related model.
-    'wedding-plans/nested-update.ts': prismaFixture(
+    'modules/planning/infrastructure/nested-update.ts': prismaFixture(
       'await prisma.weddingPlan.update({ where: { id: "p" }, data: { sharedMembers: { update: { where: { id: "m" }, data: { canViewMoney: true } } } } });',
     ),
   });
   const records = scanOwnershipViolations(options);
   assert.deepEqual(records.map(pick), [{
-    file: 'backend/src/wedding-plans/nested-update.ts', model: 'SharedMember', owner: 'collaboration', mode: 'write',
+    file: 'backend/src/modules/planning/infrastructure/nested-update.ts', model: 'SharedMember', owner: 'collaboration', mode: 'write',
     source: 'relation', reason: 'foreign-model',
   }]);
 });
 
 test('_count preserves the current model and classifies selected relations', () => {
   const options = fixtureProject({
-    'money/count.ts': prismaFixture(
+    'modules/finance/infrastructure/count.ts': prismaFixture(
       'await prisma.budgetCategory.findMany({ include: { _count: { select: { weddingCosts: true } } } });',
     ),
     'admin/count.ts': prismaFixture(
@@ -679,7 +707,7 @@ test('_count preserves the current model and classifies selected relations', () 
     ),
   });
   const records = scanOwnershipViolations(options);
-  assert.equal(records.some((record) => record.file.endsWith('money/count.ts')), false);
+  assert.equal(records.some((record) => record.file.endsWith('finance/infrastructure/count.ts')), false);
   for (const model of ['Provider', 'ProviderService']) {
     assertRecord(records, {
       file: 'backend/src/admin/count.ts', model, owner: 'marketplace', mode: 'read',
@@ -696,7 +724,7 @@ test('dynamic arguments resolve through their inferred object types; declared Pr
   // variable declared with a Prisma input type (every key possible) stays
   // unresolvable.
   const options = fixtureProject({
-    'marketplace/typed-local.ts': prismaFixture([
+    'modules/marketplace/infrastructure/typed-local.ts': prismaFixture([
       'declare const flag: boolean;',
       'declare const id: string;',
       'const where = { cityId: id, ...(flag ? { status: "ACTIVE" } : {}) };',
@@ -706,18 +734,18 @@ test('dynamic arguments resolve through their inferred object types; declared Pr
       'declare function pageArgs(): { take: number; skip?: number };',
       'declare function whereFor(value: string): { id: string; status?: string };',
     ].join('\n')),
-    'marketplace/typed-foreign.ts': prismaFixture([
+    'modules/marketplace/infrastructure/typed-foreign.ts': prismaFixture([
       'declare const flag: boolean;',
       'const include = flag ? { city: true } : {};',
       'await prisma.provider.findMany({ include });',
     ].join('\n')),
-    'marketplace/typed-declared.ts': prismaFixture([
+    'modules/marketplace/infrastructure/typed-declared.ts': prismaFixture([
       'const where: Prisma.ProviderWhereInput = { id: "p" };',
       'await prisma.provider.findMany({ where });',
     ].join('\n')),
     // An interface the product declares names its keys exactly like an
     // object type alias; a library interface (here from lib.d.ts) does not.
-    'marketplace/typed-interface.ts': prismaFixture([
+    'modules/marketplace/infrastructure/typed-interface.ts': prismaFixture([
       'interface ProviderArgs { where: { cityId: string }; include: { city: boolean } }',
       'declare const args: ProviderArgs;',
       'await prisma.provider.findMany(args);',
@@ -728,24 +756,24 @@ test('dynamic arguments resolve through their inferred object types; declared Pr
     ].join('\n'), 'interface OwnWhere { id: string; status?: string }'),
   });
   const records = scanOwnershipViolations(options);
-  assert.deepEqual(records.filter((record) => record.file === 'backend/src/marketplace/typed-local.ts'), []);
-  assertExactRecords(records.filter((record) => record.file === 'backend/src/marketplace/typed-foreign.ts'), [
+  assert.deepEqual(records.filter((record) => record.file === 'backend/src/modules/marketplace/infrastructure/typed-local.ts'), []);
+  assertExactRecords(records.filter((record) => record.file === 'backend/src/modules/marketplace/infrastructure/typed-foreign.ts'), [
     {
-      file: 'backend/src/marketplace/typed-foreign.ts', model: 'City', owner: 'catalog', operation: 'city',
+      file: 'backend/src/modules/marketplace/infrastructure/typed-foreign.ts', model: 'City', owner: 'catalog', operation: 'city',
       mode: 'read', source: 'relation', reason: 'foreign-model', count: 1,
     },
   ]);
   assertRecord(records, {
-    file: 'backend/src/marketplace/typed-declared.ts', model: '<dynamic>', owner: null, mode: 'unknown',
+    file: 'backend/src/modules/marketplace/infrastructure/typed-declared.ts', model: '<dynamic>', owner: null, mode: 'unknown',
     source: 'relation', reason: 'unknown-relation-shape',
   });
-  assertExactRecords(records.filter((record) => record.file === 'backend/src/marketplace/typed-interface.ts'), [
+  assertExactRecords(records.filter((record) => record.file === 'backend/src/modules/marketplace/infrastructure/typed-interface.ts'), [
     {
-      file: 'backend/src/marketplace/typed-interface.ts', model: 'City', owner: 'catalog', operation: 'city',
+      file: 'backend/src/modules/marketplace/infrastructure/typed-interface.ts', model: 'City', owner: 'catalog', operation: 'city',
       mode: 'read', source: 'relation', reason: 'foreign-model', count: 1,
     },
     {
-      file: 'backend/src/marketplace/typed-interface.ts', model: '<dynamic>', owner: null, operation: 'count',
+      file: 'backend/src/modules/marketplace/infrastructure/typed-interface.ts', model: '<dynamic>', owner: null, operation: 'count',
       mode: 'unknown', source: 'relation', reason: 'unknown-relation-shape', count: 1,
     },
   ]);
@@ -757,23 +785,23 @@ test('dynamic arguments resolve through their inferred object types; declared Pr
 // type is still never a proof.
 test('an array literal spreading an iterable resolves through its inferred element type', () => {
   const options = fixtureProject({
-    'conversations/iterable.ts': prismaFixture([
+    'modules/messaging/infrastructure/iterable.ts': prismaFixture([
       'declare const seeds: Array<{ conversationId: string; userId: string }>;',
       'const unique = [...new Map(seeds.map((seed) => [seed.userId, seed])).values()];',
       'await prisma.conversationParticipant.createMany({ data: unique, skipDuplicates: true });',
     ].join('\n')),
-    'conversations/generated-iterable.ts': prismaFixture([
+    'modules/messaging/infrastructure/generated-iterable.ts': prismaFixture([
       'declare const seeds: Set<Prisma.ConversationParticipantCreateManyInput>;',
       'await prisma.conversationParticipant.createMany({ data: [...seeds] });',
     ].join('\n')),
   });
   const records = scanOwnershipViolations(options);
   assert.equal(
-    records.some((record) => record.file === 'backend/src/conversations/iterable.ts'),
+    records.some((record) => record.file === 'backend/src/modules/messaging/infrastructure/iterable.ts'),
     false,
   );
   assertRecord(records, {
-    file: 'backend/src/conversations/generated-iterable.ts', model: '<dynamic>', owner: null,
+    file: 'backend/src/modules/messaging/infrastructure/generated-iterable.ts', model: '<dynamic>', owner: null,
     mode: 'unknown', source: 'relation', reason: 'unknown-relation-shape',
   });
 });

@@ -1,8 +1,6 @@
 import { AuthenticatedUser } from './identity-session.types';
-import {
-  AdminPermission,
-  permissionsForAdminRole,
-} from '../../backoffice/domain/admin-permissions';
+import type { AdminPermission } from '../../backoffice/public/admin-permission.port';
+import type { AdminRole } from '@prisma/client';
 import { UserRole } from '@prisma/client';
 
 export interface SafeUser {
@@ -29,6 +27,7 @@ export interface SafeUser {
 
 export function toSafeUser(
   user: AuthenticatedUser,
+  permissionsForAdminRole: (role: AdminRole | null | undefined) => AdminPermission[],
   includeAdminMetadata = user.adminMfa === true,
 ): SafeUser {
   const authenticated = toAuthenticatedUser(user, includeAdminMetadata);

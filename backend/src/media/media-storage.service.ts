@@ -24,7 +24,7 @@ import {
   normalizeMediaUpload,
   ownedMediaKeyFromUrl,
 } from './media-upload-policy';
-import { MediaUploadTicketService } from './media-upload-ticket.service';
+import { MediaUploadTicketService } from '../modules/media/infrastructure/media-upload-ticket.service';
 import type {
   MediaConsumptionTarget,
   MediaPurpose,

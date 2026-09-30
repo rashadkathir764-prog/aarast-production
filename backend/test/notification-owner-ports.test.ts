@@ -14,10 +14,10 @@ import {
 import { findConversationProviderId } from '../src/conversations/conversation-lifecycle';
 import { ContributorScopeService } from '../src/modules/collaboration/internal/contributor-scope.service';
 import { PermissionService } from '../src/modules/collaboration/internal/permission.service';
-import { FinancePortService } from '../src/modules/finance/internal/finance-port.service';
-import { ProviderReadService } from '../src/modules/marketplace/internal/provider-read.service';
-import { PlanReadService } from '../src/modules/planning/internal/plan-read.service';
-import { TasksPortService } from '../src/modules/tasks/internal/tasks-port.service';
+import { FinancePortService } from '../src/modules/finance/infrastructure/finance-port.service';
+import { ProviderReadService } from '../src/modules/marketplace/infrastructure/provider-read.service';
+import { PlanReadService } from '../src/modules/planning/infrastructure/plan-read.service';
+import { TasksPortService } from '../src/modules/tasks/infrastructure/tasks-port.service';
 
 // The notifications service used to walk the planning plans, their members,
 // the due tasks and payment schedules, the contribution history, the

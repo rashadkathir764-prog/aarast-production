@@ -85,7 +85,7 @@ test("the gate locks and reauthorizes the actor before target helpers run", () =
   // service); the gate takes it through identity's admin port before it
   // decides on the locked row.
   const gate = source("../modules/backoffice/public/admin-mutation-gate.ts");
-  const identityLocks = source("../modules/identity/internal/identity-admin.service.ts");
+  const identityLocks = source("../modules/identity/infrastructure/identity-admin.service.ts");
   assert.match(gate, /runSerializableTransaction/);
   assert.match(gate, /lockAccountsForUpdateInTransaction\(tx, \[\s*currentUser\.id,?\s*\]\)/);
   assert.match(identityLocks, /FROM "User"[\s\S]*FOR UPDATE/);

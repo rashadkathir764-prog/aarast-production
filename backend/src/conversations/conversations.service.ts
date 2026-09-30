@@ -52,6 +52,10 @@ import {
 } from './conversation-policy';
 import { ConversationRealtimePublisher } from './conversation-realtime.publisher';
 import { SendMessageDto } from './dto/send-message.dto';
+import {
+  ConversationsRepository,
+  type ConversationAccessFilter,
+} from '../modules/messaging/infrastructure/conversations.repository';
 
 // The conversations the user may open: as the account of an active
 // provider, as the account requester, or through a plan the user owns or
@@ -59,14 +63,6 @@ import { SendMessageDto } from './dto/send-message.dto';
 // collaboration's rows, read through their ports and applied to the
 // conversation table by id (the shape is declared so the ownership scan can
 // prove it).
-interface ConversationAccessWhere {
-  OR: [
-    { providerId: { in: string[] } },
-    { scope: typeof ConversationScope.ACCOUNT; accountRequesterUserId: string },
-    { scope: typeof ConversationScope.PLAN; weddingPlanId: { in: string[] } },
-  ];
-}
-
 type ConversationSide = 'CUSTOMER' | 'PROVIDER';
 
 interface ConversationAccess {
@@ -96,6 +92,7 @@ interface TimelineCursor {
 
 @Injectable()
 export class ConversationsService {
+  private readonly repository = new ConversationsRepository();
   constructor(
     private readonly prisma: PrismaService,
     @Inject(NOTIFICATIONS_PORT)
@@ -140,13 +137,7 @@ export class ConversationsService {
     const limit = normalizeMessagePageSize(limitValue);
     const accessWhere = await this.accessWhere(currentUser.id);
     await this.assertConversationCursor(accessWhere, cursor);
-    const candidates = await this.prisma.conversation.findMany({
-      where: accessWhere,
-      orderBy: [{ lastActivityAt: 'desc' }, { createdAt: 'desc' }, { id: 'desc' }],
-      take: limit + 1,
-      ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
-      select: { id: true },
-    });
+    const candidates = await this.repository.listPage(this.prisma, accessWhere, cursor, limit);
     const hasMore = candidates.length > limit;
     const page = candidates.slice(0, limit);
     await this.ensureParticipants(
@@ -159,15 +150,7 @@ export class ConversationsService {
     const conversations = ids.length
       ? await this.relations.attachConversationRelations(
           this.prisma,
-          await this.prisma.conversation.findMany({
-            where: { id: { in: ids } },
-            orderBy: [
-              { lastActivityAt: 'desc' },
-              { createdAt: 'desc' },
-              { id: 'desc' },
-            ],
-            include: conversationOwnInclude,
-          }),
+          await this.repository.listByIds(this.prisma, ids),
         )
       : [];
     const unread = await this.unreadCounts(currentUser.id, ids);
@@ -211,13 +194,7 @@ export class ConversationsService {
     await this.assertMessageCursor(conversationId, cursor);
     const messages = await this.relations.attachMessageSenders(
       this.prisma,
-      await this.prisma.chatMessage.findMany({
-        where: { conversationId, deletedAt: null },
-        orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
-        take: limit + 1,
-        ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
-        include: { attachments: { orderBy: { createdAt: 'asc' } } },
-      }),
+      await this.repository.listMessages(this.prisma, conversationId, cursor, limit),
     );
     const hasMore = messages.length > limit;
     const page = messages.slice(0, limit);
@@ -240,25 +217,9 @@ export class ConversationsService {
     const [messages, events, expiredOffers] = await Promise.all([
       this.relations.attachMessageSenders(
         this.prisma,
-        await this.prisma.chatMessage.findMany({
-          where: {
-            conversationId,
-            deletedAt: null,
-            ...(before ? { createdAt: { lte: before } } : {}),
-          },
-          orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
-          take: limit + 1,
-          include: { attachments: { orderBy: { createdAt: 'asc' } } },
-        }),
+        await this.repository.listTimelineMessages(this.prisma, conversationId, before, limit),
       ),
-      this.prisma.conversationEvent.findMany({
-        where: {
-          conversationId,
-          ...(before ? { occurredAt: { lte: before } } : {}),
-        },
-        orderBy: [{ occurredAt: 'desc' }, { id: 'desc' }],
-        take: limit + 1,
-      }),
+      this.repository.listTimelineEvents(this.prisma, conversationId, before, limit),
       // The lapsed pending offers are marketplace's rows.
       this.relations.quotes.listExpiredPendingOffersForConversation(
         this.prisma,
@@ -399,21 +360,9 @@ export class ConversationsService {
           ),
       );
       const [created] = await this.relations.attachMessageSenders(tx, [
-        await tx.chatMessage.create({
-          data: {
-            conversationId,
-            senderUserId: currentUser.id,
-            body,
-            attachments: {
-              create: verifiedAttachments.map((attachment) => ({
-                storageKey: attachment.key,
-                contentType: attachment.contentType,
-                byteSize: attachment.byteSize,
-              })),
-            },
-          },
-          include: { attachments: true },
-        }),
+        await this.repository.createMessage(
+          tx, conversationId, currentUser.id, body, verifiedAttachments,
+        ),
       ]);
       for (const attachment of verifiedAttachments) {
         const createdAttachment = created.attachments.find(
@@ -430,18 +379,10 @@ export class ConversationsService {
           tx,
         );
       }
-      await tx.conversation.update({
-        where: { id: conversationId },
-        data: { lastActivityAt: now },
-      });
-      const senderState = await tx.conversationParticipant.updateMany({
-        where: {
-          conversationId,
-          userId: currentUser.id,
-          revokedAt: null,
-        },
-        data: { lastReadAt: now },
-      });
+      await this.repository.touchConversation(tx, conversationId, now);
+      const senderState = await this.repository.markParticipantRead(
+        tx, conversationId, currentUser.id, now,
+      );
       if (senderState.count !== 1) {
         throw new NotFoundException('Conversation not found');
       }
@@ -466,10 +407,7 @@ export class ConversationsService {
         // notifications' row, read through its port on this transaction.
         const [preferences, participantStates] = await Promise.all([
           this.notifications.listProviderMessagePreferences(tx, recipientIds),
-          tx.conversationParticipant.findMany({
-            where: { conversationId, userId: { in: recipientIds }, revokedAt: null },
-            select: { userId: true, mutedAt: true },
-          }),
+          this.repository.recipientStates(tx, conversationId, recipientIds),
         ]);
         const preferenceByUser = new Map(
           preferences.map((preference) => [preference.userId, preference]),
@@ -526,10 +464,9 @@ export class ConversationsService {
     attachmentId: string,
   ) {
     await this.assertAccess(currentUser, conversationId);
-    const attachment = await this.prisma.chatAttachment.findFirst({
-      where: { id: attachmentId, message: { conversationId, deletedAt: null } },
-      select: { storageKey: true },
-    });
+    const attachment = await this.repository.findAttachment(
+      this.prisma, conversationId, attachmentId,
+    );
     if (!attachment) throw new NotFoundException('Attachment not found');
     const access = await this.mediaStorage.createDownloadUrl(attachment.storageKey);
     return {
@@ -551,14 +488,9 @@ export class ConversationsService {
           participants: 'UPDATE',
         },
       );
-      const updated = await tx.conversationParticipant.updateMany({
-        where: {
-          conversationId,
-          userId: currentUser.id,
-          revokedAt: null,
-        },
-        data: { lastReadAt },
-      });
+      const updated = await this.repository.markParticipantRead(
+        tx, conversationId, currentUser.id, lastReadAt,
+      );
       if (updated.count !== 1) {
         throw new NotFoundException('Conversation not found');
       }
@@ -580,14 +512,9 @@ export class ConversationsService {
         },
       );
       const mutedAt = enabled ? new Date() : null;
-      const participant = await tx.conversationParticipant.updateMany({
-        where: {
-          conversationId,
-          userId: currentUser.id,
-          revokedAt: null,
-        },
-        data: { mutedAt },
-      });
+      const participant = await this.repository.setParticipantMuted(
+        tx, conversationId, currentUser.id, mutedAt,
+      );
       if (participant.count !== 1) {
         throw new NotFoundException('Conversation not found');
       }
@@ -606,21 +533,9 @@ export class ConversationsService {
           participants: 'SHARE',
         },
       );
-      const conversation = await tx.conversation.update({
-        where: { id: conversationId },
-        data:
-          access.side === 'PROVIDER'
-            ? { providerSideBlockedAt: enabled ? new Date() : null }
-            : {
-                customerSideBlockedAt: enabled ? new Date() : null,
-                customerSideBlockedById: enabled ? currentUser.id : null,
-              },
-        select: {
-          customerSideBlockedAt: true,
-          customerSideBlockedById: true,
-          providerSideBlockedAt: true,
-        },
-      });
+      const conversation = await this.repository.setConversationBlocked(
+        tx, conversationId, currentUser.id, access.side === 'PROVIDER', enabled,
+      );
       return {
         conversationId,
         blocked:
@@ -649,17 +564,7 @@ export class ConversationsService {
           participants: 'SHARE',
         },
       );
-      return tx.conversationReport.upsert({
-        where: {
-          conversationId_reporterUserId: {
-            conversationId,
-            reporterUserId: currentUser.id,
-          },
-        },
-        update: { reason, status: 'OPEN' },
-        create: { conversationId, reporterUserId: currentUser.id, reason },
-        select: { id: true, status: true, createdAt: true, updatedAt: true },
-      });
+      return this.repository.reportConversation(tx, conversationId, currentUser.id, reason);
     });
   }
 
@@ -685,10 +590,9 @@ export class ConversationsService {
     if (!conversation) throw new NotFoundException('Conversation not found');
     let access = this.accessFor(conversation, currentUser.id);
     if (!access) {
-      await this.prisma.conversationParticipant.updateMany({
-        where: { conversationId, userId: currentUser.id, revokedAt: null },
-        data: { revokedAt: new Date() },
-      });
+      await this.repository.revokeParticipant(
+        this.prisma, conversationId, currentUser.id, new Date(),
+      );
       this.realtime.revokeConversationAccess(currentUser.id, [conversationId]);
       throw new NotFoundException('Conversation not found');
     }
@@ -712,14 +616,9 @@ export class ConversationsService {
           currentUser.id,
         )
       ) {
-        await this.prisma.conversationParticipant.updateMany({
-          where: {
-            conversationId,
-            userId: currentUser.id,
-            revokedAt: null,
-          },
-          data: { revokedAt: new Date() },
-        });
+        await this.repository.revokeParticipant(
+          this.prisma, conversationId, currentUser.id, new Date(),
+        );
         this.realtime.revokeConversationAccess(currentUser.id, [
           conversationId,
         ]);
@@ -853,32 +752,14 @@ export class ConversationsService {
       assertProviderOperational(provider);
     }
 
-    const conversationLock =
-      options.conversation === 'UPDATE'
-        ? await tx.$queryRaw<Array<{ id: string }>>(
-            Prisma.sql`
-              SELECT "id"
-              FROM "Conversation"
-              WHERE "id" = ${conversationId}
-              FOR UPDATE
-            `,
-          )
-        : await tx.$queryRaw<Array<{ id: string }>>(
-            Prisma.sql`
-              SELECT "id"
-              FROM "Conversation"
-              WHERE "id" = ${conversationId}
-              FOR SHARE
-            `,
-          );
+    const conversationLock = await this.repository.lockConversation(
+      tx, conversationId, options.conversation,
+    );
     if (conversationLock.length !== 1) {
       throw new NotFoundException('Conversation not found');
     }
 
-    await tx.conversationParticipant.createMany({
-      data: [{ conversationId, userId: currentUser.id }],
-      skipDuplicates: true,
-    });
+    await this.repository.ensureParticipants(tx, [{ conversationId, userId: currentUser.id }]);
     const participantUserIds = new Set<string>([currentUser.id]);
     if (options.lockRecipients) {
       for (const recipientId of recipientUserIds) {
@@ -886,29 +767,9 @@ export class ConversationsService {
       }
     }
     const sortedParticipantUserIds = [...participantUserIds].sort();
-    if (options.participants === 'UPDATE') {
-      await tx.$queryRaw(
-        Prisma.sql`
-          SELECT "id"
-          FROM "ConversationParticipant"
-          WHERE "conversationId" = ${conversationId}
-            AND "userId" IN (${Prisma.join(sortedParticipantUserIds)})
-          ORDER BY "userId" ASC
-          FOR UPDATE
-        `,
-      );
-    } else {
-      await tx.$queryRaw(
-        Prisma.sql`
-          SELECT "id"
-          FROM "ConversationParticipant"
-          WHERE "conversationId" = ${conversationId}
-            AND "userId" IN (${Prisma.join(sortedParticipantUserIds)})
-          ORDER BY "userId" ASC
-          FOR SHARE
-        `,
-      );
-    }
+    await this.repository.lockParticipants(
+      tx, conversationId, sortedParticipantUserIds, options.participants,
+    );
 
     const conversation = await this.findConversationRecord(tx, conversationId);
     const access = conversation
@@ -1014,7 +875,7 @@ export class ConversationsService {
 
   private async accessWhere(
     currentUserId: string,
-  ): Promise<ConversationAccessWhere> {
+  ): Promise<ConversationAccessFilter> {
     const provider = await this.relations.providers.getProviderByUserId(
       this.prisma,
       currentUserId,
@@ -1029,21 +890,9 @@ export class ConversationsService {
       .filter((membership) => membership.canManageProviders)
       .map((membership) => membership.weddingPlanId);
     return {
-      OR: [
-        {
-          providerId: {
-            in:
-              provider && provider.status === ProviderStatus.ACTIVE
-                ? [provider.id]
-                : [],
-          },
-        },
-        { scope: ConversationScope.ACCOUNT, accountRequesterUserId: currentUserId },
-        {
-          scope: ConversationScope.PLAN,
-          weddingPlanId: { in: [...new Set([...ownedPlanIds, ...managingPlanIds])] },
-        },
-      ],
+      providerIds: provider && provider.status === ProviderStatus.ACTIVE ? [provider.id] : [],
+      accountRequesterUserId: currentUserId,
+      planIds: [...new Set([...ownedPlanIds, ...managingPlanIds])],
     };
   }
 
@@ -1051,10 +900,7 @@ export class ConversationsService {
     client: Prisma.TransactionClient,
     conversationId: string,
   ): Promise<ConversationRecord | null> {
-    const row = await client.conversation.findUnique({
-      where: { id: conversationId },
-      include: conversationOwnInclude,
-    });
+    const row = await this.repository.findConversation(client, conversationId);
     if (!row) return null;
     const [conversation] = await this.relations.attachConversationRelations(
       client,
@@ -1070,50 +916,31 @@ export class ConversationsService {
       ...new Map(values.map((value) => [`${value.conversationId}:${value.userId}`, value])).values(),
     ];
     if (unique.length === 0) return;
-    await this.prisma.conversationParticipant.createMany({
-      data: unique,
-      skipDuplicates: true,
-    });
+    await this.repository.ensureParticipants(this.prisma, unique);
   }
 
   private async unreadCounts(currentUserId: string, conversationIds: string[]) {
     if (conversationIds.length === 0) return new Map<string, number>();
-    const rows = await this.prisma.$queryRaw<Array<{ conversationId: string; count: bigint }>>(
-      Prisma.sql`
-        SELECT m."conversationId", count(*)::bigint AS "count"
-        FROM "ChatMessage" m
-        JOIN "ConversationParticipant" p
-          ON p."conversationId" = m."conversationId"
-         AND p."userId" = ${currentUserId}
-         AND p."revokedAt" IS NULL
-        WHERE m."conversationId" IN (${Prisma.join(conversationIds)})
-          AND m."senderUserId" <> ${currentUserId}
-          AND m."deletedAt" IS NULL
-          AND (p."lastReadAt" IS NULL OR m."createdAt" > p."lastReadAt")
-        GROUP BY m."conversationId"
-      `,
-    );
+    const rows = await this.repository.unreadCounts(this.prisma, currentUserId, conversationIds);
     return new Map(rows.map((row) => [row.conversationId, Number(row.count)]));
   }
 
   private async assertConversationCursor(
-    accessWhere: ConversationAccessWhere,
+    accessWhere: ConversationAccessFilter,
     cursor?: string,
   ) {
     if (!cursor) return;
-    const conversation = await this.prisma.conversation.findFirst({
-      where: { AND: [{ id: cursor }, accessWhere] },
-      select: { id: true },
-    });
+    const conversation = await this.repository.findAccessibleCursor(
+      this.prisma, accessWhere, cursor,
+    );
     if (!conversation) throw new BadRequestException('Invalid conversation cursor');
   }
 
   private async assertMessageCursor(conversationId: string, cursor?: string) {
     if (!cursor) return;
-    const message = await this.prisma.chatMessage.findFirst({
-      where: { id: cursor, conversationId, deletedAt: null },
-      select: { id: true },
-    });
+    const message = await this.repository.findMessageCursor(
+      this.prisma, conversationId, cursor,
+    );
     if (!message) throw new BadRequestException('Invalid message cursor');
   }
 

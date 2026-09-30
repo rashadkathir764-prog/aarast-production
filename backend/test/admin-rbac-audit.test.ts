@@ -50,11 +50,14 @@ test('admin mutations produce append-only redacted audit phases', () => {
 test('audit read API is permission-gated and paginated', () => {
   const controller = read('src/admin/admin-audit.controller.ts');
   const service = read('src/admin/admin-audit.service.ts');
+  const repository = read('src/modules/backoffice/infrastructure/prisma-admin-audit-log.repository.ts');
 
   assert.match(controller, /AdminPermission\.AUDIT_READ/);
   assert.match(controller, /@Get\(\)/);
-  assert.match(service, /adminAuditLog\.count/);
-  assert.match(service, /adminAuditLog\.findMany/);
+  assert.match(service, /auditLog\.list/);
+  assert.match(repository, /adminAuditLog\.count/);
+  assert.match(repository, /adminAuditLog\.findMany/);
+  assert.match(repository, /prisma\.\$transaction/);
   assert.match(service, /totalPages/);
 });
 

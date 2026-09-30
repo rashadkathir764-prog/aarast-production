@@ -10,15 +10,12 @@ import { AdminAuditInterceptor } from '../src/admin/admin-audit.interceptor';
 
 function fixture() {
   const rows: any[] = [];
-  const prisma = {
-    adminAuditLog: {
-      create: async ({ data }: { data: any }) => {
-        rows.push(data);
-        return data;
-      },
+  const auditLog = {
+    append: async (data: any) => {
+      rows.push(data);
     },
   };
-  return { rows, interceptor: new AdminAuditInterceptor(prisma as any) };
+  return { rows, interceptor: new AdminAuditInterceptor(auditLog as any) };
 }
 
 function context(overrides: Record<string, unknown> = {}): ExecutionContext {
@@ -78,10 +75,8 @@ test('failed mutation stores only a safe error class and status', async () => {
 test('audit ATTEMPT failure blocks the privileged mutation', async () => {
   let executions = 0;
   const interceptor = new AdminAuditInterceptor({
-    adminAuditLog: {
-      create: async () => {
-        throw new Error('audit unavailable');
-      },
+    append: async () => {
+      throw new Error('audit unavailable');
     },
   } as any);
   const next = {

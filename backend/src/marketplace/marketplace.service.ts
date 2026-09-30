@@ -1,3 +1,4 @@
+import * as core from "../modules/marketplace/infrastructure/marketplace-core.repository";
 import { CONVERSATION_LIFECYCLE_PORT, type ConversationLifecyclePort } from "../modules/messaging/public/conversation-lifecycle.port";
 import {
   BadRequestException,
@@ -14,7 +15,6 @@ import {
   ProviderStatus,
   QuoteOffer,
   QuoteRequest,
-  ReviewStatus,
   WeddingPlan,
 } from "@prisma/client";
 import { AuthenticatedUser } from "../modules/identity/public/identity-session.types";
@@ -52,7 +52,6 @@ import {
 
 import {
   FULL_QUOTE_VISIBILITY,
-  MARKETPLACE_QUOTE_INCLUDE,
   type QuoteVisibility,
   type QuoteWithRelations,
 } from "./marketplace.contracts";
@@ -154,23 +153,8 @@ export class MarketplaceService {
   async findProviders(query: ListProvidersQueryDto) {
     const { pagination, where } = MarketplaceQuery.providerSearch(query);
     const [total, providerRows] = await this.prisma.$transaction([
-      this.prisma.provider.count({ where }),
-      this.prisma.provider.findMany({
-        where,
-        include: {
-          services: {
-            where: { isActive: true }, orderBy: [{ isFeatured: "desc" }, { createdAt: "desc" }],
-            select: { title: true, basePrice: true, currency: true, categoryId: true },
-          },
-        },
-        orderBy: [
-          { isFeatured: "desc" },
-          { ratingAverage: "desc" },
-          { createdAt: "desc" },
-        ],
-        skip: pagination.skip,
-        take: pagination.limit,
-      }),
+      core.countActiveProviders(this.prisma, where),
+      core.searchActiveProviders(this.prisma, where, pagination),
     ]);
     // Catalog's city and category rows are attached after the own-table read.
     const providers = await this.relations.attachProviderListCatalog(
@@ -188,18 +172,7 @@ export class MarketplaceService {
 
   async findProvider(id: string) {
     MarketplaceQuery.assertUuid(id, "providerId");
-    const providerRow = await this.prisma.provider.findFirst({
-      where: { id, status: ProviderStatus.ACTIVE },
-      include: {
-        services: {
-          where: { isActive: true },
-          include: {
-            images: { orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }] },
-          },
-          orderBy: [{ isFeatured: "desc" }, { createdAt: "desc" }],
-        },
-      },
-    });
+    const providerRow = await core.findActiveProviderWithServices(this.prisma, id);
 
     if (!providerRow) {
       throw new NotFoundException("Provider not found");
@@ -224,14 +197,7 @@ export class MarketplaceService {
     await this.findActiveProviderOrThrow(providerId);
     const services = await this.relations.attachServiceDetails(
       this.prisma,
-      await this.prisma.providerService.findMany({
-        where: { providerId, isActive: true },
-        include: {
-          provider: true,
-          images: { orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }] },
-        },
-        orderBy: [{ isFeatured: "desc" }, { createdAt: "desc" }],
-      }),
+      await core.listActiveProviderServices(this.prisma, providerId),
     );
 
     return services.map((service) =>
@@ -243,21 +209,8 @@ export class MarketplaceService {
     const { pagination, where } = MarketplaceQuery.serviceSearch(query);
 
     const [total, serviceRows] = await this.prisma.$transaction([
-      this.prisma.providerService.count({ where }),
-      this.prisma.providerService.findMany({
-        where,
-        include: {
-          provider: true,
-          images: { orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }] },
-        },
-        orderBy: [
-          { isFeatured: "desc" },
-          { basePrice: "asc" },
-          { createdAt: "desc" },
-        ],
-        skip: pagination.skip,
-        take: pagination.limit,
-      }),
+      core.countActiveServices(this.prisma, where),
+      core.searchActiveServices(this.prisma, where, pagination),
     ]);
     const services = await this.relations.attachServiceDetails(
       this.prisma,
@@ -275,17 +228,7 @@ export class MarketplaceService {
 
   async findService(id: string) {
     MarketplaceQuery.assertUuid(id, "serviceId");
-    const serviceRow = await this.prisma.providerService.findFirst({
-      where: {
-        id,
-        isActive: true,
-        provider: { status: ProviderStatus.ACTIVE },
-      },
-      include: {
-        provider: true,
-        images: { orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }] },
-      },
-    });
+    const serviceRow = await core.findActiveService(this.prisma, id);
 
     if (!serviceRow) {
       throw new NotFoundException("Service not found");
@@ -299,11 +242,7 @@ export class MarketplaceService {
 
   async findProviderPackages(providerId: string) {
     await this.findActiveProviderOrThrow(providerId);
-    const packages = await this.prisma.providerPackage.findMany({
-      where: { providerId, isActive: true },
-      include: { service: true },
-      orderBy: { createdAt: "desc" },
-    });
+    const packages = await core.listActiveProviderPackages(this.prisma, providerId);
 
     return packages.map((providerPackage) =>
       MarketplacePresenter.toPackageResponse(providerPackage),
@@ -314,10 +253,7 @@ export class MarketplaceService {
     await this.findActiveProviderOrThrow(providerId);
     const reviews = await this.relations.attachReviewUsers(
       this.prisma,
-      await this.prisma.providerReview.findMany({
-        where: { providerId, status: ReviewStatus.PUBLISHED },
-        orderBy: { createdAt: "desc" },
-      }),
+      await core.listPublishedProviderReviews(this.prisma, providerId),
     );
 
     return reviews.map((review) =>
@@ -330,10 +266,7 @@ export class MarketplaceService {
     const favorite = await runSerializableTransaction(
       this.prisma,
       async (tx) => {
-        const providerSeed = await tx.provider.findUnique({
-          where: { id: providerId },
-          select: { userId: true },
-        });
+        const providerSeed = await core.findProviderAccountForFavorite(tx, providerId);
         const lockedUserIds = await lockMarketplaceMutationUsers(
           tx,
           currentUser.id,
@@ -347,20 +280,7 @@ export class MarketplaceService {
         );
         assertMarketplaceProviderActive(provider);
         return this.relations.attachFavoriteProviders(tx, [
-          await tx.favoriteProvider.upsert({
-            where: {
-              userId_providerId: {
-                userId: currentUser.id,
-                providerId,
-              },
-            },
-            create: {
-              userId: currentUser.id,
-              providerId,
-            },
-            update: {},
-            include: { provider: true },
-          }),
+          await core.saveFavoriteProvider(tx, currentUser.id, providerId),
         ]);
       },
     );
@@ -372,12 +292,7 @@ export class MarketplaceService {
     MarketplaceQuery.assertUuid(providerId, "providerId");
     await runSerializableTransaction(this.prisma, async (tx) => {
       await lockMarketplaceMutationUsers(tx, currentUser.id);
-      await tx.favoriteProvider.deleteMany({
-        where: {
-          userId: currentUser.id,
-          providerId,
-        },
-      });
+      await core.deleteFavoriteProvider(tx, currentUser.id, providerId);
     });
 
     return { providerId, deleted: true };
@@ -386,14 +301,7 @@ export class MarketplaceService {
   async findMyFavoriteProviders(currentUser: AuthenticatedUser) {
     const favorites = await this.relations.attachFavoriteProviders(
       this.prisma,
-      await this.prisma.favoriteProvider.findMany({
-        where: {
-          userId: currentUser.id,
-          provider: { status: ProviderStatus.ACTIVE },
-        },
-        include: { provider: true },
-        orderBy: { createdAt: "desc" },
-      }),
+      await core.listMyActiveFavoriteProviders(this.prisma, currentUser.id),
     );
 
     return favorites.map((favorite) =>
@@ -552,15 +460,7 @@ export class MarketplaceService {
         );
         return this.relations.attachQuoteRelations(
           tx,
-          await tx.quoteRequest.findMany({
-            where: {
-              weddingPlanId,
-              ...(quoteIds ? { id: { in: quoteIds } } : {}),
-              ...liveFilter,
-            },
-            include: MARKETPLACE_QUOTE_INCLUDE,
-            orderBy: { createdAt: "desc" },
-          }),
+          await core.listPlanQuoteRequests(tx, weddingPlanId, quoteIds, liveFilter),
         );
       },
       { isolationLevel: Prisma.TransactionIsolationLevel.RepeatableRead },
@@ -696,15 +596,7 @@ export class MarketplaceService {
     const quotes = await runSerializableTransaction(this.prisma, async (tx) =>
       this.relations.attachQuoteRelations(
         tx,
-        await tx.quoteRequest.findMany({
-          where: await buildMyQuoteAccessWhere(
-            tx,
-            this.quoteScopePorts,
-            currentUser.id,
-          ),
-          include: MARKETPLACE_QUOTE_INCLUDE,
-          orderBy: { createdAt: "desc" },
-        }),
+        await core.listMyQuoteRequests(tx, await buildMyQuoteAccessWhere(tx, this.quoteScopePorts, currentUser.id)),
       ),
     );
 
@@ -714,15 +606,7 @@ export class MarketplaceService {
   async findMyQuoteRequest(currentUser: AuthenticatedUser, id: string) {
     MarketplaceQuery.assertUuid(id, "quoteRequestId");
     const quote = await runSerializableTransaction(this.prisma, async (tx) => {
-      const row = await tx.quoteRequest.findFirst({
-        where: await buildMyQuoteAccessWhere(
-          tx,
-          this.quoteScopePorts,
-          currentUser.id,
-          id,
-        ),
-        include: MARKETPLACE_QUOTE_INCLUDE,
-      });
+      const row = await core.findMyQuoteRequest(tx, await buildMyQuoteAccessWhere(tx, this.quoteScopePorts, currentUser.id, id));
       return row ? this.relations.attachQuoteRelation(tx, row) : null;
     });
 
@@ -759,9 +643,7 @@ export class MarketplaceService {
       this.prisma,
       providerId,
       async (tx) => {
-        const provider = await tx.provider.findUnique({
-          where: { id: providerId },
-        });
+        const provider = await core.findProviderForReview(tx, providerId);
         if (!provider || provider.status !== ProviderStatus.ACTIVE) {
           throw new NotFoundException("Provider not found");
         }
@@ -771,27 +653,13 @@ export class MarketplaceService {
           );
         }
 
-        const existing = await tx.providerReview.findUnique({
-          where: {
-            userId_providerId: {
-              userId: currentUser.id,
-              providerId,
-            },
-          },
-        });
+        const existing = await core.findExistingProviderReview(tx, currentUser.id, providerId);
         if (existing) {
           throw new ConflictException("You already reviewed this provider");
         }
 
         const [review] = await this.relations.attachReviewUsers(tx, [
-          await tx.providerReview.create({
-            data: {
-              userId: currentUser.id,
-              providerId,
-              rating: dto.rating,
-              comment: MarketplaceQuery.optionalText(dto.comment),
-            },
-          }),
+          await core.createProviderReview(tx, currentUser.id, providerId, dto.rating, MarketplaceQuery.optionalText(dto.comment)),
         ]);
         return MarketplacePresenter.toReviewResponse(review);
       },
@@ -804,9 +672,7 @@ export class MarketplaceService {
     dto: UpdateProviderReviewDto,
   ) {
     MarketplaceQuery.assertUuid(id, "reviewId");
-    const existing = await this.prisma.providerReview.findFirst({
-      where: { id, userId: currentUser.id },
-    });
+    const existing = await core.findReviewForUser(this.prisma, id, currentUser.id);
 
     if (!existing) {
       throw new NotFoundException("Review not found");
@@ -816,22 +682,12 @@ export class MarketplaceService {
       this.prisma,
       existing.providerId,
       async (tx) => {
-        const current = await tx.providerReview.findFirst({
-          where: { id, userId: currentUser.id },
-        });
+        const current = await core.findReviewForUser(tx, id, currentUser.id);
         if (!current) {
           throw new NotFoundException("Review not found");
         }
         const [review] = await this.relations.attachReviewUsers(tx, [
-          await tx.providerReview.update({
-            where: { id },
-            data: {
-              ...(dto.rating !== undefined ? { rating: dto.rating } : {}),
-              ...(dto.comment !== undefined
-                ? { comment: MarketplaceQuery.optionalText(dto.comment) }
-                : {}),
-            },
-          }),
+          await core.updateProviderReview(tx, id, { ...(dto.rating !== undefined ? { rating: dto.rating } : {}), ...(dto.comment !== undefined ? { comment: MarketplaceQuery.optionalText(dto.comment) } : {}) }),
         ]);
         return MarketplacePresenter.toReviewResponse(review);
       },
@@ -840,9 +696,7 @@ export class MarketplaceService {
 
   async deleteReview(currentUser: AuthenticatedUser, id: string) {
     MarketplaceQuery.assertUuid(id, "reviewId");
-    const existing = await this.prisma.providerReview.findFirst({
-      where: { id, userId: currentUser.id },
-    });
+    const existing = await core.findReviewForUser(this.prisma, id, currentUser.id);
 
     if (!existing) {
       throw new NotFoundException("Review not found");
@@ -852,13 +706,11 @@ export class MarketplaceService {
       this.prisma,
       existing.providerId,
       async (tx) => {
-        const current = await tx.providerReview.findFirst({
-          where: { id, userId: currentUser.id },
-        });
+        const current = await core.findReviewForUser(tx, id, currentUser.id);
         if (!current) {
           throw new NotFoundException("Review not found");
         }
-        await tx.providerReview.delete({ where: { id } });
+        await core.deleteProviderReview(tx, id);
         return { id, deleted: true };
       },
     );
@@ -868,9 +720,7 @@ export class MarketplaceService {
     providerId: string,
   ): Promise<Provider> {
     MarketplaceQuery.assertUuid(providerId, "providerId");
-    const provider = await this.prisma.provider.findFirst({
-      where: { id: providerId, status: ProviderStatus.ACTIVE },
-    });
+    const provider = await core.findActiveProvider(this.prisma, providerId);
 
     if (!provider) {
       throw new NotFoundException("Provider not found");
@@ -884,14 +734,7 @@ export class MarketplaceService {
     providerId: string,
   ): Promise<ProviderService> {
     MarketplaceQuery.assertUuid(serviceId, "serviceId");
-    const service = await this.prisma.providerService.findFirst({
-      where: {
-        id: serviceId,
-        providerId,
-        isActive: true,
-        provider: { status: ProviderStatus.ACTIVE },
-      },
-    });
+    const service = await core.findActiveServiceForProvider(this.prisma, serviceId, providerId);
 
     if (!service) {
       throw new BadRequestException(
@@ -918,10 +761,7 @@ export class MarketplaceService {
     id: string,
   ): Promise<{ quote: QuoteWithRelations; visibility: QuoteVisibility }> {
     MarketplaceQuery.assertUuid(id, "quoteRequestId");
-    const quoteSeed = await this.prisma.quoteRequest.findUnique({
-      where: { id },
-      select: { id: true, weddingPlanId: true },
-    });
+    const quoteSeed = await core.findQuoteRequestSeed(this.prisma, id);
     if (!quoteSeed) {
       throw new NotFoundException("Quote request not found");
     }
@@ -958,14 +798,7 @@ export class MarketplaceService {
       };
     }
 
-    const quoteRow = await this.prisma.quoteRequest.findFirst({
-      where: {
-        id: quoteSeed.id,
-        userId: currentUser.id,
-        weddingPlanId: null,
-      },
-      include: MARKETPLACE_QUOTE_INCLUDE,
-    });
+    const quoteRow = await core.findPersonalQuoteRequest(this.prisma, quoteSeed.id, currentUser.id);
     if (!quoteRow) {
       throw new NotFoundException("Quote request not found");
     }
@@ -979,10 +812,7 @@ export class MarketplaceService {
     id: string,
   ): Promise<QuoteOffer & { quoteRequest: QuoteRequest }> {
     MarketplaceQuery.assertUuid(id, "quoteOfferId");
-    const offer = await this.prisma.quoteOffer.findUnique({
-      where: { id },
-      include: { quoteRequest: true },
-    });
+    const offer = await core.findQuoteOfferWithRequest(this.prisma, id);
     if (!offer) {
       throw new NotFoundException("Quote offer not found");
     }

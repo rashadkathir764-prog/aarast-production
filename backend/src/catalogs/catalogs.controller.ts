@@ -15,7 +15,7 @@ import { JwtSessionGuard } from '../modules/identity/public/jwt-session.guard';
 import { AdminGuard } from '../modules/backoffice/public/admin.guard';
 import { AdminPermissionGuard } from '../modules/backoffice/public/admin-permission.guard';
 import { RequireAdminPermission } from '../modules/backoffice/public/admin-permission.decorator';
-import { AdminPermission } from '../modules/backoffice/domain/admin-permissions';
+import { AdminPermission } from '../modules/backoffice/public/admin-permission.port';
 import { AdministrativeCatalogService } from './administrative-catalog.service';
 import {
   AdminCatalogItemDto,

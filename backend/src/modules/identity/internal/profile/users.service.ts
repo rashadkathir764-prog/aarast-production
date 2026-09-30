@@ -16,7 +16,8 @@ import {
   UserRole,
 } from "@prisma/client";
 import { AuthenticatedUser } from "../../public/identity-session.types";
-import { SafeUser, toSafeUser } from "../../public/safe-user";
+import { SafeUser } from "../../public/safe-user";
+import { toSafeUser } from "../safe-user.presenter";
 import { PhoneNormalizer } from "../../../../shared-kernel/phone/phone-normalizer";
 import { runRetryableTransaction } from "../../../../platform/database/serializable-transaction";
 import {
@@ -81,6 +82,24 @@ import {
 import { UpdateProfileDto } from "../../api/user-dto/update-profile.dto";
 import { UpdateSettingsDto } from "../../api/user-dto/update-settings.dto";
 import { assertActiveMutationActorForUpdateInTransaction } from "../../public/user-lifecycle-lock";
+import {
+  findApplicationUserByPhone,
+  findDuplicateProfileEmail,
+  findProfileForUpdate,
+  lockNotificationSettingsUser as lockNotificationSettingsUserRow,
+  updateProfileUser,
+} from '../../infrastructure/profile-user.repository';
+import {
+  clearAdministratorApplicationIdentity,
+  createAccountDeletionReceipt,
+  deleteAccountUser,
+  deleteApplicationOtpCodesByPhone,
+  deleteApplicationRefreshTokens,
+  deleteOtpCodesByPhone,
+  findAccountDeletionReceipt,
+  lockUserForAccountDeletion,
+  lockUserForDeletionStatus,
+} from '../../infrastructure/account-erasure.repository';
 
 export interface NotificationPreferenceResponse {
   id: string;
@@ -203,24 +222,15 @@ export class UsersService {
           tx,
           currentUser.id,
         );
-        const existing = await tx.user.findUniqueOrThrow({
-          where: { id: currentUser.id },
-          select: {
-            role: true,
-            avatarUrl: true,
-            appAvatarUrl: true,
-          },
-        });
+        const existing = await findProfileForUpdate(tx, currentUser.id);
         const applicationAdmin =
           existing.role === UserRole.ADMIN && currentUser.adminMfa !== true;
         if (email) {
-          const duplicateEmail = await tx.user.findFirst({
-            where: {
-              id: { not: currentUser.id },
-              OR: [{ email }, { appEmail: email }],
-            },
-            select: { id: true },
-          });
+          const duplicateEmail = await findDuplicateProfileEmail(
+            tx,
+            currentUser.id,
+            email,
+          );
           if (duplicateEmail) {
             throw new ConflictException("Email is already registered");
           }
@@ -248,9 +258,7 @@ export class UsersService {
             tx,
           );
         }
-        return tx.user.update({
-          where: { id: currentUser.id },
-          data: {
+        return updateProfileUser(tx, currentUser.id, {
             ...(dto.name !== undefined
               ? applicationAdmin
                 ? { appName: this.requiredText(dto.name, "name") }
@@ -270,7 +278,6 @@ export class UsersService {
               ? { locale: this.requiredText(dto.locale, "locale") }
               : {}),
             ...(dto.persona !== undefined ? { persona: dto.persona } : {}),
-          },
         });
       },
       { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
@@ -301,10 +308,7 @@ export class UsersService {
     await runRetryableTransaction(
       this.prisma,
       async (tx) => {
-        const priorReceipt = await tx.accountDeletionReceipt.findUnique({
-          where: { receiptHash },
-          select: { receiptHash: true },
-        });
+        const priorReceipt = await findAccountDeletionReceipt(tx, receiptHash);
         if (priorReceipt) return;
 
         // The same advisory account lock used by presigning prevents a new
@@ -316,22 +320,10 @@ export class UsersService {
         // Lock the account before enumerating its plans. A concurrent plan
         // create needs a foreign-key key-share lock on this row and therefore
         // cannot slip a new owned plan past the deletion snapshot.
-        const lockedUsers = await tx.$queryRaw<
-          Array<{ id: string; role: UserRole }>
-        >(
-          Prisma.sql`
-            SELECT "id", "role"
-            FROM "User"
-            WHERE "id" = ${userId}
-            FOR UPDATE
-          `,
-        );
+        const lockedUsers = await lockUserForAccountDeletion(tx, userId);
         if (lockedUsers.length === 0) {
           const committedWhileWaiting =
-            await tx.accountDeletionReceipt.findUnique({
-              where: { receiptHash },
-              select: { receiptHash: true },
-            });
+            await findAccountDeletionReceipt(tx, receiptHash);
           if (committedWhileWaiting) return;
           throw new NotFoundException("User not found");
         }
@@ -511,17 +503,13 @@ export class UsersService {
         // The anonymous receipt commits atomically with erasure. It contains
         // neither the former user id nor the request id and is immutable at the
         // database boundary, so a lost HTTP response remains recoverable.
-        await tx.accountDeletionReceipt.create({
-          data: { receiptHash },
-        });
+        await createAccountDeletionReceipt(tx, receiptHash);
 
         if (!preservesAdministratorIdentity) {
           // Keyed by userId / phone with no User foreign key: never cascades.
           await deleteIdempotencyKeysForUser(tx, userId);
           if (currentUser.phone) {
-            await tx.otpCode.deleteMany({
-              where: { phone: currentUser.phone },
-            });
+            await deleteOtpCodesByPhone(tx, currentUser.phone);
           }
 
           // Finally the user. Cascades refresh tokens, memberships, personal
@@ -529,7 +517,7 @@ export class UsersService {
           // SetNulls actor/creator fields in other owners' contexts. Historical
           // tenures were closed above and their immutable events are retained.
           await enqueueUserSessionsRevoked(tx, userId);
-          await tx.user.delete({ where: { id: userId } });
+          await deleteAccountUser(tx, userId);
         }
       },
       {
@@ -561,42 +549,13 @@ export class UsersService {
     await this.marketplaceErasure.deleteUserFavoritesInTransaction(tx, userId);
     await this.messagingErasure.eraseUserParticipationInTransaction(tx, userId);
 
-    await tx.refreshToken.deleteMany({
-      where: { userId, scope: AuthSessionScope.APPLICATION },
-    });
+    await deleteApplicationRefreshTokens(tx, userId);
     await deleteApplicationIdempotencyKeysForUser(tx, userId);
     if (phone) {
-      await tx.otpCode.deleteMany({
-        where: {
-          phone,
-          purpose: {
-            in: [
-              OtpPurpose.REGISTER,
-              OtpPurpose.LOGIN,
-              OtpPurpose.INVITE_ACCESS,
-              OtpPurpose.VERIFY_PHONE,
-              OtpPurpose.RESET_PASSWORD,
-            ],
-          },
-        },
-      });
+      await deleteApplicationOtpCodesByPhone(tx, phone);
     }
     await enqueueUserSessionsRevoked(tx, userId);
-    await tx.user.update({
-      where: { id: userId },
-      data: {
-        appPasswordHash: null,
-        appPasswordConfiguredAt: null,
-        appName: null,
-        appEmail: null,
-        appAvatarUrl: null,
-        appRole: AppRole.WEDDING_USER,
-        activeWeddingPlanId: null,
-        onboardingPath: null,
-        persona: null,
-        onboardingCompletedAt: null,
-      },
-    });
+    await clearAdministratorApplicationIdentity(tx, userId);
   }
 
   async accountDeletionStatus(
@@ -606,10 +565,7 @@ export class UsersService {
     const receiptHash = accountDeletionReceiptHash(userId, clientRequestId);
     return this.prisma.$transaction(
       async (tx) => {
-        const receipt = await tx.accountDeletionReceipt.findUnique({
-          where: { receiptHash },
-          select: { receiptHash: true },
-        });
+        const receipt = await findAccountDeletionReceipt(tx, receiptHash);
         if (receipt) return { status: "DELETED" as const };
 
         const reservation = await findIdempotencyReservation(
@@ -631,19 +587,9 @@ export class UsersService {
             // interceptor owner. Reclaim only that exact unfinished command;
             // deleteMe remains concurrent-safe through the User lock and the
             // unique receipt.
-            const lockedUser = await tx.$queryRaw<Array<{ id: string }>>(
-              Prisma.sql`
-                SELECT "id"
-                FROM "User"
-                WHERE "id" = ${userId}
-                FOR UPDATE
-              `,
-            );
+            const lockedUser = await lockUserForDeletionStatus(tx, userId);
             const receiptAfterLock =
-              await tx.accountDeletionReceipt.findUnique({
-                where: { receiptHash },
-                select: { receiptHash: true },
-              });
+              await findAccountDeletionReceipt(tx, receiptHash);
             if (receiptAfterLock) return { status: "DELETED" as const };
             if (lockedUser.length === 0) {
               return { status: "NOT_STARTED" as const };
@@ -658,10 +604,7 @@ export class UsersService {
           return { status: "PENDING" as const };
         }
         const receiptAfterReservationRead =
-          await tx.accountDeletionReceipt.findUnique({
-            where: { receiptHash },
-            select: { receiptHash: true },
-          });
+          await findAccountDeletionReceipt(tx, receiptHash);
         if (receiptAfterReservationRead) {
           return { status: "DELETED" as const };
         }
@@ -681,16 +624,10 @@ export class UsersService {
       currentUser,
     );
     const normalizedPhone = PhoneNormalizer.normalizeRequired(phone);
-    const user = await this.prisma.user.findFirst({
-      where: {
-        phone: { in: PhoneNormalizer.lookupVariants(normalizedPhone) },
-      },
-      select: {
-        id: true,
-        phone: true,
-        ...applicationNameFields,
-      },
-    });
+    const user = await findApplicationUserByPhone(
+      this.prisma,
+      PhoneNormalizer.lookupVariants(normalizedPhone),
+    );
 
     if (!user) {
       throw new NotFoundException("User not found for phone");
@@ -764,14 +701,7 @@ export class UsersService {
     tx: Prisma.TransactionClient,
     userId: string,
   ): Promise<void> {
-    const users = await tx.$queryRaw<Array<{ id: string; status: string }>>(
-      Prisma.sql`
-        SELECT "id", "status"
-        FROM "User"
-        WHERE "id" = ${userId}
-        FOR UPDATE
-      `,
-    );
+    const users = await lockNotificationSettingsUserRow(tx, userId);
     if (users.length !== 1 || users[0]?.status !== "ACTIVE") {
       throw new NotFoundException("User not found");
     }

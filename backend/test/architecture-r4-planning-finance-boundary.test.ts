@@ -580,6 +580,41 @@ test('R4 writer isolation rejects dependencies, nested transactions, remapped er
   }
 });
 
+test('R4 writer accepts one infrastructure update and rejects an extra infrastructure write', () => {
+  const writer = [
+    "import { Injectable } from '@nestjs/common';",
+    "import { updateWeddingPlanBudgetInTransaction } from '../infrastructure/wedding-plan.repository';",
+    '@Injectable()',
+    'export class WeddingPlanBudgetWriter {',
+    '  async updateBudgetInTransaction(tx: any, input: any): Promise<void> {',
+    '    await updateWeddingPlanBudgetInTransaction(tx, input);',
+    '  }',
+    '}',
+  ].join('\n');
+  const repository = [
+    'export async function updateWeddingPlanBudgetInTransaction(tx: any, input: any): Promise<void> {',
+    '  await tx.weddingPlan.update({',
+    '    where: { id: input.weddingPlanId },',
+    '    data: { estimatedBudget: input.estimatedBudget, currency: input.currency },',
+    '  });',
+    '}',
+  ].join('\n');
+  const paths = {
+    'backend/src/modules/planning/internal/wedding-plan-budget-writer.ts': writer,
+    'backend/src/modules/planning/infrastructure/wedding-plan.repository.ts': repository,
+  };
+  const valid = contextScanner().scanR4PlanningBudgetWriter?.(sourceLawFixture(paths));
+  assert.equal(valid?.diagnostics.some((item) => item.kind === 'r4-writer-isolation'), false);
+  const invalid = contextScanner().scanR4PlanningBudgetWriter?.(sourceLawFixture({
+    ...paths,
+    'backend/src/modules/planning/infrastructure/wedding-plan.repository.ts': repository.replace(
+      '  });\n}',
+      '  });\n  await tx.weddingPlan.deleteMany({});\n}',
+    ),
+  }));
+  assert.equal(invalid?.diagnostics.some((item) => item.kind === 'r4-writer-isolation'), true);
+});
+
 test('R4 module laws reject wrong internal ownership, duplicate registration, and useClass', () => {
   const contract = [{
     token: 'PLANNING_BUDGET_WRITE_PORT',

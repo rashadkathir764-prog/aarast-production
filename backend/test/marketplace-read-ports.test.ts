@@ -4,15 +4,15 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { MODULE_METADATA } from '@nestjs/common/constants';
 import type { Prisma } from '@prisma/client';
-import { MarketplaceErasureService } from '../src/modules/marketplace/internal/marketplace-erasure.service';
+import { MarketplaceErasureService } from '../src/modules/marketplace/infrastructure/marketplace-erasure.service';
 import {
   MARKETPLACE_ERASURE_IMPLEMENTATION,
   MarketplaceReadInternalModule,
   PROVIDER_READ_IMPLEMENTATION,
   QUOTE_READ_IMPLEMENTATION,
 } from '../src/modules/marketplace/internal/marketplace-read.internal.module';
-import { ProviderReadService } from '../src/modules/marketplace/internal/provider-read.service';
-import { QuoteReadService } from '../src/modules/marketplace/internal/quote-read.service';
+import { ProviderReadService } from '../src/modules/marketplace/infrastructure/provider-read.service';
+import { QuoteReadService } from '../src/modules/marketplace/infrastructure/quote-read.service';
 import { ProviderReadPublicModule } from '../src/modules/marketplace/public/provider-read-public.module';
 import { PROVIDER_READ_PORT } from '../src/modules/marketplace/public/provider-read.port';
 import { QuoteReadPublicModule } from '../src/modules/marketplace/public/quote-read-public.module';

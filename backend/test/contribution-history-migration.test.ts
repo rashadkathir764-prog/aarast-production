@@ -120,7 +120,7 @@ test("every runtime WeddingPlan creation adds its history scope in the same tran
   const service = read("src/wedding-plans/wedding-plans.service.ts");
   const createdPlanVariables = [
     ...service.matchAll(
-      /const\s+(\w+)\s*=\s*await\s+tx\.weddingPlan\.create\s*\(/g,
+      /const\s+(\w+)\s*=\s*await\s+createWeddingPlan\(tx,\s*\{/g,
     ),
   ].map((match) => match[1]);
   // The history scope is collaboration's row: planning opens it through the
@@ -135,13 +135,21 @@ test("every runtime WeddingPlan creation adds its history scope in the same tran
   assert.equal(createdPlanVariables.length, 3);
   assert.deepEqual(scopedPlanVariables.sort(), createdPlanVariables.sort());
   assert.doesNotMatch(service, /this\.prisma\.weddingPlan\.create\s*\(/);
+  assert.match(
+    read('src/modules/planning/infrastructure/wedding-plan.repository.ts'),
+    /createWeddingPlan\([\s\S]*tx\.weddingPlan\.create\(/,
+  );
   assert.doesNotMatch(service, /contributorHistoryScope/);
   const history = read(
     "src/modules/collaboration/internal/contribution-history.service.ts",
   );
   assert.match(
     history,
-    /createHistoryScopeInTransaction\([\s\S]*tx:\s*Prisma\.TransactionClient[\s\S]*tx\.contributorHistoryScope\.create\([\s\S]*weddingPlanId:\s*plan\.id[\s\S]*status:\s*ContributionScopeStatus\.ACTIVE[\s\S]*historyCoverageStartsAt:\s*plan\.createdAt/,
+    /createHistoryScopeInTransaction\([\s\S]*tx:\s*Prisma\.TransactionClient[\s\S]*this\.repository\.createHistoryScope\(tx, plan\)/,
+  );
+  assert.match(
+    read('src/modules/collaboration/infrastructure/contribution-history.repository.ts'),
+    /createHistoryScope\([\s\S]*tx\.contributorHistoryScope\.create\([\s\S]*weddingPlanId:\s*plan\.id[\s\S]*status:\s*ContributionScopeStatus\.ACTIVE[\s\S]*historyCoverageStartsAt:\s*plan\.createdAt/,
   );
 });
 

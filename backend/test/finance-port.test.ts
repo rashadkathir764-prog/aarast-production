@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { MODULE_METADATA } from '@nestjs/common/constants';
 import { Prisma } from '@prisma/client';
-import { FinancePortService } from '../src/modules/finance/internal/finance-port.service';
+import { FinancePortService } from '../src/modules/finance/infrastructure/finance-port.service';
 import {
   FINANCE_IMPLEMENTATION,
   FinancePortInternalModule,

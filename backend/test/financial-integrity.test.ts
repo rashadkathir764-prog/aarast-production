@@ -28,9 +28,9 @@ import {
   normalizeBudgetCategoryName,
 } from "../src/modules/finance/domain/cost-category-matching";
 import { WeddingCostsService } from "../src/wedding-costs/wedding-costs.service";
-import { ProviderReadService } from "../src/modules/marketplace/internal/provider-read.service";
-import { QuoteReadService } from "../src/modules/marketplace/internal/quote-read.service";
-import { PlanReadService } from "../src/modules/planning/internal/plan-read.service";
+import { ProviderReadService } from "../src/modules/marketplace/infrastructure/provider-read.service";
+import { QuoteReadService } from "../src/modules/marketplace/infrastructure/quote-read.service";
+import { PlanReadService } from "../src/modules/planning/infrastructure/plan-read.service";
 
 test("money validation accepts bounded amounts and rejects unsafe values", () => {
   assert.equal(requiredMoneyAmount("1500000", "amount"), "1500000");

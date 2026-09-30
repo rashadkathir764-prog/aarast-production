@@ -95,6 +95,17 @@ test('legacy code may consume only a future context public slice', () => {
   assert.equal(result.status, 0, result.stderr || result.stdout);
 });
 
+test('Catalog cannot import Backoffice domain even for admin permissions', () => {
+  const root = fixtureRoot();
+  write(root, 'src/catalogs/probe.ts',
+    "import { AdminPermission } from '../modules/backoffice/domain/admin-permissions';\nexport const permission = AdminPermission.CATALOG_READ;\n");
+  write(root, 'src/modules/backoffice/domain/admin-permissions.ts',
+    "export enum AdminPermission { CATALOG_READ = 'CATALOG_READ' }\n");
+  const result = cruise(root, ['--config', configPath, 'src']);
+  assert.notEqual(result.status, 0, result.stderr || result.stdout);
+  assert.match(`${result.stdout}\n${result.stderr}`, /context-catalog-cross-context/);
+});
+
 test('mixed legacy/future internal edges and canonical platform-to-future edges fail', () => {
   const root = fixtureRoot();
   const baseline = path.join(root, 'known.json');
@@ -148,7 +159,7 @@ test('shared kernel cannot import a legacy business context', () => {
   assert.match(`${result.stdout}\n${result.stderr}`, /shared-kernel-is-foundational/);
 });
 
-test('only legacy auth/catalogs and relocated SafeUser may import the exact Backoffice permission contract', () => {
+test('legacy auth, Catalog, and relocated SafeUser cannot import Backoffice domain', () => {
   const allowedRoot = fixtureRoot();
   write(
     allowedRoot,
@@ -170,8 +181,10 @@ test('only legacy auth/catalogs and relocated SafeUser may import the exact Back
     'src/modules/identity/public/safe-user.ts',
     "import '../../backoffice/domain/admin-permissions';\n",
   );
-  const allowed = cruise(allowedRoot, ['--config', configPath, 'src']);
-  assert.equal(allowed.status, 0, allowed.stderr || allowed.stdout);
+  const formerlyAllowed = cruise(allowedRoot, ['--config', configPath, 'src']);
+  assert.notEqual(formerlyAllowed.status, 0);
+  assert.match(`${formerlyAllowed.stdout}\n${formerlyAllowed.stderr}`, /context-catalog-cross-context/);
+  assert.match(`${formerlyAllowed.stdout}\n${formerlyAllowed.stderr}`, /context-identity-cross-context/);
 
   const siblingRoot = fixtureRoot();
   write(siblingRoot, 'src/modules/backoffice/domain/private.ts', 'export const value = true;\n');

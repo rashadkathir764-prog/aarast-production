@@ -14,6 +14,7 @@ import {
   refreshTokenExpiry,
 } from "../src/modules/identity/internal/auth/refresh-token-policy";
 import { AuthService } from "../src/modules/identity/internal/auth/auth.service";
+import { AuthSessionRepository } from "../src/modules/identity/infrastructure/auth-session.repository";
 import { authService } from "./support/owner-ports";
 
 test("refresh token policy creates opaque hashed expiring tokens", () => {
@@ -246,9 +247,14 @@ test("refresh token schema and authenticated lifecycle stay wired", () => {
   assert.match(controller, /@Post\(["']refresh["']\)/);
   assert.match(controller, /@Post\(["']logout["']\)/);
   assert.match(controller, /@Post\(["']logout-all["']\)/);
-  assert.match(service, /refreshToken\.create/);
-  assert.match(service, /refreshToken\.update/);
-  assert.match(service, /refreshToken\.updateMany/);
+  const sessionRepository = readFileSync(
+    join(process.cwd(), "src/modules/identity/infrastructure/auth-session.repository.ts"),
+    "utf8",
+  );
+  assert.match(service, /sessions\.rotate\(tx/);
+  assert.match(sessionRepository, /refreshToken\.create/);
+  assert.match(sessionRepository, /refreshToken\.update/);
+  assert.match(sessionRepository, /refreshToken\.updateMany/);
   assert.match(identityAuthInternalModule, /JWT_ACCESS_EXPIRES_IN/);
 });
 
@@ -280,7 +286,12 @@ test("creating a wedding plan makes it the account active plan", () => {
 
   assert.ok(createBlock);
   assert.match(createBlock, /runSerializableTransaction/);
-  assert.match(createBlock, /weddingPlan\.create/);
+  assert.match(createBlock, /createWeddingPlan\(\s*tx,/);
+  const planningRepository = readFileSync(
+    join(process.cwd(), 'src/modules/planning/infrastructure/wedding-plan.repository.ts'),
+    'utf8',
+  );
+  assert.match(planningRepository, /createWeddingPlan\([\s\S]*?tx\.weddingPlan\.create/);
   // `User.activeWeddingPlanId` is identity's column: planning sets the
   // pointer through the identity port on the same transaction, and the
   // owner's implementation writes it with `user.update`.
@@ -289,7 +300,7 @@ test("creating a wedding plan makes it the account active plan", () => {
     /activePlan\.setActivePlanPointerInTransaction\(\s*tx,\s*currentUser\.id,\s*created\.id,?\s*\)/,
   );
   const identityPort = readFileSync(
-    join(process.cwd(), "src/modules/identity/internal/identity-user-port.service.ts"),
+    join(process.cwd(), "src/modules/identity/infrastructure/identity-user-port.service.ts"),
     "utf8",
   );
   assert.match(
@@ -859,8 +870,8 @@ test("application refresh family overflow fails closed for the whole application
     }),
   ];
   const harness = createRefreshFamilyHarness(rows);
-  const originalLimit = (AuthService as any).maxRefreshFamilyDepth;
-  (AuthService as any).maxRefreshFamilyDepth = 2;
+  const originalLimit = (AuthSessionRepository as any).maxRefreshFamilyDepth;
+  (AuthSessionRepository as any).maxRefreshFamilyDepth = 2;
 
   try {
     await assert.rejects(
@@ -868,7 +879,7 @@ test("application refresh family overflow fails closed for the whole application
       /Session is invalid or expired/,
     );
   } finally {
-    (AuthService as any).maxRefreshFamilyDepth = originalLimit;
+    (AuthSessionRepository as any).maxRefreshFamilyDepth = originalLimit;
   }
 
   assert.ok(rows[2].revokedAt);
@@ -912,8 +923,8 @@ test("admin refresh family overflow fails closed only for the admin realm", asyn
     }),
   ];
   const harness = createRefreshFamilyHarness(rows);
-  const originalLimit = (AuthService as any).maxRefreshFamilyDepth;
-  (AuthService as any).maxRefreshFamilyDepth = 2;
+  const originalLimit = (AuthSessionRepository as any).maxRefreshFamilyDepth;
+  (AuthSessionRepository as any).maxRefreshFamilyDepth = 2;
 
   try {
     await assert.rejects(
@@ -921,7 +932,7 @@ test("admin refresh family overflow fails closed only for the admin realm", asyn
       /Session is invalid or expired/,
     );
   } finally {
-    (AuthService as any).maxRefreshFamilyDepth = originalLimit;
+    (AuthSessionRepository as any).maxRefreshFamilyDepth = originalLimit;
   }
 
   assert.ok(rows[2].revokedAt);

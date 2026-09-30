@@ -143,6 +143,20 @@ function fixtureProject(
   return { repoRoot: root, backendRoot: fixtureBackend };
 }
 
+test('ports scan rejects Catalog imports of Backoffice domain permissions', () => {
+  const fixture = fixtureProject({
+    'backend/src/catalogs/probe.ts':
+      "import { AdminPermission } from '../modules/backoffice/domain/admin-permissions';\nexport const permission = AdminPermission.CATALOG_READ;\n",
+    'backend/src/modules/backoffice/domain/admin-permissions.ts':
+      "export enum AdminPermission { CATALOG_READ = 'CATALOG_READ' }\n",
+  });
+  const result = scanPorts(fixture);
+  assert.ok(result.diagnostics.some((item) =>
+    item.kind === 'non-public-cross-module-import'
+    && item.path === 'backend/src/catalogs/probe.ts'
+  ));
+});
+
 function diagnosticsOfKind(result: ScanResult, kind: DiagnosticKind) {
   return result.diagnostics.filter((diagnostic) => diagnostic.kind === kind);
 }
@@ -449,7 +463,7 @@ test('only the exact documented transitional platform debt is deferred to the de
   }
 });
 
-test('only legacy auth/catalogs and relocated SafeUser may import the exact Backoffice permission contract', () => {
+test('legacy auth, Catalog, and relocated SafeUser cannot import Backoffice domain', () => {
   for (const source of [
     'backend/src/auth/use-permission.ts',
     'backend/src/catalogs/use-permission.ts',
@@ -459,7 +473,7 @@ test('only legacy auth/catalogs and relocated SafeUser may import the exact Back
       'backend/src/modules/backoffice/domain/admin-permissions.ts':
         'export const permission = true;\n',
     }));
-    assert.deepEqual(diagnosticsOfKind(allowed, 'non-public-cross-module-import'), []);
+    assert.equal(diagnosticsOfKind(allowed, 'non-public-cross-module-import').length, 1);
   }
 
   const sibling = scanPorts(fixtureProject({
@@ -490,10 +504,7 @@ test('only legacy auth/catalogs and relocated SafeUser may import the exact Back
     'backend/src/modules/backoffice/domain/admin-permissions.ts':
       'export const permission = true;\n',
   }));
-  assert.deepEqual(
-    diagnosticsOfKind(relocatedSafeUser, 'non-public-cross-module-import'),
-    [],
-  );
+  assert.equal(diagnosticsOfKind(relocatedSafeUser, 'non-public-cross-module-import').length, 1);
 
   const futureIdentitySibling = scanPorts(fixtureProject({
     'backend/src/modules/identity/public/not-safe-user.ts':

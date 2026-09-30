@@ -1,6 +1,6 @@
 import { Module } from '@nestjs/common';
-import { PlanErasureService } from './plan-erasure.service';
-import { PlanReadService } from './plan-read.service';
+import { PlanErasureService } from '../infrastructure/plan-erasure.service';
+import { PlanReadService } from '../infrastructure/plan-read.service';
 
 export const PLAN_READ_IMPLEMENTATION = Symbol('PLAN_READ_IMPLEMENTATION');
 export const PLAN_ERASURE_IMPLEMENTATION = Symbol('PLAN_ERASURE_IMPLEMENTATION');

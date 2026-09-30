@@ -89,6 +89,7 @@ import {
   PlanPermissionFlags,
   rolePermissionDefaults,
 } from "./plan-permissions";
+import { SharingRepository } from "../infrastructure/sharing.repository";
 
 export interface SharedMemberResponse {
   id: string;
@@ -285,6 +286,7 @@ const revocationDescriptors: readonly RevocationDescriptor[] = [
 
 @Injectable()
 export class SharingService {
+  private readonly repository = new SharingRepository();
   private readonly logger = new Logger(SharingService.name);
 
   constructor(
@@ -327,9 +329,7 @@ export class SharingService {
       throw new BadRequestException("Owner cannot be added as a shared member");
     }
 
-    const existing = await this.prisma.sharedMember.findUnique({
-      where: { weddingPlanId_userId: { weddingPlanId, userId } },
-    });
+    const existing = await this.repository.findMember(this.prisma, weddingPlanId, userId);
     if (existing) {
       throw new ConflictException(
         "User is already shared on this wedding plan",
@@ -354,9 +354,7 @@ export class SharingService {
           "Owner cannot be added as a shared member",
         );
       }
-      const duplicate = await tx.sharedMember.findUnique({
-        where: { weddingPlanId_userId: { weddingPlanId, userId } },
-      });
+      const duplicate = await this.repository.findMember(tx, weddingPlanId, userId);
       if (duplicate) {
         throw new ConflictException(
           "User is already shared on this wedding plan",
@@ -376,14 +374,7 @@ export class SharingService {
       }
       const created = await this.withMemberUser(
         tx,
-        await tx.sharedMember.create({
-          data: {
-            weddingPlanId,
-            userId,
-            role,
-            ...permissionData,
-          },
-        }),
+        await this.repository.createMember(tx, weddingPlanId, userId, role, permissionData),
       );
       await this.history.ensureTenureInTransaction(tx, created);
       await this.history.recordForContextInTransaction(
@@ -445,10 +436,7 @@ export class SharingService {
   ): Promise<SharedWeddingPlanResponse[]> {
     const members = await this.withMemberUsers(
       this.prisma,
-      await this.prisma.sharedMember.findMany({
-        where: { userId: currentUser.id },
-        orderBy: { createdAt: "desc" },
-      }),
+      await this.repository.listSharedPlans(this.prisma, currentUser.id),
     );
     const plans = new Map(
       (
@@ -508,13 +496,9 @@ export class SharingService {
           }
           const members = await this.withMemberUsers(
             tx,
-            await tx.sharedMember.findMany({
-              where: {
-                weddingPlanId,
-                ...liveMembershipFilter,
-              },
-              orderBy: { createdAt: "asc" },
-            }),
+            await this.repository.listPlanMembersForOwner(
+              tx, weddingPlanId, liveMembershipFilter,
+            ),
           );
           return [
             this.toOwnerMemberResponse({ ...plan, owner }),
@@ -534,24 +518,10 @@ export class SharingService {
             : {};
         const members = await this.withMemberUsers(
           tx,
-          await tx.sharedMember.findMany({
-            where: {
-              weddingPlanId,
-              OR: [
-                { userId: currentUser.id },
-                ...(createdMemberIds.length > 0
-                  ? [
-                      {
-                        id: { in: createdMemberIds },
-                        ...inviterAuthorityFilter,
-                      },
-                    ]
-                  : []),
-              ],
-              ...liveMembershipFilter,
-            },
-            orderBy: { createdAt: "asc" },
-          }),
+          await this.repository.listPlanMembersForContributor(
+            tx, weddingPlanId, currentUser.id, createdMemberIds,
+            inviterAuthorityFilter, liveMembershipFilter,
+          ),
         );
         return members
           .filter(
@@ -614,14 +584,9 @@ export class SharingService {
         }
 
         if (target.user) {
-          const existingMember = await tx.sharedMember.findUnique({
-            where: {
-              weddingPlanId_userId: {
-                weddingPlanId,
-                userId: target.user.id,
-              },
-            },
-          });
+          const existingMember = await this.repository.findMember(
+            tx, weddingPlanId, target.user.id,
+          );
           if (existingMember) {
             throw new ConflictException(
               "User is already shared on this wedding plan",
@@ -630,30 +595,21 @@ export class SharingService {
         }
 
         const now = new Date();
-        const duplicateInvite = await tx.planInvite.findFirst({
-          where: {
-            weddingPlanId,
-            acceptedAt: null,
-            declinedAt: null,
-            revokedAt: null,
-            expiresAt: { gt: now },
-            OR: [
-              ...(target.user ? [{ inviteeUserId: target.user.id }] : []),
-              ...(target.normalizedPhone
-                ? [{ normalizedPhone: target.normalizedPhone }]
-                : []),
-              ...(target.email ? [{ email: target.email }] : []),
-            ],
+        const duplicateInvite = await this.repository.findPendingDuplicateInvite(
+          tx, weddingPlanId, now,
+          {
+            inviteeUserId: target.user?.id ?? null,
+            normalizedPhone: target.normalizedPhone,
+            email: target.email,
           },
-        });
+        );
         if (duplicateInvite) {
           throw new ConflictException(
             "A pending invitation already exists for this participant",
           );
         }
 
-        const invite = await tx.planInvite.create({
-          data: {
+        const invite = await this.repository.createInvite(tx, {
             weddingPlanId,
             inviterUserId: currentUser.id,
             inviteeUserId: target.user?.id ?? null,
@@ -664,12 +620,10 @@ export class SharingService {
             normalizedPhone: target.normalizedPhone,
             email: target.email,
             role,
-            ...permissionData,
+            permissions: permissionData,
             expiresAt: this.expiresAt(dto.expiresInDays),
             tokenHash: this.hashInviteToken(token),
-            deliveryStatus: PlanInviteDeliveryStatus.PENDING,
-            deliveryAttemptedAt: now,
-          },
+            attemptedAt: now,
         });
 
         await this.history.recordForContextInTransaction(
@@ -741,15 +695,7 @@ export class SharingService {
     );
     const invites = await this.withInvitesRelations(
       this.prisma,
-      await this.prisma.planInvite.findMany({
-        where: {
-          OR: [
-            { inviteeUserId: currentUser.id },
-            ...(normalizedPhone ? [{ normalizedPhone }] : []),
-          ],
-        },
-        orderBy: { createdAt: "desc" },
-      }),
+      await this.repository.listCurrentUserInvites(this.prisma, currentUser.id, normalizedPhone),
     );
     const acceptedPlanIds = [
       ...new Set(
@@ -765,13 +711,9 @@ export class SharingService {
     const liveMemberships =
       acceptedPlanIds.length === 0
         ? []
-        : await this.prisma.sharedMember.findMany({
-            where: {
-              userId: currentUser.id,
-              weddingPlanId: { in: acceptedPlanIds },
-            },
-            select: { weddingPlanId: true },
-          });
+        : await this.repository.liveMembershipPlanIds(
+            this.prisma, currentUser.id, acceptedPlanIds,
+          );
     const liveMembershipPlanIds = new Set(
       liveMemberships.map((membership) => membership.weddingPlanId),
     );
@@ -793,15 +735,9 @@ export class SharingService {
     const liveMembership =
       this.inviteStatus(invite) === "ACCEPTED" &&
       invite.inviteeUserId === currentUser.id
-        ? await this.prisma.sharedMember.findUnique({
-            where: {
-              weddingPlanId_userId: {
-                weddingPlanId: invite.weddingPlanId,
-                userId: currentUser.id,
-              },
-            },
-            select: { id: true },
-          })
+        ? await this.repository.liveMembershipId(
+            this.prisma, invite.weddingPlanId, currentUser.id,
+          )
         : null;
     return this.toCurrentUserInviteResponse(
       await this.withInviteRelations(this.prisma, invite),
@@ -833,14 +769,9 @@ export class SharingService {
         );
         return this.withInvitesRelations(
           tx,
-          await tx.planInvite.findMany({
-            where: {
-              weddingPlanId,
-              ...(access.isOwner ? {} : { inviterUserId: currentUser.id }),
-              ...liveFilter,
-            },
-            orderBy: { createdAt: "desc" },
-          }),
+          await this.repository.listPlanInvites(
+            tx, weddingPlanId, currentUser.id, access.isOwner, liveFilter,
+          ),
         );
       },
       { isolationLevel: Prisma.TransactionIsolationLevel.RepeatableRead },
@@ -868,9 +799,7 @@ export class SharingService {
             weddingPlanId,
             currentUser,
           );
-        const invite = await tx.planInvite.findFirst({
-          where: { id: inviteId, weddingPlanId },
-        });
+        const invite = await this.repository.findPlanInvite(tx, inviteId, weddingPlanId);
         if (!invite) throw new NotFoundException("Invite not found");
         if (
           !transactionalAccess.isOwner &&
@@ -885,25 +814,14 @@ export class SharingService {
         );
 
         const now = new Date();
-        const claimed = await tx.planInvite.updateMany({
-          where: {
-            id: invite.id,
-            weddingPlanId,
-            tokenHash: invite.tokenHash,
-            acceptedAt: null,
-            declinedAt: null,
-            revokedAt: null,
-            expiresAt: { gt: now },
-          },
-          data: { revokedAt: now },
-        });
+        const claimed = await this.repository.cancelPendingInvite(
+          tx, invite, weddingPlanId, now,
+        );
         if (claimed.count !== 1) {
           throw new ConflictException("Invite is no longer pending");
         }
 
-        const updated = await tx.planInvite.findUnique({
-          where: { id: invite.id },
-        });
+        const updated = await this.repository.findInviteById(tx, invite.id);
         if (!updated) {
           throw new ConflictException("Invite is no longer pending");
         }
@@ -929,9 +847,7 @@ export class SharingService {
             weddingPlanId,
             currentUser,
           );
-        const invite = await tx.planInvite.findFirst({
-          where: { id: inviteId, weddingPlanId },
-        });
+        const invite = await this.repository.findPlanInvite(tx, inviteId, weddingPlanId);
         if (!invite) {
           throw new NotFoundException("Invite not found");
         }
@@ -964,31 +880,15 @@ export class SharingService {
           now,
         );
 
-        const updated = await tx.planInvite.updateMany({
-          where: {
-            id: invite.id,
-            weddingPlanId,
-            tokenHash: invite.tokenHash,
-            acceptedAt: null,
-            declinedAt: null,
-            revokedAt: null,
-            expiresAt: { gt: now },
-          },
-          data: {
-            tokenHash: this.hashInviteToken(token),
-            deliveryStatus: PlanInviteDeliveryStatus.PENDING,
-            deliveryAttemptedAt: now,
-            ...(dto.role !== undefined ? { role } : {}),
-            ...permissionData,
-          },
-        });
+        const updated = await this.repository.rotatePendingInvite(
+          tx, invite, weddingPlanId, now, this.hashInviteToken(token),
+          dto.role !== undefined ? role : undefined, permissionData,
+        );
         if (updated.count !== 1) {
           throw new ConflictException("Invite is no longer pending");
         }
 
-        const rotated = await tx.planInvite.findUnique({
-          where: { id: invite.id },
-        });
+        const rotated = await this.repository.findInviteById(tx, invite.id);
         if (!rotated) {
           throw new ConflictException("Invite is no longer pending");
         }
@@ -1076,20 +976,11 @@ export class SharingService {
           plan,
         );
 
-      const lockedInvite = await tx.$queryRaw<Array<{ id: string }>>(
-        Prisma.sql`
-          SELECT "id"
-          FROM "PlanInvite"
-          WHERE "id" = ${resolvedInvite.id}
-          FOR UPDATE
-        `,
-      );
+      const lockedInvite = await this.repository.lockInvite(tx, resolvedInvite.id);
       if (lockedInvite.length !== 1) {
         throw new ConflictException("Invite is no longer pending");
       }
-      const invite = await tx.planInvite.findUnique({
-        where: { id: resolvedInvite.id },
-      });
+      const invite = await this.repository.findInviteById(tx, resolvedInvite.id);
       if (!invite) {
         throw new ConflictException("Invite is no longer pending");
       }
@@ -1106,14 +997,9 @@ export class SharingService {
         if (!presentedTokenStillMatches) {
           throw new ConflictException("Invite is no longer pending");
         }
-        const existingMember = await tx.sharedMember.findUnique({
-          where: {
-            weddingPlanId_userId: {
-              weddingPlanId: invite.weddingPlanId,
-              userId: currentUser.id,
-            },
-          },
-        });
+        const existingMember = await this.repository.findMember(
+          tx, invite.weddingPlanId, currentUser.id,
+        );
         if (!existingMember) {
           throw new ConflictException(
             "Accepted invitation membership is no longer active",
@@ -1139,46 +1025,17 @@ export class SharingService {
         delegatedInviterMember,
       );
 
-      const claimed = await tx.planInvite.updateMany({
-        where: {
-          id: invite.id,
-          ...this.inviteClaimTokenFilter(invite, token),
-          acceptedAt: null,
-          declinedAt: null,
-          revokedAt: null,
-          expiresAt: { gt: acceptedAt },
-        },
-        data: {
-          acceptedAt,
-          inviteeUserId: currentUser.id,
-        },
-      });
+      const claimed = await this.repository.claimInvite(
+        tx, invite, this.inviteClaimTokenFilter(invite, token).tokenHash ?? null,
+        acceptedAt, currentUser.id, 'ACCEPT',
+      );
       if (claimed.count !== 1) {
         throw new ConflictException("Invite is no longer pending");
       }
 
-      const upsertedMember = await tx.sharedMember.upsert({
-        where: {
-          weddingPlanId_userId: {
-            weddingPlanId: invite.weddingPlanId,
-            userId: currentUser.id,
-          },
-        },
-        update: {},
-        create: {
-          weddingPlanId: invite.weddingPlanId,
-          userId: currentUser.id,
-          role: invite.role,
-          canViewMoney: invite.canViewMoney,
-          canEditPlan: invite.canEditPlan,
-          canManageTasks: invite.canManageTasks,
-          canManageGuests: invite.canManageGuests,
-          canManageProviders: invite.canManageProviders,
-          canInviteMembers: invite.canInviteMembers,
-          canManageMoney: invite.canManageMoney,
-          receiveNotifications: invite.receiveNotifications,
-        },
-      });
+      const upsertedMember = await this.repository.upsertAcceptedMember(
+        tx, invite, currentUser.id,
+      );
       const member = await this.withMemberUser(tx, upsertedMember);
       await this.history.ensureTenureInTransaction(tx, member);
       await this.recordAcceptedInviteMemberForInviterInTransaction(
@@ -1196,9 +1053,7 @@ export class SharingService {
         );
       }
 
-      const acceptedInviteRow = await tx.planInvite.findUnique({
-        where: { id: invite.id },
-      });
+      const acceptedInviteRow = await this.repository.findInviteById(tx, invite.id);
       if (!acceptedInviteRow) {
         throw new ConflictException("Invite is no longer pending");
       }
@@ -1284,20 +1139,11 @@ export class SharingService {
         ) {
           throw new NotFoundException("Wedding plan not found");
         }
-        const lockedInvite = await tx.$queryRaw<Array<{ id: string }>>(
-          Prisma.sql`
-          SELECT "id"
-          FROM "PlanInvite"
-          WHERE "id" = ${invite.id}
-          FOR UPDATE
-        `,
-        );
+        const lockedInvite = await this.repository.lockInvite(tx, invite.id);
         if (lockedInvite.length !== 1) {
           throw new ConflictException("Invite is no longer pending");
         }
-        const currentInvite = await tx.planInvite.findUnique({
-          where: { id: invite.id },
-        });
+        const currentInvite = await this.repository.findInviteById(tx, invite.id);
         if (!currentInvite) {
           throw new ConflictException("Invite is no longer pending");
         }
@@ -1317,26 +1163,15 @@ export class SharingService {
           return this.withInviteRelations(tx, currentInvite);
         }
         this.assertInviteCanBeAccepted(currentInvite, currentUser);
-        const claimed = await tx.planInvite.updateMany({
-          where: {
-            id: currentInvite.id,
-            ...this.inviteClaimTokenFilter(currentInvite, token),
-            acceptedAt: null,
-            declinedAt: null,
-            revokedAt: null,
-            expiresAt: { gt: declinedAt },
-          },
-          data: {
-            declinedAt,
-            inviteeUserId: currentUser.id,
-          },
-        });
+        const claimed = await this.repository.claimInvite(
+          tx, currentInvite,
+          this.inviteClaimTokenFilter(currentInvite, token).tokenHash ?? null,
+          declinedAt, currentUser.id, 'DECLINE',
+        );
         if (claimed.count !== 1) {
           throw new ConflictException("Invite is no longer pending");
         }
-        const updatedRow = await tx.planInvite.findUnique({
-          where: { id: currentInvite.id },
-        });
+        const updatedRow = await this.repository.findInviteById(tx, currentInvite.id);
         if (!updatedRow) {
           throw new ConflictException("Invite is no longer pending");
         }
@@ -1371,10 +1206,7 @@ export class SharingService {
     dto: UpdateSharedMemberDto,
   ): Promise<SharedMemberResponse> {
     this.assertNotOwnerMemberId(memberId);
-    const targetSeed = await this.prisma.sharedMember.findFirst({
-      where: { id: memberId, weddingPlanId },
-      select: { userId: true },
-    });
+    const targetSeed = await this.repository.findMemberSeed(this.prisma, weddingPlanId, memberId);
     if (!targetSeed) {
       throw new NotFoundException("Shared member not found");
     }
@@ -1386,21 +1218,11 @@ export class SharingService {
         currentUser,
         [targetSeed.userId],
       );
-      const targetLock = await tx.$queryRaw<Array<{ id: string }>>(
-        Prisma.sql`
-          SELECT "id"
-          FROM "SharedMember"
-          WHERE "id" = ${memberId}
-            AND "weddingPlanId" = ${weddingPlanId}
-          FOR UPDATE
-        `,
-      );
+      const targetLock = await this.repository.lockMemberById(tx, weddingPlanId, memberId);
       if (targetLock.length !== 1) {
         throw new NotFoundException("Shared member not found");
       }
-      const existing = await tx.sharedMember.findFirst({
-        where: { id: memberId, weddingPlanId },
-      });
+      const existing = await this.repository.findMemberById(tx, weddingPlanId, memberId);
       if (!existing || existing.userId !== targetSeed.userId) {
         throw new NotFoundException("Shared member not found");
       }
@@ -1464,16 +1286,10 @@ export class SharingService {
         );
       const updated = await this.withMemberUser(
         tx,
-        await tx.sharedMember.update({
-          where: { id: existing.id },
-          data: {
-            ...(dto.role !== undefined ? { role } : {}),
-            ...permissionData,
-            ...(authorityChanged
-              ? { authorityVersion: authorityVersion + 1 }
-              : {}),
-          },
-        }),
+        await this.repository.updateMember(
+          tx, existing.id, dto.role !== undefined ? role : undefined,
+          permissionData, authorityChanged ? authorityVersion + 1 : undefined,
+        ),
       );
       if (hadFinancialAccess && !keepsFinancialAccess) {
         await this.notifications.purgeMoneyForMember(
@@ -1529,10 +1345,7 @@ export class SharingService {
     if (this.isOwnerMemberId(memberId)) {
       throw new BadRequestException("Last owner cannot be removed");
     }
-    const targetSeed = await this.prisma.sharedMember.findFirst({
-      where: { id: memberId, weddingPlanId },
-      select: { userId: true },
-    });
+    const targetSeed = await this.repository.findMemberSeed(this.prisma, weddingPlanId, memberId);
     if (!targetSeed) {
       throw new NotFoundException("Shared member not found");
     }
@@ -1558,48 +1371,15 @@ export class SharingService {
         targetUser.phone,
       );
       const revokedAt = new Date();
-      const targetInvitePredicate = normalizedPhone
-        ? Prisma.sql`
-            (
-              "inviterUserId" = ${targetSeed.userId}
-              OR "inviteeUserId" = ${targetSeed.userId}
-              OR "normalizedPhone" = ${normalizedPhone}
-            )
-          `
-        : Prisma.sql`(
-            "inviterUserId" = ${targetSeed.userId}
-            OR "inviteeUserId" = ${targetSeed.userId}
-          )`;
-      const pendingInviteLocks = await tx.$queryRaw<Array<{ id: string }>>(
-        Prisma.sql`
-          SELECT "id"
-          FROM "PlanInvite"
-          WHERE "weddingPlanId" = ${weddingPlanId}
-            AND "acceptedAt" IS NULL
-            AND "declinedAt" IS NULL
-            AND "revokedAt" IS NULL
-            AND "expiresAt" > ${revokedAt}
-            AND ${targetInvitePredicate}
-          ORDER BY "id"
-          FOR UPDATE
-        `,
+      const pendingInviteLocks = await this.repository.lockPendingInvitesForUser(
+        tx, weddingPlanId, targetSeed.userId, normalizedPhone, revokedAt,
       );
       const pendingInviteIds = pendingInviteLocks.map((invite) => invite.id);
-      const targetLock = await tx.$queryRaw<Array<{ id: string }>>(
-        Prisma.sql`
-          SELECT "id"
-          FROM "SharedMember"
-          WHERE "id" = ${memberId}
-            AND "weddingPlanId" = ${weddingPlanId}
-          FOR UPDATE
-        `,
-      );
+      const targetLock = await this.repository.lockMemberById(tx, weddingPlanId, memberId);
       if (targetLock.length !== 1) {
         throw new NotFoundException("Shared member not found");
       }
-      const existing = await tx.sharedMember.findFirst({
-        where: { id: memberId, weddingPlanId },
-      });
+      const existing = await this.repository.findMemberById(tx, weddingPlanId, memberId);
       if (!existing || existing.userId !== targetSeed.userId) {
         throw new NotFoundException("Shared member not found");
       }
@@ -1615,22 +1395,10 @@ export class SharingService {
         this.permissionFlagsForRecord(existing),
       );
       if (pendingInviteIds.length > 0) {
-        const revokedInvites = await tx.planInvite.updateMany({
-          where: {
-            id: { in: pendingInviteIds },
-            weddingPlanId,
-            acceptedAt: null,
-            declinedAt: null,
-            revokedAt: null,
-            expiresAt: { gt: revokedAt },
-            OR: [
-              { inviterUserId: existing.userId },
-              { inviteeUserId: existing.userId },
-              ...(normalizedPhone ? [{ normalizedPhone }] : []),
-            ],
-          },
-          data: { revokedAt },
-        });
+        const revokedInvites = await this.repository.revokePendingInvitesForUser(
+          tx, weddingPlanId, existing.userId, normalizedPhone,
+          pendingInviteIds, revokedAt,
+        );
         if (revokedInvites.count !== pendingInviteIds.length) {
           throw new ConflictException(
             "Invitation state changed during removal",
@@ -1664,7 +1432,7 @@ export class SharingService {
         existing.userId,
         weddingPlanId,
       );
-      await tx.sharedMember.delete({ where: { id: existing.id } });
+      await this.repository.deleteMember(tx, existing.id);
       const revokedConversationIds =
         await this.participation.setPlanConversationParticipationInTransaction(
           tx,
@@ -1740,23 +1508,8 @@ export class SharingService {
         );
       }
 
-      const targetLock = await tx.$queryRaw<Array<{ id: string }>>(
-        Prisma.sql`
-          SELECT "id"
-          FROM "SharedMember"
-          WHERE "weddingPlanId" = ${weddingPlanId}
-            AND "userId" = ${currentUser.id}
-          FOR UPDATE
-        `,
-      );
-      const existing = await tx.sharedMember.findUnique({
-        where: {
-          weddingPlanId_userId: {
-            weddingPlanId,
-            userId: currentUser.id,
-          },
-        },
-      });
+      const targetLock = await this.repository.lockMemberByUser(tx, weddingPlanId, currentUser.id);
+      const existing = await this.repository.findMember(tx, weddingPlanId, currentUser.id);
       if (!existing) {
         if (targetLock.length > 0) {
           throw new ConflictException("Membership state changed during leave");
@@ -1834,7 +1587,7 @@ export class SharingService {
         currentUser.id,
         weddingPlanId,
       );
-      await tx.sharedMember.delete({ where: { id: existing.id } });
+      await this.repository.deleteMember(tx, existing.id);
       const revokedConversationIds =
         await this.participation.setPlanConversationParticipationInTransaction(
           tx,
@@ -1889,9 +1642,7 @@ export class SharingService {
     weddingPlanId: string,
     memberId: string,
   ): Promise<SharedMember> {
-    const member = await this.prisma.sharedMember.findFirst({
-      where: { id: memberId, weddingPlanId },
-    });
+    const member = await this.repository.findMemberById(this.prisma, weddingPlanId, memberId);
     if (!member) {
       throw new NotFoundException("Shared member not found");
     }
@@ -2041,22 +1792,9 @@ export class SharingService {
   ): Promise<PlanInviteWithRelations> {
     return runSerializableTransaction(this.prisma, async (tx) => {
       const finalizedAt = new Date();
-      const stored = await tx.planInvite.updateMany({
-        where: {
-          id: attempt.inviteId,
-          weddingPlanId: attempt.weddingPlanId,
-          tokenHash: attempt.tokenHash,
-          deliveryAttemptedAt: attempt.attemptedAt,
-          deliveryStatus: PlanInviteDeliveryStatus.PENDING,
-          acceptedAt: null,
-          declinedAt: null,
-          revokedAt: null,
-          expiresAt: { gt: finalizedAt },
-        },
-        data: {
-          deliveryStatus: this.toStoredDeliveryStatus(delivery.status),
-        },
-      });
+      const stored = await this.repository.persistInviteDelivery(
+        tx, attempt, finalizedAt, this.toStoredDeliveryStatus(delivery.status),
+      );
       if (stored.count !== 1) {
         throw new HttpException(
           {
@@ -2068,9 +1806,7 @@ export class SharingService {
         );
       }
 
-      const finalized = await tx.planInvite.findUnique({
-        where: { id: attempt.inviteId },
-      });
+      const finalized = await this.repository.findInviteById(tx, attempt.inviteId);
       if (!finalized) {
         throw new NotFoundException("Invite not found");
       }
@@ -2148,14 +1884,12 @@ export class SharingService {
   private async findInviteByTokenOrThrow(
     token: string,
   ): Promise<PlanInviteWithRelations> {
-    const inviteByHash = await this.prisma.planInvite.findUnique({
-      where: { tokenHash: this.hashInviteToken(token) },
-    });
+    const inviteByHash = await this.repository.findInviteByHash(
+      this.prisma, this.hashInviteToken(token),
+    );
     const invite =
       inviteByHash ??
-      (await this.prisma.planInvite.findUnique({
-        where: { id: token },
-      }));
+      (await this.repository.findInviteById(this.prisma, token));
     if (!invite) {
       throw new NotFoundException("Invite not found");
     }
@@ -2319,17 +2053,9 @@ export class SharingService {
     entityType: ContributionEntityType,
     action: ContributionAction,
   ): Promise<string[]> {
-    const events = await this.prisma.contributionEvent.findMany({
-      where: {
-        historyScope: { weddingPlanId },
-        contributorTenure: { actorUserId },
-        entityType,
-        action,
-        entityId: { not: null },
-      },
-      select: { entityId: true },
-      distinct: ["entityId"],
-    });
+    const events = await this.repository.contributedEntityIds(
+      this.prisma, weddingPlanId, actorUserId, entityType, action,
+    );
     return events.flatMap(({ entityId }) => (entityId ? [entityId] : []));
   }
 
@@ -2364,17 +2090,9 @@ export class SharingService {
     targetMemberId: string,
   ): Promise<void> {
     if (access.isOwner) return;
-    const createdByActor = await tx.contributionEvent.findFirst({
-      where: {
-        historyScope: { weddingPlanId: access.plan.id },
-        contributorTenure: { actorUserId },
-        section: ContributionSection.MEMBERS,
-        entityType: ContributionEntityType.MEMBER_ITEM,
-        entityId: targetMemberId,
-        action: ContributionAction.CREATED,
-      },
-      select: { id: true },
-    });
+    const createdByActor = await this.repository.memberCreatedByActor(
+      tx, access.plan.id, actorUserId, targetMemberId,
+    );
     if (!createdByActor) throw new NotFoundException("Shared member not found");
   }
 
@@ -2445,14 +2163,9 @@ export class SharingService {
     member: SharedMember & { user?: ApplicationContactRecord },
     occurredAt: Date,
   ): Promise<void> {
-    const inviterMember = await tx.sharedMember.findUnique({
-      where: {
-        weddingPlanId_userId: {
-          weddingPlanId: invite.weddingPlanId,
-          userId: invite.inviterUserId,
-        },
-      },
-    });
+    const inviterMember = await this.repository.findMember(
+      tx, invite.weddingPlanId, invite.inviterUserId,
+    );
     if (!inviterMember) return;
     await this.history.ensureTenureInTransaction(tx, inviterMember);
     await this.history.recordInTransaction(tx, {
@@ -2499,20 +2212,9 @@ export class SharingService {
     weddingPlanId: string,
     actorUserId: string,
   ): Promise<boolean> {
-    const scope = await tx.contributorHistoryScope.findUnique({
-      where: { weddingPlanId },
-      select: { id: true },
-    });
+    const scope = await this.repository.getHistoryScopeId(tx, weddingPlanId);
     if (!scope) return false;
-    const previousLeave = await tx.contributorTenure.findFirst({
-      where: {
-        historyScopeId: scope.id,
-        actorUserId,
-        endedAt: { not: null },
-        endReason: "MEMBER_LEFT",
-      },
-      select: { id: true },
-    });
+    const previousLeave = await this.repository.previousLeave(tx, scope.id, actorUserId);
     return previousLeave !== null;
   }
 
@@ -2523,25 +2225,12 @@ export class SharingService {
   ): Promise<SharedMember | null> {
     if (invite.inviterUserId === plan.ownerUserId) return null;
 
-    const locks = await tx.$queryRaw<Array<{ id: string }>>(
-      Prisma.sql`
-        SELECT "id"
-        FROM "SharedMember"
-        WHERE "weddingPlanId" = ${invite.weddingPlanId}
-          AND "userId" = ${invite.inviterUserId}
-        FOR SHARE
-      `,
+    const locks = await this.repository.lockDelegatedMemberForShare(
+      tx, invite.weddingPlanId, invite.inviterUserId,
     );
     if (locks.length !== 1) return null;
 
-    return tx.sharedMember.findUnique({
-      where: {
-        weddingPlanId_userId: {
-          weddingPlanId: invite.weddingPlanId,
-          userId: invite.inviterUserId,
-        },
-      },
-    });
+    return this.repository.findMember(tx, invite.weddingPlanId, invite.inviterUserId);
   }
 
   private assertPendingInviteAuthority(
@@ -2610,48 +2299,14 @@ export class SharingService {
     revokedAt: Date,
   ): Promise<void> {
     const normalizedPhone = PhoneNormalizer.normalizeOptional(rawPhone);
-    const targetPredicate = normalizedPhone
-      ? Prisma.sql`(
-          "inviterUserId" = ${userId}
-          OR "inviteeUserId" = ${userId}
-          OR "normalizedPhone" = ${normalizedPhone}
-        )`
-      : Prisma.sql`(
-          "inviterUserId" = ${userId}
-          OR "inviteeUserId" = ${userId}
-        )`;
-    const locks = await tx.$queryRaw<Array<{ id: string }>>(
-      Prisma.sql`
-        SELECT "id"
-        FROM "PlanInvite"
-        WHERE "weddingPlanId" = ${weddingPlanId}
-          AND "acceptedAt" IS NULL
-          AND "declinedAt" IS NULL
-          AND "revokedAt" IS NULL
-          AND "expiresAt" > ${revokedAt}
-          AND ${targetPredicate}
-        ORDER BY "id"
-        FOR UPDATE
-      `,
+    const locks = await this.repository.lockPendingInvitesForUser(
+      tx, weddingPlanId, userId, normalizedPhone, revokedAt,
     );
     const ids = locks.map(({ id }) => id);
     if (ids.length === 0) return;
-    const revoked = await tx.planInvite.updateMany({
-      where: {
-        id: { in: ids },
-        weddingPlanId,
-        acceptedAt: null,
-        declinedAt: null,
-        revokedAt: null,
-        expiresAt: { gt: revokedAt },
-        OR: [
-          { inviterUserId: userId },
-          { inviteeUserId: userId },
-          ...(normalizedPhone ? [{ normalizedPhone }] : []),
-        ],
-      },
-      data: { revokedAt },
-    });
+    const revoked = await this.repository.revokePendingInvitesForUser(
+      tx, weddingPlanId, userId, normalizedPhone, ids, revokedAt,
+    );
     if (revoked.count !== ids.length) {
       throw new ConflictException("Invitation state changed during leave");
     }
@@ -2664,41 +2319,8 @@ export class SharingService {
     nextAuthority: PermissionFlags,
     revokedAt: Date,
   ): Promise<void> {
-    const pendingInvites = await tx.$queryRaw<
-      Array<
-        Pick<
-          PlanInvite,
-          | "id"
-          | "canViewMoney"
-          | "canEditPlan"
-          | "canManageTasks"
-          | "canManageGuests"
-          | "canManageProviders"
-          | "canInviteMembers"
-          | "canManageMoney"
-        >
-      >
-    >(
-      Prisma.sql`
-        SELECT
-          "id",
-          "canViewMoney",
-          "canEditPlan",
-          "canManageTasks",
-          "canManageGuests",
-          "canManageProviders",
-          "canInviteMembers",
-          "canManageMoney"
-        FROM "PlanInvite"
-        WHERE "weddingPlanId" = ${weddingPlanId}
-          AND "inviterUserId" = ${inviterUserId}
-          AND "acceptedAt" IS NULL
-          AND "declinedAt" IS NULL
-          AND "revokedAt" IS NULL
-          AND "expiresAt" > ${revokedAt}
-        ORDER BY "id"
-        FOR UPDATE
-      `,
+    const pendingInvites = await this.repository.lockPendingInvitesForInviter(
+      tx, weddingPlanId, inviterUserId, revokedAt,
     );
     const inviteIds = pendingInvites
       .filter((invite) => {
@@ -2710,18 +2332,9 @@ export class SharingService {
       .map(({ id }) => id);
     if (inviteIds.length === 0) return;
 
-    const revoked = await tx.planInvite.updateMany({
-      where: {
-        id: { in: inviteIds },
-        weddingPlanId,
-        inviterUserId,
-        acceptedAt: null,
-        declinedAt: null,
-        revokedAt: null,
-        expiresAt: { gt: revokedAt },
-      },
-      data: { revokedAt },
-    });
+    const revoked = await this.repository.revokePendingInvitesForInviter(
+      tx, weddingPlanId, inviterUserId, inviteIds, revokedAt,
+    );
     if (revoked.count !== inviteIds.length) {
       throw new ConflictException(
         "Invitation state changed during authority revocation",

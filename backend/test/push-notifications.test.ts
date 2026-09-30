@@ -3,8 +3,8 @@ import "reflect-metadata";
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { NotificationType, PushPlatform, UserStatus } from "@prisma/client";
-import { PushDeliveryService } from "../src/push/push-delivery.service";
-import { PushInstallationsService } from "../src/push/push-installations.service";
+import { PushDeliveryService } from "../src/modules/notifications/infrastructure/push-delivery.service";
+import { PushInstallationsService } from "../src/modules/notifications/infrastructure/push-installations.service";
 import { validateRuntimeEnvironment } from "../src/platform/config/runtime-environment";
 import {
   isPushNotificationType,

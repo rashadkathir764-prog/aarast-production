@@ -5,6 +5,10 @@ import {
   assertProviderOperational,
   assertProviderProfileWritable,
 } from "../modules/marketplace/public/provider-access-policy";
+import {
+  findProviderForMutation,
+  lockOwnedProviderRow,
+} from "../modules/marketplace/infrastructure/provider-mutation-lock.repository";
 
 export type ProviderMutationAccess = "OPERATIONAL" | "PROFILE";
 export type ProviderMutationLockMode = "SHARE" | "UPDATE";
@@ -33,30 +37,12 @@ export async function lockOwnedProviderAfterUsersInTransaction(
   mode: ProviderMutationLockMode = "SHARE",
   expectedProviderId?: string,
 ): Promise<Provider> {
-  const rows =
-    mode === "UPDATE"
-      ? await tx.$queryRaw<Array<{ id: string }>>(
-          Prisma.sql`
-            SELECT "id"
-            FROM "Provider"
-            WHERE "userId" = ${userId}
-            FOR UPDATE
-          `,
-        )
-      : await tx.$queryRaw<Array<{ id: string }>>(
-          Prisma.sql`
-            SELECT "id"
-            FROM "Provider"
-            WHERE "userId" = ${userId}
-            FOR SHARE
-          `,
-        );
-  const row = rows[0];
+  const row = await lockOwnedProviderRow(tx, userId, mode);
   if (!row || (expectedProviderId && row.id !== expectedProviderId)) {
     throw new NotFoundException("Provider profile not found");
   }
 
-  const provider = await tx.provider.findUnique({ where: { id: row.id } });
+  const provider = await findProviderForMutation(tx, row.id);
   if (
     !provider ||
     provider.userId !== userId ||

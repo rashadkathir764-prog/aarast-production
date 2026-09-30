@@ -1482,7 +1482,7 @@ test('foreign internal/full/concrete and cross-public runtime imports fail while
   assert.equal(result.diagnostics.some((item: any) => item.path.endsWith('/legal.ts')), false);
 });
 
-test('only relocated SafeUser may import the exact Backoffice permission contract', () => {
+test('relocated SafeUser and its siblings cannot import Backoffice domain', () => {
   const options = fixtureProject({
     'backend/src/modules/backoffice/domain/admin-permissions.ts':
       'export const permission = true;\n',
@@ -1498,7 +1498,7 @@ test('only relocated SafeUser may import the exact Backoffice permission contrac
   const diagnostics = scanner().scanR3SourceLaws(options).diagnostics.filter(
     (item: any) => item.kind === 'illegal-boundary-import',
   );
-  assert.equal(diagnostics.some((item: any) => item.path.endsWith('/safe-user.ts')), false);
+  assert.equal(diagnostics.some((item: any) => item.path.endsWith('/safe-user.ts')), true);
   assert.equal(diagnostics.some((item: any) => item.path.endsWith('/not-safe-user.ts')), true);
   assert.equal(diagnostics.some((item: any) => item.path.endsWith('/safe-user-private.ts')), true);
 });

@@ -1,5 +1,9 @@
 import { NotFoundException } from "@nestjs/common";
 import { Prisma, UserStatus } from "@prisma/client";
+import {
+  lockUserLifecycleRowsForShare,
+  lockUserLifecycleRowsForUpdate,
+} from "../infrastructure/user-lifecycle-lock.repository";
 
 export interface LockedUserLifecycleRow {
   id: string;
@@ -10,36 +14,14 @@ export async function lockUserLifecycleRowsInTransaction(
   tx: Prisma.TransactionClient,
   userIds: readonly string[],
 ): Promise<LockedUserLifecycleRow[]> {
-  const sortedUserIds = [...new Set(userIds)].sort();
-  if (sortedUserIds.length === 0) return [];
-
-  return tx.$queryRaw<LockedUserLifecycleRow[]>(
-    Prisma.sql`
-      SELECT "id", "status"
-      FROM "User"
-      WHERE "id" IN (${Prisma.join(sortedUserIds)})
-      ORDER BY "id" ASC
-      FOR SHARE
-    `,
-  );
+  return lockUserLifecycleRowsForShare(tx, userIds);
 }
 
 export async function lockUserLifecycleRowsForUpdateInTransaction(
   tx: Prisma.TransactionClient,
   userIds: readonly string[],
 ): Promise<LockedUserLifecycleRow[]> {
-  const sortedUserIds = [...new Set(userIds)].sort();
-  if (sortedUserIds.length === 0) return [];
-
-  return tx.$queryRaw<LockedUserLifecycleRow[]>(
-    Prisma.sql`
-      SELECT "id", "status"
-      FROM "User"
-      WHERE "id" IN (${Prisma.join(sortedUserIds)})
-      ORDER BY "id" ASC
-      FOR UPDATE
-    `,
-  );
+  return lockUserLifecycleRowsForUpdate(tx, userIds);
 }
 
 export async function assertActiveMutationActorInTransaction(

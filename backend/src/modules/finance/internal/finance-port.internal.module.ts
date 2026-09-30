@@ -1,5 +1,5 @@
 import { Module } from '@nestjs/common';
-import { FinancePortService } from './finance-port.service';
+import { FinancePortService } from '../infrastructure/finance-port.service';
 
 export const FINANCE_IMPLEMENTATION = Symbol('FINANCE_IMPLEMENTATION');
 

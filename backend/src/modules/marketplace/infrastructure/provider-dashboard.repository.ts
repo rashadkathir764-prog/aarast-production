@@ -1,0 +1,304 @@
+import { Prisma, ProviderStatus, QuoteOfferStatus, QuoteRequestStatus } from '@prisma/client';
+
+type Client = Prisma.TransactionClient;
+
+const serviceInclude = {
+  images: { orderBy: [{ sortOrder: 'asc' }, { createdAt: 'asc' }] },
+} satisfies Prisma.ProviderServiceInclude;
+
+const quoteInclude = {
+  service: true,
+  offers: { orderBy: { createdAt: 'desc' } },
+} satisfies Prisma.QuoteRequestInclude;
+
+export interface ProviderProfileChanges {
+  businessName?: string;
+  ownerName?: string | null;
+  phone?: string;
+  whatsapp?: string | null;
+  email?: string | null;
+  description?: string | null;
+  address?: string | null;
+  cityId?: string;
+  latitude?: string | null;
+  longitude?: string | null;
+  logoUrl?: string | null;
+  coverUrl?: string | null;
+}
+
+export interface ServiceFields {
+  providerId: string;
+  categoryId: string;
+  title: string;
+  description: string | null;
+  basePrice: string | null;
+  priceUnit: string | null;
+  currency: string;
+  cityId: string | null;
+}
+
+export interface ServiceChanges {
+  categoryId?: string;
+  title?: string;
+  description?: string | null;
+  basePrice?: string | null;
+  priceUnit?: string | null;
+  currency?: string;
+  cityId?: string | null;
+  isActive?: boolean;
+}
+
+export interface ImageFields {
+  serviceId: string;
+  imageUrl: string;
+  altText: string | null;
+  sortOrder: number;
+}
+
+export interface ImageChanges {
+  imageUrl?: string;
+  altText?: string | null;
+  sortOrder?: number;
+}
+
+export interface PackageFields {
+  providerId: string;
+  serviceId: string | null;
+  title: string;
+  description: string | null;
+  price: string | null;
+  currency: string;
+  items?: Prisma.InputJsonValue;
+}
+
+export interface PackageChanges {
+  serviceId?: string | null;
+  title?: string;
+  description?: string | null;
+  price?: string | null;
+  currency?: string;
+  items?: Prisma.InputJsonValue;
+  isActive?: boolean;
+}
+
+export interface OfferFields {
+  quoteRequestId: string;
+  providerId: string;
+  title: string | null;
+  message: string;
+  amount: string;
+  currency: string;
+  validUntil: Date | null;
+}
+
+export interface OfferChanges {
+  title?: string | null;
+  message?: string;
+  amount?: string;
+  currency?: string;
+  validUntil?: Date | null;
+}
+
+export function lockExistingApplication(client: Client, userId: string) {
+  return client.$queryRaw<Array<{ id: string }>>(
+    Prisma.sql`SELECT "id" FROM "Provider" WHERE "userId" = ${userId} FOR UPDATE`,
+  );
+}
+
+export function createProviderApplication(client: Client, fields: {
+  userId: string; cityId: string; primaryCategoryId: string | null;
+  businessName: string; phone: string; description: string | null;
+}) {
+  return client.provider.create({ data: { ...fields, status: ProviderStatus.PENDING } });
+}
+
+export function updateProviderProfile(client: Client, providerId: string, changes: ProviderProfileChanges) {
+  return client.provider.update({ where: { id: providerId }, data: changes });
+}
+
+export function countProviderDashboard(client: Client, providerId: string) {
+  return Promise.all([
+    client.providerService.count({ where: { providerId } }),
+    client.providerService.count({ where: { providerId, isActive: true } }),
+    client.quoteRequest.count({ where: { providerId } }),
+    client.quoteRequest.count({ where: { providerId, status: QuoteRequestStatus.SENT } }),
+  ]);
+}
+
+export function listOwnedServices(client: Client, providerId: string) {
+  return client.providerService.findMany({
+    where: { providerId }, include: serviceInclude, orderBy: { createdAt: 'desc' },
+  });
+}
+
+export function createProviderService(client: Client, fields: ServiceFields) {
+  return client.providerService.create({ data: fields, include: serviceInclude });
+}
+
+export function updateProviderService(client: Client, serviceId: string, changes: ServiceChanges) {
+  return client.providerService.update({ where: { id: serviceId }, data: changes, include: serviceInclude });
+}
+
+export function deactivateProviderService(client: Client, serviceId: string) {
+  return client.providerService.update({
+    where: { id: serviceId }, data: { isActive: false }, include: serviceInclude,
+  });
+}
+
+export function createServiceImage(client: Client, fields: ImageFields) {
+  return client.providerServiceImage.create({ data: fields });
+}
+
+export function updateServiceImage(client: Client, imageId: string, changes: ImageChanges) {
+  return client.providerServiceImage.update({ where: { id: imageId }, data: changes });
+}
+
+export function deleteServiceImage(client: Client, imageId: string) {
+  return client.providerServiceImage.delete({ where: { id: imageId } });
+}
+
+export function listOwnedPackages(client: Client, providerId: string) {
+  return client.providerPackage.findMany({
+    where: { providerId }, include: { service: true }, orderBy: { createdAt: 'desc' },
+  });
+}
+
+export function createProviderPackage(client: Client, fields: PackageFields) {
+  return client.providerPackage.create({ data: fields, include: { service: true } });
+}
+
+export function updateProviderPackage(client: Client, packageId: string, changes: PackageChanges) {
+  return client.providerPackage.update({ where: { id: packageId }, data: changes, include: { service: true } });
+}
+
+export function deactivateProviderPackage(client: Client, packageId: string) {
+  return client.providerPackage.update({
+    where: { id: packageId }, data: { isActive: false }, include: { service: true },
+  });
+}
+
+export function listProviderQuoteRequests(client: Client, providerId: string) {
+  return client.quoteRequest.findMany({
+    where: { providerId }, include: quoteInclude, orderBy: { createdAt: 'desc' },
+  });
+}
+
+export function findProviderQuoteRequest(client: Client, id: string, providerId: string) {
+  return client.quoteRequest.findFirst({ where: { id, providerId }, include: quoteInclude });
+}
+
+export function findProviderQuoteMutationSeed(client: Client, id: string) {
+  return client.quoteRequest.findUnique({
+    where: { id },
+    select: { providerId: true, userId: true, weddingPlanId: true, conversationId: true },
+  });
+}
+
+export function findLockedProviderQuoteRequest(client: Client, id: string, providerId: string) {
+  return client.quoteRequest.findFirst({ where: { id, providerId } });
+}
+
+export function transitionProviderQuoteRequest(
+  client: Client, id: string, previousStatus: QuoteRequestStatus,
+  status: QuoteRequestStatus, rejectedAt?: Date,
+) {
+  return client.quoteRequest.updateMany({
+    where: { id, status: previousStatus },
+    data: { status, ...(rejectedAt ? { rejectedAt } : {}) },
+  });
+}
+
+export function requireProviderQuoteRequest(client: Client, id: string) {
+  return client.quoteRequest.findUniqueOrThrow({ where: { id }, include: quoteInclude });
+}
+
+export function findExistingQuoteOffer(client: Client, quoteRequestId: string) {
+  return client.quoteOffer.findFirst({ where: { quoteRequestId }, select: { id: true } });
+}
+
+export function createQuoteOffer(client: Client, fields: OfferFields) {
+  return client.quoteOffer.create({ data: fields });
+}
+
+export function markQuoteRequestResponded(client: Client, quoteRequestId: string) {
+  return client.quoteRequest.update({
+    where: { id: quoteRequestId }, data: { status: QuoteRequestStatus.RESPONDED },
+  });
+}
+
+export function findOfferMutationSeed(client: Client, id: string) {
+  return client.quoteOffer.findUnique({
+    where: { id },
+    select: {
+      providerId: true,
+      quoteRequest: { select: { userId: true, weddingPlanId: true, conversationId: true } },
+    },
+  });
+}
+
+export function findLockedProviderOffer(client: Client, id: string, providerId: string) {
+  return client.quoteOffer.findFirst({
+    where: { id, providerId },
+    include: { quoteRequest: { select: { status: true, weddingPlanId: true } } },
+  });
+}
+
+export function updatePendingQuoteOffer(client: Client, id: string, changes: OfferChanges) {
+  return client.quoteOffer.updateMany({
+    where: { id, status: QuoteOfferStatus.PENDING }, data: changes,
+  });
+}
+
+export function requireQuoteOffer(client: Client, id: string) {
+  return client.quoteOffer.findUniqueOrThrow({ where: { id } });
+}
+
+export function listProviderReviews(client: Client, providerId: string) {
+  return client.providerReview.findMany({ where: { providerId }, orderBy: { createdAt: 'desc' } });
+}
+
+export function findProviderByUserId(client: Client, userId: string) {
+  return client.provider.findUnique({ where: { userId } });
+}
+
+export function findPreliminaryProvider(client: Client, userId: string) {
+  return client.provider.findUnique({ where: { userId }, select: { id: true } });
+}
+
+export function lockOwnedServiceRow(client: Client, providerId: string, serviceId: string, mode: 'SHARE' | 'UPDATE') {
+  return mode === 'UPDATE'
+    ? client.$queryRaw<Array<{ id: string }>>(
+        Prisma.sql`SELECT "id" FROM "ProviderService" WHERE "id" = ${serviceId} AND "providerId" = ${providerId} FOR UPDATE`,
+      )
+    : client.$queryRaw<Array<{ id: string }>>(
+        Prisma.sql`SELECT "id" FROM "ProviderService" WHERE "id" = ${serviceId} AND "providerId" = ${providerId} FOR SHARE`,
+      );
+}
+
+export function findOwnedServiceAfterLock(client: Client, serviceId: string) {
+  return client.providerService.findUnique({ where: { id: serviceId }, include: serviceInclude });
+}
+
+export function lockOwnedImageRow(client: Client, serviceId: string, imageId: string) {
+  return client.$queryRaw<Array<{ id: string }>>(
+    Prisma.sql`SELECT "id" FROM "ProviderServiceImage" WHERE "id" = ${imageId} AND "serviceId" = ${serviceId} FOR UPDATE`,
+  );
+}
+
+export function findOwnedImageAfterLock(client: Client, imageId: string) {
+  return client.providerServiceImage.findUnique({ where: { id: imageId } });
+}
+
+export function lockOwnedPackageRow(client: Client, providerId: string, packageId: string) {
+  return client.$queryRaw<Array<{ id: string }>>(
+    Prisma.sql`SELECT "id" FROM "ProviderPackage" WHERE "id" = ${packageId} AND "providerId" = ${providerId} FOR UPDATE`,
+  );
+}
+
+export function findOwnedService(client: Client, serviceId: string, providerId: string) {
+  return client.providerService.findFirst({ where: { id: serviceId, providerId }, include: serviceInclude });
+}
+
+export function findOwnedPackage(client: Client, packageId: string, providerId: string) {
+  return client.providerPackage.findFirst({ where: { id: packageId, providerId } });
+}

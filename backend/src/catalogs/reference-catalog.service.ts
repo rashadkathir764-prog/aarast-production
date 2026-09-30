@@ -12,21 +12,20 @@ import {
   type IdentityAdminPort,
 } from '../modules/identity/public/identity-admin.port';
 import { AuthenticatedUser } from '../modules/identity/public/identity-session.types';
-import { AdminPermission } from '../modules/backoffice/domain/admin-permissions';
+import { AdminPermission } from '../modules/backoffice/public/admin-permission.port';
 import { runAuthorizedAdminMutation } from '../modules/backoffice/public/admin-mutation-gate';
 import { PrismaService } from '../platform/database/prisma.service';
+import { ReferenceCatalogRepository } from '../modules/catalog/infrastructure/reference-catalog.repository';
 import { AdminCatalogItemDto } from './dto/admin-reference-catalog.dto';
 import {
-  MONEY_STARTER_CATALOG_KEY,
   moneyStarterDefaults,
   supportedCatalogIconKeys,
 } from './reference-catalog.defaults';
 
-const catalogSeedLock = 2_026_080_901;
-
 @Injectable()
 export class ReferenceCatalogService {
   private seedPromise: Promise<void> | null = null;
+  private readonly repository = new ReferenceCatalogRepository();
 
   constructor(
     private readonly prisma: PrismaService,
@@ -36,42 +35,7 @@ export class ReferenceCatalogService {
   async getBootstrap(knownVersion?: string) {
     await this.ensureSystemCatalogs();
     const [catalogs, providerCategories, cities, governorates, districtVersion, localityVersion] =
-      await this.prisma.$transaction([
-        this.prisma.referenceCatalog.findMany({
-          where: { isActive: true },
-          orderBy: { key: 'asc' },
-          include: {
-            items: {
-              where: { publishedRevision: { gt: 0 } },
-              orderBy: { key: 'asc' },
-              include: { revisions: { orderBy: { revision: 'desc' } } },
-            },
-          },
-        }),
-        this.prisma.providerCategory.findMany({
-          where: { isActive: true },
-          orderBy: [{ sortOrder: 'asc' }, { nameAr: 'asc' }],
-        }),
-        this.prisma.city.findMany({
-          where: { isActive: true },
-          orderBy: [{ sortOrder: 'asc' }, { nameAr: 'asc' }],
-        }),
-        this.prisma.governorate.findMany({
-          where: { isActive: true },
-          orderBy: [{ sortOrder: 'asc' }, { nameAr: 'asc' }],
-          include: {
-            _count: {
-              select: {
-                districts: { where: { isActive: true } },
-              },
-            },
-          },
-        }),
-        this.prisma.district.aggregate({ _max: { updatedAt: true } }),
-        this.prisma.administrativeLocality.aggregate({
-          _max: { updatedAt: true },
-        }),
-      ]);
+      await this.repository.bootstrapRows(this.prisma);
 
     const version = this.bootstrapVersion({
       catalogs: catalogs.map((catalog) => ({
@@ -145,10 +109,7 @@ export class ReferenceCatalogService {
 
   async listAdminCatalogs() {
     await this.ensureSystemCatalogs();
-    const catalogs = await this.prisma.referenceCatalog.findMany({
-      orderBy: { key: 'asc' },
-      include: { items: true },
-    });
+    const catalogs = await this.repository.listAdminCatalogs(this.prisma);
     return catalogs.map((catalog) => ({
       id: catalog.id,
       key: catalog.key,
@@ -169,15 +130,10 @@ export class ReferenceCatalogService {
 
   async getAdminCatalog(catalogKey: string) {
     await this.ensureSystemCatalogs();
-    const catalog = await this.prisma.referenceCatalog.findUnique({
-      where: { key: catalogKey },
-      include: {
-        items: {
-          orderBy: { key: 'asc' },
-          include: { revisions: { orderBy: { revision: 'desc' } } },
-        },
-      },
-    });
+    const catalog = await this.repository.getAdminCatalog(
+      this.prisma,
+      catalogKey,
+    );
     if (!catalog) throw new NotFoundException('Reference catalog not found');
     return {
       id: catalog.id,
@@ -208,22 +164,18 @@ export class ReferenceCatalogService {
         const catalog = await this.lockCatalog(tx, catalogKey);
         const itemKey =
           this.optionalKey(dto.key) ?? `custom-${randomUUID().toLowerCase()}`;
-        const existing = await tx.referenceCatalogItem.findUnique({
-          where: { catalogId_key: { catalogId: catalog.id, key: itemKey } },
-        });
+        const existing = await this.repository.getItemByKey(
+          tx,
+          catalog.id,
+          itemKey,
+        );
         if (existing) throw new ConflictException('Catalog item key exists');
-        return tx.referenceCatalogItem.create({
-          data: {
-            catalogId: catalog.id,
-            key: itemKey,
-            currentRevision: 1,
-            publishedRevision: 0,
-            revisions: {
-              create: this.revisionData({ ...dto, nameAr }, 1),
-            },
-          },
-          include: { revisions: { orderBy: { revision: 'desc' } } },
-        });
+        return this.repository.createItem(
+          tx,
+          catalog.id,
+          itemKey,
+          this.revisionData({ ...dto, nameAr }, 1),
+        );
       },
     );
     return this.toAdminItem(result);
@@ -244,24 +196,18 @@ export class ReferenceCatalogService {
       AdminPermission.CATALOG_WRITE,
       async (tx) => {
         const locked = await this.lockCatalogItem(tx, catalogKey, itemId);
-        const current = await tx.referenceCatalogItemRevision.findUnique({
-          where: {
-            itemId_revision: {
-              itemId,
-              revision: locked.currentRevision,
-            },
-          },
-        });
+        const current = await this.repository.getRevision(
+          tx,
+          itemId,
+          locked.currentRevision,
+        );
         if (!current) throw new NotFoundException('Catalog draft not found');
         const nextRevision = locked.currentRevision + 1;
-        await tx.referenceCatalogItemRevision.create({
-          data: this.mergedRevisionData(itemId, nextRevision, current, dto),
-        });
-        return tx.referenceCatalogItem.update({
-          where: { id: itemId },
-          data: { currentRevision: nextRevision },
-          include: { revisions: { orderBy: { revision: 'desc' } } },
-        });
+        await this.repository.createRevision(
+          tx,
+          this.mergedRevisionData(itemId, nextRevision, current, dto),
+        );
+        return this.repository.updateCurrentRevision(tx, itemId, nextRevision);
       },
     );
     return this.toAdminItem(result);
@@ -282,19 +228,14 @@ export class ReferenceCatalogService {
       async (tx) => {
         const locked = await this.lockCatalogItem(tx, catalogKey, itemId);
         const targetRevision = revision ?? locked.currentRevision;
-        const target = await tx.referenceCatalogItemRevision.findUnique({
-          where: { itemId_revision: { itemId, revision: targetRevision } },
-        });
+        const target = await this.repository.getRevision(
+          tx,
+          itemId,
+          targetRevision,
+        );
         if (!target) throw new NotFoundException('Catalog revision not found');
-        await tx.referenceCatalog.update({
-          where: { id: locked.catalogId },
-          data: { version: { increment: 1 } },
-        });
-        return tx.referenceCatalogItem.update({
-          where: { id: itemId },
-          data: { publishedRevision: targetRevision },
-          include: { revisions: { orderBy: { revision: 'desc' } } },
-        });
+        await this.repository.incrementCatalogVersion(tx, locked.catalogId);
+        return this.repository.publishItem(tx, itemId, targetRevision);
       },
     );
     return this.toAdminItem(result);
@@ -313,36 +254,21 @@ export class ReferenceCatalogService {
       AdminPermission.CATALOG_WRITE,
       async (tx) => {
         const locked = await this.lockCatalogItem(tx, catalogKey, itemId);
-        const current = await tx.referenceCatalogItemRevision.findUnique({
-          where: {
-            itemId_revision: {
-              itemId,
-              revision: locked.currentRevision,
-            },
-          },
-        });
+        const current = await this.repository.getRevision(
+          tx,
+          itemId,
+          locked.currentRevision,
+        );
         if (!current) throw new NotFoundException('Catalog draft not found');
         const nextRevision = locked.currentRevision + 1;
-        await tx.referenceCatalogItemRevision.create({
-          data: {
-            ...this.copyRevision(current),
-            itemId,
-            revision: nextRevision,
-            isActive: false,
-          },
+        await this.repository.createRevision(tx, {
+          ...this.copyRevision(current),
+          itemId,
+          revision: nextRevision,
+          isActive: false,
         });
-        await tx.referenceCatalog.update({
-          where: { id: locked.catalogId },
-          data: { version: { increment: 1 } },
-        });
-        return tx.referenceCatalogItem.update({
-          where: { id: itemId },
-          data: {
-            currentRevision: nextRevision,
-            publishedRevision: nextRevision,
-          },
-          include: { revisions: { orderBy: { revision: 'desc' } } },
-        });
+        await this.repository.incrementCatalogVersion(tx, locked.catalogId);
+        return this.repository.disableItem(tx, itemId, nextRevision);
       },
     );
     return this.toAdminItem(result);
@@ -359,68 +285,20 @@ export class ReferenceCatalogService {
 
   private async seedMoneyStarterCatalog(): Promise<void> {
     await this.prisma.$transaction(async (tx) => {
-      await tx.$executeRaw(
-        Prisma.sql`SELECT pg_advisory_xact_lock(${catalogSeedLock})`,
-      );
-      const catalog = await tx.referenceCatalog.upsert({
-        where: { key: MONEY_STARTER_CATALOG_KEY },
-        create: {
-          key: MONEY_STARTER_CATALOG_KEY,
-          nameAr: 'تصنيفات بداية الميزانية',
-          description:
-            'التصنيفات المقترحة للعريس والعروسة قبل تحديد الميزانية.',
-          version: 1,
-        },
-        update: {},
-      });
+      await this.repository.lockSeed(tx);
+      const catalog = await this.repository.upsertMoneyStarterCatalog(tx);
       for (const item of moneyStarterDefaults) {
-        await tx.referenceCatalogItem.upsert({
-          where: {
-            catalogId_key: { catalogId: catalog.id, key: item.key },
-          },
-          create: {
-            catalogId: catalog.id,
-            key: item.key,
-            currentRevision: 1,
-            publishedRevision: 1,
-            revisions: {
-              create: {
-                revision: 1,
-                groupKey: item.groupKey,
-                groupNameAr: item.groupNameAr,
-                groupSubtitleAr: item.groupSubtitleAr,
-                nameAr: item.nameAr,
-                icon: item.icon,
-                sortOrder: item.sortOrder,
-                showForGroom: item.showForGroom,
-                showForBride: item.showForBride,
-                showForCustomer: true,
-                showForProvider: false,
-                isRecommended: item.isRecommended,
-                isActive: true,
-                metadata: item.metadata,
-              },
-            },
-          },
-          update: {},
-        });
+        await this.repository.upsertMoneyStarterItem(tx, catalog.id, item);
       }
     });
   }
 
   private async lockCatalog(tx: Prisma.TransactionClient, catalogKey: string) {
-    const rows = await tx.$queryRaw<Array<{ id: string }>>(
-      Prisma.sql`
-        SELECT "id"
-        FROM "ReferenceCatalog"
-        WHERE "key" = ${catalogKey}
-        FOR UPDATE
-      `,
-    );
-    if (rows.length !== 1) {
+    const row = await this.repository.lockCatalog(tx, catalogKey);
+    if (!row) {
       throw new NotFoundException('Reference catalog not found');
     }
-    return rows[0];
+    return row;
   }
 
   private async lockCatalogItem(
@@ -428,24 +306,9 @@ export class ReferenceCatalogService {
     catalogKey: string,
     itemId: string,
   ) {
-    const rows = await tx.$queryRaw<
-      Array<{
-        id: string;
-        catalogId: string;
-        currentRevision: number;
-        publishedRevision: number;
-      }>
-    >(
-      Prisma.sql`
-        SELECT item."id", item."catalogId", item."currentRevision", item."publishedRevision"
-        FROM "ReferenceCatalogItem" item
-        INNER JOIN "ReferenceCatalog" catalog ON catalog."id" = item."catalogId"
-        WHERE item."id" = ${itemId} AND catalog."key" = ${catalogKey}
-        FOR UPDATE OF item
-      `,
-    );
-    if (rows.length !== 1) throw new NotFoundException('Catalog item not found');
-    return rows[0];
+    const row = await this.repository.lockCatalogItem(tx, catalogKey, itemId);
+    if (!row) throw new NotFoundException('Catalog item not found');
+    return row;
   }
 
   private revisionData(dto: AdminCatalogItemDto, revision: number) {

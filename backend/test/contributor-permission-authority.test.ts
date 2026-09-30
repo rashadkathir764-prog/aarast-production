@@ -7,7 +7,7 @@ import { test } from "node:test";
 import { ForbiddenException } from "@nestjs/common";
 import { SharedMemberRole, WeddingPlanStatus } from "@prisma/client";
 import { PermissionService } from "../src/modules/collaboration/internal/permission.service";
-import { PlanReadService } from "../src/modules/planning/internal/plan-read.service";
+import { PlanReadService } from "../src/modules/planning/infrastructure/plan-read.service";
 import { sharingService } from "./support/owner-ports";
 
 const taskRevokedMessage = "لم تعد لديك صلاحية لتنفيذ هذه المهمة";

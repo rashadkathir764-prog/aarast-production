@@ -1230,13 +1230,31 @@ function exactR4BudgetUpdateStatement(statement) {
     && exactPropertyAccess(data.get('currency'), 'input', 'currency'));
 }
 
+function exactR4BudgetDelegationStatement(statement) {
+  if (!ts.isExpressionStatement(statement) || !ts.isAwaitExpression(statement.expression)) return false;
+  const call = statement.expression.expression;
+  return ts.isCallExpression(call)
+    && ts.isIdentifier(call.expression)
+    && call.expression.text === 'updateWeddingPlanBudgetInTransaction'
+    && call.arguments.length === 2
+    && ts.isIdentifier(call.arguments[0])
+    && call.arguments[0].text === 'tx'
+    && ts.isIdentifier(call.arguments[1])
+    && call.arguments[1].text === 'input';
+}
+
 function scanR4PlanningBudgetWriterProgram(program, repoRoot) {
   const expectedPath = 'backend/src/modules/planning/internal/wedding-plan-budget-writer.ts';
+  const repositoryPath = 'backend/src/modules/planning/infrastructure/wedding-plan.repository.ts';
   const sourceFile = program.getSourceFiles().find((candidate) => {
     if (candidate.isDeclarationFile) return false;
     try { return repoPath(candidate.fileName, repoRoot) === expectedPath; } catch { return false; }
   });
   if (!sourceFile) return { diagnostics: [] };
+  const repositoryFile = program.getSourceFiles().find((candidate) => {
+    if (candidate.isDeclarationFile) return false;
+    try { return repoPath(candidate.fileName, repoRoot) === repositoryPath; } catch { return false; }
+  });
 
   const diagnostics = [];
   const classes = sourceFile.statements.filter((statement) => (
@@ -1264,9 +1282,33 @@ function scanR4PlanningBudgetWriterProgram(program, repoRoot) {
     && ts.isIdentifier(method.parameters[0].name) && method.parameters[0].name.text === 'tx'
     && ts.isIdentifier(method.parameters[1].name) && method.parameters[1].name.text === 'input');
   const exactBody = Boolean(method?.body && method.body.statements.length === 1
-    && exactR4BudgetUpdateStatement(method.body.statements[0]));
+    && exactR4BudgetDelegationStatement(method.body.statements[0]));
+  const exactRepositoryImport = sourceFile.statements.some((statement) => (
+    ts.isImportDeclaration(statement)
+    && ts.isStringLiteral(statement.moduleSpecifier)
+    && statement.moduleSpecifier.text === '../infrastructure/wedding-plan.repository'
+    && statement.importClause?.namedBindings
+    && ts.isNamedImports(statement.importClause.namedBindings)
+    && statement.importClause.namedBindings.elements.length === 1
+    && statement.importClause.namedBindings.elements[0].name.text === 'updateWeddingPlanBudgetInTransaction'
+  ));
+  const repositoryFunctions = repositoryFile ? repositoryFile.statements.filter((statement) => (
+    ts.isFunctionDeclaration(statement)
+    && statement.name?.text === 'updateWeddingPlanBudgetInTransaction'
+  )) : [];
+  const repositoryFunction = repositoryFunctions.length === 1 ? repositoryFunctions[0] : null;
+  const exactRepository = Boolean(repositoryFunction
+    && repositoryFunction.modifiers?.some((modifier) => modifier.kind === ts.SyntaxKind.AsyncKeyword)
+    && repositoryFunction.parameters.length === 2
+    && ts.isIdentifier(repositoryFunction.parameters[0].name)
+    && repositoryFunction.parameters[0].name.text === 'tx'
+    && ts.isIdentifier(repositoryFunction.parameters[1].name)
+    && repositoryFunction.parameters[1].name.text === 'input'
+    && repositoryFunction.body?.statements.length === 1
+    && exactR4BudgetUpdateStatement(repositoryFunction.body.statements[0]));
   const exactClass = Boolean(writer && classes.length === 1 && members.length === 1
-    && method && asyncModifier && exactParameters && exactBody && !forbiddenImport);
+    && method && asyncModifier && exactParameters && exactBody
+    && exactRepositoryImport && exactRepository && !forbiddenImport);
   if (!exactClass) {
     addDiagnostic(diagnostics, 'r4-writer-isolation', expectedPath, sourceFile, writer || sourceFile);
   }
@@ -1287,9 +1329,6 @@ function scanR3SourceLaws(options) {
   const diagnostics = [];
   const modules = [];
   const imports = [];
-  const relocatedSafeUser = 'backend/src/modules/identity/public/safe-user.ts';
-  const backofficePermissionContract =
-    'backend/src/modules/backoffice/domain/admin-permissions.ts';
   const providerContracts = [...(options.providerContracts || [])];
   const r12aManifest = options.r12aManifest === undefined
     ? null : validateR12aManifest(options.r12aManifest);
@@ -1379,11 +1418,9 @@ function scanR3SourceLaws(options) {
             && targetPath.endsWith('-public.module.ts')
             && importedNames.length > 0
             && importedNames.every((name) => sourceModuleImports.includes(name));
-          const legalInternalPortDependency = sourceClass.slice === 'internal'
+          const legalInternalPortDependency = ['internal', 'infrastructure'].includes(sourceClass.slice)
             && targetClass.kind === 'future' && targetClass.slice === 'public'
-            && targetPath.endsWith('.port.ts');
-          const legalRelocatedPermissionContract = repositoryPath === relocatedSafeUser
-            && targetPath === backofficePermissionContract;
+            && (sourceClass.slice === 'infrastructure' || targetPath.endsWith('.port.ts'));
           const r12aRuntimeTargetPath = r12aManifest && r12aManifest.stage === 'strict'
             ? (R12A_RUNTIME_PUBLIC_MOVES.get(resolvedTargetPath) || targetPath)
             : targetPath;
@@ -1401,7 +1438,6 @@ function scanR3SourceLaws(options) {
             );
           const legalR12cRuntimePublicEdge = r12cAllowances.edges.has(`${repositoryPath}->${targetPath}`);
           if (!legalType && !legalPublicModuleDependency && !legalInternalPortDependency
-              && !legalRelocatedPermissionContract
               && !legalR12aRuntimePublicEdge
               && !legalR7CollaborationRelocatedImport
               && !legalR12cRuntimePublicEdge) {
@@ -1506,7 +1542,8 @@ function scanR3SourceLaws(options) {
               const identityClass = classify(identity.declarationPath);
               return identityClass.context === moduleClass.context && (
                 identityClass.kind === 'legacy'
-                || (identityClass.kind === 'future' && identityClass.slice === 'internal')
+                || (identityClass.kind === 'future'
+                  && ['internal', 'infrastructure'].includes(identityClass.slice))
               );
             })
           : [];

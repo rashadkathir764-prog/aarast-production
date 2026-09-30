@@ -1,5 +1,5 @@
 import { Module } from '@nestjs/common';
-import { CatalogReadService } from './catalog-read.service';
+import { CatalogReadService } from '../infrastructure/catalog-read.service';
 
 export const CATALOG_READ_IMPLEMENTATION = Symbol('CATALOG_READ_IMPLEMENTATION');
 

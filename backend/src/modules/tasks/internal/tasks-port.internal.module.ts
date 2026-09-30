@@ -1,5 +1,5 @@
 import { Module } from '@nestjs/common';
-import { TasksPortService } from './tasks-port.service';
+import { TasksPortService } from '../infrastructure/tasks-port.service';
 
 export const TASKS_IMPLEMENTATION = Symbol('TASKS_IMPLEMENTATION');
 

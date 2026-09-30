@@ -51,6 +51,15 @@ import { CompleteOnboardingDto } from "../onboarding/dto/complete-onboarding.dto
 import { ImportLocalPlanDto } from "../onboarding/dto/import-local-plan.dto";
 import { PrismaService } from "../platform/database/prisma.service";
 import {
+  archiveWeddingPlan,
+  createWeddingPlan,
+  findAccessiblePlanningWeddingPlan,
+  findImportedWeddingPlan,
+  listAccessibleWeddingPlans,
+  listOwnedWeddingPlans,
+  updateWeddingPlan,
+} from "../modules/planning/infrastructure/wedding-plan.repository";
+import {
   assertWeddingPlanWritable,
   COLLABORATION_PERMISSION_PORT,
   type CollaborationPermissionPort as PermissionService,
@@ -149,8 +158,7 @@ export class WeddingPlansService {
         tx,
         currentUser.id,
       );
-      const created = await tx.weddingPlan.create({
-        data: {
+      const created = await createWeddingPlan(tx, {
           ownerUserId: currentUser.id,
           title: this.requiredText(dto.title, "title"),
           city,
@@ -163,7 +171,6 @@ export class WeddingPlansService {
           currency: this.normalizedCurrency(dto.currency),
           onboardingPath: dto.onboardingPath ?? null,
           persona: dto.persona ?? null,
-        },
       });
       if (selectedCategories.length > 0) {
         await this.finance.createBudgetCategoriesInTransaction(
@@ -193,10 +200,7 @@ export class WeddingPlansService {
   async findMine(
     currentUser: AuthenticatedUser,
   ): Promise<WeddingPlanResponse[]> {
-    const plans = await this.prisma.weddingPlan.findMany({
-      where: { ownerUserId: currentUser.id },
-      orderBy: { createdAt: "desc" },
-    });
+    const plans = await listOwnedWeddingPlans(this.prisma, currentUser.id);
 
     return plans.map((plan) => this.toResponse(plan));
   }
@@ -204,10 +208,15 @@ export class WeddingPlansService {
   async findAccessible(
     currentUser: AuthenticatedUser,
   ): Promise<WeddingPlanResponse[]> {
-    const plans = await this.prisma.weddingPlan.findMany({
-      where: await this.accessiblePlansWhere(this.prisma, currentUser.id),
-      orderBy: [{ updatedAt: "desc" }, { createdAt: "desc" }],
-    });
+    const memberPlanIds = await this.permissions.listMemberPlanIds(
+      this.prisma,
+      currentUser.id,
+    );
+    const plans = await listAccessibleWeddingPlans(
+      this.prisma,
+      currentUser.id,
+      memberPlanIds,
+    );
 
     return Promise.all(
       plans.map((plan) => this.toReadableResponse(plan, currentUser)),
@@ -269,9 +278,7 @@ export class WeddingPlansService {
             ? (cityFromWeddingLocation(location) ?? context.plan.city)
             : undefined;
 
-      const plan = await tx.weddingPlan.update({
-        where: { id },
-        data: {
+      const plan = await updateWeddingPlan(tx, id, {
           ...(dto.title !== undefined
             ? { title: this.requiredText(dto.title, "title") }
             : {}),
@@ -289,7 +296,6 @@ export class WeddingPlansService {
             ? { onboardingPath: dto.onboardingPath }
             : {}),
           ...(dto.persona !== undefined ? { persona: dto.persona } : {}),
-        },
       });
       await this.recordPlanContribution(
         tx,
@@ -318,10 +324,7 @@ export class WeddingPlansService {
           currentUser,
         );
       const archivedAt = new Date();
-      const plan = await tx.weddingPlan.update({
-        where: { id },
-        data: { status: WeddingPlanStatus.ARCHIVED },
-      });
+      const plan = await archiveWeddingPlan(tx, id);
       // The permission assertion above holds the plan's UPDATE lock. Invite
       // acceptance takes the same lifecycle lock before claiming an invite, so
       // either acceptance commits first or it observes the archived plan.
@@ -396,8 +399,7 @@ export class WeddingPlansService {
         tx,
         currentUser.id,
       );
-      const plan = await tx.weddingPlan.create({
-        data: {
+      const plan = await createWeddingPlan(tx, {
           ownerUserId: currentUser.id,
           title:
             this.optionalText(dto.title) ??
@@ -413,7 +415,6 @@ export class WeddingPlansService {
           onboardingPath: path,
           persona: dto.persona ?? null,
           onboardingCompletedAt: now,
-        },
       });
 
       await this.contributionHistory.createHistoryScopeInTransaction(tx, plan);
@@ -461,9 +462,11 @@ export class WeddingPlansService {
       "clientMigrationId",
     );
 
-    const existing = await this.prisma.weddingPlan.findFirst({
-      where: { ownerUserId: currentUser.id, importMigrationId: migrationId },
-    });
+    const existing = await findImportedWeddingPlan(
+      this.prisma,
+      currentUser.id,
+      migrationId,
+    );
     if (existing) {
       return this.buildImportResponse(existing, currentUser, true);
     }
@@ -610,8 +613,7 @@ export class WeddingPlansService {
           tx,
           currentUser.id,
         );
-        const createdPlan = await tx.weddingPlan.create({
-          data: {
+        const createdPlan = await createWeddingPlan(tx, {
             ownerUserId: currentUser.id,
             title:
               this.optionalText(dto.title) ??
@@ -628,7 +630,6 @@ export class WeddingPlansService {
             persona: dto.persona ?? null,
             onboardingCompletedAt: now,
             importMigrationId: migrationId,
-          },
         });
 
         await this.contributionHistory.createHistoryScopeInTransaction(
@@ -711,12 +712,11 @@ export class WeddingPlansService {
         error instanceof Prisma.PrismaClientKnownRequestError &&
         error.code === "P2002"
       ) {
-        const winner = await this.prisma.weddingPlan.findFirst({
-          where: {
-            ownerUserId: currentUser.id,
-            importMigrationId: migrationId,
-          },
-        });
+        const winner = await findImportedWeddingPlan(
+          this.prisma,
+          currentUser.id,
+          migrationId,
+        );
         if (winner) {
           return this.buildImportResponse(winner, currentUser, true);
         }
@@ -885,30 +885,20 @@ export class WeddingPlansService {
 
   // A plan is accessible to its owner and to its shared members; the
   // membership is collaboration's and is read through its port.
-  private async accessiblePlansWhere(
-    client: Prisma.TransactionClient,
-    userId: string,
-  ) {
-    const memberPlanIds = await this.permissions.listMemberPlanIds(
-      client,
-      userId,
-    );
-    return {
-      OR: [{ ownerUserId: userId }, { id: { in: memberPlanIds } }],
-    };
-  }
-
   private async findAccessiblePlanningPlan(
     currentUser: AuthenticatedUser,
     id: string,
   ): Promise<WeddingPlan | null> {
-    return this.prisma.weddingPlan.findFirst({
-      where: {
-        id,
-        status: WeddingPlanStatus.PLANNING,
-        ...(await this.accessiblePlansWhere(this.prisma, currentUser.id)),
-      },
-    });
+    const memberPlanIds = await this.permissions.listMemberPlanIds(
+      this.prisma,
+      currentUser.id,
+    );
+    return findAccessiblePlanningWeddingPlan(
+      this.prisma,
+      id,
+      currentUser.id,
+      memberPlanIds,
+    );
   }
 
   private async toReadableResponse(

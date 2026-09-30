@@ -1,7 +1,7 @@
 import { Module } from '@nestjs/common';
-import { MarketplaceErasureService } from './marketplace-erasure.service';
-import { ProviderReadService } from './provider-read.service';
-import { QuoteReadService } from './quote-read.service';
+import { MarketplaceErasureService } from '../infrastructure/marketplace-erasure.service';
+import { ProviderReadService } from '../infrastructure/provider-read.service';
+import { QuoteReadService } from '../infrastructure/quote-read.service';
 
 export const PROVIDER_READ_IMPLEMENTATION = Symbol('PROVIDER_READ_IMPLEMENTATION');
 export const QUOTE_READ_IMPLEMENTATION = Symbol('QUOTE_READ_IMPLEMENTATION');

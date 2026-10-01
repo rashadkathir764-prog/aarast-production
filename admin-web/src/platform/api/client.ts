@@ -1,10 +1,15 @@
 const fallbackBaseUrl = import.meta.env.DEV
   ? 'http://127.0.0.1:3115'
-  : 'https://aarast-api.shadowgardn.com';
+  : import.meta.env.VITE_AARAST_BUILD_TARGET === 'staging'
+    ? ''
+    : 'https://aarast-api.shadowgardn.com';
 
 export const apiBaseUrl =
   import.meta.env.VITE_API_BASE_URL?.toString().trim().replace(/\/$/, '') ||
   fallbackBaseUrl;
+if (import.meta.env.VITE_AARAST_BUILD_TARGET === 'staging' && !apiBaseUrl) {
+  throw new Error('Staging Admin API origin is missing.');
+}
 
 let adminAccessToken: string | null = null;
 type AdminSessionExpiredHandler = () => void;

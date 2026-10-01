@@ -1,0 +1,30 @@
+name: aarast-full-staging-20261001
+
+services:
+  backend:
+    image: ${STAGING_BACKEND_IMAGE_ID:?staging backend image required}
+    build:
+      context: ../../backend
+      args:
+        AARAST_GIT_REVISION: ${STAGING_GIT_REVISION:?full candidate SHA required}
+
+  admin-web:
+    image: ${STAGING_ADMIN_IMAGE_ID:?staging Admin image required}
+    build:
+      context: ../../admin-web
+      args:
+        AARAST_GIT_REVISION: ${STAGING_GIT_REVISION:?full candidate SHA required}
+        AARAST_BUILD_TARGET: staging
+        VITE_API_BASE_URL: ${STAGING_API_ORIGIN:?staging API origin required}
+
+  public-site:
+    image: ${STAGING_PUBLIC_SITE_IMAGE_ID:?staging invite image required}
+    build:
+      context: ..
+      dockerfile: staging/public-site/Dockerfile
+      args:
+        AARAST_GIT_REVISION: ${STAGING_GIT_REVISION:?full candidate SHA required}
+        STAGING_INVITE_ORIGIN: ${STAGING_INVITE_ORIGIN:?staging invite origin required}
+        STAGING_QA_INVITE_HOST: ${STAGING_QA_INVITE_HOST:?QA invite host required}
+        STAGING_QA_APPLICATION_ID: ${STAGING_QA_APPLICATION_ID:?QA app ID required}
+        STAGING_QA_CERT_FINGERPRINT: ${STAGING_QA_CERT_FINGERPRINT:?QA cert fingerprint required}

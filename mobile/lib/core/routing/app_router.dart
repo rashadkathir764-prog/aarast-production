@@ -130,12 +130,19 @@ class AppRouter {
   static const providerPackageNew = '/provider/packages/new';
   static const notifications = '/notifications';
   static const inviteAccess = '/invites';
-  static const inviteAppLinkHost = 'aarast.shadowgardn.com';
+  static const inviteAppLinkHost = String.fromEnvironment(
+    'AARAST_INVITE_HOST',
+    defaultValue: 'aarast.shadowgardn.com',
+  );
+  static const inviteCustomScheme = String.fromEnvironment(
+    'AARAST_INVITE_SCHEME',
+    defaultValue: 'aarast',
+  );
   static const inviteCustomSchemeHost = 'open';
   static String inviteDecision(String token) =>
       '/invites/${Uri.encodeComponent(token)}';
   static Uri inviteCustomLink(String token) => Uri(
-    scheme: 'aarast',
+    scheme: inviteCustomScheme,
     host: inviteCustomSchemeHost,
     pathSegments: ['invites', token],
   );

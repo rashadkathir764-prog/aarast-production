@@ -1,0 +1,265 @@
+name: aarast-full-staging-20261001
+
+services:
+  postgres:
+    image: postgres:16-alpine@sha256:16bc17c64a573ef34162af9298258d1aec548232985b33ed7b1eac33ba35c229
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${STAGING_DB_NAME:?staging database name required}
+      POSTGRES_USER: ${STAGING_DB_OWNER_USER:?staging owner role required}
+      POSTGRES_PASSWORD: ${STAGING_DB_OWNER_PASSWORD:?staging owner password required}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: [CMD-SHELL, 'pg_isready -U "$${POSTGRES_USER}" -d "$${POSTGRES_DB}"']
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    mem_limit: 768m
+    networks: [private]
+
+  postgres-roles:
+    image: postgres:16-alpine@sha256:16bc17c64a573ef34162af9298258d1aec548232985b33ed7b1eac33ba35c229
+    restart: "no"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      POSTGRES_DB: ${STAGING_DB_NAME:?staging database name required}
+      POSTGRES_OWNER_USER: ${STAGING_DB_OWNER_USER:?staging owner role required}
+      POSTGRES_OWNER_PASSWORD: ${STAGING_DB_OWNER_PASSWORD:?staging owner password required}
+      AARAST_DB_MIGRATOR_USER: ${STAGING_DB_MIGRATOR_USER:?staging migrator role required}
+      AARAST_DB_MIGRATOR_PASSWORD: ${STAGING_DB_MIGRATOR_PASSWORD:?staging migrator password required}
+      AARAST_DB_RUNTIME_USER: ${STAGING_DB_RUNTIME_USER:?staging runtime role required}
+      AARAST_DB_RUNTIME_PASSWORD: ${STAGING_DB_RUNTIME_PASSWORD:?staging runtime password required}
+    configs:
+      - source: postgres_least_privilege
+        target: /opt/aarast/postgres/least-privilege.sql
+    entrypoint:
+      - /bin/sh
+      - -ec
+      - |
+        for role in "$${POSTGRES_OWNER_USER}" "$${AARAST_DB_MIGRATOR_USER}" "$${AARAST_DB_RUNTIME_USER}"; do
+          case "$${role}" in
+            ""|*[!A-Za-z0-9_]*) exit 1 ;;
+          esac
+        done
+        if [ "$${POSTGRES_OWNER_USER}" = "$${AARAST_DB_MIGRATOR_USER}" ] ||
+           [ "$${POSTGRES_OWNER_USER}" = "$${AARAST_DB_RUNTIME_USER}" ] ||
+           [ "$${AARAST_DB_MIGRATOR_USER}" = "$${AARAST_DB_RUNTIME_USER}" ]; then
+          echo "FAIL: staging database roles must be distinct" >&2
+          exit 1
+        fi
+        export PGPASSWORD="$${POSTGRES_OWNER_PASSWORD}"
+        exec psql --host=postgres --username="$${POSTGRES_OWNER_USER}" \
+          --dbname="$${POSTGRES_DB}" --file=/opt/aarast/postgres/least-privilege.sql
+    networks: [private]
+
+  redis:
+    image: redis:7-alpine@sha256:6ab0b6e7381779332f97b8ca76193e45b0756f38d4c0dcda72dbb3c32061ab99
+    restart: unless-stopped
+    command: [redis-server, --maxmemory, 128mb, --maxmemory-policy, allkeys-lru]
+    healthcheck:
+      test: [CMD, redis-cli, ping]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    mem_limit: 192m
+    networks: [private]
+
+  media:
+    image: minio/minio:RELEASE.2025-09-07T16-13-09Z@sha256:14cea493d9a34af32f524e538b8346cf79f3321eff8e708c1e2960462bd8936e
+    restart: unless-stopped
+    command: server /data
+    environment:
+      MINIO_ROOT_USER: ${STAGING_MEDIA_ROOT_USER:?staging media root user required}
+      MINIO_ROOT_PASSWORD: ${STAGING_MEDIA_ROOT_PASSWORD:?staging media root password required}
+    volumes:
+      - media_data:/data
+    ports:
+      - "127.0.0.1:${STAGING_MEDIA_PORT:?staging media loopback port required}:9000"
+    healthcheck:
+      test: [CMD, curl, -f, 'http://127.0.0.1:9000/minio/health/live']
+      interval: 10s
+      timeout: 5s
+      retries: 20
+    mem_limit: 512m
+    networks: [private, edge]
+
+  media-init:
+    image: minio/mc:RELEASE.2025-07-21T05-28-08Z@sha256:fb8f773eac8ef9d6da0486d5dec2f42f219358bcb8de579d1623d518c9ebd4cc
+    restart: "no"
+    depends_on:
+      media:
+        condition: service_healthy
+    environment:
+      AARAST_MEDIA_BUCKET: ${STAGING_MEDIA_BUCKET:?staging media bucket required}
+      MINIO_ROOT_USER: ${STAGING_MEDIA_ROOT_USER:?staging media root user required}
+      MINIO_ROOT_PASSWORD: ${STAGING_MEDIA_ROOT_PASSWORD:?staging media root password required}
+      AARAST_MEDIA_ACCESS_KEY_ID: ${STAGING_MEDIA_ACCESS_KEY_ID:?staging media service account required}
+      AARAST_MEDIA_SECRET_ACCESS_KEY: ${STAGING_MEDIA_SECRET_ACCESS_KEY:?staging media service secret required}
+    configs:
+      - source: media_init_script
+        target: /opt/aarast/media/init.sh
+      - source: media_backend_policy
+        target: /opt/aarast/media/backend-policy.sh
+    entrypoint: [/bin/sh, /opt/aarast/media/init.sh]
+    networks: [private]
+
+  postgres-backup:
+    image: prodrigestivill/postgres-backup-local:16@sha256:a0103fbce0c48ccc7693ddbb2a2bfa733048db845354f635efef9e4566de185d
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      POSTGRES_HOST: postgres
+      POSTGRES_DB: ${STAGING_DB_NAME:?staging database name required}
+      POSTGRES_USER: ${STAGING_DB_OWNER_USER:?staging owner role required}
+      POSTGRES_PASSWORD: ${STAGING_DB_OWNER_PASSWORD:?staging owner password required}
+      SCHEDULE: "@daily"
+      BACKUP_KEEP_DAYS: "7"
+      BACKUP_KEEP_WEEKS: "4"
+      BACKUP_KEEP_MONTHS: "2"
+      HEALTHCHECK_PORT: "8080"
+    volumes:
+      - postgres_backups:/backups
+    mem_limit: 192m
+    networks: [private]
+
+  migrate:
+    image: ${STAGING_BACKEND_IMAGE_ID:?immutable staging backend image required}
+    pull_policy: never
+    restart: "no"
+    depends_on:
+      postgres-roles:
+        condition: service_completed_successfully
+    environment:
+      DATABASE_URL: postgresql://${STAGING_DB_MIGRATOR_USER:?staging migrator role required}:${STAGING_DB_MIGRATOR_PASSWORD:?staging migrator password required}@postgres:5432/${STAGING_DB_NAME:?staging database name required}?schema=public
+      AARAST_DB_EXPECTED_ROLE: ${STAGING_DB_MIGRATOR_USER:?staging migrator role required}
+      POSTGRES_DB: ${STAGING_DB_NAME:?staging database name required}
+    command:
+      - /bin/sh
+      - -ec
+      - |
+        node scripts/prod/assert-database-identity.cjs
+        npx prisma migrate deploy
+        npx prisma migrate status
+    networks: [private]
+
+  backend:
+    image: ${STAGING_BACKEND_IMAGE_ID:?immutable staging backend image required}
+    pull_policy: never
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      media-init:
+        condition: service_completed_successfully
+      migrate:
+        condition: service_completed_successfully
+    environment:
+      NODE_ENV: production
+      PORT: "3000"
+      DATABASE_URL: postgresql://${STAGING_DB_RUNTIME_USER:?staging runtime role required}:${STAGING_DB_RUNTIME_PASSWORD:?staging runtime password required}@postgres:5432/${STAGING_DB_NAME:?staging database name required}?schema=public
+      AARAST_DB_EXPECTED_ROLE: ${STAGING_DB_RUNTIME_USER:?staging runtime role required}
+      POSTGRES_DB: ${STAGING_DB_NAME:?staging database name required}
+      JWT_SECRET: ${STAGING_JWT_SECRET:?staging JWT secret required}
+      AUTH_LOGIN_THROTTLE_PEPPER: ${STAGING_AUTH_LOGIN_THROTTLE_PEPPER:?staging login pepper required}
+      CORS_ORIGINS: ${STAGING_ADMIN_ORIGIN:?staging admin origin required}
+      INVITE_PUBLIC_ORIGIN: ${STAGING_INVITE_ORIGIN:?staging invite origin required}
+      REDIS_URL: redis://redis:6379
+      READINESS_REQUIRE_REDIS: "true"
+      READINESS_REQUIRE_MEDIA: "true"
+      AARAST_MEDIA_ENDPOINT: http://media:9000
+      AARAST_MEDIA_SIGNED_ENDPOINT: ${STAGING_MEDIA_ORIGIN:?staging media origin required}
+      AARAST_MEDIA_PUBLIC_BASE_URL: ${STAGING_MEDIA_ORIGIN:?staging media origin required}/${STAGING_MEDIA_BUCKET:?staging media bucket required}
+      AARAST_MEDIA_BUCKET: ${STAGING_MEDIA_BUCKET:?staging media bucket required}
+      AARAST_MEDIA_REGION: us-east-1
+      AARAST_MEDIA_FORCE_PATH_STYLE: "true"
+      AARAST_MEDIA_ACCESS_KEY_ID: ${STAGING_MEDIA_ACCESS_KEY_ID:?staging media service account required}
+      AARAST_MEDIA_SECRET_ACCESS_KEY: ${STAGING_MEDIA_SECRET_ACCESS_KEY:?staging media service secret required}
+      AUTH_OTP_MODE: whatsapp
+      WHATSAPP_GRAPH_API_VERSION: ${STAGING_WHATSAPP_GRAPH_API_VERSION:?isolated Meta test version required}
+      WHATSAPP_PHONE_NUMBER_ID: ${STAGING_WHATSAPP_PHONE_NUMBER_ID:?isolated Meta test sender required}
+      WHATSAPP_ACCESS_TOKEN: ${STAGING_WHATSAPP_ACCESS_TOKEN:?isolated Meta test token required}
+      WHATSAPP_OTP_TEMPLATE_NAME: ${STAGING_WHATSAPP_OTP_TEMPLATE_NAME:?isolated Meta test template required}
+      WHATSAPP_OTP_TEMPLATE_LANGUAGE: ${STAGING_WHATSAPP_OTP_TEMPLATE_LANGUAGE:?isolated Meta test language required}
+      WHATSAPP_VERIFY_TOKEN: ${STAGING_WHATSAPP_VERIFY_TOKEN:?isolated Meta verify token required}
+      OTP_GLOBAL_DAILY_LIMIT: "50"
+      PUSH_NOTIFICATIONS_ENABLED: "true"
+      FIREBASE_PROJECT_ID: ${STAGING_FIREBASE_PROJECT_ID:?isolated Firebase project required}
+      GOOGLE_APPLICATION_CREDENTIALS: /run/aarast-firebase/service-account.json
+    volumes:
+      - ${STAGING_FIREBASE_CREDENTIAL_DIR:?isolated Firebase credential directory required}:/run/aarast-firebase:ro
+    ports:
+      - "127.0.0.1:${STAGING_API_PORT:?staging API loopback port required}:3000"
+    command:
+      - /bin/sh
+      - -ec
+      - |
+        node scripts/prod/assert-firebase-credentials.cjs
+        node scripts/prod/assert-database-identity.cjs
+        exec node dist/main.js
+    healthcheck:
+      test: [CMD, node, -e, "fetch('http://127.0.0.1:3000/ready').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+    mem_limit: 640m
+    networks: [private, edge]
+
+  admin-web:
+    image: ${STAGING_ADMIN_IMAGE_ID:?immutable staging Admin image required}
+    pull_policy: never
+    restart: unless-stopped
+    depends_on:
+      backend:
+        condition: service_healthy
+    environment:
+      API_ORIGIN: ${STAGING_API_ORIGIN:?staging API origin required}
+      ADMIN_PUBLIC_ORIGIN: ${STAGING_ADMIN_ORIGIN:?staging Admin origin required}
+      CORS_ORIGINS: ${STAGING_ADMIN_ORIGIN:?staging Admin origin required}
+    ports:
+      - "127.0.0.1:${STAGING_ADMIN_PORT:?staging Admin loopback port required}:80"
+    healthcheck:
+      test: [CMD-SHELL, 'wget -q -O /dev/null http://127.0.0.1/ || exit 1']
+      interval: 15s
+      timeout: 5s
+      retries: 10
+    mem_limit: 128m
+    networks: [edge]
+
+  public-site:
+    image: ${STAGING_PUBLIC_SITE_IMAGE_ID:?immutable staging invite image required}
+    pull_policy: never
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:${STAGING_INVITE_PORT:?staging invite loopback port required}:80"
+    healthcheck:
+      test: [CMD-SHELL, 'wget -q -O /dev/null http://127.0.0.1/healthz || exit 1']
+      interval: 15s
+      timeout: 5s
+      retries: 10
+    mem_limit: 96m
+    networks: [edge]
+
+volumes:
+  postgres_data:
+  postgres_backups:
+  media_data:
+
+configs:
+  postgres_least_privilege:
+    file: ../dokploy/postgres/least-privilege.sql
+  media_init_script:
+    file: ../media/init.sh
+  media_backend_policy:
+    file: ../media/backend-policy.sh
+
+networks:
+  private:
+    internal: true
+  edge: {}

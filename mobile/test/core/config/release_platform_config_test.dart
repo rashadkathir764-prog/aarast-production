@@ -60,6 +60,12 @@ void main() {
         contains('manifestPlaceholders["aarastAppLabel"] = releaseAppLabel'),
       );
       expect(manifest, contains(r'android:label="${aarastAppLabel}"'));
+      expect(gradle, contains('AARAST_INVITE_HOST'));
+      expect(gradle, contains('AARAST_ANDROID_SIGNING_PROFILE'));
+      expect(gradle, contains('qaIdentityRequested || qaSigningRequested'));
+      expect(gradle, contains('AARAST_FIREBASE_PROJECT_ID"]?.trim() == "aarast-d62e9"'));
+      expect(gradle, contains('if (stagingReleaseTaskRequested) return fromEnvironment'));
+      expect(gradle, contains('Staging release requires staging API/invite hosts'));
     },
   );
 

@@ -5,6 +5,7 @@ import {
   writeFileSync,
 } from 'node:fs';
 import { join } from 'node:path';
+import { requireBuildApiOrigin } from './staging-build-origin.mjs';
 
 const assetsDirectory = join(process.cwd(), 'dist', 'assets');
 if (!existsSync(assetsDirectory)) {
@@ -16,15 +17,20 @@ const javascript = readdirSync(assetsDirectory)
   .map((name) => readFileSync(join(assetsDirectory, name), 'utf8'))
   .join('\n');
 
-const productionApiOrigin = requirePublicHttpsOrigin(
-  process.env.VITE_API_BASE_URL || 'https://aarast-api.shadowgardn.com',
-);
+const productionApiOrigin = requirePublicHttpsOrigin(requireBuildApiOrigin(
+  process.env.AARAST_BUILD_TARGET,
+  process.env.VITE_API_BASE_URL,
+));
 
 if (javascript.includes('127.0.0.1:3115')) {
   throw new Error('Production admin build contains the loopback development API.');
 }
 if (!javascript.includes(productionApiOrigin)) {
   throw new Error(`Production admin build is missing API origin ${productionApiOrigin}.`);
+}
+if (process.env.AARAST_BUILD_TARGET === 'staging' &&
+    javascript.includes('https://aarast-api.shadowgardn.com')) {
+  throw new Error('Staging Admin artifact contains Production API origin.');
 }
 if (!javascript.includes('/api/v1/auth/admin/login')) {
   throw new Error('Production admin build is missing the current MFA login route.');

@@ -2,6 +2,11 @@
 
 Snapshot date: 2026-08-11
 
+Full isolated staging **candidate source** and its prerequisite/preflight
+contract live in [`../../deploy/staging/README.md`](../../deploy/staging/README.md).
+This is separate from the deployed Production and OTP-only lab stacks; source
+presence does not imply a staging deployment.
+
 Deployment source files live under `deploy/dokploy/`, with the public static
 image source under `deploy/public-site/`. This folder is the compact
 documentation entry point for deployment.

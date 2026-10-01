@@ -46,7 +46,7 @@
                 <action android:name="android.intent.action.VIEW"/>
                 <category android:name="android.intent.category.DEFAULT"/>
                 <category android:name="android.intent.category.BROWSABLE"/>
-                <data android:scheme="aarast"
+                <data android:scheme="${aarastCustomScheme}"
                       android:host="open"
                       android:pathPrefix="/invites/"/>
             </intent-filter>
@@ -57,7 +57,7 @@
                 <category android:name="android.intent.category.DEFAULT"/>
                 <category android:name="android.intent.category.BROWSABLE"/>
                 <data android:scheme="https"
-                      android:host="aarast.shadowgardn.com"
+                      android:host="${aarastInviteHost}"
                       android:pathPrefix="/invites/"/>
             </intent-filter>
         </activity>

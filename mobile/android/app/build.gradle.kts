@@ -90,6 +90,33 @@ fun validateReleaseDartDefines(requireStoreObservability: Boolean) {
         )
     }
 
+    val configuredAppId = System.getenv("AARAST_ANDROID_APPLICATION_ID")?.trim().orEmpty()
+    val qaSigningRequested = System.getenv("AARAST_ANDROID_SIGNING_PROFILE")?.trim() == "qa"
+    val qaIdentityRequested = configuredAppId.isNotEmpty() &&
+        configuredAppId != "com.aarast.aarast_mobile"
+    if (defines["AARAST_ENVIRONMENT"]?.trim() == "staging" ||
+        qaIdentityRequested || qaSigningRequested) {
+        val inviteHost = defines["AARAST_INVITE_HOST"]?.trim().orEmpty()
+        val inviteScheme = defines["AARAST_INVITE_SCHEME"]?.trim().orEmpty()
+        val qaLabel = System.getenv("AARAST_ANDROID_APP_LABEL")?.trim().orEmpty()
+        if (defines["AARAST_ENVIRONMENT"]?.trim() != "staging" ||
+            uri.host.equals("aarast-api.shadowgardn.com", ignoreCase = true) ||
+            uri.host.equals("aarast.shadowgardn.com", ignoreCase = true) ||
+            inviteHost.isEmpty() ||
+            inviteHost.equals("aarast.shadowgardn.com", ignoreCase = true) ||
+            !inviteHost.matches(Regex("^[a-zA-Z0-9.-]+$")) ||
+            inviteScheme != "aarast-qa" ||
+            !qaIdentityRequested ||
+            qaLabel.isEmpty() ||
+            defines["AARAST_FIREBASE_PROJECT_ID"]?.trim() == "aarast-d62e9" ||
+            System.getenv("AARAST_ANDROID_SIGNING_PROFILE")?.trim() != "qa"
+        ) {
+            throw GradleException(
+                "Staging release requires staging API/invite hosts, distinct QA identity and QA signing profile.",
+            )
+        }
+    }
+
     val bypassLoginGates = defines["AARAST_DEV_BYPASS_LOGIN_GATES"]?.trim()
     if (
         bypassLoginGates.equals("true", ignoreCase = true) ||
@@ -196,9 +223,17 @@ val signingEnvironmentKeys = mapOf(
     "keyAlias" to "AARAST_ANDROID_KEY_ALIAS",
     "keyPassword" to "AARAST_ANDROID_KEY_PASSWORD",
 )
-fun releaseSigningValue(key: String): String =
-    keystoreProperties.getProperty(key)?.trim().takeUnless { it.isNullOrEmpty() }
-        ?: System.getenv(signingEnvironmentKeys.getValue(key))?.trim().orEmpty()
+val releaseTaskRequested = gradle.startParameter.taskNames.any { taskName ->
+    taskName.contains("release", ignoreCase = true)
+}
+val stagingReleaseTaskRequested = releaseTaskRequested &&
+    decodedDartDefines()["AARAST_ENVIRONMENT"]?.trim() == "staging"
+fun releaseSigningValue(key: String): String {
+    val fromEnvironment = System.getenv(signingEnvironmentKeys.getValue(key))?.trim().orEmpty()
+    if (stagingReleaseTaskRequested) return fromEnvironment
+    return keystoreProperties.getProperty(key)?.trim().takeUnless { it.isNullOrEmpty() }
+        ?: fromEnvironment
+}
 
 val releaseSigningValues = signingEnvironmentKeys.keys.associateWith(::releaseSigningValue)
 val invalidSigningKeys = signingEnvironmentKeys.keys.filter { key ->
@@ -210,9 +245,6 @@ val releaseStoreFile = releaseSigningValues["storeFile"]
     ?.let(rootProject::file)
 val hasUsableReleaseKeystore = invalidSigningKeys.isEmpty() &&
     releaseStoreFile?.isFile == true
-val releaseTaskRequested = gradle.startParameter.taskNames.any { taskName ->
-    taskName.contains("release", ignoreCase = true)
-}
 val storeReleaseTaskRequested = gradle.startParameter.taskNames.any { taskName ->
     taskName.contains("bundle", ignoreCase = true) &&
         taskName.contains("release", ignoreCase = true)
@@ -231,7 +263,8 @@ if (releaseTaskRequested) {
         }
         throw GradleException(
             "Release signing is not configured: $reason. " +
-                "Use android/key.properties or AARAST_ANDROID_* environment variables. " +
+                "Use AARAST_ANDROID_* environment variables for Staging; " +
+                "Production may use android/key.properties. " +
                 "Debug signing is forbidden for release artifacts.",
         )
     }
@@ -251,6 +284,12 @@ android {
         val defines = decodedDartDefines()
         applicationId = releaseApplicationId
         manifestPlaceholders["aarastAppLabel"] = releaseAppLabel
+        manifestPlaceholders["aarastInviteHost"] =
+            defines["AARAST_INVITE_HOST"]?.trim()?.takeIf(String::isNotEmpty)
+                ?: "aarast.shadowgardn.com"
+        manifestPlaceholders["aarastCustomScheme"] =
+            defines["AARAST_INVITE_SCHEME"]?.trim()?.takeIf(String::isNotEmpty)
+                ?: "aarast"
         mapOf(
             "google_api_key" to "AARAST_FIREBASE_API_KEY",
             "google_app_id" to "AARAST_FIREBASE_APP_ID",

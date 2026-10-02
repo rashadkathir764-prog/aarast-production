@@ -306,6 +306,33 @@ test('development OTP code is rejected outside dev OTP mode', async () => {
   );
 });
 
+test('disabled OTP mode rejects a previously issued code without claiming it', async () => {
+  await withEnv(
+    {
+      AUTH_OTP_MODE: 'dev',
+      AUTH_DEV_OTP_CODE: '654321',
+      NODE_ENV: 'test',
+    },
+    async () => {
+      const service = createService();
+      await service.requestOtp({
+        phone: '777123456',
+        purpose: OtpPurpose.VERIFY_PHONE,
+      });
+      process.env.AUTH_OTP_MODE = 'disabled';
+      delete process.env.AUTH_DEV_OTP_CODE;
+      await assert.rejects(
+        () => service.verifyOtp({
+          phone: '777123456',
+          purpose: OtpPurpose.VERIFY_PHONE,
+          code: '654321',
+        }),
+        isOtpDeliveryUnavailable,
+      );
+    },
+  );
+});
+
 test('production with unconfigured OTP returns a safe user-facing error', async () => {
   await withEnv(
     {

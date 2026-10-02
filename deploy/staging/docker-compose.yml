@@ -187,26 +187,18 @@ services:
       AARAST_MEDIA_FORCE_PATH_STYLE: "true"
       AARAST_MEDIA_ACCESS_KEY_ID: ${STAGING_MEDIA_ACCESS_KEY_ID:?staging media service account required}
       AARAST_MEDIA_SECRET_ACCESS_KEY: ${STAGING_MEDIA_SECRET_ACCESS_KEY:?staging media service secret required}
-      AUTH_OTP_MODE: whatsapp
-      WHATSAPP_GRAPH_API_VERSION: ${STAGING_WHATSAPP_GRAPH_API_VERSION:?isolated Meta test version required}
-      WHATSAPP_PHONE_NUMBER_ID: ${STAGING_WHATSAPP_PHONE_NUMBER_ID:?isolated Meta test sender required}
-      WHATSAPP_ACCESS_TOKEN: ${STAGING_WHATSAPP_ACCESS_TOKEN:?isolated Meta test token required}
-      WHATSAPP_OTP_TEMPLATE_NAME: ${STAGING_WHATSAPP_OTP_TEMPLATE_NAME:?isolated Meta test template required}
-      WHATSAPP_OTP_TEMPLATE_LANGUAGE: ${STAGING_WHATSAPP_OTP_TEMPLATE_LANGUAGE:?isolated Meta test language required}
-      WHATSAPP_VERIFY_TOKEN: ${STAGING_WHATSAPP_VERIFY_TOKEN:?isolated Meta verify token required}
+      AUTH_OTP_MODE: disabled
       OTP_GLOBAL_DAILY_LIMIT: "50"
-      PUSH_NOTIFICATIONS_ENABLED: "true"
-      FIREBASE_PROJECT_ID: ${STAGING_FIREBASE_PROJECT_ID:?isolated Firebase project required}
-      GOOGLE_APPLICATION_CREDENTIALS: /run/aarast-firebase/service-account.json
-    volumes:
-      - ${STAGING_FIREBASE_CREDENTIAL_DIR:?isolated Firebase credential directory required}:/run/aarast-firebase:ro
+      PUSH_NOTIFICATIONS_ENABLED: "false"
     ports:
       - "127.0.0.1:${STAGING_API_PORT:?staging API loopback port required}:3000"
     command:
       - /bin/sh
       - -ec
       - |
-        node scripts/prod/assert-firebase-credentials.cjs
+        if [ "$${PUSH_NOTIFICATIONS_ENABLED}" = "true" ]; then
+          node scripts/prod/assert-firebase-credentials.cjs
+        fi
         node scripts/prod/assert-database-identity.cjs
         exec node dist/main.js
     healthcheck:

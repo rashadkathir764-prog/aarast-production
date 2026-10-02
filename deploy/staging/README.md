@@ -20,9 +20,18 @@ existing Dokploy Production and OpenWA OTP lab projects are not dependencies.
 - `postgres_backups` is a project-owned volume with a daily retention policy.
   Before real use, choose a stage-only off-host encrypted backup destination
   and prove a restore. Never copy Production data into staging.
-- Backend runs `NODE_ENV=production`, requires Redis and media readiness,
-  uses staging-only media service credentials, Meta test sender and a distinct
-  Firebase project. It will not start with missing OTP or Firebase inputs.
+- Core Backend runs `NODE_ENV=production`, requires PostgreSQL, Redis and media
+  readiness, and uses staging-only media credentials. Its explicit
+  `AUTH_OTP_MODE=disabled` and `PUSH_NOTIFICATIONS_ENABLED=false` need no Meta,
+  OpenWA or Firebase credential. OTP request and verification fail explicitly
+  while disabled; Push delivery does not contact Firebase. `/live` is process
+  liveness. `/ready` requires database, Redis and media; the existing `openwa`
+  diagnostic is `disabled` in Core and does not claim phone OTP readiness.
+- Phone acceptance is a separate gate: it additionally requires an isolated
+  real OTP sender, isolated Firebase client and Backend credentials, QA APK,
+  App Links, and acceptance accounts and journeys. Core `/ready=200` is not
+  evidence that OTP or Push is operational. Enabling Push requires the existing
+  Firebase credential preflight and fails closed without a stage-only account.
 - Admin is built with `AARAST_BUILD_TARGET=staging` and an explicit stage API
   origin. The build and runtime guards reject a missing or mismatched origin.
 - The invite image rewrites canonical URLs and scheme for QA, and generates
@@ -37,14 +46,16 @@ existing Dokploy Production and OpenWA OTP lab projects are not dependencies.
 ## Required private inputs
 
 Copy `.env.example` into a file outside Git. Its `GENERATE_UNIQUE_*` values are
-independent stage-only secrets. The `REPLACE_WITH_*` values need the owner's
-actual stage domains, dedicated Meta test sender/template, and distinct Firebase
-project/service account. The QA signing fingerprint comes from the separate
-locally generated QA keystore. The
-Firebase service account JSON must be mounted read-only in a stage-only private
-directory; do not copy a Production credential or session. All four public
-origins need DNS, TLS and explicit loopback-to-host routing. The public media
-origin must proxy the S3 endpoint without changing the signed request path.
+independent stage-only secrets. Core needs the owner's four actual stage domains,
+but **no** Meta/OpenWA/Firebase credential. Its runtime Compose has no Firebase
+mount; it runs the credential preflight only when Push is explicitly enabled.
+Phone acceptance later needs a dedicated Meta sender/template and a separate
+Firebase project, Android app and Backend service account. A reviewed integration
+configuration must then provide a stage-only read-only credential mount; the
+validator rejects enabled Push without it and rejects Production origins.
+Never copy a Production credential or session. All four public origins need
+DNS, TLS and explicit loopback-to-host routing. The public media origin must
+proxy the S3 endpoint without changing the signed request path.
 
 On this candidate's Windows preparation host, generated random secret values
 are stored outside Git under

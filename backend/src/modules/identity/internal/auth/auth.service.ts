@@ -1905,6 +1905,9 @@ export class AuthService implements IdentityAuthPort {
       now: Date;
     },
   ): Promise<OtpClaimResult> {
+    if (this.getOtpMode() === "disabled") {
+      throw otpDeliveryUnavailableError();
+    }
     if (this.getOtpMode() !== "dev" && input.code === this.getDevOtpCode()) {
       return { outcome: "invalid" };
     }

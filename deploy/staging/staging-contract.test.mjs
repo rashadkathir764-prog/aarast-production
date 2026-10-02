@@ -52,8 +52,56 @@ test('resolved staging topology is isolated and dependencies remain required', (
   assert.equal(compose.services.backend.environment.NODE_ENV, 'production');
   assert.equal(compose.services.backend.environment.READINESS_REQUIRE_REDIS, 'true');
   assert.equal(compose.services.backend.environment.READINESS_REQUIRE_MEDIA, 'true');
-  assert.equal(compose.services.backend.environment.PUSH_NOTIFICATIONS_ENABLED, 'true');
-  assert.equal(compose.services.backend.environment.AUTH_OTP_MODE, 'whatsapp');
+  assert.equal(compose.services.backend.environment.PUSH_NOTIFICATIONS_ENABLED, 'false');
+  assert.equal(compose.services.backend.environment.AUTH_OTP_MODE, 'disabled');
+  assert.equal(compose.services.backend.environment.FIREBASE_PROJECT_ID, undefined);
+  assert.equal(compose.services.backend.environment.GOOGLE_APPLICATION_CREDENTIALS, undefined);
+  assert.equal(compose.services.backend.environment.WHATSAPP_ACCESS_TOKEN, undefined);
+  assert.equal(compose.services.backend.volumes, undefined);
+  assert.match(compose.services.backend.command.join('\n'),
+    /if \[ "\$\$\{PUSH_NOTIFICATIONS_ENABLED\}" = "true" \]; then\s+node scripts\/prod\/assert-firebase-credentials\.cjs/);
+});
+
+test('Core staging accepts absent external integrations and rejects unsafe enablement', () => {
+  const core = structuredClone(compose);
+  core.services.backend.environment.AUTH_OTP_MODE = 'disabled';
+  core.services.backend.environment.PUSH_NOTIFICATIONS_ENABLED = 'false';
+  for (const key of Object.keys(core.services.backend.environment)) {
+    if (key.startsWith('WHATSAPP_') || key === 'FIREBASE_PROJECT_ID' ||
+        key === 'GOOGLE_APPLICATION_CREDENTIALS') {
+      delete core.services.backend.environment[key];
+    }
+  }
+  delete core.services.backend.volumes;
+  assert.deepEqual(validateStagingConfig(core, { allowExampleValues: true }), []);
+
+  const missingFirebase = structuredClone(core);
+  missingFirebase.services.backend.environment.PUSH_NOTIFICATIONS_ENABLED = 'true';
+  assert.notDeepEqual(validateStagingConfig(missingFirebase, { allowExampleValues: true }), []);
+
+  const withoutFirebasePreflight = structuredClone(core);
+  withoutFirebasePreflight.services.backend.command = ['/bin/sh', '-ec',
+    'node scripts/prod/assert-database-identity.cjs\nexec node dist/main.js'];
+  assert.match(validateStagingConfig(withoutFirebasePreflight, {
+    allowExampleValues: true,
+  }).join('\n'), /Firebase credential preflight/);
+
+  const missingMeta = structuredClone(core);
+  missingMeta.services.backend.environment.AUTH_OTP_MODE = 'whatsapp';
+  assert.notDeepEqual(validateStagingConfig(missingMeta, { allowExampleValues: true }), []);
+
+  const devOtp = structuredClone(core);
+  devOtp.services.backend.environment.AUTH_OTP_MODE = 'dev';
+  assert.notDeepEqual(validateStagingConfig(devOtp, { allowExampleValues: true }), []);
+
+  const sharedOpenWa = structuredClone(core);
+  sharedOpenWa.services.backend.environment.OPENWA_SESSION_ID = 'production-session';
+  assert.notDeepEqual(validateStagingConfig(sharedOpenWa, { allowExampleValues: true }), []);
+
+  const productionOrigin = structuredClone(core);
+  productionOrigin.services.backend.environment.INVITE_PUBLIC_ORIGIN =
+    'https://aarast.shadowgardn.com';
+  assert.notDeepEqual(validateStagingConfig(productionOrigin, { allowExampleValues: true }), []);
 });
 
 test('build topology pins QA Admin and App Link inputs to staging origins', () => {
@@ -115,7 +163,7 @@ test('preflight rejects foreign resource and production fallback mutations', () 
     (x) => { x.services.backend.environment.CORS_ORIGINS = 'https://aarast.shadowgardn.com'; },
     (x) => { x.services['admin-web'].environment.API_ORIGIN = x.services.backend.environment.INVITE_PUBLIC_ORIGIN; },
     (x) => { x.services.backend.environment.READINESS_REQUIRE_MEDIA = 'false'; },
-    (x) => { x.services.backend.environment.PUSH_NOTIFICATIONS_ENABLED = 'false'; },
+    (x) => { x.services.backend.environment.PUSH_NOTIFICATIONS_ENABLED = 'true'; },
     (x) => { x.services.backend.environment.AUTH_OTP_MODE = 'openwa'; },
     (x) => { x.services.backend.environment.FIREBASE_PROJECT_ID = 'aarast-d62e9'; },
     (x) => { x.services.backend.ports[0].host_ip = '0.0.0.0'; },

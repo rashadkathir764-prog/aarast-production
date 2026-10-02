@@ -27,6 +27,12 @@ existing Dokploy Production and OpenWA OTP lab projects are not dependencies.
   origin. The build and runtime guards reject a missing or mismatched origin.
 - The invite image rewrites canonical URLs and scheme for QA, and generates
   `assetlinks.json` from the distinct QA Android ID and signing fingerprint.
+- Compose enforces `mem_limit` and `cpus` on the one-shot jobs: role setup
+  128 MiB/0.20 CPU, media initialization 128 MiB/0.20 CPU, and migration
+  768 MiB/1.00 CPU. The existing long-running memory caps total 2,528 MiB.
+  Given the measured 5.34 GiB `MemAvailable`, the maximum overlapping
+  startup caps are 2,656 MiB, leaving about 2.75 GiB before host/Docker
+  overhead. No swap or on-server image build is part of this budget.
 
 ## Required private inputs
 
@@ -62,10 +68,12 @@ keystore fingerprint to `STAGING_QA_CERT_FINGERPRINT` before a future APK build.
 
 ## Preflight and deployment order
 
-Run from the repository root, with `STAGE_ENV` set to the private env path:
+Run from the repository root, with `STAGE_ENV` set to the private env path.
+The deployment preflight uses only the runtime Compose file; the separate
+build file is for an off-server build host:
 
 ```sh
-docker compose --env-file "$STAGE_ENV" -f deploy/staging/docker-compose.yml -f deploy/staging/docker-compose.build.yml config --format json | node deploy/staging/validate-config.mjs
+docker compose --env-file "$STAGE_ENV" -f deploy/staging/docker-compose.yml config --format json | node deploy/staging/validate-config.mjs
 node --test deploy/staging/staging-contract.test.mjs deploy/staging/public-site/build.test.mjs admin-web/scripts/staging-build-origin.contract.mjs
 ```
 
@@ -75,12 +83,38 @@ ports are unused. Confirm enough CPU, memory and disk for a separate stack.
 Do not attach the new stack to a Production network or reuse the old OTP lab.
 Do not route traffic until all dependencies are healthy.
 
-After replacing every placeholder and recording a reviewed target candidate
-SHA, build the three immutable stage images and start only this project:
+After replacing every placeholder, check out the reviewed final candidate SHA
+on a separate build host. Give that host a separate `BUILD_ENV` file containing
+only `STAGING_GIT_REVISION`, the three `STAGING_*_IMAGE_ID` tags,
+`STAGING_API_ORIGIN`, `STAGING_INVITE_ORIGIN`, `STAGING_QA_INVITE_HOST`,
+`STAGING_QA_APPLICATION_ID`, and `STAGING_QA_CERT_FINGERPRINT`. It does not
+need database, OTP, Firebase, or other runtime secrets. Set the revision and
+all three image tags to the exact 40-character candidate SHA. Do not build on
+the deployment server:
 
 ```sh
-docker compose --env-file "$STAGE_ENV" -f deploy/staging/docker-compose.yml -f deploy/staging/docker-compose.build.yml build backend admin-web public-site
-docker compose --env-file "$STAGE_ENV" -f deploy/staging/docker-compose.yml up -d
+# Off-server build host, from the final candidate checkout:
+set -a; . "$BUILD_ENV"; set +a
+test "$(git rev-parse HEAD)" = "$STAGING_GIT_REVISION"
+docker compose --env-file "$BUILD_ENV" -f deploy/staging/docker-compose.build.yml config --quiet
+docker compose --env-file "$BUILD_ENV" -f deploy/staging/docker-compose.build.yml build backend admin-web public-site
+for image in "$STAGING_BACKEND_IMAGE_ID" "$STAGING_ADMIN_IMAGE_ID" "$STAGING_PUBLIC_SITE_IMAGE_ID"; do
+  test "$(docker image inspect --format '{{index .Config.Labels "org.opencontainers.image.revision"}}' "$image")" = "$STAGING_GIT_REVISION"
+done
+```
+
+Record each image digest and transfer the immutable images through an approved
+private registry by digest, or an authenticated `docker save`/`docker load`
+channel. On the server, verify the loaded image IDs/digests and revision labels
+against the build-host record. The three SHA tags must resolve to those exact
+images. Run the runtime Compose preflight above again, then use only
+`docker-compose.yml` with `up --no-build`; never pass
+`docker-compose.build.yml` on the server. This is a future deployment step,
+not an instruction to start this candidate now.
+
+```sh
+# Future server command only, after all prerequisites and approvals are met:
+docker compose --env-file "$STAGE_ENV" -f deploy/staging/docker-compose.yml up -d --no-build
 ```
 
 Verify 76 migration records and `prisma migrate status` using the migrator

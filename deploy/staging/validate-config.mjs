@@ -8,7 +8,7 @@ const expectedServices = [
   'media-init', 'postgres-backup', 'admin-web', 'public-site',
 ];
 
-export function validateStagingConfig(config, { allowExampleValues = false } = {}) {
+export function validateStagingConfig(config, { allowExampleValues = false, allowBuildTopology = false } = {}) {
   const errors = [];
   const requireValue = (condition, message) => { if (!condition) errors.push(message); };
   const services = config.services ?? {};
@@ -41,6 +41,15 @@ export function validateStagingConfig(config, { allowExampleValues = false } = {
     requireValue((service.ports ?? []).every((port) => port.host_ip === '127.0.0.1'),
       `${name} exposes a non-loopback port`);
     requireValue(!JSON.stringify(service).match(prodHosts), `${name} references Production`);
+    if (!allowBuildTopology) requireValue(!service.build, `${name} must not build on the server`);
+  }
+  for (const [name, memory, cpus] of [
+    ['postgres-roles', '134217728', 0.20],
+    ['media-init', '134217728', 0.20],
+    ['migrate', '805306368', 1.00],
+  ]) {
+    requireValue(services[name]?.mem_limit === memory && services[name]?.cpus === cpus,
+      `${name} must retain its effective memory and CPU limits`);
   }
   for (const name of ['postgres', 'postgres-roles', 'migrate', 'redis', 'media-init', 'postgres-backup']) {
     requireValue(services[name]?.networks?.private === null && !services[name]?.networks?.edge,
@@ -112,7 +121,9 @@ export function validateStagingConfig(config, { allowExampleValues = false } = {
   ]) {
     requireValue(services[name]?.image?.startsWith(prefix), `${name} must use a staging-only image`);
   }
-  if (services['admin-web']?.build || services['public-site']?.build) {
+  if (allowBuildTopology) {
+    requireValue(['backend', 'admin-web', 'public-site'].every((name) => services[name]?.build),
+      'Off-host build topology must define all three staging images');
     const adminArgs = services['admin-web']?.build?.args ?? {};
     const inviteArgs = services['public-site']?.build?.args ?? {};
     const revision = adminArgs.AARAST_GIT_REVISION;
@@ -133,6 +144,12 @@ export function validateStagingConfig(config, { allowExampleValues = false } = {
           services[name]?.image?.endsWith(`:${revision}`)),
       'Stage image tags must equal their full candidate SHA');
     }
+  }
+  if (!allowExampleValues) {
+    const revisions = ['backend', 'admin-web', 'public-site'].map((name) =>
+      services[name]?.image?.match(/:([0-9a-f]{40})$/)?.[1]);
+    requireValue(revisions.every((revision) => revision && revision === revisions[0]),
+      'Stage image tags must share one full candidate SHA');
   }
   if (!allowExampleValues) {
     requireValue(!/(?:REPLACE_WITH|GENERATE_UNIQUE|example\.invalid)/.test(JSON.stringify(config)),

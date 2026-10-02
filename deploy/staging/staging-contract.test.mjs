@@ -13,6 +13,38 @@ const buildCompose = JSON.parse(execFileSync('docker', [
   '-f', 'deploy/staging/docker-compose.build.yml',
   'config', '--format', 'json',
 ], { encoding: 'utf8' }));
+const revision = 'a'.repeat(40);
+const buildOnly = JSON.parse(execFileSync('docker', [
+  'compose', '-f', 'deploy/staging/docker-compose.build.yml', 'config', '--format', 'json',
+], {
+  encoding: 'utf8',
+  env: {
+    Path: process.env.Path,
+    PATH: process.env.PATH ?? process.env.Path,
+    PATHEXT: process.env.PATHEXT,
+    ProgramFiles: process.env.ProgramFiles,
+    ProgramData: process.env.ProgramData,
+    HOMEDRIVE: process.env.HOMEDRIVE,
+    HOMEPATH: process.env.HOMEPATH,
+    SystemRoot: process.env.SystemRoot,
+    USERPROFILE: process.env.USERPROFILE,
+    HOME: process.env.HOME,
+    APPDATA: process.env.APPDATA,
+    LOCALAPPDATA: process.env.LOCALAPPDATA,
+    DOCKER_CONFIG: process.env.DOCKER_CONFIG,
+    TMP: process.env.TMP,
+    TEMP: process.env.TEMP,
+    STAGING_GIT_REVISION: revision,
+    STAGING_BACKEND_IMAGE_ID: `aarast-staging-backend:${revision}`,
+    STAGING_ADMIN_IMAGE_ID: `aarast-staging-admin:${revision}`,
+    STAGING_PUBLIC_SITE_IMAGE_ID: `aarast-staging-invite:${revision}`,
+    STAGING_API_ORIGIN: 'https://api.proof.example.org',
+    STAGING_INVITE_ORIGIN: 'https://invite.proof.example.org',
+    STAGING_QA_INVITE_HOST: 'invite.proof.example.org',
+    STAGING_QA_APPLICATION_ID: 'com.aarast.aarast_mobile.qa',
+    STAGING_QA_CERT_FINGERPRINT: Array(32).fill('AA').join(':'),
+  },
+}));
 
 test('resolved staging topology is isolated and dependencies remain required', () => {
   assert.deepEqual(validateStagingConfig(compose, { allowExampleValues: true }), []);
@@ -25,10 +57,53 @@ test('resolved staging topology is isolated and dependencies remain required', (
 });
 
 test('build topology pins QA Admin and App Link inputs to staging origins', () => {
-  assert.deepEqual(validateStagingConfig(buildCompose, { allowExampleValues: true }), []);
+  assert.deepEqual(validateStagingConfig(buildCompose, {
+    allowExampleValues: true, allowBuildTopology: true,
+  }), []);
   const wrongHost = structuredClone(buildCompose);
   wrongHost.services['public-site'].build.args.STAGING_QA_INVITE_HOST = 'aarast.shadowgardn.com';
-  assert.match(validateStagingConfig(wrongHost, { allowExampleValues: true }).join('\n'), /QA App Link host/);
+  assert.match(validateStagingConfig(wrongHost, {
+    allowExampleValues: true, allowBuildTopology: true,
+  }).join('\n'), /QA App Link host/);
+});
+
+test('temporary jobs have enforced Compose resource limits', () => {
+  for (const [name, memory, cpus] of [
+    ['postgres-roles', '134217728', 0.20],
+    ['media-init', '134217728', 0.20],
+    ['migrate', '805306368', 1.00],
+  ]) {
+    assert.equal(compose.services[name].mem_limit, memory, `${name} memory`);
+    assert.equal(compose.services[name].cpus, cpus, `${name} CPU`);
+    const weakened = structuredClone(compose);
+    delete weakened.services[name].mem_limit;
+    assert.match(validateStagingConfig(weakened, { allowExampleValues: true }).join('\n'),
+      new RegExp(name));
+    const withoutCpu = structuredClone(compose);
+    delete withoutCpu.services[name].cpus;
+    assert.match(validateStagingConfig(withoutCpu, { allowExampleValues: true }).join('\n'),
+      new RegExp(name));
+  }
+});
+
+test('server deployment topology consumes prebuilt SHA-tagged images only', () => {
+  for (const name of ['backend', 'admin-web', 'public-site']) {
+    assert.equal(compose.services[name].build, undefined, `${name} server build`);
+    assert.equal(compose.services[name].pull_policy, 'never', `${name} pull policy`);
+    const withBuild = structuredClone(compose);
+    withBuild.services[name].build = { context: '.' };
+    assert.match(validateStagingConfig(withBuild, { allowExampleValues: true }).join('\n'),
+      /build/);
+  }
+});
+
+test('off-server build topology needs no runtime database, OTP or Firebase secrets', () => {
+  assert.deepEqual(Object.keys(buildOnly.services).sort(), ['admin-web', 'backend', 'public-site']);
+  for (const name of ['backend', 'admin-web', 'public-site']) {
+    assert.equal(buildOnly.services[name].image.endsWith(`:${revision}`), true);
+    assert.equal(buildOnly.services[name].build.args.AARAST_GIT_REVISION, revision);
+    assert.equal(buildOnly.services[name].environment, undefined);
+  }
 });
 
 test('preflight rejects example placeholders', () => {

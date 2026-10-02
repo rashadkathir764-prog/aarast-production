@@ -60,6 +60,8 @@ export function validateStagingConfig(config, { allowExampleValues = false, allo
   const db = services.postgres?.environment ?? {};
   const roles = services['postgres-roles']?.environment ?? {};
   requireValue(backend.NODE_ENV === 'production', 'Backend must run production-like');
+  requireValue(backend.AARAST_DEPLOYMENT_TIER === 'staging',
+    'Backend must declare the isolated staging deployment identity');
   requireValue(backend.READINESS_REQUIRE_REDIS === 'true' && backend.READINESS_REQUIRE_MEDIA === 'true',
     'Redis and media readiness must remain required');
   requireValue(/if \[ "\$\$\{PUSH_NOTIFICATIONS_ENABLED\}" = "true" \]; then\s+node scripts\/prod\/assert-firebase-credentials\.cjs\s+fi/.test(
@@ -96,6 +98,10 @@ export function validateStagingConfig(config, { allowExampleValues = false, allo
     'Runtime and migrator database URLs must be distinct and local');
   requireValue(new Set([db.POSTGRES_USER, roles.AARAST_DB_MIGRATOR_USER, roles.AARAST_DB_RUNTIME_USER]).size === 3,
     'Owner, migrator and runtime roles must be distinct');
+  requireValue(db.POSTGRES_DB === 'aarast_staging' &&
+    backend.POSTGRES_DB === db.POSTGRES_DB &&
+    roles.AARAST_DB_RUNTIME_USER === 'aarast_stage_runtime',
+    'Staging database and runtime role must match the backend deployment guard');
   if (!allowExampleValues) {
     requireValue(new Set([db.POSTGRES_PASSWORD, roles.AARAST_DB_MIGRATOR_PASSWORD,
       roles.AARAST_DB_RUNTIME_PASSWORD]).size === 3,

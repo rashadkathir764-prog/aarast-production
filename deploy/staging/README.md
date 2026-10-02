@@ -22,6 +22,8 @@ existing Dokploy Production and OpenWA OTP lab projects are not dependencies.
   and prove a restore. Never copy Production data into staging.
 - Core Backend runs `NODE_ENV=production`, requires PostgreSQL, Redis and media
   readiness, and uses staging-only media credentials. Its explicit
+  `AARAST_DEPLOYMENT_TIER=staging` fails boot against another database or
+  runtime role; Production Compose does not set this marker. Its explicit
   `AUTH_OTP_MODE=disabled` and `PUSH_NOTIFICATIONS_ENABLED=false` need no Meta,
   OpenWA or Firebase credential. OTP request and verification fail explicitly
   while disabled; Push delivery does not contact Firebase. `/live` is process

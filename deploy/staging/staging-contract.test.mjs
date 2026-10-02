@@ -50,6 +50,7 @@ test('resolved staging topology is isolated and dependencies remain required', (
   assert.deepEqual(validateStagingConfig(compose, { allowExampleValues: true }), []);
   assert.equal(compose.name, 'aarast-full-staging-20261001');
   assert.equal(compose.services.backend.environment.NODE_ENV, 'production');
+  assert.equal(compose.services.backend.environment.AARAST_DEPLOYMENT_TIER, 'staging');
   assert.equal(compose.services.backend.environment.READINESS_REQUIRE_REDIS, 'true');
   assert.equal(compose.services.backend.environment.READINESS_REQUIRE_MEDIA, 'true');
   assert.equal(compose.services.backend.environment.PUSH_NOTIFICATIONS_ENABLED, 'false');
@@ -102,6 +103,12 @@ test('Core staging accepts absent external integrations and rejects unsafe enabl
   productionOrigin.services.backend.environment.INVITE_PUBLIC_ORIGIN =
     'https://aarast.shadowgardn.com';
   assert.notDeepEqual(validateStagingConfig(productionOrigin, { allowExampleValues: true }), []);
+
+  const wrongRuntimeIdentity = structuredClone(core);
+  wrongRuntimeIdentity.services.backend.environment.AARAST_DB_EXPECTED_ROLE = 'production_runtime';
+  wrongRuntimeIdentity.services['postgres-roles'].environment.AARAST_DB_RUNTIME_USER =
+    'production_runtime';
+  assert.notDeepEqual(validateStagingConfig(wrongRuntimeIdentity, { allowExampleValues: true }), []);
 });
 
 test('build topology pins QA Admin and App Link inputs to staging origins', () => {

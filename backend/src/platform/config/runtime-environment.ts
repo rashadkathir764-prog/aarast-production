@@ -25,6 +25,28 @@ export function validateRuntimeEnvironment(
   }
   validateIdentitySecret(environment);
 
+  const deploymentTier = environment.AARAST_DEPLOYMENT_TIER?.trim().toLowerCase();
+  if (deploymentTier && deploymentTier !== "staging") {
+    throw new Error("AARAST_DEPLOYMENT_TIER must be staging when set");
+  }
+  if (deploymentTier === "staging") {
+    let databaseUrl: URL;
+    try {
+      databaseUrl = new URL(environment.DATABASE_URL!);
+    } catch {
+      throw new Error("Staging deployment identity requires an isolated database");
+    }
+    if (
+      environment.NODE_ENV !== "production" ||
+      environment.POSTGRES_DB !== "aarast_staging" ||
+      environment.AARAST_DB_EXPECTED_ROLE !== "aarast_stage_runtime" ||
+      databaseUrl.hostname !== "postgres" ||
+      databaseUrl.pathname !== "/aarast_staging"
+    ) {
+      throw new Error("Staging deployment identity requires the staging database and runtime role");
+    }
+  }
+
   const otpMode = environment.AUTH_OTP_MODE?.trim().toLowerCase();
   if (otpMode && !["dev", "whatsapp", "openwa", "disabled"].includes(otpMode)) {
     throw new Error(

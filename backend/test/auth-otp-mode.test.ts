@@ -797,3 +797,26 @@ test('production runtime fails before boot on a weak JWT secret', () => {
     },
   );
 });
+
+test('a Staging deployment identity cannot boot against a Production database', () => {
+  const base = {
+    NODE_ENV: 'production',
+    JWT_SECRET: strongRuntimeJwtSecret,
+    AUTH_LOGIN_THROTTLE_PEPPER: 'Y9pM4vQ7xD2kR8nT5cF1hJ6wB3zL0sG4',
+    AUTH_OTP_MODE: 'disabled',
+    PUSH_NOTIFICATIONS_ENABLED: 'false',
+    AARAST_DEPLOYMENT_TIER: 'staging',
+    DATABASE_URL: 'postgresql://runtime:unused@postgres:5432/aarast_staging',
+    POSTGRES_DB: 'aarast_staging',
+    AARAST_DB_EXPECTED_ROLE: 'aarast_stage_runtime',
+  };
+  assert.doesNotThrow(() => validateRuntimeEnvironment(base, getJwtSecret));
+  assert.throws(
+    () => validateRuntimeEnvironment({
+      ...base,
+      DATABASE_URL: 'postgresql://runtime:unused@production-db:5432/aarast_production',
+      POSTGRES_DB: 'aarast_production',
+    }, getJwtSecret),
+    /Staging deployment identity/,
+  );
+});

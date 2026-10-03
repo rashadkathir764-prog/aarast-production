@@ -20,6 +20,7 @@ const javascript = readdirSync(assetsDirectory)
 const productionApiOrigin = requirePublicHttpsOrigin(requireBuildApiOrigin(
   process.env.AARAST_BUILD_TARGET,
   process.env.VITE_API_BASE_URL,
+  process.env.STAGING_ROUTE_PROFILE,
 ));
 
 if (javascript.includes('127.0.0.1:3115')) {
@@ -29,6 +30,7 @@ if (!javascript.includes(productionApiOrigin)) {
   throw new Error(`Production admin build is missing API origin ${productionApiOrigin}.`);
 }
 if (process.env.AARAST_BUILD_TARGET === 'staging' &&
+    process.env.STAGING_ROUTE_PROFILE !== 'aarast-controlled-cutover' &&
     javascript.includes('https://aarast-api.shadowgardn.com')) {
   throw new Error('Staging Admin artifact contains Production API origin.');
 }

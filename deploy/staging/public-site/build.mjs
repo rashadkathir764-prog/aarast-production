@@ -1,11 +1,18 @@
 import { copyFileSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 
-export function buildStagingInvite({ source, out, origin, inviteHost, packageName, fingerprint }) {
+export function buildStagingInvite({ source, out, origin, inviteHost, packageName, fingerprint, routeProfile = 'isolated' }) {
+  if (!['isolated', 'aarast-controlled-cutover'].includes(routeProfile)) {
+    throw new Error('Unknown Staging route profile');
+  }
+  const cutover = routeProfile === 'aarast-controlled-cutover';
+  if (cutover && origin !== 'https://aarast.shadowgardn.com') {
+    throw new Error('Controlled cutover requires the established Aarast invite origin');
+  }
   let url;
   try { url = new URL(origin); } catch { throw new Error('Invite origin must be public HTTPS'); }
   if (url.protocol !== 'https:' || url.origin !== origin ||
-      url.hostname === 'aarast.shadowgardn.com' ||
+      (!cutover && url.hostname === 'aarast.shadowgardn.com') ||
       url.hostname.endsWith('.invalid') || url.hostname === 'localhost') {
     throw new Error('Invite origin must be a distinct public HTTPS origin');
   }
@@ -26,7 +33,7 @@ export function buildStagingInvite({ source, out, origin, inviteHost, packageNam
   for (const name of ['invite.html', 'privacy.html', 'support.html']) {
     const original = readFileSync(resolve(source, name), 'utf8');
     const changed = original.replaceAll('https://aarast.shadowgardn.com', origin);
-    if (changed.includes('aarast.shadowgardn.com')) throw new Error(`${name} still points to Production`);
+    if (!cutover && changed.includes('aarast.shadowgardn.com')) throw new Error(`${name} still points to Production`);
     writeFileSync(resolve(out, name), changed);
   }
   const inviteJs = readFileSync(resolve(source, 'invite.js'), 'utf8')
@@ -55,6 +62,7 @@ if (process.argv[1] && new URL(import.meta.url).pathname.endsWith(process.argv[1
     inviteHost: process.env.STAGING_QA_INVITE_HOST,
     packageName: process.env.STAGING_QA_APPLICATION_ID,
     fingerprint: process.env.STAGING_QA_CERT_FINGERPRINT,
+    routeProfile: process.env.STAGING_ROUTE_PROFILE,
   });
   console.log('PASS: Staging invite site has QA origin, scheme and assetlinks');
 }

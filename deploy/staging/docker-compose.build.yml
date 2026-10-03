@@ -15,6 +15,7 @@ services:
       args:
         AARAST_GIT_REVISION: ${STAGING_GIT_REVISION:?full candidate SHA required}
         AARAST_BUILD_TARGET: staging
+        STAGING_ROUTE_PROFILE: ${STAGING_ROUTE_PROFILE:-isolated}
         VITE_API_BASE_URL: ${STAGING_API_ORIGIN:?staging API origin required}
 
   public-site:
@@ -25,6 +26,7 @@ services:
       args:
         AARAST_GIT_REVISION: ${STAGING_GIT_REVISION:?full candidate SHA required}
         STAGING_INVITE_ORIGIN: ${STAGING_INVITE_ORIGIN:?staging invite origin required}
+        STAGING_ROUTE_PROFILE: ${STAGING_ROUTE_PROFILE:-isolated}
         STAGING_QA_INVITE_HOST: ${STAGING_QA_INVITE_HOST:?QA invite host required}
         STAGING_QA_APPLICATION_ID: ${STAGING_QA_APPLICATION_ID:?QA app ID required}
         STAGING_QA_CERT_FINGERPRINT: ${STAGING_QA_CERT_FINGERPRINT:?QA cert fingerprint required}

@@ -169,6 +169,7 @@ services:
     environment:
       NODE_ENV: production
       AARAST_DEPLOYMENT_TIER: staging
+      AARAST_STAGING_ROUTE_PROFILE: ${STAGING_ROUTE_PROFILE:-isolated}
       PORT: "3000"
       DATABASE_URL: postgresql://${STAGING_DB_RUNTIME_USER:?staging runtime role required}:${STAGING_DB_RUNTIME_PASSWORD:?staging runtime password required}@postgres:5432/${STAGING_DB_NAME:?staging database name required}?schema=public
       AARAST_DB_EXPECTED_ROLE: ${STAGING_DB_RUNTIME_USER:?staging runtime role required}

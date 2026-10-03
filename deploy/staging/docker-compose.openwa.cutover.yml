@@ -1,0 +1,6 @@
+# Same old Aarast operator port; new independent session/credential directories.
+services:
+  openwa:
+    networks:
+      transport:
+        aliases: [openwa-staging.internal]

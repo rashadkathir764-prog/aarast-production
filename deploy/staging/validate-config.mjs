@@ -7,6 +7,23 @@ const expectedServices = [
   'postgres', 'postgres-roles', 'migrate', 'backend', 'redis', 'media',
   'media-init', 'postgres-backup', 'admin-web', 'public-site',
 ];
+const cutoverOrigins = {
+  api: 'https://aarast-api.shadowgardn.com', admin: 'https://aarast-admin.shadowgardn.com',
+  invite: 'https://aarast.shadowgardn.com', media: 'https://aarast-media.shadowgardn.com',
+};
+export const cutoverMediaLabels = {
+  'traefik.enable': 'true',
+  'traefik.docker.network': 'aarast-production-ytxoik_aarast_internal',
+  'traefik.http.routers.aarast-media-secure.entrypoints': 'websecure',
+  'traefik.http.routers.aarast-media-secure.rule': 'Host(`aarast-media.shadowgardn.com`)',
+  'traefik.http.routers.aarast-media-secure.service': 'aarast-media',
+  'traefik.http.routers.aarast-media-secure.tls.certresolver': 'letsencrypt',
+  'traefik.http.routers.aarast-media-web.entrypoints': 'web',
+  'traefik.http.routers.aarast-media-web.middlewares': 'redirect-to-https@file',
+  'traefik.http.routers.aarast-media-web.rule': 'Host(`aarast-media.shadowgardn.com`)',
+  'traefik.http.routers.aarast-media-web.service': 'aarast-media',
+  'traefik.http.services.aarast-media.loadbalancer.server.port': '9000',
+};
 
 export function validateStagingConfig(config, {
   allowExampleValues = false, allowBuildTopology = false, phoneAcceptance = false,
@@ -14,11 +31,24 @@ export function validateStagingConfig(config, {
   const errors = [];
   const requireValue = (condition, message) => { if (!condition) errors.push(message); };
   const services = config.services ?? {};
+  const routeProfile = services.backend?.environment?.AARAST_STAGING_ROUTE_PROFILE ?? 'isolated';
+  requireValue(['isolated', 'aarast-controlled-cutover'].includes(routeProfile), 'Unknown staging route profile');
+  const cutover = routeProfile === 'aarast-controlled-cutover';
   requireValue(config.name === project, 'Compose project must use the isolated staging name');
   requireValue(expectedServices.every((name) => services[name]), 'Full staging service set is incomplete');
   requireValue(Object.keys(services).every((name) => expectedServices.includes(name)), 'Unexpected service in staging project');
   requireValue(config.networks?.private?.internal === true, 'Database network must be internal');
   for (const [name, resource] of Object.entries(config.networks ?? {})) {
+    if (cutover && name === 'edge') {
+      requireValue(resource.external === true && resource.name === 'aarast-production-ytxoik_aarast_internal',
+        'Cutover edge must use only the verified existing Aarast network');
+      continue;
+    }
+    if (cutover && phoneAcceptance && name === 'otp_transport') {
+      requireValue(resource.external === true && resource.name === 'aarast_full_staging_openwa_test_release_transport',
+        'Cutover OTP transport must use only the independent Staging network');
+      continue;
+    }
     requireValue(resource.name === `${project}_${name}` && !resource.external,
       `Network ${name} must be owned by this project`);
   }
@@ -39,11 +69,56 @@ export function validateStagingConfig(config, {
   for (const [name, service] of Object.entries(services)) {
     requireValue(!service.container_name, `${name} must not use a global container name`);
     requireValue(!(service.networks && Object.keys(service.networks).some(
-      (network) => !['private', 'edge'].includes(network))), `${name} joins an external network`);
+      (network) => !['private', 'edge'].includes(network) &&
+        !(cutover && phoneAcceptance && name === 'backend' && network === 'otp_transport'))), `${name} joins an external network`);
     requireValue((service.ports ?? []).every((port) => port.host_ip === '127.0.0.1'),
       `${name} exposes a non-loopback port`);
-    requireValue(!JSON.stringify(service).match(prodHosts), `${name} references Production`);
+    const scanned = structuredClone(service);
+    if (cutover) {
+      const permitted = name === 'backend' ? {
+        CORS_ORIGINS: cutoverOrigins.admin, INVITE_PUBLIC_ORIGIN: cutoverOrigins.invite,
+        AARAST_MEDIA_SIGNED_ENDPOINT: cutoverOrigins.media,
+        AARAST_MEDIA_PUBLIC_BASE_URL: `${cutoverOrigins.media}/${service.environment?.AARAST_MEDIA_BUCKET}`,
+      } : name === 'admin-web' ? {
+        API_ORIGIN: cutoverOrigins.api, ADMIN_PUBLIC_ORIGIN: cutoverOrigins.admin, CORS_ORIGINS: cutoverOrigins.admin,
+      } : {};
+      for (const [key, value] of Object.entries(permitted)) {
+        requireValue(service.environment?.[key] === value, `${name} ${key} must match the approved cutover origin`);
+        if (scanned.environment?.[key] === value) delete scanned.environment[key];
+      }
+      if (scanned.build?.args) {
+        const buildInputs = name === 'admin-web' ? { VITE_API_BASE_URL: cutoverOrigins.api } :
+          name === 'public-site' ? { STAGING_INVITE_ORIGIN: cutoverOrigins.invite, STAGING_QA_INVITE_HOST: 'aarast.shadowgardn.com' } : {};
+        for (const [key, value] of Object.entries(buildInputs)) {
+          requireValue(scanned.build.args[key] === value, `${name} build origin must match cutover`);
+          if (scanned.build.args[key] === value) delete scanned.build.args[key];
+        }
+      }
+      for (const [key, value] of Object.entries(scanned.labels ?? {})) {
+        if (name === 'media' && cutoverMediaLabels[key] === value) delete scanned.labels[key];
+      }
+    }
+    requireValue(!JSON.stringify(scanned).match(prodHosts), `${name} references Production`);
+    if (Object.keys(service.labels ?? {}).some((key) => key.startsWith('traefik.'))) {
+      requireValue(cutover && name === 'media' &&
+        JSON.stringify(Object.entries(service.labels).sort()) === JSON.stringify(Object.entries(cutoverMediaLabels).sort()),
+      `${name} has unapproved proxy routes`);
+    }
     if (!allowBuildTopology) requireValue(!service.build, `${name} must not build on the server`);
+  }
+  if (cutover) {
+    for (const [name, alias, port, target] of [
+      ['backend', 'aarast-backend-prod', '8093', 3000],
+      ['admin-web', 'aarast-admin-web-prod', '8094', 80],
+      ['public-site', 'aarast-public-site-prod', '8095', 80],
+    ]) {
+      requireValue(JSON.stringify(services[name]?.networks?.edge?.aliases) === JSON.stringify([alias]),
+        `${name} must retain only its verified Aarast route alias`);
+      const ports = services[name]?.ports ?? [];
+      requireValue(ports.length === 1 && String(ports[0].published) === port && ports[0].target === target,
+        `${name} must reuse only its verified Aarast port`);
+    }
+    requireValue(!(services.media?.ports?.length), 'Cutover media must not create a new host port');
   }
   for (const [name, memory, cpus] of [
     ['postgres-roles', '134217728', 0.20],
@@ -189,6 +264,9 @@ export function validateStagingConfig(config, {
     requireValue(adminArgs.AARAST_BUILD_TARGET === 'staging' &&
       adminArgs.VITE_API_BASE_URL === services['admin-web']?.environment?.API_ORIGIN,
       'Admin build must target the explicit staging API');
+    requireValue((adminArgs.STAGING_ROUTE_PROFILE ?? 'isolated') === routeProfile &&
+      (inviteArgs.STAGING_ROUTE_PROFILE ?? 'isolated') === routeProfile,
+    'Build and runtime route profiles must match');
     requireValue(inviteArgs.STAGING_INVITE_ORIGIN === backend.INVITE_PUBLIC_ORIGIN &&
       inviteArgs.STAGING_QA_INVITE_HOST === hostnameOf(backend.INVITE_PUBLIC_ORIGIN),
       'QA App Link host must match staging invite origin');

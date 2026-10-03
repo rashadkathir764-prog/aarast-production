@@ -1,0 +1,39 @@
+# Owner-approved replacement of pre-launch Aarast routes, not a new environment.
+# Existing DB/media volumes and old containers must be backed up and preserved.
+services:
+  backend:
+    environment:
+      AARAST_STAGING_ROUTE_PROFILE: aarast-controlled-cutover
+    networks:
+      edge:
+        aliases: [aarast-backend-prod]
+      otp_transport: {}
+  admin-web:
+    networks:
+      edge:
+        aliases: [aarast-admin-web-prod]
+  public-site:
+    networks:
+      edge:
+        aliases: [aarast-public-site-prod]
+  media:
+    ports: !reset []
+    labels:
+      traefik.enable: "true"
+      traefik.docker.network: aarast-production-ytxoik_aarast_internal
+      traefik.http.routers.aarast-media-secure.entrypoints: websecure
+      traefik.http.routers.aarast-media-secure.rule: Host(`aarast-media.shadowgardn.com`)
+      traefik.http.routers.aarast-media-secure.service: aarast-media
+      traefik.http.routers.aarast-media-secure.tls.certresolver: letsencrypt
+      traefik.http.routers.aarast-media-web.entrypoints: web
+      traefik.http.routers.aarast-media-web.middlewares: redirect-to-https@file
+      traefik.http.routers.aarast-media-web.rule: Host(`aarast-media.shadowgardn.com`)
+      traefik.http.routers.aarast-media-web.service: aarast-media
+      traefik.http.services.aarast-media.loadbalancer.server.port: "9000"
+networks:
+  edge:
+    name: aarast-production-ytxoik_aarast_internal
+    external: true
+  otp_transport:
+    name: aarast_full_staging_openwa_test_release_transport
+    external: true

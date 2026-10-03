@@ -199,3 +199,8 @@ the image revision labels. No APK or acceptance accounts are created here.
 If prerequisites are absent, leave the server unchanged and report the exact
 missing input. Never use a disabled readiness flag, fake Firebase key, shared
 OpenWA session, or Production origin to make the stack green.
+# Existing Aarast pre-launch route replacement
+
+The owner-approved fixed-origin cutover is documented in
+[CONTROLLED_CUTOVER.md](CONTROLLED_CUTOVER.md). It is explicitly selected;
+the default isolated topology and its negative guards remain unchanged.

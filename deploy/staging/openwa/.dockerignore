@@ -1,0 +1,4 @@
+*
+!Dockerfile
+!apply-message-key-fix.cjs
+!message-key-contract.test.cjs

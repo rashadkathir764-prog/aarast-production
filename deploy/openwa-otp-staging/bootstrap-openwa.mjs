@@ -4,7 +4,17 @@ import { randomUUID } from 'node:crypto';
 
 const baseUrl = required('OPENWA_BASE_URL').replace(/\/$/, '');
 const masterKey = required('OPENWA_MASTER_KEY');
-const sessionName = process.env.OPENWA_SESSION_NAME || 'aarast-otp-staging';
+const bootstrapProfile = process.env.OPENWA_BOOTSTRAP_PROFILE || 'shared';
+if (!['shared', 'isolated-staging'].includes(bootstrapProfile)) {
+  throw new Error('OPENWA_BOOTSTRAP_PROFILE is unsupported');
+}
+const sessionName = process.env.OPENWA_SESSION_NAME ||
+  (bootstrapProfile === 'shared' ? 'aarast-otp-staging' : '');
+if (bootstrapProfile === 'isolated-staging' &&
+    (!/^[A-Za-z0-9][A-Za-z0-9_-]{1,63}$/.test(sessionName) ||
+      sessionName === 'aarast-otp-staging')) {
+  throw new Error('Isolated OpenWA requires a distinct explicit session name');
+}
 const keyTtlDays = boundedInteger('OPENWA_KEY_TTL_DAYS', 7, 2, 30);
 const rotateBeforeHours = boundedInteger('OPENWA_ROTATE_BEFORE_HOURS', 48, 1, 24 * 29);
 if (rotateBeforeHours >= keyTtlDays * 24) {
@@ -24,8 +34,10 @@ if (!nodePath.isAbsolute(bootstrapLockPath)) {
 }
 
 const STAGING_TRANSPORT = {
-  name: 'Aarast OTP transport staging',
-  legacyNames: ['Aarast OTP transport'],
+  name: bootstrapProfile === 'isolated-staging'
+    ? 'Aarast Full Staging OTP transport'
+    : 'Aarast OTP transport staging',
+  legacyNames: bootstrapProfile === 'isolated-staging' ? [] : ['Aarast OTP transport'],
   role: 'transient_sender',
   path:
     process.env.OPENWA_STAGING_TRANSPORT_SECRET_PATH ||
@@ -56,7 +68,9 @@ const AUDIT = {
   keyField: 'OPENWA_AUDIT_API_KEY',
   expiryField: 'OPENWA_AUDIT_API_KEY_EXPIRES_AT',
 };
-const credentialSpecs = [STAGING_TRANSPORT, PRODUCTION_TRANSPORT, AUDIT];
+const credentialSpecs = bootstrapProfile === 'isolated-staging'
+  ? [STAGING_TRANSPORT, AUDIT]
+  : [STAGING_TRANSPORT, PRODUCTION_TRANSPORT, AUDIT];
 const MAX_SECRET_BYTES = 16 * 1024;
 
 class HttpRequestError extends Error {

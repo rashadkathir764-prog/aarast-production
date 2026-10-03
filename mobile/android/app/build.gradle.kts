@@ -107,8 +107,12 @@ fun validateReleaseDartDefines(requireStoreObservability: Boolean) {
             !inviteHost.matches(Regex("^[a-zA-Z0-9.-]+$")) ||
             inviteScheme != "aarast-qa" ||
             !qaIdentityRequested ||
+            configuredAppId != "com.aarast.aarast_mobile.qa" ||
             qaLabel.isEmpty() ||
             defines["AARAST_FIREBASE_PROJECT_ID"]?.trim() == "aarast-d62e9" ||
+            defines["AARAST_FIREBASE_PROJECT_ID"]?.trim() != "aarast-staging-qa" ||
+            defines["AARAST_FIREBASE_APP_ID"]?.trim() != "1:842961585206:android:7f7deeb6f5f765d14a0497" ||
+            defines["AARAST_FIREBASE_MESSAGING_SENDER_ID"]?.trim() != "842961585206" ||
             System.getenv("AARAST_ANDROID_SIGNING_PROFILE")?.trim() != "qa"
         ) {
             throw GradleException(

@@ -8,7 +8,9 @@ const expectedServices = [
   'media-init', 'postgres-backup', 'admin-web', 'public-site',
 ];
 
-export function validateStagingConfig(config, { allowExampleValues = false, allowBuildTopology = false } = {}) {
+export function validateStagingConfig(config, {
+  allowExampleValues = false, allowBuildTopology = false, phoneAcceptance = false,
+} = {}) {
   const errors = [];
   const requireValue = (condition, message) => { if (!condition) errors.push(message); };
   const services = config.services ?? {};
@@ -67,24 +69,38 @@ export function validateStagingConfig(config, { allowExampleValues = false, allo
   requireValue(/if \[ "\$\$\{PUSH_NOTIFICATIONS_ENABLED\}" = "true" \]; then\s+node scripts\/prod\/assert-firebase-credentials\.cjs\s+fi/.test(
     (services.backend?.command ?? []).join('\n')),
   'Firebase credential preflight must run only when Staging Push is enabled');
-  requireValue(['true', 'false'].includes(backend.PUSH_NOTIFICATIONS_ENABLED),
-    'Staging push setting must be explicit');
-  requireValue(['disabled', 'whatsapp'].includes(backend.AUTH_OTP_MODE),
-    'Staging OTP mode must be disabled or isolated WhatsApp');
+  requireValue(backend.PUSH_NOTIFICATIONS_ENABLED === (phoneAcceptance ? 'true' : 'false'),
+    'Core Push must be disabled; phone acceptance requires isolated Firebase');
+  requireValue(backend.AUTH_OTP_MODE === (phoneAcceptance ? 'openwa' : 'disabled'),
+    'Core OTP must be disabled; phone acceptance requires isolated OpenWA');
   if (backend.PUSH_NOTIFICATIONS_ENABLED === 'true') {
     requireValue(Boolean(backend.FIREBASE_PROJECT_ID) &&
-      backend.FIREBASE_PROJECT_ID !== 'aarast-d62e9' &&
-      Boolean(backend.GOOGLE_APPLICATION_CREDENTIALS),
+      backend.FIREBASE_PROJECT_ID === 'aarast-staging-qa' &&
+      backend.GOOGLE_APPLICATION_CREDENTIALS === '/run/aarast-firebase/service-account.json',
     'Enabled Staging push requires an isolated Firebase project and credential');
   } else {
     requireValue(!backend.FIREBASE_PROJECT_ID && !backend.GOOGLE_APPLICATION_CREDENTIALS &&
       !(services.backend?.volumes?.length),
     'Disabled Staging push must not mount or reference Firebase credentials');
   }
-  if (backend.AUTH_OTP_MODE === 'whatsapp') {
-    requireValue(['WHATSAPP_PHONE_NUMBER_ID', 'WHATSAPP_ACCESS_TOKEN',
-      'WHATSAPP_OTP_TEMPLATE_NAME', 'WHATSAPP_VERIFY_TOKEN'].every((key) => Boolean(backend[key])),
-    'Enabled Staging OTP requires an isolated Meta sender');
+  if (backend.AUTH_OTP_MODE === 'openwa') {
+    const rawOpenWaUrl = backend.OPENWA_BASE_URL;
+    let openWaUrl;
+    try { openWaUrl = new URL(rawOpenWaUrl); } catch { /* rejected below */ }
+    requireValue(Boolean(openWaUrl) &&
+      ['https:', 'http:'].includes(openWaUrl.protocol) &&
+      !openWaUrl.username && !openWaUrl.password &&
+      openWaUrl.pathname === '/' && !openWaUrl.search && !openWaUrl.hash &&
+      /(?:staging|test)/i.test(openWaUrl.hostname) &&
+      !/(?:^aarast-openwa-otp$|otp-lab-api\.shadowgardn\.com$)/i.test(openWaUrl.hostname) &&
+      (openWaUrl.protocol === 'https:' ||
+        openWaUrl.hostname.endsWith('.internal') || openWaUrl.hostname.endsWith('.local')),
+    'OpenWA must use a dedicated Staging/Test HTTPS or private endpoint');
+    requireValue(backend.OPENWA_CREDENTIAL_FILE === '/run/aarast-openwa-staging/openwa.env' &&
+      !backend.OPENWA_SESSION_ID && !backend.OPENWA_API_KEY &&
+      !backend.AUTH_DEV_OTP_CODE &&
+      !Object.keys(backend).some((key) => key.startsWith('WHATSAPP_')),
+    'OpenWA must use only its dedicated Staging/Test credential file');
   } else {
     requireValue(!Object.keys(backend).some((key) =>
       key.startsWith('WHATSAPP_') || key.startsWith('OPENWA_') || key === 'AUTH_DEV_OTP_CODE'),
@@ -136,13 +152,23 @@ export function validateStagingConfig(config, { allowExampleValues = false, allo
   requireValue(backend.AARAST_MEDIA_PUBLIC_BASE_URL ===
     `${backend.AARAST_MEDIA_SIGNED_ENDPOINT}/${backend.AARAST_MEDIA_BUCKET}`,
     'Public media URL must match staging signed endpoint and bucket');
-  if (backend.PUSH_NOTIFICATIONS_ENABLED === 'true') {
-    requireValue(services.backend?.volumes?.length === 1 &&
-      services.backend.volumes[0].type === 'bind' &&
-      services.backend.volumes[0].read_only === true &&
-      services.backend.volumes[0].target === '/run/aarast-firebase' &&
-      services.backend.volumes[0].source?.toLowerCase().includes('staging'),
-      'Firebase credential must come from a stage-only read-only bind');
+  if (phoneAcceptance) {
+    const mounts = services.backend?.volumes ?? [];
+    const byTarget = (target) => mounts.find((mount) => mount.target === target);
+    requireValue(mounts.length === 2 &&
+      ['/run/aarast-firebase', '/run/aarast-openwa-staging'].every((target) =>
+        mounts.filter((mount) => mount.target === target).length === 1),
+    'Phone integrations require only Firebase and OpenWA credential binds');
+    for (const [target, label] of [
+      ['/run/aarast-firebase', 'Firebase'],
+      ['/run/aarast-openwa-staging', 'OpenWA'],
+    ]) {
+      const mount = byTarget(target);
+      requireValue(mount?.type === 'bind' && mount.read_only === true &&
+        mount.source?.replaceAll('\\', '/').startsWith('/var/lib/aarast-staging-test/') &&
+        !mount.source?.includes('/aarast-otp-staging/'),
+      `${label} credential must come from its separate Staging/Test read-only path`);
+    }
   }
   for (const [name, prefix] of [
     ['backend', 'aarast-staging-backend:'],
@@ -188,6 +214,84 @@ export function validateStagingConfig(config, { allowExampleValues = false, allo
   return errors;
 }
 
+export function validateOpenWaStagingConfig(config, { allowExampleValues = false } = {}) {
+  const errors = [];
+  const requireValue = (condition, message) => { if (!condition) errors.push(message); };
+  const projectName = 'aarast-full-staging-openwa-test-release';
+  const services = config.services ?? {};
+  const serviceNames = ['openwa', 'openwa-bootstrap', 'openwa-credential-rotator', 'storage-init'];
+  const secureRoot = '/var/lib/aarast-full-staging-openwa-test/secure';
+  requireValue(config.name === projectName, 'OpenWA must use its dedicated Staging project');
+  requireValue(serviceNames.every((name) => services[name]) &&
+    Object.keys(services).every((name) => serviceNames.includes(name)),
+  'OpenWA Staging service set must be isolated from Backend and old OTP lab');
+  requireValue(config.networks?.transport?.internal === true &&
+    config.networks?.egress?.internal !== true,
+  'OpenWA transport must be internal while its own egress stays separate');
+  for (const [name, network] of Object.entries(config.networks ?? {})) {
+    requireValue(['transport', 'egress'].includes(name) &&
+      network.name === `aarast_full_staging_openwa_test_release_${name}` &&
+      !network.external,
+    `OpenWA network ${name} must belong only to Staging`);
+  }
+  requireValue(!Object.keys(config.volumes ?? {}).length,
+    'OpenWA Staging must use only its dedicated encrypted host path');
+  for (const [name, service] of Object.entries(services)) {
+    requireValue(!service.container_name && !service.build,
+      `${name} must not reuse a container or build on the server`);
+    requireValue((service.ports ?? []).every((port) => port.host_ip === '127.0.0.1') &&
+      (name === 'openwa' || !(service.ports ?? []).length),
+    `${name} may publish only the OpenWA loopback operator port`);
+    for (const mount of service.volumes ?? []) {
+      const source = String(mount.source ?? '').replaceAll('\\', '/');
+      requireValue(!source.includes('/var/lib/aarast-otp-staging/') &&
+        mount.target !== '/run/aarast/production',
+      `${name} must not mount the old shared OpenWA session or Production credential`);
+      if (mount.target !== '/opt/bootstrap-openwa.mjs') {
+        requireValue(source === secureRoot || source.startsWith(`${secureRoot}/`),
+          `${name} requires its dedicated encrypted Staging OpenWA path`);
+      } else {
+        requireValue(mount.read_only === true &&
+          source.endsWith('/deploy/openwa-otp-staging/bootstrap-openwa.mjs'),
+        `${name} must mount the reviewed bootstrap script read-only`);
+      }
+    }
+  }
+  requireValue(services.openwa?.mem_limit === '2147483648' &&
+    services.openwa?.cpus === 1.5,
+  'OpenWA must retain its proven 2 GiB / 1.5 CPU limit');
+  requireValue((services.openwa?.ports ?? []).length === 1,
+    'OpenWA requires exactly one loopback operator port');
+  requireValue(services['storage-init']?.network_mode === 'none' &&
+    (services['storage-init']?.command ?? []).join('\n').includes(
+      '.aarast-full-staging-openwa-encrypted'),
+  'OpenWA storage init must require the dedicated encrypted mount marker');
+  for (const name of ['openwa-bootstrap', 'openwa-credential-rotator']) {
+    const env = services[name]?.environment ?? {};
+    requireValue(env.OPENWA_BOOTSTRAP_PROFILE === 'isolated-staging' &&
+      env.OPENWA_SESSION_NAME === 'aarast-full-staging-test-release',
+    `${name} requires the independent Staging session profile`);
+    requireValue(env.OPENWA_STAGING_TRANSPORT_SECRET_PATH ===
+      '/run/aarast/staging/openwa.env' &&
+      !env.OPENWA_PRODUCTION_TRANSPORT_SECRET_PATH,
+    `${name} must issue only a Staging transport credential`);
+    requireValue((services[name]?.volumes ?? []).some((mount) =>
+      mount.target === '/run/aarast/staging' &&
+      mount.source === `${secureRoot}/backend-secret`) &&
+      !(services[name]?.volumes ?? []).some((mount) =>
+        /production/i.test(mount.target)),
+    `${name} must mount only the dedicated Staging credential path`);
+  }
+  if (!allowExampleValues) {
+    requireValue(/^(?:sha256:[a-f0-9]{64}|[^\s]+@sha256:[a-f0-9]{64})$/.test(
+      services.openwa?.image ?? ''),
+    'OpenWA image must be an immutable reviewed ID or digest');
+    requireValue(!/replace-with|example\.invalid/i.test(JSON.stringify(config)),
+      'OpenWA Staging config still contains example placeholders');
+  }
+  return errors;
+}
+
 function isPublicHttpsOrigin(value) {
   if (typeof value !== 'string') return false;
   try {
@@ -202,7 +306,15 @@ function hostnameOf(value) {
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
-  const errors = validateStagingConfig(JSON.parse(readFileSync(0, 'utf8')));
+  const mode = process.argv[2];
+  if (mode && !['--phone-acceptance', '--openwa'].includes(mode)) {
+    console.error('Unknown staging validation mode');
+    process.exit(2);
+  }
+  const config = JSON.parse(readFileSync(0, 'utf8'));
+  const errors = mode === '--openwa'
+    ? validateOpenWaStagingConfig(config)
+    : validateStagingConfig(config, { phoneAcceptance: mode === '--phone-acceptance' });
   if (errors.length) {
     console.error(errors.join('\n'));
     process.exitCode = 1;

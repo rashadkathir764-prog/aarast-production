@@ -1,0 +1,21 @@
+# Apply only after independent Firebase and OpenWA credentials and transport
+# have passed the phone-acceptance isolation preflight. Core Compose stays off.
+services:
+  backend:
+    environment:
+      PUSH_NOTIFICATIONS_ENABLED: "true"
+      FIREBASE_PROJECT_ID: ${STAGING_FIREBASE_PROJECT_ID:?dedicated Staging Firebase project required}
+      GOOGLE_APPLICATION_CREDENTIALS: /run/aarast-firebase/service-account.json
+      AUTH_OTP_MODE: openwa
+      OPENWA_BASE_URL: ${STAGING_OPENWA_BASE_URL:?dedicated Staging OpenWA endpoint required}
+      OPENWA_CREDENTIAL_FILE: /run/aarast-openwa-staging/openwa.env
+      OPENWA_OTP_TIMEOUT_MS: "15000"
+    volumes:
+      - type: bind
+        source: ${STAGING_FIREBASE_CREDENTIAL_DIR:?Staging Firebase credential directory required}
+        target: /run/aarast-firebase
+        read_only: true
+      - type: bind
+        source: ${STAGING_OPENWA_CREDENTIAL_DIR:?dedicated Staging OpenWA credential directory required}
+        target: /run/aarast-openwa-staging
+        read_only: true

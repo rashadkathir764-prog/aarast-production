@@ -207,6 +207,47 @@ async function parseSecret(secretPath) {
   );
 }
 
+test('isolated Staging bootstrap creates no production transport credential', async (t) => {
+  const { server, state } = createOpenWaMock();
+  const baseUrl = await listen(server);
+  const paths = await createSecretPaths();
+  t.after(async () => {
+    server.close();
+    await fs.rm(paths.root, { recursive: true, force: true });
+  });
+
+  await runBootstrap(baseUrl, paths, {
+    OPENWA_BOOTSTRAP_PROFILE: 'isolated-staging',
+    OPENWA_SESSION_NAME: 'aarast-full-staging-test-release',
+  });
+
+  assert.equal(state.sessions.length, 1);
+  assert.equal(state.sessions[0].name, 'aarast-full-staging-test-release');
+  assert.equal(state.keys.length, 2);
+  assert.deepEqual(state.keys.map((key) => key.role).sort(),
+    ['transient_sender', 'viewer']);
+  assert.equal(state.keys.some((key) => /production/i.test(key.name)), false);
+  assert.equal(await fs.stat(paths.production).then(() => true, () => false), false);
+  assert.equal((await parseSecret(paths.staging)).OPENWA_SESSION_ID,
+    state.sessions[0].id);
+});
+
+test('isolated Staging bootstrap rejects the legacy shared session name', async (t) => {
+  const { server, state } = createOpenWaMock();
+  const baseUrl = await listen(server);
+  const paths = await createSecretPaths();
+  t.after(async () => {
+    server.close();
+    await fs.rm(paths.root, { recursive: true, force: true });
+  });
+
+  await assert.rejects(runBootstrap(baseUrl, paths, {
+    OPENWA_BOOTSTRAP_PROFILE: 'isolated-staging',
+  }), /distinct explicit session name/);
+  assert.equal(state.sessions.length, 0);
+  assert.equal(state.keys.length, 0);
+});
+
 test('fresh and recreated bootstrap stays idempotent and rotates a revoked key', async (t) => {
   const { server, state } = createOpenWaMock();
   const baseUrl = await listen(server);

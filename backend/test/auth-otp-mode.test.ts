@@ -820,3 +820,33 @@ test('a Staging deployment identity cannot boot against a Production database', 
     /Staging deployment identity/,
   );
 });
+
+test('Staging runtime rejects Production Firebase and the old shared OpenWA endpoint', () => {
+  const base = {
+    NODE_ENV: 'production',
+    JWT_SECRET: strongRuntimeJwtSecret,
+    AUTH_LOGIN_THROTTLE_PEPPER: 'Y9pM4vQ7xD2kR8nT5cF1hJ6wB3zL0sG4',
+    AARAST_DEPLOYMENT_TIER: 'staging',
+    DATABASE_URL: 'postgresql://runtime:unused@postgres:5432/aarast_staging',
+    POSTGRES_DB: 'aarast_staging',
+    AARAST_DB_EXPECTED_ROLE: 'aarast_stage_runtime',
+    AUTH_OTP_MODE: 'disabled',
+    PUSH_NOTIFICATIONS_ENABLED: 'false',
+  };
+  assert.throws(() => validateRuntimeEnvironment({
+    ...base,
+    PUSH_NOTIFICATIONS_ENABLED: 'true',
+    FIREBASE_PROJECT_ID: 'aarast-d62e9',
+    GOOGLE_APPLICATION_CREDENTIALS: '/run/aarast-firebase/service-account.json',
+  }, getJwtSecret), /Staging Firebase/);
+  assert.throws(() => validateRuntimeEnvironment({
+    ...base,
+    AUTH_OTP_MODE: 'openwa',
+    OPENWA_BASE_URL: 'http://aarast-openwa-otp:2785',
+    OPENWA_CREDENTIAL_FILE: '/run/aarast-openwa-staging/openwa.env',
+  }, getJwtSecret), /Staging OpenWA/);
+  assert.throws(() => validateRuntimeEnvironment({
+    ...base,
+    AUTH_OTP_MODE: 'whatsapp',
+  }, getJwtSecret), /Staging OpenWA/);
+});

@@ -64,6 +64,10 @@ void main() {
       expect(gradle, contains('AARAST_ANDROID_SIGNING_PROFILE'));
       expect(gradle, contains('qaIdentityRequested || qaSigningRequested'));
       expect(gradle, contains('AARAST_FIREBASE_PROJECT_ID"]?.trim() == "aarast-d62e9"'));
+      expect(gradle, contains('configuredAppId != "com.aarast.aarast_mobile.qa"'));
+      expect(gradle, contains('AARAST_FIREBASE_PROJECT_ID"]?.trim() != "aarast-staging-qa"'));
+      expect(gradle, contains('AARAST_FIREBASE_APP_ID"]?.trim() != "1:842961585206:android:7f7deeb6f5f765d14a0497"'));
+      expect(gradle, contains('AARAST_FIREBASE_MESSAGING_SENDER_ID"]?.trim() != "842961585206"'));
       expect(gradle, contains('if (stagingReleaseTaskRequested) return fromEnvironment'));
       expect(gradle, contains('Staging release requires staging API/invite hosts'));
     },

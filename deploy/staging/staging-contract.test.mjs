@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
 import { test } from 'node:test';
-import { validateStagingConfig } from './validate-config.mjs';
+import { validateOpenWaStagingConfig, validateStagingConfig } from './validate-config.mjs';
 
 const compose = JSON.parse(execFileSync('docker', [
   'compose', '--env-file', 'deploy/staging/.env.example',
@@ -12,6 +12,16 @@ const buildCompose = JSON.parse(execFileSync('docker', [
   '-f', 'deploy/staging/docker-compose.yml',
   '-f', 'deploy/staging/docker-compose.build.yml',
   'config', '--format', 'json',
+], { encoding: 'utf8' }));
+const phoneCompose = JSON.parse(execFileSync('docker', [
+  'compose', '--env-file', 'deploy/staging/.env.example',
+  '--env-file', 'deploy/staging/phone.env.example',
+  '-f', 'deploy/staging/docker-compose.yml',
+  '-f', 'deploy/staging/docker-compose.phone.yml', 'config', '--format', 'json',
+], { encoding: 'utf8' }));
+const openWaCompose = JSON.parse(execFileSync('docker', [
+  'compose', '--env-file', 'deploy/staging/openwa.env.example',
+  '-f', 'deploy/staging/docker-compose.openwa.yml', 'config', '--format', 'json',
 ], { encoding: 'utf8' }));
 const revision = 'a'.repeat(40);
 const buildOnly = JSON.parse(execFileSync('docker', [
@@ -109,6 +119,76 @@ test('Core staging accepts absent external integrations and rejects unsafe enabl
   wrongRuntimeIdentity.services['postgres-roles'].environment.AARAST_DB_RUNTIME_USER =
     'production_runtime';
   assert.notDeepEqual(validateStagingConfig(wrongRuntimeIdentity, { allowExampleValues: true }), []);
+});
+
+test('phone integration overlay uses separate Staging Firebase and OpenWA contracts', () => {
+  assert.deepEqual(validateStagingConfig(phoneCompose, {
+    allowExampleValues: true, phoneAcceptance: true,
+  }), []);
+  const backend = phoneCompose.services.backend;
+  assert.equal(backend.environment.AUTH_OTP_MODE, 'openwa');
+  assert.equal(backend.environment.PUSH_NOTIFICATIONS_ENABLED, 'true');
+  assert.equal(backend.environment.FIREBASE_PROJECT_ID, 'aarast-staging-qa');
+  assert.equal(backend.environment.OPENWA_CREDENTIAL_FILE,
+    '/run/aarast-openwa-staging/openwa.env');
+  assert.equal(backend.volumes.length, 2);
+  for (const [mutate, expected] of [
+    [(x) => { x.services.backend.environment.FIREBASE_PROJECT_ID = 'aarast-d62e9'; }, /Firebase/],
+    [(x) => { delete x.services.backend.environment.GOOGLE_APPLICATION_CREDENTIALS; }, /Firebase/],
+    [(x) => { x.services.backend.environment.OPENWA_BASE_URL = 'http://aarast-openwa-otp:2785'; }, /OpenWA/],
+    [(x) => { x.services.backend.environment.OPENWA_CREDENTIAL_FILE = '/run/aarast/openwa.env'; }, /OpenWA/],
+    [(x) => { x.services.backend.environment.AUTH_OTP_MODE = 'whatsapp'; }, /OpenWA/],
+    [(x) => { x.services.backend.volumes[1].source = '/var/lib/aarast-otp-staging/secure/backend-secret'; }, /OpenWA/],
+  ]) {
+    const mutated = structuredClone(phoneCompose);
+    mutate(mutated);
+    assert.match(validateStagingConfig(mutated, {
+      allowExampleValues: true, phoneAcceptance: true,
+    }).join('\n'), expected);
+  }
+});
+
+test('independent OpenWA stack cannot mount the old shared session or credentials', () => {
+  assert.deepEqual(validateOpenWaStagingConfig(openWaCompose, { allowExampleValues: true }), []);
+  assert.match(validateOpenWaStagingConfig(openWaCompose).join('\n'),
+    /immutable|placeholder/i);
+  assert.equal(openWaCompose.name, 'aarast-full-staging-openwa-test-release');
+  assert.deepEqual(Object.keys(openWaCompose.services).sort(),
+    ['openwa', 'openwa-bootstrap', 'openwa-credential-rotator', 'storage-init']);
+  assert.equal(openWaCompose.services.openwa.mem_limit, '2147483648');
+  assert.deepEqual(openWaCompose.services.openwa.ports.map((port) => port.host_ip),
+    ['127.0.0.1']);
+  assert.equal(openWaCompose.services['openwa-bootstrap'].environment.OPENWA_BOOTSTRAP_PROFILE,
+    'isolated-staging');
+  assert.equal(openWaCompose.services['openwa-credential-rotator'].environment.OPENWA_BOOTSTRAP_PROFILE,
+    'isolated-staging');
+  assert.equal(openWaCompose.services['openwa-bootstrap'].environment.OPENWA_SESSION_NAME,
+    'aarast-full-staging-test-release');
+  for (const service of Object.values(openWaCompose.services)) {
+    assert.equal(service.build, undefined);
+    for (const volume of service.volumes ?? []) {
+      assert.equal(/aarast-otp-staging|\/run\/aarast\/production/i.test(
+        `${volume.source} ${volume.target}`), false);
+    }
+  }
+  for (const name of Object.keys(openWaCompose.networks)) {
+    assert.match(openWaCompose.networks[name].name,
+      /^aarast_full_staging_openwa_test_release_/);
+  }
+  const sharedMount = structuredClone(openWaCompose);
+  sharedMount.services.openwa.volumes[0].source =
+    '/var/lib/aarast-otp-staging/secure/openwa';
+  assert.match(validateOpenWaStagingConfig(sharedMount, { allowExampleValues: true }).join('\n'),
+    /old shared|dedicated/i);
+  const sharedSession = structuredClone(openWaCompose);
+  sharedSession.services['openwa-bootstrap'].environment.OPENWA_SESSION_NAME =
+    'aarast-otp-staging';
+  assert.match(validateOpenWaStagingConfig(sharedSession, { allowExampleValues: true }).join('\n'),
+    /session/i);
+  const publicPort = structuredClone(openWaCompose);
+  publicPort.services.openwa.ports[0].host_ip = '0.0.0.0';
+  assert.match(validateOpenWaStagingConfig(publicPort, { allowExampleValues: true }).join('\n'),
+    /loopback/i);
 });
 
 test('build topology pins QA Admin and App Link inputs to staging origins', () => {

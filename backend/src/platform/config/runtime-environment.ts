@@ -97,6 +97,50 @@ export function validateRuntimeEnvironment(
     );
   }
 
+  if (deploymentTier === "staging") {
+    if (pushNotificationsEnabled === "true") {
+      if (
+        environment.FIREBASE_PROJECT_ID !== "aarast-staging-qa" ||
+        environment.GOOGLE_APPLICATION_CREDENTIALS !==
+          "/run/aarast-firebase/service-account.json"
+      ) {
+        throw new Error("Staging Firebase must use its dedicated project and credential path");
+      }
+    } else if (
+      pushNotificationsEnabled !== "false" ||
+      environment.FIREBASE_PROJECT_ID?.trim() ||
+      environment.GOOGLE_APPLICATION_CREDENTIALS?.trim()
+    ) {
+      throw new Error("Staging Firebase must be explicitly disabled without credentials");
+    }
+    if (otpMode === "openwa") {
+      let endpoint: URL;
+      try {
+        endpoint = new URL(environment.OPENWA_BASE_URL ?? "");
+      } catch {
+        throw new Error("Staging OpenWA requires an isolated endpoint");
+      }
+      if (
+        !/(?:staging|test)/i.test(endpoint.hostname) ||
+        /^(?:aarast-openwa-otp|otp-lab-api\.shadowgardn\.com)$/i.test(
+          endpoint.hostname,
+        ) ||
+        environment.OPENWA_CREDENTIAL_FILE !==
+          "/run/aarast-openwa-staging/openwa.env" ||
+        environment.OPENWA_SESSION_ID?.trim() ||
+        environment.OPENWA_API_KEY?.trim()
+      ) {
+        throw new Error("Staging OpenWA must use its dedicated endpoint and credential file");
+      }
+    } else if (
+      otpMode !== "disabled" ||
+      Object.keys(environment).some((key) => key.startsWith("OPENWA_") &&
+        Boolean(environment[key]?.trim()))
+    ) {
+      throw new Error("Staging OpenWA must be isolated or explicitly disabled");
+    }
+  }
+
   validateProductionMediaEndpoints(environment);
 
   if (otpMode === "whatsapp") {

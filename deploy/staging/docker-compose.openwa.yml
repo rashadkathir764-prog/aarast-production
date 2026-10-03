@@ -1,0 +1,156 @@
+name: aarast-full-staging-openwa-test-release
+
+x-logging: &bounded-logging
+  driver: json-file
+  options:
+    max-size: 10m
+    max-file: "3"
+
+services:
+  storage-init:
+    image: node@sha256:16e22a550f3863206a3f701448c45f7912c6896a62de43add43bb9c86130c3e2
+    restart: "no"
+    user: "0:0"
+    command:
+      - sh
+      - -ec
+      - |
+        test -f /secure/.aarast-full-staging-openwa-encrypted
+        mkdir -p /secure/openwa /secure/backend-secret /secure/operator-secret
+        chown 996:996 /secure/openwa
+        chown 1000:1000 /secure/backend-secret /secure/operator-secret
+        chmod 0700 /secure/openwa /secure/backend-secret /secure/operator-secret
+    volumes:
+      - ${STAGING_OPENWA_SECURE_DATA_PATH:?dedicated encrypted Staging OpenWA path required}:/secure
+    network_mode: none
+    read_only: true
+    cap_drop: [ALL]
+    cap_add: [CHOWN, FOWNER]
+    security_opt: [no-new-privileges:true]
+    pids_limit: 32
+    mem_limit: 32m
+    logging: *bounded-logging
+
+  openwa:
+    image: ${STAGING_OPENWA_IMAGE:?reviewed immutable Staging OpenWA image required}
+    pull_policy: never
+    restart: "on-failure:5"
+    init: true
+    depends_on:
+      storage-init:
+        condition: service_completed_successfully
+    environment:
+      NODE_ENV: production
+      PORT: "2785"
+      API_MASTER_KEY: ${STAGING_OPENWA_MASTER_KEY:?new Staging master key required}
+      API_KEY_PEPPER: ${STAGING_OPENWA_API_KEY_PEPPER:?new Staging API pepper required}
+      DATABASE_TYPE: sqlite
+      DATABASE_NAME: /app/data/openwa.sqlite
+      DATABASE_SYNCHRONIZE: "false"
+      MAIN_DATABASE_SYNCHRONIZE: "false"
+      ENGINE_TYPE: whatsapp-web.js
+      PLUGINS_ENABLED: "false"
+      REDIS_ENABLED: "false"
+      QUEUE_ENABLED: "false"
+      SEARCH_ENABLED: "false"
+      MAX_CONCURRENT_SESSIONS: "1"
+      AUTO_START_SESSIONS: "true"
+      LOG_LEVEL: info
+    volumes:
+      - ${STAGING_OPENWA_SECURE_DATA_PATH:?dedicated encrypted Staging OpenWA path required}/openwa:/app/data
+    ports:
+      - "127.0.0.1:${STAGING_OPENWA_OPERATOR_PORT:?unused loopback operator port required}:2785"
+    read_only: true
+    tmpfs:
+      - /tmp:rw,nosuid,nodev,size=536870912
+    cap_drop: [ALL]
+    cap_add: [CHOWN, DAC_OVERRIDE, FOWNER, SETGID, SETUID]
+    security_opt: [no-new-privileges:true]
+    pids_limit: 512
+    mem_limit: 2g
+    cpus: 1.5
+    healthcheck:
+      test: [CMD, curl, -fsS, "http://localhost:2785/api/health/ready"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+      start_period: 30s
+    stop_grace_period: 45s
+    logging: *bounded-logging
+    networks: [transport, egress]
+
+  openwa-bootstrap:
+    image: node@sha256:16e22a550f3863206a3f701448c45f7912c6896a62de43add43bb9c86130c3e2
+    pull_policy: never
+    restart: "no"
+    depends_on:
+      openwa:
+        condition: service_healthy
+    environment: &bootstrap-env
+      OPENWA_BOOTSTRAP_PROFILE: isolated-staging
+      OPENWA_BASE_URL: http://openwa:2785
+      OPENWA_MASTER_KEY: ${STAGING_OPENWA_MASTER_KEY:?new Staging master key required}
+      OPENWA_SESSION_NAME: ${STAGING_OPENWA_SESSION_NAME:?new Staging session name required}
+      OPENWA_STAGING_TRANSPORT_SECRET_PATH: /run/aarast/staging/openwa.env
+      OPENWA_AUDIT_SECRET_PATH: /run/aarast/operator/openwa-audit.env
+      OPENWA_BOOTSTRAP_LOCK_PATH: /run/aarast/operator/bootstrap.lock
+    volumes: &bootstrap-volumes
+      - ../openwa-otp-staging/bootstrap-openwa.mjs:/opt/bootstrap-openwa.mjs:ro
+      - ${STAGING_OPENWA_SECURE_DATA_PATH:?dedicated encrypted Staging OpenWA path required}/backend-secret:/run/aarast/staging
+      - ${STAGING_OPENWA_SECURE_DATA_PATH:?dedicated encrypted Staging OpenWA path required}/operator-secret:/run/aarast/operator
+    command: [node, /opt/bootstrap-openwa.mjs]
+    user: "1000:1000"
+    read_only: true
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=16777216
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    pids_limit: 64
+    mem_limit: 128m
+    logging: *bounded-logging
+    networks: [transport]
+
+  openwa-credential-rotator:
+    image: node@sha256:16e22a550f3863206a3f701448c45f7912c6896a62de43add43bb9c86130c3e2
+    pull_policy: never
+    restart: on-failure
+    init: true
+    depends_on:
+      openwa:
+        condition: service_healthy
+      openwa-bootstrap:
+        condition: service_completed_successfully
+    environment:
+      <<: *bootstrap-env
+      OPENWA_ROTATION_CHECK_SECONDS: "21600"
+      OPENWA_ROTATION_RETRY_SECONDS: "300"
+    volumes: *bootstrap-volumes
+    command:
+      - sh
+      - -ec
+      - |
+        sleep "$$OPENWA_ROTATION_CHECK_SECONDS"
+        while :; do
+          if node /opt/bootstrap-openwa.mjs; then
+            sleep "$$OPENWA_ROTATION_CHECK_SECONDS"
+          else
+            sleep "$$OPENWA_ROTATION_RETRY_SECONDS"
+          fi
+        done
+    user: "1000:1000"
+    read_only: true
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=16777216
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    pids_limit: 64
+    mem_limit: 128m
+    logging: *bounded-logging
+    networks: [transport]
+
+networks:
+  transport:
+    name: aarast_full_staging_openwa_test_release_transport
+    internal: true
+  egress:
+    name: aarast_full_staging_openwa_test_release_egress

@@ -95,6 +95,10 @@ services:
       media:
         condition: service_healthy
     environment:
+      # mc admin credential encryption otherwise reaches the 128 MiB cgroup cap.
+      GOMEMLIMIT: 96MiB
+      GOMAXPROCS: "1"
+      GOGC: "25"
       AARAST_MEDIA_BUCKET: ${STAGING_MEDIA_BUCKET:?staging media bucket required}
       MINIO_ROOT_USER: ${STAGING_MEDIA_ROOT_USER:?staging media root user required}
       MINIO_ROOT_PASSWORD: ${STAGING_MEDIA_ROOT_PASSWORD:?staging media root password required}

@@ -31,6 +31,10 @@ export function validateStagingConfig(config, {
   const errors = [];
   const requireValue = (condition, message) => { if (!condition) errors.push(message); };
   const services = config.services ?? {};
+  for (const [key, value] of Object.entries({ GOMEMLIMIT: '96MiB', GOMAXPROCS: '1', GOGC: '25' })) {
+    requireValue(services['media-init']?.environment?.[key] === value,
+      `media-init Go runtime must retain ${key}=${value} under its 128 MiB limit`);
+  }
   const routeProfile = services.backend?.environment?.AARAST_STAGING_ROUTE_PROFILE ?? 'isolated';
   requireValue(['isolated', 'aarast-controlled-cutover'].includes(routeProfile), 'Unknown staging route profile');
   const cutover = routeProfile === 'aarast-controlled-cutover';

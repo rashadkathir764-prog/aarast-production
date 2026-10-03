@@ -71,5 +71,13 @@ and device ACK. Firebase initialization is not real device Push delivery.
    delete old resources, prune Docker, or restart shared Traefik.
 
 No merge to `main`, public release or APK build is part of this cutover.
+The first server attempt exposed a `media-init` OOM at the unchanged 128 MiB
+hard limit during `mc admin user svcacct add`. Its Go runtime now uses
+`GOMEMLIMIT=96MiB`, `GOMAXPROCS=1`, and `GOGC=25`; the configuration gate rejects
+removal of these settings. A local test of the pinned client and real MinIO
+completed initialization at an observed peak of 82,804,736 bytes, compared
+with 134,217,728 bytes for the original runtime settings. Repeat initialization
+and actual server cgroup evidence remain deployment gates. These settings do
+not increase the hard memory/CPU limits or change the storage access policy.
 After server stability is proven, signed Release APK and real phone acceptance
 are separate gates covering Push, App Links, roles and journeys.

@@ -202,6 +202,17 @@ test('build topology pins QA Admin and App Link inputs to staging origins', () =
   }).join('\n'), /QA App Link host/);
 });
 
+test('media initializer Go runtime stays within the unchanged hard resource limit', () => {
+  const expected = { GOMEMLIMIT: '96MiB', GOMAXPROCS: '1', GOGC: '25' };
+  for (const [key, value] of Object.entries(expected)) {
+    assert.equal(compose.services['media-init'].environment[key], value);
+    const weakened = structuredClone(compose);
+    delete weakened.services['media-init'].environment[key];
+    assert.ok(validateStagingConfig(weakened, { allowExampleValues: true })
+      .some((error) => error.includes('media-init Go runtime')));
+  }
+});
+
 test('temporary jobs have enforced Compose resource limits', () => {
   for (const [name, memory, cpus] of [
     ['postgres-roles', '134217728', 0.20],

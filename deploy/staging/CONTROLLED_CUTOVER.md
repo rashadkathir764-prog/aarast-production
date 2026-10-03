@@ -71,6 +71,15 @@ and device ACK. Firebase initialization is not real device Push delivery.
    delete old resources, prune Docker, or restart shared Traefik.
 
 No merge to `main`, public release or APK build is part of this cutover.
+Backend joins the existing Aarast edge only for its proxy route. The edge also
+exports the old generic `postgres`, `redis`, and `media` aliases, so the cutover
+Backend must never use those names for its dependencies. Its private network
+provides `aarast-staging-postgres`, `aarast-staging-redis`, and
+`aarast-staging-media`; the cutover environment uses these exact aliases and
+the config/runtime guards reject ambiguous database or dependency endpoints.
+Before starting Backend, resolve each unique alias on its actual network set
+and compare the addresses to the new service IDs. Leave old DB/Redis networks,
+data and credentials unchanged.
 The first server attempt exposed a `media-init` OOM at the unchanged 128 MiB
 hard limit during `mc admin user svcacct add`. Its Go runtime now uses
 `GOMEMLIMIT=96MiB`, `GOMAXPROCS=1`, and `GOGC=25`; the configuration gate rejects

@@ -821,6 +821,27 @@ test('a Staging deployment identity cannot boot against a Production database', 
   );
 });
 
+test('controlled cutover requires the unique Staging database alias and rejects ambiguous legacy DNS', () => {
+  const base = {
+    NODE_ENV: 'production', JWT_SECRET: strongRuntimeJwtSecret,
+    AUTH_LOGIN_THROTTLE_PEPPER: 'Y9pM4vQ7xD2kR8nT5cF1hJ6wB3zL0sG4',
+    AARAST_DEPLOYMENT_TIER: 'staging',
+    AARAST_STAGING_ROUTE_PROFILE: 'aarast-controlled-cutover',
+    DATABASE_URL: 'postgresql://runtime:unused@aarast-staging-postgres:5432/aarast_staging',
+    POSTGRES_DB: 'aarast_staging', AARAST_DB_EXPECTED_ROLE: 'aarast_stage_runtime',
+    AUTH_OTP_MODE: 'disabled', PUSH_NOTIFICATIONS_ENABLED: 'false',
+  };
+  assert.doesNotThrow(() => validateRuntimeEnvironment(base, getJwtSecret));
+  for (const hostname of ['postgres', 'aarast-postgres-prod', 'production-db']) {
+    assert.throws(() => validateRuntimeEnvironment({ ...base,
+      DATABASE_URL: `postgresql://runtime:unused@${hostname}:5432/aarast_staging`,
+    }, getJwtSecret), /Staging deployment identity/);
+  }
+  assert.throws(() => validateRuntimeEnvironment({ ...base,
+    AARAST_STAGING_ROUTE_PROFILE: 'unknown',
+  }, getJwtSecret), /Staging deployment identity/);
+});
+
 test('Staging runtime rejects Production Firebase and the old shared OpenWA endpoint', () => {
   const base = {
     NODE_ENV: 'production',

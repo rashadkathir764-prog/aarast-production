@@ -133,7 +133,9 @@ export function validateStagingConfig(config, {
       `${name} must retain its effective memory and CPU limits`);
   }
   for (const name of ['postgres', 'postgres-roles', 'migrate', 'redis', 'media-init', 'postgres-backup']) {
-    requireValue(services[name]?.networks?.private === null && !services[name]?.networks?.edge,
+    const privateConfig = cutover && ['postgres', 'redis'].includes(name)
+      ? { aliases: [`aarast-staging-${name}`] } : null;
+    requireValue(JSON.stringify(services[name]?.networks) === JSON.stringify({ private: privateConfig }),
       `${name} must stay private`);
   }
   const backend = services.backend?.environment ?? {};
@@ -185,9 +187,16 @@ export function validateStagingConfig(config, {
       key.startsWith('WHATSAPP_') || key.startsWith('OPENWA_') || key === 'AUTH_DEV_OTP_CODE'),
     'Disabled Staging OTP must not reference Meta, OpenWA or development credentials');
   }
-  requireValue(backend.REDIS_URL === 'redis://redis:6379' && backend.AARAST_MEDIA_ENDPOINT === 'http://media:9000',
+  if (cutover) {
+    for (const name of ['postgres', 'redis', 'media']) {
+      requireValue(services[name]?.networks?.private?.aliases?.includes(`aarast-staging-${name}`),
+        `${name} cutover requires unique private DNS`);
+    }
+  }
+  requireValue(backend.REDIS_URL === (cutover ? 'redis://aarast-staging-redis:6379' : 'redis://redis:6379') &&
+    backend.AARAST_MEDIA_ENDPOINT === (cutover ? 'http://aarast-staging-media:9000' : 'http://media:9000'),
     'Backend must use staging Redis and media');
-  requireValue(backend.DATABASE_URL?.includes('@postgres:5432/') &&
+  requireValue(backend.DATABASE_URL?.includes(cutover ? '@aarast-staging-postgres:5432/' : '@postgres:5432/') &&
     migrate.DATABASE_URL?.includes('@postgres:5432/') &&
     backend.DATABASE_URL !== migrate.DATABASE_URL,
     'Runtime and migrator database URLs must be distinct and local');

@@ -30,6 +30,9 @@ export function validateRuntimeEnvironment(
     throw new Error("AARAST_DEPLOYMENT_TIER must be staging when set");
   }
   if (deploymentTier === "staging") {
+    const routeProfile = environment.AARAST_STAGING_ROUTE_PROFILE?.trim() || "isolated";
+    const expectedDatabaseHost = routeProfile === "aarast-controlled-cutover"
+      ? "aarast-staging-postgres" : "postgres";
     let databaseUrl: URL;
     try {
       databaseUrl = new URL(environment.DATABASE_URL!);
@@ -40,7 +43,8 @@ export function validateRuntimeEnvironment(
       environment.NODE_ENV !== "production" ||
       environment.POSTGRES_DB !== "aarast_staging" ||
       environment.AARAST_DB_EXPECTED_ROLE !== "aarast_stage_runtime" ||
-      databaseUrl.hostname !== "postgres" ||
+      !["isolated", "aarast-controlled-cutover"].includes(routeProfile) ||
+      databaseUrl.hostname !== expectedDatabaseHost ||
       databaseUrl.pathname !== "/aarast_staging"
     ) {
       throw new Error("Staging deployment identity requires the staging database and runtime role");

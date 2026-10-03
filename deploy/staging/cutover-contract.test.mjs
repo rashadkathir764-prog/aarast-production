@@ -19,6 +19,12 @@ function cutover() {
   const x = structuredClone(fixture);
   const backend = x.services.backend.environment;
   backend.AARAST_STAGING_ROUTE_PROFILE = profile;
+  backend.DATABASE_URL = backend.DATABASE_URL.replace('@postgres:', '@aarast-staging-postgres:');
+  backend.REDIS_URL = 'redis://aarast-staging-redis:6379';
+  backend.AARAST_MEDIA_ENDPOINT = 'http://aarast-staging-media:9000';
+  for (const name of ['postgres', 'redis', 'media']) {
+    x.services[name].networks.private = { aliases: [`aarast-staging-${name}`] };
+  }
   backend.CORS_ORIGINS = 'https://aarast-admin.shadowgardn.com';
   backend.INVITE_PUBLIC_ORIGIN = invite;
   backend.AARAST_MEDIA_SIGNED_ENDPOINT = 'https://aarast-media.shadowgardn.com';
@@ -69,6 +75,9 @@ test('cutover is an exact route/port/network contract, never permission to reuse
     x => { x.services.media.ports = [{ host_ip: '127.0.0.1', published: '9000', target: 9000 }]; },
     x => { x.services.backend.environment.INVITE_PUBLIC_ORIGIN = 'https://aarast.shadowgardn.com.evil.example'; },
     x => { x.services.backend.environment.REDIS_URL = 'redis://aarast-production:6379'; },
+    x => { x.services.backend.environment.DATABASE_URL = x.services.backend.environment.DATABASE_URL.replace('@aarast-staging-postgres:', '@postgres:'); },
+    x => { x.services.backend.environment.REDIS_URL = 'redis://redis:6379'; },
+    x => { x.services.backend.environment.AARAST_MEDIA_ENDPOINT = 'http://media:9000'; },
     x => { x.volumes.postgres_data.name = 'aarast-production-ytxoik_aarast_postgres_data'; },
     x => { x.services.backend.environment.FIREBASE_PROJECT_ID = 'aarast-d62e9'; },
     x => { x.services.backend.environment.OPENWA_SESSION_ID = 'production'; },
@@ -109,4 +118,26 @@ test('actual cutover overlays render without server builds and preserve private 
   assert.deepEqual(validateStagingConfig(built, {
     allowExampleValues: true, phoneAcceptance: true, allowBuildTopology: true,
   }), []);
+});
+
+test('cutover Backend uses unique private aliases even when the legacy edge exports generic service names', () => {
+  const resolved = JSON.parse(execFileSync('docker', [
+    'compose', '--env-file', 'deploy/staging/.env.example',
+    '--env-file', 'deploy/staging/phone.env.example',
+    '--env-file', 'deploy/staging/cutover.env.example',
+    '-f', 'deploy/staging/docker-compose.yml',
+    '-f', 'deploy/staging/docker-compose.phone.yml',
+    '-f', 'deploy/staging/docker-compose.cutover.yml', 'config', '--format', 'json',
+  ], { encoding: 'utf8' }));
+  const env = resolved.services.backend.environment;
+  assert.equal(new URL(env.DATABASE_URL).hostname, 'aarast-staging-postgres');
+  assert.equal(env.REDIS_URL, 'redis://aarast-staging-redis:6379');
+  assert.equal(env.AARAST_MEDIA_ENDPOINT, 'http://aarast-staging-media:9000');
+  for (const name of ['postgres', 'redis', 'media']) {
+    assert.ok(resolved.services[name].networks.private.aliases.includes(`aarast-staging-${name}`));
+    const missing = structuredClone(resolved);
+    delete missing.services[name].networks.private.aliases;
+    assert.ok(validateStagingConfig(missing, { allowExampleValues: true, phoneAcceptance: true })
+      .some(error => error.includes('unique private DNS')));
+  }
 });

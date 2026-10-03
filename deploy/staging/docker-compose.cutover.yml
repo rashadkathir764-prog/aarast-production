@@ -1,9 +1,20 @@
 # Owner-approved replacement of pre-launch Aarast routes, not a new environment.
 # Existing DB/media volumes and old containers must be backed up and preserved.
 services:
+  postgres:
+    networks:
+      private:
+        aliases: [aarast-staging-postgres]
+  redis:
+    networks:
+      private:
+        aliases: [aarast-staging-redis]
   backend:
     environment:
       AARAST_STAGING_ROUTE_PROFILE: aarast-controlled-cutover
+      DATABASE_URL: postgresql://${STAGING_DB_RUNTIME_USER:?staging runtime role required}:${STAGING_DB_RUNTIME_PASSWORD:?staging runtime password required}@aarast-staging-postgres:5432/${STAGING_DB_NAME:?staging database name required}?schema=public
+      REDIS_URL: redis://aarast-staging-redis:6379
+      AARAST_MEDIA_ENDPOINT: http://aarast-staging-media:9000
     networks:
       edge:
         aliases: [aarast-backend-prod]
@@ -17,6 +28,9 @@ services:
       edge:
         aliases: [aarast-public-site-prod]
   media:
+    networks:
+      private:
+        aliases: [aarast-staging-media]
     ports: !reset []
     labels:
       traefik.enable: "true"

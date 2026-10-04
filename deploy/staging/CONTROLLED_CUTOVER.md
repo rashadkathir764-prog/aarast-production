@@ -90,3 +90,24 @@ and actual server cgroup evidence remain deployment gates. These settings do
 not increase the hard memory/CPU limits or change the storage access policy.
 After server stability is proven, signed Release APK and real phone acceptance
 are separate gates covering Push, App Links, roles and journeys.
+
+## Signed Staging/Test Release after cutover
+
+The Android Release uses `AARAST_STAGING_ROUTE_PROFILE=aarast-controlled-cutover`
+as an explicit Dart define, alongside `AARAST_ENVIRONMENT=staging`. This profile
+accepts only `https://aarast-api.shadowgardn.com` and invite host
+`aarast.shadowgardn.com`. Missing/isolated profiles still reject these reused
+hosts; unknown profiles and a cutover profile outside Staging fail closed.
+The existing technical package `com.aarast.aarast_mobile.qa`, `aarast-qa`
+scheme, independent QA keystore, and `aarast-staging-qa` Firebase app remain
+mandatory. No login bypass, old Firebase, or default/debug signer is permitted.
+
+Run `node --test scripts/test-android-release-config.mjs` with `JAVA_HOME` and
+the pinned Gradle distribution installed (or `GRADLE_HOME` set). The tests
+execute the actual Kotlin release validation functions in a temporary Gradle
+project without Android plugins, signing secrets, or APK generation. Positive
+controls protect the isolated and unchanged production configurations.
+After building from a clean committed candidate, verify APK package, Release
+debuggability, signer fingerprint, Firebase resources and App Links against
+the live invite site's `assetlinks.json`. Compilation is not phone acceptance:
+OTP, real device Push, links, role permissions and journeys require device proof.

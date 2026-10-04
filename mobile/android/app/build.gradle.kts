@@ -91,6 +91,12 @@ fun validateReleaseDartDefines(requireStoreObservability: Boolean) {
     }
 
     val configuredAppId = System.getenv("AARAST_ANDROID_APPLICATION_ID")?.trim().orEmpty()
+    val routeProfile = defines["AARAST_STAGING_ROUTE_PROFILE"]?.trim() ?: "isolated"
+    val controlledCutover = routeProfile == "aarast-controlled-cutover"
+    if (routeProfile !in setOf("isolated", "aarast-controlled-cutover") ||
+        (controlledCutover && defines["AARAST_ENVIRONMENT"]?.trim() != "staging")) {
+        throw GradleException("Staging route profile is invalid or selected outside Staging.")
+    }
     val qaSigningRequested = System.getenv("AARAST_ANDROID_SIGNING_PROFILE")?.trim() == "qa"
     val qaIdentityRequested = configuredAppId.isNotEmpty() &&
         configuredAppId != "com.aarast.aarast_mobile"
@@ -99,11 +105,17 @@ fun validateReleaseDartDefines(requireStoreObservability: Boolean) {
         val inviteHost = defines["AARAST_INVITE_HOST"]?.trim().orEmpty()
         val inviteScheme = defines["AARAST_INVITE_SCHEME"]?.trim().orEmpty()
         val qaLabel = System.getenv("AARAST_ANDROID_APP_LABEL")?.trim().orEmpty()
-        if (defines["AARAST_ENVIRONMENT"]?.trim() != "staging" ||
+        val invalidStagingRoutes = if (controlledCutover) {
+            apiBaseUrl != "https://aarast-api.shadowgardn.com" ||
+                inviteHost != "aarast.shadowgardn.com"
+        } else {
             uri.host.equals("aarast-api.shadowgardn.com", ignoreCase = true) ||
-            uri.host.equals("aarast.shadowgardn.com", ignoreCase = true) ||
+                uri.host.equals("aarast.shadowgardn.com", ignoreCase = true) ||
+                inviteHost.equals("aarast.shadowgardn.com", ignoreCase = true)
+        }
+        if (defines["AARAST_ENVIRONMENT"]?.trim() != "staging" ||
+            invalidStagingRoutes ||
             inviteHost.isEmpty() ||
-            inviteHost.equals("aarast.shadowgardn.com", ignoreCase = true) ||
             !inviteHost.matches(Regex("^[a-zA-Z0-9.-]+$")) ||
             inviteScheme != "aarast-qa" ||
             !qaIdentityRequested ||

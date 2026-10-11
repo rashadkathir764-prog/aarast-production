@@ -1,5 +1,5 @@
 import { NotFoundException } from '@nestjs/common';
-import { CostPaymentType, PaymentScheduleStatus, Prisma, WeddingCostStatus, type WeddingCost } from '@prisma/client';
+import { CostPaymentType, PaymentScheduleStatus, Prisma, WeddingCostStatus, type CostPayer, type WeddingCost } from '@prisma/client';
 import type { PrismaService } from '../../../platform/database/prisma.service';
 import { weddingCostResponseInclude } from '../public/wedding-cost.presenter';
 
@@ -41,6 +41,8 @@ type CostData = {
   paidAmount: Prisma.Decimal;
   agreementDate: Date | null;
   status: WeddingCostStatus;
+  payer?: CostPayer | null;
+  payerName?: string | null;
   note: string | null;
 };
 type CostUpdate = Partial<Omit<CostData, 'weddingPlanId'>>;

@@ -1,4 +1,6 @@
+import { CostPayer } from "@prisma/client";
 import {
+  IsEnum,
   IsISO8601,
   IsNotEmpty,
   IsOptional,
@@ -42,6 +44,15 @@ export class UpdateWeddingCostDto {
   @IsISO8601({ strict: true, strictSeparator: true })
   @IsOptional()
   agreementDate?: string | null;
+
+  @IsEnum(CostPayer)
+  @IsOptional()
+  payer?: CostPayer | null;
+
+  @IsString()
+  @MaxLength(120)
+  @IsOptional()
+  payerName?: string | null;
 
   @IsString()
   @MaxLength(2000)

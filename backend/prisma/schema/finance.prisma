@@ -16,6 +16,36 @@ enum PaymentScheduleStatus {
   CANCELLED
 }
 
+// Where the wedding money comes from. A LOAN is money that must be paid back.
+enum FundingSourceKind {
+  SAVINGS
+  FAMILY_SUPPORT
+  GIFT
+  LOAN
+  OTHER
+}
+
+// PLEDGED: promised and not yet in hand. RECEIVED: in hand.
+enum FundingSourceStatus {
+  PLEDGED
+  RECEIVED
+}
+
+enum LoanRepaymentStatus {
+  PLANNED
+  PAID
+  CANCELLED
+}
+
+// Who is expected to pay a cost.
+enum CostPayer {
+  GROOM
+  BRIDE
+  FAMILY
+  SHARED
+  OTHER
+}
+
 model BudgetCategory {
   id              String        @id @default(cuid())
   weddingPlanId   String
@@ -45,6 +75,8 @@ model WeddingCost {
   paidAmount       Decimal           @default(0) @db.Decimal(14, 2)
   agreementDate    DateTime?
   status           WeddingCostStatus @default(OPEN)
+  payer            CostPayer?
+  payerName        String?
   note             String?
   createdAt        DateTime          @default(now())
   updatedAt        DateTime          @updatedAt
@@ -97,5 +129,43 @@ model PaymentSchedule {
 
   @@unique([id, weddingCostId])
   @@index([weddingCostId, status, dueDate])
+  @@index([status, dueDate])
+}
+
+/// Money coming into the wedding: savings, family support, gifts (rifd and
+/// nuqut), loans. Tracking only — Aarast never holds or moves this money.
+model FundingSource {
+  id            String              @id @default(cuid())
+  weddingPlanId String
+  kind          FundingSourceKind
+  sourceName    String
+  sourcePhone   String?
+  amount        Decimal             @db.Decimal(14, 2)
+  status        FundingSourceStatus @default(RECEIVED)
+  receivedAt    DateTime?
+  note          String?
+  createdAt     DateTime            @default(now())
+  updatedAt     DateTime            @updatedAt
+  weddingPlan   WeddingPlan         @relation(fields: [weddingPlanId], references: [id], onDelete: Restrict)
+  repayments    LoanRepayment[]
+
+  @@unique([id, weddingPlanId])
+  @@index([weddingPlanId, kind])
+}
+
+/// One planned repayment of a LOAN funding source.
+model LoanRepayment {
+  id              String              @id @default(cuid())
+  fundingSourceId String
+  amount          Decimal             @db.Decimal(14, 2)
+  dueDate         DateTime?
+  paidAt          DateTime?
+  status          LoanRepaymentStatus @default(PLANNED)
+  note            String?
+  createdAt       DateTime            @default(now())
+  updatedAt       DateTime            @updatedAt
+  fundingSource   FundingSource       @relation(fields: [fundingSourceId], references: [id], onDelete: Cascade)
+
+  @@index([fundingSourceId, status, dueDate])
   @@index([status, dueDate])
 }

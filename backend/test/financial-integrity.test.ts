@@ -179,6 +179,7 @@ test("money budget accepts an empty category list but still protects categories 
       },
     },
     weddingCost: { count: async () => 0, findMany: async () => [] },
+    fundingSource: { findMany: async () => [] },
     costPayment: { findMany: async () => [] },
     paymentSchedule: { findMany: async () => [] },
     budgetCategory: {
@@ -278,6 +279,7 @@ test("money budget delegates the Planning write through the same serializable tr
       }),
     },
     weddingCost: { count: async () => 0, findMany: async () => [] },
+    fundingSource: { findMany: async () => [] },
     costPayment: { findMany: async () => [] },
     paymentSchedule: { findMany: async () => [] },
     budgetCategory: {
@@ -575,6 +577,7 @@ test("money summary uses cost totals and the net append-only ledger exactly once
         currency: "YER",
       }),
     },
+    fundingSource: { findMany: async () => [] },
     budgetCategory: {
       findMany: async () => [
         {
@@ -658,6 +661,7 @@ test("payment schedule warnings expose counts without adding overlapping reminde
     weddingPlan: {
       findUnique: async () => ({ estimatedBudget: null, currency: "YER" }),
     },
+    fundingSource: { findMany: async () => [] },
     budgetCategory: { findMany: async () => [] },
     weddingCost: { findMany: async () => [] },
     costPayment: { findMany: async () => [] },
@@ -756,6 +760,7 @@ test("money access remains fail-closed when the plan is not visible", async () =
 test("money summary fails closed if the plan disappears before its snapshot is read", async () => {
   const snapshot = {
     weddingPlan: { findUnique: async () => null },
+    fundingSource: { findMany: async () => [] },
     budgetCategory: { findMany: async () => [] },
     weddingCost: { findMany: async () => [] },
     costPayment: { findMany: async () => [] },

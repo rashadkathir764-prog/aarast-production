@@ -24,8 +24,8 @@
     {
       "owner": "finance",
       "file": "finance.prisma",
-      "models": ["BudgetCategory", "WeddingCost", "CostPayment", "PaymentSchedule"],
-      "enums": ["WeddingCostStatus", "CostPaymentType", "PaymentScheduleStatus"]
+      "models": ["BudgetCategory", "WeddingCost", "CostPayment", "PaymentSchedule", "FundingSource", "LoanRepayment"],
+      "enums": ["WeddingCostStatus", "CostPaymentType", "PaymentScheduleStatus", "FundingSourceKind", "FundingSourceStatus", "LoanRepaymentStatus", "CostPayer"]
     },
     {
       "owner": "guests",
@@ -98,6 +98,8 @@
     "WeddingCost",
     "CostPayment",
     "PaymentSchedule",
+    "FundingSource",
+    "LoanRepayment",
     "WeddingTask",
     "WeddingTaskChecklistItem",
     "SharedMember",

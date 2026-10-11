@@ -3,6 +3,11 @@ import {
   BudgetCategoriesController,
   WeddingPlanBudgetCategoriesController,
 } from "../../budget-categories/budget-categories.controller";
+import {
+  FundingSourcesController,
+  LoanRepaymentsController,
+  WeddingPlanFundingSourcesController,
+} from "../../money/funding-sources.controller";
 import { MoneySummaryController } from "../../money/money-summary.controller";
 import {
   CostPaymentsController,
@@ -27,6 +32,9 @@ import { FinancePublicModule } from "./public/finance-public.module";
     CostPaymentsController,
     WeddingPlanPaymentSchedulesController,
     PaymentSchedulesController,
+    WeddingPlanFundingSourcesController,
+    FundingSourcesController,
+    LoanRepaymentsController,
   ],
 })
 export class FinanceModule {}

@@ -86,9 +86,11 @@ test('Task 6 full modules preserve the exact controller ownership', () => {
     ]],
     ['modules/finance/finance.module.ts#FinanceModule', [
       'BudgetCategoriesController', 'CostPaymentsController', 'CostsController',
+      'FundingSourcesController', 'LoanRepaymentsController',
       'MoneySummaryController', 'PaymentSchedulesController',
       'WeddingPlanBudgetCategoriesController', 'WeddingPlanCostPaymentsController',
-      'WeddingPlanCostsController', 'WeddingPlanPaymentSchedulesController',
+      'WeddingPlanCostsController', 'WeddingPlanFundingSourcesController',
+      'WeddingPlanPaymentSchedulesController',
     ]],
     ['modules/collaboration/collaboration.module.ts#CollaborationModule', [
       'ApiV1InviteAcceptController', 'ApiV1InviteAccessController',
@@ -115,7 +117,7 @@ test('Task 6 internal leaves own each non-public implementation exactly once', (
     ['modules/identity/internal/identity-profile.internal.module.ts#IdentityProfileInternalModule', ['ContextsService', 'UsersService']],
     ['modules/planning/internal/planning-services.internal.module.ts#PlanningServicesInternalModule', ['OnboardingService', 'WeddingPlansService']],
     ['modules/planning/internal/planning-budget-write.internal.module.ts#PlanningBudgetWriteInternalModule', ['WeddingPlanBudgetWriter']],
-    ['modules/finance/internal/finance-services.internal.module.ts#FinanceServicesInternalModule', ['BudgetCategoriesService', 'MoneyBudgetService', 'MoneySummaryService', 'WeddingCostsService']],
+    ['modules/finance/internal/finance-services.internal.module.ts#FinanceServicesInternalModule', ['BudgetCategoriesService', 'FundingSourcesService', 'MoneyBudgetService', 'MoneySummaryService', 'WeddingCostsService']],
     ['modules/collaboration/internal/collaboration-services.internal.module.ts#CollaborationServicesInternalModule', ['InvitationDeliveryService', 'InviteAccessService', 'SharingService']],
     ['modules/tasks/internal/tasks-service.internal.module.ts#TasksServiceInternalModule', ['TasksService']],
     ['modules/guests/internal/guests-service.internal.module.ts#GuestsServiceInternalModule', ['GuestsService']],

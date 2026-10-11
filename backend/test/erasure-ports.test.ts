@@ -66,6 +66,7 @@ function recorder() {
     costPayment: delegate('costPayment'),
     paymentSchedule: delegate('paymentSchedule'),
     weddingCost: delegate('weddingCost'),
+    fundingSource: delegate('fundingSource'),
     budgetCategory: delegate('budgetCategory'),
     weddingTask: delegate('weddingTask'),
     guest: delegate('guest'),
@@ -214,6 +215,8 @@ test('finance locks the plan costs in the money mutation order and purges the le
     ['costPayment.deleteMany', { where: { weddingCost: { weddingPlanId: { in: ['plan-1'] } } } }],
     ['paymentSchedule.deleteMany', { where: { weddingCost: { weddingPlanId: { in: ['plan-1'] } } } }],
     ['weddingCost.deleteMany', { where: { weddingPlanId: { in: ['plan-1'] } } }],
+    // Funding sources reference the plan; their loan repayments cascade.
+    ['fundingSource.deleteMany', { where: { weddingPlanId: { in: ['plan-1'] } } }],
     ['budgetCategory.deleteMany', { where: { weddingPlanId: { in: ['plan-1'] } } }],
   ]);
 });

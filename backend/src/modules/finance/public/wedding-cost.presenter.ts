@@ -1,4 +1,9 @@
-import { CostPaymentType, Prisma, WeddingCostStatus } from "@prisma/client";
+import {
+  CostPayer,
+  CostPaymentType,
+  Prisma,
+  WeddingCostStatus,
+} from "@prisma/client";
 
 // Finance's own relations only. The provider name on a cost belongs to
 // marketplace and is read through its port by whoever presents the cost.
@@ -38,6 +43,9 @@ export interface WeddingCostResponse {
   remainingAmount: string;
   agreementDate: Date | null;
   status: WeddingCostStatus;
+  /** Who is expected to pay; payerName names them (e.g. «الوالد»). */
+  payer: CostPayer | null;
+  payerName: string | null;
   note: string | null;
   paymentsCount: number;
   paymentSchedulesCount: number;
@@ -65,6 +73,8 @@ export function toWeddingCostResponse(
     remainingAmount: cost.totalAmount.minus(cost.paidAmount).toString(),
     agreementDate: cost.agreementDate,
     status: cost.status,
+    payer: cost.payer,
+    payerName: cost.payerName,
     note: cost.note,
     paymentsCount: cost._count.payments,
     paymentSchedulesCount: cost._count.paymentSchedules,

@@ -5,7 +5,7 @@
     "platform": ["IdempotencyKey", "OutboxEvent"],
     "identity": ["User", "RefreshToken", "OtpCode", "LoginThrottle", "OtpDispatchQuota", "AdminLoginChallenge", "AdminPasswordResetChallenge", "AccountDeletionReceipt"],
     "planning": ["WeddingPlan"],
-    "finance": ["BudgetCategory", "WeddingCost", "CostPayment", "PaymentSchedule"],
+    "finance": ["BudgetCategory", "WeddingCost", "CostPayment", "PaymentSchedule", "FundingSource", "LoanRepayment"],
     "collaboration": ["SharedMember", "PlanInvite", "ContributorHistoryScope", "ContributorTenure", "ContributionEvent"],
     "tasks": ["WeddingTask", "WeddingTaskChecklistItem"],
     "guests": ["Guest", "GuestGroup"],

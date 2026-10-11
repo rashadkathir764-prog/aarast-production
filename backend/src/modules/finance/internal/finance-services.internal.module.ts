@@ -1,5 +1,6 @@
 import { Module } from "@nestjs/common";
 import { BudgetCategoriesService } from "../../../budget-categories/budget-categories.service";
+import { FundingSourcesService } from "../../../money/funding-sources.service";
 import { MoneyBudgetService } from "../../../money/money-budget.service";
 import { MoneySummaryService } from "../../../money/money-summary.service";
 import { PrismaModule } from "../../../platform/database/prisma.module";
@@ -28,12 +29,14 @@ import { PlanningBudgetWritePublicModule } from "../../planning/public/planning-
     MoneyBudgetService,
     BudgetCategoriesService,
     WeddingCostsService,
+    FundingSourcesService,
   ],
   exports: [
     MoneySummaryService,
     MoneyBudgetService,
     BudgetCategoriesService,
     WeddingCostsService,
+    FundingSourcesService,
   ],
 })
 export class FinanceServicesInternalModule {}

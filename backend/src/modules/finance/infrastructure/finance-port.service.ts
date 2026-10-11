@@ -12,6 +12,7 @@ import {
   OTHER_BUDGET_CATEGORY_NAME,
 } from '../domain/cost-category-matching';
 import { deriveCostStatus } from '../domain/wedding-cost-aggregate';
+import { deletePlanFundingSources } from './funding-sources.repository';
 import type {
   CostAmounts,
   CreateCostFromAcceptedOfferInput,
@@ -139,6 +140,8 @@ export class FinancePortService implements FinancePort {
     await tx.costPayment.deleteMany({ where: { weddingCost: inPlans } });
     await tx.paymentSchedule.deleteMany({ where: { weddingCost: inPlans } });
     await tx.weddingCost.deleteMany({ where: inPlans });
+    // Funding sources reference the plan (Restrict); their repayments cascade.
+    await deletePlanFundingSources(tx, weddingPlanIds);
   }
 
   async deletePlanBudgetCategoriesInTransaction(

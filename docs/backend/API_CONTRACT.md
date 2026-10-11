@@ -1177,6 +1177,45 @@ summary built inside its own successful mutation transaction.
 Removed prelaunch expense, commitment, financial-payment, and financial-
 installment routes are not aliases and must return `404`.
 
+### Cost payer
+
+`POST /api/v1/wedding-plans/:id/costs` and `PATCH /api/v1/costs/:id` accept
+an optional `payer` (`GROOM`, `BRIDE`, `FAMILY`, `SHARED`, `OTHER`) and
+`payerName` (≤ 120, e.g. «الوالد»). Cost responses return both (null when
+unset).
+
+## Funding Sources and Loan Repayments
+
+Where the wedding money comes from, tracked only: Aarast never holds,
+collects or moves this money.
+
+- `GET|POST /api/v1/wedding-plans/:planId/funding-sources`
+- `PATCH|DELETE /api/v1/funding-sources/:id`
+- `POST /api/v1/funding-sources/:id/repayments`
+- `PATCH|DELETE /api/v1/loan-repayments/:id`
+
+A funding source has `kind` (`SAVINGS`, `FAMILY_SUPPORT`, `GIFT` — rifd and
+nuqut, `LOAN`, `OTHER`), `sourceName`, optional `sourcePhone`, positive
+`amount`, and `status` `PLEDGED` (promised) or `RECEIVED` (default; then
+`receivedAt` defaults to now). Responses include the ordered `repayments`
+and, for a loan, `repaidAmount` and `outstandingAmount`.
+
+Only a `LOAN` takes repayments (`amount`, optional `dueDate`). Planned and
+paid repayments together never exceed the loan amount (`400`). `PATCH`
+`status: PAID` records the repayment (`paidAt` defaults to now); a paid
+repayment is reopened with `status: PLANNED` before it can be edited or
+cancelled (`409`). A loan with repayments cannot change kind (`409`) or drop
+below its scheduled repayments (`400`).
+
+Privacy: funding is the plan owner's private money picture. A member, even
+with money rights, gets an empty list from `GET` and `404` from every write.
+The owner's `money-summary` adds `funding` (`total`, `received`, `pledged`,
+`availableCash` = received − paid, `shortfall` = confirmed cost not covered
+by any source, loan totals, `overdueLoanRepayments`, `nextLoanRepayment`) and
+the warnings `FUNDING_SHORTFALL` and `LOAN_REPAYMENT_OVERDUE`; a member's
+summary has `funding: null`. Account erasure deletes the plan's funding
+sources and, by cascade, their repayments.
+
 ## Tasks
 
 Protected routes:
@@ -2433,6 +2472,9 @@ configuration, and smoke checks.
 | POST | `/api/v1/costs/:id/payments` | `wedding-costs.createPayment` | 🔒 |
 | GET | `/api/v1/dashboard/home` | `dashboard.getHome` | 🔒 |
 | GET | `/api/v1/districts/:id/localities` | `catalogs.listLocalities` |  |
+| DELETE | `/api/v1/funding-sources/:id` | `funding-sources.remove` | 🔒 |
+| PATCH | `/api/v1/funding-sources/:id` | `funding-sources.update` | 🔒 |
+| POST | `/api/v1/funding-sources/:id/repayments` | `funding-sources.addRepayment` | 🔒 |
 | GET | `/api/v1/governorates` | `marketplace.findGovernorates` |  |
 | GET | `/api/v1/governorates/:id/districts` | `marketplace.findDistricts` |  |
 | DELETE | `/api/v1/guest-groups/:id` | `guests.removeGroup` | 🔒 |
@@ -2446,6 +2488,8 @@ configuration, and smoke checks.
 | POST | `/api/v1/invites/:token/request-otp` | `sharing.requestOtp` |  |
 | POST | `/api/v1/invites/:token/verify-otp` | `sharing.verifyOtp` |  |
 | GET | `/api/v1/invites/mine` | `sharing.findMyInvites` | 🔒 |
+| DELETE | `/api/v1/loan-repayments/:id` | `funding-sources.remove` | 🔒 |
+| PATCH | `/api/v1/loan-repayments/:id` | `funding-sources.update` | 🔒 |
 | GET | `/api/v1/me` | `me.me` | 🔒 |
 | GET | `/api/v1/me/favorite-providers` | `marketplace.findMyFavoriteProviders` | 🔒 |
 | GET | `/api/v1/me/quote-requests` | `marketplace.findMyQuoteRequests` | 🔒 |
@@ -2529,6 +2573,8 @@ configuration, and smoke checks.
 | PATCH | `/api/v1/wedding-plans/:id/archive` | `wedding-plans.archive` | 🔒 |
 | POST | `/api/v1/wedding-plans/:id/set-active` | `wedding-plans.setActive` | 🔒 |
 | GET | `/api/v1/wedding-plans/:planId/dashboard-summary` | `dashboard.getDashboardSummary` | 🔒 |
+| GET | `/api/v1/wedding-plans/:planId/funding-sources` | `funding-sources.findForPlan` | 🔒 |
+| POST | `/api/v1/wedding-plans/:planId/funding-sources` | `funding-sources.create` | 🔒 |
 | PUT | `/api/v1/wedding-plans/:planId/money-budget` | `money-summary.replaceMoneyBudget` | 🔒 |
 | GET | `/api/v1/wedding-plans/:planId/money-summary` | `money-summary.getMoneySummary` | 🔒 |
 | GET | `/api/v1/wedding-plans/:weddingPlanId/budget-categories` | `budget-categories.findForPlan` | 🔒 |

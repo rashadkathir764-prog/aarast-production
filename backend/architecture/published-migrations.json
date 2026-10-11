@@ -78,6 +78,7 @@
     "20260802090000_add_contributor_history": "b3d4ae416508e5bc9ddb0d8333aa96983fc33a43a1c2169fb5d0738f8d6a59a0",
     "20260803110000_add_account_deletion_receipts": "a92eaa4514ce8fdd7721c240d58f78c2a500ad6f047941f83545e2cb539a0889",
     "20260809232000_add_managed_reference_catalogs": "68a12821eacf3d6d5acbe47f7193f8693ab66ca1615b1b7116ccce52264cd864",
-    "20260811180000_backfill_missing_contributor_history_scopes": "eb4151164222be575e854b6da66a1ab74fa4ab505287d371b8a3c0c23cd8c82a"
+    "20260811180000_backfill_missing_contributor_history_scopes": "eb4151164222be575e854b6da66a1ab74fa4ab505287d371b8a3c0c23cd8c82a",
+    "20261011090000_add_funding_sources_and_cost_payer": "99afe2ea466686def6ff7e4dda5e8cf81b35f76e44c8fd20a96e929a80cb965c"
   }
 }

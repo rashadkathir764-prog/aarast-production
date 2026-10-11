@@ -107,7 +107,7 @@ export interface FinancePort {
     tx: Prisma.TransactionClient,
     weddingPlanIds: readonly string[],
   ): Promise<void>;
-  /** Account erasure: the one explicit ledger purge — payments, schedules, then costs of the plans. */
+  /** Account erasure: the one explicit ledger purge — payments, schedules, costs, then funding sources (and their loan repayments) of the plans. */
   purgePlanLedgerInTransaction(
     tx: Prisma.TransactionClient,
     weddingPlanIds: readonly string[],

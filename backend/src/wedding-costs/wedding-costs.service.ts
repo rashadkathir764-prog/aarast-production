@@ -261,6 +261,8 @@ export class WeddingCostsService {
               "agreementDate",
             ),
             status: deriveCostStatus(totalAmount, initialPayment),
+            payer: dto.payer ?? null,
+            payerName: this.optionalText(dto.payerName),
             note: this.optionalText(dto.note),
           },
         });
@@ -526,6 +528,10 @@ export class WeddingCostsService {
                     "agreementDate",
                   ),
                 }),
+            ...(dto.payer === undefined ? {} : { payer: dto.payer }),
+            ...(dto.payerName === undefined
+              ? {}
+              : { payerName: this.optionalText(dto.payerName) }),
             ...(dto.note === undefined
               ? {}
               : { note: this.optionalText(dto.note) }),

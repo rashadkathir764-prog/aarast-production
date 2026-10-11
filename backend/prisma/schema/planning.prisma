@@ -35,6 +35,7 @@ model WeddingPlan {
   activeForUsers          User[]                   @relation("ActiveWeddingPlan")
   budgetCategories        BudgetCategory[]
   weddingCosts            WeddingCost[]
+  fundingSources          FundingSource[]
   tasks                   WeddingTask[]
   sharedMembers           SharedMember[]
   planInvites             PlanInvite[]

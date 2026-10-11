@@ -441,11 +441,13 @@ rewrite as permission to restore a removed live model.
 | `RefreshToken` | 9 | `id`, `userId`, `expiresAt`, `revokedAt`, `replacedById`, `createdAt` |
 | `LoginThrottle` | 5 | `windowStartedAt`, `updatedAt` |
 | `OtpDispatchQuota` | 5 | `windowStartedAt`, `updatedAt` |
-| `WeddingPlan` | 30 | `id`, `ownerUserId`, `onboardingCompletedAt`, `importMigrationId`, `createdAt`, `updatedAt` |
+| `WeddingPlan` | 31 | `id`, `ownerUserId`, `onboardingCompletedAt`, `importMigrationId`, `createdAt`, `updatedAt` |
 | `BudgetCategory` | 9 | `id`, `weddingPlanId`, `createdAt`, `updatedAt` |
-| `WeddingCost` | 21 | `id`, `weddingPlanId`, `budgetCategoryId`, `providerId`, `quoteOfferId`, `createdAt`, `updatedAt` |
+| `WeddingCost` | 23 | `id`, `weddingPlanId`, `budgetCategoryId`, `providerId`, `quoteOfferId`, `createdAt`, `updatedAt` |
 | `CostPayment` | 14 | `id`, `weddingCostId`, `paidAt`, `paymentScheduleId`, `reversalOfId`, `createdAt` |
 | `PaymentSchedule` | 11 | `id`, `weddingCostId`, `paidAt`, `createdAt`, `updatedAt` |
+| `FundingSource` | 13 | `id`, `weddingPlanId`, `receivedAt`, `createdAt`, `updatedAt` |
+| `LoanRepayment` | 10 | `id`, `fundingSourceId`, `paidAt`, `createdAt`, `updatedAt` |
 | `WeddingTask` | 18 | `id`, `weddingPlanId`, `assigneeUserId`, `reminderAt`, `createdAt`, `updatedAt` |
 | `WeddingTaskChecklistItem` | 8 | `id`, `taskId`, `createdAt`, `updatedAt` |
 | `SharedMember` | 18 | `id`, `weddingPlanId`, `userId`, `createdAt`, `updatedAt` |
@@ -484,5 +486,5 @@ rewrite as permission to restore a removed live model.
 | `ChatAttachment` | 7 | `id`, `messageId`, `createdAt` |
 | `ConversationReport` | 9 | `id`, `conversationId`, `reporterUserId`, `createdAt`, `updatedAt` |
 
-Total models: 52
+Total models: 54
 <!-- DOCS-SYNC:END -->

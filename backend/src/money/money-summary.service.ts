@@ -3,6 +3,9 @@ import {
   ContributionAction,
   ContributionEntityType,
   CostPaymentType,
+  FundingSourceKind,
+  FundingSourceStatus,
+  LoanRepaymentStatus,
   PaymentScheduleStatus,
   Prisma,
   WeddingCostStatus,
@@ -15,6 +18,10 @@ import {
 import { runRetryableTransaction } from "../platform/database/serializable-transaction";
 import { PrismaService } from "../platform/database/prisma.service";
 import { loadMoneySummaryRows } from "../modules/finance/infrastructure/money-summary.repository";
+import {
+  listFundingSources,
+  type FundingSourceWithRepayments,
+} from "../modules/finance/infrastructure/funding-sources.repository";
 import {
   PLAN_READ_PORT,
   type PlanReadPort,
@@ -29,7 +36,9 @@ type WarningType =
   | "BUDGET_EXCEEDED"
   | "CATEGORY_EXCEEDED"
   | "PAYMENT_SCHEDULE_OVERDUE"
-  | "PAYMENT_SCHEDULE_DUE_SOON";
+  | "PAYMENT_SCHEDULE_DUE_SOON"
+  | "FUNDING_SHORTFALL"
+  | "LOAN_REPAYMENT_OVERDUE";
 
 @Injectable()
 export class MoneySummaryService {
@@ -106,10 +115,15 @@ export async function buildMoneySummaryInTransaction(
   } | null = null,
 ) {
   const weddingPlanId = access.plan.id;
-  const [plan, [categories, costs, payments, schedules]] = await Promise.all([
-    plans.getPlan(tx, weddingPlanId),
-    loadMoneySummaryRows(tx, weddingPlanId, contributionScope),
-  ]);
+  // Funding (savings, family support, gifts, loans) is the owner's private
+  // money picture; a contributor's summary never includes it.
+  const fundingVisible = access.isOwner && contributionScope === null;
+  const [plan, [categories, costs, payments, schedules], fundingSources] =
+    await Promise.all([
+      plans.getPlan(tx, weddingPlanId),
+      loadMoneySummaryRows(tx, weddingPlanId, contributionScope),
+      fundingVisible ? listFundingSources(tx, weddingPlanId, true) : null,
+    ]);
 
   if (!plan) {
     throw new NotFoundException("Wedding plan not found");
@@ -236,6 +250,25 @@ export async function buildMoneySummaryInTransaction(
       amount: null,
     });
   }
+  const funding = fundingSources
+    ? summarizeFunding(fundingSources, totalCost, paid, today)
+    : null;
+  if (funding && funding.shortfall !== null) {
+    warnings.push({
+      type: "FUNDING_SHORTFALL",
+      severity: "WARNING",
+      count: null,
+      amount: funding.shortfall,
+    });
+  }
+  if (funding && funding.overdueLoanRepayments > 0) {
+    warnings.push({
+      type: "LOAN_REPAYMENT_OVERDUE",
+      severity: "DANGER",
+      count: funding.overdueLoanRepayments,
+      amount: null,
+    });
+  }
 
   const next = pendingSchedules[0] ?? null;
   return {
@@ -273,6 +306,8 @@ export async function buildMoneySummaryInTransaction(
         : null,
     },
     categories: categoryRows,
+    /** Owner only; null for a contributor. */
+    funding,
     warnings,
     permissions: {
       canViewMoney: permissions.canViewMoney(access),
@@ -284,6 +319,80 @@ export async function buildMoneySummaryInTransaction(
 export type MoneySummaryResult = Awaited<
   ReturnType<typeof buildMoneySummaryInTransaction>
 >;
+
+/**
+ * Money in versus money committed. `total` counts pledged and received
+ * sources; `availableCash` is what was received minus what was already paid;
+ * `shortfall` is how much confirmed cost is not yet covered by any source
+ * (null once covered, or before any source is recorded).
+ */
+function summarizeFunding(
+  sources: readonly FundingSourceWithRepayments[],
+  confirmedCost: Prisma.Decimal,
+  paid: Prisma.Decimal,
+  today: Date,
+) {
+  const zero = () => new Prisma.Decimal(0);
+  let received = zero();
+  let pledged = zero();
+  let loanTotal = zero();
+  let loanRepaid = zero();
+  let overdueLoanRepayments = 0;
+  let nextRepayment: {
+    id: string;
+    fundingSourceId: string;
+    sourceName: string;
+    amount: string;
+    dueDate: Date;
+    isOverdue: boolean;
+  } | null = null;
+  for (const source of sources) {
+    if (source.status === FundingSourceStatus.RECEIVED) {
+      received = received.plus(source.amount);
+    } else {
+      pledged = pledged.plus(source.amount);
+    }
+    if (source.kind !== FundingSourceKind.LOAN) continue;
+    loanTotal = loanTotal.plus(source.amount);
+    for (const repayment of source.repayments) {
+      if (repayment.status === LoanRepaymentStatus.PAID) {
+        loanRepaid = loanRepaid.plus(repayment.amount);
+        continue;
+      }
+      if (repayment.status !== LoanRepaymentStatus.PLANNED || !repayment.dueDate) {
+        continue;
+      }
+      const isOverdue = repayment.dueDate < today;
+      if (isOverdue) overdueLoanRepayments += 1;
+      if (!nextRepayment || repayment.dueDate < nextRepayment.dueDate) {
+        nextRepayment = {
+          id: repayment.id,
+          fundingSourceId: source.id,
+          sourceName: source.sourceName,
+          amount: repayment.amount.toString(),
+          dueDate: repayment.dueDate,
+          isOverdue,
+        };
+      }
+    }
+  }
+  const total = received.plus(pledged);
+  const uncovered = confirmedCost.minus(total);
+  return {
+    total: total.toString(),
+    received: received.toString(),
+    pledged: pledged.toString(),
+    availableCash: received.minus(paid).toString(),
+    shortfall:
+      sources.length > 0 && uncovered.gt(0) ? uncovered.toString() : null,
+    loanTotal: loanTotal.toString(),
+    loanRepaid: loanRepaid.toString(),
+    loanOutstanding: loanTotal.minus(loanRepaid).toString(),
+    overdueLoanRepayments,
+    nextLoanRepayment: nextRepayment,
+    sourcesCount: sources.length,
+  };
+}
 
 function startOfTodayInRiyadh(now: Date) {
   const riyadh = new Date(now.getTime() + 3 * 60 * 60 * 1000);

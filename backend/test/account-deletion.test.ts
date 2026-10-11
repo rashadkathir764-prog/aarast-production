@@ -9,6 +9,7 @@ const PLAN_CHILDREN = [
   "costPayment",
   "paymentSchedule",
   "weddingCost",
+  "fundingSource",
   "weddingTask",
   "guest",
   "guestGroup",

@@ -78,6 +78,13 @@ export function validateStagingConfig(config, {
     requireValue((service.ports ?? []).every((port) => port.host_ip === '127.0.0.1'),
       `${name} exposes a non-loopback port`);
     const scanned = structuredClone(service);
+    // The build context and Dockerfile are paths of the checkout running the
+    // check (on CI the folder is named after the `aarast-production`
+    // repository), not deployment targets, so they are not scanned.
+    if (scanned.build) {
+      delete scanned.build.context;
+      delete scanned.build.dockerfile;
+    }
     if (cutover) {
       const permitted = name === 'backend' ? {
         CORS_ORIGINS: cutoverOrigins.admin, INVITE_PUBLIC_ORIGIN: cutoverOrigins.invite,

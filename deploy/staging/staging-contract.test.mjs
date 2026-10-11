@@ -202,6 +202,23 @@ test('build topology pins QA Admin and App Link inputs to staging origins', () =
   }).join('\n'), /QA App Link host/);
 });
 
+test('a checkout folder named after the aarast-production repository is not a Production reference', () => {
+  const ciCheckout = structuredClone(buildCompose);
+  for (const service of Object.values(ciCheckout.services)) {
+    if (service.build) {
+      service.build.context = '/home/runner/work/aarast-production/aarast-production/backend';
+    }
+  }
+  assert.deepEqual(validateStagingConfig(ciCheckout, {
+    allowExampleValues: true, allowBuildTopology: true,
+  }), []);
+  const productionArg = structuredClone(buildCompose);
+  productionArg.services['admin-web'].build.args.VITE_API_BASE_URL = 'https://aarast-api.shadowgardn.com';
+  assert.match(validateStagingConfig(productionArg, {
+    allowExampleValues: true, allowBuildTopology: true,
+  }).join('\n'), /admin-web/);
+});
+
 test('media initializer Go runtime stays within the unchanged hard resource limit', () => {
   const expected = { GOMEMLIMIT: '96MiB', GOMAXPROCS: '1', GOGC: '25' };
   for (const [key, value] of Object.entries(expected)) {

@@ -17,7 +17,7 @@ import {
   getProviderApplications,
   type ProviderApplication,
 } from '../providers/api';
-import { useAuth } from '../auth/api';
+import { AdminPermission, Can, useAuth } from '../auth/api';
 import { ActionLink } from '../../design_system/ActionButton';
 import { EmptyState } from '../../design_system/EmptyState';
 import { ErrorState } from '../../design_system/ErrorState';
@@ -245,39 +245,52 @@ export function DashboardPage() {
           title="وصول سريع"
           subtitle="انتقل إلى مساحة العمل المطلوبة دون تكرار الإجراءات."
         >
+          {/* Each link needs the same read permission as its route guard in App.tsx. */}
           <div className="dashboard-actions">
-            <Link className="dashboard-action" to="/providers/applications">
-              <Clock size={20} aria-hidden="true" />
-              <span>طلبات الموردين</span>
-            </Link>
-            <Link className="dashboard-action" to="/providers">
-              <Briefcase size={20} aria-hidden="true" />
-              <span>دليل الموردين</span>
-            </Link>
-            <Link className="dashboard-action" to="/categories">
-              <Tag size={20} aria-hidden="true" />
-              <span>فئات الموردين</span>
-            </Link>
-            <Link className="dashboard-action" to="/cities">
-              <MapPin size={20} aria-hidden="true" />
-              <span>المدن والمناطق</span>
-            </Link>
-            <Link className="dashboard-action" to="/services">
-              <PackageSearch size={20} aria-hidden="true" />
-              <span>الخدمات</span>
-            </Link>
-            <Link className="dashboard-action" to="/reviews">
-              <Star size={20} aria-hidden="true" />
-              <span>مراقبة التقييمات</span>
-            </Link>
-            <Link className="dashboard-action" to="/notifications">
-              <Bell size={20} aria-hidden="true" />
-              <span>إشعارات الحساب</span>
-            </Link>
-            <Link className="dashboard-action" to="/reports">
-              <BarChart3 size={20} aria-hidden="true" />
-              <span>التقارير التشغيلية</span>
-            </Link>
+            <Can permission={AdminPermission.PROVIDERS_READ}>
+              <Link className="dashboard-action" to="/providers/applications">
+                <Clock size={20} aria-hidden="true" />
+                <span>طلبات الموردين</span>
+              </Link>
+              <Link className="dashboard-action" to="/providers">
+                <Briefcase size={20} aria-hidden="true" />
+                <span>دليل الموردين</span>
+              </Link>
+            </Can>
+            <Can permission={AdminPermission.CATALOG_READ}>
+              <Link className="dashboard-action" to="/categories">
+                <Tag size={20} aria-hidden="true" />
+                <span>فئات الموردين</span>
+              </Link>
+              <Link className="dashboard-action" to="/cities">
+                <MapPin size={20} aria-hidden="true" />
+                <span>المدن والمناطق</span>
+              </Link>
+            </Can>
+            <Can permission={AdminPermission.SERVICES_READ}>
+              <Link className="dashboard-action" to="/services">
+                <PackageSearch size={20} aria-hidden="true" />
+                <span>الخدمات</span>
+              </Link>
+            </Can>
+            <Can permission={AdminPermission.REVIEWS_READ}>
+              <Link className="dashboard-action" to="/reviews">
+                <Star size={20} aria-hidden="true" />
+                <span>مراقبة التقييمات</span>
+              </Link>
+            </Can>
+            <Can permission={AdminPermission.NOTIFICATIONS_READ}>
+              <Link className="dashboard-action" to="/notifications">
+                <Bell size={20} aria-hidden="true" />
+                <span>إشعارات الحساب</span>
+              </Link>
+            </Can>
+            <Can permission={AdminPermission.REPORTS_READ}>
+              <Link className="dashboard-action" to="/reports">
+                <BarChart3 size={20} aria-hidden="true" />
+                <span>التقارير التشغيلية</span>
+              </Link>
+            </Can>
           </div>
         </SectionCard>
       </div>

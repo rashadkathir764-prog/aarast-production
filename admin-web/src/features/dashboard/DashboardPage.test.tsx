@@ -11,8 +11,18 @@ import { DashboardPage } from './DashboardPage';
 vi.mock('./api', () => ({ getStats: vi.fn() }));
 vi.mock('../providers/api', () => ({ getProviderApplications: vi.fn() }));
 
+const authState = vi.hoisted(() => ({
+  adminPermissions: undefined as string[] | undefined,
+}));
+
 vi.mock('../auth/AuthProvider', () => ({
-  useAuth: () => ({ user: { id: 'admin-1', name: 'مدير النظام' } }),
+  useAuth: () => ({
+    user: {
+      id: 'admin-1',
+      name: 'مدير النظام',
+      adminPermissions: authState.adminPermissions,
+    },
+  }),
 }));
 
 vi.mock('../../design_system/MiniDonut', () => ({
@@ -51,6 +61,7 @@ function renderDashboard() {
 
 describe('DashboardPage', () => {
   beforeEach(() => {
+    authState.adminPermissions = undefined;
     vi.mocked(getStats).mockResolvedValue(stats);
     vi.mocked(getProviderApplications).mockResolvedValue({
       items: [pendingProvider],
@@ -110,5 +121,55 @@ describe('DashboardPage', () => {
     );
     expect(screen.getByText('تعذر الوصول للخدمة')).toBeVisible();
     expect(screen.queryByText('120')).not.toBeInTheDocument();
+  });
+
+  // F08: quick links follow the same read permission as their route guard.
+  it('shows a moderator only the quick links that role can open', async () => {
+    authState.adminPermissions = [
+      'DASHBOARD_READ',
+      'PROVIDERS_READ',
+      'REVIEWS_READ',
+      'REVIEWS_WRITE',
+      'CONVERSATION_REPORTS_READ',
+      'CONVERSATION_REPORTS_WRITE',
+      'NOTIFICATIONS_READ',
+      'NOTIFICATIONS_WRITE',
+    ];
+
+    renderDashboard();
+    await waitFor(() => expect(screen.getByText('قاعة الندى')).toBeVisible());
+
+    for (const name of ['دليل الموردين', 'مراقبة التقييمات', 'إشعارات الحساب']) {
+      expect(screen.getByRole('link', { name })).toBeVisible();
+    }
+    for (const name of [
+      'فئات الموردين',
+      'المدن والمناطق',
+      'الخدمات',
+      'التقارير التشغيلية',
+    ]) {
+      expect(screen.queryByRole('link', { name })).not.toBeInTheDocument();
+    }
+  });
+
+  it('shows support only the quick links that role can open', async () => {
+    authState.adminPermissions = [
+      'DASHBOARD_READ',
+      'USERS_READ',
+      'PROVIDERS_READ',
+      'SERVICES_READ',
+      'CATALOG_READ',
+      'NOTIFICATIONS_READ',
+    ];
+
+    renderDashboard();
+    await waitFor(() => expect(screen.getByText('قاعة الندى')).toBeVisible());
+
+    for (const name of ['فئات الموردين', 'المدن والمناطق', 'الخدمات']) {
+      expect(screen.getByRole('link', { name })).toBeVisible();
+    }
+    for (const name of ['مراقبة التقييمات', 'التقارير التشغيلية']) {
+      expect(screen.queryByRole('link', { name })).not.toBeInTheDocument();
+    }
   });
 });

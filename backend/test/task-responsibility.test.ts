@@ -39,6 +39,7 @@ function task(overrides: Record<string, unknown> = {}) {
     priority: WeddingTaskPriority.MEDIUM,
     createdAt: now,
     updatedAt: now,
+    checklistItems: [],
     ...overrides,
   };
 }

@@ -1207,6 +1207,22 @@ Create request:
 }
 ```
 
+Every task response (list, detail, create, update, assign) carries the task's
+checklist, ordered by `sortOrder` then creation time:
+
+```json
+{
+  "id": "task-id",
+  "title": "Confirm hall",
+  "checklist": [
+    { "id": "item-id", "taskId": "task-id", "title": "Call the manager", "isDone": true, "sortOrder": 0, "createdAt": "2026-10-11T09:00:00.000Z", "updatedAt": "2026-10-11T09:00:00.000Z" }
+  ]
+}
+```
+
+Checklist create/update return the single item in the same shape; delete
+returns `{ "id": "item-id", "deleted": true }`.
+
 Owners can manage tasks. For every non-owner, the stored
 `SharedMember.canManageTasks` boolean is the final live authority. A role may
 seed the boolean only when an invitation is created. Direct member creation is

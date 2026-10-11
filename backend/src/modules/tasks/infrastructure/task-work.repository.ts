@@ -17,8 +17,16 @@ export interface TaskCreateValues {
   priority: WeddingTaskPriority;
 }
 
+/** Every task row a response is built from carries its checklist in order. */
+const withChecklist = {
+  checklistItems: {
+    orderBy: [{ sortOrder: 'asc' }, { createdAt: 'asc' }],
+  },
+} satisfies Prisma.WeddingTaskInclude;
+
 export function createTask(tx: Prisma.TransactionClient, values: TaskCreateValues) {
   return tx.weddingTask.create({
+    include: withChecklist,
     data: {
       weddingPlanId: values.weddingPlanId,
       assigneeUserId: null,
@@ -68,6 +76,7 @@ export function listLivePlanTasks(
 ) {
   return tx.weddingTask.findMany({
     where: scopedTaskWhere(weddingPlanId, actorUserId, contributorIds, liveFilter),
+    include: withChecklist,
     orderBy: [{ dueDate: 'asc' }, { createdAt: 'asc' }],
     ...pageArgs(query),
   });
@@ -83,6 +92,7 @@ export function findLivePlanTask(
 ) {
   return tx.weddingTask.findFirst({
     where: scopedTaskWhere(weddingPlanId, actorUserId, contributorIds, liveFilter, id),
+    include: withChecklist,
   });
 }
 
@@ -115,6 +125,7 @@ export interface TaskUpdateValues {
 export function updateTask(tx: Prisma.TransactionClient, id: string, values: TaskUpdateValues) {
   return tx.weddingTask.update({
     where: { id },
+    include: withChecklist,
     data: {
       ...(values.title !== undefined ? { title: values.title } : {}),
       ...(values.description !== undefined ? { description: values.description } : {}),
@@ -134,6 +145,7 @@ export function updateTask(tx: Prisma.TransactionClient, id: string, values: Tas
 export function assignTask(tx: Prisma.TransactionClient, id: string, assigneeUserId: string | null) {
   return tx.weddingTask.update({
     where: { id },
+    include: withChecklist,
     data: {
       assigneeUserId,
       ...(assigneeUserId

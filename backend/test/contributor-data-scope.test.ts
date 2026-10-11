@@ -28,6 +28,7 @@ function task(id: string, assigneeUserId: string) {
     priority: WeddingTaskPriority.MEDIUM,
     createdAt: now,
     updatedAt: now,
+    checklistItems: [],
   };
 }
 

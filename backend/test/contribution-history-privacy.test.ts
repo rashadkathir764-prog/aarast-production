@@ -165,6 +165,7 @@ test("sensitive user text is omitted from history without rejecting the task mut
     priority: WeddingTaskPriority.MEDIUM,
     createdAt: now,
     updatedAt: now,
+    checklistItems: [],
   };
   const prisma: any = {
     weddingTask: { create: async () => createdTask },

@@ -87,6 +87,8 @@ export interface TaskResponse {
   priority: WeddingTaskPriority;
   createdAt: Date;
   updatedAt: Date;
+  /** The task's checklist, ordered by sortOrder then creation. */
+  checklist: ChecklistItemResponse[];
 }
 
 export interface ChecklistItemResponse {
@@ -962,7 +964,7 @@ export class TasksService {
   }
 
   private toResponse(
-    task: WeddingTask,
+    task: WeddingTask & { checklistItems: WeddingTaskChecklistItem[] },
     includeResponsiblePhone = true,
   ): TaskResponse {
     return {
@@ -981,6 +983,9 @@ export class TasksService {
       priority: task.priority,
       createdAt: task.createdAt,
       updatedAt: task.updatedAt,
+      checklist: task.checklistItems.map((item) =>
+        this.toChecklistItemResponse(item),
+      ),
     };
   }
 

@@ -8,7 +8,7 @@ import {
   symlinkSync,
   writeFileSync,
 } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { homedir, tmpdir } from 'node:os';
 import path from 'node:path';
 import { execFileSync, spawnSync } from 'node:child_process';
 import { afterEach, test } from 'node:test';
@@ -996,7 +996,9 @@ test('scope CLI accepts only four ordered forms and preserves live or snapshot i
 
 test('I8 report confinement rejects junction or symlink escapes outside the canonical temp root', () => {
   const lexicalRoot = mkdtempSync(path.join(tmpdir(), 'aarast-r3-link-root-'));
-  const outsideRoot = mkdtempSync(path.join(path.dirname(tmpdir()), 'aarast-r3-outside-'));
+  // Outside temp and writable on every platform (the temp root's parent is
+  // `/` on Linux).
+  const outsideRoot = mkdtempSync(path.join(homedir(), 'aarast-r3-outside-'));
   temporaryRoots.push(lexicalRoot, outsideRoot);
   const link = path.join(lexicalRoot, 'redirect');
   symlinkSync(outsideRoot, link, process.platform === 'win32' ? 'junction' : 'dir');

@@ -59,10 +59,11 @@ function ignoredBackendFixture(prefix: string): string {
 
 // A directory that is outside the OS temp directory wherever the repository
 // lives (a checkout under the temp directory would otherwise make a
-// repository path count as "inside temp"): a sibling of the temp root.
+// repository path count as "inside temp"). The home directory is writable
+// and outside temp on every platform; the temp root's parent is not writable
+// on Linux, where it is `/`.
 function outsideTempRoot(prefix: string): string {
-  const parent = path.dirname(realpathSync.native(os.tmpdir()));
-  const root = mkdtempSync(path.join(parent, prefix));
+  const root = mkdtempSync(path.join(realpathSync.native(os.homedir()), prefix));
   temporaryRoots.push(root);
   return root;
 }

@@ -1,6 +1,7 @@
 import 'package:aarast_mobile/features/onboarding/onboarding_api.dart'
     show WeddingLocationDraft;
-import 'package:aarast_mobile/features/wedding_plans/models/plan_edit_result.dart';
+import 'package:aarast_mobile/features/wedding_plans/screens/plan_management_screen.dart'
+    show PlanEditResult;
 import 'package:flutter_test/flutter_test.dart';
 
 // F01: the server rejects any field outside UpdateWeddingPlanDto

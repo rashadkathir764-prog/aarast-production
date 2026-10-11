@@ -1,4 +1,4 @@
-import '../../onboarding/onboarding_api.dart' show WeddingLocationDraft;
+part of 'plan_management_screen.dart';
 
 /// What the plan edit sheet returns. [currency] is only applied to a plan
 /// kept on this device: a server plan's currency is fixed at creation, so the

@@ -46,7 +46,7 @@ void main() {
       // creation and rejected by UpdateWeddingPlanDto (F01), so only a local
       // plan applies it; plan_edit_result_test.dart pins the payload keys.
       final payloadSource = File(
-        '${mobileRoot}lib/features/wedding_plans/models/plan_edit_result.dart',
+        '${mobileRoot}lib/features/wedding_plans/screens/plan_management_screen.plan_edit_result.dart',
       ).readAsStringSync();
       for (final field in [
         "'title':",

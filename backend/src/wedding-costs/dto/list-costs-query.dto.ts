@@ -1,6 +1,6 @@
 import { Type } from "class-transformer";
 import { IsEnum, IsInt, IsOptional, IsString, Max, Min } from "class-validator";
-import { WeddingCostStatus } from "@prisma/client";
+import { CostPayer, WeddingCostStatus } from "@prisma/client";
 
 export class ListCostsQueryDto {
   @IsOptional()
@@ -27,4 +27,9 @@ export class ListCostsQueryDto {
   @IsOptional()
   @IsString()
   search?: string;
+
+  /** Only costs expected to be paid by this payer. */
+  @IsOptional()
+  @IsEnum(CostPayer)
+  payer?: CostPayer;
 }

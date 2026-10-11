@@ -1129,6 +1129,7 @@ class _MoneyProductApi extends FinanceApi {
     String? status,
     String? categoryId,
     String? search,
+    String? payer,
   }) async {
     final items = noBudget ? const <WeddingCost>[] : [cost];
     return FinancePage(

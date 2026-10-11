@@ -1,14 +1,58 @@
+import 'dart:convert';
+import 'dart:typed_data';
+
 import 'package:aarast_mobile/core/network/api_client.dart';
+import 'package:aarast_mobile/features/finance/data/finance_api.dart';
 import 'package:aarast_mobile/features/finance/data/funding_api.dart';
 import 'package:aarast_mobile/features/finance/models/funding_source.dart';
 import 'package:aarast_mobile/features/finance/models/money_summary.dart';
+import 'package:aarast_mobile/features/finance/models/wedding_cost.dart';
 import 'package:aarast_mobile/features/finance/providers/funding_provider.dart';
 import 'package:aarast_mobile/features/finance/screens/funding_sources_screen.dart';
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:provider/provider.dart';
 
 void main() {
+  test('costs can be filtered by who pays and carry the payer', () async {
+    final requests = <Uri>[];
+    final apiClient = ApiClient(tokenProvider: () async => 'token');
+    apiClient.dio.httpClientAdapter = _RecordingAdapter(requests, {
+      'items': [
+        {
+          'id': 'cost-1',
+          'weddingPlanId': 'plan-1',
+          'budgetCategoryId': 'cat-1',
+          'title': 'الذهب',
+          'totalAmount': '900000',
+          'paidAmount': '0',
+          'status': 'OPEN',
+          'payer': 'GROOM',
+          'payerName': null,
+        },
+      ],
+      'page': 1,
+      'limit': 30,
+      'total': 1,
+      'totalPages': 1,
+    });
+
+    final page = await FinanceApi(apiClient).getCosts('plan-1', payer: 'GROOM');
+
+    expect(requests.single.queryParameters['payer'], 'GROOM');
+    expect(page.items.single.payer, 'GROOM');
+    expect(CostPayerOption.label(page.items.single.payer), 'العريس');
+    expect(
+      WeddingCost.fromJson({
+        'id': 'c',
+        'payer': 'FAMILY',
+        'payerName': 'الوالد',
+      }).payerName,
+      'الوالد',
+    );
+  });
+
   test('a loan parses its repayments and what is still owed', () {
     final loan = FundingSource.fromJson({
       'id': 'loan-1',
@@ -256,4 +300,30 @@ class _FakeFundingApi extends FundingApi {
     _sources[index] = updated;
     return updated;
   }
+}
+
+class _RecordingAdapter implements HttpClientAdapter {
+  _RecordingAdapter(this.requests, this.body);
+
+  final List<Uri> requests;
+  final Map<String, dynamic> body;
+
+  @override
+  Future<ResponseBody> fetch(
+    RequestOptions options,
+    Stream<Uint8List>? requestStream,
+    Future<void>? cancelFuture,
+  ) async {
+    requests.add(options.uri);
+    return ResponseBody.fromString(
+      jsonEncode(body),
+      200,
+      headers: {
+        Headers.contentTypeHeader: ['application/json'],
+      },
+    );
+  }
+
+  @override
+  void close({bool force = false}) {}
 }

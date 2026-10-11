@@ -8,6 +8,7 @@ import 'package:provider/provider.dart';
 import '../../../core/routing/app_router.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/aarast_ui.dart';
+import '../models/funding_source.dart' show CostPayerOption;
 import '../providers/finance_provider.dart';
 import '../widgets/money_widgets.dart';
 
@@ -30,6 +31,7 @@ class _CostsScreenState extends State<CostsScreen> {
   Timer? _debounce;
   String? _status;
   String? _categoryId;
+  String? _payer;
 
   @override
   void initState() {
@@ -119,6 +121,7 @@ class _CostsScreenState extends State<CostsScreen> {
                     _MoreFiltersButton(
                       count:
                           (_categoryId == null ? 0 : 1) +
+                          (_payer == null ? 0 : 1) +
                           (_status == 'PARTIALLY_PAID' || _status == 'CANCELLED'
                               ? 1
                               : 0),
@@ -214,6 +217,7 @@ class _CostsScreenState extends State<CostsScreen> {
   Future<void> _showMoreFilters(FinanceProvider provider) async {
     var status = _status;
     var categoryId = _categoryId;
+    var payer = _payer;
     final result = await showAarastBottomSheet<_CostFilters>(
       context: context,
       isScrollControlled: true,
@@ -291,6 +295,28 @@ class _CostsScreenState extends State<CostsScreen> {
                   ],
                   onChanged: (value) => setSheetState(() => categoryId = value),
                 ),
+                const SizedBox(height: 12),
+                DropdownButtonFormField<String?>(
+                  key: const ValueKey('costs-filter-payer'),
+                  initialValue: payer,
+                  isExpanded: true,
+                  decoration: const InputDecoration(
+                    labelText: 'مين يدفع',
+                    prefixIcon: Icon(LucideIcons.user),
+                  ),
+                  items: [
+                    const DropdownMenuItem<String?>(
+                      value: null,
+                      child: Text('الجميع'),
+                    ),
+                    for (final (value, label) in CostPayerOption.values)
+                      DropdownMenuItem<String?>(
+                        value: value,
+                        child: Text(label),
+                      ),
+                  ],
+                  onChanged: (value) => setSheetState(() => payer = value),
+                ),
                 const SizedBox(height: 18),
                 Row(
                   children: [
@@ -307,7 +333,11 @@ class _CostsScreenState extends State<CostsScreen> {
                       flex: 2,
                       child: FilledButton.icon(
                         onPressed: () => Navigator.of(sheetContext).pop(
-                          _CostFilters(status: status, categoryId: categoryId),
+                          _CostFilters(
+                            status: status,
+                            categoryId: categoryId,
+                            payer: payer,
+                          ),
                         ),
                         icon: const Icon(LucideIcons.slidersHorizontal),
                         label: const Text('تطبيق التصفية'),
@@ -325,6 +355,7 @@ class _CostsScreenState extends State<CostsScreen> {
     setState(() {
       _status = result.status;
       _categoryId = result.categoryId;
+      _payer = result.payer;
     });
     await _applyFilters();
   }
@@ -334,6 +365,7 @@ class _CostsScreenState extends State<CostsScreen> {
       status: _status,
       categoryId: _categoryId,
       search: _searchController.text,
+      payer: _payer,
     );
   }
 
@@ -354,6 +386,7 @@ class _CostsScreenState extends State<CostsScreen> {
       status: _status,
       categoryId: _categoryId,
       search: _searchController.text,
+      payer: _payer,
     );
   }
 
@@ -366,10 +399,11 @@ class _CostsScreenState extends State<CostsScreen> {
 }
 
 class _CostFilters {
-  const _CostFilters({this.status, this.categoryId});
+  const _CostFilters({this.status, this.categoryId, this.payer});
 
   final String? status;
   final String? categoryId;
+  final String? payer;
 }
 
 class _MoreFiltersButton extends StatelessWidget {

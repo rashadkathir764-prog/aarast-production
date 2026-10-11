@@ -9,6 +9,7 @@ mixin _FinanceCostsApi on _FinanceApiCore {
     String? status,
     String? categoryId,
     String? search,
+    String? payer,
   }) async {
     const table = OfflineTables.cachedCosts;
     final path = Uri(
@@ -20,6 +21,7 @@ mixin _FinanceCostsApi on _FinanceApiCore {
         if (_nullableTrimmed(categoryId) != null)
           'categoryId': categoryId!.trim(),
         if (_nullableTrimmed(search) != null) 'search': search!.trim(),
+        if (_nullableTrimmed(payer) != null) 'payer': payer!.trim(),
       },
     ).toString();
     if (FinanceLocalDataSource.isLocalGuestPlanId(planId)) {
@@ -31,6 +33,7 @@ mixin _FinanceCostsApi on _FinanceApiCore {
         status: status,
         categoryId: categoryId,
         search: search,
+        payer: payer,
       );
     }
     try {
@@ -39,7 +42,11 @@ mixin _FinanceCostsApi on _FinanceApiCore {
         json,
         WeddingCost.fromJson,
       );
-      if (page == 1 && status == null && categoryId == null && search == null) {
+      if (page == 1 &&
+          status == null &&
+          categoryId == null &&
+          search == null &&
+          payer == null) {
         await _offline?.database.replaceCachedList(
           table: table,
           items: _listOfMaps(json['items']),
@@ -66,6 +73,7 @@ mixin _FinanceCostsApi on _FinanceApiCore {
           status: status,
           categoryId: categoryId,
           search: search,
+          payer: payer,
         );
       }
       rethrow;

@@ -234,6 +234,7 @@ class FinanceProvider extends ChangeNotifier with SessionScopedNotifier {
     String? status,
     String? categoryId,
     String? search,
+    String? payer,
   }) async {
     final planId = _loadedPlanId;
     if (planId == null || !hasMoreCosts || _isLoadingMoreCosts) return;
@@ -248,6 +249,7 @@ class FinanceProvider extends ChangeNotifier with SessionScopedNotifier {
         status: status,
         categoryId: categoryId,
         search: search,
+        payer: payer,
       );
       if (!_isCurrent(planGeneration) ||
           _loadedPlanId != planId ||
@@ -282,6 +284,7 @@ class FinanceProvider extends ChangeNotifier with SessionScopedNotifier {
     String? status,
     String? categoryId,
     String? search,
+    String? payer,
   }) async {
     final planId = _loadedPlanId;
     if (planId == null) return;
@@ -296,6 +299,7 @@ class FinanceProvider extends ChangeNotifier with SessionScopedNotifier {
         status: status,
         categoryId: categoryId,
         search: search,
+        payer: payer,
       );
       if (!_isCurrent(planGeneration) ||
           _loadedPlanId != planId ||

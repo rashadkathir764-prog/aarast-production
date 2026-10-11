@@ -340,6 +340,7 @@ export class WeddingCostsService {
           ...(query.categoryId?.trim()
             ? { budgetCategoryId: query.categoryId.trim() }
             : {}),
+          ...(query.payer ? { payer: query.payer } : {}),
           ...(search
             ? {
                 OR: [

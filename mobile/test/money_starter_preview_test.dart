@@ -93,6 +93,7 @@ class _EmptyFinanceApi extends FinanceApi {
     String? status,
     String? categoryId,
     String? search,
+    String? payer,
   }) async {
     return FinancePage(
       items: const [],

@@ -22,6 +22,7 @@ type CostWhere = {
   budgetCategoryId?: string;
   quoteOfferId?: string;
   providerId?: { not: null };
+  payer?: CostPayer;
   OR?: Array<{
     title?: TextSearch;
     partyName?: TextSearch;

@@ -484,6 +484,7 @@ class _FakeFinanceApi extends FinanceApi {
     String? status,
     String? categoryId,
     String? search,
+    String? payer,
   }) async => FinancePage(
     items: _costs,
     page: page,

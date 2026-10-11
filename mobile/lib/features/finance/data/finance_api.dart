@@ -233,10 +233,12 @@ FinancePage<WeddingCost> _localCostPage(
   String? status,
   String? categoryId,
   String? search,
+  String? payer,
 }) {
   final query = search?.trim().toLowerCase();
   final items = raw.map(WeddingCost.fromJson).where((cost) {
     if (_nullableTrimmed(status) != null && cost.status != status) return false;
+    if (_nullableTrimmed(payer) != null && cost.payer != payer) return false;
     if (_nullableTrimmed(categoryId) != null &&
         cost.budgetCategoryId != categoryId) {
       return false;

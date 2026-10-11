@@ -602,6 +602,7 @@ class _AcceptedQuoteFinanceApi extends FinanceApi {
     String? status,
     String? categoryId,
     String? search,
+    String? payer,
   }) async => const FinancePage(
     items: [cost],
     page: 1,

@@ -160,6 +160,7 @@ class _WriteThenReadFinanceApi extends FinanceApi {
     String? status,
     String? categoryId,
     String? search,
+    String? payer,
   }) async {
     _readGate();
     return FinancePage(

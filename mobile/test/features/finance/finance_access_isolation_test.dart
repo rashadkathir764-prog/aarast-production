@@ -264,6 +264,7 @@ class _CountingFinanceApi extends FinanceApi {
     String? status,
     String? categoryId,
     String? search,
+    String? payer,
   }) async {
     costCalls += 1;
     final items = withCost ? [_cost(planId)] : const <WeddingCost>[];

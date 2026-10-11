@@ -1,5 +1,88 @@
 part of 'provider_details_screen.dart';
 
+extension _ProviderQuoteFooter on _ProviderDetailsScreenState {
+  /// The quote footer: the latest quote's status and the primary quote action.
+  Widget _quoteFooter(String? selectedPlanId) {
+    return SafeArea(
+      top: false,
+      child: DecoratedBox(
+        decoration: const BoxDecoration(
+          color: AppTheme.surfaceRaised,
+          border: Border(top: BorderSide(color: AppTheme.border)),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(12, 10, 12, 12),
+          child: Consumer<ProviderMarketplaceProvider>(
+            builder: (context, marketplace, _) {
+              final quotes = marketplace.quotesForProviderInScope(
+                widget.providerId,
+                weddingPlanId: selectedPlanId,
+              );
+              final latest = quotes.isEmpty ? null : quotes.first;
+              final loadingQuote =
+                  !_quoteContextReady ||
+                  marketplace.isProviderQuoteContextLoading(widget.providerId);
+              return Container(
+                padding: const EdgeInsets.symmetric(horizontal: 4),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    if (latest != null) ...[
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(6, 2, 6, 7),
+                        child: Row(
+                          children: [
+                            const Expanded(
+                              child: Text(
+                                'آخر طلب لهذا المورد',
+                                style: TextStyle(
+                                  color: AppTheme.textSecondary,
+                                  fontWeight: FontWeight.w800,
+                                ),
+                              ),
+                            ),
+                            QuoteStatusChip(
+                              status: latest.lifecycleStatus,
+                              compact: true,
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                    Row(
+                      children: [
+                        if (latest != null) ...[
+                          _ContactIconButton(
+                            key: const Key('provider-details-conversation'),
+                            onTap: () => _openQuoteConversation(latest.id),
+                          ),
+                          const SizedBox(width: 10),
+                        ],
+                        Expanded(
+                          child: AarastButton(
+                            label: _primaryQuoteActionLabel(latest),
+                            icon: LucideIcons.filePlus2,
+                            isLoading: loadingQuote,
+                            onPressed: loadingQuote
+                                ? null
+                                : () =>
+                                      _openPrimaryQuoteAction(context, latest),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              );
+            },
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 Future<void> _shareProvider(
   BuildContext context,
   MarketplaceProvider provider,

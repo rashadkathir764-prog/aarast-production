@@ -607,6 +607,7 @@ test('requires the exact Task 4 owner public surfaces', () => {
       'getProviders',
       'rejectProvider',
       'requestProviderChanges',
+      'setProviderVerified',
       'suspendProvider',
     ],
   };

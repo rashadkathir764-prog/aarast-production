@@ -18,7 +18,8 @@ const EXACT = Object.freeze({
   compositionRoots: '18e34932763ebde50f663bae2c92aeb7a4aea4d7aaa2bc57d7a12247d6174aa5',
   appScreenAllowlist: '15c4b027e3f4489c1e2ad2ddc2376c73b7f29e816441c9b20a775b7f0916a869',
   publicSurfaceFirstTask: '8c16474435f8c71a05735b8d25810f6acd1d558c73dd55cd5bf5eaa5e97a0e2a',
-  publicSurfaces: 'cead895d2fd08edea2ca6a198398287dd0c2c9ac5abe648043f22b4e7e7c29cf',
+  // Re-pinned 2026-10-11: providers gained setProviderVerified (V1 checklist 4.11).
+  publicSurfaces: '8ecc341f2fc40c7fcdce0248d96434dea446ea58c80990096a7479ac6a67de0e',
   sourceFates: '2b0bc1b903a3a861b0400d398fd091a4078d9e4d2bde4a3b06166f9b764699b5',
   createdTargets: '3d658daecf9de9a7040443a75c630a8ba732b2627c5ea929fb741205fe0019a1',
   stages: 'd799c92b42714969d4570dd925a34912ea05ec6b4b4107c4ef0fbb3c93e09ab6',

@@ -92,6 +92,8 @@ export type ProviderApplication = {
   reviewNote: string | null;
   reviewedAt: string | null;
   reviewedBy: AdminUser | null;
+  /** When an admin checked the provider's documents; null when not verified. */
+  verifiedAt: string | null;
   isFeatured: boolean;
   ratingAverage: string;
   ratingCount: number;
@@ -180,4 +182,14 @@ export function activateProvider(id: string): Promise<ProviderApplication> {
     method: 'PATCH',
     body: {},
   });
+}
+
+export function setProviderVerified(
+  id: string,
+  verified: boolean,
+): Promise<ProviderApplication> {
+  return apiRequest<ProviderApplication>(
+    `/admin/providers/${id}/${verified ? 'verify' : 'unverify'}`,
+    { method: 'PATCH', body: {} },
+  );
 }

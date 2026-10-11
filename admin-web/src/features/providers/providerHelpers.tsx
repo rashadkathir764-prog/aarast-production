@@ -3,6 +3,7 @@ import {
   approveProvider,
   rejectProvider,
   requestProviderChanges,
+  setProviderVerified,
   suspendProvider,
   type ProviderApplication,
 } from './api';
@@ -34,12 +35,21 @@ export function providerActionVisibility(
   };
 }
 
+/** Verify is offered on an active provider; clearing the badge always is. */
+export function providerVerificationAction(
+  provider: Pick<ProviderApplication, 'status' | 'verifiedAt'>,
+): 'verify' | 'unverify' | null {
+  if (provider.verifiedAt) return 'unverify';
+  return provider.status === 'ACTIVE' ? 'verify' : null;
+}
+
 export function ProviderActions({
   provider,
   onChanged,
   detailsPath,
 }: ProviderActionsProps) {
   const actions = providerActionVisibility(provider.status);
+  const verification = providerVerificationAction(provider);
 
   async function run(action: () => Promise<ProviderApplication>) {
     await action();
@@ -129,6 +139,33 @@ export function ProviderActions({
           onConfirm={(reason) => run(() => suspendProvider(provider.id, reason))}
         />
         ) : null}
+        {verification === 'verify' ? (
+        <ConfirmDialog
+          title="توثيق المورد"
+          message="تأكد أنك راجعت وثائق المورد (السجل التجاري أو الهوية). ستظهر شارة «موثّق» للعملاء."
+          confirmLabel="توثيق"
+          trigger={
+            <ActionButton tone="ghost" size="small" type="button">
+              توثيق
+            </ActionButton>
+          }
+          onConfirm={() => run(() => setProviderVerified(provider.id, true))}
+        />
+        ) : null}
+        {verification === 'unverify' ? (
+        <ConfirmDialog
+          title="إلغاء التوثيق"
+          message="ستختفي شارة «موثّق» عن المورد في التطبيق."
+          confirmLabel="إلغاء التوثيق"
+          tone="danger"
+          trigger={
+            <ActionButton tone="ghost" size="small" type="button">
+              إلغاء التوثيق
+            </ActionButton>
+          }
+          onConfirm={() => run(() => setProviderVerified(provider.id, false))}
+        />
+        ) : null}
       </Can>
     </div>
   );
@@ -163,6 +200,11 @@ export function ProviderSummaryCard({
           <span dir="ltr">{provider.phone}</span>
         </DetailField>
         <StatusBadge status={provider.status} />
+        {provider.verifiedAt ? (
+          <DetailField label="التوثيق">
+            موثّق منذ {new Date(provider.verifiedAt).toLocaleDateString('ar')}
+          </DetailField>
+        ) : null}
       </div>
     </article>
   );

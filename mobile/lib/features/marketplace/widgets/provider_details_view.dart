@@ -7,6 +7,7 @@ import '../../../core/widgets/aarast_loading_state.dart';
 import '../models/marketplace_models.dart';
 import 'provider_details_sections.dart';
 import 'provider_photo_gallery.dart';
+import 'provider_trust_signals.dart';
 
 class ProviderDetailsView extends StatelessWidget {
   const ProviderDetailsView({
@@ -25,6 +26,9 @@ class ProviderDetailsView extends StatelessWidget {
     this.detailsErrorMessage,
     this.isRetryingDetails = false,
     this.onRetryDetails,
+    this.onWhatsApp,
+    this.onOpenMap,
+    this.now,
     super.key,
   });
 
@@ -43,6 +47,13 @@ class ProviderDetailsView extends StatelessWidget {
   final String? detailsErrorMessage;
   final bool isRetryingDetails;
   final VoidCallback? onRetryDetails;
+
+  /// Null hides the action (no WhatsApp number / no pinned location).
+  final VoidCallback? onWhatsApp;
+  final VoidCallback? onOpenMap;
+
+  /// The clock for "last price update"; tests pin it.
+  final DateTime? now;
 
   @override
   Widget build(BuildContext context) {
@@ -91,6 +102,15 @@ class ProviderDetailsView extends StatelessWidget {
                 ratingAverage: provider.ratingAverage,
                 ratingCount: provider.ratingCount,
                 isFeatured: provider.isFeatured,
+                isVerified: provider.isVerified,
+              ),
+              const SizedBox(height: 12),
+              ProviderTrustSignals(
+                responsiveness: provider.responsiveness,
+                pricesUpdatedAt: latestPriceUpdate(services),
+                now: now ?? DateTime.now(),
+                onWhatsApp: onWhatsApp,
+                onOpenMap: onOpenMap,
               ),
               if (_providerPriceRange(services) case final price?) ...[
                 const SizedBox(height: 14),
@@ -432,12 +452,14 @@ class _ProviderMeta extends StatelessWidget {
     required this.ratingAverage,
     required this.ratingCount,
     required this.isFeatured,
+    required this.isVerified,
   });
 
   final String? category;
   final double ratingAverage;
   final int ratingCount;
   final bool isFeatured;
+  final bool isVerified;
 
   @override
   Widget build(BuildContext context) {
@@ -447,6 +469,14 @@ class _ProviderMeta extends StatelessWidget {
         spacing: 8,
         runSpacing: 8,
         children: [
+          if (isVerified)
+            const _MetaBadge(
+              key: Key('provider-details-verified'),
+              label: 'موثّق',
+              icon: LucideIcons.shieldCheck,
+              foreground: AppTheme.success,
+              background: AppTheme.successSoft,
+            ),
           if (isFeatured)
             const _MetaBadge(
               label: 'مرجع تخطيطي',
@@ -480,6 +510,7 @@ class _MetaBadge extends StatelessWidget {
     required this.foreground,
     required this.background,
     this.icon,
+    super.key,
   });
 
   final String label;

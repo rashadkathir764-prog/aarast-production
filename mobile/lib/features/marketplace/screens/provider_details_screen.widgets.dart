@@ -96,6 +96,27 @@ Future<void> _shareProvider(
   AarastToast.showSuccess(context, 'تم نسخ بيانات المورد للمشاركة');
 }
 
+/// Opens [uri] outside the app; null (no link) hides the action. A device
+/// that cannot open it gets [failure] instead of a silent no-op.
+VoidCallback? _externalLinkAction(
+  BuildContext context,
+  Uri? uri,
+  String failure,
+) {
+  if (uri == null) return null;
+  return () async {
+    bool opened;
+    try {
+      opened = await launchUrl(uri, mode: LaunchMode.externalApplication);
+    } on PlatformException {
+      opened = false;
+    } on MissingPluginException {
+      opened = false;
+    }
+    if (!opened && context.mounted) AarastToast.showError(context, failure);
+  };
+}
+
 String _primaryQuoteActionLabel(QuoteRequest? quote) {
   if (quote == null) return 'طلب عرض سعر';
   if (quote.status == 'SENT' || quote.status == 'VIEWED') {

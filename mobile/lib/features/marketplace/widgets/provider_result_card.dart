@@ -16,6 +16,7 @@ class ProviderResultCard extends StatelessWidget {
     required this.isFavorite,
     required this.onFavorite,
     required this.onDetails,
+    this.isVerified = false,
     this.categoryLabel,
     this.locationLabel,
     this.priceLabel,
@@ -34,6 +35,9 @@ class ProviderResultCard extends StatelessWidget {
   final bool isFavorite;
   final VoidCallback? onFavorite;
   final VoidCallback onDetails;
+
+  /// An admin checked the provider's documents.
+  final bool isVerified;
   final String? categoryLabel;
   final String? locationLabel;
   final String? priceLabel;
@@ -88,16 +92,35 @@ class ProviderResultCard extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Text(
-                        businessName,
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                        style: Theme.of(context).textTheme.titleMedium
-                            ?.copyWith(
-                              color: AppTheme.textPrimary,
-                              fontWeight: FontWeight.w800,
-                              height: 1.18,
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Flexible(
+                            child: Text(
+                              businessName,
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                              style: Theme.of(context).textTheme.titleMedium
+                                  ?.copyWith(
+                                    color: AppTheme.textPrimary,
+                                    fontWeight: FontWeight.w800,
+                                    height: 1.18,
+                                  ),
                             ),
+                          ),
+                          if (isVerified) ...[
+                            const SizedBox(width: AppTheme.space4),
+                            const Tooltip(
+                              message: 'مورد موثّق',
+                              child: Icon(
+                                LucideIcons.shieldCheck,
+                                key: Key('provider-card-verified'),
+                                size: 17,
+                                color: AppTheme.success,
+                              ),
+                            ),
+                          ],
+                        ],
                       ),
                       if (hasCategory) ...[
                         const SizedBox(height: AppTheme.space2),

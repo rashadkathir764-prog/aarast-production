@@ -1168,6 +1168,7 @@ class _ProviderCard extends StatelessWidget {
       key: Key('provider-marketplace-card-${provider.id}'),
       businessName: provider.businessName,
       isFeatured: provider.isFeatured,
+      isVerified: provider.isVerified,
       ratingAverage: provider.ratingAverage,
       ratingCount: provider.ratingCount,
       categoryLabel: category,

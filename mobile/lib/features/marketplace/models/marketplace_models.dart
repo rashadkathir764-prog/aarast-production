@@ -89,6 +89,10 @@ class MarketplaceProvider {
     this.address,
     this.logoUrl,
     this.coverUrl,
+    this.latitude,
+    this.longitude,
+    this.verifiedAt,
+    this.responsiveness,
     this.services = const [],
     this.serviceSummary,
   });
@@ -112,6 +116,13 @@ class MarketplaceProvider {
       address: json['address']?.toString(),
       logoUrl: json['logoUrl']?.toString(),
       coverUrl: json['coverUrl']?.toString(),
+      latitude: _doubleOrNull(json['latitude']),
+      longitude: _doubleOrNull(json['longitude']),
+      verifiedAt: _dateOrNull(json['verifiedAt']),
+      responsiveness: _mapOrNull(
+        json['responsiveness'],
+        ProviderResponsiveness.fromJson,
+      ),
       isFeatured: json['isFeatured'] == true,
       ratingAverage: _doubleOrZero(json['ratingAverage']),
       ratingCount: _intOrZero(json['ratingCount']),
@@ -137,11 +148,42 @@ class MarketplaceProvider {
   final String? address;
   final String? logoUrl;
   final String? coverUrl;
+  final double? latitude;
+  final double? longitude;
+
+  /// When an admin checked the provider's documents; null when not verified.
+  final DateTime? verifiedAt;
+
+  /// Only on the provider details response, and null with too little history.
+  final ProviderResponsiveness? responsiveness;
   final bool isFeatured;
   final double ratingAverage;
   final int ratingCount;
   final List<MarketplaceService> services;
   final MarketplaceProviderServiceSummary? serviceSummary;
+
+  bool get isVerified => verifiedAt != null;
+}
+
+/// How quickly a provider answers quote requests, from its own history.
+class ProviderResponsiveness {
+  const ProviderResponsiveness({
+    required this.sampleSize,
+    required this.answeredPercent,
+    this.typicalResponseHours,
+  });
+
+  factory ProviderResponsiveness.fromJson(Map<String, dynamic> json) {
+    return ProviderResponsiveness(
+      sampleSize: _intOrZero(json['sampleSize']),
+      answeredPercent: _intOrZero(json['answeredPercent']),
+      typicalResponseHours: _intOrNull(json['typicalResponseHours']),
+    );
+  }
+
+  final int sampleSize;
+  final int answeredPercent;
+  final int? typicalResponseHours;
 }
 
 class MarketplaceProviderServiceSummary {
@@ -152,6 +194,7 @@ class MarketplaceProviderServiceSummary {
     this.minPrice,
     this.maxPrice,
     this.currency,
+    this.pricesUpdatedAt,
   });
 
   factory MarketplaceProviderServiceSummary.fromJson(
@@ -170,6 +213,7 @@ class MarketplaceProviderServiceSummary {
       minPrice: json['minPrice']?.toString(),
       maxPrice: json['maxPrice']?.toString(),
       currency: json['currency']?.toString(),
+      pricesUpdatedAt: _dateOrNull(json['pricesUpdatedAt']),
     );
   }
 
@@ -179,6 +223,7 @@ class MarketplaceProviderServiceSummary {
   final String? minPrice;
   final String? maxPrice;
   final String? currency;
+  final DateTime? pricesUpdatedAt;
 }
 
 class ProviderSummary {
@@ -230,6 +275,7 @@ class MarketplaceService {
     this.basePrice,
     this.priceUnit,
     this.currency,
+    this.priceUpdatedAt,
     this.city,
     this.images = const [],
   });
@@ -246,6 +292,7 @@ class MarketplaceService {
       basePrice: json['basePrice']?.toString(),
       priceUnit: json['priceUnit']?.toString(),
       currency: json['currency']?.toString(),
+      priceUpdatedAt: _dateOrNull(json['priceUpdatedAt']),
       city: _mapOrNull(json['city'], MarketplaceCity.fromJson),
       isActive: json['isActive'] != false,
       isFeatured: json['isFeatured'] == true,
@@ -263,6 +310,9 @@ class MarketplaceService {
   final String? basePrice;
   final String? priceUnit;
   final String? currency;
+
+  /// When the price last changed value; null while the service has no price.
+  final DateTime? priceUpdatedAt;
   final MarketplaceCity? city;
   final bool isActive;
   final bool isFeatured;
@@ -282,6 +332,7 @@ class MarketplaceService {
       basePrice: basePrice,
       priceUnit: priceUnit,
       currency: currency,
+      priceUpdatedAt: priceUpdatedAt,
       city: city,
       images: images ?? this.images,
     );
@@ -781,6 +832,12 @@ int? _intOrNull(Object? value) {
 double _doubleOrZero(Object? value) {
   if (value is num) return value.toDouble();
   return double.tryParse(value?.toString() ?? '') ?? 0;
+}
+
+double? _doubleOrNull(Object? value) {
+  if (value == null) return null;
+  if (value is num) return value.toDouble();
+  return double.tryParse(value.toString());
 }
 
 DateTime? _dateOrNull(Object? value) {

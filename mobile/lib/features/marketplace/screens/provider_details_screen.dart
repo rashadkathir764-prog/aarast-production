@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../../core/routing/app_router.dart';
 import '../../../core/theme/app_theme.dart';
@@ -11,6 +12,7 @@ import '../../../core/widgets/aarast_ui.dart';
 import '../../account_contexts/account_contexts_api.dart'
     show AccountContext, AccountContextController;
 import '../../auth/auth_api.dart' show AuthActionGuard;
+import '../data/provider_contact_links.dart';
 import '../models/marketplace_models.dart';
 import '../providers/marketplace_provider.dart';
 import '../widgets/provider_details_view.dart';
@@ -140,6 +142,16 @@ class _ProviderDetailsScreenState extends State<ProviderDetailsScreen> {
               if (context.canPop()) context.pop();
             },
             onShare: () => _shareProvider(context, provider),
+            onWhatsApp: _externalLinkAction(
+              context,
+              providerWhatsAppUri(provider.whatsapp),
+              'تعذر فتح واتساب على هذا الجهاز.',
+            ),
+            onOpenMap: _externalLinkAction(
+              context,
+              providerMapUri(provider.latitude, provider.longitude),
+              'تعذر فتح الخريطة على هذا الجهاز.',
+            ),
             onFavorite: () async {
               if (await AuthActionGuard.blockProtectedSubmitWithoutAccount(
                 context,

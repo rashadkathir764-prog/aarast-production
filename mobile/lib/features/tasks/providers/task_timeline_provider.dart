@@ -4,6 +4,7 @@ import '../../../core/network/api_client.dart';
 import '../../../core/offline/cache_policy.dart';
 import '../../../core/session/session_scoped_change_notifier.dart';
 import '../data/task_timeline_api.dart';
+import '../models/task_checklist_item.dart';
 import '../models/task_summary.dart';
 import '../models/timeline.dart';
 import '../models/wedding_task.dart';
@@ -22,7 +23,11 @@ class TaskTimelineProvider extends ChangeNotifier with SessionScopedNotifier {
   TaskSummary _summary = TaskSummary.empty('');
   final Map<String, int> _statusMutationVersions = {};
   final Map<String, String> _lastMeaningfulStatuses = {};
+  bool _isSavingChecklist = false;
+  String? _checklistErrorMessage;
 
+  bool get isSavingChecklist => _isSavingChecklist;
+  String? get checklistErrorMessage => _checklistErrorMessage;
   bool get isLoading => _isLoading;
   bool get isSubmitting => _isSubmitting;
   String? get errorMessage => _errorMessage;
@@ -366,6 +371,69 @@ class TaskTimelineProvider extends ChangeNotifier with SessionScopedNotifier {
     _errorMessage = null;
     _noticeMessage = null;
     notifyListeners();
+  }
+
+  Future<bool> addChecklistItem(WeddingTask task, String title) {
+    return _changeChecklist(task, (current) async {
+      final item = await _api.createChecklistItem(current, title);
+      return [...current.checklist, item];
+    });
+  }
+
+  Future<bool> updateChecklistItem(
+    WeddingTask task,
+    TaskChecklistItem item, {
+    String? title,
+    bool? isDone,
+  }) {
+    return _changeChecklist(task, (current) async {
+      final updated = await _api.updateChecklistItem(
+        current,
+        item,
+        title: title,
+        isDone: isDone,
+      );
+      return [
+        for (final entry in current.checklist)
+          entry.id == updated.id ? updated : entry,
+      ];
+    });
+  }
+
+  Future<bool> removeChecklistItem(WeddingTask task, TaskChecklistItem item) {
+    return _changeChecklist(task, (current) async {
+      await _api.deleteChecklistItem(current, item);
+      return [
+        for (final entry in current.checklist)
+          if (entry.id != item.id) entry,
+      ];
+    });
+  }
+
+  /// Applies one confirmed checklist change at a time. The task only shows
+  /// what the server saved; a failure keeps it unchanged and says why.
+  Future<bool> _changeChecklist(
+    WeddingTask task,
+    Future<List<TaskChecklistItem>> Function(WeddingTask current) change,
+  ) async {
+    if (_isSavingChecklist) return false;
+    _isSavingChecklist = true;
+    _checklistErrorMessage = null;
+    notifyListeners();
+    try {
+      final checklist = await change(_currentTask(task));
+      _replaceTask(_currentTask(task).copyWith(checklist: checklist));
+      return true;
+    } on ApiException catch (error) {
+      _checklistErrorMessage = error.message;
+      return false;
+    } catch (_) {
+      _checklistErrorMessage = 'تعذر حفظ القائمة الفرعية. حاول مرة أخرى.';
+      return false;
+    } finally {
+      _isSavingChecklist = false;
+      notifyListeners();
+    }
   }
 
   WeddingTask _currentTask(WeddingTask fallback) {

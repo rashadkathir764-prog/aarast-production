@@ -21,7 +21,9 @@ import '../models/wedding_task.dart';
 import '../providers/task_timeline_provider.dart';
 import '../utils/task_display.dart';
 import '../widgets/create_task_components.dart';
+import '../widgets/task_checklist_section.dart';
 
+part 'create_task_screen_checklist.dart';
 part 'create_task_screen_draft.dart';
 
 class CreateTaskScreen extends StatefulWidget {
@@ -425,6 +427,7 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
                         ],
                       ),
                     ),
+                    ..._checklistSection(provider),
                     const SizedBox(height: AppTheme.space14),
                     _buildLiveSummary(),
                     if (provider.errorMessage != null) ...[

@@ -1,4 +1,5 @@
 ﻿import '../../../core/phone/phone_number_utils.dart';
+import 'task_checklist_item.dart';
 
 class WeddingTask {
   const WeddingTask({
@@ -19,6 +20,7 @@ class WeddingTask {
     this.responsibleName,
     this.responsiblePhone,
     this.responsibleSource,
+    this.checklist = const [],
   });
 
   factory WeddingTask.fromJson(Map<String, dynamic> json) {
@@ -56,6 +58,11 @@ class WeddingTask {
       priority: json['priority']?.toString() ?? 'MEDIUM',
       createdAt: _dateTimeOrNow(json['createdAt']),
       updatedAt: _dateTimeOrNow(json['updatedAt']),
+      checklist: [
+        for (final item in json['checklist'] as List? ?? const [])
+          if (item is Map)
+            TaskChecklistItem.fromJson(Map<String, dynamic>.from(item)),
+      ],
     );
   }
 
@@ -76,6 +83,11 @@ class WeddingTask {
   final String priority;
   final DateTime createdAt;
   final DateTime updatedAt;
+
+  /// The task's checklist steps, in the server's order.
+  final List<TaskChecklistItem> checklist;
+
+  int get checklistDoneCount => checklist.where((item) => item.isDone).length;
 
   bool get hasDescription =>
       description != null && description!.trim().isNotEmpty;
@@ -126,6 +138,7 @@ class WeddingTask {
     String? status,
     String? priority,
     DateTime? updatedAt,
+    List<TaskChecklistItem>? checklist,
   }) {
     return WeddingTask(
       id: id,
@@ -135,6 +148,7 @@ class WeddingTask {
       priority: priority ?? this.priority,
       createdAt: createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
+      checklist: checklist ?? this.checklist,
       description: identical(description, _unchanged)
           ? this.description
           : description as String?,

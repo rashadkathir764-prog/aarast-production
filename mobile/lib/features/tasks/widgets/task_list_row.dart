@@ -211,6 +211,23 @@ class _MetaRow extends StatelessWidget {
           ],
         ),
         _DueChip(label: dueLabel, color: dueColor, isDone: isDone),
+        if (task.checklist.isNotEmpty)
+          Row(
+            key: const ValueKey('task-row-checklist-progress'),
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(
+                LucideIcons.listChecks,
+                size: 12,
+                color: AppTheme.textSecondary,
+              ),
+              const SizedBox(width: 4),
+              Text(
+                '${task.checklistDoneCount}/${task.checklist.length}',
+                style: metaStyle,
+              ),
+            ],
+          ),
         Row(
           mainAxisSize: MainAxisSize.min,
           children: [

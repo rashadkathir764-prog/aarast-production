@@ -5,6 +5,7 @@ import '../../../core/offline/cache_policy.dart';
 import '../../../core/offline/offline_sync_service.dart';
 import '../../../core/offline/offline_tables.dart';
 import '../../../core/offline/sync_queue.dart';
+import '../models/task_checklist_item.dart';
 import '../models/task_summary.dart';
 import '../models/timeline.dart';
 import '../models/wedding_task.dart';
@@ -658,7 +659,76 @@ class TaskTimelineApi {
         'responsibleSource': task.responsibleSource,
       'createdAt': task.createdAt.toIso8601String(),
       'updatedAt': task.updatedAt.toIso8601String(),
+      'checklist': [for (final item in task.checklist) item.toJson()],
     };
+  }
+
+  /// Checklist steps are saved on the server only, so they need a connection
+  /// and a task that already exists there (not a device-only task).
+  Future<TaskChecklistItem> createChecklistItem(
+    WeddingTask task,
+    String title,
+  ) async {
+    _assertChecklistAvailable(task);
+    final json = await _apiClient.postJson(
+      '/api/v1/tasks/${task.id}/checklist',
+      {'title': title.trim(), 'sortOrder': task.checklist.length},
+    );
+    final item = TaskChecklistItem.fromJson(json);
+    await _cacheChecklist(task, [...task.checklist, item]);
+    return item;
+  }
+
+  Future<TaskChecklistItem> updateChecklistItem(
+    WeddingTask task,
+    TaskChecklistItem item, {
+    String? title,
+    bool? isDone,
+  }) async {
+    _assertChecklistAvailable(task);
+    final json = await _apiClient.patchJson(
+      '/api/v1/tasks/${task.id}/checklist/${item.id}',
+      {'title': ?title?.trim(), 'isDone': ?isDone},
+    );
+    final updated = TaskChecklistItem.fromJson(json);
+    await _cacheChecklist(task, [
+      for (final current in task.checklist)
+        current.id == updated.id ? updated : current,
+    ]);
+    return updated;
+  }
+
+  Future<void> deleteChecklistItem(
+    WeddingTask task,
+    TaskChecklistItem item,
+  ) async {
+    _assertChecklistAvailable(task);
+    await _apiClient.deleteJson(
+      '/api/v1/tasks/${task.id}/checklist/${item.id}',
+    );
+    await _cacheChecklist(task, [
+      for (final current in task.checklist)
+        if (current.id != item.id) current,
+    ]);
+  }
+
+  void _assertChecklistAvailable(WeddingTask task) {
+    if (task.id.startsWith('local-') ||
+        _isLocalGuestPlanId(task.weddingPlanId)) {
+      throw const ApiException(
+        'القائمة الفرعية تُحفظ في حسابك؛ احفظ المهمة على حسابك أولًا.',
+      );
+    }
+  }
+
+  Future<void> _cacheChecklist(
+    WeddingTask task,
+    List<TaskChecklistItem> checklist,
+  ) async {
+    await _offline?.database.saveCachedItem(
+      table: OfflineTables.cachedTasks,
+      json: _taskToCacheJson(task.copyWith(checklist: checklist)),
+    );
   }
 
   bool _hasValue(String? value) {

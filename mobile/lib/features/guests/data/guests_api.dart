@@ -1,4 +1,7 @@
-﻿import '../../../core/network/api_client.dart';
+import 'dart:convert';
+
+import '../../../core/network/api_client.dart';
+import '../../../core/offline/cache_policy.dart';
 import '../../../core/offline/offline_sync_service.dart';
 import '../../../core/offline/offline_tables.dart';
 import '../../../core/phone/phone_number_utils.dart';
@@ -11,17 +14,31 @@ class GuestsApi {
   final ApiClient _apiClient;
   final OfflineSyncService? _offline;
 
+  /// Reads keep the last server copy on this (encrypted) device, so the guest
+  /// list still opens without a connection; changes still need one.
   Future<List<Guest>> getGuests(String weddingPlanId) async {
     if (_isLocalGuestPlanId(weddingPlanId)) {
       return _cachedGuests(weddingPlanId);
     }
-    final list = await _apiClient.getJsonList(
-      '/api/v1/wedding-plans/$weddingPlanId/guests',
-    );
-    return list
-        .whereType<Map>()
-        .map((item) => Guest.fromJson(Map<String, dynamic>.from(item)))
-        .toList();
+    try {
+      final items = (await _apiClient.getJsonList(
+        '/api/v1/wedding-plans/$weddingPlanId/guests',
+      )).whereType<Map>().map((item) => Map<String, dynamic>.from(item));
+      final list = items.toList();
+      await _offline?.database.replaceCachedList(
+        table: OfflineTables.cachedGuests,
+        items: list,
+        parentColumn: 'planId',
+        parentId: weddingPlanId,
+      );
+      return list.map(Guest.fromJson).toList();
+    } on Object catch (error) {
+      if (!await _canReadOffline(error)) rethrow;
+      final cached = await _cachedGuests(weddingPlanId);
+      // No saved copy: report the failure instead of an empty guest list.
+      if (cached.isEmpty) rethrow;
+      return cached;
+    }
   }
 
   Future<GuestSummary> getSummary({
@@ -36,21 +53,60 @@ class GuestsApi {
         groups: localGroups ?? const [],
       );
     }
-    final json = await _apiClient.getJson(
-      '/api/v1/wedding-plans/$weddingPlanId/guests/summary',
-    );
-    return GuestSummary.fromJson(json);
+    try {
+      final json = await _apiClient.getJson(
+        '/api/v1/wedding-plans/$weddingPlanId/guests/summary',
+      );
+      return GuestSummary.fromJson(json);
+    } on Object catch (error) {
+      if (!await _canReadOffline(error)) rethrow;
+      return GuestSummary.fromGuests(
+        weddingPlanId: weddingPlanId,
+        guests: localGuests ?? await _cachedGuests(weddingPlanId),
+        groups: localGroups ?? await _cachedGroups(weddingPlanId),
+      );
+    }
   }
 
   Future<List<GuestGroup>> getGroups(String weddingPlanId) async {
     if (_isLocalGuestPlanId(weddingPlanId)) return const [];
-    final list = await _apiClient.getJsonList(
-      '/api/v1/wedding-plans/$weddingPlanId/guest-groups',
+    try {
+      final list = (await _apiClient.getJsonList(
+        '/api/v1/wedding-plans/$weddingPlanId/guest-groups',
+      )).whereType<Map>().map((item) => Map<String, dynamic>.from(item));
+      final items = list.toList();
+      await _offline?.database.setMeta(
+        _groupsCacheKey(weddingPlanId),
+        jsonEncode(items),
+      );
+      return items.map(GuestGroup.fromJson).toList();
+    } on Object catch (error) {
+      if (!await _canReadOffline(error)) rethrow;
+      return _cachedGroups(weddingPlanId);
+    }
+  }
+
+  /// A network failure with a device cache to fall back on.
+  Future<bool> _canReadOffline(Object error) async {
+    final offline = _offline;
+    if (!CachePolicy.shouldUseCache(error) || offline == null) return false;
+    await offline.noteNetworkFailure((error as ApiException).message);
+    return true;
+  }
+
+  String _groupsCacheKey(String weddingPlanId) => 'guest-groups:$weddingPlanId';
+
+  Future<List<GuestGroup>> _cachedGroups(String weddingPlanId) async {
+    final raw = await _offline?.database.getMeta(
+      _groupsCacheKey(weddingPlanId),
     );
-    return list
-        .whereType<Map>()
-        .map((item) => GuestGroup.fromJson(Map<String, dynamic>.from(item)))
-        .toList();
+    if (raw == null) return const [];
+    final decoded = jsonDecode(raw);
+    if (decoded is! List) return const [];
+    return [
+      for (final item in decoded)
+        if (item is Map) GuestGroup.fromJson(Map<String, dynamic>.from(item)),
+    ];
   }
 
   Future<GuestGroup> createGroup({
@@ -122,6 +178,10 @@ class GuestsApi {
       '/api/v1/wedding-plans/$weddingPlanId/guests',
       payload,
     );
+    await _offline?.database.saveCachedItem(
+      table: OfflineTables.cachedGuests,
+      json: json,
+    );
     return Guest.fromJson(json);
   }
 
@@ -169,6 +229,10 @@ class GuestsApi {
       return _updateLocalGuest(id: id, payload: payload);
     }
     final json = await _apiClient.patchJson('/api/v1/guests/$id', payload);
+    await _offline?.database.saveCachedItem(
+      table: OfflineTables.cachedGuests,
+      json: json,
+    );
     return Guest.fromJson(json);
   }
 
@@ -178,6 +242,11 @@ class GuestsApi {
       return;
     }
     await _apiClient.deleteJson('/api/v1/guests/$id');
+    await _offline?.database.discardLocalEntity(
+      table: OfflineTables.cachedGuests,
+      entityType: 'guest',
+      entityId: id,
+    );
   }
 
   String? _normalizeOptionalPhone(String? phone) {

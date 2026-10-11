@@ -360,6 +360,7 @@ class SqliteLocalDatabase implements LocalDatabase {
         'timeline:$normalizedPlanId',
         'task-summary:$normalizedPlanId',
         'money_budget:$normalizedPlanId',
+        'guest-groups:$normalizedPlanId',
       ]) {
         await txn.delete(
           OfflineTables.localMeta,

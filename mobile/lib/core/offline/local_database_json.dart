@@ -317,7 +317,8 @@ class JsonLocalDatabase implements LocalDatabase {
     final meta = _readMap(_metaKey)
       ..remove('timeline:$normalizedPlanId')
       ..remove('task-summary:$normalizedPlanId')
-      ..remove('money_budget:$normalizedPlanId');
+      ..remove('money_budget:$normalizedPlanId')
+      ..remove('guest-groups:$normalizedPlanId');
     await _writeMap(_metaKey, meta);
   }
 

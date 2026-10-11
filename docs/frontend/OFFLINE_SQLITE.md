@@ -58,9 +58,15 @@ their separate secure token vault.
   operational Wedding Day view, including time/location, permission snapshot,
   important items, and provider previews already returned by the API.
 - `cached_plan_members`: shared-member/member permission cache.
-- `cached_tasks`: task/timeline task cache with dirty and deleted flags.
+- `cached_tasks`: task/timeline task cache with dirty and deleted flags; each
+  row keeps the task's checklist in its stored JSON.
+- `cached_guests`: guest list cache. For a plan on the account it is a read
+  copy of the last server list (kept in step with confirmed guest writes);
+  for a device-only plan it holds the guests themselves. The plan's guest
+  groups are kept in `local_meta` under `guest-groups:<planId>`, removed with
+  the plan graph.
 - `cached_budget_categories`: local budget category cache.
-- `cached_wedding_costs`: category-first cost cache.
+- `cached_costs`: category-first cost cache.
 - `cached_cost_payments`: append-only actual money-out ledger cache.
 - `cached_payment_schedules`: dated payment-reminder cache.
 - `cached_provider_categories`: provider category reference cache.
@@ -113,7 +119,8 @@ Network-failed safe writes create a local dirty row and add a `sync_queue` item:
 - favorite/unfavorite provider
 
 Login, registration, OTP, password flows, quote-request creation, provider
-dashboard/admin actions, and shared-member permission mutations remain
+dashboard/admin actions, shared-member permission mutations, guest and guest
+group changes on an account plan, and task checklist steps remain
 online-only. Quote-request reads may use `cached_bookings`, but a failed create
 is never presented as queued or saved offline.
 

@@ -42,15 +42,22 @@ void main() {
         '${mobileRoot}lib/features/wedding_plans/screens/plan_management_screen.dart',
       );
 
+      // The server payload lives in PlanEditResult. Currency is fixed at plan
+      // creation and rejected by UpdateWeddingPlanDto (F01), so only a local
+      // plan applies it; plan_edit_result_test.dart pins the payload keys.
+      final payloadSource = File(
+        '${mobileRoot}lib/features/wedding_plans/models/plan_edit_result.dart',
+      ).readAsStringSync();
       for (final field in [
         "'title':",
         "'weddingDate':",
-        "'currency':",
         "'location':",
         "'priorities':",
       ]) {
-        expect(source, contains(field));
+        expect(payloadSource, contains(field));
       }
+      expect(payloadSource, isNot(contains("'currency':")));
+      expect(source, contains('currency: result.currency'));
       expect(source, contains('GuestOnboardingStorage'));
       expect(source, contains('saveDraft('));
       expect(source, contains('governorate'));

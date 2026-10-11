@@ -5,13 +5,16 @@ extension _PlanCenterPlanEdit on _PlanCenterScreenState {
     WeddingPlan plan, {
     bool requireCompleteLocation = false,
   }) async {
-    final result = await showAarastBottomSheet<_PlanEditResult>(
+    final result = await showAarastBottomSheet<PlanEditResult>(
       context: context,
       isScrollControlled: true,
+      // A tall sheet must stay below the status bar (F09).
+      useSafeArea: true,
       backgroundColor: AppTheme.canvas,
       builder: (_) => _PlanEditSheet(
         plan: plan,
         requireCompleteLocation: requireCompleteLocation,
+        canChangeCurrency: _isLocalPlan,
       ),
     );
     if (result == null || !mounted) return;
@@ -38,7 +41,7 @@ extension _PlanCenterPlanEdit on _PlanCenterScreenState {
     if (mounted) _showSuccess('تم تحديث بيانات الخطة.');
   }
 
-  Future<void> _saveLocalEdit(_PlanEditResult result) async {
+  Future<void> _saveLocalEdit(PlanEditResult result) async {
     final storage = context.read<GuestOnboardingStorage>();
     final draft = await storage.loadGuestPlan();
     if (draft == null) {
@@ -158,10 +161,15 @@ class _PlanEditSheet extends StatefulWidget {
   const _PlanEditSheet({
     required this.plan,
     required this.requireCompleteLocation,
+    required this.canChangeCurrency,
   });
 
   final WeddingPlan plan;
   final bool requireCompleteLocation;
+
+  /// Only a plan kept on this device can change currency; a server plan's
+  /// currency is fixed at creation.
+  final bool canChangeCurrency;
 
   @override
   State<_PlanEditSheet> createState() => _PlanEditSheetState();
@@ -244,7 +252,7 @@ class _PlanEditSheetState extends State<_PlanEditSheet> {
 
     Navigator.pop(
       context,
-      _PlanEditResult(
+      PlanEditResult(
         title: title,
         weddingDate: _weddingDate,
         currency: _currency,
@@ -302,11 +310,21 @@ class _PlanEditSheetState extends State<_PlanEditSheet> {
                   ),
                 ),
                 const SizedBox(height: 8),
-                AarastChoicePillRow<String>(
-                  value: _currency,
-                  options: weddingCurrencyOptions,
-                  onChanged: (value) => setState(() => _currency = value),
-                ),
+                if (widget.canChangeCurrency)
+                  AarastChoicePillRow<String>(
+                    value: _currency,
+                    options: weddingCurrencyOptions,
+                    onChanged: (value) => setState(() => _currency = value),
+                  )
+                else
+                  Text(
+                    '${currencyLabelAr(_currency)} — تُحدَّد العملة عند إنشاء الخطة.',
+                    style: const TextStyle(
+                      color: AppTheme.textSecondary,
+                      fontWeight: FontWeight.w700,
+                      height: 1.45,
+                    ),
+                  ),
                 const SizedBox(height: 18),
                 Text(
                   'موقع الزفاف',
@@ -400,40 +418,6 @@ class _PlanEditSheetState extends State<_PlanEditSheet> {
         ),
       ),
     );
-  }
-}
-
-class _PlanEditResult {
-  const _PlanEditResult({
-    required this.title,
-    required this.weddingDate,
-    required this.currency,
-    required this.priorities,
-    required this.location,
-  });
-
-  final String title;
-  final DateTime? weddingDate;
-  final String currency;
-  final List<String> priorities;
-  final WeddingLocationDraft? location;
-
-  Map<String, dynamic> toUpdateJson() {
-    return {
-      'title': title,
-      if (weddingDate != null)
-        'weddingDate': DateTime.utc(
-          weddingDate!.year,
-          weddingDate!.month,
-          weddingDate!.day,
-        ).toIso8601String(),
-      'currency': currency,
-      'priorities': priorities,
-      if (location != null) ...{
-        'city': location!.cityOrDistrict,
-        'location': location!.toJson(),
-      },
-    };
   }
 }
 

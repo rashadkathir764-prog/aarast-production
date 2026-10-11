@@ -1888,6 +1888,16 @@ publishes either the current draft or a selected historical revision, so
 rollback is explicit and does not overwrite history. `DELETE` on a catalog
 item publishes an inactive revision; it never hard-deletes prior versions.
 
+The API seeds two system catalogs on start and never overwrites an existing
+row or an admin edit: `money.starter.categories` (budget starter items) and
+`tasks.starter` (suggested tasks, V1 checklist 4.9). A task item's
+`metadata.persona` is `GROOM`, `BRIDE`, `SHARED` or `FAMILY` (shared and family
+items are visible to both), and `metadata.daysBefore` is how many days before
+the wedding date the app places its due date (clamped to today, undated without
+a wedding date). The app adds chosen templates through the ordinary task
+create route, so they work offline and for local plans, and skips a template
+whose title the plan already has.
+
 Administrative geography is managed separately through CATALOG permissions:
 `/admin/governorates`, nested governorate districts, and nested district
 localities. A locality is typed as `AREA`, `ISOLATION`, `NEIGHBORHOOD`, or

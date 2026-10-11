@@ -4,8 +4,12 @@ import { join } from 'node:path';
 import { test } from 'node:test';
 import { readLivePrismaSchema } from './support/live-prisma-schema';
 import {
+  MONEY_STARTER_CATALOG_KEY,
   moneyStarterDefaults,
   supportedCatalogIconKeys,
+  systemCatalogs,
+  TASK_STARTER_CATALOG_KEY,
+  taskStarterDefaults,
 } from '../src/catalogs/reference-catalog.defaults';
 
 const root = join(__dirname, '..');
@@ -38,6 +42,33 @@ test('money starter reference defaults are stable and audience-scoped', () => {
       (item) => !item.showForBride && !item.showForGroom,
     ),
   );
+});
+
+test('task templates cover every role with a due offset before the wedding', () => {
+  assert.deepEqual(
+    systemCatalogs.map((catalog) => catalog.key),
+    [MONEY_STARTER_CATALOG_KEY, TASK_STARTER_CATALOG_KEY],
+  );
+  const allKeys = systemCatalogs.flatMap((catalog) => catalog.items.map((item) => item.key));
+  assert.equal(new Set(allKeys).size, allKeys.length, 'item keys are unique across catalogs');
+
+  const personas = new Set(taskStarterDefaults.map((item) => item.metadata?.persona));
+  assert.deepEqual([...personas].sort(), ['BRIDE', 'FAMILY', 'GROOM', 'SHARED']);
+  for (const item of taskStarterDefaults) {
+    const daysBefore = Number(item.metadata?.daysBefore);
+    assert.ok(Number.isInteger(daysBefore) && daysBefore >= 0, item.key);
+    assert.ok(supportedCatalogIconKeys.has(item.icon), item.key);
+    const persona = item.metadata?.persona;
+    assert.equal(item.showForGroom, persona !== 'BRIDE', item.key);
+    assert.equal(item.showForBride, persona !== 'GROOM', item.key);
+  }
+  // The Yemeni essentials the client listed are offered as tasks.
+  for (const word of ['المهر', 'الشرط', 'الشبكة', 'الكسوة', 'القات', 'الفنان', 'الزفة', 'مخدرة', 'النقش', 'الشقة', 'شهر العسل']) {
+    assert.ok(
+      taskStarterDefaults.some((item) => item.nameAr.includes(word)),
+      word,
+    );
+  }
 });
 
 test('catalog publication separates drafts from the public bootstrap', () => {

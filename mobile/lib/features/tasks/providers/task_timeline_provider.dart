@@ -5,6 +5,7 @@ import '../../../core/offline/cache_policy.dart';
 import '../../../core/session/session_scoped_change_notifier.dart';
 import '../data/task_timeline_api.dart';
 import '../models/task_checklist_item.dart';
+import '../models/task_starter_catalog.dart';
 import '../models/task_summary.dart';
 import '../models/timeline.dart';
 import '../models/wedding_task.dart';
@@ -172,6 +173,74 @@ class TaskTimelineProvider extends ChangeNotifier with SessionScopedNotifier {
       _isSubmitting = false;
       notifyListeners();
     }
+  }
+
+  /// Adds the chosen suggested tasks. A template whose title the plan
+  /// already has is skipped, so adding twice never duplicates. Returns how
+  /// many were added; a partial failure keeps what was saved and says so.
+  Future<int> addStarterTasks({
+    required String weddingPlanId,
+    required List<TaskStarterTemplate> templates,
+    required DateTime? weddingDate,
+    DateTime? today,
+  }) async {
+    final existing = {
+      for (final task in _tasks)
+        if (task.weddingPlanId == weddingPlanId)
+          taskStarterTitleKey(task.title),
+    };
+    final pending = templates
+        .where((item) => existing.add(taskStarterTitleKey(item.title)))
+        .toList(growable: false);
+    if (pending.isEmpty) {
+      _noticeMessage = 'كل المهام المختارة موجودة في خطتك بالفعل.';
+      notifyListeners();
+      return 0;
+    }
+
+    _isSubmitting = true;
+    _errorMessage = null;
+    _noticeMessage = null;
+    notifyListeners();
+
+    final now = today ?? DateTime.now();
+    var added = 0;
+    var queuedOffline = false;
+    String? failure;
+    try {
+      for (final template in pending) {
+        try {
+          final task = await _api.createTask(
+            weddingPlanId: weddingPlanId,
+            title: template.title,
+            dueDate: taskStarterDueDate(weddingDate, template.daysBefore, now),
+          );
+          added += 1;
+          queuedOffline = queuedOffline || task.id.startsWith('local-');
+          _tasks = [task, ..._tasks.where((item) => item.id != task.id)];
+        } on ApiException catch (error) {
+          failure = error.message;
+          break;
+        } catch (_) {
+          failure = 'تعذر حفظ المهمة.';
+          break;
+        }
+      }
+      if (added > 0) await _refreshTaskData(weddingPlanId);
+    } finally {
+      if (failure != null) {
+        _errorMessage = added == 0
+            ? failure
+            : 'أُضيفت $added من ${pending.length} مهام، وتعذر حفظ الباقي: $failure';
+      } else if (_isLocalGuestPlanId(weddingPlanId)) {
+        _noticeMessage = CachePolicy.localPlanningSaveMessage;
+      } else if (queuedOffline) {
+        _noticeMessage = CachePolicy.offlineWriteMessage;
+      }
+      _isSubmitting = false;
+      notifyListeners();
+    }
+    return added;
   }
 
   Future<bool> markTaskDone(String weddingPlanId, WeddingTask task) async {

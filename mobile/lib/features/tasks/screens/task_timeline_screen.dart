@@ -11,24 +11,29 @@ import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/aarast_toast.dart';
 import '../../../core/widgets/aarast_ui.dart';
 import '../../auth/auth_api.dart' show AuthActionGuard;
+import '../../catalogs/catalogs_api.dart' show ReferenceCatalogProvider;
 import '../../sharing/sharing_api.dart' show SharedMember, SharingProvider;
 import '../../wedding_plans/wedding_plans_api.dart'
     show
         DashboardSummaryProvider,
         WeddingPlanStageState,
+        WeddingPlansProvider,
         WeddingStageContextLine,
         WeddingStageDomain,
         publishTaskPlanPulse,
         resolveWeddingPlanStage;
+import '../models/task_starter_catalog.dart';
 import '../models/task_summary.dart';
 import '../models/wedding_task.dart';
 import '../providers/task_timeline_provider.dart';
 import '../utils/task_display.dart';
 import '../widgets/task_list_row.dart';
+import '../widgets/task_starter_sheet.dart';
 import '../widgets/tasks_progress_brief.dart';
 
 part 'task_timeline_screen.timeline.dart';
 part 'task_timeline_screen.logic.dart';
+part 'task_timeline_screen.starter.dart';
 
 class TaskTimelineScreen extends StatefulWidget {
   const TaskTimelineScreen({
@@ -218,6 +223,13 @@ class _TaskTimelineContent extends StatelessWidget {
           WeddingStageContextLine(
             stage: stage!,
             domain: WeddingStageDomain.tasks,
+          ),
+        ],
+        if (!suppressErrors && tasks.length < _starterTaskThreshold) ...[
+          const SizedBox(height: 14),
+          _StarterTasksCard(
+            onOpen: () =>
+                _openTaskStarterSheet(context, provider, weddingPlanId),
           ),
         ],
         const SizedBox(height: 18),

@@ -1624,7 +1624,9 @@ const r19ProviderPortalApi = Object.freeze({
   area: 'features/provider_portal',
   path: 'mobile/lib/features/provider_portal/provider_portal_api.dart',
 });
-const r19LegalRecordCount = 172;
+// 172 at R19, +2 for the suggested tasks reading the catalogs owner API
+// (V1 checklist 4.9, tracked in trackedPlanningBatchContracts).
+const r19LegalRecordCount = 174;
 const trackedOwnerApiContracts = [
   {
     area: 'features/account_contexts',
@@ -2492,12 +2494,25 @@ const trackedPlanningBatchContracts = [
     target: 'mobile/lib/features/sharing/sharing_api.dart',
     show: ['SharedMember', 'SharingProvider'],
   },
+  // V1 checklist 4.9: the suggested tasks are the managed `tasks.starter`
+  // catalog, read with the plan's persona and wedding date.
+  {
+    source: 'mobile/lib/features/tasks/screens/task_timeline_screen.dart',
+    target: 'mobile/lib/features/catalogs/catalogs_api.dart',
+    show: ['ReferenceCatalogProvider'],
+  },
+  {
+    source: 'mobile/lib/features/tasks/models/task_starter_catalog.dart',
+    target: 'mobile/lib/features/catalogs/catalogs_api.dart',
+    show: ['ManagedReferenceCatalog'],
+  },
   {
     source: 'mobile/lib/features/tasks/screens/task_timeline_screen.dart',
     target: 'mobile/lib/features/wedding_plans/wedding_plans_api.dart',
     show: [
       'DashboardSummaryProvider',
       'WeddingPlanStageState',
+      'WeddingPlansProvider',
       'WeddingStageContextLine',
       'WeddingStageDomain',
       'publishTaskPlanPulse',

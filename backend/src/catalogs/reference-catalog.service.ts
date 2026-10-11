@@ -18,8 +18,8 @@ import { PrismaService } from '../platform/database/prisma.service';
 import { ReferenceCatalogRepository } from '../modules/catalog/infrastructure/reference-catalog.repository';
 import { AdminCatalogItemDto } from './dto/admin-reference-catalog.dto';
 import {
-  moneyStarterDefaults,
   supportedCatalogIconKeys,
+  systemCatalogs,
 } from './reference-catalog.defaults';
 
 @Injectable()
@@ -279,19 +279,21 @@ export class ReferenceCatalogService {
 
   private async ensureSystemCatalogs(): Promise<void> {
     if (this.seedPromise != null) return this.seedPromise;
-    this.seedPromise = this.seedMoneyStarterCatalog().catch((error) => {
+    this.seedPromise = this.seedSystemCatalogs().catch((error) => {
       this.seedPromise = null;
       throw error;
     });
     return this.seedPromise;
   }
 
-  private async seedMoneyStarterCatalog(): Promise<void> {
+  private async seedSystemCatalogs(): Promise<void> {
     await this.prisma.$transaction(async (tx) => {
       await this.repository.lockSeed(tx);
-      const catalog = await this.repository.upsertMoneyStarterCatalog(tx);
-      for (const item of moneyStarterDefaults) {
-        await this.repository.upsertMoneyStarterItem(tx, catalog.id, item);
+      for (const definition of systemCatalogs) {
+        const catalog = await this.repository.upsertSystemCatalog(tx, definition);
+        for (const item of definition.items) {
+          await this.repository.upsertSystemCatalogItem(tx, catalog.id, item);
+        }
       }
     });
   }

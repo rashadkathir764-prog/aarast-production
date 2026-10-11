@@ -1,9 +1,9 @@
 import { Injectable } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '../../../platform/database/prisma.service';
-import {
-  MONEY_STARTER_CATALOG_KEY,
-  moneyStarterDefaults,
+import type {
+  DefaultReferenceCatalogItem,
+  SystemCatalogDefinition,
 } from '../../../catalogs/reference-catalog.defaults';
 
 type Client = Prisma.TransactionClient;
@@ -160,20 +160,21 @@ export class ReferenceCatalogRepository {
     return tx.$executeRaw(Prisma.sql`SELECT pg_advisory_xact_lock(${catalogSeedLock})`);
   }
 
-  upsertMoneyStarterCatalog(tx: Client) {
+  /** Creates a system catalog once; an existing one (and its admin edits) is kept. */
+  upsertSystemCatalog(tx: Client, catalog: SystemCatalogDefinition) {
     return tx.referenceCatalog.upsert({
-      where: { key: MONEY_STARTER_CATALOG_KEY },
+      where: { key: catalog.key },
       create: {
-        key: MONEY_STARTER_CATALOG_KEY,
-        nameAr: 'تصنيفات بداية الميزانية',
-        description: 'التصنيفات المقترحة للعريس والعروسة قبل تحديد الميزانية.',
+        key: catalog.key,
+        nameAr: catalog.nameAr,
+        description: catalog.description,
         version: 1,
       },
       update: {},
     });
   }
 
-  upsertMoneyStarterItem(tx: Client, catalogId: string, item: (typeof moneyStarterDefaults)[number]) {
+  upsertSystemCatalogItem(tx: Client, catalogId: string, item: DefaultReferenceCatalogItem) {
     return tx.referenceCatalogItem.upsert({
       where: { catalogId_key: { catalogId, key: item.key } },
       create: {

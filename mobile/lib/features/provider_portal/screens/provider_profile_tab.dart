@@ -15,12 +15,10 @@ import '../../account_contexts/account_contexts_api.dart'
 import '../../auth/auth_api.dart' show AuthController;
 import '../../chat/chat_api.dart' show ChatProvider;
 import '../../marketplace/marketplace_api.dart'
-    show
-        MarketplaceService,
-        ProviderDashboardProfile,
-        ProviderReview;
+    show MarketplaceService, ProviderDashboardProfile, ProviderReview;
 import '../providers/provider_dashboard_provider.dart';
 import '../widgets/provider_account_actions.dart';
+import '../widgets/provider_public_profile_action.dart';
 
 class ProviderProfileTab extends StatefulWidget {
   const ProviderProfileTab({super.key});
@@ -88,11 +86,10 @@ class _ProviderProfileTabState extends State<ProviderProfileTab> {
                   label: const Text('تعديل البيانات'),
                 ),
                 const SizedBox(height: 8),
-                OutlinedButton.icon(
-                  onPressed: () =>
+                ProviderPublicProfileAction(
+                  status: profile.status,
+                  onPreview: () =>
                       context.push(AppRouter.providerDetails(profile.id)),
-                  icon: const Icon(LucideIcons.eye),
-                  label: const Text('معاينة الملف العام'),
                 ),
               ],
             ),

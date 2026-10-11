@@ -129,6 +129,30 @@ void main() {
     },
   );
 
+  // F03: a provider that cannot be opened (unknown, or not public yet) must
+  // not offer a quote request it cannot accept.
+  testWidgets('a provider that fails to load offers no quote action', (
+    tester,
+  ) async {
+    final api = _MarketplaceLoadingTruthApi()
+      ..providerError = const ApiException('Not found', statusCode: 404);
+    final marketplace = ProviderMarketplaceProvider(api);
+
+    await tester.pumpWidget(
+      ChangeNotifierProvider<ProviderMarketplaceProvider>.value(
+        value: marketplace,
+        child: const MaterialApp(
+          home: ProviderDetailsScreen(providerId: 'provider-1'),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('تعذر فتح المورد'), findsOneWidget);
+    expect(find.text('طلب عرض سعر'), findsNothing);
+    expect(tester.takeException(), isNull);
+  });
+
   test('provider directory errors never expose backend English', () {
     expect(
       providerDirectoryErrorMessage(

@@ -69,90 +69,103 @@ class _ProviderDetailsScreenState extends State<ProviderDetailsScreen> {
         .watch<AccountContextController?>()
         ?.selectedContext;
     final selectedPlanId = _matchingSelectedPlanId(selected);
+    final providerFailedToLoad = context
+        .select<ProviderMarketplaceProvider, bool>(
+          (marketplace) =>
+              marketplace.providerDetails(widget.providerId) == null &&
+              marketplace.detailsErrorFor(widget.providerId) != null,
+        );
     return AarastScreenFrame(
       maxWidth: 520,
       safeAreaBottom: false,
-      bottomNavigationBar: SafeArea(
-        top: false,
-        child: DecoratedBox(
-          decoration: const BoxDecoration(
-            color: AppTheme.surfaceRaised,
-            border: Border(top: BorderSide(color: AppTheme.border)),
-          ),
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(12, 10, 12, 12),
-            child: Consumer<ProviderMarketplaceProvider>(
-              builder: (context, marketplace, _) {
-                final quotes = marketplace.quotesForProviderInScope(
-                  widget.providerId,
-                  weddingPlanId: selectedPlanId,
-                );
-                final latest = quotes.isEmpty ? null : quotes.first;
-                final loadingQuote =
-                    !_quoteContextReady ||
-                    marketplace.isProviderQuoteContextLoading(
-                      widget.providerId,
-                    );
-                return Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 4),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      if (latest != null) ...[
-                        Padding(
-                          padding: const EdgeInsets.fromLTRB(6, 2, 6, 7),
-                          child: Row(
-                            children: [
-                              const Expanded(
-                                child: Text(
-                                  'آخر طلب لهذا المورد',
-                                  style: TextStyle(
-                                    color: AppTheme.textSecondary,
-                                    fontWeight: FontWeight.w800,
-                                  ),
+      // A provider that failed to load (unknown, or not public) has nothing
+      // to request a quote from, so the quote footer is not offered.
+      bottomNavigationBar: providerFailedToLoad
+          ? null
+          : SafeArea(
+              top: false,
+              child: DecoratedBox(
+                decoration: const BoxDecoration(
+                  color: AppTheme.surfaceRaised,
+                  border: Border(top: BorderSide(color: AppTheme.border)),
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(12, 10, 12, 12),
+                  child: Consumer<ProviderMarketplaceProvider>(
+                    builder: (context, marketplace, _) {
+                      final quotes = marketplace.quotesForProviderInScope(
+                        widget.providerId,
+                        weddingPlanId: selectedPlanId,
+                      );
+                      final latest = quotes.isEmpty ? null : quotes.first;
+                      final loadingQuote =
+                          !_quoteContextReady ||
+                          marketplace.isProviderQuoteContextLoading(
+                            widget.providerId,
+                          );
+                      return Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 4),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            if (latest != null) ...[
+                              Padding(
+                                padding: const EdgeInsets.fromLTRB(6, 2, 6, 7),
+                                child: Row(
+                                  children: [
+                                    const Expanded(
+                                      child: Text(
+                                        'آخر طلب لهذا المورد',
+                                        style: TextStyle(
+                                          color: AppTheme.textSecondary,
+                                          fontWeight: FontWeight.w800,
+                                        ),
+                                      ),
+                                    ),
+                                    QuoteStatusChip(
+                                      status: latest.lifecycleStatus,
+                                      compact: true,
+                                    ),
+                                  ],
                                 ),
                               ),
-                              QuoteStatusChip(
-                                status: latest.lifecycleStatus,
-                                compact: true,
-                              ),
                             ],
-                          ),
-                        ),
-                      ],
-                      Row(
-                        children: [
-                          if (latest != null) ...[
-                            _ContactIconButton(
-                              key: const Key('provider-details-conversation'),
-                              onTap: () => _openQuoteConversation(latest.id),
-                            ),
-                            const SizedBox(width: 10),
-                          ],
-                          Expanded(
-                            child: AarastButton(
-                              label: _primaryQuoteActionLabel(latest),
-                              icon: LucideIcons.filePlus2,
-                              isLoading: loadingQuote,
-                              onPressed: loadingQuote
-                                  ? null
-                                  : () => _openPrimaryQuoteAction(
-                                      context,
-                                      latest,
+                            Row(
+                              children: [
+                                if (latest != null) ...[
+                                  _ContactIconButton(
+                                    key: const Key(
+                                      'provider-details-conversation',
                                     ),
+                                    onTap: () =>
+                                        _openQuoteConversation(latest.id),
+                                  ),
+                                  const SizedBox(width: 10),
+                                ],
+                                Expanded(
+                                  child: AarastButton(
+                                    label: _primaryQuoteActionLabel(latest),
+                                    icon: LucideIcons.filePlus2,
+                                    isLoading: loadingQuote,
+                                    onPressed: loadingQuote
+                                        ? null
+                                        : () => _openPrimaryQuoteAction(
+                                            context,
+                                            latest,
+                                          ),
+                                  ),
+                                ),
+                              ],
                             ),
-                          ),
-                        ],
-                      ),
-                    ],
+                          ],
+                        ),
+                      );
+                    },
                   ),
-                );
-              },
+                ),
+              ),
             ),
-          ),
-        ),
-      ),
       child: Consumer<ProviderMarketplaceProvider>(
         builder: (context, state, _) {
           final provider = state.providerDetails(widget.providerId);

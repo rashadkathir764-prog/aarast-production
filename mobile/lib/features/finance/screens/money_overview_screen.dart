@@ -763,10 +763,15 @@ class _NextPaymentCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final isOverdue = schedule.isOverdueAt(DateTime.now());
     final heading = isOverdue ? 'دفعة متأخرة' : 'موعد الدفع التالي';
-    final amount = formatCompactMoney(
-      moneyValue(schedule.amount),
-      currencyCode: currency,
+    final amountsHidden = context.select<FinanceProvider?, bool>(
+      (provider) => provider?.amountsHidden ?? false,
     );
+    final amount = amountsHidden
+        ? '••••'
+        : formatCompactMoney(
+            moneyValue(schedule.amount),
+            currencyCode: currency,
+          );
     return AarastV3AttentionSurface(
       key: const ValueKey('money-next-schedule-strip'),
       eyebrow: heading,

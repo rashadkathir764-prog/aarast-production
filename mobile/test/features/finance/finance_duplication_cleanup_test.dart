@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:aarast_mobile/core/network/api_client.dart';
 import 'package:aarast_mobile/core/theme/app_theme.dart';
+import 'package:aarast_mobile/core/utils/money_formatters.dart';
 import 'package:aarast_mobile/features/finance/data/finance_api.dart';
 import 'package:aarast_mobile/features/finance/models/money_summary.dart';
 import 'package:aarast_mobile/features/finance/models/wedding_cost.dart';
@@ -206,6 +207,46 @@ void main() {
       );
       expect(find.text('موعد الدفع التالي'), findsOneWidget);
       expect(find.text('دفعة متأخرة'), findsNothing);
+      expect(tester.takeException(), isNull);
+    });
+
+    // F02: hiding amounts must cover the next-payment card too.
+    testWidgets('hiding amounts masks the next payment amount', (tester) async {
+      _setPhoneView(tester);
+      final now = DateTime.now();
+      final today = DateTime(now.year, now.month, now.day);
+      await tester.pumpWidget(
+        _wrap(
+          _FakeFinanceApi.withCosts(
+            nextSchedule: PaymentSchedule(
+              id: 'schedule-upcoming',
+              costId: 'cost-1',
+              amount: '1000',
+              dueDate: today.add(const Duration(days: 2)),
+              status: 'PENDING',
+              costTitle: 'تكلفة 1',
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      final strip = find.byKey(const ValueKey('money-next-schedule-strip'));
+      final amount = formatCompactMoney(1000, currencyCode: 'YER');
+      Finder amountInStrip() =>
+          find.descendant(of: strip, matching: find.textContaining(amount));
+      expect(amountInStrip(), findsOneWidget);
+
+      tester
+          .element(find.byType(MoneyOverviewScreen))
+          .read<FinanceProvider>()
+          .toggleAmountsVisibility();
+      await tester.pumpAndSettle();
+
+      expect(amountInStrip(), findsNothing);
+      expect(
+        find.descendant(of: strip, matching: find.textContaining('••••')),
+        findsOneWidget,
+      );
       expect(tester.takeException(), isNull);
     });
 

@@ -1698,9 +1698,10 @@ Guest response:
 ```
 
 Users with readable plan access can list guests. Guest mutations follow the live
-`PermissionService.canManageGuests` policy: owner access, explicit
-`canManageGuests`, or one of `GROOM`, `BRIDE`, `FAMILY`, `MANAGER`, `EDITOR`, or
-`HELPER`.
+`PermissionService.canManageGuests` policy: owner access or the stored
+`SharedMember.canManageGuests` flag. A role name never grants guest rights at
+runtime; it may only seed the flag when an invitation is created (see the
+stored-flag rule under tasks).
 
 All seven guest/group mutation shapes—guest create/bulk/update/delete and group
 create/update/delete—run inside retryable `SERIALIZABLE` transactions. Lock

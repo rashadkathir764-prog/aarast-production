@@ -406,15 +406,16 @@ The three writable content preferences have direct effects:
 The hourly reminder scan (V1 checklist 4.8, 4.17) also creates plan-level
 reminders, each idempotent through its dedupe key:
 
-- `BUDGET_CATEGORY_EXCEEDED` (entity `budget_category`, route
-  `/wedding-plans/:id/money`) when a category's non-cancelled costs exceed its
-  allocation; again only after the allocation changes and is exceeded again.
+- `BUDGET_CATEGORY_EXCEEDED` (entity `budget_category`; `routeTarget` opens
+  the plan's money screen in the app) when a category's non-cancelled costs
+  exceed its allocation; again only after the allocation changes and is
+  exceeded again.
 - `LOAN_REPAYMENT_DUE_SOON` / `LOAN_REPAYMENT_OVERDUE` (entity
-  `loan_repayment`, route `/wedding-plans/:id/money/funding`) for a planned
-  loan repayment due within 7 days or overdue.
-- `WEDDING_COUNTDOWN` (entity `wedding_plan`, route
-  `/wedding-plans/:id/dashboard`) once in each window: 30, 7 and 1 day(s)
-  before the wedding date; a changed date starts the countdown again.
+  `loan_repayment`; opens the plan's funding screen) for a planned loan
+  repayment due within 7 days or overdue.
+- `WEDDING_COUNTDOWN` (entity `wedding_plan`; opens the plan dashboard) once
+  in each window: 30, 7 and 1 day(s) before the wedding date; a changed date
+  starts the countdown again.
 
 The two money reminders go to the plan owner only: a contributor's money view
 covers only the categories they created, and funding is the owner's private

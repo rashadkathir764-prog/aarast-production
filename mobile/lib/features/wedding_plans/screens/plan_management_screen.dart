@@ -27,6 +27,7 @@ import '../models/plan_edit_result.dart';
 import '../models/wedding_plan.dart';
 import '../providers/dashboard_summary_provider.dart';
 import '../providers/wedding_plans_provider.dart';
+import '../widgets/contributor_permissions_sheet.dart';
 import '../widgets/contributor_workspace_view.dart';
 import '../widgets/plan_management_view.dart';
 import '../../shell/shell_api.dart' show AarastPlanNavigationBar;

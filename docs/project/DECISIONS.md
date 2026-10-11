@@ -387,3 +387,16 @@ documentation, scope, identity, and final independent review gates passed.
 Stop before commit, push, merge, deployment, production mutation,
 remote CI, provider delivery, release, or R12B execution. After closeout, the
 only next permitted work is separate R12B design/planning with owner approval.
+
+## V1 Delivery Scope Decisions - 2026-10-11
+
+The client asked that V1 include everything in the original pitch and
+`wedding.md`. The single delivery scope is `docs/project/V1_DELIVERY_CHECKLIST.md`.
+
+| Decision | Status | Rationale |
+| --- | --- | --- |
+| V1 tracks all wedding money but never collects, holds or moves it: no in-app payment, wallet, deposit collection, financing or instalment lending. | Accepted (legal) | These need a licensed financial partner in Yemen (`wedding.md` sections 8, 9, 15). Tracking money the user moves themselves stays in scope. This narrows the earlier "no loans" decision to "no lending"; recording a loan the user took is tracking. |
+| Debts return as funding sources of kind `LOAN` with a repayment schedule (`FundingSource`, `LoanRepayment`), alongside savings, family support, gifts (rifd and nuqut), pledges and other sources. | Accepted; implemented | The pitch promises debts and instalments, and "how much is left" needs money in as well as money out. New model names keep the removed `Debt`/`Installment` system banned. |
+| Funding sources and loans are visible to the plan owner only. | Accepted; implemented | Where money comes from and who is owed is the most sensitive money data; members keep managing costs within their money rights. A separate member permission can come with the partner role (checklist 4.10). |
+| Each cost may name who is expected to pay it (`payer`, `payerName`). | Accepted; implemented | Yemeni weddings split costs between the groom, the bride, and the families. |
+| Bookings are confirmed by the provider without payment, with provider availability to prevent double booking (checklist 4.6). | Accepted; pending | The client asked for booking; payment stays out per the legal decision above. |

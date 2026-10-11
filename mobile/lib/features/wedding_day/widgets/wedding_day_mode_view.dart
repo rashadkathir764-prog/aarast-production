@@ -54,6 +54,36 @@ class WeddingDayModeView extends StatelessWidget {
         .where((provider) => provider.businessName.trim().isNotEmpty)
         .take(4)
         .toList();
+    // Viewing this screen only needs plan view access; acting on tasks and
+    // opening the management screens needs the matching capability.
+    final permissions = summary.permissions;
+    final canManageTasks = permissions.isOwner || permissions.canManageTasks;
+    final canManageGuests = permissions.isOwner || permissions.canManageGuests;
+    final canManageProviders =
+        permissions.isOwner || permissions.canManageProviders;
+    final quickLinks = [
+      if (canManageTasks)
+        AarastV3ListRow(
+          title: 'كل المهام',
+          subtitle: 'راجع الجدول أو أعد ترتيب ما تبقّى.',
+          leading: const Icon(LucideIcons.listChecks),
+          onTap: onOpenTasks,
+        ),
+      if (canManageGuests)
+        AarastV3ListRow(
+          title: 'الضيوف',
+          subtitle: 'راجع الردود والمقاعد عند الحاجة.',
+          leading: const Icon(LucideIcons.users),
+          onTap: onOpenGuests,
+        ),
+      if (canManageProviders)
+        AarastV3ListRow(
+          title: 'المزوّدون',
+          subtitle: 'افتح المزوّد المطلوب دون بحث طويل.',
+          leading: const Icon(LucideIcons.store),
+          onTap: onOpenProviders,
+        ),
+    ];
 
     return RefreshIndicator(
       onRefresh: onRefresh,
@@ -103,11 +133,14 @@ class WeddingDayModeView extends StatelessWidget {
                     _WeddingDayTaskRow(
                       task: task,
                       now: now,
-                      onComplete: () => onCompleteTask(task),
+                      onComplete: canManageTasks
+                          ? () => onCompleteTask(task)
+                          : null,
                     ),
                 ],
               ),
-            if (priorityTasks.length > visibleTasks.length) ...[
+            if (canManageTasks &&
+                priorityTasks.length > visibleTasks.length) ...[
               const SizedBox(height: AarastV3Space.x2),
               Align(
                 alignment: AlignmentDirectional.centerStart,
@@ -172,34 +205,15 @@ class WeddingDayModeView extends StatelessWidget {
                 ],
               ),
             ],
-            const SizedBox(height: AarastV3Space.x6),
-            const _SectionHeading(
-              icon: LucideIcons.layoutGrid,
-              title: 'الوصول السريع',
-            ),
-            const SizedBox(height: AarastV3Space.x2),
-            AarastV3ContinuousSurface(
-              children: [
-                AarastV3ListRow(
-                  title: 'كل المهام',
-                  subtitle: 'راجع الجدول أو أعد ترتيب ما تبقّى.',
-                  leading: const Icon(LucideIcons.listChecks),
-                  onTap: onOpenTasks,
-                ),
-                AarastV3ListRow(
-                  title: 'الضيوف',
-                  subtitle: 'راجع الردود والمقاعد عند الحاجة.',
-                  leading: const Icon(LucideIcons.users),
-                  onTap: onOpenGuests,
-                ),
-                AarastV3ListRow(
-                  title: 'المزوّدون',
-                  subtitle: 'افتح المزوّد المطلوب دون بحث طويل.',
-                  leading: const Icon(LucideIcons.store),
-                  onTap: onOpenProviders,
-                ),
-              ],
-            ),
+            if (quickLinks.isNotEmpty) ...[
+              const SizedBox(height: AarastV3Space.x6),
+              const _SectionHeading(
+                icon: LucideIcons.layoutGrid,
+                title: 'الوصول السريع',
+              ),
+              const SizedBox(height: AarastV3Space.x2),
+              AarastV3ContinuousSurface(children: quickLinks),
+            ],
           ],
         ],
       ),
@@ -316,18 +330,17 @@ class _HeaderDetail extends StatelessWidget {
 }
 
 class _WeddingDayTaskRow extends StatelessWidget {
-  const _WeddingDayTaskRow({
-    required this.task,
-    required this.onComplete,
-    this.now,
-  });
+  const _WeddingDayTaskRow({required this.task, this.onComplete, this.now});
 
   final WeddingTask task;
-  final VoidCallback onComplete;
+
+  /// Null when the viewer cannot manage tasks: the row is then read-only.
+  final VoidCallback? onComplete;
   final DateTime? now;
 
   @override
   Widget build(BuildContext context) {
+    final complete = onComplete;
     return AarastV3ListRow(
       title: task.title,
       subtitle: task.responsiblePhoneDisplay == null
@@ -335,18 +348,24 @@ class _WeddingDayTaskRow extends StatelessWidget {
           : 'المسؤول: ${task.directionalResponsibleLabel} · ${task.responsiblePhoneDisplay}',
       meta: _taskDueLabel(task.dueDate, now: now),
       accent: _taskAccent(task.dueDate, now: now),
-      leading: IconButton(
-        tooltip: 'إنجاز ${task.title}',
-        onPressed: onComplete,
-        style: IconButton.styleFrom(
-          minimumSize: const Size(42, 42),
-          side: const BorderSide(color: AarastV3Color.lineStrong),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(AarastV3Radius.control),
-          ),
-        ),
-        icon: const Icon(LucideIcons.check, size: 19),
-      ),
+      leading: complete == null
+          ? const Icon(
+              LucideIcons.circleDot,
+              size: 19,
+              color: AarastV3Color.textMuted,
+            )
+          : IconButton(
+              tooltip: 'إنجاز ${task.title}',
+              onPressed: complete,
+              style: IconButton.styleFrom(
+                minimumSize: const Size(42, 42),
+                side: const BorderSide(color: AarastV3Color.lineStrong),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(AarastV3Radius.control),
+                ),
+              ),
+              icon: const Icon(LucideIcons.check, size: 19),
+            ),
     );
   }
 }

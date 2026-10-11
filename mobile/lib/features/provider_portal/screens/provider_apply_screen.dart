@@ -19,7 +19,8 @@ import '../../account_contexts/account_contexts_api.dart'
 import '../../auth/auth_api.dart'
     show AuthActionGuard, AuthController, AuthStatus;
 import '../../marketplace/marketplace_api.dart'
-    show ProviderMarketplaceProvider;
+    show
+        ProviderMarketplaceProvider;
 import '../providers/provider_dashboard_provider.dart';
 
 class ProviderApplyScreen extends StatefulWidget {

@@ -12,7 +12,10 @@ import '../../../core/utils/currency_label.dart';
 import '../../../core/widgets/aarast_ui.dart';
 import '../../../core/widgets/aarast_toast.dart';
 import '../../marketplace/marketplace_api.dart'
-    show MarketplaceService, ProviderPackage, ProviderServiceImage;
+    show
+        MarketplaceService,
+        ProviderPackage,
+        ProviderServiceImage;
 import '../providers/provider_dashboard_provider.dart';
 import 'provider_catalog_management_widgets.dart';
 

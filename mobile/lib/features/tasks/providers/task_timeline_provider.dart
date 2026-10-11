@@ -1,4 +1,4 @@
-﻿import 'package:flutter/foundation.dart';
+import 'package:flutter/foundation.dart';
 
 import '../../../core/network/api_client.dart';
 import '../../../core/offline/cache_policy.dart';
@@ -295,13 +295,27 @@ class TaskTimelineProvider extends ChangeNotifier with SessionScopedNotifier {
       var updated = await _api.updateTask(task.id, payload);
       if (!task.id.startsWith('local-task-') &&
           _assigneeChanged(previousTask.assigneeUserId, assigneeUserId)) {
-        updated = await _api.assignTask(
-          task.id,
-          assigneeUserId: assigneeUserId,
-          assigneeName: assigneeName,
-          assigneePhone: assigneePhone,
-          assigneeRole: assigneeRole,
-        );
+        // The field update above is already saved; the assignment is a
+        // separate request. If it fails, show the saved fields and say that
+        // only the assignee was not changed, so a retry is understood.
+        final fieldsSaved = updated;
+        try {
+          updated = await _api.assignTask(
+            task.id,
+            assigneeUserId: assigneeUserId,
+            assigneeName: assigneeName,
+            assigneePhone: assigneePhone,
+            assigneeRole: assigneeRole,
+          );
+        } catch (error) {
+          _replaceTask(fieldsSaved);
+          final reason = error is ApiException
+              ? error.message
+              : 'تعذر تغيير المسؤول.';
+          await _refreshTaskData(weddingPlanId);
+          _errorMessage = 'تم حفظ تفاصيل المهمة، لكن لم يتغير المسؤول: $reason';
+          return false;
+        }
       }
       _replaceTask(updated);
       if (_isLocalGuestPlanId(weddingPlanId)) {

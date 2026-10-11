@@ -26,6 +26,7 @@ import '../../wedding_plans/wedding_plans_api.dart'
 import '../models/guest.dart';
 import '../providers/guests_provider.dart';
 import '../widgets/guest_form_sheet.dart';
+import '../widgets/guest_groups_sheet.dart';
 import '../widgets/guest_attendance_brief.dart';
 import '../widgets/guest_list_row.dart';
 
@@ -121,6 +122,35 @@ class _GuestListScreenState extends State<GuestListScreen> {
               _showGuestSheet(provider: provider, guest: guest),
           onStatus: _updateStatus,
           onDelete: _confirmDelete,
+          onManageGroups: _showGroupsSheet,
+        ),
+      ),
+    );
+  }
+
+  /// Groups are saved on the account, so a device-only plan has none.
+  Future<void> _showGroupsSheet() {
+    final provider = context.read<GuestsProvider>();
+    return showAarastBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      useRootNavigator: true,
+      builder: (_) => ListenableBuilder(
+        listenable: provider,
+        builder: (_, _) => GuestGroupsSheet(
+          groups: provider.groups,
+          guestCounts: {
+            for (final group in provider.groups)
+              group.id: provider.guests
+                  .where((guest) => guest.groupId == group.id)
+                  .length,
+          },
+          saving: provider.isSavingGroups,
+          errorMessage: provider.groupsErrorMessage,
+          onCreate: (name) => provider.createGroup(widget.weddingPlanId, name),
+          onRename: provider.renameGroup,
+          onDelete: provider.deleteGroup,
         ),
       ),
     );
@@ -387,6 +417,7 @@ class _GuestsContent extends StatelessWidget {
     required this.onEditGuest,
     required this.onStatus,
     required this.onDelete,
+    required this.onManageGroups,
   });
 
   final GuestsProvider provider;
@@ -399,6 +430,7 @@ class _GuestsContent extends StatelessWidget {
   final ValueChanged<Guest> onEditGuest;
   final Future<void> Function(Guest guest, String status) onStatus;
   final ValueChanged<Guest> onDelete;
+  final VoidCallback onManageGroups;
 
   @override
   Widget build(BuildContext context) {
@@ -469,6 +501,22 @@ class _GuestsContent extends StatelessWidget {
           isLocalPlan: isLocalPlan,
           heroTag: 'plan-$weddingPlanId-guests',
         ),
+        if (!isLocalPlan) ...[
+          const SizedBox(height: 10),
+          Align(
+            alignment: AlignmentDirectional.centerStart,
+            child: OutlinedButton.icon(
+              key: const ValueKey('guest-groups-manage'),
+              onPressed: onManageGroups,
+              icon: const Icon(LucideIcons.folderTree, size: 18),
+              label: Text(
+                provider.groups.isEmpty
+                    ? 'تنظيم الضيوف في مجموعات'
+                    : 'المجموعات (${provider.groups.length})',
+              ),
+            ),
+          ),
+        ],
         if (stage != null) ...[
           const SizedBox(height: 12),
           WeddingStageContextLine(

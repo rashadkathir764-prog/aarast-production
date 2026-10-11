@@ -18,7 +18,11 @@ class GuestsProvider extends ChangeNotifier with SessionScopedNotifier {
   List<Guest> _guests = const [];
   List<GuestGroup> _groups = const [];
   GuestSummary? _summary;
+  bool _isSavingGroups = false;
+  String? _groupsErrorMessage;
 
+  bool get isSavingGroups => _isSavingGroups;
+  String? get groupsErrorMessage => _groupsErrorMessage;
   bool get isLoading => _isLoading;
   bool get isSubmitting => _isSubmitting;
   String? get errorMessage => _errorMessage;
@@ -183,6 +187,59 @@ class GuestsProvider extends ChangeNotifier with SessionScopedNotifier {
     _errorMessage = null;
     _noticeMessage = null;
     notifyListeners();
+  }
+
+  Future<bool> createGroup(String weddingPlanId, String name) {
+    return _changeGroups(() async {
+      final group = await _api.createGroup(
+        weddingPlanId: weddingPlanId,
+        name: name,
+      );
+      _groups = [..._groups, group];
+    });
+  }
+
+  Future<bool> renameGroup(GuestGroup group, String name) {
+    return _changeGroups(() async {
+      final renamed = await _api.renameGroup(group, name);
+      _groups = [
+        for (final item in _groups) item.id == renamed.id ? renamed : item,
+      ];
+    });
+  }
+
+  /// Deleting a group keeps its guests; they become ungrouped, here as on
+  /// the server.
+  Future<bool> deleteGroup(GuestGroup group) {
+    return _changeGroups(() async {
+      await _api.deleteGroup(group);
+      _groups = _groups.where((item) => item.id != group.id).toList();
+      _guests = [
+        for (final guest in _guests)
+          guest.groupId == group.id ? guest.withoutGroup() : guest,
+      ];
+      _refreshSummary(group.weddingPlanId);
+    });
+  }
+
+  Future<bool> _changeGroups(Future<void> Function() change) async {
+    if (_isSavingGroups) return false;
+    _isSavingGroups = true;
+    _groupsErrorMessage = null;
+    notifyListeners();
+    try {
+      await change();
+      return true;
+    } on ApiException catch (error) {
+      _groupsErrorMessage = _guestErrorMessage(error);
+      return false;
+    } catch (_) {
+      _groupsErrorMessage = 'تعذر حفظ المجموعة. حاول مرة أخرى.';
+      return false;
+    } finally {
+      _isSavingGroups = false;
+      notifyListeners();
+    }
   }
 
   void _replace(Guest updated) {

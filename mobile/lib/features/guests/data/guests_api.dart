@@ -53,6 +53,30 @@ class GuestsApi {
         .toList();
   }
 
+  Future<GuestGroup> createGroup({
+    required String weddingPlanId,
+    required String name,
+  }) async {
+    final json = await _apiClient.postJson(
+      '/api/v1/wedding-plans/$weddingPlanId/guest-groups',
+      {'name': name.trim()},
+    );
+    return GuestGroup.fromJson(json);
+  }
+
+  Future<GuestGroup> renameGroup(GuestGroup group, String name) async {
+    final json = await _apiClient.patchJson(
+      '/api/v1/guest-groups/${group.id}',
+      {'name': name.trim()},
+    );
+    return GuestGroup.fromJson(json);
+  }
+
+  /// The server keeps the group's guests and only clears their group.
+  Future<void> deleteGroup(GuestGroup group) async {
+    await _apiClient.deleteJson('/api/v1/guest-groups/${group.id}');
+  }
+
   Future<Guest> createGuest({
     required String weddingPlanId,
     required String name,

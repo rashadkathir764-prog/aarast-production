@@ -64,6 +64,24 @@
 
   bool get hasMissingData => name.trim().isEmpty || !hasPhone;
 
+  /// This guest after its group is deleted: the server keeps the guest and
+  /// only clears the group (`onDelete: SetNull`).
+  Guest withoutGroup() => Guest(
+    id: id,
+    weddingPlanId: weddingPlanId,
+    name: name,
+    side: side,
+    status: status,
+    seatsCount: seatsCount,
+    createdAt: createdAt,
+    updatedAt: updatedAt,
+    companionsCount: companionsCount,
+    invitationStatus: invitationStatus,
+    attendanceStatus: attendanceStatus,
+    phone: phone,
+    notes: notes,
+  );
+
   static DateTime? _dateTimeOrNull(Object? value) {
     if (value == null) return null;
     return DateTime.tryParse(value.toString());

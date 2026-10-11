@@ -86,9 +86,10 @@ are reference-only and will be retired with the P2 visual migration.
 2. `AGENTS.md`
 3. `ARCHITECTURE_CONSTITUTION.md` for architecture work
 4. `docs/README.md`
-5. `docs/HANDOFF.md`
-6. `docs/project/STATUS.md`
-7. Area-specific docs below
+5. `docs/project/V1_DELIVERY_CHECKLIST.md` - the single V1 delivery scope; no work outside it before delivery
+6. `docs/HANDOFF.md`
+7. `docs/project/STATUS.md`
+8. Area-specific docs below
 
 When docs and implementation disagree, inspect the current source/config before
 changing behavior.
@@ -106,6 +107,7 @@ changing behavior.
 
 ### Project
 
+- `docs/project/V1_DELIVERY_CHECKLIST.md`
 - `docs/HANDOFF.md`
 - `docs/project/PRODUCT.md`
 - `docs/project/SCOPE_AND_PHASES.md`

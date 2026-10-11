@@ -179,12 +179,12 @@ void main() {
         addTearDown(harness.dispose);
         await _pumpProduct(tester, harness.app);
 
-        expect(find.text('تجهيز الميزانية · 10'), findsOneWidget);
-        await tester.tap(find.text('تجهيز الميزانية · 10'));
+        expect(find.text('تجهيز الميزانية · 12'), findsOneWidget);
+        await tester.tap(find.text('تجهيز الميزانية · 12'));
         await tester.pumpAndSettle();
 
         expect(harness.api.replaceBudgetCalls, 1);
-        expect(harness.api.savedCategoryCount, 10);
+        expect(harness.api.savedCategoryCount, 12);
         expect(harness.api.savedTotalBudget, isNull);
         expect(harness.currentLocation, AppRouter.moneyBudget(_planId));
         expect(find.byType(MoneyBudgetScreen), findsOneWidget);

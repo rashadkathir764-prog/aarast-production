@@ -32,6 +32,8 @@ const groups: GroupSeed[] = [
       ['groom-mahr', 'المهر والاتفاقات', 'users', true],
       ['groom-gold', 'الذهب والشبكة', 'gem', true],
       ['groom-contract', 'العقد والمعاملات', 'file-check'],
+      // Appended items keep the existing sort orders unchanged.
+      ['groom-kiswa', 'الكسوة', 'shirt', true],
     ],
   },
   {
@@ -47,6 +49,9 @@ const groups: GroupSeed[] = [
       ['groom-zaffa', 'الزفة والسيارة', 'car', true],
       ['groom-evening', 'جلسة أو سهرة العريس', 'moon-star'],
       ['groom-guest-stay', 'إقامة الضيوف', 'bed-double'],
+      ['groom-qat', 'القات والمقيل', 'leaf', true],
+      ['groom-artist', 'الفنان والفرقة', 'music-2'],
+      ['groom-sacrifice', 'الذبائح', 'utensils'],
     ],
   },
   {
@@ -105,6 +110,9 @@ const groups: GroupSeed[] = [
       ['bride-audio', 'الصوت والزفة', 'music-2'],
       ['bride-invites', 'الدعوات والتوزيعات', 'mail'],
       ['bride-henna', 'ليلة الحناء', 'flower'],
+      ['bride-naqsh', 'النقش', 'flower-2', true],
+      ['bride-artist', 'الفنانة والزفة', 'music-2'],
+      ['bride-subhia', 'الصبحية', 'cake-slice'],
     ],
   },
   {
@@ -134,6 +142,8 @@ const groups: GroupSeed[] = [
       ['neutral-photo', 'التصوير والفيديو', 'camera', true],
       ['neutral-decor', 'التنسيق والديكور', 'layout-grid'],
       ['neutral-audio', 'الصوت والزفة', 'music-2'],
+      ['neutral-qat', 'القات والمقيل', 'leaf'],
+      ['neutral-mahr', 'المهر والذهب', 'gem'],
     ],
   },
   {

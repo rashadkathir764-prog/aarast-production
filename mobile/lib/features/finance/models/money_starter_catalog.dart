@@ -162,6 +162,7 @@ IconData _managedMoneyIcon(String? key) {
     'flower' => LucideIcons.flower,
     'package-open' => LucideIcons.packageOpen,
     'hotel' => LucideIcons.hotel,
+    'leaf' => LucideIcons.leaf,
     _ => LucideIcons.circle,
   };
 }
@@ -194,6 +195,12 @@ const _groomCatalog = MoneyStarterCatalog(
           id: 'groom-contract',
           name: 'العقد والمعاملات',
           icon: LucideIcons.fileCheck,
+        ),
+        MoneyStarterCategory(
+          id: 'groom-kiswa',
+          name: 'الكسوة',
+          icon: LucideIcons.shirt,
+          recommended: true,
         ),
       ],
     ),
@@ -240,6 +247,22 @@ const _groomCatalog = MoneyStarterCatalog(
           id: 'groom-guest-stay',
           name: 'إقامة الضيوف',
           icon: LucideIcons.bedDouble,
+        ),
+        MoneyStarterCategory(
+          id: 'groom-qat',
+          name: 'القات والمقيل',
+          icon: LucideIcons.leaf,
+          recommended: true,
+        ),
+        MoneyStarterCategory(
+          id: 'groom-artist',
+          name: 'الفنان والفرقة',
+          icon: LucideIcons.music2,
+        ),
+        MoneyStarterCategory(
+          id: 'groom-sacrifice',
+          name: 'الذبائح',
+          icon: LucideIcons.utensils,
         ),
       ],
     ),
@@ -421,6 +444,22 @@ const _brideCatalog = MoneyStarterCatalog(
           name: 'ليلة الحناء',
           icon: LucideIcons.flower,
         ),
+        MoneyStarterCategory(
+          id: 'bride-naqsh',
+          name: 'النقش',
+          icon: LucideIcons.flower2,
+          recommended: true,
+        ),
+        MoneyStarterCategory(
+          id: 'bride-artist',
+          name: 'الفنانة والزفة',
+          icon: LucideIcons.music2,
+        ),
+        MoneyStarterCategory(
+          id: 'bride-subhia',
+          name: 'الصبحية',
+          icon: LucideIcons.cakeSlice,
+        ),
       ],
     ),
     MoneyStarterGroup(
@@ -513,6 +552,16 @@ const _neutralCatalog = MoneyStarterCatalog(
           id: 'neutral-audio',
           name: 'الصوت والزفة',
           icon: LucideIcons.music2,
+        ),
+        MoneyStarterCategory(
+          id: 'neutral-qat',
+          name: 'القات والمقيل',
+          icon: LucideIcons.leaf,
+        ),
+        MoneyStarterCategory(
+          id: 'neutral-mahr',
+          name: 'المهر والذهب',
+          icon: LucideIcons.gem,
         ),
       ],
     ),

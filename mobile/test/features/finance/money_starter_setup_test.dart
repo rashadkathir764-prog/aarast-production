@@ -21,8 +21,9 @@ void main() {
       expect(brideNames, isNot(contains('بدلة العريس')));
       expect(groomNames.toSet().length, groomNames.length);
       expect(brideNames.toSet().length, brideNames.length);
-      expect(groom.recommendedIds.length, 10);
-      expect(bride.recommendedIds.length, 10);
+      // Includes the Yemeni essentials: kiswa and qat (groom), naqsh (bride).
+      expect(groom.recommendedIds.length, 12);
+      expect(bride.recommendedIds.length, 11);
     });
 
     test('persona parsing is safe for backend and local values', () {
@@ -90,7 +91,7 @@ void main() {
     expect(find.text('جهّزي ميزانية فرحتك'), findsOneWidget);
     expect(find.text('فستان العروسة'), findsOneWidget);
     expect(find.text('بدلة العريس'), findsNothing);
-    expect(find.text('تجهيز الميزانية · 10'), findsOneWidget);
+    expect(find.text('تجهيز الميزانية · 11'), findsOneWidget);
 
     final addCustom = find.byKey(const ValueKey('money-starter-add-custom'));
     await tester.scrollUntilVisible(
@@ -115,7 +116,7 @@ void main() {
     await tester.tap(find.byTooltip('إضافة التصنيف'));
     await tester.pumpAndSettle();
     expect(find.text('فرقة نسائية خاصة'), findsOneWidget);
-    expect(find.text('تجهيز الميزانية · 11'), findsOneWidget);
+    expect(find.text('تجهيز الميزانية · 12'), findsOneWidget);
 
     await tester.tap(find.byKey(const ValueKey('money-starter-submit')));
     await tester.pumpAndSettle();

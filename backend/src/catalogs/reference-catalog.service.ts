@@ -42,6 +42,9 @@ export class ReferenceCatalogService {
         key: catalog.key,
         version: catalog.version,
         updatedAt: catalog.updatedAt.toISOString(),
+        // Items seeded later (or published) must change the version too, or
+        // devices holding the old version never receive them.
+        items: catalog.items.map((item) => [item.key, item.publishedRevision]),
       })),
       providerCategories: providerCategories.map((item) => [
         item.id,

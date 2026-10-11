@@ -32,6 +32,7 @@ import '../../features/finance/finance_api.dart'
         CostPaymentDetailsScreen,
         CostsScreen,
         FinanceProvider,
+        FundingSourcesScreen,
         MoneyBudgetScreen,
         MoneyOverviewScreen,
         PayPaymentScheduleScreen,
@@ -214,6 +215,10 @@ class AppRouter {
 
   static String moneyBudget(String id) {
     return '/wedding-plans/$id/money/budget';
+  }
+
+  static String moneyFunding(String id) {
+    return '/wedding-plans/$id/money/funding';
   }
 
   static String moneyCategoryCreate(String id) {

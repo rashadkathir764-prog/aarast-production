@@ -108,6 +108,8 @@ mixin _FinanceCostsApi on _FinanceApiCore {
     String? quoteOfferId,
     String? partyName,
     String? partyPhone,
+    String? payer,
+    String? payerName,
     DateTime? agreementDate,
     String? note,
   }) async {
@@ -125,6 +127,8 @@ mixin _FinanceCostsApi on _FinanceApiCore {
       quoteOfferId: quoteOfferId,
       partyName: partyName,
       partyPhone: partyPhone,
+      payer: payer,
+      payerName: payerName,
       agreementDate: agreementDate,
       note: note,
     );
@@ -167,6 +171,8 @@ mixin _FinanceCostsApi on _FinanceApiCore {
     String? quoteOfferId,
     String? partyName,
     String? partyPhone,
+    String? payer,
+    String? payerName,
     DateTime? agreementDate,
     String? note,
   }) async {
@@ -179,6 +185,8 @@ mixin _FinanceCostsApi on _FinanceApiCore {
       quoteOfferId: quoteOfferId,
       partyName: partyName,
       partyPhone: partyPhone,
+      payer: payer,
+      payerName: payerName,
       agreementDate: agreementDate,
       note: note,
     );
@@ -303,6 +311,8 @@ mixin _FinanceCostsApi on _FinanceApiCore {
     String? quoteOfferId,
     String? partyName,
     String? partyPhone,
+    String? payer,
+    String? payerName,
     DateTime? agreementDate,
     String? note,
   }) {
@@ -325,6 +335,9 @@ mixin _FinanceCostsApi on _FinanceApiCore {
       if (_nullableTrimmed(partyName) != null) 'partyName': partyName!.trim(),
       if (_nullableTrimmed(partyPhone) != null)
         'partyPhone': partyPhone!.trim(),
+      // Always sent, so an edit can also clear who pays.
+      'payer': _nullableTrimmed(payer),
+      'payerName': _nullableTrimmed(payerName),
       if (agreementDate != null)
         'agreementDate': agreementDate.toIso8601String(),
       if (_nullableTrimmed(note) != null) 'note': note!.trim(),

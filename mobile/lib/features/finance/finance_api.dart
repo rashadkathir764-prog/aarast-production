@@ -1,5 +1,8 @@
 // Owner-controlled public API. Cross-feature consumers import this library.
 export 'data/finance_api.dart' show FinanceApi, LocalFinancePlanContext;
+export 'data/funding_api.dart' show FundingApi;
+export 'providers/funding_provider.dart' show FundingProvider;
+export 'screens/funding_sources_screen.dart' show FundingSourcesScreen;
 export 'models/budget_category.dart' show BudgetCategory;
 export 'models/cost_draft_intent.dart' show CostDraftIntent;
 export 'models/wedding_cost.dart' show WeddingCost;

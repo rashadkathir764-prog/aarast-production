@@ -38,7 +38,12 @@ import 'features/catalogs/catalogs_api.dart'
 import 'features/chat/chat_api.dart'
     show ChatApi, ChatProvider, ChatRealtimeClient;
 import 'features/finance/finance_api.dart'
-    show FinanceApi, FinanceProvider, LocalFinancePlanContext;
+    show
+        FinanceApi,
+        FinanceProvider,
+        FundingApi,
+        FundingProvider,
+        LocalFinancePlanContext;
 import 'features/guests/guests_api.dart' show GuestsApi, GuestsProvider;
 import 'features/home/home_api.dart' show HomeDashboardProvider;
 import 'features/marketplace/marketplace_api.dart'
@@ -216,6 +221,7 @@ Future<void> _bootstrapApplication(ObservabilityConfig observability) async {
     offline: offlineSyncService,
     authStorage: authStorage,
   );
+  final fundingApi = FundingApi(apiClient, offline: offlineSyncService);
   final financeApi = FinanceApi(
     apiClient,
     offline: offlineSyncService,
@@ -330,6 +336,7 @@ Future<void> _bootstrapApplication(ObservabilityConfig observability) async {
         accountContextsApi: accountContextsApi,
         weddingPlansApi: weddingPlansApi,
         financeApi: financeApi,
+        fundingApi: fundingApi,
         taskTimelineApi: taskTimelineApi,
         sharingApi: sharingApi,
         planLeaveCoordinator: planLeaveCoordinator,
@@ -415,6 +422,7 @@ class _AarastSessionProviders extends StatelessWidget {
     required this.accountContextsApi,
     required this.weddingPlansApi,
     required this.financeApi,
+    required this.fundingApi,
     required this.taskTimelineApi,
     required this.sharingApi,
     required this.planLeaveCoordinator,
@@ -433,6 +441,7 @@ class _AarastSessionProviders extends StatelessWidget {
   final AccountContextsApi accountContextsApi;
   final WeddingPlansApi weddingPlansApi;
   final FinanceApi financeApi;
+  final FundingApi fundingApi;
   final TaskTimelineApi taskTimelineApi;
   final SharingApi sharingApi;
   final PlanLeaveCoordinator planLeaveCoordinator;
@@ -553,6 +562,20 @@ class _AarastSessionProviders extends StatelessWidget {
               current,
               _planScope(accountContexts),
               () => FinanceProvider(financeApi, permissionsApi: sharingApi),
+            ),
+          ),
+          ChangeNotifierProxyProvider<
+            AccountContextController,
+            FundingProvider
+          >(
+            create: (_) => _bindPlanScope(
+              FundingProvider(fundingApi),
+              _unselectedPlanScope,
+            ),
+            update: (_, accountContexts, current) => _forPlanScope(
+              current,
+              _planScope(accountContexts),
+              () => FundingProvider(fundingApi),
             ),
           ),
           ChangeNotifierProxyProvider<

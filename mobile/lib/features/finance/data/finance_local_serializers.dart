@@ -13,6 +13,8 @@ Map<String, dynamic> weddingCostToLocalJson(WeddingCost cost) => {
   if (cost.quoteOfferId != null) 'quoteOfferId': cost.quoteOfferId,
   if (cost.partyName != null) 'partyName': cost.partyName,
   if (cost.partyPhone != null) 'partyPhone': cost.partyPhone,
+  if (cost.payer != null) 'payer': cost.payer,
+  if (cost.payerName != null) 'payerName': cost.payerName,
   if (cost.note != null) 'note': cost.note,
   if (cost.agreementDate != null)
     'agreementDate': cost.agreementDate!.toIso8601String(),

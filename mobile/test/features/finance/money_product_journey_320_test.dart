@@ -977,6 +977,8 @@ class _MoneyProductApi extends FinanceApi {
     String? quoteOfferId,
     String? partyName,
     String? partyPhone,
+    String? payer,
+    String? payerName,
     DateTime? agreementDate,
     String? note,
   }) async {

@@ -458,6 +458,8 @@ class FinanceProvider extends ChangeNotifier with SessionScopedNotifier {
     String? quoteOfferId,
     String? partyName,
     String? partyPhone,
+    String? payer,
+    String? payerName,
     DateTime? agreementDate,
     String? note,
   }) async {
@@ -473,6 +475,8 @@ class FinanceProvider extends ChangeNotifier with SessionScopedNotifier {
         quoteOfferId: quoteOfferId,
         partyName: partyName,
         partyPhone: partyPhone,
+        payer: payer,
+        payerName: payerName,
         agreementDate: agreementDate,
         note: note,
       );
@@ -489,6 +493,8 @@ class FinanceProvider extends ChangeNotifier with SessionScopedNotifier {
     String? quoteOfferId,
     String? partyName,
     String? partyPhone,
+    String? payer,
+    String? payerName,
     DateTime? agreementDate,
     String? note,
   }) {
@@ -502,6 +508,8 @@ class FinanceProvider extends ChangeNotifier with SessionScopedNotifier {
         quoteOfferId: quoteOfferId,
         partyName: partyName,
         partyPhone: partyPhone,
+        payer: payer,
+        payerName: payerName,
         agreementDate: agreementDate,
         note: note,
       );

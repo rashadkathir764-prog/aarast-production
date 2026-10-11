@@ -1707,6 +1707,9 @@ const trackedOwnerApiContracts = [
     path: 'mobile/lib/features/finance/finance_api.dart',
     exports: [
       { uri: 'data/finance_api.dart', show: ['FinanceApi', 'LocalFinancePlanContext'] },
+      { uri: 'data/funding_api.dart', show: ['FundingApi'] },
+      { uri: 'providers/funding_provider.dart', show: ['FundingProvider'] },
+      { uri: 'screens/funding_sources_screen.dart', show: ['FundingSourcesScreen'] },
       { uri: 'models/budget_category.dart', show: ['BudgetCategory'] },
       { uri: 'models/cost_draft_intent.dart', show: ['CostDraftIntent'] },
       { uri: 'models/wedding_cost.dart', show: ['WeddingCost'] },
@@ -2939,6 +2942,7 @@ const trackedCompositionRootContracts = [
           'CostPaymentDetailsScreen',
           'CostsScreen',
           'FinanceProvider',
+          'FundingSourcesScreen',
           'MoneyBudgetScreen',
           'MoneyOverviewScreen',
           'PayPaymentScheduleScreen',
@@ -3057,7 +3061,13 @@ const trackedCompositionRootContracts = [
       },
       {
         target: 'mobile/lib/features/finance/finance_api.dart',
-        show: ['FinanceApi', 'FinanceProvider', 'LocalFinancePlanContext'],
+        show: [
+          'FinanceApi',
+          'FinanceProvider',
+          'FundingApi',
+          'FundingProvider',
+          'LocalFinancePlanContext',
+        ],
       },
       {
         target: 'mobile/lib/features/guests/guests_api.dart',

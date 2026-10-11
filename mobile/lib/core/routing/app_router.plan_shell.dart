@@ -160,6 +160,14 @@ List<RouteBase> _planShellRoutes() => [
         },
       ),
       GoRoute(
+        path: '/wedding-plans/:id/money/funding',
+        builder: (context, state) {
+          return FundingSourcesScreen(
+            weddingPlanId: state.pathParameters['id'] ?? '',
+          );
+        },
+      ),
+      GoRoute(
         path: '/wedding-plans/:id/money/costs/:costId/schedules/create',
         builder: (context, state) {
           return PaymentScheduleFormScreen(

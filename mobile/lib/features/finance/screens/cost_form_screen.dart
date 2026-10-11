@@ -20,6 +20,7 @@ import '../../marketplace/marketplace_api.dart'
         ProviderMarketplaceProvider,
         providerDirectoryErrorMessage;
 import '../models/cost_draft_intent.dart';
+import '../models/funding_source.dart' show CostPayerOption;
 import '../models/wedding_cost.dart';
 import '../providers/finance_provider.dart';
 import '../widgets/finance_write_access_block.dart';
@@ -53,8 +54,11 @@ class _CostFormScreenState extends State<CostFormScreen> {
   final _initialPaymentController = TextEditingController();
   final _partyNameController = TextEditingController();
   final _partyPhoneController = TextEditingController();
+  final _payerNameController = TextEditingController();
   final _noteController = TextEditingController();
 
+  /// Who pays: '' (not set) or a CostPayerOption code.
+  String _payer = '';
   String? _categoryId;
   String? _providerId;
   String? _providerName;
@@ -90,6 +94,8 @@ class _CostFormScreenState extends State<CostFormScreen> {
     _partyPhoneController.text =
         intent?.externalPartyPhone ?? cost?.partyPhone ?? '';
     _noteController.text = intent?.note ?? cost?.note ?? '';
+    _payer = cost?.payer ?? '';
+    _payerNameController.text = cost?.payerName ?? '';
     _providerId = intent?.providerId ?? cost?.providerId;
     _providerName = intent?.providerName ?? cost?.providerName;
     _quoteOfferId = intent?.quoteOfferId ?? cost?.quoteOfferId;
@@ -105,6 +111,7 @@ class _CostFormScreenState extends State<CostFormScreen> {
       _initialPaymentController,
       _partyNameController,
       _partyPhoneController,
+      _payerNameController,
       _noteController,
     ]) {
       controller.addListener(_handleDraftFieldChanged);
@@ -139,6 +146,7 @@ class _CostFormScreenState extends State<CostFormScreen> {
       _initialPaymentController,
       _partyNameController,
       _partyPhoneController,
+      _payerNameController,
       _noteController,
     ]) {
       controller
@@ -171,6 +179,8 @@ class _CostFormScreenState extends State<CostFormScreen> {
     _partyPhoneController.text =
         data['partyPhone']?.toString() ?? _partyPhoneController.text;
     _noteController.text = data['note']?.toString() ?? _noteController.text;
+    _payerNameController.text =
+        data['payerName']?.toString() ?? _payerNameController.text;
     final partyKind = _PartyKind.values.firstWhere(
       (value) => value.name == data['partyKind']?.toString(),
       orElse: () => _PartyKind.none,
@@ -184,6 +194,7 @@ class _CostFormScreenState extends State<CostFormScreen> {
         data['agreementDate']?.toString() ?? '',
       );
       _partyKind = partyKind;
+      _payer = data['payer']?.toString() ?? _payer;
     });
     _restoringDraft = false;
   }
@@ -207,6 +218,8 @@ class _CostFormScreenState extends State<CostFormScreen> {
       'partyName': _partyNameController.text,
       'partyPhone': _partyPhoneController.text,
       'agreementDate': _agreementDate?.toIso8601String(),
+      'payer': _payer,
+      'payerName': _payerNameController.text,
       'note': _noteController.text,
     });
   }
@@ -509,10 +522,36 @@ class _CostFormScreenState extends State<CostFormScreen> {
               icon: LucideIcons.fileText,
               initiallyExpanded:
                   _agreementDate != null ||
+                  _payer.isNotEmpty ||
                   _noteController.text.trim().isNotEmpty,
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
+                  Text(
+                    'مين يدفع هذه التكلفة؟',
+                    style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  AarastChoicePillRow<String>(
+                    key: const ValueKey('cost-payer'),
+                    value: _payer,
+                    options: [('', 'غير محدد'), ...CostPayerOption.values],
+                    onChanged: (value) => _mutateDraft(() => _payer = value),
+                  ),
+                  if (_payer == 'FAMILY' || _payer == 'OTHER') ...[
+                    const SizedBox(height: 10),
+                    TextFormField(
+                      controller: _payerNameController,
+                      textInputAction: TextInputAction.next,
+                      decoration: const InputDecoration(
+                        labelText: 'من بالتحديد؟ (مثال: الوالد)',
+                        prefixIcon: Icon(LucideIcons.user),
+                      ),
+                    ),
+                  ],
+                  const SizedBox(height: 12),
                   _DateField(
                     label: 'تاريخ الاتفاق',
                     value: _agreementDate,
@@ -615,6 +654,16 @@ class _CostFormScreenState extends State<CostFormScreen> {
     _mutateDraft(() => _agreementDate = picked);
   }
 
+  String? get _payerOrNull => _payer.isEmpty ? null : _payer;
+
+  /// A name only goes with a payer it describes (family or other).
+  String? get _payerNameOrNull {
+    final name = _payerNameController.text.trim();
+    return (_payer == 'FAMILY' || _payer == 'OTHER') && name.isNotEmpty
+        ? name
+        : null;
+  }
+
   Future<void> _save() async {
     if (!_formKey.currentState!.validate()) return;
     if (_categoryId == null) return;
@@ -646,6 +695,8 @@ class _CostFormScreenState extends State<CostFormScreen> {
                 partyPhone: _partyKind == _PartyKind.external
                     ? _partyPhoneController.text.trim()
                     : null,
+                payer: _payerOrNull,
+                payerName: _payerNameOrNull,
                 agreementDate: _agreementDate,
                 note: _noteController.text.trim(),
               )) !=
@@ -665,6 +716,8 @@ class _CostFormScreenState extends State<CostFormScreen> {
             partyPhone: _partyKind == _PartyKind.external
                 ? _partyPhoneController.text.trim()
                 : null,
+            payer: _payerOrNull,
+            payerName: _payerNameOrNull,
             agreementDate: _agreementDate,
             note: _noteController.text.trim(),
           );

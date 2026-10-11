@@ -27,6 +27,7 @@ import '../models/money_summary.dart';
 import '../models/money_starter_catalog.dart';
 import '../models/wedding_cost.dart';
 import '../providers/finance_provider.dart';
+import '../widgets/funding_widgets.dart';
 import '../widgets/money_starter_setup.dart';
 import '../widgets/money_widgets.dart';
 
@@ -156,6 +157,16 @@ class _MoneyOverviewScreenState extends State<MoneyOverviewScreen> {
                         schedule,
                         _payableCost(provider, schedule)!,
                       ),
+              ),
+            ],
+            // Only the plan owner receives funding in the summary.
+            if (provider.summary.funding case final funding?) ...[
+              const SizedBox(height: 14),
+              MoneyFundingCard(
+                funding: funding,
+                currency: provider.summary.currency,
+                onOpen: () =>
+                    context.push(AppRouter.moneyFunding(widget.weddingPlanId)),
               ),
             ],
             const SizedBox(height: 24),

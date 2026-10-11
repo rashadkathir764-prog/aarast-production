@@ -22,11 +22,18 @@ void main() {
   test(
     'the application root wires only FinanceApi and MoneyOverviewScreen',
     () {
+      // The root takes money (costs and funding) only through the finance
+      // owner API, never from its data layer.
       expect(
         main,
         contains(
           "import 'features/finance/finance_api.dart'\n"
-          '    show FinanceApi, FinanceProvider, LocalFinancePlanContext;',
+          '    show\n'
+          '        FinanceApi,\n'
+          '        FinanceProvider,\n'
+          '        FundingApi,\n'
+          '        FundingProvider,\n'
+          '        LocalFinancePlanContext;',
         ),
       );
       expect(main, isNot(contains("'features/finance/data/")));

@@ -12,6 +12,8 @@ class WeddingCost {
     this.quoteOfferId,
     this.partyName,
     this.partyPhone,
+    this.payer,
+    this.payerName,
     this.note,
     this.agreementDate,
     this.paymentsCount,
@@ -38,6 +40,8 @@ class WeddingCost {
       quoteOfferId: stringOrNull(json['quoteOfferId']),
       partyName: stringOrNull(json['partyName']),
       partyPhone: stringOrNull(json['partyPhone']),
+      payer: stringOrNull(json['payer']),
+      payerName: stringOrNull(json['payerName']),
       note: stringOrNull(json['note']),
       agreementDate: dateTimeOrNull(json['agreementDate']),
       paymentsCount: intOrNull(json['paymentsCount']),
@@ -64,6 +68,10 @@ class WeddingCost {
   final String? quoteOfferId;
   final String? partyName;
   final String? partyPhone;
+
+  /// Who is expected to pay: GROOM, BRIDE, FAMILY, SHARED or OTHER.
+  final String? payer;
+  final String? payerName;
   final String? note;
   final DateTime? agreementDate;
   final int? paymentsCount;

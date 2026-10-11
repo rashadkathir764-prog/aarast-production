@@ -10,6 +10,7 @@ class MoneySummary {
     this.categories = const [],
     this.warnings = const [],
     this.permissions = const MoneyPermissions(),
+    this.funding,
   });
 
   factory MoneySummary.empty(String planId, {String currency = 'YER'}) {
@@ -33,6 +34,9 @@ class MoneySummary {
         json['warnings'],
       ).map(MoneyWarning.fromJson).toList(),
       permissions: MoneyPermissions.fromJson(_map(json['permissions'])),
+      funding: json['funding'] is Map
+          ? MoneyFundingSummary.fromJson(_map(json['funding']))
+          : null,
     );
   }
 
@@ -44,6 +48,9 @@ class MoneySummary {
   final List<MoneyCategorySummary> categories;
   final List<MoneyWarning> warnings;
   final MoneyPermissions permissions;
+
+  /// Money in versus money committed. Only the plan owner receives it.
+  final MoneyFundingSummary? funding;
 
   String get weddingPlanId => planId;
   bool get hasAnyData =>
@@ -71,6 +78,50 @@ class MoneySummary {
     }
     return 'SAFE';
   }
+}
+
+class MoneyFundingSummary {
+  const MoneyFundingSummary({
+    this.total = '0',
+    this.received = '0',
+    this.pledged = '0',
+    this.availableCash = '0',
+    this.shortfall,
+    this.loanTotal = '0',
+    this.loanOutstanding = '0',
+    this.overdueLoanRepayments = 0,
+    this.sourcesCount = 0,
+  });
+
+  factory MoneyFundingSummary.fromJson(Map<String, dynamic> json) {
+    return MoneyFundingSummary(
+      total: json['total']?.toString() ?? '0',
+      received: json['received']?.toString() ?? '0',
+      pledged: json['pledged']?.toString() ?? '0',
+      availableCash: json['availableCash']?.toString() ?? '0',
+      shortfall: _nullableString(json['shortfall']),
+      loanTotal: json['loanTotal']?.toString() ?? '0',
+      loanOutstanding: json['loanOutstanding']?.toString() ?? '0',
+      overdueLoanRepayments:
+          int.tryParse(json['overdueLoanRepayments']?.toString() ?? '') ?? 0,
+      sourcesCount: int.tryParse(json['sourcesCount']?.toString() ?? '') ?? 0,
+    );
+  }
+
+  /// Pledged plus received.
+  final String total;
+  final String received;
+  final String pledged;
+
+  /// Received minus what was already paid out.
+  final String availableCash;
+
+  /// Confirmed cost not yet covered by any source; null once covered.
+  final String? shortfall;
+  final String loanTotal;
+  final String loanOutstanding;
+  final int overdueLoanRepayments;
+  final int sourcesCount;
 }
 
 class MoneyBudgetSummary {

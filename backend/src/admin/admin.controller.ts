@@ -109,6 +109,24 @@ export class AdminController {
     return this.adminService.activateProvider(currentUser, id);
   }
 
+  @Patch('providers/:id/verify')
+  @RequireAdminPermission(AdminPermission.PROVIDERS_WRITE)
+  verifyProvider(
+    @CurrentUser() currentUser: AuthenticatedUser,
+    @Param('id') id: string,
+  ) {
+    return this.adminService.setProviderVerified(currentUser, id, true);
+  }
+
+  @Patch('providers/:id/unverify')
+  @RequireAdminPermission(AdminPermission.PROVIDERS_WRITE)
+  unverifyProvider(
+    @CurrentUser() currentUser: AuthenticatedUser,
+    @Param('id') id: string,
+  ) {
+    return this.adminService.setProviderVerified(currentUser, id, false);
+  }
+
   @Get('providers')
   @RequireAdminPermission(AdminPermission.PROVIDERS_READ)
   listProviders(@Query() query: AdminProviderQueryDto) {

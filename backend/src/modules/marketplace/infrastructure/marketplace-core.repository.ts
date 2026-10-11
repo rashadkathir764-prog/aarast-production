@@ -6,6 +6,7 @@ import type {
   ServiceSearchWhere,
 } from "../../../marketplace/marketplace.contracts";
 import { MARKETPLACE_QUOTE_INCLUDE } from "../../../marketplace/marketplace.contracts";
+import type { ProviderResponseSample } from "../../../marketplace/provider-responsiveness";
 
 type Client = Prisma.TransactionClient;
 
@@ -19,7 +20,7 @@ export function searchActiveProviders(client: Client, where: ProviderSearchWhere
       include: {
         services: {
           where: { isActive: true }, orderBy: [{ isFeatured: "desc" }, { createdAt: "desc" }],
-          select: { title: true, basePrice: true, currency: true, categoryId: true },
+          select: { title: true, basePrice: true, currency: true, priceUpdatedAt: true, categoryId: true },
         },
       },
       orderBy: [
@@ -43,6 +44,46 @@ export function findActiveProviderWithServices(client: Client, id: string) {
       },
     },
   });
+}
+
+/**
+ * The provider's quote requests since `since` that count toward its response
+ * time: answered ones, and unanswered ones that were neither cancelled nor
+ * made after `settledBefore` (still inside the grace period).
+ */
+export async function providerResponseSample(
+  client: Client,
+  providerId: string,
+  window: { since: Date; settledBefore: Date },
+): Promise<ProviderResponseSample> {
+  const rows = await client.$queryRaw<
+    Array<{ requests: bigint; answered: bigint; medianMinutes: number | null }>
+  >(Prisma.sql`
+    SELECT
+      COUNT(*) AS "requests",
+      COUNT(o."firstOfferAt") AS "answered",
+      percentile_cont(0.5) WITHIN GROUP (
+        ORDER BY EXTRACT(EPOCH FROM (o."firstOfferAt" - q."createdAt")) / 60
+      ) AS "medianMinutes"
+    FROM "QuoteRequest" q
+    LEFT JOIN (
+      SELECT "quoteRequestId", MIN("createdAt") AS "firstOfferAt"
+      FROM "QuoteOffer"
+      GROUP BY "quoteRequestId"
+    ) o ON o."quoteRequestId" = q."id"
+    WHERE q."providerId" = ${providerId}
+      AND q."createdAt" >= ${window.since}
+      AND (
+        o."firstOfferAt" IS NOT NULL
+        OR (q."status" <> 'CANCELLED' AND q."createdAt" < ${window.settledBefore})
+      )
+  `);
+  const row = rows[0];
+  return {
+    requests: Number(row?.requests ?? 0),
+    answered: Number(row?.answered ?? 0),
+    medianMinutes: row?.medianMinutes ?? null,
+  };
 }
 
 export function listActiveProviderServices(client: Client, providerId: string) {

@@ -274,6 +274,7 @@ export function toProviderResponse(provider: AdminProviderRecord) {
     reviewedBy: provider.reviewedBy
       ? toSafeUser(provider.reviewedBy)
       : null,
+    verifiedAt: provider.verifiedAt,
     isFeatured: provider.isFeatured,
     ratingAverage: provider.ratingAverage.toString(),
     ratingCount: provider.ratingCount,

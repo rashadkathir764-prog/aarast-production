@@ -39,6 +39,10 @@ import { ListProvidersQueryDto } from "./dto/list-providers-query.dto";
 import { ListServicesQueryDto } from "./dto/list-services-query.dto";
 import { UpdateProviderReviewDto } from "./dto/update-provider-review.dto";
 import { quoteLifecycleStatus } from "./quote-lifecycle";
+import {
+  responsivenessWindow,
+  summarizeResponsiveness,
+} from "./provider-responsiveness";
 import { rejectQuoteOfferInTransaction } from "./quote-offer-rejection";
 import { createQuoteRequestInTransaction } from "./quote-request-creation";
 import { cancelQuoteRequestInTransaction } from "./quote-request-cancellation";
@@ -186,11 +190,19 @@ export class MarketplaceService {
       this.prisma,
       services.map((service) => ({ ...service, provider: providerOnly })),
     );
+    const responseSample = await core.providerResponseSample(
+      this.prisma,
+      id,
+      responsivenessWindow(new Date()),
+    );
 
-    return MarketplacePresenter.toProviderResponse({
-      ...provider,
-      services: providerServices,
-    });
+    return {
+      ...MarketplacePresenter.toProviderResponse({
+        ...provider,
+        services: providerServices,
+      }),
+      responsiveness: summarizeResponsiveness(responseSample),
+    };
   }
 
   async findProviderServices(providerId: string) {

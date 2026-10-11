@@ -1,4 +1,5 @@
 import { Prisma, ProviderStatus, QuoteOfferStatus, QuoteRequestStatus } from '@prisma/client';
+import { priceStampForNewService, priceStampForServiceUpdate } from './service-price-stamp';
 
 type Client = Prisma.TransactionClient;
 
@@ -132,11 +133,17 @@ export function listOwnedServices(client: Client, providerId: string) {
 }
 
 export function createProviderService(client: Client, fields: ServiceFields) {
-  return client.providerService.create({ data: fields, include: serviceInclude });
+  return client.providerService.create({
+    data: { ...fields, priceUpdatedAt: priceStampForNewService(fields.basePrice) },
+    include: serviceInclude,
+  });
 }
 
-export function updateProviderService(client: Client, serviceId: string, changes: ServiceChanges) {
-  return client.providerService.update({ where: { id: serviceId }, data: changes, include: serviceInclude });
+export async function updateProviderService(client: Client, serviceId: string, changes: ServiceChanges) {
+  const priceStamp = await priceStampForServiceUpdate(client, serviceId, changes);
+  return client.providerService.update({
+    where: { id: serviceId }, data: { ...changes, ...priceStamp }, include: serviceInclude,
+  });
 }
 
 export function deactivateProviderService(client: Client, serviceId: string) {

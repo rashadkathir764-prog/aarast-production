@@ -1882,6 +1882,26 @@ complete enough for discovery. Every item includes `primaryCategory` plus a
 - unique `categories`
 - `minPrice`, `maxPrice`, and `currency` when all published prices use one
   currency; mixed or absent prices remain `null`
+- `pricesUpdatedAt`: the latest `priceUpdatedAt` of the active services, or
+  `null` when none has a price
+
+Provider trust signals (V1 checklist 4.11):
+
+- Every public provider response carries `verifiedAt`: set only when an
+  administrator checked the provider's documents through
+  `PATCH /admin/providers/:id/verify` (allowed only while the provider is
+  `ACTIVE`; the owner of the listing cannot verify it) and cleared by
+  `PATCH /admin/providers/:id/unverify`. Both need `PROVIDERS_WRITE`.
+- Every service response carries `priceUpdatedAt`: stamped when the service is
+  created with a price and whenever its `basePrice` amount or `currency`
+  actually changes; other edits keep it. It is `null` while the service has no
+  price.
+- `GET /api/v1/providers/:id` adds `responsiveness`, or `null` with fewer than
+  3 counted quote requests in the last 180 days:
+  `{ sampleSize, answeredPercent, typicalResponseHours }`. A request counts
+  when the provider sent an offer on it, or when it is unanswered, not
+  cancelled and older than 48 hours. `typicalResponseHours` is the median time
+  to the first offer rounded up to whole hours (`null` when none was answered).
 
 Provider search matches the provider identity/address fields and active service
 title/description. The summary does not replace the full service contract from
@@ -2225,6 +2245,8 @@ returns the admin refresh token.
 - `PATCH /admin/providers/:id/request-changes`
 - `PATCH /admin/providers/:id/suspend`
 - `PATCH /admin/providers/:id/activate`
+- `PATCH /admin/providers/:id/verify`
+- `PATCH /admin/providers/:id/unverify`
 - `GET /admin/providers`
 - `GET /admin/providers/:id`
 - `GET /admin/services`
@@ -2405,6 +2427,8 @@ configuration, and smoke checks.
 | PATCH | `/admin/providers/:id/reject` | `admin.rejectProvider` | 🔒 |
 | PATCH | `/admin/providers/:id/request-changes` | `admin.requestProviderChanges` | 🔒 |
 | PATCH | `/admin/providers/:id/suspend` | `admin.suspendProvider` | 🔒 |
+| PATCH | `/admin/providers/:id/unverify` | `admin.unverifyProvider` | 🔒 |
+| PATCH | `/admin/providers/:id/verify` | `admin.verifyProvider` | 🔒 |
 | GET | `/admin/providers/applications` | `admin.listProviderApplications` | 🔒 |
 | GET | `/admin/providers/applications/:id` | `admin.getProviderApplication` | 🔒 |
 | GET | `/admin/reference-catalogs` | `catalogs.listCatalogs` | 🔒 |

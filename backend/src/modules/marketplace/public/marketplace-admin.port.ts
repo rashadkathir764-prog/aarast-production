@@ -103,6 +103,11 @@ export interface ProviderReviewDecision {
   reviewedById: string;
 }
 
+export interface ProviderVerification {
+  verifiedAt: Date | null;
+  verifiedById: string | null;
+}
+
 export interface AdminMarketplaceCounters {
   totalProviders: number;
   pendingProviders: number;
@@ -187,6 +192,12 @@ export interface MarketplaceAdminPort {
     tx: Prisma.TransactionClient,
     providerId: string,
     decision: ProviderReviewDecision,
+  ): Promise<AdminProviderDetailRow>;
+  /** Records that an admin checked the provider's documents, or clears it with nulls. */
+  recordProviderVerificationInTransaction(
+    tx: Prisma.TransactionClient,
+    providerId: string,
+    verification: ProviderVerification,
   ): Promise<AdminProviderDetailRow>;
   /** Locks the provider FOR SHARE; false when it does not exist. */
   lockProviderForShareInTransaction(

@@ -22,7 +22,12 @@ import type {
   CatalogUsage,
   MarketplaceAdminPort,
   ProviderReviewDecision,
+  ProviderVerification,
 } from '../public/marketplace-admin.port';
+import {
+  priceStampForNewService,
+  priceStampForServiceUpdate,
+} from './service-price-stamp';
 
 interface TextMatch {
   contains: string;
@@ -276,6 +281,21 @@ export class MarketplaceAdminRepository implements MarketplaceAdminPort {
     });
   }
 
+  async recordProviderVerificationInTransaction(
+    tx: Prisma.TransactionClient,
+    providerId: string,
+    verification: ProviderVerification,
+  ): Promise<AdminProviderDetailRow> {
+    return tx.provider.update({
+      where: { id: providerId },
+      data: {
+        verifiedAt: verification.verifiedAt,
+        verifiedById: verification.verifiedById,
+      },
+      include: providerDetailInclude,
+    });
+  }
+
   async lockProviderForShareInTransaction(
     tx: Prisma.TransactionClient,
     providerId: string,
@@ -367,7 +387,10 @@ export class MarketplaceAdminRepository implements MarketplaceAdminPort {
     fields: AdminServiceFields,
   ): Promise<AdminServiceRow> {
     return tx.providerService.create({
-      data: fields,
+      data: {
+        ...fields,
+        priceUpdatedAt: priceStampForNewService(fields.basePrice),
+      },
       include: serviceInclude,
     });
   }
@@ -377,9 +400,10 @@ export class MarketplaceAdminRepository implements MarketplaceAdminPort {
     serviceId: string,
     changes: AdminServiceChanges,
   ): Promise<AdminServiceRow> {
+    const priceStamp = await priceStampForServiceUpdate(tx, serviceId, changes);
     return tx.providerService.update({
       where: { id: serviceId },
-      data: changes,
+      data: { ...changes, ...priceStamp },
       include: serviceInclude,
     });
   }

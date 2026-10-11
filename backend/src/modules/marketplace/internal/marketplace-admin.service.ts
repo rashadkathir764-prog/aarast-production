@@ -17,6 +17,7 @@ import type {
   CatalogUsage,
   MarketplaceAdminPort,
   ProviderReviewDecision,
+  ProviderVerification,
 } from '../public/marketplace-admin.port';
 import { MarketplaceAdminRepository } from '../infrastructure/marketplace-admin.repository';
 
@@ -79,6 +80,18 @@ export class MarketplaceAdminService implements MarketplaceAdminPort {
     decision: ProviderReviewDecision,
   ): Promise<AdminProviderDetailRow> {
     return this.repository.recordProviderReviewInTransaction(tx, providerId, decision);
+  }
+
+  async recordProviderVerificationInTransaction(
+    tx: Prisma.TransactionClient,
+    providerId: string,
+    verification: ProviderVerification,
+  ): Promise<AdminProviderDetailRow> {
+    return this.repository.recordProviderVerificationInTransaction(
+      tx,
+      providerId,
+      verification,
+    );
   }
 
   async lockProviderForShareInTransaction(

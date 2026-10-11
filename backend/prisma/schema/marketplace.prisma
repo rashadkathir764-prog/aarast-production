@@ -53,6 +53,9 @@ model Provider {
   reviewNote        String?            @db.Text
   reviewedAt        DateTime?
   reviewedById      String?
+  // Set when an admin has checked the provider's documents (not just approved the listing).
+  verifiedAt        DateTime?
+  verifiedById      String?
   isFeatured        Boolean            @default(false)
   ratingAverage     Decimal            @default(0) @db.Decimal(3, 2)
   ratingCount       Int                @default(0)
@@ -86,6 +89,8 @@ model ProviderService {
   basePrice     Decimal?               @db.Decimal(14, 2)
   priceUnit     String?
   currency      String                 @default("YER")
+  // When basePrice last changed value; null while the service has no price.
+  priceUpdatedAt DateTime?
   cityId        String?
   isActive      Boolean                @default(true)
   isFeatured    Boolean                @default(false)

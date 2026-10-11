@@ -288,6 +288,7 @@ export class MarketplacePresenter {
       logoUrl: provider.logoUrl,
       coverUrl: provider.coverUrl,
       status: provider.status,
+      verifiedAt: provider.verifiedAt,
       isFeatured: provider.isFeatured,
       ratingAverage: provider.ratingAverage.toString(),
       ratingCount: provider.ratingCount,
@@ -302,6 +303,7 @@ export class MarketplacePresenter {
               basePrice: service.basePrice?.toString() ?? null,
               priceUnit: service.priceUnit,
               currency: service.currency,
+              priceUpdatedAt: service.priceUpdatedAt,
               isFeatured: service.isFeatured,
               category: this.toCategoryResponse(service.category),
               images: service.images.map((image) =>
@@ -319,7 +321,7 @@ export class MarketplacePresenter {
       primaryCategory?: ProviderCategory | null;
       servicePreviews: (Pick<
         ProviderService,
-        "title" | "basePrice" | "currency"
+        "title" | "basePrice" | "currency" | "priceUpdatedAt"
       > & {
         category: ProviderCategory;
       })[];
@@ -343,6 +345,13 @@ export class MarketplacePresenter {
       for (const price of prices) {
         if (minPrice === null || price.lessThan(minPrice)) minPrice = price;
         if (maxPrice === null || price.greaterThan(maxPrice)) maxPrice = price;
+      }
+    }
+    let pricesUpdatedAt: Date | null = null;
+    for (const service of provider.servicePreviews) {
+      const stamp = service.priceUpdatedAt;
+      if (stamp && (pricesUpdatedAt === null || stamp > pricesUpdatedAt)) {
+        pricesUpdatedAt = stamp;
       }
     }
     const categories = [
@@ -371,6 +380,7 @@ export class MarketplacePresenter {
         minPrice: minPrice?.toString() ?? null,
         maxPrice: maxPrice?.toString() ?? null,
         currency: commonCurrency ?? null,
+        pricesUpdatedAt,
       },
     };
   }
@@ -387,6 +397,7 @@ export class MarketplacePresenter {
       basePrice: service.basePrice?.toString() ?? null,
       priceUnit: service.priceUnit,
       currency: service.currency,
+      priceUpdatedAt: service.priceUpdatedAt,
       cityId: service.cityId,
       city: service.city ? this.toCityResponse(service.city) : null,
       isActive: service.isActive,

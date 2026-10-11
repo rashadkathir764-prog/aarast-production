@@ -418,6 +418,45 @@ export class AdminService {
     );
   }
 
+  /**
+   * Marks (or unmarks) that an admin checked the provider's documents. Only an
+   * ACTIVE listing can be verified; the badge is cleared freely.
+   */
+  async setProviderVerified(
+    currentUser: AuthenticatedUser,
+    id: string,
+    verified: boolean,
+  ) {
+    const provider = await runSerializableTransaction(this.prisma, async (tx) => {
+      const seed = await this.owners.marketplace.findProviderAccount(tx, id);
+      if (!seed) {
+        throw new NotFoundException('Provider not found');
+      }
+      if (seed.userId === currentUser.id) {
+        throw new BadRequestException('Provider owners cannot verify their own listing');
+      }
+      await this.lockProviderReviewUsersInTransaction(tx, currentUser, seed.userId);
+      const current =
+        await this.owners.marketplace.lockProviderForUpdateInTransaction(tx, id);
+      if (!current || current.userId !== seed.userId) {
+        throw new NotFoundException('Provider not found');
+      }
+      if (verified && current.status !== ProviderStatus.ACTIVE) {
+        throw new ConflictException('Only an active provider can be verified');
+      }
+      const updated =
+        await this.owners.marketplace.recordProviderVerificationInTransaction(
+          tx,
+          id,
+          verified
+            ? { verifiedAt: new Date(), verifiedById: currentUser.id }
+            : { verifiedAt: null, verifiedById: null },
+        );
+      return this.owners.attachProviderDetail(tx, updated);
+    });
+    return toProviderResponse(provider);
+  }
+
   async listCategories() {
     const categories = await this.prisma.$transaction(async (tx) =>
       this.owners.attachCategories(

@@ -1338,6 +1338,7 @@ export class ProviderDashboardService {
       reviewNote: provider.reviewNote,
       reviewedAt: provider.reviewedAt,
       reviewedById: provider.reviewedById,
+      verifiedAt: provider.verifiedAt,
       isFeatured: provider.isFeatured,
       ratingAverage: provider.ratingAverage.toString(),
       ratingCount: provider.ratingCount,

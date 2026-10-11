@@ -99,12 +99,14 @@ test("provider list response keeps category and active service summary", () => {
         title: "تصوير فوتوغرافي",
         basePrice: new Prisma.Decimal("250000"),
         currency: "YER",
+        priceUpdatedAt: new Date("2026-07-20T00:00:00.000Z"),
         category,
       },
       {
         title: "فيديو الزفاف",
         basePrice: new Prisma.Decimal("400000"),
         currency: "YER",
+        priceUpdatedAt: new Date("2026-07-24T00:00:00.000Z"),
         category,
       },
     ],
@@ -130,6 +132,7 @@ test("provider list response keeps category and active service summary", () => {
     minPrice: "250000",
     maxPrice: "400000",
     currency: "YER",
+    pricesUpdatedAt: new Date("2026-07-24T00:00:00.000Z"),
   });
 });
 

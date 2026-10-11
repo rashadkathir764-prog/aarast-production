@@ -38,7 +38,10 @@ type WithCatalog<T> = T & {
   primaryCategory: ProviderCategory | null;
 };
 
-type ServicePreview = Pick<ProviderService, "title" | "basePrice" | "currency">;
+type ServicePreview = Pick<
+  ProviderService,
+  "title" | "basePrice" | "currency" | "priceUpdatedAt"
+>;
 type ProviderListRow = Provider & {
   services: Array<ServicePreview & { categoryId: string }>;
 };

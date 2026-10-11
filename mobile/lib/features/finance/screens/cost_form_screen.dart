@@ -674,7 +674,9 @@ class _CostFormScreenState extends State<CostFormScreen> {
       final router = GoRouter.of(context);
       AarastFormSuccess.show(
         context,
-        message: cost == null ? 'تمت إضافة التكلفة.' : 'تم حفظ التكلفة.',
+        message: context.read<FinanceProvider>().savedMessage(
+          cost == null ? 'تمت إضافة التكلفة.' : 'تم حفظ التكلفة.',
+        ),
         nextLabel: createdCost == null ? null : 'فتح التكلفة',
         onNext: createdCost == null
             ? null

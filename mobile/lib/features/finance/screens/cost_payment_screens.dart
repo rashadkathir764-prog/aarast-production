@@ -268,7 +268,12 @@ class _RecordCostPaymentScreenState extends State<RecordCostPaymentScreen> {
     if (result != null && mounted) {
       await _draft?.clear();
       if (!mounted) return;
-      AarastFormSuccess.show(context, message: 'تم تسجيل الدفعة.');
+      AarastFormSuccess.show(
+        context,
+        message: context.read<FinanceProvider>().savedMessage(
+          'تم تسجيل الدفعة.',
+        ),
+      );
       context.pop(true);
     }
   }
@@ -434,7 +439,12 @@ class _CostPaymentDetailsScreenState extends State<CostPaymentDetailsScreen> {
       reason: reason,
     );
     if (!mounted || !ok) return;
-    AarastToast.showSuccess(context, 'تم تسجيل عكس الدفعة مع حفظ السجل.');
+    AarastToast.showSuccess(
+      context,
+      context.read<FinanceProvider>().savedMessage(
+        'تم تسجيل عكس الدفعة مع حفظ السجل.',
+      ),
+    );
     await _load(refreshMoney: true);
   }
 }

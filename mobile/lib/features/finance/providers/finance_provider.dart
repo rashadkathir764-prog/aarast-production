@@ -13,6 +13,9 @@ class FinanceProvider extends ChangeNotifier with SessionScopedNotifier {
   FinanceProvider(this._api, {SharingApi? permissionsApi})
     : _permissionsApi = permissionsApi;
 
+  static const savedButStaleMessage =
+      'تم الحفظ، لكن تعذر تحديث عرض المال الآن. اسحب للتحديث.';
+
   final FinanceApi _api;
   final SharingApi? _permissionsApi;
 
@@ -48,6 +51,10 @@ class FinanceProvider extends ChangeNotifier with SessionScopedNotifier {
   bool get hasLoadedMoney => _hasLoadedMoney;
   String? get errorMessage => _errorMessage;
   String? get noticeMessage => _noticeMessage;
+
+  /// The message to confirm a successful save: [success], unless the save
+  /// came with a notice (stale view or local-only plan) the user must see.
+  String savedMessage(String success) => _noticeMessage ?? success;
   List<BudgetCategory> get categories => List.unmodifiable(_categories);
   List<WeddingCost> get costs => List.unmodifiable(_costs);
   List<CostPayment> get payments => List.unmodifiable(_payments);
@@ -469,8 +476,7 @@ class FinanceProvider extends ChangeNotifier with SessionScopedNotifier {
         agreementDate: agreementDate,
         note: note,
       );
-      await _reloadData(planId);
-    });
+    }, refresh: () => _reloadData(planId));
     return ok ? result : null;
   }
 
@@ -499,22 +505,28 @@ class FinanceProvider extends ChangeNotifier with SessionScopedNotifier {
         agreementDate: agreementDate,
         note: note,
       );
-      await _reloadData(cost.weddingPlanId);
-    });
+    }, refresh: () => _reloadData(cost.weddingPlanId));
   }
 
   Future<bool> deleteCost(WeddingCost cost) {
-    return _submit(cost.weddingPlanId, () async {
-      await _api.deleteCost(cost);
-      await _reloadData(cost.weddingPlanId);
-    });
+    return _submit(
+      cost.weddingPlanId,
+      () => _api.deleteCost(cost),
+      refresh: () => _reloadData(cost.weddingPlanId),
+    );
   }
 
   Future<bool> cancelCost(WeddingCost cost) {
-    return _submit(cost.weddingPlanId, () async {
-      await _api.cancelCost(cost);
-      await _reloadData(cost.weddingPlanId);
-    });
+    return _submit(
+      cost.weddingPlanId,
+      () => _api.cancelCost(cost),
+      refresh: () => _reloadData(cost.weddingPlanId),
+    );
+  }
+
+  Future<void> _reloadCost(WeddingCost cost) async {
+    await _reloadData(cost.weddingPlanId);
+    await loadCostDetails(cost.id);
   }
 
   Future<CostPayment?> recordPayment({
@@ -533,9 +545,7 @@ class FinanceProvider extends ChangeNotifier with SessionScopedNotifier {
         method: method,
         note: note,
       );
-      await _reloadData(cost.weddingPlanId);
-      await loadCostDetails(cost.id);
-    });
+    }, refresh: () => _reloadCost(cost));
     return ok ? result : null;
   }
 
@@ -544,11 +554,11 @@ class FinanceProvider extends ChangeNotifier with SessionScopedNotifier {
     required WeddingCost cost,
     required String reason,
   }) {
-    return _submit(cost.weddingPlanId, () async {
-      await _api.reversePayment(payment: payment, cost: cost, reason: reason);
-      await _reloadData(cost.weddingPlanId);
-      await loadCostDetails(cost.id);
-    });
+    return _submit(
+      cost.weddingPlanId,
+      () => _api.reversePayment(payment: payment, cost: cost, reason: reason),
+      refresh: () => _reloadCost(cost),
+    );
   }
 
   Future<PaymentSchedule?> createSchedule({
@@ -565,9 +575,7 @@ class FinanceProvider extends ChangeNotifier with SessionScopedNotifier {
         dueDate: dueDate,
         note: note,
       );
-      await _reloadData(cost.weddingPlanId);
-      await loadCostDetails(cost.id);
-    });
+    }, refresh: () => _reloadCost(cost));
     return ok ? result : null;
   }
 
@@ -586,31 +594,29 @@ class FinanceProvider extends ChangeNotifier with SessionScopedNotifier {
         dueDate: dueDate,
         note: note,
       );
-      await _reloadData(cost.weddingPlanId);
-      await loadCostDetails(cost.id);
-    });
+    }, refresh: () => _reloadCost(cost));
   }
 
   Future<bool> deleteSchedule({
     required PaymentSchedule schedule,
     required WeddingCost cost,
   }) {
-    return _submit(cost.weddingPlanId, () async {
-      await _api.deleteSchedule(schedule);
-      await _reloadData(cost.weddingPlanId);
-      await loadCostDetails(cost.id);
-    });
+    return _submit(
+      cost.weddingPlanId,
+      () => _api.deleteSchedule(schedule),
+      refresh: () => _reloadCost(cost),
+    );
   }
 
   Future<bool> cancelSchedule({
     required PaymentSchedule schedule,
     required WeddingCost cost,
   }) {
-    return _submit(cost.weddingPlanId, () async {
-      await _api.cancelSchedule(schedule);
-      await _reloadData(cost.weddingPlanId);
-      await loadCostDetails(cost.id);
-    });
+    return _submit(
+      cost.weddingPlanId,
+      () => _api.cancelSchedule(schedule),
+      refresh: () => _reloadCost(cost),
+    );
   }
 
   Future<CostPayment?> paySchedule({
@@ -629,9 +635,7 @@ class FinanceProvider extends ChangeNotifier with SessionScopedNotifier {
         method: method,
         note: note,
       );
-      await _reloadData(cost.weddingPlanId);
-      await loadCostDetails(cost.id);
-    });
+    }, refresh: () => _reloadCost(cost));
     return ok ? result : null;
   }
 
@@ -664,7 +668,14 @@ class FinanceProvider extends ChangeNotifier with SessionScopedNotifier {
     );
   }
 
-  Future<bool> _submit(String planId, Future<void> Function() action) async {
+  /// Runs [write], then [refresh]. Only a failed [write] is a failed save: once
+  /// the write is confirmed, a failed [refresh] keeps the save and asks the
+  /// user to reload, so a retry re-reads instead of writing again.
+  Future<bool> _submit(
+    String planId,
+    Future<void> Function() write, {
+    Future<void> Function()? refresh,
+  }) async {
     if (!_access.canManageMoney && !_isLocalPlan(planId)) {
       _errorMessage = 'لا تملك صلاحية إدارة المال في هذه الخطة.';
       notifyListeners();
@@ -676,22 +687,37 @@ class FinanceProvider extends ChangeNotifier with SessionScopedNotifier {
     notifyListeners();
     final generation = _loadGeneration;
     try {
-      await action();
+      try {
+        await write();
+      } on ApiException catch (error) {
+        _errorMessage = error.message;
+        return false;
+      } catch (_) {
+        _errorMessage = 'تعذر حفظ التغيير الآن. حاول مرة أخرى.';
+        return false;
+      }
+      var refreshed = true;
+      if (refresh != null) {
+        try {
+          await refresh();
+          // loadCostDetails reports its own read failures in _errorMessage.
+          refreshed = _errorMessage == null;
+        } catch (_) {
+          refreshed = false;
+        }
+      }
       if (isSessionDisposed ||
           generation != _loadGeneration ||
           _loadedPlanId != planId) {
         return false;
       }
-      if (_isLocalPlan(planId)) {
+      if (!refreshed) {
+        _errorMessage = null;
+        _noticeMessage = savedButStaleMessage;
+      } else if (_isLocalPlan(planId)) {
         _noticeMessage = CachePolicy.localPlanningSaveMessage;
       }
       return true;
-    } on ApiException catch (error) {
-      _errorMessage = error.message;
-      return false;
-    } catch (_) {
-      _errorMessage = 'تعذر حفظ التغيير الآن. حاول مرة أخرى.';
-      return false;
     } finally {
       if (!isSessionDisposed &&
           generation == _loadGeneration &&

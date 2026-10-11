@@ -432,7 +432,10 @@ class _PaymentScheduleDetailsScreenState
       cost: cost,
     );
     if (ok && mounted) {
-      AarastToast.showSuccess(context, 'تم إلغاء موعد الدفع.');
+      AarastToast.showSuccess(
+        context,
+        context.read<FinanceProvider>().savedMessage('تم إلغاء موعد الدفع.'),
+      );
       await _load(refreshMoney: true);
     }
   }
@@ -451,7 +454,10 @@ class _PaymentScheduleDetailsScreenState
       cost: cost,
     );
     if (!mounted || !ok) return;
-    AarastToast.showSuccess(context, 'تم حذف موعد الدفع.');
+    AarastToast.showSuccess(
+      context,
+      context.read<FinanceProvider>().savedMessage('تم حذف موعد الدفع.'),
+    );
     context.pop(true);
   }
 
@@ -789,9 +795,9 @@ class _PaymentScheduleFormScreenState extends State<PaymentScheduleFormScreen> {
       if (!mounted) return;
       AarastFormSuccess.show(
         context,
-        message: schedule == null
-            ? 'تمت إضافة موعد الدفع.'
-            : 'تم حفظ موعد الدفع.',
+        message: context.read<FinanceProvider>().savedMessage(
+          schedule == null ? 'تمت إضافة موعد الدفع.' : 'تم حفظ موعد الدفع.',
+        ),
       );
       context.pop(true);
     }
@@ -1027,7 +1033,12 @@ class _PayPaymentScheduleScreenState extends State<PayPaymentScheduleScreen> {
     if (payment != null && mounted) {
       await _draft?.clear();
       if (!mounted) return;
-      AarastFormSuccess.show(context, message: 'تم تسجيل دفع الموعد.');
+      AarastFormSuccess.show(
+        context,
+        message: context.read<FinanceProvider>().savedMessage(
+          'تم تسجيل دفع الموعد.',
+        ),
+      );
       context.pop(true);
     }
   }

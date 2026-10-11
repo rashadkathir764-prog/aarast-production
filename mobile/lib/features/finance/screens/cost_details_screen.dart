@@ -296,7 +296,10 @@ class _CostDetailsScreenState extends State<CostDetailsScreen> {
     final ok = await provider.cancelCost(cost);
     if (!mounted) return;
     if (ok) {
-      AarastToast.showSuccess(context, 'تم إلغاء التكلفة.');
+      AarastToast.showSuccess(
+        context,
+        provider.savedMessage('تم إلغاء التكلفة.'),
+      );
       await _load(refreshMoney: true);
     }
   }

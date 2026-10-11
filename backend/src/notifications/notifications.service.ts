@@ -42,6 +42,7 @@ import {
   lockUserLifecycleRowsInTransaction,
 } from "../modules/identity/public/user-lifecycle-lock";
 import {
+  MONEY_NOTIFICATION_ENTITY_TYPES,
   type CreateNotificationInput,
   type EntityVisibilityWhere,
   type MoneyVisibilityWhere,
@@ -83,6 +84,11 @@ import {
   type TasksPort,
 } from "../modules/tasks/public/tasks.port";
 import { purgeOutboxEventsForAggregatesInTransaction } from "../platform/outbox/outbox-purge";
+import {
+  budgetCategoryExceededRow,
+  loanRepaymentRow,
+  weddingCountdownRow,
+} from "./plan-reminders";
 import {
   NotificationsRepository,
   type DueNotificationRow,
@@ -901,6 +907,43 @@ export class NotificationsService implements NotificationsPort {
           }
         }
 
+        // Plan-level reminders: over-budget categories and loan repayments
+        // (finance's rows, owner only), and the wedding countdown.
+        const [exceededCategories, dueLoanRepayments] = await Promise.all([
+          this.finance.listExceededBudgetCategories(tx, planIds),
+          this.finance.listDueLoanRepayments(tx, {
+            weddingPlanIds: planIds,
+            dueBefore: dueWindowEndOfDay,
+          }),
+        ]);
+        const ownerWants = (planId: string, key: keyof NotificationContentPreference) => {
+          const plan = plansById.get(planId);
+          return plan && this.preferenceEnabled(key, preferencesByUserId.get(plan.ownerUserId))
+            ? plan.ownerUserId
+            : null;
+        };
+        for (const category of exceededCategories) {
+          const ownerUserId = ownerWants(category.weddingPlanId, "paymentRemindersEnabled");
+          if (ownerUserId) rows.push(budgetCategoryExceededRow(ownerUserId, category));
+        }
+        for (const repayment of dueLoanRepayments) {
+          const ownerUserId = ownerWants(repayment.weddingPlanId, "paymentRemindersEnabled");
+          if (ownerUserId) rows.push(loanRepaymentRow(ownerUserId, repayment, today));
+        }
+        for (const plan of lockedPlans) {
+          const recipients = new Set([
+            plan.ownerUserId,
+            ...plan.sharedMembers.map((member) => member.userId),
+          ]);
+          for (const userId of recipients) {
+            if (!this.preferenceEnabled("taskRemindersEnabled", preferencesByUserId.get(userId))) {
+              continue;
+            }
+            const row = weddingCountdownRow(userId, plan, today);
+            if (row) rows.push(row);
+          }
+        }
+
         if (rows.length === 0) return 0;
         const created = await this.repository.createDueNotifications(tx, rows);
         for (const notification of created) {
@@ -922,7 +965,12 @@ export class NotificationsService implements NotificationsPort {
         return "taskRemindersEnabled";
       case NotificationType.PAYMENT_SCHEDULE_DUE_SOON:
       case NotificationType.PAYMENT_SCHEDULE_OVERDUE:
+      case NotificationType.BUDGET_CATEGORY_EXCEEDED:
+      case NotificationType.LOAN_REPAYMENT_DUE_SOON:
+      case NotificationType.LOAN_REPAYMENT_OVERDUE:
         return "paymentRemindersEnabled";
+      case NotificationType.WEDDING_COUNTDOWN:
+        return "taskRemindersEnabled";
       case NotificationType.QUOTE_REQUEST_SUBMITTED:
       case NotificationType.QUOTE_OFFER_RECEIVED:
       case NotificationType.QUOTE_ACCEPTED:
@@ -1057,6 +1105,9 @@ export class NotificationsService implements NotificationsPort {
     const moneyTypes = [
       NotificationType.PAYMENT_SCHEDULE_DUE_SOON,
       NotificationType.PAYMENT_SCHEDULE_OVERDUE,
+      NotificationType.BUDGET_CATEGORY_EXCEEDED,
+      NotificationType.LOAN_REPAYMENT_DUE_SOON,
+      NotificationType.LOAN_REPAYMENT_OVERDUE,
     ];
     return {
       OR: [
@@ -1066,7 +1117,7 @@ export class NotificationsService implements NotificationsPort {
             {
               OR: [
                 { entityType: null },
-                { entityType: { not: "payment_schedule" } },
+                { entityType: { notIn: [...MONEY_NOTIFICATION_ENTITY_TYPES] } },
               ],
             },
           ],

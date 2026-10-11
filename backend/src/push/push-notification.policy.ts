@@ -5,6 +5,7 @@ const PUSH_NOTIFICATION_TYPES = new Set<NotificationType>([
   NotificationType.TASK_DUE_SOON,
   NotificationType.TASK_OVERDUE,
   NotificationType.CHAT_MESSAGE_RECEIVED,
+  NotificationType.WEDDING_COUNTDOWN,
 ]);
 
 export function isPushNotificationType(type: NotificationType): boolean {
@@ -31,6 +32,11 @@ export function pushNotificationCopy(type: NotificationType): {
       return {
         title: "رسالة جديدة",
         body: "لديك رسالة جديدة. افتح أعّرست لقراءتها.",
+      };
+    case NotificationType.WEDDING_COUNTDOWN:
+      return {
+        title: "العد التنازلي للعرس",
+        body: "موعد العرس يقترب. افتح أعّرست لمراجعة ما تبقى.",
       };
     default:
       throw new Error("UnsupportedPushNotificationType");

@@ -1,10 +1,11 @@
 import { NotificationPriority, NotificationType, Prisma } from '@prisma/client';
 import type { PrismaService } from '../../../platform/database/prisma.service';
-import type {
-  CreateNotificationInput,
-  NotificationVisibilityWhere,
-  PlanVisibilityWhere,
-  ProviderAudienceWhere,
+import {
+  MONEY_NOTIFICATION_ENTITY_TYPES,
+  type CreateNotificationInput,
+  type NotificationVisibilityWhere,
+  type PlanVisibilityWhere,
+  type ProviderAudienceWhere,
 } from '../public/notifications.port';
 
 type Client = Prisma.TransactionClient | PrismaService;
@@ -175,7 +176,12 @@ export class NotificationsRepository {
 
   moneyNotificationIds(tx: Prisma.TransactionClient, userId: string, weddingPlanId: string) {
     return tx.notification.findMany({
-      where: { userId, weddingPlanId, entityType: 'payment_schedule' }, select: { id: true },
+      where: {
+        userId,
+        weddingPlanId,
+        entityType: { in: [...MONEY_NOTIFICATION_ENTITY_TYPES] },
+      },
+      select: { id: true },
     });
   }
 

@@ -431,6 +431,8 @@ test("scheduled reminders respect notification and financial permissions", async
         },
       ],
     },
+    budgetCategory: { findMany: async () => [] },
+    loanRepayment: { findMany: async () => [] },
     paymentSchedule: {
       findMany: async () => [
         {

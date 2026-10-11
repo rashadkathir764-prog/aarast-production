@@ -1,6 +1,8 @@
 import { Injectable } from '@nestjs/common';
 import {
   type BudgetCategory,
+  FundingSourceKind,
+  LoanRepaymentStatus,
   PaymentScheduleStatus,
   Prisma,
   WeddingCostStatus,
@@ -16,8 +18,10 @@ import { deletePlanFundingSources } from './funding-sources.repository';
 import type {
   CostAmounts,
   CreateCostFromAcceptedOfferInput,
+  DueLoanRepayment,
   DuePaymentSchedule,
   DuePaymentScheduleQuery,
+  ExceededBudgetCategory,
   FinancePort,
   ImportedCostInput,
   PendingPaymentSchedule,
@@ -225,6 +229,80 @@ export class FinancePortService implements FinancePort {
         },
       },
     });
+  }
+
+  async listExceededBudgetCategories(
+    client: Prisma.TransactionClient,
+    weddingPlanIds: readonly string[],
+  ): Promise<ExceededBudgetCategory[]> {
+    if (weddingPlanIds.length === 0) return [];
+    const categories = await client.budgetCategory.findMany({
+      where: {
+        weddingPlanId: { in: [...weddingPlanIds] },
+        allocatedAmount: { not: null },
+      },
+      select: { id: true, weddingPlanId: true, name: true, allocatedAmount: true },
+    });
+    if (categories.length === 0) return [];
+    // The same committed total the money summary uses: non-cancelled costs.
+    const totals = await client.weddingCost.groupBy({
+      by: ['budgetCategoryId'],
+      where: {
+        budgetCategoryId: { in: categories.map((category) => category.id) },
+        status: { not: WeddingCostStatus.CANCELLED },
+      },
+      _sum: { totalAmount: true },
+    });
+    const committedByCategory = new Map(
+      totals.map((total) => [total.budgetCategoryId, total._sum.totalAmount]),
+    );
+    return categories.flatMap((category) => {
+      const committed = committedByCategory.get(category.id);
+      if (!committed || !category.allocatedAmount) return [];
+      if (!committed.gt(category.allocatedAmount)) return [];
+      return [
+        {
+          id: category.id,
+          weddingPlanId: category.weddingPlanId,
+          name: category.name,
+          allocatedAmount: category.allocatedAmount,
+          committedAmount: committed,
+        },
+      ];
+    });
+  }
+
+  async listDueLoanRepayments(
+    client: Prisma.TransactionClient,
+    query: { weddingPlanIds: readonly string[]; dueBefore: Date },
+  ): Promise<DueLoanRepayment[]> {
+    if (query.weddingPlanIds.length === 0) return [];
+    const repayments = await client.loanRepayment.findMany({
+      where: {
+        status: LoanRepaymentStatus.PLANNED,
+        dueDate: { lte: query.dueBefore },
+        fundingSource: {
+          weddingPlanId: { in: [...query.weddingPlanIds] },
+          kind: FundingSourceKind.LOAN,
+        },
+      },
+      include: {
+        fundingSource: { select: { weddingPlanId: true, sourceName: true } },
+      },
+    });
+    return repayments.flatMap((repayment) =>
+      repayment.dueDate
+        ? [
+            {
+              id: repayment.id,
+              weddingPlanId: repayment.fundingSource.weddingPlanId,
+              sourceName: repayment.fundingSource.sourceName,
+              amount: repayment.amount,
+              dueDate: repayment.dueDate,
+            },
+          ]
+        : [],
+    );
   }
 
   async listPaymentScheduleIdsForCosts(

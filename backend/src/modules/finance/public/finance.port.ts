@@ -66,6 +66,24 @@ export interface DuePaymentScheduleQuery {
   scheduleIds?: readonly string[];
 }
 
+/** A budget category whose non-cancelled costs total more than its allocation. */
+export interface ExceededBudgetCategory {
+  id: string;
+  weddingPlanId: string;
+  name: string;
+  allocatedAmount: Prisma.Decimal;
+  committedAmount: Prisma.Decimal;
+}
+
+/** A planned repayment of one of the plan's loans that has a due date. */
+export interface DueLoanRepayment {
+  id: string;
+  weddingPlanId: string;
+  sourceName: string;
+  amount: Prisma.Decimal;
+  dueDate: Date;
+}
+
 export interface CreateCostFromAcceptedOfferInput {
   weddingPlanId: string;
   providerId: string;
@@ -137,6 +155,16 @@ export interface FinancePort {
     client: Prisma.TransactionClient,
     query: DuePaymentScheduleQuery,
   ): Promise<DuePaymentSchedule[]>;
+  /** The plans' categories whose non-cancelled costs total more than their allocation. */
+  listExceededBudgetCategories(
+    client: Prisma.TransactionClient,
+    weddingPlanIds: readonly string[],
+  ): Promise<ExceededBudgetCategory[]>;
+  /** Planned repayments of the plans' loans due at or before `dueBefore`. */
+  listDueLoanRepayments(
+    client: Prisma.TransactionClient,
+    query: { weddingPlanIds: readonly string[]; dueBefore: Date },
+  ): Promise<DueLoanRepayment[]>;
   /** The schedules of the given costs of the plan (a contributor's payment reminders). */
   listPaymentScheduleIdsForCosts(
     client: Prisma.TransactionClient,

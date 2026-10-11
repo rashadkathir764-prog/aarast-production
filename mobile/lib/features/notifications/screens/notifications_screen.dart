@@ -437,10 +437,24 @@ _NotificationTone _tone(String type) {
       color: AppTheme.danger,
     );
   }
-  if (upperType.contains('PAYMENT_SCHEDULE')) {
+  // بند تجاوز ميزانيته المخططة.
+  if (upperType.contains('EXCEEDED')) {
+    return const _NotificationTone(
+      icon: LucideIcons.alertTriangle,
+      color: AppTheme.danger,
+    );
+  }
+  if (upperType.contains('PAYMENT_SCHEDULE') ||
+      upperType.contains('LOAN_REPAYMENT')) {
     return const _NotificationTone(
       icon: LucideIcons.calendarClock,
       color: AppTheme.focus,
+    );
+  }
+  if (upperType == 'WEDDING_COUNTDOWN') {
+    return const _NotificationTone(
+      icon: LucideIcons.heart,
+      color: AppTheme.brand,
     );
   }
   if (upperType.contains('SHARING')) {

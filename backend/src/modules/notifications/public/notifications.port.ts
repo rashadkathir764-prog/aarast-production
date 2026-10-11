@@ -67,12 +67,18 @@ export interface PlanVisibilityWhere {
     | { weddingPlanId: { in: string[] } }
   >;
 }
+/** The entity types of money notifications: visible only with money access, purged when it is lost. */
+export const MONEY_NOTIFICATION_ENTITY_TYPES = [
+  'payment_schedule',
+  'budget_category',
+  'loan_repayment',
+] as const;
 export interface MoneyVisibilityWhere {
   OR: [
     {
       AND: [
         { type: { notIn: NotificationType[] } },
-        { OR: [{ entityType: null }, { entityType: { not: string } }] },
+        { OR: [{ entityType: null }, { entityType: { notIn: string[] } }] },
       ];
     },
     { weddingPlanId: { in: string[] } },

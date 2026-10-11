@@ -395,10 +395,33 @@ concern and does not make WhatsApp a general notification channel.
 
 The three writable content preferences have direct effects:
 
-- `taskRemindersEnabled` controls immediate and scheduled task reminders.
-- `paymentRemindersEnabled` controls scheduled payment reminders.
+- `taskRemindersEnabled` controls immediate and scheduled task reminders and
+  the `WEDDING_COUNTDOWN` reminder.
+- `paymentRemindersEnabled` controls scheduled payment reminders,
+  `BUDGET_CATEGORY_EXCEEDED`, and `LOAN_REPAYMENT_DUE_SOON` /
+  `LOAN_REPAYMENT_OVERDUE`.
 - `providerMessagesEnabled` controls quote-request, quote-offer, quote-decision,
   and conversation-message notifications.
+
+The hourly reminder scan (V1 checklist 4.8, 4.17) also creates plan-level
+reminders, each idempotent through its dedupe key:
+
+- `BUDGET_CATEGORY_EXCEEDED` (entity `budget_category`, route
+  `/wedding-plans/:id/money`) when a category's non-cancelled costs exceed its
+  allocation; again only after the allocation changes and is exceeded again.
+- `LOAN_REPAYMENT_DUE_SOON` / `LOAN_REPAYMENT_OVERDUE` (entity
+  `loan_repayment`, route `/wedding-plans/:id/money/funding`) for a planned
+  loan repayment due within 7 days or overdue.
+- `WEDDING_COUNTDOWN` (entity `wedding_plan`, route
+  `/wedding-plans/:id/dashboard`) once in each window: 30, 7 and 1 day(s)
+  before the wedding date; a changed date starts the countdown again.
+
+The two money reminders go to the plan owner only: a contributor's money view
+covers only the categories they created, and funding is the owner's private
+picture. They are money notifications (`budget_category` and `loan_repayment`
+join `payment_schedule`): hidden without money access and purged when it is
+lost. Only `WEDDING_COUNTDOWN` is pushed; like payment reminders, the money
+reminders stay in the in-app inbox.
 
 Missing preference rows keep the three content categories enabled by default.
 General account/sharing notifications and the in-app inbox itself remain

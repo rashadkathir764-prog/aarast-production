@@ -80,6 +80,7 @@
     "20260809232000_add_managed_reference_catalogs": "68a12821eacf3d6d5acbe47f7193f8693ab66ca1615b1b7116ccce52264cd864",
     "20260811180000_backfill_missing_contributor_history_scopes": "eb4151164222be575e854b6da66a1ab74fa4ab505287d371b8a3c0c23cd8c82a",
     "20261011090000_add_funding_sources_and_cost_payer": "99afe2ea466686def6ff7e4dda5e8cf81b35f76e44c8fd20a96e929a80cb965c",
-    "20261011120000_add_provider_trust_signals": "5c4b77091c8c30361d22658762af8321b3c4ff2bfdc2b803347affb89786ac3c"
+    "20261011120000_add_provider_trust_signals": "5c4b77091c8c30361d22658762af8321b3c4ff2bfdc2b803347affb89786ac3c",
+    "20261011150000_add_plan_reminder_notification_types": "587a284f60409fa656098a579ed517bc038382ced2e4337e9084f9f369c3f7ce"
   }
 }

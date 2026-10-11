@@ -320,6 +320,8 @@ test("scheduled reminders target only each contributor's current task or qualify
     weddingPlan: { findMany: async () => [plan] },
     weddingTask: { findMany: async () => tasks },
     paymentSchedule: { findMany: async () => schedules },
+    budgetCategory: { findMany: async () => [] },
+    loanRepayment: { findMany: async () => [] },
     contributionEvent: {
       findMany: async ({ where }: { where: unknown }) => {
         contributionWhere = where;

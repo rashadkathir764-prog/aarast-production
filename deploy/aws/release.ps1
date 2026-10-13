@@ -28,8 +28,9 @@ git -C $repo -c core.autocrlf=false -c core.eol=lf archive --format=tar.gz -o $a
 & $aws s3 cp $archive "s3://$opsBucket/releases/$sha/source.tar.gz" --region $Region --only-show-errors
 Remove-Item $archive
 
+# SSM runs this with sh; the host scripts themselves run under bash.
 $script = @"
-set -euo pipefail
+set -eu
 tree=/opt/aarast/releases/$sha
 mkdir -p "`$tree"
 aws s3 cp s3://$opsBucket/releases/$sha/source.tar.gz /tmp/aarast-$sha.tar.gz --only-show-errors

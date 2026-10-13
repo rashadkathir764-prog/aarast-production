@@ -1,0 +1,72 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Aarast hosting - monthly AWS spend alerts by email (usage before credits)
+
+Parameters:
+  AlertEmail:
+    Type: String
+    Description: Address that receives the spend alerts.
+  AlertAtUsd:
+    Type: Number
+    Default: 10
+    Description: Email when this month's usage reaches this amount.
+  ExpectedMonthlyUsd:
+    Type: Number
+    Default: 25
+    Description: Normal monthly cost of the stack; a forecast above it means something unexpected is running.
+
+Resources:
+  # Credits are excluded so the alert tracks real usage: on the free plan
+  # credits hide every charge until they run out and the account closes.
+  EarlySpendAlert:
+    Type: AWS::Budgets::Budget
+    Properties:
+      Budget:
+        BudgetName: aarast-spend-reached-alert
+        BudgetType: COST
+        TimeUnit: MONTHLY
+        BudgetLimit:
+          Amount: !Ref AlertAtUsd
+          Unit: USD
+        CostTypes:
+          IncludeCredit: false
+          IncludeRefund: false
+      NotificationsWithSubscribers:
+        - Notification:
+            NotificationType: ACTUAL
+            ComparisonOperator: GREATER_THAN
+            Threshold: 100
+            ThresholdType: PERCENTAGE
+          Subscribers:
+            - SubscriptionType: EMAIL
+              Address: !Ref AlertEmail
+
+  UnexpectedSpendAlert:
+    Type: AWS::Budgets::Budget
+    Properties:
+      Budget:
+        BudgetName: aarast-unexpected-spend-alert
+        BudgetType: COST
+        TimeUnit: MONTHLY
+        BudgetLimit:
+          Amount: !Ref ExpectedMonthlyUsd
+          Unit: USD
+        CostTypes:
+          IncludeCredit: false
+          IncludeRefund: false
+      NotificationsWithSubscribers:
+        - Notification:
+            NotificationType: FORECASTED
+            ComparisonOperator: GREATER_THAN
+            Threshold: 100
+            ThresholdType: PERCENTAGE
+          Subscribers:
+            - SubscriptionType: EMAIL
+              Address: !Ref AlertEmail
+        - Notification:
+            NotificationType: ACTUAL
+            ComparisonOperator: GREATER_THAN
+            Threshold: 100
+            ThresholdType: PERCENTAGE
+          Subscribers:
+            - SubscriptionType: EMAIL
+              Address: !Ref AlertEmail

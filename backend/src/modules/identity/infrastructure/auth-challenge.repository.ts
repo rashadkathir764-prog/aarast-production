@@ -97,11 +97,24 @@ export class AuthChallengeRepository {
     });
   }
 
-  claimAdminReset(tx: Prisma.TransactionClient, id: string, maxAttempts: number, now: Date) {
+  /** The proven code opens the password window: verifiedAt and a fresh expiry. */
+  markAdminResetVerified(
+    tx: Prisma.TransactionClient, id: string, maxAttempts: number, now: Date, verifiedUntil: Date,
+  ) {
     return tx.adminPasswordResetChallenge.updateMany({
       where: {
-        id, consumedAt: null, expiresAt: { gt: now },
+        id, consumedAt: null, verifiedAt: null, expiresAt: { gt: now },
         attempts: { lt: maxAttempts },
+      },
+      data: { verifiedAt: now, expiresAt: verifiedUntil },
+    });
+  }
+
+  /** Only a verified, unexpired challenge can set the new password, once. */
+  claimAdminReset(tx: Prisma.TransactionClient, id: string, now: Date) {
+    return tx.adminPasswordResetChallenge.updateMany({
+      where: {
+        id, consumedAt: null, verifiedAt: { not: null }, expiresAt: { gt: now },
       },
       data: { consumedAt: now },
     });

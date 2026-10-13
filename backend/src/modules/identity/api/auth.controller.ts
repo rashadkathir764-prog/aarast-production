@@ -31,6 +31,7 @@ import { PasswordResetConfirmDto } from "./auth-dto/password-reset-confirm.dto";
 import { CompleteAdminLoginDto } from "./auth-dto/complete-admin-login.dto";
 import { AdminPasswordResetRequestDto } from "./auth-dto/admin-password-reset-request.dto";
 import { AdminPasswordResetConfirmDto } from "./auth-dto/admin-password-reset-confirm.dto";
+import { AdminPasswordResetVerifyDto } from "./auth-dto/admin-password-reset-verify.dto";
 
 const ADMIN_REFRESH_COOKIE = "aarast_admin_refresh";
 
@@ -95,6 +96,13 @@ export class AuthController {
     @Req() request: Request,
   ) {
     return this.authService.requestAdminPasswordReset(dto, { ip: request.ip });
+  }
+
+  @Post("admin/password-reset/verify")
+  @HttpCode(HttpStatus.OK)
+  @Throttle({ default: { limit: 10, ttl: 60_000 } })
+  verifyAdminPasswordReset(@Body() dto: AdminPasswordResetVerifyDto) {
+    return this.authService.verifyAdminPasswordReset(dto);
   }
 
   @Post("admin/password-reset/confirm")

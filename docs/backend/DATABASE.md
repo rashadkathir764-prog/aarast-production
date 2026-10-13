@@ -436,7 +436,7 @@ rewrite as permission to restore a removed live model.
 | `User` | 50 | `id`, `appPasswordConfiguredAt`, `phoneVerifiedAt`, `lastLoginAt`, `activeWeddingPlanId`, `onboardingCompletedAt`, `createdAt`, `updatedAt` |
 | `MediaUploadTicket` | 16 | `userId`, `expiresAt`, `verifiedAt`, `consumedAt`, `consumedById`, `deletedAt`, `createdAt`, `updatedAt` |
 | `AdminLoginChallenge` | 9 | `id`, `userId`, `otpId`, `expiresAt`, `consumedAt`, `createdAt` |
-| `AdminPasswordResetChallenge` | 12 | `id`, `userId`, `otpId`, `expiresAt`, `consumedAt`, `createdAt` |
+| `AdminPasswordResetChallenge` | 13 | `id`, `userId`, `otpId`, `expiresAt`, `consumedAt`, `verifiedAt`, `createdAt` |
 | `AdminAuditLog` | 13 | `id`, `eventId`, `actorUserId`, `targetId`, `requestId`, `createdAt` |
 | `RefreshToken` | 9 | `id`, `userId`, `expiresAt`, `revokedAt`, `replacedById`, `createdAt` |
 | `LoginThrottle` | 5 | `windowStartedAt`, `updatedAt` |

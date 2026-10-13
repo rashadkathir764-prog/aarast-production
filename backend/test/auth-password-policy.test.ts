@@ -70,8 +70,18 @@ test("password reset confirm rejects a non six-digit code before it burns an att
 test("administrator recovery uses the same byte-safe bcrypt boundary", async () => {
   const errors = await errorsFor(AdminPasswordResetConfirmDto, {
     challengeToken: "a".repeat(64),
-    code: "123456",
     newPassword: `${"ع".repeat(37)}1A`,
   });
   assert.ok(errors.some((error) => error.property === "newPassword"));
+});
+
+test("administrator recovery accepts the application password rule", async () => {
+  const valid = (newPassword: string) =>
+    errorsFor(AdminPasswordResetConfirmDto, {
+      challengeToken: "a".repeat(64),
+      newPassword,
+    });
+  assert.equal((await valid("123456")).length, 0);
+  assert.equal((await valid("abcdef")).length, 0);
+  assert.ok((await valid("12345")).some((error) => error.property === "newPassword"));
 });

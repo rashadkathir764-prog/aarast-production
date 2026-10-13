@@ -46,6 +46,11 @@ export type AdminPasswordResetChallenge = {
   deliveryStatus: OtpDeliveryStatus;
 };
 
+type AdminPasswordResetVerification = {
+  verified: true;
+  expiresAt: string;
+};
+
 type AdminPasswordResetResult = {
   reset: true;
 };
@@ -124,9 +129,31 @@ function isOtpDeliveryStatus(value: unknown): value is OtpDeliveryStatus {
   );
 }
 
-export async function confirmAdminPasswordReset(
+/** Step 1: proves the WhatsApp code; the password can then be chosen calmly. */
+export async function verifyAdminPasswordReset(
   challengeToken: string,
   code: string,
+): Promise<void> {
+  try {
+    const response = await apiRequest<AdminPasswordResetVerification>(
+      '/api/v1/auth/admin/password-reset/verify',
+      {
+        method: 'POST',
+        auth: false,
+        body: { challengeToken, code },
+      },
+    );
+    if (response.verified !== true) {
+      throw new Error('تعذر التحقق من الرمز');
+    }
+  } catch (error) {
+    throw mapPasswordResetVerifyError(error);
+  }
+}
+
+/** Step 2: sets the new password on the verified recovery. */
+export async function confirmAdminPasswordReset(
+  challengeToken: string,
   newPassword: string,
 ): Promise<void> {
   try {
@@ -135,7 +162,7 @@ export async function confirmAdminPasswordReset(
       {
         method: 'POST',
         auth: false,
-        body: { challengeToken, code, newPassword },
+        body: { challengeToken, newPassword },
       },
     );
     if (response.reset !== true) {
@@ -227,15 +254,31 @@ function mapPasswordResetRequestError(error: unknown): Error {
   return new Error('تعذر الاتصال بالخادم');
 }
 
-function mapPasswordResetConfirmError(error: unknown): Error {
-  if (error instanceof ApiError && isOtpDeliveryUnavailable(error)) {
-    return new Error(otpDeliveryUnavailableMessage);
-  }
+function mapPasswordResetVerifyError(error: unknown): Error {
   if (
     error instanceof ApiError &&
     [400, 401, 409].includes(error.status ?? 0)
   ) {
-    return new Error('رمز التحقق غير صحيح أو انتهت صلاحية طلب الاستعادة.');
+    return new Error('رمز الاستعادة غير صحيح أو انتهت صلاحيته.');
+  }
+  if (error instanceof ApiError && error.status === 429) {
+    return new Error('محاولات تحقق كثيرة. انتظر قليلًا ثم ابدأ طلبًا جديدًا.');
+  }
+  if (error instanceof ApiError) {
+    return new Error('حدث خطأ في الخادم. حاول مرة أخرى بعد قليل.');
+  }
+  if (error instanceof Error && error.message === 'تعذر التحقق من الرمز') {
+    return error;
+  }
+  return new Error('تعذر الاتصال بالخادم');
+}
+
+function mapPasswordResetConfirmError(error: unknown): Error {
+  if (
+    error instanceof ApiError &&
+    [400, 401, 409].includes(error.status ?? 0)
+  ) {
+    return new Error('انتهت مهلة تعيين كلمة المرور. ابدأ طلب استعادة جديدًا.');
   }
   if (error instanceof ApiError && error.status === 429) {
     return new Error('محاولات تحقق كثيرة. انتظر قليلًا ثم ابدأ طلبًا جديدًا.');

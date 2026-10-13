@@ -115,6 +115,8 @@ model AdminPasswordResetChallenge {
   subjectHash String    @db.Char(64)
   expiresAt   DateTime
   consumedAt  DateTime?
+  // Set when the code is proven; the new password is accepted only after it.
+  verifiedAt  DateTime?
   attempts    Int       @default(0)
   maxAttempts Int       @default(5)
   createdAt   DateTime  @default(now())

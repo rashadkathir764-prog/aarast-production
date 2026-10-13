@@ -48,6 +48,7 @@ import { PasswordResetRequestDto } from "../../api/auth-dto/password-reset-reque
 import { PasswordResetConfirmDto } from "../../api/auth-dto/password-reset-confirm.dto";
 import { AdminPasswordResetRequestDto } from "../../api/auth-dto/admin-password-reset-request.dto";
 import { AdminPasswordResetConfirmDto } from "../../api/auth-dto/admin-password-reset-confirm.dto";
+import { AdminPasswordResetVerifyDto } from "../../api/auth-dto/admin-password-reset-verify.dto";
 import { JwtPayload } from "../../public/jwt-payload.interface";
 import {
   DevEchoOtpChannel,
@@ -172,6 +173,8 @@ export class AuthService implements IdentityAuthPort {
   private readonly sessions = new AuthSessionRepository();
   private static readonly otpDeliveryUncertainMessage =
     "قد يستغرق وصول الرمز لحظات. إذا وصلك الرمز فأدخله، وإن لم يصل فأعد الإرسال بعد انتهاء المهلة.";
+  /** After the code is proven, the admin has this long to choose a password. */
+  private static readonly adminResetPasswordWindowMs = 15 * 60_000;
   private static readonly dummyPasswordHash =
     "$2b$10$jnsLrksGKUtGyEjkRk/CeO5zUi9WwfPpG6.bREun6R8yXlN85DEq6";
   private static readonly dummyAdminPasswordHash =
@@ -1579,9 +1582,14 @@ export class AuthService implements IdentityAuthPort {
     };
   }
 
-  async confirmAdminPasswordReset(
-    dto: AdminPasswordResetConfirmDto,
-  ): Promise<{ reset: true }> {
+  /**
+   * Step 1 of admin recovery: proves and consumes the WhatsApp code, then
+   * opens a fresh window for choosing the new password, so typing it never
+   * races the code's expiry.
+   */
+  async verifyAdminPasswordReset(
+    dto: AdminPasswordResetVerifyDto,
+  ): Promise<{ verified: true; expiresAt: Date }> {
     const now = new Date();
     const challengeSeed = await this.challenges.findAdminResetSeed(
       this.prisma, hashRefreshToken(dto.challengeToken),
@@ -1590,38 +1598,24 @@ export class AuthService implements IdentityAuthPort {
       await bcryptjs.compare(dto.code, AuthService.dummyPasswordHash);
       throw this.adminResetInvalid();
     }
-
-    const passwordHash = await bcryptjs.hash(dto.newPassword, 12);
+    const verifiedUntil = new Date(
+      now.getTime() + AuthService.adminResetPasswordWindowMs,
+    );
 
     try {
       const result = await runSerializableTransaction(
         this.prisma,
         async (tx) => {
-          if (challengeSeed.userId) {
-            await lockUserLifecycleRowsForUpdateInTransaction(tx, [
-              challengeSeed.userId,
-            ]);
-            await this.lockAdminLoginChallengesInTransaction(
-              tx,
-              challengeSeed.userId,
-            );
-            await this.lockAdminPasswordResetChallengesInTransaction(tx, {
-              userId: challengeSeed.userId,
-            });
-          } else {
-            await this.lockAdminPasswordResetChallengesInTransaction(tx, {
-              challengeId: challengeSeed.id,
-            });
-          }
-
+          await this.lockAdminResetChallengeInTransaction(tx, challengeSeed);
           const challenge = await this.challenges.findAdminReset(tx, challengeSeed.id);
           if (
             !challenge ||
             challenge.consumedAt ||
+            challenge.verifiedAt ||
             challenge.expiresAt <= now ||
             challenge.attempts >= challenge.maxAttempts
           ) {
-            if (challenge && !challenge.consumedAt) {
+            if (challenge && !challenge.consumedAt && !challenge.verifiedAt) {
               await this.recordFailedAdminResetAttemptInTransaction(
                 tx,
                 challenge.id,
@@ -1657,41 +1651,18 @@ export class AuthService implements IdentityAuthPort {
             };
           }
 
-          const eligibleAdmin =
-            challenge.user?.role === UserRole.ADMIN &&
-            challenge.user.status === "ACTIVE" &&
-            challenge.user.phone === challenge.otp.phone;
-          if (!eligibleAdmin) {
+          if (!this.isEligibleAdminReset(challenge)) {
             await this.challenges.consumeAdminResetIfActive(tx, challenge.id, now);
             return { invalid: true as const, otpVerified: true as const };
           }
 
-          const claimed = await this.challenges.claimAdminReset(
-            tx, challenge.id, challenge.maxAttempts, now,
+          const marked = await this.challenges.markAdminResetVerified(
+            tx, challenge.id, challenge.maxAttempts, now, verifiedUntil,
           );
-          if (claimed.count !== 1) {
+          if (marked.count !== 1) {
             return { invalid: true as const, otpVerified: true as const };
           }
-
-          await this.lockRefreshSessionsInTransaction(
-            tx,
-            challenge.userId!,
-            AuthSessionScope.ADMIN,
-          );
-
-          const updated = await this.users.resetAdministratorPassword(
-            tx, challenge.userId!, passwordHash,
-          );
-          if (updated.count !== 1) {
-            return { invalid: true as const, otpVerified: true as const };
-          }
-
-          await this.sessions.revokeActiveScope(tx, challenge.userId!, AuthSessionScope.ADMIN, now);
-          await this.challenges.consumeActiveAdminLogins(tx, challenge.userId!, now);
-          await this.challenges.consumeActiveAdminResetsByUser(tx, challenge.userId!, now);
-          await this.otps.consumeAdministratorCodes(tx, challenge.user!.phone!, now);
-          await this.sessions.clearLoginThrottle(tx, challenge.subjectHash);
-          return { reset: true as const };
+          return { verified: true as const };
         },
       );
       if ("invalid" in result) {
@@ -1713,7 +1684,107 @@ export class AuthService implements IdentityAuthPort {
       throw error;
     }
     otpVerificationsTotal.inc({ outcome: "success" });
+    return { verified: true, expiresAt: verifiedUntil };
+  }
+
+  /** Step 2 of admin recovery: sets the password on a verified challenge, once. */
+  async confirmAdminPasswordReset(
+    dto: AdminPasswordResetConfirmDto,
+  ): Promise<{ reset: true }> {
+    const now = new Date();
+    const challengeSeed = await this.challenges.findAdminResetSeed(
+      this.prisma, hashRefreshToken(dto.challengeToken),
+    );
+    if (!challengeSeed) throw this.adminResetInvalid();
+
+    const passwordHash = await bcryptjs.hash(dto.newPassword, 12);
+
+    try {
+      const result = await runSerializableTransaction(
+        this.prisma,
+        async (tx) => {
+          await this.lockAdminResetChallengeInTransaction(tx, challengeSeed);
+          const challenge = await this.challenges.findAdminReset(tx, challengeSeed.id);
+          if (
+            !challenge ||
+            challenge.consumedAt ||
+            !challenge.verifiedAt ||
+            challenge.expiresAt <= now
+          ) {
+            return { invalid: true as const };
+          }
+          if (!this.isEligibleAdminReset(challenge)) {
+            await this.challenges.consumeAdminResetIfActive(tx, challenge.id, now);
+            return { invalid: true as const };
+          }
+
+          const claimed = await this.challenges.claimAdminReset(tx, challenge.id, now);
+          if (claimed.count !== 1) {
+            return { invalid: true as const };
+          }
+
+          await this.lockRefreshSessionsInTransaction(
+            tx,
+            challenge.userId!,
+            AuthSessionScope.ADMIN,
+          );
+
+          const updated = await this.users.resetAdministratorPassword(
+            tx, challenge.userId!, passwordHash,
+          );
+          if (updated.count !== 1) {
+            return { invalid: true as const };
+          }
+
+          await this.sessions.revokeActiveScope(tx, challenge.userId!, AuthSessionScope.ADMIN, now);
+          await this.challenges.consumeActiveAdminLogins(tx, challenge.userId!, now);
+          await this.challenges.consumeActiveAdminResetsByUser(tx, challenge.userId!, now);
+          await this.otps.consumeAdministratorCodes(tx, challenge.user!.phone!, now);
+          await this.sessions.clearLoginThrottle(tx, challenge.subjectHash);
+          return { reset: true as const };
+        },
+      );
+      if ("invalid" in result) throw this.adminResetInvalid();
+    } catch (error) {
+      if (
+        error instanceof Prisma.PrismaClientKnownRequestError &&
+        error.code === "P2034"
+      ) {
+        throw this.adminResetInvalid();
+      }
+      throw error;
+    }
     return { reset: true };
+  }
+
+  /** Recovery lock order: User, AdminLoginChallenge, AdminPasswordResetChallenge. */
+  private async lockAdminResetChallengeInTransaction(
+    tx: Prisma.TransactionClient,
+    seed: { id: string; userId: string | null },
+  ): Promise<void> {
+    if (seed.userId) {
+      await lockUserLifecycleRowsForUpdateInTransaction(tx, [seed.userId]);
+      await this.lockAdminLoginChallengesInTransaction(tx, seed.userId);
+      await this.lockAdminPasswordResetChallengesInTransaction(tx, {
+        userId: seed.userId,
+      });
+    } else {
+      await this.lockAdminPasswordResetChallengesInTransaction(tx, {
+        challengeId: seed.id,
+      });
+    }
+  }
+
+  /** The challenge still belongs to an active administrator with the code's phone. */
+  private isEligibleAdminReset(challenge: {
+    user: { role: UserRole; status: string; phone: string | null } | null;
+    otp: { phone: string };
+  }): boolean {
+    return (
+      challenge.user?.role === UserRole.ADMIN &&
+      challenge.user.status === "ACTIVE" &&
+      challenge.user.phone === challenge.otp.phone
+    );
   }
 
   private async createAuthResponse(

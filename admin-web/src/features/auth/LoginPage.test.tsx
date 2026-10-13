@@ -5,6 +5,7 @@ import { LoginPage } from './LoginPage';
 
 const mocks = vi.hoisted(() => ({
   requestReset: vi.fn(),
+  verifyReset: vi.fn(),
   confirmReset: vi.fn(),
   login: vi.fn(),
   verifyMfa: vi.fn(),
@@ -13,6 +14,7 @@ const mocks = vi.hoisted(() => ({
 
 vi.mock('./transport', () => ({
   requestAdminPasswordReset: mocks.requestReset,
+  verifyAdminPasswordReset: mocks.verifyReset,
   confirmAdminPasswordReset: mocks.confirmReset,
 }));
 
@@ -36,13 +38,32 @@ function renderPage() {
   );
 }
 
-async function openRecoveryConfirmation(phone = '777123456') {
+async function openRecoveryCode(phone = '777123456') {
   fireEvent.change(screen.getByLabelText('رقم الهاتف'), {
     target: { value: phone },
   });
   fireEvent.click(screen.getByRole('button', { name: 'نسيت كلمة المرور؟' }));
   fireEvent.click(screen.getByRole('button', { name: 'إرسال رمز الاستعادة' }));
   await screen.findByLabelText('رمز الاستعادة');
+}
+
+async function openRecoveryPassword() {
+  await openRecoveryCode();
+  fireEvent.change(screen.getByLabelText('رمز الاستعادة'), {
+    target: { value: '123456' },
+  });
+  fireEvent.click(screen.getByRole('button', { name: 'تحقق من الرمز' }));
+  await screen.findByLabelText('كلمة المرور الجديدة');
+}
+
+function choosePassword(password: string, confirmation = password) {
+  fireEvent.change(screen.getByLabelText('كلمة المرور الجديدة'), {
+    target: { value: password },
+  });
+  fireEvent.change(screen.getByLabelText('تأكيد كلمة المرور الجديدة'), {
+    target: { value: confirmation },
+  });
+  fireEvent.click(screen.getByRole('button', { name: 'حفظ كلمة المرور' }));
 }
 
 beforeEach(() => {
@@ -54,6 +75,7 @@ beforeEach(() => {
     retryAfterSeconds: 60,
     deliveryStatus: 'DELIVERED',
   });
+  mocks.verifyReset.mockResolvedValue(undefined);
   mocks.confirmReset.mockResolvedValue(undefined);
 });
 
@@ -92,20 +114,37 @@ describe('admin password recovery', () => {
     expect(screen.getByLabelText('كلمة المرور')).toHaveValue('');
   });
 
-  it('states that the recovery password requires an English letter', async () => {
+  it('asks for the code alone, before any password field', async () => {
     renderPage();
-    await openRecoveryConfirmation();
+    await openRecoveryCode();
 
     expect(
-      screen.getByText(
-        'من 12 إلى 72 خانة، وتحتوي على حرف إنجليزي واحد ورقم واحد على الأقل.',
-      ),
+      screen.getByRole('heading', { name: 'أدخل رمز الاستعادة', level: 2 }),
     ).toBeInTheDocument();
+    expect(screen.queryByLabelText('كلمة المرور الجديدة')).not.toBeInTheDocument();
+  });
+
+  it('a wrong code stays on the code screen with its error', async () => {
+    mocks.verifyReset.mockRejectedValueOnce(
+      new Error('رمز الاستعادة غير صحيح أو انتهت صلاحيته.'),
+    );
+    renderPage();
+    await openRecoveryCode();
+    fireEvent.change(screen.getByLabelText('رمز الاستعادة'), {
+      target: { value: '000000' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'تحقق من الرمز' }));
+
+    expect(
+      await screen.findByText('رمز الاستعادة غير صحيح أو انتهت صلاحيته.'),
+    ).toBeInTheDocument();
+    expect(screen.getByLabelText('رمز الاستعادة')).toBeInTheDocument();
+    expect(screen.queryByLabelText('كلمة المرور الجديدة')).not.toBeInTheDocument();
   });
 
   it('uses neutral copy and returns to login without creating a session', async () => {
     renderPage();
-    await openRecoveryConfirmation();
+    await openRecoveryCode();
 
     expect(mocks.requestReset).toHaveBeenCalledWith('777123456');
     expect(
@@ -114,28 +153,21 @@ describe('admin password recovery', () => {
       ),
     ).toBeInTheDocument();
     expect(
-      screen.getByText(
-        'أدخل الرمز الذي تم تسليمه إلى واتساب، ثم اختر كلمة مرور إدارية قوية.',
-      ),
+      screen.getByText('أدخل الرمز الذي تم تسليمه إلى واتساب.'),
     ).toBeInTheDocument();
 
     fireEvent.change(screen.getByLabelText('رمز الاستعادة'), {
       target: { value: '123456' },
     });
-    fireEvent.change(screen.getByLabelText('كلمة المرور الجديدة'), {
-      target: { value: 'Aarast-admin-2026' },
-    });
-    fireEvent.change(screen.getByLabelText('تأكيد كلمة المرور الجديدة'), {
-      target: { value: 'Aarast-admin-2026' },
-    });
-    fireEvent.click(screen.getByRole('button', { name: 'تغيير كلمة المرور' }));
+    fireEvent.click(screen.getByRole('button', { name: 'تحقق من الرمز' }));
+    await screen.findByLabelText('كلمة المرور الجديدة');
+    expect(mocks.verifyReset).toHaveBeenCalledWith('a'.repeat(64), '123456');
+    expect(screen.queryByLabelText('رمز الاستعادة')).not.toBeInTheDocument();
+
+    choosePassword('123456');
 
     await waitFor(() =>
-      expect(mocks.confirmReset).toHaveBeenCalledWith(
-        'a'.repeat(64),
-        '123456',
-        'Aarast-admin-2026',
-      ),
+      expect(mocks.confirmReset).toHaveBeenCalledWith('a'.repeat(64), '123456'),
     );
     expect(
       await screen.findByText(
@@ -143,7 +175,6 @@ describe('admin password recovery', () => {
       ),
     ).toBeInTheDocument();
     expect(screen.getByLabelText('رقم الهاتف')).toHaveValue('777123456');
-    expect(screen.queryByLabelText('رمز الاستعادة')).not.toBeInTheDocument();
     expect(screen.queryByLabelText('كلمة المرور الجديدة')).not.toBeInTheDocument();
   });
 
@@ -157,68 +188,44 @@ describe('admin password recovery', () => {
     });
 
     renderPage();
-    await openRecoveryConfirmation();
+    await openRecoveryCode();
 
     expect(
       screen.getByText(
         'تم قبول طلب الاستعادة، لكن لم نتأكد من وصول الرمز إلى واتساب بعد.',
       ),
     ).toBeInTheDocument();
-    expect(
-      screen.getByText(
-        'أدخل الرمز إذا وصلك عبر واتساب، ثم اختر كلمة مرور إدارية قوية.',
-      ),
-    ).toBeInTheDocument();
+    expect(screen.getByText('أدخل الرمز إذا وصلك عبر واتساب.')).toBeInTheDocument();
     expect(screen.queryByText(/تم تسليم رمز الاستعادة/)).not.toBeInTheDocument();
   });
 
-  it('does not submit a weak or mismatched administrator password', async () => {
+  it('accepts digits-only or letters-only passwords of 6 or more', async () => {
     renderPage();
-    await openRecoveryConfirmation();
-
-    fireEvent.change(screen.getByLabelText('رمز الاستعادة'), {
-      target: { value: '123456' },
-    });
-    fireEvent.change(screen.getByLabelText('كلمة المرور الجديدة'), {
-      target: { value: 'short123' },
-    });
-    fireEvent.change(screen.getByLabelText('تأكيد كلمة المرور الجديدة'), {
-      target: { value: 'short123' },
-    });
-    fireEvent.click(screen.getByRole('button', { name: 'تغيير كلمة المرور' }));
-
+    await openRecoveryPassword();
     expect(
-      await screen.findByText(
-        'كلمة المرور يجب أن تكون من 12 إلى 72 خانة وتحتوي على حرف إنجليزي ورقم.',
-      ),
+      screen.getByText('6 خانات على الأقل: أرقام أو حروف أو الاثنان معًا.'),
+    ).toBeInTheDocument();
+
+    choosePassword('12345');
+    expect(
+      await screen.findByText('كلمة المرور يجب أن تكون 6 خانات على الأقل.'),
     ).toBeInTheDocument();
     expect(mocks.confirmReset).not.toHaveBeenCalled();
 
-    fireEvent.change(screen.getByLabelText('كلمة المرور الجديدة'), {
-      target: { value: 'Aarast-admin-2026' },
-    });
-    fireEvent.change(screen.getByLabelText('تأكيد كلمة المرور الجديدة'), {
-      target: { value: 'Aarast-admin-2027' },
-    });
-    fireEvent.click(screen.getByRole('button', { name: 'تغيير كلمة المرور' }));
-
-    expect(
-      await screen.findByText('تأكيد كلمة المرور غير مطابق.'),
-    ).toBeInTheDocument();
+    choosePassword('abcdef', 'abcdeg');
+    expect(await screen.findByText('تأكيد كلمة المرور غير مطابق.')).toBeInTheDocument();
     expect(mocks.confirmReset).not.toHaveBeenCalled();
+
+    choosePassword('abcdef');
+    await waitFor(() =>
+      expect(mocks.confirmReset).toHaveBeenCalledWith('a'.repeat(64), 'abcdef'),
+    );
   });
 
   it('clears the challenge, code and new passwords when recovery is cancelled', async () => {
     renderPage();
-    await openRecoveryConfirmation();
-
-    fireEvent.change(screen.getByLabelText('رمز الاستعادة'), {
-      target: { value: '123456' },
-    });
+    await openRecoveryPassword();
     fireEvent.change(screen.getByLabelText('كلمة المرور الجديدة'), {
-      target: { value: 'Aarast-admin-2026' },
-    });
-    fireEvent.change(screen.getByLabelText('تأكيد كلمة المرور الجديدة'), {
       target: { value: 'Aarast-admin-2026' },
     });
     fireEvent.click(screen.getByRole('button', { name: 'العودة إلى تسجيل الدخول' }));
@@ -228,8 +235,12 @@ describe('admin password recovery', () => {
     await screen.findByLabelText('رمز الاستعادة');
 
     expect(screen.getByLabelText('رمز الاستعادة')).toHaveValue('');
-    expect(screen.getByLabelText('كلمة المرور الجديدة')).toHaveValue('');
-    expect(screen.getByLabelText('تأكيد كلمة المرور الجديدة')).toHaveValue('');
     expect(mocks.requestReset).toHaveBeenCalledTimes(2);
+
+    fireEvent.change(screen.getByLabelText('رمز الاستعادة'), {
+      target: { value: '123456' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'تحقق من الرمز' }));
+    expect(await screen.findByLabelText('كلمة المرور الجديدة')).toHaveValue('');
   });
 });

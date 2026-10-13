@@ -6,6 +6,7 @@ import {
   requestAdminPasswordReset,
   restoreAdminSession,
   startAdminLogin,
+  verifyAdminPasswordReset,
 } from './transport';
 import {
   clearAdminAccessToken,
@@ -253,15 +254,37 @@ describe('secure admin browser session', () => {
     );
   });
 
+  it('verifies the recovery code on its own, before any password', async () => {
+    fetchMock.mockResolvedValueOnce(
+      jsonResponse(200, { verified: true, expiresAt: '2026-10-13T20:00:00.000Z' }),
+    );
+
+    await verifyAdminPasswordReset('d'.repeat(64), '123456');
+
+    expect(fetchMock.mock.calls[0][0]).toContain(
+      '/api/v1/auth/admin/password-reset/verify',
+    );
+    expect(JSON.parse(fetchMock.mock.calls[0][1].body)).toEqual({
+      challengeToken: 'd'.repeat(64),
+      code: '123456',
+    });
+  });
+
+  it('maps every rejected recovery code to one generic message', async () => {
+    fetchMock.mockResolvedValueOnce(
+      jsonResponse(401, { message: 'Unknown administrator' }),
+    );
+
+    await expect(
+      verifyAdminPasswordReset('e'.repeat(64), '123456'),
+    ).rejects.toThrow('رمز الاستعادة غير صحيح أو انتهت صلاحيته.');
+  });
+
   it('confirms recovery without creating a session and clears any memory token', async () => {
     setAdminAccessToken('stale-admin-token');
     fetchMock.mockResolvedValueOnce(jsonResponse(200, { reset: true }));
 
-    await confirmAdminPasswordReset(
-      'd'.repeat(64),
-      '123456',
-      'Aarast-admin-2026',
-    );
+    await confirmAdminPasswordReset('d'.repeat(64), '123456');
 
     expect(getAdminAccessToken()).toBeNull();
     expect(fetchMock.mock.calls[0][0]).toContain(
@@ -269,22 +292,19 @@ describe('secure admin browser session', () => {
     );
     expect(JSON.parse(fetchMock.mock.calls[0][1].body)).toEqual({
       challengeToken: 'd'.repeat(64),
-      code: '123456',
-      newPassword: 'Aarast-admin-2026',
+      newPassword: '123456',
     });
     expect(localStorage.length).toBe(0);
     expect(sessionStorage.length).toBe(0);
   });
 
-  it('maps every invalid recovery challenge to one generic message', async () => {
+  it('an expired password window asks for a new recovery', async () => {
     fetchMock.mockResolvedValueOnce(
       jsonResponse(401, { message: 'Unknown administrator' }),
     );
 
     await expect(
-      confirmAdminPasswordReset('e'.repeat(64), '123456', 'Aarast-admin-2026'),
-    ).rejects.toThrow(
-      'رمز التحقق غير صحيح أو انتهت صلاحية طلب الاستعادة.',
-    );
+      confirmAdminPasswordReset('e'.repeat(64), '123456'),
+    ).rejects.toThrow('انتهت مهلة تعيين كلمة المرور. ابدأ طلب استعادة جديدًا.');
   });
 });

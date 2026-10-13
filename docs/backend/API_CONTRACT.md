@@ -292,10 +292,16 @@ Requires JWT. Returns the safe current user object without `passwordHash`.
   OTP relation, never the raw token or phone. The response includes the same
   bounded `deliveryStatus` used by other OTP requests so the browser never
   claims delivery from provider acceptance alone.
+- `POST /api/v1/auth/admin/password-reset/verify` — body
+  `{ challengeToken, code }`. Proves and consumes the WhatsApp code on its own
+  screen, then opens a 15-minute window (`{ verified: true, expiresAt }`) for
+  choosing the password, so typing it never races the code's expiry. A wrong
+  code burns one of the challenge's attempts; a challenge verifies once.
 - `POST /api/v1/auth/admin/password-reset/confirm` — body
-  `{ challengeToken, code, newPassword }`. Requires a 12-72 character password
-  containing an English letter and a digit, with a hard maximum of 72 UTF-8
-  bytes. Success changes only the browser-admin `passwordHash`, revokes only
+  `{ challengeToken, newPassword }`, accepted only on a verified, unexpired
+  challenge. The password follows the application rule: any characters, at
+  least 6, at most 72 UTF-8 bytes (admin sign-in always adds a WhatsApp code).
+  Success changes only the browser-admin `passwordHash`, revokes only
   administrator refresh sessions and login/recovery challenges, consumes active
   administrator OTPs, and does not create a session. Invalid, expired,
   replayed, unknown, and non-admin challenges return
@@ -2489,6 +2495,7 @@ configuration, and smoke checks.
 | POST | `/api/v1/auth/admin/logout` | `auth.logoutAdmin` |  |
 | POST | `/api/v1/auth/admin/password-reset/confirm` | `auth.confirmAdminPasswordReset` |  |
 | POST | `/api/v1/auth/admin/password-reset/request` | `auth.requestAdminPasswordReset` |  |
+| POST | `/api/v1/auth/admin/password-reset/verify` | `auth.verifyAdminPasswordReset` |  |
 | POST | `/api/v1/auth/admin/refresh` | `auth.refreshAdmin` |  |
 | POST | `/api/v1/auth/login` | `auth.login` |  |
 | POST | `/api/v1/auth/logout` | `auth.logout` | 🔒 |

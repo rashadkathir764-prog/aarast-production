@@ -4,13 +4,17 @@ import { Navigate, useLocation, useNavigate } from 'react-router-dom';
 import {
   confirmAdminPasswordReset,
   requestAdminPasswordReset,
+  verifyAdminPasswordReset,
   type OtpDeliveryStatus,
 } from './transport';
 import { safeAdminReturnPath } from './admin-return-path';
 import { useAuth } from './AuthProvider';
 import { FormField } from '../../design_system/FormField';
 
-type RecoveryStep = 'phone' | 'confirm' | null;
+// Recovery is three screens: the phone, the WhatsApp code, then the new
+// password. The code is verified on its own screen, so choosing a password
+// never races the code's expiry (the backend then allows 15 minutes).
+type RecoveryStep = 'phone' | 'code' | 'password' | null;
 
 function neutralRecoveryNotice(deliveryStatus: OtpDeliveryStatus): string {
   return deliveryStatus === 'DELIVERED'
@@ -18,13 +22,10 @@ function neutralRecoveryNotice(deliveryStatus: OtpDeliveryStatus): string {
     : 'تم قبول طلب الاستعادة، لكن لم نتأكد من وصول الرمز إلى واتساب بعد.';
 }
 
-function isStrongAdminPassword(value: string): boolean {
-  return (
-    value.length >= 12 &&
-    value.length <= 72 &&
-    /[A-Za-z]/.test(value) &&
-    /\d/.test(value)
-  );
+// The application rule: any letters or digits, 6 or more. Admin sign-in
+// always asks for a WhatsApp code as well.
+function isAcceptableAdminPassword(value: string): boolean {
+  return value.length >= 6 && new TextEncoder().encode(value).length <= 72;
 }
 
 export function LoginPage() {
@@ -61,7 +62,7 @@ export function LoginPage() {
   );
 
   useEffect(() => {
-    if (recoveryStep !== 'confirm' || retryRemaining <= 0) return undefined;
+    if (recoveryStep !== 'code' || retryRemaining <= 0) return undefined;
     const timeout = window.setTimeout(
       () => setRetryRemaining((remaining) => Math.max(0, remaining - 1)),
       1_000,
@@ -77,7 +78,11 @@ export function LoginPage() {
       await requestRecoveryCode();
       return;
     }
-    if (recoveryStep === 'confirm') {
+    if (recoveryStep === 'code') {
+      await verifyRecoveryCode();
+      return;
+    }
+    if (recoveryStep === 'password') {
       await completeRecovery();
       return;
     }
@@ -110,7 +115,7 @@ export function LoginPage() {
       setRetryRemaining(nextChallenge.retryAfterSeconds);
       setRecoveryDeliveryStatus(nextChallenge.deliveryStatus);
       setRecoveryNotice(neutralRecoveryNotice(nextChallenge.deliveryStatus));
-      setRecoveryStep('confirm');
+      setRecoveryStep('code');
     } catch (err) {
       setRecoveryError(
         err instanceof Error ? err.message : 'تعذر بدء استعادة كلمة المرور.',
@@ -120,12 +125,32 @@ export function LoginPage() {
     }
   }
 
+  async function verifyRecoveryCode() {
+    setRecoveryError(null);
+    if (!recoveryChallengeToken) {
+      setRecoveryError('انتهى طلب الاستعادة. ابدأ طلبًا جديدًا.');
+      return;
+    }
+    setIsRecoveryLoading(true);
+    try {
+      await verifyAdminPasswordReset(recoveryChallengeToken, recoveryCode);
+      setRecoveryCode('');
+      setRetryRemaining(0);
+      setRecoveryNotice('تم التحقق من الرمز. اختر كلمة المرور الجديدة.');
+      setRecoveryStep('password');
+    } catch (err) {
+      setRecoveryError(
+        err instanceof Error ? err.message : 'تعذر التحقق من الرمز.',
+      );
+    } finally {
+      setIsRecoveryLoading(false);
+    }
+  }
+
   async function completeRecovery() {
     setRecoveryError(null);
-    if (!isStrongAdminPassword(newPassword)) {
-      setRecoveryError(
-        'كلمة المرور يجب أن تكون من 12 إلى 72 خانة وتحتوي على حرف إنجليزي ورقم.',
-      );
+    if (!isAcceptableAdminPassword(newPassword)) {
+      setRecoveryError('كلمة المرور يجب أن تكون 6 خانات على الأقل.');
       return;
     }
     if (newPassword !== newPasswordConfirmation) {
@@ -139,11 +164,7 @@ export function LoginPage() {
 
     setIsRecoveryLoading(true);
     try {
-      await confirmAdminPasswordReset(
-        recoveryChallengeToken,
-        recoveryCode,
-        newPassword,
-      );
+      await confirmAdminPasswordReset(recoveryChallengeToken, newPassword);
       const restoredPhone = recoveryPhone;
       clearRecoveryState();
       setPhone(restoredPhone);
@@ -197,29 +218,35 @@ export function LoginPage() {
     ? 'التحقق بخطوتين'
     : recoveryStep === 'phone'
       ? 'استعادة كلمة المرور'
-      : recoveryStep === 'confirm'
-        ? 'تعيين كلمة مرور جديدة'
-        : 'مرحباً بك';
+      : recoveryStep === 'code'
+        ? 'أدخل رمز الاستعادة'
+        : recoveryStep === 'password'
+          ? 'تعيين كلمة مرور جديدة'
+          : 'مرحباً بك';
   const description = challenge
     ? challenge.deliveryStatus === 'DELIVERED'
       ? 'تم تسليم الرمز إلى واتساب المسؤول. أدخله لإكمال الجلسة الآمنة.'
       : 'طُلب إرسال الرمز، لكن لم نتأكد من وصوله بعد. أدخله إذا وصلك.'
     : recoveryStep === 'phone'
       ? 'أدخل رقم هاتف المسؤول. لن نكشف ما إذا كان الرقم مرتبطًا بحساب.'
-      : recoveryStep === 'confirm'
+      : recoveryStep === 'code'
         ? recoveryDeliveryStatus === 'DELIVERED'
-          ? 'أدخل الرمز الذي تم تسليمه إلى واتساب، ثم اختر كلمة مرور إدارية قوية.'
-          : 'أدخل الرمز إذا وصلك عبر واتساب، ثم اختر كلمة مرور إدارية قوية.'
-        : 'أدخل كلمة المرور، ثم أكمل رمز التحقق للوصول إلى لوحة الإدارة.';
+          ? 'أدخل الرمز الذي تم تسليمه إلى واتساب.'
+          : 'أدخل الرمز إذا وصلك عبر واتساب.'
+        : recoveryStep === 'password'
+          ? 'اختر كلمة المرور الجديدة. لديك 15 دقيقة.'
+          : 'أدخل كلمة المرور، ثم أكمل رمز التحقق للوصول إلى لوحة الإدارة.';
   const primaryLabel = isBusy
     ? 'جاري التحقق...'
     : challenge
       ? 'تحقق وافتح اللوحة'
       : recoveryStep === 'phone'
         ? 'إرسال رمز الاستعادة'
-        : recoveryStep === 'confirm'
-          ? 'تغيير كلمة المرور'
-          : 'متابعة إلى رمز التحقق';
+        : recoveryStep === 'code'
+          ? 'تحقق من الرمز'
+          : recoveryStep === 'password'
+            ? 'حفظ كلمة المرور'
+            : 'متابعة إلى رمز التحقق';
 
   return (
     <main className="login-page">
@@ -293,31 +320,33 @@ export function LoginPage() {
               required
               autoFocus
             />
-          ) : recoveryStep === 'confirm' ? (
+          ) : recoveryStep === 'code' ? (
+            <FormField
+              label="رمز الاستعادة"
+              value={recoveryCode}
+              onChange={(event) =>
+                setRecoveryCode(event.target.value.replace(/\D/g, '').slice(0, 6))
+              }
+              autoComplete="one-time-code"
+              inputMode="numeric"
+              pattern="[0-9]{6}"
+              minLength={6}
+              maxLength={6}
+              required
+              autoFocus
+            />
+          ) : recoveryStep === 'password' ? (
             <>
-              <FormField
-                label="رمز الاستعادة"
-                value={recoveryCode}
-                onChange={(event) =>
-                  setRecoveryCode(event.target.value.replace(/\D/g, '').slice(0, 6))
-                }
-                autoComplete="one-time-code"
-                inputMode="numeric"
-                pattern="[0-9]{6}"
-                minLength={6}
-                maxLength={6}
-                required
-                autoFocus
-              />
               <FormField
                 label="كلمة المرور الجديدة"
                 type="password"
                 value={newPassword}
                 onChange={(event) => setNewPassword(event.target.value)}
                 autoComplete="new-password"
-                minLength={12}
+                minLength={6}
                 maxLength={72}
                 required
+                autoFocus
               />
               <FormField
                 label="تأكيد كلمة المرور الجديدة"
@@ -327,12 +356,12 @@ export function LoginPage() {
                   setNewPasswordConfirmation(event.target.value)
                 }
                 autoComplete="new-password"
-                minLength={12}
+                minLength={6}
                 maxLength={72}
                 required
               />
               <p className="security-note">
-                من 12 إلى 72 خانة، وتحتوي على حرف إنجليزي واحد ورقم واحد على الأقل.
+                6 خانات على الأقل: أرقام أو حروف أو الاثنان معًا.
               </p>
             </>
           ) : (
@@ -404,7 +433,7 @@ export function LoginPage() {
             </button>
           ) : recoveryStep ? (
             <>
-              {recoveryStep === 'confirm' ? (
+              {recoveryStep === 'code' ? (
                 <button
                   className="button button--ghost button--full"
                   type="button"

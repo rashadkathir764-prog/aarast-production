@@ -81,6 +81,7 @@
     "20260811180000_backfill_missing_contributor_history_scopes": "eb4151164222be575e854b6da66a1ab74fa4ab505287d371b8a3c0c23cd8c82a",
     "20261011090000_add_funding_sources_and_cost_payer": "99afe2ea466686def6ff7e4dda5e8cf81b35f76e44c8fd20a96e929a80cb965c",
     "20261011120000_add_provider_trust_signals": "5c4b77091c8c30361d22658762af8321b3c4ff2bfdc2b803347affb89786ac3c",
-    "20261011150000_add_plan_reminder_notification_types": "587a284f60409fa656098a579ed517bc038382ced2e4337e9084f9f369c3f7ce"
+    "20261011150000_add_plan_reminder_notification_types": "587a284f60409fa656098a579ed517bc038382ced2e4337e9084f9f369c3f7ce",
+    "20261013200000_add_admin_reset_verified_at": "a34e0bafb2153005d12f67c4f394af144b2ddc9bd3798e3b4c49f016edfe5cd0"
   }
 }

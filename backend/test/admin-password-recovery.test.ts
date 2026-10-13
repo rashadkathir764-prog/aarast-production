@@ -155,6 +155,7 @@ function createHarness(
           attempts: 0,
           maxAttempts: 5,
           consumedAt: null,
+          verifiedAt: null,
           createdAt: new Date(),
           ...data,
         };
@@ -193,6 +194,8 @@ function createHarness(
           if (where.expiresAt?.gt && challenge.expiresAt <= where.expiresAt.gt) {
             continue;
           }
+          if (where.verifiedAt === null && challenge.verifiedAt) continue;
+          if (where.verifiedAt?.not === null && !challenge.verifiedAt) continue;
           if (
             where.attempts?.lt !== undefined &&
             challenge.attempts >= where.attempts.lt
@@ -386,9 +389,21 @@ test('admin recovery changes only the admin password and revokes every admin ses
     });
     harness.lockOrder.length = 0;
 
-    const result = await harness.service.confirmAdminPasswordReset({
+    const verified = await harness.service.verifyAdminPasswordReset({
       challengeToken: pending.challengeToken,
       code: '123456',
+    });
+    assert.equal(verified.verified, true);
+    assert.deepEqual(harness.lockOrder.slice(0, 4), [
+      'User',
+      'AdminLoginChallenge',
+      'AdminPasswordResetChallenge',
+      'OtpCode',
+    ]);
+    harness.lockOrder.length = 0;
+
+    const result = await harness.service.confirmAdminPasswordReset({
+      challengeToken: pending.challengeToken,
       newPassword: 'New-admin-password-2026',
     });
 
@@ -408,11 +423,10 @@ test('admin recovery changes only the admin password and revokes every admin ses
     assert.ok(harness.adminLoginChallenges.every((item) => item.consumedAt));
     assert.ok(harness.otps.every((otp) => otp.consumedAt));
     assert.equal(harness.loginThrottles.length, 0);
-    assert.deepEqual(harness.lockOrder.slice(0, 5), [
+    assert.deepEqual(harness.lockOrder.slice(0, 4), [
       'User',
       'AdminLoginChallenge',
       'AdminPasswordResetChallenge',
-      'OtpCode',
       'RefreshToken',
     ]);
 
@@ -420,7 +434,6 @@ test('admin recovery changes only the admin password and revokes every admin ses
       () =>
         harness.service.confirmAdminPasswordReset({
           challengeToken: pending.challengeToken,
-          code: '123456',
           newPassword: 'Another-admin-password-2026',
         }),
       (error: any) => error.getResponse?.().code === 'ADMIN_RESET_INVALID_OR_EXPIRED',
@@ -428,7 +441,75 @@ test('admin recovery changes only the admin password and revokes every admin ses
   });
 });
 
-test('admin reset rollback keeps its OTP and challenge reusable', async () => {
+test('admin recovery sets no password before the code is verified', async () => {
+  await withOtpEnv('dev', async () => {
+    const admin = userFixture();
+    const harness = createHarness(admin);
+    const pending = await harness.service.requestAdminPasswordReset({
+      phone: '777123456',
+    });
+
+    await assert.rejects(
+      () =>
+        harness.service.confirmAdminPasswordReset({
+          challengeToken: pending.challengeToken,
+          newPassword: 'skipped-the-code',
+        }),
+      (error: any) => error.getResponse?.().code === 'ADMIN_RESET_INVALID_OR_EXPIRED',
+    );
+    assert.equal(admin.passwordHash, 'old-admin-hash');
+    assert.equal(harness.resetChallenges[0].consumedAt, null);
+  });
+});
+
+test('a wrong code burns an attempt and opens no password window', async () => {
+  await withOtpEnv('dev', async () => {
+    const harness = createHarness(userFixture());
+    const pending = await harness.service.requestAdminPasswordReset({
+      phone: '777123456',
+    });
+
+    await assert.rejects(
+      () =>
+        harness.service.verifyAdminPasswordReset({
+          challengeToken: pending.challengeToken,
+          code: '000000',
+        }),
+      (error: any) => error.getResponse?.().code === 'ADMIN_RESET_INVALID_OR_EXPIRED',
+    );
+    assert.equal(harness.resetChallenges[0].attempts, 1);
+    assert.equal(harness.resetChallenges[0].verifiedAt, null);
+  });
+});
+
+test('a verified code gives 15 minutes to choose the password, once', async () => {
+  await withOtpEnv('dev', async () => {
+    const harness = createHarness(userFixture());
+    const pending = await harness.service.requestAdminPasswordReset({
+      phone: '777123456',
+    });
+    const before = Date.now();
+    const verified = await harness.service.verifyAdminPasswordReset({
+      challengeToken: pending.challengeToken,
+      code: '123456',
+    });
+
+    const windowMs = verified.expiresAt.getTime() - before;
+    assert.ok(windowMs >= 15 * 60_000 - 1_000 && windowMs <= 15 * 60_000 + 1_000);
+    assert.ok(harness.resetChallenges[0].verifiedAt);
+    // The code is spent: verifying again is refused.
+    await assert.rejects(
+      () =>
+        harness.service.verifyAdminPasswordReset({
+          challengeToken: pending.challengeToken,
+          code: '123456',
+        }),
+      (error: any) => error.getResponse?.().code === 'ADMIN_RESET_INVALID_OR_EXPIRED',
+    );
+  });
+});
+
+test('admin reset rollback keeps the verified challenge reusable', async () => {
   await withOtpEnv('dev', async () => {
     const admin = userFixture();
     const originalPasswordHash = admin.passwordHash;
@@ -438,37 +519,38 @@ test('admin reset rollback keeps its OTP and challenge reusable', async () => {
     const pending = await harness.service.requestAdminPasswordReset({
       phone: '777123456',
     });
+    await harness.service.verifyAdminPasswordReset({
+      challengeToken: pending.challengeToken,
+      code: '123456',
+    });
     harness.lockOrder.length = 0;
 
     await assert.rejects(
       () =>
         harness.service.confirmAdminPasswordReset({
           challengeToken: pending.challengeToken,
-          code: '123456',
           newPassword: 'Retryable-admin-password-2026',
         }),
       /simulated admin refresh revocation failure/,
     );
 
     assert.equal(admin.passwordHash, originalPasswordHash);
-    assert.equal(harness.otps[0].consumedAt, null);
     assert.equal(harness.resetChallenges[0].consumedAt, null);
+    assert.ok(harness.resetChallenges[0].verifiedAt);
     assert.ok(harness.refreshTokens.every((token) => token.revokedAt === null));
-    assert.deepEqual(harness.lockOrder.slice(0, 5), [
+    assert.deepEqual(harness.lockOrder.slice(0, 4), [
       'User',
       'AdminLoginChallenge',
       'AdminPasswordResetChallenge',
-      'OtpCode',
       'RefreshToken',
     ]);
 
     const result = await harness.service.confirmAdminPasswordReset({
       challengeToken: pending.challengeToken,
-      code: '123456',
       newPassword: 'Retryable-admin-password-2026',
     });
     assert.deepEqual(result, { reset: true });
-    assert.ok(harness.otps[0].consumedAt);
+    assert.ok(harness.resetChallenges[0].consumedAt);
   });
 });
 
@@ -478,15 +560,17 @@ test('one admin recovery challenge succeeds at most once under concurrency', asy
     const pending = await harness.service.requestAdminPasswordReset({
       phone: '777123456',
     });
+    await harness.service.verifyAdminPasswordReset({
+      challengeToken: pending.challengeToken,
+      code: '123456',
+    });
     const attempts = await Promise.allSettled([
       harness.service.confirmAdminPasswordReset({
         challengeToken: pending.challengeToken,
-        code: '123456',
         newPassword: 'Concurrent-admin-password-1',
       }),
       harness.service.confirmAdminPasswordReset({
         challengeToken: pending.challengeToken,
-        code: '123456',
         newPassword: 'Concurrent-admin-password-2',
       }),
     ]);

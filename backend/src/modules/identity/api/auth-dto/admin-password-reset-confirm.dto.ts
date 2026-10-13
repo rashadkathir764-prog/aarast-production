@@ -1,22 +1,17 @@
-import { IsString, Length, Matches, MaxLength, MinLength } from 'class-validator';
+import { IsString, Length, Matches, MinLength } from 'class-validator';
 import { MaxUtf8Bytes } from '../../public/max-utf8-bytes.decorator';
 
+/** Step 2 of admin recovery: the new password, after the code was verified. */
 export class AdminPasswordResetConfirmDto {
   @IsString()
   @Length(64, 64)
   @Matches(/^[a-f0-9]{64}$/)
   challengeToken!: string;
 
+  // Same rule as application passwords: any characters, 6 or more. Admin
+  // sign-in always asks for a WhatsApp code as well.
   @IsString()
-  @Length(6, 6)
-  @Matches(/^\d{6}$/)
-  code!: string;
-
-  @IsString()
-  @MinLength(12)
-  @MaxLength(72)
+  @MinLength(6)
   @MaxUtf8Bytes(72)
-  @Matches(/[A-Za-z]/)
-  @Matches(/\d/)
   newPassword!: string;
 }

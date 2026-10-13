@@ -53,11 +53,13 @@ test('admin provisioning checks every phone variant before mutating in a seriali
   );
 });
 
-test('admin provisioning rejects weak or bcrypt-truncated passwords', () => {
-  assert.throws(() => validatePassword('short123'), /at least 12/);
-  assert.throws(() => validatePassword('letters-only-password'), /letters and digits/);
+test('admin provisioning uses the application password rule and the bcrypt limit', () => {
+  assert.throws(() => validatePassword('12345'), /at least 6/);
   assert.throws(() => validatePassword(`A1${'x'.repeat(71)}`), /72 UTF-8 bytes/);
   assert.throws(() => validatePassword(`A1${'ش'.repeat(36)}`), /72 UTF-8 bytes/);
+  // Digits only, letters only, any case: the owner's decision (2026-10-13).
+  assert.doesNotThrow(() => validatePassword('123456'));
+  assert.doesNotThrow(() => validatePassword('abcdef'));
   assert.doesNotThrow(() => validatePassword('Aarast-admin-2026'));
 });
 

@@ -24,14 +24,13 @@ function selectProvisioningIdentity(users) {
   return users[0] ?? null;
 }
 
+// The application password rule: any characters, 6 or more, within bcrypt's
+// 72-byte limit. Admin sign-in always asks for a WhatsApp code as well.
 function validatePassword(value) {
-  if (value.length < 12 || Buffer.byteLength(value, 'utf8') > 72) {
+  if (value.length < 6 || Buffer.byteLength(value, 'utf8') > 72) {
     throw new Error(
-      'PROVISION_ADMIN_PASSWORD must contain at least 12 characters and at most 72 UTF-8 bytes.',
+      'PROVISION_ADMIN_PASSWORD must contain at least 6 characters and at most 72 UTF-8 bytes.',
     );
-  }
-  if (!/[A-Za-z]/.test(value) || !/\d/.test(value)) {
-    throw new Error('PROVISION_ADMIN_PASSWORD must contain letters and digits.');
   }
 }
 

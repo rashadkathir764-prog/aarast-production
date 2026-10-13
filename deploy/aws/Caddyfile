@@ -1,0 +1,15 @@
+# HTTPS for the three public names; Caddy obtains and renews the certificates.
+{$AARAST_API_HOST} {
+	encode gzip
+	reverse_proxy backend:3000
+}
+
+{$AARAST_ADMIN_HOST} {
+	encode gzip
+	reverse_proxy admin-web:80
+}
+
+{$AARAST_SITE_HOST} {
+	encode gzip
+	reverse_proxy public-site:80
+}

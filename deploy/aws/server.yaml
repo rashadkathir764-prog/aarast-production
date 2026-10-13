@@ -1,0 +1,255 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Aarast hosting - one EC2 host running the production compose, S3 media and an ops bucket for backups and releases
+
+# One small host runs the same services as the Dokploy compose (Postgres,
+# Redis, Backend, Admin web, public site, backups, OpenWA OTP) with Caddy for
+# HTTPS. Media lives in S3 instead of MinIO. The host is reached through
+# Systems Manager only: no SSH port, no stored AWS keys (it uses its role).
+
+Parameters:
+  InstanceType:
+    Type: String
+    Default: t3.small
+    Description: t3.small fits the free plan; use t3.medium or larger for a real launch.
+  RootVolumeGiB:
+    Type: Number
+    Default: 30
+  UbuntuAmi:
+    Type: AWS::SSM::Parameter::Value<AWS::EC2::Image::Id>
+    Default: /aws/service/canonical/ubuntu/server/24.04/stable/current/amd64/hvm/ebs-gp3/ami-id
+  AdminWebOrigin:
+    Type: String
+    # Interim name until the client's domain: sslip.io maps it to the IP.
+    Default: https://admin.3-121-198-183.sslip.io
+    Description: Origin allowed to upload media directly from the browser.
+
+Resources:
+  MediaBucket:
+    Type: AWS::S3::Bucket
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      BucketName: !Sub aarast-media-${AWS::AccountId}-${AWS::Region}
+      OwnershipControls:
+        Rules:
+          - ObjectOwnership: BucketOwnerEnforced
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        IgnorePublicAcls: true
+        # Only the bucket policy below makes the four public prefixes readable.
+        BlockPublicPolicy: false
+        RestrictPublicBuckets: false
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256
+      CorsConfiguration:
+        CorsRules:
+          - AllowedOrigins:
+              - !Ref AdminWebOrigin
+            AllowedMethods: [GET, PUT, HEAD]
+            AllowedHeaders: ['*']
+            MaxAge: 3000
+
+  # The same public prefixes MinIO exposed (deploy/media/init.sh); chat images
+  # stay private and are served through presigned URLs.
+  MediaBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref MediaBucket
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: PublicReadOfPublicMediaPrefixes
+            Effect: Allow
+            Principal: '*'
+            Action: s3:GetObject
+            Resource:
+              - !Sub ${MediaBucket.Arn}/user-avatar/*
+              - !Sub ${MediaBucket.Arn}/provider-logo/*
+              - !Sub ${MediaBucket.Arn}/provider-cover/*
+              - !Sub ${MediaBucket.Arn}/service-image/*
+          - Sid: DenyInsecureTransport
+            Effect: Deny
+            Principal: '*'
+            Action: s3:*
+            Resource:
+              - !GetAtt MediaBucket.Arn
+              - !Sub ${MediaBucket.Arn}/*
+            Condition:
+              Bool:
+                aws:SecureTransport: 'false'
+
+  # backups/ holds the nightly database dumps, releases/ the image archives
+  # the host loads on deploy.
+  OpsBucket:
+    Type: AWS::S3::Bucket
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      BucketName: !Sub aarast-ops-${AWS::AccountId}-${AWS::Region}
+      OwnershipControls:
+        Rules:
+          - ObjectOwnership: BucketOwnerEnforced
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        IgnorePublicAcls: true
+        BlockPublicPolicy: true
+        RestrictPublicBuckets: true
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256
+      LifecycleConfiguration:
+        Rules:
+          - Id: ExpireOldBackups
+            Status: Enabled
+            Prefix: backups/
+            ExpirationInDays: 30
+          - Id: ExpireOldReleases
+            Status: Enabled
+            Prefix: releases/
+            ExpirationInDays: 30
+
+  HostRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: ec2.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore
+      Policies:
+        - PolicyName: aarast-host-storage
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Sid: MediaObjects
+                Effect: Allow
+                Action: [s3:GetObject, s3:PutObject, s3:DeleteObject]
+                Resource: !Sub ${MediaBucket.Arn}/*
+              - Sid: MediaBucket
+                Effect: Allow
+                Action: [s3:ListBucket, s3:GetBucketLocation]
+                Resource: !GetAtt MediaBucket.Arn
+              - Sid: OpsObjects
+                Effect: Allow
+                Action: [s3:GetObject, s3:PutObject]
+                Resource:
+                  - !Sub ${OpsBucket.Arn}/backups/*
+                  - !Sub ${OpsBucket.Arn}/releases/*
+              - Sid: OpsBucket
+                Effect: Allow
+                Action: s3:ListBucket
+                Resource: !GetAtt OpsBucket.Arn
+
+  HostInstanceProfile:
+    Type: AWS::IAM::InstanceProfile
+    Properties:
+      Roles:
+        - !Ref HostRole
+
+  HostSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Aarast host - HTTP and HTTPS only, administration through Systems Manager
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          CidrIp: 0.0.0.0/0
+        - IpProtocol: tcp
+          FromPort: 443
+          ToPort: 443
+          CidrIp: 0.0.0.0/0
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          CidrIpv6: ::/0
+        - IpProtocol: tcp
+          FromPort: 443
+          ToPort: 443
+          CidrIpv6: ::/0
+
+  Host:
+    Type: AWS::EC2::Instance
+    Properties:
+      InstanceType: !Ref InstanceType
+      ImageId: !Ref UbuntuAmi
+      IamInstanceProfile: !Ref HostInstanceProfile
+      SecurityGroupIds:
+        - !GetAtt HostSecurityGroup.GroupId
+      MetadataOptions:
+        HttpTokens: required
+        HttpEndpoint: enabled
+        HttpPutResponseHopLimit: 2
+      CreditSpecification:
+        CPUCredits: standard
+      BlockDeviceMappings:
+        - DeviceName: /dev/sda1
+          Ebs:
+            VolumeType: gp3
+            VolumeSize: !Ref RootVolumeGiB
+            Encrypted: true
+            DeleteOnTermination: false
+      Tags:
+        - Key: Name
+          Value: aarast-host
+      UserData:
+        Fn::Base64: |
+          #!/bin/bash
+          set -euo pipefail
+          export DEBIAN_FRONTEND=noninteractive
+          # 2 GB swap: the 2 GB host runs Postgres, the API and the OTP browser.
+          if [ ! -f /swapfile ]; then
+            fallocate -l 2G /swapfile
+            chmod 600 /swapfile
+            mkswap /swapfile
+            swapon /swapfile
+            echo '/swapfile none swap sw 0 0' >> /etc/fstab
+            echo 'vm.swappiness=10' > /etc/sysctl.d/99-aarast.conf
+            sysctl --system
+          fi
+          apt-get update
+          apt-get install -y ca-certificates curl unzip
+          install -m 0755 -d /etc/apt/keyrings
+          curl -fsSL https://download.docker.com/linux/ubuntu/gpg -o /etc/apt/keyrings/docker.asc
+          chmod a+r /etc/apt/keyrings/docker.asc
+          . /etc/os-release
+          echo "deb [arch=amd64 signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/ubuntu ${VERSION_CODENAME} stable" > /etc/apt/sources.list.d/docker.list
+          apt-get update
+          apt-get install -y docker-ce docker-ce-cli containerd.io docker-compose-plugin
+          systemctl enable --now docker
+          if ! command -v aws >/dev/null; then
+            curl -fsSL https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip -o /tmp/awscliv2.zip
+            unzip -q /tmp/awscliv2.zip -d /tmp
+            /tmp/aws/install
+          fi
+          mkdir -p /opt/aarast
+          touch /opt/aarast/.host-ready
+
+  HostAddress:
+    Type: AWS::EC2::EIP
+    Properties:
+      Domain: vpc
+      InstanceId: !Ref Host
+      Tags:
+        - Key: Name
+          Value: aarast-host
+
+Outputs:
+  PublicIp:
+    Description: Point the api, admin and site DNS A records here.
+    Value: !Ref HostAddress
+  InstanceId:
+    Value: !Ref Host
+  MediaBucketName:
+    Value: !Ref MediaBucket
+  MediaPublicBaseUrl:
+    Value: !Sub https://${MediaBucket}.s3.${AWS::Region}.amazonaws.com
+  OpsBucketName:
+    Value: !Ref OpsBucket

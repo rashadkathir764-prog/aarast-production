@@ -1,0 +1,259 @@
+name: aarast
+
+# Interim AWS host (deploy/aws/server.yaml): the services of the Dokploy
+# compose on one t3.small, with Caddy for HTTPS instead of Dokploy/Traefik,
+# S3 instead of MinIO, and OpenWA reached over a restricted SSH tunnel to the
+# server that still runs it. Secrets live only in /opt/aarast/app/.env on the
+# host (prepare-env.sh). Memory limits are sized for 2 GB RAM + 2 GB swap.
+
+x-logging: &logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "3"
+
+services:
+  postgres:
+    image: postgres:16-alpine@sha256:16bc17c64a573ef34162af9298258d1aec548232985b33ed7b1eac33ba35c229
+    restart: unless-stopped
+    command: ["postgres", "-c", "shared_buffers=64MB", "-c", "max_connections=40"]
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:?POSTGRES_DB is required}
+      POSTGRES_USER: ${POSTGRES_OWNER_USER:?POSTGRES_OWNER_USER is required}
+      POSTGRES_PASSWORD: ${POSTGRES_OWNER_PASSWORD:?POSTGRES_OWNER_PASSWORD is required}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U \"$${POSTGRES_USER}\" -d \"$${POSTGRES_DB}\""]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    mem_limit: 384m
+    logging: *logging
+    networks: [internal]
+
+  postgres-roles:
+    image: postgres:16-alpine@sha256:16bc17c64a573ef34162af9298258d1aec548232985b33ed7b1eac33ba35c229
+    restart: "no"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_OWNER_USER: ${POSTGRES_OWNER_USER}
+      POSTGRES_OWNER_PASSWORD: ${POSTGRES_OWNER_PASSWORD}
+      AARAST_DB_MIGRATOR_USER: ${AARAST_DB_MIGRATOR_USER:?AARAST_DB_MIGRATOR_USER is required}
+      AARAST_DB_MIGRATOR_PASSWORD: ${AARAST_DB_MIGRATOR_PASSWORD:?AARAST_DB_MIGRATOR_PASSWORD is required}
+      AARAST_DB_RUNTIME_USER: ${AARAST_DB_RUNTIME_USER:?AARAST_DB_RUNTIME_USER is required}
+      AARAST_DB_RUNTIME_PASSWORD: ${AARAST_DB_RUNTIME_PASSWORD:?AARAST_DB_RUNTIME_PASSWORD is required}
+      PGPASSWORD: ${POSTGRES_OWNER_PASSWORD}
+    volumes:
+      - ../dokploy/postgres/least-privilege.sql:/opt/aarast/postgres/least-privilege.sql:ro
+    command:
+      - psql
+      - --host=postgres
+      - --username=${POSTGRES_OWNER_USER}
+      - --dbname=${POSTGRES_DB}
+      - --file=/opt/aarast/postgres/least-privilege.sql
+    logging: *logging
+    networks: [internal]
+
+  redis:
+    image: redis:7-alpine@sha256:6ab0b6e7381779332f97b8ca76193e45b0756f38d4c0dcda72dbb3c32061ab99
+    restart: unless-stopped
+    command: ["redis-server", "--maxmemory", "64mb", "--maxmemory-policy", "allkeys-lru"]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    mem_limit: 128m
+    logging: *logging
+    networks: [internal]
+
+  postgres-backup:
+    image: prodrigestivill/postgres-backup-local:16@sha256:a0103fbce0c48ccc7693ddbb2a2bfa733048db845354f635efef9e4566de185d
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      POSTGRES_HOST: postgres
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_OWNER_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_OWNER_PASSWORD}
+      SCHEDULE: "@daily"
+      BACKUP_KEEP_DAYS: 7
+      BACKUP_KEEP_WEEKS: 4
+      BACKUP_KEEP_MONTHS: 3
+      HEALTHCHECK_PORT: 8080
+    volumes:
+      # host/backup-sync.sh copies these dumps to the ops bucket.
+      - postgres_backups:/backups
+    mem_limit: 128m
+    logging: *logging
+    networks: [internal]
+
+  migrate:
+    image: aarast-backend:${AARAST_RELEASE:?AARAST_RELEASE is required}
+    pull_policy: never
+    restart: "no"
+    depends_on:
+      postgres-roles:
+        condition: service_completed_successfully
+    environment:
+      DATABASE_URL: ${AARAST_DB_MIGRATOR_DATABASE_URL:?AARAST_DB_MIGRATOR_DATABASE_URL is required}
+      AARAST_DB_EXPECTED_ROLE: ${AARAST_DB_MIGRATOR_USER}
+      POSTGRES_DB: ${POSTGRES_DB}
+    command:
+      - /bin/sh
+      - -ec
+      - |
+        node scripts/prod/assert-database-identity.cjs
+        npx prisma migrate deploy
+    logging: *logging
+    networks: [internal]
+
+  backend:
+    image: aarast-backend:${AARAST_RELEASE}
+    pull_policy: never
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      DATABASE_URL: ${AARAST_DB_RUNTIME_DATABASE_URL:?AARAST_DB_RUNTIME_DATABASE_URL is required}
+      AARAST_DB_EXPECTED_ROLE: ${AARAST_DB_RUNTIME_USER}
+      POSTGRES_DB: ${POSTGRES_DB}
+      JWT_SECRET: ${JWT_ACCESS_SECRET:?JWT_ACCESS_SECRET is required}
+      CORS_ORIGINS: https://${AARAST_ADMIN_HOST:?AARAST_ADMIN_HOST is required}
+      REDIS_URL: redis://redis:6379
+      READINESS_REQUIRE_REDIS: "true"
+      READINESS_REQUIRE_MEDIA: "true"
+      METRICS_TOKEN: ${METRICS_TOKEN:-}
+      SENTRY_DSN: ${SENTRY_DSN:-}
+      PUSH_NOTIFICATIONS_ENABLED: "false"
+      # S3 through the host role (instance metadata, hop limit 2): no keys.
+      AARAST_MEDIA_ENDPOINT: https://s3.${AWS_REGION:?AWS_REGION is required}.amazonaws.com
+      AARAST_MEDIA_SIGNED_ENDPOINT: https://s3.${AWS_REGION}.amazonaws.com
+      AARAST_MEDIA_REGION: ${AWS_REGION}
+      AARAST_MEDIA_BUCKET: ${AARAST_MEDIA_BUCKET:?AARAST_MEDIA_BUCKET is required}
+      AARAST_MEDIA_PUBLIC_BASE_URL: https://${AARAST_MEDIA_BUCKET}.s3.${AWS_REGION}.amazonaws.com
+      AARAST_MEDIA_FORCE_PATH_STYLE: "false"
+      AUTH_OTP_MODE: openwa
+      AUTH_LOGIN_THROTTLE_PEPPER: ${AUTH_LOGIN_THROTTLE_PEPPER:?AUTH_LOGIN_THROTTLE_PEPPER is required}
+      OTP_GLOBAL_DAILY_LIMIT: 150
+      OPENWA_BASE_URL: http://openwa:2785
+      OPENWA_CREDENTIAL_FILE: /run/aarast/openwa.env
+      OPENWA_OTP_TIMEOUT_MS: 15000
+    volumes:
+      - openwa_credential:/run/aarast:ro
+    command:
+      - /bin/sh
+      - -ec
+      - |
+        node scripts/prod/assert-database-identity.cjs
+        exec node dist/main.js
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000/ready').then((r)=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+    mem_limit: 640m
+    logging: *logging
+    networks: [internal]
+
+  admin-web:
+    image: aarast-admin-web:${AARAST_RELEASE}
+    pull_policy: never
+    restart: unless-stopped
+    environment:
+      API_ORIGIN: https://${AARAST_API_HOST:?AARAST_API_HOST is required}
+      ADMIN_PUBLIC_ORIGIN: https://${AARAST_ADMIN_HOST}
+      CORS_ORIGINS: https://${AARAST_ADMIN_HOST}
+    mem_limit: 64m
+    logging: *logging
+    networks: [internal]
+
+  public-site:
+    image: aarast-public-site:${AARAST_RELEASE}
+    pull_policy: never
+    restart: unless-stopped
+    mem_limit: 32m
+    logging: *logging
+    networks: [internal]
+
+  caddy:
+    image: caddy:2.10-alpine@sha256:4c6e91c6ed0e2fa03efd5b44747b625fec79bc9cd06ac5235a779726618e530d
+    restart: unless-stopped
+    environment:
+      AARAST_API_HOST: ${AARAST_API_HOST}
+      AARAST_ADMIN_HOST: ${AARAST_ADMIN_HOST}
+      AARAST_SITE_HOST: ${AARAST_SITE_HOST:?AARAST_SITE_HOST is required}
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    mem_limit: 96m
+    logging: *logging
+    networks: [internal]
+
+  # The OpenWA API of the server that runs it, as http://openwa:2785 here.
+  openwa-tunnel:
+    image: aarast-openwa-link:${AARAST_RELEASE}
+    pull_policy: never
+    restart: unless-stopped
+    command: ["/usr/local/bin/tunnel.sh"]
+    environment:
+      OPENWA_LINK_TARGET: ${OPENWA_LINK_TARGET:?OPENWA_LINK_TARGET is required}
+    volumes:
+      - /opt/aarast/openwa-link:/keys:ro
+    healthcheck:
+      test: ["CMD", "nc", "-z", "127.0.0.1", "2785"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+    mem_limit: 32m
+    logging: *logging
+    networks:
+      internal:
+        aliases: [openwa]
+
+  # Keeps /run/aarast/openwa.env of the backend in step with the key the
+  # OpenWA rotator issues on the other server.
+  openwa-credential:
+    image: aarast-openwa-link:${AARAST_RELEASE}
+    pull_policy: never
+    restart: unless-stopped
+    command: ["/usr/local/bin/credential.sh"]
+    environment:
+      OPENWA_LINK_TARGET: ${OPENWA_LINK_TARGET}
+    volumes:
+      - /opt/aarast/openwa-link:/keys:ro
+      - openwa_credential:/credential
+    mem_limit: 32m
+    logging: *logging
+    networks: [internal]
+
+volumes:
+  postgres_data:
+  postgres_backups:
+    name: aarast_postgres_backups
+  openwa_credential:
+  caddy_data:
+  caddy_config:
+
+networks:
+  internal:
+    driver: bridge

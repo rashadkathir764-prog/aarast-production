@@ -20,7 +20,9 @@ docker build -q -t "aarast-openwa-link:$release" deploy/aws/openwa-link
 echo "images built for $release"
 
 cd "$tree/deploy/aws"
-AARAST_RELEASE=$release docker compose --env-file "$env_file" up -d --remove-orphans
+export AARAST_RELEASE=$release
+dc() { docker compose --env-file "$env_file" "$@"; }
+dc up -d --remove-orphans --quiet-pull
 ln -sfn "$tree" /opt/aarast/current
 
 # Nightly copy of the database dumps to S3 (kept 30 days by the bucket rule).
@@ -40,10 +42,10 @@ docker builder prune -f --filter until=72h >/dev/null 2>&1 || true
 
 echo "waiting for the backend to become healthy"
 for _ in $(seq 1 40); do
-  state=$(docker inspect --format '{{.State.Health.Status}}' "$(docker compose ps -q backend)" 2>/dev/null || echo starting)
+  state=$(docker inspect --format '{{.State.Health.Status}}' "$(dc ps -q backend)" 2>/dev/null || echo starting)
   [ "$state" = healthy ] && break
   sleep 6
 done
-docker compose ps --format 'table {{.Service}}\t{{.Status}}'
-[ "$state" = healthy ] || { docker compose logs --tail 60 backend; exit 1; }
+dc ps --format 'table {{.Service}}\t{{.Status}}'
+[ "$state" = healthy ] || { dc logs --tail 60 backend; exit 1; }
 echo "PASS: release $release is live"

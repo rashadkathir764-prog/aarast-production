@@ -49,6 +49,10 @@ import { PasswordResetConfirmDto } from "../../api/auth-dto/password-reset-confi
 import { AdminPasswordResetRequestDto } from "../../api/auth-dto/admin-password-reset-request.dto";
 import { AdminPasswordResetConfirmDto } from "../../api/auth-dto/admin-password-reset-confirm.dto";
 import { AdminPasswordResetVerifyDto } from "../../api/auth-dto/admin-password-reset-verify.dto";
+import {
+  isAdminTrustedDevice,
+  issueAdminTrustedDevice,
+} from "./admin-trusted-device";
 import { JwtPayload } from "../../public/jwt-payload.interface";
 import {
   DevEchoOtpChannel,
@@ -98,6 +102,14 @@ export interface AuthResponse {
   accessToken: string;
   refreshToken: string;
   refreshTokenExpiresAt: Date;
+  /** Set on a code-verified admin sign-in: the browser remembers this device. */
+  adminTrustedDevice?: { token: string; expiresAt: Date };
+}
+
+/** Admin sign-in from a remembered device: password only, no code. */
+export interface AdminLoginTrustedResponse {
+  mfaRequired: false;
+  auth: AuthResponse;
 }
 
 export interface OtpRequestResponse {
@@ -368,7 +380,8 @@ export class AuthService implements IdentityAuthPort {
   async startAdminLogin(
     dto: LoginDto,
     context: OtpDispatchContext = {},
-  ): Promise<AdminLoginPendingResponse> {
+    trustedDeviceToken: string | null = null,
+  ): Promise<AdminLoginPendingResponse | AdminLoginTrustedResponse> {
     // The OTP completed below is itself proof that the administrator controls
     // the configured phone. This keeps pre-MFA/bootstrap administrators from
     // being permanently locked out while still requiring both their password
@@ -376,6 +389,12 @@ export class AuthService implements IdentityAuthPort {
     const user = await this.validatePasswordCredentials(dto, UserRole.ADMIN, {
       allowUnverifiedPhone: true,
     });
+    if (
+      user.phoneVerifiedAt &&
+      isAdminTrustedDevice(trustedDeviceToken, user, new Date())
+    ) {
+      return this.completeTrustedAdminLogin(user);
+    }
     const otp = await this.issueOtp(
       user.phone!,
       OtpPurpose.ADMIN_LOGIN,
@@ -421,6 +440,38 @@ export class AuthService implements IdentityAuthPort {
       deliveryStatus: otp.deliveryStatus,
       ...(otp.code ? { code: otp.code } : {}),
     };
+  }
+
+  /** Password-only admin sign-in on a device remembered after a code-verified one. */
+  private async completeTrustedAdminLogin(
+    user: User,
+  ): Promise<AdminLoginTrustedResponse> {
+    const now = new Date();
+    const auth = await runSerializableTransaction(this.prisma, async (tx) => {
+      const lifecycleUsers =
+        await lockUserLifecycleRowsForUpdateInTransaction(tx, [user.id]);
+      const currentUser = await this.users.findById(tx, user.id);
+      if (
+        lifecycleUsers[0]?.status !== "ACTIVE" ||
+        !currentUser ||
+        currentUser.role !== UserRole.ADMIN ||
+        currentUser.phone !== user.phone ||
+        currentUser.passwordHash !== user.passwordHash
+      ) {
+        throw authError(
+          HttpStatus.UNAUTHORIZED,
+          AuthErrorCode.INVALID_CREDENTIALS,
+          "Invalid credentials",
+        );
+      }
+      const eligible = await this.users.markAdminMfaLogin(tx, currentUser, now);
+      if (eligible.count !== 1) {
+        throw new UnauthorizedException("Admin access is required");
+      }
+      const updatedUser = await this.users.requireById(tx, user.id);
+      return this.createAuthResponse(updatedUser, true, tx);
+    });
+    return { mfaRequired: false, auth };
   }
 
   async completeAdminLogin(
@@ -487,7 +538,10 @@ export class AuthService implements IdentityAuthPort {
           }
           const updatedUser = await this.users.requireById(tx, challenge.userId);
           return {
-            auth: await this.createAuthResponse(updatedUser, true, tx),
+            auth: {
+              ...(await this.createAuthResponse(updatedUser, true, tx)),
+              adminTrustedDevice: issueAdminTrustedDevice(updatedUser, now),
+            },
           };
         },
       );

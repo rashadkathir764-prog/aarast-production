@@ -57,13 +57,31 @@ type AdminPasswordResetResult = {
 
 type AdminSession = AdminBrowserSession<AdminUser>;
 
-export async function startAdminLogin(phone: string, password: string) {
+/**
+ * Starts admin sign-in. A device remembered after a code-verified sign-in
+ * gets the session straight away ({ user }); otherwise a WhatsApp code
+ * challenge is returned.
+ */
+export async function startAdminLogin(
+  phone: string,
+  password: string,
+): Promise<AdminLoginChallenge | { user: AdminUser }> {
+  let response: AdminLoginChallenge | (AdminSession & { mfaRequired: false });
   try {
-    const response = await apiRequest<AdminLoginChallenge>('/api/v1/auth/admin/login', {
+    response = await apiRequest<
+      AdminLoginChallenge | (AdminSession & { mfaRequired: false })
+    >('/api/v1/auth/admin/login', {
       method: 'POST',
       auth: false,
       body: { phone, password },
     });
+  } catch (error) {
+    throw mapLoginError(error);
+  }
+  if (response.mfaRequired === false) {
+    return { user: acceptAdminSession(response) };
+  }
+  try {
     if (
       response.mfaRequired !== true ||
       !/^[a-f0-9]{64}$/.test(response.challengeToken) ||
@@ -209,7 +227,9 @@ function mapLoginError(error: unknown): Error {
       return new Error('بيانات الدخول غير صحيحة');
     }
     if (error.status === 429) {
-      return new Error('محاولات دخول كثيرة. انتظر قليلًا ثم حاول مرة أخرى.');
+      // The admin route answers 429 for repeated wrong passwords and also
+      // while the one-minute gap between two WhatsApp codes is running.
+      return new Error('انتظر دقيقة ثم حاول مرة أخرى.');
     }
     return new Error('حدث خطأ في الخادم. حاول مرة أخرى بعد قليل.');
   }

@@ -246,7 +246,7 @@ export function LoginPage() {
           ? 'تحقق من الرمز'
           : recoveryStep === 'password'
             ? 'حفظ كلمة المرور'
-            : 'متابعة إلى رمز التحقق';
+            : 'دخول';
 
   return (
     <main className="login-page">

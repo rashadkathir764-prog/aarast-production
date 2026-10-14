@@ -271,7 +271,14 @@ test("all access JWTs are bound to a live revocable server session", () => {
   assert.match(jwtRepository, /expiresAt: \{ gt: new Date\(\) \}/);
 });
 
-test("admin login completion rollback preserves OTP and follows canonical lock order", async () => {
+test("admin login completion rollback preserves OTP and follows canonical lock order", async (t) => {
+  // A completed admin sign-in also signs the remembered-device token.
+  const previousJwtSecret = process.env.JWT_SECRET;
+  process.env.JWT_SECRET = "k3Q9-zv8Lp2X_rT7mW4yN6bH1cJ5dF0g";
+  t.after(() => {
+    if (previousJwtSecret === undefined) delete process.env.JWT_SECRET;
+    else process.env.JWT_SECRET = previousJwtSecret;
+  });
   const now = new Date();
   const challengeToken = createOpaqueTokenValue();
   const admin: any = {

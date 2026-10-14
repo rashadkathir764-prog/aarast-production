@@ -32,6 +32,7 @@ import { CompleteAdminLoginDto } from "./auth-dto/complete-admin-login.dto";
 import { AdminPasswordResetRequestDto } from "./auth-dto/admin-password-reset-request.dto";
 import { AdminPasswordResetConfirmDto } from "./auth-dto/admin-password-reset-confirm.dto";
 import { AdminPasswordResetVerifyDto } from "./auth-dto/admin-password-reset-verify.dto";
+import { ADMIN_TRUSTED_DEVICE_COOKIE } from "../internal/auth/admin-trusted-device";
 
 const ADMIN_REFRESH_COOKIE = "aarast_admin_refresh";
 
@@ -61,8 +62,30 @@ export class AuthController {
   @Post("admin/login")
   @HttpCode(HttpStatus.OK)
   @Throttle({ default: { limit: 10, ttl: 60_000 } })
-  startAdminLogin(@Body() dto: LoginDto, @Req() request: Request) {
-    return this.authService.startAdminLogin(dto, { ip: request.ip });
+  async startAdminLogin(
+    @Body() dto: LoginDto,
+    @Req() request: Request,
+    @Headers("cookie") cookieHeader: string | undefined,
+    @Res({ passthrough: true }) response: Response,
+  ) {
+    const result = await this.authService.startAdminLogin(
+      dto,
+      { ip: request.ip },
+      this.readCookie(cookieHeader, ADMIN_TRUSTED_DEVICE_COOKIE),
+    );
+    if (result.mfaRequired) return result;
+    // A remembered device: the session starts now, no code needed.
+    this.setAdminRefreshCookie(
+      response,
+      result.auth.refreshToken,
+      result.auth.refreshTokenExpiresAt,
+    );
+    return {
+      mfaRequired: false,
+      user: result.auth.user,
+      accessToken: result.auth.accessToken,
+      accessTokenExpiresIn: process.env.JWT_ACCESS_EXPIRES_IN || "15m",
+    };
   }
 
   @Post("admin/login/complete")
@@ -81,6 +104,15 @@ export class AuthController {
       auth.refreshToken,
       auth.refreshTokenExpiresAt,
     );
+    if (auth.adminTrustedDevice) {
+      response.cookie(ADMIN_TRUSTED_DEVICE_COOKIE, auth.adminTrustedDevice.token, {
+        httpOnly: true,
+        secure: isProductionEnvironment(),
+        sameSite: "strict",
+        path: "/api/v1/auth/admin",
+        expires: auth.adminTrustedDevice.expiresAt,
+      });
+    }
     return {
       user: auth.user,
       accessToken: auth.accessToken,

@@ -11,6 +11,7 @@ test('every OTP-producing auth route forwards the trusted request IP', async () 
     },
     startAdminLogin: async (_dto: unknown, context: { ip?: string }) => {
       calls.push({ method: 'admin-login', ip: context.ip });
+      return { mfaRequired: true };
     },
     requestOtp: async (_dto: unknown, context: { ip?: string }) => {
       calls.push({ method: 'otp', ip: context.ip });
@@ -35,6 +36,8 @@ test('every OTP-producing auth route forwards the trusted request IP', async () 
   await controller.startAdminLogin(
     { phone: '777123456', password: 'secret123' },
     request,
+    undefined,
+    {} as any,
   );
   await controller.requestOtp(
     { phone: '777123456', purpose: OtpPurpose.VERIFY_PHONE },

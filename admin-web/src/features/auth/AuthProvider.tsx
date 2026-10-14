@@ -72,8 +72,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setIsLoading(true);
     setError(null);
     try {
-      const nextChallenge = await startAdminLogin(phone, password);
-      setChallenge(nextChallenge);
+      const next = await startAdminLogin(phone, password);
+      if ('user' in next) {
+        // A remembered device: signed in without a code.
+        setChallenge(null);
+        setUser(next.user);
+      } else {
+        setChallenge(next);
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'تعذر تسجيل الدخول.');
       throw err;

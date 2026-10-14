@@ -50,10 +50,41 @@ describe('secure admin browser session', () => {
 
     const challenge = await startAdminLogin('+967700000000', 'secret');
 
-    expect(challenge.challengeToken).toHaveLength(64);
+    expect('challengeToken' in challenge && challenge.challengeToken).toHaveLength(64);
     expect(getAdminAccessToken()).toBeNull();
     expect(fetchMock.mock.calls[0][0]).toContain('/api/v1/auth/admin/login');
     expect(fetchMock.mock.calls[0][1].credentials).toBe('include');
+  });
+
+  it('a remembered device signs in with the password alone', async () => {
+    fetchMock.mockResolvedValueOnce(
+      jsonResponse(200, {
+        mfaRequired: false,
+        user: { id: 'u1', name: 'مشرف', role: 'ADMIN', status: 'ACTIVE' },
+        accessToken: 'remembered-device-token',
+      }),
+    );
+
+    const result = await startAdminLogin('+967700000000', 'secret');
+
+    expect('user' in result && result.user.id).toBe('u1');
+    expect(getAdminAccessToken()).toBe('remembered-device-token');
+    expect(localStorage.length).toBe(0);
+  });
+
+  it('a remembered-device answer for a non-admin is refused', async () => {
+    fetchMock.mockResolvedValueOnce(
+      jsonResponse(200, {
+        mfaRequired: false,
+        user: { id: 'u2', name: 'مستخدم', role: 'USER', status: 'ACTIVE' },
+        accessToken: 'wrong-role-token',
+      }),
+    );
+
+    await expect(startAdminLogin('+967700000000', 'secret')).rejects.toThrow(
+      'ليس لديك صلاحية الدخول إلى لوحة الإدارة',
+    );
+    expect(getAdminAccessToken()).toBeNull();
   });
 
   it('rejects an MFA challenge that omits the delivery outcome', async () => {
@@ -142,7 +173,7 @@ describe('secure admin browser session', () => {
     );
 
     await expect(startAdminLogin('+967700000002', 'secret')).rejects.toThrow(
-      'محاولات دخول كثيرة. انتظر قليلًا ثم حاول مرة أخرى.',
+      'انتظر دقيقة ثم حاول مرة أخرى.',
     );
   });
 

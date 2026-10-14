@@ -19,6 +19,27 @@ docker build -q -t "aarast-public-site:$release" --build-arg "AARAST_GIT_REVISIO
 docker build -q -t "aarast-openwa-link:$release" deploy/aws/openwa-link
 echo "images built for $release"
 
+# Push notifications: the FCM service account lives in SSM as a SecureString.
+# It is written root-made, backend-readable only (uid 1000, mode 0600) and is
+# never printed. Without it the backend starts with push disabled.
+region=$(sed -n 's/^AWS_REGION=//p' "$env_file")
+install -d -m 0755 /opt/aarast/firebase
+key_file=/opt/aarast/firebase/service-account.json
+if aws ssm get-parameter --region "$region" --name /aarast/firebase-service-account \
+     --with-decryption --query Parameter.Value --output text >"$key_file.tmp" 2>/dev/null; then
+  chown 1000:1000 "$key_file.tmp"
+  chmod 0600 "$key_file.tmp"
+  mv -f "$key_file.tmp" "$key_file"
+  export PUSH_NOTIFICATIONS_ENABLED=true
+  FIREBASE_PROJECT_ID=$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["project_id"])' "$key_file")
+  export FIREBASE_PROJECT_ID
+  echo "push notifications enabled for $FIREBASE_PROJECT_ID"
+else
+  rm -f "$key_file.tmp"
+  export PUSH_NOTIFICATIONS_ENABLED=false
+  echo "push notifications disabled (no FCM key in SSM)"
+fi
+
 cd "$tree/deploy/aws"
 export AARAST_RELEASE=$release
 dc() { docker compose --env-file "$env_file" "$@"; }

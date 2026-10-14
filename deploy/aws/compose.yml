@@ -138,7 +138,10 @@ services:
       READINESS_REQUIRE_MEDIA: "true"
       METRICS_TOKEN: ${METRICS_TOKEN:-}
       SENTRY_DSN: ${SENTRY_DSN:-}
-      PUSH_NOTIFICATIONS_ENABLED: "false"
+      # deploy.sh turns push on when the FCM key exists in SSM.
+      PUSH_NOTIFICATIONS_ENABLED: ${PUSH_NOTIFICATIONS_ENABLED:-false}
+      FIREBASE_PROJECT_ID: ${FIREBASE_PROJECT_ID:-}
+      GOOGLE_APPLICATION_CREDENTIALS: /run/aarast-firebase/service-account.json
       # S3 through the host role (instance metadata, hop limit 2): no keys.
       AARAST_MEDIA_ENDPOINT: https://s3.${AWS_REGION:?AWS_REGION is required}.amazonaws.com
       AARAST_MEDIA_SIGNED_ENDPOINT: https://s3.${AWS_REGION}.amazonaws.com
@@ -154,10 +157,12 @@ services:
       OPENWA_OTP_TIMEOUT_MS: 15000
     volumes:
       - openwa_credential:/run/aarast:ro
+      - /opt/aarast/firebase:/run/aarast-firebase:ro
     command:
       - /bin/sh
       - -ec
       - |
+        node scripts/prod/assert-firebase-credentials.cjs
         node scripts/prod/assert-database-identity.cjs
         exec node dist/main.js
     healthcheck:

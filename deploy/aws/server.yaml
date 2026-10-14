@@ -146,6 +146,13 @@ Resources:
                 Effect: Allow
                 Action: s3:ListBucket
                 Resource: !GetAtt OpsBucket.Arn
+              # Deploy-time secrets kept as SecureString parameters under
+              # /aarast/ (the FCM service account); written to a root-owned
+              # file on the host, never into images or the compose env file.
+              - Sid: DeploySecrets
+                Effect: Allow
+                Action: ssm:GetParameter
+                Resource: !Sub arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter/aarast/*
 
   HostInstanceProfile:
     Type: AWS::IAM::InstanceProfile

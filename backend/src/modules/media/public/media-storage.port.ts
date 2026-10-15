@@ -8,7 +8,19 @@ export type MediaPurpose =
   | 'provider-logo'
   | 'provider-cover'
   | 'service-image'
-  | 'chat-image';
+  | 'chat-image'
+  | 'cost-receipt';
+
+/**
+ * Purposes kept off the public CDN: read only through a short-lived signed
+ * URL after the owner's authorization (chat images, and cost receipts,
+ * V1 checklist 4.4).
+ */
+export const PRIVATE_MEDIA_PURPOSES: readonly MediaPurpose[] = ['chat-image', 'cost-receipt'];
+
+export function isPrivateMediaPurpose(purpose: MediaPurpose): boolean {
+  return PRIVATE_MEDIA_PURPOSES.includes(purpose);
+}
 
 export interface MediaConsumptionTarget {
   type:
@@ -17,7 +29,8 @@ export interface MediaConsumptionTarget {
     | 'PROVIDER_LOGO'
     | 'PROVIDER_COVER'
     | 'SERVICE_IMAGE'
-    | 'CHAT_ATTACHMENT';
+    | 'CHAT_ATTACHMENT'
+    | 'COST_RECEIPT';
   id: string;
 }
 
@@ -83,6 +96,14 @@ export interface MediaStoragePort {
    */
   scheduleChatAttachmentDeletion(
     attachmentIds: readonly string[],
+    transaction: Prisma.TransactionClient,
+  ): Promise<void>;
+  /**
+   * The verified tickets consumed by these cost receipts become deletion
+   * jobs, before finance deletes the receipt rows (V1 checklist 4.4).
+   */
+  scheduleCostReceiptDeletion(
+    receiptIds: readonly string[],
     transaction: Prisma.TransactionClient,
   ): Promise<void>;
   checkReadiness(): Promise<void>;

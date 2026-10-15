@@ -419,6 +419,15 @@ export class UsersService {
           attachmentIds,
           tx,
         );
+        // Receipts (V1 checklist 4.4): those of the erased plans, and those
+        // this account uploaded into other plans, go with their files.
+        const receiptIds = await this.finance.listErasedReceiptIdsInTransaction(
+          tx,
+          planIds,
+          userId,
+        );
+        await this.mediaStorage.scheduleCostReceiptDeletion(receiptIds, tx);
+        await this.finance.deleteReceiptsInTransaction(tx, receiptIds);
 
         const notificationIds =
           await this.notificationsErasure.listOwnedNotificationIds(tx, {

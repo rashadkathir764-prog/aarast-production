@@ -31,6 +31,7 @@ import type {
   MediaStoragePort,
   VerifiedMediaUpload,
 } from '../modules/media/public/media-storage.port';
+import { isPrivateMediaPurpose } from '../modules/media/public/media-storage.port';
 
 @Injectable()
 export class MediaStorageService implements MediaStoragePort {
@@ -43,7 +44,7 @@ export class MediaStorageService implements MediaStoragePort {
     dto: CreateMediaUploadDto,
   ) {
     const input = normalizeMediaUpload(dto);
-    const config = this.config(input.purpose !== 'chat-image', true);
+    const config = this.config(!isPrivateMediaPurpose(input.purpose), true);
     const key = `${input.purpose}/${currentUser.id}/${randomUUID()}.${input.extension}`;
     const command = new PutObjectCommand({
       Bucket: config.bucket,
@@ -122,7 +123,7 @@ export class MediaStorageService implements MediaStoragePort {
     );
     let config: ReturnType<MediaStorageService['config']> | null = null;
     try {
-      config = this.config(purpose !== 'chat-image');
+      config = this.config(!isPrivateMediaPurpose(purpose));
       const stored = await this.verifyStoredUpload(
         config,
         currentUser,
@@ -255,6 +256,17 @@ export class MediaStorageService implements MediaStoragePort {
     );
   }
 
+  scheduleCostReceiptDeletion(
+    receiptIds: readonly string[],
+    transaction: Prisma.TransactionClient,
+  ): Promise<void> {
+    return this.tickets.scheduleConsumerDeletion(
+      transaction,
+      'COST_RECEIPT',
+      receiptIds,
+    );
+  }
+
   async deleteScheduledObjects(
     keys: string[],
   ): Promise<{ deleted: number; failed: number }> {
@@ -347,9 +359,10 @@ export class MediaStorageService implements MediaStoragePort {
   ): VerifiedMediaUpload {
     return {
       key: storageKey,
-      attachmentRef: purpose === 'chat-image' ? storageKey : null,
-      publicUrl:
-        purpose === 'chat-image' ? null : `${publicBaseUrl!}/${storageKey}`,
+      attachmentRef: isPrivateMediaPurpose(purpose) ? storageKey : null,
+      publicUrl: isPrivateMediaPurpose(purpose)
+        ? null
+        : `${publicBaseUrl!}/${storageKey}`,
       contentType,
       byteSize,
       verified: true,

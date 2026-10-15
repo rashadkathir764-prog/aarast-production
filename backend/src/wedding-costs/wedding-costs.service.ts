@@ -1,3 +1,4 @@
+import { countCostReceipts } from "../modules/finance/infrastructure/cost-receipts.repository";
 import {
   BadRequestException,
   ConflictException,
@@ -582,6 +583,15 @@ export class WeddingCostsService {
       raiseFinanceViolation(
         costDeletionViolation(paymentsCount, locked.paidAmount),
       );
+      // V1 checklist 4.4: a cost with receipts keeps them until they are
+      // deleted one by one (each file is then scheduled for deletion).
+      if ((await countCostReceipts(tx, id)) > 0) {
+        throw new ConflictException({
+          statusCode: 409,
+          code: "COST_HAS_RECEIPTS",
+          message: "Delete the cost's receipts first",
+        });
+      }
       await this.recordMoneyEvent(tx, context, {
         entityType: ContributionEntityType.WEDDING_COST,
         entityId: locked.id,
@@ -1578,6 +1588,57 @@ export class WeddingCostsService {
       },
       data: { status: PaymentScheduleStatus.CANCELLED, paidAt: null },
     });
+  }
+
+  /**
+   * Whether the reader may see this cost, decided exactly as `getCost`
+   * does; for the cost's receipts (V1 checklist 4.4).
+   */
+  async assertCostVisibleInTransaction(
+    tx: Tx,
+    currentUser: AuthenticatedUser,
+    id: string,
+  ): Promise<void> {
+    const identity = await this.costIdentityOrThrow(id);
+    const access = await this.permissions.assertMoneyReadableInTransaction(
+      tx,
+      identity.weddingPlanId,
+      currentUser,
+    );
+    const scopedCostIds = await this.scopedCostIdsInTransaction(tx, access);
+    if (scopedCostIds && !scopedCostIds.includes(id)) {
+      throw new NotFoundException("Wedding cost not found");
+    }
+    const liveFilter = await this.permissions.liveAuthorizationFilter(
+      tx,
+      access,
+      currentUser.id,
+      ["canViewMoney"],
+    );
+    const cost = await findVisibleWeddingCost(tx, {
+      where: { id, weddingPlanId: identity.weddingPlanId, ...liveFilter },
+      select: { weddingPlanId: true },
+    });
+    if (!cost) throw new NotFoundException("Wedding cost not found");
+  }
+
+  /**
+   * Whether the user may change this cost, decided exactly as `deleteCost`
+   * does, with the cost row locked; for its receipts (V1 checklist 4.4).
+   */
+  async assertCostManageableInTransaction(
+    tx: Tx,
+    currentUser: AuthenticatedUser,
+    id: string,
+  ): Promise<void> {
+    const current = await this.costOrThrow(id);
+    const context = await this.permissions.assertMoneyManageableInTransaction(
+      tx,
+      current.weddingPlanId,
+      currentUser,
+    );
+    await this.assertScopedCostInTransaction(tx, context, id);
+    await this.lockCost(tx, id);
   }
 
   private async scopedCostIdsInTransaction(

@@ -12,6 +12,8 @@ import '../../../core/widgets/aarast_toast.dart';
 import '../../../core/widgets/aarast_ui.dart';
 import '../models/wedding_cost.dart';
 import '../providers/finance_provider.dart';
+import '../data/finance_local_data_source.dart';
+import '../widgets/cost_receipts_section.dart';
 import '../widgets/money_widgets.dart';
 
 class CostDetailsScreen extends StatefulWidget {
@@ -241,6 +243,18 @@ class _CostDetailsScreenState extends State<CostDetailsScreen> {
                   ),
                   const SizedBox(height: 10),
                 ],
+              // V1 checklist 4.4: receipts live on the server (an account's
+              // plan), never in a guest's local plan.
+              if (!FinanceLocalDataSource.isLocalGuestPlanId(
+                widget.weddingPlanId,
+              )) ...[
+                const SizedBox(height: 18),
+                CostReceiptsSection(
+                  key: ValueKey('cost-receipts-${cost.id}'),
+                  costId: cost.id,
+                  canManage: provider.canManageMoney,
+                ),
+              ],
             ],
           ],
         ),

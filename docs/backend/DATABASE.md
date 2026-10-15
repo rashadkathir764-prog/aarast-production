@@ -51,6 +51,7 @@ history, or product behavior.
 | WeddingCost | The only cost backbone. Every cost belongs to a WeddingPlan and exactly one BudgetCategory, has a positive total, and may reference either an Aarast provider/accepted quote context or an external party. Paid and outstanding values come from its payment ledger. It has no due-date field; payment timing belongs only to `PaymentSchedule.dueDate`. |
 | CostPayment | An append-only money-out ledger under one WeddingCost. `PAYMENT` and `REVERSAL` are immutable rows; the original payment remains, one payment may have at most one reversal, and category/provider context is inherited through the cost instead of duplicated client input. This is planning data, not payment processing. |
 | PaymentSchedule | A dated, non-reserving reminder under one WeddingCost. `dueDate` is required and is the only payment-reminder date. A pending schedule never changes totals, reserves outstanding balance, or blocks a direct payment. Each schedule is independently capped by the row-locked outstanding cost on create/update. Paying creates one linked CostPayment; reversing it reopens that schedule, while fully paying the cost cancels all other pending reminders. |
+| CostReceipt | A receipt photo kept with a WeddingCost, optionally naming one of its CostPayments (same-cost composite FK). `storageKey` names private media read only through short-lived signed URLs. `uploadedByUserId` is a plain id (no FK to User): account erasure deletes the account's receipts explicitly. A cost with receipts cannot be deleted (Restrict). |
 | Task | Implemented as `WeddingTask` for WeddingPlan planning work, including title, optional description/due date, status, priority, checklist support, and two exclusive responsibility modes: a registered participant through `assigneeUserId`, or a manual/contact responsible through optional `responsibleName`, `responsiblePhone`, and `responsibleSource`. A database CHECK prevents both modes from being stored together. |
 | WeddingTaskChecklistItem | Implemented for task checklist rows tied to a WeddingTask. |
 | SharedMember | Implemented for permission-based WeddingPlan collaboration. Its stored booleans are the final non-owner authority; role defaults seed invitations only and never act as a runtime fallback. Direct member creation stores omitted authorization flags as `false`. `canViewMoney` controls money reads, `canManageMoney` controls money writes, and task, guest, provider, plan-edit, and member-management permissions remain separate. `authorityVersion` advances when role or authorization flags change and is captured with history events. |
@@ -446,8 +447,9 @@ rewrite as permission to restore a removed live model.
 | `OtpDispatchQuota` | 5 | `windowStartedAt`, `updatedAt` |
 | `WeddingPlan` | 31 | `id`, `ownerUserId`, `onboardingCompletedAt`, `importMigrationId`, `createdAt`, `updatedAt` |
 | `BudgetCategory` | 9 | `id`, `weddingPlanId`, `createdAt`, `updatedAt` |
-| `WeddingCost` | 23 | `id`, `weddingPlanId`, `budgetCategoryId`, `providerId`, `quoteOfferId`, `createdAt`, `updatedAt` |
-| `CostPayment` | 14 | `id`, `weddingCostId`, `paidAt`, `paymentScheduleId`, `reversalOfId`, `createdAt` |
+| `WeddingCost` | 24 | `id`, `weddingPlanId`, `budgetCategoryId`, `providerId`, `quoteOfferId`, `createdAt`, `updatedAt` |
+| `CostPayment` | 15 | `id`, `weddingCostId`, `paidAt`, `paymentScheduleId`, `reversalOfId`, `createdAt` |
+| `CostReceipt` | 10 | `id`, `weddingCostId`, `costPaymentId`, `uploadedByUserId`, `createdAt` |
 | `PaymentSchedule` | 11 | `id`, `weddingCostId`, `paidAt`, `createdAt`, `updatedAt` |
 | `FundingSource` | 13 | `id`, `weddingPlanId`, `receivedAt`, `createdAt`, `updatedAt` |
 | `LoanRepayment` | 10 | `id`, `fundingSourceId`, `paidAt`, `createdAt`, `updatedAt` |
@@ -492,5 +494,5 @@ rewrite as permission to restore a removed live model.
 | `ChatAttachment` | 7 | `id`, `messageId`, `createdAt` |
 | `ConversationReport` | 9 | `id`, `conversationId`, `reporterUserId`, `createdAt`, `updatedAt` |
 
-Total models: 57
+Total models: 58
 <!-- DOCS-SYNC:END -->

@@ -1077,6 +1077,28 @@ Reversal creates one immutable `REVERSAL` row and retains the original payment.
 Retries and concurrent submissions return the same single reversal rather than
 duplicating it. There is no payment DELETE route.
 
+## Cost Receipts
+
+Receipt photos kept with a cost or one of its payments (V1 checklist 4.4):
+
+- The app uploads the photo with media purpose `cost-receipt` (`POST
+  /api/v1/media/uploads/presign`, then `verify`). It is private media like
+  chat images: `verify` returns an `attachmentRef` and never a public URL.
+- `POST /api/v1/costs/:costId/receipts` `{ attachmentRef, costPaymentId? }`
+  keeps it with the cost (who may change the cost may add; the payment, when
+  named, must belong to the cost). At most 10 per cost
+  (`409 COST_RECEIPT_LIMIT`). An upload is attached once.
+- `GET /api/v1/costs/:costId/receipts` lists them, newest first, for whoever
+  may see the cost (the same decision as `GET /api/v1/costs/:id`, including a
+  contributor's cost scope). Each item carries `downloadUrl`, a signed URL
+  valid for 120 seconds (`Cache-Control: private, no-store`) and
+  `downloadExpiresAt`.
+- `DELETE /api/v1/costs/:costId/receipts/:receiptId` deletes the row and
+  schedules the file's deletion.
+- `DELETE /api/v1/costs/:id` is `409 COST_HAS_RECEIPTS` while the cost keeps
+  receipts. Account deletion removes the receipts of the erased plans and
+  those the account uploaded into other plans, with their files.
+
 ## Payment Schedules
 
 A `PaymentSchedule` is a non-reserving reminder under one cost, not a separate
@@ -2639,6 +2661,9 @@ configuration, and smoke checks.
 | GET | `/api/v1/conversations/:id/timeline` | `conversations.timeline` | 🔒 |
 | GET | `/api/v1/cost-payments/:id` | `wedding-costs.get` | 🔒 |
 | POST | `/api/v1/cost-payments/:id/reverse` | `wedding-costs.reverse` | 🔒 |
+| GET | `/api/v1/costs/:costId/receipts` | `cost-receipts.list` | 🔒 |
+| POST | `/api/v1/costs/:costId/receipts` | `cost-receipts.add` | 🔒 |
+| DELETE | `/api/v1/costs/:costId/receipts/:receiptId` | `cost-receipts.remove` | 🔒 |
 | DELETE | `/api/v1/costs/:id` | `wedding-costs.remove` | 🔒 |
 | GET | `/api/v1/costs/:id` | `wedding-costs.get` | 🔒 |
 | PATCH | `/api/v1/costs/:id` | `wedding-costs.update` | 🔒 |

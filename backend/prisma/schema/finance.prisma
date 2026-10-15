@@ -86,6 +86,7 @@ model WeddingCost {
   quoteOffer       QuoteOffer?       @relation(fields: [quoteOfferId], references: [id], onDelete: SetNull)
   payments         CostPayment[]
   paymentSchedules PaymentSchedule[]
+  receipts         CostReceipt[]
 
   @@index([weddingPlanId, status])
   @@index([budgetCategoryId])
@@ -107,11 +108,32 @@ model CostPayment {
   paymentSchedule   PaymentSchedule? @relation(fields: [paymentScheduleId, weddingCostId], references: [id, weddingCostId], onDelete: Restrict, map: "CostPayment_schedule_same_cost_fkey")
   reversalOf        CostPayment?     @relation("CostPaymentReversal", fields: [reversalOfId, weddingCostId], references: [id, weddingCostId], onDelete: Restrict, map: "CostPayment_reversal_same_cost_fkey")
   reversedBy        CostPayment?     @relation("CostPaymentReversal")
+  receipts          CostReceipt[]
 
   @@unique([id, weddingCostId])
   @@unique([reversalOfId, weddingCostId])
   @@index([weddingCostId, paidAt])
   @@index([paymentScheduleId])
+}
+
+/// A photo of a receipt kept with a cost, or with one of its payments (V1
+/// checklist 4.4). The file is private media read through a short-lived
+/// signed URL; who may see it follows the cost's money visibility.
+model CostReceipt {
+  id               String       @id @default(cuid())
+  weddingCostId    String
+  costPaymentId    String?
+  storageKey       String       @unique
+  contentType      String
+  byteSize         Int
+  uploadedByUserId String?
+  createdAt        DateTime     @default(now())
+  weddingCost      WeddingCost  @relation(fields: [weddingCostId], references: [id], onDelete: Restrict)
+  costPayment      CostPayment? @relation(fields: [costPaymentId, weddingCostId], references: [id, weddingCostId], onDelete: Restrict, map: "CostReceipt_payment_same_cost_fkey")
+
+  @@index([weddingCostId, createdAt])
+  @@index([costPaymentId])
+  @@index([uploadedByUserId])
 }
 
 model PaymentSchedule {

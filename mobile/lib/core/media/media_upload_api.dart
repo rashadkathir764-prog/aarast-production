@@ -33,6 +33,9 @@ class MediaUploadTicket {
   final int byteSize;
 }
 
+/// Uploads kept off the public CDN (V1 checklist 4.4 adds cost receipts).
+const privateMediaPurposes = {'chat-image', 'cost-receipt'};
+
 class MediaUploadApi {
   const MediaUploadApi(this._apiClient);
 
@@ -75,7 +78,9 @@ class MediaUploadApi {
         ...ticketJson,
         ...verifiedJson,
       });
-      final hasVerifiedReference = purpose == 'chat-image'
+      // Private purposes (chat images, cost receipts) return a reference
+      // read through signed URLs, never a public URL.
+      final hasVerifiedReference = privateMediaPurposes.contains(purpose)
           ? verifiedTicket.attachmentRef.isNotEmpty
           : verifiedTicket.publicUrl.isNotEmpty;
       if (!hasVerifiedReference) {

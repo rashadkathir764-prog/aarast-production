@@ -132,6 +132,20 @@ export interface FinancePort {
     tx: Prisma.TransactionClient,
     weddingPlanIds: readonly string[],
   ): Promise<void>;
+  /**
+   * Account erasure (V1 checklist 4.4): the receipts of the plans' costs and
+   * the receipts the account uploaded in any plan, so their files can be
+   * scheduled for deletion before the rows go.
+   */
+  listErasedReceiptIdsInTransaction(
+    tx: Prisma.TransactionClient,
+    weddingPlanIds: readonly string[],
+    userId: string,
+  ): Promise<string[]>;
+  deleteReceiptsInTransaction(
+    tx: Prisma.TransactionClient,
+    receiptIds: readonly string[],
+  ): Promise<void>;
   /** Account erasure: the one explicit ledger purge — payments, schedules, costs, then funding sources (and their loan repayments) of the plans. */
   purgePlanLedgerInTransaction(
     tx: Prisma.TransactionClient,

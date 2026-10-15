@@ -225,6 +225,17 @@ function recordingTx(
     },
   };
   for (const child of PLAN_CHILDREN) tx[child] = del(child);
+  // V1 checklist 4.4: the erased plans' costs are read to find their
+  // receipts, which go (with their files scheduled) before the ledger.
+  tx.weddingCost.findMany = async () =>
+    planIds.map((id) => ({ id: `cost-${id}` }));
+  tx.costReceipt = {
+    findMany: async () => [],
+    deleteMany: async () => {
+      calls.push("costReceipt");
+      return { count: 0 };
+    },
+  };
   tx.weddingTask.updateMany = async () => {
     calls.push("weddingTask.unassign");
     return { count: 1 };

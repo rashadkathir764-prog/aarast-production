@@ -15,6 +15,11 @@ import {
 } from '../domain/cost-category-matching';
 import { deriveCostStatus } from '../domain/wedding-cost-aggregate';
 import { deletePlanFundingSources } from './funding-sources.repository';
+import {
+  deleteReceipts,
+  listPlanReceiptIds,
+  listReceiptIdsUploadedBy,
+} from './cost-receipts.repository';
 import type {
   CostAmounts,
   CreateCostFromAcceptedOfferInput,
@@ -35,6 +40,25 @@ import {
 
 @Injectable()
 export class FinancePortService implements FinancePort {
+  async listErasedReceiptIdsInTransaction(
+    tx: Prisma.TransactionClient,
+    weddingPlanIds: readonly string[],
+    userId: string,
+  ): Promise<string[]> {
+    const [inPlans, uploaded] = await Promise.all([
+      listPlanReceiptIds(tx, weddingPlanIds),
+      listReceiptIdsUploadedBy(tx, userId),
+    ]);
+    return [...new Set([...inPlans, ...uploaded])].sort();
+  }
+
+  async deleteReceiptsInTransaction(
+    tx: Prisma.TransactionClient,
+    receiptIds: readonly string[],
+  ): Promise<void> {
+    await deleteReceipts(tx, receiptIds);
+  }
+
   async countRecordedCosts(client: Prisma.TransactionClient): Promise<RecordedCostCounts> {
     const [costs, plans] = await Promise.all([
       client.weddingCost.count(),

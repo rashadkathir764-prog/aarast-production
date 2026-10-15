@@ -80,11 +80,14 @@ import { MediaUploadTicketService } from '../../src/modules/media/infrastructure
 
 const realMediaStorage = new MediaStorageService(new MediaUploadTicketService({} as any));
 
-/** A media storage fake completed with the chat-attachment deletion step the saga calls. */
+/** A media storage fake completed with the chat-attachment and receipt deletion steps the saga calls. */
 export function mediaStorageWithOwners<T extends object>(fake: T) {
   return {
     scheduleChatAttachmentDeletion: (attachmentIds: readonly string[], transaction: unknown) =>
       realMediaStorage.scheduleChatAttachmentDeletion(attachmentIds, transaction as any),
+    // V1 checklist 4.4: the erased plans' receipt files.
+    scheduleCostReceiptDeletion: (receiptIds: readonly string[], transaction: unknown) =>
+      realMediaStorage.scheduleCostReceiptDeletion(receiptIds, transaction as any),
     ...fake,
   };
 }

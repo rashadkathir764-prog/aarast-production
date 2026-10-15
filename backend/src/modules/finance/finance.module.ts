@@ -17,6 +17,7 @@ import {
   WeddingPlanCostsController,
   WeddingPlanPaymentSchedulesController,
 } from "../../wedding-costs/wedding-costs.controller";
+import { CostReceiptsController } from "../../wedding-costs/cost-receipts.controller";
 import { FinanceServicesInternalModule } from "./internal/finance-services.internal.module";
 import { FinancePublicModule } from "./public/finance-public.module";
 
@@ -28,6 +29,7 @@ import { FinancePublicModule } from "./public/finance-public.module";
     BudgetCategoriesController,
     WeddingPlanCostsController,
     CostsController,
+    CostReceiptsController,
     WeddingPlanCostPaymentsController,
     CostPaymentsController,
     WeddingPlanPaymentSchedulesController,

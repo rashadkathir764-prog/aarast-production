@@ -264,11 +264,20 @@ export class MediaUploadTicketService {
     transaction: Prisma.TransactionClient,
     attachmentIds: readonly string[],
   ): Promise<void> {
-    if (attachmentIds.length === 0) return;
+    return this.scheduleConsumerDeletion(transaction, 'CHAT_ATTACHMENT', attachmentIds);
+  }
+
+  /** The verified tickets these consumers hold become deletion jobs. */
+  async scheduleConsumerDeletion(
+    transaction: Prisma.TransactionClient,
+    consumedByType: 'CHAT_ATTACHMENT' | 'COST_RECEIPT',
+    consumerIds: readonly string[],
+  ): Promise<void> {
+    if (consumerIds.length === 0) return;
     await transaction.mediaUploadTicket.updateMany({
       where: {
-        consumedByType: 'CHAT_ATTACHMENT',
-        consumedById: { in: [...attachmentIds] },
+        consumedByType,
+        consumedById: { in: [...consumerIds] },
         status: MediaUploadStatus.VERIFIED,
       },
       data: { status: MediaUploadStatus.DELETE_PENDING },

@@ -64,6 +64,14 @@ import { AdminProviderQueryDto } from './dto/admin-provider-query.dto';
 import { AdminReportQueryDto } from './dto/admin-report.dto';
 import { AdminReviewQueryDto, AdminReviewStatusDto } from './dto/admin-review.dto';
 import { AdminReviewActionDto } from './dto/admin-review-action.dto';
+import {
+  ACTIVE_USERS_WINDOW_DAYS,
+  CONVERSION_WINDOW_DAYS,
+  average,
+  daysAgo,
+  groupPrices,
+  percent,
+} from './admin-success-report';
 import { AdminListedProviderDto } from './dto/admin-listed-provider.dto';
 import { AdminServiceDto, AdminServiceQueryDto } from './dto/admin-service.dto';
 import { AdminConversationReportQueryDto, AdminConversationReportStatusDto } from './dto/admin-conversation-report.dto';
@@ -344,6 +352,63 @@ export class AdminService {
 
   async deleteNotification(currentUser: AuthenticatedUser, id: string) {
     return this.mutations.deleteNotification(currentUser, id);
+  }
+
+  /**
+   * The success indicators and the market price report (V1 checklist
+   * 4.21): weekly active accounts, costs recorded per plan, quote requests
+   * that became confirmed bookings, providers customers can see, and price
+   * ranges by city and category (only groups priced by several providers).
+   */
+  async getSuccessReport() {
+    const now = new Date();
+    const [activeAccounts, totalAccounts, costs, marketplace, priced] =
+      await this.prisma.$transaction(async (tx) =>
+        Promise.all([
+          this.owners.accounts.countActiveAccountsSince(
+            tx,
+            daysAgo(now, ACTIVE_USERS_WINDOW_DAYS),
+          ),
+          this.owners.accounts.countAccounts(tx),
+          this.owners.finance.countRecordedCosts(tx),
+          this.owners.marketplace.getSuccessCounts(
+            tx,
+            daysAgo(now, CONVERSION_WINDOW_DAYS),
+          ),
+          this.owners.marketplace.listPricedServices(tx),
+        ]),
+      );
+    const groups = groupPrices(priced);
+    const { cities, categories } = await this.owners.catalogNames(
+      this.prisma,
+      groups.map((group) => group.cityId),
+      groups.map((group) => group.categoryId),
+    );
+    return {
+      generatedAt: now,
+      activeUsers: {
+        windowDays: ACTIVE_USERS_WINDOW_DAYS,
+        active: activeAccounts,
+        total: totalAccounts,
+      },
+      costs: {
+        recorded: costs.costs,
+        plansWithCosts: costs.plans,
+        perPlan: average(costs.costs, costs.plans),
+      },
+      conversion: {
+        windowDays: CONVERSION_WINDOW_DAYS,
+        quoteRequests: marketplace.quoteRequests,
+        confirmedBookings: marketplace.confirmedBookings,
+        rate: percent(marketplace.confirmedBookings, marketplace.quoteRequests),
+      },
+      visibleProviders: marketplace.visibleProviders,
+      prices: groups.map((group) => ({
+        ...group,
+        cityName: cities.get(group.cityId) ?? null,
+        categoryName: categories.get(group.categoryId) ?? null,
+      })),
+    };
   }
 
   async getReportsOverview(query: AdminReportQueryDto) {

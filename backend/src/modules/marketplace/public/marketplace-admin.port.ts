@@ -161,6 +161,26 @@ export interface AdminMarketplaceReport {
   quotes: Array<{ status: QuoteRequestStatus; count: number }>;
 }
 
+/** The marketplace's part of the success indicators (V1 checklist 4.21). */
+export interface AdminMarketplaceSuccessCounts {
+  /** Quote requests created since the window start. */
+  quoteRequests: number;
+  /** Bookings created since the window start that are confirmed (or done). */
+  confirmedBookings: number;
+  /** Active providers with at least one active service: the ones customers see. */
+  visibleProviders: number;
+}
+
+/** One priced, active service of an active provider, for the price report. */
+export interface AdminPricedService {
+  providerId: string;
+  /** The service's own city, or the provider's. */
+  cityId: string;
+  categoryId: string;
+  currency: string;
+  basePrice: Prisma.Decimal;
+}
+
 /** How many providers and services reference a catalog entry. */
 export interface CatalogUsage {
   id: string;
@@ -282,6 +302,11 @@ export interface MarketplaceAdminPort {
     reviewId: string,
     status: ReviewStatus,
   ): Promise<AdminReviewRow>;
+  getSuccessCounts(
+    client: Prisma.TransactionClient,
+    since: Date,
+  ): Promise<AdminMarketplaceSuccessCounts>;
+  listPricedServices(client: Prisma.TransactionClient): Promise<AdminPricedService[]>;
   countCategoryUsage(
     client: Prisma.TransactionClient,
     categoryIds: readonly string[],

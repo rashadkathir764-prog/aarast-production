@@ -44,6 +44,13 @@ export class AdminController {
     return this.adminService.getDashboardStats();
   }
 
+  // V1 checklist 4.21: success indicators and the market price report.
+  @Get('reports/success')
+  @RequireAdminPermission(AdminPermission.REPORTS_READ)
+  getSuccessReport() {
+    return this.adminService.getSuccessReport();
+  }
+
   @Get('reports/overview')
   @RequireAdminPermission(AdminPermission.REPORTS_READ)
   getReportsOverview(@Query() query: AdminReportQueryDto) {

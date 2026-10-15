@@ -8,6 +8,7 @@ import { PageHeader } from '../../design_system/PageHeader';
 import { SectionCard } from '../../design_system/SectionCard';
 import { StatCard } from '../../design_system/StatCard';
 import { StatusBadge } from '../../design_system/StatusBadge';
+import { SuccessReportSection } from './SuccessReportSection';
 
 export function ReportsPage() {
   const [report, setReport] = useState<AdminReport | null>(null);
@@ -80,6 +81,8 @@ export function ReportsPage() {
           </>
         }
       />
+
+      <SuccessReportSection />
 
       <div className="stats-grid">
         <StatCard title="المستخدمون" value={report.users.total} tone="gold" />

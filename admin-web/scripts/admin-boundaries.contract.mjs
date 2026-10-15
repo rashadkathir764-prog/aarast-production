@@ -582,7 +582,14 @@ test('requires strict old-root absence', () => {
 
 test('requires the exact Task 4 owner public surfaces', () => {
   const task4PublicSurfaces = {
-    dashboard: ['AdminReport', 'AdminStats', 'getReportOverview', 'getStats'],
+    dashboard: [
+      'AdminReport',
+      'AdminStats',
+      'AdminSuccessReport',
+      'getReportOverview',
+      'getStats',
+      'getSuccessReport',
+    ],
     users: [
       'AdminUserRecord',
       'UserProviderSummary',

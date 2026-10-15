@@ -3,6 +3,8 @@ import { Prisma, type Provider, ProviderStatus, ReviewStatus } from '@prisma/cli
 import type {
   AdminListedProviderFields,
   AdminListing,
+  AdminMarketplaceSuccessCounts,
+  AdminPricedService,
   AdminMarketplaceCounters,
   AdminMarketplaceReport,
   AdminPage,
@@ -93,6 +95,17 @@ export class MarketplaceAdminService implements MarketplaceAdminPort {
       providerId,
       verification,
     );
+  }
+
+  async getSuccessCounts(
+    client: Prisma.TransactionClient,
+    since: Date,
+  ): Promise<AdminMarketplaceSuccessCounts> {
+    return this.repository.getSuccessCounts(client, since);
+  }
+
+  async listPricedServices(client: Prisma.TransactionClient): Promise<AdminPricedService[]> {
+    return this.repository.listPricedServices(client);
   }
 
   async hasProviderWithPhone(

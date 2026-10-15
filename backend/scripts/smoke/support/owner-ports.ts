@@ -208,6 +208,7 @@ export function adminService(
       new NotificationsAdminService(),
       ownerPorts.plans,
       new PermissionService(prisma as any, ownerPorts.plans),
+      ownerPorts.finance,
     ),
   );
 }

@@ -99,8 +99,15 @@ export interface CreateCostFromAcceptedOfferInput {
 // through this seam inside the caller's serializable transaction: finance
 // matches the budget category (its own policy, `أخرى` fallback included) and
 // creates the cost; the caller never touches the finance tables.
+export interface RecordedCostCounts {
+  costs: number;
+  plans: number;
+}
+
 export interface FinancePort {
   /** Creates the plan's initial budget categories (names normalized as finance normalizes them) and returns the plan's categories, oldest first. */
+  /** Every recorded cost, and how many plans have one (V1 checklist 4.21 back-office indicators). */
+  countRecordedCosts(client: Prisma.TransactionClient): Promise<RecordedCostCounts>;
   createBudgetCategoriesInTransaction(
     tx: Prisma.TransactionClient,
     weddingPlanId: string,

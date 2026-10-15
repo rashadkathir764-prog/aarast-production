@@ -18,6 +18,10 @@ import {
   type CollaborationPermissionPort,
 } from '../modules/collaboration/public/collaboration-permission.port';
 import {
+  FINANCE_PORT,
+  type FinancePort,
+} from '../modules/finance/public/finance.port';
+import {
   type AdminAccountRow,
   IDENTITY_ADMIN_PORT,
   type IdentityAdminPort,
@@ -115,6 +119,8 @@ export class AdminOwners {
     @Inject(PLAN_READ_PORT) readonly plans: PlanReadPort,
     @Inject(COLLABORATION_PERMISSION_PORT)
     readonly collaboration: CollaborationPermissionPort,
+    // The success indicators count recorded costs (V1 checklist 4.21).
+    @Inject(FINANCE_PORT) readonly finance: FinancePort,
   ) {}
 
   async attachProviders(
@@ -369,6 +375,24 @@ export class AdminOwners {
   ): Promise<Map<string, SafeAdminUser>> {
     const accounts = await this.accounts.getAccounts(client, unique(ids));
     return new Map(accounts.map((account) => [account.id, account]));
+  }
+
+  /** The Arabic names of these cities and categories, for a report. */
+  async catalogNames(
+    client: Client,
+    cityIds: readonly string[],
+    categoryIds: readonly string[],
+  ): Promise<{ cities: Map<string, string>; categories: Map<string, string> }> {
+    const [cities, categories] = await Promise.all([
+      this.cityMap(client, cityIds),
+      this.categoryMap(client, categoryIds),
+    ]);
+    return {
+      cities: new Map([...cities].map(([id, city]) => [id, city.nameAr])),
+      categories: new Map(
+        [...categories].map(([id, category]) => [id, category.nameAr]),
+      ),
+    };
   }
 
   private async cityMap(

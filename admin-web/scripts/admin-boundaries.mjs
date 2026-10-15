@@ -20,7 +20,8 @@ const EXACT = Object.freeze({
   publicSurfaceFirstTask: '8c16474435f8c71a05735b8d25810f6acd1d558c73dd55cd5bf5eaa5e97a0e2a',
   // Re-pinned 2026-10-11: providers gained setProviderVerified (V1 checklist 4.11).
   // Re-pinned 2026-10-15: providers gained createListedProvider (V1 checklist 4.18).
-  publicSurfaces: '506b9d4385a8eb177b0f72020e449e0b05094cc5e4df8944dc07a3d665717c97',
+  // Re-pinned 2026-10-15: dashboard gained getSuccessReport (V1 checklist 4.21).
+  publicSurfaces: 'b6fa5ecc3da849c89058ea3f6bb5de677827bc2b192f4ff1394511586685ae1f',
   sourceFates: '2b0bc1b903a3a861b0400d398fd091a4078d9e4d2bde4a3b06166f9b764699b5',
   createdTargets: '3d658daecf9de9a7040443a75c630a8ba732b2627c5ea929fb741205fe0019a1',
   stages: 'd799c92b42714969d4570dd925a34912ea05ec6b4b4107c4ef0fbb3c93e09ab6',

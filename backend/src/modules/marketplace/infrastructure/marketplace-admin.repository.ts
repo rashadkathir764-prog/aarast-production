@@ -1,4 +1,5 @@
 import {
+  BookingStatus,
   Prisma,
   type Provider,
   ProviderStatus,
@@ -8,6 +9,8 @@ import {
 import type {
   AdminListedProviderFields,
   AdminListing,
+  AdminMarketplaceSuccessCounts,
+  AdminPricedService,
   AdminMarketplaceCounters,
   AdminMarketplaceReport,
   AdminPage,
@@ -295,6 +298,47 @@ export class MarketplaceAdminRepository implements MarketplaceAdminPort {
       },
       include: providerDetailInclude,
     });
+  }
+
+  async getSuccessCounts(
+    client: Prisma.TransactionClient,
+    since: Date,
+  ): Promise<AdminMarketplaceSuccessCounts> {
+    const [quoteRequests, confirmedBookings, visibleProviders] = await Promise.all([
+      client.quoteRequest.count({ where: { createdAt: { gte: since } } }),
+      client.booking.count({
+        where: { createdAt: { gte: since }, status: BookingStatus.CONFIRMED },
+      }),
+      client.provider.count({
+        where: { status: ProviderStatus.ACTIVE, services: { some: { isActive: true } } },
+      }),
+    ]);
+    return { quoteRequests, confirmedBookings, visibleProviders };
+  }
+
+  async listPricedServices(client: Prisma.TransactionClient): Promise<AdminPricedService[]> {
+    const services = await client.providerService.findMany({
+      where: { isActive: true, basePrice: { not: null } },
+      select: {
+        providerId: true,
+        cityId: true,
+        categoryId: true,
+        currency: true,
+        basePrice: true,
+        provider: { select: { status: true, cityId: true } },
+      },
+    });
+    return services.flatMap((service) =>
+      service.provider.status === ProviderStatus.ACTIVE && service.basePrice
+        ? [{
+            providerId: service.providerId,
+            cityId: service.cityId ?? service.provider.cityId,
+            categoryId: service.categoryId,
+            currency: service.currency,
+            basePrice: service.basePrice,
+          }]
+        : [],
+    );
   }
 
   async hasProviderWithPhone(

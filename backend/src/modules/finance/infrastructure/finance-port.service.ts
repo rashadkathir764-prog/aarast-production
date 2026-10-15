@@ -26,6 +26,7 @@ import type {
   ImportedCostInput,
   PendingPaymentSchedule,
   PlanImportCounts,
+  RecordedCostCounts,
 } from '../public/finance.port';
 import {
   weddingCostResponseInclude,
@@ -34,6 +35,14 @@ import {
 
 @Injectable()
 export class FinancePortService implements FinancePort {
+  async countRecordedCosts(client: Prisma.TransactionClient): Promise<RecordedCostCounts> {
+    const [costs, plans] = await Promise.all([
+      client.weddingCost.count(),
+      client.weddingCost.groupBy({ by: ['weddingPlanId'] }),
+    ]);
+    return { costs, plans: plans.length };
+  }
+
   async createBudgetCategoriesInTransaction(
     tx: Prisma.TransactionClient,
     weddingPlanId: string,

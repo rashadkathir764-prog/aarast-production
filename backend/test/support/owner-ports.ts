@@ -461,6 +461,7 @@ export const adminOwners = new AdminOwners(
   new NotificationsAdminService(),
   ownerPorts.plans,
   realPermissions,
+  ownerPorts.finance,
 );
 
 export function adminService(

@@ -2377,6 +2377,16 @@ returns the admin refresh token.
 
 - `GET /admin/dashboard/stats`
 - `GET /admin/reports/overview`
+- `GET /admin/reports/success` (`REPORTS_READ`, V1 checklist 4.21): `activeUsers`
+  `{ windowDays: 7, active, total }` (accounts that signed in or renewed an
+  application session in the window), `costs { recorded, plansWithCosts,
+  perPlan }`, `conversion { windowDays: 30, quoteRequests, confirmedBookings,
+  rate }` (bookings created in the window that are confirmed, over quote
+  requests created in it; `rate` a whole percent or `null`),
+  `visibleProviders` (active with an active service), and `prices`: per city,
+  category and currency `{ cityName, categoryName, providers, services, min,
+  median, max }` from active services of active providers, only for groups
+  priced by at least 3 different providers so no provider's own price shows.
 - `GET /admin/providers/applications`
 - `GET /admin/providers/applications/:id`
 - `POST /admin/providers` (a listing without an account, see Provider References)
@@ -2579,6 +2589,7 @@ configuration, and smoke checks.
 | PATCH | `/admin/reference-catalogs/:catalogKey/items/:id` | `catalogs.updateItem` | 🔒 |
 | POST | `/admin/reference-catalogs/:catalogKey/items/:id/publish` | `catalogs.publishItem` | 🔒 |
 | GET | `/admin/reports/overview` | `admin.getReportsOverview` | 🔒 |
+| GET | `/admin/reports/success` | `admin.getSuccessReport` | 🔒 |
 | GET | `/admin/reviews` | `admin.listReviews` | 🔒 |
 | DELETE | `/admin/reviews/:id` | `admin.hideReview` | 🔒 |
 | PATCH | `/admin/reviews/:id/status` | `admin.updateReviewStatus` | 🔒 |

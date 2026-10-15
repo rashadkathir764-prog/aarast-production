@@ -59,3 +59,33 @@ export function getReportOverview(
 ): Promise<AdminReport> {
   return apiRequest<AdminReport>(`/admin/reports/overview${toQuery(params ?? {})}`);
 }
+
+/** Success indicators and the market price report (V1 checklist 4.21). */
+export type AdminSuccessReport = {
+  generatedAt: string;
+  activeUsers: { windowDays: number; active: number; total: number };
+  costs: { recorded: number; plansWithCosts: number; perPlan: number | null };
+  conversion: {
+    windowDays: number;
+    quoteRequests: number;
+    confirmedBookings: number;
+    rate: number | null;
+  };
+  visibleProviders: number;
+  prices: Array<{
+    cityId: string;
+    categoryId: string;
+    cityName: string | null;
+    categoryName: string | null;
+    currency: string;
+    providers: number;
+    services: number;
+    min: string;
+    median: string;
+    max: string;
+  }>;
+};
+
+export function getSuccessReport(): Promise<AdminSuccessReport> {
+  return apiRequest<AdminSuccessReport>('/admin/reports/success');
+}

@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import {
   AdminRole,
+  AuthSessionScope,
   Prisma,
   UserRole,
   UserStatus,
@@ -153,6 +154,19 @@ export class IdentityAdminService implements IdentityAdminPort {
 
   async countAccounts(client: Prisma.TransactionClient): Promise<number> {
     return client.user.count();
+  }
+
+  async countActiveAccountsSince(
+    client: Prisma.TransactionClient,
+    since: Date,
+  ): Promise<number> {
+    // A session is issued at sign-in and re-issued on every renewal, so a
+    // fresh application session means the account used the app.
+    const accounts = await client.refreshToken.groupBy({
+      by: ['userId'],
+      where: { scope: AuthSessionScope.APPLICATION, createdAt: { gte: since } },
+    });
+    return accounts.length;
   }
 
   async getAccountCounts(

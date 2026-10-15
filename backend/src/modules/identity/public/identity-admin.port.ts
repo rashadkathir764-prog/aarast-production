@@ -97,6 +97,14 @@ export interface IdentityAdminPort {
     fields: readonly AccountSearchField[],
   ): Promise<string[]>;
   countAccounts(client: Prisma.TransactionClient): Promise<number>;
+  /**
+   * Accounts that used the app since `since` (V1 checklist 4.21): signed in
+   * or renewed their application session. Back-office sessions do not count.
+   */
+  countActiveAccountsSince(
+    client: Prisma.TransactionClient,
+    since: Date,
+  ): Promise<number>;
   getAccountCounts(
     client: Prisma.TransactionClient,
     createdAt?: CreatedAtRange,

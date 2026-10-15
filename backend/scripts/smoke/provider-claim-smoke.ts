@@ -95,6 +95,7 @@ async function main(): Promise<void> {
   const adminActor = { ...admin, adminMfa: true, sessionScope: "admin" } as any;
   const asUser = (user: typeof owner) => ({ ...user, sessionScope: "application" }) as any;
   let listingId: string | null = null;
+  const otherProviderIds: string[] = [];
 
   try {
     // The admin writes the number the way people type it locally.
@@ -146,8 +147,57 @@ async function main(): Promise<void> {
     assert.deepEqual(await dashboard.findClaimableListing(asUser(owner)), { listing: null });
     await assert.rejects(dashboard.claimListing(asUser(owner), listed.id), /already exists/i);
     console.log("PASS - claiming makes the account the listing's provider, once");
+
+    // V1 checklist 4.21 on this isolated database: the owner used the app,
+    // the claimed listing plus two more price services in the same city and
+    // category, so the price group (3 providers) is reported.
+    await prisma.refreshToken.create({
+      data: {
+        userId: owner.id,
+        tokenHash: `claim-smoke-${runId}`,
+        expiresAt: new Date(Date.now() + 86_400_000),
+      },
+    });
+    const others = await Promise.all(
+      ["أ", "ب"].map((suffix) =>
+        prisma.provider.create({
+          data: {
+            businessName: `${label} ${suffix}`,
+            phone: scopedPhone(`other-${suffix}`),
+            cityId: city.id,
+            status: ProviderStatus.ACTIVE,
+          },
+        }),
+      ),
+    );
+    otherProviderIds.push(...others.map((provider) => provider.id));
+    for (const [index, providerId] of [listed.id, ...otherProviderIds].entries()) {
+      await prisma.providerService.create({
+        data: {
+          providerId,
+          categoryId: category.id,
+          title: `${label} خدمة ${index}`,
+          basePrice: String((index + 1) * 100000),
+          currency: "YER",
+        },
+      });
+    }
+    const report = await admins.getSuccessReport();
+    assert.equal(report.activeUsers.active, 1);
+    assert.equal(report.visibleProviders, 3);
+    assert.equal(report.costs.recorded, 0);
+    assert.equal(report.costs.perPlan, null);
+    assert.equal(report.conversion.rate, null);
+    const group = report.prices.find((item) => item.cityId === city.id);
+    assert.ok(group, "the city and category price group is reported");
+    assert.equal(group.providers, 3);
+    assert.equal(group.median, "200000.00");
+    assert.equal(group.cityName, city.nameAr);
+    console.log("PASS - success report: active users, visible providers and anonymous price ranges");
   } finally {
-    if (listingId) await prisma.provider.deleteMany({ where: { id: listingId } });
+    await prisma.provider.deleteMany({
+      where: { id: { in: [...(listingId ? [listingId] : []), ...otherProviderIds] } },
+    });
     await prisma.providerCategory.deleteMany({ where: { id: category.id } });
     await prisma.city.deleteMany({ where: { id: city.id } });
     await prisma.user.deleteMany({

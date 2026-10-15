@@ -199,8 +199,10 @@ test("marketplace service keeps Prisma orchestration outside pure presenters", (
   // The contracts declare the provider/service search filters and the
   // user's quote-access filter by their exact keys (+36) so the ownership
   // scan proves their shape, and shrink the quote include to marketplace's
-  // own relations (-12): 124 lines, 125 with the trailing newline.
-  assert.ok(contracts.split("\n").length <= 125);
+  // own relations (-12): 124 lines, 125 with the trailing newline. Bookings
+  // (V1 checklist 4.6) add the quote's booking relation to the include, its
+  // type and the Booking import (+3): 128 with the trailing newline.
+  assert.ok(contracts.split("\n").length <= 128);
 });
 
 test("marketplace reference catalog is installed by an idempotent migration", () => {

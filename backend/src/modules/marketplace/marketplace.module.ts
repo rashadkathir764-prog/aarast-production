@@ -12,6 +12,10 @@ import {
   ServicesController,
 } from '../../marketplace/marketplace.controller';
 import {
+  MeBookingsController,
+  ProviderBookingsController,
+} from '../../marketplace/bookings.controller';
+import {
   ProviderApplicationController,
   ProviderDashboardController,
 } from '../../provider-dashboard/provider-dashboard.controller';
@@ -40,6 +44,8 @@ import { QuoteReadPublicModule } from './public/quote-read-public.module';
     ApiV1QuoteOffersController,
     ProviderApplicationController,
     ProviderDashboardController,
+    MeBookingsController,
+    ProviderBookingsController,
   ],
 })
 export class MarketplaceModule {}

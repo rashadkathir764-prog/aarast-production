@@ -46,6 +46,7 @@
 | `backend` | `npm run smoke:auth` | `node scripts/smoke/run-isolated-smoke.js auth-smoke.js` |
 | `backend` | `npm run smoke:auth-verification` | `node scripts/smoke/run-isolated-smoke.js auth-verification-smoke.js` |
 | `backend` | `npm run smoke:backend-completion` | `node scripts/smoke/run-isolated-smoke.js backend-completion-smoke.js` |
+| `backend` | `npm run smoke:booking` | `node scripts/smoke/run-isolated-smoke.js booking-smoke.ts` |
 | `backend` | `npm run smoke:contributor-history-migration` | `node scripts/smoke/run-isolated-smoke.js --contributor-history-migration` |
 | `backend` | `npm run smoke:conversation-unification` | `node scripts/smoke/run-isolated-smoke.js conversation-unification-smoke.js` |
 | `backend` | `npm run smoke:dashboard-summary` | `node scripts/smoke/run-isolated-smoke.js dashboard-summary-smoke.js` |

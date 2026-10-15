@@ -481,6 +481,40 @@ class MarketplaceApi {
     return getQuoteRequest(quoteRequestId);
   }
 
+  /// Asks the provider to reserve [eventDate] (the quote's day when null)
+  /// after the offer was accepted (V1 checklist 4.6). Returns the quote with
+  /// its booking.
+  Future<QuoteRequest> requestBooking({
+    required String quoteRequestId,
+    DateTime? eventDate,
+  }) async {
+    await _apiClient.postJson('/api/v1/me/quote-requests/$quoteRequestId/booking', {
+      if (eventDate != null) 'eventDate': MarketplaceBooking.dayParam(eventDate),
+    });
+    return getQuoteRequest(quoteRequestId);
+  }
+
+  /// Reviews a provider after a confirmed booking's day has passed (3.1/F10).
+  Future<void> createProviderReview({
+    required String providerId,
+    required int rating,
+    String? comment,
+  }) async {
+    await _apiClient.postJson('/api/v1/providers/$providerId/reviews', {
+      'rating': rating,
+      if (comment != null && comment.trim().isNotEmpty)
+        'comment': comment.trim(),
+    });
+  }
+
+  Future<QuoteRequest> cancelBooking({
+    required String quoteRequestId,
+    required String bookingId,
+  }) async {
+    await _apiClient.patchJson('/api/v1/me/bookings/$bookingId/cancel', const {});
+    return getQuoteRequest(quoteRequestId);
+  }
+
   String _path(String path, Map<String, String> query) {
     return Uri(path: path, queryParameters: query).toString();
   }
@@ -647,6 +681,50 @@ class ProviderDashboardApi {
         .whereType<Map>()
         .map((item) => QuoteRequest.fromJson(Map<String, dynamic>.from(item)))
         .toList();
+  }
+
+  /// Open booking requests and confirmed bookings from today on (4.6).
+  Future<List<MarketplaceBooking>> getBookings() async {
+    final list = await _apiClient.getJsonList('/api/v1/provider/me/bookings');
+    return list
+        .whereType<Map>()
+        .map(
+          (item) =>
+              MarketplaceBooking.fromJson(Map<String, dynamic>.from(item)),
+        )
+        .toList();
+  }
+
+  /// [action] is `confirm`, `decline` or `cancel`.
+  Future<MarketplaceBooking> decideBooking({
+    required String bookingId,
+    required String action,
+    String? note,
+  }) async {
+    final json = await _apiClient.patchJson(
+      '/api/v1/provider/me/bookings/$bookingId/$action',
+      {if (note != null && note.trim().isNotEmpty) 'note': note.trim()},
+    );
+    return MarketplaceBooking.fromJson(json);
+  }
+
+  Future<List<DateTime>> getBlockedDates() async {
+    final list = await _apiClient.getJsonList(
+      '/api/v1/provider/me/blocked-dates',
+    );
+    return [for (final item in list) ?DateTime.tryParse(item.toString())];
+  }
+
+  Future<void> blockDate(DateTime day) async {
+    await _apiClient.postJson('/api/v1/provider/me/blocked-dates', {
+      'date': MarketplaceBooking.dayParam(day),
+    });
+  }
+
+  Future<void> unblockDate(DateTime day) async {
+    await _apiClient.deleteJson(
+      '/api/v1/provider/me/blocked-dates/${MarketplaceBooking.dayParam(day)}',
+    );
   }
 
   Future<List<ProviderPackage>> getPackages() async {

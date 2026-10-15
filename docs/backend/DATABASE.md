@@ -33,8 +33,10 @@ history, or product behavior.
 | ReferenceCatalogItem | Stable logical item key with pointers to the current draft revision and published revision. |
 | ReferenceCatalogItemRevision | Append-only content snapshot containing Arabic/English labels, grouping, icon key, order, groom/bride/customer/provider audiences, recommendation and active flags, plus bounded JSON metadata. |
 | Favorite | Lets users save providers or services for later comparison. |
-| Review | Captures user feedback about a provider/service reference. Reviews are implemented as provider-reference support, not as paid marketplace monetization. |
+| Review | Captures user feedback about a provider/service reference. Reviews are implemented as provider-reference support, not as paid marketplace monetization. A review requires a confirmed `Booking` with the provider whose day has passed (F10). |
 | Package | Represents bundled provider offerings, such as full hall packages or photography packages. |
+| Booking | The wedding day reserved with a provider after their offer was accepted (V1 checklist 4.6). One per quote request (`quoteRequestId` unique); the plan and the customer are the quote's. `status` is `REQUESTED → CONFIRMED / DECLINED`, or `CANCELLED` by either side (`cancelledBy`). `eventDate` is a calendar day. A partial unique index (`providerId`, `eventDate`) `WHERE status = 'CONFIRMED'` allows one confirmed booking per provider per day. Tracking only: no deposit or payment. |
+| ProviderBlockedDate | A day the provider marked unavailable on their calendar; unique per provider and day. Requests and confirmations for it are refused. |
 
 ## Wedding Financial OS Entities
 
@@ -470,15 +472,17 @@ rewrite as permission to restore a removed live model.
 | `ReferenceCatalogItem` | 9 | `id`, `catalogId`, `createdAt`, `updatedAt` |
 | `ReferenceCatalogItemRevision` | 19 | `id`, `itemId`, `createdAt` |
 | `ProviderCategory` | 13 | `id`, `createdAt`, `updatedAt` |
-| `Provider` | 39 | `id`, `userId`, `cityId`, `primaryCategoryId`, `reviewedAt`, `reviewedById`, `verifiedAt`, `verifiedById` |
+| `Provider` | 41 | `id`, `userId`, `cityId`, `primaryCategoryId`, `reviewedAt`, `reviewedById`, `verifiedAt`, `verifiedById` |
 | `ProviderService` | 20 | `id`, `providerId`, `categoryId`, `priceUpdatedAt`, `cityId`, `createdAt`, `updatedAt` |
 | `ProviderServiceImage` | 7 | `id`, `serviceId`, `createdAt` |
 | `ProviderPackage` | 13 | `id`, `providerId`, `serviceId`, `createdAt`, `updatedAt` |
 | `FavoriteProvider` | 6 | `id`, `userId`, `providerId`, `createdAt` |
 | `ProviderReview` | 10 | `id`, `userId`, `providerId`, `createdAt`, `updatedAt` |
-| `QuoteRequest` | 31 | `id`, `userId`, `weddingPlanId`, `providerId`, `serviceId`, `cityId`, `acceptedAt`, `rejectedAt` |
-| `QuoteOffer` | 16 | `id`, `quoteRequestId`, `providerId`, `createdAt`, `updatedAt` |
+| `QuoteRequest` | 32 | `id`, `userId`, `weddingPlanId`, `providerId`, `serviceId`, `cityId`, `acceptedAt`, `rejectedAt` |
+| `QuoteOffer` | 17 | `id`, `quoteRequestId`, `providerId`, `createdAt`, `updatedAt` |
 | `PlanProviderLink` | 12 | `id`, `weddingPlanId`, `providerId`, `quoteRequestId`, `quoteOfferId`, `createdAt`, `updatedAt` |
+| `Booking` | 17 | `id`, `quoteRequestId`, `quoteOfferId`, `providerId`, `requestedByUserId`, `confirmedAt`, `declinedAt`, `cancelledAt` |
+| `ProviderBlockedDate` | 5 | `id`, `providerId`, `createdAt` |
 | `Conversation` | 23 | `id`, `weddingPlanId`, `accountRequesterUserId`, `providerId`, `createdByUserId`, `lastActivityAt`, `closedAt`, `customerSideBlockedAt` |
 | `ConversationParticipant` | 11 | `id`, `conversationId`, `userId`, `joinedAt`, `revokedAt`, `lastReadAt`, `mutedAt`, `createdAt` |
 | `ConversationEvent` | 14 | `id`, `conversationId`, `quoteRequestId`, `quoteOfferId`, `actorUserId`, `occurredAt`, `createdAt` |
@@ -486,5 +490,5 @@ rewrite as permission to restore a removed live model.
 | `ChatAttachment` | 7 | `id`, `messageId`, `createdAt` |
 | `ConversationReport` | 9 | `id`, `conversationId`, `reporterUserId`, `createdAt`, `updatedAt` |
 
-Total models: 54
+Total models: 56
 <!-- DOCS-SYNC:END -->

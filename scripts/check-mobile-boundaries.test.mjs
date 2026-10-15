@@ -1627,8 +1627,9 @@ const r19ProviderPortalApi = Object.freeze({
 // 172 at R19, +2 for the suggested tasks reading the catalogs owner API
 // (V1 checklist 4.9, tracked in trackedPlanningBatchContracts), +2 for the
 // suggested tasks reading the plan persona from the account context and the
-// guest draft (field-test Q01).
-const r19LegalRecordCount = 176;
+// guest draft (field-test Q01), +1 for the provider's booking widgets reading
+// the marketplace owner API (V1 checklist 4.6).
+const r19LegalRecordCount = 177;
 const trackedOwnerApiContracts = [
   {
     area: 'features/account_contexts',
@@ -1785,6 +1786,11 @@ const trackedOwnerApiContracts = [
       {
         uri: 'data/marketplace_api.dart',
         show: ['MarketplaceApi', 'ProviderDashboardApi'],
+      },
+      // V1 checklist 4.6: the provider portal reads and decides bookings.
+      {
+        uri: 'models/marketplace_booking.dart',
+        show: ['MarketplaceBooking', 'bookingErrorMessage', 'bookingStatusLabel'],
       },
       {
         uri: 'models/marketplace_models.dart',
@@ -2297,6 +2303,12 @@ const trackedCollaborationBatchContracts = [
     source: 'mobile/lib/features/provider_portal/widgets/provider_portal_bottom_nav.dart',
     target: 'mobile/lib/features/shell/shell_api.dart',
     show: ['AarastNavigationItem', 'AarastPlanNavigationBar'],
+  },
+  // V1 checklist 4.6: the provider's booking panel and calendar.
+  {
+    source: 'mobile/lib/features/provider_portal/widgets/provider_bookings.dart',
+    target: 'mobile/lib/features/marketplace/marketplace_api.dart',
+    show: ['MarketplaceBooking', 'bookingStatusLabel'],
   },
   {
     source: 'mobile/lib/features/more/screens/more_screen.dart',

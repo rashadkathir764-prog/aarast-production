@@ -42,8 +42,8 @@
     {
       "owner": "marketplace",
       "file": "marketplace.prisma",
-      "models": ["Provider", "ProviderService", "ProviderServiceImage", "ProviderPackage", "FavoriteProvider", "ProviderReview", "QuoteRequest", "QuoteOffer", "PlanProviderLink"],
-      "enums": ["ProviderStatus", "ReviewStatus", "QuoteRequestStatus", "QuoteOfferStatus", "PlanProviderLinkStatus"]
+      "models": ["Provider", "ProviderService", "ProviderServiceImage", "ProviderPackage", "FavoriteProvider", "ProviderReview", "QuoteRequest", "QuoteOffer", "PlanProviderLink", "Booking", "ProviderBlockedDate"],
+      "enums": ["ProviderStatus", "ReviewStatus", "QuoteRequestStatus", "QuoteOfferStatus", "PlanProviderLinkStatus", "BookingStatus", "BookingParty"]
     },
     {
       "owner": "media",
@@ -131,6 +131,8 @@
     "QuoteRequest",
     "QuoteOffer",
     "PlanProviderLink",
+    "Booking",
+    "ProviderBlockedDate",
     "Conversation",
     "ConversationParticipant",
     "ConversationEvent",

@@ -226,6 +226,47 @@ mixin _MarketplaceQuotes on _MarketplaceProviderCore {
     );
   }
 
+  /// Reviews the provider after the booked day passed (3.1). Returns null on
+  /// success, or the reason in Arabic.
+  Future<String?> reviewProvider({
+    required String providerId,
+    required int rating,
+    String? comment,
+  }) async {
+    try {
+      await _api.createProviderReview(
+        providerId: providerId,
+        rating: rating,
+        comment: comment,
+      );
+      return null;
+    } on ApiException catch (error) {
+      if (error.statusCode == 409) return 'قيّمت هذا المزوّد من قبل.';
+      if (error.serverCode == 'REVIEW_REQUIRES_COMPLETED_BOOKING') {
+        return 'يمكنك التقييم بعد يوم الحجز.';
+      }
+      return marketplaceErrorMessage(error.message);
+    } catch (_) {
+      return 'تعذر إرسال التقييم. حاول مرة أخرى.';
+    }
+  }
+
+  /// Asks the provider to reserve the day after accepting their offer (4.6);
+  /// [eventDate] defaults to the quote's day.
+  Future<bool> requestBooking(QuoteRequest quote, {DateTime? eventDate}) {
+    return _updateQuote(
+      () => _api.requestBooking(quoteRequestId: quote.id, eventDate: eventDate),
+    );
+  }
+
+  Future<bool> cancelBooking(QuoteRequest quote) async {
+    final booking = quote.booking;
+    if (booking == null || !booking.isOpen) return false;
+    return _updateQuote(
+      () => _api.cancelBooking(quoteRequestId: quote.id, bookingId: booking.id),
+    );
+  }
+
   Future<bool> _updateQuote(Future<QuoteRequest> Function() action) async {
     if (_isSubmitting) return false;
     _isSubmitting = true;
@@ -239,7 +280,9 @@ mixin _MarketplaceQuotes on _MarketplaceProviderCore {
       ];
       return true;
     } on ApiException catch (error) {
-      _errorMessage = marketplaceErrorMessage(error.message);
+      _errorMessage =
+          bookingErrorMessage(error.serverCode) ??
+          marketplaceErrorMessage(error.message);
       return false;
     } catch (_) {
       _errorMessage = 'تعذر تحديث حالة عرض السعر.';

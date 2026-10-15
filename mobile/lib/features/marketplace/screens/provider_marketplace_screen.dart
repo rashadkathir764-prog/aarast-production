@@ -27,6 +27,7 @@ import '../../wedding_plans/wedding_plans_api.dart'
 import '../models/marketplace_models.dart';
 import '../models/provider_budget_match_intent.dart';
 import '../providers/marketplace_provider.dart';
+import '../widgets/quote_booking_area.dart';
 import '../widgets/quote_status_chip.dart';
 
 part 'provider_marketplace_screen.sections.dart';

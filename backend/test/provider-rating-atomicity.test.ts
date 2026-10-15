@@ -89,6 +89,9 @@ test("concurrent review creation cannot leave a stale provider rating cache", as
         return { count: 1 };
       },
     },
+    // F10: each reviewer has a confirmed booking whose day has passed.
+    quoteRequest: { findMany: async () => [{ id: "quote-1" }] },
+    booking: { count: async () => 1 },
     providerReview: {
       findUnique: async () => null,
       create: async ({ data }: any) => {

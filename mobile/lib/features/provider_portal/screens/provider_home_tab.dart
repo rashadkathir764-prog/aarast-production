@@ -14,6 +14,8 @@ import '../../marketplace/marketplace_api.dart'
         QuoteRequest,
         QuoteStatusChip;
 import '../providers/provider_dashboard_provider.dart';
+import '../widgets/provider_bookings.dart'
+    show ProviderBookingsSection, ProviderSetupChecklist;
 import 'provider_requests_tab.dart' show ProviderQuoteFacts;
 
 class ProviderHomeTab extends StatelessWidget {
@@ -51,12 +53,18 @@ class ProviderHomeTab extends StatelessWidget {
             if (!dashboard.canUseProviderOperations)
               _ProviderLifecycleNotice(profile: profile)
             else ...[
+              if (ProviderSetupChecklist.isIncomplete(dashboard)) ...[
+                ProviderSetupChecklist(dashboard: dashboard),
+                const SizedBox(height: 18),
+              ],
               _ProviderMetrics(
                 summary: dashboard.summary,
                 packageCount: dashboard.packages.length,
               ),
               const SizedBox(height: 18),
               _QuickActions(onOpenTab: onOpenTab),
+              const SizedBox(height: 18),
+              ProviderBookingsSection(dashboard: dashboard),
               const SizedBox(height: 18),
               AarastSectionHeader(
                 title: 'أحدث الطلبات',

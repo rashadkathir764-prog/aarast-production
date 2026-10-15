@@ -4,6 +4,7 @@ import '../../../core/network/api_client.dart';
 import '../../../core/session/session_scoped_change_notifier.dart';
 import '../../marketplace/marketplace_api.dart'
     show
+        MarketplaceBooking,
         MarketplaceService,
         ProviderDashboardApi,
         ProviderDashboardProfile,
@@ -11,6 +12,7 @@ import '../../marketplace/marketplace_api.dart'
         ProviderPackage,
         ProviderReview,
         QuoteRequest,
+        bookingErrorMessage,
         marketplaceErrorMessage;
 
 class ProviderDashboardProvider extends ChangeNotifier
@@ -29,6 +31,8 @@ class ProviderDashboardProvider extends ChangeNotifier
   List<ProviderPackage> _packages = const [];
   List<ProviderReview> _reviews = const [];
   List<QuoteRequest> _quoteRequests = const [];
+  List<MarketplaceBooking> _bookings = const [];
+  List<DateTime> _blockedDates = const [];
   bool _operationsAccessDenied = false;
 
   bool get isLoading => _isLoading;
@@ -41,6 +45,21 @@ class ProviderDashboardProvider extends ChangeNotifier
   List<ProviderPackage> get packages => _packages;
   List<ProviderReview> get reviews => _reviews;
   List<QuoteRequest> get quoteRequests => _quoteRequests;
+
+  /// Open booking requests and confirmed bookings from today on (4.6).
+  List<MarketplaceBooking> get bookings => _bookings;
+
+  /// Days the provider marked unavailable, from today on.
+  List<DateTime> get blockedDates => _blockedDates;
+
+  /// The booking that belongs to [quoteRequestId], if any is open or upcoming.
+  MarketplaceBooking? bookingForQuote(String quoteRequestId) {
+    for (final booking in _bookings) {
+      if (booking.quoteRequestId == quoteRequestId) return booking;
+    }
+    return null;
+  }
+
   bool get canUseProviderOperations =>
       profile?.status.toUpperCase() == 'ACTIVE' && !_operationsAccessDenied;
 
@@ -93,6 +112,18 @@ class ProviderDashboardProvider extends ChangeNotifier
           errors: sectionErrors,
           onAccessDenied: () => accessDenied = true,
         ),
+        _loadDashboardSection(
+          label: 'الحجوزات',
+          loader: _api.getBookings,
+          errors: sectionErrors,
+          onAccessDenied: () => accessDenied = true,
+        ),
+        _loadDashboardSection(
+          label: 'التقويم',
+          loader: _api.getBlockedDates,
+          errors: sectionErrors,
+          onAccessDenied: () => accessDenied = true,
+        ),
       ]);
       if (accessDenied) {
         _operationsAccessDenied = true;
@@ -111,6 +142,10 @@ class ProviderDashboardProvider extends ChangeNotifier
       final packages = results[2];
       final quoteRequests = results[3];
       final reviews = results[4];
+      final bookings = results[5];
+      final blockedDates = results[6];
+      if (bookings is List<MarketplaceBooking>) _bookings = bookings;
+      if (blockedDates is List<DateTime>) _blockedDates = blockedDates;
       if (summary is ProviderDashboardSummary) _summary = summary;
       if (services is List<MarketplaceService>) _services = services;
       if (packages is List<ProviderPackage>) _packages = packages;
@@ -165,6 +200,8 @@ class ProviderDashboardProvider extends ChangeNotifier
     _packages = const [];
     _reviews = const [];
     _quoteRequests = const [];
+    _bookings = const [];
+    _blockedDates = const [];
   }
 
   Future<bool> applyProvider({
@@ -594,6 +631,61 @@ class ProviderDashboardProvider extends ChangeNotifier
       return false;
     } catch (_) {
       _errorMessage = 'تعذر تعديل عرض السعر. حاول مرة أخرى.';
+      return false;
+    } finally {
+      _isSubmitting = false;
+      notifyListeners();
+    }
+  }
+
+  /// Confirms, declines or cancels a booking (V1 checklist 4.6); [action] is
+  /// `confirm`, `decline` or `cancel`.
+  Future<bool> decideBooking({
+    required String bookingId,
+    required String action,
+    String? note,
+  }) async {
+    final decided = await _calendarMutation(
+      () => _api.decideBooking(bookingId: bookingId, action: action, note: note),
+      fallback: 'تعذر تحديث الحجز. حاول مرة أخرى.',
+    );
+    // The quote cards, the booking list and the calendar all change together.
+    if (decided) await loadDashboard();
+    return decided;
+  }
+
+  Future<bool> blockDate(DateTime day) {
+    return _calendarMutation(() async {
+      await _api.blockDate(day);
+      _blockedDates = await _api.getBlockedDates();
+    }, fallback: 'تعذر إغلاق اليوم. حاول مرة أخرى.');
+  }
+
+  Future<bool> unblockDate(DateTime day) {
+    return _calendarMutation(() async {
+      await _api.unblockDate(day);
+      _blockedDates = await _api.getBlockedDates();
+    }, fallback: 'تعذر فتح اليوم. حاول مرة أخرى.');
+  }
+
+  Future<bool> _calendarMutation(
+    Future<void> Function() mutation, {
+    required String fallback,
+  }) async {
+    if (_isSubmitting) return false;
+    _isSubmitting = true;
+    _errorMessage = null;
+    notifyListeners();
+    try {
+      await mutation();
+      return true;
+    } on ApiException catch (error) {
+      _errorMessage =
+          bookingErrorMessage(error.serverCode) ??
+          marketplaceErrorMessage(error.message);
+      return false;
+    } catch (_) {
+      _errorMessage = fallback;
       return false;
     } finally {
       _isSubmitting = false;

@@ -16,8 +16,11 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import {
   AdminRole,
+  BookingStatus,
+  ConversationScope,
   PrismaClient,
   ProviderStatus,
+  QuoteRequestStatus,
   ReviewStatus,
   UserRole,
   UserStatus,
@@ -57,6 +60,43 @@ async function assertExactAggregate(providerId: string): Promise<void> {
     expectedCount === 0 ? 0 : Number((aggregate._avg.rating ?? 0).toFixed(2));
   assert.equal(provider.ratingCount, expectedCount);
   assert.equal(Number(provider.ratingAverage), expectedAverage);
+}
+
+/** F10: a reviewer needs a confirmed booking with the provider whose day has passed. */
+async function seedCompletedBookings(
+  userIds: string[],
+  providerId: string,
+): Promise<void> {
+  for (const [index, userId] of userIds.entries()) {
+    const conversation = await prisma.conversation.create({
+      data: {
+        scope: ConversationScope.ACCOUNT,
+        accountRequesterUserId: userId,
+        providerId,
+        createdByUserId: userId,
+      },
+    });
+    const quote = await prisma.quoteRequest.create({
+      data: {
+        userId,
+        providerId,
+        conversationId: conversation.id,
+        status: QuoteRequestStatus.ACCEPTED,
+        acceptedAt: new Date(),
+      },
+    });
+    await prisma.booking.create({
+      data: {
+        quoteRequestId: quote.id,
+        providerId,
+        // One confirmed booking per provider per day (partial unique index).
+        eventDate: new Date(Date.UTC(2026, 0, index + 1)),
+        status: BookingStatus.CONFIRMED,
+        requestedByUserId: userId,
+        confirmedAt: new Date(),
+      },
+    });
+  }
 }
 
 async function main(): Promise<void> {
@@ -153,6 +193,10 @@ async function main(): Promise<void> {
           status: ProviderStatus.ACTIVE,
         },
       });
+      await seedCompletedBookings(
+        reviewers.map((reviewer) => reviewer.id),
+        provider.id,
+      );
 
       await Promise.all(
         reviewers.map((reviewer, index) =>
@@ -232,6 +276,10 @@ async function main(): Promise<void> {
         status: ProviderStatus.ACTIVE,
       },
     });
+    await seedCompletedBookings(
+      [reviewers[0].id, deletionReviewer.id],
+      deletionProvider.id,
+    );
     await Promise.all([
       marketplace.createReview(reviewers[0] as any, deletionProvider.id, {
         rating: 2,

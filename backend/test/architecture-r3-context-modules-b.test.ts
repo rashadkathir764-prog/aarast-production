@@ -75,8 +75,9 @@ test('Task 7 full modules preserve the exact controller ownership', () => {
     ['modules/marketplace/marketplace.module.ts#MarketplaceModule', [
       'ApiV1QuoteOffersController', 'ApiV1QuoteRequestsController',
       'ApiV1WeddingPlanQuoteRequestsController', 'CitiesController',
-      'GovernoratesController', 'MeMarketplaceController',
-      'ProviderApplicationController', 'ProviderCategoriesController',
+      'GovernoratesController', 'MeBookingsController', 'MeMarketplaceController',
+      'ProviderApplicationController', 'ProviderBookingsController',
+      'ProviderCategoriesController',
       'ProviderDashboardController', 'ProvidersController', 'ReviewsController',
       'ServicesController',
     ]],
@@ -106,8 +107,9 @@ test('Task 7 owner-private leaves register each remaining application service on
     // The ownership program added marketplace's private relations service:
     // it attaches catalog's, planning's, identity's and finance's rows to
     // marketplace's own rows through their ports (its includes are gone).
+    // Bookings and the provider calendar (V1 checklist 4.6) add BookingsService.
     ['modules/marketplace/internal/marketplace-services.internal.module.ts#MarketplaceServicesInternalModule', [
-      'MarketplaceRelationsService', 'MarketplaceService', 'ProviderDashboardService',
+      'BookingsService', 'MarketplaceRelationsService', 'MarketplaceService', 'ProviderDashboardService',
     ]],
     ['modules/catalog/internal/catalog-services.internal.module.ts#CatalogServicesInternalModule', [
       'AdministrativeCatalogService', 'ReferenceCatalogService',

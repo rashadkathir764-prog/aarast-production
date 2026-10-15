@@ -1,4 +1,5 @@
 import {
+  Booking,
   City,
   FavoriteProvider,
   PlanProviderLink,
@@ -99,6 +100,7 @@ export type QuoteWithRelations = QuoteRequest & {
   > | null;
   offers?: (QuoteOffer & { weddingCosts: { id: string }[] })[];
   providerLinks?: PlanProviderLink[];
+  booking?: Booking | null;
 };
 
 // Contact, budget, and offer amounts are exposed only when the caller has the
@@ -117,6 +119,7 @@ export const MARKETPLACE_QUOTE_INCLUDE = {
   service: true,
   offers: { orderBy: { createdAt: "desc" } },
   providerLinks: true,
+  booking: true,
 } satisfies Prisma.QuoteRequestInclude;
 
 export type QuoteRow = Prisma.QuoteRequestGetPayload<{

@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { ConversationLifecyclePublicModule } from '../../messaging/public/conversation-lifecycle-public.module';
+import { BookingsService } from '../../../marketplace/bookings.service';
 import { MarketplaceRelationsService } from '../../../marketplace/marketplace-relations';
 import { MarketplaceService } from '../../../marketplace/marketplace.service';
 import { ProviderDashboardService } from '../../../provider-dashboard/provider-dashboard.service';
@@ -34,7 +35,8 @@ import { NotificationsPublicModule } from '../../notifications/public/notificati
     MarketplaceRelationsService,
     MarketplaceService,
     ProviderDashboardService,
+    BookingsService,
   ],
-  exports: [MarketplaceService, ProviderDashboardService],
+  exports: [MarketplaceService, ProviderDashboardService, BookingsService],
 })
 export class MarketplaceServicesInternalModule {}

@@ -15,6 +15,7 @@ import '../../marketplace/marketplace_api.dart'
         QuoteRequest,
         QuoteStatusChip;
 import '../providers/provider_dashboard_provider.dart';
+import '../widgets/provider_bookings.dart' show ProviderBookingPanel;
 
 class ProviderRequestsTab extends StatefulWidget {
   const ProviderRequestsTab({super.key});
@@ -197,6 +198,10 @@ class _ProviderRequestCard extends StatelessWidget {
               ],
             ],
           ),
+          if (quote.booking case final booking?) ...[
+            const SizedBox(height: 12),
+            ProviderBookingPanel(booking: booking),
+          ],
         ],
       ),
     );

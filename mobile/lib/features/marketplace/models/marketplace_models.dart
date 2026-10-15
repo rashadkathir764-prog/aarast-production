@@ -1,4 +1,7 @@
 import '../../onboarding/onboarding_api.dart' show WeddingLocationDraft;
+import 'marketplace_booking.dart';
+
+export 'marketplace_booking.dart';
 
 class MarketplaceCity {
   const MarketplaceCity({
@@ -479,6 +482,7 @@ class QuoteRequest {
     this.budgetMax,
     this.offers = const [],
     this.costSuggestion,
+    this.booking,
     this.createdAt,
   });
 
@@ -532,6 +536,7 @@ class QuoteRequest {
         json['costSuggestion'],
         QuoteCostSuggestion.fromJson,
       ),
+      booking: _mapOrNull(json['booking'], MarketplaceBooking.fromJson),
       createdAt: _dateOrNull(json['createdAt']),
     );
   }
@@ -559,6 +564,9 @@ class QuoteRequest {
   final String lifecycleStatus;
   final List<QuoteOffer> offers;
   final QuoteCostSuggestion? costSuggestion;
+
+  /// The day reserved with the provider after acceptance (4.6), if asked.
+  final MarketplaceBooking? booking;
   final DateTime? createdAt;
 
   QuoteOffer? get acceptedOffer {

@@ -10,6 +10,7 @@ const serviceInclude = {
 const quoteInclude = {
   service: true,
   offers: { orderBy: { createdAt: 'desc' } },
+  booking: true,
 } satisfies Prisma.QuoteRequestInclude;
 
 export interface ProviderProfileChanges {

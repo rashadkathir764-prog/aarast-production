@@ -800,6 +800,8 @@ class _OfferAcceptedArea extends StatelessWidget {
             ),
           ),
         ],
+        const SizedBox(height: 10),
+        QuoteBookingArea(quote: quote, isSubmitting: isSubmitting),
         const SizedBox(height: 8),
         OutlinedButton.icon(
           key: Key('quote-conversation-${quote.id}'),
@@ -811,6 +813,7 @@ class _OfferAcceptedArea extends StatelessWidget {
     );
   }
 }
+
 
 /// نافذة سفلية بتفاصيل العرض وملخص الطلب — القرار متاح من داخلها أيضًا.
 Future<void> _showOfferDetailsSheet(

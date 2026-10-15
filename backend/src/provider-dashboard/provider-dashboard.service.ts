@@ -6,6 +6,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import {
+  Booking,
   City,
   ConversationEventType,
   Prisma,
@@ -25,6 +26,7 @@ import {
   WeddingPlan,
 } from '@prisma/client';
 import { AuthenticatedUser } from '../modules/identity/public/identity-session.types';
+import { toBookingResponse } from '../marketplace/booking-policy';
 import { toReviewIdentity } from '../shared-kernel/privacy/review-identity';
 import { PhoneNormalizer } from '../shared-kernel/phone/phone-normalizer';
 import { runSerializableTransaction } from '../platform/database/serializable-transaction';
@@ -109,6 +111,7 @@ type ProviderQuoteRecord = QuoteRequest & {
     'id' | 'title' | 'city' | 'weddingDate' | 'currency'
   > | null;
   offers?: QuoteOffer[];
+  booking?: Booking | null;
 };
 type ProviderReviewRecord = ProviderReview & {
   user: Pick<User, 'id' | 'name' | 'appName' | 'role'>;
@@ -1453,6 +1456,7 @@ export class ProviderDashboardService {
       status: quote.status,
       lifecycleStatus: quoteLifecycleStatus(quote.status),
       offers: quote.offers?.map((offer) => this.toQuoteOfferResponse(offer)) ?? [],
+      booking: quote.booking ? toBookingResponse(quote.booking) : null,
       acceptedAt: quote.acceptedAt,
       rejectedAt: quote.rejectedAt,
       cancelledAt: quote.cancelledAt,

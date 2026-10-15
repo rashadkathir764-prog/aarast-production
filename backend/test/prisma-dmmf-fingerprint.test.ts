@@ -294,10 +294,10 @@ test('writes an atomic fingerprint only under the real OS temp directory and acc
     dmmf: { models: unknown[]; enums: unknown[] };
   };
   assert.match(saved.sha256, /^[a-f0-9]{64}$/);
-  assert.equal(saved.modelCount, 54);
-  assert.equal(saved.enumCount, 45);
-  assert.equal(saved.dmmf.models.length, 54);
-  assert.equal(saved.dmmf.enums.length, 45);
+  assert.equal(saved.modelCount, 56);
+  assert.equal(saved.enumCount, 47);
+  assert.equal(saved.dmmf.models.length, 56);
+  assert.equal(saved.dmmf.enums.length, 47);
 });
 
 test('rejects a non-temp output and a junction escape without writing outside temp', () => {

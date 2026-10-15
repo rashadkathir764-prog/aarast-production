@@ -1,8 +1,11 @@
 import * as core from "../modules/marketplace/infrastructure/marketplace-core.repository";
+import { hasCompletedBookingWith } from "../modules/marketplace/infrastructure/marketplace-booking.repository";
+import { bookingToday } from "./booking-policy";
 import { CONVERSATION_LIFECYCLE_PORT, type ConversationLifecyclePort } from "../modules/messaging/public/conversation-lifecycle.port";
 import {
   BadRequestException,
   ConflictException,
+  ForbiddenException,
   Inject,
   Injectable,
   NotFoundException,
@@ -668,6 +671,10 @@ export class MarketplaceService {
         const existing = await core.findExistingProviderReview(tx, currentUser.id, providerId);
         if (existing) {
           throw new ConflictException("You already reviewed this provider");
+        }
+        // F10: only a customer whose confirmed booking's day has passed reviews.
+        if (!(await hasCompletedBookingWith(tx, currentUser.id, providerId, bookingToday()))) {
+          throw new ForbiddenException({ statusCode: 403, code: "REVIEW_REQUIRES_COMPLETED_BOOKING", message: "Review after a completed booking" });
         }
 
         const [review] = await this.relations.attachReviewUsers(tx, [

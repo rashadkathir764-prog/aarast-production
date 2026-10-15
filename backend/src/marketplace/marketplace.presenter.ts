@@ -33,6 +33,7 @@ import {
 import { ListProvidersQueryDto } from "./dto/list-providers-query.dto";
 import { ListServicesQueryDto } from "./dto/list-services-query.dto";
 import { quoteLifecycleStatus } from "./quote-lifecycle";
+import { toBookingResponse } from "./booking-policy";
 
 export class MarketplaceQuery {
   private constructor() {}
@@ -533,6 +534,7 @@ export class MarketplacePresenter {
           (link) => link.status === PlanProviderLinkStatus.ACTIVE,
         ) ?? null,
       costSuggestion: this.quoteCostSuggestion(quote, visibility.budget),
+      booking: quote.booking ? toBookingResponse(quote.booking) : null,
       acceptedAt: quote.acceptedAt,
       rejectedAt: quote.rejectedAt,
       cancelledAt: quote.cancelledAt,

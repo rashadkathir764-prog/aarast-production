@@ -100,11 +100,11 @@ test('the base file contains only generator and datasource while owner declarati
     assert.deepEqual([...(registry.owners[owner.owner] ?? [])].sort(), [...owner.models].sort());
   }
 
-  assert.equal(actualModels.length, 54);
-  assert.equal(new Set(actualModels).size, 54);
-  assert.equal(actualEnums.length, 45);
-  assert.equal(new Set(actualEnums).size, 45);
-  assert.equal(manifest.modelOrder.length, 54);
+  assert.equal(actualModels.length, 56);
+  assert.equal(new Set(actualModels).size, 56);
+  assert.equal(actualEnums.length, 47);
+  assert.equal(new Set(actualEnums).size, 47);
+  assert.equal(manifest.modelOrder.length, 56);
   assert.deepEqual([...manifest.modelOrder].sort(), [...actualModels].sort());
   assert.deepEqual(
     Object.keys(registry.owners).filter((owner) => registry.owners[owner].length > 0).sort(),
@@ -142,8 +142,8 @@ test('the canonical loader agrees with the exact manifest and combined current s
 
   assert.deepEqual(loaded.files.map((entry) => entry.file), [manifest.baseFile, ...manifest.owners.map((entry) => entry.file)]);
   assert.deepEqual(loaded.modelOrder, manifest.modelOrder);
-  assert.equal(declarations(loaded.combinedText, 'model').length, 54);
-  assert.equal(declarations(loaded.combinedText, 'enum').length, 45);
+  assert.equal(declarations(loaded.combinedText, 'model').length, 56);
+  assert.equal(declarations(loaded.combinedText, 'enum').length, 47);
 });
 
 test('the contributor migration rehearsal keeps migrations discoverable under the passed schema directory', () => {

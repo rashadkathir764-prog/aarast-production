@@ -92,7 +92,9 @@ test('R12C closure record binds the phase, the frozen manifests and real history
   assert.ok(closure.lineageGates.some((gate: string) => gate.includes('run architecture')));
   // Closed mode: the live gate proves the invariants without any lineage replay.
   const result = api.scanR12cZeroCrossContextDependencies({ repositoryRoot: root, manifest });
-  assert.deepEqual(result, { ok: true, stage: 'strict', closed: true, dependencyRecords: 0, marketplaceConsumers: 7, ...liveOwnershipCounts() });
+  // Bookings (V1 checklist 4.6) add two marketplace-owned consumers: the
+  // bookings service and controller (7 -> 9); dependency records stay 0.
+  assert.deepEqual(result, { ok: true, stage: 'strict', closed: true, dependencyRecords: 0, marketplaceConsumers: 9, ...liveOwnershipCounts() });
   assert.deepEqual(api.readR12cStrictDependencyBytes(root), Buffer.from('[]\n', 'utf8'));
   assert.throws(() => api.projectR12cWorkingTreeToPredecessor({ repositoryRoot: root, manifest }), /R12C is closed/u);
   // The record is validated exactly: shape, phase, frozen manifests, history.

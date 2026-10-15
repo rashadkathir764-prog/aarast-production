@@ -2124,6 +2124,47 @@ and contact fields remain redacted unless the corresponding money/provider
 permission allows them; quote mutations require provider-management permission,
 and acceptance additionally requires money-management permission.
 
+## Bookings And Provider Calendar
+
+V1 checklist 4.6. A booking reserves the wedding day with a provider after the
+customer accepted their offer. It is tracking only: no deposit, payment or
+money moves through it.
+
+- `POST /api/v1/me/quote-requests/:id/booking` `{ eventDate?: "YYYY-MM-DD", note? }`
+  — the quote's requester or the plan owner (with provider-management
+  permission) asks for the day; the quote's `eventDate` when omitted. The quote
+  must be `ACCEPTED`. A declined or cancelled booking is reopened as
+  `REQUESTED`; an open one returns `409 BOOKING_ALREADY_OPEN`.
+- `PATCH /api/v1/me/bookings/:id/cancel` `{ note? }` — the customer cancels a
+  requested or confirmed booking before its day.
+- `GET /api/v1/provider/me/bookings` — the provider's open requests and
+  confirmed bookings from today on, with `customerName`, `guestCount`,
+  `location`.
+- `PATCH /api/v1/provider/me/bookings/:id/confirm|decline|cancel` `{ note? }`.
+- `GET|POST /api/v1/provider/me/blocked-dates` (`{ date }`) and
+  `DELETE /api/v1/provider/me/blocked-dates/:date` — days the provider marks
+  unavailable.
+
+A booking response is `{ id, quoteRequestId, quoteOfferId, providerId,
+eventDate, status, lifecycleStatus, cancelledBy, note, confirmedAt, declinedAt,
+cancelledAt, createdAt, updatedAt }`. `status` is `REQUESTED | CONFIRMED |
+DECLINED | CANCELLED`; `lifecycleStatus` adds `COMPLETED` for a confirmed
+booking whose day has passed. Quote responses (customer and provider) carry
+`booking` (or `null`).
+
+Availability: a request or a confirmation for a blocked day, or for a day the
+provider is already confirmed on, returns `409 BOOKING_DATE_UNAVAILABLE`; a
+partial unique index keeps one `CONFIRMED` booking per provider per day, so of
+two racing confirmations exactly one succeeds. Blocking a day that holds a
+confirmed booking returns `409 BOOKING_DATE_HAS_BOOKING`. A past day returns
+`400 BOOKING_DATE_IN_PAST`; a step the status does not allow returns
+`409 BOOKING_NOT_ALLOWED`. Each step notifies the other side
+(`BOOKING_UPDATED`).
+
+Reviews (F10): `POST /api/v1/providers/:id/reviews` requires a confirmed
+booking with the provider whose day has passed; otherwise
+`403 REVIEW_REQUIRES_COMPLETED_BOOKING`.
+
 ## Quote Conversations And Media
 
 Conversations begin only with a real quote request; open or unsolicited
@@ -2556,9 +2597,11 @@ configuration, and smoke checks.
 | DELETE | `/api/v1/loan-repayments/:id` | `funding-sources.remove` | 🔒 |
 | PATCH | `/api/v1/loan-repayments/:id` | `funding-sources.update` | 🔒 |
 | GET | `/api/v1/me` | `me.me` | 🔒 |
+| PATCH | `/api/v1/me/bookings/:id/cancel` | `bookings.cancelBooking` | 🔒 |
 | GET | `/api/v1/me/favorite-providers` | `marketplace.findMyFavoriteProviders` | 🔒 |
 | GET | `/api/v1/me/quote-requests` | `marketplace.findMyQuoteRequests` | 🔒 |
 | GET | `/api/v1/me/quote-requests/:id` | `marketplace.findMyQuoteRequest` | 🔒 |
+| POST | `/api/v1/me/quote-requests/:id/booking` | `bookings.requestBooking` | 🔒 |
 | PATCH | `/api/v1/me/quote-requests/:id/cancel` | `marketplace.cancelMyQuoteRequest` | 🔒 |
 | POST | `/api/v1/media/uploads/presign` | `media.presign` | 🔒 |
 | POST | `/api/v1/media/uploads/verify` | `media.verify` | 🔒 |
@@ -2577,6 +2620,13 @@ configuration, and smoke checks.
 | POST | `/api/v1/payment-schedules/:id/pay` | `wedding-costs.pay` | 🔒 |
 | GET | `/api/v1/provider-categories` | `marketplace.findCategories` |  |
 | POST | `/api/v1/provider/apply` | `provider-dashboard.apply` | 🔒 |
+| GET | `/api/v1/provider/me/blocked-dates` | `bookings.listBlockedDates` | 🔒 |
+| POST | `/api/v1/provider/me/blocked-dates` | `bookings.blockDate` | 🔒 |
+| DELETE | `/api/v1/provider/me/blocked-dates/:date` | `bookings.unblockDate` | 🔒 |
+| GET | `/api/v1/provider/me/bookings` | `bookings.listBookings` | 🔒 |
+| PATCH | `/api/v1/provider/me/bookings/:id/cancel` | `bookings.cancel` | 🔒 |
+| PATCH | `/api/v1/provider/me/bookings/:id/confirm` | `bookings.confirm` | 🔒 |
+| PATCH | `/api/v1/provider/me/bookings/:id/decline` | `bookings.decline` | 🔒 |
 | GET | `/api/v1/provider/me/packages` | `provider-dashboard.findPackages` | 🔒 |
 | POST | `/api/v1/provider/me/packages` | `provider-dashboard.createPackage` | 🔒 |
 | DELETE | `/api/v1/provider/me/packages/:id` | `provider-dashboard.deactivatePackage` | 🔒 |

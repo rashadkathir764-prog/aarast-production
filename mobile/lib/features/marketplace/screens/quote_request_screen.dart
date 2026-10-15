@@ -575,6 +575,7 @@ class _QuoteRequestScreenState extends State<QuoteRequestScreen> {
   }
 
   Future<void> _pickDate() async {
+    releaseFieldFocus();
     final now = DateTime.now();
     final picked = await showDatePicker(
       context: context,

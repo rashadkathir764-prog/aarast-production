@@ -92,7 +92,7 @@ void main() {
     expect(controller.errorCode, 'OTP_DELIVERY_UNAVAILABLE');
     expect(
       controller.errorMessage,
-      'خدمة رمز التحقق غير متاحة حاليًا. حاول بعد قليل.',
+      'تعذر إرسال رمز التحقق عبر واتساب. تأكد أن الرقم صحيح وعليه واتساب، ثم حاول مرة أخرى.',
     );
   });
 
@@ -109,7 +109,7 @@ void main() {
     expect(controller.errorCode, 'OTP_DELIVERY_UNAVAILABLE');
     expect(
       controller.errorMessage,
-      'خدمة رمز التحقق غير متاحة حاليًا. حاول بعد قليل.',
+      'تعذر إرسال رمز التحقق عبر واتساب. تأكد أن الرقم صحيح وعليه واتساب، ثم حاول مرة أخرى.',
     );
   });
 }

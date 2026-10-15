@@ -13,13 +13,32 @@ TaskStarterPersona taskStarterPersonaFromCode(String? value) {
   };
 }
 
+/// One place that may know a plan's persona: the selected account context,
+/// a plan the plans provider loaded, or the guest draft before sign-in.
+typedef TaskStarterPersonaSource = ({String? planId, String? persona});
+
+/// The persona of [weddingPlanId] from the first source, in priority order,
+/// that describes that plan and carries a persona. Neutral when none does.
+TaskStarterPersona taskStarterPersonaFor(
+  String weddingPlanId,
+  Iterable<TaskStarterPersonaSource> sources,
+) {
+  for (final source in sources) {
+    if (source.planId == weddingPlanId && source.persona != null) {
+      return taskStarterPersonaFromCode(source.persona);
+    }
+  }
+  return TaskStarterPersona.neutral;
+}
+
 class TaskStarterTemplate {
   const TaskStarterTemplate({
     required this.key,
     required this.title,
     required this.daysBefore,
     this.recommended = false,
-  });
+    String? taskCategory,
+  }) : _taskCategory = taskCategory;
 
   final String key;
   final String title;
@@ -27,6 +46,10 @@ class TaskStarterTemplate {
   /// Days before the wedding the task should be done; null when unknown.
   final int? daysBefore;
   final bool recommended;
+  final String? _taskCategory;
+
+  /// The task category it is filed under; null is general.
+  String? get taskCategory => _taskCategory ?? _starterTaskCategories[key];
 }
 
 class TaskStarterGroup {
@@ -87,6 +110,10 @@ List<TaskStarterGroup> taskStarterGroupsFor(
             title: item.nameAr,
             daysBefore: int.tryParse('${item.metadata['daysBefore'] ?? ''}'),
             recommended: item.isRecommended,
+            taskCategory: switch (item.metadata['taskCategory']) {
+              final String value when value.trim().isNotEmpty => value.trim(),
+              _ => null,
+            },
           ),
         );
   }
@@ -102,22 +129,90 @@ List<TaskStarterGroup> taskStarterGroupsFor(
 }
 
 /// The due date: [TaskStarterTemplate.daysBefore] days before the wedding,
-/// never in the past (a late plan still sees the task as due now). No
-/// wedding date or no offset leaves the task undated.
+/// never in the past. No wedding date or no offset leaves the task undated.
+///
+/// When the tasks being added need more lead time than is left
+/// ([longestDaysBefore] is past today), the whole set is compressed into the
+/// time that is left, keeping its order and spacing; otherwise a short
+/// engagement would see every early task due today at once (field test Q05).
 DateTime? taskStarterDueDate(
   DateTime? weddingDate,
   int? daysBefore,
-  DateTime today,
-) {
+  DateTime today, {
+  int? longestDaysBefore,
+}) {
   if (weddingDate == null || daysBefore == null) return null;
   final wedding = DateTime(
     weddingDate.year,
     weddingDate.month,
     weddingDate.day,
   );
-  final due = wedding.subtract(Duration(days: daysBefore));
   final todayDate = DateTime(today.year, today.month, today.day);
+  final daysLeft = wedding.difference(todayDate).inDays;
+  var lead = daysBefore;
+  if (longestDaysBefore != null &&
+      longestDaysBefore > daysLeft &&
+      longestDaysBefore > 0 &&
+      daysLeft > 0) {
+    lead = (daysBefore * daysLeft / longestDaysBefore).round();
+  }
+  final due = wedding.subtract(Duration(days: lead));
   return due.isBefore(todayDate) ? todayDate : due;
+}
+
+/// The task category the built-in suggested tasks file under, so they do not
+/// all land in the general bucket. A managed item may set its own in
+/// `metadata.taskCategory`; an unknown key stays general.
+const _starterTaskCategories = <String, String>{
+  'task-shared-budget': 'MONEY',
+  'task-shared-photo': 'PHOTOGRAPHY',
+  'task-shared-guests': 'GUESTS',
+  'task-shared-contract': 'DOCUMENTS',
+  'task-shared-invites': 'GUESTS',
+  'task-groom-mahr': 'MONEY',
+  'task-groom-gold': 'MONEY',
+  'task-groom-venue': 'VENUE',
+  'task-groom-kiswa': 'ATTIRE',
+  'task-groom-artist': 'PROVIDERS',
+  'task-groom-food': 'CATERING',
+  'task-groom-suit': 'ATTIRE',
+  'task-groom-qat': 'CATERING',
+  'task-groom-zaffa': 'PROVIDERS',
+  'task-bride-hall': 'VENUE',
+  'task-bride-dress': 'ATTIRE',
+  'task-bride-coiffeur': 'PROVIDERS',
+  'task-bride-singer': 'PROVIDERS',
+  'task-bride-naqsh': 'PROVIDERS',
+  'task-bride-subhia': 'CATERING',
+  'task-family-stay': 'GUESTS',
+  'task-family-hosting': 'CATERING',
+  'task-family-helpers': 'GUESTS',
+};
+
+/// The suggested task that sets the wedding date; it is not offered to a plan
+/// that already has one (field test Q06).
+const taskStarterWeddingDateKey = 'task-shared-date';
+
+/// Drops the templates a plan no longer needs: setting the wedding date when
+/// the plan has one.
+List<TaskStarterGroup> taskStarterGroupsForPlan(
+  List<TaskStarterGroup> groups, {
+  required bool hasWeddingDate,
+}) {
+  if (!hasWeddingDate) return groups;
+  return [
+    for (final group in groups)
+      if (group.templates.any((item) => item.key != taskStarterWeddingDateKey))
+        TaskStarterGroup(
+          key: group.key,
+          title: group.title,
+          subtitle: group.subtitle,
+          templates: [
+            for (final item in group.templates)
+              if (item.key != taskStarterWeddingDateKey) item,
+          ],
+        ),
+  ];
 }
 
 /// Normalized task titles, so a template is not added twice to a plan.

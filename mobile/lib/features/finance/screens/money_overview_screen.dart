@@ -132,6 +132,18 @@ class _MoneyOverviewScreenState extends State<MoneyOverviewScreen> {
               onSchedules: () =>
                   context.push(AppRouter.moneySchedules(widget.weddingPlanId)),
             ),
+            // Field test Q03: an overspent category must be visible the moment
+            // the money screen shows it, not only in the hourly notification.
+            for (final exceeded in provider.summary.exceededCategories) ...[
+              const SizedBox(height: 12),
+              MoneyMessageBanner(
+                key: ValueKey('money-category-exceeded-${exceeded.name}'),
+                error: true,
+                message: provider.amountsHidden || exceeded.overrun == null
+                    ? 'تكاليف «${exceeded.name}» تجاوزت المبلغ المخصص له.'
+                    : 'تكاليف «${exceeded.name}» تجاوزت المبلغ المخصص له بـ ${formatCompactMoney(moneyValue(exceeded.overrun), currencyCode: provider.summary.currency)}.',
+              ),
+            ],
             if (stage != null) ...[
               const SizedBox(height: 12),
               WeddingStageContextLine(
@@ -252,7 +264,9 @@ class _MoneyOverviewScreenState extends State<MoneyOverviewScreen> {
 
     AarastToast.showSuccess(
       context,
-      'جهّزنا ${categoryNames.length} تصنيفًا. بقي تحديد ميزانيتك.',
+      provider.summary.hasBudget
+          ? 'جهّزنا ${categoryNames.length} تصنيفًا. وزّع ميزانيتك عليها.'
+          : 'جهّزنا ${categoryNames.length} تصنيفًا. بقي تحديد ميزانيتك.',
     );
     await context.push(AppRouter.moneyBudget(widget.weddingPlanId));
     return true;
@@ -302,8 +316,10 @@ class _MoneyOverviewScreenState extends State<MoneyOverviewScreen> {
 bool shouldShowMoneyStarter(FinanceProvider provider) {
   if (!provider.hasLoadedMoney || !provider.canManageMoney) return false;
   final summary = provider.summary;
-  return !summary.hasBudget &&
-      provider.categories.isEmpty &&
+  // A budget alone (usually entered while creating the plan) is not a money
+  // setup: the starter is what turns it into categories, and saving it keeps
+  // the budget.
+  return provider.categories.isEmpty &&
       provider.costs.isEmpty &&
       provider.payments.isEmpty &&
       provider.dueSchedules.isEmpty &&

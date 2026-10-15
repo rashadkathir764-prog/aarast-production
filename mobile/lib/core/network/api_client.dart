@@ -11,8 +11,10 @@ typedef SessionRefresher = Future<bool> Function();
 
 const aarastBackendConnectionErrorMessage =
     'تعذر تحميل البيانات الآن. تحقق من الاتصال وحاول مرة أخرى.';
+// A number without WhatsApp and a channel outage look the same to the server
+// (field test Q07), so the message names what the user can check.
 const aarastOtpDeliveryUnavailableMessage =
-    'خدمة رمز التحقق غير متاحة حاليًا. حاول بعد قليل.';
+    'تعذر إرسال رمز التحقق عبر واتساب. تأكد أن الرقم صحيح وعليه واتساب، ثم حاول مرة أخرى.';
 const _requestSessionGenerationKey = 'aarast_request_session_generation';
 const _requestContextGenerationKey = 'aarast_request_context_generation';
 const _requestClientIdKey = 'aarast_client_request_id';

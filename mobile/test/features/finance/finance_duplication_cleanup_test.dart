@@ -432,6 +432,11 @@ class _FakeFinanceApi extends FinanceApi {
                 confirmedCost: '0',
                 remaining: '3000000',
               ),
+              // A budget with no categories is offered the starter (Q02), so
+              // the set-up-but-nothing-spent state has its categories.
+              categories: const [
+                MoneyCategorySummary(categoryId: 'category-1', name: 'الصالة'),
+              ],
             )
           : MoneySummary.empty(planId);
     }

@@ -752,6 +752,7 @@ class _PaymentScheduleFormScreenState extends State<PaymentScheduleFormScreen> {
   }
 
   Future<void> _pickDueDate(PaymentSchedule? schedule) async {
+    releaseFieldFocus();
     final now = DateTime.now();
     final initial = _dueDate ?? now;
     final picked = await showDatePicker(
@@ -1008,6 +1009,7 @@ class _PayPaymentScheduleScreenState extends State<PayPaymentScheduleScreen> {
   }
 
   Future<void> _pickPaidAt() async {
+    releaseFieldFocus();
     final now = DateTime.now();
     final picked = await showDatePicker(
       context: context,

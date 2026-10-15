@@ -494,7 +494,7 @@ class _SmartWelcomeScreenState extends State<SmartWelcomeScreen> {
   }
 
   Future<void> _showWelcomeDatePicker() async {
-    FocusScope.of(context).unfocus();
+    releaseFieldFocus();
     final now = DateTime.now();
     final date = await showDatePicker(
       context: context,

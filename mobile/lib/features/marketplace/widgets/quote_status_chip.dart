@@ -8,15 +8,23 @@ class QuoteStatusChip extends StatelessWidget {
   const QuoteStatusChip({
     required this.status,
     this.compact = false,
+    this.forProvider = false,
     super.key,
   });
 
   final String status;
   final bool compact;
 
+  /// Words the status from the provider's side ("awaiting your reply")
+  /// instead of the customer's ("awaiting the provider").
+  final bool forProvider;
+
   @override
   Widget build(BuildContext context) {
-    final presentation = quoteStatusPresentation(status);
+    final presentation = quoteStatusPresentation(
+      status,
+      forProvider: forProvider,
+    );
     return Container(
       padding: EdgeInsets.symmetric(
         horizontal: compact ? 9 : 11,
@@ -53,7 +61,43 @@ class QuoteStatusChip extends StatelessWidget {
   }
 }
 
-QuoteStatusPresentation quoteStatusPresentation(String status) {
+QuoteStatusPresentation quoteStatusPresentation(
+  String status, {
+  bool forProvider = false,
+}) {
+  // Field test Q13: the provider was told "awaiting the provider's reply"
+  // about a request waiting on them.
+  if (forProvider) {
+    switch (status) {
+      case 'PENDING_PROVIDER':
+      case 'SENT':
+      case 'VIEWED':
+        return const QuoteStatusPresentation(
+          label: 'بانتظار ردّك',
+          icon: LucideIcons.hourglass,
+          color: AppTheme.brand,
+        );
+      case 'RECEIVED':
+      case 'RESPONDED':
+        return const QuoteStatusPresentation(
+          label: 'أرسلت عرضك',
+          icon: LucideIcons.send,
+          color: AppTheme.textPrimary,
+        );
+      case 'ACCEPTED':
+        return const QuoteStatusPresentation(
+          label: 'قبل العميل عرضك',
+          icon: LucideIcons.checkCircle,
+          color: AppTheme.success,
+        );
+      case 'REJECTED':
+        return const QuoteStatusPresentation(
+          label: 'اعتذر العميل',
+          icon: LucideIcons.ban,
+          color: AppTheme.danger,
+        );
+    }
+  }
   switch (status) {
     case 'READY_TO_SEND':
       return const QuoteStatusPresentation(

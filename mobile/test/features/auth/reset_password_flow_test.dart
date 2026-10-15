@@ -236,7 +236,7 @@ void main() {
   ) async {
     final repository = await _fakeRepository()
       ..requestFailure = const ApiException(
-        'خدمة رمز التحقق غير متاحة حاليًا. حاول بعد قليل.',
+        'تعذر إرسال رمز التحقق عبر واتساب. تأكد أن الرقم صحيح وعليه واتساب، ثم حاول مرة أخرى.',
         statusCode: 503,
         serverCode: 'OTP_DELIVERY_UNAVAILABLE',
       );
@@ -248,7 +248,7 @@ void main() {
 
     expect(repository.requestCalls, 1);
     expect(
-      find.text('خدمة رمز التحقق غير متاحة حاليًا. حاول بعد قليل.'),
+      find.text('تعذر إرسال رمز التحقق عبر واتساب. تأكد أن الرقم صحيح وعليه واتساب، ثم حاول مرة أخرى.'),
       findsOneWidget,
     );
     expect(find.textContaining('كلمة المرور غير صحيحة'), findsNothing);

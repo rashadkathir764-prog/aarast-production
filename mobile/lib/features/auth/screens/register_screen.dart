@@ -41,6 +41,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
   final _descriptionController = TextEditingController();
 
   bool _obscurePassword = true;
+
+  /// After a submit showed errors, each field re-checks as it is edited, so
+  /// "required" disappears once the field is filled (field test Q09).
+  bool _submitAttempted = false;
   _AccountType _accountType = _AccountType.customer;
   String? _cityId;
   String? _categoryId;
@@ -80,6 +84,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
       child: Form(
         key: _formKey,
+        autovalidateMode: _submitAttempted
+            ? AutovalidateMode.onUserInteraction
+            : AutovalidateMode.disabled,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
@@ -247,6 +254,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
   }
 
   Future<void> _submit() async {
+    if (!_submitAttempted) setState(() => _submitAttempted = true);
     if (!_formKey.currentState!.validate()) return;
 
     final auth = context.read<AuthController>();

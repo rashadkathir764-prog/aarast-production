@@ -59,6 +59,16 @@ test("provider and service filters keep canonical active-only constraints", () =
   assert.match(JSON.stringify(services.where), /تصوير/);
 });
 
+// Field test Q14: an approved provider with no service was listed as an empty
+// card leading to an empty page.
+test("the directory lists only providers that offer an active service", () => {
+  const { where } = MarketplaceQuery.providerSearch({});
+  assert.deepEqual(where.AND, [
+    { status: "ACTIVE" },
+    { services: { some: { isActive: true } } },
+  ]);
+});
+
 test("provider list response keeps category and active service summary", () => {
   const category = {
     id: "category-1",

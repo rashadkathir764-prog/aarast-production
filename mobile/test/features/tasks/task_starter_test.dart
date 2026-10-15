@@ -31,6 +31,93 @@ void main() {
     expect(keys(TaskStarterPersona.neutral), hasLength(4));
   });
 
+  // Field test Q05: a wedding 126 days away got every task needing more
+  // lead time than that due today, and all of them filed as "other".
+  test('a short engagement spreads the tasks instead of piling them today', () {
+    final today = DateTime(2026, 10, 15);
+    final wedding = DateTime(2027, 2, 18); // 126 days away
+    DateTime? due(int days) => taskStarterDueDate(
+      wedding,
+      days,
+      today,
+      longestDaysBefore: 300,
+    );
+
+    expect(due(300), today);
+    expect(due(180), DateTime(2026, 12, 4)); // 180 * 126 / 300 = 76 days
+    expect(due(30), DateTime(2027, 2, 5)); // 30 * 126 / 300 = 13 days
+    expect(due(180)!.isBefore(due(30)!), isTrue);
+    // Enough time left: the catalog offsets are kept as they are.
+    expect(
+      taskStarterDueDate(wedding, 30, today, longestDaysBefore: 120),
+      DateTime(2027, 1, 19),
+    );
+  });
+
+  test('built-in suggested tasks carry their task category', () {
+    final templates = {
+      for (final group in taskStarterGroupsFor(null, TaskStarterPersona.groom))
+        for (final item in group.templates) item.key: item,
+    };
+    expect(templates['task-groom-venue']?.taskCategory, 'VENUE');
+    expect(templates['task-shared-photo']?.taskCategory, 'PHOTOGRAPHY');
+    expect(templates['task-shared-date']?.taskCategory, isNull);
+  });
+
+  // Field test Q06: "set the wedding date" was offered to a plan with a date.
+  test('a plan with a wedding date is not offered to set it', () {
+    final groups = taskStarterGroupsFor(null, TaskStarterPersona.groom);
+    final keys = {
+      for (final group in taskStarterGroupsForPlan(
+        groups,
+        hasWeddingDate: true,
+      ))
+        for (final item in group.templates) item.key,
+    };
+    expect(keys, isNot(contains(taskStarterWeddingDateKey)));
+    expect(keys, contains('task-shared-budget'));
+
+    final undated = {
+      for (final group in taskStarterGroupsForPlan(
+        groups,
+        hasWeddingDate: false,
+      ))
+        for (final item in group.templates) item.key,
+    };
+    expect(undated, contains(taskStarterWeddingDateKey));
+  });
+
+  // Field test Q01: a groom's guest plan was offered the bride's tasks because
+  // only the plans provider was consulted, and it does not hold a guest plan.
+  test('the persona comes from the first source that describes the plan', () {
+    expect(
+      taskStarterPersonaFor('guest-1', [
+        (planId: null, persona: null),
+        (planId: 'other', persona: 'BRIDE'),
+        (planId: 'guest-1', persona: 'groom'),
+      ]),
+      TaskStarterPersona.groom,
+    );
+    expect(
+      taskStarterPersonaFor('plan-1', [
+        (planId: 'plan-1', persona: 'groom'),
+        (planId: 'plan-1', persona: 'BRIDE'),
+      ]),
+      TaskStarterPersona.groom,
+    );
+    expect(
+      taskStarterPersonaFor('plan-1', [
+        (planId: 'plan-1', persona: null),
+        (planId: 'plan-1', persona: 'bride'),
+      ]),
+      TaskStarterPersona.bride,
+    );
+    expect(
+      taskStarterPersonaFor('plan-1', [(planId: 'other', persona: 'groom')]),
+      TaskStarterPersona.neutral,
+    );
+  });
+
   test('the managed catalog wins and carries the due offset', () {
     final managed = ManagedReferenceCatalog.fromJson({
       'key': taskStarterCatalogKey,

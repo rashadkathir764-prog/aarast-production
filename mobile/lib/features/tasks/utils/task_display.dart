@@ -49,7 +49,8 @@ String taskStatusLabel(String status) {
 
 String taskCategoryLabel(String? category) {
   final value = category?.trim();
-  if (value == null || value.isEmpty || value == 'GENERAL') return 'أخرى';
+  // Same word the task form shows for the same value (field test Q05).
+  if (value == null || value.isEmpty || value == 'GENERAL') return 'عامة';
   return switch (value) {
     'VENUE' => 'القاعة',
     'GUESTS' => 'الضيوف',

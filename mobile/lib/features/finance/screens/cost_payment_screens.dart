@@ -242,6 +242,7 @@ class _RecordCostPaymentScreenState extends State<RecordCostPaymentScreen> {
   }
 
   Future<void> _pickPaidAt() async {
+    releaseFieldFocus();
     final now = DateTime.now();
     final picked = await showDatePicker(
       context: context,

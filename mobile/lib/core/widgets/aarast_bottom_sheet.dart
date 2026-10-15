@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
 
 import '../theme/app_theme.dart';
+import 'release_field_focus.dart';
 
+/// Every Aarast sheet is a picker or a choice: it releases the field being
+/// edited first, so closing it does not reopen the keyboard on that field.
 Future<T?> showAarastBottomSheet<T>({
   required BuildContext context,
   required WidgetBuilder builder,
@@ -17,6 +20,7 @@ Future<T?> showAarastBottomSheet<T>({
   bool? showDragHandle,
   bool useRootNavigator = false,
 }) {
+  releaseFieldFocus();
   return showModalBottomSheet<T>(
     context: context,
     isScrollControlled: isScrollControlled,

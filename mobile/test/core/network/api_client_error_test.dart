@@ -165,7 +165,7 @@ void main() {
       expect(exception.statusCode, 503);
       expect(
         exception.message,
-        'خدمة رمز التحقق غير متاحة حاليًا. حاول بعد قليل.',
+        'تعذر إرسال رمز التحقق عبر واتساب. تأكد أن الرقم صحيح وعليه واتساب، ثم حاول مرة أخرى.',
       );
       expect(exception.message, isNot(contains('OTP delivery')));
     });
@@ -195,7 +195,7 @@ void main() {
       expect(exception.serverCode, 'OTP_DELIVERY_UNAVAILABLE');
       expect(
         exception.message,
-        'خدمة رمز التحقق غير متاحة حاليًا. حاول بعد قليل.',
+        'تعذر إرسال رمز التحقق عبر واتساب. تأكد أن الرقم صحيح وعليه واتساب، ثم حاول مرة أخرى.',
       );
     });
 

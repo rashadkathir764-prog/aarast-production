@@ -14,6 +14,7 @@ import '../../marketplace/marketplace_api.dart'
         QuoteRequest,
         QuoteStatusChip;
 import '../providers/provider_dashboard_provider.dart';
+import 'provider_requests_tab.dart' show ProviderQuoteFacts;
 
 class ProviderHomeTab extends StatelessWidget {
   const ProviderHomeTab({required this.onOpenTab, super.key});
@@ -77,7 +78,7 @@ class ProviderHomeTab extends StatelessWidget {
                 )
               else
                 for (final quote in dashboard.quoteRequests.take(3)) ...[
-                  _QuoteSummaryTile(quote: quote),
+                  _QuoteSummaryTile(quote: quote, onOpen: () => onOpenTab(1)),
                   const SizedBox(height: 10),
                 ],
             ],
@@ -381,29 +382,46 @@ class _QuickActions extends StatelessWidget {
 }
 
 class _QuoteSummaryTile extends StatelessWidget {
-  const _QuoteSummaryTile({required this.quote});
+  const _QuoteSummaryTile({required this.quote, required this.onOpen});
 
   final QuoteRequest quote;
+
+  /// Opens the requests tab, where the provider replies (field test Q12: the
+  /// tile looked tappable and did nothing).
+  final VoidCallback onOpen;
 
   @override
   Widget build(BuildContext context) {
     return AarastCard(
+      onTap: onOpen,
       child: Row(
         children: [
           const Icon(LucideIcons.mailQuestion, color: AppTheme.focus),
           const SizedBox(width: 10),
           Expanded(
-            child: Text(
-              quote.service?.title ?? 'طلب عرض سعر',
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: const TextStyle(
-                color: AppTheme.textPrimary,
-                fontWeight: FontWeight.w800,
-              ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  quote.service?.title ?? 'طلب عرض سعر',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    color: AppTheme.textPrimary,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                ProviderQuoteFacts(quote: quote),
+              ],
             ),
           ),
-          QuoteStatusChip(status: quote.lifecycleStatus, compact: true),
+          const SizedBox(width: 8),
+          QuoteStatusChip(
+            status: quote.lifecycleStatus,
+            compact: true,
+            forProvider: true,
+          ),
         ],
       ),
     );

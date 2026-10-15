@@ -13,7 +13,8 @@ import { validateRuntimeEnvironment } from '../src/platform/config/runtime-envir
 import { otpDeliveryOutcomesTotal } from '../src/platform/observability/metrics';
 import { createStrongRuntimeJwtSecret } from './support/runtime-secrets';
 
-const safeOtpUnavailableMessage = 'خدمة إرسال رمز التحقق غير متاحة حاليًا. حاول لاحقًا.';
+const safeOtpUnavailableMessage =
+  'تعذر إرسال رمز التحقق عبر واتساب. تأكد أن الرقم صحيح وعليه واتساب، ثم حاول مرة أخرى.';
 const strongRuntimeJwtSecret = createStrongRuntimeJwtSecret();
 
 async function otpDeliveryMetricValue(purpose: OtpPurpose, outcome: string): Promise<number> {

@@ -390,7 +390,9 @@ class AppTheme {
       floatingActionButtonTheme: const FloatingActionButtonThemeData(
         backgroundColor: brand,
         foregroundColor: onBrand,
-        shape: CircleBorder(),
+        // A stadium is a circle on the square FAB and a pill on an extended
+        // one; a circle clipped an extended FAB's label (field test Q10).
+        shape: StadiumBorder(),
         elevation: 0,
       ),
       listTileTheme: ListTileThemeData(

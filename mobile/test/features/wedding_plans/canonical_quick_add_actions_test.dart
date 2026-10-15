@@ -15,6 +15,7 @@ import 'package:aarast_mobile/features/account_contexts/data/account_contexts_ap
 import 'package:aarast_mobile/features/account_contexts/models/account_context.dart';
 import 'package:aarast_mobile/features/account_contexts/providers/account_context_controller.dart';
 import 'package:aarast_mobile/features/finance/data/finance_api.dart';
+import 'package:aarast_mobile/features/finance/models/budget_category.dart';
 import 'package:aarast_mobile/features/finance/models/money_summary.dart';
 import 'package:aarast_mobile/features/finance/providers/finance_provider.dart';
 import 'package:aarast_mobile/features/shell/screens/wedding_plan_shell.dart';
@@ -453,7 +454,7 @@ void main() {
     testWidgets(
       'money root hides the competing FAB during setup and restores it afterward',
       (tester) async {
-        Future<void> pumpWith({required bool hasBudget}) async {
+        Future<void> pumpWith({required bool setUp}) async {
           final router = _buildPlanShellRouter(
             initialLocation: AppRouter.money('plan-7'),
           );
@@ -461,16 +462,16 @@ void main() {
           await _pumpPlanShellRouter(
             tester,
             router,
-            financeProvider: _ShellFinanceProvider(hasBudget: hasBudget),
+            financeProvider: _ShellFinanceProvider(setUp: setUp),
           );
           await tester.pump();
         }
 
-        await pumpWith(hasBudget: false);
+        await pumpWith(setUp: false);
         var fab = find.byKey(const ValueKey('aarast-quick-action'));
         expect(fab, findsNothing);
 
-        await pumpWith(hasBudget: true);
+        await pumpWith(setUp: true);
         fab = find.byKey(const ValueKey('aarast-quick-action'));
         expect(fab, findsOneWidget);
         expect(tester.takeException(), isNull);
@@ -728,19 +729,34 @@ class _DummyContext implements BuildContext {
   dynamic noSuchMethod(Invocation invocation) => null;
 }
 
+/// Money set up means a budget split into categories; a bare budget still gets
+/// the starter (field test Q02).
 class _ShellFinanceProvider extends FinanceProvider {
-  _ShellFinanceProvider({required bool hasBudget})
+  _ShellFinanceProvider({required bool setUp})
     : _summary = MoneySummary(
         planId: 'plan-7',
-        budget: MoneyBudgetSummary(total: hasBudget ? '1000' : null),
+        budget: MoneyBudgetSummary(total: setUp ? '1000' : null),
         permissions: const MoneyPermissions(
           canViewMoney: true,
           canManageMoney: true,
         ),
       ),
+      _categories = setUp
+          ? const [
+              BudgetCategory(
+                id: 'category-1',
+                weddingPlanId: 'plan-7',
+                name: 'القاعة',
+              ),
+            ]
+          : const [],
       super(FinanceApi(ApiClient(tokenProvider: () async => null)));
 
   final MoneySummary _summary;
+  final List<BudgetCategory> _categories;
+
+  @override
+  List<BudgetCategory> get categories => _categories;
 
   @override
   String? get loadedPlanId => 'plan-7';

@@ -13,24 +13,42 @@ Future<void> _openTaskStarterSheet(
   final plans = context.read<WeddingPlansProvider?>();
   final active = plans?.activePlan;
   final selected = plans?.selectedPlan;
-  String? persona;
+  final accountContext = context
+      .read<AccountContextController?>()
+      ?.selectedContext;
+  final guestDraft = context.read<GuestOnboardingProvider?>()?.draft;
+  // Same sources, same order as the money starter: the selected account
+  // context is the authority for the persona; the plans provider only carries
+  // it for plans it has loaded; a guest plan has it in the local draft.
+  final persona = taskStarterPersonaFor(weddingPlanId, [
+    (
+      planId: accountContext?.weddingPlanId,
+      persona: accountContext?.persona?.name,
+    ),
+    (planId: active?.id, persona: active?.persona),
+    (planId: selected?.id, persona: selected?.persona),
+    (planId: guestDraft?.guestPlanId, persona: guestDraft?.persona?.name),
+  ]);
   DateTime? planWeddingDate;
   if (active != null && active.id == weddingPlanId) {
-    persona = active.persona;
     planWeddingDate = active.weddingDate;
   } else if (selected != null && selected.id == weddingPlanId) {
-    persona = selected.persona;
     planWeddingDate = selected.weddingDate;
+  } else if (guestDraft?.guestPlanId == weddingPlanId) {
+    planWeddingDate = guestDraft?.weddingDate;
   }
   final summary = context.read<DashboardSummaryProvider?>()?.summary;
   final weddingDate = summary?.planId == weddingPlanId
       ? summary?.weddingDate
       : planWeddingDate;
-  final groups = taskStarterGroupsFor(
-    context.read<ReferenceCatalogProvider?>()?.catalogFor(
-      taskStarterCatalogKey,
+  final groups = taskStarterGroupsForPlan(
+    taskStarterGroupsFor(
+      context.read<ReferenceCatalogProvider?>()?.catalogFor(
+        taskStarterCatalogKey,
+      ),
+      persona,
     ),
-    taskStarterPersonaFromCode(persona),
+    hasWeddingDate: weddingDate != null,
   );
   final existing = {
     for (final task in provider.tasks)
@@ -40,6 +58,9 @@ Future<void> _openTaskStarterSheet(
   final added = await showAarastBottomSheet<bool>(
     context: context,
     isScrollControlled: true,
+    // Above the plan shell, whose quick-add button and tab bar otherwise sit
+    // over the sheet's submit button (field test Q11).
+    useRootNavigator: true,
     builder: (_) => TaskStarterSheet(
       groups: groups,
       existingTitles: existing,

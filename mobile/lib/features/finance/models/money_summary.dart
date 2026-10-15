@@ -60,6 +60,22 @@ class MoneySummary {
       paymentSchedules.upcomingCount > 0 ||
       paymentSchedules.overdueCount > 0;
   bool get hasBudget => budget.total != null;
+
+  /// Categories whose confirmed costs passed their allocation, from the
+  /// server's CATEGORY_EXCEEDED warnings, with the overrun amount.
+  List<({String name, String? overrun})> get exceededCategories => [
+    for (final warning in warnings)
+      if (warning.type == 'CATEGORY_EXCEEDED')
+        (
+          name: categories
+                  .where((category) => category.categoryId == warning.categoryId)
+                  .firstOrNull
+                  ?.name ??
+              'بند',
+          overrun: warning.amount,
+        ),
+  ];
+
   double get confirmedRatio {
     final total = moneyValue(budget.total);
     if (total <= 0) return 0;

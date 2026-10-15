@@ -24,8 +24,10 @@ export function authError(
   return new HttpException({ statusCode, code, message }, statusCode);
 }
 
+// The WhatsApp channel cannot tell a number without WhatsApp from a channel
+// outage, so the message names both causes the user can act on.
 export const OTP_DELIVERY_UNAVAILABLE_MESSAGE =
-  'خدمة إرسال رمز التحقق غير متاحة حاليًا. حاول لاحقًا.';
+  'تعذر إرسال رمز التحقق عبر واتساب. تأكد أن الرقم صحيح وعليه واتساب، ثم حاول مرة أخرى.';
 
 export function otpDeliveryUnavailableError(): HttpException {
   return authError(

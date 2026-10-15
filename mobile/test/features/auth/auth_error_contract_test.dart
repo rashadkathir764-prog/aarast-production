@@ -69,7 +69,7 @@ void main() {
     expect(harness.controller.errorCode, 'OTP_DELIVERY_UNAVAILABLE');
     expect(
       harness.controller.errorMessage,
-      'خدمة رمز التحقق غير متاحة حاليًا. حاول بعد قليل.',
+      'تعذر إرسال رمز التحقق عبر واتساب. تأكد أن الرقم صحيح وعليه واتساب، ثم حاول مرة أخرى.',
     );
     expect(harness.controller.errorMessage, isNot(contains('كلمة المرور')));
   });

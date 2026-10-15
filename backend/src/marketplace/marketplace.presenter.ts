@@ -56,6 +56,10 @@ export class MarketplaceQuery {
     const pagination = this.parsePagination(query.page, query.limit);
     const and: ProviderSearchWhere["AND"] = [
       { status: ProviderStatus.ACTIVE },
+      // An approved provider is listed once it offers something: a profile
+      // with no service showed customers an empty card and an empty page
+      // (field test Q14). Its page stays reachable by id.
+      { services: { some: { isActive: true } } },
     ];
     const where: ProviderSearchWhere = { AND: and };
 

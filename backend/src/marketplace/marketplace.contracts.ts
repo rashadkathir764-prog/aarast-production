@@ -22,7 +22,7 @@ import {
 type TextMatch = { contains: string; mode: "insensitive" };
 export interface ProviderSearchWhere {
   AND: Array<
-    | { status: ProviderStatus }
+    | { status: ProviderStatus } | { services: { some: { isActive: boolean } } }
     | { cityId: string }
     | { isFeatured: boolean }
     | { OR: Array<{ primaryCategoryId: string } | { services: { some: { categoryId: string; isActive: boolean } } }> }

@@ -1625,8 +1625,10 @@ const r19ProviderPortalApi = Object.freeze({
   path: 'mobile/lib/features/provider_portal/provider_portal_api.dart',
 });
 // 172 at R19, +2 for the suggested tasks reading the catalogs owner API
-// (V1 checklist 4.9, tracked in trackedPlanningBatchContracts).
-const r19LegalRecordCount = 174;
+// (V1 checklist 4.9, tracked in trackedPlanningBatchContracts), +2 for the
+// suggested tasks reading the plan persona from the account context and the
+// guest draft (field-test Q01).
+const r19LegalRecordCount = 176;
 const trackedOwnerApiContracts = [
   {
     area: 'features/account_contexts',
@@ -2505,6 +2507,18 @@ const trackedPlanningBatchContracts = [
     source: 'mobile/lib/features/tasks/models/task_starter_catalog.dart',
     target: 'mobile/lib/features/catalogs/catalogs_api.dart',
     show: ['ManagedReferenceCatalog'],
+  },
+  // The plan's persona comes from the selected account context, or from the
+  // guest draft before sign-in — the same sources the money starter reads.
+  {
+    source: 'mobile/lib/features/tasks/screens/task_timeline_screen.dart',
+    target: 'mobile/lib/features/account_contexts/account_contexts_api.dart',
+    show: ['AccountContextController'],
+  },
+  {
+    source: 'mobile/lib/features/tasks/screens/task_timeline_screen.dart',
+    target: 'mobile/lib/features/onboarding/onboarding_api.dart',
+    show: ['GuestOnboardingProvider'],
   },
   {
     source: 'mobile/lib/features/tasks/screens/task_timeline_screen.dart',

@@ -51,6 +51,28 @@ void main() {
     },
   );
 
+  // Field test Q02: a budget entered while creating the plan hid the starter
+  // categories, so most new plans never saw them.
+  test('an owner with a budget but no categories still gets the starter', () async {
+    final provider = FinanceProvider(
+      _CountingFinanceApi(withCategories: false),
+      permissionsApi: _FakeSharingApi(
+        PlanAccessPermissions(
+          weddingPlanId: 'plan-owner',
+          isOwner: true,
+          canViewMoney: true,
+          canManageMoney: true,
+        ),
+      ),
+    );
+
+    await provider.loadMoney('plan-owner');
+
+    expect(provider.summary.hasBudget, isTrue);
+    expect(provider.categories, isEmpty);
+    expect(shouldShowMoneyStarter(provider), isTrue);
+  });
+
   test(
     'failed plan switch cannot leave the previous plan data visible',
     () async {
@@ -205,11 +227,15 @@ class _FakeSharingApi extends SharingApi {
 }
 
 class _CountingFinanceApi extends FinanceApi {
-  _CountingFinanceApi({this.failSummaryFor, this.withCost = false})
-    : super(ApiClient(tokenProvider: () async => null));
+  _CountingFinanceApi({
+    this.failSummaryFor,
+    this.withCost = false,
+    this.withCategories = true,
+  }) : super(ApiClient(tokenProvider: () async => null));
 
   final String? failSummaryFor;
   final bool withCost;
+  final bool withCategories;
   int summaryCalls = 0;
   int costCalls = 0;
   int paymentCalls = 0;
@@ -245,14 +271,16 @@ class _CountingFinanceApi extends FinanceApi {
         outstanding: withCost ? '1000' : '0',
         count: withCost ? 1 : 0,
       ),
-      categories: const [
-        MoneyCategorySummary(
-          categoryId: 'category-1',
-          name: 'الصالة',
-          allocatedAmount: '5000',
-          costsCount: 1,
-        ),
-      ],
+      categories: withCategories
+          ? const [
+              MoneyCategorySummary(
+                categoryId: 'category-1',
+                name: 'الصالة',
+                allocatedAmount: '5000',
+                costsCount: 1,
+              ),
+            ]
+          : const [],
     );
   }
 

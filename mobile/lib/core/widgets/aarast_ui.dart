@@ -20,6 +20,7 @@ export 'aarast_pressable.dart';
 export 'aarast_skeleton.dart';
 export 'aarast_status_badge.dart';
 export 'aarast_surface.dart';
+export 'release_field_focus.dart';
 
 /// غلاف الصفحات الموحّد — مبني فوق [AarastScreenFrame] حتى تتطابق كل
 /// الشاشات في الخلفية والحدود والـ SafeArea، ويضيف ترويسة فاخرة اختيارية.

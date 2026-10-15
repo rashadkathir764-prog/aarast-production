@@ -529,7 +529,8 @@ class _LocationPickerSheetState extends State<_LocationPickerSheet> {
             padding: const EdgeInsets.symmetric(horizontal: 20),
             child: TextField(
               controller: _searchController,
-              autofocus: widget.items.length > 12,
+              // No autofocus: the keyboard would cover most of the list the
+              // user came to tap. Search is one tap away.
               textAlign: TextAlign.right,
               onChanged: (value) => setState(() => _query = value),
               decoration: _locationDecoration(

@@ -355,6 +355,7 @@ class _LoanRepaymentsSheetState extends State<LoanRepaymentsSheet> {
   }
 
   Future<void> _pickDate() async {
+    releaseFieldFocus();
     final now = DateTime.now();
     final picked = await showDatePicker(
       context: context,

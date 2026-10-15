@@ -204,6 +204,9 @@ class TaskTimelineProvider extends ChangeNotifier with SessionScopedNotifier {
     notifyListeners();
 
     final now = today ?? DateTime.now();
+    final longestDaysBefore = pending
+        .map((item) => item.daysBefore ?? 0)
+        .fold(0, (longest, value) => value > longest ? value : longest);
     var added = 0;
     var queuedOffline = false;
     String? failure;
@@ -213,7 +216,13 @@ class TaskTimelineProvider extends ChangeNotifier with SessionScopedNotifier {
           final task = await _api.createTask(
             weddingPlanId: weddingPlanId,
             title: template.title,
-            dueDate: taskStarterDueDate(weddingDate, template.daysBefore, now),
+            taskCategory: template.taskCategory,
+            dueDate: taskStarterDueDate(
+              weddingDate,
+              template.daysBefore,
+              now,
+              longestDaysBefore: longestDaysBefore,
+            ),
           );
           added += 1;
           queuedOffline = queuedOffline || task.id.startsWith('local-');

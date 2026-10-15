@@ -223,6 +223,7 @@ class _PlanEditSheetState extends State<_PlanEditSheet> {
   }
 
   Future<void> _pickDate() async {
+    releaseFieldFocus();
     final picked = await showDatePicker(
       context: context,
       initialDate: _weddingDate ?? DateTime.now(),

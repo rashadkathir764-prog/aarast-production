@@ -138,7 +138,10 @@ class _MoreScreenState extends State<MoreScreen> {
                 iconBackground: AppTheme.brandMuted,
                 onTap: () => context.push(AppRouter.support),
               ),
-              if (_hasSyncService(context)) const OfflineSyncNowTile(),
+              // A guest has nothing on the server to sync with; "synced" would
+              // be a false promise about where their plan lives (field test Q08).
+              if (hasAccount && _hasSyncService(context))
+                const OfflineSyncNowTile(),
             ],
           ),
           const SizedBox(height: 18),

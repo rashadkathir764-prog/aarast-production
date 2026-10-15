@@ -171,6 +171,52 @@ void main() {
       expect(tester.takeException(), isNull);
     },
   );
+
+  // Field test Q09: "required" stayed under a field after it was filled.
+  testWidgets('a required error clears as soon as the field is filled', (
+    tester,
+  ) async {
+    tester.view.devicePixelRatio = 1;
+    tester.view.physicalSize = const Size(390, 844);
+    addTearDown(tester.view.reset);
+
+    final auth = await _authController();
+    await tester.pumpWidget(
+      MultiProvider(
+        providers: [
+          ChangeNotifierProvider<AuthController>.value(value: auth),
+          ChangeNotifierProvider<ProviderMarketplaceProvider>.value(
+            value: _ReferenceDataMarketplaceProvider(),
+          ),
+        ],
+        child: MaterialApp(
+          theme: AppTheme.light(),
+          locale: const Locale('ar'),
+          home: const Directionality(
+            textDirection: TextDirection.rtl,
+            child: RegisterScreen(),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final submit = find.widgetWithText(AarastButton, 'إنشاء حساب');
+    await tester.ensureVisible(submit);
+    await tester.tap(submit);
+    await tester.pumpAndSettle();
+    expect(find.text('رقم الهاتف مطلوب'), findsOneWidget);
+    expect(find.text('كلمة المرور مطلوبة'), findsOneWidget);
+
+    final fields = find.byType(TextFormField);
+    await tester.enterText(fields.at(1), '777123456');
+    await tester.enterText(fields.at(2), 'Test123456');
+    await tester.pumpAndSettle();
+
+    expect(find.text('رقم الهاتف مطلوب'), findsNothing);
+    expect(find.text('كلمة المرور مطلوبة'), findsNothing);
+    expect(find.text('الاسم مطلوب'), findsOneWidget);
+  });
 }
 
 Future<AuthController> _authController() async {

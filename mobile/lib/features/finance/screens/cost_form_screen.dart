@@ -643,6 +643,7 @@ class _CostFormScreenState extends State<CostFormScreen> {
   }
 
   Future<void> _pickAgreementDate() async {
+    releaseFieldFocus();
     final picked = await showDatePicker(
       context: context,
       initialDate: _agreementDate ?? DateTime.now(),

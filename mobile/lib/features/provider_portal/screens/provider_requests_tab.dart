@@ -6,6 +6,7 @@ import 'package:provider/provider.dart';
 import '../../../core/experience_v3/aarast_v3.dart';
 import '../../../core/routing/app_router.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../core/utils/arabic_date_formatter.dart';
 import '../../../core/utils/currency_label.dart';
 import '../../../core/widgets/aarast_ui.dart';
 import '../../../core/widgets/aarast_toast.dart';
@@ -151,9 +152,15 @@ class _ProviderRequestCard extends StatelessWidget {
                   ),
                 ),
               ),
-              QuoteStatusChip(status: quote.lifecycleStatus, compact: true),
+              QuoteStatusChip(
+                status: quote.lifecycleStatus,
+                compact: true,
+                forProvider: true,
+              ),
             ],
           ),
+          const SizedBox(height: 8),
+          ProviderQuoteFacts(quote: quote),
           if (quote.message?.trim().isNotEmpty == true) ...[
             const SizedBox(height: 10),
             Text(
@@ -192,6 +199,57 @@ class _ProviderRequestCard extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+/// What a provider needs to price a request at a glance: who is asking, for
+/// which day, where and for how many guests (field test Q12).
+class ProviderQuoteFacts extends StatelessWidget {
+  const ProviderQuoteFacts({required this.quote, super.key});
+
+  final QuoteRequest quote;
+
+  @override
+  Widget build(BuildContext context) {
+    final name = (quote.contactName ?? quote.userName)?.trim();
+    final place = quote.location?.displayLabel.trim();
+    final eventDate = quote.eventDate;
+    final guests = quote.guestCount;
+    final facts = <(IconData, String)>[
+      if (name != null && name.isNotEmpty) (LucideIcons.user, name),
+      if (eventDate != null)
+        (LucideIcons.calendar, formatArabicCompactDate(eventDate)),
+      if (place != null && place.isNotEmpty) (LucideIcons.mapPin, place),
+      if (guests != null && guests > 0) (LucideIcons.users, 'الضيوف: $guests'),
+    ];
+    if (facts.isEmpty) return const SizedBox.shrink();
+    final style = Theme.of(context).textTheme.bodySmall?.copyWith(
+      color: AppTheme.textSecondary,
+      fontWeight: FontWeight.w700,
+    );
+    return Wrap(
+      key: const ValueKey('provider-quote-facts'),
+      spacing: 14,
+      runSpacing: 6,
+      children: [
+        for (final (icon, label) in facts)
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(icon, size: 15, color: AppTheme.textSecondary),
+              const SizedBox(width: 4),
+              Flexible(
+                child: Text(
+                  label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: style,
+                ),
+              ),
+            ],
+          ),
+      ],
     );
   }
 }

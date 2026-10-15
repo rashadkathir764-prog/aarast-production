@@ -29,6 +29,9 @@ class _LoginScreenState extends State<LoginScreen> {
 
   bool _obscurePassword = true;
 
+  /// After a submit showed errors, fields re-check as they are edited.
+  bool _submitAttempted = false;
+
   @override
   void initState() {
     super.initState();
@@ -52,6 +55,9 @@ class _LoginScreenState extends State<LoginScreen> {
       contentAlignment: Alignment.topCenter,
       child: Form(
         key: _formKey,
+        autovalidateMode: _submitAttempted
+            ? AutovalidateMode.onUserInteraction
+            : AutovalidateMode.disabled,
         child: LoginExperience(
           phoneController: _phoneController,
           passwordController: _passwordController,
@@ -89,6 +95,7 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   Future<void> _submit() async {
+    if (!_submitAttempted) setState(() => _submitAttempted = true);
     if (!_formKey.currentState!.validate()) return;
 
     final auth = context.read<AuthController>();

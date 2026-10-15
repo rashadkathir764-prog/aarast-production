@@ -1,4 +1,6 @@
 import 'package:aarast_mobile/core/network/api_client.dart';
+import 'package:aarast_mobile/core/offline/local_database_json.dart';
+import 'package:aarast_mobile/core/offline/offline_sync_service.dart';
 import 'package:aarast_mobile/core/storage/auth_storage.dart';
 import 'package:aarast_mobile/core/theme/app_theme.dart';
 import 'package:aarast_mobile/features/auth/data/auth_repository.dart';
@@ -39,6 +41,23 @@ void main() {
     expect(find.byTooltip('تعديل صورة الحساب'), findsNothing);
   });
 
+  // Field test Q08: a guest saw "synced successfully" while the plan lived
+  // only on the phone.
+  testWidgets('a guest is not told their plan is synced', (tester) async {
+    final harness = await _MoreHarness.guest(withSyncService: true);
+
+    await tester.pumpWidget(harness.widget);
+    await _settleEntry(tester);
+    await tester.scrollUntilVisible(
+      find.text('تسجيل الدخول'),
+      320,
+      scrollable: find.byType(Scrollable).first,
+    );
+
+    expect(find.text('مزامنة الآن'), findsNothing);
+    expect(find.text('تمت المزامنة بنجاح'), findsNothing);
+  });
+
   testWidgets('account-backed profile menu keeps logout action', (
     tester,
   ) async {
@@ -75,7 +94,7 @@ class _MoreHarness {
 
   final Widget widget;
 
-  static Future<_MoreHarness> guest() async {
+  static Future<_MoreHarness> guest({bool withSyncService = false}) async {
     SharedPreferences.setMockInitialValues({});
     final preferences = await SharedPreferences.getInstance();
     final authStorage = AuthStorage(preferences);
@@ -85,12 +104,23 @@ class _MoreHarness {
     );
     final authController = AuthController(authRepository);
     await authController.restoreSession();
+    OfflineSyncService? syncService;
+    if (withSyncService) {
+      final database = JsonLocalDatabase(preferences);
+      await database.initialize();
+      syncService = OfflineSyncService(
+        database: database,
+        apiClient: ApiClient(tokenProvider: () async => null),
+      );
+      await syncService.refreshStatus();
+    }
     return _MoreHarness(
       widget: _buildApp(
         preferences: preferences,
         authStorage: authStorage,
         authRepository: authRepository,
         authController: authController,
+        syncService: syncService,
       ),
     );
   }
@@ -117,9 +147,12 @@ class _MoreHarness {
     required AuthStorage authStorage,
     required AuthRepository authRepository,
     required AuthController authController,
+    OfflineSyncService? syncService,
   }) {
     return MultiProvider(
       providers: [
+        if (syncService != null)
+          ChangeNotifierProvider<OfflineSyncService>.value(value: syncService),
         Provider<AuthStorage>.value(value: authStorage),
         Provider<AuthRepository>.value(value: authRepository),
         Provider<GuestOnboardingStorage>.value(

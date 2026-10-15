@@ -2,6 +2,17 @@ part of 'marketplace_provider.dart';
 
 // Provider details and favorites.
 mixin _MarketplaceProviderDetails on _MarketplaceProviderCore {
+  /// A customer opened the provider's page: counted for the provider's stats
+  /// (V1 checklist 4.19). A failure is logged and never shown: the page works
+  /// the same whether or not the view was counted.
+  Future<void> recordProviderView(String providerId) async {
+    try {
+      await _api.recordProviderView(providerId);
+    } on Object catch (error) {
+      debugPrint('Provider view not counted for $providerId: $error');
+    }
+  }
+
   Future<void> loadProviderDetails(String providerId, {String? weddingPlanId}) {
     final activeLoad = _providerDetailsLoads[providerId];
     if (activeLoad != null) return activeLoad;

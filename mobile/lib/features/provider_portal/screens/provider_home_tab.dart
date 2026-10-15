@@ -16,6 +16,7 @@ import '../../marketplace/marketplace_api.dart'
 import '../providers/provider_dashboard_provider.dart';
 import '../widgets/provider_bookings.dart'
     show ProviderBookingsSection, ProviderSetupChecklist;
+import '../widgets/provider_stats_panel.dart' show ProviderStatsPanel;
 import 'provider_requests_tab.dart' show ProviderQuoteFacts;
 
 class ProviderHomeTab extends StatelessWidget {
@@ -65,6 +66,8 @@ class ProviderHomeTab extends StatelessWidget {
               _QuickActions(onOpenTab: onOpenTab),
               const SizedBox(height: 18),
               ProviderBookingsSection(dashboard: dashboard),
+              const SizedBox(height: 18),
+              ProviderStatsPanel(dashboard: dashboard),
               const SizedBox(height: 18),
               AarastSectionHeader(
                 title: 'أحدث الطلبات',

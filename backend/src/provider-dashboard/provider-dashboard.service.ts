@@ -26,7 +26,8 @@ import {
   WeddingPlan,
 } from '@prisma/client';
 import { AuthenticatedUser } from '../modules/identity/public/identity-session.types';
-import { toBookingResponse } from '../marketplace/booking-policy';
+import { bookingToday, toBookingResponse } from '../marketplace/booking-policy';
+import { providerStatsWindowStart, toProviderStats } from './provider-stats';
 import { toReviewIdentity } from '../shared-kernel/privacy/review-identity';
 import { PhoneNormalizer } from '../shared-kernel/phone/phone-normalizer';
 import { runSerializableTransaction } from '../platform/database/serializable-transaction';
@@ -309,6 +310,13 @@ export class ProviderDashboardService {
       quoteRequestsCount,
       newQuoteRequestsCount,
     ] = await dashboardStore.countProviderDashboard(this.prisma, provider.id);
+    const today = bookingToday();
+    const [views, ...activity] = await dashboardStore.providerActivity(
+      this.prisma,
+      provider.id,
+      providerStatsWindowStart(today),
+      today,
+    );
 
     return {
       servicesCount,
@@ -317,6 +325,7 @@ export class ProviderDashboardService {
       newQuoteRequestsCount,
       averageRating: provider.ratingAverage.toString(),
       ratingCount: provider.ratingCount,
+      stats: toProviderStats(views._sum.views, ...activity),
     };
   }
 

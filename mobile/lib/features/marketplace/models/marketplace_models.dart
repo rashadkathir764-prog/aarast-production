@@ -778,6 +778,7 @@ class ProviderDashboardSummary {
     required this.newQuoteRequestsCount,
     required this.averageRating,
     required this.ratingCount,
+    this.stats,
   });
 
   factory ProviderDashboardSummary.empty() {
@@ -799,6 +800,7 @@ class ProviderDashboardSummary {
       newQuoteRequestsCount: _intOrZero(json['newQuoteRequestsCount']),
       averageRating: _doubleOrZero(json['averageRating']),
       ratingCount: _intOrZero(json['ratingCount']),
+      stats: _mapOrNull(json['stats'], ProviderStats.fromJson),
     );
   }
 
@@ -808,6 +810,47 @@ class ProviderDashboardSummary {
   final int newQuoteRequestsCount;
   final double averageRating;
   final int ratingCount;
+
+  /// The provider's reach over the last [ProviderStats.windowDays] days (V1 4.19).
+  final ProviderStats? stats;
+}
+
+/// What customers did with the provider's listing (V1 checklist 4.19).
+class ProviderStats {
+  const ProviderStats({
+    required this.windowDays,
+    required this.profileViews,
+    required this.quoteRequests,
+    required this.offersAccepted,
+    required this.offersDecided,
+    required this.acceptanceRate,
+    required this.upcomingBookings,
+    required this.completedBookings,
+  });
+
+  factory ProviderStats.fromJson(Map<String, dynamic> json) {
+    return ProviderStats(
+      windowDays: _intOrNull(json['windowDays']) ?? 30,
+      profileViews: _intOrZero(json['profileViews']),
+      quoteRequests: _intOrZero(json['quoteRequests']),
+      offersAccepted: _intOrZero(json['offersAccepted']),
+      offersDecided: _intOrZero(json['offersDecided']),
+      acceptanceRate: _intOrNull(json['acceptanceRate']),
+      upcomingBookings: _intOrZero(json['upcomingBookings']),
+      completedBookings: _intOrZero(json['completedBookings']),
+    );
+  }
+
+  final int windowDays;
+  final int profileViews;
+  final int quoteRequests;
+  final int offersAccepted;
+  final int offersDecided;
+
+  /// Whole percent of decided offers that customers accepted; null before any decision.
+  final int? acceptanceRate;
+  final int upcomingBookings;
+  final int completedBookings;
 }
 
 List<T> _listFromJson<T>(

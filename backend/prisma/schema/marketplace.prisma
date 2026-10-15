@@ -46,8 +46,8 @@ enum BookingParty {
 }
 
 model Provider {
-  id                String             @id @default(uuid())
-  userId            String?            @unique
+  id                String                   @id @default(uuid())
+  userId            String?                  @unique
   cityId            String
   primaryCategoryId String?
   businessName      String
@@ -55,28 +55,28 @@ model Provider {
   phone             String
   whatsapp          String?
   email             String?
-  description       String?            @db.Text
+  description       String?                  @db.Text
   address           String?
-  latitude          Decimal?           @db.Decimal(10, 7)
-  longitude         Decimal?           @db.Decimal(10, 7)
+  latitude          Decimal?                 @db.Decimal(10, 7)
+  longitude         Decimal?                 @db.Decimal(10, 7)
   logoUrl           String?
   coverUrl          String?
-  status            ProviderStatus     @default(PENDING)
-  reviewNote        String?            @db.Text
+  status            ProviderStatus           @default(PENDING)
+  reviewNote        String?                  @db.Text
   reviewedAt        DateTime?
   reviewedById      String?
   // Set when an admin has checked the provider's documents (not just approved the listing).
   verifiedAt        DateTime?
   verifiedById      String?
-  isFeatured        Boolean            @default(false)
-  ratingAverage     Decimal            @default(0) @db.Decimal(3, 2)
-  ratingCount       Int                @default(0)
-  createdAt         DateTime           @default(now())
-  updatedAt         DateTime           @updatedAt
-  user              User?              @relation(fields: [userId], references: [id], onDelete: SetNull)
-  city              City               @relation(fields: [cityId], references: [id])
-  primaryCategory   ProviderCategory?  @relation(fields: [primaryCategoryId], references: [id], onDelete: SetNull)
-  reviewedBy        User?              @relation("ProviderReviewedBy", fields: [reviewedById], references: [id], onDelete: SetNull)
+  isFeatured        Boolean                  @default(false)
+  ratingAverage     Decimal                  @default(0) @db.Decimal(3, 2)
+  ratingCount       Int                      @default(0)
+  createdAt         DateTime                 @default(now())
+  updatedAt         DateTime                 @updatedAt
+  user              User?                    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  city              City                     @relation(fields: [cityId], references: [id])
+  primaryCategory   ProviderCategory?        @relation(fields: [primaryCategoryId], references: [id], onDelete: SetNull)
+  reviewedBy        User?                    @relation("ProviderReviewedBy", fields: [reviewedById], references: [id], onDelete: SetNull)
   services          ProviderService[]
   packages          ProviderPackage[]
   favorites         FavoriteProvider[]
@@ -88,6 +88,7 @@ model Provider {
   conversations     Conversation[]
   bookings          Booking[]
   blockedDates      ProviderBlockedDate[]
+  profileViewDays   ProviderProfileViewDay[]
 
   @@index([status, isFeatured])
   @@index([cityId, status])
@@ -95,27 +96,27 @@ model Provider {
 }
 
 model ProviderService {
-  id            String                 @id @default(uuid())
-  providerId    String
-  categoryId    String
-  title         String
-  description   String?                @db.Text
-  basePrice     Decimal?               @db.Decimal(14, 2)
-  priceUnit     String?
-  currency      String                 @default("YER")
+  id             String                 @id @default(uuid())
+  providerId     String
+  categoryId     String
+  title          String
+  description    String?                @db.Text
+  basePrice      Decimal?               @db.Decimal(14, 2)
+  priceUnit      String?
+  currency       String                 @default("YER")
   // When basePrice last changed value; null while the service has no price.
   priceUpdatedAt DateTime?
-  cityId        String?
-  isActive      Boolean                @default(true)
-  isFeatured    Boolean                @default(false)
-  createdAt     DateTime               @default(now())
-  updatedAt     DateTime               @updatedAt
-  provider      Provider               @relation(fields: [providerId], references: [id], onDelete: Cascade)
-  category      ProviderCategory       @relation(fields: [categoryId], references: [id])
-  city          City?                  @relation(fields: [cityId], references: [id], onDelete: SetNull)
-  images        ProviderServiceImage[]
-  packages      ProviderPackage[]
-  quoteRequests QuoteRequest[]
+  cityId         String?
+  isActive       Boolean                @default(true)
+  isFeatured     Boolean                @default(false)
+  createdAt      DateTime               @default(now())
+  updatedAt      DateTime               @updatedAt
+  provider       Provider               @relation(fields: [providerId], references: [id], onDelete: Cascade)
+  category       ProviderCategory       @relation(fields: [categoryId], references: [id])
+  city           City?                  @relation(fields: [cityId], references: [id], onDelete: SetNull)
+  images         ProviderServiceImage[]
+  packages       ProviderPackage[]
+  quoteRequests  QuoteRequest[]
 
   @@index([providerId, isActive])
   @@index([categoryId, isActive])
@@ -302,4 +303,15 @@ model ProviderBlockedDate {
   provider   Provider @relation(fields: [providerId], references: [id], onDelete: Cascade)
 
   @@unique([providerId, date])
+}
+
+/// How many times customers opened the provider's page on one day (V1
+/// checklist 4.19). A daily total only: who viewed is not recorded.
+model ProviderProfileViewDay {
+  providerId String
+  day        DateTime @db.Date
+  views      Int      @default(0)
+  provider   Provider @relation(fields: [providerId], references: [id], onDelete: Cascade)
+
+  @@id([providerId, day])
 }

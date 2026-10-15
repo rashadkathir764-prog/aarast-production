@@ -3,12 +3,14 @@ import {
   Controller,
   Delete,
   Get,
+  HttpCode,
   Param,
   Patch,
   Post,
   Query,
   UseGuards,
 } from "@nestjs/common";
+import { Throttle } from "@nestjs/throttler";
 import { AuthenticatedUser } from "../modules/identity/public/identity-session.types";
 import { CurrentUser } from "../modules/identity/public/current-user.decorator";
 import { JwtAuthGuard } from "../modules/identity/public/jwt-auth.guard";
@@ -115,6 +117,15 @@ export class ProvidersController {
     @Body() dto: CreateProviderReviewDto,
   ) {
     return this.marketplaceService.createReview(currentUser, id, dto);
+  }
+
+  // Public like the page itself; the app calls it when a customer opens the
+  // page (not the provider's own preview). Throttled per client.
+  @Post(":id/views")
+  @HttpCode(200)
+  @Throttle({ default: { limit: 30, ttl: 60_000 } })
+  recordProviderView(@Param("id") id: string) {
+    return this.marketplaceService.recordProviderView(id);
   }
 
   @Get(":id")

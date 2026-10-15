@@ -177,6 +177,15 @@ export class MarketplaceService {
     );
   }
 
+  /** A customer opened the provider's page: counted in a daily total, who viewed is not kept (V1 4.19). */
+  async recordProviderView(id: string): Promise<{ recorded: true }> {
+    MarketplaceQuery.assertUuid(id, "providerId");
+    const day = bookingToday().toISOString().slice(0, 10);
+    const counted = await core.recordProviderProfileView(this.prisma, id, day);
+    if (counted === 0) throw new NotFoundException("Provider not found");
+    return { recorded: true };
+  }
+
   async findProvider(id: string) {
     MarketplaceQuery.assertUuid(id, "providerId");
     const providerRow = await core.findActiveProviderWithServices(this.prisma, id);

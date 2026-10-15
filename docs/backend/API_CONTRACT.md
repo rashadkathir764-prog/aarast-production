@@ -1942,6 +1942,17 @@ Provider trust signals (V1 checklist 4.11):
   when the provider sent an offer on it, or when it is unanswered, not
   cancelled and older than 48 hours. `typicalResponseHours` is the median time
   to the first offer rounded up to whole hours (`null` when none was answered).
+- `POST /api/v1/providers/:id/views` (public, `200 { recorded: true }`, throttled to 30 per minute
+  per client) counts one view of an active provider's page in a daily total
+  (V1 checklist 4.19); who viewed is not stored. `404` when the provider is not
+  active. The app calls it when a customer opens the page, not from the
+  provider's own preview.
+- `GET /api/v1/provider/me/summary` adds `stats` for the provider's last 30
+  days: `{ windowDays, profileViews, quoteRequests, offersAccepted,
+  offersDecided, acceptanceRate, upcomingBookings, completedBookings }`.
+  `acceptanceRate` is the whole-percent share of accepted offers among the
+  offers customers accepted or rejected (`null` before any decision);
+  bookings count confirmed bookings from today on and before today.
 
 Provider search matches the provider identity/address fields and active service
 title/description. The summary does not replace the full service contract from
@@ -2682,6 +2693,7 @@ configuration, and smoke checks.
 | GET | `/api/v1/providers/:id/reviews` | `marketplace.findProviderReviews` |  |
 | POST | `/api/v1/providers/:id/reviews` | `marketplace.createReview` | 🔒 |
 | GET | `/api/v1/providers/:id/services` | `marketplace.findProviderServices` |  |
+| POST | `/api/v1/providers/:id/views` | `marketplace.recordProviderView` |  |
 | GET | `/api/v1/public/rsvp/:token` | `guest-rsvp.getInvitation` |  |
 | POST | `/api/v1/public/rsvp/:token` | `guest-rsvp.respond` |  |
 | DELETE | `/api/v1/push/installations/current` | `push.unregister` | 🔒 |

@@ -40,6 +40,7 @@ class _ProviderDetailsScreenState extends State<ProviderDetailsScreen> {
   bool _quoteContextReady = false;
   bool _isReturningQuoteToMarketplace = false;
   final Set<String> _routeLaunchesInFlight = <String>{};
+  String? _countedViewProviderId;
 
   @override
   void initState() {
@@ -195,6 +196,19 @@ class _ProviderDetailsScreenState extends State<ProviderDetailsScreen> {
       widget.providerId,
       weddingPlanId: selectedPlanId,
     );
+    _countView(marketplace);
+  }
+
+  /// Once per opened provider, and never the provider's own preview of
+  /// their listing (V1 checklist 4.19).
+  void _countView(ProviderMarketplaceProvider marketplace) {
+    if (!mounted || _countedViewProviderId == widget.providerId) return;
+    if (marketplace.providerDetails(widget.providerId) == null) return;
+    final contexts =
+        context.read<AccountContextController?>()?.contexts ?? const [];
+    if (contexts.any((item) => item.providerId == widget.providerId)) return;
+    _countedViewProviderId = widget.providerId;
+    marketplace.recordProviderView(widget.providerId);
   }
 
   Future<bool> _hasAccount() async {

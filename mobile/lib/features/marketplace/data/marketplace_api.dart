@@ -280,6 +280,12 @@ class MarketplaceApi {
     }
   }
 
+  /// Counts one view of the provider's page (V1 checklist 4.19). Not queued
+  /// offline: a view that cannot reach the server is simply not counted.
+  Future<void> recordProviderView(String providerId) async {
+    await _apiClient.postJson('/api/v1/providers/$providerId/views', {});
+  }
+
   Future<void> favoriteProvider(String providerId) async {
     try {
       await _apiClient.postJson('/api/v1/providers/$providerId/favorite', {});

@@ -150,6 +150,28 @@ void main() {
 
     expect(find.text('تعذر فتح المورد'), findsOneWidget);
     expect(find.text('طلب عرض سعر'), findsNothing);
+    expect(api.viewedProviders, isEmpty);
+    expect(tester.takeException(), isNull);
+  });
+
+  // V1 checklist 4.19: opening a provider's page counts one view.
+  testWidgets('opening a provider page counts one view for their stats', (
+    tester,
+  ) async {
+    final api = _MarketplaceLoadingTruthApi();
+    final marketplace = ProviderMarketplaceProvider(api);
+
+    await tester.pumpWidget(
+      ChangeNotifierProvider<ProviderMarketplaceProvider>.value(
+        value: marketplace,
+        child: const MaterialApp(
+          home: ProviderDetailsScreen(providerId: 'provider-1'),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(api.viewedProviders, ['provider-1']);
     expect(tester.takeException(), isNull);
   });
 
@@ -232,6 +254,12 @@ class _MarketplaceLoadingTruthApi extends MarketplaceApi {
   Completer<MarketplaceProvider>? providerGate;
   int providerPageTotalPages = 1;
   int providerCalls = 0;
+  final viewedProviders = <String>[];
+
+  @override
+  Future<void> recordProviderView(String providerId) async {
+    viewedProviders.add(providerId);
+  }
 
   @override
   Future<List<MarketplaceCity>> getCities() async => const [

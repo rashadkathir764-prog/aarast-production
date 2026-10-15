@@ -37,6 +37,7 @@ history, or product behavior.
 | Package | Represents bundled provider offerings, such as full hall packages or photography packages. |
 | Booking | The wedding day reserved with a provider after their offer was accepted (V1 checklist 4.6). One per quote request (`quoteRequestId` unique); the plan and the customer are the quote's. `status` is `REQUESTED → CONFIRMED / DECLINED`, or `CANCELLED` by either side (`cancelledBy`). `eventDate` is a calendar day. A partial unique index (`providerId`, `eventDate`) `WHERE status = 'CONFIRMED'` allows one confirmed booking per provider per day. Tracking only: no deposit or payment. |
 | ProviderBlockedDate | A day the provider marked unavailable on their calendar; unique per provider and day. Requests and confirmations for it are refused. |
+| ProviderProfileViewDay | How many times customers opened a provider's page on one day (`providerId`, `day` primary key, `views`). A daily total only: who viewed is not stored (V1 checklist 4.19). |
 
 ## Wedding Financial OS Entities
 
@@ -472,7 +473,7 @@ rewrite as permission to restore a removed live model.
 | `ReferenceCatalogItem` | 9 | `id`, `catalogId`, `createdAt`, `updatedAt` |
 | `ReferenceCatalogItemRevision` | 19 | `id`, `itemId`, `createdAt` |
 | `ProviderCategory` | 13 | `id`, `createdAt`, `updatedAt` |
-| `Provider` | 41 | `id`, `userId`, `cityId`, `primaryCategoryId`, `reviewedAt`, `reviewedById`, `verifiedAt`, `verifiedById` |
+| `Provider` | 42 | `id`, `userId`, `cityId`, `primaryCategoryId`, `reviewedAt`, `reviewedById`, `verifiedAt`, `verifiedById` |
 | `ProviderService` | 20 | `id`, `providerId`, `categoryId`, `priceUpdatedAt`, `cityId`, `createdAt`, `updatedAt` |
 | `ProviderServiceImage` | 7 | `id`, `serviceId`, `createdAt` |
 | `ProviderPackage` | 13 | `id`, `providerId`, `serviceId`, `createdAt`, `updatedAt` |
@@ -483,6 +484,7 @@ rewrite as permission to restore a removed live model.
 | `PlanProviderLink` | 12 | `id`, `weddingPlanId`, `providerId`, `quoteRequestId`, `quoteOfferId`, `createdAt`, `updatedAt` |
 | `Booking` | 17 | `id`, `quoteRequestId`, `quoteOfferId`, `providerId`, `requestedByUserId`, `confirmedAt`, `declinedAt`, `cancelledAt` |
 | `ProviderBlockedDate` | 5 | `id`, `providerId`, `createdAt` |
+| `ProviderProfileViewDay` | 4 | `providerId` |
 | `Conversation` | 23 | `id`, `weddingPlanId`, `accountRequesterUserId`, `providerId`, `createdByUserId`, `lastActivityAt`, `closedAt`, `customerSideBlockedAt` |
 | `ConversationParticipant` | 11 | `id`, `conversationId`, `userId`, `joinedAt`, `revokedAt`, `lastReadAt`, `mutedAt`, `createdAt` |
 | `ConversationEvent` | 14 | `id`, `conversationId`, `quoteRequestId`, `quoteOfferId`, `actorUserId`, `occurredAt`, `createdAt` |
@@ -490,5 +492,5 @@ rewrite as permission to restore a removed live model.
 | `ChatAttachment` | 7 | `id`, `messageId`, `createdAt` |
 | `ConversationReport` | 9 | `id`, `conversationId`, `reporterUserId`, `createdAt`, `updatedAt` |
 
-Total models: 56
+Total models: 57
 <!-- DOCS-SYNC:END -->

@@ -10,6 +10,8 @@ import {
   QuoteRequestStatus,
 } from "@prisma/client";
 import { BookingsService } from "../../src/marketplace/bookings.service";
+import * as core from "../../src/modules/marketplace/infrastructure/marketplace-core.repository";
+import * as dashboardStore from "../../src/modules/marketplace/infrastructure/provider-dashboard.repository";
 import { PermissionService } from "../../src/modules/collaboration/internal/permission.service";
 import { ownerPorts } from "./support/owner-ports";
 
@@ -198,6 +200,31 @@ async function main(): Promise<void> {
       0,
     );
     console.log("PASS - a confirmed booking is reminded a week before, on both sides");
+
+    // The provider's stats (V1 checklist 4.19): concurrent first views of a
+    // day add up in one row; an unknown provider counts nothing.
+    const today = new Date().toISOString().slice(0, 10);
+    await Promise.all(
+      [1, 2, 3].map(() => core.recordProviderProfileView(prisma as any, provider.id, today)),
+    );
+    assert.equal(
+      await core.recordProviderProfileView(prisma as any, "00000000-0000-4000-8000-000000000000", today),
+      0,
+    );
+    const [views, requested, accepted, decided, upcoming, completed] =
+      await dashboardStore.providerActivity(
+        prisma as any,
+        provider.id,
+        new Date(Date.now() - 24 * 60 * 60 * 1000),
+        new Date(`${today}T00:00:00Z`),
+      );
+    assert.equal(views._sum.views, 3);
+    assert.equal(requested, 3);
+    assert.equal(accepted, 3);
+    assert.equal(decided, 3);
+    assert.equal(upcoming, 1);
+    assert.equal(completed, 0);
+    console.log("PASS - provider stats: views add up per day, with requests, offers and bookings");
 
     const cancelled = await bookings.cancelAsCustomer(
       (winner.id === bookingA.id ? customerA : customerB) as any,

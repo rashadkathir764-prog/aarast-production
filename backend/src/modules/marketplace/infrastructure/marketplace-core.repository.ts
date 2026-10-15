@@ -245,3 +245,17 @@ export function findPersonalQuoteRequest(client: Client, id: string, userId: str
 export function findQuoteOfferWithRequest(client: Client, id: string) {
   return client.quoteOffer.findUnique({ where: { id }, include: { quoteRequest: true } });
 }
+
+/**
+ * Counts one view of a listed provider's page on `day` (V1 checklist 4.19):
+ * one statement, so concurrent first views of a day cannot collide. Returns
+ * 0 when the provider is not active (nothing is counted).
+ */
+export function recordProviderProfileView(client: Client, providerId: string, day: string) {
+  return client.$executeRaw`
+    INSERT INTO "ProviderProfileViewDay" ("providerId", "day", "views")
+    SELECT "id", ${day}::date, 1 FROM "Provider"
+    WHERE "id" = ${providerId} AND "status" = 'ACTIVE'
+    ON CONFLICT ("providerId", "day")
+    DO UPDATE SET "views" = "ProviderProfileViewDay"."views" + 1`;
+}

@@ -1,4 +1,4 @@
-import { Prisma, ProviderStatus, QuoteOfferStatus, QuoteRequestStatus } from '@prisma/client';
+import { BookingStatus, Prisma, ProviderStatus, QuoteOfferStatus, QuoteRequestStatus } from '@prisma/client';
 import { priceStampForNewService, priceStampForServiceUpdate } from './service-price-stamp';
 
 type Client = Prisma.TransactionClient;
@@ -309,4 +309,28 @@ export function findOwnedService(client: Client, serviceId: string, providerId: 
 
 export function findOwnedPackage(client: Client, packageId: string, providerId: string) {
   return client.providerPackage.findFirst({ where: { id: packageId, providerId } });
+}
+
+/** The provider's activity since `from`, and their bookings around `today` (V1 checklist 4.19). */
+export function providerActivity(client: Client, providerId: string, from: Date, today: Date) {
+  const decided = [QuoteOfferStatus.ACCEPTED, QuoteOfferStatus.REJECTED];
+  return Promise.all([
+    client.providerProfileViewDay.aggregate({
+      where: { providerId, day: { gte: from } },
+      _sum: { views: true },
+    }),
+    client.quoteRequest.count({ where: { providerId, createdAt: { gte: from } } }),
+    client.quoteOffer.count({
+      where: { providerId, status: QuoteOfferStatus.ACCEPTED, createdAt: { gte: from } },
+    }),
+    client.quoteOffer.count({
+      where: { providerId, status: { in: decided }, createdAt: { gte: from } },
+    }),
+    client.booking.count({
+      where: { providerId, status: BookingStatus.CONFIRMED, eventDate: { gte: today } },
+    }),
+    client.booking.count({
+      where: { providerId, status: BookingStatus.CONFIRMED, eventDate: { lt: today } },
+    }),
+  ]);
 }

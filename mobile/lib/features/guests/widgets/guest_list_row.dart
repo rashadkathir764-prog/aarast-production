@@ -24,6 +24,7 @@ class GuestListRow extends StatelessWidget {
     required this.onEdit,
     required this.onStatus,
     required this.onDelete,
+    this.onSendInvitation,
     super.key,
   });
 
@@ -34,6 +35,10 @@ class GuestListRow extends StatelessWidget {
   final VoidCallback onEdit;
   final ValueChanged<String> onStatus;
   final VoidCallback onDelete;
+
+  /// Sends the guest their personal RSVP link over WhatsApp (V1 checklist
+  /// 4.7); null where links are unavailable (a plan kept on the phone only).
+  final VoidCallback? onSendInvitation;
 
   @override
   Widget build(BuildContext context) {
@@ -57,6 +62,13 @@ class GuestListRow extends StatelessWidget {
             semanticLabel: 'إكمال بيانات الضيف',
             icon: LucideIcons.userCog,
             onTap: isBusy ? null : onEdit,
+          )
+        : onSendInvitation != null && guest.invitationStatus == 'NOT_SENT'
+        ? _GuestPrimaryAction(
+            label: 'إرسال الدعوة',
+            semanticLabel: 'إرسال رابط الدعوة للضيف عبر واتساب',
+            icon: LucideIcons.send,
+            onTap: isBusy ? null : onSendInvitation,
           )
         : guest.status == 'INVITED' || guest.status == 'PENDING'
         ? _GuestPrimaryAction(
@@ -112,6 +124,7 @@ class GuestListRow extends StatelessWidget {
         onEdit: onEdit,
         onStatus: onStatus,
         onDelete: onDelete,
+        onSendInvitation: onSendInvitation,
       ),
       footer: primaryAction == null
           ? null
@@ -310,12 +323,14 @@ class _GuestMenu extends StatelessWidget {
     required this.onEdit,
     required this.onStatus,
     required this.onDelete,
+    this.onSendInvitation,
   });
 
   final bool isBusy;
   final VoidCallback onEdit;
   final ValueChanged<String> onStatus;
   final VoidCallback onDelete;
+  final VoidCallback? onSendInvitation;
 
   @override
   Widget build(BuildContext context) {
@@ -334,6 +349,8 @@ class _GuestMenu extends StatelessWidget {
       onSelected: (value) {
         if (value == 'edit') {
           onEdit();
+        } else if (value == 'invite') {
+          onSendInvitation?.call();
         } else if (value == 'delete') {
           onDelete();
         } else if (_statusValues.contains(value)) {
@@ -342,6 +359,11 @@ class _GuestMenu extends StatelessWidget {
       },
       itemBuilder: (context) => [
         const PopupMenuItem(value: 'edit', child: Text('تعديل')),
+        if (onSendInvitation != null)
+          const PopupMenuItem(
+            value: 'invite',
+            child: Text('إرسال رابط الدعوة'),
+          ),
         for (final status in _statusValues)
           PopupMenuItem(value: status, child: Text(guestStatusLabel(status))),
         const PopupMenuDivider(),

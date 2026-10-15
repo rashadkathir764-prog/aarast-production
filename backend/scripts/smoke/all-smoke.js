@@ -39,6 +39,7 @@ const smokeScripts = [
     ['ts-node/register'],
   ],
   ['smoke:booking', 'booking-smoke.ts', ['ts-node/register']],
+  ['smoke:guest-rsvp', 'guest-rsvp-smoke.ts', ['ts-node/register']],
   ['smoke:provider-dashboard', 'provider-dashboard-smoke.js'],
   ['smoke:ux-backend-support', 'ux-backend-support-smoke.js'],
   ['smoke:ux-c4-c7', 'ux-c4-c7-smoke.js'],

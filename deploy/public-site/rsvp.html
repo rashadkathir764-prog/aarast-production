@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="robots" content="noindex,nofollow,noarchive">
+    <title>دعوة عرس</title>
+    <meta name="description" content="دعوة خاصة لحضور عرس. أكّد حضورك من هنا.">
+    <meta property="og:locale" content="ar_YE">
+    <meta property="og:type" content="website">
+    <meta property="og:site_name" content="اعّرست">
+    <meta property="og:title" content="دعوة عرس">
+    <meta property="og:description" content="يسعدنا حضورك. أكّد حضورك من الرابط.">
+    <link rel="stylesheet" href="/invite.css">
+    <link rel="stylesheet" href="/rsvp.css">
+    <script src="/rsvp.js" defer></script>
+  </head>
+  <body>
+    <main class="invite-shell">
+      <section class="invite-card" aria-labelledby="rsvp-title" aria-live="polite">
+        <div class="brand-mark" aria-hidden="true">
+          <span class="ring ring-one"></span>
+          <span class="ring ring-two"></span>
+          <span class="heart">♥</span>
+        </div>
+        <p class="eyebrow">دعوة عرس</p>
+        <h1 id="rsvp-title">جارٍ فتح الدعوة…</h1>
+        <p id="rsvp-greeting" class="lead"></p>
+        <dl id="rsvp-details" class="rsvp-details" hidden>
+          <div id="rsvp-date-row">
+            <dt>الموعد</dt>
+            <dd id="rsvp-date"></dd>
+          </div>
+          <div id="rsvp-place-row">
+            <dt>المكان</dt>
+            <dd id="rsvp-place"></dd>
+          </div>
+        </dl>
+        <div id="rsvp-answer" class="rsvp-answer" hidden>
+          <label class="rsvp-companions" for="rsvp-companions">
+            عدد المرافقين معك
+            <input id="rsvp-companions" type="number" inputmode="numeric" min="0" max="20" value="0">
+          </label>
+          <button id="rsvp-yes" class="open-button" type="button">سأحضر بإذن الله</button>
+          <button id="rsvp-no" class="rsvp-decline" type="button">أعتذر عن الحضور</button>
+        </div>
+        <p id="rsvp-status" class="status" role="status"></p>
+      </section>
+    </main>
+  </body>
+</html>

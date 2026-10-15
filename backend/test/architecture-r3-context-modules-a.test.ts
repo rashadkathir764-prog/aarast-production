@@ -102,7 +102,8 @@ test('Task 6 full modules preserve the exact controller ownership', () => {
       'TasksController', 'WeddingPlanTasksController',
     ]],
     ['modules/guests/guests.module.ts#GuestsModule', [
-      'GuestGroupsController', 'GuestsController',
+      'GuestGroupsController', 'GuestInvitationLinksController', 'GuestsController',
+      'PublicRsvpController',
       'WeddingPlanGuestGroupsController', 'WeddingPlanGuestsController',
     ]],
   ]);
@@ -121,6 +122,7 @@ test('Task 6 internal leaves own each non-public implementation exactly once', (
     ['modules/collaboration/internal/collaboration-services.internal.module.ts#CollaborationServicesInternalModule', ['InvitationDeliveryService', 'InviteAccessService', 'SharingService']],
     ['modules/tasks/internal/tasks-service.internal.module.ts#TasksServiceInternalModule', ['TasksService']],
     ['modules/guests/internal/guests-service.internal.module.ts#GuestsServiceInternalModule', ['GuestsService']],
+    ['modules/guests/internal/guests-rsvp.internal.module.ts#GuestsRsvpInternalModule', ['GuestRsvpService']],
   ]);
   for (const [key, names] of expected) {
     const [path, className] = key.split('#');

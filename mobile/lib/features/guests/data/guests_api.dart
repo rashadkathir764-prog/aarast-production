@@ -249,6 +249,20 @@ class GuestsApi {
     );
   }
 
+  /// A new personal RSVP link for the guest and the WhatsApp text that
+  /// carries it (V1 checklist 4.7). The previous link stops working.
+  Future<GuestInvitationLink> createInvitationLink(String guestId) async {
+    final json = await _apiClient.postJson(
+      '/api/v1/guests/$guestId/invitation-link',
+      const {},
+    );
+    return GuestInvitationLink(
+      url: json['url']?.toString() ?? '',
+      message: json['message']?.toString() ?? '',
+      phone: json['phone']?.toString(),
+    );
+  }
+
   String? _normalizeOptionalPhone(String? phone) {
     try {
       return PhoneNumberUtils.normalizeOptional(phone);

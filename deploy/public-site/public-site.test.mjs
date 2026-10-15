@@ -15,6 +15,8 @@ const privacyHtml = read("privacy.html");
 const supportHtml = read("support.html");
 const publicCss = read("public.css");
 const assetLinks = JSON.parse(read("assetlinks.json"));
+const rsvpHtml = read("rsvp.html");
+const rsvpJs = read("rsvp.js");
 
 assert.match(
   dockerfile,
@@ -33,6 +35,9 @@ for (const asset of [
   "support.html",
   "public.css",
   "assetlinks.json",
+  "rsvp.html",
+  "rsvp.js",
+  "rsvp.css",
 ]) {
   const escaped = asset.replaceAll(".", "\\.");
   assert.match(dockerfile, new RegExp(escaped), `${asset} must be copied explicitly.`);
@@ -137,5 +142,26 @@ assert.match(privacyHtml, /دون 13 عاماً/);
 assert.match(supportHtml, /info@aarast\.app/);
 assert.match(supportHtml, /حذف الحساب/);
 assert.match(publicCss, /font-family:/);
+
+// Guest RSVP (V1 checklist 4.7): a private, uncached, unindexed page whose
+// script talks only to its own origin and keeps nothing on the device.
+assert.match(nginx, /location \^~ \/rsvp\/[\s\S]*?no-store[\s\S]*?noindex[\s\S]*?try_files \/rsvp\.html =404;/);
+assert.match(nginx, /location = \/rsvp\.js/);
+assert.match(nginx, /location = \/rsvp\.css/);
+assert.match(rsvpHtml, /<html lang="ar" dir="rtl">/);
+assert.match(rsvpHtml, /noindex,nofollow,noarchive/);
+assert.doesNotMatch(rsvpHtml, /<form/i, "RSVP answers by fetch; CSP forbids form posts.");
+assert.doesNotMatch(
+  rsvpHtml,
+  /<script(?![^>]*\bsrc=)[^>]*>[\s\S]*<\/script>/i,
+  "Inline scripts are forbidden by CSP.",
+);
+assert.match(rsvpJs, /segments\.length === 2 && segments\[0\] === "rsvp"/);
+assert.match(rsvpJs, /\^\[A-Za-z0-9_-\]\{43\}\$/);
+assert.match(rsvpJs, /`\/api\/v1\/public\/rsvp\/\$\{encodeURIComponent\(token\)\}`/);
+assert.doesNotMatch(rsvpJs, /https?:\/\//, "The RSVP page calls only its own origin.");
+for (const forbidden of ["localStorage", "sessionStorage", "document.cookie", "console."]) {
+  assert.doesNotMatch(rsvpJs, new RegExp(forbidden.replace(".", "\\.")));
+}
 
 process.stdout.write("public-site source checks: PASS\n");

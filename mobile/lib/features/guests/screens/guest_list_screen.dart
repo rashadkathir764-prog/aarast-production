@@ -5,8 +5,10 @@ import 'package:go_router/go_router.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 
 import 'package:provider/provider.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../../core/experience_v3/aarast_v3.dart';
+import '../../../core/network/api_client.dart' show ApiException;
 import '../../../core/phone/phone_number_utils.dart';
 import '../../../core/forms/aarast_form_draft_store.dart';
 import '../../../core/forms/aarast_form_success.dart';
@@ -23,6 +25,7 @@ import '../../wedding_plans/wedding_plans_api.dart'
         WeddingStageDomain,
         publishGuestPlanPulse,
         resolveWeddingPlanStage;
+import '../data/guests_api.dart';
 import '../models/guest.dart';
 import '../providers/guests_provider.dart';
 import '../widgets/guest_form_sheet.dart';
@@ -123,9 +126,35 @@ class _GuestListScreenState extends State<GuestListScreen> {
           onStatus: _updateStatus,
           onDelete: _confirmDelete,
           onManageGroups: _showGroupsSheet,
+          onSendInvitation: _isLocalExploration ? null : _sendInvitation,
         ),
       ),
     );
+  }
+
+  /// Opens WhatsApp with the guest's personal RSVP link (V1 checklist 4.7);
+  /// the guest's answer updates this list.
+  Future<void> _sendInvitation(Guest guest) async {
+    final api = context.read<GuestsApi>();
+    final provider = context.read<GuestsProvider>();
+    try {
+      final link = await api.createInvitationLink(guest.id);
+      final opened = await launchUrl(
+        link.whatsAppUri,
+        mode: LaunchMode.externalApplication,
+      );
+      if (!mounted) return;
+      if (!opened) {
+        AarastToast.showError(context, 'تعذر فتح واتساب على هذا الجهاز.');
+      }
+      await provider.loadGuests(widget.weddingPlanId);
+    } on ApiException catch (error) {
+      if (!mounted) return;
+      AarastToast.showError(context, error.message);
+    } catch (_) {
+      if (!mounted) return;
+      AarastToast.showError(context, 'تعذر تجهيز رابط الدعوة. حاول مرة أخرى.');
+    }
   }
 
   /// Groups are saved on the account, so a device-only plan has none.
@@ -418,6 +447,7 @@ class _GuestsContent extends StatelessWidget {
     required this.onStatus,
     required this.onDelete,
     required this.onManageGroups,
+    this.onSendInvitation,
   });
 
   final GuestsProvider provider;
@@ -431,6 +461,7 @@ class _GuestsContent extends StatelessWidget {
   final Future<void> Function(Guest guest, String status) onStatus;
   final ValueChanged<Guest> onDelete;
   final VoidCallback onManageGroups;
+  final ValueChanged<Guest>? onSendInvitation;
 
   @override
   Widget build(BuildContext context) {
@@ -585,6 +616,11 @@ class _GuestsContent extends StatelessWidget {
                     onEdit: () => onEditGuest(guest),
                     onStatus: (status) => onStatus(guest, status),
                     onDelete: () => onDelete(guest),
+                    onSendInvitation:
+                        onSendInvitation == null ||
+                            guest.id.startsWith('local-guest-')
+                        ? null
+                        : () => onSendInvitation!(guest),
                   ),
                 ),
             ],

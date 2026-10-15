@@ -21,6 +21,7 @@ enum NotificationType {
   LOAN_REPAYMENT_OVERDUE
   WEDDING_COUNTDOWN
   BOOKING_UPDATED
+  GUEST_RESPONDED
 }
 
 enum NotificationPriority {

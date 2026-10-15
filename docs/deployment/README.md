@@ -232,6 +232,18 @@ list or manage buckets, users, or policies. Provider services may own multiple
 image rows; Flutter uploads and verifies each selected image before binding it
 to the service, and the public provider profile exposes the ordered gallery.
 
+## Guest RSVP Routing (V1 checklist 4.7)
+
+The public site serves the guest RSVP page at `/rsvp/<token>`. The page calls
+`/api/v1/public/rsvp/<token>` on its **own origin** (its CSP allows only
+`'self'`), so the edge proxy for the site host must forward
+`/api/v1/public/rsvp/*` to the Backend and everything else to `public-site`.
+The AWS interim stack does this in `deploy/aws/Caddyfile`; a Dokploy/Traefik
+deployment needs the same path rule on the site host. Backend must set
+`INVITE_PUBLIC_ORIGIN` to `https://<site host>` (sharing invites and RSVP
+links are built from it; without it they point at the old production
+domain).
+
 ## Mobile Store Release Gate
 
 Release builds require an explicit public `https://` API origin and reject the

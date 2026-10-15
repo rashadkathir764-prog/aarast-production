@@ -11,5 +11,12 @@
 
 {$AARAST_SITE_HOST} {
 	encode gzip
-	reverse_proxy public-site:80
+	# The guest RSVP page (/rsvp/<token>) calls only these public routes on
+	# its own origin; everything else on this host is the static site.
+	handle /api/v1/public/rsvp/* {
+		reverse_proxy backend:3000
+	}
+	handle {
+		reverse_proxy public-site:80
+	}
 }

@@ -1,0 +1,80 @@
+.rsvp-details {
+  display: grid;
+  gap: 10px;
+  margin: 22px 0 6px;
+  padding: 16px;
+  text-align: right;
+  background: #fff6d9;
+  border: 1px solid var(--gold-soft);
+  border-radius: 18px;
+}
+
+.rsvp-details div {
+  display: flex;
+  gap: 10px;
+  align-items: baseline;
+}
+
+.rsvp-details dt {
+  min-width: 56px;
+  color: var(--burgundy-deep);
+  font-weight: 800;
+}
+
+.rsvp-details dd {
+  margin: 0;
+  color: var(--ink);
+  font-weight: 700;
+  line-height: 1.6;
+}
+
+.rsvp-answer {
+  display: grid;
+  gap: 12px;
+  margin-top: 22px;
+}
+
+.rsvp-companions {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  color: var(--muted);
+  font-weight: 700;
+  text-align: right;
+}
+
+.rsvp-companions input {
+  width: 84px;
+  padding: 10px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  font: inherit;
+  text-align: center;
+}
+
+.rsvp-answer button {
+  font-family: inherit;
+  cursor: pointer;
+  border: 0;
+}
+
+.rsvp-decline {
+  padding: 14px 18px;
+  color: var(--burgundy);
+  background: transparent;
+  border: 1px solid var(--border) !important;
+  border-radius: 16px;
+  font-size: 17px;
+  font-weight: 800;
+}
+
+.rsvp-answer button:disabled {
+  cursor: wait;
+  opacity: 0.6;
+}
+
+.rsvp-done {
+  color: #1d6b45;
+  font-weight: 800;
+}

@@ -463,6 +463,12 @@ _NotificationTone _tone(String type) {
       color: AppTheme.success,
     );
   }
+  if (upperType == 'GUEST_RESPONDED') {
+    return const _NotificationTone(
+      icon: LucideIcons.userCheck,
+      color: AppTheme.success,
+    );
+  }
   if (upperType.contains('SHARING')) {
     return const _NotificationTone(
       icon: LucideIcons.userPlus,

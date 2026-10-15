@@ -40,6 +40,11 @@ model Guest {
   seatsCount       Int                   @default(1)
   companionsCount  Int                   @default(0)
   notes            String?
+  // SHA-256 of the guest's personal RSVP link token (V1 checklist 4.7);
+  // the token itself is never stored. A new link replaces the old one.
+  rsvpTokenHash    String?               @unique
+  // When the guest last answered through their RSVP link.
+  respondedAt      DateTime?
   createdAt        DateTime              @default(now())
   updatedAt        DateTime              @updatedAt
   weddingPlan      WeddingPlan           @relation(fields: [weddingPlanId], references: [id], onDelete: Restrict)

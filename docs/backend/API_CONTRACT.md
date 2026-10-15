@@ -2165,6 +2165,30 @@ Reviews (F10): `POST /api/v1/providers/:id/reviews` requires a confirmed
 booking with the provider whose day has passed; otherwise
 `403 REVIEW_REQUIRES_COMPLETED_BOOKING`.
 
+## Guest Invitations And RSVP
+
+V1 checklist 4.7. Each guest gets a personal link to confirm or decline,
+without an account.
+
+- `POST /api/v1/guests/:id/invitation-link` (guest-management permission; a
+  contributor only for guests they added) returns `{ guestId, url, phone,
+  invitationStatus, message }`. `url` is `INVITE_PUBLIC_ORIGIN/rsvp/<token>`
+  with a 43-character token; only its SHA-256 is stored, and a new link
+  retires the previous one. A `NOT_SENT` invitation becomes `SENT`.
+  `message` is the Arabic WhatsApp text (plan title, date, place, link).
+- `GET /api/v1/public/rsvp/:token` (no auth, 30/min) returns `{ guestName,
+  planTitle, weddingDate, locationLabel, attendanceStatus, companionsCount,
+  maxCompanions, respondedAt }`.
+- `POST /api/v1/public/rsvp/:token` (no auth, 10/min) `{ attendance:
+  "CONFIRMED" | "DECLINED", companionsCount? }` (0–20; 0 when declining)
+  updates the guest's attendance, status and companions, and notifies the
+  plan owner (`GUEST_RESPONDED`).
+
+An unknown or malformed token, or an archived plan, returns
+`404 RSVP_LINK_NOT_FOUND`. The public page `/rsvp/<token>` on the public site
+calls these routes on its own origin; the edge proxy forwards
+`/api/v1/public/rsvp/*` on the site host to the API.
+
 ## Quote Conversations And Media
 
 Conversations begin only with a real quote request; open or unsolicited
@@ -2588,6 +2612,7 @@ configuration, and smoke checks.
 | DELETE | `/api/v1/guests/:id` | `guests.remove` | 🔒 |
 | GET | `/api/v1/guests/:id` | `guests.findOne` | 🔒 |
 | PATCH | `/api/v1/guests/:id` | `guests.update` | 🔒 |
+| POST | `/api/v1/guests/:id/invitation-link` | `guest-rsvp.createInvitationLink` | 🔒 |
 | GET | `/api/v1/invites/:token` | `sharing.getInvite` | 🔒 |
 | POST | `/api/v1/invites/:token/accept` | `sharing.acceptInvite` | 🔒 |
 | POST | `/api/v1/invites/:token/decline` | `sharing.declineInvite` | 🔒 |
@@ -2657,6 +2682,8 @@ configuration, and smoke checks.
 | GET | `/api/v1/providers/:id/reviews` | `marketplace.findProviderReviews` |  |
 | POST | `/api/v1/providers/:id/reviews` | `marketplace.createReview` | 🔒 |
 | GET | `/api/v1/providers/:id/services` | `marketplace.findProviderServices` |  |
+| GET | `/api/v1/public/rsvp/:token` | `guest-rsvp.getInvitation` |  |
+| POST | `/api/v1/public/rsvp/:token` | `guest-rsvp.respond` |  |
 | DELETE | `/api/v1/push/installations/current` | `push.unregister` | 🔒 |
 | PUT | `/api/v1/push/installations/current` | `push.register` | 🔒 |
 | PATCH | `/api/v1/quote-offers/:id/accept` | `marketplace.acceptOffer` | 🔒 |

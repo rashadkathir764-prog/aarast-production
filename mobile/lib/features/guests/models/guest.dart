@@ -294,3 +294,27 @@ class GuestSummary {
     };
   }
 }
+
+/// A guest's personal RSVP link and the WhatsApp text that carries it (4.7).
+class GuestInvitationLink {
+  const GuestInvitationLink({
+    required this.url,
+    required this.message,
+    this.phone,
+  });
+
+  final String url;
+  final String message;
+
+  /// The guest's number in E.164, when the plan has it.
+  final String? phone;
+
+  /// WhatsApp with the message ready: to the guest's chat when the number is
+  /// known, otherwise WhatsApp's own picker.
+  Uri get whatsAppUri {
+    final digits = phone?.replaceAll(RegExp(r'[^0-9]'), '') ?? '';
+    return Uri.https('wa.me', digits.isEmpty ? '/' : '/$digits', {
+      'text': message,
+    });
+  }
+}

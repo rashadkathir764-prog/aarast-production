@@ -52,6 +52,7 @@
 | `backend` | `npm run smoke:dashboard-summary` | `node scripts/smoke/run-isolated-smoke.js dashboard-summary-smoke.js` |
 | `backend` | `npm run smoke:financial-ledger-concurrency` | `node scripts/smoke/run-isolated-smoke.js financial-ledger-concurrency-smoke.js` |
 | `backend` | `npm run smoke:guest-phone-migration` | `node scripts/smoke/run-isolated-smoke.js --guest-phone-migration` |
+| `backend` | `npm run smoke:guest-rsvp` | `node scripts/smoke/run-isolated-smoke.js guest-rsvp-smoke.ts` |
 | `backend` | `npm run smoke:guests` | `node scripts/smoke/run-isolated-smoke.js guests-smoke.js` |
 | `backend` | `npm run smoke:guests-apis` | `node scripts/smoke/run-isolated-smoke.js guests-apis-smoke.js` |
 | `backend` | `npm run smoke:health` | `node scripts/smoke/run-isolated-smoke.js health-smoke.js` |

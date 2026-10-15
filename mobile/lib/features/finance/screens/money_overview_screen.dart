@@ -8,6 +8,7 @@ import '../../../core/experience_v3/aarast_v3.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/money_formatters.dart';
 import '../../../core/utils/arabic_date_formatter.dart';
+import '../../../core/widgets/aarast_share_sheet.dart';
 import '../../../core/widgets/aarast_toast.dart';
 import '../../../core/widgets/aarast_ui.dart';
 import '../../account_contexts/account_contexts_api.dart'
@@ -23,6 +24,7 @@ import '../../wedding_plans/wedding_plans_api.dart'
         WeddingStageContextLine,
         WeddingStageDomain,
         resolveWeddingPlanStage;
+import '../models/money_share_text.dart';
 import '../models/money_summary.dart';
 import '../models/money_starter_catalog.dart';
 import '../models/wedding_cost.dart';
@@ -132,6 +134,27 @@ class _MoneyOverviewScreenState extends State<MoneyOverviewScreen> {
               onSchedules: () =>
                   context.push(AppRouter.moneySchedules(widget.weddingPlanId)),
             ),
+            // V1 checklist 4.16: share what this screen shows on WhatsApp.
+            if (provider.summary.hasAnyData)
+              Align(
+                alignment: AlignmentDirectional.centerStart,
+                child: TextButton.icon(
+                  key: const Key('money-share-summary'),
+                  onPressed: () => showAarastShareSheet(
+                    context: context,
+                    title: 'مشاركة ملخص الميزانية',
+                    switchLabel: 'إخفاء المبالغ (نسب فقط)',
+                    switchInitial: provider.amountsHidden,
+                    buildText: (hideAmounts) => moneyShareText(
+                      provider.summary,
+                      planTitle: _planTitle(context),
+                      hideAmounts: hideAmounts,
+                    ),
+                  ),
+                  icon: const Icon(LucideIcons.share2),
+                  label: const Text('مشاركة الملخص عبر واتساب'),
+                ),
+              ),
             // Field test Q03: an overspent category must be visible the moment
             // the money screen shows it, not only in the hourly notification.
             for (final exceeded in provider.summary.exceededCategories) ...[
@@ -296,6 +319,16 @@ class _MoneyOverviewScreenState extends State<MoneyOverviewScreen> {
       extra: schedule,
     );
     if (changed == true && mounted) await _load();
+  }
+
+  /// The plan's name for a shared summary; a generic one for a guest.
+  String _planTitle(BuildContext context) {
+    final selected = context.read<AccountContextController?>()?.selectedContext;
+    if (selected?.weddingPlanId?.toString() == widget.weddingPlanId) {
+      final name = selected?.displayName.trim() ?? '';
+      if (name.isNotEmpty) return name;
+    }
+    return 'خطتنا';
   }
 
   Future<void> _load() {

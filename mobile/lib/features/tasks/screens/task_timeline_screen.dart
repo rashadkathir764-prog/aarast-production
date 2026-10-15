@@ -28,6 +28,7 @@ import '../../wedding_plans/wedding_plans_api.dart'
 import '../models/task_starter_catalog.dart';
 import '../models/task_summary.dart';
 import '../models/wedding_task.dart';
+import '../widgets/task_share_button.dart';
 import '../providers/task_timeline_provider.dart';
 import '../utils/task_display.dart';
 import '../widgets/task_list_row.dart';
@@ -221,6 +222,8 @@ class _TaskTimelineContent extends StatelessWidget {
                   onChanged: onFilterChanged,
                 ),
         ),
+        if (tasks.isNotEmpty)
+          TaskShareButton(tasks: tasks, planTitle: _sharePlanTitle(context)),
         if (stage != null) ...[
           const SizedBox(height: 12),
           WeddingStageContextLine(
@@ -257,6 +260,14 @@ class _TaskTimelineContent extends StatelessWidget {
         ],
       ],
     );
+  }
+
+  String _sharePlanTitle(BuildContext context) {
+    final selected = context.read<AccountContextController?>()?.selectedContext;
+    final name = selected?.weddingPlanId?.toString() == weddingPlanId
+        ? selected?.displayName.trim() ?? ''
+        : '';
+    return name.isEmpty ? 'خطتنا' : name;
   }
 
   List<Widget> _flatFilteredList(

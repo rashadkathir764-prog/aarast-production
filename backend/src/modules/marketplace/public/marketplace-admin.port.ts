@@ -103,6 +103,23 @@ export interface ProviderReviewDecision {
   reviewedById: string;
 }
 
+/**
+ * A listing an administrator creates before the provider has an account
+ * (V1 checklist 4.18): it is ACTIVE at once, and the provider claims it
+ * later by signing in with the same verified phone.
+ */
+export interface AdminListedProviderFields {
+  businessName: string;
+  phone: string;
+  whatsapp: string | null;
+  cityId: string;
+  primaryCategoryId: string;
+  description: string | null;
+  address: string | null;
+  reviewedAt: Date;
+  reviewedById: string;
+}
+
 export interface ProviderVerification {
   verifiedAt: Date | null;
   verifiedById: string | null;
@@ -198,6 +215,16 @@ export interface MarketplaceAdminPort {
     tx: Prisma.TransactionClient,
     providerId: string,
     verification: ProviderVerification,
+  ): Promise<AdminProviderDetailRow>;
+  /** Whether any provider already lists one of these spellings of a phone. */
+  hasProviderWithPhone(
+    client: Prisma.TransactionClient,
+    phones: readonly string[],
+  ): Promise<boolean>;
+  /** Creates an ACTIVE provider with no account, for its owner to claim (V1 4.18). */
+  createListedProviderInTransaction(
+    tx: Prisma.TransactionClient,
+    fields: AdminListedProviderFields,
   ): Promise<AdminProviderDetailRow>;
   /** Locks the provider FOR SHARE; false when it does not exist. */
   lockProviderForShareInTransaction(

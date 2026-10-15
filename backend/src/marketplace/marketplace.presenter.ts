@@ -294,6 +294,9 @@ export class MarketplacePresenter {
       coverUrl: provider.coverUrl,
       status: provider.status,
       verifiedAt: provider.verifiedAt,
+      // A back-office listing its owner has not claimed (V1 4.18): it takes
+      // no quote requests; customers reach it by phone or WhatsApp.
+      isClaimed: provider.userId !== null,
       isFeatured: provider.isFeatured,
       ratingAverage: provider.ratingAverage.toString(),
       ratingCount: provider.ratingCount,

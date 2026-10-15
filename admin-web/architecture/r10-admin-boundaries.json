@@ -112,7 +112,7 @@
     "dashboard": ["AdminReport", "AdminStats", "getReportOverview", "getStats"],
     "moderation": ["ConversationReport", "ProviderReview", "getConversationReports", "getReviews", "hideReview", "updateConversationReportStatus", "updateReviewStatus"],
     "notifications": ["AdminNotification", "archiveAdminNotification", "deleteAdminNotification", "getAdminNotifications", "getAdminUnreadNotificationCount", "markAdminNotificationRead"],
-    "providers": ["CityProjection", "ProviderApplication", "ProviderCategoryProjection", "ProviderPackageProjection", "ProviderQueryParams", "ProviderReference", "ProviderServiceProjection", "activateProvider", "approveProvider", "getProvider", "getProviderApplication", "getProviderApplications", "getProviders", "rejectProvider", "requestProviderChanges", "setProviderVerified", "suspendProvider"],
+    "providers": ["CityProjection", "ListedProviderInput", "ProviderApplication", "ProviderCategoryProjection", "ProviderPackageProjection", "ProviderQueryParams", "ProviderReference", "ProviderServiceProjection", "activateProvider", "approveProvider", "createListedProvider", "getProvider", "getProviderApplication", "getProviderApplications", "getProviders", "rejectProvider", "requestProviderChanges", "setProviderVerified", "suspendProvider"],
     "users": ["AdminUserRecord", "UserProviderSummary", "activateUser", "disableUser", "getUser", "getUsers"]
   },
   "sourceFates": [

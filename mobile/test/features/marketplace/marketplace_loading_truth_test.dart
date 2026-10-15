@@ -154,6 +154,35 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  // V1 checklist 4.18: an admin listing nobody claimed takes no quote
+  // request; the page says how to reach the provider instead.
+  testWidgets('an unclaimed listing offers contact instead of a quote', (
+    tester,
+  ) async {
+    final api = _MarketplaceLoadingTruthApi()
+      ..provider = MarketplaceProvider.fromJson({
+        'id': 'provider-1',
+        'businessName': 'قاعة الأمل',
+        'isClaimed': false,
+      });
+    final marketplace = ProviderMarketplaceProvider(api);
+
+    await tester.pumpWidget(
+      ChangeNotifierProvider<ProviderMarketplaceProvider>.value(
+        value: marketplace,
+        child: const MaterialApp(
+          home: ProviderDetailsScreen(providerId: 'provider-1'),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.textContaining('لم يفعّل حسابه في اعّرست بعد'), findsOneWidget);
+    expect(find.text('طلب عرض سعر'), findsNothing);
+    expect(MarketplaceProvider.fromJson({'id': 'p'}).isClaimed, isTrue);
+    expect(tester.takeException(), isNull);
+  });
+
   // V1 checklist 4.19: opening a provider's page counts one view.
   testWidgets('opening a provider page counts one view for their stats', (
     tester,
@@ -255,6 +284,7 @@ class _MarketplaceLoadingTruthApi extends MarketplaceApi {
   int providerPageTotalPages = 1;
   int providerCalls = 0;
   final viewedProviders = <String>[];
+  MarketplaceProvider provider = _provider;
 
   @override
   Future<void> recordProviderView(String providerId) async {
@@ -318,7 +348,7 @@ class _MarketplaceLoadingTruthApi extends MarketplaceApi {
     if (error != null) throw error;
     final gate = providerGate;
     if (gate != null) return gate.future;
-    return _provider;
+    return provider;
   }
 
   @override

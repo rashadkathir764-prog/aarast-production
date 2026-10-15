@@ -334,3 +334,17 @@ export function providerActivity(client: Client, providerId: string, from: Date,
     }),
   ]);
 }
+
+/** An active listing the back office made under one of these phone spellings, not yet claimed (V1 checklist 4.18). */
+export function findUnclaimedListing(client: Client, phones: readonly string[]) {
+  return client.provider.findFirst({
+    where: { userId: null, status: ProviderStatus.ACTIVE, phone: { in: [...phones] } },
+    select: { id: true, businessName: true, phone: true },
+    orderBy: { createdAt: 'asc' },
+  });
+}
+
+/** Hands a locked, unclaimed listing to the account that proved its phone. */
+export function claimListing(client: Client, providerId: string, userId: string) {
+  return client.provider.update({ where: { id: providerId }, data: { userId } });
+}

@@ -22,6 +22,7 @@ import '../../marketplace/marketplace_api.dart'
     show
         ProviderMarketplaceProvider;
 import '../providers/provider_dashboard_provider.dart';
+import '../widgets/provider_claim_card.dart';
 
 class ProviderApplyScreen extends StatefulWidget {
   const ProviderApplyScreen({super.key});
@@ -49,7 +50,9 @@ class _ProviderApplyScreenState extends State<ProviderApplyScreen> {
           !AppFeatureFlags.devBypassLoginGatesForUxExploration ||
           await AuthActionGuard.hasAccount(context);
       if (!mounted || !hasAccount) return;
-      context.read<ProviderDashboardProvider>().loadDashboard();
+      final dashboard = context.read<ProviderDashboardProvider>();
+      dashboard.loadDashboard();
+      dashboard.loadClaimableListing();
       _configureDraft();
     });
   }
@@ -76,6 +79,7 @@ class _ProviderApplyScreenState extends State<ProviderApplyScreen> {
       resizeToAvoidBottomInset: true,
       bottomNavigationBar:
           !hasProfile &&
+              dashboard.claimableListing == null &&
               !(auth.status == AuthStatus.unauthenticated &&
                   !AppFeatureFlags.devBypassLoginGatesForUxExploration) &&
               !(dashboard.isLoading && dashboard.profile == null)
@@ -119,6 +123,9 @@ class _ProviderApplyScreenState extends State<ProviderApplyScreen> {
               status: dashboard.profile?.status ?? 'PENDING',
               onDashboard: () => context.go(AppRouter.providerDashboard),
             )
+          // V1 checklist 4.18: the admin already listed this phone's business.
+          else if (dashboard.claimableListing != null)
+            ProviderClaimCard(dashboard: dashboard)
           else ...[
             const AarastV3FocusPrompt(
               question: 'ما النشاط الذي تريد عرضه في أعرست؟',

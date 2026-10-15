@@ -19,6 +19,7 @@ import { AdminPermission } from '../modules/backoffice/domain/admin-permissions'
 import { AdminService } from './admin.service';
 import { AdminCategoryDto, AdminCityDto } from './dto/admin-catalog.dto';
 import { AdminNotificationQueryDto } from './dto/admin-notification.dto';
+import { AdminListedProviderDto } from './dto/admin-listed-provider.dto';
 import { AdminProviderQueryDto } from './dto/admin-provider-query.dto';
 import { AdminReportQueryDto } from './dto/admin-report.dto';
 import {
@@ -125,6 +126,16 @@ export class AdminController {
     @Param('id') id: string,
   ) {
     return this.adminService.setProviderVerified(currentUser, id, false);
+  }
+
+  // V1 checklist 4.18: a listing for a provider without an account yet.
+  @Post('providers')
+  @RequireAdminPermission(AdminPermission.PROVIDERS_WRITE)
+  createListedProvider(
+    @CurrentUser() currentUser: AuthenticatedUser,
+    @Body() dto: AdminListedProviderDto,
+  ) {
+    return this.adminService.createListedProvider(currentUser, dto);
   }
 
   @Get('providers')

@@ -183,3 +183,42 @@ class _DetailsFrame extends StatelessWidget {
     );
   }
 }
+
+/// What an unclaimed listing (V1 checklist 4.18) tells a customer.
+const unclaimedProviderMessage =
+    'هذا المزوّد لم يفعّل حسابه في اعّرست بعد، فلا يستقبل طلبات عروض الأسعار. تواصل معه مباشرة بالاتصال أو واتساب.';
+
+class _UnclaimedProviderFooter extends StatelessWidget {
+  const _UnclaimedProviderFooter();
+
+  @override
+  Widget build(BuildContext context) {
+    return SafeArea(
+      top: false,
+      child: DecoratedBox(
+        decoration: const BoxDecoration(
+          color: AppTheme.surfaceRaised,
+          border: Border(top: BorderSide(color: AppTheme.border)),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(16, 12, 16, 14),
+          child: Row(
+            children: [
+              const Icon(LucideIcons.info, color: AppTheme.textSecondary),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  unclaimedProviderMessage,
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: AppTheme.textSecondary,
+                    height: 1.45,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}

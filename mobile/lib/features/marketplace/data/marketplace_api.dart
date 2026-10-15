@@ -658,6 +658,24 @@ class ProviderDashboardApi {
 
   final ApiClient _apiClient;
 
+  /// A listing the admin made under this account's phone, not yet claimed
+  /// (V1 checklist 4.18); null when there is none.
+  Future<ProviderClaimableListing?> getClaimableListing() async {
+    final json = await _apiClient.getJson('/api/v1/provider/claimable');
+    final listing = json['listing'];
+    return listing is Map
+        ? ProviderClaimableListing.fromJson(Map<String, dynamic>.from(listing))
+        : null;
+  }
+
+  Future<ProviderDashboardProfile> claimListing(String providerId) async {
+    final json = await _apiClient.postJson(
+      '/api/v1/provider/claim/$providerId',
+      {},
+    );
+    return ProviderDashboardProfile.fromJson(json);
+  }
+
   Future<ProviderDashboardProfile> getProfile() async {
     final json = await _apiClient.getJson('/api/v1/provider/me/profile');
     return ProviderDashboardProfile.fromJson(json);

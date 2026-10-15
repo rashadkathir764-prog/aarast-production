@@ -46,6 +46,7 @@
     "smoke:account-deletion": "node scripts/smoke/run-isolated-smoke.js account-deletion-smoke.ts",
     "smoke:booking": "node scripts/smoke/run-isolated-smoke.js booking-smoke.ts",
     "smoke:guest-rsvp": "node scripts/smoke/run-isolated-smoke.js guest-rsvp-smoke.ts",
+    "smoke:provider-claim": "node scripts/smoke/run-isolated-smoke.js provider-claim-smoke.ts",
     "smoke:contributor-history-migration": "node scripts/smoke/run-isolated-smoke.js --contributor-history-migration",
     "smoke:guest-phone-migration": "node scripts/smoke/run-isolated-smoke.js --guest-phone-migration",
     "smoke:schema-equivalence": "node scripts/smoke/run-isolated-smoke.js --schema-equivalence",

@@ -104,6 +104,15 @@ export function createQuoteRequestInTransaction(
         lockedUserIds,
       );
       assertMarketplaceProviderActive(provider);
+      // A listing the back office made that its owner has not claimed yet
+      // (V1 checklist 4.18): nobody would read the request.
+      if (!provider.userId) {
+        throw new ConflictException({
+          statusCode: 409,
+          code: "PROVIDER_NOT_CLAIMED",
+          message: "This provider has not activated their account yet",
+        });
+      }
       if (serviceId) {
         await lockActiveProviderService(tx, serviceId, providerId);
       }

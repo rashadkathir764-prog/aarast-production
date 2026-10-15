@@ -64,6 +64,7 @@ import { AdminProviderQueryDto } from './dto/admin-provider-query.dto';
 import { AdminReportQueryDto } from './dto/admin-report.dto';
 import { AdminReviewQueryDto, AdminReviewStatusDto } from './dto/admin-review.dto';
 import { AdminReviewActionDto } from './dto/admin-review-action.dto';
+import { AdminListedProviderDto } from './dto/admin-listed-provider.dto';
 import { AdminServiceDto, AdminServiceQueryDto } from './dto/admin-service.dto';
 import { AdminConversationReportQueryDto, AdminConversationReportStatusDto } from './dto/admin-conversation-report.dto';
 import { authorizeAdminUserStatusChange } from './admin-user-status';
@@ -203,6 +204,13 @@ export class AdminService {
       total,
       pagination,
     );
+  }
+
+  async createListedProvider(
+    currentUser: AuthenticatedUser,
+    dto: AdminListedProviderDto,
+  ) {
+    return this.mutations.createListedProvider(currentUser, dto);
   }
 
   async createService(

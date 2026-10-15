@@ -6,6 +6,7 @@ import '../../marketplace/marketplace_api.dart'
     show
         MarketplaceBooking,
         MarketplaceService,
+        ProviderClaimableListing,
         ProviderDashboardApi,
         ProviderDashboardProfile,
         ProviderDashboardSummary,
@@ -34,6 +35,7 @@ class ProviderDashboardProvider extends ChangeNotifier
   List<MarketplaceBooking> _bookings = const [];
   List<DateTime> _blockedDates = const [];
   bool _operationsAccessDenied = false;
+  ProviderClaimableListing? _claimableListing;
 
   bool get isLoading => _isLoading;
   bool get isSubmitting => _isSubmitting;
@@ -45,6 +47,45 @@ class ProviderDashboardProvider extends ChangeNotifier
   List<ProviderPackage> get packages => _packages;
   List<ProviderReview> get reviews => _reviews;
   List<QuoteRequest> get quoteRequests => _quoteRequests;
+
+  /// A listing the admin made under this account's phone (V1 checklist 4.18).
+  ProviderClaimableListing? get claimableListing => _claimableListing;
+
+  /// Looks for that listing. A failure leaves the normal application form,
+  /// which the server refuses with a clear message if a listing exists.
+  Future<void> loadClaimableListing() async {
+    try {
+      _claimableListing = await _api.getClaimableListing();
+    } on Object catch (error) {
+      debugPrint('Claimable provider listing not loaded: $error');
+      _claimableListing = null;
+    }
+    notifyListeners();
+  }
+
+  /// Claims the listing: the account becomes its (already approved) provider.
+  Future<bool> claimListing() async {
+    final listing = _claimableListing;
+    if (listing == null) return false;
+    _isSubmitting = true;
+    _errorMessage = null;
+    notifyListeners();
+    try {
+      _profile = await _api.claimListing(listing.id);
+      _hasProviderProfile = true;
+      _claimableListing = null;
+      return true;
+    } on ApiException catch (error) {
+      _errorMessage = marketplaceErrorMessage(error.message);
+      return false;
+    } catch (_) {
+      _errorMessage = 'تعذر استلام ملف المزوّد. حاول مرة أخرى.';
+      return false;
+    } finally {
+      _isSubmitting = false;
+      notifyListeners();
+    }
+  }
 
   /// Open booking requests and confirmed bookings from today on (4.6).
   List<MarketplaceBooking> get bookings => _bookings;

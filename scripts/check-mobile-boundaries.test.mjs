@@ -1797,6 +1797,8 @@ const trackedOwnerApiContracts = [
         show: [
           'MarketplaceProvider',
           'MarketplaceService',
+          // V1 checklist 4.18: the provider portal offers the admin's listing.
+          'ProviderClaimableListing',
           'ProviderDashboardProfile',
           'ProviderDashboardSummary',
           'ProviderPackage',

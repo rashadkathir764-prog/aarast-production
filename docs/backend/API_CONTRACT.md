@@ -2094,6 +2094,29 @@ Provider dashboard routes:
 - `PATCH /api/v1/provider/me/quote-offers/:id`
 - `GET /api/v1/provider/me/reviews`
 
+Listings the back office made before the provider had an account (V1
+checklist 4.18):
+
+- `POST /admin/providers` (`PROVIDERS_WRITE`) creates an `ACTIVE` provider with
+  no account from `{ businessName, phone, whatsapp?, cityId, categoryId,
+  address?, description? }`. The phone is normalized; a phone any provider
+  already uses (in any of its spellings) is `409 PROVIDER_PHONE_TAKEN`. The
+  listing shows in the directory once it has an active service
+  (`POST /admin/services`).
+- `GET /api/v1/provider/claimable` returns `{ listing: { id, businessName } }`
+  when an active, unclaimed listing carries the caller's phone and the caller
+  owns no provider; otherwise `{ listing: null }`. Every session's phone is
+  verified by OTP, which is the proof of ownership.
+- `POST /api/v1/provider/claim/:providerId` makes the caller that listing's
+  provider (the account is promoted like an approved applicant) and returns
+  the provider profile. A listing that is not the caller's to claim is `404`;
+  a caller who already owns a provider is `409`.
+- `POST /api/v1/provider/apply` is `409 PROVIDER_LISTING_CLAIMABLE` while such a
+  listing waits under the caller's phone.
+- Public provider responses carry `isClaimed`. A quote request to a provider
+  without an account (unclaimed, or whose owner deleted their account) is
+  `409 PROVIDER_NOT_CLAIMED`; customers reach it by phone or WhatsApp.
+
 Provider capabilities are based on the current database status, not a JWT role
 or a hidden UI action:
 
@@ -2356,6 +2379,7 @@ returns the admin refresh token.
 - `GET /admin/reports/overview`
 - `GET /admin/providers/applications`
 - `GET /admin/providers/applications/:id`
+- `POST /admin/providers` (a listing without an account, see Provider References)
 - `PATCH /admin/providers/:id/approve`
 - `PATCH /admin/providers/:id/reject`
 - `PATCH /admin/providers/:id/request-changes`
@@ -2537,6 +2561,7 @@ configuration, and smoke checks.
 | DELETE | `/admin/provider-categories/:id` | `admin.deleteCategory` | 🔒 |
 | PATCH | `/admin/provider-categories/:id` | `admin.updateCategory` | 🔒 |
 | GET | `/admin/providers` | `admin.listProviders` | 🔒 |
+| POST | `/admin/providers` | `admin.createListedProvider` | 🔒 |
 | GET | `/admin/providers/:id` | `admin.getProvider` | 🔒 |
 | PATCH | `/admin/providers/:id/activate` | `admin.activateProvider` | 🔒 |
 | PATCH | `/admin/providers/:id/approve` | `admin.approveProvider` | 🔒 |
@@ -2656,6 +2681,8 @@ configuration, and smoke checks.
 | POST | `/api/v1/payment-schedules/:id/pay` | `wedding-costs.pay` | 🔒 |
 | GET | `/api/v1/provider-categories` | `marketplace.findCategories` |  |
 | POST | `/api/v1/provider/apply` | `provider-dashboard.apply` | 🔒 |
+| POST | `/api/v1/provider/claim/:providerId` | `provider-dashboard.claimListing` | 🔒 |
+| GET | `/api/v1/provider/claimable` | `provider-dashboard.findClaimableListing` | 🔒 |
 | GET | `/api/v1/provider/me/blocked-dates` | `bookings.listBlockedDates` | 🔒 |
 | POST | `/api/v1/provider/me/blocked-dates` | `bookings.blockDate` | 🔒 |
 | DELETE | `/api/v1/provider/me/blocked-dates/:date` | `bookings.unblockDate` | 🔒 |

@@ -95,6 +95,7 @@ class MarketplaceProvider {
     this.latitude,
     this.longitude,
     this.verifiedAt,
+    this.isClaimed = true,
     this.responsiveness,
     this.services = const [],
     this.serviceSummary,
@@ -122,6 +123,7 @@ class MarketplaceProvider {
       latitude: _doubleOrNull(json['latitude']),
       longitude: _doubleOrNull(json['longitude']),
       verifiedAt: _dateOrNull(json['verifiedAt']),
+      isClaimed: json['isClaimed'] != false,
       responsiveness: _mapOrNull(
         json['responsiveness'],
         ProviderResponsiveness.fromJson,
@@ -156,6 +158,10 @@ class MarketplaceProvider {
 
   /// When an admin checked the provider's documents; null when not verified.
   final DateTime? verifiedAt;
+
+  /// False for a listing the admin made that its owner has not claimed yet
+  /// (V1 checklist 4.18): it takes no quote requests, only calls and WhatsApp.
+  final bool isClaimed;
 
   /// Only on the provider details response, and null with too little history.
   final ProviderResponsiveness? responsiveness;
@@ -813,6 +819,21 @@ class ProviderDashboardSummary {
 
   /// The provider's reach over the last [ProviderStats.windowDays] days (V1 4.19).
   final ProviderStats? stats;
+}
+
+/// A listing the admin made under the account's phone (V1 checklist 4.18).
+class ProviderClaimableListing {
+  const ProviderClaimableListing({required this.id, required this.businessName});
+
+  factory ProviderClaimableListing.fromJson(Map<String, dynamic> json) {
+    return ProviderClaimableListing(
+      id: json['id'].toString(),
+      businessName: json['businessName']?.toString() ?? '',
+    );
+  }
+
+  final String id;
+  final String businessName;
 }
 
 /// What customers did with the provider's listing (V1 checklist 4.19).

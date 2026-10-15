@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  ConflictException,
   NotFoundException,
 } from '@nestjs/common';
 import {
@@ -10,6 +11,7 @@ import {
 import { AuthenticatedUser } from '../modules/identity/public/identity-session.types';
 import { AdminPermission } from '../modules/backoffice/domain/admin-permissions';
 import { optionalMoneyAmount } from '../shared-kernel/money/money';
+import { PhoneNormalizer } from '../shared-kernel/phone/phone-normalizer';
 import {
   lockProviderRatingRows,
   refreshProviderRating,
@@ -24,12 +26,14 @@ import {
   toAdminServiceResponse,
   toCategoryResponse,
   toCityResponse,
+  toProviderResponse,
 } from './admin.presenter';
 import {
   AdminCategoryDto,
   AdminCityDto,
 } from './dto/admin-catalog.dto';
 import { AdminConversationReportStatusDto } from './dto/admin-conversation-report.dto';
+import { AdminListedProviderDto } from './dto/admin-listed-provider.dto';
 import { AdminReviewStatusDto } from './dto/admin-review.dto';
 import { AdminServiceDto } from './dto/admin-service.dto';
 
@@ -38,6 +42,57 @@ export class AdminMutationExecutor {
     private readonly prisma: PrismaService,
     private readonly owners: AdminOwners,
   ) {}
+
+  /**
+   * Lists a provider who has no account yet (V1 checklist 4.18). It is
+   * ACTIVE at once; its owner claims it by signing in with the same phone,
+   * so a phone already on another provider is refused.
+   */
+  async createListedProvider(
+    currentUser: AuthenticatedUser,
+    dto: AdminListedProviderDto,
+  ) {
+    const phone = PhoneNormalizer.normalizeRequired(dto.phone);
+    const whatsapp = PhoneNormalizer.normalizeOptional(dto.whatsapp, 'whatsapp');
+    const provider = await runAuthorizedAdminMutation(
+      this.prisma,
+      this.owners.accounts,
+      currentUser,
+      AdminPermission.PROVIDERS_WRITE,
+      async (tx) => {
+        const cityId = this.requiredText(dto.cityId, 'cityId');
+        const categoryId = this.requiredText(dto.categoryId, 'categoryId');
+        await this.lockCityForShare(tx, cityId);
+        await this.lockCategoryForShare(tx, categoryId);
+        if (
+          await this.owners.marketplace.hasProviderWithPhone(
+            tx,
+            PhoneNormalizer.lookupVariants(phone),
+          )
+        ) {
+          throw new ConflictException({
+            statusCode: 409,
+            code: 'PROVIDER_PHONE_TAKEN',
+            message: 'A provider already uses this phone',
+          });
+        }
+        const created =
+          await this.owners.marketplace.createListedProviderInTransaction(tx, {
+            businessName: this.requiredText(dto.businessName, 'businessName'),
+            phone,
+            whatsapp,
+            cityId,
+            primaryCategoryId: categoryId,
+            description: this.optionalText(dto.description),
+            address: this.optionalText(dto.address),
+            reviewedAt: new Date(),
+            reviewedById: currentUser.id,
+          });
+        return this.owners.attachProviderDetail(tx, created);
+      },
+    );
+    return toProviderResponse(provider);
+  }
 
   async createService(
     currentUser: AuthenticatedUser,

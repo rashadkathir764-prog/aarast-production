@@ -20,6 +20,8 @@ import { StatusBadge } from '../../design_system/StatusBadge';
 import { TableToolbar } from '../../design_system/TableToolbar';
 import { formatDate } from '../../platform/i18n/formatDate';
 import { ProviderActions } from './providerHelpers';
+import { AddListedProviderCard } from './AddListedProviderCard';
+import { AdminPermission, Can } from '../auth/api';
 
 const statuses = [
   { value: '', label: 'النشطون والموقوفون' },
@@ -243,37 +245,47 @@ export function ProvidersPage({
           />
         </SectionCard>
 
-        <SectionCard
-          title="ترتيب سريع"
-          subtitle="حسب عدد طلبات العروض في النتائج الحالية."
-          className="sticky-panel"
-        >
-          <div className="compact-list">
-            {[...items]
-              .sort(
-                (first, second) =>
-                  second.quoteRequestsCount - first.quoteRequestsCount,
-              )
-              .slice(0, 5)
-              .map((provider, index) => (
-                <Link
-                  className="compact-row"
-                  to={`/providers/${provider.id}`}
-                  key={provider.id}
-                >
-                  <b>{index + 1}</b>
-                  <div>
-                    <strong>{provider.businessName}</strong>
-                    <span>{provider.quoteRequestsCount} طلب عرض</span>
-                  </div>
-                  <StatusBadge status={provider.status} />
-                </Link>
-              ))}
-            {items.length === 0 ? (
-              <span className="muted-text">لا توجد بيانات كافية للترتيب.</span>
-            ) : null}
-          </div>
-        </SectionCard>
+        <div className="page-stack">
+          <SectionCard
+            title="ترتيب سريع"
+            subtitle="حسب عدد طلبات العروض في النتائج الحالية."
+            className="sticky-panel"
+          >
+            <div className="compact-list">
+              {[...items]
+                .sort(
+                  (first, second) =>
+                    second.quoteRequestsCount - first.quoteRequestsCount,
+                )
+                .slice(0, 5)
+                .map((provider, index) => (
+                  <Link
+                    className="compact-row"
+                    to={`/providers/${provider.id}`}
+                    key={provider.id}
+                  >
+                    <b>{index + 1}</b>
+                    <div>
+                      <strong>{provider.businessName}</strong>
+                      <span>{provider.quoteRequestsCount} طلب عرض</span>
+                    </div>
+                    <StatusBadge status={provider.status} />
+                  </Link>
+                ))}
+              {items.length === 0 ? (
+                <span className="muted-text">لا توجد بيانات كافية للترتيب.</span>
+              ) : null}
+            </div>
+          </SectionCard>
+
+          <Can permission={AdminPermission.PROVIDERS_WRITE}>
+            <AddListedProviderCard
+              cities={cities}
+              categories={categories}
+              onCreated={load}
+            />
+          </Can>
+        </div>
       </div>
     </section>
   );

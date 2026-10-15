@@ -593,6 +593,7 @@ test('requires the exact Task 4 owner public surfaces', () => {
     ],
     providers: [
       'CityProjection',
+      'ListedProviderInput',
       'ProviderApplication',
       'ProviderCategoryProjection',
       'ProviderPackageProjection',
@@ -601,6 +602,7 @@ test('requires the exact Task 4 owner public surfaces', () => {
       'ProviderServiceProjection',
       'activateProvider',
       'approveProvider',
+      'createListedProvider',
       'getProvider',
       'getProviderApplication',
       'getProviderApplications',

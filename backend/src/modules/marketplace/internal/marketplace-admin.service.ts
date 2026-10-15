@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { Prisma, type Provider, ProviderStatus, ReviewStatus } from '@prisma/client';
 import type {
+  AdminListedProviderFields,
   AdminListing,
   AdminMarketplaceCounters,
   AdminMarketplaceReport,
@@ -92,6 +93,20 @@ export class MarketplaceAdminService implements MarketplaceAdminPort {
       providerId,
       verification,
     );
+  }
+
+  async hasProviderWithPhone(
+    client: Prisma.TransactionClient,
+    phones: readonly string[],
+  ): Promise<boolean> {
+    return this.repository.hasProviderWithPhone(client, phones);
+  }
+
+  async createListedProviderInTransaction(
+    tx: Prisma.TransactionClient,
+    fields: AdminListedProviderFields,
+  ): Promise<AdminProviderDetailRow> {
+    return this.repository.createListedProviderInTransaction(tx, fields);
   }
 
   async lockProviderForShareInTransaction(

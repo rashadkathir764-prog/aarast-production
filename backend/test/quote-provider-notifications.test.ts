@@ -217,7 +217,11 @@ test("a new quote request notifies the provider account too", async () => {
   );
 });
 
-test("a provider without a linked user account is skipped silently", async () => {
+// V1 checklist 4.18: a provider without an account (a back-office listing
+// not yet claimed, or an owner who deleted their account) cannot read a
+// request, so none is created and nobody is notified. This test asserted
+// the old behaviour (the request was created and only the requester told).
+test("a provider without a linked user account takes no quote request", async () => {
   const { sent, notifications } = capture();
   const prisma = {
     provider: { findFirst: async () => providerRow(null) },
@@ -243,10 +247,11 @@ test("a provider without a linked user account is skipped silently", async () =>
     notifications as any, lifecycle, new FinancePortService(),
   );
 
-  await service.createQuoteRequest(requester, PROVIDER_ID, {} as any);
-
-  assert.equal(sent.length, 1);
-  assert.equal(sent[0].userId, requester.id);
+  await assert.rejects(
+    service.createQuoteRequest(requester, PROVIDER_ID, {} as any),
+    (error: any) => error?.response?.code === "PROVIDER_NOT_CLAIMED",
+  );
+  assert.equal(sent.length, 0);
 });
 
 test("provider rejection notifies the requester with the exact quote route", async () => {

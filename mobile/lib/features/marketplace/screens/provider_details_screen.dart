@@ -78,13 +78,22 @@ class _ProviderDetailsScreenState extends State<ProviderDetailsScreen> {
               marketplace.providerDetails(widget.providerId) == null &&
               marketplace.detailsErrorFor(widget.providerId) != null,
         );
+    final providerUnclaimed = context
+        .select<ProviderMarketplaceProvider, bool>(
+          (marketplace) =>
+              marketplace.providerDetails(widget.providerId)?.isClaimed ==
+              false,
+        );
     return AarastScreenFrame(
       maxWidth: 520,
       safeAreaBottom: false,
       // A provider that failed to load (unknown, or not public) has nothing
-      // to request a quote from, so the quote footer is not offered.
+      // to request a quote from, so the quote footer is not offered; an
+      // unclaimed listing (V1 4.18) explains how to reach it instead.
       bottomNavigationBar: providerFailedToLoad
           ? null
+          : providerUnclaimed
+          ? const _UnclaimedProviderFooter()
           : _quoteFooter(selectedPlanId),
       child: Consumer<ProviderMarketplaceProvider>(
         builder: (context, state, _) {
@@ -161,10 +170,12 @@ class _ProviderDetailsScreenState extends State<ProviderDetailsScreen> {
               }
               await state.toggleFavorite(provider.id);
             },
-            onRequestQuote: (service) => _pushOnce(
-              AppRouter.providerQuote(provider.id),
-              extra: service.id,
-            ),
+            onRequestQuote: (service) => provider.isClaimed
+                ? _pushOnce(
+                    AppRouter.providerQuote(provider.id),
+                    extra: service.id,
+                  )
+                : AarastToast.showInfo(context, unclaimedProviderMessage),
             servicesErrorMessage: servicesError,
             packagesErrorMessage: packagesError,
             reviewsErrorMessage: reviewsError,

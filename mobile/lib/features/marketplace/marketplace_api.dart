@@ -6,6 +6,7 @@ export 'models/marketplace_models.dart'
     show
         MarketplaceProvider,
         MarketplaceService,
+        ProviderClaimableListing,
         ProviderDashboardProfile,
         ProviderDashboardSummary,
         ProviderPackage,

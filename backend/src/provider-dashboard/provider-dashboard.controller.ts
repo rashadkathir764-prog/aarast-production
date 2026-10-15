@@ -40,6 +40,20 @@ export class ProviderApplicationController {
   ) {
     return this.providerDashboardService.apply(currentUser, dto);
   }
+
+  // V1 checklist 4.18: a listing the back office made under this phone.
+  @Get("claimable")
+  findClaimableListing(@CurrentUser() currentUser: AuthenticatedUser) {
+    return this.providerDashboardService.findClaimableListing(currentUser);
+  }
+
+  @Post("claim/:providerId")
+  claimListing(
+    @CurrentUser() currentUser: AuthenticatedUser,
+    @Param("providerId") providerId: string,
+  ) {
+    return this.providerDashboardService.claimListing(currentUser, providerId);
+  }
 }
 
 @Controller("api/v1/provider/me")

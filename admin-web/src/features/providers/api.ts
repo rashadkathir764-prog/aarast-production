@@ -136,6 +136,26 @@ export function getProviders(
   );
 }
 
+/** A provider listed before its owner has an account (V1 checklist 4.18). */
+export type ListedProviderInput = {
+  businessName: string;
+  phone: string;
+  whatsapp: string | null;
+  cityId: string;
+  categoryId: string;
+  address: string | null;
+  description: string | null;
+};
+
+export function createListedProvider(
+  input: ListedProviderInput,
+): Promise<ProviderApplication> {
+  return apiRequest<ProviderApplication>('/admin/providers', {
+    method: 'POST',
+    body: input,
+  });
+}
+
 export function getProvider(id: string): Promise<ProviderApplication> {
   return apiRequest<ProviderApplication>(`/admin/providers/${id}`);
 }

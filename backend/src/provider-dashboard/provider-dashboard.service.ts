@@ -43,6 +43,7 @@ import {
   quoteLifecycleStatus,
 } from '../marketplace/quote-lifecycle';
 import { isQuoteOfferExpired } from '../marketplace/quote-offer-expiry';
+import { lockMarketplaceProvider } from '../marketplace/marketplace-write-locks';
 import {
   providerRejectedRequestNotification,
   quoteOfferReceivedNotification,
@@ -157,6 +158,21 @@ export class ProviderDashboardService {
           'Provider profile already exists for this user',
         );
       }
+      // A listing already waits under this phone (V1 checklist 4.18): claim
+      // it rather than apply for a second provider with the same phone.
+      if (
+        currentUser.phone &&
+        (await dashboardStore.findUnclaimedListing(
+          tx,
+          PhoneNormalizer.lookupVariants(currentUser.phone),
+        ))
+      ) {
+        throw new ConflictException({
+          statusCode: 409,
+          code: 'PROVIDER_LISTING_CLAIMABLE',
+          message: 'A provider listing already exists for this phone; claim it',
+        });
+      }
 
       await this.lockActiveCategoriesInTransaction(tx, categoryIds);
       await this.lockActiveCityInTransaction(tx, dto.cityId);
@@ -185,6 +201,66 @@ export class ProviderDashboardService {
       return this.withProviderCatalog(tx, created);
     });
 
+    return this.toProviderProfileResponse(provider);
+  }
+
+  /**
+   * The listing the back office made under this account's phone and nobody
+   * claimed yet (V1 checklist 4.18). Every session's phone is verified by
+   * OTP, so the phone is the proof of ownership.
+   */
+  async findClaimableListing(currentUser: AuthenticatedUser) {
+    if (!currentUser.phone) return { listing: null };
+    if (await dashboardStore.findProviderByUserId(this.prisma, currentUser.id)) {
+      return { listing: null };
+    }
+    const listing = await dashboardStore.findUnclaimedListing(
+      this.prisma,
+      PhoneNormalizer.lookupVariants(currentUser.phone),
+    );
+    return {
+      listing: listing ? { id: listing.id, businessName: listing.businessName } : null,
+    };
+  }
+
+  /** Claims that listing: the account becomes its provider, already approved. */
+  async claimListing(currentUser: AuthenticatedUser, providerId: string) {
+    const phones = currentUser.phone
+      ? PhoneNormalizer.lookupVariants(currentUser.phone)
+      : [];
+    const provider = await runSerializableTransaction(this.prisma, async (tx) => {
+      const [actor] = await lockUserLifecycleRowsForUpdateInTransaction(tx, [
+        currentUser.id,
+      ]);
+      if (!actor || actor.status !== UserStatus.ACTIVE) {
+        throw new NotFoundException('User not found');
+      }
+      if ((await dashboardStore.lockExistingApplication(tx, currentUser.id)).length > 0) {
+        throw new ConflictException('Provider profile already exists for this user');
+      }
+      const listing = await lockMarketplaceProvider(tx, providerId, 'UPDATE');
+      const claimable = await dashboardStore.findUnclaimedListing(tx, phones);
+      // Not this account's to claim: reads as missing, revealing nothing.
+      if (
+        listing.userId !== null ||
+        listing.status !== ProviderStatus.ACTIVE ||
+        claimable?.id !== listing.id
+      ) {
+        throw new NotFoundException('Provider listing not found');
+      }
+      if (
+        !(await this.providerAccount.promoteToProviderInTransaction(
+          tx,
+          currentUser.id,
+        ))
+      ) {
+        throw new ConflictException(
+          'The application identity is not eligible for a provider account',
+        );
+      }
+      const claimed = await dashboardStore.claimListing(tx, listing.id, currentUser.id);
+      return this.withProviderCatalog(tx, claimed);
+    });
     return this.toProviderProfileResponse(provider);
   }
 

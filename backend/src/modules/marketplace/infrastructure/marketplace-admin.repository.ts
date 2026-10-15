@@ -6,6 +6,7 @@ import {
   ReviewStatus,
 } from '@prisma/client';
 import type {
+  AdminListedProviderFields,
   AdminListing,
   AdminMarketplaceCounters,
   AdminMarketplaceReport,
@@ -291,6 +292,40 @@ export class MarketplaceAdminRepository implements MarketplaceAdminPort {
       data: {
         verifiedAt: verification.verifiedAt,
         verifiedById: verification.verifiedById,
+      },
+      include: providerDetailInclude,
+    });
+  }
+
+  async hasProviderWithPhone(
+    client: Prisma.TransactionClient,
+    phones: readonly string[],
+  ): Promise<boolean> {
+    if (phones.length === 0) return false;
+    const found = await client.provider.findFirst({
+      where: { phone: { in: [...phones] } },
+      select: { id: true },
+    });
+    return found !== null;
+  }
+
+  async createListedProviderInTransaction(
+    tx: Prisma.TransactionClient,
+    fields: AdminListedProviderFields,
+  ): Promise<AdminProviderDetailRow> {
+    return tx.provider.create({
+      data: {
+        userId: null,
+        status: ProviderStatus.ACTIVE,
+        businessName: fields.businessName,
+        phone: fields.phone,
+        whatsapp: fields.whatsapp,
+        cityId: fields.cityId,
+        primaryCategoryId: fields.primaryCategoryId,
+        description: fields.description,
+        address: fields.address,
+        reviewedAt: fields.reviewedAt,
+        reviewedById: fields.reviewedById,
       },
       include: providerDetailInclude,
     });

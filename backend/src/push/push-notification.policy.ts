@@ -6,6 +6,10 @@ const PUSH_NOTIFICATION_TYPES = new Set<NotificationType>([
   NotificationType.TASK_OVERDUE,
   NotificationType.CHAT_MESSAGE_RECEIVED,
   NotificationType.WEDDING_COUNTDOWN,
+  // A price offer for the customer and every booking step for the other
+  // side: each waits on a decision (V1 checklist 4.6).
+  NotificationType.QUOTE_OFFER_RECEIVED,
+  NotificationType.BOOKING_UPDATED,
 ]);
 
 export function isPushNotificationType(type: NotificationType): boolean {
@@ -37,6 +41,16 @@ export function pushNotificationCopy(type: NotificationType): {
       return {
         title: "العد التنازلي للعرس",
         body: "موعد العرس يقترب. افتح أعّرست لمراجعة ما تبقى.",
+      };
+    case NotificationType.QUOTE_OFFER_RECEIVED:
+      return {
+        title: "وصل عرض سعر",
+        body: "وصلك عرض سعر جديد. افتح أعّرست لمراجعته.",
+      };
+    case NotificationType.BOOKING_UPDATED:
+      return {
+        title: "تحديث على حجز",
+        body: "لديك تحديث على حجز. افتح أعّرست لعرض التفاصيل.",
       };
     default:
       throw new Error("UnsupportedPushNotificationType");

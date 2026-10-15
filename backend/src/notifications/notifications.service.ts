@@ -976,6 +976,7 @@ export class NotificationsService implements NotificationsPort {
       case NotificationType.QUOTE_ACCEPTED:
       case NotificationType.QUOTE_REJECTED:
       case NotificationType.CHAT_MESSAGE_RECEIVED:
+      case NotificationType.BOOKING_UPDATED:
         return "providerMessagesEnabled";
       default:
         return null;

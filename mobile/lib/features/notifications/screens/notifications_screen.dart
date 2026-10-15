@@ -457,6 +457,12 @@ _NotificationTone _tone(String type) {
       color: AppTheme.brand,
     );
   }
+  if (upperType == 'BOOKING_UPDATED') {
+    return const _NotificationTone(
+      icon: LucideIcons.calendarCheck,
+      color: AppTheme.success,
+    );
+  }
   if (upperType.contains('SHARING')) {
     return const _NotificationTone(
       icon: LucideIcons.userPlus,

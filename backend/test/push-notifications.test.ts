@@ -26,6 +26,19 @@ test("push policy is limited to task and chat notification types", () => {
   );
 });
 
+// A price offer and each booking step wait on the other side's decision, so
+// they reach the phone; the copy stays generic (V1 checklist 4.6).
+test("an offer and a booking step are pushed with generic copy", () => {
+  for (const type of [
+    NotificationType.QUOTE_OFFER_RECEIVED,
+    NotificationType.BOOKING_UPDATED,
+  ]) {
+    assert.equal(isPushNotificationType(type), true);
+    const copy = pushNotificationCopy(type);
+    assert.equal(copy.body.includes("افتح أعّرست"), true);
+  }
+});
+
 test("runtime fails closed when push is enabled without a Firebase project", () => {
   const environment = {
     NODE_ENV: "development",

@@ -22,6 +22,7 @@ import '../../auth/auth_api.dart'
 import '../../onboarding/onboarding_api.dart'
     show GuestOnboardingDraft, GuestOnboardingStorage, WeddingLocationDraft;
 import '../../sharing/sharing_api.dart' show PlanLeaveCoordinator, SharedMember;
+import '../../tasks/tasks_api.dart' show TaskTimelineApi;
 import '../models/dashboard_summary.dart';
 import '../models/wedding_plan.dart';
 import '../providers/dashboard_summary_provider.dart';

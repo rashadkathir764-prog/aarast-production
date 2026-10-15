@@ -1294,6 +1294,13 @@ Protected routes:
 - `PATCH /api/v1/tasks/:id/assign`
 - `PATCH /api/v1/tasks/:id`
 - `DELETE /api/v1/tasks/:id`
+- `POST /api/v1/wedding-plans/:weddingPlanId/tasks/shift-due-dates` `{ days }`
+  (V1 checklist 4.13, plan owner only, `-730..730`, not `0`): the wedding
+  moved, so the plan's `TODO`/`IN_PROGRESS` tasks with a due date move by
+  `days` (due date and reminder together, one statement); done, cancelled
+  and undated tasks keep theirs. Returns `{ shifted }`. The app offers it
+  right after the owner changes the wedding date; payment schedules and
+  bookings never move on their own.
 
 Create request:
 
@@ -2836,6 +2843,7 @@ configuration, and smoke checks.
 | POST | `/api/v1/wedding-plans/:weddingPlanId/quote-requests` | `marketplace.createQuoteRequest` | 🔒 |
 | GET | `/api/v1/wedding-plans/:weddingPlanId/tasks` | `tasks.findForPlan` | 🔒 |
 | POST | `/api/v1/wedding-plans/:weddingPlanId/tasks` | `tasks.create` | 🔒 |
+| POST | `/api/v1/wedding-plans/:weddingPlanId/tasks/shift-due-dates` | `tasks.shiftDueDates` | 🔒 |
 | GET | `/api/v1/wedding-plans/:weddingPlanId/tasks/summary` | `tasks.summary` | 🔒 |
 | GET | `/api/v1/wedding-plans/:weddingPlanId/timeline` | `timeline.getForPlan` | 🔒 |
 | GET | `/api/v1/wedding-plans/active` | `wedding-plans.findActive` | 🔒 |

@@ -1629,7 +1629,7 @@ const r19ProviderPortalApi = Object.freeze({
 // suggested tasks reading the plan persona from the account context and the
 // guest draft (field-test Q01), +1 for the provider's booking widgets reading
 // the marketplace owner API (V1 checklist 4.6).
-const r19LegalRecordCount = 177;
+const r19LegalRecordCount = 178;
 const trackedOwnerApiContracts = [
   {
     area: 'features/account_contexts',
@@ -2651,6 +2651,12 @@ const trackedPlanningBatchContracts = [
     source: 'mobile/lib/features/wedding_plans/screens/plan_management_screen.dart',
     target: 'mobile/lib/features/shell/shell_api.dart',
     show: ['AarastPlanNavigationBar'],
+  },
+  // V1 checklist 4.13: after the wedding moves, the owner may move tasks.
+  {
+    source: 'mobile/lib/features/wedding_plans/screens/plan_management_screen.dart',
+    target: 'mobile/lib/features/tasks/tasks_api.dart',
+    show: ['TaskTimelineApi'],
   },
   {
     source: 'mobile/lib/features/wedding_plans/screens/wedding_plan_dashboard_screen.dart',

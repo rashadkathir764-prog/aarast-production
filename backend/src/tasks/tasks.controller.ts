@@ -3,6 +3,7 @@ import {
   Controller,
   Delete,
   Get,
+  HttpCode,
   Param,
   Patch,
   Post,
@@ -16,6 +17,7 @@ import { ListQueryDto } from "../platform/http/list-query.dto";
 import { AssignTaskDto } from "./dto/assign-task.dto";
 import { CreateChecklistItemDto } from "./dto/create-checklist-item.dto";
 import { CreateTaskDto } from "./dto/create-task.dto";
+import { ShiftTaskDatesDto } from "./dto/shift-task-dates.dto";
 import { UpdateChecklistItemDto } from "./dto/update-checklist-item.dto";
 import { UpdateTaskDto } from "./dto/update-task.dto";
 import { TasksService } from "./tasks.service";
@@ -41,6 +43,17 @@ export class WeddingPlanTasksController {
     @Query() query: ListQueryDto,
   ) {
     return this.tasksService.findForPlan(currentUser, weddingPlanId, query);
+  }
+
+  // V1 checklist 4.13: the wedding moved; the owner moves open task dates.
+  @Post("shift-due-dates")
+  @HttpCode(200)
+  shiftDueDates(
+    @CurrentUser() currentUser: AuthenticatedUser,
+    @Param("weddingPlanId") weddingPlanId: string,
+    @Body() dto: ShiftTaskDatesDto,
+  ) {
+    return this.tasksService.shiftOpenDueDates(currentUser, weddingPlanId, dto.days);
   }
 
   @Get("summary")

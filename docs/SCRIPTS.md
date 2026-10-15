@@ -96,6 +96,7 @@
 | `backend` | `npm run smoke:sharing` | `node scripts/smoke/run-isolated-smoke.js sharing-smoke.js` |
 | `backend` | `npm run smoke:sharing-roles` | `node scripts/smoke/run-isolated-smoke.js sharing-roles-smoke.js` |
 | `backend` | `npm run smoke:sharing-security` | `node scripts/smoke/run-isolated-smoke.js sharing-security-smoke.js` |
+| `backend` | `npm run smoke:task-shift` | `node scripts/smoke/run-isolated-smoke.js task-shift-smoke.js` |
 | `backend` | `npm run smoke:task-timeline` | `node scripts/smoke/run-isolated-smoke.js task-timeline-smoke.js` |
 | `backend` | `npm run smoke:tasks-apis` | `node scripts/smoke/run-isolated-smoke.js tasks-apis-smoke.js` |
 | `backend` | `npm run smoke:ux-backend-support` | `node scripts/smoke/run-isolated-smoke.js ux-backend-support-smoke.js` |

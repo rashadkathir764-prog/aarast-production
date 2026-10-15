@@ -67,6 +67,7 @@ import {
   listLiveTasksForSummary,
   lockChecklistItemForUpdate,
   lockTaskForUpdate,
+  shiftOpenTaskDates,
   updateChecklistItem,
   updateTask,
 } from '../modules/tasks/infrastructure/task-work.repository';
@@ -174,6 +175,33 @@ export class TasksService {
     await this.notifyTaskDueBestEffort(task);
 
     return this.toResponse(task);
+  }
+
+  /**
+   * The wedding moved (V1 checklist 4.13): the owner moves the plan's open
+   * dated tasks by the same number of days. The app asks first; nothing
+   * moves on its own when the date changes.
+   */
+  async shiftOpenDueDates(
+    currentUser: AuthenticatedUser,
+    weddingPlanId: string,
+    days: number,
+  ): Promise<{ shifted: number }> {
+    if (!Number.isInteger(days) || days === 0) {
+      throw new BadRequestException("days must be a whole number of days other than 0");
+    }
+    const shifted = await runSerializableTransaction(this.prisma, async (tx) => {
+      const context = await this.permissions.assertTaskManageableInTransaction(
+        tx,
+        weddingPlanId,
+        currentUser,
+      );
+      if (!context.isOwner) {
+        throw new ForbiddenException("Only the plan owner moves every task");
+      }
+      return shiftOpenTaskDates(tx, weddingPlanId, days);
+    });
+    return { shifted };
   }
 
   async findForPlan(

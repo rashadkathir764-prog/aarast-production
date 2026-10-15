@@ -77,6 +77,18 @@ class TaskTimelineApi {
     }
   }
 
+  /// The wedding moved (V1 checklist 4.13): the owner moves the plan's open
+  /// dated tasks by [days]. Online only: it is a one-off decision the owner
+  /// takes right after changing the date. Returns how many tasks moved.
+  Future<int> shiftOpenDueDates(String weddingPlanId, int days) async {
+    final json = await _apiClient.postJson(
+      '/api/v1/wedding-plans/$weddingPlanId/tasks/shift-due-dates',
+      {'days': days},
+    );
+    final shifted = json['shifted'];
+    return shifted is num ? shifted.toInt() : 0;
+  }
+
   Future<TaskSummary> getTaskSummary(String weddingPlanId) async {
     if (_isLocalGuestPlanId(weddingPlanId)) {
       return _taskSummaryFromCachedTasks(weddingPlanId);

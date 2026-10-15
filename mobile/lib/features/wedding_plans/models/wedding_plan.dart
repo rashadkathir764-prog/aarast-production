@@ -91,3 +91,13 @@ class WeddingPlan {
     return value.map((item) => item.toString()).toList(growable: false);
   }
 }
+
+/// Whole days the wedding moved between two dates, or null when either is
+/// missing or the day did not change (V1 checklist 4.13).
+int? weddingDateShiftDays(DateTime? before, DateTime? after) {
+  if (before == null || after == null) return null;
+  final from = DateTime.utc(before.year, before.month, before.day);
+  final to = DateTime.utc(after.year, after.month, after.day);
+  final days = to.difference(from).inDays;
+  return days == 0 ? null : days;
+}

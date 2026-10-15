@@ -242,3 +242,23 @@ export async function lockChecklistItemForUpdate(
 export function findChecklistItemById(tx: Prisma.TransactionClient, id: string) {
   return tx.weddingTaskChecklistItem.findUnique({ where: { id } });
 }
+
+/**
+ * The wedding moved (V1 checklist 4.13): the plan's open dated tasks move
+ * by the same number of days, due date and reminder together, in one
+ * statement. Done and cancelled tasks keep their history.
+ */
+export function shiftOpenTaskDates(
+  client: Prisma.TransactionClient,
+  weddingPlanId: string,
+  days: number,
+) {
+  return client.$executeRaw`
+    UPDATE "WeddingTask"
+    SET "dueDate" = "dueDate" + make_interval(days => ${days}::int),
+        "reminderAt" = "reminderAt" + make_interval(days => ${days}::int),
+        "updatedAt" = NOW()
+    WHERE "weddingPlanId" = ${weddingPlanId}
+      AND "dueDate" IS NOT NULL
+      AND "status" IN ('TODO', 'IN_PROGRESS')`;
+}

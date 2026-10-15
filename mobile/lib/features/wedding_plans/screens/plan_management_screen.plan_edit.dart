@@ -38,7 +38,49 @@ extension _PlanCenterPlanEdit on _PlanCenterScreenState {
       plan.id,
       sharedMember: widget.sharedMember,
     );
-    if (mounted) _showSuccess('تم تحديث بيانات الخطة.');
+    if (!mounted) return;
+    _showSuccess('تم تحديث بيانات الخطة.');
+    final moved = weddingDateShiftDays(plan.weddingDate, updated.weddingDate);
+    if (moved != null && widget.sharedMember == null) {
+      await _offerTaskDateShift(plan.id, moved);
+    }
+  }
+
+  /// The wedding moved (V1 checklist 4.13): offer to move the open dated
+  /// tasks by the same days. Nothing moves unless the owner says so.
+  Future<void> _offerTaskDateShift(String planId, int days) async {
+    final direction = days > 0 ? 'تأخّر' : 'تقدّم';
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AarastDialog(
+        title: const Text('نقل مواعيد المهام؟'),
+        content: Text(
+          'موعد العرس $direction ${days.abs()} يومًا. ننقل مواعيد المهام غير '
+          'المنجزة بنفس المدة؟ مواعيد الدفعات لا تتغير لأنها اتفاق مع المزوّد، '
+          'وحجوزات المزوّدين ليوم العرس القديم تحتاج طلب اليوم الجديد منهم.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: const Text('لا، أبقِها'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            child: const Text('نعم، انقلها'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+    try {
+      final shifted = await context.read<TaskTimelineApi>().shiftOpenDueDates(
+        planId,
+        days,
+      );
+      if (mounted) _showSuccess('نُقلت مواعيد $shifted مهمة.');
+    } on Object {
+      if (mounted) _showError('تعذر نقل مواعيد المهام. حاول مرة أخرى من الإعدادات لاحقًا.');
+    }
   }
 
   Future<void> _saveLocalEdit(PlanEditResult result) async {

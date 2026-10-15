@@ -262,16 +262,35 @@ void main() {
     final state = _FakeMarketplaceProvider();
 
     await _pumpMarketplace(tester, state, authenticated: true);
+    // Nothing is filtered: the directory itself is empty, so the page says
+    // so instead of sending the user to clear filters they never set.
+    await tester.scrollUntilVisible(
+      find.text('لا يوجد مزوّدون في الدليل بعد'),
+      320,
+      scrollable: find.byType(Scrollable).first,
+    );
+
+    expect(find.text('لا يوجد مزوّدون في الدليل بعد'), findsOneWidget);
+    expect(find.text('مسح الفلاتر'), findsNothing);
+    expect(find.textContaining('أفضل'), findsNothing);
+    expect(find.textContaining('قريب'), findsNothing);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('a filtered empty directory offers to clear the filters', (
+    tester,
+  ) async {
+    final state = _FakeMarketplaceProvider(search: 'قاعة');
+
+    await _pumpMarketplace(tester, state, authenticated: true);
     await tester.scrollUntilVisible(
       find.text('لا يوجد موردون متاحون حاليًا'),
       320,
       scrollable: find.byType(Scrollable).first,
     );
 
-    expect(find.text('لا يوجد موردون متاحون حاليًا'), findsOneWidget);
-    expect(find.textContaining('أفضل'), findsNothing);
-    expect(find.textContaining('قريب'), findsNothing);
-    expect(tester.takeException(), isNull);
+    expect(find.text('مسح الفلاتر'), findsOneWidget);
+    expect(find.text('لا يوجد مزوّدون في الدليل بعد'), findsNothing);
   });
 
   testWidgets('clearing filters also clears the visible search text', (

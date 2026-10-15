@@ -284,6 +284,17 @@ class _ProviderMarketplaceScreenState extends State<ProviderMarketplaceScreen> {
                   )
                 else if (provider.isLoading && provider.providers.isEmpty)
                   const _MarketplaceSkeleton()
+                else if (provider.providers.isEmpty &&
+                    !_hasDirectoryFilters(provider))
+                  // Nothing is filtered, so "change the filters" would be
+                  // a false lead: the directory itself is empty.
+                  const AarastEmptyState(
+                    key: ValueKey('marketplace-directory-empty'),
+                    icon: LucideIcons.store,
+                    title: 'لا يوجد مزوّدون في الدليل بعد',
+                    message:
+                        'لم يُنشر أي مزوّد معتمد بخدماته حتى الآن. ادعُ مزوّدك ليسجّل في اعّرست.',
+                  )
                 else if (provider.providers.isEmpty)
                   AarastEmptyState(
                     icon: LucideIcons.store,
@@ -400,6 +411,13 @@ class _ProviderMarketplaceScreenState extends State<ProviderMarketplaceScreen> {
     if (!_scrollController.hasClients) return;
     if (_scrollController.position.extentAfter > 500) return;
     context.read<ProviderMarketplaceProvider>().loadMoreProviders();
+  }
+
+  bool _hasDirectoryFilters(ProviderMarketplaceProvider marketplace) {
+    return marketplace.cityId != null ||
+        marketplace.categoryId != null ||
+        marketplace.budgetMatchIntent != null ||
+        _searchController.text.trim().isNotEmpty;
   }
 
   Future<void> _clearMarketplaceFilters(

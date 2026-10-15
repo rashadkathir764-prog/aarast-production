@@ -246,6 +246,18 @@ expire after 30 days and are stored as hashes.
   rather than leaving the rotated session active.
 - `POST /api/v1/auth/logout-all` revokes all active application refresh
   sessions. Administrator logout/recovery affects only administrator sessions.
+- Phone change (V1 checklist 4.14), both authenticated:
+  `POST /api/v1/auth/phone-change/request` `{ phone }` sends a `VERIFY_PHONE`
+  OTP to the new number (same delivery, quota and response as
+  `otp/request`; throttled to 5 per minute); `409 PHONE_IN_USE` when any
+  account uses it (any spelling), `400 PHONE_UNCHANGED` for the account's own
+  number. `POST /api/v1/auth/phone-change/confirm` `{ phone, code }` claims the
+  OTP, moves the account (`phone`, `phoneVerifiedAt`) and revokes every
+  application session (`USER_SESSIONS_REVOKED`), returning
+  `{ changed: true, phone }`; a wrong code is the usual OTP failure and changes
+  nothing. The account signs in again with the new number and the same
+  password, which also covers a lost SIM (sign in with the old number and the
+  password, then change).
 - Application rotation, logout, reset, disable, and deletion commit
   `SESSION_REVOKED` or `USER_SESSIONS_REVOKED` outbox events with the
   authoritative session mutation. Chat sockets are grouped by `sid`; immediate
@@ -2639,6 +2651,8 @@ configuration, and smoke checks.
 | POST | `/api/v1/auth/otp/verify` | `auth.verifyOtp` |  |
 | POST | `/api/v1/auth/password-reset/confirm` | `auth.confirmPasswordReset` |  |
 | POST | `/api/v1/auth/password-reset/request` | `auth.requestPasswordReset` |  |
+| POST | `/api/v1/auth/phone-change/confirm` | `auth.confirmPhoneChange` | 🔒 |
+| POST | `/api/v1/auth/phone-change/request` | `auth.requestPhoneChange` | 🔒 |
 | POST | `/api/v1/auth/refresh` | `auth.refresh` |  |
 | POST | `/api/v1/auth/register` | `auth.register` |  |
 | POST | `/api/v1/auth/register/complete` | `auth.completeRegistration` |  |

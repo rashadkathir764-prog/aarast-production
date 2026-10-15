@@ -12,6 +12,7 @@ import '../../auth/auth_api.dart'
 import '../models/user_settings.dart';
 import '../providers/settings_provider.dart';
 import '../widgets/app_lock_settings.dart';
+import '../widgets/change_phone_sheet.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key, this.devicePushAvailableOverride});
@@ -76,6 +77,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
               phone: auth.user?.phone,
               email: auth.user?.email,
             ),
+            if (auth.user != null)
+              ChangePhoneButton(
+                requestCode: auth.requestPhoneChange,
+                confirmCode: auth.confirmPhoneChange,
+              ),
             const SizedBox(height: 14),
             if (_isCheckingAccount)
               AarastSkeleton.list(

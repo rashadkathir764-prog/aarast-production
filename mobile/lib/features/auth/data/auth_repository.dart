@@ -115,6 +115,24 @@ class AuthRepository implements SessionAuthTeardownPort {
     return OtpRequestResult.fromJson(json);
   }
 
+  /// V1 checklist 4.14: a code to the number the account moves to.
+  Future<OtpRequestResult> requestPhoneChange(String newPhone) async {
+    final json = await _apiClient.postJsonWithReceiveTimeout(
+      '/api/v1/auth/phone-change/request',
+      {'phone': normalizeYemeniPhone(newPhone)},
+      receiveTimeout: _otpDeliveryReceiveTimeout,
+    );
+    return OtpRequestResult.fromJson(json);
+  }
+
+  /// Moves the account; the server ends every session of it.
+  Future<void> confirmPhoneChange(String newPhone, String code) async {
+    await _apiClient.postJson('/api/v1/auth/phone-change/confirm', {
+      'phone': normalizeYemeniPhone(newPhone),
+      'code': code.trim(),
+    });
+  }
+
   Future<OtpRequestResult> requestInviteOtp({
     required String token,
     required String phone,

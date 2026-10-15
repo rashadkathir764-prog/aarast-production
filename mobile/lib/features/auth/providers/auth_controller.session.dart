@@ -259,7 +259,8 @@ mixin _AuthSession on _AuthControllerCore {
     try {
       await _sessionTeardownCoordinator.terminate(
         teardownLease,
-        remoteSessionAlreadyDestroyed: reason == 'account_deleted',
+        remoteSessionAlreadyDestroyed:
+            reason == 'account_deleted' || reason == 'phone_changed',
         clearGuestDraft: reason == 'account_deleted',
       );
       if (!_isCurrentSessionOperation(operation)) return;
@@ -317,6 +318,34 @@ mixin _AuthSession on _AuthControllerCore {
       requestLoginAfterCompletion: false,
       markSessionExpired: true,
     );
+  }
+
+  /// V1 checklist 4.14, step 1: sends a code to [newPhone]. Returns an
+  /// Arabic error, or null when the code was sent.
+  Future<String?> requestPhoneChange(String newPhone) async {
+    try {
+      await _authRepository.requestPhoneChange(newPhone);
+      return null;
+    } on ApiException catch (error) {
+      return phoneChangeErrorMessage(error.serverCode) ?? error.message;
+    }
+  }
+
+  /// Step 2: the code moves the account to [newPhone]. The server has ended
+  /// every session, so this one ends locally too and sign-in opens, now with
+  /// the new number. Returns an Arabic error, or null on success.
+  Future<String?> confirmPhoneChange(String newPhone, String code) async {
+    try {
+      await _authRepository.confirmPhoneChange(newPhone, code);
+    } on ApiException catch (error) {
+      return phoneChangeErrorMessage(error.serverCode) ?? error.message;
+    }
+    await _startSessionTermination(
+      reason: 'phone_changed',
+      requestLoginAfterCompletion: true,
+      markSessionExpired: false,
+    );
+    return null;
   }
 
   void acknowledgeSessionExpiry() {
@@ -620,3 +649,10 @@ mixin _AuthSession on _AuthControllerCore {
     await restoreSession();
   }
 }
+
+/// Server codes of a phone change, as Arabic actions (V1 checklist 4.14).
+String? phoneChangeErrorMessage(String? code) => switch (code) {
+  'PHONE_IN_USE' => 'هذا الرقم مسجّل لحساب آخر. استخدم رقمًا آخر.',
+  'PHONE_UNCHANGED' => 'هذا هو رقمك الحالي.',
+  _ => null,
+};

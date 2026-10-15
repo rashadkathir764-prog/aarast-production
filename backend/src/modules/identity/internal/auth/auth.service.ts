@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  ConflictException,
   HttpStatus,
   Inject,
   Injectable,
@@ -14,6 +15,7 @@ import {
   COLLABORATION_PERMISSION_PORT,
   type CollaborationPermissionPort,
 } from "../../../collaboration/public/collaboration-permission.port";
+import type { AuthenticatedUser } from "../../public/identity-session.types";
 import {
   IdentityAuthPort,
   InviteOtpVerifyInput,
@@ -26,6 +28,7 @@ import {
   Prisma,
   User,
   UserRole,
+  UserStatus,
 } from "@prisma/client";
 import * as bcryptjs from "bcryptjs";
 import { createHash, randomBytes } from "crypto";
@@ -967,6 +970,113 @@ export class AuthService implements IdentityAuthPort {
       this.realtime.disconnectUser(userId);
     }
     return { revoked: result.count };
+  }
+
+  /**
+   * Changing the account's phone, step 1 (V1 checklist 4.14): a code goes to
+   * the new number, which no account may already use. Phones get lost or
+   * replaced often in Yemen; without this the account was tied to one SIM.
+   */
+  async requestPhoneChange(
+    currentUser: AuthenticatedUser,
+    newPhoneInput: string,
+    context: OtpDispatchContext = {},
+  ): Promise<OtpRequestResponse> {
+    const phone = PhoneNormalizer.normalizeRequired(newPhoneInput);
+    await this.assertPhoneChangeAllowed(this.prisma, currentUser.id, phone);
+    const { otpId: _otpId, ...response } = await this.issueOtp(
+      phone,
+      OtpPurpose.VERIFY_PHONE,
+      context,
+    );
+    return response;
+  }
+
+  /**
+   * Step 2: the code proves the new number; the account moves to it and
+   * every application session ends, so each device signs in again with the
+   * new number.
+   */
+  async confirmPhoneChange(
+    currentUser: AuthenticatedUser,
+    newPhoneInput: string,
+    codeInput: string,
+  ): Promise<{ changed: true; phone: string }> {
+    const phone = PhoneNormalizer.normalizeRequired(newPhoneInput);
+    const code = this.requiredText(codeInput, "code");
+    const now = new Date();
+    let outcome: "changed" | "invalid";
+    try {
+      outcome = await runSerializableTransaction(this.prisma, async (tx) => {
+        const [actor] = await lockUserLifecycleRowsForUpdateInTransaction(tx, [
+          currentUser.id,
+        ]);
+        if (!actor || actor.status !== UserStatus.ACTIVE) {
+          throw new UnauthorizedException("User not found");
+        }
+        await this.assertPhoneChangeAllowed(tx, currentUser.id, phone);
+        const claim = await this.claimOtpCodeInTransaction(tx, {
+          phone,
+          purpose: OtpPurpose.VERIFY_PHONE,
+          code,
+          now,
+        });
+        if (claim.outcome === "invalid") return "invalid" as const;
+        const changed = await this.users.changePhone(tx, currentUser.id, phone, now);
+        if (changed.count !== 1) {
+          throw new UnauthorizedException("User not found");
+        }
+        await this.lockRefreshSessionsInTransaction(
+          tx,
+          currentUser.id,
+          AuthSessionScope.APPLICATION,
+        );
+        await this.sessions.revokeActiveScope(
+          tx,
+          currentUser.id,
+          AuthSessionScope.APPLICATION,
+          now,
+        );
+        await enqueueUserSessionsRevoked(tx, currentUser.id);
+        return "changed" as const;
+      });
+    } catch (error) {
+      // Another account took the number between the check and the write.
+      if (
+        error instanceof Prisma.PrismaClientKnownRequestError &&
+        error.code === "P2002"
+      ) {
+        throw this.phoneInUse();
+      }
+      throw error;
+    }
+    if (outcome === "invalid") throw this.otpInvalid();
+    this.realtime.disconnectUser(currentUser.id);
+    return { changed: true, phone };
+  }
+
+  private async assertPhoneChangeAllowed(
+    client: Prisma.TransactionClient,
+    userId: string,
+    phone: string,
+  ): Promise<void> {
+    const owner = await this.findUserByCanonicalPhone(client, phone);
+    if (owner?.id === userId) {
+      throw new BadRequestException({
+        statusCode: 400,
+        code: "PHONE_UNCHANGED",
+        message: "This is already the account's phone",
+      });
+    }
+    if (owner) throw this.phoneInUse();
+  }
+
+  private phoneInUse() {
+    return new ConflictException({
+      statusCode: 409,
+      code: "PHONE_IN_USE",
+      message: "Another account uses this phone",
+    });
   }
 
   async requestOtp(

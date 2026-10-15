@@ -65,6 +65,14 @@ export class AuthUserRepository {
     });
   }
 
+  /** V1 checklist 4.14: the account moves to a phone it just proved by OTP. */
+  changePhone(tx: Prisma.TransactionClient, userId: string, phone: string, at: Date) {
+    return tx.user.updateMany({
+      where: { id: userId, status: 'ACTIVE' },
+      data: { phone, phoneVerifiedAt: at },
+    });
+  }
+
   markAdminMfaLogin(tx: Prisma.TransactionClient, user: User, at: Date) {
     return tx.user.updateMany({
       where: { id: user.id, role: UserRole.ADMIN, status: 'ACTIVE' },

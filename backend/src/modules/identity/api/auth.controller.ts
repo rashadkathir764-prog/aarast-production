@@ -20,6 +20,7 @@ import { CompleteRegistrationDto } from "./auth-dto/complete-registration.dto";
 import { LoginDto } from "./auth-dto/login.dto";
 import { RequestOtpDto } from "./auth-dto/request-otp.dto";
 import { VerifyOtpDto } from "./auth-dto/verify-otp.dto";
+import { ConfirmPhoneChangeDto, RequestPhoneChangeDto } from "./auth-dto/change-phone.dto";
 import { JwtAuthGuard } from "../public/jwt-auth.guard";
 import { CurrentUser } from "../public/current-user.decorator";
 import { AuthenticatedUser } from "../public/identity-session.types";
@@ -206,6 +207,30 @@ export class AuthController {
   @UseGuards(JwtAuthGuard)
   logoutAll(@CurrentUser() user: AuthenticatedUser) {
     return this.authService.logoutAll(user.id);
+  }
+
+  // V1 checklist 4.14: move the account to a new phone it proves by OTP.
+  @Post("phone-change/request")
+  @HttpCode(HttpStatus.OK)
+  @UseGuards(JwtAuthGuard)
+  @Throttle({ default: { limit: 5, ttl: 60_000 } })
+  requestPhoneChange(
+    @CurrentUser() user: AuthenticatedUser,
+    @Body() dto: RequestPhoneChangeDto,
+    @Req() request: Request,
+  ) {
+    return this.authService.requestPhoneChange(user, dto.phone, { ip: request.ip });
+  }
+
+  @Post("phone-change/confirm")
+  @HttpCode(HttpStatus.OK)
+  @UseGuards(JwtAuthGuard)
+  @Throttle({ default: { limit: 10, ttl: 60_000 } })
+  confirmPhoneChange(
+    @CurrentUser() user: AuthenticatedUser,
+    @Body() dto: ConfirmPhoneChangeDto,
+  ) {
+    return this.authService.confirmPhoneChange(user, dto.phone, dto.code);
   }
 
   @Post("otp/request")

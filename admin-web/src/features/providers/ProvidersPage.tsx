@@ -21,6 +21,7 @@ import { TableToolbar } from '../../design_system/TableToolbar';
 import { formatDate } from '../../platform/i18n/formatDate';
 import { ProviderActions } from './providerHelpers';
 import { AddListedProviderCard } from './AddListedProviderCard';
+import { ImportProvidersCard } from './ImportProvidersCard';
 import { AdminPermission, Can } from '../auth/api';
 
 const statuses = [
@@ -283,6 +284,11 @@ export function ProvidersPage({
               cities={cities}
               categories={categories}
               onCreated={load}
+            />
+            <ImportProvidersCard
+              cities={cities}
+              categories={categories}
+              onImported={load}
             />
           </Can>
         </div>

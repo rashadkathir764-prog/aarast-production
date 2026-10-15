@@ -179,6 +179,26 @@ async function main(): Promise<void> {
     );
     console.log("PASS - a blocked day refuses requests until it is unblocked");
 
+    // A week before the confirmed day both sides are reminded; two days
+    // before it is outside every window (V1 checklist 4.17).
+    const remindedBefore = notifications.length;
+    await bookings.sendDueReminders(new Date("2027-02-11T09:00:00Z"));
+    const reminders = notifications
+      .slice(remindedBefore)
+      .filter((item) => item.data?.bookingId === winner.id);
+    assert.deepEqual(
+      reminders.map((item) => item.data.recipientAudience).sort(),
+      ["CUSTOMER", "PROVIDER"],
+    );
+    assert.ok(reminders.every((item) => item.dedupeKey.endsWith(":REMINDER:7:2027-02-18")));
+    const outside = notifications.length;
+    await bookings.sendDueReminders(new Date("2027-02-05T09:00:00Z"));
+    assert.equal(
+      notifications.slice(outside).filter((item) => item.data?.bookingId === winner.id).length,
+      0,
+    );
+    console.log("PASS - a confirmed booking is reminded a week before, on both sides");
+
     const cancelled = await bookings.cancelAsCustomer(
       (winner.id === bookingA.id ? customerA : customerB) as any,
       winner.id,

@@ -110,8 +110,18 @@ function fakeDatabase() {
       },
       findMany: async ({ where }: any) =>
         [...bookings.values()]
-          .filter((row) => row.providerId === where.providerId)
-          .map((row) => ({ ...row, quoteRequest: quotes.get(row.quoteRequestId) })),
+          .filter((row) =>
+            where.providerId
+              ? row.providerId === where.providerId
+              : row.status === where.status &&
+                row.eventDate >= where.eventDate.gte &&
+                row.eventDate <= where.eventDate.lte,
+          )
+          .map((row) => ({
+            ...row,
+            quoteRequest: quotes.get(row.quoteRequestId),
+            provider: providers.get(row.providerId),
+          })),
     },
     providerBlockedDate: {
       findUnique: async ({ where }: any) =>
@@ -315,4 +325,72 @@ test("a customer without a completed booking cannot review the provider", async 
     marketplace.createReview(customer, "11111111-1111-4111-8111-111111111111", { rating: 5 } as any),
     (error: any) => error?.response?.code === "REVIEW_REQUIRES_COMPLETED_BOOKING",
   );
+});
+
+test("a confirmed booking reminds both sides a week and a day before, once each", async () => {
+  const db = fakeDatabase();
+  db.addQuote("quote-1");
+  const sent = new Set<string>();
+  const bookings = new BookingsService(
+    db.prisma,
+    {
+      assertPlanReadableInTransaction: async (_tx: unknown, planId: string) => ({
+        plan: { id: planId, ownerUserId: "customer-1", status: "PLANNING" },
+        isOwner: true,
+        sharedMember: null,
+      }),
+      canManageProviders: () => true,
+    } as any,
+    {
+      // The real notifications row is unique on its dedupe key.
+      createNotificationInTransaction: async (_tx: unknown, input: any) => {
+        if (sent.has(input.dedupeKey)) {
+          throw new Prisma.PrismaClientKnownRequestError("dup", {
+            code: "P2002",
+            clientVersion: "test",
+          });
+        }
+        sent.add(input.dedupeKey);
+        db.notifications.push(input);
+        return { id: input.dedupeKey };
+      },
+    } as any,
+  );
+  const requested = await bookings.requestBooking(customer, "quote-1", {});
+  await bookings.decideAsProvider(providerUser, requested.id, "CONFIRM", {});
+  db.notifications.length = 0;
+
+  // The booking day is 2027-02-18 (Yemen time).
+  const at = (day: string) => new Date(`${day}T09:00:00Z`);
+  assert.deepEqual(await bookings.sendDueReminders(at("2027-02-01")), { sent: 0, failures: [] });
+
+  const week = await bookings.sendDueReminders(at("2027-02-11"));
+  assert.equal(week.sent, 2);
+  assert.deepEqual(db.notifications.map((n) => n.userId).sort(), ["customer-1", "provider-user-1"]);
+  assert.match(db.notifications[0].body, /بعد 7 أيام \(2027-02-18\)/);
+
+  // The next hourly scans inside the same window send nothing again.
+  assert.equal((await bookings.sendDueReminders(at("2027-02-12"))).sent, 0);
+
+  const dayBefore = await bookings.sendDueReminders(at("2027-02-17"));
+  assert.equal(dayBefore.sent, 2);
+  assert.match(db.notifications.slice(-1)[0].body, /غدًا/);
+  assert.equal(db.notifications.slice(-1)[0].priority, "HIGH");
+
+  // The day itself and after: nothing.
+  assert.equal((await bookings.sendDueReminders(at("2027-02-18"))).sent, 0);
+});
+
+test("a cancelled booking is not reminded", async () => {
+  const db = fakeDatabase();
+  db.addQuote("quote-1");
+  const bookings = service(db);
+  const requested = await bookings.requestBooking(customer, "quote-1", {});
+  await bookings.decideAsProvider(providerUser, requested.id, "CONFIRM", {});
+  await bookings.cancelAsCustomer(customer, requested.id, {});
+  db.notifications.length = 0;
+
+  const result = await bookings.sendDueReminders(new Date("2027-02-17T09:00:00Z"));
+  assert.equal(result.sent, 0);
+  assert.equal(db.notifications.length, 0);
 });

@@ -189,3 +189,18 @@ export async function hasCompletedBookingWith(
   });
   return count > 0;
 }
+
+/** Confirmed bookings from `today` through `until`, with what their reminders name (V1 checklist 4.17). */
+export function listConfirmedBookingsDue(tx: Tx, today: Date, until: Date) {
+  return tx.booking.findMany({
+    where: {
+      status: BookingStatus.CONFIRMED,
+      eventDate: { gte: today, lte: until },
+    },
+    include: {
+      quoteRequest: { select: bookingQuoteSelect },
+      provider: { select: { userId: true, businessName: true } },
+    },
+    orderBy: [{ eventDate: 'asc' }, { id: 'asc' }],
+  });
+}

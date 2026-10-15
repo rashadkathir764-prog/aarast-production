@@ -96,3 +96,103 @@ export function bookingCustomerNotification(
     dedupeKey: `${args.customerUserId}:booking:${args.bookingId}:${event}:${args.revision}`,
   };
 }
+
+// ── Reminders before a confirmed booking (V1 checklist 4.17) ───────────
+
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+/** A confirmed booking reminds both sides once a week before and once the day before. */
+export const BOOKING_REMINDER_MILESTONES = [7, 1] as const;
+
+/** The reminder window a booking `daysUntil` away is in, or null outside every window. */
+export function bookingReminderMilestone(daysUntil: number): number | null {
+  if (daysUntil < 1) return null;
+  for (const milestone of [...BOOKING_REMINDER_MILESTONES].reverse()) {
+    if (daysUntil <= milestone) return milestone;
+  }
+  return null;
+}
+
+/** Whole calendar days from `today` to the booking day (both `@db.Date` midnights). */
+export function bookingDaysUntil(eventDate: Date, today: Date): number {
+  return Math.round((eventDate.getTime() - today.getTime()) / DAY_MS);
+}
+
+function whenLabel(daysUntil: number): string {
+  if (daysUntil === 1) return "غدًا";
+  if (daysUntil === 2) return "بعد يومين";
+  return `بعد ${daysUntil} أيام`;
+}
+
+export interface BookingReminderArgs {
+  bookingId: string;
+  quoteRequestId: string;
+  providerId: string;
+  eventDate: Date;
+  customerUserId: string;
+  weddingPlanId: string | null;
+  customerName: string | null;
+  providerUserId: string | null;
+  providerName: string;
+}
+
+/**
+ * The reminders due for one confirmed booking today: the customer and the
+ * provider each once per window. The key carries the day, so a booking moved
+ * to another day (cancelled and requested again) reminds again.
+ */
+export function bookingReminderNotifications(
+  args: BookingReminderArgs,
+  today: Date,
+): CreateNotificationInput[] {
+  const daysUntil = bookingDaysUntil(args.eventDate, today);
+  const milestone = bookingReminderMilestone(daysUntil);
+  if (milestone === null) return [];
+  const day = formatDay(args.eventDate);
+  const when = whenLabel(daysUntil);
+  const priority =
+    daysUntil <= 1 ? NotificationPriority.HIGH : NotificationPriority.NORMAL;
+  const data = {
+    bookingId: args.bookingId,
+    quoteRequestId: args.quoteRequestId,
+    providerId: args.providerId,
+    daysUntil,
+  };
+  const key = (userId: string) =>
+    `${userId}:booking:${args.bookingId}:REMINDER:${milestone}:${day}`;
+  const reminders: CreateNotificationInput[] = [
+    {
+      userId: args.customerUserId,
+      weddingPlanId: args.weddingPlanId,
+      type: NotificationType.BOOKING_UPDATED,
+      priority,
+      title: "تذكير بحجز",
+      body: `حجزك مع ${args.providerName} ${when} (${day}). تواصل معه لتأكيد التفاصيل.`,
+      entityType: "booking",
+      entityId: args.bookingId,
+      routeTarget: requesterQuoteRoute(args.quoteRequestId),
+      data: {
+        ...data,
+        weddingPlanId: args.weddingPlanId,
+        recipientAudience: "CUSTOMER",
+      },
+      dedupeKey: key(args.customerUserId),
+    },
+  ];
+  if (args.providerUserId) {
+    const who = args.customerName?.trim() || "العميل";
+    reminders.push({
+      userId: args.providerUserId,
+      type: NotificationType.BOOKING_UPDATED,
+      priority,
+      title: "تذكير بحجز",
+      body: `عندك حجز مع ${who} ${when} (${day}).`,
+      entityType: "booking",
+      entityId: args.bookingId,
+      routeTarget: PROVIDER_PORTAL_ROUTE,
+      data: { ...data, recipientAudience: "PROVIDER" },
+      dedupeKey: key(args.providerUserId),
+    });
+  }
+  return reminders;
+}

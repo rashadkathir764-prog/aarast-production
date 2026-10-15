@@ -107,9 +107,11 @@ test('Task 7 owner-private leaves register each remaining application service on
     // The ownership program added marketplace's private relations service:
     // it attaches catalog's, planning's, identity's and finance's rows to
     // marketplace's own rows through their ports (its includes are gone).
-    // Bookings and the provider calendar (V1 checklist 4.6) add BookingsService.
+    // Bookings and the provider calendar (V1 checklist 4.6) add BookingsService,
+    // and the reminders before a booking (4.17) its hourly scheduler.
     ['modules/marketplace/internal/marketplace-services.internal.module.ts#MarketplaceServicesInternalModule', [
-      'BookingsService', 'MarketplaceRelationsService', 'MarketplaceService', 'ProviderDashboardService',
+      'BookingRemindersScheduler', 'BookingsService', 'MarketplaceRelationsService', 'MarketplaceService',
+      'ProviderDashboardService',
     ]],
     ['modules/catalog/internal/catalog-services.internal.module.ts#CatalogServicesInternalModule', [
       'AdministrativeCatalogService', 'ReferenceCatalogService',

@@ -40,8 +40,10 @@ import {
   type BookingResponse,
 } from "./booking-policy";
 import {
+  BOOKING_REMINDER_MILESTONES,
   bookingCustomerNotification,
   bookingProviderNotification,
+  bookingReminderNotifications,
 } from "./booking-notifications";
 import { BookingDecisionDto, RequestBookingDto } from "./dto/booking.dto";
 import { lockMarketplaceProvider } from "./marketplace-write-locks";
@@ -293,6 +295,62 @@ export class BookingsService {
     }
     await bookings.deleteBlockedDate(this.prisma, provider.id, day);
     return { date: day.toISOString().slice(0, 10) };
+  }
+
+  // ── Reminders (V1 checklist 4.17) ────────────────────────────────────
+
+  /**
+   * Reminds both sides of each confirmed booking a week and a day before.
+   * Each reminder is its own transaction that re-reads the booking, and its
+   * dedupe key makes a repeated scan (or a second replica) a no-op. A failed
+   * reminder is reported, not swallowed, and does not stop the others.
+   */
+  async sendDueReminders(
+    now: Date = new Date(),
+  ): Promise<{ sent: number; failures: Array<{ bookingId: string; error: unknown }> }> {
+    const today = bookingToday(now);
+    const until = new Date(
+      today.getTime() + BOOKING_REMINDER_MILESTONES[0] * 24 * 60 * 60 * 1000,
+    );
+    const due = await bookings.listConfirmedBookingsDue(this.prisma, today, until);
+    let sent = 0;
+    const failures: Array<{ bookingId: string; error: unknown }> = [];
+    for (const booking of due) {
+      const reminders = bookingReminderNotifications(
+        {
+          bookingId: booking.id,
+          quoteRequestId: booking.quoteRequestId,
+          providerId: booking.providerId,
+          eventDate: booking.eventDate,
+          customerUserId: booking.quoteRequest.userId,
+          weddingPlanId: booking.quoteRequest.weddingPlanId,
+          customerName: booking.quoteRequest.contactName,
+          providerUserId: booking.provider.userId,
+          providerName: booking.provider.businessName,
+        },
+        today,
+      );
+      for (const reminder of reminders) {
+        try {
+          const created = await runSerializableTransaction(this.prisma, async (tx) => {
+            const live = await bookings.findBooking(tx, booking.id);
+            if (
+              live?.status !== BookingStatus.CONFIRMED ||
+              live.eventDate.getTime() !== booking.eventDate.getTime()
+            ) {
+              return null;
+            }
+            return this.notifications.createNotificationInTransaction(tx, reminder);
+          });
+          if (created) sent += 1;
+        } catch (error) {
+          // Already reminded in this window: the dedupe key holds.
+          if (isUniqueViolation(error)) continue;
+          failures.push({ bookingId: booking.id, error });
+        }
+      }
+    }
+    return { sent, failures };
   }
 
   // ── Shared ───────────────────────────────────────────────────────────

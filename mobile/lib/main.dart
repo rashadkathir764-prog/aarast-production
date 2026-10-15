@@ -23,6 +23,7 @@ import 'core/offline/pending_plan_cleanup.dart';
 import 'core/push/push_messaging_gateway.dart';
 import 'core/push/push_notifications_controller.dart';
 import 'core/push/push_registration_api.dart';
+import 'core/security/app_lock_controller.dart';
 import 'core/session/session_boundary.dart';
 import 'core/session/pending_account_deletion.dart';
 import 'core/session/session_scoped_change_notifier.dart';
@@ -481,6 +482,13 @@ class _AarastSessionProviders extends StatelessWidget {
                 )),
           ),
           ChangeNotifierProvider(create: (_) => SettingsProvider(settingsApi)),
+          // V1 checklist 4.15: the account's optional app lock code.
+          ChangeNotifierProvider(
+            create: (_) => AppLockController(
+              vault: const SecureSensitiveValueVault(),
+              userId: sessionUserId,
+            )..load(),
+          ),
           ChangeNotifierProxyProvider<
             AccountContextController,
             ProviderDashboardProvider

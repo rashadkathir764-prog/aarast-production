@@ -12,6 +12,7 @@ import 'core/experience_v3/aarast_v3.dart';
 import 'core/routing/app_router.dart';
 import 'core/routing/aarast_back_button_dispatcher.dart';
 import 'core/push/push_lifecycle_bridge.dart';
+import 'core/security/app_lock_gate.dart';
 import 'core/theme/app_theme.dart';
 import 'features/account_contexts/account_contexts_api.dart'
     show AccountContextController;
@@ -95,7 +96,10 @@ class _AarastAppState extends State<AarastApp> {
                 child: AarastSessionTransitionGate(
                   child: AarastAuthFlowRedirector(
                     router: _router,
-                    child: child ?? const SizedBox.shrink(),
+                    child: AppLockGate(
+                      onForgotCode: auth.logout,
+                      child: child ?? const SizedBox.shrink(),
+                    ),
                   ),
                 ),
               ),

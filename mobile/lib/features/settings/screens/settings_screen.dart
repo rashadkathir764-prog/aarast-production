@@ -11,6 +11,7 @@ import '../../auth/auth_api.dart'
     show AuthActionGuard, AuthController, AuthGatePanel;
 import '../models/user_settings.dart';
 import '../providers/settings_provider.dart';
+import '../widgets/app_lock_settings.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key, this.devicePushAvailableOverride});
@@ -116,6 +117,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
               ),
               const SizedBox(height: 14),
               _StaticPreferencesCard(updatedAt: draft.updatedAt),
+              const SizedBox(height: 18),
+              const AppLockSettingsSection(),
               const SizedBox(height: 18),
               if (provider.errorMessage != null) ...[
                 _MessageCard(

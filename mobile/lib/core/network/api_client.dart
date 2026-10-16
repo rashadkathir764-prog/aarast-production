@@ -706,9 +706,22 @@ class ApiException implements Exception {
       );
     }
 
-    if (serverMessage != null) {
+    // V1 checklist 5.4: the server's own Arabic messages reach the user; an
+    // English framework or validation detail never does. It becomes an
+    // Arabic message that says what happened and what to do.
+    if (serverMessage != null && _hasArabic(serverMessage)) {
       return ApiException(
-        _cleanServerMessage(serverMessage),
+        serverMessage.trim(),
+        statusCode: statusCode,
+        serverCode: serverCode,
+        retryAfterSeconds: retryAfterSeconds,
+      );
+    }
+    if (serverMessage != null &&
+        _cleanServerMessage(serverMessage) ==
+            aarastBackendConnectionErrorMessage) {
+      return ApiException(
+        aarastBackendConnectionErrorMessage,
         statusCode: statusCode,
         serverCode: serverCode,
         retryAfterSeconds: retryAfterSeconds,
@@ -716,7 +729,7 @@ class ApiException implements Exception {
     }
 
     return ApiException(
-      'حدث خطأ، يرجى المحاولة مرة أخرى.',
+      _arabicMessageForStatus(statusCode),
       statusCode: statusCode,
       serverCode: serverCode,
       retryAfterSeconds: retryAfterSeconds,
@@ -746,6 +759,25 @@ class ApiException implements Exception {
 
   @override
   String toString() => message;
+
+  static final _arabicLetter = RegExp(r'[؀-ۿ]');
+
+  static bool _hasArabic(String message) => _arabicLetter.hasMatch(message);
+
+  /// An Arabic message with a clear next step, by what kind of failure it is.
+  static String _arabicMessageForStatus(int? statusCode) {
+    return switch (statusCode) {
+      400 || 422 => 'تعذّر الحفظ: راجع البيانات المدخلة ثم حاول مرة أخرى.',
+      403 => 'لا تملك صلاحية لهذا الإجراء. اطلب الصلاحية من صاحب الخطة.',
+      404 => 'العنصر غير موجود أو لم يعد متاحًا. حدّث الصفحة.',
+      409 => 'تغيّرت البيانات قبل الحفظ. حدّث الصفحة ثم حاول مرة أخرى.',
+      413 => 'الملف أكبر من المسموح. اختر ملفًا أصغر.',
+      429 => 'طلبات كثيرة في وقت قصير. انتظر قليلًا ثم حاول مرة أخرى.',
+      final code? when code >= 500 =>
+        'حدث خطأ في الخادم. حاول بعد قليل، وإن تكرر فتواصل مع الدعم.',
+      _ => 'حدث خطأ، يرجى المحاولة مرة أخرى.',
+    };
+  }
 
   static String _cleanServerMessage(String message) {
     final normalized = message.trim();

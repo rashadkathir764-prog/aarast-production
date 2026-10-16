@@ -312,5 +312,49 @@ void main() {
       expect(exception.message, 'لم تعد لديك صلاحية لتنفيذ هذه المهمة');
       expect(exception.message, isNot(contains('permission')));
     });
+
+    // V1 checklist 5.4: no English server detail ever reaches the user.
+    ApiException failure(int status, Object? data) {
+      final requestOptions = RequestOptions(path: '/api/v1/tasks/task-1');
+      return ApiException.fromDio(
+        DioException(
+          requestOptions: requestOptions,
+          response: Response<Object?>(
+            requestOptions: requestOptions,
+            statusCode: status,
+            data: data,
+          ),
+          type: DioExceptionType.badResponse,
+        ),
+      );
+    }
+
+    test('untyped English errors become Arabic with a next step', () {
+      final cases = <int, String>{
+        400: 'راجع البيانات المدخلة',
+        403: 'لا تملك صلاحية',
+        404: 'غير موجود',
+        409: 'حدّث الصفحة',
+        429: 'انتظر قليلًا',
+        500: 'خطأ في الخادم',
+      };
+      for (final entry in cases.entries) {
+        final exception = failure(entry.key, const {
+          'message': ['title must not be empty'],
+        });
+        expect(exception.message, contains(entry.value), reason: '${entry.key}');
+        expect(exception.message, isNot(contains('title')));
+        expect(exception.statusCode, entry.key);
+      }
+      expect(
+        failure(404, const {'message': 'Task not found'}).message,
+        isNot(contains('Task')),
+      );
+    });
+
+    test('the server\'s own Arabic message still reaches the user', () {
+      final exception = failure(400, const {'message': 'عنوان المهمة مطلوب'});
+      expect(exception.message, 'عنوان المهمة مطلوب');
+    });
   });
 }

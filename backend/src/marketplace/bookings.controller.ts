@@ -42,6 +42,15 @@ export class MeBookingsController {
   ) {
     return this.bookings.cancelAsCustomer(currentUser, id, dto);
   }
+
+  /** The plan's open and upcoming bookings (V1 checklist 4.13). */
+  @Get("wedding-plans/:weddingPlanId/bookings")
+  listPlanBookings(
+    @CurrentUser() currentUser: AuthenticatedUser,
+    @Param("weddingPlanId") weddingPlanId: string,
+  ) {
+    return this.bookings.listForPlan(currentUser, weddingPlanId);
+  }
 }
 
 /** The provider's bookings and calendar. */

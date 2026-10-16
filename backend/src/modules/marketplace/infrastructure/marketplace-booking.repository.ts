@@ -148,6 +148,24 @@ export function listProviderBookings(tx: Tx, providerId: string, today: Date) {
   });
 }
 
+/** A plan's open requests and upcoming confirmed bookings, with the provider's name (V1 checklist 4.13). */
+export function listPlanBookings(tx: Tx, weddingPlanId: string, today: Date) {
+  return tx.booking.findMany({
+    where: {
+      quoteRequest: { weddingPlanId },
+      OR: [
+        { status: BookingStatus.REQUESTED },
+        { status: BookingStatus.CONFIRMED, eventDate: { gte: today } },
+      ],
+    },
+    include: {
+      quoteRequest: { select: bookingQuoteSelect },
+      provider: { select: { businessName: true } },
+    },
+    orderBy: [{ eventDate: 'asc' }, { createdAt: 'asc' }],
+  });
+}
+
 export function listBlockedDates(tx: Tx, providerId: string, today: Date) {
   return tx.providerBlockedDate.findMany({
     where: { providerId, date: { gte: today } },

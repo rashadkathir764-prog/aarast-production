@@ -189,6 +189,37 @@ export class BookingsService {
     });
   }
 
+  /**
+   * The plan's open booking requests and upcoming confirmed bookings (V1
+   * checklist 4.13: when the wedding moves, the app names the bookings made
+   * for the old day). The owner and partner see the plan's; another member
+   * with provider rights sees the ones they requested; without provider
+   * rights, none.
+   */
+  async listForPlan(currentUser: AuthenticatedUser, weddingPlanId: string) {
+    return runRetryableTransaction(
+      this.prisma,
+      async (tx) => {
+        const context = await this.permissions.assertPlanReadableInTransaction(
+          tx,
+          weddingPlanId,
+          currentUser,
+        );
+        if (!this.permissions.canManageProviders(context)) return [];
+        const wholePlan = seesWholePlan(context);
+        const rows = await bookings.listPlanBookings(tx, weddingPlanId, bookingToday());
+        return rows
+          .filter((row) => wholePlan || row.quoteRequest.userId === currentUser.id)
+          .map((row) => ({
+            ...toBookingResponse(row),
+            providerName: row.provider.businessName,
+            weddingPlanId: row.quoteRequest.weddingPlanId,
+          }));
+      },
+      { isolationLevel: Prisma.TransactionIsolationLevel.RepeatableRead },
+    );
+  }
+
   // ── Provider ─────────────────────────────────────────────────────────
 
   async listForProvider(currentUser: AuthenticatedUser) {

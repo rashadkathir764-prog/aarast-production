@@ -2789,6 +2789,7 @@ configuration, and smoke checks.
 | GET | `/api/v1/me/quote-requests/:id` | `marketplace.findMyQuoteRequest` | 🔒 |
 | POST | `/api/v1/me/quote-requests/:id/booking` | `bookings.requestBooking` | 🔒 |
 | PATCH | `/api/v1/me/quote-requests/:id/cancel` | `marketplace.cancelMyQuoteRequest` | 🔒 |
+| GET | `/api/v1/me/wedding-plans/:weddingPlanId/bookings` | `bookings.listPlanBookings` | 🔒 |
 | POST | `/api/v1/media/uploads/presign` | `media.presign` | 🔒 |
 | POST | `/api/v1/media/uploads/verify` | `media.verify` | 🔒 |
 | GET | `/api/v1/notifications` | `notifications.list` | 🔒 |

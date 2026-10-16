@@ -105,6 +105,7 @@ async function main(): Promise<void> {
     } as any,
   );
 
+  let planId: string | null = null;
   try {
     const quoteA = await acceptedQuote(customerA.id, "2027-02-18");
     const quoteB = await acceptedQuote(customerB.id, "2027-02-18");
@@ -235,7 +236,34 @@ async function main(): Promise<void> {
     assert.equal(cancelled.cancelledBy, "CUSTOMER");
     await bookings.blockDate(providerUser as any, "2027-02-18");
     console.log("PASS - a cancelled booking frees the provider's day");
+
+    // A plan's bookings (V1 checklist 4.13: when the wedding moves, the app
+    // names the ones made for the old day). Its owner reads them with the
+    // provider's name; someone outside the plan cannot.
+    const plan = await prisma.weddingPlan.create({
+      data: { ownerUserId: customerA.id, title: `${label} plan` },
+    });
+    planId = plan.id;
+    const planQuote = await acceptedQuote(customerA.id, "2027-04-10");
+    await prisma.quoteRequest.update({
+      where: { id: planQuote.id },
+      data: { weddingPlanId: plan.id },
+    });
+    const planBooking = await bookings.requestBooking(customerA as any, planQuote.id, {});
+    const planBookings = await bookings.listForPlan(customerA as any, plan.id);
+    assert.deepEqual(planBookings.map((item) => item.id), [planBooking.id]);
+    assert.equal(planBookings[0].providerName, `${label} provider`);
+    assert.equal(planBookings[0].eventDate, "2027-04-10");
+    await assert.rejects(bookings.listForPlan(customerB as any, plan.id));
+    console.log("PASS - a plan lists its bookings with the provider's name, to its people only");
   } finally {
+    if (planId) {
+      await prisma.quoteRequest.updateMany({
+        where: { weddingPlanId: planId },
+        data: { weddingPlanId: null },
+      });
+      await prisma.weddingPlan.deleteMany({ where: { id: planId } });
+    }
     await prisma.provider.deleteMany({ where: { id: provider.id } });
     await prisma.user.deleteMany({
       where: { id: { in: [providerUser.id, customerA.id, customerB.id] } },

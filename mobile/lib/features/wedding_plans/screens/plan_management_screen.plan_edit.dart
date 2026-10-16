@@ -44,6 +44,55 @@ extension _PlanCenterPlanEdit on _PlanCenterScreenState {
     if (moved != null && widget.sharedMember == null) {
       await _offerTaskDateShift(plan.id, moved);
     }
+    final oldDay = plan.weddingDate;
+    if (moved != null && oldDay != null && mounted) {
+      await _warnOldDayBookings(plan.id, oldDay);
+    }
+  }
+
+  /// The wedding moved (V1 checklist 4.13): name the bookings made with
+  /// providers for the old day, which do not move on their own.
+  Future<void> _warnOldDayBookings(String planId, DateTime oldDay) async {
+    final List<PlanBookingDay> onOldDay;
+    try {
+      onOldDay = bookingsOnDay(
+        await PlanBookingsLookup(context.read<ApiClient>()).list(planId),
+        oldDay,
+      );
+    } on Object {
+      // Offline or unavailable: the date change itself is saved.
+      return;
+    }
+    if (onOldDay.isEmpty || !mounted) return;
+    final openProviders = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AarastDialog(
+        key: const ValueKey('old-day-bookings'),
+        title: const Text('حجوزات على يوم العرس القديم'),
+        content: Text(
+          [
+            for (final booking in onOldDay)
+              '• ${booking.providerName} (${booking.confirmed ? 'حجز مؤكد' : 'طلب حجز'})',
+            '',
+            'هذه الحجوزات لا تنتقل وحدها. اطلب من كل مزوّد اليوم الجديد أو ألغِ '
+                'الحجز من صفحة الطلب، حتى لا يبقى اليوم القديم محجوزًا لك.',
+          ].join('\n'),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: const Text('لاحقًا'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            child: const Text('فتح المزوّدين'),
+          ),
+        ],
+      ),
+    );
+    if (openProviders == true && mounted) {
+      context.go(AppRouter.planProviders(planId));
+    }
   }
 
   /// The wedding moved (V1 checklist 4.13): offer to move the open dated

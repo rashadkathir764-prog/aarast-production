@@ -216,6 +216,21 @@ describe('apiRequest', () => {
     });
   });
 
+  it('turns an English server detail into Arabic and keeps the code', async () => {
+    fetchMock.mockResolvedValueOnce(
+      response(
+        404,
+        JSON.stringify({ statusCode: 404, code: 'PROVIDER_MISSING', message: 'Provider not found' }),
+      ),
+    );
+    const error = (await apiRequest('/x').catch((caught: unknown) => caught)) as ApiError;
+    expect(error).toBeInstanceOf(ApiError);
+    expect(error.message).toBe('العنصر غير موجود أو لم يعد متاحًا. حدّث الصفحة.');
+    expect(error.message).not.toContain('Provider');
+    expect(error.code).toBe('PROVIDER_MISSING');
+    expect(error.status).toBe(404);
+  });
+
   it('falls back to a generic Arabic message when body has none', async () => {
     fetchMock.mockResolvedValueOnce(response(500, ''));
     await expect(apiRequest('/x')).rejects.toBeInstanceOf(ApiError);

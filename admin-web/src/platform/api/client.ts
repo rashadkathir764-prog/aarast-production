@@ -152,7 +152,7 @@ async function parseResponse<T>(response: Response): Promise<T> {
   const payload = await readJson(response);
   if (!response.ok) {
     throw new ApiError(
-      cleanMessage(payload),
+      arabicMessage(cleanMessage(payload), response.status),
       response.status,
       extractErrorCode(payload),
     );
@@ -184,6 +184,25 @@ function cleanMessage(payload: unknown): string {
     }
   }
   if (typeof payload === 'string' && payload.trim()) return payload;
+  return fallbackError;
+}
+
+const arabicLetter = /[؀-ۿ]/;
+
+/**
+ * V1 checklist 5.4: the server's own Arabic messages reach the team as they
+ * are; an English framework or validation detail becomes Arabic for its kind
+ * of failure. The error code stays on the ApiError for pages that need it.
+ */
+function arabicMessage(message: string, status: number): string {
+  if (arabicLetter.test(message)) return message;
+  if (status === 400 || status === 422) return 'تعذّر الحفظ: راجع البيانات المدخلة ثم حاول مرة أخرى.';
+  if (status === 401) return 'انتهت الجلسة أو بيانات الدخول غير صحيحة. سجّل الدخول من جديد.';
+  if (status === 403) return 'لا تملك صلاحية لهذا الإجراء.';
+  if (status === 404) return 'العنصر غير موجود أو لم يعد متاحًا. حدّث الصفحة.';
+  if (status === 409) return 'تغيّرت البيانات قبل الحفظ. حدّث الصفحة ثم حاول مرة أخرى.';
+  if (status === 429) return 'طلبات كثيرة في وقت قصير. انتظر قليلًا ثم حاول مرة أخرى.';
+  if (status >= 500) return 'حدث خطأ في الخادم. حاول بعد قليل.';
   return fallbackError;
 }
 

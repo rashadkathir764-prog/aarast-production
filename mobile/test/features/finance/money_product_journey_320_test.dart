@@ -981,6 +981,7 @@ class _MoneyProductApi extends FinanceApi {
     String? payerName,
     DateTime? agreementDate,
     String? note,
+    bool isPrivate = false,
   }) async {
     createdTotalAmount = totalAmount;
     createdProviderId = providerId;

@@ -163,7 +163,8 @@ test('finance serves the due schedules, the schedules of contributed costs, the 
     status: PaymentScheduleStatus.PENDING,
     weddingCost: { weddingPlanId: { in: ['plan-1'] }, status: { not: WeddingCostStatus.CANCELLED } },
   });
-  const include = { weddingCost: { select: { weddingPlanId: true, title: true, partyName: true, providerId: true } } };
+  // V1 checklist 4.10: a private cost reminds only its account.
+  const include = { weddingCost: { select: { weddingPlanId: true, title: true, partyName: true, providerId: true, privateToUserId: true } } };
   assert.deepEqual(calls, [
     ['paymentSchedule.findMany', { where: dueWhere(), include }],
     ['paymentSchedule.findMany', { where: dueWhere(['schedule-1']), include }],

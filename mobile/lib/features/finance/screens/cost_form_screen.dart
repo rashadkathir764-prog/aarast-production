@@ -59,6 +59,7 @@ class _CostFormScreenState extends State<CostFormScreen> {
 
   /// Who pays: '' (not set) or a CostPayerOption code.
   String _payer = '';
+  bool _isPrivate = false;
   String? _categoryId;
   String? _providerId;
   String? _providerName;
@@ -551,6 +552,23 @@ class _CostFormScreenState extends State<CostFormScreen> {
                       ),
                     ),
                   ],
+                  // V1 checklist 4.10: the owner or partner may keep a new
+                  // cost to themselves.
+                  if (widget.cost == null &&
+                      provider.summary.permissions.canRecordPrivateCost) ...[
+                    const SizedBox(height: 8),
+                    SwitchListTile(
+                      key: const ValueKey('cost-private'),
+                      contentPadding: EdgeInsets.zero,
+                      secondary: const Icon(LucideIcons.lock),
+                      title: const Text('تكلفة خاصة بي'),
+                      subtitle: const Text(
+                        'لا يراها شريكك ولا تدخل في أرقامه. تستطيع مشاركتها لاحقًا.',
+                      ),
+                      value: _isPrivate,
+                      onChanged: (value) => setState(() => _isPrivate = value),
+                    ),
+                  ],
                   const SizedBox(height: 12),
                   _DateField(
                     label: 'تاريخ الاتفاق',
@@ -700,6 +718,7 @@ class _CostFormScreenState extends State<CostFormScreen> {
                 payerName: _payerNameOrNull,
                 agreementDate: _agreementDate,
                 note: _noteController.text.trim(),
+                isPrivate: _isPrivate,
               )) !=
               null
         : await provider.updateCost(

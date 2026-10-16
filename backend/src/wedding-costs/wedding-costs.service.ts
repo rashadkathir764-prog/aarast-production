@@ -1,6 +1,12 @@
+import {
+  excludeOthersPrivateCosts,
+  isOthersPrivateCost,
+  isPrivateCostEntity,
+} from "../modules/finance/infrastructure/cost-privacy.repository";
 import { countCostReceipts } from "../modules/finance/infrastructure/cost-receipts.repository";
 import {
   BadRequestException,
+  ForbiddenException,
   ConflictException,
   Inject,
   Injectable,
@@ -266,6 +272,7 @@ export class WeddingCostsService {
             payer: dto.payer ?? null,
             payerName: this.optionalText(dto.payerName),
             note: this.optionalText(dto.note),
+            privateToUserId: this.privateOwnerForNewCost(context, currentUser, dto.isPrivate),
           },
         });
         if (initialPayment.gt(0)) {
@@ -446,6 +453,16 @@ export class WeddingCostsService {
         ) {
           throw new NotFoundException("Wedding cost not found");
         }
+        // V1 checklist 4.10: privacy is chosen when the cost is recorded; a
+        // shared cost never becomes private (it would vanish from the other
+        // side), and only the account it is private to can share it.
+        if (dto.isPrivate === true && !snapshot.privateToUserId) {
+          throw new BadRequestException({
+            statusCode: 400,
+            code: "COST_PRIVACY_AT_CREATION_ONLY",
+            message: "A shared cost cannot become private",
+          });
+        }
         const targetProviderId =
           dto.providerId === undefined ? snapshot.providerId : dto.providerId;
         const targetQuoteOfferId =
@@ -532,6 +549,7 @@ export class WeddingCostsService {
                   ),
                 }),
             ...(dto.payer === undefined ? {} : { payer: dto.payer }),
+            ...(dto.isPrivate === false ? { privateToUserId: null } : {}),
             ...(dto.payerName === undefined
               ? {}
               : { payerName: this.optionalText(dto.payerName) }),
@@ -1642,21 +1660,47 @@ export class WeddingCostsService {
     await this.lockCost(tx, id);
   }
 
+  /** The account a new cost is private to, or null for the shared plan (V1 checklist 4.10). */
+  private privateOwnerForNewCost(
+    context: PlanAccessContext,
+    currentUser: AuthenticatedUser,
+    isPrivate: boolean | undefined,
+  ): string | null {
+    if (!isPrivate) return null;
+    if (!seesWholePlan(context)) {
+      throw new ForbiddenException({
+        statusCode: 403,
+        code: "COST_PRIVACY_NOT_ALLOWED",
+        message: "Only the plan owner or partner records a private cost",
+      });
+    }
+    return currentUser.id;
+  }
+
   private async scopedCostIdsInTransaction(
     tx: Tx,
     context: PlanAccessContext,
   ): Promise<string[] | null> {
-    if (seesWholePlan(context) || !context.sharedMember) return null;
-    return this.requiredContributorScope().qualifyingEntityIdsInTransaction(
+    const contributed =
+      seesWholePlan(context) || !context.sharedMember
+        ? null
+        : await this.requiredContributorScope().qualifyingEntityIdsInTransaction(
+            tx,
+            context.plan.id,
+            context.sharedMember.userId,
+            [ContributionEntityType.WEDDING_COST],
+            [
+              ContributionAction.CREATED,
+              ContributionAction.COMPLETED,
+              ContributionAction.PAYMENT_RECORDED,
+            ],
+          );
+    // V1 checklist 4.10: another account's private costs never show.
+    return excludeOthersPrivateCosts(
       tx,
       context.plan.id,
-      context.sharedMember.userId,
-      [ContributionEntityType.WEDDING_COST],
-      [
-        ContributionAction.CREATED,
-        ContributionAction.COMPLETED,
-        ContributionAction.PAYMENT_RECORDED,
-      ],
+      readerUserId(context),
+      contributed,
     );
   }
 
@@ -1665,6 +1709,10 @@ export class WeddingCostsService {
     context: PlanAccessContext,
     costId: string,
   ): Promise<void> {
+    // V1 checklist 4.10: another account's private cost reads as missing.
+    if (await isOthersPrivateCost(tx, costId, readerUserId(context))) {
+      throw new NotFoundException("Wedding cost not found");
+    }
     if (seesWholePlan(context) || !context.sharedMember) return;
     const ids = await this.scopedCostIdsInTransaction(tx, context);
     if (!ids?.includes(costId)) {
@@ -1690,7 +1738,7 @@ export class WeddingCostsService {
     throw new NotFoundException("Budget category not found");
   }
 
-  private recordMoneyEvent(
+  private async recordMoneyEvent(
     tx: Tx,
     context: PlanAccessContext,
     input: {
@@ -1702,9 +1750,18 @@ export class WeddingCostsService {
       occurredAt?: Date | null;
     },
   ) {
-    if (context.isOwner) return Promise.resolve(null);
+    if (context.isOwner) return null;
     if (!this.contributionHistory) {
       throw new Error("ContributionHistoryService is required for contributor money writes");
+    }
+    // V1 checklist 4.10: a private cost leaves no trace in the history the
+    // rest of the plan reads.
+    if (
+      (input.entityType === ContributionEntityType.WEDDING_COST ||
+        input.entityType === ContributionEntityType.PAYMENT_SCHEDULE) &&
+      (await isPrivateCostEntity(tx, input.entityType, input.entityId))
+    ) {
+      return null;
     }
     return this.contributionHistory.recordForContextInTransaction(tx, context, {
       section: ContributionSection.MONEY,
@@ -2038,4 +2095,9 @@ export class WeddingCostsService {
     }
     throw error;
   }
+}
+
+/** The account reading through this context (the owner or the member). */
+function readerUserId(context: PlanAccessContext): string {
+  return context.sharedMember?.userId ?? context.plan.ownerUserId;
 }

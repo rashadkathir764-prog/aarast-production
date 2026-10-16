@@ -24,7 +24,7 @@ export async function loadDashboardHomeSections(
     await Promise.all([
       getMarketplaceSummary(client, ports, userId),
       currentWeddingPlan
-        ? getMoneyHomeSummary(client, ports, currentWeddingPlan)
+        ? getMoneyHomeSummary(client, ports, currentWeddingPlan, userId)
         : Promise.resolve(null),
       weddingPlanId
         ? getUpcomingTasks(client, ports, weddingPlanId)
@@ -60,8 +60,16 @@ async function getMoneyHomeSummary(
   client: Prisma.TransactionClient,
   ports: InsightsReadPorts,
   plan: Pick<WeddingPlan, "id" | "estimatedBudget" | "currency">,
+  userId: string,
 ) {
-  const costs = await ports.finance.listPlanCostAmounts(client, plan.id);
+  // V1 checklist 4.10: another account's private costs count nowhere.
+  const costIds = await ports.finance.excludeOthersPrivateCosts(
+    client,
+    plan.id,
+    userId,
+    null,
+  );
+  const costs = await ports.finance.listPlanCostAmounts(client, plan.id, costIds);
   // Exact decimal sums: the home summary must agree with Finance to the cent.
   const confirmedCost = sumMoney(costs.map((cost) => cost.totalAmount));
   const paid = sumMoney(costs.map((cost) => cost.paidAmount));

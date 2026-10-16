@@ -1,5 +1,6 @@
 import { CostPayer } from "@prisma/client";
 import {
+  IsBoolean,
   IsEnum,
   IsISO8601,
   IsNotEmpty,
@@ -9,6 +10,11 @@ import {
 } from "class-validator";
 
 export class UpdateWeddingCostDto {
+  /** V1 checklist 4.10: false shares a private cost with the plan; a shared cost never becomes private. */
+  @IsBoolean()
+  @IsOptional()
+  isPrivate?: boolean;
+
   @IsString()
   @IsNotEmpty()
   @IsOptional()

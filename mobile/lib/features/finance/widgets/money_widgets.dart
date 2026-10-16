@@ -621,16 +621,33 @@ class CostCard extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Text(
-                    cost.title,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                      color: cost.isCancelled
-                          ? AppTheme.textSecondary
-                          : AppTheme.textPrimary,
-                      fontWeight: FontWeight.w900,
-                    ),
+                  Row(
+                    children: [
+                      // V1 checklist 4.10: only you see a private cost.
+                      if (cost.isPrivate) ...[
+                        const Icon(
+                          LucideIcons.lock,
+                          key: ValueKey('cost-private-lock'),
+                          size: 14,
+                          color: AppTheme.textSecondary,
+                        ),
+                        const SizedBox(width: 4),
+                      ],
+                      Expanded(
+                        child: Text(
+                          cost.title,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: Theme.of(context).textTheme.titleSmall
+                              ?.copyWith(
+                                color: cost.isCancelled
+                                    ? AppTheme.textSecondary
+                                    : AppTheme.textPrimary,
+                                fontWeight: FontWeight.w900,
+                              ),
+                        ),
+                      ),
+                    ],
                   ),
                   const SizedBox(height: 3),
                   Text(

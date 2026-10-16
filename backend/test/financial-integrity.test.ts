@@ -439,6 +439,8 @@ test("a direct payment ignores reminder totals and cancels pending reminders whe
   const tx = {
     $queryRaw: async () => [{ id: cost.id }],
     weddingCost: {
+      // V1 checklist 4.10: the cost is the shared plan's.
+      findUnique: async () => ({ privateToUserId: null }),
       findUniqueOrThrow: async () => cost,
       update: async (args: any) => {
         costUpdates.push(args);
@@ -515,7 +517,11 @@ test("each payment reminder is bounded by the current remaining cost without res
   let createCalls = 0;
   const tx = {
     $queryRaw: async () => [{ id: cost.id }],
-    weddingCost: { findUniqueOrThrow: async () => cost },
+    weddingCost: {
+      // V1 checklist 4.10: the cost is the shared plan's.
+      findUnique: async () => ({ privateToUserId: null }),
+      findUniqueOrThrow: async () => cost,
+    },
     paymentSchedule: {
       aggregate: async () => {
         aggregateCalls += 1;
@@ -588,14 +594,18 @@ test("money summary uses cost totals and the net append-only ledger exactly once
       ],
     },
     weddingCost: {
-      findMany: async () => [
-        {
-          id: "cost-1",
-          budgetCategoryId: "cat-1",
-          totalAmount: new Prisma.Decimal("600"),
-          title: "القاعة",
-        },
-      ],
+      // V1 checklist 4.10: the private-cost pre-filter finds none.
+      findMany: async ({ where }: any) =>
+        where?.privateToUserId
+          ? []
+          : [
+              {
+                id: "cost-1",
+                budgetCategoryId: "cat-1",
+                totalAmount: new Prisma.Decimal("600"),
+                title: "القاعة",
+              },
+            ],
     },
     costPayment: {
       findMany: async () => [

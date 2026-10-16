@@ -229,9 +229,13 @@ test("the owner's money summary weighs funding against confirmed costs", async (
   Object.assign(tx, {
     budgetCategory: { findMany: async () => [] },
     weddingCost: {
-      findMany: async () => [
-        { id: "cost-1", budgetCategoryId: "cat-1", totalAmount: new Prisma.Decimal("400000"), title: "القاعة" },
-      ],
+      // V1 checklist 4.10: the private-cost pre-filter finds none.
+      findMany: async ({ where }: any) =>
+        where?.privateToUserId
+          ? []
+          : [
+              { id: "cost-1", budgetCategoryId: "cat-1", totalAmount: new Prisma.Decimal("400000"), title: "القاعة" },
+            ],
     },
     costPayment: {
       findMany: async () => [

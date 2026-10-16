@@ -48,6 +48,8 @@ export type DuePaymentSchedule = PaymentSchedule & {
     title: string;
     partyName: string | null;
     providerId: string | null;
+    /** V1 checklist 4.10: when set, only this account is reminded. */
+    privateToUserId: string | null;
   };
 };
 
@@ -106,6 +108,16 @@ export interface RecordedCostCounts {
 
 export interface FinancePort {
   /** Creates the plan's initial budget categories (names normalized as finance normalizes them) and returns the plan's categories, oldest first. */
+  /**
+   * The reader's cost scope (null = the whole plan) without the costs
+   * private to another account (V1 checklist 4.10).
+   */
+  excludeOthersPrivateCosts(
+    client: Prisma.TransactionClient,
+    weddingPlanId: string,
+    readerUserId: string,
+    costIds: readonly string[] | null,
+  ): Promise<string[] | null>;
   /** Every recorded cost, and how many plans have one (V1 checklist 4.21 back-office indicators). */
   countRecordedCosts(client: Prisma.TransactionClient): Promise<RecordedCostCounts>;
   createBudgetCategoriesInTransaction(

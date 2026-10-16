@@ -1,3 +1,4 @@
+import { listOthersPrivateCostIds } from "../modules/finance/infrastructure/cost-privacy.repository";
 import { Inject, Injectable, NotFoundException } from "@nestjs/common";
 import {
   ContributionAction,
@@ -119,12 +120,25 @@ export async function buildMoneySummaryInTransaction(
   // Funding (savings, family support, gifts, loans) is the owner's private
   // money picture; a contributor's summary never includes it.
   const fundingVisible = access.isOwner && contributionScope === null;
-  const [plan, [categories, costs, payments, schedules], fundingSources] =
+  const [plan, [categories, scopedCosts, scopedPayments, scopedSchedules], fundingSources, hidden] =
     await Promise.all([
       plans.getPlan(tx, weddingPlanId),
       loadMoneySummaryRows(tx, weddingPlanId, contributionScope),
       fundingVisible ? listFundingSources(tx, weddingPlanId, true) : null,
+      // V1 checklist 4.10: another account's private costs count nowhere.
+      listOthersPrivateCostIds(
+        tx,
+        weddingPlanId,
+        access.sharedMember?.userId ?? access.plan.ownerUserId,
+      ),
     ]);
+  const costs = scopedCosts.filter((cost) => !hidden.has(cost.id));
+  const payments = scopedPayments.filter(
+    (payment) => !hidden.has(payment.weddingCostId),
+  );
+  const schedules = scopedSchedules.filter(
+    (schedule) => !hidden.has(schedule.weddingCostId),
+  );
 
   if (!plan) {
     throw new NotFoundException("Wedding plan not found");
@@ -313,6 +327,9 @@ export async function buildMoneySummaryInTransaction(
     permissions: {
       canViewMoney: permissions.canViewMoney(access),
       canManageMoney: permissions.canManageMoney(access),
+      // V1 checklist 4.10: the owner or partner may record a private cost.
+      canRecordPrivateCost:
+        permissions.canManageMoney(access) && seesWholePlan(access),
     },
   };
 }

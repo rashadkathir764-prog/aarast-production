@@ -78,6 +78,9 @@ model WeddingCost {
   payer            CostPayer?
   payerName        String?
   note             String?
+  // V1 checklist 4.10: when set, only this account (the owner or the
+  // partner who recorded it) sees the cost; null is the shared plan's.
+  privateToUserId  String?
   createdAt        DateTime          @default(now())
   updatedAt        DateTime          @updatedAt
   weddingPlan      WeddingPlan       @relation(fields: [weddingPlanId], references: [id], onDelete: Restrict)
@@ -91,6 +94,7 @@ model WeddingCost {
   @@index([weddingPlanId, status])
   @@index([budgetCategoryId])
   @@index([providerId])
+  @@index([weddingPlanId, privateToUserId])
 }
 
 model CostPayment {

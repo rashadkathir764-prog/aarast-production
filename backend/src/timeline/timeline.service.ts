@@ -142,7 +142,13 @@ export class TimelineService {
             ? this.owners.finance.listPendingPaymentSchedules(
                 tx,
                 weddingPlanId,
-                moneyCostIds ? [...moneyCostIds] : null,
+                // V1 checklist 4.10: never another account's private costs.
+                await this.owners.finance.excludeOthersPrivateCosts(
+                  tx,
+                  weddingPlanId,
+                  currentUser.id,
+                  moneyCostIds ? [...moneyCostIds] : null,
+                ),
               )
             : Promise.resolve([]),
         ]);

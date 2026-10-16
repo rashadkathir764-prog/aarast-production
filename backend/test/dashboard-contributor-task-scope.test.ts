@@ -196,6 +196,14 @@ function dashboardFixture(input: {
     findMany: async ({ where }: any) =>
       (input.costs ?? [])
         .filter((cost) => !where.id?.in || where.id.in.includes(cost.id))
+        // V1 checklist 4.10: the private-cost pre-filter, as the database
+        // applies it (these fixtures hold no private cost).
+        .filter(
+          (cost: any) =>
+            !where.privateToUserId ||
+            (cost.privateToUserId != null &&
+              cost.privateToUserId !== where.NOT?.privateToUserId),
+        )
         .map((cost) => ({
           ...cost,
           totalAmount: new Prisma.Decimal(cost.totalAmount),

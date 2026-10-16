@@ -47,6 +47,8 @@ export interface WeddingCostResponse {
   payer: CostPayer | null;
   payerName: string | null;
   note: string | null;
+  /** V1 checklist 4.10: seen only by the account that recorded it. */
+  isPrivate: boolean;
   paymentsCount: number;
   paymentSchedulesCount: number;
   createdAt: Date;
@@ -76,6 +78,7 @@ export function toWeddingCostResponse(
     payer: cost.payer,
     payerName: cost.payerName,
     note: cost.note,
+    isPrivate: cost.privateToUserId !== null,
     paymentsCount: cost._count.payments,
     paymentSchedulesCount: cost._count.paymentSchedules,
     createdAt: cost.createdAt,

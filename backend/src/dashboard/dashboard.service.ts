@@ -142,7 +142,15 @@ export class DashboardService {
     // is a contributor (collaboration's history qualified the ids).
     const taskScope = dashboardTaskReadScope(contributorIds, currentUser.id);
     const quoteIds = dashboardQuoteIds(contributorIds);
-    const costIds = contributorIds ? contributorIds.costIds : null;
+    // V1 checklist 4.10: another account's private costs count nowhere.
+    const costIds = canViewMoney
+      ? await this.owners.finance.excludeOthersPrivateCosts(
+          tx,
+          weddingPlanId,
+          currentUser.id,
+          contributorIds ? contributorIds.costIds : null,
+        )
+      : null;
 
     const [
       costs,

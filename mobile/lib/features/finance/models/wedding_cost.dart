@@ -15,6 +15,7 @@ class WeddingCost {
     this.payer,
     this.payerName,
     this.note,
+    this.isPrivate = false,
     this.agreementDate,
     this.paymentsCount,
     this.categoryName,
@@ -43,6 +44,7 @@ class WeddingCost {
       payer: stringOrNull(json['payer']),
       payerName: stringOrNull(json['payerName']),
       note: stringOrNull(json['note']),
+      isPrivate: json['isPrivate'] == true,
       agreementDate: dateTimeOrNull(json['agreementDate']),
       paymentsCount: intOrNull(json['paymentsCount']),
       categoryName:
@@ -73,6 +75,9 @@ class WeddingCost {
   final String? payer;
   final String? payerName;
   final String? note;
+
+  /// V1 checklist 4.10: only the account that recorded it sees it.
+  final bool isPrivate;
   final DateTime? agreementDate;
   final int? paymentsCount;
   final String? categoryName;

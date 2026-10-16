@@ -1747,6 +1747,19 @@ reminders. The owner's funding sources and loans (V1 checklist 4.3), the
 plan's currency and budget replacement, and member management stay the
 owner's. Other roles keep the contribution-scoped view described above.
 
+Private costs (V1 checklist 4.10): the owner or a partner may create a cost
+with `isPrivate: true` (others get `403 COST_PRIVACY_NOT_ALLOWED`). Only that
+account sees it: every money read (cost list and detail, payments,
+schedules, budget-category counts, the money summary, the dashboard and home
+figures, the timeline) narrows its cost scope without the costs private to
+someone else, and reading or changing one by id is `404`. Responses carry
+`isPrivate`. `PATCH /api/v1/costs/:id` with `isPrivate: false` shares it with
+the plan; a shared cost never becomes private (`400
+COST_PRIVACY_AT_CREATION_ONLY`). Its payment reminders go only to its
+account, it never feeds the plan-wide over-budget alert, and it writes no
+contribution-history event. The money summary's `permissions` gain
+`canRecordPrivateCost`.
+
 Returning live queries also carry the current membership and stored flag in
 their final SQL predicate. Multi-query money summaries, cost/payment/schedule
 reads, dashboard reads, and other aggregate surfaces use the transaction-based

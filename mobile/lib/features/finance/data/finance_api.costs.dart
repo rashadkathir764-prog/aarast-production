@@ -120,13 +120,15 @@ mixin _FinanceCostsApi on _FinanceApiCore {
     String? payerName,
     DateTime? agreementDate,
     String? note,
+    bool isPrivate = false,
   }) async {
     FinanceMoneyRules.assertCostAmounts(
       totalAmount: totalAmount,
       initialPaymentAmount: initialPaymentAmount,
     );
     _assertPartyChoice(providerId: providerId, partyName: partyName);
-    final payload = _costPayload(
+    final payload = <String, dynamic>{
+      ..._costPayload(
       budgetCategoryId: budgetCategoryId,
       title: title,
       totalAmount: totalAmount,
@@ -139,7 +141,10 @@ mixin _FinanceCostsApi on _FinanceApiCore {
       payerName: payerName,
       agreementDate: agreementDate,
       note: note,
-    );
+    ),
+      // V1 checklist 4.10: only the owner or partner may send it.
+      if (isPrivate) 'isPrivate': true,
+    };
     final mutation = _mutation(
       'POST',
       '/api/v1/wedding-plans/$planId/costs',
@@ -183,21 +188,26 @@ mixin _FinanceCostsApi on _FinanceApiCore {
     String? payerName,
     DateTime? agreementDate,
     String? note,
+    bool shareWithPlan = false,
   }) async {
     _assertPartyChoice(providerId: providerId, partyName: partyName);
-    final payload = _costPayload(
-      budgetCategoryId: budgetCategoryId,
-      title: title,
-      totalAmount: totalAmount,
-      providerId: providerId,
-      quoteOfferId: quoteOfferId,
-      partyName: partyName,
-      partyPhone: partyPhone,
-      payer: payer,
-      payerName: payerName,
-      agreementDate: agreementDate,
-      note: note,
-    );
+    final payload = <String, dynamic>{
+      ..._costPayload(
+        budgetCategoryId: budgetCategoryId,
+        title: title,
+        totalAmount: totalAmount,
+        providerId: providerId,
+        quoteOfferId: quoteOfferId,
+        partyName: partyName,
+        partyPhone: partyPhone,
+        payer: payer,
+        payerName: payerName,
+        agreementDate: agreementDate,
+        note: note,
+      ),
+      // V1 checklist 4.10: a private cost becomes the shared plan's.
+      if (shareWithPlan) 'isPrivate': false,
+    };
     final mutation = _mutation('PATCH', '/api/v1/costs/${cost.id}', payload);
     if (FinanceLocalDataSource.isLocalGuestPlanId(cost.weddingPlanId)) {
       return _local.updateCost(cost: cost, payload: payload);

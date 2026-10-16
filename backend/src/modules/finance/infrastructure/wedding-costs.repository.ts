@@ -45,6 +45,8 @@ type CostData = {
   payer?: CostPayer | null;
   payerName?: string | null;
   note: string | null;
+  /** V1 checklist 4.10: the one account that sees a private cost. */
+  privateToUserId?: string | null;
 };
 type CostUpdate = Partial<Omit<CostData, 'weddingPlanId'>>;
 type CostSort = { createdAt?: 'asc' | 'desc'; id?: 'asc' | 'desc' };

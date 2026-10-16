@@ -143,6 +143,59 @@ async function run() {
     const familySummary = await request('GET', `/api/v1/wedding-plans/${planId}/money-summary`, null, family.token);
     check('the relative summary covers only their own costs', Number(familySummary.body?.costs?.total) === 500);
 
+    // Private costs: the bride's private cost stays hers alone.
+    const secret = await request('POST', `/api/v1/wedding-plans/${planId}/costs`, {
+      budgetCategoryId: categoryId, title: 'Bride secret', totalAmount: '700', isPrivate: true,
+    }, bride.token);
+    check('the partner records a private cost', secret.status === 201 && secret.body?.isPrivate === true);
+    check('the owner does not see the partner private cost', !(await costTitles(planId, owner.token)).includes('Bride secret'));
+    check('the partner sees her private cost', (await costTitles(planId, bride.token)).includes('Bride secret'));
+    const ownerGet = await request('GET', `/api/v1/costs/${secret.body?.id}`, null, owner.token);
+    check('the owner cannot open it by id', ownerGet.status === 404);
+    const ownerEdit = await request('PATCH', `/api/v1/costs/${secret.body?.id}`, { title: 'Peek' }, owner.token);
+    check('nor change it', ownerEdit.status === 404);
+    const ownerSummary = await request('GET', `/api/v1/wedding-plans/${planId}/money-summary`, null, owner.token);
+    check('the owner totals leave it out', Number(ownerSummary.body?.costs?.total) === 5000);
+    const brideSummaryWithSecret = await request('GET', `/api/v1/wedding-plans/${planId}/money-summary`, null, bride.token);
+    check('the partner totals include it', Number(brideSummaryWithSecret.body?.costs?.total) === 5700);
+    const ownerCategories = await request('GET', `/api/v1/wedding-plans/${planId}/budget-categories`, null, owner.token);
+    const hall = (Array.isArray(ownerCategories.body) ? ownerCategories.body : ownerCategories.body?.items ?? []).find((category) => category.id === categoryId);
+    check('the owner category counts leave it out', hall?.costsCount === 2);
+    const ownerDashboard = await request('GET', `/api/v1/wedding-plans/${planId}/dashboard-summary`, null, owner.token);
+    const findKey = (value, key) => {
+      if (!value || typeof value !== 'object') return undefined;
+      if (key in value) return value[key];
+      for (const child of Object.values(value)) {
+        const found = findKey(child, key);
+        if (found !== undefined) return found;
+      }
+      return undefined;
+    };
+    check(
+      'the owner dashboard does not count it',
+      ownerDashboard.status === 200 && Number(findKey(ownerDashboard.body, 'confirmedCostTotal')) === 5000,
+    );
+    const ownerHome = await request('GET', '/api/v1/dashboard/home', null, owner.token);
+    const homeConfirmed = findKey(ownerHome.body, 'confirmedCost');
+    check(
+      'the owner home summary does not count it',
+      ownerHome.status === 200 && Number(homeConfirmed) === 5000,
+    );
+
+    const familyPrivate = await request('POST', `/api/v1/wedding-plans/${planId}/costs`, {
+      budgetCategoryId: familyCategory.body?.id, title: 'Family private', totalAmount: '10', isPrivate: true,
+    }, family.token);
+    check('a relative cannot record a private cost', familyPrivate.status === 403 && familyPrivate.body?.code === 'COST_PRIVACY_NOT_ALLOWED');
+
+    const ownerCosts = await request('GET', `/api/v1/wedding-plans/${planId}/costs`, null, owner.token);
+    const hallCost = (Array.isArray(ownerCosts.body) ? ownerCosts.body : ownerCosts.body?.items ?? []).find((cost) => cost.title === 'Owner hall');
+    const hideShared = await request('PATCH', `/api/v1/costs/${hallCost?.id}`, { isPrivate: true }, bride.token);
+    check('a shared cost never becomes private', hideShared.status === 400 && hideShared.body?.code === 'COST_PRIVACY_AT_CREATION_ONLY');
+
+    const shared = await request('PATCH', `/api/v1/costs/${secret.body?.id}`, { isPrivate: false }, bride.token);
+    check('the partner can share her private cost', shared.status === 200 && shared.body?.isPrivate === false);
+    check('then the owner sees it', (await costTitles(planId, owner.token)).includes('Bride secret'));
+
     const brideTasks = await request('GET', `/api/v1/wedding-plans/${planId}/tasks`, null, bride.token);
     const brideTaskTitles = (Array.isArray(brideTasks.body) ? brideTasks.body : brideTasks.body?.items ?? []).map((task) => task.title);
     check('the partner sees the owner tasks', brideTaskTitles.includes('Owner task'));

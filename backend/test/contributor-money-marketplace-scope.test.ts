@@ -54,9 +54,16 @@ const contributorContext = {
 
 test("contributor cost list locks authority and carries the live permission into every final query", async () => {
   const wheres: unknown[] = [];
+  const privacyWheres: unknown[] = [];
   const tx = {
     weddingCost: {
-      findMany: ({ where }: { where: unknown }) => {
+      findMany: ({ where }: { where: any }) => {
+        // V1 checklist 4.10: the private-cost pre-filter only hides more;
+        // it is not one of the final queries this test inspects.
+        if (where?.privateToUserId) {
+          privacyWheres.push(where);
+          return Promise.resolve([]);
+        }
         wheres.push(where);
         return Promise.resolve([]);
       },
@@ -113,12 +120,21 @@ test("contributor cost list locks authority and carries the live permission into
     assert.equal("weddingPlan" in (where as object), false);
     assert.deepEqual((where as any).id, { in: [] });
   }
+  assert.deepEqual(privacyWheres, [
+    {
+      weddingPlanId: "plan-1",
+      privateToUserId: { not: null },
+      NOT: { privateToUserId: "contributor-1" },
+    },
+  ]);
 });
 
 test("contributor cost detail rejects an id outside the actor contribution scope before returning another scoped row", async () => {
   let finalQueryCalled = false;
   const tx = {
     weddingCost: {
+      // V1 checklist 4.10: no private cost in this plan.
+      findMany: async () => [],
       findFirst: async () => {
         finalQueryCalled = true;
         return null;
@@ -298,7 +314,12 @@ test("money summary applies contributor cost and category ids to every aggregate
       },
     },
     weddingCost: {
-      findMany: async ({ where }: { where: unknown }) => {
+      findMany: async ({ where }: { where: any }) => {
+        // V1 checklist 4.10: the private-cost pre-filter is recorded apart.
+        if (where?.privateToUserId) {
+          captured.privacy = where;
+          return [];
+        }
         captured.costs = where;
         return [];
       },
@@ -326,6 +347,11 @@ test("money summary applies contributor cost and category ids to every aggregate
   );
 
   assert.deepEqual((captured.costs as any).id, { in: ["cost-mine"] });
+  assert.deepEqual(captured.privacy, {
+    weddingPlanId: "plan-1",
+    privateToUserId: { not: null },
+    NOT: { privateToUserId: "contributor-1" },
+  });
   assert.deepEqual((captured.payments as any).weddingCost.id, {
     in: ["cost-mine"],
   });
@@ -364,6 +390,8 @@ test("contributor category list exposes only actor-created categories and counts
         return [ownCategory];
       },
     },
+    // V1 checklist 4.10: no private cost in this plan.
+    weddingCost: { findMany: async () => [] },
   };
   const prisma: any = {
     $transaction: async (operation: (client: any) => Promise<unknown>) =>

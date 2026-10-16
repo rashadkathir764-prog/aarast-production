@@ -1,3 +1,4 @@
+import { excludeOthersPrivateCosts } from "../modules/finance/infrastructure/cost-privacy.repository";
 import {
   BadRequestException,
   ConflictException,
@@ -157,8 +158,12 @@ export class BudgetCategoriesService {
                 ],
               ),
             ]);
+        // V1 checklist 4.10: another account's private costs count nowhere.
+        const visibleCostIds = await excludeOthersPrivateCosts(
+          tx, weddingPlanId, currentUser.id, costIds,
+        );
         const categories = await listBudgetCategories(
-          tx, weddingPlanId, categoryIds, costIds,
+          tx, weddingPlanId, categoryIds, visibleCostIds,
         );
         return categories.map((category) => this.toResponse(category));
       },
@@ -219,7 +224,10 @@ export class BudgetCategoriesService {
               ],
             );
         const category = await updateBudgetCategory(
-          tx, id, name, this.normalizedName(name), allocation, scopedCostIds,
+          tx, id, name, this.normalizedName(name), allocation,
+          await excludeOthersPrivateCosts(
+            tx, locked.weddingPlanId, currentUser.id, scopedCostIds,
+          ),
         );
         const history = this.historyForContext(context);
         if (history) await history.recordForContextInTransaction(

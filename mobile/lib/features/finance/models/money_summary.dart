@@ -287,17 +287,23 @@ class MoneyPermissions {
   const MoneyPermissions({
     this.canViewMoney = false,
     this.canManageMoney = false,
+    this.canRecordPrivateCost = false,
   });
 
   factory MoneyPermissions.fromJson(Map<String, dynamic> json) {
     return MoneyPermissions(
       canViewMoney: json['canViewMoney'] == true,
       canManageMoney: json['canManageMoney'] == true,
+      canRecordPrivateCost: json['canRecordPrivateCost'] == true,
     );
   }
 
   final bool canViewMoney;
   final bool canManageMoney;
+
+  /// V1 checklist 4.10: the owner or the partner may record a cost that only
+  /// they see.
+  final bool canRecordPrivateCost;
 }
 
 Map<String, dynamic> _map(Object? value) {

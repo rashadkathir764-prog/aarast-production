@@ -15,6 +15,7 @@ import {
 } from '../domain/cost-category-matching';
 import { deriveCostStatus } from '../domain/wedding-cost-aggregate';
 import { deletePlanFundingSources } from './funding-sources.repository';
+import { excludeOthersPrivateCosts } from './cost-privacy.repository';
 import {
   deleteReceipts,
   listPlanReceiptIds,
@@ -40,6 +41,15 @@ import {
 
 @Injectable()
 export class FinancePortService implements FinancePort {
+  excludeOthersPrivateCosts(
+    client: Prisma.TransactionClient,
+    weddingPlanId: string,
+    readerUserId: string,
+    costIds: readonly string[] | null,
+  ): Promise<string[] | null> {
+    return excludeOthersPrivateCosts(client, weddingPlanId, readerUserId, costIds);
+  }
+
   async listErasedReceiptIdsInTransaction(
     tx: Prisma.TransactionClient,
     weddingPlanIds: readonly string[],
@@ -258,6 +268,7 @@ export class FinancePortService implements FinancePort {
             title: true,
             partyName: true,
             providerId: true,
+            privateToUserId: true,
           },
         },
       },
@@ -283,6 +294,9 @@ export class FinancePortService implements FinancePort {
       where: {
         budgetCategoryId: { in: categories.map((category) => category.id) },
         status: { not: WeddingCostStatus.CANCELLED },
+        // V1 checklist 4.10: a private cost never feeds the owner's
+        // plan-wide alert (it would reveal the cost indirectly).
+        privateToUserId: null,
       },
       _sum: { totalAmount: true },
     });

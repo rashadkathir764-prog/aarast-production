@@ -466,6 +466,7 @@ class FinanceProvider extends ChangeNotifier with SessionScopedNotifier {
     String? payerName,
     DateTime? agreementDate,
     String? note,
+    bool isPrivate = false,
   }) async {
     WeddingCost? result;
     final ok = await _submit(planId, () async {
@@ -483,6 +484,7 @@ class FinanceProvider extends ChangeNotifier with SessionScopedNotifier {
         payerName: payerName,
         agreementDate: agreementDate,
         note: note,
+        isPrivate: isPrivate,
       );
     }, refresh: () => _reloadData(planId));
     return ok ? result : null;
@@ -501,6 +503,7 @@ class FinanceProvider extends ChangeNotifier with SessionScopedNotifier {
     String? payerName,
     DateTime? agreementDate,
     String? note,
+    bool shareWithPlan = false,
   }) {
     return _submit(cost.weddingPlanId, () async {
       await _api.updateCost(
@@ -516,6 +519,7 @@ class FinanceProvider extends ChangeNotifier with SessionScopedNotifier {
         payerName: payerName,
         agreementDate: agreementDate,
         note: note,
+        shareWithPlan: shareWithPlan,
       );
     }, refresh: () => _reloadData(cost.weddingPlanId));
   }

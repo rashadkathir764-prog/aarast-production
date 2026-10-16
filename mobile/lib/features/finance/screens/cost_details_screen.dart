@@ -124,6 +124,25 @@ class _CostDetailsScreenState extends State<CostDetailsScreen> {
               ],
               _CostHero(cost: cost, currency: currency),
               const SizedBox(height: 12),
+              // V1 checklist 4.10: a private cost can join the shared plan.
+              if (cost.isPrivate) ...[
+                MoneyMessageBanner(
+                  key: const ValueKey('cost-private-banner'),
+                  message:
+                      'تكلفة خاصة بك: لا يراها شريكك ولا تدخل في أرقامه.',
+                ),
+                if (provider.canManageMoney)
+                  Align(
+                    alignment: AlignmentDirectional.centerStart,
+                    child: TextButton.icon(
+                      key: const ValueKey('cost-share-with-plan'),
+                      onPressed: () => _shareWithPlan(cost),
+                      icon: const Icon(LucideIcons.users),
+                      label: const Text('مشاركتها مع الخطة'),
+                    ),
+                  ),
+                const SizedBox(height: 12),
+              ],
               if (provider.canManageMoney && !cost.isCancelled)
                 _CostPrimaryDecision(
                   cost: cost,
@@ -260,6 +279,56 @@ class _CostDetailsScreenState extends State<CostDetailsScreen> {
         ),
       ),
     );
+  }
+
+  /// Makes a private cost the shared plan's (it cannot become private again).
+  Future<void> _shareWithPlan(WeddingCost cost) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AarastDialog(
+        title: const Text('مشاركة التكلفة مع الخطة؟'),
+        content: const Text(
+          'سيراها شريكك وتدخل في أرقام الخطة. لا يمكن إرجاعها خاصة بعد ذلك.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: const Text('إلغاء'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            child: const Text('مشاركة'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+    final provider = context.read<FinanceProvider>();
+    final ok = await provider.updateCost(
+      cost: cost,
+      budgetCategoryId: cost.budgetCategoryId,
+      title: cost.title,
+      totalAmount: cost.totalAmount,
+      providerId: cost.providerId,
+      quoteOfferId: cost.quoteOfferId,
+      partyName: cost.providerId == null ? cost.partyName : null,
+      partyPhone: cost.providerId == null ? cost.partyPhone : null,
+      payer: cost.payer,
+      payerName: cost.payerName,
+      agreementDate: cost.agreementDate,
+      note: cost.note,
+      shareWithPlan: true,
+    );
+    if (!mounted) return;
+    if (ok) {
+      AarastToast.showSuccess(context, 'صارت التكلفة مشتركة مع الخطة.');
+      await _load(refreshMoney: true);
+    } else {
+      AarastToast.showError(
+        context,
+        provider.errorMessage ?? 'تعذر مشاركة التكلفة.',
+      );
+    }
   }
 
   Future<void> _editCost(WeddingCost cost) async {

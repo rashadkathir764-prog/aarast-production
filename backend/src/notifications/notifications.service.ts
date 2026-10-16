@@ -857,7 +857,7 @@ export class NotificationsService implements NotificationsPort {
           const type = overdue
             ? NotificationType.PAYMENT_SCHEDULE_OVERDUE
             : NotificationType.PAYMENT_SCHEDULE_DUE_SOON;
-          const recipients = [
+          const planRecipients = [
             plan.ownerUserId,
             ...plan.sharedMembers
               .filter(
@@ -870,6 +870,11 @@ export class NotificationsService implements NotificationsPort {
               )
               .map((member) => member.userId),
           ];
+          // V1 checklist 4.10: a private cost reminds only its account.
+          const privateTo = schedule.weddingCost.privateToUserId;
+          const recipients = privateTo
+            ? planRecipients.filter((userId) => userId === privateTo)
+            : planRecipients;
           for (const userId of new Set(recipients)) {
             if (
               !this.preferenceEnabled(

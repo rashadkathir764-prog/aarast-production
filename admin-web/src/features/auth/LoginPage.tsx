@@ -314,7 +314,7 @@ export function LoginPage() {
               label="رقم هاتف المسؤول"
               value={recoveryPhone}
               onChange={(event) => setRecoveryPhone(event.target.value)}
-              placeholder="770579680"
+              placeholder="7XXXXXXXX"
               autoComplete="username"
               inputMode="tel"
               required
@@ -370,7 +370,7 @@ export function LoginPage() {
                 label="رقم الهاتف"
                 value={phone}
                 onChange={(event) => setPhone(event.target.value)}
-                placeholder="770579680"
+                placeholder="7XXXXXXXX"
                 autoComplete="username"
                 inputMode="tel"
                 required

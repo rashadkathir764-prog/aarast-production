@@ -1,5 +1,25 @@
+/* Tajawal, served with the panel (the CSP allows fonts from 'self' only):
+   the same files the app ships. SIL Open Font License 1.1. */
+@font-face {
+  font-family: "Tajawal";
+  src: url("../assets/fonts/Tajawal-Regular.ttf") format("truetype");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Tajawal";
+  src: url("../assets/fonts/Tajawal-Bold.ttf") format("truetype");
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
 :root {
-  /* Modern semantic contract. New and migrated components use these roles. */
+  /* Modern semantic contract. New and migrated components use these roles.
+     The brand roles are the app's identity (V1 checklist 5.6): its primary
+     burgundy #800020, not a second palette. */
   --canvas: #f6f7fb;
   --surface: #ffffff;
   --surface-raised: #ffffff;
@@ -9,9 +29,9 @@
   --text-disabled: #9196a3;
   --border: #dde1ea;
   --border-strong: #aeb5c2;
-  --brand: #4f46e5;
-  --brand-muted: #eef2ff;
-  --focus: #6366f1;
+  --brand: #800020;
+  --brand-muted: #f9ecef;
+  --focus: #a3123a;
   --success: #16794a;
   --warning: #9a5b0a;
   --danger: #b4232f;

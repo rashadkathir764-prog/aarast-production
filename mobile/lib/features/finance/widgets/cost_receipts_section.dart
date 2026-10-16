@@ -18,12 +18,17 @@ class CostReceiptsSection extends StatefulWidget {
   const CostReceiptsSection({
     required this.costId,
     required this.canManage,
+    this.costPaymentId,
     this.api,
     super.key,
   });
 
   final String costId;
   final bool canManage;
+
+  /// One payment's receipts: only these are shown, and new ones are kept
+  /// with that payment. Null shows every receipt of the cost.
+  final String? costPaymentId;
 
   /// Defaults to one over the app's [ApiClient]; tests pass a fake.
   final CostReceiptsApi? api;
@@ -34,6 +39,9 @@ class CostReceiptsSection extends StatefulWidget {
 
 class _CostReceiptsSectionState extends State<CostReceiptsSection> {
   List<CostReceipt> _receipts = const [];
+
+  /// Every receipt of the cost: the limit of 10 is per cost.
+  int _costReceiptCount = 0;
   bool _available = true;
   bool _loading = true;
   bool _busy = false;
@@ -66,7 +74,17 @@ class _CostReceiptsSectionState extends State<CostReceiptsSection> {
     });
     try {
       final receipts = await _api.list(widget.costId);
-      if (mounted) setState(() => _receipts = receipts);
+      final paymentId = widget.costPaymentId;
+      if (mounted) {
+        setState(() {
+          _costReceiptCount = receipts.length;
+          _receipts = paymentId == null
+              ? receipts
+              : receipts
+                    .where((receipt) => receipt.costPaymentId == paymentId)
+                    .toList();
+        });
+      }
     } on ApiException catch (error) {
       if (mounted) setState(() => _error = error.message);
     } catch (_) {
@@ -108,7 +126,11 @@ class _CostReceiptsSectionState extends State<CostReceiptsSection> {
     setState(() => _busy = true);
     try {
       final ticket = await uploader.uploadImage(file: file, purpose: 'cost-receipt');
-      await _api.add(widget.costId, attachmentRef: ticket.attachmentRef);
+      await _api.add(
+        widget.costId,
+        attachmentRef: ticket.attachmentRef,
+        costPaymentId: widget.costPaymentId,
+      );
       if (mounted) AarastToast.showSuccess(context, 'حُفظ الإيصال.');
       await _load();
     } on ApiException catch (error) {
@@ -194,14 +216,17 @@ class _CostReceiptsSectionState extends State<CostReceiptsSection> {
   @override
   Widget build(BuildContext context) {
     if (!_available) return const SizedBox.shrink();
-    final canAdd = widget.canManage && !_busy && _receipts.length < 10;
+    final forPayment = widget.costPaymentId != null;
+    final canAdd = widget.canManage && !_busy && _costReceiptCount < 10;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         AarastSectionHeader(
-          title: 'الإيصالات',
+          title: forPayment ? 'إيصال الدفعة' : 'الإيصالات',
           subtitle: _receipts.isEmpty
-              ? 'صوّر إيصال الدفع واحفظه مع التكلفة.'
+              ? (forPayment
+                    ? 'صوّر إيصال هذه الدفعة واحفظه معها.'
+                    : 'صوّر إيصال الدفع واحفظه مع التكلفة.')
               : '${_receipts.length} إيصال محفوظ، لا يراه إلا من يرى هذه التكلفة.',
           icon: LucideIcons.receipt,
           actionLabel: canAdd ? 'إضافة إيصال' : null,

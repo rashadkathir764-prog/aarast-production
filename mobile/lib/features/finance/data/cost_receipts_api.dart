@@ -17,9 +17,15 @@ class CostReceiptsApi {
         .toList();
   }
 
-  Future<CostReceipt> add(String costId, {required String attachmentRef}) async {
+  /// Keeps a receipt with the cost, or with one of its payments.
+  Future<CostReceipt> add(
+    String costId, {
+    required String attachmentRef,
+    String? costPaymentId,
+  }) async {
     final json = await _apiClient.postJson('/api/v1/costs/$costId/receipts', {
       'attachmentRef': attachmentRef,
+      'costPaymentId': ?costPaymentId,
     });
     return CostReceipt.fromJson(json);
   }

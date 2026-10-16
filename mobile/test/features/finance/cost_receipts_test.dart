@@ -25,9 +25,10 @@ class _ReceiptsApiFake extends CostReceiptsApi {
   }
 }
 
-CostReceipt _receipt(String id) => CostReceipt.fromJson({
+CostReceipt _receipt(String id, {String? paymentId}) => CostReceipt.fromJson({
   'id': id,
   'weddingCostId': 'cost-1',
+  'costPaymentId': ?paymentId,
   'downloadUrl': 'https://media.invalid/$id.png',
   'createdAt': '2026-10-16T09:00:00Z',
 });
@@ -89,6 +90,49 @@ void main() {
 
     expect(api.deleted, ['r1']);
     expect(find.byKey(const Key('cost-receipt-r1')), findsNothing);
+  });
+
+  testWidgets('a payment shows only its own receipts; the limit counts the cost', (
+    tester,
+  ) async {
+    final api = _ReceiptsApiFake([
+      _receipt('r1', paymentId: 'pay-1'),
+      _receipt('r2', paymentId: 'pay-2'),
+      _receipt('r3'),
+    ]);
+    await tester.pumpWidget(
+      _host(
+        CostReceiptsSection(
+          costId: 'cost-1',
+          costPaymentId: 'pay-1',
+          canManage: true,
+          api: api,
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('إيصال الدفعة'), findsOneWidget);
+    expect(find.byKey(const Key('cost-receipt-r1')), findsOneWidget);
+    expect(find.byKey(const Key('cost-receipt-r2')), findsNothing);
+    expect(find.byKey(const Key('cost-receipt-r3')), findsNothing);
+    expect(find.text('إضافة إيصال'), findsOneWidget);
+
+    // Ten receipts on the cost, none on this payment: no room left.
+    api.receipts = [for (var i = 0; i < 10; i++) _receipt('c$i')];
+    await tester.pumpWidget(
+      _host(
+        CostReceiptsSection(
+          key: const ValueKey('full'),
+          costId: 'cost-1',
+          costPaymentId: 'pay-1',
+          canManage: true,
+          api: api,
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('إضافة إيصال'), findsNothing);
   });
 
   testWidgets('without an API client the section stays out of the way', (tester) async {

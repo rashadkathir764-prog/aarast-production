@@ -15,8 +15,10 @@ import '../../../core/utils/currency_label.dart';
 import '../../../core/utils/arabic_date_formatter.dart';
 import '../../../core/widgets/aarast_toast.dart';
 import '../../../core/widgets/aarast_ui.dart';
+import '../data/finance_local_data_source.dart';
 import '../models/wedding_cost.dart';
 import '../providers/finance_provider.dart';
+import '../widgets/cost_receipts_section.dart';
 import '../widgets/money_input_formatter.dart';
 import '../widgets/money_widgets.dart';
 
@@ -412,6 +414,23 @@ class _CostPaymentDetailsScreenState extends State<CostPaymentDetailsScreen> {
                 )
               else
                 MoneyMessageBanner(message: _ledgerMessage(provider, payment)),
+              // V1 checklist 4.4: the payment's own receipt. Receipts live on
+              // the server, so not for a guest's local plan or a payment
+              // still waiting to sync.
+              if (cost != null &&
+                  !payment.isReversal &&
+                  !payment.id.startsWith('local-') &&
+                  !FinanceLocalDataSource.isLocalGuestPlanId(
+                    widget.weddingPlanId,
+                  )) ...[
+                const SizedBox(height: 18),
+                CostReceiptsSection(
+                  key: ValueKey('payment-receipts-${payment.id}'),
+                  costId: cost.id,
+                  costPaymentId: payment.id,
+                  canManage: provider.canManageMoney,
+                ),
+              ],
             ],
           ],
         ),

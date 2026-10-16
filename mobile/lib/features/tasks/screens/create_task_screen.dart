@@ -25,6 +25,7 @@ import '../widgets/task_checklist_section.dart';
 
 part 'create_task_screen_checklist.dart';
 part 'create_task_screen_draft.dart';
+part 'create_task_screen_privacy.dart';
 
 class CreateTaskScreen extends StatefulWidget {
   const CreateTaskScreen({
@@ -59,6 +60,7 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
   String? _selectedAssigneeRole;
   ContactPhoneSource _responsibleSource = ContactPhoneSource.manual;
   bool _didPrefill = false, _didRequestMembers = false;
+  bool _isPrivate = false;
   AarastFormDraftCoordinator? _draft;
   bool _didConfigureDraft = false;
   bool _restoringDraft = false;
@@ -427,6 +429,7 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
                         ],
                       ),
                     ),
+                    ..._privacySection(provider),
                     ..._checklistSection(provider),
                     const SizedBox(height: AppTheme.space14),
                     _buildLiveSummary(),
@@ -503,11 +506,12 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
       assigneeRole = selfMember.role;
       hasParticipant = true;
     }
+    final task = _editingTask(provider);
+    if (_privateTaskGivenAway(provider, hasParticipant, assigneeUserId)) return;
     final responsibleName = hasParticipant
         ? null
         : _responsibleNameForPayload();
     final responsibleSource = hasParticipant ? null : _responsibleSource.name;
-    final task = _editingTask(provider);
     final saved = _isEditMode
         ? task != null &&
               await provider.updateTask(
@@ -546,6 +550,7 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
             responsibleSource: responsibleSource,
             status: 'TODO',
             priority: _priority,
+            isPrivate: _isPrivate,
           );
 
     if (_isEditMode && task == null && mounted) {
@@ -683,16 +688,4 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
     });
   }
 
-  WeddingTask? _editingTask(TaskTimelineProvider provider) {
-    final task = widget.initialTask;
-    if (task != null) return task;
-
-    final taskId = widget.taskId;
-    if (taskId == null) return null;
-
-    for (final item in provider.tasks) {
-      if (item.id == taskId) return item;
-    }
-    return null;
-  }
 }

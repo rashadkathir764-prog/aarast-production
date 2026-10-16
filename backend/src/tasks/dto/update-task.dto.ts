@@ -1,5 +1,5 @@
 import { WeddingTaskPriority, WeddingTaskStatus } from '@prisma/client';
-import { IsEnum, IsIn, IsOptional, IsString } from 'class-validator';
+import { IsBoolean, IsEnum, IsIn, IsOptional, IsString } from 'class-validator';
 
 export class UpdateTaskDto {
   @IsString()
@@ -42,4 +42,9 @@ export class UpdateTaskDto {
   @IsEnum(WeddingTaskPriority)
   @IsOptional()
   priority?: WeddingTaskPriority;
+
+  /** V1 checklist 4.10: false shares a private task with the plan; a shared task never becomes private. */
+  @IsBoolean()
+  @IsOptional()
+  isPrivate?: boolean;
 }

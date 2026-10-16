@@ -13,6 +13,7 @@ class TaskSummary {
     this.assigneeSummary = const TaskAssigneeSummary(),
     this.byStatus = const {},
     this.byPriority = const {},
+    this.canKeepPrivateTask = false,
   });
 
   factory TaskSummary.empty(String weddingPlanId) {
@@ -44,6 +45,7 @@ class TaskSummary {
       ),
       byStatus: _intMap(json['byStatus']),
       byPriority: _intMap(json['byPriority']),
+      canKeepPrivateTask: json['canKeepPrivateTask'] == true,
     );
   }
 
@@ -108,6 +110,10 @@ class TaskSummary {
   final TaskAssigneeSummary assigneeSummary;
   final Map<String, int> byStatus;
   final Map<String, int> byPriority;
+
+  /// V1 checklist 4.10: the owner or partner may keep a new task private
+  /// (the server's answer; a guest or offline-only summary says no).
+  final bool canKeepPrivateTask;
 
   int get cancelled => byStatus['CANCELLED'] ?? 0;
 

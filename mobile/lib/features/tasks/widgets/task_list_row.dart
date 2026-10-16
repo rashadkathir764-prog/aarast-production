@@ -99,6 +99,20 @@ class TaskListRow extends StatelessWidget {
                                       ),
                                 ),
                               ),
+                              // V1 checklist 4.10: seen by this account alone.
+                              if (task.isPrivate) ...[
+                                const SizedBox(width: 6),
+                                const Padding(
+                                  padding: EdgeInsets.only(top: 3),
+                                  child: Icon(
+                                    LucideIcons.lock,
+                                    key: ValueKey('task-private-lock'),
+                                    size: 14,
+                                    color: AppTheme.textSecondary,
+                                    semanticLabel: 'مهمة خاصة',
+                                  ),
+                                ),
+                              ],
                               if (task.priority == 'HIGH' ||
                                   task.priority == 'URGENT') ...[
                                 const SizedBox(width: 6),

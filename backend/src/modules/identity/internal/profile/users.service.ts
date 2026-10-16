@@ -392,6 +392,9 @@ export class UsersService {
         // cost while this path holds its payment and waits in the opposite
         // direction.
         await this.finance.lockPlanCostsForUpdateInTransaction(tx, planIds);
+        // V1 checklist 4.10: the account's private costs in other plans
+        // (as a partner) are its own data and go with it.
+        await this.finance.lockPrivateCostsForUpdateInTransaction(tx, userId);
 
         const conversationIds =
           await this.messagingErasure.lockOwnedConversationIdsForUpdateInTransaction(
@@ -456,6 +459,10 @@ export class UsersService {
           tx,
           conversationIds,
         );
+        // V1 checklist 4.10: no one else ever saw the account's private costs
+        // and tasks; they leave with it (their receipts went above).
+        await this.finance.purgePrivateCostsInTransaction(tx, userId);
+        await this.tasks.deletePrivateTasksInTransaction(tx, userId);
         const tenureEndedAt = new Date();
         if (planIds.length > 0) {
           // Contribution history is retained independently from the live plan.

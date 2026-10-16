@@ -25,6 +25,9 @@ interface RecordedGraph {
   conversationIds?: string[];
   quoteRequestIds?: string[];
   attachmentIds?: string[];
+  /** V1 checklist 4.10: the account's private costs and tasks in other plans. */
+  privateCostIds?: string[];
+  privateTaskIds?: string[];
 }
 
 function recordingTx(
@@ -227,8 +230,13 @@ function recordingTx(
   for (const child of PLAN_CHILDREN) tx[child] = del(child);
   // V1 checklist 4.4: the erased plans' costs are read to find their
   // receipts, which go (with their files scheduled) before the ledger.
-  tx.weddingCost.findMany = async () =>
-    planIds.map((id) => ({ id: `cost-${id}` }));
+  tx.weddingCost.findMany = async ({ where }: any = {}) =>
+    // V1 checklist 4.10: the account's private costs in other plans.
+    where?.privateToUserId
+      ? (graph.privateCostIds ?? []).map((id) => ({ id }))
+      : planIds.map((id) => ({ id: `cost-${id}` }));
+  tx.weddingTask.findMany = async () =>
+    (graph.privateTaskIds ?? []).map((id) => ({ id }));
   tx.costReceipt = {
     findMany: async () => [],
     deleteMany: async () => {
@@ -443,6 +451,38 @@ test("account deletion with no owned plans still erases account-level data", asy
   assert.equal(calls.includes("provider"), false);
   assert.ok(calls.includes("idempotencyKey"));
   assert.ok(calls.includes("otpCode"));
+  assert.equal(calls[calls.length - 1], "user.delete");
+});
+
+test("a partner's account deletion purges its private costs and tasks in the other plan (V1 4.10)", async () => {
+  const { tx, calls, queries } = recordingTx([], {
+    privateCostIds: ["private-cost"],
+    privateTaskIds: ["private-task"],
+  });
+  const svc = serviceFor(tx);
+
+  await svc.deleteMe(
+    { id: "u1", phone: "+967700000000" } as any,
+    "delete-u1",
+  );
+
+  const at = (name: string) => calls.indexOf(name);
+  // The private costs are locked in the money mutation order, then their
+  // ledger rows go before the costs, and the private tasks go too.
+  assert.ok(
+    queries.some(
+      (query) =>
+        query.text.includes('"privateToUserId"') &&
+        query.text.includes("FOR UPDATE") &&
+        query.values.includes("u1"),
+    ),
+  );
+  assert.ok(at("ledgerPurge") >= 0 && at("ledgerPurge") < at("costPayment"));
+  assert.ok(at("costPayment") < at("paymentSchedule"));
+  assert.ok(at("paymentSchedule") < at("weddingCost"));
+  assert.ok(at("weddingTask") >= 0 && at("weddingTask") < at("user.delete"));
+  // The other plan itself is untouched.
+  assert.equal(calls.includes("weddingPlan"), false);
   assert.equal(calls[calls.length - 1], "user.delete");
 });
 

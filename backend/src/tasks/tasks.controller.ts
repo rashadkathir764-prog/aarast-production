@@ -16,7 +16,7 @@ import { JwtAuthGuard } from "../modules/identity/public/jwt-auth.guard";
 import { ListQueryDto } from "../platform/http/list-query.dto";
 import { AssignTaskDto } from "./dto/assign-task.dto";
 import { CreateChecklistItemDto } from "./dto/create-checklist-item.dto";
-import { CreateTaskDto } from "./dto/create-task.dto";
+import { CreatePlanTaskDto } from "./dto/create-plan-task.dto";
 import { ShiftTaskDatesDto } from "./dto/shift-task-dates.dto";
 import { UpdateChecklistItemDto } from "./dto/update-checklist-item.dto";
 import { UpdateTaskDto } from "./dto/update-task.dto";
@@ -31,7 +31,7 @@ export class WeddingPlanTasksController {
   create(
     @CurrentUser() currentUser: AuthenticatedUser,
     @Param("weddingPlanId") weddingPlanId: string,
-    @Body() dto: CreateTaskDto,
+    @Body() dto: CreatePlanTaskDto,
   ) {
     return this.tasksService.create(currentUser, weddingPlanId, dto);
   }

@@ -71,6 +71,19 @@ export async function listPlanReceiptIds(
   return receipts.map((receipt) => receipt.id);
 }
 
+/** Account erasure: the receipts of the account's private costs (V1 checklist 4.10). */
+export async function listPrivateCostReceiptIds(
+  client: Client,
+  userId: string,
+): Promise<string[]> {
+  const receipts = await client.costReceipt.findMany({
+    where: { weddingCost: { privateToUserId: userId } },
+    select: { id: true },
+    orderBy: { id: 'asc' },
+  });
+  return receipts.map((receipt) => receipt.id);
+}
+
 /** Account erasure: receipts the account uploaded, in any plan. */
 export async function listReceiptIdsUploadedBy(
   client: Client,

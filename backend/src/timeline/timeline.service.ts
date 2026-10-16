@@ -133,7 +133,7 @@ export class TimelineService {
                 assigneeUserId: currentUser.id,
                 taskIds: [...contributionIds],
               }
-            : { kind: "all" };
+            : { kind: "all", readerUserId: currentUser.id };
         return Promise.all([
           isContributor && !canManageTasks
             ? Promise.resolve([])

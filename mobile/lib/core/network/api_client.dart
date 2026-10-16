@@ -810,6 +810,17 @@ class ApiException implements Exception {
   static String? _localizedServerMessage(String? code) {
     return switch (code) {
       'TASK_PERMISSION_REVOKED' => 'لم تعد لديك صلاحية لتنفيذ هذه المهمة',
+      // V1 checklist 4.10: private costs and tasks.
+      'COST_PRIVACY_NOT_ALLOWED' =>
+        'التكلفة الخاصة متاحة لصاحب الخطة والشريك فقط.',
+      'COST_PRIVACY_AT_CREATION_ONLY' =>
+        'التكلفة المشتركة لا تصبح خاصة. اختر "تكلفة خاصة بي" عند إضافتها.',
+      'TASK_PRIVACY_NOT_ALLOWED' =>
+        'المهمة الخاصة متاحة لصاحب الخطة والشريك فقط.',
+      'TASK_PRIVACY_AT_CREATION_ONLY' =>
+        'المهمة المشتركة لا تصبح خاصة. اختر "مهمة خاصة بي" عند إضافتها.',
+      'TASK_PRIVATE_ASSIGNMENT' =>
+        'المهمة الخاصة تبقى لك وحدك. شاركها مع الخطة أولًا ثم اختر المسؤول.',
       'INVALID_CREDENTIALS' => 'تعذر تسجيل الدخول بهذه البيانات.',
       'OTP_DELIVERY_UNAVAILABLE' => aarastOtpDeliveryUnavailableMessage,
       'PHONE_VERIFICATION_REQUIRED' =>

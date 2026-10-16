@@ -15,6 +15,16 @@ export interface TaskCreateValues {
   reminderAt: Date | null;
   status: WeddingTaskStatus;
   priority: WeddingTaskPriority;
+  /** V1 checklist 4.10: the one account that sees the task, or null. */
+  privateToUserId: string | null;
+}
+
+/**
+ * V1 checklist 4.10: a reader never sees a task private to another account.
+ * Every task read narrows by this before any other scope.
+ */
+export function visibleToReader(readerUserId: string) {
+  return { OR: [{ privateToUserId: null }, { privateToUserId: readerUserId }] };
 }
 
 /** Every task row a response is built from carries its checklist in order. */
@@ -40,6 +50,7 @@ export function createTask(tx: Prisma.TransactionClient, values: TaskCreateValue
       reminderAt: values.reminderAt,
       status: values.status,
       priority: values.priority,
+      privateToUserId: values.privateToUserId,
     },
   });
 }
@@ -54,14 +65,19 @@ function scopedTaskWhere(
   return {
     ...(id ? { id } : {}),
     weddingPlanId,
-    ...(contributorIds
-      ? {
-          OR: [
-            { assigneeUserId: actorUserId },
-            { id: { in: [...contributorIds] } },
-          ],
-        }
-      : {}),
+    AND: [
+      visibleToReader(actorUserId),
+      ...(contributorIds
+        ? [
+            {
+              OR: [
+                { assigneeUserId: actorUserId },
+                { id: { in: [...contributorIds] } },
+              ],
+            },
+          ]
+        : []),
+    ],
     ...liveFilter,
   };
 }
@@ -120,6 +136,8 @@ export interface TaskUpdateValues {
   reminderAt?: Date | null;
   status?: WeddingTaskStatus;
   priority?: WeddingTaskPriority;
+  /** Only ever null: sharing a private task with the plan. */
+  privateToUserId?: null;
 }
 
 export function updateTask(tx: Prisma.TransactionClient, id: string, values: TaskUpdateValues) {
@@ -138,6 +156,7 @@ export function updateTask(tx: Prisma.TransactionClient, id: string, values: Tas
       ...(values.reminderAt !== undefined ? { reminderAt: values.reminderAt } : {}),
       ...(values.status !== undefined ? { status: values.status } : {}),
       ...(values.priority !== undefined ? { priority: values.priority } : {}),
+      ...(values.privateToUserId === null ? { privateToUserId: null } : {}),
     },
   });
 }
@@ -246,19 +265,26 @@ export function findChecklistItemById(tx: Prisma.TransactionClient, id: string) 
 /**
  * The wedding moved (V1 checklist 4.13): the plan's open dated tasks move
  * by the same number of days, due date and reminder together, in one
- * statement. Done and cancelled tasks keep their history.
+ * statement. Done and cancelled tasks keep their history. Private tasks move
+ * too (the wedding moved for both sides), but the count covers only the
+ * tasks the reader sees.
  */
-export function shiftOpenTaskDates(
+export async function shiftOpenTaskDates(
   client: Prisma.TransactionClient,
   weddingPlanId: string,
   days: number,
-) {
-  return client.$executeRaw`
+  readerUserId: string,
+): Promise<number> {
+  const moved = await client.$queryRaw<Array<{ privateToUserId: string | null }>>`
     UPDATE "WeddingTask"
     SET "dueDate" = "dueDate" + make_interval(days => ${days}::int),
         "reminderAt" = "reminderAt" + make_interval(days => ${days}::int),
         "updatedAt" = NOW()
     WHERE "weddingPlanId" = ${weddingPlanId}
       AND "dueDate" IS NOT NULL
-      AND "status" IN ('TODO', 'IN_PROGRESS')`;
+      AND "status" IN ('TODO', 'IN_PROGRESS')
+    RETURNING "privateToUserId"`;
+  return moved.filter(
+    (task) => task.privateToUserId === null || task.privateToUserId === readerUserId,
+  ).length;
 }

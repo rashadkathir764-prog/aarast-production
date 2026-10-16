@@ -92,7 +92,7 @@ test('tasks serves the upcoming tasks, the plan dashboard counters and the dated
   const tasks = new TasksPortService();
   const today = new Date('2026-09-23T00:00:00.000Z');
   const endOfToday = new Date('2026-09-23T23:59:59.999Z');
-  await tasks.listUpcomingTasks(client, 'plan-1', 5);
+  await tasks.listUpcomingTasks(client, 'plan-1', 5, 'owner-1');
   const dashboard = await tasks.getPlanTaskDashboard(client, {
     weddingPlanId: 'plan-1',
     scope: { kind: 'contributor', assigneeUserId: 'user-1', taskIds: ['task-1'] },
@@ -101,11 +101,22 @@ test('tasks serves the upcoming tasks, the plan dashboard counters and the dated
   });
   assert.equal(dashboard.totalTasks, 3);
   await tasks.listDatedOpenTasks(client, 'plan-1', { kind: 'none' });
-  await tasks.listDatedOpenTasks(client, 'plan-1', { kind: 'all' });
+  await tasks.listDatedOpenTasks(client, 'plan-1', { kind: 'all', readerUserId: 'owner-1' });
 
-  const scoped = { weddingPlanId: 'plan-1', OR: [{ assigneeUserId: 'user-1' }, { id: { in: ['task-1'] } }] };
+  // V1 checklist 4.10: every read the reader can see narrows out the tasks
+  // private to another account.
+  const visibleTo = (userId: string) => ({
+    OR: [{ privateToUserId: null }, { privateToUserId: userId }],
+  });
+  const scoped = {
+    weddingPlanId: 'plan-1',
+    AND: [
+      visibleTo('user-1'),
+      { OR: [{ assigneeUserId: 'user-1' }, { id: { in: ['task-1'] } }] },
+    ],
+  };
   assert.deepEqual(calls, [
-    ['weddingTask.findMany', { where: { weddingPlanId: 'plan-1', status: open }, orderBy: byDue, take: 5 }],
+    ['weddingTask.findMany', { where: { weddingPlanId: 'plan-1', status: open, ...visibleTo('owner-1') }, orderBy: byDue, take: 5 }],
     ['weddingTask.findMany', { where: { ...scoped, dueDate: { lte: endOfToday }, status: open }, orderBy: byDue, take: 2 }],
     ['weddingTask.findFirst', { where: { ...scoped, status: open }, orderBy: byDue }],
     ['weddingTask.count', { where: scoped }],
@@ -114,7 +125,7 @@ test('tasks serves the upcoming tasks, the plan dashboard counters and the dated
     ['weddingTask.count', { where: { ...scoped, dueDate: { lt: today }, status: open } }],
     ['weddingTask.count', { where: { ...scoped, dueDate: { gte: today, lte: endOfToday }, status: open } }],
     ['weddingTask.findMany', { where: { weddingPlanId: 'plan-1', dueDate: { not: null }, status: open, id: { in: [] } }, orderBy: byDue }],
-    ['weddingTask.findMany', { where: { weddingPlanId: 'plan-1', dueDate: { not: null }, status: open }, orderBy: byDue }],
+    ['weddingTask.findMany', { where: { weddingPlanId: 'plan-1', dueDate: { not: null }, status: open, ...visibleTo('owner-1') }, orderBy: byDue }],
   ]);
 });
 

@@ -128,11 +128,14 @@ class TaskTimelineApi {
     String? responsibleSource,
     String status = 'TODO',
     String priority = 'MEDIUM',
+    bool isPrivate = false,
   }) async {
     final payload = <String, dynamic>{
       'title': title.trim(),
       'status': status,
       'priority': priority,
+      // V1 checklist 4.10: kept to its account (also when queued offline).
+      if (isPrivate) 'isPrivate': true,
       if (description != null && description.trim().isNotEmpty)
         'description': description.trim(),
       if (dueDate != null) 'dueDate': dueDate.toIso8601String(),
@@ -672,6 +675,7 @@ class TaskTimelineApi {
       'createdAt': task.createdAt.toIso8601String(),
       'updatedAt': task.updatedAt.toIso8601String(),
       'checklist': [for (final item in task.checklist) item.toJson()],
+      if (task.isPrivate) 'isPrivate': true,
     };
   }
 

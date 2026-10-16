@@ -144,10 +144,20 @@ export interface FinancePort {
     tx: Prisma.TransactionClient,
     weddingPlanIds: readonly string[],
   ): Promise<void>;
+  /** Account erasure (V1 checklist 4.10): locks the account's private costs in other plans, in the money mutation order. */
+  lockPrivateCostsForUpdateInTransaction(
+    tx: Prisma.TransactionClient,
+    userId: string,
+  ): Promise<void>;
+  /** Account erasure (V1 checklist 4.10): the account's private costs, with their payments and schedules, go with it. */
+  purgePrivateCostsInTransaction(
+    tx: Prisma.TransactionClient,
+    userId: string,
+  ): Promise<void>;
   /**
-   * Account erasure (V1 checklist 4.4): the receipts of the plans' costs and
-   * the receipts the account uploaded in any plan, so their files can be
-   * scheduled for deletion before the rows go.
+   * Account erasure (V1 checklist 4.4): the receipts of the plans' costs, of
+   * the account's private costs, and the receipts the account uploaded in any
+   * plan, so their files can be scheduled for deletion before the rows go.
    */
   listErasedReceiptIdsInTransaction(
     tx: Prisma.TransactionClient,

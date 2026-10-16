@@ -51,7 +51,7 @@ import {
 } from "../modules/collaboration/public/collaboration-permission.port";
 import { AssignTaskDto } from "./dto/assign-task.dto";
 import { CreateChecklistItemDto } from "./dto/create-checklist-item.dto";
-import { CreateTaskDto } from "./dto/create-task.dto";
+import { CreatePlanTaskDto } from "./dto/create-plan-task.dto";
 import { UpdateChecklistItemDto } from "./dto/update-checklist-item.dto";
 import { UpdateTaskDto } from "./dto/update-task.dto";
 import {
@@ -89,6 +89,8 @@ export interface TaskResponse {
   priority: WeddingTaskPriority;
   createdAt: Date;
   updatedAt: Date;
+  /** V1 checklist 4.10: seen by the reader alone (only its account ever receives it). */
+  isPrivate: boolean;
   /** The task's checklist, ordered by sortOrder then creation. */
   checklist: ChecklistItemResponse[];
 }
@@ -124,6 +126,8 @@ export interface TaskSummaryResponse {
   };
   byStatus: Record<WeddingTaskStatus, number>;
   byPriority: Record<WeddingTaskPriority, number>;
+  /** V1 checklist 4.10: the reader (owner or partner) may keep a new task private. */
+  canKeepPrivateTask: boolean;
 }
 
 @Injectable()
@@ -145,7 +149,7 @@ export class TasksService {
   async create(
     currentUser: AuthenticatedUser,
     weddingPlanId: string,
-    dto: CreateTaskDto,
+    dto: CreatePlanTaskDto,
   ): Promise<TaskResponse> {
     const task = await runSerializableTransaction(this.prisma, async (tx) => {
       const context = await this.permissions.assertTaskManageableInTransaction(
@@ -165,6 +169,7 @@ export class TasksService {
           reminderAt: this.optionalDate(dto.reminderAt, "reminderAt"),
           status: dto.status ?? WeddingTaskStatus.TODO,
           priority: dto.priority ?? WeddingTaskPriority.MEDIUM,
+          privateToUserId: this.privateOwnerForNewTask(context, currentUser, dto.isPrivate),
       });
       await this.recordTaskContribution(tx, context, created, {
         action: ContributionAction.CREATED,
@@ -200,7 +205,7 @@ export class TasksService {
       if (!seesWholePlan(context)) {
         throw new ForbiddenException("Only the plan owner or partner moves every task");
       }
-      return shiftOpenTaskDates(tx, weddingPlanId, days);
+      return shiftOpenTaskDates(tx, weddingPlanId, days, currentUser.id);
     });
     return { shifted };
   }
@@ -314,7 +319,18 @@ export class TasksService {
         existing.weddingPlanId,
       );
       await this.assertTaskInMutationScope(tx, context, currentUser.id, current);
+      // V1 checklist 4.10: privacy is chosen when the task is created; a
+      // shared task never becomes private (it would vanish from the other
+      // side), and only the account it is private to reaches it to share it.
+      if (dto.isPrivate === true && !current.privateToUserId) {
+        throw new BadRequestException({
+          statusCode: 400,
+          code: "TASK_PRIVACY_AT_CREATION_ONLY",
+          message: "A shared task cannot become private",
+        });
+      }
       const updated = await updateTask(tx, id, {
+          ...(dto.isPrivate === false ? { privateToUserId: null } : {}),
           ...(dto.title !== undefined
             ? { title: this.requiredText(dto.title, "title") }
             : {}),
@@ -379,6 +395,18 @@ export class TasksService {
         currentUser.id,
         currentTask,
       );
+      // A private task stays with its account (V1 checklist 4.10).
+      if (
+        currentTask.privateToUserId &&
+        assigneeUserId &&
+        assigneeUserId !== currentTask.privateToUserId
+      ) {
+        throw new BadRequestException({
+          statusCode: 400,
+          code: "TASK_PRIVATE_ASSIGNMENT",
+          message: "A private task is assigned only to its own account",
+        });
+      }
       const updated = await assignTask(tx, id, assigneeUserId);
       if (currentTask.assigneeUserId !== assigneeUserId) {
         const actorAction = assigneeUserId
@@ -483,6 +511,7 @@ export class TasksService {
       await this.recordChecklistContribution(
         tx,
         context,
+        currentTask,
         created,
         ContributionAction.CREATED,
       );
@@ -538,7 +567,7 @@ export class TasksService {
             : currentItem.isDone && !result.isDone
               ? ContributionAction.REOPENED
               : ContributionAction.UPDATED;
-        await this.recordChecklistContribution(tx, context, result, action);
+        await this.recordChecklistContribution(tx, context, currentTask, result, action);
         return result;
       },
     );
@@ -577,6 +606,7 @@ export class TasksService {
       await this.recordChecklistContribution(
         tx,
         context,
+        currentTask,
         currentItem,
         ContributionAction.DELETED,
       );
@@ -689,6 +719,7 @@ export class TasksService {
       },
       byStatus,
       byPriority,
+      canKeepPrivateTask: canManageTasks && seesWholePlan(context),
     };
   }
 
@@ -828,6 +859,10 @@ export class TasksService {
     actorUserId: string,
     task: WeddingTask,
   ): Promise<void> {
+    // Another account's private task does not exist for the actor (V1 checklist 4.10).
+    if (task.privateToUserId && task.privateToUserId !== actorUserId) {
+      throw new NotFoundException("Task not found");
+    }
     if (!this.isContributor(context)) return;
     if (task.assigneeUserId === actorUserId) return;
     const ids = await this.contributorScope.qualifyingEntityIdsInTransaction(
@@ -864,6 +899,9 @@ export class TasksService {
       occurredAt?: Date;
     },
   ): Promise<void> {
+    // A private task's snapshot would show it in the plan's contribution
+    // history, so it is not recorded (V1 checklist 4.10).
+    if (task.privateToUserId) return;
     await this.contributionHistory.recordForContextInTransaction(tx, context, {
       section: ContributionSection.TASKS,
       entityType: ContributionEntityType.TASK,
@@ -882,6 +920,7 @@ export class TasksService {
     task: WeddingTask,
     action: ContributionAction,
   ): Promise<void> {
+    if (task.privateToUserId) return;
     await this.contributionHistory.ensureTenureInTransaction(tx, member);
     await this.contributionHistory.recordInTransaction(tx, {
       weddingPlanId: member.weddingPlanId,
@@ -901,9 +940,11 @@ export class TasksService {
   private async recordChecklistContribution(
     tx: Prisma.TransactionClient,
     context: PlanAccessContext,
+    task: WeddingTask,
     item: WeddingTaskChecklistItem,
     action: ContributionAction,
   ): Promise<void> {
+    if (task.privateToUserId) return;
     await this.contributionHistory.recordForContextInTransaction(tx, context, {
       section: ContributionSection.TASKS,
       entityType: ContributionEntityType.TASK_CHECKLIST_ITEM,
@@ -920,6 +961,23 @@ export class TasksService {
       requiredPermission: ContributionPermission.MANAGE_TASKS,
       occurredAt: item.updatedAt,
     });
+  }
+
+  /** The account a new task is private to, or null for the shared plan (V1 checklist 4.10). */
+  private privateOwnerForNewTask(
+    context: PlanAccessContext,
+    currentUser: AuthenticatedUser,
+    isPrivate: boolean | undefined,
+  ): string | null {
+    if (!isPrivate) return null;
+    if (!seesWholePlan(context)) {
+      throw new ForbiddenException({
+        statusCode: 403,
+        code: "TASK_PRIVACY_NOT_ALLOWED",
+        message: "Only the plan owner or partner keeps a private task",
+      });
+    }
+    return currentUser.id;
   }
 
   private taskPermissionDenied(): ForbiddenException {
@@ -1012,6 +1070,7 @@ export class TasksService {
       priority: task.priority,
       createdAt: task.createdAt,
       updatedAt: task.updatedAt,
+      isPrivate: task.privateToUserId !== null,
       checklist: task.checklistItems.map((item) =>
         this.toChecklistItemResponse(item),
       ),

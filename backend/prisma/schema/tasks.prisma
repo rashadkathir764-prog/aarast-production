@@ -26,6 +26,9 @@ model WeddingTask {
   reminderAt        DateTime?
   status            WeddingTaskStatus          @default(TODO)
   priority          WeddingTaskPriority        @default(MEDIUM)
+  // V1 checklist 4.10: set when the owner or the partner keeps the task to
+  // themselves; only that account sees it.
+  privateToUserId   String?
   createdAt         DateTime                   @default(now())
   updatedAt         DateTime                   @updatedAt
   weddingPlan       WeddingPlan                @relation(fields: [weddingPlanId], references: [id], onDelete: Restrict)
@@ -34,6 +37,7 @@ model WeddingTask {
 
   @@index([weddingPlanId, status])
   @@index([assigneeUserId])
+  @@index([weddingPlanId, privateToUserId])
 }
 
 model WeddingTaskChecklistItem {

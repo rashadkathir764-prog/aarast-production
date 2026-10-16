@@ -118,7 +118,7 @@ export function dashboardTaskReadScope(
   scope: DashboardContributorDataScope | null,
   actorUserId: string,
 ): TaskReadScope {
-  if (!scope) return { kind: "all" };
+  if (!scope) return { kind: "all", readerUserId: actorUserId };
   if (!scope.tasksEnabled) return { kind: "none" };
   return {
     kind: "contributor",

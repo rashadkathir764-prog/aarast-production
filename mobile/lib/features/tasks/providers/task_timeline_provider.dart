@@ -129,6 +129,7 @@ class TaskTimelineProvider extends ChangeNotifier with SessionScopedNotifier {
     String? responsibleSource,
     String status = 'TODO',
     String priority = 'MEDIUM',
+    bool isPrivate = false,
   }) async {
     _isSubmitting = true;
     _errorMessage = null;
@@ -137,6 +138,7 @@ class TaskTimelineProvider extends ChangeNotifier with SessionScopedNotifier {
 
     try {
       final task = await _api.createTask(
+        isPrivate: isPrivate,
         weddingPlanId: weddingPlanId,
         title: title,
         description: description,
@@ -250,6 +252,33 @@ class TaskTimelineProvider extends ChangeNotifier with SessionScopedNotifier {
       notifyListeners();
     }
     return added;
+  }
+
+  /// V1 checklist 4.10: shows a private task to the whole plan. A shared
+  /// task never becomes private again.
+  Future<bool> shareTaskWithPlan(String weddingPlanId, WeddingTask task) async {
+    _isSubmitting = true;
+    _errorMessage = null;
+    _noticeMessage = null;
+    notifyListeners();
+    try {
+      final updated = await _api.updateTask(task.id, {'isPrivate': false});
+      _replaceTask(updated);
+      if (updated.id.startsWith('local-')) {
+        _noticeMessage = CachePolicy.offlineWriteMessage;
+      }
+      await _refreshTaskData(weddingPlanId);
+      return true;
+    } on ApiException catch (error) {
+      _errorMessage = error.message;
+      return false;
+    } catch (_) {
+      _errorMessage = 'تعذر مشاركة المهمة.';
+      return false;
+    } finally {
+      _isSubmitting = false;
+      notifyListeners();
+    }
   }
 
   Future<bool> markTaskDone(String weddingPlanId, WeddingTask task) async {

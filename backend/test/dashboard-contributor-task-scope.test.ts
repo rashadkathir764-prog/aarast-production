@@ -28,10 +28,15 @@ const plan = {
   updatedAt: new Date("2026-01-01T00:00:00.000Z"),
 };
 
-const task = (id: string, assigneeUserId: string) => ({
+const task = (
+  id: string,
+  assigneeUserId: string,
+  privateToUserId: string | null = null,
+) => ({
   id,
   weddingPlanId: plan.id,
   assigneeUserId,
+  privateToUserId,
   responsibleName: null,
   responsiblePhone: null,
   responsibleSource: null,
@@ -77,10 +82,7 @@ test("revoked task permission removes assigned task details and every dashboard 
   assert.equal(fixture.qualifyingCalls.length, 0);
   assert.ok(
     fixture.taskQueries.every(
-      (where) =>
-        !where.OR?.some(
-          (clause: any) => clause.assigneeUserId === "contributor-a",
-        ),
+      (where) => !mentionsAssignee(where, "contributor-a"),
     ),
   );
 });
@@ -119,6 +121,27 @@ test("active task permission keeps assigned and historical own work while isolat
       ContributionAction.PAYMENT_RECORDED,
     ],
   });
+});
+
+test("a task private to another account never reaches the dashboard, even when assigned or contributed (V1 4.10)", async () => {
+  const assignedToA = task("assigned-a", "contributor-a");
+  const ownerPrivateAssigned = task("owner-private-assigned", "contributor-a", "owner-1");
+  const ownerPrivateContributed = task("owner-private-contributed", "owner-1", "owner-1");
+  const fixture = dashboardFixture({
+    canManageTasks: true,
+    tasks: [assignedToA, ownerPrivateAssigned, ownerPrivateContributed],
+    qualifyingTaskIds: [ownerPrivateContributed.id],
+  });
+
+  const result = await fixture.service.getWeddingPlanDashboardSummary(
+    { id: "contributor-a" } as any,
+    plan.id,
+  );
+
+  assert.equal(result.totalTasks, 1);
+  assert.equal(result.nextTask?.id, assignedToA.id);
+  const serialized = JSON.stringify(result);
+  assert.equal(serialized.includes("owner-private"), false);
 });
 
 test("contributor dashboard keeps owner budget private while reporting only scoped costs on the authorization transaction", async () => {
@@ -351,13 +374,30 @@ function matchingTasks(tasks: ReturnType<typeof task>[], where: any) {
   });
 }
 
-function matchesVisibility(candidate: ReturnType<typeof task>, where: any) {
+// Evaluates the visibility part of a task where: id lists, assignee and
+// privacy equality, and nested AND / OR, as Prisma would.
+function matchesVisibility(candidate: ReturnType<typeof task>, where: any): boolean {
   if (where.id?.in && !where.id.in.includes(candidate.id)) return false;
-  if (!where.OR) return true;
-  return where.OR.some(
-    (clause: any) =>
-      clause.assigneeUserId === candidate.assigneeUserId ||
-      clause.id?.in?.includes(candidate.id),
+  if ("assigneeUserId" in where && where.assigneeUserId !== candidate.assigneeUserId) {
+    return false;
+  }
+  if ("privateToUserId" in where && where.privateToUserId !== candidate.privateToUserId) {
+    return false;
+  }
+  if (where.AND && !where.AND.every((clause: any) => matchesVisibility(candidate, clause))) {
+    return false;
+  }
+  if (where.OR && !where.OR.some((clause: any) => matchesVisibility(candidate, clause))) {
+    return false;
+  }
+  return true;
+}
+
+function mentionsAssignee(where: any, userId: string): boolean {
+  if (!where || typeof where !== "object") return false;
+  if (where.assigneeUserId === userId) return true;
+  return [...(where.AND ?? []), ...(where.OR ?? [])].some((clause: any) =>
+    mentionsAssignee(clause, userId),
   );
 }
 

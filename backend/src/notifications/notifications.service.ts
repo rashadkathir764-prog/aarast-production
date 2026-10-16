@@ -430,7 +430,11 @@ export class NotificationsService implements NotificationsPort {
       tx: Prisma.TransactionClient,
       plan: {
         ownerUserId: string;
-        sharedMembers: Array<{ userId: string; canManageTasks: boolean }>;
+        sharedMembers: Array<{
+          userId: string;
+          role: SharedMemberRole;
+          canManageTasks: boolean;
+        }>;
       },
     ) => Promise<ReadonlySet<string>>,
   ): Promise<NotificationResponse[]> {
@@ -567,10 +571,16 @@ export class NotificationsService implements NotificationsPort {
     tx: Prisma.TransactionClient,
     plan: {
       ownerUserId: string;
-      sharedMembers: Array<{ userId: string; canManageTasks: boolean }>;
+      sharedMembers: Array<{
+        userId: string;
+        role: SharedMemberRole;
+        canManageTasks: boolean;
+      }>;
     },
     task: WeddingTask | null,
   ): Promise<ReadonlySet<string>> {
+    // A private task reminds only its account (V1 checklist 4.10).
+    if (task?.privateToUserId) return new Set([task.privateToUserId]);
     const recipients = new Set([plan.ownerUserId]);
     if (!task) return recipients;
     const taskMembers = plan.sharedMembers.filter(
@@ -598,6 +608,8 @@ export class NotificationsService implements NotificationsPort {
     for (const member of taskMembers) {
       if (
         task.assigneeUserId === member.userId ||
+        // The plan's partner follows every task, as in the reminder scan.
+        isPlanPartnerRole(member.role) ||
         contributors.has(member.userId)
       ) {
         recipients.add(member.userId);
@@ -803,7 +815,7 @@ export class NotificationsService implements NotificationsPort {
           const type = overdue
             ? NotificationType.TASK_OVERDUE
             : NotificationType.TASK_DUE_SOON;
-          const recipients = new Set([
+          const planTaskRecipients = new Set([
             plan.ownerUserId,
             ...plan.sharedMembers
               .filter((member) => {
@@ -819,6 +831,12 @@ export class NotificationsService implements NotificationsPort {
               })
               .map((member) => member.userId),
           ]);
+          // V1 checklist 4.10: a private task reminds only its account.
+          const recipients = task.privateToUserId
+            ? [...planTaskRecipients].filter(
+                (userId) => userId === task.privateToUserId,
+              )
+            : planTaskRecipients;
           for (const userId of recipients) {
             if (
               !this.preferenceEnabled(

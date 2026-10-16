@@ -21,6 +21,7 @@ class WeddingTask {
     this.responsiblePhone,
     this.responsibleSource,
     this.checklist = const [],
+    this.isPrivate = false,
   });
 
   factory WeddingTask.fromJson(Map<String, dynamic> json) {
@@ -63,6 +64,7 @@ class WeddingTask {
           if (item is Map)
             TaskChecklistItem.fromJson(Map<String, dynamic>.from(item)),
       ],
+      isPrivate: json['isPrivate'] == true,
     );
   }
 
@@ -86,6 +88,9 @@ class WeddingTask {
 
   /// The task's checklist steps, in the server's order.
   final List<TaskChecklistItem> checklist;
+
+  /// V1 checklist 4.10: kept to its account; no one else in the plan sees it.
+  final bool isPrivate;
 
   int get checklistDoneCount => checklist.where((item) => item.isDone).length;
 
@@ -139,6 +144,7 @@ class WeddingTask {
     String? priority,
     DateTime? updatedAt,
     List<TaskChecklistItem>? checklist,
+    bool? isPrivate,
   }) {
     return WeddingTask(
       id: id,
@@ -149,6 +155,7 @@ class WeddingTask {
       createdAt: createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
       checklist: checklist ?? this.checklist,
+      isPrivate: isPrivate ?? this.isPrivate,
       description: identical(description, _unchanged)
           ? this.description
           : description as String?,

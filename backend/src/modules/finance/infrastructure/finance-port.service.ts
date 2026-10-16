@@ -19,6 +19,7 @@ import { excludeOthersPrivateCosts } from './cost-privacy.repository';
 import {
   deleteReceipts,
   listPlanReceiptIds,
+  listPrivateCostReceiptIds,
   listReceiptIdsUploadedBy,
 } from './cost-receipts.repository';
 import type {
@@ -55,11 +56,46 @@ export class FinancePortService implements FinancePort {
     weddingPlanIds: readonly string[],
     userId: string,
   ): Promise<string[]> {
-    const [inPlans, uploaded] = await Promise.all([
+    const [inPlans, uploaded, onPrivateCosts] = await Promise.all([
       listPlanReceiptIds(tx, weddingPlanIds),
       listReceiptIdsUploadedBy(tx, userId),
+      listPrivateCostReceiptIds(tx, userId),
     ]);
-    return [...new Set([...inPlans, ...uploaded])].sort();
+    return [...new Set([...inPlans, ...uploaded, ...onPrivateCosts])].sort();
+  }
+
+  async lockPrivateCostsForUpdateInTransaction(
+    tx: Prisma.TransactionClient,
+    userId: string,
+  ): Promise<void> {
+    await tx.$queryRaw<Array<{ id: string }>>(
+      Prisma.sql`
+        SELECT "id"
+        FROM "WeddingCost"
+        WHERE "privateToUserId" = ${userId}
+        ORDER BY "id" ASC
+        FOR UPDATE
+      `,
+    );
+  }
+
+  async purgePrivateCostsInTransaction(
+    tx: Prisma.TransactionClient,
+    userId: string,
+  ): Promise<void> {
+    const costs = await tx.weddingCost.findMany({
+      where: { privateToUserId: userId },
+      select: { id: true },
+    });
+    if (costs.length === 0) return;
+    const ofCosts = { weddingCostId: { in: costs.map((cost) => cost.id) } };
+    // The same transaction-local ledger purge as the plan erasure below.
+    await tx.$executeRaw`
+      SELECT set_config('aarast.allow_ledger_purge', 'on', true)
+    `;
+    await tx.costPayment.deleteMany({ where: ofCosts });
+    await tx.paymentSchedule.deleteMany({ where: ofCosts });
+    await tx.weddingCost.deleteMany({ where: { privateToUserId: userId } });
   }
 
   async deleteReceiptsInTransaction(

@@ -1760,6 +1760,21 @@ account, it never feeds the plan-wide over-budget alert, and it writes no
 contribution-history event. The money summary's `permissions` gain
 `canRecordPrivateCost`.
 
+Private tasks follow the same rule: `POST
+/api/v1/wedding-plans/:weddingPlanId/tasks` takes `isPrivate: true` from the
+owner or a partner (others get `403 TASK_PRIVACY_NOT_ALLOWED`). Only that
+account sees the task in the list, detail, summary, plan dashboard, home and
+timeline; reading, changing, assigning or editing its checklist by id is
+`404` for anyone else. Responses carry `isPrivate`. `PATCH
+/api/v1/tasks/:id` with `isPrivate: false` shares it; a shared task never
+becomes private (`400 TASK_PRIVACY_AT_CREATION_ONLY`). A private task is
+assigned only to its own account (`400 TASK_PRIVATE_ASSIGNMENT`), reminds
+only that account, and writes no contribution-history event. Moving the
+plan's task dates moves private tasks too, but `shifted` counts only the
+tasks the caller sees. `GET .../tasks/summary` gains `canKeepPrivateTask`.
+Deleting an account deletes its private costs (with their payments,
+schedules and receipts) and private tasks in other plans.
+
 Returning live queries also carry the current membership and stored flag in
 their final SQL predicate. Multi-query money summaries, cost/payment/schedule
 reads, dashboard reads, and other aggregate surfaces use the transaction-based

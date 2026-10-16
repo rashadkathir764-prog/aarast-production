@@ -138,7 +138,18 @@ test('tasks serves the assigned and due tasks, the contributor visibility check 
     ['$queryRaw', { sql: 'SELECT "id" FROM "WeddingTask" WHERE "id" = ? AND "weddingPlanId" = ? FOR SHARE', values: ['task-1', 'plan-9'] }],
     ['weddingTask.findUnique', { where: { id: 'task-1' } }],
     ['$queryRaw', { sql: 'SELECT "id" FROM "WeddingTask" WHERE "id" = ANY(?::text[]) ORDER BY "id" ASC FOR SHARE', values: [['task-1', 'task-2']] }],
-    ['weddingTask.findFirst', { where: { id: 'task-1', weddingPlanId: 'plan-1', OR: [{ assigneeUserId: 'user-1' }, { id: { in: ['task-9'] } }] }, select: { id: true } }],
+    // V1 checklist 4.10: never a task private to another account.
+    ['weddingTask.findFirst', {
+      where: {
+        id: 'task-1',
+        weddingPlanId: 'plan-1',
+        AND: [
+          { OR: [{ privateToUserId: null }, { privateToUserId: 'user-1' }] },
+          { OR: [{ assigneeUserId: 'user-1' }, { id: { in: ['task-9'] } }] },
+        ],
+      },
+      select: { id: true },
+    }],
   ]);
 });
 

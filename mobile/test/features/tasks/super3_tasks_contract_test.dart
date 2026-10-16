@@ -704,6 +704,7 @@ class _CapturingTaskProvider extends TaskTimelineProvider {
     String? responsibleSource,
     String status = 'TODO',
     String priority = 'MEDIUM',
+    bool isPrivate = false,
   }) async {
     createCalls += 1;
     this.assigneeUserId = assigneeUserId;

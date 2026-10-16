@@ -7,6 +7,7 @@ import type {
   TaskReadScope,
   TasksPort,
 } from '../public/tasks.port';
+import { visibleToReader } from './task-work.repository';
 
 const openStatuses = () => ({
   notIn: [WeddingTaskStatus.DONE, WeddingTaskStatus.CANCELLED],
@@ -15,14 +16,19 @@ const openStatuses = () => ({
 function scopeWhere(scope: TaskReadScope) {
   switch (scope.kind) {
     case 'all':
-      return {};
+      return visibleToReader(scope.readerUserId);
     case 'none':
       return { id: { in: [] as string[] } };
     case 'contributor':
       return {
-        OR: [
-          { assigneeUserId: scope.assigneeUserId },
-          { id: { in: [...scope.taskIds] } },
+        AND: [
+          visibleToReader(scope.assigneeUserId),
+          {
+            OR: [
+              { assigneeUserId: scope.assigneeUserId },
+              { id: { in: [...scope.taskIds] } },
+            ],
+          },
         ],
       };
   }
@@ -34,9 +40,10 @@ export class TasksPortService implements TasksPort {
     client: Prisma.TransactionClient,
     weddingPlanId: string,
     take: number,
+    readerUserId: string,
   ): Promise<WeddingTask[]> {
     return client.weddingTask.findMany({
-      where: { weddingPlanId, status: openStatuses() },
+      where: { weddingPlanId, status: openStatuses(), ...visibleToReader(readerUserId) },
       orderBy: [{ dueDate: 'asc' }, { createdAt: 'asc' }],
       take,
     });
@@ -175,9 +182,14 @@ export class TasksPortService implements TasksPort {
       where: {
         id: taskId,
         weddingPlanId,
-        OR: [
-          { assigneeUserId: userId },
-          { id: { in: [...contributedTaskIds] } },
+        AND: [
+          visibleToReader(userId),
+          {
+            OR: [
+              { assigneeUserId: userId },
+              { id: { in: [...contributedTaskIds] } },
+            ],
+          },
         ],
       },
       select: { id: true },
@@ -209,6 +221,20 @@ export class TasksPortService implements TasksPort {
   ): Promise<void> {
     await tx.weddingTask.deleteMany({
       where: { weddingPlanId: { in: [...weddingPlanIds] } },
+    });
+  }
+
+  async deletePrivateTasksInTransaction(
+    tx: Prisma.TransactionClient,
+    userId: string,
+  ): Promise<void> {
+    const tasks = await tx.weddingTask.findMany({
+      where: { privateToUserId: userId },
+      select: { id: true },
+    });
+    if (tasks.length === 0) return;
+    await tx.weddingTask.deleteMany({
+      where: { id: { in: tasks.map((task) => task.id) } },
     });
   }
 

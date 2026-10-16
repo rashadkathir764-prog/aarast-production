@@ -27,7 +27,7 @@ export async function loadDashboardHomeSections(
         ? getMoneyHomeSummary(client, ports, currentWeddingPlan, userId)
         : Promise.resolve(null),
       weddingPlanId
-        ? getUpcomingTasks(client, ports, weddingPlanId)
+        ? getUpcomingTasks(client, ports, weddingPlanId, userId)
         : Promise.resolve([]),
       weddingPlanId
         ? getSharedMembers(client, ports, permissions, weddingPlanId)
@@ -90,8 +90,10 @@ async function getUpcomingTasks(
   client: Prisma.TransactionClient,
   ports: InsightsReadPorts,
   weddingPlanId: string,
+  userId: string,
 ) {
-  const tasks = await ports.tasks.listUpcomingTasks(client, weddingPlanId, 5);
+  // V1 checklist 4.10: another account's private tasks are not listed.
+  const tasks = await ports.tasks.listUpcomingTasks(client, weddingPlanId, 5, userId);
   return tasks.map((task) => ({
     id: task.id,
     weddingPlanId: task.weddingPlanId,

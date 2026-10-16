@@ -28,9 +28,13 @@ export interface DueTaskQuery {
   taskIds?: readonly string[];
 }
 
-/** Which of a plan's tasks a reader sees: all (owner), none (revoked), or the contributor's own work. */
+/**
+ * Which of a plan's tasks a reader sees: all (owner or partner), none
+ * (revoked), or the contributor's own work. Never another account's private
+ * task (V1 checklist 4.10).
+ */
 export type TaskReadScope =
-  | { kind: 'all' }
+  | { kind: 'all'; readerUserId: string }
   | { kind: 'none' }
   | { kind: 'contributor'; assigneeUserId: string; taskIds: readonly string[] };
 
@@ -45,11 +49,12 @@ export interface PlanTaskDashboard {
 }
 
 export interface TasksPort {
-  /** The plan's open tasks in due order, at most `take` (the home dashboard). */
+  /** The plan's open tasks the reader sees, in due order, at most `take` (the home dashboard). */
   listUpcomingTasks(
     client: Prisma.TransactionClient,
     weddingPlanId: string,
     take: number,
+    readerUserId: string,
   ): Promise<WeddingTask[]>;
   /** The plan dashboard's task counters and its two urgent tasks and next task, inside the reader's scope. */
   getPlanTaskDashboard(
@@ -109,6 +114,11 @@ export interface TasksPort {
   deletePlanTasksInTransaction(
     tx: Prisma.TransactionClient,
     weddingPlanIds: readonly string[],
+  ): Promise<void>;
+  /** Account erasure (V1 checklist 4.10): the account's private tasks in other plans go with it (checklist items cascade). */
+  deletePrivateTasksInTransaction(
+    tx: Prisma.TransactionClient,
+    userId: string,
   ): Promise<void>;
   /** Retained administrator identity: clears the user from the tasks assigned to them. */
   unassignUserTasksInTransaction(

@@ -108,6 +108,8 @@ changing behavior.
 ### Project
 
 - `docs/project/V1_DELIVERY_CHECKLIST.md`
+- `docs/handover/README.md` - the Arabic V1 handover for the project owner:
+  operations, settings (names only), admin guide, accounts to own.
 - `docs/HANDOFF.md`
 - `docs/project/PRODUCT.md`
 - `docs/project/SCOPE_AND_PHASES.md`
@@ -376,7 +378,7 @@ changing behavior.
 | Area | Source |
 | --- | --- |
 | Modular-monolith architecture and phase gates | `ARCHITECTURE.md` |
-| Project continuation and owner handoff | `docs/HANDOFF.md` |
+| Project continuation and owner handoff | `docs/handover/README.md` (owner, Arabic), `docs/HANDOFF.md` (maintainers) |
 | Product identity and exclusions | `docs/project/PRODUCT.md` |
 | Scope and phase discipline | `docs/project/SCOPE_AND_PHASES.md` |
 | Current status | `docs/project/STATUS.md` |

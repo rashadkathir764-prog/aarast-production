@@ -7,6 +7,11 @@ observed repository, deployed application, recovery assets, external gates,
 and safe first actions. Detailed product, API, database, QA, and deployment
 contracts remain in the active documents listed by `docs/README.md`.
 
+> Update 2026-10-16: the V1 delivery supersedes the scope and hosting notes
+> below. The project owner's Arabic handover (operations on the interim AWS
+> host, settings, admin guide, accounts) is `docs/handover/README.md`; the
+> single V1 scope is `docs/project/V1_DELIVERY_CHECKLIST.md`.
+
 ## Start Here
 
 1. Read `README.md`, `AGENTS.md`, `docs/README.md`, this file,
@@ -39,9 +44,11 @@ money contract is an optional general budget, categories, costs, recorded
 payments, and dated payment schedules. Provider flows support discovery,
 quotes, provider operations, and quote-scoped conversations.
 
-Do not introduce confirmed bookings, deposits, payment processing, loans,
-credit, financing, production AI automation, or open unsolicited messaging
-without a new explicit product and architecture decision.
+Do not introduce deposits, payment processing, lending, credit, financing, or
+open unsolicited messaging without a new explicit product and architecture
+decision. V1 approved two items this note once excluded: bookings without any
+payment (checklist 4.6) and the consent-based planning assistant (4.12);
+loans are tracked as the user's own records, never granted (4.2).
 
 ## Repository And Verification State
 

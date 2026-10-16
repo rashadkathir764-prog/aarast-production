@@ -130,6 +130,7 @@ changing behavior.
 - `docs/frontend/MOBILE.md`
 - `docs/frontend/MOBILE_ARCHITECTURE.md`
 - `docs/frontend/DESIGN_SYSTEM.md`
+- `docs/frontend/DESIGN_DIRECTION.md` - the V1 design reference (draft for the owner's approval).
 - `docs/frontend/OFFLINE_SQLITE.md`
 - `docs/frontend/ADMIN_WEB.md`
 

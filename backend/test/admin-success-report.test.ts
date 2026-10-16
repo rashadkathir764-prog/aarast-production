@@ -1,11 +1,8 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { Prisma } from "@prisma/client";
-import {
-  average,
-  groupPrices,
-  percent,
-} from "../src/admin/admin-success-report";
+import { average, percent } from "../src/admin/admin-success-report";
+import { groupPrices } from "../src/modules/marketplace/public/market-prices";
 
 // The back office's success indicators and price report (V1 checklist 4.21).
 

@@ -487,6 +487,8 @@ test('R5 Task 5A package security scope rejects every mandated near-miss', () =>
   packageJson.scripts['architecture:imports:baseline'] =
     'depcruise --config .dependency-cruiser.cjs --output-type baseline --output-to .dependency-cruiser-known-violations.json src';
   packageJson.overrides.multer = '2.2.0';
+  // ...and it predates the planning assistant's SDK (V1 checklist 4.12).
+  delete packageJson.dependencies['@anthropic-ai/sdk'];
   delete packageJson.scripts['architecture:r12b'];
   packageJson.scripts.architecture = packageJson.scripts.architecture
     .split(' && ')

@@ -4,6 +4,7 @@ import {
   WeddingPlanDashboardController,
 } from '../../dashboard/dashboard.controller';
 import { TimelineController } from '../../timeline/timeline.controller';
+import { WeddingPlanAssistantController } from '../../dashboard/assistant/assistant.controller';
 import { InsightsServicesInternalModule } from './internal/insights-services.internal.module';
 
 @Module({
@@ -12,6 +13,7 @@ import { InsightsServicesInternalModule } from './internal/insights-services.int
     DashboardController,
     WeddingPlanDashboardController,
     TimelineController,
+    WeddingPlanAssistantController,
   ],
 })
 export class InsightsModule {}

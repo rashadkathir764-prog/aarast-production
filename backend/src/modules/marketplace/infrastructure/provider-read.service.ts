@@ -10,6 +10,8 @@ import type {
   LockedProviderRow,
   ProviderReadPort,
 } from '../public/provider-read.port';
+import { groupPrices, type PriceGroup } from '../public/market-prices';
+import { listPricedServices } from './market-prices.repository';
 
 @Injectable()
 export class ProviderReadService implements ProviderReadPort {
@@ -149,6 +151,12 @@ export class ProviderReadService implements ProviderReadPort {
         FOR SHARE
       `,
     );
+  }
+
+  async listMarketPriceGroups(
+    client: Prisma.TransactionClient,
+  ): Promise<PriceGroup[]> {
+    return groupPrices(await listPricedServices(client));
   }
 }
 

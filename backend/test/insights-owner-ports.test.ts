@@ -72,8 +72,8 @@ test('finance serves a plan\'s cost amounts and pending schedules, narrowed to a
     status: { not: WeddingCostStatus.CANCELLED },
   });
   assert.deepEqual(calls, [
-    ['weddingCost.findMany', { where: costWhere(), select: { id: true, totalAmount: true, paidAmount: true } }],
-    ['weddingCost.findMany', { where: costWhere(['cost-1']), select: { id: true, totalAmount: true, paidAmount: true } }],
+    ['weddingCost.findMany', { where: costWhere(), select: { id: true, budgetCategoryId: true, totalAmount: true, paidAmount: true } }],
+    ['weddingCost.findMany', { where: costWhere(['cost-1']), select: { id: true, budgetCategoryId: true, totalAmount: true, paidAmount: true } }],
     ['paymentSchedule.findMany', {
       where: { status: PaymentScheduleStatus.PENDING, weddingCost: costWhere() },
       include: { weddingCost: { select: { title: true } } },

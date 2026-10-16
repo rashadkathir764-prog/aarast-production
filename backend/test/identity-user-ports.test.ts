@@ -6,13 +6,17 @@ import { MODULE_METADATA } from '@nestjs/common/constants';
 import { AppRole, OnboardingPath, UserRole, UserStatus, type Prisma } from '@prisma/client';
 import {
   ACTIVE_PLAN_IMPLEMENTATION,
+  ASSISTANT_QUOTA_IMPLEMENTATION,
   IDENTITY_ADMIN_IMPLEMENTATION,
   IDENTITY_REALTIME_SESSION_IMPLEMENTATION,
   IdentityUserInternalModule,
   PROVIDER_ACCOUNT_IMPLEMENTATION,
   USER_READ_IMPLEMENTATION,
 } from '../src/modules/identity/internal/identity-user.internal.module';
+import { AssistantQuotaService } from '../src/modules/identity/infrastructure/assistant-quota.service';
 import { IdentityAdminService } from '../src/modules/identity/infrastructure/identity-admin.service';
+import { AssistantQuotaPublicModule } from '../src/modules/identity/public/assistant-quota-public.module';
+import { ASSISTANT_QUOTA_PORT } from '../src/modules/identity/public/assistant-quota.port';
 import { IdentityRealtimeSessionService } from '../src/modules/identity/infrastructure/identity-realtime-session.service';
 import { IdentityUserPortService } from '../src/modules/identity/infrastructure/identity-user-port.service';
 import { ActivePlanPublicModule } from '../src/modules/identity/public/active-plan-public.module';
@@ -269,15 +273,22 @@ test('the identity user public modules expose only their port tokens bound to th
     { provide: PROVIDER_ACCOUNT_PORT, useExisting: PROVIDER_ACCOUNT_IMPLEMENTATION },
   ]);
   assert.deepEqual(metadata(ProviderAccountPublicModule, MODULE_METADATA.EXPORTS), [PROVIDER_ACCOUNT_PORT]);
+  // The planning assistant's account quota (V1 checklist 4.12).
+  assert.deepEqual(metadata(AssistantQuotaPublicModule, MODULE_METADATA.PROVIDERS), [
+    { provide: ASSISTANT_QUOTA_PORT, useExisting: ASSISTANT_QUOTA_IMPLEMENTATION },
+  ]);
+  assert.deepEqual(metadata(AssistantQuotaPublicModule, MODULE_METADATA.EXPORTS), [ASSISTANT_QUOTA_PORT]);
   assert.deepEqual(metadata(IdentityUserInternalModule, MODULE_METADATA.PROVIDERS), [
     IdentityUserPortService,
     IdentityRealtimeSessionService,
     IdentityAdminService,
+    AssistantQuotaService,
     { provide: USER_READ_IMPLEMENTATION, useExisting: IdentityUserPortService },
     { provide: ACTIVE_PLAN_IMPLEMENTATION, useExisting: IdentityUserPortService },
     { provide: PROVIDER_ACCOUNT_IMPLEMENTATION, useExisting: IdentityUserPortService },
     { provide: IDENTITY_REALTIME_SESSION_IMPLEMENTATION, useExisting: IdentityRealtimeSessionService },
     // The back office's account administration (identity-admin.port.ts).
     { provide: IDENTITY_ADMIN_IMPLEMENTATION, useExisting: IdentityAdminService },
+    { provide: ASSISTANT_QUOTA_IMPLEMENTATION, useExisting: AssistantQuotaService },
   ]);
 });

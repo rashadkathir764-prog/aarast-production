@@ -10,7 +10,6 @@ import type {
   AdminListedProviderFields,
   AdminListing,
   AdminMarketplaceSuccessCounts,
-  AdminPricedService,
   AdminMarketplaceCounters,
   AdminMarketplaceReport,
   AdminPage,
@@ -28,6 +27,8 @@ import type {
   ProviderReviewDecision,
   ProviderVerification,
 } from '../public/marketplace-admin.port';
+import type { PricedService } from '../public/market-prices';
+import { listPricedServices } from './market-prices.repository';
 import {
   priceStampForNewService,
   priceStampForServiceUpdate,
@@ -316,29 +317,8 @@ export class MarketplaceAdminRepository implements MarketplaceAdminPort {
     return { quoteRequests, confirmedBookings, visibleProviders };
   }
 
-  async listPricedServices(client: Prisma.TransactionClient): Promise<AdminPricedService[]> {
-    const services = await client.providerService.findMany({
-      where: { isActive: true, basePrice: { not: null } },
-      select: {
-        providerId: true,
-        cityId: true,
-        categoryId: true,
-        currency: true,
-        basePrice: true,
-        provider: { select: { status: true, cityId: true } },
-      },
-    });
-    return services.flatMap((service) =>
-      service.provider.status === ProviderStatus.ACTIVE && service.basePrice
-        ? [{
-            providerId: service.providerId,
-            cityId: service.cityId ?? service.provider.cityId,
-            categoryId: service.categoryId,
-            currency: service.currency,
-            basePrice: service.basePrice,
-          }]
-        : [],
-    );
+  async listPricedServices(client: Prisma.TransactionClient): Promise<PricedService[]> {
+    return listPricedServices(client);
   }
 
   async hasProviderWithPhone(

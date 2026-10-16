@@ -86,8 +86,10 @@ test('Task 7 full modules preserve the exact controller ownership', () => {
       'CatalogsController', 'DistrictLocalitiesController',
     ]],
     ['modules/media/media.module.ts#MediaModule', ['MediaController']],
+    // The planning assistant (V1 checklist 4.12) adds its plan route.
     ['modules/insights/insights.module.ts#InsightsModule', [
-      'DashboardController', 'TimelineController', 'WeddingPlanDashboardController',
+      'DashboardController', 'TimelineController', 'WeddingPlanAssistantController',
+      'WeddingPlanDashboardController',
     ]],
     ['modules/backoffice/backoffice.module.ts#BackofficeModule', [
       'AdminAuditController', 'AdminController',
@@ -118,9 +120,10 @@ test('Task 7 owner-private leaves register each remaining application service on
     ]],
     // Insights owns no tables: the ownership program added its private
     // InsightsReadPorts holder of the owner ports the dashboard and
-    // timeline compose (their direct reads are gone).
+    // timeline compose (their direct reads are gone). The planning assistant
+    // (V1 checklist 4.12) composes the same ports, with its model runtime.
     ['modules/insights/internal/insights-services.internal.module.ts#InsightsServicesInternalModule', [
-      'DashboardService', 'InsightsReadPorts', 'TimelineService',
+      'AssistantRuntime', 'AssistantService', 'DashboardService', 'InsightsReadPorts', 'TimelineService',
     ]],
     // The back office owns only its audit log: the ownership program added
     // its private AdminOwners holder of the owners' admin ports (the admin

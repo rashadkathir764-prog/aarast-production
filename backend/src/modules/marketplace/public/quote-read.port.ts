@@ -33,6 +33,20 @@ export interface PlanQuoteCounters {
   closed: number;
 }
 
+/** A quote offer made to the plan, as the planning assistant compares it (V1 checklist 4.12). */
+export interface PlanQuoteOffer {
+  offerId: string;
+  quoteRequestId: string;
+  providerId: string;
+  serviceTitle: string | null;
+  serviceCategoryId: string | null;
+  title: string | null;
+  amount: Prisma.Decimal | null;
+  currency: string;
+  status: QuoteOffer['status'];
+  validUntil: Date | null;
+}
+
 export type ExpiredPendingOffer = Pick<
   QuoteOffer,
   'id' | 'quoteRequestId' | 'validUntil'
@@ -86,6 +100,12 @@ export interface QuoteReadPort {
     weddingPlanId: string,
     quoteIds?: readonly string[] | null,
   ): Promise<PlanQuoteCounters>;
+  /** The newest offers made to the plan's quote requests, at most `take`. */
+  listPlanQuoteOffers(
+    client: Prisma.TransactionClient,
+    weddingPlanId: string,
+    take: number,
+  ): Promise<PlanQuoteOffer[]>;
   /** Pending offers of the conversation whose validity lapsed at or before `before`, latest expiry first. */
   listExpiredPendingOffersForConversation(
     client: Prisma.TransactionClient,

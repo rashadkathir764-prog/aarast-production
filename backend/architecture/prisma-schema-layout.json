@@ -36,7 +36,7 @@
     {
       "owner": "identity",
       "file": "identity.prisma",
-      "models": ["AccountDeletionReceipt", "User", "AdminLoginChallenge", "AdminPasswordResetChallenge", "RefreshToken", "LoginThrottle", "OtpDispatchQuota", "OtpCode"],
+      "models": ["AccountDeletionReceipt", "User", "AdminLoginChallenge", "AdminPasswordResetChallenge", "RefreshToken", "LoginThrottle", "OtpDispatchQuota", "AssistantUsageDay", "OtpCode"],
       "enums": ["UserRole", "AppRole", "UserStatus", "OtpPurpose", "AuthSessionScope"]
     },
     {
@@ -93,6 +93,7 @@
     "RefreshToken",
     "LoginThrottle",
     "OtpDispatchQuota",
+    "AssistantUsageDay",
     "WeddingPlan",
     "BudgetCategory",
     "WeddingCost",

@@ -51,6 +51,7 @@
     "smoke:phone-change": "node scripts/smoke/run-isolated-smoke.js phone-change-smoke.js",
     "smoke:task-shift": "node scripts/smoke/run-isolated-smoke.js task-shift-smoke.js",
     "smoke:plan-partner": "node scripts/smoke/run-isolated-smoke.js plan-partner-smoke.js",
+    "smoke:assistant": "node scripts/smoke/run-isolated-smoke.js assistant-smoke.js",
     "smoke:contributor-history-migration": "node scripts/smoke/run-isolated-smoke.js --contributor-history-migration",
     "smoke:guest-phone-migration": "node scripts/smoke/run-isolated-smoke.js --guest-phone-migration",
     "smoke:schema-equivalence": "node scripts/smoke/run-isolated-smoke.js --schema-equivalence",
@@ -99,6 +100,7 @@
     "architecture": "npm run architecture:imports && npm run architecture:ownership && npm run architecture:ports && npm run architecture:r3 && npm run architecture:r4 && npm run architecture:r5 && npm run architecture:r6 && npm run architecture:r7 && npm run architecture:r8 && npm run architecture:r12a && npm run architecture:r12b && npm run architecture:r12c"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.131.0",
     "@aws-sdk/client-s3": "^3.1079.0",
     "@aws-sdk/s3-request-presigner": "^3.1079.0",
     "@nest-lab/throttler-storage-redis": "^1.2.0",

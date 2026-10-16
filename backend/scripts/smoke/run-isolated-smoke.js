@@ -748,6 +748,15 @@ async function main(args = process.argv.slice(2)) {
     if (scripts.includes('--load-test')) {
       environment.THROTTLE_LIMIT = process.env.LOAD_THROTTLE_LIMIT || '1000000';
     }
+    if (scripts.includes('assistant-smoke.js') || scripts.includes('all-smoke.js')) {
+      // V1 checklist 4.12: the planning assistant answers through the smoke's
+      // local stand-in for the Claude API (never the real one, never a real key).
+      const modelPort = await availablePort();
+      environment.ANTHROPIC_API_KEY = 'smoke-assistant-key';
+      environment.ANTHROPIC_BASE_URL = `http://127.0.0.1:${modelPort}`;
+      environment.AARAST_ASSISTANT_DAILY_LIMIT = '2';
+      environment.SMOKE_ASSISTANT_MODEL_PORT = String(modelPort);
+    }
     console.log(`Managed smoke run: ${identity.runId}`);
     console.log(`Isolated database: ${identity.databaseName}`);
     const databaseOnlySmoke = new Map([

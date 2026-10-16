@@ -68,8 +68,22 @@ test('R12C security prerequisite projects the multer override and accepts only t
   assert.equal(projected.overrides.multer, '2.2.0', 'the historical fingerprint chain sees the R12B-era override');
   assert.doesNotThrow(() => checker.validatePackageGraph(projected, packageLock));
   assert.equal(checker.fingerprintPlainJson(packageLock), checker.PINNED_PACKAGE_LOCK_SHA256, 'the live lock is the current approved lock');
-  assert.deepEqual(checker.PACKAGE_LOCK_LINEAGE, [checker.R12B_PACKAGE_LOCK_SHA256, checker.PINNED_PACKAGE_LOCK_SHA256]);
-  assert.notEqual(checker.R12B_PACKAGE_LOCK_SHA256, checker.PINNED_PACKAGE_LOCK_SHA256);
+  assert.deepEqual(checker.PACKAGE_LOCK_LINEAGE, [
+    checker.R12B_PACKAGE_LOCK_SHA256,
+    checker.R12C_PACKAGE_LOCK_SHA256,
+    checker.PINNED_PACKAGE_LOCK_SHA256,
+  ]);
+  assert.equal(new Set(checker.PACKAGE_LOCK_LINEAGE).size, 3);
+  // V1 checklist 4.12: the planning assistant's SDK is pinned to its approved
+  // minor and projected away for the historical chain; any other range fails.
+  assert.equal(packageJson.dependencies['@anthropic-ai/sdk'], checker.V1_ASSISTANT_SDK_RANGE);
+  assert.equal(packageLock.packages['node_modules/@anthropic-ai/sdk'].version, '0.131.0');
+  assert.equal(projected.dependencies['@anthropic-ai/sdk'], undefined);
+  for (const range of ['^0.135.0', '0.131.0', '*', 'latest']) {
+    const copy = structuredClone(packageJson);
+    copy.dependencies['@anthropic-ai/sdk'] = range;
+    assert.throws(() => checker.validatePackageGraph(checker.projectR12CArchitectureScripts(copy), packageLock), new RegExp(checker.SECURITY_FAILURE, 'u'), `sdk ${range}`);
+  }
   for (const value of ['2.2.0', '2.4.0', '^2.3.0', '3.0.0-alpha.2', undefined]) {
     const copy = structuredClone(packageJson);
     if (value === undefined) delete copy.overrides.multer; else copy.overrides.multer = value;
@@ -339,8 +353,10 @@ test('R8 architecture delegation projects exactly through R7 to the pinned packa
   (validR8.scripts as JsonRecord)['architecture:imports'] = 'depcruise --config .dependency-cruiser.cjs --ignore-known .dependency-cruiser-known-violations.json src';
   // The R8-era package still carried the baseline generator that Task 5 retired.
   (validR8.scripts as JsonRecord)['architecture:imports:baseline'] = 'depcruise --config .dependency-cruiser.cjs --output-type baseline --output-to .dependency-cruiser-known-violations.json src';
-  // ...and the R12B-era multer override that the R12C security prerequisite replaced.
+  // ...and the R12B-era multer override that the R12C security prerequisite replaced,
+  // without the planning assistant's SDK (V1 checklist 4.12).
   (validR8.overrides as JsonRecord).multer = '2.2.0';
+  delete (validR8.dependencies as JsonRecord)['@anthropic-ai/sdk'];
   delete (validR8.scripts as JsonRecord)['architecture:r12c'];
   delete (validR8.scripts as JsonRecord)['architecture:r12b'];
   delete (validR8.scripts as JsonRecord)['architecture:r12a'];
@@ -894,6 +910,8 @@ test('R12B package wiring and security projection are exact and fail closed', ()
   livePackage.scripts['architecture:imports:baseline'] =
     'depcruise --config .dependency-cruiser.cjs --output-type baseline --output-to .dependency-cruiser-known-violations.json src';
   livePackage.overrides.multer = '2.2.0';
+  // ...and predated the planning assistant's SDK (V1 checklist 4.12).
+  delete livePackage.dependencies['@anthropic-ai/sdk'];
   const packageLock = JSON.parse(readFileSync(path.join(backendRoot, 'package-lock.json'), 'utf8'));
   assert.equal((livePackage.scripts as JsonRecord)['architecture:r12b'], r12bStandaloneScript);
   assert.equal((livePackage.scripts as JsonRecord).architecture, r12bArchitectureScript);
@@ -936,6 +954,8 @@ test('R12C package-script successor is exact and cannot admit prefixes, omission
     'depcruise --config .dependency-cruiser.cjs --ignore-known .dependency-cruiser-known-violations.json src';
   predecessor.scripts['architecture:imports:baseline'] = retiredGenerator;
   predecessor.overrides.multer = '2.2.0';
+  // The R12B-era package predates the planning assistant's SDK (V1 checklist 4.12).
+  delete predecessor.dependencies['@anthropic-ai/sdk'];
   assert.deepEqual(checker.projectR12CArchitectureScripts(packageJson), checker.projectR12BArchitectureScripts(predecessor));
   assert.equal(checker.projectR12CArchitectureScripts(packageJson).scripts['architecture:imports:baseline'], retiredGenerator);
   for (const mutate of [

@@ -141,6 +141,12 @@ services:
       READINESS_REQUIRE_MEDIA: "true"
       METRICS_TOKEN: ${METRICS_TOKEN:-}
       SENTRY_DSN: ${SENTRY_DSN:-}
+      # The planning assistant (V1 checklist 4.12) stays off until the project
+      # owner puts their own Claude API key in the host env file.
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      AARAST_ASSISTANT_MODEL: ${AARAST_ASSISTANT_MODEL:-claude-opus-5-5}
+      AARAST_ASSISTANT_DAILY_LIMIT: ${AARAST_ASSISTANT_DAILY_LIMIT:-10}
+      AARAST_ASSISTANT_MONTHLY_BUDGET_USD: ${AARAST_ASSISTANT_MONTHLY_BUDGET_USD:-30}
       # deploy.sh turns push on when the FCM key exists in SSM.
       PUSH_NOTIFICATIONS_ENABLED: ${PUSH_NOTIFICATIONS_ENABLED:-false}
       FIREBASE_PROJECT_ID: ${FIREBASE_PROJECT_ID:-}

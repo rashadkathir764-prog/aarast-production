@@ -53,8 +53,11 @@ export type DuePaymentSchedule = PaymentSchedule & {
   };
 };
 
-/** A cost's amounts for a money summary (non-cancelled costs of the plan, optionally only the given ones). */
-export type CostAmounts = Pick<WeddingCost, 'id' | 'totalAmount' | 'paidAmount'>;
+/** A cost's amounts and category for a money summary (non-cancelled costs of the plan, optionally only the given ones). */
+export type CostAmounts = Pick<
+  WeddingCost,
+  'id' | 'budgetCategoryId' | 'totalAmount' | 'paidAmount'
+>;
 
 /** A pending schedule with the title of its cost (dashboard and timeline). */
 export type PendingPaymentSchedule = PaymentSchedule & {

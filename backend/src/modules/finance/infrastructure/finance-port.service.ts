@@ -257,7 +257,7 @@ export class FinancePortService implements FinancePort {
         ...(costIds ? { id: { in: [...costIds] } } : {}),
         status: { not: WeddingCostStatus.CANCELLED },
       },
-      select: { id: true, totalAmount: true, paidAmount: true },
+      select: { id: true, budgetCategoryId: true, totalAmount: true, paidAmount: true },
     });
   }
 

@@ -61,16 +61,28 @@ const PINNED_PACKAGE_JSON_SHA256 =
 // approved package-lock: the R12B qs security prerequisite (qs 6.16.0), then
 // the R12C security prerequisite (multer 2.3.0, sharp 0.35.4; registry
 // advisories GHSA-wc9g-mqfw-jrwm, GHSA-qfvm-cv95-jqjf, GHSA-535w-7cp7-47q4,
-// GHSA-qvfw-j98x-7q72, GHSA-rgj7-g3m4-5g8c). Live callers validate the current
+// GHSA-qvfw-j98x-7q72, GHSA-rgj7-g3m4-5g8c), then the V1 planning assistant
+// (V1 checklist 4.12: the official Anthropic SDK, @anthropic-ai/sdk 0.131.0,
+// chosen two weeks after its release). Live callers validate the current
 // lock; historical projections re-validate the lock of their own era, so the
 // default accepts exactly this lineage and nothing else.
 const R12B_PACKAGE_LOCK_SHA256 =
   '6d3f757db4c2ec3f6d5d97168d325a6eae418e0038b3da7dc057340352c2dea3';
-const PINNED_PACKAGE_LOCK_SHA256 =
+const R12C_PACKAGE_LOCK_SHA256 =
   'c1980760454f8ff757b2545fa39b40cee3a233cd28ba88343d16901d339123cb';
-const PACKAGE_LOCK_LINEAGE = Object.freeze([R12B_PACKAGE_LOCK_SHA256, PINNED_PACKAGE_LOCK_SHA256]);
+const PINNED_PACKAGE_LOCK_SHA256 =
+  'f83eaf7fd4063180c276d2dbfe866b30418e1177789e0540c3e0d3257e1e188a';
+const PACKAGE_LOCK_LINEAGE = Object.freeze([
+  R12B_PACKAGE_LOCK_SHA256,
+  R12C_PACKAGE_LOCK_SHA256,
+  PINNED_PACKAGE_LOCK_SHA256,
+]);
 const R12B_MULTER_OVERRIDE = '2.2.0';
 const R12C_MULTER_OVERRIDE = '2.3.0';
+// The planning assistant's SDK (V1 checklist 4.12): pinned to its approved
+// minor; the historical chain fingerprints the package without it.
+const V1_ASSISTANT_SDK = '@anthropic-ai/sdk';
+const V1_ASSISTANT_SDK_RANGE = '^0.131.0';
 const R6_ARCHITECTURE_SCRIPT =
   'npm run architecture:imports && npm run architecture:ownership && npm run architecture:ports && npm run architecture:r3 && npm run architecture:r4 && npm run architecture:r5 && npm run architecture:r6';
 const R7_ARCHITECTURE_SCRIPT = R6_ARCHITECTURE_SCRIPT + ' && npm run architecture:r7';
@@ -331,7 +343,18 @@ function projectR12CArchitectureScripts(value) {
     if (multer !== R12C_MULTER_OVERRIDE) fail();
     projectedOverrides.multer = R12B_MULTER_OVERRIDE;
   } else if (multer !== R12B_MULTER_OVERRIDE) fail();
-  return projectR12BArchitectureScripts({ ...packageJson, scripts: projectedScripts, overrides: projectedOverrides });
+  const dependencies = plainRecord(ownValue(packageJson, 'dependencies'));
+  const projectedDependencies = { ...dependencies };
+  if (hasOwn(dependencies, V1_ASSISTANT_SDK)) {
+    if (ownValue(dependencies, V1_ASSISTANT_SDK) !== V1_ASSISTANT_SDK_RANGE) fail();
+    delete projectedDependencies[V1_ASSISTANT_SDK];
+  }
+  return projectR12BArchitectureScripts({
+    ...packageJson,
+    dependencies: projectedDependencies,
+    scripts: projectedScripts,
+    overrides: projectedOverrides,
+  });
 }
 
 function validatePackageGraph(
@@ -1026,6 +1049,8 @@ module.exports = {
   PINNED_PACKAGE_JSON_SHA256,
   PINNED_PACKAGE_LOCK_SHA256,
   R12B_PACKAGE_LOCK_SHA256,
+  R12C_PACKAGE_LOCK_SHA256,
+  V1_ASSISTANT_SDK_RANGE,
   R12A_ARCHITECTURE_SCRIPT,
   R12A_STANDALONE_SCRIPT,
   R12B_ARCHITECTURE_SCRIPT,

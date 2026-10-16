@@ -45,6 +45,7 @@ const smokeScripts = [
   ['smoke:phone-change', 'phone-change-smoke.js'],
   ['smoke:task-shift', 'task-shift-smoke.js'],
   ['smoke:plan-partner', 'plan-partner-smoke.js'],
+  ['smoke:assistant', 'assistant-smoke.js'],
   ['smoke:provider-dashboard', 'provider-dashboard-smoke.js'],
   ['smoke:ux-backend-support', 'ux-backend-support-smoke.js'],
   ['smoke:ux-c4-c7', 'ux-c4-c7-smoke.js'],

@@ -5,6 +5,7 @@ import type {
   ProviderService,
   ProviderServiceImage,
 } from '@prisma/client';
+import type { PriceGroup } from './market-prices';
 
 export const PROVIDER_READ_PORT = Symbol('PROVIDER_READ_PORT');
 
@@ -81,4 +82,10 @@ export interface ProviderReadPort {
     tx: Prisma.TransactionClient,
     userId: string,
   ): Promise<Provider | null>;
+  /**
+   * The market price ranges by city, category and currency (V1 checklist
+   * 4.12), only for groups several providers price in, so no single
+   * provider's price is readable.
+   */
+  listMarketPriceGroups(client: Prisma.TransactionClient): Promise<PriceGroup[]>;
 }

@@ -1,5 +1,6 @@
 import { Module } from "@nestjs/common";
 import { PrismaModule } from "../../../platform/database/prisma.module";
+import { AssistantQuotaService } from "../infrastructure/assistant-quota.service";
 import { IdentityAdminService } from "../infrastructure/identity-admin.service";
 import { IdentityRealtimeSessionService } from "../infrastructure/identity-realtime-session.service";
 import { IdentityUserPortService } from "../infrastructure/identity-user-port.service";
@@ -15,6 +16,9 @@ export const IDENTITY_REALTIME_SESSION_IMPLEMENTATION = Symbol(
 export const IDENTITY_ADMIN_IMPLEMENTATION = Symbol(
   "IDENTITY_ADMIN_IMPLEMENTATION",
 );
+export const ASSISTANT_QUOTA_IMPLEMENTATION = Symbol(
+  "ASSISTANT_QUOTA_IMPLEMENTATION",
+);
 
 @Module({
   imports: [PrismaModule],
@@ -22,6 +26,7 @@ export const IDENTITY_ADMIN_IMPLEMENTATION = Symbol(
     IdentityUserPortService,
     IdentityRealtimeSessionService,
     IdentityAdminService,
+    AssistantQuotaService,
     {
       provide: USER_READ_IMPLEMENTATION,
       useExisting: IdentityUserPortService,
@@ -42,6 +47,10 @@ export const IDENTITY_ADMIN_IMPLEMENTATION = Symbol(
       provide: IDENTITY_ADMIN_IMPLEMENTATION,
       useExisting: IdentityAdminService,
     },
+    {
+      provide: ASSISTANT_QUOTA_IMPLEMENTATION,
+      useExisting: AssistantQuotaService,
+    },
   ],
   exports: [
     IdentityUserPortService,
@@ -52,6 +61,7 @@ export const IDENTITY_ADMIN_IMPLEMENTATION = Symbol(
     PROVIDER_ACCOUNT_IMPLEMENTATION,
     IDENTITY_REALTIME_SESSION_IMPLEMENTATION,
     IDENTITY_ADMIN_IMPLEMENTATION,
+    ASSISTANT_QUOTA_IMPLEMENTATION,
   ],
 })
 export class IdentityUserInternalModule {}

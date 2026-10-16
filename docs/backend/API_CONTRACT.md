@@ -1387,6 +1387,37 @@ and must not be faked by clients.
 `responsiblePhone` is returned only to the plan owner or a member who can
 manage tasks. Read-only plan members receive `null` for that field.
 
+## Planning Assistant
+
+V1 checklist 4.12. Protected routes:
+
+- `GET /api/v1/wedding-plans/:weddingPlanId/assistant` returns
+  `{ enabled, allowed, dailyLimit, remainingToday }`. `enabled` is false until
+  the server has `ANTHROPIC_API_KEY` and a priced `AARAST_ASSISTANT_MODEL`;
+  `allowed` is true only for the plan's owner and partner (V1 checklist 4.10).
+- `POST /api/v1/wedding-plans/:weddingPlanId/assistant/questions` with
+  `{ kind, question?, consent }` returns `200 { kind, answer, declined,
+  marketDataAvailable, remainingToday }`. `kind` is one of `PLAN`,
+  `BUDGET_SPLIT`, `COMPARE_QUOTES`, `CHEAPER`, `FORGOTTEN`, `NEGOTIATION`,
+  `QUESTION` (`question`, at most 500 characters, is required for `QUESTION`).
+
+The server sends the model the plan as the asker sees it: plan basics, guest
+and task counts, open task titles, budget categories with allocated,
+committed and paid sums only with money permission (never another account's
+private costs or tasks), received quote offers only with provider
+permission, and market price ranges (three or more providers) in the plan's
+own city only. Names, phone numbers and notes of guests and contacts are not
+sent. The rules forbid inventing prices and treat the plan data as data, not
+instructions. Nothing asked or answered is stored; only counts and cost.
+
+Refusals: `400 ASSISTANT_CONSENT_REQUIRED` (`consent` is not `true`),
+`403 ASSISTANT_OWNER_OR_PARTNER_ONLY`, `429 ASSISTANT_DAILY_LIMIT`
+(`AARAST_ASSISTANT_DAILY_LIMIT`, default 10 a day), `503 ASSISTANT_DISABLED`,
+`503 ASSISTANT_BUDGET_EXHAUSTED` (the month's cost reached
+`AARAST_ASSISTANT_MONTHLY_BUDGET_USD`, default 30), `503 ASSISTANT_BUSY` and
+`503 ASSISTANT_UNAVAILABLE` (the model failed; the question is given back).
+A safety decline returns `declined: true` with an Arabic explanation.
+
 ## Timeline
 
 Protected route:
@@ -2852,6 +2883,8 @@ configuration, and smoke checks.
 | POST | `/api/v1/wedding-plans/:planId/funding-sources` | `funding-sources.create` | 🔒 |
 | PUT | `/api/v1/wedding-plans/:planId/money-budget` | `money-summary.replaceMoneyBudget` | 🔒 |
 | GET | `/api/v1/wedding-plans/:planId/money-summary` | `money-summary.getMoneySummary` | 🔒 |
+| GET | `/api/v1/wedding-plans/:weddingPlanId/assistant` | `assistant.status` | 🔒 |
+| POST | `/api/v1/wedding-plans/:weddingPlanId/assistant/questions` | `assistant.ask` | 🔒 |
 | GET | `/api/v1/wedding-plans/:weddingPlanId/budget-categories` | `budget-categories.findForPlan` | 🔒 |
 | POST | `/api/v1/wedding-plans/:weddingPlanId/budget-categories` | `budget-categories.create` | 🔒 |
 | GET | `/api/v1/wedding-plans/:weddingPlanId/contributions` | `contribution-history.list` | 🔒 |

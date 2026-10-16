@@ -4,7 +4,6 @@ import type {
   AdminListedProviderFields,
   AdminListing,
   AdminMarketplaceSuccessCounts,
-  AdminPricedService,
   AdminMarketplaceCounters,
   AdminMarketplaceReport,
   AdminPage,
@@ -22,6 +21,7 @@ import type {
   ProviderReviewDecision,
   ProviderVerification,
 } from '../public/marketplace-admin.port';
+import type { PricedService } from '../public/market-prices';
 import { MarketplaceAdminRepository } from '../infrastructure/marketplace-admin.repository';
 
 @Injectable()
@@ -104,7 +104,7 @@ export class MarketplaceAdminService implements MarketplaceAdminPort {
     return this.repository.getSuccessCounts(client, since);
   }
 
-  async listPricedServices(client: Prisma.TransactionClient): Promise<AdminPricedService[]> {
+  async listPricedServices(client: Prisma.TransactionClient): Promise<PricedService[]> {
     return this.repository.listPricedServices(client);
   }
 

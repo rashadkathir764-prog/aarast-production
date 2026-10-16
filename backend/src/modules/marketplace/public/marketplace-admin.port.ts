@@ -9,6 +9,7 @@ import type {
   QuoteRequestStatus,
   ReviewStatus,
 } from '@prisma/client';
+import type { PricedService } from './market-prices';
 
 export const MARKETPLACE_ADMIN_PORT = Symbol('MARKETPLACE_ADMIN_PORT');
 
@@ -171,15 +172,6 @@ export interface AdminMarketplaceSuccessCounts {
   visibleProviders: number;
 }
 
-/** One priced, active service of an active provider, for the price report. */
-export interface AdminPricedService {
-  providerId: string;
-  /** The service's own city, or the provider's. */
-  cityId: string;
-  categoryId: string;
-  currency: string;
-  basePrice: Prisma.Decimal;
-}
 
 /** How many providers and services reference a catalog entry. */
 export interface CatalogUsage {
@@ -306,7 +298,7 @@ export interface MarketplaceAdminPort {
     client: Prisma.TransactionClient,
     since: Date,
   ): Promise<AdminMarketplaceSuccessCounts>;
-  listPricedServices(client: Prisma.TransactionClient): Promise<AdminPricedService[]>;
+  listPricedServices(client: Prisma.TransactionClient): Promise<PricedService[]>;
   countCategoryUsage(
     client: Prisma.TransactionClient,
     categoryIds: readonly string[],

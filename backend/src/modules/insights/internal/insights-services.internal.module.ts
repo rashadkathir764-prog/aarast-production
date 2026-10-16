@@ -16,6 +16,9 @@ import { ProviderReadPublicModule } from '../../marketplace/public/provider-read
 import { QuoteReadPublicModule } from '../../marketplace/public/quote-read-public.module';
 import { PlanReadPublicModule } from '../../planning/public/plan-read-public.module';
 import { TasksPublicModule } from '../../tasks/public/tasks-public.module';
+import { AssistantQuotaPublicModule } from '../../identity/public/assistant-quota-public.module';
+import { AssistantRuntime } from '../../../dashboard/assistant/assistant-runtime';
+import { AssistantService } from '../../../dashboard/assistant/assistant.service';
 
 @Module({
   imports: [
@@ -25,6 +28,7 @@ import { TasksPublicModule } from '../../tasks/public/tasks-public.module';
     CollaborationScopePublicModule,
     NotificationsPublicModule,
     IdentityAuthPublicModule,
+    AssistantQuotaPublicModule,
     PlanReadPublicModule,
     TasksPublicModule,
     GuestsPublicModule,
@@ -34,7 +38,13 @@ import { TasksPublicModule } from '../../tasks/public/tasks-public.module';
     UserReadPublicModule,
     CatalogReadPublicModule,
   ],
-  providers: [InsightsReadPorts, DashboardService, TimelineService],
-  exports: [DashboardService, TimelineService],
+  providers: [
+    InsightsReadPorts,
+    DashboardService,
+    TimelineService,
+    AssistantRuntime,
+    AssistantService,
+  ],
+  exports: [DashboardService, TimelineService, AssistantService],
 })
 export class InsightsServicesInternalModule {}

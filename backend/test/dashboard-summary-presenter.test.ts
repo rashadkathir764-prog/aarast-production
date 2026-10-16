@@ -58,10 +58,11 @@ test('dashboard extraction keeps service wiring, import compatibility and size b
     /@nestjs|PrismaService|PermissionService|this\.prisma/,
   );
   // Insights owns no tables: the owners' ports the dashboard and timeline
-  // compose are held by the insights-private InsightsReadPorts provider.
+  // compose are held by the insights-private InsightsReadPorts provider,
+  // which the planning assistant (V1 checklist 4.12) composes as well.
   assert.match(
     moduleSource,
-    /providers:\s*\[InsightsReadPorts,\s*DashboardService,\s*TimelineService\]/,
+    /providers:\s*\[\s*InsightsReadPorts,\s*DashboardService,\s*TimelineService,\s*AssistantRuntime,\s*AssistantService,?\s*\]/,
   );
   assert.match(serviceSource, /private readonly owners: InsightsReadPorts/);
   assert.doesNotMatch(serviceSource, /tx\.[a-zA-Z]+\.(count|findMany|findFirst)\(/);

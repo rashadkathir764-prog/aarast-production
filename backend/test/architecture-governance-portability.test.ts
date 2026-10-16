@@ -412,11 +412,32 @@ describe('governance portability', () => {
     // History stays provable: the clone is checked out at the lineage commit,
     // where no closure record exists, and the lineage gates the record names
     // that need only the installed dependency surface run there unchanged
-    // (the lockfile is identical). The typecheck gate additionally needs the
-    // generated Prisma client, an install-time step this clone does not
+    // (every package the lineage lock installs is installed identically; an
+    // approved later lock may only add packages, as the planning assistant's
+    // SDK did in V1 checklist 4.12). The typecheck gate additionally needs
+    // the generated Prisma client, an install-time step this clone does not
     // perform; it is verified in the clean-room checkout, not here.
     const lineageCommit = (closure as { lineageCommit: string }).lineageCommit;
-    assert.equal(git(clone, ['diff', '--stat', lineageCommit, 'HEAD', '--', 'backend/package-lock.json']), '', 'the lineage commit shares the lock');
+    type LockPackages = Record<string, { version?: string; integrity?: string; resolved?: string }>;
+    const lockAt = (ref: string) =>
+      JSON.parse(git(clone, ['show', `${ref}:backend/package-lock.json`])) as { packages: LockPackages };
+    const lineageLock = lockAt(lineageCommit);
+    const headLock = lockAt('HEAD');
+    const security = require(path.join(clone, 'backend', 'scripts', 'security', 'prisma-config-merge-security.cjs'));
+    assert.ok(
+      security.PACKAGE_LOCK_LINEAGE.includes(security.fingerprintPlainJson(headLock)),
+      'the HEAD lock is an approved lock',
+    );
+    for (const [name, entry] of Object.entries(lineageLock.packages)) {
+      if (name === '') continue;
+      const head = headLock.packages[name];
+      assert.ok(head, `the HEAD lock still installs ${name}`);
+      assert.deepEqual(
+        { version: head.version, integrity: head.integrity, resolved: head.resolved },
+        { version: entry.version, integrity: entry.integrity, resolved: entry.resolved },
+        `${name} is installed exactly as at the lineage commit`,
+      );
+    }
     git(clone, ['checkout', '--quiet', '--detach', lineageCommit]);
     try {
       assert.equal(existsSync(path.join(clone, closureModule.CLOSURE_PATH)), false, 'the lineage commit predates the closure record');

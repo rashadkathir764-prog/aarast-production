@@ -5,6 +5,7 @@ import type {
   ConversationQuoteRequest,
   ExpiredPendingOffer,
   PlanQuoteCounters,
+  PlanQuoteOffer,
   QuoteOfferProviderRow,
   QuoteOfferWithRequest,
   QuoteReadPort,
@@ -106,6 +107,35 @@ export class QuoteReadService implements QuoteReadPort {
       }),
     ]);
     return { total, pending, received, accepted, closed };
+  }
+
+  async listPlanQuoteOffers(
+    client: Prisma.TransactionClient,
+    weddingPlanId: string,
+    take: number,
+  ): Promise<PlanQuoteOffer[]> {
+    const offers = await client.quoteOffer.findMany({
+      where: { quoteRequest: { weddingPlanId } },
+      include: {
+        quoteRequest: {
+          select: { service: { select: { title: true, categoryId: true } } },
+        },
+      },
+      orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+      take,
+    });
+    return offers.map((offer) => ({
+      offerId: offer.id,
+      quoteRequestId: offer.quoteRequestId,
+      providerId: offer.providerId,
+      serviceTitle: offer.quoteRequest.service?.title ?? null,
+      serviceCategoryId: offer.quoteRequest.service?.categoryId ?? null,
+      title: offer.title,
+      amount: offer.amount,
+      currency: offer.currency,
+      status: offer.status,
+      validUntil: offer.validUntil,
+    }));
   }
 
   async listExpiredPendingOffersForConversation(

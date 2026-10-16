@@ -69,9 +69,9 @@ import {
   CONVERSION_WINDOW_DAYS,
   average,
   daysAgo,
-  groupPrices,
   percent,
 } from './admin-success-report';
+import { groupPrices } from '../modules/marketplace/public/market-prices';
 import { AdminListedProviderDto } from './dto/admin-listed-provider.dto';
 import { AdminServiceDto, AdminServiceQueryDto } from './dto/admin-service.dto';
 import { AdminConversationReportQueryDto, AdminConversationReportStatusDto } from './dto/admin-conversation-report.dto';

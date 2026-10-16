@@ -90,6 +90,7 @@ model User {
   conversationEvents           ConversationEvent[]           @relation("ConversationEventActor")
   mediaUploadTickets           MediaUploadTicket[]
   contributorTenures           ContributorTenure[]           @relation("ContributorTenureActor")
+  assistantUsageDays           AssistantUsageDay[]
 }
 
 model AdminLoginChallenge {
@@ -165,6 +166,25 @@ model OtpDispatchQuota {
 
   @@id([scope, subjectHash])
   @@index([updatedAt])
+}
+
+// The planning assistant's quota (V1 checklist 4.12): how many questions an
+// account asked on a day and what they cost, so the daily limit and the
+// monthly spending cap hold. No question or answer text is stored. The rows
+// leave with the account.
+model AssistantUsageDay {
+  userId       String
+  day          DateTime @db.Date
+  requests     Int      @default(0)
+  inputTokens  Int      @default(0)
+  outputTokens Int      @default(0)
+  // Cost in millionths of a US dollar.
+  costMicroUsd BigInt   @default(0)
+  updatedAt    DateTime @updatedAt
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([userId, day])
+  @@index([day])
 }
 
 model OtpCode {

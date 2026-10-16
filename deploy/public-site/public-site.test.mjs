@@ -181,6 +181,11 @@ assert.match(privacyHtml, /صور الإيصالات/);
 assert.match(privacyHtml, /رد الضيف على دعوتك/);
 assert.match(privacyHtml, /تكلفة خاصة لا يراها الآخر/);
 assert.match(privacyHtml, /قفل التطبيق برمز/);
+// V1 checklist 4.12: what the assistant sends, to whom, and what it keeps.
+assert.match(privacyHtml, /المساعد الذكي/);
+assert.match(privacyHtml, /Claude من شركة Anthropic/);
+assert.match(privacyHtml, /لا نرسل أسماء ضيوفك ولا أرقام هواتف/);
+assert.match(privacyHtml, /لا نحفظ أسئلتك ولا الإجابات/);
 
 // V1 checklist 6.4: the download page draws the QR code of its own origin
 // with the vendored qrcode-generator 1.4.4 (MIT, npm integrity

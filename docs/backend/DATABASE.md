@@ -74,6 +74,7 @@ history, or product behavior.
 | AdminPasswordResetChallenge | Hashed, short-lived, one-time administrator password-recovery challenge bound to one exact OTP. It stores a token hash and HMAC phone digest, not the raw token or phone, and is invalidated on retry, expiry, failure ceiling, or success. |
 | LoginThrottle | Durable cross-replica password-attempt admission window keyed only by an HMAC-SHA-256 account-and-realm digest using a deployment-only pepper. Application and administrator realms are isolated. Each request reserves a slot under the row lock before password comparison; five admitted attempts lock one realm for fifteen minutes. Successful authentication/reset clears it, and one hourly advisory-lock cleanup removes expired/inactive rows. |
 | OtpDispatchQuota | Atomic cross-replica OTP delivery windows for phone, IP, and global scopes. Subjects are HMAC-SHA-256 digests; no raw phone or IP is persisted. Failed deliveries still consume quota and an hourly advisory-lock cleanup removes expired rows. |
+| AssistantUsageDay | The planning assistant's account quota (V1 checklist 4.12), owned by identity like the OTP quota: one row per account per local (Asia/Riyadh) day with the questions asked, tokens and cost in micro-dollars. A question is reserved in one `INSERT .. ON CONFLICT .. WHERE requests < limit` statement before the model is called and given back if the call fails; the monthly spending cap sums the cost column. No question or answer text is stored. Rows cascade with the user. |
 | MediaUploadTicket | Durable owner, purpose, declared/verified byte size, expiry, verification state, and consumption state for every signed upload. It enforces a rolling per-account quota and allows bounded cleanup of abandoned objects without trusting a client-supplied URL. |
 | Conversation | One provider relationship thread. `PLAN` is unique by WeddingPlan + Provider; `ACCOUNT` is unique by requester User + Provider. The row owns last activity, administrative close, and customer/provider-side block state. |
 | ConversationParticipant | Per-user joined/revoked, last-read, and personal mute state. It is not an authorization source; access is derived live from plan ownership, explicit provider-management permission, account request ownership, or the provider account. Send and mark-read lock and recheck the active row in the same serializable transaction; only an explicit permission grant may clear `revokedAt`. |
@@ -437,7 +438,7 @@ rewrite as permission to restore a removed live model.
 | --- | --- | --- |
 | `IdempotencyKey` | 10 | `id`, `userId`, `completedAt`, `expiresAt`, `createdAt` |
 | `AccountDeletionReceipt` | 2 | `deletedAt` |
-| `User` | 50 | `id`, `appPasswordConfiguredAt`, `phoneVerifiedAt`, `lastLoginAt`, `activeWeddingPlanId`, `onboardingCompletedAt`, `createdAt`, `updatedAt` |
+| `User` | 51 | `id`, `appPasswordConfiguredAt`, `phoneVerifiedAt`, `lastLoginAt`, `activeWeddingPlanId`, `onboardingCompletedAt`, `createdAt`, `updatedAt` |
 | `MediaUploadTicket` | 16 | `userId`, `expiresAt`, `verifiedAt`, `consumedAt`, `consumedById`, `deletedAt`, `createdAt`, `updatedAt` |
 | `AdminLoginChallenge` | 9 | `id`, `userId`, `otpId`, `expiresAt`, `consumedAt`, `createdAt` |
 | `AdminPasswordResetChallenge` | 13 | `id`, `userId`, `otpId`, `expiresAt`, `consumedAt`, `verifiedAt`, `createdAt` |
@@ -445,6 +446,7 @@ rewrite as permission to restore a removed live model.
 | `RefreshToken` | 9 | `id`, `userId`, `expiresAt`, `revokedAt`, `replacedById`, `createdAt` |
 | `LoginThrottle` | 5 | `windowStartedAt`, `updatedAt` |
 | `OtpDispatchQuota` | 5 | `windowStartedAt`, `updatedAt` |
+| `AssistantUsageDay` | 8 | `userId`, `updatedAt` |
 | `WeddingPlan` | 31 | `id`, `ownerUserId`, `onboardingCompletedAt`, `importMigrationId`, `createdAt`, `updatedAt` |
 | `BudgetCategory` | 9 | `id`, `weddingPlanId`, `createdAt`, `updatedAt` |
 | `WeddingCost` | 25 | `id`, `weddingPlanId`, `budgetCategoryId`, `providerId`, `quoteOfferId`, `privateToUserId`, `createdAt`, `updatedAt` |
@@ -494,5 +496,5 @@ rewrite as permission to restore a removed live model.
 | `ChatAttachment` | 7 | `id`, `messageId`, `createdAt` |
 | `ConversationReport` | 9 | `id`, `conversationId`, `reporterUserId`, `createdAt`, `updatedAt` |
 
-Total models: 58
+Total models: 59
 <!-- DOCS-SYNC:END -->

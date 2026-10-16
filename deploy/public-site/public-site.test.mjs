@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
@@ -169,8 +170,6 @@ for (const forbidden of ["localStorage", "sessionStorage", "document.cookie", "c
   assert.doesNotMatch(rsvpJs, new RegExp(forbidden.replace(".", "\\.")));
 }
 
-process.stdout.write("public-site source checks: PASS\n");
-
 // V1 checklist 6.3: the terms say plainly that no money moves through the
 // app and that providers are independent parties.
 assert.match(termsHtml, /لا يستلم أموالًا ولا يحوّلها ولا يقرض/);
@@ -182,3 +181,41 @@ assert.match(privacyHtml, /صور الإيصالات/);
 assert.match(privacyHtml, /رد الضيف على دعوتك/);
 assert.match(privacyHtml, /تكلفة خاصة لا يراها الآخر/);
 assert.match(privacyHtml, /قفل التطبيق برمز/);
+
+// V1 checklist 6.4: the download page draws the QR code of its own origin
+// with the vendored qrcode-generator 1.4.4 (MIT, npm integrity
+// sha512-HM7yY8O2…guuw==), kept byte-for-byte as published.
+const downloadHtml = read("download.html");
+const downloadJs = read("download.js");
+const qrLibrary = read("qrcode-generator.js").replaceAll("\r\n", "\n");
+for (const asset of ["download.html", "download.js", "qrcode-generator.js"]) {
+  const escaped = asset.replaceAll(".", "\\.");
+  assert.match(dockerfile, new RegExp(escaped), `${asset} must be copied explicitly.`);
+  assert.match(dockerignore, new RegExp(`^!${escaped}$`, "m"), `${asset} must be allowlisted.`);
+}
+assert.match(nginx, /location = \/download \{[\s\S]*?try_files \/download\.html =404;/);
+assert.match(nginx, /location = \/download\.js/);
+assert.match(nginx, /location = \/qrcode-generator\.js/);
+assert.equal(
+  createHash("sha256").update(qrLibrary).digest("hex"),
+  "18ae399f81182bc9de916e9c77b195df20cc58d6f2d55a62b085a299f1bf1780",
+  "qrcode-generator.js must stay the published 1.4.4 file.",
+);
+assert.match(downloadHtml, /<html lang="ar" dir="rtl">/);
+assert.doesNotMatch(downloadHtml, /<form/i);
+assert.doesNotMatch(
+  downloadHtml,
+  /<script(?![^>]*\bsrc=)[^>]*>[\s\S]*<\/script>/i,
+  "Inline scripts are forbidden by CSP.",
+);
+assert.match(downloadHtml, /<script src="\/qrcode-generator\.js" defer><\/script>\s*<script src="\/download\.js" defer><\/script>/);
+assert.match(downloadHtml, /play\.google\.com\/store\/apps\/details\?id=com\.aarast\.aarast_mobile/);
+assert.match(downloadHtml, /href="\/privacy"/);
+assert.match(downloadHtml, /href="\/terms"/);
+assert.match(downloadJs, /window\.location\.origin \+ "\/download"/);
+assert.doesNotMatch(downloadJs, /innerHTML|style=|setAttribute\("style"/, "CSP forbids inline styles.");
+for (const forbidden of ["localStorage", "sessionStorage", "document.cookie", "console.", "fetch("]) {
+  assert.doesNotMatch(downloadJs, new RegExp(forbidden.replace(/[.(]/g, "\\$&")));
+}
+
+process.stdout.write("public-site source checks: PASS\n");

@@ -16,6 +16,12 @@ files, or runtime secrets into the image.
 - `/healthz` - container health probe only.
 - `/privacy` and `/privacy/` - Arabic privacy policy.
 - `/support` and `/support/` - Arabic support and account-deletion guidance.
+- `/terms` and `/terms/` - Arabic terms of use.
+- `/download` and `/download/` - Arabic app download page. Its script draws a
+  QR code of the serving origin's `/download` with the vendored, unmodified
+  `qrcode-generator.js` 1.4.4 (MIT, Kazuhiko Arase); the source check pins the
+  file's hash. The Google Play button works once the store listing is live.
+- `/rsvp/:token` - a guest's personal RSVP page.
 - `/invites/:token` - generic participant-invite landing page.
 - `/invite-preview.png` - generic social preview used by the landing page.
 - `/.well-known/assetlinks.json` - Android App Link association for the signed
@@ -33,8 +39,8 @@ that certificate, this file must be updated before store rollout. Apple
 association remains fail-closed until a real Apple Team ID exists. The landing
 also keeps its explicit `aarast://` open-app button as a browser fallback.
 
-The privacy and support pages are static HTML/CSS with no JavaScript, forms,
-analytics, or third-party resources. The participant-invite route disables
+The privacy, terms and support pages are static HTML/CSS with no JavaScript,
+forms, analytics, or third-party resources. The participant-invite route disables
 access logs, browser caching, and search indexing. Its small first-party script
 keeps the token in memory for the current page lifetime and never writes it to
 browser storage, cookies, analytics, or console output.

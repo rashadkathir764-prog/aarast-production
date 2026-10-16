@@ -19,6 +19,9 @@ class AuthRepository implements SessionAuthTeardownPort {
 
   static const _otpDeliveryReceiveTimeout = Duration(seconds: 25);
 
+  /// How long a session refresh waits for the server's answer (Q15).
+  static const refreshReceiveTimeout = Duration(seconds: 30);
+
   final ApiClient _apiClient;
   final AuthStorage _authStorage;
 
@@ -282,9 +285,16 @@ class AuthRepository implements SessionAuthTeardownPort {
     );
     if (refreshToken == null || refreshToken.isEmpty) return false;
     try {
-      final json = await _apiClient.postJson('/api/v1/auth/refresh', {
-        'refreshToken': refreshToken,
-      });
+      // The server rotates the refresh token as soon as it accepts this
+      // request, and treats a second use of the old one as theft. If a slow
+      // network made the app stop waiting after the server rotated, the next
+      // refresh would end the session (field test Q15), so this request waits
+      // longer than ordinary reads.
+      final json = await _apiClient.postJsonWithReceiveTimeout(
+        '/api/v1/auth/refresh',
+        {'refreshToken': refreshToken},
+        receiveTimeout: refreshReceiveTimeout,
+      );
       final response = _parseAuthResponse(json, operation: 'refresh');
       return _authStorage.saveSessionIfEpoch(
         expectedEpoch: sessionEpoch,

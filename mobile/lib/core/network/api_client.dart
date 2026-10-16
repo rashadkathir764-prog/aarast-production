@@ -821,6 +821,18 @@ class ApiException implements Exception {
         'المهمة المشتركة لا تصبح خاصة. اختر "مهمة خاصة بي" عند إضافتها.',
       'TASK_PRIVATE_ASSIGNMENT' =>
         'المهمة الخاصة تبقى لك وحدك. شاركها مع الخطة أولًا ثم اختر المسؤول.',
+      // V1 checklist 4.12: the planning assistant.
+      'ASSISTANT_CONSENT_REQUIRED' =>
+        'وافق على إرسال بيانات خطتك للمساعد أولًا.',
+      'ASSISTANT_OWNER_OR_PARTNER_ONLY' =>
+        'المساعد متاح لصاحب الخطة وشريكه فقط.',
+      'ASSISTANT_DAILY_LIMIT' => 'انتهت أسئلة اليوم. عد غدًا.',
+      'ASSISTANT_DISABLED' => 'المساعد غير مفعّل بعد.',
+      'ASSISTANT_BUDGET_EXHAUSTED' =>
+        'المساعد متوقف مؤقتًا هذا الشهر. جرّب الشهر القادم.',
+      'ASSISTANT_BUSY' => 'المساعد مشغول الآن. حاول بعد قليل.',
+      'ASSISTANT_UNAVAILABLE' =>
+        'المساعد غير متاح الآن. حاول لاحقًا، وإن تكرر فتواصل مع الدعم.',
       'INVALID_CREDENTIALS' => 'تعذر تسجيل الدخول بهذه البيانات.',
       'OTP_DELIVERY_UNAVAILABLE' => aarastOtpDeliveryUnavailableMessage,
       'PHONE_VERIFICATION_REQUIRED' =>

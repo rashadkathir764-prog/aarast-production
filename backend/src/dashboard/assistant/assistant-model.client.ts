@@ -38,7 +38,8 @@ export class ClaudeAssistantModel implements AssistantModel {
   private readonly client: Anthropic;
 
   constructor(apiKey: string) {
-    this.client = new Anthropic({ apiKey, timeout: 60_000, maxRetries: 1 });
+    // One retry within 45 s each ends before the app stops waiting (100 s).
+    this.client = new Anthropic({ apiKey, timeout: 45_000, maxRetries: 1 });
   }
 
   async ask(request: AssistantModelRequest): Promise<AssistantModelReply> {

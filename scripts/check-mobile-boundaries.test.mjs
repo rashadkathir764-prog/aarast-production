@@ -1628,8 +1628,10 @@ const r19ProviderPortalApi = Object.freeze({
 // (V1 checklist 4.9, tracked in trackedPlanningBatchContracts), +2 for the
 // suggested tasks reading the plan persona from the account context and the
 // guest draft (field-test Q01), +1 for the provider's booking widgets reading
-// the marketplace owner API (V1 checklist 4.6).
-const r19LegalRecordCount = 178;
+// the marketplace owner API (V1 checklist 4.6), +1 for the planning
+// assistant reading the signed-in account from the auth owner API to keep
+// each account's consent (V1 checklist 4.12).
+const r19LegalRecordCount = 179;
 const trackedOwnerApiContracts = [
   {
     area: 'features/account_contexts',
@@ -2074,6 +2076,10 @@ const trackedOwnerApiContracts = [
       {
         uri: 'screens/my_wedding_plans_screen.dart',
         show: ['MyWeddingPlansScreen'],
+      },
+      {
+        uri: 'screens/plan_assistant_screen.dart',
+        show: ['PlanAssistantScreen'],
       },
       {
         uri: 'screens/plan_management_screen.dart',
@@ -3079,6 +3085,7 @@ const trackedCompositionRootContracts = [
           'CreateWeddingPlanScreen',
           'DashboardSummary',
           'MyWeddingPlansScreen',
+          'PlanAssistantScreen',
           'PlanCenterScreen',
           'WeddingPlanDashboardScreen',
         ],

@@ -293,6 +293,7 @@ void main() {
         'lib/features/wedding_plans/screens/create_wedding_plan_screen.dart',
         'lib/features/wedding_plans/screens/wedding_plan_dashboard_screen.dart',
         'lib/features/wedding_plans/screens/plan_management_screen.dart',
+        'lib/features/wedding_plans/screens/plan_assistant_screen.dart',
         'lib/features/finance/screens/money_overview_screen.dart',
         'lib/features/finance/screens/money_budget_screen.dart',
         'lib/features/finance/screens/budget_category_details_screen.dart',

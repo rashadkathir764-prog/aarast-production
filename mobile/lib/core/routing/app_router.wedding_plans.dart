@@ -28,6 +28,19 @@ List<RouteBase> _weddingPlanRoutes() => [
       );
     },
   ),
+  // The planning assistant (V1 checklist 4.12); the screen itself tells a
+  // reader who is not the owner or partner that it is not theirs.
+  GoRoute(
+    path: '/wedding-plans/:id/assistant',
+    builder: (context, state) {
+      final id = state.pathParameters['id'] ?? '';
+      return WeddingPlanContextGate(
+        weddingPlanId: id,
+        requiredAccess: WeddingPlanRouteAccess.viewPlan,
+        child: PlanAssistantScreen(weddingPlanId: id),
+      );
+    },
+  ),
   GoRoute(
     path: '/wedding-plans/:id/wedding-day',
     builder: (context, state) {

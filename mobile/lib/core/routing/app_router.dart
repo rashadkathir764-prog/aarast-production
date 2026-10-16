@@ -84,6 +84,7 @@ import '../../features/wedding_plans/wedding_plans_api.dart'
         CreateWeddingPlanScreen,
         DashboardSummary,
         MyWeddingPlansScreen,
+        PlanAssistantScreen,
         PlanCenterScreen,
         WeddingPlanDashboardScreen;
 import '../../features/welcome_gateway/welcome_gateway_api.dart'
@@ -207,6 +208,10 @@ class AppRouter {
 
   static String planCenter(String id) {
     return '/wedding-plans/$id/plan-center';
+  }
+
+  static String planAssistant(String id) {
+    return '/wedding-plans/$id/assistant';
   }
 
   static String money(String id) {

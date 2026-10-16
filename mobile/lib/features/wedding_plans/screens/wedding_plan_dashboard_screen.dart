@@ -19,6 +19,7 @@ import '../../sharing/sharing_api.dart' show SharedMember;
 import '../models/dashboard_summary.dart';
 import '../providers/dashboard_summary_provider.dart';
 import '../widgets/dashboard/aarast_dashboard_view.dart';
+import '../widgets/plan_assistant_entry.dart';
 
 class WeddingPlanDashboardScreen extends StatefulWidget {
   const WeddingPlanDashboardScreen({
@@ -252,6 +253,11 @@ class _WeddingPlanDashboardScreenState extends State<WeddingPlanDashboardScreen>
               userName: auth.user?.name ?? 'صاحب الخطة',
               avatarUrl: auth.user?.avatarUrl,
               personaHeadline: null,
+              // The assistant answers from the server; a device-only plan
+              // has nothing there to answer from.
+              assistantEntry: _isLocalGuestPlan
+                  ? null
+                  : PlanAssistantEntry(weddingPlanId: selectedPlanId),
               bottomPadding: bottomPadding,
               onNotifications: () =>
                   context.push(AppRouter.planNotifications(selectedPlanId)),

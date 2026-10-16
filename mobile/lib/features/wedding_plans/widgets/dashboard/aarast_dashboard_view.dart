@@ -40,6 +40,7 @@ class AarastDashboardView extends StatelessWidget {
     required this.onOpenImportantItem,
     this.personaHeadline,
     this.notice,
+    this.assistantEntry,
     this.now,
     super.key,
   });
@@ -50,6 +51,9 @@ class AarastDashboardView extends StatelessWidget {
   final double bottomPadding;
   final String? personaHeadline;
   final Widget? notice;
+
+  /// The planning assistant's door (V1 checklist 4.12), under the plan moment.
+  final Widget? assistantEntry;
   final DateTime? now;
   final VoidCallback onNotifications;
   final VoidCallback onProfile;
@@ -115,6 +119,7 @@ class AarastDashboardView extends StatelessWidget {
                         personaHeadline: personaHeadline,
                         onTap: onOpenPlan,
                       ),
+                      ?assistantEntry,
                       if (weddingDay.isVisible) ...[
                         const SizedBox(height: AppTheme.space10),
                         _WeddingDayEntry(

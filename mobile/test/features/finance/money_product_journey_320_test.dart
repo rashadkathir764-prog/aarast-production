@@ -425,7 +425,7 @@ void main() {
       await tester.pumpAndSettle();
 
       await _showPartyDisclosure(tester);
-      expect(find.text('مزود من أعرست'), findsOneWidget);
+      expect(find.text('مزود من اعّرست'), findsOneWidget);
       expect(find.text('قاعة السعادة'), findsWidgets);
       await _submitCostForm(tester, title: 'حجز القاعة', amount: '500000');
 

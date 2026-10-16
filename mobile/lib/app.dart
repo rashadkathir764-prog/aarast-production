@@ -69,7 +69,7 @@ class _AarastAppState extends State<AarastApp> {
 
     return AarastBuildErrorBoundary(
       child: MaterialApp.router(
-        title: 'أعرست',
+        title: 'اعّرست',
         debugShowCheckedModeBanner: false,
         locale: const Locale('ar'),
         supportedLocales: const [Locale('ar')],

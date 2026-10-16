@@ -8,7 +8,7 @@ void main() {
     final onboardingCompletedAt = DateTime.parse('2026-03-04T05:06:07.000Z');
     final user = SafeUser(
       id: 'user-123',
-      name: 'مستخدم أعرست',
+      name: 'مستخدم اعّرست',
       phone: '+967700000001',
       email: 'user@example.test',
       avatarUrl: 'https://example.test/avatar.webp',
@@ -28,7 +28,7 @@ void main() {
 
     expect(json, {
       'id': 'user-123',
-      'name': 'مستخدم أعرست',
+      'name': 'مستخدم اعّرست',
       'phone': '+967700000001',
       'email': 'user@example.test',
       'avatarUrl': 'https://example.test/avatar.webp',

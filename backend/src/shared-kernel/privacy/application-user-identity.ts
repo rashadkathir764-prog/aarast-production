@@ -26,7 +26,7 @@ export interface ApplicationAvatarSource extends ApplicationNameSource {
 export function applicationDisplayName(user: ApplicationNameSource): string {
   if (user.role !== UserRole.ADMIN) return user.name;
   const appName = user.appName?.trim();
-  return appName || "مستخدم أعرست";
+  return appName || "مستخدم اعّرست";
 }
 
 export function applicationDisplayAvatar(

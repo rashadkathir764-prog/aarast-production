@@ -272,7 +272,7 @@ void main() {
         );
         await tester.pumpAndSettle();
 
-        await tester.tap(find.byTooltip('إعادة إرسال الرابط من أعرست'));
+        await tester.tap(find.byTooltip('إعادة إرسال الرابط من اعّرست'));
         await tester.pumpAndSettle();
 
         expect(api.reissueCalls, 1);
@@ -350,7 +350,7 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      await tester.tap(find.byTooltip('إعادة إرسال الرابط من أعرست'));
+      await tester.tap(find.byTooltip('إعادة إرسال الرابط من اعّرست'));
       await tester.pumpAndSettle();
 
       expect(

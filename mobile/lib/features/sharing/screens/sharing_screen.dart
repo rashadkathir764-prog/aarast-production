@@ -241,7 +241,7 @@ class _SharingScreenState extends State<SharingScreen>
     if (reissued.wasDeliveredByAarast) {
       AarastToast.showSuccess(
         context,
-        'تم تسليم رابط دعوة جديد إلى واتساب من أعرست.',
+        'تم تسليم رابط دعوة جديد إلى واتساب من اعّرست.',
       );
       return;
     }
@@ -255,7 +255,7 @@ class _SharingScreenState extends State<SharingScreen>
         context,
         reissued.hasUncertainDelivery
             ? 'لم نتأكد من وصول واتساب. تم نسخ الرابط دون إرسال رسالة ثانية.'
-            : 'تعذر إرسال واتساب من أعرست، وتم نسخ الرابط كخيار احتياطي.',
+            : 'تعذر إرسال واتساب من اعّرست، وتم نسخ الرابط كخيار احتياطي.',
       );
     } catch (_) {
       if (!mounted) return;
@@ -637,7 +637,7 @@ class _PendingInviteCardState extends State<_PendingInviteCard> {
           IconButton(
             key: Key('pending-invite-reissue-${invite.id}'),
             tooltip: canRetry
-                ? 'إعادة إرسال الرابط من أعرست'
+                ? 'إعادة إرسال الرابط من اعّرست'
                 : 'إعادة الإرسال متاحة بعد انتهاء مهلة الحماية',
             onPressed: canRetry ? widget.onReissue : null,
             icon: const Icon(

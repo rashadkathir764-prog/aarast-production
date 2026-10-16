@@ -688,7 +688,7 @@ class _ReviewLine extends StatelessWidget {
               const SizedBox(width: 9),
               Expanded(
                 child: Text(
-                  review.userName ?? 'مستخدم أعرست',
+                  review.userName ?? 'مستخدم اعّرست',
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: Theme.of(context).textTheme.bodySmall?.copyWith(

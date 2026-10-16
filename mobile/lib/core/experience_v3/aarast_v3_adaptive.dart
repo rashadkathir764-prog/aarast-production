@@ -81,7 +81,7 @@ const _protectedStates = {
 abstract final class AarastV3ScreenCatalog {
   static const startup = AarastV3ScreenContract(
     id: 'startup',
-    location: 'بدء أعرست',
+    location: 'بدء اعّرست',
     purpose: 'استعادة الجلسة والمسار بأمان',
     archetype: AarastV3ScreenArchetype.utility,
     states: _protectedStates,
@@ -350,7 +350,7 @@ abstract final class AarastV3ScreenCatalog {
 
   static const unmapped = AarastV3ScreenContract(
     id: 'unmapped',
-    location: 'أعرست',
+    location: 'اعّرست',
     purpose: 'مسار غير مصنّف يحتاج مراجعة قبل الإطلاق',
     archetype: AarastV3ScreenArchetype.utility,
     states: _protectedStates,

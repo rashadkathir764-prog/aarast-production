@@ -1150,7 +1150,7 @@ test("an accepted legacy invite replaces its generated password and restores a d
       setPlanInvite,
     } = createHarness();
     const legacy = await addUser("+967777123456", true);
-    legacy.name = "مشارك أعرست";
+    legacy.name = "مشارك اعّرست";
     legacy.passwordHash = await bcryptjs.hash("unreachable-random-secret", 4);
     legacy.appPasswordConfiguredAt = null;
     addSharedMember("plan-legacy", legacy.id);

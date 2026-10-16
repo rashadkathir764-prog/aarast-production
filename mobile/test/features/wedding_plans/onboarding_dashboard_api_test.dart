@@ -269,7 +269,7 @@ void main() {
           (_) => {
             ..._dashboardSummaryJson(),
             'weddingDate': '2026-08-09T18:30:00.000Z',
-            'location': {'city': 'صنعاء', 'venue': 'قاعة أعرست'},
+            'location': {'city': 'صنعاء', 'venue': 'قاعة اعّرست'},
             'planProviders': [
               {
                 'id': 'plan-provider-1',
@@ -314,7 +314,7 @@ void main() {
         ).getDashboardSummary('plan-1');
 
         expect(summary.weddingDate?.hour, 18);
-        expect(summary.location?['venue'], 'قاعة أعرست');
+        expect(summary.location?['venue'], 'قاعة اعّرست');
         expect(summary.planProviders.single.businessName, 'استديو النور');
         expect(summary.permissions.canManageTasks, isTrue);
         expect(offline.state.name, 'offline');

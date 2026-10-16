@@ -15,7 +15,7 @@ void main() {
       await dashboard.loadDashboard();
 
       expect(dashboard.hasProviderProfile, isTrue);
-      expect(dashboard.profile?.businessName, 'استديو أعرست');
+      expect(dashboard.profile?.businessName, 'استديو اعّرست');
       expect(dashboard.profile?.reviewNote, 'أكمل صور الهوية.');
       expect(dashboard.canUseProviderOperations, isFalse);
       expect(api.operationalCalls, 0);
@@ -109,7 +109,7 @@ class _ProviderDashboardApiFake extends ProviderDashboardApi {
   Future<ProviderDashboardProfile> getProfile() async {
     return ProviderDashboardProfile(
       id: 'provider-1',
-      businessName: 'استديو أعرست',
+      businessName: 'استديو اعّرست',
       status: status,
       ratingAverage: 5,
       ratingCount: 1,

@@ -231,7 +231,7 @@ class _ProviderReviewsSection extends StatelessWidget {
                         child: Text(
                           review.userName?.trim().isNotEmpty == true
                               ? review.userName!.trim()
-                              : 'عميل أعرست',
+                              : 'عميل اعّرست',
                           style: const TextStyle(
                             color: AppTheme.textPrimary,
                             fontWeight: FontWeight.w900,

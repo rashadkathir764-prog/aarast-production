@@ -31,6 +31,7 @@
 - `/shared/wedding-plans`
 - `/support`
 - `/wedding-plans`
+- `/wedding-plans/:id/assistant`
 - `/wedding-plans/:id/contributions`
 - `/wedding-plans/:id/dashboard`
 - `/wedding-plans/:id/guests`
@@ -66,4 +67,4 @@
 - `/wedding-plans/create`
 - `/welcome`
 
-Total: 65 unique routes
+Total: 66 unique routes

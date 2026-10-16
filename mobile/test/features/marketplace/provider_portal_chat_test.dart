@@ -246,7 +246,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('الرئيسية'), findsOneWidget);
-    expect(find.text('استديو أعرست'), findsOneWidget);
+    expect(find.text('استديو اعّرست'), findsOneWidget);
     expect(tester.takeException(), isNull);
 
     await tester.tap(find.bySemanticsLabel('الطلبات'));
@@ -323,7 +323,7 @@ class _FakeProviderDashboardProvider extends ProviderDashboardProvider {
   @override
   ProviderDashboardProfile? get profile => const ProviderDashboardProfile(
     id: 'provider-1',
-    businessName: 'استديو أعرست',
+    businessName: 'استديو اعّرست',
     status: 'ACTIVE',
     ratingAverage: 4.8,
     ratingCount: 12,

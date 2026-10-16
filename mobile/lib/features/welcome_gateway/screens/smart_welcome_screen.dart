@@ -650,7 +650,7 @@ class _WelcomeHeroContent {
     return switch (step) {
       _WelcomeStep.pathSelection => const _WelcomeHeroContent(
         eyebrow: 'مرحبًا بك',
-        title: 'أعرست',
+        title: 'اعّرست',
         message: 'اختر المسار المناسب لك',
       ),
       _WelcomeStep.roleSelection => const _WelcomeHeroContent(

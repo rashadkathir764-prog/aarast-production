@@ -69,7 +69,7 @@ void main() {
       final received = controller.foregroundNotifications.first;
       gateway.foreground.add(
         const PushForegroundNotification(
-          title: 'أعرست',
+          title: 'اعّرست',
           message: 'لديك تحديث جديد.',
         ),
       );
@@ -78,7 +78,7 @@ void main() {
         received,
         completion(
           isA<PushForegroundNotification>()
-              .having((value) => value.title, 'title', 'أعرست')
+              .having((value) => value.title, 'title', 'اعّرست')
               .having((value) => value.message, 'message', 'لديك تحديث جديد.'),
         ),
       );

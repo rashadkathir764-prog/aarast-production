@@ -437,7 +437,7 @@ class _FakeProviderDashboardProvider extends ProviderDashboardProvider {
 
 const _providerProfile = ProviderDashboardProfile(
   id: 'provider-1',
-  businessName: 'استديو أعرست للتصوير والتوثيق وصناعة الذكريات الجميلة',
+  businessName: 'استديو اعّرست للتصوير والتوثيق وصناعة الذكريات الجميلة',
   status: 'ACTIVE',
   ratingAverage: 4.8,
   ratingCount: 12,

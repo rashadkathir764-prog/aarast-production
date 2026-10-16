@@ -64,7 +64,7 @@ export function Sidebar({
           <ShieldCheck size={22} strokeWidth={1.8} />
         </span>
         <div>
-          <strong>أعرست</strong>
+          <strong>اعّرست</strong>
           <span>لوحة الإدارة</span>
         </div>
         <button

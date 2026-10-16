@@ -250,14 +250,14 @@ export function LoginPage() {
 
   return (
     <main className="login-page">
-      <section className="login-shell" aria-label="تسجيل دخول إدارة أعّرست">
+      <section className="login-shell" aria-label="تسجيل دخول إدارة اعّرست">
         <aside className="login-context" aria-labelledby="admin-login-context-title">
           <div className="login-context__brand">
             <span className="login-context__mark" aria-hidden="true">
               <ShieldCheck size={20} strokeWidth={1.9} />
             </span>
             <div>
-              <strong>أعّرست</strong>
+              <strong>اعّرست</strong>
               <span>إدارة المنصة</span>
             </div>
           </div>

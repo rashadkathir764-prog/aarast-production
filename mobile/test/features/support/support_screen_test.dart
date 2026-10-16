@@ -42,7 +42,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('الدعم والمساعدة'), findsOneWidget);
-    expect(find.text('إرشادات آمنة وحلول سريعة داخل أعرست'), findsOneWidget);
+    expect(find.text('إرشادات آمنة وحلول سريعة داخل اعّرست'), findsOneWidget);
     expect(find.textContaining('قناة الدعم ستظهر هنا'), findsNothing);
     expect(find.textContaining('تجهيز هادئ قبل الإطلاق'), findsNothing);
     expect(find.text('فتح الإعدادات'), findsOneWidget);

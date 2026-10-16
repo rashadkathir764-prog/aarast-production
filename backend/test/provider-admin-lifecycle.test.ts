@@ -51,7 +51,7 @@ test('provider administration actions follow the lifecycle matrix', () => {
 
 test('provider lifecycle notification preserves the administration note', () => {
   const result = switchProviderStatusNotification(
-    'استديو أعرست',
+    'استديو اعّرست',
     ProviderStatus.NEEDS_CHANGES,
     'أكمل صور الهوية التجارية.',
   );

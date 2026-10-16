@@ -17,7 +17,7 @@ export function switchProviderStatusNotification(
         title: 'مطلوب تعديل ملف المزوّد',
         body:
           reviewNote ??
-          `راجع بيانات ${name} وحدّثها وفق ملاحظات فريق أعرست.`,
+          `راجع بيانات ${name} وحدّثها وفق ملاحظات فريق اعّرست.`,
       };
     case ProviderStatus.REJECTED:
       return {
@@ -36,7 +36,7 @@ export function switchProviderStatusNotification(
     case ProviderStatus.PENDING:
       return {
         title: 'طلب المزوّد قيد المراجعة',
-        body: `يجري فريق أعرست مراجعة بيانات ${name}.`,
+        body: `يجري فريق اعّرست مراجعة بيانات ${name}.`,
       };
   }
 }

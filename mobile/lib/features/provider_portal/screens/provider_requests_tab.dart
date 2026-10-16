@@ -40,7 +40,7 @@ class _ProviderRequestsTabState extends State<ProviderRequestsTab> {
         children: [
           const AarastSectionHeader(
             title: 'طلبات الأسعار',
-            subtitle: 'راجع الطلب، أرسل عرضك، ثم ناقش التفاصيل داخل أعرست.',
+            subtitle: 'راجع الطلب، أرسل عرضك، ثم ناقش التفاصيل داخل اعّرست.',
             icon: LucideIcons.mailQuestion,
           ),
           const SizedBox(height: 14),

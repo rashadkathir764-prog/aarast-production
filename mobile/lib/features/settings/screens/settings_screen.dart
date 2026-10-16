@@ -73,7 +73,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         child: ListView(
           children: [
             _AccountCard(
-              name: auth.user?.name ?? 'مستخدم أعرست',
+              name: auth.user?.name ?? 'مستخدم اعّرست',
               phone: auth.user?.phone,
               email: auth.user?.email,
             ),
@@ -175,7 +175,7 @@ class _AccountCard extends StatelessWidget {
               ? null
               : email?.trim().isNotEmpty == true
               ? email!.trim()
-              : 'حساب أعرست',
+              : 'حساب اعّرست',
           details: phone?.trim().isNotEmpty == true
               ? AarastPhoneText(
                   phone: phone!,

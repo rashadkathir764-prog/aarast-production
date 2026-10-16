@@ -128,7 +128,7 @@ class _ProviderApplyScreenState extends State<ProviderApplyScreen> {
             ProviderClaimCard(dashboard: dashboard)
           else ...[
             const AarastV3FocusPrompt(
-              question: 'ما النشاط الذي تريد عرضه في أعرست؟',
+              question: 'ما النشاط الذي تريد عرضه في اعّرست؟',
               supportingText:
                   'أدخل بيانات النشاط الحقيقية للمراجعة؛ الإرسال لا يعني قبولًا أو حجزًا مؤكدًا.',
               icon: LucideIcons.store,

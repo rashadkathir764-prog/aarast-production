@@ -23,7 +23,7 @@ class SupportScreen extends StatelessWidget {
         devicePushAvailableOverride ?? _maybeDevicePushAvailable(context);
     return AarastPageScaffold(
       title: 'الدعم والمساعدة',
-      subtitle: 'إرشادات آمنة وحلول سريعة داخل أعرست',
+      subtitle: 'إرشادات آمنة وحلول سريعة داخل اعّرست',
       showBack: true,
       child: ListView(
         children: AarastStagger.children(context, [
@@ -463,7 +463,7 @@ class _SupportBoundaryCard extends StatelessWidget {
           ),
           const SizedBox(height: 8),
           const _BoundaryLine(
-            text: 'أعرست لا يدير مدفوعات أو عربون أو حجز مؤكد داخل هذه النسخة.',
+            text: 'اعّرست لا يدير مدفوعات أو عربون أو حجز مؤكد داخل هذه النسخة.',
           ),
           const _BoundaryLine(
             text:

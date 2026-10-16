@@ -44,7 +44,7 @@ class _ProfileMediaApiClient extends ApiClient {
     return {
       'id': 'provider-1',
       'userId': 'user-1',
-      'businessName': 'قاعة أعرست',
+      'businessName': 'قاعة اعّرست',
       'status': 'APPROVED',
       'isVerified': true,
       'logoUrl': data['logoUrl'],

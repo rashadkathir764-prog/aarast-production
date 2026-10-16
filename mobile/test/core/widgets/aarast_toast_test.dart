@@ -114,7 +114,7 @@ void main() {
             builder: (context) => TextButton(
               onPressed: () => AarastToast.showNotification(
                 context,
-                title: 'أعرست',
+                title: 'اعّرست',
                 message: 'لديك تحديث جديد في الخطة.',
               ),
               child: const Text('إشعار'),
@@ -127,7 +127,7 @@ void main() {
     await tester.tap(find.text('إشعار'));
     await tester.pump(const Duration(milliseconds: 220));
 
-    expect(find.text('أعرست'), findsOneWidget);
+    expect(find.text('اعّرست'), findsOneWidget);
     expect(find.text('لديك تحديث جديد في الخطة.'), findsOneWidget);
     expect(find.byKey(const Key('aarast-top-toast')), findsOneWidget);
   });

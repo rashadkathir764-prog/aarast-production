@@ -19,7 +19,7 @@ class MainActivity : FlutterActivity() {
         val manager = getSystemService(NotificationManager::class.java)
         val channel = NotificationChannel(
             "aarast_updates",
-            "رسائل ومهام أعّرست",
+            "رسائل ومهام اعّرست",
             NotificationManager.IMPORTANCE_HIGH,
         ).apply {
             description = "إشعارات الرسائل الجديدة وتحديثات المهام"

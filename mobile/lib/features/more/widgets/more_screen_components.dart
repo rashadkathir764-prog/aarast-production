@@ -184,7 +184,7 @@ class MoreProfileCard extends StatelessWidget {
                       )
                     else
                       Text(
-                        'حساب أعرست',
+                        'حساب اعّرست',
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: Theme.of(context).textTheme.labelMedium
@@ -480,7 +480,7 @@ class MoreVersionFooter extends StatelessWidget {
       child: Column(
         children: [
           Text(
-            'أعرست',
+            'اعّرست',
             style: Theme.of(context).textTheme.labelLarge?.copyWith(
               color: AppTheme.textSecondary,
               fontWeight: FontWeight.w900,

@@ -40,7 +40,7 @@ const page = `<!doctype html>
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>ربط واتساب - أعرست</title>
+  <title>ربط واتساب - اعّرست</title>
   <style>
     body{margin:0;background:#0f1115;color:#fff;font-family:system-ui,sans-serif;display:grid;min-height:100vh;place-items:center}
     main{width:min(92vw,520px);text-align:center;background:#191c22;border:1px solid #303640;border-radius:24px;padding:28px;box-sizing:border-box}

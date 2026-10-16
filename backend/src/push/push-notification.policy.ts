@@ -24,33 +24,33 @@ export function pushNotificationCopy(type: NotificationType): {
     case NotificationType.TASK_ASSIGNED:
       return {
         title: "مهمة جديدة",
-        body: "تم إسناد مهمة جديدة إليك. افتح أعّرست لعرض التفاصيل.",
+        body: "تم إسناد مهمة جديدة إليك. افتح اعّرست لعرض التفاصيل.",
       };
     case NotificationType.TASK_DUE_SOON:
     case NotificationType.TASK_OVERDUE:
       return {
         title: "تذكير بمهمة",
-        body: "لديك تحديث جديد على مهام الخطة. افتح أعّرست للمتابعة.",
+        body: "لديك تحديث جديد على مهام الخطة. افتح اعّرست للمتابعة.",
       };
     case NotificationType.CHAT_MESSAGE_RECEIVED:
       return {
         title: "رسالة جديدة",
-        body: "لديك رسالة جديدة. افتح أعّرست لقراءتها.",
+        body: "لديك رسالة جديدة. افتح اعّرست لقراءتها.",
       };
     case NotificationType.WEDDING_COUNTDOWN:
       return {
         title: "العد التنازلي للعرس",
-        body: "موعد العرس يقترب. افتح أعّرست لمراجعة ما تبقى.",
+        body: "موعد العرس يقترب. افتح اعّرست لمراجعة ما تبقى.",
       };
     case NotificationType.QUOTE_OFFER_RECEIVED:
       return {
         title: "وصل عرض سعر",
-        body: "وصلك عرض سعر جديد. افتح أعّرست لمراجعته.",
+        body: "وصلك عرض سعر جديد. افتح اعّرست لمراجعته.",
       };
     case NotificationType.BOOKING_UPDATED:
       return {
         title: "تحديث على حجز",
-        body: "لديك تحديث على حجز. افتح أعّرست لعرض التفاصيل.",
+        body: "لديك تحديث على حجز. افتح اعّرست لعرض التفاصيل.",
       };
     default:
       throw new Error("UnsupportedPushNotificationType");

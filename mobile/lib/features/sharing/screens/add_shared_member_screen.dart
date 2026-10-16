@@ -111,7 +111,7 @@ class _AddSharedMemberScreenState extends State<AddSharedMemberScreen> {
         subtitle: createdInvite == null
             ? 'ابحث بالرقم ثم اختر الدور — الصلاحيات تُضبط تلقائيًا.'
             : createdInvite.wasDeliveredByAarast
-            ? 'سلّم أعرست رابط الدعوة عبر واتساب. العضوية بانتظار التحقق.'
+            ? 'سلّم اعّرست رابط الدعوة عبر واتساب. العضوية بانتظار التحقق.'
             : createdInvite.hasUncertainDelivery
             ? canRetryDelivery
                   ? 'تم حفظ الدعوة، لكن لم نتأكد من وصول واتساب. يمكنك إعادة المحاولة الآن.'
@@ -285,13 +285,13 @@ class _AddSharedMemberScreenState extends State<AddSharedMemberScreen> {
     if (reissued.wasDeliveredByAarast) {
       AarastToast.showSuccess(
         context,
-        'تم تسليم رابط المشاركة إلى واتساب من أعرست.',
+        'تم تسليم رابط المشاركة إلى واتساب من اعّرست.',
       );
     } else {
       _showError(
         reissued.hasUncertainDelivery
             ? 'لم نتأكد من وصول الرابط. لا تكرر الإرسال الآن؛ انسخ الرابط كخيار آمن.'
-            : 'تعذر إرسال الرابط من أعرست. يمكنك نسخه وإرساله يدويًا.',
+            : 'تعذر إرسال الرابط من اعّرست. يمكنك نسخه وإرساله يدويًا.',
       );
     }
   }
@@ -720,7 +720,7 @@ class _InviteCreatedView extends StatelessWidget {
           AarastButton(
             key: const Key('invite-retry-delivery'),
             label: canRetryDelivery
-                ? 'إعادة الإرسال من أعرست'
+                ? 'إعادة الإرسال من اعّرست'
                 : 'إعادة الإرسال متاحة بعد انتهاء مهلة الحماية',
             icon: LucideIcons.refreshCw,
             isLoading: isRetrying,
@@ -813,7 +813,7 @@ class _FoundUserStrip extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  user.name.trim().isEmpty ? 'عضو أعرست' : user.name,
+                  user.name.trim().isEmpty ? 'عضو اعّرست' : user.name,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: textTheme.titleSmall?.copyWith(

@@ -366,7 +366,7 @@ mixin _FinanceCostsApi on _FinanceApiCore {
     if (_nullableTrimmed(providerId) != null &&
         _nullableTrimmed(partyName) != null) {
       throw const ApiException(
-        'اختر مزودًا من أعرست أو جهة خارجية، وليس كليهما.',
+        'اختر مزودًا من اعّرست أو جهة خارجية، وليس كليهما.',
       );
     }
   }

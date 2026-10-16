@@ -43,7 +43,7 @@ class _MoreScreenState extends State<MoreScreen> {
     final selectedContext = accountContexts?.selectedContext;
     final user = auth.user;
     final hasAccount = auth.status == AuthStatus.authenticated && user != null;
-    final name = user?.name ?? 'مستخدم أعرست';
+    final name = user?.name ?? 'مستخدم اعّرست';
     final phone = user?.phone;
 
     return AarastScreenFrame(

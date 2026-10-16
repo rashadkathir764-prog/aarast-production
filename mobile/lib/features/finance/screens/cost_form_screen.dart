@@ -421,7 +421,7 @@ class _CostFormScreenState extends State<CostFormScreen> {
               subtitle: _partyKind == _PartyKind.none
                   ? 'بدون مزود حالياً'
                   : _partyKind == _PartyKind.provider
-                  ? (_providerName ?? 'مزود من أعرست')
+                  ? (_providerName ?? 'مزود من اعّرست')
                   : (_partyNameController.text.trim().isEmpty
                         ? 'مزود خارجي'
                         : _partyNameController.text.trim()),
@@ -439,7 +439,7 @@ class _CostFormScreenState extends State<CostFormScreen> {
                       ),
                       ButtonSegment(
                         value: _PartyKind.provider,
-                        label: Text('مزود من أعرست'),
+                        label: Text('مزود من اعّرست'),
                         icon: Icon(LucideIcons.store),
                       ),
                       ButtonSegment(
@@ -471,7 +471,7 @@ class _CostFormScreenState extends State<CostFormScreen> {
                       icon: const Icon(LucideIcons.search),
                       label: Text(
                         _providerName == null
-                            ? 'اختيار مزود من أعرست'
+                            ? 'اختيار مزود من اعّرست'
                             : _providerName!,
                         overflow: TextOverflow.ellipsis,
                       ),
@@ -687,7 +687,7 @@ class _CostFormScreenState extends State<CostFormScreen> {
     if (!_formKey.currentState!.validate()) return;
     if (_categoryId == null) return;
     if (_partyKind == _PartyKind.provider && _providerId == null) {
-      AarastToast.showInfo(context, 'اختر مزودًا من أعرست.');
+      AarastToast.showInfo(context, 'اختر مزودًا من اعّرست.');
       return;
     }
     final provider = context.read<FinanceProvider>();
@@ -1077,7 +1077,7 @@ class _ProviderPickerState extends State<_ProviderPicker> {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               Text(
-                'اختيار مزود من أعرست',
+                'اختيار مزود من اعّرست',
                 style: Theme.of(
                   context,
                 ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w900),

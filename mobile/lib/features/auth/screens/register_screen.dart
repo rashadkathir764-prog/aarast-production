@@ -328,7 +328,7 @@ class _RegisterNarrative extends StatelessWidget {
             const SizedBox(width: AarastV3Space.x2),
             Expanded(
               child: Text(
-                providerMode ? 'بوابة المزوّد' : 'حسابك في أعرست',
+                providerMode ? 'بوابة المزوّد' : 'حسابك في اعّرست',
                 style: AarastV3Type.label(context).copyWith(color: accent),
               ),
             ),

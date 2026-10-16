@@ -15,7 +15,7 @@ void main() {
       MaterialApp(
         theme: AppTheme.light(),
         home: const AarastPageScaffold(
-          title: 'أعرست',
+          title: 'اعّرست',
           subtitle: 'نظام تصميم موحد',
           child: Center(child: Text('محتوى الشاشة')),
         ),
@@ -24,7 +24,7 @@ void main() {
 
     await tester.pump(const Duration(milliseconds: 350));
 
-    expect(find.text('أعرست'), findsOneWidget);
+    expect(find.text('اعّرست'), findsOneWidget);
     expect(find.text('نظام تصميم موحد'), findsOneWidget);
     expect(find.text('محتوى الشاشة'), findsOneWidget);
     expect(tester.takeException(), isNull);

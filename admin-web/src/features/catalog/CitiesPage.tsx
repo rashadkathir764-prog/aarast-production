@@ -104,7 +104,7 @@ export function CitiesPage() {
         eyebrow="المدن"
         icon="⌖"
         title="إدارة المدن اليمنية"
-        description="إدارة المدن المتاحة للموردين والخدمات داخل أعرست."
+        description="إدارة المدن المتاحة للموردين والخدمات داخل اعّرست."
         meta={<span>{items.length} مدينة</span>}
       />
 

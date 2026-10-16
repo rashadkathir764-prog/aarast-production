@@ -17,7 +17,7 @@ RUN if [ "$AARAST_GIT_REVISION" != "development-unversioned" ]; then \
 
 LABEL org.opencontainers.image.revision="${AARAST_GIT_REVISION}"
 
-COPY invite.html invite.js invite.css invite-preview.png privacy.html support.html public.css assetlinks.json rsvp.html rsvp.js rsvp.css /usr/share/nginx/html/
+COPY invite.html invite.js invite.css invite-preview.png privacy.html terms.html support.html public.css assetlinks.json rsvp.html rsvp.js rsvp.css /usr/share/nginx/html/
 COPY nginx.conf /etc/nginx/conf.d/default.conf
 
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \

@@ -47,6 +47,9 @@ void main() {
     expect(find.textContaining('تجهيز هادئ قبل الإطلاق'), findsNothing);
     expect(find.text('فتح الإعدادات'), findsOneWidget);
     expect(find.text('فتح التنبيهات'), findsOneWidget);
+    // V1 checklist 6.3: the published policy and terms are one tap away.
+    expect(find.byKey(const Key('support-privacy-link')), findsOneWidget);
+    expect(find.byKey(const Key('support-terms-link')), findsOneWidget);
     expect(find.text('حلول سريعة'), findsOneWidget);
     expect(find.text('لماذا لا تصلني التنبيهات؟'), findsOneWidget);
     await tester.tap(find.text('لماذا لا تصلني التنبيهات؟'));
@@ -75,7 +78,11 @@ void main() {
     );
     expect(find.text('حدود الدعم في هذه النسخة'), findsOneWidget);
 
-    await tester.ensureVisible(find.text('فتح الإعدادات'));
+    await tester.scrollUntilVisible(
+      find.text('فتح الإعدادات'),
+      -280,
+      scrollable: find.byType(Scrollable).first,
+    );
     await tester.pumpAndSettle();
     await tester.tap(find.text('فتح الإعدادات'));
     await tester.pumpAndSettle();

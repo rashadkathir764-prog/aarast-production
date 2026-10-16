@@ -13,6 +13,7 @@ const inviteHtml = read("invite.html");
 const inviteJs = read("invite.js");
 const privacyHtml = read("privacy.html");
 const supportHtml = read("support.html");
+const termsHtml = read("terms.html");
 const publicCss = read("public.css");
 const assetLinks = JSON.parse(read("assetlinks.json"));
 const rsvpHtml = read("rsvp.html");
@@ -32,6 +33,7 @@ for (const asset of [
   "invite.css",
   "invite-preview.png",
   "privacy.html",
+  "terms.html",
   "support.html",
   "public.css",
   "assetlinks.json",
@@ -52,6 +54,8 @@ assert.match(nginx, /location = \/privacy/);
 assert.match(nginx, /location = \/support/);
 assert.match(nginx, /try_files \/privacy\.html =404;/);
 assert.match(nginx, /try_files \/support\.html =404;/);
+assert.match(nginx, /location = \/terms/);
+assert.match(nginx, /try_files \/terms\.html =404;/);
 assert.match(nginx, /location = \/public\.css/);
 assert.match(nginx, /add_header_inherit merge;/);
 assert.match(nginx, /location \/\s*\{\s*return 404;/);
@@ -115,6 +119,7 @@ for (const forbidden of [
 for (const [name, html] of [
   ["privacy", privacyHtml],
   ["support", supportHtml],
+  ["terms", termsHtml],
 ]) {
   assert.match(html, /<html lang="ar" dir="rtl">/, `${name} must be Arabic RTL.`);
   assert.match(html, /<link rel="stylesheet" href="\/public\.css">/);
@@ -165,3 +170,15 @@ for (const forbidden of ["localStorage", "sessionStorage", "document.cookie", "c
 }
 
 process.stdout.write("public-site source checks: PASS\n");
+
+// V1 checklist 6.3: the terms say plainly that no money moves through the
+// app and that providers are independent parties.
+assert.match(termsHtml, /لا يستلم أموالًا ولا يحوّلها ولا يقرض/);
+assert.match(termsHtml, /أطراف مستقلة/);
+assert.match(termsHtml, /href="\/privacy"/);
+assert.match(supportHtml, /href="\/terms"/);
+// The privacy policy covers the V1 additions.
+assert.match(privacyHtml, /صور الإيصالات/);
+assert.match(privacyHtml, /رد الضيف على دعوتك/);
+assert.match(privacyHtml, /تكلفة خاصة لا يراها الآخر/);
+assert.match(privacyHtml, /قفل التطبيق برمز/);

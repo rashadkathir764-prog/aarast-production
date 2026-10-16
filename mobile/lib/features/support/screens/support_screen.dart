@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../../core/diagnostics/diagnostic_report_sender.dart';
 import '../../../core/push/push_notifications_controller.dart';
@@ -56,6 +57,23 @@ class SupportScreen extends StatelessWidget {
                   icon: LucideIcons.users,
                   onTap: () => context.push(AppRouter.sharedWeddingPlans),
                 ),
+                // V1 checklist 6.3: the published policy and terms.
+                Divider(height: 1, color: AppTheme.brandMuted.withAlpha(150)),
+                _SupportLinkRow(
+                  key: const Key('support-privacy-link'),
+                  title: 'سياسة الخصوصية',
+                  subtitle: 'ما نجمعه من بيانات وكيف نحميه',
+                  icon: LucideIcons.shieldCheck,
+                  onTap: () => _openPublicPage(context, '/privacy'),
+                ),
+                Divider(height: 1, color: AppTheme.brandMuted.withAlpha(150)),
+                _SupportLinkRow(
+                  key: const Key('support-terms-link'),
+                  title: 'شروط الاستخدام',
+                  subtitle: 'ما يقدمه اعّرست وما لا يقدمه',
+                  icon: LucideIcons.fileText,
+                  onTap: () => _openPublicPage(context, '/terms'),
+                ),
               ],
             ),
           ),
@@ -67,6 +85,17 @@ class SupportScreen extends StatelessWidget {
         ]),
       ),
     );
+  }
+}
+
+/// Opens a page of the public site (privacy policy, terms) in the browser.
+Future<void> _openPublicPage(BuildContext context, String path) async {
+  final opened = await launchUrl(
+    Uri.https(AppRouter.inviteAppLinkHost, path),
+    mode: LaunchMode.externalApplication,
+  );
+  if (!opened && context.mounted) {
+    AarastToast.showError(context, 'تعذر فتح الصفحة على هذا الجهاز.');
   }
 }
 
@@ -336,6 +365,7 @@ class _SupportLinkRow extends StatelessWidget {
     required this.subtitle,
     required this.icon,
     required this.onTap,
+    super.key,
   });
 
   final String title;

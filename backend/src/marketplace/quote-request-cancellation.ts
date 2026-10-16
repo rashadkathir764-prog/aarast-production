@@ -21,6 +21,7 @@ import { PrismaService } from "../platform/database/prisma.service";
 import {
   assertWeddingPlanWritable,
   type CollaborationPermissionPort as PermissionService,
+  seesWholePlan,
 } from "../modules/collaboration/public/collaboration-permission.port";
 import type { CollaborationScopePort } from "../modules/collaboration/public/collaboration-scope.port";
 import { findContributorProviderQuoteIds } from "./marketplace-contributor-quote-scope";
@@ -92,13 +93,13 @@ export function cancelQuoteRequestInTransaction(
       planContext = context;
       if (
         access === "PLAN_OR_REQUESTER" &&
-        !context.isOwner &&
+        !seesWholePlan(context) &&
         seed.userId !== currentUser.id
       ) {
         throw new NotFoundException("Quote request not found");
       }
       if (
-        !context.isOwner &&
+        !seesWholePlan(context) &&
         !(await findContributorProviderQuoteIds(
           tx,
           scope,

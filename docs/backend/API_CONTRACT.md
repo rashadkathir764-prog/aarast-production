@@ -1738,6 +1738,15 @@ after the new membership has the current section permission. A historical
 event is never authority by itself, and no same-plan shortcut exposes another
 contributor's entities.
 
+The one exception is the plan's partner (V1 checklist 4.10): a member whose
+role is `GROOM` or `BRIDE` reads and manages the whole plan like its owner in
+every section their current permissions open — every cost, category, payment,
+schedule, task, guest, quote request and booking, the whole-plan money summary
+and dashboard figures, and the plan's task and payment notifications and
+reminders. The owner's funding sources and loans (V1 checklist 4.3), the
+plan's currency and budget replacement, and member management stay the
+owner's. Other roles keep the contribution-scoped view described above.
+
 Returning live queries also carry the current membership and stored flag in
 their final SQL predicate. Multi-query money summaries, cost/payment/schedule
 reads, dashboard reads, and other aggregate surfaces use the transaction-based

@@ -2,6 +2,7 @@ import { ConflictException, NotFoundException } from '@nestjs/common';
 import {
   Prisma,
   SharedMember,
+  SharedMemberRole,
   WeddingPlan,
   WeddingPlanStatus,
 } from '@prisma/client';
@@ -15,6 +16,28 @@ export interface PlanAccessContext {
   plan: WeddingPlan;
   isOwner: boolean;
   sharedMember: SharedMember | null;
+}
+
+/**
+ * The plan's partner (V1 checklist 4.10): the member invited as the groom or
+ * the bride shares the plan with its owner. Unlike family and helpers, who
+ * see only what they contributed, a partner sees the whole plan in every
+ * section their permissions open, like the owner. The owner's private money
+ * (funding sources and loans, 4.3) stays the owner's.
+ */
+export function isPlanPartnerRole(role: SharedMemberRole): boolean {
+  return role === SharedMemberRole.GROOM || role === SharedMemberRole.BRIDE;
+}
+
+/** Whether the reader sees the whole plan rather than only their own contributions. */
+export function seesWholePlan(
+  context: Pick<PlanAccessContext, 'isOwner' | 'sharedMember'>,
+): boolean {
+  // Strict: a reader with no membership is never the whole plan's reader.
+  return (
+    context.isOwner ||
+    (context.sharedMember != null && isPlanPartnerRole(context.sharedMember.role))
+  );
 }
 
 export type LivePlanPermission =

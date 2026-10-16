@@ -30,6 +30,7 @@ import {
   COLLABORATION_PERMISSION_PORT,
   type CollaborationPermissionPort as PermissionService,
   PlanAccessContext,
+  seesWholePlan,
 } from "../modules/collaboration/public/collaboration-permission.port";
 
 type WarningType =
@@ -62,7 +63,7 @@ export class MoneySummaryService {
             weddingPlanId,
             currentUser,
           );
-        const contributionScope = access.isOwner
+        const contributionScope = seesWholePlan(access)
           ? null
           : {
               costIds: await this.requiredContributorScope().qualifyingEntityIdsInTransaction(

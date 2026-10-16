@@ -15,6 +15,7 @@ import {
   Prisma,
   ProviderStatus,
   SharedMember,
+  SharedMemberRole,
   UserStatus,
   WeddingPlanStatus,
   WeddingTask,
@@ -35,6 +36,8 @@ import {
   COLLABORATION_PERMISSION_PORT,
   type CollaborationPermissionPort as PermissionService,
   PlanAccessContext,
+  isPlanPartnerRole,
+  seesWholePlan,
 } from "../modules/collaboration/public/collaboration-permission.port";
 import { isPushNotificationType } from "../push/push-notification.policy";
 import {
@@ -806,6 +809,8 @@ export class NotificationsService implements NotificationsPort {
               .filter((member) => {
                 if (!member.canManageTasks) return false;
                 if (task.assigneeUserId === member.userId) return true;
+                // The plan's partner follows every task (V1 checklist 4.10).
+                if (isPlanPartnerRole(member.role)) return true;
                 return Boolean(
                   contributedTaskIdsByRecipient
                     .get(this.planRecipientScopeKey(plan.id, member.userId))
@@ -858,9 +863,10 @@ export class NotificationsService implements NotificationsPort {
               .filter(
                 (member) =>
                   member.canViewMoney &&
+                  (isPlanPartnerRole(member.role) ||
                   contributedCostIdsByRecipient
                     .get(this.planRecipientScopeKey(plan.id, member.userId))
-                    ?.has(schedule.weddingCostId) === true,
+                    ?.has(schedule.weddingCostId) === true),
               )
               .map((member) => member.userId),
           ];
@@ -1134,14 +1140,31 @@ export class NotificationsService implements NotificationsPort {
     ownedPlanIds: string[],
     memberships: ReadonlyArray<{
       weddingPlanId: string;
+      role: SharedMemberRole;
       canManageTasks: boolean;
       canViewMoney: boolean;
     }>,
   ): Promise<EntityVisibilityWhere> {
+    // A partner (V1 checklist 4.10) sees the plan's task and payment
+    // notifications like its owner; other members only their own work's.
+    const partnerPlanIds = (permitted: (member: (typeof memberships)[number]) => boolean) =>
+      memberships
+        .filter((member) => permitted(member) && isPlanPartnerRole(member.role))
+        .map((member) => member.weddingPlanId);
+    const taskPlanIds = [
+      ...ownedPlanIds,
+      ...partnerPlanIds((member) => member.canManageTasks),
+    ];
+    const moneyPlanIds = [
+      ...ownedPlanIds,
+      ...partnerPlanIds((member) => member.canViewMoney),
+    ];
     const taskMemberships = memberships.filter(
-      (member) => member.canManageTasks,
+      (member) => member.canManageTasks && !isPlanPartnerRole(member.role),
     );
-    const moneyMemberships = memberships.filter((member) => member.canViewMoney);
+    const moneyMemberships = memberships.filter(
+      (member) => member.canViewMoney && !isPlanPartnerRole(member.role),
+    );
     const relevantPlanIds = [
       ...new Set(
         [...taskMemberships, ...moneyMemberships].map(
@@ -1242,7 +1265,7 @@ export class NotificationsService implements NotificationsPort {
             { entityType: "task" },
             {
               OR: [
-                { weddingPlanId: { in: ownedPlanIds } },
+                { weddingPlanId: { in: taskPlanIds } },
                 ...scopedClauses(taskMemberships, taskIdsByPlan),
               ],
             },
@@ -1253,7 +1276,7 @@ export class NotificationsService implements NotificationsPort {
             { entityType: "payment_schedule" },
             {
               OR: [
-                { weddingPlanId: { in: ownedPlanIds } },
+                { weddingPlanId: { in: moneyPlanIds } },
                 ...scopedClauses(moneyMemberships, scheduleIdsByPlan),
               ],
             },
@@ -1540,7 +1563,7 @@ export class NotificationsService implements NotificationsPort {
     userId: string,
     notification: Pick<Notification, "entityType" | "entityId" | "weddingPlanId">,
   ): Promise<void> {
-    if (context.isOwner) return;
+    if (seesWholePlan(context)) return;
     const weddingPlanId = notification.weddingPlanId;
     const entityId = notification.entityId;
     if (!weddingPlanId || !entityId) {

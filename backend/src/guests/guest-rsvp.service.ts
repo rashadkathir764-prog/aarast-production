@@ -21,6 +21,7 @@ import { AuthenticatedUser } from "../modules/identity/public/identity-session.t
 import {
   COLLABORATION_PERMISSION_PORT,
   type CollaborationPermissionPort as PermissionService,
+  seesWholePlan,
 } from "../modules/collaboration/public/collaboration-permission.port";
 import {
   COLLABORATION_SCOPE_PORT,
@@ -138,7 +139,7 @@ export class GuestRsvpService {
         currentUser,
       );
       // A contributor manages only the guests they added.
-      if (!context.isOwner && context.sharedMember) {
+      if (!seesWholePlan(context) && context.sharedMember) {
         const own = await this.scope.qualifyingEntityIdsInTransaction(
           tx,
           guest.weddingPlanId,

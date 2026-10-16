@@ -16,7 +16,7 @@ import { runSerializableTransaction } from "../platform/database/serializable-tr
 import type { ConversationLifecyclePort } from "../modules/messaging/public/conversation-lifecycle.port";
 import type { NotificationsPort } from "../modules/notifications/public/notifications.port";
 import { PrismaService } from "../platform/database/prisma.service";
-import type { CollaborationPermissionPort as PermissionService } from "../modules/collaboration/public/collaboration-permission.port";
+import { type CollaborationPermissionPort as PermissionService, seesWholePlan } from "../modules/collaboration/public/collaboration-permission.port";
 import type { MarketplaceRelationsService } from "./marketplace-relations";
 import {
   assertQuoteRequestTransition,
@@ -74,7 +74,7 @@ export async function rejectQuoteOfferInTransaction(
         seed.quoteRequest.weddingPlanId,
         currentUser,
       );
-      if (!planContext.isOwner && seed.quoteRequest.userId !== currentUser.id) {
+      if (!seesWholePlan(planContext) && seed.quoteRequest.userId !== currentUser.id) {
         throw new NotFoundException("Quote offer not found");
       }
     } else if (seed.quoteRequest.userId !== currentUser.id) {

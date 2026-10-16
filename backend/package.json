@@ -50,6 +50,7 @@
     "smoke:cost-receipts": "node scripts/smoke/run-isolated-smoke.js cost-receipts-smoke.js",
     "smoke:phone-change": "node scripts/smoke/run-isolated-smoke.js phone-change-smoke.js",
     "smoke:task-shift": "node scripts/smoke/run-isolated-smoke.js task-shift-smoke.js",
+    "smoke:plan-partner": "node scripts/smoke/run-isolated-smoke.js plan-partner-smoke.js",
     "smoke:contributor-history-migration": "node scripts/smoke/run-isolated-smoke.js --contributor-history-migration",
     "smoke:guest-phone-migration": "node scripts/smoke/run-isolated-smoke.js --guest-phone-migration",
     "smoke:schema-equivalence": "node scripts/smoke/run-isolated-smoke.js --schema-equivalence",

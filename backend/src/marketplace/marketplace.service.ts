@@ -29,7 +29,7 @@ import {
 } from "../platform/database/serializable-transaction";
 import { NOTIFICATIONS_PORT, type NotificationsPort } from "../modules/notifications/public/notifications.port";
 import { PrismaService } from "../platform/database/prisma.service";
-import { COLLABORATION_PERMISSION_PORT, type CollaborationPermissionPort as PermissionService } from "../modules/collaboration/public/collaboration-permission.port";
+import { COLLABORATION_PERMISSION_PORT, type CollaborationPermissionPort as PermissionService, seesWholePlan } from "../modules/collaboration/public/collaboration-permission.port";
 import { COLLABORATION_SCOPE_PORT, type CollaborationScopePort } from "../modules/collaboration/public/collaboration-scope.port";
 import { CATALOG_READ_PORT, type CatalogReadPort } from "../modules/catalog/public/catalog-read.port";
 import { MarketplaceRelationsService } from "./marketplace-relations";
@@ -457,7 +457,7 @@ export class MarketplaceService {
       currentUser,
     );
     assertProviderSectionLive(context, this.permissions);
-    const quoteIds = context.isOwner
+    const quoteIds = seesWholePlan(context)
       ? null
       : await findContributorProviderQuoteIds(
           this.prisma,
@@ -852,7 +852,7 @@ export class MarketplaceService {
       );
       assertProviderSectionLive(context, this.permissions);
       if (
-        !context.isOwner &&
+        !seesWholePlan(context) &&
         !(await findContributorProviderQuoteIds(
           this.prisma,
           this.scope,

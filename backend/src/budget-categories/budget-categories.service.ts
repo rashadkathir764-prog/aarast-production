@@ -44,6 +44,7 @@ import {
   COLLABORATION_PERMISSION_PORT,
   type CollaborationPermissionPort as PermissionService,
   type PlanAccessContext,
+  seesWholePlan,
 } from "../modules/collaboration/public/collaboration-permission.port";
 import { CreateBudgetCategoryDto } from "./dto/create-budget-category.dto";
 import { UpdateBudgetCategoryDto } from "./dto/update-budget-category.dto";
@@ -134,7 +135,7 @@ export class BudgetCategoriesService {
             weddingPlanId,
             currentUser,
           );
-        const [categoryIds, costIds] = access.isOwner
+        const [categoryIds, costIds] = seesWholePlan(access)
           ? [null, null]
           : await Promise.all([
               this.requiredContributorScope().qualifyingEntityIdsInTransaction(
@@ -204,7 +205,7 @@ export class BudgetCategoriesService {
           dto.name === undefined
             ? locked.name
             : this.requiredText(dto.name, "name");
-        const scopedCostIds = context.isOwner
+        const scopedCostIds = seesWholePlan(context)
           ? null
           : await this.requiredContributorScope().qualifyingEntityIdsInTransaction(
               tx,
@@ -352,7 +353,7 @@ export class BudgetCategoriesService {
       weddingPlanId,
       currentUser,
     );
-    if (access.isOwner) return;
+    if (seesWholePlan(access)) return;
     const categoryIds =
       await this.requiredContributorScope().qualifyingEntityIds(
         weddingPlanId,
@@ -369,7 +370,7 @@ export class BudgetCategoriesService {
     context: PlanAccessContext,
     categoryId: string,
   ): Promise<void> {
-    if (context.isOwner || !context.sharedMember) return;
+    if (seesWholePlan(context) || !context.sharedMember) return;
     const categoryIds =
       await this.requiredContributorScope().qualifyingEntityIdsInTransaction(
         tx,

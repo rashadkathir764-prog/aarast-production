@@ -8,6 +8,7 @@ import {
 import {
   type CollaborationPermissionPort as PermissionService,
   type PlanAccessContext,
+  seesWholePlan,
 } from "../modules/collaboration/public/collaboration-permission.port";
 import type { CollaborationScopePort } from "../modules/collaboration/public/collaboration-scope.port";
 import type { MarketplaceRelationsService } from "./marketplace-relations";
@@ -81,7 +82,7 @@ export async function findAccessiblePlanQuoteRequest(
   weddingPlanId: string,
 ): Promise<QuoteWithRelations> {
   if (
-    !context.isOwner &&
+    !seesWholePlan(context) &&
     !(await findContributorProviderQuoteIds(
       client,
       ports.scope,

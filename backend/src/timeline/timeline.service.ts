@@ -17,6 +17,7 @@ import { runRetryableTransaction } from "../platform/database/serializable-trans
 import {
   COLLABORATION_PERMISSION_PORT,
   type CollaborationPermissionPort as PermissionService,
+  seesWholePlan,
 } from "../modules/collaboration/public/collaboration-permission.port";
 import type { TaskReadScope } from "../modules/tasks/public/tasks.port";
 import { InsightsReadPorts } from "../dashboard/insights-read-ports";
@@ -70,7 +71,7 @@ export class TimelineService {
       currentUser,
     );
     const canViewMoney = this.permissions.canViewMoney(context);
-    const isContributor = !context.isOwner && Boolean(context.sharedMember);
+    const isContributor = !seesWholePlan(context) && Boolean(context.sharedMember);
     const canManageTasks = this.permissions.canManageTasks(context);
     const contributionIds =
       isContributor && canManageTasks

@@ -47,6 +47,7 @@ import {
   PlanAccessContext,
   TASK_PERMISSION_REVOKED,
   TASK_PERMISSION_REVOKED_MESSAGE,
+  seesWholePlan,
 } from "../modules/collaboration/public/collaboration-permission.port";
 import { AssignTaskDto } from "./dto/assign-task.dto";
 import { CreateChecklistItemDto } from "./dto/create-checklist-item.dto";
@@ -196,8 +197,8 @@ export class TasksService {
         weddingPlanId,
         currentUser,
       );
-      if (!context.isOwner) {
-        throw new ForbiddenException("Only the plan owner moves every task");
+      if (!seesWholePlan(context)) {
+        throw new ForbiddenException("Only the plan owner or partner moves every task");
       }
       return shiftOpenTaskDates(tx, weddingPlanId, days);
     });
@@ -802,7 +803,7 @@ export class TasksService {
   }
 
   private isContributor(context: PlanAccessContext): boolean {
-    return !context.isOwner && Boolean(context.sharedMember);
+    return !seesWholePlan(context) && Boolean(context.sharedMember);
   }
 
   private async liveTaskScope(

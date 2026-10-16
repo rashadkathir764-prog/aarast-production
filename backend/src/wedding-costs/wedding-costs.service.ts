@@ -47,6 +47,7 @@ import {
   COLLABORATION_PERMISSION_PORT,
   type CollaborationPermissionPort as PermissionService,
   type PlanAccessContext,
+  seesWholePlan,
 } from "../modules/collaboration/public/collaboration-permission.port";
 import { CreateCostPaymentDto } from "./dto/create-cost-payment.dto";
 import { CreatePaymentScheduleDto } from "./dto/create-payment-schedule.dto";
@@ -1645,7 +1646,7 @@ export class WeddingCostsService {
     tx: Tx,
     context: PlanAccessContext,
   ): Promise<string[] | null> {
-    if (context.isOwner || !context.sharedMember) return null;
+    if (seesWholePlan(context) || !context.sharedMember) return null;
     return this.requiredContributorScope().qualifyingEntityIdsInTransaction(
       tx,
       context.plan.id,
@@ -1664,7 +1665,7 @@ export class WeddingCostsService {
     context: PlanAccessContext,
     costId: string,
   ): Promise<void> {
-    if (context.isOwner || !context.sharedMember) return;
+    if (seesWholePlan(context) || !context.sharedMember) return;
     const ids = await this.scopedCostIdsInTransaction(tx, context);
     if (!ids?.includes(costId)) {
       throw new NotFoundException("Wedding cost not found");
@@ -1676,7 +1677,7 @@ export class WeddingCostsService {
     context: PlanAccessContext,
     categoryId: string,
   ): Promise<void> {
-    if (context.isOwner || !context.sharedMember) return;
+    if (seesWholePlan(context) || !context.sharedMember) return;
     const categoryIds =
       await this.requiredContributorScope().qualifyingEntityIdsInTransaction(
         tx,

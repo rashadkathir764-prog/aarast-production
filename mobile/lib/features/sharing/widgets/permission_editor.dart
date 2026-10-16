@@ -67,6 +67,15 @@ class _SharedPermissionEditorState extends State<SharedPermissionEditor> {
               ),
           ],
         ),
+        const SizedBox(height: 8),
+        Text(
+          sharedMemberRoleScopeNote(widget.role),
+          key: const Key('shared-role-scope-note'),
+          style: textTheme.bodySmall?.copyWith(
+            color: AppTheme.textSecondary,
+            height: 1.45,
+          ),
+        ),
         const SizedBox(height: 10),
         Container(
           padding: const EdgeInsets.symmetric(vertical: 10),

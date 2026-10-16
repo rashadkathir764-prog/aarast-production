@@ -39,6 +39,7 @@ import {
   COLLABORATION_PERMISSION_PORT,
   type CollaborationPermissionPort as PermissionService,
   PlanAccessContext,
+  seesWholePlan,
 } from "../modules/collaboration/public/collaboration-permission.port";
 import { BulkGuestsDto } from "./dto/bulk-guests.dto";
 import { CreateGuestGroupDto } from "./dto/create-guest-group.dto";
@@ -683,7 +684,7 @@ export class GuestsService {
   }
 
   private isContributor(context: PlanAccessContext): boolean {
-    return !context.isOwner && Boolean(context.sharedMember);
+    return !seesWholePlan(context) && Boolean(context.sharedMember);
   }
 
   private async liveGuestScope(

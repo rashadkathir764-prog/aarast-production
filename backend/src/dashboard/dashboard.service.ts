@@ -22,6 +22,7 @@ import {
   COLLABORATION_PERMISSION_PORT,
   type CollaborationPermissionPort as PermissionService,
   PlanAccessContext,
+  seesWholePlan,
 } from "../modules/collaboration/public/collaboration-permission.port";
 import { weddingLocationResponse } from "../modules/planning/public/wedding-location";
 import {
@@ -126,7 +127,7 @@ export class DashboardService {
     const endOfToday = endOfRiyadhDay(today);
     const dueSoonEnd = new Date(endOfToday.getTime() + 7 * 86_400_000);
     const canViewMoney = this.permissions.canViewMoney(context);
-    const contributorIds = context.isOwner
+    const contributorIds = seesWholePlan(context)
       ? null
       : await resolveDashboardContributorDataScope({
           tx,
@@ -280,7 +281,7 @@ export class DashboardService {
 
     // Exact decimal sums: the dashboard must agree with Finance to the cent.
     const budgetTotalNumber =
-      canViewMoney && context.isOwner
+      canViewMoney && seesWholePlan(context)
         ? resolveBudgetDecimal(context.plan)
         : null;
     const confirmedCostNumber = canViewMoney
@@ -324,7 +325,7 @@ export class DashboardService {
       // budget, nor receive a misleading SET_BUDGET action for a value they
       // are not allowed to inspect.
       hasBudget:
-        !context.isOwner ||
+        !seesWholePlan(context) ||
         (budgetTotalNumber !== null && budgetTotalNumber.greaterThan(0)),
       guestCount,
       quoteRequestsCount,

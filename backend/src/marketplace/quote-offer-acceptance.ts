@@ -23,7 +23,7 @@ import type { ConversationLifecyclePort } from "../modules/messaging/public/conv
 import type { NotificationsPort } from "../modules/notifications/public/notifications.port";
 import { PrismaService } from "../platform/database/prisma.service";
 import { assertProviderOperational } from "../modules/marketplace/public/provider-access-policy";
-import type { CollaborationPermissionPort as PermissionService } from "../modules/collaboration/public/collaboration-permission.port";
+import { type CollaborationPermissionPort as PermissionService, seesWholePlan } from "../modules/collaboration/public/collaboration-permission.port";
 import type { FinancePort } from "../modules/finance/public/finance.port";
 import type { MarketplaceRelationsService } from "./marketplace-relations";
 import {
@@ -85,7 +85,7 @@ export async function acceptQuoteOfferInTransaction(
       input.currentUser,
     );
     if (
-      !planContext.isOwner &&
+      !seesWholePlan(planContext) &&
       offerSeed.quoteRequest.userId !== input.currentUser.id
     ) {
       throw new NotFoundException("Quote offer not found");

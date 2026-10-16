@@ -493,3 +493,15 @@ String sharedMemberRoleLabel(String role) {
     _ => role,
   };
 }
+
+/// What a member in [role] sees of the plan (V1 checklist 4.10): the groom
+/// or the bride is the owner's partner and sees the whole plan; the other
+/// roles see only what they added, within their permissions.
+String sharedMemberRoleScopeNote(String role) {
+  return switch (role) {
+    'GROOM' || 'BRIDE' =>
+      'شريك في الخطة: يرى كل شيء مثلك، ما عدا مصادر تمويلك وسلفك.',
+    'VIEWER' => 'يتابع الخطة فقط، ولا يرى المال إلا إذا سمحت له.',
+    _ => 'يرى ما أضافه هو فقط، حسب الصلاحيات التي تختارها.',
+  };
+}

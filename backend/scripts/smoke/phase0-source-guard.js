@@ -117,6 +117,7 @@ const managedCommandArguments = new Map([
   ['smoke:cost-receipts', 'cost-receipts-smoke.js'],
   ['smoke:phone-change', 'phone-change-smoke.js'],
   ['smoke:task-shift', 'task-shift-smoke.js'],
+  ['smoke:plan-partner', 'plan-partner-smoke.js'],
   ['smoke:contributor-history-migration', '--contributor-history-migration'],
   ['smoke:guest-phone-migration', '--guest-phone-migration'],
   ['smoke:schema-equivalence', '--schema-equivalence'],

@@ -17,6 +17,7 @@ import {
   assertWeddingPlanWritable,
   COLLABORATION_PERMISSION_PORT,
   type CollaborationPermissionPort as PermissionService,
+  seesWholePlan,
 } from "../modules/collaboration/public/collaboration-permission.port";
 import {
   NOTIFICATIONS_PORT,
@@ -380,7 +381,7 @@ export class BookingsService {
       });
     }
     assertWeddingPlanWritable(context.plan);
-    if (!context.isOwner && quote.userId !== currentUser.id) {
+    if (!seesWholePlan(context) && quote.userId !== currentUser.id) {
       throw new NotFoundException("Booking not found");
     }
     return context;

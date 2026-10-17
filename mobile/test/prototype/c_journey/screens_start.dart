@@ -12,7 +12,12 @@ Widget splash() => Phone(
     colors: [K.teal, K.tealDark],
   ),
   children: [
-    gap(250),
+    SizedBox(
+      height: 250,
+      child: CustomPaint(
+        painter: const QamariyaMark(alpha: 0.13, cx: 0.5, frieze: false),
+      ),
+    ),
     Center(child: wordmark(s: 64, c: Colors.white)),
     gap(14),
     Center(

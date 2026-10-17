@@ -57,7 +57,7 @@ Widget hero({
   double bigSize = 64,
 }) => Container(
   margin: const EdgeInsets.only(top: 18),
-  padding: const EdgeInsets.fromLTRB(20, 18, 20, 18),
+  clipBehavior: Clip.antiAlias,
   decoration: BoxDecoration(
     borderRadius: BorderRadius.circular(28),
     gradient: const LinearGradient(
@@ -66,55 +66,64 @@ Widget hero({
       colors: [K.teal, K.tealDark],
     ),
   ),
-  child: Column(
-    crossAxisAlignment: CrossAxisAlignment.start,
-    children: [
-      Row(
-        crossAxisAlignment: CrossAxisAlignment.end,
+  child: CustomPaint(
+    painter: const QamariyaMark(),
+    child: Padding(
+      padding: const EdgeInsets.fromLTRB(20, 18, 20, 24),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            big,
-            style: tx(bigSize, w: bold, c: Colors.white, h: 0.95),
-          ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Padding(
-              padding: const EdgeInsets.only(bottom: 6),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    unit,
-                    style: tx(18, w: bold, c: Colors.white),
-                  ),
-                  Text(
-                    sub,
-                    style: tx(14, c: Colors.white.withValues(alpha: 0.78)),
-                  ),
-                ],
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Text(
+                big,
+                style: tx(bigSize, w: bold, c: Colors.white, h: 0.95),
               ),
-            ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.only(bottom: 6),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        unit,
+                        style: tx(18, w: bold, c: Colors.white),
+                      ),
+                      Text(
+                        sub,
+                        style: tx(14, c: Colors.white.withValues(alpha: 0.78)),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 5,
+                ),
+                decoration: BoxDecoration(
+                  color: K.saffron,
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Text(moments[at], style: tx(13, w: bold)),
+              ),
+            ],
           ),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
-            decoration: BoxDecoration(
-              color: K.saffron,
-              borderRadius: BorderRadius.circular(20),
-            ),
-            child: Text(moments[at], style: tx(13, w: bold)),
+          gap(16),
+          segments(
+            5,
+            at,
+            on: Colors.white,
+            now: K.saffron,
+            off: Colors.white.withValues(alpha: 0.22),
           ),
+          ?extra,
         ],
       ),
-      gap(16),
-      segments(
-        5,
-        at,
-        on: Colors.white,
-        now: K.saffron,
-        off: Colors.white.withValues(alpha: 0.22),
-      ),
-      ?extra,
-    ],
+    ),
   ),
 );
 
@@ -390,6 +399,7 @@ Widget homeActive() => Phone(
       sub: 'قاعة سبأ · الدفعة الثانية من ثلاث',
       action: 'سجّل الدفعة',
       second: 'ذكّرني',
+      why: 'لأن موعدها قريب، والمبلغ في مدخراتك',
     ),
     gap(14),
     moneyTile(),
@@ -471,6 +481,7 @@ Widget homeWeek() {
         title: 'فرقة الأفراح ما أكّدت',
         sub: 'أرسل لهم تأكيد الموعد على واتساب',
         action: 'أرسل التأكيد',
+        why: 'آخر مزود ما أكّد، والعرس بعد يومين',
         icon: LucideIcons.music,
         fg: K.sky,
         soft: K.skySoft,
@@ -749,6 +760,7 @@ Widget homeAfter() => Phone(
       title: 'قسط خالك: 150,000 ر.ي',
       sub: 'القسط 3 من 4 · سلفة العرس',
       action: 'سجّل السداد',
+      why: 'أقرب قسط، وخالك متعود يجيه أول الشهر',
       icon: LucideIcons.wallet,
       fg: K.teal,
       soft: K.tealSoft,

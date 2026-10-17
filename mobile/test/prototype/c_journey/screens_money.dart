@@ -100,6 +100,7 @@ Widget moneySummary() => Phone(
       sub: 'قاعة سبأ · الدفعة الثانية من ثلاث',
       action: 'سجّل الدفعة',
       second: 'ذكّرني',
+      why: 'لأن موعدها قريب، والمبلغ في مدخراتك',
     ),
     sectionTitle('كيف تقفل الناقص؟'),
     whiteList([

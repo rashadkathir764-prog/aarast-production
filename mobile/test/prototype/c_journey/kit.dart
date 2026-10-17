@@ -1,5 +1,7 @@
 // Throwaway design prototype kit for direction C ("فيروز").
 // Not product code: it exists to draw the groom's journey for review.
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 
@@ -45,6 +47,10 @@ TextStyle tx(
 }) => TextStyle(fontFamily: f, fontSize: s, fontWeight: w, color: c, height: h);
 
 const bold = FontWeight.w700;
+
+/// When true, screens are drawn without the tab bar so the interactive
+/// prototype can keep one fixed tab bar over scrolling content.
+bool hideNav = false;
 
 /// Keeps phone numbers and other LTR runs in order inside RTL text.
 String ltr(String s) => '\u2066$s\u2069';
@@ -101,13 +107,16 @@ class Phone extends StatelessWidget {
                 padding: EdgeInsets.symmetric(horizontal: pad ? 16 : 0),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [...children, const SizedBox(height: 20)],
+                  children: [
+                    ...children,
+                    SizedBox(height: hideNav && nav != null ? 104 : 20),
+                  ],
                 ),
               ),
             ),
           ),
           ?bottom,
-          if (nav != null) NavBar(active: nav!),
+          if (nav != null && !hideNav) NavBar(active: nav!),
         ],
       ),
     );
@@ -520,6 +529,7 @@ Widget nextCard({
   required String sub,
   required String action,
   String? second,
+  String? why,
   IconData icon = LucideIcons.calendarDays,
   Color fg = K.saffronInk,
   Color soft = K.saffronSoft,
@@ -542,6 +552,21 @@ Widget nextCard({
             gap(2),
             Text(title, style: tx(18.5, w: bold)),
             Text(sub, style: tx(14, c: K.muted)),
+            if (why != null) ...[
+              gap(8),
+              Row(
+                children: [
+                  const Icon(LucideIcons.sparkles, size: 14, color: K.teal),
+                  const SizedBox(width: 5),
+                  Expanded(
+                    child: Text(
+                      why,
+                      style: tx(12.5, w: bold, c: K.teal),
+                    ),
+                  ),
+                ],
+              ),
+            ],
             gap(14),
             Row(
               children: [
@@ -777,3 +802,60 @@ Widget questionScreen({
     ...body,
   ],
 );
+
+/// Sanaa signature: the half-moon of a qamariya window, drawn as faint
+/// concentric arcs with its stained-glass ribs, plus a gypsum zigzag frieze.
+class QamariyaMark extends CustomPainter {
+  const QamariyaMark({this.alpha = 0.10, this.frieze = true, this.cx = 0.12});
+  final double alpha;
+  final double cx;
+  final bool frieze;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final p = Paint()
+      ..style = PaintingStyle.stroke
+      ..color = Colors.white.withValues(alpha: alpha);
+    final r = size.height * 0.95;
+    final c = Offset(size.width * cx, size.height + r * 0.18);
+    for (final f in [1.0, 0.78, 0.56]) {
+      p.strokeWidth = f == 1.0 ? 2.2 : 1.4;
+      canvas.drawArc(
+        Rect.fromCircle(center: c, radius: r * f),
+        math.pi,
+        math.pi,
+        false,
+        p,
+      );
+    }
+    p.strokeWidth = 1.2;
+    for (var i = 1; i < 6; i++) {
+      final a = math.pi + math.pi * i / 6;
+      final inner = Offset(
+        c.dx + r * 0.56 * _cos(a),
+        c.dy + r * 0.56 * _sin(a),
+      );
+      final outer = Offset(c.dx + r * _cos(a), c.dy + r * _sin(a));
+      canvas.drawLine(inner, outer, p);
+    }
+    if (frieze) {
+      final fp = Paint()..color = Colors.white.withValues(alpha: alpha * 0.9);
+      const w = 10.0;
+      final y = size.height - 3;
+      for (double x = 0; x < size.width; x += w) {
+        final path = Path()
+          ..moveTo(x, y)
+          ..lineTo(x + w / 2, y - 5)
+          ..lineTo(x + w, y)
+          ..close();
+        canvas.drawPath(path, fp);
+      }
+    }
+  }
+
+  static double _cos(double a) => math.cos(a);
+  static double _sin(double a) => math.sin(a);
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+}

@@ -1,0 +1,991 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<style>:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0}img{max-width:100%}[hidden]{display:none!important}</style>
+</head>
+<body>
+<title>رحلة اعّرست</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&family=Tajawal:wght@500;700;800&display=swap">
+<style>
+/* Layout: a guide column beside a real-size phone on wide screens; on a phone the prototype fills the screen and the guide opens as a sheet. */
+:root{
+  --pg-bg:#F2ECED; --pg-fg:#2D1A1E; --pg-muted:#6F6467; --pg-line:#E2D8DA; --pg-card:#FFFFFF; --pg-accent:#800020; --pg-chip:#F8E8EC; --frame:#1C1416;
+  --a-canvas:#FFFEFD; --a-paper:#FFFFFF; --a-quiet:#F7F3F3; --a-ink:#2D1A1E; --a-text:#352D30; --a-muted:#6F6467; --a-faint:#9A8F91; --a-line:#ECE5E6;
+  --a-primary:#800020; --a-primary-dk:#5A0015; --a-primary-soft:#F8E8EC; --a-on-primary:#FFFEFD; --a-on-primary-muted:#EFDCE1;
+  --a-gold:#D9B15F; --a-gold-dk:#8A6A24; --a-gold-soft:#FBF3DE;
+  --a-mint:#3F7A68; --a-mint-soft:#E7F2EE; --a-amber:#9A6128; --a-amber-soft:#F7EDDE; --a-danger:#B74452; --a-danger-soft:#F9E7EA; --a-cobalt:#4F6E84; --a-cobalt-soft:#EAF0F4;
+  --f-display:'Tajawal','IBM Plex Sans Arabic',system-ui,sans-serif;
+  --f-body:'IBM Plex Sans Arabic','Tajawal',system-ui,sans-serif;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){--pg-bg:#171012;--pg-fg:#F3E9EB;--pg-muted:#B8A8AC;--pg-line:#3A2A2E;--pg-card:#221A1C;--pg-accent:#E9A9B7;--pg-chip:#3A2229;--frame:#000000;color-scheme:dark}}
+:root[data-theme="dark"]{--pg-bg:#171012;--pg-fg:#F3E9EB;--pg-muted:#B8A8AC;--pg-line:#3A2A2E;--pg-card:#221A1C;--pg-accent:#E9A9B7;--pg-chip:#3A2229;--frame:#000000;color-scheme:dark}
+
+html,body{height:100%}
+body{background:var(--pg-bg);color:var(--pg-fg);font-family:var(--f-body)}
+*{box-sizing:border-box}
+button{font:inherit;color:inherit;background:none;border:0;cursor:pointer;padding:0}
+input{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--pg-accent);outline-offset:2px}
+
+.wrap{min-height:100%;display:flex;gap:40px;justify-content:center;align-items:flex-start;padding-block:28px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+
+/* guide */
+.guide{width:360px;flex:none;display:flex;flex-direction:column;gap:18px;position:sticky;top:calc(env(safe-area-inset-top,0px) + 20px)}
+.g-brand{display:flex;flex-direction:column;gap:6px}
+.g-brand h1{font-family:var(--f-display);font-weight:800;font-size:30px;line-height:1.15;margin:0;text-wrap:balance}
+.g-brand p{margin:0;color:var(--pg-muted);font-size:14px;line-height:1.7}
+.g-sec{background:var(--pg-card);border:1px solid var(--pg-line);border-radius:18px;padding:16px;display:flex;flex-direction:column;gap:12px}
+.g-sec h2{margin:0;font-family:var(--f-display);font-size:16px;font-weight:700}
+.g-hint{margin:0;font-size:13px;color:var(--pg-muted);line-height:1.6}
+.stages{display:flex;flex-wrap:wrap;gap:6px}
+.stages button{font-size:13px;padding:6px 10px;border-radius:999px;border:1px solid var(--pg-line);color:var(--pg-fg)}
+.stages button.on{background:var(--pg-accent);border-color:var(--pg-accent);color:var(--pg-card)}
+.g-note .q{font-family:var(--f-display);font-size:18px;font-weight:700;line-height:1.4;margin:0}
+.g-note dl{margin:0;display:grid;gap:8px}
+.g-note dt{font-size:12px;color:var(--pg-muted);font-weight:600}
+.g-note dd{margin:0;font-size:14px;line-height:1.7}
+.jump{display:flex;flex-direction:column;gap:2px;max-height:300px;overflow:auto}
+.jump .grp{font-size:12px;color:var(--pg-muted);font-weight:600;padding:8px 4px 4px}
+.jump button{text-align:right;font-size:14px;padding:7px 8px;border-radius:10px}
+.jump button:hover{background:var(--pg-chip)}
+.jump button.on{background:var(--pg-chip);color:var(--pg-accent);font-weight:600}
+
+/* phone */
+.phone{width:392px;height:830px;flex:none;border:11px solid var(--frame);border-radius:48px;overflow:hidden;position:relative;background:var(--a-canvas);box-shadow:0 30px 60px -30px rgba(45,26,30,.45)}
+.app{position:relative;height:100%;display:flex;flex-direction:column;background:var(--a-canvas);color:var(--a-text);font-family:var(--f-body);font-size:15px}
+.sbar{height:34px;flex:none;display:flex;align-items:center;justify-content:space-between;padding:0 22px;font-size:13px;font-weight:600;color:var(--a-ink)}
+.sbar .r{display:flex;gap:6px;align-items:center}
+.scr{flex:1;overflow-y:auto;overscroll-behavior:contain;scrollbar-width:none}
+.scr::-webkit-scrollbar{display:none}
+.pad{padding:0 16px 24px;display:flex;flex-direction:column;gap:14px}
+
+.gtoggle{display:none}
+
+@media (max-width:820px){
+  .wrap{padding:0;gap:0;display:block}
+  .guide{display:none}
+  .phone{width:100%;height:calc(100dvh - env(safe-area-inset-top,0px) - env(safe-area-inset-bottom,0px));border:0;border-radius:0;box-shadow:none}
+  .sbar{display:none}
+  .gtoggle{display:flex;position:fixed;z-index:30;top:calc(env(safe-area-inset-top,0px) + 10px);left:calc(env(safe-area-inset-left,0px) + 10px);align-items:center;gap:6px;background:var(--a-ink);color:var(--a-canvas);font-size:12px;font-weight:600;padding:7px 11px;border-radius:999px;opacity:.92}
+  .gsheet{position:fixed;inset:0;z-index:40;background:rgba(20,10,12,.5);display:flex;align-items:flex-end}
+  .gsheet .panel{background:var(--pg-bg);width:100%;max-height:86dvh;overflow:auto;border-radius:22px 22px 0 0;padding:18px max(16px,env(safe-area-inset-right,0px)) calc(20px + env(safe-area-inset-bottom,0px)) max(16px,env(safe-area-inset-left,0px));display:flex;flex-direction:column;gap:14px}
+  .gsheet .guide{display:flex;width:100%;position:static}
+}
+.gsheet[hidden]{display:none}
+
+/* app type */
+.t-h1{font-family:var(--f-display);font-weight:800;font-size:26px;line-height:1.25;color:var(--a-ink);margin:0;text-wrap:balance}
+.t-h2{font-family:var(--f-display);font-weight:700;font-size:19px;line-height:1.35;color:var(--a-ink);margin:0;text-wrap:balance}
+.t-h3{font-family:var(--f-display);font-weight:700;font-size:16px;color:var(--a-ink);margin:0}
+.t-body{font-size:14px;line-height:1.75;color:var(--a-muted);margin:0}
+.t-small{font-size:12.5px;color:var(--a-muted);line-height:1.6}
+.num{font-variant-numeric:tabular-nums;font-feature-settings:"tnum"}
+.cur{font-size:.68em;font-weight:500;color:inherit;opacity:.75;margin-right:3px}
+
+/* headers */
+.hroot{display:flex;align-items:center;justify-content:space-between;padding:10px 16px 6px}
+.hroot .who{display:flex;align-items:center;gap:10px}
+.av{width:38px;height:38px;border-radius:50%;display:grid;place-items:center;font-family:var(--f-display);font-weight:700;font-size:15px;background:var(--a-primary-soft);color:var(--a-primary);flex:none}
+.av.sm{width:30px;height:30px;font-size:12px}
+.av.gold{background:var(--a-gold-soft);color:var(--a-gold-dk)}
+.av.mint{background:var(--a-mint-soft);color:var(--a-mint)}
+.av.cob{background:var(--a-cobalt-soft);color:var(--a-cobalt)}
+.ibtn{width:40px;height:40px;border-radius:50%;display:grid;place-items:center;color:var(--a-ink);position:relative}
+.ibtn .dot{position:absolute;top:9px;left:10px;width:8px;height:8px;border-radius:50%;background:var(--a-danger);border:2px solid var(--a-canvas)}
+.htitle{padding:4px 16px 10px}
+.hsub{position:sticky;top:0;z-index:5;background:var(--a-canvas);display:flex;align-items:center;gap:6px;padding:8px 8px 8px 16px;border-bottom:1px solid var(--a-line)}
+.hsub .t{font-family:var(--f-display);font-weight:700;font-size:17px;color:var(--a-ink);flex:1}
+
+/* top tabs */
+.ttabs{position:sticky;top:0;z-index:5;background:var(--a-canvas);display:flex;gap:4px;padding:6px 12px 0;border-bottom:1px solid var(--a-line);overflow-x:auto;scrollbar-width:none}
+.ttabs button{flex:1 0 auto;padding:10px 10px 11px;font-size:14px;font-weight:600;color:var(--a-muted);border-bottom:3px solid transparent;margin-bottom:-1px;white-space:nowrap}
+.ttabs button.on{color:var(--a-primary);border-color:var(--a-primary)}
+
+/* stage strip */
+.stage-strip{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:14px;background:var(--a-quiet);text-align:right;width:100%}
+.stage-strip .lbl{font-size:12px;color:var(--a-muted)}
+.stage-strip .nm{font-family:var(--f-display);font-weight:700;font-size:15px;color:var(--a-ink)}
+.stage-strip .dots{display:flex;gap:3px;margin-right:auto}
+.stage-strip .dots i{width:7px;height:7px;border-radius:50%;background:var(--a-line)}
+.stage-strip .dots i.d{background:var(--a-primary)}
+.stage-strip .dots i.c{background:var(--a-gold);box-shadow:0 0 0 3px var(--a-gold-soft)}
+
+/* cards */
+.now{background:var(--a-primary);color:var(--a-on-primary);border-radius:22px;padding:18px;display:flex;flex-direction:column;gap:12px;position:relative;overflow:hidden}
+.now .k{font-size:12.5px;color:var(--a-on-primary-muted);font-weight:600;display:flex;align-items:center;gap:6px}
+.now h3{font-family:var(--f-display);font-weight:800;font-size:22px;line-height:1.3;margin:0;color:var(--a-on-primary);text-wrap:balance}
+.now p{margin:0;font-size:14px;line-height:1.7;color:var(--a-on-primary-muted)}
+.now .acts{display:flex;gap:8px;flex-wrap:wrap}
+.now.gold{background:var(--a-gold-soft);color:var(--a-ink)}
+.now.gold .k,.now.gold p{color:var(--a-gold-dk)}
+.now.gold h3{color:var(--a-ink)}
+.now .ring{position:absolute;left:-40px;top:-40px;width:150px;height:150px;border-radius:50%;border:22px solid rgba(255,255,255,.07)}
+
+.card{background:var(--a-paper);border:1px solid var(--a-line);border-radius:18px;padding:14px;display:flex;flex-direction:column;gap:10px}
+.card.tap{text-align:right;width:100%}
+.crow{display:flex;align-items:center;gap:12px}
+.crow .grow{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
+.ic{width:40px;height:40px;border-radius:12px;display:grid;place-items:center;flex:none;background:var(--a-quiet);color:var(--a-ink)}
+.ic.p{background:var(--a-primary-soft);color:var(--a-primary)}
+.ic.g{background:var(--a-gold-soft);color:var(--a-gold-dk)}
+.ic.m{background:var(--a-mint-soft);color:var(--a-mint)}
+.ic.a{background:var(--a-amber-soft);color:var(--a-amber)}
+.ic.c{background:var(--a-cobalt-soft);color:var(--a-cobalt)}
+.ic.d{background:var(--a-danger-soft);color:var(--a-danger)}
+.chev{color:var(--a-faint);flex:none}
+
+.month{display:flex;align-items:center;gap:14px;padding:14px;border-radius:18px;border:1px dashed var(--a-gold);background:var(--a-gold-soft)}
+.month .v{font-family:var(--f-display);font-weight:800;font-size:24px;color:var(--a-ink)}
+.month .l{font-size:12.5px;color:var(--a-gold-dk);font-weight:600}
+
+.sec-h{display:flex;align-items:baseline;justify-content:space-between;margin-top:4px}
+.link{font-size:13.5px;font-weight:600;color:var(--a-primary)}
+
+.list{background:var(--a-paper);border:1px solid var(--a-line);border-radius:18px;overflow:hidden}
+.li{display:flex;align-items:center;gap:12px;padding:12px 14px;border-bottom:1px solid var(--a-line);width:100%;text-align:right}
+.li:last-child{border-bottom:0}
+.li .grow{flex:1;min-width:0;display:flex;flex-direction:column;gap:3px}
+.li .ttl{font-weight:600;color:var(--a-ink);font-size:14.5px}
+.li .amt{font-weight:700;color:var(--a-ink);font-size:14.5px;white-space:nowrap}
+
+.pill{display:inline-flex;align-items:center;gap:4px;font-size:11.5px;font-weight:600;padding:3px 8px;border-radius:999px;white-space:nowrap}
+.pill.ok{background:var(--a-mint-soft);color:var(--a-mint)}
+.pill.warn{background:var(--a-amber-soft);color:var(--a-amber)}
+.pill.bad{background:var(--a-danger-soft);color:var(--a-danger)}
+.pill.info{background:var(--a-cobalt-soft);color:var(--a-cobalt)}
+.pill.p{background:var(--a-primary-soft);color:var(--a-primary)}
+.pill.g{background:var(--a-gold-soft);color:var(--a-gold-dk)}
+.pill.q{background:var(--a-quiet);color:var(--a-muted)}
+
+.bar{height:7px;border-radius:999px;background:var(--a-quiet);overflow:hidden;display:flex}
+.bar i{display:block;height:100%;background:var(--a-primary);border-radius:999px}
+.bar i.m{background:var(--a-mint)}
+.bar i.a{background:var(--a-amber)}
+.bar i.g{background:var(--a-gold)}
+.now .bar{background:rgba(255,255,255,.18)}
+.now .bar i{background:var(--a-gold)}
+
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;height:46px;padding:0 18px;border-radius:14px;font-weight:600;font-size:15px}
+.btn.pri{background:var(--a-primary);color:var(--a-on-primary)}
+.btn.sec{background:var(--a-paper);color:var(--a-primary);border:1px solid var(--a-line)}
+.btn.lite{background:rgba(255,255,255,.14);color:var(--a-on-primary)}
+.btn.onp{background:var(--a-on-primary);color:var(--a-primary)}
+.btn.block{width:100%}
+.btn.sm{height:36px;padding:0 12px;font-size:13.5px;border-radius:11px}
+
+.chips{display:flex;gap:8px;overflow-x:auto;scrollbar-width:none;padding-bottom:2px}
+.chip{flex:none;padding:7px 13px;border-radius:999px;border:1px solid var(--a-line);font-size:13.5px;color:var(--a-text);background:var(--a-paper)}
+.chip.on{background:var(--a-ink);border-color:var(--a-ink);color:var(--a-canvas)}
+
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.stat{background:var(--a-paper);border:1px solid var(--a-line);border-radius:14px;padding:10px;display:flex;flex-direction:column;gap:2px;min-width:0}
+.stat .l{font-size:12px;color:var(--a-muted)}
+.stat .v{font-family:var(--f-display);font-weight:800;font-size:17px;color:var(--a-ink)}
+
+/* bottom nav */
+.nav{flex:none;display:grid;grid-template-columns:repeat(4,1fr);border-top:1px solid var(--a-line);background:var(--a-paper);padding:6px 6px calc(8px + env(safe-area-inset-bottom,0px))}
+.nav button{display:flex;flex-direction:column;align-items:center;gap:3px;padding:6px 0;font-size:12px;font-weight:600;color:var(--a-faint);border-radius:14px}
+.nav button.on{color:var(--a-primary)}
+.nav button.on .nb{background:var(--a-primary-soft)}
+.nav .nb{width:52px;height:30px;border-radius:999px;display:grid;place-items:center}
+.fab{position:absolute;left:16px;bottom:calc(84px + env(safe-area-inset-bottom,0px));height:52px;padding:0 18px 0 16px;border-radius:18px;background:var(--a-ink);color:var(--a-canvas);display:flex;align-items:center;gap:8px;font-weight:700;font-size:15px;box-shadow:0 10px 24px -10px rgba(45,26,30,.6);z-index:6}
+.actbar{flex:none;padding:10px 16px calc(12px + env(safe-area-inset-bottom,0px));border-top:1px solid var(--a-line);background:var(--a-paper);display:flex;flex-direction:column;gap:6px}
+
+/* sheets, toast */
+.ov{position:absolute;inset:0;background:rgba(30,15,18,.45);z-index:20;display:flex;align-items:flex-end}
+.sheet{background:var(--a-canvas);width:100%;border-radius:24px 24px 0 0;padding:10px 16px calc(18px + env(safe-area-inset-bottom,0px));display:flex;flex-direction:column;gap:12px;max-height:92%;overflow:auto}
+.grab{width:40px;height:5px;border-radius:5px;background:var(--a-line);align-self:center}
+.toast{position:absolute;top:44px;right:12px;left:12px;z-index:30;background:var(--a-ink);color:var(--a-canvas);border-radius:14px;padding:12px 14px;font-size:14px;line-height:1.6;display:flex;gap:10px;align-items:flex-start;box-shadow:0 12px 30px -12px rgba(0,0,0,.5);animation:tin .25s ease}
+@keyframes tin{from{transform:translateY(-8px);opacity:0}}
+
+.field{display:flex;flex-direction:column;gap:6px}
+.field label{font-size:13px;font-weight:600;color:var(--a-ink)}
+.inp{height:50px;border:1px solid var(--a-line);border-radius:14px;padding:0 14px;background:var(--a-paper);display:flex;align-items:center;gap:8px}
+.inp input{border:0;outline:0;background:transparent;flex:1;min-width:0;font-size:16px;color:var(--a-ink)}
+.inp .suf{color:var(--a-muted);font-size:13px}
+.opt{display:flex;align-items:center;gap:12px;padding:14px;border:1.5px solid var(--a-line);border-radius:16px;background:var(--a-paper);text-align:right;width:100%}
+.opt.on{border-color:var(--a-primary);background:var(--a-primary-soft)}
+.opt .grow{flex:1;display:flex;flex-direction:column;gap:2px}
+.opt .ttl{font-weight:700;color:var(--a-ink)}
+.radio{width:22px;height:22px;border-radius:50%;border:2px solid var(--a-line);flex:none;display:grid;place-items:center}
+.opt.on .radio{border-color:var(--a-primary)}
+.opt.on .radio::after{content:"";width:10px;height:10px;border-radius:50%;background:var(--a-primary)}
+.chk{width:24px;height:24px;border-radius:8px;border:2px solid var(--a-line);flex:none;display:grid;place-items:center;color:transparent}
+.chk.on{background:var(--a-mint);border-color:var(--a-mint);color:#fff}
+.sw{width:44px;height:26px;border-radius:999px;background:var(--a-line);position:relative;flex:none;transition:background .2s}
+.sw::after{content:"";position:absolute;top:3px;right:3px;width:20px;height:20px;border-radius:50%;background:#fff;transition:right .2s}
+.sw.on{background:var(--a-mint)}
+.sw.on::after{right:21px}
+.progress{display:flex;gap:4px}
+.progress i{flex:1;height:4px;border-radius:4px;background:var(--a-line)}
+.progress i.d{background:var(--a-primary)}
+
+.offline{display:flex;align-items:center;gap:8px;padding:8px 12px;border-radius:12px;background:var(--a-cobalt-soft);color:var(--a-cobalt);font-size:13px;font-weight:600}
+.empty{display:flex;flex-direction:column;align-items:center;text-align:center;gap:10px;padding:26px 18px;border:1px dashed var(--a-line);border-radius:18px;background:var(--a-paper)}
+.ph{border-radius:14px;background:linear-gradient(135deg,var(--a-primary-soft),var(--a-gold-soft));display:grid;place-items:center;color:var(--a-primary)}
+
+.big-rifd{height:110px;border-radius:24px;background:var(--a-primary);color:var(--a-on-primary);display:flex;align-items:center;justify-content:center;gap:12px;font-family:var(--f-display);font-weight:800;font-size:24px;width:100%}
+.keyamts{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+.keyamts button{height:44px;border-radius:12px;border:1px solid var(--a-line);background:var(--a-paper);font-weight:700;color:var(--a-ink);font-size:14px}
+.keyamts button.on{border-color:var(--a-primary);background:var(--a-primary-soft);color:var(--a-primary)}
+
+.tl{display:flex;flex-direction:column}
+.tl .st{display:flex;gap:12px;text-align:right;width:100%}
+.tl .rail{display:flex;flex-direction:column;align-items:center;flex:none;width:26px}
+.tl .node{width:26px;height:26px;border-radius:50%;display:grid;place-items:center;border:2px solid var(--a-line);background:var(--a-paper);color:var(--a-faint);font-size:12px;font-weight:700}
+.tl .node.d{background:var(--a-primary);border-color:var(--a-primary);color:#fff}
+.tl .node.c{background:var(--a-gold);border-color:var(--a-gold);color:var(--a-ink);box-shadow:0 0 0 4px var(--a-gold-soft)}
+.tl .line{flex:1;width:2px;background:var(--a-line);min-height:16px}
+.tl .line.d{background:var(--a-primary)}
+.tl .body{padding:2px 0 18px;display:flex;flex-direction:column;gap:3px;flex:1;min-width:0}
+
+.inv{border-radius:20px;padding:22px 18px;text-align:center;background:var(--a-paper);border:1px solid var(--a-gold);display:flex;flex-direction:column;gap:8px;position:relative}
+.inv::before{content:"";position:absolute;inset:6px;border:1px solid var(--a-gold-soft);border-radius:15px;pointer-events:none}
+.inv .names{font-family:var(--f-display);font-weight:800;font-size:24px;color:var(--a-primary)}
+
+.cmp{display:grid;grid-template-columns:76px repeat(3,1fr);font-size:13px;border:1px solid var(--a-line);border-radius:16px;overflow:hidden;background:var(--a-paper)}
+.cmp > div{padding:9px 7px;border-bottom:1px solid var(--a-line);min-width:0}
+.cmp .h{font-weight:700;color:var(--a-ink);background:var(--a-quiet)}
+.cmp .rl{color:var(--a-muted);font-size:12px;background:var(--a-quiet)}
+.cmp .best{background:var(--a-mint-soft)}
+
+.finish{min-height:100%;display:flex;flex-direction:column;justify-content:center;gap:18px;padding:30px 22px;background:var(--a-primary);color:var(--a-on-primary)}
+.finish h1{font-family:var(--f-display);font-weight:800;font-size:40px;line-height:1.15;margin:0;color:var(--a-on-primary);text-wrap:balance}
+.finish .goldline{width:64px;height:4px;border-radius:4px;background:var(--a-gold)}
+
+.screen-in{animation:sin .22s ease}
+@keyframes sin{from{opacity:.4;transform:translateX(-10px)}}
+@media (prefers-reduced-motion:reduce){.screen-in,.toast{animation:none}.sw,.sw::after{transition:none}}
+</style>
+
+<div dir="rtl" lang="ar">
+  <button class="gtoggle" id="gtoggle" type="button" aria-label="افتح دليل العرض">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M4 6h16M4 12h16M4 18h10"/></svg>
+    دليل العرض
+  </button>
+  <div class="wrap">
+    <aside class="guide" id="guideDesk"></aside>
+    <div class="phone"><div class="app" id="app"></div></div>
+  </div>
+  <div class="gsheet" id="gsheet" hidden><div class="panel" id="gpanel"></div></div>
+</div>
+
+<script>
+(function(){
+document.documentElement.setAttribute('dir','rtl');
+document.documentElement.setAttribute('lang','ar');
+
+/* ---------- icons ---------- */
+const P = {
+  home:'<path d="M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/>',
+  wallet:'<path d="M3 7.5h15a3 3 0 0 1 3 3V18a3 3 0 0 1-3 3H6a3 3 0 0 1-3-3z"/><path d="M3 7.5V6a2 2 0 0 1 2-2h11"/><circle cx="16.5" cy="14.2" r="1.3"/>',
+  people:'<circle cx="9" cy="8" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0"/><path d="M16 4.6a3.5 3.5 0 0 1 0 6.8M18 14.2a6 6 0 0 1 3.5 5.8"/>',
+  store:'<path d="M4 9h16l-1.6-5H5.6z"/><path d="M5 9v11h14V9M9.5 20v-6h5v6"/>',
+  plus:'<path d="M12 5v14M5 12h14"/>',
+  back:'<path d="M9 5l7 7-7 7"/>',
+  chev:'<path d="M15 5l-7 7 7 7"/>',
+  bell:'<path d="M6 16v-5a6 6 0 0 1 12 0v5l1.6 2H4.4z"/><path d="M10 20.5a2 2 0 0 0 4 0"/>',
+  check:'<path d="M5 12.5 9.5 17 19 7.5"/>',
+  lock:'<rect x="4.5" y="10.5" width="15" height="10.5" rx="2.5"/><path d="M8 10.5V7.5a4 4 0 0 1 8 0v3"/>',
+  cal:'<rect x="3.5" y="5" width="17" height="16" rx="2.5"/><path d="M3.5 10h17M8 3v4M16 3v4"/>',
+  coin:'<circle cx="12" cy="12" r="8.5"/><path d="M12 6.8v10.4M14.8 9.4c-.4-.9-1.5-1.5-2.8-1.5-1.6 0-2.8.9-2.8 2s1.2 1.7 2.8 2.1 2.8 1 2.8 2.1-1.2 2-2.8 2c-1.3 0-2.4-.6-2.8-1.5"/>',
+  env:'<rect x="3" y="6" width="18" height="13" rx="2.5"/><path d="m3.5 7.5 8.5 6 8.5-6"/>',
+  chat:'<path d="M4 5h16v11H9.5L5 20v-4H4z"/>',
+  book:'<path d="M5 4.5h11a3 3 0 0 1 3 3V20H8a3 3 0 0 1-3-3z"/><path d="M5 17a3 3 0 0 1 3-3h11M9 8h6"/>',
+  spark:'<path d="M12 3.5l1.7 4.8L18.5 10l-4.8 1.7L12 16.5l-1.7-4.8L5.5 10l4.8-1.7z"/><path d="M18.5 15.5l.7 1.8 1.8.7-1.8.7-.7 1.8-.7-1.8-1.8-.7 1.8-.7z"/>',
+  route:'<circle cx="6" cy="18" r="2.2"/><circle cx="18" cy="6" r="2.2"/><path d="M8.2 18H15a3 3 0 0 0 0-6H9a3 3 0 0 1 0-6h6.8"/>',
+  tasks:'<path d="M9 6h11M9 12h11M9 18h11"/><path d="m3.5 6 1.2 1.2L7 5M3.5 12l1.2 1.2L7 11M3.5 18l1.2 1.2L7 17"/>',
+  camera:'<path d="M4 8h3l1.6-2.5h6.8L17 8h3v11H4z"/><circle cx="12" cy="13.2" r="3.4"/>',
+  music:'<path d="M9 18V6l11-2v12"/><circle cx="6.5" cy="18" r="2.5"/><circle cx="17.5" cy="16" r="2.5"/>',
+  hall:'<path d="M3 21h18M5 21V9l7-5 7 5v12M9.5 21v-5.5h5V21"/>',
+  food:'<path d="M7 3v8M5 3v5a2 2 0 0 0 4 0V3M7 11v10M17 3c-2 1.5-3 4-3 7h3v11"/>',
+  leaf:'<path d="M5 19c0-8 5-13 14-14-1 9-6 14-14 14z"/><path d="M5 19 13 11"/>',
+  star:'<path d="m12 4 2.4 5 5.4.6-4 3.7 1.1 5.4L12 16l-4.9 2.7 1.1-5.4-4-3.7 5.4-.6z"/>',
+  wifioff:'<path d="M3 3l18 18M8.5 16.5a5 5 0 0 1 7 0M5 13a10 10 0 0 1 4.6-2.5M14.5 10.6A10 10 0 0 1 19 13M2 9.5A15 15 0 0 1 7 6.7M12 5a15 15 0 0 1 10 4.5"/><circle cx="12" cy="20" r="1"/>',
+  phone:'<path d="M5 4h4l2 5-2.5 1.5a11 11 0 0 0 5 5L15 13l5 2v4a2 2 0 0 1-2 2A16 16 0 0 1 3 6a2 2 0 0 1 2-2z"/>',
+  receipt:'<path d="M6 3h12v18l-3-2-3 2-3-2-3 2z"/><path d="M9 8h6M9 12h6"/>',
+  alert:'<path d="M12 4 2.5 20h19z"/><path d="M12 10v4.5M12 17.5v.5"/>',
+  heart:'<path d="M12 20s-7.5-4.6-7.5-10A4.3 4.3 0 0 1 12 7.3 4.3 4.3 0 0 1 19.5 10c0 5.4-7.5 10-7.5 10z"/>',
+  gift:'<rect x="4" y="9" width="16" height="12" rx="1.5"/><path d="M3 9h18M12 9v12M12 9c-1.5-3.5-6-4-6-1.5S10 9 12 9zm0 0c1.5-3.5 6-4 6-1.5S14 9 12 9z"/>',
+  eye:'<path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12z"/><circle cx="12" cy="12" r="3"/>',
+  sum:'<path d="M17 5H7l6 7-6 7h10"/>',
+  search:'<circle cx="11" cy="11" r="6.5"/><path d="m16 16 4.5 4.5"/>',
+  send:'<path d="M20.5 3.5 3.5 10.5l7 2.5 2.5 7z"/><path d="m10.5 13 4-4"/>',
+  user:'<circle cx="12" cy="8" r="4"/><path d="M4.5 20.5a7.5 7.5 0 0 1 15 0"/>',
+  shield:'<path d="M12 3 4.5 6v6c0 4.6 3.2 7.8 7.5 9 4.3-1.2 7.5-4.4 7.5-9V6z"/><path d="m9 12 2 2 4-4"/>',
+  scissors:'<circle cx="6.5" cy="7" r="2.5"/><circle cx="6.5" cy="17" r="2.5"/><path d="M8.6 8.4 20 17M8.6 15.6 20 7"/>'
+};
+const ic = (n,s=20,w=1.9) => `<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="${w}" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${P[n]||''}</svg>`;
+
+/* ---------- money ---------- */
+const fmt = n => Math.round(n).toLocaleString('en-US');
+const short = n => {
+  const neg = n<0; n=Math.abs(n);
+  let s;
+  if(n>=1e6){ s=(Math.round(n/1e4)/100).toString()+' مليون'; }
+  else if(n>=1000){ s=Math.round(n/1000)+' ألف'; }
+  else s=fmt(n);
+  return (neg?'−':'')+s;
+};
+const R = n => `<span class="num">${fmt(n)}</span><span class="cur">ريال</span>`;
+
+/* ---------- state ---------- */
+const STAGES = [
+  {n:'هل أقدر؟', d:'تعرف كم يكلفك العرس وكم ناقصك قبل ما تتقدم.'},
+  {n:'الاتفاق', d:'تسجل ما اتفقتم عليه: الخطوبة والشرط والمهر والذهب.'},
+  {n:'الخطوبة', d:'دفعة الخطوبة، ثم ترتيب سداد الشرط والمهر.'},
+  {n:'سداد المهر', d:'أقساط الشرط والمهر، ورقم واحد كل شهر.'},
+  {n:'تحديد الموعد', d:'يتحول التطبيق للعد التنازلي وتنبني خطة المهام.'},
+  {n:'التجهيز', d:'القرارات والحجوزات والدفعات وقائمة الضيوف.'},
+  {n:'أسبوع العرس', d:'برنامج الأيام، والتأكيدات، وكاش كل ليلة.'},
+  {n:'يوم العرس', d:'برنامج اليوم، والظروف، وتسجيل الرفد.'},
+  {n:'بعد العرس', d:'نقل الرفد من الدفتر، والتقييم، والشكر.'},
+  {n:'سداد الديون', d:'تاريخ التحرر، والأقساط، ورد الرفد.'}
+];
+const S = {
+  stage:5, view:'home', tab:'home', hist:[],
+  sub:{money:'summary', people:'guests', market:'explore', rifd:'got'},
+  hallPaid:false, photoChosen:false, sheet:null, toast:null,
+  ob:{role:'groom', st:'date', cash:1500000, help:1000000, monthly:150000},
+  lighten:{home:false, room:false, qat:false, video:false},
+  tasks:{t1:false,t2:false,t3:false,t4:true,t5:false,t6:false,t7:false,t8:false},
+  env:{e1:true,e2:false,e3:false,e4:false},
+  conf:{photo:false, kitchen:false},
+  rifd:[{n:'علي صالح',a:20000},{n:'خالد العماري',a:10000},{n:'أبو نبيل',a:50000}],
+  rifdAmt:10000, rifdName:'', taskFilter:'all', guestEvent:'wed'
+};
+
+const ITEMS = () => [
+  {id:'khutba', g:'agree', n:'الخطوبة', plan:300000, paid:300000, i:'gift'},
+  {id:'mahr', g:'agree', n:'الشرط والمهر', plan:1500000, paid:1500000, i:'coin', note:'المهر حق العروس'},
+  {id:'gold', g:'agree', n:'الذهب', plan:1250000, paid:750000, i:'coin', note:'12 من 20 جرام عيار 21'},
+  {id:'kiswa', g:'wed', n:'ثياب العروس للذبال', plan:500000, paid:200000, i:'scissors'},
+  {id:'hall', g:'wed', n:'قاعة النساء', plan:800000, actual:850000, paid:S.hallPaid?550000:300000, i:'hall', note:'قاعة الماسة'},
+  {id:'walima', g:'wed', n:'الوليمة والذبائح', plan:900000, paid:0, i:'food'},
+  {id:'qat', g:'wed', n:'قات المقيل', plan:300000, paid:0, i:'leaf'},
+  {id:'singer', g:'wed', n:'المنشد والزفة', plan:250000, paid:0, i:'music'},
+  {id:'photo', g:'wed', n:'التصوير', plan:200000, actual:S.photoChosen?180000:undefined, paid:0, i:'camera', note:S.photoChosen?'عدسة صنعاء':'3 عروض وصلت'},
+  {id:'naqsh', g:'wed', n:'النقش والكوافير', plan:150000, paid:0, i:'scissors'},
+  {id:'room', g:'home', n:'غرفة النوم', plan:1200000, paid:600000, i:'home', note:'3 أقساط باقية من المعرض'}
+];
+const totals = () => {
+  const it = ITEMS();
+  const exp = it.reduce((s,x)=>s+(x.actual??x.plan),0);
+  const plan = it.reduce((s,x)=>s+x.plan,0);
+  const paid = it.reduce((s,x)=>s+x.paid,0);
+  const cash = 3950000 - paid;
+  const pledged = 500000;
+  return {exp, plan, paid, left:exp-paid, cash, pledged, gap:(exp-paid)-cash-pledged};
+};
+
+/* ---------- guide notes ---------- */
+const NOTE = {
+  welcome:{g:'البداية', t:'الترحيب', q:'كم يكلفني عرسي؟', why:'أول سؤال في رأس كل عريس. نجاوبه قبل التسجيل، فيشوف قيمة التطبيق في أول دقيقة.', ch:'بدل شاشة الترحيب العامة. لا رقم جوال ولا حساب في البداية.'},
+  ob_role:{g:'البداية', t:'مين أنت؟', q:'لمن هذه الخطة؟', why:'العريس والعروسة والأهل يشوفون نفس الرحلة لكن بكلمات وبنود مختلفة. المزود يروح لبوابته مباشرة.', ch:'سؤال واحد في الشاشة بدل نموذج طويل.'},
+  ob_stage:{g:'البداية', t:'وين وصلتوا؟', q:'من أي مرحلة نبدأ؟', why:'العرس اليمني ممكن يكون قبل موعده بسنوات. التطبيق يبدأ من مرحلتك، مو من تاريخ مفروض.', ch:'جديد. اليوم التطبيق يفترض تاريخ عرس.'},
+  ob_money:{g:'البداية', t:'كم معك؟', q:'كم الموجود وكم الموعود؟', why:'بدون هذا الرقم ما نقدر نحسب الفجوة. نسأل عن رقمين فقط.', ch:'بدل معالج الميزانية الطويل.'},
+  map:{g:'البداية', t:'خريطة عرسك', q:'كم يكلف عرسي في صنعاء، وكم ناقصني؟', why:'لحظة الإبهار: خلال دقيقة يشوف عرسه كاملاً بأسعار صنعاء التقريبية، والفجوة، ومتى يجهز. ويقدر يخفّف بنود ويشوف الأثر فوراً.', ch:'جديد. معالج "جهّز ميزانيتك" ينتقل من تبويب المال إلى هنا.'},
+  phone:{g:'البداية', t:'احفظ خطتك', q:'كيف أحفظ خطتي؟', why:'نطلب الرقم فقط لما يقرر يحفظ، بعد ما شاف القيمة.', ch:'الدخول والتسجيل شاشة واحدة برمز واتساب.'},
+  lockset:{g:'البداية', t:'قفل التطبيق', q:'من يقدر يفتح بياناتي؟', why:'الجوال في اليمن يتنقل في البيت، والبيانات المالية خاصة.', ch:'جديد (موجود في الخطة كبند 26).'},
+  home:{g:'الرئيسية', t:'الرئيسية', q:'وين وصلت؟ كم ناقصني؟ وش أسوي الآن؟', why:'كرت واحد رئيسي يتغير حسب المرحلة والوقت والفلوس، ويختفي لما تخلص منه. جرّب: سجّل دفعة القاعة من الكرت، وشوف الكرت التالي يطلع.', ch:'تحل محل 4 شاشات: الرئيسية القديمة ولوحة الخطة ومركز الخطة ولوحة الضيف. انشال الشريط العلوي المكرر.'},
+  journey:{g:'الرئيسية', t:'رحلتي', q:'وين أنا من الرحلة كلها؟', why:'يحل سؤال "وين أنا؟" نهائياً: المراحل العشر، وش خلص ووش الجاي.', ch:'جديد.'},
+  tasks:{g:'الرئيسية', t:'كل المهام', q:'وش لازم ينعمل ومين يسويه؟', why:'المهام مرتبة بالوقت ولكل مهمة مسار (رجال، نساء، مشترك) ومسؤول. المهمة المرتبطة بفلوس تبين المبلغ.', ch:'تصير داخل الرئيسية بدل تبويب مستقل.'},
+  agree:{g:'الرئيسية', t:'سجّل الاتفاق', q:'وش اتفقنا عليه بالضبط؟', why:'الشرط والمهر والذهب أكبر التزامات العريس. نسجلها بنوداً واضحة، والذهب بالجرام والعيار مو بالريال.', ch:'جديد.'},
+  notif:{g:'الرئيسية', t:'التنبيهات', q:'وش يستاهل انتباهي؟', why:'التنبيه على شاشة القفل ما يكشف أسماء ولا مبالغ.', ch:'إعادة ترتيب حسب الأهمية.'},
+  money:{g:'المال', t:'المال', q:'فلوسي ماشية صح؟', why:'التبويب يفتح دائماً على الملخص. أربع تبويبات علوية: الملخص، البنود، الدفعات، الديون. الأرقام كلها من مرحلة التجهيز.', ch:'ينصلح الزر المعلق في نص الشاشة، وينشال المعالج من التبويب، والديون صارت ظاهرة.'},
+  item:{g:'المال', t:'تفاصيل بند', q:'وين وصلت مع القاعة؟', why:'كل بند يجمع: المزود، والمخطط مقابل الفعلي، والدفعات والإيصالات، والدفعة الجاية.', ch:'تبقى مع تنظيف.'},
+  people:{g:'الناس', t:'الناس', q:'مين معي ومين أعطاني؟', why:'الضيوف والرفد والعائلة في مكان واحد لأنها كلها عن الناس.', ch:'الضيوف يصيرون حسب المناسبة ورجال ونساء. الرفد جديد. شاشات المشاركة الخمس تنضم هنا.'},
+  market:{g:'السوق', t:'السوق', q:'مين أحجز ووين وصلت معهم؟', why:'كل سعر معه تاريخ آخر تحديث، وما دفعه عرسان فعلاً. رقمك ما يوصل لمزود ما طلبته.', ch:'"طلباتي" جديدة وتجمع الطلبات والحجوزات في رحلة واحدة.'},
+  provider:{g:'السوق', t:'صفحة المزود', q:'هل هذا المزود مناسب لي؟', why:'الثقة: موثّق، وسعر بتاريخه، وتقييمات لا يتحكم فيها المزود.', ch:'تبقى مع إضافة تاريخ السعر وما دفعه العرسان.'},
+  compare:{g:'السوق', t:'مقارنة العروض', q:'أي عرض أختار؟', why:'لما تختار، العرض يصير بنداً في المال بجدول دفعاته تلقائياً.', ch:'جديد.'},
+  week:{g:'العرس', t:'أسبوع العرس', q:'وش باقي، ومين أكدت معه، وكم كاش أجهز؟', why:'التطبيق يتحول لهذا الوضع لحاله قبل العرس بأسبوع. الأسماء من صنعاء وتحتاج تأكيد مع ناس حقيقيين.', ch:'جديد.'},
+  day:{g:'العرس', t:'يوم العرس', q:'وش الجاي اليوم، ولمن أدفع؟', why:'يشتغل بدون إنترنت. الظروف تتعلّم كل ما تدفع.', ch:'شاشة يوم العرس موجودة وتنعاد بناءها على هذا الأساس.'},
+  rifdbulk:{g:'بعد العرس', t:'نقل الرفد', q:'كيف أنقل الدفتر بسرعة؟', why:'اسم ومبلغ ثم التالي. كاتب الرفد يقدر يسجل من جواله بدون ما يشوف شيء ثاني.', ch:'جديد.'},
+  finish:{g:'بعد العرس', t:'النهاية', q:'خلصت؟', why:'الرحلة الحقيقية تنتهي مع آخر قسط، مو يوم العرس.', ch:'جديد.'}
+};
+const JUMPS = [
+  ['البداية',[['welcome','الترحيب'],['ob_role','مين أنت؟'],['ob_stage','وين وصلتوا؟'],['ob_money','كم معك؟'],['map','خريطة عرسك'],['phone','احفظ خطتك'],['lockset','قفل التطبيق']]],
+  ['الرئيسية',[['home','الرئيسية'],['journey','رحلتي'],['tasks','كل المهام'],['agree','سجّل الاتفاق'],['notif','التنبيهات']]],
+  ['المال',[['money:summary','الملخص'],['money:items','البنود'],['item','تفاصيل بند: القاعة'],['money:pay','الدفعات'],['money:debts','الديون']]],
+  ['الناس',[['people:guests','الضيوف'],['people:rifd','الرفد'],['people:family','العائلة']]],
+  ['السوق',[['market:explore','استكشف'],['provider','صفحة مزود'],['market:mine','طلباتي'],['compare','مقارنة العروض'],['market:chats','المحادثات']]],
+  ['العرس وما بعده',[['week','أسبوع العرس'],['day','يوم العرس'],['rifdbulk','نقل الرفد'],['finish','النهاية']]]
+];
+
+/* ---------- navigation ---------- */
+const TABS = ['home','money','people','market'];
+function go(v, push=true){
+  if(push) S.hist.push({view:S.view, tab:S.tab});
+  if(v.includes(':')){ const [t,s]=v.split(':'); S.sub[t]=s; v=t; }
+  if(TABS.includes(v)){ S.tab=v; S.view=v; S.hist=[]; }
+  else S.view=v;
+  S.sheet=null; render(true);
+}
+function back(){ const h=S.hist.pop(); if(h){S.view=h.view; S.tab=h.tab;} else {S.view=S.tab;} S.sheet=null; render(true); }
+function toast(msg){ S.toast=msg; render(); clearTimeout(toast.t); toast.t=setTimeout(()=>{S.toast=null; render();},3200); }
+function setStage(i){
+  S.stage=i; S.hist=[]; S.tab='home';
+  S.view = i===0 ? 'welcome' : 'home';
+  if(i>=10){ S.view='finish'; }
+  render(true);
+}
+
+/* ---------- building blocks ---------- */
+const hroot = (title, extra='') => `
+  <div class="hroot"><div class="who"><div class="av">م</div><div><div class="t-small">عرس محمد وسلمى</div><div class="t-h3">${title}</div></div></div>
+  <div style="display:flex">${extra}<button class="ibtn" data-go="notif" aria-label="التنبيهات">${ic('bell',22)}<span class="dot"></span></button></div></div>`;
+const hsub = (t, right='') => `<div class="hsub"><button class="ibtn" data-back aria-label="رجوع">${ic('back',22)}</button><div class="t">${t}</div>${right}</div>`;
+const ttabs = (key, items) => `<div class="ttabs" role="tablist">${items.map(([k,l])=>`<button role="tab" class="${S.sub[key]===k?'on':''}" data-sub="${key}:${k}">${l}</button>`).join('')}</div>`;
+const stageStrip = () => `<button class="stage-strip" data-go="journey"><span style="display:flex;flex-direction:column;gap:1px"><span class="lbl">أنت الآن في</span><span class="nm">${STAGES[Math.min(S.stage,9)].n}</span></span><span class="dots">${STAGES.map((_,i)=>`<i class="${i<S.stage?'d':i===S.stage?'c':''}"></i>`).join('')}</span>${ic('chev',18)}</button>`;
+const li = (o) => `<${o.go?'button':'div'} class="li" ${o.go?`data-go="${o.go}"`:''}>${o.ic?`<span class="ic ${o.c||''}">${ic(o.ic)}</span>`:''}${o.av||''}<span class="grow"><span class="ttl">${o.t}</span>${o.s?`<span class="t-small">${o.s}</span>`:''}</span>${o.r||''}${o.go?`<span class="chev">${ic('chev',18)}</span>`:''}</${o.go?'button':'div'}>`;
+
+/* ---------- onboarding ---------- */
+function vWelcome(){
+  return {body:`
+  <div class="pad" style="min-height:100%;justify-content:space-between;padding-top:28px">
+    <div style="display:flex;flex-direction:column;gap:18px">
+      <div style="font-family:var(--f-display);font-weight:800;font-size:22px;color:var(--a-primary)">اعّرست</div>
+      <h1 class="t-h1" style="font-size:36px;line-height:1.2">كم يكلفك عرسك في صنعاء؟</h1>
+      <p class="t-body" style="font-size:16px">جاوب على أربعة أسئلة، ونوريك عرسك كاملاً: كم يكلف، كم ناقصك، ومتى تجهز. بدون تسجيل.</p>
+      <div class="card" style="gap:12px">
+        <div class="crow"><span class="ic g">${ic('coin')}</span><span class="grow"><span class="t-h3">أسعار صنعاء التقريبية</span><span class="t-small">لكل بند، من المهر إلى غرفة النوم</span></span></div>
+        <div class="crow"><span class="ic p">${ic('route')}</span><span class="grow"><span class="t-h3">من الاتفاق إلى آخر قسط</span><span class="t-small">نمشي معك قبل العرس وبعده</span></span></div>
+        <div class="crow"><span class="ic m">${ic('shield')}</span><span class="grow"><span class="t-h3">بياناتك لك وحدك</span><span class="t-small">ما يشوفها أحد إلا اللي تختاره</span></span></div>
+      </div>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:10px">
+      <button class="btn pri block" data-go="ob_role">احسب عرسي</button>
+      <button class="btn sec block" data-act="toProvider">أنا مزود خدمة</button>
+    </div>
+  </div>`};
+}
+function obFrame(step, title, sub, content, next, nextLabel='التالي'){
+  return {body:`
+    ${hsub('')}
+    <div class="pad" style="padding-top:6px">
+      <div class="progress">${[1,2,3,4].map(i=>`<i class="${i<=step?'d':''}"></i>`).join('')}</div>
+      <div style="display:flex;flex-direction:column;gap:6px;margin-top:6px"><h1 class="t-h1">${title}</h1>${sub?`<p class="t-body">${sub}</p>`:''}</div>
+      ${content}
+    </div>`, act:`<button class="btn pri block" data-go="${next}">${nextLabel}</button>`};
+}
+const opt = (grp,val,t,s,cur) => `<button class="opt ${cur===val?'on':''}" data-pick="${grp}:${val}"><span class="radio"></span><span class="grow"><span class="ttl">${t}</span>${s?`<span class="t-small">${s}</span>`:''}</span></button>`;
+function vRole(){ const c=S.ob.role; return obFrame(1,'مين أنت؟','نرتب البنود والكلمات حسبك.',
+  `<div style="display:flex;flex-direction:column;gap:10px">${opt('role','groom','العريس','أنا اللي بدفع أغلب التكاليف',c)}${opt('role','bride','العروسة','خطتي الخاصة، وأشارك منها ما أختار',c)}${opt('role','family','من الأهل','أساعد ولدي أو بنتي في الترتيب',c)}</div>`,'ob_stage'); }
+function vStage(){ const c=S.ob.st; return obFrame(2,'وين وصلتوا؟','نبدأ من مرحلتك، مو من أول الطريق.',
+  `<div style="display:flex;flex-direction:column;gap:10px">${opt('st','none','لسا ما تقدمنا','أبي أعرف كم أحتاج قبل ما أتقدم',c)}${opt('st','agreed','اتفقنا على المبالغ','نبي نسجل الاتفاق ونرتب السداد',c)}${opt('st','paying','خطبنا ونسدد المهر','أقساط الشرط والمهر شغالة',c)}${opt('st','date','حددنا موعد العرس','الخميس 18 فبراير 2027',c)}</div>`,'ob_money'); }
+function vObMoney(){ return obFrame(3,'كم معك؟','رقم تقريبي يكفي. تقدر تعدله بعدين.',
+  `<div class="field"><label for="cash">كم معك الآن؟</label><div class="inp"><input id="cash" inputmode="numeric" value="${fmt(S.ob.cash)}" data-num="cash"><span class="suf">ريال</span></div></div>
+   <div class="field"><label for="help">كم وعدك الأهل يساعدونك؟</label><div class="inp"><input id="help" inputmode="numeric" value="${fmt(S.ob.help)}" data-num="help"><span class="suf">ريال</span></div><span class="t-small">نحسبها لما توصل فعلاً. والدين نسجله لحاله.</span></div>
+   <div class="field"><label for="monthly">كم تقدر توفر في الشهر؟</label><div class="inp"><input id="monthly" inputmode="numeric" value="${fmt(S.ob.monthly)}" data-num="monthly"><span class="suf">ريال</span></div></div>`,'map','شوف خريطة عرسي'); }
+
+const MAP_ITEMS = [
+  ['agree','الخطوبة',300000],['agree','الشرط والمهر',1500000],['agree','الذهب (20 جرام عيار 21)',1250000],
+  ['wed','ثياب العروس للذبال',500000],['wed','قاعة النساء',800000,'home'],['wed','الوليمة والذبائح',900000],['wed','قات المقيل',300000,'qat'],['wed','المنشد والزفة',250000],['wed','التصوير',200000,'video'],['wed','النقش والكوافير',150000],
+  ['home','غرفة النوم',1200000,'room']
+];
+const LIGHT = {home:['عرس في البيت بدل القاعة',800000],qat:['بدون قات المقيل',300000],video:['تصوير صور بدون فيديو',80000],room:['غرفة النوم بالتقسيط بعد العرس',600000]};
+function vMap(){
+  let total = MAP_ITEMS.reduce((s,x)=>s+x[2],0);
+  let cut = Object.keys(S.lighten).filter(k=>S.lighten[k]).reduce((s,k)=>s+LIGHT[k][1],0);
+  const need = total - cut;
+  const have = S.ob.cash + S.ob.help;
+  const gap = Math.max(0, need-have);
+  const months = S.ob.monthly>0 ? Math.ceil(gap/S.ob.monthly) : 0;
+  const yrs = months>=12 ? `${Math.floor(months/12)} سنة${months%12?` و${months%12} شهر`:''}` : `${months} شهر`;
+  const grp = g => MAP_ITEMS.filter(x=>x[0]===g).map(x=>{
+    const off = x[3] && S.lighten[x[3]];
+    const v = off ? x[2]-LIGHT[x[3]][1] : x[2];
+    return `<div class="li"><span class="grow"><span class="ttl" style="${off?'color:var(--a-muted)':''}">${x[1]}</span></span><span class="amt">${short(v)}</span></div>`;}).join('');
+  return {body:`
+    ${hsub('خريطة عرسك')}
+    <div class="pad" style="padding-top:12px">
+      <div class="now"><span class="ring"></span>
+        <span class="k">عرس في صنعاء، تقدير بأسعار 2026</span>
+        <div style="display:flex;align-items:baseline;gap:8px"><span style="font-family:var(--f-display);font-weight:800;font-size:38px;line-height:1" class="num">${short(need)}</span></div>
+        <div class="stats" style="grid-template-columns:1fr 1fr">
+          <div class="stat" style="background:rgba(255,255,255,.1);border-color:rgba(255,255,255,.14)"><span class="l" style="color:var(--a-on-primary-muted)">معك والموعود</span><span class="v" style="color:var(--a-on-primary)">${short(have)}</span></div>
+          <div class="stat" style="background:rgba(255,255,255,.1);border-color:rgba(255,255,255,.14)"><span class="l" style="color:var(--a-on-primary-muted)">ناقصك</span><span class="v" style="color:var(--a-gold)">${short(gap)}</span></div>
+        </div>
+        <p>لو وفّرت ${short(S.ob.monthly)} في الشهر، تجهز بعد <b style="color:var(--a-on-primary)">${yrs}</b> تقريباً.</p>
+      </div>
+      <div class="card" style="gap:12px">
+        <div class="t-h3">خفّف عرسك وشوف الفرق</div>
+        ${Object.keys(LIGHT).map(k=>`<button class="crow" data-light="${k}" style="text-align:right"><span class="grow"><span style="font-weight:600;color:var(--a-ink)">${LIGHT[k][0]}</span><span class="t-small">يوفر ${short(LIGHT[k][1])} قبل العرس</span></span><span class="sw ${S.lighten[k]?'on':''}" role="switch" aria-checked="${S.lighten[k]}"></span></button>`).join('')}
+      </div>
+      <div class="sec-h"><span class="t-h3">اتفاق الزواج</span></div><div class="list">${grp('agree')}</div>
+      <div class="sec-h"><span class="t-h3">العرس</span></div><div class="list">${grp('wed')}</div>
+      <div class="sec-h"><span class="t-h3">البيت</span></div><div class="list">${grp('home')}</div>
+      <p class="t-small">الأسعار تقديرية من مزودين في صنعاء ومن عرسان سجلوا ما دفعوه. كل رقم تقدر تغيره.</p>
+    </div>`, act:`<button class="btn pri block" data-go="phone">احفظ خطتي</button><span class="t-small" style="text-align:center">نطلب رقم جوالك عشان ما تضيع خطتك</span>`};
+}
+function vPhone(){
+  return {body:`${hsub('احفظ خطتك')}
+  <div class="pad" style="padding-top:18px">
+    <h1 class="t-h1">رقم جوالك</h1><p class="t-body">نرسل لك رمز على واتساب. ما نعطي رقمك لأي مزود.</p>
+    <div class="field"><label for="ph">رقم الجوال</label><div class="inp" dir="ltr"><span class="suf">+967</span><input id="ph" value="77 123 4567" inputmode="tel" style="text-align:left"></div></div>
+    <div class="field"><label>الرمز اللي وصلك</label><div style="display:flex;gap:8px" dir="ltr">${'482915'.split('').map(d=>`<div class="inp" style="width:44px;justify-content:center;font-weight:700;font-size:20px;color:var(--a-ink)">${d}</div>`).join('')}</div><span class="t-small">وصل الرمز على واتساب قبل ثواني</span></div>
+  </div>`, act:`<button class="btn pri block" data-go="lockset">دخول</button>`};
+}
+function vLock(){
+  return {body:`${hsub('قفل التطبيق')}
+  <div class="pad" style="padding-top:22px;align-items:center;text-align:center">
+    <span class="ic p" style="width:72px;height:72px;border-radius:24px">${ic('lock',34)}</span>
+    <h1 class="t-h1">تقفل اعّرست برمز؟</h1>
+    <p class="t-body">لو الجوال يتنقل في البيت، القفل يخلي فلوسك وخططك لك وحدك. والتنبيهات ما تكشف أسماء ولا مبالغ.</p>
+    <div class="card" style="width:100%;text-align:right"><div class="crow"><span class="grow"><span style="font-weight:600;color:var(--a-ink)">القفل بالبصمة أو الرمز</span><span class="t-small">تقدر تغيره من الإعدادات</span></span><span class="sw on"></span></div></div>
+  </div>`, act:`<button class="btn pri block" data-act="finishOb">فعّل القفل وابدأ</button><button class="btn sec block" data-act="finishOb">بعدين</button>`};
+}
+
+/* ---------- home ---------- */
+function homeNow(){
+  const st=S.stage, T=totals();
+  if(st===0) return `<div class="now"><span class="ring"></span><span class="k">${ic('coin',16)} هدفك</span><h3>تجهز للتقدم خلال سنتين و5 شهور</h3><p>ناقصك 4.85 مليون. لو وضعت 150 ألف كل شهر، ومساعدة الوالد توصل، توصل للهدف في مارس 2029.</p><div class="acts"><button class="btn onp sm" data-go="map">شوف خريطة عرسك</button></div></div>`;
+  if(st===1) return `<div class="now"><span class="ring"></span><span class="k">${ic('book',16)} الخطوة الجاية</span><h3>سجّل اللي اتفقتوا عليه</h3><p>الخطوبة، والشرط والمهر، والذهب. نحفظها بنوداً، ونرتب سدادها، وما تضيع في الكلام.</p><div class="acts"><button class="btn onp sm" data-go="agree">سجّل الاتفاق</button></div></div>`;
+  if(st===2) return `<div class="now"><span class="ring"></span><span class="k">${ic('check',16)} انسجلت دفعة الخطوبة</span><h3>الجاي: رتّب سداد الشرط والمهر</h3><p>باقي 1.5 مليون. نقسمها على العيد ورمضان مثل ما اتفقتوا، ونذكرك قبل كل موعد.</p><div class="acts"><button class="btn onp sm" data-go="money:pay">رتّب الأقساط</button></div></div>`;
+  if(st===3) return `<div class="now"><span class="ring"></span><span class="k">${ic('coin',16)} هذا الشهر</span><h3>ضع 150 ألف قبل رمضان</h3><p>قسط الشرط الجاي 300 ألف في 1 مارس، ومعك 150 ألف مخصصة له.</p><div class="bar"><i style="width:40%"></i></div><p>سددت 600 ألف من 1.5 مليون</p><div class="acts"><button class="btn onp sm" data-act="quickPay">سجّل قسط</button><button class="btn lite sm" data-go="money:pay">الجدول</button></div></div>`;
+  if(st===4) return `<div class="now gold"><span class="k">${ic('cal',16)} حددتوا الموعد</span><h3>الخميس 18 فبراير 2027</h3><p>باقي 4 شهور. رتبنا لك 24 مهمة على مسارين، الرجال والنساء، وأولها حجز القاعة.</p><div class="acts"><button class="btn pri sm" data-go="tasks">شوف الخطة</button><button class="btn sec sm" data-go="market">شوف القاعات</button></div></div>`;
+  if(st===5){
+    if(!S.hallPaid) return `<div class="now"><span class="ring"></span><span class="k">${ic('alert',16)} بعد 5 أيام</span><h3>دفعة القاعة الثانية: 250 ألف</h3><p>قاعة الماسة، الخميس 22 أكتوبر. معك 300 ألف جاهزة.</p><div class="acts"><button class="btn onp sm" data-act="quickPay">سجّل الدفعة</button><button class="btn lite sm" data-go="item">التفاصيل</button></div></div>`;
+    if(!S.photoChosen) return `<div class="now"><span class="ring"></span><span class="k">${ic('camera',16)} قرار ينتظرك</span><h3>3 عروض تصوير وصلت</h3><p>أرخصها 180 ألف وأغلاها 250 ألف. بندك 200 ألف.</p><div class="acts"><button class="btn onp sm" data-go="compare">قارن واختر</button></div></div>`;
+    return `<div class="now"><span class="ring"></span><span class="k">${ic('music',16)} القرار الجاي</span><h3>احجز المنشد والزفة</h3><p>طلبت عرضين وما وصل رد. المنشدين يردون عادة خلال يوم.</p><div class="acts"><button class="btn onp sm" data-go="market:mine">شوف طلباتك</button></div></div>`;
+  }
+  if(st===6) return `<div class="now gold"><span class="k">${ic('cal',16)} أسبوع العرس</span><h3>باقي 5 أيام</h3><p>اليوم الحمام عند النساء. 4 من 6 مزودين أكدوا، و2 ينتظرون رسالتك.</p><div class="acts"><button class="btn pri sm" data-go="week">افتح أسبوع العرس</button></div></div>`;
+  if(st===7) return `<button class="big-rifd" data-act="rifdSheet">${ic('book',30,2.2)} سجّل رفد</button>`;
+  if(st===8) return `<div class="now"><span class="ring"></span><span class="k">${ic('book',16)} الرفد</span><h3>سجّلت 46 اسم بمجموع 1.38 مليون</h3><p>عبدالله سجّل 31 منهم يوم العرس. باقي اللي في الدفتر الورقي.</p><div class="acts"><button class="btn onp sm" data-go="rifdbulk">انقل من الدفتر</button><button class="btn lite sm" data-go="people:rifd">الدفتر</button></div></div>`;
+  if(st===9) return `<div class="now"><span class="ring"></span><span class="k">${ic('route',16)} تاريخ تحررك من الدين</span><h3>أكتوبر 2027</h3><div class="bar"><i style="width:35%"></i></div><p>سددت 350 ألف من مليون. باقي قسطين للخال حسن و8 لأخوك عبدالله.</p><div class="acts"><button class="btn onp sm" data-act="quickPay">سجّل قسط</button><button class="btn lite sm" data-go="money:debts">الديون</button></div></div>`;
+  return '';
+}
+function homeCards(){
+  const st=S.stage, T=totals();
+  const c = [];
+  const month = (v,l,s) => `<div class="month"><span class="ic g" style="background:var(--a-paper)">${ic('coin')}</span><span style="display:flex;flex-direction:column;gap:2px;flex:1"><span class="l">${l}</span><span class="v num">${v}</span><span class="t-small">${s}</span></span></div>`;
+  if(st===0){ c.push(month('150 ألف','ضع هذا الشهر','عشان تبقى على خطتك')); c.push(`<button class="card tap" data-go="map"><div class="crow"><span class="ic p">${ic('route')}</span><span class="grow"><span class="t-h3">عرس في صنعاء يكلف تقريباً 7.35 مليون</span><span class="t-small">شوف البنود وخفّف اللي ما تحتاجه</span></span><span class="chev">${ic('chev',18)}</span></div></button>`); }
+  if(st===1||st===2){ c.push(`<button class="card tap" data-go="map"><div class="crow"><span class="ic g">${ic('coin')}</span><span class="grow"><span class="t-h3">سعر جرام الذهب عيار 21 اليوم</span><span class="t-small">62,500 ريال في صنعاء. حدّثناه أمس</span></span></div></button>`); }
+  if(st===3){ c.push(`<div class="card"><div class="crow"><span class="ic g">${ic('coin')}</span><span class="grow"><span class="t-h3">ذهبك: 12 جرام عيار 21</span><span class="t-small">قيمته اليوم تقريباً 750 ألف. باقي 8 جرام من الاتفاق</span></span></div></div>`); }
+  if(st===5){
+    const due = 450000 - (S.hallPaid?250000:0);
+    c.push(month('150 ألف','ضع هذا الشهر',`مستحق خلال 30 يوم ${short(due)}، ومعك ${short(T.cash)}`));
+    if(S.hallPaid) c.push(`<button class="card tap" data-go="compare"><div class="crow"><span class="ic c">${ic('camera')}</span><span class="grow"><span class="t-h3">${S.photoChosen?'التصوير محجوز: عدسة صنعاء':'3 عروض تصوير وصلت'}</span><span class="t-small">${S.photoChosen?'180 ألف، العربون 50 ألف قبل 1 نوفمبر':'قارن واختر قبل نهاية الشهر'}</span></span><span class="chev">${ic('chev',18)}</span></div></button>`);
+    c.push(`<button class="card tap" data-go="item"><div class="crow"><span class="ic a">${ic('alert')}</span><span class="grow"><span class="t-h3">القاعة زادت عن بندها 50 ألف</span><span class="t-small">نعدّل البند أو نوفرها من بند ثاني؟</span></span><span class="chev">${ic('chev',18)}</span></div></button>`);
+    c.push(`<button class="card tap" data-act="gapSheet"><div class="crow"><span class="ic d">${ic('sum')}</span><span class="grow"><span class="t-h3">ناقصك قبل العرس ${short(T.gap)}</span><span class="t-small">شوف كيف نقفلها</span></span><span class="chev">${ic('chev',18)}</span></div></button>`);
+  }
+  if(st===4){ c.push(`<button class="card tap" data-go="people:guests"><div class="crow"><span class="ic c">${ic('people')}</span><span class="grow"><span class="t-h3">كم ضيف تتوقع؟</span><span class="t-small">العدد يحدد حجم القاعة والوليمة</span></span><span class="chev">${ic('chev',18)}</span></div></button>`); }
+  if(st===6){ c.push(`<div class="card"><div class="crow"><span class="ic g">${ic('env')}</span><span class="grow"><span class="t-h3">كاش الليلة: 60 ألف</span><span class="t-small">للمزيّنة في الحمام. تحطها في ظرف وتعلّمها لما تدفع</span></span></div></div>`); c.push(`<div class="card"><div class="crow"><span class="ic a">${ic('coin')}</span><span class="grow"><span class="t-h3">مستحق قبل الخميس 1.38 مليون</span><span class="t-small">الوليمة 900 ألف، باقي القاعة 300 ألف، المنشد 180 ألف</span></span></div></div>`); }
+  if(st===7){ c.push(`<div class="offline">${ic('wifioff',18)} بدون إنترنت. كل شيء محفوظ في جوالك وبيتزامن لاحقاً</div>`); c.push(`<button class="card tap" data-go="day"><div class="crow"><span class="ic p">${ic('cal')}</span><span class="grow"><span class="t-h3">الجاي: المقيل الساعة 3 العصر</span><span class="t-small">بيت الوالد. القات مع عبدالله</span></span><span class="chev">${ic('chev',18)}</span></div></button>`); c.push(`<button class="card tap" data-go="day"><div class="crow"><span class="ic g">${ic('env')}</span><span class="grow"><span class="t-h3">ظروف اليوم: دفعت 1 من 4</span><span class="t-small">باقي 830 ألف</span></span><span class="chev">${ic('chev',18)}</span></div></button>`); }
+  if(st===8){ c.push(`<div class="card"><div class="crow"><span class="ic m">${ic('sum')}</span><span class="grow"><span class="t-h3">الرفد غطّى 1.38 مليون من الفجوة</span><span class="t-small">باقي عليك مليون للخال حسن وأخوك عبدالله</span></span></div></div>`); c.push(`<button class="card tap" data-go="market:mine"><div class="crow"><span class="ic g">${ic('star')}</span><span class="grow"><span class="t-h3">قيّم 4 مزودين تعاملت معهم</span><span class="t-small">تقييمك يساعد العرسان اللي بعدك</span></span><span class="chev">${ic('chev',18)}</span></div></button>`); }
+  if(st===9){ c.push(`<div class="card"><div class="crow"><span class="ic p">${ic('gift')}</span><span class="grow"><span class="t-h3">عرس صالح ابن عمك الخميس</span><span class="t-small">أعطاك 20 ألف في عرسك. تبي تسجل إنك رديته؟</span></span></div><div style="display:flex;gap:8px"><button class="btn sec sm" data-act="rifdBack">سجّل الرد</button><button class="btn sec sm" data-act="dismiss">ذكّرني بعدين</button></div></div>`); c.push(`<div class="card"><div class="crow"><span class="ic a">${ic('cal')}</span><span class="grow"><span class="t-h3">قسط عبدالله بعد 3 أيام</span><span class="t-small">50 ألف</span></span></div></div>`); c.push(`<button class="card tap" data-act="finishJourney"><div class="crow"><span class="ic m">${ic('check')}</span><span class="grow"><span class="t-h3">شوف كيف تبان النهاية</span><span class="t-small">لما تسدد آخر قسط</span></span><span class="chev">${ic('chev',18)}</span></div></button>`); }
+  return c.join('');
+}
+const TASKS = [
+  {id:'t1',t:'احجز المنشد والزفة',w:'هذا الأسبوع',lane:'رجال',who:'م',amt:250000},
+  {id:'t2',t:'اختار المصور',w:'هذا الأسبوع',lane:'مشترك',who:'م',amt:200000},
+  {id:'t3',t:'أرسل قائمة ضيوف النساء لأمك',w:'هذا الأسبوع',lane:'نساء',who:'أ'},
+  {id:'t4',t:'دفعة القاعة الأولى',w:'تم',lane:'نساء',who:'م',amt:300000},
+  {id:'t5',t:'اتفق مع المطبخ على الوليمة والذبائح',w:'هذا الشهر',lane:'رجال',who:'و',amt:900000},
+  {id:'t6',t:'حجز النقش والكوافير',w:'هذا الشهر',lane:'نساء',who:'س',amt:150000},
+  {id:'t7',t:'رتّب القات للمقيل',w:'قبل العرس بأسبوعين',lane:'رجال',who:'ع',amt:300000},
+  {id:'t8',t:'أرسل الدعوات على واتساب',w:'قبل العرس بأسبوعين',lane:'مشترك',who:'م'}
+];
+const laneP = l => l==='رجال'?'info':l==='نساء'?'p':'g';
+function taskRow(t){ const done=S.tasks[t.id]; return `<div class="li"><button class="chk ${done?'on':''}" data-task="${t.id}" aria-label="إنجاز">${ic('check',16,2.6)}</button><span class="grow"><span class="ttl" style="${done?'text-decoration:line-through;color:var(--a-faint)':''}">${t.t}</span><span style="display:flex;gap:6px;align-items:center;flex-wrap:wrap"><span class="pill ${laneP(t.lane)}">${t.lane}</span>${t.amt?`<span class="t-small">${short(t.amt)}</span>`:''}</span></span><span class="av sm ${t.who==='م'?'':t.who==='س'?'gold':t.who==='ع'?'mint':'cob'}">${t.who}</span></div>`; }
+function vHome(){
+  const st=S.stage;
+  const showCount = st>=4 && st<=6;
+  const tasks = (st===5||st===4) ? TASKS.filter(t=>t.w==='هذا الأسبوع').slice(0,3) : [];
+  return {tabbed:true, body:`${hroot(st>=8?'بعد العرس':'مرحباً محمد')}
+  <div class="pad">
+    ${stageStrip()}
+    ${showCount?`<div style="display:flex;align-items:baseline;gap:8px"><span style="font-family:var(--f-display);font-weight:800;font-size:44px;color:var(--a-primary);line-height:1" class="num">${st===4?124:st===5?124:5}</span><span class="t-h3">يوم على العرس</span><span class="t-small" style="margin-right:auto">الخميس 18 فبراير</span></div>`:''}
+    ${homeNow()}
+    ${homeCards()}
+    ${tasks.length?`<div class="sec-h"><span class="t-h3">مهام هذا الأسبوع</span><button class="link" data-go="tasks">كل المهام</button></div><div class="list">${tasks.map(taskRow).join('')}</div>`:''}
+    ${st>=1 && st<=5?`<button class="card tap" data-act="askAI"><div class="crow"><span class="ic p">${ic('spark')}</span><span class="grow"><span class="t-h3">اسأل المساعد</span><span class="t-small">"وش ممكن أخفف بدون ما يخرب العرس؟"</span></span><span class="chev">${ic('chev',18)}</span></div></button>`:''}
+  </div>`};
+}
+function vJourney(){
+  return {body:`${hsub('رحلتي')}<div class="pad" style="padding-top:14px">
+    <p class="t-body">اضغط أي مرحلة وشوف كيف يتغير التطبيق فيها.</p>
+    <div class="tl">${STAGES.map((s,i)=>{const cls=i<S.stage?'d':i===S.stage?'c':'';return `<button class="st" data-stage="${i}"><span class="rail"><span class="node ${cls}">${i<S.stage?ic('check',14,2.6):i+1}</span>${i<9?`<span class="line ${i<S.stage?'d':''}"></span>`:''}</span><span class="body"><span class="t-h3" style="${i===S.stage?'color:var(--a-primary)':''}">${s.n}${i===S.stage?' <span class="pill g">أنت هنا</span>':''}</span><span class="t-small">${s.d}</span></span></button>`}).join('')}
+    <button class="st" data-act="finishJourney"><span class="rail"><span class="node">${ic('heart',13,2.4)}</span></span><span class="body"><span class="t-h3">النهاية</span><span class="t-small">سددت كل ديون عرسك.</span></span></button></div>
+  </div>`};
+}
+function vTasks(){
+  const f=S.taskFilter;
+  let list=TASKS.filter(t=> f==='all'?true : f==='mine'?t.who==='م' : f==='done'?S.tasks[t.id] : false);
+  const groups=[...new Set(list.map(t=>S.tasks[t.id]?'تم':t.w))];
+  return {body:`${hsub('كل المهام',`<button class="ibtn" data-act="newTask" aria-label="مهمة جديدة">${ic('plus',22)}</button>`)}
+  <div class="pad" style="padding-top:12px">
+    <div class="chips">${[['all','الكل'],['mine','لي'],['late','المتأخرة'],['done','المنجزة']].map(([k,l])=>`<button class="chip ${f===k?'on':''}" data-tf="${k}">${l}</button>`).join('')}</div>
+    ${f==='late'?`<div class="empty"><span class="ic m">${ic('check')}</span><span class="t-h3">ما عندك مهام متأخرة</span><span class="t-small">كل شيء ماشي في وقته.</span></div>`:''}
+    ${groups.map(g=>`<div class="sec-h"><span class="t-h3">${g}</span></div><div class="list">${list.filter(t=>(S.tasks[t.id]?'تم':t.w)===g).map(taskRow).join('')}</div>`).join('')}
+    <div class="card" style="flex-direction:row;align-items:center;gap:10px"><span class="pill info">رجال</span><span class="pill p">نساء</span><span class="pill g">مشترك</span><span class="t-small">كل مهمة لها مسار ومسؤول</span></div>
+  </div>`};
+}
+function vAgree(){
+  const row=(l,v,s)=>`<div class="field"><label>${l}</label><div class="inp"><input value="${v}" inputmode="numeric"><span class="suf">${s||'ريال'}</span></div></div>`;
+  return {body:`${hsub('سجّل الاتفاق')}<div class="pad" style="padding-top:14px">
+    <p class="t-body">اكتب اللي اتفقتوا عليه. نحوله لبنود ونرتب سدادها.</p>
+    ${row('الخطوبة','300,000')}${row('الشرط','1,000,000')}
+    <div class="field"><label>المهر</label><div class="inp"><input value="500,000"><span class="suf">ريال</span></div><span class="t-small">المهر حق العروس. لو فيه مؤجل، نسجله التزاماً قائماً.</span></div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">${row('الذهب','20','جرام')}${row('العيار','21','')}</div>
+    <div class="card"><div class="crow"><span class="ic g">${ic('coin')}</span><span class="grow"><span style="font-weight:600;color:var(--a-ink)">قيمة الذهب اليوم 1.25 مليون</span><span class="t-small">بسعر 62,500 للجرام. القيمة تتحدث مع السعر</span></span></div></div>
+    <div class="card"><div class="crow"><span class="grow"><span style="font-weight:600;color:var(--a-ink)">نسدد الشرط والمهر بأقساط</span><span class="t-small">في العيد ورمضان، ونذكرك قبل كل موعد</span></span><span class="sw on"></span></div></div>
+  </div>`, act:`<button class="btn pri block" data-act="saveAgree">احفظ الاتفاق</button>`};
+}
+function vNotif(){
+  return {body:`${hsub('التنبيهات')}<div class="pad" style="padding-top:12px">
+    <div class="card" style="background:var(--a-quiet)"><div class="crow"><span class="ic">${ic('lock')}</span><span class="grow"><span style="font-weight:600;color:var(--a-ink)">على شاشة القفل يظهر فقط:</span><span class="t-small">"عندك تذكير من اعّرست". بدون أسماء ولا مبالغ.</span></span></div></div>
+    <div class="sec-h"><span class="t-h3">تحتاج منك شيء</span></div>
+    <div class="list">${li({ic:'alert',c:'a',t:'دفعة القاعة بعد 5 أيام',s:'250 ألف لقاعة الماسة',go:'item'})}${li({ic:'camera',c:'c',t:'عرض جديد من استوديو الريان',s:'قبل ساعة',go:'compare'})}</div>
+    <div class="sec-h"><span class="t-h3">للعلم</span></div>
+    <div class="list">${li({ic:'check',c:'m',t:'سلمى أنجزت "حجز الكوافير"',s:'أمس'})}${li({ic:'people',c:'p',t:'الوالد قبل دعوتك للخطة',s:'يشوف المجموع فقط'})}</div>
+  </div>`};
+}
+
+/* ---------- money ---------- */
+function vMoney(){
+  const T=totals(), sub=S.sub.money;
+  let c='';
+  if(sub==='summary'){
+    const pPaid = T.paid/T.exp*100;
+    c=`<div class="card" style="gap:14px">
+      <div style="display:flex;justify-content:space-between;align-items:flex-end"><span style="display:flex;flex-direction:column;gap:2px"><span class="t-small">تكلفة العرس المتوقعة</span><span style="font-family:var(--f-display);font-weight:800;font-size:30px;color:var(--a-ink)" class="num">${short(T.exp)}</span></span><span class="pill warn">زاد 50 ألف عن الخطة</span></div>
+      <div class="bar" style="height:10px"><i class="m" style="width:${pPaid}%"></i></div>
+      <div class="stats"><div class="stat"><span class="l">دفعت</span><span class="v">${short(T.paid)}</span></div><div class="stat"><span class="l">باقي</span><span class="v">${short(T.left)}</span></div><div class="stat"><span class="l">معك الآن</span><span class="v">${short(T.cash)}</span></div></div>
+    </div>
+    <div class="month"><span class="ic g" style="background:var(--a-paper)">${ic('coin')}</span><span style="display:flex;flex-direction:column;gap:2px;flex:1"><span class="l">ضع هذا الشهر</span><span class="v num">150 ألف</span><span class="t-small">عشان دفعات الـ30 يوم الجاية</span></span></div>
+    <button class="card tap" data-act="gapSheet"><div class="crow"><span class="ic d">${ic('sum')}</span><span class="grow"><span class="t-h3">ناقصك قبل العرس ${short(T.gap)}</span><span class="t-small">الباقي ${short(T.left)} ناقص اللي معك والموعود</span></span><span class="chev">${ic('chev',18)}</span></div></button>
+    <div class="sec-h"><span class="t-h3">من وين الفلوس</span><button class="link" data-act="addFund">أضف</button></div>
+    <div class="list">${li({ic:'wallet',c:'m',t:'مدخراتك',s:'استلمت',r:`<span class="amt">${short(2550000)}</span>`})}${li({ic:'people',c:'p',t:'الوالد',s:'استلمت مليون. 500 ألف موعودة في يناير',r:`<span class="amt">${short(1500000)}</span>`})}${li({ic:'coin',c:'a',t:'أخوك عبدالله',s:'دين: تسدده 50 ألف شهرياً بعد العرس',r:`<span class="amt">${short(400000)}</span>`})}</div>`;
+  }
+  if(sub==='items'){
+    const it=ITEMS();
+    const grp=(g,l)=>`<div class="sec-h"><span class="t-h3">${l}</span><span class="t-small">${short(it.filter(x=>x.g===g).reduce((s,x)=>s+(x.actual??x.plan),0))}</span></div><div class="list">${it.filter(x=>x.g===g).map(x=>{const tot=x.actual??x.plan;const pc=Math.min(100,x.paid/tot*100);const over=x.actual&&x.actual>x.plan;return `<button class="li" ${x.id==='hall'?'data-go="item"':x.id==='photo'?'data-go="compare"':''}><span class="ic ${x.paid>=tot?'m':'p'}">${ic(x.i)}</span><span class="grow"><span style="display:flex;justify-content:space-between;gap:8px"><span class="ttl">${x.n}</span><span class="amt">${short(tot)}</span></span><div class="bar"><i class="${x.paid>=tot?'m':over?'a':''}" style="width:${pc}%"></i></div><span style="display:flex;justify-content:space-between;gap:6px"><span class="t-small">${x.note||(x.paid?`دفعت ${short(x.paid)}`:'ما دفعت شيء')}</span>${over?'<span class="pill warn">زاد</span>':x.paid>=tot?'<span class="pill ok">مكتمل</span>':''}</span></span></button>`}).join('')}</div>`;
+    c=`${grp('agree','اتفاق الزواج')}${grp('wed','العرس')}${grp('home','البيت')}<button class="btn sec block" data-act="addItem">${ic('plus',18)} أضف بند</button>`;
+  }
+  if(sub==='pay'){
+    const rows=[
+      ['done','15 أغسطس','عربون القاعة','قاعة الماسة',300000],
+      ['done','1 أكتوبر','قسط غرفة النوم','معرض الأمانة',200000],
+      [S.hallPaid?'done':'soon','22 أكتوبر','دفعة القاعة الثانية','قاعة الماسة',250000],
+      ['next','1 نوفمبر','قسط غرفة النوم','معرض الأمانة',200000],
+      ['next','1 ديسمبر','قسط غرفة النوم','معرض الأمانة',200000],
+      ['next','15 فبراير','باقي القاعة','قبل العرس بثلاث أيام',300000],
+      ['next','18 فبراير','الوليمة والذبائح','يوم العرس',900000]
+    ];
+    c=`<div class="chips"><button class="chip on">كل الدفعات</button><button class="chip">المهر والشرط</button><button class="chip">المزودين</button><button class="chip">الأقساط</button></div>
+    <div class="list">${rows.map(r=>`<div class="li"><span class="ic ${r[0]==='done'?'m':r[0]==='soon'?'a':''}">${ic(r[0]==='done'?'check':'cal')}</span><span class="grow"><span class="ttl">${r[2]}</span><span class="t-small">${r[1]}، ${r[3]}</span></span><span style="display:flex;flex-direction:column;align-items:flex-end;gap:3px"><span class="amt">${short(r[4])}</span>${r[0]==='done'?'<span class="pill ok">مدفوعة</span>':r[0]==='soon'?'<span class="pill warn">بعد 5 أيام</span>':''}</span></div>`).join('')}</div>`;
+  }
+  if(sub==='debts'){
+    c=`<div class="now"><span class="ring"></span><span class="k">لو مشيت على الجدول</span><h3>تتحرر من الديون في أكتوبر 2027</h3><p>عليك مليون إلا قليل لشخصين ومحل واحد.</p></div>
+    <div class="sec-h"><span class="t-h3">عليك</span><button class="link" data-act="addFund">أضف دين</button></div>
+    <div class="list">${li({av:'<span class="av">ع</span>',t:'أخوك عبدالله',s:'50 ألف شهرياً من مارس إلى أكتوبر',r:`<span class="amt">${short(400000)}</span>`})}${li({av:'<span class="av gold">م</span>',t:'معرض الأمانة للأثاث',s:'3 أقساط باقية، الجاي 1 نوفمبر',r:`<span class="amt">${short(600000)}</span>`})}</div>
+    <div class="sec-h"><span class="t-h3">لك على غيرك</span></div>
+    <div class="list">${li({av:'<span class="av mint">س</span>',t:'سالم صاحبك',s:'من رمضان الماضي',r:`<span class="amt">${short(30000)}</span>`})}</div>
+    <p class="t-small">التذكير يجيك أنت فقط. لو تبي تذكّر أحد، نجهز لك رسالة وترسلها بنفسك.</p>`;
+  }
+  return {tabbed:true, body:`${hroot('المال')}${ttabs('money',[['summary','الملخص'],['items','البنود'],['pay','الدفعات'],['debts','الديون']])}<div class="pad" style="padding-top:14px">${c}</div>`};
+}
+function vItem(){
+  return {body:`${hsub('قاعة النساء')}<div class="pad" style="padding-top:14px">
+    <div class="crow"><span class="ph" style="width:64px;height:64px">${ic('hall',28)}</span><span class="grow"><span class="t-h2">قاعة الماسة</span><span class="t-small">حدة، صنعاء. 300 مقعد</span></span><span class="pill ok">${ic('check',12,3)} محجوز</span></div>
+    <div class="stats"><div class="stat"><span class="l">الاتفاق</span><span class="v">850 ألف</span></div><div class="stat"><span class="l">دفعت</span><span class="v">${S.hallPaid?'550 ألف':'300 ألف'}</span></div><div class="stat"><span class="l">باقي</span><span class="v">${S.hallPaid?'300 ألف':'550 ألف'}</span></div></div>
+    <div class="card" style="background:var(--a-amber-soft);border-color:transparent"><div class="crow"><span class="ic a" style="background:var(--a-paper)">${ic('alert')}</span><span class="grow"><span style="font-weight:600;color:var(--a-ink)">البند كان 800 ألف، والاتفاق 850 ألف</span><span class="t-small">نرفع البند، أو نأخذ 50 ألف من بند النقش والكوافير؟</span></span></div><div style="display:flex;gap:8px"><button class="btn sec sm" data-act="okToast">ارفع البند</button><button class="btn sec sm" data-act="okToast">خذها من النقش</button></div></div>
+    <div class="sec-h"><span class="t-h3">الدفعات</span></div>
+    <div class="list">${li({ic:'receipt',c:'m',t:'العربون',s:'15 أغسطس، معها إيصال',r:`<span class="amt">${short(300000)}</span>`})}${li({ic:S.hallPaid?'receipt':'cal',c:S.hallPaid?'m':'a',t:'الدفعة الثانية',s:S.hallPaid?'اليوم، معها إيصال':'الخميس 22 أكتوبر',r:`<span class="amt">${short(250000)}</span>`})}${li({ic:'cal',t:'الباقي',s:'قبل العرس بثلاث أيام',r:`<span class="amt">${short(300000)}</span>`})}</div>
+    <div class="list">${li({ic:'user',t:'من يدفع',r:'<span class="t-small">العريس</span>'})}${li({ic:'eye',t:'من يشوف هذا البند',r:'<span class="t-small">أنت وسلمى</span>'})}${li({ic:'chat',t:'المحادثة مع القاعة',go:'market:chats'})}</div>
+  </div>`, act: S.hallPaid?`<button class="btn sec block" data-go="market:chats">${ic('chat',18)} راسل القاعة</button>`:`<button class="btn pri block" data-act="quickPay">سجّل دفعة 250 ألف</button>`};
+}
+
+/* ---------- people ---------- */
+function vPeople(){
+  const sub=S.sub.people; let c='';
+  if(sub==='guests'){
+    const ev=S.guestEvent;
+    const data={hin:[140,0,'الحناء (رجال)','بيت الوالد',0],wed:[220,180,'الزفاف','القاعة: 300 مقعد للنساء',300],sob:[0,60,'الصبحية','بيت العروسة',0]}[ev];
+    c=`<div class="chips">${[['hin','الحناء'],['wed','الزفاف'],['sob','الصبحية']].map(([k,l])=>`<button class="chip ${ev===k?'on':''}" data-ev="${k}">${l}</button>`).join('')}</div>
+    <div class="stats" style="grid-template-columns:1fr 1fr"><div class="stat"><span class="l">رجال</span><span class="v">${data[0]}</span></div><div class="stat"><span class="l">نساء</span><span class="v">${data[1]}</span></div></div>
+    ${data[4]?`<div class="card"><div style="display:flex;justify-content:space-between"><span style="font-weight:600;color:var(--a-ink)">النساء في القاعة</span><span class="t-small">${data[1]} من ${data[4]} مقعد</span></div><div class="bar"><i class="m" style="width:${data[1]/data[4]*100}%"></i></div><span class="t-small">باقي ${data[4]-data[1]} مقعد. الوليمة محسوبة على ${data[0]} رجل.</span></div>`:`<div class="card"><span class="t-small">${data[3]}</span></div>`}
+    <div class="sec-h"><span class="t-h3">المجموعات</span><button class="link" data-act="addGuest">أضف ضيف</button></div>
+    <div class="list">${li({ic:'people',c:'p',t:'أهل العريس',s:'الأعمام والأخوال وعيالهم',r:'<span class="amt num">96</span>'})}${li({ic:'people',c:'c',t:'أصحاب العمل',r:'<span class="amt num">54</span>'})}${li({ic:'people',c:'g',t:'الجيران والحارة',r:'<span class="amt num">70</span>'})}${li({ic:'people',c:'p',t:'نساء أهل العريس',s:'تديرها أم محمد',r:'<span class="amt num">110</span>'})}</div>
+    <div class="sec-h"><span class="t-h3">بطاقة الدعوة</span></div>
+    <div class="inv"><span class="t-small">يتشرف</span><span class="names">محمد وسلمى</span><span class="t-small">بدعوتكم لحضور حفل زفافهما</span><span class="t-h3">الخميس 18 فبراير 2027</span><span class="t-small">قاعة الماسة، حدة</span><span class="t-small" style="color:var(--a-primary);font-weight:600">نرجو عدم إطلاق النار</span></div>
+    <span class="t-small">البطاقة بدون صور. ترسلها أنت على واتساب، والرد يتحدث لحاله.</span>
+    <button class="btn pri block" data-act="okToast">أرسل الدعوات على واتساب</button>`;
+  }
+  if(sub==='rifd'){
+    if(S.stage<7){
+      c=`<div class="empty"><span class="ic p" style="width:56px;height:56px">${ic('book',28)}</span><span class="t-h2">الرفد يبدأ يوم العرس</span><span class="t-body">اختار واحد تثق فيه يكتب الرفد من جواله يوم العرس. يشوف الرفد بس، وما يشوف فلوسك ولا خطتك.</span><button class="btn pri" data-act="okToast">عيّن كاتب الرفد</button></div>
+      <div class="card"><div class="crow"><span class="ic g">${ic('gift')}</span><span class="grow"><span class="t-h3">أعطيت في أعراس الناس قبل؟</span><span class="t-small">سجّلها، عشان تعرف مين عليه يرد لك</span></span></div><button class="btn sec sm" data-act="okToast">سجّل ما أعطيته</button></div>`;
+    } else {
+      const tot=S.rifd.reduce((s,x)=>s+x.a,0)+1290000;
+      c=`<div class="chips"><button class="chip ${S.sub.rifd==='got'?'on':''}" data-rs="got">أعطوني</button><button class="chip ${S.sub.rifd==='gave'?'on':''}" data-rs="gave">أعطيتهم</button></div>
+      ${S.sub.rifd==='got'?`<div class="stats" style="grid-template-columns:1fr 1fr"><div class="stat"><span class="l">المجموع</span><span class="v">${short(tot)}</span></div><div class="stat"><span class="l">الأسماء</span><span class="v num">${43+S.rifd.length}</span></div></div>
+      <div class="list">${S.rifd.slice().reverse().map(x=>li({av:`<span class="av sm">${x.n[0]}</span>`,t:x.n,s:'كتبه عبدالله يوم العرس',r:`<span class="amt">${short(x.a)}</span>`})).join('')}${li({av:'<span class="av sm gold">ص</span>',t:'صالح ابن عمك',s:'عرسه الخميس 24 يونيو',r:'<span class="amt">20 ألف</span>'})}</div>
+      <p class="t-small">أنت تقرر لكل اسم: يُرد أو هدية. ما نقترح مبالغ.</p>`:`<div class="list">${li({av:'<span class="av sm mint">ف</span>',t:'عرس فيصل الحداء',s:'2025',r:'<span class="amt">10 ألف</span>'})}${li({av:'<span class="av sm mint">ن</span>',t:'عرس نبيل العماري',s:'2024',r:'<span class="amt">20 ألف</span>'})}</div>`}
+      <button class="btn sec block" data-act="rifdSheet">${ic('plus',18)} سجّل رفد</button>`;
+    }
+  }
+  if(sub==='family'){
+    c=`<div class="card" style="gap:8px"><span class="t-h3">كل واحد يشوف اللي تختاره</span><div style="display:flex;gap:6px;flex-wrap:wrap"><span class="pill ok">${ic('eye',12)} التفاصيل</span><span class="pill info">${ic('sum',12)} المجموع فقط</span><span class="pill q">${ic('lock',12)} مخفي</span></div></div>
+    <div class="list">
+      ${li({av:'<span class="av gold">س</span>',t:'سلمى',s:'العروسة، شريكة في الخطة',r:'<span class="pill ok">المشترك</span>',go:'people:family'})}
+      ${li({av:'<span class="av cob">و</span>',t:'الوالد',s:'يساهم بمليون ونص',r:'<span class="pill info">المجموع</span>'})}
+      ${li({av:'<span class="av mint">ع</span>',t:'أخوك عبدالله',s:'كاتب الرفد ومسؤول القات',r:'<span class="pill q">الرفد فقط</span>'})}
+      ${li({av:'<span class="av">أ</span>',t:'أم محمد',s:'مهام النساء وضيوفهن',r:'<span class="pill q">المهام فقط</span>'})}
+    </div>
+    <div class="card"><div class="crow"><span class="ic">${ic('lock')}</span><span class="grow"><span class="t-h3">خاص بك: 3 بنود</span><span class="t-small">دين عبدالله وبندين ثانيين. ما يشوفها أحد.</span></span></div></div>
+    <div class="card"><div class="crow"><span class="ic p">${ic('send')}</span><span class="grow"><span class="t-h3">تقرير الوالد الشهري</span><span class="t-small">صورة فيها المجموع بس: كم انصرف وكم باقي. ترسلها أنت</span></span></div><button class="btn sec sm" data-act="okToast">جهّز التقرير</button></div>
+    <button class="btn pri block" data-act="okToast">${ic('plus',18)} أضف من العائلة</button>`;
+  }
+  return {tabbed:true, body:`${hroot('الناس')}${ttabs('people',[['guests','الضيوف'],['rifd','الرفد'],['family','العائلة']])}<div class="pad" style="padding-top:14px">${c}</div>`};
+}
+
+/* ---------- market ---------- */
+const PROVS=[
+  {n:'عدسة صنعاء',c:'تصوير',i:'camera',r:'150 – 220 ألف',u:'قبل 9 أيام',paid:'دفع 6 عرسان بين 170 و200 ألف',v:true,st:4.8},
+  {n:'قاعة الماسة',c:'قاعات',i:'hall',r:'700 ألف – 1.1 مليون',u:'قبل 3 أيام',paid:'دفع 11 عريس بين 800 و950 ألف',v:true,st:4.6},
+  {n:'المنشد أبو أصيل وفرقته',c:'منشدين وزفة',i:'music',r:'180 – 300 ألف',u:'قبل شهر',paid:'دفع 4 عرسان بين 200 و260 ألف',v:true,st:4.9},
+  {n:'مطبخ الأصيل للولائم',c:'ولائم وذبائح',i:'food',r:'حسب العدد',u:'قبل 12 يوم',paid:'للـ200 شخص بين 800 ألف و1.1 مليون',v:false,st:4.4}
+];
+function vMarket(){
+  const sub=S.sub.market; let c='';
+  if(sub==='explore'){
+    c=`<div class="inp" style="background:var(--a-quiet);border-color:transparent">${ic('search',20)}<input placeholder="ابحث عن مزود أو خدمة في صنعاء" aria-label="بحث"></div>
+    <div class="chips"><button class="chip on">الكل</button><button class="chip">قاعات</button><button class="chip">تصوير</button><button class="chip">منشدين وزفة</button><button class="chip">ولائم وذبائح</button><button class="chip">نقش وكوافير</button></div>
+    ${PROVS.map((p,i)=>`<button class="card tap" data-go="provider"><div class="crow"><span class="ph" style="width:56px;height:56px">${ic(p.i,26)}</span><span class="grow"><span style="display:flex;gap:6px;align-items:center"><span class="t-h3">${p.n}</span>${p.v?`<span class="pill ok">${ic('check',11,3)} موثّق</span>`:''}</span><span class="t-small">${p.c}، ${ic('star',12)} ${p.st}</span></span></div><div style="display:flex;justify-content:space-between;gap:8px;align-items:baseline"><span style="font-weight:700;color:var(--a-ink)">${p.r}</span><span class="t-small">السعر محدّث ${p.u}</span></div><span class="t-small" style="color:var(--a-mint);font-weight:600">${p.paid}</span></button>`).join('')}`;
+  }
+  if(sub==='mine'){
+    const row=(t,p,steps,cur,act)=>`<div class="card"><div class="crow"><span class="ic p">${ic(t[1])}</span><span class="grow"><span class="t-h3">${t[0]}</span><span class="t-small">${p}</span></span></div>
+      <div style="display:flex;gap:4px;align-items:center">${steps.map((s,i)=>`<span class="pill ${i<cur?'ok':i===cur?'g':'q'}">${s}</span>${i<steps.length-1?`<span style="flex:1;height:2px;background:${i<cur?'var(--a-mint)':'var(--a-line)'}"></span>`:''}`).join('')}</div>${act||''}</div>`;
+    const steps=['طلب','عرض','محجوز','تم'];
+    c=`${row(['التصوير','camera'], S.photoChosen?'اخترت عدسة صنعاء 180 ألف':'3 عروض وصلت', steps, S.photoChosen?2:1, S.photoChosen?'':`<button class="btn pri sm" data-go="compare">قارن العروض</button>`)}
+    ${row(['المنشد والزفة','music'],'طلبت من 2. يردون عادة خلال يوم',steps,0)}
+    ${row(['قاعة النساء','hall'],'قاعة الماسة 850 ألف',steps,2)}
+    ${row(['الوليمة والذبائح','food'],'لسا ما طلبت',steps,-1,`<button class="btn sec sm" data-go="market:explore">اطلب عروض</button>`)}`;
+  }
+  if(sub==='chats'){
+    c=`<div class="list">${li({ic:'hall',c:'p',t:'قاعة الماسة',s:'تم استلام الدفعة الثانية، شكراً',r:'<span class="t-small">10:20</span>'})}${li({ic:'camera',c:'c',t:'عدسة صنعاء',s:'الألبوم 40 صفحة ومعه فيديو قصير',r:'<span class="pill p">2</span>'})}${li({ic:'music',c:'g',t:'المنشد أبو أصيل',s:'وصلنا طلبك، نرد عليك الليلة',r:'<span class="t-small">أمس</span>'})}</div><p class="t-small">كل محادثة مربوطة بطلب عرض. رقمك ما يظهر للمزود.</p>`;
+  }
+  if(sub==='fav'){
+    c=`<div class="list">${li({ic:'camera',c:'c',t:'استوديو الريان',s:'تصوير، 200 – 280 ألف',go:'provider'})}${li({ic:'scissors',c:'p',t:'نقش أم ريم',s:'نقش وحناء، للنساء',go:'provider'})}</div>`;
+  }
+  return {tabbed:true, body:`${hroot('السوق')}${ttabs('market',[['explore','استكشف'],['mine','طلباتي'],['chats','المحادثات'],['fav','المفضلة']])}<div class="pad" style="padding-top:14px">${c}</div>`};
+}
+function vProvider(){
+  return {body:`${hsub('عدسة صنعاء',`<button class="ibtn" aria-label="أضف للمفضلة" data-act="okToast">${ic('heart',22)}</button>`)}<div class="pad" style="padding-top:14px">
+    <div style="display:grid;grid-template-columns:2fr 1fr;gap:8px;height:160px"><div class="ph">${ic('camera',36)}</div><div style="display:grid;gap:8px"><div class="ph">${ic('hall',22)}</div><div class="ph">${ic('star',22)}</div></div></div>
+    <div style="display:flex;flex-direction:column;gap:4px"><div style="display:flex;gap:8px;align-items:center"><span class="t-h2">عدسة صنعاء</span><span class="pill ok">${ic('check',11,3)} موثّق</span></div><span class="t-small">تصوير أعراس الرجال، ومصوّرة لحفلات النساء. حدة، صنعاء</span></div>
+    <div class="stats"><div class="stat"><span class="l">التقييم</span><span class="v">4.8</span></div><div class="stat"><span class="l">يرد خلال</span><span class="v">ساعات</span></div><div class="stat"><span class="l">حجوزات</span><span class="v num">38</span></div></div>
+    <div class="card" style="background:var(--a-mint-soft);border-color:transparent"><span style="font-weight:600;color:var(--a-ink)">دفع 6 عرسان بين 170 و200 ألف</span><span class="t-small">من حجوزات حقيقية في اعّرست، بدون أسماء</span></div>
+    <div class="sec-h"><span class="t-h3">الباقات</span><span class="t-small">محدّثة قبل 9 أيام</span></div>
+    <div class="list">${li({t:'ألبوم 40 صفحة',s:'الرجال فقط',r:'<span class="amt">150 ألف</span>'})}${li({t:'ألبوم وفيديو قصير',s:'الرجال، ومصوّرة للنساء',r:'<span class="amt">180 ألف</span>'})}${li({t:'ألبوم وفيديو ودرون للزفة',r:'<span class="amt">220 ألف</span>'})}</div>
+    <div class="sec-h"><span class="t-h3">التقييمات</span></div>
+    <div class="card"><span style="font-weight:600;color:var(--a-ink)">${ic('star',14)} 5 "التزم بالموعد والألبوم وصل بعد أسبوعين"</span><span class="t-small">عريس حجز عن طريق اعّرست، ديسمبر 2025</span></div>
+  </div>`, act:`<button class="btn pri block" data-act="okToast">اطلب عرض سعر</button><span class="t-small" style="text-align:center">رقمك ما يوصل للمزود. التواصل داخل المحادثة</span>`};
+}
+function vCompare(){
+  const cells=[['السعر','220 ألف','180 ألف','250 ألف'],['يشمل','ألبوم وفيديو','ألبوم وفيديو قصير','ألبوم وفيديو ودرون'],['للنساء','مصوّرة','مصوّرة','لا'],['التقييم','4.7','4.8','4.5'],['عرسان دفعوا','190 – 230','170 – 200','240 – 260']];
+  return {body:`${hsub('عروض التصوير')}<div class="pad" style="padding-top:14px">
+    <p class="t-body">بندك للتصوير 200 ألف. العرض الأخضر داخل البند ومناسب لحفلة النساء.</p>
+    <div style="overflow-x:auto"><div class="cmp"><div class="h"></div><div class="h">استوديو الضوء</div><div class="h best">عدسة صنعاء</div><div class="h">استوديو الريان</div>
+    ${cells.map(r=>`<div class="rl">${r[0]}</div><div>${r[1]}</div><div class="best">${r[2]}</div><div>${r[3]}</div>`).join('')}</div></div>
+    <div class="card"><div class="crow"><span class="ic p">${ic('spark')}</span><span class="grow"><span style="font-weight:600;color:var(--a-ink)">رأي المساعد</span><span class="t-small">عدسة صنعاء أرخص بـ40 ألف ومعها مصوّرة للنساء. الدرون عند الريان إضافة تقدر تستغني عنها.</span></span></div></div>
+  </div>`, act:`<button class="btn pri block" data-act="choosePhoto">${S.photoChosen?'اخترت عدسة صنعاء':'اختر عدسة صنعاء'}</button><span class="t-small" style="text-align:center">لما تختار، يصير بند التصوير 180 ألف مع جدول دفعاته</span>`};
+}
+
+/* ---------- wedding week / day ---------- */
+function vWeek(){
+  const days=[['السبت','الحمام','نساء','بيت العروسة',true],['الأحد','الذبال','نساء','بيت الوالد'],['الاثنين','المشاجب','نساء','بيت الوالد'],['الثلاثاء','النقش، والحناء للرجال','الاثنين','غداء وبرع وسمرة'],['الأربعاء','الحفلة','نساء','قاعة الماسة'],['الخميس','الوليمة والزفة والدخلة','الاثنين','بيت الوالد ثم القاعة']];
+  const conf=[['قاعة الماسة','hall',true],['المنشد أبو أصيل','music',true],['عدسة صنعاء','camera',S.conf.photo,'photo'],['مطبخ الأصيل','food',S.conf.kitchen,'kitchen'],['نقش أم ريم','scissors',true],['القات','leaf',true]];
+  return {body:`${hsub('أسبوع العرس')}<div class="pad" style="padding-top:14px">
+    <div class="sec-h"><span class="t-h3">البرنامج</span><span class="t-small">الأسماء من صنعاء</span></div>
+    <div class="list">${days.map(d=>`<div class="li" style="${d[4]?'background:var(--a-gold-soft)':''}"><span style="width:58px;font-weight:700;color:var(--a-ink);font-size:13.5px">${d[0]}</span><span class="grow"><span class="ttl">${d[1]}</span><span class="t-small">${d[3]}</span></span><span class="pill ${d[2]==='نساء'?'p':'g'}">${d[2]==='الاثنين'?'رجال ونساء':d[2]}</span></div>`).join('')}</div>
+    <div class="sec-h"><span class="t-h3">التأكيدات</span><span class="t-small">${conf.filter(x=>x[2]).length} من 6</span></div>
+    <div class="list">${conf.map(x=>`<div class="li"><span class="ic ${x[2]?'m':'a'}">${ic(x[1])}</span><span class="grow"><span class="ttl">${x[0]}</span><span class="t-small">${x[2]?'أكد الموعد':'ما أكد بعد'}</span></span>${x[2]?`<span class="pill ok">${ic('check',11,3)} مؤكد</span>`:`<button class="btn sec sm" data-confirm="${x[3]}">${ic('send',15)} أرسل تأكيد</button>`}</div>`).join('')}</div>
+    <div class="sec-h"><span class="t-h3">كاش كل ليلة</span><span class="t-small">المجموع 1.29 مليون</span></div>
+    <div class="list">${li({ic:'env',c:'g',t:'السبت: المزيّنة',r:'<span class="amt">60 ألف</span>'})}${li({ic:'env',c:'g',t:'الثلاثاء: المنشد للحناء والقات',r:'<span class="amt">300 ألف</span>'})}${li({ic:'env',c:'g',t:'الخميس: باقي الوليمة والقاعة والزفة',r:'<span class="amt">930 ألف</span>'})}</div>
+  </div>`};
+}
+function vDay(){
+  const envs=[['e1','القات للمقيل','عبدالله',150000],['e2','باقي القاعة','قاعة الماسة',300000],['e3','الزفة','المنشد أبو أصيل',130000],['e4','باقي الوليمة','مطبخ الأصيل',400000]];
+  const left=envs.filter(e=>!S.env[e[0]]).reduce((s,e)=>s+e[3],0);
+  return {body:`${hsub('يوم العرس')}<div class="pad" style="padding-top:14px">
+    <div class="offline">${ic('wifioff',18)} بدون إنترنت. كل شيء محفوظ في جوالك</div>
+    <button class="big-rifd" data-act="rifdSheet">${ic('book',30,2.2)} سجّل رفد</button>
+    <div class="sec-h"><span class="t-h3">برنامج اليوم</span></div>
+    <div class="tl">${[['12:00','الوليمة','بيت الوالد',true],['3:00 العصر','المقيل','بيت الوالد'],['8:00 المساء','الزفة','من البيت إلى القاعة'],['10:00 المساء','الدخلة','']].map((x,i,a)=>`<div class="st"><span class="rail"><span class="node ${x[3]?'d':i===1?'c':''}">${x[3]?ic('check',13,2.6):''}</span>${i<a.length-1?`<span class="line ${x[3]?'d':''}"></span>`:''}</span><span class="body"><span class="t-h3">${x[1]} <span class="t-small">${x[0]}</span></span>${x[2]?`<span class="t-small">${x[2]}</span>`:''}</span></div>`).join('')}</div>
+    <div class="sec-h"><span class="t-h3">ظروف اليوم</span><span class="t-small">باقي ${short(left)}</span></div>
+    <div class="list">${envs.map(e=>`<div class="li"><button class="chk ${S.env[e[0]]?'on':''}" data-env="${e[0]}" aria-label="دفعت">${ic('check',16,2.6)}</button><span class="grow"><span class="ttl" style="${S.env[e[0]]?'text-decoration:line-through;color:var(--a-faint)':''}">${e[1]}</span><span class="t-small">${e[2]}</span></span><span class="amt">${short(e[3])}</span></div>`).join('')}</div>
+    <div class="sec-h"><span class="t-h3">أرقام المزودين</span></div>
+    <div class="list">${li({ic:'phone',t:'قاعة الماسة',r:'<span class="t-small num" dir="ltr">777 210 334</span>'})}${li({ic:'phone',t:'المنشد أبو أصيل',r:'<span class="t-small num" dir="ltr">733 908 112</span>'})}</div>
+  </div>`};
+}
+function vRifdBulk(){
+  return {body:`${hsub('نقل الرفد من الدفتر')}<div class="pad" style="padding-top:14px">
+    <p class="t-body">اكتب الاسم والمبلغ ثم "التالي". سجّلت ${43+S.rifd.length} اسم حتى الآن.</p>
+    ${rifdForm()}
+    <div class="list">${S.rifd.slice(-4).reverse().map(x=>li({av:`<span class="av sm">${x.n[0]}</span>`,t:x.n,r:`<span class="amt">${short(x.a)}</span>`})).join('')}</div>
+  </div>`};
+}
+function rifdForm(){
+  return `<div class="field"><label for="rn">الاسم</label><div class="inp"><input id="rn" data-rn placeholder="مثلاً: أحمد الحاج" value="${S.rifdName}"></div></div>
+  <div class="field"><label>المبلغ</label><div class="keyamts">${[5000,10000,20000,50000].map(a=>`<button class="${S.rifdAmt===a?'on':''}" data-ramt="${a}">${short(a)}</button>`).join('')}</div></div>
+  <button class="btn pri block" data-act="rifdSave">احفظ والتالي</button>`;
+}
+function vFinish(){
+  return {body:`<div class="finish">
+    <div class="goldline"></div>
+    <h1>سددت كل ديون عرسك</h1>
+    <p style="margin:0;font-size:16px;line-height:1.8;color:var(--a-on-primary-muted)">من الاتفاق في رمضان 2024 إلى آخر قسط في أكتوبر 2027. ثلاث سنوات وسبعة شهور.</p>
+    <div class="stats" style="grid-template-columns:1fr 1fr">
+      <div class="stat" style="background:rgba(255,255,255,.1);border-color:rgba(255,255,255,.14)"><span class="l" style="color:var(--a-on-primary-muted)">تكلفة العرس</span><span class="v" style="color:var(--a-on-primary)">7.38 مليون</span></div>
+      <div class="stat" style="background:rgba(255,255,255,.1);border-color:rgba(255,255,255,.14)"><span class="l" style="color:var(--a-on-primary-muted)">الرفد اللي رديته</span><span class="v" style="color:var(--a-gold)">14 من 46</span></div>
+    </div>
+    <p style="margin:0;font-size:14px;color:var(--a-on-primary-muted)">دفتر الرفد يبقى معك. نذكرك لما يقرب عرس أي واحد أعطاك.</p>
+    <div style="display:flex;flex-direction:column;gap:10px;margin-top:10px"><button class="btn onp block" data-act="okToast">احفظ الخطة كذكرى</button><button class="btn lite block" data-stage-back>رجوع للرحلة</button></div>
+  </div>`};
+}
+
+/* ---------- sheets ---------- */
+function sheetHTML(){
+  if(!S.sheet) return '';
+  let c='';
+  if(S.sheet==='quick') c=`<div class="t-h2">وش تبي تسجل؟</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+      ${[['pay','receipt','دفعة','دفعت لمزود أو قسط','m'],['rifd','book','رفد','أحد أعطاك في العرس','p'],['exp','wallet','مصروف','شيء اشتريته','c'],['fund','people','مساعدة أو دين','من الأهل أو غيرهم','g']].map(x=>`<button class="card tap" data-act="${x[0]==='pay'?'quickPay':x[0]==='rifd'?'rifdSheet':'okToast'}" style="gap:8px"><span class="ic ${x[4]}">${ic(x[1])}</span><span class="t-h3">${x[2]}</span><span class="t-small">${x[3]}</span></button>`).join('')}
+    </div>`;
+  if(S.sheet==='pay'){
+    const st=S.stage;
+    const lbl = st===3?'قسط الشرط':st===9?'قسط عبدالله':'دفعة القاعة الثانية';
+    const amt = st===3?'300,000':st===9?'50,000':'250,000';
+    c=`<div class="t-h2">سجّل دفعة</div>
+    <div class="field"><label>لأي بند</label><div class="inp"><span style="flex:1;font-weight:600;color:var(--a-ink)">${lbl}</span>${ic('chev',16)}</div></div>
+    <div class="field"><label for="pa">المبلغ</label><div class="inp"><input id="pa" value="${amt}" inputmode="numeric"><span class="suf">ريال</span></div></div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px"><div class="field"><label>من دفع</label><div class="inp"><span style="flex:1">أنا</span></div></div><div class="field"><label>التاريخ</label><div class="inp"><span style="flex:1">اليوم</span></div></div></div>
+    <button class="opt" data-act="okToast"><span class="ic">${ic('receipt')}</span><span class="grow"><span class="ttl">صوّر الإيصال</span><span class="t-small">يبقى خاص فيك</span></span></button>
+    <button class="btn pri block" data-act="savePay">احفظ الدفعة</button>`;
+  }
+  if(S.sheet==='rifd') c=`<div class="t-h2">سجّل رفد</div>${S.stage===7?`<div class="offline">${ic('wifioff',18)} بدون إنترنت. بينحفظ ويتزامن لاحقاً</div>`:''}${rifdForm()}<div class="t-small">آخر تسجيل: ${S.rifd[S.rifd.length-1].n}، ${short(S.rifd[S.rifd.length-1].a)}</div>`;
+  if(S.sheet==='gap'){ const T=totals(); c=`<div class="t-h2">ناقصك ${short(T.gap)} قبل العرس</div>
+    <p class="t-body">الباقي ${short(T.left)}. معك ${short(T.cash)}، والوالد وعد بـ500 ألف. هذي طرق تقفل الفجوة:</p>
+    <div class="list">${li({ic:'scissors',c:'p',t:'خفّف بنود',s:'مثلاً غرفة النوم بالتقسيط بعد العرس: يتأجل 600 ألف',go:'map'})}${li({ic:'people',c:'g',t:'سجّل مساعدة موعودة',s:'من أخ أو خال أو عم'})}${li({ic:'coin',c:'a',t:'سجّل دين جديد',s:'بجدول سداد واضح، ويدخل في تاريخ تحررك'})}</div>
+    <div class="card" style="background:var(--a-quiet)"><span class="t-small">الرفد المتوقع يوم العرس ما نحسبه قبل ما يوصل، عشان ما تبني على فلوس مو في يدك.</span></div>`; }
+  if(S.sheet==='ai') c=`<div class="crow"><span class="ic p">${ic('spark')}</span><span class="t-h2">المساعد</span></div>
+    <div class="card" style="background:var(--a-quiet)"><span style="font-weight:600;color:var(--a-ink)">وش ممكن أخفف بدون ما يخرب العرس؟</span></div>
+    <div class="card"><span class="t-small" style="color:var(--a-text);font-size:14px;line-height:1.8">من بنودك: التصوير عندك 3 عروض، أرخصها يوفر 20 ألف عن البند. غرفة النوم لو أجلت 3 أقساط لبعد العرس يخف عليك 600 ألف قبل الموعد. القات للمقيل ممكن يتقسم مع الأهل. ما أقترح تلمس الوليمة لأنها مرتبطة بعدد الضيوف.</span><span class="t-small">مبني على بنودك وأسعار صنعاء في اعّرست. ما يشوف بنودك الخاصة.</span></div>`;
+  return `<div class="ov" data-close><div class="sheet" role="dialog" aria-modal="true"><span class="grab"></span>${c}</div></div>`;
+}
+
+/* ---------- render ---------- */
+const VIEWS = {welcome:vWelcome, ob_role:vRole, ob_stage:vStage, ob_money:vObMoney, map:vMap, phone:vPhone, lockset:vLock, home:vHome, journey:vJourney, tasks:vTasks, agree:vAgree, notif:vNotif, money:vMoney, item:vItem, people:vPeople, market:vMarket, provider:vProvider, compare:vCompare, week:vWeek, day:vDay, rifdbulk:vRifdBulk, finish:vFinish};
+const app = document.getElementById('app');
+let lastKey='';
+function render(anim){
+  const v = VIEWS[S.view]();
+  const scr = app.querySelector('.scr');
+  const keep = (!anim && scr) ? scr.scrollTop : 0;
+  app.innerHTML = `
+    <div class="sbar"><span class="num">11:17</span><span class="r">${ic('wifioff',14,2)}<span style="width:22px;height:11px;border:1.5px solid currentColor;border-radius:3px;display:inline-block;position:relative"><i style="position:absolute;inset:1.5px;right:7px;background:currentColor;border-radius:1px"></i></span></span></div>
+    <div class="scr ${anim?'screen-in':''}">${v.body}</div>
+    ${v.act?`<div class="actbar">${v.act}</div>`:''}
+    ${v.tabbed?`<button class="fab" data-act="quick">${ic('plus',22,2.4)} سجّل</button>
+    <nav class="nav">${[['home','home','الرئيسية'],['money','wallet','المال'],['people','people','الناس'],['market','store','السوق']].map(([k,i,l])=>`<button class="${S.tab===k?'on':''}" data-go="${k}"><span class="nb">${ic(i,22)}</span>${l}</button>`).join('')}</nav>`:''}
+    ${sheetHTML()}
+    ${S.toast?`<div class="toast" role="status">${ic('check',20,2.4)}<span>${S.toast}</span></div>`:''}`;
+  if(!anim){ const n=app.querySelector('.scr'); if(n) n.scrollTop=keep; }
+  renderGuide();
+}
+
+/* ---------- guide ---------- */
+function curKey(){
+  if(['money','people','market'].includes(S.view)) return S.view+':'+S.sub[S.view];
+  return S.view;
+}
+function guideHTML(){
+  const n = NOTE[S.view] || NOTE.home;
+  const k = curKey();
+  return `
+  <div class="g-brand"><h1>رحلة العريس في اعّرست</h1><p>عرض تفاعلي للتطبيق بعد إعادة التصميم. اضغط داخل الجوال كأنه التطبيق الحقيقي. الأرقام تقديرية بأسعار صنعاء.</p></div>
+  <section class="g-sec"><h2>انتقل في الزمن</h2><p class="g-hint">اختر مرحلة، والرئيسية تتغير حسبها.</p>
+    <div class="stages">${STAGES.map((s,i)=>`<button class="${S.stage===i&&S.view!=='finish'?'on':''}" data-stage="${i}">${s.n}</button>`).join('')}<button class="${S.view==='finish'?'on':''}" data-act="finishJourney">النهاية</button></div></section>
+  <section class="g-sec g-note"><h2>${n.g}: ${n.t}</h2><p class="q">"${n.q}"</p>
+    <dl><div><dt>ليش كذا</dt><dd>${n.why}</dd></div><div><dt>وش يتغير عن التطبيق الحالي</dt><dd>${n.ch}</dd></div></dl></section>
+  <section class="g-sec"><h2>كل الشاشات</h2><div class="jump">${JUMPS.map(([g,arr])=>`<div class="grp">${g}</div>${arr.map(([key,l])=>`<button class="${k===key?'on':''}" data-jump="${key}">${l}</button>`).join('')}`).join('')}</div></section>`;
+}
+function renderGuide(){
+  const h = guideHTML();
+  document.getElementById('guideDesk').innerHTML = h;
+  const gp = document.getElementById('gpanel');
+  if(!document.getElementById('gsheet').hidden) gp.innerHTML = `<div class="guide">${h}</div><button class="btn pri block" data-gclose style="background:var(--pg-accent);color:var(--pg-card)">رجوع للعرض</button>`;
+}
+
+/* ---------- events ---------- */
+document.addEventListener('click', e=>{
+  const t = e.target.closest('[data-go],[data-back],[data-sub],[data-act],[data-pick],[data-light],[data-stage],[data-jump],[data-task],[data-tf],[data-ev],[data-rs],[data-env],[data-ramt],[data-confirm],[data-close],[data-gclose],[data-stage-back],#gtoggle');
+  if(!t) return;
+  const sheet = document.getElementById('gsheet');
+  if(t.id==='gtoggle'){ sheet.hidden=false; renderGuide(); return; }
+  if(t.hasAttribute('data-gclose')){ sheet.hidden=true; return; }
+  if(t.hasAttribute('data-close')){ if(e.target===t){ S.sheet=null; render(); } return; }
+  const d=t.dataset;
+  if(d.jump){ sheet.hidden=true; const key=d.jump;
+    if(['welcome','ob_role','ob_stage','ob_money','map','phone','lockset'].includes(key)){ S.hist=[]; S.view=key; render(true); return; }
+    if(key==='finish'){ S.view='finish'; render(true); return; }
+    if(['week','day','rifdbulk'].includes(key)){ S.stage = key==='week'?6:key==='day'?7:8; S.tab='home'; S.hist=[{view:'home',tab:'home'}]; S.view=key; render(true); return; }
+    if(key.includes(':')||TABS.includes(key)){ if(S.stage<1) S.stage=5; go(key,false); return; }
+    if(S.stage<1) S.stage=5;
+    S.hist=[{view:S.tab,tab:S.tab}]; S.view=key; render(true); return; }
+  if(d.stage!==undefined){ sheet.hidden=true; setStage(+d.stage); return; }
+  if(t.hasAttribute('data-stage-back')){ setStage(9); return; }
+  if(d.go){ go(d.go); return; }
+  if(t.hasAttribute('data-back')){ back(); return; }
+  if(d.sub){ const [k,v]=d.sub.split(':'); S.sub[k]=v; render(); return; }
+  if(d.pick){ const [k,v]=d.pick.split(':'); S.ob[k]=v; render(); return; }
+  if(d.light){ S.lighten[d.light]=!S.lighten[d.light]; render(); return; }
+  if(d.task){ S.tasks[d.task]=!S.tasks[d.task]; render(); return; }
+  if(d.tf){ S.taskFilter=d.tf; render(); return; }
+  if(d.ev){ S.guestEvent=d.ev; render(); return; }
+  if(d.rs){ S.sub.rifd=d.rs; render(); return; }
+  if(d.env){ S.env[d.env]=!S.env[d.env]; render(); return; }
+  if(d.ramt){ S.rifdAmt=+d.ramt; render(); return; }
+  if(d.confirm){ S.conf[d.confirm]=true; toast('جهزنا الرسالة في واتساب: "نأكد موعدنا يوم الخميس 18 فبراير". لما يرد، علّمه مؤكد.'); return; }
+  const a=d.act;
+  if(a==='quick'){ S.sheet='quick'; render(); }
+  else if(a==='quickPay'){ S.sheet='pay'; render(); }
+  else if(a==='rifdSheet'){ S.sheet='rifd'; render(); }
+  else if(a==='gapSheet'){ S.sheet='gap'; render(); }
+  else if(a==='askAI'){ S.sheet='ai'; render(); }
+  else if(a==='savePay'){
+    S.sheet=null;
+    if(S.stage===5 && !S.hallPaid){ S.hallPaid=true; S.tasks.t4=true; S.hist=[]; S.view='home'; S.tab='home'; render(true); toast('انسجلت دفعة القاعة. باقي عليها 300 ألف قبل العرس. وشوف الكرت الجديد في الرئيسية.'); }
+    else { render(); toast('انسجلت الدفعة، والأرقام تحدثت.'); }
+  }
+  else if(a==='choosePhoto'){ S.photoChosen=true; S.tasks.t2=true; render(); toast('اخترت عدسة صنعاء. بند التصوير صار 180 ألف، والعربون 50 ألف قبل 1 نوفمبر.'); }
+  else if(a==='rifdSave'){ const inp=app.querySelector('[data-rn]'); const name=(inp&&inp.value.trim())||'ضيف بدون اسم'; S.rifd.push({n:name,a:S.rifdAmt}); S.rifdName=''; render(); toast(`انحفظ: ${name}، ${short(S.rifdAmt)}`); const n=app.querySelector('[data-rn]'); if(n) n.focus(); }
+  else if(a==='saveAgree'){ S.stage=2; S.hist=[]; S.view='home'; S.tab='home'; render(true); toast('انحفظ الاتفاق. صار عندك 4 بنود، والذهب محسوب بالجرام.'); }
+  else if(a==='finishOb'){ const m={none:0,agreed:1,paying:3,date:5}; S.stage=m[S.ob.st]??5; S.hist=[]; S.view='home'; S.tab='home'; render(true); toast('انحفظت خطتك. أهلاً محمد.'); }
+  else if(a==='finishJourney'){ sheet.hidden=true; S.view='finish'; S.hist=[]; render(true); }
+  else if(a==='toProvider'){ toast('المزود يروح لبوابة المزود: طلبات تنتظر رده، حجوزاته وتقويمه، وملفه.'); }
+  else if(a==='rifdBack'){ toast('انسجل إنك رديت 20 ألف لصالح.'); }
+  else if(a==='dismiss'){ toast('بنذكرك قبل العرس بيوم.'); }
+  else if(a==='newTask'){ toast('إضافة مهمة: الاسم والموعد والمسؤول، وخاصة أو لا. والباقي اختياري.'); }
+  else { toast('هذا الزر في العرض للتوضيح فقط.'); }
+});
+document.addEventListener('input', e=>{
+  const n=e.target.dataset && e.target.dataset.num;
+  if(n){ const v=+e.target.value.replace(/[^0-9]/g,''); S.ob[n]=v||0; }
+  if(e.target.hasAttribute && e.target.hasAttribute('data-rn')) S.rifdName=e.target.value;
+});
+document.addEventListener('keydown', e=>{ if(e.key==='Escape'){ if(S.sheet){S.sheet=null;render();} document.getElementById('gsheet').hidden=true; }});
+
+render(true);
+})();
+</script>
+
+</body>
+</html>

@@ -93,7 +93,7 @@ curl https://api.<الدومين>/ready
 
 | العَرَض | السبب الأرجح | الحل |
 |---|---|---|
-| لا يصل رمز الدخول، و`/ready` يقول `openwa: down` | توقفت خدمة OpenWA على rk-server أو انفصل رقم واتساب | على rk-server: `docker restart aarast-openwa-otp-staging-openwa-1`، ثم تأكد أن الرقم ما زال مربوطًا. الحل الدائم: واتساب الرسمي (6.1). الدخول بكلمة المرور يبقى يعمل |
+| لا يصل رمز الدخول، و`/ready` يقول `openwa: down` | توقفت خدمة OpenWA على rk-server أو انفصل رقم واتساب. حدث في 2026-10-14: انقطع اتصال واتساب داخل OpenWA بصمت، وواجهته بقيت تقول "جاهزة" بينما فحص الإرسال يرجع `ready:false` | على rk-server: `docker restart aarast-full-staging-openwa-test-release-openwa-1` (اسم الحاوية الفعلي؛ تحقق بـ `docker ps \| grep openwa`)، وانتظر "Session ready" في `docker logs`، ثم تأكد من `/ready`. رجعت الجلسة بدون QR جديد في 2026-10-16. الحل الدائم: واتساب الرسمي (6.1). الدخول بكلمة المرور يبقى يعمل |
 | أوامر AWS ترد "session has expired" | انتهت جلسة الدخول على جهاز المطوّر | `aws login` من جديد |
 | "المساعد غير مفعّل" في التطبيق | لا يوجد `ANTHROPIC_API_KEY` في ملف الإعدادات | أضف المفتاح ثم أعد النشر |
 | "المساعد متوقف مؤقتًا هذا الشهر" | بلغ إنفاق المساعد السقف الشهري | ارفع `AARAST_ASSISTANT_MONTHLY_BUDGET_USD` أو انتظر الشهر التالي |

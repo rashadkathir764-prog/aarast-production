@@ -8,7 +8,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import '../c_journey/kit.dart';
-import '../c_journey/screens_start.dart' show splash, otp;
+import '../c_journey/screens_start.dart' show otp;
 import '../../support/preview_fonts.dart';
 import 'hard.dart';
 import 'home.dart';
@@ -52,7 +52,7 @@ void main() {
   setUpAll(loadPreviewAppFonts);
 
   final screens = <(String, Widget Function(), double)>[
-    ('a01_splash', splash, 844),
+    ('a01_splash', vSplash2, 844),
     ('a02_who', vWho2, 844),
     ('a03_name', vName, 844),
     ('a04_date', vDate, 844),

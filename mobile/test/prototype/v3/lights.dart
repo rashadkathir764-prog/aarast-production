@@ -332,9 +332,9 @@ Widget vLightsHome() {
   return Phone(
     nav: Sec.home,
     children: [
-      homeHeader(hello: 'أسبوع عرسك يا محمد'),
+      homeHeader(hello: 'باقي يومين يا محمد'),
       gap(14),
-      lightsHero(),
+      bigHero(day: false),
       gap(12),
       Container(
         padding: const EdgeInsets.all(14),
@@ -452,7 +452,7 @@ Widget vFireworksTask() {
         height: 120,
         clipBehavior: Clip.antiAlias,
         decoration: BoxDecoration(color: _night, borderRadius: BorderRadius.circular(22)),
-        child: const CustomPaint(painter: _Burst()),
+        child: const CustomPaint(painter: Fireworks()),
       ),
       gap(12),
       Box(
@@ -510,28 +510,36 @@ Widget vFireworksTask() {
   );
 }
 
-class _Burst extends CustomPainter {
-  const _Burst();
+/// Fireworks bursts: (centre as a fraction of the size, colour, radius).
+class Fireworks extends CustomPainter {
+  const Fireworks([this.bursts = _defaultBursts, this.alpha = 0.8]);
+  final List<(Offset, Color, double)> bursts;
+  final double alpha;
+
+  static const _defaultBursts = [
+    (Offset(0.28, 0.45), K.saffron, 44.0),
+    (Offset(0.66, 0.38), _warm, 52.0),
+    (Offset(0.86, 0.62), K.tealMid, 30.0),
+  ];
 
   @override
   void paint(Canvas canvas, Size size) {
     final rnd = math.Random(3);
-    for (final b in [
-      (Offset(size.width * 0.28, size.height * 0.45), K.saffron, 44.0),
-      (Offset(size.width * 0.66, size.height * 0.38), _warm, 52.0),
-      (Offset(size.width * 0.86, size.height * 0.62), K.tealMid, 30.0),
-    ]) {
-      for (var i = 0; i < 26; i++) {
-        final a = i * 2 * math.pi / 26 + rnd.nextDouble() * 0.1;
+    for (final b in bursts) {
+      final c = Offset(b.$1.dx * size.width, b.$1.dy * size.height);
+      canvas.drawCircle(c, b.$3 * 0.5, Paint()
+        ..color = b.$2.withValues(alpha: alpha * 0.18)
+        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 18));
+      for (var i = 0; i < 28; i++) {
+        final a = i * 2 * math.pi / 28 + rnd.nextDouble() * 0.1;
         final r = b.$3 * (0.75 + rnd.nextDouble() * 0.25);
         final p = Paint()
           ..strokeWidth = 1.4
           ..strokeCap = StrokeCap.round
-          ..color = b.$2.withValues(alpha: 0.8);
-        final from = b.$1 + Offset(math.cos(a), math.sin(a)) * r * 0.35;
-        final to = b.$1 + Offset(math.cos(a), math.sin(a)) * r;
-        canvas.drawLine(from, to, p);
-        canvas.drawCircle(to, 1.6, Paint()..color = b.$2);
+          ..color = b.$2.withValues(alpha: alpha);
+        final dir = Offset(math.cos(a), math.sin(a));
+        canvas.drawLine(c + dir * r * 0.35, c + dir * r, p);
+        canvas.drawCircle(c + dir * r, 1.6, Paint()..color = b.$2.withValues(alpha: alpha));
       }
     }
   }
@@ -539,3 +547,171 @@ class _Burst extends CustomPainter {
   @override
   bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
+
+/// The wedding sky: night, fireworks behind, the lights tent in front.
+Widget weddingSky({int strands = 11, int lit = 11, List<(Offset, Color, double)>? bursts, double fireAlpha = 0.8}) =>
+    DecoratedBox(
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [Color(0xFF071C24), _night, K.tealDark],
+        ),
+      ),
+      child: Stack(
+        fit: StackFit.expand,
+        children: [
+          CustomPaint(painter: Fireworks(bursts ?? Fireworks._defaultBursts, fireAlpha)),
+          CustomPaint(painter: Lights(strands: strands, lit: lit, apexY: 0.03)),
+        ],
+      ),
+    );
+
+Widget vSplash2() => Phone(
+  statusLight: true,
+  pad: false,
+  bg: K.tealDark,
+  children: [
+    SizedBox(
+      height: 790,
+      child: Stack(
+        fit: StackFit.expand,
+        children: [
+          weddingSky(
+            strands: 13,
+            bursts: const [
+              (Offset(0.18, 0.13), K.saffron, 58.0),
+              (Offset(0.82, 0.10), _warm, 64.0),
+              (Offset(0.55, 0.30), K.tealMid, 40.0),
+              (Offset(0.12, 0.42), _warm, 34.0),
+              (Offset(0.88, 0.40), K.saffron, 38.0),
+            ],
+          ),
+          const Positioned(
+            left: 0,
+            right: 0,
+            bottom: 0,
+            height: 360,
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [Color(0x00064B47), K.tealDark, K.tealDark],
+                  stops: [0, 0.55, 1],
+                ),
+              ),
+            ),
+          ),
+          Positioned(
+            left: 0,
+            right: 0,
+            bottom: 150,
+            child: Column(
+              children: [
+                wordmark(s: 64, c: Colors.white),
+                gap(12),
+                Text('عرسك من أول ريال إلى آخر قسط',
+                    style: tx(17, c: Colors.white.withValues(alpha: 0.82))),
+              ],
+            ),
+          ),
+          Positioned(
+            left: 0,
+            right: 0,
+            bottom: 70,
+            child: Center(
+              child: SizedBox(
+                width: 120,
+                child: segments(3, 1, on: Colors.white, now: K.saffron,
+                    off: Colors.white.withValues(alpha: 0.25), h: 4),
+              ),
+            ),
+          ),
+        ],
+      ),
+    ),
+  ],
+);
+
+/// The big hero for wedding mode: the whole sky behind the countdown.
+Widget bigHero({required bool day}) => Container(
+  height: 330,
+  margin: const EdgeInsets.only(top: 16),
+  clipBehavior: Clip.antiAlias,
+  decoration: BoxDecoration(borderRadius: BorderRadius.circular(30)),
+  child: Stack(
+    fit: StackFit.expand,
+    children: [
+      weddingSky(
+        strands: 7,
+        lit: day ? 7 : 5,
+        fireAlpha: day ? 0.9 : 0.45,
+        bursts: day
+            ? const [
+                (Offset(0.15, 0.14), K.saffron, 46.0),
+                (Offset(0.85, 0.12), _warm, 52.0),
+                (Offset(0.50, 0.34), K.tealMid, 34.0),
+                (Offset(0.88, 0.45), K.saffron, 30.0),
+              ]
+            : const [
+                (Offset(0.16, 0.16), K.saffron, 34.0),
+                (Offset(0.84, 0.13), _warm, 38.0),
+              ],
+      ),
+      const Positioned(
+        left: 0,
+        right: 0,
+        bottom: 0,
+        height: 170,
+        child: DecoratedBox(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: [Color(0x00064B47), K.tealDark],
+            ),
+          ),
+        ),
+      ),
+      Positioned(
+        left: 20,
+        right: 20,
+        bottom: 20,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                Text(day ? 'اليوم' : '2', style: tx(day ? 50 : 64, w: bold, c: Colors.white, h: 0.95)),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Padding(
+                    padding: const EdgeInsets.only(bottom: 6),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(day ? 'يوم عرسك' : 'يوم على عرسك', style: tx(18, w: bold, c: Colors.white)),
+                        Text(day ? '13 شعبان · الخميس' : 'كل ليلة تنوّر حبل · 5 من 7',
+                            style: tx(13.5, c: _warm)),
+                      ],
+                    ),
+                  ),
+                ),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+                  decoration: BoxDecoration(color: K.saffron, borderRadius: BorderRadius.circular(20)),
+                  child: Text(day ? 'يوم العرس' : 'أسبوع العرس', style: tx(13, w: bold)),
+                ),
+              ],
+            ),
+            gap(14),
+            segments(5, day ? 3 : 2, on: Colors.white, now: K.saffron,
+                off: Colors.white.withValues(alpha: 0.22)),
+          ],
+        ),
+      ),
+    ],
+  ),
+);

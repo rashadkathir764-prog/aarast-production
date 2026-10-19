@@ -4,6 +4,7 @@ import 'package:lucide_icons/lucide_icons.dart';
 
 import '../c_journey/kit.dart';
 import '../c_journey/screens_home.dart' show hero, homeHeader;
+import 'lights.dart' show bigHero;
 
 const hijriSub = 'الخميس 21 يناير · 13 شعبان';
 
@@ -568,7 +569,7 @@ Widget vHomeWeek() {
     nav: Sec.home,
     children: [
       homeHeader(hello: 'باقي يومين يا محمد'),
-      hero(at: 2, big: '2', unit: 'يوم على عرسك', sub: hijriSub),
+      bigHero(day: false),
       gap(12),
       nextStep(
         when: 'اليوم',
@@ -679,7 +680,7 @@ Widget vHomeDay() {
     nav: Sec.home,
     children: [
       homeHeader(hello: 'مبروك يا عريس'),
-      hero(at: 3, big: 'اليوم', bigSize: 46, unit: 'يوم عرسك', sub: '13 شعبان'),
+      bigHero(day: true),
       gap(12),
       Container(
         padding: const EdgeInsets.all(18),

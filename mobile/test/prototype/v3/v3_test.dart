@@ -16,6 +16,7 @@ import 'money.dart';
 import 'more.dart';
 import 'sections.dart';
 import 'start.dart';
+import 'touches.dart';
 
 Future<void> _shot(
   WidgetTester tester,
@@ -102,6 +103,10 @@ void main() {
     ('x14_payment_reversed', vPaymentReversed, 844), ('x15_cancel_item', vCancelItem, 844), ('x16_task_menu', vTaskMenu, 844),
     ('x17_otp_wrong', vOtpWrong, 844), ('x18_session_expired', vSessionExpired, 844),
     ('x19_conflict', vConflict, 844), ('x20_activity', vActivity, 900),
+    ('y01_where_are_you', vWhereAreYou, 960), ('y02_expat_home', vExpatHome, 1040), ('y03_remit', vRemit, 1000),
+    ('y04_custody', vCustody, 960), ('y05_hand_cash', vHandCash, 960),
+    ('y06_moment_week', vMomentWeek, 900), ('y07_moment_day', vMomentDay, 844), ('y08_moment_mahr', vMomentMahr, 844), ('y09_moment_booked', vMomentBooked, 844),
+    ('y10_father_home', vFatherHome, 960), ('y11_search', vSearch, 900),
   ];
 
   for (final s in screens) {

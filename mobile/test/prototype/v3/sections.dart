@@ -1374,14 +1374,10 @@ Widget vFamily() {
       ),
       sectionTitle('أضف مشارك', action: 'من جهات الاتصال'),
       for (final r in const [
-        (
-          'يساعد بدون المال',
-          'المهام والضيوف والمزودين',
-          LucideIcons.listChecks,
-        ),
-        ('يشوف ويعدّل', 'كل شيء، والمال إذا سمحت له', LucideIcons.users),
+        ('مساعد', 'المهام والضيوف، والرفد إذا بغيت', LucideIcons.listChecks),
+        ('أهل', 'المهام والضيوف، ويشوف المال إذا سمحت', LucideIcons.users),
         ('كاتب الرفد', 'يسجل الرفد يوم العرس بس', LucideIcons.gem),
-        ('يشوف بس', 'ملخص بدون تفاصيل الفلوس', LucideIcons.eye),
+        ('يشوف بس', 'الموعد والملخص بدون تفاصيل الفلوس', LucideIcons.eye),
       ])
         Container(
           margin: const EdgeInsets.only(bottom: 8),

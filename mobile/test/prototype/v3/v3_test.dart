@@ -8,8 +8,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import '../c_journey/kit.dart';
-import '../c_journey/screens_start.dart' show otp;
 import '../../support/preview_fonts.dart';
+import 'gaps_a.dart';
+import 'gaps_b.dart';
 import 'hard.dart';
 import 'home.dart';
 import 'lights.dart';
@@ -62,7 +63,7 @@ void main() {
     ('a06_mahr', vMahr, 900),
     ('a07_budget', vBudget, 844),
     ('a08_ready', vReady, 844),
-    ('a08b_register', vRegister, 844), ('a09_otp', otp, 844),
+    ('a08b_register', vRegister, 844), ('a09_otp', vOtp6, 844),
     ('b01_home_fresh', vHomeFresh, 960),
     ('b02_home_active', vHomeActive, 1400),
     ('b03_quick_entry', vQuickEntry, 844),
@@ -103,7 +104,7 @@ void main() {
     ('d03_starter', vStarterTasks, 1040), ('d04_task_detail', vTaskDetail, 1040), ('d05_contract_papers', vContractPapers, 1000),
     ('e06_add_guest', vAddGuest, 900), ('e07_guest_detail', vGuestDetail, 960), ('e08_reminder', vReminderPreview, 900), ('e09_rafd_book', vRafdBook, 1000), ('e10_thanks', vThanks, 900),
     ('f07_quote', vQuoteRequest, 960), ('f08_chats', vConversations, 900), ('f09_favorites', vFavorites, 900),
-    ('g06_add_participant', vAddParticipant, 960), ('g07_notif', vNotifSettings, 960), ('g08_lock', vLock, 844), ('g09_change_phone', vChangePhone, 844), ('g10_support', vSupport, 1000), ('g11_logout', vLogout, 844),
+    ('g06_add_participant', vAddParticipant2, 1000), ('g07_notif', vNotifSettings, 960), ('g08_lock', vLock, 844), ('g09_change_phone', vChangePhone, 844), ('g10_support', vSupport, 1000), ('g11_logout', vLogout, 844),
     ('q01_invite_phone', qPhone, 844), ('q02_invite_account', qAccount, 844), ('q03_invite_decision', qDecision, 960),
     ('q04_choose_path', qChoosePath, 844), ('q05_tasks_mine', qTasksMine, 900), ('q06_money_view', qMoneyView, 900),
     ('q07_money_locked', qMoneyLocked, 844), ('q08_providers_locked', qProvidersLocked, 844), ('q09_bride_view', qBrideView, 900),
@@ -123,6 +124,20 @@ void main() {
     ('y12_lights_home', vLightsHome, 960), ('y13_decor_providers', vDecorProviders, 900), ('y14_fireworks_task', vFireworksTask, 960),
     ('z01_impact_chain', vImpactChain, 900), ('z02_weekly_digest', vWeeklyDigest, 1000), ('z03_cashflow', vCashflow, 960), ('z04_receipt_scan', vReceiptScan, 900),
     ('z05_smart_tasks', vSmartTasks, 1000), ('z06_attendance', vAttendance, 960), ('z07_agreement', vAgreement, 960),
+    ('w01_forgot_password', vForgotPassword, 844), ('w02_register_errors', vRegisterErrors, 900), ('w03_whatsapp_missing', vWhatsappMissing, 900),
+    ('w04_devices', vDevices, 844), ('w05_delete_account', vDeleteAccount, 1000), ('w06_delete_pending', vDeletePending, 844),
+    ('w07_pin_entry', vPinEntry, 844), ('w08_pin_wrong', vPinWrong, 900), ('w09_local_draft', vLocalDraft, 900),
+    ('w10_edit_plan', vEditPlan, 960), ('w11_plan_switcher', vPlanSwitcher, 844), ('w12_date_passed', vDatePassed, 844),
+    ('w13_archive_plan', vArchivePlan, 900), ('w14_archived_view', vArchivedView, 960), ('w15_delete_plan', vDeletePlan, 1000),
+    ('w16_invite_states', vInviteStates, 1000),
+    ('w18_category_over', vCategoryOver, 960), ('w19_allocate', vAllocate, 1040), ('w20_payer_filter', vPayerFilter, 900),
+    ('w21_partial_refund', vPartialRefund, 900), ('w22_receipts', vReceipts, 900), ('w23_item_locked', vItemLocked, 844),
+    ('w24_timeline', vTimeline, 1000), ('w25_private_task', vPrivateTask, 844), ('w26_overdue', vOverdue, 844),
+    ('w27_guest_groups', vGuestGroups, 900), ('w28_bulk_guests', vBulkGuests, 1000), ('w29_guests_offline', vGuestsOffline, 900),
+    ('w30_directory_filters', vDirectoryFilters, 960), ('w31_offer_expired', vOfferExpired, 844), ('w32_chat_menu', vChatMenu, 844),
+    ('w33_provider_status', vProviderStatus, 900), ('w34_booking_states', vBookingStates, 1000), ('w35_rate_locked', vRateLocked, 844),
+    ('w36_ai_consent', vAiConsent, 900), ('w37_ai_limit', vAiLimit, 1000), ('w38_not_enough_data', vNotEnoughData, 844),
+    ('w39_push_off', vPushOff, 844), ('w40_privacy', vPrivacy, 900), ('w41_pending_queue', vPendingQueue, 900), ('w42_section_states', vSectionStates, 900),
   ];
 
   for (final s in screens) {

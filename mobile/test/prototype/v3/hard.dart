@@ -537,8 +537,8 @@ Widget vParticipantStates() {
       whiteList([
         m('ع', K.teal, 'الوالد', 'الدعوة وصلت أمس · ما فتحها',
             softAction('ذكّره')),
-        m('ع', K.sky, 'عادل', 'ما نعرف إذا وصلت · رقمه ما عليه واتساب؟',
-            softAction('أرسلها نصية', fg: K.saffronInk, bg: K.saffronSoft)),
+        m('ع', K.sky, 'عادل', 'رقمه ما عليه واتساب · أرسل له الرابط بأي طريقة',
+            softAction('انسخ الرابط', fg: K.saffronInk, bg: K.saffronSoft)),
       ]),
       sectionTitle('طلعوا'),
       whiteList([
@@ -1006,8 +1006,8 @@ Widget vTaskMenu() => Phone(
 
 Widget vOtpWrong() {
   Widget box(String d) => Container(
-    width: 58,
-    height: 64,
+    width: 50,
+    height: 60,
     alignment: Alignment.center,
     decoration: BoxDecoration(
       color: K.coralSoft,
@@ -1028,7 +1028,7 @@ Widget vOtpWrong() {
         textDirection: TextDirection.ltr,
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [box('4'), box('8'), box('1'), box('9'), box('2')],
+          children: [box('4'), box('8'), box('1'), box('9'), box('2'), box('6')],
         ),
       ),
       gap(14),
@@ -1063,7 +1063,7 @@ Widget vOtpWrong() {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text('ما وصلك على واتساب؟', style: tx(15.5, w: bold)),
-                  Text('نرسله رسالة نصية عادية', style: tx(13, c: K.muted)),
+                  Text('تأكد من واتساب، أو ادخل بكلمة المرور', style: tx(13, c: K.muted)),
                 ],
               ),
             ),

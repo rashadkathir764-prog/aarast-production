@@ -8,6 +8,7 @@ import 'package:lucide_icons/lucide_icons.dart';
 
 import '../c_journey/kit.dart';
 import 'home.dart' show nextStep;
+import 'lights.dart' show Lights;
 
 // ------------------------------------------------------------ shared bits
 
@@ -51,6 +52,7 @@ Widget _moment({
   required String action,
   List<Color> colors = const [K.teal, K.tealDark],
   bool confetti = true,
+  bool lights = false,
 }) => Phone(
   statusLight: true,
   gradient: LinearGradient(
@@ -67,17 +69,27 @@ Widget _moment({
       height: 230,
       child: Stack(
         children: [
-          const Positioned.fill(
-            child: CustomPaint(painter: QamariyaMark(alpha: 0.14, cx: 0.5, frieze: false)),
+          Positioned.fill(
+            child: CustomPaint(
+              painter: lights
+                  ? const Lights(strands: 11, lit: 11)
+                  : const QamariyaMark(alpha: 0.14, cx: 0.5, frieze: false),
+            ),
           ),
           if (confetti) const Positioned.fill(child: CustomPaint(painter: _Confetti())),
-          Align(
-            alignment: const Alignment(0, 0.55),
-            child: Text(eyebrow, style: tx(15, w: bold, c: Colors.white70)),
-          ),
+          if (!lights)
+            Align(
+              alignment: const Alignment(0, 0.55),
+              child: Text(eyebrow, style: tx(15, w: bold, c: Colors.white70)),
+            ),
         ],
       ),
     ),
+    if (lights) ...[
+      gap(14),
+      Center(child: Text(eyebrow, style: tx(15, w: bold, c: Colors.white70))),
+      gap(6),
+    ],
     Center(
       child: Text(title, textAlign: TextAlign.center, style: tx(32, w: bold, c: Colors.white, h: 1.2)),
     ),
@@ -516,6 +528,8 @@ Widget vMomentWeek() => _moment(
   sub: 'سبعة أيام، وكل شي مرتب.\nمن اليوم الرئيسية تمشي معك ليلة ليلة.',
   action: 'وريني برنامج الأسبوع',
   confetti: false,
+  lights: true,
+  colors: const [Color(0xFF0E2A33), K.tealDark],
   body: _glass([
     _glassRow(LucideIcons.moon, 'السمرة', 'الثلاثاء · الديوان'),
     _glassRow(LucideIcons.leaf, 'المقيل', 'الأربعاء · بيت الوالد'),
@@ -531,6 +545,8 @@ Widget vMomentDay() => _moment(
   title: 'اليوم عرسك يا محمد',
   sub: 'بارك الله لكما، وبارك عليكما،\nوجمع بينكما في خير.',
   action: 'ابدأ يومك',
+  lights: true,
+  confetti: false,
   colors: const [K.saffron, K.saffronInk],
   body: _glass([
     _glassRow(LucideIcons.soup, 'الغداء', 'الظهر · بيت الوالد'),

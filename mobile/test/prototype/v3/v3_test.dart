@@ -8,10 +8,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import '../c_journey/kit.dart';
-import '../c_journey/screens_start.dart' show splash, whoAreYou, otp;
+import '../c_journey/screens_start.dart' show splash, otp;
 import '../../support/preview_fonts.dart';
 import 'hard.dart';
 import 'home.dart';
+import 'lights.dart';
 import 'money.dart';
 import 'more.dart';
 import 'sections.dart';
@@ -34,6 +35,12 @@ Future<void> _shot(
       home: Material(child: screen),
     ),
   );
+  // Decode photos for real before the shot.
+  await tester.runAsync(() async {
+    for (final e in find.byType(Image).evaluate()) {
+      await precacheImage((e.widget as Image).image, e);
+    }
+  });
   await tester.pump();
   await expectLater(
     find.byType(MaterialApp),
@@ -46,7 +53,7 @@ void main() {
 
   final screens = <(String, Widget Function(), double)>[
     ('a01_splash', splash, 844),
-    ('a02_who', whoAreYou, 844),
+    ('a02_who', vWho2, 844),
     ('a03_name', vName, 844),
     ('a04_date', vDate, 844),
     ('a05_city', vCity, 844),
@@ -107,6 +114,7 @@ void main() {
     ('y04_custody', vCustody, 960), ('y05_hand_cash', vHandCash, 960),
     ('y06_moment_week', vMomentWeek, 900), ('y07_moment_day', vMomentDay, 844), ('y08_moment_mahr', vMomentMahr, 844), ('y09_moment_booked', vMomentBooked, 844),
     ('y10_father_home', vFatherHome, 960), ('y11_search', vSearch, 900),
+    ('y12_lights_home', vLightsHome, 960), ('y13_decor_providers', vDecorProviders, 900), ('y14_fireworks_task', vFireworksTask, 960),
   ];
 
   for (final s in screens) {

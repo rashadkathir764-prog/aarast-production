@@ -385,6 +385,8 @@ Widget vAddItem() => Phone(
         runSpacing: 8,
         children: [
           chip('الذهب', icon: LucideIcons.gem, on: true),
+          chip('زينة البيت', icon: LucideIcons.lightbulb),
+          chip('الألعاب النارية', icon: LucideIcons.sparkles),
           chip('السيارات', icon: LucideIcons.car),
           chip('الكروت', icon: LucideIcons.mail),
           chip('العطور والبخور', icon: LucideIcons.sparkles),
@@ -775,7 +777,7 @@ Widget vStarterTasks() {
   return Phone(
     bottom: Padding(
       padding: const EdgeInsets.fromLTRB(16, 8, 16, 30),
-      child: btn('أضف 23 مهمة لخطتي', wide: true, v: 16, fs: 17, bg: K.saffronInk),
+      child: btn('أضف 24 مهمة لخطتي', wide: true, v: 16, fs: 17, bg: K.saffronInk),
     ),
     children: [
       subHeader('مهام جاهزة لعرسك', sub: 'مرتبة على موعدك · شيل اللي ما يخصك'),
@@ -794,6 +796,7 @@ Widget vStarterTasks() {
         t('أرسل الدعوات', true),
         t('رتّب الغداء', true),
         t('بدلة العريس', true),
+        t('ركّب زينة البيت', true, when: 'قبل السمرة'),
       ]),
     ],
   );

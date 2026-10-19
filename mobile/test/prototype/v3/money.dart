@@ -335,7 +335,7 @@ Widget vMoneyItems() => Phone(
       _It('القاعة', LucideIcons.building2, 2.0, 0.5, note: 'دفعة بعد 5 أيام'),
       _It('الضيافة والعشاء', LucideIcons.utensils, 1.6, 0.3),
       _It('القات', LucideIcons.leaf, 1.0, 0.8),
-      _It('الذبائح', LucideIcons.beef, 1.0, 0.8),
+      _It('الغداء', LucideIcons.soup, 1.0, 0.8),
       _It('التصوير', LucideIcons.camera, 0.6, 0, note: 'عرضين وصلوا'),
       _It('الفنان والفرقة', LucideIcons.music, 0.5, 0, note: 'ما انحجز'),
       _It('بدلة العريس', LucideIcons.shirt, 0.3, 0.2),

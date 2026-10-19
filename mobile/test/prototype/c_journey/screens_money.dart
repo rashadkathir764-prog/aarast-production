@@ -165,7 +165,7 @@ const _items = [
   _Item('التصوير', LucideIcons.camera, 0.6, 0, note: 'عرضين وصلوا'),
   _Item('القات', LucideIcons.leaf, 0.5, 0),
   _Item('الفرقة', LucideIcons.music, 0.4, 0, note: 'ما انحجزت'),
-  _Item('الذبائح', LucideIcons.beef, 0.4, 0.2),
+  _Item('الغداء', LucideIcons.soup, 0.4, 0.2),
   _Item('الكوشة والزينة', LucideIcons.sparkles, 0.3, 0),
 ];
 
@@ -385,7 +385,7 @@ Widget moneyPayments() {
       ], dividers: false),
       sectionTitle('مدفوعة', action: 'الكل (9)'),
       whiteList([
-        paidRow('12 أكتوبر · نقدًا', 'الذبائح · أبو علي', '200 ألف'),
+        paidRow('12 أكتوبر · نقدًا', 'الغداء · أبو علي', '200 ألف'),
         paidRow('28 سبتمبر · تحويل', 'الذهب والشبكة', '1.2 مليون'),
         paidRow('10 سبتمبر · نقدًا', 'قاعة سبأ · العربون', '500 ألف'),
       ], dividers: false),

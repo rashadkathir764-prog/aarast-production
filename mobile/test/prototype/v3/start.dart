@@ -338,7 +338,7 @@ Widget vReady() => Phone(
             fg: K.teal,
             soft: K.tealSoft,
             title: '9 بنود لعرسك في صنعاء',
-            sub: 'القاعة والضيافة والقات والذبائح والباقي',
+            sub: 'القاعة والضيافة والقات والغداء والباقي',
           ),
           listRow(
             icon: LucideIcons.listChecks,

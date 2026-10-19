@@ -359,8 +359,8 @@ Date: 2026-10-19. Static audit, no code changed.
 
 ## Counts
 
-- Customer screens mapped: 27 (f01 to f09, g04, g05, x09 to x12, x22, y13, y14, z07, w30 to w35, c06, c10). ✅ 3, 🔧 20, ➕ 4.
-- Provider screens mapped: 44 (p01 to p43 + p05b). ✅ 2, 🔧 19, ➕ 23.
-- Admin needs: 16 rows. ✅ 1, 🔧 9, ➕ 6.
-- New endpoints proposed: about 70. Changed endpoints: about 30. New tables: 20. Enum changes: 9.
+- Customer screens mapped: 27 (f01 to f09, g04, g05, x09 to x12, x22, y13, y14, z07, w30 to w35, c06, c10). ✅ 2, 🔧 22, ➕ 3.
+- Provider screens mapped: 44 (p01 to p43 + p05b). ✅ 2, 🔧 23, ➕ 19.
+- Admin needs: 15 rows. ✅ 1, 🔧 8, ➕ 6.
+- New endpoints proposed: about 70. Changed endpoints: about 30. New tables: 22 (marketplace and catalog) plus 1 in planning (`WeddingEvent`). New enums: 17. Existing enums extended: 7.
 - Logic problems: 33 (L1 to L33).

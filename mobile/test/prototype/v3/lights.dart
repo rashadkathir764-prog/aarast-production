@@ -438,13 +438,14 @@ Widget vWhose() => Phone(
     Text('كل واحد له مساره، ويقدر يضيف الثاني مشارك', style: tx(15.5, c: K.muted)),
     gap(22),
     _roleCard('العريس', 'عرس الرجال، والمهر،\nوضيوفك ومزودينك', _groomPhoto(), on: true),
-    _roleCard('العروسة', 'تجهيزك وعرس النساء،\nفي مسارك الخاص', const ClipRect(
-        child: OverflowBox(
-          maxWidth: 230,
-          maxHeight: 290,
-          alignment: Alignment(0, -0.55),
-          child: CustomPaint(painter: Dress(), size: Size(230, 290)),
-        ),
+    // Temporary stand-in until the brother's own dress photo arrives.
+    _roleCard(
+      'العروسة',
+      'تجهيزك وعرس النساء،\nفي مسارك الخاص',
+      Image.memory(
+        File('test/prototype/v3/assets/bride_placeholder.jpg').readAsBytesSync(),
+        fit: BoxFit.cover,
+        alignment: const Alignment(-0.4, 0),
       ),
     ),
   ],

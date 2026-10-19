@@ -53,7 +53,7 @@ void main() {
 
   final screens = <(String, Widget Function(), double)>[
     ('a01_splash', vSplash2, 844),
-    ('a02_who', vWho2, 844),
+    ('a02_who', vStart, 844), ('a02b_whose', vWhose, 844),
     ('a03_name', vName, 844),
     ('a04_date', vDate, 844),
     ('a05_city', vCity, 844),

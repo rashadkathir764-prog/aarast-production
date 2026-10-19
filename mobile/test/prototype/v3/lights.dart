@@ -85,45 +85,6 @@ class Lights extends CustomPainter {
   bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
 
-/// Lace for the bride's card: scallops, little flowers and dotted ribs.
-class _Lace extends CustomPainter {
-  const _Lace();
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    canvas.drawRect(Offset.zero & size, Paint()..color = const Color(0xFFF7F3EC));
-    final line = Paint()
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 1.1
-      ..color = const Color(0xFFBFB6A6);
-    final soft = Paint()..color = const Color(0xFFD9D1C2);
-    for (var row = 0; row < 7; row++) {
-      final y = row * 26.0 + 8;
-      for (var x = (row.isEven ? 0.0 : 13.0); x < size.width + 26; x += 26) {
-        canvas.drawArc(Rect.fromCircle(center: Offset(x, y), radius: 13), 0, math.pi, false, line);
-        final f = Offset(x + 13, y + 9);
-        for (var p = 0; p < 5; p++) {
-          final a = p * 2 * math.pi / 5;
-          canvas.drawCircle(f + Offset(math.cos(a) * 3.2, math.sin(a) * 3.2), 1.6, soft);
-        }
-        canvas.drawCircle(f, 1.2, line..style = PaintingStyle.fill);
-        line.style = PaintingStyle.stroke;
-      }
-    }
-    // A pearl edge, like the hem of the veil.
-    for (var x = 4.0; x < size.width; x += 9) {
-      canvas.drawCircle(Offset(x, size.height - 6), 2.4, Paint()..color = Colors.white);
-      canvas.drawCircle(Offset(x, size.height - 6), 2.4, Paint()
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = 0.6
-        ..color = const Color(0xFFCFC6B6));
-    }
-  }
-
-  @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
-}
-
 /// Picture on the card's far edge that fades into the white card.
 Widget _fadePicture(Widget picture) => SizedBox(
   width: 150,
@@ -185,7 +146,127 @@ Widget _roleCard(String t, String sub, Widget picture, {bool on = false}) => Con
   ),
 );
 
-Widget vWho2() => Phone(
+/// A wedding dress on a hanger, cropped like a boutique photo.
+class _Dress extends CustomPainter {
+  const _Dress();
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final w = size.width, h = size.height;
+    canvas.drawRect(
+      Offset.zero & size,
+      Paint()
+        ..shader = const LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [Color(0xFFF3EEE6), Color(0xFFE7DFD2)],
+        ).createShader(Offset.zero & size),
+    );
+    final cx = w * 0.55;
+    final ink = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1
+      ..color = const Color(0xFFB9AE9B);
+    // Hanger.
+    canvas.drawLine(Offset(cx, -2), Offset(cx, h * 0.06), ink..strokeWidth = 1.6);
+    canvas.drawPath(
+      Path()
+        ..moveTo(cx - w * 0.22, h * 0.15)
+        ..lineTo(cx, h * 0.06)
+        ..lineTo(cx + w * 0.22, h * 0.15),
+      ink,
+    );
+    ink.strokeWidth = 1;
+    // Skirt: a full ball gown flowing past the card.
+    final skirt = Path()
+      ..moveTo(cx - w * 0.15, h * 0.52)
+      ..cubicTo(cx - w * 0.28, h * 0.70, cx - w * 0.55, h * 0.95, cx - w * 0.70, h * 1.15)
+      ..lineTo(cx + w * 0.70, h * 1.15)
+      ..cubicTo(cx + w * 0.55, h * 0.95, cx + w * 0.28, h * 0.70, cx + w * 0.15, h * 0.52)
+      ..close();
+    canvas.drawShadow(skirt, const Color(0xFF8C7F6A), 6, false);
+    canvas.drawPath(skirt, Paint()..color = Colors.white);
+    final fold = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1
+      ..color = const Color(0xFFE4DDD0);
+    for (final f in [-0.45, -0.25, -0.08, 0.08, 0.25, 0.45]) {
+      canvas.drawPath(
+        Path()
+          ..moveTo(cx + w * f * 0.25, h * 0.55)
+          ..quadraticBezierTo(cx + w * f * 0.7, h * 0.8, cx + w * f * 1.3, h * 1.15),
+        fold,
+      );
+    }
+    // Lace flowers scattered on the skirt.
+    final lace = Paint()..color = const Color(0xFFDCD3C4);
+    final rnd = math.Random(5);
+    for (var i = 0; i < 26; i++) {
+      final t = rnd.nextDouble();
+      final y = h * (0.6 + t * 0.5);
+      final half = w * (0.15 + t * 0.5);
+      final x = cx + (rnd.nextDouble() * 2 - 1) * half * 0.9;
+      for (var p = 0; p < 5; p++) {
+        final ang = p * 2 * math.pi / 5;
+        canvas.drawCircle(Offset(x + math.cos(ang) * 2.6, y + math.sin(ang) * 2.6), 1.3, lace);
+      }
+    }
+    // Bodice with a sweetheart neckline.
+    final bodice = Path()
+      ..moveTo(cx - w * 0.14, h * 0.24)
+      ..quadraticBezierTo(cx - w * 0.07, h * 0.20, cx, h * 0.26)
+      ..quadraticBezierTo(cx + w * 0.07, h * 0.20, cx + w * 0.14, h * 0.24)
+      ..lineTo(cx + w * 0.15, h * 0.52)
+      ..lineTo(cx - w * 0.15, h * 0.52)
+      ..close();
+    canvas.drawShadow(bodice, const Color(0xFF8C7F6A), 3, false);
+    canvas.drawPath(bodice, Paint()..color = Colors.white);
+    // Lace straps to the hanger.
+    canvas.drawLine(Offset(cx - w * 0.13, h * 0.24), Offset(cx - w * 0.17, h * 0.14), ink);
+    canvas.drawLine(Offset(cx + w * 0.13, h * 0.24), Offset(cx + w * 0.17, h * 0.14), ink);
+    for (var i = 0; i < 9; i++) {
+      canvas.drawCircle(Offset(cx - w * 0.1 + i * w * 0.025, h * (0.33 + (i % 3) * 0.04)), 1.2, lace);
+    }
+    // Pearl waistband.
+    for (var x = cx - w * 0.15; x <= cx + w * 0.15; x += 5) {
+      canvas.drawCircle(Offset(x, h * 0.52), 2.1, Paint()..color = const Color(0xFFFDFBF6));
+      canvas.drawCircle(Offset(x, h * 0.52), 2.1, ink..strokeWidth = 0.5);
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+}
+
+Widget _groomPhoto() => Image.memory(
+  File('test/prototype/v3/assets/groom.jpg').readAsBytesSync(),
+  fit: BoxFit.cover,
+  alignment: const Alignment(0.2, 0.1),
+);
+
+Widget _servicesArt() => Container(
+  color: K.skySoft,
+  child: Wrap(
+    alignment: WrapAlignment.center,
+    runAlignment: WrapAlignment.center,
+    spacing: 14,
+    runSpacing: 14,
+    children: [
+      for (final i in const [
+        LucideIcons.building2,
+        LucideIcons.music,
+        LucideIcons.camera,
+        LucideIcons.lightbulb,
+        LucideIcons.utensils,
+        LucideIcons.car,
+      ])
+        Icon(i, size: 24, color: K.sky.withValues(alpha: 0.75)),
+    ],
+  ),
+);
+
+/// First choice after the splash: plan a wedding, or offer a service.
+Widget vStart() => Phone(
   bottom: Padding(
     padding: const EdgeInsets.fromLTRB(20, 8, 20, 30),
     child: btn('التالي', wide: true, v: 16, fs: 17),
@@ -194,44 +275,62 @@ Widget vWho2() => Phone(
     gap(14),
     Center(child: wordmark(s: 28)),
     gap(26),
-    Text('مين أنت؟', style: tx(30, w: bold)),
+    Text('أهلًا فيك', style: tx(30, w: bold)),
     gap(4),
-    Text('نرتب لك خطة على قدك', style: tx(16, c: K.muted)),
+    Text('وش تبغى تسوي؟', style: tx(16, c: K.muted)),
     gap(22),
     _roleCard(
-      'العريس',
-      'عرس الرجال، والمهر،\nوضيوفك ومزودينك',
-      Image.memory(
-        File('test/prototype/v3/assets/groom.jpg').readAsBytesSync(),
-        fit: BoxFit.cover,
-        alignment: const Alignment(0.2, 0.1),
-      ),
+      'أنشئ خطتك',
+      'لعرسك أنت، عريس\nأو عروسة',
+      weddingSky(strands: 7, lit: 7, bursts: const [(Offset(0.3, 0.3), K.saffron, 26.0)]),
       on: true,
     ),
     _roleCard(
-      'العروسة',
-      'تجهيزك وعرس النساء،\nفي مسارك الخاص',
-      const CustomPaint(painter: _Lace()),
+      'مزود خدمة',
+      'قاعة، فرقة، تصوير،\nزينة، ضيافة',
+      _servicesArt(),
     ),
-    gap(6),
-    for (final r in const [
-      (LucideIcons.users, 'من الأهل', 'عندي رابط دعوة'),
-      (LucideIcons.store, 'مزود خدمة', 'قاعة، فرقة، تصوير، زينة'),
-    ])
-      Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 7),
+    gap(14),
+    Center(
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: K.line),
+        ),
         child: Row(
+          mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(r.$1, size: 19, color: K.muted),
-            const SizedBox(width: 12),
-            Text(r.$2, style: tx(15.5, w: bold)),
-            const SizedBox(width: 8),
-            Text(r.$3, style: tx(13, c: K.muted)),
-            const Spacer(),
-            const Icon(LucideIcons.chevronLeft, size: 17, color: K.faint),
+            const Icon(LucideIcons.link, size: 18, color: K.teal),
+            const SizedBox(width: 10),
+            Text('عندي رابط دعوة', style: tx(15.5, w: bold, c: K.teal)),
           ],
         ),
       ),
+    ),
+    gap(8),
+    Center(
+      child: Text('أحد ضافك في خطته؟ ادخل منه', style: tx(13, c: K.muted)),
+    ),
+  ],
+);
+
+/// Second step of creating a plan: whose wedding is this?
+Widget vWhose() => Phone(
+  bottom: Padding(
+    padding: const EdgeInsets.fromLTRB(20, 8, 20, 30),
+    child: btn('التالي', wide: true, v: 16, fs: 17),
+  ),
+  children: [
+    subHeader(''),
+    gap(4),
+    Text('خطة مين؟', style: tx(30, w: bold)),
+    gap(4),
+    Text('كل واحد له مساره، ويقدر يضيف الثاني مشارك', style: tx(15.5, c: K.muted)),
+    gap(22),
+    _roleCard('العريس', 'عرس الرجال، والمهر،\nوضيوفك ومزودينك', _groomPhoto(), on: true),
+    _roleCard('العروسة', 'تجهيزك وعرس النساء،\nفي مسارك الخاص', const CustomPaint(painter: _Dress())),
   ],
 );
 

@@ -15,6 +15,7 @@ import 'home.dart';
 import 'lights.dart';
 import 'money.dart';
 import 'more.dart';
+import 'participant.dart';
 import 'sections.dart';
 import 'smart.dart';
 import 'start.dart';
@@ -61,7 +62,7 @@ void main() {
     ('a06_mahr', vMahr, 900),
     ('a07_budget', vBudget, 844),
     ('a08_ready', vReady, 844),
-    ('a09_otp', otp, 844),
+    ('a08b_register', vRegister, 844), ('a09_otp', otp, 844),
     ('b01_home_fresh', vHomeFresh, 960),
     ('b02_home_active', vHomeActive, 1400),
     ('b03_quick_entry', vQuickEntry, 844),
@@ -103,6 +104,10 @@ void main() {
     ('e06_add_guest', vAddGuest, 900), ('e07_guest_detail', vGuestDetail, 960), ('e08_reminder', vReminderPreview, 900), ('e09_rafd_book', vRafdBook, 1000), ('e10_thanks', vThanks, 900),
     ('f07_quote', vQuoteRequest, 960), ('f08_chats', vConversations, 900), ('f09_favorites', vFavorites, 900),
     ('g06_add_participant', vAddParticipant, 960), ('g07_notif', vNotifSettings, 960), ('g08_lock', vLock, 844), ('g09_change_phone', vChangePhone, 844), ('g10_support', vSupport, 1000), ('g11_logout', vLogout, 844),
+    ('q01_invite_phone', qPhone, 844), ('q02_invite_account', qAccount, 844), ('q03_invite_decision', qDecision, 960),
+    ('q04_choose_path', qChoosePath, 844), ('q05_tasks_mine', qTasksMine, 900), ('q06_money_view', qMoneyView, 900),
+    ('q07_money_locked', qMoneyLocked, 844), ('q08_providers_locked', qProvidersLocked, 844), ('q09_bride_view', qBrideView, 900),
+    ('q10_account_plans', qAccountPlans, 960), ('q11_leave', qLeave, 844), ('q12_changed', qChanged, 960),
     ('x01_home_no_date', vHomeNoDate, 900), ('x02_date_approx', vDateApprox, 844), ('x03_money_no_budget', vMoneyNoBudget, 960),
     ('x04_from_family', vFromFamily, 900), ('x05_invite_landing', vInviteLanding, 960), ('x06_helper_home', vHelperHome, 960), ('x07_participant_states', vParticipantStates, 960),
     ('x08_pledge_check', vPledgeCheck, 900),

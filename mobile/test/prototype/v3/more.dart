@@ -63,20 +63,33 @@ Widget _bubble(String t, {bool me = false, String? time, Color? bg}) => Align(
 
 // ============================================================ الدخول
 
+/// Sign-in as the app does it: phone and password, or a WhatsApp code
+/// without a password.
 Widget vLogin() => Phone(
   bottom: Padding(
     padding: const EdgeInsets.fromLTRB(20, 8, 20, 30),
     child: Column(
       children: [
-        btn('أرسل الرمز على واتساب', wide: true, v: 16, fs: 17, icon: LucideIcons.send),
-        gap(12),
-        Text('أدخل بكلمة المرور بدل كذا', style: tx(14.5, w: bold, c: K.muted)),
+        btn('تسجيل الدخول', wide: true, v: 16, fs: 17),
+        gap(14),
+        Row(
+          children: [
+            const Expanded(child: Divider(color: K.line)),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 10),
+              child: Text('أو بدون كلمة مرور', style: tx(13, c: K.muted)),
+            ),
+            const Expanded(child: Divider(color: K.line)),
+          ],
+        ),
+        gap(10),
+        btn('الدخول برمز واتساب', wide: true, v: 14, fs: 15.5, bg: K.greenSoft, fg: K.green, icon: LucideIcons.messageCircle),
       ],
     ),
   ),
   children: [
     subHeader(''),
-    gap(20),
+    gap(14),
     Padding(
       padding: const EdgeInsets.symmetric(horizontal: 6),
       child: wordmark(s: 26),
@@ -88,37 +101,56 @@ Widget vLogin() => Phone(
     ),
     Padding(
       padding: const EdgeInsets.symmetric(horizontal: 6),
-      child: Text('رقمك بس، وتلقى خطتك مثل ما تركتها.', style: tx(16, c: K.muted)),
+      child: Text('خطتك بانتظارك، مثل ما تركتها.', style: tx(16, c: K.muted)),
     ),
-    gap(26),
-    Container(
-      padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: K.teal, width: 2),
-      ),
-      child: Directionality(
-        textDirection: TextDirection.ltr,
-        child: Row(
-          children: [
-            Text('+967', style: tx(18, w: bold, c: K.muted)),
-            const SizedBox(width: 12),
-            Container(width: 1, height: 28, color: K.line),
-            const SizedBox(width: 12),
-            Text('777 123 456', style: tx(24, w: bold)),
-          ],
-        ),
-      ),
+    gap(24),
+    field('رقم الهاتف', ltr('777 123 456'), icon: LucideIcons.phone, focused: true),
+    gap(10),
+    field('كلمة المرور', '••••••••', icon: LucideIcons.lock),
+    gap(10),
+    Align(
+      alignment: AlignmentDirectional.centerEnd,
+      child: Text('نسيت كلمة المرور؟', style: tx(14, w: bold, c: K.teal)),
     ),
-    gap(8),
-    Row(
+  ],
+);
+
+/// Saving the guest plan to an account: phone and password, then the code.
+Widget vRegister() => Phone(
+  bottom: Padding(
+    padding: const EdgeInsets.fromLTRB(20, 8, 20, 30),
+    child: Column(
       children: [
-        const Icon(LucideIcons.checkCircle2, size: 15, color: K.green),
-        const SizedBox(width: 6),
-        Text('رقم يمن موبايل صحيح', style: tx(13, w: bold, c: K.green)),
+        btn('إنشاء حساب', wide: true, v: 16, fs: 17),
+        gap(10),
+        Text('لديك حساب؟ تسجيل الدخول', style: tx(14.5, w: bold, c: K.teal)),
       ],
     ),
+  ),
+  children: [
+    subHeader('احفظ خطتك', sub: 'خطتك محفوظة في جوالك، وبالحساب ما تضيع'),
+    gap(8),
+    Box(
+      c: K.tealSoft,
+      pad: const EdgeInsets.all(14),
+      child: Row(
+        children: [
+          const Icon(LucideIcons.checkCircle2, color: K.teal),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text('عرس محمد وسلمى · 30 مهمة · 9 بنود', style: tx(14.5, w: bold, c: K.teal)),
+          ),
+        ],
+      ),
+    ),
+    gap(16),
+    field('الاسم', 'محمد الحمدي'),
+    gap(10),
+    field('رقم الهاتف', ltr('777 123 456'), icon: LucideIcons.phone, focused: true),
+    gap(10),
+    field('كلمة المرور', '••••••••', icon: LucideIcons.lock),
+    gap(8),
+    Text('8 أحرف أو أكثر. بعدها نرسل لك رمز تأكيد على واتساب.', style: tx(13, c: K.muted)),
   ],
 );
 

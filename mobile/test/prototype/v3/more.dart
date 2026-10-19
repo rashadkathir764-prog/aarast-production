@@ -775,13 +775,14 @@ Widget vStarterTasks() {
   return Phone(
     bottom: Padding(
       padding: const EdgeInsets.fromLTRB(16, 8, 16, 30),
-      child: btn('أضف 22 مهمة لخطتي', wide: true, v: 16, fs: 17, bg: K.saffronInk),
+      child: btn('أضف 23 مهمة لخطتي', wide: true, v: 16, fs: 17, bg: K.saffronInk),
     ),
     children: [
       subHeader('مهام جاهزة لعرسك', sub: 'مرتبة على موعدك · شيل اللي ما يخصك'),
       g('الحين', 'قبل العرس بثلاثة أشهر', [
         t('احجز القاعة', true, when: 'هذا الأسبوع'),
         t('حدد موعد عقد القران', true, when: 'قبل 30 أكتوبر'),
+        t('جهّز أوراق العقد', true, when: 'قبل العقد'),
         t('اختر المصور', true, when: 'نوفمبر'),
       ]),
       g('قبل بشهرين', 'ديسمبر', [
@@ -865,8 +866,154 @@ Widget vTaskDetail() {
           ],
         ),
       ),
-      sectionTitle('ملاحظة'),
-      Box(child: Text('الأمين الشرعي الشيخ عبدالله، رقمه عند الوالد.', style: tx(15, c: K.muted))),
+      sectionTitle('الأمين الشرعي'),
+      _officiant(),
+      gap(10),
+      Box(
+        pad: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        child: Row(
+          children: [
+            iconTile(LucideIcons.fileText, K.saffronInk, K.saffronSoft, s: 40),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('جهّز أوراق العقد', style: tx(15, w: bold)),
+                  Text('مهمة مرتبطة · 1 من 4 جاهزة', style: tx(13, c: K.muted)),
+                ],
+              ),
+            ),
+            const Icon(LucideIcons.chevronLeft, size: 18, color: K.faint),
+          ],
+        ),
+      ),
+    ],
+  );
+}
+
+// Who writes and registers the contract. Optional: name and number only.
+Widget _officiant() => Box(
+  pad: const EdgeInsets.all(14),
+  child: Column(
+    children: [
+      Row(
+        children: [
+          avatar('ع', K.saffronInk, s: 46),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('الشيخ عبدالله المطري', style: tx(16, w: bold)),
+                Text('${ltr('771 220 914')} · من الوالد', style: tx(13.5, c: K.muted)),
+              ],
+            ),
+          ),
+          const Icon(LucideIcons.pencil, size: 17, color: K.faint),
+        ],
+      ),
+      gap(12),
+      Row(
+        children: [
+          Expanded(child: btn('اتصل', bg: K.bg, fg: K.ink, icon: LucideIcons.phone, v: 11, fs: 14)),
+          const SizedBox(width: 8),
+          Expanded(
+            child: btn('واتساب', bg: K.greenSoft, fg: K.green, icon: LucideIcons.messageCircle, v: 11, fs: 14),
+          ),
+        ],
+      ),
+    ],
+  ),
+);
+
+Widget vContractPapers() {
+  Widget paper(String s, String sub, {bool done = false, Widget? end}) => Padding(
+    padding: const EdgeInsets.symmetric(vertical: 9),
+    child: Row(
+      children: [
+        Container(
+          width: 24,
+          height: 24,
+          decoration: BoxDecoration(
+            color: done ? K.saffronInk : Colors.transparent,
+            borderRadius: BorderRadius.circular(7),
+            border: Border.all(color: done ? K.saffronInk : K.line, width: 2),
+          ),
+          child: done ? const Icon(LucideIcons.check, size: 14, color: Colors.white) : null,
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(s, style: tx(15, w: bold, c: done ? K.muted : K.ink)),
+              Text(sub, style: tx(13, c: K.muted)),
+            ],
+          ),
+        ),
+        ?end,
+      ],
+    ),
+  );
+  return Phone(
+    bottom: Padding(
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 30),
+      child: btn('كل الأوراق جاهزة', wide: true, v: 16, fs: 17, bg: K.saffronInk, icon: LucideIcons.check),
+    ),
+    children: [
+      subHeader('جهّز أوراق العقد', sub: 'قبل عقد القران · مرتبطة بموعده'),
+      Box(
+        c: K.saffronSoft,
+        pad: const EdgeInsets.all(16),
+        child: Row(
+          children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('1 من 4 جاهزة', style: tx(22, w: bold, c: K.saffronInk)),
+                  Text('خلّها في ظرف واحد مع صالح', style: tx(13.5, c: K.saffronInk)),
+                ],
+              ),
+            ),
+            iconTile(LucideIcons.fileText, Colors.white, K.saffronInk, s: 48),
+          ],
+        ),
+      ),
+      sectionTitle('عليك'),
+      Box(
+        pad: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+        child: Column(
+          children: [
+            paper('بطاقتك الشخصية', 'الأصل وصورة', done: true),
+            paper('شاهدين ومعهم بطاقاتهم', 'صالح أخوي · ناقص واحد',
+                end: chip('اختر', bg: K.saffronSoft, fg: K.saffronInk)),
+            paper('المهر كما اتفقتوا', '3,000,000 · ينكتب في العقد'),
+            paper('اللي بتسلّمه يوم العقد', '2,000,000 · من خطتك المالية'),
+          ],
+        ),
+      ),
+      sectionTitle('عند أهل العروسة'),
+      Box(
+        pad: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        child: Row(
+          children: [
+            const Icon(LucideIcons.users, size: 20, color: K.muted),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text('بطاقة الولي وأوراق العروسة',
+                  style: tx(14.5, c: K.muted)),
+            ),
+            tag('عندهم', K.muted, K.bg),
+          ],
+        ),
+      ),
+      gap(12),
+      _info('الأوراق تختلف من منطقة لمنطقة. اسأل الأمين الشرعي وأضف اللي يطلبه.',
+          c: K.saffronInk, bg: K.saffronSoft, i: LucideIcons.helpCircle),
+      gap(8),
+      Center(child: softAction('اسأل الشيخ عبدالله على واتساب', fg: K.green, bg: K.greenSoft)),
     ],
   );
 }

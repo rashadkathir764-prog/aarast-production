@@ -860,13 +860,13 @@ Widget vTaskDetail() {
         child: Column(
           children: [
             step('اتفق مع الوالد على اليوم', true),
-            step('كلّم المأذون', false),
+            step('كلّم الأمين الشرعي', false),
             step('بلّغ أهل العروسة', false),
           ],
         ),
       ),
       sectionTitle('ملاحظة'),
-      Box(child: Text('المأذون الشيخ عبدالله، رقمه عند الوالد.', style: tx(15, c: K.muted))),
+      Box(child: Text('الأمين الشرعي الشيخ عبدالله، رقمه عند الوالد.', style: tx(15, c: K.muted))),
     ],
   );
 }

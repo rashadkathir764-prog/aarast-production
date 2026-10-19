@@ -1307,3 +1307,134 @@ Widget vProvidersEmpty() => _empty(
     (LucideIcons.search, 'استكشف كل الخدمات', 'فرق، تصوير، زينة، ضيافة'),
   ],
 );
+
+// ============================================================ إيقاف الخطة
+
+/// Stopping the plan if the wedding is called off. No question why, nothing
+/// deleted, and help with what is still open (bookings and deposits).
+Widget vPausePlan() {
+  Widget dep(String name, String paid, {bool asked = false}) => Padding(
+    padding: const EdgeInsets.symmetric(vertical: 7),
+    child: Row(
+      children: [
+        const Icon(LucideIcons.store, size: 18, color: K.sky),
+        const SizedBox(width: 10),
+        Expanded(child: Text(name, style: tx(15, w: bold))),
+        Text(paid, style: tx(13.5, c: K.muted)),
+      ],
+    ),
+  );
+  return Phone(
+    sheet: sheet(
+      title: 'إيقاف الخطة',
+      sub: 'ما نسألك ليش. خطتك تنحفظ، وترجعها متى ما بغيت.',
+      children: [
+        Box(
+          pad: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+          child: Column(
+            children: [
+              _effect(LucideIcons.bellOff, 'التذكيرات والمهام توقف'),
+              _effect(LucideIcons.users, 'المشاركين يشوفون "الخطة متوقفة" بس، بدون سبب'),
+              _effect(LucideIcons.mail, 'الضيوف ما يوصلهم شي إلا إذا أنت أرسلت'),
+              _effect(LucideIcons.fileText, 'المال والإيصالات والرفد تبقى محفوظة'),
+            ],
+          ),
+        ),
+        gap(12),
+        Text('حجوزات فيها عرابين', style: tx(14, w: bold, c: K.muted)),
+        gap(4),
+        Box(
+          pad: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+          child: Column(
+            children: [
+              dep('قاعة سبأ', 'عربون 500 ألف'),
+              dep('ضيافة الأصالة', 'عربون 300 ألف'),
+              dep('فرقة الأفراح', 'عربون 100 ألف'),
+            ],
+          ),
+        ),
+        gap(10),
+        _option('بلّغهم عني بأدب، واطلب الاسترجاع', sub: 'رسالة جاهزة لكل مزود، تشوفها قبل ما تنرسل', on: true),
+        _option('أبلّغهم بنفسي'),
+        gap(8),
+        btn('أوقف الخطة', wide: true, v: 16, fs: 17, bg: K.ink),
+        gap(10),
+        Center(child: Text('تبغى تأجيل بس؟ أجّل العرس', style: tx(14, w: bold, c: K.teal))),
+      ],
+    ),
+    children: [subHeader('حسابي')],
+  );
+}
+
+Widget vPlanPaused() {
+  Widget dep(String name, String paid, Widget state) => Padding(
+    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
+    child: Row(
+      children: [
+        iconTile(LucideIcons.store, K.sky, K.skySoft, s: 40),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(name, style: tx(15.5, w: bold)),
+              Text(paid, style: tx(12.5, c: K.muted)),
+            ],
+          ),
+        ),
+        state,
+      ],
+    ),
+  );
+  return Phone(
+    children: [
+      Padding(
+        padding: const EdgeInsets.fromLTRB(4, 8, 4, 0),
+        child: Row(
+          children: [
+            Expanded(child: Text('أهلًا محمد', style: tx(24, w: bold))),
+            avatar('م', K.saffron, s: 44),
+          ],
+        ),
+      ),
+      gap(14),
+      Container(
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(24)),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                iconTile(LucideIcons.pauseCircle, K.muted, K.bg, s: 44),
+                const SizedBox(width: 12),
+                Expanded(child: Text('خطتك متوقفة', style: tx(22, w: bold))),
+              ],
+            ),
+            gap(10),
+            Text('كل شي محفوظ كما هو. الله يكتب لك الخير، ومتى ما بغيت ترجع، ترجع من نفس المكان.',
+                style: tx(14.5, c: K.muted, h: 1.55)),
+            gap(14),
+            Row(
+              children: [
+                btn('رجّع الخطة', v: 11, fs: 14),
+                const SizedBox(width: 8),
+                btn('احذفها نهائيًا', bg: K.bg, fg: K.coral, v: 11, fs: 14),
+              ],
+            ),
+          ],
+        ),
+      ),
+      sectionTitle('العرابين', action: '600 من 900 ألف رجعت'),
+      whiteList([
+        dep('قاعة سبأ', 'عربون 500 ألف', tag('رجع كله', K.green, K.greenSoft)),
+        dep('فرقة الأفراح', 'عربون 100 ألف', tag('رجع كله', K.green, K.greenSoft)),
+        dep('ضيافة الأصالة', 'عربون 300 ألف · وعدوا الأسبوع الجاي',
+            softAction('ذكّرهم', fg: K.sky, bg: K.skySoft)),
+      ]),
+      gap(12),
+      _note('سلفة خالي أحمد باقي منها 300 ألف. التذكير بالأقساط مستمر إلا إذا أوقفته.',
+          c: K.saffronInk, bg: K.saffronSoft, i: LucideIcons.calendarClock),
+    ],
+  );
+}

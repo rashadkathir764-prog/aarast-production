@@ -746,6 +746,7 @@ Widget questionScreen({
   required List<Widget> body,
   String primary = 'التالي',
   String? skip,
+  int total = 4,
 }) => Phone(
   bottom: Padding(
     padding: const EdgeInsets.fromLTRB(20, 8, 20, 30),
@@ -778,11 +779,11 @@ Widget questionScreen({
           ),
           const SizedBox(width: 14),
           Expanded(
-            child: segments(4, step, now: K.teal, on: K.teal),
+            child: segments(total, step, now: K.teal, on: K.teal),
           ),
           const SizedBox(width: 14),
           Text(
-            '${step + 1} من 4',
+            '${step + 1} من $total',
             style: tx(14, w: bold, c: K.muted),
           ),
         ],
@@ -859,3 +860,200 @@ class QamariyaMark extends CustomPainter {
   @override
   bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
+
+// ------------------------------------------------------------ v3 additions
+
+/// Men's and women's weddings are separate; a side marker tells them apart.
+enum Side {
+  men('الرجال', Color(0xFF1F5F5B), Color(0xFFE3EEEC)),
+  women('النساء', Color(0xFFA23E6B), Color(0xFFF8E6EE)),
+  both('مشترك', K.muted, Color(0xFFEDEFEE));
+
+  const Side(this.label, this.fg, this.bg);
+  final String label;
+  final Color fg, bg;
+}
+
+Widget sideTag(Side s, {bool short = false}) =>
+    tag(short ? s.label.substring(2) : s.label, s.fg, s.bg);
+
+/// The men | women | all switch on tabs where the two weddings differ.
+Widget sideSwitch(int active, {Color c = K.teal}) =>
+    topTabs(const ['الكل', 'الرجال', 'النساء'], active, c: c);
+
+/// Amount field that spells the number in words to stop a zero too many.
+Widget amountField(
+  String label,
+  String value,
+  String words, {
+  String unit = 'ر.ي',
+  bool focused = true,
+}) => Container(
+  padding: const EdgeInsets.fromLTRB(16, 10, 16, 12),
+  decoration: BoxDecoration(
+    color: Colors.white,
+    borderRadius: BorderRadius.circular(18),
+    border: Border.all(
+      color: focused ? K.teal : K.line,
+      width: focused ? 2 : 1,
+    ),
+  ),
+  child: Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      Text(label, style: tx(12.5, c: K.muted)),
+      Row(
+        children: [
+          Expanded(
+            child: Text(value, style: tx(30, w: bold)),
+          ),
+          Text(
+            unit,
+            style: tx(15, w: bold, c: K.muted),
+          ),
+        ],
+      ),
+      Text(
+        words,
+        style: tx(13.5, w: bold, c: K.teal),
+      ),
+    ],
+  ),
+);
+
+/// Number pad with thousand and million keys.
+Widget numPad() {
+  Widget key(String k, {Color bg = Colors.white, Color fg = K.ink}) => Expanded(
+    child: Container(
+      height: 48,
+      margin: const EdgeInsets.all(3),
+      alignment: Alignment.center,
+      decoration: BoxDecoration(
+        color: bg,
+        borderRadius: BorderRadius.circular(14),
+      ),
+      child: Text(
+        k,
+        style: tx(k.length > 2 ? 16 : 21, w: bold, c: fg),
+      ),
+    ),
+  );
+  return Directionality(
+    textDirection: TextDirection.ltr,
+    child: Column(
+      children: [
+        Row(
+          children: [
+            key('1'),
+            key('2'),
+            key('3'),
+            key('ألف', bg: K.tealSoft, fg: K.teal),
+          ],
+        ),
+        Row(
+          children: [
+            key('4'),
+            key('5'),
+            key('6'),
+            key('مليون', bg: K.tealSoft, fg: K.teal),
+          ],
+        ),
+        Row(children: [key('7'), key('8'), key('9'), key('0')]),
+      ],
+    ),
+  );
+}
+
+/// "Write what happened": one line that becomes a payment, task or source.
+Widget quickInput({String text = 'اكتب وش صار… مثل: دفعت للمصور 150 ألف'}) =>
+    Container(
+      padding: const EdgeInsets.fromLTRB(16, 12, 12, 12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: K.line),
+      ),
+      child: Row(
+        children: [
+          const Icon(LucideIcons.sparkles, size: 18, color: K.teal),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              text,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: tx(14.5, c: K.faint),
+            ),
+          ),
+          Container(
+            width: 36,
+            height: 36,
+            decoration: const BoxDecoration(
+              color: K.teal,
+              shape: BoxShape.circle,
+            ),
+            child: const Icon(LucideIcons.mic, size: 17, color: Colors.white),
+          ),
+        ],
+      ),
+    );
+
+/// Bottom snackbar with undo.
+Widget undoBar(String msg) => Container(
+  margin: const EdgeInsets.fromLTRB(16, 0, 16, 10),
+  padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+  decoration: BoxDecoration(
+    color: K.ink,
+    borderRadius: BorderRadius.circular(16),
+  ),
+  child: Row(
+    children: [
+      const Icon(LucideIcons.checkCircle2, size: 18, color: Colors.white),
+      const SizedBox(width: 10),
+      Expanded(
+        child: Text(
+          msg,
+          style: tx(14.5, w: bold, c: Colors.white),
+        ),
+      ),
+      Text(
+        'تراجع',
+        style: tx(14.5, w: bold, c: K.saffron),
+      ),
+    ],
+  ),
+);
+
+/// Offline strip shown once at the top of a screen.
+Widget offlineBar() => Container(
+  margin: const EdgeInsets.only(bottom: 10),
+  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+  decoration: BoxDecoration(
+    color: K.ink,
+    borderRadius: BorderRadius.circular(14),
+  ),
+  child: Row(
+    children: [
+      const Icon(LucideIcons.wifiOff, size: 17, color: Colors.white),
+      const SizedBox(width: 10),
+      Expanded(
+        child: Text(
+          'بدون نت. اللي تضيفه ينحفظ في جوالك ويوصل لما يرجع النت.',
+          style: tx(13, c: Colors.white),
+        ),
+      ),
+    ],
+  ),
+);
+
+/// Small round avatar with a letter.
+Widget avatar(String l, Color c, {double s = 28}) => Container(
+  width: s,
+  height: s,
+  alignment: Alignment.center,
+  decoration: BoxDecoration(color: c, shape: BoxShape.circle),
+  child: Text(
+    l,
+    style: tx(s * 0.45, w: bold, c: Colors.white),
+  ),
+);

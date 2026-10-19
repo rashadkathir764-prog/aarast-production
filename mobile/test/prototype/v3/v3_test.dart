@@ -16,6 +16,7 @@ import 'lights.dart';
 import 'money.dart';
 import 'more.dart';
 import 'sections.dart';
+import 'smart.dart';
 import 'start.dart';
 import 'touches.dart';
 
@@ -115,6 +116,8 @@ void main() {
     ('y06_moment_week', vMomentWeek, 900), ('y07_moment_day', vMomentDay, 844), ('y08_moment_mahr', vMomentMahr, 844), ('y09_moment_booked', vMomentBooked, 844),
     ('y10_father_home', vFatherHome, 960), ('y11_search', vSearch, 900),
     ('y12_lights_home', vLightsHome, 960), ('y13_decor_providers', vDecorProviders, 900), ('y14_fireworks_task', vFireworksTask, 960),
+    ('z01_impact_chain', vImpactChain, 900), ('z02_weekly_digest', vWeeklyDigest, 1000), ('z03_cashflow', vCashflow, 960), ('z04_receipt_scan', vReceiptScan, 900),
+    ('z05_smart_tasks', vSmartTasks, 1000), ('z06_attendance', vAttendance, 960), ('z07_agreement', vAgreement, 960),
   ];
 
   for (final s in screens) {

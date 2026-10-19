@@ -12,7 +12,7 @@ import '../c_journey/kit.dart';
 import '../c_journey/screens_home.dart' show homeHeader;
 
 const _warm = Color(0xFFFFE3A3);
-const _night = Color(0xFF0E2A33);
+const _night = bride ? Color(0xFF2E1624) : Color(0xFF0E2A33);
 
 /// Bulb strings fanning down from one apex, the shape hung over Sanaa
 /// streets for a wedding. The first [lit] strands glow; the rest wait.
@@ -425,7 +425,7 @@ Widget vStart() => Phone(
 );
 
 /// Second step of creating a plan: whose wedding is this?
-Widget vWhose({bool bride = false}) => Phone(
+Widget vWhose() => Phone(
   bottom: Padding(
     padding: const EdgeInsets.fromLTRB(20, 8, 20, 30),
     child: btn('التالي', wide: true, v: 16, fs: 17),
@@ -437,7 +437,7 @@ Widget vWhose({bool bride = false}) => Phone(
     gap(4),
     Text('كل واحد له مساره، ويقدر يضيف الثاني مشارك', style: tx(15.5, c: K.muted)),
     gap(22),
-    _roleCard('العريس', 'عرس الرجال، والمهر،\nوضيوفك ومزودينك', _groomPhoto(), on: !bride),
+    _roleCard('العريس', 'عرس الرجال، والمهر،\nوضيوفك ومزودينك', _groomPhoto(), on: true),
     // Temporary stand-in until the brother's own dress photo arrives.
     _roleCard(
       'العروسة',
@@ -447,7 +447,6 @@ Widget vWhose({bool bride = false}) => Phone(
         fit: BoxFit.cover,
         alignment: const Alignment(-0.4, 0),
       ),
-      on: bride,
     ),
   ],
 );
@@ -772,7 +771,7 @@ Widget weddingSky({int strands = 11, int lit = 11, List<(Offset, Color, double)>
         gradient: LinearGradient(
           begin: Alignment.topCenter,
           end: Alignment.bottomCenter,
-          colors: [Color(0xFF071C24), _night, K.tealDark],
+          colors: [(bride ? Color(0xFF1E0E18) : Color(0xFF071C24)), _night, K.tealDark],
         ),
       ),
       child: Stack(

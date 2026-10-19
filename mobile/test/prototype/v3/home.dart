@@ -1181,7 +1181,7 @@ Widget vDarkHome() {
   const surf = Color(0xFF172322);
   const ink = Color(0xFFE8F1EF);
   const muted = Color(0xFF9DB0AB);
-  const teal = Color(0xFF3FB3A9);
+  const teal = bride ? Color(0xFFE39AAE) : Color(0xFF3FB3A9);
   Widget tile(String l, String b, String s, Color c) => Expanded(
     child: Container(
       padding: const EdgeInsets.all(13),
@@ -1248,7 +1248,9 @@ Widget vDarkHome() {
           gradient: const LinearGradient(
             begin: Alignment.topRight,
             end: Alignment.bottomLeft,
-            colors: [Color(0xFF0B5A56), Color(0xFF062F2C)],
+            colors: bride
+                ? [Color(0xFF6E2A40), Color(0xFF3A1422)]
+                : [Color(0xFF0B5A56), Color(0xFF062F2C)],
           ),
         ),
         child: CustomPaint(

@@ -53,7 +53,7 @@ Widget impactStrip(List<(IconData, String, String, Color)> steps, {String undo =
   ),
 );
 
-Widget vImpactChain({bool bride = false}) {
+Widget vImpactChain() {
   Widget g(String name, String sub, {bool fresh = false}) => Padding(
     padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
     child: Row(
@@ -69,37 +69,19 @@ Widget vImpactChain({bool bride = false}) {
             ],
           ),
         ),
-        if (fresh) tag(bride ? 'جديدة' : 'جديد', K.saffronInk, K.saffronSoft),
+        if (fresh) tag('جديد', K.saffronInk, K.saffronSoft),
       ],
     ),
   );
   return Phone(
     nav: Sec.guests,
-    bottom: bride
-        ? impactStrip(const [
-            (LucideIcons.users, 'الضيفات', '160 بدل 150', K.lilacSoft),
-            (LucideIcons.utensils, 'ضيافة الصالة', '+40 ألف', K.saffron),
-            (LucideIcons.wallet, 'معك', '560 ألف', K.coralSoft),
-            (LucideIcons.building2, 'الصالة 180 · متوقع 128', 'تكفي', K.tealMid),
-          ], undo: 'تراجعي')
-        : impactStrip(const [
-            (LucideIcons.users, 'الضيوف', '134 بدل 124', K.lilacSoft),
-            (LucideIcons.utensils, 'الضيافة', '+130 ألف', K.saffron),
-            (LucideIcons.wallet, 'ناقصك', '2.63 مليون', K.coralSoft),
-            (LucideIcons.building2, 'القاعة 130 · متوقع 121', 'تكفي', K.tealMid),
-          ]),
-    children: bride
-        ? [
-            tabHeader('الضيفات', '160 مدعوة · 96 أكدن', sec: Sec.guests, actions: [LucideIcons.search]),
-            sectionTitle('آل السقاف', action: '+10 الحين', ac: K.saffronInk),
-            whiteList([
-              g('نوال السقاف', 'أضافتها أمك', fresh: true),
-              g('هدى السقاف', 'أضافتها أمك', fresh: true),
-              g('سعاد السقاف', 'أضافتها أمك · معها 2', fresh: true),
-              g('أمل السقاف', 'أكّدت · معها وحدة'),
-            ]),
-          ]
-        : [
+    bottom: impactStrip(const [
+      (LucideIcons.users, 'الضيوف', '134 بدل 124', K.lilacSoft),
+      (LucideIcons.utensils, 'الضيافة', '+130 ألف', K.saffron),
+      (LucideIcons.wallet, 'ناقصك', '2.63 مليون', K.coralSoft),
+      (LucideIcons.building2, 'القاعة 130 · متوقع 121', 'تكفي', K.tealMid),
+    ]),
+    children: [
       tabHeader('الضيوف', '134 مدعو · 86 أكدوا', sec: Sec.guests, actions: [LucideIcons.search]),
       sectionTitle('آل السقاف', action: '+10 الحين', ac: K.saffronInk),
       whiteList([

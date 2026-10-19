@@ -7,7 +7,6 @@ import 'package:lucide_icons/lucide_icons.dart';
 import '../c_journey/kit.dart';
 import '../c_journey/screens_home.dart' show homeHeader;
 import 'home.dart' show nextStep;
-import '../bride/common.dart' show B, brideHeader, brideNext;
 
 // ------------------------------------------------------------ shared bits
 
@@ -88,7 +87,7 @@ Widget _row(String a, String b, {Color c = K.ink}) => Padding(
 
 // ============================================================ بدون موعد
 
-Widget vHomeNoDate({bool bride = false}) {
+Widget vHomeNoDate() {
   Widget step(int n, String t, String sub, {bool done = false, bool now = false}) => Padding(
     padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
     child: Row(
@@ -121,13 +120,13 @@ Widget vHomeNoDate({bool bride = false}) {
   return Phone(
     nav: Sec.home,
     children: [
-      bride ? brideHeader() : homeHeader(),
+      homeHeader(),
       gap(14),
       Container(
         padding: const EdgeInsets.all(20),
         decoration: BoxDecoration(
-          gradient: LinearGradient(
-            colors: bride ? const [B.rose, B.roseDark] : const [K.teal, K.tealDark],
+          gradient: const LinearGradient(
+            colors: [K.teal, K.tealDark],
             begin: Alignment.topRight,
             end: Alignment.bottomLeft,
           ),
@@ -160,16 +159,6 @@ Widget vHomeNoDate({bool bride = false}) {
         ),
       ),
       gap(12),
-      if (bride)
-        brideNext(
-          when: 'لما تقدرين',
-          title: 'تقريبًا متى الزفة؟',
-          sub: 'شهر أو موسم يكفي: بعد رمضان، الصيف، آخر السنة',
-          why: 'لأن الصالات النسائية تنحجز قبل بشهرين',
-          action: 'اختاري تقريبًا',
-          second: 'ثبّتي الموعد',
-        )
-      else
       nextStep(
         when: 'لما تقدر',
         title: 'تقريبًا متى العرس؟',
@@ -180,14 +169,6 @@ Widget vHomeNoDate({bool bride = false}) {
         icon: LucideIcons.calendarDays,
       ),
       sectionTitle('خطواتك بالترتيب', action: 'كلها'),
-      if (bride)
-        whiteList([
-          step(1, 'المهر', 'استلمتوا 2 من 3 مليون', done: true),
-          step(2, 'احجزي الصالة النسائية', 'لما يكون عندك شهر تقريبي', now: true),
-          step(3, 'ابدئي قائمة الجهاز', 'ما تحتاجين موعد لها'),
-          step(4, 'ابدئي قائمة ضيفاتك', 'تقدرين تبدئين الحين'),
-        ])
-      else
       whiteList([
         step(1, 'اتفق على المهر', 'سجّلته: 3 مليون', done: true),
         step(2, 'حدد موعد عقد القران', 'قبل كل شي ثاني', now: true),

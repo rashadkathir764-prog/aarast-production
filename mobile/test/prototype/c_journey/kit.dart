@@ -8,6 +8,9 @@ import 'package:lucide_icons/lucide_icons.dart';
 const fTaj = 'Tajawal';
 const fPlex = 'IBMPlexSansArabic';
 
+/// Which plan profile the prototype renders: the groom's or the bride's.
+const bride = bool.fromEnvironment('BRIDE');
+
 class K {
   static const bg = Color(0xFFF2F4F3);
   static const surface = Colors.white;
@@ -16,10 +19,12 @@ class K {
   static const faint = Color(0xFF8A9592);
   static const line = Color(0xFFE2E7E5);
 
-  static const teal = Color(0xFF0B6E69);
-  static const tealDark = Color(0xFF064B47);
-  static const tealSoft = Color(0xFFDCEFEC);
-  static const tealMid = Color(0xFF7FC3BC);
+  // The plan's main colour. The bride's profile swaps it for rose at build
+  // time (--dart-define=BRIDE=true); every screen stays the same.
+  static const teal = bride ? Color(0xFFB4536A) : Color(0xFF0B6E69);
+  static const tealDark = bride ? Color(0xFF7A2E45) : Color(0xFF064B47);
+  static const tealSoft = bride ? Color(0xFFF8E4EA) : Color(0xFFDCEFEC);
+  static const tealMid = bride ? Color(0xFFE39AAE) : Color(0xFF7FC3BC);
 
   static const saffron = Color(0xFFF2A93B);
   static const saffronInk = Color(0xFFA9680F);

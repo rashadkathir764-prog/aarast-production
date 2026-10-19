@@ -10,6 +10,7 @@ import 'package:flutter_test/flutter_test.dart';
 import '../c_journey/kit.dart';
 import '../c_journey/screens_start.dart' show splash, whoAreYou, otp;
 import '../../support/preview_fonts.dart';
+import 'hard.dart';
 import 'home.dart';
 import 'money.dart';
 import 'more.dart';
@@ -93,6 +94,14 @@ void main() {
     ('e06_add_guest', vAddGuest, 900), ('e07_guest_detail', vGuestDetail, 960), ('e08_reminder', vReminderPreview, 900), ('e09_rafd_book', vRafdBook, 1000), ('e10_thanks', vThanks, 900),
     ('f07_quote', vQuoteRequest, 960), ('f08_chats', vConversations, 900), ('f09_favorites', vFavorites, 900),
     ('g06_add_participant', vAddParticipant, 960), ('g07_notif', vNotifSettings, 960), ('g08_lock', vLock, 844), ('g09_change_phone', vChangePhone, 844), ('g10_support', vSupport, 1000), ('g11_logout', vLogout, 844),
+    ('x01_home_no_date', vHomeNoDate, 900), ('x02_date_approx', vDateApprox, 844), ('x03_money_no_budget', vMoneyNoBudget, 960),
+    ('x04_from_family', vFromFamily, 900), ('x05_invite_landing', vInviteLanding, 960), ('x06_helper_home', vHelperHome, 960), ('x07_participant_states', vParticipantStates, 960),
+    ('x08_pledge_check', vPledgeCheck, 900),
+    ('x09_prov_hard', vProvHard, 1040), ('x10_reject_offer', vRejectOffer, 900), ('x11_cancel_booking', vCancelBooking, 1000), ('x12_rate_sent', vRateSent, 960),
+    ('x13_rafd_later', vRafdLater, 960),
+    ('x14_payment_reversed', vPaymentReversed, 844), ('x15_cancel_item', vCancelItem, 844), ('x16_task_menu', vTaskMenu, 844),
+    ('x17_otp_wrong', vOtpWrong, 844), ('x18_session_expired', vSessionExpired, 844),
+    ('x19_conflict', vConflict, 844), ('x20_activity', vActivity, 900),
   ];
 
   for (final s in screens) {

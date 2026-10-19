@@ -6,7 +6,7 @@ import '../c_journey/kit.dart';
 
 Widget vName() => questionScreen(
   step: 0,
-  total: 5,
+  total: 6,
   q: 'أهلًا بك! وش اسمك؟',
   help: 'نناديك فيه، ونسمي خطتك باسمكم.',
   body: [
@@ -51,7 +51,7 @@ Widget vDate() {
   );
   return questionScreen(
     step: 1,
-    total: 5,
+    total: 6,
     q: 'متى العرس؟',
     help: 'نرتب لك المهام والدفعات على موعده.',
     skip: 'ما حددنا الموعد بعد',
@@ -123,7 +123,7 @@ Widget vDate() {
 
 Widget vCity() => questionScreen(
   step: 2,
-  total: 5,
+  total: 6,
   q: 'في أي مدينة العرس؟',
   help: 'نعرض لك مزودين وأسعار من مدينتك.',
   body: [
@@ -196,8 +196,8 @@ Widget vMahr() {
     ),
   );
   return questionScreen(
-    step: 3,
-    total: 5,
+    step: 4,
+    total: 6,
     q: 'اتفقتوا على المهر؟',
     help: 'اللي بتسلّمه لأهل العروسة. نحسبه لحاله ونذكرك بموعد تسليمه.',
     skip: 'ما اتفقنا بعد',
@@ -257,8 +257,8 @@ Widget vBudget() {
     ),
   );
   return questionScreen(
-    step: 4,
-    total: 5,
+    step: 5,
+    total: 6,
     q: 'كم ميزانيتك تقريبًا؟',
     help: 'لعرسك: القاعة والضيافة والقات والفنان. رقم تقريبي يكفي.',
     primary: 'جهّز خطتي',
@@ -344,7 +344,7 @@ Widget vReady() => Phone(
             icon: LucideIcons.listChecks,
             fg: K.saffronInk,
             soft: K.saffronSoft,
-            title: '32 مهمة على موعدك',
+            title: '30 مهمة على موعدك',
             sub: 'أولها هذا الأسبوع: احجز القاعة',
           ),
           listRow(

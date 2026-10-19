@@ -870,7 +870,7 @@ Widget vRafdLater() {
       ),
       sectionTitle('ترده قريبًا', action: 'الدفتر'),
       whiteList([
-        due('ع', 'عبدالله الحمدي', 'الخميس 14 مارس', '20,000', soon: true),
+        due('ع', 'عبدالله الحمدي', 'الخميس 11 مارس', '20,000', soon: true),
         due('س', 'سالم الأهدل', 'أبريل · سمعنا من صالح', '50,000'),
         due('ي', 'ياسر الأهدل', 'رديته في عرسه 2 مارس', '10,000', done: true),
       ]),
@@ -1221,3 +1221,89 @@ Widget vActivity() {
     ],
   );
 }
+
+// ============================================================ أول مرة
+
+Widget _empty({
+  required Sec sec,
+  required String title,
+  required String status,
+  required IconData icon,
+  required Color c,
+  required Color soft,
+  required String big,
+  required String sub,
+  required List<(IconData, String, String)> ways,
+}) => Phone(
+  nav: sec,
+  children: [
+    tabHeader(title, status, sec: sec),
+    gap(18),
+    Center(child: iconTile(icon, c, soft, s: 84, r: 28)),
+    gap(16),
+    Center(child: Text(big, textAlign: TextAlign.center, style: tx(23, w: bold))),
+    gap(6),
+    Center(
+      child: Text(sub, textAlign: TextAlign.center, style: tx(15, c: K.muted, h: 1.5)),
+    ),
+    gap(22),
+    for (var i = 0; i < ways.length; i++)
+      Container(
+        margin: const EdgeInsets.only(bottom: 10),
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(20),
+          border: i == 0 ? Border.all(color: c, width: 2) : null,
+        ),
+        child: Row(
+          children: [
+            iconTile(ways[i].$1, c, soft, s: 42),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(ways[i].$2, style: tx(15.5, w: bold)),
+                  Text(ways[i].$3, style: tx(13, c: K.muted)),
+                ],
+              ),
+            ),
+            const Icon(LucideIcons.chevronLeft, size: 18, color: K.faint),
+          ],
+        ),
+      ),
+  ],
+);
+
+Widget vGuestsEmpty() => _empty(
+  sec: Sec.guests,
+  title: 'الضيوف',
+  status: 'ما أضفت أحد بعد',
+  icon: LucideIcons.users,
+  c: K.lilac,
+  soft: K.lilacSoft,
+  big: 'مين بتعزم؟',
+  sub: 'ابدأ بالقريبين. العدد يساعدنا\nنحسب لك الضيافة والقاعة.',
+  ways: const [
+    (LucideIcons.contact, 'من جهات الاتصال', 'تختار، ونرتبهم حسب العائلة'),
+    (LucideIcons.hash, 'عدد تقريبي بس', 'مثل 120، والأسماء بعدين'),
+    (LucideIcons.userPlus, 'ضيف واحد', 'اسم، وكم معه'),
+  ],
+);
+
+Widget vProvidersEmpty() => _empty(
+  sec: Sec.providers,
+  title: 'المزودين',
+  status: 'ما طلبت من أحد بعد',
+  icon: LucideIcons.store,
+  c: K.sky,
+  soft: K.skySoft,
+  big: 'نبدأ بالقاعة',
+  sub: 'لأنها تحدد يومك وعدد ضيوفك،\nوالقاعات تنحجز قبل بشهرين.',
+  ways: const [
+    (LucideIcons.building2, 'قاعات فاضية يوم عرسك', 'على قد بندك في صنعاء'),
+    (LucideIcons.checkCircle2, 'حجزت برا اعّرست', 'سجّله هنا عشان يدخل خطتك'),
+    (LucideIcons.search, 'استكشف كل الخدمات', 'فرق، تصوير، زينة، ضيافة'),
+  ],
+);

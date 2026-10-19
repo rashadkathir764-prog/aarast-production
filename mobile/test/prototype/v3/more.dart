@@ -527,7 +527,7 @@ Widget vPaymentDetail() {
         child: Column(
           children: [
             r('لمين', 'قاعة سبأ'),
-            r('متى', '10 سبتمبر · 17 ربيع الأول'),
+            r('متى', '10 سبتمبر · 27 ربيع الأول'),
             r('من وين', 'مدخراتي'),
             r('كيف', 'نقدًا'),
             r('سجّلها', 'أنت'),
@@ -777,7 +777,7 @@ Widget vStarterTasks() {
   return Phone(
     bottom: Padding(
       padding: const EdgeInsets.fromLTRB(16, 8, 16, 30),
-      child: btn('أضف 24 مهمة لخطتي', wide: true, v: 16, fs: 17, bg: K.saffronInk),
+      child: btn('أضف 30 مهمة لخطتي', wide: true, v: 16, fs: 17, bg: K.saffronInk),
     ),
     children: [
       subHeader('مهام جاهزة لعرسك', sub: 'مرتبة على موعدك · شيل اللي ما يخصك'),

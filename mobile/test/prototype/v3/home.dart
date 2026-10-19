@@ -595,16 +595,16 @@ Widget vHomeWeek() {
             Row(
               children: [
                 Expanded(
-                  child: Text('أكّدوا 4 من 5', style: tx(16, w: bold)),
+                  child: Text('أكّدوا 5 من 6', style: tx(16, w: bold)),
                 ),
                 Text(
-                  'القاعة، التصوير، الضيافة، الغداء',
+                  'القاعة، الضيافة، الغداء، الزينة…',
                   style: tx(12.5, c: K.muted),
                 ),
               ],
             ),
             gap(10),
-            segments(5, 4, on: K.sky, now: K.coral, off: K.line),
+            segments(6, 5, on: K.sky, now: K.coral, off: K.line),
           ],
         ),
       ),

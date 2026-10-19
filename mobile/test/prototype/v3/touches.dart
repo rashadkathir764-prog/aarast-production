@@ -152,7 +152,7 @@ Widget _choice(IconData i, String t, String sub, {bool on = false}) => Container
 // ============================================================ المغترب
 
 Widget vWhereAreYou() => questionScreen(
-  step: 2,
+  step: 3,
   total: 6,
   q: 'أنت في اليمن،\nولا برا؟',
   help: 'كثير من العرسان يرتبون من الغربة، وأخوهم ينفّذ.',
@@ -535,7 +535,7 @@ Widget vMomentWeek() => _moment(
     _glassRow(LucideIcons.leaf, 'المقيل', 'الأربعاء · بيت الوالد'),
     _glassRow(LucideIcons.partyPopper, 'الزفاف', 'الخميس · قاعة سبأ'),
     const Divider(color: Colors.white24, height: 16),
-    _glassRow(LucideIcons.store, 'المزودين', '5 من 6 أكّدوا'),
+    _glassRow(LucideIcons.store, 'المزودين', '4 من 6 أكّدوا'),
     _glassRow(LucideIcons.wallet, 'الكاش', '750 ألف للأيام الثلاثة'),
   ]),
 );
@@ -736,7 +736,7 @@ Widget vSearch() {
       ]),
       group('الرفد'),
       whiteList([
-        hit(LucideIcons.gem, K.saffronInk, K.saffronSoft, 'عرس عبدالله الحمدي', 'ترده الخميس 14 مارس', end: '20,000'),
+        hit(LucideIcons.gem, K.saffronInk, K.saffronSoft, 'عرس عبدالله الحمدي', 'ترده الخميس 11 مارس', end: '20,000'),
       ]),
     ],
   );

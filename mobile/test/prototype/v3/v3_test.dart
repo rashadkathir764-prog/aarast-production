@@ -17,6 +17,7 @@ import 'lights.dart';
 import 'money.dart';
 import 'more.dart';
 import 'participant.dart';
+import 'participant2.dart';
 import 'sections.dart';
 import 'smart.dart';
 import 'start.dart';
@@ -109,6 +110,9 @@ void main() {
     ('q04_choose_path', qChoosePath, 844), ('q05_tasks_mine', qTasksMine, 900), ('q06_money_view', qMoneyView, 900),
     ('q07_money_locked', qMoneyLocked, 844), ('q08_providers_locked', qProvidersLocked, 844), ('q09_bride_view', qBrideView, 900),
     ('q10_account_plans', qAccountPlans, 960), ('q11_leave', qLeave, 844), ('q12_changed', qChanged, 960),
+    ('q13_permission_request', qPermissionRequest, 900), ('q14_request_sent', qRequestSent, 844), ('q15_rafd_writer', qRafdWriter, 960),
+    ('q16_providers_view', qProvidersView, 900), ('q17_bride_helper', qBrideHelper, 900), ('q18_wedding_day', qWeddingDay, 1180),
+    ('q19_plan_states', qPlanStates, 960), ('q20_removed', qRemoved, 900), ('q21_notifications', qNotifications, 844),
     ('x01_home_no_date', vHomeNoDate, 900), ('x02_date_approx', vDateApprox, 844), ('x03_money_no_budget', vMoneyNoBudget, 960),
     ('x04_from_family', vFromFamily, 900), ('x05_invite_landing', vInviteLanding, 960), ('x06_helper_home', vHelperHome, 960), ('x07_participant_states', vParticipantStates, 960),
     ('x08_pledge_check', vPledgeCheck, 900),

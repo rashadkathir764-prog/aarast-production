@@ -869,7 +869,7 @@ Widget vSplash2() => Phone(
 );
 
 /// The big hero for wedding mode: the whole sky behind the countdown.
-Widget bigHero({required bool day}) => Container(
+Widget bigHero({required bool day, String? whose}) => Container(
   height: 330,
   margin: const EdgeInsets.only(top: 16),
   clipBehavior: Clip.antiAlias,
@@ -926,7 +926,7 @@ Widget bigHero({required bool day}) => Container(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(day ? 'يوم عرسك' : 'يوم على عرسك', style: tx(18, w: bold, c: Colors.white)),
+                        Text(whose ?? (day ? 'يوم عرسك' : 'يوم على عرسك'), style: tx(18, w: bold, c: Colors.white)),
                         Text(day ? '13 شعبان · الخميس' : 'كل ليلة تنوّر حبل · 5 من 7',
                             style: tx(13.5, c: _warm)),
                       ],

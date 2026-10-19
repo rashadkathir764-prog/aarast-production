@@ -7,12 +7,12 @@ import '../c_journey/kit.dart';
 
 const _tabs = ['الملخص', 'البنود', 'الدفعات', 'من وين'];
 
-Widget _head(int tab) => Column(
+Widget _head(int tab, {String status = 'ماشية، بس ناقصك 2.5 مليون'}) => Column(
   crossAxisAlignment: CrossAxisAlignment.stretch,
   children: [
     tabHeader(
       'المال',
-      'ماشية، بس ناقصك 2.5 مليون',
+      status,
       actions: [LucideIcons.share2, LucideIcons.eyeOff],
     ),
     topTabs(_tabs, tab),
@@ -318,43 +318,68 @@ Widget _group(String title, String total, List<_It> items, {Widget? footer}) =>
       ],
     );
 
-Widget vMoneyItems() => Phone(
+/// Items for either profile: the same screen, the bride's plan only swaps the
+/// groups, the ready-made items and the wording.
+Widget vMoneyItems({bool bride = false}) => Phone(
   nav: Sec.money,
   children: [
-    _head(1),
-    _group('الاتفاق مع أهل العروسة', '3 مليون', const [
-      _It(
-        'المهر',
-        LucideIcons.heartHandshake,
-        3.0,
-        2.0,
-        note: 'الباقي 15 نوفمبر',
-      ),
-    ]),
-    _group('عرسك', '7 مليون', const [
-      _It('القاعة', LucideIcons.building2, 2.0, 0.5, note: 'دفعة بعد 5 أيام'),
-      _It('الضيافة والعشاء', LucideIcons.utensils, 1.6, 0.3),
-      _It('القات', LucideIcons.leaf, 1.0, 0.8),
-      _It('الغداء', LucideIcons.soup, 1.0, 0.8),
-      _It('التصوير', LucideIcons.camera, 0.6, 0, note: 'عرضين وصلوا'),
-      _It('الفنان والفرقة', LucideIcons.music, 0.5, 0, note: 'ما انحجز'),
-      _It('بدلة العريس', LucideIcons.shirt, 0.3, 0.2),
-    ]),
+    if (bride) ...[
+      _head(1, status: 'ماشية، ومعك 600 ألف'),
+      _group('تجهيزك', '3 مليون', const [
+        _It('الذهب', LucideIcons.gem, 1.4, 1.116, note: 'باقي الخاتم · 4 جرام'),
+        _It('الجهاز', LucideIcons.package, 1.2, 0.64, note: '23 من 41'),
+        _It('فساتين الأسبوع', LucideIcons.shirt, 0.45, 0.39, note: 'بروفة السبت'),
+      ]),
+      _group('عرس النساء', '1.5 مليون', const [
+        _It('الصالة النسائية', LucideIcons.building2, 0.6, 0.4),
+        _It('الضيافة', LucideIcons.utensils, 0.45, 0.2),
+        _It('المصورة', LucideIcons.camera, 0.18, 0.04, note: 'نسائي'),
+        _It('المزينة', LucideIcons.sparkles, 0.15, 0.05),
+        _It('النقاشة', LucideIcons.palette, 0.06, 0.03, note: 'الباقي بعد النقش'),
+        _It('الحمام', LucideIcons.droplets, 0.03, 0.03),
+      ]),
+    ] else ...[
+      _head(1),
+      _group('الاتفاق مع أهل العروسة', '3 مليون', const [
+        _It(
+          'المهر',
+          LucideIcons.heartHandshake,
+          3.0,
+          2.0,
+          note: 'الباقي 15 نوفمبر',
+        ),
+      ]),
+      _group('عرسك', '7 مليون', const [
+        _It('القاعة', LucideIcons.building2, 2.0, 0.5, note: 'دفعة بعد 5 أيام'),
+        _It('الضيافة والعشاء', LucideIcons.utensils, 1.6, 0.3),
+        _It('القات', LucideIcons.leaf, 1.0, 0.8),
+        _It('الغداء', LucideIcons.soup, 1.0, 0.8),
+        _It('التصوير', LucideIcons.camera, 0.6, 0, note: 'عرضين وصلوا'),
+        _It('الفنان والفرقة', LucideIcons.music, 0.5, 0, note: 'ما انحجز'),
+        _It('بدلة العريس', LucideIcons.shirt, 0.3, 0.2),
+      ]),
+    ],
     gap(12),
     Box(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('أضف بند', style: tx(15, w: bold)),
+          Text(bride ? 'أضيفي بند' : 'أضف بند', style: tx(15, w: bold)),
           gap(8),
           Wrap(
             spacing: 8,
             runSpacing: 8,
-            children: [
-              chip('الذهب، إذا كان عليك', icon: LucideIcons.gem),
-              chip('السيارات', icon: LucideIcons.car),
-              chip('بند ثاني', icon: LucideIcons.plus),
-            ],
+            children: bride
+                ? [
+                    chip('العطور والبخور', icon: LucideIcons.sparkles),
+                    chip('الكوشة', icon: LucideIcons.crown),
+                    chip('بند ثاني', icon: LucideIcons.plus),
+                  ]
+                : [
+                    chip('الذهب، إذا كان عليك', icon: LucideIcons.gem),
+                    chip('السيارات', icon: LucideIcons.car),
+                    chip('بند ثاني', icon: LucideIcons.plus),
+                  ],
           ),
         ],
       ),

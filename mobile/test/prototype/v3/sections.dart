@@ -644,7 +644,7 @@ Widget _stage(int at) => Row(
   ],
 );
 
-Widget vProvRequests() {
+Widget vProvRequests({bool bride = false}) {
   Widget svc(IconData i, String name, String who, int st, Widget tr) => Padding(
     padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
     child: Row(
@@ -671,7 +671,7 @@ Widget vProvRequests() {
     children: [
       tabHeader(
         'المزودين',
-        'محجوز 3 من 6 · عرضين ينتظرونك',
+        bride ? 'محجوز 3 من 6 · عرض ينتظرك' : 'محجوز 3 من 6 · عرضين ينتظرونك',
         actions: [LucideIcons.search],
       ),
       topTabs(_provTabs, 0, c: K.sky),
@@ -687,6 +687,16 @@ Widget vProvRequests() {
           ],
         ),
       ),
+      if (bride)
+        whiteList([
+          svc(LucideIcons.building2, 'الصالة النسائية', 'صالة الياسمين · أكّدت 19 يناير', 4, tag('محجوز', K.green, K.greenSoft)),
+          svc(LucideIcons.sparkles, 'المزينة', 'صالون لمسة · نسائي', 4, tag('محجوز', K.green, K.greenSoft)),
+          svc(LucideIcons.droplets, 'الحمام', 'حمام الميدان · السبت 16', 4, tag('محجوز', K.green, K.greenSoft)),
+          svc(LucideIcons.camera, 'المصورة', 'عرض من المصورة رنا · نسائي', 2, softAction('شوفي', fg: K.sky, bg: K.skySoft)),
+          svc(LucideIcons.palette, 'النقاشة', 'طلبتِ من 2 · تنتظرين الرد', 1, tag('متأخرة', K.coral, K.coralSoft)),
+          svc(LucideIcons.shirt, 'فستان الزفة', 'تأجير · أتيليه الأميرة', 3, tag('بروفة 2 من 3', K.saffronInk, K.saffronSoft)),
+        ])
+      else
       whiteList([
         svc(
           LucideIcons.building2,

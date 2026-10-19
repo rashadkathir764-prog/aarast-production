@@ -425,7 +425,7 @@ Widget vStart() => Phone(
 );
 
 /// Second step of creating a plan: whose wedding is this?
-Widget vWhose() => Phone(
+Widget vWhose({bool bride = false}) => Phone(
   bottom: Padding(
     padding: const EdgeInsets.fromLTRB(20, 8, 20, 30),
     child: btn('التالي', wide: true, v: 16, fs: 17),
@@ -437,7 +437,7 @@ Widget vWhose() => Phone(
     gap(4),
     Text('كل واحد له مساره، ويقدر يضيف الثاني مشارك', style: tx(15.5, c: K.muted)),
     gap(22),
-    _roleCard('العريس', 'عرس الرجال، والمهر،\nوضيوفك ومزودينك', _groomPhoto(), on: true),
+    _roleCard('العريس', 'عرس الرجال، والمهر،\nوضيوفك ومزودينك', _groomPhoto(), on: !bride),
     // Temporary stand-in until the brother's own dress photo arrives.
     _roleCard(
       'العروسة',
@@ -447,6 +447,7 @@ Widget vWhose() => Phone(
         fit: BoxFit.cover,
         alignment: const Alignment(-0.4, 0),
       ),
+      on: bride,
     ),
   ],
 );

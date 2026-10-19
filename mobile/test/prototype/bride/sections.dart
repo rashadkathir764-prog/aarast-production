@@ -8,7 +8,9 @@ import '../c_journey/kit.dart';
 import '../v3/lights.dart' show Lights;
 import 'common.dart';
 
-Widget _moneyTabs(int i) => topTabs(const ['الملخص', 'الذهب', 'الجهاز', 'الفساتين'], i);
+// Same money tabs as the groom; gold, the trousseau and the outfits open as
+// item details from the items list.
+Widget _moneyTabs(int i) => topTabs(const ['الملخص', 'البنود', 'الدفعات', 'من وين'], i);
 
 // ============================================================ المال
 
@@ -122,15 +124,12 @@ Widget bGold() {
     ),
   );
   return Phone(
-    nav: Sec.money,
     bottom: Padding(
       padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
       child: btn('أضيفي قطعة', wide: true, v: 15, fs: 16, bg: B.gold, icon: LucideIcons.plus),
     ),
     children: [
-      tabHeader('المال', 'ماشية، ومعك 600 ألف', actions: [LucideIcons.eyeOff]),
-      _moneyTabs(1),
-      gap(14),
+      subHeader('الذهب', sub: 'بند من تجهيزك · بالجرام والعيار'),
       Container(
         padding: const EdgeInsets.all(18),
         decoration: BoxDecoration(
@@ -173,7 +172,6 @@ Widget bGold() {
 }
 
 Widget bAddGold() => Phone(
-  nav: Sec.money,
   sheet: sheet(
     title: 'قطعة ذهب',
     sub: 'اشتريتيها، أو جتك هدية',
@@ -239,7 +237,7 @@ Widget bAddGold() => Phone(
       btn('أضيفي القطعة', wide: true, v: 16, fs: 17, bg: B.gold),
     ],
   ),
-  children: [tabHeader('المال', 'ماشية، ومعك 600 ألف'), _moneyTabs(1)],
+  children: [subHeader('الذهب', sub: 'بند من تجهيزك · بالجرام والعيار')],
 );
 
 Widget bJahaz() {
@@ -269,11 +267,8 @@ Widget bJahaz() {
     ),
   );
   return Phone(
-    nav: Sec.money,
     children: [
-      tabHeader('المال', 'ماشية، ومعك 600 ألف', actions: [LucideIcons.eyeOff]),
-      _moneyTabs(2),
-      gap(14),
+      subHeader('الجهاز', sub: 'بند من تجهيزك · قائمة بالأنواع'),
       Box(
         pad: const EdgeInsets.all(16),
         child: Row(
@@ -304,7 +299,7 @@ Widget bJahaz() {
   );
 }
 
-Widget bDresses() {
+Widget outfits({bool bride = true}) {
   Widget d(String day, String name, String how, Widget state, {Color c = K.lilac}) => Padding(
     padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
     child: Row(
@@ -334,21 +329,34 @@ Widget bDresses() {
     ),
   );
   return Phone(
-    nav: Sec.money,
     children: [
-      tabHeader('المال', 'ماشية، ومعك 600 ألف', actions: [LucideIcons.eyeOff]),
-      _moneyTabs(3),
+      subHeader(
+        bride ? 'فساتين الأسبوع' : 'لبس المناسبات',
+        sub: bride ? 'بند من تجهيزك · فستان لكل يوم' : 'بند من عرسك · لكل ليلة لبسها',
+      ),
+      note(
+        bride
+            ? 'لكل يوم فستان. اللي بالتأجير نذكّرك بالبروفة، وبإرجاعه، وبالعربون اللي يرجع لك.'
+            : 'لكل ليلة لبسها. اللي بالتفصيل نذكّرك بالبروفة وموعد الاستلام.',
+        c: K.lilac,
+        bg: K.lilacSoft,
+        i: LucideIcons.shirt,
+      ),
       gap(12),
-      note('لكل يوم فستان. اللي بالتأجير نذكّرك بالبروفة، وبإرجاعه، وبالعربون اللي يرجع لك.',
-          c: K.lilac, bg: K.lilacSoft, i: LucideIcons.shirt),
-      gap(12),
-      whiteList([
-        d('الحمام', 'التراثي الصنعاني', 'من أمي · استعارة', tag('جاهز', K.green, K.greenSoft), c: B.gold),
-        d('الذبال', 'من أهل العريس', 'يجيبونه يوم الذبال', tag('عندهم', K.muted, K.bg), c: B.gold),
-        d('النقش', 'الأخضر', 'اشتريته · 60 ألف', tag('جاهز', K.green, K.greenSoft), c: K.green),
-        d('الحفلة', 'فستان سهرة', 'تأجير 80 ألف · عربون 20', tag('بروفة السبت', K.saffronInk, K.saffronSoft)),
-        d('الزفة', 'الأبيض', 'تأجير 250 ألف · بروفة 2 من 3', tag('يرجع الأحد', B.rose, B.roseSoft), c: B.rose),
-      ]),
+      if (bride)
+        whiteList([
+          d('الحمام', 'التراثي الصنعاني', 'من أمي · استعارة', tag('جاهز', K.green, K.greenSoft), c: B.gold),
+          d('الذبال', 'من أهل العريس', 'يجيبونه يوم الذبال', tag('عندهم', K.muted, K.bg), c: B.gold),
+          d('النقش', 'الأخضر', 'اشتريته · 60 ألف', tag('جاهز', K.green, K.greenSoft), c: K.green),
+          d('الحفلة', 'فستان سهرة', 'تأجير 80 ألف · عربون 20', tag('بروفة السبت', K.saffronInk, K.saffronSoft)),
+          d('الزفة', 'الأبيض', 'تأجير 250 ألف · بروفة 2 من 3', tag('يرجع الأحد', B.rose, B.roseSoft), c: B.rose),
+        ])
+      else
+        whiteList([
+          d('السمرة', 'الثوب والجنبية والشال', 'من عندي', tag('جاهز', K.green, K.greenSoft), c: K.teal),
+          d('المقيل', 'الثوب والكوت', 'شراء · 45 ألف', tag('جاهز', K.green, K.greenSoft), c: K.teal),
+          d('الزفاف', 'البدلة والشال والجنبية', 'تفصيل 300 ألف · دفعت 200', tag('استلام 15 يناير', K.saffronInk, K.saffronSoft), c: B.gold),
+        ]),
     ],
   );
 }

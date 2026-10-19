@@ -323,12 +323,11 @@ Widget vMoneyItems() => Phone(
   children: [
     _head(1),
     _group('الاتفاق مع أهل العروسة', '3 مليون', const [
-      _It('المهر', LucideIcons.heart, 1.5, 1.5),
       _It(
-        'الشرط',
+        'المهر',
         LucideIcons.heartHandshake,
-        1.5,
-        0.5,
+        3.0,
+        2.0,
         note: 'الباقي 15 نوفمبر',
       ),
     ]),
@@ -507,7 +506,7 @@ Widget vMoneyPayments({bool offline = false}) {
           soon: true,
           pending: offline,
         ),
-        upRow('15', 'نوفمبر', 'باقي الشرط', 'مليون', 'لأهل العروسة'),
+        upRow('15', 'نوفمبر', 'باقي المهر', 'مليون', 'لأهل العروسة'),
         upRow('20', 'ديسمبر', 'ضيافة الأصالة', '400 ألف', 'العربون الثاني'),
       ], dividers: false),
       gap(10),

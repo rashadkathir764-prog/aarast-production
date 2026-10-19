@@ -582,6 +582,9 @@ def main():
             src = open(os.path.join(ROOT, d, f)).read()
             if f == 'v3_test.dart':
                 src = src.replace("'../../support/preview_fonts.dart'", "'../../../../support/preview_fonts.dart'")
+                # Splash, welcome and whose-plan come before the choice, so
+                # they stay neutral; the bride's page reuses the groom's.
+                src = re.sub(r"\s*\('a0(1_splash|2_who|2b_whose|2c_whose_bride)'.*?, 844\),", '', src)
             if d == 'v3':
                 src = src.replace('LucideIcons.music', 'LucideIcons.sparkles').replace('LucideIcons.leaf', 'LucideIcons.flame')
             open(os.path.join(OUT, d, f), 'w').write(convert(src, f, log))

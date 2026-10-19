@@ -377,7 +377,7 @@ Widget _servicesArt() => Container(
 Widget vStart() => Phone(
   bottom: Padding(
     padding: const EdgeInsets.fromLTRB(20, 8, 20, 30),
-    child: btn('التالي', wide: true, v: 16, fs: 17),
+    child: btn('أنشئ حسابي', wide: true, v: 16, fs: 17),
   ),
   children: [
     gap(14),
@@ -385,7 +385,7 @@ Widget vStart() => Phone(
     gap(26),
     Text('أهلًا فيك', style: tx(30, w: bold)),
     gap(4),
-    Text('وش تبغى تسوي؟', style: tx(16, c: K.muted)),
+    Text('جديد في اعّرست؟ اختر وش تبغى', style: tx(16, c: K.muted)),
     gap(22),
     _roleCard(
       'أنشئ خطتك',
@@ -398,34 +398,51 @@ Widget vStart() => Phone(
       'قاعة، فرقة، تصوير،\nزينة، ضيافة',
       _servicesArt(),
     ),
-    gap(14),
-    Center(
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: K.line),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Icon(LucideIcons.link, size: 18, color: K.teal),
-            const SizedBox(width: 10),
-            Text('عندي رابط دعوة', style: tx(15.5, w: bold, c: K.teal)),
-          ],
-        ),
+    gap(6),
+    // One account for everyone: the phone number finds the plan or the
+    // provider page, whichever it already has.
+    Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(22),
+        border: Border.all(color: K.line),
+      ),
+      child: Row(
+        children: [
+          iconTile(LucideIcons.logIn, K.teal, K.tealSoft, s: 44),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('عندي حساب', style: tx(17, w: bold)),
+                Text('ادخل برقم جوالك: عريس، عروسة، أو مزود', style: tx(13, c: K.muted)),
+              ],
+            ),
+          ),
+          const Icon(LucideIcons.chevronLeft, size: 18, color: K.faint),
+        ],
       ),
     ),
-    gap(8),
+    gap(16),
     Center(
-      child: Text('أحد ضافك في خطته؟ ادخل منه', style: tx(13, c: K.muted)),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Icon(LucideIcons.link, size: 17, color: K.teal),
+          const SizedBox(width: 8),
+          Text('عندي رابط دعوة', style: tx(15, w: bold, c: K.teal)),
+          Text('  ·  أحد ضافك في خطته', style: tx(13, c: K.muted)),
+        ],
+      ),
     ),
   ],
 );
 
 /// Second step of creating a plan: whose wedding is this?
-Widget vWhose() => Phone(
+/// [brideChosen] is the screen's own state: which card is ticked.
+Widget vWhose({bool brideChosen = false}) => Phone(
   bottom: Padding(
     padding: const EdgeInsets.fromLTRB(20, 8, 20, 30),
     child: btn('التالي', wide: true, v: 16, fs: 17),
@@ -437,7 +454,7 @@ Widget vWhose() => Phone(
     gap(4),
     Text('كل واحد له مساره، ويقدر يضيف الثاني مشارك', style: tx(15.5, c: K.muted)),
     gap(22),
-    _roleCard('العريس', 'عرس الرجال، والمهر،\nوضيوفك ومزودينك', _groomPhoto(), on: true),
+    _roleCard('العريس', 'عرس الرجال، والمهر،\nوضيوفك ومزودينك', _groomPhoto(), on: !brideChosen),
     // Temporary stand-in until the brother's own dress photo arrives.
     _roleCard(
       'العروسة',
@@ -447,6 +464,7 @@ Widget vWhose() => Phone(
         fit: BoxFit.cover,
         alignment: const Alignment(-0.4, 0),
       ),
+      on: brideChosen,
     ),
   ],
 );

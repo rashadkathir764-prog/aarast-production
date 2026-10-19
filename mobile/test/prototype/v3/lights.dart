@@ -146,91 +146,199 @@ Widget _roleCard(String t, String sub, Widget picture, {bool on = false}) => Con
   ),
 );
 
-/// A wedding dress on a hanger, cropped like a boutique photo.
-class _Dress extends CustomPainter {
-  const _Dress();
+/// A ball-gown wedding dress on a gold-capped mannequin, studio light:
+/// beaded corset, pleated skirt full of sparkle, crystal drops and a veil.
+class Dress extends CustomPainter {
+  const Dress({this.veil = true});
+  final bool veil;
 
   @override
   void paint(Canvas canvas, Size size) {
     final w = size.width, h = size.height;
+    final rnd = math.Random(11);
+    // Studio backdrop.
     canvas.drawRect(
       Offset.zero & size,
       Paint()
-        ..shader = const LinearGradient(
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-          colors: [Color(0xFFF3EEE6), Color(0xFFE7DFD2)],
+        ..shader = RadialGradient(
+          center: const Alignment(0, -0.3),
+          radius: 1.1,
+          colors: const [Color(0xFFF4F4F2), Color(0xFFDADAD6)],
         ).createShader(Offset.zero & size),
     );
-    final cx = w * 0.55;
-    final ink = Paint()
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 1
-      ..color = const Color(0xFFB9AE9B);
-    // Hanger.
-    canvas.drawLine(Offset(cx, -2), Offset(cx, h * 0.06), ink..strokeWidth = 1.6);
+    final cx = w * 0.5;
+    final waistY = h * 0.47;
+    final topY = h * 0.20;
+    final bw = w * 0.17; // half bodice width at the bust
+    final ww = w * 0.12; // half waist
+
+    // Mannequin neck and gold cap.
+    canvas.drawRRect(
+      RRect.fromRectAndRadius(Rect.fromCenter(center: Offset(cx, h * 0.09), width: w * 0.09, height: h * 0.10), const Radius.circular(4)),
+      Paint()..color = const Color(0xFFEDE7DC),
+    );
+    canvas.drawRRect(
+      RRect.fromRectAndRadius(Rect.fromCenter(center: Offset(cx, h * 0.015), width: w * 0.11, height: h * 0.05), const Radius.circular(6)),
+      Paint()
+        ..shader = const LinearGradient(colors: [Color(0xFFB8862E), Color(0xFFF1D489), Color(0xFFB8862E)])
+            .createShader(Rect.fromLTWH(cx - w * 0.06, 0, w * 0.12, h * 0.05)),
+    );
+    // Shoulders of the form, just peeking above the bodice.
     canvas.drawPath(
       Path()
-        ..moveTo(cx - w * 0.22, h * 0.15)
-        ..lineTo(cx, h * 0.06)
-        ..lineTo(cx + w * 0.22, h * 0.15),
-      ink,
+        ..moveTo(cx - w * 0.045, h * 0.13)
+        ..quadraticBezierTo(cx - w * 0.06, topY - h * 0.01, cx - bw * 0.85, topY + h * 0.025)
+        ..lineTo(cx + bw * 0.85, topY + h * 0.025)
+        ..quadraticBezierTo(cx + w * 0.06, topY - h * 0.01, cx + w * 0.045, h * 0.13)
+        ..close(),
+      Paint()..color = const Color(0xFFEDE7DC),
     );
-    ink.strokeWidth = 1;
-    // Skirt: a full ball gown flowing past the card.
+
+    // Skirt: wide ball gown, shaded like a cylinder, then pleats.
+    final hemY = h * 1.25;
     final skirt = Path()
-      ..moveTo(cx - w * 0.15, h * 0.52)
-      ..cubicTo(cx - w * 0.28, h * 0.70, cx - w * 0.55, h * 0.95, cx - w * 0.70, h * 1.15)
-      ..lineTo(cx + w * 0.70, h * 1.15)
-      ..cubicTo(cx + w * 0.55, h * 0.95, cx + w * 0.28, h * 0.70, cx + w * 0.15, h * 0.52)
+      ..moveTo(cx - ww, waistY)
+      ..cubicTo(cx - w * 0.35, h * 0.62, cx - w * 0.75, h * 0.95, cx - w * 0.95, hemY)
+      ..lineTo(cx + w * 0.95, hemY)
+      ..cubicTo(cx + w * 0.75, h * 0.95, cx + w * 0.35, h * 0.62, cx + ww, waistY)
       ..close();
-    canvas.drawShadow(skirt, const Color(0xFF8C7F6A), 6, false);
-    canvas.drawPath(skirt, Paint()..color = Colors.white);
-    final fold = Paint()
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 1
-      ..color = const Color(0xFFE4DDD0);
-    for (final f in [-0.45, -0.25, -0.08, 0.08, 0.25, 0.45]) {
+    canvas.drawShadow(skirt, Colors.black, 8, false);
+    final skirtRect = Rect.fromLTRB(cx - w * 0.95, waistY, cx + w * 0.95, hemY);
+    canvas.drawPath(
+      skirt,
+      Paint()
+        ..shader = const LinearGradient(
+          colors: [Color(0xFFCFCFD4), Colors.white, Color(0xFFFDFDFE), Color(0xFFC9C9CF)],
+          stops: [0, 0.38, 0.6, 1],
+        ).createShader(skirtRect),
+    );
+    canvas.save();
+    canvas.clipPath(skirt);
+    for (var i = -8; i <= 8; i++) {
+      final f = i / 8;
+      final end = Offset(cx + f * w * 1.0, hemY);
+      final ctrl = Offset(cx + f * w * 0.35, h * 0.75);
+      final from = Offset(cx + f * ww * 0.9, waistY);
+      final pleat = Path()
+        ..moveTo(from.dx, from.dy)
+        ..quadraticBezierTo(ctrl.dx, ctrl.dy, end.dx, end.dy);
+      canvas.drawPath(pleat, Paint()
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = w * 0.035
+        ..color = const Color(0xFF9EA0AA).withValues(alpha: 0.12)
+        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 3));
+      canvas.drawPath(pleat.shift(Offset(w * 0.012, 0)), Paint()
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 1
+        ..color = Colors.white.withValues(alpha: 0.9));
+    }
+    // Crystal drops hanging from the waist.
+    for (var i = -6; i <= 6; i++) {
+      final x0 = cx + i * w * 0.045;
+      final len = h * (0.10 + rnd.nextDouble() * 0.16);
+      for (var y = waistY + h * 0.02; y < waistY + len; y += h * 0.022) {
+        final x = x0 + (x0 - cx) * (y - waistY) / h * 1.2;
+        canvas.drawCircle(Offset(x, y), 1.3, Paint()..color = const Color(0xFFB9BCC6));
+      }
+      final tip = Offset(x0 + (x0 - cx) * len / h * 1.2, waistY + len);
       canvas.drawPath(
         Path()
-          ..moveTo(cx + w * f * 0.25, h * 0.55)
-          ..quadraticBezierTo(cx + w * f * 0.7, h * 0.8, cx + w * f * 1.3, h * 1.15),
-        fold,
+          ..moveTo(tip.dx, tip.dy - 3)
+          ..lineTo(tip.dx + 2.2, tip.dy + 1)
+          ..lineTo(tip.dx, tip.dy + 5)
+          ..lineTo(tip.dx - 2.2, tip.dy + 1)
+          ..close(),
+        Paint()..color = const Color(0xFFA9ADB9),
       );
     }
-    // Lace flowers scattered on the skirt.
-    final lace = Paint()..color = const Color(0xFFDCD3C4);
-    final rnd = math.Random(5);
-    for (var i = 0; i < 26; i++) {
-      final t = rnd.nextDouble();
-      final y = h * (0.6 + t * 0.5);
-      final half = w * (0.15 + t * 0.5);
-      final x = cx + (rnd.nextDouble() * 2 - 1) * half * 0.9;
-      for (var p = 0; p < 5; p++) {
-        final ang = p * 2 * math.pi / 5;
-        canvas.drawCircle(Offset(x + math.cos(ang) * 2.6, y + math.sin(ang) * 2.6), 1.3, lace);
+    // Sparkle across the skirt, denser near the waist.
+    for (var i = 0; i < 260; i++) {
+      final t = math.pow(rnd.nextDouble(), 0.8).toDouble();
+      final y = waistY + t * (hemY - waistY);
+      final half = ww + (w * 0.95 - ww) * math.pow(t, 0.7);
+      final x = cx + (rnd.nextDouble() * 2 - 1) * half;
+      final r = 0.5 + rnd.nextDouble() * 1.1;
+      canvas.drawCircle(Offset(x, y), r, Paint()..color = const Color(0xFF9FA3AE).withValues(alpha: 0.75));
+    }
+    canvas.restore();
+
+    // Bodice: strapless sweetheart corset.
+    final bodice = Path()
+      ..moveTo(cx - bw, topY + h * 0.03)
+      ..quadraticBezierTo(cx - bw * 0.5, topY - h * 0.025, cx, topY + h * 0.04)
+      ..quadraticBezierTo(cx + bw * 0.5, topY - h * 0.025, cx + bw, topY + h * 0.03)
+      ..quadraticBezierTo(cx + bw * 0.92, h * 0.36, cx + ww, waistY)
+      ..lineTo(cx, waistY + h * 0.03)
+      ..lineTo(cx - ww, waistY)
+      ..quadraticBezierTo(cx - bw * 0.92, h * 0.36, cx - bw, topY + h * 0.03)
+      ..close();
+    canvas.drawShadow(bodice, Colors.black, 4, false);
+    canvas.drawPath(
+      bodice,
+      Paint()
+        ..shader = const LinearGradient(
+          colors: [Color(0xFFD3D3D8), Colors.white, Color(0xFFD0D0D6)],
+        ).createShader(Rect.fromLTRB(cx - bw, topY, cx + bw, waistY)),
+    );
+    canvas.save();
+    canvas.clipPath(bodice);
+    // Boning seams lined with beads, and a beaded V to the waist.
+    for (final f in [-0.62, -0.25, 0.25, 0.62]) {
+      for (var y = topY + h * 0.03; y < waistY; y += h * 0.016) {
+        final k = (y - topY) / (waistY - topY);
+        canvas.drawCircle(Offset(cx + f * (bw + (ww - bw) * k), y), 0.9, Paint()..color = const Color(0xFF9EA2AD));
       }
     }
-    // Bodice with a sweetheart neckline.
-    final bodice = Path()
-      ..moveTo(cx - w * 0.14, h * 0.24)
-      ..quadraticBezierTo(cx - w * 0.07, h * 0.20, cx, h * 0.26)
-      ..quadraticBezierTo(cx + w * 0.07, h * 0.20, cx + w * 0.14, h * 0.24)
-      ..lineTo(cx + w * 0.15, h * 0.52)
-      ..lineTo(cx - w * 0.15, h * 0.52)
-      ..close();
-    canvas.drawShadow(bodice, const Color(0xFF8C7F6A), 3, false);
-    canvas.drawPath(bodice, Paint()..color = Colors.white);
-    // Lace straps to the hanger.
-    canvas.drawLine(Offset(cx - w * 0.13, h * 0.24), Offset(cx - w * 0.17, h * 0.14), ink);
-    canvas.drawLine(Offset(cx + w * 0.13, h * 0.24), Offset(cx + w * 0.17, h * 0.14), ink);
-    for (var i = 0; i < 9; i++) {
-      canvas.drawCircle(Offset(cx - w * 0.1 + i * w * 0.025, h * (0.33 + (i % 3) * 0.04)), 1.2, lace);
+    for (var i = 0; i < 70; i++) {
+      final k = rnd.nextDouble();
+      final y = topY + h * 0.04 + k * (waistY - topY - h * 0.04);
+      final spread = (bw * (1 - k) + ww * k) * 0.9;
+      canvas.drawCircle(
+        Offset(cx + (rnd.nextDouble() * 2 - 1) * spread, y),
+        0.6 + rnd.nextDouble() * 0.8,
+        Paint()..color = const Color(0xFFA6AAB5),
+      );
     }
-    // Pearl waistband.
-    for (var x = cx - w * 0.15; x <= cx + w * 0.15; x += 5) {
-      canvas.drawCircle(Offset(x, h * 0.52), 2.1, Paint()..color = const Color(0xFFFDFBF6));
-      canvas.drawCircle(Offset(x, h * 0.52), 2.1, ink..strokeWidth = 0.5);
+    canvas.restore();
+    // Highlights: a few glints with soft glow.
+    for (var i = 0; i < 16; i++) {
+      final k = rnd.nextDouble();
+      final y = waistY - h * 0.2 + k * h * 0.7;
+      final half = y < waistY ? bw * 0.8 : ww + (y - waistY) * 1.1;
+      final p = Offset(cx + (rnd.nextDouble() * 2 - 1) * half, y);
+      canvas.drawCircle(p, 3.2, Paint()
+        ..color = Colors.white.withValues(alpha: 0.9)
+        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 2.5));
+      final g = Paint()
+        ..color = Colors.white
+        ..strokeWidth = 0.8;
+      canvas.drawLine(p - const Offset(4, 0), p + const Offset(4, 0), g);
+      canvas.drawLine(p - const Offset(0, 4), p + const Offset(0, 4), g);
+    }
+
+    // Veil: sheer tulle falling from the crown to one side.
+    if (veil) {
+      final v = Path()
+        ..moveTo(cx - w * 0.03, h * 0.02)
+        ..cubicTo(cx - w * 0.30, h * 0.15, cx - w * 0.42, h * 0.55, cx - w * 0.62, h * 1.1)
+        ..lineTo(cx - w * 0.20, h * 1.1)
+        ..cubicTo(cx - w * 0.28, h * 0.6, cx - w * 0.18, h * 0.25, cx + w * 0.02, h * 0.04)
+        ..close();
+      canvas.drawPath(v, Paint()..color = Colors.white.withValues(alpha: 0.38));
+      canvas.drawPath(v, Paint()
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 0.7
+        ..color = const Color(0xFFBFC2CA).withValues(alpha: 0.6));
+      canvas.save();
+      canvas.clipPath(v);
+      for (var i = 0; i < 40; i++) {
+        canvas.drawCircle(
+          Offset(cx - w * (0.05 + rnd.nextDouble() * 0.5), h * (0.1 + rnd.nextDouble() * 0.95)),
+          0.7,
+          Paint()..color = const Color(0xFFB0B4BE),
+        );
+      }
+      canvas.restore();
     }
   }
 
@@ -330,7 +438,15 @@ Widget vWhose() => Phone(
     Text('كل واحد له مساره، ويقدر يضيف الثاني مشارك', style: tx(15.5, c: K.muted)),
     gap(22),
     _roleCard('العريس', 'عرس الرجال، والمهر،\nوضيوفك ومزودينك', _groomPhoto(), on: true),
-    _roleCard('العروسة', 'تجهيزك وعرس النساء،\nفي مسارك الخاص', const CustomPaint(painter: _Dress())),
+    _roleCard('العروسة', 'تجهيزك وعرس النساء،\nفي مسارك الخاص', const ClipRect(
+        child: OverflowBox(
+          maxWidth: 230,
+          maxHeight: 290,
+          alignment: Alignment(0, -0.55),
+          child: CustomPaint(painter: Dress(), size: Size(230, 290)),
+        ),
+      ),
+    ),
   ],
 );
 

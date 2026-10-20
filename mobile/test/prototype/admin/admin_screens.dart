@@ -65,7 +65,7 @@ Widget a01Dashboard() => desk(
 /// the date range the backend already accepts and no developer wording.
 Widget a02Reports() => desk(
   'reports',
-  crumb: 'التقارير',
+  crumb: 'السوق',
   title: 'التقارير',
   sub: 'من 1 سبتمبر لين 30 سبتمبر',
   actions: [aBtn('آخر 30 يوم', bg: A.soft, fg: A.c, icon: LucideIcons.calendarDays), aBtn('تنزيل', bg: A.soft, fg: A.c, icon: LucideIcons.download)],
@@ -264,8 +264,8 @@ Widget a07Listed() => desk(
 /// and bride flags), plus the bride-side name, the suggested provider model
 /// and period, and re-enable for disabled rows.
 Widget a08Categories() => desk(
-  'categories',
-  crumb: 'الكتالوج',
+  'catalog',
+  crumb: 'النظام / الكتالوج',
   title: 'الأقسام',
   sub: 'قسم واحد للعريس والعروسة · المزود يقدر يغيّر الطريقة المقترحة',
   actions: [aBtn('قسم جديد', icon: LucideIcons.plus)],
@@ -288,8 +288,8 @@ Widget a08Categories() => desk(
 /// Existing ReferenceCatalogsPage (tasks.starter): the item's days-before
 /// lives in metadata the UI can't edit today; draft vs published side by side.
 Widget a09Catalogs() => desk(
-  'catalogs',
-  crumb: 'الكتالوج',
+  'catalog',
+  crumb: 'النظام / الكتالوج',
   title: 'الكتالوجات',
   sub: 'تتحدث في التطبيق بدون إصدار جديد',
   actions: [aBtn('قوالب المهام', bg: A.c), aBtn('تصنيفات الميزانية', bg: A.soft, fg: A.c)],
@@ -465,7 +465,7 @@ Widget a12Bookings() => desk(
 Widget a13User() => confirm(
   desk(
     'users',
-    crumb: 'الحسابات / تفاصيل مستخدم',
+    crumb: 'الناس / تفاصيل مستخدم',
     title: 'محمد الحمدي',
     sub: '777 123 456 · من 2 أكتوبر',
     actions: [aBtn('تعطيل الحساب', bg: Colors.white, fg: K.coral)],
@@ -488,7 +488,7 @@ Widget a13User() => confirm(
 /// and the panel never shows anyone's role.
 Widget a14Team() => desk(
   'team',
-  crumb: 'الحسابات',
+  crumb: 'الفريق',
   title: 'فريق الإدارة',
   sub: 'مين يدخل اللوحة وبأي دور',
   role: Role.superAdmin,
@@ -513,7 +513,7 @@ Widget a14Team() => desk(
 /// typed, and a link to what was changed.
 Widget a15Audit() => desk(
   'audit',
-  crumb: 'الحسابات',
+  crumb: 'الفريق',
   title: 'سجل التدقيق',
   sub: 'كل إجراء في اللوحة',
   role: Role.superAdmin,
@@ -537,7 +537,7 @@ Widget a15Audit() => desk(
 /// being hard-coded.
 Widget a16Rules() => desk(
   'settings',
-  crumb: 'الحسابات',
+  crumb: 'النظام',
   title: 'القواعد',
   sub: 'الأرقام اللي تمشّي التطبيق · كل تغيير ينسجل',
   role: Role.superAdmin,

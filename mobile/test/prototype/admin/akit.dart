@@ -24,12 +24,12 @@ const roleLabel = {
 
 /// One nav link; [roles] is who sees it, from admin-permissions.ts.
 class L {
-  const L(this.id, this.label, this.icon, this.roles, {this.count, this.isNew = false, this.hot = false});
+  const L(this.id, this.label, this.icon, this.roles, {this.count, this.isNew = false, this.hot = false, this.v11 = false});
   final String id, label;
   final IconData icon;
   final Set<Role> roles;
   final int? count;
-  final bool isNew, hot;
+  final bool isNew, hot, v11;
 }
 
 const _all = {Role.superAdmin, Role.operations, Role.moderator, Role.support};
@@ -39,34 +39,45 @@ const _mod = {Role.superAdmin, Role.moderator};
 const _modOps = {Role.superAdmin, Role.operations, Role.moderator};
 const _sa = {Role.superAdmin};
 
-// Same groups and order as adminNavigation.ts; new links are marked.
+// Seven sections: the existing pages keep their place inside them; new
+// links are marked «جديد» (first version) or «1.1».
 const nav = <(String, List<L>)>[
-  ('نظرة عامة', [
-    L('dash', 'لوحة التحكم', LucideIcons.layoutDashboard, _all),
+  ('اليوم', [
+    L('inbox', 'الصندوق', LucideIcons.inbox, _all, count: 23, isNew: true, hot: true),
+  ]),
+  ('السوق', [
+    L('market', 'نظرة السوق', LucideIcons.activity, _ops, v11: true),
+    L('funnel', 'مسار العريس', LucideIcons.filter, _ops, v11: true),
+    L('calendar', 'تقويم الأعراس', LucideIcons.calendarDays, _ops, v11: true),
     L('reports', 'التقارير', LucideIcons.barChart3, _ops),
   ]),
   ('المزودين', [
-    L('apps', 'طلبات الانضمام', LucideIcons.inbox, _all, count: 12),
+    L('apps', 'طلبات الانضمام', LucideIcons.userPlus, _all, count: 12),
     L('providers', 'دليل المزودين', LucideIcons.store, _all),
-    L('listed', 'ملفات بلا حساب', LucideIcons.bookOpen, _opsSup, count: 9, isNew: true),
+    L('listed', 'ملفات بلا حساب', LucideIcons.bookOpen, _opsSup, isNew: true),
     L('services', 'الخدمات', LucideIcons.package, _opsSup),
   ]),
-  ('الكتالوج', [
-    L('categories', 'الأقسام', LucideIcons.layoutGrid, _opsSup),
-    L('catalogs', 'الكتالوجات', LucideIcons.listTree, _opsSup),
-    L('areas', 'المحافظات والمديريات', LucideIcons.map, _opsSup),
+  ('الناس', [
+    L('lookup', 'ابحث برقم', LucideIcons.search, _opsSup, isNew: true),
+    L('users', 'المستخدمون', LucideIcons.users, _opsSup),
+    L('datareq', 'طلبات البيانات', LucideIcons.fileLock, _opsSup, count: 3, isNew: true),
   ]),
   ('الرقابة', [
-    L('reviews', 'التقييمات', LucideIcons.star, _modOps, count: 5),
     L('reports_c', 'البلاغات', LucideIcons.flag, _mod, count: 3, hot: true),
+    L('reviews', 'التقييمات', LucideIcons.star, _modOps, count: 5),
+    L('photos', 'صور تحتاج مراجعة', LucideIcons.eyeOff, _mod, count: 4, isNew: true),
     L('bookings', 'الحجوزات والخلافات', LucideIcons.scale, _opsSup, count: 2, isNew: true, hot: true),
+    L('fraud', 'إشارات الاحتيال', LucideIcons.shieldAlert, _modOps, v11: true),
   ]),
-  ('الحسابات', [
-    L('users', 'المستخدمون', LucideIcons.users, _opsSup),
-    L('notifs', 'سجل الإشعارات', LucideIcons.bell, _all),
-    L('team', 'فريق الإدارة', LucideIcons.shieldCheck, _sa, isNew: true),
-    L('audit', 'سجل التدقيق', LucideIcons.history, _sa),
+  ('النظام', [
+    L('health', 'صحة المنصة', LucideIcons.heartPulse, _ops, isNew: true),
     L('settings', 'القواعد', LucideIcons.slidersHorizontal, _sa, isNew: true),
+    L('catalog', 'الكتالوج', LucideIcons.layoutGrid, _opsSup),
+    L('flags', 'الميزات والإعلانات', LucideIcons.toggleRight, _sa, v11: true),
+  ]),
+  ('الفريق', [
+    L('team', 'الأعضاء والأدوار', LucideIcons.shieldCheck, _sa, isNew: true),
+    L('audit', 'سجل التدقيق', LucideIcons.history, _sa),
   ]),
 ];
 
@@ -101,14 +112,14 @@ Widget desk(
               for (final g in nav)
                 if (g.$2.any((l) => l.roles.contains(role))) ...[
                   Padding(
-                    padding: const EdgeInsets.fromLTRB(10, 10, 10, 4),
+                    padding: const EdgeInsets.fromLTRB(10, 8, 10, 2),
                     child: Text(g.$1, style: tx(11.5, w: bold, c: Colors.white38)),
                   ),
                   for (final l in g.$2)
                     if (l.roles.contains(role))
                       Container(
                         margin: const EdgeInsets.only(bottom: 2),
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
                         decoration: BoxDecoration(color: l.id == active ? Colors.white12 : Colors.transparent, borderRadius: BorderRadius.circular(10)),
                         child: Row(
                           children: [
@@ -116,6 +127,7 @@ Widget desk(
                             const SizedBox(width: 10),
                             Expanded(child: Text(l.label, style: tx(13.5, w: l.id == active ? bold : FontWeight.w400, c: l.id == active ? Colors.white : Colors.white70))),
                             if (l.isNew) Padding(padding: const EdgeInsets.only(left: 6), child: Text('جديد', style: tx(10.5, w: bold, c: K.saffron))),
+                            if (l.v11) Padding(padding: const EdgeInsets.only(left: 6), child: Text('1.1', style: tx(10.5, w: bold, c: Colors.white38))),
                             if (l.count != null)
                               Container(
                                 padding: const EdgeInsets.symmetric(horizontal: 7),

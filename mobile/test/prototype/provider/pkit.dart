@@ -246,6 +246,7 @@ Widget st(String s) {
     'ملغي': (K.muted, K.line),
     'جاهز': (K.sky, K.skySoft),
     'تسلّم': (K.green, K.greenSoft),
+    'فاضي': (K.green, K.greenSoft),
   };
   final c = m[s] ?? (P.c, P.soft);
   return tag(s, c.$1, c.$2);

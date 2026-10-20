@@ -1,0 +1,881 @@
+// Captures today's real home / notifications / assistant screens for the
+// groom before/after review.
+//   flutter test test/prototype/now_home/now_home_test.dart --update-goldens
+@Tags(['golden'])
+library;
+
+import 'package:aarast_mobile/core/network/api_client.dart';
+import 'package:aarast_mobile/core/offline/local_database.dart';
+import 'package:aarast_mobile/core/offline/local_database_json.dart';
+import 'package:aarast_mobile/core/offline/offline_status_widgets.dart';
+import 'package:aarast_mobile/core/offline/offline_sync_service.dart';
+import 'package:aarast_mobile/core/offline/sync_status.dart';
+import 'package:aarast_mobile/core/session/safe_user.dart';
+import 'package:aarast_mobile/core/storage/auth_storage.dart';
+import 'package:aarast_mobile/core/theme/app_theme.dart';
+import 'package:aarast_mobile/core/widgets/aarast_ui.dart';
+import 'package:aarast_mobile/features/auth/data/auth_repository.dart';
+import 'package:aarast_mobile/features/auth/providers/auth_controller.dart';
+import 'package:aarast_mobile/features/home/providers/home_dashboard_provider.dart';
+import 'package:aarast_mobile/features/home/screens/dashboard_entry_screen.dart';
+import 'package:aarast_mobile/features/home/screens/home_screen.dart';
+import 'package:aarast_mobile/features/notifications/data/notifications_api.dart';
+import 'package:aarast_mobile/features/notifications/models/aarast_notification.dart';
+import 'package:aarast_mobile/features/notifications/providers/notifications_provider.dart';
+import 'package:aarast_mobile/features/notifications/screens/notifications_screen.dart';
+import 'package:aarast_mobile/features/onboarding/data/guest_onboarding_storage.dart';
+import 'package:aarast_mobile/features/onboarding/models/guest_onboarding_draft.dart';
+import 'package:aarast_mobile/features/sharing/data/sharing_api.dart';
+import 'package:aarast_mobile/features/sharing/models/shared_wedding_plan.dart';
+import 'package:aarast_mobile/features/shell/widgets/aarast_plan_chrome.dart';
+import 'package:aarast_mobile/features/shell/widgets/plan_shell_chrome.dart';
+import 'package:aarast_mobile/features/wedding_plans/widgets/quick_add_actions.dart';
+import 'package:aarast_mobile/features/tasks/models/wedding_task.dart';
+import 'package:aarast_mobile/features/wedding_day/widgets/wedding_day_mode_view.dart';
+import 'package:aarast_mobile/features/wedding_plans/data/plan_assistant_api.dart';
+import 'package:aarast_mobile/features/wedding_plans/data/wedding_plans_api.dart';
+import 'package:aarast_mobile/features/wedding_plans/models/dashboard_summary.dart';
+import 'package:aarast_mobile/features/wedding_plans/models/plan_assistant.dart';
+import 'package:aarast_mobile/features/wedding_plans/models/wedding_plan.dart';
+import 'package:aarast_mobile/features/wedding_plans/providers/dashboard_summary_provider.dart';
+import 'package:aarast_mobile/features/wedding_plans/providers/wedding_plans_provider.dart';
+import 'package:aarast_mobile/features/wedding_plans/screens/plan_assistant_screen.dart';
+import 'package:aarast_mobile/features/wedding_plans/widgets/dashboard/aarast_dashboard_view.dart';
+import 'package:aarast_mobile/features/wedding_plans/widgets/plan_assistant_entry.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
+import 'package:flutter_test/flutter_test.dart';
+import 'package:lucide_icons/lucide_icons.dart';
+import 'package:provider/provider.dart';
+import 'package:provider/single_child_widget.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+
+import '../../support/preview_fonts.dart';
+
+const _planId = 'plan-mohammed-salma';
+final _wedding = DateTime(2027, 1, 21, 16);
+
+Future<void> _shot(
+  WidgetTester tester,
+  String name,
+  Widget home, {
+  double h = 844,
+  List<SingleChildWidget> providers = const [],
+  Future<void> Function()? act,
+}) async {
+  tester.view.physicalSize = Size(390 * 2, h * 2);
+  tester.view.devicePixelRatio = 2;
+  addTearDown(tester.view.reset);
+  final app = MaterialApp(
+    debugShowCheckedModeBanner: false,
+    theme: AppTheme.light(),
+    locale: const Locale('ar'),
+    supportedLocales: const [Locale('ar')],
+    localizationsDelegates: GlobalMaterialLocalizations.delegates,
+    home: MediaQuery(
+      data: const MediaQueryData(disableAnimations: true),
+      child: home,
+    ),
+  );
+  await tester.pumpWidget(
+    providers.isEmpty ? app : MultiProvider(providers: providers, child: app),
+  );
+  for (var i = 0; i < 8; i++) {
+    await tester.pump(const Duration(milliseconds: 100));
+  }
+  if (act != null) await act();
+  await tester.pump(const Duration(seconds: 1));
+  await expectLater(
+    find.byType(MaterialApp),
+    matchesGoldenFile('out/$name.png'),
+  );
+}
+
+Map<String, dynamic> _base({
+  required int? days,
+  DateTime? date,
+  int progress = 0,
+  int totalTasks = 20,
+  int completed = 0,
+  int overdue = 0,
+  int today = 0,
+  int guests = 0,
+  int confirmed = 0,
+  int pending = 0,
+  int providers = 0,
+  int quotes = 0,
+  int received = 0,
+  String? budget = '8000000',
+  String confirmedCost = '0',
+  String paid = '0',
+  String outstanding = '0',
+  List<Map<String, dynamic>> actions = const [],
+  Map<String, dynamic>? nextSchedule,
+  int unread = 0,
+}) {
+  return {
+    'planId': _planId,
+    'title': 'عرس محمد وسلمى',
+    'currency': 'YER',
+    'weddingDate': date?.toIso8601String(),
+    'city': 'صنعاء',
+    'location': {'fullLabel': 'أمانة العاصمة · صنعاء'},
+    'status': 'PLANNING',
+    'daysRemaining': days,
+    'progressPercentage': progress,
+    'budgetTotal': budget,
+    'confirmedCostTotal': confirmedCost,
+    'paidTotal': paid,
+    'outstandingTotal': outstanding,
+    'moneySummary': {
+      'totalBudget': budget,
+      'confirmedCost': confirmedCost,
+      'paid': paid,
+      'outstanding': outstanding,
+      'remainingBudget': budget == null
+          ? null
+          : '${int.parse(budget) - int.parse(confirmedCost)}',
+      'overBudget': false,
+    },
+    'totalTasks': totalTasks,
+    'completedTasks': completed,
+    'overdueTasks': overdue,
+    'todayTasks': today,
+    'guestCount': guests,
+    'confirmedGuests': confirmed,
+    'pendingGuests': pending,
+    'providerCount': providers,
+    'acceptedProvidersCount': providers,
+    'quoteRequestsCount': quotes,
+    'receivedQuotes': received,
+    'participantCount': 1,
+    'unreadNotificationsCount': unread,
+    'nextBestActions': actions,
+    'planProviders': const [],
+    'importantNotifications': const [],
+    'nextPaymentScheduleDue': nextSchedule,
+    'permissions': {
+      'isOwner': true,
+      'canViewMoney': true,
+      'canManageTasks': true,
+      'canManageGuests': true,
+      'canManageProviders': true,
+      'canManageMembers': true,
+      'canManageMoney': true,
+      'canManagePlan': true,
+    },
+  };
+}
+
+final _fresh = DashboardSummary.fromJson(
+  _base(days: 93, date: _wedding, progress: 0),
+);
+
+final _active = DashboardSummary.fromJson(
+  _base(
+    days: 93,
+    date: _wedding,
+    progress: 40,
+    completed: 8,
+    overdue: 1,
+    guests: 124,
+    confirmed: 86,
+    pending: 20,
+    providers: 3,
+    quotes: 4,
+    received: 2,
+    confirmedCost: '5400000',
+    paid: '2400000',
+    outstanding: '3000000',
+    unread: 3,
+    actions: [
+      {
+        'id': 'a1',
+        'type': 'PAYMENT_SCHEDULE_DUE_SOON',
+        'title': 'دفعة القاعة: 500,000 ر.ي',
+        'subtitle': 'قاعة سبأ · تستحق بعد 5 أيام',
+        'icon': 'wallet',
+        'tone': 'warning',
+        'priority': 'HIGH',
+        'actionLabel': 'سجّل الدفعة',
+        'amount': '500000',
+        'dueDate': DateTime(2026, 10, 25).toIso8601String(),
+      },
+    ],
+    nextSchedule: {
+      'id': 's1',
+      'weddingCostId': 'c1',
+      'title': 'القاعة',
+      'amount': '500000',
+      'status': 'PENDING',
+      'dueDate': DateTime(2026, 10, 25).toIso8601String(),
+    },
+  ),
+);
+
+DashboardSummary _stage(int days, DateTime? date) => DashboardSummary.fromJson(
+  _base(
+    days: days,
+    date: date,
+    progress: 85,
+    completed: 17,
+    guests: 124,
+    confirmed: 110,
+    pending: 6,
+    providers: 5,
+    quotes: 6,
+    received: 5,
+    confirmedCost: '7600000',
+    paid: '6200000',
+    outstanding: '1400000',
+  ),
+);
+
+class _FakeAssistantApi extends PlanAssistantApi {
+  _FakeAssistantApi({this.status_, this.error})
+    : super(ApiClient(tokenProvider: () async => null));
+
+  final PlanAssistantStatus? status_;
+  final ApiException? error;
+
+  @override
+  Future<PlanAssistantStatus> status(String weddingPlanId) async =>
+      status_ ??
+      const PlanAssistantStatus(
+        enabled: true,
+        allowed: true,
+        dailyLimit: 10,
+        remainingToday: 10,
+      );
+
+  @override
+  Future<PlanAssistantAnswer> ask(
+    String weddingPlanId, {
+    required PlanAssistantKind kind,
+    String? question,
+  }) async {
+    if (error != null) throw error!;
+    return const PlanAssistantAnswer(
+      answer:
+          'من خطتك: ميزانيتك 8,000,000 ر.ي، اتفقت على 5,400,000 ودفعت منها '
+          '2,400,000. أكبر بند باقي هو القاعة (دفعتان).\n\n'
+          '1. ثبّت عدد الضيوف قبل الدفعة الثانية للقاعة، فالسعر بالرأس.\n'
+          '2. التصوير: وصلك عرضين، قارن بينهم قبل ما ينتهوا.\n'
+          '3. أجّل الكماليات (الزينة الإضافية) لآخر شهر.',
+      declined: false,
+      marketDataAvailable: false,
+      remainingToday: 9,
+    );
+  }
+}
+
+class _FakeNotificationsApi extends NotificationsApi {
+  _FakeNotificationsApi(this._items)
+    : super(ApiClient(tokenProvider: () async => null));
+  final List<AarastNotification> _items;
+
+  @override
+  Future<NotificationsPage> getNotifications({
+    String? weddingPlanId,
+    int page = 1,
+    int limit = 20,
+  }) async => NotificationsPage(
+    items: _items,
+    page: page,
+    limit: limit,
+    total: _items.length,
+    totalPages: _items.isEmpty ? 0 : 1,
+    hasMore: false,
+  );
+
+  @override
+  Future<int> getUnreadCount({String? weddingPlanId}) async =>
+      _items.where((item) => item.isUnread).length;
+}
+
+AarastNotification _n(
+  String id,
+  String type,
+  String title,
+  String body, {
+  required int hoursAgo,
+  bool unread = false,
+  String priority = 'NORMAL',
+}) {
+  final at = DateTime.now().subtract(Duration(hours: hoursAgo));
+  return AarastNotification(
+    id: id,
+    userId: 'user-1',
+    weddingPlanId: _planId,
+    type: type,
+    title: title,
+    body: body,
+    priority: priority,
+    createdAt: at,
+    updatedAt: at,
+    readAt: unread ? null : at,
+  );
+}
+
+class _FakeSync extends OfflineSyncService {
+  _FakeSync(LocalDatabase db, this._s, this._pending, this._blocked)
+    : super(
+        database: db,
+        apiClient: ApiClient(tokenProvider: () async => null),
+      );
+  final SyncState _s;
+  final int _pending;
+  final int _blocked;
+  @override
+  SyncState get state => _s;
+  @override
+  int get pendingCount => _pending;
+  @override
+  int get blockedCount => _blocked;
+  @override
+  int get unsyncedCount => _pending + _blocked;
+  @override
+  DateTime? get lastSyncedAt => DateTime(2026, 10, 20, 9, 40);
+  @override
+  Future<List<SyncIssueSummary>> loadBlockedIssues() async => const [
+    SyncIssueSummary(
+      entityLabel: 'ضيف',
+      operationLabel: 'تعديل',
+      message: 'رفض الخادم هذا التغيير.',
+      retryCount: 3,
+      canRetry: true,
+    ),
+  ];
+}
+
+class _FakePlansApi extends WeddingPlansApi {
+  _FakePlansApi(super.apiClient, this.plans);
+  final List<WeddingPlan> plans;
+  @override
+  Future<List<WeddingPlan>> getMyWeddingPlans() async => plans;
+}
+
+class _FakeSharingApi extends SharingApi {
+  _FakeSharingApi(super.apiClient);
+  @override
+  Future<List<SharedWeddingPlan>> getSharedWeddingPlans() async => const [];
+}
+
+void main() {
+  setUpAll(loadPreviewAppFonts);
+
+  Widget shell(Widget body, {Widget? top, String? stage}) => PlanShellChrome(
+    body: body,
+    activeIndex: 0,
+    onTabSelected: (_) {},
+    showQuickFab: true,
+    contextLabel: 'عرس محمد وسلمى',
+    stageLabel: stage,
+    topStatus: top,
+    onQuickAdd: () {},
+  );
+
+  Widget dash(DashboardSummary s, DateTime now, {Widget? assistant}) =>
+      AarastDashboardView(
+        summary: s,
+        userName: 'محمد',
+        bottomPadding: 158,
+        now: now,
+        assistantEntry: assistant,
+        onNotifications: () {},
+        onProfile: () {},
+        onOpenPlan: () {},
+        onOpenMoney: () {},
+        onOpenTasks: () {},
+        onOpenProviders: () {},
+        onOpenGuests: () {},
+        onOpenSharing: () {},
+        onOpenWeddingDay: () {},
+        onOpenNextStep: () {},
+        onOpenImportantItem: (_) {},
+      );
+
+  final now = DateTime(2026, 10, 20, 10);
+
+  testWidgets('home fresh', (tester) async {
+    await _shot(
+      tester,
+      'home_fresh',
+      shell(dash(_fresh, now), stage: 'التخطيط'),
+      h: 1000,
+    );
+  });
+
+  testWidgets('home active', (tester) async {
+    await _shot(
+      tester,
+      'home_active',
+      shell(
+        dash(
+          _active,
+          now,
+          assistant: PlanAssistantEntry(
+            weddingPlanId: _planId,
+            api: _FakeAssistantApi(),
+          ),
+        ),
+        stage: 'التخطيط',
+      ),
+      h: 1000,
+    );
+  });
+
+  testWidgets('home no date', (tester) async {
+    final s = DashboardSummary.fromJson(_base(days: null, date: null));
+    await _shot(
+      tester,
+      'home_no_date',
+      shell(dash(s, now), stage: 'البداية'),
+      h: 1000,
+    );
+  });
+
+  testWidgets('home week', (tester) async {
+    await _shot(
+      tester,
+      'home_week',
+      shell(
+        dash(_stage(2, _wedding), DateTime(2027, 1, 19, 10)),
+        stage: 'الأسبوع الأخير',
+      ),
+      h: 1000,
+    );
+  });
+
+  testWidgets('home day', (tester) async {
+    await _shot(
+      tester,
+      'home_day',
+      shell(
+        dash(_stage(0, _wedding), DateTime(2027, 1, 21, 10)),
+        stage: 'اليوم الكبير',
+      ),
+      h: 1000,
+    );
+  });
+
+  testWidgets('home after', (tester) async {
+    await _shot(
+      tester,
+      'home_after',
+      shell(
+        dash(_stage(-20, _wedding), DateTime(2027, 2, 10, 10)),
+        stage: 'ما بعد العرس',
+      ),
+      h: 1000,
+    );
+  });
+
+  testWidgets('wedding day mode', (tester) async {
+    final s = _stage(0, _wedding);
+    final tasks = [
+      WeddingTask(
+        id: 't1',
+        weddingPlanId: _planId,
+        title: 'تأكيد وصول فرقة الأفراح',
+        dueDate: DateTime(2027, 1, 21, 12),
+        responsibleName: 'صالح',
+        responsiblePhone: '+967777123456',
+        status: 'TODO',
+        priority: 'URGENT',
+        createdAt: DateTime(2027, 1, 1),
+        updatedAt: DateTime(2027, 1, 1),
+      ),
+      WeddingTask(
+        id: 't2',
+        weddingPlanId: _planId,
+        title: 'استلام البدلة',
+        dueDate: DateTime(2027, 1, 20),
+        responsibleName: 'محمد',
+        status: 'IN_PROGRESS',
+        priority: 'HIGH',
+        createdAt: DateTime(2027, 1, 1),
+        updatedAt: DateTime(2027, 1, 1),
+      ),
+    ];
+    await _shot(
+      tester,
+      'wedding_day_mode',
+      Directionality(
+        textDirection: TextDirection.rtl,
+        child: AarastScreenFrame(
+          maxWidth: 600,
+          child: Column(
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(20, 10, 20, 8),
+                child: AarastPageHeader(
+                  title: 'اليوم الكبير',
+                  showBack: true,
+                  onBack: () {},
+                ),
+              ),
+              Expanded(
+                child: WeddingDayModeView(
+                  summary: s,
+                  tasks: tasks,
+                  now: DateTime(2027, 1, 21, 10),
+                  onRefresh: () async {},
+                  onCompleteTask: (_) {},
+                  onCopyPhone: (_) {},
+                  onOpenTasks: () {},
+                  onOpenGuests: () {},
+                  onOpenProviders: () {},
+                  onOpenProvider: (_) {},
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+      h: 1400,
+    );
+  });
+
+  testWidgets('quick add sheet', (tester) async {
+    await _shot(
+      tester,
+      'quick_add',
+      Builder(
+        builder: (ctx) => PlanShellChrome(
+          body: dash(_active, now),
+          activeIndex: 0,
+          onTabSelected: (_) {},
+          showQuickFab: true,
+          contextLabel: 'عرس محمد وسلمى',
+          stageLabel: 'التخطيط',
+          onQuickAdd: () => showAarastQuickActionSheet(
+            ctx,
+            actions: buildCanonicalQuickAddActions(
+              ctx,
+              planId: _planId,
+              canManageMoney: true,
+              signals: QuickAddSignals.fromDashboard(_active),
+              onRecordPayment: () {},
+              onAddPaymentSchedule: () {},
+              openRoute: (route, {refreshDashboard = false}) async {},
+            ),
+          ),
+        ),
+      ),
+      h: 1000,
+      act: () async {
+        await tester.tap(find.byType(AarastQuickActionButton));
+        await tester.pump(const Duration(milliseconds: 500));
+        await tester.pump(const Duration(milliseconds: 500));
+      },
+    );
+  });
+
+  testWidgets('home loading', (tester) async {
+    await _shot(
+      tester,
+      'home_loading',
+      shell(const AarastDashboardSkeleton(bottomPadding: 158)),
+    );
+  });
+
+  testWidgets('home error', (tester) async {
+    await _shot(
+      tester,
+      'home_error',
+      shell(
+        AarastDashboardState(
+          bottomPadding: 158,
+          icon: LucideIcons.cloudOff,
+          title: 'تعذر تحميل الرئيسية',
+          message: 'تعذر تحميل البيانات الآن. تحقق من الاتصال وحاول مرة أخرى.',
+          actionLabel: 'إعادة المحاولة',
+          onAction: () {},
+          danger: true,
+        ),
+      ),
+    );
+  });
+
+  Future<List<SingleChildWidget>> syncProviders(
+    SyncState s,
+    int pending,
+    int blocked,
+  ) async {
+    SharedPreferences.setMockInitialValues({});
+    final prefs = await SharedPreferences.getInstance();
+    final sync = _FakeSync(JsonLocalDatabase(prefs), s, pending, blocked);
+    return [ChangeNotifierProvider<OfflineSyncService>.value(value: sync)];
+  }
+
+  testWidgets('home offline pending', (tester) async {
+    await _shot(
+      tester,
+      'home_offline',
+      shell(dash(_active, now), top: const OfflineStatusBanner()),
+      providers: await syncProviders(SyncState.offline, 3, 0),
+      h: 1000,
+    );
+  });
+
+  testWidgets('home sync blocked sheet', (tester) async {
+    await _shot(
+      tester,
+      'home_sync_blocked',
+      shell(dash(_active, now), top: const OfflineStatusBanner()),
+      providers: await syncProviders(SyncState.syncError, 2, 1),
+      act: () async {
+        await tester.tap(find.byTooltip('عرض تفاصيل المزامنة'));
+        await tester.pump(const Duration(milliseconds: 500));
+        await tester.pump(const Duration(milliseconds: 500));
+      },
+    );
+  });
+
+  Future<List<SingleChildWidget>> notifProviders(
+    List<AarastNotification> items,
+  ) async {
+    SharedPreferences.setMockInitialValues({});
+    final prefs = await SharedPreferences.getInstance();
+    final storage = AuthStorage(prefs);
+    await storage.saveSession(
+      accessToken: 'token',
+      user: const SafeUser(
+        id: 'user-1',
+        name: 'محمد',
+        role: 'USER',
+        status: 'ACTIVE',
+      ),
+    );
+    return [
+      Provider<AuthStorage>.value(value: storage),
+      ChangeNotifierProvider<NotificationsProvider>(
+        create: (_) => NotificationsProvider(_FakeNotificationsApi(items)),
+      ),
+    ];
+  }
+
+  testWidgets('notifications feed', (tester) async {
+    await _shot(
+      tester,
+      'notifications',
+      const NotificationsScreen(),
+      providers: await notifProviders([
+        _n(
+          'n1',
+          'QUOTE_OFFER_RECEIVED',
+          'وصلك عرض سعر',
+          'استوديو ضوء صنعاء أرسل عرض سعر للتصوير.',
+          hoursAgo: 1,
+          unread: true,
+          priority: 'HIGH',
+        ),
+        _n(
+          'n2',
+          'PAYMENT_SCHEDULE_DUE_SOON',
+          'موعد دفع قريب',
+          'دفعة القاعة 500,000 ر.ي تستحق قريباً.',
+          hoursAgo: 3,
+          unread: true,
+        ),
+        _n(
+          'n3',
+          'TASK_OVERDUE',
+          'مهمة متأخرة',
+          'حجز القاعة - تجاوزت موعدها.',
+          hoursAgo: 5,
+        ),
+        _n(
+          'n4',
+          'BOOKING_UPDATED',
+          'تحديث على حجز',
+          'قاعة سبأ أكدت الحجز.',
+          hoursAgo: 30,
+        ),
+        _n(
+          'n5',
+          'GUEST_RESPONDED',
+          'رد ضيف',
+          'عبدالله الحمدي أكد حضوره.',
+          hoursAgo: 50,
+        ),
+        _n(
+          'n6',
+          'WEDDING_COUNTDOWN',
+          'العد التنازلي للعرس',
+          'باقي 93 يوم على العرس.',
+          hoursAgo: 72,
+        ),
+      ]),
+      h: 1200,
+    );
+  });
+
+  testWidgets('notifications empty', (tester) async {
+    await _shot(
+      tester,
+      'notifications_empty',
+      const NotificationsScreen(),
+      providers: await notifProviders(const []),
+    );
+  });
+
+  Widget assistant(PlanAssistantApi api) =>
+      PlanAssistantScreen(weddingPlanId: _planId, api: api);
+
+  testWidgets('assistant start', (tester) async {
+    SharedPreferences.setMockInitialValues({});
+    await _shot(
+      tester,
+      'assistant',
+      assistant(_FakeAssistantApi()),
+      h: 1000,
+    );
+  });
+
+  testWidgets('assistant consent', (tester) async {
+    SharedPreferences.setMockInitialValues({});
+    await _shot(
+      tester,
+      'assistant_consent',
+      assistant(_FakeAssistantApi()),
+      act: () async {
+        await tester.tap(find.text(PlanAssistantKind.cheaper.label));
+        await tester.pump(const Duration(milliseconds: 500));
+        await tester.pump(const Duration(milliseconds: 500));
+      },
+    );
+  });
+
+  testWidgets('assistant answer', (tester) async {
+    SharedPreferences.setMockInitialValues({
+      'aarast.assistant.consent.v1.device': true,
+    });
+    await _shot(
+      tester,
+      'assistant_answer',
+      assistant(_FakeAssistantApi()),
+      h: 1300,
+      act: () async {
+        await tester.tap(find.text(PlanAssistantKind.cheaper.label));
+        await tester.pump(const Duration(milliseconds: 500));
+        await tester.pump(const Duration(milliseconds: 500));
+      },
+    );
+  });
+
+  testWidgets('assistant limit', (tester) async {
+    SharedPreferences.setMockInitialValues({});
+    await _shot(
+      tester,
+      'assistant_limit',
+      assistant(
+        _FakeAssistantApi(
+          status_: const PlanAssistantStatus(
+            enabled: true,
+            allowed: true,
+            dailyLimit: 10,
+            remainingToday: 0,
+          ),
+        ),
+      ),
+    );
+  });
+
+  testWidgets('assistant off', (tester) async {
+    SharedPreferences.setMockInitialValues({});
+    await _shot(
+      tester,
+      'assistant_off',
+      assistant(
+        _FakeAssistantApi(
+          status_: const PlanAssistantStatus(
+            enabled: false,
+            allowed: true,
+            dailyLimit: 10,
+            remainingToday: 10,
+          ),
+        ),
+      ),
+    );
+  });
+
+  testWidgets('device plan dashboard', (tester) async {
+    SharedPreferences.setMockInitialValues({});
+    final prefs = await SharedPreferences.getInstance();
+    final authStorage = AuthStorage(prefs);
+    final guest = GuestOnboardingStorage(prefs);
+    final client = ApiClient(tokenProvider: authStorage.readAccessToken);
+    final plansApi = WeddingPlansApi(client);
+    final auth = AuthController(
+      AuthRepository(client, authStorage),
+      guestOnboardingStorage: guest,
+    );
+    await guest.saveDraft(
+      GuestOnboardingDraft(
+        guestPlanId: 'guest-plan-mohammed',
+        planName: 'عرس محمد وسلمى',
+        createdAt: DateTime(2026, 10, 18),
+        isGuestPlan: true,
+        needsSync: true,
+        selectedPath: GuestOnboardingPath.weddingUser,
+        persona: GuestPersona.groom,
+        governorate: 'أمانة العاصمة',
+        city: 'صنعاء',
+        district: 'السبعين',
+        neighborhood: 'حدة',
+        street: null,
+        addressNote: null,
+        weddingDate: DateTime(2027, 1, 21),
+        weddingDateUnknown: false,
+        priorities: const ['budget', 'tasks'],
+        currency: 'YER',
+        estimatedBudget: '8000000',
+        selectedCategoryKeys: const ['hall', 'photo'],
+      ),
+    );
+    await auth.restoreSession();
+    await _shot(
+      tester,
+      'device_plan',
+      const DashboardEntryScreen(),
+      providers: [
+        Provider<AuthStorage>.value(value: authStorage),
+        Provider<GuestOnboardingStorage>.value(value: guest),
+        ChangeNotifierProvider<AuthController>.value(value: auth),
+        ChangeNotifierProvider<WeddingPlansProvider>(
+          create: (_) => WeddingPlansProvider(plansApi),
+        ),
+        ChangeNotifierProvider<DashboardSummaryProvider>(
+          create: (_) => DashboardSummaryProvider(weddingPlansApi: plansApi),
+        ),
+      ],
+      h: 1060,
+    );
+  });
+
+  testWidgets('account without plan', (tester) async {
+    SharedPreferences.setMockInitialValues({});
+    final prefs = await SharedPreferences.getInstance();
+    final storage = AuthStorage(prefs);
+    final client = ApiClient(tokenProvider: storage.readAccessToken);
+    await _shot(
+      tester,
+      'home_no_plan',
+      const HomeScreen(),
+      providers: [
+        ChangeNotifierProvider(
+          create: (_) => AuthController(AuthRepository(client, storage)),
+        ),
+        ChangeNotifierProvider(
+          create: (_) => HomeDashboardProvider(
+            weddingPlansApi: _FakePlansApi(client, const []),
+            sharingApi: _FakeSharingApi(client),
+          ),
+        ),
+      ],
+      h: 1100,
+    );
+  });
+}

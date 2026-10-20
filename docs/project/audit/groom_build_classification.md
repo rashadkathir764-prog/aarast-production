@@ -24,7 +24,7 @@ Date: 2026-10-20. Static audit. No code was changed.
 | A. Buildable now | 113 | 15 | 128 |
 | B. Needs backend first | 48 | 11 | 59 |
 | Screens classified | 161 | 26 | 187 |
-| C. Logic decisions | 40 (17 of them touch a section A screen) | | |
+| C. Logic decisions | 43 rows, 47 ids (17 decide a section A screen, 15 are wording or state fixes on section A screens, 11 affect only section B) | | |
 | D. Build slices | 10 slices covering all 128 section A screens | | |
 
 ---
@@ -64,7 +64,7 @@ These either correct an api_map row or decide a borderline case.
 | a02b_whose | خطة مين؟ | V1 | 📱 | none (the choice is kept in the local draft and later sent as the existing `persona` field) | — | a03 |
 | a03_name | اسمك | V1 | 🔧→A | name goes to `POST /auth/register`; plan `title` («عرس محمد وسلمى») is built on the client and sent as `title` | The partner name is not stored as its own field. It lives only inside the title. | a08b |
 | a04_date | متى العرس؟ | V1 | 🔧→A | `weddingDate` in `POST /onboarding/import-local`; Hijri and the Ramadan warning on the client | Defer "month only". A month tap must lead to a day pick or to «ما حددنا» (no date, F10). | x01 |
-| a05_city | المدينة | V1 | ✅ | `GET /cities`; `city` text in import-local | Governorate and district later (C55). | w10 |
+| a05_city | المدينة | V1 | ✅ | `GET /cities`; `city` text in import-local | Governorate and district later (map A L14). | w10 |
 | a07_budget | ميزانية عرسك | V1 | 🔧→A | `estimatedBudget` in import-local | Replace the range buttons with a typed number. Never store a band midpoint. Drop «ما أدري، ساعدني أحسبها» (dead end, map A L10). The line «المهر محسوب لحاله» waits for C1. | C1 |
 | a08_ready | خطتك جاهزة | V1 | 🔧→A | `GET /catalogs/bootstrap` (`money.starter.categories`, `tasks.starter`) | Drop «3 مناسبات» (events are B) and the mahr summary (a06 is B). Show the real catalog counts: 20 tasks for a groom today (C6). | a03 to a07 |
 | a08b_register | احفظ خطتك | new | ✅ | `POST /auth/register` | Password minimum 6, not 8 (C7). | a09 |
@@ -110,7 +110,7 @@ These either correct an api_map row or decide a borderline case.
 | c09_add_item | بند جديد | V1 | 🔧→A | `POST P/budget-categories` {name, allocatedAmount} | Drop the gram unit and karat, the foreign-currency units and the section. Over budget: the 422 is shown with the w18 wording. | c02, w18, C20 |
 | c10_add_cost | اتفاق جديد | V1 | 🔧→A | `POST P/costs` {budgetCategoryId, title, totalAmount, initialPaymentAmount, providerId?, quoteOfferId?, partyName?}, then `POST /costs/:id/payment-schedules` for each line | Not atomic: the client retries each call with `X-Client-Request-Id`. «الباقي يوم العرس» is saved as the fixed wedding date (C3). | c07, f04 |
 | c11_payment_detail | تفاصيل دفعة | V1 | 🔧→A | `GET /cost-payments/:id`, `POST /cost-payments/:id/reverse` | Drop «من وين» and «سجّلها أنت» (no source or actor on a payment). | x14 |
-| c12_add_source | مصدر فلوس | V1 | 🔧→A | `POST P/funding-sources` {kind, sourceName, amount, status, receivedAt}, then `POST /funding-sources/:id/repayments` per instalment | Drop the pledge's expected date. Instalments are created one by one (not atomic). Sample dates follow C13. | c05, c13 |
+| c12_add_source | مصدر فلوس | V1 | 🔧→A | `POST P/funding-sources` {kind, sourceName, amount, status, receivedAt}, then `POST /funding-sources/:id/repayments` per instalment | Drop the pledge's expected date. Instalments are created one by one (not atomic). Sample dates follow C12. | c05, c13 |
 | c13_loan | السلفة | V1 | 🔧→A | `GET P/funding-sources` (repayments inside), `PATCH /loan-repayments/:id` {status: PAID, paidAt} | Drop the «ذكّرني قبل كل قسط بثلاثة أيام» toggle: loan reminders are a fixed cron and the lead time is not set per loan. | c12 |
 | c14_share | شارك الملخص | 1.1 | 📱 | text built from `GET P/money-summary`, `GET P/costs`, `GET P/payment-schedules/due` | Never read `funding-sources`. «معنا 2.9» only for the owner. | c01 |
 | x03_money_no_budget | بدون ميزانية | V1 | 🔧→A | `GET P/money-summary` (budget null); «حط رقم» → `PUT P/money-budget` {totalBudget} | Drop «ساعدني أقدّر» and the Sanaa peer range (no couple-spend data, C22). | c01, w10 |
@@ -175,7 +175,7 @@ These either correct an api_map row or decide a borderline case.
 | x22_providers_empty | المزودين أول مرة | V1 | 🔧→A | `GET /providers?categoryId=<hall>&cityId`; «حجزت برا اعّرست» → `POST P/costs` {partyName, …} | Drop «فاضية يوم عرسك». | f02, c10 |
 | y13_decor_providers | زينة البيت | V1 | 🔧→A | `GET /providers?categoryId=<decor>` | Needs the category «زينة البيت» created through the existing admin category route (data, not code). Drop «فاضي يوم 17» (no day-range availability). | f02 |
 | w30_directory_filters | فلتر المزودين | new | 🔧→A | `GET /providers?categoryId&cityId&search` (with `total`), `GET /services?minPrice&maxPrice&categoryId&cityId` | Drop «يجون من محافظة ثانية» and «فاضي يوم 21 يناير بس». | f02 |
-| w31_offer_expired | العرض انتهى | new | 🔧→A | offer `validUntil` / expiry; «اطلب عرض جديد» = `POST P/quote-requests` (allowed after expiry, F7) | Drop «ما أبغاه، سكّر الطلب» (no close transition, C42). | f06, f07 |
+| w31_offer_expired | العرض انتهى | new | 🔧→A | offer `validUntil` / expiry; «اطلب عرض جديد» = `POST P/quote-requests` (allowed after expiry, F7) | Drop «ما أبغاه، سكّر الطلب» (no close transition, map D L6). | f06, f07 |
 | w32_chat_menu | خيارات المحادثة | new | 🔧→A | `PATCH /conversations/:id/mute`, `PATCH /conversations/:id/block`, `POST /conversations/:id/report` {reason as text} | Drop «وطلباتك معه تتسكر». Keep «الحظر ما يلغي الحجز المؤكد». | f06 |
 | w33_provider_status | حالة المزود | new | 🔧→A | `GET /providers`, `GET /providers/:id` (`verifiedAt`, `isClaimed`, `priceUpdatedAt`) | Plain «موثّق» without the method. For an unclaimed listing, replace «تقدر تطلب عرض» with «ما يستقبل طلبات لين يستلم ملفه» (`409 PROVIDER_NOT_CLAIMED`). | f02, f03 |
 | w34_booking_states | الحجوزات | new | 🔧→A | `GET /me/wedding-plans/:id/bookings` (status, declinedAt, cancelledAt, cancelledBy, note, F13); «اطلب حجز مرة ثانية» = `POST /me/quote-requests/:id/booking` | The provider's note is shown as the decline reason. Drop «ذكّرهم» and any expiry. | f05, x11 |
@@ -257,7 +257,7 @@ Contracts are summarised; the full shape is in the api_map section given. Size: 
 | y05_hand_cash | سلّم كاش | 1.1 | Same, plus holder confirmation. | handovers, confirm, spends, `CUSTODY_HOLDER` (map B §5, §7.6). | M |
 | z01_impact_chain | سلسلة التأثير | 1.1 | No impact record or undo. | `impact` on mutations, `/activities/:id/undo` (map B §6). | L |
 | z02_weekly_digest | ملخص الجمعة | 1.1 | No digest job, no money snapshots. | `WeeklyDigest`, `MoneySnapshot`, `GET P/digests/latest` (map B §6). | M |
-| z03_cashflow | المال شهر بشهر | 1.1 | No cash flow, pledge dates, deferral requests. | `GET P/money/cashflow`, `POST /payment-schedules/:id/deferral-requests` (map B §6). Needs C5b of map B (issue 5). | L |
+| z03_cashflow | المال شهر بشهر | 1.1 | No cash flow, pledge dates, deferral requests. | `GET P/money/cashflow`, `POST /payment-schedules/:id/deferral-requests` (map B §6). Needs the map B issue 5 samples fixed first. | L |
 | z04_receipt_scan | صوّر الإيصال | later | No receipt reading. | `POST P/assistant/receipt-extractions` (map B §6). | L |
 | z05_smart_tasks | مهام تجي لحالها | 1.1 | No task origin, dependencies or rebalance. | `origin`, `blockedBy`, `/tasks/suggestions/rebalance` (map C §1.1). | L |
 | e09_rafd_book | دفتر الرفد | V1 | No rafd model. | `GET P/rafd` with summary for the owner (map B §6). Needs b06. | M |
@@ -293,7 +293,7 @@ Contracts are summarised; the full shape is in the api_map section given. Size: 
 | q06_money_view | المال: يشوف بس | A money viewer gets only their own contributions (F14), so the totals would be wrong. | Section-level money VIEW: whole-plan totals and schedules, no funding (map C §2.2). Needs C65. | M |
 | q09_bride_view | العروسة مشاركة عند العريس | The partner role sees everything including money (opposite of the design); no schedule. | `PARTNER_GUEST` preset + `GET P/schedule` (map C q09). Needs b12, C63. | M |
 | q11_leave | اطلع من الخطة | Leaving does not hand the member's tasks back, so «مهامك ترجع لمحمد» would be false. | `GET P/members/me/leave-preview`; leave returns tasks to the owner (map C §3.2). | S |
-| q13_permission_request | الطلب يوصل محمد | No permission requests. | `POST P/permission-requests`, `GET` (owner), `POST /permission-requests/:id/answer` (map C q13). Needs the request sheet (C? L-C14). | M |
+| q13_permission_request | الطلب يوصل محمد | No permission requests. | `POST P/permission-requests`, `GET` (owner), `POST /permission-requests/:id/answer` (map C q13). Needs the participant request sheet (map C L-C14). | M |
 | q14_request_sent | طلبك وصل | Same. | `GET P/permission-requests/mine`, `DELETE /permission-requests/:id` (map C q14). Needs q13. | S |
 | q15_rafd_writer | كاتب الرفد | No rafd model or writer role. | `POST P/rafd`, `GET P/rafd/mine`, `rafd=WRITE` level (map C q15, map B §7.6). Needs b06. | M |
 | q16_providers_view | المزودين: يشوف بس | No providers VIEW level, no shared day contacts. | `GET P/providers/overview`, `PlanContact.sharedWithParticipants` (map C q16). | M |
@@ -329,7 +329,7 @@ Contracts are summarised; the full shape is in the api_map section given. Size: 
 | C3 | g03, w10, w12, c07, c10 (L1, B#27) | g03 says «الدفعات ما تتغير», w10 and w12 say «المهام والأقساط تتحرك». A direct contradiction. «الباقي يوم العرس» schedules are relative to the date. | Fixed-date payments stay; «يوم العرس» payments move with the date once events exist. **Interim:** every schedule has a fixed date, so g03 says «المهام تنتقل، والدفعات تبقى على مواعيدها»; change w10 and w12 to match. | **Yes**: g03, w10 copy |
 | C4 | g11, w05, w06, w15 (L2, L13, L17) | g11 «تنحذف خطتك … وما ترجع» against the 30-day restore in w06. w06's dates are 27 days, not 30. w15 deletes a plan at once while account deletion waits 30 days. | 30-day grace for the account; g11 «تنحذف بعد 30 يوم، وتقدر تتراجع». Fix the dates (19 Oct → 18 Nov). Give w15 an export link at least. **Interim:** hide the delete entry in g11 until w05 ships, so today's immediate delete is never presented with grace wording. | **Yes**: g11 |
 | C5 | w11, w09, a08 (L3) | «خطة واحدة مفتوحة لك كصاحب عرس» conflicts with w09 «خلّها خطة ثانية · لعرس أخوك», w11 «تنشئه لأحد من أهلك» and the «خطة جديدة» button. The backend has no limit. | Drop the limit for now (the plan for a brother is just a second owned plan), or keep it and add an ownership-transfer screen. Recommended: drop it, and remove the rule line from w11. | **Yes**: w11, w09 copy |
-| C6 | a08, a08b, b02, d01, d03, w09, w15 (L4, L-C01, LLA 3.4) | 30 tasks (a08, a08b, b02, d03) vs 23 (w09, w15, LLA). The catalog actually holds 20 groom tasks (F2). | Screens show the catalog's real count, never a fixed number. Update the mocks and LLA 3.4. Decide whether to grow the catalog to the designed list. | No (render the real count) |
+| C6 | a08, a08b, b02, d01, d03, w09, w15 (L4, L-C01, LLA 3.4) | 30 tasks (a08, a08b, b02, d03) vs 23 (w09, w15, LLA). The catalog actually holds 20 groom tasks (F2). | Screens show the catalog's real count, never a fixed number. Update the mocks and LLA 3.4. Decide whether to grow the catalog to the designed list. | **Copy**: render the real count |
 | C7 | a08b vs w01, w02, q02 (L12) | a08b «8 أحرف أو أكثر»; w01 and w02 «6 أحرف»; the backend minimum is 6. | 6 everywhere (or raise the backend to 8 on purpose, then change w01 and w02). | **Yes**: a08b copy |
 | C12 | b07, c13, c05 (B#10, B#11) | «سددت 2.3 من 4.2 مليون بعد العرس» and «1.9 باقي عليك» do not add up from any listed loan; c13 ends in March while c12 says four monthly instalments from February. | Debt after the wedding = loans outstanding + agreements still unpaid after the date (both exist today: `funding.loanOutstanding`, `costs.outstanding`). Align c12/c13 samples (February to May). | **Yes**: b07 |
 | C15 | x15 (B#13) | «ميزانيتك تخف · 200 ألف»: removing an item frees its allocation into the reserve; the budget does not shrink. Also «يبقى في السجل» is false: delete is hard today. | «يرجع 200 ألف للاحتياط», and «ينحذف البند» until soft removal exists. | **Yes**: x15 copy |
@@ -342,7 +342,7 @@ Contracts are summarised; the full shape is in the api_map section given. Size: 
 | C58 | x18, w41 (L18 vs DECISIONS "Bind offline replay to its originating session") | x18 promises the offline changes are sent after a new sign-in; the decision forbids a new token from authorising old writes. | Update the decision: replay is allowed when the same userId signs in again and plan access still holds; another account drops the queue. | **Yes**: x18, w41 |
 | C63 | g01, g06, x07, q03, q04, q09 (map C §2, L-C28) | The design's presets (مساعد، أهل، كاتب الرفد، يشوف بس، العروسة) with «لا / يشوف / يعدّل» per section do not match today's roles and booleans. The «العروسة» preset means "schedule only", but the backend partner role sees everything including money. | Adopt map C §2 later. **Interim mapping:** مساعد = HELPER, أهل = FAMILY, يشوف بس = VIEWER; «العروسة» is not offered; «يشوف» exists only for money. | **Yes**: g01, g06 |
 
-### C.2 Wording or state fixes on section A screens that do not need a product decision (12)
+### C.2 Wording or state fixes on section A screens that do not need a product decision (15 rows, 19 ids)
 
 | # | Screens | Problem | Fix |
 |---|---|---|---|
@@ -358,6 +358,9 @@ Contracts are summarised; the full shape is in the api_map section given. Size: 
 | C49 | w02 (L6) | «هذا الرقم عليه حساب» on the form before the OTP (phone enumeration). | Show it after a09. |
 | C50, C51 | g08, g02 (L7, L8) | No screen to set the PIN or fingerprint; g02 has no way into ten screens. | g08 = lock settings; add «عرسي» and «الحساب» groups to g02. |
 | C52, C59, C60, C62 | a02, g11, b08/g07, w09 (L9, L19, L23, L28) | «أنشئ حسابي» before any account; logout with unsent changes; payment reminder 3 vs 7 days (backend 7); a single confirm to discard a local plan against DEC. | «التالي»; add a g11 warning state; use the server's 7 days in copy until the lead-time setting exists; add a second confirmation on «تجاهلها». |
+| C44 | f04 (D-L8) | f04 promises «لما تختار … نطلب منهم حجز يوم عرسك», but accept and booking request are two calls, so a failure leaves an accepted offer with no booking. | Ship two calls with client retry and a visible «كمّل طلب الحجز» state; make it atomic later (map D f04 contract). |
+| C45 | f07 (D-L31) | f07 sends «124 تقريبًا» to every provider; PJ §5 limits guest count to halls and catering. | Send `guestCount` only for those categories (client rule now, `needsGuestCount` later). |
+| C46 | f07 (D-L10, F8) | The provider always receives the customer's phone (it defaults to the account phone). | Do not promise phone privacy on f07; add a phone toggle only when the backend supports `shareContact`. |
 
 ### C.3 Decisions that only affect section B screens (11)
 
@@ -375,7 +378,7 @@ Contracts are summarised; the full shape is in the api_map section given. Size: 
 | C65 | q06 (L-C09) | «المال: يشوف» hides sources and loans, yet shows «ناقص 2.5», which is derived from funding. | Allow the aggregate gap, never the source and loan lists (or hide the gap too). |
 | C66 | f11, z07, b03, z04 (D-L16, D-L17, AGENTS.md) | Deposits, provider acknowledgement and AI extraction are fenced by AGENTS.md unless explicitly approved; PJ §8.1 is still a draft. | Record the approvals in `DECISIONS.md` before building these. |
 
-Total in section C: 17 + 12 (14 ids, grouped) + 11 = 40 decision rows (some rows group several ids). Other map items (bride direction B#21, FX, expat, provider-side L-numbers) belong to the bride or provider journeys and are not repeated here.
+Total in section C: 17 + 15 + 11 = 43 rows covering 47 ids (some rows group several ids). Other map items (bride direction B#21, FX, expat, provider-side L-numbers) belong to the bride or provider journeys and are not repeated here.
 
 ---
 
@@ -397,8 +400,6 @@ Each slice is a vertical cut: screens, the client data layer for their endpoints
 | 10. Version 1.1 extras (7) | b09, b10, b11, w36, w37, c14, g09 | C22 | Phase 1.1 in `GROOM_JOURNEY_PHASES.md`; build after V1. |
 
 Slice totals: 17 + 8 + 8 + 12 + 10 + 12 + 24 + 15 + 15 + 7 = 128 = all section A screens.
-
-Items in section C that are neither in the slice table nor in C.3 (C44, C45, C46) are small provider-side choices from map D: accept and booking request stay two calls with client retry (D-L8); guest count goes only to halls and catering (D-L31); the customer's phone is always shared with the provider (D-L10, F8), so f07 must not promise otherwise.
 
 ## Top blockers
 

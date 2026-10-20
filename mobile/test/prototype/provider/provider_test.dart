@@ -11,6 +11,7 @@ import '../../support/preview_fonts.dart';
 import 'p_join.dart';
 import 'p_more.dart';
 import 'p_requests.dart';
+import 'p_wow.dart';
 
 Future<void> _shot(WidgetTester tester, String name, Widget screen, double h) async {
   tester.view.physicalSize = Size(390 * 2, h * 2);
@@ -48,6 +49,8 @@ void main() {
     ('p35_me', p35Me, 1000), ('p36_services', p36Services, 1040), ('p37_gallery', p37Gallery, 1000),
     ('p38_verify', p38Verify, 960), ('p39_performance', p39Performance, 960), ('p40_settings', p40Settings, 960),
     ('p41_claim_link', p41ClaimLink, 900), ('p42_notifications', p42Notifications, 900), ('p43_offline', p43Offline, 900),
+    ('p44_run_sheet', p44RunSheet, 1100), ('p45_quick_offer', p45QuickOffer, 900), ('p46_empty_nights', p46EmptyNights, 1000),
+    ('p47_income', p47Income, 1000), ('p48_share_card', p48ShareCard, 1000), ('p49_staff', p49Staff, 900), ('p50_deliver', p50Deliver, 1000),
   ];
 
   for (final s in screens) {

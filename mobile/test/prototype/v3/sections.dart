@@ -840,7 +840,7 @@ Widget vProvExplore() {
             const SizedBox(width: 8),
             Expanded(
               child: Text(
-                'قريبين من بندك 500 ألف، وفاضيين يوم 21 يناير',
+                'قريبين من بندك 500 ألف، وفاضيين ليلة الزفاف 21 يناير',
                 style: tx(14, w: bold, c: K.sky),
               ),
             ),
@@ -857,7 +857,7 @@ Widget vProvExplore() {
         LucideIcons.music,
         [
           tag('ضمن بندك', K.green, K.greenSoft),
-          tag('فاضية 21 يناير', K.sky, K.skySoft),
+          tag('باقي فرقة وحدة ليلة 21', K.saffronInk, K.saffronSoft),
           tag('موثّق', K.sky, K.skySoft),
         ],
       ),
@@ -868,7 +868,7 @@ Widget vProvExplore() {
         '500 - 700 ألف ر.ي',
         const [Color(0xFF0B6E69), Color(0xFF2F6E9E)],
         LucideIcons.mic,
-        [tag('فاضي 21 يناير', K.sky, K.skySoft)],
+        [tag('اسأل عن التوفر', K.muted, K.line), tag('ما حدّث تقويمه من شهر', K.muted, K.line)],
         saver: true,
       ),
     ],
@@ -949,7 +949,8 @@ Widget vProvPage() => Phone(
             runSpacing: 6,
             children: [
               tag('يرد عادة خلال ساعتين', K.green, K.greenSoft),
-              tag('فاضي 21 يناير', K.sky, K.skySoft),
+              tag('فاضي ليلة 21 · باقي فريقين', K.sky, K.skySoft),
+              tag('عنده فريق مصوّرات', K.coral, K.coralSoft),
             ],
           ),
           gap(12),
@@ -1160,8 +1161,8 @@ Widget vBookSheet() => Phone(
       ),
       gap(12),
       for (final s in const [
-        ('1', 'يوصلهم طلب الحجز الحين'),
-        ('2', 'يأكدون إن اليوم فاضي، وتوصلك رسالة'),
+        ('1', 'يوصلهم طلب الحجز الحين، ويردون خلال يومين'),
+        ('2', 'يأكدون الليلة ويحددون الفريق، وتوصلك رسالة'),
         ('3', 'يصير "محجوز"، ونذكركم قبل بأسبوع وبيوم'),
       ])
         Padding(
@@ -1196,7 +1197,7 @@ Widget vBookSheet() => Phone(
             const SizedBox(width: 8),
             Expanded(
               child: Text(
-                'ما فيه دفع داخل اعّرست. العربون تتفق عليه معهم مباشرة وتسجله هنا.',
+                'ما فيه دفع داخل اعّرست. الدفعة المقدمة تدفعها لهم مباشرة وتسجلها هنا، وهم يأكدون إنها وصلت.',
                 style: tx(13, w: bold, c: K.saffronInk),
               ),
             ),
@@ -1285,7 +1286,8 @@ Widget vChat() {
               ],
             ),
             gap(8),
-            Text('صور وفيديو · 550,000 ر.ي', style: tx(18, w: bold)),
+            Text('صور وفيديو · 550,000 ر.ي صنعاء', style: tx(18, w: bold)),
+            Text('نسخة 2 · أضافوا الألبوم بنفس السعر', style: tx(12.5, w: bold, c: K.saffronInk)),
             Text(
               'مصورين · فيلم 10 دقائق · ألبوم مطبوع',
               style: tx(13.5, c: K.muted),

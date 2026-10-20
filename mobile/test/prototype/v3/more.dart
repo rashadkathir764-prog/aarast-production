@@ -1327,18 +1327,36 @@ Widget vQuoteRequest() {
         pad: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         child: Column(
           children: [
+            auto(LucideIcons.partyPopper, 'المناسبة', 'الزفة · عرس رجال'),
             auto(LucideIcons.calendarDays, 'اليوم', 'الخميس 21 يناير'),
-            auto(LucideIcons.clock, 'الوقت', 'بعد العصر لين العشاء'),
+            auto(LucideIcons.clock, 'الفترة', 'الليل · بعد العشاء'),
             auto(LucideIcons.mapPin, 'المكان', 'قاعة سبأ · حدة'),
             auto(LucideIcons.users, 'الضيوف', '124 تقريبًا'),
-            auto(LucideIcons.wallet, 'بندك', '500 ألف'),
           ],
         ),
       ),
       gap(12),
       field('كلمة لهم (اختياري)', 'نبغى زفة من باب القاعة لين المنصة'),
       gap(10),
-      _info('بندك ما يوصلهم إلا إذا فعّلته.', c: K.sky, bg: K.skySoft, i: LucideIcons.lock),
+      Box(
+        pad: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+        child: Column(
+          children: [
+            for (final r in const [('شاركهم بندك: 500 ألف', 'يساعدهم يعطونك عرض على قدّك', false), ('شاركهم رقمك', 'غير كذا يكلمونك من الرسائل بس', false)])
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 6),
+                child: Row(
+                  children: [
+                    Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text(r.$1, style: tx(15, w: bold)), Text(r.$2, style: tx(12.5, c: K.muted))])),
+                    _toggle(r.$3),
+                  ],
+                ),
+              ),
+          ],
+        ),
+      ),
+      gap(10),
+      _info('بندك ورقمك ما يوصلونهم إلا إذا فعّلتهم. والطلب ينتهي لو ما ردوا خلال 7 أيام.', c: K.sky, bg: K.skySoft, i: LucideIcons.lock),
     ],
   );
 }

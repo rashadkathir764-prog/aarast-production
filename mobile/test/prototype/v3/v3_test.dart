@@ -18,6 +18,7 @@ import 'money.dart';
 import 'more.dart';
 import 'participant.dart';
 import 'participant2.dart';
+import 'prov_side.dart';
 import 'sections.dart';
 import 'smart.dart';
 import 'start.dart';
@@ -104,7 +105,7 @@ void main() {
     ('c09_add_item', vAddItem, 900), ('c10_add_cost', vAddCost, 1000), ('c11_payment_detail', vPaymentDetail, 1000), ('c12_add_source', vAddSource, 960), ('c13_loan', vLoan, 900), ('c14_share', vShareSummary, 900),
     ('d03_starter', vStarterTasks, 1040), ('d04_task_detail', vTaskDetail, 1040), ('d05_contract_papers', vContractPapers, 1000),
     ('e06_add_guest', vAddGuest, 900), ('e07_guest_detail', vGuestDetail, 960), ('e08_reminder', vReminderPreview, 900), ('e09_rafd_book', vRafdBook, 1000), ('e10_thanks', vThanks, 900),
-    ('f07_quote', vQuoteRequest, 960), ('f08_chats', vConversations, 900), ('f09_favorites', vFavorites, 900),
+    ('f07_quote', vQuoteRequest, 1080), ('f10_pick_unit', vPickUnit, 900), ('f11_deposits', vDepositStatus, 960), ('f12_held', vHeldForYou, 844), ('f13_team_arrived', vTeamArrived, 900), ('f14_delivery', vDelivery, 900), ('f08_chats', vConversations, 900), ('f09_favorites', vFavorites, 900),
     ('g06_add_participant', vAddParticipant2, 1000), ('g07_notif', vNotifSettings, 960), ('g08_lock', vLock, 844), ('g09_change_phone', vChangePhone, 844), ('g10_support', vSupport, 1000), ('g11_logout', vLogout, 844),
     ('q01_invite_phone', qPhone, 844), ('q02_invite_account', qAccount, 844), ('q03_invite_decision', qDecision, 960),
     ('q04_choose_path', qChoosePath, 844), ('q05_tasks_mine', qTasksMine, 900), ('q06_money_view', qMoneyView, 900),

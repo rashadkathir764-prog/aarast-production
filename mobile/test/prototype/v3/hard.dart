@@ -788,13 +788,13 @@ Widget vRateSent() => Phone(
       child: Column(
         children: [
           _effect(LucideIcons.checkCircle2, 'انرسل', c: K.green, end: 'الحين'),
-          _effect(LucideIcons.clock, 'نراجعه خلال يوم', c: K.saffronInk),
-          _effect(LucideIcons.circle, 'ينشر باسمك الأول بس', c: K.faint),
+          _effect(LucideIcons.checkCircle2, 'انشر الحين', c: K.green),
+          _effect(LucideIcons.messageCircle, 'المزود يقدر يرد مرة وحدة', c: K.faint),
         ],
       ),
     ),
     gap(12),
-    _note('نراجع كل تقييم عشان ما ينزل كلام جارح أو أرقام جوال. وإذا ما نشرناه نقول لك ليش.',
+    _note('ينشر باسمك الأول بس. لو فيه كلام جارح أو أرقام جوال نخفيه ونقولك ليش.',
         c: K.saffronInk, bg: K.saffronSoft, i: LucideIcons.shieldCheck),
     sectionTitle('باقي تقيّم'),
     whiteList([

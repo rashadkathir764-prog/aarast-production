@@ -1,5 +1,5 @@
-// Provider journey prototype: shared parts. The provider's app is neutral:
-// one slate colour for everyone, whether they serve men, women or both. The
+// Provider journey prototype: shared parts. The provider's app uses the
+// groom journey's teal, whether the provider serves men, women or both. The
 // status colours (green, saffron, coral) keep their meaning from the plan side.
 import 'package:flutter/material.dart';
 import 'package:lucide_icons/lucide_icons.dart';
@@ -7,10 +7,10 @@ import 'package:lucide_icons/lucide_icons.dart';
 import '../c_journey/kit.dart';
 
 class P {
-  static const c = Color(0xFF2E3B43); // slate
-  static const dark = Color(0xFF1C262C);
-  static const soft = Color(0xFFE6EBED);
-  static const mid = Color(0xFF8C9BA3);
+  static const c = Color(0xFF0B6E69); // the groom's teal
+  static const dark = Color(0xFF064B47);
+  static const soft = Color(0xFFDCEFEC);
+  static const mid = Color(0xFF7FC3BC);
 }
 
 enum PTab {

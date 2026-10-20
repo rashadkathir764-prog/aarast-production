@@ -1,16 +1,16 @@
 // Admin prototype: the existing admin-web shell (admin-web/src/layout), kept
 // as it is — the same nav groups and order, the four admin roles, the
 // breadcrumb topbar — with what the audit found missing: the admin's real
-// role shown, a queue count per link, and neutral colours.
+// role shown, a queue count per link, in the groom journey's teal.
 import 'package:flutter/material.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 
 import '../c_journey/kit.dart';
 
 class A {
-  static const c = Color(0xFF2E3B43);
-  static const dark = Color(0xFF1C262C);
-  static const soft = Color(0xFFE6EBED);
+  static const c = Color(0xFF0B6E69);
+  static const dark = Color(0xFF064B47);
+  static const soft = Color(0xFFDCEFEC);
 }
 
 enum Role { superAdmin, operations, moderator, support }

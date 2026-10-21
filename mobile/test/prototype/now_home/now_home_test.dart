@@ -232,11 +232,10 @@ DashboardSummary _stage(int days, DateTime? date) => DashboardSummary.fromJson(
 );
 
 class _FakeAssistantApi extends PlanAssistantApi {
-  _FakeAssistantApi({this.status_, this.error})
+  _FakeAssistantApi({this.status_})
     : super(ApiClient(tokenProvider: () async => null));
 
   final PlanAssistantStatus? status_;
-  final ApiException? error;
 
   @override
   Future<PlanAssistantStatus> status(String weddingPlanId) async =>
@@ -254,7 +253,6 @@ class _FakeAssistantApi extends PlanAssistantApi {
     required PlanAssistantKind kind,
     String? question,
   }) async {
-    if (error != null) throw error!;
     return const PlanAssistantAnswer(
       answer:
           'من خطتك: ميزانيتك 8,000,000 ر.ي، اتفقت على 5,400,000 ودفعت منها '

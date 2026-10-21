@@ -3,7 +3,28 @@
 import html, json, os, re, sys
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-ORDER = ["onboarding", "home", "money", "tasks", "guests", "providers", "account", "participants"]
+JOURNEYS = {
+    "groom": {
+        "order": ["onboarding", "home", "money", "tasks", "guests", "providers", "account", "participants"],
+        "title": "مسار العريس: قبل وبعد",
+        "h2": "مسار العريس كامل: قبل وبعد",
+        "who": "مسار العريس",
+        "life": "lifecycle.json",
+        "top": "top.json",
+        "out": "index.html",
+    },
+    "provider": {
+        "order": ["provider"],
+        "title": "مسار المزود: قبل وبعد",
+        "h2": "مسار المزود كامل: قبل وبعد",
+        "who": "مسار المزود",
+        "life": "lifecycle_provider.json",
+        "top": "top_provider.json",
+        "out": "provider.html",
+    },
+}
+J = JOURNEYS[sys.argv[1] if len(sys.argv) > 1 else "groom"]
+ORDER = J["order"]
 STATUS = {
     "build": ("يُبنى الآن", "st-build"),
     "backend": ("يحتاج سيرفر", "st-backend"),
@@ -32,7 +53,7 @@ def load():
             d["domain"] = key
             domains.append(d)
     life = None
-    p = os.path.join(HERE, "data", "lifecycle.json")
+    p = os.path.join(HERE, "data", J["life"])
     if os.path.exists(p):
         with open(p, encoding="utf-8") as f:
             life = json.load(f)
@@ -213,8 +234,8 @@ def summary_panel(domains, life):
         life_dec = "".join(f"<li>{t(n)}: {t(x)}</li>" for n, x in ld)
     return f"""
 <div class="panel" id="p-sum">
-  <div class="dhead"><h2>مسار العريس كامل: قبل وبعد</h2>
-  <p class="lede">كل شاشة في مسار العريس: صورتها الحالية من التطبيق الحقيقي (مصوّرة من الكود)، وصورتها في التصميم الجديد، وإيش تغيّر، وإيش موجود له في السيرفر، وإيش باقي. الشاشة الواحدة تجمع حالاتها (فاضية، خطأ، أوراق منبثقة). الصور الجديدة بالفيروزي لأنها رُسمت هكذا، واللون ما تقرر بعد.</p>
+  <div class="dhead"><h2>{J["h2"]}</h2>
+  <p class="lede">كل شاشة في {J["who"]}: صورتها الحالية من التطبيق الحقيقي (مصوّرة من الكود)، وصورتها في التصميم الجديد، وإيش تغيّر، وإيش موجود له في السيرفر، وإيش باقي. الشاشة الواحدة تجمع حالاتها (فاضية، خطأ، أوراق منبثقة). الصور الجديدة بالفيروزي لأنها رُسمت هكذا، واللون ما تقرر بعد.</p>
   <div class="key"><span><i class="dot b"></i>يُبنى الآن: السيرفر جاهز له</span><span><i class="dot k"></i>يحتاج سيرفر قبل</span><span><i class="dot f"></i>مجمّد: اتفقنا نؤجله بعد النسخة الأولى</span><span><i class="dot x"></i>تصحيح: الصورة الجديدة فيها شيء غلط</span></div>
   </div>
   <div class="tbl"><table class="sum"><thead><tr><th>القسم</th><th>شاشات</th><th>يُبنى الآن</th><th>يحتاج سيرفر</th><th>مجمّد</th><th>لها صورة حالية</th><th>صور التصميم</th><th>تصحيحات</th></tr></thead>
@@ -226,7 +247,7 @@ def summary_panel(domains, life):
 
 
 def top_html():
-    p = os.path.join(HERE, "data", "top.json")
+    p = os.path.join(HERE, "data", J["top"])
     if not os.path.exists(p):
         return ""
     top = json.load(open(p, encoding="utf-8"))
@@ -249,7 +270,7 @@ def main():
         f'<button type="button" class="tab" data-tab="{d["domain"]}">{t(d.get("title"))} <span>{len(d.get("screens", []))}</span></button>'
         for d in domains
     ) + '<button type="button" class="tab" data-tab="life">دورة الحياة</button>'
-    page = f"""<title>مسار العريس: قبل وبعد</title>
+    page = f"""<title>{J["title"]}</title>
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800&display=swap">
@@ -262,10 +283,10 @@ def main():
 </main>
 <dialog id="zoom" aria-label="الصورة مكبرة"><img id="zoomImg" alt=""></dialog>
 <script>{JS}</script>"""
-    with open(os.path.join(HERE, "index.html"), "w", encoding="utf-8") as f:
+    with open(os.path.join(HERE, J["out"]), "w", encoding="utf-8") as f:
         f.write(page)
     imgs = sorted(set(re.findall(r'src="(img/[^"]+)"', page)))
-    with open(os.path.join(HERE, "files.json"), "w") as f:
+    with open(os.path.join(HERE, "files_" + J["out"].split(".")[0] + ".json"), "w") as f:
         json.dump(imgs, f)
     print("domains", [d["domain"] for d in domains], "screens", sum(len(d.get("screens", [])) for d in domains), "images", len(imgs), "life", bool(life))
 

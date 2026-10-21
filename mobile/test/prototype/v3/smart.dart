@@ -24,7 +24,7 @@ Widget impactStrip(List<(IconData, String, String, Color)> steps, {String undo =
         children: [
           const Icon(LucideIcons.gitBranch, size: 17, color: K.saffron),
           const SizedBox(width: 8),
-          Expanded(child: Text('وش تأثر', style: tx(14, w: bold, c: K.saffron))),
+          Expanded(child: Text('ايش تأثر', style: tx(14, w: bold, c: K.saffron))),
           Text(undo, style: tx(14, w: bold, c: Colors.white)),
         ],
       ),
@@ -79,11 +79,11 @@ Widget vImpactChain() {
       (LucideIcons.users, 'الضيوف', '134 بدل 124', K.lilacSoft),
       (LucideIcons.utensils, 'الضيافة', '+130 ألف', K.saffron),
       (LucideIcons.wallet, 'ناقصك', '2.63 مليون', K.coralSoft),
-      (LucideIcons.building2, 'القاعة 130 · متوقع 121', 'تكفي', K.tealMid),
+      (LucideIcons.building2, 'القاعة 150 · متوقع 121', 'تكفي', K.tealMid),
     ]),
     children: [
       tabHeader('الضيوف', '134 مدعو · 86 أكدوا', sec: Sec.guests, actions: [LucideIcons.search]),
-      sectionTitle('آل السقاف', action: '+10 الحين', ac: K.saffronInk),
+      sectionTitle('آل السقاف', action: '+10 الآن', ac: K.saffronInk),
       whiteList([
         g('حسن السقاف', 'أضافه الوالد', fresh: true),
         g('علي السقاف', 'أضافه الوالد', fresh: true),
@@ -155,7 +155,7 @@ Widget vWeeklyDigest() {
       ),
       sectionTitle('اللي صار'),
       whiteList([
-        line(LucideIcons.store, K.sky, K.skySoft, 'انحجزت فرقة الأفراح', 'الخميس 21 يناير · العربون بعد أسبوع'),
+        line(LucideIcons.store, K.sky, K.skySoft, 'قاعة سبأ أكّدت حجز 21 يناير', 'محجوز · بدون أي دفع داخل التطبيق'),
         line(LucideIcons.wallet, K.teal, K.tealSoft, 'صالح دفع للغداء 200 ألف', 'لأبو علي · من عهدته'),
         line(LucideIcons.users, K.lilac, K.lilacSoft, '12 أكدوا حضورهم', 'صاروا 86 من 124'),
       ]),
@@ -344,7 +344,7 @@ Widget vReceiptScan() => Phone(
             for (final r in const [
               ('المبلغ', '100,000 ر.ي', true),
               ('لمين', 'فرقة الأفراح · العربون', true),
-              ('متى', '24 أكتوبر', true),
+              ('متى', 'اليوم', true),
               ('من وين', 'مدخراتي', false),
             ])
               Padding(
@@ -448,7 +448,7 @@ Widget vSmartTasks() {
       ]),
       sectionTitle('تنتظر غيرها'),
       whiteList([
-        t('أرسل الدعوات', 'تنفتح لما تحدد موعد عقد القران', locked: true,
+        t('سلّم باقي المهر', 'تنفتح لما تحدد موعد عقد القران', locked: true,
             badge: 'تنتظر: حدد موعد عقد القران', bc: K.muted, bb: K.bg),
       ]),
     ],
@@ -529,7 +529,7 @@ Widget vAttendance() {
           children: [
             const Icon(LucideIcons.building2, size: 19, color: K.teal),
             const SizedBox(width: 10),
-            Expanded(child: Text('القاعة 130 · تكفي ومعك 18 كرسي', style: tx(14, w: bold, c: K.teal))),
+            Expanded(child: Text('القاعة 150 · تكفي ومعك 38 كرسي', style: tx(14, w: bold, c: K.teal))),
           ],
         ),
       ),
@@ -584,7 +584,7 @@ Widget vAgreement() {
         pad: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
         child: Column(
           children: [
-            term('من 4 العصر لين المغرب، في قاعة سبأ'),
+            term('من بعد المغرب لين العشاء، في قاعة سبأ'),
             term('فنان واحد وأربعة عازفين، مع الطبل والمزمار'),
             term('السعر 400 ألف: عربون 100، والباقي يوم العرس'),
             term('لو تأخروا أكثر من نص ساعة، ينخصم 50 ألف'),

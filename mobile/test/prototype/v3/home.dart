@@ -231,7 +231,7 @@ Widget pulse3() {
   return Row(
     crossAxisAlignment: CrossAxisAlignment.start,
     children: [
-      tile(Sec.tasks, '12', 'من 30 مهمة', '1 متأخرة', 0.4),
+      tile(Sec.tasks, '12', 'من 20 مهمة', '1 متأخرة', 0.4),
       const SizedBox(width: 8),
       tile(Sec.guests, '86', 'أكدوا من 124', '20 ما ردّوا', 0.69),
       const SizedBox(width: 8),
@@ -368,7 +368,7 @@ Widget vHomeFresh() {
         K.teal,
         K.tealSoft,
         'ميزانيتك',
-        '10 مليون: 3 للاتفاق و7 لعرسك',
+        '7 مليون لعرسك، والمهر لحاله',
         done: true,
       ),
       step(
@@ -585,7 +585,7 @@ Widget vHomeWeek() {
       whiteList([
         day('الثلاثاء', '19', 'السمرة', 'الديوان', 'بعد العشاء', today: true),
         day('الأربعاء', '20', 'المقيل', 'بيت الوالد', 'بعد الظهر'),
-        day('الخميس', '21', 'الزفاف', 'قاعة سبأ', 'بعد العصر'),
+        day('الخميس', '21', 'الزفاف', 'قاعة سبأ', 'بعد المغرب'),
       ]),
       sectionTitle('المزودين'),
       Box(
@@ -672,7 +672,7 @@ Widget vHomeDay() {
             ],
           ),
         ),
-        if (now) tag('الحين', K.saffronInk, K.saffronSoft),
+        if (now) tag('الآن', K.saffronInk, K.saffronSoft),
       ],
     ),
   );
@@ -1363,7 +1363,7 @@ Widget vDarkHome() {
       gap(10),
       Row(
         children: [
-          tile('المهام', '12', 'من 30', const Color(0xFFF2B75A)),
+          tile('المهام', '12', 'من 20', const Color(0xFFF2B75A)),
           const SizedBox(width: 8),
           tile('الضيوف', '86', 'من 124', const Color(0xFFA993D6)),
           const SizedBox(width: 8),

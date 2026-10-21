@@ -163,7 +163,7 @@ Widget vHomeNoDate() {
         when: 'لما تقدر',
         title: 'تقريبًا متى العرس؟',
         sub: 'شهر أو موسم يكفي: بعد رمضان، الصيف، آخر السنة',
-        why: 'لأن القاعات تنحجز قبل بشهرين، ونبغى ننبهك في وقتها',
+        why: 'لأن القاعات تنحجز قبل بشهرين، ونشتي ننبهك في وقتها',
         action: 'اختر تقريبًا',
         second: 'ثبت الموعد',
         icon: LucideIcons.calendarDays,
@@ -173,7 +173,7 @@ Widget vHomeNoDate() {
         step(1, 'اتفق على المهر', 'سجّلته: 3 مليون', done: true),
         step(2, 'حدد موعد عقد القران', 'قبل كل شي ثاني', now: true),
         step(3, 'احجز القاعة', 'لما يكون عندك شهر تقريبي'),
-        step(4, 'ابدأ قائمة ضيوفك', 'تقدر تبدأ الحين، ما تحتاج موعد'),
+        step(4, 'ابدأ قائمة ضيوفك', 'تقدر تبدأ الآن، ما تحتاج موعد'),
       ]),
     ],
   );
@@ -208,7 +208,7 @@ Widget vDateApprox() => Phone(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text('ذو الحجة إلى محرّم', style: tx(16, w: bold)),
-                  Text('يونيو إلى يوليو تقريبًا', style: tx(13, c: K.muted)),
+                  Text('آخر مايو إلى يوليو تقريبًا', style: tx(13, c: K.muted)),
                 ],
               ),
             ),
@@ -234,7 +234,7 @@ Widget vMoneyNoBudget() => Phone(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('اللي سجّلته لين الحين', style: tx(14, c: K.muted)),
+          Text('اللي سجّلته لين الآن', style: tx(14, c: K.muted)),
           gap(4),
           Text('3,000,000 ر.ي', style: tx(30, w: bold)),
           Text('المهر بس · دفعت منه 2 مليون', style: tx(13.5, c: K.muted)),
@@ -247,7 +247,7 @@ Widget vMoneyNoBudget() => Phone(
     nextStep(
       when: 'دقيقة وحدة',
       title: 'كم تقريبًا بتصرف على عرسك؟',
-      sub: 'رقم تقريبي يكفي، وتعدّله متى ما تبغى',
+      sub: 'رقم تقريبي يكفي، وتعدّله متى ما تشتي',
       why: 'بدونه ما نقدر نقول لك كم ناقصك ولا ننبهك قبل ما تتعدى',
       action: 'حط رقم',
       second: 'ساعدني أقدّر',
@@ -377,7 +377,7 @@ Widget vInviteLanding() {
         children: [
           btn('أبشر، معك', wide: true, v: 16, fs: 17),
           gap(10),
-          Text('مو الحين', style: tx(15, w: bold, c: K.muted)),
+          Text('مو الآن', style: tx(15, w: bold, c: K.muted)),
         ],
       ),
     ),
@@ -403,7 +403,7 @@ Widget vInviteLanding() {
         ),
       ),
       gap(16),
-      Center(child: Text('محمد يبغاك معه في عرسه', style: tx(24, w: bold))),
+      Center(child: Text('محمد يشتيك معه في عرسه', style: tx(24, w: bold))),
       gap(4),
       Center(child: Text('الخميس 21 يناير · صنعاء', style: tx(15, c: K.muted))),
       gap(22),
@@ -422,7 +422,7 @@ Widget vInviteLanding() {
         ),
       ),
       gap(12),
-      _note('محمد يقدر يغيّرها متى ما بغى، وأنت تقدر تطلع من الخطة بضغطة.',
+      _note('محمد يقدر يغيّرها متى ما يشتي، وأنت تقدر تطلع من الخطة بضغطة.',
           i: LucideIcons.shieldCheck),
     ],
   );
@@ -478,7 +478,7 @@ Widget vHelperHome() => Phone(
       when: 'الجمعة',
       title: 'رتّب الغداء مع أبو علي',
       sub: 'محمد عطاك هذي المهمة',
-      why: 'لأن أبو علي يبغى العدد قبل أسبوعين',
+      why: 'لأن أبو علي يشتي العدد قبل أسبوعين',
       action: 'خلصت',
       second: 'كلّم أبو علي',
       icon: LucideIcons.soup,
@@ -531,7 +531,7 @@ Widget vParticipantStates() {
       subHeader('المشاركين', sub: 'مين معك، ومين لسا'),
       whiteList([
         m('ص', K.saffronInk, 'صالح', 'أخوي · مساعد · فعّال', tag('معك', K.green, K.greenSoft)),
-        m('ع', K.lilac, 'العروسة', 'الموعد والبرنامج', tag('معك', K.green, K.greenSoft)),
+        m('س', K.lilac, 'سلمى (العروسة)', 'الموعد والبرنامج', tag('معك', K.green, K.greenSoft)),
       ]),
       sectionTitle('ينتظرون'),
       whiteList([
@@ -642,7 +642,7 @@ Widget vProvHard() {
       gap(12),
       card2(
         i: LucideIcons.music,
-        name: 'الفنان أيمن الأنسي',
+        name: 'الفنان أيمن القاضي',
         state: 'اعتذر',
         c: K.coral,
         soft: K.coralSoft,
@@ -746,7 +746,7 @@ Widget vCancelBooking() => Phone(
         ),
       ),
       gap(12),
-      Text('العربون اللي دفعته: 300,000', style: tx(15, w: bold)),
+      Text('اللي دفعته لهم: 1,100,000', style: tx(15, w: bold)),
       gap(8),
       Row(
         children: [
@@ -758,9 +758,9 @@ Widget vCancelBooking() => Phone(
         ],
       ),
       gap(10),
-      amountField('كم رجع؟', '150,000', 'مية وخمسين ألف ريال', focused: false),
+      amountField('كم رجع؟', '500,000', 'خمسمية ألف ريال', focused: false),
       gap(8),
-      Text('الباقي 150 ألف ينكتب خسارة في البند، عشان أرقامك تبقى صادقة.',
+      Text('الباقي 600 ألف ينكتب خسارة في البند، عشان أرقامك تبقى صادقة.',
           style: tx(13, c: K.muted)),
       gap(16),
       btn('ألغِ الحجز', wide: true, v: 16, fs: 17, bg: K.coral),
@@ -787,8 +787,8 @@ Widget vRateSent() => Phone(
       pad: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
       child: Column(
         children: [
-          _effect(LucideIcons.checkCircle2, 'انرسل', c: K.green, end: 'الحين'),
-          _effect(LucideIcons.checkCircle2, 'انشر الحين', c: K.green),
+          _effect(LucideIcons.checkCircle2, 'انرسل', c: K.green, end: 'الآن'),
+          _effect(LucideIcons.checkCircle2, 'انشر الآن', c: K.green),
           _effect(LucideIcons.messageCircle, 'المزود يقدر يرد مرة وحدة', c: K.faint),
         ],
       ),
@@ -921,7 +921,7 @@ Widget vPaymentReversed() => Phone(
       ),
     ),
     gap(12),
-    _note('الدفعة ما تنمسح، تبقى مشطوبة عشان السجل يبقى صادق ومشاركينك يعرفون وش صار.',
+    _note('الدفعة ما تنمسح، تبقى مشطوبة عشان السجل يبقى صادق ومشاركينك يعرفون ايش صار.',
         c: K.muted, bg: Colors.white, i: LucideIcons.fileText),
     gap(12),
     Box(
@@ -1194,7 +1194,7 @@ Widget vActivity() {
   );
   return Phone(
     children: [
-      subHeader('وش صار', sub: 'كل اللي سوّاه المشاركين في خطتك'),
+      subHeader('ايش صار', sub: 'كل اللي سوّاه المشاركين في خطتك'),
       Row(
         children: [
           chip('الكل', on: true),
@@ -1215,7 +1215,7 @@ Widget vActivity() {
       sectionTitle('أمس'),
       whiteList([
         a('ص', K.saffronInk, 'صالح', 'خلّص "استلم البدلة"', '7:45 مساءً', i: LucideIcons.checkCircle2),
-        a('ع', K.lilac, 'العروسة', 'انضمت للخطة', '4:00 العصر', i: LucideIcons.userPlus),
+        a('س', K.lilac, 'سلمى (العروسة)', 'انضمت للخطة', '4:00 العصر', i: LucideIcons.userPlus),
         a('ف', K.faint, 'فهد', 'طلع من الخطة', '1:15 الظهر', i: LucideIcons.logOut),
       ]),
     ],
@@ -1327,7 +1327,7 @@ Widget vPausePlan() {
   return Phone(
     sheet: sheet(
       title: 'إيقاف الخطة',
-      sub: 'ما نسألك ليش. خطتك تنحفظ، وترجعها متى ما بغيت.',
+      sub: 'ما نسألك ليش. خطتك تنحفظ، وترجعها متى ما تشتي.',
       children: [
         Box(
           pad: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
@@ -1348,7 +1348,7 @@ Widget vPausePlan() {
           child: Column(
             children: [
               dep('قاعة سبأ', 'عربون 500 ألف'),
-              dep('ضيافة الأصالة', 'عربون 300 ألف'),
+              dep('ضيافة الأصالة', 'دفعت 1.1 مليون'),
               dep('فرقة الأفراح', 'عربون 100 ألف'),
             ],
           ),
@@ -1359,7 +1359,7 @@ Widget vPausePlan() {
         gap(8),
         btn('أوقف الخطة', wide: true, v: 16, fs: 17, bg: K.ink),
         gap(10),
-        Center(child: Text('تبغى تأجيل بس؟ أجّل العرس', style: tx(14, w: bold, c: K.teal))),
+        Center(child: Text('تشتي تأجيل بس؟ أجّل العرس', style: tx(14, w: bold, c: K.teal))),
       ],
     ),
     children: [subHeader('حسابي')],
@@ -1412,7 +1412,7 @@ Widget vPlanPaused() {
               ],
             ),
             gap(10),
-            Text('كل شي محفوظ كما هو. الله يكتب لك الخير، ومتى ما بغيت ترجع، ترجع من نفس المكان.',
+            Text('كل شي محفوظ كما هو. الله يكتب لك الخير، ومتى ما تشتي ترجع، ترجع من نفس المكان.',
                 style: tx(14.5, c: K.muted, h: 1.55)),
             gap(14),
             Row(
@@ -1425,11 +1425,11 @@ Widget vPlanPaused() {
           ],
         ),
       ),
-      sectionTitle('العرابين', action: '600 من 900 ألف رجعت'),
+      sectionTitle('العرابين', action: '600 ألف من 1.7 مليون رجعت'),
       whiteList([
         dep('قاعة سبأ', 'عربون 500 ألف', tag('رجع كله', K.green, K.greenSoft)),
         dep('فرقة الأفراح', 'عربون 100 ألف', tag('رجع كله', K.green, K.greenSoft)),
-        dep('ضيافة الأصالة', 'عربون 300 ألف · وعدوا الأسبوع الجاي',
+        dep('ضيافة الأصالة', 'دفعت 1.1 مليون · وعدوا الأسبوع الجاي',
             softAction('ذكّرهم', fg: K.sky, bg: K.skySoft)),
       ]),
       gap(12),

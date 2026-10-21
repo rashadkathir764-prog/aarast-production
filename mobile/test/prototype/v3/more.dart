@@ -104,7 +104,7 @@ Widget vLogin() => Phone(
       child: Text('خطتك بانتظارك، مثل ما تركتها.', style: tx(16, c: K.muted)),
     ),
     gap(24),
-    field('رقم الهاتف', ltr('777 123 456'), icon: LucideIcons.phone, focused: true),
+    field('رقم الهاتف', ltr('+967 777 123 456'), icon: LucideIcons.phone, focused: true),
     gap(10),
     field('كلمة المرور', '••••••••', icon: LucideIcons.lock),
     gap(10),
@@ -146,11 +146,11 @@ Widget vRegister() => Phone(
     gap(16),
     field('الاسم', 'محمد الحمدي'),
     gap(10),
-    field('رقم الهاتف', ltr('777 123 456'), icon: LucideIcons.phone, focused: true),
+    field('رقم الهاتف', ltr('+967 777 123 456'), icon: LucideIcons.phone, focused: true),
     gap(10),
     field('كلمة المرور', '••••••••', icon: LucideIcons.lock),
     gap(8),
-    Text('8 أحرف أو أكثر. بعدها نرسل لك رمز تأكيد على واتساب.', style: tx(13, c: K.muted)),
+    Text('6 أحرف أو أكثر. بعدها نرسل لك رمز تأكيد على واتساب.', style: tx(13, c: K.muted)),
   ],
 );
 
@@ -167,7 +167,7 @@ Widget vAssistant() => Phone(
       spacing: 8,
       runSpacing: 8,
       children: [
-        chip('وش نسيت؟', icon: LucideIcons.listChecks),
+        chip('ايش نسيت؟', icon: LucideIcons.listChecks),
         chip('وين أوفر؟', icon: LucideIcons.scissors),
         chip('اكتب رسالة تفاوض', icon: LucideIcons.messageCircle),
       ],
@@ -188,7 +188,7 @@ Widget vAssistant() => Phone(
             ],
           ),
           gap(8),
-          Text('خصصت مليون للقات، ودفعت منه 800 ألف.', style: tx(15, h: 1.6)),
+          Text('خصصت مليون للقات، وما دفعت منه شيء للآن.', style: tx(15, h: 1.6)),
           Text('لـ 124 ضيف هذا حوالي 8 آلاف للضيف، وهو داخل النطاق اللي سجله عرسان صنعاء على اعّرست (6 إلى 10 آلاف).',
               style: tx(15, h: 1.6)),
           gap(12),
@@ -262,7 +262,7 @@ Widget vEvents() {
           K.lilacSoft),
       ev('المقيل', 'الأربعاء 20 يناير', 'بعد الظهر', 'بيت الوالد', LucideIcons.leaf, K.green,
           K.greenSoft, note: 'القات عند صالح'),
-      ev('الزفاف', 'الخميس 21 يناير', 'بعد العصر', 'قاعة سبأ · حدة', LucideIcons.partyPopper,
+      ev('الزفاف', 'الخميس 21 يناير', 'بعد المغرب', 'قاعة سبأ · حدة', LucideIcons.partyPopper,
           K.teal, K.tealSoft, note: 'المناسبة الرئيسية'),
       gap(4),
       Text('اقتراحات', style: tx(14, w: bold, c: K.muted)),
@@ -698,7 +698,7 @@ Widget vLoan() {
             gap(12),
             segments(4, 2, on: Colors.white, now: K.saffron, off: Colors.white24),
             gap(10),
-            Text('تخلص منها في مارس إن شاء الله', style: tx(14, w: bold, c: Colors.white)),
+            Text('تخلص منها في مايو إن شاء الله', style: tx(14, w: bold, c: Colors.white)),
           ],
         ),
       ),
@@ -708,9 +708,9 @@ Widget vLoan() {
         child: Column(
           children: [
             inst('1', 'فبراير · دفعته', 2),
-            inst('2', 'أول مارس · دفعته', 2),
-            inst('3', 'منتصف مارس · بعد 9 أيام', 1),
-            inst('4', 'آخر مارس', 0),
+            inst('2', 'مارس · دفعته', 2),
+            inst('3', 'أبريل · بعد 9 أيام', 1),
+            inst('4', 'مايو', 0),
           ],
         ),
       ),
@@ -809,13 +809,13 @@ Widget vStarterTasks() {
   return Phone(
     bottom: Padding(
       padding: const EdgeInsets.fromLTRB(16, 8, 16, 30),
-      child: btn('أضف 30 مهمة لخطتي', wide: true, v: 16, fs: 17, bg: K.saffronInk),
+      child: btn('أضف 19 مهمة لخطتي', wide: true, v: 16, fs: 17, bg: K.saffronInk),
     ),
     children: [
       subHeader('مهام جاهزة لعرسك', sub: 'مرتبة على موعدك · شيل اللي ما يخصك'),
-      g('الحين', 'قبل العرس بثلاثة أشهر', [
+      g('الآن', 'قبل العرس بثلاثة أشهر', [
         t('احجز القاعة', true, when: 'هذا الأسبوع'),
-        t('حدد موعد عقد القران', true, when: 'قبل 30 أكتوبر'),
+        t('حدد موعد عقد القران', true, when: 'قبل 10 أكتوبر'),
         t('جهّز أوراق العقد', true, when: 'قبل العقد'),
         t('اختر المصور', true, when: 'نوفمبر'),
       ]),
@@ -872,7 +872,7 @@ Widget vTaskDetail() {
         child: Column(
           children: [
             for (final r in const [
-              (LucideIcons.calendarDays, 'الموعد', 'كان 12 أكتوبر'),
+              (LucideIcons.calendarDays, 'الموعد', 'كان 10 أكتوبر'),
               (LucideIcons.user, 'مين', 'أنت'),
               (LucideIcons.heartHandshake, 'مرتبطة بـ', 'المهر · الباقي 15 نوفمبر'),
             ])
@@ -1025,7 +1025,7 @@ Widget vContractPapers() {
             paper('شاهدين ومعهم بطاقاتهم', 'صالح أخوي · ناقص واحد',
                 end: chip('اختر', bg: K.saffronSoft, fg: K.saffronInk)),
             paper('المهر كما اتفقتوا', '3,000,000 · ينكتب في العقد'),
-            paper('اللي بتسلّمه يوم العقد', '2,000,000 · من خطتك المالية'),
+            paper('اللي بتسلّمه يوم العقد', '1,000,000 · باقي المهر'),
           ],
         ),
       ),
@@ -1128,9 +1128,9 @@ Widget vGuestDetail() {
         pad: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         child: Column(
           children: [
-            step('انرسلت الدعوة', '2 نوفمبر', true),
-            step('فتح الرابط', '2 نوفمبر', true),
-            step('أكّد الحضور مع واحد', '3 نوفمبر', true),
+            step('انرسلت الدعوة', '2 أكتوبر', true),
+            step('فتح الرابط', '2 أكتوبر', true),
+            step('أكّد الحضور مع واحد', '3 أكتوبر', true),
           ],
         ),
       ),
@@ -1174,7 +1174,7 @@ Widget vReminderPreview() => Phone(
     gap(16),
     _bubble(
       'أهلًا ياسر\n'
-      'نذكرك بزفاف محمد الحمدي يوم الخميس 21 يناير، بعد العصر في قاعة سبأ.\n'
+      'نذكرك بزفاف محمد الحمدي يوم الخميس 21 يناير، بعد المغرب في قاعة سبأ.\n'
       'رد علينا من هنا بضغطة:\n'
       'aarast.app/rsvp/…',
       me: true,
@@ -1188,7 +1188,7 @@ Widget vReminderPreview() => Phone(
           const Icon(LucideIcons.pencil, color: K.lilac, size: 18),
           const SizedBox(width: 10),
           Expanded(child: Text('عدّل الرسالة', style: tx(15, w: bold, c: K.lilac))),
-          Text('الوالد يرسلها', style: tx(13, c: K.muted)),
+          Text('باسم الوالد', style: tx(13, c: K.muted)),
         ],
       ),
     ),
@@ -1315,7 +1315,7 @@ Widget vQuoteRequest() {
     ),
     children: [
       subHeader('اطلب عرض سعر', sub: 'إلى فرقة الأفراح'),
-      Text('وش تحتاج؟', style: tx(14, w: bold, c: K.muted)),
+      Text('ايش تحتاج؟', style: tx(14, w: bold, c: K.muted)),
       gap(8),
       Wrap(spacing: 8, runSpacing: 8, children: [
         chip('فرقة كاملة', on: true, onBg: K.sky),
@@ -1329,14 +1329,14 @@ Widget vQuoteRequest() {
           children: [
             auto(LucideIcons.partyPopper, 'المناسبة', 'الزفة · عرس رجال'),
             auto(LucideIcons.calendarDays, 'اليوم', 'الخميس 21 يناير'),
-            auto(LucideIcons.clock, 'الفترة', 'الليل · بعد العشاء'),
+            auto(LucideIcons.clock, 'الفترة', 'الليل · بعد المغرب'),
             auto(LucideIcons.mapPin, 'المكان', 'قاعة سبأ · حدة'),
             auto(LucideIcons.users, 'الضيوف', '124 تقريبًا'),
           ],
         ),
       ),
       gap(12),
-      field('كلمة لهم (اختياري)', 'نبغى زفة من باب القاعة لين المنصة'),
+      field('كلمة لهم (اختياري)', 'نشتي زفة من باب القاعة لين المنصة'),
       gap(10),
       Box(
         pad: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
@@ -1478,7 +1478,7 @@ Widget vFavorites() {
         childAspectRatio: 0.98,
         children: [
           f('فرقة الأفراح', 'فرق', '350 - 450 ألف', const [K.sky, K.lilac], LucideIcons.music, true),
-          f('الفنان أيمن الآنسي', 'فنانين', '500 - 700 ألف', const [K.teal, K.sky],
+          f('الفنان أيمن القاضي', 'فنانين', '500 - 700 ألف', const [K.teal, K.sky],
               LucideIcons.mic, true),
           f('ضوء صنعاء', 'تصوير', '350 - 700 ألف', const [K.sky, K.ink], LucideIcons.camera,
               false),
@@ -1515,7 +1515,7 @@ Widget vAddParticipant() => Phone(
           ],
         ),
       ),
-      _label('وش تقدر تسوي؟'),
+      _label('ايش تقدر تسوي؟'),
       for (final r in const [
         ('تشوف الموعد والبرنامج', true),
         ('تشوف المهام وتضيف', true),
@@ -1566,7 +1566,7 @@ Widget vNotifSettings() {
         r('الدفعات والأقساط', 'قبل موعدها بثلاثة أيام', true),
         r('ردود الضيوف', 'مرة باليوم مجمعة', true),
         r('العروض والمحادثات', 'أول ما توصل', true),
-        r('ملخص الجمعة', 'وش صار هذا الأسبوع', true),
+        r('ملخص الجمعة', 'ايش صار هذا الأسبوع', true),
         r('المشاركين', 'لما أحد يسوي شيء', false),
       ], dividers: false),
       sectionTitle('الهدوء'),
@@ -1660,7 +1660,7 @@ Widget vChangePhone() => Phone(
   ),
   children: [
     subHeader('تغيير رقم الجوال'),
-    field('رقمك الحالي', ltr('777 123 456'), icon: LucideIcons.smartphone),
+    field('رقمك الحالي', ltr('+967 777 123 456'), icon: LucideIcons.smartphone),
     gap(10),
     Center(child: Icon(LucideIcons.arrowDown, color: K.faint)),
     gap(10),
@@ -1712,7 +1712,7 @@ Widget vSupport() => Phone(
     whiteList([
       for (final q in const [
         'كيف أضيف العروسة أو أخوي مشارك؟',
-        'وش يصير لو أجّلت العرس؟',
+        'ايش يصير لو أجّلت العرس؟',
         'هل اعّرست يحوّل فلوس؟',
         'مين يشوف أرقامي؟',
         'كيف أطلب عرض سعر من مزود؟',

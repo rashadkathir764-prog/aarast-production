@@ -79,7 +79,7 @@ final screens = <String, (Widget Function(), Sec?, List<Spot>)>{
       ('ذكّرني', 'toast:بنذكرك بكرة الصبح'),
       ('ناقصك', '20_money_summary'),
       ('1.3 مليون ر.ي', '20_money_summary'),
-      ('من 30 مهمة', '30_tasks'),
+      ('من 20 مهمة', '30_tasks'),
       ('أكدوا من 124', '40_guests'),
       ('محجوز من 7', '50_prov_requests'),
       ('قارن', '53_prov_compare'),
@@ -221,7 +221,7 @@ final screens = <String, (Widget Function(), Sec?, List<Spot>)>{
     [
       ('طلباتي', '50_prov_requests'),
       ('فرقة الأفراح', '52_prov_page'),
-      ('الفنان أيمن الآنسي', '52_prov_page'),
+      ('الفنان أيمن القاضي', '52_prov_page'),
     ],
   ),
   '52_prov_page': (

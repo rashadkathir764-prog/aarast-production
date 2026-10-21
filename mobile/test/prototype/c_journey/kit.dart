@@ -970,7 +970,7 @@ Widget numPad() {
 }
 
 /// "Write what happened": one line that becomes a payment, task or source.
-Widget quickInput({String text = 'اكتب وش صار… مثل: دفعت للمصور 150 ألف'}) =>
+Widget quickInput({String text = 'اكتب ايش صار… مثل: دفعت للمصور 150 ألف'}) =>
     Container(
       padding: const EdgeInsets.fromLTRB(16, 12, 12, 12),
       decoration: BoxDecoration(

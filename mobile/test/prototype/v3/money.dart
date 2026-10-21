@@ -199,7 +199,7 @@ Widget vMoneySummary() => Phone(
         fg: K.saffronInk,
         soft: K.saffronSoft,
         title: 'خفّف بند',
-        sub: 'الفنان 500 ألف، وفيه فرق بـ 350',
+        sub: 'الفنان 500 ألف، وفيه فرقة بـ 350 ألف',
         trailing: const Icon(LucideIcons.chevronLeft, color: K.faint, size: 18),
       ),
       listRow(
@@ -333,8 +333,8 @@ Widget vMoneyItems() => Phone(
     ]),
     _group('عرسك', '7 مليون', const [
       _It('القاعة', LucideIcons.building2, 2.0, 0.5, note: 'دفعة بعد 5 أيام'),
-      _It('الضيافة والعشاء', LucideIcons.utensils, 1.6, 0.3),
-      _It('القات', LucideIcons.leaf, 1.0, 0.8),
+      _It('الضيافة والعشاء', LucideIcons.utensils, 1.6, 1.1),
+      _It('القات', LucideIcons.leaf, 1.0, 0, note: 'طلبت من مقوّتين'),
       _It('الغداء', LucideIcons.soup, 1.0, 0.8),
       _It('التصوير', LucideIcons.camera, 0.6, 0, note: 'عرضين وصلوا'),
       _It('الفنان والفرقة', LucideIcons.music, 0.5, 0, note: 'ما انحجز'),
@@ -502,7 +502,7 @@ Widget vMoneyPayments({bool offline = false}) {
           'أكتوبر',
           'قاعة سبأ',
           '500 ألف',
-          offline ? 'سجلتها الحين' : 'الثانية من ثلاث',
+          offline ? 'سجلتها الآن' : 'الثانية من ثلاث',
           soon: true,
           pending: offline,
         ),

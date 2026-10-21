@@ -377,7 +377,7 @@ Widget _servicesArt() => Container(
 Widget vStart() => Phone(
   bottom: Padding(
     padding: const EdgeInsets.fromLTRB(20, 8, 20, 30),
-    child: btn('أنشئ حسابي', wide: true, v: 16, fs: 17),
+    child: btn('ابدأ', wide: true, v: 16, fs: 17),
   ),
   children: [
     gap(14),
@@ -385,7 +385,7 @@ Widget vStart() => Phone(
     gap(26),
     Text('أهلًا فيك', style: tx(30, w: bold)),
     gap(4),
-    Text('جديد في اعّرست؟ اختر وش تبغى', style: tx(16, c: K.muted)),
+    Text('جديد في اعّرست؟ اختر ايش تشتي', style: tx(16, c: K.muted)),
     gap(22),
     _roleCard(
       'أنشئ خطتك',

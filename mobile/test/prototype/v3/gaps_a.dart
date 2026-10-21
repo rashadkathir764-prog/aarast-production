@@ -189,7 +189,7 @@ Widget vOtp6() => Phone(
     gap(4),
     Row(
       children: [
-        Text('إلى الرقم ${ltr('777 123 456')}', style: tx(15, c: K.muted)),
+        Text('إلى الرقم ${ltr('+967 777 123 456')}', style: tx(15, c: K.muted)),
         const SizedBox(width: 8),
         Text('تغيير', style: tx(15, w: bold, c: K.teal)),
       ],
@@ -250,7 +250,7 @@ Widget vRegisterErrors() => Phone(
     subHeader('احفظ خطتك'),
     field('اسمك', 'محمد الحمدي'),
     gap(10),
-    gFieldError('رقم الهاتف', ltr('777 123 456'), 'هذا الرقم عليه حساب من قبل', icon: LucideIcons.phone),
+    gFieldError('رقم الهاتف', ltr('+967 777 123 456'), 'هذا الرقم عليه حساب من قبل', icon: LucideIcons.phone),
     gap(10),
     Box(
       pad: const EdgeInsets.all(14),
@@ -286,7 +286,7 @@ Widget vWhatsappMissing() => Phone(
         pad: const EdgeInsets.all(14),
         child: Column(
           children: [
-            gEffect(LucideIcons.smartphone, 'تأكد إن واتساب شغّال على ${ltr('777 123 456')}'),
+            gEffect(LucideIcons.smartphone, 'تأكد إن واتساب شغّال على ${ltr('+967 777 123 456')}'),
             gEffect(LucideIcons.wifi, 'تأكد إن النت واصل للجوال'),
             gEffect(LucideIcons.archive, 'شوف المحادثات المؤرشفة في واتساب'),
           ],
@@ -314,7 +314,7 @@ Widget vDevices() {
     children: [
       subHeader('الأجهزة', sub: 'وين حسابك مفتوح'),
       whiteList([
-        d(LucideIcons.smartphone, 'هذا الجوال', 'سامسونج · صنعاء · الحين', tag('أنت هنا', K.green, K.greenSoft)),
+        d(LucideIcons.smartphone, 'هذا الجوال', 'سامسونج · صنعاء · الآن', tag('أنت هنا', K.green, K.greenSoft)),
         d(LucideIcons.smartphone, 'آيفون', 'الرياض · قبل 3 أيام', softAction('اطلع', fg: K.coral, bg: K.coralSoft)),
         d(LucideIcons.tablet, 'تابلت', 'صنعاء · قبل شهر', softAction('اطلع', fg: K.coral, bg: K.coralSoft)),
       ]),
@@ -370,7 +370,7 @@ Widget vDeletePending() => Phone(
     Center(child: Text('حسابك ينحذف بعد 27 يوم', style: tx(24, w: bold))),
     gap(6),
     Center(
-      child: Text('طلبت الحذف 19 أكتوبر. لين 15 نوفمبر تقدر ترجع وكل شيء كما هو.',
+      child: Text('طلبت الحذف 19 أكتوبر. لين 18 نوفمبر تقدر ترجع وكل شيء كما هو.',
           textAlign: TextAlign.center, style: tx(15, c: K.muted, h: 1.5)),
     ),
     gap(24),
@@ -452,7 +452,7 @@ Widget vPinWrong() => Phone(
     gap(20),
     Center(child: avatar('م', K.saffron, s: 60)),
     gap(12),
-    Center(child: Text('الرمز غلط 3 مرات', style: tx(22, w: bold, c: K.coral))),
+    Center(child: Text('الرمز غلط 5 مرات', style: tx(22, w: bold, c: K.coral))),
     gap(4),
     Center(child: Text('جرّب مرة ثانية بعد ${ltr('0:30')}', style: tx(15, c: K.muted))),
     gap(20),
@@ -537,7 +537,7 @@ Widget vEditPlan() => Phone(
     gap(10),
     field('العملة', 'ريال يمني (صنعاء)', icon: LucideIcons.coins),
     gap(10),
-    field('الميزانية', '10 مليون', suffix: 'ر.ي'),
+    field('ميزانية عرسك (بدون المهر)', '7 مليون', suffix: 'ر.ي'),
     gap(14),
     gNote('لو غيّرت الموعد، المهام والأقساط تتحرك معه، ونسألك قبل ما نبلّغ المزودين.',
         i: LucideIcons.calendarClock),
@@ -577,7 +577,7 @@ Widget vPlanSwitcher() {
         gap(6),
         btn('خطة جديدة', wide: true, v: 14, bg: K.tealSoft, fg: K.teal, icon: LucideIcons.plus),
         gap(10),
-        gNote('خطة واحدة مفتوحة لك كصاحب عرس. عرس ثاني تقدر تساعد فيه أو تنشئه لأحد من أهلك.'),
+        gNote('تقدر تفتح أكثر من خطة، مثلًا لعرس أخوك. وكل خطة بمشاركينها وفلوسها.'),
       ],
     ),
     children: [gap(20)],
@@ -591,7 +591,7 @@ Widget vDatePassed() => Phone(
     children: [
       gOption('إيه، تم العرس', sub: 'تنتقل الخطة لوضع "بعد العرس": الرفد والشكر والتقييم', on: true),
       gOption('تأجل', sub: 'اختر موعد جديد، والمهام والأقساط تتحرك'),
-      gOption('ما صار، أوقف الخطة', sub: 'كل شيء ينحفظ وترجع متى ما بغيت'),
+      gOption('ما صار، أوقف الخطة', sub: 'كل شيء ينحفظ وترجع متى ما تشتي'),
       gap(8),
       btn('متابعة', wide: true, v: 16, fs: 17),
       gap(10),
@@ -662,7 +662,7 @@ Widget vArchivedView() => Phone(
           gap(12),
           Row(
             children: [
-              for (final s in const [('9.6 مليون', 'المصروف'), ('412', 'حضروا'), ('2.1 مليون', 'الرفد')])
+              for (final s in const [('9.6 مليون', 'المصروف'), ('118', 'حضروا'), ('1.8 مليون', 'الرفد')])
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -697,14 +697,14 @@ Widget vDeletePlan() => Phone(
       child: Column(
         children: [
           gEffect(LucideIcons.wallet, 'المال والإيصالات والرفد', c: K.coral),
-          gEffect(LucideIcons.listChecks, '23 مهمة و140 ضيف', c: K.coral),
+          gEffect(LucideIcons.listChecks, '20 مهمة و124 ضيف', c: K.coral),
           gEffect(LucideIcons.users, 'صالح والوالد يطلعون ويوصلهم إشعار', c: K.coral),
           gEffect(LucideIcons.store, 'حجزين مؤكدين ينلغون، ونبلّغ المزودين', c: K.coral),
         ],
       ),
     ),
     gap(12),
-    gNote('تبغى ترتاح فترة؟ أوقف الخطة بدل الحذف، أو حطها في الذكريات.',
+    gNote('تشتي ترتاح فترة؟ أوقف الخطة بدل الحذف، أو حطها في الذكريات.',
         i: LucideIcons.pauseCircle),
     gap(14),
     field('اكتب اسم الخطة للتأكيد', 'عرس محمد', focused: true),
@@ -814,7 +814,7 @@ Widget vInviteStates() {
       st(LucideIcons.xCircle, K.coral, K.coralSoft, 'الدعوة انلغت',
           'محمد لغاها. إذا تشوفها غلط، كلّمه.', 'كلّم محمد على واتساب'),
       st(LucideIcons.phoneOff, K.sky, K.skySoft, 'الدعوة لرقم ثاني',
-          'وصلت لـ ${ltr('771 554 220')} وأنت داخل بـ ${ltr('777 123 456')}.', 'ادخل بالرقم المدعو'),
+          'وصلت لـ ${ltr('771 554 220')} وأنت داخل بـ ${ltr('+967 777 123 456')}.', 'ادخل بالرقم المدعو'),
       st(LucideIcons.checkCircle2, K.green, K.greenSoft, 'أنت معهم من قبل',
           'قبلت هذي الدعوة 3 أكتوبر.', 'افتح عرس محمد'),
     ],

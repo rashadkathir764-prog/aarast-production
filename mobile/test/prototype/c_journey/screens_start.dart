@@ -145,7 +145,7 @@ Widget whoAreYou() {
 
 Widget qName() => questionScreen(
   step: 0,
-  q: 'أهلًا بك! وش اسمك؟',
+  q: 'أهلًا بك! ايش اسمك؟',
   help: 'نناديك فيه، ونسمي خطتك باسمكم.',
   body: [
     field('اسمك', 'محمد', big: true, focused: true),

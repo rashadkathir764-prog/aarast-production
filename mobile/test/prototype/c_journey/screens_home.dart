@@ -15,7 +15,7 @@ Widget homeHeader({String hello = 'أهلًا محمد'}) => Padding(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(hello, style: tx(24, w: bold)),
-            Text('عرس محمد وسلمى · صنعاء', style: tx(14, c: K.muted)),
+            Text('عرس محمد · صنعاء', style: tx(14, c: K.muted)),
           ],
         ),
       ),
@@ -129,7 +129,7 @@ Widget hero({
 
 Widget pulseTiles({
   String tasks = '12',
-  String tasksSub = 'من 30 مهمة',
+  String tasksSub = 'من 20 مهمة',
   double tasksV = 0.4,
   String guests = '86',
   String guestsSub = 'أكدوا من 124',
@@ -580,7 +580,7 @@ Widget homeDay({bool withSheet = false}) {
             ],
           ),
         ),
-        if (now) tag('الحين', K.saffronInk, K.saffronSoft),
+        if (now) tag('الآن', K.saffronInk, K.saffronSoft),
       ],
     ),
   );

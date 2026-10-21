@@ -47,9 +47,9 @@ Widget vPickUnit() => Phone(
     title: 'قاعة سبأ: أي قاعة؟',
     sub: 'الخميس 21 يناير · الليل',
     children: [
-      _unit('القاعة الكبرى', '500 ضيف · رجال', tag('فاضية', K.green, K.greenSoft), on: true),
-      _unit('القاعة الصغرى', '200 ضيف · رجال', tag('محجوزة', K.muted, K.line), off: true),
-      _unit('قاعة النساء', '350 ضيفة · طاقمها نساء', tag('فاضية', K.green, K.greenSoft)),
+      _unit('القاعة الكبرى', '150 ضيف · رجال', tag('فاضية', K.green, K.greenSoft), on: true),
+      _unit('القاعة الصغرى', '80 ضيف · رجال', tag('محجوزة', K.muted, K.line), off: true),
+      _unit('قاعة الملحق', '60 ضيف · رجال', tag('فاضية', K.green, K.greenSoft)),
       gap(8),
       Text('ومعها من نفس المزود', style: tx(14, w: bold, c: K.muted)),
       gap(8),
@@ -78,9 +78,9 @@ Widget vDepositStatus() {
     children: [
       subHeader('الدفعات المقدمة', sub: 'تدفعها برا، وتسجّلها هنا'),
       whiteList([
-        row(LucideIcons.building2, K.green, K.greenSoft, 'قاعة سبأ · 500,000', 'كاش · 3 نوفمبر', tag('أكّدوا الاستلام', K.green, K.greenSoft)),
-        row(LucideIcons.camera, K.saffronInk, K.saffronSoft, 'استوديو لحظة · 100,000', 'حوالة الكريمي · أمس', tag('ينتظر تأكيدهم', K.saffronInk, K.saffronSoft)),
-        row(LucideIcons.music, K.coral, K.coralSoft, 'فرقة الأفراح · 100,000', 'جوالي · 20 نوفمبر', tag('قالوا ما وصلت', K.coral, K.coralSoft)),
+        row(LucideIcons.building2, K.green, K.greenSoft, 'قاعة سبأ · 500,000', 'كاش · 10 سبتمبر', tag('أكّدوا الاستلام', K.green, K.greenSoft)),
+        row(LucideIcons.utensils, K.green, K.greenSoft, 'ضيافة الأصالة · 900,000', 'كاش · 8 أكتوبر', tag('أكّدوا الاستلام', K.green, K.greenSoft)),
+        row(LucideIcons.utensils, K.coral, K.coralSoft, 'ضيافة الأصالة · 200,000', 'جوالي · أمس', tag('قالوا ما وصلت', K.coral, K.coralSoft)),
       ]),
       gap(12),
       Box(
@@ -88,7 +88,7 @@ Widget vDepositStatus() {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('فرقة الأفراح قالوا ما وصلتهم', style: tx(16, w: bold)),
+            Text('ضيافة الأصالة قالوا ما وصلتهم', style: tx(16, w: bold)),
             Text('غالبًا الحوالة باسم ثاني. شوف السند، وكلّمهم، أو بلّغنا.', style: tx(13.5, c: K.muted, h: 1.5)),
             gap(10),
             Row(children: [
@@ -121,19 +121,19 @@ Widget vHeldForYou() => Phone(
             Text('ماسكين لك الليلة', style: tx(14, w: bold, c: K.lilac)),
           ]),
           gap(6),
-          Text('استوديو لحظة مسك ليلة 21 لك', style: tx(19, w: bold)),
+          Text('استوديو ضوء صنعاء مسك ليلة 21 لك', style: tx(19, w: bold)),
           Text('لين السبت 10 الليل. بعدها تنفك لحالها.', style: tx(13.5, c: K.muted)),
           gap(14),
           Row(children: [
             btn('أكّد الحجز', bg: K.lilac, v: 11, fs: 15),
             const SizedBox(width: 8),
-            btn('ما أبغاه', bg: Colors.white, fg: K.muted, v: 11, fs: 15),
+            btn('ما أشتيه', bg: Colors.white, fg: K.muted, v: 11, fs: 15),
           ]),
         ],
       ),
     ),
     gap(10),
-    Text('لو ما تبغاه، قل لهم عشان يعطونها غيرك.', style: tx(13, c: K.muted)),
+    Text('لو ما تشتيه، قل لهم عشان يعطونها غيرك.', style: tx(13, c: K.muted)),
   ],
 );
 
@@ -149,9 +149,9 @@ Widget vTeamArrived() => Phone(
     gap(10),
     whiteList([
       listRow(icon: LucideIcons.building2, fg: K.green, soft: K.greenSoft, title: 'قاعة سبأ', sub: 'جاهزة من العصر', trailing: tag('جاهز', K.green, K.greenSoft)),
-      listRow(icon: LucideIcons.camera, fg: K.green, soft: K.greenSoft, title: 'استوديو لحظة · فريق 2', sub: 'وصلوا 7:40 · المسؤول ياسر', trailing: tag('وصلوا', K.green, K.greenSoft)),
+      listRow(icon: LucideIcons.camera, fg: K.green, soft: K.greenSoft, title: 'استوديو ضوء صنعاء · فريق 2', sub: 'وصلوا 7:40 · المسؤول ياسر', trailing: tag('وصلوا', K.green, K.greenSoft)),
       listRow(icon: LucideIcons.music, fg: K.saffronInk, soft: K.saffronSoft, title: 'فرقة الأفراح', sub: 'في الطريق · يوصلون 8:15', trailing: tag('في الطريق', K.saffronInk, K.saffronSoft)),
-      listRow(icon: LucideIcons.car, fg: K.muted, soft: K.line, title: 'سيارات الزفة', sub: 'موعدهم 10:00 عند الباب'),
+      listRow(icon: LucideIcons.car, fg: K.muted, soft: K.line, title: 'سيارات الزفة', sub: 'موعدهم 7:30 عند الباب'),
     ]),
     gap(12),
     gNote('ما تحتاج تتصل تسأل «وينكم». كل مزود يضغط «في الطريق» و«وصلنا»، وتوصلك.', i: LucideIcons.mapPin),
@@ -169,7 +169,7 @@ Widget vDelivery() => Phone(
     ]),
   ),
   children: [
-    subHeader('استوديو لحظة', sub: 'سلّموا الصور'),
+    subHeader('استوديو ضوء صنعاء', sub: 'سلّموا الصور'),
     Box(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,

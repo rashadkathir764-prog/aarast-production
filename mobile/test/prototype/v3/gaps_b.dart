@@ -26,17 +26,17 @@ Widget vCategoryOver() => Phone(
             ],
           ),
           gap(10),
-          Text('2.1 مليون من 1.8', style: tx(26, w: bold)),
+          Text('1.9 مليون من 1.6', style: tx(26, w: bold)),
           gap(10),
           bar(1, K.coral, h: 10),
           gap(8),
-          Text('زاد عدد الضيوف من 300 إلى 350', style: tx(13.5, c: K.muted)),
+          Text('زاد عدد الضيوف من 124 إلى 148', style: tx(13.5, c: K.muted)),
         ],
       ),
     ),
-    sectionTitle('وش تسوي؟'),
-    gOption('زِد ميزانية الضيافة', sub: 'من الاحتياط: باقي فيه 700 ألف', on: true),
-    gOption('خذها من بند ثاني', sub: 'مثلًا الزينة: محطوط لها 600 وصرفت 250'),
+    sectionTitle('ايش تسوي؟'),
+    gOption('زِد الميزانية 300 ألف', sub: 'تصير ميزانية عرسك 7.3 مليون', on: true),
+    gOption('خذها من بند ثاني', sub: 'مثلًا الفنان: محطوط له 500 ولقيت فرقة بـ 400'),
     gOption('خلّها كذا', sub: 'المجموع يطلع فوق الميزانية بـ 300 ألف'),
     gap(6),
     btn('تطبيق', wide: true, v: 15),
@@ -63,7 +63,7 @@ Widget vAllocate() {
   return Phone(
     bottom: gBottom(btn('حفظ التوزيع', wide: true, v: 16, fs: 17)),
     children: [
-      subHeader('توزيع الميزانية', sub: '10 مليون'),
+      subHeader('توزيع الميزانية', sub: '7 مليون لعرسك · المهر لحاله'),
       Box(
         pad: const EdgeInsets.all(14),
         child: Row(
@@ -71,13 +71,13 @@ Widget vAllocate() {
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
-                children: [Text('موزّع', style: tx(12.5, c: K.muted)), Text('9.3 مليون', style: tx(20, w: bold))],
+                children: [Text('موزّع', style: tx(12.5, c: K.muted)), Text('7 مليون', style: tx(20, w: bold))],
               ),
             ),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
-                children: [Text('احتياط', style: tx(12.5, c: K.muted)), Text('700 ألف', style: tx(20, w: bold, c: K.teal))],
+                children: [Text('احتياط', style: tx(12.5, c: K.muted)), Text('ما فيه', style: tx(20, w: bold, c: K.teal))],
               ),
             ),
           ],
@@ -85,13 +85,13 @@ Widget vAllocate() {
       ),
       gap(12),
       whiteList([
-        a('القاعة', '3 مليون', 0.30),
-        a('الضيافة', '1.8 مليون', 0.18),
-        a('المهر والشبكة', '2.5 مليون', 0.25),
-        a('الغداء في بيت الوالد', '700 ألف', 0.07),
-        a('الفنان والفرقة', '500 ألف', 0.05),
-        a('المصور', '400 ألف', 0.04),
-        a('الزينة والألعاب', '400 ألف', 0.04),
+        a('القاعة', '2 مليون', 0.29),
+        a('الضيافة والعشاء', '1.6 مليون', 0.23),
+        a('القات', '1 مليون', 0.14),
+        a('الغداء في بيت الوالد', '1 مليون', 0.14),
+        a('الفنان والفرقة', '500 ألف', 0.07),
+        a('التصوير', '600 ألف', 0.09),
+        a('بدلة العريس', '300 ألف', 0.04),
       ], dividers: false),
       gap(10),
       Text('اسحب أي رقم، والاحتياط يتعدل لحاله.', style: tx(13, c: K.muted)),
@@ -107,7 +107,7 @@ Widget vPayerFilter() {
   return Phone(
     nav: Sec.money,
     children: [
-      tabHeader('الدفعات', 'مين دفع وش', sec: Sec.money),
+      tabHeader('الدفعات', 'مين دفع ايش', sec: Sec.money),
       SingleChildScrollView(
         scrollDirection: Axis.horizontal,
         child: Row(
@@ -138,9 +138,9 @@ Widget vPayerFilter() {
       ),
       gap(12),
       whiteList([
-        p('قاعة سبأ', 'الدفعة الأولى · 3 نوفمبر', '1 مليون', 'الوالد', K.teal),
-        p('الغداء', 'الذبائح · 10 يناير', '700 ألف', 'الوالد', K.teal),
-        p('ضيافة الأصالة', 'دفعة مقدمة · 8 ديسمبر', '500 ألف', 'الوالد', K.teal),
+        p('قاعة سبأ', 'العربون · 10 سبتمبر', '500 ألف', 'الوالد', K.teal),
+        p('الغداء', 'أبو علي · 5 أكتوبر', '800 ألف', 'الوالد', K.teal),
+        p('ضيافة الأصالة', 'دفعة مقدمة · 8 أكتوبر', '900 ألف', 'الوالد', K.teal),
       ]),
     ],
   );
@@ -210,8 +210,8 @@ Widget vReceipts() {
         crossAxisSpacing: 10,
         childAspectRatio: 1.05,
         children: [
-          r('قاعة سبأ', '1 مليون · 3 نوفمبر'),
-          r('ضيافة الأصالة', '500 ألف · 8 ديسمبر'),
+          r('قاعة سبأ', '500 ألف · 10 سبتمبر'),
+          r('ضيافة الأصالة', '1.1 مليون · 8 أكتوبر'),
           r('المصور', '150 ألف · بدون إيصال', missing: true),
           r('الفرقة', '100 ألف · بدون إيصال', missing: true),
         ],
@@ -291,9 +291,10 @@ Widget vTimeline() {
       tabHeader('المهام', 'على الوقت', sec: Sec.tasks),
       Row(children: [chip('القائمة', fs: 13), const SizedBox(width: 8), chip('الوقت', on: true, onBg: K.saffronInk, fs: 13)]),
       gap(16),
-      m('أكتوبر', [('احجز القاعة', true), ('اتفق على المهر', true)]),
-      m('نوفمبر · الحين', [('احجز الضيافة', false), ('اطلب عرض من مصورين', false)], now: true),
-      m('ديسمبر', [('أوراق العقد عند الأمين الشرعي', false), ('بدلة العريس', false)]),
+      m('سبتمبر', [('احجز القاعة', true), ('اتفق على المهر', true), ('احجز الضيافة', true)]),
+      m('أكتوبر · الآن', [('اختر المصور', false), ('حدد موعد عقد القران', false)], now: true),
+      m('نوفمبر', [('سلّم باقي المهر', false), ('أوراق العقد عند الأمين الشرعي', false)]),
+      m('ديسمبر', [('بدلة العريس', false), ('احجز الفنان والفرقة', false)]),
       m('يناير', [('ارسل الدعوات', false), ('رتّب القات مع المقوّت', false), ('الغداء في بيت الوالد', false)]),
     ],
   );
@@ -337,7 +338,7 @@ Widget vPrivateTask() => Phone(
 Widget vOverdue() => Phone(
   nav: Sec.tasks,
   children: [
-    tabHeader('المهام', '3 متأخرة', sec: Sec.tasks),
+    tabHeader('المهام', '2 متأخرة', sec: Sec.tasks),
     Box(
       border: K.coral,
       pad: const EdgeInsets.all(14),
@@ -347,8 +348,8 @@ Widget vOverdue() => Phone(
           Text('متأخرة', style: tx(14, w: bold, c: K.coral)),
           gap(6),
           for (final t in const [
-            ('احجز الضيافة', 'كان قبل 5 نوفمبر · متأخرة 4 أيام', 'عليك'),
-            ('اطلب عرض من مصورين', 'كان قبل 1 نوفمبر · متأخرة 8 أيام', 'صالح'),
+            ('حدد موعد عقد القران', 'كان قبل 10 أكتوبر · متأخرة 7 أيام', 'عليك'),
+            ('ذكّر آل الحمدي اللي ما ردّوا', 'كان قبل 15 أكتوبر · متأخرة يومين', 'صالح'),
           ])
             Padding(
               padding: const EdgeInsets.symmetric(vertical: 8),
@@ -389,11 +390,11 @@ Widget vGuestGroups() {
       Row(children: [chip('أهلنا', on: true, onBg: K.lilac, fs: 13), const SizedBox(width: 8), chip('أهل العروسة', fs: 13)]),
       gap(12),
       whiteList([
-        g('الأهل', '42 ضيف', K.lilac),
-        g('الحارة', '35 ضيف', K.lilac),
-        g('زملاء الشغل', '28 ضيف', K.lilac),
-        g('أصحاب الجامعة', '19 ضيف', K.lilac),
-        g('بدون مجموعة', '16 ضيف', K.faint),
+        g('الأهل', '38 ضيف', K.lilac),
+        g('الجيران', '12 ضيف', K.lilac),
+        g('زملاء الشغل', '24 ضيف', K.lilac),
+        g('الأصحاب', '28 ضيف', K.lilac),
+        g('بدون مجموعة', '0 ضيف', K.faint),
       ]),
       gap(12),
       btn('مجموعة جديدة', wide: true, v: 14, bg: K.lilacSoft, fg: K.lilac, icon: LucideIcons.plus),
@@ -448,7 +449,7 @@ Widget vBulkGuests() => Phone(
 Widget vGuestsOffline() => Phone(
   nav: Sec.guests,
   children: [
-    tabHeader('الضيوف', '140 ضيف', sec: Sec.guests),
+    tabHeader('الضيوف', '124 ضيف', sec: Sec.guests),
     offlineBar(),
     gap(10),
     Box(
@@ -517,7 +518,7 @@ Widget vDirectoryFilters() => Phone(
 Widget vOfferExpired() => Phone(
   nav: Sec.providers,
   children: [
-    subHeader('عرض استوديو الضوء'),
+    subHeader('عرض ضوء صنعاء'),
     Box(
       c: K.line,
       child: Column(
@@ -539,7 +540,7 @@ Widget vOfferExpired() => Phone(
     gap(14),
     btn('اطلب عرض جديد', wide: true, v: 15, bg: K.sky, icon: LucideIcons.refreshCw),
     gap(10),
-    btn('ما أبغاه، سكّر الطلب', wide: true, v: 15, bg: K.surface, fg: K.muted),
+    btn('ما أشتيه، سكّر الطلب', wide: true, v: 15, bg: K.surface, fg: K.muted),
     gap(14),
     gNote('السعر ممكن يتغير في العرض الجديد. الطلبات المسكرة تنحفظ في "السابقة".',
         c: K.sky, bg: K.skySoft),
@@ -557,7 +558,7 @@ Widget vChatMenu() => Phone(
         listRow(icon: LucideIcons.ban, fg: K.coral, soft: K.coralSoft, title: 'احظر المزود', sub: 'ما يقدر يراسلك، وطلباتك معه تتسكر'),
       ]),
       gap(12),
-      gNote('الحظر ما يلغي الحجز المؤكد. ألغه من "الحجوزات" لو تبغى.', c: K.coral, bg: K.coralSoft, i: LucideIcons.info),
+      gNote('الحظر ما يلغي الحجز المؤكد. ألغه من "الحجوزات" لو تشتي.', c: K.coral, bg: K.coralSoft, i: LucideIcons.info),
     ],
   ),
   children: [subHeader('فرقة الأفراح')],
@@ -590,7 +591,7 @@ Widget vProviderStatus() {
     nav: Sec.providers,
     children: [
       tabHeader('المصورين', 'صنعاء', sec: Sec.providers),
-      p('استوديو الضوء', 'موثّق: تأكدنا من السجل والرقم',
+      p('ضوء صنعاء', 'موثّق: تأكدنا من السجل والرقم',
           const Icon(LucideIcons.badgeCheck, size: 18, color: K.sky), 'من 300 ألف · محدّث هذا الشهر'),
       p('عدسة صنعاء', 'ما وثّق بعد', tag('جديد', K.muted, K.line), 'من 250 ألف · محدّث قبل 8 شهور'),
       p('مصور الحارة', 'الملف أضفناه من دليل عام، صاحبه ما استلمه',
@@ -620,12 +621,12 @@ Widget vBookingStates() {
     nav: Sec.providers,
     children: [
       tabHeader('الحجوزات', '21 يناير', sec: Sec.providers),
-      b('قاعة سبأ', 'أكدوا 2 نوفمبر · نذكّركم قبل بأسبوع وبيوم', tag('محجوز', K.green, K.greenSoft)),
-      b('ضيافة الأصالة', 'طلبت 7 نوفمبر · يردون عادة خلال يوم', tag('ينتظر تأكيدهم', K.saffronInk, K.saffronSoft),
+      b('قاعة سبأ', 'أكدوا 15 أكتوبر · نذكّركم قبل بأسبوع وبيوم', tag('محجوز', K.green, K.greenSoft)),
+      b('مقوّت الروضة', 'طلبت أمس · يردون عادة خلال يوم', tag('ينتظر تأكيدهم', K.saffronInk, K.saffronSoft),
           act: 'ذكّرهم'),
-      b('فرقة الأفراح', 'اعتذروا: محجوزين ذاك اليوم', tag('اعتذر المزود', K.coral, K.coralSoft),
-          act: 'شوف فرق فاضية يوم 21'),
-      b('استوديو الضوء', 'لغيته أنت 1 نوفمبر', tag('ملغي', K.muted, K.line), act: 'اطلب حجز مرة ثانية'),
+      b('الفنان أيمن القاضي', 'اعتذر: مشغول ذاك اليوم', tag('اعتذر المزود', K.coral, K.coralSoft),
+          act: 'شوف فنانين فاضيين يوم 21'),
+      b('عدسة سبأ', 'لغيته أنت أمس', tag('ملغي', K.muted, K.line), act: 'اطلب حجز مرة ثانية'),
     ],
   );
 }
@@ -662,14 +663,14 @@ Widget vAiConsent() => Phone(
             gEffect(LucideIcons.send, 'اللي تكتبه أو تصوره يروح لخدمة ذكاء اصطناعي تفهمه', c: K.teal),
             gEffect(LucideIcons.eyeOff, 'ما نرسل أسماء ضيوفك ولا أرقامهم', c: K.teal),
             gEffect(LucideIcons.checkCircle2, 'ما يحفظ شيء في خطتك إلا بعد ما توافق أنت', c: K.teal),
-            gEffect(LucideIcons.gauge, '30 طلب في اليوم', c: K.teal),
+            gEffect(LucideIcons.gauge, '10 أسئلة في اليوم', c: K.teal),
           ],
         ),
       ),
       gap(14),
       btn('شغّل المساعد', wide: true, v: 16, fs: 17, icon: LucideIcons.sparkles),
       gap(10),
-      Center(child: Text('مو الحين', style: tx(14.5, w: bold, c: K.muted))),
+      Center(child: Text('مو الآن', style: tx(14.5, w: bold, c: K.muted))),
       gap(8),
       Center(child: Text('تقدر توقفه من الحساب › الخصوصية', style: tx(12.5, c: K.muted))),
     ],
@@ -705,7 +706,7 @@ Widget vAiLimit() {
     children: [
       subHeader('المساعد', sub: 'لما ما يقدر'),
       st(LucideIcons.gauge, K.saffronInk, K.saffronSoft, 'خلصت طلبات اليوم',
-          'استخدمت الـ30. ترجع بكرة الساعة 12 الليل.', 'سجّل يدوي'),
+          'استخدمت الـ10. ترجع بكرة الساعة 12 الليل.', 'سجّل يدوي'),
       st(LucideIcons.scanLine, K.coral, K.coralSoft, 'ما قدرت أقرأ الفاتورة',
           'الصورة مظلمة أو مقصوصة. جرّب في ضوء أحسن.', 'صوّر مرة ثانية'),
       st(LucideIcons.helpCircle, K.sky, K.skySoft, 'ما فهمت قصدك',
@@ -726,11 +727,11 @@ Widget vNotEnoughData() => Phone(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text('من ردود ضيوفك', style: tx(13, c: K.muted)),
-          Text('62 أكدوا من 140', style: tx(26, w: bold)),
+          Text('62 أكدوا من 124', style: tx(26, w: bold)),
           gap(8),
           bar(0.44, K.lilac, h: 10),
           gap(8),
-          Text('78 لسا ما ردوا', style: tx(13.5, c: K.muted)),
+          Text('62 لسا ما ردوا', style: tx(13.5, c: K.muted)),
         ],
       ),
     ),
@@ -814,7 +815,7 @@ Widget vPrivacy() {
       subHeader('الخصوصية'),
       whiteList([
         r('أرسل تقارير الأعطال', 'بدون أسماء ولا مبالغ. تساعدنا نصلّح', true),
-        r('المساعد الذكي', '30 طلب في اليوم', true),
+        r('المساعد الذكي', '10 أسئلة في اليوم', true),
         r('اسمي في التقييمات', 'الاسم الأول بس', true),
       ], dividers: false),
       gap(12),
@@ -842,7 +843,7 @@ Widget vPendingQueue() => Phone(
             trailing: softAction('حل', fg: K.coral, bg: K.coralSoft)),
       ]),
       gap(12),
-      btn('حاول الحين', wide: true, v: 15, icon: LucideIcons.refreshCw),
+      btn('حاول الآن', wide: true, v: 15, icon: LucideIcons.refreshCw),
     ],
   ),
   children: [tabHeader('المال', '', sec: Sec.money), offlineBar()],

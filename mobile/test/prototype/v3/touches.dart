@@ -152,8 +152,8 @@ Widget _choice(IconData i, String t, String sub, {bool on = false}) => Container
 // ============================================================ المغترب
 
 Widget vWhereAreYou() => questionScreen(
-  step: 3,
-  total: 6,
+  step: 2,
+  total: 4,
   q: 'أنت في اليمن،\nولا برا؟',
   help: 'كثير من العرسان يرتبون من الغربة، وأخوهم ينفّذ.',
   body: [
@@ -395,7 +395,7 @@ Widget vCustody() {
               crossAxisAlignment: CrossAxisAlignment.end,
               children: [
                 Text(have, style: tx(17, w: bold)),
-                Text('معه الحين', style: tx(12, c: K.muted)),
+                Text('معه الآن', style: tx(12, c: K.muted)),
               ],
             ),
           ],
@@ -550,7 +550,7 @@ Widget vMomentDay() => _moment(
   colors: const [K.saffron, K.saffronInk],
   body: _glass([
     _glassRow(LucideIcons.soup, 'الغداء', 'الظهر · بيت الوالد'),
-    _glassRow(LucideIcons.partyPopper, 'الزفاف', 'بعد العصر · قاعة سبأ'),
+    _glassRow(LucideIcons.partyPopper, 'الزفاف', 'بعد المغرب · قاعة سبأ'),
     _glassRow(LucideIcons.gem, 'الرفد', 'صالح يكتبه'),
   ]),
 );
@@ -563,8 +563,8 @@ Widget vMomentMahr() => _moment(
   body: Column(
     children: [
       _glass([
-        _glassRow(LucideIcons.checkCircle2, 'يوم العقد', '2,000,000'),
-        _glassRow(LucideIcons.checkCircle2, 'الباقي · 15 نوفمبر', '1,000,000'),
+        _glassRow(LucideIcons.checkCircle2, 'يوم الخطوبة', '2,000,000'),
+        _glassRow(LucideIcons.checkCircle2, 'الباقي · يوم العقد 15 نوفمبر', '1,000,000'),
       ]),
       gap(14),
       Text('نخفي بطاقة المهر من الرئيسية، وتلقاها في المال.',
@@ -576,7 +576,7 @@ Widget vMomentMahr() => _moment(
 Widget vMomentBooked() => _moment(
   eyebrow: 'طلب الحجز انقبل',
   title: 'فرقة الأفراح\nمحجوزة ليلتك',
-  sub: 'الخميس 21 يناير · بعد العصر',
+  sub: 'الخميس 21 يناير · بعد المغرب',
   action: 'سجّل العربون',
   colors: const [K.sky, Color(0xFF1D4E73)],
   body: Column(

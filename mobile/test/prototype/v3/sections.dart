@@ -157,7 +157,7 @@ Widget vTasks() {
           chip('للوالد'),
           const Spacer(),
           Text(
-            '12 من 30',
+            '12 من 20',
             style: tx(14, w: bold, c: K.saffronInk),
           ),
         ],
@@ -166,7 +166,7 @@ Widget vTasks() {
       whiteList([
         _task(
           'حدد موعد عقد القران',
-          'كان موعدها 12 أكتوبر',
+          'كان موعدها 10 أكتوبر',
           'م',
           K.teal,
           late: true,
@@ -213,7 +213,7 @@ Widget vAddTask() => Phone(
   sheet: sheet(
     title: 'مهمة جديدة',
     children: [
-      field('وش المهمة؟', 'تذوّق الضيافة مع صالح', focused: true),
+      field('ايش المهمة؟', 'تذوّق الضيافة مع صالح', focused: true),
       gap(14),
       Text(
         'متى؟',
@@ -497,7 +497,7 @@ Widget vInvite() => Phone(
                 children: [
                   for (final c in const [
                     ('الخميس', '21 يناير'),
-                    ('13 شعبان', 'بعد العصر'),
+                    ('13 شعبان', 'بعد المغرب'),
                     ('المكان', 'قاعة سبأ'),
                   ])
                     Column(
@@ -570,7 +570,7 @@ Widget vRsvp() => Phone(
               children: [
                 for (final r in const [
                   (LucideIcons.calendarDays, 'الخميس 21 يناير · 13 شعبان'),
-                  (LucideIcons.clock, 'بعد العصر'),
+                  (LucideIcons.clock, 'بعد المغرب'),
                   (LucideIcons.mapPin, 'قاعة سبأ · حدة، صنعاء'),
                 ])
                   Padding(
@@ -862,7 +862,7 @@ Widget vProvExplore() {
         ],
       ),
       pcard(
-        'الفنان أيمن الآنسي',
+        'الفنان أيمن القاضي',
         'صنعاء · الأصبحي',
         '4.7 (41)',
         '500 - 700 ألف ر.ي',
@@ -1143,7 +1143,7 @@ Widget vBookSheet() => Phone(
           children: [
             for (final r in const [
               (LucideIcons.calendarDays, 'الخميس 21 يناير · 13 شعبان'),
-              (LucideIcons.clock, 'بعد العصر لين العشاء'),
+              (LucideIcons.clock, 'بعد المغرب لين آخر الليل'),
               (LucideIcons.mapPin, 'قاعة سبأ · حدة'),
             ])
               Padding(
@@ -1161,7 +1161,7 @@ Widget vBookSheet() => Phone(
       ),
       gap(12),
       for (final s in const [
-        ('1', 'يوصلهم طلب الحجز الحين، ويردون خلال يومين'),
+        ('1', 'يوصلهم طلب الحجز الآن، ويردون خلال يومين'),
         ('2', 'يأكدون الليلة ويحددون الفريق، وتوصلك رسالة'),
         ('3', 'يصير "محجوز"، ونذكركم قبل بأسبوع وبيوم'),
       ])
@@ -1262,7 +1262,7 @@ Widget vChat() {
     children: [
       subHeader('استوديو ضوء صنعاء', sub: 'يرد عادة خلال ساعتين'),
       bubble(
-        'السلام عليكم، نبغى تصوير زفاف يوم 21 يناير في قاعة سبأ',
+        'السلام عليكم، نشتي تصوير زفاف يوم 21 يناير في قاعة سبأ',
         true,
         '10:12',
       ),
@@ -1350,11 +1350,11 @@ Widget vFamily() {
         ),
         m('الوالد', '', 'يشوف ملخص شهري بدون تفاصيل', K.teal, l: 'ع'),
         m(
+          'سلمى',
           'العروسة',
-          '',
           'تشوف الموعد والبرنامج · بدون المال',
           const Color(0xFF8E5A9E),
-          l: 'ع',
+          l: 'س',
         ),
       ]),
       gap(10),
@@ -1377,7 +1377,7 @@ Widget vFamily() {
       ),
       sectionTitle('أضف مشارك', action: 'من جهات الاتصال'),
       for (final r in const [
-        ('مساعد', 'المهام والضيوف، والرفد إذا بغيت', LucideIcons.listChecks),
+        ('مساعد', 'المهام والضيوف، والرفد إذا تشتي', LucideIcons.listChecks),
         ('أهل', 'المهام والضيوف، ويشوف المال إذا سمحت', LucideIcons.users),
         ('كاتب الرفد', 'يسجل الرفد يوم العرس بس', LucideIcons.gem),
         ('يشوف بس', 'الموعد والملخص بدون تفاصيل الفلوس', LucideIcons.eye),
@@ -1475,7 +1475,7 @@ Widget vAccount() {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text('محمد الحمدي', style: tx(19, w: bold)),
-                  Text(ltr('777 123 456'), style: tx(14, c: K.muted)),
+                  Text(ltr('+967 777 123 456'), style: tx(14, c: K.muted)),
                 ],
               ),
             ),
@@ -1532,7 +1532,7 @@ Widget vPostpone() => Phone(
       ),
       gap(8),
       Text(
-        'بعد العيد · 27 شوال',
+        'بعد عيد الفطر · 8 ذو القعدة',
         style: tx(13.5, w: bold, c: K.teal),
       ),
       gap(14),
@@ -1562,7 +1562,7 @@ Widget vPostpone() => Phone(
                 LucideIcons.send,
                 K.lilac,
                 'الضيوف',
-                'نرسل لهم الموعد الجديد إذا تبغى',
+                'نرسل لهم الموعد الجديد إذا تشتي',
               ),
             ])
               Padding(
@@ -1783,7 +1783,7 @@ Widget vRate() {
             ),
             gap(16),
             Text(
-              'وش عجبك؟',
+              'ايش عجبك؟',
               style: tx(14, w: bold, c: K.muted),
             ),
             gap(8),

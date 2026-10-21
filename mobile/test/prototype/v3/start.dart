@@ -39,8 +39,8 @@ Widget vMahr() {
     ),
   );
   return questionScreen(
-    step: 4,
-    total: 6,
+    step: 3,
+    total: 4,
     q: 'اتفقتوا على المهر؟',
     help: 'اللي بتسلّمه لأهل العروسة. نحسبه لحاله ونذكرك بموعد تسليمه.',
     skip: 'ما اتفقنا بعد',
@@ -129,7 +129,7 @@ Widget vReady() => Phone(
             icon: LucideIcons.listChecks,
             fg: K.saffronInk,
             soft: K.saffronSoft,
-            title: '9 مهام مرتبة على موعدك',
+            title: '20 مهمة مرتبة على موعدك',
             sub: 'أولها: تحديد الميزانية وتوزيعها',
           ),
           listRow(
@@ -137,7 +137,7 @@ Widget vReady() => Phone(
             fg: K.sky,
             soft: K.skySoft,
             title: 'مزودين صنعاء بأسعارهم',
-            sub: 'قاعات ومصورين وفنانين',
+            sub: 'قاعات ومصورين ومنشدين',
           ),
         ],
       ),
@@ -146,7 +146,7 @@ Widget vReady() => Phone(
     Padding(
       padding: const EdgeInsets.symmetric(horizontal: 6),
       child: Text(
-        'تشيل وتضيف براحتك. وعندك 10 مهام ثانية تختار منها.',
+        'تشيل وتضيف براحتك، وكلها تتعدل لو تغيّر الموعد.',
         style: tx(13.5, c: K.faint),
       ),
     ),
@@ -204,8 +204,8 @@ Widget vNameDate() {
   );
   return questionScreen(
     step: 0,
-    total: 2,
-    q: 'أهلًا بك! وش اسمك، ومتى العرس؟',
+    total: 4,
+    q: 'أهلًا بك! ايش اسمك، ومتى العرس؟',
     help: 'نناديك باسمك، ونرتب المهام والدفعات على الموعد.',
     body: [
       field('اسمك', 'محمد', big: true),
@@ -279,7 +279,7 @@ Widget vNameDate() {
             const SizedBox(width: 10),
             Expanded(
               child: Text(
-                'قبل رمضان بـ 18 يوم. الأسعار عادة ترتفع قبل رمضان، فبدري أحسن.',
+                'قبل رمضان بـ 18 يوم، والحجوزات تكثر قبل رمضان. احجز القاعة بدري.',
                 style: tx(13, w: bold, c: K.saffronInk),
               ),
             ),
@@ -321,7 +321,7 @@ Widget vPlaceBudget() {
   );
   return questionScreen(
     step: 1,
-    total: 2,
+    total: 4,
     q: 'وين العرس، وكم ميزانيتك تقريبًا؟',
     help: 'نعرض لك مزودين وأسعار من مدينتك. رقم تقريبي يكفي.',
     primary: 'جهّز خطتي',

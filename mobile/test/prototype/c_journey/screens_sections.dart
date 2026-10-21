@@ -141,7 +141,7 @@ Widget tasks() => Phone(
         chip('للأهل'),
         const Spacer(),
         Text(
-          '12 من 30',
+          '12 من 20',
           style: tx(14, w: bold, c: K.saffronInk),
         ),
       ],
@@ -226,7 +226,7 @@ Widget addTaskSheet() => Phone(
   sheet: sheet(
     title: 'مهمة جديدة',
     children: [
-      field('وش المهمة؟', 'تذوّق كيكة العرس', focused: true),
+      field('ايش المهمة؟', 'تذوّق كيكة العرس', focused: true),
       gap(16),
       Text(
         'متى؟',
@@ -929,7 +929,7 @@ Widget providersExplore() {
         fit: true,
       ),
       pcard(
-        'الفنان أيمن الآنسي',
+        'الفنان أيمن القاضي',
         'صنعاء · الأصبحي',
         '4.7 (41)',
         '500 - 700 ألف ر.ي',

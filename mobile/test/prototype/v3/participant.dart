@@ -49,7 +49,7 @@ Widget _inviter() => Box(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('محمد يبغاك معه في عرسه', style: tx(16, w: bold)),
+            Text('محمد يشتيك معه في عرسه', style: tx(16, w: bold)),
             Text('الخميس 21 يناير · صنعاء', style: tx(13, c: K.muted)),
           ],
         ),
@@ -157,7 +157,7 @@ Widget qDecision() {
         ),
       ),
       gap(12),
-      Text('محمد يقدر يغيّرها، وأنت تقدر تطلع من الخطة متى ما بغيت.',
+      Text('محمد يقدر يغيّرها، وأنت تقدر تطلع من الخطة متى ما تشتي.',
           style: tx(13.5, c: K.muted)),
     ],
   );
@@ -196,7 +196,7 @@ Widget qChoosePath() {
       Center(child: wordmark(s: 26)),
       gap(20),
       Text('اختر المسار', style: tx(28, w: bold)),
-      Text('وش تفتح الحين؟ ما نطلب منك دخول مرة ثانية.', style: tx(15, c: K.muted)),
+      Text('ايش تفتح الآن؟ ما نطلب منك دخول مرة ثانية.', style: tx(15, c: K.muted)),
       gap(20),
       ctx(K.teal, 'م', 'عرس محمد', 'أخوك · الخميس 21 يناير', 'مساعد', on: true),
       ctx(const Color(0xFFB4536A), 'ل', 'عرس ليلى', 'بنت عمك · تكتب الرفد', 'مساهم'),
@@ -474,7 +474,7 @@ Widget qChanged() => Phone(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text('محمد فتح لك المال', style: tx(16, w: bold)),
-                Text('تقدر الحين تسجّل الدفعات والكاش اللي معك. المصادر والسلف تبقى خاصة فيه.',
+                Text('تقدر الآن تسجّل الدفعات والكاش اللي معك. المصادر والسلف تبقى خاصة فيه.',
                     style: tx(13.5, c: K.muted, h: 1.45)),
               ],
             ),

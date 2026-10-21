@@ -1,0 +1,819 @@
+{
+ "entities": [
+  {
+   "key": "participant",
+   "name": "المشارك والدعوة",
+   "icon_hint": "people",
+   "summary": "العريس يرسل رابط دعوة لرقم معيّن، والمدعو يقبل أو يرفض. بعدها يصير مشارك بدور وصلاحيات، ويقدر يطلع أو العريس يشيله.",
+   "states": [
+    {
+     "code": "INVITE_PENDING",
+     "name": "الدعوة تنتظر",
+     "meaning": "الرابط انرسل والمدعو لسا ما رد. يعيش 14 يوم.",
+     "appToday": "شاشة المشاركين: «ينتظرون»",
+     "design": [
+      "x07",
+      "g06",
+      "x05"
+     ],
+     "exists": true
+    },
+    {
+     "code": "INVITE_UNDELIVERED",
+     "name": "الرابط ما وصل",
+     "meaning": "واتساب ما قدر يوصله، أو الوصول غير مؤكد. العريس ينسخ الرابط ويرسله بنفسه.",
+     "appToday": "شارة حالة التسليم في المشاركين",
+     "design": [
+      "x07"
+     ],
+     "exists": true
+    },
+    {
+     "code": "INVITE_OPENED",
+     "name": "فتح الرابط",
+     "meaning": "المدعو فتح الرابط وما رد. التصميم يرسمها، السيرفر ما يعرف إذا انفتح.",
+     "appToday": "ما تظهر",
+     "design": [
+      "x07"
+     ],
+     "exists": false
+    },
+    {
+     "code": "ACCEPTED",
+     "name": "قبل وصار مشارك",
+     "meaning": "المدعو قبل ودخل الخطة بالدور والصلاحيات اللي في الدعوة.",
+     "appToday": "شاشة المشاركين: «معك»",
+     "design": [
+      "q03",
+      "q04",
+      "x07"
+     ],
+     "exists": true
+    },
+    {
+     "code": "DECLINED",
+     "name": "رفض الدعوة",
+     "meaning": "المدعو رفض. العريس يوصله تنبيه.",
+     "appToday": "تظهر «مرفوضة»",
+     "design": [
+      "q03"
+     ],
+     "exists": true
+    },
+    {
+     "code": "EXPIRED",
+     "name": "الدعوة انتهت",
+     "meaning": "عدّت 14 يوم بدون رد.",
+     "appToday": "شاشة فتح الدعوة: «منتهية»",
+     "design": [
+      "w16"
+     ],
+     "exists": true
+    },
+    {
+     "code": "CANCELLED",
+     "name": "الدعوة انلغت",
+     "meaning": "العريس لغاها، أو الخطة انأرشفت، أو المشارك انشال.",
+     "appToday": "شاشة فتح الدعوة: «ملغاة»",
+     "design": [
+      "w16"
+     ],
+     "exists": true
+    },
+    {
+     "code": "PERMISSION_REQUESTED",
+     "name": "طلب صلاحية",
+     "meaning": "المشارك يطلب صلاحية أكثر، والعريس يوافق أو يرفض. موجود في التصميم بس.",
+     "appToday": "ما تظهر",
+     "design": [
+      "q13",
+      "q14"
+     ],
+     "exists": false
+    },
+    {
+     "code": "REMOVED",
+     "name": "انشال من الخطة",
+     "meaning": "العريس شاله. مهامه تصير بدون مسؤول، واللي سجّله يبقى في السجل باسمه.",
+     "appToday": "يختفي من المشاركين",
+     "design": [
+      "q20",
+      "x07"
+     ],
+     "exists": true
+    },
+    {
+     "code": "LEFT",
+     "name": "طلع من الخطة",
+     "meaning": "المشارك طلع بنفسه. صاحب الخطة ما يقدر يطلع.",
+     "appToday": "زر الخروج في حساب المشارك",
+     "design": [
+      "q11",
+      "x07"
+     ],
+     "exists": true
+    }
+   ],
+   "transitions": [
+    {
+     "from": "—",
+     "to": "INVITE_PENDING",
+     "who": "العريس",
+     "how": "يرسل دعوة لرقم بدور وصلاحيات (POST /wedding-plans/:id/invites)",
+     "exists": true,
+     "src": "backend/src/modules/collaboration/internal/sharing.service.ts:538-624"
+    },
+    {
+     "from": "INVITE_PENDING",
+     "to": "INVITE_UNDELIVERED",
+     "who": "النظام",
+     "how": "واتساب ما وصّله (deliveryStatus: UNCERTAIN أو UNAVAILABLE)",
+     "exists": true,
+     "src": "backend/prisma/schema/collaboration.prisma:89-95"
+    },
+    {
+     "from": "INVITE_UNDELIVERED",
+     "to": "INVITE_PENDING",
+     "who": "العريس",
+     "how": "يعيد الإرسال برابط جديد، والقديم يموت (POST /invites/:inviteId/reissue)، مع وقت انتظار بين كل مرة",
+     "exists": true,
+     "src": "backend/src/modules/collaboration/internal/sharing.service.ts:834-871"
+    },
+    {
+     "from": "INVITE_PENDING",
+     "to": "INVITE_OPENED",
+     "who": "النظام",
+     "how": "يسجّل إن الرابط انفتح",
+     "exists": false,
+     "src": ""
+    },
+    {
+     "from": "INVITE_PENDING",
+     "to": "ACCEPTED",
+     "who": "المشارك",
+     "how": "يفتح الرابط، يثبت رقمه بالرمز (POST /invites/:token/request-otp وverify-otp)، ويقبل (POST /invites/:token/accept)",
+     "exists": true,
+     "src": "backend/src/modules/collaboration/internal/sharing.service.ts:913-1070"
+    },
+    {
+     "from": "INVITE_PENDING",
+     "to": "DECLINED",
+     "who": "المشارك",
+     "how": "يرفض (POST /invites/:token/decline)",
+     "exists": true,
+     "src": "backend/src/modules/collaboration/internal/sharing.service.ts:1096-1185"
+    },
+    {
+     "from": "INVITE_PENDING",
+     "to": "EXPIRED",
+     "who": "النظام",
+     "how": "بعد 14 يوم (محسوبة من تاريخ الانتهاء)",
+     "exists": true,
+     "src": "backend/src/modules/collaboration/internal/sharing.service.ts:2485-2488,2647-2658"
+    },
+    {
+     "from": "INVITE_PENDING",
+     "to": "CANCELLED",
+     "who": "العريس",
+     "how": "يلغي الدعوة (DELETE /wedding-plans/:id/invites/:inviteId)",
+     "exists": true,
+     "src": "backend/src/modules/collaboration/internal/sharing.service.ts:786"
+    },
+    {
+     "from": "INVITE_PENDING",
+     "to": "CANCELLED",
+     "who": "النظام",
+     "how": "الخطة انأرشفت",
+     "exists": true,
+     "src": "backend/src/wedding-plans/wedding-plans.service.ts:331-335"
+    },
+    {
+     "from": "—",
+     "to": "ACCEPTED",
+     "who": "العريس",
+     "how": "يضيف شخص عنده حساب مباشرة بدون دعوة (POST /wedding-plans/:id/members)",
+     "exists": true,
+     "src": "backend/src/modules/collaboration/internal/sharing.service.ts:312-370"
+    },
+    {
+     "from": "ACCEPTED",
+     "to": "ACCEPTED",
+     "who": "العريس",
+     "how": "يغيّر دوره أو صلاحياته (PATCH /wedding-plans/:id/members/:memberId)، والمشارك يوصله تنبيه",
+     "exists": true,
+     "src": "backend/src/modules/collaboration/internal/sharing.service.ts:1202"
+    },
+    {
+     "from": "ACCEPTED",
+     "to": "PERMISSION_REQUESTED",
+     "who": "المشارك",
+     "how": "يطلب صلاحية من داخل القسم المقفول",
+     "exists": false,
+     "src": ""
+    },
+    {
+     "from": "PERMISSION_REQUESTED",
+     "to": "ACCEPTED",
+     "who": "العريس",
+     "how": "يوافق أو يرفض الطلب",
+     "exists": false,
+     "src": ""
+    },
+    {
+     "from": "ACCEPTED",
+     "to": "REMOVED",
+     "who": "العريس",
+     "how": "يشيله (DELETE /wedding-plans/:id/members/:memberId)",
+     "exists": true,
+     "src": "backend/src/modules/collaboration/internal/sharing.service.ts:1340-1430"
+    },
+    {
+     "from": "ACCEPTED",
+     "to": "LEFT",
+     "who": "المشارك",
+     "how": "يطلع (DELETE /wedding-plans/:id/members/me)",
+     "exists": true,
+     "src": "backend/src/modules/collaboration/internal/sharing.service.ts:1468-1545"
+    },
+    {
+     "from": "LEFT",
+     "to": "INVITE_PENDING",
+     "who": "العريس",
+     "how": "يرجع بس بدعوة جديدة",
+     "exists": true,
+     "src": "backend/src/modules/collaboration/internal/sharing.service.ts:243,369"
+    }
+   ],
+   "designOnly": [
+    "«فتح الرابط / ما فتحها» (x07، e07): السيرفر ما يعرف إذا الرابط انفتح.",
+    "w16 يقول «الرابط يشتغل 7 أيام»، والسيرفر يخلّيه 14 يوم.",
+    "طلب صلاحية من المشارك والموافقة عليه (q13، q14).",
+    "الأدوار الجاهزة مع «لا / يشوف / يعدّل» لكل قسم، و«كاتب الرفد» (g06، q03): السيرفر عنده أدوار ومفاتيح صلاحيات بشكل ثاني (C63).",
+    "«مهامه رجعت لك» (x07، q20): في السيرفر المهام تصير بدون مسؤول، ما ترجع للعريس."
+   ],
+   "serverOnly": [
+    "إضافة شخص عنده حساب مباشرة بدون رابط (POST /members). التصميم ما يرسمها.",
+    "حالة تسليم الرابط بخمس قيم (ما ندري، ينرسل، وصل، غير مؤكد، ما ينفع). x07 يرسم «ما عليه واتساب» بس.",
+    "وقت انتظار قبل إعادة إرسال الدعوة (INVITE_REISSUE_COOLDOWN). التصميم ما يرسم «انتظر شوي».",
+    "المشارك اللي طلع ما يرجع إلا بدعوة جديدة.",
+    "الأرشفة وشيل المشارك يلغون الدعوات المعلّقة لحالهم."
+   ],
+   "decisions": [
+    "<b>قرار:</b> مدة الدعوة 7 أيام مثل w16، أو 14 مثل السيرفر؟",
+    "<b>قرار:</b> مهام المشارك اللي انشال: ترجع للعريس، أو تبقى بدون مسؤول مثل اليوم؟",
+    "<b>قرار:</b> نبني طلب الصلاحية (q13، q14) في هذي النسخة، أو نأجّله؟",
+    "<b>قرار:</b> نحفظ «فتح الرابط»، أو نشيل «ما فتحها» من x07؟"
+   ]
+  },
+  {
+   "key": "task",
+   "name": "المهمة",
+   "icon_hint": "check",
+   "summary": "المهمة لها أربع حالات: تنتظر، شغّال عليها، خلصت، ملغية. «متأخرة» و«قربت» محسوبة من التاريخ، والخاصة تنختار وقت الإنشاء بس.",
+   "states": [
+    {
+     "code": "TODO",
+     "name": "تنتظر",
+     "meaning": "مهمة مفتوحة لسا ما بدأت.",
+     "appToday": "شاشة المهام",
+     "design": [
+      "d01",
+      "d02",
+      "d03"
+     ],
+     "exists": true
+    },
+    {
+     "code": "IN_PROGRESS",
+     "name": "شغّال عليها",
+     "meaning": "بدأ فيها وما خلصت.",
+     "appToday": "تظهر «قيد التنفيذ» في المهام",
+     "design": [],
+     "exists": true
+    },
+    {
+     "code": "DUE_SOON",
+     "name": "قربت",
+     "meaning": "موعدها خلال 7 أيام. محسوب، ويوصل تذكير.",
+     "appToday": "فلتر «اليوم / القادمة» وتنبيه",
+     "design": [
+      "d01",
+      "b08"
+     ],
+     "exists": true
+    },
+    {
+     "code": "OVERDUE",
+     "name": "متأخرة",
+     "meaning": "عدّى موعدها وما خلصت. محسوب، ويوصل تنبيه.",
+     "appToday": "فلتر «المتأخرة»",
+     "design": [
+      "w26",
+      "d01"
+     ],
+     "exists": true
+    },
+    {
+     "code": "DONE",
+     "name": "خلصت",
+     "meaning": "انقفلت.",
+     "appToday": "شاشة المهام (المنجزة)",
+     "design": [
+      "d01",
+      "x16"
+     ],
+     "exists": true
+    },
+    {
+     "code": "CANCELLED",
+     "name": "ملغية",
+     "meaning": "ما نحتاجها. تبقى في القائمة ملغية.",
+     "appToday": "تظهر «ملغية»",
+     "design": [
+      "x16"
+     ],
+     "exists": true
+    },
+    {
+     "code": "DELETED",
+     "name": "انحذفت",
+     "meaning": "انمسحت نهائيًا.",
+     "appToday": "زر الحذف",
+     "design": [],
+     "exists": true
+    },
+    {
+     "code": "ASSIGNED",
+     "name": "عليها مسؤول",
+     "meaning": "مربوطة بمشارك (أو باسم ورقم شخص من برّا).",
+     "appToday": "اسم المسؤول في المهمة",
+     "design": [
+      "d02",
+      "x16",
+      "q05"
+     ],
+     "exists": true
+    },
+    {
+     "code": "PRIVATE",
+     "name": "خاصة",
+     "meaning": "يشوفها صاحبها بس. تنختار وقت الإنشاء.",
+     "appToday": "مفتاح «خاصة» في إضافة مهمة",
+     "design": [
+      "w25"
+     ],
+     "exists": true
+    }
+   ],
+   "transitions": [
+    {
+     "from": "—",
+     "to": "TODO",
+     "who": "العريس",
+     "how": "يضيف مهمة (POST /wedding-plans/:id/tasks) أو من المهام الجاهزة",
+     "exists": true,
+     "src": "backend/src/tasks/tasks.service.ts:170-172"
+    },
+    {
+     "from": "TODO",
+     "to": "IN_PROGRESS",
+     "who": "العريس",
+     "how": "يغيّر الحالة (PATCH /tasks/:id)",
+     "exists": true,
+     "src": "backend/src/tasks/tasks.service.ts:350"
+    },
+    {
+     "from": "TODO",
+     "to": "DUE_SOON",
+     "who": "النظام",
+     "how": "تذكير كل ساعة لما يبقى 7 أيام",
+     "exists": true,
+     "src": "backend/src/notifications/notifications.service.ts:625-640"
+    },
+    {
+     "from": "TODO",
+     "to": "OVERDUE",
+     "who": "النظام",
+     "how": "يعدّي الموعد، ويوصل تنبيه لكل مهمة متأخرة",
+     "exists": true,
+     "src": "backend/src/notifications/notifications.service.ts:636-639"
+    },
+    {
+     "from": "TODO",
+     "to": "DONE",
+     "who": "العريس",
+     "how": "يسحبها «خلصت» (PATCH /tasks/:id {status: DONE})",
+     "exists": true,
+     "src": "backend/src/tasks/tasks.service.ts:350-353"
+    },
+    {
+     "from": "DONE",
+     "to": "TODO",
+     "who": "العريس",
+     "how": "«أعد فتحها»",
+     "exists": true,
+     "src": "backend/src/tasks/tasks.service.ts:350-353"
+    },
+    {
+     "from": "TODO",
+     "to": "CANCELLED",
+     "who": "العريس",
+     "how": "«ما نحتاجها»",
+     "exists": true,
+     "src": "backend/src/tasks/tasks.service.ts:350"
+    },
+    {
+     "from": "TODO",
+     "to": "DELETED",
+     "who": "العريس",
+     "how": "يحذفها (DELETE /tasks/:id)",
+     "exists": true,
+     "src": "backend/src/tasks/tasks.service.ts:726"
+    },
+    {
+     "from": "TODO",
+     "to": "ASSIGNED",
+     "who": "العريس",
+     "how": "يعطيها مشارك (PATCH /tasks/:id/assign). المشارك لازم عنده صلاحية المهام، ويوصله تنبيه",
+     "exists": true,
+     "src": "backend/src/tasks/tasks.service.ts:365-475"
+    },
+    {
+     "from": "—",
+     "to": "PRIVATE",
+     "who": "العريس",
+     "how": "يختارها خاصة وقت الإنشاء",
+     "exists": true,
+     "src": "backend/src/tasks/tasks.service.ts:172"
+    },
+    {
+     "from": "TODO",
+     "to": "PRIVATE",
+     "who": "العريس",
+     "how": "يحوّل مهمة مشتركة لخاصة بعدين: ينرفض",
+     "exists": true,
+     "src": "backend/src/tasks/tasks.service.ts:322-330"
+    },
+    {
+     "from": "TODO",
+     "to": "TODO",
+     "who": "العريس",
+     "how": "المهمة تقفل ثانية لما تخلص اللي قبلها",
+     "exists": false,
+     "src": ""
+    }
+   ],
+   "designOnly": [
+    "«نبلّغك بس إذا مهمة متأخرة توقف شيء ثاني» (w26): ما فيه ترتيب بين المهام، وكل متأخرة توصل تنبيه (C39).",
+    "«تنلغي وتبقى في السجل» صح، بس «بعد العصر» كوقت (x16، d02): المهمة لها تاريخ بدون وقت.",
+    "ربط المهمة بمبلغ أو بند أو مهر (d01، d04، y14): المهمة ما لها رابط بالمال.",
+    "«12 من 30» (d01): العدد الحقيقي من الكتالوج 20 مهمة للعريس (C6).",
+    "إعطاء مهمة للوالد وهو «يشوف بس» (d02، x16): السيرفر يرفض (C28)."
+   ],
+   "serverOnly": [
+    "حالة «شغّال عليها» (IN_PROGRESS) موجودة، والتصميم ما يرسمها في أي شاشة.",
+    "الحذف النهائي موجود جنب الإلغاء. التصميم يرسم الإلغاء بس.",
+    "المهمة المشتركة ما تصير خاصة بعدين (TASK_PRIVACY_AT_CREATION_ONLY)."
+   ],
+   "decisions": [
+    "<b>قرار:</b> نشيل «شغّال عليها» من السيرفر، أو نضيفها في التصميم؟",
+    "<b>قرار:</b> المشارك اللي «يشوف بس» يقدر يستلم مهمة ويخلّصها؟ (C28)"
+   ]
+  },
+  {
+   "key": "guest",
+   "name": "الضيف والدعوة والرد",
+   "icon_hint": "guest",
+   "summary": "الضيف له ثلاث حالات مع بعض: الدعوة (ما انرسلت، انرسلت، وصلت)، والرد (ينتظر، بيحضر، معتذر)، وحالة قديمة تكرر الرد. ما فيه «يمكن» ولا «حضر فعلًا».",
+   "states": [
+    {
+     "code": "ADDED",
+     "name": "انضاف",
+     "meaning": "الضيف في القائمة، والدعوة ما انرسلت (NOT_SENT).",
+     "appToday": "قائمة الضيوف",
+     "design": [
+      "e01",
+      "e03",
+      "e06",
+      "w28"
+     ],
+     "exists": true
+    },
+    {
+     "code": "SENT",
+     "name": "الدعوة انرسلت",
+     "meaning": "انعمل له رابط رد خاص، والعريس أرسله من جواله.",
+     "appToday": "شارة الدعوة في صف الضيف",
+     "design": [
+      "e04",
+      "e07"
+     ],
+     "exists": true
+    },
+    {
+     "code": "DELIVERED",
+     "name": "الدعوة وصلت",
+     "meaning": "العريس يعلّمها «وصلت» بيده. ما فيه تأكيد تلقائي.",
+     "appToday": "شارة الدعوة",
+     "design": [
+      "e07"
+     ],
+     "exists": true
+    },
+    {
+     "code": "OPENED",
+     "name": "فتح الرابط",
+     "meaning": "التصميم يرسم «فتح الرابط» بتاريخ. السيرفر ما يسجّل الفتح.",
+     "appToday": "ما تظهر",
+     "design": [
+      "e07"
+     ],
+     "exists": false
+    },
+    {
+     "code": "PENDING",
+     "name": "ما رد",
+     "meaning": "الدعوة عنده وما رد لسا.",
+     "appToday": "فلتر «ما ردوا» في الضيوف",
+     "design": [
+      "e01",
+      "e08"
+     ],
+     "exists": true
+    },
+    {
+     "code": "CONFIRMED",
+     "name": "بيحضر",
+     "meaning": "رد من الرابط إنه حاضر، مع عدد اللي معه.",
+     "appToday": "صف الضيف أخضر",
+     "design": [
+      "e05",
+      "e07"
+     ],
+     "exists": true
+    },
+    {
+     "code": "DECLINED",
+     "name": "معتذر",
+     "meaning": "رد إنه ما بيحضر.",
+     "appToday": "صف الضيف أحمر",
+     "design": [
+      "e05"
+     ],
+     "exists": true
+    },
+    {
+     "code": "MAYBE",
+     "name": "يمكن",
+     "meaning": "ما فيه هذا الرد في السيرفر ولا في التصميم.",
+     "appToday": "ما تظهر",
+     "design": [],
+     "exists": false
+    },
+    {
+     "code": "ATTENDED",
+     "name": "حضر فعلًا",
+     "meaning": "تسجيل الحضور يوم العرس. التصميم يرسم «حضروا» كرقم في الذكريات بس.",
+     "appToday": "ما تظهر",
+     "design": [
+      "w14",
+      "z06"
+     ],
+     "exists": false
+    },
+    {
+     "code": "DELETED",
+     "name": "انحذف",
+     "meaning": "الضيف انشال من القائمة.",
+     "appToday": "زر الحذف",
+     "design": [],
+     "exists": true
+    }
+   ],
+   "transitions": [
+    {
+     "from": "—",
+     "to": "ADDED",
+     "who": "العريس",
+     "how": "يضيف ضيف (POST /wedding-plans/:id/guests) أو مجموعة من جهات الاتصال (POST .../guests/bulk)",
+     "exists": true,
+     "src": "backend/src/guests/guests.service.ts:884-891"
+    },
+    {
+     "from": "ADDED",
+     "to": "SENT",
+     "who": "العريس",
+     "how": "يطلب رابط (POST /guests/:id/invitation-link) ويرسله من واتساب جواله",
+     "exists": true,
+     "src": "backend/src/guests/guest-rsvp.service.ts:150-175"
+    },
+    {
+     "from": "SENT",
+     "to": "SENT",
+     "who": "العريس",
+     "how": "يذكّره: رابط جديد، والقديم يموت",
+     "exists": true,
+     "src": "backend/src/guests/guest-rsvp.service.ts:156-161"
+    },
+    {
+     "from": "SENT",
+     "to": "DELIVERED",
+     "who": "العريس",
+     "how": "يعلّمها وصلت بيده (PATCH /guests/:id)",
+     "exists": true,
+     "src": "backend/src/guests/guests.service.ts:362-366"
+    },
+    {
+     "from": "SENT",
+     "to": "OPENED",
+     "who": "النظام",
+     "how": "يسجّل إن الرابط انفتح",
+     "exists": false,
+     "src": ""
+    },
+    {
+     "from": "PENDING",
+     "to": "CONFIRMED",
+     "who": "الضيف",
+     "how": "يرد من صفحة الرابط «حاضر» (POST /public/rsvp/:token)، والعريس يوصله تنبيه",
+     "exists": true,
+     "src": "backend/src/guests/guest-rsvp.service.ts:195-245"
+    },
+    {
+     "from": "PENDING",
+     "to": "DECLINED",
+     "who": "الضيف",
+     "how": "يرد «أعتذر» من نفس الصفحة",
+     "exists": true,
+     "src": "backend/src/guests/guest-rsvp.service.ts:220-225"
+    },
+    {
+     "from": "CONFIRMED",
+     "to": "DECLINED",
+     "who": "الضيف",
+     "how": "يغيّر رده من نفس الرابط",
+     "exists": true,
+     "src": "backend/src/guests/guest-rsvp.service.ts:195-245"
+    },
+    {
+     "from": "PENDING",
+     "to": "CONFIRMED",
+     "who": "العريس",
+     "how": "يسجّل الرد بيده (PATCH /guests/:id)",
+     "exists": true,
+     "src": "backend/src/guests/guests.service.ts:362-371"
+    },
+    {
+     "from": "CONFIRMED",
+     "to": "ATTENDED",
+     "who": "العريس",
+     "how": "يسجّل إنه حضر يوم العرس",
+     "exists": false,
+     "src": ""
+    },
+    {
+     "from": "ADDED",
+     "to": "DELETED",
+     "who": "العريس",
+     "how": "يحذفه (DELETE /guests/:id)",
+     "exists": true,
+     "src": "backend/src/guests/guests.controller.ts:109"
+    },
+    {
+     "from": "SENT",
+     "to": "—",
+     "who": "النظام",
+     "how": "الخطة انأرشفت: كل الروابط تتسكر",
+     "exists": true,
+     "src": "backend/src/guests/guest-rsvp.service.ts:266-273"
+    }
+   ],
+   "designOnly": [
+    "«فتح الرابط» بتاريخ، وتسلسل «انرسلت، فتح، أكّد» (e07).",
+    "«حضروا» يوم العرس (w14، z06): ما فيه تسجيل حضور.",
+    "«أرسلها لـ 124 ضيف» دفعة وحدة (e04): الإرسال من جوال العريس ضيف ضيف (C30).",
+    "التذكير يرسل نفس الرابط القديم (e08): كل تذكير يعمل رابط جديد ويموّت القديم (C31).",
+    "«يرسل لهم الوالد» (e01، e08): الوالد «يشوف بس» وما يرسل (C29)."
+   ],
+   "serverOnly": [
+    "فيه حالتين تكرر بعض: status القديمة (INVITED، CONFIRMED، DECLINED، PENDING) وattendanceStatus. لازم نعتمد وحدة.",
+    "«وصلت» (DELIVERED) تنعلّم باليد بس.",
+    "لما الخطة تنأرشف، روابط الضيوف كلها تتسكر. التصميم يقول «الدفتر مفتوح دايم» (w14)."
+   ],
+   "decisions": [
+    "<b>قرار:</b> نبني تسجيل الحضور يوم العرس، أو «حضروا» في w14 يصير «أكّدوا»؟",
+    "<b>قرار:</b> نحفظ رابط الضيف بشكل نقدر نعيد إرساله، عشان التذكير ما يموّت الرابط القديم؟ (C31)"
+   ]
+  },
+  {
+   "key": "notification",
+   "name": "التنبيه",
+   "icon_hint": "bell",
+   "summary": "التنبيه ينولد من حدث أو من تذكير كل ساعة. له حالتين: ما انقرا وانقرا، ويقدر ينأرشف أو ينحذف.",
+   "states": [
+    {
+     "code": "UNREAD",
+     "name": "ما انقرا",
+     "meaning": "تنبيه جديد.",
+     "appToday": "شاشة التنبيهات مع عدّاد",
+     "design": [
+      "b08",
+      "q21"
+     ],
+     "exists": true
+    },
+    {
+     "code": "READ",
+     "name": "انقرا",
+     "meaning": "فتحه أو ضغط «قراءة الكل».",
+     "appToday": "شاشة التنبيهات",
+     "design": [
+      "b08"
+     ],
+     "exists": true
+    },
+    {
+     "code": "ARCHIVED",
+     "name": "مؤرشف",
+     "meaning": "شاله من القائمة.",
+     "appToday": "ما تظهر كحالة",
+     "design": [],
+     "exists": true
+    },
+    {
+     "code": "DELETED",
+     "name": "انحذف",
+     "meaning": "انمسح.",
+     "appToday": "ما تظهر",
+     "design": [],
+     "exists": true
+    },
+    {
+     "code": "DIGEST",
+     "name": "ملخص الأسبوع",
+     "meaning": "«جمعة مباركة، هذا الأسبوع…» (b08، z02). ما فيه ملخص في السيرفر.",
+     "appToday": "ما تظهر",
+     "design": [
+      "b08",
+      "z02"
+     ],
+     "exists": false
+    }
+   ],
+   "transitions": [
+    {
+     "from": "—",
+     "to": "UNREAD",
+     "who": "النظام",
+     "how": "حدث (عرض، حجز، مهمة، ضيف رد، دعوة) أو تذكير كل ساعة (مهام، دفعات، أقساط، عدّ تنازلي)",
+     "exists": true,
+     "src": "backend/src/notifications/notification-reminders.scheduler.ts:11; backend/prisma/schema/notifications.prisma:1-25"
+    },
+    {
+     "from": "UNREAD",
+     "to": "READ",
+     "who": "العريس",
+     "how": "يفتحه (PATCH /notifications/:id/read) أو الكل (PATCH /notifications/read-all)",
+     "exists": true,
+     "src": "backend/src/notifications/notifications.service.ts:211-219"
+    },
+    {
+     "from": "READ",
+     "to": "ARCHIVED",
+     "who": "العريس",
+     "how": "يأرشفه (PATCH /notifications/:id/archive)",
+     "exists": true,
+     "src": "backend/src/notifications/notifications.controller.ts:76"
+    },
+    {
+     "from": "READ",
+     "to": "DELETED",
+     "who": "العريس",
+     "how": "يحذفه (DELETE /notifications/:id)",
+     "exists": true,
+     "src": "backend/src/notifications/notifications.controller.ts:84"
+    },
+    {
+     "from": "—",
+     "to": "DIGEST",
+     "who": "النظام",
+     "how": "ملخص كل جمعة",
+     "exists": false,
+     "src": ""
+    }
+   ],
+   "designOnly": [
+    "ملخص الجمعة (b08، z02).",
+    "«صالح خلّص مهمتين» (b08): ما فيه تنبيه لما مشارك يخلّص مهمة.",
+    "تحديد وقت التذكير قبل الدفعة (c13، g07): التذكير ثابت."
+   ],
+   "serverOnly": [
+    "نوع SYNC_REQUIRED ما أحد يرسله. ننظفه.",
+    "الأرشفة والحذف موجودة، والتصميم ما يرسمها في b08."
+   ],
+   "decisions": [
+    "<b>قرار:</b> نضيف تنبيه «المشارك خلّص مهمة» وملخص الجمعة، أو نشيلهم من b08؟"
+   ]
+  }
+ ]
+}

@@ -454,7 +454,7 @@ Widget vWhose({bool brideChosen = false}) => Phone(
     gap(4),
     Text('كل واحد له مساره، ويقدر يضيف الثاني مشارك', style: tx(15.5, c: K.muted)),
     gap(22),
-    _roleCard('العريس', 'عرس الرجال، والمهر،\nوضيوفك ومزودينك', _groomPhoto(), on: !brideChosen),
+    _roleCard('العريس', 'عرس الرجال،\nوضيوفك ومزودينك', _groomPhoto(), on: !brideChosen),
     // Temporary stand-in until the brother's own dress photo arrives.
     _roleCard(
       'العروسة',

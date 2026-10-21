@@ -500,7 +500,7 @@ Map<String, dynamic> _conv(
 }) => {
   'id': id,
   'scope': 'PLAN',
-  'weddingPlan': {'id': 'plan-1', 'title': 'عرس محمد وسلمى'},
+  'weddingPlan': {'id': 'plan-1', 'title': 'عرس محمد'},
   'provider': {'id': p.id, 'businessName': p.businessName},
   'quoteRequestCount': 1,
   'unreadMessageCount': unread,
@@ -644,7 +644,7 @@ Future<List<SingleChildWidget>> _session(
       accountContext(
         role: AccountContextRole.owner,
         planId: 'plan-1',
-        displayName: 'عرس محمد وسلمى',
+        displayName: 'عرس محمد',
         persona: AccountContextPersona.groom,
       ),
     ),
@@ -656,7 +656,7 @@ Future<List<SingleChildWidget>> _session(
     WeddingPlan(
       id: 'plan-1',
       ownerUserId: 'user-1',
-      title: 'عرس محمد وسلمى',
+      title: 'عرس محمد',
       city: 'صنعاء',
       location: const {
         'governorate': 'أمانة العاصمة',

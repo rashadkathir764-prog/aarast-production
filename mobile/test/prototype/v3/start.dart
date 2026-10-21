@@ -1,167 +1,10 @@
-// Journey prototype v3: the start, now five questions with the women's side.
+// Journey prototype v3: the start. Two question screens after «خطة مين؟»:
+// name + date, then place + budget. The bride's name is never asked in the
+// groom's journey (owner decision 2026-10-21).
 import 'package:flutter/material.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 
 import '../c_journey/kit.dart';
-
-Widget vName() => questionScreen(
-  step: 0,
-  total: 6,
-  q: 'أهلًا بك! وش اسمك؟',
-  help: 'نناديك فيه، ونسمي خطتك باسمكم.',
-  body: [
-    field('اسمك', 'محمد', big: true, focused: true),
-    gap(12),
-    field('اسم العروسة (اختياري)', 'سلمى', big: true),
-    gap(16),
-    Box(
-      c: K.tealSoft,
-      child: Row(
-        children: [
-          const Icon(LucideIcons.sparkles, color: K.teal, size: 20),
-          const SizedBox(width: 10),
-          Text('خطتك بتكون: ', style: tx(15, c: K.muted)),
-          Text(
-            'عرس محمد وسلمى',
-            style: tx(15, w: bold, c: K.teal),
-          ),
-        ],
-      ),
-    ),
-  ],
-);
-
-Widget vDate() {
-  Widget month(String m, String h, {bool on = false}) => Container(
-    padding: const EdgeInsets.symmetric(vertical: 10),
-    decoration: BoxDecoration(
-      color: on ? K.teal : Colors.white,
-      borderRadius: BorderRadius.circular(16),
-      border: on ? null : Border.all(color: K.line),
-    ),
-    child: Column(
-      children: [
-        Text(
-          m,
-          style: tx(17, w: bold, c: on ? Colors.white : K.ink),
-        ),
-        Text(h, style: tx(12, c: on ? Colors.white70 : K.muted)),
-      ],
-    ),
-  );
-  return questionScreen(
-    step: 1,
-    total: 6,
-    q: 'متى العرس؟',
-    help: 'نرتب لك المهام والدفعات على موعده.',
-    skip: 'ما حددنا الموعد بعد',
-    body: [
-      GridView.count(
-        crossAxisCount: 3,
-        shrinkWrap: true,
-        mainAxisSpacing: 10,
-        crossAxisSpacing: 10,
-        childAspectRatio: 1.45,
-        physics: const NeverScrollableScrollPhysics(),
-        children: [
-          month('ديسمبر', 'جمادى الآخرة'),
-          month('يناير', 'رجب · شعبان', on: true),
-          month('فبراير', 'شعبان · رمضان'),
-          month('مارس', 'رمضان · شوال'),
-          month('أبريل', 'شوال · القعدة'),
-          month('مايو', 'القعدة · الحجة'),
-        ],
-      ),
-      gap(14),
-      Container(
-        padding: const EdgeInsets.fromLTRB(16, 10, 16, 12),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(18),
-          border: Border.all(color: K.line),
-        ),
-        child: Row(
-          children: [
-            const Icon(LucideIcons.calendarDays, size: 20, color: K.muted),
-            const SizedBox(width: 10),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text('اليوم بالضبط (إذا تعرفه)', style: tx(12.5, c: K.muted)),
-                  Text('الخميس 21 يناير', style: tx(17, w: bold)),
-                  Text(
-                    '13 شعبان 1448',
-                    style: tx(13.5, w: bold, c: K.teal),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-      gap(12),
-      Box(
-        c: K.saffronSoft,
-        pad: const EdgeInsets.all(14),
-        child: Row(
-          children: [
-            const Icon(LucideIcons.moon, size: 18, color: K.saffronInk),
-            const SizedBox(width: 10),
-            Expanded(
-              child: Text(
-                'قبل رمضان بـ 18 يوم. الأسعار عادة ترتفع قبل رمضان، فبدري أحسن.',
-                style: tx(13.5, w: bold, c: K.saffronInk),
-              ),
-            ),
-          ],
-        ),
-      ),
-    ],
-  );
-}
-
-Widget vCity() => questionScreen(
-  step: 2,
-  total: 6,
-  q: 'في أي مدينة العرس؟',
-  help: 'نعرض لك مزودين وأسعار من مدينتك.',
-  body: [
-    Wrap(
-      spacing: 10,
-      runSpacing: 10,
-      children: [
-        chip('صنعاء', on: true, icon: LucideIcons.mapPin, fs: 16),
-        for (final c in [
-          'عدن',
-          'تعز',
-          'إب',
-          'الحديدة',
-          'ذمار',
-          'المكلا',
-          'مأرب',
-        ])
-          chip(c, fs: 16),
-        chip('مدينة ثانية', icon: LucideIcons.plus, fs: 16),
-      ],
-    ),
-    gap(22),
-    Box(
-      child: Row(
-        children: [
-          iconTile(LucideIcons.mapPin, K.sky, K.skySoft),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Text(
-              'مكان العرس تحدده بعدين لما تحجز القاعة.',
-              style: tx(14.5, c: K.muted),
-            ),
-          ),
-        ],
-      ),
-    ),
-  ],
-);
 
 Widget vMahr() {
   Widget row(
@@ -229,54 +72,6 @@ Widget vMahr() {
   );
 }
 
-Widget vBudget() {
-  Widget opt(String a, String b, {bool on = false}) => Container(
-    margin: const EdgeInsets.only(bottom: 10),
-    padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 15),
-    decoration: card(r: 18, border: on ? K.teal : null),
-    child: Row(
-      children: [
-        Expanded(
-          child: Text(a, style: tx(18, w: bold)),
-        ),
-        Text(b, style: tx(14, c: K.muted)),
-        const SizedBox(width: 12),
-        Container(
-          width: 24,
-          height: 24,
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            color: on ? K.teal : Colors.transparent,
-            border: Border.all(color: on ? K.teal : K.line, width: 2),
-          ),
-          child: on
-              ? const Icon(LucideIcons.check, size: 14, color: Colors.white)
-              : null,
-        ),
-      ],
-    ),
-  );
-  return questionScreen(
-    step: 5,
-    total: 6,
-    q: 'كم ميزانيتك تقريبًا؟',
-    help: 'لعرسك: القاعة والضيافة والقات والفنان. رقم تقريبي يكفي.',
-    primary: 'جهّز خطتي',
-    skip: 'ما أدري، ساعدني أحسبها',
-    body: [
-      opt('أقل من 5 مليون', 'عرس بسيط'),
-      opt('5 إلى 10 مليون', 'الأكثر في صنعاء', on: true),
-      opt('10 إلى 20 مليون', 'عرس كبير'),
-      opt('أكثر من 20 مليون', ''),
-      gap(4),
-      Text(
-        'بالريال اليمني (صنعاء). المهر محسوب لحاله.',
-        style: tx(13.5, c: K.faint),
-      ),
-    ],
-  );
-}
-
 Widget vReady() => Phone(
   bottom: Padding(
     padding: const EdgeInsets.fromLTRB(20, 8, 20, 30),
@@ -316,10 +111,7 @@ Widget vReady() => Phone(
     ),
     gap(4),
     Center(
-      child: Text(
-        'عرس محمد وسلمى · صنعاء · 13 شعبان',
-        style: tx(15, c: K.muted),
-      ),
+      child: Text('عرس محمد · صنعاء · 13 شعبان', style: tx(15, c: K.muted)),
     ),
     gap(20),
     Box(
@@ -327,35 +119,236 @@ Widget vReady() => Phone(
       child: Column(
         children: [
           listRow(
-            icon: LucideIcons.calendarDays,
-            fg: K.teal,
-            soft: K.tealSoft,
-            title: '3 مناسبات على أسبوع العرس',
-            sub: 'السمرة، المقيل، الزفاف',
-          ),
-          listRow(
             icon: LucideIcons.wallet,
             fg: K.teal,
             soft: K.tealSoft,
-            title: '9 بنود لعرسك في صنعاء',
-            sub: 'القاعة والضيافة والقات والغداء والباقي',
+            title: '11 بند لعرسك',
+            sub: 'القاعة والوليمة والقات والتصوير والزفة وغيرها',
           ),
           listRow(
             icon: LucideIcons.listChecks,
             fg: K.saffronInk,
             soft: K.saffronSoft,
-            title: '30 مهمة على موعدك',
-            sub: 'أولها هذا الأسبوع: احجز القاعة',
+            title: '9 مهام مرتبة على موعدك',
+            sub: 'أولها: تحديد الميزانية وتوزيعها',
           ),
           listRow(
-            icon: LucideIcons.heartHandshake,
-            fg: K.teal,
-            soft: K.tealSoft,
-            title: 'المهر: 3 مليون',
-            sub: 'سلّمت 2 · نذكرك بالباقي قبل موعده',
+            icon: LucideIcons.store,
+            fg: K.sky,
+            soft: K.skySoft,
+            title: 'مزودين صنعاء بأسعارهم',
+            sub: 'قاعات ومصورين وفنانين',
           ),
         ],
       ),
     ),
+    gap(14),
+    Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 6),
+      child: Text(
+        'تشيل وتضيف براحتك. وعندك 10 مهام ثانية تختار منها.',
+        style: tx(13.5, c: K.faint),
+      ),
+    ),
   ],
 );
+
+Widget _label(String t) => Padding(
+  padding: const EdgeInsets.fromLTRB(6, 0, 6, 8),
+  child: Text(
+    t,
+    style: tx(14, w: bold, c: K.muted),
+  ),
+);
+
+Widget _later(String t) => Padding(
+  padding: const EdgeInsets.only(top: 10),
+  child: Row(
+    children: [
+      Container(
+        width: 22,
+        height: 22,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          border: Border.all(color: K.line, width: 2),
+        ),
+      ),
+      const SizedBox(width: 10),
+      Text(
+        t,
+        style: tx(14.5, w: bold, c: K.muted),
+      ),
+    ],
+  ),
+);
+
+/// Step 1 of 2: the groom's name and the wedding month (exact day optional).
+Widget vNameDate() {
+  Widget month(String m, String h, {bool on = false}) => Container(
+    padding: const EdgeInsets.symmetric(vertical: 7),
+    decoration: BoxDecoration(
+      color: on ? K.teal : Colors.white,
+      borderRadius: BorderRadius.circular(14),
+      border: on ? null : Border.all(color: K.line),
+    ),
+    child: Column(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        Text(
+          m,
+          style: tx(16, w: bold, c: on ? Colors.white : K.ink),
+        ),
+        Text(h, style: tx(11.5, c: on ? Colors.white70 : K.muted)),
+      ],
+    ),
+  );
+  return questionScreen(
+    step: 0,
+    total: 2,
+    q: 'أهلًا بك! وش اسمك، ومتى العرس؟',
+    help: 'نناديك باسمك، ونرتب المهام والدفعات على الموعد.',
+    body: [
+      field('اسمك', 'محمد', big: true),
+      gap(8),
+      Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 6),
+        child: Row(
+          children: [
+            const Icon(LucideIcons.sparkles, color: K.teal, size: 16),
+            const SizedBox(width: 6),
+            Text('خطتك بتكون: ', style: tx(13.5, c: K.muted)),
+            Text(
+              'عرس محمد',
+              style: tx(13.5, w: bold, c: K.teal),
+            ),
+          ],
+        ),
+      ),
+      gap(20),
+      _label('شهر العرس'),
+      GridView.count(
+        crossAxisCount: 3,
+        shrinkWrap: true,
+        mainAxisSpacing: 8,
+        crossAxisSpacing: 8,
+        childAspectRatio: 1.9,
+        physics: const NeverScrollableScrollPhysics(),
+        children: [
+          month('ديسمبر', 'جمادى الآخرة'),
+          month('يناير', 'رجب · شعبان', on: true),
+          month('فبراير', 'شعبان · رمضان'),
+          month('مارس', 'رمضان · شوال'),
+          month('أبريل', 'شوال · القعدة'),
+          month('مايو', 'القعدة · الحجة'),
+        ],
+      ),
+      gap(10),
+      Container(
+        padding: const EdgeInsets.fromLTRB(14, 9, 14, 9),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: K.line),
+        ),
+        child: Row(
+          children: [
+            const Icon(LucideIcons.calendarDays, size: 18, color: K.muted),
+            const SizedBox(width: 10),
+            Text('اليوم بالضبط (اختياري)', style: tx(13, c: K.muted)),
+            const Spacer(),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                Text('الخميس 21 يناير', style: tx(15, w: bold)),
+                Text(
+                  '13 شعبان 1448',
+                  style: tx(12.5, w: bold, c: K.teal),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+      gap(10),
+      Box(
+        c: K.saffronSoft,
+        pad: const EdgeInsets.all(12),
+        child: Row(
+          children: [
+            const Icon(LucideIcons.moon, size: 17, color: K.saffronInk),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                'قبل رمضان بـ 18 يوم. الأسعار عادة ترتفع قبل رمضان، فبدري أحسن.',
+                style: tx(13, w: bold, c: K.saffronInk),
+              ),
+            ),
+          ],
+        ),
+      ),
+      _later('ما حددنا الموعد بعد'),
+    ],
+  );
+}
+
+/// Step 2 of 2: the city and a rough budget, then the plan is prepared.
+Widget vPlaceBudget() {
+  Widget opt(String a, String b, {bool on = false}) => Container(
+    margin: const EdgeInsets.only(bottom: 8),
+    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 11),
+    decoration: card(r: 16, border: on ? K.teal : null),
+    child: Row(
+      children: [
+        Expanded(
+          child: Text(a, style: tx(16.5, w: bold)),
+        ),
+        Text(b, style: tx(13, c: K.muted)),
+        const SizedBox(width: 12),
+        Container(
+          width: 22,
+          height: 22,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            color: on ? K.teal : Colors.transparent,
+            border: Border.all(color: on ? K.teal : K.line, width: 2),
+          ),
+          child: on
+              ? const Icon(LucideIcons.check, size: 13, color: Colors.white)
+              : null,
+        ),
+      ],
+    ),
+  );
+  return questionScreen(
+    step: 1,
+    total: 2,
+    q: 'وين العرس، وكم ميزانيتك تقريبًا؟',
+    help: 'نعرض لك مزودين وأسعار من مدينتك. رقم تقريبي يكفي.',
+    primary: 'جهّز خطتي',
+    body: [
+      _label('المدينة'),
+      Wrap(
+        spacing: 8,
+        runSpacing: 8,
+        children: [
+          chip('صنعاء', on: true, icon: LucideIcons.mapPin, fs: 15),
+          for (final c in ['عدن', 'تعز', 'إب', 'الحديدة', 'ذمار', 'المكلا'])
+            chip(c, fs: 15),
+          chip('مدينة ثانية', icon: LucideIcons.plus, fs: 15),
+        ],
+      ),
+      gap(22),
+      _label('الميزانية تقريبًا (بالريال اليمني)'),
+      opt('أقل من 5 مليون', 'عرس بسيط'),
+      opt('5 إلى 10 مليون', 'عرس متوسط', on: true),
+      opt('10 إلى 20 مليون', 'عرس كبير'),
+      opt('أكثر من 20 مليون', ''),
+      _later('أكمل بدون ميزانية'),
+      gap(10),
+      Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 6),
+        child: Text('تقدر تغيّرها بعدين من الفلوس.', style: tx(13, c: K.faint)),
+      ),
+    ],
+  );
+}

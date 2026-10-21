@@ -278,7 +278,7 @@ PlanInvite _invite({String status = 'PENDING'}) => PlanInvite(
   canManageProviders: true,
   canInviteMembers: false,
   canManageMoney: false,
-  weddingPlanTitle: 'عرس محمد وسلمى',
+  weddingPlanTitle: 'عرس محمد',
   inviterName: 'محمد',
   name: 'صالح',
   phone: '+967771554220',
@@ -393,7 +393,7 @@ DashboardSummary _summary({
   bool money = false,
 }) => DashboardSummary(
   planId: _planId,
-  title: 'عرس محمد وسلمى',
+  title: 'عرس محمد',
   status: 'PLANNING',
   progressPercentage: 35,
   weddingDate: DateTime(2027, 1, 21),
@@ -457,7 +457,7 @@ Future<(List<SingleChildWidget>, GoRouter)> _workspace({
       _ctx(
         role: 'CONTRIBUTOR',
         planId: _planId,
-        name: 'عرس محمد وسلمى',
+        name: 'عرس محمد',
         tasks: tasks,
         guests: guests,
         providers: providers,
@@ -579,7 +579,7 @@ void main() {
   }) async {
     final auth = await _auth(signedIn: signedIn, setup: setup);
     final contexts = await _contexts([
-      _ctx(role: 'CONTRIBUTOR', planId: _planId, name: 'عرس محمد وسلمى'),
+      _ctx(role: 'CONTRIBUTOR', planId: _planId, name: 'عرس محمد'),
     ]);
     return [
       ChangeNotifierProvider<AuthController>.value(value: auth),
@@ -705,7 +705,7 @@ void main() {
 
   testWidgets('p08 choose path', (tester) async {
     final c = await _contexts([
-      _ctx(role: 'CONTRIBUTOR', planId: _planId, name: 'عرس محمد وسلمى'),
+      _ctx(role: 'CONTRIBUTOR', planId: _planId, name: 'عرس محمد'),
       _ctx(
         role: 'CONTRIBUTOR',
         planId: 'plan-laila',
@@ -832,7 +832,7 @@ void main() {
 
   testWidgets('p15 section blocked by permission', (tester) async {
     final c = await _contexts(
-      [_ctx(role: 'CONTRIBUTOR', planId: _planId, name: 'عرس محمد وسلمى')],
+      [_ctx(role: 'CONTRIBUTOR', planId: _planId, name: 'عرس محمد')],
       select: 'plan:$_planId:contributor',
     );
     await _shot(
@@ -900,7 +900,7 @@ void main() {
           shared: [
             SharedWeddingPlan(
               id: _planId,
-              title: 'عرس محمد وسلمى',
+              title: 'عرس محمد',
               city: 'صنعاء',
               weddingDate: DateTime(2027, 1, 21),
               currency: 'YER',
@@ -959,7 +959,7 @@ void main() {
                 'n3',
                 'SHARING_INVITATION',
                 'دعوة مشاركة',
-                'محمد دعاك تشارك في خطة عرس محمد وسلمى.',
+                'محمد دعاك تشارك في خطة عرس محمد.',
                 200,
                 unread: false,
               ),
@@ -980,7 +980,7 @@ void main() {
         _SharingApi(
           members: [
             _member('m1', 'صالح', 'HELPER', providers: true),
-            _member('m2', 'سلمى', 'BRIDE', money: true),
+            _member('m2', 'العروسة', 'BRIDE', money: true),
           ],
           planInvites: [
             PlanInvite(

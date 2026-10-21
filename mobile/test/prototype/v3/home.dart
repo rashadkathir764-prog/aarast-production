@@ -1224,7 +1224,7 @@ Widget vDarkHome() {
                     'مساء الخير يا محمد',
                     style: tx(24, w: bold, c: ink),
                   ),
-                  Text('عرس محمد وسلمى · صنعاء', style: tx(14, c: muted)),
+                  Text('عرس محمد · صنعاء', style: tx(14, c: muted)),
                 ],
               ),
             ),

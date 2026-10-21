@@ -134,7 +134,7 @@ class _Auth {
 
 WeddingPlan _plan({
   String id = _planId,
-  String title = 'عرس محمد وسلمى',
+  String title = 'عرس محمد',
   String status = 'PLANNING',
   DateTime? date,
 }) => WeddingPlan(
@@ -186,7 +186,7 @@ SharedMember _member(
 final _members = [
   _member('m1', 'صالح الحمدي', 'HELPER', tasks: true, guests: true),
   _member('m2', 'الوالد', 'VIEWER'),
-  _member('m3', 'سلمى', 'BRIDE', tasks: true, guests: true, money: true),
+  _member('m3', 'العروسة', 'BRIDE', tasks: true, guests: true, money: true),
 ];
 
 PlanInvite _invite() => PlanInvite(
@@ -350,7 +350,7 @@ void main() {
     final accountContexts = AccountContextController(
       contextsApi: _Contexts(contexts ??
           [
-            _ctx(AccountContextRole.owner, _planId, 'عرس محمد وسلمى'),
+            _ctx(AccountContextRole.owner, _planId, 'عرس محمد'),
             _ctx(AccountContextRole.contributor, 'plan-saleh', 'عرس صالح'),
             _ctx(AccountContextRole.owner, 'plan-old', 'خطة تجربة',
                 lifecycle: 'ARCHIVED'),
@@ -574,7 +574,7 @@ class _Dash extends DashboardSummaryProvider {
       );
   final _summary = DashboardSummary.fromJson({
     'planId': _planId,
-    'title': 'عرس محمد وسلمى',
+    'title': 'عرس محمد',
     'currency': 'YER',
     'weddingDate': '2027-01-21T00:00:00.000Z',
     'status': 'PLANNING',

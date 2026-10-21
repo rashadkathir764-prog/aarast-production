@@ -531,7 +531,7 @@ Widget vParticipantStates() {
       subHeader('المشاركين', sub: 'مين معك، ومين لسا'),
       whiteList([
         m('ص', K.saffronInk, 'صالح', 'أخوي · مساعد · فعّال', tag('معك', K.green, K.greenSoft)),
-        m('س', K.lilac, 'سلمى', 'العروسة · الموعد والبرنامج', tag('معك', K.green, K.greenSoft)),
+        m('ع', K.lilac, 'العروسة', 'الموعد والبرنامج', tag('معك', K.green, K.greenSoft)),
       ]),
       sectionTitle('ينتظرون'),
       whiteList([
@@ -1215,7 +1215,7 @@ Widget vActivity() {
       sectionTitle('أمس'),
       whiteList([
         a('ص', K.saffronInk, 'صالح', 'خلّص "استلم البدلة"', '7:45 مساءً', i: LucideIcons.checkCircle2),
-        a('س', K.lilac, 'سلمى', 'انضمت للخطة', '4:00 العصر', i: LucideIcons.userPlus),
+        a('ع', K.lilac, 'العروسة', 'انضمت للخطة', '4:00 العصر', i: LucideIcons.userPlus),
         a('ف', K.faint, 'فهد', 'طلع من الخطة', '1:15 الظهر', i: LucideIcons.logOut),
       ]),
     ],

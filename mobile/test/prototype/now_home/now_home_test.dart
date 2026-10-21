@@ -115,7 +115,7 @@ Map<String, dynamic> _base({
 }) {
   return {
     'planId': _planId,
-    'title': 'عرس محمد وسلمى',
+    'title': 'عرس محمد',
     'currency': 'YER',
     'weddingDate': date?.toIso8601String(),
     'city': 'صنعاء',
@@ -369,7 +369,7 @@ void main() {
     activeIndex: 0,
     onTabSelected: (_) {},
     showQuickFab: true,
-    contextLabel: 'عرس محمد وسلمى',
+    contextLabel: 'عرس محمد',
     stageLabel: stage,
     topStatus: top,
     onQuickAdd: () {},
@@ -547,7 +547,7 @@ void main() {
           activeIndex: 0,
           onTabSelected: (_) {},
           showQuickFab: true,
-          contextLabel: 'عرس محمد وسلمى',
+          contextLabel: 'عرس محمد',
           stageLabel: 'التخطيط',
           onQuickAdd: () => showAarastQuickActionSheet(
             ctx,
@@ -815,7 +815,7 @@ void main() {
     await guest.saveDraft(
       GuestOnboardingDraft(
         guestPlanId: 'guest-plan-mohammed',
-        planName: 'عرس محمد وسلمى',
+        planName: 'عرس محمد',
         createdAt: DateTime(2026, 10, 18),
         isGuestPlan: true,
         needsSync: true,

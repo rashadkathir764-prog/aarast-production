@@ -138,7 +138,7 @@ Widget vRegister() => Phone(
           const Icon(LucideIcons.checkCircle2, color: K.teal),
           const SizedBox(width: 10),
           Expanded(
-            child: Text('عرس محمد وسلمى · 30 مهمة · 9 بنود', style: tx(14.5, w: bold, c: K.teal)),
+            child: Text('عرس محمد · 11 بند · 9 مهام', style: tx(14.5, w: bold, c: K.teal)),
           ),
         ],
       ),
@@ -750,7 +750,7 @@ Widget vShareSummary() => Phone(
     ),
     gap(16),
     _bubble(
-      'ملخص عرس محمد وسلمى\n'
+      'ملخص عرس محمد\n'
       'العرس بيكلف 10 مليون، ودفعنا 4.6.\n'
       'باقي 5.4، ومعنا 2.9.\n\n'
       'أكبر البنود:\n'
@@ -1500,13 +1500,13 @@ Widget vAddParticipant() => Phone(
         decoration: card(border: K.teal),
         child: Row(
           children: [
-            avatar('س', const Color(0xFF8E5A9E), s: 42),
+            avatar('ع', const Color(0xFF8E5A9E), s: 42),
             const SizedBox(width: 12),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('سلمى', style: tx(16, w: bold)),
+                  Text('عبدالله', style: tx(16, w: bold)),
                   Text(ltr('770 998 321'), style: tx(13, c: K.muted)),
                 ],
               ),
@@ -1711,7 +1711,7 @@ Widget vSupport() => Phone(
     sectionTitle('أسئلة كثير يسألونها'),
     whiteList([
       for (final q in const [
-        'كيف أضيف سلمى أو أخوي مشارك؟',
+        'كيف أضيف العروسة أو أخوي مشارك؟',
         'وش يصير لو أجّلت العرس؟',
         'هل اعّرست يحوّل فلوس؟',
         'مين يشوف أرقامي؟',

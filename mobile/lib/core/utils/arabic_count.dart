@@ -17,3 +17,21 @@ String arabicCount(
 
 String arabicDays(int count) =>
     arabicCount(count, one: 'يوم واحد', two: 'يومين', few: 'أيام', many: 'يوم');
+
+/// «الأولى», «الثانية» … the way people number payments; from the
+/// eleventh on, the number itself.
+String arabicOrdinal(int index) {
+  const names = [
+    'الأولى',
+    'الثانية',
+    'الثالثة',
+    'الرابعة',
+    'الخامسة',
+    'السادسة',
+    'السابعة',
+    'الثامنة',
+    'التاسعة',
+    'العاشرة',
+  ];
+  return index < names.length ? names[index] : '${index + 1}';
+}

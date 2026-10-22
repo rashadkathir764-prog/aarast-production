@@ -63,8 +63,8 @@ void main() {
                   paymentId: 'payment-1',
                   costId: 'cost-1',
                 ),
-                errorTitle: 'تعذر تحميل الدفعة',
-                absentTitle: 'الدفعة غير موجودة',
+                errorTitle: 'ما قدرنا نجيبها',
+                absentTitle: 'هذي الدفعة ما عاد موجودة',
               ),
               (
                 screen: const PaymentSchedulesScreen(weddingPlanId: 'plan-1'),
@@ -169,9 +169,49 @@ void main() {
         ),
       );
 
-      expect(find.text('تفاصيل الدفعة'), findsOneWidget);
-      expect(find.text('فتح التكلفة المرتبطة'), findsOneWidget);
-      expect(find.text('عكس الدفعة'), findsOneWidget);
+      // c11: the amount, who it went to and when, then «اعكس الدفعة».
+      expect(find.text('دفعة قاعة الحفل'), findsOneWidget);
+      expect(find.text('الدفعة الأولى'), findsOneWidget);
+      expect(find.byKey(const ValueKey('payment-amount-card')), findsOneWidget);
+      expect(find.text('لمين'), findsOneWidget);
+      expect(find.text('تحويل'), findsOneWidget);
+
+      final reverse = find.byKey(const ValueKey('payment-reverse'));
+      await tester.ensureVisible(reverse);
+      await tester.pumpAndSettle();
+      await tester.tap(reverse);
+      await tester.pumpAndSettle();
+
+      // The reason is required before anything is reversed.
+      expect(find.text('تعكس الدفعة؟'), findsOneWidget);
+      await tester.tap(find.byKey(const ValueKey('payment-reverse-confirm')));
+      await tester.pumpAndSettle();
+      expect(find.text('اكتب ليش تعكسها'), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('a reversed payment stays struck through with its reason', (
+      tester,
+    ) async {
+      await _pumpMoneyScreen(
+        tester,
+        const CostPaymentDetailsScreen(
+          weddingPlanId: 'plan-1',
+          paymentId: 'payment-1',
+          costId: 'cost-1',
+        ),
+        api: _ReversedPaymentApi(),
+      );
+
+      // x14: struck through, why, and nothing left to reverse.
+      expect(find.text('انعكست'), findsWidgets);
+      expect(find.text('ما تنحسب في أي رقم'), findsOneWidget);
+      expect(find.text('سجلتها على الاتفاق الغلط'), findsOneWidget);
+      expect(find.byKey(const ValueKey('payment-reverse')), findsNothing);
+      expect(
+        find.byKey(const ValueKey('payment-record-elsewhere')),
+        findsOneWidget,
+      );
       expect(tester.takeException(), isNull);
     });
 
@@ -540,5 +580,55 @@ class _MoneyDetailsApi extends FinanceApi {
     String? planId,
   }) async {
     return [schedule];
+  }
+}
+
+/// x14: payment-1 was reversed; its reversal entry keeps the reason.
+class _ReversedPaymentApi extends _MoneyDetailsApi {
+  @override
+  CostPayment get payment => CostPayment(
+    id: 'payment-1',
+    costId: 'cost-1',
+    weddingPlanId: 'plan-1',
+    amount: '200',
+    paidAt: DateTime(2026, 7, 9, 12),
+    method: 'تحويل',
+    reversedById: 'reversal-1',
+    costTitle: 'قاعة الحفل',
+  );
+
+  CostPayment get reversal => CostPayment(
+    id: 'reversal-1',
+    costId: 'cost-1',
+    weddingPlanId: 'plan-1',
+    amount: '-200',
+    paidAt: DateTime(2026, 7, 10, 12),
+    entryType: 'REVERSAL',
+    reversalOfId: 'payment-1',
+    note: 'سجلتها على الاتفاق الغلط',
+    costTitle: 'قاعة الحفل',
+  );
+
+  @override
+  Future<FinancePage<CostPayment>> getPlanPayments(
+    String planId, {
+    int page = 1,
+    int limit = 30,
+  }) async {
+    return FinancePage(
+      items: [payment, reversal],
+      page: 1,
+      pageSize: 30,
+      total: 2,
+      totalPages: 1,
+    );
+  }
+
+  @override
+  Future<List<CostPayment>> getCostPayments(
+    String costId, {
+    String? planId,
+  }) async {
+    return [payment, reversal];
   }
 }

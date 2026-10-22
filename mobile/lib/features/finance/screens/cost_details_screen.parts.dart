@@ -8,23 +8,6 @@ String _plainAmount(BuildContext context, Object? value, String currency) {
   return compactMoneyParts(moneyValue(value), currencyCode: currency).plainText;
 }
 
-/// «الأولى», «الثانية» … the way people number payments.
-String _ordinal(int index) {
-  const names = [
-    'الأولى',
-    'الثانية',
-    'الثالثة',
-    'الرابعة',
-    'الخامسة',
-    'السادسة',
-    'السابعة',
-    'الثامنة',
-    'التاسعة',
-    'العاشرة',
-  ];
-  return index < names.length ? names[index] : '${index + 1}';
-}
-
 /// «الاتفاق 2,000,000 · باقي 1.5 مليون», what is paid, and where it came
 /// from.
 class _CostAgreementCard extends StatelessWidget {

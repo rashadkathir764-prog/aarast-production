@@ -318,7 +318,7 @@ void main() {
       'm17_payment_reverse',
       '$_m/payments/pay-hall-1?costId=cost-hall',
       act: () async {
-        final btn = find.text('عكس الدفعة');
+        final btn = find.byKey(const ValueKey('payment-reverse'));
         await t.ensureVisible(btn);
         await t.pump(const Duration(milliseconds: 300));
         await t.tap(btn);

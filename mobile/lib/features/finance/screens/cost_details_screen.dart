@@ -174,7 +174,7 @@ class _CostDetailsScreenState extends State<CostDetailsScreen> {
         .length;
     final next = pending.first;
     return (
-      'سجّل الدفعة ${_ordinal(paidCount)}',
+      'سجّل الدفعة ${arabicOrdinal(paidCount)}',
       () => _paySchedule(cost, next),
     );
   }
@@ -206,7 +206,7 @@ class _CostDetailsScreenState extends State<CostDetailsScreen> {
         _TimelineEntry(
           title: payment.isReversed
               ? 'دفعة انعكست'
-              : 'الدفعة ${_ordinal(number++)}',
+              : 'الدفعة ${arabicOrdinal(number++)}',
           line: [
             formatArabicDayMonth(payment.paidAt),
             if ((payment.method ?? '').trim().isNotEmpty)
@@ -226,7 +226,7 @@ class _CostDetailsScreenState extends State<CostDetailsScreen> {
         _TimelineEntry(
           title: (pending[index].note ?? '').trim().isNotEmpty
               ? pending[index].note!.trim()
-              : 'الدفعة ${_ordinal(number++)}',
+              : 'الدفعة ${arabicOrdinal(number++)}',
           line: _dueLine(pending[index], now),
           amount: pending[index].amount,
           state: index == 0 ? _EntryState.current : _EntryState.later,

@@ -30,6 +30,8 @@ abstract final class AarastV3Color {
   static const brandAccent = Color(0xFFFBDFA6);
   static const brandAccentStrong = Color(0xFF9A5F0E);
   static const brandAccentSoft = Color(0xFFFCEFD8);
+  // Decoration only (the wordmark dot, the lights): never text on paper.
+  static const saffron = Color(0xFFF2A93B);
 
   // Status colours, each a readable text shade with a soft fill.
   static const cobalt = Color(0xFF2F6E9E);

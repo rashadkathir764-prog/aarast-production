@@ -46,8 +46,8 @@ void main() {
                   weddingPlanId: 'plan-1',
                   costId: 'cost-1',
                 ),
-                errorTitle: 'تعذر تحميل التكلفة',
-                absentTitle: 'التكلفة غير موجودة',
+                errorTitle: 'ما قدرنا نجيبها',
+                absentTitle: 'هذا الاتفاق ما عاد موجود',
               ),
               (
                 screen: const RecordCostPaymentScreen(
@@ -107,7 +107,18 @@ void main() {
           );
           expect(find.text(item.errorTitle), findsOneWidget, reason: '$item');
           expect(find.text(item.absentTitle), findsNothing, reason: '$item');
-          expect(find.text('حاول مرة أخرى'), findsOneWidget, reason: '$item');
+          // The journey screens say «حاول مرة ثانية», the older ones
+          // «حاول مرة أخرى»: either way one retry.
+          expect(
+            find.byWidgetPredicate(
+              (widget) =>
+                  widget is Text &&
+                  (widget.data == 'حاول مرة أخرى' ||
+                      widget.data == 'حاول مرة ثانية'),
+            ),
+            findsOneWidget,
+            reason: '$item',
+          );
           expect(tester.takeException(), isNull, reason: '$item');
         }
       },
@@ -121,12 +132,13 @@ void main() {
           const CostDetailsScreen(weddingPlanId: 'plan-1', costId: 'cost-1'),
         );
 
-        expect(find.text('تفاصيل التكلفة'), findsOneWidget);
+        // c07: the agreement, its payment timeline, receipts and facts.
         expect(find.text('قاعة الحفل'), findsWidgets);
-        expect(find.text('الإجمالي'), findsOneWidget);
-        expect(find.text('المدفوع'), findsOneWidget);
-        expect(find.text('غير مدفوع'), findsOneWidget);
-        expect(find.text('معلومات التكلفة'), findsOneWidget);
+        expect(find.text('الاتفاق'), findsOneWidget);
+        expect(
+          find.byKey(const ValueKey('money-cost-primary-action')),
+          findsOneWidget,
+        );
 
         await tester.tap(find.byTooltip('المزيد'));
         await tester.pumpAndSettle();
@@ -134,15 +146,13 @@ void main() {
         expect(find.text('إلغاء التكلفة'), findsNothing);
         await tester.tapAt(const Offset(8, 8));
         await tester.pumpAndSettle();
-        expect(find.text('موعد الاستحقاق'), findsNothing);
 
-        await tester.scrollUntilVisible(find.text('الدفعات'), 240);
-        expect(find.text('الدفعات'), findsOneWidget);
-        expect(find.text('تسجيل دفعة'), findsOneWidget);
+        await tester.scrollUntilVisible(find.text('جدول الدفعات'), 240);
+        expect(find.text('جدول الدفعات'), findsOneWidget);
+        expect(find.text('أضف موعد'), findsOneWidget);
 
-        await tester.scrollUntilVisible(find.text('مواعيد الدفع'), 240);
-        expect(find.text('مواعيد الدفع'), findsOneWidget);
-        expect(find.text('إضافة موعد'), findsOneWidget);
+        await tester.scrollUntilVisible(find.text('التفاصيل'), 240);
+        expect(find.text('التفاصيل'), findsOneWidget);
         expect(tester.takeException(), isNull);
       },
     );
@@ -202,8 +212,11 @@ void main() {
       );
       await _pumpMoneyRouter(tester, router);
 
-      final providerName = find.text('قاعة السعادة');
-      await tester.scrollUntilVisible(providerName, 220);
+      // The provider's row under «التفاصيل» opens their profile; their
+      // name also heads the screen.
+      final providerName = find.text('قاعة السعادة').last;
+      await tester.ensureVisible(providerName);
+      await tester.pumpAndSettle();
       await tester.tap(providerName);
       await tester.pumpAndSettle();
 

@@ -7,14 +7,19 @@ import '../../../core/experience_v3/aarast_v3.dart';
 import '../../../core/phone/phone_number_utils.dart';
 import '../../../core/routing/app_router.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../core/utils/arabic_count.dart';
 import '../../../core/utils/arabic_date_formatter.dart';
+import '../../../core/utils/currency_label.dart';
+import '../../../core/utils/money_formatters.dart';
 import '../../../core/widgets/aarast_toast.dart';
 import '../../../core/widgets/aarast_ui.dart';
 import '../models/wedding_cost.dart';
 import '../providers/finance_provider.dart';
 import '../data/finance_local_data_source.dart';
 import '../widgets/cost_receipts_section.dart';
-import '../widgets/money_widgets.dart';
+import '../widgets/money_input_formatter.dart';
+
+part 'cost_details_screen.parts.dart';
 
 class CostDetailsScreen extends StatefulWidget {
   const CostDetailsScreen({
@@ -64,221 +69,277 @@ class _CostDetailsScreenState extends State<CostDetailsScreen> {
   Widget build(BuildContext context) {
     final provider = context.watch<FinanceProvider>();
     final cost = provider.costById(widget.costId);
-    final payments = provider.paymentsForCost(widget.costId);
-    final schedules = provider.schedulesForCost(widget.costId);
-    final pendingSchedules = schedules.where((item) => item.isPending).toList()
-      ..sort((a, b) => a.dueDate.compareTo(b.dueDate));
-    final nextSchedule = pendingSchedules.isEmpty
-        ? null
-        : pendingSchedules.first;
     final currency = provider.summary.currency;
+    final canManage = provider.canManageMoney;
 
-    return MoneySubpageScaffold(
-      title: 'تفاصيل التكلفة',
-      subtitle: cost?.title ?? 'كل ما يخص التكلفة في مكان واحد.',
-      showBack: true,
-      onBack: _goBack,
-      actions: [
-        if (cost != null && provider.canManageMoney && !cost.isCancelled)
-          _CostMoreMenu(
-            canCancel: !cost.hasActivePayments,
-            disabled: provider.isSubmitting,
-            onEdit: () => _editCost(cost),
-            onCancel: () => _confirmCancel(cost),
+    final Widget body;
+    if (_isLoadingDetails && cost == null) {
+      body = const JourneyListState(
+        phase: JourneyListPhase.loading,
+        section: JourneySection.money,
+      );
+    } else if (provider.errorMessage != null && cost == null) {
+      body = JourneyListState(
+        phase: JourneyListPhase.error,
+        section: JourneySection.money,
+        onRetry: _load,
+      );
+    } else if (cost == null) {
+      body = JourneyListState(
+        phase: JourneyListPhase.empty,
+        section: JourneySection.money,
+        emptyIcon: LucideIcons.receipt,
+        emptyTitle: 'هذا الاتفاق ما عاد موجود',
+        emptyAction: 'ارجع للبنود',
+        onEmptyAction: _goBack,
+      );
+    } else {
+      body = _details(context, provider, cost, currency, canManage);
+    }
+
+    final payAction = cost == null ? null : _payAction(provider, cost);
+    return AarastScreenFrame(
+      maxWidth: 600,
+      backgroundColor: AarastV3Color.canvas,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 8, 8, 0),
+            child: JourneySubHeader(
+              title: cost?.title ?? 'تفاصيل الاتفاق',
+              subtitle: cost?.partyLabel,
+              onBack: _goBack,
+              trailing: cost != null && canManage && !cost.isCancelled
+                  ? _CostMoreMenu(
+                      canCancel: !cost.hasActivePayments,
+                      disabled: provider.isSubmitting,
+                      onEdit: () => _editCost(cost),
+                      onCancel: () => _confirmCancel(cost),
+                    )
+                  : null,
+            ),
           ),
-      ],
-      child: RefreshIndicator(
-        color: AppTheme.brand,
-        onRefresh: () => _load(refreshMoney: true),
-        child: ListView(
-          controller: _scrollController,
-          physics: const AlwaysScrollableScrollPhysics(),
-          padding: const EdgeInsets.only(bottom: 32),
-          children: [
-            if (_isLoadingDetails && cost == null)
-              const AarastScreenLoading(label: 'جاري تحميل تفاصيل التكلفة')
-            else if (provider.errorMessage != null && cost == null)
-              AarastErrorState(
-                title: 'تعذر تحميل التكلفة',
-                message: provider.errorMessage!,
-                onRetry: _load,
-              )
-            else if (cost == null)
-              AarastEmptyState(
-                icon: LucideIcons.receipt,
-                title: 'التكلفة غير موجودة',
-                message: 'ربما حُذفت أو لم تعد ضمن هذه الخطة.',
-                action: OutlinedButton.icon(
-                  onPressed: _goBack,
-                  icon: const Icon(LucideIcons.arrowRight),
-                  label: const Text('العودة إلى التكاليف'),
-                ),
-              )
-            else ...[
-              if (provider.errorMessage != null) ...[
-                MoneyMessageBanner(
-                  message: provider.errorMessage!,
-                  error: true,
-                ),
-                const SizedBox(height: 12),
-              ],
-              _CostHero(cost: cost, currency: currency),
-              const SizedBox(height: 12),
-              // V1 checklist 4.10: a private cost can join the shared plan.
-              if (cost.isPrivate) ...[
-                MoneyMessageBanner(
-                  key: const ValueKey('cost-private-banner'),
-                  message:
-                      'تكلفة خاصة بك: لا يراها شريكك ولا تدخل في أرقامه.',
-                ),
-                if (provider.canManageMoney)
-                  Align(
-                    alignment: AlignmentDirectional.centerStart,
-                    child: TextButton.icon(
-                      key: const ValueKey('cost-share-with-plan'),
-                      onPressed: () => _shareWithPlan(cost),
-                      icon: const Icon(LucideIcons.users),
-                      label: const Text('مشاركتها مع الخطة'),
-                    ),
-                  ),
-                const SizedBox(height: 12),
-              ],
-              if (provider.canManageMoney && !cost.isCancelled)
-                _CostPrimaryDecision(
-                  cost: cost,
-                  hasPendingSchedule: pendingSchedules.isNotEmpty,
-                  onPay: () => _openRecordPayment(cost),
-                  onSchedule: () => _openScheduleCreate(cost),
-                  onViewPayments: _scrollToPayments,
-                ),
-              const SizedBox(height: 14),
-              _CostContextCard(
-                cost: cost,
-                categoryName:
-                    provider.categoryById(cost.budgetCategoryId)?.name ??
-                    cost.categoryName,
+          Expanded(
+            child: RefreshIndicator(
+              color: AarastV3Color.primary,
+              onRefresh: () => _load(refreshMoney: true),
+              child: ListView(
+                controller: _scrollController,
+                physics: const AlwaysScrollableScrollPhysics(),
+                padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
+                children: [body],
               ),
-              if (nextSchedule != null) ...[
-                const SizedBox(height: 14),
-                MoneySectionCard(
-                  title: 'موعد الدفع القادم',
-                  subtitle: 'أقرب موعد دفع معلق لهذه التكلفة.',
-                  icon: LucideIcons.calendarClock,
-                  child: ScheduleCard(
-                    schedule: nextSchedule,
-                    currency: currency,
-                    costTitle: cost.title,
-                    onTap: () => context.push(
-                      AppRouter.moneyScheduleDetails(
-                        widget.weddingPlanId,
-                        cost.id,
-                        nextSchedule.id,
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-              if (!provider.canManageMoney) ...[
-                const SizedBox(height: 14),
-                const MoneyMessageBanner(
-                  message:
-                      'هذه التفاصيل للعرض فقط. إجراءات التعديل والدفع متاحة لمدير المال.',
-                ),
-              ],
-              const SizedBox(height: 22),
-              KeyedSubtree(
-                key: _paymentsKey,
-                child: AarastSectionHeader(
-                  title: 'الدفعات',
-                  subtitle: payments.isEmpty
-                      ? 'لا توجد دفعات مسجلة لهذه التكلفة.'
-                      : '${payments.length} حركة محفوظة في السجل.',
-                  icon: LucideIcons.banknote,
-                ),
+            ),
+          ),
+          if (payAction != null)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
+              child: JourneyButton(
+                key: const ValueKey('money-cost-primary-action'),
+                label: payAction.$1,
+                expand: true,
+                large: true,
+                onPressed: payAction.$2,
               ),
-              const SizedBox(height: 10),
-              if (payments.isEmpty)
-                const AarastEmptyState(
-                  icon: LucideIcons.banknote,
-                  title: 'لا توجد دفعات',
-                  message: 'عند تسجيل دفعة ستظهر هنا كسجل يمكن مراجعته.',
-                )
-              else
-                for (final payment in payments) ...[
-                  PaymentCard(
-                    payment: payment,
-                    currency: currency,
-                    costTitle: cost.title,
-                    onTap: () => context.push(
-                      AppRouter.moneyPaymentDetails(
-                        widget.weddingPlanId,
-                        payment.id,
-                        costId: cost.id,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 10),
-                ],
-              const SizedBox(height: 12),
-              AarastSectionHeader(
-                title: 'مواعيد الدفع',
-                subtitle: schedules.isEmpty
-                    ? 'لا توجد مبالغ مجدولة بعد.'
-                    : '${schedules.length} موعد مرتبط بهذه التكلفة.',
-                icon: LucideIcons.calendarClock,
-                actionLabel:
-                    provider.canManageMoney &&
-                        !cost.isCancelled &&
-                        moneyValue(cost.remainingAmount) > 0
-                    ? 'إضافة موعد'
-                    : null,
-                onAction:
-                    provider.canManageMoney &&
-                        !cost.isCancelled &&
-                        moneyValue(cost.remainingAmount) > 0
-                    ? () => _openScheduleCreate(cost)
-                    : null,
-              ),
-              const SizedBox(height: 10),
-              if (schedules.isEmpty)
-                const AarastEmptyState(
-                  icon: LucideIcons.calendarPlus,
-                  title: 'لا توجد مواعيد دفع',
-                  message: 'أضف موعدًا إذا كان جزء من المبلغ سيُدفع لاحقًا.',
-                )
-              else
-                for (final schedule in schedules) ...[
-                  ScheduleCard(
-                    schedule: schedule,
-                    currency: currency,
-                    costTitle: cost.title,
-                    onTap: () => context.push(
-                      AppRouter.moneyScheduleDetails(
-                        widget.weddingPlanId,
-                        cost.id,
-                        schedule.id,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 10),
-                ],
-              // V1 checklist 4.4: receipts live on the server (an account's
-              // plan), never in a guest's local plan.
-              if (!FinanceLocalDataSource.isLocalGuestPlanId(
-                widget.weddingPlanId,
-              )) ...[
-                const SizedBox(height: 18),
-                CostReceiptsSection(
-                  key: ValueKey('cost-receipts-${cost.id}'),
-                  costId: cost.id,
-                  canManage: provider.canManageMoney,
-                ),
-              ],
-            ],
-          ],
-        ),
+            ),
+        ],
       ),
     );
+  }
+
+  /// The one main action: pay the next scheduled payment by its name, or
+  /// record a payment; none once the agreement is paid or cancelled.
+  (String, VoidCallback)? _payAction(
+    FinanceProvider provider,
+    WeddingCost cost,
+  ) {
+    if (!provider.canManageMoney ||
+        cost.isCancelled ||
+        moneyValue(cost.remainingAmount) <= 0) {
+      return null;
+    }
+    final pending =
+        provider
+            .schedulesForCost(cost.id)
+            .where((schedule) => schedule.isPending)
+            .toList()
+          ..sort((a, b) => a.dueDate.compareTo(b.dueDate));
+    if (pending.isEmpty) {
+      return ('سجّل دفعة', () => _openRecordPayment(cost));
+    }
+    final paidCount = provider
+        .paymentsForCost(cost.id)
+        .where((payment) => !payment.isReversal && !payment.isReversed)
+        .length;
+    final next = pending.first;
+    return (
+      'سجّل الدفعة ${_ordinal(paidCount)}',
+      () => _paySchedule(cost, next),
+    );
+  }
+
+  Widget _details(
+    BuildContext context,
+    FinanceProvider provider,
+    WeddingCost cost,
+    String currency,
+    bool canManage,
+  ) {
+    final now = DateTime.now();
+    final payments =
+        provider
+            .paymentsForCost(cost.id)
+            .where((payment) => !payment.isReversal)
+            .toList()
+          ..sort((a, b) => a.paidAt.compareTo(b.paidAt));
+    final pending =
+        provider
+            .schedulesForCost(cost.id)
+            .where((schedule) => schedule.isPending)
+            .toList()
+          ..sort((a, b) => a.dueDate.compareTo(b.dueDate));
+
+    var number = 0;
+    final entries = <_TimelineEntry>[
+      for (final payment in payments)
+        _TimelineEntry(
+          title: payment.isReversed
+              ? 'دفعة انعكست'
+              : 'الدفعة ${_ordinal(number++)}',
+          line: [
+            formatArabicDayMonth(payment.paidAt),
+            if ((payment.method ?? '').trim().isNotEmpty)
+              payment.method!.trim(),
+          ].join(' · '),
+          amount: payment.amount,
+          state: payment.isReversed ? _EntryState.reversed : _EntryState.done,
+          onTap: () => context.push(
+            AppRouter.moneyPaymentDetails(
+              widget.weddingPlanId,
+              payment.id,
+              costId: cost.id,
+            ),
+          ),
+        ),
+      for (var index = 0; index < pending.length; index++)
+        _TimelineEntry(
+          title: (pending[index].note ?? '').trim().isNotEmpty
+              ? pending[index].note!.trim()
+              : 'الدفعة ${_ordinal(number++)}',
+          line: _dueLine(pending[index], now),
+          amount: pending[index].amount,
+          state: index == 0 ? _EntryState.current : _EntryState.later,
+          onTap: () => context.push(
+            AppRouter.moneyScheduleDetails(
+              widget.weddingPlanId,
+              cost.id,
+              pending[index].id,
+            ),
+          ),
+        ),
+    ];
+    final canSchedule =
+        canManage && !cost.isCancelled && moneyValue(cost.remainingAmount) > 0;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        if (provider.errorMessage != null) ...[
+          JourneyListNotice(offline: false, onRetry: _load),
+          const SizedBox(height: 12),
+        ],
+        _CostAgreementCard(cost: cost, currency: currency),
+        // V1 checklist 4.10: a private cost can join the shared plan.
+        if (cost.isPrivate) ...[
+          const SizedBox(height: 12),
+          JourneyNote(
+            key: const ValueKey('cost-private-banner'),
+            text: 'تكلفة خاصة بك: لا يراها شريكك ولا تدخل في أرقامه.',
+            icon: LucideIcons.lock,
+          ),
+          if (canManage)
+            Align(
+              alignment: AlignmentDirectional.centerStart,
+              child: JourneyTextAction(
+                key: const ValueKey('cost-share-with-plan'),
+                label: 'مشاركتها مع الخطة',
+                icon: LucideIcons.users,
+                color: AarastV3Color.primary,
+                onPressed: () => _shareWithPlan(cost),
+              ),
+            ),
+        ],
+        if (!canManage) ...[
+          const SizedBox(height: 12),
+          const JourneyNote(
+            text:
+                'هذه التفاصيل للعرض فقط. إجراءات التعديل والدفع متاحة لمدير المال.',
+            icon: LucideIcons.eye,
+          ),
+        ],
+        const SizedBox(height: 8),
+        KeyedSubtree(
+          key: _paymentsKey,
+          child: JourneySectionTitle(
+            'جدول الدفعات',
+            action: canSchedule ? 'أضف موعد' : null,
+            onAction: canSchedule ? () => _openScheduleCreate(cost) : null,
+          ),
+        ),
+        if (entries.isEmpty)
+          const JourneyListState(
+            phase: JourneyListPhase.empty,
+            section: JourneySection.money,
+            emptyIcon: LucideIcons.calendarPlus,
+            emptyTitle: 'ما في دفعات ولا مواعيد بعد',
+          )
+        else
+          _PaymentTimeline(entries: entries, currency: currency),
+        // V1 checklist 4.4: receipts live on the server (an account's plan),
+        // never in a guest's local plan.
+        if (!FinanceLocalDataSource.isLocalGuestPlanId(
+          widget.weddingPlanId,
+        )) ...[
+          const SizedBox(height: 18),
+          CostReceiptsSection(
+            key: ValueKey('cost-receipts-${cost.id}'),
+            costId: cost.id,
+            canManage: canManage,
+          ),
+        ],
+        const SizedBox(height: 8),
+        const JourneySectionTitle('التفاصيل'),
+        _CostFacts(
+          cost: cost,
+          categoryName:
+              provider.categoryById(cost.budgetCategoryId)?.name ??
+              cost.categoryName,
+        ),
+      ],
+    );
+  }
+
+  String _dueLine(PaymentSchedule schedule, DateTime now) {
+    final date = formatArabicDayMonth(schedule.dueDate);
+    if (schedule.isOverdueAt(now)) return 'متأخرة · $date';
+    final days = DateUtils.dateOnly(
+      schedule.dueDate,
+    ).difference(DateUtils.dateOnly(now)).inDays;
+    if (days <= 0) return 'اليوم · $date';
+    if (days == 1) return 'بكرة · $date';
+    if (days <= 30) {
+      return 'بعد ${arabicCount(days, one: 'يوم', two: 'يومين', few: 'أيام', many: 'يوم')} · $date';
+    }
+    return date;
+  }
+
+  Future<void> _paySchedule(WeddingCost cost, PaymentSchedule schedule) async {
+    final changed = await context.push<bool>(
+      AppRouter.moneySchedulePay(widget.weddingPlanId, cost.id, schedule.id),
+      extra: schedule,
+    );
+    if (changed == true && mounted) await _load(refreshMoney: true);
   }
 
   /// Makes a private cost the shared plan's (it cannot become private again).
@@ -337,17 +398,6 @@ class _CostDetailsScreenState extends State<CostDetailsScreen> {
       extra: cost,
     );
     if (changed == true && mounted) await _load(refreshMoney: true);
-  }
-
-  Future<void> _scrollToPayments() async {
-    final paymentsContext = _paymentsKey.currentContext;
-    if (paymentsContext == null) return;
-    await Scrollable.ensureVisible(
-      paymentsContext,
-      duration: AppTheme.motionMedium,
-      curve: AppTheme.motionCurve,
-      alignment: 0.08,
-    );
   }
 
   Future<void> _openRecordPayment(WeddingCost cost) async {
@@ -428,365 +478,3 @@ class _CostDetailsScreenState extends State<CostDetailsScreen> {
     }
   }
 }
-
-class _CostHero extends StatelessWidget {
-  const _CostHero({required this.cost, required this.currency});
-
-  final WeddingCost cost;
-  final String currency;
-
-  @override
-  Widget build(BuildContext context) {
-    final total = moneyValue(cost.totalAmount);
-    final paid = moneyValue(cost.paidAmount);
-    final progress = total <= 0 ? 0.0 : (paid / total).clamp(0.0, 1.0);
-    return Container(
-      padding: const EdgeInsets.fromLTRB(18, 18, 18, 16),
-      decoration: BoxDecoration(
-        color: AppTheme.surfaceRaised,
-        borderRadius: BorderRadius.circular(AppTheme.radiusXl),
-        border: Border.all(color: AppTheme.border),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Expanded(
-                child: Text(
-                  'الإجمالي',
-                  style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                    color: AppTheme.textSecondary,
-                    fontWeight: FontWeight.w900,
-                  ),
-                ),
-              ),
-              const SizedBox(width: 8),
-              MoneyStatusBadge(status: cost.status),
-            ],
-          ),
-          const SizedBox(height: 6),
-          FittedBox(
-            fit: BoxFit.scaleDown,
-            alignment: AlignmentDirectional.centerStart,
-            child: MoneyAmountText(
-              amount: cost.totalAmount,
-              currency: currency,
-              color: AppTheme.textPrimary,
-              style: Theme.of(context).textTheme.headlineLarge,
-            ),
-          ),
-          const SizedBox(height: 14),
-          AarastV3ProgressLine(
-            value: progress,
-            height: 7,
-            color: cost.isPaid ? AppTheme.success : AppTheme.brand,
-            backgroundColor: AppTheme.border,
-            semanticsLabel: 'نسبة سداد التكلفة',
-          ),
-          const SizedBox(height: 12),
-          Row(
-            children: [
-              Expanded(
-                child: _CostHeroValue(
-                  label: 'المدفوع',
-                  amount: cost.paidAmount,
-                  currency: currency,
-                  color: AppTheme.success,
-                ),
-              ),
-              Container(
-                width: 1,
-                height: 34,
-                margin: const EdgeInsets.symmetric(horizontal: 14),
-                color: AppTheme.border,
-              ),
-              Expanded(
-                child: _CostHeroValue(
-                  label: 'غير مدفوع',
-                  amount: cost.remainingAmount,
-                  currency: currency,
-                  color: moneyValue(cost.remainingAmount) > 0
-                      ? AppTheme.warning
-                      : AppTheme.success,
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _CostHeroValue extends StatelessWidget {
-  const _CostHeroValue({
-    required this.label,
-    required this.amount,
-    required this.currency,
-    required this.color,
-  });
-
-  final String label;
-  final Object? amount;
-  final String currency;
-  final Color color;
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          label,
-          style: Theme.of(context).textTheme.labelSmall?.copyWith(
-            color: AppTheme.textSecondary,
-            fontWeight: FontWeight.w700,
-          ),
-        ),
-        const SizedBox(height: 3),
-        FittedBox(
-          fit: BoxFit.scaleDown,
-          alignment: AlignmentDirectional.centerStart,
-          child: MoneyAmountText(
-            amount: amount,
-            currency: currency,
-            color: color,
-            style: Theme.of(context).textTheme.titleSmall,
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-class _CostContextCard extends StatelessWidget {
-  const _CostContextCard({required this.cost, this.categoryName});
-
-  final WeddingCost cost;
-  final String? categoryName;
-
-  @override
-  Widget build(BuildContext context) {
-    final party = cost.partyLabel;
-    return MoneySectionCard(
-      title: 'معلومات التكلفة',
-      icon: LucideIcons.info,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          _InfoRow(
-            icon: LucideIcons.tags,
-            label: 'التصنيف',
-            value: categoryName ?? 'غير محدد',
-          ),
-          if (party != null)
-            _InfoRow(
-              icon: cost.providerId == null
-                  ? LucideIcons.user
-                  : LucideIcons.store,
-              label: cost.providerId == null ? 'الجهة' : 'المزود',
-              value: party,
-              onTap: cost.providerId == null
-                  ? null
-                  : () => context.push(
-                      AppRouter.providerDetails(cost.providerId!),
-                    ),
-            ),
-          if (cost.partyPhone != null)
-            _InfoRow(
-              icon: LucideIcons.phone,
-              label: 'رقم التواصل',
-              value:
-                  PhoneNumberUtils.directionalDisplay(cost.partyPhone) ??
-                  cost.partyPhone!,
-            ),
-          if (cost.agreementDate != null)
-            _InfoRow(
-              icon: LucideIcons.calendarCheck,
-              label: 'تاريخ الاتفاق',
-              value: formatArabicCompactDate(cost.agreementDate!),
-            ),
-          if (cost.note != null)
-            _InfoRow(
-              icon: LucideIcons.fileText,
-              label: 'ملاحظة',
-              value: cost.note!,
-            ),
-        ],
-      ),
-    );
-  }
-}
-
-class _InfoRow extends StatelessWidget {
-  const _InfoRow({
-    required this.icon,
-    required this.label,
-    required this.value,
-    this.onTap,
-  });
-
-  final IconData icon;
-  final String label;
-  final String value;
-  final VoidCallback? onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final content = Padding(
-      padding: const EdgeInsets.symmetric(vertical: 7),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Icon(icon, size: 18, color: AppTheme.brand),
-          const SizedBox(width: 9),
-          SizedBox(
-            width: 96,
-            child: Text(
-              label,
-              style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                color: AppTheme.textSecondary,
-                fontWeight: FontWeight.w800,
-              ),
-            ),
-          ),
-          const SizedBox(width: 6),
-          Expanded(
-            child: Text(
-              value,
-              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                color: AppTheme.textPrimary,
-                fontWeight: FontWeight.w800,
-              ),
-            ),
-          ),
-          if (onTap != null) ...[
-            const SizedBox(width: 6),
-            const Icon(
-              LucideIcons.externalLink,
-              size: 17,
-              color: AppTheme.brand,
-            ),
-          ],
-        ],
-      ),
-    );
-    if (onTap == null) return content;
-    return Semantics(
-      button: true,
-      label: 'فتح ملف $label: $value',
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(AppTheme.radiusMd),
-        child: content,
-      ),
-    );
-  }
-}
-
-class _CostPrimaryDecision extends StatelessWidget {
-  const _CostPrimaryDecision({
-    required this.cost,
-    required this.hasPendingSchedule,
-    required this.onPay,
-    required this.onSchedule,
-    required this.onViewPayments,
-  });
-
-  final WeddingCost cost;
-  final bool hasPendingSchedule;
-  final VoidCallback onPay;
-  final VoidCallback onSchedule;
-  final VoidCallback onViewPayments;
-
-  @override
-  Widget build(BuildContext context) {
-    final needsPayment = moneyValue(cost.remainingAmount) > 0;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        FilledButton.icon(
-          key: const ValueKey('money-cost-primary-action'),
-          onPressed: needsPayment ? onPay : onViewPayments,
-          icon: Icon(needsPayment ? LucideIcons.banknote : LucideIcons.history),
-          label: Text(needsPayment ? 'تسجيل دفعة' : 'عرض الدفعات'),
-        ),
-        if (needsPayment && !hasPendingSchedule) ...[
-          const SizedBox(height: 4),
-          TextButton.icon(
-            onPressed: onSchedule,
-            icon: const Icon(LucideIcons.calendarPlus, size: 18),
-            label: const Text('لا يوجد موعد قادم · أضف موعد دفع'),
-          ),
-        ],
-      ],
-    );
-  }
-}
-
-class _CostMoreMenu extends StatelessWidget {
-  const _CostMoreMenu({
-    required this.canCancel,
-    required this.disabled,
-    required this.onEdit,
-    required this.onCancel,
-  });
-
-  final bool canCancel;
-  final bool disabled;
-  final VoidCallback onEdit;
-  final VoidCallback onCancel;
-
-  @override
-  Widget build(BuildContext context) {
-    return PopupMenuButton<_CostMenuAction>(
-      enabled: !disabled,
-      tooltip: 'المزيد',
-      icon: const Icon(LucideIcons.moreHorizontal),
-      onSelected: (action) {
-        switch (action) {
-          case _CostMenuAction.edit:
-            onEdit();
-          case _CostMenuAction.cancel:
-            onCancel();
-        }
-      },
-      itemBuilder: (context) => [
-        const PopupMenuItem(
-          value: _CostMenuAction.edit,
-          child: Row(
-            children: [
-              Icon(LucideIcons.pencil, size: 18),
-              SizedBox(width: 10),
-              Flexible(child: Text('تعديل التكلفة')),
-            ],
-          ),
-        ),
-        if (canCancel)
-          const PopupMenuItem(
-            value: _CostMenuAction.cancel,
-            child: Row(
-              children: [
-                Icon(
-                  LucideIcons.circleSlash2,
-                  size: 18,
-                  color: AppTheme.danger,
-                ),
-                SizedBox(width: 10),
-                Flexible(
-                  child: Text(
-                    'إلغاء التكلفة',
-                    style: TextStyle(color: AppTheme.danger),
-                  ),
-                ),
-              ],
-            ),
-          ),
-      ],
-    );
-  }
-}
-
-enum _CostMenuAction { edit, cancel }

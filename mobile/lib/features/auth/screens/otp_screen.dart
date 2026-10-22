@@ -392,7 +392,7 @@ class _OtpScreenState extends State<OtpScreen> {
                         Text(
                           toNumber,
                           style: JourneyType.of(
-                            15.5,
+                            JourneyType.body,
                             color: AarastV3Color.textMuted,
                           ),
                         ),
@@ -400,7 +400,7 @@ class _OtpScreenState extends State<OtpScreen> {
                           PhoneNumberUtils.display(phone) ?? phone,
                           textDirection: TextDirection.ltr,
                           style: JourneyType.of(
-                            15.5,
+                            JourneyType.body,
                             color: AarastV3Color.textMuted,
                           ),
                         ),
@@ -570,7 +570,7 @@ class _CodeHelpSheetState extends State<_CodeHelpSheet> {
         children: [
           Icon(icon, size: 20, color: AarastV3Color.textMuted),
           const SizedBox(width: 12),
-          Expanded(child: Text(text, style: JourneyType.of(15))),
+          Expanded(child: Text(text, style: JourneyType.of(JourneyType.body))),
         ],
       ),
     );
@@ -588,12 +588,18 @@ class _CodeHelpSheetState extends State<_CodeHelpSheet> {
             header: true,
             child: Text(
               'الرمز ما وصل؟',
-              style: JourneyType.of(22, weight: JourneyType.bold),
+              style: JourneyType.of(
+                JourneyType.title,
+                weight: JourneyType.bold,
+              ),
             ),
           ),
           Text(
             'نرسله على واتساب فقط، وهذا اللي تقدر تسويه',
-            style: JourneyType.of(14.5, color: AarastV3Color.textMuted),
+            style: JourneyType.of(
+              JourneyType.body,
+              color: AarastV3Color.textMuted,
+            ),
           ),
           const SizedBox(height: 14),
           JourneyBox(

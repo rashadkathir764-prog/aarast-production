@@ -70,14 +70,14 @@ class _NameDateStep extends StatelessWidget {
                     TextSpan(
                       text: 'خطتك بتكون: ',
                       style: JourneyType.of(
-                        13.5,
+                        JourneyType.small,
                         color: AarastV3Color.textMuted,
                       ),
                       children: [
                         TextSpan(
                           text: 'عرس $name',
                           style: JourneyType.of(
-                            13.5,
+                            JourneyType.small,
                             weight: JourneyType.bold,
                             color: AarastV3Color.primary,
                           ),
@@ -223,13 +223,17 @@ class _MonthTile extends StatelessWidget {
             children: [
               Text(
                 arabicMonthName(month.month),
-                style: JourneyType.of(16, weight: JourneyType.bold, color: fg),
+                style: JourneyType.of(
+                  JourneyType.bodyLarge,
+                  weight: JourneyType.bold,
+                  color: fg,
+                ),
               ),
               Text(
                 hijri,
                 textAlign: TextAlign.center,
                 style: JourneyType.of(
-                  11.5,
+                  JourneyType.caption,
                   color: selected
                       ? AarastV3Color.onPrimaryMuted
                       : AarastV3Color.textMuted,
@@ -295,13 +299,11 @@ class _PlaceBudgetStep extends StatelessWidget {
                 label: name,
                 selected: name == city,
                 icon: name == city ? LucideIcons.mapPin : null,
-                fontSize: 15,
                 onTap: () => onCity(name),
               ),
             JourneyChip(
               label: 'مدينة ثانية',
               icon: LucideIcons.plus,
-              fontSize: 15,
               onTap: onMoreCities,
             ),
           ],
@@ -336,7 +338,10 @@ class _PlaceBudgetStep extends StatelessWidget {
           padding: const EdgeInsets.symmetric(horizontal: 6),
           child: Text(
             'المهر محسوب لحاله، وتقدر تغيّر الميزانية بعدين من المال.',
-            style: JourneyType.of(13, color: AarastV3Color.textMuted),
+            style: JourneyType.of(
+              JourneyType.small,
+              color: AarastV3Color.textMuted,
+            ),
           ),
         ),
       ],
@@ -444,7 +449,10 @@ class _ReadyStep extends StatelessWidget {
             child: Text(
               'خطتك جاهزة يا $name',
               textAlign: TextAlign.center,
-              style: JourneyType.of(28, weight: JourneyType.bold),
+              style: JourneyType.of(
+                JourneyType.display,
+                weight: JourneyType.bold,
+              ),
             ),
           ),
         ),
@@ -453,7 +461,10 @@ class _ReadyStep extends StatelessWidget {
           child: Text(
             subtitle,
             textAlign: TextAlign.center,
-            style: JourneyType.of(15, color: AarastV3Color.textMuted),
+            style: JourneyType.of(
+              JourneyType.body,
+              color: AarastV3Color.textMuted,
+            ),
           ),
         ),
         const SizedBox(height: 20),
@@ -491,7 +502,10 @@ class _ReadyStep extends StatelessWidget {
           padding: const EdgeInsets.symmetric(horizontal: 6),
           child: Text(
             'تشيل وتضيف براحتك، وكلها تتعدل لو تغيّر الموعد.',
-            style: JourneyType.of(13.5, color: AarastV3Color.textMuted),
+            style: JourneyType.of(
+              JourneyType.small,
+              color: AarastV3Color.textMuted,
+            ),
           ),
         ),
       ],
@@ -542,7 +556,10 @@ class _CitySheetState extends State<_CitySheet> {
             header: true,
             child: Text(
               'اختر المدينة',
-              style: JourneyType.of(22, weight: JourneyType.bold),
+              style: JourneyType.of(
+                JourneyType.title,
+                weight: JourneyType.bold,
+              ),
             ),
           ),
           const SizedBox(height: 12),
@@ -554,7 +571,6 @@ class _CitySheetState extends State<_CitySheet> {
                 JourneyChip(
                   label: name,
                   selected: name == widget.selected,
-                  fontSize: 15,
                   onTap: () => Navigator.of(context).pop(name),
                 ),
             ],
@@ -594,7 +610,7 @@ class _FieldLabel extends StatelessWidget {
       child: Text(
         text,
         style: JourneyType.of(
-          14,
+          JourneyType.small,
           weight: JourneyType.bold,
           color: AarastV3Color.textMuted,
         ),
@@ -651,7 +667,7 @@ class _RadioLine extends StatelessWidget {
                   child: Text(
                     label,
                     style: JourneyType.of(
-                      14.5,
+                      JourneyType.body,
                       weight: JourneyType.bold,
                       color: selected
                           ? AarastV3Color.ink

@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:aarast_mobile/core/experience_v3/aarast_v3.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -23,6 +25,19 @@ Widget _host(Widget child, {double width = 320, double textScale = 1}) {
 }
 
 void main() {
+  // D8: one type scale. A size is a role from JourneyType, never a number
+  // picked on a screen, so screens cannot drift apart again.
+  test('journey text takes its size from the type scale', () {
+    final literal = RegExp(r'JourneyType\.of\(\s*\d');
+    final offenders = <String>[
+      for (final file in Directory('lib').listSync(recursive: true))
+        if (file is File && file.path.endsWith('.dart'))
+          for (final (index, line) in file.readAsLinesSync().indexed)
+            if (literal.hasMatch(line)) '${file.path}:${index + 1}',
+    ];
+    expect(offenders, isEmpty, reason: offenders.join(', '));
+  });
+
   testWidgets('kit pieces stay inside 320 px with doubled text', (
     tester,
   ) async {

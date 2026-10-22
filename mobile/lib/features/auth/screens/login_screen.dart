@@ -302,7 +302,7 @@ class LoginExperience extends StatelessWidget {
             child: Text(
               'نسيت كلمة المرور؟',
               style: JourneyType.of(
-                15,
+                JourneyType.body,
                 weight: JourneyType.bold,
                 color: AarastV3Color.primary,
               ),
@@ -374,7 +374,7 @@ class LoginActions extends StatelessWidget {
             label: Text(
               'الدخول برمز واتساب',
               style: JourneyType.of(
-                16,
+                JourneyType.bodyLarge,
                 weight: JourneyType.bold,
                 color: AarastV3Color.mint,
               ),
@@ -411,7 +411,10 @@ class _InlineDivider extends StatelessWidget {
               label,
               maxLines: 2,
               textAlign: TextAlign.center,
-              style: JourneyType.of(14, color: AarastV3Color.textMuted),
+              style: JourneyType.of(
+                JourneyType.small,
+                color: AarastV3Color.textMuted,
+              ),
             ),
           ),
         ),

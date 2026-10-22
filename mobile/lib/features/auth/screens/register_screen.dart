@@ -271,7 +271,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     child: Text(
                       '6 أحرف أو أكثر. بعدها نرسل لك رمز تأكيد على واتساب.',
                       style: JourneyType.of(
-                        13.5,
+                        JourneyType.small,
                         color: AarastV3Color.textMuted,
                       ),
                     ),

@@ -16,6 +16,30 @@ import 'aarast_v3_foundations.dart';
 abstract final class JourneyType {
   static const family = AarastV3Type.bodyFamily;
 
+  // The one type scale (D8), sized for phones 360 to 412 points wide at the
+  // person's own text size. Screens take a size from here, never a number.
+
+  /// A screen's heading or question.
+  static const display = 24.0;
+
+  /// A card, sheet or section title.
+  static const title = 18.0;
+
+  /// A typed amount or name in a large field.
+  static const figure = 22.0;
+
+  /// Buttons, field values and list titles.
+  static const bodyLarge = 16.0;
+
+  /// Running text.
+  static const body = 15.0;
+
+  /// Secondary lines, hints and field labels.
+  static const small = 13.0;
+
+  /// The smallest text: tags and the Hijri date under a day.
+  static const caption = 12.0;
+
   static TextStyle of(
     double size, {
     FontWeight weight = FontWeight.w400,
@@ -195,7 +219,7 @@ class JourneyButton extends StatelessWidget {
             label,
             textAlign: TextAlign.center,
             style: JourneyType.of(
-              large ? 17 : 15,
+              large ? JourneyType.bodyLarge : JourneyType.body,
               weight: JourneyType.bold,
               color: fg,
             ),
@@ -214,7 +238,8 @@ class JourneyButton extends StatelessWidget {
         borderRadius: BorderRadius.circular(16),
         child: Container(
           width: expand ? double.infinity : null,
-          constraints: BoxConstraints(minHeight: large ? 54 : 44),
+          // One height for every main action, as AarastButton (52).
+          constraints: BoxConstraints(minHeight: large ? 52 : 44),
           padding: EdgeInsets.symmetric(
             horizontal: 18,
             vertical: large ? 15 : 11,
@@ -271,7 +296,7 @@ class JourneyTextAction extends StatelessWidget {
                     label,
                     textAlign: TextAlign.center,
                     style: JourneyType.of(
-                      15,
+                      JourneyType.body,
                       weight: JourneyType.bold,
                       color: color,
                     ),
@@ -294,7 +319,7 @@ class JourneyChip extends StatelessWidget {
     this.onTap,
     this.icon,
     this.selectedColor = AarastV3Color.primary,
-    this.fontSize = 14,
+    this.fontSize = JourneyType.body,
     super.key,
   });
 
@@ -374,7 +399,11 @@ class JourneyTag extends StatelessWidget {
       ),
       child: Text(
         label,
-        style: JourneyType.of(12, weight: JourneyType.bold, color: color),
+        style: JourneyType.of(
+          JourneyType.caption,
+          weight: JourneyType.bold,
+          color: color,
+        ),
       ),
     );
   }
@@ -536,13 +565,19 @@ class JourneyTabHeader extends StatelessWidget {
                   header: true,
                   child: Text(
                     title,
-                    style: JourneyType.of(28, weight: JourneyType.bold),
+                    style: JourneyType.of(
+                      JourneyType.display,
+                      weight: JourneyType.bold,
+                    ),
                   ),
                 ),
                 const SizedBox(height: 2),
                 Text(
                   status,
-                  style: JourneyType.of(15, color: AarastV3Color.textMuted),
+                  style: JourneyType.of(
+                    JourneyType.body,
+                    color: AarastV3Color.textMuted,
+                  ),
                 ),
               ],
             ),
@@ -591,13 +626,19 @@ class JourneySubHeader extends StatelessWidget {
                     header: true,
                     child: Text(
                       title,
-                      style: JourneyType.of(20, weight: JourneyType.bold),
+                      style: JourneyType.of(
+                        JourneyType.title,
+                        weight: JourneyType.bold,
+                      ),
                     ),
                   ),
                 if (subtitle != null)
                   Text(
                     subtitle!,
-                    style: JourneyType.of(13.5, color: AarastV3Color.textMuted),
+                    style: JourneyType.of(
+                      JourneyType.small,
+                      color: AarastV3Color.textMuted,
+                    ),
                   ),
               ],
             ),
@@ -635,7 +676,10 @@ class JourneySectionTitle extends StatelessWidget {
               header: true,
               child: Text(
                 title,
-                style: JourneyType.of(17, weight: JourneyType.bold),
+                style: JourneyType.of(
+                  JourneyType.bodyLarge,
+                  weight: JourneyType.bold,
+                ),
               ),
             ),
           ),
@@ -644,7 +688,7 @@ class JourneySectionTitle extends StatelessWidget {
                 ? Text(
                     action!,
                     style: JourneyType.of(
-                      14,
+                      JourneyType.small,
                       weight: JourneyType.bold,
                       color: actionColor,
                     ),
@@ -697,13 +741,19 @@ class JourneyListRow extends StatelessWidget {
               children: [
                 Text(
                   title,
-                  style: JourneyType.of(15.5, weight: JourneyType.bold),
+                  style: JourneyType.of(
+                    JourneyType.body,
+                    weight: JourneyType.bold,
+                  ),
                 ),
                 Text(
                   subtitle,
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
-                  style: JourneyType.of(13, color: AarastV3Color.textMuted),
+                  style: JourneyType.of(
+                    JourneyType.small,
+                    color: AarastV3Color.textMuted,
+                  ),
                 ),
               ],
             ),
@@ -805,12 +855,18 @@ class JourneyChoiceCard extends StatelessWidget {
                   children: [
                     Text(
                       title,
-                      style: JourneyType.of(19, weight: JourneyType.bold),
+                      style: JourneyType.of(
+                        JourneyType.title,
+                        weight: JourneyType.bold,
+                      ),
                     ),
                     const SizedBox(height: 2),
                     Text(
                       subtitle,
-                      style: JourneyType.of(14, color: AarastV3Color.textMuted),
+                      style: JourneyType.of(
+                        JourneyType.small,
+                        color: AarastV3Color.textMuted,
+                      ),
                     ),
                   ],
                 ),
@@ -1053,7 +1109,7 @@ class JourneyQuestionPage extends StatelessWidget {
               Text(
                 '${step + 1} من $total',
                 style: JourneyType.of(
-                  14,
+                  JourneyType.small,
                   weight: JourneyType.bold,
                   color: AarastV3Color.textMuted,
                 ),
@@ -1068,7 +1124,11 @@ class JourneyQuestionPage extends StatelessWidget {
             header: true,
             child: Text(
               question,
-              style: JourneyType.of(30, weight: JourneyType.bold, height: 1.25),
+              style: JourneyType.of(
+                JourneyType.display,
+                weight: JourneyType.bold,
+                height: 1.25,
+              ),
             ),
           ),
         ),
@@ -1077,7 +1137,10 @@ class JourneyQuestionPage extends StatelessWidget {
             padding: const EdgeInsets.fromLTRB(6, 8, 6, 0),
             child: Text(
               help!,
-              style: JourneyType.of(16, color: AarastV3Color.textMuted),
+              style: JourneyType.of(
+                JourneyType.bodyLarge,
+                color: AarastV3Color.textMuted,
+              ),
             ),
           ),
         const SizedBox(height: 26),
@@ -1189,7 +1252,7 @@ class _JourneyTextFieldState extends State<JourneyTextField> {
                     Text(
                       widget.label,
                       style: JourneyType.of(
-                        12.5,
+                        JourneyType.caption,
                         color: AarastV3Color.textMuted,
                       ),
                     ),
@@ -1208,7 +1271,9 @@ class _JourneyTextFieldState extends State<JourneyTextField> {
                       onChanged: widget.onChanged,
                       onSubmitted: widget.onSubmitted,
                       style: JourneyType.of(
-                        widget.large ? 28 : 17,
+                        widget.large
+                            ? JourneyType.figure
+                            : JourneyType.bodyLarge,
                         weight: JourneyType.bold,
                       ),
                       cursorColor: AarastV3Color.primary,
@@ -1219,7 +1284,9 @@ class _JourneyTextFieldState extends State<JourneyTextField> {
                         hintTextDirection: widget.textDirection,
                         // The hint shows the answer as it will look typed.
                         hintStyle: JourneyType.of(
-                          widget.large ? 28 : 17,
+                          widget.large
+                              ? JourneyType.figure
+                              : JourneyType.bodyLarge,
                           weight: JourneyType.bold,
                           color: AarastV3Color.textFaint,
                         ),
@@ -1237,7 +1304,7 @@ class _JourneyTextFieldState extends State<JourneyTextField> {
                       Text(
                         widget.helper!,
                         style: JourneyType.of(
-                          13.5,
+                          JourneyType.small,
                           weight: JourneyType.bold,
                           color: widget.helperColor,
                         ),
@@ -1249,7 +1316,7 @@ class _JourneyTextFieldState extends State<JourneyTextField> {
                 Text(
                   widget.suffix!,
                   style: JourneyType.of(
-                    15,
+                    JourneyType.body,
                     weight: JourneyType.bold,
                     color: AarastV3Color.textMuted,
                   ),
@@ -1272,7 +1339,7 @@ class _JourneyTextFieldState extends State<JourneyTextField> {
                   child: Text(
                     error,
                     style: JourneyType.of(
-                      13,
+                      JourneyType.small,
                       weight: JourneyType.bold,
                       color: AarastV3Color.danger,
                     ),
@@ -1331,12 +1398,15 @@ class JourneyPickerField extends StatelessWidget {
                 children: [
                   Text(
                     label,
-                    style: JourneyType.of(12.5, color: AarastV3Color.textMuted),
+                    style: JourneyType.of(
+                      JourneyType.caption,
+                      color: AarastV3Color.textMuted,
+                    ),
                   ),
                   Text(
                     has ? value! : placeholder,
                     style: JourneyType.of(
-                      17,
+                      JourneyType.bodyLarge,
                       weight: JourneyType.bold,
                       color: has ? AarastV3Color.ink : AarastV3Color.textFaint,
                     ),
@@ -1344,7 +1414,10 @@ class JourneyPickerField extends StatelessWidget {
                   if (helper != null)
                     Text(
                       helper!,
-                      style: JourneyType.of(13, color: AarastV3Color.textMuted),
+                      style: JourneyType.of(
+                        JourneyType.small,
+                        color: AarastV3Color.textMuted,
+                      ),
                     ),
                 ],
               ),
@@ -1391,7 +1464,7 @@ class JourneyNote extends StatelessWidget {
             child: Text(
               text,
               style: JourneyType.of(
-                13.5,
+                JourneyType.small,
                 weight: JourneyType.bold,
                 color: color,
               ),

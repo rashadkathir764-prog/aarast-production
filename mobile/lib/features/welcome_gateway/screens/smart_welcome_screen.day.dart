@@ -47,13 +47,19 @@ class _DaySheet extends StatelessWidget {
             header: true,
             child: Text(
               'يوم العرس في ${arabicMonthName(month.month)} ${month.year}',
-              style: JourneyType.of(21, weight: JourneyType.bold),
+              style: JourneyType.of(
+                JourneyType.title,
+                weight: JourneyType.bold,
+              ),
             ),
           ),
           if (hijriSpan != null)
             Text(
               hijriSpan,
-              style: JourneyType.of(14, color: AarastV3Color.textMuted),
+              style: JourneyType.of(
+                JourneyType.small,
+                color: AarastV3Color.textMuted,
+              ),
             ),
           const SizedBox(height: 14),
           Row(
@@ -66,7 +72,7 @@ class _DaySheet extends StatelessWidget {
                       child: Text(
                         name,
                         style: JourneyType.of(
-                          12,
+                          JourneyType.caption,
                           weight: JourneyType.bold,
                           color: AarastV3Color.textMuted,
                         ),
@@ -140,7 +146,7 @@ class _DaySheet extends StatelessWidget {
                 Text(
                   '$day',
                   style: JourneyType.of(
-                    16,
+                    JourneyType.bodyLarge,
                     weight: JourneyType.bold,
                     color: fg,
                   ),
@@ -151,7 +157,10 @@ class _DaySheet extends StatelessWidget {
                     // A new Hijri month names itself on its first day.
                     child: Text(
                       hijri.day == 1 ? '1 ${hijri.monthName}' : '${hijri.day}',
-                      style: JourneyType.of(11, color: hijriColor),
+                      style: JourneyType.of(
+                        JourneyType.caption,
+                        color: hijriColor,
+                      ),
                     ),
                   ),
               ],

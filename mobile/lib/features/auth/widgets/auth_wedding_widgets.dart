@@ -104,14 +104,20 @@ class AuthHeading extends StatelessWidget {
           header: true,
           child: Text(
             title,
-            style: JourneyType.of(30, weight: JourneyType.bold),
+            style: JourneyType.of(
+              JourneyType.display,
+              weight: JourneyType.bold,
+            ),
           ),
         ),
         if (subtitle != null) ...[
           const SizedBox(height: 4),
           Text(
             subtitle!,
-            style: JourneyType.of(15.5, color: AarastV3Color.textMuted),
+            style: JourneyType.of(
+              JourneyType.body,
+              color: AarastV3Color.textMuted,
+            ),
           ),
         ],
       ],
@@ -194,7 +200,7 @@ class AuthTextField extends StatelessWidget {
   final ValueChanged<String>? onFieldSubmitted;
   final bool compact;
 
-  static const _labelTop = 12.0;
+  static const _labelTop = 9.0;
 
   @override
   Widget build(BuildContext context) {
@@ -207,7 +213,7 @@ class AuthTextField extends StatelessWidget {
       borderRadius: BorderRadius.circular(18),
       borderSide: BorderSide(color: color, width: width),
     );
-    final valueSize = compact ? 17.0 : 19.0;
+    final valueSize = JourneyType.bodyLarge;
     // The field's own icon sits on the far edge (prototype a08b); a tool
     // such as the password eye sits beside it.
     final endTools = Padding(
@@ -267,7 +273,7 @@ class AuthTextField extends StatelessWidget {
                 color: AarastV3Color.textFaint,
               ),
               errorStyle: JourneyType.of(
-                13.5,
+                JourneyType.small,
                 weight: JourneyType.bold,
                 color: AarastV3Color.danger,
               ),
@@ -278,9 +284,9 @@ class AuthTextField extends StatelessWidget {
               fillColor: AarastV3Color.paper,
               contentPadding: const EdgeInsetsDirectional.fromSTEB(
                 16,
-                _labelTop + 22,
+                _labelTop + 19,
                 12,
-                14,
+                11,
               ),
               border: border(AarastV3Color.line, 1),
               enabledBorder: border(AarastV3Color.line, 1),
@@ -299,7 +305,10 @@ class AuthTextField extends StatelessWidget {
                   label,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: JourneyType.of(12.5, color: AarastV3Color.textMuted),
+                  style: JourneyType.of(
+                    JourneyType.caption,
+                    color: AarastV3Color.textMuted,
+                  ),
                 ),
               ),
             ),
@@ -335,7 +344,7 @@ class AuthInlineError extends StatelessWidget {
             child: Text(
               message,
               style: JourneyType.of(
-                14,
+                JourneyType.small,
                 weight: JourneyType.bold,
                 color: AarastV3Color.danger,
               ),
@@ -385,12 +394,15 @@ class AuthFooterLink extends StatelessWidget {
       child: Text.rich(
         TextSpan(
           text: '$prefix ',
-          style: JourneyType.of(15, color: AarastV3Color.textMuted),
+          style: JourneyType.of(
+            JourneyType.body,
+            color: AarastV3Color.textMuted,
+          ),
           children: [
             TextSpan(
               text: action,
               style: JourneyType.of(
-                15,
+                JourneyType.body,
                 weight: JourneyType.bold,
                 color: enabled
                     ? AarastV3Color.primary

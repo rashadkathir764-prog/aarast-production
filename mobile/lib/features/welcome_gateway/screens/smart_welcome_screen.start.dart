@@ -34,13 +34,19 @@ class _StartStep extends StatelessWidget {
           header: true,
           child: Text(
             'أهلًا فيك',
-            style: JourneyType.of(30, weight: JourneyType.bold),
+            style: JourneyType.of(
+              JourneyType.display,
+              weight: JourneyType.bold,
+            ),
           ),
         ),
         const SizedBox(height: 4),
         Text(
           'جديد في اعّرست؟ اختر ايش تشتي',
-          style: JourneyType.of(16, color: AarastV3Color.textMuted),
+          style: JourneyType.of(
+            JourneyType.bodyLarge,
+            color: AarastV3Color.textMuted,
+          ),
         ),
         const SizedBox(height: 22),
         _PictureChoiceCard(
@@ -93,7 +99,10 @@ class _StartStep extends StatelessWidget {
               ),
               Text(
                 'أحد ضافك في خطته',
-                style: JourneyType.of(13, color: AarastV3Color.textMuted),
+                style: JourneyType.of(
+                  JourneyType.small,
+                  color: AarastV3Color.textMuted,
+                ),
               ),
             ],
           ),
@@ -134,13 +143,19 @@ class _WhoseStep extends StatelessWidget {
           header: true,
           child: Text(
             'خطة مين؟',
-            style: JourneyType.of(30, weight: JourneyType.bold),
+            style: JourneyType.of(
+              JourneyType.display,
+              weight: JourneyType.bold,
+            ),
           ),
         ),
         const SizedBox(height: 4),
         Text(
           'كل واحد له مساره، ويقدر يضيف الثاني مشارك',
-          style: JourneyType.of(15.5, color: AarastV3Color.textMuted),
+          style: JourneyType.of(
+            JourneyType.body,
+            color: AarastV3Color.textMuted,
+          ),
         ),
         const SizedBox(height: 22),
         _PictureChoiceCard(
@@ -198,7 +213,7 @@ class _PictureChoiceCard extends StatelessWidget {
           selected: selected,
           borderRadius: BorderRadius.circular(24),
           child: Container(
-            constraints: const BoxConstraints(minHeight: 132),
+            constraints: const BoxConstraints(minHeight: 104),
             clipBehavior: Clip.antiAlias,
             decoration: BoxDecoration(
               color: AarastV3Color.paper,
@@ -238,13 +253,16 @@ class _PictureChoiceCard extends StatelessWidget {
                         children: [
                           Text(
                             title,
-                            style: JourneyType.of(21, weight: JourneyType.bold),
+                            style: JourneyType.of(
+                              JourneyType.title,
+                              weight: JourneyType.bold,
+                            ),
                           ),
                           const SizedBox(height: 4),
                           Text(
                             subtitle,
                             style: JourneyType.of(
-                              14,
+                              JourneyType.small,
                               color: AarastV3Color.textMuted,
                               height: 1.4,
                             ),
@@ -254,7 +272,7 @@ class _PictureChoiceCard extends StatelessWidget {
                     ),
                   ),
                   // A picture keeps to its own edge, never over the words.
-                  SizedBox(width: 140, child: ClipRect(child: picture)),
+                  SizedBox(width: 112, child: ClipRect(child: picture)),
                 ],
               ),
             ),

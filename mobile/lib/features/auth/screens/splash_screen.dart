@@ -103,7 +103,7 @@ class _SplashScreenState extends State<SplashScreen>
                         'عرسك من أول ريال إلى آخر قسط',
                         textAlign: TextAlign.center,
                         style: JourneyType.of(
-                          17,
+                          JourneyType.bodyLarge,
                           color: AarastV3Color.onPrimaryMuted,
                         ),
                       ),

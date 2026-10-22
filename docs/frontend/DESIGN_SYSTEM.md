@@ -138,6 +138,21 @@ Status colors appear with text or icons and never carry meaning alone.
 - Tajawal owns body, labels, fields, and dense product content.
 - Currency, dates, phone values, and percentages preserve their intended
   numeric direction inside RTL layouts.
+- Journey screens take every text size from one scale (`JourneyType`, D8),
+  sized for phones 360 to 412 points wide at the person's own text size:
+
+  | Role | Size | Used for |
+  | --- | --- | --- |
+  | `display` | 24 | A screen's heading or question |
+  | `title` | 18 | Card, sheet and section titles |
+  | `figure` | 22 | A typed amount or name in a large field |
+  | `bodyLarge` | 16 | Buttons, field values, list titles |
+  | `body` | 15 | Running text |
+  | `small` | 13 | Secondary lines, hints, field labels |
+  | `caption` | 12 | Tags, the Hijri date under a day |
+
+  A screen never passes a number; a test fails if one does. Main actions
+  are 52 points tall, and picture choice cards 104.
 
 ### Spacing And Shape
 

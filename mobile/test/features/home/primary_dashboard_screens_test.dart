@@ -61,7 +61,7 @@ void main() {
 
     expect(find.byType(DashboardEntryScreen), findsOneWidget);
     expect(find.byType(LocalGuestDashboardScreen), findsOneWidget);
-    expect(find.text(_planTitle), findsWidgets);
+    expect(find.textContaining(_planTitle), findsWidgets);
     _expectRtl(tester, find.byType(LocalGuestDashboardScreen));
     expect(tester.takeException(), isNull);
   });
@@ -253,7 +253,7 @@ void main() {
 
       expect(find.byType(WeddingPlanDashboardScreen), findsOneWidget);
       expect(find.byType(AarastDashboardView), findsOneWidget);
-      expect(find.text(_planTitle), findsWidgets);
+      expect(find.textContaining(_planTitle), findsWidgets);
       _expectRtl(tester, find.byType(AarastDashboardView));
       expect(tester.takeException(), isNull);
     },

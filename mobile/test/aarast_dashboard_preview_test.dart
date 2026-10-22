@@ -140,7 +140,8 @@ void main() {
     );
     expect(tester.takeException(), isNull);
     final hero = find.byKey(const ValueKey('aarast-dashboard-plan-moment'));
-    expect(tester.getSize(hero).height, inInclusiveRange(146, 176));
+    // D8: the countdown hero is compact on a phone.
+    expect(tester.getSize(hero).height, inInclusiveRange(96, 140));
     await expectLater(
       find.byType(PlanShellChrome),
       matchesGoldenFile('goldens/aarast_dashboard_active_420.png'),
@@ -155,7 +156,8 @@ void main() {
     );
     expect(tester.takeException(), isNull);
     final hero = find.byKey(const ValueKey('aarast-dashboard-plan-moment'));
-    expect(tester.getSize(hero).height, inInclusiveRange(146, 176));
+    // D8: the countdown hero is compact on a phone.
+    expect(tester.getSize(hero).height, inInclusiveRange(96, 140));
     await expectLater(
       find.byType(PlanShellChrome),
       matchesGoldenFile('goldens/aarast_dashboard_fresh_320.png'),

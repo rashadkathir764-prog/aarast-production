@@ -1,10 +1,18 @@
 part of 'aarast_dashboard_view.dart';
 
 class _DashboardMoneyCard extends StatefulWidget {
-  const _DashboardMoneyCard({required this.summary, required this.onTap});
+  const _DashboardMoneyCard({
+    required this.summary,
+    required this.onTap,
+    this.paymentShownAbove = false,
+  });
 
   final DashboardSummary summary;
   final VoidCallback onTap;
+
+  /// The next step already names the due payment; the card does not repeat
+  /// it.
+  final bool paymentShownAbove;
 
   @override
   State<_DashboardMoneyCard> createState() => _DashboardMoneyCardState();
@@ -29,7 +37,9 @@ class _DashboardMoneyCardState extends State<_DashboardMoneyCard> {
     final overBudget =
         summary.moneySummary.overBudget == true ||
         (remaining != null && remaining < 0);
-    final hasDuePayment = (summary.duePaymentSchedulesCount ?? 0) > 0;
+    final hasDuePayment =
+        !widget.paymentShownAbove &&
+        (summary.duePaymentSchedulesCount ?? 0) > 0;
     final ratio = budget == null || budget <= 0
         ? null
         : (confirmed / budget).clamp(0.0, 1.0);
@@ -576,4 +586,8 @@ String _paymentAttentionLabel(DashboardSummary summary, bool hidden) {
   return amount == null
       ? 'موعد دفع قريب · $title'
       : 'موعد دفع قريب · $title · ${_displayAmount(amount, summary.currency)}';
+}
+
+String _money(double value, String currency) {
+  return compactMoneyParts(value, currencyCode: currency).plainText;
 }

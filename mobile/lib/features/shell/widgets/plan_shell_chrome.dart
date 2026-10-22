@@ -68,13 +68,16 @@ class _PlanShellChromeState extends State<PlanShellChrome> {
         extendBody: false,
         body: Column(
           children: [
-            AarastPlanContextBar(
-              planName: widget.contextLabel,
-              destination: AarastPlanNavigationBar.planDestinationLabel(
-                widget.activeIndex,
+            // The home names the plan in its own header (b02); the other
+            // tabs keep this bar until their own redesign.
+            if (widget.activeIndex != 0)
+              AarastPlanContextBar(
+                planName: widget.contextLabel,
+                destination: AarastPlanNavigationBar.planDestinationLabel(
+                  widget.activeIndex,
+                ),
+                stageLabel: widget.stageLabel,
               ),
-              stageLabel: widget.stageLabel,
-            ),
             if (widget.topStatus != null) widget.topStatus!,
             Expanded(
               child: MediaQuery.removePadding(

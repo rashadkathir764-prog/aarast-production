@@ -19,6 +19,9 @@ abstract final class JourneyType {
   // The one type scale (D8), sized for phones 360 to 412 points wide at the
   // person's own text size. Screens take a size from here, never a number.
 
+  /// The one big number of a screen, such as the days to the wedding.
+  static const count = 40.0;
+
   /// A screen's heading or question.
   static const display = 24.0;
 

@@ -159,9 +159,11 @@ void main() {
         ),
       );
 
-      expect(find.text(summary.seed.title), findsAtLeastNWidgets(1));
+      expect(find.textContaining(summary.seed.title), findsAtLeastNWidgets(1));
       // الترويسة ترحّب بدور المستخدم وتعرض أولوية الخطة دون أرقام وهمية.
-      expect(find.textContaining('العريس'), findsOneWidget);
+      // The home greets by name, never by role; this title holds no name.
+      expect(find.text('أهلًا فيك'), findsOneWidget);
+      expect(find.textContaining('العريس'), findsNothing);
       expect(find.text('وضع تجربة التصميم'), findsNothing);
 
       final syncAction = find.byKey(const Key('aarast-local-sync-action'));

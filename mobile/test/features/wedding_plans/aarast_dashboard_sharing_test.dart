@@ -47,8 +47,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('فريق الخطة'), findsOneWidget);
-    expect(find.text('4 مشاركين'), findsOneWidget);
-    expect(find.text('2 دعوات بانتظار الرد'), findsOneWidget);
+    expect(find.text('4 مشاركين · دعوتين تنتظر الرد'), findsOneWidget);
 
     await tester.tap(sharing);
     await tester.pump();
@@ -57,7 +56,7 @@ void main() {
   });
 
   testWidgets(
-    'dashboard mosaic stays compact and complete below the plan hero',
+    'the home keeps the next step, money and the three counts under the hero',
     (tester) async {
       tester.view.devicePixelRatio = 1;
       tester.view.physicalSize = const Size(420, 900);
@@ -91,27 +90,30 @@ void main() {
         ),
       );
 
-      final mosaic = find.byKey(
-        const ValueKey('aarast-dashboard-mobile-mosaic'),
-      );
-      expect(mosaic, findsOneWidget);
+      final hero = find.byKey(const ValueKey('aarast-dashboard-plan-moment'));
+      expect(hero, findsOneWidget);
       expect(
-        find.byKey(const ValueKey('dashboard-signal-tasks')),
+        find.byWidgetPredicate(
+          (widget) =>
+              widget.key is ValueKey<String> &&
+              (widget.key! as ValueKey<String>).value.startsWith(
+                'aarast-dashboard-next-step-',
+              ),
+        ),
         findsOneWidget,
       );
-      expect(
-        find.byKey(const ValueKey('dashboard-signal-guests')),
-        findsOneWidget,
-      );
-      expect(
-        find.byKey(const ValueKey('dashboard-signal-providers')),
-        findsOneWidget,
-      );
+      for (final tile in ['tasks', 'guests', 'providers']) {
+        final found = find.byKey(ValueKey('aarast-dashboard-tile-$tile'));
+        expect(found, findsOneWidget);
+        expect(
+          tester.getTopLeft(found).dy,
+          greaterThan(tester.getBottomLeft(hero).dy),
+        );
+      }
       expect(
         find.byKey(const ValueKey('aarast-dashboard-money-card')),
         findsOneWidget,
       );
-      expect(tester.getSize(mosaic).height, lessThanOrEqualTo(450));
       expect(tester.takeException(), isNull);
     },
   );

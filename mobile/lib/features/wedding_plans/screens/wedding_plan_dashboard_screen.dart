@@ -250,9 +250,8 @@ class _WeddingPlanDashboardScreenState extends State<WeddingPlanDashboardScreen>
           builder: (_) {
             return AarastDashboardView(
               summary: summary,
-              userName: auth.user?.name ?? 'صاحب الخطة',
+              userName: auth.user?.name ?? '',
               avatarUrl: auth.user?.avatarUrl,
-              personaHeadline: null,
               // The assistant answers from the server; a device-only plan
               // has nothing there to answer from.
               assistantEntry: _isLocalGuestPlan
@@ -280,6 +279,13 @@ class _WeddingPlanDashboardScreenState extends State<WeddingPlanDashboardScreen>
               onOpenImportantItem: (item) =>
                   _openDashboardItem(item, selectedPlanId),
               onOpenNextStep: () => _openNextStep(summary, selectedPlanId),
+              onOpenPayment: (payment) => context.go(
+                AppRouter.moneySchedulePay(
+                  selectedPlanId,
+                  payment.weddingCostId,
+                  payment.id,
+                ),
+              ),
             );
           },
         ),

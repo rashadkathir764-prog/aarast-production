@@ -1634,8 +1634,9 @@ const r19ProviderPortalApi = Object.freeze({
 // (groom journey a05 to a08) reading the starting items and task count from
 // the finance, tasks and catalogs owner APIs and the cities from marketplace,
 // +1 for a08b reading the plan kept on the phone from the onboarding owner
-// API, so its name is not asked again.
-const r19LegalRecordCount = 184;
+// API, so its name is not asked again, -1 for the home greeting by the
+// plan's name instead of the onboarding persona copy (b02).
+const r19LegalRecordCount = 183;
 const trackedOwnerApiContracts = [
   {
     area: 'features/account_contexts',
@@ -2808,11 +2809,6 @@ const trackedShellEntryBatchContracts = [
     source: 'mobile/lib/features/home/screens/local_guest_dashboard_screen.dart',
     target: 'mobile/lib/features/auth/auth_api.dart',
     show: ['AuthActionGuard'],
-  },
-  {
-    source: 'mobile/lib/features/home/screens/local_guest_dashboard_screen.dart',
-    target: 'mobile/lib/features/onboarding/onboarding_api.dart',
-    show: ['personaCopyForGuest'],
   },
   {
     source: 'mobile/lib/features/home/screens/local_guest_dashboard_screen.dart',

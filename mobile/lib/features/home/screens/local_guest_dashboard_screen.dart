@@ -11,7 +11,6 @@ import '../../../core/theme/aarast_design_tokens.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/aarast_ui.dart';
 import '../../auth/auth_api.dart' show AuthActionGuard;
-import '../../onboarding/onboarding_api.dart' show personaCopyForGuest;
 import '../../shell/shell_api.dart'
     show PlanShellChrome, showAarastQuickActionSheet;
 import '../../wedding_plans/wedding_plans_api.dart'
@@ -64,7 +63,6 @@ class _LocalGuestDashboardScreenState extends State<LocalGuestDashboardScreen> {
     final summary = _summary;
     final dashboardSummary = summary.toDashboardSummary();
     final planId = dashboardSummary.planId;
-    final personaCopy = personaCopyForGuest(summary.plan.persona);
 
     return PlanShellChrome(
       activeIndex: 0,
@@ -90,8 +88,10 @@ class _LocalGuestDashboardScreenState extends State<LocalGuestDashboardScreen> {
       },
       body: AarastDashboardView(
         summary: dashboardSummary,
-        userName: personaCopy.label,
-        personaHeadline: personaCopy.dashboardHeadline,
+        // «عرس محمد» names him; with no name, the header says «أهلًا فيك».
+        userName: dashboardSummary.title.trim().startsWith('عرس ')
+            ? dashboardSummary.title.trim().substring(4)
+            : '',
         bottomPadding: 132,
         notice: _LocalSyncNotice(
           needsSync: summary.plan.needsSync,

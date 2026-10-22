@@ -66,12 +66,54 @@ class MoneyStarterCatalog {
   };
 }
 
+/// Starter rows for the mahr. The mahr sits outside the wedding budget
+/// (DECISIONS 2026-10-22, C1), so they are never offered as budget items.
+const mahrStarterIds = {'groom-mahr', 'neutral-mahr'};
+
 MoneyStarterCatalog moneyStarterCatalogFor(MoneyStarterPersona persona) {
-  return switch (persona) {
+  return _withoutMahr(switch (persona) {
     MoneyStarterPersona.groom => _groomCatalog,
     MoneyStarterPersona.bride => _brideCatalog,
     MoneyStarterPersona.neutral => _neutralCatalog,
-  };
+  });
+}
+
+MoneyStarterCatalog _withoutMahr(MoneyStarterCatalog catalog) {
+  return MoneyStarterCatalog(
+    persona: catalog.persona,
+    eyebrow: catalog.eyebrow,
+    title: catalog.title,
+    subtitle: catalog.subtitle,
+    groups: [
+      for (final group in catalog.groups)
+        if (group.categories.any((c) => !mahrStarterIds.contains(c.id)))
+          MoneyStarterGroup(
+            id: group.id,
+            title: group.title,
+            subtitle: group.subtitle,
+            categories: [
+              for (final c in group.categories)
+                if (!mahrStarterIds.contains(c.id)) c,
+            ],
+          ),
+    ],
+  );
+}
+
+/// The names of the items a new plan starts with: the recommended starter
+/// rows for [personaCode], from the managed catalog when loaded.
+List<String> moneyStarterPlanItemNames(
+  ManagedReferenceCatalog? managed,
+  String? personaCode,
+) {
+  final catalog = moneyStarterCatalogFromManaged(
+    managed,
+    moneyStarterPersonaFromCode(personaCode),
+  );
+  return [
+    for (final category in catalog.categories)
+      if (category.recommended) category.name,
+  ];
 }
 
 MoneyStarterCatalog moneyStarterCatalogFromManaged(
@@ -84,6 +126,7 @@ MoneyStarterCatalog moneyStarterCatalogFromManaged(
       managed.items
           .where((item) {
             if (!item.showForCustomer) return false;
+            if (mahrStarterIds.contains(item.key)) return false;
             return switch (persona) {
               MoneyStarterPersona.groom => item.showForGroom,
               MoneyStarterPersona.bride => item.showForBride,

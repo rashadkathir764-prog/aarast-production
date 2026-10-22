@@ -1,6 +1,6 @@
-// Full-screen visual previews for the welcome gateway, exactly as a first-time
-// visitor sees it: the text-only hero that owns every heading, and the unified
-// V3 path cards serving both the path step and the role step.
+// Full-screen visual previews of the journey start, exactly as a first-time
+// visitor sees it: «أهلًا فيك» (a02), «خطة مين؟» (a02b), and the name and
+// date question (a03).
 //
 // Regenerate with:
 //   flutter test test/welcome_gateway_preview_test.dart --update-goldens
@@ -12,13 +12,9 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-import 'package:aarast_mobile/core/network/api_client.dart';
 import 'package:aarast_mobile/core/storage/auth_storage.dart';
 import 'package:aarast_mobile/core/theme/app_theme.dart';
 import 'package:aarast_mobile/features/onboarding/data/guest_onboarding_storage.dart';
-import 'package:aarast_mobile/features/onboarding/data/yemen_administrative_api.dart';
-import 'package:aarast_mobile/features/onboarding/models/yemen_administrative_area.dart';
-import 'package:aarast_mobile/features/onboarding/providers/yemen_administrative_provider.dart';
 import 'package:aarast_mobile/features/welcome_gateway/screens/smart_welcome_screen.dart';
 
 import 'support/preview_fonts.dart';
@@ -26,8 +22,6 @@ import 'support/preview_fonts.dart';
 Future<void> _pumpGateway(WidgetTester tester) async {
   SharedPreferences.setMockInitialValues({});
   final prefs = await SharedPreferences.getInstance();
-  final yemen = YemenAdministrativeProvider(_PreviewYemenApi());
-  await yemen.loadGovernorates();
 
   tester.view.physicalSize = const Size(390, 860);
   tester.view.devicePixelRatio = 1.0;
@@ -40,91 +34,65 @@ Future<void> _pumpGateway(WidgetTester tester) async {
         Provider<GuestOnboardingStorage>(
           create: (_) => GuestOnboardingStorage(prefs),
         ),
-        ChangeNotifierProvider<YemenAdministrativeProvider>.value(value: yemen),
       ],
       child: MaterialApp(
         debugShowCheckedModeBanner: false,
         theme: AppTheme.light(),
-        home: const SmartWelcomeScreen(),
+        home: const Directionality(
+          textDirection: TextDirection.rtl,
+          child: SmartWelcomeScreen(),
+        ),
       ),
     ),
   );
-  await tester.pump(const Duration(milliseconds: 600));
+  await tester.pumpAndSettle();
 }
 
 void main() {
   setUpAll(loadPreviewAppFonts);
 
-  testWidgets('welcome gateway — path selection (390)', (tester) async {
+  testWidgets('journey start — أهلًا فيك (390)', (tester) async {
     await _pumpGateway(tester);
 
     await expectLater(
       find.byType(SmartWelcomeScreen),
-      matchesGoldenFile('goldens/welcome_gateway_pathselection.png'),
+      matchesGoldenFile('goldens/welcome_gateway_start.png'),
     );
   });
 
-  testWidgets('welcome gateway — role selection (390)', (tester) async {
+  testWidgets('journey start — خطة مين؟ (390)', (tester) async {
     await _pumpGateway(tester);
 
-    await tester.tap(find.text('إنشاء خطتك'));
+    await tester.tap(find.text('ابدأ'));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('العريس'));
+    // The groom's photo decodes off the test clock; wait for it.
+    await tester.runAsync(
+      () => precacheImage(
+        const AssetImage('assets/images/journey/groom.jpg'),
+        tester.element(find.byType(SmartWelcomeScreen)),
+      ),
+    );
     await tester.pumpAndSettle();
 
     await expectLater(
       find.byType(SmartWelcomeScreen),
-      matchesGoldenFile('goldens/welcome_gateway_roleselection.png'),
+      matchesGoldenFile('goldens/welcome_gateway_whose.png'),
     );
   });
 
-  testWidgets('welcome gateway — shared plan setup (390)', (tester) async {
+  testWidgets('journey start — name and date (390)', (tester) async {
     await _pumpGateway(tester);
 
-    await tester.tap(find.text('إنشاء خطتك'));
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('العريس'));
+    await tester.tap(find.text('ابدأ'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('التالي'));
     await tester.pumpAndSettle();
+    await tester.enterText(find.byType(TextField).first, 'محمد');
+    await tester.pumpAndSettle();
 
     await expectLater(
       find.byType(SmartWelcomeScreen),
-      matchesGoldenFile('goldens/welcome_gateway_plan_setup.png'),
+      matchesGoldenFile('goldens/welcome_gateway_name_date.png'),
     );
   });
-}
-
-class _PreviewYemenApi extends YemenAdministrativeApi {
-  _PreviewYemenApi() : super(ApiClient(tokenProvider: () async => null));
-
-  @override
-  Future<List<YemenGovernorate>> getGovernorates() async => const [
-    YemenGovernorate(
-      id: 'capital',
-      code: 'YE13',
-      nameAr: 'أمانة العاصمة',
-      nameEn: "Sana'a City",
-      districtsCount: 2,
-    ),
-    YemenGovernorate(
-      id: 'sanaa',
-      code: 'YE23',
-      nameAr: 'صنعاء',
-      nameEn: "Sana'a",
-      districtsCount: 1,
-    ),
-  ];
-
-  @override
-  Future<List<YemenDistrict>> getDistricts(String governorateId) async =>
-      const [
-        YemenDistrict(
-          id: 'district-1',
-          governorateId: 'capital',
-          code: '1301',
-          nameAr: 'بني الحارث',
-          nameEn: 'Bani Al Harith',
-        ),
-      ];
 }

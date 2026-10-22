@@ -54,11 +54,12 @@ class GuestOnboardingDraft {
     required String planName,
     required GuestPersona persona,
     required WeddingLocationDraft location,
-    required DateTime weddingDate,
+    required DateTime? weddingDate,
     required String currency,
     String? area,
     String? neighborhood,
     String? estimatedBudget,
+    List<String> startingItemNames = const [],
   }) {
     final budget = estimatedBudget?.replaceAll(',', '').trim();
     final skipped = budget == null || budget.isEmpty;
@@ -77,12 +78,14 @@ class GuestOnboardingDraft {
       street: location.street,
       addressNote: location.detailedAddress,
       weddingDate: weddingDate,
-      weddingDateUnknown: false,
+      // «ما حددنا الموعد بعد» is a real answer, not a missing one.
+      weddingDateUnknown: weddingDate == null,
       priorities: const [],
       currency: currency.trim(),
       estimatedBudget: skipped ? null : budget,
       budgetSkipped: skipped,
-      selectedCategoryKeys: const [],
+      // The plan's starting budget items, sent by name on import.
+      selectedCategoryKeys: List.unmodifiable(startingItemNames),
     );
   }
 
@@ -154,7 +157,7 @@ class GuestOnboardingDraft {
         hasPersona &&
         hasPlanName &&
         hasLocationSeed &&
-        hasRequiredWeddingDate &&
+        hasTimelineSeed &&
         (hasRequiredBudget || budgetSkipped);
   }
 

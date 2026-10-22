@@ -402,3 +402,11 @@ const _fallbackGroups = [
     ],
   ),
 ];
+
+/// How many starter tasks a new plan for [personaCode] is offered.
+int taskStarterCountFor(ManagedReferenceCatalog? managed, String? personaCode) {
+  return taskStarterGroupsFor(
+    managed,
+    taskStarterPersonaFromCode(personaCode),
+  ).fold(0, (sum, group) => sum + group.templates.length);
+}

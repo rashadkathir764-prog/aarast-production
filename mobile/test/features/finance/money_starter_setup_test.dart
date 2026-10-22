@@ -22,7 +22,8 @@ void main() {
       expect(groomNames.toSet().length, groomNames.length);
       expect(brideNames.toSet().length, brideNames.length);
       // Includes the Yemeni essentials: kiswa and qat (groom), naqsh (bride).
-      expect(groom.recommendedIds.length, 12);
+      // The mahr is outside the budget (DECISIONS 2026-10-22, C1).
+      expect(groom.recommendedIds.length, 11);
       expect(bride.recommendedIds.length, 11);
     });
 

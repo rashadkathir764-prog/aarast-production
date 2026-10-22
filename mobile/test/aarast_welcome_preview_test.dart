@@ -1,5 +1,5 @@
-// Visual preview for the harmonized welcome gateway components: the unified
-// AarastPathCard (navigation + choice modes) and the V3 setup fields.
+// Visual preview for the shared V3 plan setup fields (the welcome cards
+// moved to the journey kit with the redesigned start).
 //
 // Regenerate with:
 //   flutter test test/aarast_welcome_preview_test.dart --update-goldens
@@ -8,7 +8,6 @@ library;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:lucide_icons/lucide_icons.dart';
 import 'package:provider/provider.dart';
 
 import 'package:aarast_mobile/core/network/api_client.dart';
@@ -16,7 +15,6 @@ import 'package:aarast_mobile/core/theme/app_theme.dart';
 import 'package:aarast_mobile/features/onboarding/data/yemen_administrative_api.dart';
 import 'package:aarast_mobile/features/onboarding/models/yemen_administrative_area.dart';
 import 'package:aarast_mobile/features/onboarding/providers/yemen_administrative_provider.dart';
-import 'package:aarast_mobile/features/welcome_gateway/widgets/aarast_path_card.dart';
 import 'package:aarast_mobile/features/wedding_plans/widgets/wedding_plan_creation_form.dart';
 
 import 'support/preview_fonts.dart';
@@ -51,63 +49,6 @@ Future<void> _pump(
 
 void main() {
   setUpAll(loadPreviewAppFonts);
-
-  testWidgets('welcome — path + role cards (420)', (tester) async {
-    await _pump(
-      tester,
-      Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          AarastPathCard(
-            title: 'إنشاء خطتك',
-            subtitle: 'ابدأ خطة جديدة ثم خصصها حسب دورك.',
-            icon: LucideIcons.clipboardList,
-            tone: AarastPathTone.hero,
-            onTap: () {},
-          ),
-          const SizedBox(height: 14),
-          AarastPathCard(
-            title: 'وصلتني دعوة لخطة',
-            subtitle: 'الدخول إلى خطة تمت دعوتك إليها برقم هاتفك.',
-            icon: LucideIcons.mailCheck,
-            tone: AarastPathTone.accent,
-            onTap: () {},
-          ),
-          const SizedBox(height: 14),
-          AarastPathCard(
-            title: 'أنا مزود خدمة',
-            subtitle: 'إدارة حساب المزود أو طلب الانضمام.',
-            icon: LucideIcons.store,
-            tone: AarastPathTone.quiet,
-            onTap: () {},
-          ),
-          const SizedBox(height: 22),
-          AarastPathCard(
-            title: 'العريس',
-            subtitle: 'أتابع الخطة والميزانية',
-            icon: LucideIcons.user,
-            tone: AarastPathTone.hero,
-            selected: true,
-            onTap: () {},
-          ),
-          const SizedBox(height: 14),
-          AarastPathCard(
-            title: 'العروسة',
-            subtitle: 'أرتب التفاصيل والاختيارات',
-            icon: LucideIcons.flower2,
-            tone: AarastPathTone.accent,
-            selected: false,
-            onTap: () {},
-          ),
-        ],
-      ),
-      size: const Size(420, 900),
-    );
-    await expectLater(
-      find.byType(Scaffold),
-      matchesGoldenFile('goldens/aarast_welcome_cards.png'),
-    );
-  });
 
   testWidgets('welcome — shared plan creation form (420)', (tester) async {
     final name = TextEditingController(text: 'عرسنا');

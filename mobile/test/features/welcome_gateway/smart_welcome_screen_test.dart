@@ -1,458 +1,331 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:lucide_icons/lucide_icons.dart';
+import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:go_router/go_router.dart';
 
+import 'package:aarast_mobile/core/network/api_client.dart';
 import 'package:aarast_mobile/core/storage/auth_storage.dart';
+import 'package:aarast_mobile/features/auth/data/auth_repository.dart';
+import 'package:aarast_mobile/features/auth/providers/auth_controller.dart';
 import 'package:aarast_mobile/features/onboarding/data/guest_onboarding_storage.dart';
+import 'package:aarast_mobile/features/onboarding/models/guest_onboarding_draft.dart';
+import 'package:aarast_mobile/features/wedding_plans/data/wedding_plans_api.dart';
+import 'package:aarast_mobile/features/wedding_plans/models/onboarding_complete.dart';
+import 'package:aarast_mobile/features/wedding_plans/providers/wedding_plans_provider.dart';
 import 'package:aarast_mobile/features/welcome_gateway/screens/smart_welcome_screen.dart';
-import 'package:aarast_mobile/features/wedding_plans/widgets/wedding_plan_creation_form.dart';
 
-void main() {
-  setUp(() {
-    SharedPreferences.setMockInitialValues({});
-  });
+// The redesigned start (prototype a02 to a08): one question per screen,
+// the plan kept on the phone, and the account asked for only on saving.
 
-  testWidgets('Smart Welcome Gateway renders correctly', (tester) async {
-    final preferences = await SharedPreferences.getInstance();
-    await tester.pumpWidget(
-      MultiProvider(
-        providers: [
-          Provider<AuthStorage>(create: (_) => AuthStorage(preferences)),
-          Provider<GuestOnboardingStorage>(
-            create: (_) => GuestOnboardingStorage(preferences),
-          ),
-        ],
-        child: const MaterialApp(home: Scaffold(body: SmartWelcomeScreen())),
+GoRouter _router() => GoRouter(
+  initialLocation: '/welcome',
+  routes: [
+    GoRoute(
+      path: '/welcome',
+      builder: (context, state) => const SmartWelcomeScreen(),
+    ),
+    for (final route in [
+      '/provider/apply',
+      '/invites',
+      '/login',
+      '/home',
+      '/register',
+    ])
+      GoRoute(
+        path: route,
+        builder: (context, state) => Scaffold(body: Text('opened:$route')),
       ),
-    );
+  ],
+);
 
-    expect(find.text('اختر المسار المناسب لك'), findsOneWidget);
-    expect(find.text('إنشاء خطتك'), findsOneWidget);
-    expect(find.text('وصلتني دعوة لخطة'), findsOneWidget);
-    expect(find.text('أنا مزود خدمة'), findsOneWidget);
-    expect(find.text('لديك حساب؟'), findsOneWidget);
-    expect(find.text('تسجيل الدخول'), findsOneWidget);
-  });
+class _SignedIn extends AuthController {
+  _SignedIn(super.authRepository);
 
-  testWidgets('Organizer path shows role selection', (tester) async {
-    final preferences = await SharedPreferences.getInstance();
-    await tester.pumpWidget(
-      MultiProvider(
-        providers: [
-          Provider<AuthStorage>(create: (_) => AuthStorage(preferences)),
-          Provider<GuestOnboardingStorage>(
-            create: (_) => GuestOnboardingStorage(preferences),
-          ),
-        ],
-        child: const MaterialApp(home: Scaffold(body: SmartWelcomeScreen())),
-      ),
-    );
+  @override
+  AuthStatus get status => AuthStatus.authenticated;
+}
 
-    await tester.tap(find.text('إنشاء خطتك'));
-    await tester.pumpAndSettle();
+/// Records the plan the screen asks for; answers like the server would.
+class _RecordingPlans extends WeddingPlansProvider {
+  _RecordingPlans({required this.succeed})
+    : super(WeddingPlansApi(ApiClient(tokenProvider: () async => null)));
 
-    // ترويسة الخطوة هي المصدر الوحيد للعنوان — لا عنوان مكرّر في جسم الخطوة.
-    expect(find.text('دورك يحدد التفاصيل'), findsOneWidget);
-    expect(
-      find.text('اختيار بسيط يساعدنا نرتب التجربة لك بوضوح.'),
-      findsOneWidget,
-    );
-    expect(find.text('خلنا نتعرف عليك'), findsNothing);
-    expect(find.text('العريس'), findsOneWidget);
-    expect(find.text('أتابع الخطة والميزانية'), findsOneWidget);
-    expect(find.text('العروسة'), findsOneWidget);
-    expect(find.text('أرتب التفاصيل والاختيارات'), findsOneWidget);
-    expect(find.text('مساهم / مشارك في الخطة'), findsNothing);
-    expect(find.text('أساعد في التنظيم والمتابعة'), findsNothing);
-    expect(find.text('خلّينا نجهز أساس خطتك'), findsNothing);
-  });
+  final bool succeed;
+  OnboardingCompleteRequest? request;
 
-  testWidgets('Provider path opens provider apply route', (tester) async {
-    final preferences = await SharedPreferences.getInstance();
-    final router = GoRouter(
-      initialLocation: '/welcome',
-      routes: [
-        GoRoute(
-          path: '/welcome',
-          builder: (context, state) => const SmartWelcomeScreen(),
-        ),
-        GoRoute(
-          path: '/provider/apply',
-          builder: (context, state) =>
-              const Scaffold(body: Text('provider-apply-opened')),
-        ),
-      ],
-    );
+  @override
+  String? get errorMessage => succeed ? null : 'تعذر إنشاء خطتك.';
 
-    await tester.pumpWidget(
-      MultiProvider(
-        providers: [
-          Provider<AuthStorage>(create: (_) => AuthStorage(preferences)),
-          Provider<GuestOnboardingStorage>(
-            create: (_) => GuestOnboardingStorage(preferences),
-          ),
-        ],
-        child: MaterialApp.router(routerConfig: router),
-      ),
-    );
-
-    // Three path cards now (organizer / invite / provider) — the provider
-    // card can sit below the fold, so bring it into view before tapping.
-    await tester.ensureVisible(find.text('أنا مزود خدمة'));
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('أنا مزود خدمة'));
-    await tester.pumpAndSettle();
-
-    expect(find.text('provider-apply-opened'), findsOneWidget);
-  });
-
-  testWidgets('Invite and login entry points open their own routes', (
-    tester,
+  @override
+  Future<OnboardingCompleteResponse?> completeOnboarding(
+    OnboardingCompleteRequest request,
   ) async {
-    final preferences = await SharedPreferences.getInstance();
-    final router = GoRouter(
-      initialLocation: '/welcome',
-      routes: [
-        GoRoute(
-          path: '/welcome',
-          builder: (context, state) => const SmartWelcomeScreen(),
-        ),
-        GoRoute(
-          path: '/invites',
-          builder: (context, state) =>
-              const Scaffold(body: Text('invite-access-opened')),
-        ),
-        GoRoute(
-          path: '/login',
-          builder: (context, state) =>
-              const Scaffold(body: Text('login-opened')),
-        ),
-      ],
-    );
-
-    await tester.pumpWidget(
-      MultiProvider(
-        providers: [
-          Provider<AuthStorage>(create: (_) => AuthStorage(preferences)),
-          Provider<GuestOnboardingStorage>(
-            create: (_) => GuestOnboardingStorage(preferences),
-          ),
-        ],
-        child: MaterialApp.router(routerConfig: router),
-      ),
-    );
-
-    await tester.ensureVisible(find.text('وصلتني دعوة لخطة'));
-    await tester.tap(find.text('وصلتني دعوة لخطة'));
-    await tester.pumpAndSettle();
-    expect(find.text('invite-access-opened'), findsOneWidget);
-
-    router.go('/welcome');
-    await tester.pumpAndSettle();
-    final loginButton = find.widgetWithText(TextButton, 'تسجيل الدخول');
-    await tester.ensureVisible(loginButton);
-    await tester.pumpAndSettle();
-    await tester.tap(loginButton);
-    await tester.pumpAndSettle();
-    expect(find.text('login-opened'), findsOneWidget);
-  });
-
-  testWidgets('Organizer path saves complete local plan setup', (tester) async {
-    final preferences = await SharedPreferences.getInstance();
-    final guestStorage = GuestOnboardingStorage(preferences);
-
-    final router = GoRouter(
-      initialLocation: '/welcome',
-      routes: [
-        GoRoute(
-          path: '/welcome',
-          builder: (context, state) => const SmartWelcomeScreen(),
-        ),
-        GoRoute(
-          path: '/home',
-          builder: (context, state) =>
-              const Scaffold(body: Text('dashboard-opened')),
-        ),
-      ],
-    );
-
-    await tester.pumpWidget(
-      MultiProvider(
-        providers: [
-          Provider<AuthStorage>(create: (_) => AuthStorage(preferences)),
-          Provider<GuestOnboardingStorage>.value(value: guestStorage),
-        ],
-        child: MaterialApp.router(routerConfig: router),
-      ),
-    );
-
-    await tester.pumpAndSettle();
-
-    // Verify we landed on welcome
-    expect(find.text('اختر المسار المناسب لك'), findsOneWidget);
-
-    // Tap Organizer
-    await tester.tap(find.text('إنشاء خطتك'));
-    await tester.pumpAndSettle();
-
-    // Tap Groom, then continue after the selected state is visible.
-    await tester.tap(find.text('العريس'));
-    await tester.pumpAndSettle();
-    expect(find.byIcon(LucideIcons.checkCircle), findsOneWidget);
-
-    final continueButton = find.text('التالي');
-    await tester.ensureVisible(continueButton);
-    await tester.tap(continueButton);
-    await tester.pumpAndSettle();
-
-    // Verify quick setup
-    expect(find.text('إنشاء خطة زفاف'), findsOneWidget);
-    expect(find.text('ميزانية أولية'), findsOneWidget);
-
-    await tester.enterText(
-      find.byKey(const ValueKey('wedding-plan-title-field')),
-      'My Wedding',
-    );
-    await tester.pumpAndSettle();
-
-    // The same structured location form is used for first and additional plans.
-    expect(
-      find.textContaining('اختر المحافظة ثم المديرية بالترتيب'),
-      findsOneWidget,
-    );
-    final governorateField = find.byWidgetPredicate(
-      (widget) =>
-          widget is TextField && widget.decoration?.labelText == 'المحافظة *',
-    );
-    await tester.enterText(governorateField, 'صنعاء');
-    await tester.pumpAndSettle();
-    final districtField = find.byWidgetPredicate(
-      (widget) =>
-          widget is TextField && widget.decoration?.labelText == 'المديرية *',
-    );
-    await tester.enterText(districtField, 'بني الحارث');
-    await tester.pumpAndSettle();
-
-    final dateField = find.byKey(const ValueKey('wedding-plan-date-field'));
-    await tester.ensureVisible(dateField);
-    await tester.pumpAndSettle();
-    await tester.tap(dateField);
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('15').last);
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('OK'));
-    await tester.pumpAndSettle();
-
-    await tester.ensureVisible(find.text('ميزانية أولية'));
-    await tester.tap(find.text('ميزانية أولية'));
-    await tester.pumpAndSettle();
-
-    final budgetField = find.byKey(const ValueKey('wedding-plan-budget-field'));
-    await tester.enterText(budgetField, '3000000');
-    await tester.pumpAndSettle();
-
-    // Change currency
-    await tester.tap(find.text('ر.ي'));
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('ر.س').last);
-    await tester.pumpAndSettle();
-
-    final locationValues = tester
-        .widgetList<TextField>(find.byType(TextField))
-        .map((field) => field.controller?.text)
-        .whereType<String>()
-        .toList();
-    final locationFields = {
-      for (final field in tester.widgetList<TextField>(find.byType(TextField)))
-        field.decoration?.labelText: field.controller?.text,
-    };
-    expect(locationValues, contains('صنعاء'));
-    expect(locationValues, contains('بني الحارث'));
-    expect(locationFields['المحافظة *'], 'صنعاء');
-    expect(locationFields['المديرية *'], 'بني الحارث');
-    expect(find.text('اختر التاريخ'), findsNothing);
-
-    // Tap Start Planning
-    final startButton = find.text('إنشاء الخطة');
-    await tester.ensureVisible(startButton);
-    await tester.pumpAndSettle();
-    await tester.tap(startButton);
-    await tester.pumpAndSettle();
-
-    // Verify it navigated away from welcome to /home
-    expect(find.text('عنوان الخطة مطلوب'), findsNothing);
-    if (find.byType(WeddingPlanCreationFields).evaluate().isNotEmpty) {
-      final form = tester.widget<WeddingPlanCreationFields>(
-        find.byType(WeddingPlanCreationFields),
-      );
-      expect(form.errorMessage, isNull);
-    }
-    expect(find.text('dashboard-opened'), findsOneWidget);
-
-    // Verify draft was saved
-    final draft = await guestStorage.loadDraft();
-    final guestPlan = await guestStorage.loadGuestPlan();
-    expect(guestPlan, isNotNull);
-    expect(draft?.planName, 'My Wedding');
-    expect(draft?.governorate, 'صنعاء');
-    expect(draft?.city, 'بني الحارث');
-    expect(draft?.weddingDate, isNotNull);
-    expect(draft?.weddingDateUnknown, isFalse);
-    expect(draft?.estimatedBudget, '3000000');
-    expect(draft?.currency, 'SAR');
-  });
-
-  testWidgets(
-    'Quick setup blocks dashboard until required plan data is complete',
-    (tester) async {
-      final preferences = await SharedPreferences.getInstance();
-      final guestStorage = GuestOnboardingStorage(preferences);
-
-      final router = GoRouter(
-        initialLocation: '/welcome',
-        routes: [
-          GoRoute(
-            path: '/welcome',
-            builder: (context, state) => const SmartWelcomeScreen(),
-          ),
-          GoRoute(
-            path: '/home',
-            builder: (context, state) =>
-                const Scaffold(body: Text('dashboard-opened')),
-          ),
-        ],
-      );
-
-      await tester.pumpWidget(
-        MultiProvider(
-          providers: [
-            Provider<AuthStorage>(create: (_) => AuthStorage(preferences)),
-            Provider<GuestOnboardingStorage>.value(value: guestStorage),
-          ],
-          child: MaterialApp.router(routerConfig: router),
-        ),
-      );
-
-      await tester.pumpAndSettle();
-      await tester.tap(find.text('إنشاء خطتك'));
-      await tester.pumpAndSettle();
-      await tester.tap(find.text('العروسة'));
-      await tester.pumpAndSettle();
-      final continueButton = find.text('التالي');
-      await tester.ensureVisible(continueButton);
-      await tester.tap(continueButton);
-      await tester.pumpAndSettle();
-
-      expect(find.text('إنشاء خطة زفاف'), findsOneWidget);
-
-      final startButton = find.text('إنشاء الخطة');
-      await tester.ensureVisible(startButton);
-      await tester.tap(startButton);
-      await tester.pumpAndSettle();
-
-      expect(find.text('dashboard-opened'), findsNothing);
-      expect(await guestStorage.loadGuestPlan(), isNull);
-      expect(find.text('عنوان الخطة مطلوب'), findsOneWidget);
-    },
-  );
-
-  testWidgets('Quick setup fields stay overflow-free at 320px RTL width', (
-    tester,
-  ) async {
-    tester.view.devicePixelRatio = 1;
-    tester.view.physicalSize = const Size(320, 760);
-    addTearDown(tester.view.reset);
-
-    final controllers = List.generate(8, (_) => TextEditingController());
-    controllers[0].text = 'خطة زفاف عربية طويلة لاختبار تكبير النص';
-    controllers[1].text = 'أمانة العاصمة';
-    controllers[2].text = 'صنعاء القديمة';
-    controllers[3].text = 'حي طويل لاختبار التفاف النص العربي';
-    controllers[4].text = 'حي الأنصار';
-    controllers[7].text = '3000000';
-    addTearDown(() {
-      for (final controller in controllers) {
-        controller.dispose();
-      }
+    this.request = request;
+    if (!succeed) return null;
+    return OnboardingCompleteResponse.fromJson({
+      'activeWeddingPlan': {'id': 'plan-new', 'title': request.title},
     });
+  }
+}
 
-    await tester.pumpWidget(
-      MaterialApp(
+Future<GuestOnboardingStorage> _pump(
+  WidgetTester tester, {
+  Size size = const Size(390, 900),
+  double textScale = 1,
+  WeddingPlansProvider? signedInPlans,
+}) async {
+  tester.view.devicePixelRatio = 1;
+  tester.view.physicalSize = size;
+  addTearDown(tester.view.reset);
+  final preferences = await SharedPreferences.getInstance();
+  final storage = GuestOnboardingStorage(preferences);
+  final authStorage = AuthStorage(preferences);
+  final apiClient = ApiClient(tokenProvider: () async => null);
+  await tester.pumpWidget(
+    MultiProvider(
+      providers: [
+        Provider<AuthStorage>.value(value: authStorage),
+        Provider<GuestOnboardingStorage>.value(value: storage),
+        if (signedInPlans != null) ...[
+          ChangeNotifierProvider<AuthController>(
+            create: (_) => _SignedIn(AuthRepository(apiClient, authStorage)),
+          ),
+          ChangeNotifierProvider<WeddingPlansProvider>.value(
+            value: signedInPlans,
+          ),
+        ],
+      ],
+      child: MaterialApp.router(
+        routerConfig: _router(),
         builder: (context, child) => MediaQuery(
           data: MediaQuery.of(
             context,
-          ).copyWith(textScaler: const TextScaler.linear(2)),
-          child: child!,
-        ),
-        home: Directionality(
-          textDirection: TextDirection.rtl,
-          child: Scaffold(
-            body: SingleChildScrollView(
-              padding: const EdgeInsets.all(20),
-              child: WeddingPlanCreationFields(
-                titleController: controllers[0],
-                governorateController: controllers[1],
-                cityOrDistrictController: controllers[2],
-                areaOrNeighborhoodController: controllers[3],
-                neighborhoodController: controllers[4],
-                streetController: controllers[5],
-                detailedAddressController: controllers[6],
-                budgetController: controllers[7],
-                currency: 'YER',
-                weddingDate: DateTime(2026, 12, 1),
-                showOptionalAddress: true,
-                onSelectDate: () {},
-                onCurrencyChanged: (_) {},
-                onToggleOptionalAddress: () {},
-                onChanged: () {},
-              ),
-            ),
+          ).copyWith(textScaler: TextScaler.linear(textScale)),
+          child: Directionality(
+            textDirection: TextDirection.rtl,
+            child: child!,
           ),
         ),
       ),
+    ),
+  );
+  await tester.pumpAndSettle();
+  return storage;
+}
+
+Future<void> _tap(WidgetTester tester, String text) async {
+  // The steps are lazy lists: scroll until a far line is built.
+  if (find.text(text).evaluate().isEmpty) {
+    await tester.scrollUntilVisible(
+      find.text(text),
+      200,
+      scrollable: find.byType(Scrollable).first,
     );
-    await tester.pumpAndSettle();
+  }
+  final finder = find.text(text).last;
+  await tester.ensureVisible(finder);
+  await tester.pumpAndSettle();
+  await tester.tap(finder);
+  await tester.pumpAndSettle();
+}
 
-    await tester.ensureVisible(find.text('ميزانية أولية'));
-    await tester.tap(find.text('ميزانية أولية'));
-    await tester.pumpAndSettle();
+Future<void> _answerUpToReady(WidgetTester tester) async {
+  await _tap(tester, 'ابدأ');
+  await _tap(tester, 'التالي');
+  await tester.enterText(find.byType(TextField).first, 'محمد');
+  await tester.pumpAndSettle();
+  await _tap(tester, 'ما حددنا الموعد بعد');
+  await _tap(tester, 'التالي');
+  await _tap(tester, 'صنعاء');
+  await tester.enterText(find.byType(TextField).first, '7000000');
+  await tester.pumpAndSettle();
+  await _tap(tester, 'جهّز خطتي');
+}
 
-    expect(find.byType(WeddingPlanCreationFields), findsOneWidget);
-    expect(tester.takeException(), isNull);
-  });
+void main() {
+  setUp(() => SharedPreferences.setMockInitialValues({}));
 
-  testWidgets('Path and role selection stay overflow-free at 320px RTL width', (
+  testWidgets('a02 offers a plan or a service, sign in and invitations', (
     tester,
   ) async {
-    tester.view.devicePixelRatio = 1;
-    tester.view.physicalSize = const Size(320, 760);
-    addTearDown(tester.view.reset);
+    await _pump(tester);
+    expect(find.text('أهلًا فيك'), findsOneWidget);
+    expect(find.text('أنشئ خطتك'), findsOneWidget);
+    expect(find.text('مزود خدمة'), findsOneWidget);
+    expect(find.text('عندي حساب'), findsOneWidget);
+    expect(find.text('عندي رابط دعوة'), findsOneWidget);
+    expect(find.text('ابدأ'), findsOneWidget);
+    // C52: no account is promised before there is a plan.
+    expect(find.text('أنشئ حسابي'), findsNothing);
+  });
 
-    final preferences = await SharedPreferences.getInstance();
-    await tester.pumpWidget(
-      MultiProvider(
-        providers: [
-          Provider<AuthStorage>(create: (_) => AuthStorage(preferences)),
-          Provider<GuestOnboardingStorage>(
-            create: (_) => GuestOnboardingStorage(preferences),
-          ),
-        ],
-        child: const MaterialApp(home: Scaffold(body: SmartWelcomeScreen())),
-      ),
+  testWidgets('the provider choice opens provider apply', (tester) async {
+    await _pump(tester);
+    await _tap(tester, 'مزود خدمة');
+    await _tap(tester, 'ابدأ');
+    expect(find.text('opened:/provider/apply'), findsOneWidget);
+  });
+
+  testWidgets('sign in and invitation open their own routes', (tester) async {
+    await _pump(tester);
+    await _tap(tester, 'عندي رابط دعوة');
+    expect(find.text('opened:/invites'), findsOneWidget);
+  });
+
+  testWidgets('عندي حساب opens sign in', (tester) async {
+    await _pump(tester);
+    await _tap(tester, 'عندي حساب');
+    expect(find.text('opened:/login'), findsOneWidget);
+  });
+
+  testWidgets('a02b asks whose plan, the groom chosen by default', (
+    tester,
+  ) async {
+    await _pump(tester);
+    await _tap(tester, 'ابدأ');
+    expect(find.text('خطة مين؟'), findsOneWidget);
+    expect(find.text('العريس'), findsOneWidget);
+    expect(find.text('العروسة'), findsOneWidget);
+    expect(
+      tester.getSemantics(find.text('العريس')),
+      isSemantics(isSelected: true, isButton: true),
     );
-    await tester.pumpAndSettle();
+    expect(
+      tester.getSemantics(find.text('العروسة')),
+      isSemantics(isSelected: false, isButton: true),
+    );
+  });
 
-    expect(find.text('اختر المسار المناسب لك'), findsOneWidget);
+  testWidgets('a03 waits for a name and a day or «ما حددنا الموعد بعد»', (
+    tester,
+  ) async {
+    await _pump(tester);
+    await _tap(tester, 'ابدأ');
+    await _tap(tester, 'التالي');
+    expect(find.text('أهلًا بك! ايش اسمك، ومتى العرس؟'), findsOneWidget);
+    expect(find.text('1 من 2'), findsOneWidget);
+
+    await _tap(tester, 'التالي');
+    expect(find.text('أهلًا بك! ايش اسمك، ومتى العرس؟'), findsOneWidget);
+
+    await tester.enterText(find.byType(TextField).first, 'محمد');
+    await tester.pumpAndSettle();
+    expect(
+      find.text('خطتك بتكون: عرس محمد', findRichText: true),
+      findsOneWidget,
+    );
+    await _tap(tester, 'التالي');
+    expect(find.text('وين العرس، وكم ميزانيتك تقريبًا؟'), findsNothing);
+
+    await _tap(tester, 'ما حددنا الموعد بعد');
+    await _tap(tester, 'التالي');
+    expect(find.text('وين العرس، وكم ميزانيتك تقريبًا؟'), findsOneWidget);
+    expect(find.text('2 من 2'), findsOneWidget);
+  });
+
+  testWidgets('a05 spells the budget and needs a city', (tester) async {
+    await _pump(tester);
+    await _tap(tester, 'ابدأ');
+    await _tap(tester, 'التالي');
+    await tester.enterText(find.byType(TextField).first, 'محمد');
+    await tester.pumpAndSettle();
+    await _tap(tester, 'ما حددنا الموعد بعد');
+    await _tap(tester, 'التالي');
+
+    await tester.enterText(find.byType(TextField).first, '7000000');
+    await tester.pumpAndSettle();
+    expect(find.text('سبعة مليون ريال'), findsOneWidget);
+    await _tap(tester, 'جهّز خطتي');
+    expect(find.textContaining('خطتك جاهزة'), findsNothing);
+
+    await _tap(tester, 'صنعاء');
+    await _tap(tester, 'جهّز خطتي');
+    expect(find.text('خطتك جاهزة يا محمد'), findsOneWidget);
+  });
+
+  testWidgets('a08 keeps the plan on the phone with its starting items', (
+    tester,
+  ) async {
+    final storage = await _pump(tester);
+    await _answerUpToReady(tester);
+
+    expect(find.text('خطتك جاهزة يا محمد'), findsOneWidget);
+    expect(find.text('عرس محمد · صنعاء'), findsOneWidget);
+    expect(find.textContaining('بند لعرسك'), findsOneWidget);
+    expect(find.textContaining('مهمة مقترحة على موعدك'), findsOneWidget);
+    expect(find.text('مزودين صنعاء بأسعارهم'), findsOneWidget);
+
+    await _tap(tester, 'بعدين، خلني أشوف أول');
+    expect(find.text('opened:/home'), findsOneWidget);
+
+    final GuestOnboardingDraft? draft = await storage.loadDraft();
+    expect(draft, isNotNull);
+    expect(draft!.planName, 'عرس محمد');
+    expect(draft.city, 'صنعاء');
+    expect(draft.weddingDate, isNull);
+    expect(draft.weddingDateUnknown, isTrue);
+    expect(draft.estimatedBudget, '7000000');
+    expect(draft.currency, 'YER');
+    expect(draft.isCompleteGuestPlan, isTrue);
+    // C1: the plan starts with its wedding items, never the mahr.
+    expect(draft.selectedCategoryKeys, isNotEmpty);
+    expect(draft.selectedCategoryKeys, isNot(contains('المهر والاتفاقات')));
+  });
+
+  testWidgets('saving with the phone number opens register', (tester) async {
+    await _pump(tester);
+    await _answerUpToReady(tester);
+    await _tap(tester, 'احفظ خطتي برقم جوالي');
+    expect(find.text('opened:/register'), findsOneWidget);
+  });
+
+  testWidgets('signed in, «افتح خطتي» creates the plan on the server', (
+    tester,
+  ) async {
+    final plans = _RecordingPlans(succeed: true);
+    final storage = await _pump(tester, signedInPlans: plans);
+    await _answerUpToReady(tester);
+    expect(find.text('احفظ خطتي برقم جوالي'), findsNothing);
+
+    await _tap(tester, 'افتح خطتي');
+    expect(find.text('opened:/home'), findsOneWidget);
+    final request = plans.request!;
+    expect(request.title, 'عرس محمد');
+    expect(request.persona, 'GROOM');
+    expect(request.city, 'صنعاء');
+    expect(request.weddingDate, isNull);
+    expect(request.estimatedBudget, '7000000');
+    expect(request.currency, 'YER');
+    expect(request.selectedCategories, isNotEmpty);
+    expect(await storage.loadDraft(), isNull);
+  });
+
+  testWidgets('signed in, a failed save stays and says so', (tester) async {
+    final plans = _RecordingPlans(succeed: false);
+    await _pump(tester, signedInPlans: plans);
+    await _answerUpToReady(tester);
+    await _tap(tester, 'افتح خطتي');
+    expect(find.text('خطتك جاهزة يا محمد'), findsOneWidget);
+    expect(find.text('تعذر إنشاء خطتك.'), findsOneWidget);
+  });
+
+  testWidgets('every step fits 320 px with doubled text', (tester) async {
+    await _pump(tester, size: const Size(320, 1400), textScale: 2);
     expect(tester.takeException(), isNull);
-
-    await tester.tap(find.text('إنشاء خطتك'));
+    await _tap(tester, 'ابدأ');
+    expect(tester.takeException(), isNull);
+    await _tap(tester, 'التالي');
+    await tester.enterText(find.byType(TextField).first, 'عبدالرحمن');
     await tester.pumpAndSettle();
-
-    expect(find.text('دورك يحدد التفاصيل'), findsOneWidget);
-    expect(find.text('التالي'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+    await _tap(tester, 'ما حددنا الموعد بعد');
+    await _tap(tester, 'التالي');
+    expect(tester.takeException(), isNull);
+    await _tap(tester, 'صنعاء');
+    await _tap(tester, 'أكمل بدون ميزانية');
+    await _tap(tester, 'جهّز خطتي');
+    expect(find.text('خطتك جاهزة يا عبدالرحمن'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 }

@@ -1630,8 +1630,10 @@ const r19ProviderPortalApi = Object.freeze({
 // guest draft (field-test Q01), +1 for the provider's booking widgets reading
 // the marketplace owner API (V1 checklist 4.6), +1 for the planning
 // assistant reading the signed-in account from the auth owner API to keep
-// each account's consent (V1 checklist 4.12).
-const r19LegalRecordCount = 179;
+// each account's consent (V1 checklist 4.12), +4 for the journey start
+// (groom journey a05 to a08) reading the starting items and task count from
+// the finance, tasks and catalogs owner APIs and the cities from marketplace.
+const r19LegalRecordCount = 183;
 const trackedOwnerApiContracts = [
   {
     area: 'features/account_contexts',
@@ -1719,6 +1721,10 @@ const trackedOwnerApiContracts = [
       { uri: 'screens/funding_sources_screen.dart', show: ['FundingSourcesScreen'] },
       { uri: 'models/budget_category.dart', show: ['BudgetCategory'] },
       { uri: 'models/cost_draft_intent.dart', show: ['CostDraftIntent'] },
+      {
+        uri: 'models/money_starter_catalog.dart',
+        show: ['moneyStarterPlanItemNames'],
+      },
       { uri: 'models/wedding_cost.dart', show: ['WeddingCost'] },
       { uri: 'providers/finance_provider.dart', show: ['FinanceProvider'] },
       {
@@ -2007,6 +2013,10 @@ const trackedOwnerApiContracts = [
     path: 'mobile/lib/features/tasks/tasks_api.dart',
     exports: [
       { uri: 'data/task_timeline_api.dart', show: ['TaskTimelineApi'] },
+      {
+        uri: 'models/task_starter_catalog.dart',
+        show: ['taskStarterCountFor'],
+      },
       { uri: 'models/task_summary.dart', show: ['TaskSummary'] },
       { uri: 'models/wedding_task.dart', show: ['WeddingTask'] },
       {
@@ -2922,6 +2932,21 @@ const trackedShellEntryBatchContracts = [
   },
   {
     source: 'mobile/lib/features/welcome_gateway/screens/smart_welcome_screen.dart',
+    target: 'mobile/lib/features/catalogs/catalogs_api.dart',
+    show: ['ReferenceCatalogProvider'],
+  },
+  {
+    source: 'mobile/lib/features/welcome_gateway/screens/smart_welcome_screen.dart',
+    target: 'mobile/lib/features/finance/finance_api.dart',
+    show: ['moneyStarterPlanItemNames'],
+  },
+  {
+    source: 'mobile/lib/features/welcome_gateway/screens/smart_welcome_screen.dart',
+    target: 'mobile/lib/features/marketplace/marketplace_api.dart',
+    show: ['MarketplaceApi'],
+  },
+  {
+    source: 'mobile/lib/features/welcome_gateway/screens/smart_welcome_screen.dart',
     target: 'mobile/lib/features/onboarding/onboarding_api.dart',
     show: [
       'GuestOnboardingDraft',
@@ -2933,13 +2958,13 @@ const trackedShellEntryBatchContracts = [
   },
   {
     source: 'mobile/lib/features/welcome_gateway/screens/smart_welcome_screen.dart',
+    target: 'mobile/lib/features/tasks/tasks_api.dart',
+    show: ['taskStarterCountFor'],
+  },
+  {
+    source: 'mobile/lib/features/welcome_gateway/screens/smart_welcome_screen.dart',
     target: 'mobile/lib/features/wedding_plans/wedding_plans_api.dart',
-    show: [
-      'OnboardingCompleteRequest',
-      'WeddingPlanCreationFields',
-      'WeddingPlanCreationScope',
-      'WeddingPlansProvider',
-    ],
+    show: ['OnboardingCompleteRequest', 'WeddingPlansProvider'],
   },
 ];
 

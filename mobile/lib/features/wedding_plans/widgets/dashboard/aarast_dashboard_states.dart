@@ -1,5 +1,7 @@
 part of 'aarast_dashboard_view.dart';
 
+/// b14: the home's own shape while it loads (the header, the countdown, a
+/// card and the three tiles), so nothing jumps when the plan arrives.
 class AarastDashboardSkeleton extends StatelessWidget {
   const AarastDashboardSkeleton({required this.bottomPadding, super.key});
 
@@ -7,35 +9,92 @@ class AarastDashboardSkeleton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ColoredBox(
-      color: AppTheme.canvas,
-      child: ListView(
-        key: const ValueKey('aarast-dashboard-skeleton'),
-        padding: EdgeInsets.fromLTRB(
-          AppTheme.space16,
-          AppTheme.space20,
-          AppTheme.space16,
-          bottomPadding,
+    return Semantics(
+      label: 'نجهز خطتك',
+      liveRegion: true,
+      child: ColoredBox(
+        color: AarastV3Color.canvas,
+        child: ListView(
+          key: const ValueKey('aarast-dashboard-skeleton'),
+          padding: EdgeInsets.fromLTRB(16, 12, 16, bottomPadding),
+          physics: const NeverScrollableScrollPhysics(),
+          children: [
+            ExcludeSemantics(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  const Row(
+                    children: [
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            _SkeletonBlock(width: 150, height: 24),
+                            SizedBox(height: 6),
+                            _SkeletonBlock(width: 110, height: 12),
+                          ],
+                        ),
+                      ),
+                      _SkeletonBlock(width: 44, height: 44, round: true),
+                      SizedBox(width: 8),
+                      _SkeletonBlock(width: 44, height: 44, round: true),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                  const _SkeletonBlock(height: 116, radius: 24),
+                  const SizedBox(height: 12),
+                  const JourneyBox(
+                    padding: EdgeInsets.all(18),
+                    child: Row(
+                      children: [
+                        _SkeletonBlock(width: 44, height: 44),
+                        SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              _SkeletonBlock(width: 90, height: 10),
+                              SizedBox(height: 8),
+                              _SkeletonBlock(height: 14),
+                              SizedBox(height: 8),
+                              _SkeletonBlock(width: 160, height: 10),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  const Row(
+                    children: [
+                      Expanded(child: _SkeletonBlock(height: 104, radius: 20)),
+                      SizedBox(width: 8),
+                      Expanded(child: _SkeletonBlock(height: 104, radius: 20)),
+                      SizedBox(width: 8),
+                      Expanded(child: _SkeletonBlock(height: 104, radius: 20)),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 18),
+            Text(
+              'نجهز خطتك…',
+              textAlign: TextAlign.center,
+              style: JourneyType.of(
+                JourneyType.small,
+                weight: JourneyType.bold,
+                color: AarastV3Color.textFaint,
+              ),
+            ),
+          ],
         ),
-        physics: const NeverScrollableScrollPhysics(),
-        children: const [
-          _SkeletonLine(width: 210, height: 24),
-          SizedBox(height: AppTheme.space8),
-          _SkeletonLine(width: 150, height: 14),
-          SizedBox(height: AppTheme.space20),
-          _SkeletonLine(height: 210),
-          SizedBox(height: AppTheme.space16),
-          _SkeletonLine(height: 108),
-          SizedBox(height: AppTheme.space24),
-          _SkeletonLine(width: 130, height: 18),
-          SizedBox(height: AppTheme.space12),
-          _SkeletonLine(height: 220),
-        ],
       ),
     );
   }
 }
 
+/// b15: what happened in plain words, one way forward, and nothing else.
 class AarastDashboardState extends StatelessWidget {
   const AarastDashboardState({
     required this.bottomPadding,
@@ -44,6 +103,7 @@ class AarastDashboardState extends StatelessWidget {
     required this.message,
     required this.actionLabel,
     required this.onAction,
+    this.actionIcon = LucideIcons.refreshCw,
     this.danger = false,
     super.key,
   });
@@ -53,81 +113,64 @@ class AarastDashboardState extends StatelessWidget {
   final String title;
   final String message;
   final String actionLabel;
+  final IconData actionIcon;
   final VoidCallback onAction;
   final bool danger;
 
   @override
   Widget build(BuildContext context) {
-    final accent = danger ? AarastSemanticTokens.danger : AppTheme.brand;
-    final muted = danger
-        ? AarastSemanticTokens.dangerMuted
-        : AppTheme.brandMuted;
+    final accent = danger ? AarastV3Color.danger : AarastV3Color.primary;
+    final soft = danger ? AarastV3Color.dangerSoft : AarastV3Color.primarySoft;
     return ColoredBox(
-      color: AppTheme.canvas,
+      color: AarastV3Color.canvas,
       child: ListView(
-        padding: EdgeInsets.fromLTRB(
-          AppTheme.space20,
-          AppTheme.space32,
-          AppTheme.space20,
-          bottomPadding,
-        ),
+        padding: EdgeInsets.fromLTRB(24, 72, 24, bottomPadding),
         physics: const AlwaysScrollableScrollPhysics(),
         children: [
           Center(
             child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 520),
-              child: AarastSurface(
-                borderColor: AarastSemanticTokens.border,
-                child: Column(
-                  children: [
-                    Container(
-                      width: 56,
-                      height: 56,
-                      alignment: Alignment.center,
-                      decoration: BoxDecoration(
-                        color: muted,
-                        borderRadius: BorderRadius.circular(
-                          AppTheme.radiusSurface,
-                        ),
-                      ),
-                      child: Icon(icon, color: accent, size: 26),
+              constraints: const BoxConstraints(maxWidth: 420),
+              child: Column(
+                children: [
+                  Container(
+                    width: 88,
+                    height: 88,
+                    decoration: BoxDecoration(
+                      color: soft,
+                      shape: BoxShape.circle,
                     ),
-                    const SizedBox(height: AppTheme.space16),
-                    Text(
+                    child: Icon(icon, color: accent, size: 36),
+                  ),
+                  const SizedBox(height: 18),
+                  Semantics(
+                    header: true,
+                    child: Text(
                       title,
                       textAlign: TextAlign.center,
-                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                        color: AppTheme.textPrimary,
-                        fontWeight: FontWeight.w800,
+                      style: JourneyType.of(
+                        JourneyType.title,
+                        weight: JourneyType.bold,
                       ),
                     ),
-                    const SizedBox(height: AppTheme.space8),
-                    Text(
-                      message,
-                      textAlign: TextAlign.center,
-                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                        color: AppTheme.textSecondary,
-                        height: 1.5,
-                      ),
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    message,
+                    textAlign: TextAlign.center,
+                    style: JourneyType.of(
+                      JourneyType.body,
+                      color: AarastV3Color.textMuted,
+                      height: 1.5,
                     ),
-                    const SizedBox(height: AppTheme.space20),
-                    FilledButton.icon(
-                      onPressed: onAction,
-                      icon: const Icon(LucideIcons.refreshCw),
-                      label: Text(actionLabel),
-                      style: FilledButton.styleFrom(
-                        backgroundColor: accent,
-                        foregroundColor: AppTheme.surfaceRaised,
-                        minimumSize: const Size.fromHeight(48),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(
-                            AppTheme.radiusControl,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
+                  ),
+                  const SizedBox(height: 20),
+                  JourneyButton(
+                    label: actionLabel,
+                    icon: actionIcon,
+                    background: accent,
+                    onPressed: onAction,
+                  ),
+                ],
               ),
             ),
           ),
@@ -137,11 +180,18 @@ class AarastDashboardState extends StatelessWidget {
   }
 }
 
-class _SkeletonLine extends StatelessWidget {
-  const _SkeletonLine({this.width, required this.height});
+class _SkeletonBlock extends StatelessWidget {
+  const _SkeletonBlock({
+    this.width,
+    required this.height,
+    this.radius = 12,
+    this.round = false,
+  });
 
   final double? width;
   final double height;
+  final double radius;
+  final bool round;
 
   @override
   Widget build(BuildContext context) {
@@ -151,8 +201,9 @@ class _SkeletonLine extends StatelessWidget {
         width: width ?? double.infinity,
         height: height,
         decoration: BoxDecoration(
-          color: AppTheme.surfaceMuted,
-          borderRadius: BorderRadius.circular(AppTheme.radiusSurface),
+          color: AarastV3Color.line,
+          shape: round ? BoxShape.circle : BoxShape.rectangle,
+          borderRadius: round ? null : BorderRadius.circular(radius),
         ),
       ),
     );

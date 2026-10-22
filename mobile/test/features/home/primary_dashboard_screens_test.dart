@@ -1,3 +1,4 @@
+import 'package:aarast_mobile/core/experience_v3/aarast_v3.dart';
 import 'dart:async';
 
 import 'package:aarast_mobile/core/diagnostics/app_logger.dart';
@@ -212,7 +213,9 @@ void main() {
 
     expect(find.byType(WeddingPlanDashboardScreen), findsOneWidget);
     expect(find.byKey(const ValueKey('aarast-home-empty')), findsOneWidget);
-    expect(find.byType(FilledButton), findsOneWidget);
+    // One clear way forward (b15).
+    expect(find.byType(JourneyButton), findsOneWidget);
+    expect(find.text('أنشئ خطتك'), findsOneWidget);
     _expectRtl(tester, find.byKey(const ValueKey('aarast-home-empty')));
     expect(tester.takeException(), isNull);
 

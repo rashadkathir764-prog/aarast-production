@@ -193,11 +193,10 @@ class _WeddingPlanDashboardScreenState extends State<WeddingPlanDashboardScreen>
           child: AarastDashboardState(
             bottomPadding: bottomPadding,
             icon: LucideIcons.cloudOff,
-            title: 'تعذر تحميل الرئيسية',
+            title: 'ما قدرنا نجيب خطتك',
             message: errorMessage,
-            actionLabel: 'إعادة المحاولة',
+            actionLabel: 'حاول مرة ثانية',
             onAction: _load,
-            danger: true,
           ),
         ),
       );
@@ -215,10 +214,10 @@ class _WeddingPlanDashboardScreenState extends State<WeddingPlanDashboardScreen>
           child: AarastDashboardState(
             bottomPadding: bottomPadding,
             icon: LucideIcons.sparkles,
-            title: 'ابدأ رحلتك معنا',
-            message:
-                'لا توجد خطة نشطة بعد. أنشئ خطة زفافك الأولى وسنساعدك على تنظيم كل خطوة بهدوء.',
-            actionLabel: 'إنشاء خطة',
+            title: 'ما عندك خطة بعد',
+            message: 'أنشئ خطة عرسك، ونرتب لك كل خطوة على موعدك.',
+            actionLabel: 'أنشئ خطتك',
+            actionIcon: LucideIcons.plus,
             onAction: () => context.go(AppRouter.onboarding),
           ),
         ),
@@ -229,10 +228,11 @@ class _WeddingPlanDashboardScreenState extends State<WeddingPlanDashboardScreen>
       return AarastDashboardState(
         bottomPadding: bottomPadding,
         icon: LucideIcons.shieldAlert,
-        title: 'تعذر مطابقة مسار الخطة',
+        title: 'هذي مو الخطة المفتوحة',
         message:
-            'بيانات الرئيسية لا تطابق المسار المحدد حاليًا. ارجع إلى اختيار المسار ثم حاول مرة أخرى.',
-        actionLabel: 'العودة للرئيسية',
+            'البيانات وصلت لخطة غير اللي فاتحها. ارجع واختر الخطة من جديد.',
+        actionLabel: 'ارجع للرئيسية',
+        actionIcon: LucideIcons.home,
         onAction: () => context.go(AppRouter.home),
         danger: true,
       );

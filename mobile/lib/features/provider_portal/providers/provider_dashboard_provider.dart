@@ -275,7 +275,7 @@ class ProviderDashboardProvider extends ChangeNotifier
       _errorMessage = marketplaceErrorMessage(error.message);
       return false;
     } catch (_) {
-      _errorMessage = 'تعذر إرسال طلب الانضمام كمورد.';
+      _errorMessage = 'تعذر إرسال طلب الانضمام كمزود.';
       return false;
     } finally {
       _isSubmitting = false;

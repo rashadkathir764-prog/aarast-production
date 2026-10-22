@@ -99,7 +99,7 @@ void main() {
 
       expect(find.text('طلب عرض سعر'), findsOneWidget);
       expect(find.text('تسجيل الدخول مطلوب'), findsOneWidget);
-      expect(find.widgetWithText(TextFormField, 'رسالة للمورد'), findsNothing);
+      expect(find.widgetWithText(TextFormField, 'رسالة للمزود'), findsNothing);
       expect(find.text('أنت في وضع تجربة محلية'), findsNothing);
       expect(marketplaceProvider.createQuoteAttempted, isFalse);
       expect(tester.takeException(), isNull);

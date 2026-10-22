@@ -47,7 +47,7 @@ class _ConversationListViewState extends State<ConversationListView> {
           if (widget.embedded) ...[
             const AarastSectionHeader(
               title: 'الرسائل',
-              subtitle: 'محادثة واحدة مع كل مورد داخل الخطة.',
+              subtitle: 'محادثة واحدة مع كل مزود داخل الخطة.',
               icon: LucideIcons.messagesSquare,
             ),
             const SizedBox(height: 18),
@@ -146,7 +146,7 @@ class _ConversationTile extends StatelessWidget {
                     conversation.providerJoined
                         ? (conversation.lastMessage?.body ??
                               'آخر نشاط على طلبات الأسعار')
-                        : 'المورد لم ينضم بعد',
+                        : 'المزود لم ينضم بعد',
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: Theme.of(context).textTheme.labelSmall?.copyWith(

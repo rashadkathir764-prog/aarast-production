@@ -450,7 +450,7 @@ IconData _permissionIcon(String label) {
   return switch (label) {
     'المهام' => LucideIcons.listChecks,
     'الضيوف' => LucideIcons.users,
-    'الخدمات والموردون' => LucideIcons.store,
+    'الخدمات والمزودين' => LucideIcons.store,
     'دعوة أعضاء' => LucideIcons.userPlus,
     'إدارة المال' || 'مشاهدة المال' => LucideIcons.walletCards,
     _ => LucideIcons.eye,

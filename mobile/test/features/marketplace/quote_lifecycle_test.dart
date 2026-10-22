@@ -90,7 +90,7 @@ void main() {
     );
 
     expect(find.text('جاهز للإرسال'), findsOneWidget);
-    expect(find.text('بانتظار رد المورد'), findsOneWidget);
+    expect(find.text('بانتظار رد المزود'), findsOneWidget);
     expect(find.text('وصل عرض سعر'), findsOneWidget);
     expect(find.text('مقبول'), findsOneWidget);
     expect(find.textContaining('حجز'), findsNothing);

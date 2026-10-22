@@ -71,13 +71,13 @@ class _PlanPulse extends StatelessWidget {
           ),
           _PlanSignalRow(
             icon: LucideIcons.store,
-            label: 'الموردون',
+            label: 'المزودين',
             value: '${summary.providerCount}',
             caption: summary.receivedQuotes > 0
                 ? '${summary.receivedQuotes} عرض وصل'
                 : summary.pendingQuoteRequests > 0
                 ? '${summary.pendingQuoteRequests} بانتظار رد'
-                : 'استكشف الموردين',
+                : 'استكشف المزودين',
             onTap: onOpenProviders,
             accent: AarastV3Color.mint,
           ),

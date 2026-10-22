@@ -760,7 +760,7 @@ class _ProviderNotJoinedNotice extends StatelessWidget {
       child: Padding(
         padding: EdgeInsets.all(16),
         child: Text(
-          'المورد لم ينضم للمحادثة بعد. ستتمكن من الإرسال بعد ربط حسابه.',
+          'المزود لم ينضم للمحادثة بعد. ستتمكن من الإرسال بعد ربط حسابه.',
           textAlign: TextAlign.center,
           style: TextStyle(
             color: AppTheme.textSecondary,

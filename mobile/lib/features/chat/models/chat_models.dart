@@ -291,7 +291,7 @@ class ChatConversation {
         weddingPlan: _map(json['weddingPlan'], ChatWeddingPlan.fromJson),
         provider:
             _map(json['provider'], ChatProviderSummary.fromJson) ??
-            const ChatProviderSummary(id: '', businessName: 'مورد'),
+            const ChatProviderSummary(id: '', businessName: 'مزود'),
         counterpart: _map(json['counterpart'], ChatUser.fromJson),
         quoteRequestCount: _int(json['quoteRequestCount']),
         latestQuoteRequest: _map(

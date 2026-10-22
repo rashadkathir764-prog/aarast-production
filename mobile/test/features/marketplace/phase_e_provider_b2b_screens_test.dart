@@ -53,7 +53,7 @@ void main() {
         await tester.pumpAndSettle();
 
         expect(find.text('العودة للرئيسية'), findsOneWidget);
-        expect(find.text('فتح الموردين'), findsNothing);
+        expect(find.text('فتح المزودين'), findsNothing);
         expect(find.byType(OutlinedButton), findsNothing);
       },
     );

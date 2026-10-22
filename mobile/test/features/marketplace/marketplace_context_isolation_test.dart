@@ -81,7 +81,7 @@ void main() {
 
       await _pumpMarketplace(tester, marketplace);
 
-      expect(find.text('مورد الخطة القديمة'), findsNothing);
+      expect(find.text('مزود الخطة القديمة'), findsNothing);
       expect(find.byKey(const Key('quote-accept-quote-old')), findsNothing);
       expect(tester.takeException(), isNull);
     },
@@ -189,7 +189,7 @@ QuoteRequest _quoteFor(String planId) => QuoteRequest(
   lifecycleStatus: 'RECEIVED',
   provider: const ProviderSummary(
     id: 'provider-old',
-    businessName: 'مورد الخطة القديمة',
+    businessName: 'مزود الخطة القديمة',
     ratingAverage: 0,
     ratingCount: 0,
   ),

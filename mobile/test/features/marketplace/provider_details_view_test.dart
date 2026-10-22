@@ -26,7 +26,7 @@ void main() {
 
     await tester.tap(find.byTooltip('رجوع'));
     await tester.tap(find.byTooltip('مشاركة'));
-    await tester.tap(find.byTooltip('حفظ المورد'));
+    await tester.tap(find.byTooltip('حفظ المزود'));
     await tester.pump();
 
     final quoteAction = find.byTooltip('طلب عرض لهذه الخدمة');

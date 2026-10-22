@@ -216,7 +216,7 @@ Widget _conversationTile({
                 ),
                 const SizedBox(height: 3),
                 Text(
-                  providerJoined ? preview : 'المورد لم ينضم بعد',
+                  providerJoined ? preview : 'المزود لم ينضم بعد',
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(
@@ -277,7 +277,7 @@ Future<void> _pumpList(WidgetTester tester, {required Size size}) async {
               children: [
                 const AarastSectionHeader(
                   title: 'الرسائل',
-                  subtitle: 'محادثة واحدة مع كل مورد داخل الخطة.',
+                  subtitle: 'محادثة واحدة مع كل مزود داخل الخطة.',
                   icon: LucideIcons.messagesSquare,
                 ),
                 const SizedBox(height: 18),
@@ -296,7 +296,7 @@ Future<void> _pumpList(WidgetTester tester, {required Size size}) async {
                 _conversationTile(
                   name: 'ضيافة الأصالة',
                   contextLabel: 'طلب مستقل عن الخطة · طلب واحد',
-                  preview: 'بانتظار انضمام المورد',
+                  preview: 'بانتظار انضمام المزود',
                   unread: 0,
                   providerJoined: false,
                 ),

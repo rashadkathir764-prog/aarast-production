@@ -271,7 +271,7 @@ class _NotificationSettingsCard extends StatelessWidget {
             ),
             _SwitchRow(
               key: const Key('settings-provider-messages-switch'),
-              title: 'رسائل الموردين وعروض الأسعار',
+              title: 'رسائل المزودين وعروض الأسعار',
               value: settings.providerMessagesEnabled,
               onChanged: (value) =>
                   onChanged(settings.copyWith(providerMessagesEnabled: value)),

@@ -81,7 +81,7 @@ class _BudgetMatchedServiceCard extends StatelessWidget {
     final price = _moneyValueOrNull(service.basePrice);
     final status = _serviceBudgetStatus(intent, price);
     final color = _serviceBudgetStatusColor(status);
-    final providerName = service.provider?.businessName ?? 'مورد';
+    final providerName = service.provider?.businessName ?? 'مزود';
     final categoryName = service.category?.nameAr;
     final matchReason = _serviceBudgetReason(intent, service, price, status);
 
@@ -773,7 +773,7 @@ class _OfferAcceptedArea extends StatelessWidget {
             border: Border.all(color: AppTheme.success.withValues(alpha: 0.22)),
           ),
           child: const Text(
-            'تم ربط المورد بالخطة وإنشاء التكلفة تلقائيًا في تبويب المال، دون تسجيل أي دفعة.',
+            'تم ربط المزود بالخطة وإنشاء التكلفة تلقائيًا في تبويب المال، دون تسجيل أي دفعة.',
             style: TextStyle(
               color: AppTheme.textPrimary,
               fontWeight: FontWeight.w800,
@@ -936,7 +936,7 @@ Future<void> _showOfferDetailsSheet(
                           if (offerTitle?.isNotEmpty == true) offerTitle!,
                           if (offerMessage?.isNotEmpty == true) offerMessage!,
                         ].isEmpty
-                        ? 'لم يكتب المورد تفاصيل إضافية — اسأله من المحادثة.'
+                        ? 'لم يكتب المزود تفاصيل إضافية — اسأله من المحادثة.'
                         : [
                             if (offerTitle?.isNotEmpty == true) offerTitle!,
                             if (offerMessage?.isNotEmpty == true) offerMessage!,
@@ -991,7 +991,7 @@ Future<void> _showOfferDetailsSheet(
                 if (userMessage?.isNotEmpty == true) ...[
                   const SizedBox(height: 8),
                   Text(
-                    'رسالتك للمورد: $userMessage',
+                    'رسالتك للمزود: $userMessage',
                     style: textTheme.bodySmall?.copyWith(
                       color: AppTheme.textSecondary,
                       fontWeight: FontWeight.w700,
@@ -1039,7 +1039,7 @@ Future<void> _showOfferDetailsSheet(
                     onOpenConversation();
                   },
                   icon: const Icon(LucideIcons.messageCircle, size: 18),
-                  label: const Text('محادثة المورد'),
+                  label: const Text('محادثة المزود'),
                 ),
               ],
             ),
@@ -1108,8 +1108,8 @@ class _ResultsHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final title = cityLabel?.trim().isNotEmpty == true
-        ? 'موردون في ${cityLabel!.trim()}'
-        : 'الموردون المتاحون';
+        ? 'مزودين في ${cityLabel!.trim()}'
+        : 'المزودين المتاحون';
     return Row(
       children: [
         Expanded(
@@ -1121,7 +1121,7 @@ class _ResultsHeader extends StatelessWidget {
             ),
           ),
         ),
-        AarastStatusPill(label: '$count مورد', color: AppTheme.brand),
+        AarastStatusPill(label: '$count مزود', color: AppTheme.brand),
       ],
     );
   }
@@ -1190,7 +1190,7 @@ class _ProviderCard extends StatelessWidget {
   }
 }
 
-/// أفضل صورة تمثّل المورد في القائمة: الغلاف ثم الشعار ثم أول صورة خدمة.
+/// أفضل صورة تمثّل المزود في القائمة: الغلاف ثم الشعار ثم أول صورة خدمة.
 String? _providerImageUrl(MarketplaceProvider provider) {
   final cover = provider.coverUrl?.trim();
   if (cover != null && cover.isNotEmpty) return cover;
@@ -1205,7 +1205,7 @@ String? _providerImageUrl(MarketplaceProvider provider) {
   return null;
 }
 
-/// نطاق أسعار المورد المنشورة (أقل–أعلى) عبر خدماته، أو سعر واحد عند التطابق.
+/// نطاق أسعار المزود المنشورة (أقل–أعلى) عبر خدماته، أو سعر واحد عند التطابق.
 String? _providerPriceRangeLabel(MarketplaceProvider provider) {
   final summary = provider.serviceSummary;
   final summaryMin = _moneyValueOrNull(summary?.minPrice);

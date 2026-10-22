@@ -30,14 +30,14 @@ NotificationCopy localizeNotification({
           (upperType.contains('RECEIV') || upperType.contains('RESPON')))) {
     return const NotificationCopy(
       'وصلك عرض سعر جديد',
-      'أرسل لك المورد عرضًا على طلبك. افتح مركز الخطة لمراجعة العرض والمقارنة.',
+      'أرسل لك المزود عرضًا على طلبك. افتح مركز الخطة لمراجعة العرض والمقارنة.',
     );
   }
   if (upperType.contains('QUOTE') &&
       (upperType.contains('SENT') || upperType.contains('REQUEST'))) {
     return const NotificationCopy(
       'تم إرسال طلب عرض السعر',
-      'تم إرسال طلبك إلى المورد. سنعرض الرد عند وصول عرض حقيقي من المورد.',
+      'تم إرسال طلبك إلى المزود. سنعرض الرد عند وصول عرض حقيقي من المزود.',
     );
   }
   if (upperType.contains('INVITE') || upperType.contains('SHARE')) {

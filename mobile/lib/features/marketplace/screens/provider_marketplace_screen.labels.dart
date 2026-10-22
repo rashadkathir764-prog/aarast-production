@@ -75,14 +75,14 @@ String _emptyProvidersMessage({
     final amount = budgetIntent.hasBudget
         ? ' بميزانية ${_formatMoney(budgetIntent.allocatedValue)} ر.ي'
         : '';
-    return 'لا يوجد موردون ظاهرون لبند ${budgetIntent.budgetCategoryName}$amount حسب الفلاتر الحالية. امسح الفلاتر أو غيّر المدينة لاستعراض خيارات أوسع.';
+    return 'لا يوجد مزودين ظاهرون لبند ${budgetIntent.budgetCategoryName}$amount حسب الفلاتر الحالية. امسح الفلاتر أو غيّر المدينة لاستعراض خيارات أوسع.';
   }
 
   if (location?.hasRequiredLocation == true) {
-    return 'غيّر المدينة أو الفئة، أو امسح الفلاتر لاستعراض الموردين المتاحين.';
+    return 'غيّر المدينة أو الفئة، أو امسح الفلاتر لاستعراض المزودين المتاحين.';
   }
 
-  return 'أضف موقع الزفاف لتحسين تصفية المدينة، أو امسح الفلاتر لاستعراض الموردين المتاحين.';
+  return 'أضف موقع الزفاف لتحسين تصفية المدينة، أو امسح الفلاتر لاستعراض المزودين المتاحين.';
 }
 
 _ServiceBudgetStatus _serviceBudgetStatus(
@@ -138,7 +138,7 @@ String _serviceBudgetReason(
         pieces.add('أعلى من ميزانيتك بحوالي $amount ر.ي، لكنه من أقرب المتاح.');
       case _ServiceBudgetStatus.categoryOnly:
       case _ServiceBudgetStatus.unknown:
-        pieces.add('نفس نوع البند، لكن السعر يحتاج تأكيد من المورد.');
+        pieces.add('نفس نوع البند، لكن السعر يحتاج تأكيد من المزود.');
     }
   } else if (intent.hasBudget) {
     pieces.add('نفس نوع البند، لكن السعر غير منشور ويحتاج طلب عرض.');
@@ -191,7 +191,7 @@ String _quoteServiceLabel(QuoteRequest quote) {
   if (serviceTitle != null && serviceTitle.isNotEmpty) return serviceTitle;
   final category = quote.service?.category?.nameAr.trim();
   if (category != null && category.isNotEmpty) return category;
-  return quote.serviceId == null ? 'حسب اقتراح المورد' : 'خدمة غير متاحة';
+  return quote.serviceId == null ? 'حسب اقتراح المزود' : 'خدمة غير متاحة';
 }
 
 /// مبلغ العرض للعرض البارز: مُنسّق بفواصل مع اسم العملة العربي، أو النص الخام.
@@ -269,7 +269,7 @@ class _ErrorCard extends StatelessWidget {
   const _ErrorCard({
     required this.message,
     required this.onRetry,
-    this.title = 'تعذر تحميل الموردين',
+    this.title = 'تعذر تحميل المزودين',
   });
 
   final String title;

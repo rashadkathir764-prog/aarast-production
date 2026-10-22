@@ -35,7 +35,7 @@ extension _ProviderQuoteFooter on _ProviderDetailsScreenState {
                           children: [
                             const Expanded(
                               child: Text(
-                                'آخر طلب لهذا المورد',
+                                'آخر طلب لهذا المزود',
                                 style: TextStyle(
                                   color: AppTheme.textSecondary,
                                   fontWeight: FontWeight.w800,
@@ -93,7 +93,7 @@ Future<void> _shareProvider(
       : '${provider.businessName} — $city';
   await Clipboard.setData(ClipboardData(text: snippet));
   if (!context.mounted) return;
-  AarastToast.showSuccess(context, 'تم نسخ بيانات المورد للمشاركة');
+  AarastToast.showSuccess(context, 'تم نسخ بيانات المزود للمشاركة');
 }
 
 /// Opens [uri] outside the app; null (no link) hides the action. A device
@@ -125,7 +125,7 @@ String _primaryQuoteActionLabel(QuoteRequest? quote) {
   if (quote.status == 'RESPONDED') {
     return quote.hasExpiredOffer ? 'طلب عرض جديد' : 'مراجعة العرض';
   }
-  if (quote.status == 'ACCEPTED') return 'عرض المورد في الخطة';
+  if (quote.status == 'ACCEPTED') return 'عرض المزود في الخطة';
   return 'طلب عرض جديد';
 }
 

@@ -5,8 +5,8 @@ import 'package:lucide_icons/lucide_icons.dart';
 import '../../../core/theme/aarast_motion.dart';
 import '../../../core/theme/app_theme.dart';
 
-/// بطاقة مورد مضغوطة تعرض الحقائق المتاحة فقط، مع صورة ثابتة وإجراء تفاصيل
-/// خفيف حتى تبقى قائمة الموردين واضحة وآمنة على الشاشات الضيقة.
+/// بطاقة مزود مضغوطة تعرض الحقائق المتاحة فقط، مع صورة ثابتة وإجراء تفاصيل
+/// خفيف حتى تبقى قائمة المزودين واضحة وآمنة على الشاشات الضيقة.
 class ProviderResultCard extends StatelessWidget {
   const ProviderResultCard({
     required this.businessName,
@@ -111,7 +111,7 @@ class ProviderResultCard extends StatelessWidget {
                           if (isVerified) ...[
                             const SizedBox(width: AppTheme.space4),
                             const Tooltip(
-                              message: 'مورد موثّق',
+                              message: 'مزود موثّق',
                               child: Icon(
                                 LucideIcons.shieldCheck,
                                 key: Key('provider-card-verified'),
@@ -473,7 +473,7 @@ class _FavoriteHeart extends StatelessWidget {
     return Semantics(
       button: true,
       enabled: enabled,
-      label: isFavorite ? 'إزالة من المحفوظات' : 'حفظ المورد',
+      label: isFavorite ? 'إزالة من المحفوظات' : 'حفظ المزود',
       child: InkWell(
         key: buttonKey,
         onTap: enabled ? onTap : () {},

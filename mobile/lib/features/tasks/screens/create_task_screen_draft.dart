@@ -11,7 +11,7 @@ final _createTaskCategories = <CreateTaskCategory>[
   CreateTaskCategory('VENUE', 'القاعة', taskCategoryIcon('VENUE')),
   CreateTaskCategory('GUESTS', 'الضيوف', taskCategoryIcon('GUESTS')),
   CreateTaskCategory('MONEY', 'المال', taskCategoryIcon('MONEY')),
-  CreateTaskCategory('PROVIDERS', 'الموردين', taskCategoryIcon('PROVIDERS')),
+  CreateTaskCategory('PROVIDERS', 'المزودين', taskCategoryIcon('PROVIDERS')),
   CreateTaskCategory('ATTIRE', 'الملابس', taskCategoryIcon('ATTIRE')),
   CreateTaskCategory('PHOTOGRAPHY', 'التصوير', taskCategoryIcon('PHOTOGRAPHY')),
   CreateTaskCategory('CATERING', 'الضيافة', taskCategoryIcon('CATERING')),

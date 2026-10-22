@@ -274,7 +274,7 @@ class _ProviderMarketplaceScreenState extends State<ProviderMarketplaceScreen> {
                     height: 3,
                     color: AppTheme.brand,
                     backgroundColor: AppTheme.brandMuted,
-                    semanticsLabel: 'تحديث نتائج الموردين',
+                    semanticsLabel: 'تحديث نتائج المزودين',
                   ),
                 ],
                 const SizedBox(height: 16),
@@ -299,7 +299,7 @@ class _ProviderMarketplaceScreenState extends State<ProviderMarketplaceScreen> {
                 else if (provider.providers.isEmpty)
                   AarastEmptyState(
                     icon: LucideIcons.store,
-                    title: 'لا يوجد موردون متاحون حاليًا',
+                    title: 'لا يوجد مزودين متاحون حاليًا',
                     message: _emptyProvidersMessage(
                       budgetIntent: provider.budgetMatchIntent,
                       location: _weddingLocation,

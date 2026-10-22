@@ -166,9 +166,9 @@ class _SharedPermissionEditorState extends State<SharedPermissionEditor> {
                   onChanged: (v) => _emit(value.copyWith(canManageGuests: v)),
                 ),
                 _PermissionRow(
-                  title: 'الموردون والعروض',
+                  title: 'المزودين والعروض',
                   subtitle:
-                      'صلاحية قوية: تتيح رؤية كامل سجل محادثات الموردين وإرسال الرسائل باسم الخطة.',
+                      'صلاحية قوية: تتيح رؤية كامل سجل محادثات المزودين وإرسال الرسائل باسم الخطة.',
                   value: value.canManageProviders,
                   enabled: widget.enabled,
                   onChanged: (v) =>

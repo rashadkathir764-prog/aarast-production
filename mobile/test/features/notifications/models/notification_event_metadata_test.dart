@@ -10,7 +10,7 @@ void main() {
       'type': 'QUOTE_OFFER_RECEIVED',
       'priority': 'HIGH',
       'title': 'وصل عرض سعر',
-      'body': 'وصل عرض حقيقي من المورد.',
+      'body': 'وصل عرض حقيقي من المزود.',
       'entityType': 'quote_request',
       'entityId': 'quote-1',
       'routeTarget': '/wedding-plans/plan-1/plan-center',

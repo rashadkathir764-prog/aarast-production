@@ -37,7 +37,7 @@ class _TopMarketplaceCommandCard extends StatelessWidget {
               const SizedBox(width: AarastV3Space.x3),
               Expanded(
                 child: Text(
-                  'الموردون',
+                  'المزودين',
                   style: AarastV3Type.section(context).copyWith(fontSize: 19),
                 ),
               ),
@@ -56,7 +56,7 @@ class _TopMarketplaceCommandCard extends StatelessWidget {
                     _MarketplaceHeaderAction(
                       key: const Key('favorite-providers-action'),
                       icon: LucideIcons.heart,
-                      tooltip: 'الموردون المحفوظون',
+                      tooltip: 'المزودين المحفوظون',
                       badgeValue: favoritesAreStale
                           ? 0
                           : provider.favoriteProviderIds.length,
@@ -233,7 +233,7 @@ class _MarketplaceSearch extends StatelessWidget {
           textInputAction: TextInputAction.search,
           onSubmitted: provider.setSearch,
           decoration: InputDecoration(
-            hintText: 'ابحث عن مورد أو خدمة',
+            hintText: 'ابحث عن مزود أو خدمة',
             prefixIcon: const Icon(LucideIcons.search),
             suffixIcon: value.text.isEmpty
                 ? null
@@ -441,8 +441,8 @@ class _NoBudgetMatchesCard extends StatelessWidget {
         ? '${_formatMoney(intent.allocatedValue)} ر.ي'
         : 'بدون مبلغ محدد';
     final message = intent.hasBudget
-        ? 'لم نجد خدمة بسعر منشور قريب من $amount. سنعرض لك موردين من نفس البند، وطلب العرض سيحمل ميزانيتك تلقائيًا حتى يرد المورد بسعر واضح.'
-        : 'لم نجد خدمة بسعر منشور لهذا البند. اختر مورداً مناسباً واطلب عرضاً لتأكيد السعر.';
+        ? 'لم نجد خدمة بسعر منشور قريب من $amount. سنعرض لك مزودين من نفس البند، وطلب العرض سيحمل ميزانيتك تلقائيًا حتى يرد المزود بسعر واضح.'
+        : 'لم نجد خدمة بسعر منشور لهذا البند. اختر مزوداً مناسباً واطلب عرضاً لتأكيد السعر.';
 
     return AarastCard(
       padding: const EdgeInsets.all(14),
@@ -487,7 +487,7 @@ class _NoBudgetMatchesCard extends StatelessWidget {
                   child: TextButton.icon(
                     onPressed: onClear,
                     icon: const Icon(LucideIcons.slidersHorizontal, size: 18),
-                    label: const Text('عرض كل الموردين'),
+                    label: const Text('عرض كل المزودين'),
                   ),
                 ),
               ],

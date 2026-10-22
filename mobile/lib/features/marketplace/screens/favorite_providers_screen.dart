@@ -55,8 +55,8 @@ class _FavoriteProvidersScreenState extends State<FavoriteProvidersScreen> {
     final selected = _selectedProviders(favorites);
 
     return AarastPageScaffold(
-      title: 'الموردون المحفوظون',
-      subtitle: 'كل مورد حفظته للمقارنة أو طلب عرض لاحقاً.',
+      title: 'المزودين المحفوظون',
+      subtitle: 'كل مزود حفظته للمقارنة أو طلب عرض لاحقاً.',
       actions: [
         IconButton(
           onPressed: () {
@@ -88,7 +88,7 @@ class _FavoriteProvidersScreenState extends State<FavoriteProvidersScreen> {
                 icon: LucideIcons.heart,
                 title: 'سجل الدخول لفتح المفضلة',
                 message:
-                    'حفظ الموردين مرتبط بحسابك حتى تجدهم مرة أخرى من أي جهاز.',
+                    'حفظ المزودين مرتبط بحسابك حتى تجدهم مرة أخرى من أي جهاز.',
                 action: FilledButton.icon(
                   onPressed: () => context.go(AppRouter.login),
                   icon: const Icon(LucideIcons.logIn),
@@ -114,11 +114,11 @@ class _FavoriteProvidersScreenState extends State<FavoriteProvidersScreen> {
                 icon: LucideIcons.heart,
                 title: 'لا توجد مفضلة بعد',
                 message:
-                    'اضغط على القلب بجانب أي مورد ليظهر هنا للمقارنة والمتابعة.',
+                    'اضغط على القلب بجانب أي مزود ليظهر هنا للمقارنة والمتابعة.',
                 action: OutlinedButton.icon(
                   onPressed: () => context.go(AppRouter.providerMarketplace),
                   icon: const Icon(LucideIcons.store),
-                  label: const Text('تصفح الموردين'),
+                  label: const Text('تصفح المزودين'),
                 ),
               )
             else ...[
@@ -171,11 +171,11 @@ class _FavoriteProvidersScreenState extends State<FavoriteProvidersScreen> {
   void _toggleComparedProvider(MarketplaceProvider provider) {
     final selected = _selectedProviderIds.contains(provider.id);
     if (selected && _selectedProviderIds.length <= 2) {
-      AarastToast.showInfo(context, 'اختر موردين على الأقل للمقارنة.');
+      AarastToast.showInfo(context, 'اختر مزودين على الأقل للمقارنة.');
       return;
     }
     if (!selected && _selectedProviderIds.length >= 3) {
-      AarastToast.showInfo(context, 'يمكن مقارنة ثلاثة موردين كحد أقصى.');
+      AarastToast.showInfo(context, 'يمكن مقارنة ثلاثة مزودين كحد أقصى.');
       return;
     }
     setState(() {
@@ -194,14 +194,14 @@ class _FavoriteProvidersScreenState extends State<FavoriteProvidersScreen> {
     if (marketplace.favoriteProviderIds.contains(provider.id)) {
       AarastToast.showError(
         context,
-        marketplace.errorMessage ?? 'تعذر إزالة المورد من المفضلة.',
+        marketplace.errorMessage ?? 'تعذر إزالة المزود من المفضلة.',
       );
       return;
     }
     setState(() => _selectedProviderIds.remove(provider.id));
     AarastToast.showSuccess(
       context,
-      'تمت إزالة المورد من المفضلة',
+      'تمت إزالة المزود من المفضلة',
       action: SnackBarAction(
         label: 'تراجع',
         onPressed: () => unawaited(_restoreFavorite(marketplace, provider)),
@@ -223,7 +223,7 @@ class _FavoriteProvidersScreenState extends State<FavoriteProvidersScreen> {
       );
       return;
     }
-    AarastToast.showInfo(context, 'أُعيد المورد إلى المفضلة.');
+    AarastToast.showInfo(context, 'أُعيد المزود إلى المفضلة.');
   }
 }
 
@@ -243,7 +243,7 @@ class _ProviderComparePicker extends StatelessWidget {
     if (providers.length < 3) return const SizedBox.shrink();
     return AarastSection(
       title: 'اختر للمقارنة',
-      description: 'اعرض موردين أو ثلاثة في نفس السطح.',
+      description: 'اعرض مزودين أو ثلاثة في نفس السطح.',
       child: Wrap(
         spacing: 8,
         runSpacing: 8,
@@ -287,7 +287,7 @@ class _FavoriteProvidersHero extends StatelessWidget {
           const SizedBox(width: 12),
           Expanded(
             child: Text(
-              '$count مورد محفوظ للمقارنة',
+              '$count مزود محفوظ للمقارنة',
               style: Theme.of(context).textTheme.titleMedium?.copyWith(
                 color: AppTheme.textPrimary,
                 fontWeight: FontWeight.w900,
@@ -350,7 +350,7 @@ class _ProviderComparisonSurface extends StatelessWidget {
                       Text(
                         providers.length > 1
                             ? 'السعر والتقييم والخدمات أمامك في مكان واحد.'
-                            : 'احفظ موردًا آخر لتظهر المقارنة جنبًا إلى جنب.',
+                            : 'احفظ مزودًا آخر لتظهر المقارنة جنبًا إلى جنب.',
                         style: AarastV3Type.body(
                           context,
                         ).copyWith(color: AarastV3Color.textMuted),
@@ -425,7 +425,7 @@ class _ComparisonColumn extends StatelessWidget {
             ),
             child: Text(
               provider.businessName.isEmpty
-                  ? 'مورد محفوظ'
+                  ? 'مزود محفوظ'
                   : provider.businessName.substring(0, 1),
               style: AarastV3Type.display(
                 context,

@@ -208,7 +208,7 @@ class _AboutSectionState extends State<_AboutSection> {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         const _EditorialSectionHeader(
-          title: 'نبذة عن المورد',
+          title: 'نبذة عن المزود',
           icon: LucideIcons.info,
         ),
         const SizedBox(height: 14),
@@ -346,7 +346,7 @@ class _ServicesSection extends StatelessWidget {
           const _EditorialEmpty(
             icon: LucideIcons.wand,
             title: 'لا توجد خدمات منشورة',
-            message: 'سيظهر هنا كتالوج خدمات المورد عند إضافته.',
+            message: 'سيظهر هنا كتالوج خدمات المزود عند إضافته.',
           )
         else
           DecoratedBox(

@@ -26,8 +26,8 @@ void main() {
     expect(find.text('الحساب والخطط والمساعدة'), findsOneWidget);
     expect(find.text('خططي'), findsOneWidget);
     expect(find.text('الخطط المشتركة معي'), findsOneWidget);
-    // «تصفح الموردين» له تبويب خاص في الشريط السفلي — ليس ضمن المزيد.
-    expect(find.text('تصفح الموردين'), findsNothing);
+    // «تصفح المزودين» له تبويب خاص في الشريط السفلي — ليس ضمن المزيد.
+    expect(find.text('تصفح المزودين'), findsNothing);
     // بدون خدمة مزامنة متاحة يختفي قسم المزامنة كاملًا بعنوانه.
     expect(find.text('المزامنة'), findsNothing);
 

@@ -555,7 +555,7 @@ String _priorityLabel(String value) {
     'budget' => 'الميزانية',
     'tasks' => 'المهام',
     'guests' => 'الضيوف',
-    'providers' => 'الموردون',
+    'providers' => 'المزودين',
     _ => value,
   };
 }

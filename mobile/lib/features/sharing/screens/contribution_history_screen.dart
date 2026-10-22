@@ -263,7 +263,7 @@ String _sectionLabel(String value) => switch (value) {
   'TASKS' => 'المهام',
   'GUESTS' => 'الضيوف',
   'MONEY' => 'المال',
-  'PROVIDERS' => 'الموردون',
+  'PROVIDERS' => 'المزودين',
   'MEMBERS' => 'المساهمون',
   _ => 'الخطة',
 };
@@ -281,7 +281,7 @@ String _entityLabel(String value) => switch (value) {
   'TASK' => 'مهمة محفوظة',
   'GUEST' => 'ضيف محفوظ',
   'MONEY_ITEM' || 'WEDDING_COST' || 'COST_PAYMENT' => 'سجل مالي محفوظ',
-  'PROVIDER_ITEM' || 'QUOTE_REQUEST' => 'مورد محفوظ',
+  'PROVIDER_ITEM' || 'QUOTE_REQUEST' => 'مزود محفوظ',
   _ => 'مساهمة محفوظة',
 };
 

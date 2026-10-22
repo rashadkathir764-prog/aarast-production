@@ -262,7 +262,7 @@ class ChatProvider extends ChangeNotifier with SessionScopedNotifier {
     final conversation = _conversation(conversationId);
     if (conversation?.canSend != true) {
       _errorMessage = conversation?.providerJoined == false
-          ? 'المورد لم ينضم للمحادثة بعد'
+          ? 'المزود لم ينضم للمحادثة بعد'
           : 'لا يمكن إرسال رسائل في هذه المحادثة الآن.';
       notifyListeners();
       return false;

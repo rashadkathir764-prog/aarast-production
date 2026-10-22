@@ -192,7 +192,7 @@ void main() {
             ),
           ],
         ): 'طلب عرض جديد',
-        _quote(status: 'ACCEPTED'): 'عرض المورد في الخطة',
+        _quote(status: 'ACCEPTED'): 'عرض المزود في الخطة',
         _quote(status: 'CANCELLED'): 'طلب عرض جديد',
       };
 
@@ -420,7 +420,7 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      expect(find.text('1 مورد محفوظ للمقارنة'), findsOneWidget);
+      expect(find.text('1 مزود محفوظ للمقارنة'), findsOneWidget);
       expect(find.text('1,200 ر.س'), findsOneWidget);
       expect(find.textContaining('YER'), findsNothing);
       expect(

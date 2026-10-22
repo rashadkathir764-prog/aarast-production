@@ -180,7 +180,7 @@ class _QuoteRequestScreenState extends State<QuoteRequestScreen> {
     return AarastPageScaffold(
       title: 'طلب عرض سعر',
       subtitle: provider == null
-          ? 'حدد احتياجك للمورد'
+          ? 'حدد احتياجك للمزود'
           : 'إلى ${provider.businessName}',
       actions: [
         IconButton(
@@ -239,7 +239,7 @@ class _QuoteRequestScreenState extends State<QuoteRequestScreen> {
                         items: [
                           const DropdownMenuItem<String>(
                             value: null,
-                            child: Text('حسب اقتراح المورد'),
+                            child: Text('حسب اقتراح المزود'),
                           ),
                           for (final service in services)
                             DropdownMenuItem(
@@ -262,13 +262,13 @@ class _QuoteRequestScreenState extends State<QuoteRequestScreen> {
                         maxLength: 250,
                         textInputAction: TextInputAction.done,
                         decoration: const InputDecoration(
-                          labelText: 'رسالة للمورد',
+                          labelText: 'رسالة للمزود',
                           hintText: 'اكتب تفاصيل التاريخ، الموقع، والاحتياج...',
                           prefixIcon: Icon(LucideIcons.fileText),
                         ),
                         validator: (value) {
                           if (value == null || value.trim().length < 8) {
-                            return 'اكتب تفاصيل قصيرة ليفهم المورد طلبك';
+                            return 'اكتب تفاصيل قصيرة ليفهم المزود طلبك';
                           }
                           return null;
                         },
@@ -712,8 +712,8 @@ class _QuoteLocationContext extends StatelessWidget {
     final hasLocation = location?.hasAnyLocation == true;
     final title = hasLocation ? 'موقع الزفاف' : 'موقع الزفاف غير مكتمل';
     final message = hasLocation
-        ? 'سيظهر موقع الزفاف في تفاصيل الطلب حتى يقدّر المورد السعر بدقة. يمكنك تعديل الرسالة قبل الإرسال.'
-        : 'أضف موقع الزفاف حتى يفهم المورد مكان المناسبة قبل تسعير الطلب.';
+        ? 'سيظهر موقع الزفاف في تفاصيل الطلب حتى يقدّر المزود السعر بدقة. يمكنك تعديل الرسالة قبل الإرسال.'
+        : 'أضف موقع الزفاف حتى يفهم المزود مكان المناسبة قبل تسعير الطلب.';
     final label = location?.fullLabel ?? location?.mediumLabel;
 
     return Container(

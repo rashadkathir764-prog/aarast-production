@@ -59,7 +59,7 @@ class MainShell extends StatelessWidget {
         accountContext: selected,
       ),
       AccountContextRole.provider => const _InvalidShellContext(
-        message: 'مساحة المورد لها واجهة مستقلة ولا تُفتح من واجهة الخطط.',
+        message: 'مساحة المزود لها واجهة مستقلة ولا تُفتح من واجهة الخطط.',
       ),
     };
   }
@@ -81,7 +81,7 @@ class _OwnerMainShell extends StatefulWidget {
 
 class _OwnerMainShellState extends State<_OwnerMainShell> {
   // Bottom-nav indices for the live user shell:
-  // 0: الرئيسية, 1: المال, 2: المهام, 3: الضيوف, 4: الموردون.
+  // 0: الرئيسية, 1: المال, 2: المهام, 3: الضيوف, 4: المزودين.
   int _index = 0;
   final Set<int> _visitedTabs = {0};
   int _guestAddRequest = 0;

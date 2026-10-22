@@ -170,8 +170,8 @@ class ContributorWorkspaceView extends StatelessWidget {
       if (permissions.canManageProviders && onOpenProviders != null)
         _ContributorSectionData(
           keyName: 'providers',
-          title: 'الموردون',
-          value: '${summary.providerCount} مورد',
+          title: 'المزودين',
+          value: '${summary.providerCount} مزود',
           caption: summary.receivedQuotes > 0
               ? '${summary.receivedQuotes} عروض وصلت'
               : 'الخدمات وعروض الأسعار',

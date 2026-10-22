@@ -119,7 +119,7 @@ void main() {
       // MainShell starts on Home, whose production FAB has a repeating
       // animation. Move to Providers before pumpAndSettle so the test follows
       // the real tab transition without waiting on that perpetual animation.
-      await tester.tap(find.text('الموردون'));
+      await tester.tap(find.text('المزودين'));
       await tester.pump();
       await tester.pumpAndSettle();
 
@@ -331,7 +331,7 @@ void _expectMarketplaceBodyActive(
   expect(screen, findsOneWidget);
   expect(identical(tester.element(screen), originalElement), isTrue);
   expect(tester.getSize(screen).height, greaterThan(200));
-  expect(find.byKey(const ValueKey('الموردون-true')), findsOneWidget);
+  expect(find.byKey(const ValueKey('المزودين-true')), findsOneWidget);
 
   final scrollable = find
       .descendant(of: screen, matching: find.byType(Scrollable))

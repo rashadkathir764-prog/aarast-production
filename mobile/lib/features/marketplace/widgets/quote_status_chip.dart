@@ -109,7 +109,7 @@ QuoteStatusPresentation quoteStatusPresentation(
     case 'SENT':
     case 'VIEWED':
       return const QuoteStatusPresentation(
-        label: 'بانتظار رد المورد',
+        label: 'بانتظار رد المزود',
         icon: LucideIcons.hourglass,
         color: AppTheme.textPrimary,
       );

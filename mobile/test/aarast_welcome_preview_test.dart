@@ -76,7 +76,7 @@ void main() {
           const SizedBox(height: 14),
           AarastPathCard(
             title: 'أنا مزود خدمة',
-            subtitle: 'إدارة حساب المورد أو طلب الانضمام.',
+            subtitle: 'إدارة حساب المزود أو طلب الانضمام.',
             icon: LucideIcons.store,
             tone: AarastPathTone.quiet,
             onTap: () {},

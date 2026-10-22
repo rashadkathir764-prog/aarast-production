@@ -173,7 +173,7 @@ class _ProviderDetailsStaleWarning extends StatelessWidget {
               const SizedBox(width: 8),
               Expanded(
                 child: Text(
-                  'تعذر تحديث بيانات المورد',
+                  'تعذر تحديث بيانات المزود',
                   style: Theme.of(context).textTheme.titleSmall?.copyWith(
                     color: AppTheme.danger,
                     fontWeight: FontWeight.w900,
@@ -316,7 +316,7 @@ class _ProviderTextHero extends StatelessWidget {
                     ? AppTheme.brandMuted
                     : AppTheme.surfaceMuted,
                 onTap: onFavorite,
-                tooltip: isFavorite ? 'إزالة من المحفوظات' : 'حفظ المورد',
+                tooltip: isFavorite ? 'إزالة من المحفوظات' : 'حفظ المزود',
               ),
             ],
           ),

@@ -148,7 +148,7 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(find.text('تعذر فتح المورد'), findsOneWidget);
+    expect(find.text('تعذر فتح المزود'), findsOneWidget);
     expect(find.text('طلب عرض سعر'), findsNothing);
     expect(api.viewedProviders, isEmpty);
     expect(tester.takeException(), isNull);
@@ -209,13 +209,13 @@ void main() {
       providerDirectoryErrorMessage(
         const ApiException('Internal server error', statusCode: 500),
       ),
-      'تعذر تحميل بيانات دليل الموردين. حاول مرة أخرى.',
+      'تعذر تحميل بيانات دليل المزودين. حاول مرة أخرى.',
     );
     expect(
       providerDirectoryErrorMessage(
         const ApiException('Provider not found', statusCode: 404),
       ),
-      'تعذر تحميل بيانات دليل الموردين. حاول مرة أخرى.',
+      'تعذر تحميل بيانات دليل المزودين. حاول مرة أخرى.',
     );
     expect(
       providerDirectoryErrorMessage(

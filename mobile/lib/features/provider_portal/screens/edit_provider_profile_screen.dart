@@ -76,7 +76,7 @@ class _EditProviderProfileScreenState extends State<EditProviderProfileScreen> {
 
     return AarastPageScaffold(
       title: 'تعديل ملف المزود',
-      subtitle: 'حدّث بيانات النشاط التي تظهر للعملاء في سوق الموردين.',
+      subtitle: 'حدّث بيانات النشاط التي تظهر للعملاء في سوق المزودين.',
       resizeToAvoidBottomInset: true,
       bottomNavigationBar: profile == null
           ? null
@@ -281,7 +281,7 @@ class _EditProviderProfileScreenState extends State<EditProviderProfileScreen> {
     if (ok) {
       await _draft?.clear();
       if (!mounted) return;
-      AarastFormSuccess.show(context, message: 'تم حفظ ملف المورد.');
+      AarastFormSuccess.show(context, message: 'تم حفظ ملف المزود.');
       context.go(AppRouter.providerDashboard);
     }
   }

@@ -117,7 +117,7 @@ class _ProviderDetailsScreenState extends State<ProviderDetailsScreen> {
             return _DetailsFrame(
               child: AarastEmptyState(
                 icon: LucideIcons.alertCircle,
-                title: 'تعذر فتح المورد',
+                title: 'تعذر فتح المزود',
                 message: detailsError,
                 action: OutlinedButton.icon(
                   onPressed: () => state.loadProviderDetails(
@@ -135,8 +135,8 @@ class _ProviderDetailsScreenState extends State<ProviderDetailsScreen> {
             return const _DetailsFrame(
               child: AarastEmptyState(
                 icon: LucideIcons.store,
-                title: 'المورد غير متاح',
-                message: 'لم نتمكن من العثور على تفاصيل هذا المورد.',
+                title: 'المزود غير متاح',
+                message: 'لم نتمكن من العثور على تفاصيل هذا المزود.',
               ),
             );
           }

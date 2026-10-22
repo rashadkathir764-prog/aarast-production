@@ -95,7 +95,7 @@ AarastDashboardFocus resolveDashboardFocus(DashboardSummary summary) {
       title: summary.receivedQuotes == 1
           ? 'وصلك عرض سعر جديد'
           : 'وصلتك ${summary.receivedQuotes} عروض أسعار',
-      reason: 'قارن التفاصيل بهدوء قبل اختيار المورد الأنسب لخطة زفافك.',
+      reason: 'قارن التفاصيل بهدوء قبل اختيار المزود الأنسب لخطة زفافك.',
       actionLabel: 'مراجعة العروض',
       icon: LucideIcons.inbox,
       tone: AarastDashboardFocusTone.positive,

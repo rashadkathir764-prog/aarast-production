@@ -282,7 +282,7 @@ class _PlanEditSheetState extends State<_PlanEditSheet> {
     'budget': 'الميزانية',
     'tasks': 'المهام',
     'guests': 'الضيوف',
-    'providers': 'الموردون',
+    'providers': 'المزودين',
   };
 
   @override

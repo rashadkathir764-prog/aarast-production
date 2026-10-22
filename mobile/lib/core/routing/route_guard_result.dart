@@ -39,7 +39,7 @@ extension RouteGuardReasonMessages on RouteGuardReason {
       RouteGuardReason.financePermissionRequired => 'صلاحية المال مطلوبة',
       RouteGuardReason.taskPermissionRequired => 'صلاحية المهام مطلوبة',
       RouteGuardReason.guestPermissionRequired => 'صلاحية الضيوف مطلوبة',
-      RouteGuardReason.providerOnly => 'متاح للمورد فقط',
+      RouteGuardReason.providerOnly => 'متاح للمزود فقط',
       RouteGuardReason.userOnly => 'متاح لمستخدم الزفاف فقط',
       RouteGuardReason.featureDisabled => 'الميزة غير مفعلة',
     };

@@ -55,7 +55,7 @@ String taskCategoryLabel(String? category) {
     'VENUE' => 'القاعة',
     'GUESTS' => 'الضيوف',
     'MONEY' => 'المال',
-    'PROVIDERS' => 'الموردين',
+    'PROVIDERS' => 'المزودين',
     'ATTIRE' => 'الملابس',
     'PHOTOGRAPHY' => 'التصوير',
     'CATERING' => 'الضيافة',

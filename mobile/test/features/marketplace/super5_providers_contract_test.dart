@@ -178,7 +178,7 @@ void main() {
       await _pumpMarketplace(tester, state);
 
       expect(state.lastIncludeAccountData, isFalse);
-      expect(find.text('الموردون'), findsOneWidget);
+      expect(find.text('المزودين'), findsOneWidget);
       expect(
         find.text('طلبات العروض ومتابعتها تحتاج تسجيل دخول'),
         findsOneWidget,
@@ -196,7 +196,7 @@ void main() {
       expect(find.text('0.0 (0)'), findsNothing);
       expect(find.textContaining('قريب منك'), findsNothing);
       expect(find.textContaining('الأفضل'), findsNothing);
-      expect(find.textContaining('لوحة المورد'), findsNothing);
+      expect(find.textContaining('لوحة المزود'), findsNothing);
       expect(
         find.byKey(const Key('super5-provider-details-provider-1')),
         findsOneWidget,
@@ -284,7 +284,7 @@ void main() {
 
     await _pumpMarketplace(tester, state, authenticated: true);
     await tester.scrollUntilVisible(
-      find.text('لا يوجد موردون متاحون حاليًا'),
+      find.text('لا يوجد مزودين متاحون حاليًا'),
       320,
       scrollable: find.byType(Scrollable).first,
     );
@@ -495,7 +495,7 @@ void main() {
         _provider(
           id: 'provider-long',
           businessName:
-              'مورد باسم طويل جدًا جدًا لاختبار التفاف النص داخل البطاقة',
+              'مزود باسم طويل جدًا جدًا لاختبار التفاف النص داخل البطاقة',
           city: const MarketplaceCity(id: 'city-1', nameAr: 'صنعاء'),
           services: [_service(title: 'خدمة بتسمية طويلة لا تكسر التخطيط')],
         ),
@@ -507,12 +507,12 @@ void main() {
 
     await _pumpMarketplace(tester, state);
     await tester.scrollUntilVisible(
-      find.textContaining('مورد باسم طويل'),
+      find.textContaining('مزود باسم طويل'),
       320,
       scrollable: find.byType(Scrollable).first,
     );
 
-    expect(find.textContaining('مورد باسم طويل'), findsOneWidget);
+    expect(find.textContaining('مزود باسم طويل'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 

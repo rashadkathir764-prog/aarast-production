@@ -148,8 +148,8 @@ void main() {
     );
 
     expect(find.text('لا توجد مفضلة بعد'), findsOneWidget);
-    expect(find.text('تصفح الموردين'), findsOneWidget);
-    _expectRtlAndInsideView(tester, find.text('تصفح الموردين'), width: 320);
+    expect(find.text('تصفح المزودين'), findsOneWidget);
+    _expectRtlAndInsideView(tester, find.text('تصفح المزودين'), width: 320);
     expect(tester.takeException(), isNull);
   });
 

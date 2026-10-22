@@ -186,7 +186,7 @@ class AarastPlanNavigationBar extends StatelessWidget {
       1 => 'المال',
       2 => 'المهام',
       3 => 'الضيوف',
-      4 => 'الموردون',
+      4 => 'المزودين',
       _ => 'الرئيسية',
     };
   }
@@ -196,7 +196,7 @@ class AarastPlanNavigationBar extends StatelessWidget {
     AarastNavigationItem(icon: LucideIcons.wallet, label: 'المال'),
     AarastNavigationItem(icon: LucideIcons.listChecks, label: 'المهام'),
     AarastNavigationItem(icon: LucideIcons.users, label: 'الضيوف'),
-    AarastNavigationItem(icon: LucideIcons.store, label: 'الموردون'),
+    AarastNavigationItem(icon: LucideIcons.store, label: 'المزودين'),
   ];
 
   final List<AarastNavigationItem> items;

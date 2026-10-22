@@ -79,7 +79,7 @@ bool isSafeNotificationRouteTarget(String target) {
   }
 
   return
-  // بوابة المورد: وجهة تنبيهات "طلب جديد" و"تم قبول عرضك" للمورد.
+  // بوابة المزود: وجهة تنبيهات "طلب جديد" و"تم قبول عرضك" للمزود.
   target == '/provider/dashboard' ||
       uri.path.startsWith('/providers/') ||
       uri.path.startsWith('/conversations/') ||

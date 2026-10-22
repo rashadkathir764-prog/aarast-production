@@ -118,7 +118,7 @@ class _MoreScreenState extends State<MoreScreen> {
           MoreMenuGroup(
             children: [
               MoreActionTile(
-                title: 'الموردون المحفوظون',
+                title: 'المزودين المحفوظون',
                 icon: LucideIcons.heart,
                 iconColor: AppTheme.brand,
                 iconBackground: AppTheme.brandMuted,

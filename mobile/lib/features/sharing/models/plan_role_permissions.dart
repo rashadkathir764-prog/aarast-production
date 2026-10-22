@@ -98,7 +98,7 @@ class PlanRolePermissions {
     final manage = <String>[
       if (canManageTasks) 'المهام',
       if (canManageGuests) 'الضيوف',
-      if (canManageProviders) 'الموردون',
+      if (canManageProviders) 'المزودين',
       if (canEditPlan) 'تعديل الخطة',
       if (canInviteMembers) 'الدعوات',
     ];

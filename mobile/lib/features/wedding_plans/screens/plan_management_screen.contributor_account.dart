@@ -289,7 +289,7 @@ extension _PlanCenterContributorAccount on _PlanCenterScreenState {
       canManageTasks ? 'إدارة المهام' : 'مشاهدة المهام',
       if (canViewMoney) canManageMoney ? 'إدارة المال' : 'مشاهدة المال',
       if (canManageGuests) 'إدارة الضيوف',
-      if (canManageProviders) 'إدارة الموردين والعروض',
+      if (canManageProviders) 'إدارة المزودين والعروض',
       if (canManageMembers) 'إدارة المشاركين',
       if (canManagePlan) 'تعديل بيانات الخطة',
     ];

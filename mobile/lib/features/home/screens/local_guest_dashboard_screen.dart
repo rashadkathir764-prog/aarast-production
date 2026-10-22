@@ -289,7 +289,7 @@ class _LocalGuestDashboardScreenState extends State<LocalGuestDashboardScreen> {
     return AuthActionGuard.requireAccount(
       context,
       reason:
-          'طلب عرض سعر يحتاج حساباً حتى نربطه بخطتك ونحفظ ردود الموردين بأمان.',
+          'طلب عرض سعر يحتاج حساباً حتى نربطه بخطتك ونحفظ ردود المزودين بأمان.',
     );
   }
 

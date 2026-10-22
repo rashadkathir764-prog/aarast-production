@@ -102,7 +102,7 @@ QuoteRequest _waitingQuote(String id) => QuoteRequest(
   lifecycleStatus: 'PENDING_PROVIDER',
   provider: ProviderSummary(
     id: 'provider-$id',
-    businessName: 'مورد $id',
+    businessName: 'مزود $id',
     ratingAverage: 0,
     ratingCount: 0,
   ),
@@ -116,7 +116,7 @@ QuoteRequest _archivedPlanQuote() => const QuoteRequest(
   lifecycleStatus: 'PENDING_PROVIDER',
   provider: ProviderSummary(
     id: 'provider-archived',
-    businessName: 'مورد الخطة المؤرشفة',
+    businessName: 'مزود الخطة المؤرشفة',
     ratingAverage: 0,
     ratingCount: 0,
   ),
@@ -191,7 +191,7 @@ void main() {
     await _pump(tester, state, initialQuoteId: 'quote-waiting');
 
     expect(find.text('طلباتك وعروضك'), findsOneWidget);
-    expect(find.text('بانتظار رد المورد'), findsOneWidget);
+    expect(find.text('بانتظار رد المزود'), findsOneWidget);
     expect(find.text('قبول'), findsNothing);
     expect(find.text('رفض'), findsNothing);
     expect(find.byKey(const Key('quote-accept-quote-waiting')), findsNothing);
@@ -233,7 +233,7 @@ void main() {
       await _expandQuoteInbox(tester);
 
       expect(find.text('قاعة الثريا'), findsOneWidget);
-      expect(find.text('مورد الخطة المؤرشفة'), findsNothing);
+      expect(find.text('مزود الخطة المؤرشفة'), findsNothing);
       expect(
         find.byKey(const Key('compact-quote-status-quote-archived')),
         findsNothing,
@@ -337,7 +337,7 @@ void main() {
     await _pump(tester, state);
     await _expandQuoteInbox(tester);
 
-    expect(find.text('حسب اقتراح المورد'), findsOneWidget);
+    expect(find.text('حسب اقتراح المزود'), findsOneWidget);
     expect(find.text('خدمة غير محددة'), findsNothing);
   });
 

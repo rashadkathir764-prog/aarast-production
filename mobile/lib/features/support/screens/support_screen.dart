@@ -467,7 +467,7 @@ class _SupportBoundaryCard extends StatelessWidget {
           ),
           const _BoundaryLine(
             text:
-                'مشاكل الموردين وعروض الأسعار تُعامل كمتابعة تنظيمية، وليست ضماناً قانونياً أو مالياً.',
+                'مشاكل المزودين وعروض الأسعار تُعامل كمتابعة تنظيمية، وليست ضماناً قانونياً أو مالياً.',
           ),
           const _BoundaryLine(
             text:

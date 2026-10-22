@@ -104,7 +104,7 @@ class SharedMember {
     if (canViewMoney) labels.add('يمكنه مشاهدة المال');
     if (canManageTasks) labels.add('يمكنه إدارة المهام');
     if (canManageGuests) labels.add('يمكنه إدارة الضيوف');
-    if (canManageProviders) labels.add('يمكنه إدارة الموردين والعروض');
+    if (canManageProviders) labels.add('يمكنه إدارة المزودين والعروض');
     if (canEditPlan) labels.add('يمكنه تعديل الخطة');
     if (canInviteMembers) labels.add('يمكنه دعوة المشاركين');
     if (canManageMoney) labels.add('يمكنه إدارة المال');
@@ -404,7 +404,7 @@ class PlanInvite {
     final labels = <String>['عرض الخطة'];
     if (canManageTasks) labels.add('المهام');
     if (canManageGuests) labels.add('الضيوف');
-    if (canManageProviders) labels.add('الخدمات والموردون');
+    if (canManageProviders) labels.add('الخدمات والمزودين');
     if (canInviteMembers) labels.add('دعوة أعضاء');
     if (canManageMoney) {
       labels.add('إدارة المال');

@@ -50,7 +50,7 @@ void main() {
 
     final bare = MarketplaceProvider.fromJson({
       'id': 'provider-2',
-      'businessName': 'مورد',
+      'businessName': 'مزود',
       'responsiveness': {
         'sampleSize': 3,
         'answeredPercent': 0,
@@ -275,7 +275,7 @@ final _verifiedProvider = MarketplaceProvider(
 
 const _plainProvider = MarketplaceProvider(
   id: 'provider-2',
-  businessName: 'مورد جديد',
+  businessName: 'مزود جديد',
   ownerName: 'مالك',
   ratingAverage: 0,
   ratingCount: 0,

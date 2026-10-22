@@ -239,9 +239,9 @@ String providerDirectoryErrorMessage(Object error) {
 
 const providerReferenceDataErrorMessage = 'تعذر تحميل خيارات المدينة والفئة.';
 const providerDirectoryGenericErrorMessage =
-    'تعذر تحميل بيانات دليل الموردين. حاول مرة أخرى.';
+    'تعذر تحميل بيانات دليل المزودين. حاول مرة أخرى.';
 const providerDetailsStaleErrorMessage =
-    'تعذر تحديث بيانات المورد؛ نعرض آخر بيانات محفوظة حتى تنجح إعادة المحاولة.';
+    'تعذر تحديث بيانات المزود؛ نعرض آخر بيانات محفوظة حتى تنجح إعادة المحاولة.';
 
 List<MarketplaceService> _sortServicesByBudget(
   List<MarketplaceService> services,

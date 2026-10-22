@@ -56,6 +56,7 @@ const nav = <(String, List<L>)>[
     L('providers', 'دليل المزودين', LucideIcons.store, _all),
     L('listed', 'ملفات بلا حساب', LucideIcons.bookOpen, _opsSup, isNew: true),
     L('services', 'الخدمات', LucideIcons.package, _opsSup),
+    L('plans', 'الباقات والظهور المميز', LucideIcons.crown, _ops, isNew: true),
   ]),
   ('الناس', [
     L('lookup', 'ابحث برقم', LucideIcons.search, _opsSup, isNew: true),
@@ -119,7 +120,7 @@ Widget desk(
                     if (l.roles.contains(role))
                       Container(
                         margin: const EdgeInsets.only(bottom: 2),
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4.5),
                         decoration: BoxDecoration(color: l.id == active ? Colors.white12 : Colors.transparent, borderRadius: BorderRadius.circular(10)),
                         child: Row(
                           children: [

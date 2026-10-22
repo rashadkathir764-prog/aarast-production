@@ -108,7 +108,7 @@ Widget a03Applications() => desk(
     table(
       const [('المزود', 4), ('القسم والطريقة', 3), ('المدينة', 2), ('ينتظر', 2), ('ملاحظة', 4)],
       [
-        [t2('استوديو لحظة', 'علي الشامي · 773 210 455'), t('تصوير · أكثر من فريق'), t('صنعاء'), t('يومين', b: true, c: K.coral), tag('أُعيد إرساله · كان يحتاج تعديل', K.sky, K.skySoft)],
+        [t2('استوديو ضوء صنعاء', 'علي الشامي · 773 210 455'), t('تصوير · أكثر من فريق'), t('صنعاء'), t('يومين', b: true, c: K.coral), tag('أُعيد إرساله · كان يحتاج تعديل', K.sky, K.skySoft)],
         [t2('فرقة الأمجاد للبرع', 'صالح العزي'), t('برع · عرس واحد في الفترة'), t('ذمار'), t('يوم'), tag('صورتين فيهن وجوه (فحص آلي)', K.coral, K.coralSoft)],
         [t2('محلات الأناقة', 'منصور الحداد'), t('ملابس · بيع'), t('صنعاء'), t('يوم'), tag('رقمه يطابق ملف بلا حساب', K.saffronInk, K.saffronSoft)],
         [t2('كوافيرة أم ريان', 'من البيت'), t('كوافير · عرس واحد'), t('عدن'), t('5 ساعات'), tag('للنساء · الرقم مخفي', K.lilac, K.lilacSoft)],
@@ -138,7 +138,7 @@ Widget a04Review() {
   return desk(
     'apps',
     crumb: 'المزودين / تفاصيل طلب',
-    title: 'استوديو لحظة',
+    title: 'استوديو ضوء صنعاء',
     sub: 'تصوير · صنعاء · أكثر من فريق · أُعيد إرساله اليوم',
     actions: [aBtn('اطلب تعديل', bg: K.saffronInk), aBtn('اعتماد', bg: K.green), aBtn('رفض', bg: Colors.white, fg: K.coral)],
     body: [
@@ -149,7 +149,7 @@ Widget a04Review() {
             Expanded(
               flex: 3,
               child: Column(children: [
-                f('النشاط ويخدم', 'استوديو لحظة · الرجال والنساء'),
+                f('النشاط ويخدم', 'استوديو ضوء صنعاء · الرجال والنساء'),
                 f('صور الشغل', '6 صور', was: '2 فيهن وجوه، انشالت'),
                 f('باقة صور وفيديو', '450,000 ر.ي صنعاء · 300 صورة، فيلم 10 دقايق، درون', was: 'بدون «يشمل»'),
                 f('الفرق', '3 فرق رجال · فريق مصوّرات'),
@@ -199,7 +199,7 @@ Widget a05Directory() => desk(
       const [('المزود', 4), ('الحالة', 2), ('المدينة', 2), ('علامات', 4), ('الحجوزات', 2), ('التقييم', 2)],
       [
         [t2('قاعة سبأ', 'الصالات · قاعتين'), tag('نشط', K.green, K.greenSoft), t('صنعاء'), Wrap(spacing: 4, children: [tag('موثّق', K.green, K.greenSoft), tag('مميز', K.saffronInk, K.saffronSoft)]), t('46'), t('4.8 · 63')],
-        [t2('استوديو لحظة', 'التصوير · 4 فرق'), tag('نشط', K.green, K.greenSoft), t('صنعاء'), tag('موثّق', K.green, K.greenSoft), t('31'), t('4.7 · 38')],
+        [t2('استوديو ضوء صنعاء', 'التصوير · 4 فرق'), tag('نشط', K.green, K.greenSoft), t('صنعاء'), tag('موثّق', K.green, K.greenSoft), t('31'), t('4.7 · 38')],
         [t2('مصور الحارة', 'التصوير'), tag('نشط', K.green, K.greenSoft), t('صنعاء'), tag('بلا حساب', K.muted, K.line), t('—'), t('—')],
         [t2('مصور س', 'التصوير'), tag('موقوف', K.coral, K.coralSoft), t('عدن'), tag('تقويم قديم', K.saffronInk, K.saffronSoft), t('5 جاية'), t('3.9 · 21')],
       ],
@@ -247,7 +247,7 @@ Widget a07Listed() => desk(
         [t2('مصور الحارة', 'صنعاء · 777 300 118'), t('التصوير'), t('2', b: true, c: K.coral), t('انرسل مرتين · آخره أمس'), tag('ما استلمه', K.saffronInk, K.saffronSoft)],
         [t2('مطابخ الخير', 'إب'), t('الطباخين'), t('1'), t('انرسل اليوم'), tag('ما استلمه', K.saffronInk, K.saffronSoft)],
         [t2('فرقة النجوم', 'عدن'), t('المزمار والبرع'), t('1'), t('الرقم بدون واتساب'), tag('اتصل به', K.coral, K.coralSoft)],
-        [t2('استوديو لحظة', 'صنعاء'), t('التصوير'), t('—'), t('استلمه 12 أكتوبر'), tag('استلمه', K.green, K.greenSoft)],
+        [t2('استوديو ضوء صنعاء', 'صنعاء'), t('التصوير'), t('—'), t('استلمه 12 أكتوبر'), tag('استلمه', K.green, K.greenSoft)],
       ],
     ),
     gap(10),
@@ -354,7 +354,7 @@ Widget a10Reviews() => desk(
     table(
       const [('التقييم', 6), ('المزود', 2), ('البلاغ', 3), ('', 3)],
       [
-        [t2('★★☆☆☆ «اتصلوا على 77… لو تبغى رقمهم الصح»', 'عادل · 20 يناير'), t('فرقة الأفراح'), t('فيه رقم جوال'), Row(mainAxisSize: MainAxisSize.min, children: [softAction('أخفِ', fg: K.coral, bg: K.coralSoft), const SizedBox(width: 6), softAction('خلّه', fg: A.c, bg: A.soft)])],
+        [t2('★★☆☆☆ «اتصلوا على 77… لو تشتي رقمهم الصح»', 'عادل · 20 يناير'), t('فرقة الأفراح'), t('فيه رقم جوال'), Row(mainAxisSize: MainAxisSize.min, children: [softAction('أخفِ', fg: K.coral, bg: K.coralSoft), const SizedBox(width: 6), softAction('خلّه', fg: A.c, bg: A.soft)])],
         [t2('★☆☆☆☆ «ما جوا أصلًا»', 'فهد · 4 فبراير · رد المزود: «العريس لغى قبل يوم»'), t('مصور س'), t('المزود: كذب'), Row(mainAxisSize: MainAxisSize.min, children: [softAction('شوف الحجز', fg: A.c, bg: A.soft)])],
       ],
     ),
@@ -434,8 +434,8 @@ Widget a12Bookings() => desk(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('فرقة الأفراح مع محمد الحمدي', style: tx(18, w: bold)),
-          t('الزفة 21 يناير · دفعة مقدمة 100,000 ر.ي صنعاء · جوالي · 20 نوفمبر', c: K.muted, fs: 13.5),
+          Text('ضيافة الأصالة مع محمد الحمدي', style: tx(18, w: bold)),
+          t('الضيافة 21 يناير · دفعة 200,000 ر.ي صنعاء · جوالي · أمس', c: K.muted, fs: 13.5),
           gap(12),
           Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
             Expanded(child: panel(c: K.bg, child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [t('العريس سجّل', c: K.muted, fs: 12), t('«حوّلت من جوالي، وهذا السند»', b: true), gap(6), t('رقم المستلم في السند: 771 554 202', fs: 13)]))),
@@ -451,7 +451,7 @@ Widget a12Bookings() => desk(
     table(
       const [('الحجز', 4), ('المزود', 3), ('اليوم', 2), ('الحالة', 2)],
       [
-        [t2('محمد الحمدي', 'الزفة · فريق 2'), t('استوديو لحظة'), t('21 يناير'), tag('مؤكد', K.green, K.greenSoft)],
+        [t2('محمد الحمدي', 'الزفة · فريق 2'), t('استوديو ضوء صنعاء'), t('21 يناير'), tag('مؤكد', K.green, K.greenSoft)],
         [t2('فهد العمري', 'الزفة'), t('مصور س'), t('4 فبراير'), tag('ما صار · بلاغ', K.coral, K.coralSoft)],
       ],
     ),
@@ -475,7 +475,7 @@ Widget a13User() => confirm(
   ),
   title: 'تعطيل حساب محمد الحمدي',
   effects: const [
-    'يطلع من جهازينه الحين.',
+    'يطلع من جهازينه الآن.',
     'دعوتين أرسلها للمشاركين تنلغي.',
     'خطته تبقى، والمشاركين معه يكملون.',
     'ما تقدر تشوف مال خطته ولا ضيوفه.',
@@ -498,7 +498,7 @@ Widget a14Team() => desk(
     table(
       const [('العضو', 3), ('الدور', 2), ('يقدر', 5), ('آخر دخول', 2)],
       [
-        [t2('رشاد', '777 000 111'), tag('مدير أعلى', A.c, A.soft), t('كل شيء، والسجل، والفريق، والقواعد'), t('الحين')],
+        [t2('رشاد', '777 000 111'), tag('مدير أعلى', A.c, A.soft), t('كل شيء، والسجل، والفريق، والقواعد'), t('الآن')],
         [t2('نادية', '771 222 333'), tag('تشغيل', K.sky, K.skySoft), t('المزودين، والخدمات، والكتالوج، والمستخدمين، والتقارير'), t('قبل ساعة')],
         [t2('سارة', '773 444 555'), tag('إشراف محتوى', K.lilac, K.lilacSoft), t('التقييمات، والبلاغات، وقراءة المزودين'), t('أمس')],
         [t2('عمر', '770 666 777'), tag('دعم', K.green, K.greenSoft), t('قراءة: المستخدمين والمزودين والكتالوج'), t('قبل 3 أيام')],
@@ -520,9 +520,9 @@ Widget a15Audit() => desk(
   who: 'رشاد',
   body: [
     table(
-      const [('متى', 2), ('مين', 2), ('وش سوى', 4), ('على', 3), ('السبب', 4), ('النتيجة', 1)],
+      const [('متى', 2), ('مين', 2), ('ايش سوى', 4), ('على', 3), ('السبب', 4), ('النتيجة', 1)],
       [
-        [t('10:41'), t('رشاد · مدير أعلى', fs: 13), t('طلب تعديل', b: true), t('استوديو لحظة'), t('حقلين: الصور والباقة'), const Icon(LucideIcons.checkCircle2, color: K.green, size: 18)],
+        [t('10:41'), t('رشاد · مدير أعلى', fs: 13), t('طلب تعديل', b: true), t('استوديو ضوء صنعاء'), t('حقلين: الصور والباقة'), const Icon(LucideIcons.checkCircle2, color: K.green, size: 18)],
         [t('9:02'), t('نادية · تشغيل', fs: 13), t('وثّق', b: true), t('قاعة سبأ'), t('سجل تجاري'), const Icon(LucideIcons.checkCircle2, color: K.green, size: 18)],
         [t('أمس'), t('نادية · تشغيل', fs: 13), t('أوقف', b: true), t('مصور س'), t('3 بلاغات تأخير تسليم'), const Icon(LucideIcons.checkCircle2, color: K.green, size: 18)],
         [t('أمس'), t('سارة · إشراف', fs: 13), t('أوقف مزود', b: true), t('فرقة الأفراح'), t('—'), const Icon(LucideIcons.xCircle, color: K.coral, size: 18)],
@@ -558,6 +558,49 @@ Widget a16Rules() => desk(
             Padding(padding: const EdgeInsets.symmetric(vertical: 6), child: Row(children: [Expanded(child: t(r.$1)), softAction(r.$2, fg: A.c, bg: A.soft)])),
         ]))),
       ],
+    ),
+  ],
+);
+
+
+/// Packages and featured listing (owner request: wedding.md section 9,
+/// checklist 4.20). The provider pays the owner outside the app; the admin
+/// switches the package on by hand. No money moves inside اعّرست.
+Widget a17Plans() => desk(
+  'plans',
+  crumb: 'المزودين',
+  title: 'الباقات والظهور المميز',
+  sub: 'المزود يدفع لكم برا التطبيق، وأنتم تفعّلون الباقة من هنا',
+  actions: [aBtn('فعّل باقة لمزود', icon: LucideIcons.plus)],
+  body: [
+    Row(children: [
+      stat('352', 'مجاني', sub: 'ظهور عادي'),
+      const SizedBox(width: 12),
+      stat('27', 'مميز', sub: 'فوق في القسم والمدينة'),
+      const SizedBox(width: 12),
+      stat('9', 'احترافي', sub: 'مميز وإحصائيات وصور أكثر'),
+      const SizedBox(width: 12),
+      stat('4', 'تنتهي هذا الأسبوع', c: K.saffronInk),
+    ]),
+    gap(14),
+    table(
+      const [('المزود', 4), ('الباقة', 2), ('من', 2), ('لين', 2), ('الدفع', 3), ('', 2)],
+      [
+        [t2('قاعة سبأ', 'الصالات · صنعاء'), tag('احترافي', A.c, A.soft), t('1 أكتوبر'), t('31 ديسمبر'), t2('كاش · 3 شهور', 'سجّلته نادية'), tag('شغّال', K.green, K.greenSoft)],
+        [t2('استوديو ضوء صنعاء', 'التصوير · صنعاء'), tag('مميز', K.saffronInk, K.saffronSoft), t('15 سبتمبر'), t('15 أكتوبر'), t2('حوالة الكريمي', 'سجّلتها سارة'), tag('خلص · ذكّره', K.coral, K.coralSoft)],
+        [t2('ضيافة الأصالة', 'الضيافة · صنعاء'), tag('مميز', K.saffronInk, K.saffronSoft), t('20 أكتوبر'), t('20 نوفمبر'), t2('ينتظر الدفع', '—'), tag('ما تفعّل', K.muted, K.line)],
+      ],
+    ),
+    gap(14),
+    panel(
+      c: A.soft,
+      child: Row(children: [
+        const Icon(LucideIcons.info, color: A.c, size: 20),
+        const SizedBox(width: 10),
+        Expanded(
+          child: t('التطبيق ما يستلم فلوس. كل تفعيل ينكتب في سجل العمليات باسم اللي فعّله، والمزود يوصله إشعار ببداية ونهاية باقته. والعرسان يشوفون «مميز» بوضوح، عشان ما يحسبونه ترشيحًا من اعّرست.', c: A.c),
+        ),
+      ]),
     ),
   ],
 );

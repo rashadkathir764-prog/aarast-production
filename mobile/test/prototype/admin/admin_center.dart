@@ -44,8 +44,8 @@ Widget n01Inbox() => desk(
               const [('البند', 5), ('النوع', 2), ('الوقت', 2), ('مسؤول', 2)],
               [
                 [t2('صورة نساء بوجه واضح في معرض «عدسة الياسمين»', 'فحص آلي · قبل 40 دقيقة'), tag('صور', K.coral, K.coralSoft), _sla('باقي ساعة', late: true), t('سارة')],
-                [t2('فرقة الأفراح مع محمد الحمدي: الدفعة ما وصلت', 'العريس دفع 100,000 · المزود ينكر'), tag('خلاف دفعة', K.coral, K.coralSoft), _sla('تعدّى بيوم', late: true), t('—', c: K.muted)],
-                [t2('استوديو لحظة', 'أُعيد إرساله بعد التعديل'), tag('انضمام', K.sky, K.skySoft), _sla('باقي يوم'), t('نادية')],
+                [t2('ضيافة الأصالة مع محمد الحمدي: الدفعة ما وصلت', 'العريس دفع 200,000 · المزود ينكر'), tag('خلاف دفعة', K.coral, K.coralSoft), _sla('تعدّى بيوم', late: true), t('—', c: K.muted)],
+                [t2('استوديو ضوء صنعاء', 'أُعيد إرساله بعد التعديل'), tag('انضمام', K.sky, K.skySoft), _sla('باقي يوم'), t('نادية')],
                 [t2('منقشة أم سارة', 'البطاقة + مزكّي'), tag('توثيق', K.green, K.greenSoft), _sla('باقي يومين'), t('—', c: K.muted)],
                 [t2('احتيال: طلب تحويل لرقم ثاني', 'محمد بلّغ عن «مصور مجهول»'), tag('بلاغ', K.coral, K.coralSoft), _sla('باقي 3 ساعات'), t('سارة')],
                 [t2('770 998 321 يطلب نسخة من بياناته', 'طلب بيانات'), tag('بيانات', A.c, A.soft), _sla('باقي 5 أيام'), t('عمر')],
@@ -112,7 +112,7 @@ Widget n02Market() {
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 9),
             child: Row(children: [
-              for (final h in const [('المدينة والقسم', 3), ('طلبات', 2), ('مزودين', 2), ('ما انرد عليها', 4), ('الرد', 2), ('وش يعني', 4)])
+              for (final h in const [('المدينة والقسم', 3), ('طلبات', 2), ('مزودين', 2), ('ما انرد عليها', 4), ('الرد', 2), ('ايش يعني', 4)])
                 Expanded(flex: h.$2, child: t(h.$1, fs: 12.5, b: true, c: K.muted)),
             ]),
           ),
@@ -237,7 +237,7 @@ Widget n05Lookup() => desk(
               panel(child: Row(children: [
                 avatar('م', K.teal, s: 46),
                 const SizedBox(width: 12),
-                Expanded(child: t2('محمد الحمدي', 'حساب من 2 أكتوبر · جهازين · آخر دخول الحين')),
+                Expanded(child: t2('محمد الحمدي', 'حساب من 2 أكتوبر · جهازين · آخر دخول الآن')),
                 tag('نشط', K.green, K.greenSoft),
               ])),
               gap(10),
@@ -334,7 +334,7 @@ Widget n07Photos() {
         const SizedBox(width: 12),
         ph(const Color(0xFF7D8A80), 'كوافيرة أم ريان', 'آلي: وجه جزئي'),
         const SizedBox(width: 12),
-        ph(const Color(0xFF9C8B74), 'استوديو لحظة · فريق النساء', 'بلاغ من عروسة'),
+        ph(const Color(0xFF9C8B74), 'استوديو ضوء صنعاء · فريق النساء', 'بلاغ من عروسة'),
         const SizedBox(width: 12),
         ph(const Color(0xFF6E7F8C), 'منقشة أم سارة', 'آلي: غير متأكد'),
       ]),

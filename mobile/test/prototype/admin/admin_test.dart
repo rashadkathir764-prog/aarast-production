@@ -35,7 +35,7 @@ void main() {
     ('n05_lookup', n05Lookup), ('a13_user', a13User), ('n06_data_requests', n06DataRequests),
     ('a11_chat_reports', a11ChatReports), ('a10_reviews', a10Reviews), ('n07_photos', n07Photos), ('a12_bookings', a12Bookings), ('n08_fraud', n08Fraud),
     ('n09_health', n09Health), ('a16_rules', a16Rules), ('a08_categories', a08Categories), ('a09_catalogs', a09Catalogs), ('n10_flags', n10Flags),
-    ('a14_team', a14Team), ('a15_audit', a15Audit),
+    ('a14_team', a14Team), ('a15_audit', a15Audit), ('a17_plans', a17Plans),
   ];
   for (final s in screens) {
     testWidgets(s.$1, (t) => _shot(t, s.$1, s.$2()));

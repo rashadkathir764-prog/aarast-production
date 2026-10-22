@@ -1,13 +1,13 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
+import '../../../core/experience_v3/aarast_v3.dart';
 import '../../../core/routing/app_router.dart';
-import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/aarast_ui.dart';
 import '../../onboarding/onboarding_api.dart' show GuestOnboardingStorage;
 import '../providers/auth_controller.dart';
-import '../../../core/widgets/brand/aarast_brand_mark.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -73,41 +73,47 @@ class _SplashScreenState extends State<SplashScreen>
 
   @override
   Widget build(BuildContext context) {
-    return AarastScreenFrame(
-      maxWidth: 560,
-      safeAreaBottom: true,
-      child: Stack(
-        children: [
-          Positioned.fill(
-            child: DecoratedBox(
-              decoration: const BoxDecoration(color: AppTheme.canvas),
-            ),
-          ),
-
-          Align(
-            alignment: Alignment.center,
-            child: FadeTransition(
-              opacity: _opacityAnimation,
-              child: ScaleTransition(
-                scale: _scaleAnimation,
-                child: Align(
-                  alignment: Alignment.center,
+    // a01: the wedding sky, the name, and what the app is for. The status
+    // bar reads light over the night.
+    return AnnotatedRegion<SystemUiOverlayStyle>(
+      value: SystemUiOverlayStyle.light,
+      child: AarastScreenFrame(
+        maxWidth: 560,
+        backgroundColor: JourneyArt.night,
+        backgroundDecoration: const BoxDecoration(color: JourneyArt.night),
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            const JourneyWeddingSky(base: AarastV3Color.primaryDark),
+            Align(
+              alignment: const Alignment(0, 0.42),
+              child: FadeTransition(
+                opacity: _opacityAnimation,
+                child: ScaleTransition(
+                  scale: _scaleAnimation,
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      const AarastBrandMark(),
-                      const SizedBox(height: 16),
-                      const AarastInlineSpinner(
-                        dimension: 48,
-                        color: AppTheme.focus,
+                      const JourneyWordmark(
+                        size: 64,
+                        color: AarastV3Color.onPrimary,
+                      ),
+                      const SizedBox(height: 14),
+                      Text(
+                        'عرسك من أول ريال إلى آخر قسط',
+                        textAlign: TextAlign.center,
+                        style: JourneyType.of(
+                          17,
+                          color: AarastV3Color.onPrimaryMuted,
+                        ),
                       ),
                     ],
                   ),
                 ),
               ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

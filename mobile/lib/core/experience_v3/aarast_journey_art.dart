@@ -224,14 +224,18 @@ class _FadeIntoPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final top = size.height * 0.55;
+    // Reach four blur radii past every other edge, so only the top fades.
+    final reach = size.height * 0.32;
     canvas.drawRect(
-      Rect.fromLTRB(-40, top, size.width + 40, size.height + 80),
+      Rect.fromLTRB(-reach, top, size.width + reach, size.height + reach),
       Paint()
         ..color = color
         ..maskFilter = MaskFilter.blur(BlurStyle.normal, size.height * 0.08),
     );
+    // The solid floor starts only where the blur is already opaque (more
+    // than three blur radii below its edge), so no seam shows.
     canvas.drawRect(
-      Rect.fromLTRB(0, size.height * 0.72, size.width, size.height),
+      Rect.fromLTRB(0, size.height * 0.80, size.width, size.height),
       Paint()..color = color,
     );
   }

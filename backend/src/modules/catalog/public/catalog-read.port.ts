@@ -8,6 +8,9 @@ import type {
 
 export const CATALOG_READ_PORT = Symbol('CATALOG_READ_PORT');
 
+/** C24: the provider category of wedding venues (قاعات ومخادر). */
+export const VENUE_PROVIDER_CATEGORY_SLUG = 'wedding-halls';
+
 export type ActiveGovernorate = Governorate & {
   _count: { districts: number };
 };

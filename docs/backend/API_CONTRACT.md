@@ -844,6 +844,10 @@ The dashboard summary powers the mobile Home / Today Center. Existing count and 
 - `planProviders`: providers actually linked to the current WeddingPlan.
 - `importantNotifications`: latest user-owned notifications for this WeddingPlan.
 - `generatedAt`: server timestamp used by the mobile sync/status copy.
+- `venueSecured` (C24): `true` when the plan has a confirmed booking with a
+  provider in the venue category (`wedding-halls`), or, for a caller who sees
+  money, a non-cancelled cost in a venue budget category (قاعة، صالة). The
+  home's «القاعة» step reads it; clients never work it out themselves.
 - `membershipId` and `membershipAuthorityVersion`: the same current
   contributor-membership identity returned by `/api/v1/contexts`, or `null`
   for an owner. Clients must not construct or guess these values.

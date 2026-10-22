@@ -3,6 +3,7 @@ import 'reflect-metadata';
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import {
+  BookingStatus,
   GuestStatus,
   NotificationPriority,
   PaymentScheduleStatus,
@@ -245,4 +246,57 @@ test('notifications serves the plan dashboard preview under the reader\'s visibi
   assert.equal(latest.take, 3);
   assert.deepEqual(latestImportant.where.priority, important);
   assert.deepEqual(latestImportant.orderBy, [{ priority: 'desc' }, { createdAt: 'desc' }]);
+});
+
+// C24: the home's «القاعة» step is done by a confirmed booking with a venue
+// provider, or by a cost in a venue budget category. Each owner answers for
+// its own rows.
+test('finance answers whether a venue agreement is recorded, narrowed to a contributor\'s costs', async () => {
+  const { client, calls } = recorder({
+    'weddingCost.findMany': [
+      { budgetCategory: { name: 'تصوير' } },
+      { budgetCategory: { name: 'قاعة أو مخدرة الرجال' } },
+    ],
+  });
+  const finance = new FinancePortService();
+  assert.equal(await finance.hasVenueCost(client, 'plan-1', ['cost-1']), true);
+  assert.deepEqual(calls, [
+    ['weddingCost.findMany', {
+      where: {
+        weddingPlanId: 'plan-1',
+        id: { in: ['cost-1'] },
+        status: { not: WeddingCostStatus.CANCELLED },
+      },
+      select: { budgetCategory: { select: { name: true } } },
+    }],
+  ]);
+
+  const none = recorder({
+    'weddingCost.findMany': [{ budgetCategory: { name: 'الذهب' } }],
+  });
+  assert.equal(await finance.hasVenueCost(none.client, 'plan-1'), false);
+});
+
+test('marketplace lists the categories of a plan\'s confirmed bookings, once each', async () => {
+  const { client, calls } = recorder({
+    'booking.findMany': [
+      { provider: { primaryCategoryId: 'cat-halls' } },
+      { provider: { primaryCategoryId: 'cat-halls' } },
+      { provider: { primaryCategoryId: null } },
+    ],
+  });
+  const quotes = new QuoteReadService();
+  assert.deepEqual(
+    await quotes.listConfirmedBookingCategoryIds(client, 'plan-1', ['quote-1']),
+    ['cat-halls'],
+  );
+  assert.deepEqual(calls, [
+    ['booking.findMany', {
+      where: {
+        status: BookingStatus.CONFIRMED,
+        quoteRequest: { weddingPlanId: 'plan-1', id: { in: ['quote-1'] } },
+      },
+      select: { provider: { select: { primaryCategoryId: true } } },
+    }],
+  ]);
 });

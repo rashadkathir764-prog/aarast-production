@@ -13,6 +13,7 @@ import {
   normalizeBudgetCategoryName,
   OTHER_BUDGET_CATEGORY_NAME,
 } from '../domain/cost-category-matching';
+import { isVenueBudgetCategoryName } from '../domain/cost-category-matching';
 import { deriveCostStatus } from '../domain/wedding-cost-aggregate';
 import { deletePlanFundingSources } from './funding-sources.repository';
 import { excludeOthersPrivateCosts } from './cost-privacy.repository';
@@ -259,6 +260,22 @@ export class FinancePortService implements FinancePort {
       },
       select: { id: true, budgetCategoryId: true, totalAmount: true, paidAmount: true },
     });
+  }
+
+  async hasVenueCost(
+    client: Prisma.TransactionClient,
+    weddingPlanId: string,
+    costIds?: readonly string[] | null,
+  ): Promise<boolean> {
+    const costs = await client.weddingCost.findMany({
+      where: {
+        weddingPlanId,
+        ...(costIds ? { id: { in: [...costIds] } } : {}),
+        status: { not: WeddingCostStatus.CANCELLED },
+      },
+      select: { budgetCategory: { select: { name: true } } },
+    });
+    return costs.some((cost) => isVenueBudgetCategoryName(cost.budgetCategory.name));
   }
 
   async listPendingPaymentSchedules(

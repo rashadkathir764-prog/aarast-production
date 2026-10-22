@@ -190,6 +190,12 @@ export interface FinancePort {
     weddingPlanId: string,
     costIds?: readonly string[] | null,
   ): Promise<CostAmounts[]>;
+  /** C24: whether a non-cancelled cost sits in a venue budget category (a recorded venue agreement); `costIds` narrows to a contributor's costs. */
+  hasVenueCost(
+    client: Prisma.TransactionClient,
+    weddingPlanId: string,
+    costIds?: readonly string[] | null,
+  ): Promise<boolean>;
   /** The plan's pending schedules of non-cancelled costs, due date then creation order; `costIds` narrows to a contributor's costs. */
   listPendingPaymentSchedules(
     client: Prisma.TransactionClient,

@@ -29,6 +29,18 @@ const CATEGORY_GROUPS = [
   ["صالون", "مكياج", "تجميل", "كوافير", "beauty", "salon"],
 ] as const;
 
+/**
+ * C24: a budget category that names the wedding venue (قاعة، صالة، venue).
+ * A cost in it is a recorded venue agreement.
+ */
+export function isVenueBudgetCategoryName(name: string): boolean {
+  const source = normalizeForLogicalMatch(name);
+  if (!source) return false;
+  return CATEGORY_GROUPS[0].some((keyword) =>
+    source.includes(normalizeForLogicalMatch(keyword)),
+  );
+}
+
 export interface BudgetCategoryCandidate {
   id: string;
   name: string;

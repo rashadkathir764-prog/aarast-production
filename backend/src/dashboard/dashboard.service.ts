@@ -18,6 +18,8 @@ import {
 } from "../modules/notifications/public/notifications.port";
 import { PrismaService } from "../platform/database/prisma.service";
 import { InsightsReadPorts } from "./insights-read-ports";
+import type { DashboardSetupFacts } from "./dashboard-setup.contracts";
+import { VENUE_PROVIDER_CATEGORY_SLUG } from "../modules/catalog/public/catalog-read.port";
 import {
   COLLABORATION_PERMISSION_PORT,
   type CollaborationPermissionPort as PermissionService,
@@ -100,7 +102,7 @@ export class DashboardService {
   async getWeddingPlanDashboardSummary(
     currentUser: AuthenticatedUser,
     weddingPlanId: string,
-  ): Promise<WeddingPlanDashboardSummaryResponse> {
+  ): Promise<WeddingPlanDashboardSummaryResponse & DashboardSetupFacts> {
     return runRetryableTransaction(
       this.prisma,
       (tx) =>
@@ -117,7 +119,7 @@ export class DashboardService {
     tx: Prisma.TransactionClient,
     currentUser: AuthenticatedUser,
     weddingPlanId: string,
-  ): Promise<WeddingPlanDashboardSummaryResponse> {
+  ): Promise<WeddingPlanDashboardSummaryResponse & DashboardSetupFacts> {
     const context = await this.permissions.assertPlanReadableInTransaction(
       tx,
       weddingPlanId,
@@ -268,6 +270,25 @@ export class DashboardService {
           : null,
       },
     }));
+
+    // C24: a venue is secured by a confirmed booking with a venue provider,
+    // or by a recorded agreement (a cost in a venue budget category). Each
+    // owner answers for its own rows; catalog names the venue category.
+    const [venueCost, bookedCategoryIds] = await Promise.all([
+      canViewMoney
+        ? this.owners.finance.hasVenueCost(tx, weddingPlanId, costIds)
+        : Promise.resolve(false),
+      this.owners.quotes.listConfirmedBookingCategoryIds(
+        tx,
+        weddingPlanId,
+        quoteIds,
+      ),
+    ]);
+    const venueBooked =
+      bookedCategoryIds.length > 0 &&
+      (await this.owners.catalog.getCategories(tx, bookedCategoryIds)).some(
+        (category) => category.slug === VENUE_PROVIDER_CATEGORY_SLUG,
+      );
 
     const dueSoonSchedules = paymentSchedules.filter(
       (schedule) => schedule.dueDate >= today && schedule.dueDate <= dueSoonEnd,
@@ -426,6 +447,7 @@ export class DashboardService {
             status: nextPaymentSchedule.status,
           }
         : null,
+      venueSecured: venueCost || venueBooked,
       moneySummary: {
         totalBudget: moneyOrNull(budgetTotalNumber),
         confirmedCost: moneyOrNull(confirmedCostNumber),

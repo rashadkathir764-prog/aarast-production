@@ -21,6 +21,7 @@ part 'aarast_dashboard_states.dart';
 part 'aarast_dashboard_support.dart';
 part 'aarast_dashboard_journey.dart';
 part 'aarast_dashboard_tiles.dart';
+part 'aarast_dashboard_setup.dart';
 
 class AarastDashboardView extends StatelessWidget {
   const AarastDashboardView({
@@ -120,47 +121,60 @@ class AarastDashboardView extends StatelessWidget {
                       onTap: onOpenWeddingDay,
                     ),
                   ],
-                  const SizedBox(height: 12),
-                  _JourneyNextStep(
-                    focus: focus,
-                    payment: payment,
-                    currency: summary.currency,
-                    now: now ?? DateTime.now(),
-                    onOpen: () {
-                      final due = payment;
-                      final pay = onOpenPayment;
-                      if (due != null && pay != null) {
-                        pay(due);
-                      } else {
-                        _openFocus(focus);
-                      }
-                    },
-                  ),
-                  if (summary.canViewMoney) ...[
-                    const SizedBox(height: 12),
-                    _DashboardMoneyCard(
+                  if (_showsSetupSteps(summary)) ...[
+                    const SizedBox(height: 20),
+                    _JourneySetupSteps(
                       summary: summary,
-                      onTap: onOpenMoney,
-                      paymentShownAbove: payment != null,
+                      onOpenMoney: onOpenMoney,
+                      onOpenProviders: onOpenProviders,
+                      onOpenGuests: onOpenGuests,
                     ),
-                  ],
-                  const SizedBox(height: 12),
-                  _JourneyHomeTiles(
-                    summary: summary,
-                    onOpenTasks: onOpenTasks,
-                    onOpenGuests: onOpenGuests,
-                    onOpenProviders: onOpenProviders,
-                  ),
-                  if (afterwards.isNotEmpty) ...[
-                    const SizedBox(height: 8),
-                    _JourneyAfterwards(
-                      items: afterwards,
-                      onOpen: onOpenImportantItem,
-                    ),
-                  ],
-                  if (_showsSharing) ...[
+                  ] else ...[
                     const SizedBox(height: 12),
-                    _DashboardTeamStrip(summary: summary, onTap: onOpenSharing),
+                    _JourneyNextStep(
+                      focus: focus,
+                      payment: payment,
+                      currency: summary.currency,
+                      now: now ?? DateTime.now(),
+                      onOpen: () {
+                        final due = payment;
+                        final pay = onOpenPayment;
+                        if (due != null && pay != null) {
+                          pay(due);
+                        } else {
+                          _openFocus(focus);
+                        }
+                      },
+                    ),
+                    if (summary.canViewMoney) ...[
+                      const SizedBox(height: 12),
+                      _DashboardMoneyCard(
+                        summary: summary,
+                        onTap: onOpenMoney,
+                        paymentShownAbove: payment != null,
+                      ),
+                    ],
+                    const SizedBox(height: 12),
+                    _JourneyHomeTiles(
+                      summary: summary,
+                      onOpenTasks: onOpenTasks,
+                      onOpenGuests: onOpenGuests,
+                      onOpenProviders: onOpenProviders,
+                    ),
+                    if (afterwards.isNotEmpty) ...[
+                      const SizedBox(height: 8),
+                      _JourneyAfterwards(
+                        items: afterwards,
+                        onOpen: onOpenImportantItem,
+                      ),
+                    ],
+                    if (_showsSharing) ...[
+                      const SizedBox(height: 12),
+                      _DashboardTeamStrip(
+                        summary: summary,
+                        onTap: onOpenSharing,
+                      ),
+                    ],
                   ],
                 ],
               ),

@@ -91,6 +91,7 @@ class DashboardSummary {
     this.generatedAt,
     this.currentUserRole,
     this.contributionHistory = const {},
+    this.venueSecured = false,
   });
 
   factory DashboardSummary.fromJson(Map<String, dynamic> json) {
@@ -209,6 +210,7 @@ class DashboardSummary {
           json['currentUserRole']?.toString() ??
           participantSummary['currentUserRole']?.toString(),
       contributionHistory: _intMapOrEmpty(json['contributionHistory']),
+      venueSecured: json['venueSecured'] == true,
       permissions: DashboardPermissionSummary.fromJson(
         _mapOrEmpty(json['permissions']),
       ),
@@ -265,6 +267,10 @@ class DashboardSummary {
   final String? currentUserRole;
   final Map<String, int> contributionHistory;
   final DashboardPermissionSummary permissions;
+
+  /// C24: the venue is secured by a confirmed booking or a recorded venue
+  /// agreement, as the server decides.
+  final bool venueSecured;
 
   bool get canViewMoney => permissions.canViewMoney;
 
@@ -332,6 +338,7 @@ class DashboardSummary {
       generatedAt: generatedAt,
       currentUserRole: currentUserRole,
       contributionHistory: contributionHistory,
+      venueSecured: venueSecured,
     );
   }
 

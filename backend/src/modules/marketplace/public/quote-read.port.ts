@@ -100,6 +100,12 @@ export interface QuoteReadPort {
     weddingPlanId: string,
     quoteIds?: readonly string[] | null,
   ): Promise<PlanQuoteCounters>;
+  /** C24: the primary categories of the providers whose booking on the plan is confirmed; `quoteIds` narrows to a contributor's quotes. */
+  listConfirmedBookingCategoryIds(
+    client: Prisma.TransactionClient,
+    weddingPlanId: string,
+    quoteIds?: readonly string[] | null,
+  ): Promise<string[]>;
   /** The newest offers made to the plan's quote requests, at most `take`. */
   listPlanQuoteOffers(
     client: Prisma.TransactionClient,

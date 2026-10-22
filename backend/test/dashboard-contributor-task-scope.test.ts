@@ -231,6 +231,8 @@ function dashboardFixture(input: {
           ...cost,
           totalAmount: new Prisma.Decimal(cost.totalAmount),
           paidAmount: new Prisma.Decimal(cost.paidAmount),
+          // Every cost belongs to a budget category, as in the database.
+          budgetCategory: { name: "أخرى" },
         })),
   };
   const tx = new Proxy(

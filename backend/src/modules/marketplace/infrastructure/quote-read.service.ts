@@ -1,5 +1,10 @@
 import { Injectable } from '@nestjs/common';
-import { Prisma, QuoteOfferStatus, QuoteRequestStatus } from '@prisma/client';
+import {
+  BookingStatus,
+  Prisma,
+  QuoteOfferStatus,
+  QuoteRequestStatus,
+} from '@prisma/client';
 import type {
   ConversationQuoteCount,
   ConversationQuoteRequest,
@@ -84,6 +89,30 @@ export class QuoteReadService implements QuoteReadPort {
     userId: string,
   ): Promise<number> {
     return client.quoteRequest.count({ where: { userId } });
+  }
+
+  async listConfirmedBookingCategoryIds(
+    client: Prisma.TransactionClient,
+    weddingPlanId: string,
+    quoteIds?: readonly string[] | null,
+  ): Promise<string[]> {
+    const bookings = await client.booking.findMany({
+      where: {
+        status: BookingStatus.CONFIRMED,
+        quoteRequest: {
+          weddingPlanId,
+          ...(quoteIds ? { id: { in: [...quoteIds] } } : {}),
+        },
+      },
+      select: { provider: { select: { primaryCategoryId: true } } },
+    });
+    return [
+      ...new Set(
+        bookings.flatMap((booking) =>
+          booking.provider.primaryCategoryId ? [booking.provider.primaryCategoryId] : [],
+        ),
+      ),
+    ];
   }
 
   async getPlanQuoteCounters(

@@ -132,6 +132,8 @@ DashboardSummary _ownerSummary() {
     'overdueTasks': 0,
     'todayTasks': 0,
     'guestCount': 1,
+    // A running plan: its first steps are done (b01).
+    'venueSecured': true,
     'confirmedGuests': 0,
     'providerCount': 0,
     'quoteRequestsCount': 0,

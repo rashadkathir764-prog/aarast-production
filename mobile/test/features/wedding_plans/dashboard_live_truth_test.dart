@@ -93,7 +93,9 @@ void main() {
       'completedTasks': 0,
       'overdueTasks': 0,
       'todayTasks': 0,
-      'guestCount': 0,
+      // A running plan: its first steps are done (b01).
+      'guestCount': 40,
+      'venueSecured': true,
       'confirmedGuests': 0,
       'providerCount': 0,
       'quoteRequestsCount': 0,

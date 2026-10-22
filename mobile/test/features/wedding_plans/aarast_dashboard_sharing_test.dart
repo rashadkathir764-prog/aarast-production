@@ -181,6 +181,8 @@ DashboardSummary _summary({DateTime? weddingDate}) {
     overdueTasks: 0,
     todayTasks: 0,
     guestCount: 25,
+    // A running plan: its first steps are done (b01).
+    venueSecured: true,
     confirmedGuests: 10,
     providerCount: 1,
     quoteRequestsCount: 1,

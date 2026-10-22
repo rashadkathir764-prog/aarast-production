@@ -528,7 +528,7 @@ Widget vOfferExpired() => Phone(
             children: [
               const Icon(LucideIcons.clock, size: 20, color: K.muted),
               const SizedBox(width: 8),
-              Text('العرض انتهى 5 نوفمبر', style: tx(16, w: bold, c: K.muted)),
+              Text('العرض انتهى أمس', style: tx(16, w: bold, c: K.muted)),
             ],
           ),
           gap(8),
@@ -592,7 +592,7 @@ Widget vProviderStatus() {
     children: [
       tabHeader('المصورين', 'صنعاء', sec: Sec.providers),
       p('ضوء صنعاء', 'موثّق: تأكدنا من السجل والرقم',
-          const Icon(LucideIcons.badgeCheck, size: 18, color: K.sky), 'من 300 ألف · محدّث هذا الشهر'),
+          const Icon(LucideIcons.badgeCheck, size: 18, color: K.sky), 'من 350 ألف · محدّث هذا الشهر'),
       p('عدسة صنعاء', 'ما وثّق بعد', tag('جديد', K.muted, K.line), 'من 250 ألف · محدّث قبل 8 شهور'),
       p('مصور الحارة', 'الملف أضفناه من دليل عام، صاحبه ما استلمه',
           tag('غير مفعّل', K.saffronInk, K.saffronSoft), 'ما فيه سعر · تقدر تطلب عرض'),

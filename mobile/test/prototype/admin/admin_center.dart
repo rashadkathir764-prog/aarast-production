@@ -169,13 +169,14 @@ Widget n03Funnel() {
 /// Weddings coming up per week and city: the season before it arrives.
 Widget n04Calendar() {
   const cities = ['صنعاء', 'عدن', 'تعز', 'إب', 'الحديدة'];
-  const weeks = ['18 يناير', '25 يناير', '1 فبراير', '8 فبراير', '15 فبراير', '22 فبراير'];
+  // Ramadan 1448 starts about 8 February 2027: the peak is the week before.
+  const weeks = ['28 ديسمبر', '4 يناير', '11 يناير', '18 يناير', '25 يناير', '1 فبراير'];
   const v = [
-    [42, 58, 61, 39, 30, 22],
-    [18, 22, 31, 20, 14, 9],
-    [9, 12, 14, 10, 6, 5],
-    [7, 8, 11, 6, 4, 3],
-    [5, 6, 9, 4, 3, 2],
+    [22, 30, 39, 42, 58, 61],
+    [9, 14, 20, 18, 22, 31],
+    [5, 6, 10, 9, 12, 14],
+    [3, 4, 6, 7, 8, 11],
+    [2, 3, 4, 5, 6, 9],
   ];
   Color c(int n) => n >= 50 ? K.coral : n >= 30 ? K.saffron : n >= 12 ? K.saffronSoft : A.soft;
   return desk(

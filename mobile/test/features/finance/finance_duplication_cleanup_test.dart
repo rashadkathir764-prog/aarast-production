@@ -102,6 +102,11 @@ void main() {
       );
       expect(find.text('الميزانية والتصنيفات'), findsOneWidget);
       expect(find.text('مواعيد الدفع'), findsOneWidget);
+      // w22: an account's plan keeps receipts, reached from here.
+      expect(
+        find.byKey(const ValueKey('money-settings-receipts')),
+        findsOneWidget,
+      );
       expect(find.byType(GridView), findsNothing);
       expect(tester.takeException(), isNull);
     });

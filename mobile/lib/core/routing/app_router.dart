@@ -35,6 +35,7 @@ import '../../features/finance/finance_api.dart'
         FundingSourcesScreen,
         MoneyBudgetScreen,
         MoneyOverviewScreen,
+        MoneyReceiptsScreen,
         PayPaymentScheduleScreen,
         PaymentScheduleDetailsScreen,
         PaymentScheduleFormScreen,
@@ -273,6 +274,10 @@ class AppRouter {
       path: '/wedding-plans/$planId/money/payments/$paymentId',
       queryParameters: costId == null ? null : {'costId': costId},
     ).toString();
+  }
+
+  static String moneyReceipts(String planId) {
+    return '/wedding-plans/$planId/money/receipts';
   }
 
   static String moneySchedules(String planId, {String? costId}) {

@@ -1747,6 +1747,10 @@ const trackedOwnerApiContracts = [
       { uri: 'screens/costs_screen.dart', show: ['CostsScreen'] },
       { uri: 'screens/money_budget_screen.dart', show: ['MoneyBudgetScreen'] },
       {
+        uri: 'screens/money_receipts_screen.dart',
+        show: ['MoneyReceiptsScreen'],
+      },
+      {
         uri: 'screens/money_overview_screen.dart',
         show: ['MoneyOverviewScreen', 'shouldShowMoneyStarter'],
       },
@@ -3036,6 +3040,7 @@ const trackedCompositionRootContracts = [
           'FundingSourcesScreen',
           'MoneyBudgetScreen',
           'MoneyOverviewScreen',
+          'MoneyReceiptsScreen',
           'PayPaymentScheduleScreen',
           'PaymentScheduleDetailsScreen',
           'PaymentScheduleFormScreen',

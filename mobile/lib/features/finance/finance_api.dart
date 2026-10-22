@@ -17,6 +17,7 @@ export 'screens/cost_payment_screens.dart'
     show CostPaymentDetailsScreen, RecordCostPaymentScreen;
 export 'screens/costs_screen.dart' show CostsScreen;
 export 'screens/money_budget_screen.dart' show MoneyBudgetScreen;
+export 'screens/money_receipts_screen.dart' show MoneyReceiptsScreen;
 export 'screens/money_overview_screen.dart'
     show MoneyOverviewScreen, shouldShowMoneyStarter;
 export 'screens/payment_schedule_screens.dart'

@@ -59,8 +59,8 @@ void main() {
 
     expect(find.byKey(const Key('cost-receipt-r1')), findsOneWidget);
     expect(find.byKey(const Key('cost-receipt-r2')), findsOneWidget);
-    expect(find.textContaining('2 إيصال محفوظ'), findsOneWidget);
-    expect(find.text('إضافة إيصال'), findsOneWidget);
+    expect(find.text('ما يشوفها إلا اللي يشوف هذا الاتفاق'), findsOneWidget);
+    expect(find.text('أضف إيصال'), findsOneWidget);
   });
 
   testWidgets('a reader without money rights sees receipts but cannot add', (tester) async {
@@ -71,7 +71,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.byKey(const Key('cost-receipt-r1')), findsOneWidget);
-    expect(find.text('إضافة إيصال'), findsNothing);
+    expect(find.text('أضف إيصال'), findsNothing);
   });
 
   testWidgets('deleting from the opened receipt removes it', (tester) async {
@@ -83,9 +83,9 @@ void main() {
 
     await tester.tap(find.byKey(const Key('cost-receipt-r1')));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('حذف').first);
+    await tester.tap(find.byKey(const ValueKey('receipt-viewer-remove')));
     await tester.pumpAndSettle();
-    await tester.tap(find.widgetWithText(FilledButton, 'حذف'));
+    await tester.tap(find.byKey(const ValueKey('receipt-remove-confirm')));
     await tester.pumpAndSettle();
 
     expect(api.deleted, ['r1']);
@@ -112,11 +112,11 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(find.text('إيصال الدفعة'), findsOneWidget);
+    expect(find.text('الإيصال'), findsOneWidget);
     expect(find.byKey(const Key('cost-receipt-r1')), findsOneWidget);
     expect(find.byKey(const Key('cost-receipt-r2')), findsNothing);
     expect(find.byKey(const Key('cost-receipt-r3')), findsNothing);
-    expect(find.text('إضافة إيصال'), findsOneWidget);
+    expect(find.text('أضف إيصال'), findsOneWidget);
 
     // Ten receipts on the cost, none on this payment: no room left.
     api.receipts = [for (var i = 0; i < 10; i++) _receipt('c$i')];
@@ -132,7 +132,8 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
-    expect(find.text('إضافة إيصال'), findsNothing);
+    expect(find.text('أضف إيصال'), findsNothing);
+    expect(find.text('ما في إيصال محفوظ'), findsOneWidget);
   });
 
   testWidgets('without an API client the section stays out of the way', (tester) async {

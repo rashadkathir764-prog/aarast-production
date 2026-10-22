@@ -1,12 +1,15 @@
 import 'package:aarast_mobile/core/network/api_client.dart';
 import 'package:aarast_mobile/core/routing/app_router.dart';
+import 'package:aarast_mobile/features/finance/data/cost_receipts_api.dart';
 import 'package:aarast_mobile/features/finance/data/finance_api.dart';
 import 'package:aarast_mobile/features/finance/models/budget_category.dart';
+import 'package:aarast_mobile/features/finance/models/cost_receipt.dart';
 import 'package:aarast_mobile/features/finance/models/money_summary.dart';
 import 'package:aarast_mobile/features/finance/models/wedding_cost.dart';
 import 'package:aarast_mobile/features/finance/providers/finance_provider.dart';
 import 'package:aarast_mobile/features/finance/screens/cost_details_screen.dart';
 import 'package:aarast_mobile/features/finance/screens/cost_payment_screens.dart';
+import 'package:aarast_mobile/features/finance/screens/money_receipts_screen.dart';
 import 'package:aarast_mobile/features/finance/screens/payment_schedule_screens.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -212,6 +215,50 @@ void main() {
         find.byKey(const ValueKey('payment-record-elsewhere')),
         findsOneWidget,
       );
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('receipts count the payments that have one (w22)', (
+      tester,
+    ) async {
+      final receipts = _ReceiptsFake([]);
+      await _pumpMoneyScreen(
+        tester,
+        MoneyReceiptsScreen(weddingPlanId: 'plan-1', api: receipts),
+      );
+
+      expect(find.text('الإيصالات'), findsOneWidget);
+      expect(find.text('0 من 1 دفعة لها إيصال'), findsOneWidget);
+      expect(
+        find.byKey(const Key('receipts-payment-payment-1')),
+        findsOneWidget,
+      );
+      expect(find.textContaining('بدون إيصال'), findsOneWidget);
+      expect(tester.takeException(), isNull);
+
+      receipts.items = [
+        CostReceipt.fromJson({
+          'id': 'r1',
+          'weddingCostId': 'cost-1',
+          'costPaymentId': 'payment-1',
+          'downloadUrl': 'https://media.invalid/r1.png',
+          'createdAt': '2026-07-09T09:00:00Z',
+        }),
+        CostReceipt.fromJson({
+          'id': 'r2',
+          'weddingCostId': 'cost-1',
+          'downloadUrl': 'https://media.invalid/r2.png',
+          'createdAt': '2026-07-09T09:00:00Z',
+        }),
+      ];
+      await tester.drag(find.byType(ListView), const Offset(0, 300));
+      await tester.pumpAndSettle();
+
+      expect(find.text('1 من 1 دفعة لها إيصال'), findsOneWidget);
+      expect(find.textContaining('بدون إيصال'), findsNothing);
+      // A receipt kept for the whole agreement shows on its own.
+      expect(find.text('للاتفاق كله'), findsOneWidget);
+      expect(find.byKey(const Key('receipts-cost-r2')), findsOneWidget);
       expect(tester.takeException(), isNull);
     });
 
@@ -631,4 +678,14 @@ class _ReversedPaymentApi extends _MoneyDetailsApi {
   }) async {
     return [payment, reversal];
   }
+}
+
+class _ReceiptsFake extends CostReceiptsApi {
+  _ReceiptsFake(this.items) : super(ApiClient(tokenProvider: () async => null));
+
+  List<CostReceipt> items;
+
+  @override
+  Future<List<CostReceipt>> list(String costId) async =>
+      items.where((receipt) => receipt.weddingCostId == costId).toList();
 }

@@ -1,15 +1,12 @@
 import 'package:flutter/material.dart';
-import 'package:image_picker/image_picker.dart';
-import 'package:lucide_icons/lucide_icons.dart';
 import 'package:provider/provider.dart';
 
-import '../../../core/media/media_upload_api.dart';
+import '../../../core/experience_v3/aarast_v3.dart';
 import '../../../core/network/api_client.dart';
-import '../../../core/theme/app_theme.dart';
-import '../../../core/widgets/aarast_toast.dart';
 import '../../../core/widgets/aarast_ui.dart';
 import '../data/cost_receipts_api.dart';
 import '../models/cost_receipt.dart';
+import 'receipt_flows.dart';
 
 /// The receipt photos kept with a cost (V1 checklist 4.4). They need a
 /// connection: each photo is private and opened through a short-lived link,
@@ -45,7 +42,7 @@ class _CostReceiptsSectionState extends State<CostReceiptsSection> {
   bool _available = true;
   bool _loading = true;
   bool _busy = false;
-  String? _error;
+  bool _failed = false;
 
   late CostReceiptsApi _api;
 
@@ -70,7 +67,7 @@ class _CostReceiptsSectionState extends State<CostReceiptsSection> {
     }
     setState(() {
       _loading = true;
-      _error = null;
+      _failed = false;
     });
     try {
       final receipts = await _api.list(widget.costId);
@@ -85,132 +82,56 @@ class _CostReceiptsSectionState extends State<CostReceiptsSection> {
                     .toList();
         });
       }
-    } on ApiException catch (error) {
-      if (mounted) setState(() => _error = error.message);
     } catch (_) {
-      if (mounted) setState(() => _error = 'تعذر تحميل الإيصالات.');
+      if (mounted) setState(() => _failed = true);
     } finally {
       if (mounted) setState(() => _loading = false);
     }
   }
 
-  Future<void> _add() async {
-    final source = await showAarastBottomSheet<ImageSource>(
-      context: context,
-      builder: (sheetContext) => SafeArea(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            ListTile(
-              leading: const Icon(LucideIcons.camera),
-              title: const Text('تصوير الإيصال'),
-              onTap: () => Navigator.of(sheetContext).pop(ImageSource.camera),
-            ),
-            ListTile(
-              leading: const Icon(LucideIcons.image),
-              title: const Text('اختيار من المعرض'),
-              onTap: () => Navigator.of(sheetContext).pop(ImageSource.gallery),
-            ),
-          ],
-        ),
-      ),
-    );
-    if (source == null || !mounted) return;
-    final file = await ImagePicker().pickImage(
-      source: source,
-      imageQuality: 82,
-      maxWidth: 2000,
-    );
-    if (file == null || !mounted) return;
-    final uploader = context.read<MediaUploadApi>();
+  /// Runs one network change with the section busy, then reloads it.
+  /// Questions are asked before, so nothing spins behind a dialog.
+  Future<void> _busyWhile(Future<bool> Function() action) async {
     setState(() => _busy = true);
     try {
-      final ticket = await uploader.uploadImage(file: file, purpose: 'cost-receipt');
-      await _api.add(
-        widget.costId,
-        attachmentRef: ticket.attachmentRef,
-        costPaymentId: widget.costPaymentId,
-      );
-      if (mounted) AarastToast.showSuccess(context, 'حُفظ الإيصال.');
-      await _load();
-    } on ApiException catch (error) {
-      if (mounted) {
-        AarastToast.showError(
-          context,
-          costReceiptErrorMessage(error.serverCode) ?? error.message,
-        );
-      }
-    } catch (_) {
-      if (mounted) AarastToast.showError(context, 'تعذر حفظ الإيصال الآن.');
+      if (await action()) await _load();
     } finally {
       if (mounted) setState(() => _busy = false);
     }
   }
 
-  Future<void> _delete(CostReceipt receipt) async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (dialogContext) => AarastDialog(
-        title: const Text('حذف الإيصال؟'),
-        content: const Text('تُحذف الصورة نهائيًا.'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(dialogContext).pop(false),
-            child: const Text('إلغاء'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.of(dialogContext).pop(true),
-            child: const Text('حذف'),
-          ),
-        ],
+  Future<void> _add({CostReceipt? replacing}) async {
+    final file = await pickReceiptImage(context);
+    if (file == null || !mounted) return;
+    await _busyWhile(
+      () => saveReceiptImage(
+        context,
+        _api,
+        file,
+        costId: widget.costId,
+        costPaymentId: replacing?.costPaymentId ?? widget.costPaymentId,
+        replacing: replacing,
       ),
     );
-    if (confirmed != true || !mounted) return;
-    setState(() => _busy = true);
-    try {
-      await _api.delete(widget.costId, receipt.id);
-      await _load();
-    } on ApiException catch (error) {
-      if (mounted) AarastToast.showError(context, error.message);
-    } finally {
-      if (mounted) setState(() => _busy = false);
-    }
   }
 
   Future<void> _open(CostReceipt receipt) async {
-    await showDialog<void>(
-      context: context,
-      builder: (dialogContext) => AarastDialog(
-        title: const Text('الإيصال'),
-        scrollable: false,
-        content: InteractiveViewer(
-          child: Image.network(
-            receipt.downloadUrl,
-            errorBuilder: (_, _, _) => const Padding(
-              padding: EdgeInsets.all(24),
-              child: Text('انتهت صلاحية الرابط. أغلق وافتح الإيصال مرة أخرى.'),
-            ),
-          ),
-        ),
-        actions: [
-          if (widget.canManage)
-            TextButton.icon(
-              onPressed: () {
-                Navigator.of(dialogContext).pop();
-                _delete(receipt);
-              },
-              icon: const Icon(LucideIcons.trash2, color: AppTheme.danger),
-              label: const Text('حذف', style: TextStyle(color: AppTheme.danger)),
-            ),
-          TextButton(
-            onPressed: () => Navigator.of(dialogContext).pop(),
-            child: const Text('إغلاق'),
-          ),
-        ],
-      ),
+    final action = await showReceiptViewer(
+      context,
+      receipt,
+      canManage: widget.canManage,
     );
-    // The link lasts two minutes: refresh so the next opening works.
-    if (mounted) await _load();
+    if (!mounted) return;
+    switch (action) {
+      case ReceiptViewerAction.remove:
+        if (!await confirmRemoveReceipt(context) || !mounted) return;
+        await _busyWhile(() => deleteReceipt(context, _api, receipt));
+      case ReceiptViewerAction.replace:
+        await _add(replacing: receipt);
+      case null:
+        // The link lasts two minutes: refresh so the next opening works.
+        await _load();
+    }
   }
 
   @override
@@ -221,57 +142,84 @@ class _CostReceiptsSectionState extends State<CostReceiptsSection> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        AarastSectionHeader(
-          title: forPayment ? 'إيصال الدفعة' : 'الإيصالات',
-          subtitle: _receipts.isEmpty
-              ? (forPayment
-                    ? 'صوّر إيصال هذه الدفعة واحفظه معها.'
-                    : 'صوّر إيصال الدفع واحفظه مع التكلفة.')
-              : '${_receipts.length} إيصال محفوظ، لا يراه إلا من يرى هذه التكلفة.',
-          icon: LucideIcons.receipt,
-          actionLabel: canAdd ? 'إضافة إيصال' : null,
-          onAction: canAdd ? _add : null,
+        JourneySectionTitle(
+          forPayment ? 'الإيصال' : 'الإيصالات',
+          action: canAdd && _receipts.isNotEmpty ? 'أضف إيصال' : null,
+          onAction: canAdd && _receipts.isNotEmpty ? _add : null,
         ),
-        const SizedBox(height: 10),
         if (_loading || _busy)
           const Padding(
             padding: EdgeInsets.all(12),
-            child: Center(child: AarastInlineSpinner()),
+            child: Center(
+              child: AarastInlineSpinner(color: AarastV3Color.primary),
+            ),
           )
-        else if (_error != null)
-          AarastErrorState(
-            title: 'تعذر تحميل الإيصالات',
-            message: _error!,
+        else if (_failed)
+          JourneyListState(
+            phase: JourneyListPhase.error,
+            section: JourneySection.money,
             onRetry: _load,
           )
-        else if (_receipts.isNotEmpty)
+        else if (_receipts.isEmpty)
+          _MissingReceipt(forPayment: forPayment, onAdd: canAdd ? _add : null)
+        else ...[
           Wrap(
             spacing: 10,
             runSpacing: 10,
             children: [
               for (final receipt in _receipts)
-                InkWell(
+                ReceiptThumb(
                   key: Key('cost-receipt-${receipt.id}'),
+                  receipt: receipt,
                   onTap: () => _open(receipt),
-                  borderRadius: BorderRadius.circular(12),
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(12),
-                    child: Image.network(
-                      receipt.downloadUrl,
-                      width: 84,
-                      height: 84,
-                      fit: BoxFit.cover,
-                      errorBuilder: (_, _, _) => Container(
-                        width: 84,
-                        height: 84,
-                        color: AppTheme.surfaceRaised,
-                        child: const Icon(LucideIcons.receipt),
-                      ),
-                    ),
-                  ),
                 ),
             ],
           ),
+          const SizedBox(height: 8),
+          Text(
+            'ما يشوفها إلا اللي يشوف هذا الاتفاق',
+            style: JourneyType.of(
+              JourneyType.caption,
+              color: AarastV3Color.textMuted,
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+}
+
+/// No receipt yet: the empty frame, which takes a photo for a manager.
+class _MissingReceipt extends StatelessWidget {
+  const _MissingReceipt({required this.forPayment, required this.onAdd});
+
+  final bool forPayment;
+  final VoidCallback? onAdd;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        ReceiptThumb(
+          key: const ValueKey('cost-receipt-add'),
+          receipt: null,
+          onTap: onAdd,
+          size: 72,
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Text(
+            onAdd == null
+                ? 'ما في إيصال محفوظ'
+                : forPayment
+                ? 'صوّر إيصال هذي الدفعة واحفظه معها'
+                : 'صوّر إيصالات الدفع واحفظها مع الاتفاق',
+            style: JourneyType.of(
+              JourneyType.body,
+              color: AarastV3Color.textMuted,
+            ),
+          ),
+        ),
       ],
     );
   }

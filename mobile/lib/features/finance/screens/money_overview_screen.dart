@@ -26,6 +26,7 @@ import '../../wedding_plans/wedding_plans_api.dart'
         WeddingStageContextLine,
         WeddingStageDomain,
         resolveWeddingPlanStage;
+import '../data/finance_local_data_source.dart';
 import '../models/funding_source.dart';
 import '../models/money_share_text.dart';
 import '../models/money_summary.dart';
@@ -162,6 +163,14 @@ class _MoneyOverviewScreenState extends State<MoneyOverviewScreen> {
                   context.push(AppRouter.moneyBudget(widget.weddingPlanId)),
               onSchedules: () =>
                   context.push(AppRouter.moneySchedules(widget.weddingPlanId)),
+              onReceipts:
+                  FinanceLocalDataSource.isLocalGuestPlanId(
+                    widget.weddingPlanId,
+                  )
+                  ? null
+                  : () => context.push(
+                      AppRouter.moneyReceipts(widget.weddingPlanId),
+                    ),
             ),
             const SizedBox(height: 14),
             JourneyTabSwitch(

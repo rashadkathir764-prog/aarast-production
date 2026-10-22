@@ -1,6 +1,6 @@
 part of 'money_overview_screen.dart';
 
-enum _MoneySettingsAction { budget, schedules }
+enum _MoneySettingsAction { budget, schedules, receipts }
 
 class _MoneyHeader extends StatelessWidget {
   const _MoneyHeader({
@@ -9,6 +9,7 @@ class _MoneyHeader extends StatelessWidget {
     required this.onShare,
     required this.onBudget,
     required this.onSchedules,
+    required this.onReceipts,
   });
 
   final MoneySummary summary;
@@ -16,6 +17,9 @@ class _MoneyHeader extends StatelessWidget {
   final VoidCallback? onShare;
   final VoidCallback onBudget;
   final VoidCallback onSchedules;
+
+  /// Null where receipts cannot be kept (a guest's plan on the phone).
+  final VoidCallback? onReceipts;
 
   @override
   Widget build(BuildContext context) {
@@ -60,6 +64,7 @@ class _MoneyHeader extends StatelessWidget {
           canManage: canManage,
           onBudget: onBudget,
           onSchedules: onSchedules,
+          onReceipts: onReceipts,
         ),
       ],
     );
@@ -71,11 +76,13 @@ class _MoneySettingsMenu extends StatelessWidget {
     required this.canManage,
     required this.onBudget,
     required this.onSchedules,
+    required this.onReceipts,
   });
 
   final bool canManage;
   final VoidCallback onBudget;
   final VoidCallback onSchedules;
+  final VoidCallback? onReceipts;
 
   @override
   Widget build(BuildContext context) {
@@ -90,6 +97,8 @@ class _MoneySettingsMenu extends StatelessWidget {
               onBudget();
             case _MoneySettingsAction.schedules:
               onSchedules();
+            case _MoneySettingsAction.receipts:
+              onReceipts?.call();
           }
         },
         itemBuilder: (context) => [
@@ -110,6 +119,15 @@ class _MoneySettingsMenu extends StatelessWidget {
               label: 'مواعيد الدفع',
             ),
           ),
+          if (onReceipts != null)
+            const PopupMenuItem(
+              key: ValueKey('money-settings-receipts'),
+              value: _MoneySettingsAction.receipts,
+              child: _MoneySettingsItem(
+                icon: LucideIcons.receipt,
+                label: 'الإيصالات',
+              ),
+            ),
         ],
         // A round icon like the other header actions: a word beside three
         // buttons does not fit a 320-point phone with large text.

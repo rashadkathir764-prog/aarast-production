@@ -110,4 +110,6 @@ class AarastSemanticTokens {
   static const Color dangerMuted = AarastV3Color.dangerSoft;
   static const Color info = AarastV3Color.cobalt;
   static const Color infoMuted = AarastV3Color.cobaltSoft;
+  static const Color highlight = AarastV3Color.lilac;
+  static const Color highlightMuted = AarastV3Color.lilacSoft;
 }

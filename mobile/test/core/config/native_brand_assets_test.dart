@@ -52,9 +52,10 @@ void main() {
     expect(manifest, contains('android:roundIcon="@mipmap/ic_launcher_round"'));
     expect(launchBackground, contains('@drawable/launch_image'));
     expect(android12Style, contains('@drawable/ic_launcher_foreground'));
-    expect(colors, contains('#FFFEFD'));
+    // Teal identity (DECISIONS 2026-10-22, D0).
+    expect(colors, contains('<color name="splash_color">#0B6E69</color>'));
     expect(storyboard, contains('image="LaunchImage"'));
-    expect(storyboard, contains('green="0.9960784314"'));
+    expect(storyboard, contains('green="0.4313725490"'));
   });
 
   test('Android push uses the branded high-importance heads-up channel', () {
@@ -76,6 +77,6 @@ void main() {
     expect(activity, contains('NotificationManager.IMPORTANCE_HIGH'));
     expect(activity, contains('setShowBadge(true)'));
     expect(notificationIcon, contains('M12,2.4L14.15,9.85'));
-    expect(colors, contains('#800020'));
+    expect(colors, contains('<color name="notification_accent">#0B6E69</color>'));
   });
 }

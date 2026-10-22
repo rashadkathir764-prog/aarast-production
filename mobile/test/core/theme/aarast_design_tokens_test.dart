@@ -15,30 +15,32 @@ double _contrastRatio(Color foreground, Color background) {
 void main() {
   group('Aarast V3 design tokens', () {
     test('define the active mobile palette', () {
-      expect(AarastSemanticTokens.canvas, const Color(0xFFFFFEFD));
+      expect(AarastSemanticTokens.canvas, const Color(0xFFF2F4F3));
       expect(AarastSemanticTokens.surface, const Color(0xFFFFFFFF));
       expect(AarastSemanticTokens.surfaceRaised, const Color(0xFFFFFFFF));
-      expect(AarastSemanticTokens.surfaceMuted, const Color(0xFFF7F6F5));
-      expect(AarastSemanticTokens.textPrimary, const Color(0xFF2D1A1E));
-      expect(AarastSemanticTokens.textSecondary, const Color(0xFF6F6467));
-      expect(AarastSemanticTokens.textDisabled, const Color(0xFF9A8F91));
-      expect(AarastSemanticTokens.border, const Color(0xFFE8E3E4));
-      expect(AarastSemanticTokens.borderStrong, const Color(0xFFD3C9CC));
-      expect(AarastSemanticTokens.brand, const Color(0xFF800020));
-      expect(AarastSemanticTokens.brandDeep, const Color(0xFF5A0015));
-      expect(AarastSemanticTokens.brandMuted, const Color(0xFFF8E8EC));
-      expect(AarastSemanticTokens.onBrand, const Color(0xFFFFFEFD));
-      expect(AarastSemanticTokens.brandAccent, const Color(0xFF8A6A24));
+      expect(AarastSemanticTokens.surfaceMuted, const Color(0xFFF7F8F8));
+      expect(AarastSemanticTokens.textPrimary, const Color(0xFF13211F));
+      expect(AarastSemanticTokens.textSecondary, const Color(0xFF55625E));
+      expect(AarastSemanticTokens.textDisabled, const Color(0xFF8A9592));
+      expect(AarastSemanticTokens.border, const Color(0xFFE2E7E5));
+      expect(AarastSemanticTokens.borderStrong, const Color(0xFFC9D1CE));
+      expect(AarastSemanticTokens.brand, const Color(0xFF0B6E69));
+      expect(AarastSemanticTokens.brandDeep, const Color(0xFF064B47));
+      expect(AarastSemanticTokens.brandMuted, const Color(0xFFDCEFEC));
+      expect(AarastSemanticTokens.onBrand, const Color(0xFFFFFFFF));
+      expect(AarastSemanticTokens.brandAccent, const Color(0xFF9A5F0E));
       expect(
         AarastSemanticTokens.brandAccentDecorative,
-        const Color(0xFFD9B15F),
+        const Color(0xFFFBDFA6),
       );
-      expect(AarastSemanticTokens.brandAccentMuted, const Color(0xFFFBF3DE));
-      expect(AarastSemanticTokens.focus, const Color(0xFF5A788D));
-      expect(AarastSemanticTokens.success, const Color(0xFF4E8A78));
-      expect(AarastSemanticTokens.warning, const Color(0xFFA56D34));
-      expect(AarastSemanticTokens.danger, const Color(0xFFB74452));
-      expect(AarastSemanticTokens.info, const Color(0xFF5A788D));
+      expect(AarastSemanticTokens.brandAccentMuted, const Color(0xFFFCEFD8));
+      expect(AarastSemanticTokens.focus, const Color(0xFF2F6E9E));
+      expect(AarastSemanticTokens.success, const Color(0xFF25774F));
+      expect(AarastSemanticTokens.warning, const Color(0xFF9A5F0E));
+      expect(AarastSemanticTokens.danger, const Color(0xFFB8432A));
+      expect(AarastSemanticTokens.info, const Color(0xFF2F6E9E));
+      expect(AarastSemanticTokens.highlight, const Color(0xFF6A4FA3));
+      expect(AarastSemanticTokens.highlightMuted, const Color(0xFFECE6F6));
     });
 
     test('keeps text-capable roles AA-readable on paper', () {

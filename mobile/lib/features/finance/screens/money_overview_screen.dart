@@ -26,15 +26,17 @@ import '../../wedding_plans/wedding_plans_api.dart'
         WeddingStageContextLine,
         WeddingStageDomain,
         resolveWeddingPlanStage;
+import '../models/funding_source.dart';
 import '../models/money_share_text.dart';
 import '../models/money_summary.dart';
 import '../models/money_starter_catalog.dart';
 import '../models/wedding_cost.dart';
 import '../providers/finance_provider.dart';
-import '../widgets/funding_widgets.dart';
+import '../providers/funding_provider.dart';
 import '../widgets/money_starter_setup.dart';
 import '../widgets/money_widgets.dart';
 
+part 'money_overview_screen.funding.dart';
 part 'money_overview_screen.items.dart';
 part 'money_overview_screen.payments.dart';
 part 'money_overview_screen.pieces.dart';
@@ -209,12 +211,10 @@ class _MoneyOverviewScreenState extends State<MoneyOverviewScreen> {
               ],
               _ => [
                 if (provider.summary.funding case final funding?)
-                  MoneyFundingCard(
+                  _MoneyFundingTab(
+                    planId: widget.weddingPlanId,
                     funding: funding,
                     currency: provider.summary.currency,
-                    onOpen: () => context.push(
-                      AppRouter.moneyFunding(widget.weddingPlanId),
-                    ),
                   ),
               ],
             },

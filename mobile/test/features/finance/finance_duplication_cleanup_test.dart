@@ -4,6 +4,9 @@ import 'package:aarast_mobile/core/network/api_client.dart';
 import 'package:aarast_mobile/core/theme/app_theme.dart';
 import 'package:aarast_mobile/core/utils/money_formatters.dart';
 import 'package:aarast_mobile/features/finance/data/finance_api.dart';
+import 'package:aarast_mobile/features/finance/providers/funding_provider.dart';
+import 'package:aarast_mobile/features/finance/models/funding_source.dart';
+import 'package:aarast_mobile/features/finance/data/funding_api.dart';
 import 'package:aarast_mobile/features/finance/models/money_summary.dart';
 import 'package:aarast_mobile/features/finance/models/wedding_cost.dart';
 import 'package:aarast_mobile/features/finance/providers/finance_provider.dart';
@@ -267,6 +270,39 @@ void main() {
       expect(tester.takeException(), isNull);
     });
 
+    // c05: the owner's «من وين» shows what reached them and what is
+    // promised, then each source with its state.
+    testWidgets('«من وين» shows the sources and their state at 320px', (
+      tester,
+    ) async {
+      _setPhoneView(tester);
+      await tester.pumpWidget(
+        _wrap(
+          _FakeFinanceApi.withCosts(
+            funding: const MoneyFundingSummary(
+              received: '6000',
+              pledged: '1000',
+              availableCash: '6000',
+              shortfall: '1000',
+            ),
+          ),
+          textScale: 1.3,
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(find.text('ومع الموعود ناقصك'), findsOneWidget);
+      await tester.tap(find.byKey(const ValueKey('journey-tab-3')));
+      await tester.pumpAndSettle();
+
+      expect(find.text('وصلك'), findsOneWidget);
+      expect(find.text('موعود لك'), findsOneWidget);
+      expect(find.text('مدخراتي'), findsOneWidget);
+      expect(find.text('وصل'), findsOneWidget);
+      expect(find.text('سلفة خالي'), findsOneWidget);
+      expect(find.text('موعود'), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    });
+
     // F02: hiding amounts must cover the next-payment card too.
     testWidgets('hiding amounts masks the next payment amount', (tester) async {
       _setPhoneView(tester);
@@ -416,8 +452,15 @@ Widget _wrap(
   bool embedded = false,
 }) {
   const planId = 'plan-money-cleanup';
-  return ChangeNotifierProvider<FinanceProvider>(
-    create: (_) => FinanceProvider(api),
+  return MultiProvider(
+    providers: [
+      ChangeNotifierProvider<FinanceProvider>(
+        create: (_) => FinanceProvider(api),
+      ),
+      ChangeNotifierProvider<FundingProvider>(
+        create: (_) => FundingProvider(_FakeFundingApi()),
+      ),
+    ],
     child: MaterialApp(
       builder: (context, child) => MediaQuery(
         data: MediaQuery.of(
@@ -444,6 +487,7 @@ class _FakeFinanceApi extends FinanceApi {
     this.fail = false,
     this.hasBudget = false,
     this.nextSchedule,
+    this.funding,
   }) : super(ApiClient(tokenProvider: () async => null));
 
   factory _FakeFinanceApi.noBudget() => _FakeFinanceApi._(const []);
@@ -453,24 +497,31 @@ class _FakeFinanceApi extends FinanceApi {
 
   factory _FakeFinanceApi.failing() => _FakeFinanceApi._(const [], fail: true);
 
-  factory _FakeFinanceApi.withCosts({PaymentSchedule? nextSchedule}) =>
-      _FakeFinanceApi._([
-        for (var index = 1; index <= 4; index++)
-          WeddingCost(
-            id: 'cost-$index',
-            weddingPlanId: 'plan-money-cleanup',
-            budgetCategoryId: 'category-1',
-            title: 'تكلفة $index',
-            totalAmount: '2000',
-            paidAmount: '0',
-            remainingAmount: '2000',
-            status: 'OPEN',
-            createdAt: DateTime.utc(2026, 7, index),
-            updatedAt: DateTime.utc(2026, 7, index),
-          ),
-      ], nextSchedule: nextSchedule);
+  factory _FakeFinanceApi.withCosts({
+    PaymentSchedule? nextSchedule,
+    MoneyFundingSummary? funding,
+  }) => _FakeFinanceApi._(
+    [
+      for (var index = 1; index <= 4; index++)
+        WeddingCost(
+          id: 'cost-$index',
+          weddingPlanId: 'plan-money-cleanup',
+          budgetCategoryId: 'category-1',
+          title: 'تكلفة $index',
+          totalAmount: '2000',
+          paidAmount: '0',
+          remainingAmount: '2000',
+          status: 'OPEN',
+          createdAt: DateTime.utc(2026, 7, index),
+          updatedAt: DateTime.utc(2026, 7, index),
+        ),
+    ],
+    nextSchedule: nextSchedule,
+    funding: funding,
+  );
 
   final List<WeddingCost> _costs;
+  final MoneyFundingSummary? funding;
   final bool fail;
   final bool hasBudget;
   final PaymentSchedule? nextSchedule;
@@ -525,6 +576,7 @@ class _FakeFinanceApi extends FinanceApi {
             : 0,
         next: nextSchedule,
       ),
+      funding: funding,
       categories: const [
         MoneyCategorySummary(
           categoryId: 'category-1',
@@ -599,4 +651,29 @@ void _setPhoneView(WidgetTester tester) {
   tester.view.devicePixelRatio = 1;
   tester.view.physicalSize = const Size(320, 1200);
   addTearDown(tester.view.reset);
+}
+
+class _FakeFundingApi extends FundingApi {
+  _FakeFundingApi() : super(ApiClient(tokenProvider: () async => null));
+
+  @override
+  Future<List<FundingSource>> getFundingSources(String weddingPlanId) async =>
+      const [
+        FundingSource(
+          id: 'source-1',
+          weddingPlanId: 'plan-money-cleanup',
+          kind: FundingKind.savings,
+          sourceName: 'مدخراتي',
+          amount: '6000',
+          status: FundingStatus.received,
+        ),
+        FundingSource(
+          id: 'source-2',
+          weddingPlanId: 'plan-money-cleanup',
+          kind: FundingKind.loan,
+          sourceName: 'سلفة خالي',
+          amount: '1000',
+          status: FundingStatus.pledged,
+        ),
+      ];
 }

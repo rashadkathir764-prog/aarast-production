@@ -400,3 +400,40 @@ The client asked that V1 include everything in the original pitch and
 | Funding sources and loans are visible to the plan owner only. | Accepted; implemented | Where money comes from and who is owed is the most sensitive money data; members keep managing costs within their money rights. A separate member permission can come with the partner role (checklist 4.10). |
 | Each cost may name who is expected to pay it (`payer`, `payerName`). | Accepted; implemented | Yemeni weddings split costs between the groom, the bride, and the families. |
 | Bookings are confirmed by the provider without payment, with provider availability to prevent double booking (checklist 4.6). | Accepted; pending | The client asked for booking; payment stays out per the legal decision above. |
+
+## Groom Journey Build Decisions - 2026-10-22
+
+Rashad asked Claude to decide these and to build the redesigned journey to
+match its design on branch `groom-journey-build` (never merged). Source of
+each row: `docs/superpowers/plans/2026-10-20-groom-journey-build.md` Part 1
+and `docs/superpowers/audit/groom_build_classification.md` section C.
+
+| Decision | Status | Rationale |
+| --- | --- | --- |
+| D0. The app identity is the journey's teal (`#0B6E69`) with saffron accents, replacing the 2026-08-10 burgundy row (line 271) and the burgundy launch identity (line 156). | Accepted | Rashad chose direction ج «فيروز» on 2026-10-18 and left the final colour call to Claude. |
+| D1. Text colours keep WCAG AA 4.5 on paper: danger `#B8432A`, success `#25774F`, accent ink `#9A5F0E`; light shades stay fills only. | Accepted | The prototype's lighter shades fail the existing contrast test, which stays unchanged. |
+| D2. The bride's rose theme becomes a runtime switch by persona after the groom build. | Accepted; later | One build serves both; today's colours are compile-time constants. |
+| D3. No gradients or shadows: the wedding lights are painted with solid colours and opacity. | Accepted | The visual contract bans gradients and shadows. |
+| D4. The providers tab and its copy read «المزودين» (singular «مزود»), not «الموردون». | Accepted | Matches the design and spoken Yemeni usage. |
+| D5. The start screen keeps a small «عندك خدمة للأعراس؟ سجّل كمزود» line. | Accepted | The provider path must stay reachable. |
+| D6. Dark mode is out of this build (version 1.1). | Accepted | No dark theme exists in the app yet. |
+| Copy is in Yemeni dialect, never Gulf (ايش، تشتي، الآن). | Accepted (Rashad, 2026-10-21) | The audience is Yemeni. |
+| C1. The mahr is outside the wedding budget; for the bride it is money coming in (a funding source). The starter catalog hides `groom-mahr` until the agreement section exists. | Accepted (Rashad, 2026-10-22) | The groom pays the mahr to the bride's family, who prepare the wedding from it. |
+| C2. Money screens show the server's numbers under their real names («اتفقت على»، «معك»، «ومع الموعود ناقصك»); the phone never computes the gap. | Accepted | One truth for every member and device. |
+| C3. Postponing moves tasks; payment schedules keep their dates. | Accepted (interim) | Schedules have fixed dates until events exist. |
+| C4. Account deletion is hidden from logout until the 30-day grace exists. | Accepted (interim) | Never present an immediate delete with grace wording. |
+| C5. No one-open-plan rule: a plan for a relative is a second plan. | Accepted | The backend has no such limit. |
+| C6. Task counts come from the catalog (20 for the groom today), never a fixed number. | Accepted | Screens must not promise what the catalog does not hold. |
+| C7. Passwords need at least 6 characters everywhere. | Accepted | Matches the backend. |
+| C12. Debt after the wedding = loans outstanding + agreements still unpaid. | Accepted | Both totals exist on the server. |
+| C15. Removing an item returns its allocation to the reserve and deletes the item. | Accepted | Delete is hard today. |
+| C24. The venue step is done by a confirmed venue booking or a recorded venue agreement. | Accepted | The home step needs a rule. |
+| C27. Task «يعدّل» = add tasks and finish one's own or assigned tasks; others' tasks are read-only. | Accepted | One meaning across screens. |
+| C28. Only members whose rights allow tasks can be assigned tasks. | Accepted (interim) | The backend refuses other assignees. |
+| C29. A host name on the invitation card is card text only; the owner sends from his phone. | Accepted | View-only members cannot send. |
+| C30. Invitations are sent one after another from the owner's phone, plus «انسخ الرابط». | Accepted | Bulk WhatsApp needs the Business API. |
+| C31. A reminder makes a new invitation link and says the old one stops working. | Accepted (interim) | Only a hash of the link is stored. |
+| C58. Offline changes are replayed when the same account signs in again and still has access to the plan; another account drops them. Supersedes «Bind offline replay to its originating session» (line 153) for this case only. | Accepted | Users must not lose changes made offline because their session expired. |
+| C63. Participant presets map to today's roles: مساعد = HELPER, أهل = FAMILY, يشوف بس = VIEWER; «العروسة» is not offered until section rights exist. | Accepted (interim) | The partner role sees money; the preset must not promise less. |
+| Provider packages (free, featured, professional) and featured listing are in V1, paid to the owner outside the app and switched on by an admin. | Accepted (Rashad, 2026-10-22) | Owner request (`wedding.md` section 9, checklist 4.20). |
+| The wording fixes C17, C18, C20, C22, C25, C33, C39, C40, C44 to C47, C49 to C52, C59, C60 and C62 are applied as written in the classification. | Accepted | They need no product choice. |

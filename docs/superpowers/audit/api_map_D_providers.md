@@ -4,7 +4,7 @@ Date: 2026-10-19. Static audit, no code changed.
 
 **Rule:** the design is the reference (owner decision). The backend follows it later. Where a customer screen and `docs/project/PROVIDER_JOURNEY.md` disagree, this file lists the conflict in §5. It does not choose a winner unless the spec already decides.
 
-**Inputs:** `docs/project/PROVIDER_JOURNEY.md` (abbreviated "PJ" below, with § numbers), `docs/project/research/reports/أعراس اليمن ومزودي الخدمات.md` ("research"), `docs/project/audit/screens_inventory.md`, `mobile/test/prototype/v3/*.dart` (screen functions), `docs/project/audit/api_inventory.md` ("inv"), and backend source checked directly (paths are relative to `backend/`).
+**Inputs:** `docs/project/PROVIDER_JOURNEY.md` (abbreviated "PJ" below, with § numbers), `docs/project/research/reports/أعراس اليمن ومزودي الخدمات.md` ("research"), `docs/superpowers/audit/screens_inventory.md`, `mobile/test/prototype/v3/*.dart` (screen functions), `docs/superpowers/audit/api_inventory.md` ("inv"), and backend source checked directly (paths are relative to `backend/`).
 
 **Legend:** ✅ an existing endpoint covers it as is · 🔧 an endpoint exists but needs a change · ➕ new endpoint or model. Paths without a host. App routes are `/api/v1/...` and back office is `/admin/...` (inv §0). "case" means one quote request and everything that follows it: offer, booking, deposit and review (PJ §4: «بطاقة وحدة لكل عرس»).
 

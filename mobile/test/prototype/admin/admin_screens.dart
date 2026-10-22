@@ -1,5 +1,5 @@
 // Admin prototype, grounded in what admin-web already has (see
-// docs/project/audit/admin_current_map.md). Each screen keeps the existing
+// docs/superpowers/audit/admin_current_map.md). Each screen keeps the existing
 // page, its endpoints and permissions, and adds only what the audit found
 // missing or what the new provider and plan journeys need.
 import 'package:flutter/material.dart';

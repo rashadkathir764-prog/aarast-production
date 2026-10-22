@@ -4,7 +4,7 @@ Date: 2026-10-19. Static audit. No code was changed.
 
 **Rule (owner decision 2026-10-19):** the design (`mobile/test/prototype/v3`) is the reference. Where the backend differs, the backend changes later. Only contradictions *inside* the design are logic problems (section 4).
 
-Sources: `docs/project/audit/screens_inventory.md`, `mobile/test/prototype/v3/{sections,more,hard,gaps_a,gaps_b,touches,smart,participant,participant2}.dart`, `docs/project/audit/api_inventory.md` (abbreviated **INV**), checked against `backend/src` and `backend/prisma/schema`, plus `LOGIC_LIFECYCLE_AUDIT.md` (**LLA**) and `DECISIONS.md` (**DEC:line**).
+Sources: `docs/superpowers/audit/screens_inventory.md`, `mobile/test/prototype/v3/{sections,more,hard,gaps_a,gaps_b,touches,smart,participant,participant2}.dart`, `docs/superpowers/audit/api_inventory.md` (abbreviated **INV**), checked against `backend/src` and `backend/prisma/schema`, plus `LOGIC_LIFECYCLE_AUDIT.md` (**LLA**) and `DECISIONS.md` (**DEC:line**).
 
 ## Legend
 

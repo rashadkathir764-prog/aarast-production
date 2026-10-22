@@ -2,7 +2,7 @@
 
 Date: 2026-10-20. Static read of `mobile/` at the current working tree. No code changed.
 Paths are relative to `mobile/lib/` unless they start with `mobile/`, `docs/`, `scripts/` or `.github/`.
-Prototype = `mobile/test/prototype/v3/*.dart` (ids in `v3_test.dart`, 188 ids); descriptions = `docs/project/audit/screens_inventory.md`.
+Prototype = `mobile/test/prototype/v3/*.dart` (ids in `v3_test.dart`, 188 ids); descriptions = `docs/superpowers/audit/screens_inventory.md`.
 
 ---
 

@@ -322,14 +322,12 @@ class _Market extends ProviderMarketplaceProvider {
     this.list = const [],
     List<QuoteRequest> quotes = const [],
     this.favs = const [],
-    this.catId,
   }) : quotesData = List.of(quotes),
        super(MarketplaceApi(ApiClient(tokenProvider: () async => null)));
 
   final List<MarketplaceProvider> list;
   final List<QuoteRequest> quotesData;
   final List<FavoriteProvider> favs;
-  final String? catId;
 
   @override
   bool get isLoading => false;
@@ -346,7 +344,7 @@ class _Market extends ProviderMarketplaceProvider {
   @override
   String? get cityId => 'city-sanaa';
   @override
-  String? get categoryId => catId;
+  String? get categoryId => null;
   @override
   List<MarketplaceCity> get cities => const [_sanaa, _aden];
   @override

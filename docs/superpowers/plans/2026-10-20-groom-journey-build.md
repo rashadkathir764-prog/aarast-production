@@ -10,9 +10,9 @@
 
 **Spec:**
 - Screens and copy: `mobile/test/prototype/v3/*.dart`, rendered in `mobile/test/prototype/v3/out/<id>.png`.
-- What is buildable and what to drop per screen: `docs/project/audit/groom_build_classification.md`. Section A is the screen list. Section C contains the decisions.
-- Where each screen lives today: `docs/project/audit/mobile_arch_map.md`. Section 6 maps prototype ids to files, and §7 is the touch-point checklist.
-- Endpoint contracts: `docs/project/audit/api_map_*.md` and `api_inventory.md`.
+- What is buildable and what to drop per screen: `docs/superpowers/audit/groom_build_classification.md`. Section A is the screen list. Section C contains the decisions.
+- Where each screen lives today: `docs/superpowers/audit/mobile_arch_map.md`. Section 6 maps prototype ids to files, and §7 is the touch-point checklist.
+- Endpoint contracts: `docs/superpowers/audit/api_map_*.md` and `api_inventory.md`.
 
 **Branch:** `groom-journey-build`, made from `ccr-f548c940-73gd06`. Rashad's rule: **no merge** into any other branch. Push only to `groom-journey-build`.
 

@@ -229,6 +229,7 @@ mixin _AuthSession on _AuthControllerCore {
     _clearPendingAuthenticatedEntry();
     _loginRequestedAfterLogout = false;
     _sessionExpired = markSessionExpired;
+    _expiredSessionPhone = markSessionExpired ? _user?.phone : null;
     _user = null;
     _status = AuthStatus.terminating;
     _errorMessage = markSessionExpired

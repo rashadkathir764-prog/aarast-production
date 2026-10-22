@@ -149,4 +149,53 @@ void main() {
       },
     );
   }
+
+  // x18 (C58): after an expired session, the same account signs in again
+  // and is told its offline changes are kept.
+  testWidgets('x18 says sign in again with the kept changes at 320px', (
+    tester,
+  ) async {
+    tester.view.devicePixelRatio = 1;
+    tester.view.physicalSize = const Size(320, 760);
+    addTearDown(tester.view.reset);
+    final phone = TextEditingController(text: '+967777123456');
+    final password = TextEditingController();
+    addTearDown(phone.dispose);
+    addTearDown(password.dispose);
+
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.light(),
+        builder: (context, child) => MediaQuery(
+          data: MediaQuery.of(
+            context,
+          ).copyWith(textScaler: const TextScaler.linear(2)),
+          child: child!,
+        ),
+        home: AuthWeddingScaffold(
+          child: Form(
+            child: LoginExperience(
+              phoneController: phone,
+              passwordController: password,
+              obscurePassword: true,
+              isSubmitting: false,
+              onSubmit: () {},
+              onRequestOtp: () {},
+              onResetPassword: () {},
+              onTogglePassword: () {},
+              onRegister: () {},
+              sessionExpired: true,
+              pendingChanges: 3,
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('ادخل مرة ثانية'), findsOneWidget);
+    expect(find.text('3 أشياء سجّلتها بدون نت'), findsOneWidget);
+    expect(find.text('أهلًا من جديد'), findsNothing);
+    expect(tester.takeException(), isNull);
+  });
 }

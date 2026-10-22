@@ -24,8 +24,10 @@ List<RouteBase> _entryRoutes(AppFeatureFlags flags) => [
   ),
   GoRoute(
     path: AppRouter.login,
-    builder: (context, state) =>
-        LoginScreen(initialPhone: state.uri.queryParameters['phone']),
+    builder: (context, state) => LoginScreen(
+      initialPhone: state.uri.queryParameters['phone'],
+      sessionExpired: state.uri.queryParameters['expired'] == '1',
+    ),
   ),
   GoRoute(
     path: AppRouter.register,

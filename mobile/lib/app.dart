@@ -378,7 +378,14 @@ class AarastAuthFlowRedirector extends StatelessWidget {
           reason: 'session_expired',
           source: 'AarastAuthFlowRedirector',
         );
-        router.go(AppRouter.login);
+        final phone = context.read<AuthController>().expiredSessionPhone;
+        // x18 «ادخل مرة ثانية», with the same number filled in.
+        router.go(
+          Uri(
+            path: AppRouter.login,
+            queryParameters: {'expired': '1', 'phone': ?phone},
+          ).toString(),
+        );
       });
     } else if (flow.loginRequestedAfterLogout) {
       WidgetsBinding.instance.addPostFrameCallback((_) {

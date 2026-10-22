@@ -4,7 +4,9 @@ import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
 import '../../../core/experience_v3/aarast_v3.dart';
+import '../../../core/offline/offline_sync_service.dart';
 import '../../../core/phone/yemeni_phone_normalizer.dart';
+import '../../../core/utils/arabic_count.dart';
 import '../../../core/routing/app_router.dart';
 import '../../../core/widgets/aarast_toast.dart';
 import '../../../core/widgets/aarast_ui.dart';
@@ -13,9 +15,17 @@ import '../widgets/auth_wedding_widgets.dart';
 import 'otp_screen.dart';
 
 class LoginScreen extends StatefulWidget {
-  const LoginScreen({this.initialPhone, super.key});
+  const LoginScreen({
+    this.initialPhone,
+    this.sessionExpired = false,
+    super.key,
+  });
 
   final String? initialPhone;
+
+  /// x18: the session expired; the same account signs in again and its
+  /// unsent changes are sent (C58).
+  final bool sessionExpired;
 
   @override
   State<LoginScreen> createState() => _LoginScreenState();
@@ -76,7 +86,11 @@ class _LoginScreenState extends State<LoginScreen> {
           passwordController: _passwordController,
           obscurePassword: _obscurePassword,
           isSubmitting: auth.isSubmitting,
-          errorMessage: auth.errorMessage,
+          // x18's heading already says why; the expiry line returns only
+          // with an error from a new attempt.
+          errorMessage: widget.sessionExpired && !_submitAttempted
+              ? null
+              : auth.errorMessage,
           onSubmit: _submit,
           onRequestOtp: _requestLoginOtp,
           onResetPassword: _openResetPassword,
@@ -84,9 +98,19 @@ class _LoginScreenState extends State<LoginScreen> {
               setState(() => _obscurePassword = !_obscurePassword),
           onRegister: register,
           showActions: false,
+          sessionExpired: widget.sessionExpired,
+          pendingChanges: widget.sessionExpired ? _pendingChanges() : 0,
         ),
       ),
     );
+  }
+
+  int _pendingChanges() {
+    try {
+      return context.watch<OfflineSyncService>().pendingCount;
+    } on ProviderNotFoundException {
+      return 0;
+    }
   }
 
   void _openResetPassword() {
@@ -182,6 +206,8 @@ class LoginExperience extends StatelessWidget {
     required this.onRegister,
     this.errorMessage,
     this.showActions = true,
+    this.sessionExpired = false,
+    this.pendingChanges = 0,
     super.key,
   });
 
@@ -196,6 +222,8 @@ class LoginExperience extends StatelessWidget {
   final VoidCallback onTogglePassword;
   final VoidCallback onRegister;
   final bool showActions;
+  final bool sessionExpired;
+  final int pendingChanges;
 
   @override
   Widget build(BuildContext context) {
@@ -208,10 +236,31 @@ class LoginExperience extends StatelessWidget {
           child: AuthBrandMark(compact: true),
         ),
         const SizedBox(height: 18),
-        const AuthHeading(
-          title: 'أهلًا من جديد',
-          subtitle: 'خطتك بانتظارك، مثل ما تركتها.',
+        AuthHeading(
+          title: sessionExpired ? 'ادخل مرة ثانية' : 'أهلًا من جديد',
+          subtitle: sessionExpired
+              ? 'طال غيابك، فقفلنا الدخول لأمانك. ادخل وترجع مكانك.'
+              : 'خطتك بانتظارك، مثل ما تركتها.',
         ),
+        if (pendingChanges > 0) ...[
+          const SizedBox(height: 16),
+          JourneyBox(
+            padding: EdgeInsets.zero,
+            child: JourneyListRow(
+              icon: LucideIcons.cloudOff,
+              color: AarastV3Color.brandAccentStrong,
+              soft: AarastV3Color.brandAccentSoft,
+              title: arabicCount(
+                pendingChanges,
+                one: 'شي واحد سجّلته بدون نت',
+                two: 'شيئين سجّلتها بدون نت',
+                few: 'أشياء سجّلتها بدون نت',
+                many: 'شي سجّلته بدون نت',
+              ),
+              subtitle: 'محفوظة في جوالك، وتوصل أول ما تدخل بنفس الحساب',
+            ),
+          ),
+        ],
         const SizedBox(height: 22),
         AuthTextField(
           controller: phoneController,

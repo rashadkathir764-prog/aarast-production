@@ -43,6 +43,9 @@ abstract final class JourneyType {
   /// The smallest text: tags and the Hijri date under a day.
   static const caption = 12.0;
 
+  /// The count inside a 16-point badge dot; it does not grow with text size.
+  static const badge = 9.0;
+
   static TextStyle of(
     double size, {
     FontWeight weight = FontWeight.w400,

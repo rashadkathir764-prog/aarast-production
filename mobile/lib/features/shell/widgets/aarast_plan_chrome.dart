@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 
+import '../../../core/experience_v3/aarast_journey.dart';
 import '../../../core/experience_v3/aarast_v3_foundations.dart';
-import '../../../core/theme/aarast_design_tokens.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/aarast_bottom_sheet.dart';
 import '../../../core/widgets/aarast_pressable.dart';
@@ -227,9 +227,17 @@ class AarastPlanNavigationBar extends StatelessWidget {
               children: [
                 for (var index = 0; index < items.length; index++)
                   Expanded(
+                    // The active tab is wide enough for its name beside
+                    // its icon.
+                    flex: activeIndex == index ? 3 : 2,
                     child: _PlanNavigationItem(
                       item: items[index],
                       active: activeIndex == index,
+                      color:
+                          identical(items, _planItems) &&
+                              index < JourneySection.values.length
+                          ? JourneySection.values[index].color
+                          : AarastV3Color.primary,
                       onTap: () => onSelected(index),
                     ),
                   ),
@@ -492,15 +500,65 @@ class _PlanNavigationItem extends StatelessWidget {
     required this.item,
     required this.active,
     required this.onTap,
+    this.color = AarastV3Color.primary,
   });
 
   final AarastNavigationItem item;
   final bool active;
   final VoidCallback onTap;
 
+  /// The tab's section colour: the active tab is a pill in it (b02).
+  final Color color;
+
   @override
   Widget build(BuildContext context) {
-    final foreground = active ? AarastV3Color.primary : AarastV3Color.textFaint;
+    final foreground = active
+        ? AarastV3Color.onPrimary
+        : AarastV3Color.textMuted;
+    final icon = Stack(
+      clipBehavior: Clip.none,
+      children: [
+        Icon(item.icon, color: foreground, size: 20),
+        if (item.badge > 0)
+          PositionedDirectional(
+            start: -7,
+            top: -7,
+            child: Container(
+              constraints: const BoxConstraints(minWidth: 16),
+              height: 16,
+              padding: const EdgeInsets.symmetric(horizontal: 3),
+              alignment: Alignment.center,
+              decoration: const BoxDecoration(
+                color: AarastV3Color.danger,
+                shape: BoxShape.circle,
+              ),
+              child: Text(
+                item.badge > 9 ? '9+' : '${item.badge}',
+                textScaler: TextScaler.noScaling,
+                style: JourneyType.of(
+                  JourneyType.badge,
+                  weight: JourneyType.bold,
+                  color: AarastV3Color.onPrimary,
+                ),
+              ),
+            ),
+          ),
+      ],
+    );
+    // A tab name shrinks a little before it is ever cut.
+    final label = FittedBox(
+      fit: BoxFit.scaleDown,
+      child: Text(
+        item.label,
+        maxLines: 1,
+        style: JourneyType.of(
+          JourneyType.caption,
+          weight: JourneyType.bold,
+          color: foreground,
+          height: 1.1,
+        ),
+      ),
+    );
 
     return AarastPressable(
       onTap: onTap,
@@ -508,63 +566,31 @@ class _PlanNavigationItem extends StatelessWidget {
           ? '${item.label}، إشعارات غير مقروءة: ${item.badge}'
           : item.label,
       selected: active,
-      borderRadius: BorderRadius.circular(16),
+      borderRadius: BorderRadius.circular(18),
       child: AnimatedContainer(
         key: ValueKey('${item.label}-$active'),
         duration: AppTheme.motionFast,
         curve: AppTheme.motionCurve,
-        height: 52,
-        padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 5),
+        // Fills the bar, which grows with the person's text size.
+        height: double.infinity,
+        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 5),
         decoration: BoxDecoration(
-          color: active ? AarastV3Color.primarySoft : Colors.transparent,
-          borderRadius: BorderRadius.circular(16),
+          color: active ? color : null,
+          borderRadius: BorderRadius.circular(18),
         ),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Stack(
-              clipBehavior: Clip.none,
-              children: [
-                Icon(item.icon, color: foreground, size: 20),
-                if (item.badge > 0)
-                  PositionedDirectional(
-                    start: -7,
-                    top: -7,
-                    child: Container(
-                      constraints: const BoxConstraints(minWidth: 16),
-                      height: 16,
-                      padding: const EdgeInsets.symmetric(horizontal: 3),
-                      alignment: Alignment.center,
-                      decoration: const BoxDecoration(
-                        color: AarastSemanticTokens.danger,
-                        shape: BoxShape.circle,
-                      ),
-                      child: Text(
-                        item.badge > 9 ? '9+' : '${item.badge}',
-                        style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                          color: Colors.white,
-                          fontSize: 9,
-                          fontWeight: FontWeight.w900,
-                        ),
-                      ),
-                    ),
-                  ),
-              ],
-            ),
-            const SizedBox(height: 3),
-            Text(
-              item.label,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                color: foreground,
-                fontSize: 10,
-                height: 1,
-                fontWeight: active ? FontWeight.w900 : FontWeight.w700,
+        child: active
+            ? Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  icon,
+                  const SizedBox(width: 6),
+                  Flexible(child: label),
+                ],
+              )
+            : Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [icon, const SizedBox(height: 3), label],
               ),
-            ),
-          ],
-        ),
       ),
     );
   }

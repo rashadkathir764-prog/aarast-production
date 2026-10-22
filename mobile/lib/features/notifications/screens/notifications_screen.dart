@@ -1,11 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/semantics.dart';
 import 'package:go_router/go_router.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:provider/provider.dart';
 
 import '../../../core/config/app_feature_flags.dart';
 import '../../../core/experience_v3/aarast_v3.dart';
-import '../../../core/theme/app_theme.dart';
+import '../../../core/utils/arabic_count.dart';
 import '../../../core/utils/arabic_date_formatter.dart';
 import '../../../core/widgets/aarast_toast.dart';
 import '../../../core/widgets/aarast_ui.dart';
@@ -64,28 +65,40 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
         : provider.notifications;
     final unreadInList = notifications.where((item) => item.isUnread).length;
 
-    return AarastPageScaffold(
-      title: 'التنبيهات',
-      // العنوان الفرعي حي: عدد غير المقروء أهم من وصف ثابت.
-      subtitle: unreadInList > 0
-          ? '$unreadInList غير مقروء'
-          : widget.weddingPlanId == null
-          ? 'كل تنبيهات الحساب المحفوظة'
-          : 'تنبيهات الخطة المحفوظة',
-      actions: [
-        if (unreadInList > 0)
-          TextButton.icon(
-            onPressed: provider.isSubmitting
-                ? null
-                : () => _markAllRead(provider),
-            icon: const Icon(LucideIcons.checkCheck, size: 18),
-            label: const Text('قراءة الكل'),
+    return AarastScreenFrame(
+      backgroundColor: AarastV3Color.canvas,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+            child: JourneySubHeader(
+              title: 'التنبيهات',
+              // The count of unread matters more than a fixed description.
+              subtitle: unreadInList > 0
+                  ? '$unreadInList غير مقروء'
+                  : widget.weddingPlanId == null
+                  ? 'كل تنبيهات الحساب المحفوظة'
+                  : 'تنبيهات الخطة المحفوظة',
+              trailing: unreadInList > 0
+                  ? JourneyTextAction(
+                      label: 'قراءة الكل',
+                      color: AarastV3Color.primary,
+                      onPressed: provider.isSubmitting
+                          ? null
+                          : () => _markAllRead(provider),
+                    )
+                  : null,
+            ),
           ),
-      ],
-      child: RefreshIndicator(
-        color: AppTheme.brand,
-        onRefresh: _load,
-        child: _body(provider, notifications: notifications),
+          Expanded(
+            child: RefreshIndicator(
+              color: AarastV3Color.primary,
+              onRefresh: _load,
+              child: _body(provider, notifications: notifications),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -152,42 +165,46 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
       );
     }
 
-    final groups = aarastTemporalGroups(
-      notifications,
-      _notificationTemporalSection,
-    );
+    final groups = groupNotificationsByTime(notifications, DateTime.now());
 
     return ListView(
-      padding: const EdgeInsets.only(top: AarastV3Space.x2, bottom: 24),
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
       children: [
-        for (final group in groups.entries) ...[
-          _NotificationGroupHeader(
-            section: group.key,
-            count: group.value.length,
+        for (final group in groups) ...[
+          JourneySectionTitle(group.$1),
+          JourneyBox(
+            padding: EdgeInsets.zero,
+            child: JourneyList(
+              children: [
+                for (final notification in group.$2)
+                  _NotificationRow(
+                    notification: notification,
+                    onTap: () => _openNotification(provider, notification),
+                    onArchive: () => provider.archiveNotification(notification),
+                  ),
+              ],
+            ),
           ),
-          const SizedBox(height: AarastV3Space.x2),
-          AarastV3ContinuousSurface(
-            children: [
-              for (final notification in group.value)
-                _NotificationRow(
-                  notification: notification,
-                  onTap: () => _openNotification(provider, notification),
-                  onArchive: () => provider.archiveNotification(notification),
-                ),
-            ],
-          ),
-          const SizedBox(height: AarastV3Space.x4),
+          const SizedBox(height: 12),
         ],
         if (provider.hasMore) ...[
-          const SizedBox(height: AarastV3Space.x4),
-          AarastButton(
+          const SizedBox(height: 4),
+          JourneyButton.quiet(
             label: 'عرض المزيد',
             icon: LucideIcons.chevronsDown,
-            isLoading: provider.isLoadingMore,
+            loading: provider.isLoadingMore,
+            expand: true,
             onPressed: () =>
                 provider.loadMore(weddingPlanId: widget.weddingPlanId),
           ),
+          const SizedBox(height: 12),
         ],
+        // True: the push copy is chosen by type only and marked private
+        // (push-delivery.service.ts), so names and amounts never show there.
+        const JourneyNote(
+          text: 'على شاشة القفل تطلع بدون أسماء ولا مبالغ.',
+          icon: LucideIcons.lock,
+        ),
       ],
     );
   }
@@ -293,25 +310,50 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
   }
 }
 
-class _NotificationGroupHeader extends StatelessWidget {
-  const _NotificationGroupHeader({required this.section, required this.count});
-
-  final AarastTemporalSection section;
-  final int count;
-
-  @override
-  Widget build(BuildContext context) {
-    return AarastSectionHeader(
-      title: '${section.label} · $count',
-      icon: switch (section) {
-        AarastTemporalSection.now => LucideIcons.zap,
-        AarastTemporalSection.today => LucideIcons.sun,
-        AarastTemporalSection.week => LucideIcons.calendarDays,
-        AarastTemporalSection.later => LucideIcons.history,
-        AarastTemporalSection.completed => LucideIcons.checkCheck,
-      },
-    );
+/// «اليوم», «هذا الأسبوع» and «أقدم»: a notification keeps its place when
+/// it is read.
+@visibleForTesting
+List<(String, List<AarastNotification>)> groupNotificationsByTime(
+  List<AarastNotification> notifications,
+  DateTime now,
+) {
+  final today = DateUtils.dateOnly(now);
+  final weekStart = today.subtract(const Duration(days: 6));
+  final todays = <AarastNotification>[];
+  final week = <AarastNotification>[];
+  final older = <AarastNotification>[];
+  for (final notification in notifications) {
+    final day = DateUtils.dateOnly(notification.createdAt.toLocal());
+    if (!day.isBefore(today)) {
+      todays.add(notification);
+    } else if (!day.isBefore(weekStart)) {
+      week.add(notification);
+    } else {
+      older.add(notification);
+    }
   }
+  return [
+    if (todays.isNotEmpty) ('اليوم', todays),
+    if (week.isNotEmpty) ('هذا الأسبوع', week),
+    if (older.isNotEmpty) ('أقدم', older),
+  ];
+}
+
+/// «قبل ساعة», «قبل 3 ساعات», then the weekday, then the date.
+@visibleForTesting
+String notificationWhenLabel(DateTime at, DateTime now) {
+  final local = at.toLocal();
+  final minutes = now.difference(local).inMinutes;
+  if (minutes < 1) return 'الحين';
+  if (minutes < 60) {
+    return 'قبل ${arabicCount(minutes, one: 'دقيقة', two: 'دقيقتين', few: 'دقائق', many: 'دقيقة')}';
+  }
+  if (DateUtils.isSameDay(local, now)) {
+    final hours = now.difference(local).inHours;
+    return 'قبل ${arabicCount(hours, one: 'ساعة', two: 'ساعتين', few: 'ساعات', many: 'ساعة')}';
+  }
+  if (now.difference(local).inDays < 7) return formatArabicWeekday(local);
+  return formatArabicCompactDate(local);
 }
 
 class _NotificationRow extends StatelessWidget {
@@ -333,165 +375,173 @@ class _NotificationRow extends StatelessWidget {
       title: notification.title,
       body: notification.body,
     );
-    final isUrgent = notification.priority == 'URGENT';
-    final hasPriority = isUrgent || notification.priority == 'HIGH';
-
-    return AarastV3ListRow(
-      title: copy.title,
-      subtitle: copy.body,
-      meta: _dateLabel(notification.createdAt),
-      accent: tone.color,
+    final urgent = notification.priority.toUpperCase() == 'URGENT';
+    final when = notificationWhenLabel(notification.createdAt, DateTime.now());
+    return Semantics(
+      button: true,
+      label: [
+        if (notification.isUnread) 'جديد',
+        if (urgent) 'عاجل',
+        copy.title,
+        copy.body,
+        when,
+      ].join('، '),
       onTap: onTap,
-      semanticLabel: '${copy.title}، ${copy.body}',
-      leading: Container(
-        width: 38,
-        height: 38,
-        decoration: BoxDecoration(
-          color: tone.color.withValues(alpha: .1),
-          borderRadius: BorderRadius.circular(AarastV3Radius.control),
-        ),
-        child: Icon(tone.icon, color: tone.color, size: 17),
-      ),
-      status: _NotificationStatus(
-        isUnread: notification.isUnread,
-        label: hasPriority ? (isUrgent ? 'عاجل' : 'مهم') : null,
-        color: isUrgent ? AarastV3Color.danger : AarastV3Color.amber,
-      ),
-      action: IconButton(
-        onPressed: onArchive,
-        icon: const Icon(LucideIcons.archive, size: 17),
-        tooltip: 'أرشفة التنبيه',
-        color: AarastV3Color.textMuted,
-        visualDensity: VisualDensity.compact,
-      ),
-    );
-  }
-}
-
-class _NotificationStatus extends StatelessWidget {
-  const _NotificationStatus({
-    required this.isUnread,
-    required this.label,
-    required this.color,
-  });
-
-  final bool isUnread;
-  final String? label;
-  final Color color;
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        if (label != null)
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
-            decoration: BoxDecoration(
-              color: color.withValues(alpha: .1),
-              borderRadius: BorderRadius.circular(AarastV3Radius.pill),
-            ),
-            child: Text(
-              label!,
-              style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                color: color,
-                fontWeight: FontWeight.w800,
+      customSemanticsActions: {
+        const CustomSemanticsAction(label: 'أرشفة التنبيه'): onArchive,
+      },
+      child: AarastPressable(
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(16, 14, 8, 14),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              JourneyIconTile(
+                icon: tone.icon,
+                color: tone.color,
+                soft: tone.soft,
               ),
-            ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: ExcludeSemantics(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        copy.title,
+                        style: JourneyType.of(
+                          JourneyType.bodyLarge,
+                          weight: JourneyType.bold,
+                          color: urgent
+                              ? AarastV3Color.danger
+                              : AarastV3Color.ink,
+                        ),
+                      ),
+                      if (copy.body.trim().isNotEmpty)
+                        Text(
+                          copy.body,
+                          style: JourneyType.of(
+                            JourneyType.small,
+                            color: AarastV3Color.textMuted,
+                          ),
+                        ),
+                      Text(
+                        when,
+                        style: JourneyType.of(
+                          JourneyType.caption,
+                          color: AarastV3Color.textFaint,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              Column(
+                children: [
+                  if (notification.isUnread)
+                    const Padding(
+                      padding: EdgeInsets.only(top: 6, bottom: 2),
+                      child: SizedBox.square(
+                        dimension: 9,
+                        child: DecoratedBox(
+                          decoration: BoxDecoration(
+                            color: AarastV3Color.danger,
+                            shape: BoxShape.circle,
+                          ),
+                        ),
+                      ),
+                    ),
+                  IconButton(
+                    onPressed: onArchive,
+                    icon: const Icon(LucideIcons.archive, size: 16),
+                    tooltip: 'أرشفة التنبيه',
+                    color: AarastV3Color.textFaint,
+                    visualDensity: VisualDensity.compact,
+                    // Quiet: the unread dot is the row's only signal.
+                    style: IconButton.styleFrom(
+                      backgroundColor: AarastV3Color.paper,
+                      side: BorderSide.none,
+                    ),
+                  ),
+                ],
+              ),
+            ],
           ),
-        if (isUnread) ...[
-          if (label != null) const SizedBox(width: AarastV3Space.x2),
-          Container(
-            width: 7,
-            height: 7,
-            decoration: const BoxDecoration(
-              color: AarastV3Color.primary,
-              shape: BoxShape.circle,
-            ),
-          ),
-        ],
-      ],
+        ),
+      ),
     );
   }
 }
 
 class _NotificationTone {
-  const _NotificationTone({required this.icon, required this.color});
+  const _NotificationTone({
+    required this.icon,
+    required this.color,
+    required this.soft,
+  });
 
   final IconData icon;
   final Color color;
+  final Color soft;
 }
 
+/// Each notification takes its section's colour: providers cobalt, tasks
+/// and payments saffron, guests lilac, danger for what is late or over.
 _NotificationTone _tone(String type) {
-  final upperType = type.toUpperCase();
-  if (upperType.contains('QUOTE')) {
+  final t = type.toUpperCase();
+  if (t.contains('OVERDUE') || t.contains('EXCEEDED')) {
+    return const _NotificationTone(
+      icon: LucideIcons.alertTriangle,
+      color: AarastV3Color.danger,
+      soft: AarastV3Color.dangerSoft,
+    );
+  }
+  if (t.contains('QUOTE')) {
     return const _NotificationTone(
       icon: LucideIcons.mailOpen,
-      color: AppTheme.brand,
+      color: AarastV3Color.cobalt,
+      soft: AarastV3Color.cobaltSoft,
     );
   }
-  // موعد الدفع المتأخر يبقى تنبيه خطر، لا تنبيه موعد عادي.
-  if (upperType.contains('OVERDUE')) {
-    return const _NotificationTone(
-      icon: LucideIcons.alertTriangle,
-      color: AppTheme.danger,
-    );
-  }
-  // بند تجاوز ميزانيته المخططة.
-  if (upperType.contains('EXCEEDED')) {
-    return const _NotificationTone(
-      icon: LucideIcons.alertTriangle,
-      color: AppTheme.danger,
-    );
-  }
-  if (upperType.contains('PAYMENT_SCHEDULE') ||
-      upperType.contains('LOAN_REPAYMENT')) {
-    return const _NotificationTone(
-      icon: LucideIcons.calendarClock,
-      color: AppTheme.focus,
-    );
-  }
-  if (upperType == 'WEDDING_COUNTDOWN') {
-    return const _NotificationTone(
-      icon: LucideIcons.heart,
-      color: AppTheme.brand,
-    );
-  }
-  if (upperType == 'BOOKING_UPDATED') {
+  if (t == 'BOOKING_UPDATED') {
     return const _NotificationTone(
       icon: LucideIcons.calendarCheck,
-      color: AppTheme.success,
+      color: AarastV3Color.mint,
+      soft: AarastV3Color.mintSoft,
     );
   }
-  if (upperType == 'GUEST_RESPONDED') {
+  if (t.contains('PAYMENT_SCHEDULE') || t.contains('LOAN_REPAYMENT')) {
+    return const _NotificationTone(
+      icon: LucideIcons.calendarClock,
+      color: AarastV3Color.brandAccentStrong,
+      soft: AarastV3Color.brandAccentSoft,
+    );
+  }
+  if (t == 'GUEST_RESPONDED') {
     return const _NotificationTone(
       icon: LucideIcons.userCheck,
-      color: AppTheme.success,
+      color: AarastV3Color.lilac,
+      soft: AarastV3Color.lilacSoft,
     );
   }
-  if (upperType.contains('SHARING')) {
+  if (t.contains('TASK')) {
+    return const _NotificationTone(
+      icon: LucideIcons.listChecks,
+      color: AarastV3Color.brandAccentStrong,
+      soft: AarastV3Color.brandAccentSoft,
+    );
+  }
+  if (t.contains('SHARING')) {
     return const _NotificationTone(
       icon: LucideIcons.userPlus,
-      color: AppTheme.success,
+      color: AarastV3Color.primary,
+      soft: AarastV3Color.primarySoft,
     );
   }
   return const _NotificationTone(
-    icon: LucideIcons.listChecks,
-    color: AppTheme.brand,
-  );
-}
-
-String _dateLabel(DateTime date) {
-  return formatArabicCompactDate(date);
-}
-
-AarastTemporalSection _notificationTemporalSection(
-  AarastNotification notification,
-) {
-  final priority = notification.priority.toUpperCase();
-  return aarastActivitySection(
-    occurredAt: notification.createdAt,
-    completed: !notification.isUnread,
-    urgent: priority == 'URGENT' || priority == 'HIGH',
+    icon: LucideIcons.heart,
+    color: AarastV3Color.primary,
+    soft: AarastV3Color.primarySoft,
   );
 }

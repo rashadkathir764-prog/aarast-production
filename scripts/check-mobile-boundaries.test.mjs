@@ -1632,8 +1632,10 @@ const r19ProviderPortalApi = Object.freeze({
 // assistant reading the signed-in account from the auth owner API to keep
 // each account's consent (V1 checklist 4.12), +4 for the journey start
 // (groom journey a05 to a08) reading the starting items and task count from
-// the finance, tasks and catalogs owner APIs and the cities from marketplace.
-const r19LegalRecordCount = 183;
+// the finance, tasks and catalogs owner APIs and the cities from marketplace,
+// +1 for a08b reading the plan kept on the phone from the onboarding owner
+// API, so its name is not asked again.
+const r19LegalRecordCount = 184;
 const trackedOwnerApiContracts = [
   {
     area: 'features/account_contexts',
@@ -2185,6 +2187,11 @@ const trackedIdentityBatchContracts = [
       'ProviderMarketplaceProvider',
       'providerReferenceDataErrorMessage',
     ],
+  },
+  {
+    source: 'mobile/lib/features/auth/screens/register_screen.dart',
+    target: 'mobile/lib/features/onboarding/onboarding_api.dart',
+    show: ['GuestOnboardingDraft', 'GuestOnboardingStorage'],
   },
   {
     source: 'mobile/lib/features/auth/screens/splash_screen.dart',

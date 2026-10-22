@@ -11,10 +11,16 @@ library;
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import 'package:aarast_mobile/core/network/api_client.dart';
+import 'package:aarast_mobile/core/storage/auth_storage.dart';
 import 'package:aarast_mobile/core/theme/app_theme.dart';
-import 'package:aarast_mobile/core/widgets/aarast_otp_field.dart';
-import 'package:aarast_mobile/core/widgets/aarast_ui.dart';
+import 'package:aarast_mobile/features/auth/data/auth_repository.dart';
+import 'package:aarast_mobile/features/auth/models/pending_registration.dart';
+import 'package:aarast_mobile/features/auth/providers/auth_controller.dart';
 import 'package:aarast_mobile/features/auth/screens/login_screen.dart';
+import 'package:aarast_mobile/features/auth/screens/otp_screen.dart';
+import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:aarast_mobile/features/auth/widgets/auth_wedding_widgets.dart';
 
 import 'support/preview_fonts.dart';
@@ -63,60 +69,24 @@ Widget _loginBody() {
   );
 }
 
-Widget _otpBody() {
-  return Builder(
-    builder: (context) {
-      final textTheme = Theme.of(context).textTheme;
-      return Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          const SizedBox(height: 32),
-          Text(
-            'تأكيد رقم الهاتف',
-            textAlign: TextAlign.center,
-            style: textTheme.headlineSmall?.copyWith(
-              color: AppTheme.textPrimary,
-              fontWeight: FontWeight.w900,
-              height: 1.18,
-            ),
-          ),
-          const SizedBox(height: 10),
-          Text(
-            'أدخل رمز التحقق إذا وصلك عبر واتساب\nلإكمال إعداد الحساب.',
-            textAlign: TextAlign.center,
-            style: textTheme.bodyMedium?.copyWith(
-              color: AppTheme.textSecondary,
-              fontWeight: FontWeight.w700,
-              height: 1.45,
-            ),
-          ),
-          const SizedBox(height: 28),
-          AuthPanel(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                AarastOtpField(
-                  controller: TextEditingController(text: '123456'),
-                  enabled: false,
-                ),
-                const SizedBox(height: 22),
-                AarastButton(
-                  label: 'تأكيد الرمز',
-                  icon: Icons.verified_rounded,
-                  onPressed: () {},
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 18),
-          AuthFooterLink(
-            prefix: 'لم تستلم الرمز؟',
-            action: 'إعادة الإرسال',
-            onTap: () {},
-          ),
-        ],
-      );
-    },
+/// The real code screen, as a groom saving a plan sees it (a09).
+Future<Widget> _otpScreen() async {
+  SharedPreferences.setMockInitialValues({});
+  final storage = AuthStorage(await SharedPreferences.getInstance());
+  final auth = AuthController(
+    AuthRepository(ApiClient(tokenProvider: storage.readAccessToken), storage),
+  );
+  return ChangeNotifierProvider<AuthController>.value(
+    value: auth,
+    child: OtpScreen(
+      phone: '+967777123456',
+      purpose: 'REGISTER',
+      registration: const PendingRegistration(
+        name: 'محمد',
+        phone: '+967777123456',
+        password: 'password',
+      ),
+    ),
   );
 }
 
@@ -141,11 +111,7 @@ void main() {
   });
 
   testWidgets('auth — OTP verification (430)', (tester) async {
-    await _pump(
-      tester,
-      AuthWeddingScaffold(child: _otpBody()),
-      size: const Size(430, 900),
-    );
+    await _pump(tester, await _otpScreen(), size: const Size(430, 900));
     await expectLater(
       find.byType(Scaffold),
       matchesGoldenFile('goldens/auth_otp.png'),

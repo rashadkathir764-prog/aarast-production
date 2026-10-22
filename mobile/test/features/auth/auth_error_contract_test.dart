@@ -140,7 +140,7 @@ void main() {
         ),
         isFalse,
       );
-      expect(invalidHarness.controller.errorMessage, contains('انتهت صلاحيته'));
+      expect(invalidHarness.controller.errorMessage, contains('انتهى وقته'));
 
       final missingHarness = await _AuthHarness.create();
       missingHarness.repository.verifyFailure = const ApiException(

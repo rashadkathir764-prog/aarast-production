@@ -315,7 +315,7 @@ mixin _AuthSignIn on _AuthControllerCore {
       'ADMIN_APP_PASSWORD_ALREADY_SET' =>
         'تم إعداد حساب التطبيق لهذا الرقم بالفعل. انتقل إلى تسجيل الدخول أو استعد كلمة مرور التطبيق.',
       'OTP_INVALID_OR_EXPIRED' =>
-        'رمز التحقق غير صحيح أو انتهت صلاحيته. اطلب رمزًا جديدًا وحاول مرة أخرى.',
+        'الرمز غلط أو انتهى وقته. اكتبه مرة ثانية أو اطلب رمز جديد.',
       'ACCOUNT_NOT_FOUND_AFTER_PHONE_PROOF' =>
         'تم التحقق من الرقم، ولا يوجد حساب تطبيق مرتبط به. أنشئ حسابًا جديدًا للمتابعة.',
       'ACCOUNT_DISABLED_AFTER_PHONE_PROOF' =>

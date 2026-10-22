@@ -9,15 +9,16 @@ import '../../../core/phone/yemeni_phone_normalizer.dart';
 import '../../../core/routing/app_router.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/aarast_ui.dart';
+import '../../../core/utils/arabic_count.dart';
 import '../../marketplace/marketplace_api.dart'
     show ProviderMarketplaceProvider, providerReferenceDataErrorMessage;
+import '../../onboarding/onboarding_api.dart'
+    show GuestOnboardingDraft, GuestOnboardingStorage;
 import '../models/pending_registration.dart';
 import '../providers/auth_controller.dart';
 import '../utils/application_password_policy.dart';
 import 'otp_screen.dart';
 import '../widgets/auth_wedding_widgets.dart';
-
-enum _AccountType { customer, provider }
 
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({
@@ -45,20 +46,49 @@ class _RegisterScreenState extends State<RegisterScreen> {
   /// After a submit showed errors, each field re-checks as it is edited, so
   /// "required" disappears once the field is filled (field test Q09).
   bool _submitAttempted = false;
-  _AccountType _accountType = _AccountType.customer;
   String? _cityId;
   String? _categoryId;
+
+  /// The plan kept on the phone (a08), which this account will save.
+  GuestOnboardingDraft? _keptPlan;
+
+  /// The name came with the kept plan and is valid, so it is not asked
+  /// again (a08b). A name that would fail stays in a field to fix.
+  bool _nameFromPlan = false;
+
+  bool get _providerMode => widget.startAsProvider;
 
   @override
   void initState() {
     super.initState();
-    if (widget.startAsProvider) {
-      _accountType = _AccountType.provider;
-    }
     _phoneController.text = widget.initialPhone?.trim() ?? '';
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
-      context.read<ProviderMarketplaceProvider>().loadReferenceData();
+      if (_providerMode) {
+        context.read<ProviderMarketplaceProvider>().loadReferenceData();
+      } else {
+        _readKeptPlan();
+      }
+    });
+  }
+
+  Future<void> _readKeptPlan() async {
+    final GuestOnboardingStorage storage;
+    try {
+      storage = context.read<GuestOnboardingStorage>();
+    } on ProviderNotFoundException {
+      return;
+    }
+    final draft = await storage.loadDraft();
+    if (!mounted || draft == null || !draft.isCompleteGuestPlan) return;
+    final title = draft.planName?.trim() ?? '';
+    final name = title.startsWith('عرس ') ? title.substring(4).trim() : '';
+    setState(() {
+      _keptPlan = draft;
+      if (_nameController.text.trim().isEmpty && name.length >= 3) {
+        _nameController.text = name;
+        _nameFromPlan = true;
+      }
     });
   }
 
@@ -75,13 +105,39 @@ class _RegisterScreenState extends State<RegisterScreen> {
   Widget build(BuildContext context) {
     final auth = context.watch<AuthController>();
     final marketplace = context.watch<ProviderMarketplaceProvider>();
-    final providerMode = _accountType == _AccountType.provider;
+    final providerMode = _providerMode;
+    final keptPlan = _keptPlan;
 
     return AuthWeddingScaffold(
       leading: AuthBackButton(
         onPressed: () => context.go(AppRouter.onboarding),
       ),
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
+      bottom: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          AarastButton(
+            label: providerMode
+                ? 'إرسال طلب الانضمام'
+                : keptPlan != null
+                ? 'احفظ خطتي'
+                : 'إنشاء حساب',
+            icon: providerMode ? LucideIcons.contact : LucideIcons.userPlus,
+            isLoading: auth.isSubmitting,
+            onPressed: _submit,
+          ),
+          AuthFooterLink(
+            prefix: 'لديك حساب؟',
+            action: 'تسجيل الدخول',
+            onTap: () {
+              if (auth.isSubmitting) return;
+              auth.clearError();
+              final resume = _safeResumeLocation(context);
+              context.go(_withResume(AppRouter.login, resumeLocation: resume));
+            },
+          ),
+        ],
+      ),
       child: Form(
         key: _formKey,
         autovalidateMode: _submitAttempted
@@ -90,51 +146,57 @@ class _RegisterScreenState extends State<RegisterScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            _RegisterNarrative(providerMode: providerMode),
-            const SizedBox(height: AarastV3Space.x3),
+            AuthHeading(
+              title: providerMode
+                  ? 'أنشئ حساب مزوّد'
+                  : keptPlan != null
+                  ? 'احفظ خطتك'
+                  : 'أنشئ حسابك',
+              subtitle: providerMode
+                  ? 'بيانات نشاطك أول، وبعدها تراجع الإدارة الطلب.'
+                  : keptPlan != null
+                  ? 'خطتك محفوظة في جوالك، وبالحساب ما تضيع'
+                  : 'حساب واحد لخطتك ولكل خطة تشارك فيها',
+            ),
+            const SizedBox(height: 18),
+            if (keptPlan != null) ...[
+              _KeptPlanStrip(plan: keptPlan),
+              const SizedBox(height: 14),
+            ],
             AuthPanel(
-              padding: const EdgeInsets.symmetric(vertical: 12),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  _AccountTypeSegmentedControl(
-                    value: _accountType,
-                    onChanged: (value) {
-                      auth.clearError();
-                      setState(() => _accountType = value);
-                    },
-                  ),
-                  const SizedBox(height: 10),
                   if (providerMode) ...[
                     const _ProviderModeNote(),
                     const SizedBox(height: 10),
                   ],
-                  AuthTextField(
-                    controller: _nameController,
-                    label: providerMode
-                        ? 'اسم النشاط / اسم المزود'
-                        : 'الاسم الكامل',
-                    icon: providerMode ? LucideIcons.store : LucideIcons.user,
-                    textInputAction: TextInputAction.next,
-                    validator: (value) {
-                      if (value == null || value.trim().isEmpty) {
-                        return providerMode
-                            ? 'اسم النشاط مطلوب'
-                            : 'الاسم مطلوب';
-                      }
-                      if (value.trim().length < 3) {
-                        return providerMode
-                            ? 'اسم النشاط قصير جداً'
-                            : 'الاسم قصير جداً';
-                      }
-                      return null;
-                    },
-                  ),
-                  const SizedBox(height: 10),
+                  if (!_nameFromPlan) ...[
+                    AuthTextField(
+                      controller: _nameController,
+                      label: providerMode ? 'اسم النشاط' : 'الاسم',
+                      icon: providerMode ? LucideIcons.store : LucideIcons.user,
+                      textInputAction: TextInputAction.next,
+                      validator: (value) {
+                        if (value == null || value.trim().isEmpty) {
+                          return providerMode
+                              ? 'اسم النشاط مطلوب'
+                              : 'الاسم مطلوب';
+                        }
+                        if (value.trim().length < 3) {
+                          return providerMode
+                              ? 'اسم النشاط قصير جداً'
+                              : 'الاسم قصير جداً';
+                        }
+                        return null;
+                      },
+                    ),
+                    const SizedBox(height: 10),
+                  ],
                   AuthTextField(
                     controller: _phoneController,
                     label: providerMode ? 'رقم التواصل' : 'رقم الهاتف',
-                    hint: 'مثال: 77xxxxxxx',
+                    hint: '777 123 456',
                     icon: LucideIcons.phone,
                     keyboardType: TextInputType.phone,
                     textInputAction: TextInputAction.next,
@@ -203,35 +265,23 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       return null;
                     },
                   ),
+                  const SizedBox(height: 8),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 6),
+                    child: Text(
+                      '6 أحرف أو أكثر. بعدها نرسل لك رمز تأكيد على واتساب.',
+                      style: JourneyType.of(
+                        13.5,
+                        color: AarastV3Color.textMuted,
+                      ),
+                    ),
+                  ),
                   if (auth.errorMessage != null) ...[
-                    const SizedBox(height: 10),
+                    const SizedBox(height: 12),
                     AuthInlineError(message: auth.errorMessage!),
                   ],
-                  const SizedBox(height: 12),
-                  AarastButton(
-                    label: providerMode ? 'إرسال طلب الانضمام' : 'إنشاء حساب',
-                    icon: providerMode
-                        ? LucideIcons.contact
-                        : LucideIcons.userPlus,
-                    isLoading: auth.isSubmitting,
-                    compact: true,
-                    onPressed: _submit,
-                  ),
                 ],
               ),
-            ),
-            const SizedBox(height: 10),
-            AuthFooterLink(
-              prefix: 'لديك حساب بالفعل؟',
-              action: 'تسجيل الدخول',
-              onTap: () {
-                if (auth.isSubmitting) return;
-                auth.clearError();
-                final resume = _safeResumeLocation(context);
-                context.go(
-                  _withResume(AppRouter.login, resumeLocation: resume),
-                );
-              },
             ),
           ],
         ),
@@ -267,7 +317,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
     if (otp == null || !mounted) return;
 
-    final providerApplication = _accountType == _AccountType.provider
+    final providerApplication = _providerMode
         ? PendingProviderApplication(
             businessName: _nameController.text.trim(),
             phone: normalizedPhone,
@@ -309,158 +359,28 @@ class _RegisterScreenState extends State<RegisterScreen> {
   }
 }
 
-class _RegisterNarrative extends StatelessWidget {
-  const _RegisterNarrative({required this.providerMode});
+/// «عرس محمد · صنعاء · 11 بند»: the plan this account will save.
+class _KeptPlanStrip extends StatelessWidget {
+  const _KeptPlanStrip({required this.plan});
 
-  final bool providerMode;
-
-  @override
-  Widget build(BuildContext context) {
-    final accent = providerMode ? AarastV3Color.cobalt : AarastV3Color.primary;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        Row(
-          children: [
-            const AuthBrandMark(compact: true),
-            const SizedBox(width: AarastV3Space.x3),
-            Container(width: 28, height: 2, color: AarastV3Color.signal),
-            const SizedBox(width: AarastV3Space.x2),
-            Expanded(
-              child: Text(
-                providerMode ? 'بوابة المزوّد' : 'حسابك في اعّرست',
-                style: AarastV3Type.label(context).copyWith(color: accent),
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: AarastV3Space.x3),
-        Text(
-          providerMode ? 'أنشئ حساب مزوّد' : 'أنشئ حسابك',
-          style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-            color: AarastV3Color.ink,
-            fontFamily: AppTheme.displayFontFamily,
-            fontWeight: FontWeight.w800,
-          ),
-        ),
-        const SizedBox(height: AarastV3Space.x2),
-        Text(
-          providerMode
-              ? 'بيانات النشاط الأساسية أولاً، ثم تراجع الإدارة الطلب.'
-              : 'ثلاثة حقول فقط تفصلك عن مساحة زفافك.',
-          style: AarastV3Type.body(context),
-        ),
-      ],
-    );
-  }
-}
-
-class _AccountTypeSegmentedControl extends StatelessWidget {
-  const _AccountTypeSegmentedControl({
-    required this.value,
-    required this.onChanged,
-  });
-
-  final _AccountType value;
-  final ValueChanged<_AccountType> onChanged;
+  final GuestOnboardingDraft plan;
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        Text(
-          'نوع الحساب',
-          textAlign: TextAlign.right,
-          style: Theme.of(context).textTheme.titleSmall?.copyWith(
-            color: AppTheme.textPrimary,
-            fontWeight: FontWeight.w900,
-          ),
+    final items = plan.selectedCategoryKeys.length;
+    final line = [
+      plan.planName?.trim() ?? '',
+      plan.city?.trim() ?? '',
+      if (items > 0)
+        arabicCount(
+          items,
+          one: 'بند واحد',
+          two: 'بندين',
+          few: 'بنود',
+          many: 'بند',
         ),
-        const SizedBox(height: 8),
-        Container(
-          padding: const EdgeInsets.all(3),
-          decoration: const BoxDecoration(
-            border: Border.symmetric(
-              horizontal: BorderSide(color: AppTheme.border),
-            ),
-          ),
-          child: Row(
-            children: [
-              Expanded(
-                child: _SegmentOption(
-                  selected: value == _AccountType.customer,
-                  label: 'عميل',
-                  icon: LucideIcons.heart,
-                  onTap: () => onChanged(_AccountType.customer),
-                ),
-              ),
-              const SizedBox(width: 6),
-              Expanded(
-                child: _SegmentOption(
-                  selected: value == _AccountType.provider,
-                  label: 'مزود',
-                  icon: LucideIcons.store,
-                  onTap: () => onChanged(_AccountType.provider),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-class _SegmentOption extends StatelessWidget {
-  const _SegmentOption({
-    required this.selected,
-    required this.label,
-    required this.icon,
-    required this.onTap,
-  });
-
-  final bool selected;
-  final String label;
-  final IconData icon;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(AppTheme.radiusMd),
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 180),
-        padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 8),
-        decoration: BoxDecoration(
-          color: selected ? AppTheme.brand : Colors.transparent,
-          borderRadius: BorderRadius.circular(AppTheme.radiusMd),
-        ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              icon,
-              size: 18,
-              color: selected ? Colors.white : AppTheme.textSecondary,
-            ),
-            const SizedBox(width: 6),
-            Flexible(
-              child: Text(
-                label,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(
-                  color: selected ? Colors.white : AppTheme.textSecondary,
-                  fontWeight: FontWeight.w900,
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
+    ].where((part) => part.isNotEmpty).join(' · ');
+    return JourneyNote(text: line, icon: LucideIcons.checkCircle2);
   }
 }
 

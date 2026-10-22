@@ -6,7 +6,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
-  testWidgets('LoginExperience keeps its primary fields compact', (
+  // D7: the journey field holds its label inside the box (60 to 76 px);
+  // actions stay one comfortable touch target (48 to 56 px).
+  testWidgets('LoginExperience keeps its fields and actions to size', (
     tester,
   ) async {
     tester.view.devicePixelRatio = 1;
@@ -48,7 +50,7 @@ void main() {
     expect(fields, findsNWidgets(2));
     for (final element in fields.evaluate()) {
       final height = tester.getSize(find.byWidget(element.widget)).height;
-      expect(height, inInclusiveRange(48, 58));
+      expect(height, inInclusiveRange(60, 76));
     }
 
     final compactActions = {
@@ -60,8 +62,8 @@ void main() {
       expect(action, findsOneWidget);
       expect(
         tester.getSize(action).height,
-        inInclusiveRange(48, 50),
-        reason: '$label should stay compact',
+        inInclusiveRange(48, 56),
+        reason: '$label should stay one touch target',
       );
     }
 
@@ -123,7 +125,7 @@ void main() {
         );
         await tester.pumpAndSettle();
 
-        expect(find.text('خطتك بانتظارك.'), findsOneWidget);
+        expect(find.text('خطتك بانتظارك، مثل ما تركتها.'), findsOneWidget);
         expect(find.byType(TextFormField), findsNWidgets(2));
         expect(tester.takeException(), isNull);
 

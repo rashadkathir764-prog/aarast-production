@@ -73,13 +73,11 @@ void main() {
       ),
     );
 
-    expect(
-      find.text(
-        'أدخل رمز التحقق إذا وصلك عبر واتساب\nلتسجيل الدخول إلى حسابك.',
-      ),
-      findsOneWidget,
-    );
-    expect(find.textContaining('تم تسليمه'), findsNothing);
+    // D7 wording: «طلبنا», never «أرسلنا» or «وصل» while unconfirmed.
+    expect(find.text('طلبنا لك رمز على واتساب'), findsOneWidget);
+    expect(find.text('إذا وصلك على الرقم'), findsOneWidget);
+    expect(find.textContaining('أرسلنا'), findsNothing);
+    expect(find.text('وصل إلى الرقم'), findsNothing);
   });
 
   testWidgets('OTP copy says delivered only for a DELIVERED response', (
@@ -99,12 +97,8 @@ void main() {
       ),
     );
 
-    expect(
-      find.text(
-        'أدخل رمز التحقق الذي تم تسليمه إلى واتساب\nلتسجيل الدخول إلى حسابك.',
-      ),
-      findsOneWidget,
-    );
+    expect(find.text('أرسلنا لك رمز على واتساب'), findsOneWidget);
+    expect(find.text('وصل إلى الرقم'), findsOneWidget);
   });
 
   testWidgets('OTP clears the stale server error when retry input starts', (
@@ -158,7 +152,7 @@ void main() {
       ),
     );
 
-    expect(find.textContaining('إعادة الإرسال خلال 60 ث'), findsOneWidget);
+    expect(find.textContaining('نعيد الإرسال بعد 1:00'), findsOneWidget);
     final footer = find.byKey(const ValueKey('otp-resend-button'));
     await tester.ensureVisible(footer);
     expect(
@@ -171,9 +165,9 @@ void main() {
     );
 
     await tester.pump(const Duration(seconds: 59));
-    expect(find.textContaining('إعادة الإرسال خلال 1 ث'), findsOneWidget);
+    expect(find.textContaining('نعيد الإرسال بعد 0:01'), findsOneWidget);
     await tester.pump(const Duration(seconds: 1));
-    expect(find.text('لم تستلم الرمز؟ إعادة الإرسال'), findsOneWidget);
+    expect(find.text('ما وصلك؟ أرسل رمز جديد'), findsOneWidget);
     expect(
       tester
           .widget<TextButton>(

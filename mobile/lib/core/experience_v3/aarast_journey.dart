@@ -1216,6 +1216,7 @@ class _JourneyTextFieldState extends State<JourneyTextField> {
                         isDense: true,
                         counterText: '',
                         hintText: widget.hint,
+                        hintTextDirection: widget.textDirection,
                         // The hint shows the answer as it will look typed.
                         hintStyle: JourneyType.of(
                           widget.large ? 28 : 17,

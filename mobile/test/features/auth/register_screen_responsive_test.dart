@@ -9,6 +9,9 @@ import 'package:aarast_mobile/features/auth/screens/register_screen.dart';
 import 'package:aarast_mobile/features/marketplace/data/marketplace_api.dart';
 import 'package:aarast_mobile/features/marketplace/models/marketplace_models.dart';
 import 'package:aarast_mobile/features/marketplace/providers/marketplace_provider.dart';
+import 'package:aarast_mobile/features/onboarding/data/guest_onboarding_storage.dart';
+import 'package:aarast_mobile/features/onboarding/models/guest_onboarding_draft.dart';
+import 'package:aarast_mobile/features/onboarding/models/wedding_location_draft.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:provider/provider.dart';
@@ -217,6 +220,73 @@ void main() {
     expect(find.text('كلمة المرور مطلوبة'), findsNothing);
     expect(find.text('الاسم مطلوب'), findsOneWidget);
   });
+
+  // a08b: the plan kept on the phone is named, and its name is not asked
+  // again; the phone and the password are.
+  for (final textScale in [1.0, 2.0]) {
+    testWidgets('saving a kept plan asks only phone and password at 320px '
+        'and ${textScale}x text', (tester) async {
+      tester.view.devicePixelRatio = 1;
+      tester.view.physicalSize = const Size(320, 760);
+      addTearDown(tester.view.reset);
+
+      final auth = await _authController();
+      final preferences = await SharedPreferences.getInstance();
+      final guest = GuestOnboardingStorage(preferences);
+      await guest.saveDraft(
+        GuestOnboardingDraft.quickLocalPlanSetup(
+          planName: 'عرس محمد',
+          persona: GuestPersona.groom,
+          location: WeddingLocationDraft.fromLegacyFields(
+            governorate: 'صنعاء',
+            city: 'صنعاء',
+          ),
+          weddingDate: null,
+          currency: 'YER',
+          startingItemNames: const ['القاعة', 'الذهب', 'الكسوة'],
+        ).copyWith(
+          guestPlanId: 'local-guest-1',
+          createdAt: DateTime(2026, 10, 23),
+          isGuestPlan: true,
+          needsSync: true,
+        ),
+      );
+      await tester.pumpWidget(
+        MultiProvider(
+          providers: [
+            ChangeNotifierProvider<AuthController>.value(value: auth),
+            ChangeNotifierProvider<ProviderMarketplaceProvider>.value(
+              value: _ReferenceDataMarketplaceProvider(),
+            ),
+            Provider<GuestOnboardingStorage>.value(value: guest),
+          ],
+          child: MaterialApp(
+            theme: AppTheme.light(),
+            locale: const Locale('ar'),
+            builder: (context, child) => MediaQuery(
+              data: MediaQuery.of(
+                context,
+              ).copyWith(textScaler: TextScaler.linear(textScale)),
+              child: child!,
+            ),
+            home: const Directionality(
+              textDirection: TextDirection.rtl,
+              child: RegisterScreen(),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('احفظ خطتك'), findsOneWidget);
+      expect(find.text('عرس محمد · صنعاء · 3 بنود'), findsOneWidget);
+      expect(find.byType(TextFormField), findsNWidgets(2));
+      expect(find.text('الاسم'), findsNothing);
+      // The action keeps the heading's words.
+      expect(find.widgetWithText(AarastButton, 'احفظ خطتي'), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    });
+  }
 }
 
 Future<AuthController> _authController() async {

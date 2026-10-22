@@ -6,14 +6,17 @@ import '../../../core/experience_v3/aarast_v3.dart';
 import '../../../core/theme/aarast_motion.dart';
 import '../../../core/theme/app_theme.dart';
 
+/// A sign-in screen (prototype a08b to a10): the round back button on top,
+/// the form under it, and the main action held at the bottom.
 class AuthWeddingScaffold extends StatelessWidget {
   const AuthWeddingScaffold({
     required this.child,
-    this.padding = const EdgeInsets.symmetric(horizontal: 24, vertical: 22),
-    this.maxWidth = 430,
+    this.padding = const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+    this.maxWidth = 560,
     this.leading,
+    this.bottom,
     this.useSafeArea = true,
-    this.contentAlignment = Alignment.center,
+    this.contentAlignment = Alignment.topCenter,
     super.key,
   });
 
@@ -21,31 +24,46 @@ class AuthWeddingScaffold extends StatelessWidget {
   final EdgeInsetsGeometry padding;
   final double maxWidth;
   final Widget? leading;
+
+  /// The screen's main action, kept above the keyboard and the edge.
+  final Widget? bottom;
   final bool useSafeArea;
   final AlignmentGeometry contentAlignment;
 
   @override
   Widget build(BuildContext context) {
-    final effectivePadding = padding.add(
-      EdgeInsets.only(bottom: MediaQuery.viewInsetsOf(context).bottom + 28),
-    );
-
-    // خلفية V3 هادئة مثل بقية التطبيق — بلا زخارف مرسومة.
-    final body = Stack(
-      children: [
-        Align(
-          alignment: contentAlignment,
-          child: ConstrainedBox(
-            constraints: BoxConstraints(maxWidth: maxWidth),
-            child: SingleChildScrollView(
-              physics: const BouncingScrollPhysics(),
-              padding: effectivePadding,
-              child: AarastFadeSlide(child: child),
+    final body = Align(
+      alignment: Alignment.topCenter,
+      child: ConstrainedBox(
+        constraints: BoxConstraints(maxWidth: maxWidth),
+        child: Column(
+          children: [
+            if (leading != null)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+                child: Align(
+                  alignment: AlignmentDirectional.centerStart,
+                  child: leading,
+                ),
+              ),
+            Expanded(
+              child: Align(
+                alignment: contentAlignment,
+                child: SingleChildScrollView(
+                  physics: const BouncingScrollPhysics(),
+                  padding: padding.add(const EdgeInsets.only(bottom: 20)),
+                  child: AarastFadeSlide(child: child),
+                ),
+              ),
             ),
-          ),
+            if (bottom != null)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
+                child: bottom,
+              ),
+          ],
         ),
-        if (leading != null) Positioned(top: 8, right: 16, child: leading!),
-      ],
+      ),
     );
 
     return Directionality(
@@ -58,6 +76,7 @@ class AuthWeddingScaffold extends StatelessWidget {
   }
 }
 
+/// The app's name as everywhere else: «اعّرست» with the saffron dot.
 class AuthBrandMark extends StatelessWidget {
   const AuthBrandMark({this.compact = false, super.key});
 
@@ -65,39 +84,36 @@ class AuthBrandMark extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final textTheme = Theme.of(context).textTheme;
+    return JourneyWordmark(size: compact ? 26 : 34);
+  }
+}
 
+/// A sign-in screen's title and the line under it (prototype a08b, a10).
+class AuthHeading extends StatelessWidget {
+  const AuthHeading({required this.title, this.subtitle, super.key});
+
+  final String title;
+  final String? subtitle;
+
+  @override
+  Widget build(BuildContext context) {
     return Column(
-      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Stack(
-          alignment: Alignment.topRight,
-          clipBehavior: Clip.none,
-          children: [
-            Text(
-              'أعرسِت',
-              textAlign: TextAlign.center,
-              style:
-                  (compact ? textTheme.headlineMedium : textTheme.displaySmall)
-                      ?.copyWith(
-                        color: AarastV3Color.primary,
-                        fontFamily: AppTheme.displayFontFamily,
-                        fontWeight: FontWeight.w700,
-                        height: 1,
-                        letterSpacing: 0,
-                      ),
-            ),
-            Positioned(
-              top: compact ? -3 : -6,
-              right: compact ? -8 : -12,
-              child: Icon(
-                LucideIcons.heart,
-                color: AarastV3Color.amber,
-                size: compact ? 12 : 16,
-              ),
-            ),
-          ],
+        Semantics(
+          header: true,
+          child: Text(
+            title,
+            style: JourneyType.of(30, weight: JourneyType.bold),
+          ),
         ),
+        if (subtitle != null) ...[
+          const SizedBox(height: 4),
+          Text(
+            subtitle!,
+            style: JourneyType.of(15.5, color: AarastV3Color.textMuted),
+          ),
+        ],
       ],
     );
   }
@@ -129,6 +145,8 @@ class AuthObscureToggle extends StatelessWidget {
   }
 }
 
+/// The fields of a sign-in form. The fields carry their own boxes, so the
+/// panel only spaces them.
 class AuthPanel extends StatelessWidget {
   const AuthPanel({required this.child, this.padding, super.key});
 
@@ -137,15 +155,8 @@ class AuthPanel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      padding:
-          padding ?? const EdgeInsets.symmetric(horizontal: 0, vertical: 12),
-      decoration: const BoxDecoration(
-        border: Border.symmetric(
-          horizontal: BorderSide(color: AarastV3Color.line),
-        ),
-      ),
+    return Padding(
+      padding: padding ?? const EdgeInsets.symmetric(vertical: 4),
       child: child,
     );
   }
@@ -183,6 +194,8 @@ class AuthTextField extends StatelessWidget {
   final ValueChanged<String>? onFieldSubmitted;
   final bool compact;
 
+  static const _labelTop = 12.0;
+
   @override
   Widget build(BuildContext context) {
     final effectiveTextDirection =
@@ -190,85 +203,108 @@ class AuthTextField extends StatelessWidget {
         (keyboardType == TextInputType.phone
             ? TextDirection.ltr
             : Directionality.of(context));
-    final compactBorder = OutlineInputBorder(
-      borderRadius: BorderRadius.circular(AarastV3Radius.surface),
-      borderSide: const BorderSide(color: AarastV3Color.line),
+    OutlineInputBorder border(Color color, double width) => OutlineInputBorder(
+      borderRadius: BorderRadius.circular(18),
+      borderSide: BorderSide(color: color, width: width),
     );
-    final effectiveSuffixIcon = compact && suffixIcon != null
-        ? IconButtonTheme(
-            data: IconButtonThemeData(
-              style: IconButton.styleFrom(
-                foregroundColor: AarastV3Color.textMuted,
-                backgroundColor: Colors.transparent,
-                disabledForegroundColor: AarastV3Color.textFaint,
-                disabledBackgroundColor: Colors.transparent,
-                minimumSize: const Size.square(40),
-                padding: EdgeInsets.zero,
-                iconSize: 19,
-                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                side: BorderSide.none,
-                shape: const CircleBorder(),
+    final valueSize = compact ? 17.0 : 19.0;
+    // The field's own icon sits on the far edge (prototype a08b); a tool
+    // such as the password eye sits beside it.
+    final endTools = Padding(
+      padding: const EdgeInsetsDirectional.only(end: 10),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (suffixIcon != null)
+            IconButtonTheme(
+              data: IconButtonThemeData(
+                style: IconButton.styleFrom(
+                  foregroundColor: AarastV3Color.textMuted,
+                  backgroundColor: Colors.transparent,
+                  side: BorderSide.none,
+                  minimumSize: const Size.square(40),
+                  padding: EdgeInsets.zero,
+                  iconSize: 19,
+                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  shape: const CircleBorder(),
+                ),
+              ),
+              child: suffixIcon!,
+            ),
+          Padding(
+            padding: const EdgeInsetsDirectional.only(start: 4),
+            child: Icon(icon, size: 22, color: AarastV3Color.textMuted),
+          ),
+        ],
+      ),
+    );
+
+    // The small label stays above the value inside the box, typed or not;
+    // the error, when any, shows under the box.
+    return Semantics(
+      label: label,
+      child: Stack(
+        children: [
+          TextFormField(
+            controller: controller,
+            textAlign: TextAlign.right,
+            textDirection: effectiveTextDirection,
+            keyboardType: keyboardType,
+            textInputAction: textInputAction,
+            obscureText: obscureText,
+            maxLines: maxLines,
+            validator: validator,
+            onFieldSubmitted: onFieldSubmitted,
+            style: JourneyType.of(valueSize, weight: JourneyType.bold),
+            cursorColor: AarastV3Color.primary,
+            decoration: InputDecoration(
+              hintText: hint,
+              // A number's hint reads in the number's own direction.
+              hintTextDirection: effectiveTextDirection,
+              hintStyle: JourneyType.of(
+                valueSize,
+                weight: JourneyType.bold,
+                color: AarastV3Color.textFaint,
+              ),
+              errorStyle: JourneyType.of(
+                13.5,
+                weight: JourneyType.bold,
+                color: AarastV3Color.danger,
+              ),
+              errorMaxLines: 3,
+              suffixIcon: endTools,
+              suffixIconConstraints: const BoxConstraints(minHeight: 48),
+              filled: true,
+              fillColor: AarastV3Color.paper,
+              contentPadding: const EdgeInsetsDirectional.fromSTEB(
+                16,
+                _labelTop + 22,
+                12,
+                14,
+              ),
+              border: border(AarastV3Color.line, 1),
+              enabledBorder: border(AarastV3Color.line, 1),
+              focusedBorder: border(AarastV3Color.primary, 2),
+              errorBorder: border(AarastV3Color.danger, 2),
+              focusedErrorBorder: border(AarastV3Color.danger, 2),
+            ),
+          ),
+          PositionedDirectional(
+            top: _labelTop,
+            start: 17,
+            end: 64,
+            child: IgnorePointer(
+              child: ExcludeSemantics(
+                child: Text(
+                  label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: JourneyType.of(12.5, color: AarastV3Color.textMuted),
+                ),
               ),
             ),
-            child: suffixIcon!,
-          )
-        : suffixIcon;
-
-    return TextFormField(
-      controller: controller,
-      textAlign: TextAlign.right,
-      textDirection: effectiveTextDirection,
-      keyboardType: keyboardType,
-      textInputAction: textInputAction,
-      obscureText: obscureText,
-      maxLines: maxLines,
-      validator: validator,
-      onFieldSubmitted: onFieldSubmitted,
-      decoration: InputDecoration(
-        labelText: label,
-        hintText: hint,
-        prefixIcon: Icon(
-          icon,
-          size: compact ? 19 : null,
-          color: compact ? AarastV3Color.primary : null,
-        ),
-        suffixIcon: effectiveSuffixIcon,
-        isDense: compact,
-        visualDensity: compact ? VisualDensity.compact : null,
-        filled: compact ? true : null,
-        fillColor: compact ? AarastV3Color.paper : null,
-        contentPadding: compact
-            ? const EdgeInsetsDirectional.fromSTEB(14, 10, 12, 10)
-            : null,
-        prefixIconConstraints: compact
-            ? const BoxConstraints(minWidth: 44, minHeight: 48)
-            : null,
-        suffixIconConstraints: compact
-            ? const BoxConstraints(minWidth: 44, minHeight: 48)
-            : null,
-        border: compact ? compactBorder : null,
-        enabledBorder: compact ? compactBorder : null,
-        focusedBorder: compact
-            ? compactBorder.copyWith(
-                borderSide: const BorderSide(
-                  color: AarastV3Color.primary,
-                  width: 1.5,
-                ),
-              )
-            : null,
-        errorBorder: compact
-            ? compactBorder.copyWith(
-                borderSide: const BorderSide(color: AarastV3Color.danger),
-              )
-            : null,
-        focusedErrorBorder: compact
-            ? compactBorder.copyWith(
-                borderSide: const BorderSide(
-                  color: AarastV3Color.danger,
-                  width: 1.5,
-                ),
-              )
-            : null,
+          ),
+        ],
       ),
     );
   }
@@ -281,26 +317,27 @@ class AuthInlineError extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-      decoration: BoxDecoration(
-        color: AppTheme.brandMuted,
-        borderRadius: BorderRadius.circular(AppTheme.radiusMd),
-        border: Border.all(color: AppTheme.dangerSoft),
-      ),
+    return Semantics(
+      liveRegion: true,
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Icon(LucideIcons.alertCircle, color: AppTheme.danger, size: 19),
+          const Padding(
+            padding: EdgeInsets.only(top: 2),
+            child: Icon(
+              LucideIcons.alertCircle,
+              color: AarastV3Color.danger,
+              size: 18,
+            ),
+          ),
           const SizedBox(width: 8),
           Expanded(
             child: Text(
               message,
-              textAlign: TextAlign.right,
-              style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                color: AppTheme.danger,
-                fontWeight: FontWeight.w700,
-                height: 1.35,
+              style: JourneyType.of(
+                14,
+                weight: JourneyType.bold,
+                color: AarastV3Color.danger,
               ),
             ),
           ),
@@ -310,6 +347,7 @@ class AuthInlineError extends StatelessWidget {
   }
 }
 
+/// The round back button of every journey screen.
 class AuthBackButton extends StatelessWidget {
   const AuthBackButton({required this.onPressed, super.key});
 
@@ -317,14 +355,15 @@ class AuthBackButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return IconButton(
-      onPressed: onPressed,
-      icon: const Icon(LucideIcons.arrowRight),
+    return JourneyRoundButton(
+      icon: LucideIcons.arrowRight,
       tooltip: 'رجوع',
+      onPressed: onPressed,
     );
   }
 }
 
+/// «لديك حساب؟ تسجيل الدخول»: the question quiet, the action in teal.
 class AuthFooterLink extends StatelessWidget {
   const AuthFooterLink({
     required this.prefix,
@@ -339,6 +378,29 @@ class AuthFooterLink extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return TextButton(onPressed: onTap, child: Text('$prefix $action'));
+    final enabled = onTap != null;
+    return TextButton(
+      onPressed: onTap,
+      style: TextButton.styleFrom(minimumSize: const Size(48, 48)),
+      child: Text.rich(
+        TextSpan(
+          text: '$prefix ',
+          style: JourneyType.of(15, color: AarastV3Color.textMuted),
+          children: [
+            TextSpan(
+              text: action,
+              style: JourneyType.of(
+                15,
+                weight: JourneyType.bold,
+                color: enabled
+                    ? AarastV3Color.primary
+                    : AarastV3Color.textFaint,
+              ),
+            ),
+          ],
+        ),
+        textAlign: TextAlign.center,
+      ),
+    );
   }
 }

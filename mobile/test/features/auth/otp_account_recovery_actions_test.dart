@@ -39,7 +39,8 @@ void main() {
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 100));
 
-      expect(find.textContaining('مسجل بالفعل'), findsOneWidget);
+      expect(find.text('هذا الرقم عليه حساب من قبل'), findsOneWidget);
+      expect(find.text('هذا حسابك؟'), findsOneWidget);
       expect(find.textContaining('Phone or email'), findsNothing);
       expect(find.byKey(const ValueKey('otp-go-to-login')), findsOneWidget);
       expect(
@@ -71,8 +72,9 @@ void main() {
 
       await _pump(tester, controller: controller, router: router);
 
-      expect(find.text('تسجيل الدخول برمز التحقق'), findsOneWidget);
-      expect(find.textContaining('لتسجيل الدخول إلى حسابك'), findsOneWidget);
+      // A sign-in code speaks of signing in, never of a new account (D7).
+      expect(find.text('أول ما يكتمل الرمز تدخل على حسابك.'), findsOneWidget);
+      expect(find.textContaining('ينحفظ حسابك'), findsNothing);
 
       await tester.enterText(find.byKey(const Key('otp-code-field')), '123456');
       await tester.pump();
@@ -103,8 +105,10 @@ void main() {
 
     await _pump(tester, controller: controller, router: router);
 
-    expect(find.text('تأكيد رقم الهاتف'), findsOneWidget);
-    expect(find.textContaining('لإكمال إعداد الحساب'), findsOneWidget);
+    expect(
+      find.text('أول ما يكتمل الرمز ينحفظ حسابك وخطتك وتدخل عليها.'),
+      findsOneWidget,
+    );
     await tester.tap(find.byTooltip('رجوع'));
     await tester.pump(const Duration(milliseconds: 100));
 

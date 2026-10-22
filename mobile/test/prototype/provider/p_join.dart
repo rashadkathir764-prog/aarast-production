@@ -1,5 +1,5 @@
 // Provider journey prototype: account, joining, review, home. The running
-// example is «استوديو لحظة», a Sana'a photo studio with four teams, one of
+// example is «استوديو ضوء صنعاء», a Sana'a photo studio with four teams, one of
 // them women photographers.
 import 'package:flutter/material.dart';
 import 'package:lucide_icons/lucide_icons.dart';
@@ -54,7 +54,7 @@ Widget p02Claim() => pPhone(
       ),
     ),
     gap(12),
-    pGhost('مو أنا، أبغى ملف جديد'),
+    pGhost('مو أنا، أشتي ملف جديد'),
   ],
 );
 
@@ -68,7 +68,7 @@ Widget p03Business() => pPhone(
     gap(18),
     Text('نشاطك', style: tx(24, w: bold)),
     gap(12),
-    pField('اسم النشاط كما يعرفه الناس', 'استوديو لحظة', focused: true),
+    pField('اسم النشاط كما يعرفه الناس', 'استوديو ضوء صنعاء', focused: true),
     gap(10),
     pField('القسم', 'التصوير', icon: LucideIcons.camera),
     gap(16),
@@ -233,9 +233,9 @@ Widget p06Units() {
       sectionTitle('الباقات', action: '+ باقة', ac: P.c),
       whiteList([
         listRow(icon: LucideIcons.package, fg: P.c, soft: P.soft, title: 'صور فقط', sub: 'الزفاف · 300 صورة معدّلة',
-            trailing: Text('250,000', style: tx(14.5, w: bold))),
+            trailing: Text('350,000', style: tx(14.5, w: bold))),
         listRow(icon: LucideIcons.package, fg: P.c, soft: P.soft, title: 'صور وفيديو', sub: 'الزفاف · فيلم 10 دقايق',
-            trailing: Text('450,000', style: tx(14.5, w: bold))),
+            trailing: Text('550,000', style: tx(14.5, w: bold))),
       ]),
       gap(8),
       Text('الأسعار بريال صنعاء. تقدر تكتب «حسب الطلب».', style: tx(13, c: K.muted)),
@@ -316,7 +316,7 @@ Widget p07Submit() => pPhone(
                 Wrap(spacing: 6, runSpacing: 6, children: [
                   tag('للرجال والنساء', P.c, P.soft),
                   tag('فريق مصوّرات', K.coral, K.coralSoft),
-                  tag('من 250,000 ر.ي صنعاء', K.green, K.greenSoft),
+                  tag('من 350,000 ر.ي صنعاء', K.green, K.greenSoft),
                 ]),
               ],
             ),
@@ -331,7 +331,7 @@ Widget p07Submit() => pPhone(
           eff(LucideIcons.checkCircle2, 'نشاطك ومناطقك', c: K.green),
           eff(LucideIcons.checkCircle2, '6 صور', c: K.green),
           eff(LucideIcons.checkCircle2, '4 فرق وباقتين', c: K.green),
-          eff(LucideIcons.circle, 'التوثيق: اختياري الحين، يرفع ظهورك', c: K.faint),
+          eff(LucideIcons.circle, 'التوثيق: اختياري الآن، يرفع ظهورك', c: K.faint),
         ],
       ),
     ),
@@ -386,11 +386,11 @@ Widget p09NeedsChanges() => pPhone(
     subHeader('يحتاج تعديل بسيط'),
     pNote('ملفك قريب. صلّح الملاحظتين تحت وأرسله، ونراجعه أول بأول.', c: K.saffronInk, bg: K.saffronSoft, i: LucideIcons.clipboardCheck),
     gap(14),
-    pField('اسم النشاط', 'استوديو لحظة'),
+    pField('اسم النشاط', 'استوديو ضوء صنعاء'),
     gap(10),
     pField('صور الشغل', '6 صور', note: 'صورتين فيهن وجوه نساء واضحة. شيلهن أو بدّلهن.'),
     gap(10),
-    pField('باقة «صور وفيديو»', '450,000', note: 'اكتب وش تشمل: كم صورة، ومدة الفيلم، والألبوم.'),
+    pField('باقة «صور وفيديو»', '550,000', note: 'اكتب ايش تشمل: كم صورة، ومدة الفيلم، والألبوم.'),
     gap(10),
     pField('المناطق', 'كل صنعاء'),
     gap(10),
@@ -401,7 +401,7 @@ Widget p09NeedsChanges() => pPhone(
 Widget p10Approved() => _state(
   icon: LucideIcons.partyPopper, c: K.green, soft: K.greenSoft,
   title: 'مبروك، صرت في اعّرست',
-  sub: 'العرسان في صنعاء يشوفونك من الحين.',
+  sub: 'العرسان في صنعاء يشوفونك من الآن.',
   action: pBtn('ابدأ'),
   body: [
     sectionTitle('ثلاث خطوات أولى'),
@@ -415,7 +415,7 @@ Widget p10Approved() => _state(
 
 Widget p11Rejected() => _state(
   icon: LucideIcons.fileX, c: K.coral, soft: K.coralSoft,
-  title: 'ما قدرنا نوافق الحين',
+  title: 'ما قدرنا نوافق الآن',
   sub: 'مو نهاية الطريق. صلّح اللي تحت وقدّم من جديد.',
   action: pBtn('صلّح وقدّم من جديد'),
   body: [
@@ -437,7 +437,7 @@ Widget p11Rejected() => _state(
 Widget p12Suspended() => _state(
   icon: LucideIcons.pauseOctagon, c: K.coral, soft: K.coralSoft,
   title: 'حسابك موقوف مؤقتًا',
-  sub: 'من 10 نوفمبر. ما توصلك طلبات جديدة لين ينحل الموضوع.',
+  sub: 'من أمس. ما توصلك طلبات جديدة لين ينحل الموضوع.',
   action: pBtn('تكلّم مع الدعم', icon: LucideIcons.messageCircle),
   body: [
     Box(
@@ -492,7 +492,7 @@ Widget p13Home() => pPhone(
           gap(4),
           Text('أقدمها من أمس · ينتهي بعد 6 أيام', style: tx(13, c: Colors.white70)),
           gap(14),
-          btn('ردّ الحين', bg: Colors.white, fg: P.c),
+          btn('ردّ الآن', bg: Colors.white, fg: P.c),
         ],
       ),
     ),
@@ -508,7 +508,7 @@ Widget p13Home() => pPhone(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text('محمد قبل عرضك', style: tx(15.5, w: bold)),
-                Text('يبغى يحجز الخميس 21 يناير · أكّد اليوم', style: tx(12.5, c: K.muted)),
+                Text('يشتي يحجز الخميس 21 يناير · أكّد اليوم', style: tx(12.5, c: K.muted)),
               ],
             ),
           ),

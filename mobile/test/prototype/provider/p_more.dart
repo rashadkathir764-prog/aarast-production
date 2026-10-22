@@ -51,10 +51,15 @@ Widget p28Month() {
       pTop('التقويم', 'يناير 2027 · رجب وشعبان 1448', icons: [LucideIcons.chevronRight, LucideIcons.chevronLeft]),
       Row(children: [for (final w in wd) Expanded(child: Center(child: Text(w, style: tx(12.5, c: K.muted))))]),
       gap(4),
-      for (var r = 0; r < 5; r++)
+      // 1 January 2027 is a Friday: the Saturday-first grid starts 6 cells in.
+      for (var r = 0; r < 6; r++)
         Row(children: [
           for (var c = 0; c < 7; c++)
-            Expanded(child: r * 7 + c < days.length ? cell(days[r * 7 + c]) : const SizedBox()),
+            Expanded(
+              child: r * 7 + c - 6 >= 0 && r * 7 + c - 6 < days.length
+                  ? cell(days[r * 7 + c - 6])
+                  : const SizedBox(height: 55),
+            ),
         ]),
       gap(10),
       Wrap(spacing: 12, runSpacing: 6, children: [
@@ -214,10 +219,10 @@ Widget p32Fresh() => pPhone(
             pToggle(true),
           ]),
           gap(6),
-          kv('من', 'السبت 1 مارس'),
-          kv('لين', 'رمضان كامل · 31 مارس'),
+          kv('من', 'الاثنين 8 فبراير'),
+          kv('لين', 'آخر رمضان · 9 مارس'),
           gap(6),
-          eff(LucideIcons.inbox, 'ما توصلك طلبات جديدة، ويظهر للعرسان «في إجازة لين 31 مارس»'),
+          eff(LucideIcons.inbox, 'ما توصلك طلبات جديدة، ويظهر للعرسان «في إجازة لين 9 مارس»'),
           eff(LucideIcons.checkCircle2, 'حجوزاتك المؤكدة ما تتأثر', c: K.green),
         ],
       ),
@@ -263,7 +268,7 @@ Widget p33Chats() {
       pTop('الرسائل', 'مع العرسان'),
       whiteList([
         c('م', K.teal, 'محمد الحمدي', 'الزفة · 21 يناير', 'الدرون عند الباب ممكن؟', '9:40', un: 2, s: 'ردّيت'),
-        c('س', const Color(0xFFB4536A), 'سلمى الحمدي', 'حفلة نساء · 21 يناير', 'رسالة صوتية · 0:34', '8:15', un: 1, s: 'جديد'),
+        c('س', const Color(0xFFB4536A), 'سلمى السقاف', 'حفلة نساء · 21 يناير', 'رسالة صوتية · 0:34', '8:15', un: 1, s: 'جديد'),
         c('ع', K.sky, 'عادل الريمي', 'الزفة · 21 يناير', 'تمام، نشوفكم الخميس', 'أمس', s: 'محجوز'),
       ]),
     ],
@@ -309,17 +314,17 @@ Widget p34Chat() {
         child: Row(children: [
           const Icon(LucideIcons.fileText, size: 18, color: P.c),
           const SizedBox(width: 8),
-          Expanded(child: Text('عرضك: صور وفيديو · 450,000 · باقي 8 أيام', style: tx(13.5, w: bold, c: P.c))),
+          Expanded(child: Text('عرضك: صور وفيديو · 550,000 · باقي 8 أيام', style: tx(13.5, w: bold, c: P.c))),
           st('ردّيت'),
         ]),
       ),
       gap(14),
       b('السلام عليكم، الدرون عند الباب ممكن؟ القاعة تسمح', time: '9:38'),
-      b('وعليكم السلام. ممكن، وهو داخل في عرضك', me: true, time: '9:40'),
-      b('طيب والألبوم كم يزيد؟', time: '9:41'),
+      b('وعليكم السلام. ممكن، والقاعة تسمح', me: true, time: '9:40'),
+      b('طيب والدرون كم يزيد؟', time: '9:41'),
       gap(8),
       Wrap(spacing: 8, runSpacing: 8, children: [
-        pChip('الألبوم 80,000 إضافة'),
+        pChip('الدرون 80,000 إضافة'),
         pChip('أعدّل العرض'),
         pChip('أرسل موقع المحل'),
       ]),
@@ -344,10 +349,10 @@ Widget p35Me() => pPhone(
     pBtn('كيف يشوفك العرسان', icon: LucideIcons.eye, bg: P.soft, fg: P.c, v: 13, fs: 15),
     gap(12),
     whiteList([
-      listRow(icon: LucideIcons.package, fg: P.c, soft: P.soft, title: 'خدماتك وفرقك', sub: '4 فرق · باقتين · من 250,000'),
+      listRow(icon: LucideIcons.package, fg: P.c, soft: P.soft, title: 'خدماتك وفرقك', sub: '4 فرق · باقتين · من 350,000'),
       listRow(icon: LucideIcons.image, fg: P.c, soft: P.soft, title: 'معرض الشغل', sub: '18 صورة · تيك توك مربوط'),
       listRow(icon: LucideIcons.mapPin, fg: P.c, soft: P.soft, title: 'التغطية', sub: 'كل صنعاء · يسافر'),
-      listRow(icon: LucideIcons.badgeCheck, fg: P.c, soft: P.soft, title: 'التوثيق', sub: 'موثّق من 3 نوفمبر'),
+      listRow(icon: LucideIcons.badgeCheck, fg: P.c, soft: P.soft, title: 'التوثيق', sub: 'موثّق من أسبوعين'),
       listRow(icon: LucideIcons.star, fg: P.c, soft: P.soft, title: 'التقييمات', sub: 'تقييم جديد ما رديت عليه', trailing: dot(K.coral, 9)),
       listRow(icon: LucideIcons.barChart3, fg: P.c, soft: P.soft, title: 'أداؤك', sub: 'آخر 30 يوم'),
       listRow(icon: LucideIcons.settings, fg: P.c, soft: P.soft, title: 'الإعدادات', sub: 'الرقم، والتنبيهات، والحساب'),
@@ -374,8 +379,8 @@ Widget p36Services() {
     tab: PTab.me,
     children: [
       subHeader('خدماتك', sub: 'تصوير · 4 فرق'),
-      pkg('صور فقط', 'يشمل: 300 صورة معدّلة · إضافة: ألبوم 80,000', '250,000', 'في الموسم (شوال والصيف): 300,000'),
-      pkg('صور وفيديو', 'يشمل: 300 صورة، فيلم 10 دقايق، درون عند الباب · إضافة: ألبوم 80,000', '450,000', 'في الموسم: 520,000'),
+      pkg('صور فقط', 'يشمل: 300 صورة معدّلة · إضافة: ألبوم 80,000', '350,000', 'في الموسم (شوال والصيف): 400,000'),
+      pkg('صور وفيديو', 'يشمل: مصوّرين، 300 صورة، فيلم 10 دقايق، ألبوم مطبوع · إضافة: درون 80,000', '550,000', 'في الموسم: 620,000'),
       sectionTitle('الفرق', action: 'عدّل', ac: P.c),
       whiteList([
         listRow(icon: LucideIcons.camera, fg: P.c, soft: P.soft, title: 'فريق 1 · فريق 2 · فريق 3', sub: 'رجال'),
@@ -566,7 +571,7 @@ Widget p42Notifications() {
         n(LucideIcons.inbox, K.coral, K.coralSoft, 'طلب جديد من سلمى', 'حفلة نساء · 21 يناير', un: true),
         n(LucideIcons.calendarCheck, K.saffronInk, K.saffronSoft, 'محمد قبل عرضك', 'أكّد الحجز', un: true),
         n(LucideIcons.wallet, K.green, K.greenSoft, 'محمد سجّل دفعة 100,000', 'وصلتك؟'),
-        n(LucideIcons.calendarClock, K.sky, K.skySoft, 'فهد أجّل العرس', 'هل 4 فبراير فاضي عندك؟'),
+        n(LucideIcons.calendarClock, K.sky, K.skySoft, 'فهد أجّل العرس', 'من 4 فبراير للصيف · الحجز انلغى'),
         n(LucideIcons.lock, K.lilac, K.lilacSoft, 'الحجز المبدئي ينفك بكرة', 'محمد ما أكّد لسا'),
         n(LucideIcons.star, K.saffronInk, K.saffronSoft, 'تقييم جديد', '4 نجوم من محمد'),
       ]),

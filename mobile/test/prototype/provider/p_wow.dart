@@ -48,7 +48,7 @@ Widget p44RunSheet() {
     children: [
       pTop('شغل الليلة', 'الخميس 21 يناير · 4 أعراس'),
       job('4:00', 'مقيل عرس ناصر', 'بيت آل الشامي · السبعين', 'فريق 3', 'أبو ناصر', tag('خلص', K.green, K.greenSoft)),
-      job('7:30', 'زفة محمد الحمدي', 'قاعة سبأ · القاعة الكبرى · درون عند الباب', 'فريق 2 · ياسر', 'أبو فهد (القاعة)', tag('في الطريق', K.saffronInk, K.saffronSoft), now: true),
+      job('7:30', 'زفة محمد الحمدي', 'قاعة سبأ · القاعة الكبرى · من دخول العريس', 'فريق 2 · ياسر', 'أبو فهد (القاعة)', tag('في الطريق', K.saffronInk, K.saffronSoft), now: true),
       job('8:00', 'زفة عادل الريمي', 'قاعة الماسة · حدة', 'فريق 1 · سامي', 'عادل', tag('وصلوا', K.green, K.greenSoft)),
       job('8:00', 'حفلة سلمى', 'صالة الياسمين · التصوير ممنوع للجوالات', 'فريق النساء · أم ريم', 'أم سلمى', tag('جاهزين', P.c, P.soft)),
       gap(4),
@@ -64,14 +64,14 @@ Widget p45QuickOffer() => pPhone(
     sub: 'محمد الحمدي · الزفة · الخميس 21 يناير',
     children: [
       for (final o in const [
-        ('صور فقط', '250,000', 'آخر 5 عرسان مثله اختاروا هذي 1 مرة'),
-        ('صور وفيديو', '450,000', 'آخر 5 عرسان مثله اختاروا هذي 4 مرات'),
+        ('صور فقط', '350,000', 'آخر 5 عرسان مثله اختاروا هذي 1 مرة'),
+        ('صور وفيديو', '550,000', 'آخر 5 عرسان مثله اختاروا هذي 4 مرات'),
       ])
         pOption('${o.$1} · ${o.$2}', sub: o.$3, on: o.$1 == 'صور وفيديو'),
       gap(4),
       Row(children: [
         Expanded(child: Text('ليلة الخميس في الموسم', style: tx(14, c: K.muted))),
-        Text('سعر الموسم 520,000؟', style: tx(14, w: bold, c: K.saffronInk)),
+        Text('سعر الموسم 620,000؟', style: tx(14, w: bold, c: K.saffronInk)),
       ]),
       gap(12),
       Row(children: [
@@ -155,7 +155,7 @@ Widget p47Income() {
       Text('ريال صنعاء. والدولار والسعودي لحالهم تحت.', style: tx(12.5, c: K.muted)),
       sectionTitle('يستحق هذا الأسبوع'),
       whiteList([
-        row('محمد الحمدي', 'الباقي يوم العرس · الخميس', '350,000', tag('يوم العرس', K.saffronInk, K.saffronSoft)),
+        row('محمد الحمدي', 'الباقي يوم العرس · الخميس', '450,000', tag('يوم العرس', K.saffronInk, K.saffronSoft)),
         row('عادل الريمي', 'الباقي يوم العرس · الخميس', '300,000', tag('يوم العرس', K.saffronInk, K.saffronSoft)),
         row('ناصر الشامي', 'تأخر 5 أيام', '150,000', tag('ذكّره', K.coral, K.coralSoft)),
       ]),
@@ -189,7 +189,7 @@ Widget p48ShareCard() => pPhone(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('استوديو لحظة', style: tx(28, w: bold, c: Colors.white)),
+                Text('استوديو ضوء صنعاء', style: tx(28, w: bold, c: Colors.white)),
                 Text('تصوير أعراس · صنعاء · فريق مصوّرات', style: tx(14, c: Colors.white70)),
                 gap(12),
                 Wrap(spacing: 6, runSpacing: 6, children: [

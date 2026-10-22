@@ -276,7 +276,7 @@ Widget pTop(String title, String sub, {List<IconData> icons = const []}) => Padd
 );
 
 /// The provider's identity row: logo letter, name, kind.
-Widget pBiz({String l = 'ل', String name = 'استوديو لحظة', String kind = 'تصوير · صنعاء · 4 فرق'}) => Row(
+Widget pBiz({String l = 'ل', String name = 'استوديو ضوء صنعاء', String kind = 'تصوير · صنعاء · 4 فرق'}) => Row(
   children: [
     Container(
       width: 46,

@@ -24,10 +24,10 @@ Widget _facts() => Box(
     children: [
       kv('المناسبة', 'الزفة · عرس رجال'),
       kv('اليوم', 'الخميس 21 يناير · 13 شعبان'),
-      kv('الفترة', 'الليل · من بعد العشاء'),
+      kv('الفترة', 'الليل · من بعد المغرب'),
       kv('المكان', 'قاعة سبأ، صنعاء'),
       kv('الضيوف', '124 تقريبًا'),
-      kv('يبغى', 'صور وفيديو'),
+      kv('يشتي', 'صور وفيديو'),
     ],
   ),
 );
@@ -75,9 +75,9 @@ Widget p15Requests() {
       Row(children: [pChip('جديد 3', on: true), const SizedBox(width: 8), pChip('ردّيت 5'), const SizedBox(width: 8), pChip('محجوز 9'), const SizedBox(width: 8), pChip('انتهى')]),
       gap(12),
       card('م', K.teal, 'محمد الحمدي', 'الزفة · الخميس 21 يناير · صور وفيديو', 'ردّ: باقي 6 أيام', 'جديد', time: 'أمس'),
-      card('س', const Color(0xFFB4536A), 'سلمى الحمدي', 'حفلة نساء · الخميس 21 يناير · فريق نساء', 'ردّ: باقي 6 أيام', 'جديد', time: 'اليوم'),
+      card('س', const Color(0xFFB4536A), 'سلمى السقاف', 'حفلة نساء · الخميس 21 يناير · فريق نساء', 'ردّ: باقي 6 أيام', 'جديد', time: 'اليوم'),
       card('ع', K.sky, 'عادل الريمي', 'السمرة · الأربعاء 20 يناير', 'ردّ: باقي 7 أيام', 'جديد', time: 'قبل ساعة'),
-      card('ف', K.saffronInk, 'فهد العمري', 'الزفة · 4 فبراير', 'أكّد الحجز: يبغى يحجز', 'قبلوا عرضك'),
+      card('ف', K.saffronInk, 'فهد العمري', 'الزفة · 4 فبراير', 'أكّد الحجز: يشتي يحجز', 'قبلوا عرضك'),
     ],
   );
 }
@@ -100,7 +100,7 @@ Widget p16Request() => pPhone(
     gap(10),
     Box(
       pad: const EdgeInsets.all(14),
-      child: Text('«نبغى تصوير الزفة من دخول العريس، ودرون عند الباب إذا ممكن»', style: tx(14.5, h: 1.6)),
+      child: Text('«نشتي تصوير الزفة من دخول العريس، ودرون عند الباب إذا ممكن»', style: tx(14.5, h: 1.6)),
     ),
     gap(10),
     Box(
@@ -151,7 +151,7 @@ Widget p16Order() => pPhone(
         children: [
           kv('المجموع', '155,000 ر.ي صنعاء'),
           kv('الاستلام', 'من المحل · الاثنين 18 يناير'),
-          kv('ملاحظة', 'يبغى بروفة قبلها بأسبوع'),
+          kv('ملاحظة', 'يشتي بروفة قبلها بأسبوع'),
         ],
       ),
     ),
@@ -170,7 +170,7 @@ Widget p17Offer() => pPhone(
     gap(12),
     Row(
       children: [
-        Expanded(flex: 3, child: pField('السعر', '450,000', focused: true)),
+        Expanded(flex: 3, child: pField('السعر', '550,000', focused: true)),
         const SizedBox(width: 10),
         Expanded(flex: 2, child: pField('العملة', 'ر.ي صنعاء')),
       ],
@@ -184,10 +184,10 @@ Widget p17Offer() => pPhone(
           Text('يشمل', style: tx(13, c: K.muted)),
           eff(LucideIcons.check, '300 صورة معدّلة', c: K.green),
           eff(LucideIcons.check, 'فيلم 10 دقايق', c: K.green),
-          eff(LucideIcons.check, 'درون عند الباب', c: K.green),
+          eff(LucideIcons.check, 'ألبوم مطبوع', c: K.green),
           gap(4),
           Text('ما يشمل', style: tx(13, c: K.muted)),
-          eff(LucideIcons.x, 'الألبوم المطبوع · إضافة 80,000', c: K.coral),
+          eff(LucideIcons.x, 'الدرون عند الباب · إضافة 80,000', c: K.coral),
         ],
       ),
     ),
@@ -249,7 +249,7 @@ Widget p19OfferSent() => pPhone(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(children: [Expanded(child: Text('صور وفيديو', style: tx(17, w: bold))), st('ردّيت')]),
-          Text('450,000 ر.ي صنعاء · نسخة 1', style: tx(14, c: K.muted)),
+          Text('550,000 ر.ي صنعاء · نسخة 1', style: tx(14, c: K.muted)),
           gap(12),
           Row(
             children: [
@@ -263,7 +263,7 @@ Widget p19OfferSent() => pPhone(
             children: [
               const Icon(LucideIcons.clock, size: 18, color: K.muted),
               const SizedBox(width: 8),
-              Text('صالح لين 31 ديسمبر · باقي 8 أيام', style: tx(14)),
+              Text('صالح لين 28 أكتوبر · باقي 8 أيام', style: tx(14)),
             ],
           ),
         ],
@@ -278,7 +278,7 @@ Widget p19OfferSent() => pPhone(
       ],
     ),
     gap(12),
-    pNote('التعديل يوصله نسخة 2 فيها «وش تغيّر». والسحب يقفل العرض ويوصله سطر هادي.'),
+    pNote('التعديل يوصله نسخة 2 فيها «ايش تغيّر». والسحب يقفل العرض ويوصله سطر هادي.'),
   ],
 );
 
@@ -343,7 +343,7 @@ Widget p21Confirm() {
   return pPhone(
     sheet: sheet(
       title: 'محمد قبل عرضك',
-      sub: 'يبغى يحجز الزفة · الخميس 21 يناير · الليل',
+      sub: 'يشتي يحجز الزفة · الخميس 21 يناير · الليل',
       children: [
         Text('أي فريق؟', style: tx(14, w: bold, c: K.muted)),
         gap(8),
@@ -373,11 +373,11 @@ Widget p22Booking() => pPhone(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text('الاتفاق · نسخة 2', style: tx(13, c: K.muted)),
-          Text('صور وفيديو · 450,000 ر.ي صنعاء', style: tx(16, w: bold)),
+          Text('صور وفيديو · 550,000 ر.ي صنعاء', style: tx(16, w: bold)),
           gap(6),
           kv('الفريق', 'فريق 2'),
           kv('الدفعة المقدمة', '100,000 · وصلتك 12 ديسمبر', c: K.green),
-          kv('الباقي', '350,000 · يوم العرس'),
+          kv('الباقي', '450,000 · يوم العرس'),
           kv('التسليم', 'خلال 30 يوم من العرس'),
         ],
       ),
@@ -414,7 +414,7 @@ Widget p23Deposit() => pPhone(
           children: [
             kv('المبلغ', '100,000 ر.ي صنعاء'),
             kv('الطريقة', 'حوالة الكريمي'),
-            kv('التاريخ', 'الخميس 12 ديسمبر'),
+            kv('التاريخ', 'السبت 12 ديسمبر'),
           ],
         ),
       ),
@@ -442,7 +442,7 @@ Widget p23Deposit() => pPhone(
 Widget p24Changed() => pPhone(
   sheet: sheet(
     title: 'محمد أجّل العرس',
-    sub: 'من الخميس 21 يناير إلى الخميس 4 فبراير',
+    sub: 'من الخميس 21 يناير إلى الخميس 15 أبريل',
     children: [
       Box(
         c: K.greenSoft,
@@ -451,12 +451,12 @@ Widget p24Changed() => pPhone(
           children: [
             const Icon(LucideIcons.calendarCheck, color: K.green),
             const SizedBox(width: 10),
-            Expanded(child: Text('ليلة 4 فبراير عندك: فريق 2 فاضي', style: tx(14.5, w: bold, c: K.green))),
+            Expanded(child: Text('ليلة 15 أبريل عندك: فريق 2 فاضي', style: tx(14.5, w: bold, c: K.green))),
           ],
         ),
       ),
       gap(12),
-      pOption('ثبّت الحجز على 4 فبراير', sub: 'نفس الاتفاق والدفعة المقدمة', on: true),
+      pOption('ثبّت الحجز على 15 أبريل', sub: 'نفس الاتفاق والدفعة المقدمة', on: true),
       pOption('ثبّته وعدّل العرض', sub: 'نسخة جديدة يوافق عليها محمد'),
       pOption('ما أقدر في اليوم الجديد', sub: 'نبلّغه، والدفعة المقدمة تتسجل كم رجع'),
       gap(6),

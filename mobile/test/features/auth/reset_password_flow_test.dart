@@ -1,3 +1,5 @@
+import 'package:aarast_mobile/features/auth/providers/auth_controller.dart';
+import 'package:aarast_mobile/features/auth/models/auth_response.dart';
 import 'package:aarast_mobile/core/network/api_client.dart';
 import 'package:aarast_mobile/core/storage/auth_storage.dart';
 import 'package:aarast_mobile/features/auth/data/auth_repository.dart';
@@ -41,6 +43,21 @@ class _FakeAuthRepository extends AuthRepository {
       delivery: delivery,
       code: delivery == 'LOCAL_DEV' ? '123456' : null,
       message: deliveryMessage,
+    );
+  }
+
+  final List<String> loginCalls = [];
+
+  @override
+  Future<AuthResponse> login({
+    required String phone,
+    required String password,
+  }) async {
+    loginCalls.add('$phone:$password');
+    throw const ApiException(
+      'تعذر الدخول للاختبار.',
+      statusCode: 401,
+      serverCode: 'INVALID_CREDENTIALS',
     );
   }
 
@@ -130,7 +147,7 @@ void main() {
     await tester.pump(const Duration(seconds: 1));
     await tester.pumpAndSettle();
 
-    expect(find.text('تم تغيير كلمة المرور'), findsOneWidget);
+    expect(find.text('غيّرنا كلمة المرور'), findsOneWidget);
     expect(find.text('تسجيل الدخول'), findsOneWidget);
   });
 
@@ -248,7 +265,9 @@ void main() {
 
     expect(repository.requestCalls, 1);
     expect(
-      find.text('تعذر إرسال رمز التحقق عبر واتساب. تأكد أن الرقم صحيح وعليه واتساب، ثم حاول مرة أخرى.'),
+      find.text(
+        'تعذر إرسال رمز التحقق عبر واتساب. تأكد أن الرقم صحيح وعليه واتساب، ثم حاول مرة أخرى.',
+      ),
       findsOneWidget,
     );
     expect(find.textContaining('كلمة المرور غير صحيحة'), findsNothing);
@@ -430,5 +449,52 @@ void main() {
     expect(uri.path, '/login');
     expect(uri.queryParameters['phone'], '+967777123456');
     expect(uri.queryParameters['resume'], '/invite/example');
+  });
+
+  // w01: the reset signs every device out, so the app signs in again with
+  // the new password; when that fails, «تسجيل الدخول» stays.
+  testWidgets('reset confirm signs in again with the new password', (
+    tester,
+  ) async {
+    final repository = await _fakeRepository();
+    final auth = AuthController(repository);
+    await auth.restoreSession();
+    await tester.pumpWidget(
+      MultiProvider(
+        providers: [
+          Provider<AuthRepository>.value(value: repository),
+          ChangeNotifierProvider<AuthController>.value(value: auth),
+        ],
+        child: MaterialApp.router(
+          routerConfig: GoRouter(
+            initialLocation: '/reset-password',
+            routes: [
+              GoRoute(
+                path: '/reset-password',
+                builder: (context, state) => const ResetPasswordScreen(),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+    await tester.pump(const Duration(milliseconds: 600));
+    await tester.enterText(find.byType(TextFormField).first, '777123456');
+    await tester.tap(find.text('إرسال رمز الاستعادة'));
+    await tester.pumpAndSettle();
+    final fields = find.byType(TextFormField);
+    await tester.enterText(fields.at(0), '123456');
+    await tester.enterText(fields.at(1), 'new-secret');
+    await tester.enterText(fields.at(2), 'new-secret');
+    await tester.ensureVisible(find.text('تغيير كلمة المرور'));
+    await tester.tap(find.text('تغيير كلمة المرور'));
+    await tester.pumpAndSettle();
+    await tester.pump(const Duration(seconds: 1));
+    await tester.pumpAndSettle();
+
+    expect(repository.lastConfirmPassword, 'new-secret');
+    expect(repository.loginCalls, ['+967777123456:new-secret']);
+    expect(find.text('غيّرنا كلمة المرور'), findsOneWidget);
+    expect(find.text('تسجيل الدخول'), findsOneWidget);
   });
 }

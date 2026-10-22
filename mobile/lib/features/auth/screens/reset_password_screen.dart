@@ -13,6 +13,7 @@ import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/aarast_otp_field.dart';
 import '../../../core/widgets/aarast_ui.dart';
 import '../data/auth_repository.dart';
+import '../providers/auth_controller.dart';
 import '../utils/application_password_policy.dart';
 import '../widgets/auth_wedding_widgets.dart';
 
@@ -40,6 +41,7 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
   final _confirmPasswordController = TextEditingController();
 
   _ResetStep _step = _ResetStep.phone;
+  bool _signingIn = false;
   bool _isSubmitting = false;
   bool _obscurePassword = true;
   AarastOtpFieldState _codeFieldState = AarastOtpFieldState.idle;
@@ -319,7 +321,7 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
           ),
           const SizedBox(height: 16),
           Text(
-            'تم تغيير كلمة المرور',
+            'غيّرنا كلمة المرور',
             textAlign: TextAlign.center,
             style: Theme.of(context).textTheme.titleLarge?.copyWith(
               color: AppTheme.textPrimary,
@@ -328,7 +330,9 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
           ),
           const SizedBox(height: 8),
           Text(
-            'أُغلقت كل الجلسات السابقة لحمايتك. ادخل الآن بكلمة مرورك الجديدة.',
+            _signingIn
+                ? 'وطلعناك من كل الأجهزة لحمايتك. ندخّلك الحين بكلمة المرور الجديدة.'
+                : 'وطلعناك من كل الأجهزة لحمايتك. ادخل بكلمة المرور الجديدة.',
             textAlign: TextAlign.center,
             style: Theme.of(context).textTheme.bodyMedium?.copyWith(
               color: AppTheme.textSecondary,
@@ -340,6 +344,7 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
           AarastButton(
             label: 'تسجيل الدخول',
             icon: LucideIcons.logIn,
+            isLoading: _signingIn,
             onPressed: () => context.go(_authLocation(AppRouter.login)),
           ),
         ],
@@ -436,6 +441,7 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
       await Future<void>.delayed(AarastOtpField.successHold(context));
       if (!mounted) return;
       setState(() => _step = _ResetStep.done);
+      await _signInWithNewPassword();
     } on ApiException catch (error) {
       if (!mounted) return;
       setState(() {
@@ -451,6 +457,31 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
     } finally {
       if (mounted) setState(() => _isSubmitting = false);
     }
+  }
+
+  /// w01: the reset closed every session, so the person is signed in again
+  /// with the password just chosen. When that fails, «تسجيل الدخول» stays.
+  Future<void> _signInWithNewPassword() async {
+    final AuthController auth;
+    try {
+      auth = context.read<AuthController>();
+    } on ProviderNotFoundException {
+      return;
+    }
+    final resume = _safeResumeLocation();
+    setState(() => _signingIn = true);
+    var signedIn = false;
+    try {
+      signedIn = await auth.login(
+        phone: normalizeYemeniPhone(_phoneController.text),
+        password: _passwordController.text,
+        successLocation: resume,
+      );
+    } finally {
+      // The spinner never outlives the attempt, whatever it ended in.
+      if (mounted) setState(() => _signingIn = false);
+    }
+    if (!signedIn) auth.clearError();
   }
 
   void _startResendCooldown() {

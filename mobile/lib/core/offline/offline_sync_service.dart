@@ -84,6 +84,34 @@ class OfflineSyncService extends ChangeNotifier with WidgetsBindingObserver {
         .toList(growable: false);
   }
 
+  /// w41: every change still on the phone, oldest first: the refused ones
+  /// with why, then the ones waiting for the network.
+  Future<List<PendingChangeSummary>> loadPendingChanges() async {
+    final blocked = await database.blockedSyncItems();
+    final pending = await database.pendingSyncItems();
+    PendingChangeSummary summarize(
+      SyncQueueItem item, {
+      required bool refused,
+    }) {
+      return PendingChangeSummary(
+        entityType: item.entityType,
+        title: _pendingChangeTitle(item),
+        createdAt: item.createdAt,
+        blocked: refused,
+        reason: refused
+            ? isSyncQueueOwnershipQuarantineError(item.lastError)
+                  ? 'ما قدرنا نتأكد إنه من خطتك، فما بنرسله'
+                  : 'السيرفر رفضه، راجعه وحاول مرة ثانية'
+            : null,
+      );
+    }
+
+    return [
+      for (final item in blocked) summarize(item, refused: true),
+      for (final item in pending) summarize(item, refused: false),
+    ];
+  }
+
   Future<void> initialize() async {
     await database.initialize();
     await refreshStatus();
@@ -981,6 +1009,32 @@ class OfflineSyncService extends ChangeNotifier with WidgetsBindingObserver {
     _lastSyncedAt = now;
     await database.setMeta(_lastSyncedAtKey, now.toIso8601String());
   }
+}
+
+/// «مهمة: احجز القاعة», «دفعة: 150,000», or «إضافة مهمة» when the change
+/// carries no name.
+String _pendingChangeTitle(SyncQueueItem item) {
+  Map<String, dynamic> payload;
+  try {
+    payload = item.payload;
+  } on Object {
+    payload = const {};
+  }
+  final name = (payload['title'] ?? payload['name'])?.toString().trim() ?? '';
+  final amount = (payload['amount'] ?? payload['totalAmount'])
+      ?.toString()
+      .trim();
+  final entity = _syncEntityLabel(item.entityType);
+  if (name.isNotEmpty) return '$entity: $name';
+  if (amount != null && amount.isNotEmpty) {
+    final digits = amount.replaceAll(RegExp(r'[^0-9]'), '');
+    final grouped = digits.replaceAllMapped(
+      RegExp(r'\B(?=(\d{3})+(?!\d))'),
+      (_) => ',',
+    );
+    if (grouped.isNotEmpty) return '$entity: $grouped';
+  }
+  return '${_syncOperationLabel(item.operation)} $entity';
 }
 
 String _syncEntityLabel(String entityType) {

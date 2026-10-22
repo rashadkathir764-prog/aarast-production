@@ -68,6 +68,7 @@ class _DashboardEntryScreenState extends State<DashboardEntryScreen> {
             return LocalPlanMigrationScreen(
               snapshot: pending,
               migrationService: service,
+              autoSave: auth.accountJustCreated,
               onFinished: () {
                 if (!mounted) return;
                 setState(() {

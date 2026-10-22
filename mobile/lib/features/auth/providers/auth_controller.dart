@@ -84,6 +84,11 @@ class AuthController extends _AuthControllerCore
   /// redirects to login once, then acknowledges.
   bool get sessionExpired => _sessionExpired;
 
+  /// This session began by creating the account (a08b «احفظ خطتي»), so a
+  /// plan kept on the phone is saved without asking again: a new account
+  /// has no other plan to weigh it against.
+  bool get accountJustCreated => _accountJustCreated;
+
   /// The number of the account whose session expired, so x18 can offer to
   /// sign that same account in again. Null after any other sign-out.
   String? get expiredSessionPhone => _expiredSessionPhone;
@@ -161,6 +166,7 @@ abstract class _AuthControllerCore extends ChangeNotifier {
   String? _errorCode;
   OtpRequestResult? _otpRequest;
   bool _sessionExpired = false;
+  bool _accountJustCreated = false;
   String? _expiredSessionPhone;
   bool _loginRequestedAfterLogout = false;
   bool _authenticatedEntryPending = false;

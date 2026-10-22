@@ -217,6 +217,40 @@ void main() {
         expect(tester.takeException(), isNull);
       },
     );
+
+    // a08b: an account created by «احفظ خطتي» saves the plan at once; the
+    // choice shows only when saving fails.
+    testWidgets('a new account saves the kept plan without asking', (
+      tester,
+    ) async {
+      final preferences = await _preferences();
+      final gate = Completer<OnboardingCompleteResponse>();
+      final service = _FakeLocalPlanMigrationService(
+        GuestOnboardingStorage(preferences),
+        onMigrate: () => gate.future,
+      );
+
+      await _pump320(
+        tester,
+        child: LocalPlanMigrationScreen(
+          snapshot: _localSnapshot,
+          migrationService: service,
+          onFinished: () {},
+          autoSave: true,
+        ),
+      );
+
+      expect(service.migrateCalls, 1);
+      expect(find.text('رفع الخطة إلى حسابي'), findsNothing);
+      expect(find.textContaining('في حسابك'), findsOneWidget);
+
+      gate.completeError(const ApiException('تعذر استيراد الخطة المحلية.'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('تعذر استيراد الخطة المحلية.'), findsOneWidget);
+      expect(find.text('رفع الخطة إلى حسابي'), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    });
   });
 
   group('EditSharedMemberScreen at 320px RTL', () {

@@ -20,11 +20,16 @@ class LocalPlanMigrationScreen extends StatefulWidget {
     required this.snapshot,
     required this.migrationService,
     required this.onFinished,
+    this.autoSave = false,
   });
 
   final LocalPlanSnapshot snapshot;
   final LocalPlanMigrationService migrationService;
   final VoidCallback onFinished;
+
+  /// The account was just created to save this plan (a08b), so it is saved
+  /// at once; the choice shows only if saving fails.
+  final bool autoSave;
 
   @override
   State<LocalPlanMigrationScreen> createState() =>
@@ -34,6 +39,17 @@ class LocalPlanMigrationScreen extends StatefulWidget {
 class _LocalPlanMigrationScreenState extends State<LocalPlanMigrationScreen> {
   bool _isUploading = false;
   String? _errorMessage;
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.autoSave) {
+      _isUploading = true;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _migrate();
+      });
+    }
+  }
 
   Future<void> _migrate() async {
     setState(() {
@@ -160,6 +176,25 @@ class _LocalPlanMigrationScreenState extends State<LocalPlanMigrationScreen> {
   Widget build(BuildContext context) {
     final draft = widget.snapshot.draft;
     final theme = Theme.of(context);
+
+    if (widget.autoSave && _isUploading && _errorMessage == null) {
+      return AarastScreenFrame(
+        child: Center(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const AarastInlineSpinner(dimension: 40),
+              const SizedBox(height: 16),
+              Text(
+                'نحفظ ${draft.planName ?? 'خطتك'} في حسابك',
+                textAlign: TextAlign.center,
+                style: theme.textTheme.titleMedium,
+              ),
+            ],
+          ),
+        ),
+      );
+    }
 
     return AarastScreenFrame(
       maxWidth: 600,

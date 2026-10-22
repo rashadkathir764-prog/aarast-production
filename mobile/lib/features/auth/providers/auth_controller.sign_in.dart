@@ -39,6 +39,7 @@ mixin _AuthSignIn on _AuthControllerCore {
       await _offlineSyncService?.cacheCurrentUser(response.user);
       if (!_isCurrentSessionOperation(operation)) return;
       _status = AuthStatus.authenticated;
+      _accountJustCreated = false;
       _loginRequestedAfterLogout = false;
       _queueAuthenticatedEntry(successLocation);
       unawaited(_offlineSyncService?.syncPendingChanges());
@@ -94,6 +95,7 @@ mixin _AuthSignIn on _AuthControllerCore {
           : (await afterSessionEstablished()) ?? successLocation;
       if (!_isCurrentSessionOperation(operation)) return;
       _status = AuthStatus.authenticated;
+      _accountJustCreated = true;
       _loginRequestedAfterLogout = false;
       if (cleanResumeToken != null) {
         _pendingInviteResumeToken = cleanResumeToken;

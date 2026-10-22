@@ -134,11 +134,17 @@ class OfflineSyncService extends ChangeNotifier with WidgetsBindingObserver {
   /// in-memory sync state. Called on logout so the next account on this
   /// device can never see the previous account's financial data, and so
   /// stale queued writes never replay under a new user's token.
-  Future<void> clearLocalData() async {
+  ///
+  /// With [keepUnsentChanges] (a session that expired, C58) the queued
+  /// writes and the account they belong to stay; everything else is wiped.
+  /// They replay only when that same account signs in again
+  /// ([ensureCacheOwner] wipes them for any other account).
+  Future<void> clearLocalData({bool keepUnsentChanges = false}) async {
     appLogEvent(
       'CACHE_CLEAR_STARTED',
       category: AppLogCategory.cache,
       source: 'OfflineSyncService.clearLocalData',
+      reason: keepUnsentChanges ? 'session_expired_keep_queue' : 'logout',
     );
     _bindCacheOwner(null);
     final generation = _sessionGeneration;
@@ -148,7 +154,16 @@ class OfflineSyncService extends ChangeNotifier with WidgetsBindingObserver {
         if (generation != _sessionGeneration || _cacheOwnerUserId != null) {
           return;
         }
-        await _wipeLocalState();
+        if (keepUnsentChanges) {
+          await database.wipeCacheKeepingQueue(
+            keepMetaKey: _cacheOwnerUserIdKey,
+          );
+          _lastError = null;
+          _lastSyncedAt = null;
+          await refreshStatus();
+        } else {
+          await _wipeLocalState();
+        }
         cleared = generation == _sessionGeneration && _cacheOwnerUserId == null;
       });
       appLogEvent(

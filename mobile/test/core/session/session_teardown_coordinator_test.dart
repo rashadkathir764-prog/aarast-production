@@ -5,6 +5,35 @@ import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
+  // C58: an expired session keeps its unsent changes; a chosen sign-out
+  // wipes everything.
+  for (final keep in [true, false]) {
+    test('teardown ${keep ? 'keeps' : 'wipes'} unsent changes', () async {
+      final events = <String>[];
+      final coordinator = SessionTeardownCoordinator(
+        auth: _FakeAuthTeardown(events),
+        clearLocalAccountData: () async => events.add('local-cache'),
+        clearLocalAccountDataKeepingUnsent: () async =>
+            events.add('local-cache-keep-unsent'),
+        clearGuestDraft: () async => events.add('local-draft'),
+      );
+
+      await coordinator.terminate(
+        coordinator.begin('user-a'),
+        keepUnsentChanges: keep,
+      );
+
+      expect(
+        events,
+        contains(keep ? 'local-cache-keep-unsent' : 'local-cache'),
+      );
+      expect(
+        events,
+        isNot(contains(keep ? 'local-cache' : 'local-cache-keep-unsent')),
+      );
+    });
+  }
+
   test(
     'preserves the installation guest draft during session teardown',
     () async {

@@ -131,6 +131,7 @@ class SessionTeardownCoordinator {
   SessionTeardownCoordinator({
     required SessionAuthTeardownPort auth,
     required Future<void> Function() clearLocalAccountData,
+    Future<void> Function()? clearLocalAccountDataKeepingUnsent,
     required Future<void> Function() clearGuestDraft,
     Future<void> Function(String userId)? clearDeletedAccountState,
     SessionPushTeardownPort? push,
@@ -143,12 +144,17 @@ class SessionTeardownCoordinator {
        _auth = auth,
        _push = push,
        _clearLocalAccountData = clearLocalAccountData,
+       _clearLocalAccountDataKeepingUnsent = clearLocalAccountDataKeepingUnsent,
        _clearGuestDraft = clearGuestDraft,
        _clearDeletedAccountState = clearDeletedAccountState;
 
   final SessionAuthTeardownPort _auth;
   final SessionPushTeardownPort? _push;
   final Future<void> Function() _clearLocalAccountData;
+
+  /// For a session that expired (C58): wipes the account's cache but keeps
+  /// its unsent changes. Without it, an expired session wipes everything.
+  final Future<void> Function()? _clearLocalAccountDataKeepingUnsent;
   final Future<void> Function() _clearGuestDraft;
   final Future<void> Function(String userId)? _clearDeletedAccountState;
   final Duration credentialCaptureTimeout;
@@ -191,6 +197,7 @@ class SessionTeardownCoordinator {
     SessionTeardownLease lease, {
     bool remoteSessionAlreadyDestroyed = false,
     bool clearGuestDraft = false,
+    bool keepUnsentChanges = false,
   }) async {
     if (!identical(_activeLease, lease)) {
       throw StateError('The teardown lease is no longer active');
@@ -203,6 +210,7 @@ class SessionTeardownCoordinator {
       lease,
       clearGuestDraft: clearGuestDraft,
       clearDeletedAccountState: remoteSessionAlreadyDestroyed,
+      keepUnsentChanges: keepUnsentChanges,
     );
     final result = remoteSessionAlreadyDestroyed
         ? const SessionTeardownResult(
@@ -273,6 +281,7 @@ class SessionTeardownCoordinator {
     SessionTeardownLease lease, {
     required bool clearGuestDraft,
     required bool clearDeletedAccountState,
+    required bool keepUnsentChanges,
   }) async {
     if (!lease._authStorageCleared) {
       await _runLocalStage(
@@ -282,9 +291,10 @@ class SessionTeardownCoordinator {
       lease._authStorageCleared = true;
     }
     if (!lease._accountCacheCleared) {
+      final keeping = _clearLocalAccountDataKeepingUnsent;
       await _runLocalStage(
         SessionLocalTeardownStage.accountCache,
-        _clearLocalAccountData,
+        keepUnsentChanges && keeping != null ? keeping : _clearLocalAccountData,
       );
       lease._accountCacheCleared = true;
     }

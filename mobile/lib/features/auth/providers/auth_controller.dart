@@ -52,6 +52,11 @@ class AuthController extends _AuthControllerCore
                clearLocalAccountData: () async {
                  await offlineSyncService?.clearLocalData();
                },
+               clearLocalAccountDataKeepingUnsent: () async {
+                 await offlineSyncService?.clearLocalData(
+                   keepUnsentChanges: true,
+                 );
+               },
                clearGuestDraft: () async {
                  await guestOnboardingStorage?.clearDraft();
                },

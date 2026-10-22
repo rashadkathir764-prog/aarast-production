@@ -209,6 +209,10 @@ Future<void> _bootstrapApplication(ObservabilityConfig observability) async {
       await offlineSyncService.clearLocalData();
       await formDraftStore.clearAll();
     },
+    clearLocalAccountDataKeepingUnsent: () async {
+      await offlineSyncService.clearLocalData(keepUnsentChanges: true);
+      await formDraftStore.clearAll();
+    },
     clearGuestDraft: guestOnboardingStorage.clearDraft,
     clearDeletedAccountState: (userId) async {
       await pendingPlanCleanupStore.removeForUser(userId);

@@ -262,6 +262,9 @@ mixin _AuthSession on _AuthControllerCore {
         remoteSessionAlreadyDestroyed:
             reason == 'account_deleted' || reason == 'phone_changed',
         clearGuestDraft: reason == 'account_deleted',
+        // C58: an expired session keeps its unsent changes for the same
+        // account; a sign-out the person chose wipes them.
+        keepUnsentChanges: markSessionExpired,
       );
       if (!_isCurrentSessionOperation(operation)) return;
 

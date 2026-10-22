@@ -462,6 +462,16 @@ class JsonLocalDatabase implements LocalDatabase {
     await _writeMap(_metaKey, {});
   }
 
+  @override
+  Future<void> wipeCacheKeepingQueue({required String keepMetaKey}) async {
+    for (final table in OfflineTables.cacheTables) {
+      await _writeList(_tableKey(table), []);
+    }
+    final meta = _readMap(_metaKey)
+      ..removeWhere((key, _) => key != keepMetaKey);
+    await _writeMap(_metaKey, meta);
+  }
+
   Future<void> _ensureList(String key) async {
     if (!_preferences.containsKey(key)) {
       await _preferences.setString(key, '[]');

@@ -526,6 +526,20 @@ class SqliteLocalDatabase implements LocalDatabase {
     });
   }
 
+  @override
+  Future<void> wipeCacheKeepingQueue({required String keepMetaKey}) async {
+    await _db.transaction((txn) async {
+      for (final table in OfflineTables.cacheTables) {
+        await txn.delete(table);
+      }
+      await txn.delete(
+        OfflineTables.localMeta,
+        where: 'key != ?',
+        whereArgs: [keepMetaKey],
+      );
+    });
+  }
+
   Database get _db {
     final value = _database;
     if (value == null) {

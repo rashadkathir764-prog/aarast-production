@@ -110,4 +110,10 @@ abstract class LocalDatabase {
   /// Called on logout and when a different account signs in on the same
   /// device, so financial data never leaks across accounts.
   Future<void> wipeAll();
+
+  /// Deletes every cached row and all local meta except [keepMetaKey], and
+  /// keeps the queued sync items (C58). Used when a session expires: the
+  /// queue replays only when the same account signs in again, and any other
+  /// account wipes it first.
+  Future<void> wipeCacheKeepingQueue({required String keepMetaKey});
 }

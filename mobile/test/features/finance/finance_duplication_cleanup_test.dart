@@ -115,7 +115,12 @@ void main() {
       await tester.tap(find.byKey(const ValueKey('journey-tab-1')));
       await tester.pumpAndSettle();
 
-      expect(find.text('لا توجد تكاليف بعد'), findsOneWidget);
+      // c02: a budget item with no agreement yet reads «ما انحجز», with
+      // the way to add more under it, and no second empty list.
+      expect(find.text('الصالة'), findsOneWidget);
+      expect(find.text('ما انحجز'), findsOneWidget);
+      expect(find.text('أضف بند'), findsOneWidget);
+      expect(find.text('ما في بنود بعد'), findsNothing);
       expect(find.text('مواعيد الدفع'), findsNothing);
       expect(find.byKey(const ValueKey('money-settings-menu')), findsOneWidget);
       expect(find.text('تنظيم إضافي'), findsNothing);
@@ -125,7 +130,7 @@ void main() {
       expect(tester.takeException(), isNull);
     });
 
-    testWidgets('money root shows only the three latest costs', (tester) async {
+    testWidgets('«البنود» lists every loaded agreement', (tester) async {
       _setTallView(tester);
       await tester.pumpWidget(_wrap(_FakeFinanceApi.withCosts()));
       await tester.pumpAndSettle();
@@ -138,8 +143,11 @@ void main() {
         findsNothing,
       );
       expect(find.text('إضافة تكلفة'), findsNothing);
-      expect(find.byType(CostCard), findsNWidgets(3));
-      expect(find.text('عرض كل التكاليف'), findsOneWidget);
+      // c02: one list of agreements, each with what is paid.
+      for (var index = 1; index <= 4; index++) {
+        expect(find.byKey(ValueKey('money-item-cost-$index')), findsOneWidget);
+      }
+      expect(find.text('ما دفعت شي'), findsNWidgets(4));
     });
 
     test('payment status palette stays calm and distinct', () {

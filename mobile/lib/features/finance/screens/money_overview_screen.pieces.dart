@@ -2,100 +2,6 @@ part of 'money_overview_screen.dart';
 
 enum _MoneySettingsAction { budget, schedules }
 
-class _MoneyCostsSection extends StatelessWidget {
-  const _MoneyCostsSection({
-    required this.costs,
-    required this.currency,
-    required this.canManage,
-    required this.hasBudget,
-    required this.hasMore,
-    required this.categoryName,
-    required this.onAdd,
-    required this.onBudget,
-    required this.onAll,
-    required this.onOpen,
-  });
-
-  final List<WeddingCost> costs;
-  final String currency;
-  final bool canManage;
-  final bool hasBudget;
-  final bool hasMore;
-  final String? Function(WeddingCost cost) categoryName;
-  final VoidCallback onAdd;
-  final VoidCallback onBudget;
-  final VoidCallback onAll;
-  final ValueChanged<WeddingCost> onOpen;
-
-  @override
-  Widget build(BuildContext context) {
-    final visibleCosts = costs.take(3).toList(growable: false);
-    final shouldShowAll = hasMore || costs.length > visibleCosts.length;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        AarastSectionHeader(
-          title: 'التكاليف',
-          subtitle: costs.isEmpty
-              ? 'سجّل كل خدمة ومبلغها في بطاقة واحدة.'
-              : '${_costCountLabel(costs.length)} مسجلة في الخطة.',
-          icon: LucideIcons.receipt,
-        ),
-        const SizedBox(height: 10),
-        if (costs.isEmpty)
-          AarastEmptyState(
-            icon: LucideIcons.receipt,
-            title: 'لا توجد تكاليف بعد',
-            message: canManage
-                ? 'يمكنك إضافة تكلفة الآن حتى لو لم تحدد الميزانية.'
-                : 'لم تُسجل تكاليف في هذه الخطة حتى الآن.',
-            action: canManage
-                ? Wrap(
-                    alignment: WrapAlignment.center,
-                    spacing: 8,
-                    runSpacing: 8,
-                    children: [
-                      FilledButton.icon(
-                        key: const ValueKey('money-empty-add-cost'),
-                        onPressed: onAdd,
-                        icon: const Icon(LucideIcons.plus),
-                        label: const Text('إضافة تكلفة'),
-                      ),
-                      if (!hasBudget)
-                        TextButton(
-                          onPressed: onBudget,
-                          child: const Text('تحديد الميزانية'),
-                        ),
-                    ],
-                  )
-                : null,
-          )
-        else ...[
-          for (var index = 0; index < visibleCosts.length; index++) ...[
-            CostCard(
-              key: ValueKey('money-overview-cost-${visibleCosts[index].id}'),
-              cost: visibleCosts[index],
-              currency: currency,
-              categoryName: categoryName(visibleCosts[index]),
-              onTap: () => onOpen(visibleCosts[index]),
-            ),
-            if (index != visibleCosts.length - 1) const SizedBox(height: 2),
-          ],
-          if (shouldShowAll) ...[
-            const SizedBox(height: 10),
-            TextButton.icon(
-              onPressed: onAll,
-              icon: const Icon(LucideIcons.arrowLeft, size: 17),
-              label: const Text('عرض كل التكاليف'),
-            ),
-          ],
-        ],
-      ],
-    );
-  }
-}
-
-/// «المال» with how it stands, then hide, share and manage.
 class _MoneyHeader extends StatelessWidget {
   const _MoneyHeader({
     required this.summary,
@@ -205,30 +111,19 @@ class _MoneySettingsMenu extends StatelessWidget {
             ),
           ),
         ],
+        // A round icon like the other header actions: a word beside three
+        // buttons does not fit a 320-point phone with large text.
         child: Container(
-          height: 48,
-          padding: const EdgeInsetsDirectional.symmetric(horizontal: 10),
-          decoration: BoxDecoration(
-            color: AarastV3Color.paperQuiet,
-            borderRadius: BorderRadius.circular(AarastV3Radius.control),
-            border: Border.all(color: AarastV3Color.line),
+          width: 44,
+          height: 44,
+          decoration: const BoxDecoration(
+            color: AarastV3Color.paper,
+            shape: BoxShape.circle,
           ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Icon(
-                LucideIcons.slidersHorizontal,
-                size: 16,
-                color: AarastV3Color.primary,
-              ),
-              const SizedBox(width: AarastV3Space.x1),
-              Text(
-                'إدارة',
-                style: AarastV3Type.label(
-                  context,
-                ).copyWith(color: AarastV3Color.primary),
-              ),
-            ],
+          child: const Icon(
+            LucideIcons.slidersHorizontal,
+            size: 18,
+            color: AarastV3Color.ink,
           ),
         ),
       ),
@@ -361,13 +256,4 @@ class _NextPaymentCard extends StatelessWidget {
       ),
     );
   }
-}
-
-String _costCountLabel(int count) {
-  return switch (count) {
-    1 => 'تكلفة واحدة',
-    2 => 'تكلفتان',
-    >= 3 && <= 10 => '$count تكاليف',
-    _ => '$count تكلفة',
-  };
 }

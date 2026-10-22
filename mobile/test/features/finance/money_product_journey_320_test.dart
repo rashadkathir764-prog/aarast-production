@@ -60,7 +60,7 @@ void main() {
       // c01: the costs live under «البنود».
       await tester.tap(find.byKey(const ValueKey('journey-tab-1')));
       await tester.pumpAndSettle();
-      expect(find.byType(CostCard), findsOneWidget);
+      expect(find.byKey(const ValueKey('money-item-cost-1')), findsOneWidget);
       _expectRtl(tester, find.byType(MoneyOverviewScreen));
       expect(tester.takeException(), isNull);
       // The next payment is on «الملخص».
@@ -126,14 +126,15 @@ void main() {
       await tester.pumpAndSettle();
       await tester.tap(find.byKey(const ValueKey('journey-tab-1')));
       await tester.pumpAndSettle();
+      const itemKey = ValueKey('money-item-cost-1');
       await tester.scrollUntilVisible(
-        find.byType(CostCard),
+        find.byKey(itemKey),
         220,
         scrollable: find.byType(Scrollable).first,
       );
-      await tester.ensureVisible(find.byType(CostCard).first);
+      await tester.ensureVisible(find.byKey(itemKey));
       await tester.pumpAndSettle();
-      await tester.tap(find.byType(CostCard).first);
+      await tester.tap(find.byKey(itemKey));
       await tester.pumpAndSettle();
       expect(
         harness.currentLocation,

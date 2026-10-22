@@ -7,6 +7,7 @@ import '../../../core/routing/app_router.dart';
 import '../../../core/experience_v3/aarast_v3.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/money_formatters.dart';
+import '../../../core/utils/arabic_count.dart';
 import '../../../core/utils/arabic_date_formatter.dart';
 import '../../../core/widgets/aarast_share_sheet.dart';
 import '../../../core/widgets/aarast_toast.dart';
@@ -33,6 +34,7 @@ import '../widgets/funding_widgets.dart';
 import '../widgets/money_starter_setup.dart';
 import '../widgets/money_widgets.dart';
 
+part 'money_overview_screen.items.dart';
 part 'money_overview_screen.pieces.dart';
 part 'money_overview_screen.summary.dart';
 
@@ -180,24 +182,14 @@ class _MoneyOverviewScreenState extends State<MoneyOverviewScreen> {
                       ),
               ),
               1 => [
-                _MoneyCostsSection(
-                  costs: provider.costs,
-                  currency: provider.summary.currency,
-                  canManage: provider.canManageMoney,
-                  hasBudget: provider.summary.hasBudget,
-                  hasMore: provider.hasMoreCosts,
-                  categoryName: (cost) =>
-                      provider.categoryById(cost.budgetCategoryId)?.name ??
-                      cost.categoryName,
-                  onAdd: () => context.push(
-                    AppRouter.moneyCostCreate(widget.weddingPlanId),
-                  ),
-                  onBudget: () =>
-                      context.push(AppRouter.moneyBudget(widget.weddingPlanId)),
-                  onAll: () =>
-                      context.push(AppRouter.moneyCosts(widget.weddingPlanId)),
-                  onOpen: (cost) => context.push(
-                    AppRouter.moneyCostDetails(widget.weddingPlanId, cost.id),
+                _MoneyItemsTab(
+                  planId: widget.weddingPlanId,
+                  provider: provider,
+                  catalog: moneyStarterCatalogFromManaged(
+                    context.watch<ReferenceCatalogProvider?>()?.catalogFor(
+                      'money.starter.categories',
+                    ),
+                    _starterPersona(context),
                   ),
                 ),
               ],

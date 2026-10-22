@@ -229,6 +229,44 @@ void main() {
       expect(tester.takeException(), isNull);
     });
 
+    // c03: the payments tab totals what falls due, dates each row, and
+    // offers «دفعتها» to screen readers as well as by swipe.
+    testWidgets('«الدفعات» totals the due payments at 320px and 1.3', (
+      tester,
+    ) async {
+      _setPhoneView(tester);
+      final now = DateTime.now();
+      final today = DateTime(now.year, now.month, now.day);
+      await tester.pumpWidget(
+        _wrap(
+          _FakeFinanceApi.withCosts(
+            nextSchedule: PaymentSchedule(
+              id: 'schedule-upcoming',
+              costId: 'cost-1',
+              amount: '1000',
+              dueDate: today.add(const Duration(days: 2)),
+              status: 'PENDING',
+              costTitle: 'تكلفة 1',
+            ),
+          ),
+          textScale: 1.3,
+        ),
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const ValueKey('journey-tab-2')));
+      await tester.pumpAndSettle();
+
+      expect(find.byKey(const ValueKey('money-due-total')), findsOneWidget);
+      expect(find.text('خلال 30 يوم'), findsOneWidget);
+      expect(find.text('دفعة وحدة'), findsOneWidget);
+      expect(find.text('تكلفة 1'), findsOneWidget);
+      expect(
+        find.byKey(const ValueKey('money-due-swipe-schedule-upcoming')),
+        findsOneWidget,
+      );
+      expect(tester.takeException(), isNull);
+    });
+
     // F02: hiding amounts must cover the next-payment card too.
     testWidgets('hiding amounts masks the next payment amount', (tester) async {
       _setPhoneView(tester);

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/semantics.dart';
 import 'package:go_router/go_router.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:provider/provider.dart';
@@ -35,6 +36,7 @@ import '../widgets/money_starter_setup.dart';
 import '../widgets/money_widgets.dart';
 
 part 'money_overview_screen.items.dart';
+part 'money_overview_screen.payments.dart';
 part 'money_overview_screen.pieces.dart';
 part 'money_overview_screen.summary.dart';
 
@@ -193,7 +195,18 @@ class _MoneyOverviewScreenState extends State<MoneyOverviewScreen> {
                   ),
                 ),
               ],
-              2 => _paymentsTab(provider),
+              2 => [
+                _MoneyPaymentsTab(
+                  planId: widget.weddingPlanId,
+                  provider: provider,
+                  onPay: (schedule) {
+                    final cost = _payableCost(provider, schedule);
+                    return cost == null
+                        ? null
+                        : (schedule) => _paySchedule(schedule, cost);
+                  },
+                ),
+              ],
               _ => [
                 if (provider.summary.funding case final funding?)
                   MoneyFundingCard(
@@ -260,72 +273,6 @@ class _MoneyOverviewScreenState extends State<MoneyOverviewScreen> {
             context.push(AppRouter.moneyBudget(widget.weddingPlanId)),
       ),
       if (stageLine != null) ...[const SizedBox(height: 12), stageLine],
-    ];
-  }
-
-  /// c03 «الدفعات»: what is late and what is due soon, each opening its
-  /// schedule; the full calendar stays one tap away.
-  List<Widget> _paymentsTab(FinanceProvider provider) {
-    final schedules = provider.dueSchedules;
-    final currency = provider.summary.currency;
-    final now = DateTime.now();
-    return [
-      if (schedules.isEmpty)
-        const JourneyListState(
-          phase: JourneyListPhase.empty,
-          section: JourneySection.money,
-          emptyIcon: LucideIcons.calendarCheck,
-          emptyTitle: 'ما عليك دفعات قريبة',
-        )
-      else
-        JourneyBox(
-          padding: EdgeInsets.zero,
-          child: JourneyList(
-            children: [
-              for (final schedule in schedules)
-                JourneyListRow(
-                  key: ValueKey('money-due-schedule-${schedule.id}'),
-                  icon: schedule.isOverdueAt(now)
-                      ? LucideIcons.alertCircle
-                      : LucideIcons.calendarClock,
-                  color: schedule.isOverdueAt(now)
-                      ? AarastV3Color.danger
-                      : AarastV3Color.brandAccentStrong,
-                  soft: schedule.isOverdueAt(now)
-                      ? AarastV3Color.dangerSoft
-                      : AarastV3Color.brandAccentSoft,
-                  title:
-                      '${schedule.costTitle ?? 'دفعة'}: ${_amount(context, schedule.amount, currency)}',
-                  subtitle: schedule.isOverdueAt(now)
-                      ? 'متأخرة · ${formatArabicWeekdayDayMonth(schedule.dueDate)}'
-                      : formatArabicWeekdayDayMonth(schedule.dueDate),
-                  trailing: const Icon(
-                    LucideIcons.chevronLeft,
-                    size: 18,
-                    color: AarastV3Color.textFaint,
-                  ),
-                  onTap: () => context.push(
-                    AppRouter.moneyScheduleDetails(
-                      widget.weddingPlanId,
-                      schedule.costId,
-                      schedule.id,
-                    ),
-                  ),
-                ),
-            ],
-          ),
-        ),
-      const SizedBox(height: 8),
-      Align(
-        alignment: AlignmentDirectional.centerStart,
-        child: JourneyTextAction(
-          key: const ValueKey('money-destination-schedules'),
-          label: 'كل مواعيد الدفع',
-          color: AarastV3Color.primary,
-          onPressed: () =>
-              context.push(AppRouter.moneySchedules(widget.weddingPlanId)),
-        ),
-      ),
     ];
   }
 

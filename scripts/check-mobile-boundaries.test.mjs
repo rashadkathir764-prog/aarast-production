@@ -1760,6 +1760,10 @@ const trackedOwnerApiContracts = [
         uri: 'widgets/money_cost_action_picker.dart',
         show: ['MoneyCostActionIntent', 'showMoneyCostActionPicker'],
       },
+      {
+        uri: 'widgets/money_input_formatter.dart',
+        show: ['MoneyInputFormatter', 'formatMoneyInputValue'],
+      },
     ],
   },
   {
@@ -2938,7 +2942,11 @@ const trackedShellEntryBatchContracts = [
   {
     source: 'mobile/lib/features/welcome_gateway/screens/smart_welcome_screen.dart',
     target: 'mobile/lib/features/finance/finance_api.dart',
-    show: ['moneyStarterPlanItemNames'],
+    show: [
+      'MoneyInputFormatter',
+      'formatMoneyInputValue',
+      'moneyStarterPlanItemNames',
+    ],
   },
   {
     source: 'mobile/lib/features/welcome_gateway/screens/smart_welcome_screen.dart',

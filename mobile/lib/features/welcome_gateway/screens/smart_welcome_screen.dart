@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:provider/provider.dart';
@@ -7,6 +8,7 @@ import '../../../core/experience_v3/aarast_v3.dart';
 import '../../../core/routing/app_router.dart';
 import '../../../core/storage/auth_storage.dart';
 import '../../../core/utils/amount_words.dart';
+import '../../../core/utils/arabic_count.dart';
 import '../../../core/utils/arabic_date_formatter.dart';
 import '../../../core/utils/hijri_date.dart';
 import '../../../core/widgets/aarast_ui.dart';
@@ -14,7 +16,8 @@ import '../../account_contexts/account_contexts_api.dart'
     show AccountContextController;
 import '../../auth/auth_api.dart' show AuthController, AuthStatus;
 import '../../catalogs/catalogs_api.dart' show ReferenceCatalogProvider;
-import '../../finance/finance_api.dart' show moneyStarterPlanItemNames;
+import '../../finance/finance_api.dart'
+    show MoneyInputFormatter, formatMoneyInputValue, moneyStarterPlanItemNames;
 import '../../marketplace/marketplace_api.dart' show MarketplaceApi;
 import '../../onboarding/onboarding_api.dart'
     show
@@ -29,6 +32,7 @@ import '../../wedding_plans/wedding_plans_api.dart'
 
 part 'smart_welcome_screen.start.dart';
 part 'smart_welcome_screen.plan.dart';
+part 'smart_welcome_screen.day.dart';
 
 /// The start of the journey (prototype a02 to a08): what you want to do,
 /// whose wedding, your name and the date, the city and a rough budget, and
@@ -155,7 +159,7 @@ class _SmartWelcomeScreenState extends State<SmartWelcomeScreen> {
     }
     final name = draft.planName?.trim() ?? '';
     _nameController.text = name.startsWith('عرس ') ? name.substring(4) : name;
-    _budgetController.text = draft.estimatedBudget ?? '';
+    _budgetController.text = formatMoneyInputValue(draft.estimatedBudget);
     setState(() {
       _persona = draft.persona == GuestPersona.bride
           ? GuestPersona.bride
@@ -340,31 +344,22 @@ class _SmartWelcomeScreenState extends State<SmartWelcomeScreen> {
   String _readySubtitle() {
     final parts = <String>[_planTitle, ?_city];
     if (!_dateUnknown && _date != null) {
-      parts.add(
-        HijriDate.fromGregorian(_date!)?.dayAndMonth ??
-            formatArabicDayMonth(_date!),
-      );
+      parts.add(formatArabicDayMonth(_date!));
+      final hijri = HijriDate.fromGregorian(_date!);
+      if (hijri != null) parts.add(hijri.dayAndMonth);
     }
     return parts.join(' · ');
   }
 
   Future<void> _pickDayInMonth(DateTime month) async {
     releaseFieldFocus();
-    final today = DateUtils.dateOnly(DateTime.now());
-    final first = DateTime(month.year, month.month);
-    final last = DateTime(month.year, month.month + 1, 0);
-    final start = first.isBefore(today) ? today : first;
-    final picked = await showDatePicker(
+    final picked = await showAarastBottomSheet<DateTime>(
       context: context,
-      initialDate:
-          _date != null && !_date!.isBefore(start) && !_date!.isAfter(last)
-          ? _date!
-          : start,
-      firstDate: start,
-      lastDate: last,
-      helpText: 'اختر يوم العرس',
-      builder: (context, child) =>
-          Directionality(textDirection: TextDirection.rtl, child: child!),
+      builder: (sheetContext) => _DaySheet(
+        month: DateTime(month.year, month.month),
+        selected: _date,
+        today: DateUtils.dateOnly(DateTime.now()),
+      ),
     );
     if (picked == null || !mounted) return;
     setState(() {

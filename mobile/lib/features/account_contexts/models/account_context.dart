@@ -22,6 +22,12 @@ class AccountContextCapabilities {
   final bool canViewProviderProfile;
   final bool canManageProviderProfile;
   final bool canUseProviderOperations;
+
+  Map<String, dynamic> toJson() => {
+    'canViewProviderProfile': canViewProviderProfile,
+    'canManageProviderProfile': canManageProviderProfile,
+    'canUseProviderOperations': canUseProviderOperations,
+  };
 }
 
 class AccountContextPermissions {
@@ -60,6 +66,18 @@ class AccountContextPermissions {
   final bool canViewMoney;
   final bool canManageMoney;
   final bool canManageProviderProfile;
+
+  Map<String, dynamic> toJson() => {
+    'canViewPlan': canViewPlan,
+    'canEditPlan': canEditPlan,
+    'canManageTasks': canManageTasks,
+    'canManageGuests': canManageGuests,
+    'canManageProviders': canManageProviders,
+    'canInviteMembers': canInviteMembers,
+    'canViewMoney': canViewMoney,
+    'canManageMoney': canManageMoney,
+    'canManageProviderProfile': canManageProviderProfile,
+  };
 }
 
 class AccountContext {
@@ -143,6 +161,38 @@ class AccountContext {
 
   bool get isPlan => role != AccountContextRole.provider;
   bool get isProvider => role == AccountContextRole.provider;
+
+  /// The server's wire shape, so a kept copy reads back through [fromJson]
+  /// and its contract checks.
+  Map<String, dynamic> toJson() => {
+    'contextKey': contextKey,
+    'role': switch (role) {
+      AccountContextRole.owner => 'OWNER',
+      AccountContextRole.contributor => 'CONTRIBUTOR',
+      AccountContextRole.provider => 'PROVIDER',
+    },
+    'weddingPlanId': weddingPlanId,
+    'providerId': providerId,
+    'membershipId': membershipId,
+    'membershipAuthorityVersion': membershipAuthorityVersion,
+    'persona': switch (persona) {
+      null => null,
+      AccountContextPersona.groom => 'GROOM',
+      AccountContextPersona.bride => 'BRIDE',
+      AccountContextPersona.helper => 'HELPER',
+    },
+    'displayName': displayName,
+    'lifecycle': lifecycle,
+    'accessMode': switch (accessMode) {
+      AccountContextAccessMode.full => 'FULL',
+      AccountContextAccessMode.limited => 'LIMITED',
+      AccountContextAccessMode.readOnly => 'READ_ONLY',
+    },
+    'capabilities': capabilities.toJson(),
+    'permissions': permissions.toJson(),
+    'isAvailable': isAvailable,
+    'unavailableReason': unavailableReason,
+  };
 
   void _validateContract() {
     if (role == AccountContextRole.provider) {

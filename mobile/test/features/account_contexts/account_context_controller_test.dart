@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:aarast_mobile/core/network/api_client.dart';
+import 'package:aarast_mobile/core/session/safe_user.dart';
 import 'package:aarast_mobile/core/storage/auth_storage.dart';
 import 'package:aarast_mobile/features/account_contexts/data/account_contexts_api.dart';
 import 'package:aarast_mobile/features/account_contexts/models/account_context.dart';
@@ -10,8 +11,162 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'account_context_test_data.dart';
 
+const _offline = ApiException('offline', isNetworkFailure: true);
+
+/// A signed-in user's storage whose last opened context was [opened].
+Future<AuthStorage> _signedInStorage({
+  required String userId,
+  AccountContext? opened,
+}) async {
+  SharedPreferences.setMockInitialValues({});
+  final storage = AuthStorage(await SharedPreferences.getInstance());
+  await storage.saveSession(
+    accessToken: 'token',
+    user: SafeUser(
+      id: userId,
+      name: 'رشاد',
+      role: 'CUSTOMER',
+      status: 'ACTIVE',
+    ),
+  );
+  if (opened != null) {
+    await storage.saveAccountContextKey(
+      opened.contextKey,
+      context: opened.toJson(),
+    );
+  }
+  return storage;
+}
+
+AccountContextController _offlineController(
+  AuthStorage storage, {
+  Set<String> leaving = const {},
+  ApiException failure = _offline,
+}) {
+  return AccountContextController(
+    contextsApi: _FakeContextsApi(const [])..onList = () async => throw failure,
+    authStorage: storage,
+    setActiveWeddingPlan: (_) async {},
+    beforeRefresh: () async => leaving,
+  );
+}
+
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
+
+  group('opening without a connection', () {
+    test('a context reads back exactly from its kept copy', () {
+      for (final context in [
+        accountContext(role: AccountContextRole.owner),
+        accountContext(
+          role: AccountContextRole.contributor,
+          membershipId: 'membership-1',
+        ),
+        accountContext(role: AccountContextRole.provider),
+      ]) {
+        final copy = AccountContext.fromJson(context.toJson());
+        expect(copy.toJson(), context.toJson());
+      }
+    });
+
+    test(
+      'the owner opens the plan last opened, with an offline notice',
+      () async {
+        final owner = accountContext(role: AccountContextRole.owner);
+        final storage = await _signedInStorage(userId: 'user-1', opened: owner);
+        final controller = _offlineController(storage);
+
+        await controller.refresh(allowInitialSingleContext: true);
+
+        expect(controller.errorMessage, isNull);
+        expect(controller.selectedContext?.contextKey, owner.contextKey);
+        expect(controller.hasLoadedContexts, isTrue);
+        expect(controller.noticeMessage, contains('ما في اتصال'));
+      },
+    );
+
+    test('nothing kept says the server cannot be reached', () async {
+      final storage = await _signedInStorage(userId: 'user-1');
+      final controller = _offlineController(storage);
+
+      await controller.refresh(allowInitialSingleContext: true);
+
+      expect(controller.selectedContext, isNull);
+      expect(controller.errorMessage, contains('ما قدرنا نوصل للسيرفر'));
+    });
+
+    test('a contributor copy is never opened offline', () async {
+      final contributor = accountContext(
+        role: AccountContextRole.contributor,
+        membershipId: 'membership-1',
+      );
+      final storage = await _signedInStorage(
+        userId: 'user-1',
+        opened: contributor,
+      );
+      final controller = _offlineController(storage);
+
+      await controller.refresh(allowInitialSingleContext: true);
+
+      expect(controller.selectedContext, isNull);
+      expect(controller.errorMessage, isNotNull);
+    });
+
+    test('a plan being left is never opened offline', () async {
+      final owner = accountContext(role: AccountContextRole.owner);
+      final storage = await _signedInStorage(userId: 'user-1', opened: owner);
+      final controller = _offlineController(storage, leaving: {'plan-1'});
+
+      await controller.refresh(allowInitialSingleContext: true);
+
+      expect(controller.selectedContext, isNull);
+      expect(controller.errorMessage, isNotNull);
+    });
+
+    test('another account never opens the copy', () async {
+      final owner = accountContext(role: AccountContextRole.owner);
+      final storage = await _signedInStorage(userId: 'user-1', opened: owner);
+      await storage.saveSession(
+        accessToken: 'other',
+        user: const SafeUser(
+          id: 'user-2',
+          name: 'غيره',
+          role: 'CUSTOMER',
+          status: 'ACTIVE',
+        ),
+      );
+      final controller = _offlineController(storage);
+
+      await controller.refresh(allowInitialSingleContext: true);
+
+      expect(controller.selectedContext, isNull);
+      expect(storage.readAccountContextSnapshot(), isNull);
+    });
+
+    test('a server refusal is not treated as offline', () async {
+      final owner = accountContext(role: AccountContextRole.owner);
+      final storage = await _signedInStorage(userId: 'user-1', opened: owner);
+      final controller = _offlineController(
+        storage,
+        failure: const ApiException('down', statusCode: 500),
+      );
+
+      await controller.refresh(allowInitialSingleContext: true);
+
+      expect(controller.selectedContext, isNull);
+      expect(controller.errorMessage, isNotNull);
+    });
+
+    test('signing out drops the kept copy', () async {
+      final owner = accountContext(role: AccountContextRole.owner);
+      final storage = await _signedInStorage(userId: 'user-1', opened: owner);
+      expect(storage.readAccountContextSnapshot(), isNotNull);
+
+      await storage.clear();
+
+      expect(storage.readAccountContextSnapshot(), isNull);
+    });
+  });
 
   group('AccountContextController fallback and persistence', () {
     test(
@@ -194,21 +349,35 @@ void main() {
     );
 
     test(
-      'network refresh failure preserves valid contexts and selection',
+      'network refresh failure keeps the owner plan open and says offline',
       () async {
         final owner = accountContext(role: AccountContextRole.owner);
         final harness = await _Harness.create(contexts: [owner]);
         await harness.controller.refresh(allowInitialSingleContext: true);
-        harness.api.onList = () async =>
-            throw const ApiException('offline', isNetworkFailure: true);
+        harness.api.onList = () async => throw _offline;
 
         await harness.controller.refresh();
 
         expect(harness.controller.contexts, [owner]);
         expect(harness.controller.selectedContext, owner);
-        expect(harness.controller.errorMessage, isNotNull);
+        expect(harness.controller.errorMessage, isNull);
+        expect(harness.controller.noticeMessage, contains('ما في اتصال'));
       },
     );
+
+    test('network refresh failure still fails a contributor closed', () async {
+      final contributor = accountContext(
+        role: AccountContextRole.contributor,
+        membershipId: 'membership-1',
+      );
+      final harness = await _Harness.create(contexts: [contributor]);
+      await harness.controller.refresh(allowInitialSingleContext: true);
+      harness.api.onList = () async => throw _offline;
+
+      await harness.controller.refresh();
+
+      expect(harness.controller.errorMessage, isNotNull);
+    });
 
     test(
       'archive or revocation clears selection with a generic notice',

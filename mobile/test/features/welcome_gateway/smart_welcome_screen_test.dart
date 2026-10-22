@@ -6,6 +6,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:aarast_mobile/core/network/api_client.dart';
 import 'package:aarast_mobile/core/storage/auth_storage.dart';
+import 'package:aarast_mobile/core/utils/arabic_date_formatter.dart';
+import 'package:aarast_mobile/core/utils/hijri_date.dart';
 import 'package:aarast_mobile/features/auth/data/auth_repository.dart';
 import 'package:aarast_mobile/features/auth/providers/auth_controller.dart';
 import 'package:aarast_mobile/features/onboarding/data/guest_onboarding_storage.dart';
@@ -203,11 +205,11 @@ void main() {
     await _pump(tester);
     await _tap(tester, 'ابدأ');
     await _tap(tester, 'التالي');
-    expect(find.text('أهلًا بك! ايش اسمك، ومتى العرس؟'), findsOneWidget);
+    expect(find.text('ايش اسمك، ومتى العرس؟'), findsOneWidget);
     expect(find.text('1 من 2'), findsOneWidget);
 
     await _tap(tester, 'التالي');
-    expect(find.text('أهلًا بك! ايش اسمك، ومتى العرس؟'), findsOneWidget);
+    expect(find.text('ايش اسمك، ومتى العرس؟'), findsOneWidget);
 
     await tester.enterText(find.byType(TextField).first, 'محمد');
     await tester.pumpAndSettle();
@@ -242,6 +244,84 @@ void main() {
     await _tap(tester, 'صنعاء');
     await _tap(tester, 'جهّز خطتي');
     expect(find.text('خطتك جاهزة يا محمد'), findsOneWidget);
+  });
+
+  testWidgets('a05 groups the amount as typed and keeps whole riyals', (
+    tester,
+  ) async {
+    await _pump(tester);
+    await _tap(tester, 'ابدأ');
+    await _tap(tester, 'التالي');
+    await tester.enterText(find.byType(TextField).first, 'محمد');
+    await tester.pumpAndSettle();
+    await _tap(tester, 'ما حددنا الموعد بعد');
+    await _tap(tester, 'التالي');
+
+    String typed() =>
+        tester.widget<TextField>(find.byType(TextField).first).controller!.text;
+
+    await tester.enterText(find.byType(TextField).first, '7000000');
+    await tester.pumpAndSettle();
+    expect(typed(), '7,000,000');
+
+    // A decimal point never turns 1500.5 into 15005 riyals unnoticed.
+    await tester.enterText(find.byType(TextField).first, '1500.5');
+    await tester.pumpAndSettle();
+    expect(typed(), '15,005');
+    expect(find.text('خمسة عشر ألف وخمسة ريال'), findsOneWidget);
+  });
+
+  testWidgets('a05 takes any city typed by name', (tester) async {
+    await _pump(tester);
+    await _tap(tester, 'ابدأ');
+    await _tap(tester, 'التالي');
+    await tester.enterText(find.byType(TextField).first, 'محمد');
+    await tester.pumpAndSettle();
+    await _tap(tester, 'ما حددنا الموعد بعد');
+    await _tap(tester, 'التالي');
+
+    await _tap(tester, 'مدينة ثانية');
+    expect(find.text('اختر المدينة'), findsOneWidget);
+    await tester.enterText(find.byType(TextField).last, '  ذمار ');
+    await tester.pumpAndSettle();
+    await _tap(tester, 'اختر هذي المدينة');
+
+    expect(find.text('اختر المدينة'), findsNothing);
+    await _tap(tester, 'أكمل بدون ميزانية');
+    await _tap(tester, 'جهّز خطتي');
+    expect(find.text('عرس محمد · ذمار'), findsOneWidget);
+  });
+
+  testWidgets('a03 picks the day in the month with its Hijri date', (
+    tester,
+  ) async {
+    await _pump(tester);
+    await _tap(tester, 'ابدأ');
+    await _tap(tester, 'التالي');
+    await tester.enterText(find.byType(TextField).first, 'محمد');
+    await tester.pumpAndSettle();
+
+    final now = DateTime.now();
+    final month = DateTime(now.year, now.month + 2);
+    await _tap(tester, arabicMonthName(month.month));
+    expect(
+      find.text('يوم العرس في ${arabicMonthName(month.month)} ${month.year}'),
+      findsOneWidget,
+    );
+
+    final day = DateTime(month.year, month.month, 15);
+    final hijri = HijriDate.fromGregorian(day)!;
+    await tester.tap(
+      find.bySemanticsLabel(
+        RegExp('^${formatArabicWeekdayDayMonth(day)}، ${hijri.dayAndMonth}'),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text(formatArabicWeekdayDayMonth(day)), findsOneWidget);
+    expect(find.text(hijri.full), findsOneWidget);
+    await _tap(tester, 'التالي');
+    expect(find.text('وين العرس، وكم ميزانيتك تقريبًا؟'), findsOneWidget);
   });
 
   testWidgets('a08 keeps the plan on the phone with its starting items', (

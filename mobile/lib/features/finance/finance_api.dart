@@ -27,3 +27,5 @@ export 'screens/payment_schedule_screens.dart'
         PaymentSchedulesScreen;
 export 'widgets/money_cost_action_picker.dart'
     show MoneyCostActionIntent, showMoneyCostActionPicker;
+export 'widgets/money_input_formatter.dart'
+    show MoneyInputFormatter, formatMoneyInputValue;

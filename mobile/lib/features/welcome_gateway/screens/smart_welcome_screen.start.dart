@@ -253,7 +253,8 @@ class _PictureChoiceCard extends StatelessWidget {
                       ),
                     ),
                   ),
-                  SizedBox(width: 140, child: picture),
+                  // A picture keeps to its own edge, never over the words.
+                  SizedBox(width: 140, child: ClipRect(child: picture)),
                 ],
               ),
             ),

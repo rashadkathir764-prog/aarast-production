@@ -1106,6 +1106,7 @@ class JourneyTextField extends StatefulWidget {
     this.autofocus = false,
     this.maxLength,
     this.textDirection,
+    this.textAlign = TextAlign.start,
     this.inputFormatters,
     this.helper,
     this.helperColor = AarastV3Color.primary,
@@ -1128,6 +1129,10 @@ class JourneyTextField extends StatefulWidget {
   final bool autofocus;
   final int? maxLength;
   final TextDirection? textDirection;
+
+  /// An amount typed left to right still sits on the reading side with
+  /// [TextAlign.right].
+  final TextAlign textAlign;
   final List<TextInputFormatter>? inputFormatters;
   final String? helper;
   final Color helperColor;
@@ -1197,6 +1202,7 @@ class _JourneyTextFieldState extends State<JourneyTextField> {
                       obscureText: widget.obscureText,
                       maxLength: widget.maxLength,
                       textDirection: widget.textDirection,
+                      textAlign: widget.textAlign,
                       autofillHints: widget.autofillHints,
                       inputFormatters: widget.inputFormatters,
                       onChanged: widget.onChanged,
@@ -1210,8 +1216,10 @@ class _JourneyTextFieldState extends State<JourneyTextField> {
                         isDense: true,
                         counterText: '',
                         hintText: widget.hint,
+                        // The hint shows the answer as it will look typed.
                         hintStyle: JourneyType.of(
                           widget.large ? 28 : 17,
+                          weight: JourneyType.bold,
                           color: AarastV3Color.textFaint,
                         ),
                         border: InputBorder.none,

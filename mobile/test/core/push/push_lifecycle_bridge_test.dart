@@ -27,6 +27,8 @@ void main() {
 
     expect(push.boundUserIds, isEmpty);
     expect(router.goCalls, isEmpty);
+    // A first visit is not asked for notifications before an account.
+    expect(push.permissionRequests, 0);
   });
 
   testWidgets('null to user-A binds user-A once', (tester) async {
@@ -39,6 +41,10 @@ void main() {
     await _pumpBridge(tester, push: push, router: router, userId: 'user-A');
 
     expect(push.boundUserIds, ['user-A']);
+    // Asked once the account exists, and only once.
+    expect(push.permissionRequests, 1);
+    await _pumpBridge(tester, push: push, router: router, userId: 'user-A');
+    expect(push.permissionRequests, 1);
   });
 
   testWidgets('user-A to null unbinds once', (tester) async {

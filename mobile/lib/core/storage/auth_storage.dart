@@ -274,7 +274,27 @@ class AuthStorage {
     return selection.contextKey;
   }
 
-  Future<void> saveAccountContextKey(String contextKey) async {
+  /// The last copy the server returned of the selected context, for opening
+  /// it again without a connection. Only the signed-in user's own copy.
+  Map<String, dynamic>? readAccountContextSnapshot() {
+    final raw = _sensitiveValueVault != null
+        ? _cachedAccountContextKey
+        : _preferences.getString(_accountContextKey);
+    if (raw == null || raw.isEmpty) return null;
+    final selection = _decodeAccountContextSelection(raw);
+    final currentUserId = readUser()?.id;
+    if (selection == null ||
+        currentUserId == null ||
+        currentUserId != selection.userId) {
+      return null;
+    }
+    return selection.context;
+  }
+
+  Future<void> saveAccountContextKey(
+    String contextKey, {
+    Map<String, dynamic>? context,
+  }) async {
     final epoch = _sessionEpoch;
     await _enqueueSessionMutation(() async {
       if (!isSessionEpochCurrent(epoch)) return;
@@ -285,6 +305,7 @@ class AuthStorage {
               'version': 2,
               'userId': userId,
               'contextKey': contextKey,
+              'context': ?context,
             });
       final vault = _sensitiveValueVault;
       if (vault == null) {
@@ -416,9 +437,11 @@ class AuthStorage {
           contextKey.isEmpty) {
         return null;
       }
+      final context = decoded['context'];
       return _PersistedAccountContextSelection(
         userId: userId,
         contextKey: contextKey,
+        context: context is Map<String, dynamic> ? context : null,
       );
     } on FormatException {
       return null;
@@ -430,8 +453,10 @@ class _PersistedAccountContextSelection {
   const _PersistedAccountContextSelection({
     required this.userId,
     required this.contextKey,
+    required this.context,
   });
 
   final String userId;
   final String contextKey;
+  final Map<String, dynamic>? context;
 }

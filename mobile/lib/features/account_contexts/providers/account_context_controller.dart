@@ -42,6 +42,10 @@ class AccountContextController extends ChangeNotifier {
       'تعذر تحديث المسارات المتاحة الآن. حاول مرة أخرى.';
   static const _genericSelectionFailure =
       'تعذر فتح المسار المختار. حاول مرة أخرى.';
+  static const _offlineNotice =
+      'ما في اتصال الحين. نعرض آخر نسخة عندك، ونحدّثها لما يرجع النت.';
+  static const _offlineLoadFailure =
+      'ما قدرنا نوصل للسيرفر. تأكد من النت وحاول مرة ثانية.';
 
   final AccountContextsGateway _contextsApi;
   final AuthStorage _authStorage;
@@ -104,11 +108,10 @@ class AccountContextController extends ChangeNotifier {
     _noticeMessage = null;
     _notifyListeners();
 
+    var blockedPlanIds = const <String>{};
     try {
       final beforeRefresh = _beforeRefresh;
-      final blockedPlanIds = beforeRefresh == null
-          ? const <String>{}
-          : await beforeRefresh();
+      if (beforeRefresh != null) blockedPlanIds = await beforeRefresh();
       if (!_isCurrent(generation)) return;
       final serverContexts = await _contextsApi.listContexts();
       if (!_isCurrent(generation)) return;
@@ -200,9 +203,23 @@ class AccountContextController extends ChangeNotifier {
         _noticeMessage = _contextChangedNotice;
       }
       await _afterRefresh?.call();
-    } on ApiException {
+    } on ApiException catch (error) {
       if (_isCurrent(generation)) {
-        _errorMessage = _genericLoadFailure;
+        // Only the owner's own plan stays open without a connection. A
+        // contributor's or provider's authority can be withdrawn by someone
+        // else, so those fail closed until the server answers.
+        if (!error.isNetworkFailure) {
+          _errorMessage = _genericLoadFailure;
+        } else if (_hasLoadedContexts) {
+          if (_selectedContext?.role == AccountContextRole.owner) {
+            _noticeMessage = _offlineNotice;
+          } else {
+            _errorMessage = _offlineLoadFailure;
+          }
+        } else if (!await _openKeptContext(generation, blockedPlanIds) &&
+            _isCurrent(generation)) {
+          _errorMessage = _offlineLoadFailure;
+        }
       }
     } on Object {
       if (_isCurrent(generation)) {
@@ -258,7 +275,10 @@ class AccountContextController extends ChangeNotifier {
           await _authStorage.clearActivePlanId();
         }
         if (!_isCurrent(generation)) return false;
-        await _authStorage.saveAccountContextKey(validated.contextKey);
+        await _authStorage.saveAccountContextKey(
+          validated.contextKey,
+          context: validated.toJson(),
+        );
         return _isCurrent(generation);
       });
       if (!committed || !_isCurrent(generation)) return false;
@@ -352,7 +372,10 @@ class AccountContextController extends ChangeNotifier {
           if (!_isCurrent(generation)) return false;
         }
         await _authStorage.clearActivePlanId();
-        await _authStorage.saveAccountContextKey(archived.contextKey);
+        await _authStorage.saveAccountContextKey(
+          archived.contextKey,
+          context: archived.toJson(),
+        );
         return _isCurrent(generation);
       });
       if (!persisted || !_isCurrent(generation)) return false;
@@ -520,7 +543,56 @@ class AccountContextController extends ChangeNotifier {
       await _authStorage.clearAccountContextKey();
       return;
     }
-    await _authStorage.saveAccountContextKey(context.contextKey);
+    await _authStorage.saveAccountContextKey(
+      context.contextKey,
+      context: context.toJson(),
+    );
+  }
+
+  /// Without a connection, the plan this user owns and last opened, as the
+  /// server last returned it; null when there is none or it no longer reads.
+  AccountContext? _keptContext() {
+    final kept = _authStorage.readAccountContextSnapshot();
+    if (kept == null) return null;
+    try {
+      final context = AccountContext.fromJson(kept);
+      return context.isAvailable && context.role == AccountContextRole.owner
+          ? context
+          : null;
+    } on FormatException {
+      return null;
+    }
+  }
+
+  /// Opens the kept context when the server cannot be reached; returns
+  /// whether it did. A plan being left is never opened.
+  Future<bool> _openKeptContext(
+    int generation,
+    Set<String> blockedPlanIds,
+  ) async {
+    final kept = _keptContext();
+    if (kept == null || blockedPlanIds.contains(kept.weddingPlanId)) {
+      return false;
+    }
+    final opened = await _enqueueCommit(() async {
+      if (!_isCurrent(generation)) return false;
+      await _resetContextState(null, kept);
+      return _isCurrent(generation);
+    });
+    if (!opened || !_isCurrent(generation)) return false;
+    _contexts = List<AccountContext>.unmodifiable([kept]);
+    _selectedContext = kept;
+    _hasLoadedContexts = true;
+    _noticeMessage = _offlineNotice;
+    appLogEvent(
+      'ACTIVE_CONTEXT_SELECTED',
+      category: AppLogCategory.context,
+      userId: _userId,
+      toContextKey: kept.contextKey,
+      source: 'AccountContextController.refresh',
+      reason: 'offline_kept_context',
+    );
+    return true;
   }
 
   AccountContext? _selectFallback(

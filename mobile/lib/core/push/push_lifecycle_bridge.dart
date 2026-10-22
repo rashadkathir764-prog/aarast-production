@@ -75,7 +75,9 @@ class _AarastPushLifecycleBridgeState extends State<AarastPushLifecycleBridge>
       (push) => push.hasPendingNotificationsOpen,
     );
 
-    if (!_permissionScheduled) {
+    // Notifications belong to an account: ask once someone is signed in,
+    // never on the first screen of a first visit.
+    if (!_permissionScheduled && effectiveUserId != null) {
       _permissionScheduled = true;
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!mounted) return;

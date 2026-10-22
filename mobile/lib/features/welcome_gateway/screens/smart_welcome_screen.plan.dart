@@ -35,7 +35,7 @@ class _NameDateStep extends StatelessWidget {
     return JourneyQuestionPage(
       step: 0,
       total: _questionCount,
-      question: 'أهلًا بك! ايش اسمك، ومتى العرس؟',
+      question: 'ايش اسمك، ومتى العرس؟',
       help: 'نناديك باسمك، ونرتب المهام والدفعات على الموعد.',
       primaryLabel: 'التالي',
       onPrimary: onNext,
@@ -172,7 +172,8 @@ class _NameDateStep extends StatelessWidget {
     }
     final days = ramadan.$1.difference(day).inDays;
     if (days > 60) return null;
-    return 'قبل رمضان بـ $days يوم، والحجوزات تكثر قبل رمضان. احجز القاعة بدري.';
+    return 'باقي على رمضان ${arabicDays(days)}، والحجوزات تكثر قبله. '
+        'احجز القاعة بدري.';
   }
 }
 
@@ -297,13 +298,12 @@ class _PlaceBudgetStep extends StatelessWidget {
                 fontSize: 15,
                 onTap: () => onCity(name),
               ),
-            if (cities.length > 7)
-              JourneyChip(
-                label: 'مدينة ثانية',
-                icon: LucideIcons.plus,
-                fontSize: 15,
-                onTap: onMoreCities,
-              ),
+            JourneyChip(
+              label: 'مدينة ثانية',
+              icon: LucideIcons.plus,
+              fontSize: 15,
+              onTap: onMoreCities,
+            ),
           ],
         ),
         const SizedBox(height: 22),
@@ -316,6 +316,12 @@ class _PlaceBudgetStep extends StatelessWidget {
           suffix: 'ر.ي',
           keyboardType: TextInputType.number,
           textDirection: TextDirection.ltr,
+          textAlign: TextAlign.right,
+          // Whole riyals, grouped as typed: 7,000,000.
+          inputFormatters: [
+            FilteringTextInputFormatter.deny(RegExp(r'[.٫]')),
+            const MoneyInputFormatter(),
+          ],
           helper: amount == null || amount <= 0 ? null : amountInWords(amount),
           onChanged: (_) => onBudgetChanged(),
         ),
@@ -458,7 +464,8 @@ class _ReadyStep extends StatelessWidget {
               icon: LucideIcons.wallet,
               color: AarastV3Color.primary,
               soft: AarastV3Color.primarySoft,
-              title: '${items.length} بند لعرسك',
+              title:
+                  '${arabicCount(items.length, one: 'بند واحد', two: 'بندين', few: 'بنود', many: 'بند')} لعرسك',
               subtitle: itemsLine,
             ),
             if (catalogs.taskCount > 0)
@@ -466,7 +473,8 @@ class _ReadyStep extends StatelessWidget {
                 icon: LucideIcons.listChecks,
                 color: AarastV3Color.brandAccentStrong,
                 soft: AarastV3Color.brandAccentSoft,
-                title: '${catalogs.taskCount} مهمة مقترحة على موعدك',
+                title:
+                    '${arabicCount(catalogs.taskCount, one: 'مهمة واحدة', two: 'مهمتين', few: 'مهام', many: 'مهمة')} مقترحة على موعدك',
                 subtitle: 'تختار منها اللي يناسبك بعد الحفظ',
               ),
             JourneyListRow(
@@ -491,19 +499,44 @@ class _ReadyStep extends StatelessWidget {
   }
 }
 
-/// Every city of the directory, for «مدينة ثانية».
-class _CitySheet extends StatelessWidget {
+/// «مدينة ثانية»: every city of the directory, or any city typed by name,
+/// so a wedding outside the list (or offline) still has its city.
+class _CitySheet extends StatefulWidget {
   const _CitySheet({required this.cities, required this.selected});
 
   final List<String> cities;
   final String? selected;
 
   @override
+  State<_CitySheet> createState() => _CitySheetState();
+}
+
+class _CitySheetState extends State<_CitySheet> {
+  final _typed = TextEditingController();
+
+  @override
+  void dispose() {
+    _typed.dispose();
+    super.dispose();
+  }
+
+  void _useTyped() {
+    final name = _typed.text.trim().replaceAll(RegExp(r'\s+'), ' ');
+    if (name.isEmpty) return;
+    Navigator.of(context).pop(name);
+  }
+
+  @override
   Widget build(BuildContext context) {
     return SafeArea(
       child: ListView(
         shrinkWrap: true,
-        padding: const EdgeInsets.fromLTRB(20, 10, 20, 20),
+        padding: EdgeInsets.fromLTRB(
+          20,
+          10,
+          20,
+          20 + MediaQuery.viewInsetsOf(context).bottom,
+        ),
         children: [
           Semantics(
             header: true,
@@ -517,14 +550,31 @@ class _CitySheet extends StatelessWidget {
             spacing: 8,
             runSpacing: 8,
             children: [
-              for (final name in cities)
+              for (final name in widget.cities)
                 JourneyChip(
                   label: name,
-                  selected: name == selected,
+                  selected: name == widget.selected,
                   fontSize: 15,
                   onTap: () => Navigator.of(context).pop(name),
                 ),
             ],
+          ),
+          const SizedBox(height: 18),
+          JourneyTextField(
+            label: 'مدينتك مش في القائمة؟ اكتبها',
+            controller: _typed,
+            hint: 'ذمار',
+            icon: LucideIcons.mapPin,
+            maxLength: 40,
+            textInputAction: TextInputAction.done,
+            onChanged: (_) => setState(() {}),
+            onSubmitted: (_) => _useTyped(),
+          ),
+          const SizedBox(height: 12),
+          JourneyButton(
+            label: 'اختر هذي المدينة',
+            onPressed: _typed.text.trim().isEmpty ? null : _useTyped,
+            expand: true,
           ),
         ],
       ),

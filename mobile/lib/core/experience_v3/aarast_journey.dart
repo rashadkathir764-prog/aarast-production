@@ -438,6 +438,9 @@ class JourneyBar extends StatelessWidget {
       child: SizedBox(
         height: height,
         child: Row(
+          // An empty ColoredBox has no height of its own; stretch gives the
+          // bar its height.
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             if (v > 0)
               Expanded(

@@ -33,6 +33,9 @@ import '../widgets/funding_widgets.dart';
 import '../widgets/money_starter_setup.dart';
 import '../widgets/money_widgets.dart';
 
+part 'money_overview_screen.pieces.dart';
+part 'money_overview_screen.summary.dart';
+
 /// نقطة الدخول الوحيدة للمال.
 ///
 /// تعرض ملخص MoneySummary ثم قائمة WeddingCost. تبقى حركات الدفع داخل تفاصيل
@@ -56,6 +59,9 @@ class MoneyOverviewScreen extends StatefulWidget {
 }
 
 class _MoneyOverviewScreenState extends State<MoneyOverviewScreen> {
+  /// «الملخص · البنود · الدفعات · من وين» (c01).
+  int _tab = 0;
+
   @override
   void initState() {
     super.initState();
@@ -113,117 +119,100 @@ class _MoneyOverviewScreenState extends State<MoneyOverviewScreen> {
         onSubmit: _saveStarterCategories,
       );
     } else {
+      final hasFunding = provider.summary.funding != null;
+      final tabs = [
+        'الملخص',
+        'البنود',
+        'الدفعات',
+        // «من وين» is the owner's: only the owner receives funding.
+        if (hasFunding) 'من وين',
+      ];
+      final tab = _tab.clamp(0, tabs.length - 1);
       content = RefreshIndicator(
-        color: AppTheme.brand,
+        color: AarastV3Color.primary,
         onRefresh: _load,
         child: ListView(
           key: const PageStorageKey('money-overview-list'),
           physics: const AlwaysScrollableScrollPhysics(),
-          padding: EdgeInsets.fromLTRB(20, 16, 20, bottomClearance),
+          padding: EdgeInsets.fromLTRB(16, 12, 16, bottomClearance),
           children: [
-            if (provider.errorMessage != null) ...[
-              MoneyMessageBanner(message: provider.errorMessage!, error: true),
-              const SizedBox(height: 14),
-            ],
-            _MoneySnapshot(
+            _MoneyHeader(
               summary: provider.summary,
               canManage: provider.canManageMoney,
-              amountsHidden: provider.amountsHidden,
+              onShare: provider.summary.hasAnyData
+                  ? () => showAarastShareSheet(
+                      context: context,
+                      title: 'مشاركة ملخص الميزانية',
+                      switchLabel: 'إخفاء المبالغ (نسب فقط)',
+                      switchInitial: provider.amountsHidden,
+                      buildText: (hideAmounts) => moneyShareText(
+                        provider.summary,
+                        planTitle: _planTitle(context),
+                        hideAmounts: hideAmounts,
+                      ),
+                    )
+                  : null,
               onBudget: () =>
                   context.push(AppRouter.moneyBudget(widget.weddingPlanId)),
               onSchedules: () =>
                   context.push(AppRouter.moneySchedules(widget.weddingPlanId)),
             ),
-            // V1 checklist 4.16: share what this screen shows on WhatsApp.
-            if (provider.summary.hasAnyData)
-              Align(
-                alignment: AlignmentDirectional.centerStart,
-                child: TextButton.icon(
-                  key: const Key('money-share-summary'),
-                  onPressed: () => showAarastShareSheet(
-                    context: context,
-                    title: 'مشاركة ملخص الميزانية',
-                    switchLabel: 'إخفاء المبالغ (نسب فقط)',
-                    switchInitial: provider.amountsHidden,
-                    buildText: (hideAmounts) => moneyShareText(
-                      provider.summary,
-                      planTitle: _planTitle(context),
-                      hideAmounts: hideAmounts,
-                    ),
-                  ),
-                  icon: const Icon(LucideIcons.share2),
-                  label: const Text('مشاركة الملخص عبر واتساب'),
-                ),
-              ),
-            // Field test Q03: an overspent category must be visible the moment
-            // the money screen shows it, not only in the hourly notification.
-            for (final exceeded in provider.summary.exceededCategories) ...[
+            const SizedBox(height: 14),
+            JourneyTabSwitch(
+              key: const ValueKey('money-tabs'),
+              labels: tabs,
+              selected: tab,
+              onSelected: (index) => setState(() => _tab = index),
+            ),
+            const SizedBox(height: 14),
+            if (provider.errorMessage != null) ...[
+              JourneyListNotice(offline: false, onRetry: _load),
               const SizedBox(height: 12),
-              MoneyMessageBanner(
-                key: ValueKey('money-category-exceeded-${exceeded.name}'),
-                error: true,
-                message: provider.amountsHidden || exceeded.overrun == null
-                    ? 'تكاليف «${exceeded.name}» تجاوزت المبلغ المخصص له.'
-                    : 'تكاليف «${exceeded.name}» تجاوزت المبلغ المخصص له بـ ${formatCompactMoney(moneyValue(exceeded.overrun), currencyCode: provider.summary.currency)}.',
-              ),
             ],
-            if (stage != null) ...[
-              const SizedBox(height: 12),
-              WeddingStageContextLine(
-                stage: stage,
-                domain: WeddingStageDomain.money,
-              ),
-            ],
-            if (_nextSchedule(provider) case final schedule?) ...[
-              const SizedBox(height: 14),
-              _NextPaymentCard(
-                schedule: schedule,
-                currency: provider.summary.currency,
-                onTap: () => context.push(
-                  AppRouter.moneyScheduleDetails(
-                    widget.weddingPlanId,
-                    schedule.costId,
-                    schedule.id,
-                  ),
-                ),
-                onPay: _payableCost(provider, schedule) == null
+            ...switch (tab) {
+              0 => _summaryTab(
+                provider,
+                stage == null
                     ? null
-                    : () => _paySchedule(
-                        schedule,
-                        _payableCost(provider, schedule)!,
+                    : WeddingStageContextLine(
+                        stage: stage,
+                        domain: WeddingStageDomain.money,
                       ),
               ),
-            ],
-            // Only the plan owner receives funding in the summary.
-            if (provider.summary.funding case final funding?) ...[
-              const SizedBox(height: 14),
-              MoneyFundingCard(
-                funding: funding,
-                currency: provider.summary.currency,
-                onOpen: () =>
-                    context.push(AppRouter.moneyFunding(widget.weddingPlanId)),
-              ),
-            ],
-            const SizedBox(height: 24),
-            _MoneyCostsSection(
-              costs: provider.costs,
-              currency: provider.summary.currency,
-              canManage: provider.canManageMoney,
-              hasBudget: provider.summary.hasBudget,
-              hasMore: provider.hasMoreCosts,
-              categoryName: (cost) =>
-                  provider.categoryById(cost.budgetCategoryId)?.name ??
-                  cost.categoryName,
-              onAdd: () =>
-                  context.push(AppRouter.moneyCostCreate(widget.weddingPlanId)),
-              onBudget: () =>
-                  context.push(AppRouter.moneyBudget(widget.weddingPlanId)),
-              onAll: () =>
-                  context.push(AppRouter.moneyCosts(widget.weddingPlanId)),
-              onOpen: (cost) => context.push(
-                AppRouter.moneyCostDetails(widget.weddingPlanId, cost.id),
-              ),
-            ),
+              1 => [
+                _MoneyCostsSection(
+                  costs: provider.costs,
+                  currency: provider.summary.currency,
+                  canManage: provider.canManageMoney,
+                  hasBudget: provider.summary.hasBudget,
+                  hasMore: provider.hasMoreCosts,
+                  categoryName: (cost) =>
+                      provider.categoryById(cost.budgetCategoryId)?.name ??
+                      cost.categoryName,
+                  onAdd: () => context.push(
+                    AppRouter.moneyCostCreate(widget.weddingPlanId),
+                  ),
+                  onBudget: () =>
+                      context.push(AppRouter.moneyBudget(widget.weddingPlanId)),
+                  onAll: () =>
+                      context.push(AppRouter.moneyCosts(widget.weddingPlanId)),
+                  onOpen: (cost) => context.push(
+                    AppRouter.moneyCostDetails(widget.weddingPlanId, cost.id),
+                  ),
+                ),
+              ],
+              2 => _paymentsTab(provider),
+              _ => [
+                if (provider.summary.funding case final funding?)
+                  MoneyFundingCard(
+                    funding: funding,
+                    currency: provider.summary.currency,
+                    onOpen: () => context.push(
+                      AppRouter.moneyFunding(widget.weddingPlanId),
+                    ),
+                  ),
+              ],
+            },
           ],
         ),
       );
@@ -237,6 +226,115 @@ class _MoneyOverviewScreenState extends State<MoneyOverviewScreen> {
       );
     }
     return AarastScreenFrame(maxWidth: 560, child: content);
+  }
+
+  List<Widget> _summaryTab(FinanceProvider provider, Widget? stageLine) {
+    final summary = provider.summary;
+    return [
+      _MoneySummaryCard(summary: summary),
+      // Field test Q03: an overspent category shows the moment money opens.
+      for (final exceeded in summary.exceededCategories) ...[
+        const SizedBox(height: 12),
+        MoneyMessageBanner(
+          key: ValueKey('money-category-exceeded-${exceeded.name}'),
+          error: true,
+          message: provider.amountsHidden || exceeded.overrun == null
+              ? 'تكاليف «${exceeded.name}» تجاوزت المبلغ المخصص له.'
+              : 'تكاليف «${exceeded.name}» تجاوزت المبلغ المخصص له بـ ${formatCompactMoney(moneyValue(exceeded.overrun), currencyCode: summary.currency)}.',
+        ),
+      ],
+      if (_nextSchedule(provider) case final schedule?) ...[
+        const SizedBox(height: 12),
+        _NextPaymentCard(
+          schedule: schedule,
+          currency: summary.currency,
+          onTap: () => context.push(
+            AppRouter.moneyScheduleDetails(
+              widget.weddingPlanId,
+              schedule.costId,
+              schedule.id,
+            ),
+          ),
+          onPay: _payableCost(provider, schedule) == null
+              ? null
+              : () => _paySchedule(schedule, _payableCost(provider, schedule)!),
+        ),
+      ],
+      const SizedBox(height: 12),
+      _MoneyBudgetCard(
+        summary: summary,
+        canManage: provider.canManageMoney,
+        onBudget: () =>
+            context.push(AppRouter.moneyBudget(widget.weddingPlanId)),
+      ),
+      if (stageLine != null) ...[const SizedBox(height: 12), stageLine],
+    ];
+  }
+
+  /// c03 «الدفعات»: what is late and what is due soon, each opening its
+  /// schedule; the full calendar stays one tap away.
+  List<Widget> _paymentsTab(FinanceProvider provider) {
+    final schedules = provider.dueSchedules;
+    final currency = provider.summary.currency;
+    final now = DateTime.now();
+    return [
+      if (schedules.isEmpty)
+        const JourneyListState(
+          phase: JourneyListPhase.empty,
+          section: JourneySection.money,
+          emptyIcon: LucideIcons.calendarCheck,
+          emptyTitle: 'ما عليك دفعات قريبة',
+        )
+      else
+        JourneyBox(
+          padding: EdgeInsets.zero,
+          child: JourneyList(
+            children: [
+              for (final schedule in schedules)
+                JourneyListRow(
+                  key: ValueKey('money-due-schedule-${schedule.id}'),
+                  icon: schedule.isOverdueAt(now)
+                      ? LucideIcons.alertCircle
+                      : LucideIcons.calendarClock,
+                  color: schedule.isOverdueAt(now)
+                      ? AarastV3Color.danger
+                      : AarastV3Color.brandAccentStrong,
+                  soft: schedule.isOverdueAt(now)
+                      ? AarastV3Color.dangerSoft
+                      : AarastV3Color.brandAccentSoft,
+                  title:
+                      '${schedule.costTitle ?? 'دفعة'}: ${_amount(context, schedule.amount, currency)}',
+                  subtitle: schedule.isOverdueAt(now)
+                      ? 'متأخرة · ${formatArabicWeekdayDayMonth(schedule.dueDate)}'
+                      : formatArabicWeekdayDayMonth(schedule.dueDate),
+                  trailing: const Icon(
+                    LucideIcons.chevronLeft,
+                    size: 18,
+                    color: AarastV3Color.textFaint,
+                  ),
+                  onTap: () => context.push(
+                    AppRouter.moneyScheduleDetails(
+                      widget.weddingPlanId,
+                      schedule.costId,
+                      schedule.id,
+                    ),
+                  ),
+                ),
+            ],
+          ),
+        ),
+      const SizedBox(height: 8),
+      Align(
+        alignment: AlignmentDirectional.centerStart,
+        child: JourneyTextAction(
+          key: const ValueKey('money-destination-schedules'),
+          label: 'كل مواعيد الدفع',
+          color: AarastV3Color.primary,
+          onPressed: () =>
+              context.push(AppRouter.moneySchedules(widget.weddingPlanId)),
+        ),
+      ),
+    ];
   }
 
   MoneyStarterPersona _starterPersona(BuildContext context) {
@@ -377,482 +475,4 @@ class _MoneyRootStateList extends StatelessWidget {
       children: [child],
     );
   }
-}
-
-enum _MoneySettingsAction { budget, schedules }
-
-class _MoneyCostsSection extends StatelessWidget {
-  const _MoneyCostsSection({
-    required this.costs,
-    required this.currency,
-    required this.canManage,
-    required this.hasBudget,
-    required this.hasMore,
-    required this.categoryName,
-    required this.onAdd,
-    required this.onBudget,
-    required this.onAll,
-    required this.onOpen,
-  });
-
-  final List<WeddingCost> costs;
-  final String currency;
-  final bool canManage;
-  final bool hasBudget;
-  final bool hasMore;
-  final String? Function(WeddingCost cost) categoryName;
-  final VoidCallback onAdd;
-  final VoidCallback onBudget;
-  final VoidCallback onAll;
-  final ValueChanged<WeddingCost> onOpen;
-
-  @override
-  Widget build(BuildContext context) {
-    final visibleCosts = costs.take(3).toList(growable: false);
-    final shouldShowAll = hasMore || costs.length > visibleCosts.length;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        AarastSectionHeader(
-          title: 'التكاليف',
-          subtitle: costs.isEmpty
-              ? 'سجّل كل خدمة ومبلغها في بطاقة واحدة.'
-              : '${_costCountLabel(costs.length)} مسجلة في الخطة.',
-          icon: LucideIcons.receipt,
-        ),
-        const SizedBox(height: 10),
-        if (costs.isEmpty)
-          AarastEmptyState(
-            icon: LucideIcons.receipt,
-            title: 'لا توجد تكاليف بعد',
-            message: canManage
-                ? 'يمكنك إضافة تكلفة الآن حتى لو لم تحدد الميزانية.'
-                : 'لم تُسجل تكاليف في هذه الخطة حتى الآن.',
-            action: canManage
-                ? Wrap(
-                    alignment: WrapAlignment.center,
-                    spacing: 8,
-                    runSpacing: 8,
-                    children: [
-                      FilledButton.icon(
-                        key: const ValueKey('money-empty-add-cost'),
-                        onPressed: onAdd,
-                        icon: const Icon(LucideIcons.plus),
-                        label: const Text('إضافة تكلفة'),
-                      ),
-                      if (!hasBudget)
-                        TextButton(
-                          onPressed: onBudget,
-                          child: const Text('تحديد الميزانية'),
-                        ),
-                    ],
-                  )
-                : null,
-          )
-        else ...[
-          for (var index = 0; index < visibleCosts.length; index++) ...[
-            CostCard(
-              key: ValueKey('money-overview-cost-${visibleCosts[index].id}'),
-              cost: visibleCosts[index],
-              currency: currency,
-              categoryName: categoryName(visibleCosts[index]),
-              onTap: () => onOpen(visibleCosts[index]),
-            ),
-            if (index != visibleCosts.length - 1) const SizedBox(height: 2),
-          ],
-          if (shouldShowAll) ...[
-            const SizedBox(height: 10),
-            TextButton.icon(
-              onPressed: onAll,
-              icon: const Icon(LucideIcons.arrowLeft, size: 17),
-              label: const Text('عرض كل التكاليف'),
-            ),
-          ],
-        ],
-      ],
-    );
-  }
-}
-
-class _MoneySnapshot extends StatelessWidget {
-  const _MoneySnapshot({
-    required this.summary,
-    required this.canManage,
-    required this.amountsHidden,
-    required this.onBudget,
-    required this.onSchedules,
-  });
-
-  final MoneySummary summary;
-  final bool canManage;
-  final bool amountsHidden;
-  final VoidCallback onBudget;
-  final VoidCallback onSchedules;
-
-  @override
-  Widget build(BuildContext context) {
-    final remaining = moneyValue(summary.budget.remaining);
-    final progress = summary.confirmedRatio.clamp(0.0, 1.0).toDouble();
-    final percent = (summary.confirmedRatio * 100).round();
-    final overBudget = summary.hasBudget && remaining < 0;
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        Container(
-          key: const ValueKey('money-dashboard-hero'),
-          padding: const EdgeInsets.all(AarastV3Space.x4),
-          decoration: BoxDecoration(
-            color: AarastV3Color.paper,
-            borderRadius: BorderRadius.circular(AarastV3Radius.surface),
-            border: Border.all(color: AarastV3Color.line),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Row(
-                children: [
-                  const Icon(
-                    LucideIcons.walletCards,
-                    size: 19,
-                    color: AarastV3Color.primary,
-                  ),
-                  const SizedBox(width: AarastV3Space.x2),
-                  Expanded(
-                    child: Text(
-                      summary.hasBudget
-                          ? overBudget
-                                ? 'فوق الميزانية'
-                                : 'المتاح من الميزانية'
-                          : 'الميزانية غير محددة',
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: AarastV3Type.label(context).copyWith(
-                        color: overBudget
-                            ? AarastV3Color.rose
-                            : AarastV3Color.primary,
-                      ),
-                    ),
-                  ),
-                  MoneyPrivacyButton(),
-                  const SizedBox(width: AarastV3Space.x1),
-                  _MoneySettingsMenu(
-                    canManage: canManage,
-                    onBudget: onBudget,
-                    onSchedules: onSchedules,
-                  ),
-                ],
-              ),
-              const SizedBox(height: AarastV3Space.x2),
-              if (!summary.hasBudget)
-                Text(
-                  'حدد ميزانيتك لنحسب المتاح ونرتب التكاليف بوضوح.',
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: AarastV3Color.textMuted,
-                    height: 1.4,
-                  ),
-                )
-              else ...[
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.end,
-                  children: [
-                    Expanded(
-                      child: FittedBox(
-                        fit: BoxFit.scaleDown,
-                        alignment: AlignmentDirectional.centerStart,
-                        child: MoneyAmountText(
-                          amount: remaining.abs(),
-                          currency: summary.currency,
-                          color: overBudget
-                              ? AarastV3Color.rose
-                              : AarastV3Color.ink,
-                          style: AarastV3Type.display(
-                            context,
-                          ).copyWith(fontSize: 30),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: AarastV3Space.x2),
-                    Text(
-                      amountsHidden ? '••' : '$percent%',
-                      style: AarastV3Type.section(context).copyWith(
-                        color: overBudget
-                            ? AarastV3Color.rose
-                            : AarastV3Color.primary,
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: AarastV3Space.x2),
-                AarastV3ProgressLine(
-                  value: progress,
-                  color: overBudget
-                      ? AarastV3Color.rose
-                      : AarastV3Color.primary,
-                ),
-                const SizedBox(height: AarastV3Space.x3),
-                Row(
-                  children: [
-                    _LedgerMetric(
-                      label: 'الميزانية',
-                      amount: summary.budget.total,
-                      currency: summary.currency,
-                    ),
-                    const _LedgerDivider(),
-                    _LedgerMetric(
-                      label: 'دُفع فعليًا',
-                      amount: summary.costs.paid,
-                      currency: summary.currency,
-                      color: AarastV3Color.mint,
-                    ),
-                    const _LedgerDivider(),
-                    _LedgerMetric(
-                      label: 'غير مدفوع',
-                      amount: summary.costs.outstanding,
-                      currency: summary.currency,
-                      color: AarastV3Color.primary,
-                    ),
-                  ],
-                ),
-              ],
-              if (amountsHidden || !canManage) ...[
-                const SizedBox(height: AarastV3Space.x3),
-                AarastV3TrustLine(
-                  icon: amountsHidden ? LucideIcons.eyeOff : LucideIcons.lock,
-                  message: amountsHidden
-                      ? 'الأرقام مخفية على هذه الشاشة لحماية خصوصيتك.'
-                      : 'يمكنك الاطلاع على المال، والتعديل متاح لمدير الخطة فقط.',
-                  tone: amountsHidden
-                      ? AarastV3AttentionTone.calm
-                      : AarastV3AttentionTone.information,
-                ),
-              ],
-            ],
-          ),
-        ),
-        if (!summary.hasBudget && canManage) ...[
-          const SizedBox(height: AppTheme.space12),
-          FilledButton.icon(
-            key: const ValueKey('money-budget-setup'),
-            onPressed: onBudget,
-            icon: const Icon(LucideIcons.sparkles),
-            label: const Text('بناء الميزانية'),
-          ),
-        ],
-      ],
-    );
-  }
-}
-
-class _LedgerMetric extends StatelessWidget {
-  const _LedgerMetric({
-    required this.label,
-    required this.amount,
-    required this.currency,
-    this.color = AarastV3Color.ink,
-  });
-
-  final String label;
-  final Object? amount;
-  final String currency;
-  final Color color;
-
-  @override
-  Widget build(BuildContext context) {
-    return Expanded(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          FittedBox(
-            fit: BoxFit.scaleDown,
-            alignment: AlignmentDirectional.centerStart,
-            child: MoneyAmountText(
-              amount: amount,
-              currency: currency,
-              color: color,
-              style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                fontFamily: AarastV3Type.displayFamily,
-              ),
-            ),
-          ),
-          const SizedBox(height: 3),
-          Text(
-            label,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: Theme.of(context).textTheme.labelSmall?.copyWith(
-              color: AarastV3Color.textMuted,
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _LedgerDivider extends StatelessWidget {
-  const _LedgerDivider();
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: 1,
-      height: 32,
-      margin: const EdgeInsets.symmetric(horizontal: 10),
-      color: AarastV3Color.line,
-    );
-  }
-}
-
-class _MoneySettingsMenu extends StatelessWidget {
-  const _MoneySettingsMenu({
-    required this.canManage,
-    required this.onBudget,
-    required this.onSchedules,
-  });
-
-  final bool canManage;
-  final VoidCallback onBudget;
-  final VoidCallback onSchedules;
-
-  @override
-  Widget build(BuildContext context) {
-    return Material(
-      color: Colors.transparent,
-      child: PopupMenuButton<_MoneySettingsAction>(
-        key: const ValueKey('money-settings-menu'),
-        tooltip: 'إدارة المال',
-        onSelected: (action) {
-          switch (action) {
-            case _MoneySettingsAction.budget:
-              onBudget();
-            case _MoneySettingsAction.schedules:
-              onSchedules();
-          }
-        },
-        itemBuilder: (context) => [
-          if (canManage)
-            const PopupMenuItem(
-              key: ValueKey('money-settings-budget'),
-              value: _MoneySettingsAction.budget,
-              child: _MoneySettingsItem(
-                icon: LucideIcons.walletCards,
-                label: 'الميزانية والتصنيفات',
-              ),
-            ),
-          const PopupMenuItem(
-            key: ValueKey('money-settings-schedules'),
-            value: _MoneySettingsAction.schedules,
-            child: _MoneySettingsItem(
-              icon: LucideIcons.calendarClock,
-              label: 'مواعيد الدفع',
-            ),
-          ),
-        ],
-        child: Container(
-          height: 48,
-          padding: const EdgeInsetsDirectional.symmetric(horizontal: 10),
-          decoration: BoxDecoration(
-            color: AarastV3Color.paperQuiet,
-            borderRadius: BorderRadius.circular(AarastV3Radius.control),
-            border: Border.all(color: AarastV3Color.line),
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Icon(
-                LucideIcons.slidersHorizontal,
-                size: 16,
-                color: AarastV3Color.primary,
-              ),
-              const SizedBox(width: AarastV3Space.x1),
-              Text(
-                'إدارة',
-                style: AarastV3Type.label(
-                  context,
-                ).copyWith(color: AarastV3Color.primary),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _MoneySettingsItem extends StatelessWidget {
-  const _MoneySettingsItem({required this.icon, required this.label});
-
-  final IconData icon;
-  final String label;
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      children: [
-        Icon(icon, size: 18, color: AppTheme.brand),
-        const SizedBox(width: AppTheme.space10),
-        Flexible(
-          child: Text(
-            label,
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
-            style: Theme.of(context).textTheme.labelLarge,
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-class _NextPaymentCard extends StatelessWidget {
-  const _NextPaymentCard({
-    required this.schedule,
-    required this.currency,
-    required this.onTap,
-    this.onPay,
-  });
-
-  final PaymentSchedule schedule;
-  final String currency;
-  final VoidCallback onTap;
-  final VoidCallback? onPay;
-
-  @override
-  Widget build(BuildContext context) {
-    final isOverdue = schedule.isOverdueAt(DateTime.now());
-    final heading = isOverdue ? 'دفعة متأخرة' : 'موعد الدفع التالي';
-    final amountsHidden = context.select<FinanceProvider?, bool>(
-      (provider) => provider?.amountsHidden ?? false,
-    );
-    final amount = amountsHidden
-        ? '••••'
-        : formatCompactMoney(
-            moneyValue(schedule.amount),
-            currencyCode: currency,
-          );
-    return AarastV3AttentionSurface(
-      key: const ValueKey('money-next-schedule-strip'),
-      eyebrow: heading,
-      title: schedule.costTitle ?? 'تكلفة مسجلة',
-      reason: '${formatArabicCompactDate(schedule.dueDate)} · $amount',
-      icon: isOverdue ? LucideIcons.alertCircle : LucideIcons.calendarClock,
-      actionLabel: onPay == null ? 'عرض التفاصيل' : 'تسجيل دفعة',
-      onAction: onPay ?? onTap,
-      onTap: onTap,
-      tone: isOverdue
-          ? AarastV3AttentionTone.danger
-          : AarastV3AttentionTone.warning,
-    );
-  }
-}
-
-String _costCountLabel(int count) {
-  return switch (count) {
-    1 => 'تكلفة واحدة',
-    2 => 'تكلفتان',
-    >= 3 && <= 10 => '$count تكاليف',
-    _ => '$count تكلفة',
-  };
 }

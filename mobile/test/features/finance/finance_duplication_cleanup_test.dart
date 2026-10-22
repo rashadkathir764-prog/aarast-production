@@ -62,11 +62,16 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      expect(find.text('الميزانية'), findsOneWidget);
+      // c01: the server's numbers in one sentence, then the budget.
+      expect(
+        find.textContaining('اتفقت على', findRichText: true),
+        findsOneWidget,
+      );
+      expect(
+        find.textContaining('دفعت منها', findRichText: true),
+        findsOneWidget,
+      );
       expect(find.text('المتاح من الميزانية'), findsOneWidget);
-      expect(find.text('دُفع فعليًا'), findsOneWidget);
-      expect(find.text('التكاليف'), findsOneWidget);
-      expect(find.text('غير مدفوع'), findsWidgets);
       expect(find.text('إضافة تكلفة'), findsNothing);
       expect(
         find.byKey(const ValueKey('money-destination-budget')),
@@ -106,6 +111,9 @@ void main() {
         _wrap(_FakeFinanceApi.budgetOnly(), textScale: 1.3),
       );
       await tester.pumpAndSettle();
+      // c01: the costs live under «البنود».
+      await tester.tap(find.byKey(const ValueKey('journey-tab-1')));
+      await tester.pumpAndSettle();
 
       expect(find.text('لا توجد تكاليف بعد'), findsOneWidget);
       expect(find.text('مواعيد الدفع'), findsNothing);
@@ -120,6 +128,9 @@ void main() {
     testWidgets('money root shows only the three latest costs', (tester) async {
       _setTallView(tester);
       await tester.pumpWidget(_wrap(_FakeFinanceApi.withCosts()));
+      await tester.pumpAndSettle();
+      // c01: the costs live under «البنود».
+      await tester.tap(find.byKey(const ValueKey('journey-tab-1')));
       await tester.pumpAndSettle();
 
       expect(
@@ -175,7 +186,7 @@ void main() {
         findsOneWidget,
       );
       expect(find.text('دفعة متأخرة'), findsOneWidget);
-      expect(find.text('موعد الدفع التالي'), findsNothing);
+      expect(find.text('الدفعة الجاية'), findsNothing);
       expect(tester.takeException(), isNull);
     });
 
@@ -205,7 +216,7 @@ void main() {
         find.byKey(const ValueKey('money-next-schedule-strip')),
         findsOneWidget,
       );
-      expect(find.text('موعد الدفع التالي'), findsOneWidget);
+      expect(find.text('الدفعة الجاية'), findsOneWidget);
       expect(find.text('دفعة متأخرة'), findsNothing);
       expect(tester.takeException(), isNull);
     });
@@ -231,7 +242,8 @@ void main() {
       );
       await tester.pumpAndSettle();
       final strip = find.byKey(const ValueKey('money-next-schedule-strip'));
-      final amount = formatCompactMoney(1000, currencyCode: 'YER');
+      // Inside Arabic text the amount is in its plain form.
+      final amount = compactMoneyParts(1000, currencyCode: 'YER').plainText;
       Finder amountInStrip() =>
           find.descendant(of: strip, matching: find.textContaining(amount));
       expect(amountInStrip(), findsOneWidget);

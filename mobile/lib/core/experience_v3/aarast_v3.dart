@@ -1,6 +1,7 @@
 export 'aarast_journey.dart';
 export 'aarast_journey_art.dart';
 export 'aarast_journey_states.dart';
+export 'aarast_journey_tabs.dart';
 export 'aarast_v3_composition.dart';
 export 'aarast_v3_content.dart';
 export 'aarast_v3_adaptive.dart';

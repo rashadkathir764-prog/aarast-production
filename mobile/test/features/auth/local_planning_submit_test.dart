@@ -172,6 +172,9 @@ void main() {
         harness,
         const MoneyOverviewScreen(weddingPlanId: localPlanId),
       );
+      // c01: the costs live under «البنود».
+      await tester.tap(find.byKey(const ValueKey('journey-tab-1')));
+      await tester.pumpAndSettle();
       await tester.scrollUntilVisible(
         find.text('دفعة القاعة').first,
         240,

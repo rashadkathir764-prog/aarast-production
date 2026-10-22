@@ -25,6 +25,28 @@ Widget _host(Widget child, {double width = 320, double textScale = 1}) {
 }
 
 void main() {
+  testWidgets('a bar fills its height', (tester) async {
+    await tester.pumpWidget(
+      _host(
+        const SizedBox(
+          width: 200,
+          child: JourneyBar(value: 0.25, color: AarastV3Color.primary),
+        ),
+      ),
+    );
+    final filled = tester.getSize(
+      find
+          .descendant(
+            of: find.byType(JourneyBar),
+            matching: find.byType(ColoredBox),
+          )
+          .first,
+    );
+    expect(filled.height, 6);
+    final bar = tester.getSize(find.byType(JourneyBar));
+    expect(filled.width, closeTo(bar.width * 0.25, 1));
+  });
+
   // D8: one type scale. A size is a role from JourneyType, never a number
   // picked on a screen, so screens cannot drift apart again.
   test('journey text takes its size from the type scale', () {

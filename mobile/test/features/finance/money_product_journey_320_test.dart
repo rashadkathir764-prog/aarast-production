@@ -39,7 +39,15 @@ void main() {
 
       const stripKey = ValueKey('money-next-schedule-strip');
       expect(find.byType(MoneyOverviewScreen), findsOneWidget);
+      // The budget sits under the summary and the next payment.
+      await tester.scrollUntilVisible(
+        find.text('المتاح من الميزانية'),
+        220,
+        scrollable: find.byType(Scrollable).first,
+      );
       expect(find.text('المتاح من الميزانية'), findsOneWidget);
+      await tester.drag(find.byType(Scrollable).first, const Offset(0, 2000));
+      await tester.pumpAndSettle();
       expect(
         find.byKey(const ValueKey('money-dashboard-hero')),
         findsOneWidget,
@@ -49,9 +57,15 @@ void main() {
         find.byKey(const ValueKey('money-destination-costs')),
         findsNothing,
       );
+      // c01: the costs live under «البنود».
+      await tester.tap(find.byKey(const ValueKey('journey-tab-1')));
+      await tester.pumpAndSettle();
       expect(find.byType(CostCard), findsOneWidget);
       _expectRtl(tester, find.byType(MoneyOverviewScreen));
       expect(tester.takeException(), isNull);
+      // The next payment is on «الملخص».
+      await tester.tap(find.byKey(const ValueKey('journey-tab-0')));
+      await tester.pumpAndSettle();
 
       await tester.scrollUntilVisible(
         find.byKey(stripKey),
@@ -60,7 +74,7 @@ void main() {
       );
       await tester.ensureVisible(find.byKey(stripKey));
       await tester.pumpAndSettle();
-      await tester.tap(find.text('دفعة حجز القاعة'));
+      await tester.tap(find.byKey(stripKey));
       await tester.pumpAndSettle();
       expect(
         harness.currentLocation,
@@ -109,6 +123,8 @@ void main() {
       harness.router.pop();
       await tester.pumpAndSettle();
       harness.router.pop();
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const ValueKey('journey-tab-1')));
       await tester.pumpAndSettle();
       await tester.scrollUntilVisible(
         find.byType(CostCard),
@@ -734,6 +750,9 @@ void main() {
           find.byKey(const ValueKey('money-destination-costs')),
           findsNothing,
         );
+        // c01: the costs live under «البنود».
+        await tester.tap(find.byKey(const ValueKey('journey-tab-1')));
+        await tester.pumpAndSettle();
         expect(find.text('حجز القاعة'), findsOneWidget);
         expect(
           find.byKey(const ValueKey('money-add-cost-primary')),

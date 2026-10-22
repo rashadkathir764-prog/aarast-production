@@ -94,7 +94,7 @@ void main() {
 
     expect(find.textContaining('26%'), findsOneWidget);
     expect(find.text('دفعة متأخرة'), findsOneWidget);
-    expect(find.text('تسجيل دفعة'), findsOneWidget);
+    expect(find.text('سجّل الدفعة'), findsOneWidget);
     await expectLater(
       find.byType(MoneyOverviewScreen),
       matchesGoldenFile('goldens/money_overview.png'),

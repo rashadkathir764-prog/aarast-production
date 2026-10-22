@@ -143,6 +143,7 @@ Status colors appear with text or icons and never carry meaning alone.
 
   | Role | Size | Used for |
   | --- | --- | --- |
+  | `count` | 40 | The one big number of a screen (days to the wedding) |
   | `display` | 24 | A screen's heading or question |
   | `title` | 18 | Card, sheet and section titles |
   | `figure` | 22 | A typed amount or name in a large field |

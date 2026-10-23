@@ -9,15 +9,6 @@ String? _activeCategoryName(ProviderMarketplaceProvider provider) {
   return null;
 }
 
-String? _selectedCityName(ProviderMarketplaceProvider provider) {
-  final id = provider.cityId;
-  if (id == null) return null;
-  for (final city in provider.cities) {
-    if (city.id == id) return city.nameAr;
-  }
-  return null;
-}
-
 String _emptyProvidersMessage({
   required ProviderBudgetMatchIntent? budgetIntent,
   required WeddingLocationDraft? location,
@@ -67,42 +58,6 @@ Color _serviceBudgetStatusColor(_ServiceBudgetStatus status) {
     _ServiceBudgetStatus.categoryOnly => AarastV3Color.cobalt,
     _ServiceBudgetStatus.unknown => AarastV3Color.textMuted,
   };
-}
-
-String _serviceBudgetReason(
-  ProviderBudgetMatchIntent intent,
-  MarketplaceService service,
-  double? price,
-  _ServiceBudgetStatus status,
-) {
-  final pieces = <String>[];
-  if (intent.hasBudget && price != null) {
-    final difference = price - intent.allocatedValue;
-    final absDifference = difference.abs();
-    final amount = _formatMoney(absDifference);
-    switch (status) {
-      case _ServiceBudgetStatus.inRange:
-        pieces.add('سعره قريب من اللي حطيته لهذا البند.');
-      case _ServiceBudgetStatus.underBudget:
-        pieces.add('أقل من بندك بحوالي $amount ر.ي.');
-      case _ServiceBudgetStatus.nearby:
-        pieces.add('أعلى من بندك بحوالي $amount ر.ي.');
-      case _ServiceBudgetStatus.categoryOnly:
-      case _ServiceBudgetStatus.unknown:
-        pieces.add('من نفس قسم البند، والسعر يتأكد بعرض من المزود.');
-    }
-  } else if (intent.hasBudget) {
-    pieces.add('من نفس قسم البند، وسعره ما هو منشور. اطلب منه عرض.');
-  } else {
-    pieces.add('من نفس قسم البند. حط مبلغ للبند ونرتبهم لك على قده.');
-  }
-
-  final city = service.city?.nameAr.trim();
-  if (city != null && city.isNotEmpty) {
-    pieces.add('في $city.');
-  }
-
-  return pieces.join(' ');
 }
 
 double? _moneyValueOrNull(String? value) {

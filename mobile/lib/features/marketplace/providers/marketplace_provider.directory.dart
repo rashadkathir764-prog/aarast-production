@@ -80,9 +80,6 @@ mixin _MarketplaceDirectory on _MarketplaceProviderCore {
         _favoriteProvidersErrorMessage = favoritesResult.errorMessage;
       }
       _quoteRequests = results[4] as List<QuoteRequest>;
-      if (_budgetMatchIntent != null) {
-        _budgetMatchedServices = await _safeBudgetMatchedServices();
-      }
     } on ApiException catch (error) {
       if (generation != _loadGeneration) return;
       _errorMessage = providerDirectoryErrorMessage(error);
@@ -201,7 +198,6 @@ mixin _MarketplaceDirectory on _MarketplaceProviderCore {
 
   Future<void> setCategory(String? id) async {
     _budgetMatchIntent = null;
-    _budgetMatchedServices = const [];
     _categoryId = id;
     await loadMarketplace();
   }
@@ -211,13 +207,11 @@ mixin _MarketplaceDirectory on _MarketplaceProviderCore {
     _cityId = null;
     _categoryId = null;
     _budgetMatchIntent = null;
-    _budgetMatchedServices = const [];
     await loadMarketplace();
   }
 
   Future<void> applyBudgetMatchIntent(ProviderBudgetMatchIntent intent) async {
     _budgetMatchIntent = intent;
-    _budgetMatchedServices = const [];
     if (_categories.isEmpty) {
       await loadReferenceData();
     }
@@ -230,7 +224,6 @@ mixin _MarketplaceDirectory on _MarketplaceProviderCore {
 
   Future<void> clearBudgetMatch() async {
     _budgetMatchIntent = null;
-    _budgetMatchedServices = const [];
     await loadMarketplace();
   }
 
@@ -247,39 +240,6 @@ mixin _MarketplaceDirectory on _MarketplaceProviderCore {
       return await _api.getCategories();
     } catch (_) {
       return _categories;
-    }
-  }
-
-  Future<List<MarketplaceService>> _safeBudgetMatchedServices() async {
-    final intent = _budgetMatchIntent;
-    if (intent == null) return const [];
-
-    final minPrice = intent.minPrice;
-    final maxPrice = intent.maxPrice;
-    final categoryId = _categoryId;
-
-    try {
-      final exact = await _api.getPublicServices(
-        cityId: _cityId,
-        categoryId: categoryId,
-        search: categoryId == null ? intent.budgetCategoryName : null,
-        minPrice: minPrice?.round().toString(),
-        maxPrice: maxPrice?.round().toString(),
-      );
-      if (exact.isNotEmpty || !intent.hasBudget) {
-        return _sortServicesByBudget(exact, intent);
-      }
-
-      final fallback = await _api.getPublicServices(
-        cityId: _cityId,
-        categoryId: categoryId,
-        search: categoryId == null ? intent.budgetCategoryName : null,
-      );
-      final sorted = _sortServicesByBudget(fallback, intent);
-      final reasonable = _reasonableBudgetServices(sorted, intent);
-      return (reasonable.isEmpty ? sorted : reasonable).take(6).toList();
-    } catch (_) {
-      return const [];
     }
   }
 }

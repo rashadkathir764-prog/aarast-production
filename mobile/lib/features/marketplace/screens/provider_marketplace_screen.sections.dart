@@ -222,43 +222,6 @@ class _DirectoryFilterSheet extends StatelessWidget {
   }
 }
 
-class _NoBudgetMatchesCard extends StatelessWidget {
-  const _NoBudgetMatchesCard({required this.intent, required this.onClear});
-
-  final ProviderBudgetMatchIntent intent;
-  final VoidCallback onClear;
-
-  @override
-  Widget build(BuildContext context) {
-    // D9: an amount inside a sentence is the plain form.
-    final amount = intent.hasBudget
-        ? compactYemeniMoneyParts(intent.allocatedValue).plainText
-        : null;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        JourneyNote(
-          text: amount == null
-              ? 'ما لقينا سعر منشور لهذا البند. اختر مزود واطلب منه عرض.'
-              : 'ما لقينا سعر منشور قريب من $amount. هذي مزودين من نفس القسم، واطلب منهم عرض.',
-          icon: LucideIcons.search,
-          color: AarastV3Color.cobalt,
-          soft: AarastV3Color.cobaltSoft,
-        ),
-        Align(
-          alignment: AlignmentDirectional.centerStart,
-          child: JourneyTextAction(
-            label: 'اعرض كل المزودين',
-            icon: LucideIcons.slidersHorizontal,
-            color: AarastV3Color.cobalt,
-            onPressed: onClear,
-          ),
-        ),
-      ],
-    );
-  }
-}
-
 /// f02 «قريبين من بندك 500 ألف»: why these providers come first.
 class _BudgetMatchContextCard extends StatelessWidget {
   const _BudgetMatchContextCard({

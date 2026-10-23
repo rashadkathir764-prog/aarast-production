@@ -307,40 +307,7 @@ void main() {
     expect(find.byKey(const Key('marketplace-search-field')), findsNothing);
   });
 
-  testWidgets('budget matched services explain why they are suggested', (
-    tester,
-  ) async {
-    final state = _FakeMarketplaceProvider(
-      providers: [
-        _provider(
-          id: 'provider-1',
-          businessName: 'قاعة السلام',
-          services: const [],
-        ),
-      ],
-      categories: const [ProviderCategory(id: 'cat-venue', nameAr: 'القاعات')],
-      budgetMatchIntent: const ProviderBudgetMatchIntent(
-        budgetCategoryName: 'الصالة',
-        allocatedAmount: '300000',
-      ),
-      budgetMatchedServices: [
-        _service(
-          title: 'قاعة مناسبة للميزانية',
-          basePrice: '295000',
-          city: const MarketplaceCity(id: 'city-1', nameAr: 'صنعاء'),
-        ),
-      ],
-    );
-
-    await _pumpMarketplace(tester, state);
-
-    expect(find.text('خدمات قريبة من بندك'), findsOneWidget);
-    expect(find.text('قاعة مناسبة للميزانية'), findsOneWidget);
-    expect(find.textContaining('سعره قريب من اللي حطيته'), findsOneWidget);
-    expect(find.textContaining('في صنعاء'), findsOneWidget);
-  });
-
-  testWidgets('budget fallback explains missing exact prices honestly', (
+  testWidgets('f02 on an item shows its note, then cards that say where they stand', (
     tester,
   ) async {
     final state = _FakeMarketplaceProvider(
@@ -360,18 +327,18 @@ void main() {
 
     await _pumpMarketplace(tester, state);
 
-    expect(
-      find.textContaining('ما لقينا سعر منشور قريب من 300,000 ر.ي'),
-      findsOneWidget,
-    );
-    expect(find.text('اعرض كل المزودين'), findsOneWidget);
+    expect(find.textContaining('قريبين من بند الصالة'), findsOneWidget);
     await tester.scrollUntilVisible(
       find.text('450,000 ر.ي'),
       320,
       scrollable: find.byType(Scrollable).first,
     );
     expect(find.text('أعلى من بندك'), findsOneWidget);
-    expect(find.text('450,000 ر.ي'), findsOneWidget);
+    // Not in the prototype: a second list of services, its fallback note,
+    // and a results count above the cards.
+    expect(find.text('خدمات قريبة من بندك'), findsNothing);
+    expect(find.textContaining('ما لقينا سعر منشور'), findsNothing);
+    expect(find.textContaining('مزود واحد'), findsNothing);
   });
 
   testWidgets('provider card opens the provider details screen', (
@@ -647,9 +614,7 @@ void main() {
     tags: const ['golden'],
   );
 
-  testWidgets('budget matches stay horizontal and safe at 320px text scale', (
-    tester,
-  ) async {
+  testWidgets('an item filter stays safe at 320px text scale', (tester) async {
     tester.view.devicePixelRatio = 1;
     tester.view.physicalSize = const Size(320, 900);
     tester.platformDispatcher.textScaleFactorTestValue = 1.3;
@@ -659,31 +624,23 @@ void main() {
       tester.platformDispatcher.clearTextScaleFactorTestValue();
     });
 
-    final matchedServices = List.generate(
-      5,
-      (index) => _service(
-        title: 'خدمة مناسبة طويلة رقم ${index + 1}',
-        basePrice: '${250000 + (index * 10000)}',
-        city: const MarketplaceCity(id: 'city-1', nameAr: 'صنعاء'),
-      ),
-    );
     final state = _FakeMarketplaceProvider(
-      providers: [_provider(id: 'provider-1', businessName: 'قاعة السلام')],
+      providers: [
+        _provider(
+          id: 'provider-1',
+          businessName: 'قاعة السلام للمناسبات والأفراح الكبرى',
+          services: [_service(title: 'قاعة كبيرة', basePrice: '280000')],
+        ),
+      ],
       budgetMatchIntent: const ProviderBudgetMatchIntent(
-        budgetCategoryName: 'الصالة',
+        budgetCategoryName: 'قاعة أو مخدرة الرجال',
         allocatedAmount: '300000',
       ),
-      budgetMatchedServices: matchedServices,
     );
 
     await _pumpMarketplace(tester, state);
 
-    expect(
-      find.byKey(const Key('budget-matched-services-carousel')),
-      findsOneWidget,
-    );
-    expect(find.text('خدمة مناسبة طويلة رقم 1'), findsOneWidget);
-    expect(find.text('خدمة مناسبة طويلة رقم 5'), findsOneWidget);
+    expect(find.textContaining('قريبين من بند'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 
@@ -962,7 +919,6 @@ class _FakeMarketplaceProvider extends ProviderMarketplaceProvider {
     List<ProviderCategory> categories = const [],
     List<QuoteRequest> quoteRequests = const [],
     ProviderBudgetMatchIntent? budgetMatchIntent,
-    List<MarketplaceService> budgetMatchedServices = const [],
     bool isLoadingMore = false,
     bool hasMoreProviders = false,
     bool isLoading = false,
@@ -973,7 +929,6 @@ class _FakeMarketplaceProvider extends ProviderMarketplaceProvider {
        categoriesData = categories,
        quoteRequestsData = quoteRequests,
        budgetMatchIntentData = budgetMatchIntent,
-       budgetMatchedServicesData = budgetMatchedServices,
        isLoadingMoreData = isLoadingMore,
        hasMoreProvidersData = hasMoreProviders,
        isLoadingData = isLoading,
@@ -989,7 +944,6 @@ class _FakeMarketplaceProvider extends ProviderMarketplaceProvider {
   final bool hasMoreProvidersData;
   bool isLoadingData;
   ProviderBudgetMatchIntent? budgetMatchIntentData;
-  List<MarketplaceService> budgetMatchedServicesData;
   final Set<String> favoriteProviderIdsData;
   final String? favoriteProvidersErrorData;
 
@@ -1042,10 +996,6 @@ class _FakeMarketplaceProvider extends ProviderMarketplaceProvider {
 
   @override
   ProviderBudgetMatchIntent? get budgetMatchIntent => budgetMatchIntentData;
-
-  @override
-  List<MarketplaceService> get budgetMatchedServices =>
-      budgetMatchedServicesData;
 
   @override
   bool get includesAccountData => _includeAccountData;
@@ -1104,7 +1054,6 @@ class _FakeMarketplaceProvider extends ProviderMarketplaceProvider {
   @override
   Future<void> clearBudgetMatch() async {
     budgetMatchIntentData = null;
-    budgetMatchedServicesData = const [];
     notifyListeners();
   }
 

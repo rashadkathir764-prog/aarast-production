@@ -71,7 +71,6 @@ abstract class _MarketplaceProviderCore extends ChangeNotifier
   List<MarketplaceCity> _cities = const [];
   List<ProviderCategory> _categories = const [];
   List<MarketplaceProvider> _providers = const [];
-  List<MarketplaceService> _budgetMatchedServices = const [];
   ProviderBudgetMatchIntent? _budgetMatchIntent;
   final Map<String, MarketplaceProvider> _details = {};
   final Map<String, List<MarketplaceService>> _services = {};
@@ -109,7 +108,6 @@ abstract class _MarketplaceProviderCore extends ChangeNotifier
       .where((category) => category.isVisibleFor(_catalogAudience))
       .toList(growable: false);
   List<MarketplaceProvider> get providers => _providers;
-  List<MarketplaceService> get budgetMatchedServices => _budgetMatchedServices;
   ProviderBudgetMatchIntent? get budgetMatchIntent => _budgetMatchIntent;
   Set<String> get favoriteProviderIds => _favoriteProviderIds;
   List<FavoriteProvider> get favoriteProviders => _favoriteProviders;
@@ -242,46 +240,3 @@ const providerDirectoryGenericErrorMessage =
     'تعذر تحميل بيانات دليل المزودين. حاول مرة أخرى.';
 const providerDetailsStaleErrorMessage =
     'تعذر تحديث بيانات المزود؛ نعرض آخر بيانات محفوظة حتى تنجح إعادة المحاولة.';
-
-List<MarketplaceService> _sortServicesByBudget(
-  List<MarketplaceService> services,
-  ProviderBudgetMatchIntent intent,
-) {
-  final target = intent.allocatedValue;
-  final sorted = [...services];
-  sorted.sort((a, b) {
-    final aPrice = _servicePrice(a);
-    final bPrice = _servicePrice(b);
-    if (target <= 0) {
-      if (aPrice == null && bPrice == null) return 0;
-      if (aPrice == null) return 1;
-      if (bPrice == null) return -1;
-      return aPrice.compareTo(bPrice);
-    }
-    if (aPrice == null && bPrice == null) return 0;
-    if (aPrice == null) return 1;
-    if (bPrice == null) return -1;
-    return (aPrice - target).abs().compareTo((bPrice - target).abs());
-  });
-  return sorted;
-}
-
-List<MarketplaceService> _reasonableBudgetServices(
-  List<MarketplaceService> services,
-  ProviderBudgetMatchIntent intent,
-) {
-  if (!intent.hasBudget) return services;
-  final floor = intent.allocatedValue * 0.50;
-  final ceiling = intent.allocatedValue * 1.50;
-  return services.where((service) {
-    final price = _servicePrice(service);
-    if (price == null) return false;
-    return price >= floor && price <= ceiling;
-  }).toList();
-}
-
-double? _servicePrice(MarketplaceService service) {
-  final price = service.basePrice?.replaceAll(',', '').trim();
-  if (price == null || price.isEmpty) return null;
-  return double.tryParse(price);
-}

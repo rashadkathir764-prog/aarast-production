@@ -333,33 +333,7 @@ class _ProviderMarketplaceScreenState extends State<ProviderMarketplaceScreen> {
           JourneyListNotice(offline: false, onRetry: provider.loadMarketplace),
           const SizedBox(height: 12),
         ],
-        if (provider.budgetMatchIntent != null &&
-            provider.budgetMatchedServices.isNotEmpty) ...[
-          _BudgetMatchedServicesSection(
-            intent: provider.budgetMatchIntent!,
-            services: provider.budgetMatchedServices,
-            onOpenProvider: _openProviderDetails,
-            onRequestQuote: (service) => _pushOnce(
-              AppRouter.providerQuote(service.providerId),
-              extra: ProviderQuoteInitialContext(
-                serviceId: service.id,
-                budgetIntent: provider.budgetMatchIntent,
-              ),
-            ),
-          ),
-          const SizedBox(height: 18),
-        ] else if (provider.budgetMatchIntent != null) ...[
-          _NoBudgetMatchesCard(
-            intent: provider.budgetMatchIntent!,
-            onClear: provider.clearBudgetMatch,
-          ),
-          const SizedBox(height: 18),
-        ],
-        _ResultsHeader(
-          count: provider.totalProviders,
-          cityLabel: _selectedCityName(provider),
-        ),
-        const SizedBox(height: 12),
+        // f02: the cards alone; each says where it stands against the item.
         for (final item in provider.providers) ...[
           _ProviderCard(
             provider: item,

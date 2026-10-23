@@ -8,14 +8,19 @@ import 'package:provider/provider.dart';
 import '../../../core/experience_v3/aarast_v3.dart';
 import '../../../core/forms/aarast_form_draft_binding.dart';
 import '../../../core/forms/aarast_form_draft_store.dart';
+import '../../../core/utils/amount_words.dart';
 import '../../../core/utils/currency_label.dart';
+import '../../../core/utils/money_formatters.dart';
+import '../../../core/widgets/aarast_ui.dart';
 import '../models/budget_category.dart';
 import '../models/wedding_cost.dart';
 import '../providers/finance_provider.dart';
 import '../widgets/finance_write_access_block.dart';
 import '../widgets/money_input_formatter.dart';
-import '../widgets/money_widgets.dart';
 
+/// c09 «بند جديد» and editing one: its name and roughly how much it gets
+/// from the budget. No grams, karats or other currencies: the plan keeps
+/// one currency, and gold is an ordinary item (C20).
 class BudgetCategoryFormScreen extends StatefulWidget {
   const BudgetCategoryFormScreen({
     required this.weddingPlanId,
@@ -34,10 +39,10 @@ class BudgetCategoryFormScreen extends StatefulWidget {
 }
 
 class _BudgetCategoryFormScreenState extends State<BudgetCategoryFormScreen> {
-  final _formKey = GlobalKey<FormState>();
   late final TextEditingController _nameController;
   late final TextEditingController _amountController;
-  String? _draftError;
+  String? _nameError;
+  String? _amountError;
   AarastFormDraftBinding? _draft;
 
   bool get _editing => widget.category != null;
@@ -65,6 +70,32 @@ class _BudgetCategoryFormScreenState extends State<BudgetCategoryFormScreen> {
     super.dispose();
   }
 
+  void _goBack() {
+    if (_editing) {
+      context.pop(false);
+    } else {
+      context.pop<String?>(null);
+    }
+  }
+
+  int? get _amount {
+    final text = _amountController.text.replaceAll(',', '').trim();
+    return text.isEmpty ? null : int.tryParse(text);
+  }
+
+  /// What the budget has left for this item: the total less every other
+  /// item's share.
+  num _budgetLeft(FinanceProvider provider) {
+    final total = moneyValue(provider.summary.budget.total);
+    final others = provider.categories
+        .where((item) => item.id != widget.category?.id)
+        .fold<num>(0, (sum, item) => sum + moneyValue(item.allocatedAmount));
+    return total - others;
+  }
+
+  String _plain(num value, String currency) =>
+      compactMoneyParts(value, currencyCode: currency).plainText;
+
   @override
   Widget build(BuildContext context) {
     final provider = context.watch<FinanceProvider>();
@@ -75,137 +106,144 @@ class _BudgetCategoryFormScreenState extends State<BudgetCategoryFormScreen> {
     );
     if (accessBlock != null) return accessBlock;
 
-    return MoneySubpageScaffold(
-      title: _editing ? 'تعديل التصنيف' : 'تصنيف جديد',
-      subtitle: 'استخدم اسمًا واضحًا يفهمه كل المشاركين.',
-      showBack: true,
-      onBack: () {
-        if (_editing) {
-          context.pop(false);
-        } else {
-          context.pop<String?>(null);
-        }
-      },
-      bottomNavigationBar: AarastV3FormActionBar(
-        label: 'حفظ التصنيف',
-        icon: LucideIcons.check,
-        loading: provider.isSubmitting,
-        onPressed: provider.isSubmitting ? null : _save,
-      ),
-      child: Form(
-        key: _formKey,
-        child: ListView(
-          children: [
-            AarastV3FocusPrompt(
-              question: _editing
-                  ? 'كيف تريد ضبط هذا التصنيف؟'
-                  : 'ما البند الذي تريد تخصيص ميزانية له؟',
-              supportingText:
-                  'اكتب اسمًا واضحًا، ويمكنك ترك المبلغ فارغًا حتى تحسم الميزانية.',
-              icon: LucideIcons.tag,
+    final currency = provider.summary.currency;
+    final hasBudget = moneyValue(provider.summary.budget.total) > 0;
+    final left = _budgetLeft(provider);
+    final amount = _amount;
+    final isGold = _nameController.text.contains('ذهب');
+
+    return AarastScreenFrame(
+      maxWidth: 600,
+      backgroundColor: AarastV3Color.canvas,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 8, 8, 0),
+            child: JourneySubHeader(
+              title: _editing ? 'تعديل البند' : 'بند جديد',
+              subtitle: _editing
+                  ? widget.category!.name
+                  : 'لعرسك، ويدخل في الميزانية',
+              onBack: _goBack,
             ),
-            if (_draft != null) ...[
-              const SizedBox(height: 8),
-              AarastV3DraftStatusLine(status: _draft!.status),
-            ],
-            const SizedBox(height: 16),
-            if (provider.errorMessage != null) ...[
-              MoneyMessageBanner(message: provider.errorMessage!, error: true),
-              const SizedBox(height: 12),
-            ],
-            if (_draftError != null) ...[
-              MoneyMessageBanner(message: _draftError!, error: true),
-              const SizedBox(height: 12),
-            ],
-            MoneySectionCard(
-              title: 'بيانات التصنيف',
-              subtitle: 'اسم واضح ومبلغ مخصص يمكنك تعديله لاحقًا.',
-              icon: LucideIcons.tag,
-              child: Column(
-                children: [
-                  TextFormField(
-                    key: const ValueKey('money-category-form-name'),
-                    controller: _nameController,
-                    textInputAction: TextInputAction.next,
-                    decoration: const InputDecoration(
-                      labelText: 'اسم التصنيف',
-                      hintText: 'مثال: القاعة',
-                      prefixIcon: Icon(LucideIcons.tag),
-                    ),
-                    validator: (value) => value?.trim().isEmpty == true
-                        ? 'اكتب اسم التصنيف'
-                        : null,
+          ),
+          Expanded(
+            child: ListView(
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
+              children: [
+                if (provider.errorMessage != null) ...[
+                  JourneyListNotice(
+                    offline: false,
+                    onRetry: () => provider.loadMoney(widget.weddingPlanId),
                   ),
                   const SizedBox(height: 12),
-                  TextFormField(
-                    key: const ValueKey('money-category-form-amount'),
-                    controller: _amountController,
-                    keyboardType: const TextInputType.numberWithOptions(
-                      decimal: true,
-                    ),
-                    inputFormatters: [MoneyInputFormatter()],
-                    textDirection: TextDirection.ltr,
-                    decoration: InputDecoration(
-                      labelText: 'المخصص',
-                      helperText: 'يمكنك تركه فارغًا وتحديده لاحقًا.',
-                      prefixIcon: const Icon(LucideIcons.coins),
-                      suffixText: currencyLabelAr(provider.summary.currency),
-                    ),
-                    validator: (value) {
-                      final text = value?.replaceAll(',', '').trim() ?? '';
-                      if (text.isEmpty) return null;
-                      final amount = num.tryParse(text);
-                      return amount == null || amount < 0
-                          ? 'المبلغ غير صحيح'
-                          : null;
-                    },
+                ],
+                JourneyTextField(
+                  key: const ValueKey('money-category-form-name'),
+                  label: 'اسم البند',
+                  hint: 'مثلًا: التصوير',
+                  controller: _nameController,
+                  icon: LucideIcons.tag,
+                  maxLength: 120,
+                  errorText: _nameError,
+                  textInputAction: TextInputAction.next,
+                  onChanged: (_) => setState(() => _nameError = null),
+                ),
+                const SizedBox(height: 14),
+                JourneyTextField(
+                  key: const ValueKey('money-category-form-amount'),
+                  label: 'كم تخصص له تقريبًا؟',
+                  hint: 'تقدر تتركه لبعدين',
+                  controller: _amountController,
+                  large: true,
+                  keyboardType: TextInputType.number,
+                  inputFormatters: [MoneyInputFormatter()],
+                  suffix: currencyLabelAr(currency),
+                  errorText: _amountError,
+                  helper: amount != null && amount > 0
+                      ? amountInWords(
+                          amount,
+                          currency: currencyLabelAr(currency),
+                        )
+                      : hasBudget
+                      ? 'باقي في ميزانيتك ${_plain(left, currency)}'
+                      : null,
+                  onChanged: (_) => setState(() => _amountError = null),
+                ),
+                if (isGold) ...[
+                  const SizedBox(height: 12),
+                  const JourneyNote(
+                    text: 'الذهب ما يظهر في خطتك إلا لأنك أضفته.',
+                    icon: LucideIcons.gem,
+                    color: AarastV3Color.brandAccentStrong,
+                    soft: AarastV3Color.brandAccentSoft,
                   ),
                 ],
-              ),
+                if (_draft != null) ...[
+                  const SizedBox(height: 12),
+                  AarastV3DraftStatusLine(status: _draft!.status),
+                ],
+              ],
             ),
-            const SizedBox(height: 20),
-          ],
-        ),
+          ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
+            child: JourneyButton(
+              key: const ValueKey('category-save'),
+              label: _editing ? 'حفظ البند' : 'أضف البند',
+              expand: true,
+              large: true,
+              loading: provider.isSubmitting,
+              onPressed: provider.isSubmitting ? null : _save,
+            ),
+          ),
+        ],
       ),
     );
   }
 
-  Future<void> _save() async {
-    if (!_formKey.currentState!.validate()) return;
-    final provider = context.read<FinanceProvider>();
-    final amount = _amountController.text.replaceAll(',', '').trim();
-    final category = widget.category;
-    final normalizedName = _normalizedCategoryName(_nameController.text);
+  /// Each problem with its own message; true when the item can be saved.
+  bool _validate(FinanceProvider provider) {
+    final name = _nameController.text.trim();
+    final normalized = _normalizedCategoryName(name);
     final duplicate = provider.categories.any(
       (item) =>
-          item.id != category?.id &&
-          _normalizedCategoryName(item.name) == normalizedName,
+          item.id != widget.category?.id &&
+          _normalizedCategoryName(item.name) == normalized,
     );
-    if (duplicate) {
-      setState(() => _draftError = 'يوجد تصنيف بهذا الاسم بالفعل.');
-      return;
-    }
-    final allocation = moneyValue(amount);
-    final totalBudget = moneyValue(provider.summary.budget.total);
-    final otherAllocations = provider.categories
-        .where((item) => item.id != category?.id)
-        .fold<num>(0, (sum, item) => sum + moneyValue(item.allocatedAmount));
-    if (allocation > 0 && totalBudget <= 0) {
-      setState(
-        () => _draftError = 'حدد الميزانية العامة قبل تخصيص مبلغ لهذا التصنيف.',
-      );
-      return;
-    }
-    if (totalBudget > 0 && otherAllocations + allocation > totalBudget) {
-      setState(() => _draftError = 'المخصص يتجاوز المتبقي من الميزانية.');
-      return;
-    }
-    setState(() => _draftError = null);
+    final amount = _amount ?? 0;
+    final currency = provider.summary.currency;
+    final hasBudget = moneyValue(provider.summary.budget.total) > 0;
+    final left = _budgetLeft(provider);
+    setState(() {
+      _nameError = name.isEmpty
+          ? 'اكتب اسم البند'
+          : duplicate
+          ? 'عندك بند بهذا الاسم'
+          : null;
+      _amountError = _amountController.text.trim().isNotEmpty && _amount == null
+          ? 'المبلغ مو صحيح'
+          : amount > 0 && !hasBudget
+          ? 'حدد ميزانيتك أول، بعدين خصص للبنود'
+          : hasBudget && amount > left
+          ? 'أكثر من الباقي في ميزانيتك (${_plain(left, currency)})'
+          : null;
+    });
+    return _nameError == null && _amountError == null;
+  }
+
+  Future<void> _save() async {
+    final provider = context.read<FinanceProvider>();
+    if (!_validate(provider)) return;
+    final amount = _amount;
+    final allocated = amount == null ? null : '$amount';
+    final category = widget.category;
     if (category == null) {
       final createdId = await provider.createCategory(
         planId: widget.weddingPlanId,
         name: _nameController.text.trim(),
-        allocatedAmount: amount.isEmpty ? null : amount,
+        allocatedAmount: allocated,
       );
       if (createdId != null && mounted) {
         await _draft?.clear();
@@ -216,7 +254,7 @@ class _BudgetCategoryFormScreenState extends State<BudgetCategoryFormScreen> {
     final saved = await provider.updateCategory(
       category: category,
       name: _nameController.text.trim(),
-      allocatedAmount: amount.isEmpty ? null : amount,
+      allocatedAmount: allocated,
     );
     if (saved && mounted) {
       await _draft?.clear();

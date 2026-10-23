@@ -382,10 +382,10 @@ void main() {
         find.byKey(const ValueKey('money-category-form-amount')),
         '400000',
       );
-      await tester.tap(find.text('حفظ التصنيف'));
+      await tester.tap(find.byKey(const ValueKey('category-save')));
       await tester.pump();
 
-      expect(find.text('المخصص يتجاوز المتبقي من الميزانية.'), findsOneWidget);
+      expect(find.textContaining('أكثر من الباقي في ميزانيتك'), findsOneWidget);
       expect(tester.takeException(), isNull);
     });
 
@@ -420,10 +420,11 @@ void main() {
       harness.router.go(AppRouter.moneyCategoryCreate(_planId));
       await tester.pumpAndSettle();
       expect(find.byType(BudgetCategoryFormScreen), findsOneWidget);
-      expect(find.text('تصنيف جديد'), findsOneWidget);
-      expect(find.text('اسم التصنيف'), findsOneWidget);
-      expect(find.text('المخصص'), findsOneWidget);
-      expect(find.text('حفظ التصنيف'), findsOneWidget);
+      // c09: the item's name and roughly what it gets.
+      expect(find.text('بند جديد'), findsOneWidget);
+      expect(find.text('اسم البند'), findsOneWidget);
+      expect(find.text('كم تخصص له تقريبًا؟'), findsOneWidget);
+      expect(find.text('أضف البند'), findsOneWidget);
       _expectRtl(tester, find.byType(BudgetCategoryFormScreen));
       expect(tester.takeException(), isNull);
     });
@@ -596,7 +597,7 @@ void main() {
           find.byKey(const ValueKey('money-category-form-name')),
           'التصوير',
         );
-        await tester.tap(find.text('حفظ التصنيف'));
+        await tester.tap(find.byKey(const ValueKey('category-save')));
         await tester.pumpAndSettle();
 
         expect(find.byType(CostFormScreen), findsOneWidget);

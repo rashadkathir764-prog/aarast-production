@@ -1,28 +1,29 @@
 part of 'create_task_screen.dart';
 
 /// The edited task and its privacy. V1 checklist 4.10: the owner or the
-/// partner may keep a new task to themselves; a private task can join the
-/// shared plan later, never the other way round.
+/// partner may keep a new task to themselves (w25); a private task can join
+/// the shared plan later, never the other way round.
 extension _CreateTaskPrivacy on _CreateTaskScreenState {
   List<Widget> _privacySection(TaskTimelineProvider provider) {
     final editing = _isEditMode ? _currentEditingTask(provider) : null;
     if (editing != null && editing.isPrivate) {
       return [
-        const SizedBox(height: AppTheme.space10),
-        const AarastStatusPill(
+        const SizedBox(height: 14),
+        const JourneyNote(
           key: ValueKey('task-private-banner'),
-          label: 'مهمة خاصة بك: لا يراها شريكك ولا تدخل في أرقامه.',
+          text: 'مهمة خاصة بك: ما يشوفها شريكك ولا تدخل في أرقامه.',
           icon: LucideIcons.lock,
         ),
         Align(
           alignment: AlignmentDirectional.centerStart,
-          child: TextButton.icon(
+          child: JourneyTextAction(
             key: const ValueKey('task-share-with-plan'),
+            label: 'شاركها مع الخطة',
+            icon: LucideIcons.users,
+            color: AarastV3Color.primary,
             onPressed: provider.isSubmitting
                 ? null
                 : () => _shareWithPlan(editing),
-            icon: const Icon(LucideIcons.users),
-            label: const Text('مشاركتها مع الخطة'),
           ),
         ),
       ];
@@ -33,37 +34,58 @@ extension _CreateTaskPrivacy on _CreateTaskScreenState {
         provider.summary.canKeepPrivateTask;
     if (!canKeepPrivate) return const [];
     return [
-      const SizedBox(height: AppTheme.space10),
-      SwitchListTile(
-        key: const ValueKey('task-private'),
-        contentPadding: EdgeInsets.zero,
-        secondary: const Icon(LucideIcons.lock),
-        title: const Text('مهمة خاصة بي'),
-        subtitle: const Text(
-          'لا يراها شريكك ولا تصله تذكيراتها. تستطيع مشاركتها لاحقًا.',
+      const SizedBox(height: 14),
+      JourneyBox(
+        padding: const EdgeInsets.fromLTRB(14, 6, 6, 6),
+        child: SwitchListTile(
+          key: const ValueKey('task-private'),
+          contentPadding: EdgeInsets.zero,
+          secondary: const Icon(
+            LucideIcons.eyeOff,
+            color: AarastV3Color.brandAccentStrong,
+          ),
+          title: Text(
+            'خاصة',
+            style: JourneyType.of(JourneyType.body, weight: JourneyType.bold),
+          ),
+          subtitle: Text(
+            'ما يشوفها غيرك، حتى المشاركين',
+            style: JourneyType.of(
+              JourneyType.small,
+              color: AarastV3Color.textMuted,
+            ),
+          ),
+          value: _isPrivate,
+          onChanged: (value) => _mutateDraft(() {
+            _isPrivate = value;
+            if (value) _who = _whoMe;
+          }),
         ),
-        value: _isPrivate,
-        onChanged: (value) => _mutateDraft(() => _isPrivate = value),
       ),
     ];
   }
+
+  /// Whether the task stays with its owner only.
+  bool _keepsPrivate(TaskTimelineProvider provider) => _isEditMode
+      ? _currentEditingTask(provider)?.isPrivate == true
+      : _isPrivate;
 
   Future<void> _shareWithPlan(WeddingTask task) async {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (dialogContext) => AarastDialog(
-        title: const Text('مشاركة المهمة مع الخطة؟'),
+        title: const Text('تشاركها مع الخطة؟'),
         content: const Text(
-          'سيراها شريكك وتدخل في مهام الخطة. لا يمكن إرجاعها خاصة بعد ذلك.',
+          'بيشوفها شريكك وتدخل في مهام الخطة، وما ترجع خاصة بعدها.',
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(dialogContext).pop(false),
-            child: const Text('إلغاء'),
+            child: const Text('رجوع'),
           ),
           FilledButton(
             onPressed: () => Navigator.of(dialogContext).pop(true),
-            child: const Text('مشاركة'),
+            child: const Text('شاركها'),
           ),
         ],
       ),
@@ -73,45 +95,21 @@ extension _CreateTaskPrivacy on _CreateTaskScreenState {
     final ok = await provider.shareTaskWithPlan(widget.weddingPlanId, task);
     if (!mounted) return;
     if (ok) {
-      AarastToast.showSuccess(context, 'صارت المهمة مشتركة مع الخطة.');
+      AarastToast.showSuccess(context, 'صارت المهمة مشتركة مع الخطة');
     } else {
       AarastToast.showError(
         context,
-        provider.errorMessage ?? 'تعذر مشاركة المهمة.',
+        provider.errorMessage ?? 'ما قدرنا نشاركها',
       );
     }
-  }
-
-  /// A private task stays with its account, so no one else in the plan can
-  /// be made responsible for it. Says so and returns true when the form
-  /// tries.
-  bool _privateTaskGivenAway(
-    TaskTimelineProvider provider,
-    bool hasParticipant,
-    String? assigneeUserId,
-  ) {
-    final keepsPrivate = _isEditMode
-        ? _currentEditingTask(provider)?.isPrivate == true
-        : _isPrivate;
-    final currentUserId = context.read<AuthController?>()?.user?.id;
-    if (!keepsPrivate || !hasParticipant || assigneeUserId == currentUserId) {
-      return false;
-    }
-    AarastToast.showError(
-      context,
-      'المهمة الخاصة تبقى لك وحدك. اجعل نفسك المسؤول عنها، أو شاركها مع الخطة أولًا.',
-    );
-    return true;
   }
 
   /// The task the screen opened to edit, or null for a new task.
   WeddingTask? _editingTask(TaskTimelineProvider provider) {
     final task = widget.initialTask;
     if (task != null) return task;
-
     final taskId = widget.taskId;
     if (taskId == null) return null;
-
     for (final item in provider.tasks) {
       if (item.id == taskId) return item;
     }

@@ -35,6 +35,7 @@ class TaskRow extends StatelessWidget {
     this.showResponsible = true,
     this.selfLetter = 'أ',
     this.busy = false,
+    this.onPostpone,
     super.key,
   });
 
@@ -50,6 +51,9 @@ class TaskRow extends StatelessWidget {
   /// The letter shown for the plan owner's own tasks.
   final String selfLetter;
   final bool busy;
+
+  /// w26: «أجّلها» right on a late task.
+  final VoidCallback? onPostpone;
 
   @override
   Widget build(BuildContext context) {
@@ -139,6 +143,17 @@ class TaskRow extends StatelessWidget {
                             : AarastV3Color.textMuted,
                       ),
                     ),
+                    if (onPostpone != null)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 6),
+                        child: JourneyChip(
+                          key: ValueKey('task-postpone-${task.id}'),
+                          label: 'أجّلها',
+                          icon: LucideIcons.calendarClock,
+                          selected: false,
+                          onTap: busy ? null : onPostpone,
+                        ),
+                      ),
                   ],
                 ),
               ),

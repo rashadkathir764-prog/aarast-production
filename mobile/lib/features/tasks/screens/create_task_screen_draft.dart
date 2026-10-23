@@ -4,23 +4,28 @@
 
 part of 'create_task_screen.dart';
 
-// مصدر واحد لأيقونات التصنيف — نفس أيقونات Lucide المستخدمة في بطاقة
-// المهمة حتى يبقى التصنيف متطابقًا بين القائمة والنموذج.
-final _createTaskCategories = <CreateTaskCategory>[
-  const CreateTaskCategory('GENERAL', 'عامة', LucideIcons.layoutGrid),
-  CreateTaskCategory('VENUE', 'القاعة', taskCategoryIcon('VENUE')),
-  CreateTaskCategory('GUESTS', 'الضيوف', taskCategoryIcon('GUESTS')),
-  CreateTaskCategory('MONEY', 'المال', taskCategoryIcon('MONEY')),
-  CreateTaskCategory('PROVIDERS', 'المزودين', taskCategoryIcon('PROVIDERS')),
-  CreateTaskCategory('ATTIRE', 'الملابس', taskCategoryIcon('ATTIRE')),
-  CreateTaskCategory('PHOTOGRAPHY', 'التصوير', taskCategoryIcon('PHOTOGRAPHY')),
-  CreateTaskCategory('CATERING', 'الضيافة', taskCategoryIcon('CATERING')),
-  CreateTaskCategory('DECOR', 'الزينة', taskCategoryIcon('DECOR')),
-  CreateTaskCategory('DOCUMENTS', 'المستندات', taskCategoryIcon('DOCUMENTS')),
-];
+/// «متى؟»: this week (by Thursday), this month (by its last day), a chosen
+/// day, or no day yet. A time of day («بعد العصر») is not kept.
+enum _When { week, month, date, none }
+
+DateTime _endOfWeek(DateTime today) {
+  final days = (DateTime.thursday - today.weekday) % 7;
+  return DateUtils.dateOnly(today).add(Duration(days: days));
+}
+
+DateTime _endOfMonth(DateTime today) =>
+    DateTime(today.year, today.month + 1, 0);
 
 extension _CreateTaskDraftPersistence on _CreateTaskScreenState {
   bool get _isEditMode => widget.taskId != null || widget.initialTask != null;
+
+  /// The day the chosen «متى؟» saves as.
+  DateTime? get _dueDate => switch (_when) {
+    _When.week => _endOfWeek(DateTime.now()),
+    _When.month => _endOfMonth(DateTime.now()),
+    _When.date => _pickedDate,
+    _When.none => null,
+  };
 
   void _showSaveSuccess(TaskTimelineProvider provider) {
     final router = GoRouter.of(context);
@@ -28,37 +33,28 @@ extension _CreateTaskDraftPersistence on _CreateTaskScreenState {
       context,
       message:
           provider.noticeMessage ??
-          (_isEditMode ? 'تم حفظ تعديلات المهمة.' : 'تمت إضافة المهمة.'),
-      nextLabel: _isEditMode ? null : 'إضافة أخرى',
+          (_isEditMode ? 'انحفظت المهمة' : 'انضافت المهمة'),
+      nextLabel: _isEditMode ? null : 'أضف ثانية',
       onNext: _isEditMode
           ? null
           : () => router.push(AppRouter.createTask(widget.weddingPlanId)),
     );
   }
 
-  void _prefillTask(WeddingTask task) {
+  void _prefillTask(WeddingTask task, String? currentUserId) {
     _titleController.text = task.title;
     _descriptionController.text = task.description ?? '';
-    _responsibleNameController.text = task.responsibleLabel;
-    _responsiblePhoneController.text =
-        task.responsiblePhone ?? task.assigneePhone ?? '';
-    _selectedAssigneeUserId = task.assigneeUserId;
-    _selectedAssigneeName = task.assigneeName;
-    _selectedAssigneePhone = task.assigneePhone;
-    _selectedAssigneeRole = task.assigneeRole;
-    _responsibleSource = contactPhoneSourceFromTask(task);
-    _dueDate = task.dueDate;
+    _assigneeUserId = task.assigneeUserId;
+    _assigneeName = task.assigneeName;
+    _assigneePhone = task.assigneePhone;
+    _assigneeRole = task.assigneeRole;
+    _who = _whoForTask(task, currentUserId);
+    _pickedDate = task.dueDate;
+    _when = task.dueDate == null ? _When.none : _When.date;
     _priority = task.priority;
-    _category = _categoryExists(task.taskCategory)
-        ? task.taskCategory!
-        : 'GENERAL';
+    _category = task.taskCategory;
     _status = task.status;
     _didPrefill = true;
-  }
-
-  bool _categoryExists(String? id) {
-    if (id == null || id.isEmpty) return false;
-    return _createTaskCategories.any((category) => category.id == id);
   }
 
   void _configureDraft() {
@@ -82,21 +78,18 @@ extension _CreateTaskDraftPersistence on _CreateTaskScreenState {
     _restoringDraft = true;
     _titleController.text = data['title']?.toString() ?? '';
     _descriptionController.text = data['description']?.toString() ?? '';
-    _responsibleNameController.text =
-        data['responsibleName']?.toString() ?? 'أنا';
-    _responsiblePhoneController.text =
-        data['responsiblePhone']?.toString() ?? '';
-    final dueDate = DateTime.tryParse(data['dueDate']?.toString() ?? '');
-    final category = data['category']?.toString();
-    final priority = data['priority']?.toString();
+    _otherNameController.text = data['otherName']?.toString() ?? '';
+    _otherPhoneController.text = data['otherPhone']?.toString() ?? '';
     setState(() {
-      _dueDate = dueDate;
-      if (_categoryExists(category)) _category = category!;
-      if (const ['LOW', 'MEDIUM', 'HIGH'].contains(priority)) {
-        _priority = priority!;
-      }
-      _responsibleSource = ContactPhoneSource.values.firstWhere(
-        (source) => source.name == data['responsibleSource']?.toString(),
+      _who = data['who']?.toString() ?? _who;
+      _when = _When.values.firstWhere(
+        (value) => value.name == data['when']?.toString(),
+        orElse: () => _when,
+      );
+      _pickedDate = DateTime.tryParse(data['date']?.toString() ?? '');
+      _isPrivate = data['private'] == true;
+      _otherSource = ContactPhoneSource.values.firstWhere(
+        (source) => source.name == data['otherSource']?.toString(),
         orElse: () => ContactPhoneSource.manual,
       );
     });
@@ -108,40 +101,18 @@ extension _CreateTaskDraftPersistence on _CreateTaskScreenState {
     _draft?.schedule({
       'title': _titleController.text,
       'description': _descriptionController.text,
-      'responsibleName': _responsibleNameController.text,
-      'responsiblePhone': _responsiblePhoneController.text,
-      'responsibleSource': _responsibleSource.name,
-      'dueDate': _dueDate?.toIso8601String(),
-      'category': _category,
-      'priority': _priority,
+      'who': _who,
+      'when': _when.name,
+      'date': _pickedDate?.toIso8601String(),
+      'private': _isPrivate,
+      'otherName': _otherNameController.text,
+      'otherPhone': _otherPhoneController.text,
+      'otherSource': _otherSource.name,
     });
   }
 
   void _mutateDraft(VoidCallback change) {
     setState(change);
     _scheduleDraft();
-  }
-
-  Widget _buildLiveSummary() {
-    return AarastV3LiveSummary(
-      items: [
-        AarastV3SummaryItem(
-          label: 'المهمة',
-          value: _titleController.text.trim().isEmpty
-              ? 'لم تُكتب بعد'
-              : _titleController.text.trim(),
-        ),
-        AarastV3SummaryItem(
-          label: 'الموعد',
-          value: _dueDate == null ? 'غير محدد' : formatTaskDueDate(_dueDate!),
-        ),
-        AarastV3SummaryItem(
-          label: 'المسؤول',
-          value: _responsibleNameController.text.trim().isEmpty
-              ? 'أنا'
-              : _responsibleNameController.text.trim(),
-        ),
-      ],
-    );
   }
 }

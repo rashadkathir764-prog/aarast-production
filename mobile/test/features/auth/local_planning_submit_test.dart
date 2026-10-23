@@ -93,7 +93,7 @@ void main() {
     );
 
     await tester.enterText(
-      _textFormFieldWithLabel('عنوان المهمة'),
+      find.byKey(const ValueKey('task-title')),
       'حجز القاعة',
     );
     final submit = find.text('حفظ المهمة');
@@ -366,12 +366,6 @@ GoRouter _router({
       ),
     ],
   );
-}
-
-Finder _textFormFieldWithLabel(String label) {
-  return find
-      .ancestor(of: find.text(label), matching: find.byType(TextFormField))
-      .first;
 }
 
 Finder _textFieldWithLabel(String label) {

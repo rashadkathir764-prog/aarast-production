@@ -355,28 +355,24 @@ void main() {
         ),
       ),
     );
+    await tester.pumpAndSettle();
 
+    // d02: what, when and «لمين؟», «أنا» chosen until changed.
+    expect(find.text('لمين؟'), findsOneWidget);
+    expect(find.text('أنا'), findsWidgets);
     await tester.enterText(
-      _textFormFieldWithLabel('عنوان المهمة'),
+      find.byKey(const ValueKey('task-title')),
       'تأكيد قائمة المدعوين',
     );
-    await _openTaskDetails(tester);
-    expect(find.text('المسؤول عن المهمة'), findsOneWidget);
-    expect(find.text('أنا'), findsWidgets);
-    await tester.enterText(_textFormFieldWithLabel('اسم المسؤول'), 'محمد');
-    await tester.enterText(_textFormFieldWithLabel('رقم المسؤول'), '777123456');
-    await tester.pumpAndSettle();
-    final submit = find.text('حفظ المهمة');
-    await tester.ensureVisible(submit);
-    await tester.pumpAndSettle();
-    await tester.tap(submit);
-    await tester.pumpAndSettle();
+    await _chooseOtherPerson(tester, name: 'محمد', phone: '777123456');
+    await _saveTask(tester);
 
     expect(provider.tasks, hasLength(1));
     expect(provider.tasks.single.title, 'تأكيد قائمة المدعوين');
     expect(provider.tasks.single.responsibleName, 'محمد');
     expect(provider.tasks.single.responsiblePhone, '+967777123456');
     expect(provider.tasks.single.assigneeUserId, isNull);
+    expect(provider.tasks.single.dueDate, isNotNull);
     expect(find.text('tasks-target'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
@@ -403,17 +399,14 @@ void main() {
         sharingProvider: sharingProvider,
       ),
     );
-
-    await _openTaskDetails(tester);
-    expect(find.text('المسؤول عن المهمة'), findsOneWidget);
-    expect(find.text('مشارك من الخطة'), findsOneWidget);
-    await tester.tap(find.text('اختر مشاركاً موجوداً'));
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('ليلى').last);
     await tester.pumpAndSettle();
 
-    expect(find.text('ليلى'), findsWidgets);
-    expect(find.text('مشارك في الخطة'), findsOneWidget);
+    final layla = find.byKey(const ValueKey('task-who-member:user-1'));
+    expect(layla, findsOneWidget);
+    await tester.tap(layla);
+    await tester.pumpAndSettle();
+
+    expect(tester.widget<JourneyChip>(layla).selected, isTrue);
     expect(sharingProvider.invites, isEmpty);
     expect(tester.takeException(), isNull);
   });
@@ -437,17 +430,14 @@ void main() {
         ),
       ),
     );
+    await tester.pumpAndSettle();
 
     await tester.enterText(
-      _textFormFieldWithLabel('عنوان المهمة'),
+      find.byKey(const ValueKey('task-title')),
       'تأكيد القاعة',
     );
-    await _openTaskDetails(tester);
-    await tester.enterText(_textFormFieldWithLabel('اسم المسؤول'), 'محمد');
-    final submit = find.text('حفظ المهمة');
-    await tester.ensureVisible(submit);
-    await tester.tap(submit);
-    await tester.pumpAndSettle();
+    await _chooseOtherPerson(tester, name: 'محمد');
+    await _saveTask(tester);
 
     expect(provider.createCalls, 1);
     expect(provider.responsibleName, 'محمد');
@@ -489,17 +479,15 @@ void main() {
         authController: auth,
       ),
     );
+    await tester.pumpAndSettle();
 
     await tester.enterText(
-      _textFormFieldWithLabel('عنوان المهمة'),
+      find.byKey(const ValueKey('task-title')),
       'تأكيد القاعة',
     );
-    await _openTaskDetails(tester);
-    await tester.enterText(_textFormFieldWithLabel('اسم المسؤول'), 'انا');
-    final submit = find.text('حفظ المهمة');
-    await tester.ensureVisible(submit);
-    await tester.tap(submit);
-    await tester.pumpAndSettle();
+    // Typing «انا» as someone else still means the owner.
+    await _chooseOtherPerson(tester, name: 'انا');
+    await _saveTask(tester);
 
     expect(provider.createCalls, 1);
     expect(provider.assigneeUserId, user.id);
@@ -527,13 +515,10 @@ void main() {
         sharingProvider: sharingProvider,
       ),
     );
-
-    await _openTaskDetails(tester);
-    await tester.enterText(_textFormFieldWithLabel('اسم المسؤول'), 'سالم');
-    await tester.enterText(_textFormFieldWithLabel('رقم المسؤول'), '777654321');
     await tester.pumpAndSettle();
 
-    final invite = find.text('دعوته كمشارك في الخطة');
+    await _chooseOtherPerson(tester, name: 'سالم', phone: '777654321');
+    final invite = find.byKey(const ValueKey('task-invite-responsible'));
     await tester.ensureVisible(invite);
     await tester.tap(invite);
     await tester.pumpAndSettle();
@@ -614,6 +599,36 @@ WeddingTask _task({
   );
 }
 
+/// «شخص ثاني» with a name and, when given, a number.
+Future<void> _chooseOtherPerson(
+  WidgetTester tester, {
+  required String name,
+  String? phone,
+}) async {
+  final other = find.byKey(const ValueKey('task-who-other'));
+  await tester.ensureVisible(other);
+  await tester.tap(other);
+  await tester.pumpAndSettle();
+  await tester.enterText(find.byKey(const ValueKey('task-other-name')), name);
+  if (phone != null) {
+    await tester.enterText(
+      find.descendant(
+        of: find.byKey(const ValueKey('task-other-phone')),
+        matching: find.byType(EditableText),
+      ),
+      phone,
+    );
+  }
+  await tester.pumpAndSettle();
+}
+
+Future<void> _saveTask(WidgetTester tester) async {
+  tester.testTextInput.hide();
+  await tester.pumpAndSettle();
+  await tester.tap(find.byKey(const ValueKey('task-save')));
+  await tester.pumpAndSettle();
+}
+
 Future<_Harness> _createHarness() async {
   SharedPreferences.setMockInitialValues({});
   final preferences = await SharedPreferences.getInstance();
@@ -689,19 +704,6 @@ GoRouter _router({required Widget start}) {
       ),
     ],
   );
-}
-
-Finder _textFormFieldWithLabel(String label) {
-  return find
-      .ancestor(of: find.text(label), matching: find.byType(TextFormField))
-      .first;
-}
-
-Future<void> _openTaskDetails(WidgetTester tester) async {
-  final disclosure = find.text('المسؤول والتفاصيل');
-  await tester.ensureVisible(disclosure);
-  await tester.tap(disclosure);
-  await tester.pumpAndSettle();
 }
 
 SharedMember _member({

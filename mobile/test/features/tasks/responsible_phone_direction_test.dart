@@ -24,15 +24,13 @@ void main() {
               child: Scaffold(
                 body: SingleChildScrollView(
                   child: CreateTaskResponsibleSection(
-                    participants: const [],
-                    selectedAssigneeUserId: null,
-                    selectedAssigneeRole: null,
-                    responsibleNameController: nameController,
-                    responsiblePhoneController: phoneController,
-                    canInviteResponsible: false,
-                    onSelectParticipant: (_) {},
-                    onManualChanged: () {},
+                    choices: const [('me', 'أنا')],
+                    selected: createTaskOtherPerson,
+                    onSelected: (_) {},
+                    otherNameController: nameController,
+                    otherPhoneController: phoneController,
                     onDraftChanged: (_) {},
+                    canInvite: false,
                     onInvite: () {},
                   ),
                 ),

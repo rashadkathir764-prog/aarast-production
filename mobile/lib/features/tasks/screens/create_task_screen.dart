@@ -8,9 +8,10 @@ import 'package:provider/provider.dart';
 import '../../../core/experience_v3/aarast_v3.dart';
 import '../../../core/forms/aarast_form_draft_store.dart';
 import '../../../core/forms/aarast_form_success.dart';
-import '../../../core/routing/app_router.dart';
-import '../../../core/theme/app_theme.dart';
 import '../../../core/phone/phone_number_utils.dart';
+import '../../../core/routing/app_router.dart';
+import '../../../core/routing/pop_or_go.dart';
+import '../../../core/utils/arabic_date_formatter.dart';
 import '../../../core/widgets/aarast_toast.dart';
 import '../../../core/widgets/aarast_ui.dart';
 import '../../../shared/models/contact_phone_draft.dart';
@@ -19,14 +20,15 @@ import '../../sharing/sharing_api.dart' show SharedMember, SharingProvider;
 import '../../wedding_plans/wedding_plans_api.dart' show publishTaskPlanPulse;
 import '../models/wedding_task.dart';
 import '../providers/task_timeline_provider.dart';
-import '../utils/task_display.dart';
 import '../widgets/create_task_components.dart';
-import '../widgets/task_checklist_section.dart';
 
-part 'create_task_screen_checklist.dart';
 part 'create_task_screen_draft.dart';
 part 'create_task_screen_privacy.dart';
+part 'create_task_screen_who.dart';
 
+/// d02 «مهمة جديدة» and editing a task: what, when and for whom, kept
+/// private when the owner wants (w25). The steps live on the task itself
+/// (d04), and a category or priority already set is kept as it is.
 class CreateTaskScreen extends StatefulWidget {
   const CreateTaskScreen({
     required this.weddingPlanId,
@@ -44,23 +46,27 @@ class CreateTaskScreen extends StatefulWidget {
 }
 
 class _CreateTaskScreenState extends State<CreateTaskScreen> {
-  final _formKey = GlobalKey<FormState>();
   final _titleController = TextEditingController();
   final _descriptionController = TextEditingController();
-  final _responsibleNameController = TextEditingController(text: 'أنا');
-  final _responsiblePhoneController = TextEditingController();
+  final _otherNameController = TextEditingController();
+  final _otherPhoneController = TextEditingController();
 
-  DateTime? _dueDate;
+  _When _when = _When.week;
+  DateTime? _pickedDate;
+  String _who = _whoMe;
   String _priority = 'MEDIUM';
-  String _category = 'GENERAL';
+  String? _category = 'GENERAL';
   String _status = 'TODO';
-  String? _selectedAssigneeUserId;
-  String? _selectedAssigneeName;
-  String? _selectedAssigneePhone;
-  String? _selectedAssigneeRole;
-  ContactPhoneSource _responsibleSource = ContactPhoneSource.manual;
-  bool _didPrefill = false, _didRequestMembers = false;
+  String? _assigneeUserId;
+  String? _assigneeName;
+  String? _assigneePhone;
+  String? _assigneeRole;
+  ContactPhoneSource _otherSource = ContactPhoneSource.manual;
   bool _isPrivate = false;
+  bool _showMore = false;
+  String? _titleError;
+  String? _otherNameError;
+  bool _didPrefill = false, _didRequestMembers = false;
   AarastFormDraftCoordinator? _draft;
   bool _didConfigureDraft = false;
   bool _restoringDraft = false;
@@ -68,15 +74,11 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
   @override
   void initState() {
     super.initState();
-    final task = widget.initialTask;
-    if (task != null) {
-      _prefillTask(task);
-    }
     for (final controller in [
       _titleController,
       _descriptionController,
-      _responsibleNameController,
-      _responsiblePhoneController,
+      _otherNameController,
+      _otherPhoneController,
     ]) {
       controller.addListener(_handleTextChanged);
     }
@@ -87,18 +89,14 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
     super.didChangeDependencies();
     _configureDraft();
     _loadMembersIfAvailable();
-
     if (!_isEditMode || _didPrefill) return;
-
-    final taskId = widget.taskId;
-    if (taskId != null) {
-      final provider = context.read<TaskTimelineProvider>();
-      for (final task in provider.tasks) {
-        if (task.id == taskId) {
-          _prefillTask(task);
-          return;
-        }
-      }
+    final currentUserId = context.read<AuthController?>()?.user?.id;
+    final task =
+        widget.initialTask ??
+        _editingTask(context.read<TaskTimelineProvider>());
+    if (task != null) {
+      _prefillTask(task, currentUserId);
+      _showMore = task.hasDescription;
     }
   }
 
@@ -107,8 +105,8 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
     for (final controller in [
       _titleController,
       _descriptionController,
-      _responsibleNameController,
-      _responsiblePhoneController,
+      _otherNameController,
+      _otherPhoneController,
     ]) {
       controller
         ..removeListener(_handleTextChanged)
@@ -118,332 +116,151 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
     super.dispose();
   }
 
-  Future<void> _showCalendarPicker() async {
-    FocusScope.of(context).unfocus();
-    final now = DateTime.now();
-    var tempDate = _dueDate ?? now;
-
-    final selected = await showAarastBottomSheet<DateTime>(
-      context: context,
-      isScrollControlled: true,
-      builder: (sheetContext) {
-        return Directionality(
-          textDirection: TextDirection.rtl,
-          child: SafeArea(
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  const CreateTaskSheetHandle(),
-                  const SizedBox(height: 20),
-                  const AarastSectionHeader(
-                    title: 'تاريخ استحقاق المهمة',
-                    icon: LucideIcons.calendarCheck,
-                  ),
-                  const SizedBox(height: 8),
-                  Theme(
-                    data: Theme.of(sheetContext).copyWith(
-                      colorScheme: Theme.of(sheetContext).colorScheme.copyWith(
-                        primary: AppTheme.brand,
-                        onPrimary: Colors.white,
-                        surface: AppTheme.surfaceRaised,
-                        onSurface: AppTheme.textPrimary,
-                      ),
-                    ),
-                    child: CalendarDatePicker(
-                      initialDate: tempDate,
-                      firstDate: DateTime(now.year - 1),
-                      lastDate: DateTime(now.year + 5),
-                      onDateChanged: (date) => tempDate = date,
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  AarastButton(
-                    label: 'تأكيد التاريخ',
-                    icon: LucideIcons.check,
-                    onPressed: () => Navigator.of(sheetContext).pop(tempDate),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        );
-      },
-    );
-
-    if (selected != null && mounted) {
-      _mutateDraft(() => _dueDate = selected);
-    }
-  }
-
-  Future<void> _showCategoryPicker() async {
-    FocusScope.of(context).unfocus();
-    final selected = await showAarastBottomSheet<String>(
-      context: context,
-      isScrollControlled: true,
-      builder: (sheetContext) {
-        return Directionality(
-          textDirection: TextDirection.rtl,
-          child: SafeArea(
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  const CreateTaskSheetHandle(),
-                  const SizedBox(height: 20),
-                  const AarastSectionHeader(
-                    title: 'فئة المهمة',
-                    icon: LucideIcons.tag,
-                  ),
-                  const SizedBox(height: 14),
-                  for (final category in _createTaskCategories)
-                    CreateTaskCategoryRow(
-                      category: category,
-                      selected: category.id == _category,
-                      onTap: () => Navigator.of(sheetContext).pop(category.id),
-                    ),
-                ],
-              ),
-            ),
-          ),
-        );
-      },
-    );
-
-    if (selected != null && mounted) {
-      _mutateDraft(() => _category = selected);
-    }
+  void _handleTextChanged() {
+    _scheduleDraft();
+    if (mounted) setState(() {});
   }
 
   @override
   Widget build(BuildContext context) {
     final provider = context.watch<TaskTimelineProvider>();
-    final sharingProvider = context.watch<SharingProvider?>();
-    final currentUserId = context.watch<AuthController?>()?.user?.id;
-    final category = _createTaskCategories.firstWhere(
-      (item) => item.id == _category,
-    );
-    final participants = sharedMembersForPlan(
-      sharingProvider?.members ?? const <SharedMember>[],
+    final members = sharedMembersForPlan(
+      context.watch<SharingProvider?>()?.members ?? const <SharedMember>[],
       widget.weddingPlanId,
     );
-    final selfMember =
-        _selectedAssigneeUserId == null &&
-            isSelfTaskLabel(_responsibleNameController.text)
-        ? findCurrentSharedMember(participants, currentUserId)
-        : null;
+    final currentUserId = context.watch<AuthController?>()?.user?.id;
+    final locked = _keepsPrivate(provider);
 
     return AarastScreenFrame(
-      maxWidth: 480,
-      bottomNavigationBar: AarastV3FormActionBar(
-        maxWidth: 480,
-        label: _isEditMode ? 'حفظ التعديلات' : 'حفظ المهمة',
-        icon: _isEditMode ? LucideIcons.save : LucideIcons.calendarCheck,
-        loading: provider.isSubmitting,
-        onPressed: provider.isSubmitting ? null : _submit,
-      ),
-      child: CustomScrollView(
-        slivers: [
-          SliverToBoxAdapter(
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(20, 14, 20, 14),
-              child: AarastPageHeader(
-                title: _isEditMode ? 'تعديل المهمة' : 'مهمة جديدة',
-                subtitle: 'اكتب المطلوب، ثم حدّد متى وأولوية التنفيذ.',
-                showBack: true,
-                onBack: _goBack,
-              ),
+      maxWidth: 600,
+      backgroundColor: AarastV3Color.canvas,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 8, 8, 0),
+            child: JourneySubHeader(
+              title: _isEditMode ? 'تعديل المهمة' : 'مهمة جديدة',
+              onBack: _goBack,
             ),
           ),
-          SliverPadding(
-            padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
-            sliver: SliverToBoxAdapter(
-              child: Form(
-                key: _formKey,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
+          Expanded(
+            child: ListView(
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
+              children: [
+                JourneyTextField(
+                  key: const ValueKey('task-title'),
+                  label: 'ايش المهمة؟',
+                  hint: 'مثلًا: تذوّق الضيافة مع صالح',
+                  controller: _titleController,
+                  autofocus: !_isEditMode,
+                  maxLength: 200,
+                  errorText: _titleError,
+                  textInputAction: TextInputAction.done,
+                  onChanged: (_) => setState(() => _titleError = null),
+                ),
+                const SizedBox(height: 14),
+                _label('متى؟'),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
                   children: [
-                    if (_draft != null) ...[
-                      AarastV3DraftStatusLine(status: _draft!.status),
-                      const SizedBox(height: AppTheme.space10),
-                    ],
-                    const AarastV3FocusPrompt(
-                      question: 'ما المهمة التي تريد حسمها؟',
-                      supportingText:
-                          'اكتب القرار أولًا، ثم أضف الموعد والمسؤول بقدر ما تعرفه الآن.',
-                      icon: LucideIcons.listChecks,
-                    ),
-                    const SizedBox(height: AppTheme.space10),
-                    AarastV3FormSurface(
-                      children: [
-                        Column(
-                          children: [
-                            TextFormField(
-                              controller: _titleController,
-                              textAlign: TextAlign.right,
-                              textInputAction: TextInputAction.next,
-                              decoration: const InputDecoration(
-                                labelText: 'عنوان المهمة',
-                                hintText: 'مثال: تأكيد قائمة المدعوين',
-                                prefixIcon: Icon(LucideIcons.pencil),
-                              ),
-                              validator: (value) {
-                                if (value == null || value.trim().isEmpty) {
-                                  return 'عنوان المهمة مطلوب';
-                                }
-                                return null;
-                              },
-                            ),
-                            const SizedBox(height: AppTheme.space10),
-                            LayoutBuilder(
-                              builder: (context, constraints) {
-                                final categoryField = CreateTaskSelectorField(
-                                  label: 'الفئة',
-                                  value: category.label,
-                                  icon: category.icon,
-                                  selected: true,
-                                  onTap: _showCategoryPicker,
-                                );
-                                final dateField = CreateTaskSelectorField(
-                                  label: 'التاريخ',
-                                  value: _dueDate == null
-                                      ? 'لم يحدد بعد'
-                                      : formatTaskDueDate(_dueDate!),
-                                  icon: LucideIcons.calendar,
-                                  selected: _dueDate != null,
-                                  onTap: _showCalendarPicker,
-                                );
-
-                                if (constraints.maxWidth < 280) {
-                                  return Column(
-                                    children: [
-                                      categoryField,
-                                      const SizedBox(height: AppTheme.space10),
-                                      dateField,
-                                    ],
-                                  );
-                                }
-
-                                return Row(
-                                  children: [
-                                    Expanded(child: categoryField),
-                                    const SizedBox(width: AppTheme.space10),
-                                    Expanded(child: dateField),
-                                  ],
-                                );
-                              },
-                            ),
-                            const SizedBox(height: AppTheme.space12),
-                            const Align(
-                              alignment: AlignmentDirectional.centerStart,
-                              child: Text(
-                                'أولوية المهمة',
-                                style: TextStyle(
-                                  color: AppTheme.textPrimary,
-                                  fontWeight: FontWeight.w900,
-                                ),
-                              ),
-                            ),
-                            const SizedBox(height: AppTheme.space8),
-                            Row(
-                              children: [
-                                CreateTaskPriorityChip(
-                                  label: 'منخفضة',
-                                  icon: LucideIcons.leaf,
-                                  color: AppTheme.success,
-                                  selected: _priority == 'LOW',
-                                  onTap: () {
-                                    _mutateDraft(() => _priority = 'LOW');
-                                  },
-                                ),
-                                const SizedBox(width: AppTheme.space6),
-                                CreateTaskPriorityChip(
-                                  label: 'متوسطة',
-                                  icon: LucideIcons.gripHorizontal,
-                                  color: AppTheme.focus,
-                                  selected: _priority == 'MEDIUM',
-                                  onTap: () {
-                                    _mutateDraft(() => _priority = 'MEDIUM');
-                                  },
-                                ),
-                                const SizedBox(width: AppTheme.space6),
-                                CreateTaskPriorityChip(
-                                  label: 'عاجلة',
-                                  icon: LucideIcons.zap,
-                                  color: AppTheme.danger,
-                                  selected: _priority == 'HIGH',
-                                  onTap: () {
-                                    _mutateDraft(() => _priority = 'HIGH');
-                                  },
-                                ),
-                              ],
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: AppTheme.space10),
-                    CreateTaskDetailsDisclosure(
-                      initiallyExpanded:
-                          _descriptionController.text.trim().isNotEmpty ||
-                          _selectedAssigneeUserId != null ||
-                          !isSelfTaskLabel(_responsibleNameController.text),
-                      summary: _responsibleNameController.text.trim().isEmpty
-                          ? 'أنا · بدون ملاحظات'
-                          : '${_responsibleNameController.text.trim()} · تفاصيل إضافية',
-                      child: Column(
-                        children: [
-                          CreateTaskResponsibleSection(
-                            participants: participants,
-                            selectedAssigneeUserId:
-                                _selectedAssigneeUserId ?? selfMember?.userId,
-                            selectedAssigneeRole:
-                                _selectedAssigneeRole ?? selfMember?.role,
-                            responsibleNameController:
-                                _responsibleNameController,
-                            responsiblePhoneController:
-                                _responsiblePhoneController,
-                            canInviteResponsible: _canInviteResponsible,
-                            onSelectParticipant: _showParticipantPicker,
-                            onManualChanged: _clearSelectedParticipant,
-                            onDraftChanged: _handleResponsibleDraft,
-                            onInvite: _inviteResponsibleAsParticipant,
-                          ),
-                          const SizedBox(height: AppTheme.space10),
-                          TextFormField(
-                            controller: _descriptionController,
-                            textAlign: TextAlign.right,
-                            minLines: 2,
-                            maxLines: 3,
-                            textInputAction: TextInputAction.done,
-                            decoration: const InputDecoration(
-                              labelText: 'ملاحظة قصيرة',
-                              hintText: 'ما الذي يجب تذكره عند التنفيذ؟',
-                              alignLabelWithHint: true,
-                            ),
-                          ),
-                        ],
+                    for (final (option, label, icon) in const [
+                      (_When.week, 'هذا الأسبوع', null),
+                      (_When.month, 'هذا الشهر', null),
+                      (_When.date, 'تاريخ', LucideIcons.calendarDays),
+                      (_When.none, 'بدون موعد', null),
+                    ])
+                      JourneyChip(
+                        key: ValueKey('task-when-${option.name}'),
+                        label: option == _When.date && _pickedDate != null
+                            ? formatArabicDayMonth(_pickedDate!)
+                            : label,
+                        icon: icon,
+                        selected: _when == option,
+                        selectedColor: AarastV3Color.brandAccentStrong,
+                        onTap: () => option == _When.date
+                            ? _pickDate()
+                            : _mutateDraft(() => _when = option),
                       ),
-                    ),
-                    ..._privacySection(provider),
-                    ..._checklistSection(provider),
-                    const SizedBox(height: AppTheme.space14),
-                    _buildLiveSummary(),
-                    if (provider.errorMessage != null) ...[
-                      const SizedBox(height: AppTheme.space10),
-                      AarastStatusPill(
-                        label: provider.errorMessage!,
-                        color: AppTheme.danger,
-                        icon: LucideIcons.alertCircle,
-                      ),
-                    ],
                   ],
                 ),
-              ),
+                if (_when == _When.week || _when == _When.month)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 6),
+                    child: Text(
+                      'قبل ${formatArabicWeekdayDayMonth(_dueDate!)}',
+                      style: JourneyType.of(
+                        JourneyType.small,
+                        color: AarastV3Color.textMuted,
+                      ),
+                    ),
+                  ),
+                const SizedBox(height: 16),
+                CreateTaskResponsibleSection(
+                  choices: _whoChoices(provider, members, currentUserId),
+                  selected: _who,
+                  locked: locked,
+                  onSelected: (who) => _mutateDraft(() {
+                    _who = who;
+                    _otherNameError = null;
+                  }),
+                  otherNameController: _otherNameController,
+                  otherPhoneController: _otherPhoneController,
+                  otherNameError: _otherNameError,
+                  onDraftChanged: (draft) =>
+                      _mutateDraft(() => _otherSource = draft.source),
+                  canInvite: _otherPhoneController.text.trim().isNotEmpty,
+                  onInvite: _inviteResponsibleAsParticipant,
+                ),
+                ..._privacySection(provider),
+                const SizedBox(height: 10),
+                Align(
+                  alignment: AlignmentDirectional.centerStart,
+                  child: JourneyTextAction(
+                    key: const ValueKey('task-more'),
+                    label: _showMore ? 'أقل' : 'أضف ملاحظة',
+                    icon: _showMore
+                        ? LucideIcons.chevronUp
+                        : LucideIcons.chevronDown,
+                    color: AarastV3Color.primary,
+                    onPressed: () => setState(() => _showMore = !_showMore),
+                  ),
+                ),
+                if (_showMore)
+                  JourneyTextField(
+                    key: const ValueKey('task-note'),
+                    label: 'ملاحظة',
+                    hint: 'ايش لازم تتذكر وقت تسويها؟',
+                    controller: _descriptionController,
+                    maxLength: 1000,
+                  ),
+                if (provider.errorMessage != null) ...[
+                  const SizedBox(height: 10),
+                  JourneyNote(
+                    text: provider.errorMessage!,
+                    icon: LucideIcons.alertCircle,
+                    color: AarastV3Color.danger,
+                    soft: AarastV3Color.dangerSoft,
+                  ),
+                ],
+                if (_draft != null) ...[
+                  const SizedBox(height: 8),
+                  AarastV3DraftStatusLine(status: _draft!.status),
+                ],
+              ],
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
+            child: JourneyButton(
+              key: const ValueKey('task-save'),
+              label: _isEditMode ? 'حفظ التعديلات' : 'حفظ المهمة',
+              background: AarastV3Color.brandAccentStrong,
+              expand: true,
+              large: true,
+              loading: provider.isSubmitting,
+              onPressed: provider.isSubmitting ? null : _submit,
             ),
           ),
         ],
@@ -451,21 +268,45 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
     );
   }
 
-  void _handleTextChanged() {
-    _scheduleDraft();
-    if (mounted) setState(() {});
+  Widget _label(String text) => Padding(
+    padding: const EdgeInsets.only(bottom: 8),
+    child: Text(
+      text,
+      style: JourneyType.of(
+        JourneyType.small,
+        weight: JourneyType.bold,
+        color: AarastV3Color.textMuted,
+      ),
+    ),
+  );
+
+  Future<void> _pickDate() async {
+    releaseFieldFocus();
+    final today = DateUtils.dateOnly(DateTime.now());
+    final initial = _pickedDate != null && !_pickedDate!.isBefore(today)
+        ? _pickedDate!
+        : today;
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: initial,
+      firstDate: DateTime(today.year - 1),
+      lastDate: today.add(const Duration(days: 3650)),
+      locale: const Locale('ar'),
+    );
+    if (picked == null || !mounted) return;
+    _mutateDraft(() {
+      _pickedDate = picked;
+      _when = _When.date;
+    });
   }
 
-  void _goBack() {
-    if (context.canPop()) {
-      context.pop();
-      return;
-    }
-    context.go(AppRouter.tasks(widget.weddingPlanId));
-  }
+  void _goBack() => context.popOrGo(AppRouter.tasks(widget.weddingPlanId));
 
   Future<void> _submit() async {
-    if (!_formKey.currentState!.validate()) return;
+    if (_titleController.text.trim().isEmpty) {
+      setState(() => _titleError = 'اكتب ايش المهمة');
+      return;
+    }
     if (await AuthActionGuard.blockCloudSubmitForNonLocalPlanning(
       context,
       weddingPlanId: widget.weddingPlanId,
@@ -475,179 +316,74 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
     if (!mounted) return;
 
     final provider = context.read<TaskTimelineProvider>();
-    final description = _descriptionController.text.trim();
-    final normalizedDescription = description.isEmpty ? null : description;
-    final normalizedResponsiblePhone = _normalizedResponsiblePhone();
-    var assigneeUserId = _selectedAssigneeUserId;
-    var assigneeName = _selectedAssigneeName;
-    var assigneePhone = _selectedAssigneePhone;
-    var assigneeRole = _selectedAssigneeRole;
-    var hasParticipant = assigneeUserId?.trim().isNotEmpty == true;
-    if (!hasParticipant &&
-        !AuthActionGuard.isLocalGuestPlanId(widget.weddingPlanId) &&
-        isSelfTaskLabel(_responsibleNameController.text)) {
-      final sharingProvider = context.read<SharingProvider?>();
-      final currentUserId = context.read<AuthController?>()?.user?.id;
-      final participants = sharedMembersForPlan(
-        sharingProvider?.members ?? const <SharedMember>[],
-        widget.weddingPlanId,
+    final members = sharedMembersForPlan(
+      context.read<SharingProvider?>()?.members ?? const <SharedMember>[],
+      widget.weddingPlanId,
+    );
+    final currentUserId = context.read<AuthController?>()?.user?.id;
+    final who = _responsibleFor(provider, members, currentUserId);
+    if (who == null) return;
+    final givenAway =
+        (who.assigneeUserId != null && who.assigneeUserId != currentUserId) ||
+        who.responsibleName != null;
+    if (_keepsPrivate(provider) && givenAway) {
+      AarastToast.showError(
+        context,
+        'المهمة الخاصة تبقى لك وحدك. خلّها لك، أو شاركها مع الخطة أول.',
       );
-      final selfMember = findCurrentSharedMember(participants, currentUserId);
-      if (selfMember == null) {
-        AarastToast.showError(
-          context,
-          'تعذر تحديد حسابك ضمن الخطة. انتظر تحميل المشاركين ثم حاول مجدداً.',
-        );
-        return;
-      }
-      assigneeUserId = selfMember.userId;
-      assigneeName = selfMember.displayName;
-      assigneePhone = selfMember.user?.phone;
-      assigneeRole = selfMember.role;
-      hasParticipant = true;
+      return;
     }
+    final description = _descriptionController.text.trim();
     final task = _editingTask(provider);
-    if (_privateTaskGivenAway(provider, hasParticipant, assigneeUserId)) return;
-    final responsibleName = hasParticipant
-        ? null
-        : _responsibleNameForPayload();
-    final responsibleSource = hasParticipant ? null : _responsibleSource.name;
-    final saved = _isEditMode
-        ? task != null &&
-              await provider.updateTask(
-                weddingPlanId: widget.weddingPlanId,
-                task: task,
-                title: _titleController.text.trim(),
-                description: normalizedDescription,
-                dueDate: _dueDate,
-                taskCategory: _category,
-                assigneeUserId: assigneeUserId,
-                assigneeName: assigneeName,
-                assigneePhone: assigneePhone,
-                assigneeRole: assigneeRole,
-                responsibleName: responsibleName,
-                responsiblePhone: hasParticipant
-                    ? null
-                    : normalizedResponsiblePhone,
-                responsibleSource: responsibleSource,
-                status: _status,
-                priority: _priority,
-              )
+    if (_isEditMode && task == null) {
+      AarastToast.showError(context, 'ما قدرنا نفتح المهمة للتعديل');
+      return;
+    }
+    final saved = task != null
+        ? await provider.updateTask(
+            weddingPlanId: widget.weddingPlanId,
+            task: task,
+            title: _titleController.text.trim(),
+            description: description.isEmpty ? null : description,
+            dueDate: _dueDate,
+            taskCategory: _category,
+            assigneeUserId: who.assigneeUserId,
+            assigneeName: who.assigneeName,
+            assigneePhone: who.assigneePhone,
+            assigneeRole: who.assigneeRole,
+            responsibleName: who.responsibleName,
+            responsiblePhone: who.responsiblePhone,
+            responsibleSource: who.responsibleSource,
+            status: _status,
+            priority: _priority,
+          )
         : await provider.createTask(
             weddingPlanId: widget.weddingPlanId,
             title: _titleController.text.trim(),
-            description: normalizedDescription,
+            description: description.isEmpty ? null : description,
             dueDate: _dueDate,
             taskCategory: _category,
-            assigneeUserId: assigneeUserId,
-            assigneeName: assigneeName,
-            assigneePhone: assigneePhone,
-            assigneeRole: assigneeRole,
-            responsibleName: responsibleName,
-            responsiblePhone: hasParticipant
-                ? null
-                : normalizedResponsiblePhone,
-            responsibleSource: responsibleSource,
+            assigneeUserId: who.assigneeUserId,
+            assigneeName: who.assigneeName,
+            assigneePhone: who.assigneePhone,
+            assigneeRole: who.assigneeRole,
+            responsibleName: who.responsibleName,
+            responsiblePhone: who.responsiblePhone,
+            responsibleSource: who.responsibleSource,
             status: 'TODO',
             priority: _priority,
             isPrivate: _isPrivate,
           );
-
-    if (_isEditMode && task == null && mounted) {
-      AarastToast.showError(context, 'تعذر فتح المهمة للتعديل');
-      return;
-    }
-
-    if (saved && mounted) {
-      publishTaskPlanPulse(
-        context,
-        weddingPlanId: widget.weddingPlanId,
-        summary: provider.summary,
-      );
-      await _draft?.clear();
-      if (!mounted) return;
-      _showSaveSuccess(provider);
-      _goBack();
-    }
-  }
-
-  Future<void> _showParticipantPicker(List<SharedMember> participants) async {
-    FocusScope.of(context).unfocus();
-    if (participants.isEmpty) return;
-
-    final selected = await showAarastBottomSheet<SharedMember>(
-      context: context,
-      isScrollControlled: true,
-      builder: (sheetContext) {
-        return Directionality(
-          textDirection: TextDirection.rtl,
-          child: SafeArea(
-            child: ListView(
-              shrinkWrap: true,
-              padding: const EdgeInsets.fromLTRB(20, 12, 20, 22),
-              children: [
-                const CreateTaskSheetHandle(),
-                const SizedBox(height: 20),
-                const AarastSectionHeader(
-                  title: 'اختيار مسؤول من المشاركين',
-                  icon: LucideIcons.users,
-                ),
-                const SizedBox(height: 12),
-                for (final member in participants) ...[
-                  CreateTaskParticipantRow(
-                    member: member,
-                    selected: member.userId == _selectedAssigneeUserId,
-                    onTap: () => Navigator.of(sheetContext).pop(member),
-                  ),
-                  const SizedBox(height: 10),
-                ],
-              ],
-            ),
-          ),
-        );
-      },
+    if (!saved || !mounted) return;
+    publishTaskPlanPulse(
+      context,
+      weddingPlanId: widget.weddingPlanId,
+      summary: provider.summary,
     );
-
-    if (selected == null || !mounted) return;
-    setState(() {
-      _selectedAssigneeUserId = selected.userId;
-      _selectedAssigneeName = selected.displayName;
-      _selectedAssigneePhone = selected.user?.phone;
-      _selectedAssigneeRole = selected.role;
-      _responsibleNameController.text = selected.displayName;
-      _responsiblePhoneController.text = selected.user?.phone ?? '';
-      _responsibleSource = ContactPhoneSource.planContact;
-    });
-    _scheduleDraft();
-  }
-
-  void _handleResponsibleDraft(ContactPhoneDraft draft) {
-    setState(() {
-      _responsibleSource = draft.source;
-      if (draft.source != ContactPhoneSource.planContact) {
-        _clearSelectedParticipant(updateState: false);
-      }
-    });
-    _scheduleDraft();
-  }
-
-  void _clearSelectedParticipant({bool updateState = true}) {
-    void clear() {
-      _selectedAssigneeUserId = null;
-      _selectedAssigneeName = null;
-      _selectedAssigneePhone = null;
-      _selectedAssigneeRole = null;
-      if (_responsibleSource == ContactPhoneSource.planContact) {
-        _responsibleSource = ContactPhoneSource.manual;
-      }
-    }
-
-    if (updateState) {
-      setState(clear);
-      _scheduleDraft();
-    } else {
-      clear();
-    }
+    await _draft?.clear();
+    if (!mounted) return;
+    _showSaveSuccess(provider);
+    _goBack();
   }
 
   Future<void> _inviteResponsibleAsParticipant() async {
@@ -657,21 +393,6 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
     );
     if (!allowed || !mounted) return;
     context.push(AppRouter.addSharedMember(widget.weddingPlanId));
-  }
-
-  String? _normalizedResponsiblePhone() {
-    return PhoneNumberUtils.normalizeOptional(_responsiblePhoneController.text);
-  }
-
-  String? _responsibleNameForPayload() {
-    final value = _responsibleNameController.text.trim();
-    if (value.isEmpty || isSelfTaskLabel(value)) return null;
-    return value;
-  }
-
-  bool get _canInviteResponsible {
-    if (_selectedAssigneeUserId?.trim().isNotEmpty == true) return false;
-    return _responsiblePhoneController.text.trim().isNotEmpty;
   }
 
   void _loadMembersIfAvailable() {
@@ -687,5 +408,4 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
       sharingProvider.loadMembers(widget.weddingPlanId);
     });
   }
-
 }

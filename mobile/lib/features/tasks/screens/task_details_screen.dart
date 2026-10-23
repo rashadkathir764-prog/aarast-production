@@ -20,6 +20,7 @@ import '../models/wedding_task.dart';
 import '../providers/task_timeline_provider.dart';
 import '../utils/task_display.dart';
 import '../widgets/task_checklist_section.dart';
+import '../widgets/task_postpone.dart';
 
 part 'task_details_screen.sheets.dart';
 
@@ -362,29 +363,12 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen> {
     }
   }
 
-  /// Moves the date only; everything else is sent as it is.
   Future<void> _reschedule(
     TaskTimelineProvider provider,
     WeddingTask task,
     DateTime date,
   ) async {
-    final ok = await provider.updateTask(
-      weddingPlanId: widget.weddingPlanId,
-      task: task,
-      title: task.title,
-      description: task.description,
-      dueDate: date,
-      taskCategory: task.taskCategory,
-      assigneeUserId: task.assigneeUserId,
-      assigneeName: task.assigneeName,
-      assigneePhone: task.assigneePhone,
-      assigneeRole: task.assigneeRole,
-      responsibleName: task.responsibleName,
-      responsiblePhone: task.responsiblePhone,
-      responsibleSource: task.responsibleSource,
-      status: task.status,
-      priority: task.priority,
-    );
+    final ok = await provider.rescheduleTask(widget.weddingPlanId, task, date);
     if (!mounted) return;
     if (ok) {
       _pulse(provider);
@@ -404,12 +388,7 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen> {
     TaskTimelineProvider provider,
     WeddingTask task,
   ) async {
-    final date = await showAarastBottomSheet<DateTime>(
-      context: context,
-      isScrollControlled: true,
-      useSafeArea: true,
-      builder: (_) => _PostponeSheet(task: task),
-    );
+    final date = await showTaskPostponeSheet(context, task);
     if (date == null || !mounted) return;
     await _reschedule(provider, task, date);
   }

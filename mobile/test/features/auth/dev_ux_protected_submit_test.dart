@@ -44,7 +44,10 @@ void main() {
         ),
       );
 
-      await tester.enterText(find.byType(TextFormField).first, 'مهمة تجريبية');
+      await tester.enterText(
+        find.byKey(const ValueKey('task-title')),
+        'مهمة تجريبية',
+      );
       final submit = find.text('حفظ المهمة');
       await tester.ensureVisible(submit);
       await tester.tap(submit);

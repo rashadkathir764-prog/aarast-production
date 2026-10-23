@@ -451,6 +451,33 @@ class TaskTimelineProvider extends ChangeNotifier with SessionScopedNotifier {
     }
   }
 
+  /// «أجّلها» and «غيّر موعدها»: moves the day only, everything else is
+  /// sent as the task has it.
+  Future<bool> rescheduleTask(
+    String weddingPlanId,
+    WeddingTask task,
+    DateTime dueDate,
+  ) {
+    final current = _currentTask(task);
+    return updateTask(
+      weddingPlanId: weddingPlanId,
+      task: current,
+      title: current.title,
+      description: current.description,
+      dueDate: dueDate,
+      taskCategory: current.taskCategory,
+      assigneeUserId: current.assigneeUserId,
+      assigneeName: current.assigneeName,
+      assigneePhone: current.assigneePhone,
+      assigneeRole: current.assigneeRole,
+      responsibleName: current.responsibleName,
+      responsiblePhone: current.responsiblePhone,
+      responsibleSource: current.responsibleSource,
+      status: current.status,
+      priority: current.priority,
+    );
+  }
+
   Future<bool> deleteTask(String weddingPlanId, String taskId) async {
     _isSubmitting = true;
     _errorMessage = null;

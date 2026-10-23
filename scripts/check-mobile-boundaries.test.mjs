@@ -2585,7 +2585,7 @@ const trackedPlanningBatchContracts = [
   {
     source: 'mobile/lib/features/tasks/widgets/create_task_components.dart',
     target: 'mobile/lib/features/sharing/sharing_api.dart',
-    show: ['SharedMember', 'sharedMemberRoleLabel'],
+    show: ['SharedMember'],
   },
   {
     source: 'mobile/lib/features/wedding_day/models/wedding_day_mode.dart',

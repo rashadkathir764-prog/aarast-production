@@ -3,476 +3,136 @@ import 'package:lucide_icons/lucide_icons.dart';
 
 import '../../../core/experience_v3/aarast_v3.dart';
 import '../../../core/phone/phone_number_utils.dart';
-import '../../../core/theme/app_theme.dart';
-import '../../../core/utils/arabic_date_formatter.dart';
-import '../../../core/widgets/aarast_ui.dart';
 import '../../../shared/models/contact_phone_draft.dart';
 import '../../../shared/widgets/contact_phone_field.dart';
-import '../../sharing/sharing_api.dart'
-    show SharedMember, sharedMemberRoleLabel;
+import '../../sharing/sharing_api.dart' show SharedMember;
 import '../models/wedding_task.dart';
 
-class CreateTaskDetailsDisclosure extends StatelessWidget {
-  const CreateTaskDetailsDisclosure({
-    required this.initiallyExpanded,
-    required this.summary,
-    required this.child,
-    super.key,
-  });
+/// The «لمين؟» choice for someone not in the list yet.
+const createTaskOtherPerson = 'other';
 
-  final bool initiallyExpanded;
-  final String summary;
-  final Widget child;
-
-  @override
-  Widget build(BuildContext context) {
-    return AarastV3Disclosure(
-      title: 'المسؤول والتفاصيل',
-      subtitle: summary,
-      icon: LucideIcons.userCog,
-      initiallyExpanded: initiallyExpanded,
-      child: child,
-    );
-  }
-}
-
+/// d02 «لمين؟»: the owner, the plan's members and people already given
+/// tasks as chips, and «شخص ثاني» with a name and an optional number. A
+/// private task stays with its owner, so [locked] keeps it on «أنا».
 class CreateTaskResponsibleSection extends StatelessWidget {
   const CreateTaskResponsibleSection({
-    required this.participants,
-    required this.selectedAssigneeUserId,
-    required this.selectedAssigneeRole,
-    required this.responsibleNameController,
-    required this.responsiblePhoneController,
-    required this.canInviteResponsible,
-    required this.onSelectParticipant,
-    required this.onManualChanged,
+    required this.choices,
+    required this.selected,
+    required this.onSelected,
+    required this.otherNameController,
+    required this.otherPhoneController,
     required this.onDraftChanged,
+    required this.canInvite,
     required this.onInvite,
+    this.locked = false,
+    this.otherNameError,
     super.key,
   });
 
-  final List<SharedMember> participants;
-  final String? selectedAssigneeUserId;
-  final String? selectedAssigneeRole;
-  final TextEditingController responsibleNameController;
-  final TextEditingController responsiblePhoneController;
-  final bool canInviteResponsible;
-  final ValueChanged<List<SharedMember>> onSelectParticipant;
-  final VoidCallback onManualChanged;
+  /// (key, label) for every choice but «شخص ثاني», «أنا» first.
+  final List<(String, String)> choices;
+  final String selected;
+  final ValueChanged<String> onSelected;
+  final TextEditingController otherNameController;
+  final TextEditingController otherPhoneController;
   final ValueChanged<ContactPhoneDraft> onDraftChanged;
+  final bool canInvite;
   final VoidCallback onInvite;
+  final bool locked;
+  final String? otherNameError;
 
   @override
   Widget build(BuildContext context) {
-    final selectedParticipant = _findSelectedParticipant(
-      participants,
-      selectedAssigneeUserId,
+    final nameIsPhone = PhoneNumberUtils.areEquivalent(
+      otherNameController.text,
+      otherPhoneController.text,
     );
-    final responsibleNameIsPhone = PhoneNumberUtils.areEquivalent(
-      responsibleNameController.text,
-      responsiblePhoneController.text,
-    );
-
-    return Container(
-      padding: const EdgeInsets.all(AppTheme.space12),
-      decoration: BoxDecoration(
-        color: AppTheme.surfaceMuted,
-        borderRadius: BorderRadius.circular(AppTheme.radiusControl),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Row(
-            children: [
-              const Icon(
-                LucideIcons.userCheck,
-                color: AppTheme.brand,
-                size: 21,
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Text(
-                  'المسؤول عن المهمة',
-                  style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                    color: AppTheme.textPrimary,
-                    fontWeight: FontWeight.w900,
-                  ),
-                ),
-              ),
-              if (selectedParticipant != null)
-                CreateTaskParticipantBadge(role: selectedAssigneeRole),
-            ],
-          ),
-          if (participants.isNotEmpty) ...[
-            const SizedBox(height: 12),
-            CreateTaskSelectorField(
-              label: 'مشارك من الخطة',
-              value: selectedParticipant == null
-                  ? 'اختر مشاركاً موجوداً'
-                  : selectedParticipant.directionalDisplayName,
-              icon: LucideIcons.users,
-              selected: selectedParticipant != null,
-              onTap: () => onSelectParticipant(participants),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Padding(
+          padding: const EdgeInsets.only(bottom: 8),
+          child: Text(
+            'لمين؟',
+            style: JourneyType.of(
+              JourneyType.small,
+              weight: JourneyType.bold,
+              color: AarastV3Color.textMuted,
             ),
+          ),
+        ),
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: [
+            for (final (key, label) in choices)
+              JourneyChip(
+                key: ValueKey('task-who-$key'),
+                label: label,
+                selected: selected == key,
+                selectedColor: AarastV3Color.brandAccentStrong,
+                onTap: locked && key != choices.first.$1
+                    ? null
+                    : () => onSelected(key),
+              ),
+            if (!locked)
+              JourneyChip(
+                key: const ValueKey('task-who-other'),
+                label: 'شخص ثاني',
+                icon: LucideIcons.plus,
+                selected: selected == createTaskOtherPerson,
+                selectedColor: AarastV3Color.brandAccentStrong,
+                onTap: () => onSelected(createTaskOtherPerson),
+              ),
           ],
-          const SizedBox(height: 12),
-          TextFormField(
-            controller: responsibleNameController,
-            textAlign: TextAlign.right,
-            textDirection: responsibleNameIsPhone
-                ? TextDirection.ltr
-                : TextDirection.rtl,
-            textInputAction: TextInputAction.next,
-            onChanged: (_) => onManualChanged(),
-            decoration: const InputDecoration(
-              labelText: 'اسم المسؤول',
-              hintText: 'أنا أو اسم الشخص المسؤول',
-              prefixIcon: Icon(LucideIcons.user),
+        ),
+        if (locked)
+          Padding(
+            padding: const EdgeInsets.only(top: 6),
+            child: Text(
+              'المهمة الخاصة تبقى لك وحدك',
+              style: JourneyType.of(
+                JourneyType.small,
+                color: AarastV3Color.textMuted,
+              ),
             ),
           ),
+        if (selected == createTaskOtherPerson) ...[
           const SizedBox(height: 12),
+          JourneyTextField(
+            key: const ValueKey('task-other-name'),
+            label: 'اسمه',
+            hint: 'مثلًا: الوالد',
+            controller: otherNameController,
+            icon: LucideIcons.user,
+            textDirection: nameIsPhone ? TextDirection.ltr : null,
+            errorText: otherNameError,
+          ),
+          const SizedBox(height: 10),
           ContactPhoneField(
-            phoneController: responsiblePhoneController,
-            nameController: responsibleNameController,
-            label: 'رقم المسؤول',
+            key: const ValueKey('task-other-phone'),
+            phoneController: otherPhoneController,
+            nameController: otherNameController,
+            label: 'رقمه (لو تبي)',
             hintText: '77xxxxxxx',
-            helperText: 'يمكن ترك الرقم فارغاً؛ يظهر كرقم متابعة للمسؤول فقط.',
             onDraftChanged: onDraftChanged,
           ),
-          if (canInviteResponsible) ...[
-            const SizedBox(height: 4),
+          if (canInvite)
             Align(
               alignment: AlignmentDirectional.centerStart,
-              child: TextButton.icon(
-                style: TextButton.styleFrom(
-                  foregroundColor: AppTheme.brand,
-                  visualDensity: VisualDensity.compact,
-                ),
+              child: JourneyTextAction(
+                key: const ValueKey('task-invite-responsible'),
+                label: 'دعوته كمشارك في الخطة',
+                icon: LucideIcons.userPlus,
+                color: AarastV3Color.primary,
                 onPressed: onInvite,
-                icon: const Icon(LucideIcons.userPlus, size: 18),
-                label: const Text('دعوته كمشارك في الخطة'),
               ),
             ),
-          ],
         ],
-      ),
+      ],
     );
   }
 }
-
-class CreateTaskParticipantRow extends StatelessWidget {
-  const CreateTaskParticipantRow({
-    required this.member,
-    required this.selected,
-    required this.onTap,
-    super.key,
-  });
-
-  final SharedMember member;
-  final bool selected;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(AppTheme.radiusLg),
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-          decoration: BoxDecoration(
-            color: selected ? AppTheme.brandMuted : AppTheme.surfaceRaised,
-            borderRadius: BorderRadius.circular(AppTheme.radiusLg),
-            border: Border.all(
-              color: selected ? AppTheme.brand : AppTheme.border,
-            ),
-          ),
-          child: Row(
-            children: [
-              Icon(
-                selected ? LucideIcons.checkCircle : LucideIcons.user,
-                color: selected ? AppTheme.brand : AppTheme.focus,
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    if (member.displayNamePhone case final phone?)
-                      AarastPhoneText(
-                        phone: phone,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                          color: AppTheme.textPrimary,
-                          fontWeight: FontWeight.w900,
-                        ),
-                      )
-                    else
-                      Text(
-                        member.displayName,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                          color: AppTheme.textPrimary,
-                          fontWeight: FontWeight.w900,
-                        ),
-                      ),
-                    Text(
-                      sharedMemberRoleLabel(member.role),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: AppTheme.textSecondary,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class CreateTaskParticipantBadge extends StatelessWidget {
-  const CreateTaskParticipantBadge({this.role, super.key});
-
-  final String? role;
-
-  @override
-  Widget build(BuildContext context) {
-    final hasRole = role?.trim().isNotEmpty == true;
-    return Semantics(
-      label: hasRole
-          ? 'مشارك في الخطة، ${sharedMemberRoleLabel(role!.trim())}'
-          : 'مشارك في الخطة',
-      child: ExcludeSemantics(
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
-          decoration: BoxDecoration(
-            color: AppTheme.brandMuted,
-            borderRadius: BorderRadius.circular(999),
-            border: Border.all(color: AppTheme.brandMuted),
-          ),
-          child: Text(
-            'مشارك في الخطة',
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: Theme.of(context).textTheme.labelSmall?.copyWith(
-              color: AppTheme.brand,
-              fontWeight: FontWeight.w900,
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class CreateTaskSelectorField extends StatelessWidget {
-  const CreateTaskSelectorField({
-    required this.label,
-    required this.value,
-    required this.icon,
-    required this.selected,
-    required this.onTap,
-    super.key,
-  });
-
-  final String label;
-  final String value;
-  final IconData icon;
-  final bool selected;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(AppTheme.radiusMd),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
-        decoration: BoxDecoration(
-          color: AppTheme.surfaceRaised,
-          borderRadius: BorderRadius.circular(AppTheme.radiusMd),
-          border: Border.all(
-            color: selected ? AppTheme.brand : AppTheme.border,
-          ),
-        ),
-        child: Row(
-          children: [
-            Icon(
-              icon,
-              size: 18,
-              color: selected ? AppTheme.brand : AppTheme.focus,
-            ),
-            const SizedBox(width: 8),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    label,
-                    style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                      color: AppTheme.textSecondary,
-                    ),
-                  ),
-                  Text(
-                    value,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: AppTheme.textPrimary,
-                      fontWeight: FontWeight.w900,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const Icon(
-              LucideIcons.chevronDown,
-              size: 17,
-              color: AppTheme.textSecondary,
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class CreateTaskPriorityChip extends StatelessWidget {
-  const CreateTaskPriorityChip({
-    required this.label,
-    required this.icon,
-    required this.color,
-    required this.selected,
-    required this.onTap,
-    super.key,
-  });
-
-  final String label;
-  final IconData icon;
-  final Color color;
-  final bool selected;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return Expanded(
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(AppTheme.radiusMd),
-        child: Container(
-          padding: const EdgeInsets.symmetric(vertical: 8),
-          decoration: BoxDecoration(
-            color: selected ? color.withAlpha(25) : AppTheme.surfaceRaised,
-            borderRadius: BorderRadius.circular(AppTheme.radiusMd),
-            border: Border.all(color: selected ? color : AppTheme.border),
-          ),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(
-                icon,
-                color: selected ? color : AppTheme.textSecondary,
-                size: 16,
-              ),
-              const SizedBox(width: 5),
-              Flexible(
-                child: Text(
-                  label,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                    color: selected ? color : AppTheme.textSecondary,
-                    fontWeight: FontWeight.w900,
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class CreateTaskCategoryRow extends StatelessWidget {
-  const CreateTaskCategoryRow({
-    required this.category,
-    required this.selected,
-    required this.onTap,
-    super.key,
-  });
-
-  final CreateTaskCategory category;
-  final bool selected;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 10),
-      child: AarastCard(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
-        color: selected ? AppTheme.brandMuted : AppTheme.surfaceRaised,
-        border: Border.all(color: selected ? AppTheme.brand : AppTheme.border),
-        onTap: onTap,
-        child: Row(
-          children: [
-            Icon(category.icon, color: AppTheme.brand),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Text(
-                category.label,
-                style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                  color: selected ? AppTheme.brand : AppTheme.textPrimary,
-                  fontWeight: FontWeight.w900,
-                ),
-              ),
-            ),
-            if (selected)
-              const Icon(LucideIcons.checkCircle, color: AppTheme.brand),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class CreateTaskSheetHandle extends StatelessWidget {
-  const CreateTaskSheetHandle({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return Center(
-      child: Container(
-        width: 46,
-        height: 5,
-        decoration: BoxDecoration(
-          color: AppTheme.border,
-          borderRadius: BorderRadius.circular(99),
-        ),
-      ),
-    );
-  }
-}
-
-class CreateTaskCategory {
-  const CreateTaskCategory(this.id, this.label, this.icon);
-
-  final String id;
-  final String label;
-  final IconData icon;
-}
-
-String formatTaskDueDate(DateTime date) => formatArabicCompactDate(date);
 
 ContactPhoneSource contactPhoneSourceFromTask(WeddingTask task) {
   if (task.hasResponsibleParticipant) return ContactPhoneSource.planContact;
@@ -491,18 +151,6 @@ List<SharedMember> sharedMembersForPlan(
   return members
       .where((member) => member.weddingPlanId == weddingPlanId)
       .toList(growable: false);
-}
-
-SharedMember? _findSelectedParticipant(
-  List<SharedMember> members,
-  String? assigneeUserId,
-) {
-  final id = assigneeUserId?.trim();
-  if (id == null || id.isEmpty) return null;
-  for (final member in members) {
-    if (member.userId == id) return member;
-  }
-  return null;
 }
 
 SharedMember? findCurrentSharedMember(

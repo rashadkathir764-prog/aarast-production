@@ -450,6 +450,7 @@ void main() {
           'cost_form_screen.dart': 'cost-save',
           'budget_category_form_screen.dart': 'category-save',
           'money_budget_screen.dart': 'money-budget-save',
+          'create_task_screen.dart': 'task-save',
         };
         final journeySave = journeySaveKeys.entries
             .where((entry) => path.endsWith(entry.key))

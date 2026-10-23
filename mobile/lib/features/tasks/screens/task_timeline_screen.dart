@@ -24,6 +24,7 @@ import '../models/task_starter_catalog.dart';
 import '../models/wedding_task.dart';
 import '../providers/task_timeline_provider.dart';
 import '../utils/task_display.dart';
+import '../widgets/task_postpone.dart';
 import '../widgets/task_row.dart';
 import '../widgets/task_starter_sheet.dart';
 
@@ -291,6 +292,9 @@ class _TaskTimelineScreenState extends State<TaskTimelineScreen> {
         AppRouter.taskDetails(widget.weddingPlanId, task.id),
         extra: task,
       ),
+      onPostpone: open && isTaskLate(task)
+          ? () => _postpone(provider, task)
+          : null,
     );
     if (!open) return row;
     return Dismissible(
@@ -322,6 +326,29 @@ class _TaskTimelineScreenState extends State<TaskTimelineScreen> {
       ),
       child: row,
     );
+  }
+
+  /// w26: a late task moves to a new day from the list itself.
+  Future<void> _postpone(
+    TaskTimelineProvider provider,
+    WeddingTask task,
+  ) async {
+    final date = await showTaskPostponeSheet(context, task);
+    if (date == null || !mounted) return;
+    final ok = await provider.rescheduleTask(widget.weddingPlanId, task, date);
+    if (!mounted) return;
+    if (ok) {
+      publishTaskPlanPulse(
+        context,
+        weddingPlanId: widget.weddingPlanId,
+        summary: provider.summary,
+      );
+    } else {
+      AarastToast.showError(
+        context,
+        provider.errorMessage ?? 'ما قدرنا نغيّر الموعد',
+      );
+    }
   }
 
   void _add() => context.push(AppRouter.createTask(widget.weddingPlanId));

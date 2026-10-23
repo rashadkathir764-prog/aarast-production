@@ -21,7 +21,7 @@ void main() {
     expect(popupTheme.color, AppTheme.surfaceRaised);
   });
 
-  testWidgets('city picker opens as compact pills and applies the choice', (
+  testWidgets('w30 the filter sheet takes a city and closes on «اعرض»', (
     tester,
   ) async {
     final state = _FakeMarketplaceProvider(
@@ -44,8 +44,13 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(state.setCityCalls, ['city-1']);
-    // اللوحة تنغلق بعد الاختيار.
+    // w30: the sheet stays for the other choices and shows the count; its
+    // own button closes it.
+    expect(find.byKey(const ValueKey('city-pill-all')), findsOneWidget);
+    await tester.tap(find.byKey(const ValueKey('directory-filter-apply')));
+    await tester.pumpAndSettle();
     expect(find.byKey(const ValueKey('city-pill-all')), findsNothing);
+    expect(state.setCityCalls, ['city-1']);
   });
 
   testWidgets('choosing all cities clears the filter', (tester) async {

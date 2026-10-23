@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 
+import '../../../core/experience_v3/aarast_journey.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../wedding_plans/wedding_plans_api.dart'
     show planQuickAddIconForTab, planQuickAddLabelForTab;
@@ -12,8 +13,6 @@ class PlanShellChrome extends StatefulWidget {
     required this.activeIndex,
     required this.onTabSelected,
     required this.showQuickFab,
-    required this.contextLabel,
-    this.stageLabel,
     this.topStatus,
     this.onQuickAdd,
     this.onQuickAddLongPress,
@@ -25,8 +24,6 @@ class PlanShellChrome extends StatefulWidget {
   final int activeIndex;
   final ValueChanged<int> onTabSelected;
   final bool showQuickFab;
-  final String contextLabel;
-  final String? stageLabel;
   final Widget? topStatus;
   final VoidCallback? onQuickAdd;
   final VoidCallback? onQuickAddLongPress;
@@ -66,34 +63,36 @@ class _PlanShellChromeState extends State<PlanShellChrome> {
         // behind the tabs on Android, and also reduces the usable height while
         // the keyboard is open.
         extendBody: false,
-        body: Column(
-          children: [
-            // The home names the plan in its own header (b02); the other
-            // tabs keep this bar until their own redesign.
-            if (widget.activeIndex != 0)
-              AarastPlanContextBar(
-                planName: widget.contextLabel,
-                destination: AarastPlanNavigationBar.planDestinationLabel(
-                  widget.activeIndex,
-                ),
-                stageLabel: widget.stageLabel,
-              ),
-            if (widget.topStatus != null) widget.topStatus!,
-            Expanded(
-              child: MediaQuery.removePadding(
-                context: context,
-                removeTop: true,
-                child: NotificationListener<UserScrollNotification>(
-                  onNotification: _handleUserScroll,
-                  child: widget.body,
+        // Every tab names itself in its own header (b02, c01, d01, e01, f01),
+        // so the shell adds no title of its own. It still owns the status
+        // bar inset, which it takes away from the tab below it.
+        body: SafeArea(
+          bottom: false,
+          child: Column(
+            children: [
+              if (widget.topStatus != null) widget.topStatus!,
+              Expanded(
+                child: MediaQuery.removePadding(
+                  context: context,
+                  removeTop: true,
+                  child: NotificationListener<UserScrollNotification>(
+                    onNotification: _handleUserScroll,
+                    child: widget.body,
+                  ),
                 ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
         floatingActionButton:
             widget.showQuickFab && quickAdd != null && !keyboardVisible
             ? AarastQuickActionButton(
+                color: JourneySection
+                    .values[widget.activeIndex.clamp(
+                      0,
+                      JourneySection.values.length - 1,
+                    )]
+                    .color,
                 icon: planQuickAddIconForTab(widget.activeIndex),
                 label: planQuickAddLabelForTab(widget.activeIndex),
                 expanded: _quickActionExpanded,

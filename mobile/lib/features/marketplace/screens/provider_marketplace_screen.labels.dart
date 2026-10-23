@@ -24,16 +24,16 @@ String _emptyProvidersMessage({
 }) {
   if (budgetIntent != null) {
     final amount = budgetIntent.hasBudget
-        ? ' بميزانية ${_formatMoney(budgetIntent.allocatedValue)} ر.ي'
+        ? ' على قد ${_formatMoney(budgetIntent.allocatedValue)} ر.ي'
         : '';
-    return 'لا يوجد مزودين ظاهرون لبند ${budgetIntent.budgetCategoryName}$amount حسب الفلاتر الحالية. امسح الفلاتر أو غيّر المدينة لاستعراض خيارات أوسع.';
+    return 'ما ظهر أحد لبند ${budgetIntent.budgetCategoryName}$amount بهذا الفلتر. امسح الفلتر أو غيّر المدينة.';
   }
 
   if (location?.hasRequiredLocation == true) {
-    return 'غيّر المدينة أو الفئة، أو امسح الفلاتر لاستعراض المزودين المتاحين.';
+    return 'غيّر المدينة أو القسم، أو امسح الفلتر.';
   }
 
-  return 'أضف موقع الزفاف لتحسين تصفية المدينة، أو امسح الفلاتر لاستعراض المزودين المتاحين.';
+  return 'امسح الفلتر وشوف كل المزودين.';
 }
 
 _ServiceBudgetStatus _serviceBudgetStatus(
@@ -51,21 +51,21 @@ _ServiceBudgetStatus _serviceBudgetStatus(
 
 String _serviceBudgetStatusLabel(_ServiceBudgetStatus status) {
   return switch (status) {
-    _ServiceBudgetStatus.inRange => 'ضمن النطاق',
-    _ServiceBudgetStatus.underBudget => 'أقل من ميزانيتك',
-    _ServiceBudgetStatus.nearby => 'أقرب المتاح',
-    _ServiceBudgetStatus.categoryOnly => 'نفس الفئة',
-    _ServiceBudgetStatus.unknown => 'السعر غير محدد',
+    _ServiceBudgetStatus.inRange => 'ضمن بندك',
+    _ServiceBudgetStatus.underBudget => 'أقل من بندك',
+    _ServiceBudgetStatus.nearby => 'أعلى من بندك',
+    _ServiceBudgetStatus.categoryOnly => 'نفس القسم',
+    _ServiceBudgetStatus.unknown => 'السعر بالعرض',
   };
 }
 
 Color _serviceBudgetStatusColor(_ServiceBudgetStatus status) {
   return switch (status) {
-    _ServiceBudgetStatus.inRange => AppTheme.success,
-    _ServiceBudgetStatus.underBudget => AppTheme.brand,
-    _ServiceBudgetStatus.nearby => AppTheme.focus,
-    _ServiceBudgetStatus.categoryOnly => AppTheme.brand,
-    _ServiceBudgetStatus.unknown => AppTheme.textSecondary,
+    _ServiceBudgetStatus.inRange => AarastV3Color.mint,
+    _ServiceBudgetStatus.underBudget => AarastV3Color.mint,
+    _ServiceBudgetStatus.nearby => AarastV3Color.brandAccentStrong,
+    _ServiceBudgetStatus.categoryOnly => AarastV3Color.cobalt,
+    _ServiceBudgetStatus.unknown => AarastV3Color.textMuted,
   };
 }
 
@@ -82,24 +82,24 @@ String _serviceBudgetReason(
     final amount = _formatMoney(absDifference);
     switch (status) {
       case _ServiceBudgetStatus.inRange:
-        pieces.add('السعر قريب من المبلغ الذي خصصته لهذا البند.');
+        pieces.add('سعره قريب من اللي حطيته لهذا البند.');
       case _ServiceBudgetStatus.underBudget:
-        pieces.add('أقل من ميزانيتك بحوالي $amount ر.ي.');
+        pieces.add('أقل من بندك بحوالي $amount ر.ي.');
       case _ServiceBudgetStatus.nearby:
-        pieces.add('أعلى من ميزانيتك بحوالي $amount ر.ي، لكنه من أقرب المتاح.');
+        pieces.add('أعلى من بندك بحوالي $amount ر.ي.');
       case _ServiceBudgetStatus.categoryOnly:
       case _ServiceBudgetStatus.unknown:
-        pieces.add('نفس نوع البند، لكن السعر يحتاج تأكيد من المزود.');
+        pieces.add('من نفس قسم البند، والسعر يتأكد بعرض من المزود.');
     }
   } else if (intent.hasBudget) {
-    pieces.add('نفس نوع البند، لكن السعر غير منشور ويحتاج طلب عرض.');
+    pieces.add('من نفس قسم البند، وسعره ما هو منشور. اطلب منه عرض.');
   } else {
-    pieces.add('مطابق لفئة البند، وأضف مبلغاً لتحسين الترتيب.');
+    pieces.add('من نفس قسم البند. حط مبلغ للبند ونرتبهم لك على قده.');
   }
 
   final city = service.city?.nameAr.trim();
   if (city != null && city.isNotEmpty) {
-    pieces.add('متاح في $city.');
+    pieces.add('في $city.');
   }
 
   return pieces.join(' ');
@@ -137,65 +137,4 @@ String? _providerLocationLabel(MarketplaceProvider provider) {
   final address = provider.address?.trim();
   if (address != null && address.isNotEmpty) return address;
   return null;
-}
-
-class _MarketplaceSkeleton extends StatelessWidget {
-  const _MarketplaceSkeleton();
-
-  @override
-  Widget build(BuildContext context) {
-    // نفس skeleton النظام الموحّد — لا هيكل محلي مختلف.
-    return AarastSkeleton.list(
-      rows: 4,
-      rowHeight: 134,
-      withHeader: false,
-      inline: true,
-      padding: EdgeInsets.zero,
-    );
-  }
-}
-
-class _ErrorCard extends StatelessWidget {
-  const _ErrorCard({
-    required this.message,
-    required this.onRetry,
-    this.title = 'تعذر تحميل المزودين',
-  });
-
-  final String title;
-  final String message;
-  final VoidCallback onRetry;
-
-  @override
-  Widget build(BuildContext context) {
-    return AarastErrorState(title: title, message: message, onRetry: onRetry);
-  }
-}
-
-class _LoginRequiredCard extends StatelessWidget {
-  const _LoginRequiredCard();
-
-  @override
-  Widget build(BuildContext context) {
-    return AarastCard(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-      color: AppTheme.surfaceRaised,
-      border: Border.all(color: AppTheme.border),
-      child: Row(
-        children: [
-          const Icon(LucideIcons.logIn, color: AppTheme.focus, size: 20),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Text(
-              'طلبات العروض ومتابعتها تحتاج تسجيل دخول',
-              style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                color: AppTheme.textPrimary,
-                fontWeight: FontWeight.w800,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
 }

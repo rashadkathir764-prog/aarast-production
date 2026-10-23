@@ -34,7 +34,7 @@ class OfflineStatusBanner extends StatelessWidget {
     final label = switch (state) {
       SyncState.offline => 'بدون نت، واللي تضيفه ينحفظ في جوالك',
       SyncState.syncing => 'نرسل آخر تغييراتك',
-      SyncState.syncError => 'ما قدرنا نرسل تغييراتك الحين',
+      SyncState.syncError => 'ما قدرنا نرسل تغييراتك الآن',
       _ => 'تغييراتك تنرسل لما يرجع النت',
     };
     final lastSync = service.lastSyncedAt == null
@@ -219,7 +219,7 @@ class OfflineSyncNowTile extends StatelessWidget {
         ),
       ),
       title: Text(
-        service.blockedCount > 0 ? 'تغييرات ما وصلت' : 'أرسل التغييرات الحين',
+        service.blockedCount > 0 ? 'تغييرات ما وصلت' : 'أرسل التغييرات الآن',
         style: Theme.of(context).textTheme.titleSmall?.copyWith(
           color: AppTheme.textPrimary,
           fontWeight: FontWeight.w900,
@@ -312,7 +312,7 @@ class _PendingChangesSheet extends StatelessWidget {
                 )
               else if (snapshot.hasError)
                 Text(
-                  'ما قدرنا نقرأ التغييرات الحين.',
+                  'ما قدرنا نقرأ التغييرات الآن.',
                   style: JourneyType.of(JourneyType.body),
                 )
               else if (changes.isNotEmpty)
@@ -365,7 +365,7 @@ class _PendingChangeRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final minutes = now.difference(change.createdAt.toLocal()).inMinutes;
     final when = minutes < 1
-        ? 'الحين'
+        ? 'الآن'
         : minutes < 60
         ? 'قبل ${arabicCount(minutes, one: 'دقيقة', two: 'دقيقتين', few: 'دقائق', many: 'دقيقة')}'
         : minutes < 60 * 24

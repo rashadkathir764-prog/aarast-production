@@ -92,7 +92,9 @@ class _GuestListScreenState extends State<GuestListScreen> {
   Widget build(BuildContext context) {
     final provider = context.watch<GuestsProvider>();
     final sync = context.watch<OfflineSyncService?>();
-    final offline = sync?.state == SyncState.offline;
+    // w29: an account plan without a connection shows its last copy and
+    // waits to add. A plan kept on the phone needs no connection at all.
+    final offline = !_isLocalPlan && sync?.state == SyncState.offline;
     final guests = provider.guests
         .where((guest) => guest.weddingPlanId == widget.weddingPlanId)
         .toList();
@@ -115,6 +117,14 @@ class _GuestListScreenState extends State<GuestListScreen> {
         phase: JourneyListPhase.error,
         section: JourneySection.guests,
         onRetry: _load,
+      );
+    } else if (guests.isEmpty && offline) {
+      // The note above says why there is nothing to add with yet.
+      body = const JourneyListState(
+        key: ValueKey('guests-empty-offline'),
+        phase: JourneyListPhase.empty,
+        section: JourneySection.guests,
+        emptyTitle: 'ما أضفت أحد بعد',
       );
     } else if (guests.isEmpty) {
       body = _FirstGuests(
@@ -166,7 +176,7 @@ class _GuestListScreenState extends State<GuestListScreen> {
                       if (!_searching) _query = '';
                     }),
                   ),
-                if (widget.showLocalFab)
+                if (widget.showLocalFab && !offline)
                   JourneyRoundButton(
                     key: const ValueKey('guests-add'),
                     icon: LucideIcons.plus,

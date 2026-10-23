@@ -367,8 +367,6 @@ void main() {
     activeIndex: 0,
     onTabSelected: (_) {},
     showQuickFab: true,
-    contextLabel: 'عرس محمد',
-    stageLabel: stage,
     topStatus: top,
     onQuickAdd: () {},
   );
@@ -545,8 +543,6 @@ void main() {
           activeIndex: 0,
           onTabSelected: (_) {},
           showQuickFab: true,
-          contextLabel: 'عرس محمد',
-          stageLabel: 'التخطيط',
           onQuickAdd: () => showAarastQuickActionSheet(
             ctx,
             actions: buildCanonicalQuickAddActions(

@@ -9,7 +9,6 @@ import 'package:aarast_mobile/features/onboarding/data/guest_onboarding_storage.
 import 'package:aarast_mobile/features/onboarding/models/guest_onboarding_draft.dart';
 import 'package:aarast_mobile/features/shell/screens/wedding_plan_shell.dart';
 import 'package:aarast_mobile/features/wedding_plans/data/wedding_plans_api.dart';
-import 'package:aarast_mobile/features/wedding_plans/models/wedding_plan_stage.dart';
 import 'package:aarast_mobile/features/wedding_plans/providers/dashboard_summary_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -21,7 +20,7 @@ void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
   testWidgets(
-    'cold local nested route restores the persisted plan name and stage',
+    'cold local nested route restores the persisted plan summary',
     (tester) async {
       SharedPreferences.setMockInitialValues({});
       final preferences = await SharedPreferences.getInstance();
@@ -97,10 +96,10 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      final stage = resolveWeddingPlanStage(weddingDate).compactLabel;
+      // The tabs name themselves (DECISIONS D10); the bridge still gives
+      // them the plan's summary.
       expect(find.text('cold-guests-route'), findsOneWidget);
-      expect(find.text(planName), findsOneWidget);
-      expect(find.text('الضيوف · $stage'), findsOneWidget);
+      expect(find.textContaining('الضيوف ·'), findsNothing);
       expect(dashboard.summary?.planId, planId);
       expect(dashboard.summary?.title, planName);
       expect(dashboard.summary?.accountBacked, isFalse);

@@ -173,10 +173,8 @@ void main() {
 
       expect(state.lastIncludeAccountData, isFalse);
       expect(find.text('المزودين'), findsOneWidget);
-      expect(
-        find.text('طلبات العروض ومتابعتها تحتاج تسجيل دخول'),
-        findsOneWidget,
-      );
+      expect(find.byKey(const Key('marketplace-login-note')), findsOneWidget);
+      expect(find.textContaining('تحفظ خطتك برقم جوالك'), findsOneWidget);
       expect(find.text('طلباتك'), findsNothing);
       expect(find.text('تحتاج قرار'), findsNothing);
       expect(find.text('عروض مقبولة'), findsNothing);
@@ -259,13 +257,13 @@ void main() {
     // Nothing is filtered: the directory itself is empty, so the page says
     // so instead of sending the user to clear filters they never set.
     await tester.scrollUntilVisible(
-      find.text('لا يوجد مزوّدون في الدليل بعد'),
+      find.text('ما في مزودين في الدليل بعد'),
       320,
       scrollable: find.byType(Scrollable).first,
     );
 
-    expect(find.text('لا يوجد مزوّدون في الدليل بعد'), findsOneWidget);
-    expect(find.text('مسح الفلاتر'), findsNothing);
+    expect(find.text('ما في مزودين في الدليل بعد'), findsOneWidget);
+    expect(find.text('امسح الفلتر'), findsNothing);
     expect(find.textContaining('أفضل'), findsNothing);
     expect(find.textContaining('قريب'), findsNothing);
     expect(tester.takeException(), isNull);
@@ -278,13 +276,13 @@ void main() {
 
     await _pumpMarketplace(tester, state, authenticated: true);
     await tester.scrollUntilVisible(
-      find.text('لا يوجد مزودين متاحون حاليًا'),
+      find.text('ما لقينا مزود بهذا الاسم'),
       320,
       scrollable: find.byType(Scrollable).first,
     );
 
-    expect(find.text('مسح الفلاتر'), findsOneWidget);
-    expect(find.text('لا يوجد مزوّدون في الدليل بعد'), findsNothing);
+    expect(find.text('امسح الفلتر'), findsOneWidget);
+    expect(find.text('ما في مزودين في الدليل بعد'), findsNothing);
   });
 
   testWidgets('clearing filters also clears the visible search text', (
@@ -296,18 +294,17 @@ void main() {
     expect(find.text('قاعة'), findsOneWidget);
 
     await tester.scrollUntilVisible(
-      find.text('مسح الفلاتر'),
+      find.text('امسح الفلتر'),
       260,
       scrollable: find.byType(Scrollable).first,
     );
-    await tester.tap(find.text('مسح الفلاتر'));
+    await tester.tap(find.text('امسح الفلتر'));
     await tester.pumpAndSettle();
 
     expect(state.search, isEmpty);
-    expect(
-      tester.widget<TextField>(find.byType(TextField)).controller?.text,
-      '',
-    );
+    // The old words leave with the box: nothing is left to look searched.
+    expect(find.text('قاعة'), findsNothing);
+    expect(find.byKey(const Key('marketplace-search-field')), findsNothing);
   });
 
   testWidgets('budget matched services explain why they are suggested', (
@@ -337,10 +334,10 @@ void main() {
 
     await _pumpMarketplace(tester, state);
 
-    expect(find.text('خدمات مناسبة لهذا البند'), findsOneWidget);
+    expect(find.text('خدمات قريبة من بندك'), findsOneWidget);
     expect(find.text('قاعة مناسبة للميزانية'), findsOneWidget);
-    expect(find.textContaining('السعر قريب من المبلغ'), findsOneWidget);
-    expect(find.textContaining('متاح في صنعاء'), findsOneWidget);
+    expect(find.textContaining('سعره قريب من اللي حطيته'), findsOneWidget);
+    expect(find.textContaining('في صنعاء'), findsOneWidget);
   });
 
   testWidgets('budget fallback explains missing exact prices honestly', (
@@ -363,14 +360,17 @@ void main() {
 
     await _pumpMarketplace(tester, state);
 
-    expect(find.text('لا توجد أسعار مطابقة تماماً'), findsOneWidget);
-    expect(find.textContaining('طلب العرض سيحمل ميزانيتك'), findsOneWidget);
+    expect(
+      find.textContaining('ما لقينا سعر منشور قريب من 300,000 ر.ي'),
+      findsOneWidget,
+    );
+    expect(find.text('اعرض كل المزودين'), findsOneWidget);
     await tester.scrollUntilVisible(
       find.text('450,000 ر.ي'),
       320,
       scrollable: find.byType(Scrollable).first,
     );
-    expect(find.text('أقرب المتاح'), findsOneWidget);
+    expect(find.text('أعلى من بندك'), findsOneWidget);
     expect(find.text('450,000 ر.ي'), findsOneWidget);
   });
 
@@ -567,12 +567,17 @@ void main() {
         Directionality.of(tester.element(marketplaceList)),
         TextDirection.rtl,
       );
-      expect(
-        find.byKey(const Key('marketplace-search-field')).hitTestable(),
-        findsOneWidget,
-      );
+      // f02: the kinds and «فلتر» show at once; the search box opens from
+      // the header's search, one tap away.
+      expect(find.byKey(const Key('marketplace-search-field')), findsNothing);
       expect(
         find.byKey(const Key('city-filter-trigger')).hitTestable(),
+        findsOneWidget,
+      );
+      await tester.tap(find.byKey(const ValueKey('providers-search')));
+      await tester.pumpAndSettle();
+      expect(
+        find.byKey(const Key('marketplace-search-field')).hitTestable(),
         findsOneWidget,
       );
       // The waiting offer is in the status line on every tab.

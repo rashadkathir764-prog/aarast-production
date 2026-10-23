@@ -2,11 +2,23 @@ import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 
+import '../../../core/experience_v3/aarast_v3.dart';
 import '../../../core/theme/aarast_motion.dart';
-import '../../../core/theme/app_theme.dart';
+import '../../../core/utils/arabic_count.dart';
 
-/// بطاقة مزود مضغوطة تعرض الحقائق المتاحة فقط، مع صورة ثابتة وإجراء تفاصيل
-/// خفيف حتى تبقى قائمة المزودين واضحة وآمنة على الشاشات الضيقة.
+/// w33 how old a published price is: «محدّث هذا الشهر», «محدّث قبل 8
+/// شهور». An old price may have changed; a quote confirms it.
+String? providerPriceAgeLabel(DateTime? updatedAt, {DateTime? now}) {
+  if (updatedAt == null) return null;
+  final days = (now ?? DateTime.now()).difference(updatedAt).inDays;
+  if (days < 31) return 'محدّث هذا الشهر';
+  final months = days ~/ 30;
+  return 'محدّث قبل ${arabicCount(months, one: 'شهر', two: 'شهرين', few: 'شهور', many: 'شهر')}';
+}
+
+/// f02 a provider in «استكشف»: the photo, the name and rating, where, the
+/// facts that matter (ضمن بندك، موثّق، جديد، غير مفعّل) and the price with
+/// how old it is (w33). Only real facts; nothing is invented.
 class ProviderResultCard extends StatelessWidget {
   const ProviderResultCard({
     required this.businessName,
@@ -17,9 +29,11 @@ class ProviderResultCard extends StatelessWidget {
     required this.onFavorite,
     required this.onDetails,
     this.isVerified = false,
+    this.isClaimed = true,
     this.categoryLabel,
     this.locationLabel,
     this.priceLabel,
+    this.priceAgeLabel,
     this.budgetStatusLabel,
     this.budgetStatusColor,
     this.imageUrl,
@@ -38,9 +52,16 @@ class ProviderResultCard extends StatelessWidget {
 
   /// An admin checked the provider's documents.
   final bool isVerified;
+
+  /// False for a listing added from a public directory that its owner has
+  /// not taken over yet: it does not take requests.
+  final bool isClaimed;
   final String? categoryLabel;
   final String? locationLabel;
   final String? priceLabel;
+
+  /// «محدّث هذا الشهر», «محدّث قبل 8 شهور».
+  final String? priceAgeLabel;
   final String? budgetStatusLabel;
   final Color? budgetStatusColor;
   final String? imageUrl;
@@ -49,193 +70,164 @@ class ProviderResultCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final hasRating = ratingCount > 0;
-    final hasCategory =
-        categoryLabel != null && categoryLabel!.trim().isNotEmpty;
-    final hasLocation =
-        locationLabel != null && locationLabel!.trim().isNotEmpty;
-    final hasPrice = priceLabel != null && priceLabel!.trim().isNotEmpty;
-    final hasBudget =
-        budgetStatusLabel != null && budgetStatusLabel!.trim().isNotEmpty;
-
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: onDetails,
-        borderRadius: BorderRadius.circular(AppTheme.radiusLg),
-        child: Ink(
-          decoration: BoxDecoration(
-            color: AppTheme.surfaceRaised,
-            borderRadius: BorderRadius.circular(AppTheme.radiusLg),
-            border: Border.all(
-              color: isFeatured
-                  ? AppTheme.focus.withValues(alpha: 0.45)
-                  : AppTheme.border,
-            ),
+    final where = [
+      ?_clean(categoryLabel),
+      ?_clean(locationLabel),
+    ].join(' · ');
+    final price = _clean(priceLabel);
+    final badges = <Widget>[
+      if (_clean(budgetStatusLabel) case final budget?)
+        JourneyTag(
+          label: budget,
+          color: budgetStatusColor ?? AarastV3Color.mint,
+          soft: (budgetStatusColor ?? AarastV3Color.mint).withValues(
+            alpha: 0.12,
           ),
-          child: Padding(
-            padding: const EdgeInsets.all(AppTheme.space12),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                _VendorImage(
-                  imageUrl: imageUrl,
-                  name: businessName,
-                  isFeatured: isFeatured,
-                  isFavorite: isFavorite,
-                  onFavorite: onFavorite,
-                  favoriteButtonKey: favoriteButtonKey,
-                ),
-                const SizedBox(width: AppTheme.space12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Flexible(
-                            child: Text(
-                              businessName,
-                              maxLines: 2,
-                              overflow: TextOverflow.ellipsis,
-                              style: Theme.of(context).textTheme.titleMedium
-                                  ?.copyWith(
-                                    color: AppTheme.textPrimary,
-                                    fontWeight: FontWeight.w800,
-                                    height: 1.18,
-                                  ),
+        ),
+      if (!isClaimed)
+        const JourneyTag(
+          key: Key('provider-card-unclaimed'),
+          label: 'غير مفعّل',
+          color: AarastV3Color.brandAccentStrong,
+          soft: AarastV3Color.brandAccentSoft,
+        )
+      else if (isVerified)
+        const JourneyTag(
+          key: Key('provider-card-verified'),
+          label: 'موثّق',
+          color: AarastV3Color.cobalt,
+          soft: AarastV3Color.cobaltSoft,
+        )
+      else
+        const JourneyTag(
+          label: 'جديد',
+          color: AarastV3Color.textMuted,
+          soft: AarastV3Color.line,
+        ),
+      if (isFeatured)
+        const JourneyTag(
+          label: 'مميز',
+          color: AarastV3Color.primary,
+          soft: AarastV3Color.primarySoft,
+        ),
+    ];
+    return Semantics(
+      button: true,
+      label: 'عرض تفاصيل $businessName',
+      child: Material(
+        color: AarastV3Color.paper,
+        borderRadius: BorderRadius.circular(22),
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          key: detailsButtonKey,
+          onTap: onDetails,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              _Cover(
+                imageUrl: imageUrl,
+                name: businessName,
+                isFavorite: isFavorite,
+                onFavorite: onFavorite,
+                favoriteButtonKey: favoriteButtonKey,
+              ),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 12, 16, 14),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            businessName,
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                            style: JourneyType.of(
+                              JourneyType.title,
+                              weight: JourneyType.bold,
                             ),
                           ),
-                          if (isVerified) ...[
-                            const SizedBox(width: AppTheme.space4),
-                            const Tooltip(
-                              message: 'مزود موثّق',
-                              child: Icon(
-                                LucideIcons.shieldCheck,
-                                key: Key('provider-card-verified'),
-                                size: 17,
-                                color: AppTheme.success,
-                              ),
+                        ),
+                        if (ratingCount > 0) ...[
+                          const Icon(
+                            LucideIcons.star,
+                            size: 15,
+                            color: AarastV3Color.saffron,
+                          ),
+                          Text(
+                            ' ${ratingAverage.toStringAsFixed(1)} ($ratingCount)',
+                            textDirection: TextDirection.ltr,
+                            style: JourneyType.of(
+                              JourneyType.body,
+                              weight: JourneyType.bold,
                             ),
-                          ],
+                          ),
                         ],
-                      ),
-                      if (hasCategory) ...[
-                        const SizedBox(height: AppTheme.space2),
-                        Text(
-                          categoryLabel!,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: Theme.of(context).textTheme.labelMedium
-                              ?.copyWith(
-                                color: AppTheme.brand,
-                                fontWeight: FontWeight.w800,
-                              ),
-                        ),
                       ],
-                      if (hasRating || hasLocation) ...[
-                        const SizedBox(height: AppTheme.space6),
-                        Row(
-                          children: [
-                            if (hasRating)
-                              _RatingChip(
-                                average: ratingAverage,
-                                count: ratingCount,
-                              ),
-                            if (hasRating && hasLocation)
-                              const SizedBox(width: AppTheme.space8),
-                            if (hasLocation)
-                              Expanded(
-                                child: _LocationLabel(label: locationLabel!),
-                              ),
-                          ],
-                        ),
-                      ],
-                      if (hasPrice) ...[
-                        const SizedBox(height: AppTheme.space6),
-                        Text(
-                          priceLabel!,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: Theme.of(context).textTheme.titleSmall
-                              ?.copyWith(
-                                color: AppTheme.brand,
-                                fontWeight: FontWeight.w800,
-                              ),
-                        ),
-                      ],
-                      if (hasBudget) ...[
-                        const SizedBox(height: AppTheme.space6),
-                        Align(
-                          alignment: AlignmentDirectional.centerStart,
-                          child: _BudgetChip(
-                            label: budgetStatusLabel!,
-                            color: budgetStatusColor ?? AppTheme.focus,
-                          ),
-                        ),
-                      ],
-                      const SizedBox(height: AppTheme.space6),
-                      Semantics(
-                        button: true,
-                        label: 'عرض تفاصيل $businessName',
-                        child: InkWell(
-                          key: detailsButtonKey,
-                          onTap: onDetails,
-                          borderRadius: BorderRadius.circular(
-                            AppTheme.radiusSm,
-                          ),
-                          child: Padding(
-                            padding: const EdgeInsetsDirectional.only(
-                              top: AppTheme.space4,
-                              bottom: AppTheme.space4,
-                              end: AppTheme.space4,
-                            ),
-                            child: Row(
-                              children: [
-                                Flexible(
-                                  child: Text(
-                                    'عرض التفاصيل',
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                    style: Theme.of(context)
-                                        .textTheme
-                                        .labelLarge
-                                        ?.copyWith(
-                                          color: AppTheme.brand,
-                                          fontWeight: FontWeight.w800,
-                                        ),
-                                  ),
-                                ),
-                                const SizedBox(width: AppTheme.space4),
-                                const Icon(
-                                  LucideIcons.chevronLeft,
-                                  size: AppTheme.iconSm,
-                                  color: AppTheme.brand,
-                                ),
-                              ],
-                            ),
-                          ),
+                    ),
+                    if (where.isNotEmpty)
+                      Text(
+                        where,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: JourneyType.of(
+                          JourneyType.small,
+                          color: AarastV3Color.textMuted,
                         ),
                       ),
-                    ],
-                  ),
+                    const SizedBox(height: 8),
+                    Wrap(spacing: 6, runSpacing: 6, children: badges),
+                    const SizedBox(height: 8),
+                    if (price != null)
+                      Text(
+                        [price, ?_clean(priceAgeLabel)].join(' · '),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: JourneyType.of(
+                          JourneyType.bodyLarge,
+                          weight: JourneyType.bold,
+                          color: AarastV3Color.cobalt,
+                        ),
+                      ),
+                    // An unclaimed listing has no one to answer a request
+                    // (409 PROVIDER_NOT_CLAIMED), price or not.
+                    if (!isClaimed || price == null)
+                      Text(
+                        isClaimed
+                            ? 'اطلب عرض تعرف السعر'
+                            : 'ما يستقبل طلبات لين يستلم صاحبه ملفه',
+                        key: isClaimed
+                            ? null
+                            : const Key('provider-card-unclaimed-note'),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: JourneyType.of(
+                          price == null ? JourneyType.bodyLarge : JourneyType.small,
+                          weight: JourneyType.bold,
+                          color: AarastV3Color.textMuted,
+                        ),
+                      ),
+                  ],
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
         ),
       ),
     );
   }
+
+  static String? _clean(String? value) {
+    final trimmed = value?.trim();
+    return trimmed == null || trimmed.isEmpty ? null : trimmed;
+  }
 }
 
-class _VendorImage extends StatelessWidget {
-  const _VendorImage({
+class _Cover extends StatelessWidget {
+  const _Cover({
     required this.imageUrl,
     required this.name,
-    required this.isFeatured,
     required this.isFavorite,
     required this.onFavorite,
     required this.favoriteButtonKey,
@@ -243,7 +235,6 @@ class _VendorImage extends StatelessWidget {
 
   final String? imageUrl;
   final String name;
-  final bool isFeatured;
   final bool isFavorite;
   final VoidCallback? onFavorite;
   final Key? favoriteButtonKey;
@@ -251,182 +242,45 @@ class _VendorImage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final url = imageUrl?.trim();
+    final initial = name.trim().isNotEmpty ? name.trim().characters.first : 'م';
+    final placeholder = ColoredBox(
+      color: AarastV3Color.cobaltSoft,
+      child: Center(
+        child: Text(
+          initial,
+          style: JourneyType.of(
+            JourneyType.count,
+            weight: JourneyType.bold,
+            color: AarastV3Color.cobalt,
+          ),
+        ),
+      ),
+    );
     return SizedBox(
-      width: 92,
-      height: 92,
+      height: 120,
       child: Stack(
         fit: StackFit.expand,
         children: [
-          ClipRRect(
-            borderRadius: BorderRadius.circular(AppTheme.radiusMd),
-            child: url == null || url.isEmpty
-                ? _VendorImagePlaceholder(name: name)
-                : Image.network(
-                    url,
-                    fit: BoxFit.cover,
-                    errorBuilder: (context, error, stack) =>
-                        _VendorImagePlaceholder(name: name),
-                  ),
-          ),
-          if (isFeatured)
-            const PositionedDirectional(
-              start: 6,
-              bottom: 6,
-              child: _FeaturedBadge(),
+          if (url == null || url.isEmpty)
+            placeholder
+          else
+            Image.network(
+              url,
+              fit: BoxFit.cover,
+              errorBuilder: (context, error, stack) => placeholder,
             ),
           PositionedDirectional(
-            top: 4,
-            end: 4,
+            top: 8,
+            end: 8,
             child: DecoratedBox(
               decoration: BoxDecoration(
-                color: AppTheme.surfaceRaised.withValues(alpha: 0.9),
+                color: AarastV3Color.paper.withValues(alpha: 0.92),
                 shape: BoxShape.circle,
               ),
               child: _FavoriteHeart(
                 isFavorite: isFavorite,
                 onTap: onFavorite,
                 buttonKey: favoriteButtonKey,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _VendorImagePlaceholder extends StatelessWidget {
-  const _VendorImagePlaceholder({required this.name});
-
-  final String name;
-
-  @override
-  Widget build(BuildContext context) {
-    final initial = name.trim().isNotEmpty ? name.trim()[0] : 'م';
-    return DecoratedBox(
-      decoration: const BoxDecoration(color: AppTheme.brandMuted),
-      child: Center(
-        child: Text(
-          initial,
-          style: Theme.of(context).textTheme.headlineLarge?.copyWith(
-            color: AppTheme.brand,
-            fontWeight: FontWeight.w800,
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _FeaturedBadge extends StatelessWidget {
-  const _FeaturedBadge();
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-      decoration: BoxDecoration(
-        color: AppTheme.brand,
-        borderRadius: BorderRadius.circular(AppTheme.radiusPill),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          const Icon(LucideIcons.sparkles, size: 11, color: Colors.white),
-          const SizedBox(width: 4),
-          Text(
-            'مميز',
-            style: Theme.of(context).textTheme.labelSmall?.copyWith(
-              color: Colors.white,
-              fontWeight: FontWeight.w800,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _RatingChip extends StatelessWidget {
-  const _RatingChip({required this.average, required this.count});
-
-  final double average;
-  final int count;
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        const Icon(LucideIcons.star, size: 13, color: AppTheme.focus),
-        const SizedBox(width: 3),
-        Text(
-          '${average.toStringAsFixed(1)} ($count)',
-          textDirection: TextDirection.ltr,
-          style: Theme.of(context).textTheme.labelMedium?.copyWith(
-            color: AppTheme.textPrimary,
-            fontWeight: FontWeight.w800,
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-class _LocationLabel extends StatelessWidget {
-  const _LocationLabel({required this.label});
-
-  final String label;
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        const Icon(LucideIcons.mapPin, size: 13, color: AppTheme.textSecondary),
-        const SizedBox(width: 3),
-        Flexible(
-          child: Text(
-            label,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: Theme.of(
-              context,
-            ).textTheme.labelMedium?.copyWith(color: AppTheme.textSecondary),
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-class _BudgetChip extends StatelessWidget {
-  const _BudgetChip({required this.label, required this.color});
-
-  final String label;
-  final Color color;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.09),
-        borderRadius: BorderRadius.circular(AppTheme.radiusPill),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(LucideIcons.target, size: 12, color: color),
-          const SizedBox(width: 4),
-          Flexible(
-            child: Text(
-              label,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                color: color,
-                fontWeight: FontWeight.w800,
               ),
             ),
           ),
@@ -454,13 +308,12 @@ class _FavoriteHeart extends StatelessWidget {
 
     Widget heart = Icon(
       LucideIcons.heart,
-      color: (isFavorite ? AppTheme.brand : AppTheme.textSecondary).withValues(
-        alpha: enabled ? 1 : 0.42,
-      ),
+      color: (isFavorite ? AarastV3Color.rose : AarastV3Color.textMuted)
+          .withValues(alpha: enabled ? 1 : 0.42),
       size: 22,
     );
 
-    // نبضة صغيرة لحظة الحفظ.
+    // A small pulse the moment it is saved.
     if (enabled && isFavorite && !reduceMotion) {
       heart = heart.animate().scale(
         begin: const Offset(0.6, 0.6),
@@ -481,7 +334,7 @@ class _FavoriteHeart extends StatelessWidget {
         splashColor: enabled ? null : Colors.transparent,
         highlightColor: enabled ? null : Colors.transparent,
         hoverColor: enabled ? null : Colors.transparent,
-        child: SizedBox(width: 36, height: 36, child: Center(child: heart)),
+        child: SizedBox(width: 40, height: 40, child: Center(child: heart)),
       ),
     );
   }

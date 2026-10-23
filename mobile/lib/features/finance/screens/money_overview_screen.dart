@@ -16,16 +16,9 @@ import '../../../core/widgets/aarast_ui.dart';
 import '../../account_contexts/account_contexts_api.dart'
     show AccountContextController;
 import '../../catalogs/catalogs_api.dart' show ReferenceCatalogProvider;
-import '../../onboarding/onboarding_api.dart'
-    show GuestOnboardingProvider, GuestPersona;
 import '../../sharing/sharing_api.dart' show SharedMember;
 import '../../wedding_plans/wedding_plans_api.dart'
-    show
-        DashboardSummaryProvider,
-        WeddingPlansProvider,
-        WeddingStageContextLine,
-        WeddingStageDomain,
-        resolveWeddingPlanStage;
+    show DashboardSummaryProvider, WeddingPlansProvider;
 import '../data/finance_local_data_source.dart';
 import '../models/funding_source.dart';
 import '../models/money_share_text.dart';
@@ -86,12 +79,6 @@ class _MoneyOverviewScreenState extends State<MoneyOverviewScreen> {
   @override
   Widget build(BuildContext context) {
     final provider = context.watch<FinanceProvider>();
-    final dashboardSummary = context
-        .watch<DashboardSummaryProvider?>()
-        ?.summary;
-    final stage = dashboardSummary?.planId == widget.weddingPlanId
-        ? resolveWeddingPlanStage(dashboardSummary?.weddingDate)
-        : null;
     final bottomClearance = widget.embedded && provider.canManageMoney
         ? 204.0
         : 132.0;
@@ -185,15 +172,7 @@ class _MoneyOverviewScreenState extends State<MoneyOverviewScreen> {
               const SizedBox(height: 12),
             ],
             ...switch (tab) {
-              0 => _summaryTab(
-                provider,
-                stage == null
-                    ? null
-                    : WeddingStageContextLine(
-                        stage: stage,
-                        domain: WeddingStageDomain.money,
-                      ),
-              ),
+              0 => _summaryTab(provider),
               1 => [
                 _MoneyItemsTab(
                   planId: widget.weddingPlanId,
@@ -242,7 +221,7 @@ class _MoneyOverviewScreenState extends State<MoneyOverviewScreen> {
     return AarastScreenFrame(maxWidth: 560, child: content);
   }
 
-  List<Widget> _summaryTab(FinanceProvider provider, Widget? stageLine) {
+  List<Widget> _summaryTab(FinanceProvider provider) {
     final summary = provider.summary;
     return [
       _MoneySummaryCard(summary: summary),
@@ -281,7 +260,6 @@ class _MoneyOverviewScreenState extends State<MoneyOverviewScreen> {
         onBudget: () =>
             context.push(AppRouter.moneyBudget(widget.weddingPlanId)),
       ),
-      if (stageLine != null) ...[const SizedBox(height: 12), stageLine],
     ];
   }
 
@@ -306,13 +284,11 @@ class _MoneyOverviewScreenState extends State<MoneyOverviewScreen> {
       return moneyStarterPersonaFromCode(selectedPlan?.persona);
     }
 
-    final localDraft = context.watch<GuestOnboardingProvider?>()?.draft;
-    if (localDraft?.guestPlanId == widget.weddingPlanId) {
-      return switch (localDraft?.persona) {
-        GuestPersona.groom => MoneyStarterPersona.groom,
-        GuestPersona.bride => MoneyStarterPersona.bride,
-        _ => MoneyStarterPersona.neutral,
-      };
+    // A plan kept on the phone has its persona in its summary (field test
+    // Q01).
+    final summary = context.watch<DashboardSummaryProvider?>()?.summary;
+    if (summary?.planId == widget.weddingPlanId) {
+      return moneyStarterPersonaFromCode(summary?.persona);
     }
     return MoneyStarterPersona.neutral;
   }

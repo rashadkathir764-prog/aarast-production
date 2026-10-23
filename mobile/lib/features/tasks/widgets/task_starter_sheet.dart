@@ -67,7 +67,7 @@ class _TaskStarterSheetState extends State<TaskStarterSheet> {
     if (wedding == null || days == null) return null;
     final date = DateUtils.dateOnly(wedding).subtract(Duration(days: days));
     final today = DateUtils.dateOnly(DateTime.now());
-    return date.isBefore(today) ? 'الحين' : formatArabicDayMonth(date);
+    return date.isBefore(today) ? 'الآن' : formatArabicDayMonth(date);
   }
 
   @override

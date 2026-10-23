@@ -40,17 +40,9 @@ extension _ProviderTabs on _ProviderMarketplaceScreenState {
     finance.loadMoney(planId);
   }
 
-  void _openSearch(List<String> tabs) {
-    _selectTab('استكشف', tabs);
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) _searchFocusNode.requestFocus();
-    });
-  }
-
   Widget _boardTab(
     ProviderMarketplaceProvider marketplace,
     List<ProviderBoardRow> board,
-    WeddingPlanStageState? stage,
     List<String> tabs,
   ) {
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -64,13 +56,6 @@ extension _ProviderTabs on _ProviderMarketplaceScreenState {
         physics: const AlwaysScrollableScrollPhysics(),
         padding: EdgeInsets.fromLTRB(16, 14, 16, widget.embedded ? 124 : 28),
         children: [
-          if (stage != null) ...[
-            WeddingStageContextLine(
-              stage: stage,
-              domain: WeddingStageDomain.providers,
-            ),
-            const SizedBox(height: 12),
-          ],
           if (marketplace.quoteRequestsErrorMessage != null) ...[
             JourneyListNotice(
               offline: false,
@@ -177,11 +162,7 @@ extension _ProviderTabs on _ProviderMarketplaceScreenState {
     );
   }
 
-  Widget _exploreTab(
-    ProviderMarketplaceProvider provider,
-    WeddingPlanStageState? stage, {
-    required bool showStage,
-  }) {
+  Widget _exploreTab(ProviderMarketplaceProvider provider) {
     return RefreshIndicator(
       color: AarastV3Color.cobalt,
       onRefresh: () => _refreshMarketplace(provider),
@@ -189,37 +170,43 @@ extension _ProviderTabs on _ProviderMarketplaceScreenState {
         controller: _scrollController,
         padding: EdgeInsets.fromLTRB(16, 14, 16, widget.embedded ? 124 : 28),
         children: [
-          if (showStage && stage != null) ...[
-            WeddingStageContextLine(
-              stage: stage,
-              domain: WeddingStageDomain.providers,
-            ),
-            const SizedBox(height: 12),
-          ],
           if (!provider.includesAccountData) ...[
-            const _LoginRequiredCard(),
+            const JourneyNote(
+              key: Key('marketplace-login-note'),
+              text: 'تقدر تتصفح الآن. تطلب عروض وتتابعها بعد ما تحفظ خطتك برقم جوالك.',
+              icon: LucideIcons.logIn,
+              color: AarastV3Color.cobalt,
+              soft: AarastV3Color.cobaltSoft,
+            ),
             const SizedBox(height: 12),
           ],
           if (provider.includesAccountData &&
               provider.favoriteProvidersErrorMessage != null) ...[
-            KeyedSubtree(
-              key: const Key('marketplace-favorites-stale-warning'),
-              child: _ErrorCard(
-                title: 'تعذر تحديث المحفوظات',
-                message:
-                    'نعرض آخر حالة محفوظة مؤقتًا؛ قد تكون أرقام الحفظ '
-                    'وعلامات القلب أدناه قديمة حتى تنجح إعادة المحاولة.',
-                onRetry: provider.loadMarketplace,
+            const JourneyNote(
+              key: Key('marketplace-favorites-stale-warning'),
+              text: 'ما قدرنا نحدّث المحفوظين، فعلامات القلب ممكن تكون قديمة.',
+              icon: LucideIcons.alertTriangle,
+              color: AarastV3Color.danger,
+              soft: AarastV3Color.dangerSoft,
+            ),
+            Align(
+              alignment: AlignmentDirectional.centerStart,
+              child: JourneyTextAction(
+                label: 'حاول مرة ثانية',
+                color: AarastV3Color.danger,
+                onPressed: provider.loadMarketplace,
               ),
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 4),
           ],
-          _MarketplaceSearch(
-            controller: _searchController,
-            focusNode: _searchFocusNode,
-            provider: provider,
-          ),
-          const SizedBox(height: 10),
+          if (_searchShown) ...[
+            _MarketplaceSearch(
+              controller: _searchController,
+              focusNode: _searchFocusNode,
+              provider: provider,
+            ),
+            const SizedBox(height: 10),
+          ],
           _FilterChips(provider: provider),
           if (_weddingLocation != null &&
               !_weddingLocation!.hasRequiredLocation) ...[

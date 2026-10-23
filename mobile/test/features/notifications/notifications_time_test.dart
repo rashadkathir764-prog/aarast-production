@@ -44,7 +44,7 @@ void main() {
   test('times read the way people say them', () {
     expect(
       notificationWhenLabel(DateTime(2026, 10, 23, 14, 59, 30), now),
-      'الحين',
+      'الآن',
     );
     expect(
       notificationWhenLabel(DateTime(2026, 10, 23, 14, 30), now),

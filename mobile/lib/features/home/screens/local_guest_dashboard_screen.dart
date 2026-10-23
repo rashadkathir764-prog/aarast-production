@@ -20,8 +20,7 @@ import '../../wedding_plans/wedding_plans_api.dart'
         DashboardSummary,
         DashboardSummaryProvider,
         QuickAddSignals,
-        buildCanonicalQuickAddActions,
-        resolveWeddingPlanStage;
+        buildCanonicalQuickAddActions;
 import '../data/dashboard_summary_sources.dart';
 
 class LocalGuestDashboardScreen extends StatefulWidget {
@@ -66,10 +65,6 @@ class _LocalGuestDashboardScreenState extends State<LocalGuestDashboardScreen> {
 
     return PlanShellChrome(
       activeIndex: 0,
-      contextLabel: dashboardSummary.title,
-      stageLabel: resolveWeddingPlanStage(
-        dashboardSummary.weddingDate,
-      ).compactLabel,
       showQuickFab: true,
       onQuickAdd: () => _showQuickAdd(context, planId),
       onTabSelected: (index) {

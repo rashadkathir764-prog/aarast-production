@@ -4,6 +4,9 @@ import 'package:lucide_icons/lucide_icons.dart';
 import 'package:provider/provider.dart';
 
 import '../../core/diagnostics/app_logger.dart';
+import '../../core/offline/offline_status_widgets.dart';
+import '../../core/offline/offline_sync_service.dart';
+import '../../core/offline/sync_status.dart';
 import '../../core/routing/app_router.dart';
 import '../../core/routing/root_tab_back_scope.dart';
 import '../../core/theme/app_theme.dart';
@@ -31,7 +34,6 @@ import '../wedding_plans/wedding_plans_api.dart'
         lastCanonicalQuickAddAction,
         lastCanonicalQuickAddActionId,
         rememberCanonicalQuickAddAction,
-        resolveWeddingPlanStage,
         shouldShowPlanQuickAdd;
 import 'widgets/aarast_plan_chrome.dart';
 import 'widgets/plan_shell_chrome.dart';
@@ -254,21 +256,20 @@ class _OwnerMainShellState extends State<_OwnerMainShell> {
       );
     }
     final selectedPlanId = widget.weddingPlanId;
-    final dashboardSummary = context.watch<DashboardSummaryProvider>().summary;
-    final stageLabel = dashboardSummary?.planId == selectedPlanId
-        ? resolveWeddingPlanStage(dashboardSummary?.weddingDate).compactLabel
-        : null;
     final finance = context.watch<FinanceProvider?>();
     final canManageCurrentMoney =
         finance?.loadedPlanId == selectedPlanId &&
         (finance?.canManageMoney ?? false);
     final moneyStarterVisible =
         _index == 1 && finance != null && shouldShowMoneyStarter(finance);
+    final offline =
+        context.watch<OfflineSyncService?>()?.state == SyncState.offline;
     final showQuickFab =
         !moneyStarterVisible &&
         shouldShowPlanQuickAdd(
           tabIndex: _index,
           canManageMoney: _index != 1 || canManageCurrentMoney,
+          guestsWaitForConnection: offline,
         );
 
     return RootTabBackScope(
@@ -281,8 +282,8 @@ class _OwnerMainShellState extends State<_OwnerMainShell> {
           activeIndex: _index,
           onTabSelected: _onItemTapped,
           showQuickFab: showQuickFab,
-          contextLabel: selected!.displayName,
-          stageLabel: stageLabel,
+          // The same offline line as the plan-route shell (c04, w29).
+          topStatus: const OfflineStatusBanner(),
           onQuickAdd: _showQuickAdd,
           onQuickAddLongPress: _runLastQuickAdd,
           backgroundColor: AppTheme.canvas,

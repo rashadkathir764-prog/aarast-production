@@ -331,7 +331,7 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
           const SizedBox(height: 8),
           Text(
             _signingIn
-                ? 'وطلعناك من كل الأجهزة لحمايتك. ندخّلك الحين بكلمة المرور الجديدة.'
+                ? 'وطلعناك من كل الأجهزة لحمايتك. ندخّلك الآن بكلمة المرور الجديدة.'
                 : 'وطلعناك من كل الأجهزة لحمايتك. ادخل بكلمة المرور الجديدة.',
             textAlign: TextAlign.center,
             style: Theme.of(context).textTheme.bodyMedium?.copyWith(

@@ -85,14 +85,19 @@ String planQuickAddLabelForTab(int tabIndex) {
 /// Keeps quick-add visibility identical across the production home shell and
 /// the plan-scoped shell. Money shows it only at the tab root; providers never
 /// shows it because its primary action lives inside the marketplace flow.
+/// Guests hide it while an account plan has no connection, since adding a
+/// guest is sent at once (w29).
 bool shouldShowPlanQuickAdd({
   required int tabIndex,
   bool isRootDestination = true,
   bool canManageMoney = false,
+  bool guestsWaitForConnection = false,
 }) {
   const moneyTabIndex = 1;
+  const guestsTabIndex = 3;
   const providersTabIndex = 4;
   return tabIndex != providersTabIndex &&
+      (tabIndex != guestsTabIndex || !guestsWaitForConnection) &&
       (tabIndex != moneyTabIndex || canManageMoney) &&
       (tabIndex != moneyTabIndex || isRootDestination);
 }

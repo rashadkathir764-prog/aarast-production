@@ -18,6 +18,7 @@ class JourneyListState extends StatelessWidget {
     required this.phase,
     required this.section,
     this.emptyTitle,
+    this.emptyMessage,
     this.emptyAction,
     this.onEmptyAction,
     this.onRetry,
@@ -30,6 +31,9 @@ class JourneyListState extends StatelessWidget {
 
   /// «ما أضفت ضيوف».
   final String? emptyTitle;
+
+  /// Why it is empty, under the title.
+  final String? emptyMessage;
 
   /// «أضف أول ضيف».
   final String? emptyAction;
@@ -107,6 +111,17 @@ class JourneyListState extends StatelessWidget {
               weight: JourneyType.bold,
             ),
           ),
+          if (phase == JourneyListPhase.empty && emptyMessage != null) ...[
+            const SizedBox(height: 6),
+            Text(
+              emptyMessage!,
+              textAlign: TextAlign.center,
+              style: JourneyType.of(
+                JourneyType.body,
+                color: AarastV3Color.textMuted,
+              ),
+            ),
+          ],
           if (action != null && onAction != null) ...[
             const SizedBox(height: 12),
             JourneyButton(

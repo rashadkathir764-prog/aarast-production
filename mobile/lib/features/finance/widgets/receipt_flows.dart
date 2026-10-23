@@ -32,7 +32,7 @@ Future<XFile?> pickReceiptImage(BuildContext context) async {
               color: AarastV3Color.primary,
               soft: AarastV3Color.primarySoft,
               title: 'صوّر الإيصال',
-              subtitle: 'بالكاميرا الحين',
+              subtitle: 'بالكاميرا الآن',
               onTap: () => Navigator.of(sheetContext).pop(ImageSource.camera),
             ),
             JourneyListRow(
@@ -90,7 +90,7 @@ Future<bool> saveReceiptImage(
     return false;
   } catch (_) {
     if (context.mounted) {
-      AarastToast.showError(context, 'ما قدرنا نحفظ الإيصال الحين');
+      AarastToast.showError(context, 'ما قدرنا نحفظ الإيصال الآن');
     }
     return false;
   }

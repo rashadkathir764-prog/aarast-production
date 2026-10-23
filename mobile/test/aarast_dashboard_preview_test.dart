@@ -99,7 +99,6 @@ Future<void> _pumpDashboard(
         textDirection: TextDirection.rtl,
         child: PlanShellChrome(
           activeIndex: 0,
-          contextLabel: summary.title,
           showQuickFab: true,
           onQuickAdd: () {},
           onTabSelected: (_) {},

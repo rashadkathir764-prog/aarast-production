@@ -15,43 +15,34 @@ class _BudgetMatchedServicesSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final shown = services.take(5).toList();
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        AarastSectionHeader(
-          title: 'خدمات مناسبة لهذا البند',
-          icon: LucideIcons.store,
-        ),
-        const SizedBox(height: 10),
+        const JourneySectionTitle('خدمات قريبة من بندك'),
         LayoutBuilder(
           builder: (context, constraints) {
             final cardWidth = constraints.maxWidth < 360
                 ? constraints.maxWidth - 20
-                : 320.0;
+                : 300.0;
             return SingleChildScrollView(
               key: const Key('budget-matched-services-carousel'),
               scrollDirection: Axis.horizontal,
-              physics: const BouncingScrollPhysics(),
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  for (
-                    var index = 0;
-                    index < services.take(5).length;
-                    index++
-                  ) ...[
+                  for (var index = 0; index < shown.length; index++) ...[
                     SizedBox(
                       width: cardWidth,
                       child: _BudgetMatchedServiceCard(
                         intent: intent,
-                        service: services[index],
+                        service: shown[index],
                         onOpenProvider: () =>
-                            onOpenProvider(services[index].providerId),
-                        onRequestQuote: () => onRequestQuote(services[index]),
+                            onOpenProvider(shown[index].providerId),
+                        onRequestQuote: () => onRequestQuote(shown[index]),
                       ),
                     ),
-                    if (index < services.take(5).length - 1)
-                      const SizedBox(width: 10),
+                    if (index < shown.length - 1) const SizedBox(width: 10),
                   ],
                 ],
               ),
@@ -82,26 +73,27 @@ class _BudgetMatchedServiceCard extends StatelessWidget {
     final status = _serviceBudgetStatus(intent, price);
     final color = _serviceBudgetStatusColor(status);
     final providerName = service.provider?.businessName ?? 'مزود';
-    final categoryName = service.category?.nameAr;
-    final matchReason = _serviceBudgetReason(intent, service, price, status);
-
-    return AarastCard(
+    final category = service.category?.nameAr.trim() ?? '';
+    final facts = [
+      price == null
+          ? 'السعر بالعرض'
+          : formatCompactMoney(price, currencyCode: service.currency ?? 'YER'),
+      if (category.isNotEmpty) category,
+      ?service.city?.nameAr,
+    ].join(' · ');
+    return JourneyBox(
       padding: const EdgeInsets.all(14),
-      border: Border.all(color: color.withValues(alpha: 0.20)),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Container(
-                width: 44,
-                height: 44,
-                decoration: BoxDecoration(
-                  color: color.withValues(alpha: 0.10),
-                  borderRadius: BorderRadius.circular(AppTheme.radiusMd),
-                ),
-                child: Icon(LucideIcons.wrench, color: color),
+              JourneyIconTile(
+                icon: providerServiceIcon(service.category?.nameAr ?? service.title),
+                color: AarastV3Color.cobalt,
+                soft: AarastV3Color.cobaltSoft,
+                size: 42,
               ),
               const SizedBox(width: 12),
               Expanded(
@@ -112,99 +104,63 @@ class _BudgetMatchedServiceCard extends StatelessWidget {
                       service.title,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                        color: AppTheme.textPrimary,
-                        fontWeight: FontWeight.w900,
+                      style: JourneyType.of(
+                        JourneyType.bodyLarge,
+                        weight: JourneyType.bold,
                       ),
                     ),
-                    const SizedBox(height: 3),
                     Text(
                       providerName,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: AppTheme.textSecondary,
-                        fontWeight: FontWeight.w700,
+                      style: JourneyType.of(
+                        JourneyType.small,
+                        color: AarastV3Color.textMuted,
                       ),
                     ),
                   ],
                 ),
               ),
               const SizedBox(width: 8),
-              AarastStatusPill(
+              JourneyTag(
                 label: _serviceBudgetStatusLabel(status),
                 color: color,
+                soft: color.withValues(alpha: 0.12),
               ),
             ],
           ),
           const SizedBox(height: 10),
-          Wrap(
-            spacing: 6,
-            runSpacing: 6,
-            children: [
-              _ProviderFactPill(
-                icon: LucideIcons.badgeDollarSign,
-                text: price == null
-                    ? 'السعر غير محدد'
-                    : '${_formatMoney(price)} ${service.currency ?? 'ر.ي'}',
-                color: color,
-              ),
-              if (categoryName != null && categoryName.trim().isNotEmpty)
-                _ProviderFactPill(
-                  icon: LucideIcons.tags,
-                  text: categoryName,
-                  color: AppTheme.brand,
-                ),
-              if (service.city != null)
-                _ProviderFactPill(
-                  icon: LucideIcons.mapPin,
-                  text: service.city!.nameAr,
-                  color: AppTheme.textSecondary,
-                ),
-            ],
-          ),
-          const SizedBox(height: 10),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-            decoration: BoxDecoration(
-              color: color.withValues(alpha: 0.08),
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: color.withValues(alpha: 0.16)),
+          Text(
+            facts,
+            style: JourneyType.of(
+              JourneyType.body,
+              weight: JourneyType.bold,
+              color: AarastV3Color.cobalt,
             ),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Icon(LucideIcons.checkCircle, color: color, size: 17),
-                const SizedBox(width: 7),
-                Expanded(
-                  child: Text(
-                    matchReason,
-                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: AppTheme.textPrimary,
-                      fontWeight: FontWeight.w800,
-                      height: 1.35,
-                    ),
-                  ),
-                ),
-              ],
+          ),
+          const SizedBox(height: 4),
+          Text(
+            _serviceBudgetReason(intent, service, price, status),
+            style: JourneyType.of(
+              JourneyType.small,
+              color: AarastV3Color.textMuted,
             ),
           ),
           const SizedBox(height: 10),
           Row(
             children: [
               Expanded(
-                child: OutlinedButton.icon(
+                child: JourneyButton.quiet(
+                  label: 'التفاصيل',
                   onPressed: onOpenProvider,
-                  icon: const Icon(LucideIcons.info, size: 18),
-                  label: const Text('التفاصيل'),
                 ),
               ),
               const SizedBox(width: 8),
               Expanded(
-                child: FilledButton.icon(
+                child: JourneyButton(
+                  label: 'اطلب عرض',
+                  background: AarastV3Color.cobalt,
                   onPressed: onRequestQuote,
-                  icon: const Icon(LucideIcons.fileText, size: 18),
-                  label: const Text('طلب عرض'),
                 ),
               ),
             ],
@@ -226,43 +182,16 @@ class _LocationContextCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return AarastCard(
+    return JourneyBox(
       key: const Key('marketplace-location-prompt'),
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-      color: AppTheme.surfaceRaised,
-      border: Border.all(color: AppTheme.border),
-      onTap: onCompleteLocation,
-      child: Row(
-        children: [
-          Container(
-            width: 34,
-            height: 34,
-            decoration: BoxDecoration(
-              color: AppTheme.brandMuted,
-              borderRadius: BorderRadius.circular(AppTheme.radiusSm),
-            ),
-            child: const Icon(
-              LucideIcons.mapPin,
-              color: AppTheme.focus,
-              size: 18,
-            ),
-          ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Text(
-              'أكمل موقع الزفاف لتحسين نتائج المدينة',
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-              style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                color: AppTheme.textPrimary,
-                fontWeight: FontWeight.w800,
-                height: 1.35,
-              ),
-            ),
-          ),
-          const SizedBox(width: 6),
-          const Icon(LucideIcons.chevronLeft, color: AppTheme.focus, size: 18),
-        ],
+      padding: EdgeInsets.zero,
+      child: JourneyListRow(
+        icon: LucideIcons.mapPin,
+        color: AarastV3Color.cobalt,
+        soft: AarastV3Color.cobaltSoft,
+        title: 'وين عرسك؟',
+        subtitle: 'كمّل مكان العرس ونرتب لك مزودين مدينتك أول',
+        onTap: onCompleteLocation,
       ),
     );
   }
@@ -276,22 +205,15 @@ class _ResultsHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final title = cityLabel?.trim().isNotEmpty == true
-        ? 'مزودين في ${cityLabel!.trim()}'
-        : 'المزودين المتاحون';
-    return Row(
-      children: [
-        Expanded(
-          child: Text(
-            title,
-            style: Theme.of(context).textTheme.titleLarge?.copyWith(
-              color: AppTheme.textPrimary,
-              fontWeight: FontWeight.w900,
-            ),
-          ),
-        ),
-        AarastStatusPill(label: '$count مزود', color: AppTheme.brand),
-      ],
+    final city = cityLabel?.trim();
+    final where = city == null || city.isEmpty ? '' : ' في $city';
+    return Text(
+      '${arabicCount(count, one: 'مزود واحد', two: 'مزودين اثنين', few: 'مزودين', many: 'مزود')}$where',
+      style: JourneyType.of(
+        JourneyType.body,
+        weight: JourneyType.bold,
+        color: AarastV3Color.textMuted,
+      ),
     );
   }
 }
@@ -333,7 +255,7 @@ class _ProviderCard extends StatelessWidget {
         ? null
         : _serviceBudgetStatus(budgetIntent!, price);
     final budgetColor = budgetStatus == null
-        ? AppTheme.focus
+        ? AarastV3Color.brandAccentStrong
         : _serviceBudgetStatusColor(budgetStatus);
 
     return ProviderResultCard(
@@ -341,11 +263,15 @@ class _ProviderCard extends StatelessWidget {
       businessName: provider.businessName,
       isFeatured: provider.isFeatured,
       isVerified: provider.isVerified,
+      isClaimed: provider.isClaimed,
       ratingAverage: provider.ratingAverage,
       ratingCount: provider.ratingCount,
       categoryLabel: category,
       locationLabel: location,
       priceLabel: _providerPriceRangeLabel(provider),
+      priceAgeLabel: providerPriceAgeLabel(
+        provider.serviceSummary?.pricesUpdatedAt,
+      ),
       imageUrl: _providerImageUrl(provider),
       budgetStatusLabel: budgetStatus == null
           ? null
@@ -403,49 +329,4 @@ String? _providerPriceRangeLabel(MarketplaceProvider provider) {
   final unit = currencyLabelAr(currency);
   if (min == max) return '${_formatMoney(min)} $unit';
   return '${_formatMoney(min)} - ${_formatMoney(max)} $unit';
-}
-
-class _ProviderFactPill extends StatelessWidget {
-  const _ProviderFactPill({
-    required this.icon,
-    required this.text,
-    required this.color,
-  });
-
-  final IconData icon;
-  final String text;
-  final Color color;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
-      decoration: BoxDecoration(
-        color: AppTheme.surfaceRaised,
-        borderRadius: BorderRadius.circular(AppTheme.radiusSm),
-        border: Border.all(color: AppTheme.border),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, color: color, size: 15),
-          const SizedBox(width: 4),
-          Flexible(
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 150),
-              child: Text(
-                text,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                  color: AppTheme.textSecondary,
-                  fontWeight: FontWeight.w900,
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
 }

@@ -1,7 +1,11 @@
 import '../../../core/offline/local_database.dart';
 import '../../../core/offline/offline_tables.dart';
 import '../../onboarding/onboarding_api.dart'
-    show GeneratedDashboardSeed, GuestOnboardingDraft, GuestOnboardingStorage;
+    show
+        GeneratedDashboardSeed,
+        GuestOnboardingDraft,
+        GuestOnboardingStorage,
+        GuestPersona;
 import '../../wedding_plans/wedding_plans_api.dart'
     show
         DashboardFinancialWarning,
@@ -136,6 +140,11 @@ class LocalGuestDashboardSummary {
       dataScope: 'LOCAL',
       accountBacked: false,
       planId: plan.guestPlanId ?? 'local-guest-plan',
+      persona: switch (plan.persona) {
+        GuestPersona.groom => 'GROOM',
+        GuestPersona.bride => 'BRIDE',
+        _ => null,
+      },
       title: seed.title,
       currency: plan.currency ?? 'YER',
       weddingDate: plan.weddingDate,

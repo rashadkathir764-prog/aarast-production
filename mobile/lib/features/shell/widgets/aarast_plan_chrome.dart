@@ -181,16 +181,6 @@ class AarastPlanNavigationBar extends StatelessWidget {
     super.key,
   }) : items = _planItems;
 
-  static String planDestinationLabel(int index) {
-    return switch (index) {
-      1 => 'المال',
-      2 => 'المهام',
-      3 => 'الضيوف',
-      4 => 'المزودين',
-      _ => 'الرئيسية',
-    };
-  }
-
   static const _planItems = [
     AarastNavigationItem(icon: LucideIcons.home, label: 'الرئيسية'),
     AarastNavigationItem(icon: LucideIcons.wallet, label: 'المال'),
@@ -250,86 +240,6 @@ class AarastPlanNavigationBar extends StatelessWidget {
   }
 }
 
-class AarastPlanContextBar extends StatelessWidget {
-  const AarastPlanContextBar({
-    required this.planName,
-    required this.destination,
-    this.stageLabel,
-    super.key,
-  });
-
-  final String planName;
-  final String destination;
-  final String? stageLabel;
-
-  @override
-  Widget build(BuildContext context) {
-    final trimmedPlanName = planName.trim();
-    final effectivePlanName = trimmedPlanName.isEmpty
-        ? 'خطة الزفاف'
-        : trimmedPlanName;
-    final effectiveDestination = stageLabel?.trim().isNotEmpty == true
-        ? '$destination · ${stageLabel!.trim()}'
-        : destination;
-    final semanticLabel =
-        'الخطة الحالية: $effectivePlanName، القسم الحالي: $effectiveDestination';
-
-    return Material(
-      color: AppTheme.canvas,
-      child: SafeArea(
-        bottom: false,
-        child: Semantics(
-          header: true,
-          label: semanticLabel,
-          excludeSemantics: true,
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(20, 5, 20, 5),
-            child: Row(
-              children: [
-                Container(
-                  width: 3,
-                  height: 28,
-                  decoration: const BoxDecoration(color: AarastV3Color.primary),
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        effectiveDestination,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                          color: AarastV3Color.primary,
-                          fontSize: 10,
-                          height: 1,
-                          fontWeight: FontWeight.w900,
-                        ),
-                      ),
-                      Text(
-                        effectivePlanName,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                          color: AppTheme.textPrimary,
-                          fontSize: 13,
-                          height: 1.15,
-                          fontWeight: FontWeight.w900,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
 class AarastQuickActionButton extends StatelessWidget {
   const AarastQuickActionButton({
     required this.onPressed,
@@ -337,6 +247,7 @@ class AarastQuickActionButton extends StatelessWidget {
     this.icon = LucideIcons.plus,
     this.label = 'إضافة',
     this.expanded = true,
+    this.color = AarastV3Color.primary,
     super.key,
   });
 
@@ -345,6 +256,10 @@ class AarastQuickActionButton extends StatelessWidget {
   final IconData icon;
   final String label;
   final bool expanded;
+
+  /// The tab's own colour: «إضافة مهمة» is the tasks' amber, «إضافة ضيف»
+  /// the guests' lilac (d01, e01).
+  final Color color;
 
   @override
   Widget build(BuildContext context) {
@@ -364,7 +279,7 @@ class AarastQuickActionButton extends StatelessWidget {
         height: 52,
         padding: EdgeInsets.symmetric(horizontal: expanded ? 16 : 0),
         decoration: BoxDecoration(
-          color: AarastV3Color.primary,
+          color: color,
           borderRadius: BorderRadius.circular(18),
           border: Border.all(color: Colors.white.withValues(alpha: 0.72)),
         ),

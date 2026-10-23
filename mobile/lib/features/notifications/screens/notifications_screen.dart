@@ -344,7 +344,7 @@ List<(String, List<AarastNotification>)> groupNotificationsByTime(
 String notificationWhenLabel(DateTime at, DateTime now) {
   final local = at.toLocal();
   final minutes = now.difference(local).inMinutes;
-  if (minutes < 1) return 'الحين';
+  if (minutes < 1) return 'الآن';
   if (minutes < 60) {
     return 'قبل ${arabicCount(minutes, one: 'دقيقة', two: 'دقيقتين', few: 'دقائق', many: 'دقيقة')}';
   }

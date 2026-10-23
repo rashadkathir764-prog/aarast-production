@@ -55,7 +55,7 @@ String _guestCount(int count) =>
 /// «آخر تحديث قبل 20 دقيقة».
 String _lastUpdate(DateTime at) {
   final minutes = DateTime.now().difference(at).inMinutes;
-  if (minutes < 1) return 'آخر تحديث الحين';
+  if (minutes < 1) return 'آخر تحديث الآن';
   if (minutes < 60) {
     return 'آخر تحديث قبل ${arabicCount(minutes, one: 'دقيقة', two: 'دقيقتين', few: 'دقائق', many: 'دقيقة')}';
   }

@@ -13,6 +13,10 @@ class _MarketplaceSearch extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    OutlineInputBorder border(Color color, double width) => OutlineInputBorder(
+      borderRadius: BorderRadius.circular(18),
+      borderSide: BorderSide(color: color, width: width),
+    );
     return ValueListenableBuilder<TextEditingValue>(
       valueListenable: controller,
       builder: (context, value, _) {
@@ -22,12 +26,27 @@ class _MarketplaceSearch extends StatelessWidget {
           focusNode: focusNode,
           textInputAction: TextInputAction.search,
           onSubmitted: provider.setSearch,
+          style: JourneyType.of(JourneyType.bodyLarge, weight: JourneyType.bold),
+          cursorColor: AarastV3Color.cobalt,
           decoration: InputDecoration(
-            hintText: 'ابحث عن مزود أو خدمة',
-            prefixIcon: const Icon(LucideIcons.search),
+            hintText: 'دوّر على مزود أو خدمة',
+            hintStyle: JourneyType.of(
+              JourneyType.bodyLarge,
+              color: AarastV3Color.textFaint,
+            ),
+            filled: true,
+            fillColor: AarastV3Color.paper,
+            prefixIcon: const Icon(
+              LucideIcons.search,
+              color: AarastV3Color.textMuted,
+            ),
+            border: border(AarastV3Color.line, 1),
+            enabledBorder: border(AarastV3Color.line, 1),
+            focusedBorder: border(AarastV3Color.cobalt, 2),
             suffixIcon: value.text.isEmpty
                 ? null
                 : IconButton(
+                    tooltip: 'امسح البحث',
                     onPressed: () {
                       controller.clear();
                       provider.setSearch('');
@@ -41,8 +60,7 @@ class _MarketplaceSearch extends StatelessWidget {
   }
 }
 
-/// شريط فئات أفقي أنيق — "الكل" ثم فئات المزودين على شكل حبوب،
-/// المحددة بلون العنّاب، مع زر تصفية للمدينة على اليسار.
+/// f02 the kinds of providers as chips, and «فلتر» (w30) for the place.
 class _FilterChips extends StatelessWidget {
   const _FilterChips({required this.provider});
 
@@ -51,34 +69,51 @@ class _FilterChips extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final selectedCategory = provider.categoryId;
-    final categories = provider.categories;
-
+    final city = provider.cities
+        .where((city) => city.id == provider.cityId)
+        .firstOrNull;
     return SizedBox(
-      height: 38,
+      height: 42,
       child: Row(
         children: [
-          _CityFilterChip(provider: provider),
-          const SizedBox(width: 8),
           Expanded(
             child: ListView(
               scrollDirection: Axis.horizontal,
               padding: EdgeInsets.zero,
-              physics: const BouncingScrollPhysics(),
               children: [
-                AarastFilterPill(
+                JourneyChip(
+                  key: const ValueKey('category-chip-all'),
                   label: 'الكل',
                   selected: selectedCategory == null,
+                  selectedColor: AarastV3Color.cobalt,
                   onTap: () => provider.setCategory(null),
                 ),
-                for (final category in categories) ...[
+                for (final category in provider.categories) ...[
                   const SizedBox(width: 8),
-                  AarastFilterPill(
+                  JourneyChip(
+                    key: ValueKey('category-chip-${category.id}'),
                     label: category.nameAr,
+                    icon: providerServiceIcon(category.nameAr),
                     selected: selectedCategory == category.id,
+                    selectedColor: AarastV3Color.cobalt,
                     onTap: () => provider.setCategory(category.id),
                   ),
                 ],
               ],
+            ),
+          ),
+          const SizedBox(width: 8),
+          JourneyChip(
+            key: const Key('city-filter-trigger'),
+            label: city?.nameAr ?? 'فلتر',
+            icon: LucideIcons.slidersHorizontal,
+            selected: city != null,
+            selectedColor: AarastV3Color.cobalt,
+            onTap: () => showAarastBottomSheet<void>(
+              context: context,
+              isScrollControlled: true,
+              useSafeArea: true,
+              builder: (_) => _DirectoryFilterSheet(provider: provider),
             ),
           ),
         ],
@@ -87,135 +122,103 @@ class _FilterChips extends StatelessWidget {
   }
 }
 
-class _CityFilterChip extends StatelessWidget {
-  const _CityFilterChip({required this.provider});
+/// w30 «فلتر»: the kind and the place, and how many that shows.
+class _DirectoryFilterSheet extends StatelessWidget {
+  const _DirectoryFilterSheet({required this.provider});
 
   final ProviderMarketplaceProvider provider;
 
-  // معرّفات المدن UUIDs من الخادم — لا تصادم مع هذا الحارس.
-  static const _allCitiesSentinel = '__all_cities__';
-
   @override
   Widget build(BuildContext context) {
-    final selectedCity = provider.cityId;
-    final hasCity = selectedCity != null;
-    final cityLabel = hasCity
-        ? provider.cities
-              .firstWhere(
-                (city) => city.id == selectedCity,
-                orElse: () => const MarketplaceCity(id: '', nameAr: 'المدينة'),
-              )
-              .nameAr
-        : null;
-
-    return ConstrainedBox(
-      constraints: const BoxConstraints(maxWidth: 118),
-      child: InkWell(
-        key: const Key('city-filter-trigger'),
-        onTap: () => _showCityPicker(context),
-        borderRadius: BorderRadius.circular(AppTheme.radiusPill),
-        child: Container(
-          alignment: Alignment.center,
-          padding: const EdgeInsets.symmetric(horizontal: 10),
-          decoration: BoxDecoration(
-            color: hasCity ? AppTheme.brandMuted : AppTheme.surfaceRaised,
-            borderRadius: BorderRadius.circular(AppTheme.radiusPill),
-            border: Border.all(
-              color: hasCity ? AppTheme.brand : AppTheme.border,
+    return ListenableBuilder(
+      listenable: provider,
+      builder: (context, _) {
+        Widget label(String text) => Padding(
+          padding: const EdgeInsets.only(bottom: 8),
+          child: Text(
+            text,
+            style: JourneyType.of(
+              JourneyType.body,
+              weight: JourneyType.bold,
+              color: AarastV3Color.textMuted,
             ),
           ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
+        );
+        final total = provider.totalProviders;
+        return SingleChildScrollView(
+          padding: const EdgeInsets.fromLTRB(20, 4, 20, 20),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              const Icon(LucideIcons.mapPin, size: 15, color: AppTheme.brand),
-              const SizedBox(width: 5),
-              Flexible(
-                child: Text(
-                  cityLabel ?? 'المدينة',
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                    color: AppTheme.brand,
-                    fontWeight: FontWeight.w800,
-                  ),
+              Text(
+                'فلتر',
+                style: JourneyType.of(
+                  JourneyType.display,
+                  weight: JourneyType.bold,
                 ),
               ),
-              const SizedBox(width: 3),
-              const Icon(
-                LucideIcons.chevronDown,
-                size: 14,
-                color: AppTheme.brand,
+              const SizedBox(height: 14),
+              label('القسم'),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: [
+                  JourneyChip(
+                    label: 'الكل',
+                    selected: provider.categoryId == null,
+                    selectedColor: AarastV3Color.cobalt,
+                    onTap: () => provider.setCategory(null),
+                  ),
+                  for (final category in provider.categories)
+                    JourneyChip(
+                      label: category.nameAr,
+                      selected: provider.categoryId == category.id,
+                      selectedColor: AarastV3Color.cobalt,
+                      onTap: () => provider.setCategory(category.id),
+                    ),
+                ],
+              ),
+              const SizedBox(height: 14),
+              label('المكان'),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: [
+                  JourneyChip(
+                    key: const ValueKey('city-pill-all'),
+                    label: 'كل المدن',
+                    selected: provider.cityId == null,
+                    selectedColor: AarastV3Color.cobalt,
+                    onTap: () => provider.setCity(null),
+                  ),
+                  for (final city in provider.cities)
+                    JourneyChip(
+                      key: ValueKey('city-pill-${city.id}'),
+                      label: city.nameAr,
+                      selected: provider.cityId == city.id,
+                      selectedColor: AarastV3Color.cobalt,
+                      onTap: () => provider.setCity(city.id),
+                    ),
+                ],
+              ),
+              const SizedBox(height: 18),
+              JourneyButton(
+                key: const ValueKey('directory-filter-apply'),
+                label: provider.isLoading
+                    ? 'نحسب…'
+                    : total == 0
+                    ? 'ما في مزودين بهذا الفلتر'
+                    : 'اعرض ${arabicCount(total, one: 'مزود واحد', two: 'مزودين اثنين', few: 'مزودين', many: 'مزود')}',
+                background: AarastV3Color.cobalt,
+                expand: true,
+                large: true,
+                onPressed: () => Navigator.of(context).pop(),
               ),
             ],
           ),
-        ),
-      ),
+        );
+      },
     );
-  }
-
-  /// لوحة صغيرة أنيقة مثبتة من اليمين: المدن حبوب مرصوصة في صفّين-ثلاثة
-  /// بهوية شرائح الفلترة الموحدة — بدل القائمة الطويلة الوردية السابقة.
-  Future<void> _showCityPicker(BuildContext context) async {
-    final overlay =
-        Overlay.of(context).context.findRenderObject()! as RenderBox;
-    final trigger = context.findRenderObject()! as RenderBox;
-    final anchor = trigger.localToGlobal(Offset.zero, ancestor: overlay);
-
-    final result = await showMenu<String>(
-      context: context,
-      position: RelativeRect.fromLTRB(
-        overlay.size.width,
-        anchor.dy + trigger.size.height + 8,
-        16,
-        0,
-      ),
-      constraints: const BoxConstraints(minWidth: 220, maxWidth: 268),
-      items: [
-        PopupMenuItem<String>(
-          enabled: false,
-          padding: const EdgeInsets.fromLTRB(14, 12, 14, 14),
-          child: Directionality(
-            textDirection: TextDirection.rtl,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'المدينة',
-                  style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                    color: AppTheme.textSecondary,
-                    fontWeight: FontWeight.w800,
-                  ),
-                ),
-                const SizedBox(height: 9),
-                Wrap(
-                  spacing: 7,
-                  runSpacing: 7,
-                  children: [
-                    AarastFilterPill(
-                      key: const ValueKey('city-pill-all'),
-                      label: 'كل المدن',
-                      selected: provider.cityId == null,
-                      onTap: () => Navigator.pop(context, _allCitiesSentinel),
-                    ),
-                    for (final city in provider.cities)
-                      AarastFilterPill(
-                        key: ValueKey('city-pill-${city.id}'),
-                        label: city.nameAr,
-                        selected: provider.cityId == city.id,
-                        onTap: () => Navigator.pop(context, city.id),
-                      ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-        ),
-      ],
-    );
-
-    if (result == null) return;
-    await provider.setCity(result == _allCitiesSentinel ? null : result);
   }
 }
 
@@ -227,68 +230,36 @@ class _NoBudgetMatchesCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // D9: an amount inside a sentence is the plain form.
     final amount = intent.hasBudget
-        ? '${_formatMoney(intent.allocatedValue)} ر.ي'
-        : 'بدون مبلغ محدد';
-    final message = intent.hasBudget
-        ? 'لم نجد خدمة بسعر منشور قريب من $amount. سنعرض لك مزودين من نفس البند، وطلب العرض سيحمل ميزانيتك تلقائيًا حتى يرد المزود بسعر واضح.'
-        : 'لم نجد خدمة بسعر منشور لهذا البند. اختر مزوداً مناسباً واطلب عرضاً لتأكيد السعر.';
-
-    return AarastCard(
-      padding: const EdgeInsets.all(14),
-      color: AppTheme.canvas,
-      border: Border.all(color: AppTheme.brandMuted),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Container(
-            width: 42,
-            height: 42,
-            decoration: BoxDecoration(
-              color: AppTheme.brandMuted,
-              borderRadius: BorderRadius.circular(AppTheme.radiusMd),
-            ),
-            child: const Icon(LucideIcons.search, color: AppTheme.focus),
+        ? compactYemeniMoneyParts(intent.allocatedValue).plainText
+        : null;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        JourneyNote(
+          text: amount == null
+              ? 'ما لقينا سعر منشور لهذا البند. اختر مزود واطلب منه عرض.'
+              : 'ما لقينا سعر منشور قريب من $amount. هذي مزودين من نفس القسم، واطلب منهم عرض.',
+          icon: LucideIcons.search,
+          color: AarastV3Color.cobalt,
+          soft: AarastV3Color.cobaltSoft,
+        ),
+        Align(
+          alignment: AlignmentDirectional.centerStart,
+          child: JourneyTextAction(
+            label: 'اعرض كل المزودين',
+            icon: LucideIcons.slidersHorizontal,
+            color: AarastV3Color.cobalt,
+            onPressed: onClear,
           ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'لا توجد أسعار مطابقة تماماً',
-                  style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                    color: AppTheme.textPrimary,
-                    fontWeight: FontWeight.w900,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  message,
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: AppTheme.textSecondary,
-                    fontWeight: FontWeight.w700,
-                    height: 1.35,
-                  ),
-                ),
-                const SizedBox(height: 10),
-                Align(
-                  alignment: AlignmentDirectional.centerStart,
-                  child: TextButton.icon(
-                    onPressed: onClear,
-                    icon: const Icon(LucideIcons.slidersHorizontal, size: 18),
-                    label: const Text('عرض كل المزودين'),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 }
 
+/// f02 «قريبين من بندك 500 ألف»: why these providers come first.
 class _BudgetMatchContextCard extends StatelessWidget {
   const _BudgetMatchContextCard({
     required this.intent,
@@ -302,62 +273,36 @@ class _BudgetMatchContextCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final budgetLabel = intent.hasBudget
-        ? '${_formatMoney(intent.allocatedValue)} ر.ي'
-        : 'بدون مبلغ محدد';
-    final rangeLabel = intent.hasBudget
-        ? '${_formatMoney(intent.minPrice!)} - ${_formatMoney(intent.maxPrice!)} ر.ي'
-        : 'حسب فئة البند فقط';
-
-    return AarastCard(
-      padding: const EdgeInsets.all(14),
-      color: AppTheme.canvas,
-      border: Border.all(color: AppTheme.brandMuted),
+    final text = intent.hasBudget
+        ? 'قريبين من بند ${intent.budgetCategoryName} ${compactYemeniMoneyParts(intent.allocatedValue).plainText}'
+        : 'حسب بند ${intent.budgetCategoryName}';
+    return JourneyBox(
+      color: AarastV3Color.cobaltSoft,
+      padding: const EdgeInsetsDirectional.fromSTEB(14, 6, 4, 6),
       child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Container(
-            width: 42,
-            height: 42,
-            decoration: BoxDecoration(
-              color: AppTheme.brandMuted,
-              borderRadius: BorderRadius.circular(AppTheme.radiusMd),
-            ),
-            child: const Icon(LucideIcons.wallet, color: AppTheme.focus),
+          const Icon(
+            LucideIcons.sparkles,
+            size: 18,
+            color: AarastV3Color.cobalt,
           ),
-          const SizedBox(width: 12),
+          const SizedBox(width: 8),
           Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'حسب ميزانية بند ${intent.budgetCategoryName}',
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                    color: AppTheme.textPrimary,
-                    fontWeight: FontWeight.w900,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  categoryName == null
-                      ? '$budgetLabel · $rangeLabel'
-                      : '$categoryName · $budgetLabel · $rangeLabel',
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: AppTheme.textSecondary,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-              ],
+            child: Text(
+              text,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: JourneyType.of(
+                JourneyType.body,
+                weight: JourneyType.bold,
+                color: AarastV3Color.cobalt,
+              ),
             ),
           ),
           IconButton(
             tooltip: 'إزالة فلتر الميزانية',
             onPressed: onClear,
-            icon: const Icon(LucideIcons.x),
+            icon: const Icon(LucideIcons.x, color: AarastV3Color.cobalt),
           ),
         ],
       ),

@@ -5,8 +5,9 @@ import 'package:provider/provider.dart';
 
 import '../../../core/experience_v3/aarast_v3.dart';
 import '../../../core/routing/app_router.dart';
-import '../../../core/theme/app_theme.dart';
+import '../../../core/utils/arabic_count.dart';
 import '../../../core/utils/currency_label.dart';
+import '../../../core/utils/money_formatters.dart';
 import '../../../core/widgets/aarast_ui.dart';
 import '../../account_contexts/account_contexts_api.dart'
     show AccountContextController;
@@ -14,14 +15,7 @@ import '../widgets/provider_result_card.dart';
 import '../../auth/auth_api.dart' show AuthActionGuard;
 import '../../onboarding/onboarding_api.dart'
     show GuestOnboardingStorage, GuestPersona, WeddingLocationDraft;
-import '../../wedding_plans/wedding_plans_api.dart'
-    show
-        DashboardSummaryProvider,
-        WeddingPlanStageState,
-        WeddingPlansProvider,
-        WeddingStageContextLine,
-        WeddingStageDomain,
-        resolveWeddingPlanStage;
+import '../../wedding_plans/wedding_plans_api.dart' show WeddingPlansProvider;
 import '../../chat/chat_api.dart' show ChatProvider, ConversationListView;
 import '../../finance/finance_api.dart' show FinanceProvider;
 import '../models/marketplace_models.dart';
@@ -67,6 +61,9 @@ class _ProviderMarketplaceScreenState extends State<ProviderMarketplaceScreen> {
   int _tab = 0;
   bool _chatsLoaded = false;
 
+  /// f02 has no search box of its own: the header's search opens one.
+  bool _searchOpen = false;
+
   @override
   void initState() {
     super.initState();
@@ -76,7 +73,8 @@ class _ProviderMarketplaceScreenState extends State<ProviderMarketplaceScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       if (!mounted) return;
       final provider = context.read<ProviderMarketplaceProvider>();
-      _searchController.text = provider.search;
+      // A search kept from before shows its box with it.
+      setState(() => _searchController.text = provider.search);
       final includeAccountData = await AuthActionGuard.hasAccount(context);
       if (!mounted) return;
       provider.configureCatalogAudience(
@@ -171,13 +169,6 @@ class _ProviderMarketplaceScreenState extends State<ProviderMarketplaceScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final planId = _normalizedPlanId(widget.weddingPlanId);
-    final dashboardSummary = context
-        .watch<DashboardSummaryProvider?>()
-        ?.summary;
-    final stage = dashboardSummary?.planId == planId
-        ? resolveWeddingPlanStage(dashboardSummary?.weddingDate)
-        : null;
     return AarastScreenFrame(
       maxWidth: 520,
       safeAreaBottom: false,
@@ -211,9 +202,13 @@ class _ProviderMarketplaceScreenState extends State<ProviderMarketplaceScreen> {
                   actions: [
                     JourneyRoundButton(
                       key: const ValueKey('providers-search'),
-                      icon: LucideIcons.search,
-                      tooltip: 'ابحث',
-                      onPressed: () => _openSearch(tabs),
+                      icon: _searchShown && tabs[tab] == 'استكشف'
+                          ? LucideIcons.x
+                          : LucideIcons.search,
+                      tooltip: _searchShown && tabs[tab] == 'استكشف'
+                          ? 'سكّر البحث'
+                          : 'دوّر على مزود',
+                      onPressed: () => _toggleSearch(provider, tabs, tab),
                     ),
                   ],
                 ),
@@ -231,10 +226,10 @@ class _ProviderMarketplaceScreenState extends State<ProviderMarketplaceScreen> {
                 ),
               Expanded(
                 child: switch (tabs[tab]) {
-                  'طلباتي' => _boardTab(provider, board, stage, tabs),
+                  'طلباتي' => _boardTab(provider, board, tabs),
                   'المحادثات' => const ConversationListView(embedded: true),
                   'المفضلة' => _favoritesTab(provider),
-                  _ => _exploreTab(provider, stage, showStage: !planMode),
+                  _ => _exploreTab(provider),
                 },
               ),
             ],
@@ -244,42 +239,80 @@ class _ProviderMarketplaceScreenState extends State<ProviderMarketplaceScreen> {
     );
   }
 
+  bool get _searchShown =>
+      _searchOpen || _searchController.text.trim().isNotEmpty;
+
+  /// The header's search: on «استكشف» it opens and closes the box; on the
+  /// other tabs it moves to «استكشف» with the box open.
+  void _toggleSearch(
+    ProviderMarketplaceProvider provider,
+    List<String> tabs,
+    int tab,
+  ) {
+    if (tabs[tab] == 'استكشف' && _searchShown) {
+      final hadText = _searchController.text.trim().isNotEmpty;
+      _searchController.clear();
+      _searchFocusNode.unfocus();
+      setState(() => _searchOpen = false);
+      if (hadText) provider.setSearch('');
+      return;
+    }
+    _selectTab('استكشف', tabs);
+    setState(() => _searchOpen = true);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _searchFocusNode.requestFocus();
+    });
+  }
+
   /// f02: the directory results, or why there are none.
   List<Widget> _exploreResults(ProviderMarketplaceProvider provider) {
     return [
-      if (provider.errorMessage != null)
-        _ErrorCard(
-          message: provider.errorMessage!,
+      if (provider.errorMessage != null && provider.providers.isEmpty)
+        JourneyListState(
+          key: const ValueKey('marketplace-directory-error'),
+          phase: JourneyListPhase.error,
+          section: JourneySection.providers,
           onRetry: provider.loadMarketplace,
         )
       else if (provider.isLoading && provider.providers.isEmpty)
-        const _MarketplaceSkeleton()
+        const JourneyListState(
+          phase: JourneyListPhase.loading,
+          section: JourneySection.providers,
+        )
       else if (provider.providers.isEmpty &&
           !_hasDirectoryFilters(provider))
         // Nothing is filtered, so "change the filters" would be
         // a false lead: the directory itself is empty.
-        const AarastEmptyState(
+        const JourneyListState(
           key: ValueKey('marketplace-directory-empty'),
-          icon: LucideIcons.store,
-          title: 'لا يوجد مزوّدون في الدليل بعد',
-          message:
-              'لم يُنشر أي مزوّد معتمد بخدماته حتى الآن. ادعُ مزوّدك ليسجّل في اعّرست.',
+          phase: JourneyListPhase.empty,
+          section: JourneySection.providers,
+          emptyTitle: 'ما في مزودين في الدليل بعد',
+          emptyMessage:
+              'أول ما يسجّل مزودين ويعتمدهم فريق اعّرست، بيظهرون هنا. '
+              'تعرف مزود؟ قل له يسجّل في اعّرست.',
         )
       else if (provider.providers.isEmpty)
-        AarastEmptyState(
-          icon: LucideIcons.store,
-          title: 'لا يوجد مزودين متاحون حاليًا',
-          message: _emptyProvidersMessage(
+        JourneyListState(
+          key: const ValueKey('marketplace-filtered-empty'),
+          phase: JourneyListPhase.empty,
+          section: JourneySection.providers,
+          emptyIcon: LucideIcons.searchX,
+          emptyTitle: _searchController.text.trim().isNotEmpty
+              ? 'ما لقينا مزود بهذا الاسم'
+              : 'ما لقينا مزودين بهذا الفلتر',
+          emptyMessage: _emptyProvidersMessage(
             budgetIntent: provider.budgetMatchIntent,
             location: _weddingLocation,
           ),
-          action: OutlinedButton.icon(
-            onPressed: () => _clearMarketplaceFilters(provider),
-            icon: const Icon(LucideIcons.slidersHorizontal),
-            label: const Text('مسح الفلاتر'),
-          ),
+          emptyAction: 'امسح الفلتر',
+          onEmptyAction: () => _clearMarketplaceFilters(provider),
         )
       else ...[
+        if (provider.errorMessage != null) ...[
+          JourneyListNotice(offline: false, onRetry: provider.loadMarketplace),
+          const SizedBox(height: 12),
+        ],
         if (provider.budgetMatchIntent != null &&
             provider.budgetMatchedServices.isNotEmpty) ...[
           _BudgetMatchedServicesSection(
@@ -332,20 +365,19 @@ class _ProviderMarketplaceScreenState extends State<ProviderMarketplaceScreen> {
             child: Center(child: AarastInlineSpinner(dimension: 36)),
           )
         else if (provider.loadMoreErrorMessage != null)
-          Padding(
-            padding: const EdgeInsets.only(top: 8),
-            child: _ErrorCard(
-              title: 'تعذر تحميل المزيد',
-              message: provider.loadMoreErrorMessage!,
-              onRetry: provider.loadMoreProviders,
-            ),
+          JourneyListNotice(
+            key: const ValueKey('providers-load-more-error'),
+            offline: false,
+            onRetry: provider.loadMoreProviders,
           )
         else if (provider.hasMoreProviders)
           Center(
-            child: TextButton(
+            child: JourneyTextAction(
               key: const Key('providers-load-more'),
+              label: 'اعرض أكثر',
+              icon: LucideIcons.chevronDown,
+              color: AarastV3Color.cobalt,
               onPressed: provider.loadMoreProviders,
-              child: const Text('تحميل المزيد'),
             ),
           ),
       ],
@@ -378,6 +410,7 @@ class _ProviderMarketplaceScreenState extends State<ProviderMarketplaceScreen> {
   ) async {
     _searchController.clear();
     _searchFocusNode.unfocus();
+    setState(() => _searchOpen = false);
     await marketplace.clearFilters();
   }
 

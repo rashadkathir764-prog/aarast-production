@@ -1636,7 +1636,7 @@ const r19ProviderPortalApi = Object.freeze({
 // +1 for a08b reading the plan kept on the phone from the onboarding owner
 // API, so its name is not asked again, -1 for the home greeting by the
 // plan's name instead of the onboarding persona copy (b02).
-const r19LegalRecordCount = 194;
+const r19LegalRecordCount = 192;
 const trackedOwnerApiContracts = [
   {
     area: 'features/account_contexts',
@@ -2291,14 +2291,7 @@ const trackedCollaborationBatchContracts = [
   {
     source: 'mobile/lib/features/marketplace/screens/provider_marketplace_screen.dart',
     target: 'mobile/lib/features/wedding_plans/wedding_plans_api.dart',
-    show: [
-      'DashboardSummaryProvider',
-      'WeddingPlanStageState',
-      'WeddingPlansProvider',
-      'WeddingStageContextLine',
-      'WeddingStageDomain',
-      'resolveWeddingPlanStage',
-    ],
+    show: ['WeddingPlansProvider'],
   },
   {
     source: 'mobile/lib/features/marketplace/screens/provider_requests_screen.dart',
@@ -2514,24 +2507,13 @@ const trackedPlanningBatchContracts = [
   },
   {
     source: 'mobile/lib/features/finance/screens/money_overview_screen.dart',
-    target: 'mobile/lib/features/onboarding/onboarding_api.dart',
-    show: ['GuestOnboardingProvider', 'GuestPersona'],
-  },
-  {
-    source: 'mobile/lib/features/finance/screens/money_overview_screen.dart',
     target: 'mobile/lib/features/sharing/sharing_api.dart',
     show: ['SharedMember'],
   },
   {
     source: 'mobile/lib/features/finance/screens/money_overview_screen.dart',
     target: 'mobile/lib/features/wedding_plans/wedding_plans_api.dart',
-    show: [
-      'DashboardSummaryProvider',
-      'WeddingPlansProvider',
-      'WeddingStageContextLine',
-      'WeddingStageDomain',
-      'resolveWeddingPlanStage',
-    ],
+    show: ['DashboardSummaryProvider', 'WeddingPlansProvider'],
   },
   {
     source: 'mobile/lib/features/finance/widgets/finance_write_access_block.dart',
@@ -2616,11 +2598,6 @@ const trackedPlanningBatchContracts = [
     source: 'mobile/lib/features/tasks/screens/task_timeline_screen.dart',
     target: 'mobile/lib/features/account_contexts/account_contexts_api.dart',
     show: ['AccountContextController'],
-  },
-  {
-    source: 'mobile/lib/features/tasks/screens/task_timeline_screen.dart',
-    target: 'mobile/lib/features/onboarding/onboarding_api.dart',
-    show: ['GuestOnboardingProvider'],
   },
   {
     source: 'mobile/lib/features/tasks/screens/task_timeline_screen.dart',
@@ -2807,6 +2784,7 @@ const trackedShellEntryBatchContracts = [
       'GeneratedDashboardSeed',
       'GuestOnboardingDraft',
       'GuestOnboardingStorage',
+      'GuestPersona',
     ],
   },
   {
@@ -2886,7 +2864,6 @@ const trackedShellEntryBatchContracts = [
       'DashboardSummaryProvider',
       'QuickAddSignals',
       'buildCanonicalQuickAddActions',
-      'resolveWeddingPlanStage',
     ],
   },
   {
@@ -2933,7 +2910,6 @@ const trackedShellEntryBatchContracts = [
       'lastCanonicalQuickAddAction',
       'lastCanonicalQuickAddActionId',
       'rememberCanonicalQuickAddAction',
-      'resolveWeddingPlanStage',
       'shouldShowPlanQuickAdd',
     ],
   },
@@ -2979,7 +2955,6 @@ const trackedShellEntryBatchContracts = [
       'lastCanonicalQuickAddAction',
       'lastCanonicalQuickAddActionId',
       'rememberCanonicalQuickAddAction',
-      'resolveWeddingPlanStage',
       'shouldShowPlanQuickAdd',
     ],
   },

@@ -1,4 +1,5 @@
 import 'marketplace_models.dart';
+import 'provider_service_groups.dart';
 
 class ProviderBudgetMatchIntent {
   const ProviderBudgetMatchIntent({
@@ -32,13 +33,11 @@ class ProviderBudgetMatchIntent {
       }
     }
 
-    final keywords = _keywordsFor(source);
-    if (keywords.isEmpty) return null;
+    final group = providerServiceGroupOf(budgetCategoryName);
+    if (group < 0) return null;
     for (final category in categories) {
-      final haystack = _normalize(
-        [category.nameAr, category.nameEn ?? '', category.slug ?? ''].join(' '),
-      );
-      if (keywords.any(haystack.contains)) return category.id;
+      final names = [category.nameAr, category.nameEn ?? '', category.slug ?? ''];
+      if (providerServiceGroupOf(names.join(' ')) == group) return category.id;
     }
     return null;
   }
@@ -49,23 +48,6 @@ class ProviderQuoteInitialContext {
 
   final String? serviceId;
   final ProviderBudgetMatchIntent? budgetIntent;
-}
-
-List<String> _keywordsFor(String value) {
-  final groups = <List<String>>[
-    ['صاله', 'قاعه', 'قاعة', 'hall', 'venue'],
-    ['غداء', 'عشاء', 'ضيافه', 'ضيافة', 'بوفيه', 'تموين', 'ماء', 'cater'],
-    ['تصوير', 'مصور', 'فيديو', 'كاميرا', 'photo', 'video'],
-    ['كوش', 'ديكور', 'ورد', 'زفه', 'decor'],
-    ['فنان', 'فرقه', 'فرقة', 'ديجي', 'dj', 'music', 'ترفيه'],
-    ['فستان', 'ازياء', 'أزياء', 'ملابس', 'بدله', 'dress'],
-    ['صالون', 'مكياج', 'تجميل', 'كوافير', 'beauty', 'salon'],
-  ];
-
-  for (final group in groups) {
-    if (group.any(value.contains)) return group.map(_normalize).toList();
-  }
-  return const [];
 }
 
 String _normalize(String value) {

@@ -36,6 +36,9 @@
 - `/wedding-plans/:id/dashboard`
 - `/wedding-plans/:id/guests`
 - `/wedding-plans/:id/guests/add`
+- `/wedding-plans/:id/guests/import`
+- `/wedding-plans/:id/guests/invite`
+- `/wedding-plans/:id/guests/view/:guestId`
 - `/wedding-plans/:id/money`
 - `/wedding-plans/:id/money/budget`
 - `/wedding-plans/:id/money/categories/:categoryId`
@@ -52,14 +55,17 @@
 - `/wedding-plans/:id/money/costs/create`
 - `/wedding-plans/:id/money/funding`
 - `/wedding-plans/:id/money/payments/:paymentId`
+- `/wedding-plans/:id/money/receipts`
 - `/wedding-plans/:id/money/schedules`
 - `/wedding-plans/:id/notifications`
 - `/wedding-plans/:id/plan-center`
 - `/wedding-plans/:id/providers`
+- `/wedding-plans/:id/providers/requests`
 - `/wedding-plans/:id/sharing`
 - `/wedding-plans/:id/sharing/:memberId/edit`
 - `/wedding-plans/:id/sharing/add`
 - `/wedding-plans/:id/tasks`
+- `/wedding-plans/:id/tasks/:taskId`
 - `/wedding-plans/:id/tasks/:taskId/edit`
 - `/wedding-plans/:id/tasks/create`
 - `/wedding-plans/:id/timeline`
@@ -67,4 +73,4 @@
 - `/wedding-plans/create`
 - `/welcome`
 
-Total: 66 unique routes
+Total: 72 unique routes

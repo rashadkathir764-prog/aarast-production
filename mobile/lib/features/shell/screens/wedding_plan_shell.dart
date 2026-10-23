@@ -5,6 +5,8 @@ import 'package:provider/provider.dart';
 import '../../../core/routing/app_router.dart';
 import '../../../core/offline/local_database.dart';
 import '../../../core/offline/offline_status_widgets.dart';
+import '../../../core/offline/offline_sync_service.dart';
+import '../../../core/offline/sync_status.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../account_contexts/account_contexts_api.dart'
     show AccountContextController, AccountContextRole;
@@ -27,7 +29,6 @@ import '../../wedding_plans/wedding_plans_api.dart'
         lastCanonicalQuickAddAction,
         lastCanonicalQuickAddActionId,
         rememberCanonicalQuickAddAction,
-        resolveWeddingPlanStage,
         shouldShowPlanQuickAdd;
 import '../widgets/aarast_plan_chrome.dart';
 import '../widgets/plan_shell_chrome.dart';
@@ -252,9 +253,6 @@ class WeddingPlanShell extends StatelessWidget {
 
     final finance = context.watch<FinanceProvider?>();
     final dashboardSummary = _watchDashboardSummaryOrNull(context);
-    final stageLabel = dashboardSummary?.planId == weddingPlanId
-        ? resolveWeddingPlanStage(dashboardSummary?.weddingDate).compactLabel
-        : null;
     final canManageCurrentMoney =
         finance?.loadedPlanId == weddingPlanId &&
         (finance?.canManageMoney ?? false);
@@ -265,25 +263,26 @@ class WeddingPlanShell extends StatelessWidget {
         isMoneyRoot &&
         finance != null &&
         shouldShowMoneyStarter(finance);
+    // A plan kept on the phone sends nothing, so a missing connection
+    // changes nothing in it and is not announced.
+    final localPlan = AuthActionGuard.isLocalGuestPlanId(weddingPlanId);
+    final offline =
+        !localPlan &&
+        context.watch<OfflineSyncService?>()?.state == SyncState.offline;
     final showQuickFab =
         !moneyStarterVisible &&
         shouldShowPlanQuickAdd(
           tabIndex: currentIndex,
           isRootDestination: currentIndex != 1 || isMoneyRoot,
           canManageMoney: currentIndex != 1 || canManageCurrentMoney,
+          guestsWaitForConnection: offline,
         );
 
     final shell = PlanShellChrome(
       activeIndex: currentIndex,
       onTabSelected: (index) => _onNavigate(context, index),
       showQuickFab: showQuickFab,
-      contextLabel: selected?.weddingPlanId == weddingPlanId
-          ? selected!.displayName
-          : dashboardSummary?.planId == weddingPlanId
-          ? dashboardSummary!.title
-          : 'خطة الزفاف',
-      stageLabel: stageLabel,
-      topStatus: const OfflineStatusBanner(),
+      topStatus: localPlan ? null : const OfflineStatusBanner(),
       onQuickAdd: () => _showQuickAdd(context, weddingPlanId, currentIndex),
       onQuickAddLongPress: () =>
           _runLastQuickAdd(context, weddingPlanId, currentIndex),

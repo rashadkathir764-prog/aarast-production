@@ -529,7 +529,7 @@ class _CostFormScreenState extends State<CostFormScreen> {
   Future<void> _pickProvider() async {
     final marketplace = context.read<ProviderMarketplaceProvider?>();
     if (marketplace == null) {
-      AarastToast.showError(context, 'سوق المزودين مو متاح الحين.');
+      AarastToast.showError(context, 'سوق المزودين مو متاح الآن.');
       return;
     }
     final selected = await showAarastBottomSheet<MarketplaceProvider>(

@@ -43,7 +43,7 @@ class AccountContextController extends ChangeNotifier {
   static const _genericSelectionFailure =
       'تعذر فتح المسار المختار. حاول مرة أخرى.';
   static const _offlineNotice =
-      'ما في اتصال الحين. نعرض آخر نسخة عندك، ونحدّثها لما يرجع النت.';
+      'ما في اتصال الآن. نعرض آخر نسخة عندك، ونحدّثها لما يرجع النت.';
   static const _offlineLoadFailure =
       'ما قدرنا نوصل للسيرفر. تأكد من النت وحاول مرة ثانية.';
 

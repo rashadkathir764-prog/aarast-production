@@ -16,7 +16,6 @@ import '../../account_contexts/account_contexts_api.dart'
     show AccountContextController;
 import '../../auth/auth_api.dart' show AuthActionGuard, AuthController;
 import '../../catalogs/catalogs_api.dart' show ReferenceCatalogProvider;
-import '../../onboarding/onboarding_api.dart' show GuestOnboardingProvider;
 import '../../sharing/sharing_api.dart' show SharedMember, SharingProvider;
 import '../../wedding_plans/wedding_plans_api.dart'
     show DashboardSummaryProvider, WeddingPlansProvider, publishTaskPlanPulse;

@@ -121,12 +121,14 @@ void main() {
   });
 
   testWidgets(
-    'plan shell keeps the current plan and destination visible at small width',
+    'plan shell adds no title of its own and keeps the tab below the status bar',
     (tester) async {
+      // Every tab names itself in its own header, so the shell only owns
+      // the status bar inset (DECISIONS D10).
       tester.view.physicalSize = const Size(320, 640);
       tester.view.devicePixelRatio = 1;
+      tester.view.padding = const FakeViewPadding(top: 24);
       addTearDown(tester.view.reset);
-      const planName = 'خطة زفاف عائلة الطويلة لاختبار العرض الآمن';
 
       await tester.pumpWidget(
         MaterialApp(
@@ -138,25 +140,20 @@ void main() {
             child: child!,
           ),
           home: PlanShellChrome(
-            contextLabel: planName,
-            stageLabel: 'الأسبوع الأخير',
             activeIndex: 1,
             onTabSelected: (_) {},
             showQuickFab: false,
-            body: const Scaffold(body: Center(child: Text('محتوى المال'))),
+            body: const Align(
+              alignment: Alignment.topCenter,
+              child: Text('محتوى المال'),
+            ),
           ),
         ),
       );
 
-      expect(
-        find.bySemanticsLabel(
-          'الخطة الحالية: $planName، القسم الحالي: المال · الأسبوع الأخير',
-        ),
-        findsOneWidget,
-      );
-      expect(find.text('المال · الأسبوع الأخير'), findsOneWidget);
-      expect(find.text(planName), findsOneWidget);
-      expect(find.text('محتوى المال'), findsOneWidget);
+      expect(find.textContaining('· الأسبوع'), findsNothing);
+      expect(find.textContaining('القسم الحالي'), findsNothing);
+      expect(tester.getTopLeft(find.text('محتوى المال')).dy, 24);
       expect(tester.takeException(), isNull);
     },
   );
@@ -172,7 +169,6 @@ void main() {
         MaterialApp(
           theme: AppTheme.light(),
           home: PlanShellChrome(
-            contextLabel: 'عرس العبسي',
             activeIndex: 2,
             onTabSelected: (_) {},
             showQuickFab: true,
@@ -198,10 +194,8 @@ void main() {
         tester.getRect(find.byKey(const ValueKey('aarast-quick-action'))).left,
         lessThan(32),
       );
-      expect(
-        tester.getRect(find.byType(AarastPlanContextBar)).height,
-        lessThan(48),
-      );
+      // The tab starts at the top; no bar sits above it.
+      expect(tester.getTopLeft(find.text('مهمة 0')).dy, 0);
 
       await tester.drag(find.byType(ListView), const Offset(0, -260));
       await tester.pumpAndSettle();

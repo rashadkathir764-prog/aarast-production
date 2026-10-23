@@ -52,6 +52,22 @@ void main() {
       expect(shouldShowPlanQuickAdd(tabIndex: 4), isFalse);
     });
 
+    test('w29 guests hide quick add while an account plan is offline', () {
+      expect(
+        shouldShowPlanQuickAdd(tabIndex: 3, guestsWaitForConnection: true),
+        isFalse,
+      );
+      // The other tabs queue their writes, so they keep it.
+      expect(
+        shouldShowPlanQuickAdd(tabIndex: 2, guestsWaitForConnection: true),
+        isTrue,
+      );
+      expect(
+        shouldShowPlanQuickAdd(tabIndex: 0, guestsWaitForConnection: true),
+        isTrue,
+      );
+    });
+
     test('emits the canonical dashboard actions with stable labels', () {
       final calls = <String>[];
       Future<void> open(String route, {bool refreshDashboard = false}) async {

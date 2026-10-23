@@ -16,10 +16,11 @@ Future<void> _openTaskStarterSheet(
   final accountContext = context
       .read<AccountContextController?>()
       ?.selectedContext;
-  final guestDraft = context.read<GuestOnboardingProvider?>()?.draft;
+  final summary = context.read<DashboardSummaryProvider?>()?.summary;
   // Same sources, same order as the money starter: the selected account
   // context is the authority for the persona; the plans provider only carries
-  // it for plans it has loaded; a guest plan has it in the local draft.
+  // it for plans it has loaded; a plan kept on the phone has it in its
+  // summary (field test Q01).
   final persona = taskStarterPersonaFor(weddingPlanId, [
     (
       planId: accountContext?.weddingPlanId,
@@ -27,17 +28,14 @@ Future<void> _openTaskStarterSheet(
     ),
     (planId: active?.id, persona: active?.persona),
     (planId: selected?.id, persona: selected?.persona),
-    (planId: guestDraft?.guestPlanId, persona: guestDraft?.persona?.name),
+    (planId: summary?.planId, persona: summary?.persona),
   ]);
   DateTime? planWeddingDate;
   if (active != null && active.id == weddingPlanId) {
     planWeddingDate = active.weddingDate;
   } else if (selected != null && selected.id == weddingPlanId) {
     planWeddingDate = selected.weddingDate;
-  } else if (guestDraft?.guestPlanId == weddingPlanId) {
-    planWeddingDate = guestDraft?.weddingDate;
   }
-  final summary = context.read<DashboardSummaryProvider?>()?.summary;
   final weddingDate = summary?.planId == weddingPlanId
       ? summary?.weddingDate
       : planWeddingDate;
@@ -132,7 +130,7 @@ class _StarterTasksCard extends StatelessWidget {
                       ),
                     ),
                     Text(
-                      'الشبكة والقاعة والكسوة والنقش وغيرها، مرتبة على موعد عرسك.',
+                      'القاعة والشبكة والكسوة وغيرها، مرتبة على موعد عرسك.',
                       style: JourneyType.of(
                         JourneyType.small,
                         color: AarastV3Color.textMuted,

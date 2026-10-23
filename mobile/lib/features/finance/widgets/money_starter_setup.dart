@@ -18,7 +18,6 @@ class MoneyStarterSetup extends StatefulWidget {
     required this.onManualSetup,
     required this.onRefresh,
     this.errorMessage,
-    this.embedded = false,
     super.key,
   });
 
@@ -28,7 +27,6 @@ class MoneyStarterSetup extends StatefulWidget {
   final VoidCallback onManualSetup;
   final Future<void> Function() onRefresh;
   final String? errorMessage;
-  final bool embedded;
 
   @override
   State<MoneyStarterSetup> createState() => _MoneyStarterSetupState();
@@ -73,15 +71,14 @@ class _MoneyStarterSetupState extends State<MoneyStarterSetup> {
     final content = _content(
       context,
       includeAction: inlineAction,
-      bottomPadding: inlineAction
-          ? 36
-          : widget.embedded
-          ? 252
-          : 176,
+      bottomPadding: inlineAction ? 36 : 176,
     );
 
     if (inlineAction) return content;
 
+    // The plan shell ends the tab above its navigation bar (extendBody is
+    // false), so the action bar sits on the tab's own bottom edge. Lifting
+    // it for an embedded tab left it floating over the list.
     return Stack(
       key: const ValueKey('money-starter-setup'),
       children: [
@@ -89,7 +86,7 @@ class _MoneyStarterSetupState extends State<MoneyStarterSetup> {
         PositionedDirectional(
           start: 0,
           end: 0,
-          bottom: widget.embedded ? 94 : 0,
+          bottom: 0,
           child: _StarterActionBar(
             selectedCount: _selected.length,
             loading: widget.loading,
@@ -169,7 +166,7 @@ class _MoneyStarterSetupState extends State<MoneyStarterSetup> {
               ],
             ),
           Text(
-            'المحددة بعلامة ✓ جاهزة للإضافة. لن نضع أي مبلغ تلقائيًا.',
+            'اللي عليه ✓ ينضاف، وما نحط أي مبلغ من عندنا.',
             style: AarastV3Type.body(context),
           ),
           const SizedBox(height: AarastV3Space.x4),
@@ -264,7 +261,7 @@ class _MoneyStarterSetupState extends State<MoneyStarterSetup> {
   void _addCustom() {
     final name = _cleanName(_customController.text);
     if (name.isEmpty) {
-      setState(() => _customError = 'اكتب اسم التصنيف.');
+      setState(() => _customError = 'اكتب اسم البند.');
       return;
     }
     final normalized = _normalizeName(name);
@@ -274,7 +271,7 @@ class _MoneyStarterSetupState extends State<MoneyStarterSetup> {
       for (final category in _customCategories) _normalizeName(category.name),
     };
     if (existingNames.contains(normalized)) {
-      setState(() => _customError = 'هذا التصنيف موجود بالفعل.');
+      setState(() => _customError = 'هذا البند موجود.');
       return;
     }
     final id = 'custom-${DateTime.now().microsecondsSinceEpoch}';
@@ -495,7 +492,7 @@ class _CustomCategoryGroup extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Text('تصنيفاتك الخاصة', style: AarastV3Type.section(context)),
+        Text('بنودك الخاصة', style: AarastV3Type.section(context)),
         const SizedBox(height: AarastV3Space.x3),
         AarastV3ContinuousSurface(
           children: [
@@ -602,7 +599,7 @@ class _StarterCategoryRow extends StatelessWidget {
                   ),
                   if (onRemove != null)
                     IconButton(
-                      tooltip: 'حذف ${category.name}',
+                      tooltip: 'شيل ${category.name}',
                       onPressed: enabled ? onRemove : null,
                       icon: const Icon(LucideIcons.x, size: 18),
                       visualDensity: VisualDensity.compact,
@@ -672,7 +669,7 @@ class _CustomCategoryComposer extends StatelessWidget {
           ? Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                Text('تصنيف خاص', style: AarastV3Type.section(context)),
+                Text('بند خاص', style: AarastV3Type.section(context)),
                 const SizedBox(height: AarastV3Space.x2),
                 TextField(
                   key: const ValueKey('money-starter-custom-field'),
@@ -683,12 +680,12 @@ class _CustomCategoryComposer extends StatelessWidget {
                   textInputAction: TextInputAction.done,
                   onSubmitted: (_) => onAdd(),
                   decoration: InputDecoration(
-                    labelText: 'اسم التصنيف',
-                    hintText: 'مثال: تجهيز استراحة العائلة',
+                    labelText: 'اسم البند',
+                    hintText: 'مثل: تجهيز استراحة العائلة',
                     errorText: error,
                     prefixIcon: const Icon(LucideIcons.tag),
                     suffixIcon: IconButton(
-                      tooltip: 'إضافة التصنيف',
+                      tooltip: 'أضف البند',
                       onPressed: enabled ? onAdd : null,
                       icon: const Icon(LucideIcons.check),
                     ),
@@ -707,7 +704,7 @@ class _CustomCategoryComposer extends StatelessWidget {
                 ),
               ),
               icon: const Icon(LucideIcons.plus, size: 18),
-              label: const Text('إضافة تصنيف خاص'),
+              label: const Text('أضف بند خاص'),
             ),
     );
   }
@@ -752,13 +749,13 @@ class _StarterActionBar extends StatelessWidget {
               loading
                   ? 'نجهّز ميزانيتك…'
                   : selectedCount == 0
-                  ? 'اختر تصنيفًا للمتابعة'
+                  ? 'اختر بند واحد على الأقل'
                   : 'تجهيز الميزانية · $selectedCount',
             ),
           ),
           const SizedBox(height: AarastV3Space.x1),
           Text(
-            'سننشئ التصنيفات دفعة واحدة، ويمكنك تعديلها في أي وقت.',
+            'نضيف البنود مرة وحدة، وتقدر تعدّلها متى ما تشتي.',
             textAlign: TextAlign.center,
             style: AarastV3Type.label(
               context,
@@ -801,7 +798,7 @@ class _SelectionHint extends StatelessWidget {
           const SizedBox(width: AarastV3Space.x2),
           Expanded(
             child: Text(
-              'اختر تصنيفًا واحدًا على الأقل، أو ابدأ بالإعداد اليدوي.',
+              'اختر بند واحد على الأقل، أو رتّبها بنفسك.',
               style: AarastV3Type.body(
                 context,
               ).copyWith(color: AarastV3Color.inkSoft),

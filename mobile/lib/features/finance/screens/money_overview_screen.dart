@@ -106,7 +106,6 @@ class _MoneyOverviewScreenState extends State<MoneyOverviewScreen> {
         catalog: moneyStarterCatalogFromManaged(managedCatalog, persona),
         loading: provider.isSubmitting,
         errorMessage: provider.errorMessage,
-        embedded: widget.embedded,
         onRefresh: _load,
         onManualSetup: () =>
             context.push(AppRouter.moneyBudget(widget.weddingPlanId)),

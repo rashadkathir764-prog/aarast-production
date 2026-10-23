@@ -333,7 +333,10 @@ void main() {
     expect(find.text('خطتك جاهزة يا محمد'), findsOneWidget);
     expect(find.text('عرس محمد · صنعاء'), findsOneWidget);
     expect(find.textContaining('بند لعرسك'), findsOneWidget);
-    expect(find.textContaining('مهمة مقترحة على موعدك'), findsOneWidget);
+    // This plan has no date yet (x01), so nothing claims to sit on one.
+    expect(find.textContaining('مهمة مقترحة'), findsOneWidget);
+    expect(find.textContaining('على موعدك'), findsNothing);
+    expect(find.textContaining('ترتبها لما تحدد الموعد'), findsOneWidget);
     expect(find.text('مزودين صنعاء بأسعارهم'), findsOneWidget);
 
     await _tap(tester, 'بعدين، خلني أشوف أول');

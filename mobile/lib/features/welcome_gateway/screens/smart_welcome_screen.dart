@@ -320,6 +320,7 @@ class _SmartWelcomeScreenState extends State<SmartWelcomeScreen> {
         name: _name,
         subtitle: _readySubtitle(),
         city: _city ?? '',
+        hasDate: !_dateUnknown && _date != null,
         catalogs: _catalogs(),
         signedIn: _isAuthenticated(),
         saving: _saving,

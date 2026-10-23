@@ -337,7 +337,9 @@ class _PlaceBudgetStep extends StatelessWidget {
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 6),
           child: Text(
-            'المهر محسوب لحاله، وتقدر تغيّر الميزانية بعدين من المال.',
+            // C1: the budget is the wedding only. Nothing tracks the mahr
+            // yet (a06), so nothing may claim it is counted.
+            'الميزانية لعرسك بس، والمهر مش منها. وتقدر تغيّرها بعدين من المال.',
             style: JourneyType.of(
               JourneyType.small,
               color: AarastV3Color.textMuted,
@@ -356,6 +358,7 @@ class _ReadyStep extends StatelessWidget {
     required this.name,
     required this.subtitle,
     required this.city,
+    required this.hasDate,
     required this.catalogs,
     required this.signedIn,
     required this.saving,
@@ -369,6 +372,9 @@ class _ReadyStep extends StatelessWidget {
   final String name;
   final String subtitle;
   final String city;
+
+  /// x01: without a date nothing is placed on one yet, so nothing says so.
+  final bool hasDate;
   final ReferenceCatalogData catalogs;
   final bool signedIn;
   final bool saving;
@@ -485,8 +491,10 @@ class _ReadyStep extends StatelessWidget {
                 color: AarastV3Color.brandAccentStrong,
                 soft: AarastV3Color.brandAccentSoft,
                 title:
-                    '${arabicCount(catalogs.taskCount, one: 'مهمة واحدة', two: 'مهمتين', few: 'مهام', many: 'مهمة')} مقترحة على موعدك',
-                subtitle: 'تختار منها اللي يناسبك بعد الحفظ',
+                    '${arabicCount(catalogs.taskCount, one: 'مهمة واحدة', two: 'مهمتين', few: 'مهام', many: 'مهمة')} مقترحة${hasDate ? ' على موعدك' : ''}',
+                subtitle: hasDate
+                    ? 'تختار منها اللي يناسبك بعد الحفظ'
+                    : 'تختار منها اللي يناسبك، وترتبها لما تحدد الموعد',
               ),
             JourneyListRow(
               icon: LucideIcons.store,
@@ -501,7 +509,9 @@ class _ReadyStep extends StatelessWidget {
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 6),
           child: Text(
-            'تشيل وتضيف براحتك، وكلها تتعدل لو تغيّر الموعد.',
+            hasDate
+                ? 'تشيل وتضيف براحتك، وكلها تتعدل لو تغيّر الموعد.'
+                : 'تشيل وتضيف براحتك، وتحدد الموعد متى ما ثبت.',
             style: JourneyType.of(
               JourneyType.small,
               color: AarastV3Color.textMuted,

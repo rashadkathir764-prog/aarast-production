@@ -109,12 +109,12 @@ void main() {
       const ValueKey('money-starter-custom-field'),
     );
     await tester.enterText(customField, 'فستان العروسة');
-    await tester.tap(find.byTooltip('إضافة التصنيف'));
+    await tester.tap(find.byTooltip('أضف البند'));
     await tester.pump();
-    expect(find.text('هذا التصنيف موجود بالفعل.'), findsOneWidget);
+    expect(find.text('هذا البند موجود.'), findsOneWidget);
 
     await tester.enterText(customField, 'فرقة نسائية خاصة');
-    await tester.tap(find.byTooltip('إضافة التصنيف'));
+    await tester.tap(find.byTooltip('أضف البند'));
     await tester.pumpAndSettle();
     expect(find.text('فرقة نسائية خاصة'), findsOneWidget);
     expect(find.text('تجهيز الميزانية · 12'), findsOneWidget);
@@ -125,6 +125,23 @@ void main() {
     expect(submitted, contains('فرقة نسائية خاصة'));
     expect(submitted, contains('فستان العروسة'));
     expect(submitted, isNot(contains('بدلة العريس')));
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('the action bar sits on the tab bottom edge, not over the list', (
+    tester,
+  ) async {
+    // Seen in the running app: lifted by 94 for the old shell that drew the
+    // tab under its navigation bar, the bar floated with list rows below it.
+    await _pumpStarter(
+      tester,
+      persona: MoneyStarterPersona.groom,
+      onSubmit: (_) async => true,
+    );
+
+    final manual = find.byKey(const ValueKey('money-starter-manual'));
+    expect(manual, findsOneWidget);
+    expect(tester.getBottomLeft(manual).dy, greaterThan(900 - 48));
     expect(tester.takeException(), isNull);
   });
 

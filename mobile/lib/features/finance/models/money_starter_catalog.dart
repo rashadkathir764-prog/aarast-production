@@ -215,7 +215,7 @@ const _groomCatalog = MoneyStarterCatalog(
   eyebrow: 'بداية مرتبة للعريس',
   title: 'جهّز ميزانية عرسك',
   subtitle:
-      'اخترنا لك البنود الأكثر شيوعًا. أبقِ ما يخصك وألغِ الباقي؛ لا مبالغ ولا التزامات قبل تأكيدك.',
+      'اخترنا لك البنود اللي عند أغلب العرسان. خلّ اللي يخصك وشيل الباقي، وما نحط مبالغ ولا اتفاقات إلا لما تأكد.',
   groups: [
     MoneyStarterGroup(
       id: 'groom-agreement',
@@ -395,7 +395,7 @@ const _brideCatalog = MoneyStarterCatalog(
   eyebrow: 'بداية مرتبة للعروسة',
   title: 'جهّزي ميزانية فرحتك',
   subtitle:
-      'رتّبنا لك البنود المهمة في مكان واحد. اختاري ما يخصك فقط، ويمكنك تعديل كل شيء لاحقًا.',
+      'رتّبنا لك البنود المهمة في مكان واحد. اختاري اللي يخصك، وتقدرين تعدّلين كل شي بعدين.',
   groups: [
     MoneyStarterGroup(
       id: 'bride-look',
@@ -561,7 +561,7 @@ const _neutralCatalog = MoneyStarterCatalog(
   persona: MoneyStarterPersona.neutral,
   eyebrow: 'بداية مالية مرتبة',
   title: 'جهّز أقسام الميزانية',
-  subtitle: 'اختر البنود التي تخص الخطة الآن، وأضف أي بند خاص بكم قبل الحفظ.',
+  subtitle: 'اختر البنود اللي تخص خطتك، وأضف أي بند خاص بكم قبل الحفظ.',
   groups: [
     MoneyStarterGroup(
       id: 'neutral-event',

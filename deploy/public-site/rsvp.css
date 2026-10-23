@@ -1,80 +1,196 @@
+/* e05: the guest's page in the app's own colours (aarast_v3_foundations). */
+:root {
+  color-scheme: light;
+  --canvas: #f2f4f3;
+  --paper: #ffffff;
+  --ink: #13211f;
+  --muted: #55625e;
+  --faint: #8a9592;
+  --line: #e2e7e5;
+  --primary: #0b6e69;
+  --primary-dark: #064b47;
+  --on-primary-muted: #dcefec;
+  --saffron: #f2a93b;
+  --mint: #25774f;
+  --mint-soft: #ddf1e6;
+  --danger: #b8432a;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  background: var(--canvas);
+  color: var(--ink);
+  font-family: "Tajawal", "Noto Sans Arabic", "Segoe UI", Arial, sans-serif;
+  line-height: 1.6;
+}
+
+.rsvp-shell {
+  width: min(100%, 480px);
+  margin: 0 auto;
+  padding: 20px 16px 28px;
+}
+
+.rsvp-card {
+  padding: 28px 22px 24px;
+  text-align: center;
+  color: var(--paper);
+  background: var(--primary-dark);
+  border-radius: 28px;
+}
+
+.rsvp-greeting {
+  margin: 0;
+  color: var(--on-primary-muted);
+  font-size: 18px;
+}
+
+.rsvp-card h1 {
+  margin: 6px 0 4px;
+  font-size: 30px;
+  line-height: 1.3;
+}
+
+.rsvp-invite-line {
+  margin: 0;
+  color: var(--on-primary-muted);
+  font-size: 16px;
+}
+
 .rsvp-details {
   display: grid;
-  gap: 10px;
-  margin: 22px 0 6px;
-  padding: 16px;
-  text-align: right;
-  background: #fff6d9;
-  border: 1px solid var(--gold-soft);
-  border-radius: 18px;
+  gap: 12px;
+  margin: 20px 0 0;
+  padding-top: 18px;
+  border-top: 1px solid rgb(220 239 236 / 35%);
 }
 
 .rsvp-details div {
-  display: flex;
-  gap: 10px;
-  align-items: baseline;
+  display: grid;
+  gap: 2px;
 }
 
 .rsvp-details dt {
-  min-width: 56px;
-  color: var(--burgundy-deep);
-  font-weight: 800;
+  color: var(--on-primary-muted);
+  font-size: 13px;
 }
 
 .rsvp-details dd {
   margin: 0;
-  color: var(--ink);
+  font-size: 17px;
   font-weight: 700;
-  line-height: 1.6;
+}
+
+.rsvp-hijri {
+  display: block;
+  color: var(--on-primary-muted);
+  font-size: 14px;
+  font-weight: 400;
 }
 
 .rsvp-answer {
   display: grid;
   gap: 12px;
-  margin-top: 22px;
+  margin-top: 18px;
+  padding: 20px 18px;
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: 24px;
 }
 
-.rsvp-companions {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 12px;
-  color: var(--muted);
+.rsvp-question {
+  margin: 0;
+  font-size: 18px;
   font-weight: 700;
-  text-align: right;
 }
 
-.rsvp-companions input {
-  width: 84px;
-  padding: 10px;
-  border: 1px solid var(--border);
-  border-radius: 12px;
+.rsvp-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.rsvp-chips button,
+.rsvp-yes,
+.rsvp-no {
   font: inherit;
-  text-align: center;
-}
-
-.rsvp-answer button {
-  font-family: inherit;
   cursor: pointer;
+}
+
+.rsvp-chips button {
+  min-width: 64px;
+  padding: 10px 16px;
+  color: var(--ink);
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.rsvp-chips button[aria-pressed="true"] {
+  color: var(--paper);
+  background: var(--primary);
+  border-color: var(--primary);
+}
+
+.rsvp-yes {
+  margin-top: 6px;
+  padding: 15px 18px;
+  color: var(--paper);
+  background: var(--mint);
   border: 0;
+  border-radius: 18px;
+  font-size: 18px;
+  font-weight: 700;
 }
 
-.rsvp-decline {
-  padding: 14px 18px;
-  color: var(--burgundy);
+.rsvp-no {
+  padding: 13px 18px;
+  color: var(--danger);
   background: transparent;
-  border: 1px solid var(--border) !important;
-  border-radius: 16px;
-  font-size: 17px;
-  font-weight: 800;
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  font-size: 16px;
+  font-weight: 700;
 }
 
-.rsvp-answer button:disabled {
+.rsvp-yes:disabled,
+.rsvp-no:disabled {
   cursor: wait;
   opacity: 0.6;
 }
 
-.rsvp-done {
-  color: #1d6b45;
-  font-weight: 800;
+button:focus-visible {
+  outline: 3px solid var(--saffron);
+  outline-offset: 2px;
+}
+
+.rsvp-status {
+  margin: 0;
+  color: var(--muted);
+  text-align: center;
+}
+
+.rsvp-status:empty {
+  display: none;
+}
+
+.rsvp-status.rsvp-done {
+  padding: 12px;
+  color: var(--mint);
+  background: var(--mint-soft);
+  border-radius: 14px;
+  font-weight: 700;
+}
+
+.rsvp-footnote {
+  margin: 16px 0 0;
+  color: var(--faint);
+  font-size: 14px;
+  text-align: center;
 }

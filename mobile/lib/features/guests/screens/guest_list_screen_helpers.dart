@@ -251,3 +251,76 @@ class _GroupRow extends StatelessWidget {
     );
   }
 }
+
+/// x21 «مين بتعزم؟»: the first guests from the contacts, a pasted list, or
+/// one by one.
+class _FirstGuests extends StatelessWidget {
+  const _FirstGuests({
+    required this.onContacts,
+    required this.onPaste,
+    required this.onOne,
+  });
+
+  /// Null where the device has no address book (web, desktop).
+  final VoidCallback? onContacts;
+  final VoidCallback onPaste;
+  final VoidCallback onOne;
+
+  @override
+  Widget build(BuildContext context) {
+    Widget icon(IconData data) => Container(
+      width: 44,
+      height: 44,
+      decoration: BoxDecoration(
+        color: AarastV3Color.lilacSoft,
+        borderRadius: BorderRadius.circular(14),
+      ),
+      child: Icon(data, color: AarastV3Color.lilac),
+    );
+    return Column(
+      key: const ValueKey('guests-first'),
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        const SizedBox(height: 8),
+        Text(
+          AarastV3Copy.firstGuestTitle,
+          style: JourneyType.of(JourneyType.display, weight: JourneyType.bold),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          'ما أضفت أحد بعد.',
+          style: JourneyType.of(
+            JourneyType.body,
+            color: AarastV3Color.textMuted,
+          ),
+        ),
+        const SizedBox(height: 16),
+        if (onContacts case final contacts?) ...[
+          JourneyChoiceCard(
+            key: const ValueKey('guests-first-contacts'),
+            title: 'من جهات الاتصال',
+            subtitle: 'تختار مين تعزم، والمكرر نعلّمه لك',
+            leading: icon(LucideIcons.contact),
+            onTap: contacts,
+          ),
+          const SizedBox(height: 10),
+        ],
+        JourneyChoiceCard(
+          key: const ValueKey('guests-first-paste'),
+          title: 'الصق قائمة',
+          subtitle: 'اسم في كل سطر، ورقمه لو عندك',
+          leading: icon(LucideIcons.clipboardList),
+          onTap: onPaste,
+        ),
+        const SizedBox(height: 10),
+        JourneyChoiceCard(
+          key: const ValueKey('guests-first-one'),
+          title: 'ضيف واحد',
+          subtitle: 'اسمه ورقمه وكم معه',
+          leading: icon(LucideIcons.userPlus),
+          onTap: onOne,
+        ),
+      ],
+    );
+  }
+}

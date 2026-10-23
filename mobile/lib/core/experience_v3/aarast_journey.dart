@@ -1193,6 +1193,8 @@ class JourneyTextField extends StatefulWidget {
     this.helper,
     this.helperColor = AarastV3Color.primary,
     this.autofillHints,
+    this.minLines,
+    this.maxLines = 1,
     super.key,
   });
 
@@ -1219,6 +1221,10 @@ class JourneyTextField extends StatefulWidget {
   final String? helper;
   final Color helperColor;
   final Iterable<String>? autofillHints;
+
+  /// A note or a pasted list grows from [minLines] up to [maxLines].
+  final int? minLines;
+  final int? maxLines;
 
   @override
   State<JourneyTextField> createState() => _JourneyTextFieldState();
@@ -1282,6 +1288,8 @@ class _JourneyTextFieldState extends State<JourneyTextField> {
                       keyboardType: widget.keyboardType,
                       textInputAction: widget.textInputAction,
                       obscureText: widget.obscureText,
+                      minLines: widget.minLines,
+                      maxLines: widget.maxLines,
                       maxLength: widget.maxLength,
                       textDirection: widget.textDirection,
                       textAlign: widget.textAlign,

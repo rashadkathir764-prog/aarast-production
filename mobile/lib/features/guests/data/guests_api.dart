@@ -186,6 +186,58 @@ class GuestsApi {
     return Guest.fromJson(json);
   }
 
+  /// e03 / w28: many guests in one go, at most 200 per call. The server
+  /// takes them all or none, so duplicates are left out before calling.
+  Future<List<Guest>> createGuestsBulk({
+    required String weddingPlanId,
+    required List<({String name, String? phone})> people,
+    String? groupId,
+  }) async {
+    final normalizedGroupId = groupId?.trim();
+    List<Map<String, dynamic>> payloads(
+      List<({String name, String? phone})> chunk,
+    ) => [
+      for (final person in chunk)
+        {
+          'name': person.name.trim(),
+          'side': 'OTHER',
+          'status': 'INVITED',
+          'seatsCount': 1,
+          if (normalizedGroupId != null && normalizedGroupId.isNotEmpty)
+            'groupId': normalizedGroupId,
+          'phone': ?_normalizeOptionalPhone(person.phone),
+        },
+    ];
+    final created = <Guest>[];
+    if (_isLocalGuestPlanId(weddingPlanId)) {
+      for (final payload in payloads(people)) {
+        created.add(
+          await _createLocalGuest(
+            weddingPlanId: weddingPlanId,
+            payload: payload,
+          ),
+        );
+      }
+      return created;
+    }
+    for (var start = 0; start < people.length; start += 200) {
+      final end = start + 200 > people.length ? people.length : start + 200;
+      final json = await _apiClient.postJson(
+        '/api/v1/wedding-plans/$weddingPlanId/guests/bulk',
+        {'items': payloads(people.sublist(start, end))},
+      );
+      for (final item in json['created'] as List? ?? const []) {
+        final guestJson = Map<String, dynamic>.from(item as Map);
+        await _offline?.database.saveCachedItem(
+          table: OfflineTables.cachedGuests,
+          json: guestJson,
+        );
+        created.add(Guest.fromJson(guestJson));
+      }
+    }
+    return created;
+  }
+
   Future<Guest> updateGuest({
     required String id,
     String? name,

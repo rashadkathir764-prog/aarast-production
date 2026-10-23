@@ -109,6 +109,42 @@ class GuestsProvider extends ChangeNotifier with SessionScopedNotifier {
     }
   }
 
+  /// e03 / w28: adds [people] to the plan, in [groupId] when given.
+  /// Returns how many were added; none on a failure, which says why.
+  Future<int> addGuests({
+    required String weddingPlanId,
+    required List<({String name, String? phone})> people,
+    String? groupId,
+  }) async {
+    if (people.isEmpty) return 0;
+    _isSubmitting = true;
+    _errorMessage = null;
+    _noticeMessage = null;
+    notifyListeners();
+    try {
+      final created = await _api.createGuestsBulk(
+        weddingPlanId: weddingPlanId,
+        people: people,
+        groupId: groupId,
+      );
+      _guests = [...created, ..._guests];
+      _refreshSummary(weddingPlanId);
+      if (_isLocalGuestPlanId(weddingPlanId)) {
+        _noticeMessage = CachePolicy.localPlanningSaveMessage;
+      }
+      return created.length;
+    } on ApiException catch (error) {
+      _errorMessage = _guestErrorMessage(error);
+      return 0;
+    } catch (_) {
+      _errorMessage = 'ما قدرنا نضيف الضيوف';
+      return 0;
+    } finally {
+      _isSubmitting = false;
+      notifyListeners();
+    }
+  }
+
   Future<bool> updateGuest({
     required Guest guest,
     String? name,

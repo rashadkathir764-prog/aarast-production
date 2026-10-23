@@ -1,4 +1,5 @@
-﻿import 'package:flutter/material.dart';
+﻿import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_contacts/flutter_contacts.dart';
 import 'package:lucide_icons/lucide_icons.dart';
@@ -18,6 +19,12 @@ class ContactPickerException implements Exception {
 
 class ContactPickerService {
   const ContactPickerService._();
+
+  /// Only Android and iOS phones have an address book to read.
+  static bool get isAvailable =>
+      !kIsWeb &&
+      (defaultTargetPlatform == TargetPlatform.android ||
+          defaultTargetPlatform == TargetPlatform.iOS);
 
   static Future<ContactPhoneDraft?> pickContact(BuildContext context) async {
     final permission = await FlutterContacts.permissions.request(
@@ -51,6 +58,30 @@ class ContactPickerService {
       rawPhone: selectedPhone,
       source: ContactPhoneSource.deviceContact,
     );
+  }
+
+  /// Every contact with a number, by name (e03). The first number of each
+  /// is kept; a contact without one is left out.
+  static Future<List<ContactPhoneDraft>> loadAll() async {
+    final permission = await FlutterContacts.permissions.request(
+      PermissionType.read,
+    );
+    if (!_isGranted(permission)) {
+      throw const ContactPickerException('تم رفض صلاحية جهات الاتصال');
+    }
+    final contacts = await FlutterContacts.getAll(
+      properties: {ContactProperty.name, ContactProperty.phone},
+    );
+    final drafts = <ContactPhoneDraft>[
+      for (final contact in contacts)
+        if (_phoneNumbers(contact).isNotEmpty)
+          ContactPhoneDraft.fromInput(
+            name: contact.displayName ?? '',
+            rawPhone: _phoneNumbers(contact).first,
+            source: ContactPhoneSource.deviceContact,
+          ),
+    ]..sort((a, b) => a.name.compareTo(b.name));
+    return drafts;
   }
 
   static Future<String?> pickPhoneNumber(BuildContext context) async {

@@ -36,7 +36,7 @@ abstract final class AarastV3Copy {
   static const firstTaskMessage =
       'ابدأ بالقرار الأقرب لك الآن؛ يكفي عنوان واضح ويمكنك إضافة التفاصيل لاحقًا.';
 
-  static const firstGuestTitle = 'ابدأ بالأسماء المؤكدة لديك';
+  static const firstGuestTitle = 'مين بتعزم؟';
   static const firstGuestMessage =
       'أضف الاسم أولًا، ثم أكمل الهاتف والرد عندما تتوفر لديك البيانات.';
 }

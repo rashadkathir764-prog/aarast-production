@@ -43,7 +43,12 @@ import '../../features/finance/finance_api.dart'
         RecordCostPaymentScreen,
         WeddingCost;
 import '../../features/guests/guests_api.dart'
-    show GuestDetailsScreen, GuestInviteScreen, GuestListScreen;
+    show
+        GuestDetailsScreen,
+        GuestImportScreen,
+        GuestImportSource,
+        GuestInviteScreen,
+        GuestListScreen;
 import '../../features/home/home_api.dart' show DashboardEntryScreen;
 import '../../features/marketplace/marketplace_api.dart'
     show
@@ -344,6 +349,14 @@ class AppRouter {
     return Uri(
       path: '/wedding-plans/$weddingPlanId/guests/invite',
       queryParameters: reminder ? {'mode': 'remind'} : null,
+    ).toString();
+  }
+
+  /// e03 from the phone's contacts, or w28 a pasted list.
+  static String guestImport(String weddingPlanId, {bool contacts = false}) {
+    return Uri(
+      path: '/wedding-plans/$weddingPlanId/guests/import',
+      queryParameters: {'from': contacts ? 'contacts' : 'paste'},
     ).toString();
   }
 

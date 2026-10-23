@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:provider/provider.dart';
 
+import '../../../core/contacts/contact_picker_service.dart';
 import '../../../core/experience_v3/aarast_v3.dart';
 import '../../../core/forms/aarast_form_draft_store.dart';
 import '../../../core/forms/aarast_form_success.dart';
@@ -116,13 +117,12 @@ class _GuestListScreenState extends State<GuestListScreen> {
         onRetry: _load,
       );
     } else if (guests.isEmpty) {
-      body = JourneyListState(
-        phase: JourneyListPhase.empty,
-        section: JourneySection.guests,
-        emptyIcon: LucideIcons.users,
-        emptyTitle: AarastV3Copy.firstGuestTitle,
-        emptyAction: 'أضف أول ضيف',
-        onEmptyAction: () => _showGuestSheet(provider: provider),
+      body = _FirstGuests(
+        onContacts: ContactPickerService.isAvailable
+            ? () => _openImport(contacts: true)
+            : null,
+        onPaste: () => _openImport(contacts: false),
+        onOne: () => _showGuestSheet(provider: provider),
       );
     } else if (query.isNotEmpty) {
       body = _guestBox(
@@ -256,6 +256,27 @@ class _GuestListScreenState extends State<GuestListScreen> {
             ),
           ),
         ],
+        const SizedBox(height: 4),
+        Wrap(
+          spacing: 4,
+          children: [
+            if (ContactPickerService.isAvailable)
+              JourneyTextAction(
+                key: const ValueKey('guests-from-contacts'),
+                label: 'من جهات الاتصال',
+                icon: LucideIcons.contact,
+                color: AarastV3Color.lilac,
+                onPressed: () => _openImport(contacts: true),
+              ),
+            JourneyTextAction(
+              key: const ValueKey('guests-paste-list'),
+              label: 'الصق قائمة',
+              icon: LucideIcons.clipboardList,
+              color: AarastV3Color.lilac,
+              onPressed: () => _openImport(contacts: false),
+            ),
+          ],
+        ),
         const SizedBox(height: 8),
         JourneySectionTitle(
           'حسب العائلة',
@@ -522,6 +543,12 @@ class _GuestListScreenState extends State<GuestListScreen> {
       message: provider.noticeMessage ?? 'انضاف الضيف',
       nextLabel: 'أضف ثاني',
       onNext: () => _showGuestSheet(provider: provider),
+    );
+  }
+
+  void _openImport({required bool contacts}) {
+    context.push(
+      AppRouter.guestImport(widget.weddingPlanId, contacts: contacts),
     );
   }
 

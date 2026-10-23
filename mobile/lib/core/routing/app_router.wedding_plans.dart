@@ -84,6 +84,22 @@ List<RouteBase> _weddingPlanRoutes() => [
     },
   ),
   GoRoute(
+    path: '/wedding-plans/:id/guests/import',
+    builder: (context, state) {
+      final id = state.pathParameters['id'] ?? '';
+      return WeddingPlanContextGate(
+        weddingPlanId: id,
+        requiredAccess: WeddingPlanRouteAccess.manageGuests,
+        child: GuestImportScreen(
+          weddingPlanId: id,
+          source: state.uri.queryParameters['from'] == 'contacts'
+              ? GuestImportSource.contacts
+              : GuestImportSource.paste,
+        ),
+      );
+    },
+  ),
+  GoRoute(
     path: '/wedding-plans/:id/guests/view/:guestId',
     builder: (context, state) {
       final id = state.pathParameters['id'] ?? '';

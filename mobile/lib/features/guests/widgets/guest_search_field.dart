@@ -5,9 +5,14 @@ import '../../../core/experience_v3/aarast_v3.dart';
 
 /// «دوّر باسم أو رقم»: owns its text and reports each change.
 class GuestSearchField extends StatefulWidget {
-  const GuestSearchField({required this.onChanged, super.key});
+  const GuestSearchField({
+    required this.onChanged,
+    this.autofocus = true,
+    super.key,
+  });
 
   final ValueChanged<String> onChanged;
+  final bool autofocus;
 
   @override
   State<GuestSearchField> createState() => _GuestSearchFieldState();
@@ -29,7 +34,7 @@ class _GuestSearchFieldState extends State<GuestSearchField> {
       label: 'دوّر باسم أو رقم',
       controller: _controller,
       icon: LucideIcons.search,
-      autofocus: true,
+      autofocus: widget.autofocus,
       onChanged: (value) => widget.onChanged(value.trim()),
     );
   }

@@ -1,4 +1,5 @@
 import 'wedding_plan.dart';
+import '../../../core/utils/plan_day.dart';
 
 class DashboardPermissionSummary {
   const DashboardPermissionSummary({
@@ -115,7 +116,7 @@ class DashboardSummary {
       ),
       title: json['title'].toString(),
       currency: json['currency']?.toString() ?? 'YER',
-      weddingDate: _dateTimeOrNull(json['weddingDate']),
+      weddingDate: planDayFromJson(json['weddingDate']),
       city: json['city']?.toString(),
       location: _mapOrNull(json['location']),
       status: json['status']?.toString() ?? 'PLANNING',

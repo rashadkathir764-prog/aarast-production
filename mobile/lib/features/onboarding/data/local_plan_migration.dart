@@ -1,5 +1,6 @@
 import '../../../core/offline/local_database.dart';
 import '../../../core/offline/offline_tables.dart';
+import '../../../core/utils/plan_day.dart';
 import '../../wedding_plans/wedding_plans_api.dart'
     show OnboardingCompleteResponse, WeddingPlansApi;
 import '../models/guest_onboarding_draft.dart';
@@ -116,7 +117,7 @@ class LocalPlanMigrationService {
       'city': ?city,
       if (location.hasAnyLocation) 'location': location.toJson(),
       if (draft.weddingDate != null)
-        'weddingDate': draft.weddingDate!.toIso8601String(),
+        'weddingDate': planDayToJson(draft.weddingDate!),
       if (draft.priorities.isNotEmpty) 'priorities': draft.priorities,
       if (_budget(draft) != null) 'estimatedBudget': _budget(draft),
       'currency': draft.currency ?? 'YER',

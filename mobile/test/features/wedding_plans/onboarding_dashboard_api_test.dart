@@ -313,7 +313,8 @@ void main() {
           offline: offline,
         ).getDashboardSummary('plan-1');
 
-        expect(summary.weddingDate?.hour, 18);
+        // D11: the stored date is read as its day in Sana'a (21:30 on the 9th).
+        expect(summary.weddingDate, DateTime(2026, 8, 9));
         expect(summary.location?['venue'], 'قاعة اعّرست');
         expect(summary.planProviders.single.businessName, 'استديو النور');
         expect(summary.permissions.canManageTasks, isTrue);

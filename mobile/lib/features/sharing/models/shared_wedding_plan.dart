@@ -1,4 +1,5 @@
-﻿import 'shared_member.dart';
+﻿import '../../../core/utils/plan_day.dart';
+import 'shared_member.dart';
 
 class SharedWeddingPlan {
   const SharedWeddingPlan({
@@ -16,7 +17,7 @@ class SharedWeddingPlan {
       id: json['id'].toString(),
       title: json['title'].toString(),
       city: json['city']?.toString(),
-      weddingDate: _dateTimeOrNull(json['weddingDate']),
+      weddingDate: planDayFromJson(json['weddingDate']),
       currency: json['currency']?.toString() ?? 'YER',
       status: json['status']?.toString() ?? 'PLANNING',
       sharedMember: SharedMember.fromJson(
@@ -32,11 +33,4 @@ class SharedWeddingPlan {
   final String currency;
   final String status;
   final SharedMember sharedMember;
-}
-
-DateTime? _dateTimeOrNull(Object? value) {
-  if (value == null) {
-    return null;
-  }
-  return DateTime.tryParse(value.toString());
 }

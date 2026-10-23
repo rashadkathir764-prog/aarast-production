@@ -5,6 +5,7 @@ import '../../../core/offline/cache_policy.dart';
 import '../../../core/offline/offline_sync_service.dart';
 import '../../../core/offline/offline_tables.dart';
 import '../../../core/storage/auth_storage.dart';
+import '../../../core/utils/plan_day.dart';
 import '../models/active_wedding_plan.dart';
 import '../models/dashboard_summary.dart';
 import '../models/onboarding_complete.dart';
@@ -156,7 +157,7 @@ class WeddingPlansApi {
       'title': title,
       if (city != null && city.trim().isNotEmpty) 'city': city.trim(),
       if (location != null && location.isNotEmpty) 'location': location,
-      if (weddingDate != null) 'weddingDate': weddingDate.toIso8601String(),
+      if (weddingDate != null) 'weddingDate': planDayToJson(weddingDate),
       if (estimatedBudget != null && estimatedBudget.trim().isNotEmpty)
         'estimatedBudget': estimatedBudget.trim(),
       'currency': currency,
@@ -181,7 +182,7 @@ class WeddingPlansApi {
         'title': title.trim(),
         if (city != null && city.trim().isNotEmpty) 'city': city.trim(),
         if (location != null && location.isNotEmpty) 'location': location,
-        if (weddingDate != null) 'weddingDate': weddingDate.toIso8601String(),
+        if (weddingDate != null) 'weddingDate': planDayToJson(weddingDate),
         if (estimatedBudget != null && estimatedBudget.trim().isNotEmpty)
           'estimatedBudget': estimatedBudget.trim(),
         'currency': currency,

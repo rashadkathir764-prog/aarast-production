@@ -1,4 +1,5 @@
-﻿import '../../onboarding/onboarding_api.dart' show WeddingLocationDraft;
+﻿import '../../../core/utils/plan_day.dart';
+import '../../onboarding/onboarding_api.dart' show WeddingLocationDraft;
 
 class WeddingPlan {
   const WeddingPlan({
@@ -25,7 +26,7 @@ class WeddingPlan {
       title: json['title'].toString(),
       city: json['city']?.toString(),
       location: _mapOrNull(json['location']),
-      weddingDate: _dateTimeOrNull(json['weddingDate']),
+      weddingDate: planDayFromJson(json['weddingDate']),
       estimatedBudget: json['estimatedBudget']?.toString(),
       priorities: _stringList(json['priorities']),
       onboardingPath: json['onboardingPath']?.toString(),

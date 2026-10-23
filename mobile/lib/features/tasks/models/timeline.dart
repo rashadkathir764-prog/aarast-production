@@ -1,3 +1,5 @@
+import '../../../core/utils/plan_day.dart';
+
 class Timeline {
   const Timeline({
     required this.upcomingTasks,
@@ -11,7 +13,7 @@ class Timeline {
 
   factory Timeline.fromJson(Map<String, dynamic> json) {
     return Timeline(
-      weddingDate: _dateTimeOrNull(json['weddingDate']),
+      weddingDate: planDayFromJson(json['weddingDate']),
       upcomingTasks: _listFromJson(
         json['upcomingTasks'],
         (item) => TimelineTask.fromJson(item),

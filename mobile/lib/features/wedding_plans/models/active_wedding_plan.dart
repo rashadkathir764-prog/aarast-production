@@ -1,4 +1,5 @@
 ﻿import 'wedding_plan.dart';
+import '../../../core/utils/plan_day.dart';
 import '../../onboarding/onboarding_api.dart' show WeddingLocationDraft;
 
 class ActiveWeddingPlan {
@@ -27,7 +28,7 @@ class ActiveWeddingPlan {
       title: json['title'].toString(),
       city: json['city']?.toString(),
       location: _mapOrNull(json['location']),
-      weddingDate: _dateTimeOrNull(json['weddingDate']),
+      weddingDate: planDayFromJson(json['weddingDate']),
       priorities: _stringList(json['priorities']),
       estimatedBudget: json['estimatedBudget']?.toString(),
       currency: json['currency']?.toString() ?? 'YER',

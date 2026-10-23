@@ -5,8 +5,43 @@
 - الفرع `groom-journey-build`، وكل الشغل المكتمل مرفوع على `origin`.
 - خلصت الشرائح 1 إلى 6: البداية، الرئيسية، الفلوس، المهام، الضيوف.
 - الشريحة 7 (المزودين، جهة العميل) في النص: 6 شاشات من 24 مكتملة.
-- شاشة «استكشف» (f02 وw33) نصها مكتوب وموجود على الجهاز فقط، وما انعمل له commit.
+- شاشة «استكشف» (f02 وw33) مكتملة ومرفوعة.
 - باقي: بقية الشريحة 7، ثم الشريحة 8 (الحساب والإعدادات والخطة)، ثم الشريحة 9 (المشارك)، ثم التنظيف والتسليم.
+
+## RULE ZERO: the prototype is the law (read before anything else)
+
+Rashad's complaint (2026-10-24): a session "improved" the old «جهّز ميزانية
+عرسك» screen, which is not in the prototype, and showed him a misleading
+comparison. That must never happen again.
+
+1. **The app shows only screens that are in the prototype.** The 186 renders
+   are committed in `mobile/test/prototype/v3/out/<id>.png` (regenerate with
+   `flutter test test/prototype/v3/v3_test.dart --update-goldens`). Open the
+   PNG of every screen you touch, with the Read tool, before writing code.
+2. **When the running app shows something that is not in the prototype** (an
+   old screen, an old bar, an extra card, a setup step), do not restyle it.
+   Find why it appears and remove the cause. Restyling an old screen is a
+   failure, not progress.
+   - Example: «جهّز ميزانية عرسك» appeared because a phone plan never wrote
+     its a05 items into money. Fixed at the cause in `c9b2ce56`.
+3. **Nothing in the prototype may be missing.** Every text, row, tag and
+   button of the PNG is built, unless the classification row
+   (`docs/superpowers/audit/groom_build_classification.md`) drops it or a
+   decision in `docs/project/DECISIONS.md` changes it. Anything else you drop
+   goes into «Design differences» below, with the reason, and you tell Rashad.
+4. **Never invent a screen, a flow or a decision.** If the prototype is
+   illogical, fix it properly and record it below; do not add new screens.
+5. **Compare like with like.** When you show Rashad the app beside the
+   prototype, use the prototype's own data (عرس محمد، 21 يناير، 124 ضيف،
+   7 مليون), never an empty plan beside a full one.
+6. **Finish the work in progress first.** Run `git status` and `git log -5`
+   before starting; never build on someone's half-done change without
+   understanding it.
+7. **Old screens to delete, not to polish:** the money starter
+   (`money_starter_setup.dart`, still a fallback for plans made before
+   `c9b2ce56`), `costs_screen.dart`, the old payment schedule screens, the
+   old w09 import, quick add, `WeddingStageContextLine`. Remove each with its
+   tests and pins in the cleanup step.
 
 ## For the next agent: read this first
 
@@ -88,7 +123,7 @@ The word «أقساط» is banned. Use «على دفعات».
 | 4 Money write (12) | Done. c04 needed no code. |
 | 5 Tasks (10) | Done, except **y14**, which no commit names. Its hero must be a CustomPainter, with no gradient (D3). |
 | 6 Guests (12) | Done, except **w38**, which no commit names. Verify it. |
-| 7 Providers, customer side (24) | **In progress.** Done: f01, f02, f04, f05, x10, x11, w31, w33. Left: x22, w30, f03, f09, y13, f07, f08, f06, w32, y09, x09, w34, w35, g04, x12, b07. |
+| 7 Providers, customer side (24) | **In progress.** Done: f01, f02, f04, f05, x10, x11, w30 (filter sheet), w31, w33. Left: x22, f03, f09, y13, f07, f08, f06, w32, y09, x09, w34, w35, g04, x12, b07. |
 | 8 Account / settings / plan (15) | Not started: g02, g07, g10, g11, w39, w07, w08, g08, w10, g03, w11, g01, g06, x07, x20 |
 | 9 Participant (15) | Not started: x04, q01, q02, q03, q04, x06, q17, q05, q18, q07, q08, q10, q12, q19, q21 |
 | 10 V1.1 extras | Out of scope until after V1 |
@@ -145,7 +180,7 @@ Nothing is called done without all of these:
 
 ## Known follow-ups (not done yet)
 
-- **Money starter:** the first Money screen on a fresh plan still has the old look, with an action panel that floats over the list. Its five starter items are generic («مكان المناسبة», «مصاريف طارئة»), while a08 promises «الذهب والشبكة والكسوة». Redo it in the journey look and check it on a phone.
+- **Money starter:** NOT in the prototype; do not redo it. Since `c9b2ce56` a new plan (phone or account) opens Money on its a05 items, so the starter only appears for plans made before that. Delete it in the cleanup step (rule zero, 7).
 - **Dead code to remove, with pin updates:**
   - `WeddingStageContextLine` and `WeddingStageDomainGuidance`, which have no screen left;
   - `GuestOnboardingProvider`, which nothing provides.

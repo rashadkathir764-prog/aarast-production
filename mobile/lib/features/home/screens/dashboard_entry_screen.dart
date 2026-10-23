@@ -69,12 +69,19 @@ class _DashboardEntryScreenState extends State<DashboardEntryScreen> {
               snapshot: pending,
               migrationService: service,
               autoSave: auth.accountJustCreated,
-              onFinished: () {
+              onFinished: (planId) {
                 if (!mounted) return;
                 setState(() {
                   _migrationSnapshot = Future.value(null);
                 });
-                unawaited(context.read<AccountContextController>().refresh());
+                // The plan just saved opens; a discarded one (no id) leaves
+                // the choice to the gate.
+                final contexts = context.read<AccountContextController>();
+                unawaited(
+                  planId == null
+                      ? contexts.refresh()
+                      : contexts.refreshAndOpenPlan(planId),
+                );
               },
             );
           }

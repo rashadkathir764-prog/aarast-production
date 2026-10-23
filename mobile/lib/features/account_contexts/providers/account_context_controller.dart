@@ -231,6 +231,19 @@ class AccountContextController extends ChangeNotifier {
     }
   }
 
+  /// Refreshes, then opens the account plan [planId] when nothing is open:
+  /// a plan just saved from this phone (a08b → b01) opens at once, never a
+  /// chooser holding only that plan.
+  Future<void> refreshAndOpenPlan(String planId) async {
+    await refresh();
+    if (_disposed || _selectedContext != null) return;
+    final saved = _firstOrNull(
+      availableContexts,
+      (context) => context.isPlan && context.weddingPlanId == planId,
+    );
+    if (saved != null) await select(saved.contextKey);
+  }
+
   Future<bool> select(String contextKey) async {
     appLogEvent(
       'ACTIVE_CONTEXT_SELECTION_REQUESTED',

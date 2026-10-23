@@ -261,7 +261,7 @@ void main() {
       LocalPlanMigrationScreen(
         snapshot: _snapshot,
         migrationService: _Migration(GuestOnboardingStorage(prefs)),
-        onFinished: () {},
+        onFinished: (_) {},
       ),
       h: 1000,
       providers: [Provider<AuthStorage>.value(value: AuthStorage(prefs))],

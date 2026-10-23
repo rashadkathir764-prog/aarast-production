@@ -169,6 +169,36 @@ void main() {
   });
 
   group('AccountContextController fallback and persistence', () {
+    test('a plan just saved from the phone opens without a chooser', () async {
+      final saved = accountContext(role: AccountContextRole.owner);
+      final contexts = <AccountContext>[];
+      final harness = await _Harness.create(contexts: contexts);
+      harness.api.onList = () async => List.of(contexts);
+      // Sign-in loads the account before the phone plan reaches it.
+      await harness.controller.refresh(allowInitialSingleContext: true);
+      expect(harness.controller.selectedContext, isNull);
+
+      contexts.add(saved);
+      await harness.controller.refreshAndOpenPlan('plan-1');
+
+      expect(harness.controller.selectedContext?.contextKey, saved.contextKey);
+      expect(harness.controller.needsSelection, isFalse);
+    });
+
+    test('opening a saved plan picks it among other paths', () async {
+      final other = accountContext(
+        role: AccountContextRole.contributor,
+        planId: 'plan-2',
+        membershipId: 'membership-2',
+      );
+      final saved = accountContext(role: AccountContextRole.owner);
+      final harness = await _Harness.create(contexts: [other, saved]);
+
+      await harness.controller.refreshAndOpenPlan('plan-1');
+
+      expect(harness.controller.selectedContext?.contextKey, saved.contextKey);
+    });
+
     test(
       'loads every account path without choosing among multiple paths',
       () async {

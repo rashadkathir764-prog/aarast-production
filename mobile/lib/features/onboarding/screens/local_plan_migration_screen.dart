@@ -25,7 +25,10 @@ class LocalPlanMigrationScreen extends StatefulWidget {
 
   final LocalPlanSnapshot snapshot;
   final LocalPlanMigrationService migrationService;
-  final VoidCallback onFinished;
+
+  /// Called with the account plan the local plan became, or null when the
+  /// local plan was discarded.
+  final ValueChanged<String?> onFinished;
 
   /// The account was just created to save this plan (a08b), so it is saved
   /// at once; the choice shows only if saving fails.
@@ -84,7 +87,7 @@ class _LocalPlanMigrationScreenState extends State<LocalPlanMigrationScreen> {
       }
 
       if (!mounted) return;
-      widget.onFinished();
+      widget.onFinished(response.activePlanId);
     } on ApiException catch (error) {
       if (!mounted) return;
       setState(() {
@@ -169,7 +172,7 @@ class _LocalPlanMigrationScreenState extends State<LocalPlanMigrationScreen> {
       await offlineSync?.refreshStatus();
     }
     if (!mounted) return;
-    widget.onFinished();
+    widget.onFinished(null);
   }
 
   @override

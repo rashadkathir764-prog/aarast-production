@@ -186,7 +186,7 @@ void main() {
           child: LocalPlanMigrationScreen(
             snapshot: _localSnapshot,
             migrationService: service,
-            onFinished: () {},
+            onFinished: (_) {},
           ),
         );
 
@@ -235,7 +235,7 @@ void main() {
         child: LocalPlanMigrationScreen(
           snapshot: _localSnapshot,
           migrationService: service,
-          onFinished: () {},
+          onFinished: (_) {},
           autoSave: true,
         ),
       );

@@ -43,7 +43,7 @@ import '../../features/finance/finance_api.dart'
         RecordCostPaymentScreen,
         WeddingCost;
 import '../../features/guests/guests_api.dart'
-    show GuestDetailsScreen, GuestListScreen;
+    show GuestDetailsScreen, GuestInviteScreen, GuestListScreen;
 import '../../features/home/home_api.dart' show DashboardEntryScreen;
 import '../../features/marketplace/marketplace_api.dart'
     show
@@ -338,6 +338,13 @@ class AppRouter {
 
   static String sharing(String id) {
     return '/wedding-plans/$id/sharing';
+  }
+
+  static String guestInvite(String weddingPlanId, {bool reminder = false}) {
+    return Uri(
+      path: '/wedding-plans/$weddingPlanId/guests/invite',
+      queryParameters: reminder ? {'mode': 'remind'} : null,
+    ).toString();
   }
 
   static String guestDetails(String weddingPlanId, String guestId) {

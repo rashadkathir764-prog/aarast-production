@@ -1,4 +1,6 @@
-﻿class Guest {
+﻿import 'guest_invite_text.dart';
+
+class Guest {
   const Guest({
     required this.id,
     required this.weddingPlanId,
@@ -311,10 +313,5 @@ class GuestInvitationLink {
 
   /// WhatsApp with the message ready: to the guest's chat when the number is
   /// known, otherwise WhatsApp's own picker.
-  Uri get whatsAppUri {
-    final digits = phone?.replaceAll(RegExp(r'[^0-9]'), '') ?? '';
-    return Uri.https('wa.me', digits.isEmpty ? '/' : '/$digits', {
-      'text': message,
-    });
-  }
+  Uri get whatsAppUri => guestWhatsAppUri(phone, message);
 }

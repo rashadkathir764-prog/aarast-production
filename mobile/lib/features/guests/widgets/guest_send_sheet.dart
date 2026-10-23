@@ -1,0 +1,183 @@
+import 'package:flutter/material.dart';
+import 'package:lucide_icons/lucide_icons.dart';
+import 'package:url_launcher/url_launcher.dart';
+
+import '../../../core/experience_v3/aarast_v3.dart';
+import '../../../core/network/api_client.dart' show ApiException;
+import '../models/guest.dart';
+import '../models/guest_invite_text.dart';
+
+/// Sends to [guests] one after another from this phone's WhatsApp (C30):
+/// each guest's own link is made when their turn comes, and their chat
+/// opens with the text ready. Closing keeps what was sent.
+class GuestSendSheet extends StatefulWidget {
+  const GuestSendSheet({
+    required this.guests,
+    required this.makeLink,
+    required this.buildText,
+    required this.title,
+    super.key,
+  });
+
+  final List<Guest> guests;
+
+  /// The guest's own RSVP link, made now (a new one replaces the old).
+  final Future<String> Function(Guest guest) makeLink;
+  final String Function(Guest guest, String url) buildText;
+  final String title;
+
+  @override
+  State<GuestSendSheet> createState() => _GuestSendSheetState();
+}
+
+class _GuestSendSheetState extends State<GuestSendSheet> {
+  int _index = 0;
+  int _sent = 0;
+  bool _busy = false;
+  String? _error;
+
+  bool get _done => _index >= widget.guests.length;
+
+  Future<void> _send() async {
+    final guest = widget.guests[_index];
+    setState(() {
+      _busy = true;
+      _error = null;
+    });
+    try {
+      final url = await widget.makeLink(guest);
+      final opened = await launchUrl(
+        guestWhatsAppUri(guest.phone, widget.buildText(guest, url)),
+        mode: LaunchMode.externalApplication,
+      );
+      if (!mounted) return;
+      if (!opened) {
+        setState(() => _error = 'ما قدرنا نفتح واتساب في هذا الجوال');
+        return;
+      }
+      setState(() {
+        _sent++;
+        _index++;
+      });
+    } on ApiException catch (error) {
+      if (mounted) setState(() => _error = error.message);
+    } catch (_) {
+      if (mounted) setState(() => _error = 'ما قدرنا نجهّز رابط ${guest.name}');
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final total = widget.guests.length;
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 8, 20, 16),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Semantics(
+            header: true,
+            child: Text(
+              widget.title,
+              style: JourneyType.of(
+                JourneyType.title,
+                weight: JourneyType.bold,
+              ),
+            ),
+          ),
+          Text(
+            _done
+                ? 'انرسلت لـ $_sent من $total'
+                : 'التالي ${_index + 1} من $total',
+            key: const ValueKey('guest-send-progress'),
+            style: JourneyType.of(
+              JourneyType.small,
+              color: AarastV3Color.textMuted,
+            ),
+          ),
+          const SizedBox(height: 10),
+          JourneyBar(
+            value: total == 0 ? 1 : _index / total,
+            color: AarastV3Color.mint,
+          ),
+          const SizedBox(height: 16),
+          if (_done)
+            JourneyNote(
+              text: 'خلصت. كل واحد يرد من رابطه ويتحدث ردّه في قائمتك.',
+              icon: LucideIcons.checkCircle2,
+              color: AarastV3Color.mint,
+              soft: AarastV3Color.mintSoft,
+            )
+          else ...[
+            JourneyBox(
+              padding: const EdgeInsets.all(14),
+              child: Row(
+                children: [
+                  JourneyAvatar(
+                    letter: widget.guests[_index].name.trim().isEmpty
+                        ? '؟'
+                        : widget.guests[_index].name.trim().characters.first,
+                    color: AarastV3Color.lilac,
+                    size: 40,
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      widget.guests[_index].name,
+                      key: const ValueKey('guest-send-current'),
+                      style: JourneyType.of(
+                        JourneyType.bodyLarge,
+                        weight: JourneyType.bold,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            if (_error != null) ...[
+              const SizedBox(height: 8),
+              Text(
+                _error!,
+                style: JourneyType.of(
+                  JourneyType.small,
+                  weight: JourneyType.bold,
+                  color: AarastV3Color.danger,
+                ),
+              ),
+            ],
+          ],
+          const SizedBox(height: 16),
+          if (_done)
+            JourneyButton(
+              key: const ValueKey('guest-send-close'),
+              label: 'تمام',
+              expand: true,
+              large: true,
+              onPressed: () => Navigator.pop(context, _sent),
+            )
+          else ...[
+            JourneyButton(
+              key: const ValueKey('guest-send-open'),
+              label: 'افتح واتساب لـ${widget.guests[_index].name}',
+              icon: LucideIcons.send,
+              background: AarastV3Color.mint,
+              expand: true,
+              large: true,
+              loading: _busy,
+              onPressed: _busy ? null : _send,
+            ),
+            Center(
+              child: JourneyTextAction(
+                key: const ValueKey('guest-send-skip'),
+                label: 'تخطّاه',
+                onPressed: _busy ? null : () => setState(() => _index++),
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}

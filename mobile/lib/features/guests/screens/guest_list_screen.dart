@@ -229,6 +229,33 @@ class _GuestListScreenState extends State<GuestListScreen> {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         _GuestSummaryCard(summary: summary),
+        if (!_isLocalPlan && summary.pending > 0) ...[
+          const SizedBox(height: 10),
+          JourneyButton(
+            key: const ValueKey('guests-remind'),
+            label: 'ذكّر الـ ${summary.pending} على واتساب',
+            icon: LucideIcons.send,
+            background: AarastV3Color.lilac,
+            expand: true,
+            onPressed: () => context.push(
+              AppRouter.guestInvite(widget.weddingPlanId, reminder: true),
+            ),
+          ),
+        ],
+        if (!_isLocalPlan) ...[
+          const SizedBox(height: 4),
+          Align(
+            alignment: AlignmentDirectional.centerStart,
+            child: JourneyTextAction(
+              key: const ValueKey('guests-invite-card'),
+              label: 'بطاقة الدعوة',
+              icon: LucideIcons.mail,
+              color: AarastV3Color.lilac,
+              onPressed: () =>
+                  context.push(AppRouter.guestInvite(widget.weddingPlanId)),
+            ),
+          ),
+        ],
         const SizedBox(height: 8),
         JourneySectionTitle(
           'حسب العائلة',

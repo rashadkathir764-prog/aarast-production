@@ -1,0 +1,68 @@
+import '../../../core/utils/arabic_date_formatter.dart';
+
+/// What an invitation says, before it meets a guest and their own link.
+class GuestInviteCard {
+  const GuestInviteCard({
+    required this.title,
+    this.host,
+    this.weddingDate,
+    this.place,
+  });
+
+  /// The wedding's name, as the plan has it («زفاف محمد»).
+  final String title;
+
+  /// «يتشرف …»: whose invitation it is; card text only (C29).
+  final String? host;
+  final DateTime? weddingDate;
+  final String? place;
+
+  String? get dateLine {
+    final date = weddingDate;
+    return date == null ? null : formatArabicWeekdayDayMonth(date);
+  }
+}
+
+/// e04: the first invitation. Every guest gets their own link, so the text
+/// is built for each one.
+String guestInviteMessage(
+  GuestInviteCard card, {
+  required String guestName,
+  required String url,
+}) {
+  final host = card.host?.trim();
+  return [
+    'أهلًا ${guestName.trim()} 🌸',
+    host == null || host.isEmpty
+        ? 'يسعدنا دعوتك لحضور ${card.title}.'
+        : 'يتشرف $host بدعوتكم لحضور ${card.title}.',
+    if (card.dateLine case final date?) 'الموعد: $date',
+    if (card.place?.trim() case final place? when place.isNotEmpty)
+      'المكان: $place',
+    'أكّد حضورك بضغطة من رابطك:',
+    url,
+  ].join('\n');
+}
+
+/// e08: a reminder for who has not answered. Sending it makes a new link,
+/// and the old one stops working, so it says so (C31).
+String guestReminderMessage(
+  GuestInviteCard card, {
+  required String guestName,
+  required String url,
+}) {
+  return [
+    'أهلًا ${guestName.trim()}',
+    card.dateLine == null
+        ? 'نذكرك بـ${card.title}.'
+        : 'نذكرك بـ${card.title} يوم ${card.dateLine}.',
+    'هذا رابطك الجديد للرد بضغطة:',
+    url,
+  ].join('\n');
+}
+
+/// A WhatsApp chat with [phone], [text] ready to send.
+Uri guestWhatsAppUri(String? phone, String text) {
+  final digits = phone?.replaceAll(RegExp(r'[^0-9]'), '') ?? '';
+  return Uri.https('wa.me', digits.isEmpty ? '/' : '/$digits', {'text': text});
+}

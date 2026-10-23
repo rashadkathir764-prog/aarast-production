@@ -1636,7 +1636,7 @@ const r19ProviderPortalApi = Object.freeze({
 // +1 for a08b reading the plan kept on the phone from the onboarding owner
 // API, so its name is not asked again, -1 for the home greeting by the
 // plan's name instead of the onboarding persona copy (b02).
-const r19LegalRecordCount = 187;
+const r19LegalRecordCount = 188;
 const trackedOwnerApiContracts = [
   {
     area: 'features/account_contexts',
@@ -1783,6 +1783,10 @@ const trackedOwnerApiContracts = [
       {
         uri: 'screens/guest_details_screen.dart',
         show: ['GuestDetailsScreen'],
+      },
+      {
+        uri: 'screens/guest_invite_screen.dart',
+        show: ['GuestInviteScreen'],
       },
       { uri: 'screens/guest_list_screen.dart', show: ['GuestListScreen'] },
     ],
@@ -2527,6 +2531,11 @@ const trackedPlanningBatchContracts = [
     show: ['publishGuestPlanPulse'],
   },
   {
+    source: 'mobile/lib/features/guests/screens/guest_invite_screen.dart',
+    target: 'mobile/lib/features/wedding_plans/wedding_plans_api.dart',
+    show: ['DashboardSummaryProvider'],
+  },
+  {
     source: 'mobile/lib/features/tasks/screens/create_task_screen.dart',
     target: 'mobile/lib/features/auth/auth_api.dart',
     show: ['AuthActionGuard', 'AuthController'],
@@ -3061,7 +3070,7 @@ const trackedCompositionRootContracts = [
       },
       {
         target: 'mobile/lib/features/guests/guests_api.dart',
-        show: ['GuestDetailsScreen', 'GuestListScreen'],
+        show: ['GuestDetailsScreen', 'GuestInviteScreen', 'GuestListScreen'],
       },
       {
         target: 'mobile/lib/features/home/home_api.dart',

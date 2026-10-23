@@ -66,8 +66,8 @@ List<_PlannedLine> _planLines({
             // The last payment carries what does not divide evenly.
             amount: index == count - 1 ? rest - each * (count - 1) : each,
             label:
-                'الدفعة ${index + 1} · ${formatArabicDayMonth(_addMonths(firstDue, index))}',
-            dueDate: _addMonths(firstDue, index),
+                'الدفعة ${index + 1} · ${formatArabicDayMonth(addMonthsClamped(firstDue, index))}',
+            dueDate: addMonthsClamped(firstDue, index),
           ),
       ];
   }
@@ -87,15 +87,6 @@ String? _depositProblem(_PayPlan plan, int deposit, int total) {
     case _PayPlan.full:
       return null;
   }
-}
-
-/// The same day [months] later, kept inside shorter months.
-DateTime _addMonths(DateTime date, int months) {
-  final month = date.month + months;
-  final year = date.year + (month - 1) ~/ 12;
-  final normalized = (month - 1) % 12 + 1;
-  final lastDay = DateUtils.getDaysInMonth(year, normalized);
-  return DateTime(year, normalized, date.day > lastDay ? lastDay : date.day);
 }
 
 /// The plan's choices and, below them, the payments it will make.

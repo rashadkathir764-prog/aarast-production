@@ -7,19 +7,19 @@ import 'package:provider/provider.dart';
 
 import '../../../core/experience_v3/aarast_v3.dart';
 import '../../../core/routing/app_router.dart';
-import '../../../core/theme/app_theme.dart';
+import '../../../core/utils/money_formatters.dart';
 import '../../../core/widgets/aarast_toast.dart';
 import '../../../core/widgets/aarast_ui.dart';
 import '../models/funding_source.dart';
 import '../models/wedding_cost.dart' show moneyValue;
 import '../providers/finance_provider.dart';
 import '../providers/funding_provider.dart';
+import '../widgets/funding_sheets.dart';
 import '../widgets/funding_widgets.dart';
-import '../widgets/money_widgets.dart';
 
-/// Where the wedding money comes from: savings, family support, rifd and
-/// nuqut, pledges and loans with their repayments. The plan owner's private
-/// money picture; tracking only.
+/// «من وين»: where the wedding money comes from (savings, family support,
+/// rafd and nuqut, pledges, loans with their repayments). The plan owner's
+/// private money picture; tracking only.
 class FundingSourcesScreen extends StatefulWidget {
   const FundingSourcesScreen({required this.weddingPlanId, super.key});
 
@@ -48,78 +48,168 @@ class _FundingSourcesScreenState extends State<FundingSourcesScreen> {
         : 'YER';
   }
 
+  String _plain(Object? value) =>
+      compactMoneyParts(moneyValue(value), currencyCode: _currency).plainText;
+
   @override
   Widget build(BuildContext context) {
     final funding = context.watch<FundingProvider>();
     final sources = funding.loadedPlanId == widget.weddingPlanId
         ? funding.sources
         : const <FundingSource>[];
-    final currency = _currency;
-    return AarastScreenFrame(
-      maxWidth: 560,
-      floatingActionButton: FloatingActionButton.extended(
-        key: const ValueKey('funding-add'),
-        onPressed: funding.isSaving ? null : () => _openSourceSheet(),
-        icon: const Icon(LucideIcons.plus),
-        label: const Text('إضافة مصدر'),
-      ),
-      child: RefreshIndicator(
-        onRefresh: _load,
-        child: ListView(
-          physics: const AlwaysScrollableScrollPhysics(),
-          padding: const EdgeInsets.fromLTRB(20, 14, 20, 120),
+    num sum(
+      Iterable<FundingSource> items,
+      Object? Function(FundingSource) of,
+    ) => items.fold<num>(0, (total, item) => total + moneyValue(of(item)));
+    final received = sum(
+      sources.where((item) => !item.isPledged),
+      (item) => item.amount,
+    );
+    final pledged = sum(
+      sources.where((item) => item.isPledged),
+      (item) => item.amount,
+    );
+    final owed = sum(
+      sources.where((item) => item.isLoan),
+      (item) => item.outstandingAmount ?? item.amount,
+    );
+
+    final Widget list;
+    if (funding.isLoading && sources.isEmpty) {
+      list = const JourneyListState(
+        phase: JourneyListPhase.loading,
+        section: JourneySection.money,
+      );
+    } else if (sources.isEmpty) {
+      list = JourneyListState(
+        phase: funding.errorMessage == null
+            ? JourneyListPhase.empty
+            : JourneyListPhase.error,
+        section: JourneySection.money,
+        emptyIcon: LucideIcons.piggyBank,
+        emptyTitle: 'ما سجلت من وين بتجيب الفلوس',
+        onRetry: _load,
+      );
+    } else {
+      list = JourneyBox(
+        padding: EdgeInsets.zero,
+        child: JourneyList(
           children: [
-            AarastPageHeader(
-              title: 'مصادر التمويل',
-              subtitle: 'من أين يأتي مال العرس، وكم بقي للسداد.',
-              showBack: true,
+            for (final source in sources)
+              JourneyListRow(
+                key: ValueKey('funding-row-${source.id}'),
+                icon: fundingKindIcon(source.kind),
+                color: source.isPledged
+                    ? AarastV3Color.lilac
+                    : AarastV3Color.primary,
+                soft: source.isPledged
+                    ? AarastV3Color.lilacSoft
+                    : AarastV3Color.primarySoft,
+                title: source.sourceName,
+                subtitle: source.isLoan
+                    ? 'سلفة · باقي ${_plain(source.outstandingAmount ?? source.amount)}'
+                    : FundingKind.label(source.kind),
+                trailing: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    Text(
+                      _plain(source.amount),
+                      style: JourneyType.of(
+                        JourneyType.body,
+                        weight: JourneyType.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    JourneyTag(
+                      label: source.isPledged ? 'موعود' : 'وصل',
+                      color: source.isPledged
+                          ? AarastV3Color.lilac
+                          : AarastV3Color.mint,
+                      soft: source.isPledged
+                          ? AarastV3Color.lilacSoft
+                          : AarastV3Color.mintSoft,
+                    ),
+                  ],
+                ),
+                onTap: () => source.isLoan
+                    ? _showLoan(source.id)
+                    : source.isPledged
+                    ? _checkPledge(source)
+                    : _openSourceSheet(source: source),
+              ),
+          ],
+        ),
+      );
+    }
+
+    return AarastScreenFrame(
+      maxWidth: 600,
+      backgroundColor: AarastV3Color.canvas,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 8, 8, 0),
+            child: JourneySubHeader(
+              title: 'من وين',
+              subtitle: 'من وين بتجيب فلوس عرسك',
               onBack: () => context.canPop()
                   ? context.pop()
                   : context.go(AppRouter.money(widget.weddingPlanId)),
             ),
-            const SizedBox(height: 14),
-            if (funding.errorMessage != null) ...[
-              MoneyMessageBanner(message: funding.errorMessage!, error: true),
-              const SizedBox(height: 12),
-            ],
-            _FundingTotals(sources: sources, currency: currency),
-            const SizedBox(height: 14),
-            if (funding.isLoading && sources.isEmpty)
-              const AarastLoadingState(rows: 3, height: 64)
-            else if (sources.isEmpty)
-              const AarastEmptyState(
-                icon: LucideIcons.wallet,
-                title: 'لم تُسجّل مصادر بعد',
-                message:
-                    'أضف مدخراتك ودعم الأهل والرفد والسلف لتعرف كم يغطي مالك من تكاليف العرس.',
-              )
-            else
-              AarastV3ContinuousSurface(
+          ),
+          Expanded(
+            child: RefreshIndicator(
+              color: AarastV3Color.primary,
+              onRefresh: _load,
+              child: ListView(
+                physics: const AlwaysScrollableScrollPhysics(),
+                padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
                 children: [
-                  for (final source in sources)
-                    AarastV3ListRow(
-                      key: ValueKey('funding-row-${source.id}'),
-                      title: source.sourceName,
-                      subtitle: source.isLoan
-                          ? '${FundingKind.label(source.kind)} · ${source.repayments.length} دفعات سداد'
-                          : source.isPledged
-                          ? '${FundingKind.label(source.kind)} · وعد'
-                          : FundingKind.label(source.kind),
-                      leading: Icon(_kindIcon(source.kind)),
-                      action: MoneyAmountText(
-                        amount: source.isLoan
-                            ? source.outstandingAmount
-                            : source.amount,
-                        currency: currency,
+                  if (funding.errorMessage != null && sources.isNotEmpty) ...[
+                    JourneyListNotice(offline: false, onRetry: _load),
+                    const SizedBox(height: 12),
+                  ],
+                  if (sources.isNotEmpty) ...[
+                    JourneyBox(
+                      key: const ValueKey('funding-totals'),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 8,
                       ),
-                      onTap: () => source.isLoan
-                          ? _showLoan(source.id)
-                          : _openSourceSheet(source: source),
+                      child: Column(
+                        children: [
+                          _TotalRow(label: 'وصلك', value: _plain(received)),
+                          _TotalRow(label: 'موعود لك', value: _plain(pledged)),
+                          if (owed > 0)
+                            _TotalRow(
+                              label: 'باقي عليك من السلف',
+                              value: _plain(owed),
+                            ),
+                        ],
+                      ),
                     ),
+                    const SizedBox(height: 8),
+                    const JourneySectionTitle('المصادر'),
+                  ],
+                  list,
                 ],
               ),
-          ],
-        ),
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
+            child: JourneyButton(
+              key: const ValueKey('funding-add'),
+              label: 'أضف مصدر',
+              icon: LucideIcons.plus,
+              expand: true,
+              large: true,
+              onPressed: funding.isSaving ? null : () => _openSourceSheet(),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -129,7 +219,8 @@ class _FundingSourcesScreenState extends State<FundingSourcesScreen> {
       context: context,
       isScrollControlled: true,
       useSafeArea: true,
-      builder: (_) => FundingSourceFormSheet(source: source),
+      builder: (_) =>
+          FundingSourceFormSheet(source: source, currency: _currency),
     );
     if (result == null || !mounted) return;
     final funding = context.read<FundingProvider>();
@@ -146,6 +237,10 @@ class _FundingSourcesScreenState extends State<FundingSourcesScreen> {
         sourcePhone: result.sourcePhone,
         note: result.note,
       );
+      if (ok && result.repayments.isNotEmpty) {
+        await _addRepayments(funding.sources.last.id, result.repayments);
+        return;
+      }
     } else {
       ok = await funding.update(
         source,
@@ -161,13 +256,97 @@ class _FundingSourcesScreenState extends State<FundingSourcesScreen> {
     if (ok) {
       AarastToast.showSuccess(
         context,
-        result.delete ? 'حُذف المصدر.' : 'تم الحفظ.',
+        result.delete ? 'انشال المصدر' : 'انحفظ',
       );
       unawaited(_refreshMoneySummary());
     } else {
       AarastToast.showError(
         context,
-        funding.errorMessage ?? 'تعذر حفظ التغيير.',
+        funding.errorMessage ?? 'ما قدرنا نحفظ التغيير',
+      );
+    }
+  }
+
+  /// A new loan's repayments, one call each; a failure keeps the loan and
+  /// says what is missing.
+  Future<void> _addRepayments(
+    String loanId,
+    List<({String amount, DateTime dueDate})> repayments,
+  ) async {
+    final funding = context.read<FundingProvider>();
+    var missed = 0;
+    for (final repayment in repayments) {
+      final loan = funding.sourceById(loanId);
+      if (loan == null) break;
+      final ok = await funding.addRepayment(
+        loan,
+        amount: repayment.amount,
+        dueDate: repayment.dueDate,
+      );
+      if (!ok) missed++;
+    }
+    if (!mounted) return;
+    if (missed > 0) {
+      AarastToast.showWarning(
+        context,
+        'انحفظت السلفة، بس $missed من دفعات السداد ما انحفظت. أضفها منها.',
+      );
+    } else {
+      AarastToast.showSuccess(context, 'انحفظت السلفة ودفعاتها');
+    }
+    unawaited(_refreshMoneySummary());
+  }
+
+  /// x08: promised money that arrived moves to «وصلك»; money that will not
+  /// come is removed.
+  Future<void> _checkPledge(FundingSource source) async {
+    final finance = context.read<FinanceProvider?>();
+    final cash = finance?.loadedPlanId == widget.weddingPlanId
+        ? finance?.summary.funding?.availableCash
+        : null;
+    final answer = await showAarastBottomSheet<PledgeAnswer>(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      builder: (_) => PledgeCheckSheet(
+        source: source,
+        currency: _currency,
+        availableCash: cash,
+      ),
+    );
+    if (answer == null || !mounted) return;
+    final funding = context.read<FundingProvider>();
+    final bool ok;
+    switch (answer) {
+      case PledgeAnswer.notYet:
+        return;
+      case PledgeAnswer.edit:
+        await _openSourceSheet(source: source);
+        return;
+      case PledgeAnswer.arrived:
+        ok = await funding.update(
+          source,
+          kind: source.kind,
+          sourceName: source.sourceName,
+          amount: source.amount,
+          status: FundingStatus.received,
+          sourcePhone: source.sourcePhone,
+          note: source.note,
+        );
+      case PledgeAnswer.notComing:
+        ok = await funding.delete(source);
+    }
+    if (!mounted) return;
+    if (ok) {
+      AarastToast.showSuccess(
+        context,
+        answer == PledgeAnswer.arrived ? 'صارت معك' : 'انشالت من الموعود',
+      );
+      unawaited(_refreshMoneySummary());
+    } else {
+      AarastToast.showError(
+        context,
+        funding.errorMessage ?? 'ما قدرنا نحفظ التغيير',
       );
     }
   }
@@ -219,78 +398,39 @@ class _FundingSourcesScreenState extends State<FundingSourcesScreen> {
     );
   }
 
-  /// Keeps the money overview's funding card in step with what was saved.
+  /// Keeps the money overview's funding in step with what was saved.
   Future<void> _refreshMoneySummary() async {
     final finance = context.read<FinanceProvider?>();
     if (finance?.loadedPlanId != widget.weddingPlanId) return;
     await finance!.loadMoney(widget.weddingPlanId);
   }
-
-  IconData _kindIcon(String kind) => switch (kind) {
-    FundingKind.savings => LucideIcons.piggyBank,
-    FundingKind.familySupport => LucideIcons.users,
-    FundingKind.gift => LucideIcons.gift,
-    FundingKind.loan => LucideIcons.banknote,
-    _ => LucideIcons.wallet,
-  };
-}
-
-/// Received, pledged and loans still owed, computed from the listed sources.
-class _FundingTotals extends StatelessWidget {
-  const _FundingTotals({required this.sources, required this.currency});
-
-  final List<FundingSource> sources;
-  final String currency;
-
-  @override
-  Widget build(BuildContext context) {
-    var received = 0.0;
-    var pledged = 0.0;
-    var owed = 0.0;
-    for (final source in sources) {
-      if (source.isPledged) {
-        pledged += moneyValue(source.amount);
-      } else {
-        received += moneyValue(source.amount);
-      }
-      if (source.isLoan) owed += moneyValue(source.outstandingAmount);
-    }
-    return AarastV3ContinuousSurface(
-      children: [
-        _TotalRow(label: 'استُلم', amount: received, currency: currency),
-        _TotalRow(label: 'موعود به', amount: pledged, currency: currency),
-        _TotalRow(
-          label: 'سلف متبقية للسداد',
-          amount: owed,
-          currency: currency,
-          color: owed > 0 ? AppTheme.danger : null,
-        ),
-      ],
-    );
-  }
 }
 
 class _TotalRow extends StatelessWidget {
-  const _TotalRow({
-    required this.label,
-    required this.amount,
-    required this.currency,
-    this.color,
-  });
+  const _TotalRow({required this.label, required this.value});
 
   final String label;
-  final double amount;
-  final String currency;
-  final Color? color;
+  final String value;
 
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      padding: const EdgeInsets.symmetric(vertical: 7),
       child: Row(
         children: [
-          Expanded(child: Text(label, style: AarastV3Type.body(context))),
-          MoneyAmountText(amount: amount, currency: currency, color: color),
+          Expanded(
+            child: Text(
+              label,
+              style: JourneyType.of(
+                JourneyType.body,
+                color: AarastV3Color.textMuted,
+              ),
+            ),
+          ),
+          Text(
+            value,
+            style: JourneyType.of(JourneyType.body, weight: JourneyType.bold),
+          ),
         ],
       ),
     );

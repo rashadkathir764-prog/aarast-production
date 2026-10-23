@@ -2,12 +2,15 @@ import 'package:flutter/material.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 
 import '../../../core/experience_v3/aarast_v3.dart';
-import '../../../core/theme/app_theme.dart';
+import '../../../core/utils/amount_words.dart';
+import '../../../core/utils/arabic_count.dart';
 import '../../../core/utils/arabic_date_formatter.dart';
+import '../../../core/utils/currency_label.dart';
+import '../../../core/utils/money_formatters.dart';
+import '../../../core/utils/month_math.dart';
 import '../../../core/widgets/aarast_ui.dart';
 import '../models/funding_source.dart';
 import 'money_input_formatter.dart';
-import 'money_widgets.dart';
 
 class FundingFormResult {
   const FundingFormResult({
@@ -17,6 +20,7 @@ class FundingFormResult {
     required this.status,
     this.sourcePhone,
     this.note,
+    this.repayments = const [],
     this.delete = false,
   });
 
@@ -27,6 +31,7 @@ class FundingFormResult {
       status = '',
       sourcePhone = null,
       note = null,
+      repayments = const [],
       delete = true;
 
   final String kind;
@@ -35,21 +40,43 @@ class FundingFormResult {
   final String status;
   final String? sourcePhone;
   final String? note;
+
+  /// A new loan's repayments, added after it is saved.
+  final List<({String amount, DateTime dueDate})> repayments;
   final bool delete;
 }
 
-/// Add or edit one funding source: savings, family support, gifts, a loan.
+/// The words a groom uses for each kind of money.
+String fundingKindChoice(String kind) => switch (kind) {
+  FundingKind.savings => 'مدخراتي',
+  FundingKind.familySupport => 'دعم من الأهل',
+  FundingKind.gift => 'رفد ونقوط',
+  FundingKind.loan => 'سلفة',
+  _ => 'غيره',
+};
+
+IconData fundingKindIcon(String kind) => switch (kind) {
+  FundingKind.savings => LucideIcons.piggyBank,
+  FundingKind.familySupport => LucideIcons.heartHandshake,
+  FundingKind.gift => LucideIcons.gift,
+  FundingKind.loan => LucideIcons.calendarClock,
+  _ => LucideIcons.wallet,
+};
+
+/// c12 «مصدر فلوس»: what kind, from whom, how much, whether it arrived,
+/// and, for a new loan, how it will be paid back. Tracking only: nothing is
+/// moved.
 class FundingSourceFormSheet extends StatefulWidget {
-  const FundingSourceFormSheet({this.source, super.key});
+  const FundingSourceFormSheet({this.source, this.currency = 'YER', super.key});
 
   final FundingSource? source;
+  final String currency;
 
   @override
   State<FundingSourceFormSheet> createState() => _FundingSourceFormSheetState();
 }
 
 class _FundingSourceFormSheetState extends State<FundingSourceFormSheet> {
-  final _formKey = GlobalKey<FormState>();
   late final _name = TextEditingController(text: widget.source?.sourceName);
   late final _phone = TextEditingController(text: widget.source?.sourcePhone);
   late final _amount = TextEditingController(
@@ -58,6 +85,23 @@ class _FundingSourceFormSheetState extends State<FundingSourceFormSheet> {
   late final _note = TextEditingController(text: widget.source?.note);
   late String _kind = widget.source?.kind ?? FundingKind.familySupport;
   late bool _pledged = widget.source?.isPledged ?? false;
+  late bool _showMore =
+      (widget.source?.sourcePhone ?? '').isNotEmpty ||
+      (widget.source?.note ?? '').isNotEmpty;
+
+  /// How many payments a new loan is paid back in; 0 is «بعدين».
+  int _repaymentCount = 0;
+  DateTime _firstRepayment = addMonthsClamped(
+    DateUtils.dateOnly(DateTime.now()),
+    1,
+  );
+  String? _nameError;
+  String? _amountError;
+
+  bool get _editing => widget.source != null;
+  bool get _isLoan => _kind == FundingKind.loan;
+  int get _typedAmount =>
+      int.tryParse(_amount.text.replaceAll(',', '').trim()) ?? 0;
 
   @override
   void dispose() {
@@ -68,339 +112,265 @@ class _FundingSourceFormSheetState extends State<FundingSourceFormSheet> {
     super.dispose();
   }
 
+  List<({String amount, DateTime dueDate})> get _repayments {
+    final total = _typedAmount;
+    final count = _repaymentCount;
+    if (_editing || !_isLoan || count <= 0 || total <= 0) return const [];
+    final each = total ~/ count;
+    return [
+      for (var index = 0; index < count; index++)
+        (
+          // The last payment carries what does not divide evenly.
+          amount: '${index == count - 1 ? total - each * (count - 1) : each}',
+          dueDate: addMonthsClamped(_firstRepayment, index),
+        ),
+    ];
+  }
+
+  String _plain(num value) =>
+      compactMoneyParts(value, currencyCode: widget.currency).plainText;
+
+  Future<void> _pickFirstRepayment() async {
+    releaseFieldFocus();
+    final now = DateUtils.dateOnly(DateTime.now());
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: _firstRepayment,
+      firstDate: now,
+      lastDate: now.add(const Duration(days: 3650)),
+      locale: const Locale('ar'),
+    );
+    if (picked != null && mounted) setState(() => _firstRepayment = picked);
+  }
+
   void _submit() {
-    if (!_formKey.currentState!.validate()) return;
+    setState(() {
+      _nameError = _name.text.trim().isEmpty ? 'اكتب من مين' : null;
+      _amountError = _typedAmount <= 0 ? 'اكتب كم' : null;
+    });
+    if (_nameError != null || _amountError != null) return;
     Navigator.pop(
       context,
       FundingFormResult(
         kind: _kind,
         sourceName: _name.text.trim(),
-        amount: _amount.text.replaceAll(',', '').trim(),
-        status: _pledged ? FundingStatus.pledged : FundingStatus.received,
+        amount: '$_typedAmount',
+        status: _pledged && !_isLoan
+            ? FundingStatus.pledged
+            : FundingStatus.received,
         sourcePhone: _phone.text,
         note: _note.text,
+        repayments: _repayments,
       ),
     );
   }
 
   @override
   Widget build(BuildContext context) {
-    final editing = widget.source != null;
-    final isLoan = _kind == FundingKind.loan;
-    return Directionality(
-      textDirection: TextDirection.rtl,
-      child: SafeArea(
-        child: SingleChildScrollView(
-          padding: EdgeInsets.fromLTRB(
-            20,
-            16,
-            20,
-            20 + MediaQuery.viewInsetsOf(context).bottom,
-          ),
-          child: Form(
-            key: _formKey,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                AarastV3FocusPrompt(
-                  question: editing
-                      ? 'ما الذي تغيّر في هذا المصدر؟'
-                      : 'من أين يأتي هذا المال؟',
-                  supportingText:
-                      'سجّل المصدر ومبلغه؛ التطبيق يتتبّع المال ولا يحرّكه.',
-                  icon: LucideIcons.wallet,
-                ),
-                const SizedBox(height: 14),
-                AarastChoicePillRow<String>(
-                  value: _kind,
-                  options: [
-                    for (final kind in FundingKind.all)
-                      (kind, FundingKind.label(kind)),
-                  ],
-                  onChanged: (value) => setState(() => _kind = value),
-                ),
-                const SizedBox(height: 12),
-                TextFormField(
-                  key: const ValueKey('funding-name'),
-                  controller: _name,
-                  textAlign: TextAlign.right,
-                  decoration: InputDecoration(
-                    labelText: isLoan ? 'ممّن السلفة؟' : 'من أين؟',
-                    hintText: isLoan ? 'مثال: ابن العم' : 'مثال: الوالد',
-                  ),
-                  validator: (value) => value == null || value.trim().isEmpty
-                      ? 'اكتب اسم المصدر'
-                      : null,
-                ),
-                const SizedBox(height: 10),
-                TextFormField(
-                  key: const ValueKey('funding-amount'),
-                  controller: _amount,
-                  textAlign: TextAlign.right,
-                  keyboardType: const TextInputType.numberWithOptions(
-                    decimal: true,
-                  ),
-                  inputFormatters: const [MoneyInputFormatter()],
-                  decoration: const InputDecoration(labelText: 'المبلغ'),
-                  validator: (value) {
-                    final amount = double.tryParse(
-                      (value ?? '').replaceAll(',', ''),
-                    );
-                    return amount == null || amount <= 0
-                        ? 'اكتب مبلغًا أكبر من صفر'
-                        : null;
-                  },
-                ),
-                if (!isLoan) ...[
-                  const SizedBox(height: 6),
-                  SwitchListTile(
-                    key: const ValueKey('funding-pledged'),
-                    contentPadding: EdgeInsets.zero,
-                    value: _pledged,
-                    onChanged: (value) => setState(() => _pledged = value),
-                    title: const Text('وعد ولم يُستلم بعد'),
-                  ),
-                ],
-                const SizedBox(height: 6),
-                TextFormField(
-                  controller: _phone,
-                  textAlign: TextAlign.right,
-                  keyboardType: TextInputType.phone,
-                  decoration: const InputDecoration(
-                    labelText: 'رقم الجوال (اختياري)',
-                  ),
-                ),
-                const SizedBox(height: 10),
-                TextFormField(
-                  controller: _note,
-                  textAlign: TextAlign.right,
-                  decoration: const InputDecoration(
-                    labelText: 'ملاحظة (اختياري)',
-                  ),
-                ),
-                const SizedBox(height: 16),
-                AarastButton(
-                  key: const ValueKey('funding-save'),
-                  label: editing ? 'حفظ التعديلات' : 'إضافة',
-                  icon: LucideIcons.save,
-                  onPressed: _submit,
-                ),
-                if (editing) ...[
-                  const SizedBox(height: 8),
-                  TextButton.icon(
-                    key: const ValueKey('funding-delete'),
-                    onPressed: () => Navigator.pop(
-                      context,
-                      const FundingFormResult.delete(),
-                    ),
-                    icon: const Icon(
-                      LucideIcons.trash2,
-                      color: AppTheme.danger,
-                    ),
-                    label: const Text(
-                      'حذف المصدر',
-                      style: TextStyle(color: AppTheme.danger),
-                    ),
-                  ),
-                ],
-              ],
+    final amount = _typedAmount;
+    final currencyLabel = currencyLabelAr(widget.currency);
+    final repayments = _repayments;
+    return SingleChildScrollView(
+      padding: EdgeInsets.fromLTRB(
+        20,
+        8,
+        20,
+        16 + MediaQuery.viewInsetsOf(context).bottom,
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Semantics(
+            header: true,
+            child: Text(
+              _editing ? 'تعديل المصدر' : 'مصدر فلوس',
+              style: JourneyType.of(
+                JourneyType.title,
+                weight: JourneyType.bold,
+              ),
             ),
           ),
-        ),
-      ),
-    );
-  }
-}
-
-/// A loan's repayment schedule: add a repayment, mark it paid, remove it.
-class LoanRepaymentsSheet extends StatefulWidget {
-  const LoanRepaymentsSheet({
-    required this.loan,
-    required this.currency,
-    required this.saving,
-    required this.onAdd,
-    required this.onTogglePaid,
-    required this.onDelete,
-    required this.onEdit,
-    this.errorMessage,
-    super.key,
-  });
-
-  final FundingSource loan;
-  final String currency;
-  final bool saving;
-  final String? errorMessage;
-  final Future<bool> Function(String amount, DateTime? dueDate) onAdd;
-  final void Function(LoanRepayment repayment, bool paid) onTogglePaid;
-  final void Function(LoanRepayment repayment) onDelete;
-  final VoidCallback onEdit;
-
-  @override
-  State<LoanRepaymentsSheet> createState() => _LoanRepaymentsSheetState();
-}
-
-class _LoanRepaymentsSheetState extends State<LoanRepaymentsSheet> {
-  final _amount = TextEditingController();
-  DateTime? _dueDate;
-
-  @override
-  void dispose() {
-    _amount.dispose();
-    super.dispose();
-  }
-
-  Future<void> _pickDate() async {
-    releaseFieldFocus();
-    final now = DateTime.now();
-    final picked = await showDatePicker(
-      context: context,
-      initialDate: _dueDate ?? now,
-      firstDate: DateTime(now.year - 2),
-      lastDate: DateTime(now.year + 10),
-    );
-    if (picked != null && mounted) setState(() => _dueDate = picked);
-  }
-
-  Future<void> _add() async {
-    final amount = _amount.text.replaceAll(',', '').trim();
-    if ((double.tryParse(amount) ?? 0) <= 0 || widget.saving) return;
-    if (await widget.onAdd(amount, _dueDate) && mounted) {
-      _amount.clear();
-      setState(() => _dueDate = null);
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final loan = widget.loan;
-    return Directionality(
-      textDirection: TextDirection.rtl,
-      child: SafeArea(
-        child: SingleChildScrollView(
-          padding: EdgeInsets.fromLTRB(
-            20,
-            16,
-            20,
-            20 + MediaQuery.viewInsetsOf(context).bottom,
+          Text(
+            'من وين بتجيب فلوس عرسك',
+            style: JourneyType.of(
+              JourneyType.small,
+              color: AarastV3Color.textMuted,
+            ),
           ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
+          const SizedBox(height: 14),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
             children: [
-              Row(
-                children: [
-                  Expanded(
-                    child: Text(
-                      'سلفة من ${loan.sourceName}',
-                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                        color: AppTheme.textPrimary,
-                        fontWeight: FontWeight.w900,
-                      ),
-                    ),
-                  ),
-                  IconButton(
-                    tooltip: 'تعديل السلفة',
-                    onPressed: widget.onEdit,
-                    icon: const Icon(LucideIcons.pencil, size: 20),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 6),
-              Row(
-                children: [
-                  const Text('المتبقي: '),
-                  MoneyAmountText(
-                    amount: loan.outstandingAmount,
-                    currency: widget.currency,
-                  ),
-                ],
-              ),
-              const SizedBox(height: 12),
-              for (final repayment in loan.repayments)
-                CheckboxListTile(
-                  key: ValueKey('loan-repayment-${repayment.id}'),
-                  contentPadding: EdgeInsets.zero,
-                  value: repayment.isPaid,
-                  onChanged: widget.saving || repayment.isCancelled
-                      ? null
-                      : (value) =>
-                            widget.onTogglePaid(repayment, value ?? false),
-                  title: MoneyAmountText(
-                    amount: repayment.amount,
-                    currency: widget.currency,
-                  ),
-                  subtitle: Text(
-                    repayment.isPaid
-                        ? 'سُدّد ${_date(repayment.paidAt)}'
-                        : repayment.dueDate == null
-                        ? 'بدون موعد'
-                        : 'موعده ${_date(repayment.dueDate)}',
-                  ),
-                  secondary: repayment.isPaid
-                      ? null
-                      : IconButton(
-                          tooltip: 'حذف دفعة السداد',
-                          onPressed: widget.saving
-                              ? null
-                              : () => widget.onDelete(repayment),
-                          icon: const Icon(LucideIcons.trash2, size: 18),
-                        ),
+              for (final kind in FundingKind.all)
+                JourneyChip(
+                  key: ValueKey('funding-kind-$kind'),
+                  label: fundingKindChoice(kind),
+                  icon: fundingKindIcon(kind),
+                  selected: _kind == kind,
+                  onTap: () => setState(() => _kind = kind),
                 ),
-              if (loan.repayments.isEmpty)
-                const Padding(
-                  padding: EdgeInsets.symmetric(vertical: 8),
-                  child: Text(
-                    'قسّم السداد إلى دفعات بمواعيد لتصلك تذكيراتها.',
-                    style: TextStyle(color: AppTheme.textSecondary),
+            ],
+          ),
+          const SizedBox(height: 14),
+          JourneyTextField(
+            key: const ValueKey('funding-name'),
+            label: _kind == FundingKind.savings ? 'اسمها' : 'من مين؟',
+            hint: switch (_kind) {
+              FundingKind.savings => 'مثلًا: مدخراتي',
+              FundingKind.loan => 'مثلًا: خالي أحمد',
+              _ => 'مثلًا: الوالد',
+            },
+            controller: _name,
+            icon: LucideIcons.user,
+            errorText: _nameError,
+            onChanged: (_) => setState(() => _nameError = null),
+          ),
+          const SizedBox(height: 10),
+          JourneyTextField(
+            key: const ValueKey('funding-amount'),
+            label: 'كم؟',
+            controller: _amount,
+            large: true,
+            keyboardType: TextInputType.number,
+            inputFormatters: const [MoneyInputFormatter()],
+            suffix: currencyLabel,
+            errorText: _amountError,
+            helper: amount <= 0
+                ? null
+                : amountInWords(amount, currency: currencyLabel),
+            onChanged: (_) => setState(() => _amountError = null),
+          ),
+          if (!_isLoan) ...[
+            const SizedBox(height: 14),
+            _label('وصلت ولا موعود؟'),
+            Row(
+              children: [
+                Expanded(
+                  child: JourneyChip(
+                    key: const ValueKey('funding-received'),
+                    label: 'وصلت',
+                    selected: !_pledged,
+                    onTap: () => setState(() => _pledged = false),
                   ),
                 ),
-              const SizedBox(height: 10),
-              Row(
-                children: [
-                  Expanded(
-                    child: TextField(
-                      key: const ValueKey('loan-repayment-amount'),
-                      controller: _amount,
-                      textAlign: TextAlign.right,
-                      keyboardType: const TextInputType.numberWithOptions(
-                        decimal: true,
-                      ),
-                      inputFormatters: const [MoneyInputFormatter()],
-                      decoration: const InputDecoration(
-                        hintText: 'مبلغ دفعة السداد',
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  TextButton.icon(
-                    onPressed: _pickDate,
-                    icon: const Icon(LucideIcons.calendar, size: 18),
-                    label: Text(_dueDate == null ? 'الموعد' : _date(_dueDate)),
-                  ),
-                  IconButton.filledTonal(
-                    key: const ValueKey('loan-repayment-add'),
-                    tooltip: 'إضافة دفعة السداد',
-                    onPressed: widget.saving ? null : _add,
-                    icon: const Icon(LucideIcons.plus),
-                  ),
-                ],
-              ),
-              if (widget.errorMessage != null) ...[
-                const SizedBox(height: 8),
-                Text(
-                  widget.errorMessage!,
-                  style: const TextStyle(
-                    color: AppTheme.danger,
-                    fontWeight: FontWeight.w700,
+                const SizedBox(width: 8),
+                Expanded(
+                  child: JourneyChip(
+                    key: const ValueKey('funding-pledged'),
+                    label: 'موعود',
+                    selected: _pledged,
+                    onTap: () => setState(() => _pledged = true),
                   ),
                 ),
               ],
+            ),
+          ],
+          if (_isLoan && !_editing) ...[
+            const SizedBox(height: 14),
+            _label('كيف بترجعها؟'),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                for (final count in const [0, 1, 2, 3, 4, 6])
+                  JourneyChip(
+                    key: ValueKey('funding-repayments-$count'),
+                    label: count == 0
+                        ? 'بعدين'
+                        : arabicCount(
+                            count,
+                            one: 'دفعة وحدة',
+                            two: 'دفعتين',
+                            few: 'دفعات',
+                            many: 'دفعة',
+                          ),
+                    selected: _repaymentCount == count,
+                    onTap: () => setState(() => _repaymentCount = count),
+                  ),
+              ],
+            ),
+            if (_repaymentCount > 0) ...[
+              const SizedBox(height: 10),
+              JourneyPickerField(
+                key: const ValueKey('funding-first-repayment'),
+                label: _repaymentCount == 1 ? 'متى ترجعها؟' : 'أول دفعة',
+                value: formatArabicDayMonth(_firstRepayment),
+                icon: LucideIcons.calendarDays,
+                helper: _repaymentCount == 1 ? null : 'وبعدها كل شهر',
+                onTap: _pickFirstRepayment,
+              ),
             ],
+            if (repayments.length > 1) ...[
+              const SizedBox(height: 10),
+              JourneyBox(
+                key: const ValueKey('funding-repayment-summary'),
+                padding: const EdgeInsets.all(14),
+                child: Text(
+                  '${_plain(int.parse(repayments.first.amount))} كل شهر · تبدأ ${arabicMonthName(_firstRepayment.month)}',
+                  style: JourneyType.of(
+                    JourneyType.body,
+                    weight: JourneyType.bold,
+                  ),
+                ),
+              ),
+            ],
+          ],
+          const SizedBox(height: 8),
+          Align(
+            alignment: AlignmentDirectional.centerStart,
+            child: JourneyTextAction(
+              label: _showMore ? 'أقل' : 'تفاصيل أكثر',
+              icon: _showMore ? LucideIcons.chevronUp : LucideIcons.chevronDown,
+              color: AarastV3Color.primary,
+              onPressed: () => setState(() => _showMore = !_showMore),
+            ),
           ),
-        ),
+          if (_showMore) ...[
+            JourneyTextField(
+              label: 'رقمه (لو تبي)',
+              controller: _phone,
+              icon: LucideIcons.phone,
+              keyboardType: TextInputType.phone,
+              textDirection: TextDirection.ltr,
+            ),
+            const SizedBox(height: 10),
+            JourneyTextField(label: 'ملاحظة', controller: _note),
+          ],
+          const SizedBox(height: 16),
+          JourneyButton(
+            key: const ValueKey('funding-save'),
+            label: 'حفظ',
+            expand: true,
+            large: true,
+            onPressed: _submit,
+          ),
+          if (_editing) ...[
+            const SizedBox(height: 4),
+            Center(
+              child: JourneyTextAction(
+                key: const ValueKey('funding-delete'),
+                label: 'شيل المصدر',
+                color: AarastV3Color.danger,
+                onPressed: () =>
+                    Navigator.pop(context, const FundingFormResult.delete()),
+              ),
+            ),
+          ],
+        ],
       ),
     );
   }
 
-  String _date(DateTime? value) =>
-      value == null ? '' : formatArabicCompactDate(value);
+  Widget _label(String text) => Padding(
+    padding: const EdgeInsets.only(bottom: 8),
+    child: Text(
+      text,
+      style: JourneyType.of(
+        JourneyType.small,
+        weight: JourneyType.bold,
+        color: AarastV3Color.textMuted,
+      ),
+    ),
+  );
 }

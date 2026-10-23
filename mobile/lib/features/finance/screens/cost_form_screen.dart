@@ -13,6 +13,7 @@ import '../../../core/utils/amount_words.dart';
 import '../../../core/utils/arabic_date_formatter.dart';
 import '../../../core/utils/currency_label.dart';
 import '../../../core/utils/money_formatters.dart';
+import '../../../core/utils/month_math.dart';
 import '../../../core/widgets/aarast_toast.dart';
 import '../../../core/widgets/aarast_ui.dart';
 import '../../marketplace/marketplace_api.dart'
@@ -78,7 +79,10 @@ class _CostFormScreenState extends State<CostFormScreen> {
   _PayPlan _plan = _PayPlan.later;
   int _count = 3;
   DateTime? _restDue;
-  late DateTime _firstDue = _addMonths(DateUtils.dateOnly(DateTime.now()), 1);
+  late DateTime _firstDue = addMonthsClamped(
+    DateUtils.dateOnly(DateTime.now()),
+    1,
+  );
 
   String? _categoryError;
   String? _partyError;

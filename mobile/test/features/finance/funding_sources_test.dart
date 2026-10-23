@@ -168,7 +168,8 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('الوالد'), findsOneWidget);
-    expect(find.text('دعم الأهل · وعد'), findsOneWidget);
+    expect(find.text('دعم الأهل'), findsOneWidget);
+    expect(find.text('موعود'), findsOneWidget);
 
     await tester.tap(find.byKey(const ValueKey('funding-add')));
     await tester.pumpAndSettle();
@@ -180,7 +181,7 @@ void main() {
       find.byKey(const ValueKey('funding-amount')),
       '500000',
     );
-    await tester.tap(find.text('مدخرات'));
+    await tester.tap(find.byKey(const ValueKey('funding-kind-SAVINGS')));
     await tester.ensureVisible(find.byKey(const ValueKey('funding-save')));
     await tester.tap(find.byKey(const ValueKey('funding-save')));
     await tester.pumpAndSettle();
@@ -190,6 +191,108 @@ void main() {
     expect(find.text('مدخراتي'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
+  testWidgets('promised money that arrived moves to received (x08)', (
+    tester,
+  ) async {
+    final api = _FakeFundingApi();
+    await _pumpFunding(tester, api);
+
+    await tester.tap(find.byKey(const ValueKey('funding-row-source-0')));
+    await tester.pumpAndSettle();
+    expect(find.text('وصلت فلوس الوالد؟'), findsOneWidget);
+    await tester.tap(find.byKey(const ValueKey('pledge-confirm')));
+    await tester.pumpAndSettle();
+
+    expect(api.updatedStatuses, [FundingStatus.received]);
+    expect(find.text('وصل'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('promised money that will not come is removed (x08)', (
+    tester,
+  ) async {
+    final api = _FakeFundingApi();
+    await _pumpFunding(tester, api);
+
+    await tester.tap(find.byKey(const ValueKey('funding-row-source-0')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('pledge-notComing')));
+    await tester.pump();
+    await tester.tap(find.byKey(const ValueKey('pledge-confirm')));
+    await tester.pumpAndSettle();
+
+    expect(api.deleted, ['source-0']);
+    expect(find.text('الوالد'), findsNothing);
+  });
+
+  testWidgets('a new loan saves its monthly repayments (c12, c13)', (
+    tester,
+  ) async {
+    final api = _FakeFundingApi();
+    await _pumpFunding(tester, api);
+
+    await tester.tap(find.byKey(const ValueKey('funding-add')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('funding-kind-LOAN')));
+    await tester.pump();
+    await tester.enterText(
+      find.byKey(const ValueKey('funding-name')),
+      'خالي أحمد',
+    );
+    await tester.enterText(
+      find.byKey(const ValueKey('funding-amount')),
+      '600000',
+    );
+    await tester.pump();
+    final twoPayments = find.byKey(const ValueKey('funding-repayments-2'));
+    await tester.ensureVisible(twoPayments);
+    await tester.tap(twoPayments);
+    await tester.pump();
+    expect(
+      find.byKey(const ValueKey('funding-repayment-summary')),
+      findsOneWidget,
+    );
+    final save = find.byKey(const ValueKey('funding-save'));
+    await tester.ensureVisible(save);
+    await tester.tap(save);
+    await tester.pumpAndSettle();
+
+    final loan = api.sourceNamed('خالي أحمد');
+    expect(loan.kind, FundingKind.loan);
+    expect(loan.repayments.map((item) => item.amount), ['300000', '300000']);
+
+    // c13: the loan opens with what is owed and pays the next one.
+    await tester.tap(find.byKey(ValueKey('funding-row-${loan.id}')));
+    await tester.pumpAndSettle();
+    expect(find.text('سلفة خالي أحمد'), findsOneWidget);
+    expect(find.byKey(const ValueKey('loan-owed')), findsOneWidget);
+    final payNext = find.byKey(const ValueKey('loan-pay-next'));
+    await tester.ensureVisible(payNext);
+    expect(find.text('سجّل الدفعة الأولى'), findsOneWidget);
+    await tester.tap(payNext);
+    await tester.pumpAndSettle();
+    expect(
+      api.sourceNamed('خالي أحمد').repayments.where((item) => item.isPaid),
+      hasLength(1),
+    );
+    expect(find.text('سجّل الدفعة الثانية'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+}
+
+Future<void> _pumpFunding(WidgetTester tester, _FakeFundingApi api) async {
+  await tester.pumpWidget(
+    ChangeNotifierProvider<FundingProvider>.value(
+      value: FundingProvider(api),
+      child: const MaterialApp(
+        home: Directionality(
+          textDirection: TextDirection.rtl,
+          child: FundingSourcesScreen(weddingPlanId: 'plan-1'),
+        ),
+      ),
+    ),
+  );
+  await tester.pumpAndSettle();
 }
 
 class _FakeFundingApi extends FundingApi {
@@ -198,6 +301,45 @@ class _FakeFundingApi extends FundingApi {
   bool reject = false;
   int _sequence = 0;
   final created = <(String, String)>[];
+  final updatedStatuses = <String>[];
+  final deleted = <String>[];
+
+  FundingSource sourceNamed(String name) =>
+      _sources.firstWhere((item) => item.sourceName == name);
+
+  @override
+  Future<FundingSource> updateFundingSource(
+    FundingSource source, {
+    required String kind,
+    required String sourceName,
+    required String amount,
+    required String status,
+    String? sourcePhone,
+    String? note,
+  }) async {
+    _gate();
+    updatedStatuses.add(status);
+    final index = _sources.indexWhere((item) => item.id == source.id);
+    final updated = FundingSource(
+      id: source.id,
+      weddingPlanId: source.weddingPlanId,
+      kind: kind,
+      sourceName: sourceName,
+      amount: amount,
+      status: status,
+      outstandingAmount: source.outstandingAmount,
+      repayments: source.repayments,
+    );
+    _sources[index] = updated;
+    return updated;
+  }
+
+  @override
+  Future<void> deleteFundingSource(FundingSource source) async {
+    _gate();
+    deleted.add(source.id);
+    _sources.removeWhere((item) => item.id == source.id);
+  }
 
   final List<FundingSource> _sources = [
     const FundingSource(
@@ -250,7 +392,9 @@ class _FakeFundingApi extends FundingApi {
     DateTime? dueDate,
   }) async {
     _gate();
+    final current = _sources.firstWhere((item) => item.id == loan.id);
     return _withRepayments(loan.id, [
+      ...current.repayments,
       LoanRepayment(
         id: 'repayment-${++_sequence}',
         fundingSourceId: loan.id,

@@ -235,15 +235,20 @@ extension _ProviderTabs on _ProviderMarketplaceScreenState {
     );
   }
 
+  /// f09 «المفضلة»: the saved providers two by two, each with a box to pick
+  /// it for «قارن الملفين» (the first two are picked to start).
   Widget _favoritesTab(ProviderMarketplaceProvider marketplace) {
     final favorites = marketplace.favoriteProviders
-        .where((favorite) => favorite.provider != null)
+        .map((favorite) => favorite.provider)
+        .whereType<MarketplaceProvider>()
         .toList();
-    return ListView(
-      key: const PageStorageKey('providers-favorites'),
-      padding: EdgeInsets.fromLTRB(16, 14, 16, widget.embedded ? 124 : 28),
-      children: [
-        if (favorites.isEmpty)
+    final picked = _comparePicks(favorites);
+    final bottomGap = widget.embedded ? 124.0 : 28.0;
+    if (favorites.isEmpty) {
+      return ListView(
+        key: const PageStorageKey('providers-favorites'),
+        padding: EdgeInsets.fromLTRB(16, 14, 16, bottomGap),
+        children: [
           JourneyBox(
             key: const ValueKey('providers-favorites-empty'),
             child: Text(
@@ -253,43 +258,99 @@ extension _ProviderTabs on _ProviderMarketplaceScreenState {
                 color: AarastV3Color.textMuted,
               ),
             ),
-          )
-        else ...[
-          if (favorites.length >= 2)
-            Align(
-              alignment: AlignmentDirectional.centerStart,
-              child: JourneyTextAction(
-                key: const ValueKey('providers-favorites-compare'),
-                label: 'قارن الملفين',
-                icon: LucideIcons.columns,
-                color: AarastV3Color.cobalt,
-                onPressed: () => _pushOnce(AppRouter.favoriteProviders),
-              ),
-            ),
-          JourneyBox(
-            padding: EdgeInsets.zero,
-            child: JourneyList(
-              children: [
-                for (final favorite in favorites)
-                  JourneyListRow(
-                    key: ValueKey('providers-favorite-${favorite.providerId}'),
-                    icon: LucideIcons.heart,
-                    color: AarastV3Color.rose,
-                    soft: AarastV3Color.roseSoft,
-                    title: favorite.provider!.businessName,
-                    subtitle: [
-                      ?favorite.provider!.city?.nameAr,
-                      if (favorite.provider!.ratingCount > 0)
-                        '★ ${favorite.provider!.ratingAverage.toStringAsFixed(1)}',
-                    ].join(' · '),
-                    onTap: () => _openProviderDetails(favorite.providerId),
-                  ),
-              ],
-            ),
           ),
         ],
+      );
+    }
+    return Column(
+      children: [
+        Expanded(
+          // Two by two; each row as tall as its taller card, so large text
+          // grows the cards instead of cutting them.
+          child: ListView(
+            key: const PageStorageKey('providers-favorites'),
+            padding: const EdgeInsets.fromLTRB(16, 14, 16, 12),
+            children: [
+              for (var i = 0; i < favorites.length; i += 2) ...[
+                if (i > 0) const SizedBox(height: 10),
+                IntrinsicHeight(
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      for (final provider in favorites.skip(i).take(2)) ...[
+                        if (provider != favorites[i])
+                          const SizedBox(width: 10),
+                        Expanded(
+                          child: _FavoriteCard(
+                            key: ValueKey('providers-favorite-${provider.id}'),
+                            provider: provider,
+                            price: _favoritePrice(marketplace, provider),
+                            picked: picked.contains(provider.id),
+                            onPick: () => _togglePick(provider.id, picked),
+                            onOpen: () => _openProviderDetails(provider.id),
+                          ),
+                        ),
+                      ],
+                      if (i + 1 >= favorites.length) ...[
+                        const SizedBox(width: 10),
+                        const Expanded(child: SizedBox.shrink()),
+                      ],
+                    ],
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ),
+        if (favorites.length >= 2)
+          Padding(
+            padding: EdgeInsets.fromLTRB(16, 0, 16, bottomGap - 16),
+            child: JourneyButton(
+              key: const ValueKey('providers-favorites-compare'),
+              label: 'قارن الملفين',
+              icon: LucideIcons.columns,
+              background: AarastV3Color.cobalt,
+              large: true,
+              expand: true,
+              onPressed: picked.length == 2
+                  ? () => _pushOnce(
+                      AppRouter.compareProviders(picked.first, picked.last),
+                    )
+                  : null,
+            ),
+          ),
       ],
     );
+  }
+
+  /// A saved provider's prices. The saved list carries none, so they come
+  /// from the directory's summary or the provider's page, read once; null
+  /// until known, and «حسب الطلب» only when nothing is priced.
+  String? _favoritePrice(
+    ProviderMarketplaceProvider marketplace,
+    MarketplaceProvider provider,
+  ) {
+    final summary = _providerPriceRangeLabel(provider);
+    if (summary != null) return summary;
+    if (marketplace.providerDetails(provider.id) == null) {
+      if (_favoritePricesAsked.add(provider.id)) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) {
+            marketplace.loadProviderDetails(provider.id, weddingPlanId: null);
+          }
+        });
+      }
+      return null;
+    }
+    return providerPriceRange(marketplace.servicesFor(provider.id)) ??
+        'حسب الطلب';
+  }
+
+  /// The picks still saved, or the first two saved providers.
+  List<String> _comparePicks(List<MarketplaceProvider> favorites) {
+    final saved = favorites.map((provider) => provider.id).toList();
+    return _comparePicked?.where(saved.contains).toList() ??
+        saved.take(2).toList();
   }
 
   Widget _exploreTab(ProviderMarketplaceProvider provider) {
@@ -368,6 +429,150 @@ extension _ProviderTabs on _ProviderMarketplaceScreenState {
           const SizedBox(height: 16),
           ..._exploreResults(provider),
         ],
+      ),
+    );
+  }
+}
+
+/// One saved provider in f09: its photo (or its kind's icon), the box that
+/// picks it for comparing, its name, kind and prices.
+class _FavoriteCard extends StatelessWidget {
+  const _FavoriteCard({
+    required this.provider,
+    required this.price,
+    required this.picked,
+    required this.onPick,
+    required this.onOpen,
+    super.key,
+  });
+
+  final MarketplaceProvider provider;
+
+  /// Null while the provider's prices are not known yet.
+  final String? price;
+  final bool picked;
+  final VoidCallback onPick;
+  final VoidCallback onOpen;
+
+  @override
+  Widget build(BuildContext context) {
+    final kind = provider.primaryCategory?.nameAr.trim();
+    final cover = provider.coverUrl?.trim();
+    // Soft, as on the f02 card, so the picking box shows on it.
+    final placeholder = ColoredBox(
+      color: AarastV3Color.cobaltSoft,
+      child: Center(
+        child: Icon(
+          providerServiceIcon(kind ?? ''),
+          size: 32,
+          color: AarastV3Color.cobalt,
+        ),
+      ),
+    );
+    return AarastPressable(
+      onTap: onOpen,
+      semanticLabel: provider.businessName,
+      borderRadius: BorderRadius.circular(20),
+      child: Container(
+        clipBehavior: Clip.antiAlias,
+        decoration: BoxDecoration(
+          color: AarastV3Color.paper,
+          borderRadius: BorderRadius.circular(20),
+          border: picked
+              ? Border.all(color: AarastV3Color.cobalt, width: 2)
+              : null,
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            SizedBox(
+              height: 92,
+              child: Stack(
+                fit: StackFit.expand,
+                children: [
+                  if (cover == null || cover.isEmpty)
+                    placeholder
+                  else
+                    Image.network(
+                      cover,
+                      fit: BoxFit.cover,
+                      errorBuilder: (_, _, _) => placeholder,
+                    ),
+                  PositionedDirectional(
+                    top: 0,
+                    end: 0,
+                    child: Semantics(
+                      checked: picked,
+                      child: AarastPressable(
+                        key: ValueKey('providers-favorite-pick-${provider.id}'),
+                        onTap: onPick,
+                        semanticLabel: 'اختره للمقارنة',
+                        child: Padding(
+                          padding: const EdgeInsets.all(8),
+                          child: Container(
+                            width: 24,
+                            height: 24,
+                            decoration: BoxDecoration(
+                              color: picked
+                                  ? AarastV3Color.cobalt
+                                  : AarastV3Color.paper,
+                              borderRadius: BorderRadius.circular(7),
+                            ),
+                            child: picked
+                                ? const Icon(
+                                    LucideIcons.check,
+                                    size: 15,
+                                    color: AarastV3Color.onPrimary,
+                                  )
+                                : null,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.all(10),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    provider.businessName,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: JourneyType.of(
+                      JourneyType.body,
+                      weight: JourneyType.bold,
+                    ),
+                  ),
+                  if (kind != null && kind.isNotEmpty)
+                    Text(
+                      kind,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: JourneyType.of(
+                        JourneyType.caption,
+                        color: AarastV3Color.textMuted,
+                      ),
+                    ),
+                  if (price != null)
+                    Text(
+                      price!,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: JourneyType.of(
+                        JourneyType.small,
+                        weight: JourneyType.bold,
+                        color: AarastV3Color.cobalt,
+                      ),
+                    ),
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

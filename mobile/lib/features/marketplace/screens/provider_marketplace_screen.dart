@@ -21,6 +21,7 @@ import '../../finance/finance_api.dart' show CostDraftIntent, FinanceProvider;
 import '../models/marketplace_models.dart';
 import '../models/provider_board.dart';
 import '../widgets/provider_board_view.dart';
+import '../widgets/provider_details_view.dart' show providerPriceRange;
 import '../models/provider_budget_match_intent.dart';
 import '../providers/marketplace_provider.dart';
 
@@ -63,6 +64,12 @@ class _ProviderMarketplaceScreenState extends State<ProviderMarketplaceScreen> {
 
   /// x22 gives way to the tabs once a way to start was picked.
   bool _firstVisitLeft = false;
+
+  /// f09's picks for «قارن الملفين»; null until the person picks.
+  List<String>? _comparePicked;
+
+  /// Saved providers whose page was read for its prices (f09).
+  final Set<String> _favoritePricesAsked = {};
 
   /// f02 has no search box of its own: the header's search opens one.
   bool _searchOpen = false;
@@ -259,6 +266,17 @@ class _ProviderMarketplaceScreenState extends State<ProviderMarketplaceScreen> {
   }
 
   void _leaveFirstVisit() => setState(() => _firstVisitLeft = true);
+
+  /// f09: a box picks a provider to compare; a third pick lets go of the
+  /// one picked first.
+  void _togglePick(String id, List<String> picked) {
+    final next = [...picked];
+    if (!next.remove(id)) {
+      next.add(id);
+      if (next.length > 2) next.removeAt(0);
+    }
+    setState(() => _comparePicked = next);
+  }
 
   bool get _searchShown =>
       _searchOpen || _searchController.text.trim().isNotEmpty;

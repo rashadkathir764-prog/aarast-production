@@ -13,7 +13,10 @@ List<RouteBase> _marketplaceRoutes() => [
   ),
   GoRoute(
     path: AppRouter.favoriteProviders,
-    builder: (context, state) => const FavoriteProvidersScreen(),
+    builder: (context, state) => FavoriteProvidersScreen(
+      providerIds:
+          state.uri.queryParameters['compare']?.split(',') ?? const [],
+    ),
   ),
   GoRoute(
     path: '/providers/:id',

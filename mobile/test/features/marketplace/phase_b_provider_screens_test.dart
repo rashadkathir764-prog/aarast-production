@@ -62,7 +62,8 @@ void main() {
       expect(quoteSource, isNot(contains('_QuoteRequestHero')));
       expect(detailsSource, contains('ProviderDetailsView'));
       expect(detailsViewSource, contains('class _ProviderHero'));
-      expect(favoritesSource, contains('_FavoriteProvidersHero'));
+      // f09 «قارن الملفين» lays two columns out as f04 does (D14).
+      expect(favoritesSource, contains('class _CompareColumn'));
     });
 
     test('plan providers route forwards a quote deep-link context', () {
@@ -451,72 +452,83 @@ void main() {
       expect(tester.takeException(), isNull);
     });
 
-    testWidgets('favorite providers keep comparison copy and currency labels', (
+    testWidgets('f09 compare puts the two picked providers side by side', (
       tester,
     ) async {
       _setTallView(tester);
       final authStorage = await _authenticatedStorage();
-      final marketplace = _FakeMarketplaceProvider();
 
       await tester.pumpWidget(
         MultiProvider(
           providers: [
             Provider<AuthStorage>.value(value: authStorage),
             ChangeNotifierProvider<ProviderMarketplaceProvider>.value(
-              value: marketplace,
+              value: _TwoSaved(),
             ),
           ],
           child: MaterialApp(
             theme: AppTheme.light(),
-            home: const FavoriteProvidersScreen(),
+            home: const FavoriteProvidersScreen(
+              providerIds: [_providerId, 'provider-2'],
+            ),
           ),
         ),
       );
       await tester.pumpAndSettle();
 
-      expect(find.text('1 مزود محفوظ للمقارنة'), findsOneWidget);
+      expect(find.text('قارن الملفين'), findsOneWidget);
+      expect(find.text('قاعة السلام'), findsOneWidget);
+      expect(find.text('قاعة الأمل'), findsOneWidget);
+      // Each in its own currency, never the raw code.
       expect(find.text('1,200 ر.س'), findsOneWidget);
+      expect(find.text('باقة استقبال · 3,500 ر.ي'), findsNWidgets(2));
+      expect(find.text('حسب الطلب'), findsOneWidget);
       expect(find.textContaining('YER'), findsNothing);
+      // Neither is marked better (C47, «أنسب لك» dropped).
+      expect(find.text('أنسب لك'), findsNothing);
+      expect(find.text('اطلب عرض سعر'), findsOneWidget);
       expect(
-        find.textContaining('عند قبول العرض تُنشأ التكلفة تلقائياً'),
+        find.text('ما يستقبل طلبات لين يستلم صاحبه ملفه'),
         findsOneWidget,
       );
       expect(tester.takeException(), isNull);
     });
 
-    testWidgets(
-      'favorite provider remove action is disabled while submitting',
-      (tester) async {
-        _setTallView(tester);
-        final authStorage = await _authenticatedStorage();
-        final marketplace = _FakeMarketplaceProvider(isSubmitting: true);
+    testWidgets('f09 compare stays readable at 320px and 1.3 text', (
+      tester,
+    ) async {
+      tester.view.devicePixelRatio = 1;
+      tester.view.physicalSize = const Size(320, 900);
+      addTearDown(tester.view.reset);
+      final authStorage = await _authenticatedStorage();
 
-        await tester.pumpWidget(
-          MultiProvider(
-            providers: [
-              Provider<AuthStorage>.value(value: authStorage),
-              ChangeNotifierProvider<ProviderMarketplaceProvider>.value(
-                value: marketplace,
-              ),
-            ],
-            child: MaterialApp(
-              theme: AppTheme.light(),
-              home: const FavoriteProvidersScreen(),
+      await tester.pumpWidget(
+        MultiProvider(
+          providers: [
+            Provider<AuthStorage>.value(value: authStorage),
+            ChangeNotifierProvider<ProviderMarketplaceProvider>.value(
+              value: _TwoSaved(),
+            ),
+          ],
+          child: MaterialApp(
+            theme: AppTheme.light(),
+            builder: (context, child) => MediaQuery(
+              data: MediaQuery.of(
+                context,
+              ).copyWith(textScaler: const TextScaler.linear(1.3)),
+              child: child!,
+            ),
+            home: const FavoriteProvidersScreen(
+              providerIds: [_providerId, 'provider-2'],
             ),
           ),
-        );
-        await tester.pumpAndSettle();
+        ),
+      );
+      await tester.pumpAndSettle();
 
-        await tester.tap(
-          find.byKey(const Key('favorite-provider-remove-provider-1')),
-          warnIfMissed: false,
-        );
-        await tester.pump();
-
-        expect(marketplace.toggleFavoriteCallCount, 0);
-        expect(tester.takeException(), isNull);
-      },
-    );
+      expect(tester.takeException(), isNull);
+      expect(find.text('قارن الملفين'), findsOneWidget);
+    });
   });
 }
 
@@ -610,6 +622,31 @@ QuoteRequest _quote({
   offers: offers,
   createdAt: DateTime(2026, 7, 22),
 );
+
+/// Two saved halls: the fixture, and an unclaimed one with no prices.
+class _TwoSaved extends _FakeMarketplaceProvider {
+  @override
+  MarketplaceProvider? providerDetails(String id) => switch (id) {
+    _providerId => _provider(),
+    'provider-2' => const MarketplaceProvider(
+      id: 'provider-2',
+      businessName: 'قاعة الأمل',
+      ownerName: 'مالك',
+      ratingAverage: 0,
+      ratingCount: 0,
+      isFeatured: false,
+      isClaimed: false,
+    ),
+    _ => null,
+  };
+
+  @override
+  List<MarketplaceService> servicesFor(String id) =>
+      id == _providerId ? _provider().services : const [];
+
+  @override
+  List<ProviderPackage> packagesFor(String id) => [_package()];
+}
 
 /// The fixture hall, priced in riyals.
 class _RiyalMarketplace extends _FakeMarketplaceProvider {
@@ -761,8 +798,12 @@ String _readSource(String relativePath) {
 }
 
 String _phaseBSource(String relativePath) {
+  // The provider page and the profile comparison format money through the
+  // f03 view, so it is read with them.
   if (relativePath !=
-      'lib/features/marketplace/screens/provider_details_screen.dart') {
+          'lib/features/marketplace/screens/provider_details_screen.dart' &&
+      relativePath !=
+          'lib/features/marketplace/screens/favorite_providers_screen.dart') {
     return _readSource(relativePath);
   }
   return [

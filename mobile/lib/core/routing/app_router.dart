@@ -181,6 +181,14 @@ class AppRouter {
     return Uri(path: home, queryParameters: {'resume': resume}).toString();
   }
 
+  /// f09 «قارن الملفين»: the two saved providers to compare.
+  static String compareProviders(String first, String second) {
+    return Uri(
+      path: favoriteProviders,
+      queryParameters: {'compare': '$first,$second'},
+    ).toString();
+  }
+
   static String providerDetails(String id, {String? weddingPlanId}) {
     final planId = weddingPlanId?.trim();
     if (planId == null || planId.isEmpty) return '/providers/$id';

@@ -3,6 +3,7 @@ import 'package:lucide_icons/lucide_icons.dart';
 
 import '../../../core/experience_v3/aarast_v3.dart';
 import '../../../core/utils/currency_label.dart';
+import '../../../core/widgets/aarast_pressable.dart';
 import '../models/marketplace_models.dart';
 import 'provider_board_view.dart' show providerServiceIcon;
 import 'provider_photo_gallery.dart';
@@ -49,7 +50,7 @@ class ProviderDetailsView extends StatelessWidget {
   Widget build(BuildContext context) {
     final photos = _photoUrls(provider, services);
     final category = _categoryName(provider, services);
-    final price = _priceRange(services);
+    final price = providerPriceRange(services);
     final priceUpdatedAt =
         latestPriceUpdate(services) ?? provider.serviceSummary?.pricesUpdatedAt;
     final priceAge = priceUpdatedAt == null
@@ -204,20 +205,18 @@ class _ProviderHero extends StatelessWidget {
           if (photos.isEmpty)
             placeholder
           else
-            Semantics(
-              button: true,
-              label: 'افتح الصور',
-              child: GestureDetector(
-                onTap: () => showProviderPhotoGallery(
-                  context,
-                  images: photos,
-                  initialIndex: 0,
-                ),
-                child: Image.network(
-                  photos.first,
-                  fit: BoxFit.cover,
-                  errorBuilder: (_, _, _) => placeholder,
-                ),
+            AarastPressable(
+              onTap: () => showProviderPhotoGallery(
+                context,
+                images: photos,
+                initialIndex: 0,
+              ),
+              semanticLabel: 'افتح الصور',
+              scale: 1,
+              child: Image.network(
+                photos.first,
+                fit: BoxFit.cover,
+                errorBuilder: (_, _, _) => placeholder,
               ),
             ),
           PositionedDirectional(
@@ -400,7 +399,7 @@ List<_Offer> _offers(
           title: item.title,
           detail:
               _lines(item.items ?? item.description) ?? item.serviceTitle ?? '',
-          price: _money(item.price, item.currency),
+          price: providerMoneyLabel(item.price, item.currency),
           serviceId: item.serviceId,
           category: byId[item.serviceId]?.category?.nameAr,
         ),
@@ -408,7 +407,7 @@ List<_Offer> _offers(
   }
   return [
     for (final service in services)
-      if (_money(service.basePrice, service.currency) case final price?)
+      if (providerMoneyLabel(service.basePrice, service.currency) case final price?)
         (
           key: service.id,
           title: service.title,
@@ -430,7 +429,7 @@ String? _lines(String? text) {
   return lines.isEmpty ? null : lines.join(' · ');
 }
 
-String? _money(String? amount, String? currency) {
+String? providerMoneyLabel(String? amount, String? currency) {
   final value = num.tryParse(amount?.replaceAll(',', '').trim() ?? '');
   if (value == null) return null;
   return '${_grouped(value)} ${currencyLabelAr(currency)}';
@@ -438,7 +437,7 @@ String? _money(String? amount, String? currency) {
 
 /// The range of the services priced in the first priced service's currency;
 /// prices in another currency never join it.
-String? _priceRange(List<MarketplaceService> services) {
+String? providerPriceRange(List<MarketplaceService> services) {
   num? min;
   num? max;
   String? unitCode;

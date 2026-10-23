@@ -1637,8 +1637,9 @@ const r19ProviderPortalApi = Object.freeze({
 // API, so its name is not asked again, -1 for the home greeting by the
 // plan's name instead of the onboarding persona copy (b02).
 // +1 for f03 reading the plan's money items through the finance owner API,
-// so «ضمن بندك» compares the price with the item's amount.
-const r19LegalRecordCount = 193;
+// so «ضمن بندك» compares the price with the item's amount; -1 for the f09
+// comparison, which no longer gates on the account itself (D14).
+const r19LegalRecordCount = 192;
 const trackedOwnerApiContracts = [
   {
     area: 'features/account_contexts',
@@ -2237,11 +2238,6 @@ const trackedCollaborationBatchContracts = [
   },
   {
     source: 'mobile/lib/features/provider_portal/screens/edit_provider_profile_screen.dart',
-    target: 'mobile/lib/features/auth/auth_api.dart',
-    show: ['AuthActionGuard'],
-  },
-  {
-    source: 'mobile/lib/features/marketplace/screens/favorite_providers_screen.dart',
     target: 'mobile/lib/features/auth/auth_api.dart',
     show: ['AuthActionGuard'],
   },

@@ -314,6 +314,118 @@ void main() {
     expect(find.text('قاعة سبأ · خارج اعّرست'), findsOneWidget);
   });
 
+  testWidgets('f09 cards grow with large text at 320px', (tester) async {
+    tester.view.devicePixelRatio = 1;
+    tester.view.physicalSize = const Size(320, 900);
+    tester.platformDispatcher.textScaleFactorTestValue = 1.3;
+    addTearDown(() {
+      tester.view.resetDevicePixelRatio();
+      tester.view.resetPhysicalSize();
+      tester.platformDispatcher.clearTextScaleFactorTestValue();
+    });
+    FavoriteProvider saved(String id) => FavoriteProvider(
+      id: 'fav-$id',
+      providerId: id,
+      provider: MarketplaceProvider(
+        id: id,
+        businessName: 'قاعة السعادة للأفراح والمناسبات $id',
+        ownerName: 'مالك',
+        ratingAverage: 0,
+        ratingCount: 0,
+        isFeatured: false,
+        primaryCategory: const ProviderCategory(
+          id: 'cat-hall',
+          nameAr: 'الصالات والقاعات',
+        ),
+      ),
+    );
+    await _pump(
+      tester,
+      _FakeMarketplaceProvider(
+        favorites: [saved('p1'), saved('p2'), saved('p3')],
+      ),
+      finance: _LoadedFinance(),
+    );
+    await tester.tap(
+      find.descendant(
+        of: find.byKey(const ValueKey('providers-tabs')),
+        matching: find.text('المفضلة'),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(tester.takeException(), isNull);
+    expect(find.byKey(const ValueKey('providers-favorite-p3')), findsOneWidget);
+  });
+
+  testWidgets('f09 picks two saved providers and compares them', (
+    tester,
+  ) async {
+    FavoriteProvider saved(String id, String name) => FavoriteProvider(
+      id: 'fav-$id',
+      providerId: id,
+      provider: MarketplaceProvider(
+        id: id,
+        businessName: name,
+        ownerName: 'مالك',
+        ratingAverage: 0,
+        ratingCount: 0,
+        isFeatured: false,
+        primaryCategory: const ProviderCategory(
+          id: 'cat-photo',
+          nameAr: 'تصوير',
+        ),
+      ),
+    );
+    MarketplaceService priced(String id, String price) => MarketplaceService(
+      id: 'service-$id',
+      providerId: id,
+      title: 'باقة',
+      isFeatured: false,
+      isActive: true,
+      basePrice: price,
+      currency: 'YER',
+    );
+    final marketplace = _FakeMarketplaceProvider(
+      favorites: [
+        saved('p1', 'فرقة الأفراح'),
+        saved('p2', 'الفنان أيمن القاضي'),
+        saved('p3', 'ضوء صنعاء'),
+      ],
+      // The saved list carries no prices: p1's page was read with a price,
+      // p2's with none, and p3's not yet.
+      pages: {
+        'p1': [priced('p1', '350000'), priced('p1', '450000')],
+        'p2': const [],
+      },
+    );
+    await _pump(tester, marketplace, finance: _LoadedFinance());
+    await tester.tap(
+      find.descendant(
+        of: find.byKey(const ValueKey('providers-tabs')),
+        matching: find.text('المفضلة'),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('فرقة الأفراح'), findsOneWidget);
+    expect(find.text('ضوء صنعاء'), findsOneWidget);
+    expect(find.text('350,000 - 450,000 ر.ي'), findsOneWidget);
+    // «حسب الطلب» only where nothing is priced, never while unknown.
+    expect(find.text('حسب الطلب'), findsOneWidget);
+    expect(marketplace.pageLoads, ['p3']);
+    // «قارن الاثنين» compared profiles under the offers' name (C47).
+    expect(find.text('قارن الاثنين'), findsNothing);
+
+    // A third pick lets go of the first one picked.
+    await tester.tap(find.byKey(const ValueKey('providers-favorite-pick-p3')));
+    await tester.pump();
+    await tester.tap(find.text('قارن الملفين'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('compare p2,p3'), findsOneWidget);
+  });
+
   testWidgets('x22 is gone once a provider is saved', (tester) async {
     await _pump(
       tester,
@@ -402,6 +514,11 @@ Future<GoRouter> _pump(
         builder: (context, state) => Text(
           'cost outside ${(state.extra as CostDraftIntent?)?.outsideParty}',
         ),
+      ),
+      GoRoute(
+        path: '/providers/favorites',
+        builder: (context, state) =>
+            Text('compare ${state.uri.queryParameters['compare']}'),
       ),
     ],
   );
@@ -535,14 +652,35 @@ class _FakeMarketplaceProvider extends ProviderMarketplaceProvider {
     this.quoteOnDirectLoad,
     this.quoteRequestsError,
     this.favorites = const [],
+    this.pages = const {},
   }) : quoteRequestsData = List.of(quoteRequests),
        super(MarketplaceApi(ApiClient(tokenProvider: () async => null)));
 
   final List<FavoriteProvider> favorites;
+
+  /// Provider pages the app has read: their services by provider id.
+  final Map<String, List<MarketplaceService>> pages;
+  final pageLoads = <String>[];
   final budgetIntents = <ProviderBudgetMatchIntent>[];
 
   @override
   List<FavoriteProvider> get favoriteProviders => favorites;
+
+  @override
+  MarketplaceProvider? providerDetails(String id) => pages.containsKey(id)
+      ? favorites.firstWhere((item) => item.providerId == id).provider
+      : null;
+
+  @override
+  List<MarketplaceService> servicesFor(String id) => pages[id] ?? const [];
+
+  @override
+  Future<void> loadProviderDetails(
+    String providerId, {
+    String? weddingPlanId,
+  }) async {
+    pageLoads.add(providerId);
+  }
 
   @override
   Future<void> applyBudgetMatchIntent(ProviderBudgetMatchIntent intent) async {

@@ -10,6 +10,15 @@
 
 ## RULE ZERO: the prototype is the law (read before anything else)
 
+It holds for **every journey**, each against its own prototype:
+- groom and participant: `mobile/test/prototype/v3/out/` (187 PNGs);
+- provider: `mobile/test/prototype/provider/` (54 PNGs), spec
+  `docs/project/PROVIDER_JOURNEY.md`;
+- admin web: `mobile/test/prototype/admin/` (26 PNGs);
+- bride: the groom screens with rose colours, feminine wording and her
+  items, per `docs/project/JOURNEY_PROFILE.md` and
+  `mobile/test/prototype/bride_profile/changes.tsv` (no PNGs of its own).
+
 Rashad's complaint (2026-10-24): a session "improved" the old «جهّز ميزانية
 عرسك» screen, which is not in the prototype, and showed him a misleading
 comparison. That must never happen again.

@@ -17,7 +17,11 @@ import '../../account_contexts/account_contexts_api.dart'
 import '../../auth/auth_api.dart' show AuthController, AuthStatus;
 import '../../catalogs/catalogs_api.dart' show ReferenceCatalogProvider;
 import '../../finance/finance_api.dart'
-    show MoneyInputFormatter, formatMoneyInputValue, moneyStarterPlanItemNames;
+    show
+        FinanceApi,
+        MoneyInputFormatter,
+        formatMoneyInputValue,
+        moneyStarterPlanItemNames;
 import '../../marketplace/marketplace_api.dart' show MarketplaceApi;
 import '../../onboarding/onboarding_api.dart'
     show
@@ -205,18 +209,42 @@ class _SmartWelcomeScreenState extends State<SmartWelcomeScreen> {
     return auth?.status == AuthStatus.authenticated;
   }
 
-  /// Keeps the plan on the phone, then opens [route].
+  /// Keeps the plan on the phone, then opens [route]. The items a05
+  /// promised («11 بند لعرسك») go into its money at once, as an account
+  /// plan gets them from the server.
   Future<void> _keepOnPhone(String route) async {
-    setState(() => _saving = true);
+    setState(() {
+      _saving = true;
+      _error = null;
+    });
     final now = DateTime.now();
-    await context.read<GuestOnboardingStorage>().saveDraft(
-      _draft().copyWith(
-        guestPlanId: 'local-guest-${now.microsecondsSinceEpoch}',
-        createdAt: now,
-        isGuestPlan: true,
-        needsSync: true,
-      ),
+    final planId = 'local-guest-${now.microsecondsSinceEpoch}';
+    final draft = _draft().copyWith(
+      guestPlanId: planId,
+      createdAt: now,
+      isGuestPlan: true,
+      needsSync: true,
     );
+    try {
+      await _maybeRead<FinanceApi>()?.replaceMoneyBudget(
+        planId: planId,
+        totalBudget: draft.estimatedBudget,
+        currency: 'YER',
+        categories: [
+          for (final name in draft.selectedCategoryKeys)
+            (id: null, name: name, allocatedAmount: null),
+        ],
+      );
+      if (!mounted) return;
+      await context.read<GuestOnboardingStorage>().saveDraft(draft);
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _saving = false;
+        _error = 'ما قدرنا نحفظ الخطة على جوالك. حاول مرة ثانية.';
+      });
+      return;
+    }
     if (!mounted) return;
     setState(() => _saving = false);
     context.go(route);

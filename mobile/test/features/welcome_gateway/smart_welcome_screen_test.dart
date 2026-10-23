@@ -6,6 +6,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:aarast_mobile/core/network/api_client.dart';
 import 'package:aarast_mobile/core/storage/auth_storage.dart';
+import 'package:aarast_mobile/features/finance/data/finance_api.dart';
+import 'package:aarast_mobile/features/finance/models/money_summary.dart';
 import 'package:aarast_mobile/core/utils/arabic_date_formatter.dart';
 import 'package:aarast_mobile/core/utils/hijri_date.dart';
 import 'package:aarast_mobile/features/auth/data/auth_repository.dart';
@@ -76,6 +78,7 @@ Future<GuestOnboardingStorage> _pump(
   Size size = const Size(390, 900),
   double textScale = 1,
   WeddingPlansProvider? signedInPlans,
+  FinanceApi? finance,
 }) async {
   tester.view.devicePixelRatio = 1;
   tester.view.physicalSize = size;
@@ -89,6 +92,7 @@ Future<GuestOnboardingStorage> _pump(
       providers: [
         Provider<AuthStorage>.value(value: authStorage),
         Provider<GuestOnboardingStorage>.value(value: storage),
+        if (finance != null) Provider<FinanceApi>.value(value: finance),
         if (signedInPlans != null) ...[
           ChangeNotifierProvider<AuthController>(
             create: (_) => _SignedIn(AuthRepository(apiClient, authStorage)),
@@ -327,7 +331,8 @@ void main() {
   testWidgets('a08 keeps the plan on the phone with its starting items', (
     tester,
   ) async {
-    final storage = await _pump(tester);
+    final finance = _RecordingFinance();
+    final storage = await _pump(tester, finance: finance);
     await _answerUpToReady(tester);
 
     expect(find.text('خطتك جاهزة يا محمد'), findsOneWidget);
@@ -354,6 +359,27 @@ void main() {
     // C1: the plan starts with its wedding items, never the mahr.
     expect(draft.selectedCategoryKeys, isNotEmpty);
     expect(draft.selectedCategoryKeys, isNot(contains('المهر والاتفاقات')));
+    // The items a05 promised are in the plan's money from the start, so
+    // «المال» opens on them and never on an empty setup screen.
+    expect(finance.planIds, [draft.guestPlanId]);
+    expect(finance.budgets, ['7000000']);
+    expect(finance.names, draft.selectedCategoryKeys);
+  });
+
+  testWidgets('a08 stays and says so when the phone cannot save the plan', (
+    tester,
+  ) async {
+    final storage = await _pump(tester, finance: _RecordingFinance(fail: true));
+    await _answerUpToReady(tester);
+
+    await _tap(tester, 'بعدين، خلني أشوف أول');
+
+    expect(find.text('opened:/home'), findsNothing);
+    expect(
+      find.text('ما قدرنا نحفظ الخطة على جوالك. حاول مرة ثانية.'),
+      findsOneWidget,
+    );
+    expect(await storage.loadDraft(), isNull);
   });
 
   testWidgets('saving with the phone number opens register', (tester) async {
@@ -411,4 +437,33 @@ void main() {
     expect(find.text('خطتك جاهزة يا عبدالرحمن'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
+}
+
+class _RecordingFinance extends FinanceApi {
+  _RecordingFinance({this.fail = false})
+    : super(ApiClient(tokenProvider: () async => null));
+
+  final bool fail;
+  final planIds = <String>[];
+  final budgets = <String?>[];
+  final names = <String>[];
+
+  @override
+  Future<MoneyBudgetReplaceResult> replaceMoneyBudget({
+    required String planId,
+    required String? totalBudget,
+    required String currency,
+    required List<({String? id, String name, String? allocatedAmount})>
+    categories,
+  }) async {
+    if (fail) throw StateError('disk full');
+    planIds.add(planId);
+    budgets.add(totalBudget);
+    names.addAll([for (final category in categories) category.name]);
+    return MoneyBudgetReplaceResult(
+      summary: MoneySummary.empty(planId),
+      categories: const [],
+      idMap: const {},
+    );
+  }
 }

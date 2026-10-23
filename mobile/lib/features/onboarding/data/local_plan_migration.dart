@@ -120,8 +120,10 @@ class LocalPlanMigrationService {
       if (draft.priorities.isNotEmpty) 'priorities': draft.priorities,
       if (_budget(draft) != null) 'estimatedBudget': _budget(draft),
       'currency': draft.currency ?? 'YER',
-      if (draft.selectedCategoryKeys.isNotEmpty)
-        'selectedCategories': draft.selectedCategoryKeys,
+      // The items as they are in the plan's money now (added, renamed or
+      // removed there), not the list the plan started with.
+      if (_itemNames(snapshot).isNotEmpty)
+        'selectedCategories': _itemNames(snapshot),
       if (costs.isNotEmpty) 'costs': costs,
       if (snapshot.tasks.isNotEmpty)
         'tasks': [for (final row in snapshot.tasks) _taskPayload(row)],
@@ -130,6 +132,11 @@ class LocalPlanMigrationService {
     };
 
     return payload;
+  }
+
+  List<String> _itemNames(LocalPlanSnapshot snapshot) {
+    final names = snapshot.categoryNameById.values.toSet().toList();
+    return names.isNotEmpty ? names : snapshot.draft.selectedCategoryKeys;
   }
 
   Map<String, dynamic>? _costPayload(

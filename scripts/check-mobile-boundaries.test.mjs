@@ -2982,6 +2982,7 @@ const trackedShellEntryBatchContracts = [
     source: 'mobile/lib/features/welcome_gateway/screens/smart_welcome_screen.dart',
     target: 'mobile/lib/features/finance/finance_api.dart',
     show: [
+      'FinanceApi',
       'MoneyInputFormatter',
       'formatMoneyInputValue',
       'moneyStarterPlanItemNames',

@@ -215,6 +215,9 @@ void main() {
     expect(payload['title'], 'عرسنا');
     expect(payload['estimatedBudget'], '1500000');
     expect(payload['currency'], 'YER');
+    // The items as they are in the plan's money now, not the list the plan
+    // started with (the draft had «القاعة»; money now holds «التصوير»).
+    expect(payload['selectedCategories'], ['التصوير']);
 
     expect(payload.containsKey('expenses'), isFalse);
     final costs = payload['costs'] as List;

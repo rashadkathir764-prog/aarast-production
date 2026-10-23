@@ -8,11 +8,15 @@ import '../../../core/contacts/contact_duplicate_utils.dart';
 import '../../../core/experience_v3/aarast_v3.dart';
 import '../../../core/forms/aarast_form_draft_store.dart';
 import '../../../core/phone/phone_number_utils.dart';
-import '../../../core/theme/app_theme.dart';
+import '../../../core/widgets/aarast_ui.dart';
 import '../../../shared/widgets/contact_phone_field.dart';
 import '../models/guest.dart';
 import '../utils/guest_display.dart';
 
+/// e06 «ضيف جديد» and editing a guest: the name, an optional number, the
+/// family (a new one made right here), how many come with them, and, under
+/// «تفاصيل أكثر», the side, the answer and a note. Presentational: the
+/// caller saves the result.
 class GuestFormSheet extends StatefulWidget {
   const GuestFormSheet({
     required this.existingGuests,
@@ -20,6 +24,7 @@ class GuestFormSheet extends StatefulWidget {
     required this.blockDuplicatePhone,
     this.guest,
     this.draftScope,
+    this.onCreateGroup,
     super.key,
   });
 
@@ -29,12 +34,15 @@ class GuestFormSheet extends StatefulWidget {
   final bool blockDuplicatePhone;
   final String? draftScope;
 
+  /// Makes a group by name and returns its id; null hides «جديدة» (a
+  /// phone-only plan keeps no groups).
+  final Future<String?> Function(String name)? onCreateGroup;
+
   @override
   State<GuestFormSheet> createState() => _GuestFormSheetState();
 }
 
 class _GuestFormSheetState extends State<GuestFormSheet> {
-  final _formKey = GlobalKey<FormState>();
   late final TextEditingController _nameController;
   late final TextEditingController _phoneController;
   late final TextEditingController _notesController;
@@ -43,9 +51,16 @@ class _GuestFormSheetState extends State<GuestFormSheet> {
   late String? _groupId;
   late int _seatsCount;
   late int _companionsCount;
+  late List<GuestGroup> _groups = List.of(widget.groups);
+  late bool _showMore;
+  String? _nameError;
+  String? _phoneError;
+  bool _creatingGroup = false;
   AarastFormDraftCoordinator? _draft;
   bool _didConfigureDraft = false;
   bool _restoringDraft = false;
+
+  bool get _editing => widget.guest != null;
 
   @override
   void initState() {
@@ -54,18 +69,25 @@ class _GuestFormSheetState extends State<GuestFormSheet> {
     _nameController = TextEditingController(text: guest?.name ?? '');
     _phoneController = TextEditingController(text: guest?.phone ?? '');
     _notesController = TextEditingController(text: guest?.notes ?? '');
-    _nameController.addListener(_handleContactChanged);
-    _phoneController.addListener(_handleContactChanged);
-    _notesController.addListener(_handleContactChanged);
-    _side = _supportedSide(guest?.side);
+    for (final controller in [
+      _nameController,
+      _phoneController,
+      _notesController,
+    ]) {
+      controller.addListener(_handleChanged);
+    }
+    _side = _sideValues.contains(guest?.side) ? guest!.side : 'OTHER';
     _status = guest?.status ?? 'INVITED';
-    _groupId =
-        widget.groups.isEmpty ||
-            widget.groups.any((group) => group.id == guest?.groupId)
+    _groupId = widget.groups.any((group) => group.id == guest?.groupId)
         ? guest?.groupId
         : null;
     _seatsCount = guest?.seatsCount ?? 1;
     _companionsCount = guest?.companionsCount ?? 0;
+    _showMore =
+        guest != null &&
+        (guest.side != 'OTHER' ||
+            guest.status != 'INVITED' ||
+            (guest.notes ?? '').trim().isNotEmpty);
   }
 
   @override
@@ -89,20 +111,20 @@ class _GuestFormSheetState extends State<GuestFormSheet> {
 
   @override
   void dispose() {
-    _nameController
-      ..removeListener(_handleContactChanged)
-      ..dispose();
-    _phoneController
-      ..removeListener(_handleContactChanged)
-      ..dispose();
-    _notesController
-      ..removeListener(_handleContactChanged)
-      ..dispose();
+    for (final controller in [
+      _nameController,
+      _phoneController,
+      _notesController,
+    ]) {
+      controller
+        ..removeListener(_handleChanged)
+        ..dispose();
+    }
     _draft?.dispose();
     super.dispose();
   }
 
-  void _handleContactChanged() {
+  void _handleChanged() {
     if (!mounted) return;
     setState(() {});
     _scheduleDraft();
@@ -119,28 +141,23 @@ class _GuestFormSheetState extends State<GuestFormSheet> {
     final status = data['status']?.toString();
     final groupId = data['groupId']?.toString();
     setState(() {
-      if (side != null && _sideValues.contains(side)) _side = side;
-      if (status != null && _statusValues.contains(status)) _status = status;
-      if (groupId != null &&
-          widget.groups.any((group) => group.id == groupId)) {
-        _groupId = groupId;
-      }
-      _seatsCount = _draftInt(data['seatsCount'], _seatsCount).clamp(1, 20);
+      if (_sideValues.contains(side)) _side = side!;
+      if (_statusValues.contains(status)) _status = status!;
+      if (_groups.any((group) => group.id == groupId)) _groupId = groupId;
       _companionsCount = _draftInt(
         data['companionsCount'],
         _companionsCount,
       ).clamp(0, 20);
-      if (_companionsCount >= _seatsCount) {
-        _seatsCount = (_companionsCount + 1).clamp(1, 20);
-      }
+      _seatsCount = _draftInt(
+        data['seatsCount'],
+        _seatsCount,
+      ).clamp(_companionsCount + 1, 21);
     });
     _restoringDraft = false;
   }
 
-  int _draftInt(Object? value, int fallback) {
-    if (value is int) return value;
-    return int.tryParse(value?.toString() ?? '') ?? fallback;
-  }
+  int _draftInt(Object? value, int fallback) =>
+      value is int ? value : int.tryParse(value?.toString() ?? '') ?? fallback;
 
   void _scheduleDraft() {
     if (_restoringDraft) return;
@@ -161,14 +178,18 @@ class _GuestFormSheetState extends State<GuestFormSheet> {
     _scheduleDraft();
   }
 
-  Guest? get _duplicatePhoneGuest {
-    return ContactDuplicateUtils.findByPhone(
-      widget.existingGuests,
-      candidatePhone: _phoneController.text,
-      phoneOf: (guest) => guest.phone,
-      exclude: (guest) => guest.id == widget.guest?.id,
-    );
-  }
+  /// «كم معه؟»: the seats follow, never fewer than the guest and them.
+  void _setCompanions(int companions) => _mutate(() {
+    _companionsCount = companions;
+    _seatsCount = companions + 1;
+  });
+
+  Guest? get _duplicatePhoneGuest => ContactDuplicateUtils.findByPhone(
+    widget.existingGuests,
+    candidatePhone: _phoneController.text,
+    phoneOf: (guest) => guest.phone,
+    exclude: (guest) => guest.id == widget.guest?.id,
+  );
 
   bool get _hasSoftNameDuplicate {
     if (_phoneController.text.trim().isNotEmpty) return false;
@@ -179,222 +200,285 @@ class _GuestFormSheetState extends State<GuestFormSheet> {
     );
   }
 
-  void _submit() {
-    if (!_formKey.currentState!.validate()) return;
+  Future<void> _createGroup() async {
+    final create = widget.onCreateGroup;
+    if (create == null) return;
+    final name = await showDialog<String>(
+      context: context,
+      builder: (_) => const _NewGroupDialog(),
+    );
+    final trimmed = name?.trim();
+    if (trimmed == null || trimmed.isEmpty || !mounted) return;
+    setState(() => _creatingGroup = true);
+    final id = await create(trimmed);
+    if (!mounted) return;
+    setState(() {
+      _creatingGroup = false;
+      if (id != null) {
+        _groups = [
+          ..._groups,
+          GuestGroup(id: id, weddingPlanId: '', name: trimmed),
+        ];
+        _groupId = id;
+      }
+    });
+    _scheduleDraft();
+  }
+
+  void _submit({bool addAnother = false}) {
     final name = _nameController.text.trim();
-    final phone = PhoneNumberUtils.normalizeOptional(_phoneController.text);
+    final phone = PhoneNumberUtils.analyze(_phoneController.text);
+    final duplicate =
+        widget.blockDuplicatePhone && _duplicatePhoneGuest != null;
+    setState(() {
+      _nameError = name.isEmpty ? 'اكتب اسمه' : null;
+      _phoneError = phone.isInvalid
+          ? phone.message ?? PhoneNumberUtils.invalidMessage
+          : duplicate
+          ? 'رقمه عندك لـ${_duplicatePhoneGuest!.name}'
+          : null;
+    });
+    if (_nameError != null || _phoneError != null) return;
     Navigator.of(context).pop(
       GuestFormResult(
         name: name,
-        phone: phone,
+        phone: PhoneNumberUtils.normalizeOptional(_phoneController.text),
         groupId: _groupId,
         side: _side,
         status: _status,
         seatsCount: _seatsCount,
         companionsCount: _companionsCount,
         notes: _notesController.text,
+        addAnother: addAnother,
       ),
     );
   }
 
   @override
   Widget build(BuildContext context) {
-    final guest = widget.guest;
-    return Directionality(
-      textDirection: TextDirection.rtl,
-      child: AarastV3BottomSheetFormLayout(
-        header: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const GuestSheetHandle(),
-            const SizedBox(height: AppTheme.space8),
-            _GuestFormHeader(
-              editing: guest != null,
-              onClose: () => Navigator.of(context).pop(),
+    final duplicate = _duplicatePhoneGuest;
+    return SingleChildScrollView(
+      padding: EdgeInsets.fromLTRB(
+        20,
+        8,
+        20,
+        16 + MediaQuery.viewInsetsOf(context).bottom,
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Semantics(
+            header: true,
+            child: Text(
+              _editing ? 'تعديل ضيف' : 'ضيف جديد',
+              style: JourneyType.of(
+                JourneyType.title,
+                weight: JourneyType.bold,
+              ),
             ),
-            if (_draft != null) ...[
-              const SizedBox(height: AppTheme.space8),
-              Align(
-                alignment: AlignmentDirectional.centerStart,
-                child: AarastV3DraftStatusLine(status: _draft!.status),
+          ),
+          if (_draft != null) AarastV3DraftStatusLine(status: _draft!.status),
+          const SizedBox(height: 12),
+          JourneyTextField(
+            key: const ValueKey('guest-form-name'),
+            label: 'الاسم',
+            hint: 'مثلًا: خالد الحمدي',
+            controller: _nameController,
+            icon: LucideIcons.user,
+            autofocus: !_editing,
+            errorText: _nameError,
+            textInputAction: TextInputAction.next,
+          ),
+          const SizedBox(height: 10),
+          ContactPhoneField(
+            key: const ValueKey('guest-form-phone'),
+            nameController: _nameController,
+            phoneController: _phoneController,
+            label: 'رقم الجوال (اختياري)',
+            duplicateMessage: duplicate == null
+                ? null
+                : 'رقمه عندك لـ${duplicate.name}',
+            duplicateIsBlocking: widget.blockDuplicatePhone,
+            onDraftChanged: (_) {
+              if (!mounted) return;
+              setState(() => _phoneError = null);
+              _scheduleDraft();
+            },
+          ),
+          if (_phoneError != null)
+            Text(
+              _phoneError!,
+              key: const ValueKey('guest-form-phone-error'),
+              style: JourneyType.of(
+                JourneyType.small,
+                weight: JourneyType.bold,
+                color: AarastV3Color.danger,
               ),
-            ],
-          ],
-        ),
-        action: AarastV3PrimaryAction(
-          label: guest == null ? 'إضافة ضيف' : 'حفظ التعديل',
-          icon: LucideIcons.check,
-          onPressed: _submit,
-        ),
-        child: Form(
-          key: _formKey,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              const AarastV3FocusPrompt(
-                question: 'من الضيف الذي تريد إضافته؟',
-                supportingText:
-                    'الاسم يكفي للبدء؛ أكمل الهاتف والرد والمقاعد عندما تعرفها.',
-                icon: LucideIcons.userPlus,
+            ),
+          if (_hasSoftNameDuplicate)
+            Text(
+              'فيه اسم مشابه بدون رقم؛ كمّل لو هو شخص ثاني.',
+              style: JourneyType.of(
+                JourneyType.small,
+                weight: JourneyType.bold,
+                color: AarastV3Color.brandAccentStrong,
               ),
-              const SizedBox(height: AppTheme.space10),
-              TextFormField(
-                controller: _nameController,
-                textInputAction: TextInputAction.next,
-                decoration: const InputDecoration(
-                  labelText: 'اسم الضيف',
-                  prefixIcon: Icon(LucideIcons.user),
-                ),
-                validator: (value) =>
-                    value?.trim().isEmpty == true ? 'اسم الضيف مطلوب' : null,
-              ),
-              const SizedBox(height: AppTheme.space10),
-              ContactPhoneField(
-                nameController: _nameController,
-                phoneController: _phoneController,
-                label: 'رقم الجوال',
-                duplicateMessage: _duplicatePhoneGuest == null
-                    ? null
-                    : 'هذا الضيف موجود مسبقًا',
-                duplicateIsBlocking: widget.blockDuplicatePhone,
-                onDraftChanged: (_) {
-                  if (!mounted) return;
-                  setState(() {});
-                  _scheduleDraft();
-                },
-              ),
-              if (_hasSoftNameDuplicate) ...[
-                const SizedBox(height: AppTheme.space4),
-                const Text(
-                  'يوجد اسم مشابه بلا رقم؛ يمكنك المتابعة إن كان شخصاً آخر.',
-                  style: TextStyle(
-                    color: AppTheme.warning,
-                    fontWeight: FontWeight.w700,
+            ),
+          if (_groups.isNotEmpty || widget.onCreateGroup != null) ...[
+            _label('العائلة'),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                for (final group in _groups)
+                  JourneyChip(
+                    key: ValueKey('guest-form-group-${group.id}'),
+                    label: group.name,
+                    selected: _groupId == group.id,
+                    selectedColor: AarastV3Color.lilac,
+                    onTap: () => _mutate(
+                      () => _groupId = _groupId == group.id ? null : group.id,
+                    ),
                   ),
-                ),
+                if (widget.onCreateGroup != null)
+                  JourneyChip(
+                    key: const ValueKey('guest-form-group-new'),
+                    label: _creatingGroup ? 'نحفظها…' : 'جديدة',
+                    icon: LucideIcons.plus,
+                    selected: false,
+                    onTap: _creatingGroup ? null : _createGroup,
+                  ),
               ],
-              const SizedBox(height: AppTheme.space10),
-              AarastV3Disclosure(
-                title: 'تفاصيل إضافية',
-                subtitle: 'الطرف والرد والمقاعد والمجموعة',
-                icon: LucideIcons.slidersHorizontal,
-                initiallyExpanded:
-                    guest != null ||
-                    _groupId != null ||
-                    _notesController.text.trim().isNotEmpty ||
-                    _side != 'OTHER' ||
-                    _status != 'INVITED' ||
-                    _seatsCount != 1 ||
-                    _companionsCount != 0,
-                child: Column(
-                  children: [
-                    _CompactDecisionSurface(
-                      children: [
-                        _ChipPickerRow(
-                          label: 'الطرف',
-                          options: [
-                            for (final item in _sideValues)
-                              _ChipOption(
-                                value: item,
-                                label: guestSideLabel(item),
-                              ),
-                          ],
-                          selected: _side,
-                          onSelected: (value) => _mutate(() => _side = value),
-                        ),
-                        const SizedBox(height: AppTheme.space8),
-                        _ChipPickerRow(
-                          label: 'حالة الرد',
-                          options: [
-                            for (final item in _statusValues)
-                              _ChipOption(
-                                value: item,
-                                label: _statusLabel(item),
-                              ),
-                          ],
-                          selected: _status,
-                          onSelected: (value) => _mutate(() => _status = value),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: AppTheme.space8),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: _CompactStepper(
-                            label: 'المقاعد',
-                            value: _seatsCount,
-                            onMinus: _seatsCount > 1
-                                ? () => _mutate(() {
-                                    _seatsCount--;
-                                    if (_companionsCount >= _seatsCount) {
-                                      _companionsCount = _seatsCount - 1;
-                                    }
-                                  })
-                                : null,
-                            onPlus: _seatsCount < 20
-                                ? () => _mutate(() => _seatsCount++)
-                                : null,
-                          ),
-                        ),
-                        const SizedBox(width: AppTheme.space8),
-                        Expanded(
-                          child: _CompactStepper(
-                            label: 'المرافقون',
-                            value: _companionsCount,
-                            onMinus: _companionsCount > 0
-                                ? () => _mutate(() => _companionsCount--)
-                                : null,
-                            onPlus: _companionsCount < 20
-                                ? () => _mutate(() {
-                                    _companionsCount++;
-                                    if (_seatsCount < _companionsCount + 1) {
-                                      _seatsCount = _companionsCount + 1;
-                                    }
-                                  })
-                                : null,
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: AppTheme.space8),
-                    _GuestOptionalDetails(
-                      groups: widget.groups,
-                      groupId: _groupId,
-                      onGroupChanged: (value) {
-                        _mutate(
-                          () =>
-                              _groupId = value?.isEmpty == true ? null : value,
-                        );
-                      },
-                      notesController: _notesController,
-                    ),
-                  ],
+            ),
+          ],
+          _label('كم معه؟'),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              for (final count in const [0, 1, 2, 3])
+                JourneyChip(
+                  key: ValueKey('guest-form-companions-$count'),
+                  label: count == 0
+                      ? 'لحاله'
+                      : PhoneNumberUtils.isolateLtr('+$count'),
+                  selected: _companionsCount == count,
+                  selectedColor: AarastV3Color.lilac,
+                  onTap: () => _setCompanions(count),
                 ),
-              ),
-              const SizedBox(height: AppTheme.space10),
-              AarastV3LiveSummary(
-                items: [
-                  AarastV3SummaryItem(
-                    label: 'الضيف',
-                    value: _nameController.text.trim().isEmpty
-                        ? 'لم يُكتب بعد'
-                        : _nameController.text.trim(),
-                  ),
-                  AarastV3SummaryItem(
-                    label: 'الرد',
-                    value: _statusLabel(_status),
-                  ),
-                  AarastV3SummaryItem(label: 'المقاعد', value: '$_seatsCount'),
-                ],
+              JourneyChip(
+                key: const ValueKey('guest-form-companions-more'),
+                label: _companionsCount > 3
+                    ? PhoneNumberUtils.isolateLtr('+$_companionsCount')
+                    : 'أكثر',
+                selected: _companionsCount > 3,
+                selectedColor: AarastV3Color.lilac,
+                onTap: _companionsCount < 20
+                    ? () => _setCompanions(
+                        _companionsCount < 4 ? 4 : _companionsCount + 1,
+                      )
+                    : null,
               ),
             ],
           ),
-        ),
+          const SizedBox(height: 8),
+          Align(
+            alignment: AlignmentDirectional.centerStart,
+            child: JourneyTextAction(
+              key: const ValueKey('guest-form-more'),
+              label: _showMore ? 'أقل' : 'تفاصيل أكثر',
+              icon: _showMore ? LucideIcons.chevronUp : LucideIcons.chevronDown,
+              color: AarastV3Color.lilac,
+              onPressed: () => setState(() => _showMore = !_showMore),
+            ),
+          ),
+          if (_showMore) ...[
+            _label('من أي طرف؟'),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                for (final side in _sideValues)
+                  JourneyChip(
+                    key: ValueKey('guest-form-side-$side'),
+                    label: guestSideLabel(side),
+                    selected: _side == side,
+                    selectedColor: AarastV3Color.lilac,
+                    onTap: () => _mutate(() => _side = side),
+                  ),
+              ],
+            ),
+            _label('ردّه'),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                for (final (status, label) in const [
+                  ('INVITED', 'ما ردّ'),
+                  ('CONFIRMED', 'أكّد'),
+                  ('DECLINED', 'اعتذر'),
+                ])
+                  JourneyChip(
+                    key: ValueKey('guest-form-status-$status'),
+                    label: label,
+                    selected:
+                        _status == status ||
+                        (status == 'INVITED' && _status == 'PENDING'),
+                    selectedColor: AarastV3Color.lilac,
+                    onTap: () => _mutate(() => _status = status),
+                  ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            JourneyTextField(
+              key: const ValueKey('guest-form-notes'),
+              label: 'ملاحظة',
+              controller: _notesController,
+              maxLength: 500,
+            ),
+          ],
+          const SizedBox(height: 16),
+          Row(
+            children: [
+              Expanded(
+                child: JourneyButton(
+                  key: const ValueKey('guest-form-save'),
+                  label: _editing ? 'حفظ التعديل' : 'حفظ',
+                  background: AarastV3Color.lilac,
+                  expand: true,
+                  large: true,
+                  onPressed: _submit,
+                ),
+              ),
+              if (!_editing) ...[
+                const SizedBox(width: 10),
+                JourneyButton(
+                  key: const ValueKey('guest-form-save-next'),
+                  label: 'حفظ وأضف التالي',
+                  background: AarastV3Color.lilacSoft,
+                  foreground: AarastV3Color.lilac,
+                  large: true,
+                  onPressed: () => _submit(addAnother: true),
+                ),
+              ],
+            ],
+          ),
+        ],
       ),
     );
   }
+
+  Widget _label(String text) => Padding(
+    padding: const EdgeInsets.only(top: 14, bottom: 8),
+    child: Text(
+      text,
+      style: JourneyType.of(
+        JourneyType.small,
+        weight: JourneyType.bold,
+        color: AarastV3Color.textMuted,
+      ),
+    ),
+  );
 }
 
 class GuestFormResult {
@@ -407,6 +491,7 @@ class GuestFormResult {
     this.phone,
     this.groupId,
     this.notes,
+    this.addAnother = false,
   });
 
   final String name;
@@ -417,333 +502,53 @@ class GuestFormResult {
   final int seatsCount;
   final int companionsCount;
   final String? notes;
+
+  /// «حفظ وأضف التالي»: open the form again once this one is saved.
+  final bool addAnother;
 }
 
-class GuestSheetHandle extends StatelessWidget {
-  const GuestSheetHandle({super.key});
+/// Owns its controller so it is disposed after the dialog route is gone.
+class _NewGroupDialog extends StatefulWidget {
+  const _NewGroupDialog();
 
   @override
-  Widget build(BuildContext context) {
-    return Center(
-      child: Container(
-        width: 42,
-        height: 5,
-        decoration: BoxDecoration(
-          color: AppTheme.border,
-          borderRadius: BorderRadius.circular(999),
-        ),
-      ),
-    );
+  State<_NewGroupDialog> createState() => _NewGroupDialogState();
+}
+
+class _NewGroupDialogState extends State<_NewGroupDialog> {
+  final _controller = TextEditingController();
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
   }
-}
-
-class _GuestFormHeader extends StatelessWidget {
-  const _GuestFormHeader({required this.editing, required this.onClose});
-
-  final bool editing;
-  final VoidCallback onClose;
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      children: [
-        Container(
-          width: 36,
-          height: 36,
-          alignment: Alignment.center,
-          decoration: BoxDecoration(
-            color: AppTheme.inkSurface,
-            borderRadius: BorderRadius.circular(AppTheme.radiusControl),
-          ),
-          child: const Icon(
-            LucideIcons.userPlus,
-            color: Colors.white,
-            size: 20,
-          ),
+    return AarastDialog(
+      title: const Text('عائلة جديدة'),
+      content: TextField(
+        key: const ValueKey('guest-form-group-name'),
+        controller: _controller,
+        autofocus: true,
+        decoration: const InputDecoration(hintText: 'مثلًا: آل السقاف'),
+        onSubmitted: (value) => Navigator.pop(context, value),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text('رجوع'),
         ),
-        const SizedBox(width: AppTheme.space12),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                editing ? 'تعديل ضيف' : 'ضيف جديد',
-                style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                  color: AppTheme.textPrimary,
-                  fontFamily: AppTheme.displayFontFamily,
-                  fontWeight: FontWeight.w800,
-                ),
-              ),
-              Text(
-                'الاسم أولاً، والبقية حسب حاجتك.',
-                style: Theme.of(
-                  context,
-                ).textTheme.bodySmall?.copyWith(color: AppTheme.textSecondary),
-              ),
-            ],
-          ),
-        ),
-        IconButton(
-          onPressed: onClose,
-          tooltip: 'إغلاق',
-          icon: const Icon(LucideIcons.x),
+        FilledButton(
+          key: const ValueKey('guest-form-group-create'),
+          onPressed: () => Navigator.pop(context, _controller.text),
+          child: const Text('أضفها'),
         ),
       ],
-    );
-  }
-}
-
-class _CompactDecisionSurface extends StatelessWidget {
-  const _CompactDecisionSurface({required this.children});
-
-  final List<Widget> children;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(vertical: AppTheme.space8),
-      decoration: const BoxDecoration(
-        border: Border.symmetric(
-          horizontal: BorderSide(color: AppTheme.border),
-        ),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: children,
-      ),
-    );
-  }
-}
-
-class _GuestOptionalDetails extends StatelessWidget {
-  const _GuestOptionalDetails({
-    required this.groups,
-    required this.groupId,
-    required this.onGroupChanged,
-    required this.notesController,
-  });
-
-  final List<GuestGroup> groups;
-  final String? groupId;
-  final ValueChanged<String?> onGroupChanged;
-  final TextEditingController notesController;
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      children: [
-        if (groups.isNotEmpty) ...[
-          DropdownButtonFormField<String>(
-            initialValue: groupId,
-            items: [
-              const DropdownMenuItem(value: '', child: Text('بدون مجموعة')),
-              for (final group in groups)
-                DropdownMenuItem(value: group.id, child: Text(group.name)),
-            ],
-            onChanged: onGroupChanged,
-            decoration: const InputDecoration(
-              labelText: 'المجموعة',
-              prefixIcon: Icon(LucideIcons.folderOpen),
-            ),
-          ),
-          const SizedBox(height: AppTheme.space8),
-        ],
-        TextFormField(
-          controller: notesController,
-          minLines: 1,
-          maxLines: 2,
-          textInputAction: TextInputAction.done,
-          decoration: const InputDecoration(
-            labelText: 'ملاحظة قصيرة',
-            prefixIcon: Icon(LucideIcons.stickyNote),
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-class _ChipOption {
-  const _ChipOption({required this.value, required this.label});
-
-  final String value;
-  final String label;
-}
-
-class _ChipPickerRow extends StatelessWidget {
-  const _ChipPickerRow({
-    required this.label,
-    required this.options,
-    required this.selected,
-    required this.onSelected,
-  });
-
-  final String label;
-  final List<_ChipOption> options;
-  final String selected;
-  final ValueChanged<String> onSelected;
-
-  @override
-  Widget build(BuildContext context) {
-    final textTheme = Theme.of(context).textTheme;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          label,
-          style: textTheme.labelMedium?.copyWith(color: AppTheme.textSecondary),
-        ),
-        const SizedBox(height: 4),
-        Row(
-          children: [
-            for (var index = 0; index < options.length; index++) ...[
-              if (index > 0) const SizedBox(width: AppTheme.space6),
-              Expanded(
-                child: Builder(
-                  builder: (context) {
-                    final option = options[index];
-                    return Material(
-                      color: Colors.transparent,
-                      child: InkWell(
-                        onTap: () => onSelected(option.value),
-                        borderRadius: BorderRadius.circular(999),
-                        child: Ink(
-                          height: 36,
-                          padding: const EdgeInsets.symmetric(horizontal: 6),
-                          decoration: BoxDecoration(
-                            color: option.value == selected
-                                ? AppTheme.brand
-                                : AppTheme.surfaceRaised,
-                            borderRadius: BorderRadius.circular(999),
-                            border: Border.all(
-                              color: option.value == selected
-                                  ? AppTheme.brand
-                                  : AppTheme.border,
-                            ),
-                          ),
-                          child: Center(
-                            child: FittedBox(
-                              fit: BoxFit.scaleDown,
-                              child: Text(
-                                option.label,
-                                maxLines: 1,
-                                style: textTheme.labelMedium?.copyWith(
-                                  color: option.value == selected
-                                      ? Colors.white
-                                      : AppTheme.textPrimary,
-                                  fontWeight: FontWeight.w800,
-                                ),
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
-                    );
-                  },
-                ),
-              ),
-            ],
-          ],
-        ),
-      ],
-    );
-  }
-}
-
-class _CompactStepper extends StatelessWidget {
-  const _CompactStepper({
-    required this.label,
-    required this.value,
-    required this.onMinus,
-    required this.onPlus,
-  });
-
-  final String label;
-  final int value;
-  final VoidCallback? onMinus;
-  final VoidCallback? onPlus;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: AppTheme.space6),
-      decoration: const BoxDecoration(
-        border: Border(bottom: BorderSide(color: AppTheme.border)),
-      ),
-      child: Row(
-        children: [
-          Expanded(
-            child: Text(
-              label,
-              maxLines: 1,
-              style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                color: AppTheme.textSecondary,
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-          ),
-          _StepperButton(
-            icon: LucideIcons.minus,
-            onPressed: onMinus,
-            tooltip: 'تقليل العدد',
-          ),
-          SizedBox(
-            width: 24,
-            child: Text(
-              '$value',
-              textAlign: TextAlign.center,
-              style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                color: AppTheme.textPrimary,
-                fontWeight: FontWeight.w900,
-              ),
-            ),
-          ),
-          _StepperButton(
-            icon: LucideIcons.plus,
-            onPressed: onPlus,
-            tooltip: 'زيادة العدد',
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _StepperButton extends StatelessWidget {
-  const _StepperButton({
-    required this.icon,
-    required this.onPressed,
-    required this.tooltip,
-  });
-
-  final IconData icon;
-  final VoidCallback? onPressed;
-  final String tooltip;
-
-  @override
-  Widget build(BuildContext context) {
-    return IconButton(
-      onPressed: onPressed,
-      tooltip: tooltip,
-      visualDensity: VisualDensity.compact,
-      constraints: const BoxConstraints.tightFor(width: 36, height: 36),
-      icon: Icon(icon, size: 17),
     );
   }
 }
 
 const _sideValues = ['GROOM', 'BRIDE', 'OTHER'];
 const _statusValues = ['INVITED', 'CONFIRMED', 'PENDING', 'DECLINED'];
-
-String _supportedSide(String? side) {
-  return _sideValues.contains(side) ? side! : 'OTHER';
-}
-
-String _statusLabel(String status) {
-  return switch (status) {
-    'CONFIRMED' => 'مؤكد',
-    'DECLINED' => 'لن يحضر',
-    'PENDING' => 'بانتظار الرد',
-    _ => 'مدعو',
-  };
-}

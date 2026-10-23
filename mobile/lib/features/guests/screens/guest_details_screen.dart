@@ -389,6 +389,15 @@ class _GuestDetailsScreenState extends State<GuestDetailsScreen> {
         existingGuests: provider.guests,
         groups: provider.groups,
         blockDuplicatePhone: !_isLocalPlan,
+        onCreateGroup: _isLocalPlan
+            ? null
+            : (name) async {
+                final ok = await provider.createGroup(
+                  widget.weddingPlanId,
+                  name,
+                );
+                return ok ? provider.groups.last.id : null;
+              },
       ),
     );
     if (result == null || !mounted) return;

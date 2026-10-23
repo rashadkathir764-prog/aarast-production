@@ -50,9 +50,18 @@ void main() {
 
     await tester.tap(find.byKey(const ValueKey('guests-add')));
     await tester.pumpAndSettle();
-    await tester.enterText(_textFieldWithLabel('اسم الضيف'), 'محمد علي');
-    await tester.enterText(_textFieldWithLabel('رقم الجوال'), '777123456');
-    final sheetSubmit = find.widgetWithText(FilledButton, 'إضافة ضيف').last;
+    await tester.enterText(
+      find.byKey(const ValueKey('guest-form-name')),
+      'محمد علي',
+    );
+    await tester.enterText(
+      find.descendant(
+        of: find.byKey(const ValueKey('guest-form-phone')),
+        matching: find.byType(EditableText),
+      ),
+      '777123456',
+    );
+    final sheetSubmit = find.byKey(const ValueKey('guest-form-save'));
     await tester.ensureVisible(sheetSubmit);
     await tester.pumpAndSettle();
     await tester.tap(sheetSubmit);
@@ -369,12 +378,6 @@ GoRouter _router({
       ),
     ],
   );
-}
-
-Finder _textFieldWithLabel(String label) {
-  return find
-      .ancestor(of: find.text(label), matching: find.byType(TextField))
-      .first;
 }
 
 class _Harness {

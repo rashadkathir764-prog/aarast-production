@@ -242,9 +242,18 @@ void main() {
 
     await tester.tap(find.byKey(const ValueKey('guests-add')));
     await tester.pumpAndSettle();
-    await tester.enterText(_textFieldWithLabel('اسم الضيف'), 'سالم أحمد');
-    await tester.enterText(_textFieldWithLabel('رقم الجوال'), '777654321');
-    final submit = find.widgetWithText(FilledButton, 'إضافة ضيف').last;
+    await tester.enterText(
+      find.byKey(const ValueKey('guest-form-name')),
+      'سالم أحمد',
+    );
+    await tester.enterText(
+      find.descendant(
+        of: find.byKey(const ValueKey('guest-form-phone')),
+        matching: find.byType(EditableText),
+      ),
+      '777654321',
+    );
+    final submit = find.byKey(const ValueKey('guest-form-save'));
     await tester.ensureVisible(submit);
     await tester.pumpAndSettle();
     await tester.tap(submit);
@@ -371,12 +380,6 @@ void _setPhoneView(
   tester.view.devicePixelRatio = 1;
   tester.view.physicalSize = Size(width, height);
   addTearDown(tester.view.reset);
-}
-
-Finder _textFieldWithLabel(String label) {
-  return find
-      .ancestor(of: find.text(label), matching: find.byType(TextField))
-      .first;
 }
 
 class _Harness {

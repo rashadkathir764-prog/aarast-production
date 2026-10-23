@@ -1,4 +1,3 @@
-import 'package:aarast_mobile/core/phone/phone_number_utils.dart';
 import 'package:aarast_mobile/core/widgets/aarast_ui.dart';
 import 'package:aarast_mobile/features/guests/models/guest.dart';
 import 'package:aarast_mobile/features/guests/widgets/guest_form_sheet.dart';
@@ -10,12 +9,15 @@ void main() {
     GuestFormResult? result;
     await _openForm(tester, onResult: (value) => result = value);
 
-    await tester.enterText(_fieldWithLabel('اسم الضيف'), 'سالم أحمد');
-    await tester.enterText(_fieldWithLabel('رقم الجوال'), '777654321');
-    await tester.tap(find.text('تفاصيل إضافية'));
+    await tester.enterText(_name, 'سالم أحمد');
+    await tester.enterText(_phone, '777654321');
+    await tester.tap(find.byKey(const ValueKey('guest-form-more')));
     await tester.pumpAndSettle();
-    await tester.enterText(_fieldWithLabel('ملاحظة قصيرة'), 'من العائلة');
-    await _submit(tester, 'إضافة ضيف');
+    await tester.enterText(
+      find.byKey(const ValueKey('guest-form-notes')),
+      'من العائلة',
+    );
+    await _submit(tester);
 
     expect(result, isNotNull);
     expect(result!.name, 'سالم أحمد');
@@ -25,21 +27,25 @@ void main() {
     expect(result!.seatsCount, 1);
     expect(result!.companionsCount, 0);
     expect(result!.notes, 'من العائلة');
+    expect(result!.addAnother, isFalse);
   });
 
   testWidgets('guest form keeps validation inside the sheet', (tester) async {
     GuestFormResult? result;
     await _openForm(tester, onResult: (value) => result = value);
 
-    await _submit(tester, 'إضافة ضيف');
-    expect(find.text('اسم الضيف مطلوب'), findsOneWidget);
+    await _submit(tester);
+    expect(find.text('اكتب اسمه'), findsOneWidget);
     expect(result, isNull);
 
-    await tester.enterText(_fieldWithLabel('اسم الضيف'), 'ضيف');
-    await tester.enterText(_fieldWithLabel('رقم الجوال'), '123');
-    await _submit(tester, 'إضافة ضيف');
+    await tester.enterText(_name, 'ضيف');
+    await tester.enterText(_phone, '123');
+    await _submit(tester);
 
-    expect(find.text(PhoneNumberUtils.invalidMessage), findsOneWidget);
+    expect(
+      find.byKey(const ValueKey('guest-form-phone-error')),
+      findsOneWidget,
+    );
     expect(result, isNull);
   });
 
@@ -52,11 +58,11 @@ void main() {
       onResult: (value) => result = value,
     );
 
-    await tester.enterText(_fieldWithLabel('اسم الضيف'), 'ضيف آخر');
-    await tester.enterText(_fieldWithLabel('رقم الجوال'), '777123456');
-    await _submit(tester, 'إضافة ضيف');
+    await tester.enterText(_name, 'ضيف آخر');
+    await tester.enterText(_phone, '777123456');
+    await _submit(tester);
 
-    expect(find.text('هذا الضيف موجود مسبقًا'), findsWidgets);
+    expect(find.text('رقمه عندك لـضيف موجود'), findsWidgets);
     expect(result, isNull);
   });
 
@@ -71,9 +77,9 @@ void main() {
       onResult: (value) => result = value,
     );
 
-    await tester.enterText(_fieldWithLabel('اسم الضيف'), 'ضيف آخر');
-    await tester.enterText(_fieldWithLabel('رقم الجوال'), '777123456');
-    await _submit(tester, 'إضافة ضيف');
+    await tester.enterText(_name, 'ضيف آخر');
+    await tester.enterText(_phone, '777123456');
+    await _submit(tester);
 
     expect(result, isNotNull);
     expect(result!.phone, '+967777123456');
@@ -101,13 +107,14 @@ void main() {
     );
 
     expect(find.text('تعديل ضيف'), findsOneWidget);
-    expect(find.text('العائلة'), findsOneWidget);
-    final plusButtons = find.byTooltip('زيادة العدد');
-    await tester.tap(plusButtons.at(1));
+    expect(
+      find.byKey(const ValueKey('guest-form-group-group-1')),
+      findsOneWidget,
+    );
+    // e06 «كم معه؟»: two with him means three seats.
+    await tester.tap(find.byKey(const ValueKey('guest-form-companions-2')));
     await tester.pump();
-    await tester.tap(plusButtons.at(1));
-    await tester.pump();
-    await _submit(tester, 'حفظ التعديل');
+    await _submit(tester);
 
     expect(result, isNotNull);
     expect(result!.groupId, group.id);
@@ -115,6 +122,36 @@ void main() {
     expect(result!.status, 'CONFIRMED');
     expect(result!.companionsCount, 2);
     expect(result!.seatsCount, 3);
+  });
+
+  testWidgets('a new family is made from the form and chosen', (tester) async {
+    GuestFormResult? result;
+    final made = <String>[];
+    await _openForm(
+      tester,
+      onCreateGroup: (name) async {
+        made.add(name);
+        return 'group-new';
+      },
+      onResult: (value) => result = value,
+    );
+
+    await tester.enterText(_name, 'خالد الحمدي');
+    await tester.tap(find.byKey(const ValueKey('guest-form-group-new')));
+    await tester.pumpAndSettle();
+    await tester.enterText(
+      find.byKey(const ValueKey('guest-form-group-name')),
+      'آل الحمدي',
+    );
+    await tester.tap(find.byKey(const ValueKey('guest-form-group-create')));
+    await tester.pumpAndSettle();
+    expect(find.text('آل الحمدي'), findsOneWidget);
+    await tester.tap(find.byKey(const ValueKey('guest-form-save-next')));
+    await tester.pumpAndSettle();
+
+    expect(made, ['آل الحمدي']);
+    expect(result!.groupId, 'group-new');
+    expect(result!.addAnother, isTrue);
   });
 }
 
@@ -124,6 +161,7 @@ Future<void> _openForm(
   List<Guest> existingGuests = const [],
   List<GuestGroup> groups = const [],
   bool blockDuplicatePhone = true,
+  Future<String?> Function(String name)? onCreateGroup,
   required ValueChanged<GuestFormResult?> onResult,
 }) async {
   tester.view.devicePixelRatio = 1;
@@ -144,6 +182,7 @@ Future<void> _openForm(
                   existingGuests: existingGuests,
                   groups: groups,
                   blockDuplicatePhone: blockDuplicatePhone,
+                  onCreateGroup: onCreateGroup,
                 ),
               );
               onResult(result);
@@ -158,18 +197,18 @@ Future<void> _openForm(
   await tester.pumpAndSettle();
 }
 
-Future<void> _submit(WidgetTester tester, String label) async {
-  final submit = find.widgetWithText(FilledButton, label).last;
+final _name = find.byKey(const ValueKey('guest-form-name'));
+final _phone = find.descendant(
+  of: find.byKey(const ValueKey('guest-form-phone')),
+  matching: find.byType(EditableText),
+);
+
+Future<void> _submit(WidgetTester tester) async {
+  final submit = find.byKey(const ValueKey('guest-form-save'));
   await tester.ensureVisible(submit);
   await tester.pumpAndSettle();
   await tester.tap(submit);
   await tester.pumpAndSettle();
-}
-
-Finder _fieldWithLabel(String label) {
-  return find
-      .ancestor(of: find.text(label), matching: find.byType(TextField))
-      .first;
 }
 
 Guest _guest({

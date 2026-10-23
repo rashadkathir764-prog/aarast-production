@@ -474,6 +474,7 @@ class _GuestListScreenState extends State<GuestListScreen> {
         existingGuests: provider.guests,
         groups: provider.groups,
         blockDuplicatePhone: !_isLocalPlan,
+        onCreateGroup: _isLocalPlan ? null : _createGroup,
       ),
     );
     if (result == null || !mounted) return;
@@ -511,11 +512,32 @@ class _GuestListScreenState extends State<GuestListScreen> {
     );
     await context.read<AarastFormDraftStore?>()?.clear(scope);
     if (!mounted) return;
+    if (result.addAnother) {
+      AarastToast.showSuccess(context, 'انضاف ${result.name}');
+      await _showGuestSheet(provider: provider);
+      return;
+    }
     AarastFormSuccess.show(
       context,
       message: provider.noticeMessage ?? 'انضاف الضيف',
       nextLabel: 'أضف ثاني',
       onNext: () => _showGuestSheet(provider: provider),
     );
+  }
+
+  /// «جديدة» in the guest form: the group is saved first, then chosen.
+  Future<String?> _createGroup(String name) async {
+    final provider = context.read<GuestsProvider>();
+    final ok = await provider.createGroup(widget.weddingPlanId, name);
+    if (!ok) {
+      if (mounted) {
+        AarastToast.showError(
+          context,
+          provider.groupsErrorMessage ?? 'ما قدرنا نضيف المجموعة',
+        );
+      }
+      return null;
+    }
+    return provider.groups.last.id;
   }
 }

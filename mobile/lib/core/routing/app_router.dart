@@ -42,7 +42,8 @@ import '../../features/finance/finance_api.dart'
         PaymentSchedulesScreen,
         RecordCostPaymentScreen,
         WeddingCost;
-import '../../features/guests/guests_api.dart' show GuestListScreen;
+import '../../features/guests/guests_api.dart'
+    show GuestDetailsScreen, GuestListScreen;
 import '../../features/home/home_api.dart' show DashboardEntryScreen;
 import '../../features/marketplace/marketplace_api.dart'
     show
@@ -337,6 +338,10 @@ class AppRouter {
 
   static String sharing(String id) {
     return '/wedding-plans/$id/sharing';
+  }
+
+  static String guestDetails(String weddingPlanId, String guestId) {
+    return '/wedding-plans/$weddingPlanId/guests/view/$guestId';
   }
 
   static String guestList(String id) {

@@ -6,8 +6,6 @@ import 'package:aarast_mobile/features/guests/data/guests_api.dart';
 import 'package:aarast_mobile/features/guests/models/guest.dart';
 import 'package:aarast_mobile/features/guests/providers/guests_provider.dart';
 import 'package:aarast_mobile/features/guests/screens/guest_list_screen.dart';
-import 'package:aarast_mobile/features/guests/widgets/guest_attendance_brief.dart';
-import 'package:aarast_mobile/features/guests/widgets/guest_list_row.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:provider/provider.dart';
@@ -74,74 +72,52 @@ void main() {
     expect(summary.bySideForSuper['bride'], 1);
   });
 
+  test('guests added in the same instant on a phone plan all stay', () async {
+    final harness = await _createHarness();
+    for (var index = 0; index < 20; index++) {
+      await harness.api.createGuest(
+        weddingPlanId: _localPlanId,
+        name: 'ضيف $index',
+        side: 'GROOM',
+        status: 'INVITED',
+        seatsCount: 1,
+      );
+    }
+    final guests = await harness.api.getGuests(_localPlanId);
+    expect(guests, hasLength(20));
+    expect(guests.map((guest) => guest.id).toSet(), hasLength(20));
+  });
+
   testWidgets('approved guest UI counts seats once when companions exist', (
     tester,
   ) async {
     _setPhoneView(tester, height: 900);
-    final guests = [
-      _guest(
-        id: 'family-invite',
-        name: 'محمد علي',
-        phone: '+967777123456',
-        side: 'GROOM',
-        status: 'CONFIRMED',
-        attendanceStatus: 'CONFIRMED',
-        seatsCount: 3,
-        companionsCount: 2,
-      ),
-      _guest(
-        id: 'bride-invite',
-        name: 'ليلى سالم',
-        phone: '+967777654321',
-        side: 'BRIDE',
-        status: 'PENDING',
-        seatsCount: 1,
-      ),
-      _guest(
-        id: 'incomplete-invite',
-        name: 'ضيف بدون رقم',
-        side: 'GROOM',
-        status: 'INVITED',
-        seatsCount: 1,
-      ),
-    ];
-    final summary = GuestSummary.fromGuests(
+    final harness = await _createHarness();
+    await harness.api.createGuest(
       weddingPlanId: _localPlanId,
-      guests: guests,
+      name: 'محمد علي',
+      phone: '777123456',
+      side: 'GROOM',
+      status: 'CONFIRMED',
+      attendanceStatus: 'CONFIRMED',
+      seatsCount: 3,
+      companionsCount: 2,
+    );
+    await harness.api.createGuest(
+      weddingPlanId: _localPlanId,
+      name: 'ليلى سالم',
+      phone: '777654321',
+      side: 'BRIDE',
+      status: 'PENDING',
+      seatsCount: 1,
     );
 
-    await tester.pumpWidget(
-      MaterialApp(
-        home: Directionality(
-          textDirection: TextDirection.rtl,
-          child: Scaffold(
-            body: SingleChildScrollView(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                children: [
-                  GuestAttendanceBrief(summary: summary),
-                  GuestListRow(
-                    guest: guests.first,
-                    groupLabel: 'العائلة',
-                    isDuplicate: false,
-                    isBusy: false,
-                    onEdit: () {},
-                    onStatus: (_) {},
-                    onDelete: () {},
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-    await tester.pumpAndSettle();
+    await _pumpGuestsScreen(tester, harness, setView: false);
 
-    expect(find.text('5'), findsOneWidget);
-    expect(find.text('منهم مرافقان'), findsOneWidget);
-    expect(find.text('3 مقاعد'), findsOneWidget);
-    expect(find.text('7'), findsNothing);
+    // e01: one confirmed guest, with his two companions counted once.
+    expect(find.text('2 مدعو · 1 أكدوا · 1 ما ردّوا'), findsOneWidget);
+    expect(find.text('أكدوا من 2'), findsOneWidget);
+    expect(find.text('مع المرافقين: 4 مقعد'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 
@@ -171,20 +147,16 @@ void main() {
     await _pumpGuestsScreen(tester, harness);
 
     expect(find.text('الضيوف'), findsWidgets);
-    // ملاحظة: أُزيلت فقرة التطمين المكررة من الترويسة في إعادة تصميم V3.
-    expect(find.text('الضيوف'), findsWidgets);
-    await tester.scrollUntilVisible(
-      find.text('محمد علي'),
-      260,
-      scrollable: find.byType(Scrollable).first,
-    );
+    expect(find.byKey(const ValueKey('guests-summary')), findsOneWidget);
+    // A phone-only plan has no groups to manage.
+    expect(find.text('المجموعات'), findsNothing);
+    await tester.tap(find.byKey(const ValueKey('guest-group-all')));
+    await tester.pumpAndSettle();
+
     expect(find.text('محمد علي'), findsOneWidget);
     expect(find.text('ليلى سالم'), findsOneWidget);
-    expect(find.text('+967 777 123 456'), findsOneWidget);
-    expect(find.text('تخطيط محلي'), findsOneWidget);
-    expect(find.text('ضيف واحد يحتاج إكمال بياناته'), findsOneWidget);
-    expect(find.text('تم إرسال الدعوة'), findsNothing);
-    expect(find.text('مشارك في الخطة'), findsNothing);
+    expect(find.text('أكّد مع 1'), findsOneWidget);
+    expect(find.text('ما وصلته دعوة'), findsOneWidget);
     expect(find.text('طلب عرض سعر'), findsNothing);
     expect(tester.takeException(), isNull);
   });
@@ -212,15 +184,51 @@ void main() {
     );
 
     await _pumpGuestsScreen(tester, harness);
-    expect(find.text('ضيف واحد يحتاج إكمال بياناته'), findsOneWidget);
-    expect(find.text('رقم الجوال غير مضاف بعد'), findsOneWidget);
+    await tester.tap(find.byKey(const ValueKey('guest-group-all')));
+    await tester.pumpAndSettle();
+    expect(find.textContaining('بدون رقم'), findsWidgets);
 
-    await tester.tap(find.text('ضيف واحد يحتاج إكمال بياناته'));
+    final noPhone = find.byKey(const ValueKey('guest-filter-noPhone'));
+    await tester.ensureVisible(noPhone);
+    await tester.pumpAndSettle();
+    await tester.tap(noPhone);
     await tester.pumpAndSettle();
 
-    expect(find.text('ناقص بيانات'), findsWidgets);
     expect(find.text('ضيف بدون رقم'), findsOneWidget);
     expect(find.text('ضيف مكتمل'), findsNothing);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('search finds a guest by name or number', (tester) async {
+    _setPhoneView(tester);
+    final harness = await _createHarness();
+    await harness.api.createGuest(
+      weddingPlanId: _localPlanId,
+      name: 'عبدالله الحمدي',
+      phone: '771234567',
+      side: 'GROOM',
+      status: 'INVITED',
+      seatsCount: 1,
+    );
+    await harness.api.createGuest(
+      weddingPlanId: _localPlanId,
+      name: 'يحيى السنيدار',
+      side: 'GROOM',
+      status: 'INVITED',
+      seatsCount: 1,
+    );
+
+    await _pumpGuestsScreen(tester, harness);
+    await tester.tap(find.byKey(const ValueKey('guests-search')));
+    await tester.pumpAndSettle();
+    await tester.enterText(
+      find.byKey(const ValueKey('guests-search-field')),
+      '1234',
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('عبدالله الحمدي'), findsOneWidget);
+    expect(find.text('يحيى السنيدار'), findsNothing);
     expect(tester.takeException(), isNull);
   });
 
@@ -232,7 +240,7 @@ void main() {
     await tester.pumpWidget(_providers(harness, provider));
     await tester.pumpAndSettle();
 
-    await tester.tap(find.byType(FloatingActionButton));
+    await tester.tap(find.byKey(const ValueKey('guests-add')));
     await tester.pumpAndSettle();
     await tester.enterText(_textFieldWithLabel('اسم الضيف'), 'سالم أحمد');
     await tester.enterText(_textFieldWithLabel('رقم الجوال'), '777654321');
@@ -245,7 +253,7 @@ void main() {
     expect(provider.guests, hasLength(1));
     expect(provider.guests.single.name, 'سالم أحمد');
     expect(provider.guests.single.phone, '+967777654321');
-    expect(find.text('سالم أحمد'), findsOneWidget);
+    expect(find.textContaining('1 مدعو'), findsOneWidget);
     expect(find.text('هذه الخطوة تحتاج حسابًا'), findsNothing);
     expect(tester.takeException(), isNull);
   });
@@ -327,6 +335,8 @@ Future<void> _pumpGuestsScreen(
   for (var i = 0; i < 12; i++) {
     await tester.pump(const Duration(milliseconds: 80));
   }
+  // The saved list loads asynchronously; wait until it is on screen.
+  await tester.pumpAndSettle();
 }
 
 Widget _providers(

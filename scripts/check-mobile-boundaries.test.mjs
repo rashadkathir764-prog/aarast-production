@@ -1636,7 +1636,7 @@ const r19ProviderPortalApi = Object.freeze({
 // +1 for a08b reading the plan kept on the phone from the onboarding owner
 // API, so its name is not asked again, -1 for the home greeting by the
 // plan's name instead of the onboarding persona copy (b02).
-const r19LegalRecordCount = 185;
+const r19LegalRecordCount = 187;
 const trackedOwnerApiContracts = [
   {
     area: 'features/account_contexts',
@@ -1780,6 +1780,10 @@ const trackedOwnerApiContracts = [
       { uri: 'data/guests_api.dart', show: ['GuestsApi'] },
       { uri: 'models/guest.dart', show: ['GuestSummary'] },
       { uri: 'providers/guests_provider.dart', show: ['GuestsProvider'] },
+      {
+        uri: 'screens/guest_details_screen.dart',
+        show: ['GuestDetailsScreen'],
+      },
       { uri: 'screens/guest_list_screen.dart', show: ['GuestListScreen'] },
     ],
   },
@@ -2510,14 +2514,17 @@ const trackedPlanningBatchContracts = [
   {
     source: 'mobile/lib/features/guests/screens/guest_list_screen.dart',
     target: 'mobile/lib/features/wedding_plans/wedding_plans_api.dart',
-    show: [
-      'DashboardSummaryProvider',
-      'WeddingPlanStageState',
-      'WeddingStageContextLine',
-      'WeddingStageDomain',
-      'publishGuestPlanPulse',
-      'resolveWeddingPlanStage',
-    ],
+    show: ['publishGuestPlanPulse'],
+  },
+  {
+    source: 'mobile/lib/features/guests/screens/guest_details_screen.dart',
+    target: 'mobile/lib/features/auth/auth_api.dart',
+    show: ['AuthActionGuard'],
+  },
+  {
+    source: 'mobile/lib/features/guests/screens/guest_details_screen.dart',
+    target: 'mobile/lib/features/wedding_plans/wedding_plans_api.dart',
+    show: ['publishGuestPlanPulse'],
   },
   {
     source: 'mobile/lib/features/tasks/screens/create_task_screen.dart',
@@ -3054,7 +3061,7 @@ const trackedCompositionRootContracts = [
       },
       {
         target: 'mobile/lib/features/guests/guests_api.dart',
-        show: ['GuestListScreen'],
+        show: ['GuestDetailsScreen', 'GuestListScreen'],
       },
       {
         target: 'mobile/lib/features/home/home_api.dart',

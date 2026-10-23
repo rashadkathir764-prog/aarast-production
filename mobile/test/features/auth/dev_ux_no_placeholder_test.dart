@@ -56,7 +56,7 @@ void main() {
     );
 
     expect(find.text('الضيوف'), findsWidgets);
-    expect(find.text(AarastV3Copy.firstGuestMessage), findsOneWidget);
+    expect(find.text(AarastV3Copy.firstGuestTitle), findsOneWidget);
     expect(find.text('أنت في وضع تجربة محلية'), findsNothing);
     expect(find.text('وضع تجربة التصميم'), findsNothing);
   });

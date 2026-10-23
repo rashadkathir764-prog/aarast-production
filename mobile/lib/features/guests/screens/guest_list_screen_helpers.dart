@@ -1,116 +1,69 @@
 part of 'guest_list_screen.dart';
 
-enum _GuestFilter {
-  all,
-  confirmed,
-  pending,
-  declined,
-  incomplete,
-  groom,
-  bride,
+const _allGroups = '*';
+const _noGroup = '';
+
+/// The answers a group's guests can be narrowed to.
+enum _ReplyFilter { all, confirmed, pending, declined, noPhone }
+
+extension on _ReplyFilter {
+  String get label => switch (this) {
+    _ReplyFilter.all => 'الكل',
+    _ReplyFilter.confirmed => 'أكدوا',
+    _ReplyFilter.pending => 'ما ردّوا',
+    _ReplyFilter.declined => 'اعتذروا',
+    _ReplyFilter.noPhone => 'بدون رقم',
+  };
 }
 
-class _FilterItem {
-  const _FilterItem(this.filter, this.label);
-
-  final _GuestFilter filter;
-  final String label;
-}
-
-const _filterItems = [
-  _FilterItem(_GuestFilter.all, 'الكل'),
-  _FilterItem(_GuestFilter.confirmed, 'مؤكد'),
-  _FilterItem(_GuestFilter.pending, 'بانتظار الرد'),
-  _FilterItem(_GuestFilter.declined, 'لن يحضر'),
-  _FilterItem(_GuestFilter.incomplete, 'ناقص بيانات'),
-  _FilterItem(_GuestFilter.groom, 'طرف العريس'),
-  _FilterItem(_GuestFilter.bride, 'طرف العروسة'),
-];
-
-List<Guest> _filteredGuests(List<Guest> guests, _GuestFilter filter) {
+List<Guest> _filtered(List<Guest> guests, _ReplyFilter filter) {
   return switch (filter) {
-    _GuestFilter.all => guests,
-    _GuestFilter.confirmed =>
-      guests.where((guest) => guest.isConfirmed).toList(),
-    _GuestFilter.pending => guests.where((guest) => guest.isPending).toList(),
-    _GuestFilter.declined => guests.where((guest) => guest.isDeclined).toList(),
-    _GuestFilter.incomplete =>
-      guests.where((guest) => guest.hasMissingData).toList(),
-    _GuestFilter.groom =>
-      guests.where((guest) => guest.side == 'GROOM').toList(),
-    _GuestFilter.bride =>
-      guests.where((guest) => guest.side == 'BRIDE').toList(),
+    _ReplyFilter.all => List.of(guests),
+    _ReplyFilter.confirmed => guests.where((g) => g.isConfirmed).toList(),
+    _ReplyFilter.pending => guests.where((g) => g.isPending).toList(),
+    _ReplyFilter.declined => guests.where((g) => g.isDeclined).toList(),
+    _ReplyFilter.noPhone => guests.where((g) => !g.hasPhone).toList(),
   };
 }
 
-List<_GuestIssue> _importantIssues(
-  GuestSummary summary,
-  Set<String> duplicates,
-) {
-  if (summary.incompleteGuestsCount > 0) {
-    return [
-      _GuestIssue(
-        label: _incompleteGuestsLabel(summary.incompleteGuestsCount),
-        detail: _incompleteGuestsDetail(summary),
-        filter: _GuestFilter.incomplete,
-        icon: LucideIcons.alertTriangle,
-        tone: AarastV3AttentionTone.warning,
-      ),
-    ];
-  }
-  if (duplicates.isNotEmpty) {
-    return [
-      _GuestIssue(
-        label: duplicates.length == 1
-            ? 'تكرار محتمل يحتاج مراجعة'
-            : '${duplicates.length} تكرارات محتملة تحتاج مراجعة',
-        detail: 'راجع أرقام الجوال قبل متابعة الدعوات',
-        filter: _GuestFilter.all,
-        icon: LucideIcons.copy,
-        tone: AarastV3AttentionTone.danger,
-      ),
-    ];
-  }
-  if (summary.pending > 0) {
-    return [
-      _GuestIssue(
-        label: _pendingGuestsLabel(summary.pending),
-        detail: 'راجع الدعوات التي لم يصل ردها بعد',
-        filter: _GuestFilter.pending,
-        icon: LucideIcons.hourglass,
-        tone: AarastV3AttentionTone.information,
-      ),
-    ];
-  }
-  return const [];
+/// Guests whose name or number holds [query].
+List<Guest> _search(List<Guest> guests, String query) {
+  final digits = PhoneNumberUtils.toAsciiDigits(
+    query,
+  ).replaceAll(RegExp(r'[^0-9]'), '');
+  return guests.where((guest) {
+    if (guest.name.contains(query)) return true;
+    if (digits.length < 3) return false;
+    final phone = PhoneNumberUtils.toAsciiDigits(guest.phone ?? '');
+    return phone.replaceAll(RegExp(r'[^0-9]'), '').contains(digits);
+  }).toList()..sort((a, b) => a.name.compareTo(b.name));
 }
 
-String _incompleteGuestsLabel(int count) {
-  return switch (count) {
-    1 => 'ضيف واحد يحتاج إكمال بياناته',
-    2 => 'ضيفان يحتاجان إكمال بياناتهما',
-    >= 3 && <= 10 => '$count ضيوف يحتاجون إكمال بياناتهم',
-    _ => '$count ضيفًا يحتاجون إكمال بياناتهم',
-  };
+/// «124 مدعو · 86 أكدوا · 20 ما ردّوا».
+String _statusLine(GuestSummary summary) {
+  if (summary.totalGuests == 0) return 'ابدأ بقائمة ضيوفك';
+  return [
+    '${summary.totalGuests} مدعو',
+    '${summary.confirmed} أكدوا',
+    if (summary.pending > 0) '${summary.pending} ما ردّوا',
+  ].join(' · ');
 }
 
-String _incompleteGuestsDetail(GuestSummary summary) {
-  if (summary.missingPhoneCount == 1 && summary.incompleteGuestsCount == 1) {
-    return 'رقم الجوال غير مضاف بعد';
-  }
-  if (summary.missingPhoneCount > 0) {
-    return '${summary.missingPhoneCount} بدون رقم جوال';
-  }
-  return 'راجع الاسم وبيانات التواصل';
-}
+String _guestCount(int count) =>
+    arabicCount(count, one: 'ضيف واحد', two: 'ضيفين', few: 'ضيوف', many: 'ضيف');
 
-String _pendingGuestsLabel(int count) {
-  return switch (count) {
-    1 => 'ضيف واحد بانتظار الرد',
-    2 => 'ضيفان بانتظار الرد',
-    >= 3 && <= 10 => '$count ضيوف بانتظار الرد',
-    _ => '$count ضيفًا بانتظار الرد',
-  };
+/// «آخر تحديث قبل 20 دقيقة».
+String _lastUpdate(DateTime at) {
+  final minutes = DateTime.now().difference(at).inMinutes;
+  if (minutes < 1) return 'آخر تحديث الحين';
+  if (minutes < 60) {
+    return 'آخر تحديث قبل ${arabicCount(minutes, one: 'دقيقة', two: 'دقيقتين', few: 'دقائق', many: 'دقيقة')}';
+  }
+  final hours = minutes ~/ 60;
+  if (hours < 24) {
+    return 'آخر تحديث قبل ${arabicCount(hours, one: 'ساعة', two: 'ساعتين', few: 'ساعات', many: 'ساعة')}';
+  }
+  return 'آخر تحديث قبل ${arabicCount(hours ~/ 24, one: 'يوم', two: 'يومين', few: 'أيام', many: 'يوم')}';
 }
 
 Set<String> _duplicateGuests(List<Guest> guests) {
@@ -123,73 +76,178 @@ Set<String> _duplicateGuests(List<Guest> guests) {
     if (first == null) {
       firstByPhone[key] = guest.id;
     } else {
-      duplicates.add(first);
-      duplicates.add(guest.id);
+      duplicates
+        ..add(first)
+        ..add(guest.id);
     }
   }
   return duplicates;
 }
 
-String _groupLabel(Guest guest, List<GuestGroup> groups) {
-  final groupId = guest.groupId;
-  if (groupId == null || groupId.trim().isEmpty) return 'بدون مجموعة';
-  for (final group in groups) {
-    if (group.id == groupId) return group.name;
+/// «86 أكدوا من 124», who has not answered, and the three-part bar.
+class _GuestSummaryCard extends StatelessWidget {
+  const _GuestSummaryCard({required this.summary});
+
+  final GuestSummary summary;
+
+  @override
+  Widget build(BuildContext context) {
+    final total = summary.totalGuests;
+    return JourneyBox(
+      key: const ValueKey('guests-summary'),
+      padding: const EdgeInsets.all(18),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Text(
+                '${summary.confirmed}',
+                style: JourneyType.of(
+                  JourneyType.count,
+                  weight: JourneyType.bold,
+                  height: 1,
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  'أكدوا من $total',
+                  style: JourneyType.of(
+                    JourneyType.body,
+                    color: AarastV3Color.textMuted,
+                  ),
+                ),
+              ),
+              if (summary.pending > 0)
+                Text(
+                  '${summary.pending} ما ردّوا',
+                  style: JourneyType.of(
+                    JourneyType.body,
+                    weight: JourneyType.bold,
+                    color: AarastV3Color.brandAccentStrong,
+                  ),
+                ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(5),
+            child: SizedBox(
+              height: 10,
+              child: Row(
+                children: [
+                  for (final (count, color) in [
+                    (summary.confirmed, AarastV3Color.lilac),
+                    (summary.pending, AarastV3Color.saffron),
+                    (summary.declined, AarastV3Color.line),
+                  ])
+                    if (count > 0)
+                      Expanded(
+                        flex: count,
+                        child: ColoredBox(color: color),
+                      ),
+                ],
+              ),
+            ),
+          ),
+          if (summary.expectedSeatsCount > summary.confirmed) ...[
+            const SizedBox(height: 8),
+            Text(
+              'مع المرافقين: ${summary.expectedSeatsCount} مقعد',
+              style: JourneyType.of(
+                JourneyType.small,
+                color: AarastV3Color.textMuted,
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
   }
-  return 'ضمن مجموعة';
 }
 
-String _attendanceFromStatus(String status) {
-  return switch (status) {
-    'CONFIRMED' => 'CONFIRMED',
-    'DECLINED' => 'DECLINED',
-    _ => 'PENDING',
-  };
-}
-
-String _listTitle(_GuestFilter filter) {
-  return switch (filter) {
-    _GuestFilter.all => 'قائمة الضيوف',
-    _GuestFilter.confirmed => 'الضيوف المؤكدون',
-    _GuestFilter.pending => 'بانتظار الرد',
-    _GuestFilter.declined => 'لن يحضر',
-    _GuestFilter.incomplete => 'ناقص بيانات',
-    _GuestFilter.groom => 'طرف العريس',
-    _GuestFilter.bride => 'طرف العروسة',
-  };
-}
-
-String _emptyGuestsMessage(_GuestFilter filter) {
-  return switch (filter) {
-    _GuestFilter.all => AarastV3Copy.firstGuestMessage,
-    _GuestFilter.confirmed => 'لا يوجد ضيوف مؤكدون بعد.',
-    _GuestFilter.pending => 'لا يوجد ضيوف بانتظار الرد الآن.',
-    _GuestFilter.declined => 'لا يوجد ضيوف اعتذروا عن الحضور.',
-    _GuestFilter.incomplete => 'لا يوجد ضيوف ناقصو البيانات الآن.',
-    _GuestFilter.groom => 'لا يوجد ضيوف من طرف العريس بعد.',
-    _GuestFilter.bride => 'لا يوجد ضيوف من طرف العروسة بعد.',
-  };
-}
-
-String _emptyGuestsTitle(_GuestFilter filter) {
-  return switch (filter) {
-    _GuestFilter.all => AarastV3Copy.firstGuestTitle,
-    _ => 'لا توجد نتائج في هذا القسم',
-  };
-}
-
-class _GuestIssue {
-  const _GuestIssue({
-    required this.label,
-    required this.detail,
-    required this.filter,
-    required this.icon,
-    required this.tone,
+/// A family (group) with how many of its guests confirmed.
+class _GroupRow extends StatelessWidget {
+  const _GroupRow({
+    required this.name,
+    required this.guests,
+    required this.onTap,
+    this.icon = LucideIcons.users,
+    super.key,
   });
 
-  final String label;
-  final String detail;
-  final _GuestFilter filter;
+  final String name;
+  final List<Guest> guests;
+  final VoidCallback onTap;
   final IconData icon;
-  final AarastV3AttentionTone tone;
+
+  @override
+  Widget build(BuildContext context) {
+    final yes = guests.where((guest) => guest.isConfirmed).length;
+    final all = guests.length;
+    return Semantics(
+      button: true,
+      label: '$name، أكد $yes من $all',
+      onTap: onTap,
+      excludeSemantics: true,
+      child: AarastPressable(
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
+          child: Row(
+            children: [
+              JourneyIconTile(
+                icon: icon,
+                color: AarastV3Color.lilac,
+                soft: AarastV3Color.lilacSoft,
+                size: 42,
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      name,
+                      style: JourneyType.of(
+                        JourneyType.body,
+                        weight: JourneyType.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    JourneyBar(
+                      value: all == 0 ? 0 : yes / all,
+                      color: AarastV3Color.lilac,
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 12),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  Text(
+                    '$yes/$all',
+                    style: JourneyType.of(
+                      JourneyType.body,
+                      weight: JourneyType.bold,
+                    ),
+                  ),
+                  Text(
+                    'أكدوا',
+                    style: JourneyType.of(
+                      JourneyType.caption,
+                      color: AarastV3Color.textMuted,
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
 }

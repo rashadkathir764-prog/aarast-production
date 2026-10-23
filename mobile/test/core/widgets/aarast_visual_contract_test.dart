@@ -307,6 +307,7 @@ void main() {
         'lib/features/tasks/screens/task_details_screen.dart',
         'lib/features/tasks/screens/create_task_screen.dart',
         'lib/features/guests/screens/guest_list_screen.dart',
+        'lib/features/guests/screens/guest_details_screen.dart',
         'lib/features/wedding_day/screens/wedding_day_mode_screen.dart',
         'lib/features/sharing/screens/sharing_screen.dart',
         'lib/features/sharing/screens/add_shared_member_screen.dart',

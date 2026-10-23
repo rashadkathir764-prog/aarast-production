@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'offline_tables.dart';
+import 'sync_queue.dart';
 
 class LocalCacheRow {
   const LocalCacheRow({required this.table, required this.columns});
@@ -167,10 +168,9 @@ String _idFor(String table, Map<String, dynamic> json) {
   final id = _string(json['id']);
   if (id != null && id.isNotEmpty) return id;
   if (table == OfflineTables.cachedFavoriteProviders) {
-    return _string(json['providerId']) ??
-        'favorite-${DateTime.now().microsecondsSinceEpoch}';
+    return _string(json['providerId']) ?? nextLocalId('favorite');
   }
-  return 'local-${DateTime.now().microsecondsSinceEpoch}';
+  return nextLocalId('local');
 }
 
 String _stringOrNow(Object? value, DateTime now) {

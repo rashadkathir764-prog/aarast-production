@@ -1,0 +1,469 @@
+import 'package:flutter/material.dart';
+import 'package:lucide_icons/lucide_icons.dart';
+import 'package:provider/provider.dart';
+import 'package:url_launcher/url_launcher.dart';
+
+import '../../../core/experience_v3/aarast_v3.dart';
+import '../../../core/forms/aarast_form_draft_store.dart';
+import '../../../core/network/api_client.dart' show ApiException;
+import '../../../core/phone/phone_links.dart';
+import '../../../core/phone/phone_number_utils.dart';
+import '../../../core/routing/app_router.dart';
+import '../../../core/routing/pop_or_go.dart';
+import '../../../core/widgets/aarast_toast.dart';
+import '../../../core/widgets/aarast_ui.dart';
+import '../../auth/auth_api.dart' show AuthActionGuard;
+import '../../wedding_plans/wedding_plans_api.dart' show publishGuestPlanPulse;
+import '../data/guests_api.dart';
+import '../models/guest.dart';
+import '../providers/guests_provider.dart';
+import '../utils/guest_display.dart';
+import '../widgets/guest_form_sheet.dart';
+
+/// e07 «تفاصيل ضيف»: who, their group and number, their answer (which can
+/// be set by hand), a call and a WhatsApp chat, and their invitation. The
+/// dated timeline (sent, opened, answered) and the rafd are not drawn: the
+/// guest record keeps neither.
+class GuestDetailsScreen extends StatefulWidget {
+  const GuestDetailsScreen({
+    required this.weddingPlanId,
+    required this.guestId,
+    super.key,
+  });
+
+  final String weddingPlanId;
+  final String guestId;
+
+  @override
+  State<GuestDetailsScreen> createState() => _GuestDetailsScreenState();
+}
+
+class _GuestDetailsScreenState extends State<GuestDetailsScreen> {
+  bool _sending = false;
+
+  bool get _isLocalPlan =>
+      AuthActionGuard.isLocalGuestPlanId(widget.weddingPlanId);
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      final provider = context.read<GuestsProvider>();
+      if (_guest(provider) == null) provider.loadGuests(widget.weddingPlanId);
+    });
+  }
+
+  Guest? _guest(GuestsProvider provider) {
+    for (final guest in provider.guests) {
+      if (guest.id == widget.guestId) return guest;
+    }
+    return null;
+  }
+
+  void _back() => context.popOrGo(AppRouter.guestList(widget.weddingPlanId));
+
+  @override
+  Widget build(BuildContext context) {
+    final provider = context.watch<GuestsProvider>();
+    final guest = _guest(provider);
+
+    final Widget body;
+    if (guest == null && provider.isLoading) {
+      body = const JourneyListState(
+        phase: JourneyListPhase.loading,
+        section: JourneySection.guests,
+      );
+    } else if (guest == null) {
+      body = JourneyListState(
+        phase: provider.errorMessage == null
+            ? JourneyListPhase.empty
+            : JourneyListPhase.error,
+        section: JourneySection.guests,
+        emptyIcon: LucideIcons.userX,
+        emptyTitle: 'هذا الضيف ما عاد موجود',
+        emptyAction: 'ارجع',
+        onEmptyAction: _back,
+        onRetry: () => provider.loadGuests(widget.weddingPlanId),
+      );
+    } else {
+      body = _details(provider, guest);
+    }
+
+    return AarastScreenFrame(
+      maxWidth: 600,
+      backgroundColor: AarastV3Color.canvas,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 8, 8, 0),
+            child: JourneySubHeader(
+              title: '',
+              onBack: _back,
+              trailing: guest == null
+                  ? null
+                  : PopupMenuButton<bool>(
+                      key: const ValueKey('guest-menu'),
+                      tooltip: 'خيارات الضيف',
+                      enabled: !provider.isSubmitting,
+                      icon: const Icon(LucideIcons.moreHorizontal),
+                      onSelected: (edit) =>
+                          edit ? _edit(provider, guest) : _delete(guest),
+                      itemBuilder: (_) => const [
+                        PopupMenuItem(
+                          key: ValueKey('guest-menu-edit'),
+                          value: true,
+                          child: Text('عدّل بياناته'),
+                        ),
+                        PopupMenuItem(
+                          key: ValueKey('guest-menu-delete'),
+                          value: false,
+                          child: Text(
+                            'شيله من القائمة',
+                            style: TextStyle(color: AarastV3Color.danger),
+                          ),
+                        ),
+                      ],
+                    ),
+            ),
+          ),
+          Expanded(
+            child: ListView(
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
+              children: [body],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _details(GuestsProvider provider, Guest guest) {
+    final (color, soft) = guestReplyColors(guest);
+    final phone = guest.phone;
+    final name = guest.name.trim();
+    final status = guest.isConfirmed
+        ? 'CONFIRMED'
+        : guest.isDeclined
+        ? 'DECLINED'
+        : 'INVITED';
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Center(
+          child: JourneyAvatar(
+            letter: name.isEmpty ? '؟' : name.characters.first,
+            color: AarastV3Color.lilac,
+            size: 76,
+          ),
+        ),
+        const SizedBox(height: 10),
+        Text(
+          name.isEmpty ? 'بدون اسم' : name,
+          textAlign: TextAlign.center,
+          style: JourneyType.of(JourneyType.display, weight: JourneyType.bold),
+        ),
+        Text(
+          [
+            guestGroupLabel(guest, provider.groups),
+            if (guest.side != 'UNKNOWN') guestSideLabel(guest.side),
+            if (phone != null && phone.trim().isNotEmpty)
+              PhoneNumberUtils.directionalDisplay(phone) ?? phone,
+          ].join(' · '),
+          textAlign: TextAlign.center,
+          style: JourneyType.of(
+            JourneyType.body,
+            color: AarastV3Color.textMuted,
+          ),
+        ),
+        const SizedBox(height: 8),
+        Center(
+          child: JourneyTag(
+            key: const ValueKey('guest-reply-tag'),
+            label: guestReplyLabel(guest),
+            color: color,
+            soft: soft,
+          ),
+        ),
+        if (guest.hasPhone) ...[
+          const SizedBox(height: 16),
+          Row(
+            children: [
+              Expanded(
+                child: JourneyButton(
+                  key: const ValueKey('guest-call'),
+                  label: 'اتصل',
+                  icon: LucideIcons.phone,
+                  background: AarastV3Color.paper,
+                  foreground: AarastV3Color.ink,
+                  expand: true,
+                  onPressed: () => _launch(phoneCallUri(phone)),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: JourneyButton(
+                  key: const ValueKey('guest-whatsapp'),
+                  label: 'واتساب',
+                  icon: LucideIcons.messageCircle,
+                  background: AarastV3Color.mintSoft,
+                  foreground: AarastV3Color.mint,
+                  expand: true,
+                  onPressed: whatsAppChatUri(phone) == null
+                      ? null
+                      : () => _launch(whatsAppChatUri(phone)),
+                ),
+              ),
+            ],
+          ),
+        ],
+        const JourneySectionTitle('الرد'),
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: [
+            for (final (value, label) in const [
+              ('CONFIRMED', 'أكّد'),
+              ('DECLINED', 'اعتذر'),
+              ('INVITED', 'ما ردّ'),
+            ])
+              JourneyChip(
+                key: ValueKey('guest-reply-$value'),
+                label: label,
+                selected: status == value,
+                selectedColor: AarastV3Color.lilac,
+                onTap: provider.isSubmitting || status == value
+                    ? null
+                    : () => _setReply(provider, guest, value),
+              ),
+          ],
+        ),
+        if (guest.isConfirmed && guest.companionsCount > 0) ...[
+          const SizedBox(height: 6),
+          Text(
+            'معه ${guest.companionsCount} · ${guest.seatsCount} مقعد',
+            style: JourneyType.of(
+              JourneyType.small,
+              color: AarastV3Color.textMuted,
+            ),
+          ),
+        ],
+        if (!_isLocalPlan && !guest.id.startsWith('local-guest-')) ...[
+          const JourneySectionTitle('الدعوة'),
+          JourneyBox(
+            padding: const EdgeInsets.all(14),
+            child: Row(
+              children: [
+                Icon(
+                  guest.invitationStatus == 'NOT_SENT'
+                      ? LucideIcons.mail
+                      : LucideIcons.mailCheck,
+                  color: AarastV3Color.lilac,
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    guest.invitationStatus == 'NOT_SENT'
+                        ? 'ما انرسلت له دعوة'
+                        : 'انرسلت له الدعوة',
+                    style: JourneyType.of(
+                      JourneyType.body,
+                      weight: JourneyType.bold,
+                    ),
+                  ),
+                ),
+                if (guest.hasPhone)
+                  JourneyButton(
+                    key: const ValueKey('guest-send-invitation'),
+                    label: guest.invitationStatus == 'NOT_SENT'
+                        ? 'أرسلها'
+                        : 'رابط جديد',
+                    background: AarastV3Color.lilac,
+                    loading: _sending,
+                    onPressed: _sending ? null : () => _sendInvitation(guest),
+                  ),
+              ],
+            ),
+          ),
+          if (!guest.hasPhone)
+            Padding(
+              padding: const EdgeInsets.only(top: 6),
+              child: Text(
+                'أضف رقمه عشان توصله الدعوة على واتساب.',
+                style: JourneyType.of(
+                  JourneyType.small,
+                  color: AarastV3Color.brandAccentStrong,
+                ),
+              ),
+            ),
+        ],
+        if ((guest.notes ?? '').trim().isNotEmpty) ...[
+          const JourneySectionTitle('ملاحظة'),
+          JourneyBox(
+            padding: const EdgeInsets.all(14),
+            child: Text(
+              guest.notes!.trim(),
+              style: JourneyType.of(JourneyType.body),
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+
+  Future<void> _launch(Uri? uri) async {
+    if (uri == null) return;
+    final opened = await launchUrl(uri, mode: LaunchMode.externalApplication);
+    if (!opened && mounted) {
+      AarastToast.showError(context, 'ما قدرنا نفتحه من جوالك');
+    }
+  }
+
+  void _pulse(GuestsProvider provider) {
+    publishGuestPlanPulse(
+      context,
+      weddingPlanId: widget.weddingPlanId,
+      summary: provider.summary,
+    );
+  }
+
+  Future<void> _setReply(
+    GuestsProvider provider,
+    Guest guest,
+    String status,
+  ) async {
+    final ok = await provider.updateGuest(
+      guest: guest,
+      status: status,
+      attendanceStatus: guestAttendanceForStatus(status),
+    );
+    if (!mounted) return;
+    if (ok) {
+      _pulse(provider);
+    } else {
+      AarastToast.showError(
+        context,
+        provider.errorMessage ?? 'ما قدرنا نحفظ الرد',
+      );
+    }
+  }
+
+  /// The guest's own link, from this phone's WhatsApp (V1 checklist 4.7).
+  /// A new link replaces the old one, so the old one stops working.
+  Future<void> _sendInvitation(Guest guest) async {
+    final api = context.read<GuestsApi>();
+    final provider = context.read<GuestsProvider>();
+    setState(() => _sending = true);
+    try {
+      final link = await api.createInvitationLink(guest.id);
+      final opened = await launchUrl(
+        link.whatsAppUri,
+        mode: LaunchMode.externalApplication,
+      );
+      if (!mounted) return;
+      if (!opened) {
+        AarastToast.showError(context, 'ما قدرنا نفتح واتساب في هذا الجوال');
+      }
+      await provider.loadGuests(widget.weddingPlanId);
+    } on ApiException catch (error) {
+      if (mounted) AarastToast.showError(context, error.message);
+    } catch (_) {
+      if (mounted) {
+        AarastToast.showError(context, 'ما قدرنا نجهّز رابط الدعوة');
+      }
+    } finally {
+      if (mounted) setState(() => _sending = false);
+    }
+  }
+
+  Future<void> _edit(GuestsProvider provider, Guest guest) async {
+    final scope = 'guest:${widget.weddingPlanId}:${guest.id}';
+    final result = await showAarastBottomSheet<GuestFormResult>(
+      context: context,
+      isScrollControlled: true,
+      useRootNavigator: true,
+      builder: (_) => GuestFormSheet(
+        guest: guest,
+        draftScope: scope,
+        existingGuests: provider.guests,
+        groups: provider.groups,
+        blockDuplicatePhone: !_isLocalPlan,
+      ),
+    );
+    if (result == null || !mounted) return;
+    final ok = await provider.updateGuest(
+      guest: guest,
+      name: result.name,
+      phone: result.phone ?? '',
+      groupId: result.groupId ?? '',
+      side: result.side,
+      status: result.status,
+      attendanceStatus: guestAttendanceForStatus(result.status),
+      seatsCount: result.seatsCount,
+      companionsCount: result.companionsCount,
+      notes: result.notes,
+    );
+    if (!mounted) return;
+    if (ok) {
+      _pulse(provider);
+      await context.read<AarastFormDraftStore?>()?.clear(scope);
+      if (mounted) AarastToast.showSuccess(context, 'انحفظ');
+    } else {
+      AarastToast.showError(
+        context,
+        provider.errorMessage ?? 'ما قدرنا نحفظ الضيف',
+      );
+    }
+  }
+
+  Future<void> _delete(Guest guest) async {
+    final provider = context.read<GuestsProvider>();
+    final confirmed = await showAarastBottomSheet<bool>(
+      context: context,
+      builder: (sheetContext) => Padding(
+        padding: const EdgeInsets.fromLTRB(20, 8, 20, 16),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text(
+              'تشيل ${guest.name}؟',
+              style: JourneyType.of(
+                JourneyType.title,
+                weight: JourneyType.bold,
+              ),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              'ينشال من قائمة الضيوف ورابطه ما يعود يشتغل.',
+              style: JourneyType.of(
+                JourneyType.small,
+                color: AarastV3Color.textMuted,
+              ),
+            ),
+            const SizedBox(height: 16),
+            JourneyButton(
+              key: const ValueKey('guest-delete-confirm'),
+              label: 'شيله',
+              background: AarastV3Color.danger,
+              expand: true,
+              large: true,
+              onPressed: () => Navigator.pop(sheetContext, true),
+            ),
+          ],
+        ),
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+    final ok = await provider.deleteGuest(guest);
+    if (!mounted) return;
+    if (ok) {
+      _pulse(provider);
+      AarastToast.showSuccess(context, 'انشال الضيف');
+      _back();
+    } else {
+      AarastToast.showError(context, provider.errorMessage ?? 'ما قدرنا نشيله');
+    }
+  }
+}

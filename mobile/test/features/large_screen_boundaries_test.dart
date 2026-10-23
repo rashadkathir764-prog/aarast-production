@@ -10,7 +10,6 @@ void main() {
     expect(_lineCount(screen), lessThanOrEqualTo(1000));
     expect(screen, contains('GuestFormSheet('));
     expect(screen, contains('GuestFormResult'));
-    expect(screen, contains('GuestSheetHandle'));
     expect(screen, isNot(contains('TextEditingController')));
 
     for (final forbidden in [

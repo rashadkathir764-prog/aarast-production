@@ -48,7 +48,7 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    await tester.tap(find.byType(FloatingActionButton));
+    await tester.tap(find.byKey(const ValueKey('guests-add')));
     await tester.pumpAndSettle();
     await tester.enterText(_textFieldWithLabel('اسم الضيف'), 'محمد علي');
     await tester.enterText(_textFieldWithLabel('رقم الجوال'), '777123456');
@@ -62,7 +62,7 @@ void main() {
     expect(guestsProvider.guests.single.name, 'محمد علي');
     expect(guestsProvider.guests.single.phone, '+967777123456');
     expect(guestsProvider.noticeMessage, localMessage);
-    expect(find.text('محمد علي'), findsOneWidget);
+    expect(find.textContaining('1 مدعو'), findsOneWidget);
     expect(find.text(cloudMessage), findsNothing);
     expect(tester.takeException(), isNull);
   });
@@ -156,6 +156,9 @@ void main() {
         harness,
         const GuestListScreen(weddingPlanId: localPlanId),
       );
+      // e01: the guests are one tap away under «كل الضيوف».
+      await tester.tap(find.byKey(const ValueKey('guest-group-all')));
+      await tester.pumpAndSettle();
       expect(find.text('محمد علي'), findsOneWidget);
       expect(find.text(cloudMessage), findsNothing);
 

@@ -4,6 +4,7 @@ import '../../../core/network/api_client.dart';
 import '../../../core/offline/cache_policy.dart';
 import '../../../core/offline/offline_sync_service.dart';
 import '../../../core/offline/offline_tables.dart';
+import '../../../core/offline/sync_queue.dart';
 import '../../../core/phone/phone_number_utils.dart';
 import '../models/guest.dart';
 
@@ -288,7 +289,7 @@ class GuestsApi {
   }) async {
     final now = DateTime.now();
     final localJson = {
-      'id': 'local-guest-${now.microsecondsSinceEpoch}',
+      'id': nextLocalId('local-guest'),
       'weddingPlanId': weddingPlanId,
       ...payload,
       'createdAt': now.toIso8601String(),

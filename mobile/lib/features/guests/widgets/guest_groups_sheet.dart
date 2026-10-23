@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 
-import '../../../core/theme/app_theme.dart';
+import '../../../core/experience_v3/aarast_v3.dart';
+import '../../../core/utils/arabic_count.dart';
 import '../../../core/widgets/aarast_dialog.dart';
 import '../models/guest.dart';
 
@@ -16,6 +17,7 @@ class GuestGroupsSheet extends StatefulWidget {
     required this.onCreate,
     required this.onRename,
     required this.onDelete,
+    this.ungroupedCount = 0,
     this.errorMessage,
     super.key,
   });
@@ -24,6 +26,9 @@ class GuestGroupsSheet extends StatefulWidget {
 
   /// Guests per group id.
   final Map<String, int> guestCounts;
+
+  /// Guests without a group, shown as its own row.
+  final int ungroupedCount;
   final bool saving;
   final String? errorMessage;
   final Future<bool> Function(String name) onCreate;
@@ -67,18 +72,20 @@ class _GuestGroupsSheetState extends State<GuestGroupsSheet> {
         title: Text('حذف مجموعة «${group.name}»؟'),
         content: Text(
           count == 0
-              ? 'لا يوجد ضيوف في هذه المجموعة.'
-              : 'سيبقى $count من الضيوف في قائمتك بدون مجموعة.',
+              ? 'ما فيها ضيوف.'
+              : 'ضيوفها ($count) يبقون في قائمتك بدون مجموعة.',
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(dialogContext, false),
-            child: const Text('إلغاء'),
+            child: const Text('رجوع'),
           ),
           FilledButton(
-            style: FilledButton.styleFrom(backgroundColor: AppTheme.danger),
+            style: FilledButton.styleFrom(
+              backgroundColor: AarastV3Color.danger,
+            ),
             onPressed: () => Navigator.pop(dialogContext, true),
-            child: const Text('حذف المجموعة'),
+            child: const Text('شيل المجموعة'),
           ),
         ],
       ),
@@ -88,97 +95,117 @@ class _GuestGroupsSheetState extends State<GuestGroupsSheet> {
 
   @override
   Widget build(BuildContext context) {
-    return Directionality(
-      textDirection: TextDirection.rtl,
-      child: SafeArea(
-        child: SingleChildScrollView(
-          padding: EdgeInsets.fromLTRB(
-            20,
-            16,
-            20,
-            20 + MediaQuery.viewInsetsOf(context).bottom,
+    String count(int value) => arabicCount(
+      value,
+      one: 'ضيف واحد',
+      two: 'ضيفين',
+      few: 'ضيوف',
+      many: 'ضيف',
+    );
+    return SingleChildScrollView(
+      padding: EdgeInsets.fromLTRB(
+        16,
+        8,
+        16,
+        16 + MediaQuery.viewInsetsOf(context).bottom,
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Semantics(
+            header: true,
+            child: Text(
+              'المجموعات',
+              style: JourneyType.of(
+                JourneyType.title,
+                weight: JourneyType.bold,
+              ),
+            ),
           ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Text(
-                'مجموعات الضيوف',
-                style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                  color: AppTheme.textPrimary,
-                  fontWeight: FontWeight.w900,
-                ),
-              ),
-              const SizedBox(height: 6),
-              const Text(
-                'رتّب ضيوفك: الأهل، الأصدقاء، زملاء العمل…',
-                style: TextStyle(
-                  color: AppTheme.textSecondary,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-              const SizedBox(height: 14),
-              for (final group in widget.groups)
-                ListTile(
-                  key: ValueKey('guest-group-${group.id}'),
-                  contentPadding: EdgeInsets.zero,
-                  leading: const Icon(LucideIcons.users),
-                  title: Text(
-                    group.name,
-                    style: const TextStyle(fontWeight: FontWeight.w800),
-                  ),
-                  subtitle: Text('${widget.guestCounts[group.id] ?? 0} ضيف'),
-                  onTap: widget.saving ? null : () => _rename(group),
-                  trailing: IconButton(
-                    tooltip: 'حذف مجموعة ${group.name}',
-                    onPressed: widget.saving ? null : () => _delete(group),
-                    icon: const Icon(LucideIcons.trash2, size: 18),
-                  ),
-                ),
-              if (widget.groups.isEmpty)
-                const Padding(
-                  padding: EdgeInsets.symmetric(vertical: 8),
-                  child: Text(
-                    'لا توجد مجموعات بعد.',
-                    style: TextStyle(color: AppTheme.textSecondary),
-                  ),
-                ),
-              const SizedBox(height: 10),
-              Row(
-                children: [
-                  Expanded(
-                    child: TextField(
-                      key: const ValueKey('guest-group-new-name'),
-                      controller: _controller,
-                      textAlign: TextAlign.right,
-                      textInputAction: TextInputAction.done,
-                      onSubmitted: (_) => _create(),
-                      decoration: const InputDecoration(
-                        hintText: 'اسم مجموعة جديدة',
+          Text(
+            'رتّب ضيوفك: الأهل، الأصحاب، زملاء الشغل…',
+            style: JourneyType.of(
+              JourneyType.small,
+              color: AarastV3Color.textMuted,
+            ),
+          ),
+          const SizedBox(height: 14),
+          JourneyBox(
+            padding: EdgeInsets.zero,
+            child: JourneyList(
+              children: [
+                for (final group in widget.groups)
+                  JourneyListRow(
+                    key: ValueKey('guest-group-${group.id}'),
+                    icon: LucideIcons.users,
+                    color: AarastV3Color.lilac,
+                    soft: AarastV3Color.lilacSoft,
+                    title: group.name,
+                    subtitle: count(widget.guestCounts[group.id] ?? 0),
+                    onTap: widget.saving ? null : () => _rename(group),
+                    trailing: IconButton(
+                      tooltip: 'شيل مجموعة ${group.name}',
+                      onPressed: widget.saving ? null : () => _delete(group),
+                      icon: const Icon(
+                        LucideIcons.trash2,
+                        size: 18,
+                        color: AarastV3Color.textFaint,
                       ),
                     ),
                   ),
-                  const SizedBox(width: 8),
-                  IconButton.filledTonal(
-                    key: const ValueKey('guest-group-add'),
-                    tooltip: 'إضافة المجموعة',
-                    onPressed: widget.saving ? null : _create,
-                    icon: const Icon(LucideIcons.plus),
-                  ),
-                ],
-              ),
-              if (widget.errorMessage != null) ...[
-                const SizedBox(height: 8),
-                Text(
-                  widget.errorMessage!,
-                  style: const TextStyle(
-                    color: AppTheme.danger,
-                    fontWeight: FontWeight.w700,
-                  ),
+                JourneyListRow(
+                  icon: LucideIcons.userX,
+                  color: AarastV3Color.textFaint,
+                  soft: AarastV3Color.line,
+                  title: 'بدون مجموعة',
+                  subtitle: count(widget.ungroupedCount),
                 ),
               ],
+            ),
+          ),
+          const SizedBox(height: 12),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Expanded(
+                child: JourneyTextField(
+                  key: const ValueKey('guest-group-new-name'),
+                  label: 'مجموعة جديدة',
+                  hint: 'مثلًا: الحارة',
+                  controller: _controller,
+                  textInputAction: TextInputAction.done,
+                  onSubmitted: (_) => _create(),
+                ),
+              ),
+              const SizedBox(width: 8),
+              JourneyRoundButton(
+                key: const ValueKey('guest-group-add'),
+                icon: LucideIcons.plus,
+                tooltip: 'أضف المجموعة',
+                onPressed: widget.saving ? null : _create,
+              ),
             ],
           ),
-        ),
+          const SizedBox(height: 10),
+          Text(
+            'شيل المجموعة ما يشيل ضيوفها، ينقلهم «بدون مجموعة». اضغط على مجموعة تغيّر اسمها.',
+            style: JourneyType.of(
+              JourneyType.small,
+              color: AarastV3Color.textMuted,
+            ),
+          ),
+          if (widget.errorMessage != null) ...[
+            const SizedBox(height: 8),
+            Text(
+              widget.errorMessage!,
+              style: JourneyType.of(
+                JourneyType.small,
+                weight: JourneyType.bold,
+                color: AarastV3Color.danger,
+              ),
+            ),
+          ],
+        ],
       ),
     );
   }

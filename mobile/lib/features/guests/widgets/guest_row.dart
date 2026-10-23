@@ -1,0 +1,84 @@
+import 'package:flutter/material.dart';
+
+import '../../../core/experience_v3/aarast_v3.dart';
+import '../../../core/widgets/aarast_ui.dart';
+import '../models/guest.dart';
+import '../utils/guest_display.dart';
+
+/// One guest: their letter, name, group and answer.
+class GuestRow extends StatelessWidget {
+  const GuestRow({
+    required this.guest,
+    required this.groupLabel,
+    required this.onOpen,
+    this.isDuplicate = false,
+    super.key,
+  });
+
+  final Guest guest;
+  final String groupLabel;
+  final VoidCallback onOpen;
+
+  /// Another guest has the same number.
+  final bool isDuplicate;
+
+  @override
+  Widget build(BuildContext context) {
+    final (color, soft) = guestReplyColors(guest);
+    final reply = guestReplyLabel(guest);
+    final name = guest.name.trim();
+    final line = [
+      groupLabel,
+      if (!guest.hasPhone) 'بدون رقم',
+      if (isDuplicate) 'رقمه مكرر',
+    ].join(' · ');
+    return Semantics(
+      button: true,
+      label: '$name، $line، $reply',
+      onTap: onOpen,
+      excludeSemantics: true,
+      child: AarastPressable(
+        key: ValueKey('guest-row-${guest.id}'),
+        onTap: onOpen,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+          child: Row(
+            children: [
+              JourneyAvatar(
+                letter: name.isEmpty ? '؟' : name.characters.first,
+                color: AarastV3Color.lilac,
+                size: 38,
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      name.isEmpty ? 'بدون اسم' : name,
+                      style: JourneyType.of(
+                        JourneyType.body,
+                        weight: JourneyType.bold,
+                      ),
+                    ),
+                    Text(
+                      line,
+                      style: JourneyType.of(
+                        JourneyType.small,
+                        color: isDuplicate || !guest.hasPhone
+                            ? AarastV3Color.brandAccentStrong
+                            : AarastV3Color.textMuted,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 8),
+              JourneyTag(label: reply, color: color, soft: soft),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}

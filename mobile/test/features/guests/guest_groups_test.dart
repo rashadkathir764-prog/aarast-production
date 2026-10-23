@@ -84,7 +84,7 @@ void main() {
         ),
       );
 
-      expect(find.text('3 ضيف'), findsOneWidget);
+      expect(find.text('3 ضيوف'), findsOneWidget);
 
       await tester.enterText(
         find.byKey(const ValueKey('guest-group-new-name')),
@@ -104,13 +104,13 @@ void main() {
       await tester.pumpAndSettle();
       expect(renamed, ['family:أهل العريس']);
 
-      await tester.tap(find.byTooltip('حذف مجموعة الأهل'));
+      await tester.tap(find.byTooltip('شيل مجموعة الأهل'));
       await tester.pumpAndSettle();
       expect(
-        find.text('سيبقى 3 من الضيوف في قائمتك بدون مجموعة.'),
+        find.text('ضيوفها (3) يبقون في قائمتك بدون مجموعة.'),
         findsOneWidget,
       );
-      await tester.tap(find.text('حذف المجموعة'));
+      await tester.tap(find.text('شيل المجموعة'));
       await tester.pumpAndSettle();
       expect(deleted, ['family']);
       expect(tester.takeException(), isNull);

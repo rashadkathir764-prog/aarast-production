@@ -223,3 +223,8 @@ DateTime _dateOrNow(Object? value) {
   if (value == null) return DateTime.now();
   return DateTime.tryParse(value.toString()) ?? DateTime.now();
 }
+
+/// A device-local id that never repeats in this process, even when several
+/// records are made in the same clock tick (a contacts import, say).
+String nextLocalId(String prefix) =>
+    '$prefix-${nextSyncQueueTimestamp().microsecondsSinceEpoch}';

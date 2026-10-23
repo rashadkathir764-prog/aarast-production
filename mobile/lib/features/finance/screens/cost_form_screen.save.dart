@@ -64,7 +64,7 @@ extension _CostFormSave on _CostFormScreenState {
         context,
         message: provider.savedMessage('انحفظ الاتفاق'),
       );
-      context.pop(true);
+      context.popOrGo(AppRouter.money(widget.weddingPlanId), true);
       return;
     }
 
@@ -115,6 +115,6 @@ extension _CostFormSave on _CostFormScreenState {
         ),
       );
     }
-    context.pop(true);
+    context.popOrGo(AppRouter.money(widget.weddingPlanId), true);
   }
 }

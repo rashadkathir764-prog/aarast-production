@@ -8,6 +8,7 @@ import 'package:provider/provider.dart';
 import '../../../core/experience_v3/aarast_v3.dart';
 import '../../../core/forms/aarast_form_success.dart';
 import '../../../core/routing/app_router.dart';
+import '../../../core/routing/pop_or_go.dart';
 import '../../../core/utils/amount_words.dart';
 import '../../../core/utils/arabic_count.dart';
 import '../../../core/utils/currency_label.dart';
@@ -84,13 +85,15 @@ class _RecordCostPaymentScreenState extends State<RecordCostPaymentScreen> {
         emptyIcon: LucideIcons.receipt,
         emptyTitle: 'هذا الاتفاق ما عاد موجود',
         emptyAction: 'ارجع',
-        onEmptyAction: () => context.pop(),
+        onEmptyAction: () =>
+            context.popOrGo(AppRouter.money(widget.weddingPlanId)),
       );
     } else if (paymentRefusal(provider, cost) case final refusal?) {
       body = JourneyNote(text: refusal, icon: LucideIcons.info);
     } else {
       return paymentEntryFrame(
         context,
+        planId: widget.weddingPlanId,
         cost: cost,
         currency: currency,
         child: PaymentEntryForm(
@@ -120,6 +123,7 @@ class _RecordCostPaymentScreenState extends State<RecordCostPaymentScreen> {
     }
     return paymentEntryFrame(
       context,
+      planId: widget.weddingPlanId,
       cost: cost,
       currency: currency,
       child: ListView(
@@ -143,6 +147,7 @@ String? paymentRefusal(FinanceProvider provider, WeddingCost cost) {
 /// The screen around c06: «دفعة القاعة», who it is with and what is left.
 Widget paymentEntryFrame(
   BuildContext context, {
+  required String planId,
   required WeddingCost? cost,
   required String currency,
   required Widget child,
@@ -169,7 +174,7 @@ Widget paymentEntryFrame(
                     ?cost.partyLabel,
                     if (moneyValue(cost.remainingAmount) > 0) 'باقي عليك $left',
                   ].join(' · '),
-            onBack: () => context.pop(),
+            onBack: () => context.popOrGo(AppRouter.money(planId)),
           ),
         ),
         Expanded(child: child),

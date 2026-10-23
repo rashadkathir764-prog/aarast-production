@@ -1,7 +1,6 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
-import 'package:go_router/go_router.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:provider/provider.dart';
 
@@ -12,6 +11,8 @@ import '../../../core/utils/amount_words.dart';
 import '../../../core/utils/currency_label.dart';
 import '../../../core/utils/money_formatters.dart';
 import '../../../core/widgets/aarast_ui.dart';
+import '../../../core/routing/app_router.dart';
+import '../../../core/routing/pop_or_go.dart';
 import '../models/budget_category.dart';
 import '../models/wedding_cost.dart';
 import '../providers/finance_provider.dart';
@@ -72,9 +73,9 @@ class _BudgetCategoryFormScreenState extends State<BudgetCategoryFormScreen> {
 
   void _goBack() {
     if (_editing) {
-      context.pop(false);
+      context.popOrGo(AppRouter.money(widget.weddingPlanId), false);
     } else {
-      context.pop<String?>(null);
+      context.popOrGo<String?>(AppRouter.money(widget.weddingPlanId));
     }
   }
 
@@ -247,7 +248,12 @@ class _BudgetCategoryFormScreenState extends State<BudgetCategoryFormScreen> {
       );
       if (createdId != null && mounted) {
         await _draft?.clear();
-        if (mounted) context.pop<String>(createdId);
+        if (mounted) {
+          context.popOrGo<String>(
+            AppRouter.money(widget.weddingPlanId),
+            createdId,
+          );
+        }
       }
       return;
     }
@@ -258,7 +264,7 @@ class _BudgetCategoryFormScreenState extends State<BudgetCategoryFormScreen> {
     );
     if (saved && mounted) {
       await _draft?.clear();
-      if (mounted) context.pop(true);
+      if (mounted) context.popOrGo(AppRouter.money(widget.weddingPlanId), true);
     }
   }
 

@@ -9,6 +9,7 @@ import '../../../core/experience_v3/aarast_v3.dart';
 import '../../../core/forms/aarast_form_draft_store.dart';
 import '../../../core/forms/aarast_form_success.dart';
 import '../../../core/routing/app_router.dart';
+import '../../../core/routing/pop_or_go.dart';
 import '../../../core/utils/amount_words.dart';
 import '../../../core/utils/arabic_date_formatter.dart';
 import '../../../core/utils/currency_label.dart';
@@ -319,7 +320,8 @@ class _CostFormScreenState extends State<CostFormScreen> {
               subtitle: _editing
                   ? widget.cost!.title
                   : 'مع مين اتفقت، وبكم، وكيف بتدفع',
-              onBack: () => context.pop(false),
+              onBack: () =>
+                  context.popOrGo(AppRouter.money(widget.weddingPlanId), false),
             ),
           ),
           Expanded(

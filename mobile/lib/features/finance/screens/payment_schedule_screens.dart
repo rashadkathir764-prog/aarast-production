@@ -9,6 +9,7 @@ import '../../../core/forms/aarast_form_success.dart';
 import '../../../core/forms/aarast_form_draft_binding.dart';
 import '../../../core/forms/aarast_form_draft_store.dart';
 import '../../../core/routing/app_router.dart';
+import '../../../core/routing/pop_or_go.dart';
 import '../../../core/experience_v3/aarast_v3.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/currency_label.dart';
@@ -77,7 +78,7 @@ class _PaymentSchedulesScreenState extends State<PaymentSchedulesScreen> {
       title: 'مواعيد الدفع',
       subtitle: cost?.title ?? 'المواعيد القادمة والمتأخرة في خطتك.',
       showBack: true,
-      onBack: () => context.pop(),
+      onBack: () => context.popOrGo(AppRouter.money(widget.weddingPlanId)),
       actions: [
         if (cost != null &&
             provider.canManageMoney &&
@@ -273,7 +274,7 @@ class _PaymentScheduleDetailsScreenState
       title: 'تفاصيل موعد الدفع',
       subtitle: cost?.title ?? schedule?.costTitle ?? 'موعد مرتبط بتكلفة.',
       showBack: true,
-      onBack: () => context.pop(),
+      onBack: () => context.popOrGo(AppRouter.money(widget.weddingPlanId)),
       child: RefreshIndicator(
         color: AppTheme.brand,
         onRefresh: () => _load(refreshMoney: true),
@@ -460,7 +461,7 @@ class _PaymentScheduleDetailsScreenState
       context,
       context.read<FinanceProvider>().savedMessage('تم حذف موعد الدفع.'),
     );
-    context.pop(true);
+    context.popOrGo(AppRouter.money(widget.weddingPlanId), true);
   }
 
   Future<bool?> _confirm({
@@ -582,7 +583,7 @@ class _PaymentScheduleFormScreenState extends State<PaymentScheduleFormScreen> {
       title: _editing ? 'تعديل موعد الدفع' : 'إضافة موعد دفع',
       subtitle: cost?.title ?? 'حدد المبلغ والموعد فقط.',
       showBack: true,
-      onBack: () => context.pop(),
+      onBack: () => context.popOrGo(AppRouter.money(widget.weddingPlanId)),
       bottomNavigationBar: canSubmit
           ? AarastV3FormActionBar(
               label: _editing ? 'حفظ التعديل' : 'إضافة الموعد',
@@ -802,7 +803,7 @@ class _PaymentScheduleFormScreenState extends State<PaymentScheduleFormScreen> {
           schedule == null ? 'تمت إضافة موعد الدفع.' : 'تم حفظ موعد الدفع.',
         ),
       );
-      context.pop(true);
+      context.popOrGo(AppRouter.money(widget.weddingPlanId), true);
     }
   }
 
@@ -891,7 +892,8 @@ class _PayPaymentScheduleScreenState extends State<PayPaymentScheduleScreen> {
         emptyIcon: LucideIcons.calendarX,
         emptyTitle: 'هذا الموعد ما عاد موجود',
         emptyAction: 'ارجع',
-        onEmptyAction: () => context.pop(),
+        onEmptyAction: () =>
+            context.popOrGo(AppRouter.money(widget.weddingPlanId)),
       );
     } else if (paymentRefusal(provider, cost) case final refusal?) {
       body = JourneyNote(text: refusal, icon: LucideIcons.info);
@@ -903,6 +905,7 @@ class _PayPaymentScheduleScreenState extends State<PayPaymentScheduleScreen> {
     } else {
       return paymentEntryFrame(
         context,
+        planId: widget.weddingPlanId,
         cost: cost,
         currency: currency,
         child: PaymentEntryForm(
@@ -941,6 +944,7 @@ class _PayPaymentScheduleScreenState extends State<PayPaymentScheduleScreen> {
     }
     return paymentEntryFrame(
       context,
+      planId: widget.weddingPlanId,
       cost: cost,
       currency: currency,
       child: ListView(

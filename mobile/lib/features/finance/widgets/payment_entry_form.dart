@@ -15,6 +15,8 @@ import '../../../core/utils/currency_label.dart';
 import '../../../core/utils/money_formatters.dart';
 import '../../../core/widgets/aarast_toast.dart';
 import '../../../core/widgets/aarast_ui.dart';
+import '../../../core/routing/app_router.dart';
+import '../../../core/routing/pop_or_go.dart';
 import '../data/cost_receipts_api.dart';
 import '../models/wedding_cost.dart';
 import '../providers/finance_provider.dart';
@@ -179,7 +181,9 @@ class _PaymentEntryFormState extends State<PaymentEntryForm> {
     if (!mounted) return;
     final receipt = _receipt;
     if (receipt != null) await _saveReceipt(receipt, payment);
-    if (mounted) Navigator.of(context).pop(true);
+    if (mounted) {
+      context.popOrGo(AppRouter.money(widget.cost.weddingPlanId), true);
+    }
   }
 
   /// The receipt goes with the saved payment. A payment still waiting for

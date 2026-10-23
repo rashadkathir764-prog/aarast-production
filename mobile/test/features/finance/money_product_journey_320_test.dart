@@ -173,13 +173,13 @@ void main() {
         await tester.pumpAndSettle();
         expect(harness.currentLocation, AppRouter.moneyBudget(_planId));
         expect(find.byType(MoneyBudgetScreen), findsOneWidget);
-        expect(find.text('إدارة الميزانية'), findsOneWidget);
-        await tester.scrollUntilVisible(
-          find.text('حفظ الميزانية'),
-          240,
-          scrollable: find.byType(Scrollable).first,
+        // w19: the budget, the reserve and each item's share.
+        expect(find.text('توزيع الميزانية'), findsOneWidget);
+        expect(
+          find.byKey(const ValueKey('money-budget-reserve')),
+          findsOneWidget,
         );
-        expect(find.text('حفظ الميزانية'), findsOneWidget);
+        expect(find.text('حفظ التوزيع'), findsOneWidget);
         _expectRtl(tester, find.byType(MoneyBudgetScreen));
         expect(tester.takeException(), isNull);
       },
@@ -226,10 +226,13 @@ void main() {
         await tester.tap(find.text('حاول مرة أخرى'));
         await tester.pumpAndSettle();
 
-        final total = tester.widget<TextFormField>(
-          find.byKey(const ValueKey('money-budget-total')),
+        final total = tester.widget<EditableText>(
+          find.descendant(
+            of: find.byKey(const ValueKey('money-budget-total')),
+            matching: find.byType(EditableText),
+          ),
         );
-        expect(total.controller?.text, '1,000,000');
+        expect(total.controller.text, '1,000,000');
         final categoryName = find.byKey(
           const ValueKey('money-budget-category-category-1'),
         );
@@ -263,15 +266,7 @@ void main() {
         find.byKey(const ValueKey('money-budget-total')),
         '2500000',
       );
-      final save = find.widgetWithText(FilledButton, 'حفظ الميزانية');
-      await tester.scrollUntilVisible(
-        save,
-        240,
-        scrollable: find.byType(Scrollable).first,
-      );
-      await tester.drag(find.byType(Scrollable).first, const Offset(0, -120));
-      await tester.pumpAndSettle();
-      await tester.tap(save);
+      await tester.tap(find.byKey(const ValueKey('money-budget-save')));
       await tester.pumpAndSettle();
 
       expect(harness.api.savedTotalBudget, '2500000');
@@ -290,27 +285,61 @@ void main() {
       addTearDown(harness.dispose);
       await _pumpProduct(tester, harness.app);
 
-      final save = find.widgetWithText(FilledButton, 'حفظ الميزانية');
-      await tester.scrollUntilVisible(
-        save,
-        240,
-        scrollable: find.byType(Scrollable).first,
-      );
-      await tester.drag(find.byType(Scrollable).first, const Offset(0, -120));
-      await tester.pumpAndSettle();
-      await tester.tap(save);
+      await tester.tap(find.byKey(const ValueKey('money-budget-save')));
       await tester.pump();
 
-      final noOpError = find.text('حدد ميزانية أو أضف تصنيفًا قبل الحفظ.');
+      final noOpError = find.text('حدد ميزانية أو أضف بند قبل الحفظ');
       await tester.scrollUntilVisible(
         noOpError,
-        -240,
+        240,
         scrollable: find.byType(Scrollable).first,
       );
       expect(noOpError, findsOneWidget);
       expect(harness.api.replaceBudgetCalls, 0);
       expect(tester.takeException(), isNull);
     });
+
+    testWidgets(
+      'an item share is typed in place and the reserve follows (w19)',
+      (tester) async {
+        final harness = _MoneyProductHarness.owner(
+          initialLocation: AppRouter.moneyBudget(_planId),
+        );
+        addTearDown(harness.dispose);
+        await _pumpProduct(tester, harness.app);
+
+        // 1 million, 700 thousand of it given to the halls: 300 left.
+        final reserve = find.byKey(const ValueKey('money-budget-reserve'));
+        expect(
+          find.descendant(of: reserve, matching: find.textContaining('300')),
+          findsOneWidget,
+        );
+        final share = find.byKey(
+          const ValueKey('money-budget-share-category-1'),
+        );
+        await tester.scrollUntilVisible(
+          share,
+          180,
+          scrollable: find.byType(Scrollable).first,
+        );
+        await tester.enterText(share, '400000');
+        await tester.pump();
+        // Below the 500 thousand already agreed: flagged.
+        expect(find.textContaining('اتفقت عليه بـ'), findsOneWidget);
+        await tester.enterText(share, '900000');
+        await tester.pump();
+        expect(find.textContaining('اتفقت عليه بـ'), findsNothing);
+
+        tester.testTextInput.hide();
+        await tester.pumpAndSettle();
+        await tester.tap(find.byKey(const ValueKey('money-budget-save')));
+        await tester.pumpAndSettle();
+
+        expect(harness.api.savedTotalBudget, '1000000');
+        expect(harness.api.savedAllocations, {'category-1': '900000'});
+        expect(tester.takeException(), isNull);
+      },
+    );
 
     testWidgets('budget delegates category creation to its focused screen', (
       tester,
@@ -334,24 +363,13 @@ void main() {
       );
       await tester.pumpAndSettle();
       expect(addCategory, findsOneWidget);
-      expect(find.text('إضافة تصنيف'), findsOneWidget);
-      final sectionTitle = find.text('التصنيفات');
+      expect(find.text('أضف بند'), findsOneWidget);
+      final sectionTitle = find.text('البنود');
       expect(sectionTitle, findsOneWidget);
+      // «أضف بند» sits under the items it adds to.
       expect(
         tester.getTopLeft(addCategory).dy,
-        greaterThan(tester.getBottomLeft(find.text('إدارة الميزانية')).dy),
-      );
-      expect(
-        find.ancestor(
-          of: addCategory,
-          matching: find.byType(AarastV3SectionHeader),
-        ),
-        findsOneWidget,
-      );
-      final addButton = tester.widget<TextButton>(addCategory);
-      expect(
-        addButton.style?.backgroundColor?.resolve(<WidgetState>{}),
-        AppTheme.brandMuted,
+        greaterThan(tester.getBottomLeft(sectionTitle).dy),
       );
       await tester.tap(addCategory);
       await tester.pumpAndSettle();
@@ -1002,6 +1020,7 @@ class _MoneyProductApi extends FinanceApi {
       <({String amount, DateTime dueDate, String? note})>[];
   String? savedTotalBudget;
   int? savedCategoryCount;
+  Map<String, String?>? savedAllocations;
   int replaceBudgetCalls = 0;
   String? lastCreatedCategoryId;
   int _categorySequence = 0;
@@ -1159,6 +1178,9 @@ class _MoneyProductApi extends FinanceApi {
     replaceBudgetCalls += 1;
     savedTotalBudget = totalBudget;
     savedCategoryCount = categories.length;
+    savedAllocations = {
+      for (final item in categories) item.id ?? item.name: item.allocatedAmount,
+    };
     final idMap = <String, String>{};
     final savedCategories = <BudgetCategory>[];
     for (final category in categories) {

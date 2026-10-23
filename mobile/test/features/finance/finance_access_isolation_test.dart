@@ -179,7 +179,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('العرض فقط'), findsOneWidget);
-    expect(find.text('حفظ التكلفة'), findsNothing);
+    expect(find.text('حفظ الاتفاق'), findsNothing);
     expect(tester.takeException(), isNull);
   });
 }

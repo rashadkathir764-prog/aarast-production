@@ -1636,7 +1636,7 @@ const r19ProviderPortalApi = Object.freeze({
 // +1 for a08b reading the plan kept on the phone from the onboarding owner
 // API, so its name is not asked again, -1 for the home greeting by the
 // plan's name instead of the onboarding persona copy (b02).
-const r19LegalRecordCount = 183;
+const r19LegalRecordCount = 184;
 const trackedOwnerApiContracts = [
   {
     area: 'features/account_contexts',
@@ -2458,11 +2458,12 @@ const trackedPlanningBatchContracts = [
   {
     source: 'mobile/lib/features/finance/screens/cost_form_screen.dart',
     target: 'mobile/lib/features/marketplace/marketplace_api.dart',
-    show: [
-      'MarketplaceProvider',
-      'ProviderMarketplaceProvider',
-      'providerDirectoryErrorMessage',
-    ],
+    show: ['MarketplaceProvider', 'ProviderMarketplaceProvider'],
+  },
+  {
+    source: 'mobile/lib/features/finance/screens/cost_form_screen.dart',
+    target: 'mobile/lib/features/wedding_plans/wedding_plans_api.dart',
+    show: ['DashboardSummaryProvider'],
   },
   {
     source: 'mobile/lib/features/finance/screens/money_overview_screen.dart',

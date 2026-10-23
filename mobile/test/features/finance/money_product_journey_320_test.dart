@@ -401,16 +401,19 @@ void main() {
       addTearDown(harness.dispose);
       await _pumpProduct(tester, harness.app);
 
+      // c10: the item, who it is with, how much, and how it is paid.
       expect(find.byType(CostFormScreen), findsOneWidget);
-      expect(find.text('إضافة تكلفة'), findsOneWidget);
-      expect(find.text('التصنيف *'), findsOneWidget);
-      expect(find.text('اسم التكلفة *'), findsOneWidget);
+      expect(find.text('اتفاق جديد'), findsOneWidget);
+      expect(find.text('البند'), findsOneWidget);
+      expect(find.text('مع مين؟'), findsOneWidget);
+      expect(find.text('بكم اتفقت؟'), findsOneWidget);
+      expect(find.text('حفظ الاتفاق'), findsOneWidget);
       await tester.scrollUntilVisible(
-        find.text('حفظ التكلفة'),
+        find.text('كيف بتدفع؟'),
         240,
         scrollable: find.byType(Scrollable).first,
       );
-      expect(find.text('حفظ التكلفة'), findsOneWidget);
+      expect(find.text('كيف بتدفع؟'), findsOneWidget);
       _expectRtl(tester, find.byType(CostFormScreen));
       expect(tester.takeException(), isNull);
 
@@ -442,8 +445,7 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      await _showPartyDisclosure(tester);
-      expect(find.text('مزود من اعّرست'), findsOneWidget);
+      expect(find.byKey(const ValueKey('cost-provider-card')), findsOneWidget);
       expect(find.text('قاعة السعادة'), findsWidgets);
       await _submitCostForm(tester, title: 'حجز القاعة', amount: '500000');
 
@@ -464,19 +466,20 @@ void main() {
         AppRouter.moneyCostCreate(_planId, categoryId: 'category-1'),
       );
       await tester.pumpAndSettle();
-      await _showPartyDisclosure(tester);
-      await tester.ensureVisible(find.text('مزود خارجي'));
-      await tester.pumpAndSettle();
-      await tester.tap(find.text('مزود خارجي'));
-      await tester.pumpAndSettle();
-      final partyName = find.widgetWithText(TextFormField, 'اسم الجهة *');
-      await tester.ensureVisible(partyName);
-      await tester.pumpAndSettle();
-      await tester.enterText(partyName, 'محل الورد');
-      final partyPhone = find.widgetWithText(TextFormField, 'رقم الهاتف');
-      await tester.ensureVisible(partyPhone);
-      await tester.pumpAndSettle();
-      await tester.enterText(partyPhone, '777123456');
+      await _tapVisible(
+        tester,
+        find.byKey(const ValueKey('cost-party-external')),
+      );
+      await _enterVisible(
+        tester,
+        find.byKey(const ValueKey('cost-party-name')),
+        'محل الورد',
+      );
+      await _enterVisible(
+        tester,
+        find.byKey(const ValueKey('cost-party-phone')),
+        '777123456',
+      );
       await _submitCostForm(tester, title: 'تنسيق الورد', amount: '90000');
 
       expect(harness.api.createdProviderId, isNull);
@@ -495,17 +498,81 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      await tester.scrollUntilVisible(
-        find.text('بدون مزود حالياً'),
-        240,
-        scrollable: find.byType(Scrollable).first,
-      );
-      expect(find.text('بدون مزود حالياً'), findsOneWidget);
+      expect(find.byKey(const ValueKey('cost-party-none')), findsOneWidget);
       await _submitCostForm(tester, title: 'رسوم إضافية', amount: '30000');
 
       expect(harness.api.createdProviderId, isNull);
       expect(harness.api.createdPartyName, isNull);
       expect(harness.api.createdPartyPhone, isNull);
+      expect(harness.api.createdInitialPayment, isNull);
+      expect(harness.api.createdSchedules, isEmpty);
+    });
+
+    testWidgets('a deposit today and monthly payments after it (c10)', (
+      tester,
+    ) async {
+      final harness = _MoneyProductHarness.owner(
+        initialLocation: AppRouter.money(_planId),
+      );
+      addTearDown(harness.dispose);
+      await _pumpProduct(tester, harness.app);
+      harness.router.push(
+        AppRouter.moneyCostCreate(_planId, categoryId: 'category-1'),
+      );
+      await tester.pumpAndSettle();
+
+      await _enterVisible(
+        tester,
+        find.byKey(const Key('cost-total-amount')),
+        '400000',
+      );
+      // A deposit plan without the day of the rest saves nothing.
+      await _tapVisible(
+        tester,
+        find.byKey(const ValueKey('cost-plan-depositRest')),
+      );
+      await _enterVisible(
+        tester,
+        find.byKey(const ValueKey('cost-plan-deposit')),
+        '100000',
+      );
+      tester.testTextInput.hide();
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const ValueKey('cost-save')));
+      await tester.pumpAndSettle();
+      expect(harness.api.createdTotalAmount, isNull);
+
+      // Two monthly payments after the deposit.
+      await _tapVisible(
+        tester,
+        find.byKey(const ValueKey('cost-plan-instalments')),
+      );
+      await _tapVisible(
+        tester,
+        find.byKey(const ValueKey('cost-plan-count-2')),
+      );
+      expect(find.byKey(const ValueKey('cost-plan-preview')), findsOneWidget);
+      tester.testTextInput.hide();
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const ValueKey('cost-save')));
+      await tester.pumpAndSettle();
+
+      expect(harness.api.createdTotalAmount, '400000');
+      expect(harness.api.createdInitialPayment, '100000');
+      expect(harness.api.createdSchedules.map((line) => line.amount), [
+        '150000',
+        '150000',
+      ]);
+      expect(harness.api.createdSchedules.map((line) => line.note), [
+        'الدفعة 1',
+        'الدفعة 2',
+      ]);
+      final dates = harness.api.createdSchedules.map((line) => line.dueDate);
+      expect(
+        dates.last.difference(dates.first).inDays,
+        inInclusiveRange(28, 31),
+      );
+      expect(tester.takeException(), isNull);
     });
 
     testWidgets(
@@ -520,11 +587,10 @@ void main() {
 
         harness.router.push(AppRouter.moneyCostCreate(_planId));
         await tester.pumpAndSettle();
-        final addCategory = find.text('إضافة تصنيف');
-        await tester.ensureVisible(addCategory);
-        await tester.pumpAndSettle();
-        await tester.tap(addCategory);
-        await tester.pumpAndSettle();
+        await _tapVisible(
+          tester,
+          find.byKey(const ValueKey('cost-category-create')),
+        );
 
         await tester.enterText(
           find.byKey(const ValueKey('money-category-form-name')),
@@ -534,25 +600,12 @@ void main() {
         await tester.pumpAndSettle();
 
         expect(find.byType(CostFormScreen), findsOneWidget);
-        expect(find.text('التصوير'), findsOneWidget);
-        await tester.enterText(
-          find.widgetWithText(TextFormField, 'اسم التكلفة *'),
-          'جلسة تصوير',
+        final created = tester.widget<JourneyChip>(
+          find.byKey(const ValueKey('cost-category-created-category-1')),
         );
-        await tester.enterText(
-          find.byKey(const Key('cost-total-amount')),
-          '300000',
-        );
-        final save = find.widgetWithText(FilledButton, 'حفظ التكلفة');
-        await tester.scrollUntilVisible(
-          save,
-          240,
-          scrollable: find.byType(Scrollable).first,
-        );
-        await tester.drag(find.byType(Scrollable).first, const Offset(0, -120));
-        await tester.pumpAndSettle();
-        await tester.tap(save);
-        await tester.pumpAndSettle();
+        expect(created.label, 'التصوير');
+        expect(created.selected, isTrue);
+        await _submitCostForm(tester, title: 'جلسة تصوير', amount: '300000');
 
         expect(harness.api.createdBudgetCategoryId, 'created-category-1');
         expect(harness.api.lastCreatedCategoryId, 'created-category-1');
@@ -586,27 +639,20 @@ void main() {
         await _pumpProduct(tester, harness.app);
 
         expect(find.text('تعذر التحقق من الصلاحيات'), findsOneWidget);
-        expect(find.textContaining('عرض السعر بعملة'), findsNothing);
+        expect(find.textContaining('العرض بعملة'), findsNothing);
         await tester.tap(find.text('حاول مرة أخرى'));
         await tester.pumpAndSettle();
 
-        final amountFieldFinder = find.byKey(const Key('cost-total-amount'));
+        // Same currency once loaded: the quote's amount stays agreed.
+        final quoteTotal = find.byKey(const ValueKey('cost-quote-total'));
         await tester.scrollUntilVisible(
-          amountFieldFinder,
+          quoteTotal,
           180,
           scrollable: find.byType(Scrollable).first,
         );
-        final amountField = tester.widget<TextFormField>(amountFieldFinder);
-        expect(amountField.controller?.text, '2,500');
-        expect(find.textContaining('إجمالي التكلفة (ر.س)'), findsOneWidget);
-        expect(find.textContaining('عرض السعر بعملة'), findsNothing);
-        final editable = tester.widget<EditableText>(
-          find.descendant(
-            of: amountFieldFinder,
-            matching: find.byType(EditableText),
-          ),
-        );
-        expect(editable.readOnly, isTrue);
+        expect(find.text('2,500 ر.س'), findsOneWidget);
+        expect(find.byKey(const Key('cost-total-amount')), findsNothing);
+        expect(find.textContaining('العرض بعملة'), findsNothing);
         expect(tester.takeException(), isNull);
       },
     );
@@ -654,33 +700,28 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      final currencyWarning = find.textContaining('عرض السعر بعملة ريال سعودي');
+      expect(find.textContaining('العرض بعملة ريال سعودي'), findsOneWidget);
+      // The amount is typed again in the plan's currency.
+      final amountField = find.byKey(const Key('cost-total-amount'));
       await tester.scrollUntilVisible(
-        currencyWarning,
-        120,
-        scrollable: find.byType(Scrollable).first,
-      );
-      expect(currencyWarning, findsOneWidget);
-      final amountFieldFinder = find.byKey(const Key('cost-total-amount'));
-      await tester.scrollUntilVisible(
-        amountFieldFinder,
+        amountField,
         180,
         scrollable: find.byType(Scrollable).first,
       );
-      final amountField = tester.widget<TextFormField>(amountFieldFinder);
-      expect(amountField.controller?.text, isEmpty);
-      expect(find.textContaining('إجمالي التكلفة (ر.ي)'), findsOneWidget);
-      await tester.enterText(amountFieldFinder, '170000');
-      final save = find.widgetWithText(FilledButton, 'حفظ التكلفة');
-      await tester.scrollUntilVisible(
-        save,
-        240,
-        scrollable: find.byType(Scrollable).first,
+      expect(amountField, findsOneWidget);
+      final editable = tester.widget<EditableText>(
+        find.descendant(of: amountField, matching: find.byType(EditableText)),
       );
-      await tester.drag(find.byType(Scrollable).first, const Offset(0, -120));
-      await tester.pumpAndSettle();
-      await tester.tap(save);
-      await tester.pumpAndSettle();
+      expect(editable.controller.text, isEmpty);
+      expect(
+        find.descendant(of: amountField, matching: find.text('ر.ي')),
+        findsOneWidget,
+      );
+      await _submitCostForm(
+        tester,
+        title: 'عرض قاعة بالريال السعودي',
+        amount: '170000',
+      );
 
       expect(harness.api.createdTotalAmount, '170000');
       expect(harness.api.createdProviderId, 'provider-1');
@@ -710,25 +751,15 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      final amountFieldFinder = find.byKey(const Key('cost-total-amount'));
+      final quoteTotal = find.byKey(const ValueKey('cost-quote-total'));
       await tester.scrollUntilVisible(
-        amountFieldFinder,
+        quoteTotal,
         180,
         scrollable: find.byType(Scrollable).first,
       );
-      final amountField = tester.widget<TextFormField>(amountFieldFinder);
-      expect(amountField.controller?.text, '250,000');
-      final editable = tester.widget<EditableText>(
-        find.descendant(
-          of: amountFieldFinder,
-          matching: find.byType(EditableText),
-        ),
-      );
-      expect(editable.readOnly, isTrue);
-      expect(
-        find.text('القيمة مثبتة لأنها مرتبطة بعرض سعر مقبول.'),
-        findsOneWidget,
-      );
+      expect(find.text('250,000 ر.ي'), findsOneWidget);
+      expect(find.text('مثبت من العرض اللي وافقت عليه'), findsOneWidget);
+      expect(find.byKey(const Key('cost-total-amount')), findsNothing);
       expect(tester.takeException(), isNull);
     });
 
@@ -772,7 +803,7 @@ void main() {
         await tester.pumpAndSettle();
         expect(find.byType(CostFormScreen), findsOneWidget);
         expect(find.text('العرض فقط'), findsOneWidget);
-        expect(find.text('حفظ التكلفة'), findsNothing);
+        expect(find.text('حفظ الاتفاق'), findsNothing);
         expect(tester.takeException(), isNull);
       },
     );
@@ -965,6 +996,9 @@ class _MoneyProductApi extends FinanceApi {
   String? createdBudgetCategoryId;
   String? createdPartyName;
   String? createdPartyPhone;
+  String? createdInitialPayment;
+  final createdSchedules =
+      <({String amount, DateTime dueDate, String? note})>[];
   String? savedTotalBudget;
   int? savedCategoryCount;
   int replaceBudgetCalls = 0;
@@ -1010,6 +1044,7 @@ class _MoneyProductApi extends FinanceApi {
     createdBudgetCategoryId = budgetCategoryId;
     createdPartyName = partyName;
     createdPartyPhone = partyPhone;
+    createdInitialPayment = initialPaymentAmount;
     return WeddingCost(
       id: 'created-cost',
       weddingPlanId: planId,
@@ -1027,6 +1062,26 @@ class _MoneyProductApi extends FinanceApi {
       note: note,
       createdAt: now,
       updatedAt: now,
+    );
+  }
+
+  @override
+  Future<PaymentSchedule> createSchedule({
+    required WeddingCost cost,
+    required String amount,
+    required DateTime dueDate,
+    String? note,
+  }) async {
+    createdSchedules.add((amount: amount, dueDate: dueDate, note: note));
+    return PaymentSchedule(
+      id: 'created-schedule-${createdSchedules.length}',
+      costId: cost.id,
+      weddingPlanId: cost.weddingPlanId,
+      amount: amount,
+      dueDate: dueDate,
+      status: 'PENDING',
+      costTitle: cost.title,
+      note: note,
     );
   }
 
@@ -1212,43 +1267,45 @@ Future<void> _submitCostForm(
   required String title,
   required String amount,
 }) async {
-  await tester.fling(find.byType(ListView).first, const Offset(0, 2000), 1000);
-  await tester.pumpAndSettle();
-  final titleField = find.widgetWithText(TextFormField, 'اسم التكلفة *');
-  await tester.ensureVisible(titleField);
-  await tester.pumpAndSettle();
-  await tester.enterText(titleField, title);
-  final amountField = find.byKey(const Key('cost-total-amount'));
-  await tester.ensureVisible(amountField);
-  await tester.pumpAndSettle();
-  await tester.enterText(amountField, amount);
+  await _enterVisible(
+    tester,
+    find.byKey(const Key('cost-total-amount')),
+    amount,
+  );
+  await _enterVisible(tester, find.byKey(const ValueKey('cost-title')), title);
   tester.testTextInput.hide();
   await tester.pumpAndSettle();
-  final save = find.widgetWithText(FilledButton, 'حفظ التكلفة');
-  await tester.scrollUntilVisible(
-    save,
-    220,
-    scrollable: find.byType(Scrollable).first,
-  );
-  await tester.ensureVisible(save);
-  await tester.pumpAndSettle();
-  await tester.tap(save);
+  // «حفظ الاتفاق» stays pinned under the fields.
+  await tester.tap(find.byKey(const ValueKey('cost-save')));
   await tester.pumpAndSettle();
 }
 
-Future<void> _showPartyDisclosure(WidgetTester tester) async {
-  final title = find.text('الجهة المرتبطة');
+Future<void> _tapVisible(WidgetTester tester, Finder finder) async {
   await tester.scrollUntilVisible(
-    title,
-    240,
+    finder,
+    180,
     scrollable: find.byType(Scrollable).first,
   );
-  await tester.ensureVisible(title);
+  await tester.ensureVisible(finder);
   await tester.pumpAndSettle();
-  if (find.text('بدون مزود').evaluate().isEmpty) {
-    await tester.tap(title);
-    await tester.pumpAndSettle();
-  }
+  await tester.tap(finder);
+  await tester.pumpAndSettle();
+}
+
+Future<void> _enterVisible(
+  WidgetTester tester,
+  Finder finder,
+  String text,
+) async {
+  await tester.scrollUntilVisible(
+    finder,
+    180,
+    scrollable: find.byType(Scrollable).first,
+  );
+  await tester.ensureVisible(finder);
+  await tester.pumpAndSettle();
+  await tester.enterText(finder, text);
+  await tester.pumpAndSettle();
 }
 
 Future<void> _pumpProduct(WidgetTester tester, Widget app) async {

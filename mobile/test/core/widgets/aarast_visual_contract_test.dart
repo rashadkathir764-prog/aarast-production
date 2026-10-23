@@ -442,14 +442,22 @@ void main() {
           isTrue,
           reason: '$path must preserve unfinished non-sensitive values',
         );
-        if (path.endsWith('payment_entry_form.dart')) {
-          // The journey look pins its save button under the scrolling
-          // fields instead of the older action bar.
+        // The journey look pins its save button under the scrolling fields
+        // instead of the older action bar.
+        const journeySaveKeys = {
+          'payment_entry_form.dart': 'payment-save',
+          'cost_form_screen.dart': 'cost-save',
+        };
+        final journeySave = journeySaveKeys.entries
+            .where((entry) => path.endsWith(entry.key))
+            .map((entry) => entry.value)
+            .firstOrNull;
+        if (journeySave != null) {
           expect(
             text,
             contains(
               RegExp(
-                r"JourneyButton\(\s*key: const ValueKey\('payment-save'\)",
+                "JourneyButton\\(\\s*key: const ValueKey\\('$journeySave'\\)",
               ),
             ),
             reason: '$path must keep its primary action reachable on phones',

@@ -11,6 +11,7 @@ import 'package:aarast_mobile/features/marketplace/data/marketplace_api.dart';
 import 'package:aarast_mobile/features/marketplace/models/marketplace_models.dart';
 import 'package:aarast_mobile/features/marketplace/providers/marketplace_provider.dart';
 import 'package:aarast_mobile/features/marketplace/screens/provider_marketplace_screen.dart';
+import 'package:aarast_mobile/features/marketplace/screens/provider_requests_screen.dart';
 import 'package:aarast_mobile/features/wedding_plans/data/wedding_plans_api.dart';
 import 'package:aarast_mobile/features/wedding_plans/models/wedding_plan.dart';
 import 'package:aarast_mobile/features/wedding_plans/providers/wedding_plans_provider.dart';
@@ -88,29 +89,49 @@ void main() {
   );
 
   testWidgets(
-    'marketplace refuses quote actions when a stale quote leaks into the UI',
+    'a stale quote that leaks into the provider never reaches the board',
     (tester) async {
       final marketplace = _LeakyMarketplaceProvider([_quoteFor('plan-old')]);
       final finance = _RecordingFinanceProvider();
       addTearDown(finance.dispose);
 
       await _pumpMarketplace(tester, marketplace, finance: finance);
-      await tester.tap(find.text('طلباتك وعروضك'));
+
+      expect(find.text('مزود الخطة القديمة'), findsNothing);
+      expect(find.textContaining('وصلك عرض'), findsNothing);
+      expect(marketplace.acceptedQuoteIds, isEmpty);
+    },
+  );
+
+  testWidgets(
+    'the service page refuses a stale quote even when asked for it by id',
+    (tester) async {
+      final marketplace = _LeakyMarketplaceProvider([_quoteFor('plan-old')]);
+      final finance = _RecordingFinanceProvider();
+      addTearDown(finance.dispose);
+
+      await tester.pumpWidget(
+        MultiProvider(
+          providers: [
+            ChangeNotifierProvider<ProviderMarketplaceProvider>.value(
+              value: marketplace,
+            ),
+            ChangeNotifierProvider<FinanceProvider>.value(value: finance),
+          ],
+          child: MaterialApp(
+            theme: AppTheme.light(),
+            home: const ProviderRequestsScreen(
+              weddingPlanId: 'plan-selected',
+              quoteId: 'quote-old',
+            ),
+          ),
+        ),
+      );
       await tester.pumpAndSettle();
 
-      final acceptButton = find.byKey(const Key('quote-accept-quote-old'));
-      expect(acceptButton, findsOneWidget);
-      await tester.scrollUntilVisible(
-        acceptButton,
-        160,
-        scrollable: find.byType(Scrollable).first,
-      );
-      await tester.tap(acceptButton);
-      await tester.pump();
-
+      expect(find.byKey(const ValueKey('requests-empty')), findsOneWidget);
+      expect(find.byKey(const Key('requests-choose-quote-old')), findsNothing);
       expect(marketplace.acceptedQuoteIds, isEmpty);
-      expect(finance.loadedPlanIds, isEmpty);
-      await tester.pump(const Duration(seconds: 8));
     },
   );
 }

@@ -58,6 +58,7 @@ import '../../features/marketplace/marketplace_api.dart'
         ProviderDetailsScreen,
         ProviderMarketplaceScreen,
         ProviderQuoteInitialContext,
+        ProviderRequestsScreen,
         QuoteRequestScreen;
 import '../../features/more/more_api.dart' show MoreScreen;
 import '../../features/notifications/notifications_api.dart'
@@ -370,6 +371,18 @@ class AppRouter {
 
   static String guestListAdd(String id) {
     return '/wedding-plans/$id/guests/add';
+  }
+
+  /// f04: one service of the wedding, its offers and its booking.
+  static String providerRequests(
+    String weddingPlanId, {
+    String? itemKey,
+    String? quoteId,
+  }) {
+    return Uri(
+      path: '/wedding-plans/$weddingPlanId/providers/requests',
+      queryParameters: {'item': ?itemKey, 'quote': ?quoteId},
+    ).toString();
   }
 
   static String planProviders(String id, {String? quoteId}) {

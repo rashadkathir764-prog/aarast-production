@@ -7,11 +7,9 @@ import '../../../core/experience_v3/aarast_v3.dart';
 import '../../../core/routing/app_router.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/currency_label.dart';
-import '../../../core/widgets/aarast_toast.dart';
 import '../../../core/widgets/aarast_ui.dart';
 import '../../account_contexts/account_contexts_api.dart'
     show AccountContextController;
-import '../../finance/finance_api.dart' show FinanceProvider;
 import '../widgets/provider_result_card.dart';
 import '../../auth/auth_api.dart' show AuthActionGuard;
 import '../../onboarding/onboarding_api.dart'
@@ -19,20 +17,23 @@ import '../../onboarding/onboarding_api.dart'
 import '../../wedding_plans/wedding_plans_api.dart'
     show
         DashboardSummaryProvider,
-        WeddingPlanStage,
+        WeddingPlanStageState,
         WeddingPlansProvider,
         WeddingStageContextLine,
         WeddingStageDomain,
         resolveWeddingPlanStage;
+import '../../chat/chat_api.dart' show ChatProvider, ConversationListView;
+import '../../finance/finance_api.dart' show FinanceProvider;
 import '../models/marketplace_models.dart';
+import '../models/provider_board.dart';
+import '../widgets/provider_board_view.dart';
 import '../models/provider_budget_match_intent.dart';
 import '../providers/marketplace_provider.dart';
-import '../widgets/quote_booking_area.dart';
-import '../widgets/quote_status_chip.dart';
 
 part 'provider_marketplace_screen.sections.dart';
 part 'provider_marketplace_screen.results.dart';
 part 'provider_marketplace_screen.labels.dart';
+part 'provider_marketplace_screen.tabs.dart';
 
 class ProviderMarketplaceScreen extends StatefulWidget {
   const ProviderMarketplaceScreen({
@@ -63,6 +64,8 @@ class _ProviderMarketplaceScreenState extends State<ProviderMarketplaceScreen> {
   WeddingLocationDraft? _weddingLocation;
   String? _weddingLocationPlanId;
   String? _focusedQuoteId;
+  int _tab = 0;
+  bool _chatsLoaded = false;
 
   @override
   void initState() {
@@ -175,237 +178,186 @@ class _ProviderMarketplaceScreenState extends State<ProviderMarketplaceScreen> {
     final stage = dashboardSummary?.planId == planId
         ? resolveWeddingPlanStage(dashboardSummary?.weddingDate)
         : null;
-    final prioritizeOpenDecisions = switch (stage?.stage) {
-      WeddingPlanStage.finalMonth ||
-      WeddingPlanStage.finalWeek ||
-      WeddingPlanStage.weddingDay => true,
-      _ => false,
-    };
     return AarastScreenFrame(
       maxWidth: 520,
       safeAreaBottom: false,
+      backgroundColor: AarastV3Color.canvas,
       child: Consumer<ProviderMarketplaceProvider>(
         builder: (context, provider, _) {
-          final quoteRequests = _visibleQuoteRequests(provider);
-          return RefreshIndicator(
-            color: AppTheme.brand,
-            onRefresh: () => _refreshMarketplace(provider),
-            child: ListView(
-              controller: _scrollController,
-              padding: EdgeInsets.fromLTRB(
-                16,
-                widget.embedded ? 18 : 20,
-                16,
-                widget.embedded ? 124 : 28,
+          // f01: the plan's own requests come first; without a plan (or an
+          // account) the tab is the directory alone.
+          final planMode =
+              _weddingLocationPlanId != null && provider.includesAccountData;
+          final tabs = planMode
+              ? const ['طلباتي', 'استكشف', 'المحادثات', 'المفضلة']
+              : const ['استكشف'];
+          final tab = _tab.clamp(0, tabs.length - 1);
+          final board = planMode ? _board(provider) : const <ProviderBoardRow>[];
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Padding(
+                padding: EdgeInsets.fromLTRB(
+                  16,
+                  widget.embedded ? 12 : 16,
+                  16,
+                  0,
+                ),
+                child: JourneyTabHeader(
+                  title: 'المزودين',
+                  status: planMode
+                      ? providerBoardStatus(board)
+                      : 'دوّر على مزودين عرسك',
+                  actions: [
+                    JourneyRoundButton(
+                      key: const ValueKey('providers-search'),
+                      icon: LucideIcons.search,
+                      tooltip: 'ابحث',
+                      onPressed: () => _openSearch(tabs),
+                    ),
+                  ],
+                ),
               ),
-              children: [
-                _TopMarketplaceCommandCard(
-                  embedded: widget.embedded,
-                  provider: provider,
-                  onOpenFavorites: () => _pushOnce(AppRouter.favoriteProviders),
-                  onOpenConversations: () => _pushOnce(AppRouter.conversations),
+              if (tabs.length > 1)
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+                  child: JourneyTabSwitch(
+                    key: const ValueKey('providers-tabs'),
+                    labels: tabs,
+                    selected: tab,
+                    color: AarastV3Color.cobalt,
+                    onSelected: (index) => _selectTab(tabs[index], tabs),
+                  ),
                 ),
-                if (stage != null) ...[
-                  const SizedBox(height: 12),
-                  WeddingStageContextLine(
-                    stage: stage,
-                    domain: WeddingStageDomain.providers,
-                  ),
-                ],
-                if (!provider.includesAccountData) ...[
-                  const SizedBox(height: 12),
-                  const _LoginRequiredCard(),
-                ],
-                if (provider.includesAccountData &&
-                    provider.favoriteProvidersErrorMessage != null) ...[
-                  const SizedBox(height: 12),
-                  KeyedSubtree(
-                    key: const Key('marketplace-favorites-stale-warning'),
-                    child: _ErrorCard(
-                      title: 'تعذر تحديث المحفوظات',
-                      message:
-                          'نعرض آخر حالة محفوظة مؤقتًا؛ قد تكون أرقام الحفظ '
-                          'وعلامات القلب أدناه قديمة حتى تنجح إعادة المحاولة.',
-                      onRetry: provider.loadMarketplace,
-                    ),
-                  ),
-                ],
-                if (prioritizeOpenDecisions && quoteRequests.isNotEmpty)
-                  ..._offersInboxSection(provider, quoteRequests),
-                const SizedBox(height: 14),
-                _MarketplaceSearch(
-                  controller: _searchController,
-                  focusNode: _searchFocusNode,
-                  provider: provider,
-                ),
-                const SizedBox(height: 10),
-                _FilterChips(provider: provider),
-                if (_weddingLocation != null &&
-                    !_weddingLocation!.hasRequiredLocation) ...[
-                  const SizedBox(height: 10),
-                  _LocationContextCard(
-                    location: _weddingLocation,
-                    onCompleteLocation: _openLocationCompletion,
-                  ),
-                ],
-                if (provider.budgetMatchIntent != null) ...[
-                  const SizedBox(height: 10),
-                  _BudgetMatchContextCard(
-                    intent: provider.budgetMatchIntent!,
-                    categoryName: _activeCategoryName(provider),
-                    onClear: provider.clearBudgetMatch,
-                  ),
-                ],
-                if (!prioritizeOpenDecisions && quoteRequests.isNotEmpty)
-                  ..._offersInboxSection(provider, quoteRequests),
-                if (provider.includesAccountData &&
-                    provider.quoteRequestsErrorMessage != null) ...[
-                  const SizedBox(height: 10),
-                  _ErrorCard(
-                    title: 'تعذر تحميل عروض الأسعار',
-                    message: provider.quoteRequestsErrorMessage!,
-                    onRetry: provider.loadScopedQuoteRequests,
-                  ),
-                ],
-                if (provider.isLoading && provider.providers.isNotEmpty) ...[
-                  const SizedBox(height: 10),
-                  const AarastV3ProgressLine(
-                    key: Key('marketplace-results-refreshing'),
-                    height: 3,
-                    color: AppTheme.brand,
-                    backgroundColor: AppTheme.brandMuted,
-                    semanticsLabel: 'تحديث نتائج المزودين',
-                  ),
-                ],
-                const SizedBox(height: 16),
-                if (provider.errorMessage != null)
-                  _ErrorCard(
-                    message: provider.errorMessage!,
-                    onRetry: provider.loadMarketplace,
-                  )
-                else if (provider.isLoading && provider.providers.isEmpty)
-                  const _MarketplaceSkeleton()
-                else if (provider.providers.isEmpty &&
-                    !_hasDirectoryFilters(provider))
-                  // Nothing is filtered, so "change the filters" would be
-                  // a false lead: the directory itself is empty.
-                  const AarastEmptyState(
-                    key: ValueKey('marketplace-directory-empty'),
-                    icon: LucideIcons.store,
-                    title: 'لا يوجد مزوّدون في الدليل بعد',
-                    message:
-                        'لم يُنشر أي مزوّد معتمد بخدماته حتى الآن. ادعُ مزوّدك ليسجّل في اعّرست.',
-                  )
-                else if (provider.providers.isEmpty)
-                  AarastEmptyState(
-                    icon: LucideIcons.store,
-                    title: 'لا يوجد مزودين متاحون حاليًا',
-                    message: _emptyProvidersMessage(
-                      budgetIntent: provider.budgetMatchIntent,
-                      location: _weddingLocation,
-                    ),
-                    action: OutlinedButton.icon(
-                      onPressed: () => _clearMarketplaceFilters(provider),
-                      icon: const Icon(LucideIcons.slidersHorizontal),
-                      label: const Text('مسح الفلاتر'),
-                    ),
-                  )
-                else ...[
-                  if (provider.budgetMatchIntent != null &&
-                      provider.budgetMatchedServices.isNotEmpty) ...[
-                    _BudgetMatchedServicesSection(
-                      intent: provider.budgetMatchIntent!,
-                      services: provider.budgetMatchedServices,
-                      onOpenProvider: _openProviderDetails,
-                      onRequestQuote: (service) => _pushOnce(
-                        AppRouter.providerQuote(service.providerId),
-                        extra: ProviderQuoteInitialContext(
-                          serviceId: service.id,
-                          budgetIntent: provider.budgetMatchIntent,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 18),
-                  ] else if (provider.budgetMatchIntent != null) ...[
-                    _NoBudgetMatchesCard(
-                      intent: provider.budgetMatchIntent!,
-                      onClear: provider.clearBudgetMatch,
-                    ),
-                    const SizedBox(height: 18),
-                  ],
-                  _ResultsHeader(
-                    count: provider.totalProviders,
-                    cityLabel: _selectedCityName(provider),
-                  ),
-                  const SizedBox(height: 12),
-                  for (final item in provider.providers) ...[
-                    _ProviderCard(
-                      provider: item,
-                      budgetIntent: provider.budgetMatchIntent,
-                      isFavorite: provider.favoriteProviderIds.contains(
-                        item.id,
-                      ),
-                      onFavorite: () async {
-                        if (await AuthActionGuard.blockProtectedSubmitWithoutAccount(
-                          context,
-                        )) {
-                          return;
-                        }
-                        await provider.toggleFavorite(item.id);
-                      },
-                      onTap: () => _openProviderDetails(item.id),
-                    ),
-                    const SizedBox(height: 12),
-                  ],
-                  if (provider.isLoadingMore)
-                    const Padding(
-                      padding: EdgeInsets.symmetric(vertical: 12),
-                      child: Center(child: AarastInlineSpinner(dimension: 36)),
-                    )
-                  else if (provider.loadMoreErrorMessage != null)
-                    Padding(
-                      padding: const EdgeInsets.only(top: 8),
-                      child: _ErrorCard(
-                        title: 'تعذر تحميل المزيد',
-                        message: provider.loadMoreErrorMessage!,
-                        onRetry: provider.loadMoreProviders,
-                      ),
-                    )
-                  else if (provider.hasMoreProviders)
-                    Center(
-                      child: TextButton(
-                        key: const Key('providers-load-more'),
-                        onPressed: provider.loadMoreProviders,
-                        child: const Text('تحميل المزيد'),
-                      ),
-                    ),
-                ],
-              ],
-            ),
+              Expanded(
+                child: switch (tabs[tab]) {
+                  'طلباتي' => _boardTab(provider, board, stage, tabs),
+                  'المحادثات' => const ConversationListView(embedded: true),
+                  'المفضلة' => _favoritesTab(provider),
+                  _ => _exploreTab(provider, stage, showStage: !planMode),
+                },
+              ),
+            ],
           );
         },
       ),
     );
   }
 
-  List<Widget> _offersInboxSection(
-    ProviderMarketplaceProvider provider,
-    List<QuoteRequest> quoteRequests,
-  ) {
+  /// f02: the directory results, or why there are none.
+  List<Widget> _exploreResults(ProviderMarketplaceProvider provider) {
     return [
-      const SizedBox(height: 10),
-      _OffersInboxCard(
-        quotes: quoteRequests,
-        initialQuoteId: _focusedQuoteId,
-        isSubmitting: provider.isSubmitting,
-        onAccept: _acceptQuote,
-        onReject: _rejectQuote,
-        onViewCost: _viewAcceptedQuoteCost,
-        onOpenConversation: _openQuoteConversation,
-        onCreateNew: (quote) =>
-            _pushOnce(AppRouter.providerQuote(quote.providerId)),
-      ),
+      if (provider.errorMessage != null)
+        _ErrorCard(
+          message: provider.errorMessage!,
+          onRetry: provider.loadMarketplace,
+        )
+      else if (provider.isLoading && provider.providers.isEmpty)
+        const _MarketplaceSkeleton()
+      else if (provider.providers.isEmpty &&
+          !_hasDirectoryFilters(provider))
+        // Nothing is filtered, so "change the filters" would be
+        // a false lead: the directory itself is empty.
+        const AarastEmptyState(
+          key: ValueKey('marketplace-directory-empty'),
+          icon: LucideIcons.store,
+          title: 'لا يوجد مزوّدون في الدليل بعد',
+          message:
+              'لم يُنشر أي مزوّد معتمد بخدماته حتى الآن. ادعُ مزوّدك ليسجّل في اعّرست.',
+        )
+      else if (provider.providers.isEmpty)
+        AarastEmptyState(
+          icon: LucideIcons.store,
+          title: 'لا يوجد مزودين متاحون حاليًا',
+          message: _emptyProvidersMessage(
+            budgetIntent: provider.budgetMatchIntent,
+            location: _weddingLocation,
+          ),
+          action: OutlinedButton.icon(
+            onPressed: () => _clearMarketplaceFilters(provider),
+            icon: const Icon(LucideIcons.slidersHorizontal),
+            label: const Text('مسح الفلاتر'),
+          ),
+        )
+      else ...[
+        if (provider.budgetMatchIntent != null &&
+            provider.budgetMatchedServices.isNotEmpty) ...[
+          _BudgetMatchedServicesSection(
+            intent: provider.budgetMatchIntent!,
+            services: provider.budgetMatchedServices,
+            onOpenProvider: _openProviderDetails,
+            onRequestQuote: (service) => _pushOnce(
+              AppRouter.providerQuote(service.providerId),
+              extra: ProviderQuoteInitialContext(
+                serviceId: service.id,
+                budgetIntent: provider.budgetMatchIntent,
+              ),
+            ),
+          ),
+          const SizedBox(height: 18),
+        ] else if (provider.budgetMatchIntent != null) ...[
+          _NoBudgetMatchesCard(
+            intent: provider.budgetMatchIntent!,
+            onClear: provider.clearBudgetMatch,
+          ),
+          const SizedBox(height: 18),
+        ],
+        _ResultsHeader(
+          count: provider.totalProviders,
+          cityLabel: _selectedCityName(provider),
+        ),
+        const SizedBox(height: 12),
+        for (final item in provider.providers) ...[
+          _ProviderCard(
+            provider: item,
+            budgetIntent: provider.budgetMatchIntent,
+            isFavorite: provider.favoriteProviderIds.contains(
+              item.id,
+            ),
+            onFavorite: () async {
+              if (await AuthActionGuard.blockProtectedSubmitWithoutAccount(
+                context,
+              )) {
+                return;
+              }
+              await provider.toggleFavorite(item.id);
+            },
+            onTap: () => _openProviderDetails(item.id),
+          ),
+          const SizedBox(height: 12),
+        ],
+        if (provider.isLoadingMore)
+          const Padding(
+            padding: EdgeInsets.symmetric(vertical: 12),
+            child: Center(child: AarastInlineSpinner(dimension: 36)),
+          )
+        else if (provider.loadMoreErrorMessage != null)
+          Padding(
+            padding: const EdgeInsets.only(top: 8),
+            child: _ErrorCard(
+              title: 'تعذر تحميل المزيد',
+              message: provider.loadMoreErrorMessage!,
+              onRetry: provider.loadMoreProviders,
+            ),
+          )
+        else if (provider.hasMoreProviders)
+          Center(
+            child: TextButton(
+              key: const Key('providers-load-more'),
+              onPressed: provider.loadMoreProviders,
+              child: const Text('تحميل المزيد'),
+            ),
+          ),
+      ],
     ];
+  }
+
+  void _selectTab(String label, List<String> tabs) {
+    setState(() => _tab = tabs.indexOf(label));
+    if (label == 'المحادثات' && !_chatsLoaded) {
+      _chatsLoaded = true;
+      context.read<ChatProvider>().initialize();
+    }
   }
 
   void _loadMoreNearEnd() {
@@ -524,14 +476,6 @@ class _ProviderMarketplaceScreenState extends State<ProviderMarketplaceScreen> {
     }
   }
 
-  List<QuoteRequest> _visibleQuoteRequests(
-    ProviderMarketplaceProvider marketplace,
-  ) {
-    final planId = _weddingLocationPlanId;
-    if (planId != null) return marketplace.quotesForPlan(planId);
-    return const [];
-  }
-
   String? _normalizedPlanId(String? value) {
     final normalized = value?.trim();
     return normalized == null || normalized.isEmpty ? null : normalized;
@@ -559,16 +503,6 @@ class _ProviderMarketplaceScreenState extends State<ProviderMarketplaceScreen> {
     await _applyRouteResult(result);
   }
 
-  Future<void> _openQuoteConversation(QuoteRequest quote) async {
-    final result = await _pushOnce<ProviderMarketplaceRouteResult>(
-      AppRouter.quoteConversation(quote.id),
-      extra: widget.preserveOwnerShellOnQuoteFocus
-          ? ProviderMarketplaceLaunchOrigin.ownerMainShellProviders
-          : null,
-    );
-    await _applyRouteResult(result);
-  }
-
   Future<void> _applyRouteResult(ProviderMarketplaceRouteResult? result) async {
     final quoteId = _normalizedPlanId(result?.quoteId);
     if (!mounted || quoteId == null) return;
@@ -585,9 +519,15 @@ class _ProviderMarketplaceScreenState extends State<ProviderMarketplaceScreen> {
   }) async {
     final quoteId = _focusedQuoteId?.trim();
     if (selectedPlanId == null || quoteId == null || quoteId.isEmpty) return;
-    await marketplace.loadQuoteRequest(
+    final loaded = await marketplace.loadQuoteRequest(
       quoteId,
       expectedWeddingPlanId: selectedPlanId,
+    );
+    if (!loaded || !mounted) return;
+    // A notification about this request opens its service page.
+    _focusedQuoteId = null;
+    await _pushOnce(
+      AppRouter.providerRequests(selectedPlanId, quoteId: quoteId),
     );
   }
 
@@ -647,65 +587,5 @@ class _ProviderMarketplaceScreenState extends State<ProviderMarketplaceScreen> {
       return;
     }
     _pushOnce(AppRouter.onboarding);
-  }
-
-  // القبول من مكانه — الخادم يفحص الصلاحيات، ونحن نعرض النتيجة بصدق.
-  Future<void> _acceptQuote(QuoteRequest quote) async {
-    final planId = _selectedPlanIdForQuote(quote);
-    if (planId == null) return;
-    final marketplace = context.read<ProviderMarketplaceProvider>();
-    final accepted = await marketplace.acceptQuote(quote);
-    if (!mounted) return;
-    if (!accepted) {
-      AarastToast.showError(
-        context,
-        marketplace.errorMessage ?? 'تعذر قبول عرض السعر.',
-      );
-      return;
-    }
-    await context.read<FinanceProvider?>()?.loadMoney(planId);
-    if (!mounted) return;
-    AarastToast.showSuccess(
-      context,
-      'تم قبول العرض وإضافة التكلفة إلى تبويب المال.',
-    );
-  }
-
-  Future<void> _rejectQuote(QuoteRequest quote) async {
-    if (_selectedPlanIdForQuote(quote) == null) return;
-    final marketplace = context.read<ProviderMarketplaceProvider>();
-    final rejected = await marketplace.rejectQuote(quote);
-    if (!mounted) return;
-    if (!rejected) {
-      AarastToast.showError(
-        context,
-        marketplace.errorMessage ?? 'تعذر رفض عرض السعر.',
-      );
-      return;
-    }
-    AarastToast.showSuccess(context, 'تم رفض العرض.');
-  }
-
-  void _viewAcceptedQuoteCost(QuoteRequest quote) {
-    final planId = _selectedPlanIdForQuote(quote);
-    final costId = quote.costSuggestion?.costId?.trim();
-    if (planId == null || costId == null || costId.isEmpty) {
-      AarastToast.showError(context, 'تعذر فتح التكلفة المرتبطة بهذا العرض.');
-      return;
-    }
-    _pushOnce(AppRouter.moneyCostDetails(planId, costId));
-  }
-
-  String? _selectedPlanIdForQuote(QuoteRequest quote) {
-    final selectedPlanId = _selectedPlanIdForAccount();
-    final quotePlanId = _normalizedPlanId(quote.weddingPlanId);
-    if (selectedPlanId == null || quotePlanId != selectedPlanId) {
-      AarastToast.showError(
-        context,
-        'هذا العرض لا يطابق مسار الخطة المحدد حاليًا.',
-      );
-      return null;
-    }
-    return selectedPlanId;
   }
 }

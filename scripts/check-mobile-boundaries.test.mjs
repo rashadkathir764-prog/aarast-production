@@ -1636,7 +1636,7 @@ const r19ProviderPortalApi = Object.freeze({
 // +1 for a08b reading the plan kept on the phone from the onboarding owner
 // API, so its name is not asked again, -1 for the home greeting by the
 // plan's name instead of the onboarding persona copy (b02).
-const r19LegalRecordCount = 190;
+const r19LegalRecordCount = 194;
 const trackedOwnerApiContracts = [
   {
     area: 'features/account_contexts',
@@ -1859,6 +1859,10 @@ const trackedOwnerApiContracts = [
       {
         uri: 'screens/provider_marketplace_screen.dart',
         show: ['ProviderMarketplaceScreen'],
+      },
+      {
+        uri: 'screens/provider_requests_screen.dart',
+        show: ['ProviderRequestsScreen'],
       },
       { uri: 'screens/quote_request_screen.dart', show: ['QuoteRequestScreen'] },
       { uri: 'widgets/provider_auth_gate.dart', show: ['ProviderAuthGate'] },
@@ -2271,6 +2275,11 @@ const trackedCollaborationBatchContracts = [
   },
   {
     source: 'mobile/lib/features/marketplace/screens/provider_marketplace_screen.dart',
+    target: 'mobile/lib/features/chat/chat_api.dart',
+    show: ['ChatProvider', 'ConversationListView'],
+  },
+  {
+    source: 'mobile/lib/features/marketplace/screens/provider_marketplace_screen.dart',
     target: 'mobile/lib/features/finance/finance_api.dart',
     show: ['FinanceProvider'],
   },
@@ -2284,12 +2293,27 @@ const trackedCollaborationBatchContracts = [
     target: 'mobile/lib/features/wedding_plans/wedding_plans_api.dart',
     show: [
       'DashboardSummaryProvider',
-      'WeddingPlanStage',
+      'WeddingPlanStageState',
       'WeddingPlansProvider',
       'WeddingStageContextLine',
       'WeddingStageDomain',
       'resolveWeddingPlanStage',
     ],
+  },
+  {
+    source: 'mobile/lib/features/marketplace/screens/provider_requests_screen.dart',
+    target: 'mobile/lib/features/chat/chat_api.dart',
+    show: ['ChatApi'],
+  },
+  {
+    source: 'mobile/lib/features/marketplace/screens/provider_requests_screen.dart',
+    target: 'mobile/lib/features/finance/finance_api.dart',
+    show: ['FinanceProvider'],
+  },
+  {
+    source: 'mobile/lib/features/marketplace/screens/provider_requests_screen.dart',
+    target: 'mobile/lib/features/wedding_plans/wedding_plans_api.dart',
+    show: ['DashboardSummaryProvider'],
   },
   {
     source: 'mobile/lib/features/provider_portal/screens/provider_portal_screen.dart',
@@ -3105,6 +3129,7 @@ const trackedCompositionRootContracts = [
           'ProviderDetailsScreen',
           'ProviderMarketplaceScreen',
           'ProviderQuoteInitialContext',
+          'ProviderRequestsScreen',
           'QuoteRequestScreen',
         ],
       },

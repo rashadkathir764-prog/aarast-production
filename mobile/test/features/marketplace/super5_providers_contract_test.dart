@@ -96,7 +96,7 @@ void main() {
   );
 
   testWidgets(
-    'authenticated user opens one quote-scoped conversation per launch',
+    'a board row opens its service page once per launch',
     (tester) async {
       final state = _FakeMarketplaceProvider(
         quoteRequests: const [
@@ -123,38 +123,32 @@ void main() {
         withRouter: true,
       );
 
-      await tester.tap(find.byKey(const Key('user-conversations-action')));
-      await tester.pumpAndSettle();
-      expect(find.text('conversations-opened'), findsOneWidget);
-
-      await tester.binding.handlePopRoute();
-      await tester.pumpAndSettle();
-      await _expandQuoteInbox(tester);
-      await tester.scrollUntilVisible(
-        find.byKey(const Key('quote-conversation-quote-user-1')),
-        320,
-        scrollable: find.byType(Scrollable).first,
-      );
-      await tester.ensureVisible(
-        find.byKey(const Key('quote-conversation-quote-user-1')),
+      await tester.tap(
+        find.descendant(
+          of: find.byKey(const ValueKey('providers-tabs')),
+          matching: find.text('طلباتي'),
+        ),
       );
       await tester.pumpAndSettle();
-      final conversation = find.byKey(
-        const Key('quote-conversation-quote-user-1'),
+      final row = find.byKey(
+        const ValueKey('provider-board-category:استديو وعد'),
       );
-      final router = GoRouter.of(tester.element(conversation));
-      final onPressed = tester.widget<IconButton>(conversation).onPressed!;
-
-      onPressed();
-      onPressed();
+      expect(row, findsOneWidget);
+      final inkWell = tester.widget<InkWell>(
+        find.descendant(of: row, matching: find.byType(InkWell)).first,
+      );
+      inkWell.onTap!();
+      inkWell.onTap!();
       await tester.pumpAndSettle();
 
-      expect(find.text('quote-chat-quote-user-1'), findsOneWidget);
-
+      expect(find.textContaining('requests-item='), findsOneWidget);
+      final router = GoRouter.of(
+        tester.element(find.textContaining('requests-item=')),
+      );
       router.pop();
       await tester.pumpAndSettle();
       expect(find.byType(ProviderMarketplaceScreen), findsOneWidget);
-      expect(find.text('quote-chat-quote-user-1'), findsNothing);
+      expect(find.textContaining('requests-item='), findsNothing);
       expect(tester.takeException(), isNull);
     },
   );
@@ -431,7 +425,7 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('accepted offer shows the automatically created finance cost', (
+  testWidgets('a chosen offer reads as waiting for the booking request', (
     tester,
   ) async {
     final state = _FakeMarketplaceProvider(
@@ -471,17 +465,12 @@ void main() {
       ],
     );
 
-    await _pumpMarketplace(tester, state, authenticated: true);
-    await _expandQuoteInbox(tester);
-    await tester.scrollUntilVisible(
-      find.textContaining('إنشاء التكلفة تلقائيًا'),
-      360,
-      scrollable: find.byType(Scrollable).first,
-    );
+    await _pumpMarketplace(tester, state, authenticated: true, tab: 'طلباتي');
 
-    expect(find.textContaining('250,000 ر.ي'), findsWidgets);
+    // The chosen provider waits for the booking request; the cost itself is
+    // shown on the service page (provider_requests_test).
+    expect(find.text('اخترت قاعة السلام · اطلب الحجز'), findsOneWidget);
     expect(find.textContaining('250000 YER'), findsNothing);
-    expect(find.textContaining('إنشاء التكلفة تلقائيًا'), findsOneWidget);
     expect(find.textContaining('تم إنشاء مصروف'), findsNothing);
     expect(find.textContaining('تم إنشاء دين'), findsNothing);
     expect(tester.takeException(), isNull);
@@ -586,11 +575,8 @@ void main() {
         find.byKey(const Key('city-filter-trigger')).hitTestable(),
         findsOneWidget,
       );
-      expect(
-        find.byKey(const Key('quote-accept-quote-actionable')).hitTestable(),
-        findsNothing,
-      );
-      expect(find.textContaining('1 بحاجة قرار').hitTestable(), findsOneWidget);
+      // The waiting offer is in the status line on every tab.
+      expect(find.text('عرض ينتظرك').hitTestable(), findsOneWidget);
 
       final firstProvider = find
           .byKey(const Key('provider-marketplace-card-provider-1'))
@@ -775,17 +761,13 @@ void main() {
   );
 }
 
-Future<void> _expandQuoteInbox(WidgetTester tester) async {
-  await tester.tap(find.text('طلباتك وعروضك'));
-  await tester.pumpAndSettle();
-}
-
 Future<void> _pumpMarketplace(
   WidgetTester tester,
   _FakeMarketplaceProvider state, {
   bool authenticated = false,
   bool withRouter = false,
   bool embedded = false,
+  String tab = 'استكشف',
 }) async {
   SharedPreferences.setMockInitialValues({});
   final preferences = await SharedPreferences.getInstance();
@@ -878,6 +860,11 @@ Future<void> _pumpMarketplace(
                 ),
               ),
               GoRoute(
+                path: '/wedding-plans/:id/providers/requests',
+                builder: (context, state) =>
+                    Scaffold(body: Text('requests-${state.uri.query}')),
+              ),
+              GoRoute(
                 path: '/conversations',
                 builder: (context, state) =>
                     const Scaffold(body: Text('conversations-opened')),
@@ -913,6 +900,12 @@ Future<void> _pumpMarketplace(
 
   await tester.pumpWidget(MultiProvider(providers: providers, child: child));
   await tester.pumpAndSettle();
+  // A signed-in plan lands on «طلباتي»; directory tests open «استكشف».
+  final tabs = find.byKey(const ValueKey('providers-tabs'));
+  if (tabs.evaluate().isNotEmpty && tab != 'طلباتي') {
+    await tester.tap(find.descendant(of: tabs, matching: find.text(tab)));
+    await tester.pumpAndSettle();
+  }
 }
 
 MarketplaceProvider _provider({

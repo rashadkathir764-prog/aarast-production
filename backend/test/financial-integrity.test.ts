@@ -348,6 +348,7 @@ test("quote service categories match budget categories logically and preserve th
   const categories = [
     { id: "hall", name: "قاعات الأفراح", normalizedName: "قاعات الأفراح" },
     { id: "photo", name: "التصوير", normalizedName: "التصوير" },
+    { id: "qat", name: "القات والمقيل", normalizedName: "القات والمقيل" },
     { id: "other", name: "اخرى", normalizedName: "اخرى" },
   ];
   assert.equal(
@@ -358,6 +359,8 @@ test("quote service categories match budget categories logically and preserve th
     findLogicalBudgetCategory(categories, "Photography")?.id,
     "photo",
   );
+  // A مقوّت's offer files under the qat item, not «أخرى».
+  assert.equal(findLogicalBudgetCategory(categories, "مقوّتين")?.id, "qat");
   assert.equal(findLogicalBudgetCategory(categories, "خدمة خاصة"), null);
   assert.equal(findOtherBudgetCategory(categories)?.id, "other");
   assert.equal(normalizeBudgetCategoryName("  أخرى  "), "أخرى");

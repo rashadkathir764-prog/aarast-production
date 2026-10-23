@@ -25,6 +25,7 @@ export 'screens/favorite_providers_screen.dart' show FavoriteProvidersScreen;
 export 'screens/provider_details_screen.dart' show ProviderDetailsScreen;
 export 'screens/provider_marketplace_screen.dart'
     show ProviderMarketplaceScreen;
+export 'screens/provider_requests_screen.dart' show ProviderRequestsScreen;
 export 'screens/quote_request_screen.dart' show QuoteRequestScreen;
 export 'widgets/provider_auth_gate.dart' show ProviderAuthGate;
 export 'widgets/quote_status_chip.dart' show QuoteStatusChip;

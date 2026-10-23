@@ -20,6 +20,7 @@ import 'package:aarast_mobile/features/marketplace/data/marketplace_api.dart';
 import 'package:aarast_mobile/features/marketplace/models/marketplace_models.dart';
 import 'package:aarast_mobile/features/marketplace/providers/marketplace_provider.dart';
 import 'package:aarast_mobile/features/marketplace/screens/provider_details_screen.dart';
+import 'package:aarast_mobile/features/marketplace/screens/provider_requests_screen.dart';
 import 'package:aarast_mobile/features/marketplace/widgets/provider_auth_gate.dart';
 import 'package:aarast_mobile/features/sharing/models/shared_member.dart';
 import 'package:aarast_mobile/features/shell/main_shell.dart';
@@ -122,6 +123,14 @@ void main() {
       await tester.tap(find.text('المزودين'));
       await tester.pump();
       await tester.pumpAndSettle();
+      // The plan lands on «طلباتي»; the directory is «استكشف».
+      await tester.tap(
+        find.descendant(
+          of: find.byKey(const ValueKey('providers-tabs')),
+          matching: find.text('استكشف'),
+        ),
+      );
+      await tester.pumpAndSettle();
 
       final marketplaceScreen = find.byKey(
         const ValueKey('providers-$_planId'),
@@ -198,6 +207,14 @@ void main() {
       reviewButton.onPressed!();
       await tester.pumpAndSettle();
 
+      // «مراجعة العرض» returns the quote, and its service page opens above
+      // the still-mounted tab.
+      expect(marketplace.lastLoadedQuoteId, _quoteId);
+      expect(find.byType(ProviderRequestsScreen), findsOneWidget);
+      expect(find.byKey(const ValueKey('requests-offer-$_quoteId')), findsOneWidget);
+      await tester.tap(find.byTooltip('رجوع'));
+      await tester.pumpAndSettle();
+
       _expectMarketplaceBodyActive(
         tester,
         router: router,
@@ -205,8 +222,6 @@ void main() {
         originalPosition: marketplacePosition,
         expectedOffset: offsetBeforeQuoteReview,
       );
-      expect(marketplace.lastLoadedQuoteId, _quoteId);
-      expect(find.byKey(const Key('received-offer-$_quoteId')), findsOneWidget);
 
       await tester.scrollUntilVisible(
         details,
@@ -227,38 +242,7 @@ void main() {
       quoteEvent.onTap!();
       await tester.pumpAndSettle();
 
-      _expectMarketplaceBodyActive(
-        tester,
-        router: router,
-        originalElement: marketplaceElement,
-        originalPosition: marketplacePosition,
-        expectedOffset: offsetBeforeNestedConversation,
-      );
-      expect(marketplace.lastLoadedQuoteId, _quoteId);
-
-      await tester.ensureVisible(find.byKey(const Key('quote-inbox-toggle')));
-      await tester.pumpAndSettle();
-      final conversation = find.byKey(
-        const Key('quote-conversation-$_quoteId'),
-      );
-      if (conversation.evaluate().isEmpty) {
-        await tester.tap(find.byKey(const Key('quote-inbox-toggle')));
-        await tester.pumpAndSettle();
-      }
-      await tester.ensureVisible(conversation);
-      await tester.pumpAndSettle();
-      final offsetBeforeConversation = marketplacePosition.pixels;
-
-      await tester.tap(conversation);
-      await tester.pumpAndSettle();
-
-      final chatScreen = find.byType(ChatScreen);
-      expect(chatScreen, findsOneWidget);
-      expect(
-        GoRouterState.of(tester.element(chatScreen)).uri.path,
-        '/quotes/$_quoteId/conversation',
-      );
-
+      expect(find.byType(ProviderRequestsScreen), findsOneWidget);
       await tester.tap(find.byTooltip('رجوع'));
       await tester.pumpAndSettle();
 
@@ -267,9 +251,9 @@ void main() {
         router: router,
         originalElement: marketplaceElement,
         originalPosition: marketplacePosition,
-        expectedOffset: offsetBeforeConversation,
+        expectedOffset: offsetBeforeNestedConversation,
       );
-      expect(conversation, findsOneWidget);
+      expect(marketplace.lastLoadedQuoteId, _quoteId);
       expect(tester.takeException(), isNull);
     },
   );
@@ -302,6 +286,14 @@ GoRouter _navigationRouter() {
         },
       ),
       GoRoute(
+        path: '/wedding-plans/:id/providers/requests',
+        builder: (_, state) => ProviderRequestsScreen(
+          weddingPlanId: state.pathParameters['id'] ?? '',
+          itemKey: state.uri.queryParameters['item'],
+          quoteId: state.uri.queryParameters['quote'],
+        ),
+      ),
+      GoRoute(
         path: '/quotes/:id/conversation',
         builder: (_, state) => ProviderAuthGate(
           resumeLocation: state.uri.toString(),
@@ -327,6 +319,7 @@ void _expectMarketplaceBodyActive(
   expect(router.routeInformationProvider.value.uri.path, AppRouter.home);
   expect(find.byType(ProviderDetailsScreen), findsNothing);
   expect(find.byType(ChatScreen), findsNothing);
+  expect(find.byType(ProviderRequestsScreen), findsNothing);
   final screen = find.byKey(const ValueKey('providers-$_planId'));
   expect(screen, findsOneWidget);
   expect(identical(tester.element(screen), originalElement), isTrue);

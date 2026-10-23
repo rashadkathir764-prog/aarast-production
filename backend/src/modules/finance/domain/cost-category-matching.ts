@@ -27,6 +27,8 @@ const CATEGORY_GROUPS = [
   ["فنان", "فرقة", "فرقه", "ديجي", "dj", "music", "ترفيه"],
   ["فستان", "ازياء", "أزياء", "ملابس", "بدلة", "بدله", "dress"],
   ["صالون", "مكياج", "تجميل", "كوافير", "beauty", "salon"],
+  // The qat for the maqyal: an accepted offer from a مقوّت files under it.
+  ["قات", "مقوت", "مقوّت", "qat"],
 ] as const;
 
 /**

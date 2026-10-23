@@ -318,6 +318,7 @@ void main() {
         'lib/features/sharing/screens/invite_decision_screen.dart',
         'lib/features/sharing/screens/shared_wedding_plans_screen.dart',
         'lib/features/marketplace/screens/provider_marketplace_screen.dart',
+        'lib/features/marketplace/screens/provider_requests_screen.dart',
         'lib/features/marketplace/screens/provider_details_screen.dart',
         'lib/features/marketplace/screens/quote_request_screen.dart',
         'lib/features/provider_portal/screens/provider_apply_screen.dart',

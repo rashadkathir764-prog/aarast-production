@@ -112,9 +112,9 @@
     if (invitation.attendanceStatus === "CONFIRMED") {
       status.className = "rsvp-status rsvp-done";
       const withWhom = companions > 0 ? ` مع ${companions}` : "";
-      status.textContent = `سجّلنا حضورك${withWhom}. تقدر تغيّر ردك متى ما تبي.`;
+      status.textContent = `سجّلنا حضورك${withWhom}. تقدر تغيّر ردك متى ما تشتي.`;
     } else if (invitation.attendanceStatus === "DECLINED") {
-      status.textContent = "سجّلنا اعتذارك. تقدر تغيّر ردك متى ما تبي.";
+      status.textContent = "سجّلنا اعتذارك. تقدر تغيّر ردك متى ما تشتي.";
     } else {
       status.textContent = "";
     }

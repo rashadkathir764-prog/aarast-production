@@ -11,8 +11,9 @@ class CostDraftIntent {
     this.quoteOfferId,
     this.currency,
     this.note,
+    this.outsideParty = false,
   }) : assert(
-         providerId == null || externalPartyName == null,
+         providerId == null || (externalPartyName == null && !outsideParty),
          'A cost cannot target a provider and an external party together.',
        );
 
@@ -27,6 +28,10 @@ class CostDraftIntent {
   final String? quoteOfferId;
   final String? currency;
   final String? note;
+
+  /// Opens «مع مين؟» on someone outside اعّرست before a name is typed
+  /// (x22 «حجزت برا اعّرست»).
+  final bool outsideParty;
 
   /// Optional convenience used by the form to offer creating the first
   /// payment schedule after the cost itself is saved. It is never sent as a

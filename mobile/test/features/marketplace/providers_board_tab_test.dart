@@ -7,7 +7,12 @@ import 'package:aarast_mobile/features/account_contexts/providers/account_contex
 import 'package:aarast_mobile/features/auth/data/auth_repository.dart';
 import 'package:aarast_mobile/core/session/safe_user.dart';
 import 'package:aarast_mobile/features/auth/providers/auth_controller.dart';
+import 'package:aarast_mobile/features/finance/data/finance_api.dart';
+import 'package:aarast_mobile/features/finance/models/budget_category.dart';
+import 'package:aarast_mobile/features/finance/models/cost_draft_intent.dart';
+import 'package:aarast_mobile/features/finance/models/wedding_cost.dart';
 import 'package:aarast_mobile/features/finance/providers/finance_provider.dart';
+import 'package:aarast_mobile/features/marketplace/models/provider_budget_match_intent.dart';
 import 'package:aarast_mobile/features/marketplace/data/marketplace_api.dart';
 import 'package:aarast_mobile/features/marketplace/models/marketplace_models.dart';
 import 'package:aarast_mobile/features/marketplace/providers/marketplace_provider.dart';
@@ -144,7 +149,9 @@ void main() {
     expect(find.byKey(const ValueKey('providers-tabs')), findsOneWidget);
     expect(find.text('خدمات عرسك'), findsOneWidget);
     // Money is not loaded here, so the request names its own service.
-    final row = find.byKey(const ValueKey('provider-board-category:قاعة الثريا'));
+    final row = find.byKey(
+      const ValueKey('provider-board-category:قاعة الثريا'),
+    );
     expect(row, findsOneWidget);
     expect(find.text('وصلك عرض'), findsOneWidget);
     expect(find.text('عرض ينتظرك'), findsOneWidget);
@@ -194,15 +201,15 @@ void main() {
   testWidgets('a notification about a request opens its service page', (
     tester,
   ) async {
-    final state = _FakeMarketplaceProvider(
-      quoteOnDirectLoad: _receivedQuote(),
-    );
+    final state = _FakeMarketplaceProvider(quoteOnDirectLoad: _receivedQuote());
 
     await _pump(tester, state, initialQuoteId: 'quote-1');
 
     expect(state.directlyLoadedQuoteIds, ['quote-1']);
     expect(
-      find.text('requests /wedding-plans/plan-1/providers/requests?quote=quote-1'),
+      find.text(
+        'requests /wedding-plans/plan-1/providers/requests?quote=quote-1',
+      ),
       findsOneWidget,
     );
   });
@@ -217,6 +224,137 @@ void main() {
     await _pump(tester, state);
 
     expect(find.byType(JourneyListNotice), findsOneWidget);
+  });
+
+  testWidgets('x22 a plan that asked no one starts with the hall', (
+    tester,
+  ) async {
+    final state = _FakeMarketplaceProvider();
+    final finance = _LoadedFinance(
+      items: const [
+        BudgetCategory(
+          id: 'item-hall',
+          weddingPlanId: 'plan-1',
+          name: 'القاعة',
+          allocatedAmount: '1500000',
+        ),
+      ],
+    );
+
+    await _pump(tester, state, finance: finance);
+
+    expect(find.text('ما طلبت من أحد بعد'), findsOneWidget);
+    expect(find.text('نبدأ بالقاعة'), findsOneWidget);
+    expect(find.text('قاعات لعرسك'), findsOneWidget);
+    expect(find.text('على قد بندك في صنعاء'), findsOneWidget);
+    expect(find.text('حجزت برا اعّرست'), findsOneWidget);
+    expect(find.text('استكشف كل الخدمات'), findsOneWidget);
+    // Nothing knows which halls are free on a day, and an empty board or
+    // the tabs would say "nothing yet" a second time.
+    expect(find.textContaining('فاضية'), findsNothing);
+    expect(find.byKey(const ValueKey('providers-tabs')), findsNothing);
+    expect(find.byKey(const ValueKey('providers-search')), findsNothing);
+    expect(find.text('خدمات عرسك'), findsNothing);
+
+    await tester.tap(find.text('قاعات لعرسك'));
+    await tester.pumpAndSettle();
+    expect(state.budgetIntents.single.budgetCategoryName, 'القاعة');
+    expect(state.budgetIntents.single.allocatedAmount, '1500000');
+    expect(find.byKey(const ValueKey('providers-tabs')), findsOneWidget);
+  });
+
+  testWidgets('x22 «حجزت برا اعّرست» opens the agreement on someone outside', (
+    tester,
+  ) async {
+    await _pump(tester, _FakeMarketplaceProvider(), finance: _LoadedFinance());
+
+    await tester.tap(find.text('حجزت برا اعّرست'));
+    await tester.pumpAndSettle();
+    expect(find.text('cost outside true'), findsOneWidget);
+  });
+
+  testWidgets('x22 «استكشف كل الخدمات» gives way to the tabs', (tester) async {
+    await _pump(tester, _FakeMarketplaceProvider(), finance: _LoadedFinance());
+
+    await tester.tap(find.text('استكشف كل الخدمات'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('نبدأ بالقاعة'), findsNothing);
+    expect(find.byKey(const ValueKey('providers-tabs')), findsOneWidget);
+    expect(find.byKey(const ValueKey('providers-search')), findsOneWidget);
+  });
+
+  testWidgets('x22 is gone once something is booked outside', (tester) async {
+    final finance = _LoadedFinance(
+      items: const [
+        BudgetCategory(
+          id: 'item-hall',
+          weddingPlanId: 'plan-1',
+          name: 'القاعة',
+        ),
+      ],
+      agreements: const [
+        WeddingCost(
+          id: 'cost-1',
+          weddingPlanId: 'plan-1',
+          budgetCategoryId: 'item-hall',
+          title: 'القاعة',
+          totalAmount: '1500000',
+          paidAmount: '0',
+          remainingAmount: '1500000',
+          status: 'ACTIVE',
+          partyName: 'قاعة سبأ',
+        ),
+      ],
+    );
+
+    await _pump(tester, _FakeMarketplaceProvider(), finance: finance);
+
+    expect(find.text('نبدأ بالقاعة'), findsNothing);
+    expect(find.text('قاعة سبأ · خارج اعّرست'), findsOneWidget);
+  });
+
+  testWidgets('x22 is gone once a provider is saved', (tester) async {
+    await _pump(
+      tester,
+      _FakeMarketplaceProvider(
+        favorites: const [FavoriteProvider(id: 'fav-1', providerId: 'p-1')],
+      ),
+      finance: _LoadedFinance(),
+    );
+
+    expect(find.text('نبدأ بالقاعة'), findsNothing);
+    expect(find.byKey(const ValueKey('providers-tabs')), findsOneWidget);
+  });
+
+  testWidgets('x22 waits for the money items instead of flashing', (
+    tester,
+  ) async {
+    await _pump(
+      tester,
+      _FakeMarketplaceProvider(),
+      finance: _LoadedFinance(loading: true),
+    );
+
+    expect(find.text('نبدأ بالقاعة'), findsNothing);
+    expect(find.text('خدمات عرسك'), findsNothing);
+    expect(find.byKey(const ValueKey('providers-tabs')), findsNothing);
+  });
+
+  testWidgets('x22 stays readable at 320px and 1.3 text', (tester) async {
+    tester.view.devicePixelRatio = 1;
+    tester.view.physicalSize = const Size(320, 900);
+    tester.platformDispatcher.textScaleFactorTestValue = 1.3;
+    addTearDown(() {
+      tester.view.resetDevicePixelRatio();
+      tester.view.resetPhysicalSize();
+      tester.platformDispatcher.clearTextScaleFactorTestValue();
+    });
+
+    await _pump(tester, _FakeMarketplaceProvider(), finance: _LoadedFinance());
+
+    expect(tester.takeException(), isNull);
+    expect(find.text('نبدأ بالقاعة'), findsOneWidget);
   });
 
   testWidgets('the board stays readable at 320px and 1.3 text', (tester) async {
@@ -258,6 +396,12 @@ Future<GoRouter> _pump(
       GoRoute(
         path: '/wedding-plans/:id/providers/requests',
         builder: (context, state) => Text('requests ${state.uri}'),
+      ),
+      GoRoute(
+        path: '/wedding-plans/:id/money/costs/create',
+        builder: (context, state) => Text(
+          'cost outside ${(state.extra as CostDraftIntent?)?.outsideParty}',
+        ),
       ),
     ],
   );
@@ -316,10 +460,7 @@ Future<GoRouter> _pump(
         if (finance != null)
           ChangeNotifierProvider<FinanceProvider>.value(value: finance),
       ],
-      child: MaterialApp.router(
-        theme: AppTheme.light(),
-        routerConfig: router,
-      ),
+      child: MaterialApp.router(theme: AppTheme.light(), routerConfig: router),
     ),
   );
   await tester.pumpAndSettle();
@@ -353,13 +494,60 @@ class _StaticContextsGateway implements AccountContextsGateway {
   Future<AccountContext> validateContext(String contextKey) async => context;
 }
 
+/// The plan's money, already loaded.
+class _LoadedFinance extends FinanceProvider {
+  _LoadedFinance({
+    this.items = const [],
+    this.agreements = const [],
+    this.loading = false,
+  }) : super(FinanceApi(ApiClient(tokenProvider: () async => 'test-token')));
+
+  final List<BudgetCategory> items;
+  final List<WeddingCost> agreements;
+  final bool loading;
+
+  @override
+  String? get loadedPlanId => 'plan-1';
+
+  @override
+  bool get isLoading => loading;
+
+  @override
+  bool get canManageMoney => true;
+
+  @override
+  List<BudgetCategory> get categories => items;
+
+  @override
+  List<WeddingCost> get costs => agreements;
+
+  @override
+  Future<void> loadMoney(
+    String planId, {
+    bool canViewMoney = true,
+    bool canManageMoney = true,
+  }) async {}
+}
+
 class _FakeMarketplaceProvider extends ProviderMarketplaceProvider {
   _FakeMarketplaceProvider({
     List<QuoteRequest> quoteRequests = const [],
     this.quoteOnDirectLoad,
     this.quoteRequestsError,
+    this.favorites = const [],
   }) : quoteRequestsData = List.of(quoteRequests),
        super(MarketplaceApi(ApiClient(tokenProvider: () async => null)));
+
+  final List<FavoriteProvider> favorites;
+  final budgetIntents = <ProviderBudgetMatchIntent>[];
+
+  @override
+  List<FavoriteProvider> get favoriteProviders => favorites;
+
+  @override
+  Future<void> applyBudgetMatchIntent(ProviderBudgetMatchIntent intent) async {
+    budgetIntents.add(intent);
+  }
 
   final List<QuoteRequest> quoteRequestsData;
   final QuoteRequest? quoteOnDirectLoad;

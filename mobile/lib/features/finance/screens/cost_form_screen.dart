@@ -137,7 +137,8 @@ class _CostFormScreenState extends State<CostFormScreen> {
     _agreementDate = cost?.agreementDate;
     _partyKind = _providerId != null
         ? _PartyKind.provider
-        : _partyNameController.text.trim().isNotEmpty
+        : _partyNameController.text.trim().isNotEmpty ||
+              intent?.outsideParty == true
         ? _PartyKind.external
         : _PartyKind.none;
     _showMore =

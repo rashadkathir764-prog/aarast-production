@@ -17,7 +17,7 @@ import '../../onboarding/onboarding_api.dart'
     show GuestOnboardingStorage, GuestPersona, WeddingLocationDraft;
 import '../../wedding_plans/wedding_plans_api.dart' show WeddingPlansProvider;
 import '../../chat/chat_api.dart' show ChatProvider, ConversationListView;
-import '../../finance/finance_api.dart' show FinanceProvider;
+import '../../finance/finance_api.dart' show CostDraftIntent, FinanceProvider;
 import '../models/marketplace_models.dart';
 import '../models/provider_board.dart';
 import '../widgets/provider_board_view.dart';
@@ -60,6 +60,9 @@ class _ProviderMarketplaceScreenState extends State<ProviderMarketplaceScreen> {
   String? _focusedQuoteId;
   int _tab = 0;
   bool _chatsLoaded = false;
+
+  /// x22 gives way to the tabs once a way to start was picked.
+  bool _firstVisitLeft = false;
 
   /// f02 has no search box of its own: the header's search opens one.
   bool _searchOpen = false;
@@ -183,7 +186,15 @@ class _ProviderMarketplaceScreenState extends State<ProviderMarketplaceScreen> {
               ? const ['طلباتي', 'استكشف', 'المحادثات', 'المفضلة']
               : const ['استكشف'];
           final tab = _tab.clamp(0, tabs.length - 1);
-          final board = planMode ? _board(provider) : const <ProviderBoardRow>[];
+          final board = planMode
+              ? _board(provider)
+              : const <ProviderBoardRow>[];
+          // x22: nothing asked, booked or saved yet, so the tab is where to
+          // start, not an empty board.
+          // Null while that is not known yet.
+          final bool? firstVisit = tabs[tab] == 'طلباتي'
+              ? _firstVisitOf(provider, board)
+              : false;
           return Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
@@ -196,24 +207,27 @@ class _ProviderMarketplaceScreenState extends State<ProviderMarketplaceScreen> {
                 ),
                 child: JourneyTabHeader(
                   title: 'المزودين',
-                  status: planMode
+                  status: firstVisit != false
+                      ? 'ما طلبت من أحد بعد'
+                      : planMode
                       ? providerBoardStatus(board)
                       : 'دوّر على مزودين عرسك',
                   actions: [
-                    JourneyRoundButton(
-                      key: const ValueKey('providers-search'),
-                      icon: _searchShown && tabs[tab] == 'استكشف'
-                          ? LucideIcons.x
-                          : LucideIcons.search,
-                      tooltip: _searchShown && tabs[tab] == 'استكشف'
-                          ? 'سكّر البحث'
-                          : 'دوّر على مزود',
-                      onPressed: () => _toggleSearch(provider, tabs, tab),
-                    ),
+                    if (firstVisit == false)
+                      JourneyRoundButton(
+                        key: const ValueKey('providers-search'),
+                        icon: _searchShown && tabs[tab] == 'استكشف'
+                            ? LucideIcons.x
+                            : LucideIcons.search,
+                        tooltip: _searchShown && tabs[tab] == 'استكشف'
+                            ? 'سكّر البحث'
+                            : 'دوّر على مزود',
+                        onPressed: () => _toggleSearch(provider, tabs, tab),
+                      ),
                   ],
                 ),
               ),
-              if (tabs.length > 1)
+              if (tabs.length > 1 && firstVisit == false)
                 Padding(
                   padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
                   child: JourneyTabSwitch(
@@ -226,6 +240,11 @@ class _ProviderMarketplaceScreenState extends State<ProviderMarketplaceScreen> {
                 ),
               Expanded(
                 child: switch (tabs[tab]) {
+                  'طلباتي' when firstVisit == true => _firstVisitView(
+                    provider,
+                    tabs,
+                  ),
+                  'طلباتي' when firstVisit == null => _firstVisitPending(),
                   'طلباتي' => _boardTab(provider, board, tabs),
                   'المحادثات' => const ConversationListView(embedded: true),
                   'المفضلة' => _favoritesTab(provider),
@@ -238,6 +257,8 @@ class _ProviderMarketplaceScreenState extends State<ProviderMarketplaceScreen> {
       ),
     );
   }
+
+  void _leaveFirstVisit() => setState(() => _firstVisitLeft = true);
 
   bool get _searchShown =>
       _searchOpen || _searchController.text.trim().isNotEmpty;
@@ -279,8 +300,7 @@ class _ProviderMarketplaceScreenState extends State<ProviderMarketplaceScreen> {
           phase: JourneyListPhase.loading,
           section: JourneySection.providers,
         )
-      else if (provider.providers.isEmpty &&
-          !_hasDirectoryFilters(provider))
+      else if (provider.providers.isEmpty && !_hasDirectoryFilters(provider))
         // Nothing is filtered, so "change the filters" would be
         // a false lead: the directory itself is empty.
         const JourneyListState(
@@ -344,9 +364,7 @@ class _ProviderMarketplaceScreenState extends State<ProviderMarketplaceScreen> {
           _ProviderCard(
             provider: item,
             budgetIntent: provider.budgetMatchIntent,
-            isFavorite: provider.favoriteProviderIds.contains(
-              item.id,
-            ),
+            isFavorite: provider.favoriteProviderIds.contains(item.id),
             onFavorite: () async {
               if (await AuthActionGuard.blockProtectedSubmitWithoutAccount(
                 context,

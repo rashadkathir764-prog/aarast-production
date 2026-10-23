@@ -900,6 +900,142 @@ class JourneyChoiceCard extends StatelessWidget {
   }
 }
 
+/// One way to start in [JourneyStartWays].
+class JourneyStartWay {
+  const JourneyStartWay({
+    required this.icon,
+    required this.title,
+    required this.subtitle,
+    required this.onTap,
+    this.key,
+  });
+
+  final IconData icon;
+  final String title;
+  final String subtitle;
+  final VoidCallback onTap;
+  final Key? key;
+}
+
+/// A tab's first visit (x21, x22): a big icon, what to start with and why,
+/// and the ways to start. The first way is the one we suggest, so it carries
+/// the tab's colour as a border.
+class JourneyStartWays extends StatelessWidget {
+  const JourneyStartWays({
+    required this.icon,
+    required this.color,
+    required this.soft,
+    required this.title,
+    required this.message,
+    required this.ways,
+    super.key,
+  });
+
+  final IconData icon;
+  final Color color;
+  final Color soft;
+  final String title;
+  final String message;
+  final List<JourneyStartWay> ways;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        const SizedBox(height: 4),
+        Center(
+          child: JourneyIconTile(
+            icon: icon,
+            color: color,
+            soft: soft,
+            size: 84,
+            radius: 28,
+          ),
+        ),
+        const SizedBox(height: 16),
+        Semantics(
+          header: true,
+          child: Text(
+            title,
+            textAlign: TextAlign.center,
+            style: JourneyType.of(
+              JourneyType.display,
+              weight: JourneyType.bold,
+            ),
+          ),
+        ),
+        const SizedBox(height: 6),
+        Text(
+          message,
+          textAlign: TextAlign.center,
+          style: JourneyType.of(
+            JourneyType.body,
+            color: AarastV3Color.textMuted,
+            height: 1.5,
+          ),
+        ),
+        const SizedBox(height: 22),
+        for (var i = 0; i < ways.length; i++) ...[
+          if (i > 0) const SizedBox(height: 10),
+          AarastPressable(
+            key: ways[i].key,
+            onTap: ways[i].onTap,
+            semanticLabel: '${ways[i].title}، ${ways[i].subtitle}',
+            borderRadius: BorderRadius.circular(20),
+            child: Container(
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                color: AarastV3Color.paper,
+                borderRadius: BorderRadius.circular(20),
+                border: i == 0 ? Border.all(color: color, width: 2) : null,
+              ),
+              child: Row(
+                children: [
+                  JourneyIconTile(
+                    icon: ways[i].icon,
+                    color: color,
+                    soft: soft,
+                    size: 42,
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          ways[i].title,
+                          style: JourneyType.of(
+                            JourneyType.bodyLarge,
+                            weight: JourneyType.bold,
+                          ),
+                        ),
+                        Text(
+                          ways[i].subtitle,
+                          style: JourneyType.of(
+                            JourneyType.small,
+                            color: AarastV3Color.textMuted,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  const Icon(
+                    LucideIcons.chevronLeft,
+                    size: 18,
+                    color: AarastV3Color.textFaint,
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+}
+
 class _SelectionMark extends StatelessWidget {
   const _SelectionMark({required this.selected});
 

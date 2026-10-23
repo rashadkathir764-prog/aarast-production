@@ -2281,7 +2281,7 @@ const trackedCollaborationBatchContracts = [
   {
     source: 'mobile/lib/features/marketplace/screens/provider_marketplace_screen.dart',
     target: 'mobile/lib/features/finance/finance_api.dart',
-    show: ['FinanceProvider'],
+    show: ['CostDraftIntent', 'FinanceProvider'],
   },
   {
     source: 'mobile/lib/features/marketplace/screens/provider_marketplace_screen.dart',

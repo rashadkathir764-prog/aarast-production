@@ -906,6 +906,14 @@ Future<void> _pumpMarketplace(
   await tester.pumpWidget(MultiProvider(providers: providers, child: child));
   await tester.pumpAndSettle();
   // A signed-in plan lands on «طلباتي»; directory tests open «استكشف».
+  // A plan that asked no one lands on x22 instead, whose own way leads there.
+  final firstVisitExplore = find.byKey(
+    const ValueKey('providers-first-explore'),
+  );
+  if (firstVisitExplore.evaluate().isNotEmpty && tab != 'طلباتي') {
+    await tester.tap(firstVisitExplore);
+    await tester.pumpAndSettle();
+  }
   final tabs = find.byKey(const ValueKey('providers-tabs'));
   if (tabs.evaluate().isNotEmpty && tab != 'طلباتي') {
     await tester.tap(find.descendant(of: tabs, matching: find.text(tab)));

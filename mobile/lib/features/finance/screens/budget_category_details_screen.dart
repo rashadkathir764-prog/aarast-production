@@ -5,14 +5,18 @@ import 'package:provider/provider.dart';
 
 import '../../../core/experience_v3/aarast_v3.dart';
 import '../../../core/routing/app_router.dart';
-import '../../../core/theme/app_theme.dart';
+import '../../../core/utils/arabic_count.dart';
+import '../../../core/utils/money_formatters.dart';
 import '../../../core/widgets/aarast_toast.dart';
 import '../../../core/widgets/aarast_ui.dart';
 import '../models/budget_category.dart';
 import '../models/wedding_cost.dart';
 import '../providers/finance_provider.dart';
-import '../widgets/money_widgets.dart';
 
+part 'budget_category_details_screen.sheets.dart';
+
+/// An item of the budget: what it was given, what was agreed and paid on
+/// it, its agreements, and (w18) what to do when it went over.
 class BudgetCategoryDetailsScreen extends StatefulWidget {
   const BudgetCategoryDetailsScreen({
     required this.weddingPlanId,
@@ -36,326 +40,242 @@ class _BudgetCategoryDetailsScreenState
     WidgetsBinding.instance.addPostFrameCallback((_) => _load());
   }
 
-  @override
-  Widget build(BuildContext context) {
-    final provider = context.watch<FinanceProvider>();
-    final category = provider.categoryById(widget.categoryId);
-    final costs = provider.costs
-        .where((cost) => cost.budgetCategoryId == widget.categoryId)
-        .toList();
-
-    return MoneySubpageScaffold(
-      title: category?.name ?? 'تفاصيل التصنيف',
-      subtitle: 'كل التكاليف والدفعات المرتبطة بهذا التصنيف.',
-      showBack: true,
-      onBack: () => context.pop(),
-      actions: [
-        const MoneyPrivacyButton(compact: true),
-        if (category != null && provider.canManageMoney)
-          PopupMenuButton<String>(
-            key: const ValueKey('money-category-overflow'),
-            tooltip: 'إجراءات التصنيف',
-            onSelected: (value) => _onAction(value, category),
-            itemBuilder: (context) => [
-              const PopupMenuItem(value: 'edit', child: Text('تعديل التصنيف')),
-              PopupMenuItem(
-                value: 'delete',
-                enabled: costs.isEmpty,
-                child: Text(
-                  costs.isEmpty ? 'حذف التصنيف' : 'لا يمكن الحذف لوجود تكاليف',
-                ),
-              ),
-            ],
-            padding: EdgeInsets.zero,
-            constraints: const BoxConstraints.tightFor(width: 40, height: 40),
-            iconSize: 19,
-            splashRadius: 20,
-            color: AppTheme.surfaceRaised,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(AppTheme.radiusMd),
-            ),
-            icon: const Icon(
-              LucideIcons.moreVertical,
-              color: AppTheme.textSecondary,
-            ),
-          ),
-      ],
-      child: RefreshIndicator(
-        color: AppTheme.brand,
-        onRefresh: _load,
-        child: ListView(
-          padding: const EdgeInsets.only(bottom: 28),
-          children: [
-            if (provider.isLoading && category == null)
-              const AarastScreenLoading(label: 'جاري تحميل التصنيف')
-            else if (category == null)
-              AarastErrorState(
-                title: 'التصنيف غير موجود',
-                message:
-                    provider.errorMessage ??
-                    'ربما تم حذف التصنيف أو لم يعد متاحًا.',
-                onRetry: _load,
-              )
-            else ...[
-              if (provider.errorMessage != null) ...[
-                MoneyMessageBanner(
-                  message: provider.errorMessage!,
-                  error: true,
-                ),
-                const SizedBox(height: 12),
-              ],
-              _CategoryHero(
-                category: category,
-                currency: provider.summary.currency,
-              ),
-              const SizedBox(height: 20),
-              AarastSectionHeader(
-                title: 'التكاليف',
-                icon: LucideIcons.receipt,
-                actionLabel: provider.canManageMoney ? 'إضافة تكلفة' : null,
-                onAction: provider.canManageMoney
-                    ? () async {
-                        final changed = await context.push<bool>(
-                          AppRouter.moneyCostCreate(
-                            widget.weddingPlanId,
-                            categoryId: category.id,
-                          ),
-                        );
-                        if (changed == true) await _load();
-                      }
-                    : null,
-              ),
-              const SizedBox(height: 10),
-              if (costs.isEmpty)
-                const AarastEmptyState(
-                  icon: LucideIcons.receipt,
-                  title: 'لا توجد تكاليف في هذا التصنيف',
-                  message: 'أضف تكلفة عندما تتفق على مبلغ أو تسجل جهة.',
-                )
-              else
-                for (final cost in costs) ...[
-                  CostCard(
-                    cost: cost,
-                    currency: provider.summary.currency,
-                    categoryName: category.name,
-                    onTap: () => context.push(
-                      AppRouter.moneyCostDetails(widget.weddingPlanId, cost.id),
-                    ),
-                  ),
-                  const SizedBox(height: 10),
-                ],
-            ],
-          ],
-        ),
-      ),
-    );
-  }
-
   Future<void> _load() {
     return context.read<FinanceProvider>().loadMoney(widget.weddingPlanId);
   }
 
-  Future<void> _onAction(String action, BudgetCategory category) async {
-    if (action == 'edit') {
-      final changed = await context.push<bool>(
-        AppRouter.moneyCategoryEdit(widget.weddingPlanId, category.id),
-        extra: category,
+  String _plain(num value, String currency) =>
+      compactMoneyParts(value, currencyCode: currency).plainText;
+
+  @override
+  Widget build(BuildContext context) {
+    final provider = context.watch<FinanceProvider>();
+    final category = provider.categoryById(widget.categoryId);
+    final currency = provider.summary.currency;
+    final costs = provider.costs
+        .where((cost) => cost.budgetCategoryId == widget.categoryId)
+        .toList();
+    final canManage = provider.canManageMoney;
+
+    final Widget body;
+    if (provider.isLoading && category == null) {
+      body = const JourneyListState(
+        phase: JourneyListPhase.loading,
+        section: JourneySection.money,
       );
-      if (changed == true) await _load();
-      return;
-    }
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (dialogContext) => AarastDialog(
-        title: const Text('حذف التصنيف؟'),
-        content: const Text('سيُحذف التصنيف الفارغ نهائيًا.'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(dialogContext, false),
-            child: const Text('تراجع'),
+    } else if (category == null) {
+      body = JourneyListState(
+        phase: provider.errorMessage == null
+            ? JourneyListPhase.empty
+            : JourneyListPhase.error,
+        section: JourneySection.money,
+        emptyIcon: LucideIcons.tag,
+        emptyTitle: 'هذا البند ما عاد موجود',
+        emptyAction: 'ارجع',
+        onEmptyAction: () => context.pop(),
+        onRetry: _load,
+      );
+    } else {
+      final allocated = moneyValue(category.allocatedAmount);
+      final agreed = moneyValue(category.confirmedCost);
+      final over = category.allocatedAmount != null && agreed > allocated
+          ? agreed - allocated
+          : 0;
+      body = Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          if (provider.errorMessage != null) ...[
+            JourneyListNotice(offline: false, onRetry: _load),
+            const SizedBox(height: 12),
+          ],
+          if (over > 0)
+            _OverCard(
+              over: _plain(over, currency),
+              agreed: _plain(agreed, currency),
+              allocated: _plain(allocated, currency),
+            )
+          else
+            _CategorySummary(
+              category: category,
+              plain: (value) => _plain(value, currency),
+            ),
+          if (over > 0 && canManage) ...[
+            const SizedBox(height: 8),
+            const JourneySectionTitle('ايش تسوي؟'),
+            _OverChoices(
+              over: over,
+              overLabel: _plain(over, currency),
+              budgetAfter: _plain(
+                moneyValue(provider.summary.budget.total) + over,
+                currency,
+              ),
+              onGrow: () => _grow(category, over),
+              onMove: () =>
+                  context.push(AppRouter.moneyBudget(widget.weddingPlanId)),
+            ),
+          ],
+          const SizedBox(height: 8),
+          JourneySectionTitle(
+            'الاتفاقات',
+            action: canManage ? 'اتفاق جديد' : null,
+            onAction: canManage ? () => _addCost(category) : null,
           ),
-          FilledButton(
-            onPressed: () => Navigator.pop(dialogContext, true),
-            child: const Text('حذف'),
+          if (costs.isEmpty)
+            JourneyListState(
+              phase: JourneyListPhase.empty,
+              section: JourneySection.money,
+              emptyIcon: LucideIcons.receipt,
+              emptyTitle: 'ما فيه اتفاقات على هذا البند',
+            )
+          else
+            JourneyBox(
+              padding: EdgeInsets.zero,
+              child: JourneyList(
+                children: [
+                  for (final cost in costs)
+                    JourneyListRow(
+                      key: ValueKey('category-cost-${cost.id}'),
+                      icon: LucideIcons.receipt,
+                      color: cost.isCancelled
+                          ? AarastV3Color.textFaint
+                          : AarastV3Color.primary,
+                      soft: cost.isCancelled
+                          ? AarastV3Color.line
+                          : AarastV3Color.primarySoft,
+                      title: cost.title,
+                      subtitle: cost.isCancelled
+                          ? 'ملغي'
+                          : moneyValue(cost.remainingAmount) <= 0
+                          ? 'خالص'
+                          : 'باقي ${_plain(moneyValue(cost.remainingAmount), currency)}',
+                      trailing: Text(
+                        _plain(moneyValue(cost.totalAmount), currency),
+                        style: JourneyType.of(
+                          JourneyType.body,
+                          weight: JourneyType.bold,
+                        ),
+                      ),
+                      onTap: () => context.push(
+                        AppRouter.moneyCostDetails(
+                          widget.weddingPlanId,
+                          cost.id,
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+            ),
+        ],
+      );
+    }
+
+    return AarastScreenFrame(
+      maxWidth: 600,
+      backgroundColor: AarastV3Color.canvas,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 8, 8, 0),
+            child: JourneySubHeader(
+              title: category?.name ?? 'البند',
+              subtitle: category == null
+                  ? null
+                  : costs.isEmpty
+                  ? 'ما فيه اتفاقات'
+                  : arabicCount(
+                      costs.length,
+                      one: 'اتفاق واحد',
+                      two: 'اتفاقين',
+                      few: 'اتفاقات',
+                      many: 'اتفاق',
+                    ),
+              onBack: () => context.pop(),
+              trailing: category != null && canManage
+                  ? _CategoryMenu(
+                      onEdit: () => _edit(category),
+                      onRemove: () => _remove(category, costs.length),
+                    )
+                  : null,
+            ),
+          ),
+          Expanded(
+            child: RefreshIndicator(
+              color: AarastV3Color.primary,
+              onRefresh: _load,
+              child: ListView(
+                physics: const AlwaysScrollableScrollPhysics(),
+                padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
+                children: [body],
+              ),
+            ),
           ),
         ],
       ),
     );
-    if (confirmed != true || !mounted) return;
-    final ok = await context.read<FinanceProvider>().deleteCategory(category);
-    if (ok && mounted) {
-      AarastToast.showSuccess(context, 'تم حذف التصنيف.');
-      context.pop(true);
+  }
+
+  Future<void> _addCost(BudgetCategory category) async {
+    final changed = await context.push<bool>(
+      AppRouter.moneyCostCreate(widget.weddingPlanId, categoryId: category.id),
+    );
+    if (changed == true && mounted) await _load();
+  }
+
+  Future<void> _edit(BudgetCategory category) async {
+    final changed = await context.push<bool>(
+      AppRouter.moneyCategoryEdit(widget.weddingPlanId, category.id),
+      extra: category,
+    );
+    if (changed == true && mounted) await _load();
+  }
+
+  /// w18 «زِد الميزانية»: the item and the budget grow by what it went over.
+  Future<void> _grow(BudgetCategory category, num over) async {
+    final provider = context.read<FinanceProvider>();
+    final ok = await provider.growCategory(category: category, amount: over);
+    if (!mounted) return;
+    if (ok) {
+      AarastToast.showSuccess(context, provider.savedMessage('زادت الميزانية'));
+    } else if (provider.errorMessage != null) {
+      AarastToast.showError(context, provider.errorMessage!);
     }
   }
-}
 
-class _CategoryHero extends StatelessWidget {
-  const _CategoryHero({required this.category, required this.currency});
-
-  final BudgetCategory category;
-  final String currency;
-
-  @override
-  Widget build(BuildContext context) {
-    final allocation = moneyValue(category.allocatedAmount);
-    final confirmed = moneyValue(category.confirmedCost);
-    final over = category.allocatedAmount != null && confirmed > allocation;
-    final progress = allocation <= 0
-        ? 0.0
-        : (confirmed / allocation).clamp(0.0, 1.0);
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        Container(
-          padding: const EdgeInsets.fromLTRB(18, 18, 18, 16),
-          decoration: BoxDecoration(
-            color: AppTheme.surfaceRaised,
-            borderRadius: BorderRadius.circular(AppTheme.radiusXl),
-            border: Border.all(
-              color: over
-                  ? AppTheme.danger.withValues(alpha: .28)
-                  : AppTheme.border,
-            ),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Text(
-                category.allocatedAmount == null ? 'المخصص غير محدد' : 'المخصص',
-                style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                  color: AppTheme.textSecondary,
-                  fontWeight: FontWeight.w800,
-                ),
-              ),
-              const SizedBox(height: 5),
-              if (category.allocatedAmount == null)
-                Text(
-                  'يمكنك إضافة مخصص من تعديل التصنيف.',
-                  style: Theme.of(
-                    context,
-                  ).textTheme.bodyMedium?.copyWith(color: AppTheme.textPrimary),
-                )
-              else
-                FittedBox(
-                  fit: BoxFit.scaleDown,
-                  alignment: AlignmentDirectional.centerStart,
-                  child: MoneyAmountText(
-                    amount: category.allocatedAmount,
-                    currency: currency,
-                    style: Theme.of(context).textTheme.headlineLarge,
-                    color: over ? AppTheme.danger : AppTheme.textPrimary,
-                  ),
-                ),
-              if (category.allocatedAmount != null) ...[
-                const SizedBox(height: 13),
-                AarastV3ProgressLine(
-                  value: progress,
-                  height: 7,
-                  color: over ? AppTheme.danger : AppTheme.brand,
-                  backgroundColor: AppTheme.border,
-                  semanticsLabel: 'استهلاك مخصص التصنيف',
-                ),
-              ],
-              const SizedBox(height: 15),
-              Row(
-                children: [
-                  Expanded(
-                    child: _CategoryValue(
-                      label: 'التكاليف',
-                      amount: category.confirmedCost,
-                      currency: currency,
-                      color: over ? AppTheme.danger : AppTheme.brand,
-                    ),
-                  ),
-                  const _CategoryDivider(),
-                  Expanded(
-                    child: _CategoryValue(
-                      label: 'المدفوع',
-                      amount: category.paid,
-                      currency: currency,
-                      color: AppTheme.success,
-                    ),
-                  ),
-                  const _CategoryDivider(),
-                  Expanded(
-                    child: _CategoryValue(
-                      label: 'غير مدفوع',
-                      amount: category.outstanding,
-                      currency: currency,
-                      color: AppTheme.warning,
-                    ),
-                  ),
-                ],
-              ),
-            ],
-          ),
-        ),
-        if (over) ...[
-          const SizedBox(height: 10),
-          const MoneyMessageBanner(
-            message: 'تكاليف هذا التصنيف تجاوزت المخصص.',
-            error: true,
-          ),
-        ],
-      ],
+  /// x15: an item with agreements cannot go; an empty one is removed, or
+  /// kept without an amount.
+  Future<void> _remove(BudgetCategory category, int agreements) async {
+    final currency = context.read<FinanceProvider>().summary.currency;
+    final allocated = moneyValue(category.allocatedAmount);
+    final choice = await showAarastBottomSheet<_RemoveChoice>(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      builder: (_) => _RemoveCategorySheet(
+        name: category.name,
+        agreements: agreements,
+        allocated: allocated > 0 ? _plain(allocated, currency) : null,
+      ),
     );
-  }
-}
-
-class _CategoryDivider extends StatelessWidget {
-  const _CategoryDivider();
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: 1,
-      height: 38,
-      margin: const EdgeInsets.symmetric(horizontal: 8),
-      color: AppTheme.border,
-    );
-  }
-}
-
-class _CategoryValue extends StatelessWidget {
-  const _CategoryValue({
-    required this.label,
-    required this.amount,
-    required this.currency,
-    required this.color,
-  });
-
-  final String label;
-  final Object? amount;
-  final String currency;
-  final Color color;
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          label,
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-          style: Theme.of(context).textTheme.labelSmall?.copyWith(
-            color: AppTheme.textSecondary,
-            fontWeight: FontWeight.w700,
-          ),
-        ),
-        const SizedBox(height: 3),
-        FittedBox(
-          fit: BoxFit.scaleDown,
-          alignment: AlignmentDirectional.centerStart,
-          child: MoneyAmountText(
-            amount: amount,
-            currency: currency,
-            color: color,
-            style: Theme.of(context).textTheme.labelLarge,
-          ),
-        ),
-      ],
-    );
+    if (choice == null || !mounted) return;
+    final provider = context.read<FinanceProvider>();
+    switch (choice) {
+      case _RemoveChoice.remove:
+        if (await provider.deleteCategory(category) && mounted) {
+          AarastToast.showSuccess(context, 'انشال البند');
+          context.pop(true);
+        }
+      case _RemoveChoice.keepWithoutAmount:
+        final ok = await provider.updateCategory(
+          category: category,
+          name: category.name,
+        );
+        if (ok && mounted) {
+          AarastToast.showSuccess(context, 'صار البند بدون مبلغ');
+        }
+    }
+    if (mounted && provider.errorMessage != null) {
+      AarastToast.showError(context, provider.errorMessage!);
+    }
   }
 }

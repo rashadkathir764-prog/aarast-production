@@ -33,12 +33,13 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('الصالة'), findsWidgets);
-    expect(find.text('المخصص'), findsOneWidget);
-    expect(find.text('التكاليف'), findsWidgets);
-    expect(find.text('المدفوع'), findsWidgets);
-    expect(find.text('غير مدفوع'), findsWidgets);
+    expect(find.text('حطيت له'), findsOneWidget);
+    expect(find.text('اتفقت على'), findsOneWidget);
+    expect(find.text('دفعت'), findsOneWidget);
+    expect(find.text('باقي عليك'), findsOneWidget);
+    expect(find.text('الاتفاقات'), findsOneWidget);
     expect(find.text('حجز الصالة'), findsWidgets);
-    expect(find.text('إضافة تكلفة'), findsOneWidget);
+    expect(find.text('اتفاق جديد'), findsOneWidget);
     final overflow = find.byKey(const ValueKey('money-category-overflow'));
     expect(overflow, findsOneWidget);
     expect(
@@ -47,11 +48,79 @@ void main() {
     );
     expect(tester.getCenter(overflow).dx, lessThan(72));
     expect(tester.takeException(), isNull);
+
+    // x15: an item with an agreement cannot be removed.
+    await tester.tap(overflow);
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('money-category-remove')));
+    await tester.pumpAndSettle();
+    expect(find.text('ما تقدر تشيل الصالة'), findsOneWidget);
+    expect(find.byKey(const ValueKey('category-remove-delete')), findsNothing);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('an item over its share offers to grow the budget (w18)', (
+    tester,
+  ) async {
+    tester.view.devicePixelRatio = 1;
+    tester.view.physicalSize = const Size(320, 1100);
+    addTearDown(tester.view.reset);
+    final api = _CategoryFinanceApi(allocated: '300000');
+
+    await tester.pumpWidget(
+      ChangeNotifierProvider<FinanceProvider>(
+        create: (_) => FinanceProvider(api),
+        child: const MaterialApp(
+          home: Directionality(
+            textDirection: TextDirection.rtl,
+            child: BudgetCategoryDetailsScreen(
+              weddingPlanId: 'plan-1',
+              categoryId: 'category-1',
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const ValueKey('category-over')), findsOneWidget);
+    expect(find.textContaining('عن المحطوط'), findsOneWidget);
+    await tester.tap(find.byKey(const ValueKey('category-over-grow')));
+    await tester.pumpAndSettle();
+
+    // The budget and this item grow by the 200 thousand it went over.
+    expect(api.savedTotalBudget, '1200000');
+    expect(api.savedAllocations, {'category-1': '500000'});
+    expect(tester.takeException(), isNull);
   });
 }
 
 class _CategoryFinanceApi extends FinanceApi {
-  _CategoryFinanceApi() : super(ApiClient(tokenProvider: () async => null));
+  _CategoryFinanceApi({this.allocated = '1000000'})
+    : super(ApiClient(tokenProvider: () async => null));
+
+  final String allocated;
+  String? savedTotalBudget;
+  Map<String, String?>? savedAllocations;
+
+  @override
+  Future<MoneyBudgetReplaceResult> replaceMoneyBudget({
+    required String planId,
+    required String? totalBudget,
+    required String currency,
+    required List<({String? id, String name, String? allocatedAmount})>
+    categories,
+  }) async {
+    savedTotalBudget = totalBudget;
+    savedAllocations = {
+      for (final item in categories) item.id ?? item.name: item.allocatedAmount,
+    };
+    return MoneyBudgetReplaceResult(
+      summary: await getMoneySummary(planId),
+      categories: const [],
+      idMap: const {},
+    );
+  }
 
   static final _now = DateTime.utc(2026, 7, 10);
 
@@ -73,11 +142,11 @@ class _CategoryFinanceApi extends FinanceApi {
         outstanding: '400000',
         count: 1,
       ),
-      categories: const [
+      categories: [
         MoneyCategorySummary(
           categoryId: 'category-1',
           name: 'الصالة',
-          allocatedAmount: '1000000',
+          allocatedAmount: allocated,
           confirmedCost: '500000',
           paid: '100000',
           outstanding: '400000',

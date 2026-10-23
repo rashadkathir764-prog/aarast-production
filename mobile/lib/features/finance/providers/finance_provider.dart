@@ -434,6 +434,32 @@ class FinanceProvider extends ChangeNotifier with SessionScopedNotifier {
     });
   }
 
+  /// w18 «زِد الميزانية»: raises the wedding budget and [category]'s share
+  /// by the same [amount], so the other items keep theirs.
+  Future<bool> growCategory({
+    required BudgetCategory category,
+    required num amount,
+  }) {
+    return _submit(category.weddingPlanId, () async {
+      final total = moneyValue(_summary.budget.total) + amount;
+      await _replaceBudget(
+        planId: category.weddingPlanId,
+        totalBudget: '${total.round()}',
+        currency: _summary.currency,
+        categories: [
+          for (final item in _categories)
+            (
+              id: item.id,
+              name: item.name,
+              allocatedAmount: item.id == category.id
+                  ? '${(moneyValue(item.allocatedAmount) + amount).round()}'
+                  : item.allocatedAmount,
+            ),
+        ],
+      );
+    });
+  }
+
   Future<bool> deleteCategory(BudgetCategory category) {
     return _submit(category.weddingPlanId, () async {
       if (category.costsCount > 0) {

@@ -767,7 +767,17 @@ class JourneyListRow extends StatelessWidget {
               ],
             ),
           ),
-          if (trailing != null) ...[const SizedBox(width: 8), trailing!],
+          if (trailing != null) ...[
+            const SizedBox(width: 8),
+            // An amount or a tag gets at most 45% of the row, so large text
+            // wraps it instead of pushing the row off the screen.
+            ConstrainedBox(
+              constraints: BoxConstraints(
+                maxWidth: MediaQuery.sizeOf(context).width * .45,
+              ),
+              child: trailing,
+            ),
+          ],
         ],
       ),
     );

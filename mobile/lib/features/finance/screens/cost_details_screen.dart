@@ -6,7 +6,6 @@ import 'package:provider/provider.dart';
 import '../../../core/experience_v3/aarast_v3.dart';
 import '../../../core/phone/phone_number_utils.dart';
 import '../../../core/routing/app_router.dart';
-import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/arabic_count.dart';
 import '../../../core/utils/arabic_date_formatter.dart';
 import '../../../core/utils/currency_label.dart';
@@ -112,10 +111,9 @@ class _CostDetailsScreenState extends State<CostDetailsScreen> {
               onBack: _goBack,
               trailing: cost != null && canManage && !cost.isCancelled
                   ? _CostMoreMenu(
-                      canCancel: !cost.hasActivePayments,
                       disabled: provider.isSubmitting,
                       onEdit: () => _editCost(cost),
-                      onCancel: () => _confirmCancel(cost),
+                      onRemove: () => _remove(cost),
                     )
                   : null,
             ),
@@ -416,58 +414,63 @@ class _CostDetailsScreenState extends State<CostDetailsScreen> {
     if (changed == true && mounted) await _load(refreshMoney: true);
   }
 
-  Future<void> _confirmCancel(WeddingCost cost) async {
-    final confirmed = await _confirmAction(
-      title: 'إلغاء التكلفة؟',
-      message:
-          'ستخرج من الإجماليات وتُلغى مواعيد الدفع المفتوحة، بينما يبقى السجل محفوظًا للرجوع إليه.',
-      actionLabel: 'إلغاء التكلفة',
-      danger: true,
-    );
-    if (confirmed != true || !mounted) return;
+  /// w23: an agreement with payments stays (the record must stay true), so
+  /// the way out is reversing a wrong payment first. One without payments
+  /// is cancelled (kept, its dates cancelled) or deleted.
+  Future<void> _remove(WeddingCost cost) async {
     final provider = context.read<FinanceProvider>();
-    final ok = await provider.cancelCost(cost);
-    if (!mounted) return;
-    if (ok) {
-      AarastToast.showSuccess(
-        context,
-        provider.savedMessage('تم إلغاء التكلفة.'),
-      );
-      await _load(refreshMoney: true);
-    }
-  }
-
-  Future<bool?> _confirmAction({
-    required String title,
-    required String message,
-    required String actionLabel,
-    required bool danger,
-  }) {
-    return showDialog<bool>(
+    final active =
+        provider
+            .paymentsForCost(cost.id)
+            .where((payment) => !payment.isReversal && !payment.isReversed)
+            .toList()
+          ..sort((a, b) => b.paidAt.compareTo(a.paidAt));
+    final choice = await showAarastBottomSheet<_RemoveCostChoice>(
       context: context,
-      builder: (dialogContext) => AarastDialog(
-        icon: Icon(
-          danger ? LucideIcons.alertTriangle : LucideIcons.info,
-          color: danger ? AppTheme.danger : AppTheme.brand,
-        ),
-        title: Text(title),
-        content: Text(message),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(dialogContext, false),
-            child: const Text('رجوع'),
-          ),
-          AarastButton(
-            label: actionLabel,
-            expand: false,
-            variant: danger
-                ? AarastButtonVariant.danger
-                : AarastButtonVariant.primary,
-            onPressed: () => Navigator.pop(dialogContext, true),
-          ),
-        ],
+      isScrollControlled: true,
+      useSafeArea: true,
+      builder: (_) => _RemoveCostSheet(
+        title: cost.title,
+        paid: active.isEmpty
+            ? null
+            : compactMoneyParts(
+                moneyValue(cost.paidAmount),
+                currencyCode: provider.summary.currency,
+              ).plainText,
       ),
     );
+    if (choice == null || !mounted) return;
+    switch (choice) {
+      case _RemoveCostChoice.reverseFirst:
+        await context.push(
+          AppRouter.moneyPaymentDetails(
+            widget.weddingPlanId,
+            active.first.id,
+            costId: cost.id,
+          ),
+        );
+        if (mounted) await _load(refreshMoney: true);
+      case _RemoveCostChoice.cancel:
+        if (await provider.cancelCost(cost) && mounted) {
+          AarastToast.showSuccess(
+            context,
+            provider.savedMessage('انلغى الاتفاق'),
+          );
+          await _load(refreshMoney: true);
+        }
+      case _RemoveCostChoice.delete:
+        if (await provider.deleteCost(cost) && mounted) {
+          AarastToast.showSuccess(
+            context,
+            provider.savedMessage('انحذف الاتفاق'),
+          );
+          _goBack();
+          return;
+        }
+    }
+    if (mounted && provider.errorMessage != null) {
+      AarastToast.showError(context, provider.errorMessage!);
+    }
   }
 
   void _goBack() {

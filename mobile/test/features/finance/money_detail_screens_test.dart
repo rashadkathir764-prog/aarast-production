@@ -145,8 +145,8 @@ void main() {
 
         await tester.tap(find.byTooltip('المزيد'));
         await tester.pumpAndSettle();
-        expect(find.text('تعديل التكلفة'), findsOneWidget);
-        expect(find.text('إلغاء التكلفة'), findsNothing);
+        expect(find.text('تعديل الاتفاق'), findsOneWidget);
+        expect(find.text('شيل الاتفاق'), findsOneWidget);
         await tester.tapAt(const Offset(8, 8));
         await tester.pumpAndSettle();
 
@@ -159,6 +159,29 @@ void main() {
         expect(tester.takeException(), isNull);
       },
     );
+
+    testWidgets('an agreement with payments points to reversing (w23)', (
+      tester,
+    ) async {
+      await _pumpMoneyScreen(
+        tester,
+        const CostDetailsScreen(weddingPlanId: 'plan-1', costId: 'cost-1'),
+      );
+
+      await tester.tap(find.byTooltip('المزيد'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const ValueKey('cost-remove')));
+      await tester.pumpAndSettle();
+
+      expect(find.text('ما تقدر تشيل قاعة الحفل'), findsOneWidget);
+      expect(
+        find.byKey(const ValueKey('cost-remove-reverseFirst')),
+        findsOneWidget,
+      );
+      expect(find.byKey(const ValueKey('cost-remove-delete')), findsNothing);
+      expect(find.byKey(const ValueKey('cost-remove-cancel')), findsNothing);
+      expect(tester.takeException(), isNull);
+    });
 
     testWidgets('payment details stay usable at 320px and 1.3 text scale', (
       tester,

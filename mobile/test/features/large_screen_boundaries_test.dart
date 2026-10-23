@@ -29,9 +29,6 @@ void main() {
     final view = _read(
       'lib/features/marketplace/widgets/provider_details_view.dart',
     );
-    final sections = _read(
-      'lib/features/marketplace/widgets/provider_details_sections.dart',
-    );
 
     expect(_lineCount(screen), lessThanOrEqualTo(350));
     expect(screen, contains('ProviderDetailsView('));
@@ -45,7 +42,7 @@ void main() {
       expect(screen, isNot(contains(extractedClass)), reason: extractedClass);
     }
 
-    final presentation = '$view\n$sections';
+    final presentation = view;
     for (final forbidden in [
       'ProviderMarketplaceProvider',
       'AuthActionGuard',

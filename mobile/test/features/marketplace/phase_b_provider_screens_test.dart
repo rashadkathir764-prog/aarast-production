@@ -2,12 +2,15 @@ import 'dart:io';
 
 import 'package:aarast_mobile/core/network/api_client.dart';
 import 'package:aarast_mobile/core/storage/auth_storage.dart';
+import 'package:aarast_mobile/core/experience_v3/aarast_v3.dart';
 import 'package:aarast_mobile/core/theme/app_theme.dart';
-import 'package:aarast_mobile/core/widgets/aarast_button.dart';
 import 'package:aarast_mobile/features/account_contexts/data/account_contexts_api.dart';
 import 'package:aarast_mobile/features/account_contexts/models/account_context.dart';
 import 'package:aarast_mobile/features/account_contexts/providers/account_context_controller.dart';
 import 'package:aarast_mobile/core/session/safe_user.dart';
+import 'package:aarast_mobile/features/finance/data/finance_api.dart';
+import 'package:aarast_mobile/features/finance/models/budget_category.dart';
+import 'package:aarast_mobile/features/finance/providers/finance_provider.dart';
 import 'package:aarast_mobile/features/marketplace/data/marketplace_api.dart';
 import 'package:aarast_mobile/features/marketplace/models/marketplace_models.dart';
 import 'package:aarast_mobile/features/marketplace/providers/marketplace_provider.dart';
@@ -98,13 +101,12 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('قاعة السلام'), findsOneWidget);
-      // Price now appears both in the headline price block and the service tile.
-      expect(find.text('1,200 ر.س'), findsWidgets);
-      await tester.tap(find.text('الباقات والتفاصيل والتقييمات'));
-      await tester.pumpAndSettle();
+      // f03: the price box, then the packages, each in its own currency.
+      expect(find.text('1,200 ر.س'), findsOneWidget);
       expect(find.text('3,500 ر.ي'), findsOneWidget);
       expect(find.textContaining('YER'), findsNothing);
-      expect(find.text('مرجع تخطيطي'), findsOneWidget);
+      // D13: the old page's planning-reference badge is not in f03.
+      expect(find.text('مرجع تخطيطي'), findsNothing);
       expect(
         find.byKey(const Key('provider-details-conversation')),
         findsNothing,
@@ -138,7 +140,7 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.byKey(const Key('provider-media-fallback')), findsOneWidget);
-      expect(find.text('طلب عرض سعر'), findsOneWidget);
+      expect(find.text('اطلب عرض سعر'), findsOneWidget);
       expect(find.textContaining('YER'), findsNothing);
       expect(tester.takeException(), isNull);
     });
@@ -163,10 +165,61 @@ void main() {
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 400));
 
-      final retry = find.widgetWithText(OutlinedButton, 'إعادة المحاولة');
-      expect(retry, findsOneWidget);
-      expect(tester.widget<OutlinedButton>(retry).onPressed, isNull);
+      final retry = find.widgetWithText(JourneyTextAction, 'حاول مرة ثانية');
+      expect(retry, findsNothing);
+      // The notice stays, but its retry waits for the running refresh.
+      expect(
+        find.byKey(const ValueKey('journey-list-notice-error')),
+        findsOneWidget,
+      );
       expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('f03 says «ضمن بندك» only when the lowest price fits the item', (
+      tester,
+    ) async {
+      _setTallView(tester);
+      final account = await _authenticatedPlanContext();
+      addTearDown(account.controller.dispose);
+
+      for (final (allocated, shown) in [('500000', true), ('400000', false)]) {
+        final money = _PlanMoney(
+          BudgetCategory(
+            id: 'item-hall',
+            weddingPlanId: 'plan-1',
+            name: 'قاعة أو مخدرة الرجال',
+            allocatedAmount: allocated,
+          ),
+        );
+        await tester.pumpWidget(
+          MultiProvider(
+            providers: [
+              Provider<AuthStorage>.value(value: account.authStorage),
+              ChangeNotifierProvider<AccountContextController>.value(
+                value: account.controller,
+              ),
+              ChangeNotifierProvider<ProviderMarketplaceProvider>.value(
+                value: _RiyalMarketplace(),
+              ),
+              ChangeNotifierProvider<FinanceProvider>.value(value: money),
+            ],
+            child: const MaterialApp(
+              home: ProviderDetailsScreen(
+                providerId: _providerId,
+                weddingPlanId: 'plan-1',
+              ),
+            ),
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        expect(find.text('450,000 - 600,000 ر.ي'), findsOneWidget);
+        expect(
+          find.text('ضمن بندك'),
+          shown ? findsOneWidget : findsNothing,
+          reason: 'item $allocated',
+        );
+      }
     });
 
     testWidgets('provider details CTA follows the latest quote lifecycle', (
@@ -176,12 +229,12 @@ void main() {
       final account = await _authenticatedPlanContext();
       addTearDown(account.controller.dispose);
       final cases = <QuoteRequest?, String>{
-        null: 'طلب عرض سعر',
-        _quote(status: 'SENT'): 'متابعة الطلب الحالي',
+        null: 'اطلب عرض سعر',
+        _quote(status: 'SENT'): 'تابع طلبك',
         _quote(
           status: 'RESPONDED',
           offers: const [QuoteOffer(id: 'offer-live', status: 'PENDING')],
-        ): 'مراجعة العرض',
+        ): 'شوف العرض',
         _quote(
           status: 'RESPONDED',
           offers: const [
@@ -191,9 +244,9 @@ void main() {
               serverIsExpired: true,
             ),
           ],
-        ): 'طلب عرض جديد',
-        _quote(status: 'ACCEPTED'): 'عرض المزود في الخطة',
-        _quote(status: 'CANCELLED'): 'طلب عرض جديد',
+        ): 'اطلب عرض جديد',
+        _quote(status: 'ACCEPTED'): 'شوفه في طلباتي',
+        _quote(status: 'CANCELLED'): 'اطلب عرض جديد',
       };
 
       for (final entry in cases.entries) {
@@ -267,7 +320,8 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      await tester.tap(find.byKey(const Key('provider-details-conversation')));
+      // f03 has one action: a request still waiting opens its conversation.
+      await tester.tap(find.byKey(const Key('provider-details-quote')));
       await tester.pumpAndSettle();
 
       expect(find.text('quote-chat-${quote.id}'), findsOneWidget);
@@ -323,7 +377,7 @@ void main() {
         );
         await tester.pumpAndSettle();
 
-        await tester.tap(find.text('مراجعة العرض'));
+        await tester.tap(find.text('شوف العرض'));
         await tester.pumpAndSettle();
 
         expect(find.text('offer-route:plan-1:${quote.id}'), findsOneWidget);
@@ -381,9 +435,9 @@ void main() {
       await tester.pumpAndSettle();
 
       final actionButton = find.byWidgetPredicate(
-        (widget) => widget is AarastButton && widget.label == 'مراجعة العرض',
+        (widget) => widget is JourneyButton && widget.label == 'شوف العرض',
       );
-      final onPressed = tester.widget<AarastButton>(actionButton).onPressed!;
+      final onPressed = tester.widget<JourneyButton>(actionButton).onPressed!;
 
       onPressed();
       onPressed();
@@ -557,6 +611,45 @@ QuoteRequest _quote({
   createdAt: DateTime(2026, 7, 22),
 );
 
+/// The fixture hall, priced in riyals.
+class _RiyalMarketplace extends _FakeMarketplaceProvider {
+  @override
+  List<MarketplaceService> servicesFor(String id) => [
+    for (final (index, price) in ['450000', '600000'].indexed)
+      MarketplaceService(
+        id: 'service-yer-$index',
+        providerId: _providerId,
+        title: 'حجز القاعة $index',
+        isFeatured: false,
+        isActive: true,
+        basePrice: price,
+        currency: 'YER',
+        category: const ProviderCategory(id: 'cat-1', nameAr: 'القاعات'),
+      ),
+  ];
+}
+
+/// The plan's money, already loaded with one item.
+class _PlanMoney extends FinanceProvider {
+  _PlanMoney(this.item)
+    : super(FinanceApi(ApiClient(tokenProvider: () async => 'test-token')));
+
+  final BudgetCategory item;
+
+  @override
+  String? get loadedPlanId => 'plan-1';
+
+  @override
+  List<BudgetCategory> get categories => [item];
+
+  @override
+  Future<void> loadMoney(
+    String planId, {
+    bool canViewMoney = true,
+    bool canManageMoney = true,
+  }) async {}
+}
+
 class _FakeMarketplaceProvider extends ProviderMarketplaceProvider {
   _FakeMarketplaceProvider({
     bool isSubmitting = false,
@@ -675,9 +768,6 @@ String _phaseBSource(String relativePath) {
   return [
     _readSource(relativePath),
     _readSource('lib/features/marketplace/widgets/provider_details_view.dart'),
-    _readSource(
-      'lib/features/marketplace/widgets/provider_details_sections.dart',
-    ),
   ].join('\n');
 }
 

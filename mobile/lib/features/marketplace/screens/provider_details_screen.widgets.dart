@@ -1,99 +1,88 @@
 part of 'provider_details_screen.dart';
 
+/// f03's footer: «اطلب عرض سعر» (or where the latest request stands) and
+/// «واتساب». An unclaimed listing (w33) cannot take requests, so it says so
+/// and keeps WhatsApp only.
 extension _ProviderQuoteFooter on _ProviderDetailsScreenState {
-  /// The quote footer: the latest quote's status and the primary quote action.
   Widget _quoteFooter(String? selectedPlanId) {
-    return SafeArea(
-      top: false,
-      child: DecoratedBox(
-        decoration: const BoxDecoration(
-          color: AppTheme.surfaceRaised,
-          border: Border(top: BorderSide(color: AppTheme.border)),
-        ),
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(12, 10, 12, 12),
-          child: Consumer<ProviderMarketplaceProvider>(
-            builder: (context, marketplace, _) {
-              final quotes = marketplace.quotesForProviderInScope(
-                widget.providerId,
-                weddingPlanId: selectedPlanId,
+    return Consumer<ProviderMarketplaceProvider>(
+      builder: (context, marketplace, _) {
+        final provider = marketplace.providerDetails(widget.providerId);
+        final claimed = provider?.isClaimed != false;
+        final quotes = marketplace.quotesForProviderInScope(
+          widget.providerId,
+          weddingPlanId: selectedPlanId,
+        );
+        final latest = quotes.isEmpty ? null : quotes.first;
+        final loadingQuote =
+            !_quoteContextReady ||
+            marketplace.isProviderQuoteContextLoading(widget.providerId);
+        final onWhatsApp = provider == null
+            ? null
+            : _externalLinkAction(
+                context,
+                providerWhatsAppUri(provider.whatsapp),
+                'ما قدرنا نفتح واتساب على هذا الجوال.',
               );
-              final latest = quotes.isEmpty ? null : quotes.first;
-              final loadingQuote =
-                  !_quoteContextReady ||
-                  marketplace.isProviderQuoteContextLoading(widget.providerId);
-              return Container(
-                padding: const EdgeInsets.symmetric(horizontal: 4),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
+        if (!claimed && onWhatsApp == null) {
+          return SafeArea(
+            top: false,
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(16, 10, 16, 14),
+              child: _UnclaimedLine(),
+            ),
+          );
+        }
+        return SafeArea(
+          top: false,
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(16, 10, 16, 12),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                if (!claimed) ...[_UnclaimedLine(), const SizedBox(height: 8)],
+                Row(
                   children: [
-                    if (latest != null) ...[
-                      Padding(
-                        padding: const EdgeInsets.fromLTRB(6, 2, 6, 7),
-                        child: Row(
-                          children: [
-                            const Expanded(
-                              child: Text(
-                                'آخر طلب لهذا المزود',
-                                style: TextStyle(
-                                  color: AppTheme.textSecondary,
-                                  fontWeight: FontWeight.w800,
-                                ),
-                              ),
-                            ),
-                            QuoteStatusChip(
-                              status: latest.lifecycleStatus,
-                              compact: true,
-                            ),
-                          ],
+                    if (claimed)
+                      Expanded(
+                        child: JourneyButton(
+                          key: const Key('provider-details-quote'),
+                          label: _primaryQuoteActionLabel(latest),
+                          background: AarastV3Color.cobalt,
+                          large: true,
+                          expand: true,
+                          loading: loadingQuote,
+                          onPressed: loadingQuote
+                              ? null
+                              : () => _openPrimaryQuoteAction(context, latest),
+                        ),
+                      ),
+                    if (onWhatsApp != null) ...[
+                      if (claimed) const SizedBox(width: 10),
+                      Expanded(
+                        flex: claimed ? 0 : 1,
+                        child: JourneyButton(
+                          key: const Key('provider-whatsapp-action'),
+                          label: 'واتساب',
+                          icon: LucideIcons.messageCircle,
+                          background: AarastV3Color.mintSoft,
+                          foreground: AarastV3Color.mint,
+                          large: true,
+                          expand: !claimed,
+                          onPressed: onWhatsApp,
                         ),
                       ),
                     ],
-                    Row(
-                      children: [
-                        if (latest != null) ...[
-                          _ContactIconButton(
-                            key: const Key('provider-details-conversation'),
-                            onTap: () => _openQuoteConversation(latest.id),
-                          ),
-                          const SizedBox(width: 10),
-                        ],
-                        Expanded(
-                          child: AarastButton(
-                            label: _primaryQuoteActionLabel(latest),
-                            icon: LucideIcons.filePlus2,
-                            isLoading: loadingQuote,
-                            onPressed: loadingQuote
-                                ? null
-                                : () =>
-                                      _openPrimaryQuoteAction(context, latest),
-                          ),
-                        ),
-                      ],
-                    ),
                   ],
                 ),
-              );
-            },
+              ],
+            ),
           ),
-        ),
-      ),
+        );
+      },
     );
   }
-}
-
-Future<void> _shareProvider(
-  BuildContext context,
-  MarketplaceProvider provider,
-) async {
-  final city = provider.city?.nameAr.trim();
-  final snippet = city == null || city.isEmpty
-      ? provider.businessName
-      : '${provider.businessName} — $city';
-  await Clipboard.setData(ClipboardData(text: snippet));
-  if (!context.mounted) return;
-  AarastToast.showSuccess(context, 'تم نسخ بيانات المزود للمشاركة');
 }
 
 /// Opens [uri] outside the app; null (no link) hides the action. A device
@@ -117,46 +106,33 @@ VoidCallback? _externalLinkAction(
   };
 }
 
+/// Where the latest request to this provider stands, as the footer's action.
 String _primaryQuoteActionLabel(QuoteRequest? quote) {
-  if (quote == null) return 'طلب عرض سعر';
-  if (quote.status == 'SENT' || quote.status == 'VIEWED') {
-    return 'متابعة الطلب الحالي';
-  }
+  if (quote == null) return 'اطلب عرض سعر';
+  if (quote.status == 'SENT' || quote.status == 'VIEWED') return 'تابع طلبك';
   if (quote.status == 'RESPONDED') {
-    return quote.hasExpiredOffer ? 'طلب عرض جديد' : 'مراجعة العرض';
+    return quote.hasExpiredOffer ? 'اطلب عرض جديد' : 'شوف العرض';
   }
-  if (quote.status == 'ACCEPTED') return 'عرض المزود في الخطة';
-  return 'طلب عرض جديد';
+  if (quote.status == 'ACCEPTED') return 'شوفه في طلباتي';
+  return 'اطلب عرض جديد';
 }
 
-class _ContactIconButton extends StatelessWidget {
-  const _ContactIconButton({required this.onTap, super.key});
+/// w33: an unclaimed listing takes no requests until its owner claims it.
+const unclaimedProviderMessage = 'ما يستقبل طلبات لين يستلم صاحبه ملفه';
 
-  final VoidCallback onTap;
-
+class _UnclaimedLine extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-    return Tooltip(
-      message: 'المحادثات',
-      child: SizedBox(
-        width: 54,
-        height: 54,
-        child: OutlinedButton(
-          onPressed: onTap,
-          style: OutlinedButton.styleFrom(
-            padding: EdgeInsets.zero,
-            foregroundColor: AppTheme.brand,
-            backgroundColor: AppTheme.surfaceRaised,
-            side: const BorderSide(color: AppTheme.border),
-            shape: const CircleBorder(),
-          ),
-          child: const Icon(LucideIcons.messageCircle, size: 22),
-        ),
-      ),
+    return Text(
+      unclaimedProviderMessage,
+      key: const Key('provider-details-unclaimed'),
+      textAlign: TextAlign.center,
+      style: JourneyType.of(JourneyType.small, color: AarastV3Color.textMuted),
     );
   }
 }
 
+/// A page with no provider to show: the way back above [child].
 class _DetailsFrame extends StatelessWidget {
   const _DetailsFrame({required this.child});
 
@@ -165,60 +141,22 @@ class _DetailsFrame extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ListView(
-      padding: const EdgeInsets.fromLTRB(16, 24, 16, 24),
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
       children: [
         Align(
           alignment: AlignmentDirectional.centerStart,
-          child: IconButton(
+          child: JourneyRoundButton(
+            key: const ValueKey('provider-details-back'),
+            icon: LucideIcons.arrowRight,
             tooltip: 'رجوع',
             onPressed: () {
               if (context.canPop()) context.pop();
             },
-            icon: const Icon(LucideIcons.chevronRight),
           ),
         ),
-        const SizedBox(height: 80),
+        const SizedBox(height: 24),
         child,
       ],
-    );
-  }
-}
-
-/// What an unclaimed listing (V1 checklist 4.18) tells a customer.
-const unclaimedProviderMessage =
-    'هذا المزوّد لم يفعّل حسابه في اعّرست بعد، فلا يستقبل طلبات عروض الأسعار. تواصل معه مباشرة بالاتصال أو واتساب.';
-
-class _UnclaimedProviderFooter extends StatelessWidget {
-  const _UnclaimedProviderFooter();
-
-  @override
-  Widget build(BuildContext context) {
-    return SafeArea(
-      top: false,
-      child: DecoratedBox(
-        decoration: const BoxDecoration(
-          color: AppTheme.surfaceRaised,
-          border: Border(top: BorderSide(color: AppTheme.border)),
-        ),
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(16, 12, 16, 14),
-          child: Row(
-            children: [
-              const Icon(LucideIcons.info, color: AppTheme.textSecondary),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Text(
-                  unclaimedProviderMessage,
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: AppTheme.textSecondary,
-                    height: 1.45,
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
     );
   }
 }

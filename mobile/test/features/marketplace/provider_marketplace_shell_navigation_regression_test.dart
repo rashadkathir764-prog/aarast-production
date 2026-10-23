@@ -1,8 +1,8 @@
+import 'package:aarast_mobile/core/experience_v3/aarast_v3.dart';
 import 'package:aarast_mobile/core/network/api_client.dart';
 import 'package:aarast_mobile/core/routing/app_router.dart';
 import 'package:aarast_mobile/core/storage/auth_storage.dart';
 import 'package:aarast_mobile/core/theme/app_theme.dart';
-import 'package:aarast_mobile/core/widgets/aarast_ui.dart';
 import 'package:aarast_mobile/features/account_contexts/data/account_contexts_api.dart';
 import 'package:aarast_mobile/features/account_contexts/models/account_context.dart';
 import 'package:aarast_mobile/features/account_contexts/providers/account_context_controller.dart';
@@ -197,18 +197,18 @@ void main() {
       final offsetBeforeQuoteReview = marketplacePosition.pixels;
       await tester.tap(details);
       await tester.pumpAndSettle();
-      final reviewButton = tester.widget<AarastButton>(
+      final reviewButton = tester.widget<JourneyButton>(
         find.ancestor(
-          of: find.text('مراجعة العرض'),
-          matching: find.byType(AarastButton),
+          of: find.text('شوف العرض'),
+          matching: find.byType(JourneyButton),
         ),
       );
       reviewButton.onPressed!();
       reviewButton.onPressed!();
       await tester.pumpAndSettle();
 
-      // «مراجعة العرض» returns the quote, and its service page opens above
-      // the still-mounted tab.
+      // «شوف العرض» (D13) returns the quote, and its service page opens
+      // above the still-mounted tab.
       expect(marketplace.lastLoadedQuoteId, _quoteId);
       expect(find.byType(ProviderRequestsScreen), findsOneWidget);
       expect(find.byKey(const ValueKey('requests-offer-$_quoteId')), findsOneWidget);
@@ -222,37 +222,8 @@ void main() {
         originalPosition: marketplacePosition,
         expectedOffset: offsetBeforeQuoteReview,
       );
-
-      await tester.scrollUntilVisible(
-        details,
-        260,
-        scrollable: marketplaceScrollable,
-      );
-      await tester.pumpAndSettle();
-      final offsetBeforeNestedConversation = marketplacePosition.pixels;
-      await tester.tap(details);
-      await tester.pumpAndSettle();
-      await tester.tap(find.byKey(const Key('provider-details-conversation')));
-      await tester.pumpAndSettle();
-      expect(find.byType(ChatScreen), findsOneWidget);
-      final quoteEvent = tester.widget<InkWell>(
-        find.byKey(const Key('conversation-event-quote_offer_received')),
-      );
-      quoteEvent.onTap!();
-      quoteEvent.onTap!();
-      await tester.pumpAndSettle();
-
-      expect(find.byType(ProviderRequestsScreen), findsOneWidget);
-      await tester.tap(find.byTooltip('رجوع'));
-      await tester.pumpAndSettle();
-
-      _expectMarketplaceBodyActive(
-        tester,
-        router: router,
-        originalElement: marketplaceElement,
-        originalPosition: marketplacePosition,
-        expectedOffset: offsetBeforeNestedConversation,
-      );
+      // f03 has no chat button of its own (D13): an offer opens its service
+      // page, as above, and the chat is reached from there.
       expect(marketplace.lastLoadedQuoteId, _quoteId);
       expect(tester.takeException(), isNull);
     },

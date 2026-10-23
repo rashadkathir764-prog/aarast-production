@@ -1,14 +1,11 @@
-import 'package:aarast_mobile/core/theme/app_theme.dart';
 import 'package:aarast_mobile/features/marketplace/data/provider_contact_links.dart';
 import 'package:aarast_mobile/features/marketplace/models/marketplace_models.dart';
-import 'package:aarast_mobile/features/marketplace/widgets/provider_details_view.dart';
 import 'package:aarast_mobile/features/marketplace/widgets/provider_trust_signals.dart';
-import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-// Trust signals on the provider card (V1 checklist 4.11): the admin
+// Trust signals on the provider page (V1 checklist 4.11, f03): the admin
 // "verified" badge, the date prices last changed, how fast the provider
-// answers, and direct WhatsApp / map actions.
+// answers, and the direct WhatsApp action.
 
 final _now = DateTime.utc(2026, 10, 11, 12);
 
@@ -80,59 +77,64 @@ void main() {
     expect(providerWhatsAppUri('not a number'), isNull);
   });
 
-  test('a map link needs a valid pinned location', () {
+  test('f03 says how fast a provider answers, only from answers', () {
     expect(
-      providerMapUri(15.3694, 44.191).toString(),
-      'https://www.google.com/maps/search/?api=1&query=15.3694%2C44.191',
-    );
-    expect(providerMapUri(null, 44.191), isNull);
-    expect(providerMapUri(95, 44.191), isNull);
-  });
-
-  test('response and price-date labels read naturally in Arabic', () {
-    expect(
-      providerResponseLabel(
+      providerRespondsLabel(
         const ProviderResponsiveness(
           sampleSize: 5,
           answeredPercent: 80,
           typicalResponseHours: 2,
         ),
       ),
-      'يرد عادة خلال ساعتين · ردّ على 80٪ من الطلبات',
+      'يرد عادة خلال ساعتين',
     );
     expect(
-      providerResponseLabel(
+      providerRespondsLabel(
         const ProviderResponsiveness(
           sampleSize: 5,
           answeredPercent: 100,
           typicalResponseHours: 30,
         ),
       ),
-      'يرد عادة خلال يومين · ردّ على 100٪ من الطلبات',
+      'يرد عادة خلال يومين',
     );
+    // Nothing answered, or nothing asked: no promise either way.
     expect(
-      providerResponseLabel(
+      providerRespondsLabel(
         const ProviderResponsiveness(sampleSize: 3, answeredPercent: 0),
       ),
-      'لم يرد على طلبات العروض الأخيرة · ردّ على 0٪ من الطلبات',
+      isNull,
     );
+    expect(
+      providerRespondsLabel(
+        const ProviderResponsiveness(
+          sampleSize: 0,
+          answeredPercent: 0,
+          typicalResponseHours: 2,
+        ),
+      ),
+      isNull,
+    );
+    expect(providerRespondsLabel(null), isNull);
+  });
 
-    expect(priceFreshnessLabel(_now, _now), 'اليوم');
+  test('f03 says how old a price is, and asks to confirm an old one', () {
+    String line(int days) =>
+        priceAgeLine(_now.subtract(Duration(days: days)), _now);
+
+    expect(line(0), 'آخر تحديث للسعر اليوم');
+    expect(line(1), 'آخر تحديث للسعر أمس');
+    expect(line(5), 'آخر تحديث للسعر قبل 5 أيام');
+    expect(line(15), 'آخر تحديث للسعر قبل أسبوعين');
+    expect(line(21), 'آخر تحديث للسعر قبل 3 أسابيع');
+    expect(line(64), 'آخر تحديث للسعر قبل شهرين');
     expect(
-      priceFreshnessLabel(_now.subtract(const Duration(days: 1)), _now),
-      'أمس',
+      line(120),
+      'آخر تحديث للسعر قبل 4 شهور · تأكد منه لما تطلب العرض',
     );
     expect(
-      priceFreshnessLabel(_now.subtract(const Duration(days: 5)), _now),
-      'منذ 5 أيام',
-    );
-    expect(
-      priceFreshnessLabel(_now.subtract(const Duration(days: 64)), _now),
-      'منذ شهرين',
-    );
-    expect(
-      priceFreshnessLabel(_now.subtract(const Duration(days: 400)), _now),
-      'منذ أكثر من سنة',
+      line(400),
+      'آخر تحديث للسعر قبل أكثر من سنة · تأكد منه لما تطلب العرض',
     );
   });
 
@@ -146,56 +148,6 @@ void main() {
       ]),
       DateTime.utc(2026, 9, 1),
     );
-  });
-
-  testWidgets('the details view shows the trust line and its actions', (
-    tester,
-  ) async {
-    var whatsAppTaps = 0;
-    var mapTaps = 0;
-    await _pumpView(
-      tester,
-      provider: _verifiedProvider,
-      services: [_service('a', _now.subtract(const Duration(days: 3)))],
-      onWhatsApp: () => whatsAppTaps++,
-      onOpenMap: () => mapTaps++,
-    );
-
-    expect(find.byKey(const Key('provider-details-verified')), findsOneWidget);
-    expect(find.text('موثّق'), findsOneWidget);
-    expect(
-      find.text('يرد عادة خلال 3 ساعات · ردّ على 90٪ من الطلبات'),
-      findsOneWidget,
-    );
-    expect(find.text('آخر تحديث للسعر منذ 3 أيام'), findsOneWidget);
-
-    await tester.tap(find.byKey(const Key('provider-whatsapp-action')));
-    await tester.tap(find.byKey(const Key('provider-map-action')));
-    expect(whatsAppTaps, 1);
-    expect(mapTaps, 1);
-    expect(tester.takeException(), isNull);
-  });
-
-  testWidgets('an old price is flagged and missing signals stay hidden', (
-    tester,
-  ) async {
-    await _pumpView(
-      tester,
-      provider: _plainProvider,
-      services: [_service('a', _now.subtract(const Duration(days: 120)))],
-      width: 320,
-      textScale: 1.3,
-    );
-
-    expect(find.byKey(const Key('provider-details-verified')), findsNothing);
-    expect(find.byKey(const Key('provider-trust-response')), findsNothing);
-    expect(find.byKey(const Key('provider-whatsapp-action')), findsNothing);
-    expect(find.byKey(const Key('provider-map-action')), findsNothing);
-    expect(
-      find.text('آخر تحديث للسعر منذ 4 أشهر · تأكد منه عند طلب العرض'),
-      findsOneWidget,
-    );
-    expect(tester.takeException(), isNull);
   });
 }
 
@@ -211,73 +163,3 @@ MarketplaceService _service(String id, DateTime? priceUpdatedAt) {
     priceUpdatedAt: priceUpdatedAt,
   );
 }
-
-Future<void> _pumpView(
-  WidgetTester tester, {
-  required MarketplaceProvider provider,
-  List<MarketplaceService> services = const [],
-  VoidCallback? onWhatsApp,
-  VoidCallback? onOpenMap,
-  double width = 390,
-  double textScale = 1,
-}) async {
-  tester.view.devicePixelRatio = 1;
-  tester.view.physicalSize = Size(width, 1400);
-  addTearDown(tester.view.reset);
-
-  await tester.pumpWidget(
-    MaterialApp(
-      theme: AppTheme.light(),
-      builder: (context, child) => MediaQuery(
-        data: MediaQuery.of(
-          context,
-        ).copyWith(textScaler: TextScaler.linear(textScale)),
-        child: child!,
-      ),
-      home: Directionality(
-        textDirection: TextDirection.rtl,
-        child: Scaffold(
-          body: ProviderDetailsView(
-            provider: provider,
-            services: services,
-            packages: const [],
-            reviews: const [],
-            isFavorite: false,
-            onBack: () {},
-            onShare: () {},
-            onFavorite: () {},
-            onRequestQuote: (_) {},
-            onWhatsApp: onWhatsApp,
-            onOpenMap: onOpenMap,
-            now: _now,
-          ),
-        ),
-      ),
-    ),
-  );
-  await tester.pumpAndSettle();
-}
-
-final _verifiedProvider = MarketplaceProvider(
-  id: 'provider-1',
-  businessName: 'قاعة السلام',
-  ownerName: 'مالك القاعة',
-  ratingAverage: 4.7,
-  ratingCount: 12,
-  isFeatured: false,
-  verifiedAt: DateTime.utc(2026, 10, 1),
-  responsiveness: const ProviderResponsiveness(
-    sampleSize: 10,
-    answeredPercent: 90,
-    typicalResponseHours: 3,
-  ),
-);
-
-const _plainProvider = MarketplaceProvider(
-  id: 'provider-2',
-  businessName: 'مزود جديد',
-  ownerName: 'مالك',
-  ratingAverage: 0,
-  ratingCount: 0,
-  isFeatured: false,
-);

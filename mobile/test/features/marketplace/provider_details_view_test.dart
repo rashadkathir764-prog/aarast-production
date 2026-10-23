@@ -4,169 +4,232 @@ import 'package:aarast_mobile/features/marketplace/widgets/provider_details_view
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-void main() {
-  testWidgets('provider details view delegates every product action', (
-    tester,
-  ) async {
-    var backCalls = 0;
-    var shareCalls = 0;
-    var favoriteCalls = 0;
-    MarketplaceService? requestedService;
+// f03 «صفحة المزود», on the prototype's own provider (استوديو ضوء صنعاء).
 
-    await _pumpView(
-      tester,
-      services: const [_service],
-      packages: const [_package],
-      reviews: const [_review],
-      onBack: () => backCalls++,
-      onShare: () => shareCalls++,
-      onFavorite: () => favoriteCalls++,
-      onRequestQuote: (service) => requestedService = service,
+final _now = DateTime(2026, 10, 24, 12);
+
+void main() {
+  testWidgets('f03 shows the provider as the prototype does', (tester) async {
+    await _pumpView(tester, withinBudget: true);
+
+    expect(find.text('استوديو ضوء صنعاء'), findsOneWidget);
+    expect(find.byTooltip('موثّق'), findsOneWidget);
+    expect(find.textContaining('4.8', findRichText: true), findsOneWidget);
+    expect(
+      find.textContaining('(63) · صنعاء، حدة', findRichText: true),
+      findsOneWidget,
     );
+    expect(find.text('يرد عادة خلال ساعتين'), findsOneWidget);
+    expect(find.text('450,000 - 600,000 ر.ي'), findsOneWidget);
+    expect(find.text('ضمن بندك'), findsOneWidget);
+    expect(find.text('آخر تحديث للسعر قبل 3 أسابيع'), findsOneWidget);
+    expect(find.text('الباقات'), findsOneWidget);
+    expect(find.text('صور فقط'), findsOneWidget);
+    expect(find.text('مصور واحد · 300 صورة'), findsOneWidget);
+    expect(find.text('350,000 ر.ي'), findsOneWidget);
+    expect(find.text('صور وفيديو'), findsOneWidget);
+    expect(find.text('مصورين · فيلم 10 دقائق · ألبوم'), findsOneWidget);
+    expect(find.text('1 / 3 صورة'), findsOneWidget);
+
+    // Dropped by the classification (no data behind them), and the old
+    // page's extras that are not in the prototype.
+    expect(find.textContaining('دفعوا فعلًا'), findsNothing);
+    expect(find.textContaining('من 11 عرس'), findsNothing);
+    expect(find.textContaining('فاضي'), findsNothing);
+    expect(find.textContaining('مرجع تخطيطي'), findsNothing);
+    expect(find.byTooltip('مشاركة'), findsNothing);
+    expect(find.byTooltip('حفظ المزود'), findsNothing);
+    expect(find.textContaining('التقييمات'), findsNothing);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('back and a package lead where they should', (tester) async {
+    var backs = 0;
+    final opened = <String?>[];
+    await _pumpView(tester, onBack: () => backs++, onOpenOffer: opened.add);
 
     await tester.tap(find.byTooltip('رجوع'));
-    await tester.tap(find.byTooltip('مشاركة'));
-    await tester.tap(find.byTooltip('حفظ المزود'));
+    await tester.tap(find.text('صور وفيديو'));
     await tester.pump();
 
-    final quoteAction = find.byTooltip('طلب عرض لهذه الخدمة');
-    await tester.ensureVisible(quoteAction);
-    await tester.pumpAndSettle();
-    await tester.tap(quoteAction);
-    await tester.pump();
-
-    expect(backCalls, 1);
-    expect(shareCalls, 1);
-    expect(favoriteCalls, 1);
-    expect(requestedService?.id, _service.id);
-    expect(tester.takeException(), isNull);
+    expect(backs, 1);
+    expect(opened, ['service-video']);
   });
 
-  testWidgets('provider details empty sections stay truthful at 320px RTL', (
-    tester,
-  ) async {
-    await _pumpView(tester, width: 320, height: 900, textScale: 1.3);
+  testWidgets('the photo opens the full gallery', (tester) async {
+    await _pumpView(tester);
 
-    expect(find.text('لا توجد خدمات منشورة'), findsOneWidget);
-    expect(find.text('لا توجد باقات منشورة حاليًا.'), findsNothing);
-    await tester.tap(find.text('الباقات والتفاصيل والتقييمات'));
-    await tester.pumpAndSettle();
-    expect(find.text('لا توجد باقات منشورة حاليًا.'), findsOneWidget);
-    expect(find.text('القاعات'), findsWidgets);
-    expect(find.byKey(const Key('provider-media-fallback')), findsOneWidget);
-    expect(
-      tester.getSize(find.byKey(const Key('provider-details-hero'))).height,
-      lessThan(250),
-    );
-    expect(find.textContaining('لا توجد صور منشورة'), findsOneWidget);
-    final reviewsEmpty = find.text('لا توجد تقييمات بعد.');
-    await tester.scrollUntilVisible(
-      reviewsEmpty,
-      240,
-      scrollable: find.byType(Scrollable).first,
-    );
-    expect(reviewsEmpty, findsOneWidget);
-    expect(find.textContaining('YER'), findsNothing);
-    expect(tester.takeException(), isNull);
-  });
-
-  testWidgets(
-    'a failed services refresh shows a retry state instead of an empty catalog',
-    (tester) async {
-      var retryCalls = 0;
-
-      await _pumpView(
-        tester,
-        servicesErrorMessage: 'تعذر تحميل الخدمات.',
-        onRetryDetails: () => retryCalls++,
-      );
-
-      expect(find.text('تعذر تحديث هذا القسم'), findsOneWidget);
-      expect(find.text('تعذر تحميل الخدمات.'), findsOneWidget);
-      expect(find.text('لا توجد خدمات منشورة'), findsNothing);
-
-      await tester.tap(find.text('إعادة المحاولة'));
-      expect(retryCalls, 1);
-    },
-  );
-
-  testWidgets('show all opens the complete swipeable provider gallery', (
-    tester,
-  ) async {
-    final galleryService = _service.copyWith(
-      images: const [
-        ProviderServiceImage(id: 'image-1', imageUrl: 'https://img.test/1.jpg'),
-        ProviderServiceImage(id: 'image-2', imageUrl: 'https://img.test/2.jpg'),
-        ProviderServiceImage(id: 'image-3', imageUrl: 'https://img.test/3.jpg'),
-        ProviderServiceImage(id: 'image-4', imageUrl: 'https://img.test/4.jpg'),
-        ProviderServiceImage(id: 'image-5', imageUrl: 'https://img.test/5.jpg'),
-        ProviderServiceImage(id: 'image-6', imageUrl: 'https://img.test/6.jpg'),
-      ],
-    );
-
-    await _pumpView(
-      tester,
-      services: [galleryService],
-      width: 320,
-      height: 1200,
-      textScale: 1.3,
-    );
-
-    final showAll = find.text('عرض الكل');
-    expect(find.text('تعذّر تحميل الصورة'), findsOneWidget);
-    await tester.ensureVisible(showAll);
-    await tester.tap(showAll);
+    await tester.tap(find.bySemanticsLabel('افتح الصور'));
     await tester.pump();
 
     expect(find.byType(PageView), findsOneWidget);
-    expect(find.text('1 / 6'), findsOneWidget);
-    expect(find.byTooltip('إغلاق معرض الصور'), findsOneWidget);
+  });
+
+  testWidgets('without packages the priced services are the offers', (
+    tester,
+  ) async {
+    await _pumpView(tester, packages: const []);
+
+    expect(find.text('الباقات'), findsOneWidget);
+    expect(find.text('تصوير كامل'), findsOneWidget);
+    expect(find.text('600,000 ر.ي'), findsOneWidget);
+    expect(find.text('ضمن بندك'), findsNothing);
+  });
+
+  testWidgets('nothing priced shows no price and no offers', (tester) async {
+    await _pumpView(
+      tester,
+      provider: _provider(withResponses: false, address: null),
+      services: const [],
+      packages: const [],
+    );
+
+    expect(find.byKey(const ValueKey('provider-details-price')), findsNothing);
+    expect(find.text('الباقات'), findsNothing);
+    expect(find.textContaining('يرد عادة'), findsNothing);
+    // The cover is the only photo left.
+    expect(find.text('1 / 1 صورة'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets(
-    'a cover-only provider exposes the same single photo in gallery',
-    (tester) async {
-      await _pumpView(
-        tester,
-        provider: _providerWithCover,
-        width: 320,
-        height: 1000,
-        textScale: 1.3,
-      );
+  testWidgets('an old price asks to confirm it', (tester) async {
+    await _pumpView(
+      tester,
+      services: [
+        _photoService(
+          'service-old',
+          '450000',
+          _now.subtract(const Duration(days: 120)),
+        ),
+      ],
+      packages: const [],
+    );
 
-      expect(find.textContaining('معرض الصور 1'), findsOneWidget);
-      expect(find.text('معرض الصور'), findsOneWidget);
-      expect(find.text('عرض الكل'), findsNothing);
-      expect(
-        tester.getSize(find.byKey(const Key('provider-details-hero'))).height,
-        lessThan(250),
-      );
-      expect(tester.takeException(), isNull);
-    },
-  );
+    expect(
+      find.text('آخر تحديث للسعر قبل 4 شهور · تأكد منه لما تطلب العرض'),
+      findsOneWidget,
+    );
+  });
+
+  testWidgets('a failed refresh over an older copy offers a retry', (
+    tester,
+  ) async {
+    var retries = 0;
+    await _pumpView(
+      tester,
+      detailsErrorMessage: 'تعذر تحديث المزود.',
+      onRetryDetails: () => retries++,
+    );
+
+    expect(
+      find.byKey(const ValueKey('journey-list-notice-error')),
+      findsOneWidget,
+    );
+    await tester.tap(find.text('حاول مرة ثانية'));
+    expect(retries, 1);
+  });
+
+  testWidgets('f03 stays readable at 320px and 1.3 text', (tester) async {
+    await _pumpView(tester, width: 320, textScale: 1.3, withinBudget: true);
+
+    expect(tester.takeException(), isNull);
+    expect(find.text('استوديو ضوء صنعاء'), findsOneWidget);
+  });
 }
+
+MarketplaceProvider _provider({
+  bool withResponses = true,
+  String? address = 'حدة',
+}) => MarketplaceProvider(
+  id: 'provider-1',
+  businessName: 'استوديو ضوء صنعاء',
+  ownerName: 'مالك الاستوديو',
+  ratingAverage: 4.8,
+  ratingCount: 63,
+  isFeatured: false,
+  city: const MarketplaceCity(id: 'city-sanaa', nameAr: 'صنعاء'),
+  address: address,
+  coverUrl: 'https://img.test/cover.jpg',
+  verifiedAt: DateTime(2026, 9, 1),
+  responsiveness: withResponses
+      ? const ProviderResponsiveness(
+          sampleSize: 11,
+          answeredPercent: 100,
+          typicalResponseHours: 2,
+        )
+      : null,
+);
+
+MarketplaceService _photoService(String id, String price, DateTime updated) =>
+    MarketplaceService(
+      id: id,
+      providerId: 'provider-1',
+      title: id == 'service-video' ? 'تصوير كامل' : 'تصوير صور',
+      isFeatured: false,
+      isActive: true,
+      basePrice: price,
+      currency: 'YER',
+      priceUpdatedAt: updated,
+      category: const ProviderCategory(id: 'cat-photo', nameAr: 'التصوير'),
+      images: [
+        ProviderServiceImage(
+          id: '$id-image',
+          imageUrl: 'https://img.test/$id.jpg',
+        ),
+      ],
+    );
+
+final _services = [
+  _photoService(
+    'service-photos',
+    '450000',
+    _now.subtract(const Duration(days: 30)),
+  ),
+  _photoService(
+    'service-video',
+    '600000',
+    _now.subtract(const Duration(days: 21)),
+  ),
+];
+
+const _packages = [
+  ProviderPackage(
+    id: 'package-photos',
+    providerId: 'provider-1',
+    serviceId: 'service-photos',
+    title: 'صور فقط',
+    items: 'مصور واحد\n300 صورة',
+    price: '350000',
+    currency: 'YER',
+    isActive: true,
+  ),
+  ProviderPackage(
+    id: 'package-video',
+    providerId: 'provider-1',
+    serviceId: 'service-video',
+    title: 'صور وفيديو',
+    items: 'مصورين\nفيلم 10 دقائق\nألبوم',
+    price: '550000',
+    currency: 'YER',
+    isActive: true,
+  ),
+];
 
 Future<void> _pumpView(
   WidgetTester tester, {
-  MarketplaceProvider provider = _provider,
-  List<MarketplaceService> services = const [],
-  List<ProviderPackage> packages = const [],
-  List<ProviderReview> reviews = const [],
+  MarketplaceProvider? provider,
+  List<MarketplaceService>? services,
+  List<ProviderPackage> packages = _packages,
+  bool withinBudget = false,
   VoidCallback? onBack,
-  VoidCallback? onShare,
-  VoidCallback? onFavorite,
-  ValueChanged<MarketplaceService>? onRequestQuote,
-  String? servicesErrorMessage,
-  String? packagesErrorMessage,
-  String? reviewsErrorMessage,
+  ValueChanged<String?>? onOpenOffer,
+  String? detailsErrorMessage,
   VoidCallback? onRetryDetails,
-  double width = 390,
-  double height = 1400,
+  double width = 384,
   double textScale = 1,
 }) async {
   tester.view.devicePixelRatio = 1;
-  tester.view.physicalSize = Size(width, height);
+  tester.view.physicalSize = Size(width, 1400);
   addTearDown(tester.view.reset);
 
   await tester.pumpWidget(
@@ -182,74 +245,19 @@ Future<void> _pumpView(
         textDirection: TextDirection.rtl,
         child: Scaffold(
           body: ProviderDetailsView(
-            provider: provider,
-            services: services,
+            provider: provider ?? _provider(),
+            services: services ?? _services,
             packages: packages,
-            reviews: reviews,
-            isFavorite: false,
             onBack: onBack ?? () {},
-            onShare: onShare ?? () {},
-            onFavorite: onFavorite ?? () {},
-            onRequestQuote: onRequestQuote ?? (_) {},
-            servicesErrorMessage: servicesErrorMessage,
-            packagesErrorMessage: packagesErrorMessage,
-            reviewsErrorMessage: reviewsErrorMessage,
+            onOpenOffer: onOpenOffer ?? (_) {},
+            withinBudget: withinBudget,
+            detailsErrorMessage: detailsErrorMessage,
             onRetryDetails: onRetryDetails,
+            now: _now,
           ),
         ),
       ),
     ),
   );
-  await tester.pumpAndSettle();
+  await tester.pump();
 }
-
-const _provider = MarketplaceProvider(
-  id: 'provider-1',
-  businessName: 'قاعة السلام',
-  ownerName: 'مالك القاعة',
-  ratingAverage: 4.7,
-  ratingCount: 12,
-  isFeatured: true,
-  city: MarketplaceCity(id: 'city-1', nameAr: 'صنعاء'),
-  primaryCategory: ProviderCategory(id: 'cat-1', nameAr: 'القاعات'),
-  description: 'قاعة مناسبة للمناسبات العائلية.',
-);
-
-const _providerWithCover = MarketplaceProvider(
-  id: 'provider-cover',
-  businessName: 'قاعة بصورة غلاف',
-  ownerName: 'مالك القاعة',
-  ratingAverage: 0,
-  ratingCount: 0,
-  isFeatured: false,
-  coverUrl: 'https://img.test/cover.jpg',
-  city: MarketplaceCity(id: 'city-1', nameAr: 'صنعاء'),
-);
-
-const _service = MarketplaceService(
-  id: 'service-1',
-  providerId: 'provider-1',
-  title: 'تنسيق قاعة',
-  isFeatured: false,
-  isActive: true,
-  basePrice: '1200',
-  currency: 'SAR',
-  category: ProviderCategory(id: 'cat-1', nameAr: 'القاعات'),
-);
-
-const _package = ProviderPackage(
-  id: 'package-1',
-  providerId: 'provider-1',
-  title: 'باقة استقبال',
-  isActive: true,
-  price: '3500',
-  currency: 'YER',
-  items: 'القاعة\nالضيافة',
-);
-
-const _review = ProviderReview(
-  id: 'review-1',
-  rating: 5,
-  userName: 'عميل موثق',
-  comment: 'خدمة ممتازة.',
-);

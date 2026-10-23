@@ -119,11 +119,12 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('قاعة الأمل'), findsOneWidget);
+      // f03 discloses the old copy with the journey notice (D13).
       expect(
-        find.byKey(const Key('provider-details-stale-warning')),
+        find.byKey(const ValueKey('journey-list-notice-error')),
         findsOneWidget,
       );
-      expect(find.textContaining('آخر بيانات محفوظة'), findsOneWidget);
+      expect(find.textContaining('وهذي آخر نسخة'), findsOneWidget);
       expect(find.textContaining('Internal server error'), findsNothing);
       expect(tester.takeException(), isNull);
     },
@@ -148,8 +149,8 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(find.text('تعذر فتح المزود'), findsOneWidget);
-    expect(find.text('طلب عرض سعر'), findsNothing);
+    expect(find.byKey(const ValueKey('journey-list-error')), findsOneWidget);
+    expect(find.text('اطلب عرض سعر'), findsNothing);
     expect(api.viewedProviders, isEmpty);
     expect(tester.takeException(), isNull);
   });
@@ -177,8 +178,9 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(find.textContaining('لم يفعّل حسابه في اعّرست بعد'), findsOneWidget);
-    expect(find.text('طلب عرض سعر'), findsNothing);
+    // w33's wording, the same as on the f02 card.
+    expect(find.text('ما يستقبل طلبات لين يستلم صاحبه ملفه'), findsOneWidget);
+    expect(find.text('اطلب عرض سعر'), findsNothing);
     expect(MarketplaceProvider.fromJson({'id': 'p'}).isClaimed, isTrue);
     expect(tester.takeException(), isNull);
   });

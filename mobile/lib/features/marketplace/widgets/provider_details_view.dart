@@ -1,33 +1,26 @@
 import 'package:flutter/material.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 
-import '../../../core/theme/app_theme.dart';
+import '../../../core/experience_v3/aarast_v3.dart';
 import '../../../core/utils/currency_label.dart';
-import '../../../core/widgets/aarast_loading_state.dart';
 import '../models/marketplace_models.dart';
-import 'provider_details_sections.dart';
+import 'provider_board_view.dart' show providerServiceIcon;
 import 'provider_photo_gallery.dart';
 import 'provider_trust_signals.dart';
 
+/// f03 «صفحة المزود»: the photos, who the provider is and how they answer,
+/// their prices and how old they are, and their packages. Asking for a quote
+/// and WhatsApp sit in the screen's footer.
 class ProviderDetailsView extends StatelessWidget {
   const ProviderDetailsView({
     required this.provider,
     required this.services,
     required this.packages,
-    required this.reviews,
-    required this.isFavorite,
     required this.onBack,
-    required this.onShare,
-    required this.onFavorite,
-    required this.onRequestQuote,
-    this.servicesErrorMessage,
-    this.packagesErrorMessage,
-    this.reviewsErrorMessage,
+    this.onOpenOffer,
+    this.withinBudget = false,
     this.detailsErrorMessage,
-    this.isRetryingDetails = false,
     this.onRetryDetails,
-    this.onWhatsApp,
-    this.onOpenMap,
     this.now,
     super.key,
   });
@@ -35,100 +28,145 @@ class ProviderDetailsView extends StatelessWidget {
   final MarketplaceProvider provider;
   final List<MarketplaceService> services;
   final List<ProviderPackage> packages;
-  final List<ProviderReview> reviews;
-  final bool isFavorite;
   final VoidCallback onBack;
-  final VoidCallback onShare;
-  final VoidCallback onFavorite;
-  final ValueChanged<MarketplaceService> onRequestQuote;
-  final String? servicesErrorMessage;
-  final String? packagesErrorMessage;
-  final String? reviewsErrorMessage;
-  final String? detailsErrorMessage;
-  final bool isRetryingDetails;
-  final VoidCallback? onRetryDetails;
 
-  /// Null hides the action (no WhatsApp number / no pinned location).
-  final VoidCallback? onWhatsApp;
-  final VoidCallback? onOpenMap;
+  /// A package or priced service was tapped: ask for a quote on its service
+  /// (null when the package names none). Null when no quote can be asked.
+  final ValueChanged<String?>? onOpenOffer;
+
+  /// The lowest price fits the plan's item for this kind of service.
+  final bool withinBudget;
+
+  /// The page, its services or its packages failed to refresh, so what is
+  /// shown may be old or incomplete.
+  final String? detailsErrorMessage;
+  final VoidCallback? onRetryDetails;
 
   /// The clock for "last price update"; tests pin it.
   final DateTime? now;
 
   @override
   Widget build(BuildContext context) {
-    final serviceImages = _galleryUrls(services);
-    final heroImage = _heroImageUrl(provider, serviceImages);
-    final galleryImages = _allPhotoUrls(heroImage, serviceImages);
-    final photoCount = galleryImages.length;
-    final primaryCategory = provider.primaryCategory?.nameAr.trim();
-    final category = primaryCategory?.isNotEmpty == true
-        ? primaryCategory
-        : _providerCategory(services);
+    final photos = _photoUrls(provider, services);
+    final category = _categoryName(provider, services);
+    final price = _priceRange(services);
+    final priceUpdatedAt =
+        latestPriceUpdate(services) ?? provider.serviceSummary?.pricesUpdatedAt;
+    final priceAge = priceUpdatedAt == null
+        ? null
+        : priceAgeLine(priceUpdatedAt, now ?? DateTime.now());
+    final offers = _offers(packages, services);
+    final responds = providerRespondsLabel(provider.responsiveness);
+    final place = _place(provider);
 
     return ListView(
-      padding: const EdgeInsets.only(bottom: 10),
+      key: const ValueKey('provider-details-page'),
+      padding: const EdgeInsets.only(bottom: 24),
       children: [
         _ProviderHero(
-          providerName: provider.businessName,
-          category: category,
-          location: _providerLocationDetail(provider),
-          imageUrl: heroImage,
-          logoUrl: provider.logoUrl,
-          photoCount: photoCount,
-          isFavorite: isFavorite,
+          photos: photos,
+          icon: providerServiceIcon(category ?? ''),
           onBack: onBack,
-          onShare: onShare,
-          onFavorite: onFavorite,
         ),
-        if (detailsErrorMessage != null)
-          _ProviderDetailsStaleWarning(
-            message: detailsErrorMessage!,
-            isRetrying: isRetryingDetails,
-            onRetry: onRetryDetails,
-          ),
-        DecoratedBox(
-          decoration: const BoxDecoration(color: AppTheme.canvas),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              if (galleryImages.isNotEmpty) ...[
-                const SizedBox(height: 18),
-                _GallerySection(images: galleryImages),
+              if (detailsErrorMessage != null) ...[
+                JourneyListNotice(offline: false, onRetry: onRetryDetails),
+                const SizedBox(height: 12),
               ],
-              const SizedBox(height: 18),
-              _ProviderMeta(
-                category: category,
-                ratingAverage: provider.ratingAverage,
-                ratingCount: provider.ratingCount,
-                isFeatured: provider.isFeatured,
-                isVerified: provider.isVerified,
+              Row(
+                children: [
+                  Expanded(
+                    child: Semantics(
+                      header: true,
+                      child: Text(
+                        provider.businessName,
+                        style: JourneyType.of(
+                          JourneyType.display,
+                          weight: JourneyType.bold,
+                        ),
+                      ),
+                    ),
+                  ),
+                  if (provider.isVerified) ...[
+                    const SizedBox(width: 8),
+                    const Tooltip(
+                      message: 'موثّق',
+                      child: Icon(
+                        LucideIcons.badgeCheck,
+                        size: 22,
+                        color: AarastV3Color.cobalt,
+                        semanticLabel: 'موثّق',
+                      ),
+                    ),
+                  ],
+                ],
               ),
-              const SizedBox(height: 12),
-              ProviderTrustSignals(
-                responsiveness: provider.responsiveness,
-                pricesUpdatedAt: latestPriceUpdate(services),
-                now: now ?? DateTime.now(),
-                onWhatsApp: onWhatsApp,
-                onOpenMap: onOpenMap,
-              ),
-              if (_providerPriceRange(services) case final price?) ...[
-                const SizedBox(height: 14),
-                _PriceBand(priceLabel: price),
+              if (provider.ratingCount > 0 || place != null) ...[
+                const SizedBox(height: 2),
+                _RatingLine(
+                  average: provider.ratingAverage,
+                  count: provider.ratingCount,
+                  place: place,
+                ),
               ],
-              const SizedBox(height: 22),
-              ProviderDetailsSections(
-                provider: provider,
-                services: services,
-                packages: packages,
-                reviews: reviews,
-                onRequestQuote: onRequestQuote,
-                servicesErrorMessage: servicesErrorMessage,
-                packagesErrorMessage: packagesErrorMessage,
-                reviewsErrorMessage: reviewsErrorMessage,
-                isRetryingDetails: isRetryingDetails,
-                onRetryDetails: onRetryDetails,
-              ),
+              if (responds != null) ...[
+                const SizedBox(height: 10),
+                Wrap(
+                  spacing: 6,
+                  runSpacing: 6,
+                  children: [
+                    JourneyTag(
+                      key: const ValueKey('provider-details-responds'),
+                      label: responds,
+                      color: AarastV3Color.mint,
+                      soft: AarastV3Color.mintSoft,
+                    ),
+                  ],
+                ),
+              ],
+              if (price != null) ...[
+                const SizedBox(height: 12),
+                _PriceBox(
+                  price: price,
+                  withinBudget: withinBudget,
+                  age: priceAge,
+                ),
+              ],
+              if (offers.isNotEmpty) ...[
+                const JourneySectionTitle('الباقات'),
+                JourneyBox(
+                  padding: EdgeInsets.zero,
+                  child: JourneyList(
+                    children: [
+                      for (final offer in offers)
+                        JourneyListRow(
+                          key: ValueKey('provider-offer-${offer.key}'),
+                          icon: providerServiceIcon(offer.category ?? ''),
+                          color: AarastV3Color.cobalt,
+                          soft: AarastV3Color.cobaltSoft,
+                          title: offer.title,
+                          subtitle: offer.detail,
+                          trailing: offer.price == null
+                              ? null
+                              : Text(
+                                  offer.price!,
+                                  style: JourneyType.of(
+                                    JourneyType.body,
+                                    weight: JourneyType.bold,
+                                  ),
+                                ),
+                          onTap: onOpenOffer == null
+                              ? null
+                              : () => onOpenOffer!(offer.serviceId),
+                        ),
+                    ],
+                  ),
+                ),
+              ],
             ],
           ),
         ),
@@ -137,854 +175,332 @@ class ProviderDetailsView extends StatelessWidget {
   }
 }
 
-class _ProviderDetailsStaleWarning extends StatelessWidget {
-  const _ProviderDetailsStaleWarning({
-    required this.message,
-    required this.isRetrying,
-    this.onRetry,
+/// The photo across the top, the way back, and how many photos there are.
+class _ProviderHero extends StatelessWidget {
+  const _ProviderHero({
+    required this.photos,
+    required this.icon,
+    required this.onBack,
   });
 
-  final String message;
-  final bool isRetrying;
-  final VoidCallback? onRetry;
+  final List<String> photos;
+  final IconData icon;
+  final VoidCallback onBack;
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      key: const Key('provider-details-stale-warning'),
-      margin: const EdgeInsets.fromLTRB(18, 14, 18, 0),
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: AppTheme.dangerSoft,
-        borderRadius: BorderRadius.circular(AppTheme.radiusControl),
-        border: Border.all(color: AppTheme.danger.withValues(alpha: 0.35)),
+    final placeholder = ColoredBox(
+      key: const Key('provider-media-fallback'),
+      color: AarastV3Color.cobalt,
+      child: Center(
+        child: Icon(icon, size: 70, color: AarastV3Color.cobaltSoft),
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
+    );
+    return SizedBox(
+      height: 220,
+      child: Stack(
+        fit: StackFit.expand,
         children: [
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Icon(
-                LucideIcons.alertCircle,
-                size: 19,
-                color: AppTheme.danger,
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Text(
-                  'تعذر تحديث بيانات المزود',
-                  style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                    color: AppTheme.danger,
-                    fontWeight: FontWeight.w900,
-                  ),
+          if (photos.isEmpty)
+            placeholder
+          else
+            Semantics(
+              button: true,
+              label: 'افتح الصور',
+              child: GestureDetector(
+                onTap: () => showProviderPhotoGallery(
+                  context,
+                  images: photos,
+                  initialIndex: 0,
+                ),
+                child: Image.network(
+                  photos.first,
+                  fit: BoxFit.cover,
+                  errorBuilder: (_, _, _) => placeholder,
                 ),
               ),
-            ],
-          ),
-          const SizedBox(height: 5),
-          Text(
-            message,
-            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-              color: AppTheme.textSecondary,
-              height: 1.45,
-              fontWeight: FontWeight.w700,
+            ),
+          PositionedDirectional(
+            top: 12,
+            start: 16,
+            child: SafeArea(
+              bottom: false,
+              child: JourneyRoundButton(
+                key: const ValueKey('provider-details-back'),
+                icon: LucideIcons.arrowRight,
+                tooltip: 'رجوع',
+                size: 42,
+                onPressed: onBack,
+              ),
             ),
           ),
-          if (onRetry != null) ...[
-            const SizedBox(height: 9),
-            OutlinedButton.icon(
-              onPressed: isRetrying ? null : onRetry,
-              icon: const Icon(LucideIcons.refreshCw, size: 16),
-              label: const Text('إعادة المحاولة'),
+          if (photos.isNotEmpty)
+            PositionedDirectional(
+              bottom: 14,
+              end: 16,
+              child: IgnorePointer(
+                child: JourneyTag(
+                  label: '1 / ${photos.length} صورة',
+                  color: AarastV3Color.onPrimary,
+                  soft: AarastV3Color.ink,
+                ),
+              ),
             ),
-          ],
         ],
       ),
     );
   }
 }
 
-class _ProviderHero extends StatelessWidget {
-  const _ProviderHero({
-    required this.providerName,
-    required this.category,
-    required this.location,
-    required this.imageUrl,
-    required this.logoUrl,
-    required this.photoCount,
-    required this.isFavorite,
-    required this.onBack,
-    required this.onShare,
-    required this.onFavorite,
+/// «★ 4.8 (63) · صنعاء، حدة».
+class _RatingLine extends StatelessWidget {
+  const _RatingLine({
+    required this.average,
+    required this.count,
+    required this.place,
   });
 
-  final String providerName;
-  final String? category;
-  final String? location;
-  final String? imageUrl;
-  final String? logoUrl;
-  final int photoCount;
-  final bool isFavorite;
-  final VoidCallback onBack;
-  final VoidCallback onShare;
-  final VoidCallback onFavorite;
+  final double average;
+  final int count;
+  final String? place;
 
   @override
   Widget build(BuildContext context) {
-    return _ProviderTextHero(
-      providerName: providerName,
-      category: category,
-      location: location,
-      imageUrl: imageUrl,
-      logoUrl: logoUrl,
-      photoCount: photoCount,
-      isFavorite: isFavorite,
-      onBack: onBack,
-      onShare: onShare,
-      onFavorite: onFavorite,
+    final muted = JourneyType.of(
+      JourneyType.body,
+      color: AarastV3Color.textMuted,
+    );
+    return Text.rich(
+      TextSpan(
+        children: [
+          if (count > 0) ...[
+            const WidgetSpan(
+              alignment: PlaceholderAlignment.middle,
+              child: Icon(
+                LucideIcons.star,
+                size: 16,
+                color: AarastV3Color.brandAccentStrong,
+              ),
+            ),
+            TextSpan(
+              text: ' ${average.toStringAsFixed(1)}',
+              style: JourneyType.of(JourneyType.body, weight: JourneyType.bold),
+            ),
+            TextSpan(text: ' ($count)', style: muted),
+            if (place != null) TextSpan(text: ' · ', style: muted),
+          ],
+          if (place != null) TextSpan(text: place, style: muted),
+        ],
+      ),
     );
   }
 }
 
-class _ProviderTextHero extends StatelessWidget {
-  const _ProviderTextHero({
-    required this.providerName,
-    required this.category,
-    required this.location,
-    required this.imageUrl,
-    required this.logoUrl,
-    required this.photoCount,
-    required this.isFavorite,
-    required this.onBack,
-    required this.onShare,
-    required this.onFavorite,
+/// The price range, whether it fits the item, and how old it is.
+class _PriceBox extends StatelessWidget {
+  const _PriceBox({
+    required this.price,
+    required this.withinBudget,
+    required this.age,
   });
 
-  final String providerName;
-  final String? category;
-  final String? location;
-  final String? imageUrl;
-  final String? logoUrl;
-  final int photoCount;
-  final bool isFavorite;
-  final VoidCallback onBack;
-  final VoidCallback onShare;
-  final VoidCallback onFavorite;
+  final String price;
+  final bool withinBudget;
+  final String? age;
 
   @override
   Widget build(BuildContext context) {
-    final cleanImage = imageUrl?.trim();
-    final cleanLogo = logoUrl?.trim();
-    final displayUrl = cleanImage?.isNotEmpty == true
-        ? cleanImage
-        : cleanLogo?.isNotEmpty == true
-        ? cleanLogo
-        : null;
-    final details = <String>[
-      ?location,
-      if (photoCount > 0) 'معرض الصور $photoCount' else 'لا توجد صور منشورة',
-    ];
-    return Container(
-      key: const Key('provider-details-hero'),
-      padding: const EdgeInsets.fromLTRB(16, 14, 16, 18),
-      decoration: const BoxDecoration(
-        color: AppTheme.surfaceRaised,
-        border: Border(bottom: BorderSide(color: AppTheme.border)),
-      ),
+    return JourneyBox(
+      key: const ValueKey('provider-details-price'),
+      color: AarastV3Color.cobaltSoft,
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
-              _HeroLightButton(
-                icon: LucideIcons.chevronRight,
-                onTap: onBack,
-                tooltip: 'رجوع',
-              ),
-              const Spacer(),
-              _HeroLightButton(
-                icon: LucideIcons.share2,
-                onTap: onShare,
-                tooltip: 'مشاركة',
-              ),
-              const SizedBox(width: 8),
-              _HeroLightButton(
-                icon: LucideIcons.heart,
-                iconColor: isFavorite ? AppTheme.brand : null,
-                backgroundColor: isFavorite
-                    ? AppTheme.brandMuted
-                    : AppTheme.surfaceMuted,
-                onTap: onFavorite,
-                tooltip: isFavorite ? 'إزالة من المحفوظات' : 'حفظ المزود',
-              ),
-            ],
-          ),
-          const SizedBox(height: 16),
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              Container(
-                key: displayUrl == null
-                    ? const Key('provider-media-fallback')
-                    : null,
-                width: 58,
-                height: 58,
-                padding: const EdgeInsets.all(10),
-                clipBehavior: Clip.antiAlias,
-                decoration: BoxDecoration(
-                  color: AppTheme.surfaceMuted,
-                  borderRadius: BorderRadius.circular(AppTheme.radiusSurface),
-                  border: Border.all(color: AppTheme.border),
-                ),
-                child: displayUrl == null
-                    ? const Icon(
-                        LucideIcons.store,
-                        color: AppTheme.brand,
-                        size: 26,
-                      )
-                    : Image.network(
-                        displayUrl,
-                        fit: cleanImage?.isNotEmpty == true
-                            ? BoxFit.cover
-                            : BoxFit.contain,
-                        errorBuilder: (context, error, stackTrace) =>
-                            const Icon(
-                              LucideIcons.store,
-                              color: AppTheme.brand,
-                              size: 26,
-                            ),
-                      ),
-              ),
-              const SizedBox(width: 12),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    if (category != null) ...[
-                      Text(
-                        category!,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: Theme.of(context).textTheme.labelMedium
-                            ?.copyWith(
-                              color: AppTheme.brand,
-                              fontWeight: FontWeight.w800,
-                            ),
-                      ),
-                      const SizedBox(height: 4),
-                    ],
                     Text(
-                      providerName,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                        color: AppTheme.textPrimary,
-                        fontFamily: AppTheme.displayFontFamily,
-                        fontWeight: FontWeight.w800,
-                        height: 1.2,
+                      'أسعاره',
+                      style: JourneyType.of(
+                        JourneyType.small,
+                        color: AarastV3Color.textMuted,
                       ),
                     ),
-                    const SizedBox(height: 5),
                     Text(
-                      details.join(' · '),
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: AppTheme.textSecondary,
-                        fontWeight: FontWeight.w600,
-                        height: 1.35,
+                      price,
+                      style: JourneyType.of(
+                        JourneyType.figure,
+                        weight: JourneyType.bold,
+                        color: AarastV3Color.cobalt,
                       ),
                     ),
                   ],
                 ),
               ),
+              if (withinBudget) ...[
+                const SizedBox(width: 8),
+                const Icon(
+                  LucideIcons.checkCircle2,
+                  size: 16,
+                  color: AarastV3Color.mint,
+                ),
+                const SizedBox(width: 4),
+                Text(
+                  'ضمن بندك',
+                  style: JourneyType.of(
+                    JourneyType.body,
+                    weight: JourneyType.bold,
+                    color: AarastV3Color.mint,
+                  ),
+                ),
+              ],
             ],
           ),
-        ],
-      ),
-    );
-  }
-}
-
-class _HeroLightButton extends StatelessWidget {
-  const _HeroLightButton({
-    required this.icon,
-    required this.onTap,
-    required this.tooltip,
-    this.iconColor,
-    this.backgroundColor = AppTheme.surfaceMuted,
-  });
-
-  final IconData icon;
-  final VoidCallback onTap;
-  final String tooltip;
-  final Color? iconColor;
-  final Color backgroundColor;
-
-  @override
-  Widget build(BuildContext context) {
-    return Tooltip(
-      message: tooltip,
-      child: Material(
-        color: backgroundColor,
-        shape: const CircleBorder(side: BorderSide(color: AppTheme.border)),
-        clipBehavior: Clip.antiAlias,
-        child: InkWell(
-          onTap: onTap,
-          child: SizedBox.square(
-            dimension: 42,
-            child: Icon(
-              icon,
-              color: iconColor ?? AppTheme.textPrimary,
-              size: 19,
+          if (age != null) ...[
+            const SizedBox(height: 4),
+            Text(
+              age!,
+              style: JourneyType.of(
+                JourneyType.caption,
+                color: AarastV3Color.textMuted,
+              ),
             ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _ProviderMeta extends StatelessWidget {
-  const _ProviderMeta({
-    required this.category,
-    required this.ratingAverage,
-    required this.ratingCount,
-    required this.isFeatured,
-    required this.isVerified,
-  });
-
-  final String? category;
-  final double ratingAverage;
-  final int ratingCount;
-  final bool isFeatured;
-  final bool isVerified;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 18),
-      child: Wrap(
-        spacing: 8,
-        runSpacing: 8,
-        children: [
-          if (isVerified)
-            const _MetaBadge(
-              key: Key('provider-details-verified'),
-              label: 'موثّق',
-              icon: LucideIcons.shieldCheck,
-              foreground: AppTheme.success,
-              background: AppTheme.successSoft,
-            ),
-          if (isFeatured)
-            const _MetaBadge(
-              label: 'مرجع تخطيطي',
-              icon: LucideIcons.badgeCheck,
-              foreground: AppTheme.success,
-              background: AppTheme.successSoft,
-            ),
-          if (ratingCount > 0)
-            _MetaBadge(
-              label:
-                  '${ratingAverage.toStringAsFixed(1)} · $ratingCount تقييمًا',
-              icon: LucideIcons.star,
-              foreground: AppTheme.brand,
-              background: AppTheme.brandMuted,
-            ),
-          if (category != null)
-            _MetaBadge(
-              label: category!,
-              foreground: AppTheme.brand,
-              background: AppTheme.brandMuted,
-            ),
-        ],
-      ),
-    );
-  }
-}
-
-class _MetaBadge extends StatelessWidget {
-  const _MetaBadge({
-    required this.label,
-    required this.foreground,
-    required this.background,
-    this.icon,
-    super.key,
-  });
-
-  final String label;
-  final Color foreground;
-  final Color background;
-  final IconData? icon;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
-      decoration: BoxDecoration(
-        color: background,
-        borderRadius: BorderRadius.circular(AppTheme.radiusPill),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          if (icon != null) ...[
-            Icon(icon, size: 13, color: foreground),
-            const SizedBox(width: 5),
           ],
-          Text(
-            label,
-            style: Theme.of(context).textTheme.labelMedium?.copyWith(
-              color: foreground,
-              fontWeight: FontWeight.w800,
-            ),
-          ),
         ],
       ),
     );
   }
 }
 
-class _PriceBand extends StatelessWidget {
-  const _PriceBand({required this.priceLabel});
+/// One row under «الباقات»: a package, or a priced service when the provider
+/// published no packages.
+typedef _Offer = ({
+  String key,
+  String title,
+  String detail,
+  String? price,
+  String? serviceId,
+  String? category,
+});
 
-  final String priceLabel;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 18),
-      padding: const EdgeInsets.symmetric(vertical: 17),
-      decoration: const BoxDecoration(
-        border: Border.symmetric(
-          horizontal: BorderSide(color: AppTheme.border),
+List<_Offer> _offers(
+  List<ProviderPackage> packages,
+  List<MarketplaceService> services,
+) {
+  final byId = {for (final service in services) service.id: service};
+  final active = packages.where((item) => item.isActive).toList();
+  if (active.isNotEmpty) {
+    return [
+      for (final item in active)
+        (
+          key: item.id,
+          title: item.title,
+          detail:
+              _lines(item.items ?? item.description) ?? item.serviceTitle ?? '',
+          price: _money(item.price, item.currency),
+          serviceId: item.serviceId,
+          category: byId[item.serviceId]?.category?.nameAr,
         ),
-      ),
-      child: Row(
-        children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'نطاق سعري تقديري · يتأكد عند طلب العرض',
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: AppTheme.textSecondary,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-                const SizedBox(height: 5),
-                Text(
-                  priceLabel,
-                  textDirection: TextDirection.ltr,
-                  textAlign: TextAlign.right,
-                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                    color: AppTheme.brand,
-                    fontWeight: FontWeight.w900,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(width: 14),
-          Container(
-            width: 48,
-            height: 48,
-            decoration: BoxDecoration(
-              color: AppTheme.brandMuted,
-              shape: BoxShape.circle,
-              border: Border.all(color: AppTheme.brandMuted),
-            ),
-            child: const Icon(
-              LucideIcons.walletCards,
-              color: AppTheme.brand,
-              size: 21,
-            ),
-          ),
-        ],
-      ),
-    );
+    ];
   }
-}
-
-class _GallerySection extends StatelessWidget {
-  const _GallerySection({required this.images});
-
-  final List<String> images;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 18),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Row(
-            children: [
-              Expanded(
-                child: Text(
-                  'معرض الصور',
-                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    color: AppTheme.textPrimary,
-                    fontWeight: FontWeight.w900,
-                  ),
-                ),
-              ),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                decoration: BoxDecoration(
-                  color: AppTheme.surfaceMuted,
-                  borderRadius: BorderRadius.circular(AppTheme.radiusPill),
-                ),
-                child: Text(
-                  '${images.length} صور',
-                  style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                    color: AppTheme.textSecondary,
-                    fontWeight: FontWeight.w800,
-                  ),
-                ),
-              ),
-              const SizedBox(width: 6),
-              if (images.length > 1)
-                TextButton(
-                  onPressed: () => showProviderPhotoGallery(
-                    context,
-                    images: images,
-                    initialIndex: 0,
-                  ),
-                  child: const Text('عرض الكل'),
-                ),
-            ],
-          ),
-          const SizedBox(height: 10),
-          Container(
-            key: const Key('provider-media-stage'),
-            height: 156,
-            clipBehavior: Clip.antiAlias,
-            decoration: BoxDecoration(
-              color: AppTheme.surfaceMuted,
-              borderRadius: BorderRadius.circular(AppTheme.radiusSurface),
-              border: Border.all(color: AppTheme.border),
-            ),
-            child: Row(
-              children: [
-                Expanded(
-                  flex: 2,
-                  child: _GalleryThumb(
-                    url: images.first,
-                    onTap: () => showProviderPhotoGallery(
-                      context,
-                      images: images,
-                      initialIndex: 0,
-                    ),
-                  ),
-                ),
-                if (images.length > 1) ...[
-                  const SizedBox(width: 4),
-                  Expanded(
-                    child: Column(
-                      children: [
-                        Expanded(
-                          child: _GalleryThumb(
-                            url: images[1],
-                            onTap: () => showProviderPhotoGallery(
-                              context,
-                              images: images,
-                              initialIndex: 1,
-                            ),
-                          ),
-                        ),
-                        if (images.length > 2) ...[
-                          const SizedBox(height: 4),
-                          Expanded(
-                            child: _GalleryThumb(
-                              url: images[2],
-                              overlayCount: images.length - 3,
-                              onTap: () => showProviderPhotoGallery(
-                                context,
-                                images: images,
-                                initialIndex: 2,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ],
-                    ),
-                  ),
-                ],
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _GalleryThumb extends StatefulWidget {
-  const _GalleryThumb({
-    required this.url,
-    required this.onTap,
-    this.overlayCount = 0,
-  });
-
-  final String url;
-  final VoidCallback onTap;
-  final int overlayCount;
-
-  @override
-  State<_GalleryThumb> createState() => _GalleryThumbState();
-}
-
-class _GalleryThumbState extends State<_GalleryThumb> {
-  bool _failed = false;
-
-  @override
-  Widget build(BuildContext context) {
-    return Material(
-      color: AppTheme.surfaceRaised,
-      borderRadius: BorderRadius.circular(AppTheme.radiusLg),
-      clipBehavior: Clip.antiAlias,
-      child: InkWell(
-        onTap: widget.onTap,
-        child: Stack(
-          fit: StackFit.expand,
-          children: [
-            Image.network(
-              widget.url,
-              fit: BoxFit.cover,
-              loadingBuilder: (context, child, progress) =>
-                  progress == null ? child : const _GalleryLoadingState(),
-              errorBuilder: (context, error, stackTrace) {
-                if (!_failed) {
-                  WidgetsBinding.instance.addPostFrameCallback((_) {
-                    if (mounted) setState(() => _failed = true);
-                  });
-                }
-                return _GalleryImageFallback(
-                  remainingCount: widget.overlayCount,
-                );
-              },
-            ),
-            if (!_failed && widget.overlayCount > 0)
-              DecoratedBox(
-                decoration: BoxDecoration(
-                  color: AppTheme.textPrimary.withValues(alpha: 0.58),
-                ),
-                child: Center(
-                  child: Text(
-                    '+${widget.overlayCount}',
-                    textDirection: TextDirection.ltr,
-                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                      color: Colors.white,
-                      fontWeight: FontWeight.w900,
-                    ),
-                  ),
-                ),
-              ),
-          ],
+  return [
+    for (final service in services)
+      if (_money(service.basePrice, service.currency) case final price?)
+        (
+          key: service.id,
+          title: service.title,
+          detail: _lines(service.description) ?? '',
+          price: price,
+          serviceId: service.id,
+          category: service.category?.nameAr,
         ),
-      ),
-    );
-  }
+  ];
 }
 
-class _GalleryLoadingState extends StatelessWidget {
-  const _GalleryLoadingState();
-
-  @override
-  Widget build(BuildContext context) {
-    return const DecoratedBox(
-      decoration: BoxDecoration(color: AppTheme.surfaceMuted),
-      child: Center(child: AarastInlineSpinner(dimension: 18)),
-    );
-  }
+/// «مصور واحد · 300 صورة» from a package's lines.
+String? _lines(String? text) {
+  final lines = (text ?? '')
+      .split('\n')
+      .map((line) => line.trim())
+      .where((line) => line.isNotEmpty)
+      .toList();
+  return lines.isEmpty ? null : lines.join(' · ');
 }
 
-class _GalleryImageFallback extends StatelessWidget {
-  const _GalleryImageFallback({required this.remainingCount});
-
-  final int remainingCount;
-
-  @override
-  Widget build(BuildContext context) {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final compact =
-            constraints.maxHeight < 100 || constraints.maxWidth < 110;
-        if (compact) {
-          return DecoratedBox(
-            decoration: const BoxDecoration(color: AppTheme.surfaceMuted),
-            child: Stack(
-              fit: StackFit.expand,
-              children: [
-                Center(
-                  child: Container(
-                    width: 30,
-                    height: 30,
-                    alignment: Alignment.center,
-                    decoration: BoxDecoration(
-                      color: AppTheme.surfaceRaised,
-                      borderRadius: BorderRadius.circular(
-                        AppTheme.radiusControl,
-                      ),
-                      border: Border.all(color: AppTheme.border),
-                    ),
-                    child: const Icon(
-                      LucideIcons.imageOff,
-                      size: 16,
-                      color: AppTheme.textSecondary,
-                    ),
-                  ),
-                ),
-                if (remainingCount > 0)
-                  Align(
-                    alignment: AlignmentDirectional.bottomCenter,
-                    child: Padding(
-                      padding: const EdgeInsets.only(bottom: 3),
-                      child: Text(
-                        '$remainingCount أخرى',
-                        style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                          color: AppTheme.brand,
-                          fontSize: 9,
-                          fontWeight: FontWeight.w900,
-                        ),
-                      ),
-                    ),
-                  ),
-              ],
-            ),
-          );
-        }
-        return DecoratedBox(
-          decoration: const BoxDecoration(color: AppTheme.surfaceMuted),
-          child: Padding(
-            padding: const EdgeInsets.all(8),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Container(
-                  width: 42,
-                  height: 42,
-                  alignment: Alignment.center,
-                  decoration: BoxDecoration(
-                    color: AppTheme.surfaceRaised,
-                    borderRadius: BorderRadius.circular(AppTheme.radiusControl),
-                    border: Border.all(color: AppTheme.border),
-                  ),
-                  child: Icon(
-                    LucideIcons.imageOff,
-                    size: 21,
-                    color: AppTheme.textSecondary,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  'تعذّر تحميل الصورة',
-                  textAlign: TextAlign.center,
-                  style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                    color: AppTheme.textSecondary,
-                    fontWeight: FontWeight.w800,
-                  ),
-                ),
-                if (remainingCount > 0) ...[
-                  const SizedBox(height: 3),
-                  Text(
-                    '+$remainingCount صور أخرى',
-                    textDirection: TextDirection.rtl,
-                    textAlign: TextAlign.center,
-                    style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                      color: AppTheme.brand,
-                      fontWeight: FontWeight.w800,
-                    ),
-                  ),
-                ],
-              ],
-            ),
-          ),
-        );
-      },
-    );
-  }
+String? _money(String? amount, String? currency) {
+  final value = num.tryParse(amount?.replaceAll(',', '').trim() ?? '');
+  if (value == null) return null;
+  return '${_grouped(value)} ${currencyLabelAr(currency)}';
 }
 
-List<String> _galleryUrls(List<MarketplaceService> services) {
-  final urls = <String>[];
+/// The range of the services priced in the first priced service's currency;
+/// prices in another currency never join it.
+String? _priceRange(List<MarketplaceService> services) {
+  num? min;
+  num? max;
+  String? unitCode;
   for (final service in services) {
-    for (final image in service.images) {
-      final url = image.imageUrl.trim();
-      if (url.isNotEmpty && !urls.contains(url)) urls.add(url);
-    }
-  }
-  return urls;
-}
-
-String? _heroImageUrl(MarketplaceProvider provider, List<String> gallery) {
-  final cover = provider.coverUrl?.trim();
-  if (cover != null && cover.isNotEmpty) return cover;
-  return gallery.isNotEmpty ? gallery.first : null;
-}
-
-List<String> _allPhotoUrls(String? hero, List<String> serviceImages) {
-  return <String>{
-    if (hero != null && hero.isNotEmpty) hero,
-    ...serviceImages,
-  }.toList();
-}
-
-String? _providerCategory(List<MarketplaceService> services) {
-  for (final service in services) {
-    final category = service.category?.nameAr.trim();
-    if (category != null && category.isNotEmpty) return category;
-  }
-  return null;
-}
-
-String? _providerLocationDetail(MarketplaceProvider provider) {
-  final city = provider.city?.nameAr.trim();
-  final address = provider.address?.trim();
-  final hasCity = city != null && city.isNotEmpty;
-  final hasAddress = address != null && address.isNotEmpty;
-  if (hasCity && hasAddress) return '$city – $address';
-  if (hasCity) return city;
-  if (hasAddress) return address;
-  return null;
-}
-
-String? _providerPriceRange(List<MarketplaceService> services) {
-  double? min;
-  double? max;
-  for (final service in services) {
-    final raw = service.basePrice?.replaceAll(',', '').trim();
-    final price = raw == null || raw.isEmpty ? null : double.tryParse(raw);
+    final price = num.tryParse(
+      service.basePrice?.replaceAll(',', '').trim() ?? '',
+    );
     if (price == null) continue;
-    min = min == null ? price : (price < min ? price : min);
-    max = max == null ? price : (price > max ? price : max);
+    final code = currencyCodeFromDisplayInput(service.currency);
+    unitCode ??= code;
+    if (code != unitCode) continue;
+    min = min == null || price < min ? price : min;
+    max = max == null || price > max ? price : max;
   }
   if (min == null || max == null) return null;
-  final unit = currencyLabelAr(_firstPricedCurrency(services));
-  if (min == max) return '${_formatMoney(min)} $unit';
-  return '${_formatMoney(min)} – ${_formatMoney(max)} $unit';
+  final unit = currencyLabelAr(unitCode);
+  if (min == max) return '${_grouped(min)} $unit';
+  return '${_grouped(min)} - ${_grouped(max)} $unit';
 }
 
-String? _firstPricedCurrency(List<MarketplaceService> services) {
-  for (final service in services) {
-    final raw = service.basePrice?.replaceAll(',', '').trim();
-    if (raw != null && raw.isNotEmpty && double.tryParse(raw) != null) {
-      return service.currency;
-    }
-  }
-  return null;
-}
-
-String _formatMoney(num value) {
-  final rounded = value.round();
-  final digits = rounded.abs().toString();
+String _grouped(num value) {
+  final digits = value.round().abs().toString();
   final buffer = StringBuffer();
   for (var i = 0; i < digits.length; i++) {
     if (i > 0 && (digits.length - i) % 3 == 0) buffer.write(',');
     buffer.write(digits[i]);
   }
-  return '${rounded < 0 ? '-' : ''}$buffer';
+  return '${value < 0 ? '-' : ''}$buffer';
+}
+
+/// «صنعاء، حدة».
+String? _place(MarketplaceProvider provider) {
+  final parts = [
+    provider.city?.nameAr.trim(),
+    provider.address?.trim(),
+  ].whereType<String>().where((part) => part.isNotEmpty);
+  return parts.isEmpty ? null : parts.join('، ');
+}
+
+String? _categoryName(
+  MarketplaceProvider provider,
+  List<MarketplaceService> services,
+) {
+  final primary = provider.primaryCategory?.nameAr.trim();
+  if (primary != null && primary.isNotEmpty) return primary;
+  for (final service in services) {
+    final name = service.category?.nameAr.trim();
+    if (name != null && name.isNotEmpty) return name;
+  }
+  return null;
+}
+
+/// The cover first, then the services' photos, once each.
+List<String> _photoUrls(
+  MarketplaceProvider provider,
+  List<MarketplaceService> services,
+) {
+  final cover = provider.coverUrl?.trim();
+  return <String>{
+    if (cover != null && cover.isNotEmpty) cover,
+    for (final service in services)
+      for (final image in service.images)
+        if (image.imageUrl.trim().isNotEmpty) image.imageUrl.trim(),
+  }.toList();
 }

@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:lucide_icons/lucide_icons.dart';
@@ -5,18 +7,20 @@ import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../../../core/experience_v3/aarast_v3.dart';
 import '../../../core/routing/app_router.dart';
-import '../../../core/theme/app_theme.dart';
+import '../../../core/utils/currency_label.dart';
 import '../../../core/widgets/aarast_toast.dart';
 import '../../../core/widgets/aarast_ui.dart';
 import '../../account_contexts/account_contexts_api.dart'
     show AccountContext, AccountContextController;
 import '../../auth/auth_api.dart' show AuthActionGuard;
+import '../../finance/finance_api.dart' show FinanceProvider;
 import '../data/provider_contact_links.dart';
 import '../models/marketplace_models.dart';
+import '../models/provider_service_groups.dart';
 import '../providers/marketplace_provider.dart';
 import '../widgets/provider_details_view.dart';
-import '../widgets/quote_status_chip.dart';
 
 part 'provider_details_screen.widgets.dart';
 
@@ -72,123 +76,127 @@ class _ProviderDetailsScreenState extends State<ProviderDetailsScreen> {
         .watch<AccountContextController?>()
         ?.selectedContext;
     final selectedPlanId = _matchingSelectedPlanId(selected);
+    // «ضمن بندك» follows the plan's money items, read once if Money has not.
+    final finance = context.watch<FinanceProvider?>();
+    if (selectedPlanId != null &&
+        finance != null &&
+        finance.loadedPlanId != selectedPlanId &&
+        !finance.isLoading) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted && finance.loadedPlanId != selectedPlanId) {
+          unawaited(finance.loadMoney(selectedPlanId));
+        }
+      });
+    }
     final providerFailedToLoad = context
         .select<ProviderMarketplaceProvider, bool>(
           (marketplace) =>
               marketplace.providerDetails(widget.providerId) == null &&
               marketplace.detailsErrorFor(widget.providerId) != null,
         );
-    final providerUnclaimed = context
-        .select<ProviderMarketplaceProvider, bool>(
-          (marketplace) =>
-              marketplace.providerDetails(widget.providerId)?.isClaimed ==
-              false,
-        );
     return AarastScreenFrame(
       maxWidth: 520,
       safeAreaBottom: false,
-      // A provider that failed to load (unknown, or not public) has nothing
-      // to request a quote from, so the quote footer is not offered; an
-      // unclaimed listing (V1 4.18) explains how to reach it instead.
+      backgroundColor: AarastV3Color.canvas,
+      // A provider that failed to load has nothing to ask a quote from.
       bottomNavigationBar: providerFailedToLoad
           ? null
-          : providerUnclaimed
-          ? const _UnclaimedProviderFooter()
           : _quoteFooter(selectedPlanId),
       child: Consumer<ProviderMarketplaceProvider>(
         builder: (context, state, _) {
           final provider = state.providerDetails(widget.providerId);
           final services = state.servicesFor(widget.providerId);
-          final packages = state.packagesFor(widget.providerId);
-          final reviews = state.reviewsFor(widget.providerId);
-          final servicesError = state.servicesErrorFor(widget.providerId);
-          final packagesError = state.packagesErrorFor(widget.providerId);
-          final reviewsError = state.reviewsErrorFor(widget.providerId);
           final detailsError = state.detailsErrorFor(widget.providerId);
           final detailsLoading = state.isProviderQuoteContextLoading(
             widget.providerId,
           );
+          void retry() => state.loadProviderDetails(
+            widget.providerId,
+            weddingPlanId: selectedPlanId,
+          );
 
           if (detailsLoading && provider == null) {
-            return AarastSkeleton.page(heroHeight: 220, tiles: 3, cards: 2);
+            return const _DetailsFrame(
+              child: JourneyListState(
+                phase: JourneyListPhase.loading,
+                section: JourneySection.providers,
+              ),
+            );
           }
-
           if (detailsError != null && provider == null) {
             return _DetailsFrame(
-              child: AarastEmptyState(
-                icon: LucideIcons.alertCircle,
-                title: 'تعذر فتح المزود',
-                message: detailsError,
-                action: OutlinedButton.icon(
-                  onPressed: () => state.loadProviderDetails(
-                    widget.providerId,
-                    weddingPlanId: selectedPlanId,
-                  ),
-                  icon: const Icon(LucideIcons.refreshCw),
-                  label: const Text('إعادة المحاولة'),
-                ),
+              child: JourneyListState(
+                phase: JourneyListPhase.error,
+                section: JourneySection.providers,
+                onRetry: retry,
               ),
             );
           }
-
           if (provider == null) {
             return const _DetailsFrame(
-              child: AarastEmptyState(
-                icon: LucideIcons.store,
-                title: 'المزود غير متاح',
-                message: 'لم نتمكن من العثور على تفاصيل هذا المزود.',
+              child: JourneyListState(
+                phase: JourneyListPhase.empty,
+                section: JourneySection.providers,
+                emptyTitle: 'المزود هذا مو موجود',
+                emptyMessage: 'ما لقينا صفحته، يمكن انشالت من الدليل.',
               ),
             );
           }
 
-          final isFavorite = state.favoriteProviderIds.contains(provider.id);
           return ProviderDetailsView(
             provider: provider,
             services: services,
-            packages: packages,
-            reviews: reviews,
-            isFavorite: isFavorite,
+            packages: state.packagesFor(widget.providerId),
             onBack: () {
               if (context.canPop()) context.pop();
             },
-            onShare: () => _shareProvider(context, provider),
-            onWhatsApp: _externalLinkAction(
-              context,
-              providerWhatsAppUri(provider.whatsapp),
-              'تعذر فتح واتساب على هذا الجهاز.',
-            ),
-            onOpenMap: _externalLinkAction(
-              context,
-              providerMapUri(provider.latitude, provider.longitude),
-              'تعذر فتح الخريطة على هذا الجهاز.',
-            ),
-            onFavorite: () async {
-              if (await AuthActionGuard.blockProtectedSubmitWithoutAccount(
-                context,
-              )) {
-                return;
-              }
-              await state.toggleFavorite(provider.id);
-            },
-            onRequestQuote: (service) => provider.isClaimed
-                ? _pushOnce(
+            onOpenOffer: provider.isClaimed
+                ? (serviceId) => _pushOnce(
                     AppRouter.providerQuote(provider.id),
-                    extra: service.id,
+                    extra: serviceId,
                   )
-                : AarastToast.showInfo(context, unclaimedProviderMessage),
-            servicesErrorMessage: servicesError,
-            packagesErrorMessage: packagesError,
-            reviewsErrorMessage: reviewsError,
-            detailsErrorMessage: detailsError,
-            isRetryingDetails: detailsLoading,
-            onRetryDetails: () => state.loadProviderDetails(
-              widget.providerId,
-              weddingPlanId: selectedPlanId,
-            ),
+                : null,
+            withinBudget: _withinBudget(provider, services, selectedPlanId),
+            // The page, its services or its packages failed to refresh.
+            detailsErrorMessage:
+                detailsError ??
+                state.servicesErrorFor(widget.providerId) ??
+                state.packagesErrorFor(widget.providerId),
+            onRetryDetails: detailsLoading ? null : retry,
           );
         },
       ),
     );
+  }
+
+  /// «ضمن بندك» on f03: the plan's item for this kind of service has an
+  /// amount, and the provider's lowest price in riyals fits it.
+  bool _withinBudget(
+    MarketplaceProvider provider,
+    List<MarketplaceService> services,
+    String? planId,
+  ) {
+    final finance = context.read<FinanceProvider?>();
+    if (planId == null || finance?.loadedPlanId != planId) return false;
+    final group = providerServiceGroupOf(
+      provider.primaryCategory?.nameAr ??
+          services.firstOrNull?.category?.nameAr,
+    );
+    if (group < 0) return false;
+    final item = finance!.categories
+        .where((item) => providerServiceGroupOf(item.name) == group)
+        .firstOrNull;
+    final allocated = num.tryParse(item?.allocatedAmount ?? '') ?? 0;
+    if (allocated <= 0) return false;
+    final prices = [
+      for (final service in services)
+        if (currencyCodeFromDisplayInput(service.currency) ==
+            defaultCurrencyCode)
+          ?num.tryParse(service.basePrice?.replaceAll(',', '') ?? ''),
+    ];
+    if (prices.isEmpty) return false;
+    final lowest = prices.reduce((a, b) => a < b ? a : b);
+    return lowest <= allocated;
   }
 
   Future<void> _loadDetails() async {

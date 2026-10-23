@@ -304,6 +304,7 @@ void main() {
         'lib/features/finance/screens/funding_sources_screen.dart',
         'lib/features/finance/screens/money_receipts_screen.dart',
         'lib/features/tasks/screens/task_timeline_screen.dart',
+        'lib/features/tasks/screens/task_details_screen.dart',
         'lib/features/tasks/screens/create_task_screen.dart',
         'lib/features/guests/screens/guest_list_screen.dart',
         'lib/features/wedding_day/screens/wedding_day_mode_screen.dart',

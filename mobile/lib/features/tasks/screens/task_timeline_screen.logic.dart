@@ -1,129 +1,118 @@
 part of 'task_timeline_screen.dart';
 
-enum _TaskFilter { all, overdue, today, upcoming, completed }
+/// d01's sections, in the order they are shown.
+enum _TaskGroup { overdue, week, month, later, undated, done }
 
-({String title, Color color}) _bucketMeta(AarastTemporalSection bucket) {
-  final color = switch (bucket) {
-    AarastTemporalSection.now => AppTheme.danger,
-    AarastTemporalSection.today || AarastTemporalSection.week => AppTheme.brand,
-    AarastTemporalSection.later => AppTheme.textSecondary,
-    AarastTemporalSection.completed => AppTheme.success,
-  };
-  return (title: bucket.label, color: color);
-}
-
-AarastTemporalSection _bucketFor(WeddingTask task, DateTime today) {
-  return aarastDeadlineSection(
-    dueDate: task.status == 'CANCELLED' ? null : task.dueDate,
-    completed: task.isDone,
-    now: today,
-  );
-}
-
-List<WeddingTask> _filteredTasks(List<WeddingTask> tasks, _TaskFilter filter) {
-  return switch (filter) {
-    _TaskFilter.all => tasks,
-    _TaskFilter.overdue => tasks.where(_isLateTask).toList(),
-    _TaskFilter.today => tasks.where((task) {
-      final dueDate = task.dueDate;
-      return dueDate != null && _isSameDay(dueDate, DateTime.now());
-    }).toList(),
-    _TaskFilter.upcoming => tasks.where((task) {
-      if (task.isDone || task.status == 'CANCELLED') return false;
-      if (_isLateTask(task)) return false;
-      final dueDate = task.dueDate;
-      if (dueDate != null && _isSameDay(dueDate, DateTime.now())) return false;
-      return true;
-    }).toList(),
-    _TaskFilter.completed => tasks.where((task) => task.isDone).toList(),
+extension on _TaskGroup {
+  String get label => switch (this) {
+    _TaskGroup.overdue => 'متأخرة',
+    _TaskGroup.week => 'هذا الأسبوع',
+    _TaskGroup.month => 'هذا الشهر',
+    _TaskGroup.later => 'بعدين',
+    _TaskGroup.undated => 'بدون موعد',
+    _TaskGroup.done => 'خلصت',
   };
 }
 
-WeddingTask? _selectImportantTask(List<WeddingTask> tasks, DateTime today) {
-  final candidates = tasks.where((task) {
-    if (task.isDone || task.status == 'CANCELLED') return false;
-    final bucket = _bucketFor(task, today);
-    return bucket == AarastTemporalSection.now ||
-        bucket == AarastTemporalSection.today;
-  }).toList();
-  if (candidates.isEmpty) return null;
-
-  candidates.sort((first, second) {
-    final firstBucket = _bucketFor(first, today);
-    final secondBucket = _bucketFor(second, today);
-    final firstUrgency = firstBucket == AarastTemporalSection.now ? 0 : 1;
-    final secondUrgency = secondBucket == AarastTemporalSection.now ? 0 : 1;
-    final urgencyComparison = firstUrgency.compareTo(secondUrgency);
-    if (urgencyComparison != 0) return urgencyComparison;
-
-    final dateComparison = first.dueDate!.compareTo(second.dueDate!);
-    if (dateComparison != 0) return dateComparison;
-    return _priorityRank(
-      second.priority,
-    ).compareTo(_priorityRank(first.priority));
-  });
-  return candidates.first;
+_TaskGroup _groupOf(WeddingTask task, DateTime today) {
+  if (task.isDone || task.status == 'CANCELLED') return _TaskGroup.done;
+  if (isTaskLate(task, now: today)) return _TaskGroup.overdue;
+  final due = task.dueDate;
+  if (due == null) return _TaskGroup.undated;
+  final days = taskDateOnly(due).difference(taskDateOnly(today)).inDays;
+  if (days < 7) return _TaskGroup.week;
+  if (days <= 30) return _TaskGroup.month;
+  return _TaskGroup.later;
 }
 
-int _priorityRank(String priority) {
-  return switch (priority) {
-    'URGENT' => 4,
-    'HIGH' => 3,
-    'MEDIUM' => 2,
-    'LOW' => 1,
-    _ => 0,
-  };
-}
-
-bool _isLateTask(WeddingTask task) => isTaskLate(task);
-
-bool _isSameDay(DateTime first, DateTime second) {
-  return first.year == second.year &&
-      first.month == second.month &&
-      first.day == second.day;
-}
-
-DateTime _dateOnly(DateTime date) => DateTime(date.year, date.month, date.day);
-
-String _taskListTitle(_TaskFilter filter) {
-  return switch (filter) {
-    _TaskFilter.all => 'قائمة المهام',
-    _TaskFilter.overdue => 'المهام المتأخرة',
-    _TaskFilter.today => 'مهام اليوم',
-    _TaskFilter.upcoming => 'المهام القادمة',
-    _TaskFilter.completed => 'المهام المكتملة',
-  };
-}
-
-String _emptyTasksMessage(_TaskFilter filter) {
-  return switch (filter) {
-    _TaskFilter.all =>
-      'لا توجد مهام بعد. أضف مهمة عندما يكون لديك إجراء واضح في الخطة.',
-    _TaskFilter.overdue => 'لا توجد مهام متأخرة الآن.',
-    _TaskFilter.today => 'لا توجد مهام مستحقة اليوم.',
-    _TaskFilter.upcoming => 'لا توجد مهام قادمة الآن.',
-    _TaskFilter.completed => 'لا توجد مهام مكتملة بعد.',
-  };
-}
-
-String _taskCountLabel(int count) {
-  return switch (count) {
-    0 => 'لا مهام',
-    1 => 'مهمة واحدة',
-    2 => 'مهمتان',
-    >= 3 && <= 10 => '$count مهام',
-    _ => '$count مهمة',
-  };
-}
-
-TaskSummary _summaryForPlan(
-  TaskSummary summary,
-  String weddingPlanId,
+/// Each section's tasks, soonest first; empty sections are left out.
+Map<_TaskGroup, List<WeddingTask>> _grouped(
   List<WeddingTask> tasks,
+  DateTime today,
 ) {
-  if (summary.weddingPlanId == weddingPlanId) return summary;
-  return TaskSummary.fromTasks(weddingPlanId: weddingPlanId, tasks: tasks);
+  final groups = <_TaskGroup, List<WeddingTask>>{};
+  for (final task in tasks) {
+    groups.putIfAbsent(_groupOf(task, today), () => []).add(task);
+  }
+  for (final list in groups.values) {
+    list.sort((a, b) {
+      final first = a.dueDate;
+      final second = b.dueDate;
+      if (first == null || second == null) {
+        return a.createdAt.compareTo(b.createdAt);
+      }
+      return first.compareTo(second);
+    });
+  }
+  return {
+    for (final group in _TaskGroup.values)
+      if (groups[group] != null) group: groups[group]!,
+  };
 }
+
+/// The person filter: everyone, the owner's own tasks («لي»), or one
+/// responsible person by name.
+const _everyone = '';
+const _mine = 'me';
+
+bool _isMine(WeddingTask task, String? userId) {
+  if (task.assigneeUserId != null && task.assigneeUserId == userId) {
+    return true;
+  }
+  return task.responsibleLabel == 'أنا';
+}
+
+String _personKey(WeddingTask task, String? userId) =>
+    _isMine(task, userId) ? _mine : task.responsibleLabel;
+
+/// Everyone besides the owner who has a task, most tasks first.
+List<String> _people(List<WeddingTask> tasks, String? userId) {
+  final counts = <String, int>{};
+  for (final task in tasks) {
+    final key = _personKey(task, userId);
+    if (key == _mine) continue;
+    counts[key] = (counts[key] ?? 0) + 1;
+  }
+  return counts.keys.toList()..sort((a, b) => counts[b]!.compareTo(counts[a]!));
+}
+
+/// «باقي 3 هذا الأسبوع، ووحدة متأخرة», from the real counts (C6).
+String _statusLine(List<WeddingTask> tasks, DateTime today) {
+  if (tasks.isEmpty) return 'ابدأ بأول مهمة';
+  final open = tasks
+      .where((task) => _groupOf(task, today) != _TaskGroup.done)
+      .toList();
+  if (open.isEmpty) return 'خلصت كل المهام';
+  final overdue = open
+      .where((task) => _groupOf(task, today) == _TaskGroup.overdue)
+      .length;
+  final week = open
+      .where((task) => _groupOf(task, today) == _TaskGroup.week)
+      .length;
+  final late = overdue == 0
+      ? null
+      : arabicCount(
+          overdue,
+          one: 'وحدة متأخرة',
+          two: 'ثنتين متأخرة',
+          few: 'متأخرة',
+          many: 'متأخرة',
+        );
+  if (week == 0) {
+    final left = 'باقي ${_taskCountLabel(open.length)}';
+    return late == null ? left : '$left، منها $late';
+  }
+  final thisWeek = 'باقي $week هذا الأسبوع';
+  return late == null ? thisWeek : '$thisWeek، و$late';
+}
+
+String _taskCountLabel(int count) => arabicCount(
+  count,
+  one: 'مهمة وحدة',
+  two: 'مهمتين',
+  few: 'مهام',
+  many: 'مهمة',
+);
 
 List<SharedMember> _membersForPlan(
   List<SharedMember> members,
@@ -148,12 +137,4 @@ WeddingTask _hydrateTaskParticipant(
     );
   }
   return task;
-}
-
-bool _isLocalGuestPlanId(String? planId) {
-  final value = planId?.trim() ?? '';
-  return value.isEmpty ||
-      value == 'local-guest-plan' ||
-      value.startsWith('guest-plan-') ||
-      value.startsWith('local-guest-');
 }

@@ -1636,7 +1636,7 @@ const r19ProviderPortalApi = Object.freeze({
 // +1 for a08b reading the plan kept on the phone from the onboarding owner
 // API, so its name is not asked again, -1 for the home greeting by the
 // plan's name instead of the onboarding persona copy (b02).
-const r19LegalRecordCount = 184;
+const r19LegalRecordCount = 185;
 const trackedOwnerApiContracts = [
   {
     area: 'features/account_contexts',
@@ -2035,6 +2035,7 @@ const trackedOwnerApiContracts = [
         show: ['TaskTimelineProvider'],
       },
       { uri: 'screens/create_task_screen.dart', show: ['CreateTaskScreen'] },
+      { uri: 'screens/task_details_screen.dart', show: ['TaskDetailsScreen'] },
       { uri: 'screens/task_timeline_screen.dart', show: ['TaskTimelineScreen'] },
     ],
   },
@@ -2536,7 +2537,7 @@ const trackedPlanningBatchContracts = [
   {
     source: 'mobile/lib/features/tasks/screens/task_timeline_screen.dart',
     target: 'mobile/lib/features/auth/auth_api.dart',
-    show: ['AuthActionGuard'],
+    show: ['AuthActionGuard', 'AuthController'],
   },
   {
     source: 'mobile/lib/features/tasks/screens/task_timeline_screen.dart',
@@ -2572,13 +2573,14 @@ const trackedPlanningBatchContracts = [
     target: 'mobile/lib/features/wedding_plans/wedding_plans_api.dart',
     show: [
       'DashboardSummaryProvider',
-      'WeddingPlanStageState',
       'WeddingPlansProvider',
-      'WeddingStageContextLine',
-      'WeddingStageDomain',
       'publishTaskPlanPulse',
-      'resolveWeddingPlanStage',
     ],
+  },
+  {
+    source: 'mobile/lib/features/tasks/screens/task_details_screen.dart',
+    target: 'mobile/lib/features/wedding_plans/wedding_plans_api.dart',
+    show: ['publishTaskPlanPulse'],
   },
   {
     source: 'mobile/lib/features/tasks/widgets/create_task_components.dart',
@@ -3115,7 +3117,12 @@ const trackedCompositionRootContracts = [
       },
       {
         target: 'mobile/lib/features/tasks/tasks_api.dart',
-        show: ['CreateTaskScreen', 'TaskTimelineScreen', 'WeddingTask'],
+        show: [
+          'CreateTaskScreen',
+          'TaskDetailsScreen',
+          'TaskTimelineScreen',
+          'WeddingTask',
+        ],
       },
       {
         target: 'mobile/lib/features/wedding_day/wedding_day_api.dart',

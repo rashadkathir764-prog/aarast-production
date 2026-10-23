@@ -42,7 +42,7 @@ void main() {
       const TaskTimelineScreen(weddingPlanId: localPlanId),
     );
 
-    expect(find.text('تقدّم المهام'), findsOneWidget);
+    expect(find.text('المهام'), findsWidgets);
     expect(find.text('أنت في وضع تجربة محلية'), findsNothing);
     expect(find.text('وضع تجربة التصميم'), findsNothing);
   });

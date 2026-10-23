@@ -92,6 +92,7 @@ Future<void> _openTaskStarterSheet(
   }
 }
 
+/// d03's door: suggested tasks for a plan that has few.
 class _StarterTasksCard extends StatelessWidget {
   const _StarterTasksCard({required this.onOpen});
 
@@ -99,42 +100,50 @@ class _StarterTasksCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Material(
-      color: AppTheme.brandMuted,
-      borderRadius: BorderRadius.circular(AppTheme.radiusLg),
-      child: InkWell(
+    return Semantics(
+      button: true,
+      label: 'ابدأ بمهام جاهزة',
+      onTap: onOpen,
+      excludeSemantics: true,
+      child: AarastPressable(
         key: const Key('task-starter-open'),
-        borderRadius: BorderRadius.circular(AppTheme.radiusLg),
         onTap: onOpen,
-        child: Padding(
+        child: JourneyBox(
+          color: AarastV3Color.brandAccentSoft,
           padding: const EdgeInsets.all(16),
           child: Row(
             children: [
-              const Icon(LucideIcons.sparkles, color: AppTheme.brand),
+              const JourneyIconTile(
+                icon: LucideIcons.sparkles,
+                color: AarastV3Color.onPrimary,
+                soft: AarastV3Color.brandAccentStrong,
+              ),
               const SizedBox(width: 12),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'ابدأ بمهام مقترحة',
-                      style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                        color: AppTheme.textPrimary,
-                        fontWeight: FontWeight.w900,
+                      'ابدأ بمهام جاهزة',
+                      style: JourneyType.of(
+                        JourneyType.bodyLarge,
+                        weight: JourneyType.bold,
                       ),
                     ),
-                    const SizedBox(height: 3),
                     Text(
-                      'المهر والشبكة والقاعة والكسوة والنقش وغيرها، مرتبة حسب موعد العرس.',
-                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: AppTheme.textSecondary,
-                        height: 1.4,
+                      'الشبكة والقاعة والكسوة والنقش وغيرها، مرتبة على موعد عرسك.',
+                      style: JourneyType.of(
+                        JourneyType.small,
+                        color: AarastV3Color.textMuted,
                       ),
                     ),
                   ],
                 ),
               ),
-              const Icon(LucideIcons.chevronLeft, color: AppTheme.brand),
+              const Icon(
+                LucideIcons.chevronLeft,
+                color: AarastV3Color.brandAccentStrong,
+              ),
             ],
           ),
         ),

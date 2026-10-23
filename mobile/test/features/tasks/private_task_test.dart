@@ -5,7 +5,7 @@ import 'package:aarast_mobile/features/tasks/models/task_summary.dart';
 import 'package:aarast_mobile/features/tasks/models/timeline.dart';
 import 'package:aarast_mobile/features/tasks/models/wedding_task.dart';
 import 'package:aarast_mobile/features/tasks/providers/task_timeline_provider.dart';
-import 'package:aarast_mobile/features/tasks/widgets/task_list_row.dart';
+import 'package:aarast_mobile/features/tasks/widgets/task_row.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -30,55 +30,60 @@ void main() {
     expect(TaskSummary.fromJson(const {}).canKeepPrivateTask, isFalse);
     // A summary built from cached tasks never offers privacy on its own.
     expect(
-      TaskSummary.fromTasks(weddingPlanId: 'plan-1', tasks: const [])
-          .canKeepPrivateTask,
+      TaskSummary.fromTasks(
+        weddingPlanId: 'plan-1',
+        tasks: const [],
+      ).canKeepPrivateTask,
       isFalse,
     );
     expect(_task(isPrivate: true).copyWith(title: 'y').isPrivate, isTrue);
   });
 
-  test('the provider sends privacy on create and shares a private task', () async {
-    final api = _PrivacyApi();
-    final provider = TaskTimelineProvider(api);
+  test(
+    'the provider sends privacy on create and shares a private task',
+    () async {
+      final api = _PrivacyApi();
+      final provider = TaskTimelineProvider(api);
 
-    await provider.createTask(
-      weddingPlanId: 'plan-1',
-      title: 'هدية العروس',
-      isPrivate: true,
-    );
-    expect(api.createdPrivate, [true]);
-    expect(provider.tasks.single.isPrivate, isTrue);
+      await provider.createTask(
+        weddingPlanId: 'plan-1',
+        title: 'هدية العروس',
+        isPrivate: true,
+      );
+      expect(api.createdPrivate, [true]);
+      expect(provider.tasks.single.isPrivate, isTrue);
 
-    final shared = await provider.shareTaskWithPlan(
-      'plan-1',
-      provider.tasks.single,
-    );
-    expect(shared, isTrue);
-    expect(api.updates.single, {'isPrivate': false});
-    expect(provider.tasks.single.isPrivate, isFalse);
-  });
+      final shared = await provider.shareTaskWithPlan(
+        'plan-1',
+        provider.tasks.single,
+      );
+      expect(shared, isTrue);
+      expect(api.updates.single, {'isPrivate': false});
+      expect(provider.tasks.single.isPrivate, isFalse);
+    },
+  );
 
-  testWidgets('a private task shows a lock in the list, a shared one does not', (
-    tester,
-  ) async {
-    Widget row(bool isPrivate) => MaterialApp(
-      theme: AppTheme.light(),
-      home: Scaffold(
-        body: TaskListRow(
-          task: _task(isPrivate: isPrivate),
-          isBusy: false,
-          onEdit: () {},
-          onDelete: () {},
+  testWidgets(
+    'a private task shows a lock in the list, a shared one does not',
+    (tester) async {
+      Widget row(bool isPrivate) => MaterialApp(
+        theme: AppTheme.light(),
+        home: Scaffold(
+          body: TaskRow(
+            task: _task(isPrivate: isPrivate),
+            onToggle: () {},
+            onOpen: () {},
+          ),
         ),
-      ),
-    );
+      );
 
-    await tester.pumpWidget(row(true));
-    expect(find.byKey(const ValueKey('task-private-lock')), findsOneWidget);
+      await tester.pumpWidget(row(true));
+      expect(find.byKey(const ValueKey('task-private-lock')), findsOneWidget);
 
-    await tester.pumpWidget(row(false));
-    expect(find.byKey(const ValueKey('task-private-lock')), findsNothing);
-  });
+      await tester.pumpWidget(row(false));
+      expect(find.byKey(const ValueKey('task-private-lock')), findsNothing);
+    },
+  );
 
   test('the privacy refusals reach the user in Arabic', () {
     for (final code in [

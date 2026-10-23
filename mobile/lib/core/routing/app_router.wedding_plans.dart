@@ -70,6 +70,23 @@ List<RouteBase> _weddingPlanRoutes() => [
     },
   ),
   GoRoute(
+    path: '/wedding-plans/:id/tasks/:taskId',
+    builder: (context, state) {
+      final id = state.pathParameters['id'] ?? '';
+      return WeddingPlanContextGate(
+        weddingPlanId: id,
+        requiredAccess: WeddingPlanRouteAccess.viewPlan,
+        child: TaskDetailsScreen(
+          weddingPlanId: id,
+          taskId: state.pathParameters['taskId'] ?? '',
+          initialTask: state.extra is WeddingTask
+              ? state.extra! as WeddingTask
+              : null,
+        ),
+      );
+    },
+  ),
+  GoRoute(
     path: '/wedding-plans/:id/tasks/:taskId/edit',
     builder: (context, state) {
       final id = state.pathParameters['id'] ?? '';

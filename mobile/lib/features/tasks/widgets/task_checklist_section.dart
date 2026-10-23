@@ -2,8 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 
 import '../../../core/experience_v3/aarast_v3.dart';
-import '../../../core/theme/app_theme.dart';
-import '../../../core/widgets/aarast_dialog.dart';
+import '../../../core/widgets/aarast_ui.dart';
 import '../models/task_checklist_item.dart';
 
 /// The steps that make up one task. Each change is saved on its own, so the
@@ -62,84 +61,110 @@ class _TaskChecklistSectionState extends State<TaskChecklistSection> {
   @override
   Widget build(BuildContext context) {
     final items = widget.items;
-    final done = items.where((item) => item.isDone).length;
-    return AarastV3FormSurface(
-      title: 'خطوات المهمة',
-      subtitle: items.isEmpty
-          ? 'قسّم المهمة إلى خطوات صغيرة تُنجز واحدة واحدة.'
-          : 'أُنجز $done من ${items.length}',
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        for (final item in items)
-          Row(
-            key: ValueKey('task-checklist-item-${item.id}'),
+        const JourneySectionTitle('خطوات صغيرة'),
+        JourneyBox(
+          padding: const EdgeInsets.fromLTRB(8, 4, 8, 10),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Checkbox(
-                value: item.isDone,
-                onChanged: widget.saving
-                    ? null
-                    : (value) => widget.onToggle(item, value ?? false),
-              ),
-              Expanded(
-                child: InkWell(
-                  onTap: widget.saving ? null : () => _rename(item),
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 10),
-                    child: Text(
-                      item.title,
-                      style: TextStyle(
-                        color: item.isDone
-                            ? AppTheme.textSecondary
-                            : AppTheme.textPrimary,
-                        fontWeight: FontWeight.w700,
-                        decoration: item.isDone
-                            ? TextDecoration.lineThrough
-                            : null,
-                      ),
+              if (items.isEmpty)
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(8, 10, 8, 4),
+                  child: Text(
+                    'قسّمها على خطوات صغيرة تخلصها وحدة وحدة.',
+                    style: JourneyType.of(
+                      JourneyType.small,
+                      color: AarastV3Color.textMuted,
                     ),
                   ),
                 ),
+              for (final item in items)
+                Row(
+                  key: ValueKey('task-checklist-item-${item.id}'),
+                  children: [
+                    Checkbox(
+                      value: item.isDone,
+                      shape: const CircleBorder(),
+                      activeColor: AarastV3Color.mint,
+                      onChanged: widget.saving
+                          ? null
+                          : (value) => widget.onToggle(item, value ?? false),
+                    ),
+                    Expanded(
+                      child: AarastPressable(
+                        onTap: widget.saving ? () {} : () => _rename(item),
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 10),
+                          child: Text(
+                            item.title,
+                            style:
+                                JourneyType.of(
+                                  JourneyType.body,
+                                  color: item.isDone
+                                      ? AarastV3Color.textMuted
+                                      : AarastV3Color.ink,
+                                ).copyWith(
+                                  decoration: item.isDone
+                                      ? TextDecoration.lineThrough
+                                      : null,
+                                ),
+                          ),
+                        ),
+                      ),
+                    ),
+                    IconButton(
+                      tooltip: 'شيل الخطوة ${item.title}',
+                      onPressed: widget.saving
+                          ? null
+                          : () => widget.onRemove(item),
+                      icon: const Icon(
+                        LucideIcons.x,
+                        size: 18,
+                        color: AarastV3Color.textFaint,
+                      ),
+                    ),
+                  ],
+                ),
+              const SizedBox(height: 6),
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  Expanded(
+                    child: JourneyTextField(
+                      key: const ValueKey('task-checklist-new-item'),
+                      label: 'أضف خطوة',
+                      hint: 'مثلًا: كلّم القاعة',
+                      controller: _controller,
+                      textInputAction: TextInputAction.done,
+                      onSubmitted: (_) => _add(),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  JourneyRoundButton(
+                    key: const ValueKey('task-checklist-add'),
+                    icon: LucideIcons.plus,
+                    tooltip: 'أضف الخطوة',
+                    onPressed: widget.saving ? null : _add,
+                  ),
+                ],
               ),
-              IconButton(
-                tooltip: 'حذف الخطوة ${item.title}',
-                onPressed: widget.saving ? null : () => widget.onRemove(item),
-                icon: const Icon(LucideIcons.trash2, size: 18),
-              ),
+              if (widget.errorMessage != null) ...[
+                const SizedBox(height: 8),
+                Text(
+                  widget.errorMessage!,
+                  style: JourneyType.of(
+                    JourneyType.small,
+                    weight: JourneyType.bold,
+                    color: AarastV3Color.danger,
+                  ),
+                ),
+              ],
             ],
           ),
-        const SizedBox(height: AppTheme.space8),
-        Row(
-          children: [
-            Expanded(
-              child: TextField(
-                key: const ValueKey('task-checklist-new-item'),
-                controller: _controller,
-                textAlign: TextAlign.right,
-                textInputAction: TextInputAction.done,
-                onSubmitted: (_) => _add(),
-                decoration: const InputDecoration(
-                  hintText: 'أضف خطوة، مثال: الاتصال بالقاعة',
-                ),
-              ),
-            ),
-            const SizedBox(width: AppTheme.space8),
-            IconButton.filledTonal(
-              key: const ValueKey('task-checklist-add'),
-              tooltip: 'إضافة الخطوة',
-              onPressed: widget.saving ? null : _add,
-              icon: const Icon(LucideIcons.plus),
-            ),
-          ],
         ),
-        if (widget.errorMessage != null) ...[
-          const SizedBox(height: AppTheme.space8),
-          Text(
-            widget.errorMessage!,
-            style: const TextStyle(
-              color: AppTheme.danger,
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-        ],
       ],
     );
   }

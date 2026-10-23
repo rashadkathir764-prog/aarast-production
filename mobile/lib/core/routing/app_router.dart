@@ -77,7 +77,7 @@ import '../../features/sharing/sharing_api.dart'
 import '../../features/shell/shell_api.dart' show WeddingPlanShell;
 import '../../features/support/support_api.dart' show SupportScreen;
 import '../../features/tasks/tasks_api.dart'
-    show CreateTaskScreen, TaskTimelineScreen, WeddingTask;
+    show CreateTaskScreen, TaskDetailsScreen, TaskTimelineScreen, WeddingTask;
 import '../../features/wedding_day/wedding_day_api.dart'
     show WeddingDayModeScreen;
 import '../../features/wedding_plans/wedding_plans_api.dart'
@@ -321,6 +321,10 @@ class AppRouter {
 
   static String createTask(String id) {
     return '/wedding-plans/$id/tasks/create';
+  }
+
+  static String taskDetails(String weddingPlanId, String taskId) {
+    return '/wedding-plans/$weddingPlanId/tasks/$taskId';
   }
 
   static String editTask(String weddingPlanId, String taskId) {

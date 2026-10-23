@@ -133,7 +133,7 @@ void main() {
       ),
     );
 
-    expect(find.text('أُنجز 0 من 1'), findsOneWidget);
+    expect(find.text('خطوات صغيرة'), findsOneWidget);
 
     await tester.enterText(
       find.byKey(const ValueKey('task-checklist-new-item')),
@@ -157,7 +157,7 @@ void main() {
     await tester.pumpAndSettle();
     expect(renamed, ['a:الاتصال بالقاعة']);
 
-    await tester.tap(find.byTooltip('حذف الخطوة الاتصال'));
+    await tester.tap(find.byTooltip('شيل الخطوة الاتصال'));
     expect(removed, ['a']);
   });
 }

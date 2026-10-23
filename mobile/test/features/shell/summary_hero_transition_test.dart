@@ -2,38 +2,11 @@ import 'package:aarast_mobile/core/experience_v3/aarast_v3.dart';
 import 'package:aarast_mobile/core/theme/app_theme.dart';
 import 'package:aarast_mobile/features/guests/models/guest.dart';
 import 'package:aarast_mobile/features/guests/widgets/guest_attendance_brief.dart';
-import 'package:aarast_mobile/features/tasks/models/task_summary.dart';
-import 'package:aarast_mobile/features/tasks/widgets/tasks_progress_brief.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 
 void main() {
-  testWidgets('tasks shared transition never constrains the summary card', (
-    tester,
-  ) async {
-    const summary = TaskSummary(
-      weddingPlanId: 'plan-1',
-      total: 8,
-      completed: 3,
-      pendingInProgress: 5,
-      overdue: 1,
-      dueToday: 2,
-      highPriority: 2,
-    );
-
-    await _verifyTransition(
-      tester,
-      label: 'المهام',
-      heroTag: 'plan-1-tasks',
-      icon: LucideIcons.listChecks,
-      destination: const TasksProgressBrief(
-        summary: summary,
-        heroTag: 'plan-1-tasks',
-      ),
-    );
-  });
-
   testWidgets('guests shared transition never constrains the summary card', (
     tester,
   ) async {

@@ -5,12 +5,13 @@ import 'package:aarast_mobile/core/network/api_client.dart';
 import 'package:aarast_mobile/core/offline/local_database_json.dart';
 import 'package:aarast_mobile/core/offline/offline_sync_service.dart';
 import 'package:aarast_mobile/core/storage/auth_storage.dart';
-import 'package:aarast_mobile/core/theme/app_theme.dart';
 import 'package:aarast_mobile/features/tasks/data/task_timeline_api.dart';
 import 'package:aarast_mobile/features/tasks/models/task_summary.dart';
 import 'package:aarast_mobile/features/tasks/models/wedding_task.dart';
 import 'package:aarast_mobile/features/tasks/providers/task_timeline_provider.dart';
+import 'package:aarast_mobile/core/experience_v3/aarast_v3.dart';
 import 'package:aarast_mobile/features/tasks/screens/create_task_screen.dart';
+import 'package:aarast_mobile/features/tasks/screens/task_details_screen.dart';
 import 'package:aarast_mobile/features/tasks/screens/task_timeline_screen.dart';
 import 'package:aarast_mobile/features/auth/data/auth_repository.dart';
 import 'package:aarast_mobile/core/session/safe_user.dart';
@@ -159,21 +160,13 @@ void main() {
 
     await _pumpTasksScreen(tester, harness);
 
-    expect(find.text('تقدّم المهام'), findsOneWidget);
-    // ملاحظة: أُزيلت فقرة التطمين المكررة من ترويسة V3.
-    // (تُقال مرة واحدة في الـ onboarding لا في كل شاشة).
-    expect(find.text('تأكيد القاعة'), findsWidgets);
+    // d01: the header, this week's section, and when · who on the row.
+    expect(find.text('المهام'), findsOneWidget);
+    expect(find.text('باقي 1 هذا الأسبوع'), findsOneWidget);
+    expect(find.byKey(const ValueKey('task-group-week')), findsOneWidget);
+    expect(find.text('تأكيد القاعة'), findsOneWidget);
+    expect(find.text('اليوم · محمد'), findsOneWidget);
     expect(find.text('حساب محفوظ'), findsNothing);
-    expect(find.text('تخطيط محلي'), findsOneWidget);
-    await tester.scrollUntilVisible(
-      find.text('المسؤول: محمد'),
-      220,
-      scrollable: find.byType(Scrollable).first,
-    );
-    expect(find.text('المسؤول: محمد'), findsOneWidget);
-    expect(find.text('+967 777 123 456'), findsOneWidget);
-    expect(find.text('مشارك في الخطة'), findsNothing);
-    expect(find.text('القاعة'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 
@@ -199,12 +192,16 @@ void main() {
 
       await _pumpTasksScreen(tester, harness);
 
-      expect(find.text('المسؤول: سالم'), findsOneWidget);
-      expect(find.text('المسؤول: ليلى'), findsOneWidget);
-      expect(find.text('+967 777 654 321'), findsOneWidget);
-      expect(find.text('مشارك في الخطة'), findsOneWidget);
+      expect(find.text('بدون موعد · سالم'), findsOneWidget);
+      expect(find.text('بدون موعد · ليلى'), findsOneWidget);
+      expect(find.textContaining('+967'), findsNothing);
       expect(find.textContaining('غير معروف'), findsNothing);
-      expect(find.text('مساهم'), findsNothing);
+
+      // One chip per responsible person narrows the list to them.
+      await tester.tap(find.byKey(const ValueKey('task-person-سالم')));
+      await tester.pumpAndSettle();
+      expect(find.text('متابعة المصور'), findsOneWidget);
+      expect(find.text('مراجعة الضيوف'), findsNothing);
       expect(tester.takeException(), isNull);
     },
   );
@@ -228,20 +225,16 @@ void main() {
 
     await _pumpTasksScreen(tester, harness);
 
-    expect(find.text('الأهم الآن'), findsOneWidget);
-    expect(find.text('متأخرة · 1'), findsNothing);
-    expect(find.text('لاحقًا · 1'), findsOneWidget);
-    expect(find.text('مراجعة عقد القاعة'), findsWidgets);
-
-    await tester.ensureVisible(
-      find.byKey(const ValueKey('task-filter-overdue')),
+    expect(find.text('باقي مهمتين، منها وحدة متأخرة'), findsOneWidget);
+    final overdue = find.byKey(const ValueKey('task-group-overdue'));
+    final month = find.byKey(const ValueKey('task-group-month'));
+    expect(overdue, findsOneWidget);
+    expect(month, findsOneWidget);
+    expect(
+      tester.getTopLeft(overdue).dy,
+      lessThan(tester.getTopLeft(month).dy),
     );
-    await tester.tap(find.byKey(const ValueKey('task-filter-overdue')));
-    await tester.pumpAndSettle();
-
-    expect(find.text('المهام المتأخرة'), findsOneWidget);
-    expect(find.text('مراجعة عقد القاعة'), findsWidgets);
-    expect(find.text('مهمة لاحقة'), findsNothing);
+    expect(find.textContaining('كان موعدها'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 
@@ -264,8 +257,85 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(find.textContaining('مكتملة'), findsWidgets);
-    expect(find.text('100%'), findsWidgets);
+    expect(find.text('خلصت كل المهام'), findsOneWidget);
+    expect(find.text('1 من 1'), findsOneWidget);
+    await tester.tap(find.byKey(const ValueKey('tasks-toggle-done')));
+    await tester.pumpAndSettle();
+    expect(find.text('حجز القاعة'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('finishing a task moves it to «خلصت» (d01)', (tester) async {
+    final harness = await _createHarness();
+    await harness.api.createTask(
+      weddingPlanId: localPlanId,
+      title: 'حجز القاعة',
+      dueDate: DateTime.now().add(const Duration(days: 2)),
+    );
+
+    await _pumpTasksScreen(tester, harness);
+    final task = find.text('حجز القاعة');
+    expect(task, findsOneWidget);
+    // The circle at the start of the row finishes it.
+    await tester.tap(
+      find.byWidgetPredicate(
+        (widget) =>
+            widget.key is ValueKey<String> &&
+            (widget.key! as ValueKey<String>).value.startsWith('task-toggle-'),
+      ),
+    );
+    for (var i = 0; i < 12; i++) {
+      await tester.pump(const Duration(milliseconds: 80));
+    }
+
+    expect(find.text('خلصت كل المهام'), findsOneWidget);
+    expect(find.text('1 من 1'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('task details show when, who and the contact (d04)', (
+    tester,
+  ) async {
+    _setPhoneView(tester);
+    final harness = await _createHarness();
+    await harness.api.createTask(
+      weddingPlanId: localPlanId,
+      title: 'تذوّق الضيافة',
+      dueDate: DateTime.now().subtract(const Duration(days: 3)),
+      responsibleName: 'صالح',
+      responsiblePhone: '+967777654321',
+    );
+    final provider = TaskTimelineProvider(harness.api);
+    await provider.load(localPlanId);
+    final task = provider.tasks.single;
+
+    await tester.pumpWidget(
+      _providers(
+        harness,
+        provider,
+        MaterialApp(
+          home: TaskDetailsScreen(weddingPlanId: localPlanId, taskId: task.id),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('تذوّق الضيافة'), findsOneWidget);
+    expect(find.text('متأخرة 3 أيام'), findsOneWidget);
+    expect(find.text('لصالح'), findsOneWidget);
+    expect(find.textContaining('كان '), findsOneWidget);
+    expect(find.byKey(const ValueKey('task-contact')), findsOneWidget);
+    expect(find.text('خطوات صغيرة'), findsOneWidget);
+    expect(find.byKey(const ValueKey('task-detail-postpone')), findsOneWidget);
+
+    // x16: «ما نحتاجها» cancels it and offers to reopen.
+    await tester.tap(find.byKey(const ValueKey('task-menu')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('task-menu-cancel')));
+    await tester.pumpAndSettle();
+    expect(provider.tasks.single.status, 'CANCELLED');
+    expect(find.text('ملغية'), findsOneWidget);
+    expect(find.byKey(const ValueKey('task-detail-reopen')), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 
@@ -506,10 +576,10 @@ void main() {
 
     await _pumpTasksScreen(tester, harness, setView: false);
 
-    expect(find.text('تقدّم المهام'), findsOneWidget);
+    expect(find.text('المهام'), findsOneWidget);
     expect(
       tester.widget<Scaffold>(find.byType(Scaffold).first).backgroundColor,
-      AppTheme.canvas,
+      AarastV3Color.canvas,
     );
     expect(tester.takeException(), isNull);
   });

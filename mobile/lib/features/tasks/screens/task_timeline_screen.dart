@@ -5,40 +5,34 @@ import 'package:go_router/go_router.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:provider/provider.dart';
 
-import '../../../core/routing/app_router.dart';
 import '../../../core/experience_v3/aarast_v3.dart';
-import '../../../core/theme/app_theme.dart';
+import '../../../core/routing/app_router.dart';
+import '../../../core/utils/arabic_count.dart';
+import '../../../core/widgets/aarast_share_sheet.dart';
 import '../../../core/widgets/aarast_toast.dart';
 import '../../../core/widgets/aarast_ui.dart';
 import '../../account_contexts/account_contexts_api.dart'
     show AccountContextController;
-import '../../auth/auth_api.dart' show AuthActionGuard;
+import '../../auth/auth_api.dart' show AuthActionGuard, AuthController;
 import '../../catalogs/catalogs_api.dart' show ReferenceCatalogProvider;
 import '../../onboarding/onboarding_api.dart' show GuestOnboardingProvider;
 import '../../sharing/sharing_api.dart' show SharedMember, SharingProvider;
 import '../../wedding_plans/wedding_plans_api.dart'
-    show
-        DashboardSummaryProvider,
-        WeddingPlanStageState,
-        WeddingPlansProvider,
-        WeddingStageContextLine,
-        WeddingStageDomain,
-        publishTaskPlanPulse,
-        resolveWeddingPlanStage;
+    show DashboardSummaryProvider, WeddingPlansProvider, publishTaskPlanPulse;
+import '../models/task_share_text.dart';
 import '../models/task_starter_catalog.dart';
-import '../models/task_summary.dart';
 import '../models/wedding_task.dart';
-import '../widgets/task_share_button.dart';
 import '../providers/task_timeline_provider.dart';
 import '../utils/task_display.dart';
-import '../widgets/task_list_row.dart';
+import '../widgets/task_row.dart';
 import '../widgets/task_starter_sheet.dart';
-import '../widgets/tasks_progress_brief.dart';
 
-part 'task_timeline_screen.timeline.dart';
 part 'task_timeline_screen.logic.dart';
 part 'task_timeline_screen.starter.dart';
 
+/// d01 «المهام»: what is late, this week, this month and later, filtered by
+/// whose task it is, with the done count. Swipe or tap the circle to finish
+/// a task; tap it for its details.
 class TaskTimelineScreen extends StatefulWidget {
   const TaskTimelineScreen({
     required this.weddingPlanId,
@@ -54,449 +48,437 @@ class TaskTimelineScreen extends StatefulWidget {
 }
 
 class _TaskTimelineScreenState extends State<TaskTimelineScreen> {
-  _TaskFilter _filter = _TaskFilter.all;
-  bool _showCompleted = false;
+  String _person = _everyone;
+  bool _showDone = false;
   bool _didRequestMembers = false;
 
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted) return;
-      context.read<TaskTimelineProvider>().load(widget.weddingPlanId);
-      _loadMembersIfAvailable();
-    });
+    WidgetsBinding.instance.addPostFrameCallback((_) => _start());
   }
 
   @override
   void didUpdateWidget(covariant TaskTimelineScreen oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.weddingPlanId != widget.weddingPlanId) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (!mounted) return;
-        context.read<TaskTimelineProvider>().load(widget.weddingPlanId);
-        _didRequestMembers = false;
-        _loadMembersIfAvailable();
-      });
+      _didRequestMembers = false;
+      WidgetsBinding.instance.addPostFrameCallback((_) => _start());
     }
+  }
+
+  void _start() {
+    if (!mounted) return;
+    context.read<TaskTimelineProvider>().load(widget.weddingPlanId);
+    if (_didRequestMembers ||
+        AuthActionGuard.isLocalGuestPlanId(widget.weddingPlanId)) {
+      return;
+    }
+    final sharing = context.read<SharingProvider?>();
+    if (sharing == null) return;
+    _didRequestMembers = true;
+    sharing.loadMembers(widget.weddingPlanId);
   }
 
   @override
   Widget build(BuildContext context) {
     final provider = context.watch<TaskTimelineProvider>();
-    final sharingProvider = context.watch<SharingProvider?>();
-    final dashboardSummary = context
-        .watch<DashboardSummaryProvider?>()
-        ?.summary;
-    final stage = dashboardSummary?.planId == widget.weddingPlanId
-        ? resolveWeddingPlanStage(dashboardSummary?.weddingDate)
-        : null;
-    return AarastScreenFrame(
-      maxWidth: 520,
-      child: RefreshIndicator(
-        color: AppTheme.brand,
-        onRefresh: () => provider.load(widget.weddingPlanId),
-        child: _TaskTimelineContent(
-          provider: provider,
-          weddingPlanId: widget.weddingPlanId,
-          sharedMembers: _membersForPlan(
-            sharingProvider?.members ?? const <SharedMember>[],
-            widget.weddingPlanId,
-          ),
-          filter: _filter,
-          showCompleted: _showCompleted,
-          stage: stage,
-          showEmptyCreateAction: widget.showEmptyCreateAction,
-          suppressErrors: false,
-          onFilterChanged: (filter) {
-            setState(() => _filter = filter);
-          },
-          onToggleCompleted: () {
-            setState(() => _showCompleted = !_showCompleted);
-          },
-        ),
-      ),
+    final members = _membersForPlan(
+      context.watch<SharingProvider?>()?.members ?? const <SharedMember>[],
+      widget.weddingPlanId,
     );
-  }
+    final user = context.watch<AuthController?>()?.user;
+    final userId = user?.id;
+    final selfName = user?.name.trim() ?? '';
+    final selfLetter = selfName.isEmpty ? 'أ' : selfName.characters.first;
+    final today = DateTime.now();
+    final tasks = provider.tasks
+        .where((task) => task.weddingPlanId == widget.weddingPlanId)
+        .map((task) => _hydrateTaskParticipant(task, members))
+        .toList();
+    final people = _people(tasks, userId);
+    final person =
+        _person == _everyone || _person == _mine || people.contains(_person)
+        ? _person
+        : _everyone;
+    final visible = person == _everyone
+        ? tasks
+        : tasks.where((task) => _personKey(task, userId) == person).toList();
+    final counted = tasks.where((task) => task.status != 'CANCELLED');
+    final done = counted.where((task) => task.isDone).length;
 
-  void _loadMembersIfAvailable() {
-    if (_didRequestMembers ||
-        AuthActionGuard.isLocalGuestPlanId(widget.weddingPlanId)) {
-      return;
-    }
-    final sharingProvider = context.read<SharingProvider?>();
-    if (sharingProvider == null) return;
-    _didRequestMembers = true;
-    sharingProvider.loadMembers(widget.weddingPlanId);
-  }
-}
-
-class _TaskTimelineContent extends StatelessWidget {
-  const _TaskTimelineContent({
-    required this.provider,
-    required this.weddingPlanId,
-    required this.sharedMembers,
-    required this.filter,
-    required this.showCompleted,
-    required this.stage,
-    required this.showEmptyCreateAction,
-    required this.onFilterChanged,
-    required this.onToggleCompleted,
-    this.suppressErrors = false,
-  });
-
-  final TaskTimelineProvider provider;
-  final String weddingPlanId;
-  final List<SharedMember> sharedMembers;
-  final _TaskFilter filter;
-  final bool showCompleted;
-  final WeddingPlanStageState? stage;
-  final bool showEmptyCreateAction;
-  final ValueChanged<_TaskFilter> onFilterChanged;
-  final VoidCallback onToggleCompleted;
-  final bool suppressErrors;
-
-  @override
-  Widget build(BuildContext context) {
-    if (!suppressErrors && provider.isLoading && provider.tasks.isEmpty) {
-      return const _TimelineLoadingState();
-    }
-
-    if (!suppressErrors &&
-        provider.errorMessage != null &&
-        provider.tasks.isEmpty) {
-      return ListView(
-        physics: const AlwaysScrollableScrollPhysics(),
-        padding: const EdgeInsets.fromLTRB(20, 56, 20, 120),
+    final Widget body;
+    if (provider.isLoading && tasks.isEmpty) {
+      body = const JourneyListState(
+        phase: JourneyListPhase.loading,
+        section: JourneySection.tasks,
+      );
+    } else if (provider.errorMessage != null && tasks.isEmpty) {
+      body = JourneyListState(
+        phase: JourneyListPhase.error,
+        section: JourneySection.tasks,
+        onRetry: () => provider.load(widget.weddingPlanId),
+      );
+    } else if (tasks.isEmpty) {
+      body = JourneyListState(
+        phase: JourneyListPhase.empty,
+        section: JourneySection.tasks,
+        emptyIcon: LucideIcons.listChecks,
+        emptyTitle: 'ما فيه مهام بعد',
+        emptyAction: widget.showEmptyCreateAction ? 'أضف مهمة' : null,
+        onEmptyAction: widget.showEmptyCreateAction ? _add : null,
+      );
+    } else {
+      final groups = _grouped(visible, today);
+      body = Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          AarastEmptyState(
-            title: 'تعذر تحميل المهام',
-            message: provider.errorMessage!,
-            icon: LucideIcons.alertCircle,
-            action: AarastButton(
-              label: 'إعادة المحاولة',
-              icon: LucideIcons.refreshCw,
-              expand: false,
-              onPressed: () => provider.load(weddingPlanId),
+          for (final entry in groups.entries)
+            if (entry.key != _TaskGroup.done) ...[
+              _GroupTitle(group: entry.key, count: entry.value.length),
+              _taskBox(provider, entry.value, person, selfLetter),
+            ],
+          if (groups[_TaskGroup.done] case final finished?) ...[
+            const SizedBox(height: 6),
+            Align(
+              alignment: AlignmentDirectional.centerStart,
+              child: JourneyTextAction(
+                key: const ValueKey('tasks-toggle-done'),
+                label: _showDone
+                    ? 'خبّي اللي خلصت'
+                    : 'اللي خلصت · ${finished.length}',
+                icon: _showDone
+                    ? LucideIcons.chevronUp
+                    : LucideIcons.chevronDown,
+                color: AarastV3Color.primary,
+                onPressed: () => setState(() => _showDone = !_showDone),
+              ),
             ),
-          ),
+            if (_showDone) _taskBox(provider, finished, person, selfLetter),
+          ],
+          if (groups.keys.any((group) => group != _TaskGroup.done)) ...[
+            const SizedBox(height: 10),
+            Center(
+              child: Text(
+                'اسحب المهمة لما تخلصها',
+                style: JourneyType.of(
+                  JourneyType.small,
+                  weight: JourneyType.bold,
+                  color: AarastV3Color.textFaint,
+                ),
+              ),
+            ),
+          ],
         ],
       );
     }
 
-    final tasks = suppressErrors
-        ? const <WeddingTask>[]
-        : provider.tasks
-              .where((task) => task.weddingPlanId == weddingPlanId)
-              .map((task) => _hydrateTaskParticipant(task, sharedMembers))
-              .toList();
-    final summary = suppressErrors
-        ? TaskSummary.empty(weddingPlanId)
-        : _summaryForPlan(provider.summary, weddingPlanId, tasks);
-
-    return ListView(
-      physics: const AlwaysScrollableScrollPhysics(),
-      padding: const EdgeInsets.fromLTRB(
-        20,
-        16,
-        20,
-        AarastV3Density.pageBottomWithQuickAction,
-      ),
-      children: [
-        if (!suppressErrors && provider.errorMessage != null) ...[
-          _InlineError(message: provider.errorMessage!),
-          const SizedBox(height: 14),
-        ],
-        TasksProgressBrief(
-          summary: summary,
-          isLocalPlan: _isLocalGuestPlanId(weddingPlanId),
-          heroTag: 'plan-$weddingPlanId-tasks',
-          footer: tasks.isEmpty
-              ? null
-              : _TaskFilterChips(
-                  selected: filter,
-                  counts: {
-                    for (final item in _TaskFilter.values)
-                      item: _filteredTasks(tasks, item).length,
-                  },
-                  onChanged: onFilterChanged,
+    return AarastScreenFrame(
+      maxWidth: 600,
+      backgroundColor: AarastV3Color.canvas,
+      child: RefreshIndicator(
+        color: AarastV3Color.primary,
+        onRefresh: () => provider.load(widget.weddingPlanId),
+        child: ListView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          padding: const EdgeInsets.fromLTRB(
+            16,
+            12,
+            16,
+            AarastV3Density.pageBottomWithQuickAction,
+          ),
+          children: [
+            JourneyTabHeader(
+              title: 'المهام',
+              status: _statusLine(tasks, today),
+              actions: [
+                if (tasks.isNotEmpty)
+                  JourneyRoundButton(
+                    key: const Key('tasks-share-summary'),
+                    icon: LucideIcons.share2,
+                    tooltip: 'شارك المهام على واتساب',
+                    onPressed: () => _share(tasks),
+                  ),
+                if (widget.showEmptyCreateAction)
+                  JourneyRoundButton(
+                    key: const Key('tasks-add'),
+                    icon: LucideIcons.plus,
+                    tooltip: 'مهمة جديدة',
+                    onPressed: _add,
+                  ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            if (provider.errorMessage != null && tasks.isNotEmpty) ...[
+              JourneyListNotice(
+                offline: false,
+                onRetry: () => provider.load(widget.weddingPlanId),
+              ),
+              const SizedBox(height: 12),
+            ],
+            if (tasks.isNotEmpty) ...[
+              _PeopleFilter(
+                people: people,
+                selected: person,
+                done: done,
+                total: counted.length,
+                onSelected: (value) => setState(() => _person = value),
+              ),
+              const SizedBox(height: 4),
+            ],
+            if (tasks.length < _starterTaskThreshold) ...[
+              const SizedBox(height: 8),
+              _StarterTasksCard(
+                onOpen: () => _openTaskStarterSheet(
+                  context,
+                  provider,
+                  widget.weddingPlanId,
                 ),
+              ),
+              const SizedBox(height: 8),
+            ],
+            body,
+          ],
         ),
-        if (tasks.isNotEmpty)
-          TaskShareButton(tasks: tasks, planTitle: _sharePlanTitle(context)),
-        if (stage != null) ...[
-          const SizedBox(height: 12),
-          WeddingStageContextLine(
-            stage: stage!,
-            domain: WeddingStageDomain.tasks,
-          ),
-        ],
-        if (!suppressErrors && tasks.length < _starterTaskThreshold) ...[
-          const SizedBox(height: 14),
-          _StarterTasksCard(
-            onOpen: () =>
-                _openTaskStarterSheet(context, provider, weddingPlanId),
-          ),
-        ],
-        const SizedBox(height: 18),
-        if (filter == _TaskFilter.all)
-          _GroupedTimeline(
-            tasks: tasks,
-            showCompleted: showCompleted,
-            onToggleCompleted: onToggleCompleted,
-            onAddTask: () {
-              context.push(AppRouter.createTask(weddingPlanId));
-            },
-            showEmptyCreateAction: showEmptyCreateAction,
-            buildCard: (task, index) => _taskCard(context, task),
-          )
-        else ...[
-          AarastSectionHeader(
-            title: _taskListTitle(filter),
-            icon: LucideIcons.listChecks,
-          ),
-          const SizedBox(height: 12),
-          ..._flatFilteredList(context, tasks),
-        ],
-      ],
+      ),
     );
   }
 
-  String _sharePlanTitle(BuildContext context) {
+  Widget _taskBox(
+    TaskTimelineProvider provider,
+    List<WeddingTask> tasks,
+    String person,
+    String selfLetter,
+  ) {
+    return JourneyBox(
+      padding: EdgeInsets.zero,
+      child: Column(
+        children: [
+          for (var index = 0; index < tasks.length; index++) ...[
+            if (index > 0)
+              const Divider(
+                height: 1,
+                indent: 16,
+                endIndent: 16,
+                color: AarastV3Color.line,
+              ),
+            _swipeable(provider, tasks[index], person, selfLetter),
+          ],
+        ],
+      ),
+    );
+  }
+
+  /// Open tasks finish with a swipe; the row stays until the provider moves
+  /// it to «خلصت».
+  Widget _swipeable(
+    TaskTimelineProvider provider,
+    WeddingTask task,
+    String person,
+    String selfLetter,
+  ) {
+    final open = !task.isDone && task.status != 'CANCELLED';
+    final row = TaskRow(
+      key: ValueKey('task-row-${task.id}'),
+      task: task,
+      busy: provider.isSubmitting,
+      selfLetter: selfLetter,
+      showResponsible: person == _everyone,
+      onToggle: task.status == 'CANCELLED'
+          ? null
+          : () => open ? _finish(provider, task) : _reopen(provider, task),
+      onOpen: () => context.push(
+        AppRouter.taskDetails(widget.weddingPlanId, task.id),
+        extra: task,
+      ),
+    );
+    if (!open) return row;
+    return Dismissible(
+      key: ValueKey('task-swipe-${task.id}'),
+      direction: DismissDirection.startToEnd,
+      confirmDismiss: (_) async {
+        unawaited(_finish(provider, task));
+        return false;
+      },
+      background: Container(
+        color: AarastV3Color.mint,
+        alignment: AlignmentDirectional.centerStart,
+        padding: const EdgeInsetsDirectional.only(start: 20),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(LucideIcons.check, color: AarastV3Color.onPrimary),
+            const SizedBox(width: 8),
+            Text(
+              'خلصت',
+              style: JourneyType.of(
+                JourneyType.bodyLarge,
+                weight: JourneyType.bold,
+                color: AarastV3Color.onPrimary,
+              ),
+            ),
+          ],
+        ),
+      ),
+      child: row,
+    );
+  }
+
+  void _add() => context.push(AppRouter.createTask(widget.weddingPlanId));
+
+  void _share(List<WeddingTask> tasks) {
     final selected = context.read<AccountContextController?>()?.selectedContext;
-    final name = selected?.weddingPlanId?.toString() == weddingPlanId
+    final name = selected?.weddingPlanId?.toString() == widget.weddingPlanId
         ? selected?.displayName.trim() ?? ''
         : '';
-    return name.isEmpty ? 'خطتنا' : name;
-  }
-
-  List<Widget> _flatFilteredList(
-    BuildContext context,
-    List<WeddingTask> tasks,
-  ) {
-    final visibleTasks = _filteredTasks(tasks, filter);
-    if (visibleTasks.isEmpty) {
-      return [
-        _EmptyTasksCard(
-          message: _emptyTasksMessage(filter),
-          actionLabel: 'عرض كل المهام',
-          onAction: () => onFilterChanged(_TaskFilter.all),
-        ),
-      ];
-    }
-    return [
-      AarastV3ContinuousSurface(
-        children: [for (final task in visibleTasks) _taskCard(context, task)],
-      ),
-    ];
-  }
-
-  Widget _taskCard(BuildContext context, WeddingTask task) {
-    return AarastV3SwipeActions(
-      itemKey: ValueKey('task-swipe-${task.id}'),
-      primaryLabel: task.isDone ? 'إعادة الفتح' : 'إنجاز',
-      primaryIcon: task.isDone ? LucideIcons.rotateCcw : LucideIcons.check,
-      primaryColor: task.isDone ? AppTheme.brand : AppTheme.success,
-      onPrimary: () => task.isDone
-          ? _reopenTask(context, provider, task)
-          : _markDoneWithUndo(context, provider, task),
-      secondaryLabel: 'تعديل الموعد',
-      secondaryIcon: LucideIcons.calendarClock,
-      onSecondary: () async {
-        await context.push(
-          AppRouter.editTask(weddingPlanId, task.id),
-          extra: task,
-        );
-      },
-      child: TaskListRow(
-        task: task,
-        isBusy: provider.isSubmitting,
-        onMarkDone: task.isDone
-            ? null
-            : () => unawaited(_markDoneWithUndo(context, provider, task)),
-        onReopen: task.isDone
-            ? () => unawaited(_reopenTask(context, provider, task))
-            : null,
-        onEdit: () => context.push(
-          AppRouter.editTask(weddingPlanId, task.id),
-          extra: task,
-        ),
-        onDelete: () => _confirmDelete(context, provider, task),
+    showAarastShareSheet(
+      context: context,
+      title: 'مشاركة تقدّم المهام',
+      buildText: (_) => taskShareText(
+        tasks,
+        planTitle: name.isEmpty ? 'خطتنا' : name,
+        today: DateTime.now(),
       ),
     );
   }
 
-  Future<void> _markDoneWithUndo(
-    BuildContext context,
-    TaskTimelineProvider provider,
-    WeddingTask task,
-  ) async {
-    final previousStatus = task.status;
-
-    final success = await provider.markTaskDone(weddingPlanId, task);
-    if (!context.mounted) return;
-    if (!success) {
+  Future<void> _finish(TaskTimelineProvider provider, WeddingTask task) async {
+    final previous = task.status;
+    final ok = await provider.markTaskDone(widget.weddingPlanId, task);
+    if (!mounted) return;
+    if (!ok) {
       AarastToast.showError(
         context,
-        provider.errorMessage ?? 'تعذر إنجاز المهمة.',
+        provider.errorMessage ?? 'ما قدرنا نقفل المهمة',
       );
       return;
     }
-
     publishTaskPlanPulse(
       context,
-      weddingPlanId: weddingPlanId,
+      weddingPlanId: widget.weddingPlanId,
       summary: provider.summary,
     );
-
     AarastToast.showSuccess(
       context,
-      'تم إنجاز المهمة',
+      'خلصت ${task.title}',
       action: SnackBarAction(
         label: 'تراجع',
-        textColor: Colors.white,
-        onPressed: () {
-          unawaited(
-            _undoTaskCompletion(context, provider, task, previousStatus),
-          );
-        },
+        textColor: AarastV3Color.onPrimary,
+        onPressed: () => unawaited(
+          provider.updateTaskStatus(widget.weddingPlanId, task, previous),
+        ),
       ),
     );
   }
 
-  Future<void> _undoTaskCompletion(
-    BuildContext context,
-    TaskTimelineProvider provider,
-    WeddingTask task,
-    String previousStatus,
-  ) async {
-    final restored = await provider.updateTaskStatus(
-      weddingPlanId,
-      task,
-      previousStatus,
-    );
-    if (!restored || !context.mounted) return;
-    publishTaskPlanPulse(
-      context,
-      weddingPlanId: weddingPlanId,
-      summary: provider.summary,
-    );
-  }
-
-  Future<void> _reopenTask(
-    BuildContext context,
-    TaskTimelineProvider provider,
-    WeddingTask task,
-  ) async {
-    final success = await provider.reopenTask(weddingPlanId, task);
-    if (!context.mounted) return;
-    if (success) {
+  Future<void> _reopen(TaskTimelineProvider provider, WeddingTask task) async {
+    final ok = await provider.reopenTask(widget.weddingPlanId, task);
+    if (!mounted) return;
+    if (ok) {
       publishTaskPlanPulse(
         context,
-        weddingPlanId: weddingPlanId,
+        weddingPlanId: widget.weddingPlanId,
         summary: provider.summary,
       );
-      AarastToast.showSuccess(context, 'تمت إعادة فتح المهمة');
     } else {
       AarastToast.showError(
         context,
-        provider.errorMessage ?? 'تعذر إعادة فتح المهمة.',
+        provider.errorMessage ?? 'ما قدرنا نفتح المهمة',
       );
     }
   }
+}
 
-  Future<void> _confirmDelete(
-    BuildContext context,
-    TaskTimelineProvider provider,
-    WeddingTask task,
-  ) async {
-    final confirmed = await showAarastBottomSheet<bool>(
-      context: context,
-      builder: (sheetContext) {
-        return Directionality(
-          textDirection: TextDirection.rtl,
-          child: SafeArea(
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const _SheetHandle(),
-                  const SizedBox(height: 20),
-                  Container(
-                    width: 58,
-                    height: 58,
-                    decoration: BoxDecoration(
-                      color: AppTheme.dangerSoft,
-                      borderRadius: BorderRadius.circular(AppTheme.radiusLg),
-                    ),
-                    child: const Icon(
-                      LucideIcons.trash2,
-                      color: AppTheme.danger,
-                      size: 30,
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  Text(
-                    'حذف المهمة؟',
-                    style: Theme.of(sheetContext).textTheme.titleLarge
-                        ?.copyWith(
-                          color: AppTheme.textPrimary,
-                          fontWeight: FontWeight.w900,
-                        ),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    task.title,
-                    textAlign: TextAlign.center,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: Theme.of(sheetContext).textTheme.bodyMedium
-                        ?.copyWith(
-                          color: AppTheme.textSecondary,
-                          fontWeight: FontWeight.w700,
-                        ),
-                  ),
-                  const SizedBox(height: 22),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: AarastButton(
-                          label: 'إلغاء',
-                          variant: AarastButtonVariant.secondary,
-                          onPressed: () =>
-                              Navigator.of(sheetContext).pop(false),
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: AarastButton(
-                          label: 'حذف',
-                          icon: LucideIcons.trash2,
-                          variant: AarastButtonVariant.danger,
-                          onPressed: () => Navigator.of(sheetContext).pop(true),
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
+class _GroupTitle extends StatelessWidget {
+  const _GroupTitle({required this.group, required this.count});
+
+  final _TaskGroup group;
+  final int count;
+
+  @override
+  Widget build(BuildContext context) {
+    final late = group == _TaskGroup.overdue;
+    return Padding(
+      key: ValueKey('task-group-${group.name}'),
+      padding: const EdgeInsets.fromLTRB(6, 14, 6, 8),
+      child: Row(
+        children: [
+          Text(
+            group.label,
+            style: JourneyType.of(
+              JourneyType.bodyLarge,
+              weight: JourneyType.bold,
+              color: late ? AarastV3Color.danger : AarastV3Color.ink,
             ),
           ),
-        );
-      },
+          const SizedBox(width: 8),
+          Text(
+            '$count',
+            style: JourneyType.of(
+              JourneyType.body,
+              color: AarastV3Color.textMuted,
+            ),
+          ),
+        ],
+      ),
     );
+  }
+}
 
-    if (confirmed == true && context.mounted) {
-      final deleted = await provider.deleteTask(weddingPlanId, task.id);
-      if (deleted && context.mounted) {
-        publishTaskPlanPulse(
-          context,
-          weddingPlanId: weddingPlanId,
-          summary: provider.summary,
-        );
-        AarastToast.showSuccess(context, 'تم حذف المهمة');
-      }
-    }
+/// «الكل», «لي» and each other responsible person, with «12 من 20».
+class _PeopleFilter extends StatelessWidget {
+  const _PeopleFilter({
+    required this.people,
+    required this.selected,
+    required this.done,
+    required this.total,
+    required this.onSelected,
+  });
+
+  final List<String> people;
+  final String selected;
+  final int done;
+  final int total;
+  final ValueChanged<String> onSelected;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Expanded(
+          child: SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: Row(
+              children: [
+                for (final (key, label) in [
+                  (_everyone, 'الكل'),
+                  (_mine, 'لي'),
+                  for (final name in people) (name, 'ل$name'),
+                ]) ...[
+                  JourneyChip(
+                    key: ValueKey('task-person-${key.isEmpty ? 'all' : key}'),
+                    label: label,
+                    selected: selected == key,
+                    selectedColor: AarastV3Color.brandAccentStrong,
+                    onTap: () => onSelected(key),
+                  ),
+                  const SizedBox(width: 8),
+                ],
+              ],
+            ),
+          ),
+        ),
+        const SizedBox(width: 8),
+        Text(
+          '$done من $total',
+          key: const ValueKey('tasks-done-count'),
+          style: JourneyType.of(
+            JourneyType.body,
+            weight: JourneyType.bold,
+            color: AarastV3Color.brandAccentStrong,
+          ),
+        ),
+      ],
+    );
   }
 }

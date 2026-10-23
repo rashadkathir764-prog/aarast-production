@@ -57,8 +57,8 @@ void main() {
                   weddingPlanId: 'plan-1',
                   costId: 'cost-1',
                 ),
-                errorTitle: 'تعذر تحميل التكلفة',
-                absentTitle: 'التكلفة غير موجودة',
+                errorTitle: 'ما قدرنا نجيبها',
+                absentTitle: 'هذا الاتفاق ما عاد موجود',
               ),
               (
                 screen: const CostPaymentDetailsScreen(
@@ -97,8 +97,8 @@ void main() {
                   costId: 'cost-1',
                   scheduleId: 'schedule-1',
                 ),
-                errorTitle: 'تعذر تحميل موعد الدفع',
-                absentTitle: 'تعذر فتح الموعد',
+                errorTitle: 'ما قدرنا نجيبها',
+                absentTitle: 'هذا الموعد ما عاد موجود',
               ),
             ];
 
@@ -323,36 +323,36 @@ void main() {
           ),
         );
 
+        // c06: the header says what is left; the amount is checked
+        // against the real remainder only (the 400 reminder holds none).
+        expect(find.text('دفعة قاعة الحفل'), findsOneWidget);
         final amount = find.byKey(const Key('cost-payment-amount'));
         expect(amount, findsOneWidget);
         expect(find.text('ر.ي'), findsOneWidget);
         expect(find.text('YER'), findsNothing);
-        await tester.enterText(amount, '0');
-        final save = find.text('حفظ الدفعة');
-        await tester.ensureVisible(save);
-        await tester.drag(find.byType(ListView).last, const Offset(0, -80));
-        await tester.pumpAndSettle();
+        final save = find.byKey(const ValueKey('payment-save'));
+
+        await tester.enterText(find.byType(EditableText).first, '0');
         await tester.tap(save);
         await tester.pump();
-        expect(find.text('أدخل مبلغًا أكبر من صفر.'), findsOneWidget);
+        expect(find.text('اكتب كم دفعت'), findsOneWidget);
 
-        await tester.enterText(amount, '500');
-        expect(
-          tester.state<FormState>(find.byType(Form)).validate(),
-          isTrue,
-          reason:
-              'the pending 400 reminder must not reserve any of the 800 remainder',
+        await tester.enterText(find.byType(EditableText).first, '900');
+        await tester.tap(save);
+        await tester.pump();
+        expect(find.textContaining('أكثر من الباقي عليك'), findsOneWidget);
+
+        await tester.enterText(find.byType(EditableText).first, '500');
+        await tester.pump();
+        expect(find.textContaining('خمسمية'), findsOneWidget);
+        expect(find.textContaining('أكثر من الباقي'), findsNothing);
+
+        // «الباقي كامل» fills the whole remainder.
+        await tester.tap(
+          find.byKey(const ValueKey('payment-amount-remaining')),
         );
         await tester.pump();
-        expect(find.textContaining('يتجاوز'), findsNothing);
-
-        await tester.enterText(amount, '900');
-        expect(tester.state<FormState>(find.byType(Form)).validate(), isFalse);
-        await tester.pump();
-        expect(
-          find.text('المبلغ يتجاوز غير المدفوع على التكلفة.'),
-          findsOneWidget,
-        );
+        expect(find.text('800'), findsOneWidget);
         expect(tester.takeException(), isNull);
       },
     );
@@ -391,16 +391,19 @@ void main() {
           ),
         );
 
-        expect(find.text('المبلغ المحدد في الموعد'), findsOneWidget);
+        // The scheduled amount is paid in full: shown, not typed.
         expect(
-          find.textContaining('سيُسجَّل مبلغ الموعد كاملًا'),
+          find.byKey(const ValueKey('payment-fixed-amount')),
+          findsOneWidget,
+        );
+        expect(find.textContaining('المتفق في موعد'), findsOneWidget);
+        expect(
+          find.byKey(const ValueKey('payment-fixed-change')),
           findsOneWidget,
         );
         expect(find.byKey(const Key('cost-payment-amount')), findsNothing);
         expect(find.byKey(const Key('payment-schedule-amount')), findsNothing);
-        await tester.drag(find.byType(ListView).last, const Offset(0, -520));
-        await tester.pumpAndSettle();
-        expect(find.byKey(const Key('pay-schedule-submit')), findsOneWidget);
+        expect(find.byKey(const ValueKey('payment-save')), findsOneWidget);
         expect(tester.takeException(), isNull);
       },
     );

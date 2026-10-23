@@ -397,73 +397,84 @@ void main() {
       expect(offenders, isEmpty, reason: offenders.join('\n'));
     });
 
-    test(
-      'keeps domain forms decision-led and sensitive auth forms ephemeral',
-      () {
-        final domainFormFiles = Directory('lib/features')
-            .listSync(recursive: true)
-            .whereType<File>()
-            .where((file) => file.path.endsWith('.dart'))
-            .where(
-              (file) => !file.path.replaceAll('\\', '/').contains('/auth/'),
-            )
-            .where((file) => file.readAsStringSync().contains('Form('))
-            .toList(growable: false);
-        final missingPrompt = domainFormFiles
-            .where(
-              (file) =>
-                  !file.readAsStringSync().contains('AarastV3FocusPrompt'),
-            )
-            .map((file) => file.path)
-            .toList(growable: false);
-        expect(missingPrompt, isEmpty, reason: missingPrompt.join('\n'));
+    test('keeps domain forms decision-led and sensitive auth forms ephemeral', () {
+      final domainFormFiles = Directory('lib/features')
+          .listSync(recursive: true)
+          .whereType<File>()
+          .where((file) => file.path.endsWith('.dart'))
+          .where((file) => !file.path.replaceAll('\\', '/').contains('/auth/'))
+          // A Flutter Form widget, not names ending in «Form» such as
+          // PaymentEntryForm.
+          .where(
+            (file) => RegExp(r'\bForm\(').hasMatch(file.readAsStringSync()),
+          )
+          .toList(growable: false);
+      final missingPrompt = domainFormFiles
+          .where(
+            (file) => !file.readAsStringSync().contains('AarastV3FocusPrompt'),
+          )
+          .map((file) => file.path)
+          .toList(growable: false);
+      expect(missingPrompt, isEmpty, reason: missingPrompt.join('\n'));
 
-        const durableDraftFiles = [
-          'lib/features/finance/screens/budget_category_form_screen.dart',
-          'lib/features/finance/screens/cost_form_screen.dart',
-          'lib/features/finance/screens/cost_payment_screens.dart',
-          'lib/features/finance/screens/money_budget_screen.dart',
-          'lib/features/finance/screens/payment_schedule_screens.dart',
-          'lib/features/guests/widgets/guest_form_sheet.dart',
-          'lib/features/provider_portal/screens/add_provider_package_screen.dart',
-          'lib/features/provider_portal/screens/add_provider_service_screen.dart',
-          'lib/features/provider_portal/screens/edit_provider_profile_screen.dart',
-          'lib/features/provider_portal/screens/provider_apply_screen.dart',
-          'lib/features/marketplace/screens/quote_request_screen.dart',
-          'lib/features/sharing/screens/add_shared_member_screen.dart',
-          'lib/features/tasks/screens/create_task_screen.dart',
-          'lib/features/wedding_plans/screens/create_wedding_plan_screen.dart',
-        ];
-        for (final path in durableDraftFiles) {
-          final text = File(path).readAsStringSync();
+      const durableDraftFiles = [
+        'lib/features/finance/screens/budget_category_form_screen.dart',
+        'lib/features/finance/screens/cost_form_screen.dart',
+        'lib/features/finance/screens/money_budget_screen.dart',
+        'lib/features/finance/screens/payment_schedule_screens.dart',
+        // c06: both payment screens share this journey form.
+        'lib/features/finance/widgets/payment_entry_form.dart',
+        'lib/features/guests/widgets/guest_form_sheet.dart',
+        'lib/features/provider_portal/screens/add_provider_package_screen.dart',
+        'lib/features/provider_portal/screens/add_provider_service_screen.dart',
+        'lib/features/provider_portal/screens/edit_provider_profile_screen.dart',
+        'lib/features/provider_portal/screens/provider_apply_screen.dart',
+        'lib/features/marketplace/screens/quote_request_screen.dart',
+        'lib/features/sharing/screens/add_shared_member_screen.dart',
+        'lib/features/tasks/screens/create_task_screen.dart',
+        'lib/features/wedding_plans/screens/create_wedding_plan_screen.dart',
+      ];
+      for (final path in durableDraftFiles) {
+        final text = File(path).readAsStringSync();
+        expect(
+          text.contains('AarastFormDraftBinding') ||
+              text.contains('AarastFormDraftCoordinator'),
+          isTrue,
+          reason: '$path must preserve unfinished non-sensitive values',
+        );
+        if (path.endsWith('payment_entry_form.dart')) {
+          // The journey look pins its save button under the scrolling
+          // fields instead of the older action bar.
           expect(
-            text.contains('AarastFormDraftBinding') ||
-                text.contains('AarastFormDraftCoordinator'),
-            isTrue,
-            reason: '$path must preserve unfinished non-sensitive values',
+            text,
+            contains(
+              RegExp(
+                r"JourneyButton\(\s*key: const ValueKey\('payment-save'\)",
+              ),
+            ),
+            reason: '$path must keep its primary action reachable on phones',
           );
-          if (!path.endsWith('guest_form_sheet.dart')) {
-            expect(
-              text,
-              contains('AarastV3FormActionBar'),
-              reason: '$path must keep its primary action reachable on phones',
-            );
-          }
+        } else if (!path.endsWith('guest_form_sheet.dart')) {
+          expect(
+            text,
+            contains('AarastV3FormActionBar'),
+            reason: '$path must keep its primary action reachable on phones',
+          );
         }
+      }
 
-        for (final file
-            in Directory('lib/features/auth/screens')
-                .listSync()
-                .whereType<File>()
-                .where((file) => file.path.endsWith('.dart'))) {
-          expect(
-            file.readAsStringSync(),
-            isNot(contains('AarastFormDraft')),
-            reason: '${file.path} must never persist passwords or OTP values',
-          );
-        }
-      },
-    );
+      for (final file
+          in Directory('lib/features/auth/screens')
+              .listSync()
+              .whereType<File>()
+              .where((file) => file.path.endsWith('.dart'))) {
+        expect(
+          file.readAsStringSync(),
+          isNot(contains('AarastFormDraft')),
+          reason: '${file.path} must never persist passwords or OTP values',
+        );
+      }
+    });
 
     test(
       'keeps every production screen covered by an explicit widget test',

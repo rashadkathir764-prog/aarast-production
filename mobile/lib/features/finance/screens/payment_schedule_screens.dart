@@ -19,6 +19,8 @@ import '../models/wedding_cost.dart';
 import '../providers/finance_provider.dart';
 import '../widgets/money_input_formatter.dart';
 import '../widgets/money_widgets.dart';
+import '../widgets/payment_entry_form.dart';
+import 'cost_payment_screens.dart' show paymentEntryFrame, paymentRefusal;
 
 class PaymentSchedulesScreen extends StatefulWidget {
   const PaymentSchedulesScreen({
@@ -844,27 +846,12 @@ class PayPaymentScheduleScreen extends StatefulWidget {
 }
 
 class _PayPaymentScheduleScreenState extends State<PayPaymentScheduleScreen> {
-  final _methodController = TextEditingController();
-  final _noteController = TextEditingController();
-  DateTime _paidAt = DateTime.now();
   bool _isLoadingDetails = true;
-  AarastFormDraftBinding? _draft;
 
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) async {
-      await _load();
-      if (mounted) _configureDraft();
-    });
-  }
-
-  @override
-  void dispose() {
-    _draft?.dispose();
-    _methodController.dispose();
-    _noteController.dispose();
-    super.dispose();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _load());
   }
 
   Future<void> _load() async {
@@ -883,186 +870,84 @@ class _PayPaymentScheduleScreenState extends State<PayPaymentScheduleScreen> {
     final provider = context.watch<FinanceProvider>();
     final cost = provider.costById(widget.costId);
     final schedule = provider.scheduleById(widget.scheduleId);
-    final canSubmit =
-        cost != null &&
-        schedule != null &&
-        provider.canManageMoney &&
-        schedule.isPending &&
-        !cost.isCancelled;
+    final currency = provider.summary.currency;
 
-    return MoneySubpageScaffold(
-      title: 'دفع الموعد',
-      subtitle: cost?.title ?? 'المبلغ ثابت من موعد الدفع.',
-      showBack: true,
-      onBack: () => context.pop(),
-      bottomNavigationBar: canSubmit
-          ? AarastV3FormActionBar(
-              key: const Key('pay-schedule-submit'),
-              label: 'تأكيد دفع الموعد',
-              icon: LucideIcons.check,
-              loading: provider.isSubmitting,
-              onPressed: () => _submit(schedule, cost),
-            )
-          : null,
-      child: ListView(
-        padding: const EdgeInsets.only(bottom: 28),
-        children: [
-          if (provider.errorMessage != null && schedule != null) ...[
-            MoneyMessageBanner(message: provider.errorMessage!, error: true),
-            const SizedBox(height: 12),
-          ],
-          if (_isLoadingDetails && schedule == null)
-            const AarastScreenLoading(label: 'جاري تجهيز دفع الموعد')
-          else if (provider.errorMessage != null && schedule == null)
-            AarastErrorState(
-              title: 'تعذر تحميل موعد الدفع',
-              message: provider.errorMessage!,
-              onRetry: _load,
-            )
-          else if (cost == null || schedule == null)
-            const AarastEmptyState(
-              icon: LucideIcons.calendarX,
-              title: 'تعذر فتح الموعد',
-              message: 'التكلفة أو موعد الدفع غير موجود.',
-            )
-          else if (!provider.canManageMoney)
-            const MoneyMessageBanner(
-              message: 'لا تملك صلاحية دفع هذا الموعد.',
-              error: true,
-            )
-          else if (!schedule.isPending || cost.isCancelled)
-            const MoneyMessageBanner(
-              message: 'لا يمكن دفع هذا الموعد من حالته الحالية.',
-              error: true,
-            )
-          else ...[
-            const AarastV3FocusPrompt(
-              question: 'هل دُفع هذا الموعد كاملًا؟',
-              supportingText:
-                  'راجع المبلغ، اختر تاريخ الدفع الحقيقي، ثم أكّد مرة واحدة.',
-              icon: LucideIcons.calendarCheck,
-            ),
-            if (_draft != null) ...[
-              const SizedBox(height: 8),
-              AarastV3DraftStatusLine(status: _draft!.status),
-            ],
-            const SizedBox(height: 14),
-            MoneyRecordHero(
-              icon: LucideIcons.calendarCheck,
-              label: 'المبلغ المحدد في الموعد',
-              amount: schedule.amount,
-              currency: provider.summary.currency,
-              supportingText:
-                  'موعده ${formatArabicCompactDate(schedule.dueDate)}',
-              statusLabel: 'بانتظار التأكيد',
-              statusColor: AppTheme.focus,
-            ),
-            const SizedBox(height: 12),
-            const MoneyMessageBanner(
-              message:
-                  'سيُسجَّل مبلغ الموعد كاملًا. لتغيير المبلغ ارجع وعدّل الموعد قبل الدفع.',
-            ),
-            const SizedBox(height: 10),
-            OutlinedButton.icon(
-              onPressed: _pickPaidAt,
-              icon: const Icon(LucideIcons.calendarDays),
-              label: Text('تاريخ الدفع: ${formatArabicCompactDate(_paidAt)}'),
-            ),
-            const SizedBox(height: 10),
-            MoneyDisclosureCard(
-              title: 'تفاصيل الدفع',
-              subtitle: 'أضف الطريقة أو الملاحظة عند الحاجة',
-              icon: LucideIcons.walletCards,
-              initiallyExpanded:
-                  _methodController.text.isNotEmpty ||
-                  _noteController.text.isNotEmpty,
-              child: Column(
-                children: [
-                  TextFormField(
-                    controller: _methodController,
-                    maxLength: 80,
-                    decoration: const InputDecoration(
-                      labelText: 'طريقة الدفع',
-                      hintText: 'نقدًا، تحويل، بطاقة…',
-                      prefixIcon: Icon(LucideIcons.walletCards),
-                    ),
-                  ),
-                  const SizedBox(height: 10),
-                  TextFormField(
-                    controller: _noteController,
-                    minLines: 2,
-                    maxLines: 3,
-                    maxLength: 1000,
-                    decoration: const InputDecoration(
-                      labelText: 'ملاحظة',
-                      prefixIcon: Icon(LucideIcons.fileText),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 18),
-          ],
-        ],
-      ),
-    );
-  }
-
-  Future<void> _pickPaidAt() async {
-    releaseFieldFocus();
-    final now = DateTime.now();
-    final picked = await showDatePicker(
-      context: context,
-      initialDate: _paidAt,
-      firstDate: DateTime(now.year - 10),
-      lastDate: DateTime(now.year, now.month, now.day),
-      locale: const Locale('ar'),
-    );
-    if (picked != null && mounted) {
-      setState(() => _paidAt = picked);
-      _draft?.changed();
-    }
-  }
-
-  Future<void> _submit(PaymentSchedule schedule, WeddingCost cost) async {
-    final payment = await context.read<FinanceProvider>().paySchedule(
-      schedule: schedule,
-      cost: cost,
-      paidAt: _paidAt,
-      method: _methodController.text.trim(),
-      note: _noteController.text.trim(),
-    );
-    if (payment != null && mounted) {
-      await _draft?.clear();
-      if (!mounted) return;
-      AarastFormSuccess.show(
+    final Widget body;
+    if (_isLoadingDetails && schedule == null) {
+      body = const JourneyListState(
+        phase: JourneyListPhase.loading,
+        section: JourneySection.money,
+      );
+    } else if (provider.errorMessage != null && schedule == null) {
+      body = JourneyListState(
+        phase: JourneyListPhase.error,
+        section: JourneySection.money,
+        onRetry: _load,
+      );
+    } else if (cost == null || schedule == null) {
+      body = JourneyListState(
+        phase: JourneyListPhase.empty,
+        section: JourneySection.money,
+        emptyIcon: LucideIcons.calendarX,
+        emptyTitle: 'هذا الموعد ما عاد موجود',
+        emptyAction: 'ارجع',
+        onEmptyAction: () => context.pop(),
+      );
+    } else if (paymentRefusal(provider, cost) case final refusal?) {
+      body = JourneyNote(text: refusal, icon: LucideIcons.info);
+    } else if (!schedule.isPending) {
+      body = const JourneyNote(
+        text: 'هذا الموعد ما ينتظر دفع.',
+        icon: LucideIcons.info,
+      );
+    } else {
+      return paymentEntryFrame(
         context,
-        message: context.read<FinanceProvider>().savedMessage(
-          'تم تسجيل دفع الموعد.',
+        cost: cost,
+        currency: currency,
+        child: PaymentEntryForm(
+          cost: cost,
+          currency: currency,
+          draftScope:
+              'pay-schedule:${widget.weddingPlanId}:${widget.costId}:${widget.scheduleId}',
+          fixedAmount: schedule.amount,
+          fixedLine: 'المتفق في موعد ${formatArabicDayMonth(schedule.dueDate)}',
+          fixedAction: () => context.push(
+            AppRouter.moneyScheduleEdit(
+              widget.weddingPlanId,
+              cost.id,
+              schedule.id,
+            ),
+          ),
+          onSave: (entry) async {
+            final finance = context.read<FinanceProvider>();
+            final result = await finance.paySchedule(
+              schedule: schedule,
+              cost: cost,
+              paidAt: entry.paidAt,
+              method: entry.method,
+              note: entry.note,
+            );
+            if (result != null && context.mounted) {
+              AarastFormSuccess.show(
+                context,
+                message: finance.savedMessage('انحفظت الدفعة'),
+              );
+            }
+            return result;
+          },
         ),
       );
-      context.pop(true);
     }
-  }
-
-  void _configureDraft() {
-    if (_draft != null) return;
-    _draft = AarastFormDraftBinding(
-      store: context.read<AarastFormDraftStore?>(),
-      scope:
-          'pay-schedule:${widget.weddingPlanId}:${widget.costId}:${widget.scheduleId}',
-      fields: {'method': _methodController, 'note': _noteController},
-      readExtras: () => {'paidAt': _paidAt.toIso8601String()},
-      restoreExtras: (data) {
-        if (!mounted) return;
-        final restored = DateTime.tryParse(data['paidAt']?.toString() ?? '');
-        if (restored != null) setState(() => _paidAt = restored);
-      },
-      onStatusChanged: () {
-        if (mounted) setState(() {});
-      },
+    return paymentEntryFrame(
+      context,
+      cost: cost,
+      currency: currency,
+      child: ListView(
+        padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
+        children: [body],
+      ),
     );
-    unawaited(_draft!.restore());
   }
 }
 

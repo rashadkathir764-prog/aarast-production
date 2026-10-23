@@ -198,7 +198,10 @@ void main() {
       expect(find.textContaining('غير معروف'), findsNothing);
 
       // One chip per responsible person narrows the list to them.
-      await tester.tap(find.byKey(const ValueKey('task-person-سالم')));
+      final salem = find.byKey(const ValueKey('task-person-سالم'));
+      await tester.ensureVisible(salem);
+      await tester.pumpAndSettle();
+      await tester.tap(salem);
       await tester.pumpAndSettle();
       expect(find.text('متابعة المصور'), findsOneWidget);
       expect(find.text('مراجعة الضيوف'), findsNothing);
@@ -290,6 +293,38 @@ void main() {
 
     expect(find.text('خلصت كل المهام'), findsOneWidget);
     expect(find.text('1 من 1'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('the time view lists tasks by month (w24)', (tester) async {
+    final harness = await _createHarness();
+    final now = DateTime.now();
+    await harness.api.createTask(
+      weddingPlanId: localPlanId,
+      title: 'اختر المصور',
+      dueDate: now,
+    );
+    await harness.api.createTask(
+      weddingPlanId: localPlanId,
+      title: 'أرسل الدعوات',
+      dueDate: DateTime(now.year, now.month + 2, 10),
+    );
+    await harness.api.createTask(
+      weddingPlanId: localPlanId,
+      title: 'فكّر في الهدايا',
+    );
+
+    await _pumpTasksScreen(tester, harness);
+    await tester.tap(find.text('الوقت'));
+    await tester.pumpAndSettle();
+
+    expect(
+      find.byKey(ValueKey('task-month-${now.year}-${now.month}')),
+      findsOneWidget,
+    );
+    expect(find.textContaining('· الآن'), findsOneWidget);
+    expect(find.byKey(const ValueKey('task-month-undated')), findsOneWidget);
+    expect(find.text('أرسل الدعوات'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 

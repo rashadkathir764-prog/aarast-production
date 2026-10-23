@@ -8,6 +8,7 @@ import 'package:provider/provider.dart';
 import '../../../core/experience_v3/aarast_v3.dart';
 import '../../../core/routing/app_router.dart';
 import '../../../core/utils/arabic_count.dart';
+import '../../../core/utils/arabic_date_formatter.dart';
 import '../../../core/widgets/aarast_share_sheet.dart';
 import '../../../core/widgets/aarast_toast.dart';
 import '../../../core/widgets/aarast_ui.dart';
@@ -29,6 +30,7 @@ import '../widgets/task_row.dart';
 import '../widgets/task_starter_sheet.dart';
 
 part 'task_timeline_screen.logic.dart';
+part 'task_timeline_screen.months.dart';
 part 'task_timeline_screen.starter.dart';
 
 /// d01 «المهام»: what is late, this week, this month and later, filtered by
@@ -51,6 +53,9 @@ class TaskTimelineScreen extends StatefulWidget {
 class _TaskTimelineScreenState extends State<TaskTimelineScreen> {
   String _person = _everyone;
   bool _showDone = false;
+
+  /// w24: the list (false) or the months timeline (true).
+  bool _byMonth = false;
   bool _didRequestMembers = false;
 
   @override
@@ -131,47 +136,56 @@ class _TaskTimelineScreenState extends State<TaskTimelineScreen> {
       );
     } else {
       final groups = _grouped(visible, today);
-      body = Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          for (final entry in groups.entries)
-            if (entry.key != _TaskGroup.done) ...[
-              _GroupTitle(group: entry.key, count: entry.value.length),
-              _taskBox(provider, entry.value, person, selfLetter),
-            ],
-          if (groups[_TaskGroup.done] case final finished?) ...[
-            const SizedBox(height: 6),
-            Align(
-              alignment: AlignmentDirectional.centerStart,
-              child: JourneyTextAction(
-                key: const ValueKey('tasks-toggle-done'),
-                label: _showDone
-                    ? 'خبّي اللي خلصت'
-                    : 'اللي خلصت · ${finished.length}',
-                icon: _showDone
-                    ? LucideIcons.chevronUp
-                    : LucideIcons.chevronDown,
-                color: AarastV3Color.primary,
-                onPressed: () => setState(() => _showDone = !_showDone),
+      body = _byMonth
+          ? _MonthsTimeline(
+              tasks: visible,
+              onOpen: (task) => context.push(
+                AppRouter.taskDetails(widget.weddingPlanId, task.id),
+                extra: task,
               ),
-            ),
-            if (_showDone) _taskBox(provider, finished, person, selfLetter),
-          ],
-          if (groups.keys.any((group) => group != _TaskGroup.done)) ...[
-            const SizedBox(height: 10),
-            Center(
-              child: Text(
-                'اسحب المهمة لما تخلصها',
-                style: JourneyType.of(
-                  JourneyType.small,
-                  weight: JourneyType.bold,
-                  color: AarastV3Color.textFaint,
-                ),
-              ),
-            ),
-          ],
-        ],
-      );
+            )
+          : Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                for (final entry in groups.entries)
+                  if (entry.key != _TaskGroup.done) ...[
+                    _GroupTitle(group: entry.key, count: entry.value.length),
+                    _taskBox(provider, entry.value, person, selfLetter),
+                  ],
+                if (groups[_TaskGroup.done] case final finished?) ...[
+                  const SizedBox(height: 6),
+                  Align(
+                    alignment: AlignmentDirectional.centerStart,
+                    child: JourneyTextAction(
+                      key: const ValueKey('tasks-toggle-done'),
+                      label: _showDone
+                          ? 'خبّي اللي خلصت'
+                          : 'اللي خلصت · ${finished.length}',
+                      icon: _showDone
+                          ? LucideIcons.chevronUp
+                          : LucideIcons.chevronDown,
+                      color: AarastV3Color.primary,
+                      onPressed: () => setState(() => _showDone = !_showDone),
+                    ),
+                  ),
+                  if (_showDone)
+                    _taskBox(provider, finished, person, selfLetter),
+                ],
+                if (groups.keys.any((group) => group != _TaskGroup.done)) ...[
+                  const SizedBox(height: 10),
+                  Center(
+                    child: Text(
+                      'اسحب المهمة لما تخلصها',
+                      style: JourneyType.of(
+                        JourneyType.small,
+                        weight: JourneyType.bold,
+                        color: AarastV3Color.textFaint,
+                      ),
+                    ),
+                  ),
+                ],
+              ],
+            );
     }
 
     return AarastScreenFrame(
@@ -218,6 +232,14 @@ class _TaskTimelineScreenState extends State<TaskTimelineScreen> {
               const SizedBox(height: 12),
             ],
             if (tasks.isNotEmpty) ...[
+              JourneyTabSwitch(
+                key: const ValueKey('tasks-view'),
+                labels: const ['القائمة', 'الوقت'],
+                selected: _byMonth ? 1 : 0,
+                color: AarastV3Color.brandAccentStrong,
+                onSelected: (index) => setState(() => _byMonth = index == 1),
+              ),
+              const SizedBox(height: 12),
               _PeopleFilter(
                 people: people,
                 selected: person,

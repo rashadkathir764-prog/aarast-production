@@ -65,6 +65,7 @@ Future<void> _openTaskStarterSheet(
       groups: groups,
       existingTitles: existing,
       hasWeddingDate: weddingDate != null,
+      weddingDate: weddingDate,
       onSubmit: (templates) async {
         final count = await provider.addStarterTasks(
           weddingPlanId: weddingPlanId,

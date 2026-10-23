@@ -262,7 +262,7 @@ void main() {
     );
 
     expect(find.text('في خطتك'), findsOneWidget);
-    expect(find.text('إضافة 1 إلى خطتي'), findsOneWidget);
+    expect(find.text('أضف مهمة وحدة لخطتي'), findsOneWidget);
 
     await tester.tap(find.byKey(const ValueKey('task-starter-o')));
     await tester.pump();

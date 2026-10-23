@@ -189,6 +189,27 @@ void main() {
     },
   );
 
+  testWidgets('the first frame of a plan is the skeleton, never «no plan»', (
+    tester,
+  ) async {
+    final harness = await _Harness.create();
+    addTearDown(harness.dispose);
+    tester.view.devicePixelRatio = 1;
+    tester.view.physicalSize = const Size(320, 720);
+    addTearDown(tester.view.reset);
+
+    // Only the first frame: the plan has not been read yet.
+    await tester.pumpWidget(
+      harness.wrap(
+        _app(home: const WeddingPlanDashboardScreen(weddingPlanId: _planId)),
+      ),
+    );
+
+    expect(find.byKey(const ValueKey('aarast-home-skeleton')), findsOneWidget);
+    expect(find.text('ما عندك خطة بعد'), findsNothing);
+    expect(find.text('أنشئ خطتك'), findsNothing);
+  });
+
   testWidgets('WeddingPlanDashboardScreen renders empty state at 320px RTL', (
     tester,
   ) async {

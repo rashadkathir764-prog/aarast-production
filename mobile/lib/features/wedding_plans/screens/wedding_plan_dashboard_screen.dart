@@ -44,6 +44,10 @@ class _WeddingPlanDashboardScreenState extends State<WeddingPlanDashboardScreen>
   bool _localLoading = false;
   String? _localErrorMessage;
 
+  /// Until the first load of this plan ends, an empty summary means "not
+  /// read yet", never "no plan".
+  bool _loadedOnce = false;
+
   bool get _isLocalGuestPlan =>
       AuthActionGuard.isLocalGuestPlanId(widget.weddingPlanId);
 
@@ -89,6 +93,7 @@ class _WeddingPlanDashboardScreenState extends State<WeddingPlanDashboardScreen>
   void didUpdateWidget(covariant WeddingPlanDashboardScreen oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.weddingPlanId != widget.weddingPlanId) {
+      _loadedOnce = false;
       WidgetsBinding.instance.addPostFrameCallback((_) => _load());
     }
   }
@@ -97,12 +102,13 @@ class _WeddingPlanDashboardScreenState extends State<WeddingPlanDashboardScreen>
     if (!mounted) return;
     if (_isLocalGuestPlan) {
       await _loadLocalDashboard();
-      return;
+    } else {
+      await context.read<DashboardSummaryProvider>().loadDashboard(
+        widget.weddingPlanId,
+        sharedMember: widget.sharedMember,
+      );
     }
-    await context.read<DashboardSummaryProvider>().loadDashboard(
-      widget.weddingPlanId,
-      sharedMember: widget.sharedMember,
-    );
+    if (mounted && !_loadedOnce) setState(() => _loadedOnce = true);
   }
 
   Future<void> _loadLocalDashboard() async {
@@ -167,7 +173,7 @@ class _WeddingPlanDashboardScreenState extends State<WeddingPlanDashboardScreen>
         : provider.errorMessage;
     final bottomPadding = widget.embedded ? 158.0 : 36.0;
 
-    if (isLoading && summary == null) {
+    if ((isLoading || !_loadedOnce) && summary == null) {
       return AnimatedSwitcher(
         duration: const Duration(milliseconds: 320),
         switchInCurve: Curves.easeOutCubic,

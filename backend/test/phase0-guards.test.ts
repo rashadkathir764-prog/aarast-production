@@ -714,7 +714,7 @@ test('barrier reports every failure only after all operations settle', async () 
 test('cleanliness protection includes all tracked fixture and golden filename patterns', () => {
   const files = cleanliness.protectedTestArtifacts();
   assert.ok(files.includes('mobile/test/goldens'));
-  assert.ok(files.includes('mobile/test/features/marketplace/goldens/provider_received_offer.png'));
+  assert.ok(files.includes('mobile/test/features/marketplace/goldens/provider_marketplace_compact.png'));
   assert.ok(files.includes('backend/test/support/phase0-postgres-support.js'));
   assert.equal(cleanliness.isProtectedTestArtifactPath('backend/test/phase0.fixture.json'), true);
   assert.equal(cleanliness.isProtectedTestArtifactPath('backend/test/fixtures/custom-output.txt'), true);

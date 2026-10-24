@@ -366,6 +366,8 @@ void main() {
   }
 
   tearDownAll(() {
+    // Only with --update-goldens: a normal run must not rewrite a tracked file.
+    if (!autoUpdateGoldenFiles) return;
     File('test/prototype/c_journey/out_live/hotspots.json')
       ..createSync(recursive: true)
       ..writeAsStringSync(const JsonEncoder.withIndent(' ').convert(out));

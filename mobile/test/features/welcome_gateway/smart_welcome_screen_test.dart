@@ -22,12 +22,17 @@ import 'package:aarast_mobile/features/welcome_gateway/screens/smart_welcome_scr
 // The redesigned start (prototype a02 to a08): one question per screen,
 // the plan kept on the phone, and the account asked for only on saving.
 
-GoRouter _router() => GoRouter(
-  initialLocation: '/welcome',
+GoRouter _router({String initialLocation = '/welcome'}) => GoRouter(
+  initialLocation: initialLocation,
   routes: [
     GoRoute(
       path: '/welcome',
       builder: (context, state) => const SmartWelcomeScreen(),
+    ),
+    // w11 «خطة جديدة».
+    GoRoute(
+      path: '/wedding-plans/create',
+      builder: (context, state) => const SmartWelcomeScreen(newPlan: true),
     ),
     for (final route in [
       '/provider/apply',
@@ -79,6 +84,7 @@ Future<GuestOnboardingStorage> _pump(
   double textScale = 1,
   WeddingPlansProvider? signedInPlans,
   FinanceApi? finance,
+  String initialLocation = '/welcome',
 }) async {
   tester.view.devicePixelRatio = 1;
   tester.view.physicalSize = size;
@@ -103,7 +109,7 @@ Future<GuestOnboardingStorage> _pump(
         ],
       ],
       child: MaterialApp.router(
-        routerConfig: _router(),
+        routerConfig: _router(initialLocation: initialLocation),
         builder: (context, child) => MediaQuery(
           data: MediaQuery.of(
             context,
@@ -417,6 +423,49 @@ void main() {
     await _tap(tester, 'افتح خطتي');
     expect(find.text('خطتك جاهزة يا محمد'), findsOneWidget);
     expect(find.text('تعذر إنشاء خطتك.'), findsOneWidget);
+  });
+
+  // w11 «خطة جديدة» makes another plan with the designed steps, from
+  // «خطة مين؟»: «أهلًا فيك» offers signing in and the provider path.
+  testWidgets('a new plan starts at «خطة مين؟» and is made on the server', (
+    tester,
+  ) async {
+    final plans = _RecordingPlans(succeed: true);
+    await _pump(
+      tester,
+      signedInPlans: plans,
+      initialLocation: '/wedding-plans/create',
+    );
+    expect(find.text('أهلًا فيك'), findsNothing);
+    expect(find.text('عندي حساب'), findsNothing);
+    expect(find.text('خطة مين؟'), findsOneWidget);
+
+    await _tap(tester, 'التالي');
+    await tester.enterText(find.byType(TextField).first, 'محمد');
+    await tester.pumpAndSettle();
+    await _tap(tester, 'ما حددنا الموعد بعد');
+    await _tap(tester, 'التالي');
+    await _tap(tester, 'صنعاء');
+    await tester.enterText(find.byType(TextField).first, '7000000');
+    await tester.pumpAndSettle();
+    await _tap(tester, 'جهّز خطتي');
+    await _tap(tester, 'افتح خطتي');
+
+    expect(find.text('opened:/home'), findsOneWidget);
+    expect(plans.request!.title, 'عرس محمد');
+  });
+
+  testWidgets('back on a new plan\'s first step leaves the steps', (
+    tester,
+  ) async {
+    await _pump(
+      tester,
+      signedInPlans: _RecordingPlans(succeed: true),
+      initialLocation: '/wedding-plans/create',
+    );
+    await tester.tap(find.byTooltip('رجوع').first);
+    await tester.pumpAndSettle();
+    expect(find.text('opened:/home'), findsOneWidget);
   });
 
   testWidgets('every step fits 320 px with doubled text', (tester) async {

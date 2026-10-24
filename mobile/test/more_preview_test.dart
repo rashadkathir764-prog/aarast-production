@@ -18,9 +18,6 @@ import 'package:aarast_mobile/features/account_contexts/models/account_context.d
 import 'package:aarast_mobile/features/account_contexts/providers/account_context_controller.dart';
 import 'package:aarast_mobile/features/more/screens/more_screen.dart';
 import 'package:aarast_mobile/features/onboarding/data/guest_onboarding_storage.dart';
-import 'package:aarast_mobile/features/onboarding/data/yemen_administrative_api.dart';
-import 'package:aarast_mobile/features/onboarding/models/yemen_administrative_area.dart';
-import 'package:aarast_mobile/features/onboarding/providers/yemen_administrative_provider.dart';
 import 'package:aarast_mobile/features/settings/data/settings_api.dart';
 import 'package:aarast_mobile/features/settings/models/user_settings.dart';
 import 'package:aarast_mobile/features/settings/providers/settings_provider.dart';
@@ -35,7 +32,6 @@ import 'package:aarast_mobile/features/wedding_plans/data/wedding_plans_api.dart
 import 'package:aarast_mobile/features/wedding_plans/models/active_wedding_plan.dart';
 import 'package:aarast_mobile/features/wedding_plans/models/wedding_plan.dart';
 import 'package:aarast_mobile/features/wedding_plans/providers/wedding_plans_provider.dart';
-import 'package:aarast_mobile/features/wedding_plans/screens/create_wedding_plan_screen.dart';
 import 'package:aarast_mobile/features/wedding_plans/screens/my_wedding_plans_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -159,41 +155,6 @@ void main() {
     await expectLater(
       find.byType(Scaffold),
       matchesGoldenFile('goldens/support_links.png'),
-    );
-  });
-
-  testWidgets('create wedding plan — form without hero (420)', (tester) async {
-    tester.view.devicePixelRatio = 1;
-    tester.view.physicalSize = const Size(420, 1100);
-    addTearDown(tester.view.reset);
-
-    final provider = WeddingPlansProvider(
-      WeddingPlansApi(ApiClient(tokenProvider: () async => null)),
-    );
-    final yemen = YemenAdministrativeProvider(_PreviewYemenAdministrativeApi());
-    await yemen.loadGovernorates();
-
-    await tester.pumpWidget(
-      MultiProvider(
-        providers: [
-          ChangeNotifierProvider<WeddingPlansProvider>.value(value: provider),
-          ChangeNotifierProvider<YemenAdministrativeProvider>.value(
-            value: yemen,
-          ),
-        ],
-        child: MaterialApp(
-          debugShowCheckedModeBanner: false,
-          theme: AppTheme.light(),
-          home: const CreateWeddingPlanScreen(),
-        ),
-      ),
-    );
-    await tester.pump(const Duration(milliseconds: 400));
-    await tester.pump(const Duration(seconds: 2));
-
-    await expectLater(
-      find.byType(Scaffold),
-      matchesGoldenFile('goldens/create_wedding_plan.png'),
     );
   });
 
@@ -402,40 +363,6 @@ class _FakeSettingsApi extends SettingsApi {
   Future<UserSettings> updateSettings(UserSettings settings) async {
     return settings;
   }
-}
-
-class _PreviewYemenAdministrativeApi extends YemenAdministrativeApi {
-  _PreviewYemenAdministrativeApi()
-    : super(ApiClient(tokenProvider: () async => null));
-
-  @override
-  Future<List<YemenGovernorate>> getGovernorates() async => const [
-    YemenGovernorate(
-      id: 'capital',
-      code: 'YE13',
-      nameAr: 'أمانة العاصمة',
-      nameEn: "Sana'a City",
-      districtsCount: 10,
-    ),
-    YemenGovernorate(
-      id: 'sanaa',
-      code: 'YE23',
-      nameAr: 'صنعاء',
-      nameEn: "Sana'a",
-      districtsCount: 16,
-    ),
-    YemenGovernorate(
-      id: 'aden',
-      code: 'YE24',
-      nameAr: 'عدن',
-      nameEn: 'Aden',
-      districtsCount: 8,
-    ),
-  ];
-
-  @override
-  Future<List<YemenDistrict>> getDistricts(String governorateId) async =>
-      const [];
 }
 
 class _FakePlansProvider extends WeddingPlansProvider {

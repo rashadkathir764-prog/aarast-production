@@ -53,14 +53,21 @@ const _questionCount = 2;
 const _fallbackCities = ['صنعاء', 'عدن', 'تعز', 'إب', 'الحديدة', 'المكلا'];
 
 class SmartWelcomeScreen extends StatefulWidget {
-  const SmartWelcomeScreen({super.key});
+  const SmartWelcomeScreen({this.newPlan = false, super.key});
+
+  /// w11 «خطة جديدة»: a signed-in person adds another plan. The steps start
+  /// at «خطة مين؟» (a02b), since «أهلًا فيك» offers signing in and the
+  /// provider path, and a phone plan kept for later is left alone.
+  final bool newPlan;
 
   @override
   State<SmartWelcomeScreen> createState() => _SmartWelcomeScreenState();
 }
 
 class _SmartWelcomeScreenState extends State<SmartWelcomeScreen> {
-  _WelcomeStep _step = _WelcomeStep.start;
+  late _WelcomeStep _step = widget.newPlan
+      ? _WelcomeStep.whose
+      : _WelcomeStep.start;
   bool _wantsProvider = false;
   GuestPersona _persona = GuestPersona.groom;
 
@@ -77,7 +84,7 @@ class _SmartWelcomeScreenState extends State<SmartWelcomeScreen> {
   @override
   void initState() {
     super.initState();
-    _loadSavedDraft();
+    if (!widget.newPlan) _loadSavedDraft();
     WidgetsBinding.instance.addPostFrameCallback((_) => _loadCities());
   }
 
@@ -112,7 +119,11 @@ class _SmartWelcomeScreenState extends State<SmartWelcomeScreen> {
       case _WelcomeStep.start:
         return;
       case _WelcomeStep.whose:
-        _goTo(_WelcomeStep.start);
+        if (widget.newPlan) {
+          context.canPop() ? context.pop() : context.go(AppRouter.home);
+        } else {
+          _goTo(_WelcomeStep.start);
+        }
       case _WelcomeStep.nameDate:
         _goTo(_WelcomeStep.whose);
       case _WelcomeStep.placeBudget:
@@ -287,7 +298,9 @@ class _SmartWelcomeScreenState extends State<SmartWelcomeScreen> {
       return;
     }
     await authStorage?.saveActivePlanId(response.activePlanId);
-    await guestStorage.clearDraft();
+    // The plan was made from the steps just answered; a phone plan kept
+    // for later stays when this is another plan (w11).
+    if (!widget.newPlan) await guestStorage.clearDraft();
     if (!mounted) return;
     await _maybeRead<AccountContextController>()?.refresh(
       allowInitialSingleContext: true,

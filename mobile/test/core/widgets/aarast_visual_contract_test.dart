@@ -314,7 +314,6 @@ void main() {
         'lib/features/onboarding/screens/local_plan_migration_screen.dart',
         'lib/features/welcome_gateway/screens/smart_welcome_screen.dart',
         'lib/features/wedding_plans/screens/my_wedding_plans_screen.dart',
-        'lib/features/wedding_plans/screens/create_wedding_plan_screen.dart',
         'lib/features/wedding_plans/screens/wedding_plan_dashboard_screen.dart',
         'lib/features/wedding_plans/screens/plan_management_screen.dart',
         'lib/features/wedding_plans/screens/plan_assistant_screen.dart',
@@ -466,7 +465,6 @@ void main() {
         // g06: «أضف مشارك» is a sheet over the participants list.
         'lib/features/sharing/widgets/add_participant_sheet.dart',
         'lib/features/tasks/screens/create_task_screen.dart',
-        'lib/features/wedding_plans/screens/create_wedding_plan_screen.dart',
       ];
       for (final path in durableDraftFiles) {
         final text = File(path).readAsStringSync();

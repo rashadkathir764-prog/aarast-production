@@ -35,8 +35,10 @@ List<RouteBase> _accountRoutes() => [
     path: AppRouter.weddingPlans,
     builder: (context, state) => const MyWeddingPlansScreen(),
   ),
+  // w11 «خطة جديدة»: another plan is made with the designed steps (a02b
+  // to a08), not a separate form.
   GoRoute(
     path: AppRouter.createWeddingPlan,
-    builder: (context, state) => const CreateWeddingPlanScreen(),
+    builder: (context, state) => const SmartWelcomeScreen(newPlan: true),
   ),
 ];

@@ -1645,7 +1645,7 @@ const r19ProviderPortalApi = Object.freeze({
 // finance owner API, from the migration service and the entry screen that
 // builds it (D31); +1 for w38 knowing a plan kept on the phone, which has
 // no reminder to send, through the auth owner API (D31).
-const r19LegalRecordCount = 197;
+const r19LegalRecordCount = 194;
 const trackedOwnerApiContracts = [
   {
     area: 'features/account_contexts',
@@ -1943,10 +1943,6 @@ const trackedOwnerApiContracts = [
         uri: 'screens/local_plan_migration_screen.dart',
         show: ['LocalPlanMigrationScreen'],
       },
-      {
-        uri: 'widgets/location_picker_section.dart',
-        show: ['LocationPickerSection'],
-      },
     ],
   },
   {
@@ -2123,10 +2119,6 @@ const trackedOwnerApiContracts = [
         show: ['WeddingPlansProvider'],
       },
       {
-        uri: 'screens/create_wedding_plan_screen.dart',
-        show: ['CreateWeddingPlanScreen'],
-      },
-      {
         uri: 'screens/my_wedding_plans_screen.dart',
         show: ['MyWeddingPlansScreen', 'showPlanSwitcherSheet'],
       },
@@ -2153,10 +2145,6 @@ const trackedOwnerApiContracts = [
       {
         uri: 'widgets/postpone_sheet.dart',
         show: ['showPostponeSheet'],
-      },
-      {
-        uri: 'widgets/wedding_plan_creation_form.dart',
-        show: ['WeddingPlanCreationFields', 'WeddingPlanCreationScope'],
       },
       {
         uri: 'widgets/wedding_stage_context_line.dart',
@@ -2689,16 +2677,6 @@ const trackedPlanningBatchContracts = [
     show: ['SharedMember'],
   },
   {
-    source: 'mobile/lib/features/wedding_plans/screens/create_wedding_plan_screen.dart',
-    target: 'mobile/lib/features/account_contexts/account_contexts_api.dart',
-    show: ['AccountContextController', 'AccountContextRole'],
-  },
-  {
-    source: 'mobile/lib/features/wedding_plans/screens/create_wedding_plan_screen.dart',
-    target: 'mobile/lib/features/onboarding/onboarding_api.dart',
-    show: ['WeddingLocationDraft'],
-  },
-  {
     source: 'mobile/lib/features/wedding_plans/screens/my_wedding_plans_screen.dart',
     target: 'mobile/lib/features/account_contexts/account_contexts_api.dart',
     show: ['AccountContextController', 'AccountContextRole'],
@@ -2784,11 +2762,6 @@ const trackedPlanningBatchContracts = [
     source: 'mobile/lib/features/wedding_plans/widgets/dashboard/aarast_dashboard_view.dart',
     target: 'mobile/lib/features/wedding_day/wedding_day_api.dart',
     show: ['WeddingDayModeStatus', 'WeddingDayPhase', 'resolveWeddingDayMode'],
-  },
-  {
-    source: 'mobile/lib/features/wedding_plans/widgets/wedding_plan_creation_form.dart',
-    target: 'mobile/lib/features/onboarding/onboarding_api.dart',
-    show: ['LocationPickerSection'],
   },
 ];
 
@@ -3145,7 +3118,6 @@ const trackedCompositionRootContracts = [
       {
         target: 'mobile/lib/features/wedding_plans/wedding_plans_api.dart',
         show: [
-          'CreateWeddingPlanScreen',
           'DashboardSummary',
           'MyWeddingPlansScreen',
           'PlanAssistantScreen',

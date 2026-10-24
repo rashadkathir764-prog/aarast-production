@@ -90,7 +90,6 @@ import '../../features/wedding_day/wedding_day_api.dart'
     show WeddingDayModeScreen;
 import '../../features/wedding_plans/wedding_plans_api.dart'
     show
-        CreateWeddingPlanScreen,
         DashboardSummary,
         MyWeddingPlansScreen,
         PlanAssistantScreen,

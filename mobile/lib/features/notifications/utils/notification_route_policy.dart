@@ -15,11 +15,12 @@ String? resolveNotificationRouteTarget(AarastNotification notification) {
   }
 
   final originalTarget = _nonEmpty(notification.routeTarget);
-  // The server points every provider notice about a request at the portal's
-  // home; the request's own conversation is where it is followed.
+  // The server points every provider notice about a request or its booking
+  // at the portal's home; each opens its own case, the request screen, which
+  // shows the booking once there is one (p42, D39).
   final providerQuoteId = _providerQuoteId(notification, originalTarget);
   if (providerQuoteId != null) {
-    return '/quotes/$providerQuoteId/conversation';
+    return '/provider/requests/$providerQuoteId';
   }
 
   if (notification.entityType == 'quote_request' &&
@@ -56,6 +57,16 @@ String? _providerQuoteId(AarastNotification notification, String? target) {
   final quoteId = _nonEmpty(data?['quoteRequestId']);
   if (quoteId == null || !_safeRouteId.hasMatch(quoteId)) return null;
   return quoteId;
+}
+
+/// `/provider/requests/<id>` with nothing after it.
+bool _isProviderRequestPath(Uri uri) {
+  final segments = uri.pathSegments;
+  return !uri.hasQuery &&
+      segments.length == 3 &&
+      segments[0] == 'provider' &&
+      segments[1] == 'requests' &&
+      _safeRouteId.hasMatch(segments[2]);
 }
 
 /// `/quotes/<id>/conversation` with nothing after it.
@@ -99,6 +110,7 @@ bool isSafeNotificationRouteTarget(String target) {
   return
   // بوابة المزود: وجهة تنبيهات "طلب جديد" و"تم قبول عرضك" للمزود.
   target == '/provider/dashboard' ||
+      _isProviderRequestPath(uri) ||
       _isQuoteConversationPath(uri) ||
       uri.path.startsWith('/providers/') ||
       uri.path.startsWith('/conversations/') ||

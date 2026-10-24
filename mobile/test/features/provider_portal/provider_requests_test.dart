@@ -619,6 +619,10 @@ Future<RecordingChatProvider> pumpHarness(
         path: '/notifications',
         builder: (_, _) => const Scaffold(body: Text('التنبيهات')),
       ),
+      GoRoute(
+        path: '/provider/notifications',
+        builder: (_, _) => const Scaffold(body: Text('تنبيهات المزود')),
+      ),
     ],
   );
   addTearDown(router.dispose);

@@ -1675,8 +1675,10 @@ const r19ProviderPortalApi = Object.freeze({
 // API. +2 for p21, p22 and p25 (D39): the booking sheets and the booking
 // screens read the booking through the marketplace owner API; -1 for the
 // old booking panel and days-off sheet, deleted with their file (the setup
-// checklist moved out of it reads no owner API).
-const r19LegalRecordCount = 224;
+// checklist moved out of it reads no owner API). +2 for p42 (D39): the
+// provider's notices read his notices through the notifications owner API
+// and their requests through the marketplace owner API.
+const r19LegalRecordCount = 226;
 const trackedOwnerApiContracts = [
   {
     area: 'features/account_contexts',
@@ -1940,11 +1942,17 @@ const trackedOwnerApiContracts = [
     path: 'mobile/lib/features/notifications/notifications_api.dart',
     exports: [
       { uri: 'data/notifications_api.dart', show: ['NotificationsApi'] },
+      { uri: 'models/aarast_notification.dart', show: ['AarastNotification'] },
       {
         uri: 'providers/notifications_provider.dart',
         show: ['NotificationsProvider'],
       },
       { uri: 'screens/notifications_screen.dart', show: ['NotificationsScreen'] },
+      { uri: 'utils/notification_copy.dart', show: ['localizeNotification'] },
+      {
+        uri: 'utils/notification_route_policy.dart',
+        show: ['isSafeNotificationRouteTarget', 'resolveNotificationRouteTarget'],
+      },
     ],
   },
   {
@@ -2009,6 +2017,10 @@ const trackedOwnerApiContracts = [
       {
         uri: 'screens/provider_apply_screen.dart',
         show: ['ProviderApplyScreen'],
+      },
+      {
+        uri: 'screens/provider_notifications_screen.dart',
+        show: ['ProviderNotificationsScreen'],
       },
       { uri: 'screens/provider_offer_screen.dart', show: ['ProviderOfferScreen'] },
       { uri: 'screens/provider_portal_screen.dart', show: ['ProviderPortalScreen'] },
@@ -3158,6 +3170,7 @@ const trackedCompositionRootContracts = [
           'AddProviderServiceScreen',
           'EditProviderProfileScreen',
           'ProviderApplyScreen',
+          'ProviderNotificationsScreen',
           'ProviderOfferScreen',
           'ProviderPortalScreen',
           'ProviderRequestScreen',

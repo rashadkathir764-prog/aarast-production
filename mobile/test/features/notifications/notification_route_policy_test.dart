@@ -61,7 +61,10 @@ void main() {
     expect(isSafeNotificationRouteTarget('/provider/dashboard/x'), isFalse);
   });
 
-  test('a provider notice about a request opens its conversation', () {
+  // p42 (D39): each provider notice opens its case, the request screen,
+  // which shows the booking once there is one. It opened the conversation
+  // before (D35).
+  test('a provider notice about a request opens the request', () {
     AarastNotification notice({
       String audience = 'PROVIDER',
       String? routeTarget = '/provider/dashboard',
@@ -85,11 +88,11 @@ void main() {
     );
 
     final target = resolveNotificationRouteTarget(notice());
-    expect(target, '/quotes/quote-7/conversation');
+    expect(target, '/provider/requests/quote-7');
     expect(isSafeNotificationRouteTarget(target!), isTrue);
     expect(
       resolveNotificationRouteTarget(notice(routeTarget: null)),
-      '/quotes/quote-7/conversation',
+      '/provider/requests/quote-7',
     );
     // An id that is not a bare route id keeps the portal's home.
     expect(
@@ -103,6 +106,19 @@ void main() {
       ),
       '/providers?quoteId=quote-7',
     );
+  });
+
+  test('only a bare provider request path is a safe target', () {
+    expect(isSafeNotificationRouteTarget('/provider/requests/quote-7'), isTrue);
+    expect(
+      isSafeNotificationRouteTarget('/provider/requests/quote-7?next=/x'),
+      isFalse,
+    );
+    expect(
+      isSafeNotificationRouteTarget('/provider/requests/quote-7/offer'),
+      isFalse,
+    );
+    expect(isSafeNotificationRouteTarget('/provider/requests/a.b'), isFalse);
   });
 
   test('only a bare quote conversation path is a safe target', () {

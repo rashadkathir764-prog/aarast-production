@@ -15,6 +15,7 @@
 - `/otp`
 - `/provider/apply`
 - `/provider/dashboard`
+- `/provider/notifications`
 - `/provider/packages/new`
 - `/provider/profile/edit`
 - `/provider/requests/:id`
@@ -77,4 +78,4 @@
 - `/wedding-plans/create`
 - `/welcome`
 
-Total: 76 unique routes
+Total: 77 unique routes

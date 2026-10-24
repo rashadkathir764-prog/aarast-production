@@ -71,6 +71,7 @@ import '../../features/provider_portal/provider_portal_api.dart'
         AddProviderServiceScreen,
         EditProviderProfileScreen,
         ProviderApplyScreen,
+        ProviderNotificationsScreen,
         ProviderOfferScreen,
         ProviderPortalScreen,
         ProviderRequestScreen,
@@ -147,6 +148,9 @@ class AppRouter {
   /// His services and packages, opened from «ملفي» (D39).
   static const providerServices = '/provider/services';
   static const providerServiceNew = '/provider/services/new';
+
+  /// His notices, each opening its request (p42).
+  static const providerNotifications = '/provider/notifications';
   static const providerPackageNew = '/provider/packages/new';
 
   /// One request as the provider sees it (p16, p19).

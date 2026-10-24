@@ -52,6 +52,15 @@ List<RouteBase> _providerPortalRoutes() => [
     ),
   ),
   GoRoute(
+    path: AppRouter.providerNotifications,
+    builder: (context, state) => ProviderAuthGate(
+      resumeLocation: state.uri.toString(),
+      registerAsProvider: true,
+      providerAccountRequired: true,
+      child: const ProviderNotificationsScreen(),
+    ),
+  ),
+  GoRoute(
     path: AppRouter.providerServices,
     builder: (context, state) => ProviderAuthGate(
       resumeLocation: state.uri.toString(),

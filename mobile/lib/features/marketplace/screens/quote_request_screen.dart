@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
@@ -7,23 +8,30 @@ import '../../../core/config/app_feature_flags.dart';
 import '../../../core/experience_v3/aarast_v3.dart';
 import '../../../core/forms/aarast_form_draft_store.dart';
 import '../../../core/forms/aarast_form_success.dart';
-import '../../../core/phone/phone_number_utils.dart';
 import '../../../core/routing/app_router.dart';
-import '../../../core/theme/app_theme.dart';
+import '../../../core/utils/arabic_date_formatter.dart';
 import '../../../core/utils/currency_label.dart';
+import '../../../core/utils/money_formatters.dart';
 import '../../../core/widgets/aarast_toast.dart';
 import '../../../core/widgets/aarast_ui.dart';
 import '../../account_contexts/account_contexts_api.dart'
     show AccountContextController;
 import '../../auth/auth_api.dart'
     show AuthActionGuard, AuthController, AuthStatus;
+import '../../finance/finance_api.dart' show FinanceProvider;
 import '../../onboarding/onboarding_api.dart'
     show GuestOnboardingStorage, WeddingLocationDraft;
-import '../../wedding_plans/wedding_plans_api.dart' show WeddingPlansProvider;
+import '../../wedding_plans/wedding_plans_api.dart'
+    show DashboardSummaryProvider, WeddingPlansProvider;
 import '../models/marketplace_models.dart';
 import '../models/provider_budget_match_intent.dart';
+import '../models/provider_service_groups.dart';
 import '../providers/marketplace_provider.dart';
 
+/// f07 «اطلب عرض سعر»: what is needed, what the plan already says (the day,
+/// the time, the place and, for halls and catering, the guests), an optional
+/// word, and whether to share the item's amount. The phone number always
+/// reaches the provider (C46), so nothing promises otherwise.
 class QuoteRequestScreen extends StatefulWidget {
   const QuoteRequestScreen({
     required this.providerId,
@@ -40,17 +48,21 @@ class QuoteRequestScreen extends StatefulWidget {
   State<QuoteRequestScreen> createState() => _QuoteRequestScreenState();
 }
 
+/// The times of day a request can name; it reaches the provider in the
+/// message, since a request has no time of its own.
+const _periods = ['الصبح', 'الظهر', 'الليل · بعد المغرب'];
+
 class _QuoteRequestScreenState extends State<QuoteRequestScreen> {
-  final _formKey = GlobalKey<FormState>();
   final _guestCountController = TextEditingController();
-  final _budgetMinController = TextEditingController();
-  final _budgetMaxController = TextEditingController();
   final _messageController = TextEditingController();
 
   String? _serviceId;
   String? _cityId;
+  String? _period;
   DateTime? _eventDate;
   WeddingLocationDraft? _eventLocation;
+  bool _shareBudget = false;
+  String? _guestError;
   bool _didApplyInitialPlanContext = false;
   final Set<String> _routeLaunchesInFlight = <String>{};
   AarastFormDraftCoordinator? _draft;
@@ -61,13 +73,7 @@ class _QuoteRequestScreenState extends State<QuoteRequestScreen> {
   void initState() {
     super.initState();
     _serviceId = widget.initialServiceId;
-    _prefillBudgetIntent(widget.initialBudgetIntent);
-    for (final controller in [
-      _guestCountController,
-      _budgetMinController,
-      _budgetMaxController,
-      _messageController,
-    ]) {
+    for (final controller in [_guestCountController, _messageController]) {
       controller.addListener(_handleTextChanged);
     }
     WidgetsBinding.instance.addPostFrameCallback((_) async {
@@ -129,25 +135,10 @@ class _QuoteRequestScreenState extends State<QuoteRequestScreen> {
     _restoreDraft();
   }
 
-  void _prefillBudgetIntent(ProviderBudgetMatchIntent? intent) {
-    if (intent == null || !intent.hasBudget) return;
-    _budgetMinController.text = intent.requestMin!.round().toString();
-    _budgetMaxController.text = intent.requestMax!.round().toString();
-    if (_messageController.text.trim().isEmpty) {
-      _messageController.text =
-          'ميزانية بند ${intent.budgetCategoryName}: ${intent.allocatedValue.round()}. أريد عرضاً مناسباً لهذا النطاق.';
-    }
-  }
-
   @override
   void dispose() {
     _draft?.dispose();
-    for (final controller in [
-      _guestCountController,
-      _budgetMinController,
-      _budgetMaxController,
-      _messageController,
-    ]) {
+    for (final controller in [_guestCountController, _messageController]) {
       controller
         ..removeListener(_handleTextChanged)
         ..dispose();
@@ -165,7 +156,6 @@ class _QuoteRequestScreenState extends State<QuoteRequestScreen> {
     final selectedPlanId = selectedContext?.isPlan == true
         ? selectedContext?.weddingPlanId
         : null;
-    final currencyLabel = _selectedCurrencyLabel(plans, selectedPlanId);
     final auth = context.watch<AuthController>();
     final provider = marketplace.providerDetails(widget.providerId);
     final services = marketplace.servicesFor(widget.providerId);
@@ -174,250 +164,221 @@ class _QuoteRequestScreenState extends State<QuoteRequestScreen> {
     final requiresAuth =
         auth.status == AuthStatus.unauthenticated &&
         !AppFeatureFlags.devBypassLoginGatesForUxExploration;
-    final selectedServiceLabel = _quoteServiceLabel(services);
+    final budget = _budgetIntent(provider, services, selectedPlanId);
+    final asksGuests = _asksGuests(provider, services);
     _scheduleInitialPlanContext(plans, marketplace, selectedPlanId);
 
-    return AarastPageScaffold(
-      title: 'طلب عرض سعر',
-      subtitle: provider == null
-          ? 'حدد احتياجك للمزود'
-          : 'إلى ${provider.businessName}',
-      actions: [
-        IconButton(
-          tooltip: 'رجوع',
-          onPressed: () {
-            if (context.canPop()) context.pop();
-          },
-          icon: const Icon(LucideIcons.chevronRight),
-        ),
-      ],
+    return AarastScreenFrame(
+      maxWidth: 520,
+      backgroundColor: AarastV3Color.canvas,
+      resizeToAvoidBottomInset: true,
       bottomNavigationBar: requiresAuth
           ? null
-          : AarastV3FormActionBar(
-              label: 'إرسال الطلب',
-              icon: LucideIcons.send,
-              loading: marketplace.isSubmitting,
-              onPressed: marketplace.isSubmitting ? null : _submit,
+          : SafeArea(
+              top: false,
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
+                child: JourneyButton(
+                  key: const ValueKey('quote-send'),
+                  label: 'أرسل الطلب',
+                  icon: LucideIcons.send,
+                  background: AarastV3Color.cobalt,
+                  large: true,
+                  expand: true,
+                  loading: marketplace.isSubmitting,
+                  onPressed: marketplace.isSubmitting
+                      ? null
+                      : () => _submit(budget, asksGuests),
+                ),
+              ),
             ),
-      resizeToAvoidBottomInset: true,
-      child: requiresAuth
-          ? _QuoteAuthRequired(onLogin: () => context.go(AppRouter.login))
-          : Form(
-              key: _formKey,
-              child: ListView(
+      child: ListView(
+        padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
+        keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+        children: [
+          JourneySubHeader(
+            title: 'اطلب عرض سعر',
+            subtitle: provider == null ? null : 'إلى ${provider.businessName}',
+            onBack: () {
+              if (context.canPop()) context.pop();
+            },
+          ),
+          if (requiresAuth)
+            JourneyListState(
+              phase: JourneyListPhase.empty,
+              section: JourneySection.providers,
+              emptyIcon: LucideIcons.logIn,
+              emptyTitle: 'ادخل حسابك أول',
+              emptyMessage: 'الطلب يوصل المزود من حسابك، وتتابعه منه.',
+              emptyAction: 'ادخل',
+              onEmptyAction: () => context.go(AppRouter.login),
+            )
+          else ...[
+            if (services.isNotEmpty) ...[
+              _Label('ايش تحتاج؟'),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
                 children: [
-                  AarastV3FocusPrompt(
-                    eyebrow: 'طلب واضح',
-                    question: 'ما الذي تحتاجه من هذا المزوّد؟',
-                    supportingText: provider == null
-                        ? 'اختر الخدمة واكتب احتياجك، ثم حسّن التفاصيل إن كانت متاحة.'
-                        : 'اكتب احتياجك إلى ${provider.businessName} بوضوح؛ التفاصيل الإضافية تساعد على تسعير أدق.',
-                    icon: LucideIcons.fileQuestion,
-                  ),
-                  const SizedBox(height: 10),
-                  AarastV3FormSurface(
-                    children: [
-                      InputDecorator(
-                        decoration: const InputDecoration(
-                          labelText: 'خطة الزفاف',
-                          prefixIcon: Icon(LucideIcons.calendarDays),
-                        ),
-                        child: Text(
-                          selectedContext?.displayName ??
-                              'لم يتم اختيار مسار خطة',
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-                      const SizedBox(height: 10),
-                      DropdownButtonFormField<String>(
-                        initialValue: _safeSelectedService(services),
-                        decoration: const InputDecoration(
-                          labelText: 'الخدمة',
-                          prefixIcon: Icon(LucideIcons.wand),
-                        ),
-                        items: [
-                          const DropdownMenuItem<String>(
-                            value: null,
-                            child: Text('حسب اقتراح المزود'),
-                          ),
-                          for (final service in services)
-                            DropdownMenuItem(
-                              value: service.id,
-                              child: Text(service.title),
-                            ),
-                        ],
-                        onChanged: (value) {
-                          setState(() => _serviceId = value);
-                          _scheduleDraft();
-                        },
-                      ),
-                      const SizedBox(height: 10),
-                      _DateField(value: _eventDate, onTap: _pickDate),
-                      const SizedBox(height: 10),
-                      TextFormField(
-                        controller: _messageController,
-                        minLines: 2,
-                        maxLines: 3,
-                        maxLength: 250,
-                        textInputAction: TextInputAction.done,
-                        decoration: const InputDecoration(
-                          labelText: 'رسالة للمزود',
-                          hintText: 'اكتب تفاصيل التاريخ، الموقع، والاحتياج...',
-                          prefixIcon: Icon(LucideIcons.fileText),
-                        ),
-                        validator: (value) {
-                          if (value == null || value.trim().length < 8) {
-                            return 'اكتب تفاصيل قصيرة ليفهم المزود طلبك';
-                          }
-                          return null;
-                        },
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 10),
-                  AarastV3Disclosure(
-                    title: 'حسّن دقة العرض',
-                    subtitle: 'المدينة والضيوف ونطاق الميزانية',
-                    icon: LucideIcons.slidersHorizontal,
-                    child: Column(
-                      children: [
-                        DropdownButtonFormField<String>(
-                          initialValue: _cityId,
-                          decoration: const InputDecoration(
-                            labelText: 'المدينة',
-                            prefixIcon: Icon(LucideIcons.mapPin),
-                          ),
-                          items: marketplace.cities
-                              .map(
-                                (city) => DropdownMenuItem(
-                                  value: city.id,
-                                  child: Text(city.nameAr),
-                                ),
-                              )
-                              .toList(),
-                          onChanged: (value) {
-                            setState(() => _cityId = value);
-                            _scheduleDraft();
-                          },
-                        ),
-                        const SizedBox(height: 10),
-                        _QuoteLocationContext(location: _eventLocation),
-                        const SizedBox(height: 10),
-                        _QuoteContactContext(phone: auth.user?.phone),
-                        const SizedBox(height: 10),
-                        TextFormField(
-                          controller: _guestCountController,
-                          keyboardType: TextInputType.number,
-                          textInputAction: TextInputAction.next,
-                          decoration: const InputDecoration(
-                            labelText: 'عدد الضيوف المتوقع',
-                            prefixIcon: Icon(LucideIcons.users),
-                          ),
-                          validator: (value) {
-                            final text = value?.trim() ?? '';
-                            if (text.isEmpty) return null;
-                            final count = int.tryParse(text);
-                            if (count == null || count < 1) {
-                              return 'أدخل عددًا صحيحًا أكبر من صفر';
-                            }
-                            return null;
-                          },
-                        ),
-                        const SizedBox(height: 10),
-                        Row(
-                          children: [
-                            Expanded(
-                              child: TextFormField(
-                                controller: _budgetMinController,
-                                keyboardType: TextInputType.number,
-                                textInputAction: TextInputAction.next,
-                                decoration: InputDecoration(
-                                  labelText: 'من',
-                                  suffixText: currencyLabel,
-                                ),
-                              ),
-                            ),
-                            const SizedBox(width: 10),
-                            Expanded(
-                              child: TextFormField(
-                                controller: _budgetMaxController,
-                                keyboardType: TextInputType.number,
-                                textInputAction: TextInputAction.done,
-                                decoration: InputDecoration(
-                                  labelText: 'إلى',
-                                  suffixText: currencyLabel,
-                                ),
-                                validator: (value) {
-                                  final maxText = value?.trim() ?? '';
-                                  final minText = _budgetMinController.text
-                                      .trim();
-                                  if (maxText.isEmpty || minText.isEmpty) {
-                                    return null;
-                                  }
-                                  final min = num.tryParse(minText);
-                                  final max = num.tryParse(maxText);
-                                  if (min == null || max == null || max < min) {
-                                    return 'أكبر من «من»';
-                                  }
-                                  return null;
-                                },
-                              ),
-                            ),
-                          ],
-                        ),
-                      ],
+                  for (final service in services)
+                    JourneyChip(
+                      key: ValueKey('quote-service-${service.id}'),
+                      label: service.title,
+                      selected: _serviceId == service.id,
+                      selectedColor: AarastV3Color.cobalt,
+                      onTap: () {
+                        setState(
+                          () => _serviceId = _serviceId == service.id
+                              ? null
+                              : service.id,
+                        );
+                        _scheduleDraft();
+                      },
                     ),
+                ],
+              ),
+              const SizedBox(height: 6),
+            ],
+            _Label('من خطتك'),
+            JourneyBox(
+              padding: const EdgeInsets.symmetric(vertical: 4),
+              child: Column(
+                children: [
+                  _PlanRow(
+                    key: const Key('quote-day'),
+                    icon: LucideIcons.calendarDays,
+                    label: 'اليوم',
+                    value: _eventDate == null
+                        ? null
+                        : formatArabicWeekdayDayMonth(_eventDate!),
+                    onEdit: _pickDate,
                   ),
-                  const SizedBox(height: 10),
-                  AarastV3LiveSummary(
-                    items: [
-                      AarastV3SummaryItem(
-                        label: 'الخدمة',
-                        value: selectedServiceLabel,
-                      ),
-                      AarastV3SummaryItem(
-                        label: 'المناسبة',
-                        value: _eventDate == null
-                            ? 'دون تاريخ'
-                            : '${_eventDate!.day}/${_eventDate!.month}/${_eventDate!.year}',
-                      ),
-                      AarastV3SummaryItem(
-                        label: 'النطاق',
-                        value: _quoteBudgetSummary(currencyLabel),
-                      ),
-                    ],
+                  _PlanRow(
+                    key: const Key('quote-period'),
+                    icon: LucideIcons.clock,
+                    label: 'الفترة',
+                    value: _period,
+                    onEdit: _pickPeriod,
                   ),
-                  const SizedBox(height: 10),
-                  if (submitError != null) ...[
-                    Text(
-                      submitError,
-                      textAlign: TextAlign.center,
-                      style: const TextStyle(
-                        color: AppTheme.danger,
-                        fontWeight: FontWeight.w800,
-                      ),
+                  _PlanRow(
+                    key: const Key('quote-place'),
+                    icon: LucideIcons.mapPin,
+                    label: 'المكان',
+                    value: _placeLabel(marketplace),
+                    onEdit: () => _pickCity(marketplace),
+                  ),
+                  if (asksGuests)
+                    _PlanRow(
+                      key: const Key('quote-guests'),
+                      icon: LucideIcons.users,
+                      label: 'الضيوف',
+                      value: _guestCountController.text.trim().isEmpty
+                          ? null
+                          : '${_guestCountController.text.trim()} تقريبًا',
+                      onEdit: _pickGuests,
                     ),
-                    if (marketplace.existingActiveQuote case final quote?)
-                      Center(
-                        child: TextButton.icon(
-                          key: const Key('continue-active-quote'),
-                          onPressed: () =>
-                              _pushOnce(AppRouter.quoteConversation(quote.id)),
-                          icon: const Icon(LucideIcons.messageCircle),
-                          label: const Text('متابعة الطلب الحالي'),
-                        ),
-                      ),
-                    const SizedBox(height: 12),
-                  ],
-                  if (_draft case final draft?) ...[
-                    AarastV3DraftStatusLine(status: draft.status),
-                    const SizedBox(height: 10),
-                  ],
-                  const SizedBox(height: 24),
                 ],
               ),
             ),
+            if (_guestError != null) ...[
+              const SizedBox(height: 6),
+              Text(
+                _guestError!,
+                style: JourneyType.of(
+                  JourneyType.small,
+                  color: AarastV3Color.danger,
+                ),
+              ),
+            ],
+            const SizedBox(height: 12),
+            JourneyTextField(
+              key: const Key('quote-message'),
+              label: 'كلمة لهم (اختياري)',
+              controller: _messageController,
+              hint: 'أي تفصيل يهمّك يعرفوه',
+              maxLength: 250,
+              minLines: 1,
+              maxLines: 3,
+            ),
+            if (budget != null) ...[
+              const SizedBox(height: 12),
+              JourneyBox(
+                padding: const EdgeInsets.fromLTRB(16, 10, 8, 10),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'شاركهم بندك: '
+                            '${_amountLabel(budget.allocatedValue, plans, selectedPlanId)}',
+                            style: JourneyType.of(
+                              JourneyType.body,
+                              weight: JourneyType.bold,
+                            ),
+                          ),
+                          Text(
+                            'يساعدهم يعطونك عرض على قدّك',
+                            style: JourneyType.of(
+                              JourneyType.small,
+                              color: AarastV3Color.textMuted,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    Switch(
+                      key: const Key('quote-share-budget'),
+                      value: _shareBudget,
+                      activeTrackColor: AarastV3Color.cobalt,
+                      inactiveTrackColor: AarastV3Color.line,
+                      inactiveThumbColor: AarastV3Color.paper,
+                      trackOutlineColor: const WidgetStatePropertyAll(
+                        AarastV3Color.line,
+                      ),
+                      onChanged: (value) {
+                        setState(() => _shareBudget = value);
+                        _scheduleDraft();
+                      },
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 12),
+              const JourneyNote(
+                text: 'بندك ما يوصلهم إلا إذا فعّلته.',
+                icon: LucideIcons.lock,
+                color: AarastV3Color.cobalt,
+                soft: AarastV3Color.cobaltSoft,
+              ),
+            ],
+            if (submitError != null) ...[
+              const SizedBox(height: 12),
+              Text(
+                submitError,
+                textAlign: TextAlign.center,
+                style: JourneyType.of(
+                  JourneyType.small,
+                  weight: JourneyType.bold,
+                  color: AarastV3Color.danger,
+                ),
+              ),
+              if (marketplace.existingActiveQuote case final quote?)
+                Center(
+                  child: JourneyTextAction(
+                    key: const Key('continue-active-quote'),
+                    label: 'كمّل طلبك الحالي',
+                    icon: LucideIcons.messageCircle,
+                    color: AarastV3Color.cobalt,
+                    onPressed: () =>
+                        _pushOnce(AppRouter.quoteConversation(quote.id)),
+                  ),
+                ),
+            ],
+          ],
+        ],
+      ),
     );
   }
 
@@ -426,23 +387,70 @@ class _QuoteRequestScreenState extends State<QuoteRequestScreen> {
     if (mounted) setState(() {});
   }
 
-  String _quoteServiceLabel(List<MarketplaceService> services) {
-    final selectedId = _serviceId;
-    if (selectedId == null) return 'اقتراح المزوّد';
-    for (final service in services) {
-      if (service.id == selectedId) return service.title;
-    }
-    return 'خدمة محددة';
+  /// «1.5 مليون ر.ي» in the open plan's currency.
+  String _amountLabel(
+    num value,
+    WeddingPlansProvider plans,
+    String? selectedPlanId,
+  ) {
+    final plan = plans.selectedPlan;
+    final currency = plan?.id == selectedPlanId ? plan?.currency : null;
+    final parts = compactMoneyParts(
+      value,
+      currencyCode: currencyCodeFromDisplayInput(currency),
+    );
+    return [parts.number, ?parts.millionUnit, currencyLabelAr(currency)]
+        .join(' ');
   }
 
-  String _quoteBudgetSummary(String currencyLabel) {
-    final min = _budgetMinController.text.trim();
-    final max = _budgetMaxController.text.trim();
-    if (min.isEmpty && max.isEmpty) return 'غير محدد';
-    if (min.isNotEmpty && max.isNotEmpty) {
-      return '$min–$max $currencyLabel';
+  /// The amount the request may share: the item it came from, or the plan's
+  /// item for this kind of service; null when there is none to share.
+  ProviderBudgetMatchIntent? _budgetIntent(
+    MarketplaceProvider? provider,
+    List<MarketplaceService> services,
+    String? planId,
+  ) {
+    final given = widget.initialBudgetIntent;
+    if (given != null && given.hasBudget) return given;
+    final finance = context.read<FinanceProvider?>();
+    if (planId == null || finance?.loadedPlanId != planId) return null;
+    final group = providerServiceGroupOf(_kindName(provider, services));
+    if (group < 0) return null;
+    final item = finance!.categories
+        .where((item) => providerServiceGroupOf(item.name) == group)
+        .firstOrNull;
+    if (item == null) return null;
+    final intent = ProviderBudgetMatchIntent(
+      budgetCategoryName: item.name,
+      allocatedAmount: item.allocatedAmount,
+    );
+    return intent.hasBudget ? intent : null;
+  }
+
+  /// C45: only halls and catering are told how many guests come.
+  bool _asksGuests(
+    MarketplaceProvider? provider,
+    List<MarketplaceService> services,
+  ) {
+    final group = providerServiceGroupOf(_kindName(provider, services));
+    return group == 0 || group == 1;
+  }
+
+  String? _kindName(
+    MarketplaceProvider? provider,
+    List<MarketplaceService> services,
+  ) {
+    for (final service in services) {
+      if (service.id == _serviceId) return service.category?.nameAr;
     }
-    return '${min.isNotEmpty ? 'من $min' : 'حتى $max'} $currencyLabel';
+    return provider?.primaryCategory?.nameAr ??
+        services.firstOrNull?.category?.nameAr;
+  }
+
+  String? _placeLabel(ProviderMarketplaceProvider marketplace) {
+    final location = _eventLocation;
+    final label = location?.mediumLabel ?? location?.shortLabel;
+    return label ?? _selectedCityName(marketplace);
   }
 
   Future<void> _restoreDraft() async {
@@ -453,16 +461,12 @@ class _QuoteRequestScreenState extends State<QuoteRequestScreen> {
       setState(() {
         _serviceId ??= draft['serviceId'] as String?;
         _cityId ??= draft['cityId'] as String?;
+        _period ??= draft['period'] as String?;
+        _shareBudget = draft['shareBudget'] == true;
         final rawDate = draft['eventDate'] as String?;
         _eventDate ??= rawDate == null ? null : DateTime.tryParse(rawDate);
         if (_guestCountController.text.isEmpty) {
           _guestCountController.text = draft['guestCount'] as String? ?? '';
-        }
-        if (_budgetMinController.text.isEmpty) {
-          _budgetMinController.text = draft['budgetMin'] as String? ?? '';
-        }
-        if (_budgetMaxController.text.isEmpty) {
-          _budgetMaxController.text = draft['budgetMax'] as String? ?? '';
         }
         if (_messageController.text.isEmpty) {
           _messageController.text = draft['message'] as String? ?? '';
@@ -478,30 +482,12 @@ class _QuoteRequestScreenState extends State<QuoteRequestScreen> {
     _draft?.schedule({
       'serviceId': _serviceId,
       'cityId': _cityId,
+      'period': _period,
+      'shareBudget': _shareBudget,
       'eventDate': _eventDate?.toIso8601String(),
       'guestCount': _guestCountController.text,
-      'budgetMin': _budgetMinController.text,
-      'budgetMax': _budgetMaxController.text,
       'message': _messageController.text,
     });
-  }
-
-  String? _safeSelectedService(List<MarketplaceService> services) {
-    if (_serviceId == null) return null;
-    return services.any((service) => service.id == _serviceId)
-        ? _serviceId
-        : null;
-  }
-
-  String _selectedCurrencyLabel(
-    WeddingPlansProvider plans,
-    String? selectedPlanId,
-  ) {
-    final selectedPlan = plans.selectedPlan;
-    final currency = selectedPlan?.id == selectedPlanId
-        ? selectedPlan?.currency
-        : null;
-    return currencyLabelAr(currency);
   }
 
   Future<void> _loadGuestLocationContext(
@@ -513,12 +499,9 @@ class _QuoteRequestScreenState extends State<QuoteRequestScreen> {
     final location = guestPlan.weddingLocation;
     if (!location.hasAnyLocation && guestPlan.weddingDate == null) return;
     setState(() {
-      if (location.hasAnyLocation) {
-        _eventLocation = location;
-      }
+      if (location.hasAnyLocation) _eventLocation = location;
       _eventDate ??= guestPlan.weddingDate;
     });
-    _prefillLocationMessage(location);
   }
 
   void _scheduleInitialPlanContext(
@@ -535,14 +518,18 @@ class _QuoteRequestScreenState extends State<QuoteRequestScreen> {
       if (!mounted) return;
       final location = selectedPlan.weddingLocation;
       final matchingCityId = _matchingCityId(marketplace, location);
+      final summary = context.read<DashboardSummaryProvider?>()?.summary;
+      final guests = summary?.planId == selectedPlanId
+          ? summary!.guestCount
+          : 0;
       setState(() {
         _eventDate ??= selectedPlan.weddingDate;
-        if (location.hasAnyLocation) {
-          _eventLocation ??= location;
-        }
+        if (location.hasAnyLocation) _eventLocation ??= location;
         _cityId ??= matchingCityId;
+        if (_guestCountController.text.isEmpty && guests > 0) {
+          _guestCountController.text = '$guests';
+        }
       });
-      _prefillLocationMessage(location);
     });
   }
 
@@ -557,7 +544,6 @@ class _QuoteRequestScreenState extends State<QuoteRequestScreen> {
         location.governorate!.trim(),
     ];
     if (candidates.isEmpty) return null;
-
     for (final city in marketplace.cities) {
       final cityName = city.nameAr.trim();
       if (candidates.any((candidate) => candidate == cityName)) {
@@ -565,13 +551,6 @@ class _QuoteRequestScreenState extends State<QuoteRequestScreen> {
       }
     }
     return null;
-  }
-
-  void _prefillLocationMessage(WeddingLocationDraft location) {
-    final label = location.mediumLabel ?? location.shortLabel;
-    if (label == null || _messageController.text.trim().isNotEmpty) return;
-    _messageController.text =
-        'موقع الزفاف: $label\nأحتاج عرض سعر مناسب لتفاصيل المناسبة.';
   }
 
   Future<void> _pickDate() async {
@@ -583,16 +562,100 @@ class _QuoteRequestScreenState extends State<QuoteRequestScreen> {
       firstDate: now,
       lastDate: DateTime(now.year + 5),
     );
-    if (picked != null) {
-      setState(() {
-        _eventDate = picked;
-      });
-      _scheduleDraft();
-    }
+    if (picked == null || !mounted) return;
+    setState(() => _eventDate = picked);
+    _scheduleDraft();
   }
 
-  Future<void> _submit() async {
-    if (!_formKey.currentState!.validate()) return;
+  Future<void> _pickPeriod() async {
+    releaseFieldFocus();
+    final picked = await _choose<String>(
+      title: 'الفترة',
+      options: [for (final period in _periods) (period, period)],
+      selected: _period,
+    );
+    if (picked == null || !mounted) return;
+    setState(() => _period = picked);
+    _scheduleDraft();
+  }
+
+  Future<void> _pickCity(ProviderMarketplaceProvider marketplace) async {
+    releaseFieldFocus();
+    final picked = await _choose<String>(
+      title: 'المكان',
+      options: [for (final city in marketplace.cities) (city.id, city.nameAr)],
+      selected: _cityId,
+    );
+    if (picked == null || !mounted) return;
+    setState(() {
+      // Another city drops the plan's venue, which belongs to the old one.
+      if (picked != _cityId) _eventLocation = null;
+      _cityId = picked;
+    });
+    _scheduleDraft();
+  }
+
+  Future<void> _pickGuests() async {
+    releaseFieldFocus();
+    final value = await showAarastBottomSheet<String>(
+      context: context,
+      isScrollControlled: true,
+      builder: (_) => _GuestsSheet(initial: _guestCountController.text),
+    );
+    if (value == null || !mounted) return;
+    setState(() {
+      _guestCountController.text = value.trim();
+      _guestError = null;
+    });
+  }
+
+  /// A short list to pick one from, with the current one marked.
+  Future<T?> _choose<T>({
+    required String title,
+    required List<(T, String)> options,
+    required T? selected,
+  }) {
+    return showAarastBottomSheet<T>(
+      context: context,
+      isScrollControlled: true,
+      builder: (sheetContext) => SafeArea(
+        child: ListView(
+          shrinkWrap: true,
+          padding: const EdgeInsets.fromLTRB(20, 16, 20, 16),
+          children: [
+            Text(
+              title,
+              style: JourneyType.of(JourneyType.title, weight: JourneyType.bold),
+            ),
+            const SizedBox(height: 12),
+            for (final (value, label) in options) ...[
+              JourneyChoiceCard(
+                title: label,
+                subtitle: '',
+                leading: const SizedBox.shrink(),
+                selected: value == selected,
+                onTap: () => Navigator.of(sheetContext).pop(value),
+              ),
+              const SizedBox(height: 8),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _submit(
+    ProviderBudgetMatchIntent? budget,
+    bool asksGuests,
+  ) async {
+    final guestText = _guestCountController.text.trim();
+    final guestCount = asksGuests && guestText.isNotEmpty
+        ? int.tryParse(guestText)
+        : null;
+    if (asksGuests && guestText.isNotEmpty && (guestCount ?? 0) < 1) {
+      setState(() => _guestError = 'اكتب عدد الضيوف بالأرقام');
+      return;
+    }
     if (await AuthActionGuard.blockProtectedSubmitWithoutAccount(
       context,
       message: AuthActionGuard.quoteSubmitMessage,
@@ -608,15 +671,12 @@ class _QuoteRequestScreenState extends State<QuoteRequestScreen> {
         ? selectedContext?.weddingPlanId
         : null;
     if (selectedPlanId == null) {
-      AarastToast.showError(
-        context,
-        'اختر مسار خطة الزفاف قبل إرسال طلب عرض السعر.',
-      );
+      AarastToast.showError(context, 'افتح خطتك أول، وبعدين اطلب العرض.');
       return;
     }
 
-    final guestCount = int.tryParse(_guestCountController.text.trim());
     final marketplace = context.read<ProviderMarketplaceProvider>();
+    final shared = _shareBudget ? budget : null;
     final success = await marketplace.createQuoteRequest(
       providerId: widget.providerId,
       weddingPlanId: selectedPlanId,
@@ -627,9 +687,14 @@ class _QuoteRequestScreenState extends State<QuoteRequestScreen> {
       guestCount: guestCount,
       contactName: context.read<AuthController>().user?.name,
       contactPhone: context.read<AuthController>().user?.phone,
-      budgetMin: _budgetMinController.text,
-      budgetMax: _budgetMaxController.text,
-      message: _messageController.text,
+      // F8: the amount reaches the provider only when shared.
+      budgetMin: shared?.requestMin?.round().toString() ?? '',
+      budgetMax: shared?.requestMax?.round().toString() ?? '',
+      message: [
+        if (_period != null) 'الفترة: $_period',
+        if (_messageController.text.trim().isNotEmpty)
+          _messageController.text.trim(),
+      ].join('\n'),
     );
 
     if (!mounted) return;
@@ -638,13 +703,13 @@ class _QuoteRequestScreenState extends State<QuoteRequestScreen> {
       if (!mounted) return;
       final createdQuote = marketplace.lastCreatedQuote;
       final responsePlanId = createdQuote?.weddingPlanId?.trim();
-      AarastFormSuccess.show(context, message: 'تم إرسال طلب عرض السعر بنجاح.');
+      AarastFormSuccess.show(context, message: 'وصل طلبك للمزود.');
       if (responsePlanId != null &&
           responsePlanId.isNotEmpty &&
           responsePlanId != selectedPlanId) {
         AarastToast.showError(
           context,
-          'تعذر تأكيد ارتباط الطلب بمسار الخطة المحدد.',
+          'ما قدرنا نتأكد إن الطلب في خطتك المفتوحة.',
         );
         return;
       }
@@ -672,15 +737,10 @@ class _QuoteRequestScreenState extends State<QuoteRequestScreen> {
     if (location == null || !location.hasAnyLocation) {
       return selectedCityName == null ? null : {'city': selectedCityName};
     }
-
-    if (location.hasRequiredLocation) {
-      return location.toJson();
-    }
+    if (location.hasRequiredLocation) return location.toJson();
 
     final city = _cleanText(location.cityOrDistrict) ?? selectedCityName;
-    if (city != null) {
-      return {'city': city};
-    }
+    if (city != null) return {'city': city};
 
     // Send an explicit empty object so the backend does not fall back to a
     // previously stored partial structured location for the selected plan.
@@ -702,73 +762,52 @@ class _QuoteRequestScreenState extends State<QuoteRequestScreen> {
   }
 }
 
-class _QuoteLocationContext extends StatelessWidget {
-  const _QuoteLocationContext({required this.location});
+/// «كم ضيف تقريبًا؟», owning its field for as long as the sheet lives.
+class _GuestsSheet extends StatefulWidget {
+  const _GuestsSheet({required this.initial});
 
-  final WeddingLocationDraft? location;
+  final String initial;
+
+  @override
+  State<_GuestsSheet> createState() => _GuestsSheetState();
+}
+
+class _GuestsSheetState extends State<_GuestsSheet> {
+  late final _controller = TextEditingController(text: widget.initial);
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
-    final hasLocation = location?.hasAnyLocation == true;
-    final title = hasLocation ? 'موقع الزفاف' : 'موقع الزفاف غير مكتمل';
-    final message = hasLocation
-        ? 'سيظهر موقع الزفاف في تفاصيل الطلب حتى يقدّر المزود السعر بدقة. يمكنك تعديل الرسالة قبل الإرسال.'
-        : 'أضف موقع الزفاف حتى يفهم المزود مكان المناسبة قبل تسعير الطلب.';
-    final label = location?.fullLabel ?? location?.mediumLabel;
-
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: hasLocation ? AppTheme.success.withValues(alpha: 0.08) : null,
-        borderRadius: BorderRadius.circular(AppTheme.radiusMd),
-        border: Border.all(
-          color: hasLocation
-              ? AppTheme.success.withValues(alpha: 0.22)
-              : AppTheme.border,
-        ),
+    return SingleChildScrollView(
+      padding: EdgeInsets.fromLTRB(
+        20,
+        16,
+        20,
+        16 + MediaQuery.viewInsetsOf(context).bottom,
       ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Icon(
-            hasLocation ? LucideIcons.mapPin : LucideIcons.mapPin,
-            color: hasLocation ? AppTheme.success : AppTheme.brand,
+          JourneyTextField(
+            label: 'كم ضيف تقريبًا؟',
+            controller: _controller,
+            keyboardType: TextInputType.number,
+            inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+            autofocus: true,
           ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title,
-                  style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                    color: AppTheme.textPrimary,
-                    fontWeight: FontWeight.w900,
-                  ),
-                ),
-                if (label != null) ...[
-                  const SizedBox(height: 4),
-                  Text(
-                    label,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                      color: AppTheme.brand,
-                      fontWeight: FontWeight.w800,
-                    ),
-                  ),
-                ],
-                const SizedBox(height: 4),
-                Text(
-                  message,
-                  style: const TextStyle(
-                    color: AppTheme.textSecondary,
-                    fontWeight: FontWeight.w600,
-                    height: 1.45,
-                  ),
-                ),
-              ],
-            ),
+          const SizedBox(height: 12),
+          JourneyButton(
+            label: 'تمام',
+            background: AarastV3Color.cobalt,
+            large: true,
+            expand: true,
+            onPressed: () => Navigator.of(context).pop(_controller.text),
           ),
         ],
       ),
@@ -776,119 +815,84 @@ class _QuoteLocationContext extends StatelessWidget {
   }
 }
 
-class _QuoteContactContext extends StatelessWidget {
-  const _QuoteContactContext({this.phone});
+class _Label extends StatelessWidget {
+  const _Label(this.text);
 
-  final String? phone;
+  final String text;
 
   @override
   Widget build(BuildContext context) {
-    final displayPhone = PhoneNumberUtils.display(phone);
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: AppTheme.surfaceRaised,
-        borderRadius: BorderRadius.circular(AppTheme.radiusMd),
-        border: Border.all(color: AppTheme.border),
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(4, 10, 4, 8),
+      child: Text(
+        text,
+        style: JourneyType.of(
+          JourneyType.body,
+          weight: JourneyType.bold,
+          color: AarastV3Color.textMuted,
+        ),
       ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Icon(LucideIcons.phoneCall, color: AppTheme.brand),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                  'رقم التواصل',
-                  style: TextStyle(
-                    color: AppTheme.textPrimary,
-                    fontWeight: FontWeight.w900,
-                  ),
+    );
+  }
+}
+
+/// One fact from the plan, with the pencil that changes it.
+class _PlanRow extends StatelessWidget {
+  const _PlanRow({
+    required this.icon,
+    required this.label,
+    required this.value,
+    required this.onEdit,
+    super.key,
+  });
+
+  final IconData icon;
+  final String label;
+
+  /// Null when the plan does not say yet.
+  final String? value;
+  final VoidCallback onEdit;
+
+  @override
+  Widget build(BuildContext context) {
+    return AarastPressable(
+      onTap: onEdit,
+      semanticLabel: '$label، ${value ?? 'ما حددت'}، غيّر',
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 11),
+        child: Row(
+          children: [
+            Icon(icon, size: 20, color: AarastV3Color.cobalt),
+            const SizedBox(width: 10),
+            SizedBox(
+              width: 64,
+              child: Text(
+                label,
+                style: JourneyType.of(
+                  JourneyType.body,
+                  color: AarastV3Color.textMuted,
                 ),
-                const SizedBox(height: 3),
-                if (displayPhone != null)
-                  AarastPhoneText(
-                    phone: displayPhone,
-                    style: const TextStyle(
-                      color: AppTheme.textSecondary,
-                      fontWeight: FontWeight.w700,
-                      height: 1.4,
-                    ),
-                  )
-                else
-                  const Text(
-                    'سيُستخدم رقم الحساب عند إرسال الطلب بعد تسجيل الدخول.',
-                    textAlign: TextAlign.right,
-                    style: TextStyle(
-                      color: AppTheme.textSecondary,
-                      fontWeight: FontWeight.w700,
-                      height: 1.4,
-                    ),
-                  ),
-              ],
+              ),
             ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _QuoteAuthRequired extends StatelessWidget {
-  const _QuoteAuthRequired({required this.onLogin});
-
-  final VoidCallback onLogin;
-
-  @override
-  Widget build(BuildContext context) {
-    return ListView(
-      children: [
-        const SizedBox(height: 48),
-        AarastEmptyState(
-          icon: LucideIcons.lock,
-          title: 'تسجيل الدخول مطلوب',
-          message: 'سجّل الدخول أولاً لإرسال طلب عرض سعر للمزود.',
-          action: FilledButton.icon(
-            onPressed: onLogin,
-            icon: const Icon(LucideIcons.logIn),
-            label: const Text('تسجيل الدخول'),
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-class _DateField extends StatelessWidget {
-  const _DateField({required this.value, required this.onTap});
-
-  final DateTime? value;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(AppTheme.radiusMd),
-      child: InputDecorator(
-        decoration: const InputDecoration(
-          labelText: 'تاريخ المناسبة',
-          prefixIcon: Icon(LucideIcons.calendar),
-        ),
-        child: Text(
-          value == null
-              ? 'اختر التاريخ'
-              : '${value!.day}/${value!.month}/${value!.year}',
-          textDirection: TextDirection.ltr,
-          textAlign: TextAlign.right,
-          style: TextStyle(
-            color: value == null
-                ? AppTheme.textSecondary
-                : AppTheme.textPrimary,
-            fontWeight: FontWeight.w700,
-          ),
+            Expanded(
+              child: Text(
+                value ?? 'ما حددت',
+                style: JourneyType.of(
+                  JourneyType.body,
+                  weight: value == null ? FontWeight.w400 : JourneyType.bold,
+                  color: value == null
+                      ? AarastV3Color.textMuted
+                      : AarastV3Color.ink,
+                ),
+              ),
+            ),
+            const SizedBox(width: 8),
+            const Icon(
+              LucideIcons.pencil,
+              size: 18,
+              color: AarastV3Color.textFaint,
+            ),
+          ],
         ),
       ),
     );

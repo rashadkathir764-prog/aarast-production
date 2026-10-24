@@ -100,9 +100,10 @@ void main() {
         await tester.pump(const Duration(milliseconds: 80));
       }
 
-      expect(find.text('طلب عرض سعر'), findsOneWidget);
-      expect(find.text('تسجيل الدخول مطلوب'), findsOneWidget);
-      expect(find.widgetWithText(TextFormField, 'رسالة للمزود'), findsNothing);
+      // f07 wording (D15).
+      expect(find.text('اطلب عرض سعر'), findsOneWidget);
+      expect(find.text('ادخل حسابك أول'), findsOneWidget);
+      expect(find.text('كلمة لهم (اختياري)'), findsNothing);
       expect(find.text('أنت في وضع تجربة محلية'), findsNothing);
       expect(marketplaceProvider.createQuoteAttempted, isFalse);
       expect(tester.takeException(), isNull);

@@ -56,9 +56,11 @@ void main() {
         'lib/features/marketplace/screens/favorite_providers_screen.dart',
       );
 
-      expect(quoteSource, contains('AarastV3FocusPrompt'));
-      expect(quoteSource, contains('AarastV3LiveSummary'));
-      expect(quoteSource, contains('AarastV3FormActionBar'));
+      // f07 (D15): the plan's facts with a pencil each and the send button
+      // pinned under them, not the older prompt, summary and action bar.
+      expect(quoteSource, contains('class _PlanRow'));
+      expect(quoteSource, contains("ValueKey('quote-send')"));
+      expect(quoteSource, isNot(contains('AarastV3FormActionBar')));
       expect(quoteSource, isNot(contains('_QuoteRequestHero')));
       expect(detailsSource, contains('ProviderDetailsView'));
       expect(detailsViewSource, contains('class _ProviderHero'));

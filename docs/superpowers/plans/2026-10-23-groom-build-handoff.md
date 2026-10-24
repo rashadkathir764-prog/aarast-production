@@ -4,7 +4,7 @@
 
 - الفرع `groom-journey-build`، وكل الشغل المكتمل مرفوع على `origin`.
 - خلصت الشرائح 1 إلى 6: البداية، الرئيسية، الفلوس، المهام، الضيوف.
-- الشريحة 7 (المزودين، جهة العميل) في النص: 11 شاشة من 24 مكتملة.
+- الشريحة 7 (المزودين، جهة العميل) في النص: 14 شاشة من 24 مكتملة.
 - شاشة «استكشف» (f02 وw33) مكتملة ومرفوعة، وبعدها «نبدأ بالقاعة» (x22) وصفحة المزود (f03).
 - إصلاحات 2026-10-24 من تشغيل التطبيق الحقيقي: موعد العرس ما عاد ينقص يوم (D11)، الخطة المحفوظة تنفتح بدون «اختر المسار»، الرئيسية ما تقول «ما عندك خطة بعد» وهي تحمّل، و«استكشف» ما فيه «خدمات قريبة من بندك» (D12).
 - باقي: بقية الشريحة 7، ثم الشريحة 8 (الحساب والإعدادات والخطة)، ثم الشريحة 9 (المشارك)، ثم التنظيف والتسليم.
@@ -133,7 +133,7 @@ The word «أقساط» is banned. Use «على دفعات».
 | 4 Money write (12) | Done. c04 needed no code. |
 | 5 Tasks (10) | Done, except **y14**, which no commit names. Its hero must be a CustomPainter, with no gradient (D3). |
 | 6 Guests (12) | Done, except **w38**, which no commit names. Verify it. |
-| 7 Providers, customer side (24) | **In progress.** Done: f01, f02, f03, f04, f05, x10, x11, x22, w30 (filter sheet), w31, w33. Left: f09, y13, f07, f08, f06, w32, y09, x09, w34, w35, g04, x12, b07. |
+| 7 Providers, customer side (24) | **In progress.** Done: f01, f02, f03, f04, f05, f07, f09, x10, x11, x22, w30 (filter sheet), w31, w33; y13 needs no code (f02 with the «زينة البيت» category, which is admin data). Left: f08, f06, w32, y09, x09, w34, w35, g04, x12, b07. |
 | 8 Account / settings / plan (15) | Not started: g02, g07, g10, g11, w39, w07, w08, g08, w10, g03, w11, g01, g06, x07, x20 |
 | 9 Participant (15) | Not started: x04, q01, q02, q03, q04, x06, q17, q05, q18, q07, q08, q10, q12, q19, q21 |
 | 10 V1.1 extras | Out of scope until after V1 |
@@ -218,6 +218,8 @@ Each line is a place where the app differs from the prototype:
 - The task form has no category or priority.
 - The data-saver images mode waits for its setting in slice 8.
 - x22: «قاعات لعرسك» instead of «قاعات فاضية يوم عرسك» (no free-day data); «على قد بندك» only when the hall item has an amount.
+- y13: no category line («تركيب قبل السمرة وفك بعد العرس · يغطون صنعاء»; a category has no description) and no «فاضي يوم 17».
+- f07: no «المناسبة» row, no «شاركهم رقمك», no 7-day expiry (D15); the time goes into the message.
 - f03: no «عرسان دفعوا فعلًا · من 11 عرس», no «فاضي ليلة 21 · باقي فريقين», no «عنده فريق مصوّرات» (no data behind any of them). The price box is labelled «أسعاره». Prices read 450,000 ر.ي, not «450 ألف».
 
 ## At the end of the groom path

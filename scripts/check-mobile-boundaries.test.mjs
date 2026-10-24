@@ -1638,8 +1638,9 @@ const r19ProviderPortalApi = Object.freeze({
 // plan's name instead of the onboarding persona copy (b02).
 // +1 for f03 reading the plan's money items through the finance owner API,
 // so «ضمن بندك» compares the price with the item's amount; -1 for the f09
-// comparison, which no longer gates on the account itself (D14).
-const r19LegalRecordCount = 192;
+// comparison, which no longer gates on the account itself (D14); +1 for
+// f07 reading the plan's item through the finance owner API (D15).
+const r19LegalRecordCount = 193;
 const trackedOwnerApiContracts = [
   {
     area: 'features/account_contexts',
@@ -2343,13 +2344,18 @@ const trackedCollaborationBatchContracts = [
   },
   {
     source: 'mobile/lib/features/marketplace/screens/quote_request_screen.dart',
+    target: 'mobile/lib/features/finance/finance_api.dart',
+    show: ['FinanceProvider'],
+  },
+  {
+    source: 'mobile/lib/features/marketplace/screens/quote_request_screen.dart',
     target: 'mobile/lib/features/onboarding/onboarding_api.dart',
     show: ['GuestOnboardingStorage', 'WeddingLocationDraft'],
   },
   {
     source: 'mobile/lib/features/marketplace/screens/quote_request_screen.dart',
     target: 'mobile/lib/features/wedding_plans/wedding_plans_api.dart',
-    show: ['WeddingPlansProvider'],
+    show: ['DashboardSummaryProvider', 'WeddingPlansProvider'],
   },
   {
     source: 'mobile/lib/features/provider_portal/widgets/provider_account_actions.dart',

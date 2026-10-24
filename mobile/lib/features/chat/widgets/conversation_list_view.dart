@@ -34,14 +34,20 @@ class ConversationListView extends StatefulWidget {
 }
 
 class _ConversationListViewState extends State<ConversationListView> {
+  ChatProvider? _chat;
+
   @override
-  void initState() {
-    super.initState();
-    if (!widget.embedded) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) context.read<ChatProvider>().initialize();
-      });
-    }
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (widget.embedded) return;
+    // Opened straight on this page, the per-plan chat store is swapped once
+    // the plan is chosen; the list loads again on the current one.
+    final chat = context.read<ChatProvider>();
+    if (identical(chat, _chat)) return;
+    _chat = chat;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted && identical(chat, _chat)) chat.initialize();
+    });
   }
 
   @override

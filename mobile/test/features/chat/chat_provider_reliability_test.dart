@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:aarast_mobile/core/media/media_upload_api.dart';
 import 'package:aarast_mobile/core/network/api_client.dart';
 import 'package:aarast_mobile/core/storage/auth_storage.dart';
@@ -294,7 +296,8 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('الرسالة الأحدث'), findsOneWidget);
-    expect(find.text('أُنشئ طلب عرض سعر'), findsOneWidget);
+    // f06: the request opens the conversation as the customer's message.
+    expect(find.text('طلبت عرض سعر'), findsOneWidget);
     chat.dispose();
   });
 
@@ -513,12 +516,7 @@ void main() {
     await tester.pumpWidget(_chatApp(chat));
     await tester.pumpAndSettle();
 
-    expect(
-      find.text(
-        'المزود لم ينضم للمحادثة بعد. ستتمكن من الإرسال بعد ربط حسابه.',
-      ),
-      findsOneWidget,
-    );
+    expect(find.text('ما يقدر يرد لين يستلم صاحبه ملفه.'), findsOneWidget);
     expect(find.byType(TextField), findsNothing);
     chat.dispose();
   });
@@ -546,12 +544,7 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.byType(ChatScreen), findsOneWidget);
-      expect(
-        find.text(
-          'المزود لم ينضم للمحادثة بعد. ستتمكن من الإرسال بعد ربط حسابه.',
-        ),
-        findsOneWidget,
-      );
+      expect(find.text('ما يقدر يرد لين يستلم صاحبه ملفه.'), findsOneWidget);
       expect(find.byType(TextField), findsNothing);
       expect(api.conversationForQuoteCalls, 1);
       expect(api.timelineCalls, 1);
@@ -580,16 +573,253 @@ void main() {
     await tester.pumpWidget(_chatApp(chat));
     await tester.pumpAndSettle();
 
-    expect(find.text('تعذر تحميل المحادثة'), findsOneWidget);
-    expect(find.text('حاول مرة أخرى'), findsOneWidget);
+    expect(find.text('ما قدرنا نجيبها'), findsOneWidget);
+    expect(find.text('حاول مرة ثانية'), findsOneWidget);
 
-    await tester.tap(find.text('حاول مرة أخرى'));
+    await tester.tap(find.text('حاول مرة ثانية'));
     await tester.pumpAndSettle();
 
-    expect(find.text('أُنشئ طلب عرض سعر'), findsOneWidget);
+    expect(find.text('طلبت عرض سعر'), findsOneWidget);
     expect(chat.hasConversationLoadError('conversation-1'), isFalse);
     expect(api.timelineCalls, 2);
     chat.dispose();
+  });
+
+  testWidgets('an unopened conversation loads instead of reading empty', (
+    tester,
+  ) async {
+    final gate = Completer<void>();
+    final api = _GatedTimelineApi(gate, conversations: [_conversation()]);
+    final chat = ChatProvider(
+      api: api,
+      realtime: _FakeRealtimeClient(storage),
+      authStorage: storage,
+    );
+
+    // The very first frame, before the conversation is even asked for.
+    await tester.pumpWidget(_chatApp(chat));
+
+    expect(find.byKey(const ValueKey('journey-list-loading')), findsOneWidget);
+    expect(find.text('ما في رسائل بعد'), findsNothing);
+
+    gate.complete();
+    await tester.pumpAndSettle();
+    expect(find.text('ما في رسائل بعد'), findsOneWidget);
+    chat.dispose();
+  });
+
+  testWidgets('a swapped plan chat store opens the same conversation again', (
+    tester,
+  ) async {
+    ChatProvider store(String body) => ChatProvider(
+      api: _FakeChatApi(
+        conversations: [_conversation()],
+        initialTimeline: ChatTimelinePage(items: [_messageItem(body: body)]),
+      ),
+      realtime: _FakeRealtimeClient(storage),
+      authStorage: storage,
+    );
+    final first = store('قبل اختيار الخطة');
+    final second = store('بعد اختيار الخطة');
+    final current = ValueNotifier<ChatProvider>(first);
+
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.light(),
+        home: ValueListenableBuilder<ChatProvider>(
+          valueListenable: current,
+          builder: (_, chat, _) => ChangeNotifierProvider<ChatProvider>.value(
+            value: chat,
+            child: const ChatScreen(conversationId: 'conversation-1'),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('قبل اختيار الخطة'), findsOneWidget);
+
+    current.value = second;
+    await tester.pumpAndSettle();
+
+    expect(find.text('بعد اختيار الخطة'), findsOneWidget);
+    expect(find.text('ما في رسائل بعد'), findsNothing);
+    expect(find.text('قاعة السعادة'), findsOneWidget);
+    first.dispose();
+    second.dispose();
+    current.dispose();
+  });
+
+  testWidgets('a swapped plan chat store loads the conversation list again', (
+    tester,
+  ) async {
+    final firstApi = _FakeChatApi(conversations: [_conversation()]);
+    final secondApi = _FakeChatApi(conversations: [_conversation()]);
+    ChatProvider store(_FakeChatApi api) => ChatProvider(
+      api: api,
+      realtime: _FakeRealtimeClient(storage),
+      authStorage: storage,
+    );
+    final first = store(firstApi);
+    final second = store(secondApi);
+    final current = ValueNotifier<ChatProvider>(first);
+
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.light(),
+        home: ValueListenableBuilder<ChatProvider>(
+          valueListenable: current,
+          builder: (_, chat, _) => ChangeNotifierProvider<ChatProvider>.value(
+            value: chat,
+            child: const ConversationListView(),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    current.value = second;
+    await tester.pumpAndSettle();
+
+    expect(firstApi.requestedConversationCursors, [null]);
+    expect(secondApi.requestedConversationCursors, [null]);
+    expect(find.text('قاعة السعادة'), findsOneWidget);
+    first.dispose();
+    second.dispose();
+    current.dispose();
+  });
+
+  group('f06 conversation', () {
+    final now = DateTime(2026, 10, 20, 9);
+
+    _FakeChatApi studioApi() => _FakeChatApi(
+      conversations: [_conversation()],
+      initialTimeline: ChatTimelinePage(
+        items: [
+          _eventItem(),
+          _messageItem(
+            body:
+                'وعليكم السلام، مبروك مقدمًا. اليوم فاضي عندنا، أرسلنا لك العرض',
+          ),
+          ChatTimelineItem.fromJson({
+            'kind': 'EVENT',
+            'occurredAt': '2026-07-07T13:00:00.000Z',
+            'event': {
+              'id': 'event-offer',
+              'conversationId': 'conversation-1',
+              'quoteRequestId': 'quote-1',
+              'quoteOfferId': 'offer-1',
+              'type': 'QUOTE_OFFER_RECEIVED',
+              'occurredAt': '2026-07-07T13:00:00.000Z',
+            },
+          }),
+        ],
+      ),
+      quoteRequestItems: [
+        ChatQuoteRequestSummary(
+          id: 'quote-1',
+          status: 'RESPONDED',
+          createdAt: DateTime.utc(2026, 7, 7),
+          service: const ChatQuoteService(id: 'service-1', title: 'تصوير'),
+          message: 'السلام عليكم، نشتي تصوير زفاف يوم 21 يناير في قاعة سبأ',
+          offers: [
+            ChatQuoteOffer(
+              id: 'offer-1',
+              status: 'PENDING',
+              title: 'صور وفيديو',
+              message: 'مصورين · فيلم 10 دقائق · ألبوم مطبوع',
+              amount: '550000',
+              currency: 'YER',
+              validUntil: now.add(const Duration(days: 6)),
+            ),
+          ],
+        ),
+      ],
+    );
+
+    Widget studioApp(ChatProvider chat) =>
+        ChangeNotifierProvider<ChatProvider>.value(
+          value: chat,
+          child: MaterialApp(
+            theme: AppTheme.light(),
+            home: Directionality(
+              textDirection: TextDirection.rtl,
+              child: ChatScreen(
+                conversationId: 'conversation-1',
+                now: now,
+                providerLine: (_, providerId) async =>
+                    providerId == 'provider-1' ? 'يرد عادة خلال ساعتين' : null,
+              ),
+            ),
+          ),
+        );
+
+    testWidgets('request, reply and offer read as the design', (tester) async {
+      final chat = ChatProvider(
+        api: studioApi(),
+        realtime: _FakeRealtimeClient(storage),
+        authStorage: storage,
+      );
+
+      await tester.pumpWidget(studioApp(chat));
+      await tester.pumpAndSettle();
+
+      expect(find.text('قاعة السعادة'), findsOneWidget);
+      expect(find.text('يرد عادة خلال ساعتين'), findsOneWidget);
+      expect(
+        find.text('السلام عليكم، نشتي تصوير زفاف يوم 21 يناير في قاعة سبأ'),
+        findsOneWidget,
+      );
+      expect(find.text('وصلك عرض'), findsOneWidget);
+      expect(find.text('ينتهي بعد 6 أيام'), findsOneWidget);
+      expect(find.text('صور وفيديو · 550,000 ر.ي'), findsOneWidget);
+      expect(find.text('مصورين · فيلم 10 دقائق · ألبوم مطبوع'), findsOneWidget);
+      expect(find.text('اقبل العرض'), findsOneWidget);
+      expect(find.text('قارن'), findsOneWidget);
+      expect(find.text('اكتب رسالتك...'), findsOneWidget);
+      // Nothing the design does not show: no avatar, no menu button, no
+      // formal event cards or read receipts.
+      expect(find.byType(CircleAvatar), findsNothing);
+      expect(find.byIcon(LucideIcons.moreVertical), findsNothing);
+      expect(find.text('وصل عرض سعر جديد'), findsNothing);
+      expect(find.text('تمت القراءة'), findsNothing);
+      chat.dispose();
+    });
+
+    testWidgets('the name opens w32: mute, report, block', (tester) async {
+      final api = studioApi();
+      final chat = ChatProvider(
+        api: api,
+        realtime: _FakeRealtimeClient(storage),
+        authStorage: storage,
+      );
+
+      await tester.pumpWidget(studioApp(chat));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('قاعة السعادة'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('كتم المحادثة'), findsOneWidget);
+      expect(find.text('الرسائل توصل بدون تنبيه'), findsOneWidget);
+      expect(find.text('بلّغ عن مشكلة'), findsOneWidget);
+      expect(find.text('تأخير، كلام غير لائق، احتيال'), findsOneWidget);
+      expect(find.text('احظر المزود'), findsOneWidget);
+      expect(find.text('ما يقدر يراسلك'), findsOneWidget);
+      expect(
+        find.text('الحظر ما يلغي الحجز المؤكد. ألغه من "الحجوزات" لو تشتي.'),
+        findsOneWidget,
+      );
+
+      await tester.tap(find.byType(Switch));
+      await tester.pumpAndSettle();
+      expect(api.mutedValues, [true]);
+      expect(tester.widget<Switch>(find.byType(Switch)).value, isTrue);
+
+      await tester.tap(find.text('بلّغ عن مشكلة'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('احتيال'));
+      await tester.pumpAndSettle();
+      expect(api.reports, ['احتيال']);
+      chat.dispose();
+    });
   });
 
   testWidgets('failed send keeps timeline clean and shows backend error', (
@@ -761,7 +991,22 @@ class _FakeChatApi extends ChatApi {
     this.timelineError,
     this.timelineFailuresRemaining = 0,
     this.sendError,
+    this.quoteRequestItems,
   }) : super(ApiClient(tokenProvider: () async => null));
+
+  final List<ChatQuoteRequestSummary>? quoteRequestItems;
+  final List<bool> mutedValues = [];
+  final List<String> reports = [];
+
+  @override
+  Future<void> setMuted(String conversationId, bool enabled) async {
+    mutedValues.add(enabled);
+  }
+
+  @override
+  Future<void> report(String conversationId, String reason) async {
+    reports.add(reason);
+  }
 
   final List<ChatConversation> conversations;
   final ChatConversationPage? conversationPage;
@@ -823,18 +1068,20 @@ class _FakeChatApi extends ChatApi {
   @override
   Future<ChatQuoteRequestPage> quoteRequests(String conversationId) async =>
       ChatQuoteRequestPage(
-        items: [
-          ChatQuoteRequestSummary(
-            id: 'quote-1',
-            status: 'SENT',
-            createdAt: DateTime.utc(2026, 7, 7),
-          ),
-          ChatQuoteRequestSummary(
-            id: 'quote-2',
-            status: 'ACCEPTED',
-            createdAt: DateTime.utc(2026, 7, 8),
-          ),
-        ],
+        items:
+            quoteRequestItems ??
+            [
+              ChatQuoteRequestSummary(
+                id: 'quote-1',
+                status: 'SENT',
+                createdAt: DateTime.utc(2026, 7, 7),
+              ),
+              ChatQuoteRequestSummary(
+                id: 'quote-2',
+                status: 'ACCEPTED',
+                createdAt: DateTime.utc(2026, 7, 8),
+              ),
+            ],
       );
 
   @override
@@ -929,5 +1176,20 @@ class _FakeRealtimeClient extends ChatRealtimeClient {
   void reset() {
     resetCalls += 1;
     joinedConversationIds.clear();
+  }
+}
+
+class _GatedTimelineApi extends _FakeChatApi {
+  _GatedTimelineApi(this.gate, {super.conversations});
+
+  final Completer<void> gate;
+
+  @override
+  Future<ChatTimelinePage> timeline(
+    String conversationId, {
+    String? cursor,
+  }) async {
+    await gate.future;
+    return super.timeline(conversationId, cursor: cursor);
   }
 }

@@ -605,6 +605,8 @@ class JourneySubHeader extends StatelessWidget {
     this.subtitle,
     this.onBack,
     this.trailing,
+    this.onTitleTap,
+    this.titleTapLabel,
     super.key,
   });
 
@@ -613,8 +615,37 @@ class JourneySubHeader extends StatelessWidget {
   final VoidCallback? onBack;
   final Widget? trailing;
 
+  /// Pressing the title opens what belongs to it, as a conversation's name
+  /// opens its options (w32); [titleTapLabel] tells screen readers so.
+  final VoidCallback? onTitleTap;
+  final String? titleTapLabel;
+
   @override
   Widget build(BuildContext context) {
+    final heading = Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        if (title.isNotEmpty)
+          Semantics(
+            header: true,
+            child: Text(
+              title,
+              style: JourneyType.of(
+                JourneyType.title,
+                weight: JourneyType.bold,
+              ),
+            ),
+          ),
+        if (subtitle != null)
+          Text(
+            subtitle!,
+            style: JourneyType.of(
+              JourneyType.small,
+              color: AarastV3Color.textMuted,
+            ),
+          ),
+      ],
+    );
     return Padding(
       padding: const EdgeInsets.fromLTRB(2, 6, 2, 14),
       child: Row(
@@ -627,30 +658,14 @@ class JourneySubHeader extends StatelessWidget {
           ),
           const SizedBox(width: 12),
           Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                if (title.isNotEmpty)
-                  Semantics(
-                    header: true,
-                    child: Text(
-                      title,
-                      style: JourneyType.of(
-                        JourneyType.title,
-                        weight: JourneyType.bold,
-                      ),
-                    ),
+            child: onTitleTap == null
+                ? heading
+                : AarastPressable(
+                    onTap: onTitleTap,
+                    semanticLabel: titleTapLabel,
+                    borderRadius: BorderRadius.circular(12),
+                    child: SizedBox(width: double.infinity, child: heading),
                   ),
-                if (subtitle != null)
-                  Text(
-                    subtitle!,
-                    style: JourneyType.of(
-                      JourneyType.small,
-                      color: AarastV3Color.textMuted,
-                    ),
-                  ),
-              ],
-            ),
           ),
           ?trailing,
         ],

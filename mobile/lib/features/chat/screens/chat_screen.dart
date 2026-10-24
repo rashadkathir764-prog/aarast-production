@@ -4,25 +4,41 @@ import 'package:image_picker/image_picker.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:provider/provider.dart';
 
+import '../../../core/experience_v3/aarast_v3.dart';
 import '../../../core/media/media_upload_api.dart';
 import '../../../core/network/api_client.dart';
 import '../../../core/routing/app_router.dart';
-import '../../../core/theme/app_theme.dart';
+import '../../../core/utils/offer_ends.dart';
+import '../../../core/utils/currency_label.dart';
 import '../../../core/widgets/aarast_toast.dart';
 import '../../../core/widgets/aarast_ui.dart';
 import '../data/chat_api.dart';
 import '../models/chat_models.dart';
 import '../providers/chat_provider.dart';
 
+/// Reads the line under the provider's name, «يرد عادة خلال ساعتين»; the
+/// providers side supplies it so chat keeps no copy of provider pages.
+typedef ChatProviderLine =
+    Future<String?> Function(BuildContext context, String providerId);
+
+/// f06: one conversation with a provider. The request opens it as the
+/// customer's own message, an offer arrives as a card to accept or compare,
+/// and the name on top opens the conversation's options (w32).
 class ChatScreen extends StatefulWidget {
   const ChatScreen({
     required this.conversationId,
     this.returnQuoteToMarketplace = false,
+    this.providerLine,
+    this.now,
     super.key,
   });
 
   final String conversationId;
   final bool returnQuoteToMarketplace;
+  final ChatProviderLine? providerLine;
+
+  /// Fixed in tests so «ينتهي بعد 6 أيام» does not drift.
+  final DateTime? now;
 
   @override
   State<ChatScreen> createState() => _ChatScreenState();
@@ -35,22 +51,33 @@ class _ChatScreenState extends State<ChatScreen> {
   bool _isUploading = false;
   bool _quoteNavigationInFlight = false;
   ChatProvider? _chatProvider;
+  String? _lineProviderId;
+  String? _providerLine;
 
-  @override
-  void initState() {
-    super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) async {
-      await context.read<ChatProvider>().openConversation(
-        widget.conversationId,
-      );
-      _scrollToEnd();
-    });
-  }
+  /// Until the first load ends an empty timeline is not yet known to be
+  /// empty, so the screen keeps showing that it loads.
+  bool _firstLoadDone = false;
 
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    _chatProvider ??= context.read<ChatProvider>();
+    // The chat store is per plan: opening the app straight on this page
+    // swaps it once the plan is chosen, and the new one starts empty, so
+    // the conversation is opened again on whichever store is current.
+    final chat = context.read<ChatProvider>();
+    if (identical(chat, _chatProvider)) return;
+    _chatProvider?.closeConversation(widget.conversationId);
+    _chatProvider = chat;
+    _firstLoadDone = false;
+    WidgetsBinding.instance.addPostFrameCallback((_) => _open(chat));
+  }
+
+  Future<void> _open(ChatProvider chat) async {
+    if (!mounted || !identical(chat, _chatProvider)) return;
+    await chat.openConversation(widget.conversationId);
+    if (!mounted || !identical(chat, _chatProvider)) return;
+    setState(() => _firstLoadDone = true);
+    _scrollToEnd();
   }
 
   @override
@@ -61,90 +88,145 @@ class _ChatScreenState extends State<ChatScreen> {
     super.dispose();
   }
 
+  /// Asks once per provider for the line under the name.
+  void _loadProviderLine(ChatConversation? conversation) {
+    final read = widget.providerLine;
+    final providerId = conversation?.provider.id ?? '';
+    if (read == null || providerId.isEmpty || providerId == _lineProviderId) {
+      return;
+    }
+    _lineProviderId = providerId;
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      if (!mounted) return;
+      final line = await read(context, providerId);
+      if (mounted && _lineProviderId == providerId) {
+        setState(() => _providerLine = line);
+      }
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     final chat = context.watch<ChatProvider>();
     final conversation = _conversation(chat);
+    _loadProviderLine(conversation);
     final timeline = chat.timelineFor(widget.conversationId);
+    final requests = chat.quoteRequestsFor(widget.conversationId);
+    // Shared members without provider rights never see the conversation, so
+    // this is the customer's side; the provider answers from the other one.
+    final customerSide = conversation?.permissions.canManageProviders ?? true;
+    final now = widget.now ?? DateTime.now();
+    final hasOlder = chat.canLoadOlder(widget.conversationId);
+
+    final Widget body;
+    if ((chat.isLoading || !_firstLoadDone) &&
+        timeline.isEmpty &&
+        !chat.hasConversationLoadError(widget.conversationId)) {
+      body = const Padding(
+        padding: EdgeInsets.symmetric(horizontal: 16),
+        child: JourneyListState(
+          phase: JourneyListPhase.loading,
+          section: JourneySection.providers,
+        ),
+      );
+    } else if (chat.hasConversationLoadError(widget.conversationId) &&
+        timeline.isEmpty) {
+      body = JourneyListState(
+        phase: JourneyListPhase.error,
+        section: JourneySection.providers,
+        onRetry: () => chat.openConversation(widget.conversationId),
+      );
+    } else if (timeline.isEmpty) {
+      body = const JourneyListState(
+        phase: JourneyListPhase.empty,
+        section: JourneySection.providers,
+        emptyIcon: LucideIcons.messageCircle,
+        emptyTitle: 'ما في رسائل بعد',
+      );
+    } else {
+      body = ListView.builder(
+        controller: _scrollController,
+        padding: const EdgeInsets.fromLTRB(16, 4, 16, 16),
+        itemCount: timeline.length + (hasOlder ? 1 : 0),
+        itemBuilder: (context, index) {
+          if (hasOlder && index == 0) {
+            final loading = chat.isLoadingOlder(widget.conversationId);
+            return Center(
+              child: JourneyTextAction(
+                key: const Key('chat-load-older'),
+                label: 'رسائل أقدم',
+                icon: LucideIcons.chevronUp,
+                color: AarastV3Color.cobalt,
+                onPressed: loading ? null : _loadOlder,
+              ),
+            );
+          }
+          final item = timeline[index - (hasOlder ? 1 : 0)];
+          final message = item.message;
+          if (message != null) {
+            return _Bubble(
+              mine: message.senderUserId == chat.currentUserId,
+              text: message.body,
+              time: message.pending ? 'يرسل…' : _clock(message.createdAt),
+              attachments: [
+                for (final attachment in message.attachments)
+                  _PrivateChatImage(
+                    conversationId: message.conversationId,
+                    attachment: attachment,
+                  ),
+              ],
+            );
+          }
+          final event = item.event;
+          if (event == null) return const SizedBox.shrink();
+          return _EventView(
+            event: event,
+            request: _requestOf(requests, event.quoteRequestId),
+            customerSide: customerSide,
+            now: now,
+            onOpenQuote: event.quoteRequestId == null
+                ? null
+                : () => _openQuoteEvent(conversation, event.quoteRequestId!),
+          );
+        },
+      );
+    }
+
     return AarastScreenFrame(
+      maxWidth: 520,
       resizeToAvoidBottomInset: true,
+      backgroundColor: AarastV3Color.canvas,
       child: Column(
         children: [
-          _ChatHeader(
-            conversation: conversation,
-            onAction: (action) => _handleAction(chat, conversation, action),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+            child: JourneySubHeader(
+              title: conversation?.provider.businessName ?? '',
+              subtitle: _providerLine,
+              onBack: () {
+                if (context.canPop()) context.pop();
+              },
+              onTitleTap: conversation == null
+                  ? null
+                  : () => _openOptions(conversation),
+              titleTapLabel: 'خيارات المحادثة',
+            ),
           ),
-          Expanded(
-            child: chat.isLoading && timeline.isEmpty
-                ? const AarastScreenLoading(label: 'جارٍ تحميل الرسائل...')
-                : chat.hasConversationLoadError(widget.conversationId) &&
-                      timeline.isEmpty
-                ? AarastErrorState(
-                    title: 'تعذر تحميل المحادثة',
-                    message: chat.errorMessage!,
-                    onRetry: () => chat.openConversation(widget.conversationId),
-                  )
-                : timeline.isEmpty
-                ? const AarastEmptyState(
-                    icon: LucideIcons.messageCircle,
-                    title: 'لا يوجد نشاط بعد',
-                    message:
-                        'ستظهر هنا الرسائل وتحديثات طلبات الأسعار والعروض.',
-                  )
-                : ListView.builder(
-                    controller: _scrollController,
-                    padding: const EdgeInsets.fromLTRB(18, 16, 18, 20),
-                    itemCount:
-                        timeline.length +
-                        (chat.canLoadOlder(widget.conversationId) ? 1 : 0),
-                    itemBuilder: (context, index) {
-                      final hasOlder = chat.canLoadOlder(widget.conversationId);
-                      if (hasOlder && index == 0) {
-                        return Center(
-                          child: TextButton.icon(
-                            key: const Key('chat-load-older'),
-                            onPressed:
-                                chat.isLoadingOlder(widget.conversationId)
-                                ? null
-                                : _loadOlder,
-                            icon: chat.isLoadingOlder(widget.conversationId)
-                                ? const AarastInlineSpinner(dimension: 16)
-                                : const Icon(LucideIcons.history, size: 18),
-                            label: const Text('تحميل نشاط أقدم'),
-                          ),
-                        );
-                      }
-                      final item = timeline[index - (hasOlder ? 1 : 0)];
-                      final message = item.message;
-                      if (message != null) {
-                        return _MessageBubble(
-                          message: message,
-                          mine: message.senderUserId == chat.currentUserId,
-                          read: chat.isMessageRead(message),
-                        );
-                      }
-                      final event = item.event;
-                      return event == null
-                          ? const SizedBox.shrink()
-                          : _ConversationEventCard(
-                              event: event,
-                              onTap: event.quoteRequestId == null
-                                  ? null
-                                  : () => _openQuoteEvent(
-                                      conversation,
-                                      event.quoteRequestId!,
-                                    ),
-                            );
-                    },
-                  ),
-          ),
+          Expanded(child: body),
           if (conversation?.blocked == true)
-            _BlockedNotice(
-              blockedByMe: conversation?.blockedByMe == true,
-              blockedByCounterpart: conversation?.blockedByCounterpart == true,
+            _Notice(
+              text: conversation?.blockedByMe == true
+                  ? 'حظرته. ترفع الحظر من اسمه فوق.'
+                  : 'ما تقدر ترسل في هذي المحادثة الحين.',
+              color: AarastV3Color.danger,
+              soft: AarastV3Color.dangerSoft,
             )
           else if (conversation?.providerJoined == false)
-            const _ProviderNotJoinedNotice()
+            const _Notice(
+              text: 'ما يقدر يرد لين يستلم صاحبه ملفه.',
+              color: AarastV3Color.amber,
+              soft: AarastV3Color.amberSoft,
+            )
           else if (conversation?.canSend == true)
             _Composer(
               controller: _controller,
@@ -154,11 +236,26 @@ class _ChatScreenState extends State<ChatScreen> {
               onRemoveAttachment: () => setState(() => _attachment = null),
               onSend: _send,
             )
-          else
-            const _ConversationUnavailableNotice(),
+          else if (conversation != null)
+            const _Notice(
+              text: 'ما تقدر ترسل في هذي المحادثة الحين.',
+              color: AarastV3Color.textMuted,
+              soft: AarastV3Color.line,
+            ),
         ],
       ),
     );
+  }
+
+  ChatQuoteRequestSummary? _requestOf(
+    List<ChatQuoteRequestSummary> requests,
+    String? id,
+  ) {
+    if (id == null) return null;
+    for (final request in requests) {
+      if (request.id == id) return request;
+    }
+    return null;
   }
 
   Future<void> _openQuoteEvent(
@@ -194,6 +291,42 @@ class _ChatScreenState extends State<ChatScreen> {
     return null;
   }
 
+  /// w32: mute, report, block.
+  Future<void> _openOptions(ChatConversation conversation) async {
+    final action = await showAarastBottomSheet<String>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: AarastV3Color.canvas,
+      builder: (_) => _OptionsSheet(conversationId: conversation.id),
+    );
+    if (!mounted || action == null) return;
+    final chat = context.read<ChatProvider>();
+    if (action == 'block') {
+      final ok = await chat.setBlocked(conversation, !conversation.blockedByMe);
+      if (mounted && !ok) _showError(chat.errorMessage);
+      return;
+    }
+    if (action == 'report') {
+      final reason = await showAarastBottomSheet<String>(
+        context: context,
+        isScrollControlled: true,
+        builder: (_) => const _ReportSheet(),
+      );
+      if (!mounted || reason == null) return;
+      final ok = await chat.report(conversation, reason);
+      if (!mounted) return;
+      if (ok) {
+        AarastToast.showSuccess(context, 'وصلنا بلاغك، بنراجعه.');
+      } else {
+        _showError(chat.errorMessage);
+      }
+    }
+  }
+
+  void _showError(String? message) {
+    if (message != null) AarastToast.showError(context, message);
+  }
+
   Future<void> _pickImage() async {
     final file = await ImagePicker().pickImage(
       source: ImageSource.gallery,
@@ -214,7 +347,7 @@ class _ChatScreenState extends State<ChatScreen> {
       }
     } catch (_) {
       if (mounted) {
-        AarastToast.showError(context, 'تعذر رفع الصورة الآن.');
+        AarastToast.showError(context, 'ما قدرنا نرفع الصورة، جرب مرة ثانية.');
       }
     } finally {
       if (mounted) setState(() => _isUploading = false);
@@ -232,10 +365,7 @@ class _ChatScreenState extends State<ChatScreen> {
     );
     if (!mounted) return;
     if (!ok) {
-      final message = context.read<ChatProvider>().errorMessage;
-      if (message != null) {
-        AarastToast.showError(context, message);
-      }
+      _showError(context.read<ChatProvider>().errorMessage);
       return;
     }
     _controller.clear();
@@ -265,39 +395,6 @@ class _ChatScreenState extends State<ChatScreen> {
     });
   }
 
-  Future<void> _handleAction(
-    ChatProvider chat,
-    ChatConversation? conversation,
-    String action,
-  ) async {
-    if (conversation == null) return;
-    bool? succeeded;
-    String? successMessage;
-    if (action == 'mute') {
-      succeeded = await chat.setMuted(conversation, !conversation.muted);
-    } else if (action == 'block') {
-      succeeded = await chat.setBlocked(
-        conversation,
-        !conversation.blockedByMe,
-      );
-    } else if (action == 'report' && mounted) {
-      final reason = await _reportReason(context);
-      if (reason != null) {
-        succeeded = await chat.report(conversation, reason);
-        successMessage = 'تم إرسال البلاغ للمراجعة.';
-      }
-    }
-    if (!mounted || succeeded == null) return;
-    final message = succeeded ? successMessage : chat.errorMessage;
-    if (message != null) {
-      if (succeeded) {
-        AarastToast.showSuccess(context, message);
-      } else {
-        AarastToast.showError(context, message);
-      }
-    }
-  }
-
   void _scrollToEnd() {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (_scrollController.hasClients) {
@@ -311,235 +408,585 @@ class _ChatScreenState extends State<ChatScreen> {
   }
 }
 
-class _ChatHeader extends StatelessWidget {
-  const _ChatHeader({required this.conversation, required this.onAction});
-
-  final ChatConversation? conversation;
-  final ValueChanged<String> onAction;
-
-  @override
-  Widget build(BuildContext context) {
-    return SafeArea(
-      bottom: false,
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(12, 10, 16, 8),
-        child: Row(
-          children: [
-            IconButton(
-              tooltip: 'رجوع',
-              onPressed: () {
-                if (context.canPop()) context.pop();
-              },
-              icon: const Icon(LucideIcons.arrowRight),
-            ),
-            CircleAvatar(
-              backgroundColor: AppTheme.brandMuted,
-              backgroundImage: conversation?.provider.logoUrl == null
-                  ? null
-                  : NetworkImage(conversation!.provider.logoUrl!),
-              child: conversation?.provider.logoUrl == null
-                  ? const Icon(LucideIcons.store, color: AppTheme.brand)
-                  : null,
-            ),
-            const SizedBox(width: 10),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    conversation?.provider.businessName ?? 'المحادثة',
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                      color: AppTheme.textPrimary,
-                      fontWeight: FontWeight.w900,
-                    ),
-                  ),
-                  Text(
-                    _conversationSubtitle(conversation),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                      color: AppTheme.textSecondary,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            PopupMenuButton<String>(
-              icon: const Icon(LucideIcons.moreVertical),
-              onSelected: onAction,
-              itemBuilder: (_) => [
-                PopupMenuItem(
-                  value: 'mute',
-                  child: Text(
-                    conversation?.muted == true
-                        ? 'إلغاء الكتم'
-                        : 'كتم الإشعارات',
-                  ),
-                ),
-                PopupMenuItem(
-                  value: 'block',
-                  child: Text(
-                    conversation?.blockedByMe == true
-                        ? 'إلغاء الحظر'
-                        : 'حظر المحادثة',
-                  ),
-                ),
-                const PopupMenuItem(value: 'report', child: Text('إبلاغ')),
-              ],
-            ),
-          ],
-        ),
-      ),
-    );
-  }
+/// «10:12».
+String _clock(DateTime at) {
+  final local = at.toLocal();
+  final hour = local.hour.toString().padLeft(2, '0');
+  final minute = local.minute.toString().padLeft(2, '0');
+  return '$hour:$minute';
 }
 
-String _conversationSubtitle(ChatConversation? conversation) {
-  if (conversation == null) return 'طلبات الأسعار';
-  final contextLabel = conversation.scope == ChatConversationScope.plan
-      ? (conversation.weddingPlan?.title ?? 'خطة الزفاف')
-      : 'طلب مستقل عن الخطة';
-  final countLabel = conversation.quoteRequestCount == 1
-      ? 'طلب واحد'
-      : '${conversation.quoteRequestCount} طلبات';
-  return '$contextLabel · $countLabel';
-}
-
-class _ConversationEventCard extends StatelessWidget {
-  const _ConversationEventCard({required this.event, this.onTap});
-
-  final ChatConversationEvent event;
-  final VoidCallback? onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final details = _eventPresentation(event.type);
-    return Align(
-      child: Padding(
-        padding: const EdgeInsets.only(bottom: 10),
-        child: InkWell(
-          key: Key('conversation-event-${event.type.toLowerCase()}'),
-          onTap: onTap,
-          borderRadius: BorderRadius.circular(AppTheme.radiusMd),
-          child: Container(
-            constraints: const BoxConstraints(maxWidth: 360),
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
-            decoration: BoxDecoration(
-              color: AppTheme.surfaceRaised,
-              borderRadius: BorderRadius.circular(AppTheme.radiusMd),
-              border: Border.all(color: AppTheme.border),
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(details.$1, size: 18, color: AppTheme.brand),
-                const SizedBox(width: 9),
-                Flexible(
-                  child: Text(
-                    details.$2,
-                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                      color: AppTheme.textPrimary,
-                      fontWeight: FontWeight.w800,
-                    ),
-                  ),
-                ),
-                if (onTap != null) ...[
-                  const SizedBox(width: 8),
-                  const Icon(
-                    LucideIcons.chevronLeft,
-                    size: 17,
-                    color: AppTheme.textSecondary,
-                  ),
-                ],
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-(IconData, String) _eventPresentation(String type) => switch (type) {
-  'QUOTE_REQUEST_CREATED' => (LucideIcons.filePlus2, 'أُنشئ طلب عرض سعر'),
-  'QUOTE_REQUEST_CANCELLED' => (LucideIcons.fileX2, 'أُلغي طلب عرض السعر'),
-  'QUOTE_REQUEST_REJECTED' => (LucideIcons.fileWarning, 'رُفض طلب عرض السعر'),
-  'QUOTE_OFFER_RECEIVED' => (LucideIcons.mailCheck, 'وصل عرض سعر جديد'),
-  'QUOTE_OFFER_REJECTED' => (LucideIcons.badgeX, 'رُفض عرض السعر'),
-  'QUOTE_OFFER_ACCEPTED' => (LucideIcons.badgeCheck, 'قُبل عرض السعر'),
-  'QUOTE_OFFER_EXPIRED' => (LucideIcons.clock3, 'انتهت صلاحية عرض السعر'),
-  _ => (LucideIcons.activity, 'تحديث على طلب السعر'),
-};
-
-class _MessageBubble extends StatelessWidget {
-  const _MessageBubble({
-    required this.message,
+/// Mine on the reading side in cobalt, theirs on the other in white.
+class _Bubble extends StatelessWidget {
+  const _Bubble({
     required this.mine,
-    required this.read,
+    required this.text,
+    required this.time,
+    this.attachments = const [],
+    super.key,
   });
 
-  final ChatMessage message;
   final bool mine;
-  final bool read;
+  final String text;
+  final String time;
+  final List<Widget> attachments;
 
   @override
   Widget build(BuildContext context) {
+    final ink = mine ? AarastV3Color.onPrimary : AarastV3Color.text;
     return Align(
-      alignment: mine ? Alignment.centerRight : Alignment.centerLeft,
+      alignment: mine
+          ? AlignmentDirectional.centerStart
+          : AlignmentDirectional.centerEnd,
       child: Container(
-        constraints: const BoxConstraints(maxWidth: 320),
-        margin: const EdgeInsets.only(bottom: 10),
-        padding: const EdgeInsets.all(12),
+        constraints: const BoxConstraints(maxWidth: 290),
+        margin: const EdgeInsets.only(bottom: 8),
+        padding: const EdgeInsets.fromLTRB(14, 10, 14, 8),
         decoration: BoxDecoration(
-          color: mine ? AppTheme.brand : AppTheme.surfaceRaised,
-          borderRadius: BorderRadius.only(
-            topLeft: const Radius.circular(16),
-            topRight: const Radius.circular(16),
-            bottomLeft: Radius.circular(mine ? 16 : 4),
-            bottomRight: Radius.circular(mine ? 4 : 16),
-          ),
-          border: mine ? null : Border.all(color: AppTheme.border),
+          color: mine ? AarastV3Color.cobalt : AarastV3Color.paper,
+          borderRadius: BorderRadius.circular(18),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            for (final attachment in message.attachments) ...[
-              _PrivateChatImage(
-                conversationId: message.conversationId,
-                attachment: attachment,
-              ),
+            for (final attachment in attachments) ...[
+              attachment,
               const SizedBox(height: 8),
             ],
+            Text(text, style: JourneyType.of(JourneyType.body, color: ink)),
             Text(
-              message.body,
-              style: TextStyle(
-                color: mine ? Colors.white : AppTheme.textPrimary,
-                height: 1.4,
-                fontWeight: FontWeight.w700,
+              time,
+              style: JourneyType.of(
+                JourneyType.caption,
+                color: mine
+                    ? AarastV3Color.onPrimaryMuted
+                    : AarastV3Color.textFaint,
               ),
             ),
-            if (message.pending) ...[
-              const SizedBox(height: 5),
-              Text(
-                'جارٍ الإرسال...',
-                style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                  color: mine ? Colors.white70 : AppTheme.textSecondary,
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// A quote event in the conversation: the request as the customer's message,
+/// an offer as its card, anything else as one quiet line.
+class _EventView extends StatelessWidget {
+  const _EventView({
+    required this.event,
+    required this.request,
+    required this.customerSide,
+    required this.now,
+    required this.onOpenQuote,
+  });
+
+  final ChatConversationEvent event;
+  final ChatQuoteRequestSummary? request;
+  final bool customerSide;
+  final DateTime now;
+  final VoidCallback? onOpenQuote;
+
+  @override
+  Widget build(BuildContext context) {
+    final key = Key('conversation-event-${event.type.toLowerCase()}');
+    switch (event.type) {
+      case 'QUOTE_REQUEST_CREATED':
+        final service = request?.service?.title;
+        final message = request?.message?.trim() ?? '';
+        return _Bubble(
+          key: key,
+          mine: customerSide,
+          text: message.isNotEmpty
+              ? message
+              : service == null
+              ? 'طلبت عرض سعر'
+              : 'طلبت عرض: $service',
+          time: _clock(event.occurredAt),
+        );
+      case 'QUOTE_OFFER_RECEIVED':
+        return _OfferCard(
+          key: key,
+          offer: _offer,
+          serviceTitle: request?.service?.title,
+          customerSide: customerSide,
+          now: now,
+          onOpen: onOpenQuote,
+        );
+    }
+    final label = switch (event.type) {
+      'QUOTE_REQUEST_CANCELLED' => 'تسكّر الطلب',
+      'QUOTE_REQUEST_REJECTED' => 'اعتذروا عن الطلب',
+      'QUOTE_OFFER_REJECTED' => 'انرفض العرض',
+      'QUOTE_OFFER_ACCEPTED' => 'انقبل العرض',
+      'QUOTE_OFFER_EXPIRED' => 'انتهت مدة العرض',
+      _ => 'تغيّر شي في الطلب',
+    };
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Center(
+        child: AarastPressable(
+          key: key,
+          onTap: onOpenQuote,
+          borderRadius: BorderRadius.circular(12),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+            child: Text(
+              '$label · ${_clock(event.occurredAt)}',
+              style: JourneyType.of(
+                JourneyType.small,
+                color: AarastV3Color.textMuted,
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  ChatQuoteOffer? get _offer {
+    final offers = request?.offers ?? const <ChatQuoteOffer>[];
+    for (final offer in offers) {
+      if (offer.id == event.quoteOfferId) return offer;
+    }
+    return null;
+  }
+}
+
+/// f06's offer card: what it is, its price and what comes with it, and the
+/// two ways forward. Accepting happens on the offer itself, where it is
+/// confirmed, so both buttons open it.
+class _OfferCard extends StatelessWidget {
+  const _OfferCard({
+    required this.offer,
+    required this.serviceTitle,
+    required this.customerSide,
+    required this.now,
+    required this.onOpen,
+    super.key,
+  });
+
+  final ChatQuoteOffer? offer;
+  final String? serviceTitle;
+  final bool customerSide;
+  final DateTime now;
+  final VoidCallback? onOpen;
+
+  @override
+  Widget build(BuildContext context) {
+    final offer = this.offer;
+    final validUntil = offer?.validUntil;
+    final ends = validUntil == null ? null : offerEndsLabel(validUntil, now);
+    final status = offer?.status ?? 'PENDING';
+    final expired = validUntil != null && ends == null;
+    final open = status == 'PENDING' && !expired;
+    final (tag, tagColor, tagSoft) = switch (status) {
+      'ACCEPTED' => ('انقبل', AarastV3Color.mint, AarastV3Color.mintSoft),
+      'REJECTED' => ('انرفض', AarastV3Color.textMuted, AarastV3Color.line),
+      'WITHDRAWN' => ('سحبوه', AarastV3Color.textMuted, AarastV3Color.line),
+      _ when expired => (
+        'انتهت مدته',
+        AarastV3Color.textMuted,
+        AarastV3Color.line,
+      ),
+      _ when customerSide => (
+        'وصلك عرض',
+        AarastV3Color.cobalt,
+        AarastV3Color.cobaltSoft,
+      ),
+      _ => ('عرضك', AarastV3Color.cobalt, AarastV3Color.cobaltSoft),
+    };
+    final title = offer?.title?.trim().isNotEmpty == true
+        ? offer!.title!.trim()
+        : serviceTitle;
+    final price = _money(offer?.amount, offer?.currency);
+    final headline = [?title, ?price].join(' · ');
+    final details = offer?.message?.trim() ?? '';
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: AarastPressable(
+        onTap: onOpen,
+        borderRadius: BorderRadius.circular(22),
+        child: JourneyBox(
+          padding: const EdgeInsets.all(14),
+          borderColor: open ? AarastV3Color.cobalt : AarastV3Color.line,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  JourneyTag(label: tag, color: tagColor, soft: tagSoft),
+                  const Spacer(),
+                  if (open && ends != null)
+                    Text(
+                      ends,
+                      style: JourneyType.of(
+                        JourneyType.small,
+                        color: AarastV3Color.textMuted,
+                      ),
+                    ),
+                ],
+              ),
+              if (headline.isNotEmpty) ...[
+                const SizedBox(height: 8),
+                Text(
+                  headline,
+                  style: JourneyType.of(
+                    JourneyType.title,
+                    weight: JourneyType.bold,
+                  ),
+                ),
+              ],
+              if (details.isNotEmpty)
+                Text(
+                  details,
+                  style: JourneyType.of(
+                    JourneyType.body,
+                    color: AarastV3Color.textMuted,
+                  ),
+                ),
+              if (open && customerSide && onOpen != null) ...[
+                const SizedBox(height: 12),
+                Row(
+                  children: [
+                    Expanded(
+                      child: JourneyButton(
+                        key: const Key('chat-offer-accept'),
+                        label: 'اقبل العرض',
+                        background: AarastV3Color.cobalt,
+                        expand: true,
+                        onPressed: onOpen,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: JourneyButton(
+                        key: const Key('chat-offer-compare'),
+                        label: 'قارن',
+                        background: AarastV3Color.cobaltSoft,
+                        foreground: AarastV3Color.cobalt,
+                        expand: true,
+                        onPressed: onOpen,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// «550,000 ر.ي»; null when the amount is hidden or unreadable.
+String? _money(String? amount, String? currency) {
+  final value = num.tryParse(amount?.replaceAll(',', '').trim() ?? '');
+  if (value == null) return null;
+  final digits = value.round().abs().toString();
+  final buffer = StringBuffer();
+  for (var i = 0; i < digits.length; i++) {
+    if (i > 0 && (digits.length - i) % 3 == 0) buffer.write(',');
+    buffer.write(digits[i]);
+  }
+  return '${value < 0 ? '-' : ''}$buffer ${currencyLabelAr(currency)}';
+}
+
+/// w32: the conversation's options. Muting applies at once; reporting and
+/// blocking close the sheet and carry on in the screen.
+class _OptionsSheet extends StatelessWidget {
+  const _OptionsSheet({required this.conversationId});
+
+  final String conversationId;
+
+  @override
+  Widget build(BuildContext context) {
+    final chat = context.watch<ChatProvider>();
+    ChatConversation? conversation;
+    for (final item in chat.conversations) {
+      if (item.id == conversationId) conversation = item;
+    }
+    if (conversation == null) return const SizedBox.shrink();
+    final current = conversation;
+    return SafeArea(
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.fromLTRB(20, 10, 20, 16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Center(
+              child: Container(
+                width: 40,
+                height: 5,
+                decoration: BoxDecoration(
+                  color: AarastV3Color.line,
+                  borderRadius: BorderRadius.circular(3),
                 ),
               ),
-            ] else if (read) ...[
-              const SizedBox(height: 5),
-              Text(
-                'تمت القراءة',
-                style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                  color: mine ? Colors.white70 : AppTheme.textSecondary,
+            ),
+            const SizedBox(height: 18),
+            Text(
+              current.provider.businessName,
+              style: JourneyType.of(
+                JourneyType.title,
+                weight: JourneyType.bold,
+              ),
+            ),
+            const SizedBox(height: 14),
+            JourneyList(
+              children: [
+                JourneyListRow(
+                  key: const Key('chat-option-mute'),
+                  icon: LucideIcons.bellOff,
+                  color: AarastV3Color.ink,
+                  soft: AarastV3Color.canvas,
+                  title: 'كتم المحادثة',
+                  subtitle: 'الرسائل توصل بدون تنبيه',
+                  trailing: Switch(
+                    value: current.muted,
+                    activeTrackColor: AarastV3Color.cobalt,
+                    inactiveTrackColor: AarastV3Color.line,
+                    inactiveThumbColor: AarastV3Color.paper,
+                    trackOutlineColor: const WidgetStatePropertyAll(
+                      AarastV3Color.line,
+                    ),
+                    onChanged: (value) async {
+                      final ok = await chat.setMuted(current, value);
+                      if (!ok && context.mounted) {
+                        final message = chat.errorMessage;
+                        if (message != null) {
+                          AarastToast.showError(context, message);
+                        }
+                      }
+                    },
+                  ),
+                ),
+                JourneyListRow(
+                  key: const Key('chat-option-report'),
+                  icon: LucideIcons.flag,
+                  color: AarastV3Color.amber,
+                  soft: AarastV3Color.amberSoft,
+                  title: 'بلّغ عن مشكلة',
+                  subtitle: 'تأخير، كلام غير لائق، احتيال',
+                  onTap: () => Navigator.of(context).pop('report'),
+                ),
+                JourneyListRow(
+                  key: const Key('chat-option-block'),
+                  icon: LucideIcons.ban,
+                  color: AarastV3Color.danger,
+                  soft: AarastV3Color.dangerSoft,
+                  title: current.blockedByMe ? 'ارفع الحظر' : 'احظر المزود',
+                  subtitle: current.blockedByMe
+                      ? 'يقدر يراسلك من جديد'
+                      : 'ما يقدر يراسلك',
+                  onTap: () => Navigator.of(context).pop('block'),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            const JourneyNote(
+              text: 'الحظر ما يلغي الحجز المؤكد. ألغه من "الحجوزات" لو تشتي.',
+              color: AarastV3Color.danger,
+              soft: AarastV3Color.dangerSoft,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// The report's reason, from the three w32 names under «بلّغ عن مشكلة».
+class _ReportSheet extends StatelessWidget {
+  const _ReportSheet();
+
+  static const _reasons = ['تأخير', 'كلام غير لائق', 'احتيال'];
+
+  @override
+  Widget build(BuildContext context) {
+    return SafeArea(
+      child: ListView(
+        shrinkWrap: true,
+        padding: const EdgeInsets.fromLTRB(20, 16, 20, 16),
+        children: [
+          Text(
+            'ايش المشكلة؟',
+            style: JourneyType.of(JourneyType.title, weight: JourneyType.bold),
+          ),
+          const SizedBox(height: 12),
+          for (final reason in _reasons) ...[
+            JourneyChoiceCard(
+              key: Key('chat-report-$reason'),
+              title: reason,
+              subtitle: '',
+              leading: const SizedBox.shrink(),
+              selected: false,
+              onTap: () => Navigator.of(context).pop(reason),
+            ),
+            const SizedBox(height: 8),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _Notice extends StatelessWidget {
+  const _Notice({required this.text, required this.color, required this.soft});
+
+  final String text;
+  final Color color;
+  final Color soft;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 6, 16, 12),
+      child: JourneyNote(text: text, color: color, soft: soft),
+    );
+  }
+}
+
+/// The white field and the round send button.
+class _Composer extends StatelessWidget {
+  const _Composer({
+    required this.controller,
+    required this.attachment,
+    required this.isBusy,
+    required this.onPickImage,
+    required this.onRemoveAttachment,
+    required this.onSend,
+  });
+
+  final TextEditingController controller;
+  final MediaUploadTicket? attachment;
+  final bool isBusy;
+  final VoidCallback onPickImage;
+  final VoidCallback onRemoveAttachment;
+  final VoidCallback onSend;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(14, 6, 14, 12),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (attachment != null)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 6),
+              child: Row(
+                children: [
+                  const Icon(
+                    LucideIcons.image,
+                    size: 18,
+                    color: AarastV3Color.cobalt,
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'الصورة جاهزة',
+                      style: JourneyType.of(
+                        JourneyType.small,
+                        color: AarastV3Color.textMuted,
+                      ),
+                    ),
+                  ),
+                  JourneyRoundButton(
+                    icon: LucideIcons.x,
+                    tooltip: 'شيل الصورة',
+                    size: 36,
+                    onPressed: onRemoveAttachment,
+                  ),
+                ],
+              ),
+            ),
+          Row(
+            children: [
+              Expanded(
+                child: TextField(
+                  controller: controller,
+                  minLines: 1,
+                  maxLines: 4,
+                  maxLength: 2000,
+                  style: JourneyType.of(JourneyType.body),
+                  decoration: InputDecoration(
+                    hintText: 'اكتب رسالتك...',
+                    hintStyle: JourneyType.of(
+                      JourneyType.body,
+                      color: AarastV3Color.textFaint,
+                    ),
+                    counterText: '',
+                    filled: true,
+                    fillColor: AarastV3Color.paper,
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 13,
+                    ),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(22),
+                      borderSide: BorderSide.none,
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(22),
+                      borderSide: BorderSide.none,
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(22),
+                      borderSide: const BorderSide(
+                        color: AarastV3Color.cobalt,
+                        width: 2,
+                      ),
+                    ),
+                    suffixIcon: Semantics(
+                      button: true,
+                      label: 'أرسل صورة',
+                      child: AarastPressable(
+                        onTap: isBusy ? null : onPickImage,
+                        borderRadius: BorderRadius.circular(20),
+                        child: const Icon(
+                          LucideIcons.image,
+                          size: 20,
+                          color: AarastV3Color.textFaint,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Semantics(
+                button: true,
+                label: 'أرسل',
+                child: AarastPressable(
+                  onTap: isBusy ? null : onSend,
+                  borderRadius: BorderRadius.circular(23),
+                  child: Container(
+                    width: 46,
+                    height: 46,
+                    decoration: const BoxDecoration(
+                      color: AarastV3Color.cobalt,
+                      shape: BoxShape.circle,
+                    ),
+                    child: isBusy
+                        ? const Center(
+                            child: AarastInlineSpinner(
+                              color: AarastV3Color.onPrimary,
+                            ),
+                          )
+                        : const Icon(
+                            LucideIcons.send,
+                            size: 19,
+                            color: AarastV3Color.onPrimary,
+                          ),
+                  ),
                 ),
               ),
             ],
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
@@ -637,7 +1084,7 @@ class _PrivateChatImageState extends State<_PrivateChatImage> {
     }
     if (_failed || _url.isEmpty) return const _PrivateImageFailure();
     return ClipRRect(
-      borderRadius: BorderRadius.circular(AppTheme.radiusMd),
+      borderRadius: BorderRadius.circular(14),
       child: Image.network(
         _url,
         key: ValueKey(_url),
@@ -670,190 +1117,4 @@ class _PrivateImageFailure extends StatelessWidget {
       child: Center(child: Icon(LucideIcons.imageOff)),
     );
   }
-}
-
-class _Composer extends StatelessWidget {
-  const _Composer({
-    required this.controller,
-    required this.attachment,
-    required this.isBusy,
-    required this.onPickImage,
-    required this.onRemoveAttachment,
-    required this.onSend,
-  });
-
-  final TextEditingController controller;
-  final MediaUploadTicket? attachment;
-  final bool isBusy;
-  final VoidCallback onPickImage;
-  final VoidCallback onRemoveAttachment;
-  final VoidCallback onSend;
-
-  @override
-  Widget build(BuildContext context) {
-    return SafeArea(
-      top: false,
-      child: Container(
-        padding: const EdgeInsets.fromLTRB(12, 8, 12, 10),
-        decoration: const BoxDecoration(
-          color: AppTheme.surfaceRaised,
-          border: Border(top: BorderSide(color: AppTheme.border)),
-        ),
-        child: Column(
-          children: [
-            if (attachment != null)
-              Row(
-                children: [
-                  const Icon(LucideIcons.image, color: AppTheme.focus),
-                  const SizedBox(width: 8),
-                  const Expanded(child: Text('الصورة جاهزة للإرسال')),
-                  IconButton(
-                    tooltip: 'إزالة الصورة',
-                    onPressed: onRemoveAttachment,
-                    icon: const Icon(LucideIcons.x),
-                  ),
-                ],
-              ),
-            Row(
-              children: [
-                IconButton(
-                  tooltip: 'إضافة صورة',
-                  onPressed: isBusy ? null : onPickImage,
-                  icon: const Icon(LucideIcons.imagePlus),
-                ),
-                Expanded(
-                  child: TextField(
-                    controller: controller,
-                    minLines: 1,
-                    maxLines: 4,
-                    maxLength: 2000,
-                    decoration: const InputDecoration(
-                      hintText: 'اكتب رسالتك...',
-                      counterText: '',
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                IconButton.filled(
-                  tooltip: 'إرسال',
-                  onPressed: isBusy ? null : onSend,
-                  icon: isBusy
-                      ? const AarastInlineSpinner(color: AppTheme.surfaceRaised)
-                      : const Icon(LucideIcons.send),
-                ),
-              ],
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _ProviderNotJoinedNotice extends StatelessWidget {
-  const _ProviderNotJoinedNotice();
-
-  @override
-  Widget build(BuildContext context) {
-    return const SafeArea(
-      top: false,
-      child: Padding(
-        padding: EdgeInsets.all(16),
-        child: Text(
-          'المزود لم ينضم للمحادثة بعد. ستتمكن من الإرسال بعد ربط حسابه.',
-          textAlign: TextAlign.center,
-          style: TextStyle(
-            color: AppTheme.textSecondary,
-            fontWeight: FontWeight.w800,
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _ConversationUnavailableNotice extends StatelessWidget {
-  const _ConversationUnavailableNotice();
-
-  @override
-  Widget build(BuildContext context) {
-    return const SafeArea(
-      top: false,
-      child: Padding(
-        padding: EdgeInsets.all(16),
-        child: Text(
-          'لا يمكن إرسال رسائل جديدة في هذه المحادثة الآن.',
-          textAlign: TextAlign.center,
-          style: TextStyle(
-            color: AppTheme.textSecondary,
-            fontWeight: FontWeight.w800,
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _BlockedNotice extends StatelessWidget {
-  const _BlockedNotice({
-    required this.blockedByMe,
-    required this.blockedByCounterpart,
-  });
-
-  final bool blockedByMe;
-  final bool blockedByCounterpart;
-
-  @override
-  Widget build(BuildContext context) {
-    return SafeArea(
-      top: false,
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Text(
-          blockedByMe
-              ? 'أنت حظرت هذه المحادثة. ألغِ الحظر من القائمة للمتابعة.'
-              : blockedByCounterpart
-              ? 'أوقف الطرف الآخر المحادثة. لا يمكن إرسال رسائل جديدة الآن.'
-              : 'المحادثة محظورة. لا يمكن إرسال رسائل جديدة الآن.',
-          textAlign: TextAlign.center,
-          style: const TextStyle(
-            color: AppTheme.danger,
-            fontWeight: FontWeight.w800,
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-Future<String?> _reportReason(BuildContext context) async {
-  final controller = TextEditingController();
-  final result = await showDialog<String>(
-    context: context,
-    builder: (context) => AarastDialog(
-      title: const Text('إبلاغ عن المحادثة'),
-      content: TextField(
-        controller: controller,
-        minLines: 3,
-        maxLines: 5,
-        maxLength: 500,
-        decoration: const InputDecoration(hintText: 'اكتب سبب الإبلاغ'),
-      ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.pop(context),
-          child: const Text('إلغاء'),
-        ),
-        FilledButton(
-          onPressed: () {
-            final value = controller.text.trim();
-            if (value.length >= 3) Navigator.pop(context, value);
-          },
-          child: const Text('إرسال البلاغ'),
-        ),
-      ],
-    ),
-  );
-  controller.dispose();
-  return result;
 }

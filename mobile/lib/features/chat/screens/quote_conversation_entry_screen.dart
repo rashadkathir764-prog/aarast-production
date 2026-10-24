@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../../../core/experience_v3/aarast_v3.dart';
 import '../../../core/network/api_client.dart';
 import '../../../core/widgets/aarast_ui.dart';
 import '../models/chat_models.dart';
@@ -11,11 +12,13 @@ class QuoteConversationEntryScreen extends StatefulWidget {
   const QuoteConversationEntryScreen({
     required this.quoteRequestId,
     this.returnQuoteToMarketplace = false,
+    this.providerLine,
     super.key,
   });
 
   final String quoteRequestId;
   final bool returnQuoteToMarketplace;
+  final ChatProviderLine? providerLine;
 
   @override
   State<QuoteConversationEntryScreen> createState() =>
@@ -58,18 +61,25 @@ class _QuoteConversationEntryScreenState
       return ChatScreen(
         conversationId: conversation.id,
         returnQuoteToMarketplace: widget.returnQuoteToMarketplace,
+        providerLine: widget.providerLine,
       );
     }
-    return AarastPageScaffold(
-      title: 'المحادثة',
-      showBack: true,
-      child: _error == null
-          ? const AarastScreenLoading(label: 'جارٍ فتح المحادثة الآمنة...')
-          : AarastErrorState(
-              title: 'تعذر فتح المحادثة',
-              message: _error!,
-              onRetry: _open,
-            ),
+    return AarastScreenFrame(
+      maxWidth: 520,
+      backgroundColor: AarastV3Color.canvas,
+      child: ListView(
+        padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
+        children: [
+          const JourneySubHeader(title: ''),
+          JourneyListState(
+            phase: _error == null
+                ? JourneyListPhase.loading
+                : JourneyListPhase.error,
+            section: JourneySection.providers,
+            onRetry: _open,
+          ),
+        ],
+      ),
     );
   }
 }

@@ -88,12 +88,46 @@ class ChatQuoteService {
   final String title;
 }
 
+/// An offer on a request, as the conversation shows it (f06). [amount] is
+/// null when the viewer may not see money.
+class ChatQuoteOffer {
+  const ChatQuoteOffer({
+    required this.id,
+    required this.status,
+    this.title,
+    this.message,
+    this.amount,
+    this.currency,
+    this.validUntil,
+  });
+
+  factory ChatQuoteOffer.fromJson(Map<String, dynamic> json) => ChatQuoteOffer(
+    id: json['id']?.toString() ?? '',
+    status: json['status']?.toString() ?? '',
+    title: json['title']?.toString(),
+    message: json['message']?.toString(),
+    amount: json['amount']?.toString(),
+    currency: json['currency']?.toString(),
+    validUntil: _date(json['validUntil']),
+  );
+
+  final String id;
+  final String status;
+  final String? title;
+  final String? message;
+  final String? amount;
+  final String? currency;
+  final DateTime? validUntil;
+}
+
 class ChatQuoteRequestSummary {
   const ChatQuoteRequestSummary({
     required this.id,
     required this.status,
     required this.createdAt,
     this.service,
+    this.message,
+    this.offers = const [],
   });
 
   factory ChatQuoteRequestSummary.fromJson(Map<String, dynamic> json) =>
@@ -103,12 +137,18 @@ class ChatQuoteRequestSummary {
         createdAt:
             _date(json['createdAt']) ?? DateTime.fromMillisecondsSinceEpoch(0),
         service: _map(json['service'], ChatQuoteService.fromJson),
+        message: json['message']?.toString(),
+        offers: _list(json['offers'], ChatQuoteOffer.fromJson),
       );
 
   final String id;
   final String status;
   final DateTime createdAt;
   final ChatQuoteService? service;
+
+  /// What the customer wrote with the request.
+  final String? message;
+  final List<ChatQuoteOffer> offers;
 }
 
 class ChatAttachment {

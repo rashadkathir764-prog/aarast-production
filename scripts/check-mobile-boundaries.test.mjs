@@ -1870,6 +1870,10 @@ const trackedOwnerApiContracts = [
       },
       { uri: 'screens/quote_request_screen.dart', show: ['QuoteRequestScreen'] },
       { uri: 'widgets/provider_auth_gate.dart', show: ['ProviderAuthGate'] },
+      {
+        uri: 'widgets/provider_trust_signals.dart',
+        show: ['providerRespondsLine'],
+      },
       { uri: 'widgets/quote_status_chip.dart', show: ['QuoteStatusChip'] },
     ],
   },
@@ -3116,6 +3120,7 @@ const trackedCompositionRootContracts = [
           'ProviderQuoteInitialContext',
           'ProviderRequestsScreen',
           'QuoteRequestScreen',
+          'providerRespondsLine',
         ],
       },
       {

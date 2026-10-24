@@ -59,7 +59,8 @@ import '../../features/marketplace/marketplace_api.dart'
         ProviderMarketplaceScreen,
         ProviderQuoteInitialContext,
         ProviderRequestsScreen,
-        QuoteRequestScreen;
+        QuoteRequestScreen,
+        providerRespondsLine;
 import '../../features/more/more_api.dart' show MoreScreen;
 import '../../features/notifications/notifications_api.dart'
     show NotificationsScreen;

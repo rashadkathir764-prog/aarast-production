@@ -28,4 +28,5 @@ export 'screens/provider_marketplace_screen.dart'
 export 'screens/provider_requests_screen.dart' show ProviderRequestsScreen;
 export 'screens/quote_request_screen.dart' show QuoteRequestScreen;
 export 'widgets/provider_auth_gate.dart' show ProviderAuthGate;
+export 'widgets/provider_trust_signals.dart' show providerRespondsLine;
 export 'widgets/quote_status_chip.dart' show QuoteStatusChip;

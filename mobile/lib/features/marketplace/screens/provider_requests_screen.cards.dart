@@ -77,7 +77,7 @@ class _OfferCard extends StatelessWidget {
         .where((line) => line.isNotEmpty)
         .toList();
     final until = offer.validUntil;
-    final daysLeft = until?.difference(DateTime.now()).inDays;
+    final ends = until == null ? null : offerEndsLabel(until, DateTime.now());
     final provider = quote.provider;
     return JourneyBox(
       padding: const EdgeInsets.all(14),
@@ -131,9 +131,9 @@ class _OfferCard extends StatelessWidget {
                 ),
               ],
             ),
-          if (daysLeft != null && daysLeft >= 0)
+          if (ends != null)
             Text(
-              daysLeft == 0 ? 'ينتهي اليوم' : 'ينتهي بعد $daysLeft أيام',
+              ends,
               style: JourneyType.of(
                 JourneyType.small,
                 color: AarastV3Color.brandAccentStrong,

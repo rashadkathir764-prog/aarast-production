@@ -18,7 +18,10 @@ List<RouteBase> _conversationRoutes() => [
       final id = state.pathParameters['id'] ?? '';
       return ProviderAuthGate(
         resumeLocation: state.uri.toString(),
-        child: ChatScreen(conversationId: id),
+        child: ChatScreen(
+          conversationId: id,
+          providerLine: providerRespondsLine,
+        ),
       );
     },
   ),
@@ -30,6 +33,7 @@ List<RouteBase> _conversationRoutes() => [
         resumeLocation: state.uri.toString(),
         child: QuoteConversationEntryScreen(
           quoteRequestId: id,
+          providerLine: providerRespondsLine,
           returnQuoteToMarketplace:
               state.extra ==
               ProviderMarketplaceLaunchOrigin.ownerMainShellProviders,

@@ -54,14 +54,17 @@ void main() {
       );
       await tester.pump();
 
-      expect(find.text('جارٍ فتح المحادثة الآمنة...'), findsOneWidget);
+      expect(
+        find.byKey(const ValueKey('journey-list-loading')),
+        findsOneWidget,
+      );
       expect(tester.takeException(), isNull);
 
       gate.complete();
       await tester.pumpAndSettle();
 
       expect(find.byType(ChatScreen), findsOneWidget);
-      expect(find.text('لا يوجد نشاط بعد'), findsOneWidget);
+      expect(find.text('ما في رسائل بعد'), findsOneWidget);
       expect(tester.takeException(), isNull);
     });
 
@@ -83,8 +86,8 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      expect(find.text('تعذر فتح المحادثة'), findsOneWidget);
-      expect(find.text('حاول مرة أخرى'), findsOneWidget);
+      expect(find.text('ما قدرنا نجيبها'), findsOneWidget);
+      expect(find.text('حاول مرة ثانية'), findsOneWidget);
       expect(tester.takeException(), isNull);
     });
   });

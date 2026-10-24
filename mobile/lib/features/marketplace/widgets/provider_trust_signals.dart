@@ -1,3 +1,7 @@
+import 'package:flutter/widgets.dart';
+import 'package:provider/provider.dart';
+
+import '../data/marketplace_api.dart';
 import '../models/marketplace_models.dart';
 
 /// A price older than this is flagged so the customer confirms it first.
@@ -61,4 +65,20 @@ String _ago(DateTime then, DateTime now) {
   if (months == 2) return 'قبل شهرين';
   if (months <= 10) return 'قبل $months شهور';
   return 'قبل $months شهر';
+}
+
+/// The same «يرد عادة …» line for a screen that only knows the provider's
+/// id, as the conversation header (f06). The line is optional there, so a
+/// failed read leaves it out instead of failing the screen.
+Future<String?> providerRespondsLine(
+  BuildContext context,
+  String providerId,
+) async {
+  final api = context.read<MarketplaceApi>();
+  try {
+    final provider = await api.getProvider(providerId);
+    return providerRespondsLabel(provider.responsiveness);
+  } on Object {
+    return null;
+  }
 }

@@ -150,7 +150,13 @@ class AarastScreenFrame extends StatelessWidget {
         floatingActionButton: floatingActionButton,
         resizeToAvoidBottomInset: resizeToAvoidBottomInset,
         body: DecoratedBox(
-          decoration: backgroundDecoration ?? AppTheme.screenDecoration(),
+          // A chosen colour fills the screen; the default decoration would
+          // paint the canvas over it.
+          decoration:
+              backgroundDecoration ??
+              (backgroundColor == null
+                  ? AppTheme.screenDecoration()
+                  : BoxDecoration(color: backgroundColor)),
           child: SafeArea(
             bottom: safeAreaBottom,
             child: Center(

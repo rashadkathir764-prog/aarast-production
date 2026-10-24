@@ -194,6 +194,44 @@ void main() {
     expect(vault.values, isEmpty);
   });
 
+  testWidgets('w08: five wrong codes rest the pad and the note opens forgot', (
+    tester,
+  ) async {
+    final setup = controller();
+    await setup.load();
+    await setup.setCode('2580');
+    final lock = controller();
+    await lock.load();
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: ChangeNotifierProvider.value(
+          value: lock,
+          child: AppLockGate(
+            onForgotCode: () async {},
+            child: const Scaffold(body: Text('خطتي')),
+          ),
+        ),
+      ),
+    );
+    for (var attempt = 0; attempt < 5; attempt++) {
+      for (var press = 0; press < 4; press++) {
+        await tester.tap(find.byKey(const Key('app-lock-key-1')));
+        await tester.pump();
+      }
+      await tester.pump();
+    }
+
+    expect(find.text('الرمز غلط 5 مرات'), findsOneWidget);
+    expect(find.textContaining('جرّب مرة ثانية بعد'), findsOneWidget);
+    // The note replaces the separate «نسيت الرمز؟» link while the pad waits.
+    expect(find.text('نسيت الرمز؟'), findsNothing);
+    await tester.ensureVisible(find.byKey(const Key('app-lock-forgot')));
+    await tester.tap(find.byKey(const Key('app-lock-forgot')));
+    await tester.pump();
+    expect(find.text('اطلع وشيل الرمز'), findsOneWidget);
+  });
+
   testWidgets('g08 chooses a code twice, then can take the lock off', (
     tester,
   ) async {

@@ -126,11 +126,13 @@ class _LockSettingsScreenState extends State<LockSettingsScreen> {
             }),
           ),
           const SizedBox(height: 10),
-          JourneyTextAction(
-            key: const Key('lock-turn-off'),
-            label: 'شيل القفل',
-            color: AarastV3Color.onPrimary,
-            onPressed: () => _turnOff(controller),
+          Center(
+            child: JourneyTextAction(
+              key: const Key('lock-turn-off'),
+              label: 'شيل القفل',
+              color: AarastV3Color.onPrimary,
+              onPressed: () => _turnOff(controller),
+            ),
           ),
         ],
       );

@@ -148,7 +148,7 @@ class _AppLockScreenState extends State<AppLockScreen> {
                     color: AarastV3Color.saffron,
                     size: 60,
                   ),
-                  const SizedBox(height: 18),
+                  const SizedBox(height: 12),
                   Text(
                     title,
                     textAlign: TextAlign.center,
@@ -169,7 +169,7 @@ class _AppLockScreenState extends State<AppLockScreen> {
                       ),
                     ),
                   ],
-                  const SizedBox(height: 24),
+                  const SizedBox(height: 20),
                   if (_confirmingForgot)
                     _ForgotConfirm(
                       onForget: _forget,
@@ -182,14 +182,21 @@ class _AppLockScreenState extends State<AppLockScreen> {
                       onCompleted: _submit,
                     ),
                   const SizedBox(height: 16),
-                  if (waiting)
-                    const JourneyNote(
-                      icon: LucideIcons.keyRound,
-                      text:
-                          'نسيت الرمز؟ ادخل برقم جوالك ورمز واتساب، والقفل ينشال '
-                          'وتختار رمز جديد.',
-                    ),
-                  if (!_confirmingForgot)
+                  // w08: while the pad waits the note is the way out, so it
+                  // opens the same confirmation as the link it replaces.
+                  if (waiting && !_confirmingForgot)
+                    AarastPressable(
+                      key: const Key('app-lock-forgot'),
+                      onTap: () => setState(() => _confirmingForgot = true),
+                      borderRadius: BorderRadius.circular(16),
+                      child: const JourneyNote(
+                        icon: LucideIcons.keyRound,
+                        text:
+                            'نسيت الرمز؟ ادخل برقم جوالك ورمز واتساب، والقفل '
+                            'ينشال وتختار رمز جديد.',
+                      ),
+                    )
+                  else if (!_confirmingForgot)
                     JourneyTextAction(
                       key: const Key('app-lock-forgot'),
                       label: 'نسيت الرمز؟',
@@ -326,49 +333,54 @@ class _AppLockCodePadState extends State<AppLockCodePad> {
             ],
           ),
         ),
-        const SizedBox(height: 28),
-        // Digits read left to right like a phone pad, even in Arabic.
-        Directionality(
-          textDirection: TextDirection.ltr,
-          child: Column(
-            children: [
-              for (final row in const [
-                ['1', '2', '3'],
-                ['4', '5', '6'],
-                ['7', '8', '9'],
-              ])
+        const SizedBox(height: 30),
+        // Digits read left to right like a phone pad, even in Arabic. The
+        // wide g08 pad shrinks to fit a 320-point phone.
+        FittedBox(
+          fit: BoxFit.scaleDown,
+          child: Directionality(
+            textDirection: TextDirection.ltr,
+            child: Column(
+              children: [
+                for (final row in const [
+                  ['1', '2', '3'],
+                  ['4', '5', '6'],
+                  ['7', '8', '9'],
+                ])
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [for (final digit in row) _key(digit)],
+                  ),
                 Row(
                   mainAxisSize: MainAxisSize.min,
-                  children: [for (final digit in row) _key(digit)],
-                ),
-              Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  _tile(null),
-                  _key('0'),
-                  _tile(
-                    Semantics(
-                      button: true,
-                      label: 'مسح',
-                      child: Tooltip(
-                        message: 'مسح',
-                        child: AarastPressable(
-                          onTap: widget.enabled ? _erase : null,
-                          borderRadius: BorderRadius.circular(22),
-                          child: Center(
-                            child: Icon(
-                              LucideIcons.delete,
-                              size: 26,
-                              color: _ink,
+                  children: [
+                    _tile(null),
+                    _key('0'),
+                    _tile(
+                      erase: true,
+                      Semantics(
+                        button: true,
+                        label: 'مسح',
+                        child: Tooltip(
+                          message: 'مسح',
+                          child: AarastPressable(
+                            onTap: widget.enabled ? _erase : null,
+                            borderRadius: BorderRadius.circular(22),
+                            child: Center(
+                              child: Icon(
+                                LucideIcons.delete,
+                                size: 26,
+                                color: _ink,
+                              ),
                             ),
                           ),
                         ),
                       ),
                     ),
-                  ),
-                ],
-              ),
-            ],
+                  ],
+                ),
+              ],
+            ),
           ),
         ),
       ],
@@ -380,23 +392,27 @@ class _AppLockCodePadState extends State<AppLockCodePad> {
     return widget.enabled ? AarastV3Color.text : AarastV3Color.textFaint;
   }
 
-  Widget _tile(Widget? child) {
+  /// g08 draws round 78-point keys spread wide, with the erase key bare;
+  /// w07 draws rounded 74×62 tiles.
+  Widget _tile(Widget? child, {bool erase = false}) {
     final Color fill;
     if (widget.dark) {
-      fill = child == null
+      fill = child == null || erase
           ? Colors.transparent
           : AarastV3Color.paper.withValues(alpha: 0.14);
     } else {
       fill = widget.enabled ? AarastV3Color.paper : AarastV3Color.line;
     }
     return Padding(
-      padding: const EdgeInsets.all(6),
+      padding: widget.dark
+          ? const EdgeInsets.symmetric(horizontal: 18, vertical: 8)
+          : const EdgeInsets.all(6),
       child: Container(
-        width: 74,
-        height: 62,
+        width: widget.dark ? 78 : 74,
+        height: widget.dark ? 78 : 62,
         decoration: BoxDecoration(
           color: fill,
-          borderRadius: BorderRadius.circular(widget.dark ? 31 : 22),
+          borderRadius: BorderRadius.circular(widget.dark ? 39 : 22),
         ),
         child: child,
       ),

@@ -612,7 +612,7 @@ void main() {
     await _shot(
       tester,
       'p02_invite_phone',
-      const InviteDecisionScreen(),
+      InviteDecisionScreen(token: _token),
       h: 900,
       providers: await inviteProviders(),
       act: () => enterPhone(tester),
@@ -642,7 +642,7 @@ void main() {
     await _shot(
       tester,
       'p04_invite_otp',
-      const InviteDecisionScreen(),
+      InviteDecisionScreen(token: _token),
       h: 1000,
       providers: await inviteProviders(),
       act: () async {
@@ -664,7 +664,7 @@ void main() {
     await _shot(
       tester,
       'p05_invite_decision',
-      const InviteDecisionScreen(),
+      InviteDecisionScreen(token: _token),
       h: 1500,
       providers: await inviteProviders(),
       act: () async {
@@ -679,7 +679,7 @@ void main() {
     await _shot(
       tester,
       'p06_invite_joined',
-      const InviteDecisionScreen(),
+      InviteDecisionScreen(token: _token),
       h: 1100,
       providers: await inviteProviders(),
       act: () async {
@@ -695,7 +695,7 @@ void main() {
     await _shot(
       tester,
       'p07_invite_decline',
-      const InviteDecisionScreen(),
+      InviteDecisionScreen(token: _token),
       h: 1100,
       providers: await inviteProviders(),
       act: () async {

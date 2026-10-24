@@ -1,4 +1,5 @@
 import '../../../core/phone/phone_number_utils.dart';
+import '../../../core/utils/plan_day.dart';
 import 'plan_role_permissions.dart';
 
 class SharedMember {
@@ -173,6 +174,8 @@ class PlanInvite {
     this.email,
     this.weddingPlanTitle,
     this.inviterName,
+    this.weddingDate,
+    this.weddingCity,
   });
 
   factory PlanInvite.fromJson(Map<String, dynamic> json) {
@@ -208,6 +211,8 @@ class PlanInvite {
       email: json['email']?.toString(),
       weddingPlanTitle: plan is Map ? plan['title']?.toString() : null,
       inviterName: inviter is Map ? inviter['name']?.toString() : null,
+      weddingDate: plan is Map ? planDayFromJson(plan['weddingDate']) : null,
+      weddingCity: plan is Map ? plan['city']?.toString() : null,
       deliveryStatus: delivery is Map
           ? delivery['status']?.toString() ?? 'UNKNOWN'
           : 'UNKNOWN',
@@ -242,6 +247,11 @@ class PlanInvite {
   final String? email;
   final String? weddingPlanTitle;
   final String? inviterName;
+
+  /// The plan's day and city, sent with the invite once the phone is
+  /// proven (q03 «الخميس 21 يناير · صنعاء»).
+  final DateTime? weddingDate;
+  final String? weddingCity;
 
   bool get isPending => status == 'PENDING';
   bool get isAccepted => status == 'ACCEPTED';
@@ -302,6 +312,8 @@ class PlanInvite {
       email: email,
       weddingPlanTitle: weddingPlanTitle,
       inviterName: inviterName,
+      weddingDate: weddingDate,
+      weddingCity: weddingCity,
     );
   }
 
@@ -333,6 +345,8 @@ class PlanInvite {
       email: email,
       weddingPlanTitle: weddingPlanTitle,
       inviterName: inviterName,
+      weddingDate: weddingDate,
+      weddingCity: weddingCity,
     );
   }
 
@@ -360,6 +374,8 @@ class PlanInvite {
       email: email,
       weddingPlanTitle: weddingPlanTitle,
       inviterName: inviterName,
+      weddingDate: weddingDate,
+      weddingCity: weddingCity,
     );
   }
 
@@ -371,20 +387,6 @@ class PlanInvite {
     return normalizedPhone == null || normalizedPhone.isEmpty
         ? null
         : normalizedPhone;
-  }
-
-  List<String> get permissionLabels {
-    final labels = <String>['عرض الخطة'];
-    if (canManageTasks) labels.add('المهام');
-    if (canManageGuests) labels.add('الضيوف');
-    if (canManageProviders) labels.add('الخدمات والمزودين');
-    if (canInviteMembers) labels.add('دعوة أعضاء');
-    if (canManageMoney) {
-      labels.add('إدارة المال');
-    } else if (canViewMoney) {
-      labels.add('مشاهدة المال');
-    }
-    return labels;
   }
 
   String get displayName {

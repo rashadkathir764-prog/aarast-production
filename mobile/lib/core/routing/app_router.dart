@@ -78,6 +78,7 @@ import '../../features/sharing/sharing_api.dart'
     show
         ContributionHistoryScreen,
         EditSharedMemberScreen,
+        FromFamilyScreen,
         InviteDecisionScreen,
         SharedMember,
         SharedWeddingPlansScreen,

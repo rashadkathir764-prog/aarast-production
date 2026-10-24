@@ -9,6 +9,7 @@ export 'providers/sharing_provider.dart' show SharingProvider;
 export 'screens/contribution_history_screen.dart'
     show ContributionHistoryScreen;
 export 'screens/edit_shared_member_screen.dart' show EditSharedMemberScreen;
+export 'screens/from_family_screen.dart' show FromFamilyScreen;
 export 'screens/invite_decision_screen.dart' show InviteDecisionScreen;
 export 'screens/shared_wedding_plans_screen.dart' show SharedWeddingPlansScreen;
 export 'screens/sharing_screen.dart' show SharingScreen;

@@ -6,9 +6,11 @@ List<RouteBase> _accountRoutes() => [
     path: AppRouter.notifications,
     builder: (context, state) => const NotificationsScreen(),
   ),
+  // x04 «تساعد في عرس أحد؟»: the way in for a participant without the link
+  // open yet; the link itself opens the invite (q01 to q03).
   GoRoute(
     path: AppRouter.inviteAccess,
-    builder: (context, state) => const InviteDecisionScreen(),
+    builder: (context, state) => const FromFamilyScreen(),
   ),
   GoRoute(
     path: '/invites/:token',

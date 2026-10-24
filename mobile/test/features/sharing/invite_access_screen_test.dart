@@ -5,7 +5,7 @@ import 'package:aarast_mobile/core/network/api_client.dart';
 import 'package:aarast_mobile/core/session/session_boundary.dart';
 import 'package:aarast_mobile/core/storage/auth_storage.dart';
 import 'package:aarast_mobile/core/theme/app_theme.dart';
-import 'package:aarast_mobile/core/widgets/aarast_ui.dart';
+import 'package:aarast_mobile/core/experience_v3/aarast_v3.dart';
 import 'package:aarast_mobile/features/account_contexts/data/account_contexts_api.dart';
 import 'package:aarast_mobile/features/account_contexts/models/account_context.dart';
 import 'package:aarast_mobile/features/account_contexts/providers/account_context_controller.dart';
@@ -21,6 +21,7 @@ import 'package:aarast_mobile/features/sharing/screens/invite_decision_screen.da
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
+import 'package:lucide_icons/lucide_icons.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -158,90 +159,82 @@ void main() {
   );
 
   testWidgets(
-    'invite access starts with phone verification and no plan creation',
+    'q01: an invite link starts with the phone, nothing of the plan',
     (tester) async {
       final harness = await _authHarness();
-      await _pumpInviteScreen(tester, harness);
+      await _pumpGuestInvite(tester, harness);
 
-      expect(find.text('وصلتني دعوة لخطة'), findsOneWidget);
-      expect(find.text('أدخل الرقم الذي وصلت إليه الدعوة.'), findsWidgets);
+      expect(find.text('دعوة للمشاركة'), findsOneWidget);
+      expect(find.byKey(const ValueKey('invite-step-0')), findsOneWidget);
+      expect(find.text('رقم الهاتف'), findsWidgets);
+      expect(find.text('التحقق'), findsOneWidget);
+      expect(find.text('الدعوة'), findsOneWidget);
       expect(find.byKey(const Key('invite-phone-field')), findsOneWidget);
-      expect(find.text('إنشاء خطة'), findsNothing);
-      expect(find.text('أجهز عرسي'), findsNothing);
+      expect(find.text('نفس الرقم اللي وصلته الدعوة عليه.'), findsOneWidget);
       expect(find.text('إرسال رمز التحقق'), findsOneWidget);
+      // Nothing of the plan or the inviter is read before the code (C35).
+      expect(find.byKey(const ValueKey('invite-inviter-card')), findsNothing);
+      expect(find.textContaining('يشتيك معه'), findsNothing);
+      expect(find.text('إنشاء خطة'), findsNothing);
     },
   );
 
-  testWidgets('invite resend stays disabled for the full 60-second cooldown', (
-    tester,
-  ) async {
+  testWidgets('the code resend waits the full 60 seconds', (tester) async {
     final harness = await _authHarness();
-    await _pumpInviteScreen(tester, harness);
+    await _pumpGuestInvite(tester, harness);
     await _openOtpStep(tester);
 
-    final resend = find.byKey(const ValueKey('invite-otp-resend-button'));
+    expect(find.text('رمز التحقق'), findsOneWidget);
     expect(harness.repository.requestCalls, 1);
-    expect(find.text('إعادة الإرسال خلال 60 ث'), findsOneWidget);
-    expect(tester.widget<AarastButton>(resend).onPressed, isNull);
+    expect(find.text('نعيد الإرسال بعد 1:00'), findsOneWidget);
+    await tester.tap(find.byKey(const ValueKey('invite-otp-resend-button')));
+    await tester.pump();
+    expect(harness.repository.requestCalls, 1);
 
     await tester.pump(const Duration(seconds: 59));
-    expect(find.text('إعادة الإرسال خلال 1 ث'), findsOneWidget);
-    expect(tester.widget<AarastButton>(resend).onPressed, isNull);
+    expect(find.text('نعيد الإرسال بعد 0:01'), findsOneWidget);
 
     await tester.pump(const Duration(seconds: 1));
-    expect(find.text('إعادة إرسال الرمز'), findsOneWidget);
-    expect(tester.widget<AarastButton>(resend).onPressed, isNotNull);
-
-    await _tapVisible(tester, resend);
+    expect(find.text('أرسل رمز جديد'), findsOneWidget);
+    await _tapVisible(
+      tester,
+      find.byKey(const ValueKey('invite-otp-resend-button')),
+    );
     await tester.pump();
     expect(harness.repository.requestCalls, 2);
-    expect(find.text('إعادة الإرسال خلال 60 ث'), findsOneWidget);
+    expect(find.text('نعيد الإرسال بعد 1:00'), findsOneWidget);
   });
 
-  testWidgets('pending invite OTP request never claims WhatsApp delivery', (
-    tester,
-  ) async {
-    final harness = await _authHarness();
-    harness.repository.otpDeliveryStatus = 'PENDING';
-    await _pumpInviteScreen(tester, harness);
-    await _openOtpStep(tester);
+  for (final status in ['PENDING', 'UNCERTAIN']) {
+    testWidgets('a $status code never claims WhatsApp delivery', (
+      tester,
+    ) async {
+      final harness = await _authHarness();
+      harness.repository.otpDeliveryStatus = status;
+      await _pumpGuestInvite(tester, harness);
+      await _openOtpStep(tester);
 
-    expect(find.textContaining('طلبنا إرسال الرمز إلى'), findsOneWidget);
-    expect(find.textContaining('لم نتأكد من وصوله'), findsWidgets);
-    expect(find.textContaining('تم تسليم الرمز'), findsNothing);
-  });
+      expect(find.text('طلبنا لك رمز على واتساب'), findsOneWidget);
+      expect(find.text('إذا وصلك على الرقم'), findsOneWidget);
+      expect(find.text('أرسلنا لك رمز على واتساب'), findsNothing);
+    });
+  }
 
-  testWidgets('uncertain invite OTP request stays explicitly unconfirmed', (
-    tester,
-  ) async {
-    final harness = await _authHarness();
-    harness.repository.otpDeliveryStatus = 'UNCERTAIN';
-    await _pumpInviteScreen(tester, harness);
-    await _openOtpStep(tester);
-
-    expect(find.textContaining('طلبنا إرسال الرمز إلى'), findsOneWidget);
-    expect(find.textContaining('لم نتأكد من وصوله'), findsWidgets);
-    expect(find.textContaining('تم تسليم الرمز'), findsNothing);
-  });
-
-  testWidgets('delivered invite OTP request may confirm WhatsApp delivery', (
-    tester,
-  ) async {
+  testWidgets('a delivered code says so', (tester) async {
     final harness = await _authHarness();
     harness.repository.otpDeliveryStatus = 'DELIVERED';
-    await _pumpInviteScreen(tester, harness);
+    await _pumpGuestInvite(tester, harness);
     await _openOtpStep(tester);
 
-    expect(find.textContaining('تم تسليم الرمز إلى واتساب'), findsOneWidget);
-    expect(find.textContaining('لم نتأكد من وصوله'), findsNothing);
+    expect(find.text('أرسلنا لك رمز على واتساب'), findsOneWidget);
+    expect(find.text('وصل إلى الرقم'), findsOneWidget);
+    expect(find.text('طلبنا لك رمز على واتساب'), findsNothing);
   });
 
-  testWidgets('invite OTP clears stale errors when a new attempt starts', (
-    tester,
-  ) async {
+  testWidgets('a new attempt clears the last code error', (tester) async {
     final harness = await _authHarness();
     harness.repository.failVerify = true;
-    await _pumpInviteScreen(tester, harness);
+    await _pumpGuestInvite(tester, harness);
     await _openOtpStep(tester);
 
     await tester.enterText(find.byKey(const Key('invite-otp-field')), '999999');
@@ -253,14 +246,14 @@ void main() {
     expect(harness.controller.errorMessage, isNull);
   });
 
-  testWidgets('invite OTP submits only once while verification is in flight', (
+  testWidgets('the code is sent once while it is being checked', (
     tester,
   ) async {
     final harness = await _authHarness();
     harness.repository
       ..failVerify = true
       ..verifyGate = Completer<void>();
-    await _pumpInviteScreen(tester, harness);
+    await _pumpGuestInvite(tester, harness);
     await _openOtpStep(tester);
 
     await tester.enterText(find.byKey(const Key('invite-otp-field')), '123456');
@@ -275,15 +268,13 @@ void main() {
     expect(harness.repository.verifyCalls, 1);
   });
 
-  testWidgets('invite OTP is overflow-free at 320px and 1.3 scale', (
-    tester,
-  ) async {
+  testWidgets('the code step fits 320px at 1.3 text', (tester) async {
     tester.view.physicalSize = const Size(320, 800);
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
     final harness = await _authHarness();
-    await _pumpInviteScreen(tester, harness, textScale: 1.3);
+    await _pumpGuestInvite(tester, harness, textScale: 1.3);
     await _openOtpStep(tester);
 
     expect(harness.repository.requestCalls, 1);
@@ -296,60 +287,101 @@ void main() {
   });
 
   testWidgets(
-    'verified contributor reviews real role and permissions before joining',
+    'q03: after the code the invite shows who asks, the role and each right',
     (tester) async {
-      final invite = _invite(
-        canManageTasks: true,
-        canManageGuests: true,
-        canViewMoney: false,
-      );
+      final token = _testInviteToken();
       final harness = await _authHarness();
       harness.repository.authenticateOnVerify = true;
-      final sharingApi = _FakeSharingApi(invites: [invite]);
+      final sharingApi = _FakeSharingApi(
+        invites: [
+          _invite(
+            token: token,
+            canManageTasks: true,
+            canManageGuests: true,
+            weddingDate: DateTime(2027, 1, 21),
+            weddingCity: 'صنعاء',
+          ),
+        ],
+      );
 
-      await _pumpInviteScreen(tester, harness, sharingApi: sharingApi);
+      await _pumpGuestInvite(
+        tester,
+        harness,
+        token: token,
+        sharingApi: sharingApi,
+      );
       await _openVerifiedInvite(tester);
 
-      expect(find.text('عرس رشاد وسارة'), findsOneWidget);
-      expect(find.text('الداعي: رشاد'), findsOneWidget);
-      expect(find.textContaining('مساهم'), findsWidgets);
-      expect(find.text('المهام'), findsOneWidget);
-      expect(find.text('الضيوف'), findsOneWidget);
+      expect(find.text('الدعوة'), findsWidgets);
+      expect(find.byKey(const ValueKey('invite-step-2')), findsOneWidget);
+      expect(find.text('رشاد يشتيك معه في عرسه'), findsOneWidget);
+      expect(find.text('الخميس 21 يناير · صنعاء'), findsOneWidget);
+      expect(find.text('دورك: مساعد'), findsOneWidget);
+      expect(find.text('موعد العرس'), findsOneWidget);
+      // C27: a participant adds tasks and finishes their own.
+      expect(find.text('المهام: تضيف مهام وتخلّص اللي عليك'), findsOneWidget);
+      expect(find.text('الضيوف: تضيف وترتب'), findsOneWidget);
+      for (final closed in ['المال', 'المزودين']) {
+        expect(
+          find.descendant(
+            of: find.byKey(ValueKey('invite-right-$closed')),
+            matching: find.byIcon(LucideIcons.x),
+          ),
+          findsOneWidget,
+        );
+      }
+      expect(find.textContaining('الرفد'), findsNothing);
       expect(
-        find.text('الميزانية والتكاليف والدفعات خاصة ولن تظهر لك.'),
+        find.text('رشاد يقدر يغيّرها، وأنت تقدر تطلع من الخطة متى ما تشتي.'),
         findsOneWidget,
       );
-      await _scrollUntilVisible(
-        tester,
-        find.byKey(const Key('invite-accept-button')),
-      );
       expect(find.byKey(const Key('invite-accept-button')), findsOneWidget);
-      expect(find.text('إنشاء خطة'), findsNothing);
+      expect(find.byKey(const Key('invite-decline-button')), findsOneWidget);
+      expect(sharingApi.acceptCalls, 0);
+      expect(find.byKey(const Key('participant-home')), findsNothing);
     },
   );
 
-  testWidgets('accepting an invite shows success before entering the plan', (
+  testWidgets('q03: money shows its real level, never more', (tester) async {
+    final token = _testInviteToken();
+    final harness = await _authHarness();
+    harness.repository.authenticateOnVerify = true;
+    await _pumpGuestInvite(
+      tester,
+      harness,
+      token: token,
+      sharingApi: _FakeSharingApi(
+        invites: [_invite(token: token, canViewMoney: true)],
+      ),
+    );
+    await _openVerifiedInvite(tester);
+    expect(find.text('المال: تشوف بس'), findsOneWidget);
+    expect(find.text('المال: تشوف وتسجّل'), findsNothing);
+  });
+
+  testWidgets('joining selects the participant path and opens the plan home', (
     tester,
   ) async {
+    final token = _testInviteToken();
     final harness = await _authHarness();
     harness.repository.authenticateOnVerify = true;
     final sharingApi = _FakeSharingApi(
-      invites: [_invite(canManageTasks: true)],
+      invites: [_invite(token: token, canManageTasks: true)],
     );
 
-    await _pumpInviteScreen(tester, harness, sharingApi: sharingApi);
+    await _pumpGuestInvite(
+      tester,
+      harness,
+      token: token,
+      sharingApi: sharingApi,
+    );
     await _openVerifiedInvite(tester);
     await _tapVisible(tester, find.byKey(const Key('invite-accept-button')));
     await tester.pumpAndSettle();
 
     expect(sharingApi.acceptCalls, 1);
-    expect(find.byKey(const Key('invite-joined-success')), findsOneWidget);
-    expect(find.text('تم الانضمام بنجاح'), findsOneWidget);
-    await _scrollUntilVisible(
-      tester,
-      find.byKey(const Key('invite-open-plan-button')),
-    );
-    expect(find.byKey(const Key('invite-open-plan-button')), findsOneWidget);
+    expect(find.byKey(const Key('participant-home')), findsOneWidget);
+    expect(tester.takeException(), isNull);
   });
 
   testWidgets(
@@ -382,7 +414,6 @@ void main() {
 
       expect(harness.repository.inviteRequestCalls, 1);
       expect(harness.repository.lastInviteToken, token);
-      expect(find.text('تأكيد الرمز ومراجعة الدعوة'), findsOneWidget);
 
       await tester.enterText(
         find.byKey(const Key('invite-otp-field')),
@@ -396,32 +427,23 @@ void main() {
       expect(sharingApi.inviteLookupUserIds, contains('invitee-1'));
       expect(sharingApi.acceptUserIds, isEmpty);
       expect(sharingApi.acceptCalls, 0);
-      expect(find.text('عرس رشاد وسارة'), findsOneWidget);
-      await _scrollUntilVisible(
-        tester,
-        find.byKey(const Key('invite-accept-button')),
-      );
+      expect(find.text('رشاد يشتيك معه في عرسه'), findsOneWidget);
       expect(find.byKey(const Key('invite-accept-button')), findsOneWidget);
       expect(find.byKey(const Key('invite-decline-button')), findsOneWidget);
-      expect(find.byKey(const Key('contributor-dashboard')), findsNothing);
+      expect(find.byKey(const Key('participant-home')), findsNothing);
 
       await _tapVisible(tester, find.byKey(const Key('invite-accept-button')));
       await tester.pumpAndSettle();
 
       expect(sharingApi.acceptUserIds, ['invitee-1']);
       expect(sharingApi.acceptCalls, 1);
-      await _tapVisible(
-        tester,
-        find.byKey(const Key('invite-open-plan-button')),
-      );
-      await tester.pumpAndSettle();
-      expect(find.byKey(const Key('contributor-dashboard')), findsOneWidget);
+      expect(find.byKey(const Key('participant-home')), findsOneWidget);
       expect(tester.takeException(), isNull);
     },
   );
 
   testWidgets(
-    'an invite accepted on another session waits for explicit entry without duplicate acceptance',
+    'an invite accepted on another session opens with «ادخل الخطة» and is not accepted twice',
     (tester) async {
       final token = _testInviteToken();
       final harness = await _authHarness();
@@ -454,166 +476,51 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(harness.controller.user?.id, 'invitee-1');
-      expect(sharingApi.acceptCalls, 0);
-      expect(sharingApi.acceptUserIds, isEmpty);
-      await _scrollUntilVisible(
-        tester,
-        find.byKey(const Key('invite-open-plan-button')),
-      );
-      expect(find.byKey(const Key('invite-open-plan-button')), findsOneWidget);
-      expect(find.byKey(const Key('contributor-dashboard')), findsNothing);
+      expect(find.text('ادخل الخطة'), findsOneWidget);
+      expect(find.byKey(const Key('invite-accept-button')), findsNothing);
+      expect(find.byKey(const Key('participant-home')), findsNothing);
       await _tapVisible(
         tester,
         find.byKey(const Key('invite-open-plan-button')),
       );
       await tester.pumpAndSettle();
-      expect(find.byKey(const Key('contributor-dashboard')), findsOneWidget);
-      expect(tester.takeException(), isNull);
-    },
-  );
-
-  testWidgets(
-    'opening a second accepted invite never reuses the first invite context',
-    (tester) async {
-      final harness = await _authHarness();
-      harness.repository.authenticateOnVerify = true;
-      expect(
-        await harness.controller.verifyOtp(
-          phone: '777123456',
-          purpose: 'LOGIN',
-          code: '123456',
-        ),
-        isTrue,
-      );
-      final sharingApi = _FakeSharingApi(
-        invites: [
-          _invite(
-            id: 'invite-1',
-            weddingPlanId: 'plan-1',
-            weddingPlanTitle: 'الخطة الأولى',
-          ),
-          _invite(
-            id: 'invite-2',
-            weddingPlanId: 'plan-2',
-            weddingPlanTitle: 'الخطة الثانية',
-            token: 'token-2',
-            status: 'ACCEPTED',
-          ),
-        ],
-      );
-      final accountContexts = await _accountContexts(
-        planIds: const ['plan-1', 'plan-2'],
-      );
-      final sharingProvider = SharingProvider(sharingApi);
-      final router = GoRouter(
-        initialLocation: '/invites',
-        routes: [
-          GoRoute(
-            path: '/invites',
-            builder: (context, state) => const InviteDecisionScreen(),
-          ),
-          GoRoute(
-            path: '/wedding-plans/:id/plan-center',
-            builder: (context, state) => Scaffold(
-              key: Key('contributor-dashboard-${state.pathParameters['id']}'),
-            ),
-          ),
-        ],
-      );
-      addTearDown(router.dispose);
-
-      await tester.pumpWidget(
-        MultiProvider(
-          providers: [
-            ChangeNotifierProvider<AuthController>.value(
-              value: harness.controller,
-            ),
-            ChangeNotifierProvider<SharingProvider>.value(
-              value: sharingProvider,
-            ),
-            ChangeNotifierProvider<AccountContextController>.value(
-              value: accountContexts,
-            ),
-          ],
-          child: MaterialApp.router(
-            theme: AppTheme.light(),
-            routerConfig: router,
-          ),
-        ),
-      );
-      await tester.pumpAndSettle();
-
-      await tester.tap(find.text('الخطة الأولى'));
-      await tester.pumpAndSettle();
-      await _tapVisible(tester, find.byKey(const Key('invite-accept-button')));
-      await tester.pumpAndSettle();
-      expect(
-        sharingProvider.acceptedInviteContextKey,
-        'plan:plan-1:contributor',
-      );
-
-      await _tapVisible(tester, find.text('رجوع'));
-      await tester.pumpAndSettle();
-      await tester.tap(find.text('الخطة الثانية'));
-      await tester.pumpAndSettle();
-
-      expect(
-        accountContexts.selectedContext?.contextKey,
-        'plan:plan-2:contributor',
-      );
-      expect(
-        find.byKey(const Key('contributor-dashboard-plan-2')),
-        findsOneWidget,
-      );
-      expect(tester.takeException(), isNull);
-    },
-  );
-
-  testWidgets(
-    'an accepted invite without context reports an ended membership',
-    (tester) async {
-      final token = _testInviteToken();
-      final harness = await _authHarness();
-      harness.repository.authenticateOnVerify = true;
-      final sharingApi = _FakeSharingApi(
-        invites: [
-          _invite(token: token, status: 'ACCEPTED', withContextKey: false),
-        ],
-        currentUserId: () => harness.controller.user?.id,
-      );
-
-      await _pumpBoundaryLinkedInviteScreen(
-        tester,
-        harness,
-        token: token,
-        sharingApi: sharingApi,
-        startGuestAtInvite: true,
-      );
-      await _openOtpStep(tester);
-      await tester.enterText(
-        find.byKey(const Key('invite-otp-field')),
-        '123456',
-      );
-      await tester.pump(const Duration(milliseconds: 1100));
-      await tester.pumpAndSettle();
-
-      expect(find.text('انتهت عضويتك في هذه الخطة'), findsOneWidget);
-      expect(
-        find.descendant(
-          of: find.byKey(const Key('invite-membership-ended')),
-          matching: find.textContaining('عضويتك في الخطة لم تعد فعالة'),
-        ),
-        findsOneWidget,
-      );
-      expect(find.byKey(const Key('invite-open-plan-button')), findsNothing);
-      expect(find.text('صلاحياتك في الخطة'), findsNothing);
-      expect(find.byKey(const Key('contributor-dashboard')), findsNothing);
       expect(sharingApi.acceptCalls, 0);
+      expect(find.byKey(const Key('participant-home')), findsOneWidget);
       expect(tester.takeException(), isNull);
     },
   );
 
-  testWidgets('new app registration resumes at the explicit invite decision', (
+  testWidgets('an accepted invite without a membership says it ended', (
+    tester,
+  ) async {
+    final token = _testInviteToken();
+    final harness = await _authHarness();
+    harness.repository.authenticateOnVerify = true;
+    final sharingApi = _FakeSharingApi(
+      invites: [
+        _invite(token: token, status: 'ACCEPTED', withContextKey: false),
+      ],
+      currentUserId: () => harness.controller.user?.id,
+    );
+
+    await _pumpGuestInvite(
+      tester,
+      harness,
+      token: token,
+      sharingApi: sharingApi,
+    );
+    await _openVerifiedInvite(tester);
+
+    expect(find.byKey(const Key('invite-membership-ended')), findsOneWidget);
+    expect(find.textContaining('ما عاد لك وصول للخطة'), findsOneWidget);
+    expect(find.byKey(const ValueKey('invite-rights')), findsNothing);
+    expect(find.byKey(const Key('invite-open-plan-button')), findsNothing);
+    expect(find.byKey(const Key('invite-accept-button')), findsNothing);
+    expect(sharingApi.acceptCalls, 0);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('a new app account resumes at the explicit invite decision', (
     tester,
   ) async {
     final token = _testInviteToken();
@@ -647,20 +554,15 @@ void main() {
 
     expect(harness.controller.user?.id, 'invitee-1');
     expect(sharingApi.inviteLookupUserIds, ['invitee-1']);
-    expect(sharingApi.acceptUserIds, isEmpty);
     expect(sharingApi.acceptCalls, 0);
-    await _scrollUntilVisible(
-      tester,
-      find.byKey(const Key('invite-accept-button')),
-    );
     expect(find.byKey(const Key('invite-accept-button')), findsOneWidget);
     expect(find.byKey(const Key('invite-decline-button')), findsOneWidget);
-    expect(find.byKey(const Key('contributor-dashboard')), findsNothing);
+    expect(find.byKey(const Key('participant-home')), findsNothing);
     expect(tester.takeException(), isNull);
   });
 
   testWidgets(
-    'a private invite link verifies its phone even when another account is signed in',
+    'a private link proves its phone even when another account is signed in',
     (tester) async {
       final token = _testInviteToken();
       final harness = await _authHarness();
@@ -684,11 +586,11 @@ void main() {
 
       expect(find.byKey(const Key('invite-phone-field')), findsOneWidget);
       expect(harness.repository.inviteRequestCalls, 0);
-      expect(find.byKey(const Key('contributor-dashboard')), findsNothing);
+      expect(find.byKey(const ValueKey('invite-inviter-card')), findsNothing);
     },
   );
 
-  testWidgets('a private invite link rejects a non-invited phone before OTP', (
+  testWidgets('a phone the invite was not sent to stops before the code', (
     tester,
   ) async {
     final token = _testInviteToken();
@@ -717,136 +619,176 @@ void main() {
     expect(find.textContaining('لا توجد دعوة فعّالة'), findsOneWidget);
   });
 
-  testWidgets(
-    'first private invite creates a contributor password with the same OTP',
-    (tester) async {
-      tester.view.physicalSize = const Size(320, 800);
-      tester.view.devicePixelRatio = 1;
-      addTearDown(tester.view.resetPhysicalSize);
-      addTearDown(tester.view.resetDevicePixelRatio);
-      final token = _testInviteToken();
-      final harness = await _authHarness();
-      harness.repository.inviteAccountSetupRequired = true;
-      harness.repository.authenticateOnVerify = true;
-      final sharingApi = _FakeSharingApi(invites: [_invite(token: token)]);
-      await _pumpBoundaryLinkedInviteScreen(
-        tester,
-        harness,
-        token: token,
-        sharingApi: sharingApi,
-        startGuestAtInvite: true,
-      );
-
-      await _openOtpStep(tester);
-      expect(find.text('أنشئ حساب المساهم مرة واحدة'), findsOneWidget);
-      await tester.enterText(
-        find.byKey(const ValueKey('invite-account-name-field')),
-        'أحمد المساهم',
-      );
-      await tester.enterText(
-        find.byKey(const ValueKey('invite-account-password-field')),
-        'contributor-secret',
-      );
-      await tester.enterText(
-        find.byKey(
-          const ValueKey('invite-account-password-confirmation-field'),
-        ),
-        'contributor-secret',
-      );
-      await _tapVisible(
-        tester,
-        find.byKey(const ValueKey('invite-account-setup-continue')),
-      );
-      await tester.pumpAndSettle();
-      await tester.enterText(
-        find.byKey(const Key('invite-otp-field')),
-        '123456',
-      );
-      await tester.pumpAndSettle();
-
-      expect(harness.repository.lastVerifiedInviteToken, token);
-      expect(harness.repository.lastAccountName, 'أحمد المساهم');
-      expect(harness.repository.lastAccountPassword, 'contributor-secret');
-      expect(sharingApi.acceptCalls, 0);
-      await _scrollUntilVisible(
-        tester,
-        find.byKey(const Key('invite-accept-button')),
-      );
-      expect(find.byKey(const Key('invite-accept-button')), findsOneWidget);
-      expect(find.byKey(const Key('invite-decline-button')), findsOneWidget);
-      expect(find.byKey(const Key('contributor-dashboard')), findsNothing);
-    },
-  );
-
-  testWidgets('declining an invite requires explicit confirmation', (
-    tester,
-  ) async {
-    final harness = await _authHarness();
-    harness.repository.authenticateOnVerify = true;
-    final sharingApi = _FakeSharingApi(invites: [_invite()]);
-
-    await _pumpInviteScreen(tester, harness, sharingApi: sharingApi);
-    await _openVerifiedInvite(tester);
-    await _tapVisible(tester, find.byKey(const Key('invite-decline-button')));
-    await tester.pumpAndSettle();
-
-    expect(find.text('تأكيد رفض الدعوة'), findsOneWidget);
-    expect(sharingApi.declineCalls, 0);
-
-    await tester.tap(find.byKey(const Key('invite-confirm-decline-button')));
-    await tester.pumpAndSettle();
-
-    expect(sharingApi.declineCalls, 1);
-    expect(find.text('مرفوضة'), findsOneWidget);
-  });
-
-  testWidgets('invite details are overflow-free at 320px and 1.3 scale', (
+  testWidgets('q02: a first invite makes the account with the same code', (
     tester,
   ) async {
     tester.view.physicalSize = const Size(320, 800);
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
+    final token = _testInviteToken();
+    final harness = await _authHarness();
+    harness.repository.inviteAccountSetupRequired = true;
+    harness.repository.authenticateOnVerify = true;
+    final sharingApi = _FakeSharingApi(invites: [_invite(token: token)]);
+    await _pumpGuestInvite(
+      tester,
+      harness,
+      token: token,
+      sharingApi: sharingApi,
+    );
+
+    await _openOtpStep(tester);
+    expect(find.text('حسابك في اعّرست'), findsOneWidget);
+    expect(find.byKey(const ValueKey('invite-step-1')), findsOneWidget);
+    expect(
+      find.text('أول مرة تدخل؟ نسوي لك حساب، وتقدر بعدين تبدأ خطتك أنت كمان.'),
+      findsOneWidget,
+    );
+    expect(find.text('اسمك'), findsOneWidget);
+    expect(find.text('كلمة المرور'), findsOneWidget);
+    expect(find.text('تأكيد كلمة المرور'), findsOneWidget);
+
+    // C7: six letters at least, and both must match.
+    await tester.enterText(
+      find.byKey(const ValueKey('invite-account-password-field')),
+      '12345',
+    );
+    await _tapVisible(
+      tester,
+      find.byKey(const ValueKey('invite-account-setup-continue')),
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('اكتب اسمك'), findsOneWidget);
+    expect(find.text('كلمة المرور 6 أحرف أو أكثر'), findsOneWidget);
+
+    await tester.enterText(
+      find.byKey(const ValueKey('invite-account-name-field')),
+      'أحمد المساهم',
+    );
+    await tester.enterText(
+      find.byKey(const ValueKey('invite-account-password-field')),
+      'contributor-secret',
+    );
+    await tester.enterText(
+      find.byKey(const ValueKey('invite-account-password-confirmation-field')),
+      'contributor-other',
+    );
+    await _tapVisible(
+      tester,
+      find.byKey(const ValueKey('invite-account-setup-continue')),
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('الكلمتين مو نفس بعض'), findsOneWidget);
+
+    await tester.enterText(
+      find.byKey(const ValueKey('invite-account-password-confirmation-field')),
+      'contributor-secret',
+    );
+    await _tapVisible(
+      tester,
+      find.byKey(const ValueKey('invite-account-setup-continue')),
+    );
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byKey(const Key('invite-otp-field')), '123456');
+    await tester.pump(const Duration(milliseconds: 1100));
+    await tester.pumpAndSettle();
+
+    expect(harness.repository.lastVerifiedInviteToken, token);
+    expect(harness.repository.lastAccountName, 'أحمد المساهم');
+    expect(harness.repository.lastAccountPassword, 'contributor-secret');
+    expect(sharingApi.acceptCalls, 0);
+    expect(find.byKey(const Key('invite-accept-button')), findsOneWidget);
+    expect(find.byKey(const Key('invite-decline-button')), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('refusing asks first in a journey sheet', (tester) async {
+    final token = _testInviteToken();
+    final harness = await _authHarness();
+    harness.repository.authenticateOnVerify = true;
+    final sharingApi = _FakeSharingApi(invites: [_invite(token: token)]);
+
+    await _pumpGuestInvite(
+      tester,
+      harness,
+      token: token,
+      sharingApi: sharingApi,
+    );
+    await _openVerifiedInvite(tester);
+    await _tapVisible(tester, find.byKey(const Key('invite-decline-button')));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(JourneySheetBody), findsOneWidget);
+    expect(find.text('ترفض الدعوة؟'), findsOneWidget);
+    expect(sharingApi.declineCalls, 0);
+
+    await tester.tap(find.byKey(const Key('invite-confirm-decline-button')));
+    await tester.pumpAndSettle();
+
+    expect(sharingApi.declineCalls, 1);
+    expect(find.text('رفضت هذي الدعوة.'), findsOneWidget);
+    expect(find.byKey(const Key('invite-accept-button')), findsNothing);
+    expect(find.byKey(const Key('participant-home')), findsNothing);
+  });
+
+  testWidgets('every right fits 320px at 1.3 text', (tester) async {
+    tester.view.physicalSize = const Size(320, 800);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    final token = _testInviteToken();
     final harness = await _authHarness();
     harness.repository.authenticateOnVerify = true;
     final sharingApi = _FakeSharingApi(
       invites: [
         _invite(
+          token: token,
           canViewMoney: true,
+          canManageMoney: true,
           canManageTasks: true,
           canManageGuests: true,
           canManageProviders: true,
           canInviteMembers: true,
+          canEditPlan: true,
         ),
       ],
     );
 
-    await _pumpInviteScreen(
+    await _pumpGuestInvite(
       tester,
       harness,
+      token: token,
       sharingApi: sharingApi,
       textScale: 1.3,
     );
     await _openVerifiedInvite(tester);
 
-    await _scrollUntilVisible(
-      tester,
-      find.byKey(const Key('invite-accept-button')),
-    );
+    expect(find.text('المال: تشوف وتسجّل'), findsOneWidget);
+    expect(find.text('المشاركين: تضيف ناس للخطة'), findsOneWidget);
     expect(find.byKey(const Key('invite-accept-button')), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
+}
 
-  test('invite permission labels keep financial access explicit', () {
-    final helperInvite = _invite(canManageTasks: true);
-    expect(helperInvite.permissionLabels, contains('عرض الخطة'));
-    expect(helperInvite.permissionLabels, contains('المهام'));
-    expect(helperInvite.permissionLabels, isNot(contains('إدارة المال')));
-    expect(helperInvite.permissionLabels, isNot(contains('عرض مالي محدود')));
-
-    final financeInvite = _invite(canViewMoney: true, canManageMoney: true);
-    expect(financeInvite.permissionLabels, contains('إدارة المال'));
-  });
+/// A guest opens the invite link and proves the phone; the verified account
+/// then resumes the same link through the account boundary.
+Future<void> _pumpGuestInvite(
+  WidgetTester tester,
+  _AuthHarness harness, {
+  String? token,
+  SharingApi? sharingApi,
+  double textScale = 1,
+}) {
+  final link = token ?? _testInviteToken();
+  return _pumpBoundaryLinkedInviteScreen(
+    tester,
+    harness,
+    token: link,
+    sharingApi: sharingApi ?? _FakeSharingApi(invites: [_invite(token: link)]),
+    startGuestAtInvite: true,
+    textScale: textScale,
+  );
 }
 
 Future<_AuthHarness> _authHarness() async {
@@ -857,37 +799,6 @@ Future<_AuthHarness> _authHarness() async {
   final controller = AuthController(repository);
   await controller.restoreSession();
   return _AuthHarness(controller, repository);
-}
-
-Future<void> _pumpInviteScreen(
-  WidgetTester tester,
-  _AuthHarness harness, {
-  SharingApi? sharingApi,
-  double textScale = 1,
-}) async {
-  final sharing = SharingProvider(sharingApi ?? _FakeSharingApi());
-  final accountContexts = await _accountContexts();
-  await tester.pumpWidget(
-    MultiProvider(
-      providers: [
-        ChangeNotifierProvider<AuthController>.value(value: harness.controller),
-        ChangeNotifierProvider<SharingProvider>.value(value: sharing),
-        ChangeNotifierProvider<AccountContextController>.value(
-          value: accountContexts,
-        ),
-      ],
-      child: MaterialApp(
-        theme: AppTheme.light(),
-        builder: (context, materialChild) => MediaQuery(
-          data: MediaQuery.of(
-            context,
-          ).copyWith(textScaler: TextScaler.linear(textScale)),
-          child: materialChild!,
-        ),
-        home: const InviteDecisionScreen(),
-      ),
-    ),
-  );
 }
 
 Future<GoRouter> _pumpLinkedInviteScreen(
@@ -904,13 +815,13 @@ Future<GoRouter> _pumpLinkedInviteScreen(
       GoRoute(
         path: '/invites/:token',
         builder: (context, state) =>
-            InviteDecisionScreen(token: state.pathParameters['token']),
+            InviteDecisionScreen(token: state.pathParameters['token'] ?? ''),
       ),
       GoRoute(
-        path: '/wedding-plans/:id/plan-center',
+        path: '/home',
         builder: (context, state) => const Scaffold(
-          key: Key('contributor-dashboard'),
-          body: Text('مساحة المساهم'),
+          key: Key('participant-home'),
+          body: Text('رئيسية المشارك'),
         ),
       ),
       GoRoute(
@@ -944,7 +855,9 @@ Future<void> _pumpBoundaryLinkedInviteScreen(
   required String token,
   required SharingApi sharingApi,
   bool startGuestAtInvite = false,
+  double textScale = 1,
 }) async {
+  _harnessTextScale = textScale;
   if (harness.controller.user != null) {
     harness.controller.claimPendingAuthenticatedEntry();
   }
@@ -1031,13 +944,13 @@ class _BoundaryInviteRouterAppState extends State<_BoundaryInviteRouterApp> {
       GoRoute(
         path: '/invites/:token',
         builder: (context, state) =>
-            InviteDecisionScreen(token: state.pathParameters['token']),
+            InviteDecisionScreen(token: state.pathParameters['token'] ?? ''),
       ),
       GoRoute(
-        path: '/wedding-plans/:id/plan-center',
+        path: '/home',
         builder: (context, state) => const Scaffold(
-          key: Key('contributor-dashboard'),
-          body: Text('مساحة المساهم'),
+          key: Key('participant-home'),
+          body: Text('رئيسية المشارك'),
         ),
       ),
     ],
@@ -1056,9 +969,14 @@ class _BoundaryInviteRouterAppState extends State<_BoundaryInviteRouterApp> {
       child: MaterialApp.router(
         theme: AppTheme.light(),
         routerConfig: _router,
-        builder: (context, child) => AarastAuthFlowRedirector(
-          router: _router,
-          child: child ?? const SizedBox.shrink(),
+        builder: (context, child) => MediaQuery(
+          data: MediaQuery.of(
+            context,
+          ).copyWith(textScaler: TextScaler.linear(_harnessTextScale)),
+          child: AarastAuthFlowRedirector(
+            router: _router,
+            child: child ?? const SizedBox.shrink(),
+          ),
         ),
       ),
     );
@@ -1148,6 +1066,8 @@ PlanInvite _invite({
   bool canManageProviders = false,
   bool canInviteMembers = false,
   bool canManageMoney = false,
+  DateTime? weddingDate,
+  String? weddingCity,
 }) {
   return PlanInvite(
     id: id,
@@ -1168,6 +1088,8 @@ PlanInvite _invite({
     canManageMoney: canManageMoney,
     weddingPlanTitle: weddingPlanTitle,
     inviterName: 'رشاد',
+    weddingDate: weddingDate,
+    weddingCity: weddingCity,
   );
 }
 
@@ -1392,5 +1314,10 @@ PlanInvite _withStatus(PlanInvite invite, String status) {
     email: invite.email,
     weddingPlanTitle: invite.weddingPlanTitle,
     inviterName: invite.inviterName,
+    weddingDate: invite.weddingDate,
+    weddingCity: invite.weddingCity,
   );
 }
+
+/// The text size the boundary app shows, set by each pump.
+double _harnessTextScale = 1;

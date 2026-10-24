@@ -1648,8 +1648,9 @@ const r19ProviderPortalApi = Object.freeze({
 // «+» kept by the owner (D33): its choices read the plan's signals and stage
 // through the wedding plans owner API and open a payment or a payment date
 // through the finance owner API, and the route shell reads the money rights
-// through the finance owner API.
-const r19LegalRecordCount = 197;
+// through the finance owner API. +1 for x04 «تساعد في عرس أحد؟» knowing
+// whether the person is signed in through the auth owner API (D34).
+const r19LegalRecordCount = 198;
 const trackedOwnerApiContracts = [
   {
     area: 'features/account_contexts',
@@ -2020,6 +2021,7 @@ const trackedOwnerApiContracts = [
         uri: 'screens/edit_shared_member_screen.dart',
         show: ['EditSharedMemberScreen'],
       },
+      { uri: 'screens/from_family_screen.dart', show: ['FromFamilyScreen'] },
       { uri: 'screens/invite_decision_screen.dart', show: ['InviteDecisionScreen'] },
       {
         uri: 'screens/shared_wedding_plans_screen.dart',
@@ -2424,9 +2426,14 @@ const trackedCollaborationBatchContracts = [
     show: ['AccountContextController'],
   },
   {
+    source: 'mobile/lib/features/sharing/screens/from_family_screen.dart',
+    target: 'mobile/lib/features/auth/auth_api.dart',
+    show: ['AuthController', 'AuthStatus'],
+  },
+  {
     source: 'mobile/lib/features/sharing/screens/invite_decision_screen.dart',
     target: 'mobile/lib/features/auth/auth_api.dart',
-    show: ['AuthController', 'AuthObscureToggle', 'AuthStatus', 'AuthTextField'],
+    show: ['AuthController', 'AuthStatus'],
   },
   {
     source: 'mobile/lib/features/sharing/screens/shared_wedding_plans_screen.dart',
@@ -3108,6 +3115,7 @@ const trackedCompositionRootContracts = [
         show: [
           'ContributionHistoryScreen',
           'EditSharedMemberScreen',
+          'FromFamilyScreen',
           'InviteDecisionScreen',
           'SharedMember',
           'SharedWeddingPlansScreen',

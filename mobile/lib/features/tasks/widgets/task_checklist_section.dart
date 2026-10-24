@@ -49,9 +49,9 @@ class _TaskChecklistSectionState extends State<TaskChecklistSection> {
   }
 
   Future<void> _rename(TaskChecklistItem item) async {
-    final title = await showDialog<String>(
+    final title = await showJourneySheet<String>(
       context: context,
-      builder: (_) => _RenameStepDialog(initialTitle: item.title),
+      builder: (_) => _RenameStepSheet(initialTitle: item.title),
     );
     final trimmed = title?.trim();
     if (trimmed == null || trimmed.isEmpty || trimmed == item.title) return;
@@ -170,18 +170,18 @@ class _TaskChecklistSectionState extends State<TaskChecklistSection> {
   }
 }
 
-/// Owns its text controller so it is disposed only after the dialog route,
+/// Owns its text controller so it is disposed only after the sheet route,
 /// including its closing animation, is gone.
-class _RenameStepDialog extends StatefulWidget {
-  const _RenameStepDialog({required this.initialTitle});
+class _RenameStepSheet extends StatefulWidget {
+  const _RenameStepSheet({required this.initialTitle});
 
   final String initialTitle;
 
   @override
-  State<_RenameStepDialog> createState() => _RenameStepDialogState();
+  State<_RenameStepSheet> createState() => _RenameStepSheetState();
 }
 
-class _RenameStepDialogState extends State<_RenameStepDialog> {
+class _RenameStepSheetState extends State<_RenameStepSheet> {
   late final _controller = TextEditingController(text: widget.initialTitle);
 
   @override
@@ -192,23 +192,25 @@ class _RenameStepDialogState extends State<_RenameStepDialog> {
 
   @override
   Widget build(BuildContext context) {
-    return AarastDialog(
-      title: const Text('تعديل الخطوة'),
-      content: TextField(
-        key: const ValueKey('task-checklist-rename-field'),
-        controller: _controller,
-        autofocus: true,
-        textAlign: TextAlign.right,
-        onSubmitted: (value) => Navigator.pop(context, value),
-      ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.pop(context),
-          child: const Text('إلغاء'),
+    return JourneySheetBody(
+      title: 'تعديل الخطوة',
+      children: [
+        JourneyTextField(
+          key: const ValueKey('task-checklist-rename-field'),
+          label: 'الخطوة',
+          controller: _controller,
+          autofocus: true,
+          textInputAction: TextInputAction.done,
+          onSubmitted: (value) => Navigator.pop(context, value),
         ),
-        FilledButton(
+        const SizedBox(height: 16),
+        JourneyButton(
+          key: const ValueKey('task-checklist-rename-save'),
+          label: 'حفظ',
+          background: AarastV3Color.brandAccentStrong,
+          expand: true,
+          large: true,
           onPressed: () => Navigator.pop(context, _controller.text),
-          child: const Text('حفظ'),
         ),
       ],
     );

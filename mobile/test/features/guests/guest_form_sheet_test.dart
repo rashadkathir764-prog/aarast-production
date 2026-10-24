@@ -139,6 +139,9 @@ void main() {
     await tester.enterText(_name, 'خالد الحمدي');
     await tester.tap(find.byKey(const ValueKey('guest-form-group-new')));
     await tester.pumpAndSettle();
+    // «عائلة جديدة» is a journey sheet over the form, not a dialog.
+    expect(find.text('عائلة جديدة'), findsOneWidget);
+    expect(find.byType(AlertDialog), findsNothing);
     await tester.enterText(
       find.byKey(const ValueKey('guest-form-group-name')),
       'آل الحمدي',

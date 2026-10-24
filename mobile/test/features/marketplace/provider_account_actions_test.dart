@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:aarast_mobile/core/experience_v3/aarast_journey.dart';
 import 'package:aarast_mobile/core/theme/app_theme.dart';
 import 'package:aarast_mobile/features/provider_portal/widgets/provider_account_actions.dart';
 import 'package:flutter/material.dart';
@@ -180,14 +181,14 @@ void main() {
 
     expect(find.text('حذف حسابك نهائيًا؟'), findsOneWidget);
     final confirm = find.byKey(const Key('provider-delete-account-confirm'));
-    expect(tester.widget<FilledButton>(confirm).onPressed, isNull);
+    expect(tester.widget<JourneyButton>(confirm).onPressed, isNull);
 
     await tester.enterText(
       find.byKey(const Key('provider-delete-account-input')),
       'حذف',
     );
     await tester.pump();
-    expect(tester.widget<FilledButton>(confirm).onPressed, isNotNull);
+    expect(tester.widget<JourneyButton>(confirm).onPressed, isNotNull);
 
     await tester.tap(confirm);
     await tester.pumpAndSettle();

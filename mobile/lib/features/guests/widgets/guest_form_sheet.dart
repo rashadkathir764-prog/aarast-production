@@ -8,7 +8,6 @@ import '../../../core/contacts/contact_duplicate_utils.dart';
 import '../../../core/experience_v3/aarast_v3.dart';
 import '../../../core/forms/aarast_form_draft_store.dart';
 import '../../../core/phone/phone_number_utils.dart';
-import '../../../core/widgets/aarast_ui.dart';
 import '../../../shared/widgets/contact_phone_field.dart';
 import '../models/guest.dart';
 import '../utils/guest_display.dart';
@@ -203,9 +202,9 @@ class _GuestFormSheetState extends State<GuestFormSheet> {
   Future<void> _createGroup() async {
     final create = widget.onCreateGroup;
     if (create == null) return;
-    final name = await showDialog<String>(
+    final name = await showJourneySheet<String>(
       context: context,
-      builder: (_) => const _NewGroupDialog(),
+      builder: (_) => const _NewGroupSheet(),
     );
     final trimmed = name?.trim();
     if (trimmed == null || trimmed.isEmpty || !mounted) return;
@@ -490,15 +489,16 @@ class GuestFormResult {
   final bool addAnother;
 }
 
-/// Owns its controller so it is disposed after the dialog route is gone.
-class _NewGroupDialog extends StatefulWidget {
-  const _NewGroupDialog();
+/// «عائلة جديدة», a journey sheet over the guest form (e06). Owns its
+/// controller so it is disposed after the sheet route is gone.
+class _NewGroupSheet extends StatefulWidget {
+  const _NewGroupSheet();
 
   @override
-  State<_NewGroupDialog> createState() => _NewGroupDialogState();
+  State<_NewGroupSheet> createState() => _NewGroupSheetState();
 }
 
-class _NewGroupDialogState extends State<_NewGroupDialog> {
+class _NewGroupSheetState extends State<_NewGroupSheet> {
   final _controller = TextEditingController();
 
   @override
@@ -509,24 +509,26 @@ class _NewGroupDialogState extends State<_NewGroupDialog> {
 
   @override
   Widget build(BuildContext context) {
-    return AarastDialog(
-      title: const Text('عائلة جديدة'),
-      content: TextField(
-        key: const ValueKey('guest-form-group-name'),
-        controller: _controller,
-        autofocus: true,
-        decoration: const InputDecoration(hintText: 'مثلًا: آل السقاف'),
-        onSubmitted: (value) => Navigator.pop(context, value),
-      ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.pop(context),
-          child: const Text('رجوع'),
+    return JourneySheetBody(
+      title: 'عائلة جديدة',
+      children: [
+        JourneyTextField(
+          key: const ValueKey('guest-form-group-name'),
+          label: 'اسم العائلة',
+          hint: 'مثلًا: آل السقاف',
+          controller: _controller,
+          autofocus: true,
+          textInputAction: TextInputAction.done,
+          onSubmitted: (value) => Navigator.pop(context, value),
         ),
-        FilledButton(
+        const SizedBox(height: 16),
+        JourneyButton(
           key: const ValueKey('guest-form-group-create'),
+          label: 'أضفها',
+          background: AarastV3Color.lilac,
+          expand: true,
+          large: true,
           onPressed: () => Navigator.pop(context, _controller.text),
-          child: const Text('أضفها'),
         ),
       ],
     );

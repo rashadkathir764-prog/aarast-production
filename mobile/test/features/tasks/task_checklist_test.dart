@@ -149,6 +149,9 @@ void main() {
 
     await tester.tap(find.text('الاتصال'));
     await tester.pumpAndSettle();
+    // The rename opens as a journey sheet, not a Material dialog.
+    expect(find.byKey(const ValueKey('journey-sheet-handle')), findsOneWidget);
+    expect(find.byType(AlertDialog), findsNothing);
     await tester.enterText(
       find.byKey(const ValueKey('task-checklist-rename-field')),
       'الاتصال بالقاعة',

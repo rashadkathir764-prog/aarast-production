@@ -23,11 +23,13 @@ class JourneyTabSwitch extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // The prototype's topTabs: 4 around, 9 above and below a 13.5 bold
+    // name, 16 outside and 12 inside; about 44 tall.
     return Container(
       padding: const EdgeInsets.all(4),
       decoration: BoxDecoration(
         color: AarastV3Color.paper,
-        borderRadius: BorderRadius.circular(18),
+        borderRadius: BorderRadius.circular(16),
       ),
       child: Row(
         children: [
@@ -42,16 +44,18 @@ class JourneyTabSwitch extends StatelessWidget {
                 child: AarastPressable(
                   onTap: () => onSelected(index),
                   selected: index == selected,
-                  borderRadius: BorderRadius.circular(14),
+                  borderRadius: BorderRadius.circular(12),
                   child: AnimatedContainer(
                     key: ValueKey('journey-tab-$index'),
                     duration: const Duration(milliseconds: 180),
-                    constraints: const BoxConstraints(minHeight: 44),
                     alignment: Alignment.center,
-                    padding: const EdgeInsets.symmetric(horizontal: 4),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 4,
+                      vertical: 9,
+                    ),
                     decoration: BoxDecoration(
                       color: index == selected ? color : null,
-                      borderRadius: BorderRadius.circular(14),
+                      borderRadius: BorderRadius.circular(12),
                     ),
                     child: FittedBox(
                       fit: BoxFit.scaleDown,
@@ -59,7 +63,7 @@ class JourneyTabSwitch extends StatelessWidget {
                         labels[index],
                         maxLines: 1,
                         style: JourneyType.of(
-                          JourneyType.body,
+                          JourneyType.detail,
                           weight: JourneyType.bold,
                           color: index == selected
                               ? AarastV3Color.onPrimary

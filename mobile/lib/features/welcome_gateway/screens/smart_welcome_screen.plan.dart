@@ -295,15 +295,18 @@ class _PlaceBudgetStep extends StatelessWidget {
           runSpacing: 8,
           children: [
             for (final name in [...shown, ?extra])
+              // a05 draws the cities a step larger than other chips.
               JourneyChip(
                 label: name,
                 selected: name == city,
                 icon: name == city ? LucideIcons.mapPin : null,
+                fontSize: JourneyType.body,
                 onTap: () => onCity(name),
               ),
             JourneyChip(
               label: 'مدينة ثانية',
               icon: LucideIcons.plus,
+              fontSize: JourneyType.body,
               onTap: onMoreCities,
             ),
           ],

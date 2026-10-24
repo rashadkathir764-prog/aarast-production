@@ -138,22 +138,38 @@ Status colors appear with text or icons and never carry meaning alone.
 - Tajawal owns body, labels, fields, and dense product content.
 - Currency, dates, phone values, and percentages preserve their intended
   numeric direction inside RTL layouts.
-- Journey screens take every text size from one scale (`JourneyType`, D8),
-  sized for phones 360 to 412 points wide at the person's own text size:
+- Journey screens take every text size from one scale (`JourneyType`),
+  the approved design's sizes (`mobile/test/prototype/c_journey/kit.dart`).
+  D30 restored the headings D8 had shrunk:
 
   | Role | Size | Used for |
   | --- | --- | --- |
   | `count` | 40 | The one big number of a screen (days to the wedding) |
-  | `display` | 24 | A screen's heading or question |
-  | `title` | 18 | Card, sheet and section titles |
-  | `figure` | 22 | A typed amount or name in a large field |
-  | `bodyLarge` | 16 | Buttons, field values, list titles |
-  | `body` | 15 | Running text |
-  | `small` | 13 | Secondary lines, hints, field labels |
+  | `headline` | 34 | The money summary's big gap |
+  | `question` | 30 | An onboarding question (`JourneyQuestionPage`) |
+  | `hero` | 28 | A main tab's title (`JourneyTabHeader`) |
+  | `amount` | 28 | A typed amount or name in a large field |
+  | `display` | 24 | A heading inside a screen (a start card) |
+  | `sheetTitle` | 22 | A sheet's title (`JourneySheetBody`) |
+  | `figure` | 22 | A figure inside a card (a quote's price, a lock key) |
+  | `pageTitle` | 20 | A pushed screen's title (`JourneySubHeader`) |
+  | `prominent` | 19 | A person's name on their profile, a card's lead figure |
+  | `title` | 18 | Card titles |
+  | `lead` | 17 | Section titles, field values, a main action's label |
+  | `bodyLarge` | 16 | List titles that stand out, the help under a question |
+  | `body` | 15 | Running text, list titles |
+  | `bodySmall` | 14 | Chips, a section's link, a sheet's subtitle, form labels |
+  | `detail` | 13.5 | Section tabs, a pushed screen's subtitle |
+  | `small` | 13 | Secondary lines, hints |
+  | `label` | 12.5 | A field's label |
   | `caption` | 12 | Tags, the Hijri date under a day |
 
   A screen never passes a number; a test fails if one does. Main actions
-  are 52 points tall, and picture choice cards 104.
+  are 16 above and below a 17 label (at least 52 points tall), section tabs
+  about 44, chips about 37, and picture choice cards 104. Every journey
+  sheet is `showJourneySheet` with a `JourneySheetBody`: canvas, 28 top
+  radius, 20 / 10 / 20 / 30 padding, a 40×5 handle, 14 to a 22 title, 16 to
+  the content.
 
 ### Spacing And Shape
 

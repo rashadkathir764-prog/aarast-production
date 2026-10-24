@@ -4,10 +4,12 @@ import 'package:image_picker/image_picker.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:provider/provider.dart';
 
+import '../../../core/experience_v3/aarast_v3.dart';
 import '../../../core/media/media_upload_api.dart';
 import '../../../core/network/api_client.dart';
 import '../../../core/routing/app_router.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../core/utils/arabic_count.dart';
 import '../../../core/widgets/aarast_ui.dart';
 import '../../../core/widgets/aarast_toast.dart';
 import '../../account_contexts/account_contexts_api.dart'
@@ -100,6 +102,24 @@ class _ProviderProfileTabState extends State<ProviderProfileTab> {
               ],
             ),
           ),
+          // The services left the bottom bar for the calendar (p28, D39);
+          // p35 lists them here, as «خدماتك».
+          if (dashboard.canUseProviderOperations) ...[
+            const SizedBox(height: 14),
+            JourneyList(
+              children: [
+                JourneyListRow(
+                  key: const Key('provider-profile-services'),
+                  icon: LucideIcons.package,
+                  color: AarastV3Color.primary,
+                  soft: AarastV3Color.primarySoft,
+                  title: 'خدماتك وباقاتك',
+                  subtitle: _servicesLine(dashboard),
+                  onTap: () => context.push(AppRouter.providerServices),
+                ),
+              ],
+            ),
+          ],
           // Moved from the home tab, which is now p13; the performance
           // page (p39) and the first-steps home (p14) replace them later.
           if (dashboard.canUseProviderOperations) ...[
@@ -127,6 +147,31 @@ class _ProviderProfileTabState extends State<ProviderProfileTab> {
         ),
       ],
     );
+  }
+
+  /// «3 خدمات · باقتين», or what to add first.
+  static String _servicesLine(ProviderDashboardProvider dashboard) {
+    final services = dashboard.services.length;
+    final packages = dashboard.packages.length;
+    if (services == 0 && packages == 0) return 'أضف خدماتك وأسعارك';
+    return [
+      if (services > 0)
+        arabicCount(
+          services,
+          one: 'خدمة',
+          two: 'خدمتين',
+          few: 'خدمات',
+          many: 'خدمة',
+        ),
+      if (packages > 0)
+        arabicCount(
+          packages,
+          one: 'باقة',
+          two: 'باقتين',
+          few: 'باقات',
+          many: 'باقة',
+        ),
+    ].join(' · ');
   }
 
   Future<void> _syncProviderData() async {

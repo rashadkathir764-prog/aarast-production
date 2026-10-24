@@ -1,3 +1,5 @@
+import '../../../core/utils/plan_day.dart';
+
 /// The wedding day reserved with a provider after their offer was accepted
 /// (V1 checklist 4.6). Tracking only: no deposit or payment.
 class MarketplaceBooking {
@@ -26,8 +28,9 @@ class MarketplaceBooking {
       id: json['id'].toString(),
       quoteRequestId: json['quoteRequestId']?.toString() ?? '',
       providerId: json['providerId']?.toString() ?? '',
+      // A day, read as the day in Sana'a (D11).
       eventDate:
-          DateTime.tryParse(json['eventDate']?.toString() ?? '') ??
+          planDayFromJson(json['eventDate']) ??
           DateTime.fromMillisecondsSinceEpoch(0),
       status: status,
       lifecycleStatus: json['lifecycleStatus']?.toString() ?? status,

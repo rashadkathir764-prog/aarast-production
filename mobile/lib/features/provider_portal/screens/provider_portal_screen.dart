@@ -25,7 +25,8 @@ class ProviderPortalScreen extends StatefulWidget {
   const ProviderPortalScreen({this.initialTab, super.key});
 
   /// The tab a link opens on: `requests` for the requests tab
-  /// ([AppRouter.providerRequestsTab]); the home tab otherwise.
+  /// ([AppRouter.providerRequestsTab]), `calendar` for the calendar; the
+  /// home tab otherwise.
   final String? initialTab;
 
   @override
@@ -34,6 +35,7 @@ class ProviderPortalScreen extends StatefulWidget {
 
 int? _tabIndexOf(String? tab) => switch (tab) {
   'requests' => 1,
+  'calendar' => 2,
   _ => null,
 };
 
@@ -88,8 +90,7 @@ class _ProviderPortalScreenState extends State<ProviderPortalScreen> {
     if (!mounted) return;
     switch (step) {
       case ProviderFirstStep.calendar:
-        // The days off are kept from the home tab's bookings section.
-        _openTab(0);
+        _openTab(2);
       case ProviderFirstStep.services:
         unawaited(context.push(AppRouter.providerServiceNew));
       case ProviderFirstStep.notifications:
@@ -202,7 +203,7 @@ class _ProviderPortalScreenState extends State<ProviderPortalScreen> {
                 ? const ProviderRequestsTab()
                 : _ProviderOperationsUnavailable(profile: dashboard.profile),
             canUseOperations
-                ? const ProviderServicesTab()
+                ? const ProviderCalendarTab()
                 : _ProviderOperationsUnavailable(profile: dashboard.profile),
             canUseOperations
                 ? const ConversationListView(embedded: true)

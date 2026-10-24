@@ -737,7 +737,8 @@ class ProviderDashboardApi {
     final list = await _apiClient.getJsonList(
       '/api/v1/provider/me/blocked-dates',
     );
-    return [for (final item in list) ?DateTime.tryParse(item.toString())];
+    // Days, read as the day in Sana'a (D11).
+    return [for (final item in list) ?planDayFromJson(item)];
   }
 
   Future<void> blockDate(DateTime day) async {

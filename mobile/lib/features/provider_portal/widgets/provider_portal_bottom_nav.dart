@@ -32,16 +32,18 @@ class ProviderPortalBottomNav extends StatelessWidget {
           label: 'الطلبات',
           badge: waitingRequests,
         ),
+        // p28: the calendar takes the third place, as drawn; the services
+        // open from «ملفي».
         const AarastNavigationItem(
-          icon: LucideIcons.sparkles,
-          label: 'الخدمات',
+          icon: LucideIcons.calendarDays,
+          label: 'التقويم',
         ),
         AarastNavigationItem(
-          icon: LucideIcons.messagesSquare,
+          icon: LucideIcons.messageCircle,
           label: 'الرسائل',
           badge: unreadMessages,
         ),
-        const AarastNavigationItem(icon: LucideIcons.userCircle, label: 'ملفي'),
+        const AarastNavigationItem(icon: LucideIcons.store, label: 'ملفي'),
       ],
       activeIndex: activeIndex,
       onSelected: onSelected,

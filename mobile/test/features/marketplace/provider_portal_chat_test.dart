@@ -121,7 +121,8 @@ void main() {
       'lib/features/provider_portal/widgets/provider_portal_bottom_nav.dart',
     ).readAsStringSync();
     final source = '$portalSource\n$navigationSource';
-    for (final label in ['الرئيسية', 'الطلبات', 'الخدمات', 'الرسائل', 'ملفي']) {
+    // p28 (D39): the calendar takes the services' place, as drawn.
+    for (final label in ['الرئيسية', 'الطلبات', 'التقويم', 'الرسائل', 'ملفي']) {
       expect(source, contains(label));
     }
     expect(source, contains('IndexedStack'));
@@ -260,9 +261,9 @@ void main() {
     expect(tester.getSize(find.text('جديد')).height, lessThanOrEqualTo(24));
     expect(tester.takeException(), isNull);
 
-    await tester.tap(find.text('الخدمات'));
+    await tester.tap(find.text('التقويم'));
     await tester.pumpAndSettle();
-    expect(find.text('الخدمات والباقات'), findsOneWidget);
+    expect(find.byKey(const Key('provider-calendar-close-days')), findsOne);
     expect(tester.takeException(), isNull);
 
     await tester.tap(find.text('الرسائل'));

@@ -9,7 +9,6 @@ import '../../../core/utils/arabic_date_formatter.dart';
 import '../../marketplace/marketplace_api.dart'
     show MarketplaceBooking, ProviderDashboardProfile, QuoteRequest;
 import '../providers/provider_dashboard_provider.dart';
-import '../widgets/provider_bookings.dart' show showProviderBlockedDates;
 import '../widgets/provider_join_parts.dart';
 import '../widgets/provider_request_parts.dart';
 
@@ -120,7 +119,7 @@ class ProviderHomeTab extends StatelessWidget {
       JourneySectionTitle(
         'هذا الأسبوع',
         action: 'التقويم',
-        onAction: () => showProviderBlockedDates(context),
+        onAction: () => onOpenTab(2),
       ),
       if (week.isEmpty)
         JourneyBox(

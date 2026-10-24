@@ -9,3 +9,4 @@ export 'screens/provider_apply_screen.dart' show ProviderApplyScreen;
 export 'screens/provider_offer_screen.dart' show ProviderOfferScreen;
 export 'screens/provider_portal_screen.dart' show ProviderPortalScreen;
 export 'screens/provider_request_screen.dart' show ProviderRequestScreen;
+export 'screens/provider_services_screen.dart' show ProviderServicesScreen;

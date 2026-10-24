@@ -73,7 +73,8 @@ import '../../features/provider_portal/provider_portal_api.dart'
         ProviderApplyScreen,
         ProviderOfferScreen,
         ProviderPortalScreen,
-        ProviderRequestScreen;
+        ProviderRequestScreen,
+        ProviderServicesScreen;
 import '../../features/settings/settings_api.dart'
     show LockSettingsScreen, SettingsScreen;
 import '../../features/sharing/sharing_api.dart'
@@ -143,6 +144,8 @@ class AppRouter {
   /// answered (a quote event tapped in the provider's chat).
   static const providerRequestsTab = '/provider/dashboard?tab=requests';
   static const providerProfileEdit = '/provider/profile/edit';
+  /// His services and packages, opened from «ملفي» (D39).
+  static const providerServices = '/provider/services';
   static const providerServiceNew = '/provider/services/new';
   static const providerPackageNew = '/provider/packages/new';
 

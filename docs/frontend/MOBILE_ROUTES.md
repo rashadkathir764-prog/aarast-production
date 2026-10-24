@@ -19,6 +19,7 @@
 - `/provider/profile/edit`
 - `/provider/requests/:id`
 - `/provider/requests/:id/offer`
+- `/provider/services`
 - `/provider/services/new`
 - `/providers`
 - `/providers/:id`
@@ -76,4 +77,4 @@
 - `/wedding-plans/create`
 - `/welcome`
 
-Total: 75 unique routes
+Total: 76 unique routes

@@ -1670,8 +1670,10 @@ const r19ProviderPortalApi = Object.freeze({
 // (p17), the request parts, the cards (p15, p20), the apology (p18) and the
 // quick offer (p45) read the request through the marketplace owner API, and
 // the apology sends its line through the chat owner API; the offer form's
-// record goes with its file.
-const r19LegalRecordCount = 221;
+// record goes with its file. +2 for p28 and p29 (D39): the calendar's day
+// parts and the day sheet read the bookings through the marketplace owner
+// API.
+const r19LegalRecordCount = 223;
 const trackedOwnerApiContracts = [
   {
     area: 'features/account_contexts',
@@ -2008,6 +2010,7 @@ const trackedOwnerApiContracts = [
       { uri: 'screens/provider_offer_screen.dart', show: ['ProviderOfferScreen'] },
       { uri: 'screens/provider_portal_screen.dart', show: ['ProviderPortalScreen'] },
       { uri: 'screens/provider_request_screen.dart', show: ['ProviderRequestScreen'] },
+      { uri: 'screens/provider_services_screen.dart', show: ['ProviderServicesScreen'] },
     ],
   },
   {
@@ -3161,6 +3164,7 @@ const trackedCompositionRootContracts = [
           'ProviderOfferScreen',
           'ProviderPortalScreen',
           'ProviderRequestScreen',
+          'ProviderServicesScreen',
         ],
       },
       {

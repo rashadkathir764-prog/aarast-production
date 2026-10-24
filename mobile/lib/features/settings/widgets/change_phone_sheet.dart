@@ -2,79 +2,43 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 
+import '../../../core/experience_v3/aarast_v3.dart';
 import '../../../core/phone/yemeni_phone_normalizer.dart';
-import '../../../core/theme/app_theme.dart';
-import '../../../core/widgets/aarast_ui.dart';
 
-/// "Change my phone number" (V1 checklist 4.14). A code goes to the new
-/// number on WhatsApp; entering it moves the account there and signs out
-/// every device, so the next sign-in uses the new number and the same
-/// password. A lost SIM: sign in with the old number and the password,
-/// then move here.
-/// Moves the account to a new phone (g02 «تغيير رقم الجوال»).
+/// g09 «تغيير رقم الجوال», a journey sheet from «حسابي»: the number now, the
+/// new one, and a code on WhatsApp to the new number. Confirming moves the
+/// account and signs out every device, this one too, so the next sign-in is
+/// with the new number. The plan and its participants stay as they are.
+/// [currentPhone] is shown as given («+967 777 123 456»).
 Future<void> showChangePhoneSheet(
   BuildContext context, {
+  required String? currentPhone,
   required Future<String?> Function(String newPhone) requestCode,
   required Future<String?> Function(String newPhone, String code) confirmCode,
 }) {
-  return showAarastBottomSheet<void>(
+  return showJourneySheet<void>(
     context: context,
-    isScrollControlled: true,
-    builder: (sheetContext) => Padding(
-      padding: EdgeInsets.only(
-        bottom: MediaQuery.viewInsetsOf(sheetContext).bottom,
-      ),
-      child: _ChangePhoneSheet(
-        requestCode: requestCode,
-        confirmCode: confirmCode,
-      ),
+    builder: (_) => _ChangePhoneSheet(
+      currentPhone: currentPhone,
+      requestCode: requestCode,
+      confirmCode: confirmCode,
     ),
   );
 }
 
-class ChangePhoneButton extends StatelessWidget {
-  const ChangePhoneButton({
+class _ChangePhoneSheet extends StatefulWidget {
+  const _ChangePhoneSheet({
+    required this.currentPhone,
     required this.requestCode,
     required this.confirmCode,
-    super.key,
   });
+
+  final String? currentPhone;
 
   /// Sends the code; returns an Arabic error or null.
   final Future<String?> Function(String newPhone) requestCode;
 
   /// Moves the account; returns an Arabic error or null (then signs out).
-  final Future<String?> Function(String newPhone, String code) confirmCode;
-
-  @override
-  Widget build(BuildContext context) {
-    return Align(
-      alignment: AlignmentDirectional.centerStart,
-      child: TextButton.icon(
-        key: const Key('settings-change-phone'),
-        onPressed: () => showAarastBottomSheet<void>(
-          context: context,
-          isScrollControlled: true,
-          builder: (_) => Padding(
-            padding: EdgeInsets.only(
-              bottom: MediaQuery.viewInsetsOf(context).bottom,
-            ),
-            child: _ChangePhoneSheet(
-              requestCode: requestCode,
-              confirmCode: confirmCode,
-            ),
-          ),
-        ),
-        icon: const Icon(LucideIcons.smartphone),
-        label: const Text('تغيير رقم الجوال'),
-      ),
-    );
-  }
-}
-
-class _ChangePhoneSheet extends StatefulWidget {
-  const _ChangePhoneSheet({required this.requestCode, required this.confirmCode});
-
-  final Future<String?> Function(String newPhone) requestCode;
   final Future<String?> Function(String newPhone, String code) confirmCode;
 
   @override
@@ -98,7 +62,7 @@ class _ChangePhoneSheetState extends State<_ChangePhoneSheet> {
   Future<void> _send() async {
     final input = _phone.text.trim();
     if (!isValidYemeniPhoneInput(input)) {
-      setState(() => _error = 'اكتب رقم جوال يمني صحيح، مثل 77xxxxxxx.');
+      setState(() => _error = 'اكتب رقم جوال يمني صحيح، مثل 771234567');
       return;
     }
     setState(() {
@@ -119,7 +83,7 @@ class _ChangePhoneSheetState extends State<_ChangePhoneSheet> {
     final code = _code.text.trim();
     if (sentTo == null) return;
     if (!RegExp(r'^[0-9]{4,8}$').hasMatch(code)) {
-      setState(() => _error = 'اكتب الرمز الذي وصلك على واتساب.');
+      setState(() => _error = 'اكتب الرمز اللي وصلك على واتساب');
       return;
     }
     setState(() {
@@ -140,65 +104,122 @@ class _ChangePhoneSheetState extends State<_ChangePhoneSheet> {
 
   @override
   Widget build(BuildContext context) {
-    final textTheme = Theme.of(context).textTheme;
     final sentTo = _sentTo;
-    return SafeArea(
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Text(
-              'تغيير رقم الجوال',
-              style: textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w900),
-            ),
-            const SizedBox(height: 6),
-            Text(
-              sentTo == null
-                  ? 'سنرسل رمزًا على واتساب للرقم الجديد. بعد التأكيد يخرج حسابك من كل الأجهزة، وتدخل بالرقم الجديد وكلمة المرور نفسها.'
-                  : 'أرسلنا رمزًا على واتساب إلى $sentTo.',
-              style: textTheme.bodySmall?.copyWith(
-                color: AppTheme.textSecondary,
-                height: 1.5,
+    final current = widget.currentPhone?.trim() ?? '';
+    return JourneySheetBody(
+      title: 'تغيير رقم الجوال',
+      subtitle: sentTo == null ? null : 'أرسلنا لك رمز على واتساب على $sentTo',
+      bottom: JourneyButton(
+        key: const ValueKey('change-phone-submit'),
+        label: sentTo == null ? 'أرسل الرمز للرقم الجديد' : 'غيّر الرقم',
+        expand: true,
+        large: true,
+        loading: _busy,
+        onPressed: sentTo == null ? _send : _confirm,
+      ),
+      children: [
+        if (sentTo == null) ...[
+          if (current.isNotEmpty) ...[
+            _CurrentPhone(phone: current),
+            const Padding(
+              padding: EdgeInsets.symmetric(vertical: 10),
+              child: Icon(
+                LucideIcons.arrowDown,
+                size: 22,
+                color: AarastV3Color.textFaint,
               ),
             ),
-            const SizedBox(height: 14),
-            if (sentTo == null)
-              TextField(
-                key: const Key('change-phone-number'),
-                controller: _phone,
-                enabled: !_busy,
-                keyboardType: TextInputType.phone,
-                textDirection: TextDirection.ltr,
-                inputFormatters: [
-                  FilteringTextInputFormatter.allow(RegExp(r'[0-9+]')),
-                ],
-                decoration: const InputDecoration(labelText: 'الرقم الجديد'),
-              )
-            else
-              TextField(
-                key: const Key('change-phone-code'),
-                controller: _code,
-                enabled: !_busy,
-                keyboardType: TextInputType.number,
-                textDirection: TextDirection.ltr,
-                inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                decoration: const InputDecoration(labelText: 'رمز التحقق'),
-              ),
-            if (_error != null) ...[
-              const SizedBox(height: 8),
-              Text(
-                _error!,
-                style: textTheme.bodySmall?.copyWith(color: AppTheme.danger),
-              ),
+          ],
+          JourneyTextField(
+            key: const Key('change-phone-number'),
+            label: 'الرقم الجديد',
+            controller: _phone,
+            large: true,
+            autofocus: true,
+            keyboardType: TextInputType.phone,
+            textDirection: TextDirection.ltr,
+            textAlign: TextAlign.right,
+            inputFormatters: [
+              FilteringTextInputFormatter.allow(RegExp(r'[0-9+]')),
             ],
-            const SizedBox(height: 14),
-            AarastButton(
-              label: sentTo == null ? 'إرسال الرمز' : 'تأكيد وتغيير الرقم',
-              icon: sentTo == null ? LucideIcons.send : LucideIcons.checkCircle2,
-              isLoading: _busy,
-              onPressed: _busy ? null : (sentTo == null ? _send : _confirm),
+            errorText: _error,
+            textInputAction: TextInputAction.done,
+            onSubmitted: (_) => _busy ? null : _send(),
+          ),
+          const SizedBox(height: 16),
+          const JourneyNote(
+            icon: LucideIcons.shieldCheck,
+            text:
+                'خطتك ومشاركينك يبقون مثل ما هم. بنطلعك من كل الأجهزة وتدخل من جديد بالرقم الجديد.',
+          ),
+        ] else
+          JourneyTextField(
+            key: const Key('change-phone-code'),
+            label: 'الرمز',
+            controller: _code,
+            large: true,
+            autofocus: true,
+            keyboardType: TextInputType.number,
+            textDirection: TextDirection.ltr,
+            textAlign: TextAlign.right,
+            inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+            errorText: _error,
+            textInputAction: TextInputAction.done,
+            onSubmitted: (_) => _busy ? null : _confirm(),
+          ),
+      ],
+    );
+  }
+}
+
+/// «رقمك الحالي» as g09 draws it: the field's look, read only.
+class _CurrentPhone extends StatelessWidget {
+  const _CurrentPhone({required this.phone});
+
+  final String phone;
+
+  @override
+  Widget build(BuildContext context) {
+    return Semantics(
+      label: 'رقمك الحالي، $phone',
+      excludeSemantics: true,
+      child: Container(
+        key: const ValueKey('change-phone-current'),
+        padding: const EdgeInsets.fromLTRB(16, 10, 16, 12),
+        decoration: BoxDecoration(
+          color: AarastV3Color.paper,
+          borderRadius: BorderRadius.circular(18),
+          border: Border.all(color: AarastV3Color.line),
+        ),
+        child: Row(
+          children: [
+            const Icon(
+              LucideIcons.smartphone,
+              size: 20,
+              color: AarastV3Color.textMuted,
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'رقمك الحالي',
+                    style: JourneyType.of(
+                      JourneyType.label,
+                      color: AarastV3Color.textMuted,
+                    ),
+                  ),
+                  Text(
+                    phone,
+                    textDirection: TextDirection.ltr,
+                    style: JourneyType.of(
+                      JourneyType.lead,
+                      weight: JourneyType.bold,
+                    ),
+                  ),
+                ],
+              ),
             ),
           ],
         ),

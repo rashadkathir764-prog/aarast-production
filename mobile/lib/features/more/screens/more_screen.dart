@@ -168,6 +168,12 @@ class _MoreScreenState extends State<MoreScreen> {
                   title: 'تغيير رقم الجوال',
                   onTap: () => showChangePhoneSheet(
                     context,
+                    currentPhone: switch (user.phone?.trim()) {
+                      final phone? when phone.isNotEmpty => _groupedPhone(
+                        phone,
+                      ),
+                      _ => null,
+                    },
                     requestCode: auth.requestPhoneChange,
                     confirmCode: auth.confirmPhoneChange,
                   ),

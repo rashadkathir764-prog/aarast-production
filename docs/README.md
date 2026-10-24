@@ -108,6 +108,7 @@ changing behavior.
 ### Project
 
 - `docs/project/V1_DELIVERY_CHECKLIST.md`
+- `docs/project/OWNER_REQUIREMENTS_TRACE.md` - the owner's ten requirements (R1 to R10) traced against the current code, with the prioritized gap list.
 - `docs/handover/README.md` - the Arabic V1 handover for the project owner:
   operations, settings (names only), admin guide, accounts to own.
 - `docs/HANDOFF.md`

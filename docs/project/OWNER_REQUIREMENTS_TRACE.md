@@ -1,0 +1,390 @@
+# تتبّع متطلبات صاحب المشروع على الكود الحالي (R1 إلى R10)
+
+Snapshot date: 2026-10-25
+
+الفرع: `groom-journey-build`. هذا الملف قراءة وتحقق من الكود، وما يغيّر أي كود. المرحلة: A1 في `docs/superpowers/plans/2026-10-25-delivery-ledger.md`.
+
+## 0. كيف انكتب هذا الملف
+
+- **اللي قريته:** الجوال `mobile/lib/features/*`، والخادم `backend/src/**` و`backend/prisma/**`، ولوحة الإدارة `admin-web/src`. وراجعت `docs/superpowers/audit/design_inventory.md` و`docs/project/DECISIONS.md` (D17 إلى D45) و`docs/superpowers/plans/2026-10-24-status-and-remaining.md` و`docs/superpowers/plans/2026-10-25-provider-backend-changes.md`.
+- **اللي ما سويته:** ما شغّلت التطبيق ولا الخادم. كل «تشتغل» هنا معناها: الكود يسمح بها من أوله لآخره (الشاشة ثم الاستدعاء ثم الخادم). وكل شي ما قدرت أثبته من الكود مكتوب «ما تحققت».
+- **العلامات:** ✅ يشتغل في الكود. ⚠️ يشتغل بنقص أو بشرط. ❌ ما هو موجود أو مسدود.
+- **المراحل في عمود «المرحلة»** (من سجل التسليم): B1 دورة المزود، B2 العرض والطلب، B3 الحجز والسعة، B4 التقييم والتنبيهات، B5 المهر والعروسة، B6 نموذج البيع، C الإكمال والفروق، جديد = ما تناسبه أي مرحلة.
+- **أرقام B-xx** هي بنود `docs/superpowers/plans/2026-10-25-provider-backend-changes.md`.
+
+## 1. طلب صاحب المشروع وخلاصة الدراسة
+
+الطلب: تطبيق ذكي يدير كل تفاصيل الزواج في اليمن، للعريس والعروسة، كل واحد لحاله أو الاثنين أو بمشاركة. من أول يوم: القاعة، الفستان، التصوير، الذهب، الشقة، شهر العسل، المصاريف، الديون، الأقساط، والمهام الصغيرة قبل يوم الزفاف. كل شي في مكان واحد بدل الفوضى والواتسابات. يعرّفك كم صرفت وكم باقي وايش ناقص. ويربط المستخدمين بالموردين، ويبني بيانات عن السوق، ويفتح فرص للتقسيط والإعلانات والشراكات.
+
+خلاصة الدراسة: التطبيق «نظام مالي للعرس» مو دليل. النسخة الأولى: ميزانية، تتبع مصاريف وديون ودفعات (بدون دفع داخل التطبيق وبدون إقراض)، قائمة مهام، مشاركة محدودة والخصوصية افتراضية (الديون والمصاريف الحساسة مخفية)، دليل مزودين بنطاق سعر و«آخر تحديث للسعر»، طلب عرض بواتساب أو نموذج، عمل خفيف بدون نت، عربي يمني، مساعد ذكي عملي. التقسيط والدفع بعد النسخة الأولى وعن طريق شركاء مرخّصين فقط.
+
+## 2. الملخص
+
+| # | المتطلب | الحالة | السبب في سطر |
+|---|---|---|---|
+| R1 | عريس وعروسة: كل واحد لحاله، أو معًا، أو بمشاركة | ⚠️ | الثلاث طرق تشتغل. لكن العروسة اللي تنضم لخطة عريس ترى ألوانه وكلامه وبنوده هو بس، وما فيه ملخص «كم دفع كل واحد». |
+| R2 | القاعة والفستان والتصوير والذهب والشقة وشهر العسل | ⚠️ | البنود والمهام موجودة للست عند الطرفين، إلا مهمة الذهب عند العروسة. والمزودين: ما فيه فئة للشقة ولا لشهر العسل، وفئة الذهب مخفية عن العريس. |
+| R3 | مصاريف وديون وأقساط (تتبع فقط) | ⚠️ | تسجيل الدين والسداد والباقي يشتغل كامل. المشاكل: الأرشفة تقفل الديون، وحذف السلفة بدون تأكيد، والجدول ما يجمع الدفعات. |
+| R4 | المهام الصغيرة قبل العرس | ✅ | إنشاء وتعديل وإنجاز وحذف وتعيين وقائمة فرعية وخاصة وتذكير وتأجيل مع الموعد كلها تشتغل. نقص بسيط: «ذكّرني» ما له أثر. |
+| R5 | صرفت وباقي وناقص | ⚠️ | «اتفقت، دفعت، باقي» صحيحة من الخادم. «ايش ناقص» محصور في المتأخر والقاعة، وما فيه قائمة بالأساسيات الست. |
+| R6 | ربط المستخدمين بالمزودين (طلب، عرض، محادثة، حجز، تقييم) | ⚠️ | المسار الأساسي كامل عند الطرفين. فيه أربع حالات بدون مخرج (B-01 إلى B-04) وتفاصيل ناقصة. |
+| R7 | الخصوصية | ⚠️ | الخادم يطبّقها بقوة على المال والتكاليف والمهام والإشعارات. النقص: «إخفاء المبالغ» ما يغطي كل الشاشات، ورقم العريس وميزانية طلبه توصل المزود دائمًا. |
+| R8 | مناسب لليمن: خفيف، بدون نت، عربي، واتساب | ⚠️ | عربي ويمني وبدون نت جزئي وواتساب موجود. النقص: العملة واحدة للخطة، والسلف ما تشتغل بدون نت، ونص واحد غير صحيح عن تغيير الموعد. |
+| R9 | المساعد الذكي | ✅ | سبعة أنواع أسئلة، بموافقة، وحد يومي وحد شهري، وبدون اختراع أسعار. يحتاج مفتاح في بيئة الخادم (ما تحققت إنه مفعّل). |
+| R10 | بيانات السوق والإعلانات والشراكات | ⚠️ | تقارير الإدارة ونطاق الأسعار موجودة. الباقات والظهور المميز للمزود ما له طريق تفعيل أبدًا. |
+
+## 3. R1: عريس وعروسة، لحالهم أو معًا أو بمشاركة
+
+### الموجود اليوم
+
+- **نوع الخطة:** `WeddingPersona` فيه `GROOM` و`BRIDE` و`HELPER` (`backend/prisma/schema/planning.prisma:6`). الاختيار في a02 وa02b: `mobile/lib/features/welcome_gateway/screens/smart_welcome_screen*.dart`.
+- **الألوان والخطاب:** `JourneyProfile` يقرأ نوع الخطة (`mobile/lib/core/experience_v3/aarast_journey_profile.dart`) وتحدده `planJourneyProfile` في `mobile/lib/app.dart:145`.
+- **المشاركة:** الشاشات `/wedding-plans/:id/sharing` و`/sharing/add` و`/sharing/:memberId/edit` و`/invites` و`/shared/wedding-plans`. الأدوار في `backend/prisma/schema/collaboration.prisma:1` (المالك، العريس، العروسة، الأهل، المساعد، المساهم، المدير، المحرر، مدير المال، المشاهد).
+- **نقاط الخادم:** `POST /api/v1/wedding-plans/:weddingPlanId/invites`، `POST /api/v1/invites/:token/accept`، `PATCH /api/v1/wedding-plans/:weddingPlanId/members/:memberId`، `DELETE /api/v1/wedding-plans/:weddingPlanId/members/me`، `GET /api/v1/wedding-plans/:weddingPlanId/permissions/me`.
+- **الشريك:** اللي ينضاف بدور `GROOM` أو `BRIDE` يشوف الخطة كلها مثل المالك (`backend/src/modules/collaboration/public/collaboration-permission.port.ts:33`) إلا «من وين» (للمالك وحده) ودعوة الآخرين (`backend/src/modules/collaboration/internal/plan-permissions.ts:33`).
+- **من يدفع:** حقل `payer` على كل تكلفة (العريس، العروسة، الأهل، مشترك، غيره) في `backend/prisma/schema/finance.prisma:40`، ومنه الحقل في `mobile/lib/features/finance/screens/cost_form_screen.dart:68`.
+
+### الرحلة خطوة بخطوة
+
+| الخطوة | الحالة | الدليل |
+|---|---|---|
+| اختيار «خطة مين؟» عريس أو عروسة أو مساعد | ✅ | `smart_welcome_screen.dart`، ونوع الخطة يتحفظ في الخطة |
+| إنشاء الخطة على الجوال بدون حساب، ثم التسجيل ونقلها | ✅ | `POST /api/v1/onboarding/complete` و`POST /api/v1/onboarding/import-local` |
+| تعديل الاسم والموعد والميزانية | ✅ | `PATCH /api/v1/wedding-plans/:id`، شاشة w10 |
+| دعوة الشريك بواتساب برمز | ✅ | `POST /api/v1/invites/:token/request-otp` ثم `verify-otp` ثم `accept` |
+| الشريك يشوف المال والمهام والضيوف والمزودين | ✅ | `collaboration-permission.port.ts:33` |
+| الشريك يشوف «من وين» والسلف | ❌ بقرار | `backend/src/money/funding-sources.service.ts:107` يرجّع قائمة فاضية لغير المالك، والتبويب يختفي في `money_overview_screen.dart:100` |
+| خطة لكل واحد منهم لحاله | ✅ | كل حساب ينشئ خطته. الخطتان غير مرتبطتين ببعض |
+| تكلفة خاصة أو مهمة خاصة لواحد منهم | ✅ | `backend/src/wedding-costs/wedding-costs.service.ts:275`، `WeddingTask.privateToUserId` |
+| مشارك محدود (أهل، مساعد) | ✅ | يشوف اللي ساهم فيه بس، وما يشوف المال بدون إذن (`plan-permissions.ts:37`) |
+| إزالة مشارك أو خروجه | ✅ | `DELETE /api/v1/wedding-plans/:weddingPlanId/members/:memberId` و`members/me` |
+| بعد العرس | ⚠️ | انظر R3 (الأرشفة) |
+
+### الفجوات
+
+- **G13 (P1، B5):** العروسة اللي تنضم لخطة العريس تشوف شكل العريس وكلامه. `planJourneyProfile` يعطي الوردي فقط للمالك (`app.dart:150`)، والمشارك «يبقى على شكل التطبيق» حسب D34. وبنود البداية والمهام الجاهزة تتبع نوع **الخطة** مو نوع اللي يتصفح (`mobile/lib/features/finance/screens/money_overview_screen.dart:259`، `mobile/lib/features/tasks/models/task_starter_catalog.dart:18`). فخطة العريس ما فيها فستان ولا مكياج ولا نقش إلا إذا أضافتها يدويًا.
+- **G14 (P1، B5):** ما فيه ملخص «كم دفع العريس وكم دفعت العروسة». `payer` موجود على التكلفة بس، ولا يُجمع في `backend/src/money/money-summary.service.ts`. وفلتر «مين دفع» (w20) ينتظر الخادم حسب `design_inventory.md`.
+- **ملاحظة:** الشريك ما يشوف «من وين»، والملخص عنده ما فيه «ناقصك». هذا موثّق في V1 البند 4.3 (التمويل خاص بالمالك). ما تحققت إن رشاد يقصد هذا للزوجين.
+
+## 4. R2: القاعة والفستان والتصوير والذهب والشقة وشهر العسل
+
+المصادر: `mobile/lib/features/finance/models/money_starter_catalog.dart`، `backend/src/catalogs/reference-catalog.defaults.ts`، وفئات المزودين في `backend/prisma/migrations/20260729050000_reconcile_provider_category_catalog/migration.sql` (39 فئة في الإنتاج).
+
+### الجدول
+
+«موصى» = تنضاف تلقائيًا لخطة جديدة (`isRecommended`).
+
+| البند | بند مال: العريس | مهمة: العريس | بند مال: العروسة | مهمة: العروسة | فئة مزودين |
+|---|---|---|---|---|---|
+| القاعة | `groom-venue` موصى | `task-groom-venue` موصى | `bride-venue` موصى | `task-bride-hall` موصى | ✅ `wedding-halls` للطرفين |
+| الفستان | `groom-suit` موصى، و`groom-kiswa` موصى | `task-groom-suit` وغير موصى، و`task-groom-kiswa` موصى | `bride-dress` موصى | `task-bride-dress` موصى | ✅ `clothing` للطرفين، و`dresses` للعروسة |
+| التصوير | `groom-photo` موصى | `task-shared-photo` (مشتركة، غير موصى) | `bride-photo` موصى | `task-shared-photo` نفسها | ✅ `photography` للطرفين، و`photo-session` للعروسة |
+| الذهب | `groom-gold` موصى | `task-groom-gold` موصى | `bride-gold` موصى | ❌ ما فيه | ⚠️ `gold` موجودة لكن `showForGroom=false` (سطر 32 من الهجرة) |
+| الشقة / تجهيز المنزل | `groom-home` موصى، و`groom-housing` | `task-shared-home` (مشتركة، غير موصى) | `bride-home` غير موصى، و`bride-room`، و`bride-trousseau` موصى | `task-shared-home` نفسها | ❌ ما فيه فئة |
+| شهر العسل | `groom-honeymoon` غير موصى | `task-shared-honeymoon` غير موصى | `bride-honeymoon` غير موصى | `task-shared-honeymoon` نفسها | ❌ ما فيه فئة |
+
+الخطة بلا نوع (المساعد) تاخذ كتالوج «محايد»: عنده مكان المناسبة والتصوير والمنزل وشهر العسل، **بس بدون ذهب**. السبب: البند `neutral-mahr` («المهر والذهب») ينحذف من كل الكتالوجات لأن المهر خارج الميزانية (`money_starter_catalog.dart:71` و`:129`)، ومعه ينحذف الذهب.
+
+### الفجوات
+
+- **G10 (P1، C):** فئات المزودين. الشقة وشهر العسل ما لهم فئة في الإنتاج (39 فئة، ولا وحدة منها). والذهب فئة `gold` تظهر للعروسة فقط، فالعريس اللي يشتري الشبكة ما يلقى مزودي الذهب في تصفح الأقسام (`marketplace_models.dart:68` و`marketplace_provider.dart:108`). الإدارة تقدر تصلح الاثنين بدون كود من `POST /admin/provider-categories` و`PATCH /admin/provider-categories/:id`.
+- **G11 (P1، C):** مجموعات الربط ناقصة. الخادم (`backend/src/modules/finance/domain/cost-category-matching.ts:1`) والجوال (`mobile/lib/features/marketplace/models/provider_service_groups.dart:4`) كل واحد عنده 8 مجموعات: القاعة، الضيافة، التصوير، الكوشة، الفنان، الفستان، التجميل، القات. ما فيها ذهب ولا منزل ولا شهر عسل. النتيجة: عرض مقبول من مزود ذهب ينحط في بند «أخرى» (`backend/src/modules/finance/infrastructure/finance-port.service.ts:501`)، وزر «استكشف» على بند المنزل أو شهر العسل ما يلقى مزودين. (من قراءة الكود، ما شغّلته.)
+- **G12 (P1، B5 للعروسة وC للمحايد):**
+  - العروسة ما عندها مهمة ذهب ولا مهمة جهاز العروسة (`reference-catalog.defaults.ts:231`).
+  - شهر العسل بند غير موصى عند كل الأطراف (سطور 78 و127 و158)، فما ينضاف لخطة جديدة.
+  - بند المنزل غير موصى عند العروسة.
+  - الخطة المحايدة بلا ذهب (فوق).
+- **ملاحظة تهمّ A4:** بيانات التجربة `backend/prisma/seed.ts:77` فيها 9 فئات بأسماء مختلفة عن الإنتاج (`kosha-decor` بدل `stage-decor`، وبدون `gold`). أي بيئة تجريبية تتعبّى منه ما تمثل الإنتاج.
+
+## 5. R3: مصاريف وديون وأقساط (تتبع فقط)
+
+### الموجود اليوم
+
+- **الاتفاق (التكلفة):** `POST /api/v1/wedding-plans/:weddingPlanId/costs`، `PATCH /api/v1/costs/:id`، `DELETE /api/v1/costs/:id`، `POST /api/v1/costs/:id/cancel`. الشاشة c10 «كيف بتدفع؟» تعطي: بعدين، كاملة، عربون والباقي يوم العرس، على دفعات (`mobile/lib/features/finance/screens/cost_form_screen.plan.dart:8`).
+- **الدفعات:** `POST /api/v1/costs/:id/payments`، `POST /api/v1/cost-payments/:id/reverse`.
+- **جدول الأقساط:** `POST /api/v1/costs/:id/payment-schedules`، `PATCH /api/v1/payment-schedules/:id`، `DELETE /api/v1/payment-schedules/:id`، `POST /api/v1/payment-schedules/:id/cancel`، `POST /api/v1/payment-schedules/:id/pay`.
+- **الدين («من وين»):** `GET /api/v1/wedding-plans/:planId/funding-sources`، `POST /api/v1/wedding-plans/:planId/funding-sources`، `PATCH /api/v1/funding-sources/:id`، `DELETE /api/v1/funding-sources/:id`. أنواعها: مدخرات، دعم أهل، هدية، سلفة، غيره (`finance.prisma:20`).
+- **سداد السلفة:** `POST /api/v1/funding-sources/:id/repayments`، `PATCH /api/v1/loan-repayments/:id`، `DELETE /api/v1/loan-repayments/:id`. الباقي يطلع من الخادم: `outstandingAmount` (`backend/src/money/funding-sources.service.ts:399`). ورقة السلفة في `mobile/lib/features/finance/widgets/funding_sheets.dart:17`.
+
+### الرحلة: سجّل دين وسداده وشوف الباقي
+
+| الخطوة | الحالة | الدليل |
+|---|---|---|
+| تسجيل سلفة باسم الشخص ومبلغها | ✅ | `FundingSourceFormSheet`، والمبلغ أكبر من صفر في الخادم |
+| تقسيم السداد على دفعات بمواعيد | ✅ | يضيف الدفعات واحدة واحدة بعد حفظ السلفة، وإذا فشلت وحدة يقول كم ما انحفظت (`funding_sources_screen.dart:293`) |
+| تسجيل «دفعت دفعة» | ✅ | `onTogglePaid`، وتنقص من «باقي عليك» |
+| التراجع عن دفعة | ✅ | نفس الزر يرجّعها «غير مدفوعة»، والمدفوعة ما تتعدل إلا بعد التراجع (`backend/src/modules/finance/domain/funding-policy.ts:44`) |
+| حذف دفعة سداد غير مدفوعة | ✅ | `LoanRepaymentsSheet` يمنع حذف المدفوعة |
+| مجموع السداد أكبر من السلفة | ⚠️ | الخادم يرفض بـ400 (`funding-policy.ts:16`)، والمستخدم يشوف رسالة عامة «راجع البيانات» (انظر G22) |
+| شوف الباقي من السلف | ✅ | سطر «باقي عليك من السلف» في `funding_sources_screen.dart:191` |
+| تذكير بالسداد | ✅ | بالساعة، للمالك فقط (`backend/src/notifications/plan-reminders.ts:54`) |
+| سجل دفعة للمزود وعكسها | ✅ | `backend/src/modules/finance/domain/wedding-cost-aggregate.ts:59` |
+| تكلفة مدفوعة: حذف أو إلغاء | ✅ مقيّد | ما تنحذف ولا تنلغى إلا بعد عكس الدفعات (`wedding-cost-aggregate.ts:66` و`:72`) |
+| قائمة فاضية | ✅ | `JourneyListState` في `funding_sources_screen.dart:84` |
+| خطأ شبكة | ✅ | نفس الشاشة بزر إعادة |
+| بدون نت: تكاليف ودفعات وأقساط | ✅ | تنحفظ في الطابور (`mobile/lib/core/offline/offline_tables.dart:61`) |
+| بدون نت: السلف | ❌ | ما فيها جدول مخزّن، وتبويب «من وين» يختفي (G35) |
+| مشارك محدود | ✅ | المال مخفي بدون إذن، والمساهم يشوف اللي ساهم فيه بس (`money-summary.service.ts:67`) |
+| بعد العرس | ⚠️ | الرئيسية b07 تعرض «باقي عليك» (اتفاقات غير مدفوعة + سلف)، لكن الأرشفة تقفل كل شي (G15) |
+
+### الفجوات
+
+- **G15 (P1، جديد، يرتبط بـ w12 إلى w15):** الأرشفة تقفل الديون.
+  - تأكيد الأرشفة يقول «ما تقدر تفتحها بعدها من التطبيق» (`mobile/lib/features/wedding_plans/screens/plan_management_screen.plan_edit.dart:91`)، وما يذكر الباقي من اتفاقات وسلف.
+  - الخادم يرفض أي كتابة مالية على خطة مؤرشفة (`backend/src/modules/collaboration/internal/permission.service.ts:268`).
+  - والتذكيرات تشتغل على الخطط `PLANNING` بس (`backend/src/notifications/notifications.service.ts:705`).
+  - يعني اللي يؤرشف وعليه سلفة يخسر تسجيل السداد والتذكير. ما فيه حالة «تم العرس» في الخادم (w12 ينتظر).
+- **G16 (P1، C):** حذف مصدر التمويل بدون تأكيد وبدون حماية. زر الحذف يرسل مباشرة (`mobile/lib/features/finance/widgets/funding_widgets.dart:338`)، والخادم يحذف السلفة مع كل سجل سدادها (`backend/src/modules/finance/infrastructure/funding-sources.repository.ts:75` و`onDelete: Cascade` في `finance.prisma:193`). وحذف مصدر «وصل» ينقص «معك» في الملخص.
+- **G32 (P2، C):** جدول الدفعات ما يجمع. كل دفعة مجدولة تنقارن بالباقي لوحدها، والدفعات الثانية «ما تحجز شي» (`backend/src/modules/finance/domain/payment-schedule-policy.ts:5` و`:12`). ممكن ثلاث دفعات مجدولة مجموعها أكبر من الباقي. القرار موثّق، لكن عنوان «جدول الدفعات» يوهم غير كذا.
+- **G33 (P2، C):** السلفة «الموعودة» (ما وصلت بعد) تنحسب «باقي عليك». `loanTotal` يجمع كل سلفة بغض النظر عن حالتها (`money-summary.service.ts:373`)، وكذلك `owed` في `funding_sources_screen.dart:72`.
+- **G22 (P2، C):** رسائل الخادم للقيود المالية إنجليزية وبدون رمز، فتتحول لرسالة عامة حسب رمز الحالة (`mobile/lib/core/network/api_client.dart:709` و`:768`). مثلًا إلغاء تكلفة عليها دفعات (409) يظهر «تغيّرت البيانات قبل الحفظ. حدّث الصفحة»، وهذا مضلل. (ما تحققت إذا الشاشة تمنع الزر قبل.)
+- **G34 (P2، B4):** تذكير الدفع والبند المتجاوز ينكتب بالمبلغ بدون عملة ولا فواصل: `${schedule.amount.toString()}` في `notifications.service.ts:915` و`plan-reminders.ts:39`.
+- **G35 (P2، C):** السلف والمصادر ما تنخزن بدون نت، والملخص المحلي يحسب بدون تمويل (`mobile/lib/features/finance/data/finance_api.dart:43` و`mobile/lib/features/finance/data/finance_local_summary.dart`)، فبدون نت يختفي تبويب «من وين» وسطر «ناقصك» بدون تنبيه. والخطة المحلية قبل التسجيل ما تسجّل سلفة أبدًا.
+
+## 6. R4: المهام الصغيرة قبل يوم الزفاف
+
+### الموجود اليوم
+
+- **الشاشات:** d01 المهام، d02 مهمة جديدة، d03 مهام جاهزة، d04 تفاصيل، d05 أوراق العقد، w24 المهام على الوقت، w25 مهمة خاصة، w26 المتأخرة في `mobile/lib/features/tasks/screens/`.
+- **نقاط الخادم:** `POST /api/v1/wedding-plans/:weddingPlanId/tasks`، `PATCH /api/v1/tasks/:id`، `DELETE /api/v1/tasks/:id`، `PATCH /api/v1/tasks/:id/assign`، `POST /api/v1/tasks/:id/checklist`، `GET /api/v1/wedding-plans/:weddingPlanId/timeline`، `POST /api/v1/wedding-plans/:weddingPlanId/tasks/shift-due-dates`.
+- **المهام الجاهزة:** 26 مهمة بموعدها «قبل العرس بكذا يوم» (`reference-catalog.defaults.ts:182`). تظهر لما الخطة فيها أقل من 3 مهام (`task_timeline_screen.starter.dart:4`)، وما تكرر المهمة اللي بنفس العنوان (`:50`).
+
+### الرحلة
+
+| الخطوة | الحالة | الدليل |
+|---|---|---|
+| إضافة مهمة وتحديد موعدها والمسؤول | ✅ | `tasks.service.ts:149` و`:365` |
+| قائمة فرعية داخل المهمة | ✅ | `createChecklistItem` |
+| إنجاز المهمة والتراجع | ✅ | `PATCH /api/v1/tasks/:id` يغيّر الحالة بين `TODO` و`DONE` |
+| حذف مهمة | ✅ | `DELETE /api/v1/tasks/:id` |
+| مهام جاهزة حسب نوع الخطة | ✅ | `mobile/lib/features/tasks/models/task_starter_catalog.dart:73` |
+| قائمة فاضية وخطأ شبكة | ✅ | w42 مبنية |
+| بدون نت | ✅ | `task` في الطابور |
+| مشارك محدود | ✅ | يشوف مهامه أو اللي ساهم فيها، والخاصة للمالك والشريك فقط |
+| تذكير قبل الموعد بسبعة أيام وعند التأخر | ✅ | `notifications.service.ts:668` |
+| تأجيل العرس يحرّك المهام المفتوحة | ✅ | `postpone_sheet.dart:139` |
+| بعد العرس | ⚠️ | المهام المتأخرة تبقى بدون حالة «تم العرس» (w12 ينتظر)، وتتوقف تذكيراتها بالأرشفة فقط |
+
+### الفجوات
+
+- **G36 (P2، C):** `reminderAt` ينحفظ في الخادم (`backend/prisma/schema/tasks.prisma`) لكن ما أحد يقرأه للتذكير. التذكير يمشي على `dueDate` بس. والجرد يسجّل إن الرئيسية b02 انبنت «بدون ذكّرني».
+- مهمة الذهب عند العروسة غير موجودة، وهي G12.
+
+## 7. R5: كم صرفت، كم باقي، ايش ناقص
+
+### الموجود اليوم
+
+- **الأرقام من الخادم:** `GET /api/v1/wedding-plans/:planId/money-summary` يرجّع الميزانية، والاتفاقات، والمدفوع، والباقي، والبنود، والتحذيرات، والتمويل للمالك (`backend/src/money/money-summary.service.ts:289`). التكاليف الملغاة ما تنحسب (`backend/src/modules/finance/infrastructure/money-summary.repository.ts:28`). الجوال ما يحسب شي (C2) إلا لما ينقطع النت.
+- **الرئيسية:** `GET /api/v1/wedding-plans/:planId/dashboard-summary` تعطي المهام المتأخرة، والدفعة الجاية، والتحذيرات، وأهم الأعمال. وسطر «اتفقت على كذا، دفعت كذا، باقي عليك كذا» في `mobile/lib/features/finance/screens/money_overview_screen.summary.dart:48`.
+- **اتساق الأرقام:** الملخص واللوحة يحسبان كل واحد على حدة (حسابان في كودين)، لكن بنفس الاستثناءات: التكاليف الملغاة والخاصة بغيرك (`backend/src/dashboard/dashboard.service.ts:149`). ما اختبرت إنهم يطلعون نفس الرقم.
+
+### الرحلة
+
+| الخطوة | الحالة | الدليل |
+|---|---|---|
+| «كم صرفت»: المدفوع كله | ✅ | `costs.paid` |
+| «كم باقي» على الاتفاقات | ✅ | `costs.outstanding` |
+| «كم باقي من الميزانية» | ✅ | `budget.remaining`، والعنوان «المتاح من الميزانية». هو الميزانية ناقص **الاتفاقات** مو ناقص المدفوع |
+| «ايش ناقصك من الفلوس» | ✅ للمالك | `funding.shortfall` يحسب الموعود أيضًا |
+| بند فات حده | ✅ | `CATEGORY_EXCEEDED` وإشعار `budgetCategoryExceededRow` |
+| «ايش ناقص قبل يوم العرس» | ⚠️ | مهام متأخرة ودفعات قريبة وعروض وصلت ودعوات معلّقة، وللقاعة فقط خانة «محجوزة؟» (`backend/src/dashboard/dashboard-setup.contracts.ts:6`) |
+| بدون نت | ⚠️ | الملخص يتحسب على الجوال بدون تمويل (G35) |
+
+### الفجوات
+
+- **G23 (P1، C):** ما فيه قائمة «ايش ناقص» للأساسيات الست (قاعة، فستان، مصور، ذهب، شقة، شهر عسل). الوحيد المحسوب هو القاعة (`dashboard.service.ts:450`). غيرها يظهر فقط لو أضاف المستخدم مهمة له. والبديل «ايش نسيت؟» في المساعد، وهو محدود بـ10 أسئلة باليوم ويحتاج موافقة ومفتاح.
+- **ملاحظة:** نسبة «التقدم» في الرئيسية = المهام المنجزة ÷ كل المهام (`dashboard-summary.presenter.ts:392`) ما تعكس المال. ما تحققت إذا المهام الملغاة تنحسب في المجموع.
+
+## 8. R6: الربط بين المستخدمين والمزودين (من الطلب للتقييم، من الجهتين)
+
+### الموجود اليوم
+
+**جهة العريس:** f01 طلباتي (`provider_requests_screen.dart`)، f02 استكشف (`provider_marketplace_screen*.dart`)، f03 صفحة المزود، f04 قارن، f05 طلب الحجز، f06 المحادثة (`chat_screen.dart`)، f07 اطلب عرض (`quote_request_screen.dart`)، f09 المفضلة، w34 الحجوزات (`plan_bookings_screen.dart`)، y09 لحظة الحجز، g04 قيّم (`provider_reviews_screen.dart`).
+
+**جهة المزود** (`mobile/lib/features/provider_portal/screens/`): p01 إلى p12 الانضمام والحالات (`provider_apply_screen.dart`، `provider_pending_screen.dart`، `provider_changes_screen.dart`، `provider_rejected_screen.dart`، `provider_suspended_screen.dart`)، الطلبات والعرض (`provider_request_screen.dart`، `provider_offer_screen.dart`)، الحجز والتقويم (`provider_booking_screen.dart`، `provider_calendar_tab.dart`)، الخدمات والباقات والمعرض والأداء.
+
+**نقاط الخادم:**
+
+| المرحلة | العريس | المزود |
+|---|---|---|
+| الانضمام | | `POST /api/v1/provider/apply`، `POST /api/v1/provider/claim/:providerId`، `PATCH /api/v1/provider/me/profile` |
+| الطلب | `POST /api/v1/wedding-plans/:weddingPlanId/quote-requests`، `POST /api/v1/providers/:id/quote-requests`، `PATCH /api/v1/me/quote-requests/:id/cancel` | `PATCH /api/v1/provider/me/quote-requests/:id/status` |
+| العرض | `PATCH /api/v1/quote-offers/:id/accept`، `PATCH /api/v1/quote-offers/:id/reject` | `POST /api/v1/provider/me/quote-requests/:id/offers`، `PATCH /api/v1/provider/me/quote-offers/:id` |
+| المحادثة | `GET /api/v1/quote-requests/:quoteRequestId/conversation`، `POST /api/v1/conversations/:id/messages` | نفسها |
+| الحجز | `POST /api/v1/me/quote-requests/:id/booking`، `PATCH /api/v1/me/bookings/:id/cancel` | `PATCH /api/v1/provider/me/bookings/:id/confirm` و`decline` و`cancel`، `POST /api/v1/provider/me/blocked-dates` |
+| التقييم | `POST /api/v1/providers/:id/reviews`، `PATCH /api/v1/reviews/:id`، `DELETE /api/v1/reviews/:id` | `GET /api/v1/provider/me/reviews` (قراءة فقط) |
+
+- قبول العرض يضيفه تكلفة في الميزانية، وإذا ما لقى بندًا يناسبه يحطه في «أخرى» (`finance-port.service.ts:501`).
+- المحادثة مربوطة بطلب العرض فقط (ما فيه رسائل حرة).
+- الحجز: حجز مؤكد واحد لكل مزود في اليوم، يفرضه فهرس في قاعدة البيانات (`20261015120000_add_bookings_and_provider_calendar/migration.sql:70`).
+- التقييم: مرة واحدة لكل عميل لمزود، وبعد حجز مؤكد مرّ يومه (`backend/src/marketplace/marketplace.service.ts:684`).
+
+### الرحلة من الجهتين
+
+| الخطوة | الحالة | الدليل |
+|---|---|---|
+| المزود يقدّم طلب انضمام | ✅ | `apply`، ولا يطلب خدمة (G37) |
+| الإدارة توافق | ✅ | `/admin/providers/:id/approve` |
+| الإدارة تطلب تعديل، والمزود يصلّح ويرسل | ❌ | G01 |
+| المزود المرفوض يقدّم من جديد | ❌ | G02 |
+| العريس يطلب عرض سعر | ✅ | `quote-request-creation.ts` |
+| المزود يشوف الطلب، يرد بعرض أو يعتذر | ✅ | `provider-dashboard.service.ts:838` |
+| المزود يسحب عرضه | ❌ | G03 |
+| الطلب بدون رد | ❌ | G04 |
+| العريس يقبل أو يرفض العرض | ✅ | `quote-offer-acceptance.ts` وrejection |
+| العريس يلغي الطلب | ✅ | `quote-request-cancellation.ts` |
+| محادثة | ✅ | `conversations.controller.ts` |
+| طلب حجز، وتأكيد أو اعتذار | ✅ | `booking-policy.ts` |
+| حجزان لنفس اليوم | ✅ | الثاني يطلع له `BOOKING_DATE_UNAVAILABLE` برسالة عربية (`marketplace_booking.dart:123`) |
+| إلغاء الحجز من أي طرف قبل يومه | ✅ | `backend/src/marketplace/booking-policy.ts:86` |
+| تقييم بعد العرس | ✅ | `REVIEW_REQUIRES_COMPLETED_BOOKING` مترجم (`marketplace_provider.quotes.dart:245`) |
+| المزود يرد على التقييم | ❌ | G20 |
+| بعد الحجز: «تم العرس؟» والتسليم | ❌ | B-22 وB-23 |
+| تأجيل العرس والحجز على اليوم القديم | ⚠️ | الجوال يسمّي الحجوزات ويقول «كلّم المزودين»، والخادم ما يغيّر شي (B-24) |
+
+### الفجوات
+
+- **G01 (P0، B1):** `NEEDS_CHANGES` بلا مخرج للمزود (B-01). المزود يصلّح ملفه ثم «كلّم الدعم» (`provider_changes_screen.dart:78` و`:136`). لا يوجد انتقال من `NEEDS_CHANGES` إلى `PENDING` (`backend/src/admin/provider-admin-lifecycle.ts:14`)، والإدارة تقدر توافق مباشرة لكنها ما تدري إنه صلّح.
+- **G02 (P0، B1):** المرفوض عالق (B-02). الملف للقراءة فقط (`backend/src/modules/marketplace/public/provider-access-policy.ts:31`) وزر الشاشة «تكلّم مع الدعم» (`provider_rejected_screen.dart:91`).
+- **G03 (P0، B2):** سحب العرض (B-03). الحالة `WITHDRAWN` معرّفة (`backend/prisma/schema/marketplace.prisma:28`) وما أحد يكتبها.
+- **G04 (P0، B2):** الطلب بلا انتهاء (B-04). حالات الطلب (`marketplace.prisma:15`) ما فيها «منتهي»، ومسار الانتقال (`backend/src/marketplace/quote-lifecycle.ts:61`) ما فيه وقت. الطلب `SENT` يبقى للأبد.
+- **G37 (P1، B1):** الانضمام بدون خدمة وسعر (B-10). `apply` ما يطلب خدمات. واستلام الملف من الدليل `claim` يفعّل الملف فورًا بإثبات الرقم بدون مراجعة (B-12) في `provider-dashboard.service.ts:227`.
+- **G24 (P1، B2):** تفاصيل العرض: سبب الاعتذار (B-05)، ونسخ العرض و«ايش تغيّر» (B-06)، و«يشمل / ما يشمل» (B-07)، وسبب رفض العريس (B-11).
+- **G25 (P1، B3):** السعة (B-20: الافتراضي 1 والقيد اليوم ثابت)، و«تم العرس؟» (B-22)، والتسليم (B-23)، وتغيير الموعد أو العدد (B-24).
+- **G20 (P1، B4):** رد المزود على التقييم وتنبيه التقييم الجديد (B-09)، وتصليح نصوص التنبيهات (B-38)، وفتح التنبيه لطلبه (B-19).
+- **G18 (P1، B2):** رقم العريس وميزانية طلبه توصل المزود دائمًا (B-08). انظر R7.
+- **G19 (P1، جديد):** العملة. عرض المزود لازم يطابق عملة الخطة وإلا يُرفض (`provider-dashboard.service.ts:1356`)، والعملة تتثبت بعد أول تكلفة (`backend/src/money/money-budget.service.ts:99`). وتسجيل الخطة يفترض الريال اليمني (`smart_welcome_screen.dart:212`). مزود يسعّر بالريال السعودي أو الدولار (شائع في الذهب والقاعات) ما يقدر يرسل عرضًا لخطة بالريال اليمني، ورسالة الرفض إنجليزية فتطلع «راجع البيانات».
+
+## 9. R7: الخصوصية، والتطبيق على الخادم
+
+**الخلاصة:** الخادم يطبّق الخصوصية. ما تعتمد على الجوال. هذا اللي تحققت منه:
+
+| القاعدة | وين تُطبّق |
+|---|---|
+| المشارك ما يشوف المال بدون إذن صريح | `canViewMoney` يبدأ `false` لكل الأدوار إلا المالك والعريس والعروسة ومدير المال (`plan-permissions.ts:14` و`:66`) |
+| المساهم يشوف التكاليف اللي ساهم فيها فقط، وميزانية الخطة `null` عنده | `money-summary.service.ts:67` و`:174` |
+| «من وين» والسلف للمالك وحده، وتختفي حتى عن الشريك | `funding-sources.service.ts:107` و`:322`، `money-summary.service.ts:122` |
+| التكلفة الخاصة مخفية عن الطرف الثاني في القوائم والتفاصيل والدفعات والملخص والرئيسية والجدول الزمني | `cost-privacy.repository.ts`، وتُستدعى في `wedding-costs.service.ts:1699` و`:1713`، `dashboard.service.ts:149`، `timeline.service.ts:146` |
+| ما يتسجل حدث في سجل المساهمات عن تكلفة خاصة | `wedding-costs.service.ts:1762` |
+| مدخلات المساعد تستثني التكاليف الخاصة بغيرك | `backend/src/dashboard/assistant/assistant.service.ts:289`، والمساعد للمالك والشريك فقط (`:137`) |
+| المهمة الخاصة تذكّر صاحبها فقط | `notifications.service.ts:835` |
+| تذكير الدفع لغير المالك نص عام بدون مبلغ | `notifications.service.ts:915` |
+| الخطة المؤرشفة للقراءة فقط | `permission.service.ts:268` |
+| تحويل التكلفة من مشتركة إلى خاصة ممنوع بعد الإنشاء | `wedding-costs.service.ts:459`، رمز `COST_PRIVACY_AT_CREATION_ONLY` |
+
+### الفجوات
+
+- **G17 (P1، C):** «إخفاء المبالغ» تفضيل على الجهاز فقط (`mobile/lib/core/preferences/device_preferences.dart:15`) وما يغطي كل شاشات المال. يخفي في الملخص وتفاصيل الاتفاق والدفعة والإيصالات والرئيسية، **ولا يخفي** في:
+  - تفاصيل البند `budget_category_details_screen.dart:93` و`:150`
+  - توزيع الميزانية `money_budget_screen.rows.dart:132` و`:182`
+  - «من وين» والسلف `funding_sources_screen.dart:113` و`:189`
+  - ورقة جدول الدفعات `payment_schedule_sheet.dart:134` و`:224`
+  - بطاقة «باقي عليك» بعد العرس `aarast_dashboard_journey.dart:512`
+  - ونصوص الإشعارات (G34)
+- **G18 (P1، B2):** خصوصية العريس مع المزود. `toQuoteResponse` يرجّع للمزود دائمًا `contactPhone` و`budgetMin` و`budgetMax` ورقم المستخدم (`provider-dashboard.service.ts:1536` إلى `:1540`). التصميم يقول «ما يوصلونك إلا إذا شاركها» (B-08). الجوال يخفيها والبيانات توصل.
+- **ملاحظة:** رقم الجوال في بطاقة الضيف ظاهر لكل من عنده إذن الضيوف. هذا مقصود (الضيوف مو مال).
+
+## 10. R8: مناسب لليمن
+
+| الجانب | الحالة | الدليل |
+|---|---|---|
+| عربي يمني | ✅ | كل النصوص باللهجة، والإنجليزي من الخادم يتحول لعربي عام (`api_client.dart:709`) |
+| ذكر وأنثى | ✅ | `context.say(groom, bride)`، D43 |
+| خفيف وبدون نت جزئي | ⚠️ | مخزّن ويكتب بدون نت: الخطط والأعضاء والضيوف والمهام والفئات والتكاليف والدفعات والأقساط والحجوزات وطلبات العروض والدليل والمفضلة (`offline_tables.dart:9` و`:56`). غير مخزّن: السلف، المحادثة، التقييمات، الإشعارات، عروض الأسعار. حجم التطبيق: ما تحققت |
+| واتساب | ✅ | رمز الدخول بواتساب، ودعوات الضيوف، ومشاركة ملخص الميزانية مع خيار إخفاء المبالغ (`mobile/lib/core/widgets/aarast_share_sheet.dart:10`)، وزر واتساب في صفحة المزود (`provider_details_screen.widgets.dart:24`) |
+| الدخول | ⚠️ | الرمز عبر واتساب فقط. قناة الرسائل خارجية، وما تحققت من حالة تشغيلها |
+| التقويم والتاريخ | ✅ | يوم كامل بتوقيت صنعاء (D11)، وموسم رمضان في اختيار التاريخ |
+| العملة | ⚠️ | ريال يمني، ريال سعودي، دولار، لكن **عملة واحدة للخطة** (G19) |
+
+- **G21 (P1، C):** نص غير صحيح عن تغيير الموعد. شاشة «خطتك جاهزة» تقول «وكلها تتعدل لو تغيّر الموعد» (`mobile/lib/features/welcome_gateway/screens/smart_welcome_screen.plan.dart:532`). الواقع حسب `postpone_sheet.dart:24` و`:224`: المهام فقط تنتقل، والدفعات تبقى على مواعيدها والحجوزات تبقى على اليوم القديم. و«الباقي يوم العرس» يتحفظ بتاريخ ثابت (`cost_form_screen.plan.dart:4`). وعنوان شاشة التأجيل «نرتب كل شيء على الموعد الجديد» أيضًا مبالغ فيه (P2).
+- **G38 (P2):** المحادثة مع المزود بدون نت غير ممكنة، وتضارب الكتابات بدون نت ما اتحل (x19 مؤجل).
+
+## 11. R9: المساعد الذكي (b11)
+
+**الموجود:** `GET /api/v1/wedding-plans/:weddingPlanId/assistant` للحالة، و`POST /api/v1/wedding-plans/:weddingPlanId/assistant/questions` للسؤال. سبعة أنواع: خطة عمل، توزيع الميزانية، مقارنة العروض، وين أوفر، ايش نسيت، رسالة تفاوض، سؤال حر (`backend/src/dashboard/assistant/assistant.prompt.ts:5`). الشاشة `/wedding-plans/:id/assistant` في `mobile/lib/features/wedding_plans/screens/plan_assistant_screen.dart`.
+
+**حدود النسخة الأولى كلها مطبّقة:**
+- موافقة صريحة قبل إرسال بيانات الخطة (`ASSISTANT_CONSENT_REQUIRED`).
+- حد يومي لكل حساب، افتراضيه 10، وسقف شهري للخدمة كلها بالدولار (`backend/src/dashboard/assistant/assistant-config.ts:19`).
+- للمالك والشريك فقط (`assistant.service.ts:137`).
+- لا يخترع أسعارًا ولا يوصي بقرض ولا طلب بيانات دفع (القواعد 2 و4 في `backend/src/dashboard/assistant/assistant.prompt.ts:70`).
+- يستخدم أسعار السوق في مدينة الخطة فقط، ومن ثلاثة مزودين أو أكثر.
+- ما يشوف السلف ولا مصادر التمويل.
+
+**الفجوات:**
+- **G40 (P2):** يشتغل فقط لو في بيئة الخادم نموذج معروف السعر ومفتاح (`readAssistantConfig`). بدونه يرد `ASSISTANT_DISABLED` ويقول الجوال «المساعد غير مفعّل بعد». ما تحققت إنه مفعّل في الإنتاج.
+- **ملاحظة:** «يذكّرك بالدفعات» ما هو من المساعد. التذكير آلي بدون ذكاء اصطناعي (R4 وR3)، وهذا يطابق الدراسة.
+
+## 12. R10: بيانات السوق والإعلانات والشراكات
+
+**الموجود:**
+- **بيانات السوق:** نطاق أسعار (أقل، وسيط، أعلى) لكل مدينة وفئة من ثلاثة مزودين أو أكثر، من أسعار المزودين المنشورة (`backend/src/modules/marketplace/infrastructure/market-prices.repository.ts`). و«آخر تحديث للسعر» (`priceUpdatedAt`) يظهر «محدّث هذا الشهر» في البطاقة (`provider_result_card.dart:11`).
+- **تقارير الإدارة:** `GET /admin/reports/success` (المستخدمون النشطون في 7 أيام، والتكاليف لكل خطة، ونسبة الطلبات اللي صارت حجوزات في 30 يومًا، والمزودون الظاهرون، وجدول الأسعار) و`GET /admin/reports/overview`، ومعها تنزيل CSV (`admin-web/src/features/dashboard/ReportsPage.tsx`).
+- **الظهور المميز:** حقل `isFeatured` على المزود وعلى الخدمة، والدليل يرتّب المميز أول (`backend/src/modules/marketplace/infrastructure/marketplace-core.repository.ts:22` و`:96`)، وبطاقة المزود تكتب «مميز».
+
+**الفجوات:**
+- **G05 (P0، B6):** ما فيه طريق لتفعيل الظهور المميز للمزود. الكتابة على `Provider.isFeatured` غير موجودة في أي مكان إلا إنشاء المزود بـ`false` (`backend/src/admin/admin-mutation-executor.ts:225`) وبيانات التجربة. الإدارة تقدر تميّز **الخدمة** فقط (`PATCH /admin/services/:id`). ما فيه باقة ولا مدة ولا سجل ولا تنبيه انتهاء (B-43). هذا وعد رشاد في D41 («الإدارة تفعّلها بيدها»).
+- **G41 (P2، جديد):** بيانات السوق من أسعار المزودين المنشورة فقط. ما فيه تجميع مجهول الهوية لما يدفعه العرسان فعلًا حسب الفئة والمدينة. تقرير النجاح يعدّ التكاليف فقط (`countRecordedCosts`). هذا يتماشى مع الدراسة للنسخة الأولى، لكن «يبني بيانات عن السوق» أوسع منه.
+- **G42 (P2، B6):** الإعلانات والشراكات: ما فيه نموذج لموضع إعلان أو شريك أو حملة. التقسيط والتمويل بعد النسخة الأولى حسب الدراسة وD41.
+
+## 13. القائمة المرتبة بالأولوية
+
+**P0: يكسر وعد رشاد.**
+
+| # | المتطلب | الفجوة | الدليل | المرحلة |
+|---|---|---|---|---|
+| G01 | R6 | المزود المطلوب تعديل ملفه ما يقدر يرجّعه للمراجعة (B-01) | `provider_changes_screen.dart:78`، `provider-admin-lifecycle.ts:14` | B1 |
+| G02 | R6 | المرفوض عالق للأبد (B-02) | `provider_rejected_screen.dart:91`، `provider-access-policy.ts:31` | B1 |
+| G03 | R6 | سحب العرض ما له كاتب (B-03) | `marketplace.prisma:28` | B2 |
+| G04 | R6 | طلب العرض بلا انتهاء (B-04) | `marketplace.prisma:15`، `quote-lifecycle.ts:62` | B2 |
+| G05 | R10 | الظهور المميز والباقات للمزود ما لها طريق تفعيل (B-43) | `admin-mutation-executor.ts:225` | B6 |
+
+**P1: عيب ظاهر.**
+
+| # | المتطلب | الفجوة | الدليل | المرحلة |
+|---|---|---|---|---|
+| G10 | R2 | الشقة وشهر العسل بدون فئة مزودين، والذهب مخفي عن العريس | `migration.sql:32` (reconcile)، `marketplace_models.dart:68` | C |
+| G11 | R2 | مجموعات الربط تنقصها الذهب والمنزل وشهر العسل | `cost-category-matching.ts:1`، `provider_service_groups.dart:4` | C |
+| G12 | R2 | العروسة بلا مهمة ذهب وجهاز، وشهر العسل غير موصى، والمحايد بلا ذهب | `reference-catalog.defaults.ts:231`، `money_starter_catalog.dart:129` | B5 (العروسة) وC (المحايد) |
+| G13 | R1 | العروسة المنضمة لخطة العريس ترى ألوانه وكلامه وبنوده | `app.dart:150`، `money_overview_screen.dart:259` | B5 |
+| G14 | R1 وR5 | ما فيه ملخص «كم دفع كل واحد» | `money-summary.service.ts`، `finance.prisma:40` | B5 |
+| G15 | R3 | الأرشفة تقفل تسجيل الديون والتذكير بدون تحذير | `plan_management_screen.plan_edit.dart:91`، `permission.service.ts:268`، `notifications.service.ts:705` | جديد (w12 إلى w15) |
+| G16 | R3 | حذف السلفة بدون تأكيد ويمسح سجل السداد | `funding_widgets.dart:338`، `funding-sources.repository.ts:75` | C |
+| G17 | R7 | «إخفاء المبالغ» ما يغطي كل الشاشات | سطور في القسم 9 | C |
+| G18 | R7 وR6 | رقم العريس وميزانية طلبه توصل المزود دائمًا (B-08) | `provider-dashboard.service.ts:1536` | B2 |
+| G19 | R8 وR6 | عملة واحدة للخطة، وعرض المزود بعملة ثانية يُرفض برسالة مضللة | `provider-dashboard.service.ts:1356`، `money-budget.service.ts:99` | جديد |
+| G20 | R6 | رد المزود على التقييم وتنبيهه (B-09) ونصوص التنبيهات (B-38) | لا نقطة خادم لرد التقييم | B4 |
+| G21 | R8 | «وكلها تتعدل لو تغيّر الموعد» غير صحيح | `smart_welcome_screen.plan.dart:532`، `postpone_sheet.dart:224` | C |
+| G23 | R5 | ما فيه «ايش ناقص» للأساسيات الست | `dashboard.service.ts:450` | C |
+| G24 | R6 | تفاصيل العرض والاعتذار: B-05 وB-06 وB-07 وB-11 | `provider-backend-changes.md` | B2 |
+| G25 | R6 | السعة وتم العرس والتسليم وتغيير الموعد: B-20 وB-22 وB-23 وB-24 | `provider-backend-changes.md` | B3 |
+| G37 | R6 | الانضمام بدون خدمة، والاستلام يفعّل بدون مراجعة (B-10 وB-12) | `provider-dashboard.service.ts:227` | B1 |
+| G28 | R1 وR2 | المهر خارج الميزانية وما له مكان ولا بند (a06) | `money_starter_catalog.dart:71`، `design_inventory.md` | B5 |
+
+**P2: تحسين.**
+
+| # | المتطلب | الفجوة | المرحلة |
+|---|---|---|---|
+| G22 | R3 | رسائل القيود المالية الإنجليزية تطلع عامة ومضللة أحيانًا (`api_client.dart:768`) | C |
+| G32 | R3 | جدول الدفعات ما يجمع، مجموع المجدول ممكن يزيد على الباقي (`payment-schedule-policy.ts:12`) | C |
+| G33 | R3 | السلفة الموعودة تنحسب «باقي عليك» (`money-summary.service.ts:373`) | C |
+| G34 | R3 | مبلغ التذكير بدون عملة (`notifications.service.ts:915`) | B4 |
+| G35 | R3 وR8 | السلف بدون نت، وتبويب «من وين» يختفي، والخطة المحلية بلا سلف | C |
+| G36 | R4 | `reminderAt` ينحفظ وما يُستعمل | C |
+| G38 | R8 | المحادثة وتضارب الكتابة بدون نت | C |
+| G40 | R9 | المساعد يحتاج مفتاح بالخادم (ما تحققت إنه مفعّل) | C |
+| G41 | R10 | بيانات السوق من الأسعار المنشورة فقط، بدون تجميع لما يدفعه العرسان | جديد |
+| G42 | R10 | لا نموذج للإعلانات والشراكات خارج الظهور المميز | B6 |
+| — | R2 | بيانات التجربة `seed.ts:77` بفئات غير فئات الإنتاج (A4) | جديد |
+| — | R8 | عنوان شاشة التأجيل «نرتب كل شيء» مبالغ فيه | C |
+
+## 14. اللي ما تحققت منه
+
+- ما شغّلت التطبيق ولا الخادم ولا الاختبارات. كل الحالات من قراءة الكود، ومنها «يشتغل».
+- إذا فئات الإنتاج الفعلية في قاعدة البيانات الحيّة مثل الهجرة (الإدارة تقدر تكون عدّلتها بعد).
+- إذا المساعد مفعّل في الإنتاج (مفتاح ونموذج وميزانية).
+- حجم التطبيق وسرعته على جوالات اليمن.
+- حالة قناة واتساب لرموز الدخول.
+- إذا شاشة تفاصيل الاتفاق تمنع زر الإلغاء قبل ما يصل لخطأ 409 (G22).
+- إذا المهام الملغاة تدخل في نسبة التقدم.
+- إذا الأرقام الفعلية لمزودين وأسعار كل مدينة كافية لتظهر «مزودين $city بأسعارهم» (الخطة الأولى تعد بها).

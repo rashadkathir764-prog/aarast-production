@@ -372,16 +372,25 @@ class _SmartWelcomeScreenState extends State<SmartWelcomeScreen> {
         onBack: _back,
       ),
     };
+    // The start and «خطة مين؟» are the same for everyone. From a03 on the
+    // plan being made already has its owner, so its steps take that
+    // profile (the bride's rose and voice) before the plan exists.
+    final shared = _step == _WelcomeStep.start || _step == _WelcomeStep.whose;
     return AarastScreenFrame(
       maxWidth: 600,
       safeAreaBottom: false,
       backgroundColor: AarastV3Color.canvas,
-      child: AnimatedSwitcher(
-        duration: AarastV3Motion.standard,
-        child: KeyedSubtree(key: ValueKey(_step), child: page),
+      child: JourneyProfileScope(
+        profile: shared ? JourneyProfile.groom : _profile,
+        child: AnimatedSwitcher(
+          duration: AarastV3Motion.standard,
+          child: KeyedSubtree(key: ValueKey(_step), child: page),
+        ),
       ),
     );
   }
+
+  JourneyProfile get _profile => JourneyProfile.fromPersona(_personaCode);
 
   String _readySubtitle() {
     final parts = <String>[_planTitle, ?_city];

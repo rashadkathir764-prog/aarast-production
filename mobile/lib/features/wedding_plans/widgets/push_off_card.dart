@@ -51,7 +51,8 @@ class _PushOffCardState extends State<PushOffCard> {
     } else {
       AarastToast.showInfo(
         context,
-        'افتحها من إعدادات الجوال › التطبيقات › اعّرست › الإشعارات.',
+        '${context.say('افتحها', 'افتحيها')} من إعدادات الجوال › التطبيقات › '
+        'اعّرست › الإشعارات.',
       );
     }
   }
@@ -91,8 +92,8 @@ class _PushOffCardState extends State<PushOffCard> {
                 ),
                 const SizedBox(height: 2),
                 Text(
-                  'ما راح يوصلك موعد دفعة ولا رد مزود. افتحها من إعدادات '
-                  'الجوال.',
+                  'ما راح يوصلك موعد دفعة ولا رد مزود. '
+                  '${context.say('افتحها', 'افتحيها')} من إعدادات الجوال.',
                   style: JourneyType.of(
                     JourneyType.body,
                     color: AarastV3Color.textMuted,
@@ -105,7 +106,7 @@ class _PushOffCardState extends State<PushOffCard> {
                   children: [
                     JourneyButton(
                       key: const ValueKey('push-off-open'),
-                      label: 'افتح الإعدادات',
+                      label: context.say('افتح الإعدادات', 'افتحي الإعدادات'),
                       background: AarastV3Color.brandAccentStrong,
                       onPressed: _open,
                     ),

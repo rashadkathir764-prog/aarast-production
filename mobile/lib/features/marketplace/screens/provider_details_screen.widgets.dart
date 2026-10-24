@@ -48,7 +48,10 @@ extension _ProviderQuoteFooter on _ProviderDetailsScreenState {
                       Expanded(
                         child: JourneyButton(
                           key: const Key('provider-details-quote'),
-                          label: _primaryQuoteActionLabel(latest),
+                          label: _primaryQuoteActionLabel(
+                            latest,
+                            context.journeyProfile,
+                          ),
                           background: AarastV3Color.cobalt,
                           large: true,
                           expand: true,
@@ -107,14 +110,21 @@ VoidCallback? _externalLinkAction(
 }
 
 /// Where the latest request to this provider stands, as the footer's action.
-String _primaryQuoteActionLabel(QuoteRequest? quote) {
-  if (quote == null) return 'اطلب عرض سعر';
-  if (quote.status == 'SENT' || quote.status == 'VIEWED') return 'تابع طلبك';
-  if (quote.status == 'RESPONDED') {
-    return quote.hasExpiredOffer ? 'اطلب عرض جديد' : 'شوف العرض';
+String _primaryQuoteActionLabel(QuoteRequest? quote, JourneyProfile profile) {
+  final say = profile.say;
+  if (quote == null) return say('اطلب عرض سعر', 'اطلبي عرض سعر');
+  if (quote.status == 'SENT' || quote.status == 'VIEWED') {
+    return say('تابع طلبك', 'تابعي طلبك');
   }
-  if (quote.status == 'ACCEPTED') return 'شوفه في طلباتي';
-  return 'اطلب عرض جديد';
+  if (quote.status == 'RESPONDED') {
+    return quote.hasExpiredOffer
+        ? say('اطلب عرض جديد', 'اطلبي عرض جديد')
+        : say('شوف العرض', 'شوفي العرض');
+  }
+  if (quote.status == 'ACCEPTED') {
+    return say('شوفه في طلباتي', 'شوفيه في طلباتي');
+  }
+  return say('اطلب عرض جديد', 'اطلبي عرض جديد');
 }
 
 /// w33: an unclaimed listing takes no requests until its owner claims it.

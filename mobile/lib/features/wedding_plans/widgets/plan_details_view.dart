@@ -112,7 +112,9 @@ class _PlanDetailsViewState extends State<PlanDetailsView> {
     releaseFieldFocus();
     final title = _title.text.trim();
     if (title.isEmpty) {
-      setState(() => _titleError = 'اكتب اسم للخطة');
+      setState(
+        () => _titleError = context.say('اكتب اسم للخطة', 'اكتبي اسم للخطة'),
+      );
       return;
     }
     setState(() => _saving = true);
@@ -159,7 +161,7 @@ class _PlanDetailsViewState extends State<PlanDetailsView> {
                 label: 'موعد العرس',
                 icon: LucideIcons.calendarDays,
                 value: day == null ? null : formatArabicDate(day),
-                placeholder: 'اختر اليوم',
+                placeholder: context.say('اختر اليوم', 'اختاري اليوم'),
                 onTap: hasStoredDay
                     ? (widget.onChangeDate ?? () {})
                     : _pickFirstDay,
@@ -170,7 +172,7 @@ class _PlanDetailsViewState extends State<PlanDetailsView> {
                   alignment: AlignmentDirectional.centerStart,
                   child: JourneyChip(
                     key: const ValueKey('plan-details-change-day'),
-                    label: 'غيّر الموعد',
+                    label: context.say('غيّر الموعد', 'غيّري الموعد'),
                     selected: true,
                     onTap: widget.onChangeDate,
                   ),
@@ -192,11 +194,11 @@ class _PlanDetailsViewState extends State<PlanDetailsView> {
               ),
               if (hasStoredDay) ...[
                 const SizedBox(height: 16),
-                const JourneyNote(
+                JourneyNote(
                   icon: LucideIcons.calendarClock,
                   text:
-                      'لو غيّرت الموعد، المهام تنتقل معه، والدفعات تبقى على '
-                      'مواعيدها.',
+                      'لو ${context.say('غيّرت', 'غيّرتِ')} الموعد، المهام '
+                      'تنتقل معه، والدفعات تبقى على مواعيدها.',
                 ),
               ],
               if (widget.onArchive != null) ...[
@@ -204,7 +206,10 @@ class _PlanDetailsViewState extends State<PlanDetailsView> {
                 Center(
                   child: JourneyTextAction(
                     key: const ValueKey('plan-details-archive'),
-                    label: 'حط الخطة في الأرشيف',
+                    label: context.say(
+                      'حط الخطة في الأرشيف',
+                      'حطي الخطة في الأرشيف',
+                    ),
                     color: AarastV3Color.textMuted,
                     onPressed: widget.onArchive,
                   ),

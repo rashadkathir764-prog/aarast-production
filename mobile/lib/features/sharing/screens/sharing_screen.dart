@@ -267,7 +267,10 @@ class _SharingScreenState extends State<SharingScreen>
     if (!mounted || !copied) return;
     AarastToast.showSuccess(
       context,
-      'نسخنا رابط جديد، أرسله له. القديم ما عاد يشتغل.',
+      context.say(
+        'نسخنا رابط جديد، أرسله له. القديم ما عاد يشتغل.',
+        'نسخنا رابط جديد، أرسليه لها. القديم ما عاد يشتغل.',
+      ),
     );
   }
 
@@ -275,12 +278,15 @@ class _SharingScreenState extends State<SharingScreen>
     final cancel = await showJourneySheet<bool>(
       context: context,
       builder: (sheetContext) => JourneySheetBody(
-        title: 'تلغي دعوة ${_inviteName(invite)}؟',
-        subtitle: 'الرابط اللي عنده ما عاد يشتغل، وتقدر تدعوه من جديد.',
+        title: '${context.say('تلغي', 'تلغين')} دعوة ${_inviteName(invite)}؟',
+        subtitle: context.say(
+          'الرابط اللي عنده ما عاد يشتغل، وتقدر تدعوه من جديد.',
+          'الرابط اللي عنده ما عاد يشتغل، وتقدرين تدعينه من جديد.',
+        ),
         children: [
           JourneyButton(
             key: ValueKey('pending-invite-cancel-${invite.id}'),
-            label: 'الغِ الدعوة',
+            label: context.say('الغِ الدعوة', 'الغي الدعوة'),
             background: AarastV3Color.danger,
             large: true,
             expand: true,
@@ -361,7 +367,7 @@ class _SharingScreenState extends State<SharingScreen>
       maxWidth: 520,
       backgroundColor: AarastV3Color.canvas,
       child: RefreshIndicator(
-        color: AarastV3Color.primary,
+        color: context.accent.primary,
         onRefresh: () => _refreshSharingAccessAndLoad(
           showPageLoader: false,
           preserveCurrentState: true,
@@ -493,23 +499,30 @@ class _SharingScreenState extends State<SharingScreen>
         ),
       ],
       if (members.isEmpty && pending.isEmpty)
-        const JourneyListState(
+        JourneyListState(
           phase: JourneyListPhase.empty,
           section: JourneySection.home,
           emptyIcon: LucideIcons.users,
-          emptyTitle: 'لسا ما أضفت أحد',
-          emptyMessage: 'اختر له دور من تحت، ويوصله رابط على واتساب.',
+          emptyTitle: context.say('لسا ما أضفت أحد', 'لسا ما أضفتِ أحد'),
+          emptyMessage: context.say(
+            'اختر له دور من تحت، ويوصله رابط على واتساب.',
+            'اختاري له دور من تحت، ويوصله رابط على واتساب.',
+          ),
         ),
       const SizedBox(height: 10),
       JourneyNote(
         key: const ValueKey('sharing-note'),
         text: pending.isNotEmpty
-            ? 'الرابط يشتغل 7 أيام من يوم الدعوة. لما ترسل له رابط جديد، '
+            ? 'الرابط يشتغل 7 أيام من يوم الدعوة. '
+                  '${context.say('لما ترسل', 'لما ترسلين')} له رابط جديد، '
                   'القديم ما عاد يشتغل.'
-            : 'كل مشارك يدخل برقمه، ويشوف بس الأقسام اللي تفتحها له.',
+            : context.say(
+                'كل مشارك يدخل برقمه، ويشوف بس الأقسام اللي تفتحها له.',
+                'كل مشارك يدخل برقمه، ويشوف بس الأقسام اللي تفتحينها له.',
+              ),
       ),
       JourneySectionTitle(
-        'أضف مشارك',
+        context.say('أضف مشارك', 'أضيفي مشارك'),
         action: ContactPickerService.isAvailable ? 'من جهات الاتصال' : null,
         onAction: ContactPickerService.isAvailable ? _addFromContacts : null,
       ),
@@ -711,7 +724,8 @@ class _PendingInviteRowState extends State<_PendingInviteRow> {
     return AarastPressable(
       key: ValueKey('pending-invite-${invite.id}'),
       onTap: widget.onTap,
-      semanticLabel: '${_inviteName(invite)}، ${_deliveryLine(invite)}',
+      semanticLabel:
+          '${_inviteName(invite)}، ${_deliveryLine(invite, context.journeyProfile)}',
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
         child: Row(
@@ -728,7 +742,7 @@ class _PendingInviteRowState extends State<_PendingInviteRow> {
                 children: [
                   _Name(name: invite.name, phone: invite.phone),
                   Text(
-                    _deliveryLine(invite),
+                    _deliveryLine(invite, context.journeyProfile),
                     style: JourneyType.of(
                       JourneyType.small,
                       color: AarastV3Color.textMuted,
@@ -748,7 +762,9 @@ class _PendingInviteRowState extends State<_PendingInviteRow> {
                   key: ValueKey('pending-invite-reissue-${invite.id}'),
                   onTap: canRetry ? widget.onReissue : null,
                   borderRadius: BorderRadius.circular(14),
-                  semanticLabel: remind ? 'ذكّره' : 'انسخ الرابط',
+                  semanticLabel: remind
+                      ? context.say('ذكّره', 'ذكّريه')
+                      : context.say('انسخ الرابط', 'انسخي الرابط'),
                   child: Container(
                     padding: const EdgeInsets.symmetric(
                       horizontal: 12,
@@ -756,17 +772,19 @@ class _PendingInviteRowState extends State<_PendingInviteRow> {
                     ),
                     decoration: BoxDecoration(
                       color: remind
-                          ? AarastV3Color.primarySoft
+                          ? context.accent.primarySoft
                           : AarastV3Color.brandAccentSoft,
                       borderRadius: BorderRadius.circular(14),
                     ),
                     child: Text(
-                      remind ? 'ذكّره' : 'انسخ الرابط',
+                      remind
+                          ? context.say('ذكّره', 'ذكّريه')
+                          : context.say('انسخ الرابط', 'انسخي الرابط'),
                       style: JourneyType.of(
                         JourneyType.small,
                         weight: JourneyType.bold,
                         color: remind
-                            ? AarastV3Color.primary
+                            ? context.accent.primary
                             : AarastV3Color.brandAccentStrong,
                       ),
                     ),
@@ -783,13 +801,17 @@ class _PendingInviteRowState extends State<_PendingInviteRow> {
 
 /// Where the invite stands, from the server's delivery record. Whether it
 /// was opened is not known, so it is not said.
-String _deliveryLine(PlanInvite invite) {
+String _deliveryLine(PlanInvite invite, JourneyProfile profile) {
+  final send = profile.say(
+    'أرسل له الرابط بأي طريقة',
+    'أرسلي له الرابط بأي طريقة',
+  );
   return switch (invite.deliveryStatus) {
     'DELIVERED' => 'الدعوة وصلت ${_dayWord(invite.deliveryAttemptedAt)}',
     'PENDING' => 'نرسل له الدعوة على واتساب',
-    'UNCERTAIN' => 'ما تأكدنا إنها وصلت · أرسل له الرابط بأي طريقة',
-    'UNAVAILABLE' => 'ما وصلته على واتساب · أرسل له الرابط بأي طريقة',
-    _ => 'الدعوة محفوظة · أرسل له الرابط بأي طريقة',
+    'UNCERTAIN' => 'ما تأكدنا إنها وصلت · $send',
+    'UNAVAILABLE' => 'ما وصلته على واتساب · $send',
+    _ => 'الدعوة محفوظة · $send',
   };
 }
 
@@ -821,14 +843,15 @@ class _PresetCard extends StatelessWidget {
     return AarastPressable(
       key: ValueKey('sharing-preset-${preset.role}'),
       onTap: onTap,
-      semanticLabel: 'أضف ${preset.label}، ${preset.description}',
+      semanticLabel:
+          '${context.say('أضف', 'أضيفي')} ${preset.label}، ${preset.description}',
       borderRadius: BorderRadius.circular(18),
       child: JourneyBox(
         radius: 18,
         padding: const EdgeInsets.all(13),
         child: Row(
           children: [
-            Icon(icon, size: 20, color: AarastV3Color.primary),
+            Icon(icon, size: 20, color: context.accent.primary),
             const SizedBox(width: 12),
             Expanded(
               child: Column(

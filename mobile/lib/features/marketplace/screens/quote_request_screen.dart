@@ -180,7 +180,7 @@ class _QuoteRequestScreenState extends State<QuoteRequestScreen> {
                 padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
                 child: JourneyButton(
                   key: const ValueKey('quote-send'),
-                  label: 'أرسل الطلب',
+                  label: context.say('أرسل الطلب', 'أرسلي الطلب'),
                   icon: LucideIcons.send,
                   background: AarastV3Color.cobalt,
                   large: true,
@@ -197,7 +197,7 @@ class _QuoteRequestScreenState extends State<QuoteRequestScreen> {
         keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
         children: [
           JourneySubHeader(
-            title: 'اطلب عرض سعر',
+            title: context.say('اطلب عرض سعر', 'اطلبي عرض سعر'),
             subtitle: provider == null ? null : 'إلى ${provider.businessName}',
             onBack: () {
               if (context.canPop()) context.pop();
@@ -208,14 +208,17 @@ class _QuoteRequestScreenState extends State<QuoteRequestScreen> {
               phase: JourneyListPhase.empty,
               section: JourneySection.providers,
               emptyIcon: LucideIcons.logIn,
-              emptyTitle: 'ادخل حسابك أول',
-              emptyMessage: 'الطلب يوصل المزود من حسابك، وتتابعه منه.',
-              emptyAction: 'ادخل',
+              emptyTitle: context.say('ادخل حسابك أول', 'ادخلي حسابك أول'),
+              emptyMessage: context.say(
+                'الطلب يوصل المزود من حسابك، وتتابعه منه.',
+                'الطلب يوصل المزود من حسابك، وتتابعينه منه.',
+              ),
+              emptyAction: context.say('ادخل', 'ادخلي'),
               onEmptyAction: () => context.go(AppRouter.login),
             )
           else ...[
             if (services.isNotEmpty) ...[
-              _Label('ايش تحتاج؟'),
+              _Label(context.say('ايش تحتاج؟', 'ايش تحتاجين؟')),
               Wrap(
                 spacing: 8,
                 runSpacing: 8,
@@ -271,7 +274,7 @@ class _QuoteRequestScreenState extends State<QuoteRequestScreen> {
                     _PlanRow(
                       key: const Key('quote-guests'),
                       icon: LucideIcons.users,
-                      label: 'الضيوف',
+                      label: context.say('الضيوف', 'الضيفات'),
                       value: _guestCountController.text.trim().isEmpty
                           ? null
                           : '${_guestCountController.text.trim()} تقريبًا',
@@ -311,7 +314,7 @@ class _QuoteRequestScreenState extends State<QuoteRequestScreen> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            'شاركهم بندك: '
+                            '${context.say('شاركهم', 'شاركيهم')} بندك: '
                             '${_amountLabel(budget.allocatedValue, plans, selectedPlanId)}',
                             style: JourneyType.of(
                               JourneyType.body,
@@ -341,8 +344,11 @@ class _QuoteRequestScreenState extends State<QuoteRequestScreen> {
                 ),
               ),
               const SizedBox(height: 12),
-              const JourneyNote(
-                text: 'بندك ما يوصلهم إلا إذا فعّلته.',
+              JourneyNote(
+                text: context.say(
+                  'بندك ما يوصلهم إلا إذا فعّلته.',
+                  'بندك ما يوصلهم إلا إذا فعّلتيه.',
+                ),
                 icon: LucideIcons.lock,
                 color: AarastV3Color.cobalt,
                 soft: AarastV3Color.cobaltSoft,
@@ -363,7 +369,7 @@ class _QuoteRequestScreenState extends State<QuoteRequestScreen> {
                 Center(
                   child: JourneyTextAction(
                     key: const Key('continue-active-quote'),
-                    label: 'كمّل طلبك الحالي',
+                    label: context.say('كمّل طلبك الحالي', 'كمّلي طلبك الحالي'),
                     icon: LucideIcons.messageCircle,
                     color: AarastV3Color.cobalt,
                     onPressed: () =>
@@ -638,7 +644,12 @@ class _QuoteRequestScreenState extends State<QuoteRequestScreen> {
         ? int.tryParse(guestText)
         : null;
     if (asksGuests && guestText.isNotEmpty && (guestCount ?? 0) < 1) {
-      setState(() => _guestError = 'اكتب عدد الضيوف بالأرقام');
+      setState(
+        () => _guestError = context.say(
+          'اكتب عدد الضيوف بالأرقام',
+          'اكتبي عدد الضيفات بالأرقام',
+        ),
+      );
       return;
     }
     if (await AuthActionGuard.blockProtectedSubmitWithoutAccount(
@@ -656,7 +667,13 @@ class _QuoteRequestScreenState extends State<QuoteRequestScreen> {
         ? selectedContext?.weddingPlanId
         : null;
     if (selectedPlanId == null) {
-      AarastToast.showError(context, 'افتح خطتك أول، وبعدين اطلب العرض.');
+      AarastToast.showError(
+        context,
+        context.say(
+          'افتح خطتك أول، وبعدين اطلب العرض.',
+          'افتحي خطتك أول، وبعدين اطلبي العرض.',
+        ),
+      );
       return;
     }
 
@@ -772,7 +789,7 @@ class _GuestsSheetState extends State<_GuestsSheet> {
       title: null,
       children: [
         JourneyTextField(
-          label: 'كم ضيف تقريبًا؟',
+          label: context.say('كم ضيف تقريبًا؟', 'كم ضيفة تقريبًا؟'),
           controller: _controller,
           keyboardType: TextInputType.number,
           inputFormatters: [FilteringTextInputFormatter.digitsOnly],
@@ -833,7 +850,8 @@ class _PlanRow extends StatelessWidget {
   Widget build(BuildContext context) {
     return AarastPressable(
       onTap: onEdit,
-      semanticLabel: '$label، ${value ?? 'ما حددت'}، غيّر',
+      semanticLabel:
+          '$label، ${value ?? context.say('ما حددت', 'ما حددتِ')}، ${context.say('غيّر', 'غيّري')}',
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 11),
         child: Row(
@@ -852,7 +870,7 @@ class _PlanRow extends StatelessWidget {
             ),
             Expanded(
               child: Text(
-                value ?? 'ما حددت',
+                value ?? context.say('ما حددت', 'ما حددتِ'),
                 style: JourneyType.of(
                   JourneyType.body,
                   weight: value == null ? FontWeight.w400 : JourneyType.bold,

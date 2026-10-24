@@ -118,7 +118,7 @@ class _ContributionHistoryScreenState extends State<ContributionHistoryScreen> {
       maxWidth: 520,
       backgroundColor: AarastV3Color.canvas,
       child: RefreshIndicator(
-        color: AarastV3Color.primary,
+        color: context.accent.primary,
         onRefresh: _load,
         child: ListView(
           physics: const AlwaysScrollableScrollPhysics(),
@@ -224,7 +224,7 @@ class _ContributionHistoryScreenState extends State<ContributionHistoryScreen> {
             for (final row in entry.value)
               _ActivityRow(
                 activity: row,
-                color: colors[row.actor?.userId] ?? AarastV3Color.primary,
+                color: colors[row.actor?.userId] ?? context.accent.primary,
               ),
           ],
         ),

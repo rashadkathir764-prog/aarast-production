@@ -28,7 +28,7 @@ class OfflineStatusBanner extends StatelessWidget {
       SyncState.offline => AarastV3Color.amber,
       SyncState.syncError => AarastV3Color.danger,
       SyncState.syncing => AarastV3Color.cobalt,
-      _ => AarastV3Color.primary,
+      _ => context.accent.primary,
     };
     final label = switch (state) {
       SyncState.offline => 'بدون نت، واللي تضيفه ينحفظ في جوالك',
@@ -165,23 +165,23 @@ class OfflinePendingBadge extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
       decoration: BoxDecoration(
-        color: AarastV3Color.primarySoft,
+        color: context.accent.primarySoft,
         borderRadius: BorderRadius.circular(999),
         border: Border.all(color: AarastV3Color.line),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const Icon(
+          Icon(
             LucideIcons.refreshCwOff,
-            color: AarastV3Color.primary,
+            color: context.accent.primary,
             size: 14,
           ),
           const SizedBox(width: 4),
           Text(
             'ينتظر النت',
             style: Theme.of(context).textTheme.labelSmall?.copyWith(
-              color: AarastV3Color.primary,
+              color: context.accent.primary,
               fontWeight: FontWeight.w900,
             ),
           ),
@@ -348,7 +348,7 @@ class _PendingChangeRow extends StatelessWidget {
             AarastV3Color.danger,
             AarastV3Color.dangerSoft,
           )
-        : _changeTone(change.entityType);
+        : _changeTone(change.entityType, context.accent);
     return JourneyListRow(
       icon: icon,
       color: color,
@@ -366,7 +366,7 @@ class _PendingChangeRow extends StatelessWidget {
   }
 }
 
-(IconData, Color, Color) _changeTone(String entityType) {
+(IconData, Color, Color) _changeTone(String entityType, JourneyAccent accent) {
   return switch (entityType) {
     'task' => (
       LucideIcons.checkCircle2,
@@ -378,16 +378,8 @@ class _PendingChangeRow extends StatelessWidget {
       AarastV3Color.cobalt,
       AarastV3Color.cobaltSoft,
     ),
-    'wedding_plan' => (
-      LucideIcons.heart,
-      AarastV3Color.primary,
-      AarastV3Color.primarySoft,
-    ),
-    _ => (
-      LucideIcons.receipt,
-      AarastV3Color.primary,
-      AarastV3Color.primarySoft,
-    ),
+    'wedding_plan' => (LucideIcons.heart, accent.primary, accent.primarySoft),
+    _ => (LucideIcons.receipt, accent.primary, accent.primarySoft),
   };
 }
 

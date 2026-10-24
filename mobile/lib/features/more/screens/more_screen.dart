@@ -175,7 +175,7 @@ class _MoreScreenState extends State<MoreScreen> {
                 _Row(
                   key: const ValueKey('account-hide-amounts'),
                   icon: LucideIcons.eyeOff,
-                  title: 'أخفِ المبالغ',
+                  title: context.say('أخفِ المبالغ', 'أخفي المبالغ'),
                   switchValue: preferences.hideAmounts,
                   onSwitch: preferences.setHideAmounts,
                 ),
@@ -276,7 +276,10 @@ class _MoreScreenState extends State<MoreScreen> {
   Future<void> _changeAvatar(BuildContext context) async {
     if (!await AuthActionGuard.requireAccount(
       context,
-      reason: 'ادخل حسابك أول عشان تغيّر صورتك.',
+      reason: context.say(
+        'ادخل حسابك أول عشان تغيّر صورتك.',
+        'ادخلي حسابك أول عشان تغيّرين صورتك.',
+      ),
     )) {
       return;
     }
@@ -291,17 +294,17 @@ class _MoreScreenState extends State<MoreScreen> {
             children: [
               JourneyListRow(
                 icon: LucideIcons.camera,
-                color: AarastV3Color.primary,
-                soft: AarastV3Color.primarySoft,
-                title: 'صوّر',
+                color: context.accent.primary,
+                soft: context.accent.primarySoft,
+                title: context.say('صوّر', 'صوّري'),
                 subtitle: 'بالكاميرا',
                 onTap: () => Navigator.of(sheetContext).pop(ImageSource.camera),
               ),
               JourneyListRow(
                 icon: LucideIcons.image,
-                color: AarastV3Color.primary,
-                soft: AarastV3Color.primarySoft,
-                title: 'اختر صورة',
+                color: context.accent.primary,
+                soft: context.accent.primarySoft,
+                title: context.say('اختر صورة', 'اختاري صورة'),
                 subtitle: 'من المعرض',
                 onTap: () =>
                     Navigator.of(sheetContext).pop(ImageSource.gallery),
@@ -328,7 +331,13 @@ class _MoreScreenState extends State<MoreScreen> {
     }
     final contentType = _avatarContentType(file);
     if (contentType == null) {
-      AarastToast.showError(context, 'اختر صورة JPG أو PNG أو WebP.');
+      AarastToast.showError(
+        context,
+        context.say(
+          'اختر صورة JPG أو PNG أو WebP.',
+          'اختاري صورة JPG أو PNG أو WebP.',
+        ),
+      );
       return;
     }
     final bytes = await file.readAsBytes();
@@ -492,7 +501,7 @@ class _Row extends StatelessWidget {
     this.onTap,
     this.switchValue,
     this.onSwitch,
-    this.color = AarastV3Color.primary,
+    this.color,
     super.key,
   });
 
@@ -502,11 +511,14 @@ class _Row extends StatelessWidget {
   final VoidCallback? onTap;
   final bool? switchValue;
   final ValueChanged<bool>? onSwitch;
-  final Color color;
+
+  /// A warning colour; the plan's colour (with ink text) when null.
+  final Color? color;
 
   @override
   Widget build(BuildContext context) {
     final toggle = switchValue;
+    final color = this.color ?? context.accent.primary;
     final row = Padding(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
       child: Row(
@@ -519,9 +531,7 @@ class _Row extends StatelessWidget {
               style: JourneyType.of(
                 JourneyType.body,
                 weight: JourneyType.bold,
-                color: color == AarastV3Color.primary
-                    ? AarastV3Color.text
-                    : color,
+                color: this.color == null ? AarastV3Color.text : color,
               ),
             ),
           ),

@@ -40,13 +40,13 @@ class LogoutSheet extends StatelessWidget {
             soft: AarastV3Color.amberSoft,
             text:
                 'عندك ${arabicCount(unsent, one: 'تغيير واحد', two: 'تغييرين', few: 'تغييرات', many: 'تغيير')} '
-                'ما وصل لحسابك. لو طلعت الحين يضيع من هذا الجوال.',
+                'ما وصل لحسابك. ${context.say('لو طلعت', 'لو طلعتِ')} الحين يضيع من هذا الجوال.',
           ),
           if (!offline && service != null) ...[
             const SizedBox(height: 10),
             JourneyButton(
               key: const ValueKey('account-logout-send'),
-              label: 'أرسلها الحين',
+              label: context.say('أرسلها الحين', 'أرسليها الحين'),
               expand: true,
               loading: sending,
               onPressed: sending ? null : service.syncPendingChanges,
@@ -58,7 +58,10 @@ class LogoutSheet extends StatelessWidget {
           key: const ValueKey('account-logout-confirm'),
           onTap: () => Navigator.of(context).pop(true),
           borderRadius: BorderRadius.circular(22),
-          semanticLabel: 'اخرج من هذا الجوال',
+          semanticLabel: context.say(
+            'اخرج من هذا الجوال',
+            'اخرجي من هذا الجوال',
+          ),
           child: JourneyBox(
             padding: const EdgeInsets.all(16),
             child: Row(
@@ -70,7 +73,10 @@ class LogoutSheet extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'اخرج من هذا الجوال',
+                        context.say(
+                          'اخرج من هذا الجوال',
+                          'اخرجي من هذا الجوال',
+                        ),
                         style: JourneyType.of(
                           JourneyType.bodyLarge,
                           weight: JourneyType.bold,
@@ -79,7 +85,10 @@ class LogoutSheet extends StatelessWidget {
                       Text(
                         unsent > 0
                             ? 'خطتك تبقى، بس اللي ما وصل يضيع'
-                            : 'خطتك تبقى، وترجع لها برقمك',
+                            : context.say(
+                                'خطتك تبقى، وترجع لها برقمك',
+                                'خطتك تبقى، وترجعين لها برقمك',
+                              ),
                         style: JourneyType.of(
                           JourneyType.small,
                           color: unsent > 0

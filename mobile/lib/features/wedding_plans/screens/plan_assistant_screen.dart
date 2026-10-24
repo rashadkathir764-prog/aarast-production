@@ -131,7 +131,10 @@ class _PlanAssistantScreenState extends State<PlanAssistantScreen> {
     if (status == null || _asking) return;
     final typed = _questionController.text.trim();
     if (kind == PlanAssistantKind.question && typed.isEmpty) {
-      AarastToast.showError(context, 'اكتب سؤالك أول.');
+      AarastToast.showError(
+        context,
+        context.say('اكتب سؤالك أول.', 'اكتبي سؤالك أول.'),
+      );
       return;
     }
     if (!await _ensureConsent(status.dailyLimit) || !mounted) return;
@@ -214,7 +217,7 @@ class _PlanAssistantScreenState extends State<PlanAssistantScreen> {
               padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
               children: [
                 JourneySubHeader(
-                  title: 'اسأل اعّرست',
+                  title: context.say('اسأل اعّرست', 'اسألي اعّرست'),
                   subtitle: 'يجاوبك من خطتك أنت، وما يخترع أسعار',
                   onBack: _goBack,
                 ),
@@ -302,7 +305,7 @@ class _PlanAssistantScreenState extends State<PlanAssistantScreen> {
         Row(
           key: const ValueKey('assistant-thinking'),
           children: [
-            const AarastInlineSpinner(color: AarastV3Color.primary),
+            AarastInlineSpinner(color: context.accent.primary),
             const SizedBox(width: 10),
             Expanded(
               child: Text(
@@ -339,7 +342,9 @@ class _PlanAssistantScreenState extends State<PlanAssistantScreen> {
           color: AarastV3Color.brandAccentStrong,
           soft: AarastV3Color.brandAccentSoft,
           title: 'خلصت أسئلة اليوم',
-          line: 'استخدمت الـ${status.dailyLimit}. ترجع بكرة الساعة 12 الليل.',
+          line:
+              '${context.say('استخدمت', 'استخدمتِ')} الـ${status.dailyLimit}. '
+              '${context.say('ترجع', 'ترجعين')} بكرة الساعة 12 الليل.',
         ),
       if (!exhausted && _stop != _Stop.limit)
         Row(
@@ -358,7 +363,7 @@ class _PlanAssistantScreenState extends State<PlanAssistantScreen> {
               JourneyRoundButton(
                 key: const ValueKey('assistant-copy'),
                 icon: LucideIcons.copy,
-                tooltip: 'انسخ الإجابة',
+                tooltip: context.say('انسخ الإجابة', 'انسخي الإجابة'),
                 size: 40,
                 onPressed: () => _copy(answer.answer),
               ),
@@ -389,9 +394,9 @@ class _QuestionBubble extends StatelessWidget {
       child: ConstrainedBox(
         constraints: const BoxConstraints(maxWidth: 360),
         child: DecoratedBox(
-          decoration: const BoxDecoration(
-            color: AarastV3Color.primary,
-            borderRadius: BorderRadiusDirectional.only(
+          decoration: BoxDecoration(
+            color: context.accent.primary,
+            borderRadius: const BorderRadiusDirectional.only(
               topStart: Radius.circular(22),
               topEnd: Radius.circular(22),
               bottomEnd: Radius.circular(22),
@@ -444,10 +449,10 @@ class _AnswerCard extends StatelessWidget {
         children: [
           Row(
             children: [
-              const Icon(
+              Icon(
                 LucideIcons.sparkles,
                 size: 18,
-                color: AarastV3Color.primary,
+                color: context.accent.primary,
               ),
               const SizedBox(width: 6),
               Text(
@@ -455,7 +460,7 @@ class _AnswerCard extends StatelessWidget {
                 style: JourneyType.of(
                   JourneyType.bodySmall,
                   weight: JourneyType.bold,
-                  color: AarastV3Color.primary,
+                  color: context.accent.primary,
                 ),
               ),
             ],
@@ -570,11 +575,7 @@ class _AskField extends StatelessWidget {
       ),
       child: Row(
         children: [
-          const Icon(
-            LucideIcons.sparkles,
-            size: 20,
-            color: AarastV3Color.primary,
-          ),
+          Icon(LucideIcons.sparkles, size: 20, color: context.accent.primary),
           const SizedBox(width: 10),
           Expanded(
             child: TextField(
@@ -587,11 +588,11 @@ class _AskField extends StatelessWidget {
               textInputAction: TextInputAction.send,
               onSubmitted: (_) => onSend(),
               style: JourneyType.of(JourneyType.bodyLarge),
-              cursorColor: AarastV3Color.primary,
+              cursorColor: context.accent.primary,
               decoration: InputDecoration(
                 isDense: true,
                 counterText: '',
-                hintText: 'اسأل عن عرسك…',
+                hintText: context.say('اسأل عن عرسك…', 'اسألي عن عرسك…'),
                 hintStyle: JourneyType.of(
                   JourneyType.bodyLarge,
                   color: AarastV3Color.textFaint,
@@ -609,7 +610,7 @@ class _AskField extends StatelessWidget {
           Semantics(
             button: true,
             enabled: enabled,
-            label: 'اسأل',
+            label: context.say('اسأل', 'اسألي'),
             excludeSemantics: true,
             child: AarastPressable(
               key: const ValueKey('assistant-send'),
@@ -620,7 +621,7 @@ class _AskField extends StatelessWidget {
                 height: 48,
                 decoration: BoxDecoration(
                   color: enabled
-                      ? AarastV3Color.primary
+                      ? context.accent.primary
                       : AarastV3Color.lineStrong,
                   shape: BoxShape.circle,
                 ),
@@ -646,13 +647,13 @@ class _ConsentSheet extends StatelessWidget {
 
   final int dailyLimit;
 
-  Widget _row(IconData icon, String text) {
+  Widget _row(BuildContext context, IconData icon, String text) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(icon, size: 22, color: AarastV3Color.primary),
+          Icon(icon, size: 22, color: context.accent.primary),
           const SizedBox(width: 12),
           Expanded(child: Text(text, style: JourneyType.of(JourneyType.body))),
         ],
@@ -671,15 +672,25 @@ class _ConsentSheet extends StatelessWidget {
           child: Column(
             children: [
               _row(
+                context,
                 LucideIcons.send,
                 'سؤالك وملخص خطتك (المدينة والموعد والميزانية وبنودها والعروض) يروحون لخدمة Claude من Anthropic تفهمه',
               ),
-              _row(LucideIcons.eyeOff, 'ما نرسل أسماء ضيوفك ولا أرقامهم'),
               _row(
+                context,
+                LucideIcons.eyeOff,
+                context.say(
+                  'ما نرسل أسماء ضيوفك ولا أرقامهم',
+                  'ما نرسل أسماء ضيفاتك ولا أرقامهن',
+                ),
+              ),
+              _row(
+                context,
                 LucideIcons.checkCircle2,
                 'ما نحفظ أسئلتك، وما يتغيّر شيء في خطتك',
               ),
               _row(
+                context,
                 LucideIcons.gauge,
                 arabicCount(
                   dailyLimit,
@@ -695,7 +706,7 @@ class _ConsentSheet extends StatelessWidget {
         const SizedBox(height: 16),
         JourneyButton(
           key: const ValueKey('assistant-consent-agree'),
-          label: 'شغّل المساعد',
+          label: context.say('شغّل المساعد', 'شغّلي المساعد'),
           icon: LucideIcons.sparkles,
           expand: true,
           large: true,

@@ -62,7 +62,12 @@ class _ChangePhoneSheetState extends State<_ChangePhoneSheet> {
   Future<void> _send() async {
     final input = _phone.text.trim();
     if (!isValidYemeniPhoneInput(input)) {
-      setState(() => _error = 'اكتب رقم جوال يمني صحيح، مثل 771234567');
+      setState(
+        () => _error = context.say(
+          'اكتب رقم جوال يمني صحيح، مثل 771234567',
+          'اكتبي رقم جوال يمني صحيح، مثل 771234567',
+        ),
+      );
       return;
     }
     setState(() {
@@ -83,7 +88,12 @@ class _ChangePhoneSheetState extends State<_ChangePhoneSheet> {
     final code = _code.text.trim();
     if (sentTo == null) return;
     if (!RegExp(r'^[0-9]{4,8}$').hasMatch(code)) {
-      setState(() => _error = 'اكتب الرمز اللي وصلك على واتساب');
+      setState(
+        () => _error = context.say(
+          'اكتب الرمز اللي وصلك على واتساب',
+          'اكتبي الرمز اللي وصلك على واتساب',
+        ),
+      );
       return;
     }
     setState(() {
@@ -111,7 +121,9 @@ class _ChangePhoneSheetState extends State<_ChangePhoneSheet> {
       subtitle: sentTo == null ? null : 'أرسلنا لك رمز على واتساب على $sentTo',
       bottom: JourneyButton(
         key: const ValueKey('change-phone-submit'),
-        label: sentTo == null ? 'أرسل الرمز للرقم الجديد' : 'غيّر الرقم',
+        label: sentTo == null
+            ? context.say('أرسل الرمز للرقم الجديد', 'أرسلي الرمز للرقم الجديد')
+            : context.say('غيّر الرقم', 'غيّري الرقم'),
         expand: true,
         large: true,
         loading: _busy,
@@ -147,10 +159,12 @@ class _ChangePhoneSheetState extends State<_ChangePhoneSheet> {
             onSubmitted: (_) => _busy ? null : _send(),
           ),
           const SizedBox(height: 16),
-          const JourneyNote(
+          JourneyNote(
             icon: LucideIcons.shieldCheck,
-            text:
-                'خطتك ومشاركينك يبقون مثل ما هم. بنطلعك من كل الأجهزة وتدخل من جديد بالرقم الجديد.',
+            text: context.say(
+              'خطتك ومشاركينك يبقون مثل ما هم. بنطلعك من كل الأجهزة وتدخل من جديد بالرقم الجديد.',
+              'خطتك ومشاركينك يبقون مثل ما هم. بنطلعك من كل الأجهزة وتدخلين من جديد بالرقم الجديد.',
+            ),
           ),
         ] else
           JourneyTextField(

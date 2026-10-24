@@ -31,7 +31,9 @@ class _NameDateStep extends StatelessWidget {
       for (var i = 0; i < 6; i++) DateTime(today.year, today.month + i),
     ];
     final hijri = date == null ? null : HijriDate.fromGregorian(date!);
-    final note = date == null ? null : _ramadanNote(date!);
+    final note = date == null
+        ? null
+        : _ramadanNote(date!, context.journeyProfile);
     return JourneyQuestionPage(
       step: 0,
       total: _questionCount,
@@ -45,7 +47,7 @@ class _NameDateStep extends StatelessWidget {
           label: 'اسمك',
           controller: controller,
           large: true,
-          hint: 'محمد',
+          hint: context.say('محمد', 'سلمى'),
           textInputAction: TextInputAction.done,
           onChanged: (_) => onNameChanged(),
         ),
@@ -56,11 +58,11 @@ class _NameDateStep extends StatelessWidget {
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Padding(
-                  padding: EdgeInsets.only(top: 2),
+                Padding(
+                  padding: const EdgeInsets.only(top: 2),
                   child: Icon(
                     LucideIcons.sparkles,
-                    color: AarastV3Color.primary,
+                    color: context.accent.primary,
                     size: 16,
                   ),
                 ),
@@ -79,7 +81,7 @@ class _NameDateStep extends StatelessWidget {
                           style: JourneyType.of(
                             JourneyType.small,
                             weight: JourneyType.bold,
-                            color: AarastV3Color.primary,
+                            color: context.accent.primary,
                           ),
                         ),
                       ],
@@ -163,17 +165,18 @@ class _NameDateStep extends StatelessWidget {
 
   /// A word about Ramadan when the wedding falls inside it or within 60
   /// days before it.
-  static String? _ramadanNote(DateTime date) {
+  static String? _ramadanNote(DateTime date, JourneyProfile profile) {
     final ramadan = HijriDate.ramadanOnOrAfter(date);
     if (ramadan == null) return null;
     final day = DateTime.utc(date.year, date.month, date.day);
     if (!day.isBefore(ramadan.$1)) {
-      return 'هذا اليوم في رمضان، والأعراس فيه قليلة. تأكد من الموعد مع الأهل.';
+      return 'هذا اليوم في رمضان، والأعراس فيه قليلة. '
+          '${profile.say('تأكد', 'تأكدي')} من الموعد مع الأهل.';
     }
     final days = ramadan.$1.difference(day).inDays;
     if (days > 60) return null;
     return 'باقي على رمضان ${arabicDays(days)}، والحجوزات تكثر قبله. '
-        'احجز القاعة بدري.';
+        '${profile.say('احجز', 'احجزي')} القاعة بدري.';
   }
 }
 
@@ -214,7 +217,7 @@ class _MonthTile extends StatelessWidget {
         child: Container(
           padding: const EdgeInsets.symmetric(vertical: 7, horizontal: 4),
           decoration: BoxDecoration(
-            color: selected ? AarastV3Color.primary : AarastV3Color.paper,
+            color: selected ? context.accent.primary : AarastV3Color.paper,
             borderRadius: BorderRadius.circular(14),
             border: selected ? null : Border.all(color: AarastV3Color.line),
           ),
@@ -332,7 +335,7 @@ class _PlaceBudgetStep extends StatelessWidget {
         ),
         const SizedBox(height: 6),
         _RadioLine(
-          label: 'أكمل بدون ميزانية',
+          label: context.say('أكمل بدون ميزانية', 'أكملي بدون ميزانية'),
           selected: budgetSkipped,
           onTap: onSkipBudget,
         ),
@@ -342,7 +345,10 @@ class _PlaceBudgetStep extends StatelessWidget {
           child: Text(
             // C1: the budget is the wedding only. Nothing tracks the mahr
             // yet (a06), so nothing may claim it is counted.
-            'الميزانية لعرسك بس، والمهر مش منها. وتقدر تغيّرها بعدين من المال.',
+            context.say(
+              'الميزانية لعرسك بس، والمهر مش منها. وتقدر تغيّرها بعدين من المال.',
+              'الميزانية لعرسك بس، والمهر مش منها. وتقدرين تغيّرينها بعدين من المال.',
+            ),
             style: JourneyType.of(
               JourneyType.small,
               color: AarastV3Color.textMuted,
@@ -391,7 +397,7 @@ class _ReadyStep extends StatelessWidget {
   Widget build(BuildContext context) {
     final items = catalogs.items;
     final itemsLine = items.isEmpty
-        ? 'تضيف بنودك بنفسك'
+        ? context.say('تضيف بنودك بنفسك', 'تضيفين بنودك بنفسك')
         : items.length <= 4
         ? items.join('، ')
         : '${items.take(4).join(' و')} وغيرها';
@@ -440,14 +446,14 @@ class _ReadyStep extends StatelessWidget {
           child: Container(
             width: 110,
             height: 110,
-            decoration: const BoxDecoration(
-              color: AarastV3Color.primarySoft,
+            decoration: BoxDecoration(
+              color: context.accent.primarySoft,
               shape: BoxShape.circle,
             ),
-            child: const Icon(
+            child: Icon(
               LucideIcons.partyPopper,
               size: 50,
-              color: AarastV3Color.primary,
+              color: context.accent.primary,
             ),
           ),
         ),
@@ -482,8 +488,8 @@ class _ReadyStep extends StatelessWidget {
           children: [
             JourneyListRow(
               icon: LucideIcons.wallet,
-              color: AarastV3Color.primary,
-              soft: AarastV3Color.primarySoft,
+              color: context.accent.primary,
+              soft: context.accent.primarySoft,
               title:
                   '${arabicCount(items.length, one: 'بند واحد', two: 'بندين', few: 'بنود', many: 'بند')} لعرسك',
               subtitle: itemsLine,
@@ -496,15 +502,24 @@ class _ReadyStep extends StatelessWidget {
                 title:
                     '${arabicCount(catalogs.taskCount, one: 'مهمة واحدة', two: 'مهمتين', few: 'مهام', many: 'مهمة')} مقترحة${hasDate ? ' على موعدك' : ''}',
                 subtitle: hasDate
-                    ? 'تختار منها اللي يناسبك بعد الحفظ'
-                    : 'تختار منها اللي يناسبك، وترتبها لما تحدد الموعد',
+                    ? context.say(
+                        'تختار منها اللي يناسبك بعد الحفظ',
+                        'تختارين منها اللي يناسبك بعد الحفظ',
+                      )
+                    : context.say(
+                        'تختار منها اللي يناسبك، وترتبها لما تحدد الموعد',
+                        'تختارين منها اللي يناسبك، وترتبينها لما تحددين الموعد',
+                      ),
               ),
             JourneyListRow(
               icon: LucideIcons.store,
               color: AarastV3Color.cobalt,
               soft: AarastV3Color.cobaltSoft,
               title: 'مزودين $city بأسعارهم',
-              subtitle: 'قاعات ومصورين ومنشدين',
+              subtitle: context.say(
+                'قاعات ومصورين ومنشدين',
+                'صالات ومصورات ومنشدات',
+              ),
             ),
           ],
         ),
@@ -513,8 +528,14 @@ class _ReadyStep extends StatelessWidget {
           padding: const EdgeInsets.symmetric(horizontal: 6),
           child: Text(
             hasDate
-                ? 'تشيل وتضيف براحتك، وكلها تتعدل لو تغيّر الموعد.'
-                : 'تشيل وتضيف براحتك، وتحدد الموعد متى ما ثبت.',
+                ? context.say(
+                    'تشيل وتضيف براحتك، وكلها تتعدل لو تغيّر الموعد.',
+                    'تشيلين وتضيفين براحتك، وكلها تتعدل لو تغيّر الموعد.',
+                  )
+                : context.say(
+                    'تشيل وتضيف براحتك، وتحدد الموعد متى ما ثبت.',
+                    'تشيلين وتضيفين براحتك، وتحددين الموعد متى ما ثبت.',
+                  ),
             style: JourneyType.of(
               JourneyType.small,
               color: AarastV3Color.textMuted,
@@ -556,7 +577,7 @@ class _CitySheetState extends State<_CitySheet> {
   @override
   Widget build(BuildContext context) {
     return JourneySheetBody(
-      title: 'اختر المدينة',
+      title: context.say('اختر المدينة', 'اختاري المدينة'),
       children: [
         Wrap(
           spacing: 8,
@@ -572,7 +593,10 @@ class _CitySheetState extends State<_CitySheet> {
         ),
         const SizedBox(height: 18),
         JourneyTextField(
-          label: 'مدينتك مش في القائمة؟ اكتبها',
+          label: context.say(
+            'مدينتك مش في القائمة؟ اكتبها',
+            'مدينتك مش في القائمة؟ اكتبيها',
+          ),
           controller: _typed,
           hint: 'ذمار',
           icon: LucideIcons.mapPin,
@@ -583,7 +607,7 @@ class _CitySheetState extends State<_CitySheet> {
         ),
         const SizedBox(height: 12),
         JourneyButton(
-          label: 'اختر هذي المدينة',
+          label: context.say('اختر هذي المدينة', 'اختاري هذي المدينة'),
           onPressed: _typed.text.trim().isEmpty ? null : _useTyped,
           expand: true,
         ),
@@ -650,7 +674,7 @@ class _RadioLine extends StatelessWidget {
                     shape: BoxShape.circle,
                     border: Border.all(
                       color: selected
-                          ? AarastV3Color.primary
+                          ? context.accent.primary
                           : AarastV3Color.line,
                       width: selected ? 7 : 2,
                     ),

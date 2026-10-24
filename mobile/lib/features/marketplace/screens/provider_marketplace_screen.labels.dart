@@ -12,19 +12,28 @@ String? _activeCategoryName(ProviderMarketplaceProvider provider) {
 String _emptyProvidersMessage({
   required ProviderBudgetMatchIntent? budgetIntent,
   required WeddingLocationDraft? location,
+  required JourneyProfile profile,
 }) {
+  final say = profile.say;
   if (budgetIntent != null) {
     final amount = budgetIntent.hasBudget
         ? ' على قد ${_formatMoney(budgetIntent.allocatedValue)} ر.ي'
         : '';
-    return 'ما ظهر أحد لبند ${budgetIntent.budgetCategoryName}$amount بهذا الفلتر. امسح الفلتر أو غيّر المدينة.';
+    return 'ما ظهر أحد لبند ${budgetIntent.budgetCategoryName}$amount بهذا الفلتر. '
+        '${say('امسح الفلتر أو غيّر المدينة.', 'امسحي الفلتر أو غيّري المدينة.')}';
   }
 
   if (location?.hasRequiredLocation == true) {
-    return 'غيّر المدينة أو القسم، أو امسح الفلتر.';
+    return say(
+      'غيّر المدينة أو القسم، أو امسح الفلتر.',
+      'غيّري المدينة أو القسم، أو امسحي الفلتر.',
+    );
   }
 
-  return 'امسح الفلتر وشوف كل المزودين.';
+  return say(
+    'امسح الفلتر وشوف كل المزودين.',
+    'امسحي الفلتر وشوفي كل المزودين.',
+  );
 }
 
 _ServiceBudgetStatus _serviceBudgetStatus(

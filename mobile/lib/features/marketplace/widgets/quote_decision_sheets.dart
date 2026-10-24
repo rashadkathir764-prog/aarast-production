@@ -145,7 +145,7 @@ class _BookingRequestSheetState extends State<BookingRequestSheet> {
               fact(
                 LucideIcons.calendarDays,
                 day == null
-                    ? 'اختر يوم الحجز'
+                    ? context.say('اختر يوم الحجز', 'اختاري يوم الحجز')
                     : bookingDayLabel(
                         day,
                         showHijri:
@@ -158,7 +158,9 @@ class _BookingRequestSheetState extends State<BookingRequestSheet> {
                 alignment: AlignmentDirectional.centerStart,
                 child: JourneyTextAction(
                   key: const ValueKey('booking-other-day'),
-                  label: day == null ? 'اختر اليوم' : 'يوم ثاني',
+                  label: day == null
+                      ? context.say('اختر اليوم', 'اختاري اليوم')
+                      : 'يوم ثاني',
                   icon: LucideIcons.calendarPlus,
                   color: AarastV3Color.cobalt,
                   onPressed: _changeDay,
@@ -172,10 +174,12 @@ class _BookingRequestSheetState extends State<BookingRequestSheet> {
         step('2', 'يأكدون إن اليوم فاضي، وتوصلك رسالة'),
         step('3', 'يصير «محجوز»، ونذكّركم قبل بأسبوع وبيوم'),
         const SizedBox(height: 4),
-        const JourneyNote(
-          key: ValueKey('booking-no-payment'),
-          text:
-              'ما فيه دفع داخل اعّرست. الدفعة المقدمة تتفق عليها معهم مباشرة وتسجلها في المال.',
+        JourneyNote(
+          key: const ValueKey('booking-no-payment'),
+          text: context.say(
+            'ما فيه دفع داخل اعّرست. الدفعة المقدمة تتفق عليها معهم مباشرة وتسجلها في المال.',
+            'ما فيه دفع داخل اعّرست. الدفعة المقدمة تتفقين عليها معهم مباشرة وتسجلينها في المال.',
+          ),
           icon: LucideIcons.info,
           color: AarastV3Color.brandAccentStrong,
           soft: AarastV3Color.brandAccentSoft,
@@ -183,7 +187,7 @@ class _BookingRequestSheetState extends State<BookingRequestSheet> {
         const SizedBox(height: 16),
         JourneyButton(
           key: const ValueKey('booking-request'),
-          label: 'اطلب الحجز',
+          label: context.say('اطلب الحجز', 'اطلبي الحجز'),
           icon: LucideIcons.calendarCheck,
           background: AarastV3Color.cobalt,
           expand: true,
@@ -207,11 +211,12 @@ class DeclineOfferSheet extends StatefulWidget {
 }
 
 class _DeclineOfferSheetState extends State<DeclineOfferSheet> {
+  /// Each reason in the groom's and the bride's words.
   static const _reasons = [
-    'السعر فوق بندي',
-    'اخترت غيرهم',
-    'الموعد ما يناسب',
-    'بدون سبب',
+    ('السعر فوق بندي', 'السعر فوق بندي'),
+    ('اخترت غيرهم', 'اخترتِ غيرهم'),
+    ('الموعد ما يناسب', 'الموعد ما يناسب'),
+    ('بدون سبب', 'بدون سبب'),
   ];
   int _reason = 0;
   bool _editing = false;
@@ -271,7 +276,7 @@ class _DeclineOfferSheetState extends State<DeclineOfferSheet> {
             for (var i = 0; i < _reasons.length; i++)
               JourneyChip(
                 key: ValueKey('decline-reason-$i'),
-                label: _reasons[i],
+                label: context.say(_reasons[i].$1, _reasons[i].$2),
                 selected: _reason == i,
                 selectedColor: AarastV3Color.cobalt,
                 onTap: () => setState(() {
@@ -313,7 +318,7 @@ class _DeclineOfferSheetState extends State<DeclineOfferSheet> {
             if (!_editing)
               JourneyTextAction(
                 key: const ValueKey('decline-edit'),
-                label: 'عدّل الرسالة',
+                label: context.say('عدّل الرسالة', 'عدّلي الرسالة'),
                 icon: LucideIcons.pencil,
                 color: AarastV3Color.cobalt,
                 onPressed: () => setState(() => _editing = true),
@@ -331,7 +336,7 @@ class _DeclineOfferSheetState extends State<DeclineOfferSheet> {
         const SizedBox(height: 16),
         JourneyButton(
           key: const ValueKey('decline-send'),
-          label: 'أرسل واعتذر',
+          label: context.say('أرسل واعتذر', 'أرسلي واعتذري'),
           background: AarastV3Color.cobalt,
           expand: true,
           large: true,

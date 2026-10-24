@@ -146,7 +146,9 @@ class _AddParticipantSheetState extends State<_AddParticipantSheet> {
     final name = _name.text.trim();
     final phone = participantPhone(_phone.text);
     return JourneySheetBody(
-      title: _fromContact && name.isNotEmpty ? 'أضف $name' : 'أضف مشارك',
+      title: _fromContact && name.isNotEmpty
+          ? '${context.say('أضف', 'أضيفي')} $name'
+          : context.say('أضف مشارك', 'أضيفي مشارك'),
       // The number reads left to right inside the Arabic line (g06).
       subtitle: _fromContact && phone != null
           ? PhoneNumberUtils.isolateLtr(phone)
@@ -156,7 +158,7 @@ class _AddParticipantSheetState extends State<_AddParticipantSheet> {
           JourneyTextField(
             key: const ValueKey('participant-name'),
             label: 'اسمه',
-            hint: 'صالح',
+            hint: context.say('صالح', 'نورة'),
             controller: _name,
             textInputAction: TextInputAction.next,
             onChanged: (_) => setState(() {}),
@@ -181,7 +183,7 @@ class _AddParticipantSheetState extends State<_AddParticipantSheet> {
               child: JourneyTextAction(
                 label: 'من جهات الاتصال',
                 icon: LucideIcons.contact,
-                color: AarastV3Color.primary,
+                color: context.accent.primary,
                 onPressed: _sending ? null : _pickContact,
               ),
             ),
@@ -216,7 +218,10 @@ class _AddParticipantSheetState extends State<_AddParticipantSheet> {
         const SizedBox(height: 12),
         JourneyButton(
           key: const ValueKey('participant-send'),
-          label: 'أرسل الدعوة على واتساب',
+          label: context.say(
+            'أرسل الدعوة على واتساب',
+            'أرسلي الدعوة على واتساب',
+          ),
           icon: LucideIcons.send,
           large: true,
           expand: true,
@@ -230,11 +235,18 @@ class _AddParticipantSheetState extends State<_AddParticipantSheet> {
   /// WhatsApp did not take the invite: the link is shown this once.
   Widget _created(PlanInvite invite) {
     final note = switch (invite.deliveryStatus) {
-      'UNCERTAIN' =>
+      'UNCERTAIN' => context.say(
         'ما تأكدنا إنها وصلته على واتساب. انسخ الرابط وأرسله له بنفسك.',
-      'PENDING' =>
+        'ما تأكدنا إنها وصلته على واتساب. انسخي الرابط وأرسليه له بنفسك.',
+      ),
+      'PENDING' => context.say(
         'نرسلها له على واتساب الحين. وتقدر تنسخ الرابط وترسله بنفسك.',
-      _ => 'ما قدرنا نرسلها على واتساب. انسخ الرابط وأرسله له بأي طريقة.',
+        'نرسلها له على واتساب الحين. وتقدرين تنسخين الرابط وترسلينه بنفسك.',
+      ),
+      _ => context.say(
+        'ما قدرنا نرسلها على واتساب. انسخ الرابط وأرسله له بأي طريقة.',
+        'ما قدرنا نرسلها على واتساب. انسخي الرابط وأرسليه له بأي طريقة.',
+      ),
     };
     final name = invite.name?.trim();
     return JourneySheetBody(
@@ -253,7 +265,7 @@ class _AddParticipantSheetState extends State<_AddParticipantSheet> {
         const SizedBox(height: 14),
         JourneyButton(
           key: const ValueKey('invite-copy-link'),
-          label: 'انسخ الرابط',
+          label: context.say('انسخ الرابط', 'انسخي الرابط'),
           icon: LucideIcons.copy,
           large: true,
           expand: true,
@@ -275,7 +287,10 @@ class _AddParticipantSheetState extends State<_AddParticipantSheet> {
         : InviteShareContent.fromInvite(invite).inviteLink.toString();
     final copied = await copyInviteText(context, text);
     if (!mounted || !copied) return;
-    AarastToast.showSuccess(context, 'نسخنا الرابط، أرسله له.');
+    AarastToast.showSuccess(
+      context,
+      context.say('نسخنا الرابط، أرسله له.', 'نسخنا الرابط، أرسليه له.'),
+    );
   }
 
   String? _checkPhone(SharingProvider provider) {
@@ -284,7 +299,9 @@ class _AddParticipantSheetState extends State<_AddParticipantSheet> {
       required: true,
       requireYemeni: true,
     );
-    if (!analysis.isValid) return 'اكتب رقم جوال يمني صحيح';
+    if (!analysis.isValid) {
+      return context.say('اكتب رقم جوال يمني صحيح', 'اكتبي رقم جوال يمني صحيح');
+    }
     final member = ContactDuplicateUtils.findByPhone(
       provider.members.where(
         (member) => member.weddingPlanId == widget.weddingPlanId,
@@ -322,7 +339,8 @@ class _AddParticipantSheetState extends State<_AddParticipantSheet> {
       setState(() {
         _sending = false;
         _error =
-            'دعوته محفوظة وأرسلناها قبل شوي. تقدر ترسل له رابط جديد بعد '
+            'دعوته محفوظة وأرسلناها قبل شوي. '
+            '${context.say('تقدر ترسل', 'تقدرين ترسلين')} له رابط جديد بعد '
             '${waiting.deliveryRetryRemainingSeconds} ثانية.';
       });
       return;
@@ -358,7 +376,11 @@ class _AddParticipantSheetState extends State<_AddParticipantSheet> {
       setState(() {
         _sending = false;
         _error =
-            provider.errorMessage ?? 'ما قدرنا نرسل الدعوة. جرّب مرة ثانية.';
+            provider.errorMessage ??
+            context.say(
+              'ما قدرنا نرسل الدعوة. جرّب مرة ثانية.',
+              'ما قدرنا نرسل الدعوة. جرّبي مرة ثانية.',
+            );
       });
       return;
     }

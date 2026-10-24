@@ -107,10 +107,10 @@ class ProviderResultCard extends StatelessWidget {
           soft: AarastV3Color.line,
         ),
       if (isFeatured)
-        const JourneyTag(
+        JourneyTag(
           label: 'مميز',
-          color: AarastV3Color.primary,
-          soft: AarastV3Color.primarySoft,
+          color: context.accent.primary,
+          soft: context.accent.primarySoft,
         ),
     ];
     return Semantics(
@@ -197,7 +197,10 @@ class ProviderResultCard extends StatelessWidget {
                     if (!isClaimed || price == null)
                       Text(
                         isClaimed
-                            ? 'اطلب عرض تعرف السعر'
+                            ? context.say(
+                                'اطلب عرض تعرف السعر',
+                                'اطلبي عرض تعرفين السعر',
+                              )
                             : 'ما يستقبل طلبات لين يستلم صاحبه ملفه',
                         key: isClaimed
                             ? null

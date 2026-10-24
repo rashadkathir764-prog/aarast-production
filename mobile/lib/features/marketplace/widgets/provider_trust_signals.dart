@@ -1,6 +1,7 @@
 import 'package:flutter/widgets.dart';
 import 'package:provider/provider.dart';
 
+import '../../../core/experience_v3/aarast_journey_profile.dart';
 import '../data/marketplace_api.dart';
 import '../models/marketplace_models.dart';
 
@@ -41,10 +42,14 @@ String _withinLabel(int hours) {
 }
 
 /// f03 «آخر تحديث للسعر قبل 3 أسابيع»; an old price also asks to confirm it.
-String priceAgeLine(DateTime updatedAt, DateTime now) {
+String priceAgeLine(
+  DateTime updatedAt,
+  DateTime now, {
+  JourneyProfile profile = JourneyProfile.groom,
+}) {
   final line = 'آخر تحديث للسعر ${_ago(updatedAt, now)}';
   return now.difference(updatedAt) > providerPriceStaleAfter
-      ? '$line · تأكد منه لما تطلب العرض'
+      ? '$line · ${profile.say('تأكد منه لما تطلب العرض', 'تأكدي منه لما تطلبين العرض')}'
       : line;
 }
 

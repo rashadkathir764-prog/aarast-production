@@ -120,12 +120,12 @@ class _AppLockScreenState extends State<AppLockScreen> {
       title = failures >= AppLockController.freeAttempts
           ? 'الرمز غلط $failures مرات'
           : 'الرمز غلط';
-      line = 'جرّب مرة ثانية بعد ${_clock(wait)}';
+      line = '${context.say('جرّب', 'جرّبي')} مرة ثانية بعد ${_clock(wait)}';
     } else if (_wrong) {
       title = 'الرمز غلط';
-      line = 'جرّب مرة ثانية';
+      line = '${context.say('جرّب', 'جرّبي')} مرة ثانية';
     } else {
-      title = 'أدخل رمز القفل';
+      title = context.say('أدخل رمز القفل', 'أدخلي رمز القفل');
       line = null;
     }
     final error = waiting || _wrong;
@@ -189,18 +189,21 @@ class _AppLockScreenState extends State<AppLockScreen> {
                       key: const Key('app-lock-forgot'),
                       onTap: () => setState(() => _confirmingForgot = true),
                       borderRadius: BorderRadius.circular(16),
-                      child: const JourneyNote(
+                      child: JourneyNote(
                         icon: LucideIcons.keyRound,
-                        text:
-                            'نسيت الرمز؟ ادخل برقم جوالك ورمز واتساب، والقفل '
-                            'ينشال وتختار رمز جديد.',
+                        text: context.say(
+                          'نسيت الرمز؟ ادخل برقم جوالك ورمز واتساب، والقفل '
+                              'ينشال وتختار رمز جديد.',
+                          'نسيتِ الرمز؟ ادخلي برقم جوالك ورمز واتساب، والقفل '
+                              'ينشال وتختارين رمز جديد.',
+                        ),
                       ),
                     )
                   else if (!_confirmingForgot)
                     JourneyTextAction(
                       key: const Key('app-lock-forgot'),
-                      label: 'نسيت الرمز؟',
-                      color: AarastV3Color.primary,
+                      label: context.say('نسيت الرمز؟', 'نسيتِ الرمز؟'),
+                      color: context.accent.primary,
                       onPressed: () => setState(() => _confirmingForgot = true),
                     ),
                 ],
@@ -228,12 +231,13 @@ class _ForgotConfirm extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Text(
-            'نسيت الرمز؟',
+            context.say('نسيت الرمز؟', 'نسيتِ الرمز؟'),
             style: JourneyType.of(JourneyType.title, weight: JourneyType.bold),
           ),
           const SizedBox(height: 6),
           Text(
-            'نطلعك من الحساب وينشال الرمز. ادخل من جديد برقم جوالك '
+            'نطلعك من الحساب وينشال الرمز. '
+            '${context.say('ادخل', 'ادخلي')} من جديد برقم جوالك '
             'ورمز واتساب، وبياناتك محفوظة في حسابك.',
             style: JourneyType.of(
               JourneyType.body,
@@ -308,7 +312,7 @@ class _AppLockCodePadState extends State<AppLockCodePad> {
         ? AarastV3Color.onPrimary
         : widget.failed
         ? AarastV3Color.danger
-        : AarastV3Color.primary;
+        : context.accent.primary;
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [

@@ -100,7 +100,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
               trailing: participantPlan == null && unreadInList > 0
                   ? JourneyTextAction(
                       label: 'قراءة الكل',
-                      color: AarastV3Color.primary,
+                      color: context.accent.primary,
                       onPressed: provider.isSubmitting
                           ? null
                           : () => _markAllRead(provider),
@@ -110,7 +110,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
           ),
           Expanded(
             child: RefreshIndicator(
-              color: AarastV3Color.primary,
+              color: context.accent.primary,
               onRefresh: _load,
               child: _body(
                 provider,
@@ -435,7 +435,7 @@ class _NotificationRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final tone = _tone(notification.type);
+    final tone = _tone(notification.type, context.accent);
     final copy = localizeNotification(
       type: notification.type,
       title: notification.title,
@@ -510,10 +510,10 @@ class _NotificationRow extends StatelessWidget {
                   child: SizedBox.square(
                     dimension: 9,
                     child: notification.isUnread
-                        ? const DecoratedBox(
-                            key: ValueKey('notification-unread-dot'),
+                        ? DecoratedBox(
+                            key: const ValueKey('notification-unread-dot'),
                             decoration: BoxDecoration(
-                              color: AarastV3Color.primary,
+                              color: context.accent.primary,
                               shape: BoxShape.circle,
                             ),
                           )
@@ -572,7 +572,7 @@ class _NotificationTone {
 
 /// Each notification takes its section's colour: providers cobalt, tasks
 /// and payments saffron, guests lilac, danger for what is late or over.
-_NotificationTone _tone(String type) {
+_NotificationTone _tone(String type, JourneyAccent accent) {
   final t = type.toUpperCase();
   if (t.contains('OVERDUE') || t.contains('EXCEEDED')) {
     return const _NotificationTone(
@@ -617,15 +617,15 @@ _NotificationTone _tone(String type) {
     );
   }
   if (t.contains('SHARING')) {
-    return const _NotificationTone(
+    return _NotificationTone(
       icon: LucideIcons.userPlus,
-      color: AarastV3Color.primary,
-      soft: AarastV3Color.primarySoft,
+      color: accent.primary,
+      soft: accent.primarySoft,
     );
   }
-  return const _NotificationTone(
+  return _NotificationTone(
     icon: LucideIcons.heart,
-    color: AarastV3Color.primary,
-    soft: AarastV3Color.primarySoft,
+    color: accent.primary,
+    soft: accent.primarySoft,
   );
 }

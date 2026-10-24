@@ -59,7 +59,11 @@ class ProviderDetailsView extends StatelessWidget {
         latestPriceUpdate(services) ?? provider.serviceSummary?.pricesUpdatedAt;
     final priceAge = priceUpdatedAt == null
         ? null
-        : priceAgeLine(priceUpdatedAt, now ?? DateTime.now());
+        : priceAgeLine(
+            priceUpdatedAt,
+            now ?? DateTime.now(),
+            profile: context.journeyProfile,
+          );
     final offers = _offers(packages, services);
     final responds = providerRespondsLabel(provider.responsiveness);
     final place = _place(provider);
@@ -219,7 +223,7 @@ class _ProviderHero extends StatelessWidget {
                 images: photos,
                 initialIndex: 0,
               ),
-              semanticLabel: 'افتح الصور',
+              semanticLabel: context.say('افتح الصور', 'افتحي الصور'),
               scale: 1,
               child: dataSaver
                   ? placeholder

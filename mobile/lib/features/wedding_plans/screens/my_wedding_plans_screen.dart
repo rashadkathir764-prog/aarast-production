@@ -151,19 +151,19 @@ class _PlanSwitcherState extends State<_PlanSwitcher> {
           borderRadius: BorderRadius.circular(22),
           semanticLabel: 'خطة جديدة',
           child: JourneyBox(
-            color: AarastV3Color.primarySoft,
+            color: context.accent.primarySoft,
             padding: const EdgeInsets.symmetric(vertical: 18),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                const Icon(LucideIcons.plus, color: AarastV3Color.primary),
+                Icon(LucideIcons.plus, color: context.accent.primary),
                 const SizedBox(width: 8),
                 Text(
                   'خطة جديدة',
                   style: JourneyType.of(
                     JourneyType.bodyLarge,
                     weight: JourneyType.bold,
-                    color: AarastV3Color.primary,
+                    color: context.accent.primary,
                   ),
                 ),
               ],
@@ -171,10 +171,13 @@ class _PlanSwitcherState extends State<_PlanSwitcher> {
           ),
         ),
         const SizedBox(height: 10),
-        const JourneyNote(
-          text:
-              'تقدر تفتح أكثر من خطة، مثلًا لعرس أخوك. وكل خطة بمشاركينها '
-              'وفلوسها.',
+        JourneyNote(
+          text: context.say(
+            'تقدر تفتح أكثر من خطة، مثلًا لعرس أخوك. وكل خطة بمشاركينها '
+                'وفلوسها.',
+            'تقدرين تفتحين أكثر من خطة، مثلًا لعرس أخوك. وكل خطة '
+                'بمشاركينها وفلوسها.',
+          ),
         ),
       ],
     );
@@ -222,7 +225,8 @@ class _PlanSwitcherState extends State<_PlanSwitcher> {
     if (!opened) {
       AarastToast.showError(
         context,
-        accounts.errorMessage ?? 'ما قدرنا نفتح الخطة. جرّب مرة ثانية.',
+        accounts.errorMessage ??
+            'ما قدرنا نفتح الخطة. ${context.say('جرّب', 'جرّبي')} مرة ثانية.',
       );
       return;
     }
@@ -256,14 +260,14 @@ class _PlanCard extends StatelessWidget {
         ? AarastV3Color.textFaint
         : helped
         ? AarastV3Color.brandAccentStrong
-        : AarastV3Color.primary;
+        : context.accent.primary;
     final (String? tag, Color tagColor, Color tagSoft) = archived
         ? ('مؤرشفة', AarastV3Color.textMuted, AarastV3Color.line)
         : helped
         ? ('مشارك', AarastV3Color.amber, AarastV3Color.amberSoft)
         : open
-        ? ('مفتوحة', AarastV3Color.primary, AarastV3Color.primarySoft)
-        : (null, AarastV3Color.primary, AarastV3Color.primarySoft);
+        ? ('مفتوحة', context.accent.primary, context.accent.primarySoft)
+        : (null, context.accent.primary, context.accent.primarySoft);
     final name = entry.name.trim();
     final card = Container(
       padding: const EdgeInsets.all(14),
@@ -271,7 +275,7 @@ class _PlanCard extends StatelessWidget {
         color: AarastV3Color.paper,
         borderRadius: BorderRadius.circular(22),
         border: Border.all(
-          color: open ? AarastV3Color.primary : AarastV3Color.line,
+          color: open ? context.accent.primary : AarastV3Color.line,
           width: open ? 2 : 1,
         ),
       ),

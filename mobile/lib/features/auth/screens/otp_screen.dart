@@ -384,7 +384,7 @@ class _OtpScreenState extends State<OtpScreen> {
                         ),
                         JourneyTextAction(
                           label: 'تغيير',
-                          color: AarastV3Color.primary,
+                          color: context.accent.primary,
                           onPressed: _goBack,
                         ),
                       ],
@@ -425,9 +425,12 @@ class _OtpScreenState extends State<OtpScreen> {
                     Center(
                       child: JourneyTextAction(
                         key: const ValueKey('otp-go-to-password-reset'),
-                        label: 'نسيت كلمة المرور؟',
+                        label: context.say(
+                          'نسيت كلمة المرور؟',
+                          'نسيتِ كلمة المرور؟',
+                        ),
                         icon: LucideIcons.keyRound,
-                        color: AarastV3Color.primary,
+                        color: context.accent.primary,
                         onPressed: phone.isEmpty
                             ? null
                             : () => _goToPasswordReset(phone),
@@ -449,8 +452,8 @@ class _OtpScreenState extends State<OtpScreen> {
                         padding: EdgeInsets.zero,
                         child: JourneyListRow(
                           icon: LucideIcons.messageSquare,
-                          color: AarastV3Color.primary,
-                          soft: AarastV3Color.primarySoft,
+                          color: context.accent.primary,
+                          soft: context.accent.primarySoft,
                           title: 'الرمز ما وصل؟',
                           subtitle: 'شوف ايش تسوي، أو ادخل بكلمة المرور',
                           trailing: const Icon(
@@ -494,10 +497,12 @@ class _ExistingAccountCard extends StatelessWidget {
       padding: EdgeInsets.zero,
       child: JourneyListRow(
         icon: LucideIcons.logIn,
-        color: AarastV3Color.primary,
-        soft: AarastV3Color.primarySoft,
+        color: context.accent.primary,
+        soft: context.accent.primarySoft,
         title: 'هذا حسابك؟',
-        subtitle: 'ادخل عليه، وخطتك اللي على الجهاز نسألك عنها بعدها',
+        subtitle:
+            '${context.say('ادخل', 'ادخلي')} عليه، وخطتك اللي على الجهاز '
+            'نسألك عنها بعدها',
         trailing: JourneyButton.quiet(
           key: const ValueKey('otp-go-to-login'),
           label: 'ادخل',
@@ -598,7 +603,7 @@ class _CodeHelpSheetState extends State<_CodeHelpSheet> {
         Center(
           child: JourneyTextAction(
             label: 'الرقم غلط؟ غيّره',
-            color: AarastV3Color.primary,
+            color: context.accent.primary,
             onPressed: widget.onChangeNumber,
           ),
         ),

@@ -149,7 +149,7 @@ class _OfferCard extends StatelessWidget {
           const SizedBox(height: 12),
           JourneyButton(
             key: ValueKey('requests-choose-${quote.id}'),
-            label: 'اختر هذا',
+            label: context.say('اختر هذا', 'اختاري هذا'),
             background: AarastV3Color.cobalt,
             expand: true,
             loading: busy,
@@ -214,20 +214,30 @@ class _ChosenCard extends StatelessWidget {
       ),
       'DECLINED' => ('اعتذر المزود', AarastV3Color.danger, AarastV3Color.dangerSoft),
       'CANCELLED' => ('ملغي', AarastV3Color.textMuted, AarastV3Color.canvas),
-      _ => ('اخترته', AarastV3Color.cobalt, AarastV3Color.cobaltSoft),
+      _ => (
+        context.say('اخترته', 'اخترتيه'),
+        AarastV3Color.cobalt,
+        AarastV3Color.cobaltSoft,
+      ),
     };
     final detail = switch (booking?.status) {
-      _ when completed => 'مرّ يوم الحجز. قيّمهم يستفيد غيرك.',
+      _ when completed => context.say(
+        'مرّ يوم الحجز. قيّمهم يستفيد غيرك.',
+        'مرّ يوم الحجز. قيّميهم يستفيد غيرك.',
+      ),
       'CONFIRMED' =>
         'أكدوا ${formatArabicDayMonth(booking!.eventDate)} · نذكّركم قبل بأسبوع وبيوم',
       'REQUESTED' =>
-        'طلبت ${formatArabicDayMonth(booking!.eventDate)} · ينتظر ردهم',
+        '${context.say('طلبت', 'طلبتِ')} ${formatArabicDayMonth(booking!.eventDate)} · ينتظر ردهم',
       'DECLINED' =>
         booking!.note?.trim().isNotEmpty == true
             ? 'اعتذروا: ${booking.note!.trim()}'
             : 'اعتذروا عن ${formatArabicDayMonth(booking.eventDate)}',
       'CANCELLED' => 'انلغى الحجز',
-      _ => 'باقي تطلب منهم حجز يوم عرسك',
+      _ => context.say(
+        'باقي تطلب منهم حجز يوم عرسك',
+        'باقي تطلبين منهم حجز يوم عرسك',
+      ),
     };
     final amount = offerAmountLabel(quote.acceptedOffer);
     return JourneyBox(
@@ -266,7 +276,8 @@ class _ChosenCard extends StatelessWidget {
           if (completed)
             JourneyButton(
               key: ValueKey('requests-rate-${quote.id}'),
-              label: 'قيّم ${quoteProviderName(quote)}',
+              label:
+                  '${context.say('قيّم', 'قيّمي')} ${quoteProviderName(quote)}',
               icon: LucideIcons.star,
               background: AarastV3Color.brandAccentStrong,
               expand: true,
@@ -275,7 +286,9 @@ class _ChosenCard extends StatelessWidget {
           else if (booking == null || booking.canRequestAgain)
             JourneyButton(
               key: ValueKey('requests-book-${quote.id}'),
-              label: booking == null ? 'اطلب الحجز' : 'اطلب حجز مرة ثانية',
+              label: booking == null
+                  ? context.say('اطلب الحجز', 'اطلبي الحجز')
+                  : context.say('اطلب حجز مرة ثانية', 'اطلبي حجز مرة ثانية'),
               icon: LucideIcons.calendarCheck,
               background: AarastV3Color.cobalt,
               expand: true,
@@ -287,9 +300,12 @@ class _ChosenCard extends StatelessWidget {
               if (quote.costSuggestion?.canViewCost == true)
                 JourneyTextAction(
                   key: ValueKey('requests-view-cost-${quote.id}'),
-                  label: 'شوف البند في المال',
+                  label: context.say(
+                    'شوف البند في المال',
+                    'شوفي البند في المال',
+                  ),
                   icon: LucideIcons.wallet,
-                  color: AarastV3Color.primary,
+                  color: context.accent.primary,
                   onPressed: onViewCost,
                 ),
               JourneyTextAction(
@@ -302,7 +318,9 @@ class _ChosenCard extends StatelessWidget {
               if (booking != null && booking.isOpen)
                 JourneyTextAction(
                   key: ValueKey('requests-cancel-booking-${quote.id}'),
-                  label: booking.isConfirmed ? 'ألغِ الحجز' : 'ألغِ الطلب',
+                  label: booking.isConfirmed
+                      ? context.say('ألغِ الحجز', 'ألغي الحجز')
+                      : context.say('ألغِ الطلب', 'ألغي الطلب'),
                   color: AarastV3Color.danger,
                   onPressed: busy ? null : onCancelBooking,
                 ),
@@ -374,7 +392,7 @@ class _ExpiredCard extends StatelessWidget {
         const SizedBox(height: 10),
         JourneyButton(
           key: ValueKey('requests-new-${quote.id}'),
-          label: 'اطلب عرض جديد',
+          label: context.say('اطلب عرض جديد', 'اطلبي عرض جديد'),
           icon: LucideIcons.refreshCw,
           background: AarastV3Color.cobalt,
           expand: true,
@@ -413,7 +431,10 @@ class _CancelBookingSheet extends StatelessWidget {
       title: confirmed
           ? 'إلغاء حجز ${quoteProviderName(quote)}'
           : 'إلغاء طلب الحجز',
-      subtitle: 'قبل ما تلغي، هذا اللي بيصير',
+      subtitle: context.say(
+        'قبل ما تلغي، هذا اللي بيصير',
+        'قبل ما تلغين، هذا اللي بيصير',
+      ),
       children: [
         JourneyBox(
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
@@ -423,7 +444,10 @@ class _CancelBookingSheet extends StatelessWidget {
               effect(LucideIcons.calendarX, 'اليوم يرجع فاضي عندهم'),
               effect(
                 LucideIcons.wallet,
-                'البند يبقى في المال: لو رجّعوا لك شيء أو ما بتدفع، عدّله من هناك',
+                context.say(
+                  'البند يبقى في المال: لو رجّعوا لك شيء أو ما بتدفع، عدّله من هناك',
+                  'البند يبقى في المال: لو رجّعوا لك شيء أو ما بتدفعين، عدّليه من هناك',
+                ),
               ),
             ],
           ),
@@ -431,7 +455,9 @@ class _CancelBookingSheet extends StatelessWidget {
         const SizedBox(height: 16),
         JourneyButton(
           key: const ValueKey('requests-cancel-booking-confirm'),
-          label: confirmed ? 'ألغِ الحجز' : 'ألغِ الطلب',
+          label: confirmed
+              ? context.say('ألغِ الحجز', 'ألغي الحجز')
+              : context.say('ألغِ الطلب', 'ألغي الطلب'),
           background: AarastV3Color.danger,
           expand: true,
           large: true,

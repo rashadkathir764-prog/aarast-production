@@ -29,7 +29,10 @@ class _MarketplaceSearch extends StatelessWidget {
           style: JourneyType.of(JourneyType.bodyLarge, weight: JourneyType.bold),
           cursorColor: AarastV3Color.cobalt,
           decoration: InputDecoration(
-            hintText: 'دوّر على مزود أو خدمة',
+            hintText: context.say(
+              'دوّر على مزود أو خدمة',
+              'دوّري على مزود أو خدمة',
+            ),
             hintStyle: JourneyType.of(
               JourneyType.bodyLarge,
               color: AarastV3Color.textFaint,
@@ -46,7 +49,7 @@ class _MarketplaceSearch extends StatelessWidget {
             suffixIcon: value.text.isEmpty
                 ? null
                 : IconButton(
-                    tooltip: 'امسح البحث',
+                    tooltip: context.say('امسح البحث', 'امسحي البحث'),
                     onPressed: () {
                       controller.clear();
                       provider.setSearch('');

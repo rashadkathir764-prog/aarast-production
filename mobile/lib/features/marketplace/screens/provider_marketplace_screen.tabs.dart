@@ -115,14 +115,19 @@ extension _ProviderTabs on _ProviderMarketplaceScreenState {
           icon: LucideIcons.store,
           color: AarastV3Color.cobalt,
           soft: AarastV3Color.cobaltSoft,
-          title: 'نبدأ بالقاعة',
-          message: 'لأنها تحدد يومك وعدد ضيوفك،\nوالقاعات تنحجز قبل بشهرين.',
+          title: context.say('نبدأ بالقاعة', 'نبدأ بالصالة'),
+          message: context.say(
+            'لأنها تحدد يومك وعدد ضيوفك،\nوالقاعات تنحجز قبل بشهرين.',
+            'لأنها تحدد يومك وعدد ضيفاتك،\nوالصالات تنحجز قبل بشهرين.',
+          ),
           ways: [
             JourneyStartWay(
               key: const ValueKey('providers-first-halls'),
               icon: LucideIcons.building2,
-              title: 'قاعات لعرسك',
-              subtitle: hallWhere.isEmpty ? 'كل القاعات في الدليل' : hallWhere,
+              title: context.say('قاعات لعرسك', 'صالات لعرسك'),
+              subtitle: hallWhere.isEmpty
+                  ? context.say('كل القاعات في الدليل', 'كل الصالات في الدليل')
+                  : hallWhere,
               onTap: () async {
                 _leaveFirstVisit();
                 _selectTab('استكشف', tabs);
@@ -145,8 +150,11 @@ extension _ProviderTabs on _ProviderMarketplaceScreenState {
               JourneyStartWay(
                 key: const ValueKey('providers-first-outside'),
                 icon: LucideIcons.checkCircle2,
-                title: 'حجزت برا اعّرست',
-                subtitle: 'سجّله هنا عشان يدخل خطتك',
+                title: context.say('حجزت برا اعّرست', 'حجزتِ برا اعّرست'),
+                subtitle: context.say(
+                  'سجّله هنا عشان يدخل خطتك',
+                  'سجّليه هنا عشان يدخل خطتك',
+                ),
                 onTap: () => _pushOnce(
                   AppRouter.moneyCostCreate(planId),
                   extra: const CostDraftIntent(outsideParty: true),
@@ -156,7 +164,10 @@ extension _ProviderTabs on _ProviderMarketplaceScreenState {
               key: const ValueKey('providers-first-explore'),
               icon: LucideIcons.search,
               title: 'استكشف كل الخدمات',
-              subtitle: 'فرق، تصوير، زينة، ضيافة',
+              subtitle: context.say(
+                'فرق، تصوير، زينة، ضيافة',
+                'مزينات، مصورات، زينة، ضيافة',
+              ),
               onTap: () {
                 _leaveFirstVisit();
                 _selectTab('استكشف', tabs);
@@ -290,7 +301,10 @@ extension _ProviderTabs on _ProviderMarketplaceScreenState {
           JourneyBox(
             key: const ValueKey('providers-favorites-empty'),
             child: Text(
-              'احفظ المزود اللي يعجبك بالقلب، ويجيك هنا تقارن بينهم.',
+              context.say(
+                'احفظ المزود اللي يعجبك بالقلب، ويجيك هنا تقارن بينهم.',
+                'احفظي المزود اللي يعجبك بالقلب، ويجيك هنا تقارنين بينهم.',
+              ),
               style: JourneyType.of(
                 JourneyType.body,
                 color: AarastV3Color.textMuted,
@@ -344,7 +358,7 @@ extension _ProviderTabs on _ProviderMarketplaceScreenState {
             padding: EdgeInsets.fromLTRB(16, 0, 16, bottomGap - 16),
             child: JourneyButton(
               key: const ValueKey('providers-favorites-compare'),
-              label: 'قارن الملفين',
+              label: context.say('قارن الملفين', 'قارني الملفين'),
               icon: LucideIcons.columns,
               background: AarastV3Color.cobalt,
               large: true,
@@ -399,10 +413,12 @@ extension _ProviderTabs on _ProviderMarketplaceScreenState {
         padding: EdgeInsets.fromLTRB(16, 14, 16, widget.embedded ? 124 : 28),
         children: [
           if (!provider.includesAccountData) ...[
-            const JourneyNote(
-              key: Key('marketplace-login-note'),
-              text:
-                  'تقدر تتصفح الآن. تطلب عروض وتتابعها بعد ما تحفظ خطتك برقم جوالك.',
+            JourneyNote(
+              key: const Key('marketplace-login-note'),
+              text: context.say(
+                'تقدر تتصفح الآن. تطلب عروض وتتابعها بعد ما تحفظ خطتك برقم جوالك.',
+                'تقدرين تتصفحين الآن. تطلبين عروض وتتابعينها بعد ما تحفظين خطتك برقم جوالك.',
+              ),
               icon: LucideIcons.logIn,
               color: AarastV3Color.cobalt,
               soft: AarastV3Color.cobaltSoft,
@@ -543,7 +559,10 @@ class _FavoriteCard extends StatelessWidget {
                       child: AarastPressable(
                         key: ValueKey('providers-favorite-pick-${provider.id}'),
                         onTap: onPick,
-                        semanticLabel: 'اختره للمقارنة',
+                        semanticLabel: context.say(
+                          'اختره للمقارنة',
+                          'اختاريه للمقارنة',
+                        ),
                         child: Padding(
                           padding: const EdgeInsets.all(8),
                           child: Container(

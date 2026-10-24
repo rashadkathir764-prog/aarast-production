@@ -125,7 +125,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             AuthHeading(
-              title: keptPlan != null ? 'احفظ خطتك' : 'أنشئ حسابك',
+              title: keptPlan != null
+                  ? context.say('احفظ خطتك', 'احفظي خطتك')
+                  : context.say('أنشئ حسابك', 'أنشئي حسابك'),
               subtitle: keptPlan != null
                   ? 'خطتك محفوظة في جوالك، وبالحساب ما تضيع'
                   : 'حساب واحد لخطتك ولكل خطة تشارك فيها',

@@ -72,8 +72,8 @@ class _StartStep extends StatelessWidget {
           padding: EdgeInsets.zero,
           child: JourneyListRow(
             icon: LucideIcons.logIn,
-            color: AarastV3Color.primary,
-            soft: AarastV3Color.primarySoft,
+            color: context.accent.primary,
+            soft: context.accent.primarySoft,
             iconSize: 44,
             title: 'عندي حساب',
             subtitle: 'ادخل برقم جوالك: عريس، عروسة، أو مزود',
@@ -94,7 +94,7 @@ class _StartStep extends StatelessWidget {
               JourneyTextAction(
                 label: 'عندي رابط دعوة',
                 icon: LucideIcons.link,
-                color: AarastV3Color.primary,
+                color: context.accent.primary,
                 onPressed: onInvite,
               ),
               Text(
@@ -219,7 +219,7 @@ class _PictureChoiceCard extends StatelessWidget {
               color: AarastV3Color.paper,
               borderRadius: BorderRadius.circular(24),
               border: Border.all(
-                color: selected ? AarastV3Color.primary : AarastV3Color.line,
+                color: selected ? context.accent.primary : AarastV3Color.line,
                 width: selected ? 2 : 1,
               ),
             ),
@@ -236,7 +236,7 @@ class _PictureChoiceCard extends StatelessWidget {
                         shape: BoxShape.circle,
                         border: Border.all(
                           color: selected
-                              ? AarastV3Color.primary
+                              ? context.accent.primary
                               : AarastV3Color.line,
                           width: selected ? 7 : 2,
                         ),

@@ -95,7 +95,7 @@ class _BookingMomentScreenState extends State<BookingMomentScreen> {
 
     final (String action, VoidCallback onAction) = schedule != null
         ? (
-            'سجّل $scheduleName',
+            '${context.say('سجّل', 'سجّلي')} $scheduleName',
             () => _go(
               AppRouter.moneySchedulePay(
                 widget.weddingPlanId,
@@ -106,7 +106,7 @@ class _BookingMomentScreenState extends State<BookingMomentScreen> {
           )
         : cost != null
         ? (
-            'سجّل العربون',
+            context.say('سجّل العربون', 'سجّلي العربون'),
             () => _go(
               AppRouter.moneyPaymentCreate(widget.weddingPlanId, cost.id),
             ),

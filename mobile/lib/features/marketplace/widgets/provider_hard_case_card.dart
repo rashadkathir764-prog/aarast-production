@@ -148,20 +148,20 @@ class ProviderHardCaseCard extends StatelessWidget {
                 if (declined)
                   JourneyButton(
                     key: ValueKey('provider-hard-case-others-${quote.id}'),
-                    label: 'شوف البدائل',
+                    label: context.say('شوف البدائل', 'شوفي البدائل'),
                     background: AarastV3Color.cobalt,
                     onPressed: onFindOthers,
                   )
                 else
                   JourneyButton.quiet(
                     key: ValueKey('provider-hard-case-others-${quote.id}'),
-                    label: 'اطلب من غيره',
+                    label: context.say('اطلب من غيره', 'اطلبي من غيره'),
                     onPressed: onFindOthers,
                   ),
                 if (declined && onAnotherDay != null)
                   JourneyButton.quiet(
                     key: ValueKey('provider-hard-case-day-${quote.id}'),
-                    label: 'اطلب يوم ثاني',
+                    label: context.say('اطلب يوم ثاني', 'اطلبي يوم ثاني'),
                     onPressed: onAnotherDay,
                   ),
               ],

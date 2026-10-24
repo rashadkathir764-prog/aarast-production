@@ -236,9 +236,14 @@ class LoginExperience extends StatelessWidget {
         ),
         const SizedBox(height: 18),
         AuthHeading(
-          title: sessionExpired ? 'ادخل مرة ثانية' : 'أهلًا من جديد',
+          title: sessionExpired
+              ? context.say('ادخل مرة ثانية', 'ادخلي مرة ثانية')
+              : 'أهلًا من جديد',
           subtitle: sessionExpired
-              ? 'طال غيابك، فقفلنا الدخول لأمانك. ادخل وترجع مكانك.'
+              ? context.say(
+                  'طال غيابك، فقفلنا الدخول لأمانك. ادخل وترجع مكانك.',
+                  'طال غيابك، فقفلنا الدخول لأمانك. ادخلي وترجعين مكانك.',
+                )
               : 'خطتك بانتظارك، مثل ما تركتها.',
         ),
         if (pendingChanges > 0) ...[
@@ -297,8 +302,8 @@ class LoginExperience extends StatelessWidget {
           alignment: AlignmentDirectional.centerEnd,
           child: JourneyTextAction(
             key: const ValueKey('login-forgot-password-action'),
-            label: 'نسيت كلمة المرور؟',
-            color: AarastV3Color.primary,
+            label: context.say('نسيت كلمة المرور؟', 'نسيتِ كلمة المرور؟'),
+            color: context.accent.primary,
             onPressed: onResetPassword,
           ),
         ),

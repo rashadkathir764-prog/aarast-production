@@ -116,7 +116,7 @@ class _DaySheet extends StatelessWidget {
           child: Container(
             constraints: const BoxConstraints(minHeight: 52),
             decoration: BoxDecoration(
-              color: chosen ? AarastV3Color.primary : null,
+              color: chosen ? context.accent.primary : null,
               borderRadius: BorderRadius.circular(12),
             ),
             child: Column(

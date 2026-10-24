@@ -42,7 +42,10 @@ class _LockSettingsScreenState extends State<LockSettingsScreen> {
     final Widget body;
     if (controller == null || controller.userId == null) {
       body = Text(
-        'ادخل حسابك أول عشان تقفل التطبيق برمز.',
+        context.say(
+          'ادخل حسابك أول عشان تقفل التطبيق برمز.',
+          'ادخلي حسابك أول عشان تقفلين التطبيق برمز.',
+        ),
         textAlign: TextAlign.center,
         style: JourneyType.of(
           JourneyType.bodyLarge,
@@ -55,10 +58,13 @@ class _LockSettingsScreenState extends State<LockSettingsScreen> {
         children: [
           Text(
             _mismatch
-                ? 'الرمزين مختلفين، ابدأ من جديد'
+                ? context.say(
+                    'الرمزين مختلفين، ابدأ من جديد',
+                    'الرمزين مختلفين، ابدئي من جديد',
+                  )
                 : _first == null
-                ? 'اختر رمز من 4 أرقام'
-                : 'اكتبه مرة ثانية',
+                ? context.say('اختر رمز من 4 أرقام', 'اختاري رمز من 4 أرقام')
+                : context.say('اكتبه مرة ثانية', 'اكتبيه مرة ثانية'),
             textAlign: TextAlign.center,
             style: JourneyType.of(
               JourneyType.title,
@@ -68,11 +74,14 @@ class _LockSettingsScreenState extends State<LockSettingsScreen> {
           ),
           const SizedBox(height: 6),
           Text(
-            'لا تستخدم تاريخ ميلاد أو رقم يعرفه غيرك.',
+            context.say(
+              'لا تستخدم تاريخ ميلاد أو رقم يعرفه غيرك.',
+              'لا تستخدمين تاريخ ميلاد أو رقم يعرفه غيرك.',
+            ),
             textAlign: TextAlign.center,
             style: JourneyType.of(
               JourneyType.small,
-              color: AarastV3Color.onPrimaryMuted,
+              color: context.accent.onPrimaryMuted,
             ),
           ),
           const SizedBox(height: 24),
@@ -105,19 +114,22 @@ class _LockSettingsScreenState extends State<LockSettingsScreen> {
           ),
           const SizedBox(height: 6),
           Text(
-            'نطلبه لما تفتح التطبيق، وبعد دقيقة برّاه.',
+            context.say(
+              'نطلبه لما تفتح التطبيق، وبعد دقيقة برّاه.',
+              'نطلبه لما تفتحين التطبيق، وبعد دقيقة برّاه.',
+            ),
             textAlign: TextAlign.center,
             style: JourneyType.of(
               JourneyType.body,
-              color: AarastV3Color.onPrimaryMuted,
+              color: context.accent.onPrimaryMuted,
             ),
           ),
           const SizedBox(height: 24),
           JourneyButton(
             key: const Key('lock-change-code'),
-            label: 'غيّر الرمز',
+            label: context.say('غيّر الرمز', 'غيّري الرمز'),
             background: AarastV3Color.paper,
-            foreground: AarastV3Color.primary,
+            foreground: context.accent.primary,
             expand: true,
             onPressed: () => setState(() {
               _choosing = true;
@@ -129,7 +141,7 @@ class _LockSettingsScreenState extends State<LockSettingsScreen> {
           Center(
             child: JourneyTextAction(
               key: const Key('lock-turn-off'),
-              label: 'شيل القفل',
+              label: context.say('شيل القفل', 'شيلي القفل'),
               color: AarastV3Color.onPrimary,
               onPressed: () => _turnOff(controller),
             ),
@@ -142,7 +154,7 @@ class _LockSettingsScreenState extends State<LockSettingsScreen> {
       value: SystemUiOverlayStyle.light,
       child: AarastScreenFrame(
         maxWidth: 520,
-        backgroundColor: AarastV3Color.primary,
+        backgroundColor: context.accent.primary,
         child: ListView(
           padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
           children: [

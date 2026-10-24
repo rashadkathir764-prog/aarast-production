@@ -59,7 +59,7 @@ class ParticipantAccessEditor extends StatelessWidget {
               ),
               _LevelRow(
                 icon: LucideIcons.users,
-                label: 'الضيوف',
+                label: JourneySection.guests.labelOf(context),
                 selected: p.canManageGuests ? 1 : 0,
                 onChanged: enabled
                     ? (i) => onChanged(p.copyWith(canManageGuests: i == 1))
@@ -90,9 +90,11 @@ class ParticipantAccessEditor extends StatelessWidget {
           key: const ValueKey('participant-access-note'),
           icon: LucideIcons.lock,
           text: role == 'GROOM' || role == 'BRIDE'
-              ? 'الشريك يشوف الخطة كلها في الأقسام اللي تفتحها له، إلا مصادر '
+              ? 'الشريك يشوف الخطة كلها في الأقسام اللي '
+                    '${context.say('تفتحها', 'تفتحينها')} له، إلا مصادر '
                     'فلوسك وسلفك تبقى لك.'
-              : 'في كل قسم تفتحه، المشارك يشوف اللي أضافه هو أو اللي عليه بس. '
+              : 'في كل قسم ${context.say('تفتحه', 'تفتحينه')}، المشارك يشوف '
+                    'اللي أضافه هو أو اللي عليه بس. '
                     '"المهام: يعدّل" يعني يضيف مهام ويخلّص اللي عليه، ومصادر '
                     'فلوسك وسلفك تبقى لك.',
         ),
@@ -133,7 +135,7 @@ class _LevelRow extends StatelessWidget {
             Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Icon(icon, size: 19, color: AarastV3Color.primary),
+                Icon(icon, size: 19, color: context.accent.primary),
                 const SizedBox(width: 10),
                 Text(
                   label,

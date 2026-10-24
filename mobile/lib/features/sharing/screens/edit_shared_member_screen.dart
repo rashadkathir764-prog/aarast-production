@@ -184,7 +184,7 @@ class _EditSharedMemberScreenState extends State<EditSharedMemberScreen> {
       const SizedBox(height: 14),
       JourneyButton(
         key: const ValueKey('member-save'),
-        label: 'احفظ',
+        label: context.say('احفظ', 'احفظي'),
         large: true,
         expand: true,
         loading: provider.isSubmitting,
@@ -194,7 +194,7 @@ class _EditSharedMemberScreenState extends State<EditSharedMemberScreen> {
       Center(
         child: JourneyTextAction(
           key: const ValueKey('member-remove'),
-          label: 'شيله من الخطة',
+          label: context.say('شيله من الخطة', 'شيليه من الخطة'),
           icon: LucideIcons.userMinus,
           color: AarastV3Color.danger,
           onPressed: provider.isSubmitting
@@ -319,12 +319,12 @@ class _EditSharedMemberScreenState extends State<EditSharedMemberScreen> {
     final confirmed = await showJourneySheet<bool>(
       context: context,
       builder: (sheetContext) => JourneySheetBody(
-        title: 'تشيل $who من الخطة؟',
+        title: '${context.say('تشيل', 'تشيلين')} $who من الخطة؟',
         subtitle: 'يطلع على طول، وما يقدر يفتح الخطة بعدها.',
         children: [
           JourneyButton(
             key: const ValueKey('member-remove-confirm'),
-            label: 'شيله',
+            label: context.say('شيله', 'شيليه'),
             background: AarastV3Color.danger,
             large: true,
             expand: true,

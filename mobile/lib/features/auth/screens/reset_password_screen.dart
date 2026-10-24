@@ -96,7 +96,10 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
     return AuthWeddingScaffold(
       leading: SizedBox(
         width: double.infinity,
-        child: JourneySubHeader(title: 'نسيت كلمة المرور', onBack: _back),
+        child: JourneySubHeader(
+          title: context.say('نسيت كلمة المرور', 'نسيتِ كلمة المرور'),
+          onBack: _back,
+        ),
       ),
       bottom: JourneyButton(
         key: const ValueKey('reset-primary-action'),
@@ -188,7 +191,7 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
             ),
             JourneyTextAction(
               label: 'تغيير',
-              color: AarastV3Color.primary,
+              color: context.accent.primary,
               onPressed: _isSubmitting ? null : () => _goTo(_ResetStep.phone),
             ),
           ],
@@ -309,7 +312,7 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
             key: const ValueKey('reset-create-account-action'),
             label: 'أنشئ حساب جديد بهذا الرقم',
             icon: LucideIcons.userPlus,
-            color: AarastV3Color.primary,
+            color: context.accent.primary,
             onPressed: _isSubmitting
                 ? null
                 : () => context.go(_authLocation(AppRouter.register)),
@@ -602,9 +605,9 @@ class _ResetSteps extends StatelessWidget {
                   alignment: Alignment.center,
                   decoration: BoxDecoration(
                     color: index == at
-                        ? AarastV3Color.primary
+                        ? context.accent.primary
                         : index < at
-                        ? AarastV3Color.primarySoft
+                        ? context.accent.primarySoft
                         : null,
                     borderRadius: BorderRadius.circular(999),
                   ),
@@ -619,7 +622,7 @@ class _ResetSteps extends StatelessWidget {
                         color: index == at
                             ? AarastV3Color.onPrimary
                             : index < at
-                            ? AarastV3Color.primary
+                            ? context.accent.primary
                             : AarastV3Color.textMuted,
                       ),
                     ),

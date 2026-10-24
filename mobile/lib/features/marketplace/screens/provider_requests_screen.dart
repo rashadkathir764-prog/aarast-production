@@ -153,7 +153,7 @@ class _ProviderRequestsScreenState extends State<ProviderRequestsScreen> {
     final title = row == null
         ? 'المزودين'
         : offers.length >= 2
-        ? 'قارن عروض ${row.title}'
+        ? '${context.say('قارن', 'قارني')} عروض ${row.title}'
         : row.title;
 
     return AarastScreenFrame(
@@ -200,12 +200,13 @@ class _ProviderRequestsScreenState extends State<ProviderRequestsScreen> {
                       onChat: _openChat,
                     ),
                     const SizedBox(height: 12),
-                    const JourneyNote(
-                      key: ValueKey('requests-choose-note'),
-                      text: 'لما تختار، يصير بند في المال، ونطلب منهم حجز يوم عرسك.',
+                    JourneyNote(
+                      key: const ValueKey('requests-choose-note'),
+                      text: context.say(
+                        'لما تختار، يصير بند في المال، ونطلب منهم حجز يوم عرسك.',
+                        'لما تختارين، يصير بند في المال، ونطلب منهم حجز يوم عرسك.',
+                      ),
                       icon: LucideIcons.wallet,
-                      color: AarastV3Color.primary,
-                      soft: AarastV3Color.primarySoft,
                     ),
                   ],
                   for (final quote in accepted) ...[
@@ -249,7 +250,7 @@ class _ProviderRequestsScreenState extends State<ProviderRequestsScreen> {
                               title: quoteProviderName(quote),
                               subtitle: quote.createdAt == null
                                   ? 'ينتظر الرد'
-                                  : 'طلبت ${formatArabicDayMonth(quote.createdAt!)} · ينتظر الرد',
+                                  : '${context.say('طلبت', 'طلبتِ')} ${formatArabicDayMonth(quote.createdAt!)} · ينتظر الرد',
                               onTap: () => _openChat(quote),
                             ),
                         ],
@@ -271,7 +272,10 @@ class _ProviderRequestsScreenState extends State<ProviderRequestsScreen> {
                               soft: AarastV3Color.canvas,
                               title: quoteProviderName(quote),
                               subtitle: quote.lifecycleStatus == 'REJECTED'
-                                  ? 'اعتذرت عن عرضهم'
+                                  ? context.say(
+                                      'اعتذرت عن عرضهم',
+                                      'اعتذرتِ عن عرضهم',
+                                    )
                                   : 'انلغى الطلب',
                               onTap: () => _openChat(quote),
                             ),
@@ -319,7 +323,10 @@ class _ProviderRequestsScreenState extends State<ProviderRequestsScreen> {
     }
     await context.read<FinanceProvider?>()?.loadMoney(widget.weddingPlanId);
     if (!mounted) return;
-    AarastToast.showSuccess(context, 'اخترت ${quoteProviderName(quote)}، وصار بند في المال.');
+    AarastToast.showSuccess(
+      context,
+      '${context.say('اخترت', 'اخترتِ')} ${quoteProviderName(quote)}، وصار بند في المال.',
+    );
     await _book(_fresh(quote));
   }
 
@@ -348,7 +355,11 @@ class _ProviderRequestsScreenState extends State<ProviderRequestsScreen> {
     } else {
       AarastToast.showError(
         context,
-        marketplace.errorMessage ?? 'ما وصل طلب الحجز. جرّب مرة ثانية.',
+        marketplace.errorMessage ??
+            context.say(
+              'ما وصل طلب الحجز. جرّب مرة ثانية.',
+              'ما وصل طلب الحجز. جرّبي مرة ثانية.',
+            ),
       );
     }
   }
@@ -369,14 +380,26 @@ class _ProviderRequestsScreenState extends State<ProviderRequestsScreen> {
       await chat.send(conversation.id, body: message);
     } catch (_) {
       if (mounted) {
-        AarastToast.showError(context, 'ما وصلت رسالتك. جرّب مرة ثانية.');
+        AarastToast.showError(
+          context,
+          context.say(
+            'ما وصلت رسالتك. جرّب مرة ثانية.',
+            'ما وصلت رسالتك. جرّبي مرة ثانية.',
+          ),
+        );
       }
       return;
     }
     final ok = await marketplace.rejectQuote(quote);
     if (!mounted) return;
     if (ok) {
-      AarastToast.showSuccess(context, 'وصلتهم رسالتك واعتذرت عن العرض.');
+      AarastToast.showSuccess(
+        context,
+        context.say(
+          'وصلتهم رسالتك واعتذرت عن العرض.',
+          'وصلتهم رسالتك واعتذرتِ عن العرض.',
+        ),
+      );
     } else {
       AarastToast.showError(
         context,

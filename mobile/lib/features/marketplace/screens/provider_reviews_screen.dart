@@ -149,7 +149,9 @@ class _ProviderReviewsScreenState extends State<ProviderReviewsScreen> {
       body = _Sent(sent: _sent!, left: left.toList(), name: name);
       footer = JourneyButton(
         key: const ValueKey('reviews-next'),
-        label: next == null ? 'تمام' : 'قيّم ${next.name}',
+        label: next == null
+            ? 'تمام'
+            : '${context.say('قيّم', 'قيّمي')} ${next.name}',
         background: AarastV3Color.brandAccentStrong,
         expand: true,
         large: true,
@@ -170,11 +172,14 @@ class _ProviderReviewsScreenState extends State<ProviderReviewsScreen> {
       body = locked != null
           ? _Locked(provider: locked, name: name)
           : done.isEmpty
-          ? const JourneyListState(
+          ? JourneyListState(
               phase: JourneyListPhase.empty,
               section: JourneySection.providers,
               emptyIcon: LucideIcons.star,
-              emptyTitle: 'ما في مزودين تقيّمهم بعد',
+              emptyTitle: context.say(
+                'ما في مزودين تقيّمهم بعد',
+                'ما في مزودين تقيّمينهم بعد',
+              ),
             )
           : _RatedList(done: done, mine: _mine);
       footer = null;
@@ -191,7 +196,9 @@ class _ProviderReviewsScreenState extends State<ProviderReviewsScreen> {
       );
       footer = JourneyButton(
         key: const ValueKey('reviews-send'),
-        label: left.length > 1 ? 'أرسل التقييم والتالي' : 'أرسل التقييم',
+        label: left.length > 1
+            ? context.say('أرسل التقييم والتالي', 'أرسلي التقييم والتالي')
+            : context.say('أرسل التقييم', 'أرسلي التقييم'),
         background: AarastV3Color.brandAccentStrong,
         expand: true,
         large: true,
@@ -215,10 +222,10 @@ class _ProviderReviewsScreenState extends State<ProviderReviewsScreen> {
                       ? 'تقييمك'
                       : locked
                       ? body.provider.name
-                      : 'قيّم مزودينك',
+                      : context.say('قيّم مزودينك', 'قيّمي مزودينك'),
                   subtitle: _sent != null || locked || done.isEmpty
                       ? null
-                      : '${_mine.length} من ${done.length} · تقييمك يساعد العرسان الجايين',
+                      : '${_mine.length} من ${done.length} · ${context.say('تقييمك يساعد العرسان الجايين', 'تقييمك يساعد العرايس الجايات')}',
                   onBack: _close,
                 ),
                 body,
@@ -374,6 +381,10 @@ class _Rate extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final commentFor = context.say(
+      'كلمة للعرسان الجايين',
+      'كلمة للعرايس الجايات',
+    );
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -405,7 +416,8 @@ class _Rate extends StatelessWidget {
                         Text(
                           [
                             if (provider.service.isNotEmpty) provider.service,
-                            if (paid != null) 'دفعت $paid',
+                            if (paid != null)
+                              '${context.say('دفعت', 'دفعتِ')} $paid',
                           ].join(' · '),
                           style: JourneyType.of(
                             JourneyType.small,
@@ -437,7 +449,7 @@ class _Rate extends StatelessWidget {
               const SizedBox(height: 16),
               JourneyTextField(
                 key: const ValueKey('reviews-comment'),
-                label: 'كلمة للعرسان الجايين (اختياري)',
+                label: '$commentFor (اختياري)',
                 controller: comment,
                 minLines: 1,
                 maxLines: 4,
@@ -493,7 +505,7 @@ class _RatedList extends StatelessWidget {
         Padding(
           padding: const EdgeInsets.fromLTRB(4, 0, 4, 10),
           child: Text(
-            'قيّمتهم',
+            context.say('قيّمتهم', 'قيّمتيهم'),
             style: JourneyType.of(JourneyType.title, weight: JourneyType.bold),
           ),
         ),
@@ -568,7 +580,10 @@ class _Sent extends StatelessWidget {
         ),
         const SizedBox(height: 4),
         Text(
-          'شكرًا، العرسان الجايين بيستفيدون منه',
+          context.say(
+            'شكرًا، العرسان الجايين بيستفيدون منه',
+            'شكرًا، العرايس الجايات بيستفيدن منه',
+          ),
           textAlign: TextAlign.center,
           style: JourneyType.of(
             JourneyType.body,
@@ -599,7 +614,7 @@ class _Sent extends StatelessWidget {
           Padding(
             padding: const EdgeInsets.fromLTRB(4, 0, 4, 10),
             child: Text(
-              'باقي تقيّم',
+              context.say('باقي تقيّم', 'باقي تقيّمين'),
               style: JourneyType.of(
                 JourneyType.title,
                 weight: JourneyType.bold,
@@ -653,7 +668,10 @@ class _Locked extends StatelessWidget {
         ),
         const SizedBox(height: 6),
         Text(
-          'تقيّم المزود بعد يوم الحجز بس، عشان كل تقييم يكون من تجربة حقيقية.',
+          context.say(
+            'تقيّم المزود بعد يوم الحجز بس، عشان كل تقييم يكون من تجربة حقيقية.',
+            'تقيّمين المزود بعد يوم الحجز بس، عشان كل تقييم يكون من تجربة حقيقية.',
+          ),
           textAlign: TextAlign.center,
           style: JourneyType.of(
             JourneyType.body,

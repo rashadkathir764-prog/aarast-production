@@ -28,10 +28,13 @@ Future<void> _showManualCopy(BuildContext context, String text) {
     context: context,
     isDismissible: false,
     builder: (sheetContext) => JourneySheetBody(
-      title: 'انسخ الرابط بنفسك',
-      subtitle:
-          'ما قدرنا ننسخه. اضغط عليه مطوّل وانسخه قبل ما تقفل، لأنه ما '
-          'يظهر مرة ثانية.',
+      title: context.say('انسخ الرابط بنفسك', 'انسخي الرابط بنفسك'),
+      subtitle: context.say(
+        'ما قدرنا ننسخه. اضغط عليه مطوّل وانسخه قبل ما تقفل، لأنه ما '
+            'يظهر مرة ثانية.',
+        'ما قدرنا ننسخه. اضغطي عليه مطوّل وانسخيه قبل ما تقفلين، لأنه ما '
+            'يظهر مرة ثانية.',
+      ),
       children: [
         JourneyBox(
           child: SelectableText(

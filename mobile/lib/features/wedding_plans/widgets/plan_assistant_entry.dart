@@ -65,9 +65,9 @@ class _PlanAssistantEntryState extends State<PlanAssistantEntry> {
         child: JourneyListRow(
           key: const ValueKey('assistant-entry'),
           icon: LucideIcons.sparkles,
-          color: AarastV3Color.primary,
-          soft: AarastV3Color.primarySoft,
-          title: 'اسأل اعّرست',
+          color: context.accent.primary,
+          soft: context.accent.primarySoft,
+          title: context.say('اسأل اعّرست', 'اسألي اعّرست'),
           subtitle: 'يجاوبك من خطتك أنت، وما يخترع أسعار',
           trailing: const Icon(
             LucideIcons.chevronLeft,

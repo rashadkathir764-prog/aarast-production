@@ -74,7 +74,7 @@ class _FavoriteProvidersScreenState extends State<FavoriteProvidersScreen> {
         padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
         children: [
           JourneySubHeader(
-            title: 'قارن الملفين',
+            title: context.say('قارن الملفين', 'قارني الملفين'),
             subtitle: _subtitle(providers),
             onBack: () => context.canPop()
                 ? context.pop()
@@ -119,11 +119,17 @@ class _FavoriteProvidersScreenState extends State<FavoriteProvidersScreen> {
               section: JourneySection.providers,
             )
           else
-            const JourneyListState(
+            JourneyListState(
               phase: JourneyListPhase.empty,
               section: JourneySection.providers,
-              emptyTitle: 'احفظ مزودين تقارن بينهم',
-              emptyMessage: 'اضغط القلب على مزودين في «استكشف»، ويجون هنا.',
+              emptyTitle: context.say(
+                'احفظ مزودين تقارن بينهم',
+                'احفظي مزودين تقارنين بينهم',
+              ),
+              emptyMessage: context.say(
+                'اضغط القلب على مزودين في «استكشف»، ويجون هنا.',
+                'اضغطي القلب على مزودين في «استكشف»، ويجون هنا.',
+              ),
             ),
         ],
       ),
@@ -251,7 +257,7 @@ class _CompareColumn extends StatelessWidget {
           if (onQuote != null)
             JourneyButton(
               key: ValueKey('compare-quote-${provider.id}'),
-              label: 'اطلب عرض سعر',
+              label: context.say('اطلب عرض سعر', 'اطلبي عرض سعر'),
               background: AarastV3Color.cobaltSoft,
               foreground: AarastV3Color.cobalt,
               expand: true,

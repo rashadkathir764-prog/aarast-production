@@ -32,7 +32,10 @@ class ProviderBoardView extends StatelessWidget {
             ),
             const SizedBox(height: 4),
             Text(
-              'أضف بنود عرسك في المال (القاعة، الضيافة، التصوير…) وتظهر هنا، أو دوّر في «استكشف».',
+              context.say(
+                'أضف بنود عرسك في المال (القاعة، الضيافة، التصوير…) وتظهر هنا، أو دوّر في «استكشف».',
+                'أضيفي بنود عرسك في المال (الصالة، الضيافة، التصوير…) وتظهر هنا، أو دوّري في «استكشف».',
+              ),
               style: JourneyType.of(
                 JourneyType.body,
                 color: AarastV3Color.textMuted,
@@ -125,11 +128,20 @@ class _BoardRow extends StatelessWidget {
         soft: AarastV3Color.mintSoft,
       );
     } else if (row.stage == 0) {
-      trailing = _SoftAction(label: 'ابحث', onTap: onSearch);
+      trailing = _SoftAction(
+        label: context.say('ابحث', 'ابحثي'),
+        onTap: onSearch,
+      );
     } else if (row.waitingOffers >= 2) {
-      trailing = _SoftAction(label: 'قارن', onTap: onOpen);
+      trailing = _SoftAction(
+        label: context.say('قارن', 'قارني'),
+        onTap: onOpen,
+      );
     } else if (row.waitingOffers == 1) {
-      trailing = _SoftAction(label: 'شوف العرض', onTap: onOpen);
+      trailing = _SoftAction(
+        label: context.say('شوف العرض', 'شوفي العرض'),
+        onTap: onOpen,
+      );
     } else {
       trailing = const Icon(
         LucideIcons.chevronLeft,

@@ -134,7 +134,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       maxWidth: 520,
       backgroundColor: AarastV3Color.canvas,
       child: RefreshIndicator(
-        color: AarastV3Color.primary,
+        color: context.accent.primary,
         onRefresh: _refreshAccountAndLoad,
         child: ListView(
           padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
@@ -160,7 +160,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
     if (before != null) provider.updateDraft(before);
     AarastToast.showError(
       context,
-      provider.errorMessage ?? 'ما قدرنا نحفظ، جرب مرة ثانية.',
+      provider.errorMessage ??
+          context.say(
+            'ما قدرنا نحفظ، جرب مرة ثانية.',
+            'ما قدرنا نحفظ، جربي مرة ثانية.',
+          ),
     );
   }
 }

@@ -19,7 +19,10 @@ class _LocationContextCard extends StatelessWidget {
         color: AarastV3Color.cobalt,
         soft: AarastV3Color.cobaltSoft,
         title: 'وين عرسك؟',
-        subtitle: 'كمّل مكان العرس ونرتب لك مزودين مدينتك أول',
+        subtitle: context.say(
+          'كمّل مكان العرس ونرتب لك مزودين مدينتك أول',
+          'كمّلي مكان العرس ونرتب لك مزودين مدينتك أول',
+        ),
         onTap: onCompleteLocation,
       ),
     );

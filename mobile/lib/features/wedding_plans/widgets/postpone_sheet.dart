@@ -126,7 +126,9 @@ class _PostponeSheetState extends State<_PostponeSheet> {
         setState(() {
           _saving = false;
           _error =
-              plans.errorMessage ?? 'ما قدرنا نغيّر الموعد. جرّب مرة ثانية.';
+              plans.errorMessage ??
+              'ما قدرنا نغيّر الموعد. '
+                  '${context.say('جرّب', 'جرّبي')} مرة ثانية.';
         });
         return;
       }
@@ -139,7 +141,9 @@ class _PostponeSheetState extends State<_PostponeSheet> {
         if (!mounted) return;
         setState(() {
           _saving = false;
-          _error = 'تغيّر الموعد، بس المهام ما انتقلت. جرّب مرة ثانية.';
+          _error =
+              'تغيّر الموعد، بس المهام ما انتقلت. '
+              '${context.say('جرّب', 'جرّبي')} مرة ثانية.';
         });
         return;
       }
@@ -175,7 +179,9 @@ class _PostponeSheetState extends State<_PostponeSheet> {
                 key: const ValueKey('postpone-new-day'),
                 label: 'صار',
                 icon: LucideIcons.calendarCheck,
-                value: next == null ? 'اختر اليوم' : formatArabicDayMonth(next),
+                value: next == null
+                    ? context.say('اختر اليوم', 'اختاري اليوم')
+                    : formatArabicDayMonth(next),
                 selected: true,
                 onTap: _dateSaved ? null : _pick,
               ),
@@ -189,7 +195,7 @@ class _PostponeSheetState extends State<_PostponeSheet> {
             style: JourneyType.of(
               JourneyType.small,
               weight: JourneyType.bold,
-              color: AarastV3Color.primary,
+              color: context.accent.primary,
             ),
           ),
         ],
@@ -219,16 +225,19 @@ class _PostponeSheetState extends State<_PostponeSheet> {
                     title:
                         '${arabicCount(_oldDayBookings.length, one: 'حجز واحد', two: 'حجزين', few: 'حجوزات', many: 'حجز')} '
                         'على اليوم القديم',
-                    subtitle: 'كلّم المزودين على اليوم الجديد',
+                    subtitle: context.say(
+                      'كلّم المزودين على اليوم الجديد',
+                      'كلّمي المزودين على اليوم الجديد',
+                    ),
                     onTap: () {
                       final router = GoRouter.of(context);
                       Navigator.of(context).pop(_dateSaved);
                       router.push(AppRouter.planBookings(widget.planId));
                     },
                   ),
-                const _ImpactRow(
+                _ImpactRow(
                   icon: LucideIcons.wallet,
-                  color: AarastV3Color.primary,
+                  color: context.accent.primary,
                   title: 'الدفعات تبقى على مواعيدها',
                   subtitle: 'لأنها اتفاق مع المزود',
                 ),
@@ -249,7 +258,9 @@ class _PostponeSheetState extends State<_PostponeSheet> {
         const SizedBox(height: 16),
         JourneyButton(
           key: const ValueKey('postpone-apply'),
-          label: _dateSaved ? 'انقل المهام' : 'أجّل العرس',
+          label: _dateSaved
+              ? context.say('انقل المهام', 'انقلي المهام')
+              : context.say('أجّل العرس', 'أجّلي العرس'),
           large: true,
           expand: true,
           loading: _saving,
@@ -299,7 +310,7 @@ class _DayCard extends StatelessWidget {
         color: AarastV3Color.paper,
         borderRadius: BorderRadius.circular(22),
         border: Border.all(
-          color: selected ? AarastV3Color.primary : AarastV3Color.line,
+          color: selected ? context.accent.primary : AarastV3Color.line,
           width: selected ? 2 : 1,
         ),
       ),

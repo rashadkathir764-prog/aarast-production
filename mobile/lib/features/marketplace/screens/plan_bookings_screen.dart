@@ -76,7 +76,10 @@ class _PlanBookingsScreenState extends State<PlanBookingsScreen> {
                   : JourneyListPhase.empty,
               section: JourneySection.providers,
               emptyIcon: LucideIcons.calendarCheck,
-              emptyTitle: 'ما حجزت عند أحد بعد',
+              emptyTitle: context.say(
+                'ما حجزت عند أحد بعد',
+                'ما حجزتِ عند أحد بعد',
+              ),
               onRetry: marketplace.loadScopedQuoteRequests,
             )
           else
@@ -189,11 +192,11 @@ class _BookingCard extends StatelessWidget {
       'CONFIRMED' => _confirmedLine(booking),
       'REQUESTED' =>
         booking.createdAt == null
-            ? 'طلبت الحجز'
-            : 'طلبت ${_dayWord(booking.createdAt!, now)}',
+            ? context.say('طلبت الحجز', 'طلبتِ الحجز')
+            : '${context.say('طلبت', 'طلبتِ')} ${_dayWord(booking.createdAt!, now)}',
       'DECLINED' => reason == null ? 'اعتذر عن الموعد' : 'اعتذر: $reason',
       'COMPLETED' => 'كان يوم ${formatArabicDayMonth(booking.eventDate)}',
-      _ => _cancelledLine(booking),
+      _ => _cancelledLine(booking, context.journeyProfile),
     };
     final askAgain =
         booking.lifecycleStatus == 'CANCELLED' &&
@@ -237,7 +240,7 @@ class _BookingCard extends StatelessWidget {
               const SizedBox(height: 10),
               JourneyButton(
                 key: ValueKey('booking-rate-${booking.id}'),
-                label: 'قيّمهم',
+                label: context.say('قيّمهم', 'قيّميهم'),
                 background: AarastV3Color.brandAccentSoft,
                 foreground: AarastV3Color.brandAccentStrong,
                 onPressed: onRate,
@@ -251,7 +254,9 @@ class _BookingCard extends StatelessWidget {
                       ? 'booking-find-others-${booking.id}'
                       : 'booking-ask-again-${booking.id}',
                 ),
-                label: findOthers ? 'شوف غيرهم' : 'اطلب حجز مرة ثانية',
+                label: findOthers
+                    ? context.say('شوف غيرهم', 'شوفي غيرهم')
+                    : context.say('اطلب حجز مرة ثانية', 'اطلبي حجز مرة ثانية'),
                 icon: findOthers
                     ? providerServiceIcon(_serviceName(quote))
                     : null,
@@ -288,11 +293,13 @@ class _BookingCard extends StatelessWidget {
     return [confirmed, ?reminder].join(' · ');
   }
 
-  String _cancelledLine(MarketplaceBooking booking) {
+  String _cancelledLine(MarketplaceBooking booking, JourneyProfile profile) {
     final when = booking.cancelledAt == null
         ? null
         : _dayWord(booking.cancelledAt!, now);
-    final who = booking.cancelledBy == 'PROVIDER' ? 'لغاه المزود' : 'لغيته أنت';
+    final who = booking.cancelledBy == 'PROVIDER'
+        ? 'لغاه المزود'
+        : profile.say('لغيته أنت', 'لغيتيه أنتِ');
     final reason = booking.note;
     return [
       [who, ?when].join(' '),

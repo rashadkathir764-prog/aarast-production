@@ -260,7 +260,7 @@ class AuthTextField extends StatelessWidget {
             validator: validator,
             onFieldSubmitted: onFieldSubmitted,
             style: JourneyType.of(valueSize, weight: JourneyType.bold),
-            cursorColor: AarastV3Color.primary,
+            cursorColor: context.accent.primary,
             decoration: InputDecoration(
               hintText: hint,
               // A number's hint reads in the number's own direction.
@@ -288,7 +288,7 @@ class AuthTextField extends StatelessWidget {
               ),
               border: border(AarastV3Color.line, 1),
               enabledBorder: border(AarastV3Color.line, 1),
-              focusedBorder: border(AarastV3Color.primary, 2),
+              focusedBorder: border(context.accent.primary, 2),
               errorBorder: border(AarastV3Color.danger, 2),
               focusedErrorBorder: border(AarastV3Color.danger, 2),
             ),
@@ -436,7 +436,7 @@ class _FooterLinkText extends StatelessWidget {
             style: JourneyType.of(
               JourneyType.body,
               weight: JourneyType.bold,
-              color: enabled ? AarastV3Color.primary : AarastV3Color.textFaint,
+              color: enabled ? context.accent.primary : AarastV3Color.textFaint,
             ),
           ),
         ],

@@ -228,10 +228,13 @@ class _ProviderMarketplaceScreenState extends State<ProviderMarketplaceScreen> {
                 child: JourneyTabHeader(
                   title: 'المزودين',
                   status: firstVisit != false
-                      ? 'ما طلبت من أحد بعد'
+                      ? context.say('ما طلبت من أحد بعد', 'ما طلبتِ من أحد بعد')
                       : planMode
                       ? providerBoardStatus(board)
-                      : 'دوّر على مزودين عرسك',
+                      : context.say(
+                          'دوّر على مزودين عرسك',
+                          'دوّري على مزودين عرسك',
+                        ),
                   onStatusTap:
                       planMode &&
                           firstVisit == false &&
@@ -251,8 +254,8 @@ class _ProviderMarketplaceScreenState extends State<ProviderMarketplaceScreen> {
                             ? LucideIcons.x
                             : LucideIcons.search,
                         tooltip: _searchShown && tabs[tab] == 'استكشف'
-                            ? 'سكّر البحث'
-                            : 'دوّر على مزود',
+                            ? context.say('سكّر البحث', 'سكّري البحث')
+                            : context.say('دوّر على مزود', 'دوّري على مزود'),
                         onPressed: () => _toggleSearch(provider, tabs, tab),
                       ),
                   ],
@@ -388,14 +391,14 @@ class _ProviderMarketplaceScreenState extends State<ProviderMarketplaceScreen> {
       else if (provider.providers.isEmpty && !_hasDirectoryFilters(provider))
         // Nothing is filtered, so "change the filters" would be
         // a false lead: the directory itself is empty.
-        const JourneyListState(
-          key: ValueKey('marketplace-directory-empty'),
+        JourneyListState(
+          key: const ValueKey('marketplace-directory-empty'),
           phase: JourneyListPhase.empty,
           section: JourneySection.providers,
           emptyTitle: 'ما في مزودين في الدليل بعد',
           emptyMessage:
               'أول ما يسجّل مزودين ويعتمدهم فريق اعّرست، بيظهرون هنا. '
-              'تعرف مزود؟ قل له يسجّل في اعّرست.',
+              '${context.say('تعرف مزود؟ قل له', 'تعرفين مزود؟ قولي له')} يسجّل في اعّرست.',
         )
       else if (provider.providers.isEmpty)
         JourneyListState(
@@ -409,8 +412,9 @@ class _ProviderMarketplaceScreenState extends State<ProviderMarketplaceScreen> {
           emptyMessage: _emptyProvidersMessage(
             budgetIntent: provider.budgetMatchIntent,
             location: _weddingLocation,
+            profile: context.journeyProfile,
           ),
-          emptyAction: 'امسح الفلتر',
+          emptyAction: context.say('امسح الفلتر', 'امسحي الفلتر'),
           onEmptyAction: () => _clearMarketplaceFilters(provider),
         )
       else ...[

@@ -62,10 +62,10 @@ class _MoneyItemsTab extends StatelessWidget {
           paidLine: cost.isCancelled
               ? 'ملغي'
               : moneyValue(cost.paidAmount) <= 0
-              ? 'ما دفعت شي'
+              ? context.say('ما دفعت شي', 'ما دفعتِ شي')
               : moneyValue(cost.paidAmount) >= moneyValue(cost.totalAmount)
               ? 'خالص'
-              : 'دفعت ${_amount(context, cost.paidAmount, currency)}',
+              : '${context.say('دفعت', 'دفعتِ')} ${_amount(context, cost.paidAmount, currency)}',
           note: cost.isCancelled ? null : _nextDueNote(provider, cost, now),
           muted: cost.isCancelled,
           private: cost.isPrivate,
@@ -81,7 +81,7 @@ class _MoneyItemsTab extends StatelessWidget {
               ? ''
               : _amount(context, category.allocatedAmount, currency),
           paidRatio: 0,
-          paidLine: 'ما دفعت شي',
+          paidLine: context.say('ما دفعت شي', 'ما دفعتِ شي'),
           note: ('ما انحجز', AarastV3Color.brandAccentStrong),
           onTap: provider.canManageMoney
               ? () => context.push(
@@ -101,7 +101,9 @@ class _MoneyItemsTab extends StatelessWidget {
             phase: JourneyListPhase.empty,
             section: JourneySection.money,
             emptyTitle: 'ما في بنود بعد',
-            emptyAction: provider.canManageMoney ? 'أضف أول بند' : null,
+            emptyAction: provider.canManageMoney
+                ? context.say('أضف أول بند', 'أضيفي أول بند')
+                : null,
             onEmptyAction: provider.canManageMoney
                 ? () => context.push(AppRouter.moneyCategoryCreate(planId))
                 : null,
@@ -132,7 +134,7 @@ class _MoneyItemsTab extends StatelessWidget {
             child: JourneyTextAction(
               key: const ValueKey('money-items-more'),
               label: provider.isLoadingMoreCosts ? 'يحمّل…' : 'باقي البنود',
-              color: AarastV3Color.primary,
+              color: context.accent.primary,
               onPressed: provider.isLoadingMoreCosts
                   ? null
                   : provider.loadMoreCosts,
@@ -147,7 +149,7 @@ class _MoneyItemsTab extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 Text(
-                  'أضف بند',
+                  context.say('أضف بند', 'أضيفي بند'),
                   style: JourneyType.of(
                     JourneyType.bodyLarge,
                     weight: JourneyType.bold,
@@ -262,8 +264,8 @@ class _MoneyItemRow extends StatelessWidget {
             children: [
               JourneyIconTile(
                 icon: icon,
-                color: muted ? AarastV3Color.textFaint : AarastV3Color.primary,
-                soft: muted ? AarastV3Color.line : AarastV3Color.primarySoft,
+                color: muted ? AarastV3Color.textFaint : context.accent.primary,
+                soft: muted ? AarastV3Color.line : context.accent.primarySoft,
               ),
               const SizedBox(width: 12),
               Expanded(
@@ -318,7 +320,7 @@ class _MoneyItemRow extends StatelessWidget {
                       value: paidRatio,
                       color: muted
                           ? AarastV3Color.textFaint
-                          : AarastV3Color.primary,
+                          : context.accent.primary,
                       height: 5,
                     ),
                     const SizedBox(height: 6),

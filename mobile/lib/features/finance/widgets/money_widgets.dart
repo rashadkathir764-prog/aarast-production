@@ -21,7 +21,9 @@ class MoneyPrivacyButton extends StatelessWidget {
       child: JourneyRoundButton(
         key: const ValueKey('money-privacy-toggle'),
         icon: hidden ? LucideIcons.eye : LucideIcons.eyeOff,
-        tooltip: hidden ? 'أظهر المبالغ' : 'أخفِ المبالغ',
+        tooltip: hidden
+            ? context.say('أظهر المبالغ', 'أظهري المبالغ')
+            : context.say('أخفِ المبالغ', 'أخفي المبالغ'),
         onPressed: context.read<FinanceProvider>().toggleAmountsVisibility,
       ),
     );

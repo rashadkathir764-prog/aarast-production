@@ -40,15 +40,17 @@ class _CategorySummary extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           row(
-            'حطيت له',
-            category.allocatedAmount == null ? 'ما حددت' : plain(allocated),
+            context.say('حطيت له', 'حطيتِ له'),
+            category.allocatedAmount == null
+                ? context.say('ما حددت', 'ما حددتِ')
+                : plain(allocated),
           ),
-          row('اتفقت على', plain(agreed)),
-          row('دفعت', plain(paid)),
+          row(context.say('اتفقت على', 'اتفقتِ على'), plain(agreed)),
+          row(context.say('دفعت', 'دفعتِ'), plain(paid)),
           row('باقي عليك', plain(moneyValue(category.outstanding))),
           if (agreed > 0) ...[
             const SizedBox(height: 8),
-            JourneyBar(value: ratio, color: AarastV3Color.primary),
+            JourneyBar(value: ratio, color: context.accent.primary),
           ],
         ],
       ),
@@ -145,28 +147,28 @@ class _OverChoices extends StatelessWidget {
       children: [
         JourneyChoiceCard(
           key: const ValueKey('category-over-grow'),
-          title: 'زِد الميزانية $overLabel',
+          title: '${context.say('زِد', 'زيدي')} الميزانية $overLabel',
           subtitle: 'تصير ميزانية عرسك $budgetAfter',
-          leading: const Icon(
-            LucideIcons.trendingUp,
-            color: AarastV3Color.primary,
-          ),
+          leading: Icon(LucideIcons.trendingUp, color: context.accent.primary),
           onTap: onGrow,
         ),
         const SizedBox(height: 8),
         JourneyChoiceCard(
           key: const ValueKey('category-over-move'),
-          title: 'خذها من بند ثاني',
-          subtitle: 'تنقص من بند ما احتاج كل اللي حطيته له',
-          leading: const Icon(
+          title: context.say('خذها من بند ثاني', 'خذيها من بند ثاني'),
+          subtitle: context.say(
+            'تنقص من بند ما احتاج كل اللي حطيته له',
+            'تنقص من بند ما احتاج كل اللي حطيتيه له',
+          ),
+          leading: Icon(
             LucideIcons.arrowLeftRight,
-            color: AarastV3Color.primary,
+            color: context.accent.primary,
           ),
           onTap: onMove,
         ),
         const SizedBox(height: 8),
         Text(
-          'لو خليتها كذا، المجموع يطلع فوق الميزانية بـ $overLabel.',
+          '${context.say('لو خليتها', 'لو خليتيها')} كذا، المجموع يطلع فوق الميزانية بـ $overLabel.',
           style: JourneyType.of(
             JourneyType.small,
             color: AarastV3Color.textMuted,
@@ -190,8 +192,8 @@ class _CategoryMenu extends StatelessWidget {
       tooltip: 'إجراءات البند',
       icon: const Icon(LucideIcons.moreHorizontal),
       onSelected: (edit) => edit ? onEdit() : onRemove(),
-      itemBuilder: (context) => const [
-        PopupMenuItem(
+      itemBuilder: (context) => [
+        const PopupMenuItem(
           value: true,
           child: Row(
             children: [
@@ -202,16 +204,20 @@ class _CategoryMenu extends StatelessWidget {
           ),
         ),
         PopupMenuItem(
-          key: ValueKey('money-category-remove'),
+          key: const ValueKey('money-category-remove'),
           value: false,
           child: Row(
             children: [
-              Icon(LucideIcons.trash2, size: 18, color: AarastV3Color.danger),
-              SizedBox(width: 10),
+              const Icon(
+                LucideIcons.trash2,
+                size: 18,
+                color: AarastV3Color.danger,
+              ),
+              const SizedBox(width: 10),
               Flexible(
                 child: Text(
-                  'شيل البند',
-                  style: TextStyle(color: AarastV3Color.danger),
+                  context.say('شيل البند', 'شيلي البند'),
+                  style: const TextStyle(color: AarastV3Color.danger),
                 ),
               ),
             ],
@@ -251,13 +257,13 @@ class _RemoveCategorySheetState extends State<_RemoveCategorySheet> {
     final blocked = widget.agreements > 0;
     return JourneySheetBody(
       title: blocked
-          ? 'ما تقدر تشيل ${widget.name}'
-          : 'تشيل بند ${widget.name}؟',
+          ? '${context.say('ما تقدر تشيل', 'ما تقدرين تشيلين')} ${widget.name}'
+          : '${context.say('تشيل', 'تشيلين')} بند ${widget.name}؟',
       subtitle: blocked
-          ? 'عليه ${arabicCount(widget.agreements, one: 'اتفاق واحد', two: 'اتفاقين', few: 'اتفاقات', many: 'اتفاق')}. شيلها أو انقلها لبند ثاني أول.'
+          ? 'عليه ${arabicCount(widget.agreements, one: 'اتفاق واحد', two: 'اتفاقين', few: 'اتفاقات', many: 'اتفاق')}. ${context.say('شيلها أو انقلها', 'شيليها أو انقليها')} لبند ثاني أول.'
           : widget.allocated == null
-          ? 'ما حطيت له مبلغ'
-          : 'حطيت له ${widget.allocated}، وما عليه اتفاقات',
+          ? context.say('ما حطيت له مبلغ', 'ما حطيتِ له مبلغ')
+          : '${context.say('حطيت', 'حطيتِ')} له ${widget.allocated}، وما عليه اتفاقات',
       children: [
         if (!blocked) ...[
           if (widget.allocated != null) ...[
@@ -265,10 +271,10 @@ class _RemoveCategorySheetState extends State<_RemoveCategorySheet> {
               padding: const EdgeInsets.all(14),
               child: Row(
                 children: [
-                  const Icon(
+                  Icon(
                     LucideIcons.wallet,
                     size: 18,
-                    color: AarastV3Color.primary,
+                    color: context.accent.primary,
                   ),
                   const SizedBox(width: 10),
                   Expanded(
@@ -287,7 +293,7 @@ class _RemoveCategorySheetState extends State<_RemoveCategorySheet> {
           ],
           JourneyChoiceCard(
             key: const ValueKey('category-remove-delete'),
-            title: 'شيله',
+            title: context.say('شيله', 'شيليه'),
             subtitle: 'ينحذف البند',
             leading: const Icon(
               LucideIcons.trash2,
@@ -300,11 +306,11 @@ class _RemoveCategorySheetState extends State<_RemoveCategorySheet> {
             const SizedBox(height: 8),
             JourneyChoiceCard(
               key: const ValueKey('category-remove-keep'),
-              title: 'خلّه، بس بدون مبلغ',
+              title: context.say('خلّه، بس بدون مبلغ', 'خلّيه، بس بدون مبلغ'),
               subtitle: 'لو بتتكفل فيه العائلة مثلًا',
-              leading: const Icon(
+              leading: Icon(
                 LucideIcons.minusCircle,
-                color: AarastV3Color.primary,
+                color: context.accent.primary,
               ),
               selected: _choice == _RemoveChoice.keepWithoutAmount,
               onTap: () =>
@@ -318,11 +324,11 @@ class _RemoveCategorySheetState extends State<_RemoveCategorySheet> {
           label: blocked
               ? 'تمام'
               : _choice == _RemoveChoice.remove
-              ? 'شيل البند'
-              : 'خلّه بدون مبلغ',
+              ? context.say('شيل البند', 'شيلي البند')
+              : context.say('خلّه بدون مبلغ', 'خلّيه بدون مبلغ'),
           background: !blocked && _choice == _RemoveChoice.remove
               ? AarastV3Color.danger
-              : AarastV3Color.primary,
+              : context.accent.primary,
           expand: true,
           large: true,
           onPressed: () => Navigator.pop(context, blocked ? null : _choice),

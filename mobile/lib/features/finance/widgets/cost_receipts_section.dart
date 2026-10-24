@@ -144,14 +144,16 @@ class _CostReceiptsSectionState extends State<CostReceiptsSection> {
       children: [
         JourneySectionTitle(
           forPayment ? 'الإيصال' : 'الإيصالات',
-          action: canAdd && _receipts.isNotEmpty ? 'أضف إيصال' : null,
+          action: canAdd && _receipts.isNotEmpty
+              ? context.say('أضف إيصال', 'أضيفي إيصال')
+              : null,
           onAction: canAdd && _receipts.isNotEmpty ? _add : null,
         ),
         if (_loading || _busy)
-          const Padding(
-            padding: EdgeInsets.all(12),
+          Padding(
+            padding: const EdgeInsets.all(12),
             child: Center(
-              child: AarastInlineSpinner(color: AarastV3Color.primary),
+              child: AarastInlineSpinner(color: context.accent.primary),
             ),
           )
         else if (_failed)
@@ -212,8 +214,14 @@ class _MissingReceipt extends StatelessWidget {
             onAdd == null
                 ? 'ما في إيصال محفوظ'
                 : forPayment
-                ? 'صوّر إيصال هذي الدفعة واحفظه معها'
-                : 'صوّر إيصالات الدفع واحفظها مع الاتفاق',
+                ? context.say(
+                    'صوّر إيصال هذي الدفعة واحفظه معها',
+                    'صوّري إيصال هذي الدفعة واحفظيه معها',
+                  )
+                : context.say(
+                    'صوّر إيصالات الدفع واحفظها مع الاتفاق',
+                    'صوّري إيصالات الدفع واحفظيها مع الاتفاق',
+                  ),
             style: JourneyType.of(
               JourneyType.body,
               color: AarastV3Color.textMuted,

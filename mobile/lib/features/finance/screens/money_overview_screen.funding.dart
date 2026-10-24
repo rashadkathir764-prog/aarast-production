@@ -55,7 +55,7 @@ class _MoneyFundingTabState extends State<_MoneyFundingTab> {
                   amount: _amount(context, funding.received, currency),
                   line:
                       'معك ${_amount(context, funding.availableCash, currency)}',
-                  color: AarastV3Color.primary,
+                  color: context.accent.primary,
                   background: AarastV3Color.paper,
                 ),
               ),
@@ -73,7 +73,11 @@ class _MoneyFundingTabState extends State<_MoneyFundingTab> {
           ),
         ),
         const SizedBox(height: 8),
-        JourneySectionTitle('المصادر', action: 'أضف مصدر', onAction: open),
+        JourneySectionTitle(
+          'المصادر',
+          action: context.say('أضف مصدر', 'أضيفي مصدر'),
+          onAction: open,
+        ),
         if (sources == null || sources.isLoading && list.isEmpty)
           const JourneyListState(
             phase: JourneyListPhase.loading,
@@ -86,8 +90,11 @@ class _MoneyFundingTabState extends State<_MoneyFundingTab> {
                 : JourneyListPhase.error,
             section: JourneySection.money,
             emptyIcon: LucideIcons.piggyBank,
-            emptyTitle: 'ما سجلت من وين بتجيب الفلوس',
-            emptyAction: 'أضف أول مصدر',
+            emptyTitle: context.say(
+              'ما سجلت من وين بتجيب الفلوس',
+              'ما سجلتِ من وين بتجيبين الفلوس',
+            ),
+            emptyAction: context.say('أضف أول مصدر', 'أضيفي أول مصدر'),
             onEmptyAction: open,
             onRetry: () => sources.load(widget.planId),
           )
@@ -182,13 +189,13 @@ class _FundingSourceRow extends StatelessWidget {
     final (icon, color, soft) = switch (source.kind) {
       FundingKind.savings => (
         LucideIcons.piggyBank,
-        AarastV3Color.primary,
-        AarastV3Color.primarySoft,
+        context.accent.primary,
+        context.accent.primarySoft,
       ),
       FundingKind.familySupport => (
         LucideIcons.heartHandshake,
-        AarastV3Color.primary,
-        AarastV3Color.primarySoft,
+        context.accent.primary,
+        context.accent.primarySoft,
       ),
       FundingKind.loan => (
         LucideIcons.user,
@@ -202,7 +209,7 @@ class _FundingSourceRow extends StatelessWidget {
       color: color,
       soft: soft,
       title: source.sourceName,
-      subtitle: FundingKind.label(source.kind),
+      subtitle: FundingKind.label(source.kind, context.journeyProfile),
       onTap: onTap,
       trailing: Column(
         mainAxisSize: MainAxisSize.min,

@@ -38,7 +38,7 @@ class _MoneyHeader extends StatelessWidget {
                 ),
               ),
               Text(
-                _moneyStatusLine(summary),
+                _moneyStatusLine(summary, context.journeyProfile),
                 style: JourneyType.of(
                   JourneyType.small,
                   color: AarastV3Color.textMuted,
@@ -53,7 +53,10 @@ class _MoneyHeader extends StatelessWidget {
           JourneyRoundButton(
             key: const Key('money-share-summary'),
             icon: LucideIcons.share2,
-            tooltip: 'شارك الملخص على واتساب',
+            tooltip: context.say(
+              'شارك الملخص على واتساب',
+              'شاركي الملخص على واتساب',
+            ),
             onPressed: onShare!,
           ),
         ],
@@ -247,10 +250,10 @@ class _NextPaymentCard extends StatelessWidget {
                 Align(
                   alignment: AlignmentDirectional.centerStart,
                   child: JourneyButton(
-                    label: 'سجّل الدفعة',
+                    label: context.say('سجّل الدفعة', 'سجّلي الدفعة'),
                     background: isOverdue
                         ? AarastV3Color.danger
-                        : AarastV3Color.primary,
+                        : context.accent.primary,
                     onPressed: onPay,
                   ),
                 ),

@@ -74,7 +74,7 @@ class _ReserveBox extends StatelessWidget {
       semanticLabel: [
         'موزّع $allocated',
         if (reserve == null)
-          'حدد ميزانية عرسك'
+          context.say('حدد ميزانية عرسك', 'حددي ميزانية عرسك')
         else
           '${over ? 'زايد عن الميزانية' : 'احتياط'} $reserve',
       ].join('، '),
@@ -86,12 +86,16 @@ class _ReserveBox extends StatelessWidget {
             cell('موزّع', allocated, AarastV3Color.ink),
             const SizedBox(width: 12),
             if (reserve == null)
-              cell('احتياط', 'حدد الميزانية', AarastV3Color.primary)
+              cell(
+                'احتياط',
+                context.say('حدد الميزانية', 'حددي الميزانية'),
+                context.accent.primary,
+              )
             else
               cell(
                 over ? 'زايد عن الميزانية' : 'احتياط',
                 reserve,
-                over ? AarastV3Color.danger : AarastV3Color.primary,
+                over ? AarastV3Color.danger : context.accent.primary,
               ),
           ],
         ),
@@ -123,7 +127,7 @@ class _AllocationRow extends StatelessWidget {
     final share = moneyValue(row.amount.text);
     final agreed = moneyValue(row.confirmedCost);
     final short = typed && share < agreed;
-    final color = short ? AarastV3Color.danger : AarastV3Color.primary;
+    final color = short ? AarastV3Color.danger : context.accent.primary;
     final value = typed
         ? compactMoneyParts(share, currencyCode: currency).plainText
         : 'بدون';
@@ -175,7 +179,7 @@ class _AllocationRow extends StatelessWidget {
               Padding(
                 padding: const EdgeInsets.only(top: 4),
                 child: Text(
-                  'اتفقت عليه بـ ${compactMoneyParts(agreed, currencyCode: currency).plainText}',
+                  '${context.say('اتفقت', 'اتفقتِ')} عليه بـ ${compactMoneyParts(agreed, currencyCode: currency).plainText}',
                   style: JourneyType.of(
                     JourneyType.small,
                     weight: JourneyType.bold,

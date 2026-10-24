@@ -107,7 +107,7 @@ class _CostAgreementCard extends StatelessWidget {
             value: ratio,
             color: cost.isCancelled
                 ? AarastV3Color.textFaint
-                : AarastV3Color.primary,
+                : context.accent.primary,
           ),
           if (line.isNotEmpty) ...[
             const SizedBox(height: 10),
@@ -312,8 +312,8 @@ class _CostFacts extends StatelessWidget {
         children: [
           JourneyListRow(
             icon: LucideIcons.tags,
-            color: AarastV3Color.primary,
-            soft: AarastV3Color.primarySoft,
+            color: context.accent.primary,
+            soft: context.accent.primarySoft,
             title: categoryName ?? 'بدون بند',
             subtitle: 'البند',
           ),
@@ -381,8 +381,8 @@ class _CostMoreMenu extends StatelessWidget {
       tooltip: 'المزيد',
       icon: const Icon(LucideIcons.moreHorizontal),
       onSelected: (edit) => edit ? onEdit() : onRemove(),
-      itemBuilder: (context) => const [
-        PopupMenuItem(
+      itemBuilder: (context) => [
+        const PopupMenuItem(
           value: true,
           child: Row(
             children: [
@@ -393,16 +393,20 @@ class _CostMoreMenu extends StatelessWidget {
           ),
         ),
         PopupMenuItem(
-          key: ValueKey('cost-remove'),
+          key: const ValueKey('cost-remove'),
           value: false,
           child: Row(
             children: [
-              Icon(LucideIcons.trash2, size: 18, color: AarastV3Color.danger),
-              SizedBox(width: 10),
+              const Icon(
+                LucideIcons.trash2,
+                size: 18,
+                color: AarastV3Color.danger,
+              ),
+              const SizedBox(width: 10),
               Flexible(
                 child: Text(
-                  'شيل الاتفاق',
-                  style: TextStyle(color: AarastV3Color.danger),
+                  context.say('شيل الاتفاق', 'شيلي الاتفاق'),
+                  style: const TextStyle(color: AarastV3Color.danger),
                 ),
               ),
             ],
@@ -438,30 +442,35 @@ class _RemoveCostSheetState extends State<_RemoveCostSheet> {
   Widget build(BuildContext context) {
     final locked = widget.paid != null;
     final options = locked
-        ? const [
+        ? [
             (
               _RemoveCostChoice.reverseFirst,
-              'اعكس الدفعة أول',
-              'لو سجلتها غلط. بعدها تقدر تشيله',
+              context.say('اعكس الدفعة أول', 'اعكسي الدفعة أول'),
+              context.say(
+                'لو سجلتها غلط. بعدها تقدر تشيله',
+                'لو سجلتيها غلط. بعدها تقدرين تشيلينه',
+              ),
               LucideIcons.undo2,
             ),
           ]
-        : const [
+        : [
             (
               _RemoveCostChoice.cancel,
-              'ألغِه',
+              context.say('ألغِه', 'ألغيه'),
               'يبقى في السجل ملغي، وتنلغي مواعيد دفعه',
               LucideIcons.circleSlash2,
             ),
             (
               _RemoveCostChoice.delete,
-              'احذفه نهائيًا',
+              context.say('احذفه نهائيًا', 'احذفيه نهائيًا'),
               'ينمسح من خطتك',
               LucideIcons.trash2,
             ),
           ];
     return JourneySheetBody(
-      title: locked ? 'ما تقدر تشيل ${widget.title}' : 'تشيل ${widget.title}؟',
+      title: locked
+          ? '${context.say('ما تقدر تشيل', 'ما تقدرين تشيلين')} ${widget.title}'
+          : '${context.say('تشيل', 'تشيلين')} ${widget.title}؟',
       subtitle: locked
           ? 'عليه دفعات بـ ${widget.paid}. الاتفاق اللي عليه دفعات يبقى عشان سجلك يبقى صادق.'
           : 'ما عليه دفعات',
@@ -475,7 +484,7 @@ class _RemoveCostSheetState extends State<_RemoveCostSheet> {
               icon,
               color: choice == _RemoveCostChoice.delete
                   ? AarastV3Color.danger
-                  : AarastV3Color.primary,
+                  : context.accent.primary,
             ),
             selected: _choice == choice,
             onTap: () => setState(() => _choice = choice),
@@ -488,7 +497,7 @@ class _RemoveCostSheetState extends State<_RemoveCostSheet> {
           label: 'متابعة',
           background: _choice == _RemoveCostChoice.delete
               ? AarastV3Color.danger
-              : AarastV3Color.primary,
+              : context.accent.primary,
           expand: true,
           large: true,
           onPressed: () => Navigator.pop(context, _choice),

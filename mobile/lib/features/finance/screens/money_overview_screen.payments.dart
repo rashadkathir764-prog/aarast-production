@@ -43,7 +43,7 @@ class _MoneyPaymentsTab extends StatelessWidget {
         else ...[
           JourneyBox(
             key: const ValueKey('money-due-total'),
-            color: AarastV3Color.primarySoft,
+            color: context.accent.primarySoft,
             padding: const EdgeInsets.all(18),
             child: Row(
               children: [
@@ -63,7 +63,7 @@ class _MoneyPaymentsTab extends StatelessWidget {
                         style: JourneyType.of(
                           JourneyType.display,
                           weight: JourneyType.bold,
-                          color: AarastV3Color.primaryDark,
+                          color: context.accent.primaryDark,
                         ),
                       ),
                     ],
@@ -80,7 +80,7 @@ class _MoneyPaymentsTab extends StatelessWidget {
                   style: JourneyType.of(
                     JourneyType.bodyLarge,
                     weight: JourneyType.bold,
-                    color: AarastV3Color.primary,
+                    color: context.accent.primary,
                   ),
                 ),
               ],
@@ -92,7 +92,10 @@ class _MoneyPaymentsTab extends StatelessWidget {
             Padding(
               padding: const EdgeInsetsDirectional.fromSTEB(6, 0, 6, 8),
               child: Text(
-                'اسحب الدفعة لما تدفعها',
+                context.say(
+                  'اسحب الدفعة لما تدفعها',
+                  'اسحبي الدفعة لما تدفعينها',
+                ),
                 style: JourneyType.of(
                   JourneyType.small,
                   color: AarastV3Color.textMuted,
@@ -159,7 +162,9 @@ class _DueRow extends StatelessWidget {
       customSemanticsActions: onPay == null
           ? null
           : {
-              const CustomSemanticsAction(label: 'دفعتها'): () =>
+              CustomSemanticsAction(
+                label: context.say('دفعتها', 'دفعتيها'),
+              ): () =>
                   onPay!(schedule),
             },
       excludeSemantics: true,
@@ -269,7 +274,7 @@ class _DueRow extends StatelessWidget {
             const Icon(LucideIcons.check, color: AarastV3Color.onPrimary),
             const SizedBox(width: 8),
             Text(
-              'دفعتها',
+              context.say('دفعتها', 'دفعتيها'),
               style: JourneyType.of(
                 JourneyType.bodyLarge,
                 weight: JourneyType.bold,

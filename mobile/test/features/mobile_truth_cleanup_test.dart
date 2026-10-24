@@ -302,7 +302,14 @@ void main() {
           continue;
         }
 
-        final lines = entity.readAsLinesSync();
+        // A bride's own plan speaks to her through the plan profile's
+        // say(groom, bride) (JOURNEY_PROFILE.md, D43): the feminine form
+        // inside a say(...) call is only ever shown on her plan, so those
+        // calls are blanked before the scan. Any feminine word left outside
+        // one would still reach the groom and is reported.
+        final lines = _withoutProfileSayCalls(
+          entity.readAsStringSync(),
+        ).split('\n');
         for (var i = 0; i < lines.length; i++) {
           final line = lines[i];
           if (line.trim().startsWith('//')) continue;
@@ -317,10 +324,36 @@ void main() {
         isEmpty,
         reason:
             'Production-reachable screens should use neutral Arabic CTAs. '
-            'Bride-form copy is only valid inside persona_copy.dart.',
+            'Bride-form copy is only valid inside persona_copy.dart or as '
+            'the bride argument of the plan profile say(groom, bride).',
       );
     });
   });
+}
+
+/// [source] with every `say(...)` call's arguments replaced by spaces
+/// (newlines kept, so line numbers stay true).
+String _withoutProfileSayCalls(String source) {
+  final out = StringBuffer();
+  final call = RegExp(r'\bsay\(');
+  var index = 0;
+  for (final match in call.allMatches(source)) {
+    if (match.start < index) continue;
+    out.write(source.substring(index, match.end));
+    var depth = 1;
+    var cursor = match.end;
+    while (cursor < source.length && depth > 0) {
+      final char = source[cursor];
+      if (char == '(') depth++;
+      if (char == ')') depth--;
+      if (depth > 0) out.write(char == '\n' ? '\n' : ' ');
+      cursor++;
+    }
+    out.write(')');
+    index = cursor;
+  }
+  out.write(source.substring(index));
+  return out.toString();
 }
 
 String _findMobileRoot() {

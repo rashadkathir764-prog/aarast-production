@@ -159,7 +159,10 @@ class _MoneyBudgetScreenState extends State<MoneyBudgetScreen> {
                 const SizedBox(height: 10),
                 if (_rows.isNotEmpty)
                   Text(
-                    'اضغط أي بند وغيّر رقمه، والاحتياط يتعدل لحاله.',
+                    context.say(
+                      'اضغط أي بند وغيّر رقمه، والاحتياط يتعدل لحاله.',
+                      'اضغطي أي بند وغيّري رقمه، والاحتياط يتعدل لحاله.',
+                    ),
                     style: JourneyType.of(
                       JourneyType.small,
                       color: AarastV3Color.textMuted,
@@ -169,9 +172,9 @@ class _MoneyBudgetScreenState extends State<MoneyBudgetScreen> {
                   alignment: AlignmentDirectional.centerStart,
                   child: JourneyTextAction(
                     key: const ValueKey('money-budget-add-category'),
-                    label: 'أضف بند',
+                    label: context.say('أضف بند', 'أضيفي بند'),
                     icon: LucideIcons.plus,
-                    color: AarastV3Color.primary,
+                    color: context.accent.primary,
                     onPressed: _openCategoryCreate,
                   ),
                 ),
@@ -294,7 +297,10 @@ class _MoneyBudgetScreenState extends State<MoneyBudgetScreen> {
           final share = moneyValue(row.amount.text);
           return JourneySheetBody(
             title: row.name,
-            subtitle: 'كم تحط له من ميزانية عرسك؟',
+            subtitle: context.say(
+              'كم تحط له من ميزانية عرسك؟',
+              'كم تحطين له من ميزانية عرسك؟',
+            ),
             children: [
               JourneyTextField(
                 key: ValueKey('money-budget-share-${row.key}'),
@@ -331,7 +337,7 @@ class _MoneyBudgetScreenState extends State<MoneyBudgetScreen> {
                   child: JourneyTextAction(
                     key: ValueKey('money-budget-open-${row.id}'),
                     label: 'تفاصيل البند',
-                    color: AarastV3Color.primary,
+                    color: context.accent.primary,
                     onPressed: () {
                       Navigator.of(sheetContext).pop();
                       _openCategory(row);
@@ -411,8 +417,18 @@ class _MoneyBudgetScreenState extends State<MoneyBudgetScreen> {
 
   /// Each problem in plain words; null when the budget can be saved.
   String? _problem(String totalText, num total, num allocated) {
-    if (totalText.isNotEmpty && total <= 0) return 'اكتب ميزانية أكبر من صفر';
-    if (total <= 0 && _rows.isEmpty) return 'حدد ميزانية أو أضف بند قبل الحفظ';
+    if (totalText.isNotEmpty && total <= 0) {
+      return context.say(
+        'اكتب ميزانية أكبر من صفر',
+        'اكتبي ميزانية أكبر من صفر',
+      );
+    }
+    if (total <= 0 && _rows.isEmpty) {
+      return context.say(
+        'حدد ميزانية أو أضف بند قبل الحفظ',
+        'حددي ميزانية أو أضيفي بند قبل الحفظ',
+      );
+    }
     final names = <String>{};
     for (final row in _rows) {
       if (!names.add(_normalizedCategoryName(row.name))) {
@@ -420,10 +436,13 @@ class _MoneyBudgetScreenState extends State<MoneyBudgetScreen> {
       }
     }
     if (total <= 0 && allocated > 0) {
-      return 'حدد ميزانية عرسك أول، بعدين وزّعها على البنود';
+      return context.say(
+        'حدد ميزانية عرسك أول، بعدين وزّعها على البنود',
+        'حددي ميزانية عرسك أول، بعدين وزّعيها على البنود',
+      );
     }
     if (total > 0 && allocated > total) {
-      return 'وزّعت ${_plain(allocated)}، وهذا أكثر من ميزانيتك بـ ${_plain(allocated - total)}';
+      return '${context.say('وزّعت', 'وزّعتِ')} ${_plain(allocated)}، وهذا أكثر من ميزانيتك بـ ${_plain(allocated - total)}';
     }
     return null;
   }

@@ -16,14 +16,21 @@ String _amount(BuildContext context, Object? value, String currency) {
 }
 
 /// The status line under «المال».
-String _moneyStatusLine(MoneySummary summary) {
+String _moneyStatusLine(MoneySummary summary, JourneyProfile profile) {
   final funding = summary.funding;
   if (funding != null && funding.shortfall != null) {
     return 'ماشية، بس ومع الموعود ناقصك شي';
   }
-  if (!summary.hasBudget) return 'حدد ميزانيتك ونرتب لك الباقي';
+  if (!summary.hasBudget) {
+    return profile.say(
+      'حدد ميزانيتك ونرتب لك الباقي',
+      'حددي ميزانيتك ونرتب لك الباقي',
+    );
+  }
   if (moneyValue(summary.budget.remaining) < 0) return 'فوق الميزانية';
-  if (summary.costs.count == 0) return 'ما سجلت اتفاقات بعد';
+  if (summary.costs.count == 0) {
+    return profile.say('ما سجلت اتفاقات بعد', 'ما سجلتِ اتفاقات بعد');
+  }
   return 'ماشية';
 }
 
@@ -60,9 +67,11 @@ class _MoneySummaryCard extends StatelessWidget {
               style: plain,
               children: hasAgreements
                   ? [
-                      const TextSpan(text: 'اتفقت على '),
+                      TextSpan(text: context.say('اتفقت على ', 'اتفقتِ على ')),
                       TextSpan(text: agreed, style: strong),
-                      const TextSpan(text: '، دفعت منها '),
+                      TextSpan(
+                        text: context.say('، دفعت منها ', '، دفعتِ منها '),
+                      ),
                       TextSpan(
                         text: paid,
                         style: strong.copyWith(color: AarastV3Color.mint),
@@ -82,7 +91,7 @@ class _MoneySummaryCard extends StatelessWidget {
                             funding.availableCash,
                             currency,
                           ),
-                          style: strong.copyWith(color: AarastV3Color.primary),
+                          style: strong.copyWith(color: context.accent.primary),
                         ),
                         if (moneyValue(funding.pledged) > 0) ...[
                           const TextSpan(text: '، وموعود لك '),
@@ -94,11 +103,14 @@ class _MoneySummaryCard extends StatelessWidget {
                         const TextSpan(text: '.'),
                       ],
                     ]
-                  : const [
+                  : [
                       TextSpan(
-                        text:
-                            'لسا ما سجلت اتفاقات. أول ما تتفق مع مزود، سجّله '
-                            'ونحسب لك المدفوع والباقي.',
+                        text: context.say(
+                          'لسا ما سجلت اتفاقات. أول ما تتفق مع مزود، سجّله '
+                              'ونحسب لك المدفوع والباقي.',
+                          'لسا ما سجلتِ اتفاقات. أول ما تتفقين مع مزود، '
+                              'سجّليه ونحسب لك المدفوع والباقي.',
+                        ),
                       ),
                     ],
             ),
@@ -127,7 +139,10 @@ class _ShortfallLine extends StatelessWidget {
     // coverage.
     if (funding.sourcesCount == 0 && funding.shortfall == null) {
       return Text(
-        'ما سجلت من وين فلوسك بعد، فما نعرف إذا تكفي.',
+        context.say(
+          'ما سجلت من وين فلوسك بعد، فما نعرف إذا تكفي.',
+          'ما سجلتِ من وين فلوسك بعد، فما نعرف إذا تكفي.',
+        ),
         key: const ValueKey('money-funding-unknown'),
         style: JourneyType.of(
           JourneyType.bodySmall,
@@ -206,7 +221,7 @@ class _MoneyBudgetCard extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Text(
-              'ما حددت ميزانية',
+              context.say('ما حددت ميزانية', 'ما حددتِ ميزانية'),
               style: JourneyType.of(
                 JourneyType.title,
                 weight: JourneyType.bold,
@@ -226,7 +241,7 @@ class _MoneyBudgetCard extends StatelessWidget {
                 alignment: AlignmentDirectional.centerStart,
                 child: JourneyButton(
                   key: const ValueKey('money-budget-setup'),
-                  label: 'حط رقم',
+                  label: context.say('حط رقم', 'حطي رقم'),
                   icon: LucideIcons.wallet,
                   onPressed: onBudget,
                 ),
@@ -267,7 +282,7 @@ class _MoneyBudgetCard extends StatelessWidget {
           const SizedBox(height: 10),
           JourneyBar(
             value: ratio,
-            color: over ? AarastV3Color.danger : AarastV3Color.primary,
+            color: over ? AarastV3Color.danger : context.accent.primary,
           ),
           const SizedBox(height: 8),
           Text(

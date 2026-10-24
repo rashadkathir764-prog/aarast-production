@@ -103,13 +103,13 @@ extension _CostFormSave on _CostFormScreenState {
     if (missed > 0) {
       AarastToast.showWarning(
         context,
-        'انحفظ الاتفاق، بس $missed من مواعيد الدفع ما انحفظت. أضفها من تفاصيله.',
+        'انحفظ الاتفاق، بس $missed من مواعيد الدفع ما انحفظت. ${context.say('أضفها', 'أضيفيها')} من تفاصيله.',
       );
     } else {
       AarastFormSuccess.show(
         context,
         message: provider.savedMessage('انحفظ الاتفاق'),
-        nextLabel: 'افتح الاتفاق',
+        nextLabel: context.say('افتح الاتفاق', 'افتحي الاتفاق'),
         onNext: () => router.push(
           AppRouter.moneyCostDetails(widget.weddingPlanId, created.id),
         ),

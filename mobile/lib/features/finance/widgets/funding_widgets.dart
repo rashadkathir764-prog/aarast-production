@@ -46,11 +46,12 @@ class FundingFormResult {
   final bool delete;
 }
 
-/// The words a groom uses for each kind of money.
-String fundingKindChoice(String kind) => switch (kind) {
+/// The words the plan's owner uses for each kind of money: the groom's rafd
+/// is the bride's gifts (JOURNEY_PROFILE.md).
+String fundingKindChoice(String kind, JourneyProfile profile) => switch (kind) {
   FundingKind.savings => 'مدخراتي',
   FundingKind.familySupport => 'دعم من الأهل',
-  FundingKind.gift => 'رفد ونقوط',
+  FundingKind.gift => profile.say('رفد ونقوط', 'هدايا ونقوط'),
   FundingKind.loan => 'سلفة',
   _ => 'غيره',
 };
@@ -145,8 +146,12 @@ class _FundingSourceFormSheetState extends State<FundingSourceFormSheet> {
 
   void _submit() {
     setState(() {
-      _nameError = _name.text.trim().isEmpty ? 'اكتب من مين' : null;
-      _amountError = _typedAmount <= 0 ? 'اكتب كم' : null;
+      _nameError = _name.text.trim().isEmpty
+          ? context.say('اكتب من مين', 'اكتبي من مين')
+          : null;
+      _amountError = _typedAmount <= 0
+          ? context.say('اكتب كم', 'اكتبي كم')
+          : null;
     });
     if (_nameError != null || _amountError != null) return;
     Navigator.pop(
@@ -172,7 +177,10 @@ class _FundingSourceFormSheetState extends State<FundingSourceFormSheet> {
     final repayments = _repayments;
     return JourneySheetBody(
       title: _editing ? 'تعديل المصدر' : 'مصدر فلوس',
-      subtitle: 'من وين بتجيب فلوس عرسك',
+      subtitle: context.say(
+        'من وين بتجيب فلوس عرسك',
+        'من وين بتجيبين فلوس عرسك',
+      ),
       children: [
         Wrap(
           spacing: 8,
@@ -181,7 +189,7 @@ class _FundingSourceFormSheetState extends State<FundingSourceFormSheet> {
             for (final kind in FundingKind.all)
               JourneyChip(
                 key: ValueKey('funding-kind-$kind'),
-                label: fundingKindChoice(kind),
+                label: fundingKindChoice(kind, context.journeyProfile),
                 icon: fundingKindIcon(kind),
                 selected: _kind == kind,
                 onTap: () => setState(() => _kind = kind),
@@ -195,7 +203,7 @@ class _FundingSourceFormSheetState extends State<FundingSourceFormSheet> {
           hint: switch (_kind) {
             FundingKind.savings => 'مثلًا: مدخراتي',
             FundingKind.loan => 'مثلًا: خالي أحمد',
-            _ => 'مثلًا: الوالد',
+            _ => context.say('مثلًا: الوالد', 'مثلًا: الوالدة'),
           },
           controller: _name,
           icon: LucideIcons.user,
@@ -244,7 +252,7 @@ class _FundingSourceFormSheetState extends State<FundingSourceFormSheet> {
         ],
         if (_isLoan && !_editing) ...[
           const SizedBox(height: 14),
-          _label('كيف بترجعها؟'),
+          _label(context.say('كيف بترجعها؟', 'كيف بترجعينها؟')),
           Wrap(
             spacing: 8,
             runSpacing: 8,
@@ -270,7 +278,9 @@ class _FundingSourceFormSheetState extends State<FundingSourceFormSheet> {
             const SizedBox(height: 10),
             JourneyPickerField(
               key: const ValueKey('funding-first-repayment'),
-              label: _repaymentCount == 1 ? 'متى ترجعها؟' : 'أول دفعة',
+              label: _repaymentCount == 1
+                  ? context.say('متى ترجعها؟', 'متى ترجعينها؟')
+                  : 'أول دفعة',
               value: formatArabicDayMonth(_firstRepayment),
               icon: LucideIcons.calendarDays,
               helper: _repaymentCount == 1 ? null : 'وبعدها كل شهر',
@@ -298,13 +308,13 @@ class _FundingSourceFormSheetState extends State<FundingSourceFormSheet> {
           child: JourneyTextAction(
             label: _showMore ? 'أقل' : 'تفاصيل أكثر',
             icon: _showMore ? LucideIcons.chevronUp : LucideIcons.chevronDown,
-            color: AarastV3Color.primary,
+            color: context.accent.primary,
             onPressed: () => setState(() => _showMore = !_showMore),
           ),
         ),
         if (_showMore) ...[
           JourneyTextField(
-            label: 'رقمه (لو تبي)',
+            label: context.say('رقمه (لو تبي)', 'رقمه (لو تبين)'),
             controller: _phone,
             icon: LucideIcons.phone,
             keyboardType: TextInputType.phone,
@@ -326,7 +336,7 @@ class _FundingSourceFormSheetState extends State<FundingSourceFormSheet> {
           Center(
             child: JourneyTextAction(
               key: const ValueKey('funding-delete'),
-              label: 'شيل المصدر',
+              label: context.say('شيل المصدر', 'شيلي المصدر'),
               color: AarastV3Color.danger,
               onPressed: () =>
                   Navigator.pop(context, const FundingFormResult.delete()),

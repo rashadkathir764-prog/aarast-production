@@ -80,9 +80,8 @@ class _LoanRepaymentsSheetState extends State<LoanRepaymentsSheet> {
   String _line(LoanRepayment repayment, DateTime today) {
     if (repayment.isPaid) {
       final paidAt = repayment.paidAt;
-      return paidAt == null
-          ? 'دفعتها'
-          : '${formatArabicDayMonth(paidAt)} · دفعتها';
+      final paid = context.say('دفعتها', 'دفعتيها');
+      return paidAt == null ? paid : '${formatArabicDayMonth(paidAt)} · $paid';
     }
     final due = repayment.dueDate;
     if (due == null) return 'بدون موعد';
@@ -125,16 +124,16 @@ class _LoanRepaymentsSheetState extends State<LoanRepaymentsSheet> {
       children: [
         JourneyBox(
           key: const ValueKey('loan-owed'),
-          color: AarastV3Color.primary,
+          color: context.accent.primary,
           padding: const EdgeInsets.all(18),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                owed > 0 ? 'باقي عليك' : 'خلصت منها',
+                owed > 0 ? 'باقي عليك' : context.say('خلصت منها', 'خلصتِ منها'),
                 style: JourneyType.of(
                   JourneyType.small,
-                  color: AarastV3Color.onPrimaryMuted,
+                  color: context.accent.onPrimaryMuted,
                 ),
               ),
               if (owed > 0)
@@ -157,13 +156,13 @@ class _LoanRepaymentsSheetState extends State<LoanRepaymentsSheet> {
                   done: paidCount,
                   filled: AarastV3Color.onPrimary,
                   current: AarastV3Color.saffron,
-                  empty: AarastV3Color.onPrimaryMuted,
+                  empty: context.accent.onPrimaryMuted,
                 ),
               ],
               if (allDated && owed > 0) ...[
                 const SizedBox(height: 10),
                 Text(
-                  'تخلص منها في ${arabicMonthName(dueDates.last.month)} إن شاء الله',
+                  '${context.say('تخلص', 'تخلصين')} منها في ${arabicMonthName(dueDates.last.month)} إن شاء الله',
                   style: JourneyType.of(
                     JourneyType.body,
                     weight: JourneyType.bold,
@@ -217,7 +216,7 @@ class _LoanRepaymentsSheetState extends State<LoanRepaymentsSheet> {
             Expanded(
               child: JourneyTextField(
                 key: const ValueKey('loan-repayment-amount'),
-                label: 'أضف دفعة سداد',
+                label: context.say('أضف دفعة سداد', 'أضيفي دفعة سداد'),
                 controller: _amount,
                 keyboardType: TextInputType.number,
                 inputFormatters: const [MoneyInputFormatter()],
@@ -241,7 +240,7 @@ class _LoanRepaymentsSheetState extends State<LoanRepaymentsSheet> {
               child: JourneyRoundButton(
                 key: const ValueKey('loan-repayment-add'),
                 icon: LucideIcons.plus,
-                tooltip: 'أضف دفعة السداد',
+                tooltip: context.say('أضف دفعة السداد', 'أضيفي دفعة السداد'),
                 onPressed: widget.saving ? null : _add,
               ),
             ),
@@ -273,7 +272,8 @@ class _LoanRepaymentsSheetState extends State<LoanRepaymentsSheet> {
           const SizedBox(height: 16),
           JourneyButton(
             key: const ValueKey('loan-pay-next'),
-            label: 'سجّل الدفعة ${arabicOrdinal(nextIndex)}',
+            label:
+                '${context.say('سجّل', 'سجّلي')} الدفعة ${arabicOrdinal(nextIndex)}',
             expand: true,
             large: true,
             loading: widget.saving,
@@ -372,7 +372,7 @@ class _RepaymentRow extends StatelessWidget {
               ),
               if (onDelete != null)
                 IconButton(
-                  tooltip: 'شيل دفعة السداد',
+                  tooltip: context.say('شيل دفعة السداد', 'شيلي دفعة السداد'),
                   onPressed: onDelete,
                   icon: const Icon(
                     LucideIcons.trash2,
@@ -465,7 +465,7 @@ class _PledgeCheckSheetState extends State<PledgeCheckSheet> {
         if (_answer == PledgeAnswer.arrived && cash != null) ...[
           JourneyBox(
             key: const ValueKey('pledge-cash-after'),
-            color: AarastV3Color.primarySoft,
+            color: context.accent.primarySoft,
             padding: const EdgeInsets.all(14),
             child: Row(
               children: [
@@ -474,7 +474,7 @@ class _PledgeCheckSheetState extends State<PledgeCheckSheet> {
                     'معك يصير',
                     style: JourneyType.of(
                       JourneyType.body,
-                      color: AarastV3Color.primary,
+                      color: context.accent.primary,
                     ),
                   ),
                 ),
@@ -485,12 +485,12 @@ class _PledgeCheckSheetState extends State<PledgeCheckSheet> {
                     color: AarastV3Color.textMuted,
                   ),
                 ),
-                const Padding(
-                  padding: EdgeInsets.symmetric(horizontal: 6),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 6),
                   child: Icon(
                     LucideIcons.arrowLeft,
                     size: 16,
-                    color: AarastV3Color.primary,
+                    color: context.accent.primary,
                   ),
                 ),
                 Text(
@@ -498,7 +498,7 @@ class _PledgeCheckSheetState extends State<PledgeCheckSheet> {
                   style: JourneyType.of(
                     JourneyType.bodyLarge,
                     weight: JourneyType.bold,
-                    color: AarastV3Color.primary,
+                    color: context.accent.primary,
                   ),
                 ),
               ],
@@ -517,8 +517,8 @@ class _PledgeCheckSheetState extends State<PledgeCheckSheet> {
         Center(
           child: JourneyTextAction(
             key: const ValueKey('pledge-edit'),
-            label: 'عدّل المصدر',
-            color: AarastV3Color.primary,
+            label: context.say('عدّل المصدر', 'عدّلي المصدر'),
+            color: context.accent.primary,
             onPressed: () => Navigator.pop(context, PledgeAnswer.edit),
           ),
         ),

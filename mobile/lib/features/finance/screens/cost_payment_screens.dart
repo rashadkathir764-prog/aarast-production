@@ -85,7 +85,7 @@ class _RecordCostPaymentScreenState extends State<RecordCostPaymentScreen> {
         section: JourneySection.money,
         emptyIcon: LucideIcons.receipt,
         emptyTitle: 'هذا الاتفاق ما عاد موجود',
-        emptyAction: 'ارجع',
+        emptyAction: context.say('ارجع', 'ارجعي'),
         onEmptyAction: () =>
             context.popOrGo(AppRouter.money(widget.weddingPlanId)),
       );
@@ -199,7 +199,7 @@ class _PayPaymentScheduleScreenState extends State<PayPaymentScheduleScreen> {
         section: JourneySection.money,
         emptyIcon: LucideIcons.calendarX,
         emptyTitle: 'هذا الموعد ما عاد موجود',
-        emptyAction: 'ارجع',
+        emptyAction: context.say('ارجع', 'ارجعي'),
         onEmptyAction: () =>
             context.popOrGo(AppRouter.money(widget.weddingPlanId)),
       );

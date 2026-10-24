@@ -29,18 +29,18 @@ Future<XFile?> pickReceiptImage(BuildContext context) async {
               JourneyListRow(
                 key: const ValueKey('receipt-source-camera'),
                 icon: LucideIcons.camera,
-                color: AarastV3Color.primary,
-                soft: AarastV3Color.primarySoft,
-                title: 'صوّر الإيصال',
+                color: context.accent.primary,
+                soft: context.accent.primarySoft,
+                title: context.say('صوّر الإيصال', 'صوّري الإيصال'),
                 subtitle: 'بالكاميرا الآن',
                 onTap: () => Navigator.of(sheetContext).pop(ImageSource.camera),
               ),
               JourneyListRow(
                 key: const ValueKey('receipt-source-gallery'),
                 icon: LucideIcons.image,
-                color: AarastV3Color.primary,
-                soft: AarastV3Color.primarySoft,
-                title: 'اختر من الصور',
+                color: context.accent.primary,
+                soft: context.accent.primarySoft,
+                title: context.say('اختر من الصور', 'اختاري من الصور'),
                 subtitle: 'صورة محفوظة في جوالك',
                 onTap: () =>
                     Navigator.of(sheetContext).pop(ImageSource.gallery),
@@ -112,7 +112,7 @@ Future<bool> confirmRemoveReceipt(BuildContext context) async {
   final confirmed = await showDialog<bool>(
     context: context,
     builder: (dialogContext) => AarastDialog(
-      title: const Text('تشيل الإيصال؟'),
+      title: Text(context.say('تشيل الإيصال؟', 'تشيلين الإيصال؟')),
       content: const Text('الصورة تنحذف، والدفعة تبقى.'),
       actions: [
         TextButton(
@@ -123,7 +123,7 @@ Future<bool> confirmRemoveReceipt(BuildContext context) async {
           key: const ValueKey('receipt-remove-confirm'),
           style: FilledButton.styleFrom(backgroundColor: AarastV3Color.danger),
           onPressed: () => Navigator.of(dialogContext).pop(true),
-          child: const Text('شيله'),
+          child: Text(context.say('شيله', 'شيليه')),
         ),
       ],
     ),
@@ -161,9 +161,14 @@ Future<ReceiptViewerAction?> showReceiptViewer(
       content: InteractiveViewer(
         child: Image.network(
           receipt.downloadUrl,
-          errorBuilder: (_, _, _) => const Padding(
-            padding: EdgeInsets.all(24),
-            child: Text('انتهى الرابط. سكّر وافتح الإيصال مرة ثانية.'),
+          errorBuilder: (_, _, _) => Padding(
+            padding: const EdgeInsets.all(24),
+            child: Text(
+              context.say(
+                'انتهى الرابط. سكّر وافتح الإيصال مرة ثانية.',
+                'انتهى الرابط. سكّري وافتحي الإيصال مرة ثانية.',
+              ),
+            ),
           ),
         ),
       ),
@@ -173,21 +178,21 @@ Future<ReceiptViewerAction?> showReceiptViewer(
             key: const ValueKey('receipt-viewer-remove'),
             onPressed: () =>
                 Navigator.of(dialogContext).pop(ReceiptViewerAction.remove),
-            child: const Text(
-              'شيله',
-              style: TextStyle(color: AarastV3Color.danger),
+            child: Text(
+              context.say('شيله', 'شيليه'),
+              style: const TextStyle(color: AarastV3Color.danger),
             ),
           ),
           TextButton(
             key: const ValueKey('receipt-viewer-replace'),
             onPressed: () =>
                 Navigator.of(dialogContext).pop(ReceiptViewerAction.replace),
-            child: const Text('بدّله'),
+            child: Text(context.say('بدّله', 'بدّليه')),
           ),
         ],
         TextButton(
           onPressed: () => Navigator.of(dialogContext).pop(),
-          child: const Text('سكّر'),
+          child: Text(context.say('سكّر', 'سكّري')),
         ),
       ],
     ),
@@ -242,11 +247,11 @@ class ReceiptThumb extends StatelessWidget {
               errorBuilder: (_, _, _) => Container(
                 width: width,
                 height: size,
-                color: AarastV3Color.primarySoft,
-                child: const Icon(
+                color: context.accent.primarySoft,
+                child: Icon(
                   LucideIcons.fileText,
                   size: 28,
-                  color: AarastV3Color.primary,
+                  color: context.accent.primary,
                 ),
               ),
             ),
@@ -254,7 +259,9 @@ class ReceiptThumb extends StatelessWidget {
     if (onTap == null) return child;
     return Semantics(
       button: true,
-      label: receipt == null ? 'أضف إيصال' : 'افتح الإيصال',
+      label: receipt == null
+          ? context.say('أضف إيصال', 'أضيفي إيصال')
+          : context.say('افتح الإيصال', 'افتحي الإيصال'),
       onTap: onTap,
       excludeSemantics: true,
       child: AarastPressable(onTap: onTap!, child: child),

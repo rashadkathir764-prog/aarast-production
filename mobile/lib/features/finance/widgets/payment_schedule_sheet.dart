@@ -129,11 +129,13 @@ class _PaymentScheduleSheetState extends State<_PaymentScheduleSheet> {
     setState(() {
       _error = null;
       _amountError = amount == null || amount <= 0
-          ? 'اكتب كم المبلغ'
+          ? context.say('اكتب كم المبلغ', 'اكتبي كم المبلغ')
           : amount > _available
           ? 'أكثر من الباقي عليك (${_plain(_available)})'
           : null;
-      _dateError = _dueDate == null ? 'اختر يوم الدفعة' : null;
+      _dateError = _dueDate == null
+          ? context.say('اختر يوم الدفعة', 'اختاري يوم الدفعة')
+          : null;
     });
     if (_amountError != null || _dateError != null) return;
 
@@ -171,12 +173,13 @@ class _PaymentScheduleSheetState extends State<_PaymentScheduleSheet> {
     final confirmed = await showJourneySheet<bool>(
       context: context,
       builder: (sheetContext) => JourneySheetBody(
-        title: 'تشيل موعد ${formatArabicDayMonth(schedule.dueDate)}؟',
+        title:
+            '${context.say('تشيل', 'تشيلين')} موعد ${formatArabicDayMonth(schedule.dueDate)}؟',
         subtitle: 'ينحذف من جدول الدفعات، والاتفاق يبقى مثل ما هو.',
         children: [
           JourneyButton(
             key: const ValueKey('payment-schedule-remove-confirm'),
-            label: 'شيله',
+            label: context.say('شيله', 'شيليه'),
             background: AarastV3Color.danger,
             expand: true,
             large: true,
@@ -225,7 +228,7 @@ class _PaymentScheduleSheetState extends State<_PaymentScheduleSheet> {
         children: [
           JourneyButton(
             key: const ValueKey('schedule-save'),
-            label: 'احفظ الموعد',
+            label: context.say('احفظ الموعد', 'احفظي الموعد'),
             expand: true,
             large: true,
             loading: submitting,
@@ -235,7 +238,7 @@ class _PaymentScheduleSheetState extends State<_PaymentScheduleSheet> {
             Center(
               child: JourneyTextAction(
                 key: const ValueKey('payment-schedule-remove'),
-                label: 'شيل الموعد',
+                label: context.say('شيل الموعد', 'شيلي الموعد'),
                 color: AarastV3Color.danger,
                 onPressed: submitting ? null : _remove,
               ),
@@ -263,7 +266,7 @@ class _PaymentScheduleSheetState extends State<_PaymentScheduleSheet> {
           label: 'متى',
           icon: LucideIcons.calendarDays,
           value: due == null ? null : formatArabicWeekdayDayMonth(due),
-          placeholder: 'اختر اليوم',
+          placeholder: context.say('اختر اليوم', 'اختاري اليوم'),
           onTap: _pickDate,
         ),
         if (_dateError case final error?) _ErrorLine(error),

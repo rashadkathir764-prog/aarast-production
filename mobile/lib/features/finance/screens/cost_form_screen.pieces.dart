@@ -154,14 +154,15 @@ class _PartySection extends StatelessWidget {
               icon: LucideIcons.store,
               color: AarastV3Color.cobalt,
               soft: AarastV3Color.cobaltSoft,
-              title: providerName ?? 'اختر المزود',
+              title:
+                  providerName ?? context.say('اختر المزود', 'اختاري المزود'),
               subtitle: providerName == null ? 'من سوق اعّرست' : 'من اعّرست',
               trailing: Text(
-                providerName == null ? 'اختر' : 'تغيير',
+                providerName == null ? context.say('اختر', 'اختاري') : 'تغيير',
                 style: JourneyType.of(
                   JourneyType.body,
                   weight: JourneyType.bold,
-                  color: AarastV3Color.primary,
+                  color: context.accent.primary,
                 ),
               ),
               onTap: onPickProvider,
@@ -181,7 +182,7 @@ class _PartySection extends StatelessWidget {
           const SizedBox(height: 10),
           JourneyTextField(
             key: const ValueKey('cost-party-phone'),
-            label: 'رقمه (لو تبي)',
+            label: context.say('رقمه (لو تبي)', 'رقمه (لو تبين)'),
             controller: phoneController,
             icon: LucideIcons.phone,
             keyboardType: TextInputType.phone,
@@ -217,13 +218,13 @@ class _QuoteTotal extends StatelessWidget {
     final value = amount.round();
     return JourneyBox(
       key: const ValueKey('cost-quote-total'),
-      color: AarastV3Color.primarySoft,
+      color: context.accent.primarySoft,
       padding: const EdgeInsets.all(16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'بكم اتفقت؟',
+            context.say('بكم اتفقت؟', 'بكم اتفقتِ؟'),
             style: JourneyType.of(
               JourneyType.small,
               color: AarastV3Color.textMuted,
@@ -237,16 +238,19 @@ class _QuoteTotal extends StatelessWidget {
               style: JourneyType.of(
                 JourneyType.display,
                 weight: JourneyType.bold,
-                color: AarastV3Color.primaryDark,
+                color: context.accent.primaryDark,
               ),
             ),
           ),
           Text(
-            'مثبت من العرض اللي وافقت عليه',
+            context.say(
+              'مثبت من العرض اللي وافقت عليه',
+              'مثبت من العرض اللي وافقتِ عليه',
+            ),
             style: JourneyType.of(
               JourneyType.small,
               weight: JourneyType.bold,
-              color: AarastV3Color.primary,
+              color: context.accent.primary,
             ),
           ),
         ],
@@ -417,11 +421,11 @@ class _ProviderPickerState extends State<_ProviderPicker> {
       );
     }
     return JourneySheetBody(
-      title: 'مع مين اتفقت؟',
+      title: context.say('مع مين اتفقت؟', 'مع مين اتفقتِ؟'),
       children: [
         JourneyTextField(
           key: const ValueKey('cost-provider-search'),
-          label: 'ابحث بالاسم',
+          label: context.say('ابحث بالاسم', 'ابحثي بالاسم'),
           controller: _searchController,
           icon: LucideIcons.search,
           autofocus: true,
@@ -433,7 +437,7 @@ class _ProviderPickerState extends State<_ProviderPicker> {
           Center(
             child: JourneyTextAction(
               label: _isLoadingMore ? 'نجيب أكثر…' : 'مزودين أكثر',
-              color: AarastV3Color.primary,
+              color: context.accent.primary,
               onPressed: _isLoadingMore ? null : () => _load(reset: false),
             ),
           ),
@@ -491,7 +495,7 @@ class _MoreDetails extends StatelessWidget {
           const SizedBox(height: 10),
           JourneyTextField(
             label: 'مين بالضبط؟',
-            hint: 'مثلًا: الوالد',
+            hint: context.say('مثلًا: الوالد', 'مثلًا: الوالدة'),
             controller: payerNameController,
             icon: LucideIcons.user,
           ),
@@ -517,7 +521,7 @@ class _MoreDetails extends StatelessWidget {
           value: agreementDate == null
               ? null
               : formatArabicWeekdayDayMonth(agreementDate!),
-          placeholder: 'اختر اليوم',
+          placeholder: context.say('اختر اليوم', 'اختاري اليوم'),
           icon: LucideIcons.calendarDays,
           onTap: onPickAgreementDate,
         ),

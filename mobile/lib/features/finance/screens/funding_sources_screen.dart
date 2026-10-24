@@ -87,7 +87,10 @@ class _FundingSourcesScreenState extends State<FundingSourcesScreen> {
             : JourneyListPhase.error,
         section: JourneySection.money,
         emptyIcon: LucideIcons.piggyBank,
-        emptyTitle: 'ما سجلت من وين بتجيب الفلوس',
+        emptyTitle: context.say(
+          'ما سجلت من وين بتجيب الفلوس',
+          'ما سجلتِ من وين بتجيبين الفلوس',
+        ),
         onRetry: _load,
       );
     } else {
@@ -101,14 +104,14 @@ class _FundingSourcesScreenState extends State<FundingSourcesScreen> {
                 icon: fundingKindIcon(source.kind),
                 color: source.isPledged
                     ? AarastV3Color.lilac
-                    : AarastV3Color.primary,
+                    : context.accent.primary,
                 soft: source.isPledged
                     ? AarastV3Color.lilacSoft
-                    : AarastV3Color.primarySoft,
+                    : context.accent.primarySoft,
                 title: source.sourceName,
                 subtitle: source.isLoan
                     ? 'سلفة · باقي ${_plain(source.outstandingAmount ?? source.amount)}'
-                    : FundingKind.label(source.kind),
+                    : FundingKind.label(source.kind, context.journeyProfile),
                 trailing: Column(
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.end,
@@ -153,7 +156,10 @@ class _FundingSourcesScreenState extends State<FundingSourcesScreen> {
             padding: const EdgeInsets.fromLTRB(16, 8, 8, 0),
             child: JourneySubHeader(
               title: 'من وين',
-              subtitle: 'من وين بتجيب فلوس عرسك',
+              subtitle: context.say(
+                'من وين بتجيب فلوس عرسك',
+                'من وين بتجيبين فلوس عرسك',
+              ),
               onBack: () => context.canPop()
                   ? context.pop()
                   : context.go(AppRouter.money(widget.weddingPlanId)),
@@ -161,7 +167,7 @@ class _FundingSourcesScreenState extends State<FundingSourcesScreen> {
           ),
           Expanded(
             child: RefreshIndicator(
-              color: AarastV3Color.primary,
+              color: context.accent.primary,
               onRefresh: _load,
               child: ListView(
                 physics: const AlwaysScrollableScrollPhysics(),
@@ -202,7 +208,7 @@ class _FundingSourcesScreenState extends State<FundingSourcesScreen> {
             padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
             child: JourneyButton(
               key: const ValueKey('funding-add'),
-              label: 'أضف مصدر',
+              label: context.say('أضف مصدر', 'أضيفي مصدر'),
               icon: LucideIcons.plus,
               expand: true,
               large: true,
@@ -287,7 +293,7 @@ class _FundingSourcesScreenState extends State<FundingSourcesScreen> {
     if (missed > 0) {
       AarastToast.showWarning(
         context,
-        'انحفظت السلفة، بس $missed من دفعات السداد ما انحفظت. أضفها منها.',
+        'انحفظت السلفة، بس $missed من دفعات السداد ما انحفظت. ${context.say('أضفها', 'أضيفيها')} منها.',
       );
     } else {
       AarastToast.showSuccess(context, 'انحفظت السلفة ودفعاتها');

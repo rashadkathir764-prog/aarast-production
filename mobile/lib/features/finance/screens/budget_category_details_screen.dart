@@ -71,7 +71,7 @@ class _BudgetCategoryDetailsScreenState
         section: JourneySection.money,
         emptyIcon: LucideIcons.tag,
         emptyTitle: 'هذا البند ما عاد موجود',
-        emptyAction: 'ارجع',
+        emptyAction: context.say('ارجع', 'ارجعي'),
         onEmptyAction: () => context.pop(),
         onRetry: _load,
       );
@@ -101,7 +101,7 @@ class _BudgetCategoryDetailsScreenState
             ),
           if (over > 0 && canManage) ...[
             const SizedBox(height: 8),
-            const JourneySectionTitle('ايش تسوي؟'),
+            JourneySectionTitle(context.say('ايش تسوي؟', 'ايش تسوين؟')),
             _OverChoices(
               over: over,
               overLabel: _plain(over, currency),
@@ -138,10 +138,10 @@ class _BudgetCategoryDetailsScreenState
                       icon: LucideIcons.receipt,
                       color: cost.isCancelled
                           ? AarastV3Color.textFaint
-                          : AarastV3Color.primary,
+                          : context.accent.primary,
                       soft: cost.isCancelled
                           ? AarastV3Color.line
-                          : AarastV3Color.primarySoft,
+                          : context.accent.primarySoft,
                       title: cost.title,
                       subtitle: cost.isCancelled
                           ? 'ملغي'
@@ -201,7 +201,7 @@ class _BudgetCategoryDetailsScreenState
           ),
           Expanded(
             child: RefreshIndicator(
-              color: AarastV3Color.primary,
+              color: context.accent.primary,
               onRefresh: _load,
               child: ListView(
                 physics: const AlwaysScrollableScrollPhysics(),

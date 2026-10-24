@@ -90,7 +90,7 @@ class _CostDetailsScreenState extends State<CostDetailsScreen> {
         section: JourneySection.money,
         emptyIcon: LucideIcons.receipt,
         emptyTitle: 'هذا الاتفاق ما عاد موجود',
-        emptyAction: 'ارجع للبنود',
+        emptyAction: context.say('ارجع للبنود', 'ارجعي للبنود'),
         onEmptyAction: _goBack,
       );
     } else {
@@ -121,7 +121,7 @@ class _CostDetailsScreenState extends State<CostDetailsScreen> {
           ),
           Expanded(
             child: RefreshIndicator(
-              color: AarastV3Color.primary,
+              color: context.accent.primary,
               onRefresh: () => _load(refreshMoney: true),
               child: ListView(
                 controller: _scrollController,
@@ -165,7 +165,10 @@ class _CostDetailsScreenState extends State<CostDetailsScreen> {
             .toList()
           ..sort((a, b) => a.dueDate.compareTo(b.dueDate));
     if (pending.isEmpty) {
-      return ('سجّل دفعة', () => _openRecordPayment(cost));
+      return (
+        context.say('سجّل دفعة', 'سجّلي دفعة'),
+        () => _openRecordPayment(cost),
+      );
     }
     final paidCount = provider
         .paymentsForCost(cost.id)
@@ -173,7 +176,7 @@ class _CostDetailsScreenState extends State<CostDetailsScreen> {
         .length;
     final next = pending.first;
     return (
-      'سجّل الدفعة ${arabicOrdinal(paidCount)}',
+      '${context.say('سجّل', 'سجّلي')} الدفعة ${arabicOrdinal(paidCount)}',
       () => _paySchedule(cost, next),
     );
   }
@@ -261,7 +264,7 @@ class _CostDetailsScreenState extends State<CostDetailsScreen> {
                 key: const ValueKey('cost-share-with-plan'),
                 label: 'مشاركتها مع الخطة',
                 icon: LucideIcons.users,
-                color: AarastV3Color.primary,
+                color: context.accent.primary,
                 onPressed: () => _shareWithPlan(cost),
               ),
             ),
@@ -279,7 +282,7 @@ class _CostDetailsScreenState extends State<CostDetailsScreen> {
           key: _paymentsKey,
           child: JourneySectionTitle(
             'جدول الدفعات',
-            action: canSchedule ? 'أضف موعد' : null,
+            action: canSchedule ? context.say('أضف موعد', 'أضيفي موعد') : null,
             onAction: canSchedule
                 ? () => _openSchedule(cost, currency, null)
                 : null,
@@ -345,12 +348,12 @@ class _CostDetailsScreenState extends State<CostDetailsScreen> {
     final confirmed = await showJourneySheet<bool>(
       context: context,
       builder: (sheetContext) => JourneySheetBody(
-        title: 'تشاركها مع الخطة؟',
+        title: context.say('تشاركها مع الخطة؟', 'تشاركينها مع الخطة؟'),
         subtitle: 'بيشوفها شريكك وتدخل في أرقام الخطة، وما ترجع خاصة بعدها.',
         children: [
           JourneyButton(
             key: const ValueKey('cost-share-confirm'),
-            label: 'شاركها',
+            label: context.say('شاركها', 'شاركيها'),
             expand: true,
             large: true,
             onPressed: () => Navigator.of(sheetContext).pop(true),

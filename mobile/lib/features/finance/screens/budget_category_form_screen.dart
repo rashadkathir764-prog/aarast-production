@@ -154,8 +154,14 @@ class _BudgetCategoryFormScreenState extends State<BudgetCategoryFormScreen> {
                 const SizedBox(height: 14),
                 JourneyTextField(
                   key: const ValueKey('money-category-form-amount'),
-                  label: 'كم تخصص له تقريبًا؟',
-                  hint: 'تقدر تتركه لبعدين',
+                  label: context.say(
+                    'كم تخصص له تقريبًا؟',
+                    'كم تخصصين له تقريبًا؟',
+                  ),
+                  hint: context.say(
+                    'تقدر تتركه لبعدين',
+                    'تقدرين تتركينه لبعدين',
+                  ),
                   controller: _amountController,
                   large: true,
                   keyboardType: TextInputType.number,
@@ -174,8 +180,11 @@ class _BudgetCategoryFormScreenState extends State<BudgetCategoryFormScreen> {
                 ),
                 if (isGold) ...[
                   const SizedBox(height: 12),
-                  const JourneyNote(
-                    text: 'الذهب ما يظهر في خطتك إلا لأنك أضفته.',
+                  JourneyNote(
+                    text: context.say(
+                      'الذهب ما يظهر في خطتك إلا لأنك أضفته.',
+                      'الذهب ما يظهر في خطتك إلا لأنك أضفتيه.',
+                    ),
                     icon: LucideIcons.gem,
                     color: AarastV3Color.brandAccentStrong,
                     soft: AarastV3Color.brandAccentSoft,
@@ -192,7 +201,9 @@ class _BudgetCategoryFormScreenState extends State<BudgetCategoryFormScreen> {
             padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
             child: JourneyButton(
               key: const ValueKey('category-save'),
-              label: _editing ? 'حفظ البند' : 'أضف البند',
+              label: _editing
+                  ? 'حفظ البند'
+                  : context.say('أضف البند', 'أضيفي البند'),
               expand: true,
               large: true,
               loading: provider.isSubmitting,
@@ -219,14 +230,17 @@ class _BudgetCategoryFormScreenState extends State<BudgetCategoryFormScreen> {
     final left = _budgetLeft(provider);
     setState(() {
       _nameError = name.isEmpty
-          ? 'اكتب اسم البند'
+          ? context.say('اكتب اسم البند', 'اكتبي اسم البند')
           : duplicate
           ? 'عندك بند بهذا الاسم'
           : null;
       _amountError = _amountController.text.trim().isNotEmpty && _amount == null
           ? 'المبلغ مو صحيح'
           : amount > 0 && !hasBudget
-          ? 'حدد ميزانيتك أول، بعدين خصص للبنود'
+          ? context.say(
+              'حدد ميزانيتك أول، بعدين خصص للبنود',
+              'حددي ميزانيتك أول، بعدين خصصي للبنود',
+            )
           : hasBudget && amount > left
           ? 'أكثر من الباقي في ميزانيتك (${_plain(left, currency)})'
           : null;

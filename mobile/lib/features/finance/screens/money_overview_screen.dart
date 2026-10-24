@@ -112,7 +112,7 @@ class _MoneyOverviewScreenState extends State<MoneyOverviewScreen> {
         tabs.length - 1,
       );
       content = RefreshIndicator(
-        color: AarastV3Color.primary,
+        color: context.accent.primary,
         onRefresh: _load,
         child: ListView(
           key: const PageStorageKey('money-overview-list'),

@@ -320,7 +320,10 @@ class _CostFormScreenState extends State<CostFormScreen> {
               title: _editing ? 'تعديل الاتفاق' : 'اتفاق جديد',
               subtitle: _editing
                   ? widget.cost!.title
-                  : 'مع مين اتفقت، وبكم، وكيف بتدفع',
+                  : context.say(
+                      'مع مين اتفقت، وبكم، وكيف بتدفع',
+                      'مع مين اتفقتِ، وبكم، وكيف بتدفعين',
+                    ),
               onBack: () =>
                   context.popOrGo(AppRouter.money(widget.weddingPlanId), false),
             ),
@@ -330,9 +333,11 @@ class _CostFormScreenState extends State<CostFormScreen> {
               padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
               children: [
                 if (widget.intent?.cameFromAcceptedQuote == true) ...[
-                  const JourneyNote(
-                    text:
-                        'عبّينا هذي من العرض اللي وافقت عليه. ما ينحفظ شي لين تضغط حفظ الاتفاق.',
+                  JourneyNote(
+                    text: context.say(
+                      'عبّينا هذي من العرض اللي وافقت عليه. ما ينحفظ شي لين تضغط حفظ الاتفاق.',
+                      'عبّينا هذي من العرض اللي وافقتِ عليه. ما ينحفظ شي لين تضغطين حفظ الاتفاق.',
+                    ),
                   ),
                   const SizedBox(height: 12),
                 ],
@@ -378,7 +383,7 @@ class _CostFormScreenState extends State<CostFormScreen> {
                 else
                   JourneyTextField(
                     key: const Key('cost-total-amount'),
-                    label: 'بكم اتفقت؟',
+                    label: context.say('بكم اتفقت؟', 'بكم اتفقتِ؟'),
                     controller: _totalController,
                     large: true,
                     keyboardType: TextInputType.number,
@@ -401,7 +406,10 @@ class _CostFormScreenState extends State<CostFormScreen> {
                 const SizedBox(height: 16),
                 JourneyTextField(
                   key: const ValueKey('cost-title'),
-                  label: 'اسم الاتفاق (لو تبي)',
+                  label: context.say(
+                    'اسم الاتفاق (لو تبي)',
+                    'اسم الاتفاق (لو تبين)',
+                  ),
                   hint:
                       _titleFallback(
                         _partyKind,
@@ -409,7 +417,7 @@ class _CostFormScreenState extends State<CostFormScreen> {
                         _partyNameController.text,
                         category,
                       ) ??
-                      'مثلًا: حجز القاعة',
+                      context.say('مثلًا: حجز القاعة', 'مثلًا: حجز الصالة'),
                   controller: _titleController,
                   maxLength: 200,
                 ),
@@ -449,7 +457,7 @@ class _CostFormScreenState extends State<CostFormScreen> {
                     icon: _showMore
                         ? LucideIcons.chevronUp
                         : LucideIcons.chevronDown,
-                    color: AarastV3Color.primary,
+                    color: context.accent.primary,
                     onPressed: () => setState(() => _showMore = !_showMore),
                   ),
                 ),
@@ -582,7 +590,7 @@ class _CostFormScreenState extends State<CostFormScreen> {
     _mutateDraft(() {
       _quoteOfferId = null;
       _quoteCurrencyWarning =
-          'العرض بعملة ${currencySpokenLabelAr(quoteCurrency)}، وخطتك بعملة ${currencySpokenLabelAr(canonicalPlanCurrency)}. اكتب المبلغ بعد ما تحوّله لعملة خطتك؛ الاتفاق يبقى مع المزود بس ما ينربط بعرض بعملة ثانية.';
+          'العرض بعملة ${currencySpokenLabelAr(quoteCurrency)}، وخطتك بعملة ${currencySpokenLabelAr(canonicalPlanCurrency)}. ${context.say('اكتب المبلغ بعد ما تحوّله', 'اكتبي المبلغ بعد ما تحوّلينه')} لعملة خطتك؛ الاتفاق يبقى مع المزود بس ما ينربط بعرض بعملة ثانية.';
     });
   }
 
@@ -590,26 +598,37 @@ class _CostFormScreenState extends State<CostFormScreen> {
   bool _validate(List<_PlannedLine> lines) {
     final paid = moneyValue(widget.cost?.paidAmount);
     setState(() {
-      _categoryError = _categoryId == null ? 'اختر البند' : null;
+      _categoryError = _categoryId == null
+          ? context.say('اختر البند', 'اختاري البند')
+          : null;
       _partyError = switch (_partyKind) {
-        _PartyKind.provider when _providerId == null => 'اختر المزود',
+        _PartyKind.provider when _providerId == null => context.say(
+          'اختر المزود',
+          'اختاري المزود',
+        ),
         _PartyKind.external when _partyNameController.text.trim().isEmpty =>
-          'اكتب اسمه',
+          context.say('اكتب اسمه', 'اكتبي اسمه'),
         _ => null,
       };
       _totalError = _total <= 0
-          ? 'اكتب بكم اتفقت'
+          ? context.say('اكتب بكم اتفقت', 'اكتبي بكم اتفقتِ')
           : _editing && _total < paid
-          ? 'ما يصير أقل من اللي دفعته (${compactMoneyParts(paid, currencyCode: context.read<FinanceProvider>().summary.currency).plainText})'
+          ? '${context.say('ما يصير أقل من اللي دفعته', 'ما يصير أقل من اللي دفعتيه')} (${compactMoneyParts(paid, currencyCode: context.read<FinanceProvider>().summary.currency).plainText})'
           : null;
       _depositError = _editing
           ? null
-          : _depositProblem(_plan, _deposit, _total);
+          : _depositProblem(_plan, _deposit, _total, context.journeyProfile);
     });
     final planIncomplete =
         !_editing && _plan != _PayPlan.later && lines.isEmpty;
     if (planIncomplete && _depositError == null) {
-      AarastToast.showInfo(context, 'كمّل كيف بتدفع، أو اختر بعدين.');
+      AarastToast.showInfo(
+        context,
+        context.say(
+          'كمّل كيف بتدفع، أو اختر بعدين.',
+          'كمّلي كيف بتدفعين، أو اختاري بعدين.',
+        ),
+      );
     }
     return _categoryError == null &&
         _partyError == null &&

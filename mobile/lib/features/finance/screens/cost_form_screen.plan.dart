@@ -8,9 +8,9 @@ part of 'cost_form_screen.dart';
 enum _PayPlan { later, full, depositRest, instalments }
 
 extension on _PayPlan {
-  String get label => switch (this) {
+  String labelFor(JourneyProfile profile) => switch (this) {
     _PayPlan.later => 'بعدين',
-    _PayPlan.full => 'دفعتها كاملة',
+    _PayPlan.full => profile.say('دفعتها كاملة', 'دفعتيها كاملة'),
     _PayPlan.depositRest => 'عربون والباقي يوم العرس',
     _PayPlan.instalments => 'على دفعات',
   };
@@ -74,10 +74,17 @@ List<_PlannedLine> _planLines({
 }
 
 /// Why the deposit cannot be saved with [plan], or null.
-String? _depositProblem(_PayPlan plan, int deposit, int total) {
+String? _depositProblem(
+  _PayPlan plan,
+  int deposit,
+  int total,
+  JourneyProfile profile,
+) {
   switch (plan) {
     case _PayPlan.depositRest:
-      if (deposit <= 0) return 'اكتب كم العربون';
+      if (deposit <= 0) {
+        return profile.say('اكتب كم العربون', 'اكتبي كم العربون');
+      }
       if (total > 0 && deposit >= total) return 'العربون أقل من الاتفاق';
       return null;
     case _PayPlan.instalments:
@@ -128,7 +135,7 @@ class _PlanSection extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        _FieldLabel('كيف بتدفع؟'),
+        _FieldLabel(context.say('كيف بتدفع؟', 'كيف بتدفعين؟')),
         Wrap(
           spacing: 8,
           runSpacing: 8,
@@ -136,7 +143,7 @@ class _PlanSection extends StatelessWidget {
             for (final option in _PayPlan.values)
               JourneyChip(
                 key: ValueKey('cost-plan-${option.name}'),
-                label: option.label,
+                label: option.labelFor(context.journeyProfile),
                 selected: plan == option,
                 onTap: () => onPlan(option),
               ),
@@ -147,7 +154,10 @@ class _PlanSection extends StatelessWidget {
           JourneyTextField(
             key: const ValueKey('cost-plan-deposit'),
             label: plan == _PayPlan.instalments
-                ? 'العربون (لو دفعت شي اليوم)'
+                ? context.say(
+                    'العربون (لو دفعت شي اليوم)',
+                    'العربون (لو دفعتِ شي اليوم)',
+                  )
                 : 'العربون',
             controller: depositController,
             keyboardType: TextInputType.number,
@@ -166,7 +176,7 @@ class _PlanSection extends StatelessWidget {
                 : weddingDateKnown
                 ? 'يوم العرس · ${formatArabicDayMonth(restDue!)}'
                 : formatArabicDayMonth(restDue!),
-            placeholder: 'اختر اليوم',
+            placeholder: context.say('اختر اليوم', 'اختاري اليوم'),
             icon: LucideIcons.calendarHeart,
             onTap: onPickRestDue,
           ),
@@ -242,8 +252,8 @@ class _PlanRow extends StatelessWidget {
             alignment: Alignment.center,
             decoration: BoxDecoration(
               color: line.paidNow
-                  ? AarastV3Color.primary
-                  : AarastV3Color.primarySoft,
+                  ? context.accent.primary
+                  : context.accent.primarySoft,
               shape: BoxShape.circle,
             ),
             child: Text(
@@ -253,7 +263,7 @@ class _PlanRow extends StatelessWidget {
                 weight: JourneyType.bold,
                 color: line.paidNow
                     ? AarastV3Color.onPrimary
-                    : AarastV3Color.primary,
+                    : context.accent.primary,
               ),
             ),
           ),

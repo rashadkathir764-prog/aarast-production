@@ -58,7 +58,7 @@ Future<MoneyCostActionSelection?> showMoneyCostActionPicker(
             phase: JourneyListPhase.empty,
             section: JourneySection.money,
             emptyIcon: LucideIcons.receipt,
-            emptyTitle: 'سجّل اتفاق أول',
+            emptyTitle: context.say('سجّل اتفاق أول', 'سجّلي اتفاق أول'),
             emptyMessage: intent == MoneyCostActionIntent.payment
                 ? 'الدفعة تنسجل على اتفاق، عشان تبقى أرقامك صادقة.'
                 : 'موعد الدفع ينربط باتفاق ومبلغ واضحين.',
@@ -74,8 +74,8 @@ Future<MoneyCostActionSelection?> showMoneyCostActionPicker(
                 JourneyListRow(
                   key: ValueKey('money-cost-action-${cost.id}'),
                   icon: LucideIcons.receipt,
-                  color: AarastV3Color.primary,
-                  soft: AarastV3Color.primarySoft,
+                  color: context.accent.primary,
+                  soft: context.accent.primarySoft,
                   title: cost.title,
                   subtitle: hideAmounts
                       ? 'باقي عليه مبلغ'

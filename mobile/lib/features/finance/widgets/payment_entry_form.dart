@@ -130,7 +130,9 @@ class _PaymentEntryFormState extends State<PaymentEntryForm> {
   String? _validate() {
     if (_fixed) return null;
     final amount = _typedAmount;
-    if (amount == null || amount <= 0) return 'اكتب كم دفعت';
+    if (amount == null || amount <= 0) {
+      return context.say('اكتب كم دفعت', 'اكتبي كم دفعتِ');
+    }
     if (amount > _remaining) {
       return 'أكثر من الباقي عليك (${_plain(_remaining)})';
     }
@@ -192,7 +194,10 @@ class _PaymentEntryFormState extends State<PaymentEntryForm> {
     if (payment.id.startsWith('local-')) {
       AarastToast.showInfo(
         context,
-        'الدفعة انحفظت. أضف الإيصال من تفاصيلها لما يرجع النت.',
+        context.say(
+          'الدفعة انحفظت. أضف الإيصال من تفاصيلها لما يرجع النت.',
+          'الدفعة انحفظت. أضيفي الإيصال من تفاصيلها لما يرجع النت.',
+        ),
       );
       return;
     }
@@ -279,7 +284,7 @@ class _PaymentEntryFormState extends State<PaymentEntryForm> {
               ),
               const SizedBox(height: 16),
               Text(
-                'كيف دفعت؟',
+                context.say('كيف دفعت؟', 'كيف دفعتِ؟'),
                 style: JourneyType.of(
                   JourneyType.bodySmall,
                   weight: JourneyType.bold,
@@ -359,7 +364,7 @@ class _FixedAmount extends StatelessWidget {
     final value = moneyValue(amount).round();
     return JourneyBox(
       key: const ValueKey('payment-fixed-amount'),
-      color: AarastV3Color.primarySoft,
+      color: context.accent.primarySoft,
       padding: const EdgeInsets.all(18),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -372,7 +377,7 @@ class _FixedAmount extends StatelessWidget {
               style: JourneyType.of(
                 JourneyType.display,
                 weight: JourneyType.bold,
-                color: AarastV3Color.primaryDark,
+                color: context.accent.primaryDark,
               ),
             ),
           ),
@@ -381,7 +386,7 @@ class _FixedAmount extends StatelessWidget {
             style: JourneyType.of(
               JourneyType.small,
               weight: JourneyType.bold,
-              color: AarastV3Color.primary,
+              color: context.accent.primary,
             ),
           ),
           if (line != null) ...[
@@ -397,8 +402,11 @@ class _FixedAmount extends StatelessWidget {
           if (onChange != null)
             JourneyTextAction(
               key: const ValueKey('payment-fixed-change'),
-              label: 'دفعت مبلغ ثاني؟ عدّل الموعد',
-              color: AarastV3Color.primary,
+              label: context.say(
+                'دفعت مبلغ ثاني؟ عدّل الموعد',
+                'دفعتِ مبلغ ثاني؟ عدّلي الموعد',
+              ),
+              color: context.accent.primary,
               onPressed: onChange!,
             ),
         ],
@@ -426,9 +434,9 @@ class _ReceiptPick extends StatelessWidget {
         alignment: AlignmentDirectional.centerStart,
         child: JourneyTextAction(
           key: const ValueKey('payment-receipt-pick'),
-          label: 'صوّر الإيصال',
+          label: context.say('صوّر الإيصال', 'صوّري الإيصال'),
           icon: LucideIcons.camera,
-          color: AarastV3Color.primary,
+          color: context.accent.primary,
           onPressed: onPick,
         ),
       );
@@ -444,7 +452,7 @@ class _ReceiptPick extends StatelessWidget {
           ),
         ),
         JourneyTextAction(
-          label: 'شيله',
+          label: context.say('شيله', 'شيليه'),
           color: AarastV3Color.danger,
           onPressed: onClear,
         ),

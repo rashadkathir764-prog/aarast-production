@@ -1,3 +1,5 @@
+import '../../../core/experience_v3/aarast_journey_profile.dart';
+
 /// Where wedding money comes from, as `/api/v1/.../funding-sources` returns
 /// it. Tracking only: the app records money; it never moves it.
 class FundingSource {
@@ -125,10 +127,11 @@ abstract final class FundingKind {
 
   static const all = [savings, familySupport, gift, loan, other];
 
-  static String label(String kind) => switch (kind) {
+  /// The kind's name; the groom's rafd is the bride's gifts.
+  static String label(String kind, JourneyProfile profile) => switch (kind) {
     savings => 'مدخرات',
     familySupport => 'دعم الأهل',
-    gift => 'رفد ونقوط',
+    gift => profile.say('رفد ونقوط', 'هدايا ونقوط'),
     loan => 'سلفة (دين)',
     _ => 'مصدر آخر',
   };

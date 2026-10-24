@@ -172,11 +172,14 @@ class _MoneyReceiptsScreenState extends State<MoneyReceiptsScreen> {
 
     final Widget body;
     if (FinanceLocalDataSource.isLocalGuestPlanId(widget.weddingPlanId)) {
-      body = const JourneyListState(
+      body = JourneyListState(
         phase: JourneyListPhase.empty,
         section: JourneySection.money,
         emptyIcon: LucideIcons.receipt,
-        emptyTitle: 'الإيصالات تنحفظ مع حسابك، سجّل دخولك أول',
+        emptyTitle: context.say(
+          'الإيصالات تنحفظ مع حسابك، سجّل دخولك أول',
+          'الإيصالات تنحفظ مع حسابك، سجّلي دخولك أول',
+        ),
       );
     } else if (_loading && _receiptsByCost.isEmpty) {
       body = const JourneyListState(
@@ -190,11 +193,11 @@ class _MoneyReceiptsScreenState extends State<MoneyReceiptsScreen> {
         onRetry: () => _load(refreshMoney: true),
       );
     } else if (payments.isEmpty && costReceipts.isEmpty) {
-      body = const JourneyListState(
+      body = JourneyListState(
         phase: JourneyListPhase.empty,
         section: JourneySection.money,
         emptyIcon: LucideIcons.receipt,
-        emptyTitle: 'ما سجلت دفعات بعد',
+        emptyTitle: context.say('ما سجلت دفعات بعد', 'ما سجلتِ دفعات بعد'),
       );
     } else {
       body = Column(
@@ -237,8 +240,14 @@ class _MoneyReceiptsScreenState extends State<MoneyReceiptsScreen> {
           const SizedBox(height: 12),
           JourneyNote(
             text: canManage
-                ? 'افتح أي إيصال تبدله أو تشيله. الدفعة تبقى حتى لو شلت الإيصال.'
-                : 'تقدر تشوف الإيصالات، والإضافة لمدير المال.',
+                ? context.say(
+                    'افتح أي إيصال تبدله أو تشيله. الدفعة تبقى حتى لو شلت الإيصال.',
+                    'افتحي أي إيصال تبدلينه أو تشيلينه. الدفعة تبقى حتى لو شلتِ الإيصال.',
+                  )
+                : context.say(
+                    'تقدر تشوف الإيصالات، والإضافة لمدير المال.',
+                    'تقدرين تشوفين الإيصالات، والإضافة لمدير المال.',
+                  ),
           ),
         ],
       );
@@ -262,7 +271,7 @@ class _MoneyReceiptsScreenState extends State<MoneyReceiptsScreen> {
           ),
           Expanded(
             child: RefreshIndicator(
-              color: AarastV3Color.primary,
+              color: context.accent.primary,
               onRefresh: () => _load(refreshMoney: true),
               child: ListView(
                 physics: const AlwaysScrollableScrollPhysics(),

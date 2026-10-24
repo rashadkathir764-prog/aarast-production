@@ -78,7 +78,7 @@ class _CostPaymentDetailsScreenState extends State<CostPaymentDetailsScreen> {
         section: JourneySection.money,
         emptyIcon: LucideIcons.banknote,
         emptyTitle: 'هذي الدفعة ما عاد موجودة',
-        emptyAction: 'ارجع',
+        emptyAction: context.say('ارجع', 'ارجعي'),
         onEmptyAction: _goBack,
       );
     } else {
@@ -104,7 +104,7 @@ class _CostPaymentDetailsScreenState extends State<CostPaymentDetailsScreen> {
           ),
           Expanded(
             child: RefreshIndicator(
-              color: AarastV3Color.primary,
+              color: context.accent.primary,
               onRefresh: () => _load(refreshMoney: true),
               child: ListView(
                 physics: const AlwaysScrollableScrollPhysics(),
@@ -216,19 +216,22 @@ class _CostPaymentDetailsScreenState extends State<CostPaymentDetailsScreen> {
           const SizedBox(height: 12),
           JourneyBox(
             key: const ValueKey('payment-record-elsewhere'),
-            color: AarastV3Color.primarySoft,
+            color: context.accent.primarySoft,
             padding: const EdgeInsets.all(14),
             child: Row(
               children: [
-                const Icon(LucideIcons.receipt, color: AarastV3Color.primary),
+                Icon(LucideIcons.receipt, color: context.accent.primary),
                 const SizedBox(width: 10),
                 Expanded(
                   child: Text(
-                    'تسجّلها على اتفاق ثاني؟',
+                    context.say(
+                      'تسجّلها على اتفاق ثاني؟',
+                      'تسجّلينها على اتفاق ثاني؟',
+                    ),
                     style: JourneyType.of(
                       JourneyType.body,
                       weight: JourneyType.bold,
-                      color: AarastV3Color.primaryDark,
+                      color: context.accent.primaryDark,
                     ),
                   ),
                 ),
@@ -259,7 +262,10 @@ class _CostPaymentDetailsScreenState extends State<CostPaymentDetailsScreen> {
           Center(
             child: JourneyTextAction(
               key: const ValueKey('payment-reverse'),
-              label: 'سجلتها بالغلط؟ اعكس الدفعة',
+              label: context.say(
+                'سجلتها بالغلط؟ اعكس الدفعة',
+                'سجلتيها بالغلط؟ اعكسي الدفعة',
+              ),
               color: AarastV3Color.danger,
               onPressed: provider.isSubmitting
                   ? null
@@ -482,7 +488,9 @@ class _ReverseSheetState extends State<_ReverseSheet> {
   void _confirm() {
     final reason = _controller.text.trim();
     if (reason.isEmpty) {
-      setState(() => _error = 'اكتب ليش تعكسها');
+      setState(
+        () => _error = context.say('اكتب ليش تعكسها', 'اكتبي ليش تعكسينها'),
+      );
       return;
     }
     Navigator.pop(context, reason);
@@ -491,13 +499,16 @@ class _ReverseSheetState extends State<_ReverseSheet> {
   @override
   Widget build(BuildContext context) {
     return JourneySheetBody(
-      title: 'تعكس الدفعة؟',
+      title: context.say('تعكس الدفعة؟', 'تعكسين الدفعة؟'),
       subtitle: 'ما تنمسح: تبقى مشطوبة في السجل، ويرجع مبلغها للباقي.',
       children: [
         JourneyTextField(
           key: const ValueKey('payment-reverse-reason'),
           label: 'ليش؟',
-          hint: 'مثلًا: سجلتها على الاتفاق الغلط',
+          hint: context.say(
+            'مثلًا: سجلتها على الاتفاق الغلط',
+            'مثلًا: سجلتيها على الاتفاق الغلط',
+          ),
           controller: _controller,
           autofocus: true,
           maxLength: 1000,
@@ -508,7 +519,7 @@ class _ReverseSheetState extends State<_ReverseSheet> {
         const SizedBox(height: 16),
         JourneyButton(
           key: const ValueKey('payment-reverse-confirm'),
-          label: 'اعكس الدفعة',
+          label: context.say('اعكس الدفعة', 'اعكسي الدفعة'),
           background: AarastV3Color.danger,
           expand: true,
           large: true,

@@ -96,7 +96,19 @@ class WeddingPlanShell extends StatelessWidget {
         selected?.weddingPlanId == weddingPlanId;
 
     // The selected account context is the only authority for shell shape.
-    if (contributorView) return child;
+    // A participant gets the same five tabs, each page or its lock chosen by
+    // the route (participantPlanTab), and no «+» (the design draws none).
+    if (contributorView) {
+      if (!shouldDisplayPlanShellChrome(location)) return child;
+      return PlanShellChrome(
+        key: ValueKey('participant-route-shell-$weddingPlanId'),
+        activeIndex: currentIndex,
+        onTabSelected: (index) => _onNavigate(context, index),
+        topStatus: const OfflineStatusBanner(),
+        backgroundColor: AppTheme.canvas,
+        body: child,
+      );
+    }
     // Creation and editing are focused decisions. Keeping the plan navigation
     // underneath those routes creates competing actions (and, for guest
     // sheets, visibly overlaps the modal). Let form screens own the whole

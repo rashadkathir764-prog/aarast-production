@@ -5,9 +5,20 @@ List<RouteBase> _planShellRoutes() => [
   ShellRoute(
     builder: (context, state, child) {
       final id = state.pathParameters['id'] ?? '';
+      // A participant's tab opens to its lock when the right is missing
+      // (q07, q08), so the tab itself only needs the plan.
+      final selected = context
+          .read<AccountContextController?>()
+          ?.selectedContext;
+      final participantTab =
+          selected?.role == AccountContextRole.contributor &&
+          selected?.weddingPlanId == id &&
+          isPlanTabRoot(state.uri.path);
       return WeddingPlanContextGate(
         weddingPlanId: id,
-        requiredAccess: weddingPlanRouteAccessForPath(state.uri.path),
+        requiredAccess: participantTab
+            ? WeddingPlanRouteAccess.viewPlan
+            : weddingPlanRouteAccessForPath(state.uri.path),
         child: WeddingPlanShell(weddingPlanId: id, child: child),
       );
     },
@@ -19,6 +30,8 @@ List<RouteBase> _planShellRoutes() => [
           final sharedMember = state.extra is SharedMember
               ? state.extra! as SharedMember
               : null;
+          final participant = participantPlanTab(context, id, 0);
+          if (participant != null) return participant;
           return WeddingPlanDashboardScreen(
             weddingPlanId: id,
             sharedMember: sharedMember,
@@ -33,17 +46,12 @@ List<RouteBase> _planShellRoutes() => [
           final sharedMember = state.extra is SharedMember
               ? state.extra! as SharedMember
               : null;
-          final selected = context
-              .read<AccountContextController?>()
-              ?.selectedContext;
-          final contributorView =
-              selected?.role == AccountContextRole.contributor &&
-              selected?.weddingPlanId == id;
-          return MoneyOverviewScreen(
-            weddingPlanId: id,
-            sharedMember: sharedMember,
-            embedded: !contributorView,
-          );
+          return participantPlanTab(context, id, 1) ??
+              MoneyOverviewScreen(
+                weddingPlanId: id,
+                sharedMember: sharedMember,
+                embedded: true,
+              );
         },
       ),
       GoRoute(
@@ -191,7 +199,8 @@ List<RouteBase> _planShellRoutes() => [
         path: '/wedding-plans/:id/tasks',
         builder: (context, state) {
           final id = state.pathParameters['id'] ?? '';
-          return TaskTimelineScreen(weddingPlanId: id);
+          return participantPlanTab(context, id, 2) ??
+              TaskTimelineScreen(weddingPlanId: id);
         },
       ),
       GoRoute(
@@ -205,7 +214,8 @@ List<RouteBase> _planShellRoutes() => [
         path: '/wedding-plans/:id/guests',
         builder: (context, state) {
           final id = state.pathParameters['id'] ?? '';
-          return GuestListScreen(weddingPlanId: id);
+          return participantPlanTab(context, id, 3) ??
+              GuestListScreen(weddingPlanId: id);
         },
       ),
       GoRoute(
@@ -222,13 +232,12 @@ List<RouteBase> _planShellRoutes() => [
           final budgetIntent = state.extra is ProviderBudgetMatchIntent
               ? state.extra! as ProviderBudgetMatchIntent
               : null;
+          if (state.uri.queryParameters['quoteId'] == null) {
+            final participant = participantPlanTab(context, id, 4);
+            if (participant != null) return participant;
+          }
           return ProviderMarketplaceScreen(
-            embedded:
-                context
-                    .read<AccountContextController?>()
-                    ?.selectedContext
-                    ?.role !=
-                AccountContextRole.contributor,
+            embedded: true,
             weddingPlanId: id,
             initialBudgetIntent: budgetIntent,
             initialQuoteId: state.uri.queryParameters['quoteId'],

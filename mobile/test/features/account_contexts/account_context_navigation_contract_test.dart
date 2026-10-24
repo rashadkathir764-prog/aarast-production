@@ -111,13 +111,6 @@ void main() {
           startMarker: 'static Future<void> _logout(BuildContext context)',
           endMarker: 'Future<void> _changeAvatar(BuildContext context)',
         ),
-        (
-          name: 'PlanManagementScreen._confirmContributorLogout',
-          path:
-              'lib/features/wedding_plans/screens/plan_management_screen.dart',
-          startMarker: 'Future<void> _confirmContributorLogout()',
-          endMarker: 'Future<void> _openContributorRoute(',
-        ),
       ];
 
   for (final logoutCase in logoutCases) {

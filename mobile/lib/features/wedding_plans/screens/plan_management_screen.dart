@@ -1,7 +1,5 @@
 import 'dart:async';
 
-import 'dart:math';
-
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:lucide_icons/lucide_icons.dart';
@@ -9,44 +7,33 @@ import 'package:provider/provider.dart';
 
 import '../../../core/experience_v3/aarast_v3.dart';
 import '../../../core/routing/app_router.dart';
-import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/plan_day.dart';
 import '../../../core/widgets/aarast_toast.dart';
 import '../../../core/widgets/aarast_ui.dart';
 import '../../account_contexts/account_contexts_api.dart'
-    show
-        AccountContextController,
-        AccountContextPermissions,
-        AccountContextRole;
-import '../../auth/auth_api.dart'
-    show AuthActionGuard, AuthController, confirmAccountDeletion;
+    show AccountContextController, AccountContextRole;
+import '../../auth/auth_api.dart' show AuthActionGuard, AuthController;
 import '../../onboarding/onboarding_api.dart'
     show GuestOnboardingDraft, GuestOnboardingStorage;
-import '../../sharing/sharing_api.dart' show PlanLeaveCoordinator, SharedMember;
+import '../../sharing/sharing_api.dart' show SharedMember;
 import '../../finance/finance_api.dart' show FinanceProvider;
-import '../models/dashboard_summary.dart';
 import '../models/wedding_plan.dart';
 import '../providers/dashboard_summary_provider.dart';
 import '../providers/wedding_plans_provider.dart';
-import '../widgets/contributor_permissions_sheet.dart';
-import '../widgets/contributor_workspace_view.dart';
 import '../widgets/plan_details_view.dart';
 import '../widgets/postpone_sheet.dart';
 
-part 'plan_management_screen.contributor_account.dart';
 part 'plan_management_screen.plan_edit.dart';
 
 class PlanCenterScreen extends StatefulWidget {
   const PlanCenterScreen({
     required this.weddingPlanId,
     this.sharedMember,
-    this.initialSummary,
     super.key,
   });
 
   final String weddingPlanId;
   final SharedMember? sharedMember;
-  final DashboardSummary? initialSummary;
 
   @override
   State<PlanCenterScreen> createState() => _PlanCenterScreenState();
@@ -57,7 +44,6 @@ class _PlanCenterScreenState extends State<PlanCenterScreen>
   WeddingPlan? _localPlan;
   bool _localLoading = false;
   String? _localError;
-  String? _leavePlanClientRequestId;
   FinanceProvider? _financeAsked;
 
   bool get _isLocalPlan =>
@@ -79,7 +65,7 @@ class _PlanCenterScreenState extends State<PlanCenterScreen>
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state != AppLifecycleState.resumed || !mounted) return;
-    unawaited(_load(refreshContextAuthority: true));
+    unawaited(_load());
   }
 
   @override
@@ -91,29 +77,17 @@ class _PlanCenterScreenState extends State<PlanCenterScreen>
     }
   }
 
-  Future<void> _load({bool refreshContextAuthority = false}) async {
+  Future<void> _load() async {
     if (!mounted) return;
     if (_isLocalPlan) {
       await _loadLocalPlan();
       return;
     }
-    final accountContexts = context.read<AccountContextController?>();
-    final selectedContext = accountContexts?.selectedContext;
-    if (refreshContextAuthority &&
-        selectedContext?.role == AccountContextRole.contributor &&
-        selectedContext?.weddingPlanId == widget.weddingPlanId) {
-      await accountContexts!.refresh();
-      if (!mounted) return;
-      final refreshedContext = accountContexts.selectedContext;
-      if (refreshedContext?.role != AccountContextRole.contributor ||
-          refreshedContext?.weddingPlanId != widget.weddingPlanId ||
-          refreshedContext?.isAvailable != true) {
-        return;
-      }
-    }
-    final isContributor =
-        selectedContext?.role == AccountContextRole.contributor &&
-        selectedContext?.weddingPlanId == widget.weddingPlanId;
+    final selected = context.read<AccountContextController?>()?.selectedContext;
+    final ownPlan =
+        selected == null ||
+        selected.role == AccountContextRole.owner ||
+        selected.weddingPlanId != widget.weddingPlanId;
     await Future.wait([
       context.read<WeddingPlansProvider>().loadWeddingPlan(
         widget.weddingPlanId,
@@ -122,8 +96,9 @@ class _PlanCenterScreenState extends State<PlanCenterScreen>
         widget.weddingPlanId,
         sharedMember: widget.sharedMember,
       ),
-      // w10 shows the wedding budget.
-      if (!isContributor)
+      // w10 shows the wedding budget; a participant only when they may see
+      // the money.
+      if (ownPlan || selected.permissions.canViewMoney)
         context.read<FinanceProvider>().loadMoney(widget.weddingPlanId),
     ]);
   }
@@ -161,143 +136,27 @@ class _PlanCenterScreenState extends State<PlanCenterScreen>
         ? weddingPlans.selectedPlan
         : null;
     final plan = _isLocalPlan ? _localPlan : serverPlan;
-    final activeSummary = dashboard.summary?.planId == widget.weddingPlanId
-        ? dashboard.summary
-        : widget.initialSummary?.planId == widget.weddingPlanId
-        ? widget.initialSummary
-        : null;
-    final selectedContext = context
-        .watch<AccountContextController?>()
-        ?.selectedContext;
-    final isContributor =
-        selectedContext?.role == AccountContextRole.contributor &&
-        selectedContext?.weddingPlanId == widget.weddingPlanId;
-    final isLoading =
-        (_isLocalPlan
-            ? _localLoading
-            : (weddingPlans.isLoading || dashboard.isLoading) &&
-                  plan == null) ||
-        (isContributor && activeSummary == null && dashboard.isLoading);
+    final isLoading = _isLocalPlan
+        ? _localLoading
+        : (weddingPlans.isLoading || dashboard.isLoading) && plan == null;
     final error = _isLocalPlan
         ? _localError
         : weddingPlans.errorMessage ?? dashboard.errorMessage;
-
-    if (isContributor) {
-      final summary = activeSummary;
-      if (isLoading) {
-        return _buildContributorScaffold(
-          child: const AarastScreenLoading(label: 'جارٍ تجهيز مساحتك...'),
-        );
-      }
-      if (summary == null) {
-        return _buildContributorScaffold(
-          child: AarastErrorState(
-            title: 'تعذر تحميل الخطة المشتركة',
-            message: error ?? 'يرجى المحاولة مرة أخرى.',
-            onRetry: _load,
-          ),
-        );
-      }
-      final contextPermissions = selectedContext!.permissions;
-      final canViewMoney =
-          summary.permissions.canViewMoney && contextPermissions.canViewMoney;
-      final canManageMoney =
-          summary.permissions.canManageMoney &&
-          contextPermissions.canManageMoney;
-      final canManageTasks =
-          summary.permissions.canManageTasks &&
-          contextPermissions.canManageTasks;
-      final canManageGuests =
-          summary.permissions.canManageGuests &&
-          contextPermissions.canManageGuests;
-      final canManageProviders =
-          summary.permissions.canManageProviders &&
-          contextPermissions.canManageProviders;
-      final canManageMembers =
-          summary.permissions.canManageMembers &&
-          contextPermissions.canInviteMembers;
-
-      return _buildContributorScaffold(
-        summary: summary,
-        child: RefreshIndicator(
-          color: ContributorWorkspaceColors.primary,
-          onRefresh: () => _load(refreshContextAuthority: true),
-          child: ContributorWorkspaceView(
-            summary: summary,
-            effectivePermissions: DashboardPermissionSummary(
-              isOwner: false,
-              role: summary.permissions.role,
-              canViewMoney: canViewMoney,
-              canManageTasks: canManageTasks,
-              canManageGuests: canManageGuests,
-              canManageProviders: canManageProviders,
-              canManageMembers: canManageMembers,
-              canManageMoney: canManageMoney,
-              canManagePlan: false,
-            ),
-            onOpenTasks: () =>
-                _openContributorRoute(AppRouter.tasks(summary.planId)),
-            onOpenNotifications: () => _openContributorRoute(
-              AppRouter.planNotifications(summary.planId),
-            ),
-            onShowPermissions: () => _showContributorPermissions(
-              summary,
-              contextPermissions: contextPermissions,
-            ),
-            onOpenContributionHistory: () => _openContributorRoute(
-              AppRouter.contributionHistory(summary.planId),
-            ),
-            onOpenMoney: canViewMoney
-                ? () => _openContributorRoute(
-                    AppRouter.money(summary.planId),
-                    extra: widget.sharedMember,
-                  )
-                : null,
-            onOpenGuests: canManageGuests
-                ? () => _openContributorRoute(
-                    AppRouter.guestList(summary.planId),
-                    extra: widget.sharedMember,
-                  )
-                : null,
-            onOpenProviders: canManageProviders
-                ? () => _openContributorRoute(
-                    AppRouter.planProviders(summary.planId),
-                    extra: widget.sharedMember,
-                  )
-                : null,
-            onOpenMembers: canManageMembers
-                ? () => _openContributorRoute(
-                    AppRouter.sharing(summary.planId),
-                    extra: widget.sharedMember,
-                  )
-                : null,
-            onCreateTask: canManageTasks
-                ? () => _openContributorRoute(
-                    AppRouter.createTask(summary.planId),
-                  )
-                : null,
-            onAddGuest: canManageGuests
-                ? () => _openContributorRoute(
-                    AppRouter.guestListAdd(summary.planId),
-                    extra: widget.sharedMember,
-                  )
-                : null,
-            onAddCost: canManageMoney
-                ? () => _openContributorRoute(
-                    AppRouter.moneyCostCreate(summary.planId),
-                    extra: widget.sharedMember,
-                  )
-                : null,
-          ),
-        ),
-      );
-    }
 
     // w10 «بيانات الخطة» for the plan's owner (D27).
     final finance = context.watch<FinanceProvider>();
     // The plan scope may hand over a new money provider after the first
     // load (a cold open): load the budget into that one too.
-    if (!identical(finance, _financeAsked) &&
+    final selected = context
+        .watch<AccountContextController?>()
+        ?.selectedContext;
+    final mayLoadMoney =
+        selected == null ||
+        selected.role == AccountContextRole.owner ||
+        selected.weddingPlanId != widget.weddingPlanId ||
+        selected.permissions.canViewMoney;
+    if (mayLoadMoney &&
+        !identical(finance, _financeAsked) &&
         finance.loadedPlanId != widget.weddingPlanId) {
       _financeAsked = finance;
       WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -354,45 +213,6 @@ class _PlanCenterScreenState extends State<PlanCenterScreen>
     return dashboard.summary?.permissions.canManagePlan == true ||
         auth.user?.id == plan.ownerUserId ||
         widget.sharedMember?.role == 'MANAGER';
-  }
-
-  Widget _buildContributorScaffold({
-    required Widget child,
-    DashboardSummary? summary,
-  }) {
-    return AarastPageScaffold(
-      title: 'مساحتي',
-      subtitle: 'الخطة المشتركة',
-      showBack: false,
-      backgroundColor: ContributorWorkspaceColors.canvas,
-      backgroundDecoration: const BoxDecoration(
-        color: ContributorWorkspaceColors.canvas,
-      ),
-      actions: [
-        if (summary != null)
-          IconButton(
-            key: const Key('contributor-notifications-action'),
-            tooltip: 'التحديثات',
-            onPressed: () => _openContributorRoute(
-              AppRouter.planNotifications(summary.planId),
-            ),
-            icon: summary.unreadNotificationsCount > 0
-                ? Badge.count(
-                    count: summary.unreadNotificationsCount,
-                    backgroundColor: ContributorWorkspaceColors.primary,
-                    child: const Icon(LucideIcons.bell),
-                  )
-                : const Icon(LucideIcons.bell),
-          ),
-        IconButton(
-          key: const Key('contributor-account-action'),
-          tooltip: 'الحساب والخروج',
-          onPressed: _showContributorAccountMenu,
-          icon: const Icon(LucideIcons.userCircle),
-        ),
-      ],
-      child: child,
-    );
   }
 
   WeddingPlan _weddingPlanFromDraft(GuestOnboardingDraft draft) {

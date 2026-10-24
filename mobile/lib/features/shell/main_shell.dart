@@ -16,7 +16,8 @@ import '../guests/guests_api.dart' show GuestListScreen;
 import '../marketplace/marketplace_api.dart' show ProviderMarketplaceScreen;
 import '../tasks/tasks_api.dart' show TaskTimelineScreen;
 import '../wedding_plans/wedding_plans_api.dart'
-    show DashboardSummaryProvider, PlanCenterScreen, WeddingPlanDashboardScreen;
+    show DashboardSummaryProvider, WeddingPlanDashboardScreen;
+import 'screens/participant_plan_shell.dart';
 import 'widgets/plan_quick_add.dart';
 import 'widgets/plan_quick_add_sheet.dart';
 import 'widgets/plan_shell_chrome.dart';
@@ -270,8 +271,8 @@ class _ContributorMainShellState extends State<_ContributorMainShell> {
         activeContextType: 'contributor',
         weddingPlanId: accountContext.weddingPlanId,
         shellType: 'contributor',
-        selectedTab: 'workspace',
-        screen: 'PlanCenterScreen',
+        selectedTab: 'home',
+        screen: 'ParticipantPlanShell',
         reason: 'first_frame_completed',
         source: 'ContributorMainShell',
       );
@@ -288,8 +289,8 @@ class _ContributorMainShellState extends State<_ContributorMainShell> {
       activeContextType: 'contributor',
       weddingPlanId: accountContext.weddingPlanId,
       shellType: 'contributor',
-      selectedTab: 'workspace',
-      screen: 'PlanCenterScreen',
+      selectedTab: 'home',
+      screen: 'ParticipantPlanShell',
       reason: 'widget_disposed',
       source: 'ContributorMainShell',
     );
@@ -308,8 +309,8 @@ class _ContributorMainShellState extends State<_ContributorMainShell> {
       );
     }
 
-    return PlanCenterScreen(
-      key: ValueKey('contributor-workspace-${accountContext.contextKey}'),
+    return ParticipantPlanShell(
+      key: ValueKey('participant-shell-${accountContext.contextKey}'),
       weddingPlanId: accountContext.weddingPlanId!,
     );
   }

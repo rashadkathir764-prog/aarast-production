@@ -12,19 +12,10 @@ List<RouteBase> _weddingPlanRoutes() => [
                 (state.extra as Map)['sharedMember'] is SharedMember)
           ? (state.extra as Map)['sharedMember'] as SharedMember
           : null;
-      final initialSummary =
-          state.extra is Map &&
-              (state.extra as Map)['summary'] is DashboardSummary
-          ? (state.extra as Map)['summary'] as DashboardSummary
-          : null;
       return WeddingPlanContextGate(
         weddingPlanId: id,
         requiredAccess: WeddingPlanRouteAccess.viewPlan,
-        child: PlanCenterScreen(
-          weddingPlanId: id,
-          sharedMember: sharedMember,
-          initialSummary: initialSummary,
-        ),
+        child: PlanCenterScreen(weddingPlanId: id, sharedMember: sharedMember),
       );
     },
   ),

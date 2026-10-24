@@ -3,6 +3,7 @@ export 'data/account_contexts_api.dart' show AccountContextsApi;
 export 'models/account_context.dart'
     show
         AccountContext,
+        AccountContextPermissionChange,
         AccountContextPermissions,
         AccountContextPersona,
         AccountContextRole;

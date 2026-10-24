@@ -5,5 +5,8 @@ export 'models/task_summary.dart' show TaskSummary;
 export 'models/wedding_task.dart' show WeddingTask;
 export 'providers/task_timeline_provider.dart' show TaskTimelineProvider;
 export 'screens/create_task_screen.dart' show CreateTaskScreen;
+export 'screens/participant_tasks_screen.dart' show ParticipantTasksScreen;
 export 'screens/task_details_screen.dart' show TaskDetailsScreen;
 export 'screens/task_timeline_screen.dart' show TaskTimelineScreen;
+export 'utils/task_display.dart' show taskCategoryIcon;
+export 'widgets/task_row.dart' show taskWhenLabel;

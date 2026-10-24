@@ -1,0 +1,553 @@
+part of 'participant_home_screen.dart';
+
+/// «أهلًا صالح», the plan with «أنت مساعد», the bell and the account.
+class _Greeting extends StatelessWidget {
+  const _Greeting({
+    required this.name,
+    required this.planTitle,
+    required this.roleTag,
+    required this.voice,
+    required this.unread,
+    required this.onNotifications,
+    required this.onProfile,
+  });
+
+  final String name;
+  final String planTitle;
+  final String roleTag;
+  final _PlanVoice voice;
+  final int unread;
+  final VoidCallback onNotifications;
+  final VoidCallback onProfile;
+
+  @override
+  Widget build(BuildContext context) {
+    final first = name.trim().split(RegExp(r'\s+')).first;
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(4, 8, 4, 0),
+      child: Row(
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Semantics(
+                  header: true,
+                  child: Text(
+                    first.isEmpty ? 'أهلًا فيك' : 'أهلًا $first',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: JourneyType.of(
+                      JourneyType.display,
+                      weight: JourneyType.bold,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Wrap(
+                  crossAxisAlignment: WrapCrossAlignment.center,
+                  spacing: 6,
+                  runSpacing: 4,
+                  children: [
+                    if (planTitle.isNotEmpty)
+                      Text(
+                        '$planTitle ·',
+                        style: JourneyType.of(
+                          JourneyType.bodySmall,
+                          color: AarastV3Color.textMuted,
+                        ),
+                      ),
+                    JourneyTag(
+                      key: const ValueKey('participant-role-tag'),
+                      label: roleTag,
+                      color: voice.accent,
+                      soft: voice.soft,
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 10),
+          Stack(
+            clipBehavior: Clip.none,
+            children: [
+              JourneyRoundButton(
+                key: const ValueKey('participant-notifications'),
+                icon: LucideIcons.bell,
+                tooltip: unread > 0 ? 'التنبيهات، $unread جديدة' : 'التنبيهات',
+                onPressed: onNotifications,
+              ),
+              if (unread > 0)
+                PositionedDirectional(
+                  top: 9,
+                  end: 10,
+                  child: SizedBox.square(
+                    dimension: 9,
+                    child: DecoratedBox(
+                      decoration: BoxDecoration(
+                        color: voice.accent,
+                        shape: BoxShape.circle,
+                      ),
+                    ),
+                  ),
+                ),
+            ],
+          ),
+          const SizedBox(width: 8),
+          Semantics(
+            button: true,
+            label: 'حسابي',
+            onTap: onProfile,
+            excludeSemantics: true,
+            child: AarastPressable(
+              key: const ValueKey('participant-profile'),
+              onTap: onProfile,
+              borderRadius: BorderRadius.circular(22),
+              child: JourneyAvatar(
+                letter: first.isEmpty ? 'ع' : first.characters.first,
+                color: AarastV3Color.brandAccentStrong,
+                size: 44,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// «96 يوم على العرس · الخميس 21 يناير», in the plan's colour.
+class _CountHero extends StatelessWidget {
+  const _CountHero({
+    required this.date,
+    required this.days,
+    required this.voice,
+  });
+
+  final DateTime? date;
+  final int? days;
+  final _PlanVoice voice;
+
+  @override
+  Widget build(BuildContext context) {
+    final day = date;
+    final count = days;
+    final String line;
+    final String? figure;
+    if (day == null || count == null) {
+      line = 'الموعد لسا ما ثبت';
+      figure = null;
+    } else if (count > 2) {
+      line = 'يوم على العرس';
+      figure = '$count';
+    } else if (count == 2) {
+      line = 'يومين على العرس';
+      figure = null;
+    } else if (count == 1) {
+      line = 'العرس بكرة';
+      figure = null;
+    } else {
+      line = 'العرس تم، ألف مبروك';
+      figure = null;
+    }
+    final detail = day == null
+        ? 'لما يثبّته ${voice.owner} يطلع هنا'
+        : formatArabicWeekdayDayMonth(day);
+    return Semantics(
+      label: [?figure, line, detail].join(' '),
+      excludeSemantics: true,
+      child: JourneyBox(
+        key: const ValueKey('participant-count-hero'),
+        color: voice.accent,
+        radius: 24,
+        padding: const EdgeInsets.fromLTRB(20, 18, 20, 18),
+        child: Row(
+          children: [
+            if (figure != null) ...[
+              Text(
+                figure,
+                style: JourneyType.of(
+                  JourneyType.count,
+                  weight: JourneyType.bold,
+                  color: AarastV3Color.onPrimary,
+                  height: 1,
+                ),
+              ),
+              const SizedBox(width: 12),
+            ],
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    line,
+                    style: JourneyType.of(
+                      JourneyType.lead,
+                      weight: JourneyType.bold,
+                      color: AarastV3Color.onPrimary,
+                    ),
+                  ),
+                  Text(
+                    detail,
+                    style: JourneyType.of(
+                      JourneyType.small,
+                      color: AarastV3Color.onPrimaryMuted,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// q18: on the day, the wedding sky with «اليوم» and «يوم العرس».
+class _DayHero extends StatelessWidget {
+  const _DayHero({
+    required this.title,
+    required this.date,
+    required this.showHijri,
+    required this.voice,
+  });
+
+  final String title;
+  final DateTime? date;
+  final bool showHijri;
+  final _PlanVoice voice;
+
+  @override
+  Widget build(BuildContext context) {
+    final day = date;
+    final hijri = day == null || !showHijri
+        ? null
+        : HijriDate.fromGregorian(day);
+    final line = [
+      ?hijri?.dayAndMonth,
+      if (day != null) formatArabicWeekday(day),
+    ].join(' · ');
+    return Semantics(
+      label: 'اليوم $title، $line',
+      excludeSemantics: true,
+      child: ClipRRect(
+        key: const ValueKey('participant-day-hero'),
+        borderRadius: BorderRadius.circular(24),
+        child: SizedBox(
+          height: 300,
+          child: Stack(
+            fit: StackFit.expand,
+            children: [
+              JourneyWeddingSky(
+                base: voice.bride
+                    ? AarastV3Color.rose
+                    : AarastV3Color.primaryDark,
+              ),
+              PositionedDirectional(
+                start: 20,
+                end: 20,
+                bottom: 18,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: [
+                        Text(
+                          'اليوم',
+                          style: JourneyType.of(
+                            JourneyType.count,
+                            weight: JourneyType.bold,
+                            color: AarastV3Color.onPrimary,
+                            height: 1,
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                title,
+                                style: JourneyType.of(
+                                  JourneyType.lead,
+                                  weight: JourneyType.bold,
+                                  color: AarastV3Color.onPrimary,
+                                ),
+                              ),
+                              if (line.isNotEmpty)
+                                Text(
+                                  line,
+                                  style: JourneyType.of(
+                                    JourneyType.small,
+                                    color: AarastV3Color.brandAccent,
+                                  ),
+                                ),
+                            ],
+                          ),
+                        ),
+                        const JourneyTag(
+                          label: 'يوم العرس',
+                          color: AarastV3Color.ink,
+                          soft: AarastV3Color.saffron,
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 14),
+                    const JourneySegments(
+                      total: 5,
+                      done: 3,
+                      filled: AarastV3Color.onPrimary,
+                      current: AarastV3Color.saffron,
+                      empty: AarastV3Color.primaryDark,
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// x06 «الخطوة الجاية»: the participant's nearest open task, finished from
+/// here, with a call to the person it names when there is a number.
+class _NextTaskCard extends StatelessWidget {
+  const _NextTaskCard({
+    required this.task,
+    required this.mine,
+    required this.busy,
+    required this.onDone,
+    required this.onOpen,
+  });
+
+  final WeddingTask task;
+
+  /// Given to this participant (the assignee is them).
+  final bool mine;
+  final bool busy;
+  final VoidCallback onDone;
+  final VoidCallback onOpen;
+
+  @override
+  Widget build(BuildContext context) {
+    final contact = task.responsibleName?.trim() ?? '';
+    final call = contact.isEmpty
+        ? null
+        : phoneCallUri(task.responsiblePhone ?? task.assigneePhone);
+    return JourneyBox(
+      key: ValueKey('participant-next-${task.id}'),
+      padding: const EdgeInsets.all(18),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          AarastPressable(
+            onTap: onOpen,
+            semanticLabel: task.title,
+            borderRadius: BorderRadius.circular(16),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                JourneyIconTile(
+                  icon: taskCategoryIcon(task.taskCategory),
+                  color: AarastV3Color.brandAccentStrong,
+                  soft: AarastV3Color.brandAccentSoft,
+                  size: 48,
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'الخطوة الجاية · ${taskWhenLabel(task)}',
+                        style: JourneyType.of(
+                          JourneyType.small,
+                          weight: JourneyType.bold,
+                          color: AarastV3Color.brandAccentStrong,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        task.title,
+                        style: JourneyType.of(
+                          JourneyType.title,
+                          weight: JourneyType.bold,
+                        ),
+                      ),
+                      if (mine)
+                        Text(
+                          'هذي المهمة عليك',
+                          style: JourneyType.of(
+                            JourneyType.small,
+                            color: AarastV3Color.textMuted,
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 14),
+          Wrap(
+            spacing: 10,
+            runSpacing: 8,
+            children: [
+              JourneyButton(
+                key: const ValueKey('participant-next-done'),
+                label: 'خلصت',
+                loading: busy,
+                onPressed: onDone,
+              ),
+              if (call != null)
+                JourneyButton.quiet(
+                  key: const ValueKey('participant-next-call'),
+                  label: 'كلّم $contact',
+                  onPressed: () => unawaited(launchUrl(call)),
+                ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// One task in «مهامك» or «عليك اليوم».
+class _TaskLine extends StatelessWidget {
+  const _TaskLine({
+    required this.task,
+    required this.onTap,
+    this.trailing,
+    super.key,
+  });
+
+  final WeddingTask task;
+  final VoidCallback onTap;
+  final Widget? trailing;
+
+  @override
+  Widget build(BuildContext context) {
+    final guests = task.taskCategory == 'GUESTS';
+    return JourneyListRow(
+      icon: taskCategoryIcon(task.taskCategory),
+      color: guests ? AarastV3Color.lilac : AarastV3Color.brandAccentStrong,
+      soft: guests ? AarastV3Color.lilacSoft : AarastV3Color.brandAccentSoft,
+      title: task.title,
+      subtitle: taskWhenLabel(task),
+      trailing: trailing,
+      onTap: onTap,
+    );
+  }
+}
+
+/// q12: what the owner opened or closed since this phone last looked. Told
+/// on the phone, once (the server sends no notice of it).
+class _ChangeCard extends StatelessWidget {
+  const _ChangeCard({required this.change, required this.voice});
+
+  final AccountContextPermissionChange change;
+  final _PlanVoice voice;
+
+  @override
+  Widget build(BuildContext context) {
+    final before = change.before;
+    final after = change.after;
+    final opened = <String>[
+      if (!before.canViewMoney && after.canViewMoney)
+        'المال'
+      else if (!before.canManageMoney && after.canManageMoney)
+        'تسجيل المال',
+      if (!before.canManageTasks && after.canManageTasks) 'المهام',
+      if (!before.canManageGuests && after.canManageGuests) 'الضيوف',
+      if (!before.canManageProviders && after.canManageProviders) 'المزودين',
+      if (!before.canInviteMembers && after.canInviteMembers) 'إضافة المشاركين',
+      if (!before.canEditPlan && after.canEditPlan) 'تعديل بيانات الخطة',
+    ];
+    final closed = <String>[
+      if (before.canViewMoney && !after.canViewMoney)
+        'المال'
+      else if (before.canManageMoney && !after.canManageMoney)
+        'تسجيل المال',
+      if (before.canManageTasks && !after.canManageTasks) 'المهام',
+      if (before.canManageGuests && !after.canManageGuests) 'الضيوف',
+      if (before.canManageProviders && !after.canManageProviders) 'المزودين',
+      if (before.canInviteMembers && !after.canInviteMembers) 'إضافة المشاركين',
+      if (before.canEditPlan && !after.canEditPlan) 'تعديل بيانات الخطة',
+    ];
+    final owner = voice.owner;
+    final String title;
+    final String body;
+    if (opened.length == 1 && closed.isEmpty) {
+      title = '$owner ${voice.verb('فتح', 'فتحت')} لك ${opened.single}';
+      body = switch (opened.single) {
+        'المال' when after.canManageMoney =>
+          'تقدر الآن تشوف المال وتسجّل الدفعات. المصادر والسلف تبقى خاصة ${voice.bride ? 'فيها' : 'فيه'}.',
+        'المال' =>
+          'تقدر الآن تشوف المال. المصادر والسلف تبقى خاصة ${voice.bride ? 'فيها' : 'فيه'}.',
+        'تسجيل المال' =>
+          'تقدر الآن تسجّل الدفعات. المصادر والسلف تبقى خاصة ${voice.bride ? 'فيها' : 'فيه'}.',
+        final section => _open(section),
+      };
+    } else if (closed.length == 1 && opened.isEmpty) {
+      title = '$owner ${voice.verb('قفل', 'قفلت')} عنك ${closed.single}';
+      body = 'اللي سجّلته قبل يبقى باسمك.';
+    } else {
+      title = '$owner ${voice.verb('غيّر', 'غيّرت')} صلاحياتك';
+      body = [
+        if (opened.isNotEmpty) 'صار مفتوح لك: ${opened.join('، ')}.',
+        if (closed.isNotEmpty) 'وما عاد مفتوح: ${closed.join('، ')}.',
+      ].join(' ');
+    }
+    return JourneyBox(
+      key: const ValueKey('participant-rights-changed'),
+      color: AarastV3Color.brandAccentSoft,
+      padding: const EdgeInsets.all(16),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const JourneyIconTile(
+            icon: LucideIcons.key,
+            color: AarastV3Color.brandAccentStrong,
+            soft: AarastV3Color.paper,
+            size: 42,
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: JourneyType.of(
+                    JourneyType.bodyLarge,
+                    weight: JourneyType.bold,
+                  ),
+                ),
+                Text(
+                  body,
+                  style: JourneyType.of(
+                    JourneyType.detail,
+                    color: AarastV3Color.textMuted,
+                    height: 1.45,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  static String _open(String section) => switch (section) {
+    'إضافة المشاركين' => 'تقدر الآن تضيف ناس للخطة من «حسابي».',
+    'تعديل بيانات الخطة' => 'تقدر الآن تعدّل بيانات الخطة.',
+    final name => 'تقدر الآن تشتغل على $name، تلقاها في التبويبات تحت.',
+  };
+}

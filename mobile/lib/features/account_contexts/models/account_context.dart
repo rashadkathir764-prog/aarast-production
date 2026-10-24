@@ -80,6 +80,54 @@ class AccountContextPermissions {
   };
 }
 
+/// q12: what the plan's owner opened or closed for a participant since this
+/// phone last saw the same membership. The server sends no notice of it, so
+/// the phone compares the path it kept with the one just returned.
+class AccountContextPermissionChange {
+  const AccountContextPermissionChange({
+    required this.contextKey,
+    required this.before,
+    required this.after,
+  });
+
+  final String contextKey;
+  final AccountContextPermissions before;
+  final AccountContextPermissions after;
+
+  /// The change between the kept path and the returned one, or null when
+  /// they are not the same participant membership or nothing changed.
+  static AccountContextPermissionChange? between(
+    AccountContext? kept,
+    AccountContext? returned,
+  ) {
+    if (kept == null ||
+        returned == null ||
+        returned.role != AccountContextRole.contributor ||
+        kept.contextKey != returned.contextKey ||
+        kept.membershipId != returned.membershipId) {
+      return null;
+    }
+    final change = AccountContextPermissionChange(
+      contextKey: returned.contextKey,
+      before: kept.permissions,
+      after: returned.permissions,
+    );
+    return change.isEmpty ? null : change;
+  }
+
+  bool get moneyChanged =>
+      before.canViewMoney != after.canViewMoney ||
+      before.canManageMoney != after.canManageMoney;
+
+  bool get isEmpty =>
+      !moneyChanged &&
+      before.canManageTasks == after.canManageTasks &&
+      before.canManageGuests == after.canManageGuests &&
+      before.canManageProviders == after.canManageProviders &&
+      before.canInviteMembers == after.canInviteMembers &&
+      before.canEditPlan == after.canEditPlan;
+}
+
 class AccountContext {
   const AccountContext({
     required this.contextKey,
@@ -161,6 +209,14 @@ class AccountContext {
 
   bool get isPlan => role != AccountContextRole.provider;
   bool get isProvider => role == AccountContextRole.provider;
+
+  /// How a plan names its owner to a participant («العريس», «العروسة»):
+  /// the server sends the plan's persona, not the owner's name.
+  String get planOwnerWord => switch (persona) {
+    AccountContextPersona.bride => 'العروسة',
+    AccountContextPersona.groom => 'العريس',
+    _ => 'صاحب العرس',
+  };
 
   /// The server's wire shape, so a kept copy reads back through [fromJson]
   /// and its contract checks.

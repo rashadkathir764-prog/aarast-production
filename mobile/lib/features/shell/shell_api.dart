@@ -1,5 +1,6 @@
 // Owner-controlled public API. Cross-feature consumers import this library.
 export 'main_shell.dart' show MainShell;
+export 'screens/participant_plan_shell.dart' show participantPlanTab;
 export 'screens/wedding_plan_shell.dart' show WeddingPlanShell;
 export 'widgets/aarast_plan_chrome.dart'
     show AarastNavigationItem, AarastPlanNavigationBar;

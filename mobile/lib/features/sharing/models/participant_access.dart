@@ -74,6 +74,22 @@ String participantRoleLabel(String role) {
   };
 }
 
+/// «أنت مساعد» beside the plan's name on a participant's own screens; a
+/// bride's plan speaks to a woman («أنتِ مساعدة», q17).
+String participantRoleTag(String? role, {bool feminine = false}) {
+  final word = role == null ? 'مشارك' : participantRoleLabel(role);
+  if (!feminine) return 'أنت $word';
+  final her = switch (word) {
+    'مساعد' => 'مساعدة',
+    'مشارك' => 'مشاركة',
+    'مساهم' => 'مساهمة',
+    'مدير' => 'مديرة',
+    'شريك' => 'شريكة',
+    _ => word,
+  };
+  return 'أنتِ $her';
+}
+
 /// «771 554 220»: a Yemeni mobile the way it is read out at home; any other
 /// number as it is displayed elsewhere.
 String? participantPhone(String? phone) {

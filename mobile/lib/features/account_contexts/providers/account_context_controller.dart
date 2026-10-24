@@ -58,6 +58,7 @@ class AccountContextController extends ChangeNotifier {
 
   List<AccountContext> _contexts = const [];
   AccountContext? _selectedContext;
+  AccountContextPermissionChange? _permissionChange;
   String? _errorMessage;
   String? _noticeMessage;
   bool _hasLoadedContexts = false;
@@ -71,6 +72,19 @@ class AccountContextController extends ChangeNotifier {
   List<AccountContext> get availableContexts =>
       _contexts.where((context) => context.isAvailable).toList(growable: false);
   AccountContext? get selectedContext => _selectedContext;
+
+  /// q12: what changed in the open participant path since this phone last
+  /// kept it; null when nothing changed. The home takes it once with
+  /// [takePermissionChange].
+  AccountContextPermissionChange? get permissionChange => _permissionChange;
+
+  /// Hands the change to the one screen that tells it, so it is told once.
+  AccountContextPermissionChange? takePermissionChange() {
+    final change = _permissionChange;
+    _permissionChange = null;
+    return change;
+  }
+
   String? get errorMessage => _errorMessage;
   String? get noticeMessage => _noticeMessage;
   bool get hasLoadedContexts => _hasLoadedContexts;
@@ -109,6 +123,7 @@ class AccountContextController extends ChangeNotifier {
     _notifyListeners();
 
     var blockedPlanIds = const <String>{};
+    AccountContextPermissionChange? permissionChange;
     try {
       final beforeRefresh = _beforeRefresh;
       if (beforeRefresh != null) blockedPlanIds = await beforeRefresh();
@@ -175,6 +190,10 @@ class AccountContextController extends ChangeNotifier {
           }
           await _saveActivePlanWithReconciliation(selectedPlanId);
         }
+        permissionChange = AccountContextPermissionChange.between(
+          _storedContext(),
+          selected,
+        );
         await _persistContext(selected);
         return _isCurrent(generation);
       });
@@ -182,6 +201,7 @@ class AccountContextController extends ChangeNotifier {
 
       _contexts = List<AccountContext>.unmodifiable(freshContexts);
       _selectedContext = selected;
+      _notePermissionChange(permissionChange, selected);
       _hasLoadedContexts = true;
       if (!_sameContext(previousContext, selected)) {
         appLogEvent(
@@ -256,6 +276,7 @@ class AccountContextController extends ChangeNotifier {
     );
     final generation = ++_generation;
     final previousContext = _selectedContext;
+    AccountContextPermissionChange? permissionChange;
     _selectionCount += 1;
     _errorMessage = null;
     _noticeMessage = null;
@@ -288,6 +309,10 @@ class AccountContextController extends ChangeNotifier {
           await _authStorage.clearActivePlanId();
         }
         if (!_isCurrent(generation)) return false;
+        permissionChange = AccountContextPermissionChange.between(
+          _storedContext(),
+          validated,
+        );
         await _authStorage.saveAccountContextKey(
           validated.contextKey,
           context: validated.toJson(),
@@ -300,6 +325,7 @@ class AccountContextController extends ChangeNotifier {
         _replaceOrAppend(_contexts, validated),
       );
       _selectedContext = validated;
+      _notePermissionChange(permissionChange, validated);
       appLogEvent(
         'ACTIVE_CONTEXT_SELECTED',
         category: AppLogCategory.context,
@@ -447,6 +473,7 @@ class AccountContextController extends ChangeNotifier {
     ++_generation;
     _contexts = const [];
     _selectedContext = null;
+    _permissionChange = null;
     _hasLoadedContexts = false;
     _errorMessage = null;
     _noticeMessage = null;
@@ -560,6 +587,29 @@ class AccountContextController extends ChangeNotifier {
       context.contextKey,
       context: context.toJson(),
     );
+  }
+
+  /// The path this phone kept for the signed-in user, whatever its role.
+  AccountContext? _storedContext() {
+    final kept = _authStorage.readAccountContextSnapshot();
+    if (kept == null) return null;
+    try {
+      return AccountContext.fromJson(kept);
+    } on FormatException {
+      return null;
+    }
+  }
+
+  /// A new change replaces the last one; another path drops it.
+  void _notePermissionChange(
+    AccountContextPermissionChange? change,
+    AccountContext? selected,
+  ) {
+    if (change != null) {
+      _permissionChange = change;
+    } else if (_permissionChange?.contextKey != selected?.contextKey) {
+      _permissionChange = null;
+    }
   }
 
   /// Without a connection, the plan this user owns and last opened, as the

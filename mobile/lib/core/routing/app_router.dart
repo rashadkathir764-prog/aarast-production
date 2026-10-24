@@ -83,7 +83,8 @@ import '../../features/sharing/sharing_api.dart'
         ParticipantPlanStateScreen,
         SharedMember,
         SharingScreen;
-import '../../features/shell/shell_api.dart' show WeddingPlanShell;
+import '../../features/shell/shell_api.dart'
+    show WeddingPlanShell, participantPlanTab;
 import '../../features/support/support_api.dart' show SupportScreen;
 import '../../features/tasks/tasks_api.dart'
     show CreateTaskScreen, TaskDetailsScreen, TaskTimelineScreen, WeddingTask;
@@ -465,6 +466,20 @@ WeddingPlanRouteAccess weddingPlanRouteAccessForPath(String path) {
           : WeddingPlanRouteAccess.manageMoney,
     _ => WeddingPlanRouteAccess.unknown,
   };
+}
+
+/// One of the plan's five tab pages itself, not a page inside a tab.
+bool isPlanTabRoot(String path) {
+  final segments = Uri.tryParse(path)?.pathSegments ?? const <String>[];
+  return segments.length == 3 &&
+      segments.first == 'wedding-plans' &&
+      const {
+        'dashboard',
+        'money',
+        'tasks',
+        'guests',
+        'providers',
+      }.contains(segments[2]);
 }
 
 bool _isReadOnlyMoneyPath(List<String> segments) {

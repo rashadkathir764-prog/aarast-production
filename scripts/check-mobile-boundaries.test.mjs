@@ -1654,8 +1654,14 @@ const r19ProviderPortalApi = Object.freeze({
 // through the sharing owner API, its participant sections read the paths,
 // the signed-in account and the leave through the account contexts, auth
 // and sharing owner APIs, and q19 reads the paths; the old shared plans
-// screen's two records go with it.
-const r19LegalRecordCount = 201;
+// screen's two records go with it. +12 for the participant's tabs (D34):
+// x06's home reads the path, the account, the role word and the tasks
+// through the account contexts, auth, sharing and tasks owner APIs; the
+// participant shell builds each tab's page or lock from the account
+// contexts, finance, guests, marketplace, sharing, tasks and wedding plans
+// owner APIs; q05 reports a finished task to the home through the wedding
+// plans owner API.
+const r19LegalRecordCount = 213;
 const trackedOwnerApiContracts = [
   {
     area: 'features/account_contexts',
@@ -1666,6 +1672,7 @@ const trackedOwnerApiContracts = [
         uri: 'models/account_context.dart',
         show: [
           'AccountContext',
+          'AccountContextPermissionChange',
           'AccountContextPermissions',
           'AccountContextPersona',
           'AccountContextRole',
@@ -2011,7 +2018,7 @@ const trackedOwnerApiContracts = [
       { uri: 'data/sharing_api.dart', show: ['SharingApi'] },
       {
         uri: 'models/participant_access.dart',
-        show: ['participantPhone', 'participantRoleLabel'],
+        show: ['participantPhone', 'participantRoleLabel', 'participantRoleTag'],
       },
       {
         uri: 'models/plan_access_permissions.dart',
@@ -2053,6 +2060,10 @@ const trackedOwnerApiContracts = [
     path: 'mobile/lib/features/shell/shell_api.dart',
     exports: [
       { uri: 'main_shell.dart', show: ['MainShell'] },
+      {
+        uri: 'screens/participant_plan_shell.dart',
+        show: ['participantPlanTab'],
+      },
       { uri: 'screens/wedding_plan_shell.dart', show: ['WeddingPlanShell'] },
       {
         uri: 'widgets/aarast_plan_chrome.dart',
@@ -2087,8 +2098,14 @@ const trackedOwnerApiContracts = [
         show: ['TaskTimelineProvider'],
       },
       { uri: 'screens/create_task_screen.dart', show: ['CreateTaskScreen'] },
+      {
+        uri: 'screens/participant_tasks_screen.dart',
+        show: ['ParticipantTasksScreen'],
+      },
       { uri: 'screens/task_details_screen.dart', show: ['TaskDetailsScreen'] },
       { uri: 'screens/task_timeline_screen.dart', show: ['TaskTimelineScreen'] },
+      { uri: 'utils/task_display.dart', show: ['taskCategoryIcon'] },
+      { uri: 'widgets/task_row.dart', show: ['taskWhenLabel'] },
     ],
   },
   {
@@ -2142,6 +2159,10 @@ const trackedOwnerApiContracts = [
       {
         uri: 'screens/my_wedding_plans_screen.dart',
         show: ['MyWeddingPlansScreen', 'showPlanSwitcherSheet'],
+      },
+      {
+        uri: 'screens/participant_home_screen.dart',
+        show: ['ParticipantHomeScreen'],
       },
       {
         uri: 'screens/plan_assistant_screen.dart',
@@ -2727,12 +2748,12 @@ const trackedPlanningBatchContracts = [
   {
     source: 'mobile/lib/features/wedding_plans/screens/plan_management_screen.dart',
     target: 'mobile/lib/features/account_contexts/account_contexts_api.dart',
-    show: ['AccountContextController', 'AccountContextPermissions', 'AccountContextRole'],
+    show: ['AccountContextController', 'AccountContextRole'],
   },
   {
     source: 'mobile/lib/features/wedding_plans/screens/plan_management_screen.dart',
     target: 'mobile/lib/features/auth/auth_api.dart',
-    show: ['AuthActionGuard', 'AuthController', 'confirmAccountDeletion'],
+    show: ['AuthActionGuard', 'AuthController'],
   },
   {
     source: 'mobile/lib/features/wedding_plans/screens/plan_management_screen.dart',
@@ -2742,7 +2763,7 @@ const trackedPlanningBatchContracts = [
   {
     source: 'mobile/lib/features/wedding_plans/screens/plan_management_screen.dart',
     target: 'mobile/lib/features/sharing/sharing_api.dart',
-    show: ['PlanLeaveCoordinator', 'SharedMember'],
+    show: ['SharedMember'],
   },
   // w10 saves the wedding budget through the plan's money (D27).
   {
@@ -2929,11 +2950,7 @@ const trackedShellEntryBatchContracts = [
   {
     source: 'mobile/lib/features/shell/main_shell.dart',
     target: 'mobile/lib/features/wedding_plans/wedding_plans_api.dart',
-    show: [
-      'DashboardSummaryProvider',
-      'PlanCenterScreen',
-      'WeddingPlanDashboardScreen',
-    ],
+    show: ['DashboardSummaryProvider', 'WeddingPlanDashboardScreen'],
   },
   {
     source: 'mobile/lib/features/shell/screens/wedding_plan_shell.dart',
@@ -3159,7 +3176,7 @@ const trackedCompositionRootContracts = [
       },
       {
         target: 'mobile/lib/features/shell/shell_api.dart',
-        show: ['WeddingPlanShell'],
+        show: ['WeddingPlanShell', 'participantPlanTab'],
       },
       {
         target: 'mobile/lib/features/support/support_api.dart',

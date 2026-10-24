@@ -17,6 +17,7 @@ import 'package:aarast_mobile/features/account_contexts/providers/account_contex
 import 'package:aarast_mobile/features/finance/data/finance_api.dart';
 import 'package:aarast_mobile/features/finance/providers/finance_provider.dart';
 import 'package:aarast_mobile/features/shell/screens/wedding_plan_shell.dart';
+import 'package:aarast_mobile/features/shell/widgets/plan_quick_add_sheet.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
@@ -30,51 +31,53 @@ void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
   group('WeddingPlanShell routing', () {
-    test(
-      'owner shells use canonical chrome while contributor shell stays isolated',
-      () {
-        final chrome = File(
-          'lib/features/shell/widgets/plan_shell_chrome.dart',
+    test('owner and participant shells use the canonical chrome', () {
+      final chrome = File('lib/features/shell/widgets/plan_shell_chrome.dart');
+      expect(
+        chrome.existsSync(),
+        isTrue,
+        reason: 'PlanShellChrome must be the only production shell frame.',
+      );
+
+      for (final path in <String>[
+        'lib/features/shell/main_shell.dart',
+        'lib/features/shell/screens/wedding_plan_shell.dart',
+      ]) {
+        final source = File(path).readAsStringSync();
+        expect(source, contains('PlanShellChrome('), reason: path);
+        expect(
+          source,
+          isNot(contains('RoyalSmartFloatingActionButton(')),
+          reason: path,
         );
         expect(
-          chrome.existsSync(),
-          isTrue,
-          reason: 'PlanShellChrome must be the only production shell frame.',
+          source,
+          isNot(contains('RoyalDashboardBottomNav(')),
+          reason: path,
         );
+      }
 
-        for (final path in <String>[
-          'lib/features/shell/main_shell.dart',
-          'lib/features/shell/screens/wedding_plan_shell.dart',
-        ]) {
-          final source = File(path).readAsStringSync();
-          expect(source, contains('PlanShellChrome('), reason: path);
-          expect(
-            source,
-            isNot(contains('RoyalSmartFloatingActionButton(')),
-            reason: path,
-          );
-          expect(
-            source,
-            isNot(contains('RoyalDashboardBottomNav(')),
-            reason: path,
-          );
-        }
+      final routeShell = File(
+        'lib/features/shell/screens/wedding_plan_shell.dart',
+      ).readAsStringSync();
+      expect(routeShell, isNot(contains('child: Scaffold(')));
 
-        final routeShell = File(
-          'lib/features/shell/screens/wedding_plan_shell.dart',
-        ).readAsStringSync();
-        expect(routeShell, isNot(contains('child: Scaffold(')));
-
-        final mainShell = File(
-          'lib/features/shell/main_shell.dart',
-        ).readAsStringSync();
-        expect(mainShell, contains('class _ContributorMainShell'));
-        expect(mainShell, contains('contributor-workspace-'));
-        expect(mainShell, isNot(contains('contributor-indexed-stack-')));
-        expect(mainShell, isNot(contains('contributor-navigation-')));
-        expect(mainShell, isNot(contains('contributor-tab-')));
-      },
-    );
+      final mainShell = File(
+        'lib/features/shell/main_shell.dart',
+      ).readAsStringSync();
+      // D34: a participant gets the plan's five tabs (x06, q05, q07,
+      // q08) on the same chrome, never the old one-page workspace, and no
+      // floating «+» (the design draws none).
+      expect(mainShell, contains('class _ContributorMainShell'));
+      expect(mainShell, contains('ParticipantPlanShell('));
+      expect(mainShell, isNot(contains('contributor-workspace-')));
+      final participantShell = File(
+        'lib/features/shell/screens/participant_plan_shell.dart',
+      ).readAsStringSync();
+      expect(participantShell, contains('PlanShellChrome('));
+      expect(participantShell, isNot(contains('onQuickAdd')));
+      expect(routeShell, contains('participant-route-shell-'));
+    });
 
     testWidgets(
       'route-owned plan shell keeps an opaque semantic canvas during tab changes',
@@ -100,6 +103,42 @@ void main() {
         expectOpaqueShellSurface();
         await _tapNavIcon(tester, LucideIcons.store);
         expectOpaqueShellSurface();
+        expect(tester.takeException(), isNull);
+      },
+    );
+
+    testWidgets(
+      'a participant plan route gets the tabs without the «+» (D34)',
+      (tester) async {
+        final router = _buildPlanShellRouter(
+          initialLocation: AppRouter.money('plan-7'),
+        );
+        addTearDown(router.dispose);
+        await _pumpPlanShellRouter(
+          tester,
+          router,
+          role: AccountContextRole.contributor,
+        );
+        await tester.pumpAndSettle();
+
+        expect(
+          find.byKey(const ValueKey('participant-route-shell-plan-7')),
+          findsOneWidget,
+        );
+        expect(find.byType(PlanQuickAddButton), findsNothing);
+        expect(find.text('money'), findsOneWidget);
+
+        await _tapNavIcon(tester, LucideIcons.listChecks);
+        expect(router.state.uri.path, AppRouter.tasks('plan-7'));
+        expect(find.text('tasks'), findsOneWidget);
+
+        // A page inside a tab owns the screen, as for the owner.
+        router.go(AppRouter.moneyBudget('plan-7'));
+        await tester.pumpAndSettle();
+        expect(
+          find.byKey(const ValueKey('participant-route-shell-plan-7')),
+          findsNothing,
+        );
         expect(tester.takeException(), isNull);
       },
     );
@@ -412,13 +451,11 @@ Future<void> _pumpPlanShellRouter(
   WidgetTester tester,
   GoRouter router, {
   FinanceProvider? finance,
+  AccountContextRole role = AccountContextRole.owner,
 }) async {
   SharedPreferences.setMockInitialValues({});
   final preferences = await SharedPreferences.getInstance();
-  final context = accountContext(
-    role: AccountContextRole.owner,
-    planId: 'plan-7',
-  );
+  final context = accountContext(role: role, planId: 'plan-7');
   final controller = AccountContextController(
     contextsApi: _StaticAccountContextsGateway(context),
     authStorage: AuthStorage(preferences),

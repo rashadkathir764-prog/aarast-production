@@ -19,6 +19,7 @@ export 'providers/dashboard_summary_provider.dart'
 export 'providers/wedding_plans_provider.dart' show WeddingPlansProvider;
 export 'screens/my_wedding_plans_screen.dart'
     show MyWeddingPlansScreen, showPlanSwitcherSheet;
+export 'screens/participant_home_screen.dart' show ParticipantHomeScreen;
 export 'screens/plan_assistant_screen.dart' show PlanAssistantScreen;
 export 'screens/plan_management_screen.dart' show PlanCenterScreen;
 export 'screens/wedding_plan_dashboard_screen.dart'

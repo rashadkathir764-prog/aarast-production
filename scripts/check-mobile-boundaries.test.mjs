@@ -1649,8 +1649,13 @@ const r19ProviderPortalApi = Object.freeze({
 // through the wedding plans owner API and open a payment or a payment date
 // through the finance owner API, and the route shell reads the money rights
 // through the finance owner API. +1 for x04 «تساعد في عرس أحد؟» knowing
-// whether the person is signed in through the auth owner API (D34).
-const r19LegalRecordCount = 198;
+// whether the person is signed in through the auth owner API (D34). +3 for
+// q10 and q19 (D34): «حسابي» reads the participant's phone and role word
+// through the sharing owner API, its participant sections read the paths,
+// the signed-in account and the leave through the account contexts, auth
+// and sharing owner APIs, and q19 reads the paths; the old shared plans
+// screen's two records go with it.
+const r19LegalRecordCount = 201;
 const trackedOwnerApiContracts = [
   {
     area: 'features/account_contexts',
@@ -1659,7 +1664,12 @@ const trackedOwnerApiContracts = [
       { uri: 'data/account_contexts_api.dart', show: ['AccountContextsApi'] },
       {
         uri: 'models/account_context.dart',
-        show: ['AccountContext', 'AccountContextPermissions', 'AccountContextRole'],
+        show: [
+          'AccountContext',
+          'AccountContextPermissions',
+          'AccountContextPersona',
+          'AccountContextRole',
+        ],
       },
       {
         uri: 'providers/account_context_controller.dart',
@@ -2000,6 +2010,10 @@ const trackedOwnerApiContracts = [
     exports: [
       { uri: 'data/sharing_api.dart', show: ['SharingApi'] },
       {
+        uri: 'models/participant_access.dart',
+        show: ['participantPhone', 'participantRoleLabel'],
+      },
+      {
         uri: 'models/plan_access_permissions.dart',
         show: ['PlanAccessPermissions'],
       },
@@ -2024,8 +2038,8 @@ const trackedOwnerApiContracts = [
       { uri: 'screens/from_family_screen.dart', show: ['FromFamilyScreen'] },
       { uri: 'screens/invite_decision_screen.dart', show: ['InviteDecisionScreen'] },
       {
-        uri: 'screens/shared_wedding_plans_screen.dart',
-        show: ['SharedWeddingPlansScreen'],
+        uri: 'screens/participant_plan_state_screen.dart',
+        show: ['ParticipantPlanStateScreen'],
       },
       { uri: 'screens/sharing_screen.dart', show: ['SharingScreen'] },
       {
@@ -2383,7 +2397,7 @@ const trackedCollaborationBatchContracts = [
   {
     source: 'mobile/lib/features/more/screens/more_screen.dart',
     target: 'mobile/lib/features/account_contexts/account_contexts_api.dart',
-    show: ['AccountContextController'],
+    show: ['AccountContextController', 'AccountContextRole'],
   },
   {
     source: 'mobile/lib/features/more/screens/more_screen.dart',
@@ -2397,8 +2411,34 @@ const trackedCollaborationBatchContracts = [
   },
   {
     source: 'mobile/lib/features/more/screens/more_screen.dart',
+    target: 'mobile/lib/features/sharing/sharing_api.dart',
+    show: ['participantPhone', 'participantRoleLabel'],
+  },
+  {
+    source: 'mobile/lib/features/more/screens/more_screen.dart',
     target: 'mobile/lib/features/wedding_plans/wedding_plans_api.dart',
     show: ['DashboardSummaryProvider', 'showPlanSwitcherSheet', 'showPostponeSheet'],
+  },
+  {
+    source: 'mobile/lib/features/more/widgets/participant_account_sections.dart',
+    target: 'mobile/lib/features/account_contexts/account_contexts_api.dart',
+    show: [
+      'AccountContext',
+      'AccountContextController',
+      'AccountContextPermissions',
+      'AccountContextPersona',
+      'AccountContextRole',
+    ],
+  },
+  {
+    source: 'mobile/lib/features/more/widgets/participant_account_sections.dart',
+    target: 'mobile/lib/features/auth/auth_api.dart',
+    show: ['AuthController'],
+  },
+  {
+    source: 'mobile/lib/features/more/widgets/participant_account_sections.dart',
+    target: 'mobile/lib/features/sharing/sharing_api.dart',
+    show: ['PlanLeaveCoordinator'],
   },
   {
     source: 'mobile/lib/features/notifications/screens/notifications_screen.dart',
@@ -2436,14 +2476,9 @@ const trackedCollaborationBatchContracts = [
     show: ['AuthController', 'AuthStatus'],
   },
   {
-    source: 'mobile/lib/features/sharing/screens/shared_wedding_plans_screen.dart',
+    source: 'mobile/lib/features/sharing/screens/participant_plan_state_screen.dart',
     target: 'mobile/lib/features/account_contexts/account_contexts_api.dart',
-    show: ['AccountContextController', 'AccountContextRole'],
-  },
-  {
-    source: 'mobile/lib/features/sharing/screens/shared_wedding_plans_screen.dart',
-    target: 'mobile/lib/features/auth/auth_api.dart',
-    show: ['AuthActionGuard', 'AuthGatePanel'],
+    show: ['AccountContext', 'AccountContextController', 'AccountContextRole'],
   },
   {
     source: 'mobile/lib/features/sharing/screens/sharing_screen.dart',
@@ -3117,8 +3152,8 @@ const trackedCompositionRootContracts = [
           'EditSharedMemberScreen',
           'FromFamilyScreen',
           'InviteDecisionScreen',
+          'ParticipantPlanStateScreen',
           'SharedMember',
-          'SharedWeddingPlansScreen',
           'SharingScreen',
         ],
       },

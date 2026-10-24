@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:aarast_mobile/app.dart';
+import 'package:aarast_mobile/core/experience_v3/aarast_v3.dart';
 import 'package:aarast_mobile/core/network/api_client.dart';
 import 'package:aarast_mobile/core/offline/local_database_json.dart';
 import 'package:aarast_mobile/core/offline/offline_sync_service.dart';
@@ -19,13 +20,14 @@ import 'package:aarast_mobile/features/account_contexts/widgets/wedding_plan_con
 import 'package:aarast_mobile/features/auth/data/auth_repository.dart';
 import 'package:aarast_mobile/core/session/safe_user.dart';
 import 'package:aarast_mobile/features/auth/providers/auth_controller.dart';
+import 'package:aarast_mobile/features/more/screens/more_screen.dart';
 import 'package:aarast_mobile/features/shell/main_shell.dart';
+import 'package:aarast_mobile/features/sharing/screens/participant_plan_state_screen.dart';
 import 'package:aarast_mobile/features/sharing/data/sharing_api.dart';
 import 'package:aarast_mobile/features/sharing/services/plan_leave_coordinator.dart';
 import 'package:aarast_mobile/features/wedding_plans/data/wedding_plans_api.dart';
 import 'package:aarast_mobile/features/wedding_plans/providers/dashboard_summary_provider.dart';
 import 'package:aarast_mobile/features/wedding_plans/providers/wedding_plans_provider.dart';
-import 'package:aarast_mobile/features/wedding_plans/screens/plan_management_screen.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -154,101 +156,132 @@ void main() {
     await expectLater(store.readAll(), throwsA(isA<FormatException>()));
   });
 
-  testWidgets(
-    'exit workspace preserves account session and opens path choice',
-    (tester) async {
-      final harness = await _ContributorActionHarness.create();
-      addTearDown(harness.dispose);
-      await harness.pump(tester);
+  testWidgets('q10 lists the plans helped in, your own plan and the open one', (
+    tester,
+  ) async {
+    final harness = await _ContributorActionHarness.create(withArchived: true);
+    addTearDown(harness.dispose);
+    await harness.pump(tester);
 
-      await tester.tap(find.byKey(const Key('contributor-account-action')));
-      await tester.pumpAndSettle();
-      await tester.tap(find.byKey(const Key('contributor-exit-workspace')));
-      await tester.pumpAndSettle();
+    expect(find.text('حسابي'), findsOneWidget);
+    expect(find.text('مساهم · 777 123 456'), findsOneWidget);
+    expect(find.text('الخطط اللي أشارك فيها'), findsOneWidget);
+    expect(
+      find.byKey(
+        const ValueKey('participant-plan-plan:shared-plan:contributor'),
+      ),
+      findsOneWidget,
+    );
+    // The flags the plan opens: tasks and guests, no money.
+    expect(find.text('المهام والضيوف'), findsOneWidget);
+    expect(find.text('في الذكريات'), findsOneWidget);
+    expect(find.text('خطتي'), findsOneWidget);
+    expect(
+      find.byKey(const ValueKey('participant-plan-plan:owner-plan:owner')),
+      findsOneWidget,
+    );
+    expect(find.text('في عرس المشارك'), findsOneWidget);
+    expect(find.text('اللي سجّلته'), findsOneWidget);
+    expect(find.text('اطلع من الخطة'), findsOneWidget);
+    // The owner's profile card and «عرسي» are not the participant's.
+    expect(find.byTooltip('تعديل صورة الحساب'), findsNothing);
+    expect(find.text('عرسي'), findsNothing);
+    // q10 lists the plans, so g02's «خططك» row is not repeated.
+    expect(find.byKey(const ValueKey('account-plans')), findsNothing);
+    // C4: deleting the account waits for its 30-day grace, as for the owner.
+    await tester.scrollUntilVisible(
+      find.text('الخروج'),
+      320,
+      scrollable: find.byType(Scrollable).first,
+    );
+    expect(find.textContaining('حذف الحساب'), findsNothing);
+    expect(tester.takeException(), isNull);
+  });
 
-      expect(find.byKey(const Key('path-choice-destination')), findsOneWidget);
-      expect(harness.contexts.selectedContext, isNull);
-      expect(harness.storage.readAccountContextKey(), isNull);
-      expect(await harness.storage.readAccessToken(), 'session-token');
-      expect(tester.takeException(), isNull);
-    },
-  );
+  testWidgets('without a plan of their own q10 offers to start one', (
+    tester,
+  ) async {
+    final harness = await _ContributorActionHarness.create(withOwner: false);
+    addTearDown(harness.dispose);
+    await harness.pump(tester);
 
-  testWidgets('account logout clears session and opens login', (tester) async {
+    expect(find.text('ابدأ خطة عرسك'), findsOneWidget);
+    expect(find.text('بنفس حسابك'), findsOneWidget);
+    await tester.tap(find.byKey(const ValueKey('participant-start-own-plan')));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('new-plan-destination')), findsOneWidget);
+  });
+
+  testWidgets('another path opens from q10 without signing in again', (
+    tester,
+  ) async {
     final harness = await _ContributorActionHarness.create();
     addTearDown(harness.dispose);
     await harness.pump(tester);
 
-    await tester.tap(find.byKey(const Key('contributor-account-action')));
-    await tester.pumpAndSettle();
-    await tester.tap(find.byKey(const Key('contributor-logout-account')));
-    await tester.pumpAndSettle();
-    await tester.tap(find.byKey(const Key('contributor-logout-confirm')));
+    await tester.tap(
+      find.byKey(const ValueKey('participant-plan-plan:owner-plan:owner')),
+    );
     await tester.pumpAndSettle();
 
-    expect(find.byKey(const Key('login-destination')), findsOneWidget);
-    expect(harness.storage.readAccountContextKey(), isNull);
-    expect(await harness.storage.readAccessToken(), isNull);
-    expect(await harness.storage.readRefreshToken(), isNull);
+    expect(find.byKey(const Key('path-choice-destination')), findsOneWidget);
+    expect(
+      harness.contexts.selectedContext?.contextKey,
+      'plan:owner-plan:owner',
+    );
+    expect(await harness.storage.readAccessToken(), 'session-token');
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('q19: a plan in the memories says so, read only', (tester) async {
+    final harness = await _ContributorActionHarness.create(withArchived: true);
+    addTearDown(harness.dispose);
+    await harness.pump(tester);
+
+    await tester.ensureVisible(
+      find.byKey(const ValueKey('participant-plan-plan:old-plan:contributor')),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(
+      find.byKey(const ValueKey('participant-plan-plan:old-plan:contributor')),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('عرس قديم'), findsOneWidget);
+    expect(find.text('لما الخطة تتغير'), findsOneWidget);
+    expect(find.text('الخطة في الذكريات'), findsOneWidget);
+    expect(
+      find.text('العرس تم الحمد لله، وصاحب الخطة حفظها في الذكريات.'),
+      findsOneWidget,
+    );
+    // Paused, postponed and deleted wait for the plan states (q19).
+    expect(find.text('الخطة متوقفة'), findsNothing);
+    expect(find.text('الخطة انحذفت'), findsNothing);
+    // The archived plan never becomes the open one.
+    expect(
+      harness.contexts.selectedContext?.contextKey,
+      'plan:shared-plan:contributor',
+    );
     expect(tester.takeException(), isNull);
   });
 
   testWidgets(
-    'contributor account menu keeps workspace exit, plan leave, logout, and deletion distinct',
+    'account logout from «حسابي» clears the session and opens login',
     (tester) async {
       final harness = await _ContributorActionHarness.create();
       addTearDown(harness.dispose);
       await harness.pump(tester);
 
-      await tester.tap(find.byKey(const Key('contributor-account-action')));
+      await tester.scrollUntilVisible(
+        find.text('الخروج'),
+        320,
+        scrollable: find.byType(Scrollable).first,
+      );
+      await tester.tap(find.text('الخروج'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const ValueKey('account-logout-confirm')));
       await tester.pumpAndSettle();
 
-      expect(
-        find.byKey(const Key('contributor-exit-workspace')),
-        findsOneWidget,
-      );
-      expect(find.byKey(const Key('contributor-leave-plan')), findsOneWidget);
-      expect(
-        find.byKey(const Key('contributor-logout-account')),
-        findsOneWidget,
-      );
-      expect(
-        find.byKey(const Key('contributor-delete-account')),
-        findsOneWidget,
-      );
-      expect(find.text('الخروج من المساحة'), findsOneWidget);
-      expect(find.text('مغادرة الخطة'), findsOneWidget);
-      expect(find.text('تسجيل الخروج من الحساب'), findsOneWidget);
-      expect(find.text('حذف الحساب'), findsOneWidget);
-      expect(tester.takeException(), isNull);
-    },
-  );
-
-  testWidgets(
-    'contributor deletion uses the central account flow and clears the full session',
-    (tester) async {
-      final harness = await _ContributorActionHarness.create();
-      addTearDown(harness.dispose);
-      await harness.pump(tester);
-
-      await tester.tap(find.byKey(const Key('contributor-account-action')));
-      await tester.pumpAndSettle();
-      final deleteAction = find.byKey(const Key('contributor-delete-account'));
-      await tester.ensureVisible(deleteAction);
-      await tester.pumpAndSettle();
-      await tester.tap(deleteAction);
-      await tester.pumpAndSettle();
-      await tester.enterText(
-        find.byKey(const Key('contributor-delete-account-input')),
-        'حذف',
-      );
-      await tester.pump();
-      await tester.tap(
-        find.byKey(const Key('contributor-delete-account-confirm')),
-      );
-      await tester.pumpAndSettle();
-
-      expect(harness.authRepository.deleteCalls, 1);
       expect(find.byKey(const Key('login-destination')), findsOneWidget);
       expect(harness.storage.readAccountContextKey(), isNull);
       expect(await harness.storage.readAccessToken(), isNull);
@@ -258,9 +291,11 @@ void main() {
   );
 
   testWidgets(
-    'resuming the contributor workspace refreshes account-context authority',
+    'resuming the participant shell refreshes account-context authority',
     (tester) async {
-      final harness = await _ContributorActionHarness.create();
+      final harness = await _ContributorActionHarness.create(
+        initialLocation: '/shell',
+      );
       addTearDown(harness.dispose);
       await harness.pump(tester);
       final callsBeforeResume = harness.contextsGateway.listCalls;
@@ -282,22 +317,22 @@ void main() {
       addTearDown(harness.dispose);
       await harness.pump(tester);
 
-      await tester.tap(find.byKey(const Key('contributor-account-action')));
-      await tester.pumpAndSettle();
-      await tester.tap(find.byKey(const Key('contributor-leave-plan')));
-      await tester.pumpAndSettle();
-      await tester.tap(find.byKey(const Key('contributor-leave-plan-confirm')));
+      await _openLeave(tester);
+      expect(find.byType(JourneySheetBody), findsOneWidget);
+      expect(find.text('تطلع من عرس المشارك؟'), findsOneWidget);
+      expect(find.text('تقدر ترجع لو أرسل لك دعوة ثانية'), findsWidgets);
+      await tester.tap(find.byKey(const ValueKey('participant-leave-confirm')));
       await tester.pumpAndSettle();
 
       expect(
-        find.byKey(const Key('contributor-leave-plan-error')),
+        find.byKey(const ValueKey('participant-leave-error')),
         findsOneWidget,
       );
       expect(harness.contexts.selectedContext?.weddingPlanId, 'shared-plan');
       expect(harness.offline.clearPlanCalls, isEmpty);
       expect(await harness.pendingPlanCleanupStore.readAll(), isEmpty);
 
-      await tester.tap(find.byKey(const Key('contributor-leave-plan-confirm')));
+      await tester.tap(find.byKey(const ValueKey('participant-leave-confirm')));
       await tester.pumpAndSettle();
 
       expect(find.byKey(const Key('path-choice-destination')), findsOneWidget);
@@ -320,11 +355,8 @@ void main() {
       final refreshCallsBeforeLeave = harness.contextsGateway.listCalls;
       harness.offline.pauseNextPlanClear();
 
-      await tester.tap(find.byKey(const Key('contributor-account-action')));
-      await tester.pumpAndSettle();
-      await tester.tap(find.byKey(const Key('contributor-leave-plan')));
-      await tester.pumpAndSettle();
-      await tester.tap(find.byKey(const Key('contributor-leave-plan-confirm')));
+      await _openLeave(tester);
+      await tester.tap(find.byKey(const ValueKey('participant-leave-confirm')));
       await tester.pump();
       await tester.pump();
 
@@ -350,10 +382,6 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.byKey(const Key('path-choice-destination')), findsOneWidget);
-      expect(
-        harness.contextsGateway.listCalls,
-        greaterThan(refreshCallsBeforeLeave),
-      );
       expect(harness.contexts.selectedContext, isNull);
       expect(
         harness.contexts.contexts.any(
@@ -399,11 +427,8 @@ void main() {
       harness.sharing.beforeLeave = () => leaveRelease.future;
       await harness.pump(tester);
 
-      await tester.tap(find.byKey(const Key('contributor-account-action')));
-      await tester.pumpAndSettle();
-      await tester.tap(find.byKey(const Key('contributor-leave-plan')));
-      await tester.pumpAndSettle();
-      await tester.tap(find.byKey(const Key('contributor-leave-plan-confirm')));
+      await _openLeave(tester);
+      await tester.tap(find.byKey(const ValueKey('participant-leave-confirm')));
       await tester.pump();
       await tester.pump();
       expect(harness.sharing.requestIds, hasLength(1));
@@ -434,11 +459,8 @@ void main() {
       harness.offline.failNextPlanClear = true;
       await harness.pump(tester);
 
-      await tester.tap(find.byKey(const Key('contributor-account-action')));
-      await tester.pumpAndSettle();
-      await tester.tap(find.byKey(const Key('contributor-leave-plan')));
-      await tester.pumpAndSettle();
-      await tester.tap(find.byKey(const Key('contributor-leave-plan-confirm')));
+      await _openLeave(tester);
+      await tester.tap(find.byKey(const ValueKey('participant-leave-confirm')));
       await tester.pumpAndSettle();
 
       expect(harness.sharing.requestIds, hasLength(2));
@@ -470,11 +492,8 @@ void main() {
         );
       await harness.pump(tester);
 
-      await tester.tap(find.byKey(const Key('contributor-account-action')));
-      await tester.pumpAndSettle();
-      await tester.tap(find.byKey(const Key('contributor-leave-plan')));
-      await tester.pumpAndSettle();
-      await tester.tap(find.byKey(const Key('contributor-leave-plan-confirm')));
+      await _openLeave(tester);
+      await tester.tap(find.byKey(const ValueKey('participant-leave-confirm')));
       await tester.pumpAndSettle();
 
       expect(find.byKey(const Key('path-choice-destination')), findsOneWidget);
@@ -494,7 +513,7 @@ void main() {
   );
 
   testWidgets(
-    'guarded contributor center refreshes once without a remount loop',
+    'a guarded participant shell refreshes once without a remount loop',
     (tester) async {
       final harness = await _ContributorActionHarness.create(
         initialLocation: '/guarded-workspace',
@@ -511,6 +530,14 @@ void main() {
       expect(tester.takeException(), isNull);
     },
   );
+}
+
+Future<void> _openLeave(WidgetTester tester) async {
+  final leave = find.byKey(const ValueKey('participant-leave'));
+  await tester.ensureVisible(leave);
+  await tester.pumpAndSettle();
+  await tester.tap(leave);
+  await tester.pumpAndSettle();
 }
 
 class _ContributorActionHarness {
@@ -544,6 +571,8 @@ class _ContributorActionHarness {
 
   static Future<_ContributorActionHarness> create({
     String initialLocation = '/workspace',
+    bool withOwner = true,
+    bool withArchived = false,
   }) async {
     SharedPreferences.setMockInitialValues({});
     final preferences = await SharedPreferences.getInstance();
@@ -554,6 +583,7 @@ class _ContributorActionHarness {
       user: const SafeUser(
         id: 'contributor-user',
         name: 'مساهم',
+        phone: '+967777123456',
         role: 'USER',
         status: 'ACTIVE',
       ),
@@ -562,12 +592,25 @@ class _ContributorActionHarness {
     final contributor = accountContext(
       role: AccountContextRole.contributor,
       planId: 'shared-plan',
+      displayName: 'عرس المشارك',
+    );
+    final archived = accountContext(
+      role: AccountContextRole.contributor,
+      planId: 'old-plan',
+      displayName: 'عرس قديم',
+      lifecycle: 'ARCHIVED',
+      isAvailable: false,
+      unavailableReason: 'PLAN_ARCHIVED',
     );
     final owner = accountContext(
       role: AccountContextRole.owner,
       planId: 'owner-plan',
     );
-    final contextsGateway = _ContextsGateway([owner, contributor]);
+    final contextsGateway = _ContextsGateway([
+      if (withOwner) owner,
+      contributor,
+      if (withArchived) archived,
+    ]);
     final apiClient = ApiClient(tokenProvider: storage.readAccessToken);
     apiClient.dio.interceptors.add(
       InterceptorsWrapper(
@@ -630,13 +673,24 @@ class _ContributorActionHarness {
     final router = GoRouter(
       initialLocation: initialLocation,
       routes: [
-        GoRoute(path: '/workspace', builder: (_, _) => const MainShell()),
+        GoRoute(path: '/workspace', builder: (_, _) => const MoreScreen()),
+        GoRoute(path: '/shell', builder: (_, _) => const MainShell()),
         GoRoute(
           path: '/guarded-workspace',
           builder: (_, _) => const WeddingPlanContextGate(
             weddingPlanId: 'shared-plan',
-            child: PlanCenterScreen(weddingPlanId: 'shared-plan'),
+            child: MainShell(),
           ),
+        ),
+        GoRoute(
+          path: '/shared/wedding-plans/:id',
+          builder: (_, state) => ParticipantPlanStateScreen(
+            weddingPlanId: state.pathParameters['id'] ?? '',
+          ),
+        ),
+        GoRoute(
+          path: AppRouter.createWeddingPlan,
+          builder: (_, _) => const SizedBox(key: Key('new-plan-destination')),
         ),
         GoRoute(
           path: AppRouter.home,
@@ -839,6 +893,7 @@ class _ContributorAuthRepository extends AuthRepository {
   static const _user = SafeUser(
     id: 'contributor-user',
     name: 'مساهم',
+    phone: '+967777123456',
     role: 'USER',
     status: 'ACTIVE',
   );

@@ -22,11 +22,6 @@ import 'package:aarast_mobile/features/settings/data/settings_api.dart';
 import 'package:aarast_mobile/features/settings/models/user_settings.dart';
 import 'package:aarast_mobile/features/settings/providers/settings_provider.dart';
 import 'package:aarast_mobile/features/settings/screens/settings_screen.dart';
-import 'package:aarast_mobile/features/sharing/data/sharing_api.dart';
-import 'package:aarast_mobile/features/sharing/models/shared_member.dart';
-import 'package:aarast_mobile/features/sharing/models/shared_wedding_plan.dart';
-import 'package:aarast_mobile/features/sharing/providers/sharing_provider.dart';
-import 'package:aarast_mobile/features/sharing/screens/shared_wedding_plans_screen.dart';
 import 'package:aarast_mobile/features/support/screens/support_screen.dart';
 import 'package:aarast_mobile/features/wedding_plans/data/wedding_plans_api.dart';
 import 'package:aarast_mobile/features/wedding_plans/models/active_wedding_plan.dart';
@@ -222,71 +217,6 @@ void main() {
     );
   });
 
-  testWidgets('shared plans — compact rows (420)', (tester) async {
-    tester.view.devicePixelRatio = 1;
-    tester.view.physicalSize = const Size(420, 1000);
-    addTearDown(tester.view.reset);
-
-    SharedPreferences.setMockInitialValues({});
-    final preferences = await SharedPreferences.getInstance();
-    final authStorage = AuthStorage(preferences);
-    await authStorage.saveSession(
-      accessToken: 'more-preview-token',
-      user: const SafeUser(
-        id: 'user-1',
-        name: 'رشاد',
-        role: 'USER',
-        status: 'ACTIVE',
-      ),
-    );
-
-    final api = _FakeSharingApi(
-      sharedPlans: [
-        _sharedPlan(
-          id: 'plan-1',
-          title: 'عرس العبسي',
-          city: 'صنعاء',
-          currency: 'YER',
-          role: 'FAMILY',
-          canViewMoney: true,
-          canManageTasks: true,
-          canManageGuests: true,
-        ),
-        _sharedPlan(
-          id: 'plan-2',
-          title: 'عرس آل سالم',
-          city: 'عدن',
-          currency: 'SAR',
-          role: 'VIEWER',
-        ),
-      ],
-    );
-
-    await tester.pumpWidget(
-      MultiProvider(
-        providers: [
-          Provider<AuthStorage>.value(value: authStorage),
-          ChangeNotifierProvider<SharingProvider>.value(
-            value: SharingProvider(api),
-          ),
-        ],
-        child: MaterialApp(
-          debugShowCheckedModeBanner: false,
-          theme: AppTheme.light(),
-          home: const MediaQuery(
-            data: MediaQueryData(disableAnimations: true),
-            child: SharedWeddingPlansScreen(),
-          ),
-        ),
-      ),
-    );
-    await tester.pumpAndSettle();
-
-    await expectLater(
-      find.byType(Scaffold),
-      matchesGoldenFile('goldens/shared_plans.png'),
-    );
-  });
 }
 
 class _PreviewContextsGateway implements AccountContextsGateway {
@@ -300,43 +230,6 @@ class _PreviewContextsGateway implements AccountContextsGateway {
   @override
   Future<AccountContext> validateContext(String contextKey) async =>
       contexts.firstWhere((context) => context.contextKey == contextKey);
-}
-
-SharedWeddingPlan _sharedPlan({
-  required String id,
-  required String title,
-  required String city,
-  required String currency,
-  required String role,
-  bool canViewMoney = false,
-  bool canManageTasks = false,
-  bool canManageGuests = false,
-}) {
-  return SharedWeddingPlan(
-    id: id,
-    title: title,
-    city: city,
-    weddingDate: DateTime(2026, 8, 31),
-    currency: currency,
-    status: 'ACTIVE',
-    sharedMember: SharedMember(
-      id: 'member-$id',
-      weddingPlanId: id,
-      userId: 'user-member-$id',
-      user: SharedMemberUser(
-        id: 'user-member-$id',
-        name: 'رشاد',
-        phone: '+967777123456',
-      ),
-      role: role,
-      canViewMoney: canViewMoney,
-      canManageTasks: canManageTasks,
-      canManageGuests: canManageGuests,
-      canManageMoney: false,
-      createdAt: DateTime(2026, 7, 5),
-      updatedAt: DateTime(2026, 7, 5),
-    ),
-  );
 }
 
 class _FakeSettingsApi extends SettingsApi {
@@ -392,18 +285,6 @@ class _FakePlansProvider extends WeddingPlansProvider {
 
   @override
   Future<void> loadActiveWeddingPlan() async {}
-}
-
-class _FakeSharingApi extends SharingApi {
-  _FakeSharingApi({this.sharedPlans = const []})
-    : super(ApiClient(tokenProvider: () async => null));
-
-  final List<SharedWeddingPlan> sharedPlans;
-
-  @override
-  Future<List<SharedWeddingPlan>> getSharedWeddingPlans() async {
-    return sharedPlans;
-  }
 }
 
 class _SignedInAuthRepository extends AuthRepository {

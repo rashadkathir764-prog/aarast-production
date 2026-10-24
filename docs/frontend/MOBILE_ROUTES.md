@@ -30,6 +30,7 @@
 - `/settings`
 - `/settings/lock`
 - `/shared/wedding-plans`
+- `/shared/wedding-plans/:id`
 - `/support`
 - `/wedding-plans`
 - `/wedding-plans/:id/assistant`
@@ -74,4 +75,4 @@
 - `/wedding-plans/create`
 - `/welcome`
 
-Total: 73 unique routes
+Total: 74 unique routes

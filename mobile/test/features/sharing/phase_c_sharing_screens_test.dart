@@ -9,9 +9,7 @@ import 'package:aarast_mobile/core/widgets/aarast_pressable.dart';
 import 'package:aarast_mobile/features/sharing/data/sharing_api.dart';
 import 'package:aarast_mobile/features/sharing/models/plan_access_permissions.dart';
 import 'package:aarast_mobile/features/sharing/models/shared_member.dart';
-import 'package:aarast_mobile/features/sharing/models/shared_wedding_plan.dart';
 import 'package:aarast_mobile/features/sharing/providers/sharing_provider.dart';
-import 'package:aarast_mobile/features/sharing/screens/shared_wedding_plans_screen.dart';
 import 'package:aarast_mobile/features/sharing/screens/sharing_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -37,11 +35,6 @@ void main() {
           expect(source, isNot(contains('PLANNING')), reason: path);
           expect(source, isNot(contains("'YER'")), reason: path);
         }
-
-        expect(
-          _readSource('lib/features/sharing/widgets/shared_plan_card.dart'),
-          contains('currencyLabelAr'),
-        );
       },
     );
   });
@@ -254,27 +247,6 @@ void main() {
         expect(tester.takeException(), isNull);
       },
     );
-
-    testWidgets('shared plans show Arabic currency labels', (tester) async {
-      _setTallView(tester);
-      final api = _FakeSharingApi(sharedPlans: [_sharedPlan()]);
-
-      await _pumpWithAuth(
-        tester,
-        provider: SharingProvider(api),
-        child: const SharedWeddingPlansScreen(),
-      );
-      expect(find.text('الخطط المشتركة'), findsOneWidget);
-      expect(find.text('الخطط المشتركة معي'), findsNothing);
-      await tester.pumpAndSettle();
-
-      expect(find.text('1 خطة مشتركة معك'), findsOneWidget);
-      expect(find.textContaining('ر.س'), findsWidgets);
-      expect(find.textContaining('SAR'), findsNothing);
-      expect(find.textContaining('YER'), findsNothing);
-      expect(api.getSharedWeddingPlansCalls, 1);
-      expect(tester.takeException(), isNull);
-    });
 
     testWidgets(
       'reissuing a pending invite sends the rotated link from Aarast',
@@ -535,8 +507,9 @@ const _phaseCPaths = [
   'lib/features/sharing/screens/sharing_screen.dart',
   'lib/features/sharing/screens/edit_shared_member_screen.dart',
   'lib/features/sharing/screens/contribution_history_screen.dart',
-  'lib/features/sharing/screens/shared_wedding_plans_screen.dart',
-  'lib/features/sharing/widgets/shared_plan_card.dart',
+  'lib/features/sharing/screens/from_family_screen.dart',
+  'lib/features/sharing/screens/invite_decision_screen.dart',
+  'lib/features/sharing/screens/participant_plan_state_screen.dart',
   'lib/features/sharing/widgets/add_participant_sheet.dart',
   'lib/features/sharing/widgets/participant_access_editor.dart',
 ];
@@ -621,34 +594,19 @@ PlanInvite _invite({
   );
 }
 
-SharedWeddingPlan _sharedPlan() {
-  return SharedWeddingPlan(
-    id: _planId,
-    title: 'خطة الرياض',
-    city: 'الرياض',
-    weddingDate: DateTime(2026, 8, 20),
-    currency: 'SAR',
-    status: 'ACTIVE',
-    sharedMember: _member(id: 'member-shared', userName: 'رشاد'),
-  );
-}
-
 class _FakeSharingApi extends SharingApi {
   _FakeSharingApi({
     this.members = const [],
     this.invites = const [],
-    this.sharedPlans = const [],
     this.reissueDeliveryStatus = 'DELIVERED',
   }) : super(ApiClient(tokenProvider: () async => null));
 
   final List<SharedMember> members;
   final List<PlanInvite> invites;
-  final List<SharedWeddingPlan> sharedPlans;
   final String reissueDeliveryStatus;
 
   int getSharedMembersCalls = 0;
   int getPlanInvitesCalls = 0;
-  int getSharedWeddingPlansCalls = 0;
   int reissueCalls = 0;
   int cancelCalls = 0;
 
@@ -679,11 +637,6 @@ class _FakeSharingApi extends SharingApi {
     return invites;
   }
 
-  @override
-  Future<List<SharedWeddingPlan>> getSharedWeddingPlans() async {
-    getSharedWeddingPlansCalls += 1;
-    return sharedPlans;
-  }
 
   @override
   Future<PlanInvite> reissuePlanInvite({

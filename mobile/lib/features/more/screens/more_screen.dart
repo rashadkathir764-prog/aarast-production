@@ -13,17 +13,22 @@ import '../../../core/utils/arabic_date_formatter.dart';
 import '../../../core/widgets/aarast_toast.dart';
 import '../../../core/widgets/aarast_ui.dart';
 import '../../account_contexts/account_contexts_api.dart'
-    show AccountContextController;
+    show AccountContextController, AccountContextRole;
 import '../../auth/auth_api.dart'
     show AuthActionGuard, AuthController, AuthStatus;
 import '../../settings/settings_api.dart' show showChangePhoneSheet;
+import '../../sharing/sharing_api.dart'
+    show participantPhone, participantRoleLabel;
 import '../widgets/logout_sheet.dart';
+import '../widgets/participant_account_sections.dart';
 import '../../wedding_plans/wedding_plans_api.dart'
     show DashboardSummaryProvider, showPlanSwitcherSheet, showPostponeSheet;
 
 /// g02 «حسابي»: who you are, your wedding, how the app looks, safety and
 /// privacy, and the account (C51 adds «الحساب»: notifications, plans,
 /// help, sign out). «الأرقام» and «الوضع الليلي» are left out (D23).
+/// A participant sees q10 at the top instead: the name and number, the
+/// plans helped in, their own plan, and the open plan's record and leave.
 class MoreScreen extends StatefulWidget {
   const MoreScreen({super.key});
 
@@ -43,6 +48,10 @@ class _MoreScreenState extends State<MoreScreen> {
         .watch<AccountContextController?>()
         ?.selectedContext;
     final planId = selected?.weddingPlanId;
+    final participant =
+        selected != null &&
+        selected.isPlan &&
+        selected.role == AccountContextRole.contributor;
     final summary = context.watch<DashboardSummaryProvider?>()?.summary;
     final plan = summary != null && summary.planId == planId ? summary : null;
     final preferences = context.watch<DevicePreferences?>();
@@ -61,18 +70,35 @@ class _MoreScreenState extends State<MoreScreen> {
         children: [
           JourneySubHeader(
             title: 'حسابي',
+            subtitle: participant
+                ? [
+                    if ((user?.name ?? '').trim().isNotEmpty) user!.name.trim(),
+                    ?participantPhone(user?.phone),
+                  ].join(' · ')
+                : null,
             onBack: () =>
                 context.canPop() ? context.pop() : context.go(AppRouter.home),
           ),
-          _ProfileCard(
-            name: user?.name ?? '',
-            phone: user?.phone,
-            avatarUrl: user?.avatarUrl,
-            busy: auth.isSubmitting,
-            onEditAvatar: hasAccount ? () => _changeAvatar(context) : null,
-          ),
-          // «عرسي» belongs to the plan's owner; a participant's own rows
-          // come with the participant screens (slice 9).
+          if (participant)
+            ParticipantAccountSections(
+              current: selected,
+              roleLabel: plan?.permissions.role == null
+                  ? null
+                  : participantRoleLabel(plan!.permissions.role!),
+              recordedCount: plan?.contributionHistory.values.fold<int>(
+                0,
+                (total, count) => total + count,
+              ),
+            )
+          else
+            _ProfileCard(
+              name: user?.name ?? '',
+              phone: user?.phone,
+              avatarUrl: user?.avatarUrl,
+              busy: auth.isSubmitting,
+              onEditAvatar: hasAccount ? () => _changeAvatar(context) : null,
+            ),
+          // «عرسي» belongs to the plan's owner.
           if (planId != null &&
               planId.isNotEmpty &&
               plan?.permissions.isOwner == true) ...[
@@ -191,12 +217,14 @@ class _MoreScreenState extends State<MoreScreen> {
                   title: 'التنبيهات',
                   onTap: () => context.push(AppRouter.settings),
                 ),
-              _Row(
-                key: const ValueKey('account-plans'),
-                icon: LucideIcons.layers,
-                title: 'خططك',
-                onTap: () => showPlanSwitcherSheet(context),
-              ),
+              // A participant's plans are listed above (q10).
+              if (!participant)
+                _Row(
+                  key: const ValueKey('account-plans'),
+                  icon: LucideIcons.layers,
+                  title: 'خططك',
+                  onTap: () => showPlanSwitcherSheet(context),
+                ),
               _Row(
                 key: const ValueKey('account-help'),
                 icon: LucideIcons.lifeBuoy,

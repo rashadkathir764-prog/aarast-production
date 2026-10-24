@@ -27,12 +27,10 @@ import 'package:aarast_mobile/features/sharing/data/sharing_api.dart';
 import 'package:aarast_mobile/features/sharing/models/contribution_history.dart';
 import 'package:aarast_mobile/features/sharing/models/plan_access_permissions.dart';
 import 'package:aarast_mobile/features/sharing/models/shared_member.dart';
-import 'package:aarast_mobile/features/sharing/models/shared_wedding_plan.dart';
 import 'package:aarast_mobile/features/sharing/providers/contribution_history_provider.dart';
 import 'package:aarast_mobile/features/sharing/providers/sharing_provider.dart';
 import 'package:aarast_mobile/features/sharing/screens/contribution_history_screen.dart';
 import 'package:aarast_mobile/features/sharing/screens/invite_decision_screen.dart';
-import 'package:aarast_mobile/features/sharing/screens/shared_wedding_plans_screen.dart';
 import 'package:aarast_mobile/features/sharing/screens/sharing_screen.dart';
 import 'package:aarast_mobile/features/wedding_plans/data/wedding_plans_api.dart';
 import 'package:aarast_mobile/features/wedding_plans/models/dashboard_summary.dart';
@@ -312,13 +310,11 @@ class _SharingApi extends SharingApi {
     this.invites = const [],
     this.members = const [],
     this.planInvites = const [],
-    this.shared = const [],
   }) : super(ApiClient(tokenProvider: () async => null));
 
   final List<PlanInvite> invites;
   final List<SharedMember> members;
   final List<PlanInvite> planInvites;
-  final List<SharedWeddingPlan> shared;
 
   @override
   Future<List<PlanInvite>> getMyInvites() async => invites;
@@ -338,8 +334,6 @@ class _SharingApi extends SharingApi {
   Future<List<SharedMember>> getSharedMembers(String id) async => members;
   @override
   Future<List<PlanInvite>> getPlanInvites(String id) async => planInvites;
-  @override
-  Future<List<SharedWeddingPlan>> getSharedWeddingPlans() async => shared;
   @override
   Future<ContributionHistoryResponse> getContributionHistory(
     String weddingPlanId, {
@@ -890,30 +884,6 @@ void main() {
       ),
     ];
   }
-
-  testWidgets('p18 shared plans list', (tester) async {
-    await _shot(
-      tester,
-      'p18_shared_plans',
-      const SharedWeddingPlansScreen(),
-      h: 1000,
-      providers: await sharingProviders(
-        _SharingApi(
-          shared: [
-            SharedWeddingPlan(
-              id: _planId,
-              title: 'عرس محمد',
-              city: 'صنعاء',
-              weddingDate: DateTime(2027, 1, 21),
-              currency: 'YER',
-              status: 'ACTIVE',
-              sharedMember: _member('m1', 'صالح', 'HELPER', providers: true),
-            ),
-          ],
-        ),
-      ),
-    );
-  });
 
   testWidgets('p19 contribution history', (tester) async {
     await _shot(

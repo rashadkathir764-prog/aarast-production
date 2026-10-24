@@ -272,8 +272,16 @@ List<RouteBase> _weddingPlanRoutes() => [
       );
     },
   ),
+  // q10 lists the plans a participant helps in, inside «حسابي».
   GoRoute(
     path: AppRouter.sharedWeddingPlans,
-    builder: (context, state) => const SharedWeddingPlansScreen(),
+    redirect: (context, state) => AppRouter.more,
+  ),
+  // q19: a plan helped in that its owner put in the memories.
+  GoRoute(
+    path: '/shared/wedding-plans/:id',
+    builder: (context, state) => ParticipantPlanStateScreen(
+      weddingPlanId: state.pathParameters['id'] ?? '',
+    ),
   ),
 ];

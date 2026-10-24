@@ -80,8 +80,8 @@ import '../../features/sharing/sharing_api.dart'
         EditSharedMemberScreen,
         FromFamilyScreen,
         InviteDecisionScreen,
+        ParticipantPlanStateScreen,
         SharedMember,
-        SharedWeddingPlansScreen,
         SharingScreen;
 import '../../features/shell/shell_api.dart' show WeddingPlanShell;
 import '../../features/support/support_api.dart' show SupportScreen;
@@ -405,6 +405,10 @@ class AppRouter {
   }
 
   static const sharedWeddingPlans = '/shared/wedding-plans';
+
+  /// q19: what happened to a plan the participant helps in.
+  static String sharedPlanState(String weddingPlanId) =>
+      '$sharedWeddingPlans/${Uri.encodeComponent(weddingPlanId)}';
 
   static String? guestOnboardingRedirect(AppFeatureFlags flags) {
     if (flags.enableGuestFirstOnboarding) return null;

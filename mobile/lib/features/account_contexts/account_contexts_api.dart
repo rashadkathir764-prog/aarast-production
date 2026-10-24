@@ -1,7 +1,11 @@
 // Owner-controlled public API. Cross-feature consumers import this library.
 export 'data/account_contexts_api.dart' show AccountContextsApi;
 export 'models/account_context.dart'
-    show AccountContext, AccountContextPermissions, AccountContextRole;
+    show
+        AccountContext,
+        AccountContextPermissions,
+        AccountContextPersona,
+        AccountContextRole;
 export 'providers/account_context_controller.dart'
     show AccountContextController;
 export 'widgets/account_context_entry_gate.dart' show AccountContextEntryGate;

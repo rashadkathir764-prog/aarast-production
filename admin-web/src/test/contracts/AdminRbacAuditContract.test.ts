@@ -55,7 +55,9 @@ describe('admin RBAC and audit UI contract', () => {
   });
 
   it('keeps the admin avatar local to the CSP policy', () => {
+    // The admin's letter moved to the sidebar foot (akit `desk`).
     expect(topbarSource).not.toContain('ui-avatars.com');
-    expect(topbarSource).toContain('avatarInitial');
+    expect(sidebarSource).not.toContain('ui-avatars.com');
+    expect(sidebarSource).toContain('avatarInitial');
   });
 });

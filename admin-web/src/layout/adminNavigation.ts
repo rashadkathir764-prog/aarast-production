@@ -1,20 +1,20 @@
 import {
   BarChart3,
+  Flag,
+  History,
   Inbox,
   LayoutGrid,
-  ListTree,
-  MapPin,
-  MessageSquareText,
-  PackageSearch,
-  ShieldAlert,
-  ShieldCheck,
+  Package,
   Star,
-  Tag,
-  UserCircle,
+  Store,
+  UserPlus,
   Users,
   type LucideIcon,
 } from 'lucide-react';
 import { AdminPermission } from '../features/auth/api';
+
+/** A queue whose size the sidebar shows beside its link. */
+export type AdminQueueCount = 'inbox' | 'applications' | 'reports';
 
 export type AdminNavigationItem = {
   route: string;
@@ -22,6 +22,9 @@ export type AdminNavigationItem = {
   permission: AdminPermission;
   icon: LucideIcon;
   isActive: (pathname: string) => boolean;
+  count?: AdminQueueCount;
+  /** A hot count is coral (akit `hot`), the others are quiet. */
+  hot?: boolean;
 };
 
 export type AdminNavigationGroup = {
@@ -35,6 +38,8 @@ export type AdminLocation = {
   parentTitle: string;
   route: string;
   isDetail: boolean;
+  /** «لوحة الإدارة / …» after the group, as drawn. */
+  crumb: string[];
 };
 
 function normalizePathname(pathname: string) {
@@ -54,8 +59,8 @@ function exactRoute(route: string) {
   return (pathname: string) => normalizePathname(pathname) === route;
 }
 
-function nestedRoute(route: string) {
-  return (pathname: string) => matchesRoute(pathname, route);
+function nestedRoute(...routes: string[]) {
+  return (pathname: string) => routes.some((route) => matchesRoute(pathname, route));
 }
 
 function providerDirectoryRoute(pathname: string) {
@@ -65,17 +70,36 @@ function providerDirectoryRoute(pathname: string) {
   );
 }
 
+export const CATALOG_ROUTES = [
+  '/categories',
+  '/reference-catalogs',
+  '/cities',
+  '/administrative-areas',
+] as const;
+
+/**
+ * The seven sections of the admin designs (akit `nav`), holding only the
+ * pages that are built. Links for designs that wait for the server are left
+ * out until their page exists.
+ */
 export const adminNavigationGroups: AdminNavigationGroup[] = [
   {
-    label: 'نظرة عامة',
+    label: 'اليوم',
     links: [
       {
         route: '/',
-        label: 'لوحة التحكم',
+        label: 'الصندوق',
         permission: AdminPermission.DASHBOARD_READ,
-        icon: LayoutGrid,
+        icon: Inbox,
         isActive: exactRoute('/'),
+        count: 'inbox',
+        hot: true,
       },
+    ],
+  },
+  {
+    label: 'السوق',
+    links: [
       {
         route: '/reports',
         label: 'التقارير',
@@ -86,28 +110,55 @@ export const adminNavigationGroups: AdminNavigationGroup[] = [
     ],
   },
   {
-    label: 'السوق والكتالوج',
+    label: 'المزودين',
     links: [
       {
-        route: '/providers',
-        label: 'الموردون',
+        route: '/providers/applications',
+        label: 'طلبات الانضمام',
         permission: AdminPermission.PROVIDERS_READ,
-        icon: Users,
-        isActive: providerDirectoryRoute,
+        icon: UserPlus,
+        isActive: nestedRoute('/providers/applications'),
+        count: 'applications',
       },
       {
-        route: '/providers/applications',
-        label: 'طلبات الموردين',
+        route: '/providers',
+        label: 'دليل المزودين',
         permission: AdminPermission.PROVIDERS_READ,
-        icon: Inbox,
-        isActive: nestedRoute('/providers/applications'),
+        icon: Store,
+        isActive: providerDirectoryRoute,
       },
       {
         route: '/services',
         label: 'الخدمات',
         permission: AdminPermission.SERVICES_READ,
-        icon: PackageSearch,
+        icon: Package,
         isActive: nestedRoute('/services'),
+      },
+    ],
+  },
+  {
+    label: 'الناس',
+    links: [
+      {
+        route: '/users',
+        label: 'المستخدمون',
+        permission: AdminPermission.USERS_READ,
+        icon: Users,
+        isActive: nestedRoute('/users'),
+      },
+    ],
+  },
+  {
+    label: 'الرقابة',
+    links: [
+      {
+        route: '/conversation-reports',
+        label: 'البلاغات',
+        permission: AdminPermission.CONVERSATION_REPORTS_READ,
+        icon: Flag,
+        isActive: nestedRoute('/conversation-reports'),
+        count: 'reports',
+        hot: true,
       },
       {
         route: '/reviews',
@@ -116,65 +167,28 @@ export const adminNavigationGroups: AdminNavigationGroup[] = [
         icon: Star,
         isActive: nestedRoute('/reviews'),
       },
+    ],
+  },
+  {
+    label: 'النظام',
+    links: [
       {
         route: '/categories',
-        label: 'فئات الموردين',
+        label: 'الكتالوج',
         permission: AdminPermission.CATALOG_READ,
-        icon: Tag,
-        isActive: nestedRoute('/categories'),
-      },
-      {
-        route: '/reference-catalogs',
-        label: 'الكتالوجات الديناميكية',
-        permission: AdminPermission.CATALOG_READ,
-        icon: ListTree,
-        isActive: nestedRoute('/reference-catalogs'),
-      },
-      {
-        route: '/administrative-areas',
-        label: 'المحافظات والمديريات',
-        permission: AdminPermission.CATALOG_READ,
-        icon: MapPin,
-        isActive: nestedRoute('/administrative-areas'),
-      },
-      {
-        route: '/cities',
-        label: 'المدن والمناطق',
-        permission: AdminPermission.CATALOG_READ,
-        icon: MapPin,
-        isActive: nestedRoute('/cities'),
+        icon: LayoutGrid,
+        isActive: nestedRoute(...CATALOG_ROUTES),
       },
     ],
   },
   {
-    label: 'الحسابات والرقابة',
+    label: 'الفريق',
     links: [
-      {
-        route: '/users',
-        label: 'المستخدمون',
-        permission: AdminPermission.USERS_READ,
-        icon: UserCircle,
-        isActive: nestedRoute('/users'),
-      },
-      {
-        route: '/conversation-reports',
-        label: 'بلاغات المحادثات',
-        permission: AdminPermission.CONVERSATION_REPORTS_READ,
-        icon: ShieldAlert,
-        isActive: nestedRoute('/conversation-reports'),
-      },
-      {
-        route: '/notifications',
-        label: 'الإشعارات',
-        permission: AdminPermission.NOTIFICATIONS_READ,
-        icon: MessageSquareText,
-        isActive: nestedRoute('/notifications'),
-      },
       {
         route: '/audit-logs',
         label: 'سجل التدقيق',
         permission: AdminPermission.AUDIT_READ,
-        icon: ShieldCheck,
+        icon: History,
         isActive: nestedRoute('/audit-logs'),
       },
     ],
@@ -185,16 +199,21 @@ export const adminNavigationItems = adminNavigationGroups.flatMap(
   (group) => group.links.map((link) => ({ ...link, group: group.label })),
 );
 
+/** Pages kept without a link of their own. */
+const unlinkedLocations = [
+  { route: '/notifications', group: 'النظام', title: 'الإشعارات' },
+];
+
 const detailLocations = [
   {
     route: '/providers/applications',
-    title: 'تفاصيل طلب مورد',
+    title: 'تفاصيل طلب',
     matches: (pathname: string) =>
       /^\/providers\/applications\/[^/]+$/.test(pathname),
   },
   {
     route: '/providers',
-    title: 'تفاصيل مورد',
+    title: 'تفاصيل مزود',
     matches: (pathname: string) =>
       /^\/providers\/(?!applications(?:\/|$)|new$)[^/]+$/.test(pathname),
   },
@@ -215,14 +234,32 @@ export function resolveAdminLocation(pathname: string): AdminLocation {
   );
 
   if (!item) {
+    const unlinked = unlinkedLocations.find((location) =>
+      matchesRoute(normalizedPathname, location.route),
+    );
+    if (unlinked) {
+      return {
+        group: unlinked.group,
+        title: unlinked.title,
+        parentTitle: unlinked.title,
+        route: unlinked.route,
+        isDetail: false,
+        crumb: [unlinked.group],
+      };
+    }
     return {
       group: 'لوحة الإدارة',
       title: 'صفحة غير معروفة',
-      parentTitle: 'لوحة التحكم',
+      parentTitle: 'الصندوق',
       route: '/',
       isDetail: false,
+      crumb: [],
     };
   }
+
+  const crumb = [item.group];
+  if (item.route === '/categories') crumb.push(item.label);
+  if (detail) crumb.push(detail.title);
 
   return {
     group: item.group,
@@ -230,5 +267,6 @@ export function resolveAdminLocation(pathname: string): AdminLocation {
     parentTitle: item.label,
     route: item.route,
     isDetail: Boolean(detail),
+    crumb,
   };
 }

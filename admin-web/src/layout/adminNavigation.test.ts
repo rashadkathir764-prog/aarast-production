@@ -28,26 +28,46 @@ describe('admin navigation', () => {
     expect(itemFor('/users').isActive('/users-old')).toBe(false);
   });
 
-  it('resolves a concise location for list and detail routes', () => {
+  it('only counts the queues the server can size', () => {
+    expect(
+      adminNavigationItems.filter((item) => item.count).map((item) => item.route),
+    ).toEqual(['/', '/providers/applications', '/conversation-reports']);
+  });
+
+  it('resolves the crumb the designs draw for list and detail routes', () => {
+    expect(resolveAdminLocation('/')).toMatchObject({
+      group: 'اليوم',
+      title: 'الصندوق',
+      crumb: ['اليوم'],
+    });
     expect(resolveAdminLocation('/providers/applications')).toMatchObject({
-      group: 'السوق والكتالوج',
-      title: 'طلبات الموردين',
+      group: 'المزودين',
+      title: 'طلبات الانضمام',
       route: '/providers/applications',
+      crumb: ['المزودين'],
     });
     expect(resolveAdminLocation('/providers/applications/provider-1')).toMatchObject({
-      group: 'السوق والكتالوج',
-      title: 'تفاصيل طلب مورد',
+      title: 'تفاصيل طلب',
       route: '/providers/applications',
+      crumb: ['المزودين', 'تفاصيل طلب'],
     });
     expect(resolveAdminLocation('/users/user-1')).toMatchObject({
-      group: 'الحسابات والرقابة',
+      group: 'الناس',
       title: 'تفاصيل مستخدم',
       route: '/users',
     });
     expect(resolveAdminLocation('/providers/provider-1/')).toMatchObject({
-      title: 'تفاصيل مورد',
+      title: 'تفاصيل مزود',
       route: '/providers',
       isDetail: true,
+      crumb: ['المزودين', 'تفاصيل مزود'],
+    });
+    expect(resolveAdminLocation('/categories')).toMatchObject({
+      crumb: ['النظام', 'الكتالوج'],
+    });
+    expect(resolveAdminLocation('/notifications')).toMatchObject({
+      title: 'الإشعارات',
+      crumb: ['النظام'],
     });
     expect(resolveAdminLocation('/providers2')).toMatchObject({
       title: 'صفحة غير معروفة',

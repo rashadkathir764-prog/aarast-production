@@ -1,298 +1,215 @@
-import { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+// n01 «الصندوق» (mobile/test/prototype/admin/admin_center.dart `n01Inbox`):
+// one inbox for the queues this admin can act on, each item with its
+// promise. Only the queues the server has are here: provider applications
+// waiting for review and open conversation reports. The owner column, the
+// «لي / بدون مسؤول / الكل» filters and «ضغط الفريق» wait for A-01
+// (docs/superpowers/audit/admin_build_classification.md).
+import { useCallback, useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { Clock } from 'lucide-react';
 import {
-  BarChart3,
-  Bell,
-  Briefcase,
-  CalendarCheck,
-  Clock,
-  MapPin,
-  PackageSearch,
-  Star,
-  Tag,
-  Users,
-} from 'lucide-react';
-import { getStats, type AdminStats } from './api';
-import {
+  getProvider,
   getProviderApplications,
   type ProviderApplication,
 } from '../providers/api';
-import { AdminPermission, Can, useAuth } from '../auth/api';
-import { ActionLink } from '../../design_system/ActionButton';
-import { EmptyState } from '../../design_system/EmptyState';
-import { ErrorState } from '../../design_system/ErrorState';
-import { LoadingState } from '../../design_system/LoadingState';
-import { MiniDonut } from '../../design_system/MiniDonut';
-import { PageHeader } from '../../design_system/PageHeader';
-import { SectionCard } from '../../design_system/SectionCard';
-import { StatCard } from '../../design_system/StatCard';
-import { StatusBadge } from '../../design_system/StatusBadge';
-import { formatDate } from '../../platform/i18n/formatDate';
+import { AdminPermission, hasAdminPermission, useAuth } from '../auth/api';
+import {
+  DeskHeader,
+  DeskNote,
+  DeskRetry,
+  DeskTable,
+  Panel,
+  Tag,
+  TwoLine,
+} from '../../design_system/Desk';
+import { agoWords, deadline, PROMISE } from '../../platform/i18n/deskTime';
 
-export function DashboardPage() {
+/** The slice of a conversation report the inbox reads. */
+export type InboxReport = {
+  id: string;
+  reason: string;
+  createdAt: string;
+  reporter: { id: string; name: string };
+  conversation: { provider: { id: string; businessName: string } };
+};
+
+type InboxPage<T> = { items: T[]; total: number };
+
+type DashboardPageProps = {
+  /** Open conversation reports, handed in by the app (moderation owns them). */
+  getOpenReports: (params: {
+    status: 'OPEN';
+    page: number;
+    limit: number;
+  }) => Promise<InboxPage<InboxReport>>;
+};
+
+type Kind = 'join' | 'report';
+
+type InboxItem = {
+  key: string;
+  kind: Kind;
+  title: string;
+  sub: string;
+  start: string;
+  to: string;
+};
+
+/** The promise per kind, as «الوعد لكل نوع» writes it. */
+const PROMISES: Record<Kind, { label: string; words: string; ms: number; tag: string; tone: 'sky' | 'coral' }> = {
+  report: { label: 'بلاغ', words: '4 ساعات', ms: 4 * PROMISE.HOUR, tag: 'بلاغ', tone: 'coral' },
+  join: { label: 'انضمام', words: 'يومين', ms: 2 * PROMISE.DAY, tag: 'انضمام', tone: 'sky' },
+};
+
+const LIMIT = 100;
+
+function joinItem(provider: ProviderApplication): InboxItem {
+  const where = [provider.primaryCategory?.nameAr, provider.city?.nameAr]
+    .filter(Boolean)
+    .join(' · ');
+  return {
+    key: `join-${provider.id}`,
+    kind: 'join',
+    title: provider.businessName,
+    sub: where ? `${where} · ${agoWords(provider.createdAt)}` : agoWords(provider.createdAt),
+    start: provider.createdAt,
+    to: `/providers/applications/${provider.id}`,
+  };
+}
+
+function reportItem(report: InboxReport, ownerId: string | null | undefined): InboxItem {
+  const provider = report.conversation.provider.businessName;
+  // The provider's owner filed it: the reported party is the customer.
+  const sub =
+    ownerId && ownerId === report.reporter.id
+      ? `«${provider}» بلّغ عن عميل`
+      : `${report.reporter.name} بلّغ عن «${provider}»`;
+  return {
+    key: `report-${report.id}`,
+    kind: 'report',
+    title: report.reason,
+    sub,
+    start: report.createdAt,
+    to: '/conversation-reports',
+  };
+}
+
+export function DashboardPage({ getOpenReports }: DashboardPageProps) {
   const { user } = useAuth();
-  const [stats, setStats] = useState<AdminStats | null>(null);
-  const [pending, setPending] = useState<ProviderApplication[]>([]);
+  const navigate = useNavigate();
+  const actsOnJoins = hasAdminPermission(user, AdminPermission.PROVIDERS_WRITE);
+  const actsOnReports = hasAdminPermission(user, AdminPermission.CONVERSATION_REPORTS_WRITE);
+  const [items, setItems] = useState<InboxItem[] | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const [now, setNow] = useState(() => new Date());
 
-  async function load() {
-    setIsLoading(true);
+  const load = useCallback(async () => {
     setError(null);
     try {
-      const [statsResult, pendingResult] = await Promise.all([
-        getStats(),
-        getProviderApplications({ status: 'PENDING', limit: 5 }),
+      const [joins, reports] = await Promise.all([
+        actsOnJoins
+          ? getProviderApplications({ status: 'PENDING', page: 1, limit: LIMIT })
+          : Promise.resolve({ items: [] as ProviderApplication[], total: 0 }),
+        actsOnReports
+          ? getOpenReports({ status: 'OPEN', page: 1, limit: LIMIT })
+          : Promise.resolve({ items: [] as InboxReport[], total: 0 }),
       ]);
-      setStats(statsResult);
-      setPending(pendingResult.items);
-    } catch (err) {
-      setError(
-        err instanceof Error ? err.message : 'تعذر تحميل لوحة التحكم.',
+      const providerIds = [...new Set(reports.items.map((report) => report.conversation.provider.id))];
+      const owners = await Promise.allSettled(providerIds.map((id) => getProvider(id)));
+      const ownerOf = new Map(
+        providerIds.map((id, index) => {
+          const result = owners[index];
+          return [id, result.status === 'fulfilled' ? result.value.userId : undefined];
+        }),
       );
-    } finally {
-      setIsLoading(false);
+      const next = [
+        ...joins.items.map(joinItem),
+        ...reports.items.map((report) =>
+          reportItem(report, ownerOf.get(report.conversation.provider.id)),
+        ),
+      ];
+      const current = new Date();
+      next.sort(
+        (a, b) =>
+          deadline(a.start, PROMISES[a.kind].ms, current).remainingMs -
+          deadline(b.start, PROMISES[b.kind].ms, current).remainingMs,
+      );
+      setNow(current);
+      setItems(next);
+    } catch (value) {
+      setError(value instanceof Error ? value.message : 'ما قدرنا نحمّل الصندوق.');
     }
-  }
+  }, [actsOnJoins, actsOnReports, getOpenReports]);
 
   useEffect(() => {
     void load();
-  }, []);
+  }, [load]);
 
-  const title = `مرحباً، ${user?.name ?? 'مدير النظام'}`;
-  const header = (
-    <PageHeader
-      eyebrow="نظرة تشغيلية"
-      title={title}
-      description="ابدأ بالطلبات التي تحتاج قراراً، ثم استخدم الملخص لمتابعة حالة المنصة."
-    />
+  const kinds = (Object.keys(PROMISES) as Kind[]).filter((kind) =>
+    kind === 'join' ? actsOnJoins : actsOnReports,
   );
-
-  if (isLoading) {
-    return (
-      <section className="dashboard-page" dir="rtl">
-        {header}
-        <LoadingState title="جارٍ تجهيز لوحة التحكم" />
-      </section>
-    );
-  }
-
-  if (error) {
-    return (
-      <section className="dashboard-page" dir="rtl">
-        {header}
-        <ErrorState message={error} onRetry={load} />
-      </section>
-    );
-  }
-
-  if (!stats) {
-    return (
-      <section className="dashboard-page" dir="rtl">
-        {header}
-        <EmptyState
-          title="لا توجد بيانات"
-          message="لم تصل إحصاءات الإدارة بعد."
-        />
-      </section>
-    );
-  }
-
-  const attentionCount = stats.pendingProviders + stats.needsChangesProviders;
-  const providerStatusData = [
-    { name: 'نشط', value: stats.approvedProviders, color: 'var(--success)' },
-    { name: 'قيد المراجعة', value: stats.pendingProviders, color: 'var(--info)' },
-    {
-      name: 'يحتاج تعديل',
-      value: stats.needsChangesProviders,
-      color: 'var(--warning)',
-    },
-    { name: 'مرفوض', value: stats.rejectedProviders, color: 'var(--danger)' },
-    {
-      name: 'موقوف',
-      value: stats.suspendedProviders,
-      color: 'var(--text-disabled)',
-    },
-  ];
-  const providerStatusTotal = providerStatusData.reduce(
-    (total, item) => total + item.value,
-    0,
-  );
+  const late = items?.filter((item) => deadline(item.start, PROMISES[item.kind].ms, now).overdue).length ?? 0;
+  const sub = items
+    ? `كل شغل اللوحة في مكان واحد · ${items.length} مفتوح · ${late} تعدّت الوقت`
+    : 'كل شغل اللوحة في مكان واحد';
 
   return (
-    <section className="dashboard-page" dir="rtl">
-      <PageHeader
-        eyebrow="نظرة تشغيلية"
-        title={title}
-        description="ابدأ بالطلبات التي تحتاج قراراً، ثم استخدم الملخص لمتابعة حالة المنصة."
-        actions={
-          <ActionLink
-            to={attentionCount > 0 ? '/providers/applications' : '/providers'}
-            icon={<Clock size={18} />}
-          >
-            {attentionCount > 0
-              ? `مراجعة ${attentionCount} طلب${attentionCount === 1 ? '' : 'ات'}`
-              : 'عرض الموردين'}
-          </ActionLink>
-        }
-      />
-
-      <div className="stats-grid dashboard-summary-grid">
-        <StatCard
-          title="المستخدمون"
-          value={stats.totalUsers}
-          icon={<Users size={18} />}
-          tone="brand"
-        />
-        <StatCard
-          title="الموردون"
-          value={stats.totalProviders}
-          icon={<Briefcase size={18} />}
-          tone="info"
-        />
-        <StatCard
-          title="خطط الزواج"
-          value={stats.totalWeddingPlans}
-          icon={<CalendarCheck size={18} />}
-          tone="success"
-        />
-        <StatCard
-          title="طلبات العروض"
-          value={stats.totalQuoteRequests}
-          icon={<BarChart3 size={18} />}
-          tone="warning"
-        />
-      </div>
-
-      <div className="dashboard-priority-grid">
-        <SectionCard
-          title="طلبات الموردين التي تنتظر المراجعة"
-          subtitle={
-            pending.length > 0
-              ? 'اختر طلباً لعرض التفاصيل واتخاذ الإجراء المناسب.'
-              : 'لا توجد طلبات جديدة تحتاج مراجعة الآن.'
-          }
-          actions={<Link to="/providers/applications">عرض الكل</Link>}
-        >
-          {pending.length === 0 ? (
-            <div className="dashboard-empty-note">
-              <strong>قائمة المراجعة فارغة</strong>
-              <span>ستظهر هنا الطلبات الجديدة فور وصولها.</span>
-            </div>
-          ) : (
-            <ul className="dashboard-pending-list">
-              {pending.map((provider) => (
-                <li key={provider.id}>
-                  <Link to={`/providers/applications/${provider.id}`}>
-                    <span className="dashboard-pending-avatar" aria-hidden="true">
-                      {provider.businessName.charAt(0)}
-                    </span>
-                    <span className="dashboard-pending-main">
-                      <strong>{provider.businessName}</strong>
-                      <span>
-                        {provider.primaryCategory?.nameAr ?? 'فئة غير محددة'}
-                      </span>
-                    </span>
-                    <span className="dashboard-pending-date">
-                      {formatDate(provider.createdAt)}
-                    </span>
-                    <StatusBadge status={provider.status} />
-                  </Link>
-                </li>
-              ))}
-            </ul>
-          )}
-        </SectionCard>
-
-        <SectionCard
-          title="صورة العمل اليوم"
-          subtitle="مؤشرات سريعة تساعد على ترتيب الأولويات."
-        >
-          <ul className="dashboard-health-list">
-            <li>
-              <span>طلبات جديدة</span>
-              <strong>{stats.pendingProviders}</strong>
-            </li>
-            <li>
-              <span>طلبات تحتاج تعديل</span>
-              <strong>{stats.needsChangesProviders}</strong>
-            </li>
-            <li>
-              <span>موردون نشطون</span>
-              <strong>{stats.approvedProviders}</strong>
-            </li>
-            <li>
-              <span>مدن مفعّلة</span>
-              <strong>{stats.totalCities}</strong>
-            </li>
-          </ul>
-        </SectionCard>
-      </div>
-
-      <div className="dashboard-priority-grid">
-        <SectionCard
-          title="حالة الموردين"
-          subtitle="توزيع مرئي للحالة الحالية، وليس مؤشراً مالياً أو حجزاً."
-        >
-          <MiniDonut
-            value={providerStatusTotal}
-            label="مورد"
-            data={providerStatusData}
-          />
-        </SectionCard>
-
-        <SectionCard
-          title="وصول سريع"
-          subtitle="انتقل إلى مساحة العمل المطلوبة دون تكرار الإجراءات."
-        >
-          {/* Each link needs the same read permission as its route guard in App.tsx. */}
-          <div className="dashboard-actions">
-            <Can permission={AdminPermission.PROVIDERS_READ}>
-              <Link className="dashboard-action" to="/providers/applications">
-                <Clock size={20} aria-hidden="true" />
-                <span>طلبات الموردين</span>
-              </Link>
-              <Link className="dashboard-action" to="/providers">
-                <Briefcase size={20} aria-hidden="true" />
-                <span>دليل الموردين</span>
-              </Link>
-            </Can>
-            <Can permission={AdminPermission.CATALOG_READ}>
-              <Link className="dashboard-action" to="/categories">
-                <Tag size={20} aria-hidden="true" />
-                <span>فئات الموردين</span>
-              </Link>
-              <Link className="dashboard-action" to="/cities">
-                <MapPin size={20} aria-hidden="true" />
-                <span>المدن والمناطق</span>
-              </Link>
-            </Can>
-            <Can permission={AdminPermission.SERVICES_READ}>
-              <Link className="dashboard-action" to="/services">
-                <PackageSearch size={20} aria-hidden="true" />
-                <span>الخدمات</span>
-              </Link>
-            </Can>
-            <Can permission={AdminPermission.REVIEWS_READ}>
-              <Link className="dashboard-action" to="/reviews">
-                <Star size={20} aria-hidden="true" />
-                <span>مراقبة التقييمات</span>
-              </Link>
-            </Can>
-            <Can permission={AdminPermission.NOTIFICATIONS_READ}>
-              <Link className="dashboard-action" to="/notifications">
-                <Bell size={20} aria-hidden="true" />
-                <span>إشعارات الحساب</span>
-              </Link>
-            </Can>
-            <Can permission={AdminPermission.REPORTS_READ}>
-              <Link className="dashboard-action" to="/reports">
-                <BarChart3 size={20} aria-hidden="true" />
-                <span>التقارير التشغيلية</span>
-              </Link>
-            </Can>
+    <section className="desk-fill-page">
+      <DeskHeader title="الصندوق" sub={sub} />
+      {error ? <DeskRetry message={error} onRetry={() => void load()} /> : null}
+      <div className="desk-split">
+        <div className="desk-split__main" style={{ flex: 4 }}>
+          {items === null && !error ? <DeskNote>لحظة، نجمع البنود…</DeskNote> : null}
+          {items && items.length === 0 ? (
+            <Panel>
+              <DeskNote>ما فيه شي ينتظر الآن.</DeskNote>
+            </Panel>
+          ) : null}
+          {items && items.length > 0 ? (
+            <DeskTable
+              caption="بنود الصندوق"
+              columns={[
+                { label: 'البند', flex: 5 },
+                { label: 'النوع', flex: 2 },
+                { label: 'الوقت', flex: 2 },
+              ]}
+              rows={items}
+              rowKey={(item) => item.key}
+              highlight={(item) => deadline(item.start, PROMISES[item.kind].ms, now).overdue}
+              onRowClick={(item) => navigate(item.to)}
+              rowLabel={(item) => `افتح ${item.title}`}
+              renderRow={(item) => {
+                const promise = PROMISES[item.kind];
+                const time = deadline(item.start, promise.ms, now);
+                return [
+                  <TwoLine key="t" main={item.title} sub={item.sub} />,
+                  <Tag key="k" tone={promise.tone}>
+                    {promise.tag}
+                  </Tag>,
+                  <span key="s" className={`desk-sla${time.late ? ' is-late' : ''}`}>
+                    <Clock size={14} aria-hidden="true" />
+                    {time.label}
+                  </span>,
+                ];
+              }}
+            />
+          ) : null}
+        </div>
+        {kinds.length > 0 ? (
+          <div className="desk-split__side" style={{ flex: 2 }}>
+            <Panel>
+              <h2 className="desk-panel__title">الوعد لكل نوع</h2>
+              <dl className="desk-pairs">
+                {kinds.map((kind) => (
+                  <div key={kind}>
+                    <dt>{PROMISES[kind].label}</dt>
+                    <dd>{PROMISES[kind].words}</dd>
+                  </div>
+                ))}
+              </dl>
+            </Panel>
           </div>
-        </SectionCard>
+        ) : null}
       </div>
     </section>
   );

@@ -3,6 +3,7 @@ import { Outlet, useNavigate } from 'react-router-dom';
 import { useAuth } from '../features/auth/api';
 import { Sidebar } from './Sidebar';
 import { Topbar } from './Topbar';
+import '../styles/desk.css';
 
 export function AdminLayout() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
@@ -62,7 +63,7 @@ export function AdminLayout() {
   }
 
   return (
-    <div className="admin-shell" dir="rtl">
+    <div className="desk-shell" dir="rtl">
       <Sidebar
         closeButtonRef={drawerCloseButtonRef}
         isOpen={isSidebarOpen}
@@ -72,7 +73,7 @@ export function AdminLayout() {
       />
 
       <button
-        className={`sidebar-scrim ${isSidebarOpen ? 'visible' : ''}`}
+        className={`desk-scrim${isSidebarOpen ? ' is-visible' : ''}`}
         type="button"
         aria-label="إغلاق القائمة"
         aria-hidden={!isSidebarOpen}
@@ -82,7 +83,7 @@ export function AdminLayout() {
 
       <main
         ref={adminMainRef}
-        className="admin-main"
+        className="desk-main"
         aria-hidden={isSidebarOpen}
       >
         <Topbar
@@ -90,7 +91,7 @@ export function AdminLayout() {
           menuButtonRef={menuButtonRef}
           onMenuClick={() => (isSidebarOpen ? closeSidebar() : openSidebar())}
         />
-        <div className="content-frame">
+        <div className="desk-content">
           <Outlet />
         </div>
       </main>

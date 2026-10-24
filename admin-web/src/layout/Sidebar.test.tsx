@@ -8,17 +8,27 @@ import { Sidebar } from './Sidebar';
 const authState = vi.hoisted(() => ({
   user: {
     id: 'admin-1',
-    name: 'مدير النظام',
+    name: 'نادية',
+    adminRole: 'OPERATIONS',
     adminPermissions: [],
   } as {
     id: string;
     name: string;
+    adminRole: string | null;
     adminPermissions: string[];
   } | null,
 }));
 
+const queueCounts = vi.hoisted(() => ({
+  value: {} as Record<string, number | undefined>,
+}));
+
 vi.mock('../features/auth/AuthProvider', () => ({
   useAuth: () => authState,
+}));
+
+vi.mock('./useQueueCounts', () => ({
+  useQueueCounts: () => queueCounts.value,
 }));
 
 function renderSidebar(pathname = '/') {
@@ -43,11 +53,34 @@ function renderSidebar(pathname = '/') {
 
 describe('Sidebar', () => {
   beforeEach(() => {
+    queueCounts.value = {};
     authState.user = {
       id: 'admin-1',
-      name: 'مدير النظام',
+      name: 'نادية',
+      adminRole: 'OPERATIONS',
       adminPermissions: Object.values(AdminPermission),
     };
+  });
+
+  it('draws the design sections in order with only the built pages', () => {
+    renderSidebar('/');
+
+    const groups = Array.from(
+      document.querySelectorAll('.desk-side__group-label'),
+    ).map((node) => node.textContent);
+    expect(groups).toEqual([
+      'اليوم',
+      'السوق',
+      'المزودين',
+      'الناس',
+      'الرقابة',
+      'النظام',
+      'الفريق',
+    ]);
+    expect(screen.queryByText('جديد')).not.toBeInTheDocument();
+    expect(screen.queryByText('1.1')).not.toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: /نظرة السوق/ })).not.toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: /الإشعارات/ })).not.toBeInTheDocument();
   });
 
   it('marks only provider applications as current on an application detail page', () => {
@@ -55,8 +88,8 @@ describe('Sidebar', () => {
 
     const currentLinks = screen.getAllByRole('link', { current: 'page' });
     expect(currentLinks).toHaveLength(1);
-    expect(currentLinks[0]).toHaveTextContent('طلبات الموردين');
-    expect(screen.getByRole('link', { name: 'الموردون' })).not.toHaveAttribute(
+    expect(currentLinks[0]).toHaveTextContent('طلبات الانضمام');
+    expect(screen.getByRole('link', { name: 'دليل المزودين' })).not.toHaveAttribute(
       'aria-current',
     );
   });
@@ -66,23 +99,65 @@ describe('Sidebar', () => {
 
     const currentLinks = screen.getAllByRole('link', { current: 'page' });
     expect(currentLinks).toHaveLength(1);
-    expect(currentLinks[0]).toHaveTextContent('الموردون');
+    expect(currentLinks[0]).toHaveTextContent('دليل المزودين');
+  });
+
+  it('keeps the catalog link current on every catalog page', () => {
+    for (const path of ['/categories', '/reference-catalogs', '/cities', '/administrative-areas']) {
+      const { unmount } = render(
+        <MemoryRouter initialEntries={[path]}>
+          <Sidebar
+            closeButtonRef={createRef<HTMLButtonElement>()}
+            isOpen={false}
+            onClose={vi.fn()}
+            onNavigate={vi.fn()}
+            onLogout={vi.fn()}
+          />
+        </MemoryRouter>,
+      );
+      expect(screen.getByRole('link', { current: 'page' })).toHaveTextContent('الكتالوج');
+      unmount();
+    }
   });
 
   it('does not render links without the matching server permission', () => {
     authState.user = {
       id: 'admin-1',
-      name: 'مدير النظام',
+      name: 'نادية',
+      adminRole: 'SUPPORT',
       adminPermissions: [AdminPermission.DASHBOARD_READ],
     };
 
     renderSidebar('/');
 
-    expect(screen.getByRole('link', { name: 'لوحة التحكم' })).toBeVisible();
+    expect(screen.getByRole('link', { name: 'الصندوق' })).toBeVisible();
     expect(
-      screen.queryByRole('link', { name: 'طلبات الموردين' }),
+      screen.queryByRole('link', { name: 'طلبات الانضمام' }),
     ).not.toBeInTheDocument();
-    expect(screen.queryByText('السوق والكتالوج')).not.toBeInTheDocument();
+    expect(screen.queryByText('المزودين')).not.toBeInTheDocument();
+  });
+
+  it('shows the queue counts the server gives, coral for the hot ones', () => {
+    queueCounts.value = { inbox: 23, applications: 12, reports: undefined };
+    renderSidebar('/');
+
+    const inbox = screen.getByRole('link', { name: /الصندوق/ });
+    expect(inbox).toHaveTextContent('23');
+    expect(inbox.querySelector('.desk-side__count')).toHaveClass('is-hot');
+    const applications = screen.getByRole('link', { name: /طلبات الانضمام/ });
+    expect(applications.querySelector('.desk-side__count')).not.toHaveClass('is-hot');
+    expect(
+      screen.getByRole('link', { name: /البلاغات/ }).querySelector('.desk-side__count'),
+    ).toBeNull();
+  });
+
+  it('shows the admin name and real role, and signs out', () => {
+    const { onLogout } = renderSidebar('/');
+
+    expect(screen.getByText('نادية')).toBeVisible();
+    expect(screen.getByText('تشغيل')).toBeVisible();
+    fireEvent.click(screen.getByRole('button', { name: 'تسجيل الخروج' }));
+    expect(onLogout).toHaveBeenCalledTimes(1);
   });
 
   it('closes the drawer after navigation and through its close control', () => {

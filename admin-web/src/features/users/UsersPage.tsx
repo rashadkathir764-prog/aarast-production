@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { activateUser, disableUser, getUsers, type AdminUserRecord } from './api';
 import { ActionButton } from '../../design_system/ActionButton';
 import { DataTable } from '../../design_system/DataTable';
@@ -19,7 +19,10 @@ import { AdminPermission, Can, useAuth } from '../auth/api';
 export function UsersPage() {
   const { user: currentAdmin } = useAuth();
   const [items, setItems] = useState<AdminUserRecord[]>([]);
-  const [search, setSearch] = useState('');
+  // The desk's top search («ابحث برقم أو اسم») lands here as ?search=.
+  const [searchParams] = useSearchParams();
+  const urlSearch = searchParams.get('search') ?? '';
+  const [search, setSearch] = useState(urlSearch);
   const [page, setPage] = useState(1);
   const [pagination, setPagination] = useState({
     page: 1,
@@ -30,11 +33,11 @@ export function UsersPage() {
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  async function load() {
+  async function load(term: string = search) {
     setIsLoading(true);
     setError(null);
     try {
-      const result = await getUsers({ search, page, limit: 20 });
+      const result = await getUsers({ search: term, page, limit: 20 });
       if (page > result.totalPages) {
         setPage(result.totalPages);
         return;
@@ -57,6 +60,15 @@ export function UsersPage() {
     load();
   }, [page]);
 
+  const [lastUrlSearch, setLastUrlSearch] = useState(urlSearch);
+  useEffect(() => {
+    if (urlSearch === lastUrlSearch) return;
+    setLastUrlSearch(urlSearch);
+    setSearch(urlSearch);
+    if (page === 1) void load(urlSearch);
+    else setPage(1);
+  }, [urlSearch]);
+
   function submitSearch() {
     if (page === 1) void load();
     else setPage(1);
@@ -77,7 +89,7 @@ export function UsersPage() {
   }
 
   if (isLoading) return <LoadingState title="جاري تحميل المستخدمين" />;
-  if (error) return <ErrorState message={error} onRetry={load} />;
+  if (error) return <ErrorState message={error} onRetry={() => load()} />;
 
   const adminCount = items.filter((user) => user.role === 'ADMIN').length;
   const providerCount = items.filter((user) => user.role === 'PROVIDER').length;

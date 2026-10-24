@@ -21,13 +21,22 @@ type TriggerProps = {
 
 type ConfirmDialogProps = {
   title: string;
-  message: string;
+  message?: string;
   confirmLabel: string;
   tone?: 'normal' | 'danger';
   needsNote?: boolean;
   noteLabel?: string;
   trigger: ReactNode;
   onConfirm: (note: string) => Promise<void> | void;
+  /**
+   * The admin desk dialog (akit `confirm`): what will happen as dotted
+   * lines, the note in a teal box, the action first and «تراجع» after it.
+   */
+  variant?: 'classic' | 'desk';
+  effects?: string[];
+  confirmTone?: 'teal' | 'coral' | 'green' | 'saffron';
+  cancelLabel?: string;
+  noteRequired?: boolean;
 };
 
 export function ConfirmDialog({
@@ -39,6 +48,11 @@ export function ConfirmDialog({
   noteLabel = 'الملاحظة',
   trigger,
   onConfirm,
+  variant = 'classic',
+  effects,
+  confirmTone = 'teal',
+  cancelLabel = 'تراجع',
+  noteRequired = true,
 }: ConfirmDialogProps) {
   const [open, setOpen] = useState(false);
   const [note, setNote] = useState('');
@@ -117,8 +131,10 @@ export function ConfirmDialog({
     setError(null);
   }
 
+  const noteMissing = needsNote && noteRequired && !note.trim();
+
   async function submit() {
-    if (needsNote && !note.trim()) return;
+    if (noteMissing) return;
     setIsSubmitting(true);
     setError(null);
     try {
@@ -170,6 +186,82 @@ export function ConfirmDialog({
           {trigger}
         </span>
       );
+
+  if (variant === 'desk') {
+    return (
+      <>
+        {triggerElement}
+        {open
+          ? createPortal(
+              <div
+                className="desk-dialog-backdrop"
+                role="presentation"
+                onClick={closeDialog}
+              >
+                <div
+                  className="desk-dialog"
+                  role="dialog"
+                  aria-modal="true"
+                  aria-labelledby={titleId}
+                  aria-describedby={messageId}
+                  id={dialogId}
+                  ref={dialogRef}
+                  tabIndex={-1}
+                  dir="rtl"
+                  onClick={(event) => event.stopPropagation()}
+                >
+                  <h2 id={titleId}>{title}</h2>
+                  <div id={messageId}>
+                    {effects && effects.length > 0 ? (
+                      <ul className="desk-dialog__effects">
+                        {effects.map((effect) => (
+                          <li key={effect}>{effect}</li>
+                        ))}
+                      </ul>
+                    ) : null}
+                    {message ? <p className="desk-dialog__message">{message}</p> : null}
+                  </div>
+                  {needsNote ? (
+                    <label className="desk-dialog__note">
+                      <span>{noteLabel}</span>
+                      <textarea
+                        value={note}
+                        onChange={(event) => setNote(event.target.value)}
+                        rows={2}
+                      />
+                    </label>
+                  ) : null}
+                  {error ? (
+                    <p className="desk-dialog__error" role="alert">
+                      {error}
+                    </p>
+                  ) : null}
+                  <div className="desk-dialog__actions">
+                    <button
+                      className={`desk-btn desk-btn--${confirmTone}`}
+                      type="button"
+                      onClick={submit}
+                      disabled={isSubmitting || noteMissing}
+                    >
+                      <span>{isSubmitting ? 'لحظة…' : confirmLabel}</span>
+                    </button>
+                    <button
+                      className="desk-btn desk-btn--soft"
+                      type="button"
+                      onClick={closeDialog}
+                      disabled={isSubmitting}
+                    >
+                      <span>{cancelLabel}</span>
+                    </button>
+                  </div>
+                </div>
+              </div>,
+              document.body,
+            )
+          : null}
+      </>
+    );
+  }
 
   return (
     <>
@@ -223,7 +315,7 @@ export function ConfirmDialog({
                     className={`button ${tone === 'danger' ? 'button--danger' : ''}`}
                     type="button"
                     onClick={submit}
-                    disabled={isSubmitting || (needsNote && !note.trim())}
+                    disabled={isSubmitting || noteMissing}
                   >
                     {isSubmitting ? 'جاري التنفيذ...' : confirmLabel}
                   </button>

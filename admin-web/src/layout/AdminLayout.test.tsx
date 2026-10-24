@@ -15,6 +15,10 @@ vi.mock('../features/auth/AuthProvider', () => ({
   }),
 }));
 
+vi.mock('./useQueueCounts', () => ({
+  useQueueCounts: () => ({}),
+}));
+
 function renderLayout() {
   render(
     <MemoryRouter initialEntries={['/']}>

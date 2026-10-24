@@ -7,6 +7,7 @@ import { LoginPage } from './features/auth/LoginPage';
 import { DashboardPage } from './features/dashboard/DashboardPage';
 import { getStats } from './features/dashboard/api';
 import { getCategories, getCities } from './features/catalog/api';
+import { getConversationReports } from './features/moderation/api';
 import { ProviderApplicationsPage } from './features/providers/ProviderApplicationsPage';
 import { ProviderApplicationDetailsPage } from './features/providers/ProviderApplicationDetailsPage';
 import { ProvidersPage } from './features/providers/ProvidersPage';
@@ -41,7 +42,7 @@ export default function App() {
           index
           element={
             <RequireAdminPermission permission={AdminPermission.DASHBOARD_READ}>
-              <DashboardPage />
+              <DashboardPage getOpenReports={getConversationReports} />
             </RequireAdminPermission>
           }
         />

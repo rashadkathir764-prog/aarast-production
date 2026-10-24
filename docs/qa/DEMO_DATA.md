@@ -15,9 +15,13 @@ real app and compared to its design like for like.
 من مجلد `backend`:
 
 ```powershell
-npx ts-node prisma/demo-seed.ts
+npm run seed
 ```
 
+- هذا هو الأمر الوحيد لتعبئة البيانات (القرار D47): `npm run seed` يشغّل
+  `prisma/demo-seed.ts`، و`prisma migrate reset` يشغّله بعد ما يعيد بناء القاعدة.
+  ملف `prisma/seed.ts` القديم انحذف. المدن وفئات المزودين تجي من الـ migrations
+  نفسها مثل الإنتاج، فما يحتاج أمر ثاني قبله.
 - يقرأ `backend/.env` لو `DATABASE_URL` غير مضبوط، ولا يطبع منه شيء.
 - **يمتنع عن التشغيل** لو `NODE_ENV=production`، أو لو عنوان قاعدة البيانات مو
   `localhost` / `127.0.0.1`.

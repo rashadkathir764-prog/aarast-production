@@ -112,7 +112,8 @@ export const PROVIDERS: readonly ProviderSpec[] = [
   {
     key: 'hospitality',
     city: 'صنعاء',
-    categorySlug: 'hospitality',
+    // The production catalog's «وجبات» (migration 20260729050000).
+    categorySlug: 'catering',
     businessName: 'ضيافة الأصالة',
     ownerName: 'عبدالرحمن الأصبحي',
     phone: '+967777000501',

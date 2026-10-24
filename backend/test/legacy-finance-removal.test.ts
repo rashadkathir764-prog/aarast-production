@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { test } from "node:test";
 import { readLivePrismaSchema } from './support/live-prisma-schema';
@@ -58,7 +58,15 @@ test("only the unified money domain remains in the live schema and modules", () 
 });
 
 test("operational seed, load, and smoke tools cannot restore old money paths", () => {
-  const seed = read("prisma/seed.ts");
+  // The local demo seed is the only seed (D47): its entry and every module.
+  const seed = [
+    "prisma/demo-seed.ts",
+    ...readdirSync(join(backendRoot, "prisma/demo-seed"))
+      .filter((name) => name.endsWith(".ts"))
+      .map((name) => `prisma/demo-seed/${name}`),
+  ]
+    .map(read)
+    .join("\n");
   const load = read("scripts/load/load-test.js");
   const packageJson = read("package.json");
   const allSmoke = read("scripts/smoke/all-smoke.js");

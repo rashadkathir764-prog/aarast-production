@@ -2,7 +2,10 @@
 // (the groom, the bride, the providers and the admin team) so every journey can
 // be walked in the real app and compared to the prototype like for like.
 //
-//   cd backend && npx ts-node prisma/demo-seed.ts
+//   cd backend && npm run seed      (also run by `prisma migrate reset`)
+//
+// It is the only seed (D47). The reference catalog (cities and provider
+// categories) comes from the migrations, as in production.
 //
 // Safe to run again: every row has a stable id and is updated in place. It
 // refuses to run in production or against any database that is not on this

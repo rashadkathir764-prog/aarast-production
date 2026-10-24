@@ -41,7 +41,7 @@ async function resolveCities(prisma: PrismaClient): Promise<Map<string, string>>
     }
     // Only Dhamar is missing from the stock catalog; anything else means an unmigrated database.
     if (nameAr !== 'ذمار') {
-      throw new Error(`City ${nameAr} is missing. Run the migrations and "npm run seed" first.`);
+      throw new Error(`City ${nameAr} is missing. Run the migrations first.`);
     }
     const created = await prisma.city.create({
       data: { nameAr, nameEn: 'Dhamar', countryCode: 'YE', isActive: true, sortOrder: 70 },

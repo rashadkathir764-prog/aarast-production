@@ -15,7 +15,10 @@ directories and `backend/prisma/seed.ts` are byte-identical to immutable
 fingerprint matched the base, `prisma migrate diff` was empty, and the generated
 model table below remained byte-identical. This is a physical organization
 change only; it does not alter the database, Prisma Client contract, migration
-history, or product behavior.
+history, or product behavior. (This paragraph records R2. Since D47,
+`backend/prisma/seed.ts` is retired: `npm run seed` and `prisma migrate reset`
+run the local demo seed `backend/prisma/demo-seed.ts`, see
+`docs/qa/DEMO_DATA.md`.)
 
 ## Current And Marketplace Entities
 

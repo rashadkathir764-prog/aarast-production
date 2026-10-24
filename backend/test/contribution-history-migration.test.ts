@@ -281,21 +281,27 @@ test("repair migration backfills only missing scopes without inventing historica
 });
 
 test("seed creates or repairs the demo plan scope without rewriting coverage", () => {
-  const seed = read("prisma/seed.ts");
-  const demoSeed = seed.slice(
-    seed.indexOf("async function seedBackendCompletionDemo"),
+  // The local demo seed is the only seed (D47); every demo plan is written by
+  // seedPlanCore, in one transaction with its contributor history scope.
+  const planSeed = read("prisma/demo-seed/plan.ts");
+  const core = planSeed.slice(
+    planSeed.indexOf("export async function seedPlanCore"),
+    planSeed.indexOf("async function seedItem"),
+  );
+  const planWrite = core.slice(
+    core.indexOf("await prisma.$transaction("),
+    core.indexOf("await tx.user.update"),
   );
 
-  assert.match(demoSeed, /prisma\.\$transaction\(async \(tx\) =>/);
-  assert.match(demoSeed, /await tx\.weddingPlan\.create\(/);
-  assert.match(demoSeed, /await tx\.contributorHistoryScope\.upsert\(/);
+  assert.match(planWrite, /^await prisma\.\$transaction\(\s*async \(tx\) =>/);
+  assert.match(planWrite, /await tx\.weddingPlan\.upsert\(/);
+  assert.match(planWrite, /await tx\.contributorHistoryScope\.upsert\(/);
   assert.match(
-    demoSeed,
-    /create:[\s\S]*weddingPlanId:\s*activePlan\.id[\s\S]*status:\s*ContributionScopeStatus\.ACTIVE[\s\S]*historyCoverageStartsAt:\s*new Date\(\)/,
+    planWrite,
+    /create:\s*\{[\s\S]*weddingPlanId:\s*id,[\s\S]*status:\s*ContributionScopeStatus\.ACTIVE[\s\S]*historyCoverageStartsAt:/,
   );
-  const scopeUpsert = demoSeed.slice(
-    demoSeed.indexOf("await tx.contributorHistoryScope.upsert"),
-    demoSeed.indexOf("return activePlan"),
+  const scopeUpsert = planWrite.slice(
+    planWrite.indexOf("await tx.contributorHistoryScope.upsert"),
   );
   assert.doesNotMatch(scopeUpsert, /update:[\s\S]*historyCoverageStartsAt/);
 });

@@ -309,8 +309,9 @@ void main() {
       // p35 (D40): «التقييمات» opens the published reviews in a sheet.
       await tester.tap(find.byKey(const Key('provider-me-reviews')));
       await tester.pumpAndSettle();
-      expect(find.text('تصوير رائع'), findsOneWidget);
-      expect(find.text('تعليق مخفي'), findsNothing);
+      // Each review reads as p27's card: the words in quotes.
+      expect(find.text('«تصوير رائع»'), findsOneWidget);
+      expect(find.textContaining('تعليق مخفي'), findsNothing);
       expect(
         find.text('تقييم واحد في ملفك، وتقييم ما يظهر للعرسان'),
         findsOneWidget,
@@ -338,17 +339,17 @@ void main() {
       expect(find.byKey(const Key('provider-me-edit-cover')), findsOne);
     });
 
+    // A refused profile opens p11 (slice 5); a tab closes only when the
+    // server refuses an active profile's operations (its status changed).
     testWidgets('a closed portal tab offers support and pulls to refresh', (
       tester,
     ) async {
-      final api = _PortalApi(status: 'REJECTED');
+      final api = _PortalApi(denyOperations: true);
       await _pumpPortal(tester, api, initialTab: 'requests');
 
-      expect(find.text('الطلب غير معتمد'), findsOneWidget);
+      expect(find.text('عمليات المزود غير متاحة'), findsOneWidget);
       expect(
-        find.text(
-          'الإدارة ما اعتمدت طلبك، والملف ما يتعدّل. لو عندك سؤال كلّم الدعم.',
-        ),
+        find.text('اسحب الصفحة لتحت عشان تتحدّث حالة حسابك.'),
         findsOneWidget,
       );
       expect(
@@ -584,10 +585,15 @@ class _PortalApi extends ProviderDashboardApi {
     this.reviews = const [],
     this.bookingStatus = 'REQUESTED',
     this.hasBooking = true,
+    this.denyOperations = false,
   }) : _quotes = [for (final quote in quotes) Map.of(quote)],
        super(ApiClient(tokenProvider: () async => null));
 
   final String status;
+
+  /// The server refuses the operations (403) although the profile reads
+  /// as active.
+  final bool denyOperations;
   final List<Map<String, dynamic>> _quotes;
   final List<ProviderReview> reviews;
   String bookingStatus;
@@ -615,8 +621,12 @@ class _PortalApi extends ProviderDashboardApi {
   }
 
   @override
-  Future<ProviderDashboardSummary> getSummary() async =>
-      ProviderDashboardSummary.empty();
+  Future<ProviderDashboardSummary> getSummary() async {
+    if (denyOperations) {
+      throw const ApiException('forbidden', statusCode: 403);
+    }
+    return ProviderDashboardSummary.empty();
+  }
 
   @override
   Future<List<MarketplaceService>> getServices() async => const [];

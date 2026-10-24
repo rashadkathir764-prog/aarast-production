@@ -7,7 +7,7 @@ import '../../../core/experience_v3/aarast_v3.dart';
 import '../../../core/routing/app_router.dart';
 import '../../../core/utils/arabic_date_formatter.dart';
 import '../../marketplace/marketplace_api.dart'
-    show MarketplaceBooking, ProviderDashboardProfile, QuoteRequest;
+    show MarketplaceBooking, QuoteRequest;
 import '../providers/provider_dashboard_provider.dart';
 import '../widgets/provider_first_steps.dart';
 import '../widgets/provider_join_parts.dart';
@@ -66,7 +66,7 @@ class ProviderHomeTab extends StatelessWidget {
             ),
             const SizedBox(height: 16),
             if (!dashboard.canUseProviderOperations)
-              _ProviderLifecycleNotice(profile: profile)
+              const _ProviderLifecycleNotice()
             else if (dashboard.quoteRequests.isEmpty &&
                 dashboard.errorMessage == null &&
                 !dashboard.isOffline)
@@ -363,31 +363,16 @@ class _BookingAsked extends StatelessWidget {
   }
 }
 
-/// A profile under changes or refused keeps the portal until slice 5 (p09,
-/// p11): the admin's note, the edit while changes are asked, and support.
-/// The server keeps a rejected profile read-only, and an edit does not
-/// send a profile back to review by itself.
+/// The server refused his operations although the profile read as active
+/// (its status changed meanwhile). Every other status has its own screen
+/// (p08, p09, p11, p12), so this only asks for a refresh and offers support.
 class _ProviderLifecycleNotice extends StatelessWidget {
-  const _ProviderLifecycleNotice({required this.profile});
-
-  final ProviderDashboardProfile profile;
+  const _ProviderLifecycleNotice();
 
   @override
   Widget build(BuildContext context) {
-    final status = profile.status.toUpperCase();
-    final title = switch (status) {
-      'NEEDS_CHANGES' => 'ملفك يحتاج تعديلات',
-      'REJECTED' => 'ما قدرنا نوافق على ملفك',
-      _ => 'شغل المزود موقوف الحين',
-    };
-    final fallback = switch (status) {
-      'NEEDS_CHANGES' =>
-        'عدّل ملفك حسب ملاحظة الإدارة، وبعدها كلّم الدعم عشان يراجعونه.',
-      'REJECTED' =>
-        'الإدارة ما اعتمدت طلبك، والملف ما يتعدّل. لو عندك سؤال كلّم الدعم.',
-      _ => 'اسحب الصفحة لتحت عشان تتحدّث حالة حسابك.',
-    };
-    final note = profile.reviewNote?.trim() ?? '';
+    const title = 'شغل المزود موقوف الآن';
+    const message = 'اسحب الصفحة لتحت عشان تتحدّث حالة حسابك.';
     return JourneyBox(
       key: const Key('provider-lifecycle-notice'),
       child: Column(
@@ -395,10 +380,8 @@ class _ProviderLifecycleNotice extends StatelessWidget {
         children: [
           Row(
             children: [
-              JourneyIconTile(
-                icon: status == 'NEEDS_CHANGES'
-                    ? LucideIcons.fileEdit
-                    : LucideIcons.shieldAlert,
+              const JourneyIconTile(
+                icon: LucideIcons.shieldAlert,
                 color: AarastV3Color.brandAccentStrong,
                 soft: AarastV3Color.brandAccentSoft,
                 size: 42,
@@ -417,24 +400,13 @@ class _ProviderLifecycleNotice extends StatelessWidget {
           ),
           const SizedBox(height: 10),
           Text(
-            note.isEmpty ? fallback : note,
+            message,
             style: JourneyType.of(
               JourneyType.body,
               color: AarastV3Color.textMuted,
               height: 1.5,
             ),
           ),
-          if (status == 'NEEDS_CHANGES') ...[
-            const SizedBox(height: 12),
-            JourneyButton(
-              label: 'عدّل ملفك',
-              icon: LucideIcons.pencil,
-              background: AarastV3Color.canvas,
-              foreground: AarastV3Color.primary,
-              expand: true,
-              onPressed: () => context.push(AppRouter.providerProfileEdit),
-            ),
-          ],
           const SizedBox(height: 10),
           JourneyButton(
             key: const Key('provider-lifecycle-support'),

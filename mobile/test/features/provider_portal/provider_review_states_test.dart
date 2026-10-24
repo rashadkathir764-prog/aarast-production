@@ -10,8 +10,10 @@ import 'package:aarast_mobile/features/marketplace/models/marketplace_models.dar
 import 'package:aarast_mobile/features/provider_portal/data/provider_approval_ledger.dart';
 import 'package:aarast_mobile/features/provider_portal/providers/provider_dashboard_provider.dart';
 import 'package:aarast_mobile/features/provider_portal/screens/provider_approved_screen.dart';
+import 'package:aarast_mobile/features/provider_portal/screens/provider_changes_screen.dart';
 import 'package:aarast_mobile/features/provider_portal/screens/provider_pending_screen.dart';
 import 'package:aarast_mobile/features/provider_portal/screens/provider_portal_screen.dart';
+import 'package:aarast_mobile/features/provider_portal/screens/provider_rejected_screen.dart';
 import 'package:aarast_mobile/features/provider_portal/screens/provider_suspended_screen.dart';
 import 'package:aarast_mobile/features/provider_portal/widgets/provider_join_parts.dart';
 import 'package:flutter/material.dart';
@@ -162,6 +164,127 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.byType(ProviderApprovedScreen), findsNothing);
       expect(find.text('الرئيسية'), findsWidgets);
+    });
+  });
+
+  group('p09 needs changes', () {
+    testWidgets('the team note once, his fields to edit, and support', (
+      tester,
+    ) async {
+      final now = DateTime.now();
+      final api = _Api(
+        status: 'NEEDS_CHANGES',
+        reviewNote: 'اكتب ايش تشمل باقتك: كم صورة، ومدة الفيلم، والألبوم.',
+        reviewedAt: DateTime(now.year, now.month, now.day - 1, 9),
+        description: 'تصوير أعراس رجال ونساء.',
+      );
+      await _pumpPortal(tester, api);
+
+      expect(find.byType(ProviderChangesScreen), findsOneWidget);
+      expect(find.text('يحتاج تعديل بسيط'), findsOneWidget);
+      expect(
+        find.text('ملفك قريب. صلّح الملاحظة تحت، وبعدها كلّم الدعم يراجعونه.'),
+        findsOneWidget,
+      );
+      expect(
+        find.text('اكتب ايش تشمل باقتك: كم صورة، ومدة الفيلم، والألبوم.'),
+        findsOneWidget,
+      );
+      expect(find.text('اسم النشاط'), findsOneWidget);
+      expect(find.text('استوديو ضوء صنعاء'), findsOneWidget);
+      expect(find.text('المدينة'), findsOneWidget);
+      expect(find.text('صنعاء'), findsOneWidget);
+      expect(find.text('نبذة النشاط'), findsOneWidget);
+      expect(find.text('الملاحظة من فريق المراجعة · أمس'), findsOneWidget);
+      // No resubmit on the server (F3, B-01): nothing promises one.
+      expect(find.text('أرسلت التعديل'), findsNothing);
+      expect(find.textContaining('أول بأول'), findsNothing);
+      // No tabs while changes are asked.
+      expect(find.text('الطلبات'), findsNothing);
+
+      await tester.tap(find.byKey(const Key('provider-changes-name')));
+      await tester.pumpAndSettle();
+      expect(find.text('تعديل الملف'), findsOneWidget);
+      await tester.pageBack();
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byKey(const Key('provider-changes-support')));
+      await tester.pumpAndSettle();
+      expect(find.text('صفحة الدعم'), findsOneWidget);
+    });
+
+    testWidgets('without a note it asks him to fix his profile and pulls '
+        'to read the status again', (tester) async {
+      final api = _Api(status: 'NEEDS_CHANGES');
+      await _pumpPortal(tester, api);
+
+      expect(find.byKey(const Key('provider-changes-note')), findsNothing);
+      expect(
+        find.text('ملفك قريب. صلّح بياناته، وبعدها كلّم الدعم يراجعونه.'),
+        findsOneWidget,
+      );
+      expect(find.byKey(const Key('provider-changes-about')), findsNothing);
+      expect(find.textContaining('الملاحظة من فريق'), findsNothing);
+
+      final loads = api.profileLoads;
+      await tester.fling(
+        find.byType(RefreshIndicator),
+        const Offset(0, 400),
+        1000,
+      );
+      await tester.pumpAndSettle();
+      expect(api.profileLoads, greaterThan(loads));
+
+      await tester.tap(find.byKey(const Key('provider-state-account')));
+      await tester.pumpAndSettle();
+      expect(find.text('حسابي'), findsOneWidget);
+    });
+  });
+
+  group('p11 rejected', () {
+    testWidgets('the reason and support, and no way back the server lacks', (
+      tester,
+    ) async {
+      final api = _Api(
+        status: 'REJECTED',
+        reviewNote: 'الصور مأخوذة من حساب ثاني. نحتاج صور شغلك أنت.',
+      );
+      await _pumpPortal(tester, api);
+
+      expect(find.byType(ProviderRejectedScreen), findsOneWidget);
+      expect(find.text('ما قدرنا نوافق الآن'), findsOneWidget);
+      expect(find.text('لو عندك سؤال عن القرار، كلّم الدعم.'), findsOneWidget);
+      expect(find.text('استوديو ضوء صنعاء'), findsOneWidget);
+      expect(find.text('التصوير · صنعاء'), findsOneWidget);
+      expect(find.text('السبب'), findsOneWidget);
+      expect(
+        find.text('الصور مأخوذة من حساب ثاني. نحتاج صور شغلك أنت.'),
+        findsOneWidget,
+      );
+      // A refused profile is read-only and cannot apply again (B-02).
+      expect(find.text('صلّح وقدّم من جديد'), findsNothing);
+      expect(find.textContaining('نهاية الطريق'), findsNothing);
+      expect(find.text('الطلبات'), findsNothing);
+
+      await tester.tap(find.byKey(const Key('provider-rejected-support')));
+      await tester.pumpAndSettle();
+      expect(find.text('صفحة الدعم'), findsOneWidget);
+    });
+
+    testWidgets('without a reason, no reason box', (tester) async {
+      final api = _Api(status: 'REJECTED');
+      await _pumpPortal(tester, api);
+      expect(find.byKey(const Key('provider-rejected-reason')), findsNothing);
+
+      // The team can still approve a refused profile: a pull reads it.
+      api.status = 'ACTIVE';
+      await tester.fling(
+        find.byType(RefreshIndicator),
+        const Offset(0, 400),
+        1000,
+      );
+      await tester.pumpAndSettle();
+      expect(find.byType(ProviderRejectedScreen), findsNothing);
     });
   });
 
@@ -354,11 +477,13 @@ class _Api extends ProviderDashboardApi {
     this.createdAt,
     this.reviewNote,
     this.reviewedAt,
+    this.description,
     this.bookings = const [],
     this.failBookings = false,
   }) : super(ApiClient(tokenProvider: () async => null));
 
   String status;
+  final String? description;
   final DateTime? createdAt;
   final String? reviewNote;
   final DateTime? reviewedAt;
@@ -386,6 +511,7 @@ class _Api extends ProviderDashboardApi {
         'showForBride': true,
       },
       'reviewNote': reviewNote,
+      'description': description,
       'reviewedAt': reviewedAt?.toIso8601String(),
       'createdAt': createdAt?.toIso8601String(),
     });

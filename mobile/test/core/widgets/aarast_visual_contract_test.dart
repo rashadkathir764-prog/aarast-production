@@ -354,6 +354,8 @@ void main() {
         'lib/features/provider_portal/screens/provider_pending_screen.dart',
         'lib/features/provider_portal/screens/provider_approved_screen.dart',
         'lib/features/provider_portal/screens/provider_suspended_screen.dart',
+        'lib/features/provider_portal/screens/provider_changes_screen.dart',
+        'lib/features/provider_portal/screens/provider_rejected_screen.dart',
         'lib/features/provider_portal/screens/provider_request_screen.dart',
         'lib/features/provider_portal/screens/provider_booking_screen.dart',
         'lib/features/provider_portal/screens/provider_notifications_screen.dart',

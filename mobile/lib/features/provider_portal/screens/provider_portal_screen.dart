@@ -12,13 +12,14 @@ import '../../../core/routing/app_router.dart';
 import '../../../core/widgets/aarast_ui.dart';
 import '../../../core/routing/root_tab_back_scope.dart';
 import '../../chat/chat_api.dart' show ChatProvider;
-import '../../marketplace/marketplace_api.dart' show ProviderDashboardProfile;
 import '../data/provider_approval_ledger.dart';
 import '../providers/provider_dashboard_provider.dart';
 import '../widgets/provider_portal_bottom_nav.dart';
 import 'provider_approved_screen.dart';
+import 'provider_changes_screen.dart';
 import 'provider_pending_screen.dart';
 import 'provider_portal_tabs.dart';
+import 'provider_rejected_screen.dart';
 import 'provider_suspended_screen.dart';
 
 class ProviderPortalScreen extends StatefulWidget {
@@ -151,6 +152,21 @@ class _ProviderPortalScreenState extends State<ProviderPortalScreen> {
             onEdit: () => context.push(AppRouter.providerProfileEdit),
             onAccount: () => context.push(AppRouter.more),
           );
+        case 'NEEDS_CHANGES':
+          return ProviderChangesScreen(
+            profile: profile,
+            onRefresh: dashboard.loadDashboard,
+            onEdit: () => context.push(AppRouter.providerProfileEdit),
+            onSupport: () => context.push(AppRouter.support),
+            onAccount: () => context.push(AppRouter.more),
+          );
+        case 'REJECTED':
+          return ProviderRejectedScreen(
+            profile: profile,
+            onRefresh: dashboard.loadDashboard,
+            onSupport: () => context.push(AppRouter.support),
+            onAccount: () => context.push(AppRouter.more),
+          );
         case 'SUSPENDED':
           return ProviderSuspendedScreen(
             profile: profile,
@@ -201,13 +217,13 @@ class _ProviderPortalScreenState extends State<ProviderPortalScreen> {
             ProviderHomeTab(onOpenTab: _openTab),
             canUseOperations
                 ? const ProviderRequestsTab()
-                : _ProviderOperationsUnavailable(profile: dashboard.profile),
+                : const _ProviderOperationsUnavailable(),
             canUseOperations
                 ? const ProviderCalendarTab()
-                : _ProviderOperationsUnavailable(profile: dashboard.profile),
+                : const _ProviderOperationsUnavailable(),
             canUseOperations
                 ? const ProviderChatsTab()
-                : _ProviderOperationsUnavailable(profile: dashboard.profile),
+                : const _ProviderOperationsUnavailable(),
             const ProviderProfileTab(),
           ],
         ),
@@ -232,33 +248,18 @@ class _ProviderPortalScreenState extends State<ProviderPortalScreen> {
   }
 }
 
+/// A tab the server refused although the profile read as active (its
+/// status changed meanwhile). Every other status has its own screen: p08,
+/// p09, p11 and p12.
 class _ProviderOperationsUnavailable extends StatelessWidget {
-  const _ProviderOperationsUnavailable({required this.profile});
-
-  final ProviderDashboardProfile? profile;
+  const _ProviderOperationsUnavailable();
 
   @override
   Widget build(BuildContext context) {
-    final status = profile?.status.toUpperCase();
-    final copy = switch (status) {
-      'NEEDS_CHANGES' => (
-        'أكمل التعديلات المطلوبة',
-        profile?.reviewNote?.trim().isNotEmpty == true
-            ? profile!.reviewNote!.trim()
-            : 'عدّل بيانات ملفك حسب ملاحظة الإدارة، وبعدها كلّم الدعم عشان يراجعونه.',
-      ),
-      'REJECTED' => (
-        'الطلب غير معتمد',
-        profile?.reviewNote?.trim().isNotEmpty == true
-            ? profile!.reviewNote!.trim()
-            : 'الإدارة ما اعتمدت طلبك، والملف ما يتعدّل. لو عندك سؤال كلّم الدعم.',
-      ),
-      // A pending (p08) or suspended (p12) profile has its own screen.
-      _ => (
-        'عمليات المزوّد غير متاحة',
-        'اسحب الصفحة لتحت عشان تتحدّث حالة حسابك.',
-      ),
-    };
+    const copy = (
+      'عمليات المزود غير متاحة',
+      'اسحب الصفحة لتحت عشان تتحدّث حالة حسابك.',
+    );
     return RefreshIndicator(
       color: AarastV3Color.primary,
       onRefresh: context.read<ProviderDashboardProvider>().loadDashboard,

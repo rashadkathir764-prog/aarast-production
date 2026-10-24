@@ -1686,8 +1686,11 @@ const r19ProviderPortalApi = Object.freeze({
 // account and the notification settings through the account contexts, auth
 // and settings owner APIs), -6 for the deleted and rebuilt files («ملفي»'s
 // path, account and chat records moved to p40, the account actions, the
-// old services list and its edit dialogs).
-const r19LegalRecordCount = 232;
+// old services list and its edit dialogs). Provider slice 5 (p09, p11),
+// +1: +2 for the new state screens reading the profile through the
+// marketplace owner API, -1 for the portal, whose closed tab no longer reads
+// the profile.
+const r19LegalRecordCount = 233;
 const trackedOwnerApiContracts = [
   {
     area: 'features/account_contexts',
@@ -2561,11 +2564,6 @@ const trackedCollaborationBatchContracts = [
     source: 'mobile/lib/features/provider_portal/screens/provider_apply_screen.dart',
     target: 'mobile/lib/features/marketplace/marketplace_api.dart',
     show: ['ProviderMarketplaceProvider'],
-  },
-  {
-    source: 'mobile/lib/features/provider_portal/screens/provider_portal_screen.dart',
-    target: 'mobile/lib/features/marketplace/marketplace_api.dart',
-    show: ['ProviderDashboardProfile'],
   },
   {
     source: 'mobile/lib/features/provider_portal/screens/provider_profile_tab.dart',

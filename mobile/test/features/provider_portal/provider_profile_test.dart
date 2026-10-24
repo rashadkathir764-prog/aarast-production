@@ -1,3 +1,4 @@
+import 'package:aarast_mobile/core/experience_v3/aarast_v3.dart';
 import 'package:aarast_mobile/core/network/api_client.dart';
 import 'package:aarast_mobile/core/session/safe_user.dart';
 import 'package:aarast_mobile/core/storage/auth_storage.dart';
@@ -11,12 +12,14 @@ import 'package:aarast_mobile/features/provider_portal/screens/provider_portal_t
 import 'package:aarast_mobile/features/provider_portal/screens/provider_services_screen.dart';
 import 'package:aarast_mobile/features/provider_portal/screens/provider_settings_screen.dart';
 import 'package:aarast_mobile/features/provider_portal/screens/provider_share_screen.dart';
+import 'package:aarast_mobile/features/provider_portal/widgets/provider_profile_parts.dart';
 import 'package:aarast_mobile/features/settings/data/settings_api.dart';
 import 'package:aarast_mobile/features/settings/models/user_settings.dart';
 import 'package:aarast_mobile/features/settings/providers/settings_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
+import 'package:lucide_icons/lucide_icons.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -360,6 +363,69 @@ void main() {
       expect(find.byKey(const Key('provider-profile-services')), findsNothing);
       expect(find.byKey(const Key('provider-me-edit')), findsNothing);
       expect(find.byKey(const Key('provider-me-settings')), findsOneWidget);
+    });
+  });
+
+  group('p27 review card', () {
+    testWidgets('the name, the stars, when it was written and the words; '
+        'no tags, reply or report', (tester) async {
+      tester.view.devicePixelRatio = 1;
+      tester.view.physicalSize = const Size(390, 900);
+      addTearDown(tester.view.reset);
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: AppTheme.light(),
+          home: Scaffold(
+            body: ProviderReviewCard(
+              now: _now,
+              review: ProviderReview(
+                id: 'review-1',
+                rating: 4,
+                userName: 'محمد',
+                comment: 'الصور رهيبة، بس الفيلم تأخر أسبوعين عن الموعد.',
+                createdAt: _now.subtract(const Duration(days: 15)),
+              ),
+            ),
+          ),
+        ),
+      );
+
+      expect(find.text('محمد'), findsOneWidget);
+      expect(find.bySemanticsLabel('4 من 5'), findsOneWidget);
+      final stars = tester
+          .widgetList<Icon>(find.byIcon(LucideIcons.star))
+          .map((icon) => icon.color)
+          .toList();
+      expect(stars, [
+        for (var i = 0; i < 4; i++) AarastV3Color.saffron,
+        AarastV3Color.line,
+      ]);
+      expect(find.text('قبل أسبوعين'), findsOneWidget);
+      expect(
+        find.text('«الصور رهيبة، بس الفيلم تأخر أسبوعين عن الموعد.»'),
+        findsOneWidget,
+      );
+      // No occasion, tags, reply or report on the server (B-09, B-28).
+      expect(find.text('انشر الرد'), findsNothing);
+      expect(find.textContaining('بلّغ'), findsNothing);
+    });
+
+    testWidgets('a review without a name or words keeps the stars only', (
+      tester,
+    ) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: AppTheme.light(),
+          home: const Scaffold(
+            body: ProviderReviewCard(
+              review: ProviderReview(id: 'review-2', rating: 5),
+            ),
+          ),
+        ),
+      );
+      expect(find.text('عريس من اعّرست'), findsOneWidget);
+      expect(find.bySemanticsLabel('5 من 5'), findsOneWidget);
+      expect(find.textContaining('«'), findsNothing);
     });
   });
 

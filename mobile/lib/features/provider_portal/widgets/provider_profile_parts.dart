@@ -114,8 +114,11 @@ String? providerPricesCurrencyLine(
 }
 
 /// p35 «التقييمات»: the published reviews, as customers read them on his
-/// page (D35), and how many are not shown. A reply waits for its backend
-/// item (F15), so none is offered.
+/// page (D35), and how many are not shown. Each card is p27's: the name,
+/// the stars and the words in quotes. The server keeps no occasion, tags,
+/// reply or report (F15; B-09, B-28), so the card says when the review was
+/// written instead of «الزفة · 21 يناير», and no reply box or «بلّغ عنه» is
+/// offered.
 class ProviderReviewsSheet extends StatelessWidget {
   const ProviderReviewsSheet({required this.all, super.key});
 
@@ -147,48 +150,86 @@ class ProviderReviewsSheet extends StatelessWidget {
           )
         else
           for (final review in reviews) ...[
-            JourneyBox(
-              key: Key('provider-review-${review.id}'),
-              padding: const EdgeInsets.all(14),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Expanded(
-                        child: Text(
-                          review.userName?.trim().isNotEmpty == true
-                              ? review.userName!.trim()
-                              : 'عريس من اعّرست',
-                          style: JourneyType.of(
-                            JourneyType.body,
-                            weight: JourneyType.bold,
-                          ),
-                        ),
-                      ),
-                      JourneyTag(
-                        label: '★ ${review.rating}',
-                        color: AarastV3Color.brandAccentStrong,
-                        soft: AarastV3Color.brandAccentSoft,
-                      ),
-                    ],
-                  ),
-                  if (review.comment?.trim().isNotEmpty == true) ...[
-                    const SizedBox(height: 6),
-                    Text(
-                      review.comment!.trim(),
-                      style: JourneyType.of(
-                        JourneyType.body,
-                        color: AarastV3Color.textMuted,
-                      ),
-                    ),
-                  ],
-                ],
-              ),
-            ),
+            ProviderReviewCard(review: review),
             const SizedBox(height: 8),
           ],
       ],
+    );
+  }
+}
+
+/// p27's review card: «محمد» and five stars, when it was written, and the
+/// words in quotes.
+class ProviderReviewCard extends StatelessWidget {
+  const ProviderReviewCard({required this.review, this.now, super.key});
+
+  final ProviderReview review;
+
+  /// The clock the age line reads; the device's when null.
+  final DateTime? now;
+
+  @override
+  Widget build(BuildContext context) {
+    final name = review.userName?.trim().isNotEmpty == true
+        ? review.userName!.trim()
+        : 'عريس من اعّرست';
+    final comment = review.comment?.trim() ?? '';
+    final written = review.createdAt;
+    final rating = review.rating.clamp(0, 5);
+    return JourneyBox(
+      key: Key('provider-review-${review.id}'),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Flexible(
+                child: Text(
+                  name,
+                  style: JourneyType.of(
+                    JourneyType.lead,
+                    weight: JourneyType.bold,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Semantics(
+                label: '$rating من 5',
+                child: ExcludeSemantics(
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      for (var star = 1; star <= 5; star++)
+                        Icon(
+                          LucideIcons.star,
+                          size: 17,
+                          color: star <= rating
+                              ? AarastV3Color.saffron
+                              : AarastV3Color.line,
+                        ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+          if (written != null)
+            Text(
+              providerAgoLabel(written, now: now),
+              style: JourneyType.of(
+                JourneyType.small,
+                color: AarastV3Color.textMuted,
+              ),
+            ),
+          if (comment.isNotEmpty) ...[
+            const SizedBox(height: 10),
+            Text(
+              '«$comment»',
+              style: JourneyType.of(JourneyType.body, height: 1.6),
+            ),
+          ],
+        ],
+      ),
     );
   }
 }

@@ -145,6 +145,7 @@ changing behavior.
 
 - `docs/qa/README.md`
 - `docs/qa/MOBILE_QA.md`
+- `docs/qa/DEMO_DATA.md`
 
 ### Deployment
 
@@ -399,6 +400,7 @@ changing behavior.
 | Admin web | `docs/frontend/ADMIN_WEB.md` |
 | Testing and QA | `docs/qa/README.md` |
 | Mobile QA | `docs/qa/MOBILE_QA.md` |
+| Local demo data (accounts, seed command) | `docs/qa/DEMO_DATA.md` |
 | Deployment | `docs/deployment/README.md` |
 | Dokploy runbook | `docs/deployment/DOKPLOY_RUNBOOK.md` |
 | Temporary OpenWA OTP gate | `docs/deployment/OPENWA_OTP_MVP.md` |

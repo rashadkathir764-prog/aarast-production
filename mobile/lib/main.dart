@@ -58,7 +58,7 @@ import 'features/onboarding/onboarding_api.dart'
         YemenAdministrativeApi,
         YemenAdministrativeProvider;
 import 'features/provider_portal/provider_portal_api.dart'
-    show ProviderDashboardProvider;
+    show ProviderDashboardProvider, ProviderOfferQueue;
 import 'features/settings/settings_api.dart' show SettingsApi, SettingsProvider;
 import 'features/sharing/sharing_api.dart'
     show
@@ -352,6 +352,7 @@ Future<void> _bootstrapApplication(ObservabilityConfig observability) async {
         planLeaveCoordinator: planLeaveCoordinator,
         marketplaceApi: marketplaceApi,
         providerDashboardApi: providerDashboardApi,
+        providerOfferQueue: ProviderOfferQueue(preferences),
         chatApi: chatApi,
         chatRealtimeClient: chatRealtimeClient,
         notificationsApi: notificationsApi,
@@ -438,6 +439,7 @@ class _AarastSessionProviders extends StatelessWidget {
     required this.planLeaveCoordinator,
     required this.marketplaceApi,
     required this.providerDashboardApi,
+    required this.providerOfferQueue,
     required this.chatApi,
     required this.chatRealtimeClient,
     required this.notificationsApi,
@@ -457,6 +459,9 @@ class _AarastSessionProviders extends StatelessWidget {
   final PlanLeaveCoordinator planLeaveCoordinator;
   final MarketplaceApi marketplaceApi;
   final ProviderDashboardApi providerDashboardApi;
+
+  /// The provider's offers sent with no network (p43).
+  final ProviderOfferQueue providerOfferQueue;
   final ChatApi chatApi;
   final ChatRealtimeClient chatRealtimeClient;
   final NotificationsApi notificationsApi;
@@ -503,13 +508,19 @@ class _AarastSessionProviders extends StatelessWidget {
             ProviderDashboardProvider
           >(
             create: (_) => _bindPlanScope(
-              ProviderDashboardProvider(providerDashboardApi),
+              ProviderDashboardProvider(
+                providerDashboardApi,
+                offerQueue: providerOfferQueue,
+              ),
               _unselectedPlanScope,
             ),
             update: (_, accountContexts, current) => _forPlanScope(
               current,
               _planScope(accountContexts),
-              () => ProviderDashboardProvider(providerDashboardApi),
+              () => ProviderDashboardProvider(
+                providerDashboardApi,
+                offerQueue: providerOfferQueue,
+              ),
             ),
           ),
           ChangeNotifierProxyProvider<AccountContextController, ChatProvider>(

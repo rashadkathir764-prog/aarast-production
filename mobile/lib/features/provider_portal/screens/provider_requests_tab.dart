@@ -7,6 +7,8 @@ import '../../../core/routing/app_router.dart';
 import '../../marketplace/marketplace_api.dart'
     show MarketplaceBooking, QuoteRequest;
 import '../providers/provider_dashboard_provider.dart';
+import '../widgets/provider_booking_sheets.dart'
+    show ProviderConfirmNeedsNetwork;
 import '../widgets/provider_quick_offer_sheet.dart';
 import '../widgets/provider_request_cards.dart';
 import '../widgets/provider_request_parts.dart';
@@ -65,6 +67,8 @@ class _ProviderRequestsTabState extends State<ProviderRequestsTab> {
     final shown = _sorted(
       cases.where((item) => item.state.tab == _tab).toList(),
     );
+    final offline = dashboard.isOffline;
+    final updated = dashboard.lastUpdatedAt;
     return RefreshIndicator(
       color: AarastV3Color.primary,
       onRefresh: dashboard.loadDashboard,
@@ -80,6 +84,41 @@ class _ProviderRequestsTabState extends State<ProviderRequestsTab> {
                 ? 'ما فيه أحد ينتظر ردك'
                 : '$waiting ينتظرون ردك',
           ),
+          // p43: without the network the lists are the last ones read,
+          // a new offer waits on the phone, and a confirmation waits for
+          // the network.
+          if (offline) ...[
+            const ProviderOfflineBar(),
+            const SizedBox(height: 14),
+          ],
+          for (final offer in dashboard.queuedOffers) ...[
+            ProviderQueuedOfferBox(
+              key: Key('provider-queued-offer-${offer.quoteRequestId}'),
+              name: _queuedName(cases, offer.quoteRequestId),
+            ),
+            const SizedBox(height: 10),
+          ],
+          if (offline &&
+              cases.any(
+                (item) => item.state == ProviderCaseState.bookingAsked,
+              )) ...[
+            const ProviderConfirmNeedsNetwork(),
+            const SizedBox(height: 10),
+          ],
+          if (offline && updated != null) ...[
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 4),
+              child: Text(
+                providerUpdatedLabel(updated),
+                key: const Key('provider-requests-updated'),
+                style: JourneyType.of(
+                  JourneyType.small,
+                  color: AarastV3Color.textMuted,
+                ),
+              ),
+            ),
+            const SizedBox(height: 14),
+          ],
           // One line as drawn; a large text size wraps it, never hides one.
           Wrap(
             spacing: 8,
@@ -167,6 +206,15 @@ class _ProviderRequestsTabState extends State<ProviderRequestsTab> {
           ? null
           : () => showProviderQuickOffer(context, quote, packages),
     );
+  }
+
+  static String _queuedName(List<ProviderCase> cases, String quoteId) {
+    for (final item in cases) {
+      if (item.quote.id == quoteId) {
+        return providerFirstName(providerCustomerName(item.quote));
+      }
+    }
+    return 'العميل';
   }
 
   /// New requests oldest first (the one waiting longest on top), then the

@@ -59,8 +59,7 @@ class ProviderHomeTab extends StatelessWidget {
                 key: const Key('provider-home-notifications'),
                 icon: LucideIcons.bell,
                 tooltip: 'التنبيهات',
-                onPressed: () =>
-                    context.push(AppRouter.providerNotifications),
+                onPressed: () => context.push(AppRouter.providerNotifications),
               ),
             ),
             const SizedBox(height: 16),

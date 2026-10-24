@@ -165,6 +165,14 @@ class _NewRequest extends StatelessWidget {
                   ),
                   const SizedBox(height: 10),
                 ],
+                // p43: his offer waits on the phone for the network.
+                if (dashboard.queuedOfferFor(quote.id) != null) ...[
+                  ProviderQueuedOfferBox(
+                    key: const Key('provider-request-queued-offer'),
+                    name: providerFirstName(name),
+                  ),
+                  const SizedBox(height: 10),
+                ],
                 if (quote.eventDate case final day?) ...[
                   ProviderDayStatus(
                     day: day,

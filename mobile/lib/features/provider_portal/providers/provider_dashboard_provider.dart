@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 
 import '../../../core/network/api_client.dart';
@@ -15,6 +17,22 @@ import '../../marketplace/marketplace_api.dart'
         QuoteRequest,
         bookingErrorMessage,
         marketplaceErrorMessage;
+import '../data/provider_offer_queue.dart';
+
+export '../data/provider_offer_queue.dart' show ProviderQueuedOffer;
+
+/// What sending an offer came to.
+enum ProviderOfferSend {
+  /// The server has it.
+  sent,
+
+  /// No network: it waits on this phone and goes when the network returns
+  /// (p43).
+  queued,
+
+  /// Nothing was sent; [ProviderDashboardProvider.errorMessage] says why.
+  failed,
+}
 
 /// What sending the joining came to (p07).
 enum ProviderJoinResult {
@@ -36,7 +54,10 @@ enum ProviderJoinResult {
 
 class ProviderDashboardProvider extends ChangeNotifier
     with SessionScopedNotifier {
-  ProviderDashboardProvider(this._api);
+  /// [offerQueue] keeps the offers sent with no network (p43); without it
+  /// such an offer fails as any other write.
+  ProviderDashboardProvider(this._api, {ProviderOfferQueue? offerQueue})
+    : _queue = offerQueue;
 
   final ProviderDashboardApi _api;
 
@@ -68,6 +89,33 @@ class ProviderDashboardProvider extends ChangeNotifier
   /// The last booking or calendar change failed for want of the network.
   bool get lastChangeOffline => _lastChangeOffline;
   bool _lastChangeOffline = false;
+
+  /// The last read of his data failed for want of the network (p43); what
+  /// shows is from [lastUpdatedAt].
+  bool get isOffline => _offline;
+  bool _offline = false;
+
+  /// When his data was last read from the server.
+  DateTime? get lastUpdatedAt => _lastUpdatedAt;
+  DateTime? _lastUpdatedAt;
+
+  /// The offers kept on this phone until the network returns (p43).
+  List<ProviderQueuedOffer> get queuedOffers => _queuedOffers;
+  List<ProviderQueuedOffer> _queuedOffers = const [];
+
+  ProviderQueuedOffer? queuedOfferFor(String quoteRequestId) {
+    for (final offer in _queuedOffers) {
+      if (offer.quoteRequestId == quoteRequestId) return offer;
+    }
+    return null;
+  }
+
+  /// While offers wait and the network is gone, the data is read again
+  /// every half minute, which sends them once it is back.
+  Timer? _retry;
+  static const retryEvery = Duration(seconds: 30);
+
+  final ProviderOfferQueue? _queue;
   bool get hasProviderProfile => _hasProviderProfile;
   ProviderDashboardProfile? get profile => _profile;
   ProviderDashboardSummary get summary => _summary;
@@ -176,6 +224,8 @@ class ProviderDashboardProvider extends ChangeNotifier
       _profile = profile;
       _hasProviderProfile = true;
       _operationsAccessDenied = false;
+      _offline = false;
+      _lastUpdatedAt = DateTime.now();
 
       if (!canUseProviderOperations) {
         _clearOperationalData();
@@ -261,11 +311,17 @@ class ProviderDashboardProvider extends ChangeNotifier
         _quoteRequests = quoteRequests;
       }
       if (reviews is List<ProviderReview>) _reviews = reviews;
+      await _sendQueuedOffers(
+        profile.id,
+        quotesRead: quoteRequests is List<QuoteRequest>,
+      );
       if (sectionErrors.isNotEmpty) {
         _errorMessage =
             'تم تحميل ملف المزوّد، لكن تعذر تحديث: ${sectionErrors.join('، ')}.';
       }
     } on ApiException catch (error) {
+      // What was read before stays on screen, with its time (p43).
+      _offline = error.isNetworkFailure;
       if (_isMissingProviderProfile(error.message)) {
         _profile = null;
         _hasProviderProfile = false;
@@ -278,8 +334,112 @@ class ProviderDashboardProvider extends ChangeNotifier
       _errorMessage = aarastBackendConnectionErrorMessage;
     } finally {
       _isLoading = false;
+      _scheduleRetry();
       notifyListeners();
     }
+  }
+
+  void _scheduleRetry() {
+    _retry?.cancel();
+    _retry = null;
+    if (!_offline || _queuedOffers.isEmpty) return;
+    _retry = Timer(retryEvery, () {
+      if (!isSessionDisposed) loadDashboard();
+    });
+  }
+
+  @override
+  void dispose() {
+    _retry?.cancel();
+    super.dispose();
+  }
+
+  /// Sends the offers kept on this phone (p43). One the request no longer
+  /// waits for (answered, cancelled or gone from his list) is dropped; one
+  /// the server already holds answers 409 and counts as sent (F6).
+  Future<void> _sendQueuedOffers(
+    String providerId, {
+    required bool quotesRead,
+  }) async {
+    final queue = _queue;
+    if (queue == null) return;
+    final waiting = queue.read(providerId);
+    if (waiting.isEmpty || !quotesRead) {
+      _queuedOffers = waiting;
+      return;
+    }
+    final kept = <ProviderQueuedOffer>[];
+    var sent = false;
+    for (final offer in waiting) {
+      final quote = _quoteRequests
+          .where((item) => item.id == offer.quoteRequestId)
+          .firstOrNull;
+      if (quote == null ||
+          quote.offers.isNotEmpty ||
+          !const {'SENT', 'VIEWED'}.contains(quote.status.toUpperCase())) {
+        continue;
+      }
+      if (_offline) {
+        kept.add(offer);
+        continue;
+      }
+      try {
+        await _api.createQuoteOffer(
+          quoteRequestId: offer.quoteRequestId,
+          message: offer.message,
+          amount: offer.amount,
+          currency: offer.currency,
+          title: offer.title,
+          validUntil: offer.validUntil,
+        );
+        sent = true;
+      } on ApiException catch (error) {
+        if (error.serverCode == 'QUOTE_OFFER_ALREADY_EXISTS') {
+          sent = true;
+        } else if (error.isNetworkFailure) {
+          _offline = true;
+          kept.add(offer);
+        } else {
+          _errorMessage =
+              'ما وصل عرضك المحفوظ: ${marketplaceErrorMessage(error.message)}';
+        }
+      } on Object catch (error) {
+        debugPrint('Queued offer not sent: $error');
+        kept.add(offer);
+      }
+    }
+    _queuedOffers = kept;
+    await queue.write(providerId, kept);
+    if (sent) {
+      try {
+        _quoteRequests = await _api.getQuoteRequests();
+      } on Object catch (error) {
+        debugPrint('Requests not read after the queued offers: $error');
+      }
+    }
+  }
+
+  /// Keeps an offer on this phone when the network is gone; false when the
+  /// phone cannot keep it.
+  Future<bool> _queueOffer(ProviderQueuedOffer offer) async {
+    final providerId = _profile?.id;
+    final queue = _queue;
+    if (providerId == null || queue == null) return false;
+    final list = [
+      for (final item in queue.read(providerId))
+        if (item.quoteRequestId != offer.quoteRequestId) item,
+      offer,
+    ];
+    try {
+      await queue.write(providerId, list);
+    } on Object catch (error) {
+      debugPrint('Offer not kept on the phone: $error');
+      return false;
+    }
+    _queuedOffers = list;
+    _offline = true;
+    _scheduleRetry();
+    return true;
   }
 
   Future<T?> _loadDashboardSection<T>({
@@ -726,7 +886,10 @@ class ProviderDashboardProvider extends ChangeNotifier
     }
   }
 
-  Future<bool> createQuoteOffer({
+  /// Sends a new offer. With no network it is kept on this phone and sent
+  /// when the network returns (p43); a second create of the same offer is
+  /// refused by the server (F6), so the replay is safe.
+  Future<ProviderOfferSend> createQuoteOffer({
     required String quoteRequestId,
     required String message,
     required String amount,
@@ -748,13 +911,27 @@ class ProviderDashboardProvider extends ChangeNotifier
         validUntil: validUntil,
       );
       await loadDashboard();
-      return true;
+      return ProviderOfferSend.sent;
     } on ApiException catch (error) {
+      if (error.isNetworkFailure &&
+          await _queueOffer(
+            ProviderQueuedOffer(
+              quoteRequestId: quoteRequestId,
+              message: message,
+              amount: amount,
+              currency: currency,
+              title: title,
+              validUntil: validUntil,
+              queuedAt: DateTime.now(),
+            ),
+          )) {
+        return ProviderOfferSend.queued;
+      }
       _errorMessage = marketplaceErrorMessage(error.message);
-      return false;
+      return ProviderOfferSend.failed;
     } catch (_) {
       _errorMessage = 'تعذر إرسال عرض السعر. حاول مرة أخرى.';
-      return false;
+      return ProviderOfferSend.failed;
     } finally {
       _isSubmitting = false;
       notifyListeners();

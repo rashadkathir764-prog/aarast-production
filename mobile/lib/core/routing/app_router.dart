@@ -145,6 +145,7 @@ class AppRouter {
   /// answered (a quote event tapped in the provider's chat).
   static const providerRequestsTab = '/provider/dashboard?tab=requests';
   static const providerProfileEdit = '/provider/profile/edit';
+
   /// His services and packages, opened from «ملفي» (D39).
   static const providerServices = '/provider/services';
   static const providerServiceNew = '/provider/services/new';

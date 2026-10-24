@@ -450,7 +450,9 @@ class _OfferPreviewSheetState extends State<_OfferPreviewSheet> {
       _error = null;
     });
     final currency = providerOfferCurrency(quote);
-    final ok = existing == null
+    // A new offer waits on the phone with no network (p43); an edit or a
+    // renewal needs the server's answer.
+    final result = existing == null
         ? await dashboard.createQuoteOffer(
             quoteRequestId: quote.id,
             title: widget.title,
@@ -466,9 +468,11 @@ class _OfferPreviewSheetState extends State<_OfferPreviewSheet> {
             amount: widget.amount,
             currency: currency,
             validUntil: widget.validUntil,
-          );
+          )
+        ? ProviderOfferSend.sent
+        : ProviderOfferSend.failed;
     if (!mounted) return;
-    if (!ok) {
+    if (result == ProviderOfferSend.failed) {
       setState(() {
         _busy = false;
         _error =
@@ -478,7 +482,9 @@ class _OfferPreviewSheetState extends State<_OfferPreviewSheet> {
     }
     AarastToast.showSuccess(
       context,
-      renewing
+      result == ProviderOfferSend.queued
+          ? providerQueuedOfferToast
+          : renewing
           ? 'تجدّد العرض، ورجع مفتوح له.'
           : existing == null
           ? 'وصل عرضك.'

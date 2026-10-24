@@ -133,7 +133,7 @@ class _ProviderQuickOfferSheetState extends State<_ProviderQuickOfferSheet> {
       _busy = true;
       _error = null;
     });
-    final sent = await dashboard.createQuoteOffer(
+    final result = await dashboard.createQuoteOffer(
       quoteRequestId: widget.quote.id,
       title: _package.title.trim(),
       message: message,
@@ -144,7 +144,7 @@ class _ProviderQuickOfferSheetState extends State<_ProviderQuickOfferSheet> {
       ),
     );
     if (!mounted) return;
-    if (!sent) {
+    if (result == ProviderOfferSend.failed) {
       setState(() {
         _busy = false;
         _error =
@@ -152,7 +152,12 @@ class _ProviderQuickOfferSheetState extends State<_ProviderQuickOfferSheet> {
       });
       return;
     }
-    AarastToast.showSuccess(context, 'وصل عرضك.');
+    AarastToast.showSuccess(
+      context,
+      result == ProviderOfferSend.queued
+          ? providerQueuedOfferToast
+          : 'وصل عرضك.',
+    );
     Navigator.of(context).pop();
   }
 }

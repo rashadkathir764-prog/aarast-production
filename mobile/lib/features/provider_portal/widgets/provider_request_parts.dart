@@ -2,12 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 
 import '../../../core/experience_v3/aarast_v3.dart';
+import '../../../core/utils/arabic_count.dart';
 import '../../../core/utils/arabic_date_formatter.dart';
 import '../../../core/utils/currency_label.dart';
 import '../../../core/utils/hijri_date.dart';
 import '../../marketplace/marketplace_api.dart'
     show MarketplaceBooking, ProviderPackage, QuoteRequest;
 import '../providers/provider_dashboard_provider.dart';
+import 'provider_join_parts.dart' show providerMomentLabel;
 
 /// Where a request stands for the provider, read on the phone from the
 /// request, its offer and its booking (classification p15). The server has
@@ -240,6 +242,108 @@ String providerRequestLine(QuoteRequest quote) => [
   if (quote.service?.title.trim().isNotEmpty == true)
     quote.service!.title.trim(),
 ].join(' · ');
+
+/// p43's bar: no network, and what still works without it. Only a new
+/// offer waits on the phone (B-34), so only it is promised.
+class ProviderOfflineBar extends StatelessWidget {
+  const ProviderOfflineBar({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      key: const Key('provider-offline-bar'),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      decoration: BoxDecoration(
+        color: AarastV3Color.ink,
+        borderRadius: BorderRadius.circular(14),
+      ),
+      child: Row(
+        children: [
+          const Icon(
+            LucideIcons.wifiOff,
+            size: 17,
+            color: AarastV3Color.onPrimary,
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              'بدون نت. العرض اللي ترسله ينحفظ في جوالك ويوصل لما يرجع النت.',
+              style: JourneyType.of(
+                JourneyType.small,
+                color: AarastV3Color.onPrimary,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// «آخر تحديث قبل 12 دقيقة»: when his data was last read.
+String providerUpdatedLabel(DateTime at, {DateTime? now}) {
+  final clock = now ?? DateTime.now();
+  final minutes = clock.difference(at).inMinutes;
+  if (minutes < 1) return 'آخر تحديث قبل لحظات';
+  if (minutes < 60) {
+    return 'آخر تحديث قبل ${arabicCount(minutes, one: 'دقيقة', two: 'دقيقتين', few: 'دقائق', many: 'دقيقة')}';
+  }
+  final hours = clock.difference(at).inHours;
+  if (hours < 24 && clock.day == at.day) {
+    return 'آخر تحديث قبل ${arabicCount(hours, one: 'ساعة', two: 'ساعتين', few: 'ساعات', many: 'ساعة')}';
+  }
+  return 'آخر تحديث ${providerMomentLabel(at, now: clock)}';
+}
+
+/// Said when an offer waits on the phone for the network (p43).
+const providerQueuedOfferToast =
+    'بدون نت. عرضك محفوظ على جوالك، وينرسل أول ما يرجع النت.';
+
+/// p43's line for an offer kept on the phone: «عرضك لعادل ينتظر النت».
+class ProviderQueuedOfferBox extends StatelessWidget {
+  const ProviderQueuedOfferBox({required this.name, super.key});
+
+  /// The customer's first name.
+  final String name;
+
+  @override
+  Widget build(BuildContext context) {
+    return JourneyBox(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(
+                LucideIcons.clock,
+                size: 18,
+                color: AarastV3Color.brandAccentStrong,
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  'عرضك ل$name ينتظر النت',
+                  style: JourneyType.of(
+                    JourneyType.body,
+                    weight: JourneyType.bold,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          Text(
+            'محفوظ على جوالك، وينرسل أول ما يرجع النت',
+            style: JourneyType.of(
+              JourneyType.small,
+              color: AarastV3Color.textMuted,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
 
 /// A status word on its soft fill.
 class ProviderCaseTag extends StatelessWidget {

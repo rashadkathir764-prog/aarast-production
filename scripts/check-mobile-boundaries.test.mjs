@@ -1998,6 +1998,7 @@ const trackedOwnerApiContracts = [
     area: 'features/provider_portal',
     path: 'mobile/lib/features/provider_portal/provider_portal_api.dart',
     exports: [
+      { uri: 'data/provider_offer_queue.dart', show: ['ProviderOfferQueue'] },
       {
         uri: 'providers/provider_dashboard_provider.dart',
         show: ['ProviderDashboardProvider'],
@@ -3289,7 +3290,7 @@ const trackedCompositionRootContracts = [
       },
       {
         target: 'mobile/lib/features/provider_portal/provider_portal_api.dart',
-        show: ['ProviderDashboardProvider'],
+        show: ['ProviderDashboardProvider', 'ProviderOfferQueue'],
       },
       {
         target: 'mobile/lib/features/settings/settings_api.dart',

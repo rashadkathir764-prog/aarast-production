@@ -1,4 +1,5 @@
 // Owner-controlled public API. Cross-feature consumers import this library.
+export 'data/provider_offer_queue.dart' show ProviderOfferQueue;
 export 'providers/provider_dashboard_provider.dart'
     show ProviderDashboardProvider;
 export 'screens/add_provider_package_screen.dart' show AddProviderPackageScreen;

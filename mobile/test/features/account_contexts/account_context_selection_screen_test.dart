@@ -1,3 +1,4 @@
+import 'package:aarast_mobile/core/experience_v3/aarast_v3.dart';
 import 'package:aarast_mobile/core/storage/auth_storage.dart';
 import 'package:aarast_mobile/features/account_contexts/data/account_contexts_api.dart';
 import 'package:aarast_mobile/features/account_contexts/models/account_context.dart';
@@ -67,6 +68,64 @@ void main() {
       expect(tester.takeException(), isNull);
     },
   );
+  testWidgets('q04 names each path with what it is to you, as drawn', (
+    tester,
+  ) async {
+    final helped = accountContext(
+      role: AccountContextRole.contributor,
+      planId: 'plan-mohammed',
+      displayName: 'عرس محمد',
+    );
+    final sister = accountContext(
+      role: AccountContextRole.contributor,
+      planId: 'plan-salma',
+      displayName: 'عرس سلمى',
+      persona: AccountContextPersona.bride,
+    );
+    final own = accountContext(
+      role: AccountContextRole.owner,
+      planId: 'plan-saleh',
+      displayName: 'عرس صالح',
+    );
+    final controller = await _controller([helped, sister, own]);
+
+    await tester.pumpWidget(
+      ChangeNotifierProvider<AccountContextController>.value(
+        value: controller,
+        child: const MaterialApp(home: AccountContextSelectionScreen()),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('اختر المسار'), findsOneWidget);
+    expect(
+      find.text('ايش تفتح الآن؟ ما نطلب منك دخول مرة ثانية.'),
+      findsOneWidget,
+    );
+    expect(find.byType(JourneyWordmark), findsOneWidget);
+    expect(find.text('عرس محمد'), findsOneWidget);
+    expect(find.text('تساعد فيها'), findsOneWidget);
+    expect(find.text('مشارك'), findsOneWidget);
+    // A bride's plan speaks to her helper as a woman.
+    expect(find.text('تساعدين فيها'), findsOneWidget);
+    expect(find.text('مشاركة'), findsOneWidget);
+    expect(find.text('خطتك'), findsOneWidget);
+    expect(find.text('عريس'), findsOneWidget);
+    // The letter is the name after «عرس».
+    expect(find.text('م'), findsOneWidget);
+    expect(find.text('تقدر تبدّل بينهم من حسابي'), findsOneWidget);
+    // No relation and no rafd role: the server sends neither.
+    expect(find.text('أخوك · الخميس 21 يناير'), findsNothing);
+    expect(find.text('كاتب الرفد'), findsNothing);
+
+    await tester.tap(
+      find.byKey(
+        const ValueKey('account-path-option-plan:plan-mohammed:contributor'),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(controller.selectedContext, helped);
+  });
 }
 
 Future<AccountContextController> _controller(

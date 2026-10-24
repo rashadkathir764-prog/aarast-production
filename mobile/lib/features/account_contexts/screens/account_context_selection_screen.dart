@@ -1,13 +1,15 @@
 import 'package:flutter/material.dart';
-import 'package:lucide_icons/lucide_icons.dart';
 import 'package:provider/provider.dart';
 
 import '../../../core/diagnostics/app_logger.dart';
-import '../../../core/theme/app_theme.dart';
+import '../../../core/experience_v3/aarast_v3.dart';
 import '../../../core/widgets/aarast_ui.dart';
 import '../models/account_context.dart';
 import '../providers/account_context_controller.dart';
 
+/// q04 «اختر المسار»: one phone, more than one place to open: your own
+/// plan, someone else's you help in, or the provider account. Choosing only
+/// publishes the path; the entry gate opens it, with no second sign-in.
 class AccountContextSelectionScreen extends StatefulWidget {
   const AccountContextSelectionScreen({super.key});
 
@@ -19,6 +21,7 @@ class AccountContextSelectionScreen extends StatefulWidget {
 class _AccountContextSelectionScreenState
     extends State<AccountContextSelectionScreen> {
   bool _shownEventRecorded = false;
+  String? _choosing;
 
   @override
   void didChangeDependencies() {
@@ -37,142 +40,193 @@ class _AccountContextSelectionScreenState
     );
   }
 
+  Future<void> _choose(
+    AccountContextController controller,
+    AccountContext path,
+  ) async {
+    setState(() => _choosing = path.contextKey);
+    await controller.select(path.contextKey);
+    // Chosen, the entry gate opens the path; refused, the card is free again.
+    if (mounted) setState(() => _choosing = null);
+  }
+
   @override
   Widget build(BuildContext context) {
     final controller = context.watch<AccountContextController>();
     final paths = controller.availableContexts;
 
-    return AarastScaffold(
+    return AarastScreenFrame(
       key: const ValueKey('account-context-selection-screen'),
+      maxWidth: 520,
+      backgroundColor: AarastV3Color.canvas,
       child: ListView(
-        padding: const EdgeInsets.fromLTRB(20, 28, 20, 32),
+        padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
         children: [
-          const Icon(LucideIcons.layers, color: AppTheme.brand, size: 42),
-          const SizedBox(height: 16),
-          Text(
-            'اختر المسار',
-            textAlign: TextAlign.center,
-            style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-              color: AppTheme.textPrimary,
-              fontWeight: FontWeight.w900,
+          const SizedBox(height: 14),
+          const Center(child: JourneyWordmark(size: 26)),
+          const SizedBox(height: 20),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 4),
+            child: Semantics(
+              header: true,
+              child: Text(
+                'اختر المسار',
+                style: JourneyType.of(
+                  JourneyType.hero,
+                  weight: JourneyType.bold,
+                ),
+              ),
             ),
           ),
-          const SizedBox(height: 8),
-          Text(
-            'اختر المساحة التي تريد فتحها الآن. لن نطلب تسجيل الدخول أو رمز تحقق مرة أخرى.',
-            textAlign: TextAlign.center,
-            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-              color: AppTheme.textSecondary,
-              fontWeight: FontWeight.w700,
-              height: 1.5,
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 4),
+            child: Text(
+              'ايش تفتح الآن؟ ما نطلب منك دخول مرة ثانية.',
+              style: JourneyType.of(
+                JourneyType.body,
+                color: AarastV3Color.textMuted,
+              ),
             ),
           ),
-          const SizedBox(height: 24),
+          const SizedBox(height: 20),
           for (final path in paths) ...[
-            _AccountPathCard(
+            _PathCard(
               path: path,
-              enabled: !controller.isSelecting,
-              onTap: () => controller.select(path.contextKey),
+              chosen: _choosing == path.contextKey,
+              onTap: controller.isSelecting
+                  ? null
+                  : () => _choose(controller, path),
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 10),
           ],
-          if (controller.errorMessage != null) ...[
-            const SizedBox(height: 4),
-            AarastErrorState(
-              title: 'تعذر فتح المسار',
-              message: controller.errorMessage!,
+          if (controller.errorMessage case final error?) ...[
+            JourneyNote(
+              text: error,
+              color: AarastV3Color.danger,
+              soft: AarastV3Color.dangerSoft,
+            ),
+            const SizedBox(height: 10),
+            JourneyListState(
+              phase: JourneyListPhase.error,
+              section: JourneySection.home,
               onRetry: controller.refresh,
             ),
           ],
+          const SizedBox(height: 6),
+          Center(
+            child: Text(
+              'تقدر تبدّل بينهم من حسابي',
+              style: JourneyType.of(
+                JourneyType.small,
+                color: AarastV3Color.textMuted,
+              ),
+            ),
+          ),
         ],
       ),
     );
   }
 }
 
-class _AccountPathCard extends StatelessWidget {
-  const _AccountPathCard({
+/// One path: a letter in the plan's colour, its name, what it is to you,
+/// and a tag. Contexts carry no relation («أخوك») and no participant role,
+/// so the line says what is known.
+class _PathCard extends StatelessWidget {
+  const _PathCard({
     required this.path,
-    required this.enabled,
+    required this.chosen,
     required this.onTap,
   });
 
   final AccountContext path;
-  final bool enabled;
-  final Future<bool> Function() onTap;
+  final bool chosen;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
-    final role = _roleLabel(path.role);
-    return AarastCard(
-      key: ValueKey('account-path-option-${path.contextKey}'),
-      onTap: enabled ? () => onTap() : null,
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 15),
-      child: Row(
-        children: [
-          Container(
-            width: 48,
-            height: 48,
-            alignment: Alignment.center,
-            decoration: BoxDecoration(
-              color: AppTheme.brandMuted,
-              borderRadius: BorderRadius.circular(16),
+    final bride = path.persona == AccountContextPersona.bride;
+    final (Color color, String tag, String line) = switch (path.role) {
+      AccountContextRole.owner => (
+        AarastV3Color.brandAccentStrong,
+        bride ? 'عروسة' : 'عريس',
+        bride ? 'خطتكِ' : 'خطتك',
+      ),
+      AccountContextRole.contributor => (
+        bride ? AarastV3Color.rose : AarastV3Color.primary,
+        bride ? 'مشاركة' : 'مشارك',
+        bride ? 'تساعدين فيها' : 'تساعد فيها',
+      ),
+      AccountContextRole.provider => (
+        AarastV3Color.cobalt,
+        'مزود',
+        'حساب المزود',
+      ),
+    };
+    final name = path.displayName.trim();
+    final letterSource = name.startsWith('عرس ') ? name.substring(4) : name;
+    final letter = letterSource.trim().isEmpty
+        ? 'ع'
+        : letterSource.trim().characters.first;
+    return Semantics(
+      button: true,
+      selected: chosen,
+      label: '$name، $line، $tag',
+      onTap: onTap,
+      excludeSemantics: true,
+      child: AarastPressable(
+        key: ValueKey('account-path-option-${path.contextKey}'),
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(20),
+        child: Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: AarastV3Color.paper,
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(
+              color: chosen ? AarastV3Color.primary : AarastV3Color.line,
+              width: chosen ? 2 : 1,
             ),
-            child: Icon(_roleIcon(path.role), color: AppTheme.brand, size: 24),
           ),
-          const SizedBox(width: 14),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  role,
-                  style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                    color: AppTheme.brand,
-                    fontWeight: FontWeight.w900,
-                  ),
+          child: Row(
+            children: [
+              JourneyAvatar(letter: letter, color: color, size: 46),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      name,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: JourneyType.of(
+                        JourneyType.bodyLarge,
+                        weight: JourneyType.bold,
+                      ),
+                    ),
+                    Text(
+                      line,
+                      style: JourneyType.of(
+                        JourneyType.small,
+                        color: AarastV3Color.textMuted,
+                      ),
+                    ),
+                  ],
                 ),
-                const SizedBox(height: 4),
-                Text(
-                  path.displayName,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    color: AppTheme.textPrimary,
-                    fontWeight: FontWeight.w800,
-                    height: 1.35,
-                  ),
+              ),
+              const SizedBox(width: 8),
+              if (chosen)
+                AarastInlineSpinner(dimension: 20, color: color)
+              else
+                JourneyTag(
+                  label: tag,
+                  color: color,
+                  soft: color.withValues(alpha: 0.12),
                 ),
-              ],
-            ),
+            ],
           ),
-          const SizedBox(width: 10),
-          if (enabled)
-            const Icon(
-              LucideIcons.chevronLeft,
-              color: AppTheme.textSecondary,
-              size: 20,
-            )
-          else
-            const AarastInlineSpinner(dimension: 20, color: AppTheme.brand),
-        ],
+        ),
       ),
     );
   }
-}
-
-String _roleLabel(AccountContextRole role) {
-  return switch (role) {
-    AccountContextRole.owner => 'عريس',
-    AccountContextRole.contributor => 'مساهم',
-    AccountContextRole.provider => 'مزود',
-  };
-}
-
-IconData _roleIcon(AccountContextRole role) {
-  return switch (role) {
-    AccountContextRole.owner => LucideIcons.heartHandshake,
-    AccountContextRole.contributor => LucideIcons.users,
-    AccountContextRole.provider => LucideIcons.store,
-  };
 }

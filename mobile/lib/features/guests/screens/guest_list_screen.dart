@@ -106,6 +106,7 @@ class _GuestListScreenState extends State<GuestListScreen> {
     );
     final duplicates = _duplicateGuests(guests);
     final query = _query;
+    final words = GuestWords.of(context);
 
     final Widget body;
     if (provider.isLoading && guests.isEmpty) {
@@ -121,11 +122,11 @@ class _GuestListScreenState extends State<GuestListScreen> {
       );
     } else if (guests.isEmpty && offline) {
       // The note above says why there is nothing to add with yet.
-      body = const JourneyListState(
-        key: ValueKey('guests-empty-offline'),
+      body = JourneyListState(
+        key: const ValueKey('guests-empty-offline'),
         phase: JourneyListPhase.empty,
         section: JourneySection.guests,
-        emptyTitle: 'ما أضفت أحد بعد',
+        emptyTitle: words.noneAdded,
       );
     } else if (guests.isEmpty) {
       body = _FirstGuests(
@@ -164,14 +165,16 @@ class _GuestListScreenState extends State<GuestListScreen> {
           ),
           children: [
             JourneyTabHeader(
-              title: 'الضيوف',
-              status: _statusLine(summary),
+              title: words.guests,
+              status: _statusLine(summary, words),
               actions: [
                 if (guests.isNotEmpty)
                   JourneyRoundButton(
                     key: const ValueKey('guests-search'),
                     icon: _searching ? LucideIcons.x : LucideIcons.search,
-                    tooltip: _searching ? 'سكّر البحث' : 'دوّر على ضيف',
+                    tooltip: _searching
+                        ? context.say('سكّر البحث', 'سكّري البحث')
+                        : context.say('دوّر على ضيف', 'دوّري على ضيفة'),
                     onPressed: () => setState(() {
                       _searching = !_searching;
                       if (!_searching) _query = '';
@@ -181,7 +184,7 @@ class _GuestListScreenState extends State<GuestListScreen> {
                   JourneyRoundButton(
                     key: const ValueKey('guests-add'),
                     icon: LucideIcons.plus,
-                    tooltip: 'ضيف جديد',
+                    tooltip: words.newGuest,
                     onPressed: provider.isSubmitting
                         ? null
                         : () => _showGuestSheet(provider: provider),
@@ -193,7 +196,10 @@ class _GuestListScreenState extends State<GuestListScreen> {
               JourneyNote(
                 key: const ValueKey('guests-offline'),
                 text: [
-                  'تشوف القائمة. الإضافة والدعوات لما يرجع النت.',
+                  context.say(
+                    'تشوف القائمة. الإضافة والدعوات لما يرجع النت.',
+                    'تشوفين القائمة. الإضافة والدعوات لما يرجع النت.',
+                  ),
                   if (sync?.lastSyncedAt case final at?) _lastUpdate(at),
                 ].join('\n'),
                 icon: LucideIcons.wifiOff,
@@ -248,7 +254,8 @@ class _GuestListScreenState extends State<GuestListScreen> {
           const SizedBox(height: 10),
           JourneyButton(
             key: const ValueKey('guests-remind'),
-            label: 'ذكّر الـ ${summary.pending} على واتساب',
+            label:
+                '${context.say('ذكّر', 'ذكّري')} الـ ${summary.pending} على واتساب',
             icon: LucideIcons.send,
             background: AarastV3Color.lilac,
             expand: true,
@@ -285,7 +292,7 @@ class _GuestListScreenState extends State<GuestListScreen> {
               ),
             JourneyTextAction(
               key: const ValueKey('guests-paste-list'),
-              label: 'الصق قائمة',
+              label: context.say('الصق قائمة', 'الصقي قائمة'),
               icon: LucideIcons.clipboardList,
               color: AarastV3Color.lilac,
               onPressed: () => _openImport(contacts: false),
@@ -297,6 +304,8 @@ class _GuestListScreenState extends State<GuestListScreen> {
           'حسب العائلة',
           action: _isLocalPlan ? null : 'المجموعات',
           onAction: _isLocalPlan ? null : _showGroupsSheet,
+          // The guests' own colour, as e01 draws the section's link.
+          actionColor: AarastV3Color.lilac,
         ),
         JourneyBox(
           padding: EdgeInsets.zero,
@@ -304,7 +313,7 @@ class _GuestListScreenState extends State<GuestListScreen> {
             children: [
               _GroupRow(
                 key: const ValueKey('guest-group-all'),
-                name: 'كل الضيوف',
+                name: GuestWords.of(context).allGuests,
                 guests: guests,
                 icon: LucideIcons.users,
                 onTap: () => _openGroupView(_allGroups),
@@ -348,8 +357,9 @@ class _GuestListScreenState extends State<GuestListScreen> {
             .toList(),
       _ => guests.where((guest) => guest.groupId == open).toList(),
     };
+    final words = GuestWords.of(context);
     final title = switch (open) {
-      _allGroups => 'كل الضيوف',
+      _allGroups => words.allGuests,
       _noGroup => 'بدون مجموعة',
       _ =>
         provider.groups
@@ -376,7 +386,7 @@ class _GuestListScreenState extends State<GuestListScreen> {
         Padding(
           padding: const EdgeInsets.fromLTRB(6, 4, 6, 10),
           child: Text(
-            '$title · ${_guestCount(inGroup.length)}',
+            '$title · ${words.count(inGroup.length)}',
             style: JourneyType.of(JourneyType.title, weight: JourneyType.bold),
           ),
         ),
@@ -387,7 +397,8 @@ class _GuestListScreenState extends State<GuestListScreen> {
               for (final filter in _ReplyFilter.values) ...[
                 JourneyChip(
                   key: ValueKey('guest-filter-${filter.name}'),
-                  label: '${filter.label} ${_filtered(inGroup, filter).length}',
+                  label:
+                      '${filter.labelFor(words)} ${_filtered(inGroup, filter).length}',
                   selected: _reply == filter,
                   selectedColor: AarastV3Color.lilac,
                   onTap: () => setState(() => _reply = filter),
@@ -534,7 +545,8 @@ class _GuestListScreenState extends State<GuestListScreen> {
     if (!ok) {
       AarastToast.showError(
         context,
-        provider.errorMessage ?? 'ما قدرنا نحفظ الضيف',
+        provider.errorMessage ??
+            context.say('ما قدرنا نحفظ الضيف', 'ما قدرنا نحفظ الضيفة'),
       );
       return;
     }
@@ -552,8 +564,9 @@ class _GuestListScreenState extends State<GuestListScreen> {
     }
     AarastFormSuccess.show(
       context,
-      message: provider.noticeMessage ?? 'انضاف الضيف',
-      nextLabel: 'أضف ثاني',
+      message:
+          provider.noticeMessage ?? context.say('انضاف الضيف', 'انضافت الضيفة'),
+      nextLabel: context.say('أضف ثاني', 'أضيفي ثانية'),
       onNext: () => _showGuestSheet(provider: provider),
     );
   }

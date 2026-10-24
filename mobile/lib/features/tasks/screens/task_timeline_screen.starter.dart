@@ -100,7 +100,7 @@ class _StarterTasksCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return Semantics(
       button: true,
-      label: 'ابدأ بمهام جاهزة',
+      label: context.say('ابدأ بمهام جاهزة', 'ابدئي بمهام جاهزة'),
       onTap: onOpen,
       excludeSemantics: true,
       child: AarastPressable(
@@ -122,14 +122,17 @@ class _StarterTasksCard extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'ابدأ بمهام جاهزة',
+                      context.say('ابدأ بمهام جاهزة', 'ابدئي بمهام جاهزة'),
                       style: JourneyType.of(
                         JourneyType.bodyLarge,
                         weight: JourneyType.bold,
                       ),
                     ),
                     Text(
-                      'القاعة والشبكة والكسوة وغيرها، مرتبة على موعد عرسك.',
+                      context.say(
+                        'القاعة والشبكة والكسوة وغيرها، مرتبة على موعد عرسك.',
+                        'الصالة والفستان والكوافير وغيرها، مرتبة على موعد عرسك.',
+                      ),
                       style: JourneyType.of(
                         JourneyType.small,
                         color: AarastV3Color.textMuted,

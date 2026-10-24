@@ -89,7 +89,7 @@ class _ContactCard extends StatelessWidget {
           JourneyRoundButton(
             key: const ValueKey('task-contact-call'),
             icon: LucideIcons.phone,
-            tooltip: 'اتصل بـ$name',
+            tooltip: '${context.say('اتصل', 'اتصلي')} بـ$name',
             onPressed: onCall,
           ),
           if (onWhatsApp != null) ...[
@@ -97,7 +97,7 @@ class _ContactCard extends StatelessWidget {
             JourneyRoundButton(
               key: const ValueKey('task-contact-whatsapp'),
               icon: LucideIcons.messageCircle,
-              tooltip: 'كلّم $name على واتساب',
+              tooltip: '${context.say('كلّم', 'كلّمي')} $name على واتساب',
               onPressed: onWhatsApp!,
             ),
           ],
@@ -157,15 +157,36 @@ class _TaskMenu extends StatelessWidget {
       onSelected: onSelected,
       itemBuilder: (context) => [
         if (open) ...[
-          item(_TaskAction.handOver, LucideIcons.userPlus, 'حوّلها لأحد ثاني'),
-          item(_TaskAction.moveDate, LucideIcons.calendarClock, 'غيّر موعدها'),
+          item(
+            _TaskAction.handOver,
+            LucideIcons.userPlus,
+            context.say('حوّلها لأحد ثاني', 'حوّليها لأحد ثاني'),
+          ),
+          item(
+            _TaskAction.moveDate,
+            LucideIcons.calendarClock,
+            context.say('غيّر موعدها', 'غيّري موعدها'),
+          ),
         ],
-        item(_TaskAction.edit, LucideIcons.pencil, 'عدّل المهمة'),
+        item(
+          _TaskAction.edit,
+          LucideIcons.pencil,
+          context.say('عدّل المهمة', 'عدّلي المهمة'),
+        ),
         if (!open)
-          item(_TaskAction.reopen, LucideIcons.rotateCcw, 'أعد فتحها')
+          item(
+            _TaskAction.reopen,
+            LucideIcons.rotateCcw,
+            context.say('أعد فتحها', 'أعيدي فتحها'),
+          )
         else
           item(_TaskAction.cancel, LucideIcons.x, 'ما نحتاجها', danger: true),
-        item(_TaskAction.delete, LucideIcons.trash2, 'احذفها', danger: true),
+        item(
+          _TaskAction.delete,
+          LucideIcons.trash2,
+          context.say('احذفها', 'احذفيها'),
+          danger: true,
+        ),
       ],
     );
   }
@@ -179,13 +200,15 @@ class _DeleteSheet extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return JourneySheetBody(
-      title: 'تحذف «$title»؟',
-      subtitle:
-          'تنمسح هي وخطواتها. لو بس ما تحتاجها، «ما نحتاجها» تخليها في السجل.',
+      title: '${context.say('تحذف', 'تحذفين')} «$title»؟',
+      subtitle: context.say(
+        'تنمسح هي وخطواتها. لو بس ما تحتاجها، «ما نحتاجها» تخليها في السجل.',
+        'تنمسح هي وخطواتها. لو بس ما تحتاجينها، «ما نحتاجها» تخليها في السجل.',
+      ),
       children: [
         JourneyButton(
           key: const ValueKey('task-delete-confirm'),
-          label: 'احذفها',
+          label: context.say('احذفها', 'احذفيها'),
           background: AarastV3Color.danger,
           expand: true,
           large: true,

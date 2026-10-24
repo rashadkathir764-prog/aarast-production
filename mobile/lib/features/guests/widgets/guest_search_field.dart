@@ -31,7 +31,7 @@ class _GuestSearchFieldState extends State<GuestSearchField> {
   Widget build(BuildContext context) {
     return JourneyTextField(
       key: const ValueKey('guests-search-field'),
-      label: 'دوّر باسم أو رقم',
+      label: context.say('دوّر باسم أو رقم', 'دوّري باسم أو رقم'),
       controller: _controller,
       icon: LucideIcons.search,
       autofocus: widget.autofocus,

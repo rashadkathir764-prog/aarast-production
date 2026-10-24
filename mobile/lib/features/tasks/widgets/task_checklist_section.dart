@@ -74,7 +74,10 @@ class _TaskChecklistSectionState extends State<TaskChecklistSection> {
                 Padding(
                   padding: const EdgeInsets.fromLTRB(8, 10, 8, 4),
                   child: Text(
-                    'قسّمها على خطوات صغيرة تخلصها وحدة وحدة.',
+                    context.say(
+                      'قسّمها على خطوات صغيرة تخلصها وحدة وحدة.',
+                      'قسّميها على خطوات صغيرة تخلصينها وحدة وحدة.',
+                    ),
                     style: JourneyType.of(
                       JourneyType.small,
                       color: AarastV3Color.textMuted,
@@ -116,7 +119,8 @@ class _TaskChecklistSectionState extends State<TaskChecklistSection> {
                       ),
                     ),
                     IconButton(
-                      tooltip: 'شيل الخطوة ${item.title}',
+                      tooltip:
+                          '${context.say('شيل', 'شيلي')} الخطوة ${item.title}',
                       onPressed: widget.saving
                           ? null
                           : () => widget.onRemove(item),
@@ -135,8 +139,11 @@ class _TaskChecklistSectionState extends State<TaskChecklistSection> {
                   Expanded(
                     child: JourneyTextField(
                       key: const ValueKey('task-checklist-new-item'),
-                      label: 'أضف خطوة',
-                      hint: 'مثلًا: كلّم القاعة',
+                      label: context.say('أضف خطوة', 'أضيفي خطوة'),
+                      hint: context.say(
+                        'مثلًا: كلّم القاعة',
+                        'مثلًا: كلّمي الصالة',
+                      ),
                       controller: _controller,
                       textInputAction: TextInputAction.done,
                       onSubmitted: (_) => _add(),
@@ -146,7 +153,7 @@ class _TaskChecklistSectionState extends State<TaskChecklistSection> {
                   JourneyRoundButton(
                     key: const ValueKey('task-checklist-add'),
                     icon: LucideIcons.plus,
-                    tooltip: 'أضف الخطوة',
+                    tooltip: context.say('أضف الخطوة', 'أضيفي الخطوة'),
                     onPressed: widget.saving ? null : _add,
                   ),
                 ],

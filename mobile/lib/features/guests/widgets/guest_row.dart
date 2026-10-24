@@ -25,12 +25,12 @@ class GuestRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final (color, soft) = guestReplyColors(guest);
-    final reply = guestReplyLabel(guest);
+    final reply = guestReplyLabel(guest, context.journeyProfile);
     final name = guest.name.trim();
     final line = [
       groupLabel,
       if (!guest.hasPhone) 'بدون رقم',
-      if (isDuplicate) 'رقمه مكرر',
+      if (isDuplicate) context.say('رقمه مكرر', 'رقمها مكرر'),
     ].join(' · ');
     return Semantics(
       button: true,

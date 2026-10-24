@@ -151,7 +151,10 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
                 JourneyTextField(
                   key: const ValueKey('task-title'),
                   label: 'ايش المهمة؟',
-                  hint: 'مثلًا: تذوّق الضيافة مع صالح',
+                  hint: context.say(
+                    'مثلًا: تذوّق الضيافة مع صالح',
+                    'مثلًا: تذوّق الضيافة مع نورة',
+                  ),
                   controller: _titleController,
                   autofocus: !_isEditMode,
                   maxLength: 200,
@@ -219,11 +222,13 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
                   alignment: AlignmentDirectional.centerStart,
                   child: JourneyTextAction(
                     key: const ValueKey('task-more'),
-                    label: _showMore ? 'أقل' : 'أضف ملاحظة',
+                    label: _showMore
+                        ? 'أقل'
+                        : context.say('أضف ملاحظة', 'أضيفي ملاحظة'),
                     icon: _showMore
                         ? LucideIcons.chevronUp
                         : LucideIcons.chevronDown,
-                    color: AarastV3Color.primary,
+                    color: context.accent.primary,
                     onPressed: () => setState(() => _showMore = !_showMore),
                   ),
                 ),
@@ -231,7 +236,10 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
                   JourneyTextField(
                     key: const ValueKey('task-note'),
                     label: 'ملاحظة',
-                    hint: 'ايش لازم تتذكر وقت تسويها؟',
+                    hint: context.say(
+                      'ايش لازم تتذكر وقت تسويها؟',
+                      'ايش لازم تتذكرين وقت تسوينها؟',
+                    ),
                     controller: _descriptionController,
                     maxLength: 1000,
                   ),
@@ -304,7 +312,9 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
 
   Future<void> _submit() async {
     if (_titleController.text.trim().isEmpty) {
-      setState(() => _titleError = 'اكتب ايش المهمة');
+      setState(
+        () => _titleError = context.say('اكتب ايش المهمة', 'اكتبي ايش المهمة'),
+      );
       return;
     }
     if (await AuthActionGuard.blockCloudSubmitForNonLocalPlanning(
@@ -329,7 +339,10 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
     if (_keepsPrivate(provider) && givenAway) {
       AarastToast.showError(
         context,
-        'المهمة الخاصة تبقى لك وحدك. خلّها لك، أو شاركها مع الخطة أول.',
+        context.say(
+          'المهمة الخاصة تبقى لك وحدك. خلّها لك، أو شاركها مع الخطة أول.',
+          'المهمة الخاصة تبقى لك وحدك. خلّيها لك، أو شاركيها مع الخطة أول.',
+        ),
       );
       return;
     }

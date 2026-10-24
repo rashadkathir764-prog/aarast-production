@@ -83,7 +83,7 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen> {
         section: JourneySection.tasks,
         emptyIcon: LucideIcons.listChecks,
         emptyTitle: 'هذي المهمة ما عاد موجودة',
-        emptyAction: 'ارجع',
+        emptyAction: context.say('ارجع', 'ارجعي'),
         onEmptyAction: _back,
         onRetry: () => provider.load(widget.weddingPlanId),
       );
@@ -114,7 +114,7 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen> {
           ),
           Expanded(
             child: RefreshIndicator(
-              color: AarastV3Color.primary,
+              color: context.accent.primary,
               onRefresh: () => provider.load(widget.weddingPlanId),
               child: ListView(
                 physics: const AlwaysScrollableScrollPhysics(),
@@ -146,7 +146,7 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen> {
                         const SizedBox(width: 10),
                         JourneyButton(
                           key: const ValueKey('task-detail-postpone'),
-                          label: 'أجّلها',
+                          label: context.say('أجّلها', 'أجّليها'),
                           background: AarastV3Color.brandAccentSoft,
                           foreground: AarastV3Color.brandAccentStrong,
                           large: true,
@@ -158,7 +158,7 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen> {
                     )
                   : JourneyButton(
                       key: const ValueKey('task-detail-reopen'),
-                      label: 'أعد فتحها',
+                      label: context.say('أعد فتحها', 'أعيدي فتحها'),
                       icon: LucideIcons.rotateCcw,
                       expand: true,
                       large: true,
@@ -246,7 +246,9 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen> {
               _Fact(
                 icon: LucideIcons.user,
                 label: 'مين',
-                value: mine ? 'أنت' : task.directionalResponsibleLabel,
+                value: mine
+                    ? context.say('أنت', 'أنتِ')
+                    : task.directionalResponsibleLabel,
               ),
               if (task.hasDescription)
                 _Fact(

@@ -18,9 +18,9 @@ extension _CreateTaskPrivacy on _CreateTaskScreenState {
           alignment: AlignmentDirectional.centerStart,
           child: JourneyTextAction(
             key: const ValueKey('task-share-with-plan'),
-            label: 'شاركها مع الخطة',
+            label: context.say('شاركها مع الخطة', 'شاركيها مع الخطة'),
             icon: LucideIcons.users,
-            color: AarastV3Color.primary,
+            color: context.accent.primary,
             onPressed: provider.isSubmitting
                 ? null
                 : () => _shareWithPlan(editing),
@@ -74,7 +74,7 @@ extension _CreateTaskPrivacy on _CreateTaskScreenState {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (dialogContext) => AarastDialog(
-        title: const Text('تشاركها مع الخطة؟'),
+        title: Text(context.say('تشاركها مع الخطة؟', 'تشاركينها مع الخطة؟')),
         content: const Text(
           'بيشوفها شريكك وتدخل في مهام الخطة، وما ترجع خاصة بعدها.',
         ),
@@ -85,7 +85,7 @@ extension _CreateTaskPrivacy on _CreateTaskScreenState {
           ),
           FilledButton(
             onPressed: () => Navigator.of(dialogContext).pop(true),
-            child: const Text('شاركها'),
+            child: Text(context.say('شاركها', 'شاركيها')),
           ),
         ],
       ),

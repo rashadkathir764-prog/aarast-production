@@ -5,7 +5,6 @@ import 'package:provider/provider.dart';
 import '../../../core/experience_v3/aarast_v3.dart';
 import '../../../core/routing/app_router.dart';
 import '../../../core/routing/pop_or_go.dart';
-import '../../../core/utils/arabic_count.dart';
 import '../../../core/widgets/aarast_ui.dart';
 import '../../wedding_plans/wedding_plans_api.dart'
     show DashboardSummaryProvider;
@@ -13,6 +12,7 @@ import '../data/guests_api.dart';
 import '../models/guest.dart';
 import '../models/guest_invite_text.dart';
 import '../providers/guests_provider.dart';
+import '../utils/guest_display.dart';
 import '../widgets/guest_send_sheet.dart';
 
 /// e04 «بطاقة الدعوة» and e08 «تذكير اللي ما ردّوا»: the card as guests
@@ -90,6 +90,7 @@ class _GuestInviteScreenState extends State<GuestInviteScreen> {
       host: _host.text,
       weddingDate: mine?.weddingDate,
       place: _place.text,
+      profile: context.journeyProfile,
     );
   }
 
@@ -100,13 +101,9 @@ class _GuestInviteScreenState extends State<GuestInviteScreen> {
     final candidates = _recipients(provider.guests);
     final reachable = candidates.where((guest) => guest.hasPhone).toList();
     final unreachable = candidates.length - reachable.length;
-    final count = arabicCount(
-      reachable.length,
-      one: 'ضيف واحد',
-      two: 'ضيفين',
-      few: 'ضيوف',
-      many: 'ضيف',
-    );
+    final words = GuestWords.of(context);
+    final say = words.profile.say;
+    final count = words.count(reachable.length);
 
     return AarastScreenFrame(
       maxWidth: 600,
@@ -117,10 +114,18 @@ class _GuestInviteScreenState extends State<GuestInviteScreen> {
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 8, 8, 0),
             child: JourneySubHeader(
-              title: widget.reminder ? 'تذكير اللي ما ردّوا' : 'بطاقة الدعوة',
+              title: widget.reminder
+                  ? 'تذكير اللي ${words.pending}'
+                  : 'بطاقة الدعوة',
               subtitle: widget.reminder
-                  ? 'كل واحد يوصله باسمه ورابطه'
-                  : 'كل ضيف يوصله رابط خاص يرد منه بضغطة',
+                  ? say(
+                      'كل واحد يوصله باسمه ورابطه',
+                      'كل وحدة يوصلها باسمها ورابطها',
+                    )
+                  : say(
+                      'كل ضيف يوصله رابط خاص يرد منه بضغطة',
+                      'كل ضيفة يوصلها رابط خاص ترد منه بضغطة',
+                    ),
               onBack: () =>
                   context.popOrGo(AppRouter.guestList(widget.weddingPlanId)),
             ),
@@ -134,7 +139,7 @@ class _GuestInviteScreenState extends State<GuestInviteScreen> {
                     text: guestReminderMessage(
                       card,
                       guestName: reachable.isEmpty
-                          ? 'ياسر'
+                          ? say('ياسر', 'يسرى')
                           : reachable.first.name,
                       url: 'aarast.app/rsvp/…',
                     ),
@@ -145,8 +150,11 @@ class _GuestInviteScreenState extends State<GuestInviteScreen> {
                 if (!widget.reminder) ...[
                   JourneyTextField(
                     key: const ValueKey('invite-host'),
-                    label: 'باسم مين الدعوة؟ (لو تبي)',
-                    hint: 'مثلًا: عبدالرحمن الحمدي',
+                    label: say(
+                      'باسم مين الدعوة؟ (لو تبي)',
+                      'باسم مين الدعوة؟ (لو تبين)',
+                    ),
+                    hint: say('مثلًا: عبدالرحمن الحمدي', 'مثلًا: أم سلمى'),
                     controller: _host,
                     icon: LucideIcons.user,
                   ),
@@ -154,7 +162,7 @@ class _GuestInviteScreenState extends State<GuestInviteScreen> {
                   JourneyTextField(
                     key: const ValueKey('invite-place'),
                     label: 'المكان',
-                    hint: 'مثلًا: قاعة سبأ',
+                    hint: say('مثلًا: قاعة سبأ', 'مثلًا: صالة الياسمين'),
                     controller: _place,
                     icon: LucideIcons.mapPin,
                   ),
@@ -179,7 +187,7 @@ class _GuestInviteScreenState extends State<GuestInviteScreen> {
                   JourneyNote(
                     key: const ValueKey('invite-no-phone'),
                     text:
-                        '${arabicCount(unreachable, one: 'ضيف واحد', two: 'ضيفين', few: 'ضيوف', many: 'ضيف')} بدون رقم، ما توصلهم على واتساب.',
+                        '${words.count(unreachable)} بدون رقم، ${say('ما توصلهم', 'ما توصلهن')} على واتساب.',
                     icon: LucideIcons.phoneOff,
                     color: AarastV3Color.brandAccentStrong,
                     soft: AarastV3Color.brandAccentSoft,
@@ -189,8 +197,14 @@ class _GuestInviteScreenState extends State<GuestInviteScreen> {
                   const SizedBox(height: 10),
                   Text(
                     widget.reminder
-                        ? 'ما فيه أحد ينتظر رده.'
-                        : 'ما فيه أحد ما وصلته دعوة.',
+                        ? say(
+                            'ما فيه أحد ينتظر رده.',
+                            'ما فيه وحدة تنتظر ردها.',
+                          )
+                        : say(
+                            'ما فيه أحد ما وصلته دعوة.',
+                            'ما فيه وحدة ما وصلتها دعوة.',
+                          ),
                     textAlign: TextAlign.center,
                     style: JourneyType.of(
                       JourneyType.body,
@@ -205,7 +219,7 @@ class _GuestInviteScreenState extends State<GuestInviteScreen> {
             padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
             child: JourneyButton(
               key: const ValueKey('invite-send'),
-              label: 'أرسل لـ $count',
+              label: '${say('أرسل', 'أرسلي')} لـ $count',
               icon: LucideIcons.send,
               background: AarastV3Color.mint,
               expand: true,
@@ -231,7 +245,9 @@ class _GuestInviteScreenState extends State<GuestInviteScreen> {
       isDismissible: false,
       builder: (_) => GuestSendSheet(
         guests: guests,
-        title: widget.reminder ? 'تذكير اللي ما ردّوا' : 'إرسال الدعوات',
+        title: widget.reminder
+            ? 'تذكير اللي ${GuestWords.of(context).pending}'
+            : 'إرسال الدعوات',
         makeLink: (guest) async =>
             (await api.createInvitationLink(guest.id)).url,
         buildText: (guest, url) => widget.reminder
@@ -256,21 +272,27 @@ class _InviteCardPreview extends StatelessWidget {
     TextStyle light(double size, {bool bold = false}) => JourneyType.of(
       size,
       weight: bold ? JourneyType.bold : FontWeight.w400,
-      color: bold ? AarastV3Color.onPrimary : AarastV3Color.onPrimaryMuted,
+      color: bold ? AarastV3Color.onPrimary : context.accent.onPrimaryMuted,
     );
     return Container(
       key: const ValueKey('invite-card'),
       padding: const EdgeInsets.fromLTRB(22, 26, 22, 22),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(28),
-        color: AarastV3Color.primaryDark,
+        color: context.accent.primaryDark,
       ),
       child: Column(
         children: [
           if (host.isNotEmpty) ...[
-            Text('يتشرف', style: light(JourneyType.body)),
+            Text(
+              card.profile.say('يتشرف', 'تتشرف'),
+              style: light(JourneyType.body),
+            ),
             Text(host, style: light(JourneyType.title, bold: true)),
-            Text('بدعوتكم لحضور', style: light(JourneyType.body)),
+            Text(
+              card.profile.say('بدعوتكم لحضور', 'بدعوتكن لحضور'),
+              style: light(JourneyType.body),
+            ),
           ] else
             Text('يسعدنا حضوركم', style: light(JourneyType.body)),
           const SizedBox(height: 14),
@@ -280,7 +302,7 @@ class _InviteCardPreview extends StatelessWidget {
             style: light(JourneyType.count, bold: true),
           ),
           const SizedBox(height: 14),
-          const Divider(color: AarastV3Color.onPrimaryMuted, height: 1),
+          Divider(color: context.accent.onPrimaryMuted, height: 1),
           const SizedBox(height: 14),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceEvenly,
@@ -321,7 +343,7 @@ class _InviteCardPreview extends StatelessWidget {
               borderRadius: BorderRadius.circular(16),
             ),
             child: Text(
-              'أكّد حضورك',
+              card.profile.say('أكّد حضورك', 'أكّدي حضورك'),
               style: JourneyType.of(
                 JourneyType.bodyLarge,
                 weight: JourneyType.bold,

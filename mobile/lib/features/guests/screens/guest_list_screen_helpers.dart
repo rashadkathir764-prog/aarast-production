@@ -7,11 +7,11 @@ const _noGroup = '';
 enum _ReplyFilter { all, confirmed, pending, declined, noPhone }
 
 extension on _ReplyFilter {
-  String get label => switch (this) {
+  String labelFor(GuestWords words) => switch (this) {
     _ReplyFilter.all => 'الكل',
-    _ReplyFilter.confirmed => 'أكدوا',
-    _ReplyFilter.pending => 'ما ردّوا',
-    _ReplyFilter.declined => 'اعتذروا',
+    _ReplyFilter.confirmed => words.confirmed,
+    _ReplyFilter.pending => words.pending,
+    _ReplyFilter.declined => words.declined,
     _ReplyFilter.noPhone => 'بدون رقم',
   };
 }
@@ -40,17 +40,16 @@ List<Guest> _search(List<Guest> guests, String query) {
 }
 
 /// «124 مدعو · 86 أكدوا · 20 ما ردّوا».
-String _statusLine(GuestSummary summary) {
-  if (summary.totalGuests == 0) return 'ابدأ بقائمة ضيوفك';
+String _statusLine(GuestSummary summary, GuestWords words) {
+  if (summary.totalGuests == 0) {
+    return words.profile.say('ابدأ بقائمة ضيوفك', 'ابدئي بقائمة ضيفاتك');
+  }
   return [
-    '${summary.totalGuests} مدعو',
-    '${summary.confirmed} أكدوا',
-    if (summary.pending > 0) '${summary.pending} ما ردّوا',
+    '${summary.totalGuests} ${words.invited}',
+    '${summary.confirmed} ${words.confirmed}',
+    if (summary.pending > 0) '${summary.pending} ${words.pending}',
   ].join(' · ');
 }
-
-String _guestCount(int count) =>
-    arabicCount(count, one: 'ضيف واحد', two: 'ضيفين', few: 'ضيوف', many: 'ضيف');
 
 /// «آخر تحديث قبل 20 دقيقة».
 String _lastUpdate(DateTime at) {
@@ -95,16 +94,18 @@ class _GuestSummaryCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final total = summary.totalGuests;
+    final words = GuestWords.of(context);
     return AarastPressable(
       key: const ValueKey('guests-summary'),
       onTap: onTap,
-      semanticLabel: 'كم بيحضر؟ ${summary.confirmed} أكدوا من $total',
+      semanticLabel:
+          'كم بيحضر؟ ${summary.confirmed} ${words.confirmed} من $total',
       borderRadius: BorderRadius.circular(22),
-      child: _card(total),
+      child: _card(total, words),
     );
   }
 
-  Widget _card(int total) {
+  Widget _card(int total, GuestWords words) {
     return JourneyBox(
       padding: const EdgeInsets.all(18),
       child: Column(
@@ -124,7 +125,7 @@ class _GuestSummaryCard extends StatelessWidget {
               const SizedBox(width: 8),
               Expanded(
                 child: Text(
-                  'أكدوا من $total',
+                  '${words.confirmed} من $total',
                   style: JourneyType.of(
                     JourneyType.body,
                     color: AarastV3Color.textMuted,
@@ -133,7 +134,7 @@ class _GuestSummaryCard extends StatelessWidget {
               ),
               if (summary.pending > 0)
                 Text(
-                  '${summary.pending} ما ردّوا',
+                  '${summary.pending} ${words.pending}',
                   style: JourneyType.of(
                     JourneyType.body,
                     weight: JourneyType.bold,
@@ -198,9 +199,10 @@ class _GroupRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final yes = guests.where((guest) => guest.isConfirmed).length;
     final all = guests.length;
+    final words = GuestWords.of(context);
     return Semantics(
       button: true,
-      label: '$name، أكد $yes من $all',
+      label: '$name، ${words.profile.say('أكد', 'أكّدت')} $yes من $all',
       onTap: onTap,
       excludeSemantics: true,
       child: AarastPressable(
@@ -247,7 +249,7 @@ class _GroupRow extends StatelessWidget {
                     ),
                   ),
                   Text(
-                    'أكدوا',
+                    words.confirmed,
                     style: JourneyType.of(
                       JourneyType.caption,
                       color: AarastV3Color.textMuted,
@@ -294,12 +296,12 @@ class _FirstGuests extends StatelessWidget {
       children: [
         const SizedBox(height: 8),
         Text(
-          AarastV3Copy.firstGuestTitle,
+          context.say(AarastV3Copy.firstGuestTitle, 'مين بتعزمين؟'),
           style: JourneyType.of(JourneyType.display, weight: JourneyType.bold),
         ),
         const SizedBox(height: 4),
         Text(
-          'ما أضفت أحد بعد.',
+          '${GuestWords.of(context).noneAdded}.',
           style: JourneyType.of(
             JourneyType.body,
             color: AarastV3Color.textMuted,
@@ -310,7 +312,10 @@ class _FirstGuests extends StatelessWidget {
           JourneyChoiceCard(
             key: const ValueKey('guests-first-contacts'),
             title: 'من جهات الاتصال',
-            subtitle: 'تختار مين تعزم، والمكرر نعلّمه لك',
+            subtitle: context.say(
+              'تختار مين تعزم، والمكرر نعلّمه لك',
+              'تختارين مين تعزمين، والمكرر نعلّمه لك',
+            ),
             leading: icon(LucideIcons.contact),
             onTap: contacts,
           ),
@@ -318,16 +323,19 @@ class _FirstGuests extends StatelessWidget {
         ],
         JourneyChoiceCard(
           key: const ValueKey('guests-first-paste'),
-          title: 'الصق قائمة',
-          subtitle: 'اسم في كل سطر، ورقمه لو عندك',
+          title: context.say('الصق قائمة', 'الصقي قائمة'),
+          subtitle: context.say(
+            'اسم في كل سطر، ورقمه لو عندك',
+            'اسم في كل سطر، ورقمها لو عندك',
+          ),
           leading: icon(LucideIcons.clipboardList),
           onTap: onPaste,
         ),
         const SizedBox(height: 10),
         JourneyChoiceCard(
           key: const ValueKey('guests-first-one'),
-          title: 'ضيف واحد',
-          subtitle: 'اسمه ورقمه وكم معه',
+          title: context.say('ضيف واحد', 'ضيفة وحدة'),
+          subtitle: context.say('اسمه ورقمه وكم معه', 'اسمها ورقمها وكم معها'),
           leading: icon(LucideIcons.userPlus),
           onTap: onOne,
         ),

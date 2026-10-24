@@ -230,11 +230,13 @@ class _GuestFormSheetState extends State<GuestFormSheet> {
     final duplicate =
         widget.blockDuplicatePhone && _duplicatePhoneGuest != null;
     setState(() {
-      _nameError = name.isEmpty ? 'اكتب اسمه' : null;
+      _nameError = name.isEmpty
+          ? context.say('اكتب اسمه', 'اكتبي اسمها')
+          : null;
       _phoneError = phone.isInvalid
           ? phone.message ?? PhoneNumberUtils.invalidMessage
           : duplicate
-          ? 'رقمه عندك لـ${_duplicatePhoneGuest!.name}'
+          ? '${context.say('رقمه', 'رقمها')} عندك لـ${_duplicatePhoneGuest!.name}'
           : null;
     });
     if (_nameError != null || _phoneError != null) return;
@@ -257,7 +259,9 @@ class _GuestFormSheetState extends State<GuestFormSheet> {
   Widget build(BuildContext context) {
     final duplicate = _duplicatePhoneGuest;
     return JourneySheetBody(
-      title: _editing ? 'تعديل ضيف' : 'ضيف جديد',
+      title: _editing
+          ? context.say('تعديل ضيف', 'تعديل ضيفة')
+          : GuestWords.of(context).newGuest,
       children: [
         if (_draft != null) ...[
           AarastV3DraftStatusLine(status: _draft!.status),
@@ -266,7 +270,7 @@ class _GuestFormSheetState extends State<GuestFormSheet> {
         JourneyTextField(
           key: const ValueKey('guest-form-name'),
           label: 'الاسم',
-          hint: 'مثلًا: خالد الحمدي',
+          hint: context.say('مثلًا: خالد الحمدي', 'مثلًا: خلود الحمدي'),
           controller: _nameController,
           autofocus: !_editing,
           errorText: _nameError,
@@ -280,7 +284,7 @@ class _GuestFormSheetState extends State<GuestFormSheet> {
           label: 'رقم الجوال (اختياري)',
           duplicateMessage: duplicate == null
               ? null
-              : 'رقمه عندك لـ${duplicate.name}',
+              : '${context.say('رقمه', 'رقمها')} عندك لـ${duplicate.name}',
           duplicateIsBlocking: widget.blockDuplicatePhone,
           onDraftChanged: (_) {
             if (!mounted) return;
@@ -300,7 +304,10 @@ class _GuestFormSheetState extends State<GuestFormSheet> {
           ),
         if (_hasSoftNameDuplicate)
           Text(
-            'فيه اسم مشابه بدون رقم؛ كمّل لو هو شخص ثاني.',
+            context.say(
+              'فيه اسم مشابه بدون رقم؛ كمّل لو هو شخص ثاني.',
+              'فيه اسم مشابه بدون رقم؛ كمّلي لو هي وحدة ثانية.',
+            ),
             style: JourneyType.of(
               JourneyType.small,
               weight: JourneyType.bold,
@@ -334,7 +341,7 @@ class _GuestFormSheetState extends State<GuestFormSheet> {
             ],
           ),
         ],
-        _label('كم معه؟'),
+        _label(context.say('كم معه؟', 'كم معها؟')),
         Wrap(
           spacing: 8,
           runSpacing: 8,
@@ -343,7 +350,7 @@ class _GuestFormSheetState extends State<GuestFormSheet> {
               JourneyChip(
                 key: ValueKey('guest-form-companions-$count'),
                 label: count == 0
-                    ? 'لحاله'
+                    ? context.say('لحاله', 'لحالها')
                     : PhoneNumberUtils.isolateLtr('+$count'),
                 selected: _companionsCount == count,
                 selectedColor: AarastV3Color.lilac,
@@ -391,15 +398,15 @@ class _GuestFormSheetState extends State<GuestFormSheet> {
                 ),
             ],
           ),
-          _label('ردّه'),
+          _label(context.say('ردّه', 'ردّها')),
           Wrap(
             spacing: 8,
             runSpacing: 8,
             children: [
-              for (final (status, label) in const [
-                ('INVITED', 'ما ردّ'),
-                ('CONFIRMED', 'أكّد'),
-                ('DECLINED', 'اعتذر'),
+              for (final (status, label) in [
+                ('INVITED', context.say('ما ردّ', 'ما ردّت')),
+                ('CONFIRMED', context.say('أكّد', 'أكّدت')),
+                ('DECLINED', context.say('اعتذر', 'اعتذرت')),
               ])
                 JourneyChip(
                   key: ValueKey('guest-form-status-$status'),
@@ -437,7 +444,7 @@ class _GuestFormSheetState extends State<GuestFormSheet> {
               const SizedBox(width: 10),
               JourneyButton(
                 key: const ValueKey('guest-form-save-next'),
-                label: 'حفظ وأضف التالي',
+                label: context.say('حفظ وأضف التالي', 'حفظ وأضيفي التالية'),
                 background: AarastV3Color.lilacSoft,
                 foreground: AarastV3Color.lilac,
                 large: true,
@@ -524,7 +531,7 @@ class _NewGroupSheetState extends State<_NewGroupSheet> {
         const SizedBox(height: 16),
         JourneyButton(
           key: const ValueKey('guest-form-group-create'),
-          label: 'أضفها',
+          label: context.say('أضفها', 'أضيفيها'),
           background: AarastV3Color.lilac,
           expand: true,
           large: true,

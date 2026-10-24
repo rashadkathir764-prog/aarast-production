@@ -2,9 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 
 import '../../../core/experience_v3/aarast_v3.dart';
-import '../../../core/utils/arabic_count.dart';
 import '../../../core/widgets/aarast_dialog.dart';
 import '../models/guest.dart';
+import '../utils/guest_display.dart';
 
 /// Create, rename and delete guest groups (family, friends, colleagues…).
 /// Presentational: the caller saves each change and passes the current
@@ -72,8 +72,11 @@ class _GuestGroupsSheetState extends State<GuestGroupsSheet> {
         title: Text('حذف مجموعة «${group.name}»؟'),
         content: Text(
           count == 0
-              ? 'ما فيها ضيوف.'
-              : 'ضيوفها ($count) يبقون في قائمتك بدون مجموعة.',
+              ? context.say('ما فيها ضيوف.', 'ما فيها ضيفات.')
+              : context.say(
+                  'ضيوفها ($count) يبقون في قائمتك بدون مجموعة.',
+                  'ضيفاتها ($count) يبقين في قائمتك بدون مجموعة.',
+                ),
         ),
         actions: [
           TextButton(
@@ -85,7 +88,7 @@ class _GuestGroupsSheetState extends State<GuestGroupsSheet> {
               backgroundColor: AarastV3Color.danger,
             ),
             onPressed: () => Navigator.pop(dialogContext, true),
-            child: const Text('شيل المجموعة'),
+            child: Text(context.say('شيل المجموعة', 'شيلي المجموعة')),
           ),
         ],
       ),
@@ -95,16 +98,13 @@ class _GuestGroupsSheetState extends State<GuestGroupsSheet> {
 
   @override
   Widget build(BuildContext context) {
-    String count(int value) => arabicCount(
-      value,
-      one: 'ضيف واحد',
-      two: 'ضيفين',
-      few: 'ضيوف',
-      many: 'ضيف',
-    );
+    final count = GuestWords.of(context).count;
     return JourneySheetBody(
       title: 'المجموعات',
-      subtitle: 'رتّب ضيوفك: الأهل، الأصحاب، زملاء الشغل…',
+      subtitle: context.say(
+        'رتّب ضيوفك: الأهل، الأصحاب، زملاء الشغل…',
+        'رتّبي ضيفاتك: الأهل، الصاحبات، زميلات الشغل…',
+      ),
       children: [
         JourneyBox(
           padding: EdgeInsets.zero,
@@ -120,7 +120,8 @@ class _GuestGroupsSheetState extends State<GuestGroupsSheet> {
                   subtitle: count(widget.guestCounts[group.id] ?? 0),
                   onTap: widget.saving ? null : () => _rename(group),
                   trailing: IconButton(
-                    tooltip: 'شيل مجموعة ${group.name}',
+                    tooltip:
+                        '${context.say('شيل', 'شيلي')} مجموعة ${group.name}',
                     onPressed: widget.saving ? null : () => _delete(group),
                     icon: const Icon(
                       LucideIcons.trash2,
@@ -157,14 +158,17 @@ class _GuestGroupsSheetState extends State<GuestGroupsSheet> {
             JourneyRoundButton(
               key: const ValueKey('guest-group-add'),
               icon: LucideIcons.plus,
-              tooltip: 'أضف المجموعة',
+              tooltip: context.say('أضف المجموعة', 'أضيفي المجموعة'),
               onPressed: widget.saving ? null : _create,
             ),
           ],
         ),
         const SizedBox(height: 10),
         Text(
-          'شيل المجموعة ما يشيل ضيوفها، ينقلهم «بدون مجموعة». اضغط على مجموعة تغيّر اسمها.',
+          context.say(
+            'شيل المجموعة ما يشيل ضيوفها، ينقلهم «بدون مجموعة». اضغط على مجموعة تغيّر اسمها.',
+            'شيل المجموعة ما يشيل ضيفاتها، ينقلهن «بدون مجموعة». اضغطي على مجموعة تغيّرين اسمها.',
+          ),
           style: JourneyType.of(
             JourneyType.small,
             color: AarastV3Color.textMuted,

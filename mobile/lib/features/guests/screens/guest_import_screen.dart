@@ -7,7 +7,6 @@ import '../../../core/experience_v3/aarast_v3.dart';
 import '../../../core/phone/phone_number_utils.dart';
 import '../../../core/routing/app_router.dart';
 import '../../../core/routing/pop_or_go.dart';
-import '../../../core/utils/arabic_count.dart';
 import '../../../core/widgets/aarast_toast.dart';
 import '../../../core/widgets/aarast_ui.dart';
 import '../../../shared/models/contact_phone_draft.dart';
@@ -16,6 +15,7 @@ import '../../wedding_plans/wedding_plans_api.dart' show publishGuestPlanPulse;
 import '../models/guest.dart';
 import '../models/guest_import.dart';
 import '../providers/guests_provider.dart';
+import '../utils/guest_display.dart';
 import '../widgets/guest_search_field.dart';
 
 /// Where the guests come from.
@@ -117,13 +117,9 @@ class _GuestImportScreenState extends State<GuestImportScreen> {
         .toList();
     final candidates = _candidates(guests);
     final toAdd = _toAdd(candidates);
-    final count = arabicCount(
-      toAdd.length,
-      one: 'ضيف واحد',
-      two: 'ضيفين',
-      few: 'ضيوف',
-      many: 'ضيف',
-    );
+    final words = GuestWords.of(context);
+    final say = words.profile.say;
+    final count = words.count(toAdd.length);
 
     return AarastScreenFrame(
       maxWidth: 600,
@@ -134,10 +130,15 @@ class _GuestImportScreenState extends State<GuestImportScreen> {
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 8, 8, 0),
             child: JourneySubHeader(
-              title: _fromContacts ? 'من جهات الاتصال' : 'أضف مجموعة ضيوف',
+              title: _fromContacts
+                  ? 'من جهات الاتصال'
+                  : say('أضف مجموعة ضيوف', 'أضيفي مجموعة ضيفات'),
               subtitle: _fromContacts
-                  ? 'اختر مين تعزم، والمكرر نعلّمه لك'
-                  : 'الصق قائمة، ونفهمها لك',
+                  ? say(
+                      'اختر مين تعزم، والمكرر نعلّمه لك',
+                      'اختاري مين تعزمين، والمكرر نعلّمه لك',
+                    )
+                  : say('الصق قائمة، ونفهمها لك', 'الصقي قائمة، ونفهمها لك'),
               onBack: () =>
                   context.popOrGo(AppRouter.guestList(widget.weddingPlanId)),
             ),
@@ -151,7 +152,9 @@ class _GuestImportScreenState extends State<GuestImportScreen> {
             padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
             child: JourneyButton(
               key: const ValueKey('import-add'),
-              label: toAdd.isEmpty ? 'أضف' : 'أضف $count',
+              label: toAdd.isEmpty
+                  ? say('أضف', 'أضيفي')
+                  : '${say('أضف', 'أضيفي')} $count',
               icon: LucideIcons.userPlus,
               background: AarastV3Color.lilac,
               expand: true,
@@ -172,8 +175,14 @@ class _GuestImportScreenState extends State<GuestImportScreen> {
       children: [
         JourneyTextField(
           key: const ValueKey('import-paste'),
-          label: 'الصق قائمة: اسم في كل سطر، ورقمه لو عندك',
-          hint: 'عبدالله الحمدي 771234567\nيحيى السنيدار',
+          label: context.say(
+            'الصق قائمة: اسم في كل سطر، ورقمه لو عندك',
+            'الصقي قائمة: اسم في كل سطر، ورقمها لو عندك',
+          ),
+          hint: context.say(
+            'عبدالله الحمدي 771234567\nيحيى السنيدار',
+            'عبير الحمدي 771234567\nهدى السنيدار',
+          ),
           controller: _paste,
           icon: LucideIcons.clipboardList,
           keyboardType: TextInputType.multiline,
@@ -279,9 +288,13 @@ class _GuestImportScreenState extends State<GuestImportScreen> {
       items.add(
         JourneySectionTitle(
           family == null
-              ? 'الباقين'
+              ? context.say('الباقين', 'الباقيات')
               : '$family · ${section.members.length} من جهاتك',
-          action: open.isEmpty ? null : (allPicked ? 'شيل الكل' : 'اختر الكل'),
+          action: open.isEmpty
+              ? null
+              : (allPicked
+                    ? context.say('شيل الكل', 'شيلي الكل')
+                    : context.say('اختر الكل', 'اختاري الكل')),
           onAction: open.isEmpty
               ? null
               : () => setState(() {
@@ -380,7 +393,8 @@ class _GuestImportScreenState extends State<GuestImportScreen> {
     if (added == 0) {
       AarastToast.showError(
         context,
-        provider.errorMessage ?? 'ما قدرنا نضيف الضيوف',
+        provider.errorMessage ??
+            context.say('ما قدرنا نضيف الضيوف', 'ما قدرنا نضيف الضيفات'),
       );
       return;
     }
@@ -391,7 +405,7 @@ class _GuestImportScreenState extends State<GuestImportScreen> {
     );
     AarastToast.showSuccess(
       context,
-      'انضاف ${arabicCount(added, one: 'ضيف واحد', two: 'ضيفين', few: 'ضيوف', many: 'ضيف')}',
+      'انضاف ${GuestWords.of(context).count(added)}',
     );
     context.popOrGo(AppRouter.guestList(widget.weddingPlanId));
   }

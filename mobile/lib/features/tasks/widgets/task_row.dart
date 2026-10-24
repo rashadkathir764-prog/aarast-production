@@ -81,8 +81,9 @@ class TaskRow extends StatelessWidget {
       customSemanticsActions: onToggle == null
           ? null
           : {
-              CustomSemanticsAction(label: done ? 'أعد فتحها' : 'خلصت'):
-                  onToggle!,
+              CustomSemanticsAction(
+                label: done ? context.say('أعد فتحها', 'أعيدي فتحها') : 'خلصت',
+              ): onToggle!,
             },
       child: AarastPressable(
         onTap: onOpen ?? () {},
@@ -148,7 +149,7 @@ class TaskRow extends StatelessWidget {
                         padding: const EdgeInsets.only(top: 6),
                         child: JourneyChip(
                           key: ValueKey('task-postpone-${task.id}'),
-                          label: 'أجّلها',
+                          label: context.say('أجّلها', 'أجّليها'),
                           icon: LucideIcons.calendarClock,
                           selected: false,
                           onTap: busy ? null : onPostpone,
@@ -161,7 +162,7 @@ class TaskRow extends StatelessWidget {
               JourneyAvatar(
                 letter: letter,
                 color: mine
-                    ? AarastV3Color.primary
+                    ? context.accent.primary
                     : AarastV3Color.brandAccentStrong,
               ),
             ],

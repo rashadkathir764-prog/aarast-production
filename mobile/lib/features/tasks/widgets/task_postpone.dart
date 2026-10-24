@@ -49,7 +49,7 @@ class TaskPostponeSheet extends StatelessWidget {
       ('بعد أسبوع', from.add(const Duration(days: 7))),
     ];
     return JourneySheetBody(
-      title: 'لمتى تأجلها؟',
+      title: context.say('لمتى تأجلها؟', 'لمتى تأجلينها؟'),
       children: [
         JourneyBox(
           padding: EdgeInsets.zero,
@@ -68,9 +68,9 @@ class TaskPostponeSheet extends StatelessWidget {
               JourneyListRow(
                 key: const ValueKey('task-postpone-pick'),
                 icon: LucideIcons.calendarDays,
-                color: AarastV3Color.primary,
-                soft: AarastV3Color.primarySoft,
-                title: 'اختر يوم',
+                color: context.accent.primary,
+                soft: context.accent.primarySoft,
+                title: context.say('اختر يوم', 'اختاري يوم'),
                 subtitle: 'من التقويم',
                 onTap: () async {
                   final date = await pickTaskDate(

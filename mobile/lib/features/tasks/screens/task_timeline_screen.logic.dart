@@ -77,8 +77,12 @@ List<String> _people(List<WeddingTask> tasks, String? userId) {
 }
 
 /// «باقي 3 هذا الأسبوع، ووحدة متأخرة», from the real counts (C6).
-String _statusLine(List<WeddingTask> tasks, DateTime today) {
-  if (tasks.isEmpty) return 'ابدأ بأول مهمة';
+String _statusLine(
+  List<WeddingTask> tasks,
+  DateTime today,
+  JourneyProfile profile,
+) {
+  if (tasks.isEmpty) return profile.say('ابدأ بأول مهمة', 'ابدئي بأول مهمة');
   final open = tasks
       .where((task) => _groupOf(task, today) != _TaskGroup.done)
       .toList();

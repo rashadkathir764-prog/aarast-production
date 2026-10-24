@@ -76,13 +76,22 @@ class _TaskStarterSheetState extends State<TaskStarterSheet> {
     return JourneySheetBody(
       title: 'مهام جاهزة لعرسك',
       subtitle: widget.hasWeddingDate
-          ? 'مرتبة على موعدك · شيل اللي ما يخصك'
-          : 'شيل اللي ما يخصك · ثبّت موعد العرس وتترتب المواعيد',
+          ? context.say(
+              'مرتبة على موعدك · شيل اللي ما يخصك',
+              'مرتبة على موعدك · شيلي اللي ما يخصك',
+            )
+          : context.say(
+              'شيل اللي ما يخصك · ثبّت موعد العرس وتترتب المواعيد',
+              'شيلي اللي ما يخصك · ثبّتي موعد العرس وتترتب المواعيد',
+            ),
       bottom: JourneyButton(
         key: const Key('task-starter-submit'),
         label: count == 0
-            ? 'اختر مهمة وحدة على الأقل'
-            : 'أضف ${arabicCount(count, one: 'مهمة وحدة', two: 'مهمتين', few: 'مهام', many: 'مهمة')} لخطتي',
+            ? context.say(
+                'اختر مهمة وحدة على الأقل',
+                'اختاري مهمة وحدة على الأقل',
+              )
+            : '${context.say('أضف', 'أضيفي')} ${arabicCount(count, one: 'مهمة وحدة', two: 'مهمتين', few: 'مهام', many: 'مهمة')} لخطتي',
         icon: LucideIcons.listPlus,
         background: AarastV3Color.brandAccentStrong,
         expand: true,

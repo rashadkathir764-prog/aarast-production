@@ -107,7 +107,10 @@ extension _CreateTaskWho on _CreateTaskScreenState {
       if (self == null) {
         AarastToast.showError(
           context,
-          'ما قدرنا نلقى حسابك في الخطة. انتظر لين يحمّل المشاركين وجرّب مرة ثانية.',
+          context.say(
+            'ما قدرنا نلقى حسابك في الخطة. انتظر لين يحمّل المشاركين وجرّب مرة ثانية.',
+            'ما قدرنا نلقى حسابك في الخطة. انتظري لين يحمّل المشاركين وجرّبي مرة ثانية.',
+          ),
         );
         return null;
       }
@@ -157,7 +160,9 @@ extension _CreateTaskWho on _CreateTaskScreenState {
         _mutateDraft(() => _who = _whoMe);
         return _responsibleFor(provider, members, currentUserId);
       }
-      _mutateDraft(() => _otherNameError = 'اكتب اسمه');
+      _mutateDraft(
+        () => _otherNameError = context.say('اكتب اسمه', 'اكتبي اسمه'),
+      );
       return null;
     }
     return (

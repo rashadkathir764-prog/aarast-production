@@ -36,10 +36,7 @@ part 'task_timeline_screen.starter.dart';
 /// whose task it is, with the done count. Swipe or tap the circle to finish
 /// a task; tap it for its details.
 class TaskTimelineScreen extends StatefulWidget {
-  const TaskTimelineScreen({
-    required this.weddingPlanId,
-    super.key,
-  });
+  const TaskTimelineScreen({required this.weddingPlanId, super.key});
 
   final String weddingPlanId;
 
@@ -128,7 +125,7 @@ class _TaskTimelineScreenState extends State<TaskTimelineScreen> {
         section: JourneySection.tasks,
         emptyIcon: LucideIcons.listChecks,
         emptyTitle: 'ما فيه مهام بعد',
-        emptyAction: 'أضف مهمة',
+        emptyAction: context.say('أضف مهمة', 'أضيفي مهمة'),
         onEmptyAction: _add,
       );
     } else {
@@ -161,7 +158,7 @@ class _TaskTimelineScreenState extends State<TaskTimelineScreen> {
                       icon: _showDone
                           ? LucideIcons.chevronUp
                           : LucideIcons.chevronDown,
-                      color: AarastV3Color.primary,
+                      color: context.accent.primary,
                       onPressed: () => setState(() => _showDone = !_showDone),
                     ),
                   ),
@@ -172,7 +169,10 @@ class _TaskTimelineScreenState extends State<TaskTimelineScreen> {
                   const SizedBox(height: 10),
                   Center(
                     child: Text(
-                      'اسحب المهمة لما تخلصها',
+                      context.say(
+                        'اسحب المهمة لما تخلصها',
+                        'اسحبي المهمة لما تخلصينها',
+                      ),
                       style: JourneyType.of(
                         JourneyType.small,
                         weight: JourneyType.bold,
@@ -189,7 +189,7 @@ class _TaskTimelineScreenState extends State<TaskTimelineScreen> {
       maxWidth: 600,
       backgroundColor: AarastV3Color.canvas,
       child: RefreshIndicator(
-        color: AarastV3Color.primary,
+        color: context.accent.primary,
         onRefresh: () => provider.load(widget.weddingPlanId),
         child: ListView(
           physics: const AlwaysScrollableScrollPhysics(),
@@ -202,13 +202,16 @@ class _TaskTimelineScreenState extends State<TaskTimelineScreen> {
           children: [
             JourneyTabHeader(
               title: 'المهام',
-              status: _statusLine(tasks, today),
+              status: _statusLine(tasks, today, context.journeyProfile),
               actions: [
                 if (tasks.isNotEmpty)
                   JourneyRoundButton(
                     key: const Key('tasks-share-summary'),
                     icon: LucideIcons.share2,
-                    tooltip: 'شارك المهام على واتساب',
+                    tooltip: context.say(
+                      'شارك المهام على واتساب',
+                      'شاركي المهام على واتساب',
+                    ),
                     onPressed: () => _share(tasks),
                   ),
                 JourneyRoundButton(

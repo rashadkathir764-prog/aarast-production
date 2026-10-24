@@ -1,3 +1,4 @@
+import '../../../core/experience_v3/aarast_journey_profile.dart';
 import '../../../core/utils/arabic_date_formatter.dart';
 
 /// What an invitation says, before it meets a guest and their own link.
@@ -7,7 +8,12 @@ class GuestInviteCard {
     this.host,
     this.weddingDate,
     this.place,
+    this.profile = JourneyProfile.groom,
   });
+
+  /// Whose wedding invites: the bride's card is sent by a woman to her
+  /// women guests («تتشرف … بدعوتكن», «أكّدي حضورك»).
+  final JourneyProfile profile;
 
   /// The wedding's name, as the plan has it («زفاف محمد»).
   final String title;
@@ -31,15 +37,19 @@ String guestInviteMessage(
   required String url,
 }) {
   final host = card.host?.trim();
+  final say = card.profile.say;
   return [
     'أهلًا ${guestName.trim()} 🌸',
     host == null || host.isEmpty
         ? 'يسعدنا دعوتك لحضور ${card.title}.'
-        : 'يتشرف $host بدعوتكم لحضور ${card.title}.',
+        : say(
+            'يتشرف $host بدعوتكم لحضور ${card.title}.',
+            'تتشرف $host بدعوتكن لحضور ${card.title}.',
+          ),
     if (card.dateLine case final date?) 'الموعد: $date',
     if (card.place?.trim() case final place? when place.isNotEmpty)
       'المكان: $place',
-    'أكّد حضورك بضغطة من رابطك:',
+    say('أكّد حضورك بضغطة من رابطك:', 'أكّدي حضورك بضغطة من رابطك:'),
     url,
   ].join('\n');
 }

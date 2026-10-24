@@ -34,7 +34,7 @@ extension _CreateTaskDraftPersistence on _CreateTaskScreenState {
       message:
           provider.noticeMessage ??
           (_isEditMode ? 'انحفظت المهمة' : 'انضافت المهمة'),
-      nextLabel: _isEditMode ? null : 'أضف ثانية',
+      nextLabel: _isEditMode ? null : context.say('أضف ثانية', 'أضيفي ثانية'),
       onNext: _isEditMode
           ? null
           : () => router.push(AppRouter.createTask(widget.weddingPlanId)),

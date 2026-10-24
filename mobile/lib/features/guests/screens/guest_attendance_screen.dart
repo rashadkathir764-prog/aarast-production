@@ -10,6 +10,7 @@ import '../../../core/widgets/aarast_ui.dart';
 import '../../auth/auth_api.dart' show AuthActionGuard;
 import '../data/guests_api.dart';
 import '../models/guest.dart';
+import '../utils/guest_display.dart';
 
 /// w38 «كم بيحضر؟»: the guests' real answers from `GET P/guests/summary`,
 /// how many confirmed out of how many invited and how many have not
@@ -75,11 +76,11 @@ class _GuestAttendanceScreenState extends State<GuestAttendanceScreen> {
                   onRetry: _retry,
                 )
               else if (summary.totalGuests == 0)
-                const JourneyListState(
+                JourneyListState(
                   phase: JourneyListPhase.empty,
                   section: JourneySection.guests,
                   emptyIcon: LucideIcons.users,
-                  emptyTitle: 'ما أضفت أحد بعد',
+                  emptyTitle: GuestWords.of(context).noneAdded,
                 )
               else
                 ..._answers(summary),
@@ -93,9 +94,13 @@ class _GuestAttendanceScreenState extends State<GuestAttendanceScreen> {
   List<Widget> _answers(GuestSummary summary) {
     final total = summary.totalGuests;
     final answered = summary.confirmed + summary.declined;
+    final words = GuestWords.of(context);
+    final say = words.profile.say;
     final waiting = [
-      summary.pending == 0 ? 'كل ضيوفك ردوا' : '${summary.pending} لسا ما ردوا',
-      if (summary.declined > 0) '${summary.declined} اعتذروا',
+      summary.pending == 0
+          ? say('كل ضيوفك ردوا', 'كل ضيفاتك ردّن')
+          : '${summary.pending} ${say('لسا ما ردوا', 'لسا ما ردّن')}',
+      if (summary.declined > 0) '${summary.declined} ${words.declined}',
     ].join(' · ');
     return [
       JourneyBox(
@@ -104,14 +109,14 @@ class _GuestAttendanceScreenState extends State<GuestAttendanceScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'من ردود ضيوفك',
+              'من ردود ${words.yourGuests}',
               style: JourneyType.of(
                 JourneyType.small,
                 color: AarastV3Color.textMuted,
               ),
             ),
             Text(
-              '${summary.confirmed} أكدوا من $total',
+              '${summary.confirmed} ${words.confirmed} من $total',
               style: JourneyType.of(
                 JourneyType.display,
                 weight: JourneyType.bold,
@@ -138,9 +143,10 @@ class _GuestAttendanceScreenState extends State<GuestAttendanceScreen> {
       // none; past half it would promise one, so it goes.
       if (answered * 2 <= total) ...[
         const SizedBox(height: 12),
-        const JourneyNote(
-          key: ValueKey('guest-attendance-no-guess'),
-          text: 'التوقع يطلع لما يرد نص ضيوفك على الأقل. ما نخمّن من عندنا.',
+        JourneyNote(
+          key: const ValueKey('guest-attendance-no-guess'),
+          text:
+              'التوقع يطلع لما يرد نص ${words.yourGuests} على الأقل. ما نخمّن من عندنا.',
           icon: LucideIcons.barChart3,
           color: AarastV3Color.textMuted,
           soft: AarastV3Color.line,
@@ -150,7 +156,7 @@ class _GuestAttendanceScreenState extends State<GuestAttendanceScreen> {
         const SizedBox(height: 14),
         JourneyButton(
           key: const ValueKey('guest-attendance-remind'),
-          label: 'ذكّر اللي ما ردوا',
+          label: say('ذكّر اللي ما ردوا', 'ذكّري اللي ما ردّن'),
           icon: LucideIcons.send,
           background: AarastV3Color.lilac,
           expand: true,

@@ -84,7 +84,10 @@ class _GuestSendSheetState extends State<GuestSendSheet> {
         const SizedBox(height: 16),
         if (_done)
           JourneyNote(
-            text: 'خلصت. كل واحد يرد من رابطه ويتحدث ردّه في قائمتك.',
+            text: context.say(
+              'خلصت. كل واحد يرد من رابطه ويتحدث ردّه في قائمتك.',
+              'خلصت. كل وحدة ترد من رابطها ويتحدث ردّها في قائمتك.',
+            ),
             icon: LucideIcons.checkCircle2,
             color: AarastV3Color.mint,
             soft: AarastV3Color.mintSoft,
@@ -139,7 +142,8 @@ class _GuestSendSheetState extends State<GuestSendSheet> {
         else ...[
           JourneyButton(
             key: const ValueKey('guest-send-open'),
-            label: 'افتح واتساب لـ${widget.guests[_index].name}',
+            label:
+                '${context.say('افتح', 'افتحي')} واتساب لـ${widget.guests[_index].name}',
             icon: LucideIcons.send,
             background: AarastV3Color.mint,
             expand: true,
@@ -150,7 +154,7 @@ class _GuestSendSheetState extends State<GuestSendSheet> {
           Center(
             child: JourneyTextAction(
               key: const ValueKey('guest-send-skip'),
-              label: 'تخطّاه',
+              label: context.say('تخطّاه', 'تخطّيها'),
               onPressed: _busy ? null : () => setState(() => _index++),
             ),
           ),

@@ -81,8 +81,11 @@ class _GuestDetailsScreenState extends State<GuestDetailsScreen> {
             : JourneyListPhase.error,
         section: JourneySection.guests,
         emptyIcon: LucideIcons.userX,
-        emptyTitle: 'هذا الضيف ما عاد موجود',
-        emptyAction: 'ارجع',
+        emptyTitle: context.say(
+          'هذا الضيف ما عاد موجود',
+          'هذي الضيفة ما عادت موجودة',
+        ),
+        emptyAction: context.say('ارجع', 'ارجعي'),
         onEmptyAction: _back,
         onRetry: () => provider.loadGuests(widget.weddingPlanId),
       );
@@ -105,23 +108,25 @@ class _GuestDetailsScreenState extends State<GuestDetailsScreen> {
                   ? null
                   : PopupMenuButton<bool>(
                       key: const ValueKey('guest-menu'),
-                      tooltip: 'خيارات الضيف',
+                      tooltip: context.say('خيارات الضيف', 'خيارات الضيفة'),
                       enabled: !provider.isSubmitting,
                       icon: const Icon(LucideIcons.moreHorizontal),
                       onSelected: (edit) =>
                           edit ? _edit(provider, guest) : _delete(guest),
-                      itemBuilder: (_) => const [
+                      itemBuilder: (_) => [
                         PopupMenuItem(
-                          key: ValueKey('guest-menu-edit'),
+                          key: const ValueKey('guest-menu-edit'),
                           value: true,
-                          child: Text('عدّل بياناته'),
+                          child: Text(
+                            context.say('عدّل بياناته', 'عدّلي بياناتها'),
+                          ),
                         ),
                         PopupMenuItem(
-                          key: ValueKey('guest-menu-delete'),
+                          key: const ValueKey('guest-menu-delete'),
                           value: false,
                           child: Text(
-                            'شيله من القائمة',
-                            style: TextStyle(color: AarastV3Color.danger),
+                            context.say('شيله من القائمة', 'شيليها من القائمة'),
+                            style: const TextStyle(color: AarastV3Color.danger),
                           ),
                         ),
                       ],
@@ -181,7 +186,7 @@ class _GuestDetailsScreenState extends State<GuestDetailsScreen> {
         Center(
           child: JourneyTag(
             key: const ValueKey('guest-reply-tag'),
-            label: guestReplyLabel(guest),
+            label: guestReplyLabel(guest, context.journeyProfile),
             color: color,
             soft: soft,
           ),
@@ -193,7 +198,7 @@ class _GuestDetailsScreenState extends State<GuestDetailsScreen> {
               Expanded(
                 child: JourneyButton(
                   key: const ValueKey('guest-call'),
-                  label: 'اتصل',
+                  label: context.say('اتصل', 'اتصلي'),
                   icon: LucideIcons.phone,
                   background: AarastV3Color.paper,
                   foreground: AarastV3Color.ink,
@@ -223,10 +228,10 @@ class _GuestDetailsScreenState extends State<GuestDetailsScreen> {
           spacing: 8,
           runSpacing: 8,
           children: [
-            for (final (value, label) in const [
-              ('CONFIRMED', 'أكّد'),
-              ('DECLINED', 'اعتذر'),
-              ('INVITED', 'ما ردّ'),
+            for (final (value, label) in [
+              ('CONFIRMED', context.say('أكّد', 'أكّدت')),
+              ('DECLINED', context.say('اعتذر', 'اعتذرت')),
+              ('INVITED', context.say('ما ردّ', 'ما ردّت')),
             ])
               JourneyChip(
                 key: ValueKey('guest-reply-$value'),
@@ -242,7 +247,7 @@ class _GuestDetailsScreenState extends State<GuestDetailsScreen> {
         if (guest.isConfirmed && guest.companionsCount > 0) ...[
           const SizedBox(height: 6),
           Text(
-            'معه ${guest.companionsCount} · ${guest.seatsCount} مقعد',
+            '${context.say('معه', 'معها')} ${guest.companionsCount} · ${guest.seatsCount} مقعد',
             style: JourneyType.of(
               JourneyType.small,
               color: AarastV3Color.textMuted,
@@ -265,8 +270,8 @@ class _GuestDetailsScreenState extends State<GuestDetailsScreen> {
                 Expanded(
                   child: Text(
                     guest.invitationStatus == 'NOT_SENT'
-                        ? 'ما انرسلت له دعوة'
-                        : 'انرسلت له الدعوة',
+                        ? context.say('ما انرسلت له دعوة', 'ما انرسلت لها دعوة')
+                        : context.say('انرسلت له الدعوة', 'انرسلت لها الدعوة'),
                     style: JourneyType.of(
                       JourneyType.body,
                       weight: JourneyType.bold,
@@ -277,7 +282,7 @@ class _GuestDetailsScreenState extends State<GuestDetailsScreen> {
                   JourneyButton(
                     key: const ValueKey('guest-send-invitation'),
                     label: guest.invitationStatus == 'NOT_SENT'
-                        ? 'أرسلها'
+                        ? context.say('أرسلها', 'أرسليها')
                         : 'رابط جديد',
                     background: AarastV3Color.lilac,
                     loading: _sending,
@@ -290,7 +295,10 @@ class _GuestDetailsScreenState extends State<GuestDetailsScreen> {
             Padding(
               padding: const EdgeInsets.only(top: 6),
               child: Text(
-                'أضف رقمه عشان توصله الدعوة على واتساب.',
+                context.say(
+                  'أضف رقمه عشان توصله الدعوة على واتساب.',
+                  'أضيفي رقمها عشان توصلها الدعوة على واتساب.',
+                ),
                 style: JourneyType.of(
                   JourneyType.small,
                   color: AarastV3Color.brandAccentStrong,
@@ -420,7 +428,8 @@ class _GuestDetailsScreenState extends State<GuestDetailsScreen> {
     } else {
       AarastToast.showError(
         context,
-        provider.errorMessage ?? 'ما قدرنا نحفظ الضيف',
+        provider.errorMessage ??
+            context.say('ما قدرنا نحفظ الضيف', 'ما قدرنا نحفظ الضيفة'),
       );
     }
   }
@@ -430,12 +439,15 @@ class _GuestDetailsScreenState extends State<GuestDetailsScreen> {
     final confirmed = await showJourneySheet<bool>(
       context: context,
       builder: (sheetContext) => JourneySheetBody(
-        title: 'تشيل ${guest.name}؟',
-        subtitle: 'ينشال من قائمة الضيوف ورابطه ما يعود يشتغل.',
+        title: '${context.say('تشيل', 'تشيلين')} ${guest.name}؟',
+        subtitle: context.say(
+          'ينشال من قائمة الضيوف ورابطه ما يعود يشتغل.',
+          'تنشال من قائمة الضيفات ورابطها ما يعود يشتغل.',
+        ),
         children: [
           JourneyButton(
             key: const ValueKey('guest-delete-confirm'),
-            label: 'شيله',
+            label: context.say('شيله', 'شيليها'),
             background: AarastV3Color.danger,
             expand: true,
             large: true,
@@ -449,10 +461,17 @@ class _GuestDetailsScreenState extends State<GuestDetailsScreen> {
     if (!mounted) return;
     if (ok) {
       _pulse(provider);
-      AarastToast.showSuccess(context, 'انشال الضيف');
+      AarastToast.showSuccess(
+        context,
+        context.say('انشال الضيف', 'انشالت الضيفة'),
+      );
       _back();
     } else {
-      AarastToast.showError(context, provider.errorMessage ?? 'ما قدرنا نشيله');
+      AarastToast.showError(
+        context,
+        provider.errorMessage ??
+            context.say('ما قدرنا نشيله', 'ما قدرنا نشيلها'),
+      );
     }
   }
 }

@@ -1,3 +1,4 @@
+import 'package:aarast_mobile/core/experience_v3/aarast_journey.dart';
 import 'package:aarast_mobile/core/network/api_client.dart';
 import 'package:aarast_mobile/core/routing/app_router.dart';
 import 'package:aarast_mobile/core/storage/auth_storage.dart';
@@ -130,6 +131,12 @@ void main() {
       find.byKey(const Key('provider-auth-gate-register')),
       findsOneWidget,
     );
+    // The gate is on the journey kit, not the old card and buttons.
+    expect(
+      tester.widget(find.byKey(const Key('provider-auth-gate-login'))),
+      isA<JourneyButton>(),
+    );
+    expect(find.text('ادخل أول'), findsOneWidget);
     expect(find.text('أنت في وضع تجربة محلية'), findsNothing);
     expect(find.text('login'), findsNothing);
   });

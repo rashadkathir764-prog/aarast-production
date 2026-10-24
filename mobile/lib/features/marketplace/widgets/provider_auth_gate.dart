@@ -4,9 +4,10 @@ import 'package:lucide_icons/lucide_icons.dart';
 import 'package:provider/provider.dart';
 
 import '../../../core/config/app_feature_flags.dart';
+import '../../../core/experience_v3/aarast_v3.dart';
 import '../../../core/routing/app_router.dart';
-import '../../../core/theme/app_theme.dart';
-import '../../../core/widgets/aarast_ui.dart';
+import '../../../core/widgets/aarast_ui.dart'
+    show AarastInlineSpinner, AarastScreenFrame;
 import '../../account_contexts/account_contexts_api.dart'
     show AccountContextController;
 import '../../auth/auth_api.dart' show AuthController, AuthStatus;
@@ -23,7 +24,7 @@ class ProviderAuthGate extends StatelessWidget {
     super.key,
   });
 
-  static const message = 'سجّل الدخول لإرسال طلب عرض ومتابعة الردود';
+  static const message = 'ادخل بحسابك عشان ترسل طلب عرض وتتابع الردود.';
 
   final Widget child;
   final String resumeLocation;
@@ -41,7 +42,16 @@ class ProviderAuthGate extends StatelessWidget {
 
     final auth = context.watch<AuthController>();
     if (auth.status == AuthStatus.checking) {
-      return const AarastScaffold(child: AarastScreenLoading());
+      return const AarastScreenFrame(
+        maxWidth: 520,
+        backgroundColor: AarastV3Color.canvas,
+        child: Center(
+          child: AarastInlineSpinner(
+            dimension: 28,
+            color: AarastV3Color.cobalt,
+          ),
+        ),
+      );
     }
     if (auth.status == AuthStatus.authenticated) {
       if (!providerAccountRequired &&
@@ -71,95 +81,37 @@ class ProviderAuthGate extends StatelessWidget {
       );
     }
 
-    return Directionality(
-      textDirection: TextDirection.rtl,
-      child: Scaffold(
-        backgroundColor: AppTheme.canvas,
-        body: SafeArea(
-          bottom: !embedded,
-          child: Center(
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 520),
-              child: ListView(
-                shrinkWrap: true,
-                padding: EdgeInsets.fromLTRB(20, 24, 20, embedded ? 120 : 24),
-                children: [
-                  AarastCard(
-                    key: const Key('provider-auth-gate'),
-                    padding: const EdgeInsets.all(20),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        Container(
-                          width: 64,
-                          height: 64,
-                          alignment: Alignment.center,
-                          decoration: BoxDecoration(
-                            color: AppTheme.brandMuted,
-                            borderRadius: BorderRadius.circular(20),
-                          ),
-                          child: const Icon(
-                            LucideIcons.lock,
-                            color: AppTheme.brand,
-                            size: 32,
-                          ),
-                        ),
-                        const SizedBox(height: 16),
-                        Text(
-                          'تسجيل الدخول مطلوب',
-                          textAlign: TextAlign.center,
-                          style: Theme.of(context).textTheme.titleLarge
-                              ?.copyWith(
-                                color: AppTheme.textPrimary,
-                                fontWeight: FontWeight.w900,
-                              ),
-                        ),
-                        const SizedBox(height: 8),
-                        Text(
-                          message,
-                          textAlign: TextAlign.center,
-                          style: Theme.of(context).textTheme.bodyMedium
-                              ?.copyWith(
-                                color: AppTheme.textSecondary,
-                                fontWeight: FontWeight.w700,
-                                height: 1.5,
-                              ),
-                        ),
-                        const SizedBox(height: 18),
-                        AarastButton(
-                          key: const Key('provider-auth-gate-login'),
-                          label: 'تسجيل الدخول',
-                          icon: LucideIcons.logIn,
-                          onPressed: () => context.go(
-                            _withResume(AppRouter.login, resumeLocation),
-                          ),
-                        ),
-                        const SizedBox(height: 10),
-                        AarastButton(
-                          key: const Key('provider-auth-gate-register'),
-                          label: registerAsProvider
-                              ? 'إنشاء حساب مزود'
-                              : 'إنشاء حساب',
-                          icon: LucideIcons.userPlus,
-                          variant: AarastButtonVariant.secondary,
-                          onPressed: () => context.go(
-                            _withResume(
-                              registerAsProvider
-                                  ? '${AppRouter.register}?type=provider'
-                                  : AppRouter.register,
-                              resumeLocation,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
+    return _GateCard(
+      key: const Key('provider-auth-gate'),
+      embedded: embedded,
+      icon: LucideIcons.lock,
+      title: 'ادخل أول',
+      message: message,
+      actions: [
+        JourneyButton(
+          key: const Key('provider-auth-gate-login'),
+          label: 'تسجيل الدخول',
+          background: AarastV3Color.cobalt,
+          expand: true,
+          large: true,
+          onPressed: () =>
+              context.go(_withResume(AppRouter.login, resumeLocation)),
+        ),
+        const SizedBox(height: 8),
+        JourneyButton.quiet(
+          key: const Key('provider-auth-gate-register'),
+          label: registerAsProvider ? 'أنشئ حساب مزود' : 'أنشئ حساب',
+          expand: true,
+          onPressed: () => context.go(
+            _withResume(
+              registerAsProvider
+                  ? '${AppRouter.register}?type=provider'
+                  : AppRouter.register,
+              resumeLocation,
             ),
           ),
         ),
-      ),
+      ],
     );
   }
 
@@ -181,87 +133,102 @@ class _ProviderAccountRequiredGate extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Directionality(
-      textDirection: TextDirection.rtl,
-      child: Scaffold(
-        backgroundColor: AppTheme.canvas,
-        body: SafeArea(
-          bottom: !embedded,
-          child: Center(
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 520),
-              child: ListView(
-                shrinkWrap: true,
-                padding: EdgeInsets.fromLTRB(20, 24, 20, embedded ? 120 : 24),
-                children: [
-                  AarastCard(
-                    key: const Key('provider-account-required-gate'),
-                    padding: const EdgeInsets.all(20),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        Container(
-                          width: 64,
-                          height: 64,
-                          alignment: Alignment.center,
-                          decoration: BoxDecoration(
-                            color: AppTheme.brandMuted,
-                            borderRadius: BorderRadius.circular(20),
-                          ),
-                          child: const Icon(
-                            LucideIcons.store,
-                            color: AppTheme.brand,
-                            size: 32,
-                          ),
-                        ),
-                        const SizedBox(height: 16),
-                        Text(
-                          hasProviderContext
-                              ? 'هذه العملية غير متاحة حاليًا'
-                              : 'هذا المسار للمزوّدين فقط',
-                          textAlign: TextAlign.center,
-                          style: Theme.of(context).textTheme.titleLarge
-                              ?.copyWith(
-                                color: AppTheme.textPrimary,
-                                fontWeight: FontWeight.w900,
-                              ),
-                        ),
-                        const SizedBox(height: 8),
-                        Text(
-                          hasProviderContext
-                              ? 'حالة مساحة المزود الحالية لا تسمح بهذه العملية. راجع الحالة أو جرّب لاحقًا.'
-                              : 'حسابك الحالي حساب تخطيط زفاف. افتح لوحة العريس/العروسة أو قدّم طلب الانضمام كمزوّد.',
-                          textAlign: TextAlign.center,
-                          style: Theme.of(context).textTheme.bodyMedium
-                              ?.copyWith(
-                                color: AppTheme.textSecondary,
-                                fontWeight: FontWeight.w700,
-                                height: 1.5,
-                              ),
-                        ),
-                        const SizedBox(height: 18),
-                        AarastButton(
-                          key: const Key('provider-account-required-apply'),
-                          label: 'تقديم طلب مزوّد',
-                          icon: LucideIcons.store,
-                          onPressed: () => context.go(AppRouter.providerApply),
-                        ),
-                        const SizedBox(height: 10),
-                        AarastButton(
-                          key: const Key('provider-account-required-home'),
-                          label: 'فتح لوحة التخطيط',
-                          icon: LucideIcons.heart,
-                          variant: AarastButtonVariant.secondary,
-                          onPressed: () => context.go(AppRouter.home),
-                        ),
-                      ],
+    return _GateCard(
+      key: const Key('provider-account-required-gate'),
+      embedded: embedded,
+      icon: LucideIcons.store,
+      title: hasProviderContext ? 'هذا مو متاح الآن' : 'هذا للمزودين بس',
+      message: hasProviderContext
+          ? 'حالة حساب المزود ما تسمح بهذا. راجع الحالة أو جرّب بعدين.'
+          : 'حسابك حساب تخطيط عرس. ارجع لخطتك، أو قدّم طلب انضمام كمزود.',
+      actions: [
+        JourneyButton(
+          key: const Key('provider-account-required-apply'),
+          label: 'قدّم طلب مزود',
+          background: AarastV3Color.cobalt,
+          expand: true,
+          large: true,
+          onPressed: () => context.go(AppRouter.providerApply),
+        ),
+        const SizedBox(height: 8),
+        JourneyButton.quiet(
+          key: const Key('provider-account-required-home'),
+          label: 'ارجع لخطتي',
+          expand: true,
+          onPressed: () => context.go(AppRouter.home),
+        ),
+      ],
+    );
+  }
+}
+
+/// A gate on the canvas: the icon, why, and what to do (journey kit).
+class _GateCard extends StatelessWidget {
+  const _GateCard({
+    required this.embedded,
+    required this.icon,
+    required this.title,
+    required this.message,
+    required this.actions,
+    super.key,
+  });
+
+  final bool embedded;
+  final IconData icon;
+  final String title;
+  final String message;
+  final List<Widget> actions;
+
+  @override
+  Widget build(BuildContext context) {
+    return AarastScreenFrame(
+      maxWidth: 520,
+      backgroundColor: AarastV3Color.canvas,
+      safeAreaBottom: !embedded,
+      child: ListView(
+        padding: EdgeInsets.fromLTRB(16, 24, 16, embedded ? 120 : 32),
+        children: [
+          JourneyBox(
+            padding: const EdgeInsets.all(20),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Center(
+                  child: JourneyIconTile(
+                    icon: icon,
+                    color: AarastV3Color.cobalt,
+                    soft: AarastV3Color.cobaltSoft,
+                    size: 64,
+                    radius: 20,
+                  ),
+                ),
+                const SizedBox(height: 16),
+                Semantics(
+                  header: true,
+                  child: Text(
+                    title,
+                    textAlign: TextAlign.center,
+                    style: JourneyType.of(
+                      JourneyType.sheetTitle,
+                      weight: JourneyType.bold,
                     ),
                   ),
-                ],
-              ),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  message,
+                  textAlign: TextAlign.center,
+                  style: JourneyType.of(
+                    JourneyType.body,
+                    color: AarastV3Color.textMuted,
+                  ),
+                ),
+                const SizedBox(height: 18),
+                ...actions,
+              ],
             ),
           ),
-        ),
+        ],
       ),
     );
   }

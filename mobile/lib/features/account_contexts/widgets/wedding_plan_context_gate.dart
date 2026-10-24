@@ -5,7 +5,9 @@ import 'package:provider/provider.dart';
 
 import '../../../core/diagnostics/app_logger.dart';
 import '../../../core/routing/app_router.dart';
-import '../../../core/widgets/aarast_ui.dart';
+import '../../../core/experience_v3/aarast_v3.dart';
+import '../../../core/widgets/aarast_ui.dart'
+    show AarastInlineSpinner, AarastScreenFrame;
 import '../../auth/auth_api.dart'
     show AuthActionGuard, AuthController, AuthStatus;
 import '../models/account_context.dart';
@@ -40,7 +42,7 @@ class WeddingPlanContextGate extends StatelessWidget {
     final controller = context.watch<AccountContextController?>();
     final auth = context.watch<AuthController?>();
     if (auth != null && auth.status == AuthStatus.checking) {
-      return const AarastScaffold(child: AarastScreenLoading());
+      return const _GateLoading();
     }
     if (auth != null && auth.status == AuthStatus.unauthenticated) {
       if (AuthActionGuard.isLocalGuestPlanId(weddingPlanId)) {
@@ -54,12 +56,12 @@ class WeddingPlanContextGate extends StatelessWidget {
     }
     if (!controller.isRefreshing && controller.errorMessage != null) {
       return _MismatchedPlanContext(
-        title: 'تعذر التحقق من مساحة الخطة',
+        title: 'ما قدرنا نتأكد من الخطة',
         message: controller.errorMessage!,
       );
     }
     if (!controller.hasLoadedContexts || controller.isRefreshing) {
-      return const AarastScaffold(child: AarastScreenLoading());
+      return const _GateLoading();
     }
     if (isWeddingPlanRouteCompatible(
       controller,
@@ -80,10 +82,10 @@ class WeddingPlanContextGate extends StatelessWidget {
           : 'selected_context_mismatch',
     );
     return _MismatchedPlanContext(
-      title: samePlan ? 'هذا القسم غير متاح لصلاحيتك' : 'مساحة الخطة غير متاحة',
+      title: samePlan ? 'هذا القسم مو مفتوح لك' : 'هذي الخطة ما عادت لك',
       message: samePlan
-          ? 'سياق المساهم الحالي لا يمنح صلاحية فتح هذا القسم.'
-          : 'لم تعد هذه الخطة ضمن مساحات حسابك المتاحة. ارجع للرئيسية واختر مساحة أخرى.',
+          ? 'صلاحيتك في هذي الخطة ما تفتح هذا القسم.'
+          : 'ما عادت ضمن خططك. ارجع للرئيسية واختر خطة ثانية.',
     );
   }
 }
@@ -138,7 +140,7 @@ class SelectedWeddingPlanContextGate extends StatelessWidget {
   Widget build(BuildContext context) {
     final auth = context.watch<AuthController?>();
     if (auth != null && auth.status == AuthStatus.checking) {
-      return const AarastScaffold(child: AarastScreenLoading());
+      return const _GateLoading();
     }
     if (auth != null && auth.status == AuthStatus.unauthenticated) {
       return child;
@@ -157,12 +159,12 @@ class SelectedWeddingPlanContextGate extends StatelessWidget {
     }
     if (!controller.isRefreshing && controller.errorMessage != null) {
       return _MismatchedPlanContext(
-        title: 'تعذر التحقق من مساحة الخطة',
+        title: 'ما قدرنا نتأكد من الخطة',
         message: controller.errorMessage!,
       );
     }
     if (!controller.hasLoadedContexts || controller.isRefreshing) {
-      return const AarastScaffold(child: AarastScreenLoading());
+      return const _GateLoading();
     }
     final selected = controller.selectedContext;
     if (selected != null &&
@@ -201,36 +203,24 @@ class _LoginRequiredPlanContext extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return AarastScaffold(
-      child: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(20),
-          child: Center(
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 520),
-              child: AarastEmptyState(
-                key: const ValueKey('wedding-plan-context-login'),
-                icon: LucideIcons.lock,
-                title: 'تسجيل الدخول مطلوب',
-                message:
-                    'سجّل الدخول للتحقق من مساحة خطة الزفاف قبل فتح هذا المسار.',
-                action: AarastButton(
-                  label: 'تسجيل الدخول',
-                  icon: LucideIcons.logIn,
-                  onPressed: () {
-                    final resume = AppRouter.weddingPlanDashboard(planId);
-                    context.go(
-                      Uri(
-                        path: AppRouter.login,
-                        queryParameters: {'resume': resume},
-                      ).toString(),
-                    );
-                  },
-                ),
-              ),
-            ),
-          ),
-        ),
+    return _GatePage(
+      child: JourneyListState(
+        key: const ValueKey('wedding-plan-context-login'),
+        phase: JourneyListPhase.empty,
+        section: JourneySection.home,
+        emptyIcon: LucideIcons.lock,
+        emptyTitle: 'ادخل أول',
+        emptyMessage: 'ادخل بحسابك عشان نفتح لك هذي الخطة.',
+        emptyAction: 'تسجيل الدخول',
+        onEmptyAction: () {
+          final resume = AppRouter.weddingPlanDashboard(planId);
+          context.go(
+            Uri(
+              path: AppRouter.login,
+              queryParameters: {'resume': resume},
+            ).toString(),
+          );
+        },
       ),
     );
   }
@@ -238,9 +228,8 @@ class _LoginRequiredPlanContext extends StatelessWidget {
 
 class _MismatchedPlanContext extends StatelessWidget {
   const _MismatchedPlanContext({
-    this.title = 'مساحة الخطة غير متاحة',
-    this.message =
-        'لم تعد هذه الخطة ضمن مساحات حسابك المتاحة. ارجع للرئيسية واختر مساحة أخرى.',
+    this.title = 'هذي الخطة ما عادت لك',
+    this.message = 'ما عادت ضمن خططك. ارجع للرئيسية واختر خطة ثانية.',
   });
 
   final String title;
@@ -248,21 +237,52 @@ class _MismatchedPlanContext extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return AarastScaffold(
-      child: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(20),
-          child: Center(
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 520),
-              child: AarastEmptyState(
-                key: const ValueKey('wedding-plan-context-mismatch'),
-                icon: LucideIcons.shieldAlert,
-                title: title,
-                message: message,
-              ),
-            ),
-          ),
+    return _GatePage(
+      child: JourneyListState(
+        key: const ValueKey('wedding-plan-context-mismatch'),
+        phase: JourneyListPhase.empty,
+        section: JourneySection.home,
+        emptyIcon: LucideIcons.shieldAlert,
+        emptyTitle: title,
+        emptyMessage: message,
+      ),
+    );
+  }
+}
+
+/// The gate's own page: the canvas and the kit's padding.
+class _GatePage extends StatelessWidget {
+  const _GatePage({required this.child});
+
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return AarastScreenFrame(
+      maxWidth: 520,
+      backgroundColor: AarastV3Color.canvas,
+      child: ListView(
+        padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
+        children: [child],
+      ),
+    );
+  }
+}
+
+/// While the plan is checked: the kit's spinner on the canvas.
+class _GateLoading extends StatelessWidget {
+  const _GateLoading();
+
+  @override
+  Widget build(BuildContext context) {
+    return const AarastScreenFrame(
+      maxWidth: 520,
+      backgroundColor: AarastV3Color.canvas,
+      child: Center(
+        child: AarastInlineSpinner(
+          key: ValueKey('wedding-plan-context-loading'),
+          dimension: 28,
+          color: AarastV3Color.primary,
         ),
       ),
     );

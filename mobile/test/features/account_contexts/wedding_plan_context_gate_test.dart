@@ -129,7 +129,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('owner-dashboard-content'), findsNothing);
-    expect(find.text('هذا القسم غير متاح لصلاحيتك'), findsOneWidget);
+    expect(find.text('هذا القسم مو مفتوح لك'), findsOneWidget);
     expect(harness.controller.selectedContext, contributor);
     expect(tester.takeException(), isNull);
   });

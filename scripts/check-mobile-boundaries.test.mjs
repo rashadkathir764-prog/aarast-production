@@ -1666,8 +1666,12 @@ const r19ProviderPortalApi = Object.freeze({
 // the code screen (the provider portal owner API) nor asks the city and the
 // category at sign-up (the marketplace owner API). +3 for p08, p10 and p12
 // (D36), each reading the provider's profile through the marketplace owner
-// API.
-const r19LegalRecordCount = 215;
+// API. +6 for provider slice 2 (D37): the request (p16, p19), the offer page
+// (p17), the request parts, the cards (p15, p20), the apology (p18) and the
+// quick offer (p45) read the request through the marketplace owner API, and
+// the apology sends its line through the chat owner API; the offer form's
+// record goes with its file.
+const r19LegalRecordCount = 221;
 const trackedOwnerApiContracts = [
   {
     area: 'features/account_contexts',
@@ -2001,7 +2005,9 @@ const trackedOwnerApiContracts = [
         uri: 'screens/provider_apply_screen.dart',
         show: ['ProviderApplyScreen'],
       },
+      { uri: 'screens/provider_offer_screen.dart', show: ['ProviderOfferScreen'] },
       { uri: 'screens/provider_portal_screen.dart', show: ['ProviderPortalScreen'] },
+      { uri: 'screens/provider_request_screen.dart', show: ['ProviderRequestScreen'] },
     ],
   },
   {
@@ -3152,7 +3158,9 @@ const trackedCompositionRootContracts = [
           'AddProviderServiceScreen',
           'EditProviderProfileScreen',
           'ProviderApplyScreen',
+          'ProviderOfferScreen',
           'ProviderPortalScreen',
+          'ProviderRequestScreen',
         ],
       },
       {

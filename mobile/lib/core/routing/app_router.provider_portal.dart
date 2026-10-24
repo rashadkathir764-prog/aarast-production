@@ -22,6 +22,26 @@ List<RouteBase> _providerPortalRoutes() => [
     ),
   ),
   GoRoute(
+    path: '/provider/requests/:id',
+    builder: (context, state) => ProviderAuthGate(
+      resumeLocation: state.uri.toString(),
+      registerAsProvider: true,
+      providerAccountRequired: true,
+      providerOperationsRequired: true,
+      child: ProviderRequestScreen(quoteId: state.pathParameters['id']!),
+    ),
+  ),
+  GoRoute(
+    path: '/provider/requests/:id/offer',
+    builder: (context, state) => ProviderAuthGate(
+      resumeLocation: state.uri.toString(),
+      registerAsProvider: true,
+      providerAccountRequired: true,
+      providerOperationsRequired: true,
+      child: ProviderOfferScreen(quoteId: state.pathParameters['id']!),
+    ),
+  ),
+  GoRoute(
     path: AppRouter.providerProfileEdit,
     builder: (context, state) => ProviderAuthGate(
       resumeLocation: state.uri.toString(),

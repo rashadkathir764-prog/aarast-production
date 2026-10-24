@@ -314,61 +314,9 @@ class ProviderSetupChecklist extends StatelessWidget {
   }
 }
 
-/// Upcoming confirmed days and open booking requests, and the days the
-/// provider closed on their calendar (V1 checklist 4.6).
-class ProviderBookingsSection extends StatelessWidget {
-  const ProviderBookingsSection({required this.dashboard, super.key});
-
-  final ProviderDashboardProvider dashboard;
-
-  @override
-  Widget build(BuildContext context) {
-    final bookings = dashboard.bookings;
-    final requested = bookings.where((item) => item.isRequested).length;
-    final textTheme = Theme.of(context).textTheme;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        AarastSectionHeader(
-          title: 'حجوزاتك',
-          subtitle: requested > 0
-              ? '$requested ${requested == 1 ? 'طلب حجز ينتظر ردّك' : 'طلبات حجز تنتظر ردّك'}'
-              : 'الأيام المؤكدة القادمة.',
-          icon: LucideIcons.calendarCheck,
-          actionLabel: 'الأيام المغلقة',
-          onAction: () => _showBlockedDatesSheet(context),
-        ),
-        const SizedBox(height: 10),
-        if (bookings.isEmpty)
-          Text(
-            'لا توجد حجوزات بعد. بعد قبول العميل عرضك يطلب حجز اليوم، فتؤكده من هنا.',
-            style: textTheme.bodySmall?.copyWith(
-              color: AppTheme.textSecondary,
-              height: 1.45,
-            ),
-          )
-        else
-          for (final booking in bookings.take(5)) ...[
-            if (booking.customerName != null)
-              Padding(
-                padding: const EdgeInsets.only(bottom: 4),
-                child: Text(
-                  booking.customerName!,
-                  style: textTheme.bodySmall?.copyWith(
-                    color: AppTheme.textSecondary,
-                    fontWeight: FontWeight.w800,
-                  ),
-                ),
-              ),
-            ProviderBookingPanel(booking: booking),
-            const SizedBox(height: 10),
-          ],
-      ],
-    );
-  }
-}
-
-Future<void> _showBlockedDatesSheet(BuildContext context) {
+/// The days the provider closed on his calendar (V1 checklist 4.6), until
+/// the calendar (p28) is built.
+Future<void> showProviderBlockedDates(BuildContext context) {
   return showAarastBottomSheet<void>(
     context: context,
     isScrollControlled: true,

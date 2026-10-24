@@ -71,7 +71,9 @@ import '../../features/provider_portal/provider_portal_api.dart'
         AddProviderServiceScreen,
         EditProviderProfileScreen,
         ProviderApplyScreen,
-        ProviderPortalScreen;
+        ProviderOfferScreen,
+        ProviderPortalScreen,
+        ProviderRequestScreen;
 import '../../features/settings/settings_api.dart'
     show LockSettingsScreen, SettingsScreen;
 import '../../features/sharing/sharing_api.dart'
@@ -143,6 +145,14 @@ class AppRouter {
   static const providerProfileEdit = '/provider/profile/edit';
   static const providerServiceNew = '/provider/services/new';
   static const providerPackageNew = '/provider/packages/new';
+
+  /// One request as the provider sees it (p16, p19).
+  static String providerRequest(String quoteRequestId) =>
+      '/provider/requests/$quoteRequestId';
+
+  /// The provider's offer on a request (p17): send, edit or renew.
+  static String providerRequestOffer(String quoteRequestId) =>
+      '/provider/requests/$quoteRequestId/offer';
   static const notifications = '/notifications';
   static const inviteAccess = '/invites';
   static const inviteAppLinkHost = String.fromEnvironment(

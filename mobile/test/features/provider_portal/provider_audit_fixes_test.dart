@@ -11,13 +11,17 @@ import 'package:aarast_mobile/features/marketplace/data/marketplace_api.dart';
 import 'package:aarast_mobile/features/marketplace/models/marketplace_models.dart';
 import 'package:aarast_mobile/features/provider_portal/providers/provider_dashboard_provider.dart';
 import 'package:aarast_mobile/features/provider_portal/screens/provider_portal_screen.dart';
+import 'package:aarast_mobile/features/provider_portal/screens/provider_offer_screen.dart';
 import 'package:aarast_mobile/features/provider_portal/screens/provider_portal_tabs.dart';
+import 'package:aarast_mobile/features/provider_portal/screens/provider_request_screen.dart';
 import 'package:aarast_mobile/features/provider_portal/widgets/provider_bookings.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+
+import 'provider_requests_test.dart' as requests;
 
 // The provider portal's audit fixes (D35): the provider declines a request
 // and marks it seen, gives his offer an end date and renews an expired one,
@@ -53,22 +57,27 @@ Map<String, dynamic> _offerJson({required DateTime validUntil}) => {
 };
 
 void main() {
+  // Slice 2 (D37) moved these steps onto the request (p16, p19), the
+  // apology sheet (p18) and the offer page (p17); the behaviour is D35's.
   group('requests', () {
     testWidgets('a new request is declined after a confirmation', (
       tester,
     ) async {
-      final api = _PortalApi(quotes: [_quoteJson()]);
+      final api = _PortalApi(quotes: [_quoteJson()], hasBooking: false);
       await _pumpRequests(tester, api);
+      await _openRequest(tester);
 
       await tester.tap(find.byKey(const Key('provider-quote-decline-quote-1')));
       await tester.pumpAndSettle();
-      expect(find.text('تعتذر عن الطلب؟'), findsOneWidget);
-      expect(api.statusUpdates, isEmpty);
+      expect(find.text('تعتذر من أحمد؟'), findsOneWidget);
+      expect(api.statusUpdates, ['quote-1:VIEWED']);
 
+      await tester.tap(find.byKey(const Key('provider-decline-other')));
+      await tester.pumpAndSettle();
       await tester.tap(find.byKey(const Key('provider-quote-decline-confirm')));
       await tester.pumpAndSettle();
 
-      expect(api.statusUpdates, ['quote-1:REJECTED']);
+      expect(api.statusUpdates, ['quote-1:VIEWED', 'quote-1:REJECTED']);
       expect(
         find.byKey(const Key('provider-quote-decline-quote-1')),
         findsNothing,
@@ -78,6 +87,7 @@ void main() {
 
     testWidgets('a request with an offer cannot be declined', (tester) async {
       final api = _PortalApi(
+        hasBooking: false,
         quotes: [
           _quoteJson(
             status: 'RESPONDED',
@@ -90,41 +100,47 @@ void main() {
         ],
       );
       await _pumpRequests(tester, api);
+      await tester.tap(find.byKey(const Key('provider-requests-tab-replied')));
+      await tester.pumpAndSettle();
+      await _openRequest(tester);
 
       expect(
         find.byKey(const Key('provider-quote-decline-quote-1')),
         findsNothing,
       );
-      expect(find.text('تعديل العرض'), findsOneWidget);
+      expect(find.text('عدّل العرض'), findsOneWidget);
     });
 
     testWidgets('opening a new request tells the customer it was seen, once', (
       tester,
     ) async {
-      final api = _PortalApi(quotes: [_quoteJson()]);
+      final api = _PortalApi(quotes: [_quoteJson()], hasBooking: false);
       await _pumpRequests(tester, api);
 
-      await tester.tap(find.text('محادثة'));
+      await _openRequest(tester);
+      await tester.tap(find.byKey(const Key('provider-request-ask')));
       await tester.pumpAndSettle();
       expect(find.text('محادثة الطلب quote-1'), findsOneWidget);
       expect(api.statusUpdates, ['quote-1:VIEWED']);
 
       await tester.pageBack();
       await tester.pumpAndSettle();
-      await tester.tap(find.text('محادثة'));
+      await tester.tap(find.byTooltip('رجوع'));
       await tester.pumpAndSettle();
+      await _openRequest(tester);
       expect(api.statusUpdates, ['quote-1:VIEWED']);
     });
 
     testWidgets(
       'a new offer is open ten days unless another length is picked',
       (tester) async {
-        final api = _PortalApi(quotes: [_quoteJson()]);
+        final api = _PortalApi(quotes: [_quoteJson()], hasBooking: false);
         await _pumpRequests(tester, api);
+        await _openRequest(tester);
 
-        await tester.tap(find.byKey(const Key('provider-offer-open-quote-1')));
+        await tester.tap(find.byKey(const Key('provider-request-offer')));
         await tester.pumpAndSettle();
-        expect(find.text('العرض صالح لمدة'), findsOneWidget);
+        expect(find.text('صالح لـ'), findsOneWidget);
         expect(find.text('7 أيام'), findsOneWidget);
         expect(find.text('10 أيام'), findsOneWidget);
         expect(find.text('14 يوم'), findsOneWidget);
@@ -138,8 +154,7 @@ void main() {
           'تصوير ليلة كاملة',
         );
         final before = DateTime.now();
-        await tester.tap(find.byKey(const Key('provider-offer-submit')));
-        await tester.pumpAndSettle();
+        await _sendOffer(tester);
 
         expect(api.createdOffers, hasLength(1));
         _expectDaysAhead(api.createdOffers.single, before, 10);
@@ -151,6 +166,7 @@ void main() {
       tester,
     ) async {
       final api = _PortalApi(
+        hasBooking: false,
         quotes: [
           _quoteJson(
             status: 'RESPONDED',
@@ -163,6 +179,9 @@ void main() {
         ],
       );
       await _pumpRequests(tester, api);
+      await tester.tap(find.byKey(const Key('provider-requests-tab-ended')));
+      await tester.pumpAndSettle();
+      await _openRequest(tester);
 
       expect(find.text('جدّد العرض'), findsOneWidget);
       await tester.tap(find.byKey(const Key('provider-offer-open-quote-1')));
@@ -175,8 +194,7 @@ void main() {
       await tester.pumpAndSettle();
 
       final before = DateTime.now();
-      await tester.tap(find.byKey(const Key('provider-offer-submit')));
-      await tester.pumpAndSettle();
+      await _sendOffer(tester);
 
       expect(api.updatedOfferIds, ['offer-1']);
       _expectDaysAhead(api.updatedOffers.single, before, 14);
@@ -189,6 +207,7 @@ void main() {
     ) async {
       final ends = DateTime.now().add(const Duration(days: 4));
       final api = _PortalApi(
+        hasBooking: false,
         quotes: [
           _quoteJson(
             status: 'RESPONDED',
@@ -197,11 +216,13 @@ void main() {
         ],
       );
       await _pumpRequests(tester, api);
+      await tester.tap(find.byKey(const Key('provider-requests-tab-replied')));
+      await tester.pumpAndSettle();
+      await _openRequest(tester);
 
       await tester.tap(find.byKey(const Key('provider-offer-open-quote-1')));
       await tester.pumpAndSettle();
-      await tester.tap(find.byKey(const Key('provider-offer-submit')));
-      await tester.pumpAndSettle();
+      await _sendOffer(tester);
 
       expect(
         api.updatedOffers.single!.difference(ends).inSeconds.abs(),
@@ -357,7 +378,10 @@ void main() {
 
     testWidgets('a link opens the portal on its requests tab', (tester) async {
       await _pumpPortal(tester, _PortalApi(), initialTab: 'requests');
-      expect(find.text('طلبات الأسعار'), findsOneWidget);
+      expect(
+        find.byKey(const Key('provider-requests-tab-fresh')).hitTestable(),
+        findsOneWidget,
+      );
     });
 
     test('no line promises a review path the server does not have', () {
@@ -396,13 +420,33 @@ Future<void> _pumpRequests(WidgetTester tester, _PortalApi api) async {
   tester.view.devicePixelRatio = 1;
   tester.view.physicalSize = const Size(420, 1400);
   addTearDown(tester.view.reset);
+  SharedPreferences.setMockInitialValues({});
+  final chat = requests.RecordingChatProvider(
+    AuthStorage(await SharedPreferences.getInstance()),
+  );
+  addTearDown(chat.dispose);
   final dashboard = ProviderDashboardProvider(api);
   await dashboard.loadDashboard();
   final router = GoRouter(
     routes: [
       GoRoute(
         path: '/',
-        builder: (_, _) => const Scaffold(body: ProviderRequestsTab()),
+        builder: (_, _) => const Scaffold(
+          body: Directionality(
+            textDirection: TextDirection.rtl,
+            child: ProviderRequestsTab(),
+          ),
+        ),
+      ),
+      GoRoute(
+        path: '/provider/requests/:id',
+        builder: (_, state) =>
+            ProviderRequestScreen(quoteId: state.pathParameters['id']!),
+      ),
+      GoRoute(
+        path: '/provider/requests/:id/offer',
+        builder: (_, state) =>
+            ProviderOfferScreen(quoteId: state.pathParameters['id']!),
       ),
       GoRoute(
         path: '/quotes/:id/conversation',
@@ -415,11 +459,30 @@ Future<void> _pumpRequests(WidgetTester tester, _PortalApi api) async {
   );
   addTearDown(router.dispose);
   await tester.pumpWidget(
-    ChangeNotifierProvider<ProviderDashboardProvider>.value(
-      value: dashboard,
+    MultiProvider(
+      providers: [
+        ChangeNotifierProvider<ProviderDashboardProvider>.value(
+          value: dashboard,
+        ),
+        ChangeNotifierProvider<ChatProvider>.value(value: chat),
+      ],
       child: MaterialApp.router(theme: AppTheme.light(), routerConfig: router),
     ),
   );
+  await tester.pumpAndSettle();
+}
+
+/// Opens the request from its card in the list.
+Future<void> _openRequest(WidgetTester tester) async {
+  await tester.tap(find.byKey(const Key('provider-request-quote-1')));
+  await tester.pumpAndSettle();
+}
+
+/// «شوف العرض قبل ما يوصله», then the send in its sheet.
+Future<void> _sendOffer(WidgetTester tester) async {
+  await tester.tap(find.byKey(const Key('provider-offer-preview')));
+  await tester.pumpAndSettle();
+  await tester.tap(find.byKey(const Key('provider-offer-submit')));
   await tester.pumpAndSettle();
 }
 
@@ -514,6 +577,7 @@ class _PortalApi extends ProviderDashboardApi {
     List<Map<String, dynamic>> quotes = const [],
     this.reviews = const [],
     this.bookingStatus = 'REQUESTED',
+    this.hasBooking = true,
   }) : _quotes = [for (final quote in quotes) Map.of(quote)],
        super(ApiClient(tokenProvider: () async => null));
 
@@ -521,6 +585,10 @@ class _PortalApi extends ProviderDashboardApi {
   final List<Map<String, dynamic>> _quotes;
   final List<ProviderReview> reviews;
   String bookingStatus;
+
+  /// A request under answer has no booking yet (slice 2 reads its state
+  /// from the booking too).
+  final bool hasBooking;
   int profileLoads = 0;
   final statusUpdates = <String>[];
   final createdOffers = <DateTime?>[];
@@ -560,14 +628,15 @@ class _PortalApi extends ProviderDashboardApi {
 
   @override
   Future<List<MarketplaceBooking>> getBookings() async => [
-    MarketplaceBooking.fromJson({
-      'id': 'booking-1',
-      'quoteRequestId': 'quote-1',
-      'providerId': 'provider-1',
-      'eventDate': '2027-02-18',
-      'status': bookingStatus,
-      'lifecycleStatus': bookingStatus,
-    }),
+    if (hasBooking)
+      MarketplaceBooking.fromJson({
+        'id': 'booking-1',
+        'quoteRequestId': 'quote-1',
+        'providerId': 'provider-1',
+        'eventDate': '2027-02-18',
+        'status': bookingStatus,
+        'lifecycleStatus': bookingStatus,
+      }),
   ];
 
   @override

@@ -1,24 +1,50 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:lucide_icons/lucide_icons.dart';
 import 'package:provider/provider.dart';
 
 import '../../../core/experience_v3/aarast_v3.dart';
 import '../../../core/routing/app_router.dart';
-import '../../../core/theme/app_theme.dart';
-import '../../../core/utils/arabic_date_formatter.dart';
-import '../../../core/widgets/aarast_ui.dart';
-import '../../../core/widgets/aarast_toast.dart';
 import '../../marketplace/marketplace_api.dart'
-    show
-        QuoteRequest,
-        QuoteStatusChip;
+    show MarketplaceBooking, QuoteRequest;
 import '../providers/provider_dashboard_provider.dart';
-import '../widgets/provider_bookings.dart' show ProviderBookingPanel;
-import 'provider_offer_dialog.dart';
+import '../widgets/provider_quick_offer_sheet.dart';
+import '../widgets/provider_request_cards.dart';
+import '../widgets/provider_request_parts.dart';
 
-export 'provider_offer_dialog.dart' show validateProviderOfferAmount;
+export 'provider_offer_screen.dart' show validateProviderOfferAmount;
 
+/// A request with where it stands, read once per build.
+typedef ProviderCase = ({
+  QuoteRequest quote,
+  MarketplaceBooking? booking,
+  ProviderCaseState state,
+});
+
+/// Every request the provider holds, with its state.
+List<ProviderCase> providerCases(ProviderDashboardProvider dashboard) => [
+  for (final quote in dashboard.quoteRequests)
+    () {
+      final booking = providerBookingOf(quote, dashboard);
+      return (
+        quote: quote,
+        booking: booking,
+        state: providerCaseOf(quote, booking),
+      );
+    }(),
+];
+
+/// How many new requests wait for his answer (SENT and VIEWED): the
+/// requests tab's badge, p13's «ينتظرونك» and p15's line, as drawn. The
+/// bookings to confirm sit in the same list without adding to the count.
+int providerWaitingCount(ProviderDashboardProvider dashboard) => dashboard
+    .quoteRequests
+    .where((quote) => const {'SENT', 'VIEWED'}.contains(quote.status))
+    .length;
+
+/// p15 «الطلبات» and, on its last list, p20 «انتهى». The lists are read on
+/// the phone from every request the server sends (F5): new, answered,
+/// booked and ended. No time left is shown (F8) and no occasion (the
+/// server holds none).
 class ProviderRequestsTab extends StatefulWidget {
   const ProviderRequestsTab({super.key});
 
@@ -27,322 +53,142 @@ class ProviderRequestsTab extends StatefulWidget {
 }
 
 class _ProviderRequestsTabState extends State<ProviderRequestsTab> {
-  String _filter = 'ALL';
+  ProviderRequestTab _tab = ProviderRequestTab.fresh;
 
   @override
   Widget build(BuildContext context) {
     final dashboard = context.watch<ProviderDashboardProvider>();
-    final quotes = dashboard.quoteRequests.where(_matches).toList();
+    final cases = providerCases(dashboard);
+    int count(ProviderRequestTab tab) =>
+        cases.where((item) => item.state.tab == tab).length;
+    final waiting = providerWaitingCount(dashboard);
+    final shown = _sorted(
+      cases.where((item) => item.state.tab == _tab).toList(),
+    );
     return RefreshIndicator(
-      color: AppTheme.brand,
+      color: AarastV3Color.primary,
       onRefresh: dashboard.loadDashboard,
       child: ListView(
         physics: const AlwaysScrollableScrollPhysics(),
-        padding: const EdgeInsets.fromLTRB(20, 14, 20, 128),
+        padding: const EdgeInsets.fromLTRB(16, 8, 16, 128),
         children: [
-          const AarastSectionHeader(
-            title: 'طلبات الأسعار',
-            subtitle: 'راجع الطلب، أرسل عرضك، ثم ناقش التفاصيل داخل اعّرست.',
-            icon: LucideIcons.mailQuestion,
+          JourneyTabHeader(
+            title: 'الطلبات',
+            status: _tab == ProviderRequestTab.ended
+                ? 'اللي ما كمّل، وليش'
+                : waiting == 0
+                ? 'ما فيه أحد ينتظر ردك'
+                : '$waiting ينتظرون ردك',
           ),
-          const SizedBox(height: 14),
-          SegmentedButton<String>(
-            expandedInsets: EdgeInsets.zero,
-            showSelectedIcon: false,
-            style: const ButtonStyle(
-              padding: WidgetStatePropertyAll(
-                EdgeInsets.symmetric(horizontal: 4),
-              ),
-              textStyle: WidgetStatePropertyAll(
-                TextStyle(fontWeight: FontWeight.w800),
-              ),
-              visualDensity: VisualDensity.compact,
-            ),
-            segments: const [
-              ButtonSegment(
-                value: 'ALL',
-                label: Text('الكل', maxLines: 1, softWrap: false),
-              ),
-              ButtonSegment(
-                value: 'NEW',
-                label: Text('جديد', maxLines: 1, softWrap: false),
-              ),
-              ButtonSegment(
-                value: 'OFFERED',
-                label: Text('تم العرض', maxLines: 1, softWrap: false),
-              ),
-              ButtonSegment(
-                value: 'CLOSED',
-                label: Text('مغلق', maxLines: 1, softWrap: false),
-              ),
+          // One line as drawn; a large text size wraps it, never hides one.
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              for (final tab in ProviderRequestTab.values)
+                JourneyChip(
+                  key: Key('provider-requests-tab-${tab.name}'),
+                  // The ended list carries no count, as drawn.
+                  label: switch (tab) {
+                    ProviderRequestTab.ended => tab.label,
+                    ProviderRequestTab.fresh when waiting > 0 =>
+                      '${tab.label} $waiting',
+                    ProviderRequestTab.fresh => tab.label,
+                    _ when count(tab) > 0 => '${tab.label} ${count(tab)}',
+                    _ => tab.label,
+                  },
+                  selected: _tab == tab,
+                  onTap: () => setState(() => _tab = tab),
+                ),
             ],
-            selected: {_filter},
-            onSelectionChanged: (value) =>
-                setState(() => _filter = value.first),
           ),
-          const SizedBox(height: 16),
-          if (dashboard.isLoading && dashboard.quoteRequests.isEmpty)
-            const AarastScreenLoading(label: 'جارٍ تحميل الطلبات...')
-          else if (quotes.isEmpty)
-            const AarastEmptyState(
-              icon: LucideIcons.inbox,
-              title: 'لا توجد طلبات في هذا القسم',
-              message: 'ستظهر الطلبات الجديدة هنا فور وصولها.',
+          const SizedBox(height: 12),
+          if (shown.isEmpty)
+            JourneyListState(
+              phase: dashboard.isLoading && dashboard.quoteRequests.isEmpty
+                  ? JourneyListPhase.loading
+                  : dashboard.errorMessage != null &&
+                        dashboard.quoteRequests.isEmpty
+                  ? JourneyListPhase.error
+                  : JourneyListPhase.empty,
+              section: JourneySection.home,
+              emptyIcon: JourneySection.home.icon,
+              emptyTitle: switch (_tab) {
+                ProviderRequestTab.fresh => 'ما فيه طلب جديد',
+                ProviderRequestTab.replied => 'ما فيه عرض ينتظر رد',
+                ProviderRequestTab.booked => 'ما عندك حجز لسا',
+                ProviderRequestTab.ended => 'ما فيه شيء انتهى',
+              },
+              emptyMessage: _tab == ProviderRequestTab.fresh
+                  ? 'الطلبات الجديدة توصلك هنا.'
+                  : null,
+              onRetry: dashboard.loadDashboard,
             )
           else
-            for (final quote in quotes) ...[
-              _ProviderRequestCard(
-                quote: quote,
-                onChat: () {
-                  // Opening a new request is what the customer reads as
-                  // «شاف طلبك».
-                  dashboard.markQuoteViewed(quote.id);
-                  context.push(AppRouter.quoteConversation(quote.id));
-                },
-                onOffer: _offerModeOf(quote) == null
-                    ? null
-                    : () {
-                        dashboard.markQuoteViewed(quote.id);
-                        showProviderOfferDialog(context, quote);
-                      },
-                offerMode: _offerModeOf(quote),
-                onDecline: _canDecline(quote)
-                    ? () => _confirmDecline(context, quote)
-                    : null,
-              ),
-              const SizedBox(height: 12),
+            for (var index = 0; index < shown.length; index++) ...[
+              if (index > 0)
+                SizedBox(height: _tab == ProviderRequestTab.ended ? 12 : 10),
+              _card(context, dashboard, shown[index], index),
             ],
         ],
       ),
     );
   }
 
-  bool _matches(QuoteRequest quote) {
-    if (_filter == 'ALL') return true;
-    if (_filter == 'NEW') {
-      return quote.lifecycleStatus == 'PENDING_PROVIDER';
+  Widget _card(
+    BuildContext context,
+    ProviderDashboardProvider dashboard,
+    ProviderCase item,
+    int index,
+  ) {
+    final quote = item.quote;
+    void open() => context.push(AppRouter.providerRequest(quote.id));
+    if (_tab == ProviderRequestTab.ended) {
+      return ProviderEndedCard(
+        quote: quote,
+        state: item.state,
+        booking: item.booking,
+        onOpen: open,
+        onRenew: item.state == ProviderCaseState.offerExpired
+            ? () => context.push(AppRouter.providerRequestOffer(quote.id))
+            : null,
+      );
     }
-    if (_filter == 'OFFERED') {
-      return quote.lifecycleStatus == 'RECEIVED';
-    }
-    return const {
-      'ACCEPTED',
-      'REJECTED',
-      'CANCELLED',
-    }.contains(quote.lifecycleStatus);
-  }
-}
-
-/// What the offer button does on a request: send the first offer, edit the
-/// open one, or renew one whose time ran out (the server lets a provider
-/// change a pending offer, expired or not, while the request awaits a reply).
-enum _OfferMode { send, edit, renew }
-
-_OfferMode? _offerModeOf(QuoteRequest quote) {
-  if (quote.pendingOffer != null) return _OfferMode.edit;
-  if (quote.expiredOffer != null) return _OfferMode.renew;
-  if (quote.lifecycleStatus == 'PENDING_PROVIDER') return _OfferMode.send;
-  return null;
-}
-
-/// The server lets the provider decline a request until he sends an offer.
-bool _canDecline(QuoteRequest quote) =>
-    quote.status == 'SENT' || quote.status == 'VIEWED';
-
-Future<void> _confirmDecline(BuildContext context, QuoteRequest quote) async {
-  final dashboard = context.read<ProviderDashboardProvider>();
-  final confirmed = await showJourneySheet<bool>(
-    context: context,
-    builder: (sheetContext) => JourneySheetBody(
-      title: 'تعتذر عن الطلب؟',
-      subtitle:
-          'بيوصل العميل إنك اعتذرت، وما تقدر ترسل له عرض على هذا الطلب بعدها.',
-      children: [
-        JourneyButton(
-          key: const Key('provider-quote-decline-confirm'),
-          label: 'اعتذر عن الطلب',
-          background: AarastV3Color.danger,
-          expand: true,
-          large: true,
-          onPressed: () => Navigator.of(sheetContext).pop(true),
-        ),
-        const SizedBox(height: 8),
-        JourneyButton.quiet(
-          label: 'رجوع',
-          expand: true,
-          onPressed: () => Navigator.of(sheetContext).pop(false),
-        ),
-      ],
-    ),
-  );
-  if (confirmed != true || !context.mounted) return;
-  final ok = await dashboard.updateQuoteStatus(
-    quoteRequestId: quote.id,
-    status: 'REJECTED',
-  );
-  if (!context.mounted) return;
-  if (ok) {
-    AarastToast.showSuccess(context, 'اعتذرت عن الطلب، ووصل العميل خبر.');
-  } else {
-    AarastToast.showError(
-      context,
-      dashboard.errorMessage ?? 'تعذر الاعتذار عن الطلب. حاول مرة ثانية.',
+    final packages = item.state == ProviderCaseState.fresh
+        ? providerOfferPackages(dashboard.packages, quote)
+        : const <Never>[];
+    return ProviderRequestCard(
+      quote: quote,
+      state: item.state,
+      booking: item.booking,
+      color: JourneyAvatar.paletteAt(index + 1),
+      onOpen: open,
+      onQuickOffer: packages.isEmpty
+          ? null
+          : () => showProviderQuickOffer(context, quote, packages),
     );
   }
-}
 
-class _ProviderRequestCard extends StatelessWidget {
-  const _ProviderRequestCard({
-    required this.quote,
-    required this.onChat,
-    this.onOffer,
-    this.offerMode,
-    this.onDecline,
-  });
-
-  final QuoteRequest quote;
-  final VoidCallback onChat;
-  final VoidCallback? onOffer;
-  final _OfferMode? offerMode;
-  final VoidCallback? onDecline;
-
-  @override
-  Widget build(BuildContext context) {
-    return AarastCard(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Row(
-            children: [
-              Expanded(
-                child: Text(
-                  quote.service?.title ?? 'طلب عرض سعر',
-                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    color: AppTheme.textPrimary,
-                    fontWeight: FontWeight.w900,
-                  ),
-                ),
-              ),
-              QuoteStatusChip(
-                status: quote.lifecycleStatus,
-                compact: true,
-                forProvider: true,
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          ProviderQuoteFacts(quote: quote),
-          if (quote.message?.trim().isNotEmpty == true) ...[
-            const SizedBox(height: 10),
-            Text(
-              quote.message!.trim(),
-              maxLines: 3,
-              overflow: TextOverflow.ellipsis,
-              style: const TextStyle(
-                color: AppTheme.textSecondary,
-                height: 1.45,
-              ),
-            ),
-          ],
-          const SizedBox(height: 12),
-          Row(
-            children: [
-              Expanded(
-                child: OutlinedButton.icon(
-                  onPressed: onChat,
-                  icon: const Icon(LucideIcons.messageCircle),
-                  label: const Text('محادثة'),
-                ),
-              ),
-              if (onOffer != null) ...[
-                const SizedBox(width: 8),
-                Expanded(
-                  child: FilledButton.icon(
-                    key: Key('provider-offer-open-${quote.id}'),
-                    onPressed: onOffer,
-                    icon: Icon(switch (offerMode) {
-                      _OfferMode.edit => LucideIcons.fileEdit,
-                      _OfferMode.renew => LucideIcons.refreshCw,
-                      _ => LucideIcons.send,
-                    }),
-                    label: Text(switch (offerMode) {
-                      _OfferMode.edit => 'تعديل العرض',
-                      _OfferMode.renew => 'جدّد العرض',
-                      _ => 'إرسال عرض',
-                    }),
-                  ),
-                ),
-              ],
-            ],
-          ),
-          if (onDecline != null)
-            Align(
-              alignment: AlignmentDirectional.centerEnd,
-              child: JourneyTextAction(
-                key: Key('provider-quote-decline-${quote.id}'),
-                label: 'اعتذار',
-                icon: LucideIcons.x,
-                color: AarastV3Color.danger,
-                onPressed: onDecline,
-              ),
-            ),
-          if (quote.booking case final booking?) ...[
-            const SizedBox(height: 12),
-            ProviderBookingPanel(booking: booking),
-          ],
-        ],
-      ),
-    );
-  }
-}
-
-/// What a provider needs to price a request at a glance: who is asking, for
-/// which day, where and for how many guests (field test Q12).
-class ProviderQuoteFacts extends StatelessWidget {
-  const ProviderQuoteFacts({required this.quote, super.key});
-
-  final QuoteRequest quote;
-
-  @override
-  Widget build(BuildContext context) {
-    final name = (quote.contactName ?? quote.userName)?.trim();
-    final place = quote.location?.displayLabel.trim();
-    final eventDate = quote.eventDate;
-    final guests = quote.guestCount;
-    final facts = <(IconData, String)>[
-      if (name != null && name.isNotEmpty) (LucideIcons.user, name),
-      if (eventDate != null)
-        (LucideIcons.calendar, formatArabicCompactDate(eventDate)),
-      if (place != null && place.isNotEmpty) (LucideIcons.mapPin, place),
-      if (guests != null && guests > 0) (LucideIcons.users, 'الضيوف: $guests'),
-    ];
-    if (facts.isEmpty) return const SizedBox.shrink();
-    final style = Theme.of(context).textTheme.bodySmall?.copyWith(
-      color: AppTheme.textSecondary,
-      fontWeight: FontWeight.w700,
-    );
-    return Wrap(
-      key: const ValueKey('provider-quote-facts'),
-      spacing: 14,
-      runSpacing: 6,
-      children: [
-        for (final (icon, label) in facts)
-          Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(icon, size: 15, color: AppTheme.textSecondary),
-              const SizedBox(width: 4),
-              Flexible(
-                child: Text(
-                  label,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: style,
-                ),
-              ),
-            ],
-          ),
-      ],
-    );
+  /// New requests oldest first (the one waiting longest on top), then the
+  /// bookings to confirm; the rest by their latest change.
+  List<ProviderCase> _sorted(List<ProviderCase> items) {
+    final epoch = DateTime.fromMillisecondsSinceEpoch(0);
+    int rank(ProviderCase item) =>
+        item.state == ProviderCaseState.fresh ? 0 : 1;
+    return items..sort((a, b) {
+      if (_tab == ProviderRequestTab.fresh) {
+        final byRank = rank(a).compareTo(rank(b));
+        if (byRank != 0) return byRank;
+        return (a.quote.createdAt ?? epoch).compareTo(
+          b.quote.createdAt ?? epoch,
+        );
+      }
+      if (_tab == ProviderRequestTab.booked) {
+        return (a.booking?.eventDate ?? epoch).compareTo(
+          b.booking?.eventDate ?? epoch,
+        );
+      }
+      return (b.quote.updatedAt ?? epoch).compareTo(a.quote.updatedAt ?? epoch);
+    });
   }
 }

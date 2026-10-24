@@ -5,20 +5,18 @@ import 'package:provider/provider.dart';
 
 import '../../../core/experience_v3/aarast_v3.dart';
 import '../../../core/routing/app_router.dart';
-import '../../../core/theme/app_theme.dart';
-import '../../../core/widgets/aarast_ui.dart';
+import '../../../core/utils/arabic_date_formatter.dart';
 import '../../marketplace/marketplace_api.dart'
-    show
-        ProviderDashboardProfile,
-        ProviderDashboardSummary,
-        QuoteRequest,
-        QuoteStatusChip;
+    show MarketplaceBooking, ProviderDashboardProfile, QuoteRequest;
 import '../providers/provider_dashboard_provider.dart';
-import '../widgets/provider_bookings.dart'
-    show ProviderBookingsSection, ProviderSetupChecklist;
-import '../widgets/provider_stats_panel.dart' show ProviderStatsPanel;
-import 'provider_requests_tab.dart' show ProviderQuoteFacts;
+import '../widgets/provider_bookings.dart' show showProviderBlockedDates;
+import '../widgets/provider_join_parts.dart';
+import '../widgets/provider_request_parts.dart';
 
+/// p13 «الرئيسية»: who waits for him, who accepted his offer and asks to
+/// book, and his confirmed weddings this week. The waiting count is the new
+/// requests (SENT and VIEWED); requests never expire on the server (F8), so
+/// no expiry is shown.
 class ProviderHomeTab extends StatelessWidget {
   const ProviderHomeTab({required this.onOpenTab, super.key});
 
@@ -29,85 +27,338 @@ class ProviderHomeTab extends StatelessWidget {
     final dashboard = context.watch<ProviderDashboardProvider>();
     final profile = dashboard.profile;
     return RefreshIndicator(
-      color: AppTheme.brand,
+      color: AarastV3Color.primary,
       onRefresh: dashboard.loadDashboard,
       child: ListView(
         physics: const AlwaysScrollableScrollPhysics(),
-        padding: const EdgeInsets.fromLTRB(20, 14, 20, 128),
+        padding: const EdgeInsets.fromLTRB(16, 8, 16, 128),
         children: [
-          if (dashboard.isLoading && profile == null)
-            const AarastScreenLoading(label: 'جارٍ تجهيز لوحة المزوّد...')
-          else if (profile == null)
-            AarastEmptyState(
-              icon: LucideIcons.store,
-              title: 'أكمل طلب الانضمام كمزوّد',
-              message: 'بعد الاعتماد ستدير ملفك وخدماتك وطلبات العملاء من هنا.',
-              action: FilledButton.icon(
-                onPressed: () => context.push(AppRouter.providerApply),
-                icon: const Icon(LucideIcons.badgeCheck),
-                label: const Text('طلب الانضمام'),
-              ),
-            )
+          if (profile == null)
+            dashboard.isLoading
+                ? const JourneyListState(
+                    phase: JourneyListPhase.loading,
+                    section: JourneySection.home,
+                  )
+                : JourneyListState(
+                    phase: JourneyListPhase.empty,
+                    section: JourneySection.home,
+                    emptyIcon: LucideIcons.store,
+                    emptyTitle: 'كمّل طلب الانضمام',
+                    emptyMessage: 'بعد الموافقة تستقبل طلبات العرسان هنا.',
+                    emptyAction: 'طلب الانضمام',
+                    onEmptyAction: () => context.push(AppRouter.providerApply),
+                  )
           else ...[
-            _ProviderIdentityHero(profile: profile),
+            const SizedBox(height: 10),
+            ProviderIdentityRow(
+              name: profile.businessName,
+              kind: providerKindLine(
+                category: profile.primaryCategory?.nameAr,
+                city: profile.city?.nameAr,
+              ),
+              trailing: JourneyRoundButton(
+                key: const Key('provider-home-notifications'),
+                icon: LucideIcons.bell,
+                tooltip: 'التنبيهات',
+                onPressed: () => context.push(AppRouter.notifications),
+              ),
+            ),
             const SizedBox(height: 16),
             if (!dashboard.canUseProviderOperations)
               _ProviderLifecycleNotice(profile: profile)
-            else ...[
-              if (ProviderSetupChecklist.isIncomplete(dashboard)) ...[
-                ProviderSetupChecklist(dashboard: dashboard),
-                const SizedBox(height: 18),
-              ],
-              _ProviderMetrics(
-                summary: dashboard.summary,
-                packageCount: dashboard.packages.length,
-              ),
-              const SizedBox(height: 18),
-              _QuickActions(onOpenTab: onOpenTab),
-              const SizedBox(height: 18),
-              ProviderBookingsSection(dashboard: dashboard),
-              const SizedBox(height: 18),
-              ProviderStatsPanel(dashboard: dashboard),
-              const SizedBox(height: 18),
-              AarastSectionHeader(
-                title: 'أحدث الطلبات',
-                subtitle: 'طلبات عرض السعر الأحدث لنشاطك.',
-                icon: LucideIcons.mailQuestion,
-                actionLabel: dashboard.quoteRequests.isEmpty
-                    ? null
-                    : 'عرض الكل',
-                onAction: dashboard.quoteRequests.isEmpty
-                    ? null
-                    : () => onOpenTab(1),
-              ),
-              const SizedBox(height: 12),
-              if (dashboard.quoteRequests.isEmpty)
-                const AarastEmptyState(
-                  icon: LucideIcons.inbox,
-                  title: 'لا توجد طلبات جديدة',
-                  message: 'حسّن ملفك وأضف صور خدماتك لزيادة فرص الظهور.',
-                )
-              else
-                for (final quote in dashboard.quoteRequests.take(3)) ...[
-                  _QuoteSummaryTile(quote: quote, onOpen: () => onOpenTab(1)),
-                  const SizedBox(height: 10),
-                ],
-            ],
+            else
+              ..._operations(context, dashboard),
           ],
-          if (dashboard.errorMessage != null) ...[
+          if (dashboard.errorMessage case final error?) ...[
             const SizedBox(height: 12),
-            AarastErrorState(
-              title: 'تعذر تحديث لوحة المزوّد',
-              message: dashboard.errorMessage!,
-              onRetry: dashboard.loadDashboard,
+            JourneyNote(
+              key: const Key('provider-home-error'),
+              text: error,
+              icon: LucideIcons.alertCircle,
+              color: AarastV3Color.danger,
+              soft: AarastV3Color.dangerSoft,
             ),
           ],
         ],
       ),
     );
   }
+
+  List<Widget> _operations(
+    BuildContext context,
+    ProviderDashboardProvider dashboard,
+  ) {
+    final waiting = dashboard.quoteRequests
+        .where((quote) => const {'SENT', 'VIEWED'}.contains(quote.status))
+        .toList();
+    final asked = dashboard.bookings
+        .where((booking) => booking.isRequested)
+        .toList();
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final week =
+        dashboard.bookings
+            .where(
+              (booking) =>
+                  booking.isConfirmed &&
+                  !booking.eventDate.isBefore(today) &&
+                  booking.eventDate.isBefore(
+                    today.add(const Duration(days: 7)),
+                  ),
+            )
+            .toList()
+          ..sort((a, b) => a.eventDate.compareTo(b.eventDate));
+    return [
+      if (waiting.isNotEmpty)
+        _WaitingHero(waiting: waiting, onAnswer: () => onOpenTab(1))
+      else
+        const _NothingWaiting(),
+      for (final booking in asked) ...[
+        const SizedBox(height: 12),
+        _BookingAsked(booking: booking, quote: _quoteFor(dashboard, booking)),
+      ],
+      JourneySectionTitle(
+        'هذا الأسبوع',
+        action: 'التقويم',
+        onAction: () => showProviderBlockedDates(context),
+      ),
+      if (week.isEmpty)
+        JourneyBox(
+          padding: const EdgeInsets.all(14),
+          child: Text(
+            'ما عندك عرس مؤكد هذا الأسبوع.',
+            style: JourneyType.of(
+              JourneyType.body,
+              color: AarastV3Color.textMuted,
+            ),
+          ),
+        )
+      else
+        JourneyList(
+          children: [
+            for (final booking in week)
+              _weekRow(context, booking, _quoteFor(dashboard, booking)),
+          ],
+        ),
+    ];
+  }
+
+  static QuoteRequest? _quoteFor(
+    ProviderDashboardProvider dashboard,
+    MarketplaceBooking booking,
+  ) {
+    for (final quote in dashboard.quoteRequests) {
+      if (quote.id == booking.quoteRequestId) return quote;
+    }
+    return null;
+  }
+
+  Widget _weekRow(
+    BuildContext context,
+    MarketplaceBooking booking,
+    QuoteRequest? quote,
+  ) {
+    final name = booking.customerName?.trim().isNotEmpty == true
+        ? booking.customerName!.trim()
+        : quote == null
+        ? 'العميل'
+        : providerCustomerName(quote);
+    final service = quote?.service?.title.trim() ?? '';
+    return JourneyListRow(
+      key: Key('provider-home-week-${booking.id}'),
+      icon: LucideIcons.calendarCheck,
+      color: AarastV3Color.mint,
+      soft: AarastV3Color.mintSoft,
+      title: formatArabicWeekdayDayMonth(booking.eventDate),
+      subtitle: service.isEmpty ? 'عرس $name' : 'عرس $name · $service',
+      onTap: () =>
+          context.push(AppRouter.providerRequest(booking.quoteRequestId)),
+    );
+  }
 }
 
+/// «ينتظرونك»: how many new requests wait, and since when the oldest.
+class _WaitingHero extends StatelessWidget {
+  const _WaitingHero({required this.waiting, required this.onAnswer});
+
+  final List<QuoteRequest> waiting;
+  final VoidCallback onAnswer;
+
+  @override
+  Widget build(BuildContext context) {
+    final count = waiting.length;
+    final headline = switch (count) {
+      1 => 'طلب ما رديت عليه',
+      2 => 'طلبين ما رديت عليهم',
+      <= 10 => '$count طلبات ما رديت عليها',
+      _ => '$count طلب ما رديت عليها',
+    };
+    final dates = [for (final quote in waiting) ?quote.createdAt]..sort();
+    return Container(
+      key: const Key('provider-home-waiting'),
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: AarastV3Color.primary,
+        borderRadius: BorderRadius.circular(24),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'ينتظرونك',
+            style: JourneyType.of(
+              JourneyType.bodySmall,
+              color: AarastV3Color.onPrimaryMuted,
+            ),
+          ),
+          Text(
+            headline,
+            style: JourneyType.of(
+              JourneyType.sheetTitle,
+              weight: JourneyType.bold,
+              color: AarastV3Color.onPrimary,
+            ),
+          ),
+          if (dates.isNotEmpty) ...[
+            const SizedBox(height: 4),
+            Text(
+              count == 1
+                  ? 'وصل ${providerDayLabel(dates.first)}'
+                  : 'أقدمها من ${providerDayLabel(dates.first)}',
+              style: JourneyType.of(
+                JourneyType.small,
+                color: AarastV3Color.onPrimaryMuted,
+              ),
+            ),
+          ],
+          const SizedBox(height: 14),
+          JourneyButton(
+            key: const Key('provider-home-answer'),
+            label: 'ردّ الآن',
+            background: AarastV3Color.paper,
+            foreground: AarastV3Color.primary,
+            large: true,
+            onPressed: onAnswer,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// No new request waits (the empty home, p14, is its own step).
+class _NothingWaiting extends StatelessWidget {
+  const _NothingWaiting();
+
+  @override
+  Widget build(BuildContext context) {
+    return JourneyBox(
+      key: const Key('provider-home-none-waiting'),
+      padding: const EdgeInsets.all(14),
+      child: Row(
+        children: [
+          const JourneyIconTile(
+            icon: LucideIcons.inbox,
+            color: AarastV3Color.primary,
+            soft: AarastV3Color.primarySoft,
+            size: 42,
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'ما فيه طلب ينتظر ردك',
+                  style: JourneyType.of(
+                    JourneyType.body,
+                    weight: JourneyType.bold,
+                  ),
+                ),
+                Text(
+                  'الطلبات الجديدة توصلك هنا.',
+                  style: JourneyType.of(
+                    JourneyType.small,
+                    color: AarastV3Color.textMuted,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// «محمد قبل عرضك · أكّد»: a booking request waiting for his confirmation.
+/// There is no confirmation deadline, so «أكّد اليوم» is not said.
+class _BookingAsked extends StatelessWidget {
+  const _BookingAsked({required this.booking, required this.quote});
+
+  final MarketplaceBooking booking;
+  final QuoteRequest? quote;
+
+  @override
+  Widget build(BuildContext context) {
+    final name = booking.customerName?.trim().isNotEmpty == true
+        ? booking.customerName!.trim()
+        : quote == null
+        ? 'العميل'
+        : providerCustomerName(quote!);
+    void open() =>
+        context.push(AppRouter.providerRequest(booking.quoteRequestId));
+    return JourneyBox(
+      key: Key('provider-home-booking-${booking.id}'),
+      padding: const EdgeInsets.all(14),
+      child: Row(
+        children: [
+          const JourneyIconTile(
+            icon: LucideIcons.calendarCheck,
+            color: AarastV3Color.brandAccentStrong,
+            soft: AarastV3Color.brandAccentSoft,
+            size: 42,
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  '${providerFirstName(name)} قبل عرضك',
+                  style: JourneyType.of(
+                    JourneyType.body,
+                    weight: JourneyType.bold,
+                  ),
+                ),
+                Text(
+                  'يشتي يحجز ${formatArabicWeekdayDayMonth(booking.eventDate)}',
+                  style: JourneyType.of(
+                    JourneyType.label,
+                    color: AarastV3Color.textMuted,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 8),
+          JourneyButton(
+            key: Key('provider-home-confirm-${booking.id}'),
+            label: 'أكّد',
+            background: AarastV3Color.brandAccentSoft,
+            foreground: AarastV3Color.brandAccentStrong,
+            onPressed: open,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// A profile under changes or refused keeps the portal until slice 5 (p09,
+/// p11): the admin's note, the edit while changes are asked, and support.
+/// The server keeps a rejected profile read-only, and an edit does not
+/// send a profile back to review by itself.
 class _ProviderLifecycleNotice extends StatelessWidget {
   const _ProviderLifecycleNotice({required this.profile});
 
@@ -116,43 +367,41 @@ class _ProviderLifecycleNotice extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final status = profile.status.toUpperCase();
-    // A pending (p08) or suspended (p12) profile has its own screen; this
-    // notice is left for the states slice 5 rebuilds, and for a profile whose
-    // operations were refused.
     final title = switch (status) {
       'NEEDS_CHANGES' => 'ملفك يحتاج تعديلات',
-      'REJECTED' => 'لم يُعتمد طلب المزوّد',
-      _ => 'عمليات المزوّد غير متاحة',
+      'REJECTED' => 'ما قدرنا نوافق على ملفك',
+      _ => 'شغل المزود موقوف الحين',
     };
-    // The server keeps a rejected profile read-only, and an edit does not
-    // send a profile back to review by itself.
-    final defaultMessage = switch (status) {
+    final fallback = switch (status) {
       'NEEDS_CHANGES' =>
         'عدّل ملفك حسب ملاحظة الإدارة، وبعدها كلّم الدعم عشان يراجعونه.',
       'REJECTED' =>
         'الإدارة ما اعتمدت طلبك، والملف ما يتعدّل. لو عندك سؤال كلّم الدعم.',
       _ => 'اسحب الصفحة لتحت عشان تتحدّث حالة حسابك.',
     };
-    final note = profile.reviewNote?.trim();
-    return AarastCard(
+    final note = profile.reviewNote?.trim() ?? '';
+    return JourneyBox(
+      key: const Key('provider-lifecycle-notice'),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Row(
             children: [
-              Icon(
-                status == 'NEEDS_CHANGES'
+              JourneyIconTile(
+                icon: status == 'NEEDS_CHANGES'
                     ? LucideIcons.fileEdit
                     : LucideIcons.shieldAlert,
-                color: AppTheme.brand,
+                color: AarastV3Color.brandAccentStrong,
+                soft: AarastV3Color.brandAccentSoft,
+                size: 42,
               ),
-              const SizedBox(width: 10),
+              const SizedBox(width: 12),
               Expanded(
                 child: Text(
                   title,
-                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    color: AppTheme.textPrimary,
-                    fontWeight: FontWeight.w900,
+                  style: JourneyType.of(
+                    JourneyType.lead,
+                    weight: JourneyType.bold,
                   ),
                 ),
               ),
@@ -160,18 +409,22 @@ class _ProviderLifecycleNotice extends StatelessWidget {
           ),
           const SizedBox(height: 10),
           Text(
-            note == null || note.isEmpty ? defaultMessage : note,
-            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-              color: AppTheme.textSecondary,
-              height: 1.6,
+            note.isEmpty ? fallback : note,
+            style: JourneyType.of(
+              JourneyType.body,
+              color: AarastV3Color.textMuted,
+              height: 1.5,
             ),
           ),
           if (status == 'NEEDS_CHANGES') ...[
-            const SizedBox(height: 14),
-            OutlinedButton.icon(
+            const SizedBox(height: 12),
+            JourneyButton(
+              label: 'عدّل ملفك',
+              icon: LucideIcons.pencil,
+              background: AarastV3Color.canvas,
+              foreground: AarastV3Color.primary,
+              expand: true,
               onPressed: () => context.push(AppRouter.providerProfileEdit),
-              icon: const Icon(LucideIcons.fileEdit),
-              label: const Text('تحديث ملف المزوّد'),
             ),
           ],
           const SizedBox(height: 10),
@@ -187,284 +440,5 @@ class _ProviderLifecycleNotice extends StatelessWidget {
         ],
       ),
     );
-  }
-}
-
-class _ProviderIdentityHero extends StatelessWidget {
-  const _ProviderIdentityHero({required this.profile});
-
-  final ProviderDashboardProfile profile;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(AarastV3Space.x4),
-      decoration: BoxDecoration(
-        color: AarastV3Color.paper,
-        borderRadius: BorderRadius.circular(AarastV3Radius.surface),
-        border: Border.all(color: AarastV3Color.line),
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Container(
-            width: 64,
-            height: 72,
-            clipBehavior: Clip.antiAlias,
-            decoration: BoxDecoration(
-              color: AarastV3Color.paper,
-              borderRadius: BorderRadius.circular(AarastV3Radius.surface),
-              border: Border.all(color: AarastV3Color.line),
-              image: profile.logoUrl == null
-                  ? null
-                  : DecorationImage(
-                      image: NetworkImage(profile.logoUrl!),
-                      fit: BoxFit.cover,
-                    ),
-            ),
-            child: profile.logoUrl == null
-                ? const Icon(
-                    LucideIcons.store,
-                    color: AarastV3Color.primary,
-                    size: 26,
-                  )
-                : null,
-          ),
-          const SizedBox(width: AarastV3Space.x4),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Expanded(
-                      child: Text(
-                        'استوديو العمل',
-                        style: AarastV3Type.label(
-                          context,
-                        ).copyWith(color: AarastV3Color.primary),
-                      ),
-                    ),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: AarastV3Space.x2,
-                        vertical: AarastV3Space.x1,
-                      ),
-                      decoration: BoxDecoration(
-                        color: AarastV3Color.mintSoft,
-                        borderRadius: BorderRadius.circular(
-                          AarastV3Radius.pill,
-                        ),
-                      ),
-                      child: Text(
-                        _providerStatus(profile.status),
-                        style: AarastV3Type.label(
-                          context,
-                        ).copyWith(color: AarastV3Color.mint),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: AarastV3Space.x2),
-                Text(
-                  profile.businessName,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  style: AarastV3Type.title(
-                    context,
-                  ).copyWith(color: AarastV3Color.ink),
-                ),
-                const SizedBox(height: AarastV3Space.x2),
-                Row(
-                  children: [
-                    const Icon(
-                      LucideIcons.mapPin,
-                      color: AarastV3Color.textMuted,
-                      size: 15,
-                    ),
-                    const SizedBox(width: AarastV3Space.x1),
-                    Expanded(
-                      child: Text(
-                        profile.city?.nameAr ?? 'المدينة غير محددة',
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: AarastV3Type.body(
-                          context,
-                        ).copyWith(color: AarastV3Color.textMuted),
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _ProviderMetrics extends StatelessWidget {
-  const _ProviderMetrics({required this.summary, required this.packageCount});
-
-  final ProviderDashboardSummary summary;
-  final int packageCount;
-
-  @override
-  Widget build(BuildContext context) {
-    final items = [
-      ('${summary.activeServicesCount}', 'خدمة نشطة', LucideIcons.sparkles),
-      ('$packageCount', 'باقة', LucideIcons.gem),
-      (
-        '${summary.newQuoteRequestsCount}',
-        'طلب جديد',
-        LucideIcons.mailQuestion,
-      ),
-      (summary.averageRating.toStringAsFixed(1), 'التقييم', LucideIcons.star),
-    ];
-    return GridView.builder(
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 2,
-        crossAxisSpacing: 10,
-        mainAxisSpacing: 10,
-        childAspectRatio: 1.65,
-      ),
-      itemCount: items.length,
-      itemBuilder: (context, index) {
-        final item = items[index];
-        return Container(
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 14),
-          decoration: const BoxDecoration(
-            border: Border(bottom: BorderSide(color: AarastV3Color.line)),
-          ),
-          child: Row(
-            children: [
-              Icon(
-                item.$3,
-                color: index.isEven ? AppTheme.brand : AppTheme.focus,
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      item.$1,
-                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                        color: AppTheme.textPrimary,
-                        fontWeight: FontWeight.w900,
-                      ),
-                    ),
-                    Text(
-                      item.$2,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                        color: AppTheme.textSecondary,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        );
-      },
-    );
-  }
-}
-
-class _QuickActions extends StatelessWidget {
-  const _QuickActions({required this.onOpenTab});
-
-  final ValueChanged<int> onOpenTab;
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      children: [
-        Expanded(
-          child: OutlinedButton.icon(
-            onPressed: () => onOpenTab(1),
-            icon: const Icon(LucideIcons.inbox),
-            label: const Text('عرض الطلبات'),
-          ),
-        ),
-        const SizedBox(width: 8),
-        Expanded(
-          child: FilledButton.icon(
-            onPressed: () => context.push(AppRouter.providerServiceNew),
-            icon: const Icon(LucideIcons.plus),
-            label: const Text('خدمة جديدة'),
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-class _QuoteSummaryTile extends StatelessWidget {
-  const _QuoteSummaryTile({required this.quote, required this.onOpen});
-
-  final QuoteRequest quote;
-
-  /// Opens the requests tab, where the provider replies (field test Q12: the
-  /// tile looked tappable and did nothing).
-  final VoidCallback onOpen;
-
-  @override
-  Widget build(BuildContext context) {
-    return AarastCard(
-      onTap: onOpen,
-      child: Row(
-        children: [
-          const Icon(LucideIcons.mailQuestion, color: AppTheme.focus),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  quote.service?.title ?? 'طلب عرض سعر',
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    color: AppTheme.textPrimary,
-                    fontWeight: FontWeight.w800,
-                  ),
-                ),
-                const SizedBox(height: 6),
-                ProviderQuoteFacts(quote: quote),
-              ],
-            ),
-          ),
-          const SizedBox(width: 8),
-          QuoteStatusChip(
-            status: quote.lifecycleStatus,
-            compact: true,
-            forProvider: true,
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-String _providerStatus(String status) {
-  switch (status.toUpperCase()) {
-    case 'ACTIVE':
-      return 'معتمد';
-    case 'NEEDS_CHANGES':
-      return 'يحتاج تعديل';
-    case 'SUSPENDED':
-      return 'موقوف';
-    case 'REJECTED':
-      return 'غير معتمد';
-    default:
-      return 'قيد المراجعة';
   }
 }

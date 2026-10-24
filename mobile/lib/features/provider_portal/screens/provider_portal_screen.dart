@@ -182,11 +182,16 @@ class _ProviderPortalScreenState extends State<ProviderPortalScreen> {
       activeIndex: _activeIndex,
       onReturnToRoot: () => _openTab(0),
       child: AarastScreenFrame(
+        maxWidth: 520,
+        backgroundColor: AarastV3Color.canvas,
         extendBody: true,
         safeAreaBottom: false,
         bottomNavigationBar: ProviderPortalBottomNav(
           activeIndex: _activeIndex,
           unreadMessages: unreadMessages,
+          waitingRequests: canUseOperations
+              ? providerWaitingCount(dashboard)
+              : 0,
           onSelected: _openTab,
         ),
         child: IndexedStack(

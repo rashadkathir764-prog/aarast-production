@@ -29,6 +29,7 @@ import 'package:aarast_mobile/features/provider_portal/screens/add_provider_pack
 import 'package:aarast_mobile/features/provider_portal/screens/add_provider_service_screen.dart';
 import 'package:aarast_mobile/features/provider_portal/screens/edit_provider_profile_screen.dart';
 import 'package:aarast_mobile/features/provider_portal/screens/provider_apply_screen.dart';
+import 'package:aarast_mobile/features/provider_portal/screens/provider_offer_screen.dart';
 import 'package:aarast_mobile/features/provider_portal/screens/provider_portal_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
@@ -634,18 +635,13 @@ void main() {
     );
   });
 
-  testWidgets('offer dialog', (tester) async {
+  // The offer is its own page now (p17, D37).
+  testWidgets('offer page', (tester) async {
     await _shot(
       tester,
       'v11_offer',
-      const ProviderPortalScreen(),
+      const ProviderOfferScreen(quoteId: 'q1'),
       await _session(_DashApi()),
-      act: () async {
-        await _tab(tester, 'الطلبات');
-        await tester.tap(find.text('إرسال عرض').first);
-        await tester.pump(const Duration(milliseconds: 500));
-        await tester.pump(const Duration(milliseconds: 500));
-      },
     );
   });
 

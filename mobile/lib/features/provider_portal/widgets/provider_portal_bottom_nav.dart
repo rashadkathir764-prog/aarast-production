@@ -11,6 +11,7 @@ class ProviderPortalBottomNav extends StatelessWidget {
     required this.activeIndex,
     required this.onSelected,
     this.unreadMessages = 0,
+    this.waitingRequests = 0,
     super.key,
   });
 
@@ -18,14 +19,18 @@ class ProviderPortalBottomNav extends StatelessWidget {
   final ValueChanged<int> onSelected;
   final int unreadMessages;
 
+  /// The requests waiting for his answer (p13, p15).
+  final int waitingRequests;
+
   @override
   Widget build(BuildContext context) {
     return AarastPlanNavigationBar(
       items: [
         const AarastNavigationItem(icon: LucideIcons.home, label: 'الرئيسية'),
-        const AarastNavigationItem(
-          icon: LucideIcons.mailQuestion,
+        AarastNavigationItem(
+          icon: LucideIcons.inbox,
           label: 'الطلبات',
+          badge: waitingRequests,
         ),
         const AarastNavigationItem(
           icon: LucideIcons.sparkles,

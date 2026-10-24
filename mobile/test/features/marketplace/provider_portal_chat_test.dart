@@ -251,10 +251,13 @@ void main() {
 
     await tester.tap(find.bySemanticsLabel('الطلبات'));
     await tester.pumpAndSettle();
-    final closedFilterRect = tester.getRect(find.text('مغلق'));
-    expect(closedFilterRect.left, greaterThanOrEqualTo(0));
-    expect(closedFilterRect.right, lessThanOrEqualTo(320));
-    expect(tester.getSize(find.text('الكل')).height, lessThanOrEqualTo(24));
+    // p15's lists (D37): the last one stays on screen, each label one line.
+    final endedFilterRect = tester.getRect(
+      find.byKey(const Key('provider-requests-tab-ended')),
+    );
+    expect(endedFilterRect.left, greaterThanOrEqualTo(0));
+    expect(endedFilterRect.right, lessThanOrEqualTo(320));
+    expect(tester.getSize(find.text('جديد')).height, lessThanOrEqualTo(24));
     expect(tester.takeException(), isNull);
 
     await tester.tap(find.text('الخدمات'));

@@ -18,7 +18,9 @@ import '../../marketplace/marketplace_api.dart'
     show MarketplaceService, ProviderDashboardProfile, ProviderReview;
 import '../providers/provider_dashboard_provider.dart';
 import '../widgets/provider_account_actions.dart';
+import '../widgets/provider_bookings.dart' show ProviderSetupChecklist;
 import '../widgets/provider_public_profile_action.dart';
+import '../widgets/provider_stats_panel.dart' show ProviderStatsPanel;
 
 class ProviderProfileTab extends StatefulWidget {
   const ProviderProfileTab({super.key});
@@ -98,6 +100,16 @@ class _ProviderProfileTabState extends State<ProviderProfileTab> {
               ],
             ),
           ),
+          // Moved from the home tab, which is now p13; the performance
+          // page (p39) and the first-steps home (p14) replace them later.
+          if (dashboard.canUseProviderOperations) ...[
+            if (ProviderSetupChecklist.isIncomplete(dashboard)) ...[
+              const SizedBox(height: 14),
+              ProviderSetupChecklist(dashboard: dashboard),
+            ],
+            const SizedBox(height: 14),
+            ProviderStatsPanel(dashboard: dashboard),
+          ],
           const SizedBox(height: 14),
           _PortfolioGallery(services: dashboard.services),
           if (dashboard.canUseProviderOperations) ...[

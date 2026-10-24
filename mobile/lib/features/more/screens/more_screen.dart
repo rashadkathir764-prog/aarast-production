@@ -348,11 +348,11 @@ class _GroupTitle extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(6, 20, 6, 8),
+      padding: const EdgeInsets.fromLTRB(6, 16, 6, 8),
       child: Text(
         title,
         style: JourneyType.of(
-          JourneyType.body,
+          JourneyType.bodySmall,
           weight: JourneyType.bold,
           color: AarastV3Color.textMuted,
         ),
@@ -381,8 +381,9 @@ class _ProfileCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final letter = name.trim().isEmpty ? 'ا' : name.trim().characters.first;
     final url = avatarUrl;
+    // g02: a 54 avatar, 14 from a 19 bold name over a 14 muted phone.
     final Widget avatar = SizedBox.square(
-      dimension: 64,
+      dimension: 54,
       child: busy
           ? const Center(child: AarastInlineSpinner())
           : url != null && url.isNotEmpty
@@ -393,18 +394,18 @@ class _ProfileCard extends StatelessWidget {
                 errorBuilder: (_, _, _) => JourneyAvatar(
                   letter: letter,
                   color: AarastV3Color.saffron,
-                  size: 64,
+                  size: 54,
                 ),
               ),
             )
           : JourneyAvatar(
               letter: letter,
               color: AarastV3Color.saffron,
-              size: 64,
+              size: 54,
             ),
     );
     return JourneyBox(
-      padding: const EdgeInsets.all(18),
+      padding: const EdgeInsets.all(16),
       child: Row(
         children: [
           onEditAvatar == null
@@ -414,7 +415,7 @@ class _ProfileCard extends StatelessWidget {
                   child: AarastPressable(
                     key: const ValueKey('account-avatar'),
                     onTap: onEditAvatar,
-                    borderRadius: BorderRadius.circular(32),
+                    borderRadius: BorderRadius.circular(27),
                     child: avatar,
                   ),
                 ),
@@ -426,7 +427,7 @@ class _ProfileCard extends StatelessWidget {
                 Text(
                   name.trim().isEmpty ? 'ضيف' : name.trim(),
                   style: JourneyType.of(
-                    JourneyType.title,
+                    JourneyType.prominent,
                     weight: JourneyType.bold,
                   ),
                 ),
@@ -435,7 +436,7 @@ class _ProfileCard extends StatelessWidget {
                     _groupedPhone(phone!.trim()),
                     textDirection: TextDirection.ltr,
                     style: JourneyType.of(
-                      JourneyType.small,
+                      JourneyType.bodySmall,
                       color: AarastV3Color.textMuted,
                     ),
                   ),
@@ -473,11 +474,11 @@ class _Row extends StatelessWidget {
   Widget build(BuildContext context) {
     final toggle = switchValue;
     final row = Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
       child: Row(
         children: [
-          Icon(icon, size: 22, color: color),
-          const SizedBox(width: 14),
+          Icon(icon, size: 20, color: color),
+          const SizedBox(width: 12),
           Expanded(
             child: Text(
               title,
@@ -497,16 +498,16 @@ class _Row extends StatelessWidget {
               Text(
                 value!,
                 style: JourneyType.of(
-                  JourneyType.body,
+                  JourneyType.bodySmall,
                   color: AarastV3Color.textMuted,
                 ),
               ),
             if (onTap != null) ...[
-              const SizedBox(width: 6),
+              const SizedBox(width: 4),
               const Icon(
                 LucideIcons.chevronLeft,
-                size: 18,
-                color: AarastV3Color.textMuted,
+                size: 17,
+                color: AarastV3Color.textFaint,
               ),
             ],
           ],

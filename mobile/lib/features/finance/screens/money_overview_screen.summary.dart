@@ -41,19 +41,17 @@ class _MoneySummaryCard extends StatelessWidget {
     final left = _amount(context, summary.costs.outstanding, currency);
     final hasAgreements = summary.costs.count > 0;
 
-    final strong = JourneyType.of(
-      JourneyType.bodyLarge,
-      weight: JourneyType.bold,
-    );
+    // c01: a 17 sentence (1.7 apart) in a box padded 20, then the 34 gap.
+    final strong = JourneyType.of(JourneyType.lead, weight: JourneyType.bold);
     final plain = JourneyType.of(
-      JourneyType.bodyLarge,
+      JourneyType.lead,
       color: AarastV3Color.textMuted,
-      height: 1.6,
+      height: 1.7,
     );
 
     return JourneyBox(
       key: const ValueKey('money-dashboard-hero'),
-      padding: const EdgeInsets.all(18),
+      padding: const EdgeInsets.all(20),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -146,10 +144,10 @@ class _ShortfallLine extends StatelessWidget {
         Text(
           _amount(context, shortfall, currency),
           style: JourneyType.of(
-            JourneyType.count,
+            JourneyType.headline,
             weight: JourneyType.bold,
             color: AarastV3Color.danger,
-            height: 1.1,
+            height: 1.2,
           ),
         ),
         Padding(
@@ -157,7 +155,7 @@ class _ShortfallLine extends StatelessWidget {
           child: Text(
             'ومع الموعود ناقصك',
             style: JourneyType.of(
-              JourneyType.small,
+              JourneyType.bodySmall,
               weight: JourneyType.bold,
               color: AarastV3Color.textMuted,
             ),

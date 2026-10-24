@@ -273,7 +273,7 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
     child: Text(
       text,
       style: JourneyType.of(
-        JourneyType.small,
+        JourneyType.bodySmall,
         weight: JourneyType.bold,
         color: AarastV3Color.textMuted,
       ),

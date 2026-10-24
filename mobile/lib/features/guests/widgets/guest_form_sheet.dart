@@ -269,7 +269,6 @@ class _GuestFormSheetState extends State<GuestFormSheet> {
           label: 'الاسم',
           hint: 'مثلًا: خالد الحمدي',
           controller: _nameController,
-          icon: LucideIcons.user,
           autofocus: !_editing,
           errorText: _nameError,
           textInputAction: TextInputAction.next,
@@ -457,7 +456,7 @@ class _GuestFormSheetState extends State<GuestFormSheet> {
     child: Text(
       text,
       style: JourneyType.of(
-        JourneyType.small,
+        JourneyType.bodySmall,
         weight: JourneyType.bold,
         color: AarastV3Color.textMuted,
       ),

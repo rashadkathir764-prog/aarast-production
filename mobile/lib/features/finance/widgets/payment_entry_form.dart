@@ -281,7 +281,7 @@ class _PaymentEntryFormState extends State<PaymentEntryForm> {
               Text(
                 'كيف دفعت؟',
                 style: JourneyType.of(
-                  JourneyType.small,
+                  JourneyType.bodySmall,
                   weight: JourneyType.bold,
                   color: AarastV3Color.textMuted,
                 ),

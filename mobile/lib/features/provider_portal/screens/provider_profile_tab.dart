@@ -20,8 +20,8 @@ import '../../marketplace/marketplace_api.dart'
     show MarketplaceService, ProviderDashboardProfile, ProviderReview;
 import '../providers/provider_dashboard_provider.dart';
 import '../widgets/provider_account_actions.dart';
-import '../widgets/provider_bookings.dart' show ProviderSetupChecklist;
 import '../widgets/provider_public_profile_action.dart';
+import '../widgets/provider_setup_checklist.dart';
 import '../widgets/provider_stats_panel.dart' show ProviderStatsPanel;
 
 class ProviderProfileTab extends StatefulWidget {

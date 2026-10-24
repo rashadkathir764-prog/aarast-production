@@ -326,6 +326,53 @@ class ProviderDayStatus extends StatelessWidget {
   }
 }
 
+/// The facts a request holds (prototype `_facts`, p16 and p22): the day
+/// (with the Hijri day while shown), the place, the guests and what he
+/// asked for. The occasion and the period have no field; an empty fact is
+/// left out.
+class ProviderRequestFacts extends StatelessWidget {
+  const ProviderRequestFacts({
+    required this.quote,
+    required this.showHijri,
+    this.day,
+    super.key,
+  });
+
+  final QuoteRequest quote;
+  final bool showHijri;
+
+  /// The booked day, when it is the one to show; else the request's.
+  final DateTime? day;
+
+  @override
+  Widget build(BuildContext context) {
+    final location = quote.location;
+    final place =
+        (location?.fullLabel ?? location?.mediumLabel ?? location?.shortLabel)
+            ?.trim() ??
+        '';
+    final guests = quote.guestCount;
+    final wants = quote.service?.title.trim() ?? '';
+    final facts = [
+      if (day ?? quote.eventDate case final day?)
+        ('اليوم', providerEventDayLabel(day, showHijri: showHijri)),
+      if (place.isNotEmpty) ('المكان', place),
+      if (guests != null && guests > 0) ('الضيوف', '$guests تقريبًا'),
+      if (wants.isNotEmpty) ('يشتي', wants),
+    ];
+    if (facts.isEmpty) return const SizedBox.shrink();
+    return JourneyBox(
+      key: const Key('provider-request-facts'),
+      child: Column(
+        children: [
+          for (final (label, value) in facts)
+            ProviderFactLine(label: label, value: value),
+        ],
+      ),
+    );
+  }
+}
+
 /// One fact of a request (prototype `kv`): a muted label, a bold value.
 class ProviderFactLine extends StatelessWidget {
   const ProviderFactLine({required this.label, required this.value, super.key});

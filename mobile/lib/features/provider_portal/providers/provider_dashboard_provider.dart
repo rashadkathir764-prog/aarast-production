@@ -59,6 +59,15 @@ class ProviderDashboardProvider extends ChangeNotifier
   bool get isLoading => _isLoading;
   bool get isSubmitting => _isSubmitting;
   String? get errorMessage => _errorMessage;
+
+  /// The server's code for the last booking or calendar refusal, as
+  /// `BOOKING_DATE_UNAVAILABLE` when another confirmation took the day.
+  String? get errorCode => _errorCode;
+  String? _errorCode;
+
+  /// The last booking or calendar change failed for want of the network.
+  bool get lastChangeOffline => _lastChangeOffline;
+  bool _lastChangeOffline = false;
   bool get hasProviderProfile => _hasProviderProfile;
   ProviderDashboardProfile? get profile => _profile;
   ProviderDashboardSummary get summary => _summary;
@@ -824,11 +833,15 @@ class ProviderDashboardProvider extends ChangeNotifier
     if (_isSubmitting) return false;
     _isSubmitting = true;
     _errorMessage = null;
+    _errorCode = null;
+    _lastChangeOffline = false;
     notifyListeners();
     try {
       await mutation();
       return true;
     } on ApiException catch (error) {
+      _errorCode = error.serverCode;
+      _lastChangeOffline = error.isNetworkFailure;
       _errorMessage =
           bookingErrorMessage(error.serverCode) ??
           marketplaceErrorMessage(error.message);

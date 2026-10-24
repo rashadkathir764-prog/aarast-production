@@ -3,7 +3,8 @@ import 'package:aarast_mobile/core/theme/app_theme.dart';
 import 'package:aarast_mobile/features/marketplace/data/marketplace_api.dart';
 import 'package:aarast_mobile/features/marketplace/models/marketplace_models.dart';
 import 'package:aarast_mobile/features/provider_portal/providers/provider_dashboard_provider.dart';
-import 'package:aarast_mobile/features/provider_portal/widgets/provider_bookings.dart';
+import 'package:aarast_mobile/features/provider_portal/widgets/provider_booking_sheets.dart';
+import 'package:aarast_mobile/features/provider_portal/widgets/provider_setup_checklist.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:provider/provider.dart';
@@ -110,9 +111,8 @@ void main() {
     expect(dashboard.blockedDates, isEmpty);
   });
 
-  testWidgets('a request shows confirm and decline; confirming calls the API', (
-    tester,
-  ) async {
+  testWidgets('a request opens p21 with confirm and decline; confirming '
+      'calls the API', (tester) async {
     final api = _BookingsApiFake();
     final dashboard = ProviderDashboardProvider(api);
     await dashboard.loadDashboard();
@@ -125,14 +125,25 @@ void main() {
           home: Scaffold(
             body: Directionality(
               textDirection: TextDirection.rtl,
-              child: ProviderBookingPanel(booking: dashboard.bookings.single),
+              child: Builder(
+                builder: (context) => TextButton(
+                  onPressed: () => showProviderConfirmSheet(
+                    context,
+                    quote: null,
+                    booking: dashboard.bookings.single,
+                  ),
+                  child: const Text('افتح'),
+                ),
+              ),
             ),
           ),
         ),
       ),
     );
+    await tester.tap(find.text('افتح'));
+    await tester.pumpAndSettle();
 
-    expect(find.text('اعتذار'), findsOneWidget);
+    expect(find.text('ما أقدر، اعتذر'), findsOneWidget);
     await tester.tap(find.byKey(const Key('provider-booking-confirm-booking-1')));
     await tester.pumpAndSettle();
     expect(api.decisions, ['booking-1:confirm']);

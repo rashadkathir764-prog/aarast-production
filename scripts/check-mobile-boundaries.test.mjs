@@ -1672,8 +1672,11 @@ const r19ProviderPortalApi = Object.freeze({
 // the apology sends its line through the chat owner API; the offer form's
 // record goes with its file. +2 for p28 and p29 (D39): the calendar's day
 // parts and the day sheet read the bookings through the marketplace owner
-// API.
-const r19LegalRecordCount = 223;
+// API. +2 for p21, p22 and p25 (D39): the booking sheets and the booking
+// screens read the booking through the marketplace owner API; -1 for the
+// old booking panel and days-off sheet, deleted with their file (the setup
+// checklist moved out of it reads no owner API).
+const r19LegalRecordCount = 224;
 const trackedOwnerApiContracts = [
   {
     area: 'features/account_contexts',
@@ -2414,12 +2417,6 @@ const trackedCollaborationBatchContracts = [
     source: 'mobile/lib/features/provider_portal/widgets/provider_portal_bottom_nav.dart',
     target: 'mobile/lib/features/shell/shell_api.dart',
     show: ['AarastNavigationItem', 'AarastPlanNavigationBar'],
-  },
-  // V1 checklist 4.6: the provider's booking panel and calendar.
-  {
-    source: 'mobile/lib/features/provider_portal/widgets/provider_bookings.dart',
-    target: 'mobile/lib/features/marketplace/marketplace_api.dart',
-    show: ['MarketplaceBooking', 'bookingStatusLabel'],
   },
   {
     source: 'mobile/lib/features/more/screens/more_screen.dart',

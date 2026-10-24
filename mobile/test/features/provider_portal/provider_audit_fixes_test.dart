@@ -14,7 +14,7 @@ import 'package:aarast_mobile/features/provider_portal/screens/provider_portal_s
 import 'package:aarast_mobile/features/provider_portal/screens/provider_offer_screen.dart';
 import 'package:aarast_mobile/features/provider_portal/screens/provider_portal_tabs.dart';
 import 'package:aarast_mobile/features/provider_portal/screens/provider_request_screen.dart';
-import 'package:aarast_mobile/features/provider_portal/widgets/provider_bookings.dart';
+import 'package:aarast_mobile/features/provider_portal/screens/provider_booking_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
@@ -248,10 +248,19 @@ void main() {
     final api = _PortalApi(bookingStatus: 'CONFIRMED');
     final dashboard = ProviderDashboardProvider(api);
     await dashboard.loadDashboard();
+    // p22's cancel (D39) asks with the same optional reason.
     await tester.pumpWidget(
       _host(
         dashboard,
-        ProviderBookingPanel(booking: dashboard.bookings.single),
+        ProviderBookingScreen(
+          quote: QuoteRequest.fromJson(const {
+            'id': 'quote-1',
+            'providerId': 'provider-1',
+            'status': 'ACCEPTED',
+            'contactName': 'محمد الحمدي',
+          }),
+          booking: dashboard.bookings.single,
+        ),
       ),
     );
 
@@ -263,9 +272,7 @@ void main() {
       find.byKey(const Key('provider-booking-reason')),
       'تعطلت المعدات',
     );
-    await tester.tap(
-      find.byKey(const Key('provider-booking-decision-confirm')),
-    );
+    await tester.tap(find.byKey(const Key('provider-booking-cancel-send')));
     await tester.pumpAndSettle();
 
     expect(api.decisions, ['booking-1:cancel:تعطلت المعدات']);

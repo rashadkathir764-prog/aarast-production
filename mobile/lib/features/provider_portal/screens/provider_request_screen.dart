@@ -10,17 +10,19 @@ import '../../../core/utils/arabic_date_formatter.dart';
 import '../../../core/widgets/aarast_ui.dart';
 import '../../marketplace/marketplace_api.dart' show QuoteRequest;
 import '../providers/provider_dashboard_provider.dart';
-import '../widgets/provider_bookings.dart' show ProviderBookingPanel;
+import '../widgets/provider_booking_sheets.dart';
 import '../widgets/provider_decline_sheet.dart';
 import '../widgets/provider_join_parts.dart' show providerMomentLabel;
 import '../widgets/provider_request_cards.dart' show ProviderEndedCard;
 import '../widgets/provider_request_parts.dart';
+import 'provider_booking_screen.dart';
 
 /// One request as the provider sees it. A new one (SENT or VIEWED) is p16
 /// «طلب جديد»: the facts the server holds, his own day, the message, and
 /// the offer or the apology. Once he answered it is p19: his offer, its end
-/// date, and its edit or renewal. Opening a new request tells the customer
-/// it was seen, once (D35).
+/// date, and its edit or renewal; a booking request opens p21 over it once.
+/// A confirmed booking is p22, and one cancelled or declined p25. Opening a
+/// new request tells the customer it was seen, once (D35).
 class ProviderRequestScreen extends StatefulWidget {
   const ProviderRequestScreen({required this.quoteId, super.key});
 
@@ -31,6 +33,8 @@ class ProviderRequestScreen extends StatefulWidget {
 }
 
 class _ProviderRequestScreenState extends State<ProviderRequestScreen> {
+  /// The booking requests whose p21 sheet already opened here.
+  final _confirmShown = <String>{};
   @override
   void initState() {
     super.initState();
@@ -78,8 +82,24 @@ class _ProviderRequestScreenState extends State<ProviderRequestScreen> {
     }
     final booking = providerBookingOf(quote, dashboard);
     final state = providerCaseOf(quote, booking);
-    if (state == ProviderCaseState.fresh) {
-      return _NewRequest(quote: quote, dashboard: dashboard);
+    switch (state) {
+      case ProviderCaseState.fresh:
+        return _NewRequest(quote: quote, dashboard: dashboard);
+      case ProviderCaseState.booked || ProviderCaseState.done:
+        return ProviderBookingScreen(quote: quote, booking: booking!);
+      case ProviderCaseState.bookingCancelled ||
+          ProviderCaseState.bookingDeclined:
+        return ProviderBookingEndedScreen(quote: quote, booking: booking!);
+      case ProviderCaseState.bookingAsked:
+        // As drawn, the request opens with p21 on it, once.
+        if (_confirmShown.add(booking!.id)) {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (!mounted) return;
+            showProviderConfirmSheet(context, quote: quote, booking: booking);
+          });
+        }
+      default:
+        break;
     }
     return _Answered(quote: quote, state: state, dashboard: dashboard);
   }
@@ -96,22 +116,7 @@ class _NewRequest extends StatelessWidget {
   Widget build(BuildContext context) {
     final name = providerCustomerName(quote);
     final showHijri = context.watch<DevicePreferences?>()?.showHijri ?? true;
-    final location = quote.location;
-    // No «لم يحدد الموقع» filler: an empty place is left out.
-    final place =
-        (location?.fullLabel ?? location?.mediumLabel ?? location?.shortLabel)
-            ?.trim() ??
-        '';
-    final guests = quote.guestCount;
-    final wants = quote.service?.title.trim() ?? '';
     final message = quote.message?.trim() ?? '';
-    final facts = [
-      if (quote.eventDate case final day?)
-        ('اليوم', providerEventDayLabel(day, showHijri: showHijri)),
-      if (place.isNotEmpty) ('المكان', place),
-      if (guests != null && guests > 0) ('الضيوف', '$guests تقريبًا'),
-      if (wants.isNotEmpty) ('يشتي', wants),
-    ];
     return AarastScreenFrame(
       maxWidth: 520,
       backgroundColor: AarastV3Color.canvas,
@@ -147,17 +152,9 @@ class _NewRequest extends StatelessWidget {
                   ],
                 ),
                 const SizedBox(height: 12),
-                if (facts.isNotEmpty) ...[
-                  JourneyBox(
-                    child: Column(
-                      children: [
-                        for (final (label, value) in facts)
-                          ProviderFactLine(label: label, value: value),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 10),
-                ],
+                // No «لم يحدد الموقع» filler: an empty fact is left out.
+                ProviderRequestFacts(quote: quote, showHijri: showHijri),
+                const SizedBox(height: 10),
                 if (message.isNotEmpty) ...[
                   JourneyBox(
                     padding: const EdgeInsets.all(14),
@@ -348,9 +345,20 @@ class _Answered extends StatelessWidget {
                   'التعديل يغيّر العرض نفسه، وما يوصله تنبيه. لو غيّرت شيء، قله في المحادثة.',
             ),
           ],
-          if (booking != null) ...[
+          if (booking != null && state == ProviderCaseState.bookingAsked) ...[
             const SizedBox(height: 12),
-            ProviderBookingPanel(booking: booking),
+            JourneyButton(
+              key: Key('provider-booking-open-${booking.id}'),
+              label: 'أكّد الحجز',
+              icon: LucideIcons.calendarCheck,
+              expand: true,
+              large: true,
+              onPressed: () => showProviderConfirmSheet(
+                context,
+                quote: quote,
+                booking: booking,
+              ),
+            ),
           ],
           const SizedBox(height: 8),
           Center(

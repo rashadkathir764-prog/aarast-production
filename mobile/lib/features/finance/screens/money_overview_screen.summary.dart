@@ -72,7 +72,9 @@ class _MoneySummaryCard extends StatelessWidget {
                       const TextSpan(text: '.'),
                       // «معك» only once a source is recorded; before that
                       // the server knows nothing about the money in.
-                      if (funding != null && funding.sourcesCount > 0) ...[
+                      if (funding != null &&
+                          (funding.sourcesCount > 0 ||
+                              funding.shortfall != null)) ...[
                         const TextSpan(text: ' معك '),
                         TextSpan(
                           text: _amount(
@@ -123,7 +125,7 @@ class _ShortfallLine extends StatelessWidget {
     // The server leaves the shortfall empty both when the sources cover
     // the agreements and before any source exists; only the first is
     // coverage.
-    if (funding.sourcesCount == 0) {
+    if (funding.sourcesCount == 0 && funding.shortfall == null) {
       return Text(
         'ما سجلت من وين فلوسك بعد، فما نعرف إذا تكفي.',
         key: const ValueKey('money-funding-unknown'),

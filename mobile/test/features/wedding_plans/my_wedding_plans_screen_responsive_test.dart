@@ -60,10 +60,11 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.byType(MyWeddingPlansScreen), findsOneWidget);
-    expect(find.text('خططي'), findsOneWidget);
-    expect(find.text('لا توجد خطط زفاف بعد'), findsOneWidget);
-    expect(find.text('إنشاء خطة جديدة'), findsOneWidget);
-    expect(find.text('الخطط المشتركة معي'), findsOneWidget);
+    // w11 (D28): plans you help in are listed with yours, so the separate
+    // shared-plans link and the empty-state card are gone.
+    expect(find.text('خططك'), findsOneWidget);
+    expect(find.text('خطة جديدة'), findsOneWidget);
+    expect(find.textContaining('تقدر تفتح أكثر من خطة'), findsOneWidget);
     final exception = tester.takeException();
     expect(
       exception,
@@ -109,16 +110,67 @@ void main() {
 
     expect(
       find.descendant(
-        of: find.byKey(const Key('wedding-plan-card-selected')),
-        matching: find.text('الخطة الحالية'),
+        of: find.byKey(const ValueKey('plan-switcher-selected')),
+        matching: find.text('مفتوحة'),
       ),
-      findsWidgets,
+      findsOneWidget,
     );
-    expect(find.byKey(const Key('wedding-plan-card-newest')), findsOneWidget);
+    expect(
+      find.descendant(
+        of: find.byKey(const ValueKey('plan-switcher-newest')),
+        matching: find.text('مفتوحة'),
+      ),
+      findsNothing,
+    );
+  });
+
+  testWidgets('w11 lists plans you help in, and archived ones stay closed', (
+    tester,
+  ) async {
+    final mine = _plan('mine', 'عرس محمد');
+    final archived = _plan('old', 'عرس عادل', status: 'ARCHIVED');
+    final apiClient = ApiClient(tokenProvider: () async => null);
+    final plans = _PlansWithActiveProvider(apiClient, [mine, archived], mine);
+    final accountContexts = await _accountContexts([
+      accountContext(role: AccountContextRole.owner, planId: mine.id),
+      accountContext(
+        role: AccountContextRole.contributor,
+        planId: 'helped',
+        displayName: 'عرس صالح',
+      ),
+    ], selectedPlanId: mine.id);
+
+    await tester.pumpWidget(
+      MultiProvider(
+        providers: [
+          ChangeNotifierProvider<WeddingPlansProvider>.value(value: plans),
+          ChangeNotifierProvider<AccountContextController>.value(
+            value: accountContexts,
+          ),
+        ],
+        child: MaterialApp(
+          theme: AppTheme.light(),
+          home: const Directionality(
+            textDirection: TextDirection.rtl,
+            child: MyWeddingPlansScreen(),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('عرس صالح'), findsOneWidget);
+    expect(find.text('مشارك'), findsOneWidget);
+    expect(find.text('مؤرشفة'), findsOneWidget);
+    expect(find.text('في الذكريات · 2026'), findsOneWidget);
+
+    await tester.tap(find.text('عرس عادل'));
+    await tester.pumpAndSettle();
+    expect(accountContexts.selectedContext?.weddingPlanId, mine.id);
   });
 }
 
-WeddingPlan _plan(String id, String title) {
+WeddingPlan _plan(String id, String title, {String status = 'PLANNING'}) {
   final now = DateTime(2026, 7, 11);
   return WeddingPlan(
     id: id,
@@ -126,7 +178,7 @@ WeddingPlan _plan(String id, String title) {
     title: title,
     city: 'صنعاء',
     currency: 'YER',
-    status: 'PLANNING',
+    status: status,
     createdAt: now,
     updatedAt: now,
   );

@@ -1,14 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:provider/provider.dart';
 import 'package:lucide_icons/lucide_icons.dart';
+import 'package:provider/provider.dart';
 
 import '../../../core/experience_v3/aarast_v3.dart';
-import '../../../core/offline/offline_status_widgets.dart';
 import '../../../core/routing/app_router.dart';
-import '../../../core/theme/aarast_motion.dart';
-import '../../../core/theme/app_theme.dart';
-import '../../../core/utils/plan_status_label.dart';
+import '../../../core/utils/arabic_count.dart';
 import '../../../core/widgets/aarast_toast.dart';
 import '../../../core/widgets/aarast_ui.dart';
 import '../../account_contexts/account_contexts_api.dart'
@@ -16,361 +13,359 @@ import '../../account_contexts/account_contexts_api.dart'
 import '../models/wedding_plan.dart';
 import '../providers/wedding_plans_provider.dart';
 
-class MyWeddingPlansScreen extends StatefulWidget {
-  const MyWeddingPlansScreen({this.onSelectPlan, super.key});
-  final void Function(String planId)? onSelectPlan;
+/// w11 «خططك» as a page, for the routes that land on the plans list (no
+/// open plan, after an archive). «حسابي» opens the same list as a sheet
+/// with [showPlanSwitcherSheet].
+class MyWeddingPlansScreen extends StatelessWidget {
+  const MyWeddingPlansScreen({super.key});
 
   @override
-  State<MyWeddingPlansScreen> createState() => _MyWeddingPlansScreenState();
+  Widget build(BuildContext context) {
+    return AarastScreenFrame(
+      maxWidth: 520,
+      backgroundColor: AarastV3Color.canvas,
+      child: ListView(
+        padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
+        children: [
+          JourneySubHeader(
+            title: 'خططك',
+            onBack: () =>
+                context.canPop() ? context.pop() : context.go(AppRouter.home),
+          ),
+          const _PlanSwitcher(),
+        ],
+      ),
+    );
+  }
 }
 
-class _MyWeddingPlansScreenState extends State<MyWeddingPlansScreen> {
+/// w11 over «حسابي»: every plan of yours and every plan you help in, the
+/// open one marked, archived ones listed but closed (`set-active` refuses
+/// them), and «خطة جديدة» (D28).
+Future<void> showPlanSwitcherSheet(BuildContext context) {
+  return showAarastBottomSheet<void>(
+    context: context,
+    backgroundColor: AarastV3Color.canvas,
+    showDragHandle: true,
+    isScrollControlled: true,
+    builder: (_) => SafeArea(
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.fromLTRB(20, 0, 20, 16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text(
+              'خططك',
+              style: JourneyType.of(
+                JourneyType.display,
+                weight: JourneyType.bold,
+              ),
+            ),
+            const SizedBox(height: 16),
+            const _PlanSwitcher(inSheet: true),
+          ],
+        ),
+      ),
+    ),
+  );
+}
+
+/// One row of w11: an owned plan or a plan you help in.
+class _PlanEntry {
+  const _PlanEntry.owned(WeddingPlan this.plan)
+    : contextKey = null,
+      title = null;
+
+  const _PlanEntry.helped({
+    required String this.contextKey,
+    required String this.title,
+  }) : plan = null;
+
+  final WeddingPlan? plan;
+  final String? contextKey;
+  final String? title;
+
+  String get name => plan?.title ?? title ?? '';
+  bool get archived => plan?.status == 'ARCHIVED';
+}
+
+class _PlanSwitcher extends StatefulWidget {
+  const _PlanSwitcher({this.inSheet = false});
+
+  final bool inSheet;
+
+  @override
+  State<_PlanSwitcher> createState() => _PlanSwitcherState();
+}
+
+class _PlanSwitcherState extends State<_PlanSwitcher> {
+  bool _opening = false;
+
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted) return;
-      _loadPlans();
+      if (mounted) context.read<WeddingPlansProvider>().loadMyWeddingPlans();
     });
   }
 
-  Future<void> _loadPlans() async {
-    final provider = context.read<WeddingPlansProvider>();
-    await provider.loadMyWeddingPlans();
-  }
-
   @override
   Widget build(BuildContext context) {
-    final provider = context.watch<WeddingPlansProvider>();
-    // Isolated previews may render this screen without the app-level context
-    // controller. In that case there is simply no selected context to
-    // highlight; no plan provider value is used as a fallback.
-    final selectedContext = context
-        .watch<AccountContextController?>()
-        ?.selectedContext;
-    final selectedPlanId = selectedContext?.isPlan == true
-        ? selectedContext?.weddingPlanId
+    final plans = context.watch<WeddingPlansProvider>();
+    final accounts = context.watch<AccountContextController?>();
+    final selected = accounts?.selectedContext;
+    final openPlanId = selected?.isPlan == true
+        ? selected?.weddingPlanId
         : null;
+    final entries = <_PlanEntry>[
+      for (final plan in plans.plans.where((plan) => !_isArchived(plan)))
+        _PlanEntry.owned(plan),
+      for (final helped in accounts?.contexts ?? const [])
+        if (helped.isPlan &&
+            helped.isAvailable &&
+            helped.role == AccountContextRole.contributor)
+          _PlanEntry.helped(
+            contextKey: helped.contextKey,
+            title: helped.displayName,
+          ),
+      for (final plan in plans.plans.where(_isArchived)) _PlanEntry.owned(plan),
+    ];
 
-    return AarastPageScaffold(
-      title: 'خططي',
-      subtitle: 'كل خطط زفافك في مكان واحد',
-      showBack: true,
-      safeAreaBottom: false,
-      child: RefreshIndicator(
-        color: AppTheme.brand,
-        onRefresh: _loadPlans,
-        child: _PlansContent(
-          provider: provider,
-          activePlanId: selectedPlanId,
-          onOpenPlan: _openPlan,
+    if (plans.isLoading && plans.plans.isEmpty) {
+      return const JourneyListState(
+        phase: JourneyListPhase.loading,
+        section: JourneySection.home,
+      );
+    }
+    if (plans.errorMessage != null && plans.plans.isEmpty) {
+      return JourneyListState(
+        phase: JourneyListPhase.error,
+        section: JourneySection.home,
+        onRetry: plans.loadMyWeddingPlans,
+      );
+    }
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        for (final entry in entries) ...[
+          _PlanCard(
+            key: ValueKey(
+              'plan-switcher-${entry.plan?.id ?? entry.contextKey}',
+            ),
+            entry: entry,
+            open: entry.plan != null
+                ? entry.plan!.id == openPlanId
+                : entry.contextKey == selected?.contextKey,
+            onTap: entry.archived || _opening ? null : () => _open(entry),
+          ),
+          const SizedBox(height: 10),
+        ],
+        AarastPressable(
+          key: const ValueKey('plan-switcher-new'),
+          onTap: () {
+            if (widget.inSheet) Navigator.of(context).pop();
+            GoRouter.of(context).push(AppRouter.createWeddingPlan);
+          },
+          borderRadius: BorderRadius.circular(22),
+          semanticLabel: 'خطة جديدة',
+          child: JourneyBox(
+            color: AarastV3Color.primarySoft,
+            padding: const EdgeInsets.symmetric(vertical: 18),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const Icon(LucideIcons.plus, color: AarastV3Color.primary),
+                const SizedBox(width: 8),
+                Text(
+                  'خطة جديدة',
+                  style: JourneyType.of(
+                    JourneyType.bodyLarge,
+                    weight: JourneyType.bold,
+                    color: AarastV3Color.primary,
+                  ),
+                ),
+              ],
+            ),
+          ),
         ),
-      ),
+        const SizedBox(height: 10),
+        const JourneyNote(
+          text:
+              'تقدر تفتح أكثر من خطة، مثلًا لعرس أخوك. وكل خطة بمشاركينها '
+              'وفلوسها.',
+        ),
+      ],
     );
   }
 
-  Future<void> _openPlan(WeddingPlan plan) async {
-    final accountContexts = context.read<AccountContextController>();
-    await accountContexts.refresh();
+  static bool _isArchived(WeddingPlan plan) => plan.status == 'ARCHIVED';
+
+  Future<void> _open(_PlanEntry entry) async {
+    final accounts = context.read<AccountContextController>();
+    final router = GoRouter.of(context);
+    final plan = entry.plan;
+    final current = accounts.selectedContext;
+    if (plan != null && current?.weddingPlanId == plan.id) {
+      if (widget.inSheet) Navigator.of(context).pop();
+      router.go(AppRouter.weddingPlanDashboard(plan.id));
+      return;
+    }
+    final helpedPlanId = current?.weddingPlanId;
+    if (plan == null &&
+        current?.contextKey == entry.contextKey &&
+        helpedPlanId != null) {
+      if (widget.inSheet) Navigator.of(context).pop();
+      router.go(AppRouter.planCenter(helpedPlanId));
+      return;
+    }
+    setState(() => _opening = true);
+    var key = entry.contextKey;
+    if (plan != null) {
+      await accounts.refresh();
+      if (!mounted) return;
+      for (final candidate in accounts.contexts) {
+        if (candidate.isPlan &&
+            candidate.isAvailable &&
+            candidate.role == AccountContextRole.owner &&
+            candidate.weddingPlanId == plan.id) {
+          key = candidate.contextKey;
+          break;
+        }
+      }
+    }
+    final opened = key != null && await accounts.select(key);
     if (!mounted) return;
-    final matchingContexts = accountContexts.contexts
-        .where(
-          (candidate) =>
-              candidate.isPlan &&
-              candidate.isAvailable &&
-              candidate.role == AccountContextRole.owner &&
-              candidate.weddingPlanId == plan.id,
-        )
-        .toList(growable: false);
-    final target = matchingContexts.isEmpty ? null : matchingContexts.first;
-    final selected =
-        target != null && await accountContexts.select(target.contextKey);
-    if (!mounted) return;
-    if (!selected) {
+    setState(() => _opening = false);
+    if (!opened) {
       AarastToast.showError(
         context,
-        accountContexts.errorMessage ?? 'تعذر فتح الخطة المختارة.',
+        accounts.errorMessage ?? 'ما قدرنا نفتح الخطة. جرّب مرة ثانية.',
       );
       return;
     }
-    if (widget.onSelectPlan != null) {
-      widget.onSelectPlan!(plan.id);
-    } else {
-      context.go(AppRouter.weddingPlanDashboard(plan.id));
-    }
-  }
-}
-
-class _PlansContent extends StatelessWidget {
-  const _PlansContent({
-    required this.provider,
-    required this.activePlanId,
-    required this.onOpenPlan,
-  });
-
-  final WeddingPlansProvider provider;
-  final String? activePlanId;
-  final ValueChanged<WeddingPlan> onOpenPlan;
-
-  @override
-  Widget build(BuildContext context) {
-    if (provider.isLoading && provider.plans.isEmpty) {
-      return AarastSkeleton.list(rows: 3, rowHeight: 120, withHeader: false);
-    }
-
-    if (provider.errorMessage != null && provider.plans.isEmpty) {
-      return ListView(
-        physics: const AlwaysScrollableScrollPhysics(),
-        children: [
-          const SizedBox(height: 40),
-          AarastErrorState(
-            title: 'تعذر تحميل خططك',
-            message: provider.errorMessage!,
-            onRetry: provider.loadMyWeddingPlans,
-          ),
-        ],
-      );
-    }
-
-    return ListView(
-      physics: const AlwaysScrollableScrollPhysics(),
-      padding: const EdgeInsets.only(bottom: 120),
-      children: AarastStagger.children(context, [
-        if (provider.plans.isEmpty)
-          const AarastEmptyState(
-            title: 'لا توجد خطط زفاف بعد',
-            message: 'أنشئ خطتك الأولى وابدأ الترتيب بهدوء.',
-            icon: LucideIcons.calendarHeart,
-          )
-        else
-          for (var i = 0; i < provider.plans.length; i++)
-            _PlanCard(
-              key: Key('wedding-plan-card-${provider.plans[i].id}'),
-              plan: provider.plans[i],
-              isFeatured: provider.plans[i].id == activePlanId,
-              onTap: () => onOpenPlan(provider.plans[i]),
-            ),
-        const SizedBox(height: 10),
-        AarastButton(
-          label: 'إنشاء خطة جديدة',
-          icon: LucideIcons.plus,
-          onPressed: () => context.push(AppRouter.createWeddingPlan),
-        ),
-        const SizedBox(height: 10),
-        _SharedPlansLink(
-          onTap: () => context.push(AppRouter.sharedWeddingPlans),
-        ),
-      ]),
-    );
-  }
-}
-
-/// بديل صادق لتبويب «المشتركة» القديم الذي لم يكن يعمل أصلًا —
-/// رابط هادئ يفتح شاشة الخطط المشتركة الحقيقية.
-class _SharedPlansLink extends StatelessWidget {
-  const _SharedPlansLink({required this.onTap});
-
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return AarastCard(
-      onTap: onTap,
-      color: AppTheme.canvas,
-      border: Border.all(color: AppTheme.brandMuted.withAlpha(80)),
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-      child: Row(
-        children: [
-          Container(
-            width: 38,
-            height: 38,
-            decoration: BoxDecoration(
-              color: AppTheme.brandMuted,
-              borderRadius: BorderRadius.circular(AppTheme.radiusSm),
-            ),
-            child: const Icon(
-              LucideIcons.users,
-              color: AppTheme.brand,
-              size: 18,
-            ),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Text(
-              'الخطط المشتركة معي',
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                color: AppTheme.textPrimary,
-                fontWeight: FontWeight.w800,
-              ),
-            ),
-          ),
-          const SizedBox(width: 8),
-          const Icon(
-            LucideIcons.chevronLeft,
-            color: AppTheme.textSecondary,
-            size: 18,
-          ),
-        ],
-      ),
+    final planId = accounts.selectedContext?.weddingPlanId;
+    if (widget.inSheet) Navigator.of(context).pop();
+    if (planId == null) return;
+    router.go(
+      plan != null
+          ? AppRouter.weddingPlanDashboard(planId)
+          : AppRouter.planCenter(planId),
     );
   }
 }
 
 class _PlanCard extends StatelessWidget {
   const _PlanCard({
-    super.key,
-    required this.plan,
-    required this.isFeatured,
+    required this.entry,
+    required this.open,
     required this.onTap,
+    super.key,
   });
 
-  final WeddingPlan plan;
-  final bool isFeatured;
-  final VoidCallback onTap;
+  final _PlanEntry entry;
+  final bool open;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
-    final textTheme = Theme.of(context).textTheme;
-
-    final titleColor = isFeatured ? Colors.white : AppTheme.textPrimary;
-    final subtitleColor = isFeatured ? Colors.white70 : AppTheme.textSecondary;
-    final iconColor = isFeatured ? AppTheme.brandMuted : AppTheme.focus;
-    final progressBgColor = isFeatured ? AppTheme.textPrimary : AppTheme.canvas;
-    final progressFillColor = isFeatured ? AppTheme.focus : AppTheme.brand;
-    final daysLeft = plan.daysRemaining;
-    final totalPlanningDays = plan.weddingDate
-        ?.difference(plan.createdAt)
-        .inDays;
-    final percent =
-        daysLeft == null || totalPlanningDays == null || totalPlanningDays <= 0
-        ? 0
-        : (((totalPlanningDays - daysLeft).clamp(0, totalPlanningDays) /
-                      totalPlanningDays) *
-                  100)
-              .round();
-
-    return AarastCard(
-      onTap: onTap,
-      margin: const EdgeInsets.only(bottom: 10),
-      padding: EdgeInsets.zero,
-      color: isFeatured ? AppTheme.brand : AppTheme.surfaceRaised,
-      radius: AppTheme.radiusLg,
-      border: isFeatured ? null : Border.all(color: AppTheme.border),
-      child: Container(
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(AppTheme.radiusLg),
-        ),
-        padding: const EdgeInsets.all(14),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Row(
-              children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        plan.title,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: textTheme.titleMedium?.copyWith(
-                          color: titleColor,
-                          fontWeight: FontWeight.w800,
-                        ),
-                      ),
-                      const SizedBox(height: 3),
-                      Row(
-                        children: [
-                          Icon(LucideIcons.mapPin, color: iconColor, size: 13),
-                          const SizedBox(width: 4),
-                          Flexible(
-                            child: Text(
-                              plan.city ?? 'بدون مدينة',
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: textTheme.labelSmall?.copyWith(
-                                color: subtitleColor,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 8,
-                    vertical: 3,
-                  ),
-                  decoration: BoxDecoration(
-                    color: isFeatured ? Colors.white24 : AppTheme.canvas,
-                    borderRadius: BorderRadius.circular(999),
-                  ),
-                  child: Text(
-                    isFeatured
-                        ? 'الخطة الحالية'
-                        : planStatusLabelAr(plan.status),
-                    maxLines: 1,
-                    style: textTheme.labelSmall?.copyWith(
-                      color: isFeatured ? Colors.white : AppTheme.textPrimary,
-                      fontWeight: FontWeight.w800,
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 6),
-                OfflinePendingBadge(
-                  entityType: 'wedding_plan',
-                  entityId: plan.id,
-                ),
-                const SizedBox(width: 2),
-                Icon(LucideIcons.chevronLeft, color: subtitleColor, size: 16),
-              ],
-            ),
-            if (daysLeft != null) ...[
-              const SizedBox(height: 12),
-              Row(
-                children: [
-                  Icon(LucideIcons.calendarDays, color: iconColor, size: 14),
-                  const SizedBox(width: 5),
-                  Text(
-                    daysLeft <= 0 ? 'اليوم المنتظر وصل' : '$daysLeft يوم متبقي',
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: textTheme.labelSmall?.copyWith(
-                      color: subtitleColor,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: AarastV3ProgressLine(
-                      value: percent / 100.0,
-                      height: 5,
-                      backgroundColor: progressBgColor,
-                      color: progressFillColor,
-                      semanticsLabel: 'اكتمال الخطة',
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  Text(
-                    '$percent%',
-                    style: textTheme.labelSmall?.copyWith(
-                      color: titleColor,
-                      fontWeight: FontWeight.w800,
-                    ),
-                  ),
-                ],
-              ),
-            ],
-          ],
+    final plan = entry.plan;
+    final archived = entry.archived;
+    final helped = plan == null;
+    final color = archived
+        ? AarastV3Color.textFaint
+        : helped
+        ? AarastV3Color.brandAccentStrong
+        : AarastV3Color.primary;
+    final (String? tag, Color tagColor, Color tagSoft) = archived
+        ? ('مؤرشفة', AarastV3Color.textMuted, AarastV3Color.line)
+        : helped
+        ? ('مشارك', AarastV3Color.amber, AarastV3Color.amberSoft)
+        : open
+        ? ('مفتوحة', AarastV3Color.primary, AarastV3Color.primarySoft)
+        : (null, AarastV3Color.primary, AarastV3Color.primarySoft);
+    final name = entry.name.trim();
+    final card = Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: AarastV3Color.paper,
+        borderRadius: BorderRadius.circular(22),
+        border: Border.all(
+          color: open ? AarastV3Color.primary : AarastV3Color.line,
+          width: open ? 2 : 1,
         ),
       ),
+      child: Row(
+        children: [
+          JourneyAvatar(
+            letter: name.isEmpty ? 'ع' : _firstLetter(name),
+            color: color,
+            size: 42,
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  name,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: JourneyType.of(
+                    JourneyType.bodyLarge,
+                    weight: JourneyType.bold,
+                  ),
+                ),
+                Text(
+                  _subtitle(entry),
+                  style: JourneyType.of(
+                    JourneyType.small,
+                    color: AarastV3Color.textMuted,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          if (tag != null)
+            JourneyTag(label: tag, color: tagColor, soft: tagSoft),
+        ],
+      ),
     );
+    if (onTap == null) {
+      return Semantics(label: '$name، ${_subtitle(entry)}', child: card);
+    }
+    return AarastPressable(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(22),
+      semanticLabel: '$name، ${_subtitle(entry)}',
+      child: card,
+    );
+  }
+
+  /// «عرس محمد» opens on «م», skipping the word «عرس».
+  static String _firstLetter(String name) {
+    final words = name.split(RegExp(r'\s+'));
+    final word = words.length > 1 && words.first == 'عرس' ? words[1] : name;
+    return word.characters.first;
+  }
+
+  /// «خطتك · 96 يوم», «أنت مشارك», «في الذكريات · 2025».
+  static String _subtitle(_PlanEntry entry) {
+    final plan = entry.plan;
+    if (plan == null) return 'أنت مشارك';
+    final day = plan.weddingDate;
+    if (entry.archived) {
+      return 'في الذكريات · ${(day ?? plan.updatedAt).year}';
+    }
+    if (day == null) return 'خطتك';
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final left = DateTime(
+      day.year,
+      day.month,
+      day.day,
+    ).difference(today).inDays;
+    if (left < 0) return 'خطتك · مرّ العرس';
+    if (left == 0) return 'خطتك · اليوم';
+    return 'خطتك · ${arabicDays(left)}';
   }
 }

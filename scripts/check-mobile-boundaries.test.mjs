@@ -2138,7 +2138,7 @@ const trackedOwnerApiContracts = [
       },
       {
         uri: 'screens/my_wedding_plans_screen.dart',
-        show: ['MyWeddingPlansScreen'],
+        show: ['MyWeddingPlansScreen', 'showPlanSwitcherSheet'],
       },
       {
         uri: 'screens/plan_assistant_screen.dart',
@@ -2426,7 +2426,7 @@ const trackedCollaborationBatchContracts = [
   {
     source: 'mobile/lib/features/more/screens/more_screen.dart',
     target: 'mobile/lib/features/wedding_plans/wedding_plans_api.dart',
-    show: ['DashboardSummaryProvider', 'showPostponeSheet'],
+    show: ['DashboardSummaryProvider', 'showPlanSwitcherSheet', 'showPostponeSheet'],
   },
   {
     source: 'mobile/lib/features/notifications/screens/notifications_screen.dart',

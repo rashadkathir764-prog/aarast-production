@@ -19,7 +19,7 @@ import '../../auth/auth_api.dart'
 import '../../settings/settings_api.dart' show showChangePhoneSheet;
 import '../widgets/logout_sheet.dart';
 import '../../wedding_plans/wedding_plans_api.dart'
-    show DashboardSummaryProvider, showPostponeSheet;
+    show DashboardSummaryProvider, showPlanSwitcherSheet, showPostponeSheet;
 
 /// g02 «حسابي»: who you are, your wedding, how the app looks, safety and
 /// privacy, and the account (C51 adds «الحساب»: notifications, plans,
@@ -71,7 +71,11 @@ class _MoreScreenState extends State<MoreScreen> {
             busy: auth.isSubmitting,
             onEditAvatar: hasAccount ? () => _changeAvatar(context) : null,
           ),
-          if (planId != null && planId.isNotEmpty) ...[
+          // «عرسي» belongs to the plan's owner; a participant's own rows
+          // come with the participant screens (slice 9).
+          if (planId != null &&
+              planId.isNotEmpty &&
+              plan?.permissions.isOwner == true) ...[
             const _GroupTitle('عرسي'),
             JourneyList(
               dividers: false,
@@ -185,7 +189,7 @@ class _MoreScreenState extends State<MoreScreen> {
                 key: const ValueKey('account-plans'),
                 icon: LucideIcons.layers,
                 title: 'خططك',
-                onTap: () => context.push(AppRouter.weddingPlans),
+                onTap: () => showPlanSwitcherSheet(context),
               ),
               _Row(
                 key: const ValueKey('account-help'),

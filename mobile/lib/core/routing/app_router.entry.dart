@@ -31,10 +31,23 @@ List<RouteBase> _entryRoutes(AppFeatureFlags flags) => [
   ),
   GoRoute(
     path: AppRouter.register,
-    builder: (context, state) => RegisterScreen(
-      startAsProvider: state.uri.queryParameters['type'] == 'provider',
-      initialPhone: state.uri.queryParameters['phone'],
-    ),
+    builder: (context, state) {
+      final query = state.uri.queryParameters;
+      final resume = query['resume'];
+      // p01 is the provider's own account. A return from the code screen
+      // keeps only the resume, so a provider page there means a provider.
+      final provider =
+          query['type'] == 'provider' ||
+          (resume != null &&
+              !resume.startsWith('//') &&
+              Uri.tryParse(resume)?.pathSegments.firstOrNull == 'provider');
+      return provider
+          ? ProviderRegisterScreen(
+              initialPhone: query['phone'],
+              resumeLocation: resume,
+            )
+          : RegisterScreen(initialPhone: query['phone']);
+    },
   ),
   GoRoute(
     path: AppRouter.resetPassword,

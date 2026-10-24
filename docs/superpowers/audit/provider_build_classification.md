@@ -37,7 +37,7 @@ Date: 2026-10-24. Read-only planning audit. No code changed.
 
 | Id | Title | Shows / does | Endpoints / fields | St | Mobile must drop or adapt now | Depends on |
 |---|---|---|---|---|---|---|
-| p01_register | حساب مزود | name, phone, password, WhatsApp code; «نفس الرقم تقدر تسوي فيه خطة عرسك» | auth register + OTP; `GET /api/v1/contexts` | ✅ | — | — |
+| p01_register | حساب مزود | name, phone, password, WhatsApp code; «نفس الرقم تقدر تسوي فيه خطة عرسك» | auth register + OTP; `GET /api/v1/contexts` | ✅ Done (D36) | — | — |
 | p02_claim | لقينا ملف بنفس رقمك | listing card, «عندك طلبين…», «38 شافوا ملفك», claim, «مو أنا» | `GET /provider/claimable`, `POST /provider/claim/:id` (F4) | 🔧 | Drop the pending-requests line (unclaimed listings cannot receive requests) and the views line (not in `claimable`). Show the category and city only if read from the claimed profile after the claim. «مو أنا، أشتي ملف جديد» cannot work (apply returns `PROVIDER_LISTING_CLAIMABLE`): replace it with «تواصل مع الدعم». «بعد ما تستلمه تعدّل كل شيء» is true (ACTIVE right away) | B-12, B-13 |
 | p03_business | نشاطك | business name, category, «يخدم مين» | collected locally and sent by `POST /provider/apply` at p07 | 🔧 | Drop «يخدم مين» and the note about «المصورين/المصورات» (no field). The wizard keeps steps locally because apply creates PENDING at once (F1) | B-10, B-14 |
 | p04_where | وين تشتغل | city, districts, travel toggle, shop address | `cityId` (apply), `address` (profile PATCH after apply) | 🔧 | Keep city and address. Drop district chips and the travel toggle | B-15 |

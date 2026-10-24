@@ -7,11 +7,7 @@ import '../../../core/contacts/contact_phone_field_suffix.dart';
 import '../../../core/experience_v3/aarast_v3.dart';
 import '../../../core/phone/yemeni_phone_normalizer.dart';
 import '../../../core/routing/app_router.dart';
-import '../../../core/theme/app_theme.dart';
-import '../../../core/widgets/aarast_ui.dart';
 import '../../../core/utils/arabic_count.dart';
-import '../../marketplace/marketplace_api.dart'
-    show ProviderMarketplaceProvider, providerReferenceDataErrorMessage;
 import '../../onboarding/onboarding_api.dart'
     show GuestOnboardingDraft, GuestOnboardingStorage;
 import '../models/pending_registration.dart';
@@ -20,14 +16,11 @@ import '../utils/application_password_policy.dart';
 import 'otp_screen.dart';
 import '../widgets/auth_wedding_widgets.dart';
 
+/// The wedding account (a-series). A provider's account is
+/// [ProviderRegisterScreen] (p01).
 class RegisterScreen extends StatefulWidget {
-  const RegisterScreen({
-    this.startAsProvider = false,
-    this.initialPhone,
-    super.key,
-  });
+  const RegisterScreen({this.initialPhone, super.key});
 
-  final bool startAsProvider;
   final String? initialPhone;
 
   @override
@@ -39,15 +32,12 @@ class _RegisterScreenState extends State<RegisterScreen> {
   final _nameController = TextEditingController();
   final _phoneController = TextEditingController();
   final _passwordController = TextEditingController();
-  final _descriptionController = TextEditingController();
 
   bool _obscurePassword = true;
 
   /// After a submit showed errors, each field re-checks as it is edited, so
   /// "required" disappears once the field is filled (field test Q09).
   bool _submitAttempted = false;
-  String? _cityId;
-  String? _categoryId;
 
   /// The plan kept on the phone (a08), which this account will save.
   GuestOnboardingDraft? _keptPlan;
@@ -56,19 +46,12 @@ class _RegisterScreenState extends State<RegisterScreen> {
   /// again (a08b). A name that would fail stays in a field to fix.
   bool _nameFromPlan = false;
 
-  bool get _providerMode => widget.startAsProvider;
-
   @override
   void initState() {
     super.initState();
     _phoneController.text = widget.initialPhone?.trim() ?? '';
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted) return;
-      if (_providerMode) {
-        context.read<ProviderMarketplaceProvider>().loadReferenceData();
-      } else {
-        _readKeptPlan();
-      }
+      if (mounted) _readKeptPlan();
     });
   }
 
@@ -97,15 +80,12 @@ class _RegisterScreenState extends State<RegisterScreen> {
     _nameController.dispose();
     _phoneController.dispose();
     _passwordController.dispose();
-    _descriptionController.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     final auth = context.watch<AuthController>();
-    final marketplace = context.watch<ProviderMarketplaceProvider>();
-    final providerMode = _providerMode;
     final keptPlan = _keptPlan;
 
     return AuthWeddingScaffold(
@@ -118,11 +98,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
         children: [
           JourneyButton(
             key: const ValueKey('register-submit'),
-            label: providerMode
-                ? 'إرسال طلب الانضمام'
-                : keptPlan != null
-                ? 'احفظ خطتي'
-                : 'إنشاء حساب',
+            label: keptPlan != null ? 'احفظ خطتي' : 'إنشاء حساب',
             expand: true,
             large: true,
             loading: auth.isSubmitting,
@@ -149,14 +125,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             AuthHeading(
-              title: providerMode
-                  ? 'أنشئ حساب مزوّد'
-                  : keptPlan != null
-                  ? 'احفظ خطتك'
-                  : 'أنشئ حسابك',
-              subtitle: providerMode
-                  ? 'بيانات نشاطك أول، وبعدها تراجع الإدارة الطلب.'
-                  : keptPlan != null
+              title: keptPlan != null ? 'احفظ خطتك' : 'أنشئ حسابك',
+              subtitle: keptPlan != null
                   ? 'خطتك محفوظة في جوالك، وبالحساب ما تضيع'
                   : 'حساب واحد لخطتك ولكل خطة تشارك فيها',
             ),
@@ -169,26 +139,18 @@ class _RegisterScreenState extends State<RegisterScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  if (providerMode) ...[
-                    const _ProviderModeNote(),
-                    const SizedBox(height: 10),
-                  ],
                   if (!_nameFromPlan) ...[
                     AuthTextField(
                       controller: _nameController,
-                      label: providerMode ? 'اسم النشاط' : 'الاسم',
-                      icon: providerMode ? LucideIcons.store : LucideIcons.user,
+                      label: 'الاسم',
+                      icon: LucideIcons.user,
                       textInputAction: TextInputAction.next,
                       validator: (value) {
                         if (value == null || value.trim().isEmpty) {
-                          return providerMode
-                              ? 'اسم النشاط مطلوب'
-                              : 'الاسم مطلوب';
+                          return 'الاسم مطلوب';
                         }
                         if (value.trim().length < 3) {
-                          return providerMode
-                              ? 'اسم النشاط قصير جداً'
-                              : 'الاسم قصير جداً';
+                          return 'الاسم قصير جداً';
                         }
                         return null;
                       },
@@ -197,7 +159,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   ],
                   AuthTextField(
                     controller: _phoneController,
-                    label: providerMode ? 'رقم التواصل' : 'رقم الهاتف',
+                    label: 'رقم الهاتف',
                     hint: '777 123 456',
                     icon: LucideIcons.phone,
                     keyboardType: TextInputType.phone,
@@ -215,31 +177,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       return null;
                     },
                   ),
-                  if (providerMode) ...[
-                    const SizedBox(height: 10),
-                    _ProviderReferenceFields(
-                      marketplace: marketplace,
-                      cityId: _safeCityId(marketplace),
-                      categoryId: _safeCategoryId(marketplace),
-                      onCityChanged: (value) => setState(() => _cityId = value),
-                      onCategoryChanged: (value) =>
-                          setState(() => _categoryId = value),
-                    ),
-                    const SizedBox(height: 10),
-                    AarastDisclosureCard(
-                      title: 'نبذة النشاط',
-                      subtitle: 'أضف الخدمات وما يميزك عند الحاجة',
-                      icon: LucideIcons.fileText,
-                      child: AuthTextField(
-                        controller: _descriptionController,
-                        label: 'نبذة مختصرة',
-                        hint: 'الخدمات، المدينة، وما يميز نشاطك',
-                        icon: LucideIcons.fileText,
-                        maxLines: 3,
-                        textInputAction: TextInputAction.next,
-                      ),
-                    ),
-                  ],
                   const SizedBox(height: 10),
                   AuthTextField(
                     controller: _passwordController,
@@ -291,20 +228,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
     );
   }
 
-  String? _safeCityId(ProviderMarketplaceProvider marketplace) {
-    if (_cityId == null) return null;
-    return marketplace.cities.any((city) => city.id == _cityId)
-        ? _cityId
-        : null;
-  }
-
-  String? _safeCategoryId(ProviderMarketplaceProvider marketplace) {
-    if (_categoryId == null) return null;
-    return marketplace.categories.any((category) => category.id == _categoryId)
-        ? _categoryId
-        : null;
-  }
-
   Future<void> _submit() async {
     if (!_submitAttempted) setState(() => _submitAttempted = true);
     if (!_formKey.currentState!.validate()) return;
@@ -319,16 +242,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
     if (otp == null || !mounted) return;
 
-    final providerApplication = _providerMode
-        ? PendingProviderApplication(
-            businessName: _nameController.text.trim(),
-            phone: normalizedPhone,
-            cityId: _cityId!,
-            categoryId: _categoryId!,
-            description: _descriptionController.text.trim(),
-          )
-        : null;
-
     context.go(
       AppRouter.otp,
       extra: OtpScreenArgs(
@@ -340,7 +253,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
           name: _nameController.text.trim(),
           phone: normalizedPhone,
           password: _passwordController.text,
-          providerApplication: providerApplication,
         ),
       ),
     );
@@ -383,177 +295,5 @@ class _KeptPlanStrip extends StatelessWidget {
         ),
     ].where((part) => part.isNotEmpty).join(' · ');
     return JourneyNote(text: line, icon: LucideIcons.checkCircle2);
-  }
-}
-
-class _ProviderModeNote extends StatelessWidget {
-  const _ProviderModeNote();
-
-  @override
-  Widget build(BuildContext context) {
-    return const Padding(
-      padding: EdgeInsetsDirectional.only(start: 2),
-      child: Text(
-        'سيتم مراجعة طلبك، وبعد الموافقة ستظهر لوحة المزود.',
-        textAlign: TextAlign.right,
-        style: TextStyle(
-          color: AppTheme.textPrimary,
-          fontWeight: FontWeight.w800,
-          height: 1.45,
-        ),
-      ),
-    );
-  }
-}
-
-class _ProviderDropdown extends StatelessWidget {
-  const _ProviderDropdown({
-    required this.fieldKey,
-    required this.value,
-    required this.label,
-    required this.icon,
-    required this.items,
-    required this.onChanged,
-    required this.validator,
-  });
-
-  final Key fieldKey;
-  final String? value;
-  final String label;
-  final IconData icon;
-  final List<DropdownMenuItem<String>> items;
-  final ValueChanged<String?> onChanged;
-  final FormFieldValidator<String> validator;
-
-  @override
-  Widget build(BuildContext context) {
-    return DropdownButtonFormField<String>(
-      key: fieldKey,
-      initialValue: value,
-      isExpanded: true,
-      menuMaxHeight: 320,
-      decoration: InputDecoration(
-        labelText: label,
-        floatingLabelBehavior: FloatingLabelBehavior.always,
-        prefixIcon: Icon(icon),
-        contentPadding: const EdgeInsets.symmetric(
-          horizontal: 14,
-          vertical: 10,
-        ),
-      ),
-      items: items,
-      onChanged: onChanged,
-      validator: validator,
-    );
-  }
-}
-
-class _ProviderReferenceFields extends StatelessWidget {
-  const _ProviderReferenceFields({
-    required this.marketplace,
-    required this.cityId,
-    required this.categoryId,
-    required this.onCityChanged,
-    required this.onCategoryChanged,
-  });
-
-  final ProviderMarketplaceProvider marketplace;
-  final String? cityId;
-  final String? categoryId;
-  final ValueChanged<String?> onCityChanged;
-  final ValueChanged<String?> onCategoryChanged;
-
-  @override
-  Widget build(BuildContext context) {
-    if (marketplace.isReferenceDataLoading &&
-        (marketplace.cities.isEmpty || marketplace.categories.isEmpty)) {
-      return const _ProviderReferenceLoading();
-    }
-
-    if (marketplace.cities.isEmpty || marketplace.categories.isEmpty) {
-      return Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          AuthInlineError(
-            message:
-                marketplace.referenceDataErrorMessage ??
-                providerReferenceDataErrorMessage,
-          ),
-          const SizedBox(height: 8),
-          OutlinedButton.icon(
-            onPressed: marketplace.isReferenceDataLoading
-                ? null
-                : marketplace.loadReferenceData,
-            icon: const Icon(LucideIcons.refreshCw, size: 18),
-            label: const Text('إعادة المحاولة'),
-          ),
-        ],
-      );
-    }
-
-    return Column(
-      children: [
-        _ProviderDropdown(
-          fieldKey: const Key('provider-city-dropdown'),
-          value: cityId,
-          label: 'المدينة',
-          icon: LucideIcons.mapPin,
-          items: marketplace.cities
-              .map(
-                (city) =>
-                    DropdownMenuItem(value: city.id, child: Text(city.nameAr)),
-              )
-              .toList(),
-          onChanged: onCityChanged,
-          validator: (value) => value == null ? 'اختر المدينة' : null,
-        ),
-        const SizedBox(height: 10),
-        _ProviderDropdown(
-          fieldKey: const Key('provider-category-dropdown'),
-          value: categoryId,
-          label: 'الفئة',
-          icon: LucideIcons.shapes,
-          items: marketplace.categories
-              .map(
-                (category) => DropdownMenuItem(
-                  value: category.id,
-                  child: Text(category.nameAr),
-                ),
-              )
-              .toList(),
-          onChanged: onCategoryChanged,
-          validator: (value) => value == null ? 'اختر الفئة' : null,
-        ),
-      ],
-    );
-  }
-}
-
-class _ProviderReferenceLoading extends StatelessWidget {
-  const _ProviderReferenceLoading();
-
-  @override
-  Widget build(BuildContext context) {
-    return const AarastCard(
-      padding: EdgeInsets.all(14),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          AarastV3ProgressLine(
-            height: 3,
-            semanticsLabel: 'تحميل المدن والفئات',
-          ),
-          SizedBox(height: 10),
-          Text(
-            'جارٍ تحميل المدن والفئات…',
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              color: AppTheme.textSecondary,
-              fontWeight: FontWeight.w800,
-            ),
-          ),
-        ],
-      ),
-    );
   }
 }

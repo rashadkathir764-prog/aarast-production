@@ -304,6 +304,7 @@ void main() {
         'lib/features/auth/screens/splash_screen.dart',
         'lib/features/auth/screens/login_screen.dart',
         'lib/features/auth/screens/register_screen.dart',
+        'lib/features/auth/screens/provider_register_screen.dart',
         'lib/features/auth/screens/otp_screen.dart',
         'lib/features/auth/screens/reset_password_screen.dart',
         'lib/features/chat/screens/chat_screen.dart',

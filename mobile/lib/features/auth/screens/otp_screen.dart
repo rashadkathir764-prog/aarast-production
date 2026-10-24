@@ -10,8 +10,6 @@ import '../../../core/phone/phone_number_utils.dart';
 import '../../../core/routing/app_router.dart';
 import '../../../core/widgets/aarast_otp_field.dart';
 import '../../../core/widgets/aarast_toast.dart';
-import '../../provider_portal/provider_portal_api.dart'
-    show ProviderDashboardProvider;
 import '../models/pending_registration.dart';
 import '../providers/auth_controller.dart';
 import '../widgets/auth_wedding_widgets.dart';
@@ -151,10 +149,6 @@ class _OtpScreenState extends State<OtpScreen> {
 
     setState(() => _isVerifying = true);
     final registration = widget.registration;
-    final providerApplication = registration?.providerApplication;
-    final provider = providerApplication == null
-        ? null
-        : context.read<ProviderDashboardProvider>();
     final success = registration == null
         ? await auth.verifyOtp(
             phone: phone,
@@ -171,24 +165,6 @@ class _OtpScreenState extends State<OtpScreen> {
               widget.successLocation,
             ),
             successLocation: widget.successLocation,
-            afterSessionEstablished: providerApplication == null
-                ? null
-                : () async {
-                    final applied = await provider!.applyProvider(
-                      businessName: providerApplication.businessName,
-                      phone: providerApplication.phone,
-                      cityId: providerApplication.cityId,
-                      categoryIds: [providerApplication.categoryId],
-                      description: providerApplication.description,
-                    );
-                    if (!applied && mounted) {
-                      AarastToast.showError(
-                        context,
-                        'تم إنشاء الحساب وتوثيق الرقم، لكن تعذر إرسال طلب المزود. يمكنك إعادة الطلب من حسابك.',
-                      );
-                    }
-                    return applied ? AppRouter.providerApplyStatus : null;
-                  },
           );
 
     if (!mounted) return;

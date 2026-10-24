@@ -16,6 +16,7 @@ import '../../features/auth/auth_api.dart'
         LoginScreen,
         OtpScreen,
         OtpScreenArgs,
+        ProviderRegisterScreen,
         RegisterScreen,
         ResetPasswordScreen,
         SplashScreen;

@@ -3,6 +3,7 @@ export 'data/auth_repository.dart' show AuthRepository;
 export 'providers/auth_controller.dart' show AuthController, AuthStatus;
 export 'screens/login_screen.dart' show LoginScreen;
 export 'screens/otp_screen.dart' show OtpScreen, OtpScreenArgs;
+export 'screens/provider_register_screen.dart' show ProviderRegisterScreen;
 export 'screens/register_screen.dart' show RegisterScreen;
 export 'screens/reset_password_screen.dart' show ResetPasswordScreen;
 export 'screens/splash_screen.dart' show SplashScreen;

@@ -1662,8 +1662,10 @@ const r19ProviderPortalApi = Object.freeze({
 // owner APIs; q05 reports a finished task to the home through the wedding
 // plans owner API. +1 for the provider's offer form (D35), now its own file
 // beside the requests tab, reading the request through the marketplace
-// owner API.
-const r19LegalRecordCount = 214;
+// owner API. -2 for p01 (D36): the provider's account no longer applies from
+// the code screen (the provider portal owner API) nor asks the city and the
+// category at sign-up (the marketplace owner API).
+const r19LegalRecordCount = 212;
 const trackedOwnerApiContracts = [
   {
     area: 'features/account_contexts',
@@ -1706,6 +1708,10 @@ const trackedOwnerApiContracts = [
       { uri: 'providers/auth_controller.dart', show: ['AuthController', 'AuthStatus'] },
       { uri: 'screens/login_screen.dart', show: ['LoginScreen'] },
       { uri: 'screens/otp_screen.dart', show: ['OtpScreen', 'OtpScreenArgs'] },
+      {
+        uri: 'screens/provider_register_screen.dart',
+        show: ['ProviderRegisterScreen'],
+      },
       { uri: 'screens/register_screen.dart', show: ['RegisterScreen'] },
       { uri: 'screens/reset_password_screen.dart', show: ['ResetPasswordScreen'] },
       { uri: 'screens/splash_screen.dart', show: ['SplashScreen'] },
@@ -2229,19 +2235,6 @@ const trackedIdentityBatchContracts = [
     source: 'mobile/lib/features/auth/providers/auth_controller.dart',
     target: 'mobile/lib/features/onboarding/onboarding_api.dart',
     show: ['GuestOnboardingStorage'],
-  },
-  {
-    source: 'mobile/lib/features/auth/screens/otp_screen.dart',
-    target: 'mobile/lib/features/provider_portal/provider_portal_api.dart',
-    show: ['ProviderDashboardProvider'],
-  },
-  {
-    source: 'mobile/lib/features/auth/screens/register_screen.dart',
-    target: 'mobile/lib/features/marketplace/marketplace_api.dart',
-    show: [
-      'ProviderMarketplaceProvider',
-      'providerReferenceDataErrorMessage',
-    ],
   },
   {
     source: 'mobile/lib/features/auth/screens/register_screen.dart',
@@ -3080,6 +3073,7 @@ const trackedCompositionRootContracts = [
           'LoginScreen',
           'OtpScreen',
           'OtpScreenArgs',
+          'ProviderRegisterScreen',
           'RegisterScreen',
           'ResetPasswordScreen',
           'SplashScreen',

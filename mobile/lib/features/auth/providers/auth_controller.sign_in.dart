@@ -68,7 +68,6 @@ mixin _AuthSignIn on _AuthControllerCore {
     required String otpCode,
     String? resumeInviteToken,
     String? successLocation,
-    Future<String?> Function()? afterSessionEstablished,
   }) async {
     if (_status != AuthStatus.unauthenticated) {
       return false;
@@ -90,10 +89,6 @@ mixin _AuthSignIn on _AuthControllerCore {
       if (!_isCurrentSessionOperation(operation)) return;
       await _offlineSyncService?.cacheCurrentUser(response.user);
       if (!_isCurrentSessionOperation(operation)) return;
-      final resolvedSuccessLocation = afterSessionEstablished == null
-          ? successLocation
-          : (await afterSessionEstablished()) ?? successLocation;
-      if (!_isCurrentSessionOperation(operation)) return;
       _status = AuthStatus.authenticated;
       _accountJustCreated = true;
       _loginRequestedAfterLogout = false;
@@ -102,7 +97,7 @@ mixin _AuthSignIn on _AuthControllerCore {
         _pendingInviteRouteClaimed = false;
       } else {
         _clearPendingInviteResume();
-        _queueAuthenticatedEntry(resolvedSuccessLocation);
+        _queueAuthenticatedEntry(successLocation);
       }
       unawaited(_offlineSyncService?.syncPendingChanges());
     });

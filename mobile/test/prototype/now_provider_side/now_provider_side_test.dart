@@ -15,7 +15,7 @@ import 'package:aarast_mobile/features/account_contexts/models/account_context.d
 import 'package:aarast_mobile/features/account_contexts/providers/account_context_controller.dart';
 import 'package:aarast_mobile/features/auth/data/auth_repository.dart';
 import 'package:aarast_mobile/features/auth/providers/auth_controller.dart';
-import 'package:aarast_mobile/features/auth/screens/register_screen.dart';
+import 'package:aarast_mobile/features/auth/screens/provider_register_screen.dart';
 import 'package:aarast_mobile/features/chat/data/chat_api.dart';
 import 'package:aarast_mobile/features/chat/data/chat_realtime_client.dart';
 import 'package:aarast_mobile/features/chat/models/chat_models.dart';
@@ -557,7 +557,7 @@ void main() {
     await _shot(
       tester,
       'v01_register',
-      const RegisterScreen(startAsProvider: true),
+      const ProviderRegisterScreen(),
       await _session(_DashApi(hasProfile: false), signedIn: false, load: false),
       h: 1200,
     );

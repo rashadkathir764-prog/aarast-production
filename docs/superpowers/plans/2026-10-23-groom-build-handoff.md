@@ -7,7 +7,8 @@
 - الشريحة 7 (المزودين، جهة العميل) مكتملة: 24 شاشة من 24.
 - شاشة «استكشف» (f02 وw33) مكتملة ومرفوعة، وبعدها «نبدأ بالقاعة» (x22) وصفحة المزود (f03).
 - إصلاحات 2026-10-24 من تشغيل التطبيق الحقيقي: موعد العرس ما عاد ينقص يوم (D11)، الخطة المحفوظة تنفتح بدون «اختر المسار»، الرئيسية ما تقول «ما عندك خطة بعد» وهي تحمّل، و«استكشف» ما فيه «خدمات قريبة من بندك» (D12).
-- باقي: بقية الشريحة 7، ثم الشريحة 8 (الحساب والإعدادات والخطة)، ثم الشريحة 9 (المشارك)، ثم التنظيف والتسليم.
+- باقي: الشريحة 9 (المشارك)، ثم التسليم.
+- التنظيف (2026-10-25، D32): شلنا زر الإضافة العائم وشاشات المال القديمة ومرحلة «جهّز ميزانية عرسك» ونموذج الخطة القديم، وبنينا w01 وg09 وb11 على تصميمها. التفاصيل في D32.
 
 ## RULE ZERO: the prototype is the law (read before anything else)
 
@@ -47,11 +48,12 @@ comparison. That must never happen again.
 6. **Finish the work in progress first.** Run `git status` and `git log -5`
    before starting; never build on someone's half-done change without
    understanding it.
-7. **Old screens to delete, not to polish:** the money starter
-   (`money_starter_setup.dart`, still a fallback for plans made before
-   `c9b2ce56`), `costs_screen.dart`, the old payment schedule screens
-   (the old w09 import is gone, D31), quick add, `WeddingStageContextLine`. Remove each with its
-   tests and pins in the cleanup step.
+7. **Old screens to delete, not to polish:** done in the cleanup (D32): the
+   money starter, `costs_screen.dart`, the old payment schedule screens,
+   quick add, `WeddingStageContextLine`, the old plan creation form and
+   `GuestOnboardingProvider` are gone with their tests and pins. Still
+   undesigned and reachable: `WeddingDayModeScreen` (from the home on the
+   day; map it to b05/y07 or remove it).
 
 ## For the next agent: read this first
 
@@ -190,10 +192,9 @@ Nothing is called done without all of these:
 
 ## Known follow-ups (not done yet)
 
-- **Money starter:** NOT in the prototype; do not redo it. Since `c9b2ce56` a new plan (phone or account) opens Money on its a05 items, so the starter only appears for plans made before that. Delete it in the cleanup step (rule zero, 7).
-- **Dead code to remove, with pin updates:**
-  - `WeddingStageContextLine` and `WeddingStageDomainGuidance`, which have no screen left;
-  - `GuestOnboardingProvider`, which nothing provides.
+- **Money starter:** deleted (D32). Money with nothing in it opens on «البنود» with «أضف أول بند».
+- **Dead code:** removed (D32). Still without a screen: the Yemen governorate provider, API and offline cache (leave with the offline database's next schema step) and the unrouted `HomeScreen`.
+- **`AarastButton`** keeps two users: the participant's invite decision (slice 9) and `WeddingDayModeScreen`. Delete it once both move to the kit.
 - **Tasks:** the «تحديد الميزانية» starter task stays open after the budget is divided.
 - **Promised to the client in `V1_DELIVERY_CHECKLIST.md` but not in this build (section B: needs backend):**
   - 4.1 the wedding events (المقيل، السمرة، الزفاف، الحناء);
@@ -230,10 +231,16 @@ Each line is a place where the app differs from the prototype:
 - w09 (D31): no «ضمّها لخطتي» (import-local always makes a new plan), «خلّها خطة ثانية» chosen to start with, no «آخر تعديل» lines; «تجاهلها» asks a second time.
 - y14 (D31): no «البند · 150 ألف» row, no «ليلة الزفاف · قدام البيت», the d04 rows and actions of every task; known by its title.
 - w38 (D31): real counts only, «· N اعتذروا» when some declined, the no-guess note only up to half answered, opened from the guests summary card.
+- No floating «إضافة» on any tab (D32); the tasks and guests add from their header «+».
+- c02/c07 (D32): «باقي البنود» loads more agreements; a payment date is added, changed or removed in a sheet from c07 and from «عدّل الموعد» on c06; a private agreement shows a lock.
+- g09 (D32): a sheet, not a page; the note says every device is signed out.
+- w01 (D32): no «تأكدنا إنه رقمك»; a refused code goes back to «الرمز»; a closing «غيّرنا كلمة المرور» when signing in again fails.
+- w11 (D32): «خطة جديدة» starts the welcome steps at a02b.
+- b11/w36/w37 (D32): no «لو» box, market range or microphone; w36 without «ويقرأ الفواتير» and the account switch line; w37 only the limit and offline cards, without «سجّل يدوي».
 
 ## At the end of the groom path
 
-1. Clean up the old screens: costs_screen, the payment schedules and quick add (the old w09 is gone, D31).
+1. ~~Clean up the old screens~~: done (D32), except `WeddingDayModeScreen`.
 2. Regenerate the goldens.
 3. Build the release APK. Firebase dart-defines are read at build time from `%USERPROFILE%\Downloads\google-services (3).json`, and their values are never printed. A cloud session cannot do this step; it needs Rashad's machine.
 4. Update the prototype with the differences above.

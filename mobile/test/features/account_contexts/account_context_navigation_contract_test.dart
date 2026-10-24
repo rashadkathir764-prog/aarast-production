@@ -132,7 +132,7 @@ void main() {
   }
 
   test(
-    'provider application refreshes user then contexts before status navigation',
+    'provider application refreshes user then contexts before the portal',
     () {
       for (final path in [
         'lib/features/provider_portal/screens/provider_apply_screen.dart',
@@ -144,7 +144,7 @@ void main() {
           refreshUser < 0 ? 0 : refreshUser,
         );
         final statusNavigation = source.indexOf(
-          'context.go(AppRouter.providerApplyStatus)',
+          'context.go(AppRouter.providerDashboard)',
           refreshContexts < 0 ? 0 : refreshContexts,
         );
 

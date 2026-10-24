@@ -1,7 +1,10 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../../core/diagnostics/app_logger.dart';
 import '../../../core/experience_v3/aarast_v3.dart';
@@ -10,9 +13,13 @@ import '../../../core/widgets/aarast_ui.dart';
 import '../../../core/routing/root_tab_back_scope.dart';
 import '../../chat/chat_api.dart' show ChatProvider, ConversationListView;
 import '../../marketplace/marketplace_api.dart' show ProviderDashboardProfile;
+import '../data/provider_approval_ledger.dart';
 import '../providers/provider_dashboard_provider.dart';
 import '../widgets/provider_portal_bottom_nav.dart';
+import 'provider_approved_screen.dart';
+import 'provider_pending_screen.dart';
 import 'provider_portal_tabs.dart';
+import 'provider_suspended_screen.dart';
 
 class ProviderPortalScreen extends StatefulWidget {
   const ProviderPortalScreen({this.initialTab, super.key});
@@ -32,6 +39,63 @@ int? _tabIndexOf(String? tab) => switch (tab) {
 
 class _ProviderPortalScreenState extends State<ProviderPortalScreen> {
   late int _activeIndex = _tabIndexOf(widget.initialTab) ?? 0;
+
+  /// Whether p10 is due for the profile's current status; null while this
+  /// phone's record is read.
+  bool? _welcome;
+  String? _notedStatus;
+
+  void _noteStatus(String providerId, String status) {
+    final key = '$providerId:$status';
+    if (key == _notedStatus) return;
+    _notedStatus = key;
+    _welcome = status == 'ACTIVE' ? null : false;
+    unawaited(_readWelcome(providerId, status, key));
+  }
+
+  Future<void> _readWelcome(
+    String providerId,
+    String status,
+    String key,
+  ) async {
+    var due = false;
+    try {
+      final ledger = ProviderApprovalLedger(
+        await SharedPreferences.getInstance(),
+      );
+      due = await ledger.welcomeDue(providerId, status);
+    } on Object catch (error) {
+      debugPrint('Provider welcome not read: $error');
+    }
+    if (!mounted || key != _notedStatus) return;
+    setState(() => _welcome = due);
+  }
+
+  Future<void> _welcomed(String providerId) async {
+    setState(() => _welcome = false);
+    try {
+      final ledger = ProviderApprovalLedger(
+        await SharedPreferences.getInstance(),
+      );
+      await ledger.markWelcomed(providerId);
+    } on Object catch (error) {
+      debugPrint('Provider welcome not remembered: $error');
+    }
+  }
+
+  Future<void> _openFirstStep(String providerId, ProviderFirstStep step) async {
+    await _welcomed(providerId);
+    if (!mounted) return;
+    switch (step) {
+      case ProviderFirstStep.calendar:
+        // The days off are kept from the home tab's bookings section.
+        _openTab(0);
+      case ProviderFirstStep.services:
+        unawaited(context.push(AppRouter.providerServiceNew));
+      case ProviderFirstStep.notifications:
+        unawaited(context.push(AppRouter.settings));
+    }
+  }
 
   @override
   void didUpdateWidget(covariant ProviderPortalScreen oldWidget) {
@@ -74,6 +138,41 @@ class _ProviderPortalScreenState extends State<ProviderPortalScreen> {
   @override
   Widget build(BuildContext context) {
     final dashboard = context.watch<ProviderDashboardProvider>();
+    final profile = dashboard.profile;
+    if (profile != null) {
+      final status = profile.status.toUpperCase();
+      _noteStatus(profile.id, status);
+      switch (status) {
+        case 'PENDING':
+          return ProviderPendingScreen(
+            profile: profile,
+            onRefresh: dashboard.loadDashboard,
+            onEdit: () => context.push(AppRouter.providerProfileEdit),
+            onAccount: () => context.push(AppRouter.more),
+          );
+        case 'SUSPENDED':
+          return ProviderSuspendedScreen(
+            profile: profile,
+            upcomingBookings: dashboard.upcomingConfirmedBookings,
+            bookingsKnown: !dashboard.bookingsLoadFailed,
+            onRefresh: dashboard.loadDashboard,
+            onSupport: () => context.push(AppRouter.support),
+            onAccount: () => context.push(AppRouter.more),
+          );
+        case 'ACTIVE' when _welcome == null:
+          return const AarastScreenFrame(
+            maxWidth: 520,
+            backgroundColor: AarastV3Color.canvas,
+            child: SizedBox.expand(),
+          );
+        case 'ACTIVE' when _welcome == true:
+          return ProviderApprovedScreen(
+            profile: profile,
+            onStart: () => _welcomed(profile.id),
+            onStep: (step) => _openFirstStep(profile.id, step),
+          );
+      }
+    }
     final canUseOperations = dashboard.canUseProviderOperations;
     final unreadMessages = context
         .watch<ChatProvider>()
@@ -148,16 +247,7 @@ class _ProviderOperationsUnavailable extends StatelessWidget {
             ? profile!.reviewNote!.trim()
             : 'الإدارة ما اعتمدت طلبك، والملف ما يتعدّل. لو عندك سؤال كلّم الدعم.',
       ),
-      'SUSPENDED' => (
-        'عمليات المزوّد موقوفة',
-        profile?.reviewNote?.trim().isNotEmpty == true
-            ? profile!.reviewNote!.trim()
-            : 'لا يمكن إدارة الخدمات أو الطلبات حتى تعيد الإدارة تفعيل الحساب.',
-      ),
-      'PENDING' => (
-        'الطلب قيد المراجعة',
-        'ستتاح الخدمات والطلبات والمحادثات بعد اعتماد حساب المزوّد.',
-      ),
+      // A pending (p08) or suspended (p12) profile has its own screen.
       _ => (
         'عمليات المزوّد غير متاحة',
         'اسحب الصفحة لتحت عشان تتحدّث حالة حسابك.',

@@ -14,7 +14,6 @@
 - `/onboarding`
 - `/otp`
 - `/provider/apply`
-- `/provider/apply/status`
 - `/provider/dashboard`
 - `/provider/packages/new`
 - `/provider/profile/edit`
@@ -75,4 +74,4 @@
 - `/wedding-plans/create`
 - `/welcome`
 
-Total: 74 unique routes
+Total: 73 unique routes

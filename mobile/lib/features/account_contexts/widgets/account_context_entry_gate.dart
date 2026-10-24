@@ -133,10 +133,7 @@ String? _safeResumeForNoContext(String? location) {
   if (path.startsWith('/invites/') || path == AppRouter.inviteAccess) {
     return location;
   }
-  if (path == AppRouter.providerApply ||
-      path == AppRouter.providerApplyStatus) {
-    return location;
-  }
+  if (path == AppRouter.providerApply) return location;
   return null;
 }
 

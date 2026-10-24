@@ -11,14 +11,6 @@ List<RouteBase> _providerPortalRoutes() => [
     ),
   ),
   GoRoute(
-    path: AppRouter.providerApplyStatus,
-    builder: (context, state) => ProviderAuthGate(
-      resumeLocation: state.uri.toString(),
-      registerAsProvider: true,
-      child: const ProviderApplyStatusScreen(),
-    ),
-  ),
-  GoRoute(
     path: AppRouter.providerDashboard,
     builder: (context, state) => ProviderAuthGate(
       resumeLocation: state.uri.toString(),

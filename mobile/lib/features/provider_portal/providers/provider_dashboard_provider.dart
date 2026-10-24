@@ -16,6 +16,24 @@ import '../../marketplace/marketplace_api.dart'
         bookingErrorMessage,
         marketplaceErrorMessage;
 
+/// What sending the joining came to (p07).
+enum ProviderJoinResult {
+  /// The application and the shop's place were saved.
+  sent,
+
+  /// The application was saved; the shop's place was not.
+  sentWithoutAddress,
+
+  /// A listing already waits under this phone: claim it (p02, F4).
+  listingClaimable,
+
+  /// This account already has a provider profile.
+  alreadyApplied,
+
+  /// Nothing was saved; [ProviderDashboardProvider.errorMessage] says why.
+  failed,
+}
+
 class ProviderDashboardProvider extends ChangeNotifier
     with SessionScopedNotifier {
   ProviderDashboardProvider(this._api);
@@ -36,6 +54,7 @@ class ProviderDashboardProvider extends ChangeNotifier
   List<DateTime> _blockedDates = const [];
   bool _operationsAccessDenied = false;
   ProviderClaimableListing? _claimableListing;
+  bool _bookingsLoadFailed = false;
 
   bool get isLoading => _isLoading;
   bool get isSubmitting => _isSubmitting;
@@ -101,6 +120,33 @@ class ProviderDashboardProvider extends ChangeNotifier
     return null;
   }
 
+  /// The bookings list could not be read, so its count is unknown.
+  bool get bookingsLoadFailed => _bookingsLoadFailed;
+
+  /// The confirmed bookings still ahead, from the bookings list (p12).
+  int get upcomingConfirmedBookings {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    return _bookings
+        .where(
+          (booking) =>
+              booking.status.toUpperCase() == 'CONFIRMED' &&
+              !booking.eventDate.isBefore(today),
+        )
+        .length;
+  }
+
+  Future<void> _loadClosedBookings() async {
+    try {
+      _bookings = await _api.getBookings();
+      _bookingsLoadFailed = false;
+    } on Object catch (error) {
+      debugPrint('Provider bookings not loaded: $error');
+      _bookings = const [];
+      _bookingsLoadFailed = true;
+    }
+  }
+
   bool get canUseProviderOperations =>
       profile?.status.toUpperCase() == 'ACTIVE' && !_operationsAccessDenied;
 
@@ -124,6 +170,11 @@ class ProviderDashboardProvider extends ChangeNotifier
 
       if (!canUseProviderOperations) {
         _clearOperationalData();
+        // A suspended provider keeps his confirmed bookings (p12); the
+        // bookings list is the one read the server still allows him (F10).
+        if (profile.status.toUpperCase() == 'SUSPENDED') {
+          await _loadClosedBookings();
+        }
         return;
       }
 
@@ -249,15 +300,19 @@ class ProviderDashboardProvider extends ChangeNotifier
     _reviews = const [];
     _quoteRequests = const [];
     _bookings = const [];
+    _bookingsLoadFailed = false;
     _blockedDates = const [];
   }
 
-  Future<bool> applyProvider({
+  /// Sends the joining (p07): the server creates the provider as PENDING at
+  /// once (F1), then the shop's place goes in a profile update, since apply
+  /// takes no address.
+  Future<ProviderJoinResult> applyProvider({
     required String businessName,
     required String phone,
     required String cityId,
-    List<String> categoryIds = const [],
-    String? description,
+    required String categoryId,
+    String? address,
   }) async {
     _isSubmitting = true;
     _errorMessage = null;
@@ -268,24 +323,40 @@ class ProviderDashboardProvider extends ChangeNotifier
         businessName: businessName,
         phone: phone,
         cityId: cityId,
-        categoryIds: categoryIds,
-        description: description,
+        categoryIds: [categoryId],
       );
       _hasProviderProfile = true;
-      _summary = ProviderDashboardSummary.empty();
-      _services = const [];
-      _packages = const [];
-      _reviews = const [];
-      _quoteRequests = const [];
-      return true;
+      _clearOperationalData();
     } on ApiException catch (error) {
+      if (error.serverCode == 'PROVIDER_LISTING_CLAIMABLE') {
+        _isSubmitting = false;
+        await loadClaimableListing();
+        return ProviderJoinResult.listingClaimable;
+      }
+      if (error.statusCode == 409) {
+        _isSubmitting = false;
+        await loadDashboard();
+        return ProviderJoinResult.alreadyApplied;
+      }
       _errorMessage = marketplaceErrorMessage(error.message);
-      return false;
+      return ProviderJoinResult.failed;
     } catch (_) {
-      _errorMessage = 'تعذر إرسال طلب الانضمام كمزود.';
-      return false;
+      _errorMessage = 'ما قدرنا نرسل طلبك. جرّب مرة ثانية.';
+      return ProviderJoinResult.failed;
     } finally {
       _isSubmitting = false;
+      notifyListeners();
+    }
+
+    final place = address?.trim() ?? '';
+    if (place.isEmpty) return ProviderJoinResult.sent;
+    try {
+      _profile = await _api.updateProfileAddress(place);
+      return ProviderJoinResult.sent;
+    } on Object catch (error) {
+      debugPrint('Provider address not saved after joining: $error');
+      return ProviderJoinResult.sentWithoutAddress;
+    } finally {
       notifyListeners();
     }
   }

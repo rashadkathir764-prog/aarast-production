@@ -116,21 +116,22 @@ class _ProviderLifecycleNotice extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final status = profile.status.toUpperCase();
+    // A pending (p08) or suspended (p12) profile has its own screen; this
+    // notice is left for the states slice 5 rebuilds, and for a profile whose
+    // operations were refused.
     final title = switch (status) {
       'NEEDS_CHANGES' => 'ملفك يحتاج تعديلات',
       'REJECTED' => 'لم يُعتمد طلب المزوّد',
-      'SUSPENDED' => 'حساب المزوّد موقوف',
-      _ => 'طلبك قيد المراجعة',
+      _ => 'عمليات المزوّد غير متاحة',
     };
-    // The server keeps a rejected or suspended profile read-only, and an edit
-    // does not send a profile back to review by itself.
+    // The server keeps a rejected profile read-only, and an edit does not
+    // send a profile back to review by itself.
     final defaultMessage = switch (status) {
       'NEEDS_CHANGES' =>
         'عدّل ملفك حسب ملاحظة الإدارة، وبعدها كلّم الدعم عشان يراجعونه.',
       'REJECTED' =>
         'الإدارة ما اعتمدت طلبك، والملف ما يتعدّل. لو عندك سؤال كلّم الدعم.',
-      'SUSPENDED' => 'توقفت العمليات مؤقتًا حتى تعيد الإدارة تفعيل الحساب.',
-      _ => 'تقدر تعدّل ملفك الحين، والخدمات والطلبات تفتح بعد الاعتماد.',
+      _ => 'اسحب الصفحة لتحت عشان تتحدّث حالة حسابك.',
     };
     final note = profile.reviewNote?.trim();
     return AarastCard(
@@ -165,7 +166,7 @@ class _ProviderLifecycleNotice extends StatelessWidget {
               height: 1.6,
             ),
           ),
-          if (status == 'NEEDS_CHANGES' || status == 'PENDING') ...[
+          if (status == 'NEEDS_CHANGES') ...[
             const SizedBox(height: 14),
             OutlinedButton.icon(
               onPressed: () => context.push(AppRouter.providerProfileEdit),

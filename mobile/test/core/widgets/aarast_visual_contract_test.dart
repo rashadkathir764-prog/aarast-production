@@ -349,7 +349,11 @@ void main() {
         'lib/features/marketplace/screens/provider_details_screen.dart',
         'lib/features/marketplace/screens/quote_request_screen.dart',
         'lib/features/provider_portal/screens/provider_apply_screen.dart',
+        'lib/features/provider_portal/screens/provider_claim_screen.dart',
         'lib/features/provider_portal/screens/provider_portal_screen.dart',
+        'lib/features/provider_portal/screens/provider_pending_screen.dart',
+        'lib/features/provider_portal/screens/provider_approved_screen.dart',
+        'lib/features/provider_portal/screens/provider_suspended_screen.dart',
         'lib/features/provider_portal/screens/add_provider_service_screen.dart',
         'lib/features/provider_portal/screens/add_provider_package_screen.dart',
         'lib/features/provider_portal/screens/edit_provider_profile_screen.dart',
@@ -490,6 +494,7 @@ void main() {
           'create_task_screen.dart': 'task-save',
           'quote_request_screen.dart': 'quote-send',
           'add_participant_sheet.dart': 'participant-send',
+          'provider_apply_screen.dart': 'provider-apply-send',
         };
         final journeySave = journeySaveKeys.entries
             .where((entry) => path.endsWith(entry.key))

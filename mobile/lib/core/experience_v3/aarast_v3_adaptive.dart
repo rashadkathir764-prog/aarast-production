@@ -379,8 +379,7 @@ abstract final class AarastV3ScreenCatalog {
         normalized == '/provider/packages/new') {
       return providerForm;
     }
-    if (normalized == '/provider/apply/status' ||
-        normalized == '/provider/dashboard') {
+    if (normalized == '/provider/dashboard') {
       return providerWorkspace;
     }
     if (normalized == '/conversations') return conversations;

@@ -759,6 +759,8 @@ class ProviderDashboardProfile {
     this.reviewedAt,
     this.logoUrl,
     this.coverUrl,
+    this.address,
+    this.createdAt,
   });
 
   factory ProviderDashboardProfile.fromJson(Map<String, dynamic> json) {
@@ -781,6 +783,8 @@ class ProviderDashboardProfile {
       reviewedAt: _dateOrNull(json['reviewedAt']),
       logoUrl: json['logoUrl']?.toString(),
       coverUrl: json['coverUrl']?.toString(),
+      address: json['address']?.toString(),
+      createdAt: _dateOrNull(json['createdAt']),
     );
   }
 
@@ -799,6 +803,12 @@ class ProviderDashboardProfile {
   final DateTime? reviewedAt;
   final String? logoUrl;
   final String? coverUrl;
+
+  /// The shop's place, set after joining (p04 «مكان المحل»).
+  final String? address;
+
+  /// When the provider applied or the listing was made (p08 «أرسلته…»).
+  final DateTime? createdAt;
 }
 
 class ProviderDashboardSummary {

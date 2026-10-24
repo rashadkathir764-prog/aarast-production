@@ -3,7 +3,7 @@ import 'package:aarast_mobile/core/theme/app_theme.dart';
 import 'package:aarast_mobile/features/marketplace/data/marketplace_api.dart';
 import 'package:aarast_mobile/features/marketplace/models/marketplace_models.dart';
 import 'package:aarast_mobile/features/provider_portal/providers/provider_dashboard_provider.dart';
-import 'package:aarast_mobile/features/provider_portal/widgets/provider_claim_card.dart';
+import 'package:aarast_mobile/features/provider_portal/screens/provider_claim_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -34,22 +34,31 @@ void main() {
     expect(dashboard.claimableListing, isNull);
   });
 
-  testWidgets('the card names the listing and offers to claim it', (
-    tester,
-  ) async {
-    final dashboard = ProviderDashboardProvider(_ClaimApiFake());
-    await dashboard.loadClaimableListing();
-
+  // p02 replaced the claim card (D36); the full flow is in
+  // provider_join_test.dart.
+  testWidgets('p02 names the listing and offers to claim it', (tester) async {
+    var claims = 0;
+    var support = 0;
     await tester.pumpWidget(
       MaterialApp(
         theme: AppTheme.light(),
-        home: Scaffold(body: ProviderClaimCard(dashboard: dashboard)),
+        home: ProviderClaimScreen(
+          businessName: 'الفنان علي',
+          submitting: false,
+          onBack: () {},
+          onClaim: () => claims += 1,
+          onSupport: () => support += 1,
+        ),
       ),
     );
 
-    expect(find.text('ملفك موجود في اعّرست'), findsOneWidget);
-    expect(find.textContaining('«الفنان علي»'), findsOneWidget);
-    expect(find.text('استلم ملفي'), findsOneWidget);
+    expect(find.text('لقينا ملف بنفس رقمك'), findsOneWidget);
+    expect(find.text('الفنان علي'), findsOneWidget);
+    expect(find.text('إيه، هذا ملفي'), findsOneWidget);
+    await tester.tap(find.byKey(const Key('provider-claim-confirm')));
+    await tester.tap(find.byKey(const Key('provider-claim-support')));
+    expect(claims, 1);
+    expect(support, 1);
   });
 }
 

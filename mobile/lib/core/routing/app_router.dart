@@ -71,7 +71,6 @@ import '../../features/provider_portal/provider_portal_api.dart'
         AddProviderServiceScreen,
         EditProviderProfileScreen,
         ProviderApplyScreen,
-        ProviderApplyStatusScreen,
         ProviderPortalScreen;
 import '../../features/settings/settings_api.dart'
     show LockSettingsScreen, SettingsScreen;
@@ -136,7 +135,6 @@ class AppRouter {
   static const favoriteProviders = '/providers/favorites';
   static const conversations = '/conversations';
   static const providerApply = '/provider/apply';
-  static const providerApplyStatus = '/provider/apply/status';
   static const providerDashboard = '/provider/dashboard';
 
   /// The provider portal opened on its requests tab, where a request is

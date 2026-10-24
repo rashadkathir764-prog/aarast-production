@@ -809,6 +809,15 @@ class ProviderDashboardApi {
     return ProviderDashboardProfile.fromJson(json);
   }
 
+  /// Sets the shop's place only (p04): apply takes no address, so joining
+  /// sends it right after the application.
+  Future<ProviderDashboardProfile> updateProfileAddress(String address) async {
+    final json = await _apiClient.patchJson('/api/v1/provider/me/profile', {
+      'address': address.trim(),
+    });
+    return ProviderDashboardProfile.fromJson(json);
+  }
+
   Future<ProviderDashboardProfile> updateProfileMedia({
     String? logoUrl,
     String? coverUrl,

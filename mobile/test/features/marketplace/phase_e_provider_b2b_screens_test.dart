@@ -1,7 +1,8 @@
 import 'dart:io';
 
 import 'package:aarast_mobile/core/utils/currency_label.dart';
-import 'package:aarast_mobile/features/provider_portal/screens/provider_apply_screen.dart';
+import 'package:aarast_mobile/features/marketplace/models/marketplace_models.dart';
+import 'package:aarast_mobile/features/provider_portal/screens/provider_pending_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -44,15 +45,30 @@ void main() {
       expect(currencyLabelAr(defaultCurrencyCode), 'ر.ي');
     });
 
+    // The old status page is now p08, shown by the portal (D36).
     testWidgets(
-      'submitted provider application offers home return without customer browsing',
+      'a submitted application waits on p08 without customer browsing',
       (tester) async {
         await tester.pumpWidget(
-          const MaterialApp(home: ProviderApplyStatusScreen()),
+          MaterialApp(
+            home: ProviderPendingScreen(
+              profile: const ProviderDashboardProfile(
+                id: 'provider-1',
+                businessName: 'استوديو ضوء صنعاء',
+                status: 'PENDING',
+                ratingAverage: 0,
+                ratingCount: 0,
+              ),
+              onRefresh: () async {},
+              onEdit: () {},
+              onAccount: () {},
+            ),
+          ),
         );
         await tester.pumpAndSettle();
 
-        expect(find.text('العودة للرئيسية'), findsOneWidget);
+        expect(find.text('طلبك قيد المراجعة'), findsOneWidget);
+        expect(find.text('عدّل طلبك'), findsOneWidget);
         expect(find.text('فتح المزودين'), findsNothing);
         expect(find.byType(OutlinedButton), findsNothing);
       },

@@ -92,9 +92,6 @@ class AarastBackButtonDispatcher extends RootBackButtonDispatcher {
       return AppRouter.welcome;
     }
 
-    if (path == AppRouter.providerApplyStatus) {
-      return AppRouter.providerApply;
-    }
     if (path == AppRouter.providerProfileEdit ||
         path == AppRouter.providerServiceNew ||
         path == AppRouter.providerPackageNew) {

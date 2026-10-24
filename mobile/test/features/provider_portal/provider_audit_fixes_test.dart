@@ -10,7 +10,6 @@ import 'package:aarast_mobile/features/chat/providers/chat_provider.dart';
 import 'package:aarast_mobile/features/marketplace/data/marketplace_api.dart';
 import 'package:aarast_mobile/features/marketplace/models/marketplace_models.dart';
 import 'package:aarast_mobile/features/provider_portal/providers/provider_dashboard_provider.dart';
-import 'package:aarast_mobile/features/provider_portal/screens/provider_apply_screen.dart';
 import 'package:aarast_mobile/features/provider_portal/screens/provider_portal_screen.dart';
 import 'package:aarast_mobile/features/provider_portal/screens/provider_portal_tabs.dart';
 import 'package:aarast_mobile/features/provider_portal/widgets/provider_bookings.dart';
@@ -344,14 +343,14 @@ void main() {
       expect(find.text('صفحة الدعم'), findsOneWidget);
     });
 
-    testWidgets('the home notice of a closed profile reaches support', (
-      tester,
-    ) async {
+    // A suspended profile now opens p12 (D36), which keeps the way to
+    // support as its main action.
+    testWidgets('a suspended profile reaches support from p12', (tester) async {
       final api = _PortalApi(status: 'SUSPENDED');
       await _pumpPortal(tester, api);
 
-      expect(find.text('حساب المزوّد موقوف'), findsOneWidget);
-      await tester.tap(find.byKey(const Key('provider-lifecycle-support')));
+      expect(find.text('حسابك موقوف مؤقتًا'), findsOneWidget);
+      await tester.tap(find.byKey(const Key('provider-suspended-support')));
       await tester.pumpAndSettle();
       expect(find.text('صفحة الدعم'), findsOneWidget);
     });
@@ -359,20 +358,6 @@ void main() {
     testWidgets('a link opens the portal on its requests tab', (tester) async {
       await _pumpPortal(tester, _PortalApi(), initialTab: 'requests');
       expect(find.text('طلبات الأسعار'), findsOneWidget);
-    });
-
-    test('an applicant reads what is true for each status', () {
-      expect(providerApplicationStatusCopy('REJECTED').$1, 'طلبك ما انقبل');
-      expect(
-        providerApplicationStatusCopy('SUSPENDED').$1,
-        'حساب المزود موقوف',
-      );
-      expect(
-        providerApplicationStatusCopy('NEEDS_CHANGES').$1,
-        'طلبك يحتاج تعديلات',
-      );
-      expect(providerApplicationStatusCopy('PENDING').$1, 'طلبك قيد المراجعة');
-      expect(providerApplicationStatusCopy('ACTIVE').$1, 'حساب المزود نشط');
     });
 
     test('no line promises a review path the server does not have', () {

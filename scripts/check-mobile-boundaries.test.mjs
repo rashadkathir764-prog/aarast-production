@@ -1664,8 +1664,10 @@ const r19ProviderPortalApi = Object.freeze({
 // beside the requests tab, reading the request through the marketplace
 // owner API. -2 for p01 (D36): the provider's account no longer applies from
 // the code screen (the provider portal owner API) nor asks the city and the
-// category at sign-up (the marketplace owner API).
-const r19LegalRecordCount = 212;
+// category at sign-up (the marketplace owner API). +3 for p08, p10 and p12
+// (D36), each reading the provider's profile through the marketplace owner
+// API.
+const r19LegalRecordCount = 215;
 const trackedOwnerApiContracts = [
   {
     area: 'features/account_contexts',
@@ -1997,7 +1999,7 @@ const trackedOwnerApiContracts = [
       },
       {
         uri: 'screens/provider_apply_screen.dart',
-        show: ['ProviderApplyScreen', 'ProviderApplyStatusScreen'],
+        show: ['ProviderApplyScreen'],
       },
       { uri: 'screens/provider_portal_screen.dart', show: ['ProviderPortalScreen'] },
     ],
@@ -2277,7 +2279,7 @@ const trackedCollaborationBatchContracts = [
   {
     source: 'mobile/lib/features/provider_portal/screens/provider_apply_screen.dart',
     target: 'mobile/lib/features/auth/auth_api.dart',
-    show: ['AuthActionGuard', 'AuthController', 'AuthStatus'],
+    show: ['AuthActionGuard', 'AuthController'],
   },
   {
     source: 'mobile/lib/features/marketplace/screens/provider_details_screen.dart',
@@ -3150,7 +3152,6 @@ const trackedCompositionRootContracts = [
           'AddProviderServiceScreen',
           'EditProviderProfileScreen',
           'ProviderApplyScreen',
-          'ProviderApplyStatusScreen',
           'ProviderPortalScreen',
         ],
       },
@@ -3909,7 +3910,7 @@ test('tracked Collaboration batch rejects one unchanged internal import', () => 
     'mobile/lib/features/provider_portal/screens/provider_apply_screen.dart': [
       "import '../../account_contexts/account_contexts_api.dart' show AccountContextController;",
       "import '../../marketplace/marketplace_api.dart' show ProviderMarketplaceProvider;",
-      "import '../../auth/auth_api.dart' show AuthActionGuard, AuthController, AuthStatus;",
+      "import '../../auth/auth_api.dart' show AuthActionGuard, AuthController;",
       "import '../../auth/providers/auth_controller.dart';",
       '',
     ].join('\n'),
@@ -3929,7 +3930,7 @@ test('tracked Collaboration batch rejects one duplicate owner import', () => {
       "import '../../account_contexts/account_contexts_api.dart' show AccountContextController;",
       "import '../../marketplace/marketplace_api.dart' show ProviderMarketplaceProvider;",
       "import '../../auth/auth_api.dart' show AuthActionGuard;",
-      "import '../../auth/auth_api.dart' show AuthController, AuthStatus;",
+      "import '../../auth/auth_api.dart' show AuthController;",
       '',
     ].join('\n'),
   });
@@ -3947,7 +3948,7 @@ test('tracked Collaboration batch rejects one missing symbol', () => {
     'mobile/lib/features/provider_portal/screens/provider_apply_screen.dart': [
       "import '../../account_contexts/account_contexts_api.dart' show AccountContextController;",
       "import '../../marketplace/marketplace_api.dart' show ProviderMarketplaceProvider;",
-      "import '../../auth/auth_api.dart' show AuthActionGuard, AuthController;",
+      "import '../../auth/auth_api.dart' show AuthActionGuard;",
       '',
     ].join('\n'),
   });

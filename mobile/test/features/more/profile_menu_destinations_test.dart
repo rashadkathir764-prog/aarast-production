@@ -82,8 +82,32 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.text('الخروج'));
     await tester.pumpAndSettle();
-    expect(find.text('تسجيل الخروج'), findsOneWidget);
+    // g11 (D26): one way out of this phone, no delete (C4), and «رجوع».
+    expect(find.text('اخرج من هذا الجوال'), findsOneWidget);
+    expect(find.text('خطتك تبقى، وترجع لها برقمك'), findsOneWidget);
+    expect(find.textContaining('احذف حسابي'), findsNothing);
+    expect(find.byKey(const ValueKey('account-logout-unsent')), findsNothing);
     expect(find.text('تسجيل الدخول'), findsNothing);
+  });
+
+  testWidgets('g11 names changes that would be lost (C59)', (tester) async {
+    final harness = await _MoreHarness.signedIn(unsent: true);
+
+    await tester.pumpWidget(harness.widget);
+    await _settleEntry(tester);
+    await tester.scrollUntilVisible(
+      find.text('الخروج'),
+      320,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.ensureVisible(find.text('الخروج'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('الخروج'));
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const ValueKey('account-logout-unsent')), findsOneWidget);
+    expect(find.textContaining('تغيير واحد'), findsOneWidget);
+    expect(find.text('خطتك تبقى، بس اللي ما وصل يضيع'), findsOneWidget);
   });
 
   testWidgets('the look switches are kept on the phone', (tester) async {
@@ -149,13 +173,31 @@ class _MoreHarness {
     );
   }
 
-  static Future<_MoreHarness> signedIn() async {
+  static Future<_MoreHarness> signedIn({bool unsent = false}) async {
     SharedPreferences.setMockInitialValues({});
     final preferences = await SharedPreferences.getInstance();
     final authStorage = AuthStorage(preferences);
     final authRepository = _SignedInAuthRepository(authStorage);
     final authController = AuthController(authRepository);
     await authController.restoreSession();
+    OfflineSyncService? syncService;
+    if (unsent) {
+      final database = JsonLocalDatabase(preferences);
+      await database.initialize();
+      await database.enqueueSync(
+        entityType: 'task',
+        operation: 'create',
+        endpoint: '/api/v1/wedding-plans/plan-1/tasks',
+        method: 'POST',
+        payload: {'title': 'احجز القاعة'},
+        planId: 'plan-1',
+      );
+      syncService = OfflineSyncService(
+        database: database,
+        apiClient: ApiClient(tokenProvider: () async => null),
+      );
+      await syncService.refreshStatus();
+    }
     final device = DevicePreferences(preferences);
     return _MoreHarness(
       preferences: device,
@@ -165,6 +207,7 @@ class _MoreHarness {
         authStorage: authStorage,
         authRepository: authRepository,
         authController: authController,
+        syncService: syncService,
       ),
     );
   }

@@ -5,6 +5,7 @@ import 'package:lucide_icons/lucide_icons.dart';
 import 'package:provider/provider.dart';
 
 import '../../../core/experience_v3/aarast_v3.dart';
+import '../../../core/offline/offline_sync_service.dart';
 import '../../../core/preferences/device_preferences.dart';
 import '../../../core/routing/app_router.dart';
 import '../../../core/security/app_lock_controller.dart';
@@ -16,6 +17,7 @@ import '../../account_contexts/account_contexts_api.dart'
 import '../../auth/auth_api.dart'
     show AuthActionGuard, AuthController, AuthStatus;
 import '../../settings/settings_api.dart' show showChangePhoneSheet;
+import '../widgets/logout_sheet.dart';
 import '../../wedding_plans/wedding_plans_api.dart'
     show DashboardSummaryProvider;
 
@@ -206,41 +208,23 @@ class _MoreScreenState extends State<MoreScreen> {
     );
   }
 
+  /// g11 «الخروج». Deleting the account stays out until its 30-day grace
+  /// exists (C4); changes not yet sent are named first, because signing out
+  /// wipes them from this phone (C59).
   static Future<void> _logout(BuildContext context) async {
+    OfflineSyncService? sync;
+    try {
+      sync = context.read<OfflineSyncService>();
+    } on ProviderNotFoundException {
+      sync = null;
+    }
     final confirmed = await showAarastBottomSheet<bool>(
       context: context,
-      builder: (sheetContext) => SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(20, 16, 20, 16),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Text(
-                'تسجيل الخروج',
-                style: JourneyType.of(
-                  JourneyType.title,
-                  weight: JourneyType.bold,
-                ),
-              ),
-              const SizedBox(height: 16),
-              JourneyButton(
-                key: const ValueKey('account-logout-confirm'),
-                label: 'اطلع',
-                background: AarastV3Color.danger,
-                expand: true,
-                onPressed: () => Navigator.of(sheetContext).pop(true),
-              ),
-              const SizedBox(height: 8),
-              JourneyButton.quiet(
-                label: 'ارجع',
-                expand: true,
-                onPressed: () => Navigator.of(sheetContext).pop(false),
-              ),
-            ],
-          ),
-        ),
-      ),
+      backgroundColor: AarastV3Color.canvas,
+      showDragHandle: true,
+      // The C59 warning makes it taller than the default nine-sixteenths.
+      isScrollControlled: true,
+      builder: (sheetContext) => LogoutSheet(sync: sync),
     );
 
     if (confirmed == true && context.mounted) {

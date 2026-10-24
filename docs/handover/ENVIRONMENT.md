@@ -42,6 +42,7 @@
 | `AARAST_INVITE_HOST` | دومين روابط الدعوات وتأكيد الحضور |
 | `AARAST_FIREBASE_API_KEY` / `AARAST_FIREBASE_APP_ID` / `AARAST_FIREBASE_MESSAGING_SENDER_ID` / `AARAST_FIREBASE_PROJECT_ID` | ربط الإشعارات (من ملف `google-services.json` لمشروع Firebase) |
 | `AARAST_SENTRY_DSN` / `AARAST_SENTRY_TRACES_SAMPLE_RATE` | أعطال التطبيق إلى Sentry |
+| `AARAST_SUPPORT_WHATSAPP` | رقم واتساب فريق الدعم بالصيغة الدولية (مثل `+967777000111`)، يظهر في «المساعدة». بدونه تختفي بطاقة واتساب |
 | `AARAST_ANDROID_APPLICATION_ID` | معرّف التطبيق (الافتراضي `com.aarast.aarast_mobile`) |
 | `AARAST_ANDROID_APP_LABEL` | اسم التطبيق تحت الأيقونة (الافتراضي "اعّرست") |
 | `AARAST_ANDROID_STORE_FILE` / `AARAST_ANDROID_STORE_PASSWORD` / `AARAST_ANDROID_KEY_ALIAS` / `AARAST_ANDROID_KEY_PASSWORD` | مفتاح توقيع التطبيق |

@@ -449,7 +449,9 @@ class _Api extends FinanceApi {
       costId: 'cost-photo',
       costTitle: 'تصوير فيديو وفوتو',
       amount: '450000',
-      dueDate: DateTime(2026, 11, 5),
+      // Far out, so the screens show the plain date, not «بعد N يوم» (the app
+      // reads the real clock, and the shot must not change with the day).
+      dueDate: DateTime(2030, 11, 5),
       status: 'PENDING',
       note: 'الباقي قبل العرس',
     ),
@@ -461,7 +463,7 @@ class _Api extends FinanceApi {
     costId: 'cost-hall',
     costTitle: 'قاعة ليالي صنعاء',
     amount: '500000',
-    dueDate: DateTime(2027, 1, 15),
+    dueDate: DateTime(2030, 1, 15),
     status: 'PENDING',
     note: 'آخر دفعة قبل العرس بأسبوع',
   );
@@ -645,7 +647,7 @@ class _Funding extends FundingApi {
       id: 'src-loan',
       weddingPlanId: weddingPlanId,
       kind: FundingKind.loan,
-      sourceName: 'سلفة من ابن العم عادل',
+      sourceName: 'ابن العم عادل',
       amount: '1000000',
       status: FundingStatus.received,
       receivedAt: DateTime(2026, 9, 15),
@@ -658,7 +660,7 @@ class _Funding extends FundingApi {
             fundingSourceId: 'src-loan',
             amount: '250000',
             status: RepaymentStatus.planned,
-            dueDate: DateTime(2027, 2 + i, 1),
+            dueDate: DateTime(2030, 2 + i, 1),
           ),
       ],
     ),

@@ -31,6 +31,7 @@ import 'package:aarast_mobile/features/provider_portal/screens/edit_provider_pro
 import 'package:aarast_mobile/features/provider_portal/screens/provider_apply_screen.dart';
 import 'package:aarast_mobile/features/provider_portal/screens/provider_offer_screen.dart';
 import 'package:aarast_mobile/features/provider_portal/screens/provider_portal_screen.dart';
+import 'package:aarast_mobile/features/provider_portal/screens/provider_services_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -86,7 +87,7 @@ MarketplaceService _service(
   categoryId: 'cat-photo',
   description: 'الزفاف كامل، من دخول العريس إلى نهاية الحفل.',
   basePrice: price,
-  priceUnit: 'EVENT',
+  priceUnit: 'للحفل كامل',
   currency: 'YER',
 );
 
@@ -524,9 +525,13 @@ Future<void> _shot(
         locale: const Locale('ar'),
         supportedLocales: const [Locale('ar')],
         localizationsDelegates: GlobalMaterialLocalizations.delegates,
-        home: MediaQuery(
-          data: const MediaQueryData(disableAnimations: true),
-          child: home,
+        // Keep the real window size: a bare MediaQueryData has a zero size,
+        // and widgets sized from it collapse.
+        home: Builder(
+          builder: (context) => MediaQuery(
+            data: MediaQuery.of(context).copyWith(disableAnimations: true),
+            child: home,
+          ),
         ),
       ),
     ),
@@ -542,7 +547,6 @@ Future<void> _shot(
   await tester.pump(const Duration(seconds: 3));
   await tester.pumpWidget(const SizedBox());
   await tester.pump(const Duration(seconds: 9));
-  tester.takeException();
 }
 
 Future<void> _tab(WidgetTester tester, String label) async {
@@ -645,27 +649,28 @@ void main() {
     );
   });
 
+  // p36 «خدماتك»: services and packages share one page, opened from «ملفي».
   testWidgets('services', (tester) async {
     await _shot(
       tester,
       'v12_services',
-      const ProviderPortalScreen(),
+      ProviderServicesScreen(now: DateTime(2026, 10, 25)),
       await _session(_DashApi()),
-      h: 1300,
-      act: () => _tab(tester, 'الخدمات'),
+      h: 1000,
     );
   });
 
-  testWidgets('packages', (tester) async {
+  // A listing opens its edit in a sheet.
+  testWidgets('edit a package', (tester) async {
     await _shot(
       tester,
-      'v13_packages',
-      const ProviderPortalScreen(),
+      'v13_edit_package',
+      ProviderServicesScreen(now: DateTime(2026, 10, 25)),
       await _session(_DashApi()),
       h: 1100,
       act: () async {
-        await _tab(tester, 'الخدمات');
-        await tester.tap(find.text('الباقات').last);
+        await tester.tap(find.byKey(const Key('provider-package-pk1')));
+        await tester.pump(const Duration(milliseconds: 500));
         await tester.pump(const Duration(milliseconds: 500));
       },
     );

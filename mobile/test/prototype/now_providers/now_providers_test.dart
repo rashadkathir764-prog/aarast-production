@@ -20,12 +20,18 @@ import 'package:aarast_mobile/features/chat/models/chat_models.dart';
 import 'package:aarast_mobile/features/chat/providers/chat_provider.dart';
 import 'package:aarast_mobile/features/chat/screens/chat_screen.dart';
 import 'package:aarast_mobile/features/chat/widgets/conversation_list_view.dart';
+import 'package:aarast_mobile/features/finance/data/finance_api.dart';
+import 'package:aarast_mobile/features/finance/models/budget_category.dart';
+import 'package:aarast_mobile/features/finance/models/wedding_cost.dart';
+import 'package:aarast_mobile/features/finance/providers/finance_provider.dart';
 import 'package:aarast_mobile/features/marketplace/data/marketplace_api.dart';
 import 'package:aarast_mobile/features/marketplace/models/marketplace_models.dart';
 import 'package:aarast_mobile/features/marketplace/providers/marketplace_provider.dart';
 import 'package:aarast_mobile/features/marketplace/screens/favorite_providers_screen.dart';
+import 'package:aarast_mobile/features/marketplace/screens/plan_bookings_screen.dart';
 import 'package:aarast_mobile/features/marketplace/screens/provider_details_screen.dart';
 import 'package:aarast_mobile/features/marketplace/screens/provider_marketplace_screen.dart';
+import 'package:aarast_mobile/features/marketplace/screens/provider_requests_screen.dart';
 import 'package:aarast_mobile/features/marketplace/screens/quote_request_screen.dart';
 import 'package:aarast_mobile/features/onboarding/models/wedding_location_draft.dart';
 import 'package:aarast_mobile/features/wedding_plans/data/wedding_plans_api.dart';
@@ -34,7 +40,6 @@ import 'package:aarast_mobile/features/wedding_plans/providers/wedding_plans_pro
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:lucide_icons/lucide_icons.dart';
 import 'package:provider/provider.dart';
 import 'package:provider/single_child_widget.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -321,12 +326,16 @@ class _Market extends ProviderMarketplaceProvider {
     this.list = const [],
     List<QuoteRequest> quotes = const [],
     this.favs = const [],
+    this.city = 'city-sanaa',
   }) : quotesData = List.of(quotes),
        super(MarketplaceApi(ApiClient(tokenProvider: () async => null)));
 
   final List<MarketplaceProvider> list;
   final List<QuoteRequest> quotesData;
   final List<FavoriteProvider> favs;
+
+  /// The chosen city filter; null for no filter at all.
+  final String? city;
 
   @override
   bool get isLoading => false;
@@ -341,7 +350,7 @@ class _Market extends ProviderMarketplaceProvider {
   @override
   String get search => '';
   @override
-  String? get cityId => 'city-sanaa';
+  String? get cityId => city;
   @override
   String? get categoryId => null;
   @override
@@ -439,6 +448,59 @@ class _Market extends ProviderMarketplaceProvider {
   Future<void> setSearch(String value) async {}
   @override
   Future<void> toggleFavorite(String providerId) async {}
+  @override
+  Future<void> loadScopedQuoteRequests() async {}
+  @override
+  Future<bool> acceptQuote(QuoteRequest quote) async => true;
+}
+
+/// The plan's money items, already loaded: the providers board reads them
+/// to draw one row per service.
+class _LoadedFinance extends FinanceProvider {
+  _LoadedFinance()
+    : super(FinanceApi(ApiClient(tokenProvider: () async => 't')));
+
+  @override
+  String? get loadedPlanId => 'plan-1';
+  @override
+  bool get isLoading => false;
+  @override
+  bool get canManageMoney => true;
+  @override
+  List<BudgetCategory> get categories => const [
+    BudgetCategory(
+      id: 'item-hall',
+      weddingPlanId: 'plan-1',
+      name: 'القاعة',
+      allocatedAmount: '1800000',
+    ),
+    BudgetCategory(
+      id: 'item-photo',
+      weddingPlanId: 'plan-1',
+      name: 'التصوير',
+      allocatedAmount: '600000',
+    ),
+    BudgetCategory(
+      id: 'item-band',
+      weddingPlanId: 'plan-1',
+      name: 'الفرقة',
+      allocatedAmount: '400000',
+    ),
+    BudgetCategory(
+      id: 'item-food',
+      weddingPlanId: 'plan-1',
+      name: 'الضيافة',
+      allocatedAmount: '1000000',
+    ),
+  ];
+  @override
+  List<WeddingCost> get costs => const [];
+  @override
+  Future<void> loadMoney(
+    String planId, {
+    bool canViewMoney = true,
+    bool canManageMoney = true,
+  }) async {}
 }
 
 class _Plans extends WeddingPlansProvider {
@@ -688,6 +750,7 @@ Future<List<SingleChildWidget>> _session(
     ChangeNotifierProvider<WeddingPlansProvider>.value(value: plans),
     ChangeNotifierProvider<ProviderMarketplaceProvider>.value(value: market),
     ChangeNotifierProvider<ChatProvider>.value(value: chat),
+    ChangeNotifierProvider<FinanceProvider>.value(value: _LoadedFinance()),
   ];
 }
 
@@ -711,9 +774,13 @@ Future<void> _shot(
         locale: const Locale('ar'),
         supportedLocales: const [Locale('ar')],
         localizationsDelegates: GlobalMaterialLocalizations.delegates,
-        home: MediaQuery(
-          data: const MediaQueryData(disableAnimations: true),
-          child: home,
+        // Keep the real window size: a bare MediaQueryData has a zero size,
+        // and widgets sized from it (the board's «محجوز» tag) collapse.
+        home: Builder(
+          builder: (context) => MediaQuery(
+            data: MediaQuery.of(context).copyWith(disableAnimations: true),
+            child: home,
+          ),
         ),
       ),
     ),
@@ -730,16 +797,45 @@ Future<void> _shot(
   await tester.pump(const Duration(seconds: 3));
   await tester.pumpWidget(const SizedBox());
   await tester.pump(const Duration(seconds: 9));
-  // The details sheet's AnimatedSize can tick once after teardown in the test
-  // binding; that is not part of the captured frame.
-  tester.takeException();
 }
 
-Future<void> _openInbox(WidgetTester tester) async {
-  await tester.tap(find.text('طلباتك وعروضك'));
+/// Taps one of the providers tab's four tabs (طلباتي، استكشف، المحادثات،
+/// المفضلة) or its x22 way to start.
+Future<void> _openTab(WidgetTester tester, String label) async {
+  await tester.tap(find.text(label));
   await tester.pump(const Duration(milliseconds: 400));
   await tester.pump(const Duration(milliseconds: 400));
 }
+
+/// A second offer for the photography item, so f04 shows two side by side.
+QuoteRequest _receivedLens() => QuoteRequest(
+  id: 'q-ward',
+  providerId: 'p-ward',
+  weddingPlanId: 'plan-1',
+  status: 'RESPONDED',
+  lifecycleStatus: 'RECEIVED',
+  guestCount: 124,
+  eventDate: DateTime(2027, 1, 21),
+  location: _loc,
+  provider: const ProviderSummary(
+    id: 'p-ward',
+    businessName: 'استوديو الورد',
+    ratingAverage: 4.5,
+    ratingCount: 29,
+  ),
+  service: _svc('s-ward-1', 'p-ward', 'صور وفيديو', _photo, '480000'),
+  offers: [
+    QuoteOffer(
+      id: 'o-ward',
+      status: 'PENDING',
+      title: 'صور وفيديو',
+      amount: '480000',
+      currency: 'YER',
+      message: 'مصور واحد، فيلم 6 دقائق، وألبوم صغير.',
+      validUntil: DateTime(2026, 10, 30),
+    ),
+  ],
+);
 
 const _market = ProviderMarketplaceScreen(
   embedded: true,
@@ -750,29 +846,10 @@ const _market = ProviderMarketplaceScreen(
 void main() {
   setUpAll(loadPreviewAppFonts);
 
-  testWidgets('explore', (tester) async {
+  // x22: a plan that asked no one starts with the hall.
+  testWidgets('first visit', (tester) async {
     final m = _Market(list: _allProviders);
-    await _shot(tester, 'explore', _market, await _session(m), h: 1900);
-  });
-
-  testWidgets('explore empty directory', (tester) async {
-    final m = _Market();
-    await _shot(tester, 'explore_empty', _market, await _session(m), h: 900);
-  });
-
-  testWidgets('city filter sheet', (tester) async {
-    final m = _Market(list: _allProviders);
-    await _shot(
-      tester,
-      'city_filter',
-      _market,
-      await _session(m),
-      act: () async {
-        await tester.tap(find.text('صنعاء').first);
-        await tester.pump(const Duration(milliseconds: 500));
-        await tester.pump(const Duration(milliseconds: 500));
-      },
-    );
+    await _shot(tester, 'first_visit', _market, await _session(m), h: 900);
   });
 
   final inboxQuotes = [
@@ -787,37 +864,89 @@ void main() {
     _expired(),
   ];
 
-  testWidgets('offers collapsed', (tester) async {
-    final m = _Market(list: _allProviders, quotes: inboxQuotes);
-    await _shot(tester, 'offers_closed', _market, await _session(m), h: 1100);
-  });
-
-  testWidgets('offers open', (tester) async {
+  // f02: the directory, reached from the tab.
+  testWidgets('explore', (tester) async {
     final m = _Market(list: _allProviders, quotes: inboxQuotes);
     await _shot(
       tester,
-      'offers_open',
+      'explore',
       _market,
       await _session(m),
-      h: 2200,
-      act: () => _openInbox(tester),
+      h: 1900,
+      act: () => _openTab(tester, 'استكشف'),
     );
   });
 
-  testWidgets('offer details sheet', (tester) async {
+  testWidgets('explore empty directory', (tester) async {
+    final m = _Market(city: null);
+    await _shot(
+      tester,
+      'explore_empty',
+      _market,
+      await _session(m),
+      h: 900,
+      act: () => _openTab(tester, 'استكشف كل الخدمات'),
+    );
+  });
+
+  // w30 «فلتر».
+  testWidgets('city filter sheet', (tester) async {
     final m = _Market(list: _allProviders, quotes: inboxQuotes);
     await _shot(
       tester,
-      'offer_sheet',
+      'city_filter',
       _market,
       await _session(m),
-      h: 1000,
       act: () async {
-        await _openInbox(tester);
-        final key = find.byKey(const Key('quote-offer-details-q-light'));
-        await tester.ensureVisible(key);
-        await tester.pump(const Duration(milliseconds: 300));
-        await tester.tap(key);
+        await _openTab(tester, 'استكشف');
+        await tester.tap(find.byKey(const Key('city-filter-trigger')));
+        await tester.pump(const Duration(milliseconds: 500));
+        await tester.pump(const Duration(milliseconds: 500));
+      },
+    );
+  });
+
+  // f01 «طلباتي»: each service of the plan and where it stands.
+  testWidgets('board', (tester) async {
+    final m = _Market(list: _allProviders, quotes: inboxQuotes);
+    await _shot(tester, 'board', _market, await _session(m), h: 1100);
+  });
+
+  // f04 «قارن العروض»: two offers for one service side by side.
+  testWidgets('compare offers', (tester) async {
+    final m = _Market(
+      list: _allProviders,
+      quotes: [_received(), _receivedLens()],
+    );
+    await _shot(
+      tester,
+      'compare_offers',
+      const ProviderRequestsScreen(
+        weddingPlanId: 'plan-1',
+        itemKey: 'item-photo',
+      ),
+      await _session(m),
+      h: 1100,
+    );
+  });
+
+  // f05: «اختر هذا» asks the provider to hold the wedding day.
+  testWidgets('choose an offer asks for the booking', (tester) async {
+    final m = _Market(
+      list: _allProviders,
+      quotes: [_received(), _receivedLens()],
+    );
+    await _shot(
+      tester,
+      'booking_request',
+      const ProviderRequestsScreen(
+        weddingPlanId: 'plan-1',
+        itemKey: 'item-photo',
+      ),
+      await _session(m),
+      h: 1100,
+      act: () async {
+        await tester.tap(find.byKey(const ValueKey('requests-choose-q-light')));
         await tester.pump(const Duration(milliseconds: 500));
         await tester.pump(const Duration(milliseconds: 500));
       },
@@ -864,13 +993,16 @@ void main() {
         ),
       ],
     );
+    // w34 «الحجوزات».
     await _shot(
       tester,
       'bookings',
-      _market,
+      PlanBookingsScreen(
+        weddingPlanId: 'plan-1',
+        now: DateTime(2026, 10, 25, 12),
+      ),
       await _session(m),
-      h: 2200,
-      act: () => _openInbox(tester),
+      h: 1500,
     );
   });
 
@@ -889,11 +1021,13 @@ void main() {
     await _shot(
       tester,
       'cancel_booking',
-      _market,
+      const ProviderRequestsScreen(
+        weddingPlanId: 'plan-1',
+        itemKey: 'item-food',
+      ),
       await _session(m),
       act: () async {
-        await _openInbox(tester);
-        final key = find.byKey(const Key('quote-booking-cancel-q-asala'));
+        final key = find.byKey(const ValueKey('requests-cancel-booking-q-asala'));
         await tester.ensureVisible(key);
         await tester.pump(const Duration(milliseconds: 300));
         await tester.tap(key);
@@ -924,10 +1058,12 @@ void main() {
     await _shot(
       tester,
       'rate_row',
-      _market,
+      const ProviderRequestsScreen(
+        weddingPlanId: 'plan-1',
+        itemKey: 'item-hall',
+      ),
       providers,
-      h: 1100,
-      act: () => _openInbox(tester),
+      h: 900,
     );
   });
 
@@ -942,23 +1078,6 @@ void main() {
     );
   });
 
-  testWidgets('provider details expanded', (tester) async {
-    final m = _Market(list: _allProviders, quotes: [_received()]);
-    await _shot(
-      tester,
-      'details_more',
-      const ProviderDetailsScreen(providerId: 'p-light', weddingPlanId: 'plan-1'),
-      await _session(m),
-      h: 2100,
-      act: () async {
-        await tester.tap(find.text('الباقات والتفاصيل والتقييمات'));
-        for (var i = 0; i < 30; i++) {
-          await tester.pump(const Duration(milliseconds: 50));
-        }
-      },
-    );
-  });
-
   testWidgets('quote request', (tester) async {
     final m = _Market(list: _allProviders);
     await _shot(
@@ -970,35 +1089,33 @@ void main() {
     );
   });
 
-  testWidgets('quote request expanded', (tester) async {
-    final m = _Market(list: _allProviders);
-    await _shot(
-      tester,
-      'quote_form_more',
-      const QuoteRequestScreen(providerId: 'p-afrah'),
-      await _session(m),
-      h: 1500,
-      act: () async {
-        await tester.tap(find.text('حسّن دقة العرض'));
-        await tester.pump(const Duration(milliseconds: 500));
-        await tester.pump(const Duration(milliseconds: 500));
-      },
-    );
-  });
+  final favs = [
+    FavoriteProvider(id: 'f1', providerId: 'p-afrah', provider: _afrah),
+    FavoriteProvider(id: 'f2', providerId: 'p-light', provider: _light),
+  ];
 
+  // f09 «المفضلة»: the saved providers two by two.
   testWidgets('favorites', (tester) async {
-    final m = _Market(
-      favs: [
-        FavoriteProvider(id: 'f1', providerId: 'p-afrah', provider: _afrah),
-        FavoriteProvider(id: 'f2', providerId: 'p-light', provider: _light),
-      ],
-    );
+    final m = _Market(list: _allProviders, favs: favs);
     await _shot(
       tester,
       'favorites',
+      _market,
+      await _session(m),
+      h: 1000,
+      act: () => _openTab(tester, 'المفضلة'),
+    );
+  });
+
+  // «قارن الملفين»: the first two saved providers side by side.
+  testWidgets('favorites compare', (tester) async {
+    final m = _Market(favs: favs);
+    await _shot(
+      tester,
+      'favorites_compare',
       const FavoriteProvidersScreen(),
       await _session(m),
-      h: 1500,
+      h: 900,
     );
   });
 
@@ -1045,7 +1162,8 @@ void main() {
       await _session(m),
       h: 844,
       act: () async {
-        await tester.tap(find.byIcon(LucideIcons.moreVertical));
+        // w32: the name in the header opens mute, report and block.
+        await tester.tap(find.text(_light.businessName).first);
         await tester.pump(const Duration(milliseconds: 500));
         await tester.pump(const Duration(milliseconds: 500));
       },

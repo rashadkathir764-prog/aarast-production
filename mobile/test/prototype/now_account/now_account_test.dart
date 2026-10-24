@@ -7,6 +7,7 @@ library;
 import 'package:aarast_mobile/core/network/api_client.dart';
 import 'package:aarast_mobile/core/offline/local_database_json.dart';
 import 'package:aarast_mobile/core/offline/offline_sync_service.dart';
+import 'package:aarast_mobile/core/preferences/device_preferences.dart';
 import 'package:aarast_mobile/core/security/app_lock_controller.dart';
 import 'package:aarast_mobile/core/security/app_lock_gate.dart';
 import 'package:aarast_mobile/core/session/safe_user.dart';
@@ -19,11 +20,15 @@ import 'package:aarast_mobile/features/account_contexts/providers/account_contex
 import 'package:aarast_mobile/features/account_contexts/screens/account_context_selection_screen.dart';
 import 'package:aarast_mobile/features/auth/data/auth_repository.dart';
 import 'package:aarast_mobile/features/auth/providers/auth_controller.dart';
+import 'package:aarast_mobile/features/finance/data/finance_api.dart';
+import 'package:aarast_mobile/features/finance/models/money_summary.dart';
+import 'package:aarast_mobile/features/finance/providers/finance_provider.dart';
 import 'package:aarast_mobile/features/more/screens/more_screen.dart';
 import 'package:aarast_mobile/features/onboarding/data/guest_onboarding_storage.dart';
 import 'package:aarast_mobile/features/settings/data/settings_api.dart';
 import 'package:aarast_mobile/features/settings/models/user_settings.dart';
 import 'package:aarast_mobile/features/settings/providers/settings_provider.dart';
+import 'package:aarast_mobile/features/settings/screens/lock_settings_screen.dart';
 import 'package:aarast_mobile/features/settings/screens/settings_screen.dart';
 import 'package:aarast_mobile/features/sharing/data/sharing_api.dart';
 import 'package:aarast_mobile/features/sharing/models/contribution_history.dart';
@@ -219,51 +224,50 @@ void main() {
       apiClient: ApiClient(tokenProvider: () async => null),
     );
     await offline.refreshStatus();
+    // g02 draws «عرسي» for the plan's owner and «شكل التطبيق» from the
+    // phone's own preferences, so both are provided as the app does.
+    final accountContexts = AccountContextController(
+      contextsApi: _Contexts([_ctx(AccountContextRole.owner, _planId, 'عرس محمد')]),
+      authStorage: a.storage,
+      setActiveWeddingPlan: (_) async {},
+    );
+    await accountContexts.refresh(allowInitialSingleContext: true);
+    final lock = AppLockController(vault: _Vault(), userId: 'user-1');
+    await lock.load();
     return [
       ...a.providers,
       ChangeNotifierProvider<OfflineSyncService>.value(value: offline),
+      ChangeNotifierProvider<DevicePreferences>.value(
+        value: DevicePreferences(a.prefs),
+      ),
+      ChangeNotifierProvider<AccountContextController>.value(
+        value: accountContexts,
+      ),
+      ChangeNotifierProvider<DashboardSummaryProvider>.value(value: _Dash()),
+      ChangeNotifierProvider<AppLockController>.value(value: lock),
     ];
   }
 
+  // g02 «حسابي».
   testWidgets('a01 more', (tester) async {
     await _shot(tester, 'a01_more', const MoreScreen(),
         h: 1300, providers: await moreProviders());
+    expect(find.text('حسابي'), findsOneWidget);
+    expect(find.text('عرسي'), findsOneWidget);
   });
 
-  testWidgets('a02 account actions', (tester) async {
-    await _shot(tester, 'a02_account_actions', const MoreScreen(),
-        providers: await moreProviders(), act: () async {
-      await tester.scrollUntilVisible(find.text('إدارة الحساب'), 200,
-          scrollable: find.byType(Scrollable).first);
-      await tester.tap(find.text('إدارة الحساب'));
-      await tester.pumpAndSettle();
-    });
-  });
-
+  // g11 «الخروج». The old «إدارة الحساب» sheet (a02) and «حذف الحساب نهائيًا»
+  // (a04) are gone: a229aa97 (D23) removed them, account deletion stays hidden
+  // until its 30-day grace exists (C4), so those two shots have no screen.
   testWidgets('a03 logout confirm', (tester) async {
     await _shot(tester, 'a03_logout_confirm', const MoreScreen(),
-        providers: await moreProviders(), act: () async {
-      await tester.scrollUntilVisible(find.text('إدارة الحساب'), 200,
-          scrollable: find.byType(Scrollable).first);
-      await tester.tap(find.text('إدارة الحساب'));
-      await tester.pumpAndSettle();
-      await tester.tap(find.text('تسجيل الخروج').last);
+        h: 1300, providers: await moreProviders(), act: () async {
+      await tester.tap(find.byKey(const ValueKey('account-logout')));
       await tester.pumpAndSettle();
     });
   });
 
-  testWidgets('a04 delete account', (tester) async {
-    await _shot(tester, 'a04_delete_account', const MoreScreen(),
-        providers: await moreProviders(), act: () async {
-      await tester.scrollUntilVisible(find.text('إدارة الحساب'), 200,
-          scrollable: find.byType(Scrollable).first);
-      await tester.tap(find.text('إدارة الحساب'));
-      await tester.pumpAndSettle();
-      await tester.tap(find.text('حذف الحساب نهائيًا'));
-      await tester.pumpAndSettle();
-    });
-  });
-
+  // w39 / settings: «التنبيهات».
   Future<List<SingleChildWidget>> settingsProviders({bool lockOn = false}) async {
     final a = await _auth();
     final vault = _Vault();
@@ -285,28 +289,25 @@ void main() {
         h: 1500, providers: await settingsProviders());
   });
 
-  testWidgets('a06 settings lock on', (tester) async {
-    await _shot(tester, 'a06_settings_lock_on',
-        const SettingsScreen(devicePushAvailableOverride: true),
-        h: 1500, providers: await settingsProviders(lockOn: true));
+  // The app lock moved out of the settings screen to its own page
+  // (`LockSettingsScreen`, reached from «قفل التطبيق» in g02).
+  testWidgets('a06 lock on', (tester) async {
+    await _shot(tester, 'a06_lock_on', const LockSettingsScreen(),
+        providers: await settingsProviders(lockOn: true));
+    expect(find.text('التطبيق مقفول برمزك'), findsOneWidget);
   });
 
   testWidgets('a07 lock choose code', (tester) async {
-    await _shot(tester, 'a07_lock_choose',
-        const SettingsScreen(devicePushAvailableOverride: true),
-        h: 1000, providers: await settingsProviders(), act: () async {
-      await tester.scrollUntilVisible(find.text('قفل التطبيق برمز'), 200,
-          scrollable: find.byType(Scrollable).first);
-      await tester.tap(find.text('قفل التطبيق برمز'));
-      await tester.pumpAndSettle();
-    });
+    await _shot(tester, 'a07_lock_choose', const LockSettingsScreen(),
+        providers: await settingsProviders());
+    expect(find.text('اختر رمز من 4 أرقام'), findsOneWidget);
   });
 
+  // The change-phone sheet is opened from g02 now, not from settings.
   testWidgets('a08 change phone', (tester) async {
-    await _shot(tester, 'a08_change_phone',
-        const SettingsScreen(devicePushAvailableOverride: true),
-        providers: await settingsProviders(), act: () async {
-      await tester.tap(find.text('تغيير رقم الجوال'));
+    await _shot(tester, 'a08_change_phone', const MoreScreen(),
+        h: 1300, providers: await moreProviders(), act: () async {
+      await tester.tap(find.byKey(const ValueKey('account-change-phone')));
       await tester.pumpAndSettle();
     });
   });
@@ -339,10 +340,11 @@ void main() {
 
   Future<List<SingleChildWidget>> planProviders({
     List<AccountContext>? contexts,
+    DateTime? weddingDate,
   }) async {
     final a = await _auth();
     final plans = _Plans([
-      _plan(),
+      _plan(date: weddingDate),
       _plan(id: 'plan-old', title: 'خطة تجربة', status: 'ARCHIVED',
           date: DateTime(2026, 5, 2)),
     ]);
@@ -362,6 +364,9 @@ void main() {
       ...a.providers,
       ChangeNotifierProvider<WeddingPlansProvider>.value(value: plans),
       ChangeNotifierProvider<DashboardSummaryProvider>.value(value: _Dash()),
+      // w10 reads the plan's budget from the money provider, as main.dart
+      // provides it.
+      ChangeNotifierProvider<FinanceProvider>.value(value: _Finance()),
       ChangeNotifierProvider<AccountContextController>.value(
         value: accountContexts,
       ),
@@ -369,8 +374,14 @@ void main() {
   }
 
   testWidgets('a11 my plans', (tester) async {
+    // «خطتك · 88 يوم» counts from today, so the day follows today.
+    final now = DateTime.now();
     await _shot(tester, 'a11_my_plans', const MyWeddingPlansScreen(),
-        h: 1000, providers: await planProviders());
+        h: 1000,
+        providers: await planProviders(
+          weddingDate: DateTime(now.year, now.month, now.day + 88),
+        ));
+    expect(find.text('خطتك · 88 يوم'), findsOneWidget);
   });
 
   testWidgets('a12 contexts', (tester) async {
@@ -384,22 +395,20 @@ void main() {
         h: 2000, providers: await planProviders());
   });
 
-  testWidgets('a14 plan edit', (tester) async {
-    await _shot(tester, 'a14_plan_edit',
-        const PlanCenterScreen(weddingPlanId: _planId),
-        h: 1500, providers: await planProviders(), act: () async {
-      await tester.tap(find.text('تعديل البيانات الأساسية'));
-      await tester.pumpAndSettle();
-    });
-  });
-
+  // a14 «تعديل البيانات الأساسية» had its own page; w10 (5712617e) edits the
+  // plan on the screen itself, so a13 is the edit screen and a14 has no
+  // screen of its own.
   testWidgets('a15 archive confirm', (tester) async {
     await _shot(tester, 'a15_archive_confirm',
         const PlanCenterScreen(weddingPlanId: _planId),
-        h: 2000, providers: await planProviders(), act: () async {
-      await tester.tap(find.text('أرشفة الخطة'));
+        h: 1000, providers: await planProviders(), act: () async {
+      final archive = find.byKey(const ValueKey('plan-details-archive'));
+      await tester.ensureVisible(archive);
+      await tester.pumpAndSettle();
+      await tester.tap(archive);
       await tester.pumpAndSettle();
     });
+    expect(find.text('تحط الخطة في الأرشيف؟'), findsOneWidget);
   });
 
   Future<List<SingleChildWidget>> sharingProviders(_SharingApi api) async {
@@ -459,12 +468,20 @@ void main() {
         h: 1300,
         providers: [
           ChangeNotifierProvider<SharingProvider>.value(
-            value: SharingProvider(_SharingApi(history: true)),
+            value: SharingProvider(
+              _SharingApi(history: true, members: _members),
+            ),
           ),
           ChangeNotifierProvider<ContributionHistoryProvider>.value(
-            value: ContributionHistoryProvider(_SharingApi(history: true)),
+            value: ContributionHistoryProvider(
+              _SharingApi(history: true, members: _members),
+            ),
           ),
         ]);
+    expect(
+      find.textContaining('دفعة التصوير', findRichText: true),
+      findsOneWidget,
+    );
   });
 
   testWidgets('a22 history empty', (tester) async {
@@ -570,6 +587,29 @@ class _Plans extends WeddingPlansProvider {
   Future<void> loadWeddingPlan(String id) async {}
 }
 
+class _Finance extends FinanceProvider {
+  _Finance() : super(FinanceApi(ApiClient(tokenProvider: () async => null)));
+  @override
+  bool get isLoading => false;
+  @override
+  bool get hasLoadedMoney => true;
+  @override
+  String? get loadedPlanId => _planId;
+  @override
+  String? get errorMessage => null;
+  @override
+  MoneySummary get summary => const MoneySummary(
+    planId: _planId,
+    budget: MoneyBudgetSummary(total: '8000000'),
+  );
+  @override
+  Future<void> loadMoney(
+    String planId, {
+    bool canViewMoney = true,
+    bool canManageMoney = true,
+  }) async {}
+}
+
 class _Dash extends DashboardSummaryProvider {
   _Dash()
     : super(
@@ -652,7 +692,7 @@ class _SharingApi extends SharingApi {
       'capturedAt': at,
       'snapshot': snap,
     };
-    final events = history
+    final all = history
         ? [
             e('e1', 'MONEY', 'COST_PAYMENT', 'PAYMENT_RECORDED',
                 '2026-10-19T07:20:00.000Z',
@@ -665,6 +705,21 @@ class _SharingApi extends SharingApi {
                 {'title': 'حجز القاعة', 'status': 'TODO'}),
           ]
         : const <Map<String, dynamic>>[];
+    // The server never names who did an event: the owner asks for each
+    // participant by id, so the fake answers per participant.
+    const doneBy = {
+      'e1': 'user-m3',
+      'e2': 'user-m1',
+      'e3': 'user-m1',
+      'e4': 'user-m1',
+    };
+    final events = all
+        .where(
+          (event) =>
+              contributorUserId == null ||
+              doneBy[event['id']] == contributorUserId,
+        )
+        .toList();
     return ContributionHistoryResponse.fromJson({
       'historyCoverageStartsAt': '2026-10-01T09:00:00.000Z',
       'total': events.length,

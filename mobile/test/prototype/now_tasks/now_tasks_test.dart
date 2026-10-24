@@ -15,6 +15,7 @@ import 'package:aarast_mobile/features/tasks/models/timeline.dart';
 import 'package:aarast_mobile/features/tasks/models/wedding_task.dart';
 import 'package:aarast_mobile/features/tasks/providers/task_timeline_provider.dart';
 import 'package:aarast_mobile/features/tasks/screens/create_task_screen.dart';
+import 'package:aarast_mobile/features/tasks/screens/task_details_screen.dart';
 import 'package:aarast_mobile/features/tasks/screens/task_timeline_screen.dart';
 import 'package:aarast_mobile/features/tasks/widgets/task_starter_sheet.dart';
 import 'package:flutter/material.dart';
@@ -59,10 +60,12 @@ class _Api extends TaskTimelineApi {
   }
 }
 
-DateTime _day(int offset) {
-  final n = DateTime.now();
-  return DateTime(n.year, n.month, n.day).add(Duration(days: offset));
-}
+/// Fixed days, so the shots do not change with the day they run: the app
+/// reads the real clock, so a day before it is always late and a far day is
+/// always «بعدين» (a «today» or «this week» task cannot be pinned).
+DateTime _day(int offset) => offset < 0
+    ? DateTime(2026, 10, 25).add(Duration(days: offset))
+    : DateTime(2030).add(Duration(days: offset));
 
 WeddingTask _t(
   String id,
@@ -135,10 +138,10 @@ final _activeTasks = <WeddingTask>[
     ],
   ),
   _t('t8', 'الاتفاق على الوليمة والذبائح', due: 40, who: 'الوالد', phone: '+967733445566'),
-  _t('t9', 'ترتيب القات والمقيل', at: DateTime(2027, 1, 7)),
-  _t('t10', 'ترتيب الزفة والسيارة', at: DateTime(2027, 1, 7), who: 'صالح'),
+  _t('t9', 'ترتيب القات والمقيل', at: DateTime(2030, 3, 7)),
+  _t('t10', 'ترتيب الزفة والسيارة', at: DateTime(2030, 3, 7), who: 'صالح'),
   _t('t11', 'توزيع الدعوات'),
-  _t('t12', 'هدية العروسة', at: DateTime(2027, 1, 14), private: true),
+  _t('t12', 'هدية العروسة', at: DateTime(2030, 3, 14), private: true),
 ];
 
 Future<TaskTimelineProvider> _provider(List<WeddingTask> tasks) async {
@@ -172,10 +175,13 @@ Future<void> _shot(
         locale: const Locale('ar'),
         supportedLocales: const [Locale('ar')],
         localizationsDelegates: GlobalMaterialLocalizations.delegates,
-        home: MediaQuery(
-          data: const MediaQueryData(disableAnimations: true),
-          child: Scaffold(body: SafeArea(child: home)),
+        // Keep the real view size: a bare MediaQueryData has size zero, which
+        // collapses widths that read MediaQuery.sizeOf.
+        builder: (context, child) => MediaQuery(
+          data: MediaQuery.of(context).copyWith(disableAnimations: true),
+          child: child!,
         ),
+        home: Scaffold(body: SafeArea(child: home)),
       ),
     ),
   );
@@ -219,56 +225,75 @@ void main() {
       await _provider(_activeTasks),
       h: 2100,
       act: () async {
-        await tester.tap(find.text('عرض').last);
+        await tester.tap(find.byKey(const ValueKey('tasks-toggle-done')));
         await tester.pumpAndSettle();
       },
     );
   });
 
-  testWidgets('t04 overdue filter', (tester) async {
+  // The «متأخرة» chip is gone: lateness is its own group, and the list can be
+  // narrowed to one person or read by month («الوقت»).
+  testWidgets('t04 one person', (tester) async {
     await _shot(
       tester,
-      't04_overdue',
+      't04_person',
       const TaskTimelineScreen(weddingPlanId: _plan),
       await _provider(_activeTasks),
       h: 900,
       act: () async {
-        await tester.tap(
-          find.byWidgetPredicate(
-            (w) => w is Text && (w.data ?? '').startsWith('متأخرة '),
-          ),
-        );
+        await tester.tap(find.byKey(const ValueKey('task-person-صالح')));
         await tester.pumpAndSettle();
       },
     );
   });
 
-  testWidgets('t05 task menu', (tester) async {
+  testWidgets('t04 by month', (tester) async {
+    await _shot(
+      tester,
+      't04_months',
+      const TaskTimelineScreen(weddingPlanId: _plan),
+      await _provider(_activeTasks),
+      h: 1500,
+      act: () async {
+        await tester.tap(find.text('الوقت'));
+        await tester.pumpAndSettle();
+      },
+    );
+  });
+
+  // d04: a task opens on its own screen; its menu (x16) holds the actions.
+  testWidgets('t05 task details and menu', (tester) async {
+    final task = _activeTasks.firstWhere((t) => t.id == 't4');
     await _shot(
       tester,
       't05_task_menu',
-      const TaskTimelineScreen(weddingPlanId: _plan),
+      TaskDetailsScreen(weddingPlanId: _plan, taskId: task.id, initialTask: task),
       await _provider(_activeTasks),
       h: 900,
       act: () async {
-        await tester.tap(find.byTooltip('إجراءات المهمة').first);
-        await tester.pumpAndSettle();
+        await tester.tap(find.byKey(const ValueKey('task-menu')));
+        // The route's animation starts on its first frame.
+        await tester.pump(const Duration(milliseconds: 500));
+        await tester.pump(const Duration(milliseconds: 500));
       },
     );
   });
 
   testWidgets('t06 delete confirm', (tester) async {
+    final task = _activeTasks.firstWhere((t) => t.id == 't4');
     await _shot(
       tester,
       't06_delete_confirm',
-      const TaskTimelineScreen(weddingPlanId: _plan),
+      TaskDetailsScreen(weddingPlanId: _plan, taskId: task.id, initialTask: task),
       await _provider(_activeTasks),
       h: 900,
       act: () async {
-        await tester.tap(find.byTooltip('إجراءات المهمة').first);
-        await tester.pumpAndSettle();
-        await tester.tap(find.text('حذف المهمة'));
-        await tester.pumpAndSettle();
+        await tester.tap(find.byKey(const ValueKey('task-menu')));
+        await tester.pump(const Duration(milliseconds: 500));
+        await tester.pump(const Duration(milliseconds: 500));
+        await tester.tap(find.byKey(const ValueKey('task-menu-delete')));
+        await tester.pump(const Duration(milliseconds: 500));
+        await tester.pump(const Duration(milliseconds: 500));
       },
     );
   });

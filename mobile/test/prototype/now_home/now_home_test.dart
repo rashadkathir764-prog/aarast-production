@@ -4,6 +4,8 @@
 @Tags(['golden'])
 library;
 
+import 'dart:typed_data';
+
 import 'package:aarast_mobile/core/network/api_client.dart';
 import 'package:aarast_mobile/core/offline/local_database.dart';
 import 'package:aarast_mobile/core/offline/local_database_json.dart';
@@ -70,10 +72,13 @@ Future<void> _shot(
     locale: const Locale('ar'),
     supportedLocales: const [Locale('ar')],
     localizationsDelegates: GlobalMaterialLocalizations.delegates,
-    home: MediaQuery(
-      data: const MediaQueryData(disableAnimations: true),
-      child: home,
+    // Keep the real view size: a bare MediaQueryData has size zero, which
+    // collapses widths that read MediaQuery.sizeOf.
+    builder: (context, child) => MediaQuery(
+      data: MediaQuery.of(context).copyWith(disableAnimations: true),
+      child: child!,
     ),
+    home: home,
   );
   await tester.pumpWidget(
     providers.isEmpty ? app : MultiProvider(providers: providers, child: app),
@@ -298,7 +303,10 @@ AarastNotification _n(
   bool unread = false,
   String priority = 'NORMAL',
 }) {
-  final at = DateTime.now().subtract(Duration(hours: hoursAgo));
+  // A fixed past moment: the feed groups and words times against the real
+  // clock («اليوم», weekday names), so only an old date keeps the shot the
+  // same on every day it runs.
+  final at = DateTime(2026, 9, 20, 18).subtract(Duration(hours: hoursAgo));
   return AarastNotification(
     id: id,
     userId: 'user-1',
@@ -311,6 +319,25 @@ AarastNotification _n(
     updatedAt: at,
     readAt: unread ? null : at,
   );
+}
+
+/// The usual golden comparison, but a diff of at most [tolerance] (a
+/// fraction of the pixels) still passes.
+class _TolerantComparator extends LocalFileComparator {
+  _TolerantComparator(super.testFile, this.tolerance);
+
+  final double tolerance;
+
+  @override
+  Future<bool> compare(Uint8List imageBytes, Uri golden) async {
+    final result = await GoldenFileComparator.compareLists(
+      imageBytes,
+      await getGoldenBytes(golden),
+    );
+    if (result.passed || result.diffPercent <= tolerance) return true;
+    final error = await generateFailureOutput(result, golden, basedir);
+    throw FlutterError(error);
+  }
 }
 
 class _FakeSync extends OfflineSyncService {
@@ -332,14 +359,28 @@ class _FakeSync extends OfflineSyncService {
   int get unsyncedCount => _pending + _blocked;
   @override
   DateTime? get lastSyncedAt => DateTime(2026, 10, 20, 9, 40);
+  /// w41: the sheet lists every change still on the phone, the refused one
+  /// with its reason, the rest waiting for the network.
   @override
-  Future<List<SyncIssueSummary>> loadBlockedIssues() async => const [
-    SyncIssueSummary(
-      entityLabel: 'ضيف',
-      operationLabel: 'تعديل',
-      message: 'رفض الخادم هذا التغيير.',
-      retryCount: 3,
-      canRetry: true,
+  Future<List<PendingChangeSummary>> loadPendingChanges() async => [
+    PendingChangeSummary(
+      entityType: 'guest',
+      title: 'ضيف: عبدالله الحمدي',
+      createdAt: DateTime.now().subtract(const Duration(hours: 2, minutes: 1)),
+      blocked: true,
+      reason: 'رفض الخادم هذا التغيير',
+    ),
+    PendingChangeSummary(
+      entityType: 'task',
+      title: 'مهمة: حجز المصور',
+      createdAt: DateTime.now().subtract(const Duration(hours: 5, minutes: 1)),
+      blocked: false,
+    ),
+    PendingChangeSummary(
+      entityType: 'cost',
+      title: 'دفعة: قاعة ليالي صنعاء',
+      createdAt: DateTime.now().subtract(const Duration(days: 1, hours: 1)),
+      blocked: false,
     ),
   ];
 }
@@ -583,7 +624,7 @@ void main() {
       shell(dash(_active, now), top: const OfflineStatusBanner()),
       providers: await syncProviders(SyncState.syncError, 2, 1),
       act: () async {
-        await tester.tap(find.byTooltip('عرض تفاصيل المزامنة'));
+        await tester.tap(find.byTooltip('شوف التغييرات اللي تنتظر'));
         await tester.pump(const Duration(milliseconds: 500));
         await tester.pump(const Duration(milliseconds: 500));
       },
@@ -709,6 +750,16 @@ void main() {
     SharedPreferences.setMockInitialValues({
       'aarast.assistant.consent.v1.device': true,
     });
+    // The question's bubble carries the clock time it was asked (the screen
+    // reads DateTime.now()), so these few pixels change every minute. Only
+    // this shot tolerates a difference that small; a moved or missing widget
+    // is far above it.
+    final before = goldenFileComparator;
+    goldenFileComparator = _TolerantComparator(
+      (before as LocalFileComparator).basedir.resolve('now_home_test.dart'),
+      0.0005,
+    );
+    addTearDown(() => goldenFileComparator = before);
     await _shot(
       tester,
       'assistant_answer',
@@ -784,8 +835,10 @@ void main() {
         neighborhood: 'حدة',
         street: null,
         addressNote: null,
-        weddingDate: DateTime(2027, 1, 21),
-        weddingDateUnknown: false,
+        // No date: the countdown reads the real clock, so a date would change
+        // the shot every day.
+        weddingDate: null,
+        weddingDateUnknown: true,
         priorities: const ['budget', 'tasks'],
         currency: 'YER',
         estimatedBudget: '8000000',

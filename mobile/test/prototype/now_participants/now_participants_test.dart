@@ -5,6 +5,10 @@
 library;
 
 import 'package:aarast_mobile/core/network/api_client.dart';
+import 'package:aarast_mobile/core/offline/local_database_json.dart';
+import 'package:aarast_mobile/core/offline/offline_sync_service.dart';
+import 'package:aarast_mobile/core/offline/pending_plan_cleanup.dart';
+import 'package:aarast_mobile/core/preferences/device_preferences.dart';
 import 'package:aarast_mobile/core/session/safe_user.dart';
 import 'package:aarast_mobile/core/storage/auth_storage.dart';
 import 'package:aarast_mobile/core/theme/app_theme.dart';
@@ -19,6 +23,7 @@ import 'package:aarast_mobile/features/auth/providers/auth_controller.dart';
 import 'package:aarast_mobile/features/finance/data/finance_api.dart';
 import 'package:aarast_mobile/features/finance/providers/finance_provider.dart';
 import 'package:aarast_mobile/features/finance/screens/money_budget_screen.dart';
+import 'package:aarast_mobile/features/more/screens/more_screen.dart';
 import 'package:aarast_mobile/features/notifications/data/notifications_api.dart';
 import 'package:aarast_mobile/features/notifications/models/aarast_notification.dart';
 import 'package:aarast_mobile/features/notifications/providers/notifications_provider.dart';
@@ -32,12 +37,17 @@ import 'package:aarast_mobile/features/sharing/providers/sharing_provider.dart';
 import 'package:aarast_mobile/features/sharing/screens/contribution_history_screen.dart';
 import 'package:aarast_mobile/features/sharing/screens/invite_decision_screen.dart';
 import 'package:aarast_mobile/features/sharing/screens/sharing_screen.dart';
+import 'package:aarast_mobile/features/sharing/services/plan_leave_coordinator.dart';
+import 'package:aarast_mobile/features/tasks/data/task_timeline_api.dart';
+import 'package:aarast_mobile/features/tasks/models/task_summary.dart';
+import 'package:aarast_mobile/features/tasks/models/timeline.dart';
+import 'package:aarast_mobile/features/tasks/models/wedding_task.dart';
+import 'package:aarast_mobile/features/tasks/providers/task_timeline_provider.dart';
 import 'package:aarast_mobile/features/wedding_plans/data/wedding_plans_api.dart';
 import 'package:aarast_mobile/features/wedding_plans/models/dashboard_summary.dart';
 import 'package:aarast_mobile/features/wedding_plans/models/wedding_plan.dart';
 import 'package:aarast_mobile/features/wedding_plans/providers/dashboard_summary_provider.dart';
-import 'package:aarast_mobile/features/wedding_plans/providers/wedding_plans_provider.dart';
-import 'package:aarast_mobile/features/wedding_plans/screens/plan_management_screen.dart';
+import 'package:aarast_mobile/features/wedding_plans/screens/participant_home_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -310,11 +320,15 @@ class _SharingApi extends SharingApi {
     this.invites = const [],
     this.members = const [],
     this.planInvites = const [],
+    this.participant = false,
   }) : super(ApiClient(tokenProvider: () async => null));
 
   final List<PlanInvite> invites;
   final List<SharedMember> members;
   final List<PlanInvite> planInvites;
+
+  /// The reader is a participant, not the plan's owner.
+  final bool participant;
 
   @override
   Future<List<PlanInvite>> getMyInvites() async => invites;
@@ -329,7 +343,9 @@ class _SharingApi extends SharingApi {
       );
   @override
   Future<PlanAccessPermissions> getMyPlanPermissions(String id) async =>
-      PlanAccessPermissions.owner(weddingPlanId: id);
+      participant
+      ? PlanAccessPermissions.denied(weddingPlanId: id)
+      : PlanAccessPermissions.owner(weddingPlanId: id);
   @override
   Future<List<SharedMember>> getSharedMembers(String id) async => members;
   @override
@@ -441,8 +457,35 @@ class _PlansApi extends WeddingPlansApi {
       throw const ApiException('not used');
 }
 
+class _TasksApi extends TaskTimelineApi {
+  _TasksApi(super.apiClient, this._tasks);
+  final List<WeddingTask> _tasks;
+  @override
+  Future<List<WeddingTask>> getTasks(String weddingPlanId) async => _tasks;
+  @override
+  Future<Timeline> getTimeline(String weddingPlanId) async => Timeline.empty();
+  @override
+  Future<TaskSummary> getTaskSummary(String weddingPlanId) async =>
+      TaskSummary.empty(weddingPlanId);
+}
+
+// No due day, so the row reads «بدون موعد» whatever today is.
+WeddingTask _task(String id, String title, {bool mine = false}) => WeddingTask(
+  id: id,
+  weddingPlanId: _planId,
+  title: title,
+  status: 'TODO',
+  priority: 'MEDIUM',
+  assigneeUserId: mine ? 'saleh' : null,
+  createdAt: DateTime(2026, 10, 1),
+  updatedAt: DateTime(2026, 10, 1),
+);
+
+/// A participant's open plan: [screen] is x06 «رئيسية المساعد» or q10
+/// «حسابي», both built on the same account paths and dashboard summary.
 Future<(List<SingleChildWidget>, GoRouter)> _workspace({
   required String role,
+  required Widget screen,
   bool tasks = true,
   bool guests = true,
   bool providers = true,
@@ -473,22 +516,45 @@ Future<(List<SingleChildWidget>, GoRouter)> _workspace({
     ),
   );
   final router = GoRouter(
-    routes: [
-      GoRoute(
-        path: '/',
-        builder: (_, _) => const PlanCenterScreen(weddingPlanId: _planId),
-      ),
-    ],
+    routes: [GoRoute(path: '/', builder: (_, _) => screen)],
   );
+  // q10 reads the open plan's summary from the provider, as the shell has it
+  // loaded before «حسابي» opens.
+  final dashboard = DashboardSummaryProvider(weddingPlansApi: api);
+  await dashboard.loadDashboard(_planId);
+  final prefs = await SharedPreferences.getInstance();
+  final database = JsonLocalDatabase(prefs);
+  await database.initialize();
+  final offline = OfflineSyncService(
+    database: database,
+    apiClient: ApiClient(tokenProvider: () async => null),
+  );
+  await offline.refreshStatus();
+  final apiClient = ApiClient(tokenProvider: () async => null);
   return (
     <SingleChildWidget>[
       ChangeNotifierProvider<AccountContextController>.value(value: contexts),
       ChangeNotifierProvider<AuthController>.value(value: auth),
-      ChangeNotifierProvider<WeddingPlansProvider>.value(
-        value: WeddingPlansProvider(api),
+      ChangeNotifierProvider<DashboardSummaryProvider>.value(value: dashboard),
+      ChangeNotifierProvider<TaskTimelineProvider>.value(
+        value: TaskTimelineProvider(
+          _TasksApi(apiClient, [
+            _task('t1', 'رتّب سيارات الزفة', mine: true),
+            _task('t2', 'ذكّر آل الحمدي اللي ما ردّوا'),
+            _task('t3', 'استلم قهوة الضيافة'),
+          ]),
+        ),
       ),
-      ChangeNotifierProvider<DashboardSummaryProvider>.value(
-        value: DashboardSummaryProvider(weddingPlansApi: api),
+      ChangeNotifierProvider<DevicePreferences>.value(
+        value: DevicePreferences(prefs),
+      ),
+      ChangeNotifierProvider<OfflineSyncService>.value(value: offline),
+      Provider<PlanLeaveCoordinator>.value(
+        value: PlanLeaveCoordinator(
+          sharingApi: _SharingApi(),
+          offlineSync: offline,
+          store: PendingPlanCleanupStore(prefs),
+        ),
       ),
       Provider<SharingApi>.value(value: _SharingApi()),
     ],
@@ -569,18 +635,31 @@ void main() {
   setUpAll(loadPreviewAppFonts);
   setUp(() => SharedPreferences.setMockInitialValues({}));
 
+  // [verified]: the phone was proven on the page before, so the verified
+  // account's router resumes this link on the invite itself (p05 onwards);
+  // proving it on this page ends in that resume, never in the invite.
   Future<List<SingleChildWidget>> inviteProviders({
     bool signedIn = false,
     bool setup = false,
+    bool verified = false,
+    String status = 'PENDING',
   }) async {
     final auth = await _auth(signedIn: signedIn, setup: setup);
+    if (verified) {
+      await auth.verifyOtp(
+        phone: '771554220',
+        purpose: 'LOGIN',
+        code: '123456',
+        resumeInviteToken: _token,
+      );
+    }
     final contexts = await _contexts([
       _ctx(role: 'CONTRIBUTOR', planId: _planId, name: 'عرس محمد'),
     ]);
     return [
       ChangeNotifierProvider<AuthController>.value(value: auth),
       ChangeNotifierProvider<SharingProvider>.value(
-        value: SharingProvider(_SharingApi(invites: [_invite()])),
+        value: SharingProvider(_SharingApi(invites: [_invite(status: status)])),
       ),
       ChangeNotifierProvider<AccountContextController>.value(value: contexts),
     ];
@@ -646,43 +725,32 @@ void main() {
     );
   });
 
-  Future<void> verified(WidgetTester tester) async {
-    await enterPhone(tester);
-    await tapKey(tester, const Key('invite-request-otp-button'));
-    await tester.enterText(find.byKey(const Key('invite-otp-field')), '123456');
-    await tester.pump(const Duration(milliseconds: 1100));
-    await tester.pumpAndSettle();
-  }
-
+  // q03: proving the number on this page signs the account in, and the
+  // app's router then resumes the link on the invite (a fresh page holding
+  // the pending resume). Waiting for the code page to settle instead would
+  // never end: the focused code field keeps a blinking cursor alive.
   testWidgets('p05 invite decision', (tester) async {
     await _shot(
       tester,
       'p05_invite_decision',
       InviteDecisionScreen(token: _token),
       h: 1500,
-      providers: await inviteProviders(),
-      act: () async {
-        await verified(tester);
-        await tester.drag(find.byType(Scrollable).last, const Offset(0, 2000));
-        await tester.pumpAndSettle();
-      },
+      providers: await inviteProviders(verified: true),
     );
+    expect(find.byKey(const Key('invite-accept-button')), findsOneWidget);
   });
 
+  // The invite the person already joined from: «ادخل الخطة» (accepting
+  // opens the plan's home, so the joined state is read from the link again).
   testWidgets('p06 invite joined', (tester) async {
     await _shot(
       tester,
       'p06_invite_joined',
       InviteDecisionScreen(token: _token),
       h: 1100,
-      providers: await inviteProviders(),
-      act: () async {
-        await verified(tester);
-        await tapKey(tester, const Key('invite-accept-button'));
-        await tester.drag(find.byType(Scrollable).last, const Offset(0, 2000));
-        await tester.pumpAndSettle();
-      },
+      providers: await inviteProviders(verified: true, status: 'ACCEPTED'),
     );
+    expect(find.byKey(const Key('invite-open-plan-button')), findsOneWidget);
   });
 
   testWidgets('p07 invite decline confirm', (tester) async {
@@ -691,11 +759,15 @@ void main() {
       'p07_invite_decline',
       InviteDecisionScreen(token: _token),
       h: 1100,
-      providers: await inviteProviders(),
+      providers: await inviteProviders(verified: true),
       act: () async {
-        await verified(tester);
-        await tapKey(tester, const Key('invite-decline-button'));
+        await tester.tap(find.byKey(const Key('invite-decline-button')));
+        await tester.pumpAndSettle();
       },
+    );
+    expect(
+      find.byKey(const Key('invite-confirm-decline-button')),
+      findsOneWidget,
     );
   });
 
@@ -725,7 +797,10 @@ void main() {
   });
 
   testWidgets('p09 helper workspace', (tester) async {
-    final (p, r) = await _workspace(role: 'HELPER');
+    final (p, r) = await _workspace(
+      role: 'HELPER',
+      screen: const ParticipantHomeScreen(weddingPlanId: _planId),
+    );
     await _shot(
       tester,
       'p09_workspace_helper',
@@ -739,6 +814,7 @@ void main() {
   testWidgets('p10 viewer workspace (father, view only)', (tester) async {
     final (p, r) = await _workspace(
       role: 'VIEWER',
+      screen: const ParticipantHomeScreen(weddingPlanId: _planId),
       tasks: false,
       guests: false,
       providers: false,
@@ -756,6 +832,7 @@ void main() {
   testWidgets('p11 money viewer workspace', (tester) async {
     final (p, r) = await _workspace(
       role: 'FAMILY',
+      screen: const ParticipantHomeScreen(weddingPlanId: _planId),
       providers: false,
       money: true,
     );
@@ -769,61 +846,49 @@ void main() {
     );
   });
 
-  testWidgets('p12 permissions sheet', (tester) async {
-    final (p, r) = await _workspace(role: 'HELPER');
-    await _shot(
-      tester,
-      'p12_permissions_sheet',
-      const SizedBox(),
-      h: 1100,
-      providers: p,
-      router: r,
-      act: () async {
-        final card = find.byKey(const Key('contributor-permissions-card'));
-        await tester.scrollUntilVisible(
-          card,
-          300,
-          scrollable: find.byType(Scrollable).first,
-        );
-        await tester.pumpAndSettle();
-        await tester.tap(card);
-        await tester.pumpAndSettle();
-      },
-    );
-  });
+  // p12 «صلاحياتي» (the permissions card and its sheet) has no screen any
+  // more: 6c148ab4 removed `contributor-permissions-card`; the participant's
+  // rights show as the locks p15 / q07 / q08 and, when the owner changes
+  // them, as q12's card on the home.
 
+  // q10: the participant's «حسابي».
   testWidgets('p13 account menu', (tester) async {
-    final (p, r) = await _workspace(role: 'HELPER');
+    final (p, r) = await _workspace(
+      role: 'HELPER',
+      screen: const MoreScreen(),
+    );
     await _shot(
       tester,
       'p13_account_menu',
       const SizedBox(),
-      h: 1000,
+      h: 1300,
       providers: p,
       router: r,
-      act: () async {
-        await tester.tap(find.byKey(const Key('contributor-account-action')));
-        await tester.pumpAndSettle();
-      },
     );
+    expect(find.byKey(const ValueKey('participant-leave')), findsOneWidget);
   });
 
   testWidgets('p14 leave confirm', (tester) async {
-    final (p, r) = await _workspace(role: 'HELPER');
+    final (p, r) = await _workspace(
+      role: 'HELPER',
+      screen: const MoreScreen(),
+    );
     await _shot(
       tester,
       'p14_leave_confirm',
       const SizedBox(),
-      h: 844,
+      h: 1300,
       providers: p,
       router: r,
       act: () async {
-        await tester.tap(find.byKey(const Key('contributor-account-action')));
+        final leave = find.byKey(const ValueKey('participant-leave'));
+        await tester.ensureVisible(leave);
         await tester.pumpAndSettle();
-        await tester.tap(find.byKey(const Key('contributor-leave-plan')));
+        await tester.tap(leave);
         await tester.pumpAndSettle();
       },
     );
+    expect(find.byKey(const ValueKey('participant-leave-confirm')), findsOneWidget);
   });
 
   testWidgets('p15 section blocked by permission', (tester) async {
@@ -893,13 +958,15 @@ void main() {
       h: 1100,
       providers: [
         ChangeNotifierProvider<SharingProvider>.value(
-          value: SharingProvider(_SharingApi()),
+          value: SharingProvider(_SharingApi(participant: true)),
         ),
         ChangeNotifierProvider<ContributionHistoryProvider>.value(
-          value: ContributionHistoryProvider(_SharingApi()),
+          value: ContributionHistoryProvider(_SharingApi(participant: true)),
         ),
       ],
     );
+    // The participant reads their own record, kept under their name.
+    expect(find.text('اللي سجّلته'), findsOneWidget);
   });
 
   testWidgets('p20 plan notifications', (tester) async {

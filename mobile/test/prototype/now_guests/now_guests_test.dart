@@ -8,6 +8,7 @@ import 'package:aarast_mobile/core/theme/app_theme.dart';
 import 'package:aarast_mobile/features/guests/data/guests_api.dart';
 import 'package:aarast_mobile/features/guests/models/guest.dart';
 import 'package:aarast_mobile/features/guests/providers/guests_provider.dart';
+import 'package:aarast_mobile/features/guests/screens/guest_details_screen.dart';
 import 'package:aarast_mobile/features/guests/screens/guest_list_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
@@ -101,6 +102,7 @@ Future<void> _shot(
   required List<Guest> guests,
   List<GuestGroup> groups = _groups,
   double h = 1400,
+  Widget? home,
   Future<void> Function()? act,
 }) async {
   tester.view.physicalSize = Size(390 * 2, h * 2);
@@ -121,10 +123,13 @@ Future<void> _shot(
         locale: const Locale('ar'),
         supportedLocales: const [Locale('ar')],
         localizationsDelegates: GlobalMaterialLocalizations.delegates,
-        home: const MediaQuery(
-          data: MediaQueryData(disableAnimations: true),
-          child: GuestListScreen(weddingPlanId: _plan),
+        // Keep the real view size: a bare MediaQueryData has size zero, which
+        // collapses widths that read MediaQuery.sizeOf (the section link).
+        builder: (context, child) => MediaQuery(
+          data: MediaQuery.of(context).copyWith(disableAnimations: true),
+          child: child!,
         ),
+        home: home ?? const GuestListScreen(weddingPlanId: _plan),
       ),
     ),
   );
@@ -157,7 +162,8 @@ void main() {
       guests: _guests,
       h: 1100,
       act: () async {
-        await tester.tap(find.byType(FloatingActionButton));
+        // D32: guests add from the header «+».
+        await tester.tap(find.byKey(const ValueKey('guests-add')));
         await tester.pump(const Duration(milliseconds: 500));
       },
     );
@@ -170,13 +176,40 @@ void main() {
       guests: _guests,
       h: 1500,
       act: () async {
-        await tester.tap(find.byType(FloatingActionButton));
+        await tester.tap(find.byKey(const ValueKey('guests-add')));
         await tester.pump(const Duration(milliseconds: 500));
-        await tester.ensureVisible(find.text('تفاصيل إضافية'));
+        final more = find.byKey(const ValueKey('guest-form-more'));
+        await tester.ensureVisible(more);
         await tester.pump(const Duration(milliseconds: 300));
-        await tester.tap(find.text('تفاصيل إضافية'));
+        await tester.tap(more);
         await tester.pump(const Duration(milliseconds: 500));
       },
+    );
+  });
+
+  testWidgets('guests of one family', (tester) async {
+    await _shot(
+      tester,
+      'guests_family',
+      guests: _guests,
+      h: 900,
+      act: () async {
+        await tester.tap(find.byKey(const ValueKey('guest-group-g1')));
+        await tester.pump(const Duration(milliseconds: 500));
+      },
+    );
+  });
+
+  testWidgets('guest details', (tester) async {
+    await _shot(
+      tester,
+      'guest_details',
+      guests: _guests,
+      home: const GuestDetailsScreen(
+        weddingPlanId: _plan,
+        guestId: 'guest-3',
+      ),
+      h: 900,
     );
   });
 
@@ -185,29 +218,44 @@ void main() {
       tester,
       'guest_edit',
       guests: _guests,
+      home: const GuestDetailsScreen(
+        weddingPlanId: _plan,
+        guestId: 'guest-1',
+      ),
       h: 1500,
       act: () async {
-        await tester.tap(find.text('عبدالله الحمدي'));
+        // e07: «عدّل بياناته» is in the details menu.
+        await tester.tap(find.byKey(const ValueKey('guest-menu')));
+        // The route's animation starts on its first frame; a second pump
+        // lets it finish before the menu can be tapped.
         await tester.pump(const Duration(milliseconds: 500));
-        final more = find.text('تفاصيل إضافية');
-        if (more.evaluate().isNotEmpty) {
-          await tester.ensureVisible(more.first);
-          await tester.pump(const Duration(milliseconds: 300));
-          await tester.tap(more.first);
-          await tester.pump(const Duration(milliseconds: 500));
+        await tester.pump(const Duration(milliseconds: 500));
+        await tester.tap(find.text('عدّل بياناته'));
+        for (var i = 0; i < 6; i++) {
+          await tester.pump(const Duration(milliseconds: 250));
         }
+        final more = find.byKey(const ValueKey('guest-form-more'));
+        await tester.ensureVisible(more);
+        await tester.pump(const Duration(milliseconds: 300));
+        await tester.tap(more);
+        await tester.pump(const Duration(milliseconds: 500));
       },
     );
   });
 
-  testWidgets('guest row menu', (tester) async {
+  testWidgets('guest details menu', (tester) async {
     await _shot(
       tester,
       'guest_menu',
       guests: _guests,
-      h: 1100,
+      home: const GuestDetailsScreen(
+        weddingPlanId: _plan,
+        guestId: 'guest-3',
+      ),
+      h: 900,
       act: () async {
-        await tester.tap(find.byTooltip('إجراءات الضيف').at(2));
+        await tester.tap(find.byKey(const ValueKey('guest-menu')));
+        await tester.pump(const Duration(milliseconds: 500));
         await tester.pump(const Duration(milliseconds: 500));
       },
     );
@@ -220,7 +268,7 @@ void main() {
       guests: _guests,
       h: 1100,
       act: () async {
-        await tester.tap(find.byKey(const ValueKey('guest-groups-manage')));
+        await tester.tap(find.text('المجموعات'));
         await tester.pump(const Duration(milliseconds: 500));
       },
     );

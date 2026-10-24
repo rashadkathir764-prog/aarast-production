@@ -145,7 +145,8 @@ void main() {
       const SmartWelcomeScreen(),
       providers: await gateway(),
       act: () async {
-        await tester.tap(find.text('إنشاء خطتك'));
+        // a02 «أهلًا فيك» → «ابدأ» → a02b «خطة مين؟».
+        await tester.tap(find.text('ابدأ'));
         await tester.pumpAndSettle();
         await tester.tap(find.text('العريس'));
         await tester.pumpAndSettle();
@@ -161,7 +162,7 @@ void main() {
       h: 1000,
       providers: await gateway(),
       act: () async {
-        await tester.tap(find.text('إنشاء خطتك'));
+        await tester.tap(find.text('ابدأ'));
         await tester.pumpAndSettle();
         await tester.tap(find.text('العريس'));
         await tester.pumpAndSettle();
@@ -253,12 +254,36 @@ void main() {
     );
   });
 
+  // w09: the account already has an open plan, so the phone plan meets it in
+  // the choice sheet (real counts for both).
   testWidgets('n11 local draft', (tester) async {
     SharedPreferences.setMockInitialValues({});
     final prefs = await SharedPreferences.getInstance();
     await _shot(
       tester,
       'n11_local_draft',
+      LocalPlanMigrationScreen(
+        snapshot: _snapshot,
+        migrationService: _Migration(
+          GuestOnboardingStorage(prefs),
+          account: const AccountPlanCounts(items: 8, tasks: 12),
+        ),
+        onFinished: (_) {},
+      ),
+      h: 1000,
+      providers: [Provider<AuthStorage>.value(value: AuthStorage(prefs))],
+    );
+    expect(find.byType(LocalPlanMigrationScreen), findsOneWidget);
+  });
+
+  // An account without an open plan saves the phone plan at once; here the
+  // save fails, so the screen offers a retry or dropping the phone plan.
+  testWidgets('n11 local draft save failed', (tester) async {
+    SharedPreferences.setMockInitialValues({});
+    final prefs = await SharedPreferences.getInstance();
+    await _shot(
+      tester,
+      'n11b_local_draft_failed',
       LocalPlanMigrationScreen(
         snapshot: _snapshot,
         migrationService: _Migration(GuestOnboardingStorage(prefs)),
@@ -320,7 +345,7 @@ class _Vault implements SensitiveValueVault {
 }
 
 class _Migration extends LocalPlanMigrationService {
-  _Migration(GuestOnboardingStorage storage)
+  _Migration(GuestOnboardingStorage storage, {this.account})
     : super(
         guestStorage: storage,
         weddingPlansApi: WeddingPlansApi(
@@ -328,6 +353,12 @@ class _Migration extends LocalPlanMigrationService {
         ),
         financeApi: FinanceApi(ApiClient(tokenProvider: () async => null)),
       );
+
+  /// The account's open plan; null means the account has none.
+  final AccountPlanCounts? account;
+
+  @override
+  Future<AccountPlanCounts?> accountPlanCounts() async => account;
 
   @override
   Future<OnboardingCompleteResponse> migrate(LocalPlanSnapshot snapshot) =>

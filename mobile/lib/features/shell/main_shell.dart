@@ -1,41 +1,20 @@
 import 'package:flutter/material.dart';
-import 'package:go_router/go_router.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:provider/provider.dart';
 
 import '../../core/diagnostics/app_logger.dart';
 import '../../core/offline/offline_status_widgets.dart';
-import '../../core/offline/offline_sync_service.dart';
-import '../../core/offline/sync_status.dart';
-import '../../core/routing/app_router.dart';
 import '../../core/routing/root_tab_back_scope.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/widgets/aarast_ui.dart';
 import '../account_contexts/account_contexts_api.dart'
     show AccountContext, AccountContextController, AccountContextRole;
-import '../finance/finance_api.dart'
-    show
-        FinanceProvider,
-        MoneyCostActionIntent,
-        MoneyOverviewScreen,
-        shouldShowMoneyStarter,
-        showMoneyCostActionPicker;
+import '../finance/finance_api.dart' show MoneyOverviewScreen;
 import '../guests/guests_api.dart' show GuestListScreen;
 import '../marketplace/marketplace_api.dart' show ProviderMarketplaceScreen;
 import '../tasks/tasks_api.dart' show TaskTimelineScreen;
 import '../wedding_plans/wedding_plans_api.dart'
-    show
-        DashboardSummaryProvider,
-        PlanCenterScreen,
-        QuickAddContext,
-        QuickAddSignals,
-        WeddingPlanDashboardScreen,
-        buildCanonicalQuickAddActions,
-        lastCanonicalQuickAddAction,
-        lastCanonicalQuickAddActionId,
-        rememberCanonicalQuickAddAction,
-        shouldShowPlanQuickAdd;
-import 'widgets/aarast_plan_chrome.dart';
+    show PlanCenterScreen, WeddingPlanDashboardScreen;
 import 'widgets/plan_shell_chrome.dart';
 
 class MainShell extends StatelessWidget {
@@ -86,7 +65,6 @@ class _OwnerMainShellState extends State<_OwnerMainShell> {
   // 0: الرئيسية, 1: المال, 2: المهام, 3: الضيوف, 4: المزودين.
   int _index = 0;
   final Set<int> _visitedTabs = {0};
-  int _guestAddRequest = 0;
 
   void _onItemTapped(int index) {
     appLogEvent(
@@ -106,144 +84,6 @@ class _OwnerMainShellState extends State<_OwnerMainShell> {
     });
   }
 
-  void _showQuickAdd() {
-    final selectedPlanId = widget.weddingPlanId;
-    if (_index == 2) {
-      rememberCanonicalQuickAddAction(selectedPlanId, 'task');
-      context.push(AppRouter.createTask(selectedPlanId));
-      return;
-    }
-    if (_index == 3) {
-      rememberCanonicalQuickAddAction(selectedPlanId, 'guest');
-      setState(() {
-        _visitedTabs.add(3);
-        _guestAddRequest += 1;
-      });
-      return;
-    }
-    showAarastQuickActionSheet(context, actions: _quickActions(selectedPlanId));
-  }
-
-  void _runLastQuickAdd() {
-    final planId = widget.weddingPlanId;
-    switch (lastCanonicalQuickAddActionId(planId)) {
-      case 'task':
-        context.push(AppRouter.createTask(planId));
-        return;
-      case 'guest':
-        setState(() {
-          _visitedTabs.add(3);
-          _guestAddRequest += 1;
-        });
-        return;
-      case null:
-        _showQuickAdd();
-        return;
-      default:
-        final actions = _quickActions(planId, closeSheetBeforeOpen: false);
-        final action = lastCanonicalQuickAddAction(planId, actions);
-        if (action == null) {
-          _showQuickAdd();
-        } else {
-          action.onTap();
-        }
-        return;
-    }
-  }
-
-  List<AarastQuickAction> _quickActions(
-    String planId, {
-    bool closeSheetBeforeOpen = true,
-  }) {
-    final dashboard = context.read<DashboardSummaryProvider>().summary;
-    Future<void> open(String route, {bool refreshDashboard = false}) async {
-      if (closeSheetBeforeOpen) {
-        Navigator.of(context, rootNavigator: true).pop();
-      }
-      if (!mounted) return;
-      final changed = await context.push<bool>(route);
-      if (refreshDashboard && changed == true && mounted) {
-        await context.read<DashboardSummaryProvider>().loadDashboard(planId);
-      }
-    }
-
-    return buildCanonicalQuickAddActions(
-      context,
-      planId: planId,
-      canManageMoney: _canManageMoney(planId),
-      contextOrder: _quickAddContextForIndex(_index),
-      refreshDashboardOnMoney: true,
-      signals: dashboard?.planId == planId
-          ? QuickAddSignals.fromDashboard(dashboard!)
-          : null,
-      onRecordPayment: () => _openMoneyCostAction(
-        planId,
-        MoneyCostActionIntent.payment,
-        closeQuickSheet: closeSheetBeforeOpen,
-      ),
-      onAddPaymentSchedule: () => _openMoneyCostAction(
-        planId,
-        MoneyCostActionIntent.schedule,
-        closeQuickSheet: closeSheetBeforeOpen,
-      ),
-      openRoute: open,
-    );
-  }
-
-  Future<void> _openMoneyCostAction(
-    String planId,
-    MoneyCostActionIntent intent, {
-    required bool closeQuickSheet,
-  }) async {
-    if (closeQuickSheet) {
-      await Navigator.of(context, rootNavigator: true).maybePop();
-      await Future<void>.delayed(Duration.zero);
-    }
-    if (!mounted) return;
-
-    final finance = context.read<FinanceProvider>();
-    final selection = await showMoneyCostActionPicker(
-      context,
-      intent: intent,
-      costs: finance.costs,
-      currency: finance.summary.currency,
-    );
-    if (!mounted || selection == null) return;
-
-    final route = selection.createCost
-        ? AppRouter.moneyCostCreate(planId)
-        : intent == MoneyCostActionIntent.payment
-        ? AppRouter.moneyPaymentCreate(planId, selection.cost!.id)
-        : AppRouter.moneyScheduleCreate(planId, selection.cost!.id);
-    final changed = await context.push<bool>(route, extra: selection.cost);
-    if (changed == true && mounted) {
-      await Future.wait([
-        finance.loadMoney(planId),
-        context.read<DashboardSummaryProvider>().loadDashboard(planId),
-      ]);
-    }
-  }
-
-  bool _canManageMoney(String planId) {
-    final finance = context.read<FinanceProvider?>();
-    if (finance?.loadedPlanId == planId) {
-      return finance?.canManageMoney ?? false;
-    }
-    final summary = context.read<DashboardSummaryProvider>().summary;
-    return summary?.planId == planId &&
-        (summary?.permissions.canManageMoney ?? false);
-  }
-
-  QuickAddContext _quickAddContextForIndex(int index) {
-    return switch (index) {
-      1 => QuickAddContext.money,
-      2 => QuickAddContext.tasks,
-      3 => QuickAddContext.guests,
-      4 => QuickAddContext.providers,
-      _ => QuickAddContext.dashboard,
-    };
-  }
-
   @override
   Widget build(BuildContext context) {
     final shellTheme = Theme.of(context);
@@ -256,21 +96,6 @@ class _OwnerMainShellState extends State<_OwnerMainShell> {
       );
     }
     final selectedPlanId = widget.weddingPlanId;
-    final finance = context.watch<FinanceProvider?>();
-    final canManageCurrentMoney =
-        finance?.loadedPlanId == selectedPlanId &&
-        (finance?.canManageMoney ?? false);
-    final moneyStarterVisible =
-        _index == 1 && finance != null && shouldShowMoneyStarter(finance);
-    final offline =
-        context.watch<OfflineSyncService?>()?.state == SyncState.offline;
-    final showQuickFab =
-        !moneyStarterVisible &&
-        shouldShowPlanQuickAdd(
-          tabIndex: _index,
-          canManageMoney: _index != 1 || canManageCurrentMoney,
-          guestsWaitForConnection: offline,
-        );
 
     return RootTabBackScope(
       activeIndex: _index,
@@ -281,11 +106,8 @@ class _OwnerMainShellState extends State<_OwnerMainShell> {
           key: ValueKey('owner-shell-chrome-${widget.contextKey}'),
           activeIndex: _index,
           onTabSelected: _onItemTapped,
-          showQuickFab: showQuickFab,
           // The same offline line as the plan-route shell (c04, w29).
           topStatus: const OfflineStatusBanner(),
-          onQuickAdd: _showQuickAdd,
-          onQuickAddLongPress: _runLastQuickAdd,
           backgroundColor: AppTheme.canvas,
           body: IndexedStack(
             key: ValueKey('owner-indexed-stack-${widget.contextKey}'),
@@ -317,7 +139,6 @@ class _OwnerMainShellState extends State<_OwnerMainShell> {
                 TaskTimelineScreen(
                   key: ValueKey('tasks-$selectedPlanId'),
                   weddingPlanId: selectedPlanId,
-                  showEmptyCreateAction: false,
                 ),
               ),
 
@@ -327,8 +148,6 @@ class _OwnerMainShellState extends State<_OwnerMainShell> {
                 GuestListScreen(
                   key: ValueKey('guests-$selectedPlanId'),
                   weddingPlanId: selectedPlanId,
-                  showLocalFab: false,
-                  openAddRequest: _guestAddRequest,
                 ),
               ),
 

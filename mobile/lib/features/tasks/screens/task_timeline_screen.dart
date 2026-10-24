@@ -38,12 +38,10 @@ part 'task_timeline_screen.starter.dart';
 class TaskTimelineScreen extends StatefulWidget {
   const TaskTimelineScreen({
     required this.weddingPlanId,
-    this.showEmptyCreateAction = true,
     super.key,
   });
 
   final String weddingPlanId;
-  final bool showEmptyCreateAction;
 
   @override
   State<TaskTimelineScreen> createState() => _TaskTimelineScreenState();
@@ -130,8 +128,8 @@ class _TaskTimelineScreenState extends State<TaskTimelineScreen> {
         section: JourneySection.tasks,
         emptyIcon: LucideIcons.listChecks,
         emptyTitle: 'ما فيه مهام بعد',
-        emptyAction: widget.showEmptyCreateAction ? 'أضف مهمة' : null,
-        onEmptyAction: widget.showEmptyCreateAction ? _add : null,
+        emptyAction: 'أضف مهمة',
+        onEmptyAction: _add,
       );
     } else {
       final groups = _grouped(visible, today);
@@ -195,12 +193,7 @@ class _TaskTimelineScreenState extends State<TaskTimelineScreen> {
         onRefresh: () => provider.load(widget.weddingPlanId),
         child: ListView(
           physics: const AlwaysScrollableScrollPhysics(),
-          padding: const EdgeInsets.fromLTRB(
-            16,
-            12,
-            16,
-            AarastV3Density.pageBottomWithQuickAction,
-          ),
+          padding: const EdgeInsets.fromLTRB(16, 12, 16, 32),
           children: [
             JourneyTabHeader(
               title: 'المهام',
@@ -213,13 +206,12 @@ class _TaskTimelineScreenState extends State<TaskTimelineScreen> {
                     tooltip: 'شارك المهام على واتساب',
                     onPressed: () => _share(tasks),
                   ),
-                if (widget.showEmptyCreateAction)
-                  JourneyRoundButton(
-                    key: const Key('tasks-add'),
-                    icon: LucideIcons.plus,
-                    tooltip: 'مهمة جديدة',
-                    onPressed: _add,
-                  ),
+                JourneyRoundButton(
+                  key: const Key('tasks-add'),
+                  icon: LucideIcons.plus,
+                  tooltip: 'مهمة جديدة',
+                  onPressed: _add,
+                ),
               ],
             ),
             const SizedBox(height: 12),

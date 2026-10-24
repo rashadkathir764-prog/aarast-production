@@ -11,16 +11,13 @@ import '../../../core/theme/aarast_design_tokens.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/aarast_ui.dart';
 import '../../auth/auth_api.dart' show AuthActionGuard;
-import '../../shell/shell_api.dart'
-    show PlanShellChrome, showAarastQuickActionSheet;
+import '../../shell/shell_api.dart' show PlanShellChrome;
 import '../../wedding_plans/wedding_plans_api.dart'
     show
         AarastDashboardView,
         DashboardImportantItem,
         DashboardSummary,
-        DashboardSummaryProvider,
-        QuickAddSignals,
-        buildCanonicalQuickAddActions;
+        DashboardSummaryProvider;
 import '../data/dashboard_summary_sources.dart';
 
 class LocalGuestDashboardScreen extends StatefulWidget {
@@ -65,8 +62,6 @@ class _LocalGuestDashboardScreenState extends State<LocalGuestDashboardScreen> {
 
     return PlanShellChrome(
       activeIndex: 0,
-      showQuickFab: true,
-      onQuickAdd: () => _showQuickAdd(context, planId),
       onTabSelected: (index) {
         switch (index) {
           case 0:
@@ -113,33 +108,6 @@ class _LocalGuestDashboardScreenState extends State<LocalGuestDashboardScreen> {
             _openLocalDashboardItem(context, planId, item),
         onOpenNextStep: () =>
             _openLocalNextStep(context, planId, dashboardSummary),
-      ),
-    );
-  }
-
-  void _showQuickAdd(BuildContext context, String planId) {
-    Future<void> open(String route, {bool refreshDashboard = false}) async {
-      Navigator.of(context, rootNavigator: true).pop();
-      if (!mounted) return;
-      await context.push(route);
-      if (mounted) await _refreshSummary();
-    }
-
-    void requestQuote() {
-      Navigator.of(context, rootNavigator: true).pop();
-      if (!mounted) return;
-      _requireAccountForQuote(context);
-    }
-
-    showAarastQuickActionSheet(
-      context,
-      actions: buildCanonicalQuickAddActions(
-        context,
-        planId: planId,
-        canManageMoney: true,
-        signals: QuickAddSignals.fromDashboard(_summary.toDashboardSummary()),
-        openRoute: open,
-        onRequestQuote: requestQuote,
       ),
     );
   }
@@ -277,14 +245,6 @@ class _LocalGuestDashboardScreenState extends State<LocalGuestDashboardScreen> {
       context,
       reason:
           'الإشعارات الحسابية تحتاج حساباً حتى نربط التنبيهات بخطتك ونحفظها بأمان.',
-    );
-  }
-
-  Future<bool> _requireAccountForQuote(BuildContext context) {
-    return AuthActionGuard.requireAccount(
-      context,
-      reason:
-          'طلب عرض سعر يحتاج حساباً حتى نربطه بخطتك ونحفظ ردود المزودين بأمان.',
     );
   }
 

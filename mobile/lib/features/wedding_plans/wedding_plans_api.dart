@@ -28,17 +28,6 @@ export 'screens/wedding_plan_dashboard_screen.dart'
 export 'utils/plan_pulse_sync.dart'
     show publishGuestPlanPulse, publishTaskPlanPulse;
 export 'widgets/dashboard/aarast_dashboard_view.dart' show AarastDashboardView;
-export 'widgets/quick_add_actions.dart'
-    show
-        QuickAddContext,
-        QuickAddSignals,
-        buildCanonicalQuickAddActions,
-        lastCanonicalQuickAddAction,
-        lastCanonicalQuickAddActionId,
-        planQuickAddIconForTab,
-        planQuickAddLabelForTab,
-        rememberCanonicalQuickAddAction,
-        shouldShowPlanQuickAdd;
 export 'widgets/postpone_sheet.dart' show showPostponeSheet;
 export 'widgets/wedding_plan_creation_form.dart'
     show WeddingPlanCreationFields, WeddingPlanCreationScope;

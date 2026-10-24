@@ -86,10 +86,6 @@ abstract final class AarastV3Density {
   static const pageHorizontal = AarastV3Space.x5;
   static const pageTop = AarastV3Space.x3;
   static const pageBottom = 112.0;
-  // Root plan tabs use an extended quick action above a floating navigation
-  // surface. Lists need enough trailing space for their final row to scroll
-  // completely clear of both controls.
-  static const pageBottomWithQuickAction = 184.0;
   static const sectionGap = AarastV3Space.x5;
   static const compactGap = AarastV3Space.x3;
   static const rowMinHeight = 68.0;

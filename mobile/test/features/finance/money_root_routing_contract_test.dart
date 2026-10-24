@@ -15,9 +15,6 @@ void main() {
   final planShell = File(
     'lib/features/shell/screens/wedding_plan_shell.dart',
   ).readAsStringSync();
-  final quickActions = File(
-    'lib/features/wedding_plans/widgets/quick_add_actions.dart',
-  ).readAsStringSync();
 
   test(
     'the application root wires only FinanceApi and MoneyOverviewScreen',
@@ -68,15 +65,17 @@ void main() {
     }
   });
 
-  test('both shells and quick add use the one money vocabulary', () {
+  test('the plan shell uses the one money vocabulary and no quick add', () {
     expect(planShell, contains("'money'"));
     expect(planShell, isNot(contains("'finance'")));
-    expect(quickActions, contains('AppRouter.moneyCostCreate(planId)'));
-    expect(quickActions, contains('AppRouter.moneyCategoryCreate(planId)'));
-    expect(quickActions, contains('onRecordPayment'));
-    expect(quickActions, contains('onAddPaymentSchedule'));
-    expect(quickActions, isNot(contains('AppRouter.moneyBudget(planId)')));
-    expect(quickActions, isNot(contains('createFinancialCommitment')));
-    expect(quickActions, isNot(contains('recordPayment')));
+    // The design draws no floating add (b02, c01): money adds from «أضف بند»
+    // and an agreement's own page.
+    expect(
+      File('lib/features/wedding_plans/widgets/quick_add_actions.dart')
+          .existsSync(),
+      isFalse,
+    );
+    expect(planShell, isNot(contains('QuickAdd')));
+    expect(mainShell, isNot(contains('QuickAdd')));
   });
 }

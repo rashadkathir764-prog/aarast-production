@@ -307,7 +307,7 @@ void main() {
     expect(find.text('tasks-opened'), findsOneWidget);
   });
 
-  testWidgets('guest smart plus opens guests without a login blocker', (
+  testWidgets('guest opens guests from the tab without a login blocker', (
     tester,
   ) async {
     SharedPreferences.setMockInitialValues({});
@@ -342,45 +342,19 @@ void main() {
       ),
     );
 
-    await tester.tap(find.byKey(const ValueKey('aarast-quick-action')));
-    for (var i = 0; i < 10; i++) {
-      await tester.pump(const Duration(milliseconds: 80));
-    }
-    expect(find.text('إضافة ضيف'), findsOneWidget);
-    await tester.tap(find.text('إضافة ضيف'), warnIfMissed: false);
+    // No floating add over the home (b02); the guests open from their tab.
+    expect(find.byKey(const ValueKey('aarast-quick-action')), findsNothing);
+    final guestsNav = find.descendant(
+      of: find.byType(AarastPlanNavigationBar),
+      matching: find.text('الضيوف'),
+    );
+    await tester.tap(guestsNav, warnIfMissed: false);
     for (var i = 0; i < 10; i++) {
       await tester.pump(const Duration(milliseconds: 80));
     }
 
     expect(find.text('guests-opened'), findsOneWidget);
-  });
-
-  testWidgets('guest smart plus quote request remains account-gated', (
-    tester,
-  ) async {
-    SharedPreferences.setMockInitialValues({});
-    final preferences = await SharedPreferences.getInstance();
-    final authStorage = AuthStorage(preferences);
-    final summary = LocalGuestDashboardSummary.fromPlan(_guestPlan());
-
-    await tester.pumpWidget(
-      Provider<AuthStorage>.value(
-        value: authStorage,
-        child: MaterialApp(home: LocalGuestDashboardScreen(summary: summary)),
-      ),
-    );
-
-    await tester.tap(find.byKey(const ValueKey('aarast-quick-action')));
-    for (var i = 0; i < 10; i++) {
-      await tester.pump(const Duration(milliseconds: 80));
-    }
-
-    await tester.tap(find.text('طلب عرض سعر'), warnIfMissed: false);
-    for (var i = 0; i < 10; i++) {
-      await tester.pump(const Duration(milliseconds: 80));
-    }
-
-    expect(find.text('تسجيل الدخول'), findsOneWidget);
+    expect(find.text('تسجيل الدخول'), findsNothing);
   });
 }
 

@@ -229,28 +229,21 @@ List<RouteBase> _planShellRoutes() => [
         path: '/wedding-plans/:id/tasks',
         builder: (context, state) {
           final id = state.pathParameters['id'] ?? '';
-          return TaskTimelineScreen(
-            weddingPlanId: id,
-            showEmptyCreateAction: false,
-          );
+          return TaskTimelineScreen(weddingPlanId: id);
         },
       ),
       GoRoute(
         path: '/wedding-plans/:id/guests/add',
         builder: (context, state) {
           final id = state.pathParameters['id'] ?? '';
-          return GuestListScreen(
-            weddingPlanId: id,
-            showLocalFab: false,
-            openAddOnStart: true,
-          );
+          return GuestListScreen(weddingPlanId: id, openAddOnStart: true);
         },
       ),
       GoRoute(
         path: '/wedding-plans/:id/guests',
         builder: (context, state) {
           final id = state.pathParameters['id'] ?? '';
-          return GuestListScreen(weddingPlanId: id, showLocalFab: false);
+          return GuestListScreen(weddingPlanId: id);
         },
       ),
       GoRoute(

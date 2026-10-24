@@ -1645,7 +1645,7 @@ const r19ProviderPortalApi = Object.freeze({
 // finance owner API, from the migration service and the entry screen that
 // builds it (D31); +1 for w38 knowing a plan kept on the phone, which has
 // no reminder to send, through the auth owner API (D31).
-const r19LegalRecordCount = 200;
+const r19LegalRecordCount = 197;
 const trackedOwnerApiContracts = [
   {
     area: 'features/account_contexts',
@@ -1771,10 +1771,6 @@ const trackedOwnerApiContracts = [
           'PaymentScheduleFormScreen',
           'PaymentSchedulesScreen',
         ],
-      },
-      {
-        uri: 'widgets/money_cost_action_picker.dart',
-        show: ['MoneyCostActionIntent', 'showMoneyCostActionPicker'],
       },
       {
         uri: 'widgets/money_input_formatter.dart',
@@ -2050,12 +2046,7 @@ const trackedOwnerApiContracts = [
       { uri: 'screens/wedding_plan_shell.dart', show: ['WeddingPlanShell'] },
       {
         uri: 'widgets/aarast_plan_chrome.dart',
-        show: [
-          'AarastNavigationItem',
-          'AarastPlanNavigationBar',
-          'AarastQuickAction',
-          'showAarastQuickActionSheet',
-        ],
+        show: ['AarastNavigationItem', 'AarastPlanNavigationBar'],
       },
       { uri: 'widgets/plan_shell_chrome.dart', show: ['PlanShellChrome'] },
     ],
@@ -2164,20 +2155,6 @@ const trackedOwnerApiContracts = [
       {
         uri: 'widgets/dashboard/aarast_dashboard_view.dart',
         show: ['AarastDashboardView'],
-      },
-      {
-        uri: 'widgets/quick_add_actions.dart',
-        show: [
-          'QuickAddContext',
-          'QuickAddSignals',
-          'buildCanonicalQuickAddActions',
-          'lastCanonicalQuickAddAction',
-          'lastCanonicalQuickAddActionId',
-          'planQuickAddIconForTab',
-          'planQuickAddLabelForTab',
-          'rememberCanonicalQuickAddAction',
-          'shouldShowPlanQuickAdd',
-        ],
       },
       {
         uri: 'widgets/postpone_sheet.dart',
@@ -2815,11 +2792,6 @@ const trackedPlanningBatchContracts = [
     show: ['WeddingDayModeStatus', 'WeddingDayPhase', 'resolveWeddingDayMode'],
   },
   {
-    source: 'mobile/lib/features/wedding_plans/widgets/quick_add_actions.dart',
-    target: 'mobile/lib/features/shell/shell_api.dart',
-    show: ['AarastQuickAction'],
-  },
-  {
     source: 'mobile/lib/features/wedding_plans/widgets/wedding_plan_creation_form.dart',
     target: 'mobile/lib/features/onboarding/onboarding_api.dart',
     show: ['LocationPickerSection'],
@@ -2907,7 +2879,7 @@ const trackedShellEntryBatchContracts = [
   {
     source: 'mobile/lib/features/home/screens/local_guest_dashboard_screen.dart',
     target: 'mobile/lib/features/shell/shell_api.dart',
-    show: ['PlanShellChrome', 'showAarastQuickActionSheet'],
+    show: ['PlanShellChrome'],
   },
   {
     source: 'mobile/lib/features/home/screens/local_guest_dashboard_screen.dart',
@@ -2917,8 +2889,6 @@ const trackedShellEntryBatchContracts = [
       'DashboardImportantItem',
       'DashboardSummary',
       'DashboardSummaryProvider',
-      'QuickAddSignals',
-      'buildCanonicalQuickAddActions',
     ],
   },
   {
@@ -2929,13 +2899,7 @@ const trackedShellEntryBatchContracts = [
   {
     source: 'mobile/lib/features/shell/main_shell.dart',
     target: 'mobile/lib/features/finance/finance_api.dart',
-    show: [
-      'FinanceProvider',
-      'MoneyCostActionIntent',
-      'MoneyOverviewScreen',
-      'shouldShowMoneyStarter',
-      'showMoneyCostActionPicker',
-    ],
+    show: ['MoneyOverviewScreen'],
   },
   {
     source: 'mobile/lib/features/shell/main_shell.dart',
@@ -2955,18 +2919,7 @@ const trackedShellEntryBatchContracts = [
   {
     source: 'mobile/lib/features/shell/main_shell.dart',
     target: 'mobile/lib/features/wedding_plans/wedding_plans_api.dart',
-    show: [
-      'DashboardSummaryProvider',
-      'PlanCenterScreen',
-      'QuickAddContext',
-      'QuickAddSignals',
-      'WeddingPlanDashboardScreen',
-      'buildCanonicalQuickAddActions',
-      'lastCanonicalQuickAddAction',
-      'lastCanonicalQuickAddActionId',
-      'rememberCanonicalQuickAddAction',
-      'shouldShowPlanQuickAdd',
-    ],
+    show: ['PlanCenterScreen', 'WeddingPlanDashboardScreen'],
   },
   {
     source: 'mobile/lib/features/shell/screens/wedding_plan_shell.dart',
@@ -2977,16 +2930,6 @@ const trackedShellEntryBatchContracts = [
     source: 'mobile/lib/features/shell/screens/wedding_plan_shell.dart',
     target: 'mobile/lib/features/auth/auth_api.dart',
     show: ['AuthActionGuard'],
-  },
-  {
-    source: 'mobile/lib/features/shell/screens/wedding_plan_shell.dart',
-    target: 'mobile/lib/features/finance/finance_api.dart',
-    show: [
-      'FinanceProvider',
-      'MoneyCostActionIntent',
-      'shouldShowMoneyStarter',
-      'showMoneyCostActionPicker',
-    ],
   },
   {
     source: 'mobile/lib/features/shell/screens/wedding_plan_shell.dart',
@@ -3001,22 +2944,7 @@ const trackedShellEntryBatchContracts = [
   {
     source: 'mobile/lib/features/shell/screens/wedding_plan_shell.dart',
     target: 'mobile/lib/features/wedding_plans/wedding_plans_api.dart',
-    show: [
-      'DashboardSummary',
-      'DashboardSummaryProvider',
-      'QuickAddContext',
-      'QuickAddSignals',
-      'buildCanonicalQuickAddActions',
-      'lastCanonicalQuickAddAction',
-      'lastCanonicalQuickAddActionId',
-      'rememberCanonicalQuickAddAction',
-      'shouldShowPlanQuickAdd',
-    ],
-  },
-  {
-    source: 'mobile/lib/features/shell/widgets/plan_shell_chrome.dart',
-    target: 'mobile/lib/features/wedding_plans/wedding_plans_api.dart',
-    show: ['planQuickAddIconForTab', 'planQuickAddLabelForTab'],
+    show: ['DashboardSummary', 'DashboardSummaryProvider'],
   },
   {
     source: 'mobile/lib/features/welcome_gateway/screens/smart_welcome_screen.dart',

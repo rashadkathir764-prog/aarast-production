@@ -27,9 +27,7 @@ import 'package:aarast_mobile/features/onboarding/data/guest_onboarding_storage.
 import 'package:aarast_mobile/features/onboarding/models/guest_onboarding_draft.dart';
 import 'package:aarast_mobile/features/sharing/data/sharing_api.dart';
 import 'package:aarast_mobile/features/sharing/models/shared_wedding_plan.dart';
-import 'package:aarast_mobile/features/shell/widgets/aarast_plan_chrome.dart';
 import 'package:aarast_mobile/features/shell/widgets/plan_shell_chrome.dart';
-import 'package:aarast_mobile/features/wedding_plans/widgets/quick_add_actions.dart';
 import 'package:aarast_mobile/features/tasks/models/wedding_task.dart';
 import 'package:aarast_mobile/features/wedding_day/widgets/wedding_day_mode_view.dart';
 import 'package:aarast_mobile/features/wedding_plans/data/plan_assistant_api.dart';
@@ -366,9 +364,7 @@ void main() {
     body: body,
     activeIndex: 0,
     onTabSelected: (_) {},
-    showQuickFab: true,
     topStatus: top,
-    onQuickAdd: () {},
   );
 
   Widget dash(DashboardSummary s, DateTime now, {Widget? assistant}) =>
@@ -530,39 +526,6 @@ void main() {
         ),
       ),
       h: 1400,
-    );
-  });
-
-  testWidgets('quick add sheet', (tester) async {
-    await _shot(
-      tester,
-      'quick_add',
-      Builder(
-        builder: (ctx) => PlanShellChrome(
-          body: dash(_active, now),
-          activeIndex: 0,
-          onTabSelected: (_) {},
-          showQuickFab: true,
-          onQuickAdd: () => showAarastQuickActionSheet(
-            ctx,
-            actions: buildCanonicalQuickAddActions(
-              ctx,
-              planId: _planId,
-              canManageMoney: true,
-              signals: QuickAddSignals.fromDashboard(_active),
-              onRecordPayment: () {},
-              onAddPaymentSchedule: () {},
-              openRoute: (route, {refreshDashboard = false}) async {},
-            ),
-          ),
-        ),
-      ),
-      h: 1000,
-      act: () async {
-        await tester.tap(find.byType(AarastQuickActionButton));
-        await tester.pump(const Duration(milliseconds: 500));
-        await tester.pump(const Duration(milliseconds: 500));
-      },
     );
   });
 

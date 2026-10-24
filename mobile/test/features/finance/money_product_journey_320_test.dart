@@ -113,6 +113,11 @@ void main() {
       await tester.pumpAndSettle();
       await tester.tap(find.byKey(categoryRow));
       await tester.pumpAndSettle();
+      // w19: an item opens its share in a sheet; its page is one press on.
+      await tester.tap(
+        find.byKey(const ValueKey('money-budget-open-category-1')),
+      );
+      await tester.pumpAndSettle();
       expect(
         harness.currentLocation,
         AppRouter.moneyCategoryDetails(_planId, 'category-1'),
@@ -221,11 +226,17 @@ void main() {
         await _pumpProduct(tester, harness.app);
 
         expect(find.text('تعذر التحقق من الصلاحيات'), findsOneWidget);
-        expect(find.byKey(const ValueKey('money-budget-total')), findsNothing);
+        expect(
+          find.byKey(const ValueKey('money-budget-reserve')),
+          findsNothing,
+        );
 
         await tester.tap(find.text('حاول مرة أخرى'));
         await tester.pumpAndSettle();
 
+        // The budget lives behind the «موزّع / احتياط» box (w19).
+        await tester.tap(find.byKey(const ValueKey('money-budget-reserve')));
+        await tester.pumpAndSettle();
         final total = tester.widget<EditableText>(
           find.descendant(
             of: find.byKey(const ValueKey('money-budget-total')),
@@ -233,6 +244,8 @@ void main() {
           ),
         );
         expect(total.controller.text, '1,000,000');
+        await tester.tap(find.byKey(const ValueKey('money-budget-total-done')));
+        await tester.pumpAndSettle();
         final categoryName = find.byKey(
           const ValueKey('money-budget-category-category-1'),
         );
@@ -262,10 +275,14 @@ void main() {
         find.byKey(const ValueKey('money-budget-category-name-0')),
         findsNothing,
       );
+      await tester.tap(find.byKey(const ValueKey('money-budget-reserve')));
+      await tester.pumpAndSettle();
       await tester.enterText(
         find.byKey(const ValueKey('money-budget-total')),
         '2500000',
       );
+      await tester.tap(find.byKey(const ValueKey('money-budget-total-done')));
+      await tester.pumpAndSettle();
       await tester.tap(find.byKey(const ValueKey('money-budget-save')));
       await tester.pumpAndSettle();
 
@@ -300,7 +317,7 @@ void main() {
     });
 
     testWidgets(
-      'an item share is typed in place and the reserve follows (w19)',
+      'an item share is changed in its sheet and the reserve follows (w19)',
       (tester) async {
         final harness = _MoneyProductHarness.owner(
           initialLocation: AppRouter.moneyBudget(_planId),
@@ -314,23 +331,60 @@ void main() {
           find.descendant(of: reserve, matching: find.textContaining('300')),
           findsOneWidget,
         );
-        final share = find.byKey(
-          const ValueKey('money-budget-share-category-1'),
-        );
+        // The row shows the share as an amount, not a box to type in.
+        const row = ValueKey('money-budget-category-category-1');
         await tester.scrollUntilVisible(
-          share,
+          find.byKey(row),
           180,
           scrollable: find.byType(Scrollable).first,
         );
+        expect(
+          find.descendant(
+            of: find.byKey(row),
+            matching: find.byType(EditableText),
+          ),
+          findsNothing,
+        );
+        expect(
+          find.descendant(
+            of: find.byKey(row),
+            matching: find.textContaining('700'),
+          ),
+          findsOneWidget,
+        );
+        // gaps_b vAllocate: 15 bold name, 12.5 label over a 20 figure.
+        expect(
+          tester.widget<Text>(find.text('القاعات')).style?.fontSize,
+          JourneyType.body,
+        );
+        expect(
+          tester
+              .widget<Text>(
+                find.descendant(of: reserve, matching: find.text('موزّع')),
+              )
+              .style
+              ?.fontSize,
+          JourneyType.label,
+        );
+        await tester.tap(find.byKey(row));
+        await tester.pumpAndSettle();
+        final share = find.byKey(
+          const ValueKey('money-budget-share-category-1'),
+        );
         await tester.enterText(share, '400000');
         await tester.pump();
-        // Below the 500 thousand already agreed: flagged.
+        // Below the 500 thousand already agreed: flagged on the row.
         expect(find.textContaining('اتفقت عليه بـ'), findsOneWidget);
         await tester.enterText(share, '900000');
         await tester.pump();
         expect(find.textContaining('اتفقت عليه بـ'), findsNothing);
+        // 1 million with 900 thousand given out: 100 thousand left.
+        expect(
+          find.descendant(of: reserve, matching: find.textContaining('100')),
+          findsOneWidget,
+        );
 
-        tester.testTextInput.hide();
+        await tester.tap(find.byKey(const ValueKey('money-budget-share-done')));
         await tester.pumpAndSettle();
         await tester.tap(find.byKey(const ValueKey('money-budget-save')));
         await tester.pumpAndSettle();
@@ -352,7 +406,12 @@ void main() {
 
       expect(find.byType(MoneyBudgetScreen), findsOneWidget);
       expect(find.byType(ListView), findsOneWidget);
-      expect(find.byKey(const ValueKey('money-budget-total')), findsOneWidget);
+      // w19: the budget is a box over the items, not a large field.
+      expect(find.byKey(const ValueKey('money-budget-total')), findsNothing);
+      expect(
+        find.byKey(const ValueKey('money-budget-reserve')),
+        findsOneWidget,
+      );
       final addCategory = find.byKey(
         const ValueKey('money-budget-add-category'),
       );
@@ -364,12 +423,16 @@ void main() {
       await tester.pumpAndSettle();
       expect(addCategory, findsOneWidget);
       expect(find.text('أضف بند'), findsOneWidget);
-      final sectionTitle = find.text('البنود');
-      expect(sectionTitle, findsOneWidget);
       // «أضف بند» sits under the items it adds to.
       expect(
         tester.getTopLeft(addCategory).dy,
-        greaterThan(tester.getBottomLeft(sectionTitle).dy),
+        greaterThan(
+          tester
+              .getBottomLeft(
+                find.byKey(const ValueKey('money-budget-category-category-1')),
+              )
+              .dy,
+        ),
       );
       await tester.tap(addCategory);
       await tester.pumpAndSettle();

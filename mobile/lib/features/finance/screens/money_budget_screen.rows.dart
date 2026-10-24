@@ -21,12 +21,15 @@ class _CategoryDraft {
   void dispose() => amount.dispose();
 }
 
-/// «موزّع» and «احتياط» (or how far the shares went over).
+/// «موزّع» and «احتياط» (or how far the shares went over), as w19 draws
+/// them: a 12.5 muted label over a 20 bold figure. Pressing it changes the
+/// budget itself.
 class _ReserveBox extends StatelessWidget {
   const _ReserveBox({
     required this.allocated,
     required this.reserve,
     required this.over,
+    required this.onTap,
   });
 
   final String allocated;
@@ -34,6 +37,7 @@ class _ReserveBox extends StatelessWidget {
   /// Null while there is no budget to compare with.
   final String? reserve;
   final bool over;
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
@@ -44,7 +48,7 @@ class _ReserveBox extends StatelessWidget {
           Text(
             label,
             style: JourneyType.of(
-              JourneyType.small,
+              JourneyType.label,
               color: AarastV3Color.textMuted,
             ),
           ),
@@ -54,7 +58,7 @@ class _ReserveBox extends StatelessWidget {
             child: Text(
               value,
               style: JourneyType.of(
-                JourneyType.title,
+                JourneyType.pageTitle,
                 weight: JourneyType.bold,
                 color: color,
               ),
@@ -63,134 +67,124 @@ class _ReserveBox extends StatelessWidget {
         ],
       ),
     );
-    return JourneyBox(
+    final reserve = this.reserve;
+    return AarastPressable(
       key: const ValueKey('money-budget-reserve'),
-      padding: const EdgeInsets.all(14),
-      child: Row(
-        children: [
-          cell('موزّع', allocated, AarastV3Color.ink),
-          if (reserve != null) ...[
+      onTap: onTap,
+      semanticLabel: [
+        'موزّع $allocated',
+        if (reserve == null)
+          'حدد ميزانية عرسك'
+        else
+          '${over ? 'زايد عن الميزانية' : 'احتياط'} $reserve',
+      ].join('، '),
+      borderRadius: BorderRadius.circular(22),
+      child: JourneyBox(
+        padding: const EdgeInsets.all(14),
+        child: Row(
+          children: [
+            cell('موزّع', allocated, AarastV3Color.ink),
             const SizedBox(width: 12),
-            cell(
-              over ? 'زايد عن الميزانية' : 'احتياط',
-              reserve!,
-              over ? AarastV3Color.danger : AarastV3Color.primary,
-            ),
+            if (reserve == null)
+              cell('احتياط', 'حدد الميزانية', AarastV3Color.primary)
+            else
+              cell(
+                over ? 'زايد عن الميزانية' : 'احتياط',
+                reserve,
+                over ? AarastV3Color.danger : AarastV3Color.primary,
+              ),
           ],
-        ],
+        ),
       ),
     );
   }
 }
 
-/// An item's name, its share typed in place, and how much of the budget
-/// that is. A share below what is already agreed turns red.
+/// An item as w19 draws it: its name and share on one line, the bar of its
+/// part of the budget under them. A share below what is already agreed
+/// turns red and says so. Pressing it changes the share.
 class _AllocationRow extends StatelessWidget {
   const _AllocationRow({
     required this.row,
     required this.total,
     required this.currency,
-    required this.onChanged,
-    required this.onOpen,
+    required this.onTap,
     super.key,
   });
 
   final _CategoryDraft row;
   final num total;
   final String currency;
-  final VoidCallback onChanged;
-  final VoidCallback onOpen;
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
+    final typed = row.amount.text.trim().isNotEmpty;
     final share = moneyValue(row.amount.text);
     final agreed = moneyValue(row.confirmedCost);
-    final short = row.amount.text.trim().isNotEmpty && share < agreed;
+    final short = typed && share < agreed;
     final color = short ? AarastV3Color.danger : AarastV3Color.primary;
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Row(
-            children: [
-              Expanded(
-                child: Semantics(
-                  button: true,
-                  label: 'افتح ${row.name}',
-                  onTap: row.id == null ? null : onOpen,
-                  excludeSemantics: true,
-                  child: AarastPressable(
-                    key: ValueKey('money-budget-category-${row.id}'),
-                    onTap: row.id == null ? () {} : onOpen,
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 6),
-                      child: Text(
-                        row.name,
-                        style: JourneyType.of(
-                          JourneyType.body,
-                          weight: JourneyType.bold,
-                        ),
-                      ),
+    final value = typed
+        ? compactMoneyParts(share, currencyCode: currency).plainText
+        : 'بدون';
+    return AarastPressable(
+      key: ValueKey('money-budget-category-${row.id}'),
+      onTap: onTap,
+      semanticLabel: '${row.name}، $value',
+      borderRadius: BorderRadius.circular(16),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    row.name,
+                    style: JourneyType.of(
+                      JourneyType.body,
+                      weight: JourneyType.bold,
                     ),
                   ),
                 ),
-              ),
-              const SizedBox(width: 8),
-              SizedBox(
-                width: 132,
-                child: TextField(
-                  key: ValueKey('money-budget-share-${row.key}'),
-                  controller: row.amount,
-                  keyboardType: TextInputType.number,
-                  inputFormatters: [MoneyInputFormatter()],
-                  textAlign: TextAlign.end,
-                  textDirection: TextDirection.ltr,
+                const SizedBox(width: 8),
+                Text(
+                  value,
                   style: JourneyType.of(
                     JourneyType.body,
                     weight: JourneyType.bold,
-                    color: short ? AarastV3Color.danger : AarastV3Color.ink,
+                    color: short
+                        ? AarastV3Color.danger
+                        : typed
+                        ? AarastV3Color.ink
+                        : AarastV3Color.textFaint,
                   ),
-                  decoration: InputDecoration(
-                    isDense: true,
-                    hintText: 'بدون',
-                    suffixText: currencyLabelAr(currency),
-                    filled: true,
-                    fillColor: AarastV3Color.canvas,
-                    contentPadding: const EdgeInsets.symmetric(
-                      horizontal: 10,
-                      vertical: 10,
-                    ),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: BorderSide.none,
-                    ),
-                  ),
-                  onChanged: (_) => onChanged(),
-                  onTapOutside: (_) =>
-                      FocusManager.instance.primaryFocus?.unfocus(),
                 ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 6),
-          JourneyBar(
-            value: total <= 0 ? 0 : (share / total).clamp(0.0, 1.0).toDouble(),
-            color: color,
-          ),
-          if (short)
-            Padding(
-              padding: const EdgeInsets.only(top: 4),
-              child: Text(
-                'اتفقت عليه بـ ${compactMoneyParts(agreed, currencyCode: currency).plainText}',
-                style: JourneyType.of(
-                  JourneyType.small,
-                  weight: JourneyType.bold,
-                  color: AarastV3Color.danger,
-                ),
-              ),
+              ],
             ),
-        ],
+            const SizedBox(height: 6),
+            JourneyBar(
+              value: total <= 0
+                  ? 0
+                  : (share / total).clamp(0.0, 1.0).toDouble(),
+              color: color,
+              height: 8,
+            ),
+            if (short)
+              Padding(
+                padding: const EdgeInsets.only(top: 4),
+                child: Text(
+                  'اتفقت عليه بـ ${compactMoneyParts(agreed, currencyCode: currency).plainText}',
+                  style: JourneyType.of(
+                    JourneyType.small,
+                    weight: JourneyType.bold,
+                    color: AarastV3Color.danger,
+                  ),
+                ),
+              ),
+          ],
+        ),
       ),
     );
   }

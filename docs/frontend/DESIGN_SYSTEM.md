@@ -154,7 +154,7 @@ Status colors appear with text or icons and never carry meaning alone.
   | `display` | 24 | A heading inside a screen (a start card) |
   | `sheetTitle` | 22 | A sheet's title (`JourneySheetBody`) |
   | `figure` | 22 | A figure inside a card (a quote's price, a lock key) |
-  | `pageTitle` | 20 | A pushed screen's title (`JourneySubHeader`) |
+  | `pageTitle` | 20 | A pushed screen's title (`JourneySubHeader`), a stat box figure |
   | `prominent` | 19 | A person's name on their profile, a card's lead figure |
   | `title` | 18 | Card titles |
   | `lead` | 17 | Section titles, field values, a main action's label |

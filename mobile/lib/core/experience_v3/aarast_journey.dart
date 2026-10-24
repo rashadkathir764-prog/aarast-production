@@ -45,7 +45,8 @@ abstract final class JourneyType {
   /// A figure inside a card: a quote's price, a lock key.
   static const figure = 22.0;
 
-  /// A pushed screen's title (JourneySubHeader).
+  /// A pushed screen's title (JourneySubHeader) and a figure in a stat box
+  /// (w19 «موزّع / احتياط»).
   static const pageTitle = 20.0;
 
   /// A person's name on their profile, a card's lead figure.

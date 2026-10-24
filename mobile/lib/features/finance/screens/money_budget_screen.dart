@@ -22,9 +22,11 @@ import '../widgets/money_input_formatter.dart';
 
 part 'money_budget_screen.rows.dart';
 
-/// w19 «توزيع الميزانية»: the wedding budget (the mahr is outside it, C1),
-/// each item's share typed in place, and the reserve that is left
-/// (`budget.unallocated`), updated as the numbers change.
+/// w19 «توزيع الميزانية» (gaps_b `vAllocate`): the wedding budget (the mahr
+/// is outside it, C1) split over the items. A box says how much is given
+/// out and what is left in reserve (`budget.unallocated`); each item shows
+/// its share and its part of the budget. Pressing an item changes its share
+/// in a small sheet, and pressing the box changes the budget itself.
 class MoneyBudgetScreen extends StatefulWidget {
   const MoneyBudgetScreen({required this.weddingPlanId, super.key});
 
@@ -39,7 +41,6 @@ class _MoneyBudgetScreenState extends State<MoneyBudgetScreen> {
   final _rows = <_CategoryDraft>[];
   String _currency = defaultCurrencyCode;
   bool _hydrated = false;
-  String? _totalError;
   String? _formError;
   AarastFormDraftBinding? _draft;
 
@@ -65,6 +66,11 @@ class _MoneyBudgetScreenState extends State<MoneyBudgetScreen> {
   String _plain(num value) =>
       compactMoneyParts(value, currencyCode: _currency).plainText;
 
+  void _changed() {
+    setState(() => _formError = null);
+    _draft?.changed();
+  }
+
   @override
   Widget build(BuildContext context) {
     final provider = context.watch<FinanceProvider>();
@@ -85,7 +91,6 @@ class _MoneyBudgetScreenState extends State<MoneyBudgetScreen> {
     if (accessBlock != null) return accessBlock;
 
     final total = moneyValue(_totalController.text);
-    final currencyLocked = provider.summary.costs.count > 0;
     final allocated = _rows.fold<num>(
       0,
       (sum, row) => sum + moneyValue(row.amount.text),
@@ -110,7 +115,7 @@ class _MoneyBudgetScreenState extends State<MoneyBudgetScreen> {
           ),
           Expanded(
             child: ListView(
-              padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
               children: [
                 if (provider.errorMessage != null) ...[
                   JourneyListNotice(
@@ -119,54 +124,6 @@ class _MoneyBudgetScreenState extends State<MoneyBudgetScreen> {
                   ),
                   const SizedBox(height: 12),
                 ],
-                JourneyTextField(
-                  key: const ValueKey('money-budget-total'),
-                  label: 'ميزانية عرسك',
-                  hint: 'مثلًا: 3,000,000',
-                  controller: _totalController,
-                  large: true,
-                  keyboardType: TextInputType.number,
-                  inputFormatters: [MoneyInputFormatter()],
-                  suffix: currencyLabelAr(_currency),
-                  errorText: _totalError,
-                  helper: total > 0
-                      ? amountInWords(
-                          total.round(),
-                          currency: currencyLabelAr(_currency),
-                        )
-                      : null,
-                  onChanged: (_) => setState(() {
-                    _totalError = null;
-                    _formError = null;
-                  }),
-                ),
-                const SizedBox(height: 10),
-                if (currencyLocked)
-                  Text(
-                    'العملة ${currencySpokenLabelAr(_currency)}، ثابتة بعد أول اتفاق',
-                    key: const ValueKey('money-budget-currency-locked'),
-                    style: JourneyType.of(
-                      JourneyType.small,
-                      color: AarastV3Color.textMuted,
-                    ),
-                  )
-                else
-                  Wrap(
-                    spacing: 8,
-                    runSpacing: 8,
-                    children: [
-                      for (final (code, label) in weddingCurrencyOptions)
-                        JourneyChip(
-                          label: label,
-                          selected: _currency == code,
-                          onTap: () {
-                            setState(() => _currency = code);
-                            _draft?.changed();
-                          },
-                        ),
-                    ],
-                  ),
-                const SizedBox(height: 14),
                 _ReserveBox(
                   allocated: _plain(allocated),
                   reserve: total <= 0
@@ -175,9 +132,9 @@ class _MoneyBudgetScreenState extends State<MoneyBudgetScreen> {
                       ? 'ما فيه'
                       : _plain(reserve.abs()),
                   over: total > 0 && reserve < 0,
+                  onTap: _editTotal,
                 ),
-                const SizedBox(height: 8),
-                const JourneySectionTitle('البنود'),
+                const SizedBox(height: 12),
                 if (_rows.isEmpty)
                   const JourneyListState(
                     phase: JourneyListPhase.empty,
@@ -186,26 +143,28 @@ class _MoneyBudgetScreenState extends State<MoneyBudgetScreen> {
                     emptyTitle: 'ما فيه بنود بعد',
                   )
                 else
-                  JourneyBox(
-                    padding: const EdgeInsets.symmetric(vertical: 4),
-                    child: Column(
-                      children: [
-                        for (final row in _rows)
-                          _AllocationRow(
-                            key: ValueKey(row.key),
-                            row: row,
-                            total: total,
-                            currency: _currency,
-                            onChanged: () {
-                              setState(() => _formError = null);
-                              _draft?.changed();
-                            },
-                            onOpen: () => _openCategory(row),
-                          ),
-                      ],
+                  JourneyList(
+                    dividers: false,
+                    children: [
+                      for (final row in _rows)
+                        _AllocationRow(
+                          key: ValueKey(row.key),
+                          row: row,
+                          total: total,
+                          currency: _currency,
+                          onTap: () => _editShare(row),
+                        ),
+                    ],
+                  ),
+                const SizedBox(height: 10),
+                if (_rows.isNotEmpty)
+                  Text(
+                    'اضغط أي بند وغيّر رقمه، والاحتياط يتعدل لحاله.',
+                    style: JourneyType.of(
+                      JourneyType.small,
+                      color: AarastV3Color.textMuted,
                     ),
                   ),
-                const SizedBox(height: 6),
                 Align(
                   alignment: AlignmentDirectional.centerStart,
                   child: JourneyTextAction(
@@ -216,14 +175,6 @@ class _MoneyBudgetScreenState extends State<MoneyBudgetScreen> {
                     onPressed: _openCategoryCreate,
                   ),
                 ),
-                if (_rows.isNotEmpty)
-                  Text(
-                    'غيّر أي رقم، والاحتياط يتعدل لحاله.',
-                    style: JourneyType.of(
-                      JourneyType.small,
-                      color: AarastV3Color.textMuted,
-                    ),
-                  ),
                 if (_formError != null) ...[
                   const SizedBox(height: 10),
                   JourneyNote(
@@ -253,6 +204,144 @@ class _MoneyBudgetScreenState extends State<MoneyBudgetScreen> {
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  /// «ميزانية عرسك» and its currency, in a sheet over the split.
+  Future<void> _editTotal() {
+    final currencyLocked =
+        context.read<FinanceProvider>().summary.costs.count > 0;
+    return showJourneySheet<void>(
+      context: context,
+      builder: (sheetContext) => StatefulBuilder(
+        builder: (sheetContext, setSheetState) {
+          final total = moneyValue(_totalController.text);
+          return JourneySheetBody(
+            title: 'ميزانية عرسك',
+            subtitle: 'المهر لحاله، برا الميزانية',
+            children: [
+              JourneyTextField(
+                key: const ValueKey('money-budget-total'),
+                label: 'كم تقريبًا؟',
+                hint: 'مثلًا: 3,000,000',
+                controller: _totalController,
+                large: true,
+                autofocus: true,
+                keyboardType: TextInputType.number,
+                inputFormatters: [MoneyInputFormatter()],
+                suffix: currencyLabelAr(_currency),
+                helper: total > 0
+                    ? amountInWords(
+                        total.round(),
+                        currency: currencyLabelAr(_currency),
+                      )
+                    : null,
+                onChanged: (_) {
+                  setSheetState(() {});
+                  _changed();
+                },
+              ),
+              const SizedBox(height: 12),
+              if (currencyLocked)
+                Text(
+                  'العملة ${currencySpokenLabelAr(_currency)}، ثابتة بعد أول اتفاق',
+                  key: const ValueKey('money-budget-currency-locked'),
+                  style: JourneyType.of(
+                    JourneyType.small,
+                    color: AarastV3Color.textMuted,
+                  ),
+                )
+              else
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    for (final (code, label) in weddingCurrencyOptions)
+                      JourneyChip(
+                        label: label,
+                        selected: _currency == code,
+                        onTap: () {
+                          setSheetState(() {});
+                          setState(() => _currency = code);
+                          _draft?.changed();
+                        },
+                      ),
+                  ],
+                ),
+              const SizedBox(height: 16),
+              JourneyButton(
+                key: const ValueKey('money-budget-total-done'),
+                label: 'تمام',
+                expand: true,
+                large: true,
+                onPressed: () => Navigator.of(sheetContext).pop(),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+  }
+
+  /// One item's share, typed in a small sheet; the reserve follows as it
+  /// changes. The item's own page stays one press away.
+  Future<void> _editShare(_CategoryDraft row) {
+    return showJourneySheet<void>(
+      context: context,
+      builder: (sheetContext) => StatefulBuilder(
+        builder: (sheetContext, setSheetState) {
+          final share = moneyValue(row.amount.text);
+          return JourneySheetBody(
+            title: row.name,
+            subtitle: 'كم تحط له من ميزانية عرسك؟',
+            children: [
+              JourneyTextField(
+                key: ValueKey('money-budget-share-${row.key}'),
+                label: 'نصيبه',
+                hint: 'بدون',
+                controller: row.amount,
+                large: true,
+                autofocus: true,
+                keyboardType: TextInputType.number,
+                inputFormatters: [MoneyInputFormatter()],
+                suffix: currencyLabelAr(_currency),
+                helper: share > 0
+                    ? amountInWords(
+                        share.round(),
+                        currency: currencyLabelAr(_currency),
+                      )
+                    : null,
+                onChanged: (_) {
+                  setSheetState(() {});
+                  _changed();
+                },
+              ),
+              const SizedBox(height: 16),
+              JourneyButton(
+                key: const ValueKey('money-budget-share-done'),
+                label: 'تمام',
+                expand: true,
+                large: true,
+                onPressed: () => Navigator.of(sheetContext).pop(),
+              ),
+              if (row.id != null) ...[
+                const SizedBox(height: 6),
+                Center(
+                  child: JourneyTextAction(
+                    key: ValueKey('money-budget-open-${row.id}'),
+                    label: 'تفاصيل البند',
+                    color: AarastV3Color.primary,
+                    onPressed: () {
+                      Navigator.of(sheetContext).pop();
+                      _openCategory(row);
+                    },
+                  ),
+                ),
+              ],
+            ],
+          );
+        },
       ),
     );
   }
@@ -321,7 +410,8 @@ class _MoneyBudgetScreenState extends State<MoneyBudgetScreen> {
   }
 
   /// Each problem in plain words; null when the budget can be saved.
-  String? _problem(num total, num allocated) {
+  String? _problem(String totalText, num total, num allocated) {
+    if (totalText.isNotEmpty && total <= 0) return 'اكتب ميزانية أكبر من صفر';
     if (total <= 0 && _rows.isEmpty) return 'حدد ميزانية أو أضف بند قبل الحفظ';
     final names = <String>{};
     for (final row in _rows) {
@@ -345,13 +435,8 @@ class _MoneyBudgetScreenState extends State<MoneyBudgetScreen> {
       0,
       (sum, row) => sum + moneyValue(row.amount.text),
     );
-    setState(() {
-      _totalError = totalText.isNotEmpty && total <= 0
-          ? 'اكتب ميزانية أكبر من صفر'
-          : null;
-      _formError = _totalError == null ? _problem(total, allocated) : null;
-    });
-    if (_totalError != null || _formError != null) return;
+    setState(() => _formError = _problem(totalText, total, allocated));
+    if (_formError != null) return;
     final ok = await context.read<FinanceProvider>().saveBudget(
       planId: widget.weddingPlanId,
       totalBudget: totalText.isEmpty ? null : totalText,

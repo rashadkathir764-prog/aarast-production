@@ -761,17 +761,39 @@ class _PendingInviteRowState extends State<_PendingInviteRow> {
             ),
             const SizedBox(width: 8),
             // Large text wraps the action instead of pushing the row off.
+            // x07 draws a small pill; while the server asks to wait it
+            // rests faded instead of turning into a grey button.
             Flexible(
-              child: JourneyButton(
-                key: ValueKey('pending-invite-reissue-${invite.id}'),
-                label: remind ? 'ذكّره' : 'انسخ الرابط',
-                background: remind
-                    ? AarastV3Color.primarySoft
-                    : AarastV3Color.brandAccentSoft,
-                foreground: remind
-                    ? AarastV3Color.primary
-                    : AarastV3Color.brandAccentStrong,
-                onPressed: canRetry ? widget.onReissue : null,
+              child: Opacity(
+                opacity: canRetry ? 1 : 0.5,
+                child: AarastPressable(
+                  key: ValueKey('pending-invite-reissue-${invite.id}'),
+                  onTap: canRetry ? widget.onReissue : null,
+                  borderRadius: BorderRadius.circular(14),
+                  semanticLabel: remind ? 'ذكّره' : 'انسخ الرابط',
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 6,
+                    ),
+                    decoration: BoxDecoration(
+                      color: remind
+                          ? AarastV3Color.primarySoft
+                          : AarastV3Color.brandAccentSoft,
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                    child: Text(
+                      remind ? 'ذكّره' : 'انسخ الرابط',
+                      style: JourneyType.of(
+                        JourneyType.small,
+                        weight: JourneyType.bold,
+                        color: remind
+                            ? AarastV3Color.primary
+                            : AarastV3Color.brandAccentStrong,
+                      ),
+                    ),
+                  ),
+                ),
               ),
             ),
           ],

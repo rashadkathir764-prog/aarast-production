@@ -3,9 +3,9 @@ import 'dart:io';
 
 import 'package:aarast_mobile/core/network/api_client.dart';
 import 'package:aarast_mobile/core/storage/auth_storage.dart';
-import 'package:aarast_mobile/core/experience_v3/aarast_v3.dart';
 import 'package:aarast_mobile/core/theme/app_theme.dart';
 import 'package:aarast_mobile/core/session/safe_user.dart';
+import 'package:aarast_mobile/core/widgets/aarast_pressable.dart';
 import 'package:aarast_mobile/features/sharing/data/sharing_api.dart';
 import 'package:aarast_mobile/features/sharing/models/plan_access_permissions.dart';
 import 'package:aarast_mobile/features/sharing/models/shared_member.dart';
@@ -331,13 +331,13 @@ void main() {
       final retryFinder = find.byKey(
         const Key('pending-invite-reissue-invite-1'),
       );
-      expect(tester.widget<JourneyButton>(retryFinder).onPressed, isNull);
+      expect(tester.widget<AarastPressable>(retryFinder).onTap, isNull);
       expect(api.reissueCalls, 0);
 
       await tester.pump(const Duration(seconds: 2, milliseconds: 100));
       await tester.pump();
 
-      expect(tester.widget<JourneyButton>(retryFinder).onPressed, isNotNull);
+      expect(tester.widget<AarastPressable>(retryFinder).onTap, isNotNull);
       await tester.tap(retryFinder);
       await tester.pumpAndSettle();
       expect(api.reissueCalls, 1);

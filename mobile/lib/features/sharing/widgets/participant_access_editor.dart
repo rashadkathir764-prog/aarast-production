@@ -121,34 +121,38 @@ class _LevelRow extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 6),
       // With large text on a narrow phone the switch drops under its name
-      // instead of running off the row.
-      child: Wrap(
-        alignment: WrapAlignment.spaceBetween,
-        crossAxisAlignment: WrapCrossAlignment.center,
-        runSpacing: 6,
-        children: [
-          Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(icon, size: 19, color: AarastV3Color.primary),
-              const SizedBox(width: 10),
-              Text(
-                label,
-                style: JourneyType.of(
-                  JourneyType.body,
-                  weight: JourneyType.bold,
+      // instead of running off the row. The full width lets spaceBetween
+      // put the switch on the far side, as drawn.
+      child: SizedBox(
+        width: double.infinity,
+        child: Wrap(
+          alignment: WrapAlignment.spaceBetween,
+          crossAxisAlignment: WrapCrossAlignment.center,
+          runSpacing: 6,
+          children: [
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(icon, size: 19, color: AarastV3Color.primary),
+                const SizedBox(width: 10),
+                Text(
+                  label,
+                  style: JourneyType.of(
+                    JourneyType.body,
+                    weight: JourneyType.bold,
+                  ),
                 ),
-              ),
-            ],
-          ),
-          JourneyLevelSwitch(
-            key: ValueKey('participant-level-$label'),
-            options: options,
-            selected: selected,
-            semanticLabel: label,
-            onChanged: onChanged,
-          ),
-        ],
+              ],
+            ),
+            JourneyLevelSwitch(
+              key: ValueKey('participant-level-$label'),
+              options: options,
+              selected: selected,
+              semanticLabel: label,
+              onChanged: onChanged,
+            ),
+          ],
+        ),
       ),
     );
   }

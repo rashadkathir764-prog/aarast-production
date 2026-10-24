@@ -17,6 +17,17 @@ bool isTaskLate(WeddingTask task, {DateTime? now}) {
   return taskDateOnly(dueDate).isBefore(taskDateOnly(now ?? DateTime.now()));
 }
 
+/// y14: a task about the fireworks, known by its title («الألعاب النارية»,
+/// «ألعاب نارية», with or without hamza or the final ة). Nothing else marks
+/// a fireworks task: no task category or catalog item names them.
+bool isFireworksTask(WeddingTask task) {
+  final title = task.title
+      .replaceAll(RegExp(r'[\u064B-\u0652\u0640]'), '')
+      .replaceAll(RegExp('[أإآ]'), 'ا')
+      .replaceAll('ة', 'ه');
+  return RegExp('العاب (ال)?ناريه').hasMatch(title);
+}
+
 Color taskPriorityColor(String priority) {
   return switch (priority) {
     'LOW' => AppTheme.success,

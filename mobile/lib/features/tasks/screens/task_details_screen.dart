@@ -181,6 +181,7 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen> {
         : taskDateOnly(DateTime.now()).difference(taskDateOnly(due)).inDays;
     final phone = task.responsiblePhone ?? task.assigneePhone;
     final steps = task.checklist;
+    final fireworks = isFireworksTask(task);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -191,6 +192,7 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen> {
           ),
           const SizedBox(height: 12),
         ],
+        if (fireworks) ...[const _FireworksHero(), const SizedBox(height: 12)],
         Wrap(
           spacing: 8,
           runSpacing: 8,
@@ -296,6 +298,18 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen> {
               provider.updateChecklistItem(task, item, title: title),
           onRemove: (item) => provider.removeChecklistItem(task, item),
         ),
+        if (fireworks) ...[
+          const SizedBox(height: 12),
+          const JourneyNote(
+            key: ValueKey('task-fireworks-safety'),
+            text:
+                'واحد بس يشعّلها، والأطفال بعيد. انتبهوا للعيون والأيدي، '
+                'فرحتك ما تستاهل إصابة.',
+            icon: LucideIcons.shieldAlert,
+            color: AarastV3Color.danger,
+            soft: AarastV3Color.dangerSoft,
+          ),
+        ],
         if (!mine && phone != null && phone.trim().isNotEmpty) ...[
           const SizedBox(height: 8),
           _ContactCard(
@@ -433,5 +447,27 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen> {
           _back();
         }
     }
+  }
+}
+
+/// y14: the night box over a fireworks task, painted with solid colours
+/// (D3).
+class _FireworksHero extends StatelessWidget {
+  const _FireworksHero();
+
+  @override
+  Widget build(BuildContext context) {
+    return ExcludeSemantics(
+      child: Container(
+        key: const ValueKey('task-fireworks-hero'),
+        height: 120,
+        clipBehavior: Clip.antiAlias,
+        decoration: BoxDecoration(
+          color: JourneyArt.night,
+          borderRadius: BorderRadius.circular(22),
+        ),
+        child: const CustomPaint(painter: JourneyFireworksPainter()),
+      ),
+    );
   }
 }

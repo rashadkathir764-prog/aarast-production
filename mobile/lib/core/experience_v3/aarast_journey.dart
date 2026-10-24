@@ -79,6 +79,9 @@ abstract final class JourneyType {
   /// The smallest text: tags and the Hijri date under a day.
   static const caption = 12.0;
 
+  /// An inactive tab's name in the bottom bar (b02: 11.5, regular, muted).
+  static const tabLabel = 11.5;
+
   /// The count inside a 16-point badge dot; it does not grow with text size.
   static const badge = 9.0;
 
@@ -841,9 +844,14 @@ class JourneySectionTitle extends StatelessWidget {
               ),
             ),
           ),
-          // Large text wraps the action instead of pushing it off the row.
+          // The link sits at the far end, as drawn. A Flexible here shared
+          // the row with the title and left the link mid-row; a width cap
+          // still lets large text wrap it instead of pushing it off.
           if (action != null)
-            Flexible(
+            ConstrainedBox(
+              constraints: BoxConstraints(
+                maxWidth: MediaQuery.sizeOf(context).width * .45,
+              ),
               child: _SectionLink(
                 label: action!,
                 onTap: onAction,

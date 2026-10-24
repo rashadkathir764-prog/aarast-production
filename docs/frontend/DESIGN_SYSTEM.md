@@ -165,6 +165,7 @@ Status colors appear with text or icons and never carry meaning alone.
   | `small` | 13 | Secondary lines, hints |
   | `label` | 12.5 | A field's label |
   | `caption` | 12 | Tags, the Hijri date under a day |
+  | `tabLabel` | 11.5 | An inactive tab's name in the bottom bar (regular, muted) |
 
   A screen never passes a number; a test fails if one does. Main actions
   are 16 above and below a 17 label (at least 52 points tall), section tabs

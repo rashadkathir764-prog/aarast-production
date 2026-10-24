@@ -108,13 +108,19 @@ class _PlanNavigationItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // b02: the active tab is a pill with a 19 icon and its 14 bold name;
+    // the others a faint 21 icon over an 11.5 regular muted name.
     final foreground = active
         ? AarastV3Color.onPrimary
         : AarastV3Color.textMuted;
     final icon = Stack(
       clipBehavior: Clip.none,
       children: [
-        Icon(item.icon, color: foreground, size: 20),
+        Icon(
+          item.icon,
+          color: active ? AarastV3Color.onPrimary : AarastV3Color.textFaint,
+          size: active ? 19 : 21,
+        ),
         if (item.badge > 0)
           PositionedDirectional(
             start: -7,
@@ -148,8 +154,8 @@ class _PlanNavigationItem extends StatelessWidget {
         item.label,
         maxLines: 1,
         style: JourneyType.of(
-          JourneyType.caption,
-          weight: JourneyType.bold,
+          active ? JourneyType.bodySmall : JourneyType.tabLabel,
+          weight: active ? JourneyType.bold : FontWeight.w400,
           color: foreground,
           height: 1.1,
         ),

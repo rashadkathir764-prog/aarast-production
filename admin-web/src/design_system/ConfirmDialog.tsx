@@ -227,7 +227,7 @@ export function ConfirmDialog({
                       <textarea
                         value={note}
                         onChange={(event) => setNote(event.target.value)}
-                        rows={2}
+                        rows={1}
                       />
                     </label>
                   ) : null}

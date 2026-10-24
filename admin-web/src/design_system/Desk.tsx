@@ -2,6 +2,7 @@
 // page head, buttons, panels, tables, tags and stats every admin page uses.
 import type { ButtonHTMLAttributes, ReactNode } from 'react';
 import type { LucideIcon } from 'lucide-react';
+import { Pagination } from './Pagination';
 
 export type DeskTone =
   | 'teal'
@@ -224,6 +225,34 @@ export function DeskTable<T>({
   );
 }
 
+/** Page buttons under a desk table, shown only when there is a next page. */
+export function DeskPager({
+  page,
+  limit,
+  total,
+  totalPages,
+  onPageChange,
+}: {
+  page: number;
+  limit: number;
+  total: number;
+  totalPages: number;
+  onPageChange: (page: number) => void;
+}) {
+  if (totalPages <= 1) return null;
+  return (
+    <div className="desk-pager">
+      <Pagination
+        page={page}
+        limit={limit}
+        total={total}
+        totalPages={totalPages}
+        onPageChange={onPageChange}
+      />
+    </div>
+  );
+}
+
 /** Loading, error and empty lines inside the desk, without replacing the page. */
 export function DeskNote({ children, tone }: { children: ReactNode; tone?: 'coral' }) {
   return (
@@ -246,6 +275,15 @@ export function DeskRetry({ message, onRetry }: { message: string; onRetry: () =
 export function stars(rating: number): string {
   const full = Math.max(0, Math.min(5, Math.round(rating)));
   return '★'.repeat(full) + '☆'.repeat(5 - full);
+}
+
+/** «773 210 455»: a Yemeni mobile in threes, as the designs write it. */
+export function phoneSpaced(phone: string | null | undefined): string {
+  if (!phone) return '—';
+  const digits = phone.replace(/\D/g, '');
+  const local = digits.length === 12 && digits.startsWith('967') ? digits.slice(3) : digits;
+  if (local.length !== 9) return phone;
+  return `${local.slice(0, 3)} ${local.slice(3, 6)} ${local.slice(6)}`;
 }
 
 /** «550,000» with Latin digits, the way the designs write money and counts. */

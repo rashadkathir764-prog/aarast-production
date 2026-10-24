@@ -424,16 +424,14 @@
   font-weight: 700;
 }
 
+/* Four stat slots, as every design row draws them; fewer cards keep their
+   quarter width. */
 .desk-stats {
-  display: flex;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   align-items: center;
   gap: 12px;
   margin-bottom: 12px;
-}
-
-.desk-stats > * {
-  flex: 1 1 0;
-  min-width: 0;
 }
 
 .desk-stat {
@@ -483,6 +481,14 @@
 .desk-tag--sky { background: var(--d-sky-soft); color: var(--d-sky); }
 .desk-tag--lilac { background: var(--d-lilac-soft); color: var(--d-lilac); }
 .desk-tag--muted { background: var(--d-line); color: var(--d-muted); }
+
+.desk-tag--wrap {
+  white-space: normal;
+}
+
+.desk-contents {
+  display: contents;
+}
 
 .desk-tags {
   display: inline-flex;
@@ -601,6 +607,62 @@
   height: 12px;
 }
 
+/* a04: one card per field, and the review line beside them. */
+.desk-field-stack {
+  gap: 8px;
+}
+
+.desk-field-card {
+  padding: 12px;
+  border: 1px solid var(--d-line);
+  border-radius: 12px;
+  background: var(--d-surface);
+}
+
+.desk-field-card__more {
+  margin: 4px 0 0;
+  font-size: 12.5px;
+  color: var(--d-muted);
+}
+
+.desk-fill-page .desk-split__side.desk-split__side--fill {
+  align-self: stretch;
+}
+
+.desk-split__side--fill > .desk-panel {
+  flex: 1;
+}
+
+.desk-timeline {
+  margin: 6px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.desk-timeline li {
+  display: flex;
+  gap: 0;
+  padding: 5px 0;
+  font-size: 13.5px;
+}
+
+.desk-timeline li > span:first-child {
+  flex: 0 0 90px;
+  font-size: 12.5px;
+  color: var(--d-muted);
+}
+
+.desk-timeline li > span:last-child {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+}
+
+.desk-timeline__note {
+  font-size: 13px;
+  color: var(--d-coral);
+}
+
 /* A page whose main panel runs to the bottom of the frame (akit `Expanded`). */
 .desk-fill-page {
   display: flex;
@@ -671,9 +733,40 @@
 }
 
 /* Pagination under a desk table. */
-.desk-content .pagination {
+.desk-pager .pagination {
   margin-top: 10px;
   font-family: var(--d-font);
+}
+
+.desk-pager .pagination__summary {
+  font-size: 12.5px;
+  font-weight: 400;
+  color: var(--d-muted);
+}
+
+.desk-pager .pagination__controls button {
+  min-width: 34px;
+  min-height: 34px;
+  border: 0;
+  border-radius: 12px;
+  background: var(--d-soft);
+  font: inherit;
+  font-size: 13.5px;
+  font-weight: 700;
+  color: var(--d-teal);
+}
+
+.desk-pager .pagination__controls button:hover:not(:disabled),
+.desk-pager .pagination__controls button:focus-visible {
+  border-color: transparent;
+  box-shadow: none;
+  outline: 2px solid var(--d-saffron);
+  outline-offset: 1px;
+}
+
+.desk-pager .pagination__controls button[aria-current='page'] {
+  background: var(--d-teal);
+  color: #fff;
 }
 
 /* ---------------------------------------------------------------- dialog */
@@ -781,7 +874,9 @@
   padding: 0;
   border: 0;
   outline: 0;
-  resize: vertical;
+  box-shadow: none;
+  background: transparent;
+  resize: none;
   font: inherit;
   font-size: 14px;
   font-weight: 700;
@@ -895,12 +990,14 @@
     width: 200px;
   }
 
-  .desk-stats,
+  .desk-stats {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
   .desk-split {
     flex-wrap: wrap;
   }
 
-  .desk-stats > *,
   .desk-split > * {
     flex: 1 1 260px;
   }

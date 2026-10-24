@@ -1,168 +1,69 @@
-import { useEffect, useState } from 'react';
+// a06 «تفاصيل مزود» and its suspension (mobile/test/prototype/admin/
+// admin_screens.dart `a06ProviderSuspend`). «حجوزات جاية» waits for B-40 and
+// «بلاغات» for A-21; the server counts every quote request, so the card says
+// «طلبات العروض». The suspension window keeps only what the server does
+// today: the two lines about bookings and open requests wait for B-42.
+import { useCallback, useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { getProvider, type ProviderApplication } from './api';
-import { ActionLink } from '../../design_system/ActionButton';
-import { DetailField } from '../../design_system/DetailField';
-import { EmptyState } from '../../design_system/EmptyState';
-import { ErrorState } from '../../design_system/ErrorState';
-import { LoadingState } from '../../design_system/LoadingState';
-import { PageHeader } from '../../design_system/PageHeader';
-import { SectionCard } from '../../design_system/SectionCard';
-import { StatCard } from '../../design_system/StatCard';
-import { StatusBadge } from '../../design_system/StatusBadge';
-import { Timeline } from '../../design_system/Timeline';
-import { formatDate } from '../../platform/i18n/formatDate';
+import { ProviderDecisions, providerStatusWord } from './providerHelpers';
 import {
-  ProviderActions,
-  ProviderSummaryCard,
-} from './providerHelpers';
+  DeskHeader,
+  DeskNote,
+  DeskRetry,
+  Stat,
+  StatRow,
+  grouped,
+} from '../../design_system/Desk';
+import { monthName } from '../../platform/i18n/deskTime';
 
 export function ProviderDetailsPage() {
-  const { id } = useParams();
+  const { id = '' } = useParams();
   const [provider, setProvider] = useState<ProviderApplication | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
 
-  async function load() {
-    if (!id) return;
-    setIsLoading(true);
+  const load = useCallback(async () => {
     setError(null);
     try {
       setProvider(await getProvider(id));
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'تعذر تحميل المورد.');
-    } finally {
-      setIsLoading(false);
+    } catch (value) {
+      setError(value instanceof Error ? value.message : 'ما قدرنا نحمّل المزود.');
     }
-  }
-
-  useEffect(() => {
-    load();
   }, [id]);
 
-  if (isLoading) return <LoadingState title="جاري تحميل ملف المورد" />;
-  if (error) return <ErrorState message={error} onRetry={load} />;
+  useEffect(() => {
+    void load();
+  }, [load]);
+
   if (!provider) {
-    return (
-      <EmptyState
-        title="المورد غير موجود"
-        message="لا يمكن عرض هذا المورد."
-      />
-    );
+    return error ? <DeskRetry message={error} onRetry={() => void load()} /> : <DeskNote>لحظة، نحمّل المزود…</DeskNote>;
   }
 
+  const since = provider.reviewedAt ?? provider.createdAt;
+  const sub = [
+    provider.primaryCategory?.nameAr,
+    provider.city?.nameAr,
+    `${providerStatusWord(provider.status)} من ${monthName(since)}`,
+  ]
+    .filter(Boolean)
+    .join(' · ');
+
   return (
-    <section className="page-stack">
-      <PageHeader
-        eyebrow="إدارة مورد"
-        icon="◉"
+    <section>
+      <DeskHeader
         title={provider.businessName}
-        description="ملف إداري لمتابعة حالة المورد وجودة بياناته وخدماته."
-        actions={
-          <ActionLink tone="ghost" to="/providers">
-            العودة للموردين
-          </ActionLink>
-        }
-        meta={
-          <>
-            <StatusBadge status={provider.status} />
-            <span>آخر تحديث {formatDate(provider.updatedAt)}</span>
-          </>
-        }
+        sub={sub}
+        actions={<ProviderDecisions provider={provider} onChanged={load} />}
       />
-
-      <ProviderSummaryCard provider={provider} />
-
-      <div className="stats-grid">
-        <StatCard title="الخدمات" value={provider.servicesCount} tone="info" />
-        <StatCard title="الباقات" value={provider.packagesCount} tone="gold" />
-        <StatCard
-          title="طلبات العروض"
-          value={provider.quoteRequestsCount}
-          tone="warning"
+      {error ? <DeskRetry message={error} onRetry={() => void load()} /> : null}
+      <StatRow>
+        <Stat value={grouped(provider.quoteRequestsCount)} label="طلبات العروض" />
+        <Stat
+          value={provider.ratingCount ? Number(provider.ratingAverage).toFixed(1) : '—'}
+          label="التقييم"
+          sub={provider.ratingCount ? `${provider.ratingCount} تقييم` : undefined}
         />
-        <StatCard
-          title="التقييمات"
-          value={provider.reviewsCount}
-          tone="success"
-          hint={`متوسط ${provider.ratingAverage}`}
-        />
-      </div>
-
-      <SectionCard
-        title="حالة الظهور العام"
-        subtitle="إجراءات الإدارة المباشرة على حالة المورد."
-        actions={<StatusBadge status={provider.status} />}
-      >
-        <ProviderActions provider={provider} onChanged={load} />
-        {provider.reviewNote ? (
-          <p className="review-note">ملاحظة الإدارة: {provider.reviewNote}</p>
-        ) : null}
-      </SectionCard>
-
-      <div className="two-column">
-        <SectionCard title="بيانات عامة" subtitle="معلومات منشورة أو إدارية آمنة">
-          <div className="details-grid">
-            <DetailField label="الهاتف">
-              <span dir="ltr">{provider.phone}</span>
-            </DetailField>
-            <DetailField label="واتساب">
-              <span dir="ltr">{provider.whatsapp ?? 'غير محدد'}</span>
-            </DetailField>
-            <DetailField label="المدينة">
-              {provider.city?.nameAr ?? 'غير محدد'}
-            </DetailField>
-            <DetailField label="الفئة">
-              {provider.primaryCategory?.nameAr ?? 'غير محدد'}
-            </DetailField>
-            <DetailField label="العنوان">
-              {provider.address ?? 'غير محدد'}
-            </DetailField>
-            <DetailField label="تاريخ الإنشاء">
-              {formatDate(provider.createdAt)}
-            </DetailField>
-          </div>
-          <p className="muted-text">{provider.description ?? 'لا يوجد وصف.'}</p>
-        </SectionCard>
-
-        <SectionCard title="سجل الحالة" subtitle="آخر قرار إداري مسجل.">
-          <Timeline
-            items={[
-              {
-                title: 'تم إنشاء ملف المورد',
-                caption: formatDate(provider.createdAt),
-                tone: 'gold',
-              },
-              {
-                title: provider.reviewedAt ? 'آخر مراجعة إدارية' : 'لا توجد مراجعة بعد',
-                caption: provider.reviewedAt
-                  ? formatDate(provider.reviewedAt)
-                  : 'بانتظار إجراء الإدارة',
-                tone: provider.reviewedAt ? 'success' : 'warning',
-              },
-            ]}
-          />
-        </SectionCard>
-      </div>
-
-      <SectionCard title="الخدمات" subtitle={`${provider.servicesCount} خدمة مسجلة.`}>
-        {provider.services?.length ? (
-          <div className="cards-grid">
-            {provider.services.map((service) => (
-              <article className="mini-card" key={service.id}>
-                <strong>{service.title}</strong>
-                <span>{service.category?.nameAr ?? 'فئة غير محددة'}</span>
-                <p>{service.description ?? 'لا يوجد وصف.'}</p>
-              </article>
-            ))}
-          </div>
-        ) : (
-          <EmptyState
-            title="لا توجد خدمات"
-            message="لم يضف المورد خدمات بعد."
-          />
-        )}
-      </SectionCard>
+      </StatRow>
     </section>
   );
 }

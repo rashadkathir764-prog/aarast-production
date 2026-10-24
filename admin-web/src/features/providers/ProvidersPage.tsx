@@ -1,298 +1,172 @@
-import { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+// a05 «دليل المزودين» (mobile/test/prototype/admin/admin_screens.dart
+// `a05Directory`): the active and suspended providers with their marks. The
+// bookings column waits for B-40 and «تقويم قديم» for B-25; the teams under
+// the name left with D41. Adding a listed provider and importing a file open
+// the existing forms in a window.
+import { useCallback, useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { Plus, Upload } from 'lucide-react';
 import {
   getProviders,
   type CityProjection,
   type ProviderApplication,
   type ProviderCategoryProjection,
 } from './api';
-import { DataTable } from '../../design_system/DataTable';
-import { EmptyState } from '../../design_system/EmptyState';
-import { ErrorState } from '../../design_system/ErrorState';
-import { FilterSelect } from '../../design_system/FilterSelect';
-import { LoadingState } from '../../design_system/LoadingState';
-import { PageHeader } from '../../design_system/PageHeader';
-import { Pagination } from '../../design_system/Pagination';
-import { SearchInput } from '../../design_system/SearchInput';
-import { SectionCard } from '../../design_system/SectionCard';
-import { StatCard } from '../../design_system/StatCard';
-import { StatusBadge } from '../../design_system/StatusBadge';
-import { TableToolbar } from '../../design_system/TableToolbar';
-import { formatDate } from '../../platform/i18n/formatDate';
-import { ProviderActions } from './providerHelpers';
 import { AddListedProviderCard } from './AddListedProviderCard';
 import { ImportProvidersCard } from './ImportProvidersCard';
+import { ProviderStatusTag } from './providerHelpers';
 import { AdminPermission, Can } from '../auth/api';
+import {
+  DeskButton,
+  DeskHeader,
+  DeskNote,
+  DeskPager,
+  DeskRetry,
+  DeskTable,
+  Panel,
+  Tag,
+  TwoLine,
+} from '../../design_system/Desk';
+import { DeskModal } from '../../design_system/DeskModal';
 
-const statuses = [
-  { value: '', label: 'النشطون والموقوفون' },
-  { value: 'ACTIVE', label: 'نشط' },
-  { value: 'SUSPENDED', label: 'موقوف' },
-  { value: 'PENDING', label: 'جديد' },
-  { value: 'NEEDS_CHANGES', label: 'يحتاج تعديل' },
-  { value: 'REJECTED', label: 'مرفوض' },
-];
+type DirectoryCounts = { totalProviders: number; approvedProviders: number };
 
 type ProvidersPageProps = {
   getCities: () => Promise<CityProjection[]>;
   getCategories: () => Promise<ProviderCategoryProjection[]>;
+  getStats: () => Promise<DirectoryCounts>;
 };
 
-export function ProvidersPage({
-  getCities,
-  getCategories,
-}: ProvidersPageProps) {
-  const [items, setItems] = useState<ProviderApplication[]>([]);
+type Page = {
+  items: ProviderApplication[];
+  page: number;
+  limit: number;
+  total: number;
+  totalPages: number;
+};
+
+function rating(provider: ProviderApplication): string {
+  if (!provider.ratingCount) return '—';
+  return `${Number(provider.ratingAverage).toFixed(1)} · ${provider.ratingCount}`;
+}
+
+export function ProvidersPage({ getCities, getCategories, getStats }: ProvidersPageProps) {
+  const navigate = useNavigate();
+  const [page, setPage] = useState(1);
+  const [result, setResult] = useState<Page | null>(null);
+  const [counts, setCounts] = useState<DirectoryCounts | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [form, setForm] = useState<'add' | 'import' | null>(null);
   const [cities, setCities] = useState<CityProjection[]>([]);
   const [categories, setCategories] = useState<ProviderCategoryProjection[]>([]);
-  const [status, setStatus] = useState('');
-  const [cityId, setCityId] = useState('');
-  const [categoryId, setCategoryId] = useState('');
-  const [search, setSearch] = useState('');
-  const [page, setPage] = useState(1);
-  const [pagination, setPagination] = useState({
-    page: 1,
-    limit: 20,
-    total: 0,
-    totalPages: 1,
-  });
-  const [error, setError] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
 
-  async function load() {
-    setIsLoading(true);
+  const load = useCallback(async () => {
     setError(null);
     try {
-      const [providers, cityList, categoryList] = await Promise.all([
-        getProviders({ status, cityId, categoryId, search, page, limit: 20 }),
-        getCities(),
-        getCategories(),
-      ]);
-      if (page > providers.totalPages) {
-        setPage(providers.totalPages);
-        return;
+      // No status: the server answers with active and suspended providers.
+      setResult(await getProviders({ page, limit: 20 }));
+    } catch (value) {
+      setError(value instanceof Error ? value.message : 'ما قدرنا نحمّل الدليل.');
+    }
+  }, [page]);
+
+  useEffect(() => {
+    void load();
+  }, [load]);
+
+  useEffect(() => {
+    getStats().then(setCounts, () => setCounts(null));
+  }, [getStats]);
+
+  async function open(next: 'add' | 'import') {
+    setForm(next);
+    if (cities.length === 0 || categories.length === 0) {
+      try {
+        const [nextCities, nextCategories] = await Promise.all([getCities(), getCategories()]);
+        setCities(nextCities.filter((city) => city.isActive));
+        setCategories(nextCategories.filter((category) => category.isActive));
+      } catch (value) {
+        setError(value instanceof Error ? value.message : 'ما قدرنا نحمّل المدن والأقسام.');
       }
-      setItems(providers.items);
-      setPagination({
-        page: providers.page,
-        limit: providers.limit,
-        total: providers.total,
-        totalPages: providers.totalPages,
-      });
-      setCities(cityList);
-      setCategories(categoryList);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'تعذر تحميل الموردين.');
-    } finally {
-      setIsLoading(false);
     }
   }
 
-  useEffect(() => {
-    load();
-  }, [status, cityId, categoryId, page]);
-
-  function submitSearch() {
-    if (page === 1) void load();
-    else setPage(1);
+  // The window stays open so its own result line («أُضيف …») stays readable.
+  async function changed() {
+    await load();
+    getStats().then(setCounts, () => undefined);
   }
 
-  if (isLoading) return <LoadingState title="جاري تحميل الموردين" />;
-  if (error) return <ErrorState message={error} onRetry={load} />;
-
-  const totalServices = items.reduce(
-    (total, provider) => total + provider.servicesCount,
-    0,
-  );
-  const totalBookings = items.reduce(
-    (total, provider) => total + provider.quoteRequestsCount,
-    0,
-  );
-  const activeCount = items.filter((provider) => provider.status === 'ACTIVE').length;
-  const suspendedCount = items.filter(
-    (provider) => provider.status === 'SUSPENDED',
-  ).length;
-
   return (
-    <section className="page-stack">
-      <PageHeader
-        eyebrow="إدارة الموردين"
-        icon="◉"
-        title="ملفات الموردين داخل المنصة"
-        description="هذه الصفحة مختلفة عن طلبات الانضمام، وتعرض الموردين المسجلين وحالة ظهورهم."
-        meta={<span>{pagination.total} مورد مطابق</span>}
+    <section>
+      <DeskHeader
+        title="دليل المزودين"
+        sub={counts ? `${counts.totalProviders} مزود · ${counts.approvedProviders} نشط` : undefined}
+        actions={
+          <Can permission={AdminPermission.PROVIDERS_WRITE}>
+            <DeskButton tone="soft" icon={Plus} onClick={() => void open('add')}>
+              أضف مزود بلا حساب
+            </DeskButton>
+            <DeskButton tone="soft" icon={Upload} onClick={() => void open('import')}>
+              استيراد ملف
+            </DeskButton>
+          </Can>
+        }
       />
-
-      <div className="stats-grid">
-        <StatCard title="كل النتائج" value={pagination.total} tone="gold" />
-        <StatCard title="نشط في الصفحة" value={activeCount} tone="success" />
-        <StatCard title="موقوف في الصفحة" value={suspendedCount} tone="danger" />
-        <StatCard title="خدمات الصفحة" value={totalServices} tone="info" />
-        <StatCard title="طلبات الصفحة" value={totalBookings} tone="warning" />
-      </div>
-
-      <SectionCard className="filters-card">
-        <TableToolbar>
-          <SearchInput
-            label="بحث في الموردين"
-            value={search}
-            onChange={setSearch}
-            onSubmit={submitSearch}
-            placeholder="بحث باسم المورد أو الهاتف"
-          />
-          <FilterSelect
-            label="الحالة"
-            value={status}
-            onChange={(value) => {
-              setStatus(value);
-              setPage(1);
-            }}
-            options={statuses}
-          />
-          <FilterSelect
-            label="المدينة"
-            value={cityId}
-            onChange={(value) => {
-              setCityId(value);
-              setPage(1);
-            }}
-            options={[
-              { value: '', label: 'كل المدن' },
-              ...cities.map((city) => ({ value: city.id, label: city.nameAr })),
+      {error ? <DeskRetry message={error} onRetry={() => void load()} /> : null}
+      {result === null && !error ? <DeskNote>لحظة، نحمّل الدليل…</DeskNote> : null}
+      {result && result.items.length === 0 ? (
+        <Panel>
+          <DeskNote>ما فيه مزودين بعد.</DeskNote>
+        </Panel>
+      ) : null}
+      {result && result.items.length > 0 ? (
+        <>
+          <DeskTable
+            caption="دليل المزودين"
+            columns={[
+              { label: 'المزود', flex: 4 },
+              { label: 'الحالة', flex: 2 },
+              { label: 'المدينة', flex: 2 },
+              { label: 'علامات', flex: 4 },
+              { label: 'التقييم', flex: 2 },
+            ]}
+            rows={result.items}
+            rowKey={(provider) => provider.id}
+            onRowClick={(provider) => navigate(`/providers/${provider.id}`)}
+            rowLabel={(provider) => `افتح ${provider.businessName}`}
+            renderRow={(provider) => [
+              <TwoLine
+                key="p"
+                main={provider.businessName}
+                sub={provider.primaryCategory?.nameAr}
+              />,
+              <ProviderStatusTag key="s" status={provider.status} />,
+              provider.city?.nameAr ?? '—',
+              <span key="m" className="desk-tags">
+                {provider.verifiedAt ? <Tag tone="green">موثّق</Tag> : null}
+                {provider.isFeatured ? <Tag tone="saffron">مميز</Tag> : null}
+                {provider.userId ? null : <Tag tone="muted">بلا حساب</Tag>}
+              </span>,
+              rating(provider),
             ]}
           />
-          <FilterSelect
-            label="الفئة"
-            value={categoryId}
-            onChange={(value) => {
-              setCategoryId(value);
-              setPage(1);
-            }}
-            options={[
-              { value: '', label: 'كل الفئات' },
-              ...categories.map((category) => ({
-                value: category.id,
-                label: category.nameAr,
-              })),
-            ]}
-          />
-        </TableToolbar>
-      </SectionCard>
-
-      <div className="content-with-aside">
-        <SectionCard
-          title="قائمة الموردين"
-          subtitle="حالة المورد، المدينة، الخدمات، الطلبات، والتقييمات."
-        >
-          {items.length === 0 ? (
-            <EmptyState
-              title="لا يوجد موردون"
-              message="لا توجد ملفات موردين مطابقة للفلاتر الحالية."
-            />
-          ) : (
-            <DataTable
-              label="قائمة الموردين"
-              columns={[
-                'المورد',
-                'الحالة',
-                'المدينة',
-                'الهاتف',
-                'الخدمات',
-                'طلبات العروض',
-                'التقييم',
-                'الإجراءات',
-              ]}
-              minWidth={1040}
-            >
-              {items.map((provider) => (
-                <tr key={provider.id}>
-                  <td>
-                    <Link className="table-strong-link" to={`/providers/${provider.id}`}>
-                      {provider.businessName}
-                    </Link>
-                    <span className="table-subtle">
-                      {provider.primaryCategory?.nameAr ?? 'فئة غير محددة'} ·{' '}
-                      {formatDate(provider.updatedAt)}
-                    </span>
-                  </td>
-                  <td>
-                    <StatusBadge status={provider.status} />
-                  </td>
-                  <td>{provider.city?.nameAr ?? 'غير محدد'}</td>
-                  <td dir="ltr">{provider.phone}</td>
-                  <td>{provider.servicesCount}</td>
-                  <td>{provider.quoteRequestsCount}</td>
-                  <td>
-                    {provider.ratingAverage} / 5
-                    <span className="table-subtle">{provider.ratingCount} تقييم</span>
-                  </td>
-                  <td className="actions-cell">
-                    <ProviderActions
-                      provider={provider}
-                      detailsPath={`/providers/${provider.id}`}
-                      onChanged={load}
-                    />
-                  </td>
-                </tr>
-              ))}
-            </DataTable>
-          )}
-          <Pagination
-            page={pagination.page}
-            limit={pagination.limit}
-            total={pagination.total}
-            totalPages={pagination.totalPages}
+          <DeskPager
+            page={result.page}
+            limit={result.limit}
+            total={result.total}
+            totalPages={result.totalPages}
             onPageChange={setPage}
           />
-        </SectionCard>
+        </>
+      ) : null}
 
-        <div className="page-stack">
-          <SectionCard
-            title="ترتيب سريع"
-            subtitle="حسب عدد طلبات العروض في النتائج الحالية."
-            className="sticky-panel"
-          >
-            <div className="compact-list">
-              {[...items]
-                .sort(
-                  (first, second) =>
-                    second.quoteRequestsCount - first.quoteRequestsCount,
-                )
-                .slice(0, 5)
-                .map((provider, index) => (
-                  <Link
-                    className="compact-row"
-                    to={`/providers/${provider.id}`}
-                    key={provider.id}
-                  >
-                    <b>{index + 1}</b>
-                    <div>
-                      <strong>{provider.businessName}</strong>
-                      <span>{provider.quoteRequestsCount} طلب عرض</span>
-                    </div>
-                    <StatusBadge status={provider.status} />
-                  </Link>
-                ))}
-              {items.length === 0 ? (
-                <span className="muted-text">لا توجد بيانات كافية للترتيب.</span>
-              ) : null}
-            </div>
-          </SectionCard>
-
-          <Can permission={AdminPermission.PROVIDERS_WRITE}>
-            <AddListedProviderCard
-              cities={cities}
-              categories={categories}
-              onCreated={load}
-            />
-            <ImportProvidersCard
-              cities={cities}
-              categories={categories}
-              onImported={load}
-            />
-          </Can>
-        </div>
-      </div>
+      <DeskModal title="أضف مزود بلا حساب" open={form === 'add'} onClose={() => setForm(null)} wide>
+        <AddListedProviderCard cities={cities} categories={categories} onCreated={changed} />
+      </DeskModal>
+      <DeskModal title="استيراد ملف" open={form === 'import'} onClose={() => setForm(null)} wide>
+        <ImportProvidersCard cities={cities} categories={categories} onImported={changed} />
+      </DeskModal>
     </section>
   );
 }

@@ -1,257 +1,170 @@
-import { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+// a03 «طلبات الانضمام» (mobile/test/prototype/admin/admin_screens.dart
+// `a03Applications`). «أُعيد إرسالها» waits for B-01; the method column and
+// the automatic checks in «ملاحظة» have no field (D41, B-16, B-13, B-31), so
+// the note column carries the admin's own note. The server lists the newest
+// first, so the page reads up to 100 and puts the oldest first (A-06).
+import { useCallback, useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { getProviderApplications, type ProviderApplication } from './api';
 import {
-  getProviderApplications,
-  type CityProjection,
-  type ProviderApplication,
-  type ProviderCategoryProjection,
-} from './api';
-import { DataTable } from '../../design_system/DataTable';
-import { EmptyState } from '../../design_system/EmptyState';
-import { ErrorState } from '../../design_system/ErrorState';
-import { FilterSelect } from '../../design_system/FilterSelect';
-import { LoadingState } from '../../design_system/LoadingState';
-import { PageHeader } from '../../design_system/PageHeader';
-import { Pagination } from '../../design_system/Pagination';
-import { SearchInput } from '../../design_system/SearchInput';
-import { SectionCard } from '../../design_system/SectionCard';
-import { StatCard } from '../../design_system/StatCard';
-import { StatusBadge } from '../../design_system/StatusBadge';
-import { TableToolbar } from '../../design_system/TableToolbar';
-import { formatDate } from '../../platform/i18n/formatDate';
-import { ProviderActions, shortId } from './providerHelpers';
+  DeskButton,
+  DeskHeader,
+  DeskNote,
+  DeskPager,
+  DeskRetry,
+  DeskTable,
+  Panel,
+  Tag,
+  TwoLine,
+  phoneSpaced,
+} from '../../design_system/Desk';
+import { PROMISE, spanWords } from '../../platform/i18n/deskTime';
 
-const statuses = [
-  { value: '', label: 'الطلبات غير المعتمدة' },
-  { value: 'PENDING', label: 'جديد' },
-  { value: 'NEEDS_CHANGES', label: 'يحتاج تعديل' },
-  { value: 'ACTIVE', label: 'مقبول' },
-  { value: 'REJECTED', label: 'مرفوض' },
-  { value: 'SUSPENDED', label: 'موقوف' },
-];
+type Status = 'PENDING' | 'NEEDS_CHANGES' | 'REJECTED';
 
-type ProviderApplicationStats = {
-  pendingProviders: number;
-  needsChangesProviders: number;
-  rejectedProviders: number;
-};
+/** The counts the tabs read from the dashboard stats (handed in by the app). */
+type ApplicationCounts = { pendingProviders: number; needsChangesProviders: number };
 
 type ProviderApplicationsPageProps = {
-  getStats: () => Promise<ProviderApplicationStats>;
-  getCities: () => Promise<CityProjection[]>;
-  getCategories: () => Promise<ProviderCategoryProjection[]>;
+  getStats: () => Promise<ApplicationCounts>;
 };
 
-export function ProviderApplicationsPage({
-  getStats,
-  getCities,
-  getCategories,
-}: ProviderApplicationsPageProps) {
-  const [items, setItems] = useState<ProviderApplication[]>([]);
-  const [cities, setCities] = useState<CityProjection[]>([]);
-  const [categories, setCategories] = useState<ProviderCategoryProjection[]>([]);
-  const [status, setStatus] = useState('');
-  const [cityId, setCityId] = useState('');
-  const [categoryId, setCategoryId] = useState('');
-  const [search, setSearch] = useState('');
-  const [page, setPage] = useState(1);
-  const [pagination, setPagination] = useState({
-    page: 1,
-    limit: 20,
-    total: 0,
-    totalPages: 1,
-  });
-  const [stats, setStats] = useState<ProviderApplicationStats | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+const LIMIT = 100;
+const PROMISE_MS = 2 * PROMISE.DAY;
 
-  async function load() {
-    setIsLoading(true);
+function owner(provider: ProviderApplication) {
+  const name = provider.ownerName ?? provider.user?.name;
+  return (
+    <>
+      {name ? `${name} · ` : ''}
+      <span className="desk-num">{phoneSpaced(provider.phone)}</span>
+    </>
+  );
+}
+
+export function ProviderApplicationsPage({ getStats }: ProviderApplicationsPageProps) {
+  const navigate = useNavigate();
+  const [status, setStatus] = useState<Status>('PENDING');
+  const [page, setPage] = useState(1);
+  const [result, setResult] = useState<{
+    items: ProviderApplication[];
+    page: number;
+    limit: number;
+    total: number;
+    totalPages: number;
+  } | null>(null);
+  const [stats, setStats] = useState<ApplicationCounts | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  const load = useCallback(async () => {
     setError(null);
     try {
-      const [providers, cityList, categoryList, statsResult] = await Promise.all([
-        getProviderApplications({
-          status,
-          cityId,
-          categoryId,
-          search,
-          page,
-          limit: 20,
-        }),
-        getCities(),
-        getCategories(),
-        getStats(),
-      ]);
-      if (page > providers.totalPages) {
-        setPage(providers.totalPages);
-        return;
-      }
-      setItems(providers.items);
-      setPagination({
-        page: providers.page,
-        limit: providers.limit,
-        total: providers.total,
-        totalPages: providers.totalPages,
+      const next = await getProviderApplications({ status, page, limit: LIMIT });
+      setResult({
+        ...next,
+        items: [...next.items].sort(
+          (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime(),
+        ),
       });
-      setCities(cityList);
-      setCategories(categoryList);
-      setStats(statsResult);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'تعذر تحميل الطلبات.');
-    } finally {
-      setIsLoading(false);
+    } catch (value) {
+      setError(value instanceof Error ? value.message : 'ما قدرنا نحمّل الطلبات.');
     }
-  }
+  }, [status, page]);
 
   useEffect(() => {
-    load();
-  }, [status, cityId, categoryId, page]);
+    void load();
+  }, [load]);
 
-  function submitSearch() {
-    if (page === 1) void load();
-    else setPage(1);
+  useEffect(() => {
+    getStats().then(setStats, () => setStats(null));
+  }, [getStats]);
+
+  function pick(next: Status) {
+    setStatus(next);
+    setPage(1);
+    setResult(null);
   }
 
-  if (isLoading) return <LoadingState title="جاري تحميل طلبات الموردين" />;
-  if (error) return <ErrorState message={error} onRetry={load} />;
+  const tabs: Array<{ status: Status; label: string }> = [
+    { status: 'PENDING', label: stats ? `جديد ${stats.pendingProviders}` : 'جديد' },
+    {
+      status: 'NEEDS_CHANGES',
+      label: stats ? `يحتاج تعديل ${stats.needsChangesProviders}` : 'يحتاج تعديل',
+    },
+    { status: 'REJECTED', label: 'مرفوض' },
+  ];
+  const now = Date.now();
 
   return (
-    <section className="page-stack">
-      <PageHeader
-        eyebrow="موافقات الموردين"
-        icon="□"
-        title="طلبات الموردين"
-        description="مراجعة طلبات الانضمام قبل اعتماد ظهور الموردين في السوق العام."
-        meta={
-          <>
-            <span>{pagination.total} نتيجة مطابقة</span>
-            <span>لا يظهر المورد علنا قبل الاعتماد</span>
-          </>
-        }
-      />
-
-      {stats ? (
-        <div className="stats-grid">
-          <StatCard title="جديد" value={stats.pendingProviders} tone="warning" />
-          <StatCard
-            title="يحتاج تعديل"
-            value={stats.needsChangesProviders}
-            tone="gold"
-          />
-          <StatCard title="مرفوض" value={stats.rejectedProviders} tone="danger" />
-        </div>
-      ) : null}
-
-      <SectionCard className="filters-card">
-        <TableToolbar>
-          <SearchInput
-            label="بحث في طلبات الموردين"
-            value={search}
-            onChange={setSearch}
-            onSubmit={submitSearch}
-            placeholder="بحث باسم النشاط أو الهاتف"
-          />
-          <FilterSelect
-            label="الحالة"
-            value={status}
-            onChange={(value) => {
-              setStatus(value);
-              setPage(1);
-            }}
-            options={statuses}
-          />
-          <FilterSelect
-            label="المدينة"
-            value={cityId}
-            onChange={(value) => {
-              setCityId(value);
-              setPage(1);
-            }}
-            options={[
-              { value: '', label: 'كل المدن' },
-              ...cities.map((city) => ({ value: city.id, label: city.nameAr })),
-            ]}
-          />
-          <FilterSelect
-            label="الفئة"
-            value={categoryId}
-            onChange={(value) => {
-              setCategoryId(value);
-              setPage(1);
-            }}
-            options={[
-              { value: '', label: 'كل الفئات' },
-              ...categories.map((category) => ({
-                value: category.id,
-                label: category.nameAr,
-              })),
-            ]}
-          />
-        </TableToolbar>
-      </SectionCard>
-
-      <SectionCard
-        title="سجل الطلبات"
-        subtitle="كل إجراء مؤثر يستخدم تأكيدا واضحا قبل التنفيذ."
-      >
-        {items.length === 0 ? (
-          <EmptyState
-            title="لا توجد طلبات حاليا"
-            message="جرب تغيير الفلاتر أو البحث باسم آخر."
-          />
-        ) : (
-          <DataTable
-            label="سجل طلبات الموردين"
-            columns={[
-              'رقم الطلب',
-              'المورد',
-              'المدينة',
-              'نوع الطلب',
-              'الحالة',
-              'تاريخ الطلب',
-              'الإجراءات',
-            ]}
-            minWidth={980}
+    <section>
+      <DeskHeader
+        title="طلبات الانضمام"
+        sub="الأقدم أول · نوعد المزود برد خلال يومين"
+        actions={tabs.map((tab) => (
+          <DeskButton
+            key={tab.status}
+            tone={tab.status === status ? 'teal' : 'soft'}
+            pressed={tab.status === status}
+            onClick={() => pick(tab.status)}
           >
-            {items.map((provider) => (
-              <tr key={provider.id}>
-                <td className="nowrap">{shortId(provider.id)}</td>
-                <td>
-                  <Link
-                    className="table-strong-link"
-                    to={`/providers/applications/${provider.id}`}
-                  >
-                    {provider.businessName}
-                  </Link>
-                  <span className="table-subtle">
-                    {provider.user?.name ?? provider.ownerName ?? 'مالك غير محدد'}
+            {tab.label}
+          </DeskButton>
+        ))}
+      />
+      {error ? <DeskRetry message={error} onRetry={() => void load()} /> : null}
+      {result === null && !error ? <DeskNote>لحظة، نحمّل الطلبات…</DeskNote> : null}
+      {result && result.items.length === 0 ? (
+        <Panel>
+          <DeskNote>ما فيه طلبات هنا.</DeskNote>
+        </Panel>
+      ) : null}
+      {result && result.items.length > 0 ? (
+        <>
+          <DeskTable
+            caption="طلبات الانضمام"
+            columns={[
+              { label: 'المزود', flex: 4 },
+              { label: 'القسم', flex: 3 },
+              { label: 'المدينة', flex: 2 },
+              { label: 'ينتظر', flex: 2 },
+              { label: 'ملاحظة', flex: 4 },
+            ]}
+            rows={result.items}
+            rowKey={(provider) => provider.id}
+            onRowClick={(provider) => navigate(`/providers/applications/${provider.id}`)}
+            rowLabel={(provider) => `افتح طلب ${provider.businessName}`}
+            renderRow={(provider) => {
+              const since = provider.status === 'PENDING'
+                ? provider.createdAt
+                : provider.reviewedAt ?? provider.createdAt;
+              const waited = now - new Date(since).getTime();
+              const late = provider.status === 'PENDING' && waited >= PROMISE_MS;
+              return [
+                <TwoLine key="p" main={provider.businessName} sub={owner(provider)} />,
+                provider.primaryCategory?.nameAr ?? '—',
+                provider.city?.nameAr ?? '—',
+                <span key="w" className={late ? 'desk-bold desk-ink--coral' : undefined}>
+                  {spanWords(waited)}
+                </span>,
+                provider.reviewNote ? (
+                  <span key="n" className="desk-tag-cell">
+                    <Tag tone={provider.status === 'REJECTED' ? 'muted' : 'saffron'}>
+                      <span className="desk-tag--wrap">{provider.reviewNote}</span>
+                    </Tag>
                   </span>
-                </td>
-                <td>{provider.city?.nameAr ?? 'غير محدد'}</td>
-                <td>{provider.primaryCategory?.nameAr ?? 'خدمة أعراس'}</td>
-                <td>
-                  <StatusBadge status={provider.status} />
-                </td>
-                <td className="nowrap">{formatDate(provider.createdAt)}</td>
-                <td className="actions-cell">
-                  <ProviderActions
-                    provider={provider}
-                    detailsPath={`/providers/applications/${provider.id}`}
-                    onChanged={load}
-                  />
-                </td>
-              </tr>
-            ))}
-          </DataTable>
-        )}
-        <Pagination
-          page={pagination.page}
-          limit={pagination.limit}
-          total={pagination.total}
-          totalPages={pagination.totalPages}
-          onPageChange={setPage}
-        />
-      </SectionCard>
+                ) : null,
+              ];
+            }}
+          />
+          <DeskPager
+            page={result.page}
+            limit={result.limit}
+            total={result.total}
+            totalPages={result.totalPages}
+            onPageChange={setPage}
+          />
+        </>
+      ) : null}
     </section>
   );
 }

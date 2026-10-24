@@ -6,24 +6,38 @@ import providersSource from '../../features/providers/ProvidersPage.tsx?raw';
 import reviewsSource from '../../features/moderation/ReviewsPage.tsx?raw';
 import servicesSource from '../../features/catalog/ServicesPage.tsx?raw';
 import usersSource from '../../features/users/UsersPage.tsx?raw';
+import deskSource from '../../design_system/Desk.tsx?raw';
 
+// Pages rebuilt on the admin desk render the same shared control through
+// `DeskPager` (design_system/Desk.tsx), fed by the server's page answer.
 const paginatedPages = [
-  ['UsersPage.tsx', usersSource, '../../design_system/Pagination'],
-  ['ProviderApplicationsPage.tsx', providerApplicationsSource, '../../design_system/Pagination'],
-  ['ProvidersPage.tsx', providersSource, '../../design_system/Pagination'],
-  ['ServicesPage.tsx', servicesSource, '../../design_system/Pagination'],
-  ['ReviewsPage.tsx', reviewsSource, '../../design_system/Pagination'],
-  ['ConversationReportsPage.tsx', conversationReportsSource, '../../design_system/Pagination'],
-  ['NotificationsPage.tsx', notificationsSource, '../../design_system/Pagination'],
+  ['UsersPage.tsx', usersSource, 'shared'],
+  ['ProviderApplicationsPage.tsx', providerApplicationsSource, 'desk'],
+  ['ProvidersPage.tsx', providersSource, 'desk'],
+  ['ServicesPage.tsx', servicesSource, 'shared'],
+  ['ReviewsPage.tsx', reviewsSource, 'shared'],
+  ['ConversationReportsPage.tsx', conversationReportsSource, 'shared'],
+  ['NotificationsPage.tsx', notificationsSource, 'shared'],
 ] as const;
 
 describe('admin list pagination contract', () => {
-  for (const [file, source, expectedPaginationImport] of paginatedPages) {
+  it('the desk pager renders the shared control', () => {
+    expect(deskSource).toContain("from './Pagination'");
+    expect(deskSource).toContain('<Pagination');
+  });
+
+  for (const [file, source, mode] of paginatedPages) {
     it(`${file} sends page metadata and renders the shared control`, () => {
-      expect(source).toContain(`from '${expectedPaginationImport}'`);
       expect(source).toMatch(/get[A-Za-z]+\(\{[\s\S]*?page,[\s\S]*?limit:/);
-      expect(source).toContain('<Pagination');
-      expect(source).toContain('totalPages={pagination.totalPages}');
+      if (mode === 'desk') {
+        expect(source).toContain("from '../../design_system/Desk'");
+        expect(source).toContain('<DeskPager');
+        expect(source).toContain('totalPages={result.totalPages}');
+      } else {
+        expect(source).toContain("from '../../design_system/Pagination'");
+        expect(source).toContain('<Pagination');
+        expect(source).toContain('totalPages={pagination.totalPages}');
+      }
     });
   }
 

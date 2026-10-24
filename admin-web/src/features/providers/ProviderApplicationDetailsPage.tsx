@@ -1,192 +1,160 @@
-import { useEffect, useState } from 'react';
+// a04 «مراجعة طلب» (mobile/test/prototype/admin/admin_screens.dart
+// `a04Review`): the application field by field and its review line. The note
+// per field and «قبل التعديل» wait for B-01 (one note goes with «اطلب
+// تعديل»), «يخدم» has no field, the teams left with D41, and the quick
+// checks need B-16, B-07 and A-07, so that panel is not drawn.
+import { type ReactNode, useCallback, useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
-import { getProviderApplication, type ProviderApplication } from './api';
-import { ActionLink } from '../../design_system/ActionButton';
-import { DetailField } from '../../design_system/DetailField';
-import { EmptyState } from '../../design_system/EmptyState';
-import { ErrorState } from '../../design_system/ErrorState';
-import { LoadingState } from '../../design_system/LoadingState';
-import { PageHeader } from '../../design_system/PageHeader';
-import { SectionCard } from '../../design_system/SectionCard';
-import { StatusBadge } from '../../design_system/StatusBadge';
-import { Timeline } from '../../design_system/Timeline';
-import { formatDate } from '../../platform/i18n/formatDate';
 import {
-  ProviderActions,
-  ProviderSummaryCard,
-  shortId,
-} from './providerHelpers';
+  getProviderApplication,
+  type ProviderApplication,
+  type ProviderPackageProjection,
+  type ProviderServiceProjection,
+} from './api';
+import { ProviderDecisions, providerStatusWord } from './providerHelpers';
+import {
+  DeskHeader,
+  DeskNote,
+  DeskRetry,
+  Panel,
+  TwoLine,
+  grouped,
+} from '../../design_system/Desk';
+import { whenShort } from '../../platform/i18n/deskTime';
+
+function money(amount: string | null, currency: string): string | null {
+  if (amount === null || amount === '') return null;
+  return `${grouped(amount)} ${currency === 'YER' ? 'ر.ي' : currency}`;
+}
+
+function photoCount(count: number): string {
+  if (count === 0) return 'ما فيه صور';
+  if (count === 1) return 'صورة وحدة';
+  if (count === 2) return 'صورتين';
+  if (count <= 10) return `${count} صور`;
+  return `${count} صورة`;
+}
+
+function serviceLine(service: ProviderServiceProjection): string {
+  return [money(service.basePrice, service.currency), service.description]
+    .filter(Boolean)
+    .join(' · ') || 'بدون سعر';
+}
+
+function packageLine(item: ProviderPackageProjection): string {
+  const included = Array.isArray(item.items)
+    ? item.items.filter((entry): entry is string => typeof entry === 'string').join('، ')
+    : '';
+  return [money(item.price, item.currency), included || item.description]
+    .filter(Boolean)
+    .join(' · ') || 'بدون سعر';
+}
+
+function decisionLine(provider: ProviderApplication): string | null {
+  if (!provider.reviewedAt) return null;
+  const who = provider.reviewedBy?.name ?? 'الإدارة';
+  switch (provider.status) {
+    case 'NEEDS_CHANGES':
+      return `${who} طلب تعديل`;
+    case 'REJECTED':
+      return `${who} رفض الطلب`;
+    case 'ACTIVE':
+      return `${who} اعتمد الطلب`;
+    case 'SUSPENDED':
+      return `${who} أوقف الملف`;
+    default:
+      return null;
+  }
+}
+
+function Field({ label, value, children }: { label: string; value: string; children?: ReactNode }) {
+  return (
+    <div className="desk-field-card">
+      <TwoLine main={label} sub={value} />
+      {children}
+    </div>
+  );
+}
 
 export function ProviderApplicationDetailsPage() {
-  const { id } = useParams();
+  const { id = '' } = useParams();
   const [provider, setProvider] = useState<ProviderApplication | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
 
-  async function load() {
-    if (!id) return;
-    setIsLoading(true);
+  const load = useCallback(async () => {
     setError(null);
     try {
       setProvider(await getProviderApplication(id));
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'تعذر تحميل تفاصيل الطلب.');
-    } finally {
-      setIsLoading(false);
+    } catch (value) {
+      setError(value instanceof Error ? value.message : 'ما قدرنا نحمّل الطلب.');
     }
-  }
-
-  useEffect(() => {
-    load();
   }, [id]);
 
-  if (isLoading) return <LoadingState title="جاري تحميل ملف الطلب" />;
-  if (error) return <ErrorState message={error} onRetry={load} />;
+  useEffect(() => {
+    void load();
+  }, [load]);
+
   if (!provider) {
-    return (
-      <EmptyState
-        title="الطلب غير موجود"
-        message="لا يمكن عرض هذا الطلب."
-      />
-    );
+    return error ? <DeskRetry message={error} onRetry={() => void load()} /> : <DeskNote>لحظة، نحمّل الطلب…</DeskNote>;
   }
 
+  const services = provider.services ?? [];
+  const packages = provider.packages ?? [];
+  const photos = services.reduce((sum, service) => sum + (service.images?.length ?? 0), 0);
+  const where = [provider.primaryCategory?.nameAr, provider.city?.nameAr].filter(Boolean);
+  const state = provider.status === 'PENDING'
+    ? `قدّم ${whenShort(provider.createdAt)}`
+    : providerStatusWord(provider.status);
+  const decision = decisionLine(provider);
+
   return (
-    <section className="page-stack">
-      <PageHeader
-        eyebrow="تفاصيل طلب المورد"
-        icon="□"
+    <section className="desk-fill-page">
+      <DeskHeader
         title={provider.businessName}
-        description="مراجعة بيانات النشاط والتواصل والخدمات قبل اعتماد الظهور العام."
-        actions={
-          <ActionLink className="button--ghost" tone="ghost" to="/providers/applications">
-            العودة للطلبات
-          </ActionLink>
-        }
-        meta={
-          <>
-            <StatusBadge status={provider.status} />
-            <span>{shortId(provider.id)}</span>
-            <span>{formatDate(provider.createdAt)}</span>
-          </>
-        }
+        sub={[...where, state].join(' · ')}
+        actions={<ProviderDecisions provider={provider} onChanged={load} />}
       />
-
-      <ProviderSummaryCard provider={provider} />
-
-      <SectionCard
-        title="إجراءات المراجعة"
-        subtitle="الرفض والإيقاف وطلب التعديل تستخدم ملاحظة واضحة قبل التنفيذ."
-        actions={<StatusBadge status={provider.status} />}
-      >
-        <ProviderActions provider={provider} onChanged={load} />
-        {provider.reviewNote ? (
-          <p className="review-note">ملاحظة الإدارة: {provider.reviewNote}</p>
-        ) : null}
-      </SectionCard>
-
-      <div className="two-column">
-        <SectionCard title="بيانات النشاط" subtitle="معلومات العرض العام">
-          <div className="details-grid">
-            <DetailField label="اسم النشاط">{provider.businessName}</DetailField>
-            <DetailField label="المدينة">
-              {provider.city?.nameAr ?? 'غير محدد'}
-            </DetailField>
-            <DetailField label="الفئة">
-              {provider.primaryCategory?.nameAr ?? 'غير محدد'}
-            </DetailField>
-            <DetailField label="الهاتف">
-              <span dir="ltr">{provider.phone}</span>
-            </DetailField>
-            <DetailField label="واتساب">
-              <span dir="ltr">{provider.whatsapp ?? 'غير محدد'}</span>
-            </DetailField>
-            <DetailField label="البريد">{provider.email ?? 'غير محدد'}</DetailField>
-          </div>
-          <p className="muted-text">{provider.description ?? 'لا يوجد وصف.'}</p>
-        </SectionCard>
-
-        <SectionCard title="صاحب الحساب" subtitle="بيانات آمنة للعرض الإداري">
-          <div className="details-grid">
-            <DetailField label="الاسم">
-              {provider.user?.name ?? provider.ownerName ?? 'غير محدد'}
-            </DetailField>
-            <DetailField label="هاتف الحساب">
-              <span dir="ltr">{provider.user?.phone ?? 'غير محدد'}</span>
-            </DetailField>
-            <DetailField label="البريد">
-              {provider.user?.email ?? provider.email ?? 'غير محدد'}
-            </DetailField>
-            <DetailField label="الدور">
-              {provider.user?.role ?? 'غير محدد'}
-            </DetailField>
-          </div>
-        </SectionCard>
-      </div>
-
-      <div className="two-column">
-        <SectionCard title="خط المراجعة" subtitle="حالة الطلب منذ الإنشاء.">
-          <Timeline
-            items={[
-              {
-                title: 'تم إنشاء الطلب',
-                caption: formatDate(provider.createdAt),
-                tone: 'gold',
-              },
-              {
-                title: provider.reviewedAt ? 'تمت مراجعته' : 'بانتظار القرار',
-                caption: provider.reviewedAt
-                  ? formatDate(provider.reviewedAt)
-                  : 'لم يتم تسجيل مراجعة بعد',
-                tone: provider.reviewedAt ? 'success' : 'warning',
-              },
-            ]}
+      {error ? <DeskRetry message={error} onRetry={() => void load()} /> : null}
+      <div className="desk-split">
+        <div className="desk-split__main desk-field-stack" style={{ flex: 3 }}>
+          <Field label="النشاط" value={provider.businessName}>
+            {provider.description ? <p className="desk-field-card__more">{provider.description}</p> : null}
+          </Field>
+          <Field label="صور الشغل" value={photoCount(photos)} />
+          {services.map((service) => (
+            <Field key={service.id} label={service.title} value={serviceLine(service)} />
+          ))}
+          {packages.map((item) => (
+            <Field key={item.id} label={item.title} value={packageLine(item)} />
+          ))}
+          <Field
+            label="المناطق"
+            value={[provider.city?.nameAr, provider.address].filter(Boolean).join(' · ') || '—'}
           />
-        </SectionCard>
-
-        <SectionCard title="المستندات والصور" subtitle="الشعار والغلاف المحفوظان في ملف المورد.">
-          <div className="media-preview">
-            {provider.logoUrl ? <img src={provider.logoUrl} alt="" /> : null}
-            {provider.coverUrl ? <img src={provider.coverUrl} alt="" /> : null}
-            {!provider.logoUrl && !provider.coverUrl ? (
-              <EmptyState
-                title="لا توجد صور مرفقة"
-                message="لم يرسل المورد شعارا أو غلافا في البيانات الحالية."
-              />
-            ) : null}
-          </div>
-        </SectionCard>
-      </div>
-
-      <SectionCard
-        title="الخدمات والباقات"
-        subtitle="تظهر فقط عند وجود بيانات حقيقية ضمن ملف المورد."
-      >
-        <div className="cards-grid">
-          {provider.services?.map((service) => (
-            <article className="mini-card" key={service.id}>
-              <strong>{service.title}</strong>
-              <span>{service.category?.nameAr ?? 'فئة غير محددة'}</span>
-              <p>{service.description ?? 'لا يوجد وصف.'}</p>
-            </article>
-          ))}
-          {provider.packages?.map((providerPackage) => (
-            <article className="mini-card" key={providerPackage.id}>
-              <strong>{providerPackage.title}</strong>
-              <span>
-                {providerPackage.price ?? 'حسب الطلب'} {providerPackage.currency}
-              </span>
-              <p>{providerPackage.description ?? 'لا يوجد وصف.'}</p>
-            </article>
-          ))}
         </div>
-        {!provider.services?.length && !provider.packages?.length ? (
-          <EmptyState
-            title="لا توجد خدمات أو باقات"
-            message="لم يضف المورد خدمات أو باقات بعد."
-          />
-        ) : null}
-      </SectionCard>
+        <div className="desk-split__side desk-split__side--fill" style={{ flex: 2 }}>
+          <Panel>
+            <h2 className="desk-panel__title">خط المراجعة</h2>
+            <ol className="desk-timeline">
+              <li>
+                <span>{whenShort(provider.createdAt)}</span>
+                <span>قدّم الطلب</span>
+              </li>
+              {decision && provider.reviewedAt ? (
+                <li>
+                  <span>{whenShort(provider.reviewedAt)}</span>
+                  <span>
+                    {decision}
+                    {provider.reviewNote ? (
+                      <strong className="desk-timeline__note">للمزود: {provider.reviewNote}</strong>
+                    ) : null}
+                  </span>
+                </li>
+              ) : null}
+            </ol>
+          </Panel>
+        </div>
+      </div>
     </section>
   );
 }

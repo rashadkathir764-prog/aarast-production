@@ -39,13 +39,22 @@ describe('provider administration lifecycle', () => {
   });
 
   it('keeps applications and provider directory defaults distinct', () => {
-    expect(applicationsSource).toContain('الطلبات غير المعتمدة');
-    expect(providersSource).toContain('النشطون والموقوفون');
+    // a03 opens on the new applications; a05 leaves the status to the
+    // server, which lists the active and suspended providers.
+    expect(applicationsSource).toContain("useState<Status>('PENDING')");
+    expect(applicationsSource).toContain('getProviderApplications');
+    expect(providersSource).toContain('getProviders({ page, limit: 20 })');
+  });
+
+  it('shows directory totals from the server, never page-local sums', () => {
+    expect(providersSource).toContain('counts.totalProviders');
+    expect(providersSource).toContain('counts.approvedProviders');
+    expect(providersSource).not.toContain('في الصفحة');
+    expect(applicationsSource).not.toContain('في الصفحة');
   });
 
   it('labels page-local aggregates honestly', () => {
     for (const source of [
-      providersSource,
       reviewsSource,
       servicesSource,
       usersSource,

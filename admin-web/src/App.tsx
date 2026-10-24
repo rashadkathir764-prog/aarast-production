@@ -50,11 +50,7 @@ export default function App() {
           path="providers/applications"
           element={
             <RequireAdminPermission permission={AdminPermission.PROVIDERS_READ}>
-              <ProviderApplicationsPage
-                getCategories={getCategories}
-                getCities={getCities}
-                getStats={getStats}
-              />
+              <ProviderApplicationsPage getStats={getStats} />
             </RequireAdminPermission>
           }
         />
@@ -73,6 +69,7 @@ export default function App() {
               <ProvidersPage
                 getCategories={getCategories}
                 getCities={getCities}
+                getStats={getStats}
               />
             </RequireAdminPermission>
           }

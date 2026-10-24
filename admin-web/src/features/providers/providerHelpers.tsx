@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react';
 import {
   activateProvider,
   approveProvider,
@@ -7,21 +8,9 @@ import {
   suspendProvider,
   type ProviderApplication,
 } from './api';
-import { ActionButton, ActionLink } from '../../design_system/ActionButton';
 import { ConfirmDialog } from '../../design_system/ConfirmDialog';
-import { DetailField } from '../../design_system/DetailField';
-import { StatusBadge } from '../../design_system/StatusBadge';
+import { DeskButton, Tag } from '../../design_system/Desk';
 import { AdminPermission, Can } from '../auth/api';
-
-export function shortId(value: string) {
-  return `#${value.slice(0, 8).toUpperCase()}`;
-}
-
-type ProviderActionsProps = {
-  provider: ProviderApplication;
-  onChanged: () => Promise<void> | void;
-  detailsPath?: string;
-};
 
 export function providerActionVisibility(
   status: ProviderApplication['status'],
@@ -43,169 +32,196 @@ export function providerVerificationAction(
   return provider.status === 'ACTIVE' ? 'verify' : null;
 }
 
-export function ProviderActions({
+const STATUS_TAGS: Record<string, { label: string; tone: 'green' | 'coral' | 'saffron' | 'sky' | 'muted' }> = {
+  ACTIVE: { label: 'نشط', tone: 'green' },
+  SUSPENDED: { label: 'موقوف', tone: 'coral' },
+  PENDING: { label: 'جديد', tone: 'sky' },
+  NEEDS_CHANGES: { label: 'يحتاج تعديل', tone: 'saffron' },
+  REJECTED: { label: 'مرفوض', tone: 'muted' },
+};
+
+/** The provider's state as a design tag («نشط», «موقوف»…). */
+export function ProviderStatusTag({ status }: { status: string }) {
+  const tag = STATUS_TAGS[status] ?? { label: status, tone: 'muted' as const };
+  return <Tag tone={tag.tone}>{tag.label}</Tag>;
+}
+
+/** The status word inside a sentence: «نشط من مارس». */
+export function providerStatusWord(status: string): string {
+  return STATUS_TAGS[status]?.label ?? status;
+}
+
+type Decision = {
+  key: string;
+  button: ReactNode;
+  dialog: (trigger: ReactNode) => ReactNode;
+};
+
+/**
+ * The decisions an admin with PROVIDERS_WRITE can take on a provider, as the
+ * designs draw them (a04 review: «اطلب تعديل · اعتماد · رفض»; a06 details:
+ * «إيقاف · إلغاء التوثيق»). Each confirms first and says only what the
+ * server really does.
+ */
+export function ProviderDecisions({
   provider,
   onChanged,
-  detailsPath,
-}: ProviderActionsProps) {
+}: {
+  provider: ProviderApplication;
+  onChanged: () => Promise<void> | void;
+}) {
   const actions = providerActionVisibility(provider.status);
   const verification = providerVerificationAction(provider);
+  const name = provider.businessName;
 
   async function run(action: () => Promise<ProviderApplication>) {
     await action();
     await onChanged();
   }
 
-  return (
-    <div className="actions">
-      {detailsPath ? (
-        <ActionLink tone="ghost" size="small" to={detailsPath}>
-          عرض
-        </ActionLink>
-      ) : null}
-      <Can permission={AdminPermission.PROVIDERS_WRITE}>
-        {actions.approve ? (
+  const decisions: Decision[] = [];
+  if (actions.requestChanges) {
+    decisions.push({
+      key: 'changes',
+      button: <DeskButton tone="saffron">اطلب تعديل</DeskButton>,
+      dialog: (trigger) => (
         <ConfirmDialog
-          title="اعتماد المورد"
-          message="سيصبح المورد ظاهرا للعملاء في سوق الموردين بعد الاعتماد."
-          confirmLabel="اعتماد"
-          trigger={
-            <ActionButton size="small" type="button">
-              اعتماد
-            </ActionButton>
-          }
+          variant="desk"
+          title={`اطلب تعديل من ${name}`}
+          effects={['يبقى مخفي عن العرسان لين يعدّل.', 'ملاحظتك توصله في تنبيه.']}
+          needsNote
+          noteLabel="الملاحظة (توصل المزود)"
+          confirmLabel="أرسل الملاحظة"
+          confirmTone="saffron"
+          trigger={trigger}
+          onConfirm={(note) => run(() => requestProviderChanges(provider.id, note))}
+        />
+      ),
+    });
+  }
+  if (actions.approve) {
+    decisions.push({
+      key: 'approve',
+      button: <DeskButton tone="green">اعتماد</DeskButton>,
+      dialog: (trigger) => (
+        <ConfirmDialog
+          variant="desk"
+          title={`اعتماد ${name}`}
+          effects={[
+            'يظهر للعرسان في الدليل لما تكون عنده خدمة نشطة.',
+            'يوصله تنبيه إن طلبه انقبل.',
+          ]}
+          confirmLabel="اعتمد"
+          confirmTone="green"
+          trigger={trigger}
           onConfirm={() => run(() => approveProvider(provider.id))}
         />
-        ) : null}
-        {actions.activate ? (
+      ),
+    });
+  }
+  if (actions.reject) {
+    decisions.push({
+      key: 'reject',
+      button: <DeskButton tone="white-coral">رفض</DeskButton>,
+      dialog: (trigger) => (
         <ConfirmDialog
-          title="تفعيل المورد"
-          message="سيعود المورد إلى الحالة النشطة والمتاحة في السوق العام."
-          confirmLabel="تفعيل"
-          trigger={
-            <ActionButton tone="ghost" size="small" type="button">
-              تفعيل
-            </ActionButton>
-          }
-          onConfirm={() => run(() => activateProvider(provider.id))}
-        />
-        ) : null}
-        {actions.requestChanges ? (
-        <ConfirmDialog
-          title="طلب تعديل"
-          message="سيبقى المورد مخفيا حتى يراجع بياناته ويعالج ملاحظات الإدارة."
-          confirmLabel="طلب تعديل"
+          variant="desk"
+          title={`رفض ${name}`}
+          effects={['ما يظهر للعرسان.', 'السبب يوصله في تنبيه.']}
           needsNote
-          noteLabel="ملاحظة الإدارة"
-          trigger={
-            <ActionButton tone="ghost" size="small" type="button">
-              طلب تعديل
-            </ActionButton>
-          }
-          onConfirm={(note) =>
-            run(() => requestProviderChanges(provider.id, note))
-          }
-        />
-        ) : null}
-        {actions.reject ? (
-        <ConfirmDialog
-          title="رفض الطلب"
-          message="سيبقى المورد مخفيا عن العملاء ولن يظهر في السوق العام."
-          confirmLabel="رفض"
-          tone="danger"
-          needsNote
-          noteLabel="سبب الرفض"
-          trigger={
-            <ActionButton tone="danger" size="small" type="button">
-              رفض
-            </ActionButton>
-          }
+          noteLabel="السبب (يوصل المزود)"
+          confirmLabel="ارفض"
+          confirmTone="coral"
+          trigger={trigger}
           onConfirm={(reason) => run(() => rejectProvider(provider.id, reason))}
         />
-        ) : null}
-        {actions.suspend ? (
+      ),
+    });
+  }
+  if (actions.suspend) {
+    decisions.push({
+      key: 'suspend',
+      button: <DeskButton tone="coral">إيقاف</DeskButton>,
+      dialog: (trigger) => (
         <ConfirmDialog
-          title="إيقاف المورد"
-          message="سيتم إخفاء المورد من السوق العام مؤقتا حتى تتم مراجعته."
-          confirmLabel="إيقاف"
-          tone="danger"
+          variant="desk"
+          title={`إيقاف ${name}`}
+          effects={[
+            'يختفي من الدليل وما توصله طلبات جديدة.',
+            'يوصله السبب، ويقدر يتواصل مع الدعم.',
+          ]}
           needsNote
-          noteLabel="سبب الإيقاف"
-          trigger={
-            <ActionButton tone="ghost" size="small" type="button">
-              إيقاف
-            </ActionButton>
-          }
+          noteLabel="السبب (يوصل المزود)"
+          confirmLabel="أوقف"
+          confirmTone="coral"
+          trigger={trigger}
           onConfirm={(reason) => run(() => suspendProvider(provider.id, reason))}
         />
-        ) : null}
-        {verification === 'verify' ? (
+      ),
+    });
+  }
+  if (actions.activate) {
+    decisions.push({
+      key: 'activate',
+      button: <DeskButton tone="teal">تفعيل</DeskButton>,
+      dialog: (trigger) => (
         <ConfirmDialog
-          title="توثيق المورد"
-          message="تأكد أنك راجعت وثائق المورد (السجل التجاري أو الهوية). ستظهر شارة «موثّق» للعملاء."
-          confirmLabel="توثيق"
-          trigger={
-            <ActionButton tone="ghost" size="small" type="button">
-              توثيق
-            </ActionButton>
-          }
+          variant="desk"
+          title={`تفعيل ${name}`}
+          effects={['يرجع للدليل ويستقبل طلبات.', 'يوصله تنبيه إن حسابه رجع.']}
+          confirmLabel="فعّله"
+          trigger={trigger}
+          onConfirm={() => run(() => activateProvider(provider.id))}
+        />
+      ),
+    });
+  }
+  if (verification === 'verify') {
+    decisions.push({
+      key: 'verify',
+      button: <DeskButton tone="soft">توثيق</DeskButton>,
+      dialog: (trigger) => (
+        <ConfirmDialog
+          variant="desk"
+          title={`توثيق ${name}`}
+          effects={[
+            'تأكد إنك راجعت السجل التجاري أو الهوية.',
+            'تظهر علامة «موثّق» للعرسان.',
+          ]}
+          confirmLabel="وثّقه"
+          confirmTone="green"
+          trigger={trigger}
           onConfirm={() => run(() => setProviderVerified(provider.id, true))}
         />
-        ) : null}
-        {verification === 'unverify' ? (
+      ),
+    });
+  }
+  if (verification === 'unverify') {
+    decisions.push({
+      key: 'unverify',
+      button: <DeskButton tone="soft">إلغاء التوثيق</DeskButton>,
+      dialog: (trigger) => (
         <ConfirmDialog
-          title="إلغاء التوثيق"
-          message="ستختفي شارة «موثّق» عن المورد في التطبيق."
-          confirmLabel="إلغاء التوثيق"
-          tone="danger"
-          trigger={
-            <ActionButton tone="ghost" size="small" type="button">
-              إلغاء التوثيق
-            </ActionButton>
-          }
+          variant="desk"
+          title={`إلغاء توثيق ${name}`}
+          effects={['تختفي علامة «موثّق» من ملفه.']}
+          confirmLabel="ألغِ التوثيق"
+          confirmTone="coral"
+          trigger={trigger}
           onConfirm={() => run(() => setProviderVerified(provider.id, false))}
         />
-        ) : null}
-      </Can>
-    </div>
-  );
-}
+      ),
+    });
+  }
 
-export function ProviderSummaryCard({
-  provider,
-}: {
-  provider: ProviderApplication;
-}) {
+  if (decisions.length === 0) return null;
   return (
-    <article className="provider-summary">
-      <div className="provider-summary__avatar" aria-hidden="true">
-        {provider.logoUrl ? (
-          <img src={provider.logoUrl} alt="" />
-        ) : (
-          provider.businessName.slice(0, 1)
-        )}
-      </div>
-      <div className="provider-summary__main">
-        <span className="eyebrow">ملف مورد</span>
-        <h2>{provider.businessName}</h2>
-        <p>
-          {provider.user?.name ?? provider.ownerName ?? 'مالك غير محدد'} ·{' '}
-          {provider.city?.nameAr ?? 'مدينة غير محددة'} ·{' '}
-          {provider.primaryCategory?.nameAr ?? 'فئة غير محددة'}
-        </p>
-      </div>
-      <div className="provider-summary__details">
-        <DetailField label="رقم الطلب">{shortId(provider.id)}</DetailField>
-        <DetailField label="الهاتف">
-          <span dir="ltr">{provider.phone}</span>
-        </DetailField>
-        <StatusBadge status={provider.status} />
-        {provider.verifiedAt ? (
-          <DetailField label="التوثيق">
-            موثّق منذ {new Date(provider.verifiedAt).toLocaleDateString('ar')}
-          </DetailField>
-        ) : null}
-      </div>
-    </article>
+    <Can permission={AdminPermission.PROVIDERS_WRITE}>
+      {decisions.map((decision) => (
+        <span key={decision.key} className="desk-contents">
+          {decision.dialog(decision.button)}
+        </span>
+      ))}
+    </Can>
   );
 }

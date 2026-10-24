@@ -760,36 +760,34 @@ test('pins Task 5 Catalog loader injection and Provider request ordering', () =>
     appSource,
     /import\s*\{\s*getCategories,\s*getCities\s*\}\s*from '\.\/features\/catalog\/api';/,
   );
+  // 2026-10-24, admin designs a03/a05: the applications page draws no city
+  // or category filter, so it takes only the stats loader; the directory
+  // still receives the catalog loaders for its add and import windows.
   assert.match(
     appSource,
-    /<ProviderApplicationsPage\s+[\s\S]*?getCategories=\{getCategories\}[\s\S]*?getCities=\{getCities\}[\s\S]*?getStats=\{getStats\}[\s\S]*?\/>/,
+    /<ProviderApplicationsPage\s+[\s\S]*?getStats=\{getStats\}[\s\S]*?\/>/,
   );
   assert.match(
     appSource,
-    /<ProvidersPage\s+[\s\S]*?getCategories=\{getCategories\}[\s\S]*?getCities=\{getCities\}[\s\S]*?\/>/,
+    /<ProvidersPage\s+[\s\S]*?getCategories=\{getCategories\}[\s\S]*?getCities=\{getCities\}[\s\S]*?getStats=\{getStats\}[\s\S]*?\/>/,
   );
 
   for (const source of [applicationsSource, providersSource]) {
     assert.doesNotMatch(source, /features\/catalog|\.\.\/catalog\/api/);
-    assert.match(source, /getCities:\s*\(\)\s*=>\s*Promise<CityProjection\[\]>/);
-    assert.match(
-      source,
-      /getCategories:\s*\(\)\s*=>\s*Promise<ProviderCategoryProjection\[\]>/,
-    );
+    assert.doesNotMatch(source, /features\/dashboard|\.\.\/dashboard\/api/);
   }
+  assert.match(providersSource, /getCities:\s*\(\)\s*=>\s*Promise<CityProjection\[\]>/);
+  assert.match(
+    providersSource,
+    /getCategories:\s*\(\)\s*=>\s*Promise<ProviderCategoryProjection\[\]>/,
+  );
 
-  const applicationsRequests = applicationsSource.match(
-    /Promise\.all\(\[([\s\S]*?)\]\)/,
-  )?.[1];
-  assert.ok(applicationsRequests);
-  assert.ok(applicationsRequests.indexOf('getProviderApplications(') < applicationsRequests.indexOf('getCities()'));
-  assert.ok(applicationsRequests.indexOf('getCities()') < applicationsRequests.indexOf('getCategories()'));
-  assert.ok(applicationsRequests.indexOf('getCategories()') < applicationsRequests.indexOf('getStats()'));
-
+  // The catalog loaders run only when a window that needs them opens, after
+  // the list itself was requested.
   const providerRequests = providersSource.match(/Promise\.all\(\[([\s\S]*?)\]\)/)?.[1];
   assert.ok(providerRequests);
-  assert.ok(providerRequests.indexOf('getProviders(') < providerRequests.indexOf('getCities()'));
   assert.ok(providerRequests.indexOf('getCities()') < providerRequests.indexOf('getCategories()'));
+  assert.ok(providersSource.indexOf('getProviders(') < providersSource.indexOf('getCities()'));
 });
 
 test('requires the exact Task 6 Moderation Notifications and Audit public surfaces', () => {

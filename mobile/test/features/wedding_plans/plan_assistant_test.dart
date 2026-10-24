@@ -57,26 +57,56 @@ void main() {
       app(PlanAssistantScreen(weddingPlanId: 'plan-1', api: api)),
     );
     await tester.pumpAndSettle();
-    expect(find.text('باقي لك اليوم 2 من 3 أسئلة'), findsOneWidget);
+    // b11: the header and the three drawn questions.
+    expect(find.text('اسأل اعّرست'), findsOneWidget);
+    expect(find.text('ايش نسيت؟'), findsOneWidget);
+    expect(find.text('وين أوفر؟'), findsOneWidget);
+    expect(find.text('اكتب رسالة تفاوض'), findsOneWidget);
+    expect(find.text('باقي لك اليوم سؤالين'), findsOneWidget);
 
-    await tester.tap(find.byKey(const ValueKey('assistant-kind-BUDGET_SPLIT')));
+    await tester.tap(find.byKey(const ValueKey('assistant-kind-CHEAPER')));
     await tester.pumpAndSettle();
-    expect(find.text('قبل أن تسأل المساعد'), findsOneWidget);
+    // w36 asks in a journey sheet, with the server's daily limit.
+    expect(find.text('المساعد الذكي'), findsOneWidget);
+    expect(find.byKey(const ValueKey('journey-sheet-handle')), findsOneWidget);
+    expect(find.text('3 أسئلة في اليوم'), findsOneWidget);
+    expect(find.text('ما نرسل أسماء ضيوفك ولا أرقامهم'), findsOneWidget);
     expect(api.asked, isEmpty, reason: 'nothing is sent before consent');
 
     await tester.tap(find.byKey(const ValueKey('assistant-consent-agree')));
     await tester.pumpAndSettle();
-    expect(api.asked, [PlanAssistantKind.budgetSplit]);
+    expect(api.asked, [PlanAssistantKind.cheaper]);
+    // The question sits above its answer.
+    expect(
+      find.byKey(const ValueKey('assistant-question-bubble')),
+      findsOneWidget,
+    );
     expect(find.byKey(const ValueKey('assistant-answer')), findsOneWidget);
     expect(find.text('وزّع 40% للقاعة'), findsOneWidget);
+    expect(find.text('من خطتك'), findsOneWidget);
+    expect(find.text('اقتراح، والقرار لك.'), findsOneWidget);
     expect(find.byKey(const ValueKey('assistant-no-market')), findsOneWidget);
-    expect(find.text('باقي لك اليوم 1 من 3 أسئلة'), findsOneWidget);
+    expect(find.text('باقي لك اليوم سؤال واحد'), findsOneWidget);
 
     // Consent is remembered: the next question goes straight out.
     await tester.tap(find.byKey(const ValueKey('assistant-kind-FORGOTTEN')));
     await tester.pumpAndSettle();
-    expect(find.text('قبل أن تسأل المساعد'), findsNothing);
+    expect(find.text('المساعد الذكي'), findsNothing);
     expect(api.asked.last, PlanAssistantKind.forgotten);
+  });
+
+  testWidgets('«مو الآن» sends nothing', (tester) async {
+    final api = _FakeAssistantApi();
+    await tester.pumpWidget(
+      app(PlanAssistantScreen(weddingPlanId: 'plan-1', api: api)),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('assistant-kind-FORGOTTEN')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('مو الآن'));
+    await tester.pumpAndSettle();
+    expect(api.asked, isEmpty);
+    expect(find.byKey(const ValueKey('assistant-answer')), findsNothing);
   });
 
   testWidgets('a free question needs its text and is sent with it', (
@@ -110,19 +140,67 @@ void main() {
     });
     final api = _FakeAssistantApi(
       failure: const ApiException(
-        'انتهت أسئلة اليوم. عد غدًا.',
-        statusCode: 429,
-        serverCode: 'ASSISTANT_DAILY_LIMIT',
+        'ما قدرنا نجاوب على هذا السؤال.',
+        statusCode: 422,
+        serverCode: 'ASSISTANT_DECLINED',
       ),
     );
     await tester.pumpWidget(
       app(PlanAssistantScreen(weddingPlanId: 'plan-1', api: api)),
     );
     await tester.pumpAndSettle();
-    await tester.tap(find.byKey(const ValueKey('assistant-kind-PLAN')));
+    await tester.tap(find.byKey(const ValueKey('assistant-kind-FORGOTTEN')));
     await tester.pumpAndSettle();
     expect(find.byKey(const ValueKey('assistant-error')), findsOneWidget);
-    expect(find.text('انتهت أسئلة اليوم. عد غدًا.'), findsOneWidget);
+    expect(find.text('ما قدرنا نجاوب على هذا السؤال.'), findsOneWidget);
+  });
+
+  // w37: the two reasons the design keeps for no answer.
+  testWidgets('today\'s limit and a missing connection say why (w37)', (
+    tester,
+  ) async {
+    SharedPreferences.setMockInitialValues({
+      'aarast.assistant.consent.v1.device': true,
+    });
+    await tester.pumpWidget(
+      app(
+        PlanAssistantScreen(
+          weddingPlanId: 'plan-1',
+          api: _FakeAssistantApi(
+            failure: const ApiException(
+              'انتهت أسئلة اليوم.',
+              statusCode: 429,
+              serverCode: 'ASSISTANT_DAILY_LIMIT',
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('assistant-kind-CHEAPER')));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const ValueKey('assistant-limit')), findsOneWidget);
+    expect(find.text('خلصت أسئلة اليوم'), findsOneWidget);
+    expect(find.byKey(const ValueKey('assistant-question-bubble')), findsNothing);
+
+    await tester.pumpWidget(
+      app(
+        PlanAssistantScreen(
+          weddingPlanId: 'plan-2',
+          api: _FakeAssistantApi(
+            failure: const ApiException(
+              'تعذر الاتصال.',
+              isNetworkFailure: true,
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('assistant-kind-CHEAPER')));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const ValueKey('assistant-offline')), findsOneWidget);
+    expect(find.text('المساعد يحتاج نت'), findsOneWidget);
   });
 
   testWidgets('a relative or a switched-off service sees why, not the tools', (
@@ -138,7 +216,7 @@ void main() {
     );
     await tester.pumpAndSettle();
     expect(find.byKey(const ValueKey('assistant-not-allowed')), findsOneWidget);
-    expect(find.byKey(const ValueKey('assistant-kind-PLAN')), findsNothing);
+    expect(find.byKey(const ValueKey('assistant-kind-FORGOTTEN')), findsNothing);
 
     await tester.pumpWidget(
       app(

@@ -6,8 +6,8 @@ enum PlanAssistantKind {
   plan('PLAN', 'خطة عمل حتى يوم العرس', LucideIcons.calendarCheck),
   budgetSplit('BUDGET_SPLIT', 'وزّع لي الميزانية', LucideIcons.pieChart),
   compareQuotes('COMPARE_QUOTES', 'قارن عروض الأسعار', LucideIcons.scale),
-  cheaper('CHEAPER', 'كيف أوفّر؟', LucideIcons.piggyBank),
-  forgotten('FORGOTTEN', 'ماذا نسيت؟', LucideIcons.listChecks),
+  cheaper('CHEAPER', 'وين أوفر؟', LucideIcons.piggyBank),
+  forgotten('FORGOTTEN', 'ايش نسيت؟', LucideIcons.listChecks),
   negotiation('NEGOTIATION', 'اكتب رسالة تفاوض', LucideIcons.messageCircle),
   question('QUESTION', 'سؤال آخر', LucideIcons.helpCircle);
 

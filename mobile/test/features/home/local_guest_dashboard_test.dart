@@ -1,3 +1,4 @@
+import 'package:aarast_mobile/core/experience_v3/aarast_journey_sheet.dart';
 import 'package:aarast_mobile/core/network/api_client.dart';
 import 'package:aarast_mobile/core/offline/local_database_json.dart';
 import 'package:aarast_mobile/core/offline/offline_tables.dart';
@@ -342,8 +343,6 @@ void main() {
       ),
     );
 
-    // No floating add over the home (b02); the guests open from their tab.
-    expect(find.byKey(const ValueKey('aarast-quick-action')), findsNothing);
     final guestsNav = find.descendant(
       of: find.byType(AarastPlanNavigationBar),
       matching: find.text('الضيوف'),
@@ -355,6 +354,79 @@ void main() {
 
     expect(find.text('guests-opened'), findsOneWidget);
     expect(find.text('تسجيل الدخول'), findsNothing);
+  });
+
+  testWidgets('guest «+» opens the guest form without a login blocker', (
+    tester,
+  ) async {
+    SharedPreferences.setMockInitialValues({});
+    final preferences = await SharedPreferences.getInstance();
+    final authStorage = AuthStorage(preferences);
+    final summary = LocalGuestDashboardSummary.fromPlan(_guestPlan());
+    final router = GoRouter(
+      initialLocation: '/',
+      routes: [
+        GoRoute(
+          path: '/',
+          builder: (context, state) =>
+              LocalGuestDashboardScreen(summary: summary),
+        ),
+        GoRoute(
+          path: '/wedding-plans/:id/guests/add',
+          builder: (context, state) =>
+              const Scaffold(body: Text('guest-add-opened')),
+        ),
+      ],
+    );
+
+    await tester.pumpWidget(
+      Provider<AuthStorage>.value(
+        value: authStorage,
+        child: MaterialApp.router(routerConfig: router),
+      ),
+    );
+
+    // D33: the plan kept on the phone has the «+» on its home.
+    await tester.tap(find.byKey(const ValueKey('aarast-quick-action')));
+    for (var i = 0; i < 10; i++) {
+      await tester.pump(const Duration(milliseconds: 80));
+    }
+    expect(find.byType(JourneySheetBody), findsOneWidget);
+    // The guest owns the plan, so its money choice is offered.
+    expect(find.text('إضافة اتفاق'), findsOneWidget);
+    await tester.tap(find.text('إضافة ضيف'), warnIfMissed: false);
+    for (var i = 0; i < 10; i++) {
+      await tester.pump(const Duration(milliseconds: 80));
+    }
+
+    expect(find.text('guest-add-opened'), findsOneWidget);
+    expect(find.text('تسجيل الدخول'), findsNothing);
+  });
+
+  testWidgets('guest «+» quote request remains account-gated', (tester) async {
+    SharedPreferences.setMockInitialValues({});
+    final preferences = await SharedPreferences.getInstance();
+    final authStorage = AuthStorage(preferences);
+    final summary = LocalGuestDashboardSummary.fromPlan(_guestPlan());
+
+    await tester.pumpWidget(
+      Provider<AuthStorage>.value(
+        value: authStorage,
+        child: MaterialApp(home: LocalGuestDashboardScreen(summary: summary)),
+      ),
+    );
+
+    await tester.tap(find.byKey(const ValueKey('aarast-quick-action')));
+    for (var i = 0; i < 10; i++) {
+      await tester.pump(const Duration(milliseconds: 80));
+    }
+
+    await tester.tap(find.text('طلب عرض سعر'), warnIfMissed: false);
+    for (var i = 0; i < 10; i++) {
+      await tester.pump(const Duration(milliseconds: 80));
+    }
+
+    expect(find.text('تسجيل الدخول'), findsOneWidget);
   });
 }
 

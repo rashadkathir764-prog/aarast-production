@@ -66,6 +66,51 @@ void main() {
     expect(find.byKey(const ValueKey('guests-summary')), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
+
+  testWidgets('each «+» request from the home shell opens the add sheet once', (
+    tester,
+  ) async {
+    // D33: the owner shell keeps the guests tab alive and raises a request.
+    final harness = await _harness(planId: 'guest-plan-request');
+    await _pump(tester, harness, planId: 'guest-plan-request');
+    expect(find.text('ضيف جديد'), findsNothing);
+
+    Future<void> request(int value) async {
+      await tester.pumpWidget(
+        MultiProvider(
+          providers: [
+            Provider<AuthStorage>.value(value: harness.authStorage),
+            ChangeNotifierProvider<OfflineSyncService>.value(
+              value: harness.offline,
+            ),
+            ChangeNotifierProvider<GuestsProvider>(
+              create: (_) => GuestsProvider(harness.api),
+            ),
+          ],
+          child: MaterialApp(
+            home: GuestListScreen(
+              weddingPlanId: 'guest-plan-request',
+              openAddRequest: value,
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+    }
+
+    await request(1);
+    expect(find.text('ضيف جديد'), findsOneWidget);
+    Navigator.of(tester.element(find.text('ضيف جديد'))).pop();
+    await tester.pumpAndSettle();
+    expect(find.text('ضيف جديد'), findsNothing);
+
+    // The same request again opens nothing; a new one opens it again.
+    await request(1);
+    expect(find.text('ضيف جديد'), findsNothing);
+    await request(2);
+    expect(find.text('ضيف جديد'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
 }
 
 class _CachedGuestsApi extends GuestsApi {

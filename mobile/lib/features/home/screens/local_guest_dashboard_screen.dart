@@ -11,7 +11,8 @@ import '../../../core/theme/aarast_design_tokens.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/aarast_ui.dart';
 import '../../auth/auth_api.dart' show AuthActionGuard;
-import '../../shell/shell_api.dart' show PlanShellChrome;
+import '../../shell/shell_api.dart'
+    show PlanQuickAddFlow, PlanQuickAddSignals, PlanShellChrome;
 import '../../wedding_plans/wedding_plans_api.dart'
     show
         AarastDashboardView,
@@ -62,6 +63,8 @@ class _LocalGuestDashboardScreenState extends State<LocalGuestDashboardScreen> {
 
     return PlanShellChrome(
       activeIndex: 0,
+      onQuickAdd: () => _quickAdd(context, planId).open(context),
+      onQuickAddLongPress: () => _quickAdd(context, planId).repeatLast(context),
       onTabSelected: (index) {
         switch (index) {
           case 0:
@@ -109,6 +112,35 @@ class _LocalGuestDashboardScreenState extends State<LocalGuestDashboardScreen> {
         onOpenNextStep: () =>
             _openLocalNextStep(context, planId, dashboardSummary),
       ),
+    );
+  }
+
+  /// The plan's «+» on the home of a plan kept on the phone (D33). The plan
+  /// is the guest's own, so its money may be managed; a quote still needs an
+  /// account, and every return rereads the plan from the phone.
+  PlanQuickAddFlow _quickAdd(BuildContext context, String planId) {
+    return PlanQuickAddFlow(
+      planId: planId,
+      tabIndex: 0,
+      canManageMoney: true,
+      refreshOnReturn: true,
+      signals: PlanQuickAddSignals.fromDashboard(_summary.toDashboardSummary()),
+      onAddGuest: () => unawaited(_openAddGuest(context, planId)),
+      onFindProviders: () => unawaited(_requireAccountForQuote(context)),
+      onChanged: _refreshSummary,
+    );
+  }
+
+  Future<void> _openAddGuest(BuildContext context, String planId) async {
+    await context.push(AppRouter.guestListAdd(planId));
+    await _refreshSummary();
+  }
+
+  Future<bool> _requireAccountForQuote(BuildContext context) {
+    return AuthActionGuard.requireAccount(
+      context,
+      reason:
+          'طلب عرض سعر يحتاج حساباً حتى نربطه بخطتك ونحفظ ردود المزودين بأمان.',
     );
   }
 

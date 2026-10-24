@@ -117,7 +117,15 @@ class _MoneyOverviewScreenState extends State<MoneyOverviewScreen> {
         child: ListView(
           key: const PageStorageKey('money-overview-list'),
           physics: const AlwaysScrollableScrollPhysics(),
-          padding: const EdgeInsets.fromLTRB(16, 12, 16, 32),
+          // The plan's «+» floats over money for whoever manages it (D33).
+          padding: EdgeInsets.fromLTRB(
+            16,
+            12,
+            16,
+            provider.canManageMoney
+                ? AarastV3Density.pageBottomWithQuickAction
+                : 32,
+          ),
           children: [
             _MoneyHeader(
               summary: provider.summary,

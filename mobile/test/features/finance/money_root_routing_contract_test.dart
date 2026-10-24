@@ -68,17 +68,27 @@ void main() {
     }
   });
 
-  test('the plan shell uses the one money vocabulary and no quick add', () {
+  test('both shells and the quick add use the one money vocabulary', () {
+    final quickAdd = File(
+      'lib/features/shell/widgets/plan_quick_add.dart',
+    ).readAsStringSync();
+    final costAction = File(
+      'lib/features/finance/widgets/money_cost_action_picker.dart',
+    ).readAsStringSync();
     expect(planShell, contains("'money'"));
     expect(planShell, isNot(contains("'finance'")));
-    // The design draws no floating add (b02, c01): money adds from «أضف بند»
-    // and an agreement's own page.
-    expect(
-      File('lib/features/wedding_plans/widgets/quick_add_actions.dart')
-          .existsSync(),
-      isFalse,
-    );
-    expect(planShell, isNot(contains('QuickAdd')));
-    expect(mainShell, isNot(contains('QuickAdd')));
+    // D33: both shells run the one «+» flow, which opens today's money forms.
+    expect(planShell, contains('PlanQuickAddFlow('));
+    expect(mainShell, contains('PlanQuickAddFlow('));
+    expect(quickAdd, contains('AppRouter.moneyCostCreate(planId)'));
+    expect(quickAdd, contains('AppRouter.moneyCategoryCreate(planId)'));
+    expect(quickAdd, contains('MoneyCostActionIntent.payment'));
+    expect(quickAdd, contains('MoneyCostActionIntent.schedule'));
+    expect(quickAdd, isNot(contains('AppRouter.moneyBudget(planId)')));
+    expect(quickAdd, isNot(contains('createFinancialCommitment')));
+    expect(quickAdd, isNot(contains('recordPayment')));
+    // A payment goes through c07's form, a date through its sheet.
+    expect(costAction, contains('AppRouter.moneyPaymentCreate(planId'));
+    expect(costAction, contains('showPaymentScheduleSheet('));
   });
 }

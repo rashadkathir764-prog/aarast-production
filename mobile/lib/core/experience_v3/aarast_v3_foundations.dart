@@ -86,6 +86,9 @@ abstract final class AarastV3Density {
   static const pageHorizontal = AarastV3Space.x5;
   static const pageTop = AarastV3Space.x3;
   static const pageBottom = 112.0;
+  // Root plan tabs carry the floating «+» above the tabs (D33). Their lists
+  // need enough trailing space for the last row to scroll clear of it.
+  static const pageBottomWithQuickAction = 184.0;
   static const sectionGap = AarastV3Space.x5;
   static const compactGap = AarastV3Space.x3;
   static const rowMinHeight = 68.0;

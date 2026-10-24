@@ -1644,8 +1644,12 @@ const r19ProviderPortalApi = Object.freeze({
 // (D29); +2 for w09 reading the account plan's money items through the
 // finance owner API, from the migration service and the entry screen that
 // builds it (D31); +1 for w38 knowing a plan kept on the phone, which has
-// no reminder to send, through the auth owner API (D31).
-const r19LegalRecordCount = 194;
+// no reminder to send, through the auth owner API (D31). +3 for the plan's
+// «+» kept by the owner (D33): its choices read the plan's signals and stage
+// through the wedding plans owner API and open a payment or a payment date
+// through the finance owner API, and the route shell reads the money rights
+// through the finance owner API.
+const r19LegalRecordCount = 197;
 const trackedOwnerApiContracts = [
   {
     area: 'features/account_contexts',
@@ -1765,6 +1769,10 @@ const trackedOwnerApiContracts = [
       {
         uri: 'screens/money_overview_screen.dart',
         show: ['MoneyOverviewScreen'],
+      },
+      {
+        uri: 'widgets/money_cost_action_picker.dart',
+        show: ['MoneyCostActionIntent', 'openMoneyCostAction'],
       },
       {
         uri: 'widgets/money_input_formatter.dart',
@@ -2033,6 +2041,11 @@ const trackedOwnerApiContracts = [
       {
         uri: 'widgets/aarast_plan_chrome.dart',
         show: ['AarastNavigationItem', 'AarastPlanNavigationBar'],
+      },
+      { uri: 'widgets/plan_quick_add.dart', show: ['PlanQuickAddSignals'] },
+      {
+        uri: 'widgets/plan_quick_add_sheet.dart',
+        show: ['PlanQuickAddFlow'],
       },
       { uri: 'widgets/plan_shell_chrome.dart', show: ['PlanShellChrome'] },
     ],
@@ -2834,7 +2847,7 @@ const trackedShellEntryBatchContracts = [
   {
     source: 'mobile/lib/features/home/screens/local_guest_dashboard_screen.dart',
     target: 'mobile/lib/features/shell/shell_api.dart',
-    show: ['PlanShellChrome'],
+    show: ['PlanQuickAddFlow', 'PlanQuickAddSignals', 'PlanShellChrome'],
   },
   {
     source: 'mobile/lib/features/home/screens/local_guest_dashboard_screen.dart',
@@ -2854,7 +2867,7 @@ const trackedShellEntryBatchContracts = [
   {
     source: 'mobile/lib/features/shell/main_shell.dart',
     target: 'mobile/lib/features/finance/finance_api.dart',
-    show: ['MoneyOverviewScreen'],
+    show: ['FinanceProvider', 'MoneyOverviewScreen'],
   },
   {
     source: 'mobile/lib/features/shell/main_shell.dart',
@@ -2874,7 +2887,11 @@ const trackedShellEntryBatchContracts = [
   {
     source: 'mobile/lib/features/shell/main_shell.dart',
     target: 'mobile/lib/features/wedding_plans/wedding_plans_api.dart',
-    show: ['PlanCenterScreen', 'WeddingPlanDashboardScreen'],
+    show: [
+      'DashboardSummaryProvider',
+      'PlanCenterScreen',
+      'WeddingPlanDashboardScreen',
+    ],
   },
   {
     source: 'mobile/lib/features/shell/screens/wedding_plan_shell.dart',
@@ -2885,6 +2902,11 @@ const trackedShellEntryBatchContracts = [
     source: 'mobile/lib/features/shell/screens/wedding_plan_shell.dart',
     target: 'mobile/lib/features/auth/auth_api.dart',
     show: ['AuthActionGuard'],
+  },
+  {
+    source: 'mobile/lib/features/shell/screens/wedding_plan_shell.dart',
+    target: 'mobile/lib/features/finance/finance_api.dart',
+    show: ['FinanceProvider'],
   },
   {
     source: 'mobile/lib/features/shell/screens/wedding_plan_shell.dart',
@@ -2900,6 +2922,16 @@ const trackedShellEntryBatchContracts = [
     source: 'mobile/lib/features/shell/screens/wedding_plan_shell.dart',
     target: 'mobile/lib/features/wedding_plans/wedding_plans_api.dart',
     show: ['DashboardSummary', 'DashboardSummaryProvider'],
+  },
+  {
+    source: 'mobile/lib/features/shell/widgets/plan_quick_add.dart',
+    target: 'mobile/lib/features/finance/finance_api.dart',
+    show: ['MoneyCostActionIntent', 'openMoneyCostAction'],
+  },
+  {
+    source: 'mobile/lib/features/shell/widgets/plan_quick_add.dart',
+    target: 'mobile/lib/features/wedding_plans/wedding_plans_api.dart',
+    show: ['DashboardSummary', 'WeddingPlanStage', 'resolveWeddingPlanStage'],
   },
   {
     source: 'mobile/lib/features/welcome_gateway/screens/smart_welcome_screen.dart',

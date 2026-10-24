@@ -4,14 +4,20 @@ import 'package:provider/provider.dart';
 
 import '../../../core/offline/local_database.dart';
 import '../../../core/offline/offline_status_widgets.dart';
+import '../../../core/offline/offline_sync_service.dart';
+import '../../../core/offline/sync_status.dart';
+import '../../../core/routing/app_router.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../account_contexts/account_contexts_api.dart'
     show AccountContextController, AccountContextRole;
 import '../../auth/auth_api.dart' show AuthActionGuard;
+import '../../finance/finance_api.dart' show FinanceProvider;
 import '../../home/home_api.dart' show LocalGuestDashboardSummarySource;
 import '../../onboarding/onboarding_api.dart' show GuestOnboardingStorage;
 import '../../wedding_plans/wedding_plans_api.dart'
     show DashboardSummary, DashboardSummaryProvider;
+import '../widgets/plan_quick_add.dart';
+import '../widgets/plan_quick_add_sheet.dart';
 import '../widgets/plan_shell_chrome.dart';
 
 class WeddingPlanShell extends StatelessWidget {
@@ -46,6 +52,39 @@ class WeddingPlanShell extends StatelessWidget {
     }
   }
 
+  /// The «+» on the current tab (D33). The guest sheet opens on its own
+  /// route over the guests; a quote starts from the providers tab.
+  PlanQuickAddFlow _quickAdd(BuildContext context, int currentIndex) {
+    final dashboard = context.read<DashboardSummaryProvider?>();
+    final summary = dashboard?.summary;
+    final localPlan = AuthActionGuard.isLocalGuestPlanId(weddingPlanId);
+    return PlanQuickAddFlow(
+      planId: weddingPlanId,
+      tabIndex: currentIndex,
+      canManageMoney: _canManageMoney(context),
+      offerAgreementActions: true,
+      signals: summary?.planId == weddingPlanId
+          ? PlanQuickAddSignals.fromDashboard(summary!)
+          : null,
+      onAddGuest: () => context.go(AppRouter.guestListAdd(weddingPlanId)),
+      onFindProviders: () => context.go(AppRouter.planProviders(weddingPlanId)),
+      // A plan kept on the phone has no home summary to fetch; its own
+      // bridge republishes it.
+      onChanged: () async {
+        if (!localPlan) await dashboard?.loadDashboard(weddingPlanId);
+      },
+    );
+  }
+
+  /// Money rights from the loaded money, else from the home summary.
+  bool _canManageMoney(BuildContext context) {
+    final finance = context.read<FinanceProvider?>();
+    if (finance?.loadedPlanId == weddingPlanId) return finance!.canManageMoney;
+    final summary = context.read<DashboardSummaryProvider?>()?.summary;
+    return summary?.planId == weddingPlanId &&
+        summary!.permissions.canManageMoney;
+  }
+
   @override
   Widget build(BuildContext context) {
     final currentIndex = _calculateSelectedIndex(context);
@@ -68,11 +107,29 @@ class WeddingPlanShell extends StatelessWidget {
     // A plan kept on the phone sends nothing, so a missing connection
     // changes nothing in it and is not announced.
     final localPlan = AuthActionGuard.isLocalGuestPlanId(weddingPlanId);
+    final finance = context.watch<FinanceProvider?>();
+    final offline =
+        !localPlan &&
+        context.watch<OfflineSyncService?>()?.state == SyncState.offline;
+    final showQuickAdd = shouldShowPlanQuickAdd(
+      tabIndex: currentIndex,
+      isRootDestination: currentIndex != 1 || location.endsWith('/money'),
+      canManageMoney:
+          currentIndex != 1 ||
+          (finance?.loadedPlanId == weddingPlanId && finance!.canManageMoney),
+      guestsWaitForConnection: offline,
+    );
 
     final shell = PlanShellChrome(
       activeIndex: currentIndex,
       onTabSelected: (index) => _onNavigate(context, index),
       topStatus: localPlan ? null : const OfflineStatusBanner(),
+      onQuickAdd: showQuickAdd
+          ? () => _quickAdd(context, currentIndex).open(context)
+          : null,
+      onQuickAddLongPress: showQuickAdd
+          ? () => _quickAdd(context, currentIndex).repeatLast(context)
+          : null,
       // This route-owned shell is entered from quote and conversation flows.
       // Its surface must stay opaque while GoRouter replaces child routes;
       // otherwise the Android render surface is exposed behind the persistent

@@ -35,11 +35,16 @@ class GuestListScreen extends StatefulWidget {
   const GuestListScreen({
     required this.weddingPlanId,
     this.openAddOnStart = false,
+    this.openAddRequest = 0,
     super.key,
   });
 
   final String weddingPlanId;
   final bool openAddOnStart;
+
+  /// Raised by the home shell's «+» (D33): each new value opens the add
+  /// sheet once.
+  final int openAddRequest;
 
   @override
   State<GuestListScreen> createState() => _GuestListScreenState();
@@ -73,7 +78,8 @@ class _GuestListScreenState extends State<GuestListScreen> {
         if (mounted) _load();
       });
     }
-    if (!oldWidget.openAddOnStart && widget.openAddOnStart) {
+    if ((!oldWidget.openAddOnStart && widget.openAddOnStart) ||
+        oldWidget.openAddRequest != widget.openAddRequest) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted) unawaited(_openAddSheetIfRequested());
       });
@@ -150,7 +156,12 @@ class _GuestListScreenState extends State<GuestListScreen> {
         onRefresh: _isLocalPlan ? () async {} : _load,
         child: ListView(
           physics: const AlwaysScrollableScrollPhysics(),
-          padding: const EdgeInsets.fromLTRB(16, 12, 16, 32),
+          padding: const EdgeInsets.fromLTRB(
+            16,
+            12,
+            16,
+            AarastV3Density.pageBottomWithQuickAction,
+          ),
           children: [
             JourneyTabHeader(
               title: 'الضيوف',
@@ -475,7 +486,8 @@ class _GuestListScreenState extends State<GuestListScreen> {
   }
 
   Future<void> _openAddSheetIfRequested() async {
-    if (!widget.openAddOnStart || widget.weddingPlanId.trim().isEmpty) {
+    if ((!widget.openAddOnStart && widget.openAddRequest <= 0) ||
+        widget.weddingPlanId.trim().isEmpty) {
       return;
     }
     await _showGuestSheet(provider: context.read<GuestsProvider>());

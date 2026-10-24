@@ -1,16 +1,21 @@
 // The plan shell around the five tabs: canonical chrome, opaque surface,
-// tab switching without page key reuse, and no floating add button (the
-// design draws none; each tab adds from its own header).
+// tab switching without page key reuse, and the floating «+» the owner kept
+// (D33): on the home, money (for whoever manages it), tasks and guests,
+// never on the providers or a money subpage.
 
 import 'dart:async';
 import 'dart:io';
 
+import 'package:aarast_mobile/core/experience_v3/aarast_v3.dart';
+import 'package:aarast_mobile/core/network/api_client.dart';
 import 'package:aarast_mobile/core/routing/app_router.dart';
 import 'package:aarast_mobile/core/storage/auth_storage.dart';
 import 'package:aarast_mobile/core/theme/app_theme.dart';
 import 'package:aarast_mobile/features/account_contexts/data/account_contexts_api.dart';
 import 'package:aarast_mobile/features/account_contexts/models/account_context.dart';
 import 'package:aarast_mobile/features/account_contexts/providers/account_context_controller.dart';
+import 'package:aarast_mobile/features/finance/data/finance_api.dart';
+import 'package:aarast_mobile/features/finance/providers/finance_provider.dart';
 import 'package:aarast_mobile/features/shell/screens/wedding_plan_shell.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -124,41 +129,210 @@ void main() {
       await _pumpPlanShellRouter(tester, router);
       await tester.pump();
 
-      void expectNoFloatingAdd() {
+      void expectQuickAdd({required bool shown}) {
         final shellScaffold = tester
             .widgetList<Scaffold>(find.byType(Scaffold))
             .singleWhere((scaffold) => scaffold.bottomNavigationBar != null);
-        expect(shellScaffold.floatingActionButton, isNull);
-        expect(find.byKey(const ValueKey('aarast-quick-action')), findsNothing);
+        expect(shellScaffold.floatingActionButton != null, shown);
+        expect(
+          find.byKey(const ValueKey('aarast-quick-action')),
+          shown ? findsOneWidget : findsNothing,
+        );
       }
 
-      expectNoFloatingAdd();
+      expectQuickAdd(shown: true);
       expect(find.byIcon(Icons.more_horiz), findsNothing);
       expect(find.byIcon(Icons.more_vert), findsNothing);
 
+      // No money loaded here, so nobody is known to manage it.
       await _tapNavIcon(tester, LucideIcons.wallet);
       expect(router.state.uri.path, AppRouter.money('plan-7'));
-      expectNoFloatingAdd();
+      expectQuickAdd(shown: false);
       expect(tester.takeException(), isNull);
 
       await _tapNavIcon(tester, LucideIcons.listChecks);
       expect(router.state.uri.path, AppRouter.tasks('plan-7'));
-      expectNoFloatingAdd();
+      expectQuickAdd(shown: true);
       expect(tester.takeException(), isNull);
 
       await _tapNavIcon(tester, LucideIcons.users);
       expect(router.state.uri.path, AppRouter.guestList('plan-7'));
-      expectNoFloatingAdd();
+      expectQuickAdd(shown: true);
       expect(tester.takeException(), isNull);
 
       await _tapNavIcon(tester, LucideIcons.store);
       expect(router.state.uri.path, AppRouter.planProviders('plan-7'));
-      expectNoFloatingAdd();
+      expectQuickAdd(shown: false);
       expect(tester.takeException(), isNull);
 
       await _tapNavIcon(tester, LucideIcons.home);
       expect(router.state.uri.path, AppRouter.weddingPlanDashboard('plan-7'));
-      expectNoFloatingAdd();
+      expectQuickAdd(shown: true);
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('money root shows the «+» only to whoever manages the money', (
+      tester,
+    ) async {
+      for (final canManage in [true, false]) {
+        final router = _buildPlanShellRouter(
+          initialLocation: AppRouter.money('plan-7'),
+        );
+        addTearDown(router.dispose);
+        await _pumpPlanShellRouter(
+          tester,
+          router,
+          finance: _ShellFinance(canManage: canManage),
+        );
+        await tester.pump();
+
+        expect(find.text('money'), findsOneWidget);
+        expect(
+          find.bySemanticsLabel('إضافة اتفاق'),
+          canManage ? findsOneWidget : findsNothing,
+          reason: 'canManage: $canManage',
+        );
+        expect(tester.takeException(), isNull);
+      }
+    });
+
+    testWidgets('guest «+» opens the add route without page key reuse', (
+      tester,
+    ) async {
+      final router = _buildPlanShellRouter(
+        initialLocation: AppRouter.guestList('plan-7'),
+      );
+
+      await _pumpPlanShellRouter(tester, router);
+      await tester.pump();
+
+      expect(find.text('guests'), findsOneWidget);
+      expect(find.bySemanticsLabel('إضافة ضيف'), findsOneWidget);
+
+      await tester.tap(find.byKey(const ValueKey('aarast-quick-action')));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+
+      expect(tester.takeException(), isNull);
+      expect(find.byType(JourneySheetBody), findsNothing);
+      expect(find.text('guest-add'), findsOneWidget);
+      expect(router.state.uri.path, AppRouter.guestListAdd('plan-7'));
+    });
+
+    testWidgets('tasks «+» opens the new task form straight away', (
+      tester,
+    ) async {
+      final router = _buildPlanShellRouter(
+        initialLocation: AppRouter.tasks('plan-7'),
+      );
+
+      await _pumpPlanShellRouter(tester, router);
+      await tester.pump();
+
+      expect(find.bySemanticsLabel('إضافة مهمة'), findsOneWidget);
+      await tester.tap(find.byKey(const ValueKey('aarast-quick-action')));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(JourneySheetBody), findsNothing);
+      expect(find.text('task-create'), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets(
+      'home «+» opens the journey sheet; a choice opens its form and a long press repeats it',
+      (tester) async {
+        final router = _buildPlanShellRouter(
+          initialLocation: AppRouter.weddingPlanDashboard('plan-7'),
+        );
+
+        await _pumpPlanShellRouter(tester, router);
+        await tester.pump();
+
+        await tester.tap(find.byKey(const ValueKey('aarast-quick-action')));
+        await tester.pumpAndSettle();
+
+        expect(find.byType(JourneySheetBody), findsOneWidget);
+        expect(find.text('ايش تضيف؟'), findsOneWidget);
+        expect(find.text('الأنسب الآن'), findsOneWidget);
+        expect(find.text('إضافة مهمة'), findsOneWidget);
+        expect(find.text('إضافة ضيف'), findsOneWidget);
+        expect(find.text('طلب عرض سعر'), findsOneWidget);
+        // Nobody is known to manage the money, so nothing adds to it.
+        expect(find.text('إضافة اتفاق'), findsNothing);
+        expect(find.text('إضافة بند'), findsNothing);
+
+        await tester.tap(find.text('إضافة مهمة'));
+        await tester.pumpAndSettle();
+        expect(find.byType(JourneySheetBody), findsNothing);
+        expect(find.text('task-create'), findsOneWidget);
+
+        router.pop();
+        await tester.pumpAndSettle();
+        expect(find.text('dashboard'), findsOneWidget);
+
+        await tester.longPress(
+          find.byKey(const ValueKey('aarast-quick-action')),
+        );
+        await tester.pumpAndSettle();
+        expect(find.byType(JourneySheetBody), findsNothing);
+        expect(find.text('task-create'), findsOneWidget);
+        expect(tester.takeException(), isNull);
+      },
+    );
+
+    testWidgets('home «+» quote choice opens the providers tab', (
+      tester,
+    ) async {
+      final router = _buildPlanShellRouter(
+        initialLocation: AppRouter.weddingPlanDashboard('plan-7'),
+      );
+
+      await _pumpPlanShellRouter(tester, router);
+      await tester.pump();
+      await tester.tap(find.byKey(const ValueKey('aarast-quick-action')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('طلب عرض سعر'));
+      await tester.pumpAndSettle();
+
+      expect(router.state.uri.path, AppRouter.planProviders('plan-7'));
+      expect(find.byKey(const ValueKey('aarast-quick-action')), findsNothing);
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('money «+» offers the agreement, payment, date and item', (
+      tester,
+    ) async {
+      final router = _buildPlanShellRouter(
+        initialLocation: AppRouter.money('plan-7'),
+      );
+
+      await _pumpPlanShellRouter(
+        tester,
+        router,
+        finance: _ShellFinance(canManage: true),
+      );
+      await tester.pump();
+      await tester.tap(find.byKey(const ValueKey('aarast-quick-action')));
+      await tester.pumpAndSettle();
+
+      // The «+» itself is also «إضافة اتفاق»; read the sheet's rows.
+      Finder row(String label) => find.descendant(
+        of: find.byType(JourneySheetBody),
+        matching: find.text(label),
+      );
+      for (final label in [
+        'إضافة اتفاق',
+        'تسجيل دفعة',
+        'إضافة موعد دفع',
+        'إضافة بند',
+      ]) {
+        expect(row(label), findsOneWidget, reason: label);
+      }
+      expect(row('إضافة مهمة'), findsNothing);
+
+      await tester.tap(row('إضافة اتفاق'));
+      await tester.pumpAndSettle();
+      expect(find.text('cost-create'), findsOneWidget);
       expect(tester.takeException(), isNull);
     });
 
@@ -234,7 +408,11 @@ void main() {
   });
 }
 
-Future<void> _pumpPlanShellRouter(WidgetTester tester, GoRouter router) async {
+Future<void> _pumpPlanShellRouter(
+  WidgetTester tester,
+  GoRouter router, {
+  FinanceProvider? finance,
+}) async {
   SharedPreferences.setMockInitialValues({});
   final preferences = await SharedPreferences.getInstance();
   final context = accountContext(
@@ -250,10 +428,17 @@ Future<void> _pumpPlanShellRouter(WidgetTester tester, GoRouter router) async {
   expect(await controller.select(context.contextKey), isTrue);
   addTearDown(controller.dispose);
 
+  Widget app = MaterialApp.router(routerConfig: router);
+  if (finance != null) {
+    app = ChangeNotifierProvider<FinanceProvider>.value(
+      value: finance,
+      child: app,
+    );
+  }
   await tester.pumpWidget(
     ChangeNotifierProvider<AccountContextController>.value(
       value: controller,
-      child: MaterialApp.router(routerConfig: router),
+      child: app,
     ),
   );
 }
@@ -287,6 +472,11 @@ GoRouter _buildPlanShellRouter({
             builder: (context, state) => const Scaffold(body: Text('budget')),
           ),
           GoRoute(
+            path: '/wedding-plans/:id/money/costs/create',
+            builder: (context, state) =>
+                const Scaffold(body: Text('cost-create')),
+          ),
+          GoRoute(
             path: '/wedding-plans/:id/tasks',
             builder: (context, state) => const Scaffold(body: Text('tasks')),
           ),
@@ -305,6 +495,10 @@ GoRouter _buildPlanShellRouter({
                 const Scaffold(body: Text('providers')),
           ),
         ],
+      ),
+      GoRoute(
+        path: '/wedding-plans/:id/tasks/create',
+        builder: (context, state) => const Scaffold(body: Text('task-create')),
       ),
       ...extraRootRoutes,
     ],
@@ -332,4 +526,21 @@ Future<void> _tapNavIcon(WidgetTester tester, IconData icon) async {
   await tester.tap(find.byIcon(icon));
   await tester.pump();
   await tester.pump(const Duration(milliseconds: 300));
+}
+
+/// The plan's money, loaded, with or without the right to manage it.
+class _ShellFinance extends FinanceProvider {
+  _ShellFinance({required this.canManage})
+    : super(FinanceApi(ApiClient(tokenProvider: () async => null)));
+
+  final bool canManage;
+
+  @override
+  String? get loadedPlanId => 'plan-7';
+
+  @override
+  bool get hasLoadedMoney => true;
+
+  @override
+  bool get canManageMoney => canManage;
 }

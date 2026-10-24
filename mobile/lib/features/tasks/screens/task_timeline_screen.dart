@@ -193,7 +193,12 @@ class _TaskTimelineScreenState extends State<TaskTimelineScreen> {
         onRefresh: () => provider.load(widget.weddingPlanId),
         child: ListView(
           physics: const AlwaysScrollableScrollPhysics(),
-          padding: const EdgeInsets.fromLTRB(16, 12, 16, 32),
+          padding: const EdgeInsets.fromLTRB(
+            16,
+            12,
+            16,
+            AarastV3Density.pageBottomWithQuickAction,
+          ),
           children: [
             JourneyTabHeader(
               title: 'المهام',

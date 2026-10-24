@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:aarast_mobile/core/experience_v3/aarast_v3_foundations.dart';
 import 'package:aarast_mobile/core/network/api_client.dart';
 import 'package:aarast_mobile/core/theme/app_theme.dart';
 import 'package:aarast_mobile/core/utils/money_formatters.dart';
@@ -358,9 +359,9 @@ void main() {
       );
       final padding = list.padding! as EdgeInsets;
       expect(surface.color, AppTheme.canvas);
-      // No floating add sits over money (c01), so the list ends with the
-      // kit's page bottom above the tabs.
-      expect(padding.bottom, 32);
+      // The plan's «+» floats over money for whoever manages it (D33): the
+      // last card must scroll fully clear of it.
+      expect(padding.bottom, AarastV3Density.pageBottomWithQuickAction);
       expect(tester.takeException(), isNull);
     });
 

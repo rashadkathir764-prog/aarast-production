@@ -21,5 +21,7 @@ export 'screens/cost_payment_screens.dart'
 export 'screens/money_budget_screen.dart' show MoneyBudgetScreen;
 export 'screens/money_receipts_screen.dart' show MoneyReceiptsScreen;
 export 'screens/money_overview_screen.dart' show MoneyOverviewScreen;
+export 'widgets/money_cost_action_picker.dart'
+    show MoneyCostActionIntent, openMoneyCostAction;
 export 'widgets/money_input_formatter.dart'
     show MoneyInputFormatter, formatMoneyInputValue;

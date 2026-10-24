@@ -1,5 +1,8 @@
+import 'package:aarast_mobile/core/experience_v3/aarast_v3.dart';
 import 'package:aarast_mobile/core/theme/app_theme.dart';
 import 'package:aarast_mobile/features/shell/widgets/aarast_plan_chrome.dart';
+import 'package:aarast_mobile/features/shell/widgets/plan_quick_add.dart';
+import 'package:aarast_mobile/features/shell/widgets/plan_quick_add_sheet.dart';
 import 'package:aarast_mobile/features/shell/widgets/plan_shell_chrome.dart';
 import 'package:aarast_mobile/features/shell/screens/wedding_plan_shell.dart';
 import 'package:flutter/material.dart';
@@ -87,13 +90,14 @@ void main() {
   );
 
   testWidgets(
-    'the plan shell draws no floating add button (b02, c01, d01, e01)',
+    'the «+» floats at the RTL side in the tab colour and folds while scrolling down',
     (tester) async {
-      // Each tab adds from its own header; the design draws no floating
-      // button over the tabs.
+      // D33: the owner keeps the floating button.
       tester.view.physicalSize = const Size(320, 760);
       tester.view.devicePixelRatio = 1;
       addTearDown(tester.view.reset);
+      var taps = 0;
+      var longPresses = 0;
 
       await tester.pumpWidget(
         MaterialApp(
@@ -101,6 +105,8 @@ void main() {
           home: PlanShellChrome(
             activeIndex: 2,
             onTabSelected: (_) {},
+            onQuickAdd: () => taps += 1,
+            onQuickAddLongPress: () => longPresses += 1,
             body: ListView.builder(
               itemExtent: 72,
               itemCount: 20,
@@ -112,12 +118,162 @@ void main() {
 
       final scaffold = tester.widget<Scaffold>(find.byType(Scaffold).first);
       expect(scaffold.extendBody, isFalse);
-      expect(scaffold.floatingActionButton, isNull);
-      expect(find.byKey(const ValueKey('aarast-quick-action')), findsNothing);
-      expect(find.text('إضافة مهمة'), findsNothing);
+      expect(
+        scaffold.floatingActionButtonLocation,
+        FloatingActionButtonLocation.endFloat,
+      );
+      final fab = find.byKey(const ValueKey('aarast-quick-action'));
+      expect(find.text('إضافة مهمة'), findsOneWidget);
+      expect(find.bySemanticsLabel('إضافة مهمة'), findsOneWidget);
+      expect(tester.getRect(fab).left, lessThan(32));
+      final decoration =
+          tester.widget<AnimatedContainer>(fab).decoration! as BoxDecoration;
+      expect(decoration.color, JourneySection.tasks.color);
       // The tab starts at the top; no bar sits above it.
       expect(tester.getTopLeft(find.text('مهمة 0')).dy, 0);
+
+      await tester.tap(fab);
+      await tester.longPress(fab);
+      expect(taps, 1);
+      expect(longPresses, 1);
+
+      await tester.drag(find.byType(ListView), const Offset(0, -260));
+      await tester.pumpAndSettle();
+      expect(find.text('إضافة مهمة'), findsNothing);
+      expect(find.bySemanticsLabel('إضافة مهمة'), findsOneWidget);
+
+      await tester.drag(find.byType(ListView), const Offset(0, 180));
+      await tester.pumpAndSettle();
+      expect(find.text('إضافة مهمة'), findsOneWidget);
       expect(tester.takeException(), isNull);
+    },
+  );
+
+  testWidgets('each tab names and colours its «+»', (tester) async {
+    Future<void> pumpTab(int index) => tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.light(),
+        home: PlanShellChrome(
+          activeIndex: index,
+          onTabSelected: (_) {},
+          onQuickAdd: () {},
+          body: const SizedBox.expand(),
+        ),
+      ),
+    );
+
+    for (final (index, label, section) in [
+      (0, 'إضافة', JourneySection.home),
+      (1, 'إضافة اتفاق', JourneySection.money),
+      (2, 'إضافة مهمة', JourneySection.tasks),
+      (3, 'إضافة ضيف', JourneySection.guests),
+    ]) {
+      await pumpTab(index);
+      expect(find.bySemanticsLabel(label), findsOneWidget, reason: label);
+      final decoration =
+          tester
+                  .widget<AnimatedContainer>(
+                    find.byKey(const ValueKey('aarast-quick-action')),
+                  )
+                  .decoration!
+              as BoxDecoration;
+      expect(decoration.color, section.color, reason: label);
+    }
+    expect(JourneySection.guests.color, AarastV3Color.lilac);
+  });
+
+  testWidgets('no «+» without a handler, and none over the keyboard', (
+    tester,
+  ) async {
+    Future<void> pump({VoidCallback? onQuickAdd, double keyboard = 0}) =>
+        tester.pumpWidget(
+          MaterialApp(
+            theme: AppTheme.light(),
+            builder: (context, child) => MediaQuery(
+              data: MediaQuery.of(
+                context,
+              ).copyWith(viewInsets: EdgeInsets.only(bottom: keyboard)),
+              child: child!,
+            ),
+            home: PlanShellChrome(
+              activeIndex: 0,
+              onTabSelected: (_) {},
+              onQuickAdd: onQuickAdd,
+              body: const SizedBox.expand(),
+            ),
+          ),
+        );
+
+    await pump();
+    expect(find.byKey(const ValueKey('aarast-quick-action')), findsNothing);
+    await pump(onQuickAdd: () {});
+    expect(find.byKey(const ValueKey('aarast-quick-action')), findsOneWidget);
+    await pump(onQuickAdd: () {}, keyboard: 300);
+    expect(find.byKey(const ValueKey('aarast-quick-action')), findsNothing);
+  });
+
+  testWidgets(
+    'the «+» sheet is a journey sheet that scrolls on a short enlarged-text viewport',
+    (tester) async {
+      tester.view.physicalSize = const Size(320, 280);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.reset);
+      PlanQuickAddKind? picked;
+
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: AppTheme.light(),
+          builder: (context, child) => MediaQuery(
+            data: MediaQuery.of(
+              context,
+            ).copyWith(textScaler: const TextScaler.linear(1.8)),
+            child: child!,
+          ),
+          home: Builder(
+            builder: (context) => Scaffold(
+              body: Center(
+                child: TextButton(
+                  onPressed: () async {
+                    picked = await showPlanQuickAddSheet(
+                      context,
+                      actions: planQuickAddActions(
+                        planId: 'sheet-plan',
+                        tabIndex: 1,
+                        canManageMoney: true,
+                        offerAgreementActions: true,
+                      ),
+                    );
+                  },
+                  child: const Text('فتح'),
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+
+      await tester.tap(find.text('فتح'));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(JourneySheetBody), findsOneWidget);
+      expect(find.text('ايش تضيف؟'), findsOneWidget);
+      expect(find.text('الأنسب الآن'), findsOneWidget);
+      final last = find.text('إضافة بند');
+      expect(last.hitTestable(), findsNothing);
+
+      await tester.dragUntilVisible(
+        last,
+        find.byType(SingleChildScrollView),
+        const Offset(0, -80),
+      );
+      await tester.pumpAndSettle();
+      expect(last.hitTestable(), findsOneWidget);
+      expect(tester.takeException(), isNull);
+
+      await tester.tap(last);
+      await tester.pumpAndSettle();
+      expect(picked, PlanQuickAddKind.category);
+      expect(find.byType(JourneySheetBody), findsNothing);
     },
   );
 }

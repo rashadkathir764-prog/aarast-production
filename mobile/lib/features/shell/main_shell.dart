@@ -4,17 +4,21 @@ import 'package:provider/provider.dart';
 
 import '../../core/diagnostics/app_logger.dart';
 import '../../core/offline/offline_status_widgets.dart';
+import '../../core/offline/offline_sync_service.dart';
+import '../../core/offline/sync_status.dart';
 import '../../core/routing/root_tab_back_scope.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/widgets/aarast_ui.dart';
 import '../account_contexts/account_contexts_api.dart'
     show AccountContext, AccountContextController, AccountContextRole;
-import '../finance/finance_api.dart' show MoneyOverviewScreen;
+import '../finance/finance_api.dart' show FinanceProvider, MoneyOverviewScreen;
 import '../guests/guests_api.dart' show GuestListScreen;
 import '../marketplace/marketplace_api.dart' show ProviderMarketplaceScreen;
 import '../tasks/tasks_api.dart' show TaskTimelineScreen;
 import '../wedding_plans/wedding_plans_api.dart'
-    show PlanCenterScreen, WeddingPlanDashboardScreen;
+    show DashboardSummaryProvider, PlanCenterScreen, WeddingPlanDashboardScreen;
+import 'widgets/plan_quick_add.dart';
+import 'widgets/plan_quick_add_sheet.dart';
 import 'widgets/plan_shell_chrome.dart';
 
 class MainShell extends StatelessWidget {
@@ -66,6 +70,9 @@ class _OwnerMainShellState extends State<_OwnerMainShell> {
   int _index = 0;
   final Set<int> _visitedTabs = {0};
 
+  /// Raised by the «+» to open the guests' add sheet on their tab.
+  int _guestAddRequest = 0;
+
   void _onItemTapped(int index) {
     appLogEvent(
       'SHELL_TAB_SELECTED',
@@ -84,6 +91,38 @@ class _OwnerMainShellState extends State<_OwnerMainShell> {
     });
   }
 
+  /// The «+» on the current tab (D33). The guest sheet and the providers
+  /// open on their own tabs inside this shell.
+  PlanQuickAddFlow _quickAdd() {
+    final planId = widget.weddingPlanId;
+    final dashboard = context.read<DashboardSummaryProvider>();
+    final summary = dashboard.summary;
+    return PlanQuickAddFlow(
+      planId: planId,
+      tabIndex: _index,
+      canManageMoney: _canManageMoney(planId),
+      offerAgreementActions: true,
+      signals: summary?.planId == planId
+          ? PlanQuickAddSignals.fromDashboard(summary!)
+          : null,
+      onAddGuest: () => setState(() {
+        _index = 3;
+        _visitedTabs.add(3);
+        _guestAddRequest += 1;
+      }),
+      onFindProviders: () => _onItemTapped(4),
+      onChanged: () => dashboard.loadDashboard(planId),
+    );
+  }
+
+  /// Money rights from the loaded money, else from the home summary.
+  bool _canManageMoney(String planId) {
+    final finance = context.read<FinanceProvider?>();
+    if (finance?.loadedPlanId == planId) return finance!.canManageMoney;
+    final summary = context.read<DashboardSummaryProvider>().summary;
+    return summary?.planId == planId && summary!.permissions.canManageMoney;
+  }
+
   @override
   Widget build(BuildContext context) {
     final shellTheme = Theme.of(context);
@@ -96,6 +135,16 @@ class _OwnerMainShellState extends State<_OwnerMainShell> {
       );
     }
     final selectedPlanId = widget.weddingPlanId;
+    final finance = context.watch<FinanceProvider?>();
+    final offline =
+        context.watch<OfflineSyncService?>()?.state == SyncState.offline;
+    final showQuickAdd = shouldShowPlanQuickAdd(
+      tabIndex: _index,
+      canManageMoney:
+          _index != 1 ||
+          (finance?.loadedPlanId == selectedPlanId && finance!.canManageMoney),
+      guestsWaitForConnection: offline,
+    );
 
     return RootTabBackScope(
       activeIndex: _index,
@@ -108,6 +157,10 @@ class _OwnerMainShellState extends State<_OwnerMainShell> {
           onTabSelected: _onItemTapped,
           // The same offline line as the plan-route shell (c04, w29).
           topStatus: const OfflineStatusBanner(),
+          onQuickAdd: showQuickAdd ? () => _quickAdd().open(context) : null,
+          onQuickAddLongPress: showQuickAdd
+              ? () => _quickAdd().repeatLast(context)
+              : null,
           backgroundColor: AppTheme.canvas,
           body: IndexedStack(
             key: ValueKey('owner-indexed-stack-${widget.contextKey}'),
@@ -148,6 +201,7 @@ class _OwnerMainShellState extends State<_OwnerMainShell> {
                 GuestListScreen(
                   key: ValueKey('guests-$selectedPlanId'),
                   weddingPlanId: selectedPlanId,
+                  openAddRequest: _guestAddRequest,
                 ),
               ),
 

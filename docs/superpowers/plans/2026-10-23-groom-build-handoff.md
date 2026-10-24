@@ -4,7 +4,7 @@
 
 - الفرع `groom-journey-build`، وكل الشغل المكتمل مرفوع على `origin`.
 - خلصت الشرائح 1 إلى 6: البداية، الرئيسية، الفلوس، المهام، الضيوف.
-- الشريحة 7 (المزودين، جهة العميل) في النص: 23 شاشة من 24 مكتملة.
+- الشريحة 7 (المزودين، جهة العميل) مكتملة: 24 شاشة من 24.
 - شاشة «استكشف» (f02 وw33) مكتملة ومرفوعة، وبعدها «نبدأ بالقاعة» (x22) وصفحة المزود (f03).
 - إصلاحات 2026-10-24 من تشغيل التطبيق الحقيقي: موعد العرس ما عاد ينقص يوم (D11)، الخطة المحفوظة تنفتح بدون «اختر المسار»، الرئيسية ما تقول «ما عندك خطة بعد» وهي تحمّل، و«استكشف» ما فيه «خدمات قريبة من بندك» (D12).
 - باقي: بقية الشريحة 7، ثم الشريحة 8 (الحساب والإعدادات والخطة)، ثم الشريحة 9 (المشارك)، ثم التنظيف والتسليم.
@@ -133,7 +133,7 @@ The word «أقساط» is banned. Use «على دفعات».
 | 4 Money write (12) | Done. c04 needed no code. |
 | 5 Tasks (10) | Done, except **y14**, which no commit names. Its hero must be a CustomPainter, with no gradient (D3). |
 | 6 Guests (12) | Done, except **w38**, which no commit names. Verify it. |
-| 7 Providers, customer side (24) | **In progress.** Done: f01, f02, f03, f04, f05, f06, f07, f08, f09, x10, x11, x22, w30 (filter sheet), w31, w32, w33, w34, w35, x09, x12, y09, g04; y13 needs no code (f02 with the «زينة البيت» category, which is admin data). Left: b07. |
+| 7 Providers, customer side (24) | **Done.** Done: f01, f02, f03, f04, f05, f06, f07, f08, f09, x10, x11, x22, w30 (filter sheet), w31, w32, w33, w34, w35, x09, x12, y09, g04, b07; y13 needs no code (f02 with the «زينة البيت» category, which is admin data). |
 | 8 Account / settings / plan (15) | Not started: g02, g07, g10, g11, w39, w07, w08, g08, w10, g03, w11, g01, g06, x07, x20 |
 | 9 Participant (15) | Not started: x04, q01, q02, q03, q04, x06, q17, q05, q18, q07, q08, q10, q12, q19, q21 |
 | 10 V1.1 extras | Out of scope until after V1 |
@@ -221,6 +221,7 @@ Each line is a place where the app differs from the prototype:
 - y13: no category line («تركيب قبل السمرة وفك بعد العرس · يغطون صنعاء»; a category has no description) and no «فاضي يوم 17».
 - f07: no «المناسبة» row, no «شاركهم رقمك», no 7-day expiry (D15); the time goes into the message.
 - f06/w32 (D17): w32 opens by pressing the provider's name (the prototype shows no opener); no «نسخة 2» line on the offer; «احظر المزود» says only «ما يقدر يراسلك»; the photo button stays inside the field.
+- b07 (D22): no payoff month, no rafd/thanks/ledger/book cards, no provider count on the rating card.
 - g04/x12/w35 (D21): no quick tags, no provider reply line, no reminder, «يطلع باسمك: …» instead of «باسمك الأول بس».
 - x09 (D20): no banner, no «سحب عرضه», no «ذكّره», no reason or free-alternatives count.
 - y09 (D19): «ليلتك محجوزة / عند …» instead of «… محجوزة ليلتك»; no «صار محجوز 4 من 6»; solid cobalt instead of the sky gradient.

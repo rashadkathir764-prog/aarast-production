@@ -10,12 +10,16 @@ class _JourneyHomeHeader extends StatelessWidget {
     required this.summary,
     required this.onNotifications,
     required this.onProfile,
+    this.married = false,
   });
 
   final String userName;
   final DashboardSummary summary;
   final VoidCallback onNotifications;
   final VoidCallback onProfile;
+
+  /// b07: once the day has passed the greeting congratulates.
+  final bool married;
 
   @override
   Widget build(BuildContext context) {
@@ -36,7 +40,9 @@ class _JourneyHomeHeader extends StatelessWidget {
               Semantics(
                 header: true,
                 child: Text(
-                  name.isEmpty ? 'أهلًا فيك' : 'أهلًا $name',
+                  married
+                      ? (name.isEmpty ? 'ألف مبروك' : 'ألف مبروك يا $name')
+                      : (name.isEmpty ? 'أهلًا فيك' : 'أهلًا $name'),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: JourneyType.of(
@@ -423,4 +429,182 @@ String _currencyLabel(String currency) {
     'USD' => r'$',
     _ => currency,
   };
+}
+
+
+/// b07: what is left to pay once the day has passed: agreements still
+/// unpaid plus loans still owed (C12), and what was paid of all of them.
+class DashboardAfterWedding {
+  const DashboardAfterWedding({
+    required this.left,
+    required this.paid,
+    required this.total,
+  });
+
+  final num left;
+  final num paid;
+  final num total;
+}
+
+/// b07's hero: «1.9 مليون باقي عليك», the share paid and «سددت … من …».
+/// «تخلص منها في يونيو» is left out: no payoff date is planned anywhere.
+class _AfterWeddingHero extends StatelessWidget {
+  const _AfterWeddingHero({
+    required this.debt,
+    required this.currency,
+    required this.onTap,
+  });
+
+  final DashboardAfterWedding debt;
+  final String currency;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final left = compactMoneyParts(debt.left, currencyCode: currency);
+    final paid = compactMoneyParts(debt.paid, currencyCode: currency);
+    final total = compactMoneyParts(debt.total, currencyCode: currency);
+    final share = debt.total <= 0 ? 0.0 : (debt.paid / debt.total).clamp(0, 1);
+    final filled = (share * 5).round();
+    return AarastPressable(
+      key: const ValueKey('aarast-dashboard-after-hero'),
+      onTap: onTap,
+      semanticLabel:
+          '${left.semanticText} باقي عليك. سددت ${paid.semanticText} من ${total.semanticText}',
+      borderRadius: BorderRadius.circular(24),
+      child: JourneyBox(
+        color: AarastV3Color.primary,
+        radius: 24,
+        padding: EdgeInsets.zero,
+        child: Stack(
+          children: [
+            const Positioned.fill(
+              child: ExcludeSemantics(
+                child: CustomPaint(
+                  painter: JourneyQamariyaPainter(alpha: 0.08),
+                ),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 18, 20, 18),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Row(
+                    children: [
+                      Text(
+                        left.number,
+                        style: JourneyType.of(
+                          JourneyType.count,
+                          weight: JourneyType.bold,
+                          color: AarastV3Color.onPrimary,
+                          height: 1,
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Text(
+                          '${left.millionUnit ?? left.currency} باقي عليك',
+                          style: JourneyType.of(
+                            JourneyType.title,
+                            weight: JourneyType.bold,
+                            color: AarastV3Color.onPrimary,
+                          ),
+                        ),
+                      ),
+                      const JourneyTag(
+                        label: 'بعد العرس',
+                        color: AarastV3Color.ink,
+                        soft: AarastV3Color.saffron,
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 14),
+                  Row(
+                    children: [
+                      for (var piece = 0; piece < 5; piece++) ...[
+                        if (piece > 0) const SizedBox(width: 6),
+                        Expanded(
+                          child: Container(
+                            height: 6,
+                            decoration: BoxDecoration(
+                              color: piece < filled
+                                  ? AarastV3Color.saffron
+                                  : AarastV3Color.paper,
+                              borderRadius: BorderRadius.circular(3),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  Text(
+                    'سددت ${paid.plainText} من ${total.plainText}',
+                    style: JourneyType.of(
+                      JourneyType.small,
+                      color: AarastV3Color.onPrimaryMuted,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// b07 «قيّم مزودينك», opening g04.
+class _RateProvidersCard extends StatelessWidget {
+  const _RateProvidersCard({required this.onTap});
+
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return JourneyBox(
+      key: const ValueKey('aarast-dashboard-rate-providers'),
+      padding: const EdgeInsets.all(16),
+      child: Row(
+        children: [
+          const JourneyIconTile(
+            icon: LucideIcons.star,
+            color: AarastV3Color.brandAccentStrong,
+            soft: AarastV3Color.brandAccentSoft,
+            size: 44,
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'قيّم مزودينك',
+                  style: JourneyType.of(
+                    JourneyType.bodyLarge,
+                    weight: JourneyType.bold,
+                  ),
+                ),
+                Text(
+                  'تقييمك يساعد العرسان الجايين',
+                  style: JourneyType.of(
+                    JourneyType.small,
+                    color: AarastV3Color.textMuted,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 8),
+          JourneyButton(
+            label: 'قيّم',
+            background: AarastV3Color.brandAccentStrong,
+            onPressed: onTap,
+          ),
+        ],
+      ),
+    );
+  }
 }

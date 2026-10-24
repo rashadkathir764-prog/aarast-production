@@ -41,6 +41,8 @@ class AarastDashboardView extends StatelessWidget {
     this.assistantEntry,
     this.now,
     this.onOpenPayment,
+    this.afterWedding,
+    this.onOpenReviews,
     super.key,
   });
 
@@ -68,6 +70,12 @@ class AarastDashboardView extends StatelessWidget {
   /// Opens recording the due payment the next step names (b02).
   final ValueChanged<DashboardNextPaymentSchedule>? onOpenPayment;
 
+  /// b07: the debt left after the wedding, once the money is loaded.
+  final DashboardAfterWedding? afterWedding;
+
+  /// b07 «قيّم مزودينك».
+  final VoidCallback? onOpenReviews;
+
   @override
   Widget build(BuildContext context) {
     final focus = resolveDashboardFocus(summary);
@@ -79,6 +87,10 @@ class AarastDashboardView extends StatelessWidget {
         summary.canViewMoney && focus.target != AarastDashboardFocusTarget.item
         ? summary.nextPaymentScheduleDue
         : null;
+    // b07: after the day the home is the debt, the next repayment and the
+    // providers to rate; the planning cards are done with.
+    final married = planStage.stage == WeddingPlanStage.wrapUp;
+    final debt = married ? afterWedding : null;
     final afterwards = [
       for (final item in summary.importantItems)
         if (!identical(item, focus.item)) item,
@@ -102,14 +114,22 @@ class AarastDashboardView extends StatelessWidget {
                     summary: summary,
                     onNotifications: onNotifications,
                     onProfile: onProfile,
+                    married: married,
                   ),
                   if (notice != null) ...[const SizedBox(height: 12), notice!],
                   const SizedBox(height: 16),
-                  _JourneyHomeHero(
-                    summary: summary,
-                    stage: planStage,
-                    onTap: onOpenPlan,
-                  ),
+                  if (debt != null && debt.left > 0)
+                    _AfterWeddingHero(
+                      debt: debt,
+                      currency: summary.currency,
+                      onTap: onOpenMoney,
+                    )
+                  else
+                    _JourneyHomeHero(
+                      summary: summary,
+                      stage: planStage,
+                      onTap: onOpenPlan,
+                    ),
                   ?assistantEntry,
                   if (weddingDay.isVisible) ...[
                     const SizedBox(height: 10),
@@ -118,7 +138,22 @@ class AarastDashboardView extends StatelessWidget {
                       onTap: onOpenWeddingDay,
                     ),
                   ],
-                  if (_showsSetupSteps(summary)) ...[
+                  if (married) ...[
+                    if (payment != null) ...[
+                      const SizedBox(height: 12),
+                      _JourneyNextStep(
+                        focus: focus,
+                        payment: payment,
+                        currency: summary.currency,
+                        now: now ?? DateTime.now(),
+                        onOpen: () => onOpenPayment?.call(payment),
+                      ),
+                    ],
+                    if (onOpenReviews != null) ...[
+                      const SizedBox(height: 12),
+                      _RateProvidersCard(onTap: onOpenReviews!),
+                    ],
+                  ] else if (_showsSetupSteps(summary)) ...[
                     const SizedBox(height: 20),
                     _JourneySetupSteps(
                       summary: summary,

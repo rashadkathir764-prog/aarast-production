@@ -12,11 +12,13 @@ import '../../../core/theme/app_theme.dart';
 import '../../account_contexts/account_contexts_api.dart'
     show AccountContextController;
 import '../../auth/auth_api.dart' show AuthActionGuard, AuthController;
+import '../../finance/finance_api.dart' show FinanceProvider;
 import '../../home/home_api.dart'
     show LocalGuestDashboardSummary, LocalGuestDashboardSummarySource;
 import '../../onboarding/onboarding_api.dart' show GuestOnboardingStorage;
 import '../../sharing/sharing_api.dart' show SharedMember;
 import '../models/dashboard_summary.dart';
+import '../models/wedding_plan_stage.dart';
 import '../providers/dashboard_summary_provider.dart';
 import '../widgets/dashboard/aarast_dashboard_view.dart';
 import '../widgets/plan_assistant_entry.dart';
@@ -134,6 +136,34 @@ class _WeddingPlanDashboardScreenState extends State<WeddingPlanDashboardScreen>
         setState(() => _localLoading = false);
       }
     }
+  }
+
+  /// b07: once the day has passed, what is left to pay from the money
+  /// section (agreements unpaid plus loans still owed, C12). Null until
+  /// the money is loaded, or for someone who may not see it.
+  DashboardAfterWedding? _afterWedding(DashboardSummary summary, String planId) {
+    if (_isLocalGuestPlan ||
+        !summary.canViewMoney ||
+        resolveWeddingPlanStage(summary.weddingDate).stage !=
+            WeddingPlanStage.wrapUp) {
+      return null;
+    }
+    final finance = context.watch<FinanceProvider?>();
+    if (finance == null) return null;
+    if (finance.loadedPlanId != planId) {
+      if (!finance.isLoading) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) finance.loadMoney(planId);
+        });
+      }
+      return null;
+    }
+    num value(String? text) => num.tryParse(text ?? '') ?? 0;
+    final money = finance.summary;
+    final funding = money.funding;
+    final total = value(money.costs.total) + value(funding?.loanTotal);
+    final left = value(money.costs.outstanding) + value(funding?.loanOutstanding);
+    return DashboardAfterWedding(left: left, paid: total - left, total: total);
   }
 
   @override
@@ -256,6 +286,10 @@ class _WeddingPlanDashboardScreenState extends State<WeddingPlanDashboardScreen>
           builder: (_) {
             return AarastDashboardView(
               summary: summary,
+              afterWedding: _afterWedding(summary, selectedPlanId),
+              onOpenReviews: _isLocalGuestPlan
+                  ? null
+                  : () => context.push(AppRouter.planReviews(selectedPlanId)),
               userName: auth.user?.name ?? '',
               avatarUrl: auth.user?.avatarUrl,
               // The assistant answers from the server; a device-only plan

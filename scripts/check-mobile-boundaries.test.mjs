@@ -1640,7 +1640,7 @@ const r19ProviderPortalApi = Object.freeze({
 // so «ضمن بندك» compares the price with the item's amount; -1 for the f09
 // comparison, which no longer gates on the account itself (D14); +1 for
 // f07 reading the plan's item through the finance owner API (D15).
-const r19LegalRecordCount = 197;
+const r19LegalRecordCount = 198;
 const trackedOwnerApiContracts = [
   {
     area: 'features/account_contexts',
@@ -2755,6 +2755,11 @@ const trackedPlanningBatchContracts = [
     source: 'mobile/lib/features/wedding_plans/screens/wedding_plan_dashboard_screen.dart',
     target: 'mobile/lib/features/auth/auth_api.dart',
     show: ['AuthActionGuard', 'AuthController'],
+  },
+  {
+    source: 'mobile/lib/features/wedding_plans/screens/wedding_plan_dashboard_screen.dart',
+    target: 'mobile/lib/features/finance/finance_api.dart',
+    show: ['FinanceProvider'],
   },
   {
     source: 'mobile/lib/features/wedding_plans/screens/wedding_plan_dashboard_screen.dart',

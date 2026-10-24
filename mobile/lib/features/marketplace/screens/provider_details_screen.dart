@@ -8,6 +8,7 @@ import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../../core/experience_v3/aarast_v3.dart';
+import '../../../core/preferences/device_preferences.dart';
 import '../../../core/routing/app_router.dart';
 import '../../../core/utils/currency_label.dart';
 import '../../../core/widgets/aarast_toast.dart';
@@ -157,6 +158,7 @@ class _ProviderDetailsScreenState extends State<ProviderDetailsScreen> {
                   )
                 : null,
             withinBudget: _withinBudget(provider, services, selectedPlanId),
+            dataSaver: context.watch<DevicePreferences?>()?.dataSaver ?? false,
             // The page, its services or its packages failed to refresh.
             detailsErrorMessage:
                 detailsError ??

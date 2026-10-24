@@ -7,6 +7,7 @@ import 'package:provider/provider.dart';
 
 import '../../../core/diagnostics/app_logger.dart';
 import '../../../core/offline/local_database.dart';
+import '../../../core/preferences/device_preferences.dart';
 import '../../../core/routing/app_router.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../account_contexts/account_contexts_api.dart'
@@ -287,6 +288,8 @@ class _WeddingPlanDashboardScreenState extends State<WeddingPlanDashboardScreen>
             return AarastDashboardView(
               summary: summary,
               afterWedding: _afterWedding(summary, selectedPlanId),
+              showHijri:
+                  context.watch<DevicePreferences?>()?.showHijri ?? true,
               onOpenReviews: _isLocalGuestPlan
                   ? null
                   : () => context.push(AppRouter.planReviews(selectedPlanId)),

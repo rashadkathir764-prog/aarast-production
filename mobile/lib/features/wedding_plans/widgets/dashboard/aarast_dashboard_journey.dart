@@ -116,7 +116,11 @@ class _JourneyHomeHero extends StatelessWidget {
     required this.summary,
     required this.stage,
     required this.onTap,
+    required this.showHijri,
   });
+
+  /// g02: the Hijri date next to the Gregorian one.
+  final bool showHijri;
 
   final DashboardSummary summary;
   final WeddingPlanStageState stage;
@@ -126,7 +130,9 @@ class _JourneyHomeHero extends StatelessWidget {
   Widget build(BuildContext context) {
     final date = summary.weddingDate;
     final days = summary.daysRemaining ?? stage.daysUntilWedding;
-    final hijri = date == null ? null : HijriDate.fromGregorian(date);
+    final hijri = date == null || !showHijri
+        ? null
+        : HijriDate.fromGregorian(date);
     final dateLine = date == null
         ? null
         : [formatArabicWeekdayDayMonth(date), ?hijri?.dayAndMonth].join(' · ');

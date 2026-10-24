@@ -56,37 +56,23 @@ void main() {
     }
   });
 
-  test('more screen keeps flows outside its presentation components', () {
+  // D23: «حسابي» (g02) is one bounded screen; its rows hold no flows.
+  test('account screen stays bounded and keeps flows in the screen state', () {
     final screen = _read('lib/features/more/screens/more_screen.dart');
-    final components = _read(
-      'lib/features/more/widgets/more_screen_components.dart',
-    );
 
     expect(_lineCount(screen), lessThanOrEqualTo(600));
-    expect(screen, contains('MoreIdentitySummary.from'));
     expect(screen, contains('showAarastBottomSheet'));
     expect(screen, contains('AuthActionGuard'));
     expect(screen, contains('AppRouter'));
-    for (final extractedClass in [
-      'class _IdentitySummary',
-      'class _ProfileCard',
-      'class _MenuGroup',
-      'class _MoreActionTile',
-      'class _DangerGroup',
-    ]) {
-      expect(screen, isNot(contains(extractedClass)), reason: extractedClass);
-    }
-
+    final rows = screen.substring(screen.indexOf('class _Row '));
     for (final forbidden in [
-      'Provider',
       'AuthActionGuard',
       'AppRouter',
-      'go_router',
       'context.push',
       'context.read',
       'context.watch',
     ]) {
-      expect(components, isNot(contains(forbidden)), reason: forbidden);
+      expect(rows, isNot(contains(forbidden)), reason: forbidden);
     }
   });
 

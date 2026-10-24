@@ -109,7 +109,7 @@ void main() {
           name: 'MoreScreen._logout',
           path: 'lib/features/more/screens/more_screen.dart',
           startMarker: 'static Future<void> _logout(BuildContext context)',
-          endMarker: 'static Future<void> _deleteAccount(BuildContext context)',
+          endMarker: 'Future<void> _changeAvatar(BuildContext context)',
         ),
         (
           name: 'PlanManagementScreen._confirmContributorLogout',

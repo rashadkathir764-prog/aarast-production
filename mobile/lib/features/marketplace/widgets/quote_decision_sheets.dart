@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:lucide_icons/lucide_icons.dart';
+import 'package:provider/provider.dart';
 
 import '../../../core/experience_v3/aarast_v3.dart';
+import '../../../core/preferences/device_preferences.dart';
 import '../../../core/utils/arabic_date_formatter.dart';
 import '../../../core/utils/hijri_date.dart';
 import '../../../core/utils/money_formatters.dart';
@@ -19,9 +21,9 @@ String quoteProviderName(QuoteRequest quote) =>
     ? quote.provider!.businessName.trim()
     : 'المزود';
 
-/// «الخميس 21 يناير · 13 شعبان».
-String bookingDayLabel(DateTime day) {
-  final hijri = HijriDate.fromGregorian(day);
+/// «الخميس 21 يناير · 13 شعبان»; the Hijri part only while g02 shows it.
+String bookingDayLabel(DateTime day, {bool showHijri = true}) {
+  final hijri = showHijri ? HijriDate.fromGregorian(day) : null;
   final gregorian = formatArabicWeekdayDayMonth(day);
   return hijri == null ? gregorian : '$gregorian · ${hijri.dayAndMonth}';
 }
@@ -155,7 +157,14 @@ class _BookingRequestSheetState extends State<BookingRequestSheet> {
               children: [
                 fact(
                   LucideIcons.calendarDays,
-                  day == null ? 'اختر يوم الحجز' : bookingDayLabel(day),
+                  day == null
+                      ? 'اختر يوم الحجز'
+                      : bookingDayLabel(
+                          day,
+                          showHijri:
+                              context.watch<DevicePreferences?>()?.showHijri ??
+                              true,
+                        ),
                 ),
                 if (place.isNotEmpty) fact(LucideIcons.mapPin, place),
                 Align(

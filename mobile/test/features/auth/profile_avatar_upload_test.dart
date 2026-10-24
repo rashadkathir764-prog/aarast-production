@@ -92,9 +92,6 @@ void main() {
     final dashboardSource = File(
       'lib/features/wedding_plans/screens/wedding_plan_dashboard_screen.dart',
     ).readAsStringSync();
-    final moreComponentsSource = File(
-      'lib/features/more/widgets/more_screen_components.dart',
-    ).readAsStringSync();
     final iosInfo = File('ios/Runner/Info.plist').readAsStringSync();
 
     expect(moreSource, contains('avatarUrl: user?.avatarUrl'));
@@ -107,7 +104,6 @@ void main() {
     expect(moreSource, contains('_avatarMaxBytes = 5 * 1024 * 1024'));
     expect(moreSource, contains('AuthActionGuard.requireAccount'));
     expect(moreSource, isNot(contains('NotificationsProvider')));
-    expect(moreComponentsSource, isNot(contains('LucideIcons.bell')));
     expect(iosInfo, contains('NSCameraUsageDescription'));
     expect(iosInfo, contains('NSPhotoLibraryUsageDescription'));
     expect(iosInfo, contains('NSPhotoLibraryAddUsageDescription'));

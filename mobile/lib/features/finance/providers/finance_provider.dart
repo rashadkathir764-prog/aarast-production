@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 
 import '../../../core/network/api_client.dart';
 import '../../../core/offline/cache_policy.dart';
+import '../../../core/preferences/device_preferences.dart';
 import '../../../core/session/session_scoped_change_notifier.dart';
 import '../../sharing/sharing_api.dart' show PlanAccessPermissions, SharingApi;
 import '../data/finance_api.dart';
@@ -10,8 +11,17 @@ import '../models/money_summary.dart';
 import '../models/wedding_cost.dart';
 
 class FinanceProvider extends ChangeNotifier with SessionScopedNotifier {
-  FinanceProvider(this._api, {SharingApi? permissionsApi})
-    : _permissionsApi = permissionsApi;
+  FinanceProvider(
+    this._api, {
+    SharingApi? permissionsApi,
+    DevicePreferences? preferences,
+  }) : _permissionsApi = permissionsApi,
+       _preferences = preferences {
+    _preferences?.addListener(notifyListeners);
+  }
+
+  /// «أخفِ المبالغ» (g02) lives on the phone and outlasts this plan.
+  final DevicePreferences? _preferences;
 
   static const savedButStaleMessage =
       'تم الحفظ، لكن تعذر تحديث عرض المال الآن. اسحب للتحديث.';
@@ -68,9 +78,14 @@ class FinanceProvider extends ChangeNotifier with SessionScopedNotifier {
   bool get hasMorePayments => _paymentsPage < _paymentsTotalPages;
   bool get isLoadingMoreCosts => _isLoadingMoreCosts;
   bool get isLoadingMorePayments => _isLoadingMorePayments;
-  bool get amountsHidden => _amountsHidden;
+  bool get amountsHidden => _preferences?.hideAmounts ?? _amountsHidden;
 
   void toggleAmountsVisibility() {
+    final preferences = _preferences;
+    if (preferences != null) {
+      preferences.setHideAmounts(!preferences.hideAmounts);
+      return;
+    }
     _amountsHidden = !_amountsHidden;
     notifyListeners();
   }
@@ -905,6 +920,7 @@ class FinanceProvider extends ChangeNotifier with SessionScopedNotifier {
   @override
   void dispose() {
     _loadGeneration += 1;
+    _preferences?.removeListener(notifyListeners);
     super.dispose();
   }
 }

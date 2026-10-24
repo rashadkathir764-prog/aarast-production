@@ -1,23 +1,27 @@
 import 'package:flutter/material.dart';
-import 'package:lucide_icons/lucide_icons.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:lucide_icons/lucide_icons.dart';
 import 'package:provider/provider.dart';
 
-import '../../../core/offline/offline_status_widgets.dart';
-import '../../../core/offline/offline_sync_service.dart';
+import '../../../core/experience_v3/aarast_v3.dart';
+import '../../../core/preferences/device_preferences.dart';
 import '../../../core/routing/app_router.dart';
-import '../../../core/theme/app_theme.dart';
+import '../../../core/security/app_lock_controller.dart';
+import '../../../core/utils/arabic_date_formatter.dart';
 import '../../../core/widgets/aarast_toast.dart';
 import '../../../core/widgets/aarast_ui.dart';
 import '../../account_contexts/account_contexts_api.dart'
     show AccountContextController;
 import '../../auth/auth_api.dart'
-    show AuthActionGuard, AuthController, AuthStatus, confirmAccountDeletion;
-import '../../onboarding/onboarding_api.dart'
-    show GuestOnboardingDraft, GuestOnboardingStorage;
-import '../widgets/more_screen_components.dart';
+    show AuthActionGuard, AuthController, AuthStatus;
+import '../../settings/settings_api.dart' show showChangePhoneSheet;
+import '../../wedding_plans/wedding_plans_api.dart'
+    show DashboardSummaryProvider;
 
+/// g02 «حسابي»: who you are, your wedding, how the app looks, safety and
+/// privacy, and the account (C51 adds «الحساب»: notifications, plans,
+/// help, sign out). «الأرقام» and «الوضع الليلي» are left out (D23).
 class MoreScreen extends StatefulWidget {
   const MoreScreen({super.key});
 
@@ -28,221 +32,215 @@ class MoreScreen extends StatefulWidget {
 class _MoreScreenState extends State<MoreScreen> {
   static const _avatarMaxBytes = 5 * 1024 * 1024;
 
-  Future<GuestOnboardingDraft?>? _identityDraftFuture;
-
-  @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    _identityDraftFuture ??= _loadIdentityDraft();
-  }
-
   @override
   Widget build(BuildContext context) {
     final auth = context.watch<AuthController>();
-    final accountContexts = context.watch<AccountContextController?>();
-    final selectedContext = accountContexts?.selectedContext;
     final user = auth.user;
     final hasAccount = auth.status == AuthStatus.authenticated && user != null;
-    final name = user?.name ?? 'مستخدم اعّرست';
-    final phone = user?.phone;
+    final selected = context
+        .watch<AccountContextController?>()
+        ?.selectedContext;
+    final planId = selected?.weddingPlanId;
+    final summary = context.watch<DashboardSummaryProvider?>()?.summary;
+    final plan = summary != null && summary.planId == planId ? summary : null;
+    final preferences = context.watch<DevicePreferences?>();
+    AppLockController? lock;
+    try {
+      lock = context.watch<AppLockController>();
+    } on ProviderNotFoundException {
+      lock = null;
+    }
 
     return AarastScreenFrame(
       maxWidth: 520,
-      safeAreaBottom: false,
+      backgroundColor: AarastV3Color.canvas,
       child: ListView(
-        padding: const EdgeInsets.fromLTRB(20, 14, 20, 124),
+        padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
         children: [
-          const MoreHeader(),
-          const SizedBox(height: 12),
-          FutureBuilder<GuestOnboardingDraft?>(
-            future: _identityDraftFuture,
-            builder: (context, snapshot) {
-              final identity = MoreIdentitySummary.from(
-                selectedContext: selectedContext,
-                draft: snapshot.data,
-              );
-              return MoreProfileCard(
-                name: name,
-                phone: phone,
-                avatarUrl: user?.avatarUrl,
-                isUpdatingAvatar: auth.isSubmitting,
-                roleLabel: identity.roleLabel,
-                personaLabel: identity.personaLabel,
-                onEditAvatar: hasAccount ? () => _changeAvatar(context) : null,
-              );
-            },
+          JourneySubHeader(
+            title: 'حسابي',
+            onBack: () =>
+                context.canPop() ? context.pop() : context.go(AppRouter.home),
           ),
-          const SizedBox(height: 20),
-          const MoreMenuSectionTitle(title: 'خططك'),
-          const SizedBox(height: 6),
-          MoreMenuGroup(
+          _ProfileCard(
+            name: user?.name ?? '',
+            phone: user?.phone,
+            avatarUrl: user?.avatarUrl,
+            busy: auth.isSubmitting,
+            onEditAvatar: hasAccount ? () => _changeAvatar(context) : null,
+          ),
+          if (planId != null && planId.isNotEmpty) ...[
+            const _GroupTitle('عرسي'),
+            JourneyList(
+              dividers: false,
+              children: [
+                _Row(
+                  key: const ValueKey('account-wedding-date'),
+                  icon: LucideIcons.calendarDays,
+                  title: 'موعد العرس',
+                  value: plan?.weddingDate == null
+                      ? null
+                      : formatArabicDayMonth(plan!.weddingDate!),
+                  onTap: () => context.push(AppRouter.planCenter(planId)),
+                ),
+                _Row(
+                  key: const ValueKey('account-participants'),
+                  icon: LucideIcons.users,
+                  title: 'المشاركين',
+                  value: plan == null ? null : '${plan.participantCount}',
+                  onTap: () => context.push(AppRouter.sharing(planId)),
+                ),
+                _Row(
+                  key: const ValueKey('account-postpone'),
+                  icon: LucideIcons.calendarClock,
+                  title: 'تأجيل العرس',
+                  onTap: () => context.push(AppRouter.planCenter(planId)),
+                ),
+              ],
+            ),
+          ],
+          if (preferences != null) ...[
+            const _GroupTitle('شكل التطبيق'),
+            JourneyList(
+              dividers: false,
+              children: [
+                _Row(
+                  key: const ValueKey('account-hijri'),
+                  icon: LucideIcons.moon,
+                  title: 'التاريخ الهجري جنب الميلادي',
+                  switchValue: preferences.showHijri,
+                  onSwitch: preferences.setShowHijri,
+                ),
+                _Row(
+                  key: const ValueKey('account-large-text'),
+                  icon: LucideIcons.type,
+                  title: 'خط كبير',
+                  switchValue: preferences.largeText,
+                  onSwitch: preferences.setLargeText,
+                ),
+                _Row(
+                  key: const ValueKey('account-data-saver'),
+                  icon: LucideIcons.image,
+                  title: 'توفير البيانات',
+                  switchValue: preferences.dataSaver,
+                  onSwitch: preferences.setDataSaver,
+                ),
+              ],
+            ),
+          ],
+          const _GroupTitle('الأمان والخصوصية'),
+          JourneyList(
+            dividers: false,
             children: [
-              MoreActionTile(
-                title: 'الخطط المشتركة معي',
-                icon: LucideIcons.users,
-                iconColor: AppTheme.brand,
-                iconBackground: AppTheme.brandMuted,
-                onTap: () => context.push(AppRouter.sharedWeddingPlans),
-              ),
-              MoreActionTile(
-                title: 'خططي',
-                icon: LucideIcons.calendarDays,
-                iconColor: AppTheme.brand,
-                iconBackground: AppTheme.brandMuted,
-                onTap: () => context.push(AppRouter.weddingPlans),
-              ),
-              MoreActionTile(
-                title: 'إنشاء خطة زفاف',
-                icon: LucideIcons.plusCircle,
-                iconColor: AppTheme.brand,
-                iconBackground: AppTheme.brandMuted,
-                onTap: () => context.push(AppRouter.createWeddingPlan),
-              ),
-              if (hasAccount && selectedContext != null)
-                MoreActionTile(
-                  title: 'الخروج من المسار',
-                  icon: LucideIcons.layers,
-                  iconColor: AppTheme.brand,
-                  iconBackground: AppTheme.brandMuted,
-                  onTap: () {
-                    final controller = accountContexts;
-                    if (controller == null) return;
-                    _exitWorkspace(context, controller);
-                  },
+              if (preferences != null)
+                _Row(
+                  key: const ValueKey('account-hide-amounts'),
+                  icon: LucideIcons.eyeOff,
+                  title: 'أخفِ المبالغ',
+                  switchValue: preferences.hideAmounts,
+                  onSwitch: preferences.setHideAmounts,
+                ),
+              if (hasAccount && lock != null && lock.userId != null)
+                _Row(
+                  key: const ValueKey('account-app-lock'),
+                  icon: LucideIcons.lock,
+                  title: 'قفل التطبيق',
+                  value: lock.isEnabled ? 'رمز' : 'مطفي',
+                  onTap: () => context.push(AppRouter.settings),
+                ),
+              if (hasAccount)
+                _Row(
+                  key: const ValueKey('account-change-phone'),
+                  icon: LucideIcons.smartphone,
+                  title: 'تغيير رقم الجوال',
+                  onTap: () => showChangePhoneSheet(
+                    context,
+                    requestCode: auth.requestPhoneChange,
+                    confirmCode: auth.confirmPhoneChange,
+                  ),
                 ),
             ],
           ),
-          const SizedBox(height: 18),
-          const MoreMenuSectionTitle(title: 'أدواتك'),
-          const SizedBox(height: 6),
-          MoreMenuGroup(
+          const _GroupTitle('الحساب'),
+          JourneyList(
+            dividers: false,
             children: [
-              MoreActionTile(
-                title: 'المزودين المحفوظون',
-                icon: LucideIcons.heart,
-                iconColor: AppTheme.brand,
-                iconBackground: AppTheme.brandMuted,
-                onTap: () => context.push(AppRouter.favoriteProviders),
+              if (hasAccount)
+                _Row(
+                  key: const ValueKey('account-notifications'),
+                  icon: LucideIcons.bell,
+                  title: 'التنبيهات',
+                  onTap: () => context.push(AppRouter.settings),
+                ),
+              _Row(
+                key: const ValueKey('account-plans'),
+                icon: LucideIcons.layers,
+                title: 'خططك',
+                onTap: () => context.push(AppRouter.weddingPlans),
               ),
-              MoreActionTile(
-                title: 'الإعدادات',
-                icon: LucideIcons.settings,
-                iconColor: AppTheme.brand,
-                iconBackground: AppTheme.brandMuted,
-                onTap: () => context.push(AppRouter.settings),
-              ),
-              MoreActionTile(
-                title: 'الدعم والمساعدة',
-                icon: LucideIcons.headphones,
-                iconColor: AppTheme.brand,
-                iconBackground: AppTheme.brandMuted,
+              _Row(
+                key: const ValueKey('account-help'),
+                icon: LucideIcons.lifeBuoy,
+                title: 'المساعدة',
                 onTap: () => context.push(AppRouter.support),
               ),
-              // A guest has nothing on the server to sync with; "synced" would
-              // be a false promise about where their plan lives (field test Q08).
-              if (hasAccount && _hasSyncService(context))
-                const OfflineSyncNowTile(),
+              if (hasAccount)
+                _Row(
+                  key: const ValueKey('account-logout'),
+                  icon: LucideIcons.logOut,
+                  title: 'الخروج',
+                  color: AarastV3Color.danger,
+                  onTap: () => _logout(context),
+                )
+              else
+                _Row(
+                  key: const ValueKey('account-login'),
+                  icon: LucideIcons.logIn,
+                  title: 'تسجيل الدخول',
+                  onTap: () => context.push(AppRouter.login),
+                ),
             ],
           ),
-          const SizedBox(height: 18),
-          if (!hasAccount)
-            MoreOptionalLoginTile(onTap: () => context.push(AppRouter.login))
-          else
-            MoreDangerGroup(
-              onLogout: () => _logout(context),
-              onDeleteAccount: () => _deleteAccount(context),
-            ),
-          const SizedBox(height: 22),
-          const MoreVersionFooter(),
         ],
       ),
     );
   }
 
-  static Future<void> _exitWorkspace(
-    BuildContext context,
-    AccountContextController accountContexts,
-  ) async {
-    await accountContexts.exitWorkspace();
-    await accountContexts.refresh();
-    if (!context.mounted) return;
-    context.go(AppRouter.home);
-  }
-
   static Future<void> _logout(BuildContext context) async {
     final confirmed = await showAarastBottomSheet<bool>(
       context: context,
-      builder: (sheetContext) {
-        return Directionality(
-          textDirection: TextDirection.rtl,
-          child: SafeArea(
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const MoreSheetHandle(),
-                  const SizedBox(height: 20),
-                  Container(
-                    width: 58,
-                    height: 58,
-                    decoration: BoxDecoration(
-                      color: AppTheme.dangerSoft,
-                      borderRadius: BorderRadius.circular(AppTheme.radiusLg),
-                    ),
-                    child: const Icon(
-                      LucideIcons.logOut,
-                      color: AppTheme.danger,
-                      size: 30,
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  Text(
-                    'تسجيل الخروج',
-                    style: Theme.of(sheetContext).textTheme.titleLarge
-                        ?.copyWith(
-                          color: AppTheme.textPrimary,
-                          fontWeight: FontWeight.w900,
-                        ),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    'هل ترغب في الخروج من حسابك الآن؟',
-                    textAlign: TextAlign.center,
-                    style: Theme.of(sheetContext).textTheme.bodyMedium
-                        ?.copyWith(
-                          color: AppTheme.textSecondary,
-                          fontWeight: FontWeight.w700,
-                        ),
-                  ),
-                  const SizedBox(height: 22),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: AarastButton(
-                          label: 'إلغاء',
-                          variant: AarastButtonVariant.secondary,
-                          onPressed: () =>
-                              Navigator.of(sheetContext).pop(false),
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: AarastButton(
-                          label: 'خروج',
-                          icon: LucideIcons.logOut,
-                          variant: AarastButtonVariant.danger,
-                          onPressed: () => Navigator.of(sheetContext).pop(true),
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
+      builder: (sheetContext) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(20, 16, 20, 16),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Text(
+                'تسجيل الخروج',
+                style: JourneyType.of(
+                  JourneyType.title,
+                  weight: JourneyType.bold,
+                ),
               ),
-            ),
+              const SizedBox(height: 16),
+              JourneyButton(
+                key: const ValueKey('account-logout-confirm'),
+                label: 'اطلع',
+                background: AarastV3Color.danger,
+                expand: true,
+                onPressed: () => Navigator.of(sheetContext).pop(true),
+              ),
+              const SizedBox(height: 8),
+              JourneyButton.quiet(
+                label: 'ارجع',
+                expand: true,
+                onPressed: () => Navigator.of(sheetContext).pop(false),
+              ),
+            ],
           ),
-        );
-      },
+        ),
+      ),
     );
 
     if (confirmed == true && context.mounted) {
@@ -250,38 +248,44 @@ class _MoreScreenState extends State<MoreScreen> {
     }
   }
 
-  static Future<void> _deleteAccount(BuildContext context) async {
-    if (!await confirmAccountDeletion(context, keyPrefix: 'more') ||
-        !context.mounted) {
-      return;
-    }
-    await _performConfirmedAccountDeletion(context);
-  }
-
-  static Future<void> _performConfirmedAccountDeletion(
-    BuildContext context,
-  ) async {
-    final auth = context.read<AuthController>();
-    final deleted = await auth.deleteAccount();
-    if (!context.mounted) return;
-    if (!deleted) {
-      AarastToast.showError(
-        context,
-        auth.errorMessage ?? 'تعذّر حذف الحساب. حاول مرة أخرى.',
-      );
-    }
-  }
-
   Future<void> _changeAvatar(BuildContext context) async {
     if (!await AuthActionGuard.requireAccount(
       context,
-      reason: 'سجّل الدخول لتحديث صورة حسابك ومزامنتها بأمان.',
+      reason: 'ادخل حسابك أول عشان تغيّر صورتك.',
     )) {
       return;
     }
     if (!context.mounted) return;
 
-    final source = await _showAvatarSourceSheet(context);
+    final source = await showAarastBottomSheet<ImageSource>(
+      context: context,
+      builder: (sheetContext) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(20, 16, 20, 16),
+          child: JourneyList(
+            children: [
+              JourneyListRow(
+                icon: LucideIcons.camera,
+                color: AarastV3Color.primary,
+                soft: AarastV3Color.primarySoft,
+                title: 'صوّر',
+                subtitle: 'بالكاميرا',
+                onTap: () => Navigator.of(sheetContext).pop(ImageSource.camera),
+              ),
+              JourneyListRow(
+                icon: LucideIcons.image,
+                color: AarastV3Color.primary,
+                soft: AarastV3Color.primarySoft,
+                title: 'اختر صورة',
+                subtitle: 'من المعرض',
+                onTap: () =>
+                    Navigator.of(sheetContext).pop(ImageSource.gallery),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
     if (source == null || !context.mounted) return;
 
     final file = await ImagePicker().pickImage(
@@ -294,20 +298,14 @@ class _MoreScreenState extends State<MoreScreen> {
     final size = await file.length();
     if (!context.mounted) return;
     if (size > _avatarMaxBytes) {
-      _showNotice(context, 'حجم الصورة يجب ألا يتجاوز 5MB.', isError: true);
+      AarastToast.showError(context, 'الصورة أكبر من 5 ميجا.');
       return;
     }
-
     final contentType = _avatarContentType(file);
     if (contentType == null) {
-      _showNotice(
-        context,
-        'اختر صورة بصيغة JPG أو PNG أو WebP.',
-        isError: true,
-      );
+      AarastToast.showError(context, 'اختر صورة JPG أو PNG أو WebP.');
       return;
     }
-
     final bytes = await file.readAsBytes();
     if (!context.mounted) return;
 
@@ -318,61 +316,14 @@ class _MoreScreenState extends State<MoreScreen> {
       contentType: contentType,
     );
     if (!context.mounted) return;
-
-    _showNotice(
-      context,
-      ok ? 'تم تحديث صورة الحساب.' : auth.errorMessage ?? 'تعذر تحديث الصورة.',
-      isError: !ok,
-    );
-  }
-
-  static Future<ImageSource?> _showAvatarSourceSheet(BuildContext context) {
-    return showAarastBottomSheet<ImageSource>(
-      context: context,
-      backgroundColor: AppTheme.surfaceRaised,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-      ),
-      builder: (sheetContext) {
-        return Directionality(
-          textDirection: TextDirection.rtl,
-          child: SafeArea(
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const MoreSheetHandle(),
-                  const SizedBox(height: 18),
-                  Text(
-                    'تحديث صورة الحساب',
-                    style: Theme.of(sheetContext).textTheme.titleLarge
-                        ?.copyWith(
-                          color: AppTheme.textPrimary,
-                          fontWeight: FontWeight.w900,
-                        ),
-                  ),
-                  const SizedBox(height: 14),
-                  MoreAvatarSourceTile(
-                    icon: LucideIcons.camera,
-                    title: 'التقاط بالكاميرا',
-                    onTap: () =>
-                        Navigator.of(sheetContext).pop(ImageSource.camera),
-                  ),
-                  const SizedBox(height: 8),
-                  MoreAvatarSourceTile(
-                    icon: LucideIcons.image,
-                    title: 'اختيار من المعرض',
-                    onTap: () =>
-                        Navigator.of(sheetContext).pop(ImageSource.gallery),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        );
-      },
-    );
+    if (ok) {
+      AarastToast.showSuccess(context, 'تغيّرت صورتك.');
+    } else {
+      AarastToast.showError(
+        context,
+        auth.errorMessage ?? 'ما قدرنا نغيّر الصورة.',
+      );
+    }
   }
 
   static String? _avatarContentType(XFile file) {
@@ -396,33 +347,199 @@ class _MoreScreenState extends State<MoreScreen> {
     final fromPath = pathParts.isEmpty ? '' : pathParts.last.trim();
     return fromPath.isEmpty ? 'avatar.jpg' : fromPath;
   }
+}
 
-  static void _showNotice(
-    BuildContext context,
-    String message, {
-    bool isError = false,
-  }) {
-    if (isError) {
-      AarastToast.showError(context, message);
-    } else {
-      AarastToast.showSuccess(context, message);
-    }
-  }
+class _GroupTitle extends StatelessWidget {
+  const _GroupTitle(this.title);
 
-  Future<GuestOnboardingDraft?> _loadIdentityDraft() async {
-    try {
-      return await context.read<GuestOnboardingStorage>().loadDraft();
-    } on ProviderNotFoundException {
-      return null;
-    }
+  final String title;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(6, 20, 6, 8),
+      child: Text(
+        title,
+        style: JourneyType.of(
+          JourneyType.body,
+          weight: JourneyType.bold,
+          color: AarastV3Color.textMuted,
+        ),
+      ),
+    );
   }
 }
 
-bool _hasSyncService(BuildContext context) {
-  try {
-    context.watch<OfflineSyncService>();
-    return true;
-  } on ProviderNotFoundException {
-    return false;
+/// The name, the phone, and the avatar (pressing it changes the photo).
+class _ProfileCard extends StatelessWidget {
+  const _ProfileCard({
+    required this.name,
+    required this.phone,
+    required this.avatarUrl,
+    required this.busy,
+    required this.onEditAvatar,
+  });
+
+  final String name;
+  final String? phone;
+  final String? avatarUrl;
+  final bool busy;
+  final VoidCallback? onEditAvatar;
+
+  @override
+  Widget build(BuildContext context) {
+    final letter = name.trim().isEmpty ? 'ا' : name.trim().characters.first;
+    final url = avatarUrl;
+    final Widget avatar = SizedBox.square(
+      dimension: 64,
+      child: busy
+          ? const Center(child: AarastInlineSpinner())
+          : url != null && url.isNotEmpty
+          ? ClipOval(
+              child: Image.network(
+                url,
+                fit: BoxFit.cover,
+                errorBuilder: (_, _, _) => JourneyAvatar(
+                  letter: letter,
+                  color: AarastV3Color.saffron,
+                  size: 64,
+                ),
+              ),
+            )
+          : JourneyAvatar(
+              letter: letter,
+              color: AarastV3Color.saffron,
+              size: 64,
+            ),
+    );
+    return JourneyBox(
+      padding: const EdgeInsets.all(18),
+      child: Row(
+        children: [
+          onEditAvatar == null
+              ? avatar
+              : Tooltip(
+                  message: 'تعديل صورة الحساب',
+                  child: AarastPressable(
+                    key: const ValueKey('account-avatar'),
+                    onTap: onEditAvatar,
+                    borderRadius: BorderRadius.circular(32),
+                    child: avatar,
+                  ),
+                ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  name.trim().isEmpty ? 'ضيف' : name.trim(),
+                  style: JourneyType.of(
+                    JourneyType.title,
+                    weight: JourneyType.bold,
+                  ),
+                ),
+                if (phone != null && phone!.trim().isNotEmpty)
+                  Text(
+                    _groupedPhone(phone!.trim()),
+                    textDirection: TextDirection.ltr,
+                    style: JourneyType.of(
+                      JourneyType.small,
+                      color: AarastV3Color.textMuted,
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
   }
+}
+
+/// One row: an icon, a title, then a value with an arrow or a switch.
+class _Row extends StatelessWidget {
+  const _Row({
+    required this.icon,
+    required this.title,
+    this.value,
+    this.onTap,
+    this.switchValue,
+    this.onSwitch,
+    this.color = AarastV3Color.primary,
+    super.key,
+  });
+
+  final IconData icon;
+  final String title;
+  final String? value;
+  final VoidCallback? onTap;
+  final bool? switchValue;
+  final ValueChanged<bool>? onSwitch;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    final toggle = switchValue;
+    final row = Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      child: Row(
+        children: [
+          Icon(icon, size: 22, color: color),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Text(
+              title,
+              style: JourneyType.of(
+                JourneyType.body,
+                weight: JourneyType.bold,
+                color: color == AarastV3Color.primary
+                    ? AarastV3Color.text
+                    : color,
+              ),
+            ),
+          ),
+          if (toggle != null)
+            Switch(
+              value: toggle,
+              materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+              activeTrackColor: AarastV3Color.primary,
+              inactiveTrackColor: AarastV3Color.line,
+              inactiveThumbColor: AarastV3Color.paper,
+              trackOutlineColor: const WidgetStatePropertyAll(
+                AarastV3Color.line,
+              ),
+              onChanged: onSwitch,
+            )
+          else ...[
+            if (value != null)
+              Text(
+                value!,
+                style: JourneyType.of(
+                  JourneyType.body,
+                  color: AarastV3Color.textMuted,
+                ),
+              ),
+            if (onTap != null) ...[
+              const SizedBox(width: 6),
+              const Icon(
+                LucideIcons.chevronLeft,
+                size: 18,
+                color: AarastV3Color.textMuted,
+              ),
+            ],
+          ],
+        ],
+      ),
+    );
+    if (onTap == null) return row;
+    return AarastPressable(onTap: onTap, child: row);
+  }
+}
+
+/// «+967 777 123 456», the way a Yemeni number is read out.
+String _groupedPhone(String phone) {
+  final match = RegExp(r'^\+967(\d{3})(\d{3})(\d{3})$').firstMatch(phone);
+  if (match == null) return phone;
+  return '+967 ${match[1]} ${match[2]} ${match[3]}';
 }

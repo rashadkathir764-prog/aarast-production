@@ -11,6 +11,27 @@ import '../../../core/widgets/aarast_ui.dart';
 /// every device, so the next sign-in uses the new number and the same
 /// password. A lost SIM: sign in with the old number and the password,
 /// then move here.
+/// Moves the account to a new phone (g02 «تغيير رقم الجوال»).
+Future<void> showChangePhoneSheet(
+  BuildContext context, {
+  required Future<String?> Function(String newPhone) requestCode,
+  required Future<String?> Function(String newPhone, String code) confirmCode,
+}) {
+  return showAarastBottomSheet<void>(
+    context: context,
+    isScrollControlled: true,
+    builder: (sheetContext) => Padding(
+      padding: EdgeInsets.only(
+        bottom: MediaQuery.viewInsetsOf(sheetContext).bottom,
+      ),
+      child: _ChangePhoneSheet(
+        requestCode: requestCode,
+        confirmCode: confirmCode,
+      ),
+    ),
+  );
+}
+
 class ChangePhoneButton extends StatelessWidget {
   const ChangePhoneButton({
     required this.requestCode,

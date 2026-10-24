@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:lucide_icons/lucide_icons.dart';
+import 'package:provider/provider.dart';
 
 import '../../../core/experience_v3/aarast_v3.dart';
+import '../../../core/preferences/device_preferences.dart';
 import '../../../core/theme/aarast_motion.dart';
 import '../../../core/utils/arabic_count.dart';
 
@@ -261,7 +263,8 @@ class _Cover extends StatelessWidget {
       child: Stack(
         fit: StackFit.expand,
         children: [
-          if (url == null || url.isEmpty)
+          // g02 «توفير البيانات»: no photo loads in the list.
+          if (url == null || url.isEmpty || (context.watch<DevicePreferences?>()?.dataSaver ?? false))
             placeholder
           else
             Image.network(

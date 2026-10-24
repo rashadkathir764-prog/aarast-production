@@ -9,6 +9,18 @@ import 'package:flutter_test/flutter_test.dart';
 final _now = DateTime(2026, 10, 24, 12);
 
 void main() {
+  testWidgets('g02 data saver keeps the page photo from loading', (
+    tester,
+  ) async {
+    await _pumpView(tester, dataSaver: true);
+
+    expect(find.byType(Image), findsNothing);
+    expect(
+      find.byKey(const ValueKey('provider-media-fallback')),
+      findsOneWidget,
+    );
+  });
+
   testWidgets('f03 shows the provider as the prototype does', (tester) async {
     await _pumpView(tester, withinBudget: true);
 
@@ -227,6 +239,7 @@ Future<void> _pumpView(
   VoidCallback? onRetryDetails,
   double width = 384,
   double textScale = 1,
+  bool dataSaver = false,
 }) async {
   tester.view.devicePixelRatio = 1;
   tester.view.physicalSize = Size(width, 1400);
@@ -254,6 +267,7 @@ Future<void> _pumpView(
             detailsErrorMessage: detailsErrorMessage,
             onRetryDetails: onRetryDetails,
             now: _now,
+            dataSaver: dataSaver,
           ),
         ),
       ),

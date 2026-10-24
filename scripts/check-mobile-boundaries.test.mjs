@@ -1640,7 +1640,7 @@ const r19ProviderPortalApi = Object.freeze({
 // so «ضمن بندك» compares the price with the item's amount; -1 for the f09
 // comparison, which no longer gates on the account itself (D14); +1 for
 // f07 reading the plan's item through the finance owner API (D15).
-const r19LegalRecordCount = 198;
+const r19LegalRecordCount = 197;
 const trackedOwnerApiContracts = [
   {
     area: 'features/account_contexts',
@@ -1984,6 +1984,10 @@ const trackedOwnerApiContracts = [
       { uri: 'data/settings_api.dart', show: ['SettingsApi'] },
       { uri: 'providers/settings_provider.dart', show: ['SettingsProvider'] },
       { uri: 'screens/settings_screen.dart', show: ['SettingsScreen'] },
+      {
+        uri: 'widgets/change_phone_sheet.dart',
+        show: ['showChangePhoneSheet'],
+      },
     ],
   },
   {
@@ -2404,22 +2408,17 @@ const trackedCollaborationBatchContracts = [
   {
     source: 'mobile/lib/features/more/screens/more_screen.dart',
     target: 'mobile/lib/features/auth/auth_api.dart',
-    show: ['AuthActionGuard', 'AuthController', 'AuthStatus', 'confirmAccountDeletion'],
+    show: ['AuthActionGuard', 'AuthController', 'AuthStatus'],
   },
   {
     source: 'mobile/lib/features/more/screens/more_screen.dart',
-    target: 'mobile/lib/features/onboarding/onboarding_api.dart',
-    show: ['GuestOnboardingDraft', 'GuestOnboardingStorage'],
+    target: 'mobile/lib/features/settings/settings_api.dart',
+    show: ['showChangePhoneSheet'],
   },
   {
-    source: 'mobile/lib/features/more/widgets/more_screen_components.dart',
-    target: 'mobile/lib/features/account_contexts/account_contexts_api.dart',
-    show: ['AccountContext', 'AccountContextRole'],
-  },
-  {
-    source: 'mobile/lib/features/more/widgets/more_screen_components.dart',
-    target: 'mobile/lib/features/onboarding/onboarding_api.dart',
-    show: ['GuestOnboardingDraft', 'appRoleLabel', 'personaCopyForGuest'],
+    source: 'mobile/lib/features/more/screens/more_screen.dart',
+    target: 'mobile/lib/features/wedding_plans/wedding_plans_api.dart',
+    show: ['DashboardSummaryProvider'],
   },
   {
     source: 'mobile/lib/features/notifications/screens/notifications_screen.dart',

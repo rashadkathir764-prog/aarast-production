@@ -43,6 +43,7 @@ class AarastDashboardView extends StatelessWidget {
     this.onOpenPayment,
     this.afterWedding,
     this.onOpenReviews,
+    this.showHijri = true,
     super.key,
   });
 
@@ -75,6 +76,9 @@ class AarastDashboardView extends StatelessWidget {
 
   /// b07 «قيّم مزودينك».
   final VoidCallback? onOpenReviews;
+
+  /// g02: the Hijri date next to the Gregorian one.
+  final bool showHijri;
 
   @override
   Widget build(BuildContext context) {
@@ -129,6 +133,7 @@ class AarastDashboardView extends StatelessWidget {
                       summary: summary,
                       stage: planStage,
                       onTap: onOpenPlan,
+                      showHijri: showHijri,
                     ),
                   ?assistantEntry,
                   if (weddingDay.isVisible) ...[

@@ -20,6 +20,7 @@ import 'core/network/api_client.dart';
 import 'core/offline/local_database.dart';
 import 'core/offline/offline_sync_service.dart';
 import 'core/offline/pending_plan_cleanup.dart';
+import 'core/preferences/device_preferences.dart';
 import 'core/push/push_messaging_gateway.dart';
 import 'core/push/push_notifications_controller.dart';
 import 'core/push/push_registration_api.dart';
@@ -168,6 +169,7 @@ Future<void> _bootstrapApplication(ObservabilityConfig observability) async {
     authStorage: authStorage,
   );
   final apiClient = ApiClient(tokenProvider: authStorage.readAccessToken);
+  final devicePreferences = DevicePreferences(preferences);
   late final LocalDatabase localDatabase;
   try {
     localDatabase = await createLocalDatabase(preferences);
@@ -296,6 +298,9 @@ Future<void> _bootstrapApplication(ObservabilityConfig observability) async {
         ),
         Provider<WeddingPlansApi>.value(value: weddingPlansApi),
         Provider<FinanceApi>.value(value: financeApi),
+        ChangeNotifierProvider<DevicePreferences>.value(
+          value: devicePreferences,
+        ),
         Provider<TaskTimelineApi>.value(value: taskTimelineApi),
         Provider<SharingApi>.value(value: sharingApi),
         Provider<PlanLeaveCoordinator>.value(value: planLeaveCoordinator),
@@ -566,14 +571,22 @@ class _AarastSessionProviders extends StatelessWidget {
             AccountContextController,
             FinanceProvider
           >(
-            create: (_) => _bindPlanScope(
-              FinanceProvider(financeApi, permissionsApi: sharingApi),
+            create: (context) => _bindPlanScope(
+              FinanceProvider(
+                financeApi,
+                permissionsApi: sharingApi,
+                preferences: context.read<DevicePreferences>(),
+              ),
               _unselectedPlanScope,
             ),
-            update: (_, accountContexts, current) => _forPlanScope(
+            update: (context, accountContexts, current) => _forPlanScope(
               current,
               _planScope(accountContexts),
-              () => FinanceProvider(financeApi, permissionsApi: sharingApi),
+              () => FinanceProvider(
+                financeApi,
+                permissionsApi: sharingApi,
+                preferences: context.read<DevicePreferences>(),
+              ),
             ),
           ),
           ChangeNotifierProxyProvider<

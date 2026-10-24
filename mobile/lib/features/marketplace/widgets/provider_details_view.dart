@@ -23,8 +23,12 @@ class ProviderDetailsView extends StatelessWidget {
     this.detailsErrorMessage,
     this.onRetryDetails,
     this.now,
+    this.dataSaver = false,
     super.key,
   });
+
+  /// g02 «توفير البيانات»: the photos load only once opened.
+  final bool dataSaver;
 
   final MarketplaceProvider provider;
   final List<MarketplaceService> services;
@@ -68,6 +72,7 @@ class ProviderDetailsView extends StatelessWidget {
           photos: photos,
           icon: providerServiceIcon(category ?? ''),
           onBack: onBack,
+          dataSaver: dataSaver,
         ),
         Padding(
           padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
@@ -182,7 +187,10 @@ class _ProviderHero extends StatelessWidget {
     required this.photos,
     required this.icon,
     required this.onBack,
+    required this.dataSaver,
   });
+
+  final bool dataSaver;
 
   final List<String> photos;
   final IconData icon;
@@ -213,11 +221,13 @@ class _ProviderHero extends StatelessWidget {
               ),
               semanticLabel: 'افتح الصور',
               scale: 1,
-              child: Image.network(
-                photos.first,
-                fit: BoxFit.cover,
-                errorBuilder: (_, _, _) => placeholder,
-              ),
+              child: dataSaver
+                  ? placeholder
+                  : Image.network(
+                      photos.first,
+                      fit: BoxFit.cover,
+                      errorBuilder: (_, _, _) => placeholder,
+                    ),
             ),
           PositionedDirectional(
             top: 12,

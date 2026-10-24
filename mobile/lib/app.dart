@@ -9,6 +9,7 @@ import 'package:provider/provider.dart';
 
 import 'core/diagnostics/app_logger.dart';
 import 'core/experience_v3/aarast_v3.dart';
+import 'core/preferences/device_preferences.dart';
 import 'core/routing/app_router.dart';
 import 'core/routing/aarast_back_button_dispatcher.dart';
 import 'core/push/push_lifecycle_bridge.dart';
@@ -81,24 +82,39 @@ class _AarastAppState extends State<AarastApp> {
         backButtonDispatcher: _backButtonDispatcher,
         builder: (context, child) {
           final auth = context.watch<AuthController>();
+          // g02 «خط كبير»: every text a step bigger, on top of the phone's.
+          final largeText =
+              context.watch<DevicePreferences?>()?.largeText ?? false;
+          final media = MediaQuery.of(context);
+          final scaled = largeText
+              ? media.copyWith(
+                  textScaler: TextScaler.linear(
+                    media.textScaler.scale(1) *
+                        DevicePreferences.largeTextFactor,
+                  ),
+                )
+              : media;
           final authenticatedUserId = auth.status == AuthStatus.authenticated
               ? auth.user?.id
               : null;
-          return Directionality(
-            textDirection: TextDirection.rtl,
-            child: AarastPushLifecycleBridge(
-              router: _router,
-              authenticatedUserId: authenticatedUserId,
-              child: AarastV3AdaptiveExperienceShell(
-                routeListenable: _router.routeInformationProvider,
-                readLocation: () =>
-                    _router.routeInformationProvider.value.uri.toString(),
-                child: AarastSessionTransitionGate(
-                  child: AarastAuthFlowRedirector(
-                    router: _router,
-                    child: AppLockGate(
-                      onForgotCode: auth.logout,
-                      child: child ?? const SizedBox.shrink(),
+          return MediaQuery(
+            data: scaled,
+            child: Directionality(
+              textDirection: TextDirection.rtl,
+              child: AarastPushLifecycleBridge(
+                router: _router,
+                authenticatedUserId: authenticatedUserId,
+                child: AarastV3AdaptiveExperienceShell(
+                  routeListenable: _router.routeInformationProvider,
+                  readLocation: () =>
+                      _router.routeInformationProvider.value.uri.toString(),
+                  child: AarastSessionTransitionGate(
+                    child: AarastAuthFlowRedirector(
+                      router: _router,
+                      child: AppLockGate(
+                        onForgotCode: auth.logout,
+                        child: child ?? const SizedBox.shrink(),
+                      ),
                     ),
                   ),
                 ),

@@ -1,6 +1,7 @@
 import 'package:aarast_mobile/core/network/api_client.dart';
 import 'package:aarast_mobile/core/offline/local_database_json.dart';
 import 'package:aarast_mobile/core/offline/offline_sync_service.dart';
+import 'package:aarast_mobile/core/preferences/device_preferences.dart';
 import 'package:aarast_mobile/core/storage/auth_storage.dart';
 import 'package:aarast_mobile/core/theme/app_theme.dart';
 import 'package:aarast_mobile/features/auth/data/auth_repository.dart';
@@ -13,8 +14,10 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+// g02 «حسابي» (D23): the account, the wedding, how the app looks, safety
+// and privacy, and the account group C51 adds.
 void main() {
-  testWidgets('guest profile menu shows login instead of logout', (
+  testWidgets('a guest sees the account screen with sign in, not sign out', (
     tester,
   ) async {
     final harness = await _MoreHarness.guest();
@@ -22,14 +25,15 @@ void main() {
     await tester.pumpWidget(harness.widget);
     await _settleEntry(tester);
 
-    expect(find.text('مساحتك'), findsOneWidget);
-    expect(find.text('الحساب والخطط والمساعدة'), findsOneWidget);
-    expect(find.text('خططي'), findsOneWidget);
-    expect(find.text('الخطط المشتركة معي'), findsOneWidget);
-    // «تصفح المزودين» له تبويب خاص في الشريط السفلي — ليس ضمن المزيد.
-    expect(find.text('تصفح المزودين'), findsNothing);
-    // بدون خدمة مزامنة متاحة يختفي قسم المزامنة كاملًا بعنوانه.
-    expect(find.text('المزامنة'), findsNothing);
+    expect(find.text('حسابي'), findsOneWidget);
+    expect(find.text('شكل التطبيق'), findsOneWidget);
+    expect(find.text('التاريخ الهجري جنب الميلادي'), findsOneWidget);
+    expect(find.text('خط كبير'), findsOneWidget);
+    expect(find.text('توفير البيانات'), findsOneWidget);
+    expect(find.text('أخفِ المبالغ'), findsOneWidget);
+    // D23: no app-wide digit shaping, and no dark mode in this build (D6).
+    expect(find.text('الأرقام'), findsNothing);
+    expect(find.text('الوضع الليلي'), findsNothing);
 
     await tester.scrollUntilVisible(
       find.text('تسجيل الدخول'),
@@ -37,7 +41,7 @@ void main() {
       scrollable: find.byType(Scrollable).first,
     );
     expect(find.text('تسجيل الدخول'), findsOneWidget);
-    expect(find.text('تسجيل الخروج'), findsNothing);
+    expect(find.text('الخروج'), findsNothing);
     expect(find.byTooltip('تعديل صورة الحساب'), findsNothing);
   });
 
@@ -48,17 +52,12 @@ void main() {
 
     await tester.pumpWidget(harness.widget);
     await _settleEntry(tester);
-    await tester.scrollUntilVisible(
-      find.text('تسجيل الدخول'),
-      320,
-      scrollable: find.byType(Scrollable).first,
-    );
 
     expect(find.text('مزامنة الآن'), findsNothing);
     expect(find.text('تمت المزامنة بنجاح'), findsNothing);
   });
 
-  testWidgets('account-backed profile menu keeps logout action', (
+  testWidgets('the account keeps its photo change and sign out', (
     tester,
   ) async {
     final harness = await _MoreHarness.signedIn();
@@ -66,20 +65,38 @@ void main() {
     await tester.pumpWidget(harness.widget);
     await _settleEntry(tester);
 
+    expect(find.text('رشاد'), findsOneWidget);
+    expect(find.text('+967 777 000 000'), findsOneWidget);
     expect(find.byTooltip('تعديل صورة الحساب'), findsOneWidget);
+    expect(find.text('تغيير رقم الجوال'), findsOneWidget);
 
     await tester.scrollUntilVisible(
-      find.text('إدارة الحساب'),
+      find.text('الخروج'),
       320,
       scrollable: find.byType(Scrollable).first,
     );
-
-    expect(find.text('تسجيل الخروج'), findsNothing);
-    await tester.tap(find.text('إدارة الحساب'));
+    // C4: deleting the account stays hidden until its 30-day grace exists.
+    expect(find.textContaining('حذف الحساب'), findsNothing);
+    await tester.tap(find.text('الخروج'));
     await tester.pumpAndSettle();
     expect(find.text('تسجيل الخروج'), findsOneWidget);
-    expect(find.text('حذف الحساب نهائيًا'), findsOneWidget);
     expect(find.text('تسجيل الدخول'), findsNothing);
+  });
+
+  testWidgets('the look switches are kept on the phone', (tester) async {
+    final harness = await _MoreHarness.guest();
+
+    await tester.pumpWidget(harness.widget);
+    await _settleEntry(tester);
+    await tester.tap(
+      find.descendant(
+        of: find.byKey(const ValueKey('account-large-text')),
+        matching: find.byType(Switch),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(harness.preferences.largeText, isTrue);
   });
 }
 
@@ -90,9 +107,10 @@ Future<void> _settleEntry(WidgetTester tester) async {
 }
 
 class _MoreHarness {
-  const _MoreHarness({required this.widget});
+  const _MoreHarness({required this.widget, required this.preferences});
 
   final Widget widget;
+  final DevicePreferences preferences;
 
   static Future<_MoreHarness> guest({bool withSyncService = false}) async {
     SharedPreferences.setMockInitialValues({});
@@ -114,9 +132,12 @@ class _MoreHarness {
       );
       await syncService.refreshStatus();
     }
+    final device = DevicePreferences(preferences);
     return _MoreHarness(
+      preferences: device,
       widget: _buildApp(
         preferences: preferences,
+        device: device,
         authStorage: authStorage,
         authRepository: authRepository,
         authController: authController,
@@ -132,9 +153,12 @@ class _MoreHarness {
     final authRepository = _SignedInAuthRepository(authStorage);
     final authController = AuthController(authRepository);
     await authController.restoreSession();
+    final device = DevicePreferences(preferences);
     return _MoreHarness(
+      preferences: device,
       widget: _buildApp(
         preferences: preferences,
+        device: device,
         authStorage: authStorage,
         authRepository: authRepository,
         authController: authController,
@@ -144,6 +168,7 @@ class _MoreHarness {
 
   static Widget _buildApp({
     required SharedPreferences preferences,
+    required DevicePreferences device,
     required AuthStorage authStorage,
     required AuthRepository authRepository,
     required AuthController authController,
@@ -159,6 +184,7 @@ class _MoreHarness {
           value: GuestOnboardingStorage(preferences),
         ),
         ChangeNotifierProvider<AuthController>.value(value: authController),
+        ChangeNotifierProvider<DevicePreferences>.value(value: device),
       ],
       child: MaterialApp(
         theme: AppTheme.light(),

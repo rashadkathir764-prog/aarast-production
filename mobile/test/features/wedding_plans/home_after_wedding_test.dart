@@ -12,6 +12,7 @@ Future<int Function()> _pump(
   WidgetTester tester, {
   DateTime? weddingDate,
   DashboardAfterWedding? debt,
+  bool showHijri = true,
 }) async {
   tester.view.devicePixelRatio = 1;
   tester.view.physicalSize = const Size(420, 1100);
@@ -29,6 +30,7 @@ Future<int Function()> _pump(
             bottomPadding: 24,
             now: _now,
             afterWedding: debt,
+            showHijri: showHijri,
             onOpenReviews: () => reviews += 1,
             onNotifications: () {},
             onProfile: () {},
@@ -108,6 +110,14 @@ void main() {
       findsOneWidget,
     );
     expect(find.text('قيّم مزودينك'), findsOneWidget);
+  });
+
+  testWidgets('g02 turns the Hijri date off on the home', (tester) async {
+    await _pump(tester, weddingDate: DateTime(2027, 3, 1));
+    expect(find.text('الاثنين 1 مارس · 22 رمضان'), findsOneWidget);
+
+    await _pump(tester, weddingDate: DateTime(2027, 3, 1), showHijri: false);
+    expect(find.text('الاثنين 1 مارس'), findsOneWidget);
   });
 
   testWidgets('before the day the home stays the planning home', (

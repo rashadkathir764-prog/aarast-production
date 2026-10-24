@@ -315,7 +315,9 @@ class _ChosenCard extends StatelessWidget {
                 color: AarastV3Color.cobalt,
                 onPressed: onChat,
               ),
-              if (booking != null && booking.isOpen)
+              // The server cancels only before the day (booking-policy), so a
+              // completed booking has no cancel to offer.
+              if (booking != null && booking.isOpen && !completed)
                 JourneyTextAction(
                   key: ValueKey('requests-cancel-booking-${quote.id}'),
                   label: booking.isConfirmed

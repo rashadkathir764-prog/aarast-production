@@ -316,6 +316,12 @@ void main() {
       _accepted(booking: _booking('CONFIRMED', lifecycle: 'COMPLETED')),
     ]);
 
+    // The server cancels only before the day, so a finished booking has no
+    // cancel to offer.
+    expect(
+      find.byKey(const ValueKey('requests-cancel-booking-q1')),
+      findsNothing,
+    );
     // D21: rating happens on «قيّم مزودينك» (g04), not in a sheet here.
     await tester.tap(find.byKey(const ValueKey('requests-rate-q1')));
     await tester.pumpAndSettle();

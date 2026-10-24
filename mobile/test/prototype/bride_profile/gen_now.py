@@ -7,7 +7,11 @@ with the persona switched, so the bride's "before" shots come from the same
 real screens.
 
   python3 test/prototype/bride_profile/gen_now.py      # from mobile/
-  flutter test test/prototype/bride_profile/gen/now_bride --update-goldens
+  flutter test test/prototype/bride_profile/gen/now_bride/<domain>_bride.dart \
+      --update-goldens
+
+The copies are named `<domain>_bride.dart`, not `_test.dart`, so a plain
+`flutter test` does not discover them (see gen.py).
 """
 import os
 import re
@@ -39,7 +43,7 @@ def main():
         s = re.sub(r"'\.\./\.\./", "'../../../../", s)
         s = s.replace("matchesGoldenFile('out/", f"matchesGoldenFile('out/{d}_")
         s = re.sub(r"matchesGoldenFile\('out/\$", f"matchesGoldenFile('out/{d}_$", s)
-        with open(os.path.join(OUT, f'{d}_test.dart'), 'w', encoding='utf-8') as f:
+        with open(os.path.join(OUT, f'{d}_bride.dart'), 'w', encoding='utf-8') as f:
             f.write(s)
     print('wrote', len(DOMAINS), 'files to', OUT)
 

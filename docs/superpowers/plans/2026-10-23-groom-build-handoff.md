@@ -22,9 +22,11 @@ It holds for **every journey**, each against its own prototype:
 - bride: `mobile/test/prototype/bride_profile/out/` (160 PNGs, the groom
   screens with rose colours, feminine wording and her items). Regenerate
   from `mobile/`: `PYTHONUTF8=1 python test/prototype/bride_profile/gen.py`
-  then `flutter test test/prototype/bride_profile/gen/v3/v3_test.dart
+  then `flutter test test/prototype/bride_profile/gen/v3/v3_bride.dart
   --dart-define=BRIDE=true --update-goldens`, and copy `gen/v3/out/*.png`
-  to `bride_profile/out/`. Rules: `docs/project/JOURNEY_PROFILE.md`.
+  to `bride_profile/out/`. The generated entry is `v3_bride.dart`, not
+  `_test.dart`, so a plain `flutter test` never runs it without BRIDE.
+  Rules: `docs/project/JOURNEY_PROFILE.md`.
 
 Rashad's complaint (2026-10-24): a session "improved" the old «جهّز ميزانية
 عرسك» screen, which is not in the prototype, and showed him a misleading

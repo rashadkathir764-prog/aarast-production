@@ -9,8 +9,13 @@ The groom sources stay the single source of truth. This script copies them
 into bride_profile/gen/ and rewrites Arabic string literals only.
 
   python3 test/prototype/bride_profile/gen.py            # from mobile/
-  flutter test test/prototype/bride_profile/gen/v3/v3_test.dart \
+  flutter test test/prototype/bride_profile/gen/v3/v3_bride.dart \
       --dart-define=BRIDE=true --update-goldens
+
+The generated entry points are named `*_bride.dart`, not `*_test.dart`, on
+purpose: a plain `flutter test` discovers every `*_test.dart` under test/ and
+would run the bride copy without BRIDE=true (groom colours), failing 118 shots
+against the rose goldens. Only an explicit path runs them.
 """
 import os
 import re
@@ -840,7 +845,8 @@ def main():
                                   "'التجهيز',\n              'البيت · الكوافيرة مع أختك نورة'")
             if d == 'v3':
                 src = src.replace('LucideIcons.music', 'LucideIcons.sparkles').replace('LucideIcons.leaf', 'LucideIcons.flame')
-            open(os.path.join(OUT, d, f), 'w').write(convert(src, f, log))
+            target = f[:-len('_test.dart')] + '_bride.dart' if f.endswith('_test.dart') else f
+            open(os.path.join(OUT, d, target), 'w').write(convert(src, f, log))
     with open(os.path.join(ROOT, 'bride_profile', 'changes.tsv'), 'w') as fh:
         seen = set()
         for f, a, b in log:

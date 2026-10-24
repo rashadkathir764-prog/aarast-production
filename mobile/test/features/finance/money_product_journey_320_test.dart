@@ -28,6 +28,22 @@ const _planId = 'plan-money-product';
 
 void main() {
   group('canonical money product journey at 320px RTL and 1.3 scale', () {
+    // The server leaves the shortfall empty before any source is recorded:
+    // that is not knowing, never «يغطون اتفاقاتك».
+    testWidgets('no funding source yet claims no coverage', (tester) async {
+      final harness = _MoneyProductHarness.owner(
+        initialLocation: AppRouter.money(_planId),
+        funding: const MoneyFundingSummary(),
+      );
+      addTearDown(harness.dispose);
+      await _pumpProduct(tester, harness.app);
+
+      expect(find.byKey(const ValueKey('money-funding-unknown')), findsOneWidget);
+      expect(find.textContaining('يغطون'), findsNothing);
+      expect(find.textContaining(' معك '), findsNothing);
+    });
+
+
     testWidgets('owner opens real schedule, category, and cost destinations', (
       tester,
     ) async {
@@ -918,9 +934,11 @@ class _MoneyProductHarness {
     int failSummaryLoads = 0,
     String currency = 'YER',
     String personaCode = 'GROOM',
+    MoneyFundingSummary? funding,
   }) {
     final api = _MoneyProductApi(
       noBudget: noBudget,
+      funding: funding,
       failSummaryLoads: failSummaryLoads,
       currency: currency,
     );
@@ -1066,9 +1084,11 @@ class _MoneyProductApi extends FinanceApi {
     this.noBudget = false,
     this.failSummaryLoads = 0,
     this.currency = 'YER',
+    this.funding,
   }) : super(ApiClient(tokenProvider: () async => null));
 
   final bool noBudget;
+  final MoneyFundingSummary? funding;
   int failSummaryLoads;
   final String currency;
   final now = DateTime.utc(2026, 7, 14, 12);
@@ -1197,6 +1217,7 @@ class _MoneyProductApi extends FinanceApi {
     return MoneySummary(
       planId: planId,
       currency: currency,
+      funding: funding,
       budget: const MoneyBudgetSummary(
         total: '1000000',
         allocated: '700000',

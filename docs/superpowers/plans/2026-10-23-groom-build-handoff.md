@@ -7,7 +7,8 @@
 - الشريحة 7 (المزودين، جهة العميل) مكتملة: 24 شاشة من 24.
 - شاشة «استكشف» (f02 وw33) مكتملة ومرفوعة، وبعدها «نبدأ بالقاعة» (x22) وصفحة المزود (f03).
 - إصلاحات 2026-10-24 من تشغيل التطبيق الحقيقي: موعد العرس ما عاد ينقص يوم (D11)، الخطة المحفوظة تنفتح بدون «اختر المسار»، الرئيسية ما تقول «ما عندك خطة بعد» وهي تحمّل، و«استكشف» ما فيه «خدمات قريبة من بندك» (D12).
-- باقي: الشريحة 9 (المشارك)، ثم التسليم.
+- الشريحة 9 (المشارك) مكتملة (D34): الدعوة من الأهل إلى القرار، «اختر المسار»، تبويبات المشارك ورئيسيته ومهامه والأقفال، «حسابي» للمشارك، الخطة في الذكريات، وتنبيهاته.
+- باقي: التسليم.
 - التنظيف (2026-10-25، D32): شلنا زر الإضافة العائم وشاشات المال القديمة ومرحلة «جهّز ميزانية عرسك» ونموذج الخطة القديم، وبنينا w01 وg09 وb11 على تصميمها. التفاصيل في D32.
 
 ## RULE ZERO: the prototype is the law (read before anything else)
@@ -137,7 +138,7 @@ The word «أقساط» is banned. Use «على دفعات».
 | 6 Guests (12) | Done. w38 «كم بيحضر؟» opens from the guests summary card and shows the real answers only, no forecast (D31). |
 | 7 Providers, customer side (24) | **Done.** Done: f01, f02, f03, f04, f05, f06, f07, f08, f09, x10, x11, x22, w30 (filter sheet), w31, w32, w33, w34, w35, x09, x12, y09, g04, b07; y13 needs no code (f02 with the «زينة البيت» category, which is admin data). |
 | 8 Account / settings / plan (15) | **Done.** Done: g02, g07, g08, w07, w08, w39, g10, g11, w10, g03, w11, g01, g06, x07, x20. |
-| 9 Participant (15) | Not started: x04, q01, q02, q03, q04, x06, q17, q05, q18, q07, q08, q10, q12, q19, q21 |
+| 9 Participant (15) | **Done (D34).** Done: x04, q01, q02, q03, q04, x06, q17, q05, q18, q07, q08, q10, q12, q19, q21. Left: none; the old workspace, shared plans list and invite list are removed. |
 | 10 V1.1 extras | Out of scope until after V1 |
 
 **Slice 7 warning (AGENTS.md):**
@@ -194,7 +195,7 @@ Nothing is called done without all of these:
 
 - **Money starter:** deleted (D32). Money with nothing in it opens on «البنود» with «أضف أول بند».
 - **Dead code:** removed (D32). Still without a screen: the Yemen governorate provider, API and offline cache (leave with the offline database's next schema step) and the unrouted `HomeScreen`.
-- **`AarastButton`** keeps two users: the participant's invite decision (slice 9) and `WeddingDayModeScreen`. Delete it once both move to the kit.
+- **`AarastButton`** keeps one user, `WeddingDayModeScreen`. Delete it once that screen moves to the kit (or is removed).
 - **Tasks:** the «تحديد الميزانية» starter task stays open after the budget is divided.
 - **Promised to the client in `V1_DELIVERY_CHECKLIST.md` but not in this build (section B: needs backend):**
   - 4.1 the wedding events (المقيل، السمرة، الزفاف، الحناء);
@@ -237,6 +238,7 @@ Each line is a place where the app differs from the prototype:
 - w01 (D32): no «تأكدنا إنه رقمك»; a refused code goes back to «الرمز»; a closing «غيّرنا كلمة المرور» when signing in again fails.
 - w11 (D32): «خطة جديدة» starts the welcome steps at a02b.
 - b11/w36/w37 (D32): no «لو» box, market range or microphone; w36 without «ويقرأ الفواتير» and the account switch line; w37 only the limit and offline cards, without «سجّل يدوي».
+- Participant (D34): no relation («أخوك»)، owner name or participant gender is sent, so the owner is «العريس/العروسة» and a bride's plan speaks in the feminine; no «اطلب من محمد» or request buttons (q13), no rafd rows, no programme or time of day, no custody step; x06 has a bell; q05 has no «كل مهام الخطة»; q10 leave says «تقدر ترجع لو أرسل لك دعوة ثانية» and keeps g02's settings below; q19 only «في الذكريات»; q21 plain rows.
 
 ## At the end of the groom path
 

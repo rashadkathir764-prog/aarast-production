@@ -198,6 +198,109 @@ void main() {
     expect(find.textContaining(RegExp(r'محجوز \d')), findsNothing);
   });
 
+  group('x09 hard cases', () {
+    QuoteRequest band(
+      String id,
+      String status, {
+      String provider = 'الفنان أيمن القاضي',
+      DateTime? updatedAt,
+      DateTime? rejectedAt,
+    }) => QuoteRequest(
+      id: id,
+      providerId: 'provider-$id',
+      weddingPlanId: 'plan-1',
+      status: status,
+      lifecycleStatus: status,
+      provider: ProviderSummary(
+        id: 'provider-$id',
+        businessName: provider,
+        ratingAverage: 0,
+        ratingCount: 0,
+      ),
+      service: const MarketplaceService(
+        id: 'service-band',
+        providerId: 'provider-band',
+        title: 'زفة',
+        category: ProviderCategory(id: 'cat-band', nameAr: 'الفنان والفرقة'),
+        isFeatured: false,
+        isActive: true,
+      ),
+      updatedAt: updatedAt,
+      rejectedAt: rejectedAt,
+    );
+
+    testWidgets('a decline with nothing else going offers alternatives', (
+      tester,
+    ) async {
+      final now = DateTime.now();
+      await _pump(
+        tester,
+        _FakeMarketplaceProvider(
+          quoteRequests: [
+            band(
+              'declined',
+              'REJECTED',
+              rejectedAt: now.subtract(const Duration(days: 1)),
+            ),
+          ],
+        ),
+      );
+
+      expect(find.text('اعتذر'), findsOneWidget);
+      expect(find.text('اعتذروا عن طلبك أمس.'), findsOneWidget);
+      expect(find.text('شوف البدائل'), findsOneWidget);
+      expect(find.text('اطلب يوم ثاني'), findsOneWidget);
+      // Dropped: nothing behind «ذكّره» or «فاضيين يومك».
+      expect(find.text('ذكّره'), findsNothing);
+
+      await tester.tap(find.text('شوف البدائل'));
+      await tester.pumpAndSettle();
+      final tabs = tester.widget<JourneyTabSwitch>(
+        find.byKey(const ValueKey('providers-tabs')),
+      );
+      expect(tabs.labels[tabs.selected], 'استكشف');
+    });
+
+    testWidgets('a request opened a day ago without a reply is named', (
+      tester,
+    ) async {
+      final now = DateTime.now();
+      await _pump(
+        tester,
+        _FakeMarketplaceProvider(
+          quoteRequests: [
+            band(
+              'seen',
+              'VIEWED',
+              provider: 'مقوّت الروضة',
+              updatedAt: now.subtract(const Duration(days: 2)),
+            ),
+          ],
+        ),
+      );
+
+      expect(find.text('شاف وما رد'), findsOneWidget);
+      expect(find.text('فتح طلبك قبل يومين، وما رد بعد.'), findsOneWidget);
+      expect(find.text('اطلب من غيره'), findsOneWidget);
+    });
+
+    testWidgets('a decline stays quiet while another request is going', (
+      tester,
+    ) async {
+      await _pump(
+        tester,
+        _FakeMarketplaceProvider(
+          quoteRequests: [
+            band('declined', 'REJECTED'),
+            band('other', 'SENT', provider: 'فرقة الأفراح'),
+          ],
+        ),
+      );
+
+      expect(find.text('اعتذر'), findsNothing);
+    });
+  });
+
   testWidgets('y09 a booking confirmed since the last look opens its moment', (
     tester,
   ) async {

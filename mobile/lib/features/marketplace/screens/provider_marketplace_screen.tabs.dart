@@ -191,6 +191,19 @@ extension _ProviderTabs on _ProviderMarketplaceScreenState {
             ),
             const SizedBox(height: 12),
           ],
+          for (final hardCase in providerHardCases(board, DateTime.now()))
+            ProviderHardCaseCard(
+              hardCase: hardCase,
+              now: DateTime.now(),
+              onFindOthers: () => _searchServiceNamed(
+                hardCase.row.providerCategoryName ?? hardCase.row.title,
+                marketplace,
+                tabs,
+              ),
+              onAnotherDay: () => _pushOnce<void>(
+                AppRouter.providerQuote(hardCase.quote.providerId),
+              ),
+            ),
           ProviderBoardView(
             rows: board,
             onOpen: _openBoardRow,

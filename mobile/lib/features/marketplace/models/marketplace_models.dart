@@ -491,6 +491,8 @@ class QuoteRequest {
     this.costSuggestion,
     this.booking,
     this.createdAt,
+    this.rejectedAt,
+    this.updatedAt,
   });
 
   factory QuoteRequest.fromJson(Map<String, dynamic> json) {
@@ -545,6 +547,8 @@ class QuoteRequest {
       ),
       booking: _mapOrNull(json['booking'], MarketplaceBooking.fromJson),
       createdAt: _dateOrNull(json['createdAt']),
+      rejectedAt: _dateOrNull(json['rejectedAt']),
+      updatedAt: _dateOrNull(json['updatedAt']),
     );
   }
 
@@ -575,6 +579,12 @@ class QuoteRequest {
   /// The day reserved with the provider after acceptance (4.6), if asked.
   final MarketplaceBooking? booking;
   final DateTime? createdAt;
+
+  /// When the provider declined (x09).
+  final DateTime? rejectedAt;
+
+  /// The last change; for a VIEWED request, about when it was opened.
+  final DateTime? updatedAt;
 
   QuoteOffer? get acceptedOffer {
     for (final offer in offers) {

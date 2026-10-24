@@ -24,6 +24,7 @@ import '../models/marketplace_models.dart';
 import '../models/provider_board.dart';
 import '../widgets/provider_board_view.dart';
 import '../widgets/provider_details_view.dart' show providerPriceRange;
+import '../widgets/provider_hard_case_card.dart';
 import '../models/provider_budget_match_intent.dart';
 import '../providers/marketplace_provider.dart';
 

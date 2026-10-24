@@ -146,7 +146,7 @@ class _MoreScreenState extends State<MoreScreen> {
                   icon: LucideIcons.lock,
                   title: 'قفل التطبيق',
                   value: lock.isEnabled ? 'رمز' : 'مطفي',
-                  onTap: () => context.push(AppRouter.settings),
+                  onTap: () => context.push(AppRouter.lockSettings),
                 ),
               if (hasAccount)
                 _Row(

@@ -1,6 +1,7 @@
 import 'package:aarast_mobile/core/security/app_lock_controller.dart';
 import 'package:aarast_mobile/core/security/app_lock_gate.dart';
 import 'package:aarast_mobile/core/storage/sensitive_value_vault.dart';
+import 'package:aarast_mobile/features/settings/screens/lock_settings_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:provider/provider.dart';
@@ -26,11 +27,8 @@ void main() {
   late _MemoryVault vault;
   late DateTime now;
 
-  AppLockController controller({String? userId = 'user-1'}) => AppLockController(
-    vault: vault,
-    userId: userId,
-    clock: () => now,
-  );
+  AppLockController controller({String? userId = 'user-1'}) =>
+      AppLockController(vault: vault, userId: userId, clock: () => now);
 
   setUp(() {
     vault = _MemoryVault();
@@ -97,21 +95,24 @@ void main() {
     expect(reopened.failedAttempts, 0);
   });
 
-  test('returning after a minute away locks again; a short switch does not', () async {
-    final lock = controller();
-    await lock.load();
-    await lock.setCode('2580');
+  test(
+    'returning after a minute away locks again; a short switch does not',
+    () async {
+      final lock = controller();
+      await lock.load();
+      await lock.setCode('2580');
 
-    lock.didChangeAppLifecycleState(AppLifecycleState.paused);
-    now = now.add(const Duration(seconds: 20));
-    lock.didChangeAppLifecycleState(AppLifecycleState.resumed);
-    expect(lock.isLocked, isFalse);
+      lock.didChangeAppLifecycleState(AppLifecycleState.paused);
+      now = now.add(const Duration(seconds: 20));
+      lock.didChangeAppLifecycleState(AppLifecycleState.resumed);
+      expect(lock.isLocked, isFalse);
 
-    lock.didChangeAppLifecycleState(AppLifecycleState.paused);
-    now = now.add(const Duration(minutes: 2));
-    lock.didChangeAppLifecycleState(AppLifecycleState.resumed);
-    expect(lock.isLocked, isTrue);
-  });
+      lock.didChangeAppLifecycleState(AppLifecycleState.paused);
+      now = now.add(const Duration(minutes: 2));
+      lock.didChangeAppLifecycleState(AppLifecycleState.resumed);
+      expect(lock.isLocked, isTrue);
+    },
+  );
 
   test('a forgotten code is cleared for the sign-out', () async {
     final lock = controller();
@@ -123,7 +124,9 @@ void main() {
     expect(() => lock.setCode('12'), throwsArgumentError);
   });
 
-  testWidgets('the lock screen covers the app until the right code', (tester) async {
+  testWidgets('the lock screen covers the app until the right code', (
+    tester,
+  ) async {
     final setup = controller();
     await setup.load();
     await setup.setCode('2580');
@@ -149,7 +152,8 @@ void main() {
       await tester.pump();
     }
     await tester.pumpAndSettle();
-    expect(find.text('الرمز غير صحيح.'), findsOneWidget);
+    // w08: a wrong code turns the title into «الرمز غلط».
+    expect(find.text('الرمز غلط'), findsOneWidget);
 
     for (final digit in ['2', '5', '8', '0']) {
       await tester.tap(find.byKey(Key('app-lock-key-$digit')));
@@ -180,12 +184,76 @@ void main() {
         ),
       ),
     );
-    await tester.tap(find.text('نسيت الرمز؟'));
+    await tester.ensureVisible(find.byKey(const Key('app-lock-forgot')));
+    await tester.tap(find.byKey(const Key('app-lock-forgot')));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('خروج وإلغاء الرمز'));
+    await tester.tap(find.text('اطلع وشيل الرمز'));
     await tester.pumpAndSettle();
 
     expect(signedOut, isTrue);
     expect(vault.values, isEmpty);
+  });
+
+  testWidgets('g08 chooses a code twice, then can take the lock off', (
+    tester,
+  ) async {
+    final lock = controller();
+    await lock.load();
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Directionality(
+          textDirection: TextDirection.rtl,
+          child: ChangeNotifierProvider.value(
+            value: lock,
+            child: const LockSettingsScreen(),
+          ),
+        ),
+      ),
+    );
+    await tester.pump();
+
+    expect(find.text('اختر رمز من 4 أرقام'), findsOneWidget);
+    for (final digit in ['1', '9', '7', '3']) {
+      await tester.tap(find.byKey(Key('app-lock-key-$digit')));
+      await tester.pump();
+    }
+    await tester.pumpAndSettle();
+    expect(find.text('اكتبه مرة ثانية'), findsOneWidget);
+    for (final digit in ['1', '9', '7', '3']) {
+      await tester.tap(find.byKey(Key('app-lock-key-$digit')));
+      await tester.pump();
+    }
+    await tester.pumpAndSettle();
+
+    expect(lock.isEnabled, isTrue);
+    expect(find.text('التطبيق مقفول برمزك'), findsOneWidget);
+
+    await tester.tap(find.byKey(const Key('lock-turn-off')));
+    await tester.pumpAndSettle();
+    expect(lock.isEnabled, isFalse);
+  });
+
+  testWidgets('g08 starts over when the second code differs', (tester) async {
+    final lock = controller();
+    await lock.load();
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: ChangeNotifierProvider.value(
+          value: lock,
+          child: const LockSettingsScreen(),
+        ),
+      ),
+    );
+    await tester.pump();
+    for (final digit in ['1', '2', '3', '4', '4', '3', '2', '1']) {
+      await tester.tap(find.byKey(Key('app-lock-key-$digit')));
+      await tester.pump();
+    }
+    await tester.pumpAndSettle();
+
+    expect(find.text('الرمزين مختلفين، ابدأ من جديد'), findsOneWidget);
+    expect(lock.isEnabled, isFalse);
   });
 }

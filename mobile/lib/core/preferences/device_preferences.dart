@@ -12,6 +12,10 @@ class DevicePreferences extends ChangeNotifier {
   static const _largeTextKey = 'aarast_pref_large_text';
   static const _dataSaverKey = 'aarast_pref_data_saver';
   static const _hideAmountsKey = 'aarast_pref_hide_amounts';
+  static const _pushCardKey = 'aarast_pref_push_card_hidden_until';
+
+  /// How long «لاحقًا» on w39 keeps the card away.
+  static const pushCardPause = Duration(days: 7);
 
   /// How much bigger «خط كبير» makes every text.
   static const largeTextFactor = 1.15;
@@ -26,6 +30,20 @@ class DevicePreferences extends ChangeNotifier {
 
   /// Money amounts show as dots until revealed.
   bool get hideAmounts => _preferences.getBool(_hideAmountsKey) ?? false;
+
+  /// w39 shows again once this has passed.
+  DateTime? get pushCardHiddenUntil {
+    final millis = _preferences.getInt(_pushCardKey);
+    return millis == null ? null : DateTime.fromMillisecondsSinceEpoch(millis);
+  }
+
+  Future<void> hidePushCard(DateTime now) async {
+    await _preferences.setInt(
+      _pushCardKey,
+      now.add(pushCardPause).millisecondsSinceEpoch,
+    );
+    notifyListeners();
+  }
 
   Future<void> setShowHijri(bool value) => _set(_hijriKey, value);
   Future<void> setLargeText(bool value) => _set(_largeTextKey, value);

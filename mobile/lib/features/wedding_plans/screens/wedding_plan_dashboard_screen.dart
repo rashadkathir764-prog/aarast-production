@@ -23,6 +23,7 @@ import '../models/wedding_plan_stage.dart';
 import '../providers/dashboard_summary_provider.dart';
 import '../widgets/dashboard/aarast_dashboard_view.dart';
 import '../widgets/plan_assistant_entry.dart';
+import '../widgets/push_off_card.dart';
 
 class WeddingPlanDashboardScreen extends StatefulWidget {
   const WeddingPlanDashboardScreen({
@@ -287,6 +288,8 @@ class _WeddingPlanDashboardScreenState extends State<WeddingPlanDashboardScreen>
           builder: (_) {
             return AarastDashboardView(
               summary: summary,
+              // w39: an account whose phone turned notifications off.
+              notice: _isLocalGuestPlan ? null : const PushOffCard(),
               afterWedding: _afterWedding(summary, selectedPlanId),
               showHijri:
                   context.watch<DevicePreferences?>()?.showHijri ?? true,

@@ -4,19 +4,28 @@ import 'package:flutter/material.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:provider/provider.dart';
 
-import '../theme/app_theme.dart';
+import '../experience_v3/aarast_v3.dart';
+import '../widgets/aarast_pressable.dart';
 import 'app_lock_controller.dart';
 
 /// Covers the app with the lock screen while the account's app lock is
 /// closed (V1 checklist 4.15). The app underneath keeps its navigation, so
 /// unlocking returns exactly where the user was.
 class AppLockGate extends StatelessWidget {
-  const AppLockGate({required this.child, required this.onForgotCode, super.key});
+  const AppLockGate({
+    required this.child,
+    required this.onForgotCode,
+    this.name,
+    super.key,
+  });
 
   final Widget child;
 
   /// Signs the account out after its code was cleared.
   final Future<void> Function() onForgotCode;
+
+  /// The account's name, for the letter on the lock (w07).
+  final String? name;
 
   @override
   Widget build(BuildContext context) {
@@ -33,27 +42,40 @@ class AppLockGate extends StatelessWidget {
         // Hidden content cannot be read by accessibility services either.
         ExcludeSemantics(excluding: covered, child: child),
         if (lock.isPending)
-          const ColoredBox(color: AppTheme.canvas)
+          const ColoredBox(color: AarastV3Color.canvas)
         else if (lock.isLocked)
-          AppLockScreen(lock: lock, onForgotCode: onForgotCode),
+          AppLockScreen(lock: lock, onForgotCode: onForgotCode, name: name),
       ],
     );
   }
 }
 
+/// w07 «أدخل رمز القفل», and w08 once codes go wrong.
 class AppLockScreen extends StatefulWidget {
-  const AppLockScreen({required this.lock, required this.onForgotCode, super.key});
+  const AppLockScreen({
+    required this.lock,
+    required this.onForgotCode,
+    this.name,
+    super.key,
+  });
 
   final AppLockController lock;
   final Future<void> Function() onForgotCode;
+  final String? name;
 
   @override
   State<AppLockScreen> createState() => _AppLockScreenState();
 }
 
 class _AppLockScreenState extends State<AppLockScreen> {
-  String? _error;
+  bool _wrong = false;
   Timer? _ticker;
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.lock.waitRemaining > Duration.zero) _tick();
+  }
 
   @override
   void dispose() {
@@ -64,83 +86,118 @@ class _AppLockScreenState extends State<AppLockScreen> {
   Future<void> _submit(String code) async {
     final opened = await widget.lock.unlock(code);
     if (!mounted || opened) return;
-    final wait = widget.lock.waitRemaining;
-    setState(() {
-      _error = wait > Duration.zero
-          ? 'محاولات كثيرة. انتظر ${_waitLabel(wait)} ثم حاول.'
-          : 'الرمز غير صحيح.';
-    });
-    if (wait > Duration.zero) {
-      _ticker?.cancel();
-      _ticker = Timer.periodic(const Duration(seconds: 1), (timer) {
-        if (!mounted) return timer.cancel();
-        final left = widget.lock.waitRemaining;
-        setState(() {
-          _error = left > Duration.zero
-              ? 'محاولات كثيرة. انتظر ${_waitLabel(left)} ثم حاول.'
-              : null;
-        });
-        if (left == Duration.zero) timer.cancel();
-      });
-    }
+    setState(() => _wrong = true);
+    if (widget.lock.waitRemaining > Duration.zero) _tick();
   }
 
-  Future<void> _forgot() async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: const Text('نسيت الرمز؟'),
-        content: const Text(
-          'سنخرجك من الحساب ويُلغى الرمز. ادخل مرة أخرى برقم جوالك ورمز واتساب، '
-          'وبياناتك محفوظة في حسابك.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(dialogContext).pop(false),
-            child: const Text('إلغاء'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.of(dialogContext).pop(true),
-            child: const Text('خروج وإلغاء الرمز'),
-          ),
-        ],
-      ),
-    );
-    if (confirmed != true) return;
+  void _tick() {
+    _ticker?.cancel();
+    _ticker = Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (!mounted) return timer.cancel();
+      setState(() {});
+      if (widget.lock.waitRemaining == Duration.zero) timer.cancel();
+    });
+  }
+
+  /// The lock covers the app's navigator, so a sheet or dialog would open
+  /// under it; the forgotten-code question is asked on the lock itself.
+  bool _confirmingForgot = false;
+
+  Future<void> _forget() async {
     await widget.lock.forgetForSignOut();
     await widget.onForgotCode();
   }
 
   @override
   Widget build(BuildContext context) {
-    final waiting = widget.lock.waitRemaining > Duration.zero;
+    final wait = widget.lock.waitRemaining;
+    final waiting = wait > Duration.zero;
+    final failures = widget.lock.failedAttempts;
+    final name = widget.name?.trim() ?? '';
+    final String title;
+    final String? line;
+    if (waiting) {
+      title = failures >= AppLockController.freeAttempts
+          ? 'الرمز غلط $failures مرات'
+          : 'الرمز غلط';
+      line = 'جرّب مرة ثانية بعد ${_clock(wait)}';
+    } else if (_wrong) {
+      title = 'الرمز غلط';
+      line = 'جرّب مرة ثانية';
+    } else {
+      title = 'أدخل رمز القفل';
+      line = null;
+    }
+    final error = waiting || _wrong;
     return Material(
       key: const Key('app-lock-screen'),
-      color: AppTheme.canvas,
+      color: AarastV3Color.canvas,
       child: SafeArea(
         child: Center(
           child: SingleChildScrollView(
-            padding: const EdgeInsets.all(24),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const Icon(LucideIcons.lock, size: 40, color: AppTheme.brand),
-                const SizedBox(height: 12),
-                Text(
-                  'أدخل رمز القفل',
-                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                    fontWeight: FontWeight.w900,
+            padding: const EdgeInsets.fromLTRB(24, 32, 24, 24),
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 360),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const JourneyWordmark(),
+                  const SizedBox(height: 22),
+                  JourneyAvatar(
+                    letter: name.isEmpty ? 'ا' : name.characters.first,
+                    color: AarastV3Color.saffron,
+                    size: 60,
                   ),
-                ),
-                const SizedBox(height: 20),
-                AppLockCodePad(
-                  enabled: !waiting,
-                  error: _error,
-                  onCompleted: _submit,
-                ),
-                const SizedBox(height: 12),
-                TextButton(onPressed: _forgot, child: const Text('نسيت الرمز؟')),
-              ],
+                  const SizedBox(height: 18),
+                  Text(
+                    title,
+                    textAlign: TextAlign.center,
+                    style: JourneyType.of(
+                      JourneyType.display,
+                      weight: JourneyType.bold,
+                      color: error ? AarastV3Color.danger : AarastV3Color.text,
+                    ),
+                  ),
+                  if (line != null) ...[
+                    const SizedBox(height: 4),
+                    Text(
+                      line,
+                      textAlign: TextAlign.center,
+                      style: JourneyType.of(
+                        JourneyType.body,
+                        color: AarastV3Color.textMuted,
+                      ),
+                    ),
+                  ],
+                  const SizedBox(height: 24),
+                  if (_confirmingForgot)
+                    _ForgotConfirm(
+                      onForget: _forget,
+                      onBack: () => setState(() => _confirmingForgot = false),
+                    )
+                  else
+                    AppLockCodePad(
+                      enabled: !waiting,
+                      failed: waiting,
+                      onCompleted: _submit,
+                    ),
+                  const SizedBox(height: 16),
+                  if (waiting)
+                    const JourneyNote(
+                      icon: LucideIcons.keyRound,
+                      text:
+                          'نسيت الرمز؟ ادخل برقم جوالك ورمز واتساب، والقفل ينشال '
+                          'وتختار رمز جديد.',
+                    ),
+                  if (!_confirmingForgot)
+                    JourneyTextAction(
+                      key: const Key('app-lock-forgot'),
+                      label: 'نسيت الرمز؟',
+                      color: AarastV3Color.primary,
+                      onPressed: () => setState(() => _confirmingForgot = true),
+                    ),
+                ],
+              ),
             ),
           ),
         ),
@@ -149,25 +206,72 @@ class _AppLockScreenState extends State<AppLockScreen> {
   }
 }
 
-String _waitLabel(Duration wait) {
+/// «نسيت الرمز؟» answered on the lock: sign out and clear the code.
+class _ForgotConfirm extends StatelessWidget {
+  const _ForgotConfirm({required this.onForget, required this.onBack});
+
+  final VoidCallback onForget;
+  final VoidCallback onBack;
+
+  @override
+  Widget build(BuildContext context) {
+    return JourneyBox(
+      padding: const EdgeInsets.all(18),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text(
+            'نسيت الرمز؟',
+            style: JourneyType.of(JourneyType.title, weight: JourneyType.bold),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            'نطلعك من الحساب وينشال الرمز. ادخل من جديد برقم جوالك '
+            'ورمز واتساب، وبياناتك محفوظة في حسابك.',
+            style: JourneyType.of(
+              JourneyType.body,
+              color: AarastV3Color.textMuted,
+            ),
+          ),
+          const SizedBox(height: 16),
+          JourneyButton(
+            key: const Key('app-lock-forgot-confirm'),
+            label: 'اطلع وشيل الرمز',
+            expand: true,
+            onPressed: onForget,
+          ),
+          const SizedBox(height: 8),
+          JourneyButton.quiet(label: 'ارجع', expand: true, onPressed: onBack),
+        ],
+      ),
+    );
+  }
+}
+
+/// «0:30».
+String _clock(Duration wait) {
   final seconds = wait.inSeconds + (wait.inMilliseconds % 1000 > 0 ? 1 : 0);
-  if (seconds < 60) return '$seconds ثانية';
-  return '${(seconds / 60).ceil()} دقيقة';
+  return '${seconds ~/ 60}:${(seconds % 60).toString().padLeft(2, '0')}';
 }
 
 /// Four dots and a digit pad (no system keyboard, so nothing is predicted
-/// or remembered). Calls [onCompleted] with the full code and clears.
+/// or remembered). Calls [onCompleted] with the full code and clears. On
+/// the teal of g08 [dark] draws it in white.
 class AppLockCodePad extends StatefulWidget {
   const AppLockCodePad({
     required this.onCompleted,
     this.enabled = true,
-    this.error,
+    this.failed = false,
+    this.dark = false,
     super.key,
   });
 
   final FutureOr<void> Function(String code) onCompleted;
   final bool enabled;
-  final String? error;
+
+  /// w08: the dots turn red while the pad waits.
+  final bool failed;
+  final bool dark;
 
   @override
   State<AppLockCodePad> createState() => _AppLockCodePadState();
@@ -193,7 +297,11 @@ class _AppLockCodePadState extends State<AppLockCodePad> {
 
   @override
   Widget build(BuildContext context) {
-    final textTheme = Theme.of(context).textTheme;
+    final dot = widget.dark
+        ? AarastV3Color.onPrimary
+        : widget.failed
+        ? AarastV3Color.danger
+        : AarastV3Color.primary;
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
@@ -202,32 +310,23 @@ class _AppLockCodePadState extends State<AppLockCodePad> {
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              for (var index = 0; index < AppLockController.codeLength; index += 1)
+              for (var index = 0; index < AppLockController.codeLength; index++)
                 Container(
-                  width: 16,
-                  height: 16,
-                  margin: const EdgeInsets.symmetric(horizontal: 8),
+                  width: 18,
+                  height: 18,
+                  margin: const EdgeInsets.symmetric(horizontal: 10),
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
-                    color: index < _code.length ? AppTheme.brand : Colors.transparent,
-                    border: Border.all(color: AppTheme.brand, width: 2),
+                    color: index < _code.length || widget.failed
+                        ? dot
+                        : Colors.transparent,
+                    border: Border.all(color: dot, width: 2),
                   ),
                 ),
             ],
           ),
         ),
-        SizedBox(
-          height: 40,
-          child: Center(
-            child: widget.error == null
-                ? null
-                : Text(
-                    widget.error!,
-                    textAlign: TextAlign.center,
-                    style: textTheme.bodySmall?.copyWith(color: AppTheme.danger),
-                  ),
-          ),
-        ),
+        const SizedBox(height: 28),
         // Digits read left to right like a phone pad, even in Arabic.
         Directionality(
           textDirection: TextDirection.ltr,
@@ -245,15 +344,26 @@ class _AppLockCodePadState extends State<AppLockCodePad> {
               Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  const SizedBox(width: 88, height: 72),
+                  _tile(null),
                   _key('0'),
-                  SizedBox(
-                    width: 88,
-                    height: 72,
-                    child: IconButton(
-                      tooltip: 'مسح',
-                      onPressed: widget.enabled ? _erase : null,
-                      icon: const Icon(LucideIcons.delete),
+                  _tile(
+                    Semantics(
+                      button: true,
+                      label: 'مسح',
+                      child: Tooltip(
+                        message: 'مسح',
+                        child: AarastPressable(
+                          onTap: widget.enabled ? _erase : null,
+                          borderRadius: BorderRadius.circular(22),
+                          child: Center(
+                            child: Icon(
+                              LucideIcons.delete,
+                              size: 26,
+                              color: _ink,
+                            ),
+                          ),
+                        ),
+                      ),
                     ),
                   ),
                 ],
@@ -265,19 +375,49 @@ class _AppLockCodePadState extends State<AppLockCodePad> {
     );
   }
 
+  Color get _ink {
+    if (widget.dark) return AarastV3Color.onPrimary;
+    return widget.enabled ? AarastV3Color.text : AarastV3Color.textFaint;
+  }
+
+  Widget _tile(Widget? child) {
+    final Color fill;
+    if (widget.dark) {
+      fill = child == null
+          ? Colors.transparent
+          : AarastV3Color.paper.withValues(alpha: 0.14);
+    } else {
+      fill = widget.enabled ? AarastV3Color.paper : AarastV3Color.line;
+    }
+    return Padding(
+      padding: const EdgeInsets.all(6),
+      child: Container(
+        width: 74,
+        height: 62,
+        decoration: BoxDecoration(
+          color: fill,
+          borderRadius: BorderRadius.circular(widget.dark ? 31 : 22),
+        ),
+        child: child,
+      ),
+    );
+  }
+
   Widget _key(String digit) {
-    return SizedBox(
-      width: 88,
-      height: 72,
-      child: Padding(
-        padding: const EdgeInsets.all(6),
-        child: OutlinedButton(
-          key: Key('app-lock-key-$digit'),
-          onPressed: widget.enabled ? () => _press(digit) : null,
-          style: OutlinedButton.styleFrom(shape: const CircleBorder()),
+    return _tile(
+      AarastPressable(
+        key: Key('app-lock-key-$digit'),
+        onTap: widget.enabled ? () => _press(digit) : null,
+        semanticLabel: digit,
+        borderRadius: BorderRadius.circular(22),
+        child: Center(
           child: Text(
             digit,
-            style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w800),
+            style: JourneyType.of(
+              JourneyType.figure,
+              weight: JourneyType.bold,
+              color: _ink,
+            ),
           ),
         ),
       ),

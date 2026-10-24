@@ -113,6 +113,7 @@ class _AarastAppState extends State<AarastApp> {
                       router: _router,
                       child: AppLockGate(
                         onForgotCode: auth.logout,
+                        name: auth.user?.name,
                         child: child ?? const SizedBox.shrink(),
                       ),
                     ),

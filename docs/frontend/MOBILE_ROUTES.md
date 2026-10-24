@@ -28,6 +28,7 @@
 - `/register`
 - `/reset-password`
 - `/settings`
+- `/settings/lock`
 - `/shared/wedding-plans`
 - `/support`
 - `/wedding-plans`
@@ -76,4 +77,4 @@
 - `/wedding-plans/create`
 - `/welcome`
 
-Total: 75 unique routes
+Total: 76 unique routes

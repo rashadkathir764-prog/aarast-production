@@ -75,7 +75,8 @@ import '../../features/provider_portal/provider_portal_api.dart'
         ProviderApplyScreen,
         ProviderApplyStatusScreen,
         ProviderPortalScreen;
-import '../../features/settings/settings_api.dart' show SettingsScreen;
+import '../../features/settings/settings_api.dart'
+    show LockSettingsScreen, SettingsScreen;
 import '../../features/sharing/sharing_api.dart'
     show
         AddSharedMemberScreen,
@@ -167,6 +168,7 @@ class AppRouter {
   );
   static const more = '/more';
   static const settings = '/settings';
+  static const lockSettings = '/settings/lock';
   static const support = '/support';
   static const guestOnboardingPreview = '/dev/guest-onboarding';
   static const userNavigationShellPreview = '/dev/user-navigation-shell';

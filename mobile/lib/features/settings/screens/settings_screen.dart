@@ -1,19 +1,22 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:provider/provider.dart';
 
 import '../../../core/experience_v3/aarast_v3.dart';
 import '../../../core/push/push_notifications_controller.dart';
-import '../../../core/theme/app_theme.dart';
-import '../../../core/utils/arabic_date_formatter.dart';
+import '../../../core/routing/app_router.dart';
+import '../../../core/widgets/aarast_toast.dart';
 import '../../../core/widgets/aarast_ui.dart';
-import '../../auth/auth_api.dart'
-    show AuthActionGuard, AuthController, AuthGatePanel;
+import '../../auth/auth_api.dart' show AuthActionGuard, AuthGatePanel;
 import '../models/user_settings.dart';
 import '../providers/settings_provider.dart';
-import '../widgets/app_lock_settings.dart';
-import '../widgets/change_phone_sheet.dart';
 
+/// g07 «التنبيهات»: the reminders the server sends, each saved the moment
+/// it is switched. Kept to what the server has (C60): tasks, payments (a
+/// week before, the server's lead time) and offers with conversations.
+/// Quiet hours, the Friday digest, guest replies and participants' activity
+/// are left out (D24).
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key, this.devicePushAvailableOverride});
 
@@ -31,8 +34,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted) return;
-      _refreshAccountAndLoad();
+      if (mounted) _refreshAccountAndLoad();
     });
   }
 
@@ -41,369 +43,124 @@ class _SettingsScreenState extends State<SettingsScreen> {
       _isCheckingAccount = true;
       _showLoginGate = false;
     });
-
     final shouldGate = await AuthActionGuard.shouldGateAccountOnly(context);
     if (!mounted) return;
-
     setState(() {
       _isCheckingAccount = false;
       _showLoginGate = shouldGate;
     });
-
-    if (!shouldGate) {
-      await context.read<SettingsProvider>().loadSettings();
-    }
+    if (!shouldGate) await context.read<SettingsProvider>().loadSettings();
   }
 
   @override
   Widget build(BuildContext context) {
     final provider = context.watch<SettingsProvider>();
-    final auth = context.watch<AuthController>();
     final draft = provider.draft;
     final devicePushAvailable =
-        widget.devicePushAvailableOverride ??
-        _maybeDevicePushAvailable(context);
+        widget.devicePushAvailableOverride ?? _maybeDevicePushAvailable(context);
 
-    return AarastPageScaffold(
-      title: 'الإعدادات',
-      subtitle: 'تفضيلات الحساب والتنبيهات',
-      child: RefreshIndicator(
-        color: AppTheme.brand,
-        onRefresh: _refreshAccountAndLoad,
-        child: ListView(
-          children: [
-            _AccountCard(
-              name: auth.user?.name ?? 'مستخدم اعّرست',
-              phone: auth.user?.phone,
-              email: auth.user?.email,
-            ),
-            if (auth.user != null)
-              ChangePhoneButton(
-                requestCode: auth.requestPhoneChange,
-                confirmCode: auth.confirmPhoneChange,
+    final Widget body;
+    if (_showLoginGate) {
+      body = const SizedBox(
+        height: 420,
+        child: AuthGatePanel(
+          title: 'سجّل الدخول لإدارة الإعدادات',
+          body: 'التنبيهات مرتبطة بحسابك عشان نحفظها لك.',
+          icon: LucideIcons.bell,
+        ),
+      );
+    } else if (_isCheckingAccount || (provider.isLoading && draft == null)) {
+      body = const JourneyListState(
+        phase: JourneyListPhase.loading,
+        section: JourneySection.home,
+      );
+    } else if (draft == null) {
+      body = JourneyListState(
+        phase: JourneyListPhase.error,
+        section: JourneySection.home,
+        onRetry: provider.loadSettings,
+      );
+    } else {
+      body = Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          JourneyList(
+            dividers: false,
+            children: [
+              _Toggle(
+                key: const Key('settings-task-reminders-switch'),
+                title: 'المهام',
+                subtitle: 'لما يقرب موعدها أو تتأخر',
+                value: draft.taskRemindersEnabled,
+                onChanged: (value) => _save(
+                  provider,
+                  draft.copyWith(taskRemindersEnabled: value),
+                ),
               ),
-            const SizedBox(height: 14),
-            if (_isCheckingAccount)
-              AarastSkeleton.list(
-                rows: 2,
-                rowHeight: 210,
-                withHeader: false,
-                inline: true,
-                padding: const EdgeInsets.symmetric(vertical: 8),
-              )
-            else if (_showLoginGate)
-              const SizedBox(
-                height: 420,
-                child: AuthGatePanel(
-                  title: 'سجّل الدخول لإدارة الإعدادات',
-                  body:
-                      'الإعدادات مرتبطة بحسابك حتى نحفظ تفضيلات التنبيهات والمزامنة بأمان.',
-                  icon: LucideIcons.settings,
+              _Toggle(
+                key: const Key('settings-payment-reminders-switch'),
+                title: 'الدفعات',
+                subtitle: 'قبل موعدها بأسبوع',
+                value: draft.paymentRemindersEnabled,
+                onChanged: (value) => _save(
+                  provider,
+                  draft.copyWith(paymentRemindersEnabled: value),
                 ),
-              )
-            else if (provider.isLoading && draft == null)
-              AarastSkeleton.list(
-                rows: 2,
-                rowHeight: 210,
-                withHeader: false,
-                inline: true,
-                padding: const EdgeInsets.symmetric(vertical: 8),
-              )
-            else if (provider.errorMessage != null && draft == null)
-              AarastErrorState(
-                title: 'تعذر تحميل الإعدادات',
-                message: provider.errorMessage!,
-                onRetry: provider.loadSettings,
-              )
-            else if (draft != null) ...[
-              _NotificationSettingsCard(
-                settings: draft,
-                devicePushAvailable: devicePushAvailable,
-                onChanged: provider.updateDraft,
               ),
-              const SizedBox(height: 14),
-              _StaticPreferencesCard(updatedAt: draft.updatedAt),
-              const SizedBox(height: 18),
-              const AppLockSettingsSection(),
-              const SizedBox(height: 18),
-              if (provider.errorMessage != null) ...[
-                _MessageCard(
-                  message: provider.errorMessage!,
-                  color: AppTheme.danger,
+              _Toggle(
+                key: const Key('settings-provider-messages-switch'),
+                title: 'العروض والمحادثات',
+                subtitle: 'أول ما توصل',
+                value: draft.providerMessagesEnabled,
+                onChanged: (value) => _save(
+                  provider,
+                  draft.copyWith(providerMessagesEnabled: value),
                 ),
-                const SizedBox(height: 12),
-              ],
-              if (provider.successMessage != null) ...[
-                _MessageCard(
-                  message: provider.successMessage!,
-                  color: AppTheme.success,
-                ),
-                const SizedBox(height: 12),
-              ],
-              AarastButton(
-                label: 'حفظ الإعدادات',
-                icon: LucideIcons.save,
-                isLoading: provider.isSubmitting,
-                onPressed: provider.isSubmitting || !provider.hasChanges
-                    ? null
-                    : provider.saveSettings,
               ),
             ],
-            const SizedBox(height: 90),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _AccountCard extends StatelessWidget {
-  const _AccountCard({required this.name, this.phone, this.email});
-
-  final String name;
-  final String? phone;
-  final String? email;
-
-  @override
-  Widget build(BuildContext context) {
-    final textTheme = Theme.of(context).textTheme;
-    return AarastV3ContinuousSurface(
-      children: [
-        AarastV3ListRow(
-          title: name,
-          subtitle: phone?.trim().isNotEmpty == true
-              ? null
-              : email?.trim().isNotEmpty == true
-              ? email!.trim()
-              : 'حساب اعّرست',
-          details: phone?.trim().isNotEmpty == true
-              ? AarastPhoneText(
-                  phone: phone!,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: textTheme.labelSmall?.copyWith(
-                    color: AppTheme.textSecondary,
-                    fontWeight: FontWeight.w600,
-                  ),
-                )
-              : null,
-          leading: Container(
-            width: 38,
-            height: 38,
-            decoration: BoxDecoration(
-              color: AppTheme.brandMuted.withAlpha(120),
-              borderRadius: BorderRadius.circular(AppTheme.radiusSm),
-            ),
-            child: const Icon(
-              LucideIcons.user,
-              color: AppTheme.focus,
-              size: 18,
-            ),
           ),
-        ),
-      ],
-    );
-  }
-}
+          const SizedBox(height: 14),
+          JourneyNote(
+            icon: LucideIcons.lock,
+            text: devicePushAvailable
+                ? 'على شاشة القفل ما تطلع أسماء ولا مبالغ.'
+                : 'هذي النسخة ما توصلها تنبيهات الجوال، تلقاها داخل التطبيق.',
+          ),
+        ],
+      );
+    }
 
-class _NotificationSettingsCard extends StatelessWidget {
-  const _NotificationSettingsCard({
-    required this.settings,
-    required this.devicePushAvailable,
-    required this.onChanged,
-  });
-
-  final UserSettings settings;
-  final bool devicePushAvailable;
-  final ValueChanged<UserSettings> onChanged;
-
-  @override
-  Widget build(BuildContext context) {
-    final push = settings.channelCapabilities.push;
-    final pushAvailable = settings.channelCapabilities.pushAvailableOnDevice(
-      devicePushAvailable,
-    );
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        const AarastV3SectionHeader(
-          title: 'تفضيلات التنبيهات',
-          subtitle: 'الوصول والمتابعة في مكان واحد',
-        ),
-        const SizedBox(height: AarastV3Space.x2),
-        AarastV3ContinuousSurface(
+    return AarastScreenFrame(
+      maxWidth: 520,
+      backgroundColor: AarastV3Color.canvas,
+      child: RefreshIndicator(
+        color: AarastV3Color.primary,
+        onRefresh: _refreshAccountAndLoad,
+        child: ListView(
+          padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
           children: [
-            _DeliveryStatusRow(
-              key: const Key('settings-in-app-delivery-status'),
-              icon: LucideIcons.checkCircle,
-              title: 'تنبيهات داخل التطبيق',
-              body: settings.channelCapabilities.inAppAvailable
-                  ? 'متاحة دائماً داخل صندوق التنبيهات.'
-                  : 'غير متاحة حالياً.',
-              available: settings.channelCapabilities.inAppAvailable,
+            JourneySubHeader(
+              title: 'التنبيهات',
+              onBack: () =>
+                  context.canPop() ? context.pop() : context.go(AppRouter.more),
             ),
-            _DeliveryStatusRow(
-              key: const Key('settings-external-delivery-status'),
-              icon: LucideIcons.bell,
-              title: 'إشعارات الجهاز',
-              body: !push.supported
-                  ? 'خدمة إشعارات الجهاز غير مفعلة في الخادم حالياً.'
-                  : !devicePushAvailable
-                  ? 'تحتاج نسخة Android مهيأة للإشعارات وإعداد Firebase صالحاً.'
-                  : push.enabled
-                  ? 'مفعلة لهذا الحساب على جهاز مسجل.'
-                  : 'متاحة للرسائل والمهام بعد السماح بها من إعدادات الجهاز.',
-              available: pushAvailable,
-            ),
-            _SwitchRow(
-              key: const Key('settings-task-reminders-switch'),
-              title: 'تذكير المهام',
-              value: settings.taskRemindersEnabled,
-              onChanged: (value) =>
-                  onChanged(settings.copyWith(taskRemindersEnabled: value)),
-            ),
-            _SwitchRow(
-              key: const Key('settings-payment-reminders-switch'),
-              title: 'تذكير مواعيد الدفع',
-              value: settings.paymentRemindersEnabled,
-              onChanged: (value) =>
-                  onChanged(settings.copyWith(paymentRemindersEnabled: value)),
-            ),
-            _SwitchRow(
-              key: const Key('settings-provider-messages-switch'),
-              title: 'رسائل المزودين وعروض الأسعار',
-              value: settings.providerMessagesEnabled,
-              onChanged: (value) =>
-                  onChanged(settings.copyWith(providerMessagesEnabled: value)),
-            ),
+            body,
           ],
         ),
-      ],
-    );
-  }
-}
-
-class _DeliveryStatusRow extends StatelessWidget {
-  const _DeliveryStatusRow({
-    super.key,
-    required this.icon,
-    required this.title,
-    required this.body,
-    required this.available,
-  });
-
-  final IconData icon;
-  final String title;
-  final String body;
-  final bool available;
-
-  @override
-  Widget build(BuildContext context) {
-    final color = available ? AppTheme.success : AppTheme.textSecondary;
-    return AarastV3ListRow(
-      title: title,
-      subtitle: body,
-      accent: color,
-      leading: Container(
-        width: 32,
-        height: 32,
-        decoration: BoxDecoration(
-          color: color.withValues(alpha: 0.1),
-          borderRadius: BorderRadius.circular(AppTheme.radiusSm),
-        ),
-        child: Icon(icon, size: 16, color: color),
-      ),
-      status: Text(
-        available ? 'متاح' : 'غير متاح',
-        style: Theme.of(context).textTheme.labelSmall?.copyWith(
-          color: color,
-          fontWeight: FontWeight.w800,
-        ),
       ),
     );
   }
-}
 
-class _StaticPreferencesCard extends StatelessWidget {
-  const _StaticPreferencesCard({required this.updatedAt});
-
-  final DateTime updatedAt;
-
-  @override
-  Widget build(BuildContext context) {
-    return AarastV3ContinuousSurface(
-      children: [
-        AarastV3ListRow(
-          title: 'لغة التطبيق: العربية',
-          meta: 'آخر حفظ: ${formatArabicCompactDate(updatedAt)}',
-          accent: AppTheme.focus,
-          leading: const Icon(
-            LucideIcons.languages,
-            size: 18,
-            color: AppTheme.focus,
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-class _SwitchRow extends StatelessWidget {
-  const _SwitchRow({
-    super.key,
-    required this.title,
-    required this.value,
-    required this.onChanged,
-  });
-
-  final String title;
-  final bool value;
-  final ValueChanged<bool> onChanged;
-
-  @override
-  Widget build(BuildContext context) {
-    return AarastV3ListRow(
-      title: title,
-      accent: value ? AppTheme.brand : AppTheme.textSecondary,
-      action: Switch(
-        value: value,
-        onChanged: onChanged,
-        activeThumbColor: Colors.white,
-        activeTrackColor: AppTheme.brand,
-        inactiveThumbColor: AppTheme.surfaceRaised,
-        inactiveTrackColor: AppTheme.surfaceMuted,
-        trackOutlineColor: WidgetStateProperty.resolveWith(
-          (states) => states.contains(WidgetState.selected)
-              ? AppTheme.brand
-              : AppTheme.borderStrong,
-        ),
-        thumbIcon: WidgetStateProperty.resolveWith(
-          (states) => states.contains(WidgetState.selected)
-              ? const Icon(LucideIcons.check, size: 14, color: AppTheme.brand)
-              : null,
-        ),
-        materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-      ),
-    );
-  }
-}
-
-class _MessageCard extends StatelessWidget {
-  const _MessageCard({required this.message, required this.color});
-
-  final String message;
-  final Color color;
-
-  @override
-  Widget build(BuildContext context) {
-    return AarastCard(
-      color: color.withValues(alpha: 0.1),
-      border: Border.all(color: color.withValues(alpha: 0.1)),
-      child: Text(
-        message,
-        textAlign: TextAlign.center,
-        style: TextStyle(color: color, fontWeight: FontWeight.w900),
-      ),
+  /// Saves at once; a failed save puts the switch back.
+  Future<void> _save(SettingsProvider provider, UserSettings next) async {
+    final before = provider.settings;
+    provider.updateDraft(next);
+    final ok = await provider.saveSettings();
+    if (!mounted || ok) return;
+    if (before != null) provider.updateDraft(before);
+    AarastToast.showError(
+      context,
+      provider.errorMessage ?? 'ما قدرنا نحفظ، جرب مرة ثانية.',
     );
   }
 }
@@ -413,5 +170,63 @@ bool _maybeDevicePushAvailable(BuildContext context) {
     return context.watch<PushNotificationsController>().isAvailable;
   } on ProviderNotFoundException {
     return false;
+  }
+}
+
+class _Toggle extends StatelessWidget {
+  const _Toggle({
+    required this.title,
+    required this.subtitle,
+    required this.value,
+    required this.onChanged,
+    super.key,
+  });
+
+  final String title;
+  final String subtitle;
+  final bool value;
+  final ValueChanged<bool> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      child: Row(
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: JourneyType.of(
+                    JourneyType.bodyLarge,
+                    weight: JourneyType.bold,
+                  ),
+                ),
+                Text(
+                  subtitle,
+                  style: JourneyType.of(
+                    JourneyType.small,
+                    color: AarastV3Color.textMuted,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Switch(
+            value: value,
+            materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+            activeTrackColor: AarastV3Color.primary,
+            inactiveTrackColor: AarastV3Color.line,
+            inactiveThumbColor: AarastV3Color.paper,
+            trackOutlineColor: const WidgetStatePropertyAll(
+              AarastV3Color.line,
+            ),
+            onChanged: onChanged,
+          ),
+        ],
+      ),
+    );
   }
 }

@@ -332,6 +332,7 @@ void main() {
         'lib/features/marketplace/screens/provider_reviews_screen.dart',
         'lib/features/notifications/screens/notifications_screen.dart',
         'lib/features/more/screens/more_screen.dart',
+        'lib/features/settings/screens/lock_settings_screen.dart',
         'lib/features/settings/screens/settings_screen.dart',
         'lib/features/support/screens/support_screen.dart',
       ];

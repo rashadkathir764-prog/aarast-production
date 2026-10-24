@@ -69,8 +69,14 @@ void main() {
       expect(find.text('واتساب'), findsNothing);
       expect(find.text('رسائل SMS'), findsNothing);
       expect(find.text('البريد الإلكتروني'), findsNothing);
-      expect(find.text('تنبيهات داخل التطبيق'), findsOneWidget);
-      expect(find.textContaining('متاحة للرسائل والمهام'), findsOneWidget);
+      // g07 (D24): the server's three reminders, and the lock-screen note
+      // (push copy carries no names or amounts).
+      expect(find.text('المهام'), findsOneWidget);
+      expect(find.text('الدفعات'), findsOneWidget);
+      expect(find.text('قبل موعدها بأسبوع'), findsOneWidget);
+      expect(find.text('العروض والمحادثات'), findsOneWidget);
+      expect(find.text('على شاشة القفل ما تطلع أسماء ولا مبالغ.'), findsOneWidget);
+      expect(find.text('ملخص الجمعة'), findsNothing);
 
       for (final key in const [
         Key('settings-task-reminders-switch'),
@@ -81,15 +87,12 @@ void main() {
         await tester.tap(
           find.descendant(of: find.byKey(key), matching: find.byType(Switch)),
         );
-        await tester.pump();
+        await tester.pumpAndSettle();
       }
 
-      final saveButton = find.text('حفظ الإعدادات');
-      await tester.ensureVisible(saveButton);
-      await tester.tap(saveButton);
-      await tester.pumpAndSettle();
-
-      expect(fakeApi.updateSettingsCalls, 1);
+      // Each switch saves the moment it is switched; no save button.
+      expect(find.text('حفظ الإعدادات'), findsNothing);
+      expect(fakeApi.updateSettingsCalls, 3);
       expect(fakeApi.lastUpdatePayload, {
         'taskRemindersEnabled': false,
         'paymentRemindersEnabled': false,
@@ -109,8 +112,11 @@ void main() {
     final fakeApi = _FakeSettingsApi();
     await _pumpSignedInSettings(tester, fakeApi, devicePushAvailable: false);
 
-    expect(find.textContaining('نسخة Android مهيأة للإشعارات'), findsOneWidget);
-    expect(find.textContaining('متاحة للرسائل والمهام'), findsNothing);
+    expect(
+      find.text('هذي النسخة ما توصلها تنبيهات الجوال، تلقاها داخل التطبيق.'),
+      findsOneWidget,
+    );
+    expect(find.textContaining('شاشة القفل'), findsNothing);
   });
 }
 

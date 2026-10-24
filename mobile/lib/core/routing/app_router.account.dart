@@ -24,6 +24,10 @@ List<RouteBase> _accountRoutes() => [
     builder: (context, state) => const SettingsScreen(),
   ),
   GoRoute(
+    path: AppRouter.lockSettings,
+    builder: (context, state) => const LockSettingsScreen(),
+  ),
+  GoRoute(
     path: AppRouter.support,
     builder: (context, state) => const SupportScreen(),
   ),

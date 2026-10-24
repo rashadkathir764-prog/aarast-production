@@ -1983,6 +1983,10 @@ const trackedOwnerApiContracts = [
     exports: [
       { uri: 'data/settings_api.dart', show: ['SettingsApi'] },
       { uri: 'providers/settings_provider.dart', show: ['SettingsProvider'] },
+      {
+        uri: 'screens/lock_settings_screen.dart',
+        show: ['LockSettingsScreen'],
+      },
       { uri: 'screens/settings_screen.dart', show: ['SettingsScreen'] },
       {
         uri: 'widgets/change_phone_sheet.dart',
@@ -2433,7 +2437,7 @@ const trackedCollaborationBatchContracts = [
   {
     source: 'mobile/lib/features/settings/screens/settings_screen.dart',
     target: 'mobile/lib/features/auth/auth_api.dart',
-    show: ['AuthActionGuard', 'AuthController', 'AuthGatePanel'],
+    show: ['AuthActionGuard', 'AuthGatePanel'],
   },
   {
     source: 'mobile/lib/features/sharing/screens/add_shared_member_screen.dart',
@@ -3160,7 +3164,7 @@ const trackedCompositionRootContracts = [
       },
       {
         target: 'mobile/lib/features/settings/settings_api.dart',
-        show: ['SettingsScreen'],
+        show: ['LockSettingsScreen', 'SettingsScreen'],
       },
       {
         target: 'mobile/lib/features/sharing/sharing_api.dart',

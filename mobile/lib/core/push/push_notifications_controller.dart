@@ -109,6 +109,31 @@ class PushNotificationsController extends ChangeNotifier
 
   Future<void> refreshCurrentRegistration() => _queueCurrentRegistration();
 
+  /// w39: the phone has this app's notifications turned off.
+  Future<bool> isTurnedOff() async {
+    if (!isAvailable) return false;
+    try {
+      return await _gateway.authorizationStatus() ==
+          PushAuthorizationStatus.denied;
+    } on Object {
+      return false;
+    }
+  }
+
+  /// w39 «افتح الإعدادات»: asks the phone again; true once they are on.
+  /// A phone that will not ask again leaves them to its own settings.
+  Future<bool> askAgain() async {
+    if (!isAvailable) return false;
+    try {
+      final status = await _gateway.requestPermission();
+      if (status != PushAuthorizationStatus.authorized) return false;
+      await _queueCurrentRegistration();
+      return true;
+    } on Object {
+      return false;
+    }
+  }
+
   Future<void> bindAuthenticatedUser(String? userId) {
     final normalized = userId?.trim();
     final nextUserId = normalized?.isNotEmpty == true ? normalized : null;

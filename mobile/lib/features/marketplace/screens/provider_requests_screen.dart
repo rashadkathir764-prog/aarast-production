@@ -18,7 +18,6 @@ import '../../wedding_plans/wedding_plans_api.dart'
 import '../models/marketplace_models.dart';
 import '../models/provider_board.dart';
 import '../providers/marketplace_provider.dart';
-import '../widgets/quote_booking_area.dart' show showProviderReviewSheet;
 import '../widgets/quote_decision_sheets.dart';
 
 part 'provider_requests_screen.cards.dart';
@@ -217,10 +216,11 @@ class _ProviderRequestsScreenState extends State<ProviderRequestsScreen> {
                       onBook: () => _book(quote),
                       onCancelBooking: () => _cancelBooking(quote),
                       onViewCost: () => _viewCost(quote),
-                      onRate: () => showProviderReviewSheet(
-                        context,
-                        providerId: quote.providerId,
-                        providerName: quote.provider?.businessName,
+                      onRate: () => context.push(
+                        AppRouter.planReviews(
+                          widget.weddingPlanId,
+                          providerId: quote.providerId,
+                        ),
                       ),
                       onChat: () => _openChat(quote),
                     ),

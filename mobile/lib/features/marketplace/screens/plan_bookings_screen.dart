@@ -4,6 +4,7 @@ import 'package:lucide_icons/lucide_icons.dart';
 import 'package:provider/provider.dart';
 
 import '../../../core/experience_v3/aarast_v3.dart';
+import '../../../core/routing/app_router.dart';
 import '../../../core/utils/arabic_date_formatter.dart';
 import '../../../core/widgets/aarast_toast.dart';
 import '../../../core/widgets/aarast_ui.dart';
@@ -87,6 +88,12 @@ class _PlanBookingsScreenState extends State<PlanBookingsScreen> {
                 busy: marketplace.isSubmitting,
                 onFindOthers: () => context.pop(_serviceName(quote)),
                 onAskAgain: () => _askAgain(marketplace, quote),
+                onRate: () => context.push(
+                  AppRouter.planReviews(
+                    widget.weddingPlanId,
+                    providerId: quote.providerId,
+                  ),
+                ),
               ),
         ],
       ),
@@ -145,6 +152,7 @@ class _BookingCard extends StatelessWidget {
     required this.busy,
     required this.onFindOthers,
     required this.onAskAgain,
+    required this.onRate,
     super.key,
   });
 
@@ -153,6 +161,9 @@ class _BookingCard extends StatelessWidget {
   final bool busy;
   final VoidCallback onFindOthers;
   final VoidCallback onAskAgain;
+
+  /// «قيّمهم» once the day has passed (g04).
+  final VoidCallback onRate;
 
   @override
   Widget build(BuildContext context) {
@@ -190,6 +201,7 @@ class _BookingCard extends StatelessWidget {
         quote.status == 'ACCEPTED';
     final findOthers =
         booking.lifecycleStatus == 'DECLINED' && _serviceName(quote).isNotEmpty;
+    final rate = booking.lifecycleStatus == 'COMPLETED';
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 10),
@@ -221,6 +233,16 @@ class _BookingCard extends StatelessWidget {
                 color: AarastV3Color.textMuted,
               ),
             ),
+            if (rate) ...[
+              const SizedBox(height: 10),
+              JourneyButton(
+                key: ValueKey('booking-rate-${booking.id}'),
+                label: 'قيّمهم',
+                background: AarastV3Color.brandAccentSoft,
+                foreground: AarastV3Color.brandAccentStrong,
+                onPressed: onRate,
+              ),
+            ],
             if (findOthers || askAgain) ...[
               const SizedBox(height: 10),
               JourneyButton(

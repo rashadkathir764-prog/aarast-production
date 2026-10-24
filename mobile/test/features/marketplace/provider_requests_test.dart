@@ -312,18 +312,17 @@ void main() {
   });
 
   testWidgets('after the day, the groom rates the provider', (tester) async {
-    final h = await _pump(tester, [
+    await _pump(tester, [
       _accepted(booking: _booking('CONFIRMED', lifecycle: 'COMPLETED')),
     ]);
 
+    // D21: rating happens on «قيّم مزودينك» (g04), not in a sheet here.
     await tester.tap(find.byKey(const ValueKey('requests-rate-q1')));
     await tester.pumpAndSettle();
-    await tester.tap(find.byKey(const Key('review-star-5')));
-    await tester.enterText(find.byKey(const Key('review-comment')), 'ممتاز');
-    await tester.pump();
-    await tester.tap(find.byKey(const Key('review-submit')));
-    await tester.pumpAndSettle();
-    expect(h.marketplace.reviews, ['provider-q1:5:ممتاز']);
+    expect(
+      find.text('opened /wedding-plans/plan-1/providers/reviews?provider=provider-q1'),
+      findsOneWidget,
+    );
   });
 
   testWidgets('a notification opens its request without knowing the row', (

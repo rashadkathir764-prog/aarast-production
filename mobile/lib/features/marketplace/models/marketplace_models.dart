@@ -418,6 +418,7 @@ class ProviderReview {
   const ProviderReview({
     required this.id,
     required this.rating,
+    this.userId,
     this.userName,
     this.comment,
     this.createdAt,
@@ -428,6 +429,7 @@ class ProviderReview {
     return ProviderReview(
       id: json['id'].toString(),
       rating: _intOrZero(json['rating']),
+      userId: json['userId']?.toString(),
       userName: user is Map ? user['name']?.toString() : null,
       comment: json['comment']?.toString(),
       createdAt: _dateOrNull(json['createdAt']),
@@ -436,6 +438,9 @@ class ProviderReview {
 
   final String id;
   final int rating;
+
+  /// Whose review it is: the reviews screen (g04) finds the account's own.
+  final String? userId;
   final String? userName;
   final String? comment;
   final DateTime? createdAt;

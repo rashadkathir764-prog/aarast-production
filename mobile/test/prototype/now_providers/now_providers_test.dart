@@ -27,7 +27,6 @@ import 'package:aarast_mobile/features/marketplace/screens/favorite_providers_sc
 import 'package:aarast_mobile/features/marketplace/screens/provider_details_screen.dart';
 import 'package:aarast_mobile/features/marketplace/screens/provider_marketplace_screen.dart';
 import 'package:aarast_mobile/features/marketplace/screens/quote_request_screen.dart';
-import 'package:aarast_mobile/features/marketplace/widgets/quote_booking_area.dart';
 import 'package:aarast_mobile/features/onboarding/models/wedding_location_draft.dart';
 import 'package:aarast_mobile/features/wedding_plans/data/wedding_plans_api.dart';
 import 'package:aarast_mobile/features/wedding_plans/models/wedding_plan.dart';
@@ -922,34 +921,6 @@ void main() {
       providers,
       h: 1100,
       act: () => _openInbox(tester),
-    );
-  });
-
-  testWidgets('rate sheet', (tester) async {
-    final m = _Market(list: _allProviders);
-    await _shot(
-      tester,
-      'rate_sheet',
-      Builder(
-        builder: (context) => Scaffold(
-          body: Center(
-            child: TextButton(
-              onPressed: () => showProviderReviewSheet(
-                context,
-                providerId: 'p-saba',
-                providerName: 'قاعة سبأ',
-              ),
-              child: const Text('open'),
-            ),
-          ),
-        ),
-      ),
-      await _session(m),
-      act: () async {
-        await tester.tap(find.text('open'));
-        await tester.pump(const Duration(milliseconds: 500));
-        await tester.pump(const Duration(milliseconds: 500));
-      },
     );
   });
 

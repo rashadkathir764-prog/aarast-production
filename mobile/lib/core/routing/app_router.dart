@@ -61,6 +61,7 @@ import '../../features/marketplace/marketplace_api.dart'
         ProviderMarketplaceScreen,
         ProviderQuoteInitialContext,
         ProviderRequestsScreen,
+        ProviderReviewsScreen,
         QuoteRequestScreen,
         providerRespondsLine;
 import '../../features/more/more_api.dart' show MoreScreen;
@@ -398,6 +399,11 @@ class AppRouter {
 
   static String bookingMoment(String weddingPlanId, String quoteId) =>
       '/wedding-plans/$weddingPlanId/providers/booked/$quoteId';
+
+  static String planReviews(String weddingPlanId, {String? providerId}) => Uri(
+    path: '/wedding-plans/$weddingPlanId/providers/reviews',
+    queryParameters: providerId == null ? null : {'provider': providerId},
+  ).toString();
 
   static String planBookings(String weddingPlanId) =>
       '/wedding-plans/$weddingPlanId/providers/bookings';

@@ -28,6 +28,7 @@ export 'screens/provider_details_screen.dart' show ProviderDetailsScreen;
 export 'screens/provider_marketplace_screen.dart'
     show ProviderMarketplaceScreen;
 export 'screens/provider_requests_screen.dart' show ProviderRequestsScreen;
+export 'screens/provider_reviews_screen.dart' show ProviderReviewsScreen;
 export 'screens/quote_request_screen.dart' show QuoteRequestScreen;
 export 'widgets/provider_auth_gate.dart' show ProviderAuthGate;
 export 'widgets/provider_trust_signals.dart' show providerRespondsLine;

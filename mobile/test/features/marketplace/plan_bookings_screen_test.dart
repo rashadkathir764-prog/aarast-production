@@ -69,11 +69,14 @@ final _quotes = [
   }),
 ];
 
-Future<(_Marketplace, List<Object?>)> _pump(WidgetTester tester) async {
+Future<(_Marketplace, List<Object?>)> _pump(
+  WidgetTester tester, {
+  List<QuoteRequest>? quotes,
+}) async {
   tester.view.devicePixelRatio = 1;
   tester.view.physicalSize = const Size(420, 1400);
   addTearDown(tester.view.reset);
-  final marketplace = _Marketplace(_quotes);
+  final marketplace = _Marketplace(quotes ?? _quotes);
   final popped = <Object?>[];
   final router = GoRouter(
     initialLocation: '/',
@@ -94,6 +97,8 @@ Future<(_Marketplace, List<Object?>)> _pump(WidgetTester tester) async {
             PlanBookingsScreen(weddingPlanId: 'plan-1', now: _now),
       ),
     ],
+    errorBuilder: (context, state) =>
+        Scaffold(body: Text('opened ${state.uri}')),
   );
   addTearDown(router.dispose);
   await tester.pumpWidget(
@@ -159,6 +164,29 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(marketplace.asked, ['cancel']);
+  });
+
+  testWidgets('a booking whose day passed asks for a rating', (tester) async {
+    await _pump(
+      tester,
+      quotes: [
+        _quote('studio', 'استوديو ضوء صنعاء', 'التصوير', {
+          'status': 'CONFIRMED',
+          'lifecycleStatus': 'COMPLETED',
+        }),
+      ],
+    );
+
+    expect(find.text('تمّ'), findsOneWidget);
+    await tester.tap(find.text('قيّمهم'));
+    await tester.pumpAndSettle();
+
+    expect(
+      find.text(
+        'opened /wedding-plans/plan-1/providers/reviews?provider=provider-studio',
+      ),
+      findsOneWidget,
+    );
   });
 
   testWidgets('a plan with no bookings says so', (tester) async {

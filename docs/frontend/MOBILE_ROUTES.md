@@ -63,6 +63,7 @@
 - `/wedding-plans/:id/providers/booked/:quoteId`
 - `/wedding-plans/:id/providers/bookings`
 - `/wedding-plans/:id/providers/requests`
+- `/wedding-plans/:id/providers/reviews`
 - `/wedding-plans/:id/sharing`
 - `/wedding-plans/:id/sharing/:memberId/edit`
 - `/wedding-plans/:id/sharing/add`
@@ -75,4 +76,4 @@
 - `/wedding-plans/create`
 - `/welcome`
 
-Total: 74 unique routes
+Total: 75 unique routes

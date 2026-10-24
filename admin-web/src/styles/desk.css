@@ -663,6 +663,38 @@
   color: var(--d-coral);
 }
 
+.desk-stars {
+  letter-spacing: 1px;
+}
+
+/* a11: the report being read. */
+.desk-report__title {
+  margin: 0;
+  font-size: 17px;
+  font-weight: 700;
+}
+
+.desk-report__who {
+  margin: 0;
+  font-size: 13px;
+  color: var(--d-muted);
+}
+
+.desk-report__who a,
+.desk-two a {
+  color: inherit;
+  text-decoration: underline;
+  text-decoration-color: var(--d-line);
+  text-underline-offset: 3px;
+}
+
+.desk-report__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
+}
+
 /* A page whose main panel runs to the bottom of the frame (akit `Expanded`). */
 .desk-fill-page {
   display: flex;

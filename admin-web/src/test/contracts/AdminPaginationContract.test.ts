@@ -15,8 +15,8 @@ const paginatedPages = [
   ['ProviderApplicationsPage.tsx', providerApplicationsSource, 'desk'],
   ['ProvidersPage.tsx', providersSource, 'desk'],
   ['ServicesPage.tsx', servicesSource, 'shared'],
-  ['ReviewsPage.tsx', reviewsSource, 'shared'],
-  ['ConversationReportsPage.tsx', conversationReportsSource, 'shared'],
+  ['ReviewsPage.tsx', reviewsSource, 'desk'],
+  ['ConversationReportsPage.tsx', conversationReportsSource, 'desk'],
   ['NotificationsPage.tsx', notificationsSource, 'shared'],
 ] as const;
 
@@ -43,10 +43,9 @@ describe('admin list pagination contract', () => {
 
   it('uses server-side provider search instead of a fixed 100-row lookup', () => {
     expect(servicesSource).toContain('providerSearchQuery');
-    expect(reviewsSource).toContain('providerSearchQuery');
     expect(servicesSource).not.toContain('getProviders({ limit: 100 })');
-    expect(reviewsSource).not.toContain('getProviders({ limit: 100 })');
     expect(servicesSource).toContain('search: providerSearchQuery');
-    expect(reviewsSource).toContain('search: providerSearchQuery');
+    // a10 draws no provider filter, so the reviews page looks up no providers.
+    expect(reviewsSource).not.toContain('getProviders(');
   });
 });

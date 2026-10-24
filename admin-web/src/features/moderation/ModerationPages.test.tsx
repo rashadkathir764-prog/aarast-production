@@ -1,15 +1,16 @@
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   getConversationReports,
   getReviews,
   hideReview,
+  updateConversationReportStatus,
   updateReviewStatus,
   type ConversationReport,
   type ProviderReview,
 } from './api';
-import { getProvider, getProviders, type ProviderApplication } from '../providers/api';
+import { getProvider, type ProviderApplication } from '../providers/api';
 import { ConversationReportsPage } from './ConversationReportsPage';
 import { ReviewsPage } from './ReviewsPage';
 
@@ -25,21 +26,29 @@ vi.mock('../auth/AuthProvider', () => ({
   useAuth: () => ({
     user: {
       id: 'admin-1',
-      name: 'مدير',
+      name: 'سارة',
       adminPermissions: ['USERS_READ', 'REVIEWS_WRITE', 'CONVERSATION_REPORTS_WRITE'],
     },
   }),
 }));
 
+const NOW = new Date('2026-10-24T08:00:00.000Z');
+
 const page = <T,>(items: T[]) => ({ items, page: 1, limit: 20, total: items.length, totalPages: 1 });
 
-const report = (id: string, reporterId: string, reporterName: string): ConversationReport => ({
+const report = (
+  id: string,
+  reporterId: string,
+  reporterName: string,
+  reason = 'احتيال',
+  createdAt = '2026-10-23T10:00:00.000Z',
+): ConversationReport => ({
   id,
   conversationId: `conversation-${id}`,
-  reason: 'احتيال',
+  reason,
   status: 'OPEN',
-  createdAt: '2026-10-20T10:00:00.000Z',
-  updatedAt: '2026-10-20T10:00:00.000Z',
+  createdAt,
+  updatedAt: createdAt,
   reporter: { id: reporterId, name: reporterName, phone: null, avatarUrl: null },
   conversation: {
     provider: { id: 'provider-1', businessName: 'استديو الفن' },
@@ -50,21 +59,32 @@ const report = (id: string, reporterId: string, reporterName: string): Conversat
 const review = (status: string): ProviderReview => ({
   id: 'review-1',
   userId: 'user-1',
-  user: { id: 'user-1', name: 'أحمد' },
+  user: { id: 'user-1', name: 'عادل' },
   providerId: 'provider-1',
-  rating: 4,
-  comment: 'خدمة ممتازة',
+  provider: { id: 'provider-1', businessName: 'فرقة الأفراح' } as ProviderReview['provider'],
+  rating: 2,
+  comment: 'ما جوا أصلًا',
   status,
-  createdAt: '2026-10-20T10:00:00.000Z',
-  updatedAt: '2026-10-20T10:00:00.000Z',
+  createdAt: '2026-01-20T10:00:00.000Z',
+  updatedAt: '2026-01-20T10:00:00.000Z',
 });
 
-describe('ConversationReportsPage', () => {
+beforeEach(() => {
+  vi.useFakeTimers({ toFake: ['Date'] });
+  vi.setSystemTime(NOW);
+});
+
+afterEach(() => {
+  vi.useRealTimers();
+  vi.clearAllMocks();
+});
+
+describe('ConversationReportsPage (a11)', () => {
   beforeEach(() => {
     vi.mocked(getConversationReports).mockResolvedValue(
       page([
-        report('r1', 'customer-1', 'أحمد العريس'),
-        report('r2', 'provider-owner-1', 'صاحب الاستديو'),
+        report('r1', 'customer-1', 'أحمد العريس', 'كلام غير لائق'),
+        report('r2', 'provider-owner-1', 'صاحب الاستديو', 'إزعاج', '2026-10-21T10:00:00.000Z'),
       ]),
     );
     vi.mocked(getProvider).mockResolvedValue({
@@ -73,37 +93,61 @@ describe('ConversationReportsPage', () => {
     } as ProviderApplication);
   });
 
-  it('links both parties and names the customer when the provider reports', async () => {
+  function renderReports() {
     render(
       <MemoryRouter>
         <ConversationReportsPage />
       </MemoryRouter>,
     );
-    await waitFor(() => expect(screen.getByText('أحمد العريس')).toBeInTheDocument());
+  }
 
-    expect(screen.getByRole('link', { name: 'أحمد العريس' })).toHaveAttribute(
-      'href',
-      '/users/customer-1',
-    );
-    const customerRow = screen.getByText('أحمد العريس').closest('tr') as HTMLElement;
-    expect(within(customerRow).getByRole('link', { name: 'استديو الفن' })).toHaveAttribute(
-      'href',
-      '/providers/provider-1',
-    );
+  it('lists the open reports and reads the first one, linking both parties', async () => {
+    renderReports();
 
-    const providerRow = screen.getByText('صاحب الاستديو').closest('tr') as HTMLElement;
-    expect(within(providerRow).getByText('المزود نفسه')).toBeInTheDocument();
-    expect(within(providerRow).getByText('العميل في المحادثة')).toBeInTheDocument();
+    const first = await screen.findByRole('row', { name: 'اقرأ بلاغ كلام غير لائق' });
+    expect(first).toHaveTextContent('أحمد العريس بلّغ عن استديو الفن · أمس');
+    expect(first).toHaveClass('is-hi');
+    expect(getConversationReports).toHaveBeenCalledWith({ status: 'OPEN', page: 1, limit: 20 });
+
+    expect(screen.getByRole('heading', { name: 'كلام غير لائق' })).toBeVisible();
+    expect(screen.getByRole('link', { name: 'أحمد العريس' })).toHaveAttribute('href', '/users/customer-1');
+    expect(screen.getByRole('link', { name: 'استديو الفن' })).toHaveAttribute('href', '/providers/provider-1');
     expect(screen.queryByText(/quote-raw-id-123/)).toBeNull();
+    expect(screen.queryByRole('button', { name: 'احذف الرسالة' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'اطلب إيقافه' })).not.toBeInTheDocument();
+  });
+
+  it('names the customer when the provider reports', async () => {
+    renderReports();
+
+    const second = await screen.findByRole('row', { name: 'اقرأ بلاغ إزعاج' });
+    expect(second).toHaveTextContent('استديو الفن بلّغ عن العميل · قبل 3 أيام');
+    fireEvent.click(second);
+
+    expect(screen.getByRole('heading', { name: 'إزعاج' })).toBeVisible();
+    expect(screen.getByText(/المزود نفسه/)).toHaveTextContent('العميل في المحادثة');
+  });
+
+  it('closes a report as handled or as nothing, and says why when it fails', async () => {
+    vi.mocked(updateConversationReportStatus).mockRejectedValueOnce(new Error('تعذر التحديث الآن.'));
+    renderReports();
+    await screen.findByRole('heading', { name: 'كلام غير لائق' });
+
+    fireEvent.click(screen.getByRole('button', { name: 'ما فيه شيء' }));
+    expect(await screen.findByRole('alert')).toHaveTextContent('تعذر التحديث الآن.');
+    expect(updateConversationReportStatus).toHaveBeenCalledWith('r1', 'DISMISSED');
+
+    vi.mocked(updateConversationReportStatus).mockResolvedValue({} as ConversationReport);
+    fireEvent.click(screen.getByRole('button', { name: 'تمت المراجعة' }));
+    await waitFor(() =>
+      expect(updateConversationReportStatus).toHaveBeenLastCalledWith('r1', 'REVIEWED'),
+    );
   });
 });
 
-describe('ReviewsPage', () => {
+describe('ReviewsPage (a10)', () => {
   beforeEach(() => {
     vi.mocked(getReviews).mockResolvedValue(page([review('PUBLISHED')]));
-    vi.mocked(getProviders).mockResolvedValue(page([]));
-    vi.mocked(updateReviewStatus).mockReset();
-    vi.mocked(hideReview).mockReset();
   });
 
   function renderReviews() {
@@ -114,27 +158,43 @@ describe('ReviewsPage', () => {
     );
   }
 
-  it('keeps the list when an action fails and says why', async () => {
-    vi.mocked(updateReviewStatus).mockRejectedValue(new Error('تعذر تحديث التقييم الآن.'));
+  it('shows the stars, the words, the reviewer and the provider', async () => {
     renderReviews();
-    await waitFor(() => expect(screen.getByText('خدمة ممتازة')).toBeInTheDocument());
-
-    fireEvent.click(screen.getByRole('button', { name: 'مراجعة' }));
-
-    expect(await screen.findByRole('alert')).toHaveTextContent('تعذر تحديث التقييم الآن.');
-    expect(screen.getByText('خدمة ممتازة')).toBeInTheDocument();
+    const row = (await screen.findByText(/ما جوا أصلًا/)).closest('tr') as HTMLElement;
+    expect(row).toHaveTextContent('★★☆☆☆ «ما جوا أصلًا»');
+    expect(row).toHaveTextContent('عادل · 20 يناير');
+    expect(row).toHaveTextContent('فرقة الأفراح');
+    expect(screen.getByText('تنشر على طول · المخالف ينخفي')).toBeVisible();
+    expect(screen.queryByText(/مبلّغ عنها/)).not.toBeInTheDocument();
   });
 
   it('asks before hiding a review', async () => {
     vi.mocked(hideReview).mockResolvedValue(review('HIDDEN'));
     renderReviews();
-    await waitFor(() => expect(screen.getByText('خدمة ممتازة')).toBeInTheDocument());
+    await screen.findByText(/ما جوا أصلًا/);
 
-    fireEvent.click(screen.getByRole('button', { name: 'إخفاء' }));
+    fireEvent.click(screen.getByRole('button', { name: 'أخفِ' }));
     expect(hideReview).not.toHaveBeenCalled();
-    const dialog = await screen.findByRole('dialog');
-    fireEvent.click(within(dialog).getByRole('button', { name: 'إخفاء' }));
+    const dialog = await screen.findByRole('dialog', { name: 'إخفاء تقييم عادل' });
+    fireEvent.click(within(dialog).getByRole('button', { name: 'أخفِ' }));
 
     await waitFor(() => expect(hideReview).toHaveBeenCalledWith('review-1'));
+  });
+
+  it('lists the hidden ones and brings one back, keeping the list when that fails', async () => {
+    vi.mocked(getReviews).mockResolvedValue(page([review('HIDDEN')]));
+    vi.mocked(updateReviewStatus).mockRejectedValue(new Error('تعذر تحديث التقييم الآن.'));
+    renderReviews();
+    await screen.findByText(/ما جوا أصلًا/);
+
+    fireEvent.click(screen.getByRole('button', { name: 'مخفية' }));
+    await waitFor(() =>
+      expect(getReviews).toHaveBeenLastCalledWith({ status: 'HIDDEN', page: 1, limit: 20 }),
+    );
+    fireEvent.click(await screen.findByRole('button', { name: 'أظهره' }));
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('تعذر تحديث التقييم الآن.');
+    expect(updateReviewStatus).toHaveBeenCalledWith('review-1', 'PUBLISHED');
+    expect(screen.getByText(/ما جوا أصلًا/)).toBeInTheDocument();
   });
 });

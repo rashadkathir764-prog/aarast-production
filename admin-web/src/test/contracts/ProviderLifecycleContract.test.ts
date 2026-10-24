@@ -51,15 +51,13 @@ describe('provider administration lifecycle', () => {
     expect(providersSource).toContain('counts.approvedProviders');
     expect(providersSource).not.toContain('في الصفحة');
     expect(applicationsSource).not.toContain('في الصفحة');
+    // a10 and a11 draw no page counts at all.
+    expect(reviewsSource).not.toContain('في الصفحة');
+    expect(reportsSource).not.toContain('في الصفحة');
   });
 
   it('labels page-local aggregates honestly', () => {
-    for (const source of [
-      reviewsSource,
-      servicesSource,
-      usersSource,
-      reportsSource,
-    ]) {
+    for (const source of [servicesSource, usersSource]) {
       expect(source).toContain('value={pagination.total}');
       expect(source).toContain('في الصفحة');
     }

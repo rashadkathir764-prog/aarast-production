@@ -1,277 +1,178 @@
-import { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
-import { getReviews, hideReview, ProviderReview, updateReviewStatus } from './api';
-import { getProviders, type ProviderApplication } from '../providers/api';
-import { ActionButton } from '../../design_system/ActionButton';
+// a10 «التقييمات» (mobile/test/prototype/admin/admin_screens.dart
+// `a10Reviews`). «مبلّغ عنها», the report column and «خلّه» wait for B-28,
+// the provider's reply for B-09 and «شوف الحجز» for B-40. Hiding takes no
+// reason and tells no one yet (A-08), so the page does not say it does.
+import { useCallback, useEffect, useState } from 'react';
+import {
+  getReviews,
+  hideReview,
+  updateReviewStatus,
+  type ProviderReview,
+} from './api';
+import { AdminPermission, Can } from '../auth/api';
 import { ConfirmDialog } from '../../design_system/ConfirmDialog';
-import { DataTable } from '../../design_system/DataTable';
-import { EmptyState } from '../../design_system/EmptyState';
-import { ErrorState } from '../../design_system/ErrorState';
-import { FilterSelect } from '../../design_system/FilterSelect';
-import { LoadingState } from '../../design_system/LoadingState';
-import { PageHeader } from '../../design_system/PageHeader';
-import { Pagination } from '../../design_system/Pagination';
-import { SearchInput } from '../../design_system/SearchInput';
-import { SectionCard } from '../../design_system/SectionCard';
-import { StatCard } from '../../design_system/StatCard';
-import { StatusBadge, statusLabel } from '../../design_system/StatusBadge';
-import { TableToolbar } from '../../design_system/TableToolbar';
-import { Can } from '../auth/api';
-import { AdminPermission } from '../auth/api';
+import {
+  DeskButton,
+  DeskHeader,
+  DeskNote,
+  DeskPager,
+  DeskRetry,
+  DeskTable,
+  Panel,
+  SoftAction,
+  TwoLine,
+  stars,
+} from '../../design_system/Desk';
+import { dayMonth } from '../../platform/i18n/deskTime';
 
-const statuses = [
-  { value: '', label: 'كل الحالات' },
-  { value: 'PUBLISHED', label: 'منشورة' },
-  { value: 'PENDING', label: 'قيد المراجعة' },
-  { value: 'HIDDEN', label: 'مخفية' },
-];
+type Tab = 'ALL' | 'HIDDEN';
+
+type Page = {
+  items: ProviderReview[];
+  page: number;
+  limit: number;
+  total: number;
+  totalPages: number;
+};
 
 export function ReviewsPage() {
-  const [providers, setProviders] = useState<ProviderApplication[]>([]);
-  const [reviews, setReviews] = useState<ProviderReview[]>([]);
-  const [providerId, setProviderId] = useState('');
-  const [providerSearch, setProviderSearch] = useState('');
-  const [providerSearchQuery, setProviderSearchQuery] = useState('');
-  const [status, setStatus] = useState('');
-  const [search, setSearch] = useState('');
+  const [tab, setTab] = useState<Tab>('ALL');
   const [page, setPage] = useState(1);
-  const [pagination, setPagination] = useState({
-    page: 1,
-    limit: 20,
-    total: 0,
-    totalPages: 1,
-  });
+  const [result, setResult] = useState<Page | null>(null);
   const [error, setError] = useState<string | null>(null);
-  // A failed action keeps the list on screen and says why above it.
   const [actionError, setActionError] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const [busyId, setBusyId] = useState<string | null>(null);
 
-  async function load() {
-    setIsLoading(true);
+  const load = useCallback(async () => {
     setError(null);
     try {
-      const [reviewPage, providerPage] = await Promise.all([
-        getReviews({ search, providerId, status, page, limit: 20 }),
-        getProviders({ search: providerSearchQuery, page: 1, limit: 20 }),
-      ]);
-      if (page > reviewPage.totalPages) {
-        setPage(reviewPage.totalPages);
-        return;
-      }
-      setReviews(reviewPage.items);
-      setPagination({
-        page: reviewPage.page,
-        limit: reviewPage.limit,
-        total: reviewPage.total,
-        totalPages: reviewPage.totalPages,
-      });
-      setProviders(providerPage.items);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'تعذر تحميل التقييمات.');
-    } finally {
-      setIsLoading(false);
+      setResult(
+        await getReviews({ status: tab === 'HIDDEN' ? 'HIDDEN' : undefined, page, limit: 20 }),
+      );
+    } catch (value) {
+      setError(value instanceof Error ? value.message : 'ما قدرنا نحمّل التقييمات.');
     }
-  }
+  }, [tab, page]);
 
   useEffect(() => {
-    load();
-  }, [providerId, status, page, providerSearchQuery]);
+    void load();
+  }, [load]);
 
-  function submitSearch() {
-    if (page === 1) void load();
-    else setPage(1);
+  function pick(next: Tab) {
+    setTab(next);
+    setPage(1);
+    setResult(null);
+    setActionError(null);
   }
 
-  async function setReviewStatus(review: ProviderReview, nextStatus: string) {
+  async function publish(review: ProviderReview) {
+    setBusyId(review.id);
     setActionError(null);
     try {
-      await updateReviewStatus(review.id, nextStatus);
-    } catch (err) {
-      setActionError(err instanceof Error ? err.message : 'تعذر تحديث حالة التقييم.');
-      return;
+      await updateReviewStatus(review.id, 'PUBLISHED');
+      await load();
+    } catch (value) {
+      setActionError(value instanceof Error ? value.message : 'ما قدرنا نغيّر التقييم.');
+    } finally {
+      setBusyId(null);
     }
-    await load();
   }
 
-  // Thrown errors stay inside the confirmation, which shows them there.
   async function hide(review: ProviderReview) {
     setActionError(null);
     await hideReview(review.id);
     await load();
   }
 
-  if (isLoading) return <LoadingState title="جاري تحميل التقييمات" />;
-  if (error) return <ErrorState message={error} onRetry={load} />;
-
-  const publishedCount = reviews.filter((review) => review.status === 'PUBLISHED').length;
-  const hiddenCount = reviews.filter((review) => review.status === 'HIDDEN').length;
-  const pendingCount = reviews.filter((review) => review.status === 'PENDING').length;
-  const averageRating =
-    reviews.length === 0
-      ? '0.0'
-      : (reviews.reduce((total, review) => total + review.rating, 0) / reviews.length).toFixed(1);
-
   return (
-    <section className="page-stack">
-      <PageHeader
-        eyebrow="إدارة التقييمات"
-        icon="☆"
-        title="رقابة تقييمات الموردين"
-        description="كل تقييمات الموردين بكل حالاتها: انشر أو أخفِ أو أرجع للمراجعة، ويُعاد حساب تقييم المورد بعدها."
-        meta={<span>{pagination.total} تقييم مطابق</span>}
-      />
-
-      <div className="stats-grid">
-        <StatCard title="كل النتائج" value={pagination.total} tone="gold" />
-        <StatCard title="منشورة في الصفحة" value={publishedCount} tone="success" />
-        <StatCard title="قيد المراجعة في الصفحة" value={pendingCount} tone="warning" />
-        <StatCard title="مخفية في الصفحة" value={hiddenCount} tone="danger" />
-        <StatCard title="متوسط الصفحة" value={averageRating} tone="info" />
-      </div>
-
-      <SectionCard className="filters-card">
-        <TableToolbar>
-          <SearchInput
-            label="بحث في التقييمات"
-            value={search}
-            onChange={setSearch}
-            onSubmit={submitSearch}
-            placeholder="بحث بالعميل أو المورد أو التعليق"
-          />
-          <SearchInput
-            label="بحث عن مورد للتصفية"
-            value={providerSearch}
-            onChange={setProviderSearch}
-            onSubmit={() => {
-              setProviderSearchQuery(providerSearch);
-              setProviderId('');
-              setPage(1);
-            }}
-            placeholder="بحث المورد للاختيار"
-          />
-          <FilterSelect
-            label="الحالة"
-            value={status}
-            onChange={(value) => {
-              setStatus(value);
-              setPage(1);
-            }}
-            options={statuses}
-          />
-          <FilterSelect
-            label="المورد"
-            value={providerId}
-            onChange={(value) => {
-              setProviderId(value);
-              setPage(1);
-            }}
-            options={[
-              { value: '', label: 'كل الموردين' },
-              ...providers.map((provider) => ({
-                value: provider.id,
-                label: provider.businessName,
-              })),
-            ]}
-          />
-        </TableToolbar>
-      </SectionCard>
-
-      <SectionCard title="قائمة التقييمات" subtitle="لا يوجد مسح محدود لأول 30 مورد؛ المصدر إداري مباشر.">
-        {actionError ? (
-          <p className="inline-error" role="alert">
-            {actionError}
-          </p>
-        ) : null}
-        {reviews.length === 0 ? (
-          <EmptyState title="لا توجد تقييمات مطابقة" message="غير الفلاتر أو ابحث بكلمة أخرى." tone="api" />
-        ) : (
-          <DataTable
-            label="قائمة تقييمات الموردين"
-            columns={['العميل', 'المورد', 'النجوم', 'التعليق', 'الحالة', 'التاريخ', 'إجراءات']}
-            minWidth={1100}
+    <section>
+      <DeskHeader
+        title="التقييمات"
+        sub="تنشر على طول · المخالف ينخفي"
+        actions={(
+          [
+            ['ALL', 'الكل'],
+            ['HIDDEN', 'مخفية'],
+          ] as const
+        ).map(([value, label]) => (
+          <DeskButton
+            key={value}
+            tone={tab === value ? 'teal' : 'soft'}
+            pressed={tab === value}
+            onClick={() => pick(value)}
           >
-            {reviews.map((review) => (
-              <tr key={review.id}>
-                <td>
-                  <strong>{review.user.name}</strong>
-                  <span className="table-subtle">بيانات الاتصال خاصة</span>
-                </td>
-                <td>
-                  {review.provider ? (
-                    <Link className="table-strong-link" to={`/providers/${review.provider.id}`}>
-                      {review.provider.businessName}
-                    </Link>
-                  ) : (
-                    review.providerId
-                  )}
-                  <span className="table-subtle">{review.provider?.city?.nameAr ?? ''}</span>
-                </td>
-                <td>{formatStars(review.rating)}</td>
-                <td>{review.comment?.trim() || <span className="table-subtle">بدون تعليق</span>}</td>
-                <td>
-                  <StatusBadge status={review.status} />
-                </td>
-                <td>{formatDate(review.createdAt)}</td>
-                <td className="actions-cell">
-                  <Can permission={AdminPermission.REVIEWS_WRITE}>
-                    {review.status !== 'PUBLISHED' ? (
-                    <ActionButton
-                      tone="ghost"
-                      size="small"
-                      onClick={() => setReviewStatus(review, 'PUBLISHED')}
-                    >
-                      نشر
-                    </ActionButton>
-                    ) : null}
-                    {review.status !== 'PENDING' ? (
-                    <ActionButton
-                      tone="ghost"
-                      size="small"
-                      onClick={() => setReviewStatus(review, 'PENDING')}
-                    >
-                      مراجعة
-                    </ActionButton>
-                    ) : null}
-                    {review.status !== 'HIDDEN' ? (
+            {label}
+          </DeskButton>
+        ))}
+      />
+      {error ? <DeskRetry message={error} onRetry={() => void load()} /> : null}
+      {actionError ? <DeskRetry message={actionError} onRetry={() => void load()} /> : null}
+      {result === null && !error ? <DeskNote>لحظة، نحمّل التقييمات…</DeskNote> : null}
+      {result && result.items.length === 0 ? (
+        <Panel>
+          <DeskNote>{tab === 'HIDDEN' ? 'ما فيه تقييم مخفي.' : 'ما فيه تقييمات بعد.'}</DeskNote>
+        </Panel>
+      ) : null}
+      {result && result.items.length > 0 ? (
+        <>
+          <DeskTable
+            caption="التقييمات"
+            columns={[
+              { label: 'التقييم', flex: 6 },
+              { label: 'المزود', flex: 2 },
+              { label: '', flex: 3 },
+            ]}
+            rows={result.items}
+            rowKey={(review) => review.id}
+            renderRow={(review) => [
+              <TwoLine
+                key="r"
+                main={
+                  <>
+                    <span className="desk-stars" aria-label={`${review.rating} من 5`}>
+                      {stars(review.rating)}
+                    </span>{' '}
+                    {review.comment ? `«${review.comment}»` : 'بدون تعليق'}
+                  </>
+                }
+                sub={`${review.user.name} · ${dayMonth(review.createdAt)}`}
+              />,
+              review.provider?.businessName ?? '—',
+              <Can key="a" permission={AdminPermission.REVIEWS_WRITE}>
+                <span className="desk-actions">
+                  {review.status === 'HIDDEN' || review.status === 'PENDING' ? (
+                    <SoftAction disabled={busyId === review.id} onClick={() => void publish(review)}>
+                      {review.status === 'HIDDEN' ? 'أظهره' : 'انشره'}
+                    </SoftAction>
+                  ) : null}
+                  {review.status !== 'HIDDEN' ? (
                     <ConfirmDialog
-                      title="إخفاء التقييم"
-                      message="ما يظهر التقييم للعملاء بعد الإخفاء، ويُعاد حساب تقييم المورد بدونه. تقدر تنشره مرة ثانية لاحقًا."
-                      confirmLabel="إخفاء"
-                      tone="danger"
-                      trigger={
-                        <ActionButton tone="danger" size="small" type="button">
-                          إخفاء
-                        </ActionButton>
-                      }
+                      variant="desk"
+                      title={`إخفاء تقييم ${review.user.name}`}
+                      effects={[
+                        `ما يظهر في ملف ${review.provider?.businessName ?? 'المزود'} ولا يدخل في تقييمه.`,
+                        'تقدر ترجّعه من «مخفية».',
+                      ]}
+                      confirmLabel="أخفِ"
+                      confirmTone="coral"
+                      trigger={<SoftAction tone="coral">أخفِ</SoftAction>}
                       onConfirm={() => hide(review)}
                     />
-                    ) : null}
-                  </Can>
-                </td>
-              </tr>
-            ))}
-          </DataTable>
-        )}
-        <Pagination
-          page={pagination.page}
-          limit={pagination.limit}
-          total={pagination.total}
-          totalPages={pagination.totalPages}
-          onPageChange={setPage}
-        />
-      </SectionCard>
+                  ) : null}
+                </span>
+              </Can>,
+            ]}
+          />
+          <DeskPager
+            page={result.page}
+            limit={result.limit}
+            total={result.total}
+            totalPages={result.totalPages}
+            onPageChange={setPage}
+          />
+        </>
+      ) : null}
+      <DeskNote>التقييم بعد حجز «تم» ما ينحذف بسبب إن المزود ما عجبه.</DeskNote>
     </section>
   );
-}
-
-function formatStars(rating: number) {
-  const safeRating = Math.max(0, Math.min(5, Math.round(rating)));
-  return `${'★'.repeat(safeRating)}${'☆'.repeat(5 - safeRating)} (${rating})`;
-}
-
-function formatDate(value: string) {
-  return new Intl.DateTimeFormat('ar-YE', {
-    dateStyle: 'medium',
-    timeStyle: 'short',
-  }).format(new Date(value));
 }

@@ -60,6 +60,14 @@ export function whenShort(value: string | Date, now: Date = new Date()): string 
   return dayMonth(value, now);
 }
 
+/** «اليوم», «أمس», «قبل يومين», «قبل 3 أيام». */
+export function dayAgo(value: string | Date, now: Date = new Date()): string {
+  const days = dayNumber(partsOf(now)) - dayNumber(partsOf(new Date(value)));
+  if (days <= 0) return 'اليوم';
+  if (days === 1) return 'أمس';
+  return `قبل ${countUnit(days, 'day')}`;
+}
+
 /** Audit style: «10:41» today, «أمس», then «18 أكتوبر». */
 export function whenClock(value: string | Date, now: Date = new Date()): string {
   const date = partsOf(new Date(value));

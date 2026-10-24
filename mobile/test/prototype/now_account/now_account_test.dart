@@ -32,7 +32,6 @@ import 'package:aarast_mobile/features/sharing/models/plan_role_permissions.dart
 import 'package:aarast_mobile/features/sharing/models/shared_member.dart';
 import 'package:aarast_mobile/features/sharing/providers/contribution_history_provider.dart';
 import 'package:aarast_mobile/features/sharing/providers/sharing_provider.dart';
-import 'package:aarast_mobile/features/sharing/screens/add_shared_member_screen.dart';
 import 'package:aarast_mobile/features/sharing/screens/contribution_history_screen.dart';
 import 'package:aarast_mobile/features/sharing/screens/edit_shared_member_screen.dart';
 import 'package:aarast_mobile/features/sharing/screens/sharing_screen.dart';
@@ -427,16 +426,16 @@ void main() {
 
   testWidgets('a18 add member', (tester) async {
     await _shot(tester, 'a18_add_member',
-        const AddSharedMemberScreen(weddingPlanId: _planId),
+        const SharingScreen(weddingPlanId: _planId, startAdding: true),
         h: 1300, providers: await sharingProviders(_SharingApi()));
   });
 
   testWidgets('a19 add member custom', (tester) async {
     await _shot(tester, 'a19_add_member_custom',
-        const AddSharedMemberScreen(weddingPlanId: _planId),
+        const SharingScreen(weddingPlanId: _planId, startAdding: true),
         h: 1900, providers: await sharingProviders(_SharingApi()),
         act: () async {
-      await tester.tap(find.text('تخصيص').first);
+      await tester.tap(find.text('أهل').last);
       await tester.pumpAndSettle();
     });
   });
@@ -459,6 +458,9 @@ void main() {
         const ContributionHistoryScreen(weddingPlanId: _planId),
         h: 1300,
         providers: [
+          ChangeNotifierProvider<SharingProvider>.value(
+            value: SharingProvider(_SharingApi(history: true)),
+          ),
           ChangeNotifierProvider<ContributionHistoryProvider>.value(
             value: ContributionHistoryProvider(_SharingApi(history: true)),
           ),
@@ -469,6 +471,9 @@ void main() {
     await _shot(tester, 'a22_history_empty',
         const ContributionHistoryScreen(weddingPlanId: _planId),
         providers: [
+          ChangeNotifierProvider<SharingProvider>.value(
+            value: SharingProvider(_SharingApi()),
+          ),
           ChangeNotifierProvider<ContributionHistoryProvider>.value(
             value: ContributionHistoryProvider(_SharingApi()),
           ),
@@ -628,6 +633,8 @@ class _SharingApi extends SharingApi {
     String weddingPlanId, {
     int limit = 100,
     int offset = 0,
+    String? section,
+    String? contributorUserId,
   }) async {
     Map<String, dynamic> e(
       String id,

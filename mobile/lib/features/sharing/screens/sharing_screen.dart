@@ -1,30 +1,40 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
-import 'package:lucide_icons/lucide_icons.dart';
 import 'package:go_router/go_router.dart';
+import 'package:lucide_icons/lucide_icons.dart';
 import 'package:provider/provider.dart';
 
+import '../../../core/contacts/contact_picker_service.dart';
 import '../../../core/experience_v3/aarast_v3.dart';
+import '../../../core/phone/phone_number_utils.dart';
 import '../../../core/routing/app_router.dart';
-import '../../../core/theme/app_theme.dart';
+import '../../../core/utils/arabic_date_formatter.dart';
 import '../../../core/widgets/aarast_toast.dart';
 import '../../../core/widgets/aarast_ui.dart';
 import '../../auth/auth_api.dart' show AuthActionGuard, AuthGatePanel;
-import '../models/invite_share_content.dart';
+import '../models/participant_access.dart';
 import '../models/shared_member.dart';
 import '../providers/sharing_provider.dart';
-import '../widgets/shared_member_card.dart';
+import '../widgets/add_participant_sheet.dart';
+import '../widgets/invite_link_copy.dart';
 
+/// g01 «المشاركين» and its x07 state «مين معك ومين لسا»: who helps with
+/// what (`GET P/members`, the line built from their stored flags), who has
+/// not accepted yet (`GET P/invites` with the WhatsApp delivery), and the
+/// ready roles to add someone (C63). Pending invites refresh while open.
 class SharingScreen extends StatefulWidget {
   const SharingScreen({
     required this.weddingPlanId,
+    this.startAdding = false,
     this.pendingInviteRefreshInterval = const Duration(seconds: 10),
     super.key,
   });
 
   final String weddingPlanId;
+
+  /// Opens «أضف مشارك» once the list is ready (the add route).
+  final bool startAdding;
   final Duration pendingInviteRefreshInterval;
 
   @override
@@ -37,6 +47,7 @@ class _SharingScreenState extends State<SharingScreen>
   bool _showLoginGate = false;
   bool _showPermissionGate = false;
   bool _showAccessError = false;
+  bool _addOpened = false;
   Timer? _pendingInviteRefreshTimer;
   int _refreshGeneration = 0;
   int _refreshesInFlight = 0;
@@ -153,6 +164,13 @@ class _SharingScreenState extends State<SharingScreen>
         _showPermissionGate = accessLoaded && !canManageMembers;
         _showAccessError = !accessLoaded && provider.authGateKind == null;
       });
+      if (canManageMembers &&
+          widget.startAdding &&
+          !_addOpened &&
+          provider.authGateKind == null) {
+        _addOpened = true;
+        unawaited(_openAdd(ParticipantPreset.helper));
+      }
     } finally {
       _refreshesInFlight -= 1;
       if (mounted && _refreshesInFlight == 0) {
@@ -202,37 +220,34 @@ class _SharingScreenState extends State<SharingScreen>
     });
   }
 
-  @override
-  Widget build(BuildContext context) {
-    final provider = context.watch<SharingProvider>();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) _syncPendingInviteRefreshTimer();
-    });
-
-    return AarastPageScaffold(
-      title: 'المشاركة والصلاحيات',
-      subtitle: 'شارك الخطة وحدد ما يمكن لكل عضو رؤيته أو إدارته',
-      showBack: true,
-      child: RefreshIndicator(
-        color: AppTheme.brand,
-        onRefresh: () => _refreshSharingAccessAndLoad(
-          showPageLoader: false,
-          preserveCurrentState: true,
-        ),
-        child: _SharingContent(
-          provider: provider,
-          weddingPlanId: widget.weddingPlanId,
-          onRetryAccess: _refreshSharingAccessAndLoad,
-          onReissueInvite: _reissueInvite,
-          isCheckingSharingAccess: _isCheckingSharingAccess,
-          showLoginGate: _showLoginGate,
-          showPermissionGate: _showPermissionGate,
-          showAccessError: _showAccessError,
-        ),
-      ),
+  Future<void> _openAdd(ParticipantPreset preset) async {
+    await showAddParticipantSheet(
+      context,
+      weddingPlanId: widget.weddingPlanId,
+      preset: preset,
     );
+    if (mounted) _syncPendingInviteRefreshTimer();
   }
 
+  Future<void> _addFromContacts() async {
+    try {
+      final contact = await ContactPickerService.pickContact(context);
+      if (!mounted || contact == null) return;
+      await showAddParticipantSheet(
+        context,
+        weddingPlanId: widget.weddingPlanId,
+        contact: contact,
+      );
+      if (mounted) _syncPendingInviteRefreshTimer();
+    } on Object catch (error) {
+      if (mounted) {
+        AarastToast.showError(context, contactPickerErrorMessage(error));
+      }
+    }
+  }
+
+  /// «ذكّره» and «انسخ الرابط» both mint a new link; the old one stops
+  /// working, and the message says so (C31).
   Future<void> _reissueInvite(PlanInvite invite) async {
     final provider = context.read<SharingProvider>();
     final reissued = await provider.reissueInvite(invite);
@@ -241,96 +256,156 @@ class _SharingScreenState extends State<SharingScreen>
     if (reissued.wasDeliveredByAarast) {
       AarastToast.showSuccess(
         context,
-        'تم تسليم رابط دعوة جديد إلى واتساب من اعّرست.',
+        'وصله رابط جديد على واتساب، والقديم ما عاد يشتغل.',
       );
       return;
     }
-
-    final content = InviteShareContent.fromInvite(reissued);
-    final inviteLink = content.inviteLink.toString();
-    try {
-      await Clipboard.setData(ClipboardData(text: inviteLink));
-      if (!mounted) return;
-      AarastToast.showSuccess(
-        context,
-        reissued.hasUncertainDelivery
-            ? 'لم نتأكد من وصول واتساب. تم نسخ الرابط دون إرسال رسالة ثانية.'
-            : 'تعذر إرسال واتساب من اعّرست، وتم نسخ الرابط كخيار احتياطي.',
-      );
-    } catch (_) {
-      if (!mounted) return;
-      await _showInviteLinkFallback(inviteLink);
-    }
-  }
-
-  Future<void> _showInviteLinkFallback(String inviteLink) {
-    return showDialog<void>(
-      context: context,
-      barrierDismissible: false,
-      builder: (dialogContext) => AarastDialog(
-        title: const Text('رابط الدعوة الجديدة'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            const Text(
-              'تعذر النسخ تلقائيًا. احتفظ بهذا الرابط قبل إغلاق النافذة.',
-            ),
-            const SizedBox(height: 12),
-            SelectableText(
-              inviteLink,
-              key: const Key('invite-link-manual-copy-fallback'),
-              textDirection: TextDirection.ltr,
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            key: const Key('invite-link-fallback-done'),
-            onPressed: () => Navigator.of(dialogContext).pop(),
-            child: const Text('تم'),
-          ),
-        ],
-      ),
+    final copied = await copyInviteText(
+      context,
+      newInviteLinkMessage(reissued),
+    );
+    if (!mounted || !copied) return;
+    AarastToast.showSuccess(
+      context,
+      'نسخنا رابط جديد، أرسله له. القديم ما عاد يشتغل.',
     );
   }
-}
 
-class _SharingContent extends StatelessWidget {
-  const _SharingContent({
-    required this.provider,
-    required this.weddingPlanId,
-    required this.onRetryAccess,
-    required this.onReissueInvite,
-    required this.isCheckingSharingAccess,
-    required this.showLoginGate,
-    required this.showPermissionGate,
-    required this.showAccessError,
-  });
-
-  final SharingProvider provider;
-  final String weddingPlanId;
-  final VoidCallback onRetryAccess;
-  final ValueChanged<PlanInvite> onReissueInvite;
-  final bool isCheckingSharingAccess;
-  final bool showLoginGate;
-  final bool showPermissionGate;
-  final bool showAccessError;
+  Future<void> _confirmCancel(PlanInvite invite) async {
+    final cancel = await showAarastBottomSheet<bool>(
+      context: context,
+      backgroundColor: AarastV3Color.canvas,
+      showDragHandle: true,
+      isScrollControlled: true,
+      builder: (sheetContext) => SafeArea(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.fromLTRB(20, 0, 20, 16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Text(
+                'تلغي دعوة ${_inviteName(invite)}؟',
+                style: JourneyType.of(
+                  JourneyType.display,
+                  weight: JourneyType.bold,
+                ),
+              ),
+              Text(
+                'الرابط اللي عنده ما عاد يشتغل، وتقدر تدعوه من جديد.',
+                style: JourneyType.of(
+                  JourneyType.body,
+                  color: AarastV3Color.textMuted,
+                ),
+              ),
+              const SizedBox(height: 16),
+              JourneyButton(
+                key: ValueKey('pending-invite-cancel-${invite.id}'),
+                label: 'الغِ الدعوة',
+                background: AarastV3Color.danger,
+                large: true,
+                expand: true,
+                onPressed: () => Navigator.of(sheetContext).pop(true),
+              ),
+              const SizedBox(height: 6),
+              JourneyTextAction(
+                label: 'رجوع',
+                onPressed: () => Navigator.of(sheetContext).pop(false),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+    if (cancel != true || !mounted) return;
+    final cancelled = await context.read<SharingProvider>().cancelInvite(
+      invite,
+    );
+    if (cancelled && mounted) {
+      AarastToast.showSuccess(context, 'لغينا الدعوة.');
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
-    if (isCheckingSharingAccess) {
-      return AarastSkeleton.list(rows: 6, rowHeight: 60, withHeader: true);
+    final provider = context.watch<SharingProvider>();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _syncPendingInviteRefreshTimer();
+    });
+    final pending = provider.invites
+        .where(
+          (invite) =>
+              invite.weddingPlanId == widget.weddingPlanId && invite.isPending,
+        )
+        .toList();
+    final ready =
+        !_isCheckingSharingAccess &&
+        !_showLoginGate &&
+        !_showPermissionGate &&
+        !_showAccessError &&
+        provider.authGateKind == null;
+
+    final header = JourneySubHeader(
+      title: 'المشاركين',
+      subtitle: ready && pending.isNotEmpty
+          ? 'مين معك، ومين لسا'
+          : 'مين يساعدك في عرسك',
+      onBack: () =>
+          context.canPop() ? context.pop() : context.go(AppRouter.more),
+      trailing: ready
+          ? JourneyRoundButton(
+              icon: LucideIcons.history,
+              tooltip: 'وش سوّى المشاركين',
+              onPressed: () => context.push(
+                AppRouter.contributionHistory(widget.weddingPlanId),
+              ),
+            )
+          : null,
+    );
+    final gate = _authGate(provider);
+    if (gate != null) {
+      // The sign-in panel scrolls on its own, under the header.
+      return AarastScreenFrame(
+        maxWidth: 520,
+        backgroundColor: AarastV3Color.canvas,
+        child: Column(
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+              child: header,
+            ),
+            Expanded(child: gate),
+          ],
+        ),
+      );
     }
 
-    if (showLoginGate) {
+    return AarastScreenFrame(
+      maxWidth: 520,
+      backgroundColor: AarastV3Color.canvas,
+      child: RefreshIndicator(
+        color: AarastV3Color.primary,
+        onRefresh: () => _refreshSharingAccessAndLoad(
+          showPageLoader: false,
+          preserveCurrentState: true,
+        ),
+        child: ListView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
+          children: [header, ..._body(provider, pending)],
+        ),
+      ),
+    );
+  }
+
+  Widget? _authGate(SharingProvider provider) {
+    if (_isCheckingSharingAccess) return null;
+    if (_showLoginGate) {
       return const AuthGatePanel(
         title: AuthActionGuard.sharingLoginGateTitle,
         body: AuthActionGuard.sharingLoginGateBody,
         icon: LucideIcons.userPlus,
       );
     }
-
     if (provider.authGateKind == SharingAuthGateKind.sessionExpired) {
       return const AuthGatePanel(
         title: AuthActionGuard.sessionExpiredTitle,
@@ -338,203 +413,281 @@ class _SharingContent extends StatelessWidget {
         icon: LucideIcons.fileClock,
       );
     }
+    return null;
+  }
 
-    if (showAccessError) {
-      return ListView(
-        children: [
-          const SizedBox(height: 40),
-          AarastErrorState(
-            title: 'تعذر التحقق من الصلاحيات',
-            message:
-                provider.accessErrorMessage ??
-                'تحقق من الاتصال وحاول مرة أخرى.',
-            onRetry: onRetryAccess,
-          ),
-        ],
-      );
-    }
-
-    if (showPermissionGate) {
-      return ListView(
-        children: const [
-          SizedBox(height: 40),
-          AarastEmptyState(
-            title: 'ليس لديك صلاحية إدارة المشاركين',
-            message:
-                'يمكنك متابعة الخطة، لكن إضافة الأعضاء وتعديلهم متاحة للمصرح لهم فقط.',
-            icon: LucideIcons.shieldAlert,
-            tone: AarastEmptyStateTone.restricted,
-          ),
-        ],
-      );
-    }
-
-    if (provider.isLoading && provider.members.isEmpty) {
-      return AarastSkeleton.list(rows: 6, rowHeight: 60, withHeader: true);
-    }
-
-    if (provider.errorMessage != null && provider.members.isEmpty) {
-      return ListView(
-        children: [
-          const SizedBox(height: 40),
-          AarastErrorState(
-            title: 'تعذر تحميل المشاركة',
-            message: provider.errorMessage!,
-            onRetry: () => provider.loadMembers(weddingPlanId),
-          ),
-        ],
-      );
-    }
-
-    final pendingInvites = provider.invites
-        .where((invite) => invite.isPending)
-        .toList();
-
-    return ListView(
-      children: [
-        const _PrivacyStrip(),
-        const SizedBox(height: 12),
-        AarastButton(
-          label: 'إضافة عضو',
-          icon: LucideIcons.userPlus,
-          onPressed: provider.isSubmitting
-              ? null
-              : () => context.push(AppRouter.addSharedMember(weddingPlanId)),
+  List<Widget> _body(SharingProvider provider, List<PlanInvite> pending) {
+    if (_isCheckingSharingAccess) {
+      return const [
+        JourneyListState(
+          phase: JourneyListPhase.loading,
+          section: JourneySection.home,
         ),
-        if (provider.errorMessage != null) ...[
-          const SizedBox(height: 12),
-          Text(
-            provider.errorMessage!,
-            textAlign: TextAlign.right,
-            style: const TextStyle(color: AppTheme.danger),
-          ),
-        ],
-        if (pendingInvites.isNotEmpty) ...[
-          const SizedBox(height: 18),
-          _SectionTitle('الدعوات المعلقة (${pendingInvites.length})'),
-          const SizedBox(height: 8),
-          for (final invite in pendingInvites)
-            _PendingInviteCard(
-              invite: invite,
-              onReissue: provider.isSubmitting
-                  ? null
-                  : () => onReissueInvite(invite),
-              onCancel: provider.isSubmitting
-                  ? null
-                  : () => provider.cancelInvite(invite),
-            ),
-        ],
-        const SizedBox(height: 18),
-        _SectionTitle('المشاركون (${provider.members.length})'),
-        const SizedBox(height: 8),
-        if (provider.members.isEmpty)
-          Container(
-            padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 16),
-            alignment: Alignment.center,
-            decoration: BoxDecoration(
-              color: AppTheme.surfaceRaised,
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: AppTheme.border),
-            ),
-            child: Text(
-              'الخطة خاصة بك الآن. استخدم زر إضافة عضو لإضافة شخص موثوق.',
-              style: Theme.of(
-                context,
-              ).textTheme.labelMedium?.copyWith(color: AppTheme.textSecondary),
-              textAlign: TextAlign.center,
-            ),
-          ),
-        if (provider.members.isNotEmpty)
-          AarastV3ContinuousSurface(
-            children: [
-              for (final member in provider.members)
-                SharedMemberCard(
-                  member: member,
-                  onTap: member.isOwner
-                      ? null
-                      : () {
-                          provider.selectMember(member);
-                          context.push(
-                            AppRouter.editSharedMember(
-                              weddingPlanId,
-                              member.id,
-                            ),
-                          );
-                        },
-                ),
-            ],
-          ),
+      ];
+    }
+    if (_showAccessError) {
+      return [
+        JourneyListState(
+          phase: JourneyListPhase.error,
+          section: JourneySection.home,
+          onRetry: _refreshSharingAccessAndLoad,
+        ),
+      ];
+    }
+    if (_showPermissionGate) {
+      return const [
+        JourneyListState(
+          phase: JourneyListPhase.empty,
+          section: JourneySection.home,
+          emptyIcon: LucideIcons.lock,
+          emptyTitle: 'المشاركين يديرهم صاحب الخطة',
+          emptyMessage: 'هو اللي يضيفهم ويحدد ايش يشوف كل واحد.',
+        ),
+      ];
+    }
+    final members = provider.members
+        .where((member) => !member.isOwner)
+        .toList();
+    if (provider.isLoading && members.isEmpty) {
+      return const [
+        JourneyListState(
+          phase: JourneyListPhase.loading,
+          section: JourneySection.home,
+        ),
+      ];
+    }
+    if (provider.errorMessage != null &&
+        provider.members.isEmpty &&
+        provider.invites.isEmpty) {
+      return [
+        JourneyListState(
+          phase: JourneyListPhase.error,
+          section: JourneySection.home,
+          onRetry: () => provider.loadMembers(widget.weddingPlanId),
+        ),
+      ];
+    }
+
+    return [
+      if (provider.errorMessage != null) ...[
+        JourneyNote(
+          key: const ValueKey('sharing-error'),
+          icon: LucideIcons.alertCircle,
+          color: AarastV3Color.danger,
+          soft: AarastV3Color.dangerSoft,
+          text: provider.errorMessage!,
+        ),
+        const SizedBox(height: 10),
       ],
-    );
+      if (members.isNotEmpty)
+        JourneyList(
+          children: [
+            for (var i = 0; i < members.length; i++)
+              _MemberRow(
+                member: members[i],
+                color: JourneyAvatar.paletteAt(i),
+                withTag: pending.isNotEmpty,
+                onTap: () {
+                  provider.selectMember(members[i]);
+                  context.push(
+                    AppRouter.editSharedMember(
+                      widget.weddingPlanId,
+                      members[i].id,
+                    ),
+                  );
+                },
+              ),
+          ],
+        ),
+      if (pending.isNotEmpty) ...[
+        const JourneySectionTitle('ينتظرون'),
+        JourneyList(
+          children: [
+            for (var i = 0; i < pending.length; i++)
+              _PendingInviteRow(
+                invite: pending[i],
+                color: JourneyAvatar.paletteAt(members.length + i),
+                busy: provider.isSubmitting,
+                onReissue: () => _reissueInvite(pending[i]),
+                onTap: () => _confirmCancel(pending[i]),
+              ),
+          ],
+        ),
+      ],
+      if (members.isEmpty && pending.isEmpty)
+        const JourneyListState(
+          phase: JourneyListPhase.empty,
+          section: JourneySection.home,
+          emptyIcon: LucideIcons.users,
+          emptyTitle: 'لسا ما أضفت أحد',
+          emptyMessage: 'اختر له دور من تحت، ويوصله رابط على واتساب.',
+        ),
+      const SizedBox(height: 10),
+      JourneyNote(
+        key: const ValueKey('sharing-note'),
+        text: pending.isNotEmpty
+            ? 'الرابط يشتغل 7 أيام من يوم الدعوة. لما ترسل له رابط جديد، '
+                  'القديم ما عاد يشتغل.'
+            : 'كل مشارك يدخل برقمه، ويشوف بس الأقسام اللي تفتحها له.',
+      ),
+      JourneySectionTitle(
+        'أضف مشارك',
+        action: ContactPickerService.isAvailable ? 'من جهات الاتصال' : null,
+        onAction: ContactPickerService.isAvailable ? _addFromContacts : null,
+      ),
+      for (final preset in ParticipantPreset.values)
+        Padding(
+          padding: const EdgeInsets.only(bottom: 8),
+          child: _PresetCard(
+            preset: preset,
+            onTap: provider.isSubmitting ? null : () => _openAdd(preset),
+          ),
+        ),
+    ];
   }
 }
 
-class _SectionTitle extends StatelessWidget {
-  const _SectionTitle(this.text);
+String _letter(String? name) {
+  final value = name?.trim() ?? '';
+  return value.isEmpty ? 'م' : value.characters.first;
+}
 
-  final String text;
+String _inviteName(PlanInvite invite) {
+  final name = invite.name?.trim();
+  if (name != null && name.isNotEmpty) return name;
+  final phone = participantPhone(invite.phone);
+  return phone == null ? 'المدعو' : PhoneNumberUtils.isolateLtr(phone);
+}
+
+/// A participant's name, or the number laid out left to right.
+class _Name extends StatelessWidget {
+  const _Name({required this.name, required this.phone});
+
+  final String? name;
+  final String? phone;
 
   @override
   Widget build(BuildContext context) {
+    final style = JourneyType.of(JourneyType.body, weight: JourneyType.bold);
+    final value = name?.trim();
+    if (value != null && value.isNotEmpty) {
+      return Text(
+        value,
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        style: style,
+      );
+    }
     return Text(
-      text,
-      textAlign: TextAlign.right,
-      style: Theme.of(context).textTheme.titleSmall?.copyWith(
-        color: AppTheme.textPrimary,
-        fontWeight: FontWeight.w800,
-      ),
+      participantPhone(phone) ?? 'مشارك',
+      textDirection: TextDirection.ltr,
+      maxLines: 1,
+      overflow: TextOverflow.ellipsis,
+      style: style,
     );
   }
 }
 
-/// سطر خصوصية واحد يغني عن كرتَي الشرح السابقين — العنوان في ترويسة
-/// الصفحة أصلًا، والمهم الوحيد هنا: المال لا يُشارك إلا بصلاحية.
-class _PrivacyStrip extends StatelessWidget {
-  const _PrivacyStrip();
+class _MemberRow extends StatelessWidget {
+  const _MemberRow({
+    required this.member,
+    required this.color,
+    required this.withTag,
+    required this.onTap,
+  });
+
+  final SharedMember member;
+  final Color color;
+
+  /// x07: next to people still waiting, the ones with you say «معك».
+  final bool withTag;
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-      decoration: BoxDecoration(
-        color: AppTheme.focus.withAlpha(26),
-        borderRadius: BorderRadius.circular(AppTheme.radiusMd),
-      ),
-      child: Row(
-        children: [
-          const Icon(LucideIcons.lock, size: 15, color: AppTheme.focus),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Text(
-              'المال خاص افتراضيًا — لا يظهر لأي عضو إلا بصلاحية تمنحها.',
-              style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                color: AppTheme.textPrimary,
-                height: 1.4,
+    final name = member.user?.name;
+    final summary = participantSummary(member.toPermissions());
+    return AarastPressable(
+      key: ValueKey('sharing-member-${member.id}'),
+      onTap: onTap,
+      semanticLabel:
+          '${member.displayName}، ${participantRoleLabel(member.role)}، '
+          '$summary',
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
+        child: Row(
+          children: [
+            JourneyAvatar(letter: _letter(name), color: color, size: 42),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Flexible(
+                        child: _Name(name: name, phone: member.user?.phone),
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        participantRoleLabel(member.role),
+                        style: JourneyType.of(
+                          JourneyType.small,
+                          color: AarastV3Color.textMuted,
+                        ),
+                      ),
+                    ],
+                  ),
+                  Text(
+                    summary,
+                    style: JourneyType.of(
+                      JourneyType.small,
+                      color: AarastV3Color.textMuted,
+                    ),
+                  ),
+                ],
               ),
             ),
-          ),
-        ],
+            const SizedBox(width: 8),
+            if (withTag)
+              const JourneyTag(
+                label: 'معك',
+                color: AarastV3Color.mint,
+                soft: AarastV3Color.mintSoft,
+              )
+            else
+              const Icon(
+                LucideIcons.chevronLeft,
+                size: 18,
+                color: AarastV3Color.textFaint,
+              ),
+          ],
+        ),
       ),
     );
   }
 }
 
-class _PendingInviteCard extends StatefulWidget {
-  const _PendingInviteCard({
+class _PendingInviteRow extends StatefulWidget {
+  const _PendingInviteRow({
     required this.invite,
+    required this.color,
+    required this.busy,
     required this.onReissue,
-    required this.onCancel,
+    required this.onTap,
   });
 
   final PlanInvite invite;
-  final VoidCallback? onReissue;
-  final VoidCallback? onCancel;
+  final Color color;
+  final bool busy;
+  final VoidCallback onReissue;
+  final VoidCallback onTap;
 
   @override
-  State<_PendingInviteCard> createState() => _PendingInviteCardState();
+  State<_PendingInviteRow> createState() => _PendingInviteRowState();
 }
 
-class _PendingInviteCardState extends State<_PendingInviteCard> {
+class _PendingInviteRowState extends State<_PendingInviteRow> {
   Timer? _retryTimer;
   bool _retryUnlocked = false;
 
@@ -545,7 +698,7 @@ class _PendingInviteCardState extends State<_PendingInviteCard> {
   }
 
   @override
-  void didUpdateWidget(covariant _PendingInviteCard oldWidget) {
+  void didUpdateWidget(covariant _PendingInviteRow oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.invite.deliveryRetryAvailableAt !=
         widget.invite.deliveryRetryAvailableAt) {
@@ -572,90 +725,134 @@ class _PendingInviteCardState extends State<_PendingInviteCard> {
   @override
   Widget build(BuildContext context) {
     final invite = widget.invite;
-    final canRetry = _retryUnlocked || invite.canRetryDelivery;
-    final textTheme = Theme.of(context).textTheme;
-    return AarastCard(
-      margin: const EdgeInsets.only(bottom: 8),
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-      child: Row(
-        children: [
-          Container(
-            width: 36,
-            height: 36,
-            decoration: BoxDecoration(
-              color: AppTheme.focus.withAlpha(26),
-              shape: BoxShape.circle,
+    final canRetry =
+        !widget.busy && (_retryUnlocked || invite.canRetryDelivery);
+    // Delivered or on its way: remind on WhatsApp. Otherwise the owner
+    // sends the link himself.
+    final remind = invite.wasDeliveredByAarast || invite.hasPendingDelivery;
+    return AarastPressable(
+      key: ValueKey('pending-invite-${invite.id}'),
+      onTap: widget.onTap,
+      semanticLabel: '${_inviteName(invite)}، ${_deliveryLine(invite)}',
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
+        child: Row(
+          children: [
+            JourneyAvatar(
+              letter: _letter(invite.name),
+              color: widget.color,
+              size: 42,
             ),
-            child: const Icon(
-              LucideIcons.send,
-              size: 15,
-              color: AppTheme.focus,
-            ),
-          ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                if (invite.displayNamePhone case final phone?)
-                  AarastPhoneText(
-                    phone: phone,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: textTheme.titleSmall?.copyWith(
-                      color: AppTheme.textPrimary,
-                      fontWeight: FontWeight.w800,
-                    ),
-                  )
-                else
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _Name(name: invite.name, phone: invite.phone),
                   Text(
-                    invite.displayName,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: textTheme.titleSmall?.copyWith(
-                      color: AppTheme.textPrimary,
-                      fontWeight: FontWeight.w800,
+                    _deliveryLine(invite),
+                    style: JourneyType.of(
+                      JourneyType.small,
+                      color: AarastV3Color.textMuted,
                     ),
                   ),
-                const SizedBox(height: 2),
-                Text(
-                  [
-                    sharedMemberRoleLabel(invite.role),
-                    'بانتظار القبول',
-                    ?invite.deliverySummaryLabel,
-                  ].join(' · '),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: textTheme.labelSmall?.copyWith(
-                    color: AppTheme.textSecondary,
-                    fontWeight: FontWeight.w600,
+                ],
+              ),
+            ),
+            const SizedBox(width: 8),
+            // Large text wraps the action instead of pushing the row off.
+            Flexible(
+              child: JourneyButton(
+                key: ValueKey('pending-invite-reissue-${invite.id}'),
+                label: remind ? 'ذكّره' : 'انسخ الرابط',
+                background: remind
+                    ? AarastV3Color.primarySoft
+                    : AarastV3Color.brandAccentSoft,
+                foreground: remind
+                    ? AarastV3Color.primary
+                    : AarastV3Color.brandAccentStrong,
+                onPressed: canRetry ? widget.onReissue : null,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Where the invite stands, from the server's delivery record. Whether it
+/// was opened is not known, so it is not said.
+String _deliveryLine(PlanInvite invite) {
+  return switch (invite.deliveryStatus) {
+    'DELIVERED' => 'الدعوة وصلت ${_dayWord(invite.deliveryAttemptedAt)}',
+    'PENDING' => 'نرسل له الدعوة على واتساب',
+    'UNCERTAIN' => 'ما تأكدنا إنها وصلت · أرسل له الرابط بأي طريقة',
+    'UNAVAILABLE' => 'ما وصلته على واتساب · أرسل له الرابط بأي طريقة',
+    _ => 'الدعوة محفوظة · أرسل له الرابط بأي طريقة',
+  };
+}
+
+String _dayWord(DateTime? at) {
+  if (at == null) return 'على واتساب';
+  final local = at.toLocal();
+  final now = DateTime.now();
+  final day = DateTime(local.year, local.month, local.day);
+  final today = DateTime(now.year, now.month, now.day);
+  final days = today.difference(day).inDays;
+  if (days <= 0) return 'اليوم';
+  if (days == 1) return 'أمس';
+  return formatArabicDayMonth(local);
+}
+
+class _PresetCard extends StatelessWidget {
+  const _PresetCard({required this.preset, required this.onTap});
+
+  final ParticipantPreset preset;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final icon = switch (preset) {
+      ParticipantPreset.helper => LucideIcons.listChecks,
+      ParticipantPreset.family => LucideIcons.users,
+      ParticipantPreset.viewer => LucideIcons.eye,
+    };
+    return AarastPressable(
+      key: ValueKey('sharing-preset-${preset.role}'),
+      onTap: onTap,
+      semanticLabel: 'أضف ${preset.label}، ${preset.description}',
+      borderRadius: BorderRadius.circular(18),
+      child: JourneyBox(
+        radius: 18,
+        padding: const EdgeInsets.all(13),
+        child: Row(
+          children: [
+            Icon(icon, size: 20, color: AarastV3Color.primary),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    preset.label,
+                    style: JourneyType.of(
+                      JourneyType.body,
+                      weight: JourneyType.bold,
+                    ),
                   ),
-                ),
-              ],
+                  Text(
+                    preset.description,
+                    style: JourneyType.of(
+                      JourneyType.small,
+                      color: AarastV3Color.textMuted,
+                    ),
+                  ),
+                ],
+              ),
             ),
-          ),
-          IconButton(
-            key: Key('pending-invite-reissue-${invite.id}'),
-            tooltip: canRetry
-                ? 'إعادة إرسال الرابط من اعّرست'
-                : 'إعادة الإرسال متاحة بعد انتهاء مهلة الحماية',
-            onPressed: canRetry ? widget.onReissue : null,
-            icon: const Icon(
-              LucideIcons.refreshCw,
-              size: 18,
-              color: AppTheme.brand,
-            ),
-          ),
-          IconButton(
-            tooltip: 'إلغاء الدعوة',
-            onPressed: widget.onCancel,
-            icon: const Icon(
-              LucideIcons.x,
-              size: 18,
-              color: AppTheme.textSecondary,
-            ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

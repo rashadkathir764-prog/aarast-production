@@ -182,6 +182,47 @@ void main() {
     );
   });
 
+  testWidgets('a level switch picks one word and reads it with its row', (
+    tester,
+  ) async {
+    var picked = 0;
+    await tester.pumpWidget(
+      _host(
+        StatefulBuilder(
+          builder: (context, setState) => JourneyLevelSwitch(
+            options: const ['لا', 'يشوف', 'يعدّل'],
+            selected: picked,
+            semanticLabel: 'المال',
+            onChanged: (value) => setState(() => picked = value),
+          ),
+        ),
+      ),
+    );
+    expect(
+      tester.getSemantics(find.text('لا')),
+      matchesSemantics(
+        isButton: true,
+        isSelected: true,
+        hasSelectedState: true,
+        isEnabled: true,
+        hasEnabledState: true,
+        label: 'المال: لا',
+        hasTapAction: true,
+      ),
+    );
+    await tester.tap(find.text('يعدّل'));
+    await tester.pump();
+    expect(picked, 2);
+    expect(
+      tester.widget<Text>(find.text('يعدّل')).style?.color,
+      AarastV3Color.primary,
+    );
+    expect(
+      tester.widget<Text>(find.text('لا')).style?.color,
+      AarastV3Color.textMuted,
+    );
+  });
+
   testWidgets('the question page counts steps from one', (tester) async {
     await tester.pumpWidget(
       _host(

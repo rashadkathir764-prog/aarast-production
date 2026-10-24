@@ -3,7 +3,9 @@ import 'dart:async';
 import 'package:aarast_mobile/core/network/api_client.dart';
 import 'package:aarast_mobile/features/sharing/data/sharing_api.dart';
 import 'package:aarast_mobile/features/sharing/models/contribution_history.dart';
+import 'package:aarast_mobile/features/sharing/models/plan_access_permissions.dart';
 import 'package:aarast_mobile/features/sharing/providers/contribution_history_provider.dart';
+import 'package:aarast_mobile/features/sharing/providers/sharing_provider.dart';
 import 'package:aarast_mobile/features/sharing/screens/contribution_history_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -67,8 +69,15 @@ void main() {
       final provider = ContributionHistoryProvider(_EmptyHistoryApi());
       addTearDown(provider.dispose);
       await tester.pumpWidget(
-        ChangeNotifierProvider<ContributionHistoryProvider>.value(
-          value: provider,
+        MultiProvider(
+          providers: [
+            ChangeNotifierProvider<SharingProvider>.value(
+              value: SharingProvider(_EmptyHistoryApi()),
+            ),
+            ChangeNotifierProvider<ContributionHistoryProvider>.value(
+              value: provider,
+            ),
+          ],
           child: const MaterialApp(
             home: ContributionHistoryScreen(weddingPlanId: 'plan-shared'),
           ),
@@ -116,7 +125,7 @@ void main() {
       api.complete('plan-a', _historyJson('event-a', 'خطة أ'));
       await first;
 
-      expect(provider.response?.events.single.id, 'event-b');
+      expect(provider.activities.single.event.id, 'event-b');
       provider.dispose();
     },
   );
@@ -137,7 +146,7 @@ void main() {
       expect(provider.isLoadingMore, isFalse);
       await provider.loadMore();
       expect(api.requests, ['plan-a:0', 'plan-a:1', 'plan-b:0', 'plan-b:1']);
-      expect(provider.response?.events.map((event) => event.id), [
+      expect(provider.activities.map((row) => row.event.id), [
         'plan-b-event-1',
         'plan-b-event-2',
       ]);
@@ -145,7 +154,7 @@ void main() {
       api.completeStalePlanALoadMore();
       await staleLoadMore;
       expect(provider.isLoadingMore, isFalse);
-      expect(provider.response?.events.map((event) => event.id), [
+      expect(provider.activities.map((row) => row.event.id), [
         'plan-b-event-1',
         'plan-b-event-2',
       ]);
@@ -160,8 +169,15 @@ void main() {
     addTearDown(provider.dispose);
 
     await tester.pumpWidget(
-      ChangeNotifierProvider<ContributionHistoryProvider>.value(
-        value: provider,
+      MultiProvider(
+        providers: [
+          ChangeNotifierProvider<SharingProvider>.value(
+            value: SharingProvider(api),
+          ),
+          ChangeNotifierProvider<ContributionHistoryProvider>.value(
+            value: provider,
+          ),
+        ],
         child: const MaterialApp(
           home: ContributionHistoryScreen(weddingPlanId: 'plan-paged'),
         ),
@@ -176,7 +192,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(api.offsets, [0, 2]);
-    expect(provider.response?.events.map((event) => event.id), [
+    expect(provider.activities.map((row) => row.event.id), [
       'event-1',
       'event-2',
       'event-3',
@@ -196,7 +212,7 @@ void main() {
       await provider.load('plan-changing');
       await provider.loadMore();
 
-      expect(provider.response?.events.map((event) => event.id), [
+      expect(provider.activities.map((row) => row.event.id), [
         'event-1',
         'event-2',
       ]);
@@ -234,6 +250,8 @@ class _ControlledHistoryApi extends SharingApi {
     String weddingPlanId, {
     int limit = 100,
     int offset = 0,
+    String? section,
+    String? contributorUserId,
   }) {
     return (_requests[weddingPlanId] ??=
             Completer<ContributionHistoryResponse>())
@@ -260,6 +278,8 @@ class _PlanSwitchDuringLoadMoreApi extends SharingApi {
     String weddingPlanId, {
     int limit = 100,
     int offset = 0,
+    String? section,
+    String? contributorUserId,
   }) {
     requests.add('$weddingPlanId:$offset');
     if (weddingPlanId == 'plan-a' && offset == 1) {
@@ -294,6 +314,17 @@ class _PagedHistoryApi extends SharingApi {
   _PagedHistoryApi()
     : super(ApiClient(tokenProvider: () async => 'test-token'));
 
+  // A participant reading their own history.
+  @override
+  Future<PlanAccessPermissions> getMyPlanPermissions(
+    String weddingPlanId,
+  ) async => PlanAccessPermissions(
+    weddingPlanId: weddingPlanId,
+    isOwner: false,
+    canViewMoney: false,
+    canManageMoney: false,
+  );
+
   final List<int> offsets = [];
 
   @override
@@ -301,6 +332,8 @@ class _PagedHistoryApi extends SharingApi {
     String weddingPlanId, {
     int limit = 100,
     int offset = 0,
+    String? section,
+    String? contributorUserId,
   }) async {
     offsets.add(offset);
     final rows = offset == 0
@@ -321,11 +354,24 @@ class _EmptyHistoryApi extends SharingApi {
   _EmptyHistoryApi()
     : super(ApiClient(tokenProvider: () async => 'test-token'));
 
+  // A participant reading their own history.
+  @override
+  Future<PlanAccessPermissions> getMyPlanPermissions(
+    String weddingPlanId,
+  ) async => PlanAccessPermissions(
+    weddingPlanId: weddingPlanId,
+    isOwner: false,
+    canViewMoney: false,
+    canManageMoney: false,
+  );
+
   @override
   Future<ContributionHistoryResponse> getContributionHistory(
     String weddingPlanId, {
     int limit = 100,
     int offset = 0,
+    String? section,
+    String? contributorUserId,
   }) async {
     return ContributionHistoryResponse.fromJson({
       'historyCoverageStartsAt': '2026-08-02T09:00:00.000Z',
@@ -344,6 +390,8 @@ class _OverlappingHistoryApi extends SharingApi {
     String weddingPlanId, {
     int limit = 100,
     int offset = 0,
+    String? section,
+    String? contributorUserId,
   }) async {
     return ContributionHistoryResponse.fromJson({
       'historyCoverageStartsAt': '2026-08-02T09:00:00.000Z',

@@ -1,0 +1,83 @@
+import '../../../core/phone/phone_number_utils.dart';
+import 'plan_role_permissions.dart';
+
+/// The ready roles of g01 and g06, each one of today's backend roles (C63).
+/// «العروسة» and «كاتب الرفد» are not offered: the partner role sees money
+/// and the rafd book is not built.
+enum ParticipantPreset {
+  helper('HELPER', 'مساعد', 'المهام والضيوف والمزودين'),
+  family('FAMILY', 'أهل', 'المهام والضيوف، ويشوف المال إذا سمحت'),
+  viewer('VIEWER', 'يشوف بس', 'يتابع الخطة، وما يعدّل شي');
+
+  const ParticipantPreset(this.role, this.label, this.description);
+
+  final String role;
+  final String label;
+  final String description;
+
+  /// The flags the server gives this role by default.
+  PlanRolePermissions get permissions => PlanRolePermissions.forRole(role);
+
+  static ParticipantPreset? ofRole(String role) {
+    for (final preset in values) {
+      if (preset.role == role) return preset;
+    }
+    return null;
+  }
+}
+
+/// Money has three levels; the other sections have two (g06).
+enum MoneyLevel { none, view, manage }
+
+extension ParticipantLevels on PlanRolePermissions {
+  MoneyLevel get moneyLevel => canManageMoney
+      ? MoneyLevel.manage
+      : canViewMoney
+      ? MoneyLevel.view
+      : MoneyLevel.none;
+
+  PlanRolePermissions withMoneyLevel(MoneyLevel level) => copyWith(
+    canManageMoney: level == MoneyLevel.manage,
+    canViewMoney: level != MoneyLevel.none,
+  );
+}
+
+/// The one line under a participant's name, built from the stored flags
+/// (g01): «يساعد في المهام والضيوف · بدون المال».
+String participantSummary(PlanRolePermissions permissions) {
+  final sections = [
+    if (permissions.canManageTasks) 'المهام',
+    if (permissions.canManageGuests) 'الضيوف',
+    if (permissions.canManageProviders) 'المزودين',
+  ];
+  final money = switch (permissions.moneyLevel) {
+    MoneyLevel.manage => 'يسجّل في المال',
+    MoneyLevel.view => 'يشوف المال',
+    MoneyLevel.none => 'بدون المال',
+  };
+  if (sections.isEmpty) {
+    return permissions.moneyLevel == MoneyLevel.none ? 'يتابع الخطة بس' : money;
+  }
+  return 'يساعد في ${sections.join(' و')} · $money';
+}
+
+/// The role word beside a participant's name.
+String participantRoleLabel(String role) {
+  final preset = ParticipantPreset.ofRole(role);
+  if (preset != null) return preset.label;
+  return switch (role) {
+    'OWNER' => 'صاحب الخطة',
+    'GROOM' || 'BRIDE' => 'شريك',
+    'MANAGER' => 'مدير',
+    'CONTRIBUTOR' => 'مساهم',
+    _ => 'مشارك',
+  };
+}
+
+/// «771 554 220»: a Yemeni mobile the way it is read out at home; any other
+/// number as it is displayed elsewhere.
+String? participantPhone(String? phone) {
+  final display = PhoneNumberUtils.display(phone);
+  if (display == null) return null;
+  return display.startsWith('+967 ') ? display.substring(5) : display;
+}

@@ -12,7 +12,7 @@ import 'package:aarast_mobile/features/guests/providers/guests_provider.dart';
 import 'package:aarast_mobile/features/guests/screens/guest_list_screen.dart';
 import 'package:aarast_mobile/features/sharing/data/sharing_api.dart';
 import 'package:aarast_mobile/features/sharing/providers/sharing_provider.dart';
-import 'package:aarast_mobile/features/sharing/screens/add_shared_member_screen.dart';
+import 'package:aarast_mobile/features/sharing/screens/sharing_screen.dart';
 import 'package:aarast_mobile/features/tasks/data/task_timeline_api.dart';
 import 'package:aarast_mobile/features/tasks/providers/task_timeline_provider.dart';
 import 'package:aarast_mobile/features/tasks/screens/create_task_screen.dart';
@@ -289,7 +289,8 @@ void main() {
           ChangeNotifierProvider<SharingProvider>.value(value: sharingProvider),
         ],
         child: const MaterialApp(
-          home: AddSharedMemberScreen(weddingPlanId: localPlanId),
+          // The add route: the participants list opening «أضف مشارك».
+          home: SharingScreen(weddingPlanId: localPlanId, startAdding: true),
         ),
       ),
     );
@@ -301,6 +302,7 @@ void main() {
     expect(find.text(cloudMessage), findsNothing);
     expect(find.text('إعادة المحاولة'), findsNothing);
     expect(sharingProvider.invites, isEmpty);
+    expect(find.text('أرسل الدعوة على واتساب'), findsNothing);
     expect(tester.takeException(), isNull);
   });
 }

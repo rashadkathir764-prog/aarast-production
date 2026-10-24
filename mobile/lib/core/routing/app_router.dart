@@ -79,7 +79,6 @@ import '../../features/settings/settings_api.dart'
     show LockSettingsScreen, SettingsScreen;
 import '../../features/sharing/sharing_api.dart'
     show
-        AddSharedMemberScreen,
         ContributionHistoryScreen,
         EditSharedMemberScreen,
         InviteDecisionScreen,

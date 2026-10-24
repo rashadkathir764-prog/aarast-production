@@ -9,7 +9,6 @@ import 'package:aarast_mobile/features/sharing/models/plan_access_permissions.da
 import 'package:aarast_mobile/features/sharing/models/shared_member.dart';
 import 'package:aarast_mobile/features/sharing/models/shared_wedding_plan.dart';
 import 'package:aarast_mobile/features/sharing/providers/sharing_provider.dart';
-import 'package:aarast_mobile/features/sharing/screens/add_shared_member_screen.dart';
 import 'package:aarast_mobile/features/sharing/screens/sharing_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -21,18 +20,6 @@ void main() {
   const localPlanId = 'guest-plan-sharing';
   const accountPlanId = 'plan-account-1';
   const rawAuthError = 'بيانات الدخول غير صحيحة أو انتهت الجلسة.';
-
-  test('member lookup always scopes the request to its wedding plan', () async {
-    final client = _RecordingLookupApiClient();
-    final api = SharingApi(client);
-
-    await api.lookupUserByPhone(accountPlanId, '777123456');
-
-    final uri = Uri.parse(client.path!);
-    expect(uri.path, '/api/v1/users/lookup');
-    expect(uri.queryParameters['weddingPlanId'], accountPlanId);
-    expect(uri.queryParameters['phone'], '+967777123456');
-  });
 
   testWidgets(
     'local/no-login opening sharing shows login gate without protected API retry',
@@ -115,24 +102,28 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('local/no-login add member shows login gate', (tester) async {
+  testWidgets('local/no-login add route shows login gate, not the sheet', (
+    tester,
+  ) async {
     final fakeApi = _FakeSharingApi();
     final provider = SharingProvider(fakeApi);
 
     await _pumpSharingScreen(
       tester,
       provider: provider,
-      screen: const AddSharedMemberScreen(weddingPlanId: localPlanId),
+      screen: const SharingScreen(
+        weddingPlanId: localPlanId,
+        startAdding: true,
+      ),
     );
     await tester.pumpAndSettle();
 
     expect(find.byKey(const Key('sharing-auth-gate')), findsOneWidget);
     expect(find.text(AuthActionGuard.sharingLoginGateTitle), findsOneWidget);
     expect(find.text(AuthActionGuard.sharingLoginGateBody), findsOneWidget);
-    expect(find.text('إرسال دعوة المشاركة'), findsNothing);
+    expect(find.text('أرسل الدعوة على واتساب'), findsNothing);
     expect(find.text('إعادة المحاولة'), findsNothing);
     expect(find.text(rawAuthError), findsNothing);
-    expect(fakeApi.lookupUserByPhoneCalls, 0);
     expect(fakeApi.createPlanInviteCalls, 0);
     expect(provider.members, isEmpty);
     expect(provider.invites, isEmpty);
@@ -215,7 +206,7 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      expect(find.text('ليس لديك صلاحية إدارة المشاركين'), findsOneWidget);
+      expect(find.text('المشاركين يديرهم صاحب الخطة'), findsOneWidget);
       expect(fakeApi.getMyPlanPermissionsCalls, 1);
       expect(fakeApi.getSharedMembersCalls, 0);
       expect(fakeApi.getPlanInvitesCalls, 0);
@@ -247,18 +238,18 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      expect(find.text('تعذر التحقق من الصلاحيات'), findsOneWidget);
+      expect(find.text('ما قدرنا نجيبها'), findsOneWidget);
       expect(fakeApi.getSharedMembersCalls, 0);
       expect(fakeApi.getPlanInvitesCalls, 0);
 
-      await tester.tap(find.text('حاول مرة أخرى'));
+      await tester.tap(find.text('حاول مرة ثانية'));
       await tester.pumpAndSettle();
 
       expect(fakeApi.getMyPlanPermissionsCalls, 2);
       expect(fakeApi.getSharedMembersCalls, 1);
       expect(fakeApi.getPlanInvitesCalls, 1);
       expect(find.text('أمينة'), findsOneWidget);
-      expect(find.text('تعذر التحقق من الصلاحيات'), findsNothing);
+      expect(find.text('ما قدرنا نجيبها'), findsNothing);
       expect(tester.takeException(), isNull);
     },
   );
@@ -334,7 +325,6 @@ class _FakeSharingApi extends SharingApi {
 
   int getSharedMembersCalls = 0;
   int getPlanInvitesCalls = 0;
-  int lookupUserByPhoneCalls = 0;
   int createPlanInviteCalls = 0;
   int getMyPlanPermissionsCalls = 0;
   int getSharedWeddingPlansCalls = 0;
@@ -371,16 +361,6 @@ class _FakeSharingApi extends SharingApi {
   }
 
   @override
-  Future<SharedUserLookup> lookupUserByPhone(
-    String weddingPlanId,
-    String phone,
-  ) async {
-    lookupUserByPhoneCalls += 1;
-    _throwIfUnauthorized();
-    return const SharedUserLookup(id: 'lookup-user', name: 'عضو');
-  }
-
-  @override
   Future<PlanInvite> createPlanInvite({
     required String weddingPlanId,
     required String phone,
@@ -394,6 +374,7 @@ class _FakeSharingApi extends SharingApi {
     required bool canInviteMembers,
     required bool canManageMoney,
     required bool receiveNotifications,
+    int expiresInDays = 7,
   }) async {
     createPlanInviteCalls += 1;
     _throwIfUnauthorized();
@@ -430,21 +411,5 @@ class _FakeSharingApi extends SharingApi {
         statusCode: 401,
       );
     }
-  }
-}
-
-class _RecordingLookupApiClient extends ApiClient {
-  _RecordingLookupApiClient() : super(tokenProvider: () async => 'token');
-
-  String? path;
-
-  @override
-  Future<Map<String, dynamic>> getJson(String path) async {
-    this.path = path;
-    return const {
-      'id': 'lookup-user',
-      'name': 'Member',
-      'phone': '+967777123456',
-    };
   }
 }

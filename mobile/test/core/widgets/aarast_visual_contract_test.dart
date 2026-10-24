@@ -312,7 +312,6 @@ void main() {
         'lib/features/guests/screens/guest_invite_screen.dart',
         'lib/features/wedding_day/screens/wedding_day_mode_screen.dart',
         'lib/features/sharing/screens/sharing_screen.dart',
-        'lib/features/sharing/screens/add_shared_member_screen.dart',
         'lib/features/sharing/screens/contribution_history_screen.dart',
         'lib/features/sharing/screens/edit_shared_member_screen.dart',
         'lib/features/sharing/screens/invite_decision_screen.dart',
@@ -439,7 +438,8 @@ void main() {
         'lib/features/provider_portal/screens/edit_provider_profile_screen.dart',
         'lib/features/provider_portal/screens/provider_apply_screen.dart',
         'lib/features/marketplace/screens/quote_request_screen.dart',
-        'lib/features/sharing/screens/add_shared_member_screen.dart',
+        // g06: «أضف مشارك» is a sheet over the participants list.
+        'lib/features/sharing/widgets/add_participant_sheet.dart',
         'lib/features/tasks/screens/create_task_screen.dart',
         'lib/features/wedding_plans/screens/create_wedding_plan_screen.dart',
       ];
@@ -460,6 +460,7 @@ void main() {
           'money_budget_screen.dart': 'money-budget-save',
           'create_task_screen.dart': 'task-save',
           'quote_request_screen.dart': 'quote-send',
+          'add_participant_sheet.dart': 'participant-send',
         };
         final journeySave = journeySaveKeys.entries
             .where((entry) => path.endsWith(entry.key))

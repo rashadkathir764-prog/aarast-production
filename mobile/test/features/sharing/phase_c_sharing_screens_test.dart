@@ -3,6 +3,7 @@ import 'dart:io';
 
 import 'package:aarast_mobile/core/network/api_client.dart';
 import 'package:aarast_mobile/core/storage/auth_storage.dart';
+import 'package:aarast_mobile/core/experience_v3/aarast_v3.dart';
 import 'package:aarast_mobile/core/theme/app_theme.dart';
 import 'package:aarast_mobile/core/session/safe_user.dart';
 import 'package:aarast_mobile/features/sharing/data/sharing_api.dart';
@@ -46,7 +47,7 @@ void main() {
   });
 
   group('Phase C sharing screens rendering', () {
-    testWidgets('sharing screen renders truthful privacy metrics', (
+    testWidgets('g01 with x07: members by stored flags, then who waits', (
       tester,
     ) async {
       _setTallView(tester);
@@ -64,16 +65,34 @@ void main() {
       );
       await tester.pumpAndSettle();
 
+      expect(find.text('المشاركين'), findsOneWidget);
+      expect(find.text('مين معك، ومين لسا'), findsOneWidget);
+      expect(find.text('أمينة'), findsOneWidget);
+      // The line is built from the stored flags: no section, money seen.
+      expect(find.text('يشوف بس'), findsWidgets);
+      expect(find.text('يشوف المال'), findsOneWidget);
+      expect(find.text('معك'), findsOneWidget);
+      expect(find.text('ينتظرون'), findsOneWidget);
+      expect(find.text('خالد'), findsOneWidget);
       expect(
-        find.text('المال خاص افتراضيًا — لا يظهر لأي عضو إلا بصلاحية تمنحها.'),
+        find.text('الدعوة محفوظة · أرسل له الرابط بأي طريقة'),
         findsOneWidget,
       );
-      expect(find.text('المشاركون (1)'), findsOneWidget);
-      expect(find.text('الدعوات المعلقة (1)'), findsOneWidget);
-      expect(find.text('أمينة'), findsOneWidget);
-      // ملخص صلاحيات صادق: مشاهدة فقط مع اطلاع مالي (canViewMoney).
-      expect(find.text('عرض فقط · يشاهد المال'), findsOneWidget);
-      expect(find.text('مساعد · بانتظار القبول'), findsOneWidget);
+      expect(find.text('انسخ الرابط'), findsOneWidget);
+      expect(find.textContaining('الرابط يشتغل 7 أيام'), findsOneWidget);
+      // The ready roles of today only (C63); nothing the build cannot do.
+      expect(find.text('مساعد'), findsOneWidget);
+      expect(find.text('أهل'), findsOneWidget);
+      for (final gone in [
+        'العروسة',
+        'كاتب الرفد',
+        'ما فتحها',
+        'طلعوا',
+        'ويكتب الرفد',
+      ]) {
+        expect(find.textContaining(gone), findsNothing, reason: gone);
+      }
+      expect(find.textContaining('أقساط'), findsNothing);
       expect(api.getSharedMembersCalls, 1);
       expect(api.getPlanInvitesCalls, 1);
       expect(tester.takeException(), isNull);
@@ -94,7 +113,7 @@ void main() {
         );
         await tester.pumpAndSettle();
 
-        expect(find.text('الدعوات المعلقة (1)'), findsOneWidget);
+        expect(find.text('ينتظرون'), findsOneWidget);
         expect(api.getSharedMembersCalls, 1);
         expect(api.getPlanInvitesCalls, 1);
 
@@ -109,7 +128,7 @@ void main() {
         );
         await tester.pumpAndSettle();
 
-        expect(find.text('الدعوات المعلقة (1)'), findsNothing);
+        expect(find.text('ينتظرون'), findsNothing);
         expect(find.text('المساهم المقبول'), findsOneWidget);
         expect(api.getSharedMembersCalls, 2);
         expect(api.getPlanInvitesCalls, 2);
@@ -152,7 +171,7 @@ void main() {
         await tester.pump();
 
         expect(api.getPlanInvitesCalls, 2);
-        expect(find.text('الدعوات المعلقة (1)'), findsOneWidget);
+        expect(find.text('ينتظرون'), findsOneWidget);
         expect(provider.isLoading, isFalse);
 
         invites.clear();
@@ -162,7 +181,7 @@ void main() {
         refreshGate.complete();
         await tester.pumpAndSettle();
 
-        expect(find.text('الدعوات المعلقة (1)'), findsNothing);
+        expect(find.text('ينتظرون'), findsNothing);
         expect(find.text('المساهم المقبول'), findsOneWidget);
 
         await tester.pump(const Duration(seconds: 30));
@@ -226,9 +245,7 @@ void main() {
         );
         await tester.pumpAndSettle();
 
-        final phoneTexts = tester.widgetList<Text>(
-          find.text('+967 777 123 456'),
-        );
+        final phoneTexts = tester.widgetList<Text>(find.text('777 123 456'));
         expect(phoneTexts, hasLength(2));
         expect(
           phoneTexts.every((text) => text.textDirection == TextDirection.ltr),
@@ -272,11 +289,19 @@ void main() {
         );
         await tester.pumpAndSettle();
 
-        await tester.tap(find.byTooltip('إعادة إرسال الرابط من اعّرست'));
+        await tester.tap(
+          find.byKey(const Key('pending-invite-reissue-invite-1')),
+        );
         await tester.pumpAndSettle();
 
         expect(api.reissueCalls, 1);
-        expect(find.textContaining('تم تسليم رابط دعوة جديد'), findsOneWidget);
+        expect(
+          find.textContaining(
+            'وصله رابط جديد على واتساب، والقديم ما عاد يشتغل',
+          ),
+          findsOneWidget,
+        );
+        await tester.pump(const Duration(seconds: 6));
         expect(tester.takeException(), isNull);
       },
     );
@@ -306,13 +331,13 @@ void main() {
       final retryFinder = find.byKey(
         const Key('pending-invite-reissue-invite-1'),
       );
-      expect(tester.widget<IconButton>(retryFinder).onPressed, isNull);
+      expect(tester.widget<JourneyButton>(retryFinder).onPressed, isNull);
       expect(api.reissueCalls, 0);
 
       await tester.pump(const Duration(seconds: 2, milliseconds: 100));
       await tester.pump();
 
-      expect(tester.widget<IconButton>(retryFinder).onPressed, isNotNull);
+      expect(tester.widget<JourneyButton>(retryFinder).onPressed, isNotNull);
       await tester.tap(retryFinder);
       await tester.pumpAndSettle();
       expect(api.reissueCalls, 1);
@@ -350,7 +375,9 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      await tester.tap(find.byTooltip('إعادة إرسال الرابط من اعّرست'));
+      await tester.tap(
+        find.byKey(const Key('pending-invite-reissue-invite-1')),
+      );
       await tester.pumpAndSettle();
 
       expect(
@@ -364,18 +391,154 @@ void main() {
       expect(api.reissueCalls, 1);
       expect(tester.takeException(), isNull);
     });
+
+    testWidgets(
+      'copying a link mints a new one and says the old one stops (C31)',
+      (tester) async {
+        _setTallView(tester);
+        String? copied;
+        tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+          SystemChannels.platform,
+          (call) async {
+            if (call.method == 'Clipboard.setData') {
+              copied = (call.arguments as Map)['text'] as String?;
+            }
+            return null;
+          },
+        );
+        addTearDown(
+          () => tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+            SystemChannels.platform,
+            null,
+          ),
+        );
+        final api = _FakeSharingApi(
+          invites: [_invite(deliveryStatus: 'UNAVAILABLE')],
+          reissueDeliveryStatus: 'UNAVAILABLE',
+        );
+
+        await _pumpWithAuth(
+          tester,
+          provider: SharingProvider(api),
+          child: const SharingScreen(weddingPlanId: _planId),
+        );
+        await tester.pumpAndSettle();
+
+        expect(
+          find.text('ما وصلته على واتساب · أرسل له الرابط بأي طريقة'),
+          findsOneWidget,
+        );
+        await tester.tap(find.text('انسخ الرابط'));
+        await tester.pumpAndSettle();
+
+        expect(api.reissueCalls, 1);
+        expect(copied, startsWith('هذا رابطك الجديد، والقديم ما عاد يشتغل'));
+        expect(copied, contains('abcdefghijklmnopqrstuvwxyzABCDEFGH123456789'));
+        await tester.pump(const Duration(seconds: 6));
+      },
+    );
+
+    testWidgets('a delivered invite offers «ذكّره» with when it arrived', (
+      tester,
+    ) async {
+      _setTallView(tester);
+      final api = _FakeSharingApi(
+        invites: [
+          _invite(
+            deliveryStatus: 'DELIVERED',
+            deliveryAttemptedAt: DateTime.now(),
+          ),
+        ],
+      );
+
+      await _pumpWithAuth(
+        tester,
+        provider: SharingProvider(api),
+        child: const SharingScreen(weddingPlanId: _planId),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('الدعوة وصلت اليوم'), findsOneWidget);
+      expect(find.text('ذكّره'), findsOneWidget);
+    });
+
+    testWidgets('cancelling a waiting invite asks first, then deletes it', (
+      tester,
+    ) async {
+      _setTallView(tester);
+      final api = _FakeSharingApi(invites: [_invite()]);
+      final provider = SharingProvider(api);
+
+      await _pumpWithAuth(
+        tester,
+        provider: provider,
+        child: const SharingScreen(weddingPlanId: _planId),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byKey(const ValueKey('pending-invite-invite-1')));
+      await tester.pumpAndSettle();
+      expect(find.text('تلغي دعوة خالد؟'), findsOneWidget);
+      expect(api.cancelCalls, 0);
+
+      await tester.tap(
+        find.byKey(const ValueKey('pending-invite-cancel-invite-1')),
+      );
+      await tester.pumpAndSettle();
+      expect(api.cancelCalls, 1);
+      expect(provider.invites, isEmpty);
+      expect(find.text('ينتظرون'), findsNothing);
+      await tester.pump(const Duration(seconds: 6));
+    });
+
+    testWidgets('each member line says what their stored flags allow', (
+      tester,
+    ) async {
+      _setTallView(tester);
+      final helper = SharedMember(
+        id: 'helper',
+        weddingPlanId: _planId,
+        userId: 'user-helper',
+        user: const SharedMemberUser(
+          id: 'user-helper',
+          name: 'صالح',
+          phone: '+967771554220',
+        ),
+        role: 'HELPER',
+        canViewMoney: false,
+        canManageTasks: true,
+        canManageGuests: true,
+        canManageMoney: false,
+        createdAt: DateTime(2026, 7, 5),
+        updatedAt: DateTime(2026, 7, 5),
+      );
+      final api = _FakeSharingApi(members: [helper]);
+
+      await _pumpWithAuth(
+        tester,
+        provider: SharingProvider(api),
+        child: const SharingScreen(weddingPlanId: _planId),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('مين يساعدك في عرسك'), findsOneWidget);
+      expect(find.text('يساعد في المهام والضيوف · بدون المال'), findsOneWidget);
+      expect(find.text('معك'), findsNothing);
+      expect(find.text('ينتظرون'), findsNothing);
+      expect(find.textContaining('كل مشارك يدخل برقمه'), findsOneWidget);
+    });
   });
 }
 
 const _planId = 'plan-sharing-1';
 const _phaseCPaths = [
-  'lib/features/sharing/screens/add_shared_member_screen.dart',
   'lib/features/sharing/screens/sharing_screen.dart',
   'lib/features/sharing/screens/edit_shared_member_screen.dart',
+  'lib/features/sharing/screens/contribution_history_screen.dart',
   'lib/features/sharing/screens/shared_wedding_plans_screen.dart',
-  'lib/features/sharing/widgets/shared_member_card.dart',
   'lib/features/sharing/widgets/shared_plan_card.dart',
-  'lib/features/sharing/widgets/permission_editor.dart',
+  'lib/features/sharing/widgets/add_participant_sheet.dart',
+  'lib/features/sharing/widgets/participant_access_editor.dart',
 ];
 
 Future<void> _pumpWithAuth(
@@ -434,6 +597,7 @@ PlanInvite _invite({
   String? name = 'خالد',
   String deliveryStatus = 'NOT_REQUESTED',
   DateTime? deliveryRetryAvailableAt,
+  DateTime? deliveryAttemptedAt,
 }) {
   return PlanInvite(
     id: 'invite-1',
@@ -451,6 +615,7 @@ PlanInvite _invite({
     canManageMoney: false,
     deliveryStatus: deliveryStatus,
     deliveryRetryAvailableAt: deliveryRetryAvailableAt,
+    deliveryAttemptedAt: deliveryAttemptedAt,
     phone: '+967777123456',
     name: name,
   );
@@ -485,6 +650,15 @@ class _FakeSharingApi extends SharingApi {
   int getPlanInvitesCalls = 0;
   int getSharedWeddingPlansCalls = 0;
   int reissueCalls = 0;
+  int cancelCalls = 0;
+
+  @override
+  Future<void> cancelPlanInvite({
+    required String weddingPlanId,
+    required String inviteId,
+  }) async {
+    cancelCalls += 1;
+  }
 
   @override
   Future<PlanAccessPermissions> getMyPlanPermissions(

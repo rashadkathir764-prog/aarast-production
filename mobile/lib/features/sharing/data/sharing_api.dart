@@ -51,23 +51,6 @@ class SharingApi {
     }
   }
 
-  Future<SharedUserLookup> lookupUserByPhone(
-    String weddingPlanId,
-    String phone,
-  ) async {
-    final normalizedPhone = _normalizePhone(phone);
-    final json = await _apiClient.getJson(
-      Uri(
-        path: '/api/v1/users/lookup',
-        queryParameters: {
-          'weddingPlanId': weddingPlanId,
-          'phone': normalizedPhone,
-        },
-      ).toString(),
-    );
-    return SharedUserLookup.fromJson(json);
-  }
-
   Future<SharedMember> createSharedMember({
     required String weddingPlanId,
     String? userId,
@@ -115,6 +98,7 @@ class SharingApi {
     required bool canInviteMembers,
     required bool canManageMoney,
     required bool receiveNotifications,
+    int expiresInDays = 7,
   }) async {
     final normalizedPhone = _normalizePhone(phone);
     final json = await _apiClient
@@ -130,6 +114,7 @@ class SharingApi {
           'canInviteMembers': canInviteMembers,
           'canManageMoney': canManageMoney,
           'receiveNotifications': receiveNotifications,
+          'expiresInDays': expiresInDays,
         });
     return PlanInvite.fromJson(json);
   }
@@ -261,15 +246,25 @@ class SharingApi {
     );
   }
 
+  /// One page of the plan's frozen history. The owner may narrow it to one
+  /// participant with [contributorUserId]; a participant always gets their
+  /// own. [section] is `TASKS`, `GUESTS`, `MONEY`, `PROVIDERS`, ...
   Future<ContributionHistoryResponse> getContributionHistory(
     String weddingPlanId, {
     int limit = 100,
     int offset = 0,
+    String? section,
+    String? contributorUserId,
   }) async {
     final json = await _apiClient.getJson(
       Uri(
         path: '/api/v1/wedding-plans/$weddingPlanId/contributions',
-        queryParameters: {'limit': '$limit', 'offset': '$offset'},
+        queryParameters: {
+          'limit': '$limit',
+          'offset': '$offset',
+          'section': ?section,
+          'contributorUserId': ?contributorUserId,
+        },
       ).toString(),
     );
     return ContributionHistoryResponse.fromJson(json);

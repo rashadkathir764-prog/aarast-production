@@ -268,7 +268,7 @@ void main() {
         child: const EditSharedMemberScreen(sharedMemberId: 'missing'),
       );
 
-      expect(find.text('لا يمكن تعديل العضو الآن'), findsOneWidget);
+      expect(find.text('ما لقينا هذا المشارك'), findsOneWidget);
       expect(tester.takeException(), isNull);
     });
 
@@ -290,17 +290,17 @@ void main() {
         );
 
         expect(find.textContaining('اسم عضو طويل'), findsOneWidget);
-        expect(find.text('إدارة المال'), findsOneWidget);
+        expect(find.text('المال'), findsOneWidget);
         expect(tester.takeException(), isNull);
 
         await tester.scrollUntilVisible(
-          find.text('حفظ التغييرات'),
+          find.text('احفظ'),
           280,
           scrollable: find.byType(Scrollable).first,
         );
         await tester.drag(find.byType(Scrollable).first, const Offset(0, -120));
         await tester.pump();
-        await tester.tap(find.text('حفظ التغييرات'));
+        await tester.tap(find.text('احفظ'));
         await tester.pump();
         expect(provider.isSubmitting, isTrue);
         expect(tester.takeException(), isNull);

@@ -504,6 +504,83 @@ class JourneySegments extends StatelessWidget {
   }
 }
 
+/// A small segmented choice of one level («لا / يشوف / يعدّل»): the words sit
+/// in a grey track and the chosen one on a white pill in [color] (g06).
+/// Without [onChanged] it rests.
+class JourneyLevelSwitch extends StatelessWidget {
+  const JourneyLevelSwitch({
+    required this.options,
+    required this.selected,
+    required this.onChanged,
+    required this.semanticLabel,
+    this.color = AarastV3Color.primary,
+    super.key,
+  });
+
+  final List<String> options;
+  final int selected;
+  final ValueChanged<int>? onChanged;
+
+  /// What the switch sets («المهام»); each word is read with it.
+  final String semanticLabel;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    final enabled = onChanged != null;
+    return Opacity(
+      opacity: enabled ? 1 : 0.5,
+      child: Container(
+        padding: const EdgeInsets.all(3),
+        decoration: BoxDecoration(
+          color: AarastV3Color.line,
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            for (var i = 0; i < options.length; i++)
+              Semantics(
+                button: true,
+                selected: i == selected,
+                enabled: enabled,
+                label: '$semanticLabel: ${options[i]}',
+                onTap: enabled ? () => onChanged!(i) : null,
+                excludeSemantics: true,
+                child: AarastPressable(
+                  onTap: enabled ? () => onChanged!(i) : null,
+                  borderRadius: BorderRadius.circular(9),
+                  child: Container(
+                    constraints: const BoxConstraints(minHeight: 32),
+                    alignment: Alignment.center,
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 5,
+                    ),
+                    decoration: BoxDecoration(
+                      color: i == selected
+                          ? AarastV3Color.paper
+                          : Colors.transparent,
+                      borderRadius: BorderRadius.circular(9),
+                    ),
+                    child: Text(
+                      options[i],
+                      style: JourneyType.of(
+                        JourneyType.small,
+                        weight: JourneyType.bold,
+                        color: i == selected ? color : AarastV3Color.textMuted,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 /// A round 44px button on the page (back, search, actions).
 class JourneyRoundButton extends StatelessWidget {
   const JourneyRoundButton({
@@ -728,21 +805,24 @@ class JourneySectionTitle extends StatelessWidget {
               ),
             ),
           ),
+          // Large text wraps the action instead of pushing it off the row.
           if (action != null)
-            onAction == null
-                ? Text(
-                    action!,
-                    style: JourneyType.of(
-                      JourneyType.small,
-                      weight: JourneyType.bold,
+            Flexible(
+              child: onAction == null
+                  ? Text(
+                      action!,
+                      style: JourneyType.of(
+                        JourneyType.small,
+                        weight: JourneyType.bold,
+                        color: actionColor,
+                      ),
+                    )
+                  : JourneyTextAction(
+                      label: action!,
+                      onPressed: onAction,
                       color: actionColor,
                     ),
-                  )
-                : JourneyTextAction(
-                    label: action!,
-                    onPressed: onAction,
-                    color: actionColor,
-                  ),
+            ),
         ],
       ),
     );
@@ -1165,6 +1245,16 @@ class JourneyAvatar extends StatelessWidget {
   final String letter;
   final Color color;
   final double size;
+
+  /// The colours people in one list take in turn (g01, x07, x20).
+  static const palette = [
+    AarastV3Color.brandAccentStrong,
+    AarastV3Color.primary,
+    AarastV3Color.lilac,
+    AarastV3Color.cobalt,
+  ];
+
+  static Color paletteAt(int index) => palette[index % palette.length];
 
   @override
   Widget build(BuildContext context) {

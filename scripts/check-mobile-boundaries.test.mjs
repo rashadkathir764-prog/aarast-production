@@ -1639,8 +1639,10 @@ const r19ProviderPortalApi = Object.freeze({
 // +1 for f03 reading the plan's money items through the finance owner API,
 // so «ضمن بندك» compares the price with the item's amount; -1 for the f09
 // comparison, which no longer gates on the account itself (D14); +1 for
-// f07 reading the plan's item through the finance owner API (D15).
-const r19LegalRecordCount = 198;
+// f07 reading the plan's item through the finance owner API (D15); -1 for
+// the old add-member screen, now g06's sheet inside the sharing feature
+// (D29).
+const r19LegalRecordCount = 197;
 const trackedOwnerApiContracts = [
   {
     area: 'features/account_contexts',
@@ -2013,10 +2015,6 @@ const trackedOwnerApiContracts = [
         show: ['ContributionHistoryProvider'],
       },
       { uri: 'providers/sharing_provider.dart', show: ['SharingProvider'] },
-      {
-        uri: 'screens/add_shared_member_screen.dart',
-        show: ['AddSharedMemberScreen'],
-      },
       {
         uri: 'screens/contribution_history_screen.dart',
         show: ['ContributionHistoryScreen'],
@@ -2440,11 +2438,6 @@ const trackedCollaborationBatchContracts = [
   },
   {
     source: 'mobile/lib/features/settings/screens/settings_screen.dart',
-    target: 'mobile/lib/features/auth/auth_api.dart',
-    show: ['AuthActionGuard', 'AuthGatePanel'],
-  },
-  {
-    source: 'mobile/lib/features/sharing/screens/add_shared_member_screen.dart',
     target: 'mobile/lib/features/auth/auth_api.dart',
     show: ['AuthActionGuard', 'AuthGatePanel'],
   },
@@ -3179,7 +3172,6 @@ const trackedCompositionRootContracts = [
       {
         target: 'mobile/lib/features/sharing/sharing_api.dart',
         show: [
-          'AddSharedMemberScreen',
           'ContributionHistoryScreen',
           'EditSharedMemberScreen',
           'InviteDecisionScreen',

@@ -345,6 +345,8 @@ class _SharingApi extends SharingApi {
     String weddingPlanId, {
     int limit = 100,
     int offset = 0,
+    String? section,
+    String? contributorUserId,
   }) async {
     Map<String, dynamic> ev(
       String id,
@@ -920,6 +922,9 @@ void main() {
       const ContributionHistoryScreen(weddingPlanId: _planId),
       h: 1100,
       providers: [
+        ChangeNotifierProvider<SharingProvider>.value(
+          value: SharingProvider(_SharingApi()),
+        ),
         ChangeNotifierProvider<ContributionHistoryProvider>.value(
           value: ContributionHistoryProvider(_SharingApi()),
         ),

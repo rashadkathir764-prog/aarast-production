@@ -17,10 +17,8 @@ class SharingProvider extends ChangeNotifier with SessionScopedNotifier {
 
   bool _isLoading = false;
   bool _isSubmitting = false;
-  bool _isLookingUp = false;
   String? _errorMessage;
   String? _accessErrorMessage;
-  String? _lookupErrorMessage;
   SharingAuthGateKind? _authGateKind;
   List<SharedMember> _members = const [];
   List<PlanInvite> _invites = const [];
@@ -30,7 +28,6 @@ class SharingProvider extends ChangeNotifier with SessionScopedNotifier {
     weddingPlanId: '',
   );
   SharedMember? _selectedMember;
-  SharedUserLookup? _lookupUser;
   PlanInvite? _selectedInvite;
   SharedMember? _acceptedInviteMember;
   String? _acceptedInviteContextKey;
@@ -45,10 +42,8 @@ class SharingProvider extends ChangeNotifier with SessionScopedNotifier {
 
   bool get isLoading => _isLoading;
   bool get isSubmitting => _isSubmitting;
-  bool get isLookingUp => _isLookingUp;
   String? get errorMessage => _errorMessage;
   String? get accessErrorMessage => _accessErrorMessage;
-  String? get lookupErrorMessage => _lookupErrorMessage;
   SharingAuthGateKind? get authGateKind => _authGateKind;
   List<SharedMember> get members => _members;
   List<PlanInvite> get invites => _invites;
@@ -56,7 +51,6 @@ class SharingProvider extends ChangeNotifier with SessionScopedNotifier {
   List<SharedWeddingPlan> get sharedPlans => _sharedPlans;
   PlanAccessPermissions get access => _access;
   SharedMember? get selectedMember => _selectedMember;
-  SharedUserLookup? get lookupUser => _lookupUser;
   PlanInvite? get selectedInvite => _selectedInvite;
   SharedMember? get acceptedInviteMember => _acceptedInviteMember;
   String? get acceptedInviteContextKey => _acceptedInviteContextKey;
@@ -83,7 +77,6 @@ class SharingProvider extends ChangeNotifier with SessionScopedNotifier {
       _members = const [];
       _invites = const [];
       _selectedMember = null;
-      _lookupUser = null;
       notifyListeners();
     }
 
@@ -187,41 +180,6 @@ class SharingProvider extends ChangeNotifier with SessionScopedNotifier {
     return _findMember(id);
   }
 
-  Future<bool> lookupUserByPhone(String weddingPlanId, String phone) async {
-    _isLookingUp = true;
-    _lookupErrorMessage = null;
-    _lookupUser = null;
-    _authGateKind = null;
-    notifyListeners();
-
-    try {
-      _lookupUser = await _api.lookupUserByPhone(weddingPlanId, phone);
-      return true;
-    } on ApiException catch (error) {
-      if (error.isUnauthorized) {
-        _handleApiError(error);
-        return false;
-      }
-      _lookupErrorMessage = _sharingErrorMessage(
-        error.message,
-        fallback: 'الرقم غير مسجل',
-      );
-      return false;
-    } catch (_) {
-      _lookupErrorMessage = 'تعذر البحث عن المستخدم. حاول مرة أخرى.';
-      return false;
-    } finally {
-      _isLookingUp = false;
-      notifyListeners();
-    }
-  }
-
-  void clearLookup() {
-    _lookupUser = null;
-    _lookupErrorMessage = null;
-    notifyListeners();
-  }
-
   Future<bool> createMember({
     required String weddingPlanId,
     String? userId,
@@ -248,8 +206,6 @@ class SharingProvider extends ChangeNotifier with SessionScopedNotifier {
       );
       _members = [member, ..._members.where((item) => item.id != member.id)];
       _selectedMember = member;
-      _lookupUser = null;
-      _lookupErrorMessage = null;
       return true;
     } on ApiException catch (error) {
       if (error.isUnauthorized) {
@@ -696,7 +652,6 @@ class SharingProvider extends ChangeNotifier with SessionScopedNotifier {
   void clearError() {
     _errorMessage = null;
     _accessErrorMessage = null;
-    _lookupErrorMessage = null;
     _authGateKind = null;
     notifyListeners();
   }
@@ -714,7 +669,6 @@ class SharingProvider extends ChangeNotifier with SessionScopedNotifier {
     if (error.isUnauthorized) {
       _authGateKind = SharingAuthGateKind.sessionExpired;
       _errorMessage = null;
-      _lookupErrorMessage = null;
       return;
     }
     _authGateKind = null;

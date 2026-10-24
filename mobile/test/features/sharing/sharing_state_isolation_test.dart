@@ -73,7 +73,7 @@ void main() {
       await tester.pump();
 
       expect(find.text('الاسم القديم'), findsNothing);
-      expect(find.text('حفظ التغييرات'), findsNothing);
+      expect(find.text('احفظ'), findsNothing);
 
       permissionGate.complete(
         const PlanAccessPermissions.owner(weddingPlanId: 'plan-a'),
@@ -101,10 +101,10 @@ void main() {
       await _pumpEditScreen(tester, provider);
       await tester.pumpAndSettle();
 
-      expect(find.text('ليس لديك صلاحية إدارة المشاركين'), findsOneWidget);
+      expect(find.text('المشاركين يديرهم صاحب الخطة'), findsOneWidget);
       expect(find.text('عضو قديم'), findsNothing);
-      expect(find.text('حفظ التغييرات'), findsNothing);
-      expect(find.text('إزالة العضو من الخطة'), findsNothing);
+      expect(find.text('احفظ'), findsNothing);
+      expect(find.text('شيله من الخطة'), findsNothing);
       expect(api.getSharedMembersCalls, 0);
       expect(tester.takeException(), isNull);
     });
@@ -124,10 +124,10 @@ void main() {
       await _pumpEditScreen(tester, provider);
       await tester.pumpAndSettle();
 
-      expect(find.text('تعذر التحقق من صلاحية تعديل العضو'), findsOneWidget);
+      expect(find.text('ما قدرنا نجيبها'), findsOneWidget);
       expect(find.text('عضو قديم'), findsNothing);
-      expect(find.text('حفظ التغييرات'), findsNothing);
-      expect(find.text('حاول مرة أخرى'), findsOneWidget);
+      expect(find.text('احفظ'), findsNothing);
+      expect(find.text('حاول مرة ثانية'), findsOneWidget);
       expect(api.getSharedMembersCalls, 0);
       expect(tester.takeException(), isNull);
     });

@@ -1,35 +1,48 @@
-import 'package:aarast_mobile/core/theme/app_theme.dart';
+import 'package:aarast_mobile/core/network/api_client.dart';
+import 'package:aarast_mobile/core/phone/phone_number_utils.dart';
+import 'package:aarast_mobile/features/sharing/data/sharing_api.dart';
+import 'package:aarast_mobile/features/sharing/models/participant_access.dart';
+import 'package:aarast_mobile/features/sharing/models/plan_access_permissions.dart';
 import 'package:aarast_mobile/features/sharing/models/shared_member.dart';
-import 'package:aarast_mobile/features/sharing/widgets/shared_member_card.dart';
+import 'package:aarast_mobile/features/sharing/providers/sharing_provider.dart';
+import 'package:aarast_mobile/features/sharing/screens/edit_shared_member_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:provider/provider.dart';
 
 void main() {
-  testWidgets('phone-only member stays LTR at 320px and 1.3 text scale', (
+  test('a Yemeni mobile reads «777 123 456»; others stay as shown', () {
+    expect(participantPhone('+967777123456'), '777 123 456');
+    expect(participantPhone('777123456'), '777 123 456');
+    expect(participantPhone(null), isNull);
+    expect(participantPhone('+966501234567'), '+966501234567');
+  });
+
+  testWidgets('a phone-only member keeps the number in order at 320px', (
     tester,
   ) async {
     tester.view.devicePixelRatio = 1;
-    tester.view.physicalSize = const Size(320, 640);
+    tester.view.physicalSize = const Size(320, 900);
     addTearDown(tester.view.reset);
 
+    final provider = SharingProvider(_Api())..selectMember(_phoneOnlyMember());
     await tester.pumpWidget(
-      MaterialApp(
-        theme: AppTheme.light(),
-        home: Directionality(
-          textDirection: TextDirection.rtl,
-          child: MediaQuery(
-            data: const MediaQueryData(textScaler: TextScaler.linear(1.3)),
-            child: Scaffold(
-              body: SharedMemberCard(member: _phoneOnlyMember(), onTap: null),
-            ),
+      ChangeNotifierProvider<SharingProvider>.value(
+        value: provider,
+        child: const MaterialApp(
+          home: MediaQuery(
+            data: MediaQueryData(textScaler: TextScaler.linear(1.3)),
+            child: EditSharedMemberScreen(sharedMemberId: 'member-phone'),
           ),
         ),
       ),
     );
     await tester.pumpAndSettle();
 
-    final phoneText = tester.widget<Text>(find.text('+967 777 123 456'));
-    expect(phoneText.textDirection, TextDirection.ltr);
+    expect(
+      find.text(PhoneNumberUtils.isolateLtr('777 123 456')),
+      findsOneWidget,
+    );
     expect(tester.takeException(), isNull);
   });
 
@@ -37,8 +50,29 @@ void main() {
     final invite = _phoneOnlyInvite();
 
     expect(invite.displayNamePhone, '+967777123456');
-    expect(invite.directionalDisplayName, '\u2066+967 777 123 456\u2069');
+    expect(
+      invite.directionalDisplayName,
+      PhoneNumberUtils.isolateLtr('+967 777 123 456'),
+    );
   });
+}
+
+class _Api extends SharingApi {
+  _Api() : super(ApiClient(tokenProvider: () async => null));
+
+  @override
+  Future<PlanAccessPermissions> getMyPlanPermissions(
+    String weddingPlanId,
+  ) async => PlanAccessPermissions.owner(weddingPlanId: weddingPlanId);
+
+  @override
+  Future<List<SharedMember>> getSharedMembers(String weddingPlanId) async => [
+    _phoneOnlyMember(),
+  ];
+
+  @override
+  Future<List<PlanInvite>> getPlanInvites(String weddingPlanId) async =>
+      const [];
 }
 
 SharedMember _phoneOnlyMember() {

@@ -6,7 +6,6 @@ export 'models/shared_wedding_plan.dart' show SharedWeddingPlan;
 export 'providers/contribution_history_provider.dart'
     show ContributionHistoryProvider;
 export 'providers/sharing_provider.dart' show SharingProvider;
-export 'screens/add_shared_member_screen.dart' show AddSharedMemberScreen;
 export 'screens/contribution_history_screen.dart'
     show ContributionHistoryScreen;
 export 'screens/edit_shared_member_screen.dart' show EditSharedMemberScreen;

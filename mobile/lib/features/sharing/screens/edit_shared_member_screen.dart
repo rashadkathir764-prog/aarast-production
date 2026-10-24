@@ -1,23 +1,24 @@
 import 'package:flutter/material.dart';
-import 'package:lucide_icons/lucide_icons.dart';
 import 'package:go_router/go_router.dart';
+import 'package:lucide_icons/lucide_icons.dart';
 import 'package:provider/provider.dart';
 
+import '../../../core/experience_v3/aarast_v3.dart';
+import '../../../core/phone/phone_number_utils.dart';
 import '../../../core/routing/app_router.dart';
 import '../../../core/widgets/aarast_toast.dart';
 import '../../../core/widgets/aarast_ui.dart';
 import '../../auth/auth_api.dart' show AuthActionGuard, AuthGatePanel;
+import '../models/participant_access.dart';
 import '../models/plan_role_permissions.dart';
 import '../models/shared_member.dart';
 import '../providers/sharing_provider.dart';
-import '../widgets/permission_editor.dart';
-import '../widgets/shared_member_card.dart';
+import '../widgets/participant_access_editor.dart';
 
-/// الأدوار الأساسية المعروضة — نفس قائمة شاشة الإضافة. دور العضو الحالي
-/// يُدرج دائمًا حتى لو كان من الأدوار الخلفية القديمة (MANAGER/CONTRIBUTOR)
-/// فلا تنكسر القائمة عند فتح عضو أضيف بها.
-const _baseEditRoles = ['VIEWER', 'GROOM', 'BRIDE', 'FAMILY', 'HELPER'];
-
+/// A participant from g01: the same ready roles and section levels as adding
+/// one (g06), saved as one complete permission snapshot, and taking them off
+/// the plan. Flags the levels do not show (editing the plan, inviting) keep
+/// their stored value.
 class EditSharedMemberScreen extends StatefulWidget {
   const EditSharedMemberScreen({required this.sharedMemberId, super.key});
 
@@ -59,129 +60,160 @@ class _EditSharedMemberScreenState extends State<EditSharedMemberScreen> {
     });
   }
 
-  List<String> _rolesFor(SharedMember member) {
-    if (_baseEditRoles.contains(member.role)) return _baseEditRoles;
-    return [..._baseEditRoles, member.role];
-  }
-
   @override
   Widget build(BuildContext context) {
     final provider = context.watch<SharingProvider>();
-
-    if (_isCheckingAccess) {
-      return _stateScaffold(AarastSkeleton.form(fields: 4, withButton: true));
-    }
-
-    if (provider.authGateKind == SharingAuthGateKind.sessionExpired) {
-      return _stateScaffold(
-        const AuthGatePanel(
-          title: AuthActionGuard.sessionExpiredTitle,
-          body: AuthActionGuard.sharingSessionExpiredBody,
-          icon: LucideIcons.fileClock,
-        ),
-      );
-    }
-
-    if (_showLoadError) {
-      return _stateScaffold(
-        AarastErrorState(
-          title: 'تعذر التحقق من صلاحية تعديل العضو',
-          message:
-              provider.accessErrorMessage ??
-              provider.errorMessage ??
-              'تحقق من الاتصال وحاول مرة أخرى.',
-          onRetry: _refreshMemberAccess,
-        ),
-      );
-    }
-
-    if (_showPermissionGate) {
-      return _stateScaffold(
-        const AarastEmptyState(
-          title: 'ليس لديك صلاحية إدارة المشاركين',
-          message: 'تعديل الأعضاء أو حذفهم متاح للمصرح لهم فقط.',
-          icon: LucideIcons.shieldAlert,
-          tone: AarastEmptyStateTone.restricted,
-        ),
-      );
-    }
-
     final member = _verifiedMember;
+    if (member != null && !_initialized) _syncFromMember(member);
+    final name = member?.user?.name.trim();
+    // Isolated so the digit groups keep their order inside Arabic text.
+    final localPhone = participantPhone(member?.user?.phone);
+    final phone = localPhone == null
+        ? null
+        : PhoneNumberUtils.isolateLtr(localPhone);
+    final hasName = name != null && name.isNotEmpty;
 
-    if (_showMissingMember || member == null) {
-      return _stateScaffold(
-        const Center(
-          child: AarastEmptyState(
-            title: 'لا يمكن تعديل العضو الآن',
-            message: 'افتح العضو من شاشة المشاركة حتى يمكن تعديل صلاحياته.',
-            icon: LucideIcons.users,
-          ),
-        ),
-      );
-    }
-
-    if (!_initialized) {
-      _syncFromMember(member);
-    }
-
-    return AarastPageScaffold(
-      title: 'تعديل عضو المشاركة',
-      subtitle: 'عدّل الدور أو خصص الصلاحيات ثم احفظ.',
-      showBack: true,
-      child: ListView(
-        children: [
-          SharedMemberCard(member: member, onTap: null),
-          const SizedBox(height: 6),
-          SharedPermissionEditor(
-            role: _role,
-            roles: _rolesFor(member),
-            permissions: _permissions,
-            onRoleSelected: (role) => setState(() {
-              _role = role;
-              _permissions = PlanRolePermissions.forRole(role);
-            }),
-            onPermissionsChanged: (value) =>
-                setState(() => _permissions = value),
-            enabled: !provider.isSubmitting,
-            // في التعديل الهدف غالبًا ضبط الصلاحيات — تُفتح جاهزة.
-            initiallyExpanded: true,
-          ),
-          if (provider.errorMessage != null) ...[
-            const SizedBox(height: 12),
-            Text(
-              provider.errorMessage!,
-              textAlign: TextAlign.right,
-              style: TextStyle(color: Theme.of(context).colorScheme.error),
+    final header = JourneySubHeader(
+      title: member == null
+          ? 'المشارك'
+          : hasName
+          ? name
+          : (phone ?? 'المشارك'),
+      subtitle: member == null
+          ? null
+          : hasName && phone != null
+          ? '${participantRoleLabel(member.role)} · $phone'
+          : participantRoleLabel(member.role),
+      onBack: _leave,
+    );
+    if (!_isCheckingAccess &&
+        provider.authGateKind == SharingAuthGateKind.sessionExpired) {
+      // The sign-in panel scrolls on its own, under the header.
+      return AarastScreenFrame(
+        maxWidth: 520,
+        backgroundColor: AarastV3Color.canvas,
+        child: Column(
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+              child: header,
+            ),
+            const Expanded(
+              child: AuthGatePanel(
+                title: AuthActionGuard.sessionExpiredTitle,
+                body: AuthActionGuard.sharingSessionExpiredBody,
+                icon: LucideIcons.fileClock,
+              ),
             ),
           ],
-          const SizedBox(height: 18),
-          AarastButton(
-            label: 'حفظ التغييرات',
-            isLoading: provider.isSubmitting,
-            onPressed: provider.isSubmitting ? null : () => _save(member),
-          ),
-          const SizedBox(height: 10),
-          AarastButton(
-            label: 'إزالة العضو من الخطة',
-            icon: LucideIcons.trash2,
-            variant: AarastButtonVariant.danger,
-            onPressed: provider.isSubmitting
-                ? null
-                : () => _confirmRemove(member),
-          ),
-          const SizedBox(height: 20),
-        ],
+        ),
+      );
+    }
+    return AarastScreenFrame(
+      maxWidth: 520,
+      backgroundColor: AarastV3Color.canvas,
+      child: ListView(
+        padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
+        children: [header, ..._body(provider, member)],
       ),
     );
   }
 
-  AarastPageScaffold _stateScaffold(Widget child) {
-    return AarastPageScaffold(
-      title: 'تعديل عضو المشاركة',
-      subtitle: 'عدّل الدور أو خصص الصلاحيات ثم احفظ.',
-      showBack: true,
-      child: child,
-    );
+  List<Widget> _body(SharingProvider provider, SharedMember? member) {
+    if (_isCheckingAccess) {
+      return const [
+        JourneyListState(
+          phase: JourneyListPhase.loading,
+          section: JourneySection.home,
+        ),
+      ];
+    }
+    if (_showLoadError) {
+      return [
+        JourneyListState(
+          phase: JourneyListPhase.error,
+          section: JourneySection.home,
+          onRetry: _refreshMemberAccess,
+        ),
+      ];
+    }
+    if (_showPermissionGate) {
+      return const [
+        JourneyListState(
+          phase: JourneyListPhase.empty,
+          section: JourneySection.home,
+          emptyIcon: LucideIcons.lock,
+          emptyTitle: 'المشاركين يديرهم صاحب الخطة',
+          emptyMessage: 'هو اللي يغيّر ايش يشوف كل واحد أو يشيله.',
+        ),
+      ];
+    }
+    if (_showMissingMember || member == null) {
+      return const [
+        JourneyListState(
+          phase: JourneyListPhase.empty,
+          section: JourneySection.home,
+          emptyIcon: LucideIcons.users,
+          emptyTitle: 'ما لقينا هذا المشارك',
+          emptyMessage: 'يمكن طلع من الخطة. افتحه من «المشاركين».',
+        ),
+      ];
+    }
+
+    return [
+      ParticipantAccessEditor(
+        role: _role,
+        permissions: _permissions,
+        enabled: !provider.isSubmitting,
+        onPresetSelected: (preset) => setState(() {
+          _role = preset.role;
+          _permissions = preset.permissions;
+        }),
+        onChanged: (value) => setState(() => _permissions = value),
+      ),
+      if (provider.errorMessage != null) ...[
+        const SizedBox(height: 10),
+        JourneyNote(
+          key: const ValueKey('member-error'),
+          icon: LucideIcons.alertCircle,
+          color: AarastV3Color.danger,
+          soft: AarastV3Color.dangerSoft,
+          text: provider.errorMessage!,
+        ),
+      ],
+      const SizedBox(height: 14),
+      JourneyButton(
+        key: const ValueKey('member-save'),
+        label: 'احفظ',
+        large: true,
+        expand: true,
+        loading: provider.isSubmitting,
+        onPressed: provider.isSubmitting ? null : () => _save(member),
+      ),
+      const SizedBox(height: 6),
+      Center(
+        child: JourneyTextAction(
+          key: const ValueKey('member-remove'),
+          label: 'شيله من الخطة',
+          icon: LucideIcons.userMinus,
+          color: AarastV3Color.danger,
+          onPressed: provider.isSubmitting
+              ? null
+              : () => _confirmRemove(member),
+        ),
+      ),
+    ];
+  }
+
+  void _leave() {
+    final planId = _memberPlanId;
+    if (context.canPop()) {
+      context.pop();
+    } else if (planId != null) {
+      context.go(AppRouter.sharing(planId));
+    } else {
+      context.go(AppRouter.more);
+    }
   }
 
   Future<void> _refreshMemberAccess() async {
@@ -274,66 +306,67 @@ class _EditSharedMemberScreenState extends State<EditSharedMemberScreen> {
       role: _role,
       permissions: _permissions,
     );
-
-    if (!mounted) {
-      return;
-    }
-
-    if (updated) {
-      if (context.canPop()) {
-        context.pop();
-      } else {
-        context.go(AppRouter.sharing(member.weddingPlanId));
-      }
-    }
+    if (!mounted || !updated) return;
+    AarastToast.showSuccess(context, 'حفظنا اللي يشوفه.');
+    _leave();
   }
 
   Future<void> _confirmRemove(SharedMember member) async {
-    final confirmed = await showDialog<bool>(
+    final name = member.user?.name.trim();
+    final who = name == null || name.isEmpty
+        ? member.directionalDisplayName
+        : name;
+    final confirmed = await showAarastBottomSheet<bool>(
       context: context,
-      builder: (dialogContext) => AarastDialog(
-        title: const Text('إزالة العضو؟'),
-        content: Text(
-          'سيفقد "${member.directionalDisplayName}" الوصول للخطة فورًا.',
+      backgroundColor: AarastV3Color.canvas,
+      showDragHandle: true,
+      isScrollControlled: true,
+      builder: (sheetContext) => SafeArea(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.fromLTRB(20, 0, 20, 16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Text(
+                'تشيل $who من الخطة؟',
+                style: JourneyType.of(
+                  JourneyType.display,
+                  weight: JourneyType.bold,
+                ),
+              ),
+              Text(
+                'يطلع على طول، وما يقدر يفتح الخطة بعدها.',
+                style: JourneyType.of(
+                  JourneyType.body,
+                  color: AarastV3Color.textMuted,
+                ),
+              ),
+              const SizedBox(height: 16),
+              JourneyButton(
+                key: const ValueKey('member-remove-confirm'),
+                label: 'شيله',
+                background: AarastV3Color.danger,
+                large: true,
+                expand: true,
+                onPressed: () => Navigator.of(sheetContext).pop(true),
+              ),
+              const SizedBox(height: 6),
+              JourneyTextAction(
+                label: 'رجوع',
+                onPressed: () => Navigator.of(sheetContext).pop(false),
+              ),
+            ],
+          ),
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(dialogContext).pop(false),
-            child: const Text('إلغاء'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.of(dialogContext).pop(true),
-            child: const Text('إزالة'),
-          ),
-        ],
       ),
     );
-
-    if (confirmed != true) {
-      return;
-    }
-
-    if (!mounted) {
-      return;
-    }
-
-    final provider = context.read<SharingProvider>();
-    final removed = await provider.removeMember(
+    if (confirmed != true || !mounted) return;
+    final removed = await context.read<SharingProvider>().removeMember(
       member.weddingPlanId,
       member.id,
     );
-
-    if (!mounted) {
-      return;
-    }
-
-    if (removed) {
-      AarastToast.showSuccess(context, 'تمت إزالة العضو من الخطة.');
-      if (context.canPop()) {
-        context.pop();
-      } else {
-        context.go(AppRouter.sharing(member.weddingPlanId));
-      }
-    }
+    if (!mounted || !removed) return;
+    AarastToast.showSuccess(context, 'شلناه من الخطة.');
+    _leave();
   }
 }

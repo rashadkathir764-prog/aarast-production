@@ -255,7 +255,8 @@ List<RouteBase> _weddingPlanRoutes() => [
       return WeddingPlanContextGate(
         weddingPlanId: id,
         requiredAccess: WeddingPlanRouteAccess.inviteMembers,
-        child: AddSharedMemberScreen(weddingPlanId: id),
+        // g06 is a sheet over the participants list.
+        child: SharingScreen(weddingPlanId: id, startAdding: true),
       );
     },
   ),

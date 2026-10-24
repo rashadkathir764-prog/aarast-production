@@ -13,7 +13,6 @@ import 'package:aarast_mobile/features/sharing/data/sharing_api.dart';
 import 'package:aarast_mobile/features/sharing/models/plan_access_permissions.dart';
 import 'package:aarast_mobile/features/sharing/models/shared_member.dart';
 import 'package:aarast_mobile/features/sharing/providers/sharing_provider.dart';
-import 'package:aarast_mobile/features/sharing/screens/add_shared_member_screen.dart';
 import 'package:aarast_mobile/features/sharing/screens/sharing_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -79,7 +78,7 @@ void main() {
     await _pumpWithAuth(
       tester,
       provider: SharingProvider(api),
-      child: const AddSharedMemberScreen(weddingPlanId: _planId),
+      child: const SharingScreen(weddingPlanId: _planId, startAdding: true),
     );
     await tester.pumpAndSettle();
 

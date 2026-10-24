@@ -124,10 +124,6 @@ class SharedMember {
       receiveNotifications: receiveNotifications,
     );
   }
-
-  /// سطر واحد يلخص ما يستطيعه العضو — لصف العضو المدمج.
-  String get permissionSummary =>
-      isOwner ? 'كل الصلاحيات' : toPermissions().summaryLabel;
 }
 
 class SharedMemberUser {
@@ -140,29 +136,6 @@ class SharedMemberUser {
 
   factory SharedMemberUser.fromJson(Map<String, dynamic> json) {
     return SharedMemberUser(
-      id: json['id'].toString(),
-      name: json['name']?.toString() ?? '',
-      phone: json['phone']?.toString(),
-      avatarUrl: json['avatarUrl']?.toString(),
-    );
-  }
-
-  final String id;
-  final String name;
-  final String? phone;
-  final String? avatarUrl;
-}
-
-class SharedUserLookup {
-  const SharedUserLookup({
-    required this.id,
-    required this.name,
-    this.phone,
-    this.avatarUrl,
-  });
-
-  factory SharedUserLookup.fromJson(Map<String, dynamic> json) {
-    return SharedUserLookup(
       id: json['id'].toString(),
       name: json['name']?.toString() ?? '',
       phone: json['phone']?.toString(),
@@ -491,17 +464,5 @@ String sharedMemberRoleLabel(String role) {
     'CONTRIBUTOR' => 'مساهم',
     'VIEWER' => 'مشاهد',
     _ => role,
-  };
-}
-
-/// What a member in [role] sees of the plan (V1 checklist 4.10): the groom
-/// or the bride is the owner's partner and sees the whole plan; the other
-/// roles see only what they added, within their permissions.
-String sharedMemberRoleScopeNote(String role) {
-  return switch (role) {
-    'GROOM' || 'BRIDE' =>
-      'شريك في الخطة: يرى كل شيء مثلك، ما عدا مصادر تمويلك وسلفك.',
-    'VIEWER' => 'يتابع الخطة فقط، ولا يرى المال إلا إذا سمحت له.',
-    _ => 'يرى ما أضافه هو فقط، حسب الصلاحيات التي تختارها.',
   };
 }

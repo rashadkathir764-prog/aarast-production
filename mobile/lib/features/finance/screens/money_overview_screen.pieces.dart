@@ -1,6 +1,6 @@
 part of 'money_overview_screen.dart';
 
-enum _MoneySettingsAction { budget, schedules, receipts }
+enum _MoneySettingsAction { budget, receipts }
 
 class _MoneyHeader extends StatelessWidget {
   const _MoneyHeader({
@@ -8,7 +8,6 @@ class _MoneyHeader extends StatelessWidget {
     required this.canManage,
     required this.onShare,
     required this.onBudget,
-    required this.onSchedules,
     required this.onReceipts,
   });
 
@@ -16,7 +15,6 @@ class _MoneyHeader extends StatelessWidget {
   final bool canManage;
   final VoidCallback? onShare;
   final VoidCallback onBudget;
-  final VoidCallback onSchedules;
 
   /// Null where receipts cannot be kept (a guest's plan on the phone).
   final VoidCallback? onReceipts;
@@ -59,13 +57,14 @@ class _MoneyHeader extends StatelessWidget {
             onPressed: onShare!,
           ),
         ],
-        const SizedBox(width: 6),
-        _MoneySettingsMenu(
-          canManage: canManage,
-          onBudget: onBudget,
-          onSchedules: onSchedules,
-          onReceipts: onReceipts,
-        ),
+        if (canManage || onReceipts != null) ...[
+          const SizedBox(width: 6),
+          _MoneySettingsMenu(
+            canManage: canManage,
+            onBudget: onBudget,
+            onReceipts: onReceipts,
+          ),
+        ],
       ],
     );
   }
@@ -75,13 +74,11 @@ class _MoneySettingsMenu extends StatelessWidget {
   const _MoneySettingsMenu({
     required this.canManage,
     required this.onBudget,
-    required this.onSchedules,
     required this.onReceipts,
   });
 
   final bool canManage;
   final VoidCallback onBudget;
-  final VoidCallback onSchedules;
   final VoidCallback? onReceipts;
 
   @override
@@ -95,8 +92,6 @@ class _MoneySettingsMenu extends StatelessWidget {
           switch (action) {
             case _MoneySettingsAction.budget:
               onBudget();
-            case _MoneySettingsAction.schedules:
-              onSchedules();
             case _MoneySettingsAction.receipts:
               onReceipts?.call();
           }
@@ -111,14 +106,6 @@ class _MoneySettingsMenu extends StatelessWidget {
                 label: 'الميزانية والتصنيفات',
               ),
             ),
-          const PopupMenuItem(
-            key: ValueKey('money-settings-schedules'),
-            value: _MoneySettingsAction.schedules,
-            child: _MoneySettingsItem(
-              icon: LucideIcons.calendarClock,
-              label: 'مواعيد الدفع',
-            ),
-          ),
           if (onReceipts != null)
             const PopupMenuItem(
               key: ValueKey('money-settings-receipts'),

@@ -102,7 +102,6 @@ bool shouldDisplayPlanShellChrome(String location) {
       location.endsWith('/categories/create') ||
       location.endsWith('/costs/create') ||
       location.endsWith('/payments/create') ||
-      location.endsWith('/schedules/create') ||
       location.endsWith('/pay') ||
       location.endsWith('/edit'));
 }

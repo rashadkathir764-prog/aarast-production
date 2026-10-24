@@ -17,6 +17,7 @@ import '../providers/finance_provider.dart';
 import '../data/finance_local_data_source.dart';
 import '../widgets/cost_receipts_section.dart';
 import '../widgets/money_input_formatter.dart';
+import '../widgets/payment_schedule_sheet.dart';
 
 part 'cost_details_screen.parts.dart';
 
@@ -228,13 +229,10 @@ class _CostDetailsScreenState extends State<CostDetailsScreen> {
           line: _dueLine(pending[index], now),
           amount: pending[index].amount,
           state: index == 0 ? _EntryState.current : _EntryState.later,
-          onTap: () => context.push(
-            AppRouter.moneyScheduleDetails(
-              widget.weddingPlanId,
-              cost.id,
-              pending[index].id,
-            ),
-          ),
+          // A date still to pay changes or goes in its sheet.
+          onTap: canManage && !cost.isCancelled
+              ? () => _openSchedule(cost, currency, pending[index])
+              : null,
         ),
     ];
     final canSchedule =
@@ -282,7 +280,9 @@ class _CostDetailsScreenState extends State<CostDetailsScreen> {
           child: JourneySectionTitle(
             'جدول الدفعات',
             action: canSchedule ? 'أضف موعد' : null,
-            onAction: canSchedule ? () => _openScheduleCreate(cost) : null,
+            onAction: canSchedule
+                ? () => _openSchedule(cost, currency, null)
+                : null,
           ),
         ),
         if (entries.isEmpty)
@@ -342,21 +342,24 @@ class _CostDetailsScreenState extends State<CostDetailsScreen> {
 
   /// Makes a private cost the shared plan's (it cannot become private again).
   Future<void> _shareWithPlan(WeddingCost cost) async {
-    final confirmed = await showDialog<bool>(
+    final confirmed = await showJourneySheet<bool>(
       context: context,
-      builder: (dialogContext) => AarastDialog(
-        title: const Text('مشاركة التكلفة مع الخطة؟'),
-        content: const Text(
-          'سيراها شريكك وتدخل في أرقام الخطة. لا يمكن إرجاعها خاصة بعد ذلك.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(dialogContext).pop(false),
-            child: const Text('إلغاء'),
+      builder: (sheetContext) => JourneySheetBody(
+        title: 'تشاركها مع الخطة؟',
+        subtitle: 'بيشوفها شريكك وتدخل في أرقام الخطة، وما ترجع خاصة بعدها.',
+        children: [
+          JourneyButton(
+            key: const ValueKey('cost-share-confirm'),
+            label: 'شاركها',
+            expand: true,
+            large: true,
+            onPressed: () => Navigator.of(sheetContext).pop(true),
           ),
-          FilledButton(
-            onPressed: () => Navigator.of(dialogContext).pop(true),
-            child: const Text('مشاركة'),
+          const SizedBox(height: 8),
+          JourneyButton.quiet(
+            label: 'رجوع',
+            expand: true,
+            onPressed: () => Navigator.of(sheetContext).pop(false),
           ),
         ],
       ),
@@ -406,12 +409,18 @@ class _CostDetailsScreenState extends State<CostDetailsScreen> {
     if (changed == true && mounted) await _load(refreshMoney: true);
   }
 
-  Future<void> _openScheduleCreate(WeddingCost cost) async {
-    final changed = await context.push<bool>(
-      AppRouter.moneyScheduleCreate(widget.weddingPlanId, cost.id),
-      extra: cost,
+  Future<void> _openSchedule(
+    WeddingCost cost,
+    String currency,
+    PaymentSchedule? schedule,
+  ) async {
+    final changed = await showPaymentScheduleSheet(
+      context,
+      cost: cost,
+      currency: currency,
+      schedule: schedule,
     );
-    if (changed == true && mounted) await _load(refreshMoney: true);
+    if (changed && mounted) await _load(refreshMoney: true);
   }
 
   /// w23: an agreement with payments stays (the record must stay true), so
@@ -475,7 +484,7 @@ class _CostDetailsScreenState extends State<CostDetailsScreen> {
     if (context.canPop()) {
       context.pop();
     } else {
-      context.go(AppRouter.moneyCosts(widget.weddingPlanId));
+      context.go(AppRouter.money(widget.weddingPlanId));
     }
   }
 }

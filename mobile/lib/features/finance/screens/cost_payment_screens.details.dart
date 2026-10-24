@@ -276,10 +276,8 @@ class _CostPaymentDetailsScreenState extends State<CostPaymentDetailsScreen> {
   }
 
   Future<void> _reverse(CostPayment payment, WeddingCost cost) async {
-    final reason = await showAarastBottomSheet<String>(
+    final reason = await showJourneySheet<String>(
       context: context,
-      isScrollControlled: true,
-      useSafeArea: true,
       builder: (_) => const _ReverseSheet(),
     );
     if (reason == null || !mounted) return;
@@ -463,7 +461,7 @@ class _PaymentFact extends StatelessWidget {
   }
 }
 
-/// Asks why before reversing: the reason is kept on the record.
+/// x14: asks why before reversing; the reason is kept on the record.
 class _ReverseSheet extends StatefulWidget {
   const _ReverseSheet();
 
@@ -492,58 +490,31 @@ class _ReverseSheetState extends State<_ReverseSheet> {
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: EdgeInsets.fromLTRB(
-        20,
-        8,
-        20,
-        16 + MediaQuery.viewInsetsOf(context).bottom,
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Semantics(
-            header: true,
-            child: Text(
-              'تعكس الدفعة؟',
-              style: JourneyType.of(
-                JourneyType.title,
-                weight: JourneyType.bold,
-              ),
-            ),
-          ),
-          const SizedBox(height: 2),
-          Text(
-            'ما تنمسح: تبقى مشطوبة في السجل، ويرجع مبلغها للباقي.',
-            style: JourneyType.of(
-              JourneyType.small,
-              color: AarastV3Color.textMuted,
-            ),
-          ),
-          const SizedBox(height: 14),
-          JourneyTextField(
-            key: const ValueKey('payment-reverse-reason'),
-            label: 'ليش؟',
-            hint: 'مثلًا: سجلتها على الاتفاق الغلط',
-            controller: _controller,
-            autofocus: true,
-            maxLength: 1000,
-            errorText: _error,
-            textInputAction: TextInputAction.done,
-            onSubmitted: (_) => _confirm(),
-          ),
-          const SizedBox(height: 14),
-          JourneyButton(
-            key: const ValueKey('payment-reverse-confirm'),
-            label: 'اعكس الدفعة',
-            background: AarastV3Color.danger,
-            expand: true,
-            large: true,
-            onPressed: _confirm,
-          ),
-        ],
-      ),
+    return JourneySheetBody(
+      title: 'تعكس الدفعة؟',
+      subtitle: 'ما تنمسح: تبقى مشطوبة في السجل، ويرجع مبلغها للباقي.',
+      children: [
+        JourneyTextField(
+          key: const ValueKey('payment-reverse-reason'),
+          label: 'ليش؟',
+          hint: 'مثلًا: سجلتها على الاتفاق الغلط',
+          controller: _controller,
+          autofocus: true,
+          maxLength: 1000,
+          errorText: _error,
+          textInputAction: TextInputAction.done,
+          onSubmitted: (_) => _confirm(),
+        ),
+        const SizedBox(height: 16),
+        JourneyButton(
+          key: const ValueKey('payment-reverse-confirm'),
+          label: 'اعكس الدفعة',
+          background: AarastV3Color.danger,
+          expand: true,
+          large: true,
+          onPressed: _confirm,
+        ),
+      ],
     );
   }
 }

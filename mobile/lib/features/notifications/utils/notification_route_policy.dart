@@ -8,18 +8,9 @@ String? resolveNotificationRouteTarget(AarastNotification notification) {
       notification.weddingPlanId ?? data?['weddingPlanId'],
     );
     final costId = _nonEmpty(data?['weddingCostId']);
-    final scheduleId =
-        _nonEmpty(
-          notification.entityType == 'payment_schedule'
-              ? notification.entityId
-              : null,
-        ) ??
-        _nonEmpty(data?['paymentScheduleId']);
-    if (planId != null && costId != null && scheduleId != null) {
-      return Uri(
-        path:
-            '/wedding-plans/$planId/money/costs/$costId/schedules/$scheduleId',
-      ).toString();
+    // A payment date opens its agreement (c07), which lists every date.
+    if (planId != null && costId != null) {
+      return Uri(path: '/wedding-plans/$planId/money/costs/$costId').toString();
     }
   }
 

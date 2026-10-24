@@ -322,7 +322,6 @@ void main() {
         'lib/features/finance/screens/money_budget_screen.dart',
         'lib/features/finance/screens/budget_category_details_screen.dart',
         'lib/features/finance/screens/budget_category_form_screen.dart',
-        'lib/features/finance/screens/costs_screen.dart',
         'lib/features/finance/screens/cost_form_screen.dart',
         'lib/features/finance/screens/cost_details_screen.dart',
         'lib/features/finance/screens/funding_sources_screen.dart',
@@ -364,7 +363,7 @@ void main() {
       final sharedWrapperPattern = RegExp(
         r'Aarast(ScreenFrame|PageScaffold|Scaffold)|'
         r'AuthWeddingScaffold|GuestOnboardingStepScaffold|'
-        r'MoneySubpageScaffold|PlanShellChrome|AarastDashboardView',
+        r'PlanShellChrome|AarastDashboardView',
       );
 
       final discovered =
@@ -454,7 +453,8 @@ void main() {
         'lib/features/finance/screens/budget_category_form_screen.dart',
         'lib/features/finance/screens/cost_form_screen.dart',
         'lib/features/finance/screens/money_budget_screen.dart',
-        'lib/features/finance/screens/payment_schedule_screens.dart',
+        // c07: an agreement's payment date is added or changed in its sheet.
+        'lib/features/finance/widgets/payment_schedule_sheet.dart',
         // c06: both payment screens share this journey form.
         'lib/features/finance/widgets/payment_entry_form.dart',
         'lib/features/guests/widgets/guest_form_sheet.dart',
@@ -480,6 +480,7 @@ void main() {
         // instead of the older action bar.
         const journeySaveKeys = {
           'payment_entry_form.dart': 'payment-save',
+          'payment_schedule_sheet.dart': 'schedule-save',
           'cost_form_screen.dart': 'cost-save',
           'budget_category_form_screen.dart': 'category-save',
           'money_budget_screen.dart': 'money-budget-save',

@@ -5,7 +5,6 @@ import 'package:aarast_mobile/features/finance/models/wedding_cost.dart';
 import 'package:aarast_mobile/features/finance/providers/finance_provider.dart';
 import 'package:aarast_mobile/features/finance/screens/cost_details_screen.dart';
 import 'package:aarast_mobile/features/finance/screens/cost_form_screen.dart';
-import 'package:aarast_mobile/features/finance/screens/costs_screen.dart';
 import 'package:aarast_mobile/features/finance/screens/money_overview_screen.dart';
 import 'package:aarast_mobile/features/sharing/data/sharing_api.dart';
 import 'package:aarast_mobile/features/sharing/models/plan_access_permissions.dart';
@@ -35,29 +34,36 @@ void main() {
     },
   );
 
-  test(
-    'empty view-only money access never exposes the setup starter',
-    () async {
-      final provider = FinanceProvider(
-        _CountingFinanceApi(withCost: false),
-        permissionsApi: _FakeSharingApi(_viewer('plan-viewer')),
-      );
+  // The money starter is gone (rule zero): an empty plan opens on «البنود».
+  testWidgets('empty view-only money opens on the items with no add action', (
+    tester,
+  ) async {
+    await _setPhoneView(tester);
+    await tester.pumpWidget(
+      _financeScreen(
+        const MoneyOverviewScreen(weddingPlanId: 'plan-viewer'),
+        api: _CountingFinanceApi(withCost: false, withCategories: false),
+      ),
+    );
+    await tester.pumpAndSettle();
 
-      await provider.loadMoney('plan-viewer');
+    expect(find.text('ما في بنود بعد'), findsOneWidget);
+    expect(find.text('أضف أول بند'), findsNothing);
+    expect(find.text('أضف بند'), findsNothing);
+    expect(tester.takeException(), isNull);
+  });
 
-      expect(provider.hasLoadedMoney, isTrue);
-      expect(provider.canManageMoney, isFalse);
-      expect(shouldShowMoneyStarter(provider), isFalse);
-    },
-  );
-
-  // Field test Q02: a budget entered while creating the plan hid the starter
-  // categories, so most new plans never saw them.
-  test('an owner with a budget but no categories still gets the starter', () async {
-    final provider = FinanceProvider(
-      _CountingFinanceApi(withCategories: false),
-      permissionsApi: _FakeSharingApi(
-        PlanAccessPermissions(
+  // Field test Q02 asked that a budget alone still leads to items; with the
+  // starter gone the empty money opens where the first item is added.
+  testWidgets('an owner with a budget but no items opens on «أضف أول بند»', (
+    tester,
+  ) async {
+    await _setPhoneView(tester);
+    await tester.pumpWidget(
+      _financeScreen(
+        const MoneyOverviewScreen(weddingPlanId: 'plan-owner'),
+        api: _CountingFinanceApi(withCategories: false),
+        permissions: PlanAccessPermissions(
           weddingPlanId: 'plan-owner',
           isOwner: true,
           canViewMoney: true,
@@ -65,12 +71,17 @@ void main() {
         ),
       ),
     );
+    await tester.pumpAndSettle();
 
-    await provider.loadMoney('plan-owner');
-
+    final provider = tester
+        .element(find.byType(MoneyOverviewScreen))
+        .read<FinanceProvider>();
     expect(provider.summary.hasBudget, isTrue);
     expect(provider.categories, isEmpty);
-    expect(shouldShowMoneyStarter(provider), isTrue);
+    expect(find.text('ما في بنود بعد'), findsOneWidget);
+    expect(find.text('أضف أول بند'), findsOneWidget);
+    expect(find.textContaining('جهّز'), findsNothing);
+    expect(tester.takeException(), isNull);
   });
 
   test(
@@ -141,12 +152,14 @@ void main() {
   ) async {
     await _setPhoneView(tester);
     await tester.pumpWidget(
-      _financeScreen(const CostsScreen(weddingPlanId: 'plan-viewer')),
+      _financeScreen(const MoneyOverviewScreen(weddingPlanId: 'plan-viewer')),
     );
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('البنود'));
     await tester.pumpAndSettle();
 
     expect(find.text('حجز الصالة'), findsOneWidget);
-    expect(find.byTooltip('إضافة تكلفة'), findsNothing);
+    expect(find.text('أضف بند'), findsNothing);
     expect(tester.takeException(), isNull);
   });
 
@@ -190,11 +203,15 @@ Future<void> _setPhoneView(WidgetTester tester) async {
   addTearDown(tester.view.reset);
 }
 
-Widget _financeScreen(Widget child) {
+Widget _financeScreen(
+  Widget child, {
+  FinanceApi? api,
+  PlanAccessPermissions? permissions,
+}) {
   return ChangeNotifierProvider<FinanceProvider>(
     create: (_) => FinanceProvider(
-      _CountingFinanceApi(withCost: true),
-      permissionsApi: _FakeSharingApi(_viewer('plan-viewer')),
+      api ?? _CountingFinanceApi(withCost: true),
+      permissionsApi: _FakeSharingApi(permissions ?? _viewer('plan-viewer')),
     ),
     child: MaterialApp(
       home: Directionality(textDirection: TextDirection.rtl, child: child),

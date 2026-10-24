@@ -22,6 +22,7 @@ import '../providers/finance_provider.dart';
 import '../widgets/cost_receipts_section.dart';
 import '../widgets/money_input_formatter.dart';
 import '../widgets/payment_entry_form.dart';
+import '../widgets/payment_schedule_sheet.dart';
 
 part 'cost_payment_screens.details.dart';
 
@@ -106,6 +107,133 @@ class _RecordCostPaymentScreenState extends State<RecordCostPaymentScreen> {
             final result = await finance.recordPayment(
               cost: cost,
               amount: entry.amount!,
+              paidAt: entry.paidAt,
+              method: entry.method,
+              note: entry.note,
+            );
+            if (result != null && context.mounted) {
+              AarastFormSuccess.show(
+                context,
+                message: finance.savedMessage('انحفظت الدفعة'),
+              );
+            }
+            return result;
+          },
+        ),
+      );
+    }
+    return paymentEntryFrame(
+      context,
+      planId: widget.weddingPlanId,
+      cost: cost,
+      currency: currency,
+      child: ListView(
+        padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
+        children: [body],
+      ),
+    );
+  }
+}
+
+/// c06 for a scheduled payment: its agreed amount is paid in full, and
+/// «عدّل الموعد» changes the date's amount or day in its sheet first.
+class PayPaymentScheduleScreen extends StatefulWidget {
+  const PayPaymentScheduleScreen({
+    required this.weddingPlanId,
+    required this.costId,
+    required this.scheduleId,
+    super.key,
+  });
+
+  final String weddingPlanId;
+  final String costId;
+  final String scheduleId;
+
+  @override
+  State<PayPaymentScheduleScreen> createState() =>
+      _PayPaymentScheduleScreenState();
+}
+
+class _PayPaymentScheduleScreenState extends State<PayPaymentScheduleScreen> {
+  bool _isLoadingDetails = true;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _load());
+  }
+
+  Future<void> _load() async {
+    final provider = context.read<FinanceProvider>();
+    if (provider.loadedPlanId != widget.weddingPlanId) {
+      await provider.loadMoney(widget.weddingPlanId);
+    }
+    if (mounted && provider.canViewMoney) {
+      await provider.loadCostDetails(widget.costId);
+    }
+    if (mounted) setState(() => _isLoadingDetails = false);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final provider = context.watch<FinanceProvider>();
+    final cost = provider.costById(widget.costId);
+    final schedule = provider.scheduleById(widget.scheduleId);
+    final currency = provider.summary.currency;
+
+    final Widget body;
+    if (_isLoadingDetails && schedule == null) {
+      body = const JourneyListState(
+        phase: JourneyListPhase.loading,
+        section: JourneySection.money,
+      );
+    } else if (provider.errorMessage != null && schedule == null) {
+      body = JourneyListState(
+        phase: JourneyListPhase.error,
+        section: JourneySection.money,
+        onRetry: _load,
+      );
+    } else if (cost == null || schedule == null) {
+      body = JourneyListState(
+        phase: JourneyListPhase.empty,
+        section: JourneySection.money,
+        emptyIcon: LucideIcons.calendarX,
+        emptyTitle: 'هذا الموعد ما عاد موجود',
+        emptyAction: 'ارجع',
+        onEmptyAction: () =>
+            context.popOrGo(AppRouter.money(widget.weddingPlanId)),
+      );
+    } else if (paymentRefusal(provider, cost) case final refusal?) {
+      body = JourneyNote(text: refusal, icon: LucideIcons.info);
+    } else if (!schedule.isPending) {
+      body = const JourneyNote(
+        text: 'هذا الموعد ما ينتظر دفع.',
+        icon: LucideIcons.info,
+      );
+    } else {
+      return paymentEntryFrame(
+        context,
+        planId: widget.weddingPlanId,
+        cost: cost,
+        currency: currency,
+        child: PaymentEntryForm(
+          cost: cost,
+          currency: currency,
+          draftScope:
+              'pay-schedule:${widget.weddingPlanId}:${widget.costId}:${widget.scheduleId}',
+          fixedAmount: schedule.amount,
+          fixedLine: 'المتفق في موعد ${formatArabicDayMonth(schedule.dueDate)}',
+          fixedAction: () => showPaymentScheduleSheet(
+            context,
+            cost: cost,
+            currency: currency,
+            schedule: schedule,
+          ),
+          onSave: (entry) async {
+            final finance = context.read<FinanceProvider>();
+            final result = await finance.paySchedule(
+              schedule: schedule,
+              cost: cost,
               paidAt: entry.paidAt,
               method: entry.method,
               note: entry.note,

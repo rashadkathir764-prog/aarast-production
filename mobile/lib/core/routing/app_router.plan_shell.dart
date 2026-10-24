@@ -95,16 +95,6 @@ List<RouteBase> _planShellRoutes() => [
         },
       ),
       GoRoute(
-        path: '/wedding-plans/:id/money/costs',
-        builder: (context, state) {
-          final id = state.pathParameters['id'] ?? '';
-          return CostsScreen(
-            weddingPlanId: id,
-            initialCategoryId: state.uri.queryParameters['categoryId'],
-          );
-        },
-      ),
-      GoRoute(
         path: '/wedding-plans/:id/money/costs/create',
         builder: (context, state) {
           final id = state.pathParameters['id'] ?? '';
@@ -125,8 +115,10 @@ List<RouteBase> _planShellRoutes() => [
           final cost = state.extra is WeddingCost
               ? state.extra! as WeddingCost
               : context.read<FinanceProvider>().costById(costId);
+          // An agreement that is not loaded shows its own page, which loads
+          // it or says it is gone.
           if (cost == null) {
-            return CostsScreen(weddingPlanId: id);
+            return CostDetailsScreen(weddingPlanId: id, costId: costId);
           }
           return CostFormScreen(weddingPlanId: id, cost: cost);
         },
@@ -159,39 +151,10 @@ List<RouteBase> _planShellRoutes() => [
         },
       ),
       GoRoute(
-        path: '/wedding-plans/:id/money/schedules',
-        builder: (context, state) {
-          return PaymentSchedulesScreen(
-            weddingPlanId: state.pathParameters['id'] ?? '',
-            costId: state.uri.queryParameters['costId'],
-          );
-        },
-      ),
-      GoRoute(
         path: '/wedding-plans/:id/money/funding',
         builder: (context, state) {
           return FundingSourcesScreen(
             weddingPlanId: state.pathParameters['id'] ?? '',
-          );
-        },
-      ),
-      GoRoute(
-        path: '/wedding-plans/:id/money/costs/:costId/schedules/create',
-        builder: (context, state) {
-          return PaymentScheduleFormScreen(
-            weddingPlanId: state.pathParameters['id'] ?? '',
-            costId: state.pathParameters['costId'] ?? '',
-          );
-        },
-      ),
-      GoRoute(
-        path:
-            '/wedding-plans/:id/money/costs/:costId/schedules/:scheduleId/edit',
-        builder: (context, state) {
-          return PaymentScheduleFormScreen(
-            weddingPlanId: state.pathParameters['id'] ?? '',
-            costId: state.pathParameters['costId'] ?? '',
-            scheduleId: state.pathParameters['scheduleId'] ?? '',
           );
         },
       ),
@@ -206,15 +169,14 @@ List<RouteBase> _planShellRoutes() => [
           );
         },
       ),
+      // A payment date has no page of its own: the server's reminders and
+      // next steps link here, and its agreement (c07) lists every date.
       GoRoute(
         path: '/wedding-plans/:id/money/costs/:costId/schedules/:scheduleId',
-        builder: (context, state) {
-          return PaymentScheduleDetailsScreen(
-            weddingPlanId: state.pathParameters['id'] ?? '',
-            costId: state.pathParameters['costId'] ?? '',
-            scheduleId: state.pathParameters['scheduleId'] ?? '',
-          );
-        },
+        redirect: (context, state) => AppRouter.moneyCostDetails(
+          state.pathParameters['id'] ?? '',
+          state.pathParameters['costId'] ?? '',
+        ),
       ),
       GoRoute(
         path: '/wedding-plans/:id/money/costs/:costId',

@@ -48,7 +48,6 @@ void main() {
       '/wedding-plans/:id/money/categories/create',
       '/wedding-plans/:id/money/categories/:categoryId',
       '/wedding-plans/:id/money/categories/:categoryId/edit',
-      '/wedding-plans/:id/money/costs',
       '/wedding-plans/:id/money/costs/create',
       '/wedding-plans/:id/money/costs/:costId/edit',
     ]) {
@@ -60,6 +59,10 @@ void main() {
       '/wedding-plans/:id/expenses',
       '/wedding-plans/:id/financial-commitments',
       '/wedding-plans/:id/payments/record',
+      // The groom cleanup: «البنود» (c02) and «الدفعات» (c03) replace them.
+      "'/wedding-plans/:id/money/costs'",
+      "'/wedding-plans/:id/money/schedules'",
+      "'/wedding-plans/:id/money/costs/:costId/schedules/create'",
     ]) {
       expect(router, isNot(contains(removedPath)), reason: removedPath);
     }

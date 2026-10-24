@@ -30,16 +30,12 @@ import '../../features/finance/finance_api.dart'
         CostDraftIntent,
         CostFormScreen,
         CostPaymentDetailsScreen,
-        CostsScreen,
         FinanceProvider,
         FundingSourcesScreen,
         MoneyBudgetScreen,
         MoneyOverviewScreen,
         MoneyReceiptsScreen,
         PayPaymentScheduleScreen,
-        PaymentScheduleDetailsScreen,
-        PaymentScheduleFormScreen,
-        PaymentSchedulesScreen,
         RecordCostPaymentScreen,
         WeddingCost;
 import '../../features/guests/guests_api.dart'
@@ -260,13 +256,6 @@ class AppRouter {
     return '/wedding-plans/$planId/money/categories/$categoryId/edit';
   }
 
-  static String moneyCosts(String planId, {String? categoryId}) {
-    return Uri(
-      path: '/wedding-plans/$planId/money/costs',
-      queryParameters: categoryId == null ? null : {'categoryId': categoryId},
-    ).toString();
-  }
-
   static String moneyCostCreate(String planId, {String? categoryId}) {
     return Uri(
       path: '/wedding-plans/$planId/money/costs/create',
@@ -299,33 +288,6 @@ class AppRouter {
 
   static String moneyReceipts(String planId) {
     return '/wedding-plans/$planId/money/receipts';
-  }
-
-  static String moneySchedules(String planId, {String? costId}) {
-    return Uri(
-      path: '/wedding-plans/$planId/money/schedules',
-      queryParameters: costId == null ? null : {'costId': costId},
-    ).toString();
-  }
-
-  static String moneyScheduleCreate(String planId, String costId) {
-    return '/wedding-plans/$planId/money/costs/$costId/schedules/create';
-  }
-
-  static String moneyScheduleDetails(
-    String planId,
-    String costId,
-    String scheduleId,
-  ) {
-    return '/wedding-plans/$planId/money/costs/$costId/schedules/$scheduleId';
-  }
-
-  static String moneyScheduleEdit(
-    String planId,
-    String costId,
-    String scheduleId,
-  ) {
-    return '/wedding-plans/$planId/money/costs/$costId/schedules/$scheduleId/edit';
   }
 
   static String moneySchedulePay(

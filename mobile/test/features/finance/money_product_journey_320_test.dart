@@ -12,11 +12,8 @@ import 'package:aarast_mobile/features/finance/screens/budget_category_details_s
 import 'package:aarast_mobile/features/finance/screens/budget_category_form_screen.dart';
 import 'package:aarast_mobile/features/finance/screens/cost_details_screen.dart';
 import 'package:aarast_mobile/features/finance/screens/cost_form_screen.dart';
-import 'package:aarast_mobile/features/finance/screens/costs_screen.dart';
 import 'package:aarast_mobile/features/finance/screens/money_budget_screen.dart';
 import 'package:aarast_mobile/features/finance/screens/money_overview_screen.dart';
-import 'package:aarast_mobile/features/finance/screens/payment_schedule_screens.dart';
-import 'package:aarast_mobile/features/finance/widgets/money_widgets.dart';
 import 'package:aarast_mobile/features/sharing/data/sharing_api.dart';
 import 'package:aarast_mobile/features/sharing/models/plan_access_permissions.dart';
 import 'package:flutter/material.dart';
@@ -92,23 +89,12 @@ void main() {
       await tester.pumpAndSettle();
       await tester.tap(find.byKey(stripKey));
       await tester.pumpAndSettle();
+      // A payment date has no page of its own: it opens its agreement (c07).
       expect(
         harness.currentLocation,
-        AppRouter.moneyScheduleDetails(_planId, 'cost-1', 'schedule-1'),
+        AppRouter.moneyCostDetails(_planId, 'cost-1'),
       );
-      expect(find.byType(PaymentScheduleDetailsScreen), findsOneWidget);
-      expect(tester.takeException(), isNull);
-
-      harness.router.pop();
-      await tester.pumpAndSettle();
-      await _openMoneySettings(tester);
-      await tester.tap(find.byKey(const ValueKey('money-settings-schedules')));
-      await tester.pumpAndSettle();
-      expect(harness.currentLocation, AppRouter.moneySchedules(_planId));
-      expect(find.byType(PaymentSchedulesScreen), findsOneWidget);
-      expect(find.byType(ScheduleCard), findsWidgets);
-      expect(find.textContaining('معلّق ·'), findsWidgets);
-      expect(find.text('تسجيل الدفع'), findsWidgets);
+      expect(find.byType(CostDetailsScreen), findsOneWidget);
       expect(tester.takeException(), isNull);
 
       harness.router.pop();
@@ -165,71 +151,43 @@ void main() {
       expect(tester.takeException(), isNull);
     });
 
-    testWidgets(
-      'new groom sees the smart starter and can choose manual setup',
-      (tester) async {
-        final harness = _MoneyProductHarness.owner(
-          initialLocation: AppRouter.money(_planId),
-          noBudget: true,
-          personaCode: 'GROOM',
-        );
-        addTearDown(harness.dispose);
-        await _pumpProduct(tester, harness.app);
+    // Rule zero: the old starter («جهّز ميزانية عرسك») is not in the
+    // prototype. An empty plan opens on «البنود», and the budget (w19) is
+    // one press away in the money menu.
+    testWidgets('a new groom opens on «البنود» and reaches the budget', (
+      tester,
+    ) async {
+      final harness = _MoneyProductHarness.owner(
+        initialLocation: AppRouter.money(_planId),
+        noBudget: true,
+        personaCode: 'GROOM',
+      );
+      addTearDown(harness.dispose);
+      await _pumpProduct(tester, harness.app);
 
-        expect(
-          find.byKey(const ValueKey('money-starter-setup')),
-          findsOneWidget,
-        );
-        expect(find.text('جهّز ميزانية عرسك'), findsOneWidget);
-        expect(find.text('فستان العروسة'), findsNothing);
-        expect(
-          find.byKey(const ValueKey('money-empty-add-cost')),
-          findsNothing,
-        );
-        expect(find.byKey(const ValueKey('money-budget-setup')), findsNothing);
-        expect(tester.takeException(), isNull);
+      expect(find.byKey(const ValueKey('money-starter-setup')), findsNothing);
+      expect(find.text('جهّز ميزانية عرسك'), findsNothing);
+      expect(find.text('ما في بنود بعد'), findsOneWidget);
+      expect(find.text('أضف أول بند'), findsOneWidget);
+      expect(find.text('فستان العروسة'), findsNothing);
+      expect(find.byKey(const ValueKey('money-budget-setup')), findsNothing);
+      expect(tester.takeException(), isNull);
 
-        final setup = find.byKey(const ValueKey('money-starter-manual'));
-        await tester.tap(setup);
-        await tester.pumpAndSettle();
-        expect(harness.currentLocation, AppRouter.moneyBudget(_planId));
-        expect(find.byType(MoneyBudgetScreen), findsOneWidget);
-        // w19: the budget, the reserve and each item's share.
-        expect(find.text('توزيع الميزانية'), findsOneWidget);
-        expect(
-          find.byKey(const ValueKey('money-budget-reserve')),
-          findsOneWidget,
-        );
-        expect(find.text('حفظ التوزيع'), findsOneWidget);
-        _expectRtl(tester, find.byType(MoneyBudgetScreen));
-        expect(tester.takeException(), isNull);
-      },
-    );
-
-    testWidgets(
-      'starter creates the selected groom categories in one atomic budget write',
-      (tester) async {
-        final harness = _MoneyProductHarness.owner(
-          initialLocation: AppRouter.money(_planId),
-          noBudget: true,
-          personaCode: 'GROOM',
-        );
-        addTearDown(harness.dispose);
-        await _pumpProduct(tester, harness.app);
-
-        // The mahr is outside the budget (DECISIONS 2026-10-22, C1).
-        expect(find.text('تجهيز الميزانية · 11'), findsOneWidget);
-        await tester.tap(find.text('تجهيز الميزانية · 11'));
-        await tester.pumpAndSettle();
-
-        expect(harness.api.replaceBudgetCalls, 1);
-        expect(harness.api.savedCategoryCount, 11);
-        expect(harness.api.savedTotalBudget, isNull);
-        expect(harness.currentLocation, AppRouter.moneyBudget(_planId));
-        expect(find.byType(MoneyBudgetScreen), findsOneWidget);
-        expect(tester.takeException(), isNull);
-      },
-    );
+      await _openMoneySettings(tester);
+      await tester.tap(find.byKey(const ValueKey('money-settings-budget')));
+      await tester.pumpAndSettle();
+      expect(harness.currentLocation, AppRouter.moneyBudget(_planId));
+      expect(find.byType(MoneyBudgetScreen), findsOneWidget);
+      // w19: the budget, the reserve and each item's share.
+      expect(find.text('توزيع الميزانية'), findsOneWidget);
+      expect(
+        find.byKey(const ValueKey('money-budget-reserve')),
+        findsOneWidget,
+      );
+      expect(find.text('حفظ التوزيع'), findsOneWidget);
+      _expectRtl(tester, find.byType(MoneyBudgetScreen));
+      expect(tester.takeException(), isNull);
+    });
 
     testWidgets(
       'budget waits for a successful retry before hydrating persisted data',
@@ -755,24 +713,25 @@ void main() {
       },
     );
 
-    testWidgets('cost list separates a load error from an empty result', (
+    // The old «كل التكاليف» page is gone: the items live on «البنود».
+    testWidgets('«البنود» separates a load error from an empty result', (
       tester,
     ) async {
       final harness = _MoneyProductHarness.owner(
-        initialLocation: AppRouter.moneyCosts(_planId),
+        initialLocation: AppRouter.money(_planId),
         noBudget: true,
         failSummaryLoads: 1,
       );
       addTearDown(harness.dispose);
       await _pumpProduct(tester, harness.app);
 
-      expect(find.text('تعذر تحميل التكاليف'), findsOneWidget);
-      expect(find.text('لا توجد نتائج'), findsNothing);
-      await tester.tap(find.text('حاول مرة أخرى'));
+      expect(find.text('ما قدرنا نجيبها'), findsOneWidget);
+      expect(find.text('ما في بنود بعد'), findsNothing);
+      await tester.tap(find.text('حاول مرة ثانية'));
       await tester.pumpAndSettle();
 
-      expect(find.text('تعذر تحميل التكاليف'), findsNothing);
-      expect(find.text('لا توجد نتائج'), findsOneWidget);
+      expect(find.text('ما قدرنا نجيبها'), findsNothing);
+      expect(find.text('ما في بنود بعد'), findsOneWidget);
       expect(tester.takeException(), isNull);
     });
 
@@ -995,13 +954,6 @@ class _MoneyProductHarness {
               MoneyBudgetScreen(weddingPlanId: state.pathParameters['id']!),
         ),
         GoRoute(
-          path: '/wedding-plans/:id/money/schedules',
-          builder: (context, state) => PaymentSchedulesScreen(
-            weddingPlanId: state.pathParameters['id']!,
-            costId: state.uri.queryParameters['costId'],
-          ),
-        ),
-        GoRoute(
           path: '/wedding-plans/:id/money/categories/create',
           builder: (context, state) => BudgetCategoryFormScreen(
             weddingPlanId: state.pathParameters['id']!,
@@ -1015,11 +967,6 @@ class _MoneyProductHarness {
           ),
         ),
         GoRoute(
-          path: '/wedding-plans/:id/money/costs',
-          builder: (context, state) =>
-              CostsScreen(weddingPlanId: state.pathParameters['id']!),
-        ),
-        GoRoute(
           path: '/wedding-plans/:id/money/costs/create',
           builder: (context, state) => CostFormScreen(
             weddingPlanId: state.pathParameters['id']!,
@@ -1027,14 +974,6 @@ class _MoneyProductHarness {
                 ? state.extra! as CostDraftIntent
                 : null,
             initialCategoryId: state.uri.queryParameters['categoryId'],
-          ),
-        ),
-        GoRoute(
-          path: '/wedding-plans/:id/money/costs/:costId/schedules/:scheduleId',
-          builder: (context, state) => PaymentScheduleDetailsScreen(
-            weddingPlanId: state.pathParameters['id']!,
-            costId: state.pathParameters['costId']!,
-            scheduleId: state.pathParameters['scheduleId']!,
           ),
         ),
         GoRoute(

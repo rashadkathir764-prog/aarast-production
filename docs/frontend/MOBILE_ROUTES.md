@@ -46,19 +46,15 @@
 - `/wedding-plans/:id/money/categories/:categoryId`
 - `/wedding-plans/:id/money/categories/:categoryId/edit`
 - `/wedding-plans/:id/money/categories/create`
-- `/wedding-plans/:id/money/costs`
 - `/wedding-plans/:id/money/costs/:costId`
 - `/wedding-plans/:id/money/costs/:costId/edit`
 - `/wedding-plans/:id/money/costs/:costId/payments/create`
 - `/wedding-plans/:id/money/costs/:costId/schedules/:scheduleId`
-- `/wedding-plans/:id/money/costs/:costId/schedules/:scheduleId/edit`
 - `/wedding-plans/:id/money/costs/:costId/schedules/:scheduleId/pay`
-- `/wedding-plans/:id/money/costs/:costId/schedules/create`
 - `/wedding-plans/:id/money/costs/create`
 - `/wedding-plans/:id/money/funding`
 - `/wedding-plans/:id/money/payments/:paymentId`
 - `/wedding-plans/:id/money/receipts`
-- `/wedding-plans/:id/money/schedules`
 - `/wedding-plans/:id/notifications`
 - `/wedding-plans/:id/plan-center`
 - `/wedding-plans/:id/providers`
@@ -78,4 +74,4 @@
 - `/wedding-plans/create`
 - `/welcome`
 
-Total: 77 unique routes
+Total: 73 unique routes

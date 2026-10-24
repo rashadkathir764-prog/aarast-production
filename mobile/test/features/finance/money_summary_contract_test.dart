@@ -1,8 +1,6 @@
 import 'package:aarast_mobile/core/utils/money_formatters.dart';
 import 'package:aarast_mobile/features/finance/models/money_summary.dart';
 import 'package:aarast_mobile/features/finance/models/wedding_cost.dart';
-import 'package:aarast_mobile/features/finance/widgets/money_widgets.dart';
-import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
@@ -137,28 +135,5 @@ void main() {
       compactMoneyParts(1500, currencyCode: 'USD').semanticText,
       contains('دولار أمريكي'),
     );
-  });
-
-  testWidgets('MoneyAmountText is overflow-safe at 320px RTL', (tester) async {
-    tester.view.devicePixelRatio = 1;
-    tester.view.physicalSize = const Size(320, 180);
-    addTearDown(tester.view.reset);
-
-    await tester.pumpWidget(
-      const MaterialApp(
-        home: Directionality(
-          textDirection: TextDirection.rtl,
-          child: Center(
-            child: SizedBox(
-              width: 150,
-              child: MoneyAmountText(amount: 118400000, currency: 'YER'),
-            ),
-          ),
-        ),
-      ),
-    );
-
-    expect(find.byType(MoneyAmountText), findsOneWidget);
-    expect(tester.takeException(), isNull);
   });
 }

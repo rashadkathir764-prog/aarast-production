@@ -10,7 +10,6 @@ import 'package:aarast_mobile/features/finance/providers/finance_provider.dart';
 import 'package:aarast_mobile/features/finance/screens/cost_details_screen.dart';
 import 'package:aarast_mobile/features/finance/screens/cost_payment_screens.dart';
 import 'package:aarast_mobile/features/finance/screens/money_receipts_screen.dart';
-import 'package:aarast_mobile/features/finance/screens/payment_schedule_screens.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
@@ -70,28 +69,6 @@ void main() {
                 absentTitle: 'هذي الدفعة ما عاد موجودة',
               ),
               (
-                screen: const PaymentSchedulesScreen(weddingPlanId: 'plan-1'),
-                errorTitle: 'تعذر تحميل مواعيد الدفع',
-                absentTitle: 'لا توجد مواعيد دفع',
-              ),
-              (
-                screen: const PaymentScheduleDetailsScreen(
-                  weddingPlanId: 'plan-1',
-                  costId: 'cost-1',
-                  scheduleId: 'schedule-1',
-                ),
-                errorTitle: 'تعذر تحميل موعد الدفع',
-                absentTitle: 'الموعد غير موجود',
-              ),
-              (
-                screen: const PaymentScheduleFormScreen(
-                  weddingPlanId: 'plan-1',
-                  costId: 'cost-1',
-                ),
-                errorTitle: 'تعذر تحميل موعد الدفع',
-                absentTitle: 'تعذر فتح الموعد',
-              ),
-              (
                 screen: const PayPaymentScheduleScreen(
                   weddingPlanId: 'plan-1',
                   costId: 'cost-1',
@@ -110,18 +87,7 @@ void main() {
           );
           expect(find.text(item.errorTitle), findsOneWidget, reason: '$item');
           expect(find.text(item.absentTitle), findsNothing, reason: '$item');
-          // The journey screens say «حاول مرة ثانية», the older ones
-          // «حاول مرة أخرى»: either way one retry.
-          expect(
-            find.byWidgetPredicate(
-              (widget) =>
-                  widget is Text &&
-                  (widget.data == 'حاول مرة أخرى' ||
-                      widget.data == 'حاول مرة ثانية'),
-            ),
-            findsOneWidget,
-            reason: '$item',
-          );
+          expect(find.text('حاول مرة ثانية'), findsOneWidget, reason: '$item');
           expect(tester.takeException(), isNull, reason: '$item');
         }
       },
@@ -208,7 +174,9 @@ void main() {
       await tester.tap(reverse);
       await tester.pumpAndSettle();
 
-      // The reason is required before anything is reversed.
+      // x14 asks in a journey sheet; the reason is required before anything
+      // is reversed.
+      expect(find.byKey(const ValueKey('journey-sheet-handle')), findsOneWidget);
       expect(find.text('تعكس الدفعة؟'), findsOneWidget);
       await tester.tap(find.byKey(const ValueKey('payment-reverse-confirm')));
       await tester.pumpAndSettle();
@@ -285,17 +253,89 @@ void main() {
       expect(tester.takeException(), isNull);
     });
 
-    testWidgets('schedule list stays usable at 320px and 1.3 text scale', (
+    // The old payment-dates page is gone: an agreement's dates are listed
+    // on its page (c07) and each one changes in its own sheet.
+    testWidgets('a pending date opens its sheet on the agreement (c07)', (
       tester,
     ) async {
+      final api = _ScheduleRecordingApi();
       await _pumpMoneyScreen(
         tester,
-        const PaymentSchedulesScreen(weddingPlanId: 'plan-1'),
+        const CostDetailsScreen(weddingPlanId: 'plan-1', costId: 'cost-1'),
+        api: api,
       );
 
-      expect(find.text('مواعيد الدفع'), findsOneWidget);
-      expect(find.text('قاعة الحفل'), findsOneWidget);
-      expect(find.text('1 معلّق'), findsOneWidget);
+      final row = find.text('الدفعة الثانية');
+      await tester.scrollUntilVisible(row, 240);
+      await tester.tap(row);
+      await tester.pumpAndSettle();
+
+      expect(find.byKey(const ValueKey('journey-sheet-handle')), findsOneWidget);
+      expect(find.text('موعد الدفعة'), findsOneWidget);
+      expect(find.text('400'), findsOneWidget);
+      expect(find.text('ر.ي'), findsOneWidget);
+      expect(find.text('YER'), findsNothing);
+      expect(
+        find.byKey(const ValueKey('payment-schedule-remove')),
+        findsOneWidget,
+      );
+
+      await tester.enterText(
+        find.byKey(const ValueKey('payment-schedule-amount')),
+        '500',
+      );
+      await tester.tap(find.byKey(const ValueKey('schedule-save')));
+      await tester.pumpAndSettle();
+
+      expect(api.updated, ['schedule-1:500']);
+      expect(find.text('موعد الدفعة'), findsNothing);
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('removing a date asks once more, then deletes it', (
+      tester,
+    ) async {
+      final api = _ScheduleRecordingApi();
+      await _pumpMoneyScreen(
+        tester,
+        const CostDetailsScreen(weddingPlanId: 'plan-1', costId: 'cost-1'),
+        api: api,
+      );
+
+      final row = find.text('الدفعة الثانية');
+      await tester.scrollUntilVisible(row, 240);
+      await tester.tap(row);
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const ValueKey('payment-schedule-remove')));
+      await tester.pumpAndSettle();
+
+      expect(find.textContaining('تشيل موعد'), findsOneWidget);
+      expect(api.deleted, isEmpty);
+      await tester.tap(
+        find.byKey(const ValueKey('payment-schedule-remove-confirm')),
+      );
+      await tester.pumpAndSettle();
+
+      expect(api.deleted, ['schedule-1']);
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('a viewer sees the dates without opening them', (tester) async {
+      final viewer = FinanceProvider(_MoneyDetailsApi());
+      await viewer.loadMoney('plan-1', canManageMoney: false);
+      await _pumpMoneyScreen(
+        tester,
+        const CostDetailsScreen(weddingPlanId: 'plan-1', costId: 'cost-1'),
+        provider: viewer,
+      );
+
+      final row = find.text('الدفعة الثانية');
+      await tester.scrollUntilVisible(row, 240);
+      await tester.tap(row, warnIfMissed: false);
+      await tester.pumpAndSettle();
+
+      expect(find.byKey(const ValueKey('journey-sheet-handle')), findsNothing);
+      expect(find.text('أضف موعد'), findsNothing);
       expect(tester.takeException(), isNull);
     });
 
@@ -381,28 +421,6 @@ void main() {
     );
 
     testWidgets(
-      'schedule details keeps all pending actions inside the screen',
-      (tester) async {
-        await _pumpMoneyScreen(
-          tester,
-          const PaymentScheduleDetailsScreen(
-            weddingPlanId: 'plan-1',
-            costId: 'cost-1',
-            scheduleId: 'schedule-1',
-          ),
-        );
-
-        expect(find.text('تفاصيل موعد الدفع'), findsOneWidget);
-        expect(find.text('إدارة الموعد'), findsOneWidget);
-        expect(find.text('تسجيل دفع الموعد'), findsOneWidget);
-        expect(find.text('تعديل'), findsOneWidget);
-        expect(find.text('إلغاء وحفظ السجل'), findsOneWidget);
-        expect(find.text('حذف نهائي'), findsOneWidget);
-        expect(tester.takeException(), isNull);
-      },
-    );
-
-    testWidgets(
       'paying a schedule shows fixed amount and no free amount field',
       (tester) async {
         await _pumpMoneyScreen(
@@ -425,8 +443,20 @@ void main() {
           findsOneWidget,
         );
         expect(find.byKey(const Key('cost-payment-amount')), findsNothing);
-        expect(find.byKey(const Key('payment-schedule-amount')), findsNothing);
+        expect(
+          find.byKey(const ValueKey('payment-schedule-amount')),
+          findsNothing,
+        );
         expect(find.byKey(const ValueKey('payment-save')), findsOneWidget);
+
+        // «عدّل الموعد» opens the date's own sheet over the payment.
+        await tester.tap(find.byKey(const ValueKey('payment-fixed-change')));
+        await tester.pumpAndSettle();
+        expect(find.text('موعد الدفعة'), findsOneWidget);
+        expect(
+          find.byKey(const ValueKey('payment-schedule-amount')),
+          findsOneWidget,
+        );
         expect(tester.takeException(), isNull);
       },
     );
@@ -434,33 +464,40 @@ void main() {
     testWidgets(
       'schedule reminders do not reserve each other and use real remainder',
       (tester) async {
+        final api = _ScheduleRecordingApi();
         await _pumpMoneyScreen(
           tester,
-          const PaymentScheduleFormScreen(
-            weddingPlanId: 'plan-1',
-            costId: 'cost-1',
-          ),
+          const CostDetailsScreen(weddingPlanId: 'plan-1', costId: 'cost-1'),
+          api: api,
         );
+        await tester.scrollUntilVisible(find.text('أضف موعد'), 240);
+        await tester.tap(find.text('أضف موعد'));
+        await tester.pumpAndSettle();
 
-        final amount = find.byKey(const Key('payment-schedule-amount'));
+        final amount = find.byKey(const ValueKey('payment-schedule-amount'));
+        final save = find.byKey(const ValueKey('schedule-save'));
+        expect(find.text('موعد دفع جديد'), findsOneWidget);
         expect(find.text('ر.ي'), findsOneWidget);
         expect(find.text('YER'), findsNothing);
-        expect(find.text('غير مدفوع على التكلفة'), findsOneWidget);
-        await tester.enterText(amount, '700');
-        expect(
-          tester.state<FormState>(find.byType(Form)).validate(),
-          isTrue,
-          reason:
-              '700 plus the existing 400 reminder may exceed the 800 remainder because reminders do not reserve money',
-        );
-        await tester.pump();
+        // The sheet says what is left on the agreement.
+        expect(find.textContaining('باقي عليك'), findsOneWidget);
+
+        // 900 is more than the 800 left.
         await tester.enterText(amount, '900');
-        expect(tester.state<FormState>(find.byType(Form)).validate(), isFalse);
-        await tester.pump();
-        expect(
-          find.text('المبلغ يتجاوز غير المدفوع على التكلفة.'),
-          findsOneWidget,
-        );
+        await tester.tap(save);
+        await tester.pumpAndSettle();
+        expect(find.textContaining('أكثر من الباقي عليك'), findsOneWidget);
+        expect(find.text('اختر يوم الدفعة'), findsOneWidget);
+        expect(api.created, isEmpty);
+
+        // 700 plus the existing 400 reminder may pass the 800 left, because
+        // reminders do not reserve money: only the day is missing.
+        await tester.enterText(amount, '700');
+        await tester.tap(save);
+        await tester.pumpAndSettle();
+        expect(find.textContaining('أكثر من الباقي عليك'), findsNothing);
+        expect(find.text('اختر يوم الدفعة'), findsOneWidget);
+        expect(api.created, isEmpty);
         expect(tester.takeException(), isNull);
       },
     );
@@ -471,6 +508,7 @@ Future<void> _pumpMoneyScreen(
   WidgetTester tester,
   Widget screen, {
   FinanceApi? api,
+  FinanceProvider? provider,
 }) async {
   tester.view.devicePixelRatio = 1;
   tester.view.physicalSize = const Size(320, 1100);
@@ -478,7 +516,7 @@ Future<void> _pumpMoneyScreen(
 
   await tester.pumpWidget(
     ChangeNotifierProvider<FinanceProvider>(
-      create: (_) => FinanceProvider(api ?? _MoneyDetailsApi()),
+      create: (_) => provider ?? FinanceProvider(api ?? _MoneyDetailsApi()),
       child: MaterialApp(
         builder: (context, child) => MediaQuery(
           data: MediaQuery.of(
@@ -653,6 +691,41 @@ class _MoneyDetailsApi extends FinanceApi {
     String? planId,
   }) async {
     return [schedule];
+  }
+}
+
+/// Records what the payment-date sheet sends.
+class _ScheduleRecordingApi extends _MoneyDetailsApi {
+  final created = <String>[];
+  final updated = <String>[];
+  final deleted = <String>[];
+
+  @override
+  Future<PaymentSchedule> createSchedule({
+    required WeddingCost cost,
+    required String amount,
+    required DateTime dueDate,
+    String? note,
+  }) async {
+    created.add('${cost.id}:$amount');
+    return schedule;
+  }
+
+  @override
+  Future<PaymentSchedule> updateSchedule({
+    required PaymentSchedule schedule,
+    required WeddingCost cost,
+    required String amount,
+    required DateTime dueDate,
+    String? note,
+  }) async {
+    updated.add('${schedule.id}:$amount');
+    return schedule;
+  }
+
+  @override
+  Future<void> deleteSchedule(PaymentSchedule schedule) async {
+    deleted.add(schedule.id);
   }
 }
 

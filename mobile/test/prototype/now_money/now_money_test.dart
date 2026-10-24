@@ -27,11 +27,9 @@ import 'package:aarast_mobile/features/finance/screens/budget_category_form_scre
 import 'package:aarast_mobile/features/finance/screens/cost_details_screen.dart';
 import 'package:aarast_mobile/features/finance/screens/cost_form_screen.dart';
 import 'package:aarast_mobile/features/finance/screens/cost_payment_screens.dart';
-import 'package:aarast_mobile/features/finance/screens/costs_screen.dart';
 import 'package:aarast_mobile/features/finance/screens/funding_sources_screen.dart';
 import 'package:aarast_mobile/features/finance/screens/money_budget_screen.dart';
 import 'package:aarast_mobile/features/finance/screens/money_overview_screen.dart';
-import 'package:aarast_mobile/features/finance/screens/payment_schedule_screens.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
@@ -135,13 +133,6 @@ GoRouter _router(String initial, {bool offline = false}) {
         builder: (c, s) => FundingSourcesScreen(weddingPlanId: id(s)),
       ),
       GoRoute(
-        path: '/wedding-plans/:id/money/schedules',
-        builder: (c, s) => PaymentSchedulesScreen(
-          weddingPlanId: id(s),
-          costId: s.uri.queryParameters['costId'],
-        ),
-      ),
-      GoRoute(
         path: '/wedding-plans/:id/money/categories/create',
         builder: (c, s) => BudgetCategoryFormScreen(weddingPlanId: id(s)),
       ),
@@ -151,10 +142,6 @@ GoRouter _router(String initial, {bool offline = false}) {
           weddingPlanId: id(s),
           categoryId: s.pathParameters['categoryId']!,
         ),
-      ),
-      GoRoute(
-        path: '/wedding-plans/:id/money/costs',
-        builder: (c, s) => CostsScreen(weddingPlanId: id(s)),
       ),
       GoRoute(
         path: '/wedding-plans/:id/money/costs/create',
@@ -180,23 +167,8 @@ GoRouter _router(String initial, {bool offline = false}) {
         ),
       ),
       GoRoute(
-        path: '/wedding-plans/:id/money/costs/:costId/schedules/create',
-        builder: (c, s) => PaymentScheduleFormScreen(
-          weddingPlanId: id(s),
-          costId: s.pathParameters['costId']!,
-        ),
-      ),
-      GoRoute(
         path: '/wedding-plans/:id/money/costs/:costId/schedules/:scheduleId/pay',
         builder: (c, s) => PayPaymentScheduleScreen(
-          weddingPlanId: id(s),
-          costId: s.pathParameters['costId']!,
-          scheduleId: s.pathParameters['scheduleId']!,
-        ),
-      ),
-      GoRoute(
-        path: '/wedding-plans/:id/money/costs/:costId/schedules/:scheduleId',
-        builder: (c, s) => PaymentScheduleDetailsScreen(
           weddingPlanId: id(s),
           costId: s.pathParameters['costId']!,
           scheduleId: s.pathParameters['scheduleId']!,
@@ -226,10 +198,6 @@ void main() {
   testWidgets(
     'm03 overview no budget',
     (t) => _shot(t, 'm03_overview_no_budget', _m, mode: _Mode.noBudget, h: 1500),
-  );
-  testWidgets(
-    'm04 starter',
-    (t) => _shot(t, 'm04_starter', _m, mode: _Mode.empty, h: 1700),
   );
   testWidgets('m05 share', (t) async {
     await _shot(
@@ -262,19 +230,6 @@ void main() {
     'm09 category form',
     (t) => _shot(t, 'm09_category_form', '$_m/categories/create'),
   );
-  testWidgets('m10 costs', (t) => _shot(t, 'm10_costs', '$_m/costs', h: 1300));
-  testWidgets('m11 costs filter', (t) async {
-    await _shot(
-      t,
-      'm11_costs_filter',
-      '$_m/costs',
-      h: 1000,
-      act: () async {
-        await t.tap(find.textContaining('تصفية').first);
-        await t.pump(const Duration(milliseconds: 800));
-      },
-    );
-  });
   testWidgets(
     'm12 cost detail',
     (t) => _shot(t, 'm12_cost_detail', '$_m/costs/cost-hall', h: 1900),
@@ -327,25 +282,12 @@ void main() {
     );
   });
   testWidgets(
-    'm18 schedules',
-    (t) => _shot(t, 'm18_schedules', '$_m/schedules', h: 1300),
-  );
-  testWidgets(
     'm19 schedule pay',
     (t) => _shot(
       t,
       'm19_schedule_pay',
       '$_m/costs/cost-hall/schedules/sch-hall-2/pay',
       h: 1100,
-    ),
-  );
-  testWidgets(
-    'm20 schedule form',
-    (t) => _shot(
-      t,
-      'm20_schedule_form',
-      '$_m/costs/cost-hall/schedules/create',
-      h: 1000,
     ),
   );
   testWidgets(

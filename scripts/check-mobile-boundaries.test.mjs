@@ -1751,9 +1751,12 @@ const trackedOwnerApiContracts = [
       { uri: 'screens/cost_form_screen.dart', show: ['CostFormScreen'] },
       {
         uri: 'screens/cost_payment_screens.dart',
-        show: ['CostPaymentDetailsScreen', 'RecordCostPaymentScreen'],
+        show: [
+          'CostPaymentDetailsScreen',
+          'PayPaymentScheduleScreen',
+          'RecordCostPaymentScreen',
+        ],
       },
-      { uri: 'screens/costs_screen.dart', show: ['CostsScreen'] },
       { uri: 'screens/money_budget_screen.dart', show: ['MoneyBudgetScreen'] },
       {
         uri: 'screens/money_receipts_screen.dart',
@@ -1761,16 +1764,7 @@ const trackedOwnerApiContracts = [
       },
       {
         uri: 'screens/money_overview_screen.dart',
-        show: ['MoneyOverviewScreen', 'shouldShowMoneyStarter'],
-      },
-      {
-        uri: 'screens/payment_schedule_screens.dart',
-        show: [
-          'PayPaymentScheduleScreen',
-          'PaymentScheduleDetailsScreen',
-          'PaymentScheduleFormScreen',
-          'PaymentSchedulesScreen',
-        ],
+        show: ['MoneyOverviewScreen'],
       },
       {
         uri: 'widgets/money_input_formatter.dart',
@@ -3051,16 +3045,12 @@ const trackedCompositionRootContracts = [
           'CostDraftIntent',
           'CostFormScreen',
           'CostPaymentDetailsScreen',
-          'CostsScreen',
           'FinanceProvider',
           'FundingSourcesScreen',
           'MoneyBudgetScreen',
           'MoneyOverviewScreen',
           'MoneyReceiptsScreen',
           'PayPaymentScheduleScreen',
-          'PaymentScheduleDetailsScreen',
-          'PaymentScheduleFormScreen',
-          'PaymentSchedulesScreen',
           'RecordCostPaymentScreen',
           'WeddingCost',
         ],
@@ -3576,11 +3566,6 @@ function assertTrackedPlanningBatch({
       show: [],
     },
     {
-      source: 'mobile/lib/features/finance/widgets/money_widgets.dart',
-      uri: '../../../core/utils/money_formatters.dart',
-      show: [],
-    },
-    {
       source: 'mobile/lib/features/wedding_plans/widgets/dashboard/aarast_dashboard_view.dart',
       uri: '../../../../core/utils/money_formatters.dart',
       show: ['compactMoneyParts'],
@@ -3624,7 +3609,7 @@ function assertTrackedPlanningBatch({
   );
   assert.equal(
     createHash('sha256').update(financeContractText).digest('hex'),
-    '002054fedc4e770bc959c541df98e8e7343f2318fc6079bbfbf35c721048149f',
+    'a5432241e822c42614dfc3496e0361cab127456158576c7795fd4916e4989e66',
     'Planning batch Finance contract assertions changed',
   );
 

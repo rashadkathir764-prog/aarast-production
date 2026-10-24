@@ -245,12 +245,9 @@ class FinanceProvider extends ChangeNotifier with SessionScopedNotifier {
     }
   }
 
-  Future<void> loadMoreCosts({
-    String? status,
-    String? categoryId,
-    String? search,
-    String? payer,
-  }) async {
+  /// The next page of the plan's agreements, added to the same list
+  /// («البنود», c02).
+  Future<void> loadMoreCosts() async {
     final planId = _loadedPlanId;
     if (planId == null || !hasMoreCosts || _isLoadingMoreCosts) return;
     final planGeneration = _loadGeneration;
@@ -258,14 +255,7 @@ class FinanceProvider extends ChangeNotifier with SessionScopedNotifier {
     _isLoadingMoreCosts = true;
     notifyListeners();
     try {
-      final next = await _api.getCosts(
-        planId,
-        page: _costsPage + 1,
-        status: status,
-        categoryId: categoryId,
-        search: search,
-        payer: payer,
-      );
+      final next = await _api.getCosts(planId, page: _costsPage + 1);
       if (!_isCurrent(planGeneration) ||
           _loadedPlanId != planId ||
           requestGeneration != _costRequestGeneration) {
@@ -278,52 +268,6 @@ class FinanceProvider extends ChangeNotifier with SessionScopedNotifier {
       ];
       _costsPage = next.page;
       _costsTotalPages = next.totalPages;
-      _sortState();
-    } on ApiException catch (error) {
-      if (_isCurrent(planGeneration) &&
-          _loadedPlanId == planId &&
-          requestGeneration == _costRequestGeneration) {
-        _errorMessage = error.message;
-      }
-    } finally {
-      if (_isCurrent(planGeneration) &&
-          _loadedPlanId == planId &&
-          requestGeneration == _costRequestGeneration) {
-        _isLoadingMoreCosts = false;
-        notifyListeners();
-      }
-    }
-  }
-
-  Future<void> filterCosts({
-    String? status,
-    String? categoryId,
-    String? search,
-    String? payer,
-  }) async {
-    final planId = _loadedPlanId;
-    if (planId == null) return;
-    final planGeneration = _loadGeneration;
-    final requestGeneration = ++_costRequestGeneration;
-    _isLoadingMoreCosts = true;
-    _errorMessage = null;
-    notifyListeners();
-    try {
-      final page = await _api.getCosts(
-        planId,
-        status: status,
-        categoryId: categoryId,
-        search: search,
-        payer: payer,
-      );
-      if (!_isCurrent(planGeneration) ||
-          _loadedPlanId != planId ||
-          requestGeneration != _costRequestGeneration) {
-        return;
-      }
-      _costs = page.items;
-      _costsPage = page.page;
-      _costsTotalPages = page.totalPages;
       _sortState();
     } on ApiException catch (error) {
       if (_isCurrent(planGeneration) &&

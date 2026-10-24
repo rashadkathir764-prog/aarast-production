@@ -36,17 +36,12 @@ void main() {
       '/wedding-plans/plan-1/providers': 'providers',
       '/wedding-plans/plan-1/money': 'money',
       '/wedding-plans/plan-1/money/budget': 'money-form',
-      '/wedding-plans/plan-1/money/costs': 'money-list',
       '/wedding-plans/plan-1/money/costs/cost-1': 'money-detail',
       '/wedding-plans/plan-1/money/categories/category-1': 'money-detail',
       '/wedding-plans/plan-1/money/categories/category-1/edit': 'money-form',
       '/wedding-plans/plan-1/money/costs/cost-1/edit': 'money-form',
       '/wedding-plans/plan-1/money/costs/cost-1/payments/create': 'money-form',
       '/wedding-plans/plan-1/money/payments/payment-1': 'money-detail',
-      '/wedding-plans/plan-1/money/schedules': 'money-list',
-      '/wedding-plans/plan-1/money/costs/cost-1/schedules/create': 'money-form',
-      '/wedding-plans/plan-1/money/costs/cost-1/schedules/schedule-1/edit':
-          'money-form',
       '/wedding-plans/plan-1/money/costs/cost-1/schedules/schedule-1/pay':
           'money-form',
       '/wedding-plans/plan-1/money/costs/cost-1/schedules/schedule-1':

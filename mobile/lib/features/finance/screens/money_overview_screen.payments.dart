@@ -2,7 +2,8 @@ part of 'money_overview_screen.dart';
 
 // c03 «الدفعات»: what is late and what falls due in the next 30 days (the
 // server's due list), the total of those, and each one recorded with a
-// swipe («دفعتها»). The full calendar stays one tap away.
+// swipe («دفعتها»). A row opens its agreement (c07), where every date of it
+// is listed; later dates are not shown here, as drawn.
 
 class _MoneyPaymentsTab extends StatelessWidget {
   const _MoneyPaymentsTab({
@@ -115,10 +116,9 @@ class _MoneyPaymentsTab extends StatelessWidget {
                     amount: _amount(context, schedules[index].amount, currency),
                     overdue: schedules[index].isOverdueAt(now),
                     onOpen: () => context.push(
-                      AppRouter.moneyScheduleDetails(
+                      AppRouter.moneyCostDetails(
                         planId,
                         schedules[index].costId,
-                        schedules[index].id,
                       ),
                     ),
                     onPay: canSwipe ? onPay(schedules[index]) : null,
@@ -128,16 +128,6 @@ class _MoneyPaymentsTab extends StatelessWidget {
             ),
           ),
         ],
-        const SizedBox(height: 8),
-        Align(
-          alignment: AlignmentDirectional.centerStart,
-          child: JourneyTextAction(
-            key: const ValueKey('money-destination-schedules'),
-            label: 'كل مواعيد الدفع',
-            color: AarastV3Color.primary,
-            onPressed: () => context.push(AppRouter.moneySchedules(planId)),
-          ),
-        ),
       ],
     );
   }

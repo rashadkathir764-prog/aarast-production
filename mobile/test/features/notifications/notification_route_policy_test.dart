@@ -117,7 +117,8 @@ void main() {
     );
   });
 
-  test('payment schedule notification resolves to canonical money details', () {
+  // A payment date has no page of its own; its agreement (c07) lists it.
+  test('payment schedule notification resolves to its agreement', () {
     final notification = AarastNotification(
       id: 'notification-1',
       userId: 'user-1',
@@ -139,7 +140,7 @@ void main() {
 
     expect(
       resolveNotificationRouteTarget(notification),
-      '/wedding-plans/plan-1/money/costs/cost-1/schedules/schedule-1',
+      '/wedding-plans/plan-1/money/costs/cost-1',
     );
   });
 

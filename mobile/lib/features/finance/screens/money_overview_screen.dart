@@ -11,7 +11,6 @@ import '../../../core/utils/money_formatters.dart';
 import '../../../core/utils/arabic_count.dart';
 import '../../../core/utils/arabic_date_formatter.dart';
 import '../../../core/widgets/aarast_share_sheet.dart';
-import '../../../core/widgets/aarast_toast.dart';
 import '../../../core/widgets/aarast_ui.dart';
 import '../../account_contexts/account_contexts_api.dart'
     show AccountContextController;
@@ -27,7 +26,6 @@ import '../models/money_starter_catalog.dart';
 import '../models/wedding_cost.dart';
 import '../providers/finance_provider.dart';
 import '../providers/funding_provider.dart';
-import '../widgets/money_starter_setup.dart';
 import '../widgets/money_widgets.dart';
 
 part 'money_overview_screen.funding.dart';
@@ -36,10 +34,14 @@ part 'money_overview_screen.payments.dart';
 part 'money_overview_screen.pieces.dart';
 part 'money_overview_screen.summary.dart';
 
-/// نقطة الدخول الوحيدة للمال.
+/// c01 to c05 «المال»: the one way into money, on four tabs. The summary,
+/// the items (every agreement and the items not booked yet), the payments
+/// due within 30 days, and where the money comes from. A payment is
+/// recorded on its agreement (c07); the budget opens w19.
 ///
-/// تعرض ملخص MoneySummary ثم قائمة WeddingCost. تبقى حركات الدفع داخل تفاصيل
-/// التكلفة، بينما تُفتح الميزانية ومواعيد الدفع في شاشاتهما المتخصصة.
+/// A plan with no items yet opens on «البنود» with «أضف أول بند»: since
+/// c9b2ce56 every new plan brings its a05 items, so no starter step is
+/// shown (rule zero).
 class MoneyOverviewScreen extends StatefulWidget {
   const MoneyOverviewScreen({
     required this.weddingPlanId,
@@ -59,8 +61,8 @@ class MoneyOverviewScreen extends StatefulWidget {
 }
 
 class _MoneyOverviewScreenState extends State<MoneyOverviewScreen> {
-  /// «الملخص · البنود · الدفعات · من وين» (c01).
-  int _tab = 0;
+  /// «الملخص · البنود · الدفعات · من وين» (c01); null until chosen.
+  int? _tab;
 
   @override
   void initState() {
@@ -79,37 +81,21 @@ class _MoneyOverviewScreenState extends State<MoneyOverviewScreen> {
   @override
   Widget build(BuildContext context) {
     final provider = context.watch<FinanceProvider>();
-    final bottomClearance = widget.embedded && provider.canManageMoney
-        ? 204.0
-        : 132.0;
     final Widget content;
     if (provider.isLoading && !provider.hasLoadedMoney) {
-      content = _MoneyRootStateList(
-        bottomClearance: bottomClearance,
-        child: const AarastScreenLoading(label: 'نرتب صورتك المالية'),
+      content = const _MoneyRootStateList(
+        child: JourneyListState(
+          phase: JourneyListPhase.loading,
+          section: JourneySection.money,
+        ),
       );
     } else if (provider.errorMessage != null && !provider.hasLoadedMoney) {
       content = _MoneyRootStateList(
-        bottomClearance: bottomClearance,
-        child: AarastErrorState(
-          title: 'تعذر تحميل المال',
-          message: provider.errorMessage!,
+        child: JourneyListState(
+          phase: JourneyListPhase.error,
+          section: JourneySection.money,
           onRetry: _load,
         ),
-      );
-    } else if (shouldShowMoneyStarter(provider)) {
-      final persona = _starterPersona(context);
-      final managedCatalog = context
-          .watch<ReferenceCatalogProvider?>()
-          ?.catalogFor('money.starter.categories');
-      content = MoneyStarterSetup(
-        catalog: moneyStarterCatalogFromManaged(managedCatalog, persona),
-        loading: provider.isSubmitting,
-        errorMessage: provider.errorMessage,
-        onRefresh: _load,
-        onManualSetup: () =>
-            context.push(AppRouter.moneyBudget(widget.weddingPlanId)),
-        onSubmit: _saveStarterCategories,
       );
     } else {
       final hasFunding = provider.summary.funding != null;
@@ -120,14 +106,18 @@ class _MoneyOverviewScreenState extends State<MoneyOverviewScreen> {
         // «من وين» is the owner's: only the owner receives funding.
         if (hasFunding) 'من وين',
       ];
-      final tab = _tab.clamp(0, tabs.length - 1);
+      // Nothing in money yet: «البنود» is where the first item goes.
+      final tab = (_tab ?? (_isEmpty(provider) ? 1 : 0)).clamp(
+        0,
+        tabs.length - 1,
+      );
       content = RefreshIndicator(
         color: AarastV3Color.primary,
         onRefresh: _load,
         child: ListView(
           key: const PageStorageKey('money-overview-list'),
           physics: const AlwaysScrollableScrollPhysics(),
-          padding: EdgeInsets.fromLTRB(16, 12, 16, bottomClearance),
+          padding: const EdgeInsets.fromLTRB(16, 12, 16, 32),
           children: [
             _MoneyHeader(
               summary: provider.summary,
@@ -147,8 +137,6 @@ class _MoneyOverviewScreenState extends State<MoneyOverviewScreen> {
                   : null,
               onBudget: () =>
                   context.push(AppRouter.moneyBudget(widget.weddingPlanId)),
-              onSchedules: () =>
-                  context.push(AppRouter.moneySchedules(widget.weddingPlanId)),
               onReceipts:
                   FinanceLocalDataSource.isLocalGuestPlanId(
                     widget.weddingPlanId,
@@ -227,10 +215,12 @@ class _MoneyOverviewScreenState extends State<MoneyOverviewScreen> {
       // Field test Q03: an overspent category shows the moment money opens.
       for (final exceeded in summary.exceededCategories) ...[
         const SizedBox(height: 12),
-        MoneyMessageBanner(
+        JourneyNote(
           key: ValueKey('money-category-exceeded-${exceeded.name}'),
-          error: true,
-          message: provider.amountsHidden || exceeded.overrun == null
+          icon: LucideIcons.alertTriangle,
+          color: AarastV3Color.danger,
+          soft: AarastV3Color.dangerSoft,
+          text: provider.amountsHidden || exceeded.overrun == null
               ? 'تكاليف «${exceeded.name}» تجاوزت المبلغ المخصص له.'
               : 'تكاليف «${exceeded.name}» تجاوزت المبلغ المخصص له بـ ${formatCompactMoney(moneyValue(exceeded.overrun), currencyCode: summary.currency)}.',
         ),
@@ -241,11 +231,7 @@ class _MoneyOverviewScreenState extends State<MoneyOverviewScreen> {
           schedule: schedule,
           currency: summary.currency,
           onTap: () => context.push(
-            AppRouter.moneyScheduleDetails(
-              widget.weddingPlanId,
-              schedule.costId,
-              schedule.id,
-            ),
+            AppRouter.moneyCostDetails(widget.weddingPlanId, schedule.costId),
           ),
           onPay: _payableCost(provider, schedule) == null
               ? null
@@ -290,30 +276,6 @@ class _MoneyOverviewScreenState extends State<MoneyOverviewScreen> {
       return moneyStarterPersonaFromCode(summary?.persona);
     }
     return MoneyStarterPersona.neutral;
-  }
-
-  Future<bool> _saveStarterCategories(List<String> categoryNames) async {
-    if (categoryNames.isEmpty) return false;
-    final provider = context.read<FinanceProvider>();
-    final saved = await provider.saveBudget(
-      planId: widget.weddingPlanId,
-      totalBudget: provider.summary.budget.total,
-      currency: provider.summary.currency,
-      categories: [
-        for (final name in categoryNames)
-          (id: null, name: name, allocatedAmount: null),
-      ],
-    );
-    if (!saved || !mounted) return false;
-
-    AarastToast.showSuccess(
-      context,
-      provider.summary.hasBudget
-          ? 'جهّزنا ${categoryNames.length} تصنيفًا. وزّع ميزانيتك عليها.'
-          : 'جهّزنا ${categoryNames.length} تصنيفًا. بقي تحديد ميزانيتك.',
-    );
-    await context.push(AppRouter.moneyBudget(widget.weddingPlanId));
-    return true;
   }
 
   PaymentSchedule? _nextSchedule(FinanceProvider provider) {
@@ -367,34 +329,23 @@ class _MoneyOverviewScreenState extends State<MoneyOverviewScreen> {
   }
 }
 
-bool shouldShowMoneyStarter(FinanceProvider provider) {
-  if (!provider.hasLoadedMoney || !provider.canManageMoney) return false;
-  final summary = provider.summary;
-  // A budget alone (usually entered while creating the plan) is not a money
-  // setup: the starter is what turns it into categories, and saving it keeps
-  // the budget.
-  return provider.categories.isEmpty &&
-      provider.costs.isEmpty &&
-      provider.payments.isEmpty &&
-      provider.dueSchedules.isEmpty &&
-      summary.costs.count == 0 &&
-      summary.paymentSchedules.totalCount == 0;
-}
+/// No item, agreement or payment date in the plan yet.
+bool _isEmpty(FinanceProvider provider) =>
+    provider.categories.isEmpty &&
+    provider.costs.isEmpty &&
+    provider.summary.costs.count == 0 &&
+    provider.summary.paymentSchedules.totalCount == 0;
 
 class _MoneyRootStateList extends StatelessWidget {
-  const _MoneyRootStateList({
-    required this.child,
-    required this.bottomClearance,
-  });
+  const _MoneyRootStateList({required this.child});
 
   final Widget child;
-  final double bottomClearance;
 
   @override
   Widget build(BuildContext context) {
     return ListView(
       physics: const AlwaysScrollableScrollPhysics(),
-      padding: EdgeInsets.fromLTRB(20, 16, 20, bottomClearance),
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 32),
       children: [child],
     );
   }

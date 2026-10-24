@@ -68,6 +68,7 @@ class _MoneyItemsTab extends StatelessWidget {
               : 'دفعت ${_amount(context, cost.paidAmount, currency)}',
           note: cost.isCancelled ? null : _nextDueNote(provider, cost, now),
           muted: cost.isCancelled,
+          private: cost.isPrivate,
           onTap: () =>
               context.push(AppRouter.moneyCostDetails(planId, cost.id)),
         ),
@@ -123,14 +124,18 @@ class _MoneyItemsTab extends StatelessWidget {
               ],
             ),
           ),
+        // The server sends the agreements a page at a time; the rest load
+        // here, in the same list.
         if (provider.hasMoreCosts) ...[
           const SizedBox(height: 8),
-          Align(
-            alignment: AlignmentDirectional.centerStart,
+          Center(
             child: JourneyTextAction(
-              label: 'عرض كل التكاليف',
+              key: const ValueKey('money-items-more'),
+              label: provider.isLoadingMoreCosts ? 'يحمّل…' : 'باقي البنود',
               color: AarastV3Color.primary,
-              onPressed: () => context.push(AppRouter.moneyCosts(planId)),
+              onPressed: provider.isLoadingMoreCosts
+                  ? null
+                  : provider.loadMoreCosts,
             ),
           ),
         ],
@@ -217,6 +222,7 @@ class _MoneyItemRow extends StatelessWidget {
     required this.onTap,
     this.note,
     this.muted = false,
+    this.private = false,
     super.key,
   });
 
@@ -227,6 +233,10 @@ class _MoneyItemRow extends StatelessWidget {
   final String paidLine;
   final (String, Color)? note;
   final bool muted;
+
+  /// V1 checklist 4.10: a cost only its owner sees carries a lock. The
+  /// design draws no private item; the lock is the shipped privacy cue.
+  final bool private;
   final VoidCallback onTap;
 
   @override
@@ -236,6 +246,7 @@ class _MoneyItemRow extends StatelessWidget {
       button: true,
       label: [
         title,
+        if (private) 'خاص بك',
         amount,
         paidLine,
         ?note?.$1,
@@ -261,6 +272,15 @@ class _MoneyItemRow extends StatelessWidget {
                   children: [
                     Row(
                       children: [
+                        if (private) ...[
+                          const Icon(
+                            LucideIcons.lock,
+                            key: ValueKey('cost-private-lock'),
+                            size: 14,
+                            color: AarastV3Color.textMuted,
+                          ),
+                          const SizedBox(width: 4),
+                        ],
                         Expanded(
                           child: Text(
                             title,

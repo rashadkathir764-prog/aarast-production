@@ -11,7 +11,6 @@ import 'package:aarast_mobile/features/finance/models/money_summary.dart';
 import 'package:aarast_mobile/features/finance/models/wedding_cost.dart';
 import 'package:aarast_mobile/features/finance/providers/finance_provider.dart';
 import 'package:aarast_mobile/features/finance/screens/money_overview_screen.dart';
-import 'package:aarast_mobile/features/finance/widgets/money_widgets.dart';
 import 'package:aarast_mobile/features/sharing/models/shared_member.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -19,23 +18,20 @@ import 'package:provider/provider.dart';
 
 void main() {
   group('one money system cleanup', () {
-    testWidgets('first money visit opens the guided budget starter', (
+    // Rule zero: the old budget starter is not in the prototype. A plan with
+    // nothing in money opens on «البنود», where the first item goes.
+    testWidgets('first money visit opens on «البنود» with no starter', (
       tester,
     ) async {
       _setTallView(tester);
       await tester.pumpWidget(_wrap(_FakeFinanceApi.noBudget()));
       await tester.pumpAndSettle();
 
-      expect(
-        find.byKey(const ValueKey('money-starter-submit')),
-        findsOneWidget,
-      );
-      expect(
-        find.byKey(const ValueKey('money-starter-manual')),
-        findsOneWidget,
-      );
-      expect(find.byKey(const ValueKey('money-empty-add-cost')), findsNothing);
-      expect(find.byKey(const ValueKey('money-settings-menu')), findsNothing);
+      expect(find.byKey(const ValueKey('money-starter-submit')), findsNothing);
+      expect(find.byKey(const ValueKey('money-starter-manual')), findsNothing);
+      expect(find.text('ما في بنود بعد'), findsOneWidget);
+      expect(find.text('أضف أول بند'), findsOneWidget);
+      expect(find.byKey(const ValueKey('money-settings-menu')), findsOneWidget);
       expect(tester.takeException(), isNull);
     });
 
@@ -46,8 +42,8 @@ void main() {
       await tester.pumpWidget(_wrap(_FakeFinanceApi.failing()));
       await tester.pumpAndSettle();
 
-      expect(find.text('تعذر تحميل المال'), findsOneWidget);
-      expect(find.text('حاول مرة أخرى'), findsOneWidget);
+      expect(find.text('ما قدرنا نجيبها'), findsOneWidget);
+      expect(find.text('حاول مرة ثانية'), findsOneWidget);
       expect(find.text('ابدأ تنظيم مال الزفاف'), findsNothing);
       expect(find.text('مواعيد الدفع'), findsNothing);
       expect(find.text('التصنيفات'), findsNothing);
@@ -96,12 +92,14 @@ void main() {
         find.byKey(const ValueKey('money-settings-budget')),
         findsOneWidget,
       );
+      // c03 lists the payments due; every date of an agreement is on its
+      // page (c07), so the menu has no separate payment calendar.
       expect(
         find.byKey(const ValueKey('money-settings-schedules')),
-        findsOneWidget,
+        findsNothing,
       );
       expect(find.text('الميزانية والتصنيفات'), findsOneWidget);
-      expect(find.text('مواعيد الدفع'), findsOneWidget);
+      expect(find.text('مواعيد الدفع'), findsNothing);
       // w22: an account's plan keeps receipts, reached from here.
       expect(
         find.byKey(const ValueKey('money-settings-receipts')),
@@ -156,23 +154,6 @@ void main() {
         expect(find.byKey(ValueKey('money-item-cost-$index')), findsOneWidget);
       }
       expect(find.text('ما دفعت شي'), findsNWidgets(4));
-    });
-
-    test('payment status palette stays calm and distinct', () {
-      expect(moneyStatusMeta('OPEN').color, AppTheme.textSecondary);
-      expect(moneyStatusMeta('OPEN').background, AppTheme.dangerSoft);
-      expect(moneyStatusMeta('PARTIALLY_PAID').color, AppTheme.warning);
-      expect(
-        moneyStatusMeta('PARTIALLY_PAID').background,
-        AppTheme.warningSoft,
-      );
-      expect(moneyStatusMeta('PAID').color, AppTheme.success);
-      expect(moneyStatusMeta('PAID').background, AppTheme.successSoft);
-      expect(moneyStatusMeta('CANCELLED').color, AppTheme.textSecondary);
-      expect(
-        moneyStatusMeta('CANCELLED').background,
-        AppTheme.textSecondary.withValues(alpha: .10),
-      );
     });
 
     testWidgets('past pending schedule is shown as an overdue payment', (
@@ -335,10 +316,8 @@ void main() {
           find.descendant(of: strip, matching: find.textContaining(amount));
       expect(amountInStrip(), findsOneWidget);
 
-      tester
-          .element(find.byType(MoneyOverviewScreen))
-          .read<FinanceProvider>()
-          .toggleAmountsVisibility();
+      // The eye beside «المال» hides it (c01).
+      await tester.tap(find.byKey(const ValueKey('money-privacy-toggle')));
       await tester.pumpAndSettle();
 
       expect(amountInStrip(), findsNothing);
@@ -379,12 +358,9 @@ void main() {
       );
       final padding = list.padding! as EdgeInsets;
       expect(surface.color, AppTheme.canvas);
-      expect(
-        padding.bottom,
-        greaterThanOrEqualTo(196),
-        reason:
-            'The final money card must scroll fully clear of the smart FAB.',
-      );
+      // No floating add sits over money (c01), so the list ends with the
+      // kit's page bottom above the tabs.
+      expect(padding.bottom, 32);
       expect(tester.takeException(), isNull);
     });
 
@@ -397,7 +373,7 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      expect(find.text('تعذر تحميل المال'), findsOneWidget);
+      expect(find.text('ما قدرنا نجيبها'), findsOneWidget);
       expect(find.text('تكلفة 4'), findsNothing);
       expect(find.text('إعداد الميزانية'), findsNothing);
       expect(tester.takeException(), isNull);
@@ -411,6 +387,10 @@ void main() {
         'lib/features/finance/screens/budget_expense_screen.dart',
         'lib/features/finance/screens/financial_payables_screen.dart',
         'lib/features/finance/widgets/finance_overview',
+        // The groom cleanup: old pages the design replaced.
+        'lib/features/finance/screens/costs_screen.dart',
+        'lib/features/finance/screens/payment_schedule_screens.dart',
+        'lib/features/finance/widgets/money_starter_setup.dart',
       ]) {
         expect(File(path).existsSync(), isFalse, reason: path);
       }
@@ -423,6 +403,11 @@ void main() {
         'FinancialPayablesScreen',
         '/expenses',
         '/financial-commitments',
+        'CostsScreen',
+        'PaymentSchedulesScreen',
+        'PaymentScheduleFormScreen',
+        'PaymentScheduleDetailsScreen',
+        '/money/schedules',
       ]) {
         expect(router, isNot(contains(removed)), reason: removed);
       }

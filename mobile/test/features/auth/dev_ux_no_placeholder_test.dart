@@ -29,7 +29,9 @@ void main() {
       const MoneyOverviewScreen(weddingPlanId: localPlanId),
     );
 
-    expect(find.byKey(const ValueKey('money-starter-setup')), findsOneWidget);
+    // The money tabs (c01), never the old starter.
+    expect(find.byKey(const ValueKey('money-tabs')), findsOneWidget);
+    expect(find.byKey(const ValueKey('money-starter-setup')), findsNothing);
     expect(find.text('أنت في وضع تجربة محلية'), findsNothing);
     expect(find.text('وضع تجربة التصميم'), findsNothing);
   });

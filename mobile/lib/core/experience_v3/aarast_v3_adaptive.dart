@@ -136,16 +136,6 @@ abstract final class AarastV3ScreenCatalog {
     supportsOffline: true,
   );
 
-  static const moneyList = AarastV3ScreenContract(
-    id: 'money-list',
-    location: 'سجل المال',
-    purpose: 'مراجعة السجلات المالية بترتيب واضح',
-    archetype: AarastV3ScreenArchetype.list,
-    states: _protectedStates,
-    privacy: AarastV3PrivacyLevel.sensitive,
-    supportsOffline: true,
-  );
-
   static const moneyDetail = AarastV3ScreenContract(
     id: 'money-detail',
     location: 'تفاصيل مالية',
@@ -445,17 +435,11 @@ abstract final class AarastV3ScreenCatalog {
         RegExp(r'/money/categories/[^/]+/edit$').hasMatch(normalized) ||
         normalized.endsWith('/money/costs/create') ||
         RegExp(r'/money/costs/[^/]+/edit$').hasMatch(normalized) ||
+        RegExp(r'/money/costs/[^/]+/payments/create$').hasMatch(normalized) ||
         RegExp(
-          r'/money/costs/[^/]+/(?:payments|schedules)/create$',
-        ).hasMatch(normalized) ||
-        RegExp(
-          r'/money/costs/[^/]+/schedules/[^/]+/(?:edit|pay)$',
+          r'/money/costs/[^/]+/schedules/[^/]+/pay$',
         ).hasMatch(normalized)) {
       return moneyForm;
-    }
-    if (normalized.endsWith('/money/costs') ||
-        normalized.endsWith('/money/schedules')) {
-      return moneyList;
     }
     if (normalized.contains('/money/')) return moneyDetail;
     return planDetail;

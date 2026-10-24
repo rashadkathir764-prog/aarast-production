@@ -132,7 +132,7 @@ class _TimelineEntry {
     required this.line,
     required this.amount,
     required this.state,
-    required this.onTap,
+    this.onTap,
   });
 
   final String title;
@@ -141,7 +141,9 @@ class _TimelineEntry {
 
   /// done, current (the next to pay), later, or reversed.
   final _EntryState state;
-  final VoidCallback onTap;
+
+  /// Null when the row only shows (a viewer, a date nobody can change).
+  final VoidCallback? onTap;
 }
 
 enum _EntryState { done, current, later, reversed }
@@ -202,7 +204,7 @@ class _TimelineRow extends StatelessWidget {
     final muted = state == _EntryState.reversed;
     final amount = _plainAmount(context, entry.amount, currency);
     return Semantics(
-      button: true,
+      button: entry.onTap != null,
       label: '${entry.title}، ${entry.line}، $amount',
       onTap: entry.onTap,
       excludeSemantics: true,

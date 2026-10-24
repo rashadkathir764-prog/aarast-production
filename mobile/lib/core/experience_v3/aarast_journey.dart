@@ -17,8 +17,9 @@ abstract final class JourneyType {
   static const family = AarastV3Type.bodyFamily;
 
   // The one type scale, the approved design's sizes (D30, which restores
-  // the headings D8 had shrunk). Screens take a size from here, never a
-  // number.
+  // the headings D8 had shrunk). The text scale on top stops at 1.3
+  // (DevicePreferences.textScalerFor). Screens take a size from here, never
+  // a number.
 
   /// The one big number of a screen, such as the days to the wedding.
   static const count = 40.0;

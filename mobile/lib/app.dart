@@ -82,18 +82,17 @@ class _AarastAppState extends State<AarastApp> {
         backButtonDispatcher: _backButtonDispatcher,
         builder: (context, child) {
           final auth = context.watch<AuthController>();
-          // g02 «خط كبير»: every text a step bigger, on top of the phone's.
+          // g02 «خط كبير»: every text a step bigger, on top of the phone's;
+          // the two together stop at 1.3 (D30).
           final largeText =
               context.watch<DevicePreferences?>()?.largeText ?? false;
           final media = MediaQuery.of(context);
-          final scaled = largeText
-              ? media.copyWith(
-                  textScaler: TextScaler.linear(
-                    media.textScaler.scale(1) *
-                        DevicePreferences.largeTextFactor,
-                  ),
-                )
-              : media;
+          final scaled = media.copyWith(
+            textScaler: DevicePreferences.textScalerFor(
+              media.textScaler,
+              largeText: largeText,
+            ),
+          );
           final authenticatedUserId = auth.status == AuthStatus.authenticated
               ? auth.user?.id
               : null;

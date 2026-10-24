@@ -1,4 +1,5 @@
 import 'package:flutter/foundation.dart';
+import 'package:flutter/painting.dart' show TextScaler;
 import 'package:shared_preferences/shared_preferences.dart';
 
 /// How the app looks and behaves on this phone (g02 «شكل التطبيق» and
@@ -19,6 +20,23 @@ class DevicePreferences extends ChangeNotifier {
 
   /// How much bigger «خط كبير» makes every text.
   static const largeTextFactor = 1.15;
+
+  /// The most any text grows. The phone's own size and «خط كبير» together
+  /// stop here, so the design's screens still fit a phone (D30).
+  static const maxTextScale = 1.3;
+
+  /// The one text size of the app: the phone's own, a step bigger with
+  /// «خط كبير», never past [maxTextScale]. Without «خط كبير» the phone's
+  /// own scaler is kept as it is, up to the cap.
+  static TextScaler textScalerFor(
+    TextScaler system, {
+    required bool largeText,
+  }) {
+    final chosen = largeText
+        ? TextScaler.linear(system.scale(1) * largeTextFactor)
+        : system;
+    return chosen.clamp(maxScaleFactor: maxTextScale);
+  }
 
   /// The Hijri date next to the Gregorian one.
   bool get showHijri => _preferences.getBool(_hijriKey) ?? true;

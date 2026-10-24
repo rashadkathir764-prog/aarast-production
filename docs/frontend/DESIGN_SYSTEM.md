@@ -140,7 +140,9 @@ Status colors appear with text or icons and never carry meaning alone.
   numeric direction inside RTL layouts.
 - Journey screens take every text size from one scale (`JourneyType`),
   the approved design's sizes (`mobile/test/prototype/c_journey/kit.dart`).
-  D30 restored the headings D8 had shrunk:
+  D30 restored the headings D8 had shrunk; the text scale on top (the
+  phone's own size and «خط كبير» ×1.15 together) stops at 1.3
+  (`DevicePreferences.textScalerFor`, the one place it is set):
 
   | Role | Size | Used for |
   | --- | --- | --- |

@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:aarast_mobile/core/experience_v3/aarast_v3.dart';
 import 'package:aarast_mobile/core/media/media_upload_api.dart';
 import 'package:aarast_mobile/core/network/api_client.dart';
 import 'package:aarast_mobile/core/storage/auth_storage.dart';
@@ -808,10 +809,13 @@ void main() {
         findsOneWidget,
       );
 
-      await tester.tap(find.byType(Switch));
+      await tester.tap(find.byType(JourneyToggle));
       await tester.pumpAndSettle();
       expect(api.mutedValues, [true]);
-      expect(tester.widget<Switch>(find.byType(Switch)).value, isTrue);
+      expect(
+        tester.widget<JourneyToggle>(find.byType(JourneyToggle)).value,
+        isTrue,
+      );
 
       await tester.tap(find.text('بلّغ عن مشكلة'));
       await tester.pumpAndSettle();

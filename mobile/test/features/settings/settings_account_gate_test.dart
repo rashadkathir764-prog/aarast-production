@@ -1,3 +1,4 @@
+import 'package:aarast_mobile/core/experience_v3/aarast_v3.dart';
 import 'package:aarast_mobile/core/network/api_client.dart';
 import 'package:aarast_mobile/core/storage/auth_storage.dart';
 import 'package:aarast_mobile/core/theme/app_theme.dart';
@@ -52,7 +53,7 @@ void main() {
 
       await _pumpSignedInSettings(tester, fakeApi, devicePushAvailable: true);
 
-      expect(find.byType(Switch), findsNWidgets(3));
+      expect(find.byType(JourneyToggle), findsNWidgets(3));
       expect(
         find.byKey(const Key('settings-task-reminders-switch')),
         findsOneWidget,
@@ -75,7 +76,10 @@ void main() {
       expect(find.text('الدفعات'), findsOneWidget);
       expect(find.text('قبل موعدها بأسبوع'), findsOneWidget);
       expect(find.text('العروض والمحادثات'), findsOneWidget);
-      expect(find.text('على شاشة القفل ما تطلع أسماء ولا مبالغ.'), findsOneWidget);
+      expect(
+        find.text('على شاشة القفل ما تطلع أسماء ولا مبالغ.'),
+        findsOneWidget,
+      );
       expect(find.text('ملخص الجمعة'), findsNothing);
 
       for (final key in const [
@@ -85,7 +89,10 @@ void main() {
       ]) {
         await tester.ensureVisible(find.byKey(key));
         await tester.tap(
-          find.descendant(of: find.byKey(key), matching: find.byType(Switch)),
+          find.descendant(
+            of: find.byKey(key),
+            matching: find.byType(JourneyToggle),
+          ),
         );
         await tester.pumpAndSettle();
       }

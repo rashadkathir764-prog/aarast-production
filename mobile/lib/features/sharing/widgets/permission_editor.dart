@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 
+import '../../../core/experience_v3/aarast_v3.dart';
 import '../../../core/theme/app_theme.dart';
 import '../models/plan_role_permissions.dart';
 import '../models/shared_member.dart';
@@ -297,11 +298,7 @@ class _PermissionRow extends StatelessWidget {
             ),
           ),
         ),
-        Switch(
-          value: value,
-          onChanged: enabled ? onChanged : null,
-          materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-        ),
+        JourneyToggle(value: value, onChanged: enabled ? onChanged : null),
       ],
     );
   }

@@ -1674,3 +1674,60 @@ class JourneyNote extends StatelessWidget {
     );
   }
 }
+
+/// The design's on/off switch: a 44×26 track with a 20-point thumb that sits
+/// on the right when on (as drawn, D25). A row that carries it should flip
+/// it from anywhere on the row too, so the tap target is the row's full
+/// height; without [onChanged] it rests.
+class JourneyToggle extends StatelessWidget {
+  const JourneyToggle({
+    required this.value,
+    required this.onChanged,
+    this.color = AarastV3Color.primary,
+    this.semanticLabel,
+    super.key,
+  });
+
+  final bool value;
+  final ValueChanged<bool>? onChanged;
+  final Color color;
+  final String? semanticLabel;
+
+  @override
+  Widget build(BuildContext context) {
+    final enabled = onChanged != null;
+    return Semantics(
+      toggled: value,
+      enabled: enabled,
+      label: semanticLabel,
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: enabled ? () => onChanged!(!value) : null,
+        child: Opacity(
+          opacity: enabled ? 1 : 0.5,
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 160),
+            curve: Curves.easeOut,
+            width: 44,
+            height: 26,
+            padding: const EdgeInsets.all(3),
+            alignment: value ? Alignment.centerRight : Alignment.centerLeft,
+            decoration: BoxDecoration(
+              color: value ? color : AarastV3Color.line,
+              borderRadius: BorderRadius.circular(13),
+            ),
+            child: const SizedBox.square(
+              dimension: 20,
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  color: AarastV3Color.paper,
+                  shape: BoxShape.circle,
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}

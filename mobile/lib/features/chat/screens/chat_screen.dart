@@ -744,14 +744,9 @@ class _OptionsSheet extends StatelessWidget {
                   soft: AarastV3Color.canvas,
                   title: 'كتم المحادثة',
                   subtitle: 'الرسائل توصل بدون تنبيه',
-                  trailing: Switch(
+                  trailing: JourneyToggle(
                     value: current.muted,
-                    activeTrackColor: AarastV3Color.cobalt,
-                    inactiveTrackColor: AarastV3Color.line,
-                    inactiveThumbColor: AarastV3Color.paper,
-                    trackOutlineColor: const WidgetStatePropertyAll(
-                      AarastV3Color.line,
-                    ),
+                    color: AarastV3Color.cobalt,
                     onChanged: (value) async {
                       final ok = await chat.setMuted(current, value);
                       if (!ok && context.mounted) {

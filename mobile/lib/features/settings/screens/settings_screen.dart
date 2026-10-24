@@ -189,43 +189,37 @@ class _Toggle extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      child: Row(
-        children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title,
-                  style: JourneyType.of(
-                    JourneyType.bodyLarge,
-                    weight: JourneyType.bold,
+    // The whole row flips the switch.
+    return AarastPressable(
+      onTap: () => onChanged(!value),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        child: Row(
+          children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: JourneyType.of(
+                      JourneyType.body,
+                      weight: JourneyType.bold,
+                    ),
                   ),
-                ),
-                Text(
-                  subtitle,
-                  style: JourneyType.of(
-                    JourneyType.small,
-                    color: AarastV3Color.textMuted,
+                  Text(
+                    subtitle,
+                    style: JourneyType.of(
+                      JourneyType.small,
+                      color: AarastV3Color.textMuted,
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
-          ),
-          Switch(
-            value: value,
-            materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-            activeTrackColor: AarastV3Color.primary,
-            inactiveTrackColor: AarastV3Color.line,
-            inactiveThumbColor: AarastV3Color.paper,
-            trackOutlineColor: const WidgetStatePropertyAll(
-              AarastV3Color.line,
-            ),
-            onChanged: onChanged,
-          ),
-        ],
+            JourneyToggle(value: value, onChanged: onChanged),
+          ],
+        ),
       ),
     );
   }

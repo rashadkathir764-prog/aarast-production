@@ -1,3 +1,4 @@
+import 'package:aarast_mobile/core/experience_v3/aarast_v3.dart';
 import 'package:aarast_mobile/core/network/api_client.dart';
 import 'package:aarast_mobile/core/offline/local_database_json.dart';
 import 'package:aarast_mobile/core/offline/offline_sync_service.dart';
@@ -77,6 +78,8 @@ void main() {
     );
     // C4: deleting the account stays hidden until its 30-day grace exists.
     expect(find.textContaining('حذف الحساب'), findsNothing);
+    await tester.ensureVisible(find.text('الخروج'));
+    await tester.pumpAndSettle();
     await tester.tap(find.text('الخروج'));
     await tester.pumpAndSettle();
     expect(find.text('تسجيل الخروج'), findsOneWidget);
@@ -91,7 +94,7 @@ void main() {
     await tester.tap(
       find.descendant(
         of: find.byKey(const ValueKey('account-large-text')),
-        matching: find.byType(Switch),
+        matching: find.byType(JourneyToggle),
       ),
     );
     await tester.pumpAndSettle();

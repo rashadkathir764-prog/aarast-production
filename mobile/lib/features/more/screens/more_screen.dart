@@ -500,17 +500,7 @@ class _Row extends StatelessWidget {
             ),
           ),
           if (toggle != null)
-            Switch(
-              value: toggle,
-              materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-              activeTrackColor: AarastV3Color.primary,
-              inactiveTrackColor: AarastV3Color.line,
-              inactiveThumbColor: AarastV3Color.paper,
-              trackOutlineColor: const WidgetStatePropertyAll(
-                AarastV3Color.line,
-              ),
-              onChanged: onSwitch,
-            )
+            JourneyToggle(value: toggle, onChanged: onSwitch)
           else ...[
             if (value != null)
               Text(
@@ -532,8 +522,13 @@ class _Row extends StatelessWidget {
         ],
       ),
     );
-    if (onTap == null) return row;
-    return AarastPressable(onTap: onTap, child: row);
+    // A switch row flips from anywhere on it.
+    final switchChanged = onSwitch;
+    final VoidCallback? tap = toggle != null && switchChanged != null
+        ? () => switchChanged(!toggle)
+        : onTap;
+    if (tap == null) return row;
+    return AarastPressable(onTap: tap, child: row);
   }
 }
 

@@ -328,15 +328,10 @@ class _QuoteRequestScreenState extends State<QuoteRequestScreen> {
                         ],
                       ),
                     ),
-                    Switch(
+                    JourneyToggle(
                       key: const Key('quote-share-budget'),
                       value: _shareBudget,
-                      activeTrackColor: AarastV3Color.cobalt,
-                      inactiveTrackColor: AarastV3Color.line,
-                      inactiveThumbColor: AarastV3Color.paper,
-                      trackOutlineColor: const WidgetStatePropertyAll(
-                        AarastV3Color.line,
-                      ),
+                      color: AarastV3Color.cobalt,
                       onChanged: (value) {
                         setState(() => _shareBudget = value);
                         _scheduleDraft();

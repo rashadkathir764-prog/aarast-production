@@ -223,6 +223,17 @@ class _ProviderMarketplaceScreenState extends State<ProviderMarketplaceScreen> {
                       : planMode
                       ? providerBoardStatus(board)
                       : 'دوّر على مزودين عرسك',
+                  onStatusTap:
+                      planMode &&
+                          firstVisit == false &&
+                          board.any(
+                            (row) => row.quotes.any(
+                              (quote) => quote.booking != null,
+                            ),
+                          )
+                      ? () => _openBookings(provider, tabs)
+                      : null,
+                  statusTapLabel: 'الحجوزات',
                   actions: [
                     if (firstVisit == false)
                       JourneyRoundButton(

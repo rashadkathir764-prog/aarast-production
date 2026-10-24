@@ -53,6 +53,7 @@ import '../../features/home/home_api.dart' show DashboardEntryScreen;
 import '../../features/marketplace/marketplace_api.dart'
     show
         FavoriteProvidersScreen,
+        PlanBookingsScreen,
         ProviderAuthGate,
         ProviderBudgetMatchIntent,
         ProviderDetailsScreen,
@@ -393,6 +394,9 @@ class AppRouter {
       queryParameters: {'item': ?itemKey, 'quote': ?quoteId},
     ).toString();
   }
+
+  static String planBookings(String weddingPlanId) =>
+      '/wedding-plans/$weddingPlanId/providers/bookings';
 
   static String planProviders(String id, {String? quoteId}) {
     final normalizedQuoteId = quoteId?.trim();

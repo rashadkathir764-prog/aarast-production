@@ -5,6 +5,7 @@ import '../../../core/offline/cache_policy.dart';
 import '../../../core/offline/offline_sync_service.dart';
 import '../../../core/offline/offline_tables.dart';
 import '../../../core/phone/yemeni_phone_normalizer.dart';
+import '../../../core/utils/plan_day.dart';
 import '../models/marketplace_models.dart';
 
 class MarketplaceApi {
@@ -355,7 +356,7 @@ class MarketplaceApi {
         'weddingPlanId': weddingPlanId.trim(),
       if (serviceId != null && serviceId.trim().isNotEmpty)
         'serviceId': serviceId.trim(),
-      if (eventDate != null) 'eventDate': eventDate.toIso8601String(),
+      if (eventDate != null) 'eventDate': planDayToJson(eventDate),
       if (cityId != null && cityId.trim().isNotEmpty) 'cityId': cityId.trim(),
       if (guestCount != null && guestCount > 0) 'guestCount': guestCount,
       if (contactName != null && contactName.trim().isNotEmpty)

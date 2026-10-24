@@ -198,6 +198,35 @@ void main() {
     expect(find.textContaining(RegExp(r'محجوز \d')), findsNothing);
   });
 
+  testWidgets('w34 the status line opens the bookings once one exists', (
+    tester,
+  ) async {
+    final booked = QuoteRequest.fromJson({
+      'id': 'quote-booked',
+      'providerId': 'provider-1',
+      'weddingPlanId': 'plan-1',
+      'status': 'ACCEPTED',
+      'lifecycleStatus': 'ACCEPTED',
+      'provider': {'id': 'provider-1', 'businessName': 'قاعة الثريا'},
+      'booking': {
+        'id': 'booking-1',
+        'quoteRequestId': 'quote-booked',
+        'providerId': 'provider-1',
+        'eventDate': '2027-01-21',
+        'status': 'REQUESTED',
+      },
+    });
+    await _pump(tester, _FakeMarketplaceProvider(quoteRequests: [booked]));
+
+    await tester.tap(find.bySemanticsLabel('الحجوزات'));
+    await tester.pumpAndSettle();
+
+    expect(
+      find.text('bookings /wedding-plans/plan-1/providers/bookings'),
+      findsOneWidget,
+    );
+  });
+
   testWidgets('a notification about a request opens its service page', (
     tester,
   ) async {
@@ -514,6 +543,10 @@ Future<GoRouter> _pump(
         builder: (context, state) => Text(
           'cost outside ${(state.extra as CostDraftIntent?)?.outsideParty}',
         ),
+      ),
+      GoRoute(
+        path: '/wedding-plans/:id/providers/bookings',
+        builder: (context, state) => Text('bookings ${state.uri}'),
       ),
       GoRoute(
         path: '/providers/favorites',

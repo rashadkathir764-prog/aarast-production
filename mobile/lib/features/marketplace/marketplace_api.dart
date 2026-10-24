@@ -22,6 +22,7 @@ export 'providers/marketplace_provider.dart'
         providerDirectoryErrorMessage,
         providerReferenceDataErrorMessage;
 export 'screens/favorite_providers_screen.dart' show FavoriteProvidersScreen;
+export 'screens/plan_bookings_screen.dart' show PlanBookingsScreen;
 export 'screens/provider_details_screen.dart' show ProviderDetailsScreen;
 export 'screens/provider_marketplace_screen.dart'
     show ProviderMarketplaceScreen;

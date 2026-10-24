@@ -1,3 +1,4 @@
+import '../../../core/utils/plan_day.dart';
 import '../../onboarding/onboarding_api.dart' show WeddingLocationDraft;
 import 'marketplace_booking.dart';
 
@@ -516,7 +517,7 @@ class QuoteRequest {
           : null,
       provider: _mapOrNull(json['provider'], ProviderSummary.fromJson),
       service: _mapOrNull(json['service'], MarketplaceService.fromJson),
-      eventDate: _dateOrNull(json['eventDate']),
+      eventDate: planDayFromJson(json['eventDate']),
       location: location is Map
           ? WeddingLocationDraft.fromJson(Map<String, dynamic>.from(location))
           : null,

@@ -10,6 +10,11 @@ class MarketplaceBooking {
     required this.lifecycleStatus,
     this.cancelledBy,
     this.note,
+    this.quoteOfferId,
+    this.createdAt,
+    this.confirmedAt,
+    this.declinedAt,
+    this.cancelledAt,
     this.customerName,
     this.guestCount,
     this.weddingPlanId,
@@ -28,6 +33,11 @@ class MarketplaceBooking {
       lifecycleStatus: json['lifecycleStatus']?.toString() ?? status,
       cancelledBy: json['cancelledBy']?.toString(),
       note: _text(json['note']),
+      quoteOfferId: _text(json['quoteOfferId']),
+      createdAt: _moment(json['createdAt']),
+      confirmedAt: _moment(json['confirmedAt']),
+      declinedAt: _moment(json['declinedAt']),
+      cancelledAt: _moment(json['cancelledAt']),
       customerName: _text(json['customerName']),
       guestCount: json['guestCount'] is num
           ? (json['guestCount'] as num).toInt()
@@ -51,7 +61,17 @@ class MarketplaceBooking {
 
   /// `CUSTOMER` or `PROVIDER` for a cancelled booking.
   final String? cancelledBy;
+
+  /// The customer's note when asking; the provider's or the canceller's
+  /// own note once declined or cancelled (their reason).
   final String? note;
+
+  /// The accepted offer the booking follows; its cost carries the same id.
+  final String? quoteOfferId;
+  final DateTime? createdAt;
+  final DateTime? confirmedAt;
+  final DateTime? declinedAt;
+  final DateTime? cancelledAt;
 
   /// Provider list only.
   final String? customerName;
@@ -71,6 +91,9 @@ class MarketplaceBooking {
       '${day.month.toString().padLeft(2, '0')}-'
       '${day.day.toString().padLeft(2, '0')}';
 }
+
+DateTime? _moment(Object? value) =>
+    value == null ? null : DateTime.tryParse(value.toString());
 
 String? _text(Object? value) {
   final text = value?.toString().trim();

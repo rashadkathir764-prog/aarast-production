@@ -208,8 +208,33 @@ extension _ProviderTabs on _ProviderMarketplaceScreenState {
     ProviderMarketplaceProvider marketplace,
     List<String> tabs,
   ) async {
+    await _searchServiceNamed(
+      row.providerCategoryName ?? row.title,
+      marketplace,
+      tabs,
+    );
+  }
+
+  /// w34 «الحجوزات», which comes back with a declined service's name for
+  /// «شوف غيرهم».
+  Future<void> _openBookings(
+    ProviderMarketplaceProvider marketplace,
+    List<String> tabs,
+  ) async {
+    final planId = _weddingLocationPlanId;
+    if (planId == null) return;
+    final service = await _pushOnce<String>(AppRouter.planBookings(planId));
+    if (!mounted || service == null || service.isEmpty) return;
+    await _searchServiceNamed(service, marketplace, tabs);
+  }
+
+  Future<void> _searchServiceNamed(
+    String name,
+    ProviderMarketplaceProvider marketplace,
+    List<String> tabs,
+  ) async {
     _selectTab('استكشف', tabs);
-    final group = providerServiceGroupOf(row.providerCategoryName ?? row.title);
+    final group = providerServiceGroupOf(name);
     final category = group < 0
         ? null
         : marketplace.categories
@@ -278,8 +303,7 @@ extension _ProviderTabs on _ProviderMarketplaceScreenState {
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
                       for (final provider in favorites.skip(i).take(2)) ...[
-                        if (provider != favorites[i])
-                          const SizedBox(width: 10),
+                        if (provider != favorites[i]) const SizedBox(width: 10),
                         Expanded(
                           child: _FavoriteCard(
                             key: ValueKey('providers-favorite-${provider.id}'),

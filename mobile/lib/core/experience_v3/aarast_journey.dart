@@ -552,12 +552,19 @@ class JourneyTabHeader extends StatelessWidget {
     required this.title,
     required this.status,
     this.actions = const [],
+    this.onStatusTap,
+    this.statusTapLabel,
     super.key,
   });
 
   final String title;
   final String status;
   final List<Widget> actions;
+
+  /// Pressing the status line opens what it counts, as «محجوز 3» opens the
+  /// bookings (w34); [statusTapLabel] tells screen readers so.
+  final VoidCallback? onStatusTap;
+  final String? statusTapLabel;
 
   @override
   Widget build(BuildContext context) {
@@ -581,13 +588,27 @@ class JourneyTabHeader extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 2),
-                Text(
-                  status,
-                  style: JourneyType.of(
-                    JourneyType.body,
-                    color: AarastV3Color.textMuted,
+                if (onStatusTap == null)
+                  Text(
+                    status,
+                    style: JourneyType.of(
+                      JourneyType.body,
+                      color: AarastV3Color.textMuted,
+                    ),
+                  )
+                else
+                  AarastPressable(
+                    onTap: onStatusTap,
+                    semanticLabel: statusTapLabel,
+                    borderRadius: BorderRadius.circular(8),
+                    child: Text(
+                      status,
+                      style: JourneyType.of(
+                        JourneyType.body,
+                        color: AarastV3Color.textMuted,
+                      ),
+                    ),
                   ),
-                ),
               ],
             ),
           ),

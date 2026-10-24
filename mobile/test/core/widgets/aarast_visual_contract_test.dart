@@ -327,6 +327,7 @@ void main() {
         'lib/features/provider_portal/screens/add_provider_package_screen.dart',
         'lib/features/provider_portal/screens/edit_provider_profile_screen.dart',
         'lib/features/marketplace/screens/favorite_providers_screen.dart',
+        'lib/features/marketplace/screens/plan_bookings_screen.dart',
         'lib/features/notifications/screens/notifications_screen.dart',
         'lib/features/more/screens/more_screen.dart',
         'lib/features/settings/screens/settings_screen.dart',

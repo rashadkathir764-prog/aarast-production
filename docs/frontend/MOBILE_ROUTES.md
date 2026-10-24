@@ -60,6 +60,7 @@
 - `/wedding-plans/:id/notifications`
 - `/wedding-plans/:id/plan-center`
 - `/wedding-plans/:id/providers`
+- `/wedding-plans/:id/providers/bookings`
 - `/wedding-plans/:id/providers/requests`
 - `/wedding-plans/:id/sharing`
 - `/wedding-plans/:id/sharing/:memberId/edit`
@@ -73,4 +74,4 @@
 - `/wedding-plans/create`
 - `/welcome`
 
-Total: 72 unique routes
+Total: 73 unique routes

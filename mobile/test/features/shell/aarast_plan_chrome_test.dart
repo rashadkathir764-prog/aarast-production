@@ -128,7 +128,7 @@ void main() {
       expect(tester.getRect(fab).left, lessThan(32));
       final decoration =
           tester.widget<AnimatedContainer>(fab).decoration! as BoxDecoration;
-      expect(decoration.color, JourneySection.tasks.color);
+      expect(decoration.color, AarastV3Color.brandAccentStrong);
       // The tab starts at the top; no bar sits above it.
       expect(tester.getTopLeft(find.text('مهمة 0')).dy, 0);
 
@@ -162,11 +162,12 @@ void main() {
       ),
     );
 
-    for (final (index, label, section) in [
-      (0, 'إضافة', JourneySection.home),
-      (1, 'إضافة اتفاق', JourneySection.money),
-      (2, 'إضافة مهمة', JourneySection.tasks),
-      (3, 'إضافة ضيف', JourneySection.guests),
+    // The groom's colours: home and money teal, tasks saffron, guests lilac.
+    for (final (index, label, color) in [
+      (0, 'إضافة', AarastV3Color.primary),
+      (1, 'إضافة اتفاق', AarastV3Color.primary),
+      (2, 'إضافة مهمة', AarastV3Color.brandAccentStrong),
+      (3, 'إضافة ضيف', AarastV3Color.lilac),
     ]) {
       await pumpTab(index);
       expect(find.bySemanticsLabel(label), findsOneWidget, reason: label);
@@ -177,9 +178,8 @@ void main() {
                   )
                   .decoration!
               as BoxDecoration;
-      expect(decoration.color, section.color, reason: label);
+      expect(decoration.color, color, reason: label);
     }
-    expect(JourneySection.guests.color, AarastV3Color.lilac);
   });
 
   testWidgets('no «+» without a handler, and none over the keyboard', (

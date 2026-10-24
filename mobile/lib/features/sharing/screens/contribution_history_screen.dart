@@ -203,7 +203,7 @@ class _ContributionHistoryScreenState extends State<ContributionHistoryScreen> {
 
     final colors = <String, Color>{
       for (var i = 0; i < _actors.length; i++)
-        _actors[i].userId: JourneyAvatar.paletteAt(i),
+        _actors[i].userId: JourneyAvatar.paletteAt(context, i),
     };
     final days = <DateTime, List<ContributionActivity>>{};
     for (final row in rows) {

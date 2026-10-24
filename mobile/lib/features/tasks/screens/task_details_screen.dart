@@ -463,10 +463,14 @@ class _FireworksHero extends StatelessWidget {
         height: 120,
         clipBehavior: Clip.antiAlias,
         decoration: BoxDecoration(
-          color: JourneyArt.night,
+          color: context.accent.night,
           borderRadius: BorderRadius.circular(22),
         ),
-        child: const CustomPaint(painter: JourneyFireworksPainter()),
+        child: CustomPaint(
+          painter: JourneyFireworksPainter(
+            bursts: JourneyFireworksPainter.burstsFor(context.accent),
+          ),
+        ),
       ),
     );
   }

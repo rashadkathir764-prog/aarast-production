@@ -62,17 +62,23 @@ class _JourneySetupSteps extends StatelessWidget {
         doneLine: budget == null
             ? 'محددة'
             : '${_money(budget, summary.currency)} لعرسك، والمهر لحاله',
-        todoLine: 'رقم تقريبي يكفي، وتقدر تغيّره بعدين',
+        todoLine: context.say(
+          'رقم تقريبي يكفي، وتقدر تغيّره بعدين',
+          'رقم تقريبي يكفي، وتقدرين تغيّرينه بعدين',
+        ),
         icon: LucideIcons.wallet,
-        color: AarastV3Color.primary,
-        soft: AarastV3Color.primarySoft,
+        color: context.accent.primary,
+        soft: context.accent.primarySoft,
         done: _budgetIsSet(summary),
         onOpen: onOpenMoney,
       ),
       _SetupStep(
-        title: 'القاعة',
+        title: context.say('القاعة', 'الصالة'),
         doneLine: 'محجوزة',
-        todoLine: 'أهم حجز، والقاعات تمتلي بدري',
+        todoLine: context.say(
+          'أهم حجز، والقاعات تمتلي بدري',
+          'أهم حجز، والصالات تمتلي بدري',
+        ),
         icon: LucideIcons.building2,
         color: AarastV3Color.cobalt,
         soft: AarastV3Color.cobaltSoft,
@@ -80,13 +86,13 @@ class _JourneySetupSteps extends StatelessWidget {
         onOpen: onOpenProviders,
       ),
       _SetupStep(
-        title: 'ضيوفك',
+        title: context.say('ضيوفك', 'ضيفاتك'),
         doneLine: arabicCount(
           summary.guestCount,
-          one: 'ضيف واحد',
-          two: 'ضيفين',
-          few: 'ضيوف',
-          many: 'ضيف',
+          one: context.say('ضيف واحد', 'ضيفة وحدة'),
+          two: context.say('ضيفين', 'ضيفتين'),
+          few: context.say('ضيوف', 'ضيفات'),
+          many: context.say('ضيف', 'ضيفة'),
         ),
         todoLine: 'من جهات الاتصال بضغطة',
         icon: LucideIcons.users,
@@ -178,7 +184,7 @@ class _SetupStepCard extends StatelessWidget {
         child: JourneyBox(
           key: ValueKey('aarast-dashboard-setup-step-$number'),
           color: isCurrent ? AarastV3Color.paper : AarastV3Color.paperQuiet,
-          borderColor: isCurrent ? AarastV3Color.primary : null,
+          borderColor: isCurrent ? context.accent.primary : null,
           padding: const EdgeInsets.all(14),
           child: Row(
             children: [
@@ -227,7 +233,10 @@ class _SetupStepCard extends StatelessWidget {
               ),
               if (isCurrent) ...[
                 const SizedBox(width: 8),
-                JourneyButton(label: 'كمّل', onPressed: step.onOpen),
+                JourneyButton(
+                  label: context.say('كمّل', 'كمّلي'),
+                  onPressed: step.onOpen,
+                ),
               ],
             ],
           ),

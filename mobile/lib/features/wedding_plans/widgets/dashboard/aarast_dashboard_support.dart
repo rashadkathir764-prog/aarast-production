@@ -27,8 +27,8 @@ class _DashboardTeamStrip extends StatelessWidget {
       padding: EdgeInsets.zero,
       child: JourneyListRow(
         icon: LucideIcons.users,
-        color: AarastV3Color.primary,
-        soft: AarastV3Color.primarySoft,
+        color: context.accent.primary,
+        soft: context.accent.primarySoft,
         title: 'فريق الخطة',
         subtitle: summary.pendingInvites > 0 ? '$people · $invites' : people,
         trailing: const Icon(

@@ -17,8 +17,14 @@ import 'core/security/app_lock_gate.dart';
 import 'core/theme/app_theme.dart';
 import 'core/widgets/aarast_loading_state.dart' show AarastInlineSpinner;
 import 'features/account_contexts/account_contexts_api.dart'
-    show AccountContextController;
+    show
+        AccountContext,
+        AccountContextController,
+        AccountContextPersona,
+        AccountContextRole;
 import 'features/auth/auth_api.dart' show AuthController, AuthStatus;
+import 'features/wedding_plans/wedding_plans_api.dart'
+    show DashboardSummary, DashboardSummaryProvider;
 
 class AarastApp extends StatefulWidget {
   const AarastApp({super.key});
@@ -97,24 +103,26 @@ class _AarastAppState extends State<AarastApp> {
           final authenticatedUserId = auth.status == AuthStatus.authenticated
               ? auth.user?.id
               : null;
-          return MediaQuery(
-            data: scaled,
-            child: Directionality(
-              textDirection: TextDirection.rtl,
-              child: AarastPushLifecycleBridge(
-                router: _router,
-                authenticatedUserId: authenticatedUserId,
-                child: AarastV3AdaptiveExperienceShell(
-                  routeListenable: _router.routeInformationProvider,
-                  readLocation: () =>
-                      _router.routeInformationProvider.value.uri.toString(),
-                  child: AarastSessionTransitionGate(
-                    child: AarastAuthFlowRedirector(
-                      router: _router,
-                      child: AppLockGate(
-                        onForgotCode: auth.logout,
-                        name: auth.user?.name,
-                        child: child ?? const SizedBox.shrink(),
+          return AarastPlanProfileScope(
+            child: MediaQuery(
+              data: scaled,
+              child: Directionality(
+                textDirection: TextDirection.rtl,
+                child: AarastPushLifecycleBridge(
+                  router: _router,
+                  authenticatedUserId: authenticatedUserId,
+                  child: AarastV3AdaptiveExperienceShell(
+                    routeListenable: _router.routeInformationProvider,
+                    readLocation: () =>
+                        _router.routeInformationProvider.value.uri.toString(),
+                    child: AarastSessionTransitionGate(
+                      child: AarastAuthFlowRedirector(
+                        router: _router,
+                        child: AppLockGate(
+                          onForgotCode: auth.logout,
+                          name: auth.user?.name,
+                          child: child ?? const SizedBox.shrink(),
+                        ),
                       ),
                     ),
                   ),
@@ -124,6 +132,61 @@ class _AarastAppState extends State<AarastApp> {
           );
         },
       ),
+    );
+  }
+}
+
+/// The open plan's profile for the whole app (JOURNEY_PROFILE.md): the
+/// bride's when the selected context is her own plan, or when no account is
+/// signed in and the plan kept on the phone is hers. A participant keeps
+/// the app's own look (D34 paints the bride's plan for them where drawn),
+/// and the provider portal never takes a wedding's profile.
+@visibleForTesting
+JourneyProfile planJourneyProfile({
+  AccountContext? selected,
+  DashboardSummary? summary,
+}) {
+  if (selected != null) {
+    return selected.role == AccountContextRole.owner &&
+            selected.persona == AccountContextPersona.bride
+        ? JourneyProfile.bride
+        : JourneyProfile.groom;
+  }
+  if (summary != null && summary.isLocalOnly) {
+    return JourneyProfile.fromPersona(summary.persona);
+  }
+  return JourneyProfile.groom;
+}
+
+/// Provides [planJourneyProfile] above the router, so every page, sheet and
+/// dialog reads the same profile.
+@visibleForTesting
+class AarastPlanProfileScope extends StatelessWidget {
+  const AarastPlanProfileScope({required this.child, super.key});
+
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    AccountContext? selected;
+    DashboardSummary? summary;
+    try {
+      selected = context.select<AccountContextController, AccountContext?>(
+        (controller) => controller.selectedContext,
+      );
+    } on ProviderNotFoundException {
+      selected = null;
+    }
+    try {
+      summary = context.select<DashboardSummaryProvider, DashboardSummary?>(
+        (provider) => provider.summary,
+      );
+    } on ProviderNotFoundException {
+      summary = null;
+    }
+    return JourneyProfileScope(
+      profile: planJourneyProfile(selected: selected, summary: summary),
+      child: child,
     );
   }
 }

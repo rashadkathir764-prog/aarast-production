@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 
+import 'aarast_journey_profile.dart';
 import 'aarast_v3_foundations.dart';
 import 'aarast_v3_content.dart';
 
@@ -534,7 +535,7 @@ class AarastV3AttentionSurface extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colors = _attentionColors(tone);
+    final colors = _attentionColors(tone, context.accent);
     final surface = Semantics(
       container: true,
       button: onTap != null,
@@ -680,11 +681,12 @@ class AarastV3AttentionSurface extends StatelessWidget {
 
 ({Color foreground, Color background}) _attentionColors(
   AarastV3AttentionTone tone,
+  JourneyAccent accent,
 ) {
   return switch (tone) {
     AarastV3AttentionTone.calm => (
-      foreground: AarastV3Color.primary,
-      background: AarastV3Color.primarySoft,
+      foreground: accent.primary,
+      background: accent.primarySoft,
     ),
     AarastV3AttentionTone.information => (
       foreground: AarastV3Color.cobalt,
@@ -720,7 +722,7 @@ class AarastV3TrustLine extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colors = _attentionColors(tone);
+    final colors = _attentionColors(tone, context.accent);
     return Semantics(
       container: true,
       label: message,
@@ -809,7 +811,7 @@ class AarastV3StateSurface extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final visual = _stateVisual(kind);
+    final visual = _stateVisual(kind, context.accent);
     return Semantics(
       container: true,
       liveRegion:
@@ -914,6 +916,7 @@ class AarastV3StateSurface extends StatelessWidget {
 
 ({Color foreground, Color background, IconData icon}) _stateVisual(
   AarastV3ScreenStateKind kind,
+  JourneyAccent accent,
 ) {
   return switch (kind) {
     AarastV3ScreenStateKind.ready => (
@@ -922,13 +925,13 @@ class AarastV3StateSurface extends StatelessWidget {
       icon: LucideIcons.check,
     ),
     AarastV3ScreenStateKind.loading => (
-      foreground: AarastV3Color.primary,
-      background: AarastV3Color.primarySoft,
+      foreground: accent.primary,
+      background: accent.primarySoft,
       icon: LucideIcons.loader,
     ),
     AarastV3ScreenStateKind.empty => (
-      foreground: AarastV3Color.primary,
-      background: AarastV3Color.primarySoft,
+      foreground: accent.primary,
+      background: accent.primarySoft,
       icon: LucideIcons.inbox,
     ),
     AarastV3ScreenStateKind.error => (

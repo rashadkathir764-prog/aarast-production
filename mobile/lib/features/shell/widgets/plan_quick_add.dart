@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 
 import '../../../core/experience_v3/aarast_journey.dart';
+import '../../../core/experience_v3/aarast_journey_profile.dart';
 import '../../../core/routing/app_router.dart';
 import '../../finance/finance_api.dart'
     show MoneyCostActionIntent, openMoneyCostAction;
@@ -23,54 +24,83 @@ const _providersTab = 4;
 /// One thing the «+» can add. Its section gives the row its colour.
 enum PlanQuickAddKind {
   cost(
-    'إضافة اتفاق',
-    'سجّل اللي اتفقت عليه وقيمته، والدفعات بعدين.',
+    ('إضافة اتفاق', 'إضافة اتفاق'),
+    (
+      'سجّل اللي اتفقت عليه وقيمته، والدفعات بعدين.',
+      'سجّلي اللي اتفقتِ عليه وقيمته، والدفعات بعدين.',
+    ),
     LucideIcons.receipt,
     JourneySection.money,
   ),
   payment(
-    'تسجيل دفعة',
-    'اختر الاتفاق وسجّل اللي دفعته فعلًا.',
+    ('تسجيل دفعة', 'تسجيل دفعة'),
+    (
+      'اختر الاتفاق وسجّل اللي دفعته فعلًا.',
+      'اختاري الاتفاق وسجّلي اللي دفعتيه فعلًا.',
+    ),
     LucideIcons.badgeDollarSign,
     JourneySection.money,
   ),
   schedule(
-    'إضافة موعد دفع',
-    'تذكير بدفعة جاية على اتفاق، والفلوس ما تنحجز.',
+    ('إضافة موعد دفع', 'إضافة موعد دفع'),
+    (
+      'تذكير بدفعة جاية على اتفاق، والفلوس ما تنحجز.',
+      'تذكير بدفعة جاية على اتفاق، والفلوس ما تنحجز.',
+    ),
     LucideIcons.calendarPlus,
     JourneySection.money,
   ),
   category(
-    'إضافة بند',
-    'قسّم ميزانيتك لبنود واضحة تتابعها.',
+    ('إضافة بند', 'إضافة بند'),
+    (
+      'قسّم ميزانيتك لبنود واضحة تتابعها.',
+      'قسّمي ميزانيتك لبنود واضحة تتابعينها.',
+    ),
     LucideIcons.folderPlus,
     JourneySection.money,
   ),
   task(
-    'إضافة مهمة',
-    'حوّل الخطوة الجاية لمهمة بموعد ولمين.',
+    ('إضافة مهمة', 'إضافة مهمة'),
+    (
+      'حوّل الخطوة الجاية لمهمة بموعد ولمين.',
+      'حوّلي الخطوة الجاية لمهمة بموعد ولمين.',
+    ),
     LucideIcons.listPlus,
     JourneySection.tasks,
   ),
   guest(
-    'إضافة ضيف',
-    'الاسم أول، والتفاصيل بعدين.',
+    ('إضافة ضيف', 'إضافة ضيفة'),
+    ('الاسم أول، والتفاصيل بعدين.', 'الاسم أول، والتفاصيل بعدين.'),
     LucideIcons.userPlus,
     JourneySection.guests,
   ),
   quote(
-    'طلب عرض سعر',
-    'دوّر على مزود واطلب منه عرض واضح.',
+    ('طلب عرض سعر', 'طلب عرض سعر'),
+    (
+      'دوّر على مزود واطلب منه عرض واضح.',
+      'دوّري على مزود واطلبي منه عرض واضح.',
+    ),
     LucideIcons.filePlus2,
     JourneySection.providers,
   );
 
-  const PlanQuickAddKind(this.label, this.description, this.icon, this.section);
+  const PlanQuickAddKind(
+    this._label,
+    this._description,
+    this.icon,
+    this.section,
+  );
 
-  final String label;
-  final String description;
+  /// The groom's and the bride's words.
+  final (String, String) _label;
+  final (String, String) _description;
   final IconData icon;
   final JourneySection section;
+
+  String labelFor(JourneyProfile profile) => profile.say(_label.$1, _label.$2);
+
+  String descriptionFor(JourneyProfile profile) =>
+      profile.say(_description.$1, _description.$2);
 
   /// Adds to the plan's money, so it needs the right to manage money.
   bool get isMoney => section == JourneySection.money;
@@ -151,11 +181,11 @@ IconData planQuickAddIconForTab(int tabIndex) {
   };
 }
 
-String planQuickAddLabelForTab(int tabIndex) {
+String planQuickAddLabelForTab(int tabIndex, JourneyProfile profile) {
   return switch (tabIndex) {
-    _moneyTab => PlanQuickAddKind.cost.label,
-    _tasksTab => PlanQuickAddKind.task.label,
-    _guestsTab => PlanQuickAddKind.guest.label,
+    _moneyTab => PlanQuickAddKind.cost.labelFor(profile),
+    _tasksTab => PlanQuickAddKind.task.labelFor(profile),
+    _guestsTab => PlanQuickAddKind.guest.labelFor(profile),
     _ => 'إضافة',
   };
 }

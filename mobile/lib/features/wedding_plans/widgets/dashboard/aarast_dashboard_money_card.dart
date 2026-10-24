@@ -49,6 +49,7 @@ class _DashboardMoneyCardState extends State<_DashboardMoneyCard> {
     final tone = _DashboardMoneyTone.fromState(
       overBudget: overBudget,
       hasDuePayment: hasDuePayment,
+      accent: context.accent,
     );
     final headlineAmount = overBudget && remaining != null
         ? remaining.abs()
@@ -146,7 +147,7 @@ class _DashboardMoneyHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final subtitle = !budgetIsSet
-        ? 'ابدأ بصورة مالية واضحة'
+        ? context.say('ابدأ بصورة مالية واضحة', 'ابدئي بصورة مالية واضحة')
         : overBudget
         ? 'تجاوز يحتاج قرارك'
         : hasDuePayment
@@ -298,7 +299,7 @@ class _DashboardMoneyOverview extends StatelessWidget {
               child: _DashboardMoneyFigure(
                 label: 'التكاليف',
                 value: hidden ? '••••' : _displayAmount(confirmed, currency),
-                accent: AarastV3Color.primary,
+                accent: context.accent.primary,
               ),
             ),
             const SizedBox(width: AarastV3Space.x2),
@@ -334,7 +335,7 @@ class _DashboardMoneyOverview extends StatelessWidget {
           hidden
               ? 'نسبة الاستخدام مخفية مؤقتًا'
               : overBudget
-              ? 'مستخدمة $percent% · راجع التكاليف الآن'
+              ? 'مستخدمة $percent% · ${context.say('راجع', 'راجعي')} التكاليف الآن'
               : 'مستخدمة $percent% من الميزانية',
           textAlign: TextAlign.end,
           style: Theme.of(context).textTheme.labelSmall?.copyWith(
@@ -441,7 +442,7 @@ class _DashboardUnsetBudgetSummary extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                'حدّد ميزانية تقريبية',
+                context.say('حدّد ميزانية تقريبية', 'حدّدي ميزانية تقريبية'),
                 style: Theme.of(context).textTheme.titleMedium?.copyWith(
                   color: AarastV3Color.ink,
                   fontWeight: FontWeight.w900,
@@ -453,7 +454,10 @@ class _DashboardUnsetBudgetSummary extends StatelessWidget {
                     ? hidden
                           ? 'لديك تكاليف مؤكدة · المبلغ مخفي'
                           : 'التكاليف المؤكدة ${_displayAmount(confirmed, currency)}'
-                    : 'ابدأ برقم أولي وعدّله لاحقًا.',
+                    : context.say(
+                        'ابدأ برقم أولي وعدّله لاحقًا.',
+                        'ابدئي برقم أولي وعدّليه لاحقًا.',
+                      ),
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: Theme.of(context).textTheme.labelSmall?.copyWith(
@@ -468,7 +472,7 @@ class _DashboardUnsetBudgetSummary extends StatelessWidget {
         Text(
           'إعداد الميزانية',
           style: Theme.of(context).textTheme.labelSmall?.copyWith(
-            color: AarastV3Color.primary,
+            color: context.accent.primary,
             fontWeight: FontWeight.w900,
           ),
         ),
@@ -529,6 +533,7 @@ class _DashboardMoneyTone {
   factory _DashboardMoneyTone.fromState({
     required bool overBudget,
     required bool hasDuePayment,
+    required JourneyAccent accent,
   }) {
     if (overBudget) {
       return const _DashboardMoneyTone(
@@ -542,9 +547,9 @@ class _DashboardMoneyTone {
         background: AarastV3Color.amberSoft,
       );
     }
-    return const _DashboardMoneyTone(
-      accent: AarastV3Color.primary,
-      background: AarastV3Color.primarySoft,
+    return _DashboardMoneyTone(
+      accent: accent.primary,
+      background: accent.primarySoft,
     );
   }
 

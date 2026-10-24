@@ -2,17 +2,16 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 
+import 'aarast_journey_profile.dart';
 import 'aarast_v3_foundations.dart';
 
 /// The journey's two pictures: the wedding lights hung in front of the
 /// groom's house, and the fireworks behind them (prototype `v3/lights.dart`).
+/// The night sky is the plan's own ([JourneyAccent.night]).
 ///
 /// Painted with solid colours, opacity and blur only (DECISIONS 2026-10-22,
 /// D3): the visual contract bans gradients and shadows.
 abstract final class JourneyArt {
-  /// Night sky over the lights.
-  static const night = Color(0xFF0E2A33);
-
   /// The warm bulb colour.
   static const warm = Color(0xFFFFE3A3);
 }
@@ -117,15 +116,14 @@ typedef JourneyBurst = (Offset, Color, double);
 
 /// Fireworks behind the lights.
 class JourneyFireworksPainter extends CustomPainter {
-  const JourneyFireworksPainter({
-    this.bursts = defaultBursts,
-    this.alpha = 0.8,
-  });
+  const JourneyFireworksPainter({required this.bursts, this.alpha = 0.8});
 
-  static const defaultBursts = <JourneyBurst>[
-    (Offset(0.28, 0.45), AarastV3Color.saffron, 44.0),
-    (Offset(0.66, 0.38), JourneyArt.warm, 52.0),
-    (Offset(0.86, 0.62), Color(0xFF7FC3BC), 30.0),
+  /// The three bursts drawn over the plan's sky; the small one is the
+  /// plan's middle shade.
+  static List<JourneyBurst> burstsFor(JourneyAccent accent) => [
+    (const Offset(0.28, 0.45), AarastV3Color.saffron, 44.0),
+    (const Offset(0.66, 0.38), JourneyArt.warm, 52.0),
+    (const Offset(0.86, 0.62), accent.primaryMid, 30.0),
   ];
 
   final List<JourneyBurst> bursts;
@@ -172,7 +170,7 @@ class JourneyWeddingSky extends StatelessWidget {
   const JourneyWeddingSky({
     this.strands = 11,
     this.lit = 11,
-    this.bursts = JourneyFireworksPainter.defaultBursts,
+    this.bursts,
     this.fireAlpha = 0.8,
     this.base,
     super.key,
@@ -180,7 +178,9 @@ class JourneyWeddingSky extends StatelessWidget {
 
   final int strands;
   final int lit;
-  final List<JourneyBurst> bursts;
+
+  /// The fireworks; the plan's three when null.
+  final List<JourneyBurst>? bursts;
   final double fireAlpha;
 
   /// When set, the bottom of the sky fades into this colour.
@@ -190,13 +190,14 @@ class JourneyWeddingSky extends StatelessWidget {
   Widget build(BuildContext context) {
     return ExcludeSemantics(
       child: ColoredBox(
-        color: JourneyArt.night,
+        color: context.accent.night,
         child: Stack(
           fit: StackFit.expand,
           children: [
             CustomPaint(
               painter: JourneyFireworksPainter(
-                bursts: bursts,
+                bursts:
+                    bursts ?? JourneyFireworksPainter.burstsFor(context.accent),
                 alpha: fireAlpha,
               ),
             ),

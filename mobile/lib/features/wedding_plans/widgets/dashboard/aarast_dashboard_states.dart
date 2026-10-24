@@ -119,8 +119,8 @@ class AarastDashboardState extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final accent = danger ? AarastV3Color.danger : AarastV3Color.primary;
-    final soft = danger ? AarastV3Color.dangerSoft : AarastV3Color.primarySoft;
+    final accent = danger ? AarastV3Color.danger : context.accent.primary;
+    final soft = danger ? AarastV3Color.dangerSoft : context.accent.primarySoft;
     return ColoredBox(
       color: AarastV3Color.canvas,
       child: ListView(

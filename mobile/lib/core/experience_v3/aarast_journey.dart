@@ -4,6 +4,7 @@ import 'package:lucide_icons/lucide_icons.dart';
 
 import '../widgets/aarast_loading_state.dart' show AarastInlineSpinner;
 import '../widgets/aarast_pressable.dart';
+import 'aarast_journey_profile.dart';
 import 'aarast_v3_foundations.dart';
 
 /// The journey kit: the building blocks of the redesigned groom journey
@@ -101,45 +102,38 @@ abstract final class JourneyType {
   static const bold = FontWeight.w700;
 }
 
-/// The five tabs. A section keeps its colour on every screen.
+/// The five tabs. A section keeps its colour on every screen; the home and
+/// the money take the plan's own colour (teal for the groom, rose for the
+/// bride), the other three are the same for both.
 enum JourneySection {
-  home(
-    'الرئيسية',
-    LucideIcons.home,
-    AarastV3Color.primary,
-    AarastV3Color.primarySoft,
-  ),
-  money(
-    'المال',
-    LucideIcons.wallet,
-    AarastV3Color.primary,
-    AarastV3Color.primarySoft,
-  ),
-  tasks(
-    'المهام',
-    LucideIcons.listChecks,
-    AarastV3Color.brandAccentStrong,
-    AarastV3Color.brandAccentSoft,
-  ),
-  guests(
-    'الضيوف',
-    LucideIcons.users,
-    AarastV3Color.lilac,
-    AarastV3Color.lilacSoft,
-  ),
-  providers(
-    'المزودين',
-    LucideIcons.store,
-    AarastV3Color.cobalt,
-    AarastV3Color.cobaltSoft,
-  );
+  home('الرئيسية', 'الرئيسية', LucideIcons.home),
+  money('المال', 'المال', LucideIcons.wallet),
+  tasks('المهام', 'المهام', LucideIcons.listChecks),
+  guests('الضيوف', 'الضيفات', LucideIcons.users),
+  providers('المزودين', 'المزودين', LucideIcons.store);
 
-  const JourneySection(this.label, this.icon, this.color, this.soft);
+  const JourneySection(this._groomLabel, this._brideLabel, this.icon);
 
-  final String label;
+  final String _groomLabel;
+  final String _brideLabel;
   final IconData icon;
-  final Color color;
-  final Color soft;
+
+  /// The tab's name in the open plan's profile.
+  String labelOf(BuildContext context) => context.say(_groomLabel, _brideLabel);
+
+  Color colorOf(BuildContext context) => switch (this) {
+    JourneySection.home || JourneySection.money => context.accent.primary,
+    JourneySection.tasks => AarastV3Color.brandAccentStrong,
+    JourneySection.guests => AarastV3Color.lilac,
+    JourneySection.providers => AarastV3Color.cobalt,
+  };
+
+  Color softOf(BuildContext context) => switch (this) {
+    JourneySection.home || JourneySection.money => context.accent.primarySoft,
+    JourneySection.tasks => AarastV3Color.brandAccentSoft,
+    JourneySection.guests => AarastV3Color.lilacSoft,
+    JourneySection.providers => AarastV3Color.cobaltSoft,
+  };
 }
 
 /// A white rounded surface. [borderColor] draws a 2px outline (selection or
@@ -213,7 +207,7 @@ class JourneyButton extends StatelessWidget {
   const JourneyButton({
     required this.label,
     required this.onPressed,
-    this.background = AarastV3Color.primary,
+    this.background,
     this.foreground = AarastV3Color.onPrimary,
     this.icon,
     this.expand = false,
@@ -236,7 +230,9 @@ class JourneyButton extends StatelessWidget {
 
   final String label;
   final VoidCallback? onPressed;
-  final Color background;
+
+  /// The fill; the plan's colour when null.
+  final Color? background;
   final Color foreground;
   final IconData? icon;
   final bool expand;
@@ -246,7 +242,9 @@ class JourneyButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final enabled = onPressed != null && !loading;
-    final bg = enabled ? background : AarastV3Color.lineStrong;
+    final bg = enabled
+        ? background ?? context.accent.primary
+        : AarastV3Color.lineStrong;
     final fg = enabled ? foreground : AarastV3Color.paper;
     final content = Row(
       mainAxisSize: expand ? MainAxisSize.max : MainAxisSize.min,
@@ -363,7 +361,7 @@ class JourneyChip extends StatelessWidget {
     this.selected = false,
     this.onTap,
     this.icon,
-    this.selectedColor = AarastV3Color.primary,
+    this.selectedColor,
     this.fontSize = JourneyType.bodySmall,
     super.key,
   });
@@ -372,7 +370,9 @@ class JourneyChip extends StatelessWidget {
   final bool selected;
   final VoidCallback? onTap;
   final IconData? icon;
-  final Color selectedColor;
+
+  /// The selected fill; the plan's colour when null.
+  final Color? selectedColor;
   final double fontSize;
 
   @override
@@ -392,7 +392,9 @@ class JourneyChip extends StatelessWidget {
           constraints: const BoxConstraints(minHeight: 36),
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
           decoration: BoxDecoration(
-            color: selected ? selectedColor : AarastV3Color.paper,
+            color: selected
+                ? selectedColor ?? context.accent.primary
+                : AarastV3Color.paper,
             borderRadius: BorderRadius.circular(14),
             border: selected ? null : Border.all(color: AarastV3Color.line),
           ),
@@ -503,8 +505,8 @@ class JourneySegments extends StatelessWidget {
   const JourneySegments({
     required this.total,
     required this.done,
-    this.filled = AarastV3Color.primary,
-    this.current = AarastV3Color.primary,
+    this.filled,
+    this.current,
     this.empty = AarastV3Color.line,
     this.height = 6,
     super.key,
@@ -512,8 +514,10 @@ class JourneySegments extends StatelessWidget {
 
   final int total;
   final int done;
-  final Color filled;
-  final Color current;
+
+  /// The done and current steps; the plan's colour when null.
+  final Color? filled;
+  final Color? current;
   final Color empty;
   final double height;
 
@@ -529,9 +533,9 @@ class JourneySegments extends StatelessWidget {
                 margin: EdgeInsetsDirectional.only(end: i == total - 1 ? 0 : 5),
                 decoration: BoxDecoration(
                   color: i < done
-                      ? filled
+                      ? filled ?? context.accent.primary
                       : i == done
-                      ? current
+                      ? current ?? context.accent.primary
                       : empty,
                   borderRadius: BorderRadius.circular(height),
                 ),
@@ -552,7 +556,7 @@ class JourneyLevelSwitch extends StatelessWidget {
     required this.selected,
     required this.onChanged,
     required this.semanticLabel,
-    this.color = AarastV3Color.primary,
+    this.color,
     super.key,
   });
 
@@ -562,11 +566,14 @@ class JourneyLevelSwitch extends StatelessWidget {
 
   /// What the switch sets («المهام»); each word is read with it.
   final String semanticLabel;
-  final Color color;
+
+  /// The chosen word's colour; the plan's colour when null.
+  final Color? color;
 
   @override
   Widget build(BuildContext context) {
     final enabled = onChanged != null;
+    final color = this.color ?? context.accent.primary;
     return Opacity(
       opacity: enabled ? 1 : 0.5,
       child: Container(
@@ -817,14 +824,16 @@ class JourneySectionTitle extends StatelessWidget {
     this.title, {
     this.action,
     this.onAction,
-    this.actionColor = AarastV3Color.primary,
+    this.actionColor,
     super.key,
   });
 
   final String title;
   final String? action;
   final VoidCallback? onAction;
-  final Color actionColor;
+
+  /// The link's colour; the plan's colour when null.
+  final Color? actionColor;
 
   @override
   Widget build(BuildContext context) {
@@ -855,7 +864,7 @@ class JourneySectionTitle extends StatelessWidget {
               child: _SectionLink(
                 label: action!,
                 onTap: onAction,
-                color: actionColor,
+                color: actionColor ?? context.accent.primary,
               ),
             ),
         ],
@@ -1045,10 +1054,10 @@ class JourneyChoiceCard extends StatelessWidget {
         child: Container(
           padding: const EdgeInsets.all(14),
           decoration: BoxDecoration(
-            color: selected ? AarastV3Color.primarySoft : AarastV3Color.paper,
+            color: selected ? context.accent.primarySoft : AarastV3Color.paper,
             borderRadius: BorderRadius.circular(22),
             border: Border.all(
-              color: selected ? AarastV3Color.primary : AarastV3Color.line,
+              color: selected ? context.accent.primary : AarastV3Color.line,
               width: selected ? 2 : 1,
             ),
           ),
@@ -1097,7 +1106,7 @@ class JourneyOption extends StatelessWidget {
     required this.onTap,
     this.subtitle,
     this.selected = false,
-    this.color = AarastV3Color.primary,
+    this.color,
     super.key,
   });
 
@@ -1105,10 +1114,13 @@ class JourneyOption extends StatelessWidget {
   final String? subtitle;
   final VoidCallback? onTap;
   final bool selected;
-  final Color color;
+
+  /// The chosen outline; the plan's colour when null.
+  final Color? color;
 
   @override
   Widget build(BuildContext context) {
+    final color = this.color ?? context.accent.primary;
     return Semantics(
       button: true,
       selected: selected,
@@ -1321,7 +1333,7 @@ class _SelectionMark extends StatelessWidget {
       height: 26,
       decoration: BoxDecoration(
         shape: BoxShape.circle,
-        color: selected ? AarastV3Color.primary : AarastV3Color.paper,
+        color: selected ? context.accent.primary : AarastV3Color.paper,
         border: selected
             ? null
             : Border.all(color: AarastV3Color.lineStrong, width: 2),
@@ -1339,17 +1351,16 @@ class _SelectionMark extends StatelessWidget {
 
 /// The wordmark: اعّرست with its saffron dot.
 class JourneyWordmark extends StatelessWidget {
-  const JourneyWordmark({
-    this.size = 40,
-    this.color = AarastV3Color.primary,
-    super.key,
-  });
+  const JourneyWordmark({this.size = 40, this.color, super.key});
 
   final double size;
-  final Color color;
+
+  /// The word's colour; the plan's colour when null.
+  final Color? color;
 
   @override
   Widget build(BuildContext context) {
+    final color = this.color ?? context.accent.primary;
     return Semantics(
       label: 'اعّرست',
       excludeSemantics: true,
@@ -1403,15 +1414,14 @@ class JourneyAvatar extends StatelessWidget {
   final Color color;
   final double size;
 
-  /// The colours people in one list take in turn (g01, x07, x20).
-  static const palette = [
+  /// The colours people in one list take in turn (g01, x07, x20); the
+  /// second is the plan's own colour.
+  static Color paletteAt(BuildContext context, int index) => [
     AarastV3Color.brandAccentStrong,
-    AarastV3Color.primary,
+    context.accent.primary,
     AarastV3Color.lilac,
     AarastV3Color.cobalt,
-  ];
-
-  static Color paletteAt(int index) => palette[index % palette.length];
+  ][index % 4];
 
   @override
   Widget build(BuildContext context) {
@@ -1610,7 +1620,7 @@ class JourneyTextField extends StatefulWidget {
     this.textAlign = TextAlign.start,
     this.inputFormatters,
     this.helper,
-    this.helperColor = AarastV3Color.primary,
+    this.helperColor,
     this.autofillHints,
     this.minLines,
     this.maxLines = 1,
@@ -1638,7 +1648,9 @@ class JourneyTextField extends StatefulWidget {
   final TextAlign textAlign;
   final List<TextInputFormatter>? inputFormatters;
   final String? helper;
-  final Color helperColor;
+
+  /// The helper line's colour; the plan's colour when null.
+  final Color? helperColor;
   final Iterable<String>? autofillHints;
 
   /// A note or a pasted list grows from [minLines] up to [maxLines].
@@ -1670,7 +1682,7 @@ class _JourneyTextFieldState extends State<JourneyTextField> {
     final borderColor = error != null
         ? AarastV3Color.danger
         : _focus.hasFocus
-        ? AarastV3Color.primary
+        ? context.accent.primary
         : AarastV3Color.line;
     final width = error != null || _focus.hasFocus ? 2.0 : 1.0;
     return Column(
@@ -1720,7 +1732,7 @@ class _JourneyTextFieldState extends State<JourneyTextField> {
                         widget.large ? JourneyType.amount : JourneyType.lead,
                         weight: JourneyType.bold,
                       ),
-                      cursorColor: AarastV3Color.primary,
+                      cursorColor: context.accent.primary,
                       decoration: InputDecoration(
                         isDense: true,
                         counterText: '',
@@ -1748,7 +1760,7 @@ class _JourneyTextFieldState extends State<JourneyTextField> {
                         style: JourneyType.of(
                           JourneyType.small,
                           weight: JourneyType.bold,
-                          color: widget.helperColor,
+                          color: widget.helperColor ?? context.accent.primary,
                         ),
                       ),
                   ],
@@ -1876,18 +1888,22 @@ class JourneyNote extends StatelessWidget {
   const JourneyNote({
     required this.text,
     this.icon = LucideIcons.info,
-    this.color = AarastV3Color.primary,
-    this.soft = AarastV3Color.primarySoft,
+    this.color,
+    this.soft,
     super.key,
   });
 
   final String text;
   final IconData icon;
-  final Color color;
-  final Color soft;
+
+  /// The words and fill; the plan's colours when null.
+  final Color? color;
+  final Color? soft;
 
   @override
   Widget build(BuildContext context) {
+    final color = this.color ?? context.accent.primary;
+    final soft = this.soft ?? context.accent.primarySoft;
     return JourneyBox(
       color: soft,
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
@@ -1921,19 +1937,22 @@ class JourneyToggle extends StatelessWidget {
   const JourneyToggle({
     required this.value,
     required this.onChanged,
-    this.color = AarastV3Color.primary,
+    this.color,
     this.semanticLabel,
     super.key,
   });
 
   final bool value;
   final ValueChanged<bool>? onChanged;
-  final Color color;
+
+  /// The track when on; the plan's colour when null.
+  final Color? color;
   final String? semanticLabel;
 
   @override
   Widget build(BuildContext context) {
     final enabled = onChanged != null;
+    final color = this.color ?? context.accent.primary;
     return Semantics(
       toggled: value,
       enabled: enabled,

@@ -56,7 +56,7 @@ class ParticipantLockedScreen extends StatelessWidget {
         padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
         children: [
           JourneyTabHeader(
-            title: section.label,
+            title: section.labelOf(context),
             status: [
               if (planTitle.trim().isNotEmpty) planTitle.trim(),
               roleTag,
@@ -66,8 +66,8 @@ class ParticipantLockedScreen extends StatelessWidget {
           Center(
             child: JourneyIconTile(
               icon: LucideIcons.lock,
-              color: section.color,
-              soft: section.soft,
+              color: section.colorOf(context),
+              soft: section.softOf(context),
               size: 80,
               radius: 26,
             ),

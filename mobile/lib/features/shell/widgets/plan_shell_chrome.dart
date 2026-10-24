@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 
 import '../../../core/experience_v3/aarast_journey.dart';
+import '../../../core/experience_v3/aarast_journey_profile.dart';
 import '../../../core/theme/app_theme.dart';
 import 'aarast_plan_chrome.dart';
 import 'plan_quick_add.dart';
@@ -94,9 +95,12 @@ class _PlanShellChromeState extends State<PlanShellChrome> {
         ),
         floatingActionButton: quickAdd != null && !keyboardVisible
             ? PlanQuickAddButton(
-                color: section.color,
+                color: section.colorOf(context),
                 icon: planQuickAddIconForTab(widget.activeIndex),
-                label: planQuickAddLabelForTab(widget.activeIndex),
+                label: planQuickAddLabelForTab(
+                  widget.activeIndex,
+                  context.journeyProfile,
+                ),
                 expanded: _quickAddExpanded,
                 onPressed: quickAdd,
                 onLongPress: widget.onQuickAddLongPress,

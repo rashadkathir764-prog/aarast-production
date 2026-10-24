@@ -82,7 +82,10 @@ class AarastDashboardView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final focus = resolveDashboardFocus(summary);
+    final focus = resolveDashboardFocus(
+      summary,
+      profile: context.journeyProfile,
+    );
     final weddingDay = resolveWeddingDayMode(summary.weddingDate, now: now);
     final planStage = resolveWeddingPlanStage(summary.weddingDate, now: now);
     // A due payment the server named leads the next step, and the money
@@ -274,7 +277,7 @@ class _WeddingDayEntry extends StatelessWidget {
           color: AarastV3Color.paper,
           borderRadius: BorderRadius.circular(AarastV3Radius.surface),
           border: Border.all(
-            color: isToday ? AarastV3Color.primary : AarastV3Color.line,
+            color: isToday ? context.accent.primary : AarastV3Color.line,
           ),
         ),
         child: Row(
@@ -284,12 +287,12 @@ class _WeddingDayEntry extends StatelessWidget {
               height: 40,
               alignment: Alignment.center,
               decoration: BoxDecoration(
-                color: AarastV3Color.primarySoft,
+                color: context.accent.primarySoft,
                 borderRadius: BorderRadius.circular(AarastV3Radius.control),
               ),
-              child: const Icon(
+              child: Icon(
                 LucideIcons.calendarHeart,
-                color: AarastV3Color.primary,
+                color: context.accent.primary,
                 size: 20,
               ),
             ),
@@ -303,7 +306,7 @@ class _WeddingDayEntry extends StatelessWidget {
                     status.eyebrow,
                     style: AarastV3Type.label(
                       context,
-                    ).copyWith(color: AarastV3Color.primary),
+                    ).copyWith(color: context.accent.primary),
                   ),
                   const SizedBox(height: AarastV3Space.x1),
                   Text(

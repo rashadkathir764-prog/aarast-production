@@ -1690,7 +1690,9 @@ const r19ProviderPortalApi = Object.freeze({
 // +1: +2 for the new state screens reading the profile through the
 // marketplace owner API, -1 for the portal, whose closed tab no longer reads
 // the profile.
-const r19LegalRecordCount = 233;
+// +1: the app root reads the plan's persona through the wedding plans owner
+// API, so the whole app takes the open plan's profile (the bride's slice 1).
+const r19LegalRecordCount = 234;
 const trackedOwnerApiContracts = [
   {
     area: 'features/account_contexts',
@@ -3092,11 +3094,22 @@ const trackedCompositionRootContracts = [
     imports: [
       {
         target: 'mobile/lib/features/account_contexts/account_contexts_api.dart',
-        show: ['AccountContextController'],
+        show: [
+          'AccountContext',
+          'AccountContextController',
+          'AccountContextPersona',
+          'AccountContextRole',
+        ],
       },
       {
         target: 'mobile/lib/features/auth/auth_api.dart',
         show: ['AuthController', 'AuthStatus'],
+      },
+      {
+        // The open plan's profile (JOURNEY_PROFILE.md) reads the phone
+        // plan's persona from the home summary.
+        target: 'mobile/lib/features/wedding_plans/wedding_plans_api.dart',
+        show: ['DashboardSummary', 'DashboardSummaryProvider'],
       },
     ],
   },

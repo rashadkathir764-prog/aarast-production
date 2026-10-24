@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 
 import 'aarast_journey.dart';
+import 'aarast_journey_profile.dart';
 import 'aarast_v3_foundations.dart';
 
 // w42: every list has the same four states, in its section's colour. An
@@ -64,8 +65,8 @@ class JourneyListState extends StatelessWidget {
     final (icon, color, soft, title, action, onAction) = switch (phase) {
       JourneyListPhase.empty => (
         emptyIcon ?? section.icon,
-        section.color,
-        section.soft,
+        section.colorOf(context),
+        section.softOf(context),
         emptyTitle ?? 'ما في شي بعد',
         emptyAction,
         onEmptyAction,
@@ -175,7 +176,10 @@ class JourneyListNotice extends StatelessWidget {
                 Flexible(
                   child: Text(
                     offline
-                        ? 'آخر نسخة محفوظة · تشوف بس'
+                        ? context.say(
+                            'آخر نسخة محفوظة · تشوف بس',
+                            'آخر نسخة محفوظة · تشوفين بس',
+                          )
                         : 'ما قدرنا نحدّثها، وهذي آخر نسخة',
                     style: JourneyType.of(
                       JourneyType.small,

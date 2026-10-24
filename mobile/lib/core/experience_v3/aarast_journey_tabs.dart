@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../widgets/aarast_pressable.dart';
 import 'aarast_journey.dart';
+import 'aarast_journey_profile.dart';
 import 'aarast_v3_foundations.dart';
 
 /// The pill switcher at the top of a section (money «الملخص · البنود ·
@@ -12,17 +13,20 @@ class JourneyTabSwitch extends StatelessWidget {
     required this.labels,
     required this.selected,
     required this.onSelected,
-    this.color = AarastV3Color.primary,
+    this.color,
     super.key,
   });
 
   final List<String> labels;
   final int selected;
   final ValueChanged<int> onSelected;
-  final Color color;
+
+  /// The chosen tab's fill; the plan's colour when null.
+  final Color? color;
 
   @override
   Widget build(BuildContext context) {
+    final color = this.color ?? context.accent.primary;
     // The prototype's topTabs: 4 around, 9 above and below a 13.5 bold
     // name, 16 outside and 12 inside; about 44 tall.
     return Container(

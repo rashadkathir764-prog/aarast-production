@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart' show SystemUiOverlayStyle;
 
 import 'aarast_journey.dart';
+import 'aarast_journey_profile.dart';
 import 'aarast_v3_foundations.dart';
 
 /// A full-screen moment between stages of the journey (prototype
@@ -19,7 +20,7 @@ class JourneyMoment extends StatelessWidget {
     required this.body,
     required this.action,
     required this.onAction,
-    this.color = AarastV3Color.primary,
+    this.color,
     super.key,
   });
 
@@ -29,10 +30,13 @@ class JourneyMoment extends StatelessWidget {
   final Widget body;
   final String action;
   final VoidCallback onAction;
-  final Color color;
+
+  /// The moment's sky; the plan's colour when null.
+  final Color? color;
 
   @override
   Widget build(BuildContext context) {
+    final color = this.color ?? context.accent.primary;
     return AnnotatedRegion<SystemUiOverlayStyle>(
       value: SystemUiOverlayStyle.light,
       child: Material(
@@ -71,7 +75,7 @@ class JourneyMoment extends StatelessWidget {
                                 style: JourneyType.of(
                                   JourneyType.body,
                                   weight: JourneyType.bold,
-                                  color: AarastV3Color.onPrimaryMuted,
+                                  color: context.accent.onPrimaryMuted,
                                 ),
                               ),
                             ),
@@ -97,7 +101,7 @@ class JourneyMoment extends StatelessWidget {
                         textAlign: TextAlign.center,
                         style: JourneyType.of(
                           JourneyType.body,
-                          color: AarastV3Color.onPrimaryMuted,
+                          color: context.accent.onPrimaryMuted,
                         ),
                       ),
                       const SizedBox(height: 24),
@@ -167,7 +171,7 @@ class JourneyGlassRows extends StatelessWidget {
                       value,
                       style: JourneyType.of(
                         JourneyType.small,
-                        color: AarastV3Color.onPrimaryMuted,
+                        color: context.accent.onPrimaryMuted,
                       ),
                     ),
                   ],

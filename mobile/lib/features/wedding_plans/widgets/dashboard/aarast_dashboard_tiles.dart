@@ -42,7 +42,10 @@ class _JourneyHomeTiles extends StatelessWidget {
           )
         : null;
     final guestsNote = s.pendingGuests > 0
-        ? ('${s.pendingGuests} ما ردّوا', AarastV3Color.lilac)
+        ? (
+            '${s.pendingGuests} ${context.say('ما ردّوا', 'ما ردّن')}',
+            AarastV3Color.lilac,
+          )
         : null;
     final providersNote = s.receivedQuotes > 0
         ? (
@@ -82,14 +85,14 @@ class _JourneyHomeTiles extends StatelessWidget {
           Expanded(
             child: _HomeTile(
               key: const ValueKey('aarast-dashboard-tile-guests'),
-              label: 'الضيوف',
+              label: JourneySection.guests.labelOf(context),
               icon: LucideIcons.users,
               color: AarastV3Color.lilac,
               soft: AarastV3Color.lilacSoft,
               value: s.confirmedGuests,
               of: s.guestCount == 0
-                  ? 'ما في ضيوف بعد'
-                  : 'أكدوا من ${s.guestCount}',
+                  ? context.say('ما في ضيوف بعد', 'ما في ضيفات بعد')
+                  : '${context.say('أكدوا', 'أكدن')} من ${s.guestCount}',
               note: guestsNote,
               progress: s.guestCount == 0
                   ? null
@@ -243,8 +246,8 @@ class _JourneyAfterwards extends StatelessWidget {
               for (final item in items)
                 JourneyListRow(
                   icon: _iconForItem(item.type),
-                  color: _colorForItem(item.type).$1,
-                  soft: _colorForItem(item.type).$2,
+                  color: _colorForItem(item.type, context.accent).$1,
+                  soft: _colorForItem(item.type, context.accent).$2,
                   title: item.title,
                   subtitle: item.subtitle,
                   trailing: const Icon(
@@ -276,7 +279,7 @@ class _JourneyAfterwards extends StatelessWidget {
     return LucideIcons.sparkles;
   }
 
-  static (Color, Color) _colorForItem(String type) {
+  static (Color, Color) _colorForItem(String type, JourneyAccent accent) {
     final t = type.toUpperCase();
     if (t.contains('TASK')) {
       return (AarastV3Color.brandAccentStrong, AarastV3Color.brandAccentSoft);
@@ -289,6 +292,6 @@ class _JourneyAfterwards extends StatelessWidget {
         t.contains('BOOKING')) {
       return (AarastV3Color.cobalt, AarastV3Color.cobaltSoft);
     }
-    return (AarastV3Color.primary, AarastV3Color.primarySoft);
+    return (accent.primary, accent.primarySoft);
   }
 }

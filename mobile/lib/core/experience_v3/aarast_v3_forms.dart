@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 
 import '../forms/aarast_form_draft_store.dart';
+import 'aarast_journey_profile.dart';
 import 'aarast_v3_foundations.dart';
 
 class AarastV3DraftStatusLine extends StatelessWidget {
@@ -88,15 +89,15 @@ class AarastV3FocusPrompt extends StatelessWidget {
           top: AarastV3Space.x1,
           bottom: AarastV3Space.x1,
         ),
-        decoration: const BoxDecoration(
+        decoration: BoxDecoration(
           border: BorderDirectional(
-            start: BorderSide(color: AarastV3Color.primary, width: 2),
+            start: BorderSide(color: context.accent.primary, width: 2),
           ),
         ),
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Icon(icon, color: AarastV3Color.primary, size: 17),
+            Icon(icon, color: context.accent.primary, size: 17),
             const SizedBox(width: AarastV3Space.x2),
             Expanded(
               child: Column(
@@ -106,7 +107,7 @@ class AarastV3FocusPrompt extends StatelessWidget {
                     eyebrow,
                     style: AarastV3Type.label(
                       context,
-                    ).copyWith(color: AarastV3Color.primary),
+                    ).copyWith(color: context.accent.primary),
                   ),
                   const SizedBox(height: 2),
                   Text(question, style: AarastV3Type.section(context)),
@@ -160,7 +161,7 @@ class AarastV3LiveSummary extends StatelessWidget {
             title,
             style: AarastV3Type.label(
               context,
-            ).copyWith(color: AarastV3Color.primary),
+            ).copyWith(color: context.accent.primary),
           ),
           const SizedBox(height: AarastV3Space.x1),
           LayoutBuilder(
@@ -362,7 +363,7 @@ class AarastV3FormSurface extends StatelessWidget {
                 Container(
                   width: 4,
                   height: subtitle == null ? 26 : 46,
-                  color: AarastV3Color.primary,
+                  color: context.accent.primary,
                 ),
                 const SizedBox(width: AarastV3Space.x3),
                 Expanded(
@@ -428,7 +429,7 @@ class AarastV3Disclosure extends StatelessWidget {
             AarastV3Space.x2,
             AarastV3Space.x2,
           ),
-          leading: Icon(icon, color: AarastV3Color.primary, size: 19),
+          leading: Icon(icon, color: context.accent.primary, size: 19),
           title: Text(
             title,
             style: Theme.of(context).textTheme.titleSmall?.copyWith(
@@ -473,7 +474,7 @@ class AarastV3PrimaryAction extends StatelessWidget {
       onPressed: loading ? null : onPressed,
       style: FilledButton.styleFrom(
         minimumSize: const Size.fromHeight(48),
-        backgroundColor: AarastV3Color.primary,
+        backgroundColor: context.accent.primary,
         foregroundColor: AarastV3Color.onPrimary,
         disabledBackgroundColor: AarastV3Color.lineStrong,
         shape: RoundedRectangleBorder(

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 
+import 'aarast_journey_profile.dart';
 import 'aarast_v3_foundations.dart';
 
 class AarastV3PageFrame extends StatelessWidget {
@@ -455,7 +456,7 @@ class AarastV3ListRow extends StatelessWidget {
     this.status,
     this.action,
     this.onTap,
-    this.accent = AarastV3Color.primary,
+    this.accent,
     this.semanticLabel,
     super.key,
   });
@@ -470,11 +471,14 @@ class AarastV3ListRow extends StatelessWidget {
   final Widget? status;
   final Widget? action;
   final VoidCallback? onTap;
-  final Color accent;
+
+  /// The row's mark; the plan's colour when null.
+  final Color? accent;
   final String? semanticLabel;
 
   @override
   Widget build(BuildContext context) {
+    final accent = this.accent ?? context.accent.primary;
     final content = ConstrainedBox(
       constraints: const BoxConstraints(
         minHeight: AarastV3Density.rowMinHeight,
@@ -919,7 +923,7 @@ class AarastV3IconAction extends StatelessWidget {
 class AarastV3ProgressLine extends StatelessWidget {
   const AarastV3ProgressLine({
     this.value,
-    this.color = AarastV3Color.primary,
+    this.color,
     this.backgroundColor = AarastV3Color.paperQuiet,
     this.height = 5,
     this.semanticsLabel,
@@ -927,13 +931,16 @@ class AarastV3ProgressLine extends StatelessWidget {
   });
 
   final double? value;
-  final Color color;
+
+  /// The line; the plan's colour when null.
+  final Color? color;
   final Color backgroundColor;
   final double height;
   final String? semanticsLabel;
 
   @override
   Widget build(BuildContext context) {
+    final color = this.color ?? context.accent.primary;
     final normalized = value?.clamp(0.0, 1.0).toDouble();
     final reduceMotion = MediaQuery.disableAnimationsOf(context);
     Widget line(double? progress) => ClipRRect(

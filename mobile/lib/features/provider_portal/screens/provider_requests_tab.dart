@@ -200,7 +200,7 @@ class _ProviderRequestsTabState extends State<ProviderRequestsTab> {
       quote: quote,
       state: item.state,
       booking: item.booking,
-      color: JourneyAvatar.paletteAt(index + 1),
+      color: JourneyAvatar.paletteAt(context, index + 1),
       onOpen: open,
       onQuickOffer: packages.isEmpty
           ? null

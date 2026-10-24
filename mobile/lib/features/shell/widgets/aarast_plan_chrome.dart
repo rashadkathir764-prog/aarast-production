@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:lucide_icons/lucide_icons.dart';
 
 import '../../../core/experience_v3/aarast_journey.dart';
+import '../../../core/experience_v3/aarast_journey_profile.dart';
 import '../../../core/experience_v3/aarast_v3_foundations.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/aarast_pressable.dart';
@@ -20,32 +20,36 @@ class AarastNavigationItem {
 
 class AarastPlanNavigationBar extends StatelessWidget {
   const AarastPlanNavigationBar({
-    required this.items,
+    required List<AarastNavigationItem> this.items,
     required this.activeIndex,
     required this.onSelected,
     super.key,
   });
 
+  /// The plan's five tabs, named and coloured in the plan's profile.
   const AarastPlanNavigationBar.plan({
     required this.activeIndex,
     required this.onSelected,
     super.key,
-  }) : items = _planItems;
+  }) : items = null;
 
-  static const _planItems = [
-    AarastNavigationItem(icon: LucideIcons.home, label: 'الرئيسية'),
-    AarastNavigationItem(icon: LucideIcons.wallet, label: 'المال'),
-    AarastNavigationItem(icon: LucideIcons.listChecks, label: 'المهام'),
-    AarastNavigationItem(icon: LucideIcons.users, label: 'الضيوف'),
-    AarastNavigationItem(icon: LucideIcons.store, label: 'المزودين'),
-  ];
-
-  final List<AarastNavigationItem> items;
+  /// Other bars' tabs; null draws the plan's five [JourneySection]s.
+  final List<AarastNavigationItem>? items;
   final int activeIndex;
   final ValueChanged<int> onSelected;
 
   @override
   Widget build(BuildContext context) {
+    final planTabs = this.items == null;
+    final items =
+        this.items ??
+        [
+          for (final section in JourneySection.values)
+            AarastNavigationItem(
+              icon: section.icon,
+              label: section.labelOf(context),
+            ),
+        ];
     final textScale = MediaQuery.textScalerOf(context).scale(1);
     final extraHeight = ((textScale - 1).clamp(0.0, 1.0) * 18).toDouble();
     final navigationHeight = 64 + extraHeight;
@@ -74,11 +78,9 @@ class AarastPlanNavigationBar extends StatelessWidget {
                     child: _PlanNavigationItem(
                       item: items[index],
                       active: activeIndex == index,
-                      color:
-                          identical(items, _planItems) &&
-                              index < JourneySection.values.length
-                          ? JourneySection.values[index].color
-                          : AarastV3Color.primary,
+                      color: planTabs
+                          ? JourneySection.values[index].colorOf(context)
+                          : context.accent.primary,
                       onTap: () => onSelected(index),
                     ),
                   ),
@@ -96,7 +98,7 @@ class _PlanNavigationItem extends StatelessWidget {
     required this.item,
     required this.active,
     required this.onTap,
-    this.color = AarastV3Color.primary,
+    required this.color,
   });
 
   final AarastNavigationItem item;

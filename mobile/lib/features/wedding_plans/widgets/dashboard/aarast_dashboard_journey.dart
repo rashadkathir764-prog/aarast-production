@@ -155,7 +155,10 @@ class _JourneyHomeHero extends StatelessWidget {
     return Semantics(
       button: true,
       label: date == null
-          ? 'الموعد لسا ما ثبت. ثبّت الموعد'
+          ? context.say(
+              'الموعد لسا ما ثبت. ثبّت الموعد',
+              'الموعد لسا ما ثبت. ثبّتي الموعد',
+            )
           : '${days != null && days > 0 ? '$days ' : ''}$countLine، $dateLine',
       onTap: onTap,
       excludeSemantics: true,
@@ -164,11 +167,11 @@ class _JourneyHomeHero extends StatelessWidget {
         onTap: onTap,
         borderRadius: BorderRadius.circular(24),
         child: JourneyBox(
-          color: AarastV3Color.primary,
+          color: context.accent.primary,
           radius: 24,
           padding: const EdgeInsets.fromLTRB(20, 18, 20, 18),
           child: date == null
-              ? _noDate()
+              ? _noDate(context)
               : Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
@@ -203,7 +206,7 @@ class _JourneyHomeHero extends StatelessWidget {
                                 dateLine!,
                                 style: JourneyType.of(
                                   JourneyType.small,
-                                  color: AarastV3Color.onPrimaryMuted,
+                                  color: context.accent.onPrimaryMuted,
                                 ),
                               ),
                             ],
@@ -232,13 +235,13 @@ class _JourneyHomeHero extends StatelessWidget {
     );
   }
 
-  Widget _noDate() {
+  Widget _noDate(BuildContext context) {
     return Row(
       children: [
-        const JourneyIconTile(
+        JourneyIconTile(
           icon: LucideIcons.calendarPlus,
           color: AarastV3Color.onPrimary,
-          soft: AarastV3Color.primaryDark,
+          soft: context.accent.primaryDark,
         ),
         const SizedBox(width: 12),
         Expanded(
@@ -254,10 +257,13 @@ class _JourneyHomeHero extends StatelessWidget {
                 ),
               ),
               Text(
-                'ثبّته ونرتب لك المهام والدفعات عليه',
+                context.say(
+                  'ثبّته ونرتب لك المهام والدفعات عليه',
+                  'ثبّتيه ونرتب لك المهام والدفعات عليه',
+                ),
                 style: JourneyType.of(
                   JourneyType.small,
-                  color: AarastV3Color.onPrimaryMuted,
+                  color: context.accent.onPrimaryMuted,
                 ),
               ),
             ],
@@ -305,7 +311,7 @@ class _StagePath extends StatelessWidget {
                       ? AarastV3Color.saffron
                       : index < current
                       ? AarastV3Color.onPrimary
-                      : AarastV3Color.primaryDark,
+                      : context.accent.primaryDark,
                   borderRadius: BorderRadius.circular(3),
                 ),
               ),
@@ -357,7 +363,7 @@ class _JourneyNextStep extends StatelessWidget {
       title =
           '${due.title}: ${formatDashboardAmount(dashboardAmount(due.amount) ?? 0)} ${_currencyLabel(currency)}';
       reason = 'موعدها ${formatArabicWeekdayDayMonth(due.dueDate)}';
-      action = 'سجّل الدفعة';
+      action = context.say('سجّل الدفعة', 'سجّلي الدفعة');
       icon = LucideIcons.calendarClock;
     } else {
       eyebrow = 'الخطوة الجاية';
@@ -369,10 +375,10 @@ class _JourneyNextStep extends StatelessWidget {
     final urgent = focus.tone == AarastDashboardFocusTone.urgent;
     final accent = urgent
         ? AarastV3Color.brandAccentStrong
-        : AarastV3Color.primary;
+        : context.accent.primary;
     final soft = urgent
         ? AarastV3Color.brandAccentSoft
-        : AarastV3Color.primarySoft;
+        : context.accent.primarySoft;
     return JourneyBox(
       key: ValueKey('aarast-dashboard-next-step-${focus.target.name}'),
       padding: const EdgeInsets.all(18),
@@ -476,10 +482,10 @@ class _AfterWeddingHero extends StatelessWidget {
       key: const ValueKey('aarast-dashboard-after-hero'),
       onTap: onTap,
       semanticLabel:
-          '${left.semanticText} باقي عليك. سددت ${paid.semanticText} من ${total.semanticText}',
+          '${left.semanticText} باقي عليك. ${context.say('سددت', 'سدّدتِ')} ${paid.semanticText} من ${total.semanticText}',
       borderRadius: BorderRadius.circular(24),
       child: JourneyBox(
-        color: AarastV3Color.primary,
+        color: context.accent.primary,
         radius: 24,
         padding: EdgeInsets.zero,
         child: Stack(
@@ -546,10 +552,10 @@ class _AfterWeddingHero extends StatelessWidget {
                   ),
                   const SizedBox(height: 12),
                   Text(
-                    'سددت ${paid.plainText} من ${total.plainText}',
+                    '${context.say('سددت', 'سدّدتِ')} ${paid.plainText} من ${total.plainText}',
                     style: JourneyType.of(
                       JourneyType.small,
-                      color: AarastV3Color.onPrimaryMuted,
+                      color: context.accent.onPrimaryMuted,
                     ),
                   ),
                 ],
@@ -587,14 +593,17 @@ class _RateProvidersCard extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'قيّم مزودينك',
+                  context.say('قيّم مزودينك', 'قيّمي مزودينك'),
                   style: JourneyType.of(
                     JourneyType.bodyLarge,
                     weight: JourneyType.bold,
                   ),
                 ),
                 Text(
-                  'تقييمك يساعد العرسان الجايين',
+                  context.say(
+                    'تقييمك يساعد العرسان الجايين',
+                    'تقييمك يساعد العرايس الجايات',
+                  ),
                   style: JourneyType.of(
                     JourneyType.small,
                     color: AarastV3Color.textMuted,
@@ -605,7 +614,7 @@ class _RateProvidersCard extends StatelessWidget {
           ),
           const SizedBox(width: 8),
           JourneyButton(
-            label: 'قيّم',
+            label: context.say('قيّم', 'قيّمي'),
             background: AarastV3Color.brandAccentStrong,
             onPressed: onTap,
           ),

@@ -2,6 +2,7 @@
 // offers on each tab and in which order, and where each choice goes. Both
 // shells and the home of a plan kept on the phone share these rules.
 
+import 'package:aarast_mobile/core/experience_v3/aarast_journey_profile.dart';
 import 'package:aarast_mobile/core/routing/app_router.dart';
 import 'package:aarast_mobile/features/shell/widgets/plan_quick_add.dart';
 import 'package:aarast_mobile/features/wedding_plans/models/wedding_plan_stage.dart';
@@ -11,7 +12,7 @@ import 'package:go_router/go_router.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 
 List<String> _labels(List<PlanQuickAction> actions) => [
-  for (final action in actions) action.kind.label,
+  for (final action in actions) action.kind.labelFor(JourneyProfile.groom),
 ];
 
 void main() {
@@ -50,10 +51,13 @@ void main() {
     });
 
     test('each tab names its «+»', () {
-      expect(planQuickAddLabelForTab(0), 'إضافة');
-      expect(planQuickAddLabelForTab(1), 'إضافة اتفاق');
-      expect(planQuickAddLabelForTab(2), 'إضافة مهمة');
-      expect(planQuickAddLabelForTab(3), 'إضافة ضيف');
+      const groom = JourneyProfile.groom;
+      expect(planQuickAddLabelForTab(0, groom), 'إضافة');
+      expect(planQuickAddLabelForTab(1, groom), 'إضافة اتفاق');
+      expect(planQuickAddLabelForTab(2, groom), 'إضافة مهمة');
+      expect(planQuickAddLabelForTab(3, groom), 'إضافة ضيف');
+      // The bride's guests are her women guests (JOURNEY_PROFILE.md).
+      expect(planQuickAddLabelForTab(3, JourneyProfile.bride), 'إضافة ضيفة');
       expect(planQuickAddIconForTab(0), LucideIcons.plus);
       expect(planQuickAddIconForTab(1), LucideIcons.wallet);
       expect(planQuickAddIconForTab(2), LucideIcons.listPlus);
@@ -115,7 +119,7 @@ void main() {
         planId: 'plan-order',
         tabIndex: tab,
         canManageMoney: true,
-      ).first.kind.label;
+      ).first.kind.labelFor(JourneyProfile.groom);
 
       expect(first(1), 'إضافة اتفاق');
       expect(first(2), 'إضافة مهمة');

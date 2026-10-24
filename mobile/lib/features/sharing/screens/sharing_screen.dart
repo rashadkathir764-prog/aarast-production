@@ -463,7 +463,7 @@ class _SharingScreenState extends State<SharingScreen>
             for (var i = 0; i < members.length; i++)
               _MemberRow(
                 member: members[i],
-                color: JourneyAvatar.paletteAt(i),
+                color: JourneyAvatar.paletteAt(context, i),
                 withTag: pending.isNotEmpty,
                 onTap: () {
                   provider.selectMember(members[i]);
@@ -484,7 +484,7 @@ class _SharingScreenState extends State<SharingScreen>
             for (var i = 0; i < pending.length; i++)
               _PendingInviteRow(
                 invite: pending[i],
-                color: JourneyAvatar.paletteAt(members.length + i),
+                color: JourneyAvatar.paletteAt(context, members.length + i),
                 busy: provider.isSubmitting,
                 onReissue: () => _reissueInvite(pending[i]),
                 onTap: () => _confirmCancel(pending[i]),

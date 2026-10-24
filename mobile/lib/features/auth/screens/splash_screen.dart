@@ -74,45 +74,50 @@ class _SplashScreenState extends State<SplashScreen>
   @override
   Widget build(BuildContext context) {
     // a01: the wedding sky, the name, and what the app is for. The status
-    // bar reads light over the night.
+    // bar reads light over the night. a01 is the same for every journey, so
+    // it keeps the app's own sky whatever plan opens next.
+    final night = JourneyAccent.groom.night;
     return AnnotatedRegion<SystemUiOverlayStyle>(
       value: SystemUiOverlayStyle.light,
       child: AarastScreenFrame(
         maxWidth: 560,
-        backgroundColor: JourneyArt.night,
-        backgroundDecoration: const BoxDecoration(color: JourneyArt.night),
-        child: Stack(
-          fit: StackFit.expand,
-          children: [
-            const JourneyWeddingSky(base: AarastV3Color.primaryDark),
-            Align(
-              alignment: const Alignment(0, 0.42),
-              child: FadeTransition(
-                opacity: _opacityAnimation,
-                child: ScaleTransition(
-                  scale: _scaleAnimation,
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      const JourneyWordmark(
-                        size: 64,
-                        color: AarastV3Color.onPrimary,
-                      ),
-                      const SizedBox(height: 14),
-                      Text(
-                        'عرسك من أول ريال إلى آخر قسط',
-                        textAlign: TextAlign.center,
-                        style: JourneyType.of(
-                          JourneyType.bodyLarge,
-                          color: AarastV3Color.onPrimaryMuted,
+        backgroundColor: night,
+        backgroundDecoration: BoxDecoration(color: night),
+        child: JourneyProfileScope(
+          profile: JourneyProfile.groom,
+          child: Stack(
+            fit: StackFit.expand,
+            children: [
+              const JourneyWeddingSky(base: AarastV3Color.primaryDark),
+              Align(
+                alignment: const Alignment(0, 0.42),
+                child: FadeTransition(
+                  opacity: _opacityAnimation,
+                  child: ScaleTransition(
+                    scale: _scaleAnimation,
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const JourneyWordmark(
+                          size: 64,
+                          color: AarastV3Color.onPrimary,
                         ),
-                      ),
-                    ],
+                        const SizedBox(height: 14),
+                        Text(
+                          'عرسك من أول ريال إلى آخر قسط',
+                          textAlign: TextAlign.center,
+                          style: JourneyType.of(
+                            JourneyType.bodyLarge,
+                            color: AarastV3Color.onPrimaryMuted,
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );

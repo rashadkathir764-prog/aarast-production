@@ -92,15 +92,17 @@ Future<PlanQuickAddKind?> showPlanQuickAddSheet(
               JourneyListRow(
                 key: ValueKey('plan-quick-add-${action.kind.name}'),
                 icon: action.kind.icon,
-                color: action.kind.section.color,
-                soft: action.kind.section.soft,
-                title: action.kind.label,
-                subtitle: action.kind.description,
+                color: action.kind.section.colorOf(context),
+                soft: action.kind.section.softOf(context),
+                title: action.kind.labelFor(sheetContext.journeyProfile),
+                subtitle: action.kind.descriptionFor(
+                  sheetContext.journeyProfile,
+                ),
                 trailing: action.recommended
                     ? JourneyTag(
                         label: 'الأنسب الآن',
-                        color: action.kind.section.color,
-                        soft: action.kind.section.soft,
+                        color: action.kind.section.colorOf(context),
+                        soft: action.kind.section.softOf(context),
                       )
                     : null,
                 onTap: () => Navigator.of(sheetContext).pop(action.kind),

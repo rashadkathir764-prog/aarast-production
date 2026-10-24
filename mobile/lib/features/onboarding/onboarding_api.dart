@@ -8,7 +8,6 @@ export 'models/guest_onboarding_draft.dart'
     show GuestOnboardingDraft, GuestOnboardingPath, GuestPersona;
 export 'models/persona_copy.dart' show appRoleLabel, personaCopyForGuest;
 export 'models/wedding_location_draft.dart' show WeddingLocationDraft;
-export 'providers/guest_onboarding_provider.dart' show GuestOnboardingProvider;
 export 'providers/yemen_administrative_provider.dart'
     show YemenAdministrativeProvider;
 export 'screens/local_plan_migration_screen.dart' show LocalPlanMigrationScreen;

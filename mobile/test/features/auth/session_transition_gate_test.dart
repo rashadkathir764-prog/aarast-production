@@ -299,7 +299,7 @@ void main() {
     expect(harness.controller.user, isNull);
     expect(harness.controller.status, AuthStatus.terminationFailed);
     expect(find.byKey(const Key('old-provider-dashboard')), findsNothing);
-    expect(find.text('جارٍ التحقق من حذف الحساب'), findsOneWidget);
+    expect(find.text('نتأكد من حذف الحساب'), findsOneWidget);
     final firstId = harness.repository.deletionRequestIds.first;
     expect(harness.repository.deletionRequestIds, [firstId]);
     expect(await harness.deletionStore.read(), isNotNull);

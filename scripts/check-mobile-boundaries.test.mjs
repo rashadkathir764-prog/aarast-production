@@ -1932,10 +1932,6 @@ const trackedOwnerApiContracts = [
         show: ['WeddingLocationDraft'],
       },
       {
-        uri: 'providers/guest_onboarding_provider.dart',
-        show: ['GuestOnboardingProvider'],
-      },
-      {
         uri: 'providers/yemen_administrative_provider.dart',
         show: ['YemenAdministrativeProvider'],
       },
@@ -2107,10 +2103,6 @@ const trackedOwnerApiContracts = [
       },
       { uri: 'models/wedding_plan.dart', show: ['WeddingPlan'] },
       {
-        uri: 'models/wedding_stage_domain_guidance.dart',
-        show: ['WeddingStageDomain'],
-      },
-      {
         uri: 'providers/dashboard_summary_provider.dart',
         show: ['DashboardSummaryProvider'],
       },
@@ -2145,10 +2137,6 @@ const trackedOwnerApiContracts = [
       {
         uri: 'widgets/postpone_sheet.dart',
         show: ['showPostponeSheet'],
-      },
-      {
-        uri: 'widgets/wedding_stage_context_line.dart',
-        show: ['WeddingStageContextLine'],
       },
     ],
   },

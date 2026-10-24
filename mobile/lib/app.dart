@@ -15,6 +15,7 @@ import 'core/routing/aarast_back_button_dispatcher.dart';
 import 'core/push/push_lifecycle_bridge.dart';
 import 'core/security/app_lock_gate.dart';
 import 'core/theme/app_theme.dart';
+import 'core/widgets/aarast_loading_state.dart' show AarastInlineSpinner;
 import 'features/account_contexts/account_contexts_api.dart'
     show AccountContextController;
 import 'features/auth/auth_api.dart' show AuthController, AuthStatus;
@@ -145,54 +146,16 @@ class AarastSessionTransitionGate extends StatelessWidget {
     }
 
     if (status == AuthStatus.checking) {
-      return const Scaffold(
+      return const _SessionWait(
         key: Key('session-checking-screen'),
-        backgroundColor: AppTheme.canvas,
-        body: SafeArea(
-          child: Center(
-            child: Padding(
-              padding: EdgeInsets.all(24),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  CircularProgressIndicator(),
-                  SizedBox(height: 20),
-                  Text(
-                    'جارٍ التحقق من الجلسة…',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ),
+        text: 'لحظة، نتأكد من دخولك…',
       );
     }
 
     if (status == AuthStatus.terminating) {
-      return const Scaffold(
+      return const _SessionWait(
         key: Key('session-terminating-screen'),
-        backgroundColor: AppTheme.canvas,
-        body: SafeArea(
-          child: Center(
-            child: Padding(
-              padding: EdgeInsets.all(24),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  CircularProgressIndicator(),
-                  SizedBox(height: 20),
-                  Text(
-                    'جارٍ إنهاء الجلسة بأمان…',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ),
+        text: 'لحظة، نطلّعك بأمان…',
       );
     }
 
@@ -203,7 +166,7 @@ class AarastSessionTransitionGate extends StatelessWidget {
       final deletionPending = failure.$1 == 'ACCOUNT_DELETION_PENDING';
       return Scaffold(
         key: const Key('session-termination-failed-screen'),
-        backgroundColor: AppTheme.canvas,
+        backgroundColor: AarastV3Color.canvas,
         body: SafeArea(
           child: Center(
             child: Padding(
@@ -211,37 +174,44 @@ class AarastSessionTransitionGate extends StatelessWidget {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  const Icon(
-                    LucideIcons.alertTriangle,
-                    color: AppTheme.danger,
-                    size: 48,
+                  const JourneyIconTile(
+                    icon: LucideIcons.alertTriangle,
+                    color: AarastV3Color.danger,
+                    soft: AarastV3Color.dangerSoft,
+                    size: 64,
+                    radius: 20,
                   ),
                   const SizedBox(height: 16),
                   Text(
                     deletionPending
-                        ? 'جارٍ التحقق من حذف الحساب'
-                        : 'تعذر إنهاء الجلسة محلياً',
+                        ? 'نتأكد من حذف الحساب'
+                        : 'ما قدرنا نطلّعك من هذا الجوال',
                     textAlign: TextAlign.center,
-                    style: const TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.w900,
+                    style: JourneyType.of(
+                      JourneyType.pageTitle,
+                      weight: JourneyType.bold,
                     ),
                   ),
                   const SizedBox(height: 8),
                   Text(
                     failure.$2 ??
-                        'لن نعرض حساباً قديماً أو شاشة الدخول قبل اكتمال تنظيف بيانات هذا الجهاز.',
+                        'ما نعرض حساب قديم ولا شاشة الدخول قبل ما ننظّف بيانات هذا الجوال.',
                     key: const Key('session-termination-failure-message'),
                     textAlign: TextAlign.center,
+                    style: JourneyType.of(
+                      JourneyType.body,
+                      color: AarastV3Color.textMuted,
+                    ),
                   ),
                   const SizedBox(height: 20),
-                  FilledButton.icon(
+                  JourneyButton(
                     key: const Key('session-termination-retry'),
+                    label: 'حاول مرة ثانية',
+                    icon: LucideIcons.refreshCw,
+                    large: true,
                     onPressed: () {
                       unawaited(context.read<AuthController>().logout());
                     },
-                    icon: const Icon(LucideIcons.refreshCw),
-                    label: const Text('إعادة المحاولة'),
                   ),
                 ],
               ),
@@ -252,6 +222,46 @@ class AarastSessionTransitionGate extends StatelessWidget {
     }
 
     return child;
+  }
+}
+
+/// A short wait while the session is checked or closed: the kit's spinner
+/// and one plain line.
+class _SessionWait extends StatelessWidget {
+  const _SessionWait({required this.text, super.key});
+
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: AarastV3Color.canvas,
+      body: SafeArea(
+        child: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const AarastInlineSpinner(
+                  dimension: 28,
+                  color: AarastV3Color.primary,
+                ),
+                const SizedBox(height: 20),
+                Text(
+                  text,
+                  textAlign: TextAlign.center,
+                  style: JourneyType.of(
+                    JourneyType.lead,
+                    weight: JourneyType.bold,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
   }
 }
 

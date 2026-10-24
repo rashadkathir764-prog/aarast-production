@@ -14,7 +14,6 @@ export 'models/onboarding_complete.dart'
 export 'models/wedding_plan_stage.dart'
     show WeddingPlanStage, WeddingPlanStageState, resolveWeddingPlanStage;
 export 'models/wedding_plan.dart' show WeddingPlan;
-export 'models/wedding_stage_domain_guidance.dart' show WeddingStageDomain;
 export 'providers/dashboard_summary_provider.dart'
     show DashboardSummaryProvider;
 export 'providers/wedding_plans_provider.dart' show WeddingPlansProvider;
@@ -28,4 +27,3 @@ export 'utils/plan_pulse_sync.dart'
     show publishGuestPlanPulse, publishTaskPlanPulse;
 export 'widgets/dashboard/aarast_dashboard_view.dart' show AarastDashboardView;
 export 'widgets/postpone_sheet.dart' show showPostponeSheet;
-export 'widgets/wedding_stage_context_line.dart' show WeddingStageContextLine;

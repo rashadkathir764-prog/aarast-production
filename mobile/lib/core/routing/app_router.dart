@@ -44,6 +44,7 @@ import '../../features/finance/finance_api.dart'
         WeddingCost;
 import '../../features/guests/guests_api.dart'
     show
+        GuestAttendanceScreen,
         GuestDetailsScreen,
         GuestImportScreen,
         GuestImportSource,
@@ -372,6 +373,11 @@ class AppRouter {
       path: '/wedding-plans/$weddingPlanId/guests/import',
       queryParameters: {'from': contacts ? 'contacts' : 'paste'},
     ).toString();
+  }
+
+  /// w38 «كم بيحضر؟»: the guests' answers so far.
+  static String guestAttendance(String weddingPlanId) {
+    return '/wedding-plans/$weddingPlanId/guests/attendance';
   }
 
   static String guestDetails(String weddingPlanId, String guestId) {

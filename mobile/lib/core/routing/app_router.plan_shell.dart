@@ -254,6 +254,13 @@ List<RouteBase> _planShellRoutes() => [
         },
       ),
       GoRoute(
+        path: '/wedding-plans/:id/guests/attendance',
+        builder: (context, state) {
+          final id = state.pathParameters['id'] ?? '';
+          return GuestAttendanceScreen(weddingPlanId: id);
+        },
+      ),
+      GoRoute(
         path: '/wedding-plans/:id/providers',
         builder: (context, state) {
           final id = state.pathParameters['id'] ?? '';

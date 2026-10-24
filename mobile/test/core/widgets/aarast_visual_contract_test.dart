@@ -331,6 +331,7 @@ void main() {
         'lib/features/tasks/screens/task_details_screen.dart',
         'lib/features/tasks/screens/create_task_screen.dart',
         'lib/features/guests/screens/guest_list_screen.dart',
+        'lib/features/guests/screens/guest_attendance_screen.dart',
         'lib/features/guests/screens/guest_details_screen.dart',
         'lib/features/guests/screens/guest_import_screen.dart',
         'lib/features/guests/screens/guest_invite_screen.dart',

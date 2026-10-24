@@ -85,16 +85,27 @@ Set<String> _duplicateGuests(List<Guest> guests) {
 }
 
 /// «86 أكدوا من 124», who has not answered, and the three-part bar.
+/// Pressing it opens w38 «كم بيحضر؟».
 class _GuestSummaryCard extends StatelessWidget {
-  const _GuestSummaryCard({required this.summary});
+  const _GuestSummaryCard({required this.summary, required this.onTap});
 
   final GuestSummary summary;
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
     final total = summary.totalGuests;
-    return JourneyBox(
+    return AarastPressable(
       key: const ValueKey('guests-summary'),
+      onTap: onTap,
+      semanticLabel: 'كم بيحضر؟ ${summary.confirmed} أكدوا من $total',
+      borderRadius: BorderRadius.circular(22),
+      child: _card(total),
+    );
+  }
+
+  Widget _card(int total) {
+    return JourneyBox(
       padding: const EdgeInsets.all(18),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,

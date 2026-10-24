@@ -238,7 +238,11 @@ class _GuestListScreenState extends State<GuestListScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        _GuestSummaryCard(summary: summary),
+        _GuestSummaryCard(
+          summary: summary,
+          onTap: () =>
+              context.push(AppRouter.guestAttendance(widget.weddingPlanId)),
+        ),
         if (!_isLocalPlan && summary.pending > 0) ...[
           const SizedBox(height: 10),
           JourneyButton(

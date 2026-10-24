@@ -132,7 +132,7 @@ The word «أقساط» is banned. Use «على دفعات».
 | 3 Money read (8) | Done, except **x03**, which no commit names. Verify it. |
 | 4 Money write (12) | Done. c04 needed no code. |
 | 5 Tasks (10) | Done. y14 adds the fireworks hero (`JourneyFireworksPainter`, no gradient) and the safety note to a fireworks task's details, without «150 ألف» (D31). |
-| 6 Guests (12) | Done, except **w38**, which no commit names. Verify it. |
+| 6 Guests (12) | Done. w38 «كم بيحضر؟» opens from the guests summary card and shows the real answers only, no forecast (D31). |
 | 7 Providers, customer side (24) | **Done.** Done: f01, f02, f03, f04, f05, f06, f07, f08, f09, x10, x11, x22, w30 (filter sheet), w31, w32, w33, w34, w35, x09, x12, y09, g04, b07; y13 needs no code (f02 with the «زينة البيت» category, which is admin data). |
 | 8 Account / settings / plan (15) | **Done.** Done: g02, g07, g08, w07, w08, w39, g10, g11, w10, g03, w11, g01, g06, x07, x20. |
 | 9 Participant (15) | Not started: x04, q01, q02, q03, q04, x06, q17, q05, q18, q07, q08, q10, q12, q19, q21 |
@@ -229,6 +229,7 @@ Each line is a place where the app differs from the prototype:
 - f03: no «عرسان دفعوا فعلًا · من 11 عرس», no «فاضي ليلة 21 · باقي فريقين», no «عنده فريق مصوّرات» (no data behind any of them). The price box is labelled «أسعاره». Prices read 450,000 ر.ي, not «450 ألف».
 - w09 (D31): no «ضمّها لخطتي» (import-local always makes a new plan), «خلّها خطة ثانية» chosen to start with, no «آخر تعديل» lines; «تجاهلها» asks a second time.
 - y14 (D31): no «البند · 150 ألف» row, no «ليلة الزفاف · قدام البيت», the d04 rows and actions of every task; known by its title.
+- w38 (D31): real counts only, «· N اعتذروا» when some declined, the no-guess note only up to half answered, opened from the guests summary card.
 
 ## At the end of the groom path
 

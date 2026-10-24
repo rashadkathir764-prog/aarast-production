@@ -1643,8 +1643,9 @@ const r19ProviderPortalApi = Object.freeze({
 // the old add-member screen, now g06's sheet inside the sharing feature
 // (D29); +2 for w09 reading the account plan's money items through the
 // finance owner API, from the migration service and the entry screen that
-// builds it (D31).
-const r19LegalRecordCount = 199;
+// builds it (D31); +1 for w38 knowing a plan kept on the phone, which has
+// no reminder to send, through the auth owner API (D31).
+const r19LegalRecordCount = 200;
 const trackedOwnerApiContracts = [
   {
     area: 'features/account_contexts',
@@ -1788,6 +1789,10 @@ const trackedOwnerApiContracts = [
       { uri: 'data/guests_api.dart', show: ['GuestsApi'] },
       { uri: 'models/guest.dart', show: ['GuestSummary'] },
       { uri: 'providers/guests_provider.dart', show: ['GuestsProvider'] },
+      {
+        uri: 'screens/guest_attendance_screen.dart',
+        show: ['GuestAttendanceScreen'],
+      },
       {
         uri: 'screens/guest_details_screen.dart',
         show: ['GuestDetailsScreen'],
@@ -2550,6 +2555,11 @@ const trackedPlanningBatchContracts = [
     show: ['AuthActionGuard'],
   },
   {
+    source: 'mobile/lib/features/guests/screens/guest_attendance_screen.dart',
+    target: 'mobile/lib/features/auth/auth_api.dart',
+    show: ['AuthActionGuard'],
+  },
+  {
     source: 'mobile/lib/features/guests/screens/guest_list_screen.dart',
     target: 'mobile/lib/features/auth/auth_api.dart',
     show: ['AuthActionGuard'],
@@ -3130,6 +3140,7 @@ const trackedCompositionRootContracts = [
       {
         target: 'mobile/lib/features/guests/guests_api.dart',
         show: [
+          'GuestAttendanceScreen',
           'GuestDetailsScreen',
           'GuestImportScreen',
           'GuestImportSource',

@@ -37,6 +37,7 @@
 - `/wedding-plans/:id/dashboard`
 - `/wedding-plans/:id/guests`
 - `/wedding-plans/:id/guests/add`
+- `/wedding-plans/:id/guests/attendance`
 - `/wedding-plans/:id/guests/import`
 - `/wedding-plans/:id/guests/invite`
 - `/wedding-plans/:id/guests/view/:guestId`
@@ -77,4 +78,4 @@
 - `/wedding-plans/create`
 - `/welcome`
 
-Total: 76 unique routes
+Total: 77 unique routes

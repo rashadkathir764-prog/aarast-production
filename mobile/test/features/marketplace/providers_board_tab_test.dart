@@ -198,6 +198,63 @@ void main() {
     expect(find.textContaining(RegExp(r'محجوز \d')), findsNothing);
   });
 
+  testWidgets('y09 a booking confirmed since the last look opens its moment', (
+    tester,
+  ) async {
+    QuoteRequest band(String status) => QuoteRequest.fromJson({
+      'id': 'quote-band',
+      'providerId': 'provider-1',
+      'weddingPlanId': 'plan-1',
+      'status': 'ACCEPTED',
+      'lifecycleStatus': 'ACCEPTED',
+      'provider': {'id': 'provider-1', 'businessName': 'فرقة الأفراح'},
+      'booking': {
+        'id': 'booking-band',
+        'quoteRequestId': 'quote-band',
+        'providerId': 'provider-1',
+        'eventDate': '2027-01-21',
+        'status': status,
+      },
+    });
+    final state = _FakeMarketplaceProvider(quoteRequests: [band('REQUESTED')]);
+    await _pump(tester, state);
+    expect(find.textContaining('moment'), findsNothing);
+
+    state.replaceQuotes([band('CONFIRMED')]);
+    await tester.pumpAndSettle();
+
+    expect(
+      find.text('moment /wedding-plans/plan-1/providers/booked/quote-band'),
+      findsOneWidget,
+    );
+  });
+
+  testWidgets('y09 bookings confirmed before the first look stay quiet', (
+    tester,
+  ) async {
+    final state = _FakeMarketplaceProvider(
+      quoteRequests: [
+        QuoteRequest.fromJson({
+          'id': 'quote-old',
+          'providerId': 'provider-1',
+          'weddingPlanId': 'plan-1',
+          'status': 'ACCEPTED',
+          'lifecycleStatus': 'ACCEPTED',
+          'booking': {
+            'id': 'booking-old',
+            'quoteRequestId': 'quote-old',
+            'providerId': 'provider-1',
+            'eventDate': '2027-01-21',
+            'status': 'CONFIRMED',
+          },
+        }),
+      ],
+    );
+    await _pump(tester, state);
+
+    expect(find.textContaining('moment'), findsNothing);
+  });
+
   testWidgets('w34 the status line opens the bookings once one exists', (
     tester,
   ) async {
@@ -545,6 +602,10 @@ Future<GoRouter> _pump(
         ),
       ),
       GoRoute(
+        path: '/wedding-plans/:id/providers/booked/:quoteId',
+        builder: (context, state) => Text('moment ${state.uri}'),
+      ),
+      GoRoute(
         path: '/wedding-plans/:id/providers/bookings',
         builder: (context, state) => Text('bookings ${state.uri}'),
       ),
@@ -721,6 +782,15 @@ class _FakeMarketplaceProvider extends ProviderMarketplaceProvider {
   }
 
   final List<QuoteRequest> quoteRequestsData;
+
+  /// The requests as a fresh load returns them.
+  void replaceQuotes(List<QuoteRequest> quotes) {
+    quoteRequestsData
+      ..clear()
+      ..addAll(quotes);
+    notifyListeners();
+  }
+
   final QuoteRequest? quoteOnDirectLoad;
   final String? quoteRequestsError;
   final acceptedQuoteIds = <String>[];

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../../core/experience_v3/aarast_v3.dart';
 import '../../../core/routing/app_router.dart';
@@ -18,6 +19,7 @@ import '../../onboarding/onboarding_api.dart'
 import '../../wedding_plans/wedding_plans_api.dart' show WeddingPlansProvider;
 import '../../chat/chat_api.dart' show ChatProvider, ConversationListView;
 import '../../finance/finance_api.dart' show CostDraftIntent, FinanceProvider;
+import '../data/booking_moment_ledger.dart';
 import '../models/marketplace_models.dart';
 import '../models/provider_board.dart';
 import '../widgets/provider_board_view.dart';
@@ -68,6 +70,10 @@ class _ProviderMarketplaceScreenState extends State<ProviderMarketplaceScreen> {
 
   /// x22 gives way to the tabs once a way to start was picked.
   bool _firstVisitLeft = false;
+
+  /// The confirmed bookings last checked for y09, so each change is
+  /// looked at once.
+  String? _momentSignature;
 
   /// f09's picks for «قارن الملفين»; null until the person picks.
   List<String>? _comparePicked;
@@ -200,6 +206,7 @@ class _ProviderMarketplaceScreenState extends State<ProviderMarketplaceScreen> {
           final board = planMode
               ? _board(provider)
               : const <ProviderBoardRow>[];
+          if (planMode) _checkNewBookings(provider);
           // x22: nothing asked, booked or saved yet, so the tab is where to
           // start, not an empty board.
           // Null while that is not known yet.
@@ -284,6 +291,46 @@ class _ProviderMarketplaceScreenState extends State<ProviderMarketplaceScreen> {
   }
 
   void _leaveFirstVisit() => setState(() => _firstVisitLeft = true);
+
+  /// y09: once the plan's requests are loaded, a booking the provider
+  /// confirmed since this phone last looked opens its moment. Several at
+  /// once open the first and count as seen together.
+  void _checkNewBookings(ProviderMarketplaceProvider marketplace) {
+    final planId = _weddingLocationPlanId;
+    if (planId == null ||
+        marketplace.isLoading ||
+        marketplace.quoteRequestsErrorMessage != null) {
+      return;
+    }
+    final quotes = marketplace.quotesForPlan(planId);
+    if (quotes.isEmpty) return;
+    final confirmed = [
+      for (final quote in quotes)
+        if (quote.booking?.lifecycleStatus == 'CONFIRMED') quote,
+    ];
+    final signature = [
+      planId,
+      for (final quote in confirmed) quote.booking!.id,
+    ].join(',');
+    if (signature == _momentSignature) return;
+    _momentSignature = signature;
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      final ledger = BookingMomentLedger(await SharedPreferences.getInstance());
+      final unseen = await ledger.unseen(
+        planId,
+        confirmed.map((quote) => quote.booking!.id),
+      );
+      if (unseen.isEmpty) return;
+      for (final bookingId in unseen) {
+        await ledger.markSeen(planId, bookingId);
+      }
+      if (!mounted) return;
+      final quote = confirmed.firstWhere(
+        (quote) => quote.booking!.id == unseen.first,
+      );
+      await _pushOnce<void>(AppRouter.bookingMoment(planId, quote.id));
+    });
+  }
 
   /// f09: a box picks a provider to compare; a third pick lets go of the
   /// one picked first.

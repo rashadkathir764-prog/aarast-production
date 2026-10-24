@@ -1640,7 +1640,7 @@ const r19ProviderPortalApi = Object.freeze({
 // so «ضمن بندك» compares the price with the item's amount; -1 for the f09
 // comparison, which no longer gates on the account itself (D14); +1 for
 // f07 reading the plan's item through the finance owner API (D15).
-const r19LegalRecordCount = 194;
+const r19LegalRecordCount = 195;
 const trackedOwnerApiContracts = [
   {
     area: 'features/account_contexts',
@@ -1854,6 +1854,10 @@ const trackedOwnerApiContracts = [
           'providerDirectoryErrorMessage',
           'providerReferenceDataErrorMessage',
         ],
+      },
+      {
+        uri: 'screens/booking_moment_screen.dart',
+        show: ['BookingMomentScreen'],
       },
       {
         uri: 'screens/favorite_providers_screen.dart',
@@ -3113,6 +3117,7 @@ const trackedCompositionRootContracts = [
       {
         target: 'mobile/lib/features/marketplace/marketplace_api.dart',
         show: [
+          'BookingMomentScreen',
           'FavoriteProvidersScreen',
           'PlanBookingsScreen',
           'ProviderAuthGate',

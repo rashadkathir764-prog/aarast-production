@@ -52,6 +52,7 @@ import '../../features/guests/guests_api.dart'
 import '../../features/home/home_api.dart' show DashboardEntryScreen;
 import '../../features/marketplace/marketplace_api.dart'
     show
+        BookingMomentScreen,
         FavoriteProvidersScreen,
         PlanBookingsScreen,
         ProviderAuthGate,
@@ -394,6 +395,9 @@ class AppRouter {
       queryParameters: {'item': ?itemKey, 'quote': ?quoteId},
     ).toString();
   }
+
+  static String bookingMoment(String weddingPlanId, String quoteId) =>
+      '/wedding-plans/$weddingPlanId/providers/booked/$quoteId';
 
   static String planBookings(String weddingPlanId) =>
       '/wedding-plans/$weddingPlanId/providers/bookings';

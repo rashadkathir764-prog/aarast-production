@@ -1,149 +1,161 @@
-import { useEffect, useState } from 'react';
-import { AdminReport, getReportOverview } from './api';
-import { DataTable } from '../../design_system/DataTable';
-import { EmptyState } from '../../design_system/EmptyState';
-import { ErrorState } from '../../design_system/ErrorState';
-import { LoadingState } from '../../design_system/LoadingState';
-import { PageHeader } from '../../design_system/PageHeader';
-import { SectionCard } from '../../design_system/SectionCard';
-import { StatCard } from '../../design_system/StatCard';
-import { StatusBadge } from '../../design_system/StatusBadge';
-import { SuccessReportSection } from './SuccessReportSection';
+// a02 «التقارير» (mobile/test/prototype/admin/admin_screens.dart
+// `a02Reports`): the success numbers and the market price report (V1
+// checklist 4.21). The success report takes no date range, so «آخر 30 يوم»
+// waits for A-05 and the line under the title names the thirty days the
+// server counts the conversion over. «تنزيل» saves the same numbers as CSV.
+import { useCallback, useEffect, useState } from 'react';
+import { Download } from 'lucide-react';
+import { getSuccessReport, type AdminSuccessReport } from './api';
+import {
+  DeskButton,
+  DeskHeader,
+  DeskNote,
+  DeskRetry,
+  DeskTable,
+  Panel,
+  Stat,
+  StatRow,
+  grouped,
+} from '../../design_system/Desk';
+import { dayMonth, PROMISE } from '../../platform/i18n/deskTime';
+
+type PriceRow = AdminSuccessReport['prices'][number];
+
+function amount(value: string, currency: string): string {
+  const number = grouped(value);
+  return currency === 'YER' ? number : `${number} ${currency}`;
+}
+
+function csvCell(value: string | number | null): string {
+  const text = value === null ? '' : String(value);
+  return /[",\n]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
+}
+
+/** The page's numbers as a CSV the admin can open in a sheet. */
+export function successReportCsv(report: AdminSuccessReport): string {
+  const lines: Array<Array<string | number | null>> = [
+    ['المؤشر', 'القيمة'],
+    ['مستخدمون نشطون هذا الأسبوع', `${report.activeUsers.active} من ${report.activeUsers.total}`],
+    ['تكاليف مسجلة لكل خطة', report.costs.perPlan],
+    [
+      'طلبات عروض صارت حجز',
+      report.conversion.rate === null
+        ? null
+        : `${report.conversion.rate}٪ (${report.conversion.confirmedBookings} من ${report.conversion.quoteRequests})`,
+    ],
+    ['مزودون يراهم العرسان', report.visibleProviders],
+    [],
+    ['المدينة', 'القسم', 'المزودون', 'أقل سعر', 'الوسيط', 'أعلى سعر', 'العملة'],
+    ...report.prices.map((row) => [
+      row.cityName,
+      row.categoryName,
+      row.providers,
+      row.min,
+      row.median,
+      row.max,
+      row.currency,
+    ]),
+  ];
+  return `﻿${lines.map((line) => line.map(csvCell).join(',')).join('\n')}\n`;
+}
+
+function save(report: AdminSuccessReport) {
+  const blob = new Blob([successReportCsv(report)], { type: 'text/csv;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = `aarast-report-${report.generatedAt.slice(0, 10)}.csv`;
+  document.body.append(link);
+  link.click();
+  link.remove();
+  URL.revokeObjectURL(url);
+}
 
 export function ReportsPage() {
-  const [report, setReport] = useState<AdminReport | null>(null);
+  const [report, setReport] = useState<AdminSuccessReport | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
 
-  async function load() {
-    setIsLoading(true);
+  const load = useCallback(async () => {
     setError(null);
     try {
-      setReport(await getReportOverview());
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'تعذر تحميل تقرير الإدارة.');
-    } finally {
-      setIsLoading(false);
+      setReport(await getSuccessReport());
+    } catch (value) {
+      setError(value instanceof Error ? value.message : 'ما قدرنا نحمّل التقارير.');
     }
-  }
-
-  useEffect(() => {
-    load();
   }, []);
 
-  if (isLoading) return <LoadingState title="جاري تحميل تقرير الإدارة" />;
-  if (error) return <ErrorState message={error} onRetry={load} />;
-  if (!report) {
-    return (
-      <EmptyState
-        title="لا توجد بيانات تقرير"
-        message="ما وصلت بيانات تقرير قابلة للعرض. حدّث الصفحة بعد قليل."
-        tone="api"
-      />
-    );
-  }
+  useEffect(() => {
+    void load();
+  }, [load]);
 
-  const providerReviewTotal =
-    report.providers.pending +
-    report.providers.active +
-    report.providers.needsChanges +
-    report.providers.suspended +
-    report.providers.rejected;
-
-  const rows = [
-    ['المستخدمون', 'إجمالي المستخدمين', report.users.total, 'كل الحسابات المسجلة.'],
-    ['المستخدمون', 'حسابات نشطة', report.users.active, 'قابلة للاستخدام.'],
-    ['المستخدمون', 'حسابات معطلة', report.users.disabled, 'أوقفها الأدمن.'],
-    ['الموردون', 'إجمالي الموردين', report.providers.total, 'كل ملفات الموردين.'],
-    ['الموردون', 'موردون نشطون', report.providers.active, percent(report.providers.active, providerReviewTotal)],
-    ['الخدمات', 'إجمالي الخدمات', report.services.total, 'من جدول ProviderService.'],
-    ['الخدمات', 'خدمات نشطة', report.services.active, 'ظاهرة إذا كان المورد مؤهلا.'],
-    ['التقييمات', 'إجمالي التقييمات', report.reviews.total, `متوسط ${report.reviews.averageRating}`],
-    ['التقييمات', 'منشورة', report.reviews.published, 'تدخل في تقييم المورد.'],
-    ['التقييمات', 'مخفية', report.reviews.hidden, 'لا تدخل في التقييم العام.'],
-    ['الإشعارات', 'إجمالي الإشعارات', report.notifications.total, 'سجل إشعارات النظام.'],
-    ['الإشعارات', 'غير مقروءة', report.notifications.unread, 'غير مؤرشفة وغير مقروءة.'],
-    ['التخطيط', 'خطط الزواج', report.weddingPlans.total, 'لا يعرض تفاصيل مالية خاصة.'],
-    ['طلبات العروض', 'إجمالي الطلبات', report.quotes.total, 'طلبات غير ملزمة ولا تعني دفع أو حجز مؤكد.'],
-  ];
+  const end = report ? new Date(report.generatedAt) : null;
+  const start = report && end
+    ? new Date(end.getTime() - report.conversion.windowDays * PROMISE.DAY)
+    : null;
 
   return (
-    <section className="page-stack">
-      <PageHeader
-        eyebrow="التقارير"
-        icon="%"
-        title="تقرير تشغيلي حقيقي"
-        description="لقطة تشغيلية من /admin/reports/overview تشمل المستخدمين والموردين والخدمات والتقييمات والإشعارات بدون دفع أو عربون."
-        meta={
-          <>
-            <span>آخر توليد: {formatDate(report.generatedAt)}</span>
-            <StatusBadge status={report.source === 'admin_operational_database' ? 'OPEN' : 'PENDING'} />
-          </>
+    <section>
+      <DeskHeader
+        title="التقارير"
+        sub={start && end ? `من ${dayMonth(start, end)} لين ${dayMonth(end, end)}` : undefined}
+        actions={
+          report ? (
+            <DeskButton tone="soft" icon={Download} onClick={() => save(report)}>
+              تنزيل
+            </DeskButton>
+          ) : null
         }
       />
-
-      <SuccessReportSection />
-
-      <div className="stats-grid">
-        <StatCard title="المستخدمون" value={report.users.total} tone="gold" />
-        <StatCard title="الموردون" value={report.providers.total} tone="info" />
-        <StatCard title="الخدمات" value={report.services.total} tone="success" />
-        <StatCard title="التقييمات" value={report.reviews.total} tone="warning" />
-        <StatCard title="الإشعارات" value={report.notifications.total} tone="danger" />
-      </div>
-
-      <SectionCard
-        title="مؤشرات التشغيل"
-        subtitle="الأرقام من قاعدة البيانات مباشرة، ولا تشمل دفع أو تأكيد حجز."
-      >
-        <DataTable
-          label="مؤشرات التشغيل"
-          columns={['القسم', 'المؤشر', 'القيمة', 'ملاحظة']}
-          minWidth={960}
-        >
-          {rows.map(([section, metric, value, note]) => (
-            <tr key={`${section}-${metric}`}>
-              <td>{section}</td>
-              <td>
-                <strong>{metric}</strong>
-              </td>
-              <td>{value}</td>
-              <td>
-                <span className="table-subtle">{note}</span>
-              </td>
-            </tr>
-          ))}
-        </DataTable>
-      </SectionCard>
-
-      <SectionCard title="حالات طلبات العروض" subtitle="Planning leads فقط، ليست حجوزات مدفوعة.">
-        <DataTable
-          label="حالات طلبات العروض"
-          columns={['الحالة', 'العدد', 'النسبة']}
-          minWidth={720}
-          dense
-        >
-          {report.quotes.byStatus.map((item) => (
-            <tr key={item.status}>
-              <td>{item.status}</td>
-              <td>{item.count}</td>
-              <td>{percent(item.count, report.quotes.total)}</td>
-            </tr>
-          ))}
-        </DataTable>
-      </SectionCard>
+      {error ? <DeskRetry message={error} onRetry={() => void load()} /> : null}
+      {report === null && !error ? <DeskNote>لحظة، نحمّل التقارير…</DeskNote> : null}
+      {report ? (
+        <>
+          <StatRow>
+            <Stat
+              value={`${grouped(report.activeUsers.active)} من ${grouped(report.activeUsers.total)}`}
+              label="مستخدمون نشطون هذا الأسبوع"
+            />
+            <Stat
+              value={report.costs.perPlan === null ? '—' : grouped(report.costs.perPlan)}
+              label="تكاليف مسجلة لكل خطة"
+            />
+            <Stat
+              value={report.conversion.rate === null ? '—' : `${report.conversion.rate}٪`}
+              label="طلبات عروض صارت حجز"
+              sub={`${grouped(report.conversion.confirmedBookings)} من ${grouped(report.conversion.quoteRequests)}`}
+            />
+            <Stat value={grouped(report.visibleProviders)} label="مزودون يراهم العرسان" />
+          </StatRow>
+          {report.prices.length === 0 ? (
+            <Panel>
+              <DeskNote>ما عندنا أسعار كافية بعد.</DeskNote>
+            </Panel>
+          ) : (
+            <DeskTable<PriceRow>
+              caption="تقرير أسعار السوق"
+              columns={[
+                { label: 'المدينة', flex: 2 },
+                { label: 'القسم', flex: 2 },
+                { label: 'المزودون', flex: 1 },
+                { label: 'أقل سعر', flex: 2 },
+                { label: 'الوسيط', flex: 2 },
+                { label: 'أعلى سعر', flex: 2 },
+              ]}
+              rows={report.prices}
+              rowKey={(row) => `${row.cityId}-${row.categoryId}-${row.currency}`}
+              renderRow={(row) => [
+                row.cityName ?? '—',
+                row.categoryName ?? '—',
+                grouped(row.providers),
+                amount(row.min, row.currency),
+                <strong key="m">{amount(row.median, row.currency)}</strong>,
+                amount(row.max, row.currency),
+              ]}
+            />
+          )}
+          <DeskNote>السعر يظهر لما يكون عندنا 3 مزودين على الأقل. وكل مدينة بعملتها.</DeskNote>
+        </>
+      ) : null}
     </section>
   );
-}
-
-function percent(value: number, total: number) {
-  if (!total) return '0%';
-  return `${Math.round((value / total) * 100)}%`;
-}
-
-function formatDate(value: string) {
-  return new Intl.DateTimeFormat('ar-YE', {
-    dateStyle: 'medium',
-    timeStyle: 'short',
-  }).format(new Date(value));
 }

@@ -565,6 +565,7 @@
 
 .desk-bold { font-weight: 700; }
 .desk-small { font-size: 13px; }
+.desk-nowrap { white-space: nowrap; }
 .desk-num { direction: ltr; unicode-bidi: isolate; }
 
 .desk-note {
@@ -662,6 +663,80 @@
 .desk-timeline__note {
   font-size: 13px;
   color: var(--d-coral);
+}
+
+/* a09: the published version beside the draft. */
+.desk-compare {
+  width: 100%;
+  margin-top: 10px;
+  border-collapse: collapse;
+  table-layout: fixed;
+}
+
+.desk-compare th {
+  padding: 0 0 4px;
+  border: 0;
+  background: transparent;
+  font-size: 12.5px;
+  font-weight: 400;
+  color: var(--d-muted);
+  text-align: start;
+}
+
+.desk-compare td {
+  padding: 0;
+  font-size: 14px;
+  text-align: start;
+}
+
+.desk-compare td.is-changed {
+  font-weight: 700;
+  color: var(--d-sky);
+}
+
+/* The catalog's own pages (not drawn; see CatalogTabs). */
+.desk-subnav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: -6px 0 12px;
+}
+
+.desk-subnav__link {
+  padding: 4px 12px;
+  border-radius: 12px;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--d-muted);
+  text-decoration: none;
+}
+
+.desk-subnav__link:hover {
+  background: var(--d-soft);
+  color: var(--d-teal);
+}
+
+.desk-subnav__link.is-active {
+  background: var(--d-soft);
+  color: var(--d-teal);
+}
+
+.desk-link-button {
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--d-ink);
+  text-align: start;
+  cursor: pointer;
+}
+
+.desk-link-button:hover,
+.desk-link-button:focus-visible {
+  color: var(--d-teal);
+  text-decoration: underline;
 }
 
 .desk-stars {

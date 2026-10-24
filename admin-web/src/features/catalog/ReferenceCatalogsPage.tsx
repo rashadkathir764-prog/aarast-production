@@ -1,456 +1,482 @@
-import { FormEvent, useEffect, useMemo, useState } from 'react';
+// a09 «الكتالوجات» (mobile/test/prototype/admin/admin_screens.dart
+// `a09Catalogs`): the starter catalogs that change in the app without a
+// release, each item with its days before the wedding and its audience, and
+// the published version beside the draft. «ارجع للمنشور» waits for A-19 (no
+// call drops a draft). Adding and editing are not drawn and stay, in a
+// window, so the days before the wedding can still change from the panel.
+import { type FormEvent, type ReactNode, useCallback, useEffect, useState } from 'react';
 import {
   createReferenceCatalogItem,
   disableReferenceCatalogItem,
   getReferenceCatalog,
   getReferenceCatalogs,
   publishReferenceCatalogItem,
-  ReferenceCatalog,
-  ReferenceCatalogItem,
-  ReferenceCatalogSummary,
+  type ReferenceCatalog,
+  type ReferenceCatalogItem,
+  type ReferenceCatalogRevision,
+  type ReferenceCatalogSummary,
   updateReferenceCatalogItem,
 } from './api';
-import { AdminPermission } from '../auth/api';
-import { Can } from '../auth/api';
-import { ActionButton } from '../../design_system/ActionButton';
+import { CatalogTabs } from './CatalogTabs';
+import { AdminPermission, Can } from '../auth/api';
 import { ConfirmDialog } from '../../design_system/ConfirmDialog';
-import { DataTable } from '../../design_system/DataTable';
-import { EmptyState } from '../../design_system/EmptyState';
-import { ErrorState } from '../../design_system/ErrorState';
-import { FormCard } from '../../design_system/FormCard';
-import { FormField } from '../../design_system/FormField';
-import { LoadingState } from '../../design_system/LoadingState';
-import { PageHeader } from '../../design_system/PageHeader';
-import { SectionCard } from '../../design_system/SectionCard';
-import { StatCard } from '../../design_system/StatCard';
-import { StatusBadge } from '../../design_system/StatusBadge';
+import {
+  DeskButton,
+  DeskHeader,
+  DeskNote,
+  DeskRetry,
+  DeskTable,
+  Panel,
+  SoftAction,
+  Tag,
+  TwoLine,
+} from '../../design_system/Desk';
+import { DeskModal } from '../../design_system/DeskModal';
+import { countUnit } from '../../platform/i18n/deskTime';
 
-const iconOptions = [
-  'users',
-  'gem',
-  'file-check',
-  'building-2',
-  'utensils',
-  'camera',
-  'speaker',
-  'car',
-  'moon-star',
-  'bed-double',
-  'shirt',
-  'scissors',
-  'watch',
-  'shopping-bag',
-  'spray-can',
-  'home',
-  'key-round',
-  'plane',
-  'mail',
-  'gift',
-  'navigation',
-  'shield-check',
-  'sparkles',
-  'wand-2',
-  'flower-2',
-  'layout-grid',
-  'cake-slice',
-  'music-2',
-  'flower',
-  'package-open',
-  'hotel',
+const TASKS = 'tasks.starter';
+
+/** The catalog switch as the design names it. */
+const CATALOG_LABELS: Record<string, string> = {
+  'tasks.starter': 'قوالب المهام',
+  'money.starter.categories': 'تصنيفات الميزانية',
+};
+
+const ICONS = [
+  'users', 'gem', 'file-check', 'building-2', 'utensils', 'camera', 'speaker', 'car',
+  'moon-star', 'bed-double', 'shirt', 'scissors', 'watch', 'shopping-bag', 'spray-can',
+  'home', 'key-round', 'plane', 'mail', 'gift', 'navigation', 'shield-check', 'sparkles',
+  'wand-2', 'flower-2', 'layout-grid', 'cake-slice', 'music-2', 'flower', 'package-open', 'hotel',
 ];
 
-type FormState = {
+function daysBefore(revision: ReferenceCatalogRevision | null): number | null {
+  const value = revision?.metadata?.daysBefore;
+  const days = typeof value === 'number' ? value : Number(value);
+  return value === undefined || value === null || !Number.isFinite(days) ? null : days;
+}
+
+function daysWords(days: number | null): string {
+  return days === null ? '—' : countUnit(days, 'day');
+}
+
+function audience(revision: ReferenceCatalogRevision): string {
+  if (revision.showForGroom && revision.showForBride) return 'العريس والعروسة';
+  if (revision.showForGroom) return 'العريس';
+  if (revision.showForBride) return 'العروسة';
+  return '—';
+}
+
+function itemTag(item: ReferenceCatalogItem) {
+  if (item.hasUnpublishedChanges) return <Tag tone="saffron">مسودة</Tag>;
+  if (item.published?.isActive === false) return <Tag tone="muted">موقوفة</Tag>;
+  return <Tag tone="green">منشورة</Tag>;
+}
+
+type Draft = {
   key: string;
   nameAr: string;
-  nameEn: string;
-  groupKey: string;
   groupNameAr: string;
-  groupSubtitleAr: string;
+  groupKey: string;
+  days: string;
   icon: string;
   sortOrder: string;
   showForGroom: boolean;
   showForBride: boolean;
-  showForCustomer: boolean;
-  showForProvider: boolean;
   isRecommended: boolean;
-  isActive: boolean;
 };
 
-const emptyForm: FormState = {
+const EMPTY: Draft = {
   key: '',
   nameAr: '',
-  nameEn: '',
-  groupKey: '',
   groupNameAr: '',
-  groupSubtitleAr: '',
+  groupKey: '',
+  days: '',
   icon: '',
   sortOrder: '0',
   showForGroom: true,
   showForBride: true,
-  showForCustomer: true,
-  showForProvider: false,
   isRecommended: false,
-  isActive: true,
 };
 
 export function ReferenceCatalogsPage() {
   const [summaries, setSummaries] = useState<ReferenceCatalogSummary[]>([]);
   const [catalog, setCatalog] = useState<ReferenceCatalog | null>(null);
-  const [selectedKey, setSelectedKey] = useState('');
-  const [editing, setEditing] = useState<ReferenceCatalogItem | null>(null);
-  const [form, setForm] = useState<FormState>(emptyForm);
-  const [selectedRevision, setSelectedRevision] = useState<Record<string, number>>({});
-  const [isLoading, setIsLoading] = useState(true);
-  const [isSaving, setIsSaving] = useState(false);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [notice, setNotice] = useState<string | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
+  const [editing, setEditing] = useState<ReferenceCatalogItem | 'new' | null>(null);
+  const [draft, setDraft] = useState<Draft>(EMPTY);
+  const [busy, setBusy] = useState(false);
 
-  async function loadCatalogs(preferredKey?: string) {
-    setIsLoading(true);
+  const open = useCallback(async (key: string) => {
     setError(null);
     try {
-      const nextSummaries = await getReferenceCatalogs();
-      const nextKey = preferredKey || selectedKey || nextSummaries[0]?.key || '';
-      setSummaries(nextSummaries);
-      setSelectedKey(nextKey);
-      setCatalog(nextKey ? await getReferenceCatalog(nextKey) : null);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'تعذر تحميل الكتالوجات.');
-    } finally {
-      setIsLoading(false);
+      const next = await getReferenceCatalog(key);
+      setCatalog(next);
+      setSelectedId((current) => {
+        if (next.items.some((item) => item.id === current)) return current;
+        return (next.items.find((item) => item.hasUnpublishedChanges) ?? next.items[0])?.id ?? null;
+      });
+    } catch (value) {
+      setError(value instanceof Error ? value.message : 'ما قدرنا نحمّل الكتالوج.');
     }
-  }
-
-  useEffect(() => {
-    loadCatalogs();
-    // Initial load only. Catalog changes are handled explicitly below.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const groupsCount = useMemo(
-    () =>
-      new Set(
-        catalog?.items
-          .map((item) => item.current.groupKey)
-          .filter((key): key is string => Boolean(key)) ?? [],
-      ).size,
-    [catalog],
-  );
-
-  async function selectCatalog(key: string) {
-    setSelectedKey(key);
-    setEditing(null);
-    setForm(emptyForm);
+  const load = useCallback(async () => {
     setError(null);
     try {
-      setCatalog(await getReferenceCatalog(key));
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'تعذر تحميل الكتالوج.');
+      const list = await getReferenceCatalogs();
+      setSummaries(list);
+      const first = list.find((summary) => summary.key === TASKS) ?? list[0];
+      if (first) await open(first.key);
+    } catch (value) {
+      setError(value instanceof Error ? value.message : 'ما قدرنا نحمّل الكتالوجات.');
+    }
+  }, [open]);
+
+  useEffect(() => {
+    void load();
+  }, [load]);
+
+  const isTasks = catalog?.key === TASKS;
+  const selected = catalog?.items.find((item) => item.id === selectedId) ?? null;
+
+  async function publish(item: ReferenceCatalogItem) {
+    if (!catalog) return;
+    setBusy(true);
+    setActionError(null);
+    try {
+      await publishReferenceCatalogItem(catalog.key, item.id);
+      await open(catalog.key);
+    } catch (value) {
+      setActionError(value instanceof Error ? value.message : 'ما قدرنا ننشر المسودة.');
+    } finally {
+      setBusy(false);
     }
   }
 
-  function startEdit(item: ReferenceCatalogItem) {
-    const value = item.current;
-    setEditing(item);
-    setForm({
-      key: item.key,
+  function edit(target: ReferenceCatalogItem | 'new') {
+    setEditing(target);
+    setActionError(null);
+    if (target === 'new') {
+      setDraft(EMPTY);
+      return;
+    }
+    const value = target.current;
+    const days = daysBefore(value);
+    setDraft({
+      key: target.key,
       nameAr: value.nameAr,
-      nameEn: value.nameEn ?? '',
-      groupKey: value.groupKey ?? '',
       groupNameAr: value.groupNameAr ?? '',
-      groupSubtitleAr: value.groupSubtitleAr ?? '',
+      groupKey: value.groupKey ?? '',
+      days: days === null ? '' : String(days),
       icon: value.icon ?? '',
       sortOrder: String(value.sortOrder),
       showForGroom: value.showForGroom,
       showForBride: value.showForBride,
-      showForCustomer: value.showForCustomer,
-      showForProvider: value.showForProvider,
       isRecommended: value.isRecommended,
-      isActive: value.isActive,
     });
-  }
-
-  function resetForm() {
-    setEditing(null);
-    setForm(emptyForm);
   }
 
   async function save(event: FormEvent) {
     event.preventDefault();
-    if (!catalog) return;
-    setIsSaving(true);
-    setError(null);
-    setNotice(null);
+    if (!catalog || !editing || !draft.nameAr.trim()) return;
+    setBusy(true);
+    setActionError(null);
+    const base = editing === 'new' ? null : editing.current;
+    const metadata = isTasks
+      ? {
+          ...(base?.metadata ?? {}),
+          daysBefore: draft.days.trim() === '' ? null : Number(draft.days),
+        }
+      : undefined;
     const payload = {
-      ...(!editing && form.key.trim() ? { key: form.key.trim() } : {}),
-      nameAr: form.nameAr.trim(),
-      nameEn: form.nameEn.trim() || null,
-      groupKey: form.groupKey.trim() || null,
-      groupNameAr: form.groupNameAr.trim() || null,
-      groupSubtitleAr: form.groupSubtitleAr.trim() || null,
-      icon: form.icon || null,
-      sortOrder: Number(form.sortOrder) || 0,
-      showForGroom: form.showForGroom,
-      showForBride: form.showForBride,
-      showForCustomer: form.showForCustomer,
-      showForProvider: form.showForProvider,
-      isRecommended: form.isRecommended,
-      isActive: form.isActive,
+      ...(editing === 'new' && draft.key.trim() ? { key: draft.key.trim() } : {}),
+      nameAr: draft.nameAr.trim(),
+      groupNameAr: draft.groupNameAr.trim() || null,
+      groupKey: draft.groupKey.trim() || null,
+      icon: draft.icon || null,
+      sortOrder: Number(draft.sortOrder) || 0,
+      showForGroom: draft.showForGroom,
+      showForBride: draft.showForBride,
+      isRecommended: draft.isRecommended,
+      ...(metadata ? { metadata: metadata as Record<string, string | number | boolean | null> } : {}),
     };
     try {
-      if (editing) {
-        await updateReferenceCatalogItem(catalog.key, editing.id, payload);
-        setNotice('حُفظت التعديلات كمسودة. راجعها ثم انشرها عندما تكون جاهزة.');
+      if (editing === 'new') {
+        const created = await createReferenceCatalogItem(catalog.key, payload);
+        setSelectedId(created.id);
       } else {
-        await createReferenceCatalogItem(catalog.key, payload);
-        setNotice('أُضيف العنصر كمسودة ولن يظهر للمستخدمين قبل النشر.');
+        await updateReferenceCatalogItem(catalog.key, editing.id, payload);
+        setSelectedId(editing.id);
       }
-      resetForm();
-      await loadCatalogs(catalog.key);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'تعذر حفظ العنصر.');
+      setEditing(null);
+      await open(catalog.key);
+    } catch (value) {
+      setActionError(value instanceof Error ? value.message : 'ما قدرنا نحفظ.');
     } finally {
-      setIsSaving(false);
+      setBusy(false);
     }
   }
 
-  async function publish(item: ReferenceCatalogItem, revision?: number) {
-    if (!catalog) return;
-    setError(null);
-    setNotice(null);
-    try {
-      await publishReferenceCatalogItem(catalog.key, item.id, revision);
-      setNotice(
-        revision && revision !== item.currentRevision
-          ? 'أُعيد نشر النسخة المحددة بأمان.'
-          : 'نُشرت المسودة وستصل للأجهزة عند المزامنة التالية.',
-      );
-      await loadCatalogs(catalog.key);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'تعذر نشر النسخة.');
-    }
-  }
-
-  if (isLoading) return <LoadingState title="جاري تحميل مركز الكتالوجات" />;
-  if (error && !catalog) return <ErrorState message={error} onRetry={() => loadCatalogs()} />;
+  const noun = isTasks ? 'المهمة' : 'البند';
+  const columns = isTasks
+    ? [
+        { label: 'المهمة', flex: 4 },
+        { label: 'قبل العرس', flex: 2 },
+        { label: 'لمين', flex: 2 },
+        { label: 'الحالة', flex: 2 },
+      ]
+    : [
+        { label: 'البند', flex: 4 },
+        { label: 'لمين', flex: 2 },
+        { label: 'الحالة', flex: 2 },
+      ];
 
   return (
-    <section className="page-stack">
-      <PageHeader
-        eyebrow="مركز المحتوى الديناميكي"
-        icon="⌁"
-        title="الكتالوجات التي تتحدث دون إصدار جديد"
-        description="عدّل القوائم المرنة كمسودة، راجعها، ثم انشرها. النسخة المنشورة فقط تصل إلى المستخدمين والمزوّدين."
-        meta={<span>إصدار الكتالوج {catalog?.version ?? 0}</span>}
-      />
-
-      <div className="stats-grid">
-        <StatCard title="الكتالوجات" value={summaries.length} tone="info" />
-        <StatCard title="العناصر" value={catalog?.items.length ?? 0} tone="gold" />
-        <StatCard title="المجموعات" value={groupsCount} tone="success" />
-        <StatCard
-          title="بانتظار النشر"
-          value={catalog?.items.filter((item) => item.hasUnpublishedChanges).length ?? 0}
-          tone="warning"
-        />
-      </div>
-
-      {notice ? <div className="catalog-notice" role="status">{notice}</div> : null}
-      {error ? <div className="catalog-notice catalog-notice--error" role="alert">{error}</div> : null}
-
-      <SectionCard
-        title="الكتالوج النشط"
-        subtitle="اختر المجال الذي تريد إدارته. هذه الصفحة لا تتحكم في حالات الدفع أو الصلاحيات الحساسة."
-      >
-        <label className="form-field catalog-selector">
-          <span>الكتالوج</span>
-          <select value={selectedKey} onChange={(event) => selectCatalog(event.target.value)}>
-            {summaries.map((summary) => (
-              <option key={summary.key} value={summary.key}>
-                {summary.nameAr} · {summary.publishedCount} منشور
-              </option>
-            ))}
-          </select>
-        </label>
-      </SectionCard>
-
-      <div className="management-layout catalog-management-layout">
-        <SectionCard
-          title={catalog?.nameAr ?? 'الكتالوج'}
-          subtitle={catalog?.description ?? 'العناصر المنشورة والمسودات الحالية.'}
-        >
-          {!catalog || catalog.items.length === 0 ? (
-            <EmptyState title="لا توجد عناصر" message="أضف أول عنصر كمسودة ثم انشره." />
-          ) : (
-            <DataTable
-              label="عناصر الكتالوج"
-              columns={['العنصر', 'المجموعة', 'الجمهور', 'الحالة', 'الترتيب', 'إجراءات']}
-              dense
-              minWidth={980}
-            >
-              {catalog.items.map((item) => (
-                <tr key={item.id}>
-                  <td>
-                    <strong>{item.current.nameAr}</strong>
-                    <span className="table-subtle">{item.key}</span>
-                  </td>
-                  <td>
-                    {item.current.groupNameAr ?? 'بلا مجموعة'}
-                    <span className="table-subtle">{item.current.icon ?? 'بدون أيقونة'}</span>
-                  </td>
-                  <td>{audienceLabel(item)}</td>
-                  <td>
-                    <StatusBadge status={item.current.isActive ? 'ACTIVE' : 'DISABLED'} />
-                    {item.hasUnpublishedChanges ? (
-                      <span className="table-subtle catalog-draft-label">مسودة غير منشورة</span>
-                    ) : null}
-                  </td>
-                  <td>{item.current.sortOrder}</td>
-                  <td className="actions-cell">
-                    <Can permission={AdminPermission.CATALOG_WRITE}>
-                      <div className="catalog-row-actions">
-                        <ActionButton tone="ghost" size="small" type="button" onClick={() => startEdit(item)}>
-                          تعديل
-                        </ActionButton>
-                        {item.hasUnpublishedChanges ? (
-                          <ActionButton size="small" type="button" onClick={() => publish(item)}>
-                            نشر المسودة
-                          </ActionButton>
-                        ) : null}
-                        <div className="catalog-revision-control">
-                          <select
-                            aria-label={`نسخة ${item.current.nameAr}`}
-                            value={selectedRevision[item.id] ?? item.publishedRevision}
-                            onChange={(event) =>
-                              setSelectedRevision((current) => ({
-                                ...current,
-                                [item.id]: Number(event.target.value),
-                              }))
-                            }
-                          >
-                            {item.revisions.map((revision) => (
-                              <option key={revision.revision} value={revision.revision}>
-                                نسخة {revision.revision}{revision.revision === item.publishedRevision ? ' · منشورة' : ''}
-                              </option>
-                            ))}
-                          </select>
-                          <ActionButton
-                            tone="ghost"
-                            size="small"
-                            type="button"
-                            onClick={() => publish(item, selectedRevision[item.id] ?? item.publishedRevision)}
-                          >
-                            اعتماد
-                          </ActionButton>
-                        </div>
-                        {item.current.isActive ? (
-                          <ConfirmDialog
-                            title="إيقاف العنصر"
-                            message="سيُنشر إصدار غير نشط، ويمكن الرجوع إلى أي نسخة سابقة لاحقًا."
-                            confirmLabel="إيقاف"
-                            tone="danger"
-                            trigger={<ActionButton tone="danger" size="small" type="button">إيقاف</ActionButton>}
-                            onConfirm={() =>
-                              disableReferenceCatalogItem(catalog.key, item.id).then(() => loadCatalogs(catalog.key))
-                            }
-                          />
-                        ) : null}
-                      </div>
-                    </Can>
-                  </td>
-                </tr>
-              ))}
-            </DataTable>
-          )}
-        </SectionCard>
-
-        <Can permission={AdminPermission.CATALOG_WRITE}>
-          <FormCard
-            title={editing ? 'تحرير مسودة جديدة' : 'إضافة عنصر كمسودة'}
-            subtitle="لن يصل أي تغيير إلى التطبيق قبل ضغط نشر المسودة."
+    <section className="desk-fill-page">
+      <DeskHeader
+        title="الكتالوجات"
+        sub="تتحدث في التطبيق بدون إصدار جديد"
+        actions={summaries.map((summary) => (
+          <DeskButton
+            key={summary.key}
+            tone={summary.key === catalog?.key ? 'teal' : 'soft'}
+            pressed={summary.key === catalog?.key}
+            onClick={() => void open(summary.key)}
           >
-            <form className="side-form" onSubmit={save}>
-              {!editing ? (
-                <FormField
-                  label="المعرّف الثابت (اختياري)"
-                  value={form.key}
-                  onChange={(event) => setForm({ ...form, key: event.target.value })}
-                  placeholder="custom-category"
-                />
+            {CATALOG_LABELS[summary.key] ?? summary.nameAr}
+          </DeskButton>
+        ))}
+      />
+      <CatalogTabs />
+      {error ? <DeskRetry message={error} onRetry={() => void load()} /> : null}
+      {catalog === null && !error ? <DeskNote>لحظة، نحمّل الكتالوج…</DeskNote> : null}
+      {catalog ? (
+        <div className="desk-split">
+          <div className="desk-split__main" style={{ flex: 3 }}>
+            {catalog.items.length === 0 ? (
+              <Panel>
+                <DeskNote>ما فيه عناصر بعد.</DeskNote>
+              </Panel>
+            ) : (
+              <DeskTable
+                caption={CATALOG_LABELS[catalog.key] ?? catalog.nameAr}
+                columns={columns}
+                rows={catalog.items}
+                rowKey={(item) => item.id}
+                highlight={(item) => item.id === selectedId}
+                onRowClick={(item) => setSelectedId(item.id)}
+                rowLabel={(item) => `اقرأ ${item.current.nameAr}`}
+                renderRow={(item) => {
+                  const cells: ReactNode[] = [
+                    <TwoLine key="n" main={item.current.nameAr} sub={item.current.groupNameAr ?? undefined} />,
+                    <span key="a" className="desk-nowrap">{audience(item.current)}</span>,
+                    <span key="t">{itemTag(item)}</span>,
+                  ];
+                  if (isTasks) cells.splice(1, 0, daysWords(daysBefore(item.current)));
+                  return cells;
+                }}
+              />
+            )}
+          </div>
+          <div className="desk-split__side desk-split__side--fill" style={{ flex: 2 }}>
+            <Panel>
+              {selected ? (
+                <>
+                  <h2 className="desk-panel__title">
+                    {selected.current.nameAr} · {selected.hasUnpublishedChanges ? 'مسودة' : 'منشورة'}
+                  </h2>
+                  {selected.hasUnpublishedChanges ? (
+                    <Compare item={selected} isTasks={isTasks} />
+                  ) : null}
+                  <Can permission={AdminPermission.CATALOG_WRITE}>
+                    <div className="desk-report__actions">
+                      {selected.hasUnpublishedChanges ? (
+                        <DeskButton disabled={busy} onClick={() => void publish(selected)}>
+                          انشر المسودة
+                        </DeskButton>
+                      ) : null}
+                      <DeskButton tone="soft" onClick={() => edit(selected)}>
+                        عدّل
+                      </DeskButton>
+                    </div>
+                  </Can>
+                  {actionError && editing === null ? <DeskNote tone="coral">{actionError}</DeskNote> : null}
+                  <DeskNote>النشر يوصل الخطط الجديدة بس، والخطط القائمة ما تتغير.</DeskNote>
+                </>
               ) : null}
-              <FormField
-                label="الاسم العربي"
-                value={form.nameAr}
-                onChange={(event) => setForm({ ...form, nameAr: event.target.value })}
-                required
+              <Can permission={AdminPermission.CATALOG_WRITE}>
+                <div className="desk-report__actions">
+                  <SoftAction onClick={() => edit('new')}>{isTasks ? 'أضف مهمة' : 'أضف بند'}</SoftAction>
+                </div>
+              </Can>
+            </Panel>
+          </div>
+        </div>
+      ) : null}
+
+      <DeskModal
+        title={editing === 'new' ? (isTasks ? 'مهمة جديدة' : 'بند جديد') : editing ? `تعديل ${editing.current.nameAr}` : ''}
+        open={editing !== null}
+        onClose={() => setEditing(null)}
+      >
+        <form className="desk-form" onSubmit={save}>
+          <label className="desk-field">
+            {noun}
+            <input
+              value={draft.nameAr}
+              onChange={(event) => setDraft({ ...draft, nameAr: event.target.value })}
+              required
+            />
+          </label>
+          <div className="desk-row">
+            <label className="desk-field">
+              المجموعة
+              <input
+                value={draft.groupNameAr}
+                onChange={(event) => setDraft({ ...draft, groupNameAr: event.target.value })}
               />
-              <FormField
-                label="اسم المجموعة"
-                value={form.groupNameAr}
-                onChange={(event) => setForm({ ...form, groupNameAr: event.target.value })}
-                placeholder="تجهيز العريس"
+            </label>
+            <label className="desk-field">
+              معرّف المجموعة
+              <input
+                value={draft.groupKey}
+                onChange={(event) => setDraft({ ...draft, groupKey: event.target.value })}
+                dir="ltr"
               />
-              <FormField
-                label="معرّف المجموعة"
-                value={form.groupKey}
-                onChange={(event) => setForm({ ...form, groupKey: event.target.value })}
-                placeholder="groom-prep"
-              />
-              <FormField
-                label="وصف المجموعة"
-                value={form.groupSubtitleAr}
-                onChange={(event) => setForm({ ...form, groupSubtitleAr: event.target.value })}
-              />
-              <label className="form-field">
-                <span>الأيقونة</span>
-                <select value={form.icon} onChange={(event) => setForm({ ...form, icon: event.target.value })}>
-                  <option value="">بدون أيقونة</option>
-                  {iconOptions.map((icon) => <option key={icon} value={icon}>{icon}</option>)}
-                </select>
+            </label>
+          </div>
+          <div className="desk-row">
+            {isTasks ? (
+              <label className="desk-field">
+                قبل العرس (أيام)
+                <input
+                  type="number"
+                  min={0}
+                  value={draft.days}
+                  onChange={(event) => setDraft({ ...draft, days: event.target.value })}
+                />
               </label>
-              <FormField
-                label="الترتيب"
+            ) : null}
+            <label className="desk-field">
+              الأيقونة
+              <select value={draft.icon} onChange={(event) => setDraft({ ...draft, icon: event.target.value })}>
+                <option value="">بدون</option>
+                {ICONS.map((icon) => (
+                  <option key={icon} value={icon}>
+                    {icon}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="desk-field">
+              الترتيب
+              <input
                 type="number"
-                value={form.sortOrder}
-                onChange={(event) => setForm({ ...form, sortOrder: event.target.value })}
+                value={draft.sortOrder}
+                onChange={(event) => setDraft({ ...draft, sortOrder: event.target.value })}
               />
-              <div className="catalog-audience-picker">
-                <span>يظهر لمن؟</span>
-                <Check label="العريس" checked={form.showForGroom} onChange={(value) => setForm({ ...form, showForGroom: value })} />
-                <Check label="العروسة" checked={form.showForBride} onChange={(value) => setForm({ ...form, showForBride: value })} />
-                <Check label="المستخدم" checked={form.showForCustomer} onChange={(value) => setForm({ ...form, showForCustomer: value })} />
-                <Check label="المزوّد" checked={form.showForProvider} onChange={(value) => setForm({ ...form, showForProvider: value })} />
-                <Check label="مقترح افتراضيًا" checked={form.isRecommended} onChange={(value) => setForm({ ...form, isRecommended: value })} />
-                <Check label="نشط" checked={form.isActive} onChange={(value) => setForm({ ...form, isActive: value })} />
-              </div>
-              <div className="form-actions">
-                <ActionButton type="submit" disabled={isSaving || !form.nameAr.trim()}>
-                  {isSaving ? 'جاري الحفظ…' : editing ? 'حفظ كمسودة' : 'إضافة مسودة'}
-                </ActionButton>
-                {editing ? <ActionButton tone="ghost" type="button" onClick={resetForm}>إلغاء</ActionButton> : null}
-              </div>
-            </form>
-          </FormCard>
-        </Can>
-      </div>
+            </label>
+          </div>
+          {editing === 'new' ? (
+            <label className="desk-field">
+              المعرّف الثابت (اختياري)
+              <input
+                value={draft.key}
+                onChange={(event) => setDraft({ ...draft, key: event.target.value })}
+                dir="ltr"
+              />
+            </label>
+          ) : null}
+          <div className="desk-row">
+            <label className="desk-check">
+              <input
+                type="checkbox"
+                checked={draft.showForGroom}
+                onChange={(event) => setDraft({ ...draft, showForGroom: event.target.checked })}
+              />
+              العريس
+            </label>
+            <label className="desk-check">
+              <input
+                type="checkbox"
+                checked={draft.showForBride}
+                onChange={(event) => setDraft({ ...draft, showForBride: event.target.checked })}
+              />
+              العروسة
+            </label>
+            <label className="desk-check">
+              <input
+                type="checkbox"
+                checked={draft.isRecommended}
+                onChange={(event) => setDraft({ ...draft, isRecommended: event.target.checked })}
+              />
+              مقترح من البداية
+            </label>
+          </div>
+          <DeskNote>التعديل ينحفظ مسودة، وما يوصل التطبيق إلا لما تنشره.</DeskNote>
+          {actionError ? <DeskNote tone="coral">{actionError}</DeskNote> : null}
+          <div className="desk-dialog__actions">
+            <DeskButton type="submit" disabled={busy || !draft.nameAr.trim()}>
+              احفظ مسودة
+            </DeskButton>
+            {catalog && editing && editing !== 'new' && editing.current.isActive ? (
+              <ConfirmDialog
+                variant="desk"
+                title={`إيقاف ${editing.current.nameAr}`}
+                effects={['يختفي من الخطط الجديدة على طول بدون مسودة.', 'الخطط القائمة ما تتغير.']}
+                confirmLabel="أوقفه"
+                confirmTone="coral"
+                trigger={<DeskButton tone="white-coral">أوقف</DeskButton>}
+                onConfirm={async () => {
+                  await disableReferenceCatalogItem(catalog.key, editing.id);
+                  setEditing(null);
+                  await open(catalog.key);
+                }}
+              />
+            ) : null}
+          </div>
+        </form>
+      </DeskModal>
     </section>
   );
 }
 
-function Check({ label, checked, onChange }: { label: string; checked: boolean; onChange: (value: boolean) => void }) {
+/** «المنشور» beside «المسودة», the changed lines in sky. */
+function Compare({ item, isTasks }: { item: ReferenceCatalogItem; isTasks: boolean }) {
+  const before = item.published;
+  const after = item.current;
+  const lines: Array<[string, string]> = [];
+  if (isTasks) {
+    lines.push([
+      before ? `قبل ${daysWords(daysBefore(before))}` : '—',
+      `قبل ${daysWords(daysBefore(after))}`,
+    ]);
+  } else {
+    lines.push([before?.nameAr ?? '—', after.nameAr]);
+  }
+  lines.push([before?.groupNameAr ?? '—', after.groupNameAr ?? '—']);
+  if ((before?.isActive ?? true) !== after.isActive) {
+    lines.push([before?.isActive ? 'شغّال' : 'موقوف', after.isActive ? 'شغّال' : 'موقوف']);
+  }
   return (
-    <label>
-      <input type="checkbox" checked={checked} onChange={(event) => onChange(event.target.checked)} />
-      <span>{label}</span>
-    </label>
+    <table className="desk-compare">
+      <caption className="desk-sr">المنشور والمسودة</caption>
+      <thead>
+        <tr>
+          <th scope="col">المنشور</th>
+          <th scope="col">المسودة</th>
+        </tr>
+      </thead>
+      <tbody>
+        {lines.map(([was, now], index) => (
+          <tr key={index}>
+            <td>{was}</td>
+            <td className={was !== now ? 'is-changed' : undefined}>{now}</td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
   );
-}
-
-function audienceLabel(item: ReferenceCatalogItem) {
-  const labels = [
-    item.current.showForGroom ? 'العريس' : null,
-    item.current.showForBride ? 'العروسة' : null,
-    item.current.showForProvider ? 'المزوّد' : null,
-  ].filter(Boolean);
-  return labels.join('، ') || 'مخفي';
 }

@@ -1,307 +1,290 @@
-import { FormEvent, useEffect, useState } from 'react';
+// a08 «الأقسام» (mobile/test/prototype/admin/admin_screens.dart
+// `a08Categories`): one section for the groom and the bride. «الطريقة
+// المقترحة» and «المدة» left with D41; one name per section exists, so the
+// groom and bride columns show it or «ما يظهر» by the section's audience
+// (a name per side waits for A-20). Editing and disabling open from the
+// section's name, which the design does not draw but the catalog needs.
+import { type FormEvent, useCallback, useEffect, useState } from 'react';
+import { Plus } from 'lucide-react';
 import {
   createCategory,
   deleteCategory,
   getCategories,
-  ProviderCategory,
+  type ProviderCategory,
   updateCategory,
 } from './api';
-import { ActionButton } from '../../design_system/ActionButton';
+import { CatalogTabs } from './CatalogTabs';
+import { AdminPermission, Can, hasAdminPermission, useAuth } from '../auth/api';
 import { ConfirmDialog } from '../../design_system/ConfirmDialog';
-import { DataTable } from '../../design_system/DataTable';
-import { EmptyState } from '../../design_system/EmptyState';
-import { ErrorState } from '../../design_system/ErrorState';
-import { FormCard } from '../../design_system/FormCard';
-import { FormField } from '../../design_system/FormField';
-import { LoadingState } from '../../design_system/LoadingState';
-import { PageHeader } from '../../design_system/PageHeader';
-import { SectionCard } from '../../design_system/SectionCard';
-import { StatCard } from '../../design_system/StatCard';
-import { StatusBadge } from '../../design_system/StatusBadge';
-import { Can } from '../auth/api';
-import { AdminPermission } from '../auth/api';
+import {
+  DeskButton,
+  DeskHeader,
+  DeskNote,
+  DeskRetry,
+  DeskTable,
+  Panel,
+  SoftAction,
+  Tag,
+} from '../../design_system/Desk';
+import { DeskModal } from '../../design_system/DeskModal';
+
+type Draft = {
+  nameAr: string;
+  nameEn: string;
+  slug: string;
+  icon: string;
+  sortOrder: string;
+  showForGroom: boolean;
+  showForBride: boolean;
+};
+
+const EMPTY: Draft = {
+  nameAr: '',
+  nameEn: '',
+  slug: '',
+  icon: '',
+  sortOrder: '0',
+  showForGroom: true,
+  showForBride: true,
+};
+
+function draftOf(category: ProviderCategory): Draft {
+  return {
+    nameAr: category.nameAr,
+    nameEn: category.nameEn ?? '',
+    slug: category.slug,
+    icon: category.icon ?? '',
+    sortOrder: String(category.sortOrder),
+    showForGroom: category.showForGroom,
+    showForBride: category.showForBride,
+  };
+}
+
+function side(category: ProviderCategory, shown: boolean) {
+  return shown ? category.nameAr : <span className="desk-ink--muted">ما يظهر</span>;
+}
 
 export function CategoriesPage() {
-  const [items, setItems] = useState<ProviderCategory[]>([]);
-  const [editing, setEditing] = useState<ProviderCategory | null>(null);
-  const [nameAr, setNameAr] = useState('');
-  const [nameEn, setNameEn] = useState('');
-  const [slug, setSlug] = useState('');
-  const [icon, setIcon] = useState('');
-  const [sortOrder, setSortOrder] = useState('0');
-  const [showForGroom, setShowForGroom] = useState(true);
-  const [showForBride, setShowForBride] = useState(true);
+  const { user } = useAuth();
+  const canWrite = hasAdminPermission(user, AdminPermission.CATALOG_WRITE);
+  const [items, setItems] = useState<ProviderCategory[] | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const [editing, setEditing] = useState<ProviderCategory | 'new' | null>(null);
+  const [draft, setDraft] = useState<Draft>(EMPTY);
+  const [formError, setFormError] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
 
-  async function load() {
-    setIsLoading(true);
+  const load = useCallback(async () => {
     setError(null);
     try {
       setItems(await getCategories());
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'تعذر تحميل الفئات.');
-    } finally {
-      setIsLoading(false);
+    } catch (value) {
+      setError(value instanceof Error ? value.message : 'ما قدرنا نحمّل الأقسام.');
     }
-  }
-
-  useEffect(() => {
-    load();
   }, []);
 
-  function startEdit(category: ProviderCategory) {
-    setEditing(category);
-    setNameAr(category.nameAr);
-    setNameEn(category.nameEn ?? '');
-    setSlug(category.slug);
-    setIcon(category.icon ?? '');
-    setSortOrder(String(category.sortOrder));
-    setShowForGroom(category.showForGroom);
-    setShowForBride(category.showForBride);
-  }
+  useEffect(() => {
+    void load();
+  }, [load]);
 
-  function resetForm() {
-    setEditing(null);
-    setNameAr('');
-    setNameEn('');
-    setSlug('');
-    setIcon('');
-    setSortOrder('0');
-    setShowForGroom(true);
-    setShowForBride(true);
+  function open(target: ProviderCategory | 'new') {
+    setEditing(target);
+    setDraft(target === 'new' ? EMPTY : draftOf(target));
+    setFormError(null);
   }
 
   async function submit(event: FormEvent) {
     event.preventDefault();
-    setError(null);
+    if (!draft.nameAr.trim()) return;
+    setSaving(true);
+    setFormError(null);
     try {
       const payload = {
-        nameAr,
-        nameEn: nameEn || null,
-        slug: slug || null,
-        icon: icon || null,
-        showForGroom,
-        showForBride,
-        sortOrder: Number(sortOrder) || 0,
+        nameAr: draft.nameAr.trim(),
+        nameEn: draft.nameEn.trim() || null,
+        slug: draft.slug.trim() || null,
+        icon: draft.icon.trim() || null,
+        showForGroom: draft.showForGroom,
+        showForBride: draft.showForBride,
+        sortOrder: Number(draft.sortOrder) || 0,
       };
-      if (editing) {
-        await updateCategory(editing.id, payload);
-      } else {
-        await createCategory(payload);
-      }
-      resetForm();
+      if (editing === 'new') await createCategory(payload);
+      else if (editing) await updateCategory(editing.id, payload);
+      setEditing(null);
       await load();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'تعذر حفظ الفئة.');
+    } catch (value) {
+      setFormError(value instanceof Error ? value.message : 'ما قدرنا نحفظ القسم.');
+    } finally {
+      setSaving(false);
     }
   }
 
-  if (isLoading) return <LoadingState title="جاري تحميل الفئات" />;
-  if (error) return <ErrorState message={error} onRetry={load} />;
-
-  const activeCount = items.filter((category) => category.isActive).length;
-  const totalProviders = items.reduce(
-    (total, category) => total + (category.providersCount ?? 0),
-    0,
-  );
-  const totalServices = items.reduce(
-    (total, category) => total + (category.servicesCount ?? 0),
-    0,
-  );
+  const noAudience = !draft.showForGroom && !draft.showForBride;
 
   return (
-    <section className="page-stack">
-      <PageHeader
-        eyebrow="الفئات"
-        icon="◇"
-        title="إدارة فئات خدمات الأعراس"
-        description="تنظيم السوق بفئات واضحة تساعد العملاء على الوصول للمورد المناسب."
-        meta={<span>{items.length} فئة</span>}
+    <section>
+      <DeskHeader
+        title="الأقسام"
+        sub="قسم واحد للعريس والعروسة"
+        actions={
+          <Can permission={AdminPermission.CATALOG_WRITE}>
+            <DeskButton icon={Plus} onClick={() => open('new')}>
+              قسم جديد
+            </DeskButton>
+          </Can>
+        }
       />
+      <CatalogTabs />
+      {error ? <DeskRetry message={error} onRetry={() => void load()} /> : null}
+      {items === null && !error ? <DeskNote>لحظة، نحمّل الأقسام…</DeskNote> : null}
+      {items && items.length === 0 ? (
+        <Panel>
+          <DeskNote>ما فيه أقسام بعد.</DeskNote>
+        </Panel>
+      ) : null}
+      {items && items.length > 0 ? (
+        <DeskTable
+          caption="الأقسام"
+          columns={[
+            { label: 'القسم', flex: 3 },
+            { label: 'عند العريس', flex: 2 },
+            { label: 'عند العروسة', flex: 2 },
+            { label: 'الحالة', flex: 2 },
+          ]}
+          rows={items}
+          rowKey={(category) => category.id}
+          renderRow={(category) => [
+            canWrite ? (
+              <button
+                key="n"
+                type="button"
+                className="desk-link-button"
+                onClick={() => open(category)}
+                aria-label={`عدّل ${category.nameAr}`}
+              >
+                {category.nameAr}
+              </button>
+            ) : (
+              <strong key="n">{category.nameAr}</strong>
+            ),
+            side(category, category.showForGroom),
+            side(category, category.showForBride),
+            category.isActive ? (
+              <Tag key="s" tone="green">نشط</Tag>
+            ) : (
+              <span key="s" className="desk-actions">
+                <Tag tone="muted">معطّل</Tag>
+                <Can permission={AdminPermission.CATALOG_WRITE}>
+                  <ConfirmDialog
+                    variant="desk"
+                    title={`تفعيل ${category.nameAr}`}
+                    effects={['يرجع يظهر في الأقسام للعرسان والمزودين حسب مساره.']}
+                    confirmLabel="فعّله"
+                    trigger={<SoftAction>فعّله</SoftAction>}
+                    onConfirm={async () => {
+                      await updateCategory(category.id, { nameAr: category.nameAr, isActive: true });
+                      await load();
+                    }}
+                  />
+                </Can>
+              </span>
+            ),
+          ]}
+        />
+      ) : null}
 
-      <div className="stats-grid">
-        <StatCard title="إجمالي الفئات" value={items.length} tone="gold" />
-        <StatCard title="نشطة" value={activeCount} tone="success" />
-        <StatCard title="الموردون" value={totalProviders} tone="info" />
-        <StatCard title="الخدمات" value={totalServices} tone="warning" />
-      </div>
-
-      <div className="management-layout">
-        <SectionCard
-          title="فئات السوق"
-          subtitle="اسم الفئة، الأيقونة، الحالة، الترتيب، وعدد الموردين والخدمات."
-        >
-          {items.length === 0 ? (
-            <EmptyState
-              title="لا توجد فئات"
-              message="أضف أول فئة للموردين."
-            />
-          ) : (
-            <DataTable
-              label="فئات السوق"
-              columns={[
-                'اسم الفئة',
-                'الأيقونة',
-                'يظهر في',
-                'الحالة',
-                'الترتيب',
-                'الموردون',
-                'الخدمات',
-                'إجراءات',
-              ]}
-              dense
-              minWidth={1020}
-            >
-              {items.map((category) => (
-                <tr key={category.id}>
-                  <td>
-                    <strong>{category.nameAr}</strong>
-                    <span className="table-subtle">{category.nameEn ?? category.slug}</span>
-                  </td>
-                  <td>{category.icon ?? 'غير محدد'}</td>
-                  <td>
-                    {category.showForGroom && category.showForBride
-                      ? 'العريس والعروسة'
-                      : category.showForGroom
-                        ? 'العريس'
-                        : category.showForBride
-                          ? 'العروسة'
-                          : 'مخفي من المسارين'}
-                  </td>
-                  <td>
-                    <StatusBadge
-                      status={category.isActive ? 'ACTIVE' : 'DISABLED'}
-                    />
-                  </td>
-                  <td>{category.sortOrder}</td>
-                  <td>{category.providersCount ?? 0}</td>
-                  <td>{category.servicesCount ?? 0}</td>
-                  <td className="actions-cell">
-                    <Can permission={AdminPermission.CATALOG_WRITE}>
-                      <div className="actions">
-                        <ActionButton
-                          tone="ghost"
-                          size="small"
-                          type="button"
-                          onClick={() => startEdit(category)}
-                        >
-                          تعديل
-                        </ActionButton>
-                        {category.isActive ? (
-                          <ConfirmDialog
-                            title="تعطيل الفئة"
-                            message="سيتم تعطيل هذه الفئة من إدارة السوق دون حذفها نهائيا."
-                            confirmLabel="تعطيل"
-                            tone="danger"
-                            trigger={
-                              <ActionButton tone="danger" size="small" type="button">
-                                تعطيل
-                              </ActionButton>
-                            }
-                            onConfirm={() => deleteCategory(category.id).then(load)}
-                          />
-                        ) : (
-                          <ConfirmDialog
-                            title="تفعيل الفئة"
-                            message="سترجع هذه الفئة للسوق وتظهر للعملاء في مساراتها."
-                            confirmLabel="تفعيل"
-                            trigger={
-                              <ActionButton tone="ghost" size="small" type="button">
-                                تفعيل
-                              </ActionButton>
-                            }
-                            onConfirm={() =>
-                              updateCategory(category.id, {
-                                nameAr: category.nameAr,
-                                isActive: true,
-                              }).then(load)
-                            }
-                          />
-                        )}
-                      </div>
-                    </Can>
-                  </td>
-                </tr>
-              ))}
-            </DataTable>
-          )}
-        </SectionCard>
-
-        <Can permission={AdminPermission.CATALOG_WRITE}>
-          <FormCard
-            title={editing ? 'تعديل فئة' : 'إضافة فئة'}
-            subtitle="استخدم أسماء عربية واضحة ومختصرة."
-          >
-            <form className="side-form" onSubmit={submit}>
-            <FormField
-              label="الاسم العربي"
-              value={nameAr}
-              onChange={(event) => setNameAr(event.target.value)}
+      <DeskModal
+        title={editing === 'new' ? 'قسم جديد' : editing ? `تعديل ${editing.nameAr}` : ''}
+        open={editing !== null}
+        onClose={() => setEditing(null)}
+      >
+        <form className="desk-form" onSubmit={submit}>
+          <label className="desk-field">
+            الاسم العربي
+            <input
+              value={draft.nameAr}
+              onChange={(event) => setDraft({ ...draft, nameAr: event.target.value })}
               required
             />
-            <FormField
-              label="الاسم الإنجليزي"
-              value={nameEn}
-              onChange={(event) => setNameEn(event.target.value)}
-            />
-            <FormField
-              label="المعرف slug"
-              value={slug}
-              onChange={(event) => setSlug(event.target.value)}
-              placeholder="photography"
-            />
-            <FormField
-              label="الأيقونة"
-              value={icon}
-              onChange={(event) => setIcon(event.target.value)}
-              placeholder="camera"
-            />
-            <FormField
-              label="الترتيب"
-              type="number"
-              value={sortOrder}
-              onChange={(event) => setSortOrder(event.target.value)}
-            />
-            <div className="catalog-audience-picker">
-              <span>الظهور في مسار العميل</span>
-              <label>
-                <input
-                  type="checkbox"
-                  checked={showForGroom}
-                  onChange={(event) => setShowForGroom(event.target.checked)}
-                />
-                <span>العريس</span>
-              </label>
-              <label>
-                <input
-                  type="checkbox"
-                  checked={showForBride}
-                  onChange={(event) => setShowForBride(event.target.checked)}
-                />
-                <span>العروسة</span>
-              </label>
-              {!showForGroom && !showForBride ? (
-                <small>اختر مسارًا واحدًا على الأقل ليظهر التصنيف للعملاء.</small>
-              ) : null}
-            </div>
-            <div className="form-actions">
-              <ActionButton
-                type="submit"
-                disabled={!showForGroom && !showForBride}
-              >
-                {editing ? 'حفظ التعديل' : 'إضافة فئة'}
-              </ActionButton>
-              {editing ? (
-                <ActionButton tone="ghost" type="button" onClick={resetForm}>
-                  إلغاء
-                </ActionButton>
-              ) : null}
-            </div>
-            </form>
-          </FormCard>
-        </Can>
-      </div>
+          </label>
+          <div className="desk-row">
+            <label className="desk-field">
+              الاسم الإنجليزي
+              <input
+                value={draft.nameEn}
+                onChange={(event) => setDraft({ ...draft, nameEn: event.target.value })}
+                dir="ltr"
+              />
+            </label>
+            <label className="desk-field">
+              المعرّف
+              <input
+                value={draft.slug}
+                onChange={(event) => setDraft({ ...draft, slug: event.target.value })}
+                dir="ltr"
+              />
+            </label>
+          </div>
+          <div className="desk-row">
+            <label className="desk-field">
+              الأيقونة
+              <input
+                value={draft.icon}
+                onChange={(event) => setDraft({ ...draft, icon: event.target.value })}
+                dir="ltr"
+              />
+            </label>
+            <label className="desk-field">
+              الترتيب
+              <input
+                type="number"
+                value={draft.sortOrder}
+                onChange={(event) => setDraft({ ...draft, sortOrder: event.target.value })}
+              />
+            </label>
+          </div>
+          <div className="desk-row">
+            <label className="desk-check">
+              <input
+                type="checkbox"
+                checked={draft.showForGroom}
+                onChange={(event) => setDraft({ ...draft, showForGroom: event.target.checked })}
+              />
+              يظهر عند العريس
+            </label>
+            <label className="desk-check">
+              <input
+                type="checkbox"
+                checked={draft.showForBride}
+                onChange={(event) => setDraft({ ...draft, showForBride: event.target.checked })}
+              />
+              يظهر عند العروسة
+            </label>
+          </div>
+          {noAudience ? <DeskNote tone="coral">اختر مسار واحد على الأقل.</DeskNote> : null}
+          {formError ? <DeskNote tone="coral">{formError}</DeskNote> : null}
+          <div className="desk-dialog__actions">
+            <DeskButton type="submit" disabled={saving || noAudience || !draft.nameAr.trim()}>
+              احفظ
+            </DeskButton>
+            {editing && editing !== 'new' && editing.isActive ? (
+              <ConfirmDialog
+                variant="desk"
+                title={`تعطيل ${editing.nameAr}`}
+                effects={['يختفي من الأقسام عند العرسان والمزودين.', 'ما ينحذف، وتقدر ترجّعه بـ«فعّله».']}
+                confirmLabel="عطّله"
+                confirmTone="coral"
+                trigger={<DeskButton tone="white-coral">عطّل القسم</DeskButton>}
+                onConfirm={async () => {
+                  await deleteCategory(editing.id);
+                  setEditing(null);
+                  await load();
+                }}
+              />
+            ) : null}
+          </div>
+        </form>
+      </DeskModal>
     </section>
   );
 }

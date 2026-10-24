@@ -1,4 +1,5 @@
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { MemoryRouter } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   getCategories,
@@ -50,7 +51,8 @@ const city = (id: string, isActive: boolean): City => ({
 });
 
 function rowOf(name: string) {
-  return screen.getByText(name).closest('tr') as HTMLElement;
+  // The section's name also fills its groom and bride columns (a08).
+  return screen.getAllByText(name)[0].closest('tr') as HTMLElement;
 }
 
 describe('catalog reactivation', () => {
@@ -65,17 +67,30 @@ describe('catalog reactivation', () => {
   });
 
   it('offers to enable a disabled category and not to disable it again', async () => {
-    render(<CategoriesPage />);
-    await waitFor(() => expect(screen.getByText('زفة')).toBeInTheDocument());
+    // a08: the active section is disabled from its edit window; a disabled
+    // one shows «معطّل» with «فعّله».
+    render(
+      <MemoryRouter>
+        <CategoriesPage />
+      </MemoryRouter>,
+    );
+    await waitFor(() => expect(screen.getAllByText('زفة')[0]).toBeInTheDocument());
 
-    expect(within(rowOf('تصوير')).getByRole('button', { name: 'تعطيل' })).toBeInTheDocument();
-    expect(within(rowOf('تصوير')).queryByRole('button', { name: 'تفعيل' })).toBeNull();
+    expect(within(rowOf('تصوير')).queryByRole('button', { name: 'فعّله' })).toBeNull();
+    fireEvent.click(within(rowOf('تصوير')).getByRole('button', { name: 'عدّل تصوير' }));
+    const editor = screen.getByRole('dialog', { name: 'تعديل تصوير' });
+    expect(within(editor).getByRole('button', { name: 'عطّل القسم' })).toBeInTheDocument();
+    fireEvent.click(within(editor).getByRole('button', { name: 'سكّر' }));
+
     const disabledRow = rowOf('زفة');
-    expect(within(disabledRow).queryByRole('button', { name: 'تعطيل' })).toBeNull();
+    expect(within(disabledRow).getByText('معطّل')).toBeInTheDocument();
+    fireEvent.click(within(disabledRow).getByRole('button', { name: 'عدّل زفة' }));
+    expect(screen.queryByRole('button', { name: 'عطّل القسم' })).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: 'سكّر' }));
 
-    fireEvent.click(within(disabledRow).getByRole('button', { name: 'تفعيل' }));
-    const dialog = await screen.findByRole('dialog');
-    fireEvent.click(within(dialog).getByRole('button', { name: 'تفعيل' }));
+    fireEvent.click(within(disabledRow).getByRole('button', { name: 'فعّله' }));
+    const dialog = await screen.findByRole('dialog', { name: 'تفعيل زفة' });
+    fireEvent.click(within(dialog).getByRole('button', { name: 'فعّله' }));
 
     await waitFor(() =>
       expect(updateCategory).toHaveBeenCalledWith('disabled', {

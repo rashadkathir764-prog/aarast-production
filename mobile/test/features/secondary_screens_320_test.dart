@@ -9,6 +9,7 @@ import 'package:aarast_mobile/features/chat/models/chat_models.dart';
 import 'package:aarast_mobile/features/chat/providers/chat_provider.dart';
 import 'package:aarast_mobile/features/chat/screens/chat_screen.dart';
 import 'package:aarast_mobile/features/chat/screens/quote_conversation_entry_screen.dart';
+import 'package:aarast_mobile/features/finance/data/finance_api.dart';
 import 'package:aarast_mobile/features/marketplace/data/marketplace_api.dart';
 import 'package:aarast_mobile/features/marketplace/models/marketplace_models.dart';
 import 'package:aarast_mobile/features/marketplace/providers/marketplace_provider.dart';
@@ -174,14 +175,16 @@ void main() {
   });
 
   group('LocalPlanMigrationScreen at 320px RTL', () {
+    // w09: the account already has a plan, so the sheet asks.
     testWidgets(
-      'renders content, upload loading, and API error without overflow',
+      'renders the w09 sheet, upload loading, and API error without overflow',
       (tester) async {
         final preferences = await _preferences();
         final gate = Completer<OnboardingCompleteResponse>();
         final service = _FakeLocalPlanMigrationService(
           GuestOnboardingStorage(preferences),
           onMigrate: () => gate.future,
+          account: const AccountPlanCounts(items: 14, tasks: 23),
         );
 
         await _pump320(
@@ -192,37 +195,36 @@ void main() {
             onFinished: (_) {},
           ),
         );
+        await tester.pumpAndSettle();
 
-        expect(find.text('وجدنا خطتك المحفوظة على هذا الجهاز'), findsOneWidget);
-        expect(find.text('المصاريف: 1'), findsOneWidget);
-        expect(find.text('المهام: 1'), findsOneWidget);
-        expect(find.text('الضيوف: 1'), findsOneWidget);
+        expect(find.text('عندك خطة على هذا الجوال'), findsOneWidget);
+        expect(find.text('بند واحد · مهمة واحدة'), findsOneWidget);
+        expect(find.text('14 بند · 23 مهمة'), findsOneWidget);
         expect(tester.takeException(), isNull);
 
         await tester.scrollUntilVisible(
-          find.text('رفع الخطة إلى حسابي'),
+          find.text('متابعة'),
           240,
-          scrollable: find.byType(Scrollable).first,
+          scrollable: find.byType(Scrollable).last,
         );
-        await tester.drag(find.byType(Scrollable).first, const Offset(0, -120));
         await tester.pump();
-        await tester.tap(find.text('رفع الخطة إلى حسابي'));
+        await tester.tap(find.text('متابعة'));
         await tester.pump();
         expect(service.migrateCalls, 1);
-        expect(find.text('تجاهل الخطة المحلية'), findsOneWidget);
+        expect(find.text('تجاهلها'), findsOneWidget);
         expect(tester.takeException(), isNull);
 
         gate.completeError(const ApiException('تعذر استيراد الخطة المحلية.'));
         await tester.pumpAndSettle();
 
         expect(find.text('تعذر استيراد الخطة المحلية.'), findsOneWidget);
-        expect(find.text('رفع الخطة إلى حسابي'), findsOneWidget);
+        expect(find.text('متابعة'), findsOneWidget);
         expect(tester.takeException(), isNull);
       },
     );
 
-    // a08b: an account created by «احفظ خطتي» saves the plan at once; the
-    // choice shows only when saving fails.
+    // a08b: an account created by «احفظ خطتي» saves the plan at once; a
+    // failure offers to try again.
     testWidgets('a new account saves the kept plan without asking', (
       tester,
     ) async {
@@ -244,14 +246,15 @@ void main() {
       );
 
       expect(service.migrateCalls, 1);
-      expect(find.text('رفع الخطة إلى حسابي'), findsNothing);
+      expect(service.accountLookups, 0);
+      expect(find.text('عندك خطة على هذا الجوال'), findsNothing);
       expect(find.textContaining('في حسابك'), findsOneWidget);
 
       gate.completeError(const ApiException('تعذر استيراد الخطة المحلية.'));
       await tester.pumpAndSettle();
 
       expect(find.text('تعذر استيراد الخطة المحلية.'), findsOneWidget);
-      expect(find.text('رفع الخطة إلى حسابي'), findsOneWidget);
+      expect(find.text('جرّب مرة ثانية'), findsOneWidget);
       expect(tester.takeException(), isNull);
     });
   });
@@ -492,15 +495,25 @@ class _FakeLocalPlanMigrationService extends LocalPlanMigrationService {
   _FakeLocalPlanMigrationService(
     GuestOnboardingStorage storage, {
     required this.onMigrate,
+    this.account,
   }) : super(
          guestStorage: storage,
          weddingPlansApi: WeddingPlansApi(
            ApiClient(tokenProvider: () async => null),
          ),
+         financeApi: FinanceApi(ApiClient(tokenProvider: () async => null)),
        );
 
   final Future<OnboardingCompleteResponse> Function() onMigrate;
+  final AccountPlanCounts? account;
   int migrateCalls = 0;
+  int accountLookups = 0;
+
+  @override
+  Future<AccountPlanCounts?> accountPlanCounts() async {
+    accountLookups += 1;
+    return account;
+  }
 
   @override
   Future<OnboardingCompleteResponse> migrate(LocalPlanSnapshot snapshot) {

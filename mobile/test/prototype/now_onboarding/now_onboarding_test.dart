@@ -17,6 +17,7 @@ import 'package:aarast_mobile/features/auth/screens/otp_screen.dart';
 import 'package:aarast_mobile/features/auth/screens/register_screen.dart';
 import 'package:aarast_mobile/features/auth/screens/reset_password_screen.dart';
 import 'package:aarast_mobile/features/auth/screens/splash_screen.dart';
+import 'package:aarast_mobile/features/finance/data/finance_api.dart';
 import 'package:aarast_mobile/features/marketplace/data/marketplace_api.dart';
 import 'package:aarast_mobile/features/marketplace/providers/marketplace_provider.dart';
 import 'package:aarast_mobile/features/onboarding/data/guest_onboarding_storage.dart';
@@ -325,6 +326,7 @@ class _Migration extends LocalPlanMigrationService {
         weddingPlansApi: WeddingPlansApi(
           ApiClient(tokenProvider: () async => null),
         ),
+        financeApi: FinanceApi(ApiClient(tokenProvider: () async => null)),
       );
 
   @override

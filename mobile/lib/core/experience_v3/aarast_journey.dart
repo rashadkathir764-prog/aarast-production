@@ -1080,6 +1080,91 @@ class JourneyChoiceCard extends StatelessWidget {
   }
 }
 
+/// One answer in a short list of answers (prototype `gOption`): a radio
+/// ring, the answer and an optional explanation under it. The chosen one is
+/// outlined in [color] and its ring fills.
+class JourneyOption extends StatelessWidget {
+  const JourneyOption({
+    required this.title,
+    required this.onTap,
+    this.subtitle,
+    this.selected = false,
+    this.color = AarastV3Color.primary,
+    super.key,
+  });
+
+  final String title;
+  final String? subtitle;
+  final VoidCallback? onTap;
+  final bool selected;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return Semantics(
+      button: true,
+      selected: selected,
+      label: subtitle == null ? title : '$title، $subtitle',
+      onTap: onTap,
+      excludeSemantics: true,
+      child: AarastPressable(
+        onTap: onTap,
+        selected: selected,
+        borderRadius: BorderRadius.circular(16),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+          decoration: BoxDecoration(
+            color: AarastV3Color.paper,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(
+              color: selected ? color : AarastV3Color.line,
+              width: selected ? 2 : 1,
+            ),
+          ),
+          child: Row(
+            children: [
+              Container(
+                width: 22,
+                height: 22,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  border: Border.all(
+                    color: selected ? color : AarastV3Color.line,
+                    width: selected ? 7 : 2,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: JourneyType.of(
+                        JourneyType.body,
+                        weight: JourneyType.bold,
+                      ),
+                    ),
+                    if (subtitle case final subtitle?)
+                      Text(
+                        subtitle,
+                        style: JourneyType.of(
+                          JourneyType.small,
+                          color: AarastV3Color.textMuted,
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 /// One way to start in [JourneyStartWays].
 class JourneyStartWay {
   const JourneyStartWay({

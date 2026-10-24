@@ -10,6 +10,7 @@ import '../../../core/widgets/aarast_ui.dart';
 import '../../account_contexts/account_contexts_api.dart'
     show AccountContextController, AccountContextEntryGate;
 import '../../auth/auth_api.dart' show AuthController, AuthStatus;
+import '../../finance/finance_api.dart' show FinanceApi;
 import '../../onboarding/onboarding_api.dart'
     show
         GuestOnboardingStorage,
@@ -117,14 +118,17 @@ class _DashboardEntryScreenState extends State<DashboardEntryScreen> {
 
   LocalPlanMigrationService? _buildMigrationService() {
     final WeddingPlansApi weddingPlansApi;
+    final FinanceApi financeApi;
     try {
       weddingPlansApi = context.read<WeddingPlansApi>();
+      financeApi = context.read<FinanceApi>();
     } on ProviderNotFoundException {
       return null;
     }
     return LocalPlanMigrationService(
       guestStorage: context.read<GuestOnboardingStorage>(),
       weddingPlansApi: weddingPlansApi,
+      financeApi: financeApi,
       database: _localDatabaseOrNull(),
     );
   }

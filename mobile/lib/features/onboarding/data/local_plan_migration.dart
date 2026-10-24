@@ -1,6 +1,7 @@
 import '../../../core/offline/local_database.dart';
 import '../../../core/offline/offline_tables.dart';
 import '../../../core/utils/plan_day.dart';
+import '../../finance/finance_api.dart' show FinanceApi;
 import '../../wedding_plans/wedding_plans_api.dart'
     show OnboardingCompleteResponse, WeddingPlansApi;
 import '../models/guest_onboarding_draft.dart';
@@ -29,6 +30,21 @@ class LocalPlanSnapshot {
 
   bool get hasAnyRecords =>
       costs.isNotEmpty || tasks.isNotEmpty || guests.isNotEmpty;
+
+  /// The plan's money items as they are now (added, renamed or removed in
+  /// its money), or the items it started with when it has none yet.
+  List<String> get itemNames {
+    final names = categoryNameById.values.toSet().toList();
+    return names.isNotEmpty ? names : draft.selectedCategoryKeys;
+  }
+}
+
+/// What the account's own open plan holds, for w09's «في حسابك» card.
+class AccountPlanCounts {
+  const AccountPlanCounts({required this.items, required this.tasks});
+
+  final int items;
+  final int tasks;
 }
 
 /// Migrates a guest-mode local plan into the authenticated account.
@@ -40,11 +56,13 @@ class LocalPlanMigrationService {
   const LocalPlanMigrationService({
     required this.guestStorage,
     required this.weddingPlansApi,
+    required this.financeApi,
     this.database,
   });
 
   final GuestOnboardingStorage guestStorage;
   final WeddingPlansApi weddingPlansApi;
+  final FinanceApi financeApi;
   final LocalDatabase? database;
 
   static const _taskStatuses = {'TODO', 'IN_PROGRESS', 'DONE', 'CANCELLED'};
@@ -83,6 +101,25 @@ class LocalPlanMigrationService {
             _text(row['id'])!: _text(row['name'])!,
       },
     );
+  }
+
+  /// The account's own open plan (w09): the one open now when the account
+  /// owns it, otherwise the one changed last. Null when the account owns no
+  /// open plan, so the plan kept on this phone is saved without asking.
+  Future<AccountPlanCounts?> accountPlanCounts() async {
+    final plans = (await weddingPlansApi.getMyWeddingPlans())
+        .where((plan) => plan.status != 'ARCHIVED')
+        .toList();
+    if (plans.isEmpty) return null;
+    final active = await weddingPlansApi.getActiveWeddingPlan();
+    plans.sort((a, b) => b.updatedAt.compareTo(a.updatedAt));
+    final plan = plans.firstWhere(
+      (plan) => plan.id == active?.id,
+      orElse: () => plans.first,
+    );
+    final items = await financeApi.getBudgetCategories(plan.id);
+    final summary = await weddingPlansApi.getDashboardSummary(plan.id);
+    return AccountPlanCounts(items: items.length, tasks: summary.totalTasks);
   }
 
   /// Uploads the snapshot into the authenticated account in one idempotent
@@ -135,10 +172,7 @@ class LocalPlanMigrationService {
     return payload;
   }
 
-  List<String> _itemNames(LocalPlanSnapshot snapshot) {
-    final names = snapshot.categoryNameById.values.toSet().toList();
-    return names.isNotEmpty ? names : snapshot.draft.selectedCategoryKeys;
-  }
+  List<String> _itemNames(LocalPlanSnapshot snapshot) => snapshot.itemNames;
 
   Map<String, dynamic>? _costPayload(
     Map<String, dynamic> row,

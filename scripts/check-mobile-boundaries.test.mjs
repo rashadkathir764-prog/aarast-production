@@ -1641,8 +1641,10 @@ const r19ProviderPortalApi = Object.freeze({
 // comparison, which no longer gates on the account itself (D14); +1 for
 // f07 reading the plan's item through the finance owner API (D15); -1 for
 // the old add-member screen, now g06's sheet inside the sharing feature
-// (D29).
-const r19LegalRecordCount = 197;
+// (D29); +2 for w09 reading the account plan's money items through the
+// finance owner API, from the migration service and the entry screen that
+// builds it (D31).
+const r19LegalRecordCount = 199;
 const trackedOwnerApiContracts = [
   {
     area: 'features/account_contexts',
@@ -2249,6 +2251,11 @@ const trackedIdentityBatchContracts = [
   },
   {
     source: 'mobile/lib/features/onboarding/data/local_plan_migration.dart',
+    target: 'mobile/lib/features/finance/finance_api.dart',
+    show: ['FinanceApi'],
+  },
+  {
+    source: 'mobile/lib/features/onboarding/data/local_plan_migration.dart',
     target: 'mobile/lib/features/wedding_plans/wedding_plans_api.dart',
     show: ['OnboardingCompleteResponse', 'WeddingPlansApi'],
   },
@@ -2851,6 +2858,11 @@ const trackedShellEntryBatchContracts = [
     source: 'mobile/lib/features/home/screens/dashboard_entry_screen.dart',
     target: 'mobile/lib/features/auth/auth_api.dart',
     show: ['AuthController', 'AuthStatus'],
+  },
+  {
+    source: 'mobile/lib/features/home/screens/dashboard_entry_screen.dart',
+    target: 'mobile/lib/features/finance/finance_api.dart',
+    show: ['FinanceApi'],
   },
   {
     source: 'mobile/lib/features/home/screens/dashboard_entry_screen.dart',

@@ -49,8 +49,8 @@ comparison. That must never happen again.
    understanding it.
 7. **Old screens to delete, not to polish:** the money starter
    (`money_starter_setup.dart`, still a fallback for plans made before
-   `c9b2ce56`), `costs_screen.dart`, the old payment schedule screens, the
-   old w09 import, quick add, `WeddingStageContextLine`. Remove each with its
+   `c9b2ce56`), `costs_screen.dart`, the old payment schedule screens
+   (the old w09 import is gone, D31), quick add, `WeddingStageContextLine`. Remove each with its
    tests and pins in the cleanup step.
 
 ## For the next agent: read this first
@@ -127,7 +127,7 @@ The word «أقساط» is banned. Use «على دفعات».
 | Slice | State |
 |---|---|
 | 0 Foundation | Done |
-| 1 Start / sign-in (17) | Done. **Verify w09**, the local-plan import: no commit names it, and the old-screens cleanup still lists it. |
+| 1 Start / sign-in (17) | Done. w09 is built as drawn without «ضمّها لخطتي» (D31); the old w09 page is gone. |
 | 2 Shell and home (8) | Done |
 | 3 Money read (8) | Done, except **x03**, which no commit names. Verify it. |
 | 4 Money write (12) | Done. c04 needed no code. |
@@ -227,10 +227,11 @@ Each line is a place where the app differs from the prototype:
 - y09 (D19): «ليلتك محجوزة / عند …» instead of «… محجوزة ليلتك»; no «صار محجوز 4 من 6»; solid cobalt instead of the sky gradient.
 - w34 (D18): opened from the providers status line (the prototype shows no opener); a back-arrow page; no «ذكّرهم», no response time, «شوف غيرهم» instead of «شوف فنانين فاضيين يوم 21».
 - f03: no «عرسان دفعوا فعلًا · من 11 عرس», no «فاضي ليلة 21 · باقي فريقين», no «عنده فريق مصوّرات» (no data behind any of them). The price box is labelled «أسعاره». Prices read 450,000 ر.ي, not «450 ألف».
+- w09 (D31): no «ضمّها لخطتي» (import-local always makes a new plan), «خلّها خطة ثانية» chosen to start with, no «آخر تعديل» lines; «تجاهلها» asks a second time.
 
 ## At the end of the groom path
 
-1. Clean up the old screens: costs_screen, the payment schedules, the old w09 and quick add.
+1. Clean up the old screens: costs_screen, the payment schedules and quick add (the old w09 is gone, D31).
 2. Regenerate the goldens.
 3. Build the release APK. Firebase dart-defines are read at build time from `%USERPROFILE%\Downloads\google-services (3).json`, and their values are never printed. A cloud session cannot do this step; it needs Rashad's machine.
 4. Update the prototype with the differences above.

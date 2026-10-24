@@ -4,6 +4,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:aarast_mobile/core/network/api_client.dart';
 import 'package:aarast_mobile/core/offline/local_database_json.dart';
 import 'package:aarast_mobile/core/offline/offline_tables.dart';
+import 'package:aarast_mobile/features/finance/data/finance_api.dart';
 import 'package:aarast_mobile/features/onboarding/data/guest_onboarding_storage.dart';
 import 'package:aarast_mobile/features/onboarding/data/local_plan_migration.dart';
 import 'package:aarast_mobile/features/onboarding/models/guest_onboarding_draft.dart';
@@ -185,6 +186,7 @@ void main() {
     return LocalPlanMigrationService(
       guestStorage: guestStorage,
       weddingPlansApi: WeddingPlansApi(apiClient),
+      financeApi: FinanceApi(apiClient),
       database: database,
     );
   }
@@ -266,6 +268,7 @@ void main() {
     final service = LocalPlanMigrationService(
       guestStorage: guestStorage,
       weddingPlansApi: WeddingPlansApi(apiClient),
+      financeApi: FinanceApi(apiClient),
     );
 
     expect(await service.loadSnapshot(), isNull);

@@ -2464,7 +2464,7 @@ const trackedCollaborationBatchContracts = [
   {
     source: 'mobile/lib/features/notifications/screens/notifications_screen.dart',
     target: 'mobile/lib/features/account_contexts/account_contexts_api.dart',
-    show: ['AccountContextController'],
+    show: ['AccountContextController', 'AccountContextRole'],
   },
   {
     source: 'mobile/lib/features/notifications/screens/notifications_screen.dart',

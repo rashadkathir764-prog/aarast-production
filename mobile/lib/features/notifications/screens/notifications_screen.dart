@@ -11,7 +11,7 @@ import '../../../core/utils/arabic_date_formatter.dart';
 import '../../../core/widgets/aarast_toast.dart';
 import '../../../core/widgets/aarast_ui.dart';
 import '../../account_contexts/account_contexts_api.dart'
-    show AccountContextController;
+    show AccountContextController, AccountContextRole;
 import '../../auth/auth_api.dart' show AuthActionGuard, AuthGatePanel;
 import '../models/aarast_notification.dart';
 import '../providers/notifications_provider.dart';
@@ -35,6 +35,20 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
   bool get _isLocalPlanNotifications =>
       widget.weddingPlanId != null &&
       AuthActionGuard.isLocalGuestPlanId(widget.weddingPlanId);
+
+  /// q21: a participant reads one plan's notices, plainly, under its name.
+  String? _participantPlanTitle(BuildContext context) {
+    final selected = context
+        .watch<AccountContextController?>()
+        ?.selectedContext;
+    final planId = widget.weddingPlanId;
+    if (planId == null ||
+        selected?.role != AccountContextRole.contributor ||
+        selected?.weddingPlanId != planId) {
+      return null;
+    }
+    return selected!.displayName;
+  }
 
   @override
   void initState() {
@@ -64,6 +78,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
         ? const <AarastNotification>[]
         : provider.notifications;
     final unreadInList = notifications.where((item) => item.isUnread).length;
+    final participantPlan = _participantPlanTitle(context);
 
     return AarastScreenFrame(
       backgroundColor: AarastV3Color.canvas,
@@ -75,12 +90,14 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
             child: JourneySubHeader(
               title: 'التنبيهات',
               // The count of unread matters more than a fixed description.
-              subtitle: unreadInList > 0
+              subtitle: participantPlan != null
+                  ? 'من $participantPlan'
+                  : unreadInList > 0
                   ? '$unreadInList غير مقروء'
                   : widget.weddingPlanId == null
                   ? 'كل تنبيهات الحساب المحفوظة'
                   : 'تنبيهات الخطة المحفوظة',
-              trailing: unreadInList > 0
+              trailing: participantPlan == null && unreadInList > 0
                   ? JourneyTextAction(
                       label: 'قراءة الكل',
                       color: AarastV3Color.primary,
@@ -95,7 +112,11 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
             child: RefreshIndicator(
               color: AarastV3Color.primary,
               onRefresh: _load,
-              child: _body(provider, notifications: notifications),
+              child: _body(
+                provider,
+                notifications: notifications,
+                participant: participantPlan != null,
+              ),
             ),
           ),
         ],
@@ -106,6 +127,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
   Widget _body(
     NotificationsProvider provider, {
     required List<AarastNotification> notifications,
+    bool participant = false,
   }) {
     final suppressData = _isLocalPlanNotifications || _suppressAccountData;
 
@@ -160,6 +182,45 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
             title: AarastV3Copy.quietNotificationsTitle,
             message: AarastV3Copy.quietNotificationsMessage,
             tone: AarastEmptyStateTone.positive,
+          ),
+        ],
+      );
+    }
+
+    if (participant) {
+      return ListView(
+        padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
+        children: [
+          JourneyList(
+            children: [
+              for (final notification in notifications)
+                _NotificationRow(
+                  notification: notification,
+                  plain: true,
+                  onTap: () => _openNotification(provider, notification),
+                  onArchive: () => provider.archiveNotification(notification),
+                ),
+            ],
+          ),
+          if (provider.hasMore) ...[
+            const SizedBox(height: 12),
+            JourneyButton.quiet(
+              label: 'عرض المزيد',
+              icon: LucideIcons.chevronsDown,
+              loading: provider.isLoadingMore,
+              expand: true,
+              onPressed: () =>
+                  provider.loadMore(weddingPlanId: widget.weddingPlanId),
+            ),
+          ],
+          const SizedBox(height: 12),
+          // True: a notice goes to its own reader only, and the push copy is
+          // chosen by type and marked private (push-delivery.service.ts).
+          const JourneyNote(
+            key: ValueKey('participant-notifications-note'),
+            text:
+                'توصلك بس الأشياء اللي تخصك، وعلى شاشة القفل تطلع بدون أسماء ولا مبالغ.',
+            icon: LucideIcons.bellRing,
           ),
         ],
       );
@@ -361,11 +422,16 @@ class _NotificationRow extends StatelessWidget {
     required this.notification,
     required this.onTap,
     required this.onArchive,
+    this.plain = false,
   });
 
   final AarastNotification notification;
   final VoidCallback onTap;
   final VoidCallback onArchive;
+
+  /// q21: the title, the line and a teal dot when new; no time and no
+  /// archive button (archiving stays a screen-reader action).
+  final bool plain;
 
   @override
   Widget build(BuildContext context) {
@@ -426,46 +492,64 @@ class _NotificationRow extends StatelessWidget {
                             color: AarastV3Color.textMuted,
                           ),
                         ),
-                      Text(
-                        when,
-                        style: JourneyType.of(
-                          JourneyType.caption,
-                          color: AarastV3Color.textFaint,
+                      if (!plain)
+                        Text(
+                          when,
+                          style: JourneyType.of(
+                            JourneyType.caption,
+                            color: AarastV3Color.textFaint,
+                          ),
                         ),
-                      ),
                     ],
                   ),
                 ),
               ),
-              Column(
-                children: [
-                  if (notification.isUnread)
-                    const Padding(
-                      padding: EdgeInsets.only(top: 6, bottom: 2),
-                      child: SizedBox.square(
-                        dimension: 9,
-                        child: DecoratedBox(
-                          decoration: BoxDecoration(
-                            color: AarastV3Color.danger,
-                            shape: BoxShape.circle,
+              if (plain)
+                Padding(
+                  padding: const EdgeInsetsDirectional.only(top: 6, end: 8),
+                  child: SizedBox.square(
+                    dimension: 9,
+                    child: notification.isUnread
+                        ? const DecoratedBox(
+                            key: ValueKey('notification-unread-dot'),
+                            decoration: BoxDecoration(
+                              color: AarastV3Color.primary,
+                              shape: BoxShape.circle,
+                            ),
+                          )
+                        : null,
+                  ),
+                )
+              else
+                Column(
+                  children: [
+                    if (notification.isUnread)
+                      const Padding(
+                        padding: EdgeInsets.only(top: 6, bottom: 2),
+                        child: SizedBox.square(
+                          dimension: 9,
+                          child: DecoratedBox(
+                            decoration: BoxDecoration(
+                              color: AarastV3Color.danger,
+                              shape: BoxShape.circle,
+                            ),
                           ),
                         ),
                       ),
+                    IconButton(
+                      onPressed: onArchive,
+                      icon: const Icon(LucideIcons.archive, size: 16),
+                      tooltip: 'أرشفة التنبيه',
+                      color: AarastV3Color.textFaint,
+                      visualDensity: VisualDensity.compact,
+                      // Quiet: the unread dot is the row's only signal.
+                      style: IconButton.styleFrom(
+                        backgroundColor: AarastV3Color.paper,
+                        side: BorderSide.none,
+                      ),
                     ),
-                  IconButton(
-                    onPressed: onArchive,
-                    icon: const Icon(LucideIcons.archive, size: 16),
-                    tooltip: 'أرشفة التنبيه',
-                    color: AarastV3Color.textFaint,
-                    visualDensity: VisualDensity.compact,
-                    // Quiet: the unread dot is the row's only signal.
-                    style: IconButton.styleFrom(
-                      backgroundColor: AarastV3Color.paper,
-                      side: BorderSide.none,
-                    ),
-                  ),
-                ],
-              ),
+                  ],
+                ),
             ],
           ),
         ),

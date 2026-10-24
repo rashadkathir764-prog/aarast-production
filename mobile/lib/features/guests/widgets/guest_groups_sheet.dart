@@ -102,111 +102,86 @@ class _GuestGroupsSheetState extends State<GuestGroupsSheet> {
       few: 'ضيوف',
       many: 'ضيف',
     );
-    return SingleChildScrollView(
-      padding: EdgeInsets.fromLTRB(
-        16,
-        8,
-        16,
-        16 + MediaQuery.viewInsetsOf(context).bottom,
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Semantics(
-            header: true,
-            child: Text(
-              'المجموعات',
-              style: JourneyType.of(
-                JourneyType.title,
-                weight: JourneyType.bold,
-              ),
-            ),
-          ),
-          Text(
-            'رتّب ضيوفك: الأهل، الأصحاب، زملاء الشغل…',
-            style: JourneyType.of(
-              JourneyType.small,
-              color: AarastV3Color.textMuted,
-            ),
-          ),
-          const SizedBox(height: 14),
-          JourneyBox(
-            padding: EdgeInsets.zero,
-            child: JourneyList(
-              children: [
-                for (final group in widget.groups)
-                  JourneyListRow(
-                    key: ValueKey('guest-group-${group.id}'),
-                    icon: LucideIcons.users,
-                    color: AarastV3Color.lilac,
-                    soft: AarastV3Color.lilacSoft,
-                    title: group.name,
-                    subtitle: count(widget.guestCounts[group.id] ?? 0),
-                    onTap: widget.saving ? null : () => _rename(group),
-                    trailing: IconButton(
-                      tooltip: 'شيل مجموعة ${group.name}',
-                      onPressed: widget.saving ? null : () => _delete(group),
-                      icon: const Icon(
-                        LucideIcons.trash2,
-                        size: 18,
-                        color: AarastV3Color.textFaint,
-                      ),
+    return JourneySheetBody(
+      title: 'المجموعات',
+      subtitle: 'رتّب ضيوفك: الأهل، الأصحاب، زملاء الشغل…',
+      children: [
+        JourneyBox(
+          padding: EdgeInsets.zero,
+          child: JourneyList(
+            children: [
+              for (final group in widget.groups)
+                JourneyListRow(
+                  key: ValueKey('guest-group-${group.id}'),
+                  icon: LucideIcons.users,
+                  color: AarastV3Color.lilac,
+                  soft: AarastV3Color.lilacSoft,
+                  title: group.name,
+                  subtitle: count(widget.guestCounts[group.id] ?? 0),
+                  onTap: widget.saving ? null : () => _rename(group),
+                  trailing: IconButton(
+                    tooltip: 'شيل مجموعة ${group.name}',
+                    onPressed: widget.saving ? null : () => _delete(group),
+                    icon: const Icon(
+                      LucideIcons.trash2,
+                      size: 18,
+                      color: AarastV3Color.textFaint,
                     ),
                   ),
-                JourneyListRow(
-                  icon: LucideIcons.userX,
-                  color: AarastV3Color.textFaint,
-                  soft: AarastV3Color.line,
-                  title: 'بدون مجموعة',
-                  subtitle: count(widget.ungroupedCount),
                 ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 12),
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              Expanded(
-                child: JourneyTextField(
-                  key: const ValueKey('guest-group-new-name'),
-                  label: 'مجموعة جديدة',
-                  hint: 'مثلًا: الحارة',
-                  controller: _controller,
-                  textInputAction: TextInputAction.done,
-                  onSubmitted: (_) => _create(),
-                ),
-              ),
-              const SizedBox(width: 8),
-              JourneyRoundButton(
-                key: const ValueKey('guest-group-add'),
-                icon: LucideIcons.plus,
-                tooltip: 'أضف المجموعة',
-                onPressed: widget.saving ? null : _create,
+              JourneyListRow(
+                icon: LucideIcons.userX,
+                color: AarastV3Color.textFaint,
+                soft: AarastV3Color.line,
+                title: 'بدون مجموعة',
+                subtitle: count(widget.ungroupedCount),
               ),
             ],
           ),
-          const SizedBox(height: 10),
-          Text(
-            'شيل المجموعة ما يشيل ضيوفها، ينقلهم «بدون مجموعة». اضغط على مجموعة تغيّر اسمها.',
-            style: JourneyType.of(
-              JourneyType.small,
-              color: AarastV3Color.textMuted,
-            ),
-          ),
-          if (widget.errorMessage != null) ...[
-            const SizedBox(height: 8),
-            Text(
-              widget.errorMessage!,
-              style: JourneyType.of(
-                JourneyType.small,
-                weight: JourneyType.bold,
-                color: AarastV3Color.danger,
+        ),
+        const SizedBox(height: 12),
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.end,
+          children: [
+            Expanded(
+              child: JourneyTextField(
+                key: const ValueKey('guest-group-new-name'),
+                label: 'مجموعة جديدة',
+                hint: 'مثلًا: الحارة',
+                controller: _controller,
+                textInputAction: TextInputAction.done,
+                onSubmitted: (_) => _create(),
               ),
             ),
+            const SizedBox(width: 8),
+            JourneyRoundButton(
+              key: const ValueKey('guest-group-add'),
+              icon: LucideIcons.plus,
+              tooltip: 'أضف المجموعة',
+              onPressed: widget.saving ? null : _create,
+            ),
           ],
+        ),
+        const SizedBox(height: 10),
+        Text(
+          'شيل المجموعة ما يشيل ضيوفها، ينقلهم «بدون مجموعة». اضغط على مجموعة تغيّر اسمها.',
+          style: JourneyType.of(
+            JourneyType.small,
+            color: AarastV3Color.textMuted,
+          ),
+        ),
+        if (widget.errorMessage != null) ...[
+          const SizedBox(height: 8),
+          Text(
+            widget.errorMessage!,
+            style: JourneyType.of(
+              JourneyType.small,
+              weight: JourneyType.bold,
+              color: AarastV3Color.danger,
+            ),
+          ),
         ],
-      ),
+      ],
     );
   }
 }

@@ -330,10 +330,8 @@ class _ProviderRequestsScreenState extends State<ProviderRequestsScreen> {
     final place =
         mine?.location?['fullLabel']?.toString().trim() ??
         mine?.city?.trim();
-    final day = await showAarastBottomSheet<DateTime>(
+    final day = await showJourneySheet<DateTime>(
       context: context,
-      isScrollControlled: true,
-      useSafeArea: true,
       builder: (_) => BookingRequestSheet(
         quote: quote,
         day: quote.eventDate ?? mine?.weddingDate,
@@ -359,10 +357,8 @@ class _ProviderRequestsScreenState extends State<ProviderRequestsScreen> {
   /// arrived, so the provider never sees a silent «رفض».
   Future<void> _decline(QuoteRequest quote) async {
     if (!_ownQuote(quote)) return;
-    final message = await showAarastBottomSheet<String>(
+    final message = await showJourneySheet<String>(
       context: context,
-      isScrollControlled: true,
-      useSafeArea: true,
       builder: (_) => DeclineOfferSheet(quote: quote),
     );
     if (message == null || !mounted) return;
@@ -393,10 +389,8 @@ class _ProviderRequestsScreenState extends State<ProviderRequestsScreen> {
   /// groom to settle with them.
   Future<void> _cancelBooking(QuoteRequest quote) async {
     if (!_ownQuote(quote)) return;
-    final confirmed = await showAarastBottomSheet<bool>(
+    final confirmed = await showJourneySheet<bool>(
       context: context,
-      isScrollControlled: true,
-      useSafeArea: true,
       builder: (sheetContext) => _CancelBookingSheet(quote: quote),
     );
     if (confirmed != true || !mounted) return;

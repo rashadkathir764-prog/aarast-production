@@ -249,105 +249,85 @@ class _RemoveCategorySheetState extends State<_RemoveCategorySheet> {
   @override
   Widget build(BuildContext context) {
     final blocked = widget.agreements > 0;
-    return SingleChildScrollView(
-      padding: const EdgeInsets.fromLTRB(20, 8, 20, 16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Semantics(
-            header: true,
-            child: Text(
-              blocked
-                  ? 'ما تقدر تشيل ${widget.name}'
-                  : 'تشيل بند ${widget.name}؟',
-              style: JourneyType.of(
-                JourneyType.title,
-                weight: JourneyType.bold,
-              ),
-            ),
-          ),
-          Text(
-            blocked
-                ? 'عليه ${arabicCount(widget.agreements, one: 'اتفاق واحد', two: 'اتفاقين', few: 'اتفاقات', many: 'اتفاق')}. شيلها أو انقلها لبند ثاني أول.'
-                : widget.allocated == null
-                ? 'ما حطيت له مبلغ'
-                : 'حطيت له ${widget.allocated}، وما عليه اتفاقات',
-            style: JourneyType.of(
-              JourneyType.small,
-              color: AarastV3Color.textMuted,
-            ),
-          ),
-          const SizedBox(height: 14),
-          if (!blocked) ...[
-            if (widget.allocated != null) ...[
-              JourneyBox(
-                padding: const EdgeInsets.all(14),
-                child: Row(
-                  children: [
-                    const Icon(
-                      LucideIcons.wallet,
-                      size: 18,
-                      color: AarastV3Color.primary,
-                    ),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: Text(
-                        'يرجع ${widget.allocated} للاحتياط',
-                        style: JourneyType.of(
-                          JourneyType.body,
-                          weight: JourneyType.bold,
-                        ),
+    return JourneySheetBody(
+      title: blocked
+          ? 'ما تقدر تشيل ${widget.name}'
+          : 'تشيل بند ${widget.name}؟',
+      subtitle: blocked
+          ? 'عليه ${arabicCount(widget.agreements, one: 'اتفاق واحد', two: 'اتفاقين', few: 'اتفاقات', many: 'اتفاق')}. شيلها أو انقلها لبند ثاني أول.'
+          : widget.allocated == null
+          ? 'ما حطيت له مبلغ'
+          : 'حطيت له ${widget.allocated}، وما عليه اتفاقات',
+      children: [
+        if (!blocked) ...[
+          if (widget.allocated != null) ...[
+            JourneyBox(
+              padding: const EdgeInsets.all(14),
+              child: Row(
+                children: [
+                  const Icon(
+                    LucideIcons.wallet,
+                    size: 18,
+                    color: AarastV3Color.primary,
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      'يرجع ${widget.allocated} للاحتياط',
+                      style: JourneyType.of(
+                        JourneyType.body,
+                        weight: JourneyType.bold,
                       ),
                     ),
-                  ],
-                ),
+                  ),
+                ],
               ),
-              const SizedBox(height: 12),
-            ],
-            JourneyChoiceCard(
-              key: const ValueKey('category-remove-delete'),
-              title: 'شيله',
-              subtitle: 'ينحذف البند',
-              leading: const Icon(
-                LucideIcons.trash2,
-                color: AarastV3Color.danger,
-              ),
-              selected: _choice == _RemoveChoice.remove,
-              onTap: () => setState(() => _choice = _RemoveChoice.remove),
             ),
-            if (widget.allocated != null) ...[
-              const SizedBox(height: 8),
-              JourneyChoiceCard(
-                key: const ValueKey('category-remove-keep'),
-                title: 'خلّه، بس بدون مبلغ',
-                subtitle: 'لو بتتكفل فيه العائلة مثلًا',
-                leading: const Icon(
-                  LucideIcons.minusCircle,
-                  color: AarastV3Color.primary,
-                ),
-                selected: _choice == _RemoveChoice.keepWithoutAmount,
-                onTap: () =>
-                    setState(() => _choice = _RemoveChoice.keepWithoutAmount),
-              ),
-            ],
-            const SizedBox(height: 14),
+            const SizedBox(height: 12),
           ],
-          JourneyButton(
-            key: const ValueKey('category-remove-confirm'),
-            label: blocked
-                ? 'تمام'
-                : _choice == _RemoveChoice.remove
-                ? 'شيل البند'
-                : 'خلّه بدون مبلغ',
-            background: !blocked && _choice == _RemoveChoice.remove
-                ? AarastV3Color.danger
-                : AarastV3Color.primary,
-            expand: true,
-            large: true,
-            onPressed: () => Navigator.pop(context, blocked ? null : _choice),
+          JourneyChoiceCard(
+            key: const ValueKey('category-remove-delete'),
+            title: 'شيله',
+            subtitle: 'ينحذف البند',
+            leading: const Icon(
+              LucideIcons.trash2,
+              color: AarastV3Color.danger,
+            ),
+            selected: _choice == _RemoveChoice.remove,
+            onTap: () => setState(() => _choice = _RemoveChoice.remove),
           ),
+          if (widget.allocated != null) ...[
+            const SizedBox(height: 8),
+            JourneyChoiceCard(
+              key: const ValueKey('category-remove-keep'),
+              title: 'خلّه، بس بدون مبلغ',
+              subtitle: 'لو بتتكفل فيه العائلة مثلًا',
+              leading: const Icon(
+                LucideIcons.minusCircle,
+                color: AarastV3Color.primary,
+              ),
+              selected: _choice == _RemoveChoice.keepWithoutAmount,
+              onTap: () =>
+                  setState(() => _choice = _RemoveChoice.keepWithoutAmount),
+            ),
+          ],
+          const SizedBox(height: 14),
         ],
-      ),
+        JourneyButton(
+          key: const ValueKey('category-remove-confirm'),
+          label: blocked
+              ? 'تمام'
+              : _choice == _RemoveChoice.remove
+              ? 'شيل البند'
+              : 'خلّه بدون مبلغ',
+          background: !blocked && _choice == _RemoveChoice.remove
+              ? AarastV3Color.danger
+              : AarastV3Color.primary,
+          expand: true,
+          large: true,
+          onPressed: () => Navigator.pop(context, blocked ? null : _choice),
+        ),
+      ],
     );
   }
 }

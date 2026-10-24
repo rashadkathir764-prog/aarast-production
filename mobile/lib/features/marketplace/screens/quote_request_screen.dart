@@ -592,9 +592,8 @@ class _QuoteRequestScreenState extends State<QuoteRequestScreen> {
 
   Future<void> _pickGuests() async {
     releaseFieldFocus();
-    final value = await showAarastBottomSheet<String>(
+    final value = await showJourneySheet<String>(
       context: context,
-      isScrollControlled: true,
       builder: (_) => _GuestsSheet(initial: _guestCountController.text),
     );
     if (value == null || !mounted) return;
@@ -610,31 +609,22 @@ class _QuoteRequestScreenState extends State<QuoteRequestScreen> {
     required List<(T, String)> options,
     required T? selected,
   }) {
-    return showAarastBottomSheet<T>(
+    return showJourneySheet<T>(
       context: context,
-      isScrollControlled: true,
-      builder: (sheetContext) => SafeArea(
-        child: ListView(
-          shrinkWrap: true,
-          padding: const EdgeInsets.fromLTRB(20, 16, 20, 16),
-          children: [
-            Text(
-              title,
-              style: JourneyType.of(JourneyType.title, weight: JourneyType.bold),
+      builder: (sheetContext) => JourneySheetBody(
+        title: title,
+        children: [
+          for (final (value, label) in options) ...[
+            JourneyChoiceCard(
+              title: label,
+              subtitle: '',
+              leading: const SizedBox.shrink(),
+              selected: value == selected,
+              onTap: () => Navigator.of(sheetContext).pop(value),
             ),
-            const SizedBox(height: 12),
-            for (final (value, label) in options) ...[
-              JourneyChoiceCard(
-                title: label,
-                subtitle: '',
-                leading: const SizedBox.shrink(),
-                selected: value == selected,
-                onTap: () => Navigator.of(sheetContext).pop(value),
-              ),
-              const SizedBox(height: 8),
-            ],
+            const SizedBox(height: 8),
           ],
-        ),
+        ],
       ),
     );
   }
@@ -778,34 +768,25 @@ class _GuestsSheetState extends State<_GuestsSheet> {
 
   @override
   Widget build(BuildContext context) {
-    return SingleChildScrollView(
-      padding: EdgeInsets.fromLTRB(
-        20,
-        16,
-        20,
-        16 + MediaQuery.viewInsetsOf(context).bottom,
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          JourneyTextField(
-            label: 'كم ضيف تقريبًا؟',
-            controller: _controller,
-            keyboardType: TextInputType.number,
-            inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-            autofocus: true,
-          ),
-          const SizedBox(height: 12),
-          JourneyButton(
-            label: 'تمام',
-            background: AarastV3Color.cobalt,
-            large: true,
-            expand: true,
-            onPressed: () => Navigator.of(context).pop(_controller.text),
-          ),
-        ],
-      ),
+    return JourneySheetBody(
+      title: null,
+      children: [
+        JourneyTextField(
+          label: 'كم ضيف تقريبًا؟',
+          controller: _controller,
+          keyboardType: TextInputType.number,
+          inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+          autofocus: true,
+        ),
+        const SizedBox(height: 12),
+        JourneyButton(
+          label: 'تمام',
+          background: AarastV3Color.cobalt,
+          large: true,
+          expand: true,
+          onPressed: () => Navigator.of(context).pop(_controller.text),
+        ),
+      ],
     );
   }
 }

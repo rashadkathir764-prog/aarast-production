@@ -17,34 +17,21 @@ class LogoutSheet extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final service = sync;
-    return SafeArea(
-      child: SingleChildScrollView(
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(20, 0, 20, 16),
-          child: service == null
-              ? _body(context, null)
-              : ListenableBuilder(
-                  listenable: service,
-                  builder: (context, _) => _body(context, service),
-                ),
-        ),
-      ),
-    );
+    return service == null
+        ? _body(context, null)
+        : ListenableBuilder(
+            listenable: service,
+            builder: (context, _) => _body(context, service),
+          );
   }
 
   Widget _body(BuildContext context, OfflineSyncService? service) {
     final unsent = service?.unsyncedCount ?? 0;
     final sending = service?.state == SyncState.syncing;
     final offline = service?.state == SyncState.offline;
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      crossAxisAlignment: CrossAxisAlignment.stretch,
+    return JourneySheetBody(
+      title: 'الخروج',
       children: [
-        Text(
-          'الخروج',
-          style: JourneyType.of(JourneyType.display, weight: JourneyType.bold),
-        ),
-        const SizedBox(height: 16),
         if (unsent > 0) ...[
           JourneyNote(
             key: const ValueKey('account-logout-unsent'),

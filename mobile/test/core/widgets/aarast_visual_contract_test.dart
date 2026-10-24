@@ -272,6 +272,30 @@ void main() {
       expect(offenders, isEmpty, reason: offenders.join('\n'));
     });
 
+    // D30: a journey sheet takes its canvas, radius, handle and title from
+    // showJourneySheet and JourneySheetBody, never from the call site.
+    test('journey sheets take their shell from the kit', () {
+      // A sheet call whose arguments, before its builder, pick the journey
+      // canvas or a drag handle by hand.
+      final handMade = RegExp(
+        r'showAarastBottomSheet<[^>]*>\((?:(?!builder:)[\s\S])*?'
+        r'(showDragHandle|AarastV3Color\.canvas)',
+      );
+      final offenders = <String>[];
+      for (final root in [Directory('lib/features'), Directory('lib/shared')]) {
+        for (final entity in root.listSync(recursive: true)) {
+          if (entity is! File || !entity.path.endsWith('.dart')) continue;
+          final text = entity.readAsStringSync();
+          for (final match in handMade.allMatches(text)) {
+            final line = '\n'.allMatches(text.substring(0, match.start)).length;
+            offenders.add('${entity.path}:${line + 1}');
+          }
+        }
+      }
+
+      expect(offenders, isEmpty, reason: offenders.join('\n'));
+    });
+
     test('routes every production screen through shared shell wrappers', () {
       // كل شاشة موجهة في التطبيق — لا شاشة خارج نظام V3 الموحّد.
       // ملفات export الخالصة وقشرة الـ ShellRoute خارج القائمة عمداً.

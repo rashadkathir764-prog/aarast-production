@@ -409,49 +409,35 @@ class _CancelBookingSheet extends StatelessWidget {
         ],
       ),
     );
-    return SingleChildScrollView(
-      padding: const EdgeInsets.fromLTRB(20, 4, 20, 20),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Text(
-            confirmed
-                ? 'إلغاء حجز ${quoteProviderName(quote)}'
-                : 'إلغاء طلب الحجز',
-            style: JourneyType.of(JourneyType.display, weight: JourneyType.bold),
+    return JourneySheetBody(
+      title: confirmed
+          ? 'إلغاء حجز ${quoteProviderName(quote)}'
+          : 'إلغاء طلب الحجز',
+      subtitle: 'قبل ما تلغي، هذا اللي بيصير',
+      children: [
+        JourneyBox(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+          child: Column(
+            children: [
+              effect(LucideIcons.bellRing, 'يوصلهم إن الحجز انلغى'),
+              effect(LucideIcons.calendarX, 'اليوم يرجع فاضي عندهم'),
+              effect(
+                LucideIcons.wallet,
+                'البند يبقى في المال: لو رجّعوا لك شيء أو ما بتدفع، عدّله من هناك',
+              ),
+            ],
           ),
-          Text(
-            'قبل ما تلغي، هذا اللي بيصير',
-            style: JourneyType.of(
-              JourneyType.body,
-              color: AarastV3Color.textMuted,
-            ),
-          ),
-          const SizedBox(height: 12),
-          JourneyBox(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-            child: Column(
-              children: [
-                effect(LucideIcons.bellRing, 'يوصلهم إن الحجز انلغى'),
-                effect(LucideIcons.calendarX, 'اليوم يرجع فاضي عندهم'),
-                effect(
-                  LucideIcons.wallet,
-                  'البند يبقى في المال: لو رجّعوا لك شيء أو ما بتدفع، عدّله من هناك',
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 16),
-          JourneyButton(
-            key: const ValueKey('requests-cancel-booking-confirm'),
-            label: confirmed ? 'ألغِ الحجز' : 'ألغِ الطلب',
-            background: AarastV3Color.danger,
-            expand: true,
-            large: true,
-            onPressed: () => Navigator.of(context).pop(true),
-          ),
-        ],
-      ),
+        ),
+        const SizedBox(height: 16),
+        JourneyButton(
+          key: const ValueKey('requests-cancel-booking-confirm'),
+          label: confirmed ? 'ألغِ الحجز' : 'ألغِ الطلب',
+          background: AarastV3Color.danger,
+          expand: true,
+          large: true,
+          onPressed: () => Navigator.of(context).pop(true),
+        ),
+      ],
     );
   }
 }

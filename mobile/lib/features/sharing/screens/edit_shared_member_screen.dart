@@ -316,48 +316,26 @@ class _EditSharedMemberScreenState extends State<EditSharedMemberScreen> {
     final who = name == null || name.isEmpty
         ? member.directionalDisplayName
         : name;
-    final confirmed = await showAarastBottomSheet<bool>(
+    final confirmed = await showJourneySheet<bool>(
       context: context,
-      backgroundColor: AarastV3Color.canvas,
-      showDragHandle: true,
-      isScrollControlled: true,
-      builder: (sheetContext) => SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.fromLTRB(20, 0, 20, 16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Text(
-                'تشيل $who من الخطة؟',
-                style: JourneyType.of(
-                  JourneyType.display,
-                  weight: JourneyType.bold,
-                ),
-              ),
-              Text(
-                'يطلع على طول، وما يقدر يفتح الخطة بعدها.',
-                style: JourneyType.of(
-                  JourneyType.body,
-                  color: AarastV3Color.textMuted,
-                ),
-              ),
-              const SizedBox(height: 16),
-              JourneyButton(
-                key: const ValueKey('member-remove-confirm'),
-                label: 'شيله',
-                background: AarastV3Color.danger,
-                large: true,
-                expand: true,
-                onPressed: () => Navigator.of(sheetContext).pop(true),
-              ),
-              const SizedBox(height: 6),
-              JourneyTextAction(
-                label: 'رجوع',
-                onPressed: () => Navigator.of(sheetContext).pop(false),
-              ),
-            ],
+      builder: (sheetContext) => JourneySheetBody(
+        title: 'تشيل $who من الخطة؟',
+        subtitle: 'يطلع على طول، وما يقدر يفتح الخطة بعدها.',
+        children: [
+          JourneyButton(
+            key: const ValueKey('member-remove-confirm'),
+            label: 'شيله',
+            background: AarastV3Color.danger,
+            large: true,
+            expand: true,
+            onPressed: () => Navigator.of(sheetContext).pop(true),
           ),
-        ),
+          const SizedBox(height: 6),
+          JourneyTextAction(
+            label: 'رجوع',
+            onPressed: () => Navigator.of(sheetContext).pop(false),
+          ),
+        ],
       ),
     );
     if (confirmed != true || !mounted) return;

@@ -533,10 +533,8 @@ class _CostFormScreenState extends State<CostFormScreen> {
       AarastToast.showError(context, 'سوق المزودين مو متاح الآن.');
       return;
     }
-    final selected = await showAarastBottomSheet<MarketplaceProvider>(
+    final selected = await showJourneySheet<MarketplaceProvider>(
       context: context,
-      isScrollControlled: true,
-      useSafeArea: true,
       builder: (context) => _ProviderPicker(marketplace: marketplace),
     );
     if (selected == null || !mounted) return;

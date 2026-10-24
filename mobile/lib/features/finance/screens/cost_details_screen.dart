@@ -425,10 +425,8 @@ class _CostDetailsScreenState extends State<CostDetailsScreen> {
             .where((payment) => !payment.isReversal && !payment.isReversed)
             .toList()
           ..sort((a, b) => b.paidAt.compareTo(a.paidAt));
-    final choice = await showAarastBottomSheet<_RemoveCostChoice>(
+    final choice = await showJourneySheet<_RemoveCostChoice>(
       context: context,
-      isScrollControlled: true,
-      useSafeArea: true,
       builder: (_) => _RemoveCostSheet(
         title: cost.title,
         paid: active.isEmpty

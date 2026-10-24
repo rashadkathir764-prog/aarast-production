@@ -178,47 +178,26 @@ class _DeleteSheet extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 8, 20, 16),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Semantics(
-            header: true,
-            child: Text(
-              'تحذف «$title»؟',
-              style: JourneyType.of(
-                JourneyType.title,
-                weight: JourneyType.bold,
-              ),
-            ),
+    return JourneySheetBody(
+      title: 'تحذف «$title»؟',
+      subtitle:
+          'تنمسح هي وخطواتها. لو بس ما تحتاجها، «ما نحتاجها» تخليها في السجل.',
+      children: [
+        JourneyButton(
+          key: const ValueKey('task-delete-confirm'),
+          label: 'احذفها',
+          background: AarastV3Color.danger,
+          expand: true,
+          large: true,
+          onPressed: () => Navigator.pop(context, true),
+        ),
+        Center(
+          child: JourneyTextAction(
+            label: 'رجوع',
+            onPressed: () => Navigator.pop(context, false),
           ),
-          const SizedBox(height: 4),
-          Text(
-            'تنمسح هي وخطواتها. لو بس ما تحتاجها، «ما نحتاجها» تخليها في السجل.',
-            style: JourneyType.of(
-              JourneyType.small,
-              color: AarastV3Color.textMuted,
-            ),
-          ),
-          const SizedBox(height: 16),
-          JourneyButton(
-            key: const ValueKey('task-delete-confirm'),
-            label: 'احذفها',
-            background: AarastV3Color.danger,
-            expand: true,
-            large: true,
-            onPressed: () => Navigator.pop(context, true),
-          ),
-          Center(
-            child: JourneyTextAction(
-              label: 'رجوع',
-              onPressed: () => Navigator.pop(context, false),
-            ),
-          ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 }

@@ -272,48 +272,26 @@ class _SharingScreenState extends State<SharingScreen>
   }
 
   Future<void> _confirmCancel(PlanInvite invite) async {
-    final cancel = await showAarastBottomSheet<bool>(
+    final cancel = await showJourneySheet<bool>(
       context: context,
-      backgroundColor: AarastV3Color.canvas,
-      showDragHandle: true,
-      isScrollControlled: true,
-      builder: (sheetContext) => SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.fromLTRB(20, 0, 20, 16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Text(
-                'تلغي دعوة ${_inviteName(invite)}؟',
-                style: JourneyType.of(
-                  JourneyType.display,
-                  weight: JourneyType.bold,
-                ),
-              ),
-              Text(
-                'الرابط اللي عنده ما عاد يشتغل، وتقدر تدعوه من جديد.',
-                style: JourneyType.of(
-                  JourneyType.body,
-                  color: AarastV3Color.textMuted,
-                ),
-              ),
-              const SizedBox(height: 16),
-              JourneyButton(
-                key: ValueKey('pending-invite-cancel-${invite.id}'),
-                label: 'الغِ الدعوة',
-                background: AarastV3Color.danger,
-                large: true,
-                expand: true,
-                onPressed: () => Navigator.of(sheetContext).pop(true),
-              ),
-              const SizedBox(height: 6),
-              JourneyTextAction(
-                label: 'رجوع',
-                onPressed: () => Navigator.of(sheetContext).pop(false),
-              ),
-            ],
+      builder: (sheetContext) => JourneySheetBody(
+        title: 'تلغي دعوة ${_inviteName(invite)}؟',
+        subtitle: 'الرابط اللي عنده ما عاد يشتغل، وتقدر تدعوه من جديد.',
+        children: [
+          JourneyButton(
+            key: ValueKey('pending-invite-cancel-${invite.id}'),
+            label: 'الغِ الدعوة',
+            background: AarastV3Color.danger,
+            large: true,
+            expand: true,
+            onPressed: () => Navigator.of(sheetContext).pop(true),
           ),
-        ),
+          const SizedBox(height: 6),
+          JourneyTextAction(
+            label: 'رجوع',
+            onPressed: () => Navigator.of(sheetContext).pop(false),
+          ),
+        ],
       ),
     );
     if (cancel != true || !mounted) return;

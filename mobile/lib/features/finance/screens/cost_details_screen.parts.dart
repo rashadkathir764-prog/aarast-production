@@ -458,60 +458,40 @@ class _RemoveCostSheetState extends State<_RemoveCostSheet> {
               LucideIcons.trash2,
             ),
           ];
-    return SingleChildScrollView(
-      padding: const EdgeInsets.fromLTRB(20, 8, 20, 16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Semantics(
-            header: true,
-            child: Text(
-              locked ? 'ما تقدر تشيل ${widget.title}' : 'تشيل ${widget.title}؟',
-              style: JourneyType.of(
-                JourneyType.title,
-                weight: JourneyType.bold,
-              ),
+    return JourneySheetBody(
+      title: locked ? 'ما تقدر تشيل ${widget.title}' : 'تشيل ${widget.title}؟',
+      subtitle: locked
+          ? 'عليه دفعات بـ ${widget.paid}. الاتفاق اللي عليه دفعات يبقى عشان سجلك يبقى صادق.'
+          : 'ما عليه دفعات',
+      children: [
+        for (final (choice, title, line, icon) in options) ...[
+          JourneyChoiceCard(
+            key: ValueKey('cost-remove-${choice.name}'),
+            title: title,
+            subtitle: line,
+            leading: Icon(
+              icon,
+              color: choice == _RemoveCostChoice.delete
+                  ? AarastV3Color.danger
+                  : AarastV3Color.primary,
             ),
+            selected: _choice == choice,
+            onTap: () => setState(() => _choice = choice),
           ),
-          Text(
-            locked
-                ? 'عليه دفعات بـ ${widget.paid}. الاتفاق اللي عليه دفعات يبقى عشان سجلك يبقى صادق.'
-                : 'ما عليه دفعات',
-            style: JourneyType.of(
-              JourneyType.small,
-              color: AarastV3Color.textMuted,
-            ),
-          ),
-          const SizedBox(height: 14),
-          for (final (choice, title, line, icon) in options) ...[
-            JourneyChoiceCard(
-              key: ValueKey('cost-remove-${choice.name}'),
-              title: title,
-              subtitle: line,
-              leading: Icon(
-                icon,
-                color: choice == _RemoveCostChoice.delete
-                    ? AarastV3Color.danger
-                    : AarastV3Color.primary,
-              ),
-              selected: _choice == choice,
-              onTap: () => setState(() => _choice = choice),
-            ),
-            const SizedBox(height: 8),
-          ],
-          const SizedBox(height: 6),
-          JourneyButton(
-            key: const ValueKey('cost-remove-confirm'),
-            label: 'متابعة',
-            background: _choice == _RemoveCostChoice.delete
-                ? AarastV3Color.danger
-                : AarastV3Color.primary,
-            expand: true,
-            large: true,
-            onPressed: () => Navigator.pop(context, _choice),
-          ),
+          const SizedBox(height: 8),
         ],
-      ),
+        const SizedBox(height: 6),
+        JourneyButton(
+          key: const ValueKey('cost-remove-confirm'),
+          label: 'متابعة',
+          background: _choice == _RemoveCostChoice.delete
+              ? AarastV3Color.danger
+              : AarastV3Color.primary,
+          expand: true,
+          large: true,
+          onPressed: () => Navigator.pop(context, _choice),
+        ),
+      ],
     );
   }
 }

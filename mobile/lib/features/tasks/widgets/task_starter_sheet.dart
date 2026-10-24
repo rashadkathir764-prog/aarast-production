@@ -73,114 +73,73 @@ class _TaskStarterSheetState extends State<TaskStarterSheet> {
   @override
   Widget build(BuildContext context) {
     final count = _selected.length;
-    return ConstrainedBox(
-      constraints: BoxConstraints(
-        maxHeight: MediaQuery.sizeOf(context).height * .88,
+    return JourneySheetBody(
+      title: 'مهام جاهزة لعرسك',
+      subtitle: widget.hasWeddingDate
+          ? 'مرتبة على موعدك · شيل اللي ما يخصك'
+          : 'شيل اللي ما يخصك · ثبّت موعد العرس وتترتب المواعيد',
+      bottom: JourneyButton(
+        key: const Key('task-starter-submit'),
+        label: count == 0
+            ? 'اختر مهمة وحدة على الأقل'
+            : 'أضف ${arabicCount(count, one: 'مهمة وحدة', two: 'مهمتين', few: 'مهام', many: 'مهمة')} لخطتي',
+        icon: LucideIcons.listPlus,
+        background: AarastV3Color.brandAccentStrong,
+        expand: true,
+        large: true,
+        loading: _saving,
+        onPressed: count == 0 || _saving ? null : _submit,
       ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
+      children: [
+        for (final group in widget.groups) ...[
           Padding(
-            padding: const EdgeInsets.fromLTRB(20, 8, 20, 8),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+            padding: const EdgeInsets.fromLTRB(6, 14, 6, 8),
+            child: Row(
               children: [
-                Semantics(
-                  header: true,
+                Flexible(
                   child: Text(
-                    'مهام جاهزة لعرسك',
+                    group.title,
                     style: JourneyType.of(
-                      JourneyType.title,
+                      JourneyType.bodyLarge,
                       weight: JourneyType.bold,
                     ),
                   ),
                 ),
-                Text(
-                  widget.hasWeddingDate
-                      ? 'مرتبة على موعدك · شيل اللي ما يخصك'
-                      : 'شيل اللي ما يخصك · ثبّت موعد العرس وتترتب المواعيد',
-                  style: JourneyType.of(
-                    JourneyType.small,
-                    color: AarastV3Color.textMuted,
+                const SizedBox(width: 8),
+                Flexible(
+                  child: Text(
+                    group.subtitle,
+                    style: JourneyType.of(
+                      JourneyType.small,
+                      color: AarastV3Color.textMuted,
+                    ),
                   ),
                 ),
               ],
             ),
           ),
-          Flexible(
-            child: ListView(
-              shrinkWrap: true,
-              padding: const EdgeInsets.fromLTRB(16, 4, 16, 12),
+          JourneyBox(
+            padding: const EdgeInsets.symmetric(vertical: 4),
+            child: Column(
               children: [
-                for (final group in widget.groups) ...[
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(6, 14, 6, 8),
-                    child: Row(
-                      children: [
-                        Flexible(
-                          child: Text(
-                            group.title,
-                            style: JourneyType.of(
-                              JourneyType.bodyLarge,
-                              weight: JourneyType.bold,
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        Flexible(
-                          child: Text(
-                            group.subtitle,
-                            style: JourneyType.of(
-                              JourneyType.small,
-                              color: AarastV3Color.textMuted,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
+                for (final template in group.templates)
+                  _TemplateRow(
+                    template: template,
+                    when: _when(template),
+                    added: _exists(template),
+                    selected: _selected.contains(template.key),
+                    enabled: !_saving,
+                    onTap: () => setState(() {
+                      if (!_selected.remove(template.key)) {
+                        _selected.add(template.key);
+                      }
+                    }),
                   ),
-                  JourneyBox(
-                    padding: const EdgeInsets.symmetric(vertical: 4),
-                    child: Column(
-                      children: [
-                        for (final template in group.templates)
-                          _TemplateRow(
-                            template: template,
-                            when: _when(template),
-                            added: _exists(template),
-                            selected: _selected.contains(template.key),
-                            enabled: !_saving,
-                            onTap: () => setState(() {
-                              if (!_selected.remove(template.key)) {
-                                _selected.add(template.key);
-                              }
-                            }),
-                          ),
-                      ],
-                    ),
-                  ),
-                ],
               ],
             ),
           ),
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 4, 16, 16),
-            child: JourneyButton(
-              key: const Key('task-starter-submit'),
-              label: count == 0
-                  ? 'اختر مهمة وحدة على الأقل'
-                  : 'أضف ${arabicCount(count, one: 'مهمة وحدة', two: 'مهمتين', few: 'مهام', many: 'مهمة')} لخطتي',
-              icon: LucideIcons.listPlus,
-              background: AarastV3Color.brandAccentStrong,
-              expand: true,
-              large: true,
-              loading: _saving,
-              onPressed: count == 0 || _saving ? null : _submit,
-            ),
-          ),
         ],
-      ),
+      ],
     );
   }
 }

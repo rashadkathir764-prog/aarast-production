@@ -552,58 +552,39 @@ class _CitySheetState extends State<_CitySheet> {
 
   @override
   Widget build(BuildContext context) {
-    return SafeArea(
-      child: ListView(
-        shrinkWrap: true,
-        padding: EdgeInsets.fromLTRB(
-          20,
-          10,
-          20,
-          20 + MediaQuery.viewInsetsOf(context).bottom,
-        ),
-        children: [
-          Semantics(
-            header: true,
-            child: Text(
-              'اختر المدينة',
-              style: JourneyType.of(
-                JourneyType.title,
-                weight: JourneyType.bold,
+    return JourneySheetBody(
+      title: 'اختر المدينة',
+      children: [
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: [
+            for (final name in widget.cities)
+              JourneyChip(
+                label: name,
+                selected: name == widget.selected,
+                onTap: () => Navigator.of(context).pop(name),
               ),
-            ),
-          ),
-          const SizedBox(height: 12),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: [
-              for (final name in widget.cities)
-                JourneyChip(
-                  label: name,
-                  selected: name == widget.selected,
-                  onTap: () => Navigator.of(context).pop(name),
-                ),
-            ],
-          ),
-          const SizedBox(height: 18),
-          JourneyTextField(
-            label: 'مدينتك مش في القائمة؟ اكتبها',
-            controller: _typed,
-            hint: 'ذمار',
-            icon: LucideIcons.mapPin,
-            maxLength: 40,
-            textInputAction: TextInputAction.done,
-            onChanged: (_) => setState(() {}),
-            onSubmitted: (_) => _useTyped(),
-          ),
-          const SizedBox(height: 12),
-          JourneyButton(
-            label: 'اختر هذي المدينة',
-            onPressed: _typed.text.trim().isEmpty ? null : _useTyped,
-            expand: true,
-          ),
-        ],
-      ),
+          ],
+        ),
+        const SizedBox(height: 18),
+        JourneyTextField(
+          label: 'مدينتك مش في القائمة؟ اكتبها',
+          controller: _typed,
+          hint: 'ذمار',
+          icon: LucideIcons.mapPin,
+          maxLength: 40,
+          textInputAction: TextInputAction.done,
+          onChanged: (_) => setState(() {}),
+          onSubmitted: (_) => _useTyped(),
+        ),
+        const SizedBox(height: 12),
+        JourneyButton(
+          label: 'اختر هذي المدينة',
+          onPressed: _typed.text.trim().isEmpty ? null : _useTyped,
+          expand: true,
+        ),
+      ],
     );
   }
 }

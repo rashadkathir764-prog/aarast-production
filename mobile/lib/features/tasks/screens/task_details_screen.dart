@@ -421,7 +421,7 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen> {
       case _TaskAction.cancel:
         await _setStatus(provider, task, 'CANCELLED');
       case _TaskAction.delete:
-        final confirmed = await showAarastBottomSheet<bool>(
+        final confirmed = await showJourneySheet<bool>(
           context: context,
           builder: (_) => _DeleteSheet(title: task.title),
         );

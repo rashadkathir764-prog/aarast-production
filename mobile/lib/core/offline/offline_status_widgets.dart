@@ -5,7 +5,6 @@ import 'package:lucide_icons/lucide_icons.dart';
 import '../experience_v3/aarast_v3.dart';
 import '../theme/app_theme.dart';
 import '../utils/arabic_count.dart';
-import '../widgets/aarast_bottom_sheet.dart';
 import 'offline_sync_service.dart';
 import 'sync_status.dart';
 
@@ -251,10 +250,8 @@ Future<void> showPendingChangesSheet(
   BuildContext context,
   OfflineSyncService service,
 ) {
-  return showAarastBottomSheet<void>(
+  return showJourneySheet<void>(
     context: context,
-    isScrollControlled: true,
-    useSafeArea: true,
     builder: (sheetContext) => _PendingChangesSheet(service: service),
   );
 }
@@ -272,83 +269,57 @@ class _PendingChangesSheet extends StatelessWidget {
       builder: (context, snapshot) {
         final changes = snapshot.data ?? const <PendingChangeSummary>[];
         final now = DateTime.now();
-        return Padding(
-          padding: const EdgeInsets.fromLTRB(20, 8, 20, 16),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Semantics(
-                header: true,
-                child: Text(
-                  changes.isEmpty
-                      ? 'كل تغييراتك وصلت'
-                      : arabicCount(
-                          changes.length,
-                          one: 'تغيير واحد ينتظر',
-                          two: 'تغييرين ينتظرون',
-                          few: 'تغييرات تنتظر',
-                          many: 'تغيير ينتظر',
-                        ),
-                  style: JourneyType.of(
-                    JourneyType.title,
-                    weight: JourneyType.bold,
-                  ),
+        return JourneySheetBody(
+          title: changes.isEmpty
+              ? 'كل تغييراتك وصلت'
+              : arabicCount(
+                  changes.length,
+                  one: 'تغيير واحد ينتظر',
+                  two: 'تغييرين ينتظرون',
+                  few: 'تغييرات تنتظر',
+                  many: 'تغيير ينتظر',
                 ),
-              ),
-              const SizedBox(height: 2),
-              Text(
-                'محفوظة على جوالك، وتنرسل أول ما يرجع النت',
-                style: JourneyType.of(
-                  JourneyType.small,
-                  color: AarastV3Color.textMuted,
-                ),
-              ),
-              const SizedBox(height: 14),
-              if (snapshot.connectionState == ConnectionState.waiting)
-                const Padding(
-                  padding: EdgeInsets.all(24),
-                  child: Center(child: CircularProgressIndicator()),
-                )
-              else if (snapshot.hasError)
-                Text(
-                  'ما قدرنا نقرأ التغييرات الآن.',
-                  style: JourneyType.of(JourneyType.body),
-                )
-              else if (changes.isNotEmpty)
-                Flexible(
-                  child: SingleChildScrollView(
-                    child: JourneyBox(
-                      padding: EdgeInsets.zero,
-                      child: JourneyList(
-                        children: [
-                          for (final change in changes)
-                            _PendingChangeRow(change: change, now: now),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
-              const SizedBox(height: 14),
-              JourneyButton(
-                key: const Key('sync-issues-retry'),
-                label: 'حاول الآن',
-                icon: LucideIcons.refreshCw,
-                expand: true,
-                large: true,
-                onPressed: service.isSyncing || changes.isEmpty
-                    ? null
-                    : () async {
-                        Navigator.of(context).pop();
-                        if (service.blockedCount > 0) {
-                          await service.retryBlockedChanges();
-                        } else {
-                          await service.syncPendingChanges();
-                        }
-                      },
-              ),
-            ],
+          subtitle: 'محفوظة على جوالك، وتنرسل أول ما يرجع النت',
+          // The list scrolls; the retry stays in reach under it.
+          bottom: JourneyButton(
+            key: const Key('sync-issues-retry'),
+            label: 'حاول الآن',
+            icon: LucideIcons.refreshCw,
+            expand: true,
+            large: true,
+            onPressed: service.isSyncing || changes.isEmpty
+                ? null
+                : () async {
+                    Navigator.of(context).pop();
+                    if (service.blockedCount > 0) {
+                      await service.retryBlockedChanges();
+                    } else {
+                      await service.syncPendingChanges();
+                    }
+                  },
           ),
+          children: [
+            if (snapshot.connectionState == ConnectionState.waiting)
+              const Padding(
+                padding: EdgeInsets.all(24),
+                child: Center(child: CircularProgressIndicator()),
+              )
+            else if (snapshot.hasError)
+              Text(
+                'ما قدرنا نقرأ التغييرات الآن.',
+                style: JourneyType.of(JourneyType.body),
+              )
+            else if (changes.isNotEmpty)
+              JourneyBox(
+                padding: EdgeInsets.zero,
+                child: JourneyList(
+                  children: [
+                    for (final change in changes)
+                      _PendingChangeRow(change: change, now: now),
+                  ],
+                ),
+              ),
+          ],
         );
       },
     );

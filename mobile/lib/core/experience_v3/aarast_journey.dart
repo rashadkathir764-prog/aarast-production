@@ -25,7 +25,10 @@ abstract final class JourneyType {
   /// A screen's heading or question.
   static const display = 24.0;
 
-  /// A card, sheet or section title.
+  /// A sheet's title.
+  static const sheetTitle = 22.0;
+
+  /// A card title.
   static const title = 18.0;
 
   /// A typed amount or name in a large field.
@@ -36,6 +39,9 @@ abstract final class JourneyType {
 
   /// Running text.
   static const body = 15.0;
+
+  /// Chips, a section's link, a sheet's subtitle and a form's labels.
+  static const bodySmall = 14.0;
 
   /// Secondary lines, hints and field labels.
   static const small = 13.0;

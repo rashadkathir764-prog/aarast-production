@@ -25,10 +25,8 @@ Future<DateTime?> showTaskPostponeSheet(
   BuildContext context,
   WeddingTask task,
 ) {
-  return showAarastBottomSheet<DateTime>(
+  return showJourneySheet<DateTime>(
     context: context,
-    isScrollControlled: true,
-    useSafeArea: true,
     builder: (_) => TaskPostponeSheet(task: task),
   );
 }
@@ -50,59 +48,44 @@ class TaskPostponeSheet extends StatelessWidget {
       ('بعد ثلاثة أيام', from.add(const Duration(days: 3))),
       ('بعد أسبوع', from.add(const Duration(days: 7))),
     ];
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 8, 20, 16),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Semantics(
-            header: true,
-            child: Text(
-              'لمتى تأجلها؟',
-              style: JourneyType.of(
-                JourneyType.title,
-                weight: JourneyType.bold,
-              ),
-            ),
-          ),
-          const SizedBox(height: 12),
-          JourneyBox(
-            padding: EdgeInsets.zero,
-            child: JourneyList(
-              children: [
-                for (final (label, date) in options)
-                  JourneyListRow(
-                    key: ValueKey('task-postpone-$label'),
-                    icon: LucideIcons.calendarClock,
-                    color: AarastV3Color.brandAccentStrong,
-                    soft: AarastV3Color.brandAccentSoft,
-                    title: label,
-                    subtitle: formatArabicWeekdayDayMonth(date),
-                    onTap: () => Navigator.pop(context, date),
-                  ),
+    return JourneySheetBody(
+      title: 'لمتى تأجلها؟',
+      children: [
+        JourneyBox(
+          padding: EdgeInsets.zero,
+          child: JourneyList(
+            children: [
+              for (final (label, date) in options)
                 JourneyListRow(
-                  key: const ValueKey('task-postpone-pick'),
-                  icon: LucideIcons.calendarDays,
-                  color: AarastV3Color.primary,
-                  soft: AarastV3Color.primarySoft,
-                  title: 'اختر يوم',
-                  subtitle: 'من التقويم',
-                  onTap: () async {
-                    final date = await pickTaskDate(
-                      context,
-                      initial: task.dueDate,
-                    );
-                    if (date != null && context.mounted) {
-                      Navigator.pop(context, date);
-                    }
-                  },
+                  key: ValueKey('task-postpone-$label'),
+                  icon: LucideIcons.calendarClock,
+                  color: AarastV3Color.brandAccentStrong,
+                  soft: AarastV3Color.brandAccentSoft,
+                  title: label,
+                  subtitle: formatArabicWeekdayDayMonth(date),
+                  onTap: () => Navigator.pop(context, date),
                 ),
-              ],
-            ),
+              JourneyListRow(
+                key: const ValueKey('task-postpone-pick'),
+                icon: LucideIcons.calendarDays,
+                color: AarastV3Color.primary,
+                soft: AarastV3Color.primarySoft,
+                title: 'اختر يوم',
+                subtitle: 'من التقويم',
+                onTap: () async {
+                  final date = await pickTaskDate(
+                    context,
+                    initial: task.dueDate,
+                  );
+                  if (date != null && context.mounted) {
+                    Navigator.pop(context, date);
+                  }
+                },
+              ),
+            ],
           ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 }

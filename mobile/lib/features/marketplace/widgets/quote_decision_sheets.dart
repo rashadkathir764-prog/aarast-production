@@ -133,80 +133,64 @@ class _BookingRequestSheetState extends State<BookingRequestSheet> {
         ],
       ),
     );
-    return SingleChildScrollView(
-      padding: const EdgeInsets.fromLTRB(20, 4, 20, 20),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Text(
-            'نطلب الحجز؟',
-            style: JourneyType.of(JourneyType.display, weight: JourneyType.bold),
-          ),
-          Text(
-            subtitle,
-            style: JourneyType.of(
-              JourneyType.body,
-              color: AarastV3Color.textMuted,
-            ),
-          ),
-          const SizedBox(height: 14),
-          JourneyBox(
-            color: AarastV3Color.canvas,
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-            child: Column(
-              children: [
-                fact(
-                  LucideIcons.calendarDays,
-                  day == null
-                      ? 'اختر يوم الحجز'
-                      : bookingDayLabel(
-                          day,
-                          showHijri:
-                              context.watch<DevicePreferences?>()?.showHijri ??
-                              true,
-                        ),
+    return JourneySheetBody(
+      title: 'نطلب الحجز؟',
+      subtitle: subtitle,
+      children: [
+        JourneyBox(
+          color: AarastV3Color.canvas,
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+          child: Column(
+            children: [
+              fact(
+                LucideIcons.calendarDays,
+                day == null
+                    ? 'اختر يوم الحجز'
+                    : bookingDayLabel(
+                        day,
+                        showHijri:
+                            context.watch<DevicePreferences?>()?.showHijri ??
+                            true,
+                      ),
+              ),
+              if (place.isNotEmpty) fact(LucideIcons.mapPin, place),
+              Align(
+                alignment: AlignmentDirectional.centerStart,
+                child: JourneyTextAction(
+                  key: const ValueKey('booking-other-day'),
+                  label: day == null ? 'اختر اليوم' : 'يوم ثاني',
+                  icon: LucideIcons.calendarPlus,
+                  color: AarastV3Color.cobalt,
+                  onPressed: _changeDay,
                 ),
-                if (place.isNotEmpty) fact(LucideIcons.mapPin, place),
-                Align(
-                  alignment: AlignmentDirectional.centerStart,
-                  child: JourneyTextAction(
-                    key: const ValueKey('booking-other-day'),
-                    label: day == null ? 'اختر اليوم' : 'يوم ثاني',
-                    icon: LucideIcons.calendarPlus,
-                    color: AarastV3Color.cobalt,
-                    onPressed: _changeDay,
-                  ),
-                ),
-              ],
-            ),
+              ),
+            ],
           ),
-          const SizedBox(height: 14),
-          step('1', 'يوصلهم طلب الحجز الآن'),
-          step('2', 'يأكدون إن اليوم فاضي، وتوصلك رسالة'),
-          step('3', 'يصير «محجوز»، ونذكّركم قبل بأسبوع وبيوم'),
-          const SizedBox(height: 4),
-          const JourneyNote(
-            key: ValueKey('booking-no-payment'),
-            text:
-                'ما فيه دفع داخل اعّرست. الدفعة المقدمة تتفق عليها معهم مباشرة وتسجلها في المال.',
-            icon: LucideIcons.info,
-            color: AarastV3Color.brandAccentStrong,
-            soft: AarastV3Color.brandAccentSoft,
-          ),
-          const SizedBox(height: 16),
-          JourneyButton(
-            key: const ValueKey('booking-request'),
-            label: 'اطلب الحجز',
-            icon: LucideIcons.calendarCheck,
-            background: AarastV3Color.cobalt,
-            expand: true,
-            large: true,
-            onPressed: day == null
-                ? null
-                : () => Navigator.of(context).pop(day),
-          ),
-        ],
-      ),
+        ),
+        const SizedBox(height: 14),
+        step('1', 'يوصلهم طلب الحجز الآن'),
+        step('2', 'يأكدون إن اليوم فاضي، وتوصلك رسالة'),
+        step('3', 'يصير «محجوز»، ونذكّركم قبل بأسبوع وبيوم'),
+        const SizedBox(height: 4),
+        const JourneyNote(
+          key: ValueKey('booking-no-payment'),
+          text:
+              'ما فيه دفع داخل اعّرست. الدفعة المقدمة تتفق عليها معهم مباشرة وتسجلها في المال.',
+          icon: LucideIcons.info,
+          color: AarastV3Color.brandAccentStrong,
+          soft: AarastV3Color.brandAccentSoft,
+        ),
+        const SizedBox(height: 16),
+        JourneyButton(
+          key: const ValueKey('booking-request'),
+          label: 'اطلب الحجز',
+          icon: LucideIcons.calendarCheck,
+          background: AarastV3Color.cobalt,
+          expand: true,
+          large: true,
+          onPressed: day == null ? null : () => Navigator.of(context).pop(day),
+        ),
+      ],
     );
   }
 }
@@ -257,118 +241,106 @@ class _DeclineOfferSheetState extends State<DeclineOfferSheet> {
   @override
   Widget build(BuildContext context) {
     final offer = widget.quote.pendingOffer;
-    return SingleChildScrollView(
-      padding: EdgeInsets.fromLTRB(
-        20,
-        4,
-        20,
-        20 + MediaQuery.of(context).viewInsets.bottom,
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Text(
-            'ما يناسبك العرض؟',
-            style: JourneyType.of(JourneyType.display, weight: JourneyType.bold),
+    return JourneySheetBody(
+      title: 'ما يناسبك العرض؟',
+      children: [
+        Text(
+          [
+            quoteProviderName(widget.quote),
+            ?offerAmountLabel(offer),
+          ].join(' · '),
+          style: JourneyType.of(
+            JourneyType.body,
+            color: AarastV3Color.textMuted,
           ),
-          Text(
-            [
-              quoteProviderName(widget.quote),
-              ?offerAmountLabel(offer),
-            ].join(' · '),
-            style: JourneyType.of(
-              JourneyType.body,
-              color: AarastV3Color.textMuted,
-            ),
+        ),
+        const SizedBox(height: 14),
+        Text(
+          'ليش؟',
+          style: JourneyType.of(
+            JourneyType.body,
+            weight: JourneyType.bold,
+            color: AarastV3Color.textMuted,
           ),
-          const SizedBox(height: 14),
-          Text(
-            'ليش؟',
-            style: JourneyType.of(
-              JourneyType.body,
-              weight: JourneyType.bold,
-              color: AarastV3Color.textMuted,
-            ),
-          ),
-          const SizedBox(height: 8),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: [
-              for (var i = 0; i < _reasons.length; i++)
-                JourneyChip(
-                  key: ValueKey('decline-reason-$i'),
-                  label: _reasons[i],
-                  selected: _reason == i,
-                  selectedColor: AarastV3Color.cobalt,
-                  onTap: () => setState(() {
-                    _reason = i;
-                    if (!_editing) _message.text = _template(i);
-                  }),
-                ),
-            ],
-          ),
-          const SizedBox(height: 14),
-          Text(
-            'يوصلهم كذا:',
-            style: JourneyType.of(
-              JourneyType.body,
-              weight: JourneyType.bold,
-              color: AarastV3Color.textMuted,
-            ),
-          ),
-          const SizedBox(height: 8),
-          if (_editing)
-            JourneyTextField(
-              key: const ValueKey('decline-message'),
-              label: 'رسالتك',
-              controller: _message,
-              minLines: 3,
-              maxLines: 6,
-              maxLength: 500,
-              autofocus: true,
-            )
-          else
-            JourneyBox(
-              key: const ValueKey('decline-preview'),
-              padding: const EdgeInsets.all(14),
-              child: Text(_message.text, style: JourneyType.of(JourneyType.body)),
-            ),
-          const SizedBox(height: 8),
-          Row(
-            children: [
-              if (!_editing)
-                JourneyTextAction(
-                  key: const ValueKey('decline-edit'),
-                  label: 'عدّل الرسالة',
-                  icon: LucideIcons.pencil,
-                  color: AarastV3Color.cobalt,
-                  onPressed: () => setState(() => _editing = true),
-                ),
-              const Spacer(),
-              Text(
-                'بندك ما ينذكر',
-                style: JourneyType.of(
-                  JourneyType.small,
-                  color: AarastV3Color.textMuted,
-                ),
+        ),
+        const SizedBox(height: 8),
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: [
+            for (var i = 0; i < _reasons.length; i++)
+              JourneyChip(
+                key: ValueKey('decline-reason-$i'),
+                label: _reasons[i],
+                selected: _reason == i,
+                selectedColor: AarastV3Color.cobalt,
+                onTap: () => setState(() {
+                  _reason = i;
+                  if (!_editing) _message.text = _template(i);
+                }),
               ),
-            ],
+          ],
+        ),
+        const SizedBox(height: 14),
+        Text(
+          'يوصلهم كذا:',
+          style: JourneyType.of(
+            JourneyType.body,
+            weight: JourneyType.bold,
+            color: AarastV3Color.textMuted,
           ),
-          const SizedBox(height: 16),
-          JourneyButton(
-            key: const ValueKey('decline-send'),
-            label: 'أرسل واعتذر',
-            background: AarastV3Color.cobalt,
-            expand: true,
-            large: true,
-            onPressed: () {
-              final text = _message.text.trim();
-              Navigator.of(context).pop(text.isEmpty ? _template(_reason) : text);
-            },
+        ),
+        const SizedBox(height: 8),
+        if (_editing)
+          JourneyTextField(
+            key: const ValueKey('decline-message'),
+            label: 'رسالتك',
+            controller: _message,
+            minLines: 3,
+            maxLines: 6,
+            maxLength: 500,
+            autofocus: true,
+          )
+        else
+          JourneyBox(
+            key: const ValueKey('decline-preview'),
+            padding: const EdgeInsets.all(14),
+            child: Text(_message.text, style: JourneyType.of(JourneyType.body)),
           ),
-        ],
-      ),
+        const SizedBox(height: 8),
+        Row(
+          children: [
+            if (!_editing)
+              JourneyTextAction(
+                key: const ValueKey('decline-edit'),
+                label: 'عدّل الرسالة',
+                icon: LucideIcons.pencil,
+                color: AarastV3Color.cobalt,
+                onPressed: () => setState(() => _editing = true),
+              ),
+            const Spacer(),
+            Text(
+              'بندك ما ينذكر',
+              style: JourneyType.of(
+                JourneyType.small,
+                color: AarastV3Color.textMuted,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 16),
+        JourneyButton(
+          key: const ValueKey('decline-send'),
+          label: 'أرسل واعتذر',
+          background: AarastV3Color.cobalt,
+          expand: true,
+          large: true,
+          onPressed: () {
+            final text = _message.text.trim();
+            Navigator.of(context).pop(text.isEmpty ? _template(_reason) : text);
+          },
+        ),
+      ],
     );
   }
 }

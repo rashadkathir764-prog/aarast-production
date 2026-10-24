@@ -29,11 +29,8 @@ Future<bool> showPostponeSheet(
   required String planId,
   required DateTime weddingDate,
 }) async {
-  final moved = await showAarastBottomSheet<bool>(
+  final moved = await showJourneySheet<bool>(
     context: context,
-    backgroundColor: AarastV3Color.canvas,
-    showDragHandle: true,
-    isScrollControlled: true,
     builder: (_) => _PostponeSheet(planId: planId, oldDay: weddingDate),
   );
   return moved == true;
@@ -159,127 +156,106 @@ class _PostponeSheetState extends State<_PostponeSheet> {
     final days = _days;
     final showHijri = context.read<DevicePreferences?>()?.showHijri ?? true;
     final hint = next == null || !showHijri ? null : _seasonLine(next);
-    return SafeArea(
-      child: SingleChildScrollView(
-        padding: const EdgeInsets.fromLTRB(20, 0, 20, 16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
+    return JourneySheetBody(
+      title: 'تأجيل العرس',
+      subtitle: 'نرتب كل شيء على الموعد الجديد',
+      children: [
+        Row(
           children: [
-            Text(
-              'تأجيل العرس',
-              style: JourneyType.of(
-                JourneyType.display,
-                weight: JourneyType.bold,
+            Expanded(
+              child: _DayCard(
+                label: 'كان',
+                icon: LucideIcons.calendarX,
+                value: formatArabicDayMonth(widget.oldDay),
               ),
             ),
-            Text(
-              'نرتب كل شيء على الموعد الجديد',
-              style: JourneyType.of(
-                JourneyType.body,
-                color: AarastV3Color.textMuted,
+            const SizedBox(width: 10),
+            Expanded(
+              child: _DayCard(
+                key: const ValueKey('postpone-new-day'),
+                label: 'صار',
+                icon: LucideIcons.calendarCheck,
+                value: next == null ? 'اختر اليوم' : formatArabicDayMonth(next),
+                selected: true,
+                onTap: _dateSaved ? null : _pick,
               ),
-            ),
-            const SizedBox(height: 22),
-            Row(
-              children: [
-                Expanded(
-                  child: _DayCard(
-                    label: 'كان',
-                    icon: LucideIcons.calendarX,
-                    value: formatArabicDayMonth(widget.oldDay),
-                  ),
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: _DayCard(
-                    key: const ValueKey('postpone-new-day'),
-                    label: 'صار',
-                    icon: LucideIcons.calendarCheck,
-                    value: next == null
-                        ? 'اختر اليوم'
-                        : formatArabicDayMonth(next),
-                    selected: true,
-                    onTap: _dateSaved ? null : _pick,
-                  ),
-                ),
-              ],
-            ),
-            if (hint != null) ...[
-              const SizedBox(height: 12),
-              Text(
-                hint,
-                style: JourneyType.of(
-                  JourneyType.small,
-                  weight: JourneyType.bold,
-                  color: AarastV3Color.primary,
-                ),
-              ),
-            ],
-            if (days != null) ...[
-              const SizedBox(height: 16),
-              JourneyBox(
-                radius: 26,
-                padding: const EdgeInsets.symmetric(vertical: 10),
-                child: Column(
-                  children: [
-                    if (_openDatedTasks != null)
-                      _ImpactRow(
-                        icon: LucideIcons.listChecks,
-                        color: AarastV3Color.amber,
-                        title: _openDatedTasks == 0
-                            ? 'ما فيه مهام تنتقل'
-                            : '${arabicCount(_openDatedTasks!, one: 'مهمة واحدة', two: 'مهمتين', few: 'مهام', many: 'مهمة')} '
-                                  'تنتقل '
-                                  '${arabicDays(days.abs())}',
-                        subtitle: 'المنجز ما يتغير',
-                      ),
-                    if (_oldDayBookings.isNotEmpty)
-                      _ImpactRow(
-                        key: const ValueKey('postpone-old-bookings'),
-                        icon: LucideIcons.building2,
-                        color: AarastV3Color.cobalt,
-                        title:
-                            '${arabicCount(_oldDayBookings.length, one: 'حجز واحد', two: 'حجزين', few: 'حجوزات', many: 'حجز')} '
-                            'على اليوم القديم',
-                        subtitle: 'كلّم المزودين على اليوم الجديد',
-                        onTap: () {
-                          final router = GoRouter.of(context);
-                          Navigator.of(context).pop(_dateSaved);
-                          router.push(AppRouter.planBookings(widget.planId));
-                        },
-                      ),
-                    const _ImpactRow(
-                      icon: LucideIcons.wallet,
-                      color: AarastV3Color.primary,
-                      title: 'الدفعات تبقى على مواعيدها',
-                      subtitle: 'لأنها اتفاق مع المزود',
-                    ),
-                  ],
-                ),
-              ),
-            ],
-            if (_error != null) ...[
-              const SizedBox(height: 12),
-              JourneyNote(
-                key: const ValueKey('postpone-error'),
-                icon: LucideIcons.alertCircle,
-                color: AarastV3Color.danger,
-                soft: AarastV3Color.dangerSoft,
-                text: _error!,
-              ),
-            ],
-            const SizedBox(height: 16),
-            JourneyButton(
-              key: const ValueKey('postpone-apply'),
-              label: _dateSaved ? 'انقل المهام' : 'أجّل العرس',
-              large: true,
-              expand: true,
-              loading: _saving,
-              onPressed: days == null || _saving ? null : _apply,
             ),
           ],
         ),
-      ),
+        if (hint != null) ...[
+          const SizedBox(height: 12),
+          Text(
+            hint,
+            style: JourneyType.of(
+              JourneyType.small,
+              weight: JourneyType.bold,
+              color: AarastV3Color.primary,
+            ),
+          ),
+        ],
+        if (days != null) ...[
+          const SizedBox(height: 16),
+          JourneyBox(
+            radius: 26,
+            padding: const EdgeInsets.symmetric(vertical: 10),
+            child: Column(
+              children: [
+                if (_openDatedTasks != null)
+                  _ImpactRow(
+                    icon: LucideIcons.listChecks,
+                    color: AarastV3Color.amber,
+                    title: _openDatedTasks == 0
+                        ? 'ما فيه مهام تنتقل'
+                        : '${arabicCount(_openDatedTasks!, one: 'مهمة واحدة', two: 'مهمتين', few: 'مهام', many: 'مهمة')} '
+                              'تنتقل '
+                              '${arabicDays(days.abs())}',
+                    subtitle: 'المنجز ما يتغير',
+                  ),
+                if (_oldDayBookings.isNotEmpty)
+                  _ImpactRow(
+                    key: const ValueKey('postpone-old-bookings'),
+                    icon: LucideIcons.building2,
+                    color: AarastV3Color.cobalt,
+                    title:
+                        '${arabicCount(_oldDayBookings.length, one: 'حجز واحد', two: 'حجزين', few: 'حجوزات', many: 'حجز')} '
+                        'على اليوم القديم',
+                    subtitle: 'كلّم المزودين على اليوم الجديد',
+                    onTap: () {
+                      final router = GoRouter.of(context);
+                      Navigator.of(context).pop(_dateSaved);
+                      router.push(AppRouter.planBookings(widget.planId));
+                    },
+                  ),
+                const _ImpactRow(
+                  icon: LucideIcons.wallet,
+                  color: AarastV3Color.primary,
+                  title: 'الدفعات تبقى على مواعيدها',
+                  subtitle: 'لأنها اتفاق مع المزود',
+                ),
+              ],
+            ),
+          ),
+        ],
+        if (_error != null) ...[
+          const SizedBox(height: 12),
+          JourneyNote(
+            key: const ValueKey('postpone-error'),
+            icon: LucideIcons.alertCircle,
+            color: AarastV3Color.danger,
+            soft: AarastV3Color.dangerSoft,
+            text: _error!,
+          ),
+        ],
+        const SizedBox(height: 16),
+        JourneyButton(
+          key: const ValueKey('postpone-apply'),
+          label: _dateSaved ? 'انقل المهام' : 'أجّل العرس',
+          large: true,
+          expand: true,
+          loading: _saving,
+          onPressed: days == null || _saving ? null : _apply,
+        ),
+      ],
     );
   }
 }

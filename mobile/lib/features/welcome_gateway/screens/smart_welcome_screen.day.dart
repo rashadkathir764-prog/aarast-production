@@ -38,62 +38,41 @@ class _DaySheet extends StatelessWidget {
         : firstHijri.month == lastHijri.month
         ? '${firstHijri.monthName} ${firstHijri.year}'
         : '${firstHijri.monthName} · ${lastHijri.monthName} ${lastHijri.year}';
-    return SafeArea(
-      child: ListView(
-        shrinkWrap: true,
-        padding: const EdgeInsets.fromLTRB(16, 10, 16, 20),
-        children: [
-          Semantics(
-            header: true,
-            child: Text(
-              'يوم العرس في ${arabicMonthName(month.month)} ${month.year}',
-              style: JourneyType.of(
-                JourneyType.title,
-                weight: JourneyType.bold,
-              ),
-            ),
-          ),
-          if (hijriSpan != null)
-            Text(
-              hijriSpan,
-              style: JourneyType.of(
-                JourneyType.small,
-                color: AarastV3Color.textMuted,
-              ),
-            ),
-          const SizedBox(height: 14),
-          Row(
-            children: [
-              for (final name in _weekdays)
-                Expanded(
-                  child: ExcludeSemantics(
-                    child: FittedBox(
-                      fit: BoxFit.scaleDown,
-                      child: Text(
-                        name,
-                        style: JourneyType.of(
-                          JourneyType.caption,
-                          weight: JourneyType.bold,
-                          color: AarastV3Color.textMuted,
-                        ),
+    return JourneySheetBody(
+      title: 'يوم العرس في ${arabicMonthName(month.month)} ${month.year}',
+      subtitle: hijriSpan,
+      children: [
+        Row(
+          children: [
+            for (final name in _weekdays)
+              Expanded(
+                child: ExcludeSemantics(
+                  child: FittedBox(
+                    fit: BoxFit.scaleDown,
+                    child: Text(
+                      name,
+                      style: JourneyType.of(
+                        JourneyType.caption,
+                        weight: JourneyType.bold,
+                        color: AarastV3Color.textMuted,
                       ),
                     ),
                   ),
                 ),
+              ),
+          ],
+        ),
+        const SizedBox(height: 6),
+        for (var row = 0; row * 7 < lead + days; row++)
+          Row(
+            children: [
+              for (var column = 0; column < 7; column++)
+                Expanded(
+                  child: _dayCell(context, row * 7 + column - lead + 1, days),
+                ),
             ],
           ),
-          const SizedBox(height: 6),
-          for (var row = 0; row * 7 < lead + days; row++)
-            Row(
-              children: [
-                for (var column = 0; column < 7; column++)
-                  Expanded(
-                    child: _dayCell(context, row * 7 + column - lead + 1, days),
-                  ),
-              ],
-            ),
-        ],
-      ),
+      ],
     );
   }
 

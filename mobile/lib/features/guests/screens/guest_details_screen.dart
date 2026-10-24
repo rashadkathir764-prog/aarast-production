@@ -379,9 +379,8 @@ class _GuestDetailsScreenState extends State<GuestDetailsScreen> {
 
   Future<void> _edit(GuestsProvider provider, Guest guest) async {
     final scope = 'guest:${widget.weddingPlanId}:${guest.id}';
-    final result = await showAarastBottomSheet<GuestFormResult>(
+    final result = await showJourneySheet<GuestFormResult>(
       context: context,
-      isScrollControlled: true,
       useRootNavigator: true,
       builder: (_) => GuestFormSheet(
         guest: guest,
@@ -428,40 +427,21 @@ class _GuestDetailsScreenState extends State<GuestDetailsScreen> {
 
   Future<void> _delete(Guest guest) async {
     final provider = context.read<GuestsProvider>();
-    final confirmed = await showAarastBottomSheet<bool>(
+    final confirmed = await showJourneySheet<bool>(
       context: context,
-      builder: (sheetContext) => Padding(
-        padding: const EdgeInsets.fromLTRB(20, 8, 20, 16),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Text(
-              'تشيل ${guest.name}؟',
-              style: JourneyType.of(
-                JourneyType.title,
-                weight: JourneyType.bold,
-              ),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              'ينشال من قائمة الضيوف ورابطه ما يعود يشتغل.',
-              style: JourneyType.of(
-                JourneyType.small,
-                color: AarastV3Color.textMuted,
-              ),
-            ),
-            const SizedBox(height: 16),
-            JourneyButton(
-              key: const ValueKey('guest-delete-confirm'),
-              label: 'شيله',
-              background: AarastV3Color.danger,
-              expand: true,
-              large: true,
-              onPressed: () => Navigator.pop(sheetContext, true),
-            ),
-          ],
-        ),
+      builder: (sheetContext) => JourneySheetBody(
+        title: 'تشيل ${guest.name}؟',
+        subtitle: 'ينشال من قائمة الضيوف ورابطه ما يعود يشتغل.',
+        children: [
+          JourneyButton(
+            key: const ValueKey('guest-delete-confirm'),
+            label: 'شيله',
+            background: AarastV3Color.danger,
+            expand: true,
+            large: true,
+            onPressed: () => Navigator.pop(sheetContext, true),
+          ),
+        ],
       ),
     );
     if (confirmed != true || !mounted) return;

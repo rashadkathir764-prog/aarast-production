@@ -257,214 +257,198 @@ class _GuestFormSheetState extends State<GuestFormSheet> {
   @override
   Widget build(BuildContext context) {
     final duplicate = _duplicatePhoneGuest;
-    return SingleChildScrollView(
-      padding: EdgeInsets.fromLTRB(
-        20,
-        8,
-        20,
-        16 + MediaQuery.viewInsetsOf(context).bottom,
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Semantics(
-            header: true,
-            child: Text(
-              _editing ? 'تعديل ضيف' : 'ضيف جديد',
-              style: JourneyType.of(
-                JourneyType.title,
-                weight: JourneyType.bold,
-              ),
+    return JourneySheetBody(
+      title: _editing ? 'تعديل ضيف' : 'ضيف جديد',
+      children: [
+        if (_draft != null) ...[
+          AarastV3DraftStatusLine(status: _draft!.status),
+          const SizedBox(height: 8),
+        ],
+        JourneyTextField(
+          key: const ValueKey('guest-form-name'),
+          label: 'الاسم',
+          hint: 'مثلًا: خالد الحمدي',
+          controller: _nameController,
+          icon: LucideIcons.user,
+          autofocus: !_editing,
+          errorText: _nameError,
+          textInputAction: TextInputAction.next,
+        ),
+        const SizedBox(height: 10),
+        ContactPhoneField(
+          key: const ValueKey('guest-form-phone'),
+          nameController: _nameController,
+          phoneController: _phoneController,
+          label: 'رقم الجوال (اختياري)',
+          duplicateMessage: duplicate == null
+              ? null
+              : 'رقمه عندك لـ${duplicate.name}',
+          duplicateIsBlocking: widget.blockDuplicatePhone,
+          onDraftChanged: (_) {
+            if (!mounted) return;
+            setState(() => _phoneError = null);
+            _scheduleDraft();
+          },
+        ),
+        if (_phoneError != null)
+          Text(
+            _phoneError!,
+            key: const ValueKey('guest-form-phone-error'),
+            style: JourneyType.of(
+              JourneyType.small,
+              weight: JourneyType.bold,
+              color: AarastV3Color.danger,
             ),
           ),
-          if (_draft != null) AarastV3DraftStatusLine(status: _draft!.status),
-          const SizedBox(height: 12),
-          JourneyTextField(
-            key: const ValueKey('guest-form-name'),
-            label: 'الاسم',
-            hint: 'مثلًا: خالد الحمدي',
-            controller: _nameController,
-            icon: LucideIcons.user,
-            autofocus: !_editing,
-            errorText: _nameError,
-            textInputAction: TextInputAction.next,
+        if (_hasSoftNameDuplicate)
+          Text(
+            'فيه اسم مشابه بدون رقم؛ كمّل لو هو شخص ثاني.',
+            style: JourneyType.of(
+              JourneyType.small,
+              weight: JourneyType.bold,
+              color: AarastV3Color.brandAccentStrong,
+            ),
           ),
-          const SizedBox(height: 10),
-          ContactPhoneField(
-            key: const ValueKey('guest-form-phone'),
-            nameController: _nameController,
-            phoneController: _phoneController,
-            label: 'رقم الجوال (اختياري)',
-            duplicateMessage: duplicate == null
-                ? null
-                : 'رقمه عندك لـ${duplicate.name}',
-            duplicateIsBlocking: widget.blockDuplicatePhone,
-            onDraftChanged: (_) {
-              if (!mounted) return;
-              setState(() => _phoneError = null);
-              _scheduleDraft();
-            },
-          ),
-          if (_phoneError != null)
-            Text(
-              _phoneError!,
-              key: const ValueKey('guest-form-phone-error'),
-              style: JourneyType.of(
-                JourneyType.small,
-                weight: JourneyType.bold,
-                color: AarastV3Color.danger,
-              ),
-            ),
-          if (_hasSoftNameDuplicate)
-            Text(
-              'فيه اسم مشابه بدون رقم؛ كمّل لو هو شخص ثاني.',
-              style: JourneyType.of(
-                JourneyType.small,
-                weight: JourneyType.bold,
-                color: AarastV3Color.brandAccentStrong,
-              ),
-            ),
-          if (_groups.isNotEmpty || widget.onCreateGroup != null) ...[
-            _label('العائلة'),
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: [
-                for (final group in _groups)
-                  JourneyChip(
-                    key: ValueKey('guest-form-group-${group.id}'),
-                    label: group.name,
-                    selected: _groupId == group.id,
-                    selectedColor: AarastV3Color.lilac,
-                    onTap: () => _mutate(
-                      () => _groupId = _groupId == group.id ? null : group.id,
-                    ),
-                  ),
-                if (widget.onCreateGroup != null)
-                  JourneyChip(
-                    key: const ValueKey('guest-form-group-new'),
-                    label: _creatingGroup ? 'نحفظها…' : 'جديدة',
-                    icon: LucideIcons.plus,
-                    selected: false,
-                    onTap: _creatingGroup ? null : _createGroup,
-                  ),
-              ],
-            ),
-          ],
-          _label('كم معه؟'),
+        if (_groups.isNotEmpty || widget.onCreateGroup != null) ...[
+          _label('العائلة'),
           Wrap(
             spacing: 8,
             runSpacing: 8,
             children: [
-              for (final count in const [0, 1, 2, 3])
+              for (final group in _groups)
                 JourneyChip(
-                  key: ValueKey('guest-form-companions-$count'),
-                  label: count == 0
-                      ? 'لحاله'
-                      : PhoneNumberUtils.isolateLtr('+$count'),
-                  selected: _companionsCount == count,
+                  key: ValueKey('guest-form-group-${group.id}'),
+                  label: group.name,
+                  selected: _groupId == group.id,
                   selectedColor: AarastV3Color.lilac,
-                  onTap: () => _setCompanions(count),
-                ),
-              JourneyChip(
-                key: const ValueKey('guest-form-companions-more'),
-                label: _companionsCount > 3
-                    ? PhoneNumberUtils.isolateLtr('+$_companionsCount')
-                    : 'أكثر',
-                selected: _companionsCount > 3,
-                selectedColor: AarastV3Color.lilac,
-                onTap: _companionsCount < 20
-                    ? () => _setCompanions(
-                        _companionsCount < 4 ? 4 : _companionsCount + 1,
-                      )
-                    : null,
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          Align(
-            alignment: AlignmentDirectional.centerStart,
-            child: JourneyTextAction(
-              key: const ValueKey('guest-form-more'),
-              label: _showMore ? 'أقل' : 'تفاصيل أكثر',
-              icon: _showMore ? LucideIcons.chevronUp : LucideIcons.chevronDown,
-              color: AarastV3Color.lilac,
-              onPressed: () => setState(() => _showMore = !_showMore),
-            ),
-          ),
-          if (_showMore) ...[
-            _label('من أي طرف؟'),
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: [
-                for (final side in _sideValues)
-                  JourneyChip(
-                    key: ValueKey('guest-form-side-$side'),
-                    label: guestSideLabel(side),
-                    selected: _side == side,
-                    selectedColor: AarastV3Color.lilac,
-                    onTap: () => _mutate(() => _side = side),
+                  onTap: () => _mutate(
+                    () => _groupId = _groupId == group.id ? null : group.id,
                   ),
-              ],
-            ),
-            _label('ردّه'),
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: [
-                for (final (status, label) in const [
-                  ('INVITED', 'ما ردّ'),
-                  ('CONFIRMED', 'أكّد'),
-                  ('DECLINED', 'اعتذر'),
-                ])
-                  JourneyChip(
-                    key: ValueKey('guest-form-status-$status'),
-                    label: label,
-                    selected:
-                        _status == status ||
-                        (status == 'INVITED' && _status == 'PENDING'),
-                    selectedColor: AarastV3Color.lilac,
-                    onTap: () => _mutate(() => _status = status),
-                  ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            JourneyTextField(
-              key: const ValueKey('guest-form-notes'),
-              label: 'ملاحظة',
-              controller: _notesController,
-              maxLength: 500,
-            ),
-          ],
-          const SizedBox(height: 16),
-          Row(
-            children: [
-              Expanded(
-                child: JourneyButton(
-                  key: const ValueKey('guest-form-save'),
-                  label: _editing ? 'حفظ التعديل' : 'حفظ',
-                  background: AarastV3Color.lilac,
-                  expand: true,
-                  large: true,
-                  onPressed: _submit,
                 ),
-              ),
-              if (!_editing) ...[
-                const SizedBox(width: 10),
-                JourneyButton(
-                  key: const ValueKey('guest-form-save-next'),
-                  label: 'حفظ وأضف التالي',
-                  background: AarastV3Color.lilacSoft,
-                  foreground: AarastV3Color.lilac,
-                  large: true,
-                  onPressed: () => _submit(addAnother: true),
+              if (widget.onCreateGroup != null)
+                JourneyChip(
+                  key: const ValueKey('guest-form-group-new'),
+                  label: _creatingGroup ? 'نحفظها…' : 'جديدة',
+                  icon: LucideIcons.plus,
+                  selected: false,
+                  onTap: _creatingGroup ? null : _createGroup,
                 ),
-              ],
             ],
           ),
         ],
-      ),
+        _label('كم معه؟'),
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: [
+            for (final count in const [0, 1, 2, 3])
+              JourneyChip(
+                key: ValueKey('guest-form-companions-$count'),
+                label: count == 0
+                    ? 'لحاله'
+                    : PhoneNumberUtils.isolateLtr('+$count'),
+                selected: _companionsCount == count,
+                selectedColor: AarastV3Color.lilac,
+                onTap: () => _setCompanions(count),
+              ),
+            JourneyChip(
+              key: const ValueKey('guest-form-companions-more'),
+              label: _companionsCount > 3
+                  ? PhoneNumberUtils.isolateLtr('+$_companionsCount')
+                  : 'أكثر',
+              selected: _companionsCount > 3,
+              selectedColor: AarastV3Color.lilac,
+              onTap: _companionsCount < 20
+                  ? () => _setCompanions(
+                      _companionsCount < 4 ? 4 : _companionsCount + 1,
+                    )
+                  : null,
+            ),
+          ],
+        ),
+        const SizedBox(height: 8),
+        Align(
+          alignment: AlignmentDirectional.centerStart,
+          child: JourneyTextAction(
+            key: const ValueKey('guest-form-more'),
+            label: _showMore ? 'أقل' : 'تفاصيل أكثر',
+            icon: _showMore ? LucideIcons.chevronUp : LucideIcons.chevronDown,
+            color: AarastV3Color.lilac,
+            onPressed: () => setState(() => _showMore = !_showMore),
+          ),
+        ),
+        if (_showMore) ...[
+          _label('من أي طرف؟'),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              for (final side in _sideValues)
+                JourneyChip(
+                  key: ValueKey('guest-form-side-$side'),
+                  label: guestSideLabel(side),
+                  selected: _side == side,
+                  selectedColor: AarastV3Color.lilac,
+                  onTap: () => _mutate(() => _side = side),
+                ),
+            ],
+          ),
+          _label('ردّه'),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              for (final (status, label) in const [
+                ('INVITED', 'ما ردّ'),
+                ('CONFIRMED', 'أكّد'),
+                ('DECLINED', 'اعتذر'),
+              ])
+                JourneyChip(
+                  key: ValueKey('guest-form-status-$status'),
+                  label: label,
+                  selected:
+                      _status == status ||
+                      (status == 'INVITED' && _status == 'PENDING'),
+                  selectedColor: AarastV3Color.lilac,
+                  onTap: () => _mutate(() => _status = status),
+                ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          JourneyTextField(
+            key: const ValueKey('guest-form-notes'),
+            label: 'ملاحظة',
+            controller: _notesController,
+            maxLength: 500,
+          ),
+        ],
+        const SizedBox(height: 16),
+        Row(
+          children: [
+            Expanded(
+              child: JourneyButton(
+                key: const ValueKey('guest-form-save'),
+                label: _editing ? 'حفظ التعديل' : 'حفظ',
+                background: AarastV3Color.lilac,
+                expand: true,
+                large: true,
+                onPressed: _submit,
+              ),
+            ),
+            if (!_editing) ...[
+              const SizedBox(width: 10),
+              JourneyButton(
+                key: const ValueKey('guest-form-save-next'),
+                label: 'حفظ وأضف التالي',
+                background: AarastV3Color.lilacSoft,
+                foreground: AarastV3Color.lilac,
+                large: true,
+                onPressed: () => _submit(addAnother: true),
+              ),
+            ],
+          ],
+        ),
+      ],
     );
   }
 

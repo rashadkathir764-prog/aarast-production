@@ -226,10 +226,8 @@ class _GuestInviteScreenState extends State<GuestInviteScreen> {
     GuestInviteCard card,
   ) async {
     final api = context.read<GuestsApi>();
-    await showAarastBottomSheet<int>(
+    await showJourneySheet<int>(
       context: context,
-      isScrollControlled: true,
-      useSafeArea: true,
       isDismissible: false,
       builder: (_) => GuestSendSheet(
         guests: guests,

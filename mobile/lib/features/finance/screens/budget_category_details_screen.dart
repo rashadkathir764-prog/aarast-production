@@ -247,10 +247,8 @@ class _BudgetCategoryDetailsScreenState
   Future<void> _remove(BudgetCategory category, int agreements) async {
     final currency = context.read<FinanceProvider>().summary.currency;
     final allocated = moneyValue(category.allocatedAmount);
-    final choice = await showAarastBottomSheet<_RemoveChoice>(
+    final choice = await showJourneySheet<_RemoveChoice>(
       context: context,
-      isScrollControlled: true,
-      useSafeArea: true,
       builder: (_) => _RemoveCategorySheet(
         name: category.name,
         agreements: agreements,

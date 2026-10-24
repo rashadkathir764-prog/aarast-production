@@ -17,36 +17,38 @@ enum ReceiptViewerAction { replace, remove }
 /// Asks for a receipt photo, from the camera or the gallery. Null when the
 /// person backs out.
 Future<XFile?> pickReceiptImage(BuildContext context) async {
-  final source = await showAarastBottomSheet<ImageSource>(
+  final source = await showJourneySheet<ImageSource>(
     context: context,
-    useSafeArea: true,
-    builder: (sheetContext) => Padding(
-      padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
-      child: JourneyBox(
-        padding: EdgeInsets.zero,
-        child: JourneyList(
-          children: [
-            JourneyListRow(
-              key: const ValueKey('receipt-source-camera'),
-              icon: LucideIcons.camera,
-              color: AarastV3Color.primary,
-              soft: AarastV3Color.primarySoft,
-              title: 'صوّر الإيصال',
-              subtitle: 'بالكاميرا الآن',
-              onTap: () => Navigator.of(sheetContext).pop(ImageSource.camera),
-            ),
-            JourneyListRow(
-              key: const ValueKey('receipt-source-gallery'),
-              icon: LucideIcons.image,
-              color: AarastV3Color.primary,
-              soft: AarastV3Color.primarySoft,
-              title: 'اختر من الصور',
-              subtitle: 'صورة محفوظة في جوالك',
-              onTap: () => Navigator.of(sheetContext).pop(ImageSource.gallery),
-            ),
-          ],
+    builder: (sheetContext) => JourneySheetBody(
+      title: null,
+      children: [
+        JourneyBox(
+          padding: EdgeInsets.zero,
+          child: JourneyList(
+            children: [
+              JourneyListRow(
+                key: const ValueKey('receipt-source-camera'),
+                icon: LucideIcons.camera,
+                color: AarastV3Color.primary,
+                soft: AarastV3Color.primarySoft,
+                title: 'صوّر الإيصال',
+                subtitle: 'بالكاميرا الآن',
+                onTap: () => Navigator.of(sheetContext).pop(ImageSource.camera),
+              ),
+              JourneyListRow(
+                key: const ValueKey('receipt-source-gallery'),
+                icon: LucideIcons.image,
+                color: AarastV3Color.primary,
+                soft: AarastV3Color.primarySoft,
+                title: 'اختر من الصور',
+                subtitle: 'صورة محفوظة في جوالك',
+                onTap: () =>
+                    Navigator.of(sheetContext).pop(ImageSource.gallery),
+              ),
+            ],
+          ),
         ),
-      ),
+      ],
     ),
   );
   if (source == null || !context.mounted) return null;

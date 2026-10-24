@@ -293,10 +293,8 @@ class _ChatScreenState extends State<ChatScreen> {
 
   /// w32: mute, report, block.
   Future<void> _openOptions(ChatConversation conversation) async {
-    final action = await showAarastBottomSheet<String>(
+    final action = await showJourneySheet<String>(
       context: context,
-      isScrollControlled: true,
-      backgroundColor: AarastV3Color.canvas,
       builder: (_) => _OptionsSheet(conversationId: conversation.id),
     );
     if (!mounted || action == null) return;
@@ -307,9 +305,8 @@ class _ChatScreenState extends State<ChatScreen> {
       return;
     }
     if (action == 'report') {
-      final reason = await showAarastBottomSheet<String>(
+      final reason = await showJourneySheet<String>(
         context: context,
-        isScrollControlled: true,
         builder: (_) => const _ReportSheet(),
       );
       if (!mounted || reason == null) return;
@@ -710,85 +707,61 @@ class _OptionsSheet extends StatelessWidget {
     }
     if (conversation == null) return const SizedBox.shrink();
     final current = conversation;
-    return SafeArea(
-      child: SingleChildScrollView(
-        padding: const EdgeInsets.fromLTRB(20, 10, 20, 16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
+    return JourneySheetBody(
+      title: current.provider.businessName,
+      children: [
+        JourneyList(
           children: [
-            Center(
-              child: Container(
-                width: 40,
-                height: 5,
-                decoration: BoxDecoration(
-                  color: AarastV3Color.line,
-                  borderRadius: BorderRadius.circular(3),
-                ),
+            JourneyListRow(
+              key: const Key('chat-option-mute'),
+              icon: LucideIcons.bellOff,
+              color: AarastV3Color.ink,
+              soft: AarastV3Color.canvas,
+              title: 'كتم المحادثة',
+              subtitle: 'الرسائل توصل بدون تنبيه',
+              trailing: JourneyToggle(
+                value: current.muted,
+                color: AarastV3Color.cobalt,
+                onChanged: (value) async {
+                  final ok = await chat.setMuted(current, value);
+                  if (!ok && context.mounted) {
+                    final message = chat.errorMessage;
+                    if (message != null) {
+                      AarastToast.showError(context, message);
+                    }
+                  }
+                },
               ),
             ),
-            const SizedBox(height: 18),
-            Text(
-              current.provider.businessName,
-              style: JourneyType.of(
-                JourneyType.title,
-                weight: JourneyType.bold,
-              ),
+            JourneyListRow(
+              key: const Key('chat-option-report'),
+              icon: LucideIcons.flag,
+              color: AarastV3Color.amber,
+              soft: AarastV3Color.amberSoft,
+              title: 'بلّغ عن مشكلة',
+              subtitle: 'تأخير، كلام غير لائق، احتيال',
+              onTap: () => Navigator.of(context).pop('report'),
             ),
-            const SizedBox(height: 14),
-            JourneyList(
-              children: [
-                JourneyListRow(
-                  key: const Key('chat-option-mute'),
-                  icon: LucideIcons.bellOff,
-                  color: AarastV3Color.ink,
-                  soft: AarastV3Color.canvas,
-                  title: 'كتم المحادثة',
-                  subtitle: 'الرسائل توصل بدون تنبيه',
-                  trailing: JourneyToggle(
-                    value: current.muted,
-                    color: AarastV3Color.cobalt,
-                    onChanged: (value) async {
-                      final ok = await chat.setMuted(current, value);
-                      if (!ok && context.mounted) {
-                        final message = chat.errorMessage;
-                        if (message != null) {
-                          AarastToast.showError(context, message);
-                        }
-                      }
-                    },
-                  ),
-                ),
-                JourneyListRow(
-                  key: const Key('chat-option-report'),
-                  icon: LucideIcons.flag,
-                  color: AarastV3Color.amber,
-                  soft: AarastV3Color.amberSoft,
-                  title: 'بلّغ عن مشكلة',
-                  subtitle: 'تأخير، كلام غير لائق، احتيال',
-                  onTap: () => Navigator.of(context).pop('report'),
-                ),
-                JourneyListRow(
-                  key: const Key('chat-option-block'),
-                  icon: LucideIcons.ban,
-                  color: AarastV3Color.danger,
-                  soft: AarastV3Color.dangerSoft,
-                  title: current.blockedByMe ? 'ارفع الحظر' : 'احظر المزود',
-                  subtitle: current.blockedByMe
-                      ? 'يقدر يراسلك من جديد'
-                      : 'ما يقدر يراسلك',
-                  onTap: () => Navigator.of(context).pop('block'),
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            const JourneyNote(
-              text: 'الحظر ما يلغي الحجز المؤكد. ألغه من "الحجوزات" لو تشتي.',
+            JourneyListRow(
+              key: const Key('chat-option-block'),
+              icon: LucideIcons.ban,
               color: AarastV3Color.danger,
               soft: AarastV3Color.dangerSoft,
+              title: current.blockedByMe ? 'ارفع الحظر' : 'احظر المزود',
+              subtitle: current.blockedByMe
+                  ? 'يقدر يراسلك من جديد'
+                  : 'ما يقدر يراسلك',
+              onTap: () => Navigator.of(context).pop('block'),
             ),
           ],
         ),
-      ),
+        const SizedBox(height: 12),
+        const JourneyNote(
+          text: 'الحظر ما يلغي الحجز المؤكد. ألغه من "الحجوزات" لو تشتي.',
+          color: AarastV3Color.danger,
+          soft: AarastV3Color.dangerSoft,
+        ),
+      ],
     );
   }
 }
@@ -801,29 +774,21 @@ class _ReportSheet extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return SafeArea(
-      child: ListView(
-        shrinkWrap: true,
-        padding: const EdgeInsets.fromLTRB(20, 16, 20, 16),
-        children: [
-          Text(
-            'ايش المشكلة؟',
-            style: JourneyType.of(JourneyType.title, weight: JourneyType.bold),
+    return JourneySheetBody(
+      title: 'ايش المشكلة؟',
+      children: [
+        for (final reason in _reasons) ...[
+          JourneyChoiceCard(
+            key: Key('chat-report-$reason'),
+            title: reason,
+            subtitle: '',
+            leading: const SizedBox.shrink(),
+            selected: false,
+            onTap: () => Navigator.of(context).pop(reason),
           ),
-          const SizedBox(height: 12),
-          for (final reason in _reasons) ...[
-            JourneyChoiceCard(
-              key: Key('chat-report-$reason'),
-              title: reason,
-              subtitle: '',
-              leading: const SizedBox.shrink(),
-              selected: false,
-              onTap: () => Navigator.of(context).pop(reason),
-            ),
-            const SizedBox(height: 8),
-          ],
+          const SizedBox(height: 8),
         ],
-      ),
+      ],
     );
   }
 }

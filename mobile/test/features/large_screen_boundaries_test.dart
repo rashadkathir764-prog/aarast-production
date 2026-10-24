@@ -61,7 +61,9 @@ void main() {
     final screen = _read('lib/features/more/screens/more_screen.dart');
 
     expect(_lineCount(screen), lessThanOrEqualTo(600));
-    expect(screen, contains('showAarastBottomSheet'));
+    // Its sheets (sign out, photo) open from the screen state, in the
+    // journey sheet shell (D30).
+    expect(screen, contains('showJourneySheet'));
     expect(screen, contains('AuthActionGuard'));
     expect(screen, contains('AppRouter'));
     final rows = screen.substring(screen.indexOf('class _Row '));

@@ -382,7 +382,7 @@ class _SmartWelcomeScreenState extends State<SmartWelcomeScreen> {
 
   Future<void> _pickDayInMonth(DateTime month) async {
     releaseFieldFocus();
-    final picked = await showAarastBottomSheet<DateTime>(
+    final picked = await showJourneySheet<DateTime>(
       context: context,
       builder: (sheetContext) => _DaySheet(
         month: DateTime(month.year, month.month),
@@ -398,7 +398,7 @@ class _SmartWelcomeScreenState extends State<SmartWelcomeScreen> {
   }
 
   Future<void> _pickOtherCity() async {
-    final picked = await showAarastBottomSheet<String>(
+    final picked = await showJourneySheet<String>(
       context: context,
       builder: (sheetContext) => _CitySheet(cities: _cities, selected: _city),
     );

@@ -43,29 +43,11 @@ class MyWeddingPlansScreen extends StatelessWidget {
 /// open one marked, archived ones listed but closed (`set-active` refuses
 /// them), and «خطة جديدة» (D28).
 Future<void> showPlanSwitcherSheet(BuildContext context) {
-  return showAarastBottomSheet<void>(
+  return showJourneySheet<void>(
     context: context,
-    backgroundColor: AarastV3Color.canvas,
-    showDragHandle: true,
-    isScrollControlled: true,
-    builder: (_) => SafeArea(
-      child: SingleChildScrollView(
-        padding: const EdgeInsets.fromLTRB(20, 0, 20, 16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Text(
-              'خططك',
-              style: JourneyType.of(
-                JourneyType.display,
-                weight: JourneyType.bold,
-              ),
-            ),
-            const SizedBox(height: 16),
-            const _PlanSwitcher(inSheet: true),
-          ],
-        ),
-      ),
+    builder: (_) => JourneySheetBody(
+      title: 'خططك',
+      children: [const _PlanSwitcher(inSheet: true)],
     ),
   );
 }

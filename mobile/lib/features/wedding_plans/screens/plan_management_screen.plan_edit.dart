@@ -85,54 +85,32 @@ extension _PlanCenterPlanEdit on _PlanCenterScreenState {
   /// Archive stays reachable from w10 until the plan lifecycle screens
   /// (w12 to w15) ship (D27). An archived plan cannot be opened again.
   Future<void> _confirmArchive(WeddingPlan plan) async {
-    final confirmed = await showAarastBottomSheet<bool>(
+    final confirmed = await showJourneySheet<bool>(
       context: context,
-      backgroundColor: AarastV3Color.canvas,
-      showDragHandle: true,
-      builder: (sheetContext) => SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(20, 0, 20, 16),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Text(
-                'تحط الخطة في الأرشيف؟',
-                style: JourneyType.of(
-                  JourneyType.display,
-                  weight: JourneyType.bold,
-                ),
-              ),
-              const SizedBox(height: 6),
-              Text(
-                '«${plan.title}» تنتقل للأرشيف وبياناتها تبقى محفوظة، بس ما '
-                'تقدر تفتحها بعدها من التطبيق.',
-                style: JourneyType.of(
-                  JourneyType.body,
-                  color: AarastV3Color.textMuted,
-                ),
-              ),
-              const SizedBox(height: 18),
-              JourneyButton(
-                key: const ValueKey('plan-archive-confirm'),
-                label: 'حطها في الأرشيف',
-                icon: LucideIcons.archive,
-                background: AarastV3Color.danger,
-                large: true,
-                expand: true,
-                onPressed: () => Navigator.pop(sheetContext, true),
-              ),
-              const SizedBox(height: 10),
-              JourneyButton(
-                label: 'رجوع',
-                background: AarastV3Color.paper,
-                foreground: AarastV3Color.ink,
-                expand: true,
-                onPressed: () => Navigator.pop(sheetContext, false),
-              ),
-            ],
+      builder: (sheetContext) => JourneySheetBody(
+        title: 'تحط الخطة في الأرشيف؟',
+        subtitle:
+            '«${plan.title}» تنتقل للأرشيف وبياناتها تبقى محفوظة، بس ما '
+            'تقدر تفتحها بعدها من التطبيق.',
+        children: [
+          JourneyButton(
+            key: const ValueKey('plan-archive-confirm'),
+            label: 'حطها في الأرشيف',
+            icon: LucideIcons.archive,
+            background: AarastV3Color.danger,
+            large: true,
+            expand: true,
+            onPressed: () => Navigator.pop(sheetContext, true),
           ),
-        ),
+          const SizedBox(height: 10),
+          JourneyButton(
+            label: 'رجوع',
+            background: AarastV3Color.paper,
+            foreground: AarastV3Color.ink,
+            expand: true,
+            onPressed: () => Navigator.pop(sheetContext, false),
+          ),
+        ],
       ),
     );
     if (confirmed != true || !mounted) return;

@@ -416,58 +416,28 @@ class _ProviderPickerState extends State<_ProviderPicker> {
         ),
       );
     }
-    return Padding(
-      padding: EdgeInsets.fromLTRB(
-        16,
-        8,
-        16,
-        16 + MediaQuery.viewInsetsOf(context).bottom,
-      ),
-      child: SizedBox(
-        height: MediaQuery.sizeOf(context).height * .72,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Semantics(
-              header: true,
-              child: Text(
-                'مع مين اتفقت؟',
-                style: JourneyType.of(
-                  JourneyType.title,
-                  weight: JourneyType.bold,
-                ),
-              ),
-            ),
-            const SizedBox(height: 12),
-            JourneyTextField(
-              key: const ValueKey('cost-provider-search'),
-              label: 'ابحث بالاسم',
-              controller: _searchController,
-              icon: LucideIcons.search,
-              autofocus: true,
-              onChanged: _onSearchChanged,
-            ),
-            const SizedBox(height: 12),
-            Expanded(
-              child: ListView(
-                children: [
-                  list,
-                  if (_hasMore && _providers.isNotEmpty && !_isLoading)
-                    Center(
-                      child: JourneyTextAction(
-                        label: _isLoadingMore ? 'نجيب أكثر…' : 'مزودين أكثر',
-                        color: AarastV3Color.primary,
-                        onPressed: _isLoadingMore
-                            ? null
-                            : () => _load(reset: false),
-                      ),
-                    ),
-                ],
-              ),
-            ),
-          ],
+    return JourneySheetBody(
+      title: 'مع مين اتفقت؟',
+      children: [
+        JourneyTextField(
+          key: const ValueKey('cost-provider-search'),
+          label: 'ابحث بالاسم',
+          controller: _searchController,
+          icon: LucideIcons.search,
+          autofocus: true,
+          onChanged: _onSearchChanged,
         ),
-      ),
+        const SizedBox(height: 12),
+        list,
+        if (_hasMore && _providers.isNotEmpty && !_isLoading)
+          Center(
+            child: JourneyTextAction(
+              label: _isLoadingMore ? 'نجيب أكثر…' : 'مزودين أكثر',
+              color: AarastV3Color.primary,
+              onPressed: _isLoadingMore ? null : () => _load(reset: false),
+            ),
+          ),
+      ],
     );
   }
 }

@@ -451,10 +451,8 @@ class _GuestListScreenState extends State<GuestListScreen> {
   /// Groups are saved on the account, so a device-only plan has none (w27).
   Future<void> _showGroupsSheet() {
     final provider = context.read<GuestsProvider>();
-    return showAarastBottomSheet<void>(
+    return showJourneySheet<void>(
       context: context,
-      isScrollControlled: true,
-      useSafeArea: true,
       useRootNavigator: true,
       builder: (_) => ListenableBuilder(
         listenable: provider,
@@ -496,9 +494,8 @@ class _GuestListScreenState extends State<GuestListScreen> {
 
   Future<void> _showGuestSheet({required GuestsProvider provider}) async {
     final scope = 'guest:${widget.weddingPlanId}:new';
-    final result = await showAarastBottomSheet<GuestFormResult>(
+    final result = await showJourneySheet<GuestFormResult>(
       context: context,
-      isScrollControlled: true,
       useRootNavigator: true,
       builder: (_) => GuestFormSheet(
         draftScope: scope,

@@ -229,12 +229,8 @@ class _MoreScreenState extends State<MoreScreen> {
     } on ProviderNotFoundException {
       sync = null;
     }
-    final confirmed = await showAarastBottomSheet<bool>(
+    final confirmed = await showJourneySheet<bool>(
       context: context,
-      backgroundColor: AarastV3Color.canvas,
-      showDragHandle: true,
-      // The C59 warning makes it taller than the default nine-sixteenths.
-      isScrollControlled: true,
       builder: (sheetContext) => LogoutSheet(sync: sync),
     );
 
@@ -252,12 +248,12 @@ class _MoreScreenState extends State<MoreScreen> {
     }
     if (!context.mounted) return;
 
-    final source = await showAarastBottomSheet<ImageSource>(
+    final source = await showJourneySheet<ImageSource>(
       context: context,
-      builder: (sheetContext) => SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(20, 16, 20, 16),
-          child: JourneyList(
+      builder: (sheetContext) => JourneySheetBody(
+        title: null,
+        children: [
+          JourneyList(
             children: [
               JourneyListRow(
                 icon: LucideIcons.camera,
@@ -278,7 +274,7 @@ class _MoreScreenState extends State<MoreScreen> {
               ),
             ],
           ),
-        ),
+        ],
       ),
     );
     if (source == null || !context.mounted) return;

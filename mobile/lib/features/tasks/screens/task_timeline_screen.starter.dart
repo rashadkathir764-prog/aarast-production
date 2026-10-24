@@ -53,9 +53,8 @@ Future<void> _openTaskStarterSheet(
       if (task.weddingPlanId == weddingPlanId) taskStarterTitleKey(task.title),
   };
 
-  final added = await showAarastBottomSheet<bool>(
+  final added = await showJourneySheet<bool>(
     context: context,
-    isScrollControlled: true,
     // Above the plan shell, whose quick-add button and tab bar otherwise sit
     // over the sheet's submit button (field test Q11).
     useRootNavigator: true,

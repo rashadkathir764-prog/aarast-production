@@ -11,7 +11,6 @@ import '../../../core/forms/aarast_form_draft_binding.dart';
 import '../../../core/forms/aarast_form_draft_store.dart';
 import '../../../core/phone/phone_number_utils.dart';
 import '../../../core/widgets/aarast_toast.dart';
-import '../../../core/widgets/aarast_ui.dart';
 import '../../../shared/models/contact_phone_draft.dart';
 import '../models/invite_share_content.dart';
 import '../models/participant_access.dart';
@@ -31,11 +30,8 @@ Future<void> showAddParticipantSheet(
   ParticipantPreset preset = ParticipantPreset.helper,
   ContactPhoneDraft? contact,
 }) {
-  return showAarastBottomSheet<void>(
+  return showJourneySheet<void>(
     context: context,
-    backgroundColor: AarastV3Color.canvas,
-    showDragHandle: true,
-    isScrollControlled: true,
     builder: (_) => _AddParticipantSheet(
       weddingPlanId: weddingPlanId,
       preset: preset,
@@ -143,42 +139,20 @@ class _AddParticipantSheetState extends State<_AddParticipantSheet> {
   @override
   Widget build(BuildContext context) {
     final waiting = _waiting;
-    return Padding(
-      padding: EdgeInsets.only(bottom: MediaQuery.viewInsetsOf(context).bottom),
-      child: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.fromLTRB(20, 0, 20, 16),
-          child: waiting == null ? _form() : _created(waiting),
-        ),
-      ),
-    );
+    return waiting == null ? _form() : _created(waiting);
   }
 
   Widget _form() {
     final name = _name.text.trim();
     final phone = participantPhone(_phone.text);
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
+    return JourneySheetBody(
+      title: _fromContact && name.isNotEmpty ? 'أضف $name' : 'أضف مشارك',
+      // The number reads left to right inside the Arabic line (g06).
+      subtitle: _fromContact && phone != null
+          ? PhoneNumberUtils.isolateLtr(phone)
+          : null,
       children: [
-        Text(
-          _fromContact && name.isNotEmpty ? 'أضف $name' : 'أضف مشارك',
-          style: JourneyType.of(JourneyType.display, weight: JourneyType.bold),
-        ),
-        if (_fromContact && phone != null)
-          Align(
-            alignment: AlignmentDirectional.centerStart,
-            child: Text(
-              phone,
-              key: const ValueKey('participant-phone'),
-              textDirection: TextDirection.ltr,
-              style: JourneyType.of(
-                JourneyType.body,
-                color: AarastV3Color.textMuted,
-              ),
-            ),
-          ),
         if (!_fromContact) ...[
-          const SizedBox(height: 14),
           JourneyTextField(
             key: const ValueKey('participant-name'),
             label: 'اسمه',
@@ -211,8 +185,8 @@ class _AddParticipantSheetState extends State<_AddParticipantSheet> {
                 onPressed: _sending ? null : _pickContact,
               ),
             ),
+          const SizedBox(height: 14),
         ],
-        const SizedBox(height: 14),
         ParticipantAccessEditor(
           role: _role,
           permissions: _permissions,
@@ -263,24 +237,13 @@ class _AddParticipantSheetState extends State<_AddParticipantSheet> {
       _ => 'ما قدرنا نرسلها على واتساب. انسخ الرابط وأرسله له بأي طريقة.',
     };
     final name = invite.name?.trim();
-    return Column(
+    return JourneySheetBody(
       key: const ValueKey('invite-created-view'),
-      crossAxisAlignment: CrossAxisAlignment.stretch,
+      title: 'الدعوة جاهزة',
+      subtitle: name == null || name.isEmpty
+          ? 'يدخل برقمه ويوافق، والرابط يشتغل 7 أيام'
+          : '$name يدخل برقمه ويوافق، والرابط يشتغل 7 أيام',
       children: [
-        Text(
-          'الدعوة جاهزة',
-          style: JourneyType.of(JourneyType.display, weight: JourneyType.bold),
-        ),
-        Text(
-          name == null || name.isEmpty
-              ? 'يدخل برقمه ويوافق، والرابط يشتغل 7 أيام'
-              : '$name يدخل برقمه ويوافق، والرابط يشتغل 7 أيام',
-          style: JourneyType.of(
-            JourneyType.body,
-            color: AarastV3Color.textMuted,
-          ),
-        ),
-        const SizedBox(height: 14),
         JourneyNote(
           icon: LucideIcons.alertCircle,
           color: AarastV3Color.amber,

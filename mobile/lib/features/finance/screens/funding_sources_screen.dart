@@ -215,10 +215,8 @@ class _FundingSourcesScreenState extends State<FundingSourcesScreen> {
   }
 
   Future<void> _openSourceSheet({FundingSource? source}) async {
-    final result = await showAarastBottomSheet<FundingFormResult>(
+    final result = await showJourneySheet<FundingFormResult>(
       context: context,
-      isScrollControlled: true,
-      useSafeArea: true,
       builder: (_) =>
           FundingSourceFormSheet(source: source, currency: _currency),
     );
@@ -304,10 +302,8 @@ class _FundingSourcesScreenState extends State<FundingSourcesScreen> {
     final cash = finance?.loadedPlanId == widget.weddingPlanId
         ? finance?.summary.funding?.availableCash
         : null;
-    final answer = await showAarastBottomSheet<PledgeAnswer>(
+    final answer = await showJourneySheet<PledgeAnswer>(
       context: context,
-      isScrollControlled: true,
-      useSafeArea: true,
       builder: (_) => PledgeCheckSheet(
         source: source,
         currency: _currency,
@@ -355,10 +351,8 @@ class _FundingSourcesScreenState extends State<FundingSourcesScreen> {
   Future<void> _showLoan(String loanId) {
     final funding = context.read<FundingProvider>();
     final currency = _currency;
-    return showAarastBottomSheet<void>(
+    return showJourneySheet<void>(
       context: context,
-      isScrollControlled: true,
-      useSafeArea: true,
       builder: (sheetContext) => ListenableBuilder(
         listenable: funding,
         builder: (_, _) {

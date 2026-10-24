@@ -170,195 +170,170 @@ class _FundingSourceFormSheetState extends State<FundingSourceFormSheet> {
     final amount = _typedAmount;
     final currencyLabel = currencyLabelAr(widget.currency);
     final repayments = _repayments;
-    return SingleChildScrollView(
-      padding: EdgeInsets.fromLTRB(
-        20,
-        8,
-        20,
-        16 + MediaQuery.viewInsetsOf(context).bottom,
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Semantics(
-            header: true,
-            child: Text(
-              _editing ? 'تعديل المصدر' : 'مصدر فلوس',
-              style: JourneyType.of(
-                JourneyType.title,
-                weight: JourneyType.bold,
+    return JourneySheetBody(
+      title: _editing ? 'تعديل المصدر' : 'مصدر فلوس',
+      subtitle: 'من وين بتجيب فلوس عرسك',
+      children: [
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: [
+            for (final kind in FundingKind.all)
+              JourneyChip(
+                key: ValueKey('funding-kind-$kind'),
+                label: fundingKindChoice(kind),
+                icon: fundingKindIcon(kind),
+                selected: _kind == kind,
+                onTap: () => setState(() => _kind = kind),
               ),
-            ),
-          ),
-          Text(
-            'من وين بتجيب فلوس عرسك',
-            style: JourneyType.of(
-              JourneyType.small,
-              color: AarastV3Color.textMuted,
-            ),
-          ),
+          ],
+        ),
+        const SizedBox(height: 14),
+        JourneyTextField(
+          key: const ValueKey('funding-name'),
+          label: _kind == FundingKind.savings ? 'اسمها' : 'من مين؟',
+          hint: switch (_kind) {
+            FundingKind.savings => 'مثلًا: مدخراتي',
+            FundingKind.loan => 'مثلًا: خالي أحمد',
+            _ => 'مثلًا: الوالد',
+          },
+          controller: _name,
+          icon: LucideIcons.user,
+          errorText: _nameError,
+          onChanged: (_) => setState(() => _nameError = null),
+        ),
+        const SizedBox(height: 10),
+        JourneyTextField(
+          key: const ValueKey('funding-amount'),
+          label: 'كم؟',
+          controller: _amount,
+          large: true,
+          keyboardType: TextInputType.number,
+          inputFormatters: const [MoneyInputFormatter()],
+          suffix: currencyLabel,
+          errorText: _amountError,
+          helper: amount <= 0
+              ? null
+              : amountInWords(amount, currency: currencyLabel),
+          onChanged: (_) => setState(() => _amountError = null),
+        ),
+        if (!_isLoan) ...[
           const SizedBox(height: 14),
+          _label('وصلت ولا موعود؟'),
+          Row(
+            children: [
+              Expanded(
+                child: JourneyChip(
+                  key: const ValueKey('funding-received'),
+                  label: 'وصلت',
+                  selected: !_pledged,
+                  onTap: () => setState(() => _pledged = false),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: JourneyChip(
+                  key: const ValueKey('funding-pledged'),
+                  label: 'موعود',
+                  selected: _pledged,
+                  onTap: () => setState(() => _pledged = true),
+                ),
+              ),
+            ],
+          ),
+        ],
+        if (_isLoan && !_editing) ...[
+          const SizedBox(height: 14),
+          _label('كيف بترجعها؟'),
           Wrap(
             spacing: 8,
             runSpacing: 8,
             children: [
-              for (final kind in FundingKind.all)
+              for (final count in const [0, 1, 2, 3, 4, 6])
                 JourneyChip(
-                  key: ValueKey('funding-kind-$kind'),
-                  label: fundingKindChoice(kind),
-                  icon: fundingKindIcon(kind),
-                  selected: _kind == kind,
-                  onTap: () => setState(() => _kind = kind),
+                  key: ValueKey('funding-repayments-$count'),
+                  label: count == 0
+                      ? 'بعدين'
+                      : arabicCount(
+                          count,
+                          one: 'دفعة وحدة',
+                          two: 'دفعتين',
+                          few: 'دفعات',
+                          many: 'دفعة',
+                        ),
+                  selected: _repaymentCount == count,
+                  onTap: () => setState(() => _repaymentCount = count),
                 ),
             ],
           ),
-          const SizedBox(height: 14),
-          JourneyTextField(
-            key: const ValueKey('funding-name'),
-            label: _kind == FundingKind.savings ? 'اسمها' : 'من مين؟',
-            hint: switch (_kind) {
-              FundingKind.savings => 'مثلًا: مدخراتي',
-              FundingKind.loan => 'مثلًا: خالي أحمد',
-              _ => 'مثلًا: الوالد',
-            },
-            controller: _name,
-            icon: LucideIcons.user,
-            errorText: _nameError,
-            onChanged: (_) => setState(() => _nameError = null),
-          ),
-          const SizedBox(height: 10),
-          JourneyTextField(
-            key: const ValueKey('funding-amount'),
-            label: 'كم؟',
-            controller: _amount,
-            large: true,
-            keyboardType: TextInputType.number,
-            inputFormatters: const [MoneyInputFormatter()],
-            suffix: currencyLabel,
-            errorText: _amountError,
-            helper: amount <= 0
-                ? null
-                : amountInWords(amount, currency: currencyLabel),
-            onChanged: (_) => setState(() => _amountError = null),
-          ),
-          if (!_isLoan) ...[
-            const SizedBox(height: 14),
-            _label('وصلت ولا موعود؟'),
-            Row(
-              children: [
-                Expanded(
-                  child: JourneyChip(
-                    key: const ValueKey('funding-received'),
-                    label: 'وصلت',
-                    selected: !_pledged,
-                    onTap: () => setState(() => _pledged = false),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: JourneyChip(
-                    key: const ValueKey('funding-pledged'),
-                    label: 'موعود',
-                    selected: _pledged,
-                    onTap: () => setState(() => _pledged = true),
-                  ),
-                ),
-              ],
-            ),
-          ],
-          if (_isLoan && !_editing) ...[
-            const SizedBox(height: 14),
-            _label('كيف بترجعها؟'),
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: [
-                for (final count in const [0, 1, 2, 3, 4, 6])
-                  JourneyChip(
-                    key: ValueKey('funding-repayments-$count'),
-                    label: count == 0
-                        ? 'بعدين'
-                        : arabicCount(
-                            count,
-                            one: 'دفعة وحدة',
-                            two: 'دفعتين',
-                            few: 'دفعات',
-                            many: 'دفعة',
-                          ),
-                    selected: _repaymentCount == count,
-                    onTap: () => setState(() => _repaymentCount = count),
-                  ),
-              ],
-            ),
-            if (_repaymentCount > 0) ...[
-              const SizedBox(height: 10),
-              JourneyPickerField(
-                key: const ValueKey('funding-first-repayment'),
-                label: _repaymentCount == 1 ? 'متى ترجعها؟' : 'أول دفعة',
-                value: formatArabicDayMonth(_firstRepayment),
-                icon: LucideIcons.calendarDays,
-                helper: _repaymentCount == 1 ? null : 'وبعدها كل شهر',
-                onTap: _pickFirstRepayment,
-              ),
-            ],
-            if (repayments.length > 1) ...[
-              const SizedBox(height: 10),
-              JourneyBox(
-                key: const ValueKey('funding-repayment-summary'),
-                padding: const EdgeInsets.all(14),
-                child: Text(
-                  '${_plain(int.parse(repayments.first.amount))} كل شهر · تبدأ ${arabicMonthName(_firstRepayment.month)}',
-                  style: JourneyType.of(
-                    JourneyType.body,
-                    weight: JourneyType.bold,
-                  ),
-                ),
-              ),
-            ],
-          ],
-          const SizedBox(height: 8),
-          Align(
-            alignment: AlignmentDirectional.centerStart,
-            child: JourneyTextAction(
-              label: _showMore ? 'أقل' : 'تفاصيل أكثر',
-              icon: _showMore ? LucideIcons.chevronUp : LucideIcons.chevronDown,
-              color: AarastV3Color.primary,
-              onPressed: () => setState(() => _showMore = !_showMore),
-            ),
-          ),
-          if (_showMore) ...[
-            JourneyTextField(
-              label: 'رقمه (لو تبي)',
-              controller: _phone,
-              icon: LucideIcons.phone,
-              keyboardType: TextInputType.phone,
-              textDirection: TextDirection.ltr,
-            ),
+          if (_repaymentCount > 0) ...[
             const SizedBox(height: 10),
-            JourneyTextField(label: 'ملاحظة', controller: _note),
+            JourneyPickerField(
+              key: const ValueKey('funding-first-repayment'),
+              label: _repaymentCount == 1 ? 'متى ترجعها؟' : 'أول دفعة',
+              value: formatArabicDayMonth(_firstRepayment),
+              icon: LucideIcons.calendarDays,
+              helper: _repaymentCount == 1 ? null : 'وبعدها كل شهر',
+              onTap: _pickFirstRepayment,
+            ),
           ],
-          const SizedBox(height: 16),
-          JourneyButton(
-            key: const ValueKey('funding-save'),
-            label: 'حفظ',
-            expand: true,
-            large: true,
-            onPressed: _submit,
-          ),
-          if (_editing) ...[
-            const SizedBox(height: 4),
-            Center(
-              child: JourneyTextAction(
-                key: const ValueKey('funding-delete'),
-                label: 'شيل المصدر',
-                color: AarastV3Color.danger,
-                onPressed: () =>
-                    Navigator.pop(context, const FundingFormResult.delete()),
+          if (repayments.length > 1) ...[
+            const SizedBox(height: 10),
+            JourneyBox(
+              key: const ValueKey('funding-repayment-summary'),
+              padding: const EdgeInsets.all(14),
+              child: Text(
+                '${_plain(int.parse(repayments.first.amount))} كل شهر · تبدأ ${arabicMonthName(_firstRepayment.month)}',
+                style: JourneyType.of(
+                  JourneyType.body,
+                  weight: JourneyType.bold,
+                ),
               ),
             ),
           ],
         ],
-      ),
+        const SizedBox(height: 8),
+        Align(
+          alignment: AlignmentDirectional.centerStart,
+          child: JourneyTextAction(
+            label: _showMore ? 'أقل' : 'تفاصيل أكثر',
+            icon: _showMore ? LucideIcons.chevronUp : LucideIcons.chevronDown,
+            color: AarastV3Color.primary,
+            onPressed: () => setState(() => _showMore = !_showMore),
+          ),
+        ),
+        if (_showMore) ...[
+          JourneyTextField(
+            label: 'رقمه (لو تبي)',
+            controller: _phone,
+            icon: LucideIcons.phone,
+            keyboardType: TextInputType.phone,
+            textDirection: TextDirection.ltr,
+          ),
+          const SizedBox(height: 10),
+          JourneyTextField(label: 'ملاحظة', controller: _note),
+        ],
+        const SizedBox(height: 16),
+        JourneyButton(
+          key: const ValueKey('funding-save'),
+          label: 'حفظ',
+          expand: true,
+          large: true,
+          onPressed: _submit,
+        ),
+        if (_editing) ...[
+          const SizedBox(height: 4),
+          Center(
+            child: JourneyTextAction(
+              key: const ValueKey('funding-delete'),
+              label: 'شيل المصدر',
+              color: AarastV3Color.danger,
+              onPressed: () =>
+                  Navigator.pop(context, const FundingFormResult.delete()),
+            ),
+          ),
+        ],
+      ],
     );
   }
 

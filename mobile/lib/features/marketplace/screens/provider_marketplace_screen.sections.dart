@@ -109,10 +109,8 @@ class _FilterChips extends StatelessWidget {
             icon: LucideIcons.slidersHorizontal,
             selected: city != null,
             selectedColor: AarastV3Color.cobalt,
-            onTap: () => showAarastBottomSheet<void>(
+            onTap: () => showJourneySheet<void>(
               context: context,
-              isScrollControlled: true,
-              useSafeArea: true,
               builder: (_) => _DirectoryFilterSheet(provider: provider),
             ),
           ),
@@ -145,77 +143,66 @@ class _DirectoryFilterSheet extends StatelessWidget {
           ),
         );
         final total = provider.totalProviders;
-        return SingleChildScrollView(
-          padding: const EdgeInsets.fromLTRB(20, 4, 20, 20),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Text(
-                'فلتر',
-                style: JourneyType.of(
-                  JourneyType.display,
-                  weight: JourneyType.bold,
+        return JourneySheetBody(
+          title: 'فلتر',
+          children: [
+            label('القسم'),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                JourneyChip(
+                  label: 'الكل',
+                  selected: provider.categoryId == null,
+                  selectedColor: AarastV3Color.cobalt,
+                  onTap: () => provider.setCategory(null),
                 ),
-              ),
-              const SizedBox(height: 14),
-              label('القسم'),
-              Wrap(
-                spacing: 8,
-                runSpacing: 8,
-                children: [
+                for (final category in provider.categories)
                   JourneyChip(
-                    label: 'الكل',
-                    selected: provider.categoryId == null,
+                    label: category.nameAr,
+                    selected: provider.categoryId == category.id,
                     selectedColor: AarastV3Color.cobalt,
-                    onTap: () => provider.setCategory(null),
+                    onTap: () => provider.setCategory(category.id),
                   ),
-                  for (final category in provider.categories)
-                    JourneyChip(
-                      label: category.nameAr,
-                      selected: provider.categoryId == category.id,
-                      selectedColor: AarastV3Color.cobalt,
-                      onTap: () => provider.setCategory(category.id),
-                    ),
-                ],
-              ),
-              const SizedBox(height: 14),
-              label('المكان'),
-              Wrap(
-                spacing: 8,
-                runSpacing: 8,
-                children: [
+              ],
+            ),
+            const SizedBox(height: 14),
+            label('المكان'),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                JourneyChip(
+                  key: const ValueKey('city-pill-all'),
+                  label: 'كل المدن',
+                  selected: provider.cityId == null,
+                  selectedColor: AarastV3Color.cobalt,
+                  onTap: () => provider.setCity(null),
+                ),
+                for (final city in provider.cities)
                   JourneyChip(
-                    key: const ValueKey('city-pill-all'),
-                    label: 'كل المدن',
-                    selected: provider.cityId == null,
+                    key: ValueKey('city-pill-${city.id}'),
+                    label: city.nameAr,
+                    selected: provider.cityId == city.id,
                     selectedColor: AarastV3Color.cobalt,
-                    onTap: () => provider.setCity(null),
+                    onTap: () => provider.setCity(city.id),
                   ),
-                  for (final city in provider.cities)
-                    JourneyChip(
-                      key: ValueKey('city-pill-${city.id}'),
-                      label: city.nameAr,
-                      selected: provider.cityId == city.id,
-                      selectedColor: AarastV3Color.cobalt,
-                      onTap: () => provider.setCity(city.id),
-                    ),
-                ],
-              ),
-              const SizedBox(height: 18),
-              JourneyButton(
-                key: const ValueKey('directory-filter-apply'),
-                label: provider.isLoading
-                    ? 'نحسب…'
-                    : total == 0
-                    ? 'ما في مزودين بهذا الفلتر'
-                    : 'اعرض ${arabicCount(total, one: 'مزود واحد', two: 'مزودين اثنين', few: 'مزودين', many: 'مزود')}',
-                background: AarastV3Color.cobalt,
-                expand: true,
-                large: true,
-                onPressed: () => Navigator.of(context).pop(),
-              ),
-            ],
-          ),
+              ],
+            ),
+            const SizedBox(height: 18),
+            JourneyButton(
+              key: const ValueKey('directory-filter-apply'),
+              label: provider.isLoading
+                  ? 'نحسب…'
+                  : total == 0
+                  ? 'ما في مزودين بهذا الفلتر'
+                  : 'اعرض ${arabicCount(total, one: 'مزود واحد', two: 'مزودين اثنين', few: 'مزودين', many: 'مزود')}',
+              background: AarastV3Color.cobalt,
+              expand: true,
+              large: true,
+              onPressed: () => Navigator.of(context).pop(),
+            ),
+          ],
         );
       },
     );

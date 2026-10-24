@@ -6,7 +6,7 @@ import 'package:aarast_mobile/core/theme/app_theme.dart';
 import 'package:aarast_mobile/features/marketplace/data/marketplace_api.dart';
 import 'package:aarast_mobile/features/marketplace/models/marketplace_models.dart';
 import 'package:aarast_mobile/features/provider_portal/providers/provider_dashboard_provider.dart';
-import 'package:aarast_mobile/features/provider_portal/screens/provider_services_tab.dart';
+import 'package:aarast_mobile/features/provider_portal/screens/provider_gallery_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:image_picker/image_picker.dart';
@@ -33,7 +33,7 @@ void main() {
             home: Directionality(
               textDirection: TextDirection.rtl,
               child: Scaffold(
-                body: ProviderServicesTab(
+                body: ProviderGalleryScreen(
                   pickImages: () async {
                     pickerCalls++;
                     return selectedFiles;
@@ -49,7 +49,9 @@ void main() {
         ),
       );
 
-      await tester.tap(find.text('إضافة صور للأعمال'));
+      // p37: the photos are added to the album of the chosen service.
+      expect(find.text('أضف صور في قاعة اللؤلؤة'), findsOneWidget);
+      await tester.tap(find.byKey(const Key('provider-gallery-add')));
       await tester.pumpAndSettle();
 
       expect(pickerCalls, 1);
@@ -59,7 +61,7 @@ void main() {
         'https://media.example.test/hall-2.jpg',
         'https://media.example.test/hall-3.jpg',
       ]);
-      expect(find.text('تمت إضافة 3 صور إلى الخدمة.'), findsOneWidget);
+      expect(find.text('انضافت 3 صور.'), findsOneWidget);
       expect(tester.takeException(), isNull);
     },
   );

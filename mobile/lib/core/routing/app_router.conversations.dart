@@ -21,6 +21,7 @@ List<RouteBase> _conversationRoutes() => [
         child: ChatScreen(
           conversationId: id,
           providerLine: providerRespondsLine,
+          providerCase: providerChatCase,
         ),
       );
     },
@@ -34,6 +35,7 @@ List<RouteBase> _conversationRoutes() => [
         child: QuoteConversationEntryScreen(
           quoteRequestId: id,
           providerLine: providerRespondsLine,
+          providerCase: providerChatCase,
           returnQuoteToMarketplace:
               state.extra ==
               ProviderMarketplaceLaunchOrigin.ownerMainShellProviders,

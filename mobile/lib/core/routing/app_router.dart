@@ -71,11 +71,16 @@ import '../../features/provider_portal/provider_portal_api.dart'
         AddProviderServiceScreen,
         EditProviderProfileScreen,
         ProviderApplyScreen,
+        ProviderGalleryScreen,
         ProviderNotificationsScreen,
         ProviderOfferScreen,
+        ProviderPerformanceScreen,
         ProviderPortalScreen,
         ProviderRequestScreen,
-        ProviderServicesScreen;
+        ProviderServicesScreen,
+        ProviderSettingsScreen,
+        ProviderShareScreen,
+        providerChatCase;
 import '../../features/settings/settings_api.dart'
     show LockSettingsScreen, SettingsScreen;
 import '../../features/sharing/sharing_api.dart'
@@ -153,6 +158,18 @@ class AppRouter {
   /// His notices, each opening its request (p42).
   static const providerNotifications = '/provider/notifications';
   static const providerPackageNew = '/provider/packages/new';
+
+  /// His work's photos by service, and where he works (p37).
+  static const providerGallery = '/provider/gallery';
+
+  /// His last 30 days (p39).
+  static const providerPerformance = '/provider/performance';
+
+  /// His notifications and account (p40).
+  static const providerSettings = '/provider/settings';
+
+  /// A card of his profile to post (p48).
+  static const providerShare = '/provider/share';
 
   /// One request as the provider sees it (p16, p19).
   static String providerRequest(String quoteRequestId) =>

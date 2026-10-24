@@ -268,23 +268,23 @@ void main() {
 
     await tester.tap(find.text('الرسائل'));
     await tester.pumpAndSettle();
-    // The shared conversations list speaks the journey's words (f08).
-    expect(find.text('ما في محادثات بعد'), findsOneWidget);
+    // p33 (D40): his own list, under «مع العرسان».
+    expect(find.text('مع العرسان'), findsOneWidget);
+    expect(find.byKey(const Key('provider-chats-empty')), findsOneWidget);
     expect(tester.takeException(), isNull);
 
     await tester.tap(find.text('ملفي'));
     await tester.pumpAndSettle();
+    // p35 (D40): the account moved to p40, behind «الإعدادات».
     await tester.scrollUntilVisible(
-      find.byKey(const Key('provider-settings-action')),
+      find.byKey(const Key('provider-me-settings')),
       220,
       scrollable: find.byType(Scrollable).first,
     );
     await tester.pumpAndSettle();
 
-    expect(find.text('الحساب والتطبيق'), findsOneWidget);
     expect(find.text('الإعدادات'), findsOneWidget);
-    expect(find.text('مزامنة الآن'), findsOneWidget);
-    expect(find.text('تسجيل الخروج'), findsOneWidget);
+    expect(find.text('التنبيهات والحساب'), findsOneWidget);
     expect(tester.takeException(), isNull);
 
     expect(

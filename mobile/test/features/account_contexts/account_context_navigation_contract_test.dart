@@ -99,10 +99,10 @@ void main() {
   final logoutCases =
       <({String name, String path, String startMarker, String endMarker})>[
         (
-          name: 'ProviderProfileTab._logout',
+          name: 'ProviderSettingsScreen._logout',
           path:
-              'lib/features/provider_portal/screens/provider_profile_tab.dart',
-          startMarker: 'Future<void> _logout()',
+              'lib/features/provider_portal/screens/provider_settings_screen.dart',
+          startMarker: 'Future<String?> _logout()',
           endMarker: 'Future<String?> _deleteAccount()',
         ),
         (

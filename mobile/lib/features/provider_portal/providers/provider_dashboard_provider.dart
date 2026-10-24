@@ -13,6 +13,7 @@ import '../../marketplace/marketplace_api.dart'
         ProviderDashboardProfile,
         ProviderDashboardSummary,
         ProviderPackage,
+        ProviderResponsiveness,
         ProviderReview,
         QuoteRequest,
         bookingErrorMessage,
@@ -175,6 +176,25 @@ class ProviderDashboardProvider extends ChangeNotifier
       if (booking.quoteRequestId == quoteRequestId) return booking;
     }
     return null;
+  }
+
+  /// How quickly he answers as customers read it (F16); null until read,
+  /// with too little history, or when it could not be read.
+  ProviderResponsiveness? get responsiveness => _responsiveness;
+  ProviderResponsiveness? _responsiveness;
+
+  /// Reads [responsiveness] for p35 and p39. It is optional on both, so a
+  /// failed read leaves it out instead of failing the screen.
+  Future<void> loadResponsiveness() async {
+    final providerId = _profile?.id;
+    if (providerId == null || !canUseProviderOperations) return;
+    try {
+      _responsiveness = await _api.getResponsiveness(providerId);
+    } on Object catch (error) {
+      debugPrint('Provider responsiveness not read: $error');
+      return;
+    }
+    notifyListeners();
   }
 
   /// The bookings list could not be read, so its count is unknown.
@@ -471,6 +491,7 @@ class ProviderDashboardProvider extends ChangeNotifier
     _bookings = const [];
     _bookingsLoadFailed = false;
     _blockedDates = const [];
+    _responsiveness = null;
   }
 
   /// Sends the joining (p07): the server creates the provider as PENDING at

@@ -81,7 +81,7 @@ void main() {
       const tabFiles = [
         'provider_home_tab.dart',
         'provider_requests_tab.dart',
-        'provider_services_tab.dart',
+        'provider_chats_tab.dart',
         'provider_profile_tab.dart',
       ];
       final sources = <String>[];
@@ -106,12 +106,21 @@ void main() {
 
       final source = sources.join('\n');
 
-      expect(source, contains('currencyLabelAr(service.currency)'));
-      expect(source, contains('currencyLabelAr(item.currency)'));
       expect(source, contains('class ProviderHomeTab'));
       expect(source, contains('class ProviderRequestsTab'));
-      expect(source, contains('class ProviderServicesTab'));
+      expect(source, contains('class ProviderChatsTab'));
       expect(source, contains('class ProviderProfileTab'));
+      // The services left the tabs for p36 (D39, D40); their prices name
+      // the currency in Arabic, never its code.
+      final services = File(
+        'lib/features/provider_portal/screens/provider_services_screen.dart',
+      ).readAsStringSync();
+      final parts = File(
+        'lib/features/provider_portal/widgets/provider_profile_parts.dart',
+      ).readAsStringSync();
+      expect(services, contains('providerPricesCurrencyLine('));
+      expect(parts, contains('currencySpokenLabelAr('));
+      expect(services, isNot(contains('YER')));
       expect(source, isNot(contains('250000 YER')));
     });
   });

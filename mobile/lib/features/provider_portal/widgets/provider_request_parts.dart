@@ -235,6 +235,23 @@ String providerEventDayLabel(DateTime day, {required bool showHijri}) {
   return hijri == null ? gregorian : '$gregorian · ${hijri.dayAndMonth}';
 }
 
+/// «باقي 8 أيام» to an offer's end day; «آخر يوم اليوم» on it.
+String providerDaysLeftLabel(DateTime until, {DateTime? now}) {
+  final clock = now ?? DateTime.now();
+  final days = DateTime(
+    until.year,
+    until.month,
+    until.day,
+  ).difference(DateTime(clock.year, clock.month, clock.day)).inDays;
+  return switch (days) {
+    <= 0 => 'آخر يوم اليوم',
+    1 => 'باقي يوم',
+    2 => 'باقي يومين',
+    <= 10 => 'باقي $days أيام',
+    _ => 'باقي $days يوم',
+  };
+}
+
 /// «الزفة · الخميس 21 يناير» without the occasion, which the server does
 /// not hold: the day, then what he asked for.
 String providerRequestLine(QuoteRequest quote) => [

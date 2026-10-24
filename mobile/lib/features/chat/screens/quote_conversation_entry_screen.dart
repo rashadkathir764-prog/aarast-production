@@ -13,12 +13,14 @@ class QuoteConversationEntryScreen extends StatefulWidget {
     required this.quoteRequestId,
     this.returnQuoteToMarketplace = false,
     this.providerLine,
+    this.providerCase,
     super.key,
   });
 
   final String quoteRequestId;
   final bool returnQuoteToMarketplace;
   final ChatProviderLine? providerLine;
+  final ChatProviderCase? providerCase;
 
   @override
   State<QuoteConversationEntryScreen> createState() =>
@@ -62,6 +64,7 @@ class _QuoteConversationEntryScreenState
         conversationId: conversation.id,
         returnQuoteToMarketplace: widget.returnQuoteToMarketplace,
         providerLine: widget.providerLine,
+        providerCase: widget.providerCase,
       );
     }
     return AarastScreenFrame(

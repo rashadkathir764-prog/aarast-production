@@ -761,6 +761,7 @@ class ProviderDashboardProfile {
     this.coverUrl,
     this.address,
     this.createdAt,
+    this.verifiedAt,
   });
 
   factory ProviderDashboardProfile.fromJson(Map<String, dynamic> json) {
@@ -785,6 +786,7 @@ class ProviderDashboardProfile {
       coverUrl: json['coverUrl']?.toString(),
       address: json['address']?.toString(),
       createdAt: _dateOrNull(json['createdAt']),
+      verifiedAt: _dateOrNull(json['verifiedAt']),
     );
   }
 
@@ -809,6 +811,10 @@ class ProviderDashboardProfile {
 
   /// When the provider applied or the listing was made (p08 «أرسلته…»).
   final DateTime? createdAt;
+
+  /// When an admin verified the provider; null while not verified (p35,
+  /// p48 «موثّق»).
+  final DateTime? verifiedAt;
 }
 
 class ProviderDashboardSummary {

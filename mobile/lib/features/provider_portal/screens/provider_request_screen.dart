@@ -388,19 +388,6 @@ class _Answered extends StatelessWidget {
   static String _validityLine(DateTime until, bool expired) {
     final day = formatArabicDayMonth(until);
     if (expired) return 'انتهى في $day';
-    final now = DateTime.now();
-    final days = DateTime(
-      until.year,
-      until.month,
-      until.day,
-    ).difference(DateTime(now.year, now.month, now.day)).inDays;
-    final left = switch (days) {
-      <= 0 => 'آخر يوم اليوم',
-      1 => 'باقي يوم',
-      2 => 'باقي يومين',
-      <= 10 => 'باقي $days أيام',
-      _ => 'باقي $days يوم',
-    };
-    return 'صالح لين $day · $left';
+    return 'صالح لين $day · ${providerDaysLeftLabel(until)}';
   }
 }

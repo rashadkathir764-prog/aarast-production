@@ -9,13 +9,15 @@ import '../../../core/utils/arabic_date_formatter.dart';
 import '../../marketplace/marketplace_api.dart'
     show MarketplaceBooking, ProviderDashboardProfile, QuoteRequest;
 import '../providers/provider_dashboard_provider.dart';
+import '../widgets/provider_first_steps.dart';
 import '../widgets/provider_join_parts.dart';
 import '../widgets/provider_request_parts.dart';
 
 /// p13 «الرئيسية»: who waits for him, who accepted his offer and asks to
 /// book, and his confirmed weddings this week. The waiting count is the new
 /// requests (SENT and VIEWED); requests never expire on the server (F8), so
-/// no expiry is shown.
+/// no expiry is shown. Before his first request it is p14
+/// ([ProviderFirstSteps]).
 class ProviderHomeTab extends StatelessWidget {
   const ProviderHomeTab({required this.onOpenTab, super.key});
 
@@ -65,6 +67,13 @@ class ProviderHomeTab extends StatelessWidget {
             const SizedBox(height: 16),
             if (!dashboard.canUseProviderOperations)
               _ProviderLifecycleNotice(profile: profile)
+            else if (dashboard.quoteRequests.isEmpty &&
+                dashboard.errorMessage == null &&
+                !dashboard.isOffline)
+              ProviderFirstSteps(
+                dashboard: dashboard,
+                onOpenProfile: () => onOpenTab(4),
+              )
             else
               ..._operations(context, dashboard),
           ],
@@ -245,7 +254,7 @@ class _WaitingHero extends StatelessWidget {
   }
 }
 
-/// No new request waits (the empty home, p14, is its own step).
+/// No new request waits, though requests came before.
 class _NothingWaiting extends StatelessWidget {
   const _NothingWaiting();
 

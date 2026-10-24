@@ -8,24 +8,25 @@ import '../../../core/experience_v3/aarast_v3.dart';
 import '../../../core/media/media_upload_api.dart';
 import '../../../core/network/api_client.dart';
 import '../../../core/routing/app_router.dart';
-import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/arabic_count.dart';
-import '../../../core/widgets/aarast_ui.dart';
 import '../../../core/widgets/aarast_toast.dart';
-import '../../account_contexts/account_contexts_api.dart'
-    show AccountContextController;
-import '../../auth/auth_api.dart' show AuthController;
-import '../../chat/chat_api.dart' show ChatProvider;
 import '../../marketplace/marketplace_api.dart'
-    show MarketplaceService, ProviderDashboardProfile, ProviderReview;
+    show ProviderDashboardProfile, providerRespondsLabel;
 import '../providers/provider_dashboard_provider.dart';
-import '../widgets/provider_account_actions.dart';
-import '../widgets/provider_public_profile_action.dart';
-import '../widgets/provider_setup_checklist.dart';
-import '../widgets/provider_stats_panel.dart' show ProviderStatsPanel;
+import '../widgets/provider_join_parts.dart';
+import '../widgets/provider_profile_parts.dart';
 
+/// p35 «ملفي»: who he is to customers, and a row for each piece of his
+/// profile. Only what the server holds is shown (classification p35): the
+/// «موثّق» tag and «التوثيق» row only with `verifiedAt`, the rating only
+/// with ratings, the reply speed only when the public page has it (F16), the
+/// coverage as his city; no «تيك توك مربوط», no teams and no unanswered
+/// review dot (B-09, B-15, B-16, B-17).
 class ProviderProfileTab extends StatefulWidget {
-  const ProviderProfileTab({super.key});
+  const ProviderProfileTab({this.now, super.key});
+
+  /// The clock for «موثّق من أسبوعين»; tests pin it.
+  final DateTime? now;
 
   @override
   State<ProviderProfileTab> createState() => _ProviderProfileTabState();
@@ -35,180 +36,293 @@ class _ProviderProfileTabState extends State<ProviderProfileTab> {
   bool _busy = false;
 
   @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      context.read<ProviderDashboardProvider>().loadResponsiveness();
+    });
+  }
+
+  Future<void> _refresh() async {
+    final dashboard = context.read<ProviderDashboardProvider>();
+    await dashboard.loadDashboard();
+    await dashboard.loadResponsiveness();
+  }
+
+  @override
   Widget build(BuildContext context) {
     final dashboard = context.watch<ProviderDashboardProvider>();
     final profile = dashboard.profile;
-    final canManage = dashboard.canManageProviderProfile;
-    return ListView(
-      padding: const EdgeInsets.fromLTRB(20, 14, 20, 128),
-      children: [
-        const AarastSectionHeader(
-          title: 'ملفي التجاري',
-          subtitle: 'هذه هي الهوية التي يراها العملاء في سوق المزوّدين.',
-          icon: LucideIcons.userCircle,
-        ),
-        const SizedBox(height: 16),
-        if (profile == null)
-          const AarastEmptyState(
-            icon: LucideIcons.store,
-            title: 'لا يوجد ملف مزوّد',
-            message: 'أكمل طلب الانضمام أولًا.',
-          )
-        else ...[
-          _ProfileMediaCard(
-            profile: profile,
-            busy: _busy,
-            onLogo: canManage ? () => _upload('provider-logo') : null,
-            onCover: canManage ? () => _upload('provider-cover') : null,
-          ),
-          const SizedBox(height: 14),
-          AarastCard(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Text(
-                  profile.businessName,
-                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                    color: AppTheme.textPrimary,
-                    fontWeight: FontWeight.w900,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  profile.description?.trim().isNotEmpty == true
-                      ? profile.description!.trim()
-                      : 'أضف نبذة توضح ما يميز نشاطك وخدماتك.',
-                  style: const TextStyle(
-                    color: AppTheme.textSecondary,
-                    height: 1.5,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-                const SizedBox(height: 14),
-                if (canManage) ...[
-                  FilledButton.icon(
-                    onPressed: () =>
-                        context.push(AppRouter.providerProfileEdit),
-                    icon: const Icon(LucideIcons.pencil),
-                    label: const Text('تعديل البيانات'),
-                  ),
-                  const SizedBox(height: 8),
-                ],
-                ProviderPublicProfileAction(
-                  status: profile.status,
-                  onPreview: () =>
-                      context.push(AppRouter.providerDetails(profile.id)),
-                ),
-              ],
-            ),
-          ),
-          // The services left the bottom bar for the calendar (p28, D39);
-          // p35 lists them here, as «خدماتك».
-          if (dashboard.canUseProviderOperations) ...[
-            const SizedBox(height: 14),
-            JourneyList(
-              children: [
-                JourneyListRow(
-                  key: const Key('provider-profile-services'),
-                  icon: LucideIcons.package,
-                  color: AarastV3Color.primary,
-                  soft: AarastV3Color.primarySoft,
-                  title: 'خدماتك وباقاتك',
-                  subtitle: _servicesLine(dashboard),
-                  onTap: () => context.push(AppRouter.providerServices),
-                ),
-              ],
-            ),
-          ],
-          // Moved from the home tab, which is now p13; the performance
-          // page (p39) and the first-steps home (p14) replace them later.
-          if (dashboard.canUseProviderOperations) ...[
-            if (ProviderSetupChecklist.isIncomplete(dashboard)) ...[
-              const SizedBox(height: 14),
-              ProviderSetupChecklist(dashboard: dashboard),
-            ],
-            const SizedBox(height: 14),
-            ProviderStatsPanel(dashboard: dashboard),
-          ],
-          const SizedBox(height: 14),
-          _PortfolioGallery(services: dashboard.services),
-          if (dashboard.canUseProviderOperations) ...[
-            const SizedBox(height: 18),
-            _ProviderReviewsSection(all: dashboard.reviews),
-          ],
+    return RefreshIndicator(
+      color: AarastV3Color.primary,
+      onRefresh: _refresh,
+      child: ListView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: const EdgeInsets.fromLTRB(16, 8, 16, 128),
+        children: [
+          if (profile == null)
+            dashboard.isLoading
+                ? const JourneyListState(
+                    phase: JourneyListPhase.loading,
+                    section: JourneySection.home,
+                  )
+                : JourneyListState(
+                    phase: JourneyListPhase.error,
+                    section: JourneySection.home,
+                    onRetry: dashboard.loadDashboard,
+                  )
+          else
+            ..._profile(context, dashboard, profile),
         ],
-        const SizedBox(height: 22),
-        ProviderAccountActions(
-          onOpenSettings: () => context.push(AppRouter.settings),
-          onSync: _syncProviderData,
-          onExitWorkspace: _exitWorkspace,
-          onLogout: _logout,
-          onDeleteAccount: _deleteAccount,
-        ),
-      ],
+      ),
     );
   }
 
-  /// «3 خدمات · باقتين», or what to add first.
-  static String _servicesLine(ProviderDashboardProvider dashboard) {
-    final services = dashboard.services.length;
-    final packages = dashboard.packages.length;
-    if (services == 0 && packages == 0) return 'أضف خدماتك وأسعارك';
+  List<Widget> _profile(
+    BuildContext context,
+    ProviderDashboardProvider dashboard,
+    ProviderDashboardProfile profile,
+  ) {
+    final operations = dashboard.canUseProviderOperations;
+    final canManage = dashboard.canManageProviderProfile;
+    final responds = operations
+        ? providerRespondsLabel(dashboard.responsiveness)
+        : null;
+    final verifiedAt = profile.verifiedAt;
+    final city = profile.city?.nameAr.trim() ?? '';
+    final photos = providerPhotoCount(dashboard.services);
+    final published = dashboard.reviews.where((r) => r.isPublished).length;
+    final tags = [
+      if (verifiedAt != null)
+        const JourneyTag(
+          key: Key('provider-me-verified'),
+          label: 'موثّق',
+          color: AarastV3Color.mint,
+          soft: AarastV3Color.mintSoft,
+        ),
+      if (profile.ratingCount > 0)
+        JourneyTag(
+          label:
+              '★ ${providerRatingLabel(profile.ratingAverage, profile.ratingCount)}',
+          color: AarastV3Color.brandAccentStrong,
+          soft: AarastV3Color.brandAccentSoft,
+        ),
+      if (responds != null)
+        JourneyTag(
+          key: const Key('provider-me-responds'),
+          label: responds,
+          color: AarastV3Color.cobalt,
+          soft: AarastV3Color.cobaltSoft,
+        ),
+    ];
     return [
-      if (services > 0)
-        arabicCount(
-          services,
-          one: 'خدمة',
-          two: 'خدمتين',
-          few: 'خدمات',
-          many: 'خدمة',
+      const SizedBox(height: 6),
+      ProviderIdentityRow(
+        name: profile.businessName,
+        kind: providerKindLine(
+          category: profile.primaryCategory?.nameAr,
+          city: profile.city?.nameAr,
         ),
-      if (packages > 0)
-        arabicCount(
-          packages,
-          one: 'باقة',
-          two: 'باقتين',
-          few: 'باقات',
-          many: 'باقة',
+        logoUrl: profile.logoUrl,
+        trailing: canManage
+            ? JourneyRoundButton(
+                key: const Key('provider-me-edit'),
+                icon: LucideIcons.pencil,
+                tooltip: 'عدّل ملفك',
+                onPressed: _busy ? null : () => _openEdit(context),
+              )
+            : null,
+      ),
+      if (tags.isNotEmpty) ...[
+        const SizedBox(height: 10),
+        Wrap(spacing: 6, runSpacing: 6, children: tags),
+      ],
+      // His public page exists only while he is approved.
+      if (operations) ...[
+        const SizedBox(height: 12),
+        JourneyButton(
+          key: const Key('provider-me-preview'),
+          label: 'كيف يشوفك العرسان',
+          icon: LucideIcons.eye,
+          background: AarastV3Color.primarySoft,
+          foreground: AarastV3Color.primary,
+          expand: true,
+          large: true,
+          onPressed: () => context.push(AppRouter.providerDetails(profile.id)),
         ),
-    ].join(' · ');
+      ],
+      const SizedBox(height: 12),
+      JourneyList(
+        children: [
+          if (operations) ...[
+            JourneyListRow(
+              key: const Key('provider-profile-services'),
+              icon: LucideIcons.package,
+              color: AarastV3Color.primary,
+              soft: AarastV3Color.primarySoft,
+              title: 'خدماتك وباقاتك',
+              subtitle: providerServicesLine(
+                dashboard.services,
+                dashboard.packages,
+              ),
+              onTap: () => context.push(AppRouter.providerServices),
+            ),
+            JourneyListRow(
+              key: const Key('provider-me-gallery'),
+              icon: LucideIcons.image,
+              color: AarastV3Color.primary,
+              soft: AarastV3Color.primarySoft,
+              title: 'معرض الشغل',
+              subtitle: photos == 0
+                  ? 'ما فيه صور لسا'
+                  : arabicCount(
+                      photos,
+                      one: 'صورة وحدة',
+                      two: 'صورتين',
+                      few: 'صور',
+                      many: 'صورة',
+                    ),
+              onTap: () => context.push(AppRouter.providerGallery),
+            ),
+          ],
+          if (city.isNotEmpty)
+            JourneyListRow(
+              key: const Key('provider-me-coverage'),
+              icon: LucideIcons.mapPin,
+              color: AarastV3Color.primary,
+              soft: AarastV3Color.primarySoft,
+              title: 'التغطية',
+              subtitle: city,
+              onTap: canManage
+                  ? () => context.push(AppRouter.providerProfileEdit)
+                  : null,
+            ),
+          if (verifiedAt != null)
+            JourneyListRow(
+              key: const Key('provider-me-verification'),
+              icon: LucideIcons.badgeCheck,
+              color: AarastV3Color.primary,
+              soft: AarastV3Color.primarySoft,
+              title: 'التوثيق',
+              subtitle: 'موثّق ${_since(verifiedAt)}',
+            ),
+          if (operations) ...[
+            JourneyListRow(
+              key: const Key('provider-me-reviews'),
+              icon: LucideIcons.star,
+              color: AarastV3Color.primary,
+              soft: AarastV3Color.primarySoft,
+              title: 'التقييمات',
+              subtitle: published == 0
+                  ? 'ما فيه تقييم لسا'
+                  : profile.ratingCount > 0
+                  ? providerRatingLabel(
+                      profile.ratingAverage,
+                      profile.ratingCount,
+                    )
+                  : arabicCount(
+                      published,
+                      one: 'تقييم واحد',
+                      two: 'تقييمين',
+                      few: 'تقييمات',
+                      many: 'تقييم',
+                    ),
+              onTap: () => showJourneySheet<void>(
+                context: context,
+                builder: (_) => ProviderReviewsSheet(all: dashboard.reviews),
+              ),
+            ),
+            JourneyListRow(
+              key: const Key('provider-me-performance'),
+              icon: LucideIcons.barChart3,
+              color: AarastV3Color.primary,
+              soft: AarastV3Color.primarySoft,
+              title: 'أداؤك',
+              subtitle: 'آخر 30 يوم',
+              onTap: () => context.push(AppRouter.providerPerformance),
+            ),
+            JourneyListRow(
+              key: const Key('provider-me-share'),
+              icon: LucideIcons.share2,
+              color: AarastV3Color.primary,
+              soft: AarastV3Color.primarySoft,
+              title: 'شارك ملفك',
+              subtitle: 'بطاقة لحالة واتساب',
+              onTap: () => context.push(AppRouter.providerShare),
+            ),
+          ],
+          JourneyListRow(
+            key: const Key('provider-me-settings'),
+            icon: LucideIcons.settings,
+            color: AarastV3Color.primary,
+            soft: AarastV3Color.primarySoft,
+            title: 'الإعدادات',
+            subtitle: 'التنبيهات والحساب',
+            onTap: () => context.push(AppRouter.providerSettings),
+          ),
+        ],
+      ),
+    ];
   }
 
-  Future<void> _syncProviderData() async {
-    final accountContexts = context.read<AccountContextController>();
-    await accountContexts.refresh();
-    if (!mounted) return;
-    final dashboard = context.read<ProviderDashboardProvider>();
-    final chat = context.read<ChatProvider>();
-    await dashboard.loadDashboard();
-    if (!mounted) return;
-    if (dashboard.canUseProviderOperations) {
-      await chat.loadConversations();
+  /// «من أسبوعين».
+  String _since(DateTime at) {
+    final ago = providerAgoLabel(at, now: widget.now);
+    return switch (ago) {
+      'اليوم' => 'اليوم',
+      'أمس' => 'من أمس',
+      _ => 'من ${ago.replaceFirst('قبل ', '')}',
+    };
+  }
+
+  /// His details, logo and cover, from the pencil by his name.
+  Future<void> _openEdit(BuildContext context) async {
+    final choice = await showJourneySheet<String>(
+      context: context,
+      builder: (sheetContext) => JourneySheetBody(
+        title: 'عدّل ملفك',
+        children: [
+          JourneyList(
+            children: [
+              JourneyListRow(
+                key: const Key('provider-me-edit-details'),
+                icon: LucideIcons.fileEdit,
+                color: AarastV3Color.primary,
+                soft: AarastV3Color.primarySoft,
+                title: 'بياناتك',
+                subtitle: 'الاسم والمدينة والنبذة',
+                onTap: () => Navigator.of(sheetContext).pop('details'),
+              ),
+              JourneyListRow(
+                key: const Key('provider-me-edit-logo'),
+                icon: LucideIcons.store,
+                color: AarastV3Color.primary,
+                soft: AarastV3Color.primarySoft,
+                title: 'الشعار',
+                subtitle: 'الصورة اللي جنب اسمك',
+                onTap: () => Navigator.of(sheetContext).pop('provider-logo'),
+              ),
+              JourneyListRow(
+                key: const Key('provider-me-edit-cover'),
+                icon: LucideIcons.image,
+                color: AarastV3Color.primary,
+                soft: AarastV3Color.primarySoft,
+                title: 'الغلاف',
+                subtitle: 'الصورة العريضة فوق ملفك',
+                onTap: () => Navigator.of(sheetContext).pop('provider-cover'),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+    if (!context.mounted || choice == null) return;
+    if (choice == 'details') {
+      await context.push(AppRouter.providerProfileEdit);
+      return;
     }
-    if (dashboard.errorMessage != null ||
-        (dashboard.canUseProviderOperations && chat.errorMessage != null)) {
-      throw StateError('Provider refresh failed');
-    }
-  }
-
-  Future<void> _exitWorkspace() async {
-    final router = GoRouter.of(context);
-    final accountContexts = context.read<AccountContextController>();
-    await accountContexts.exitWorkspace();
-    await accountContexts.refresh();
-    router.go(AppRouter.home);
-  }
-
-  Future<void> _logout() async {
-    await context.read<AuthController>().logout();
-  }
-
-  Future<String?> _deleteAccount() async {
-    final auth = context.read<AuthController>();
-    final deleted = await auth.deleteAccount();
-    if (!mounted) return deleted ? null : 'تعذر حذف الحساب.';
-    if (deleted) return null;
-    return auth.errorMessage ?? 'تعذر حذف الحساب. حاول مرة أخرى.';
+    await _upload(choice);
   }
 
   Future<void> _upload(String purpose) async {
@@ -234,243 +348,22 @@ class _ProviderProfileTabState extends State<ProviderProfileTab> {
       if (!saved) {
         AarastToast.showError(
           context,
-          dashboard.errorMessage ?? 'تعذر حفظ الصورة في ملف المزوّد.',
+          dashboard.errorMessage ?? 'ما قدرنا نحفظ الصورة في ملفك.',
         );
         return;
       }
       AarastToast.showSuccess(
         context,
-        purpose == 'provider-logo'
-            ? 'تم تحديث شعار ملفك التجاري.'
-            : 'تم تحديث غلاف ملفك التجاري.',
+        purpose == 'provider-logo' ? 'تغيّر شعارك.' : 'تغيّر غلافك.',
       );
     } on ApiException catch (error) {
       if (mounted) AarastToast.showError(context, error.message);
     } catch (_) {
       if (mounted) {
-        AarastToast.showError(context, 'تعذر رفع الصورة الآن. حاول مرة أخرى.');
+        AarastToast.showError(context, 'ما قدرنا نرفع الصورة، جرب مرة ثانية.');
       }
     } finally {
       if (mounted) setState(() => _busy = false);
     }
-  }
-}
-
-class _ProviderReviewsSection extends StatelessWidget {
-  const _ProviderReviewsSection({required this.all});
-
-  /// Every review the server sends the provider, whatever its status; only
-  /// the published ones show on the public profile, so only those are listed.
-  final List<ProviderReview> all;
-
-  @override
-  Widget build(BuildContext context) {
-    final reviews = [
-      for (final review in all)
-        if (review.isPublished) review,
-    ];
-    final unpublished = all.length - reviews.length;
-    final published = reviews.isEmpty
-        ? 'لا توجد مراجعات منشورة حتى الآن.'
-        : '${reviews.length} مراجعة منشورة على ملفك.';
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        AarastSectionHeader(
-          title: 'مراجعات العملاء',
-          subtitle: unpublished == 0
-              ? published
-              : '$published و$unpublished ما تظهر للعملاء (مخفية أو تحت المراجعة).',
-          icon: LucideIcons.star,
-        ),
-        const SizedBox(height: 10),
-        if (reviews.isEmpty)
-          const AarastEmptyState(
-            icon: LucideIcons.messageSquare,
-            title: 'لا توجد مراجعات بعد',
-            message: 'ستظهر هنا المراجعات المنشورة من العملاء.',
-          )
-        else
-          for (final review in reviews) ...[
-            AarastCard(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Expanded(
-                        child: Text(
-                          review.userName?.trim().isNotEmpty == true
-                              ? review.userName!.trim()
-                              : 'عميل اعّرست',
-                          style: const TextStyle(
-                            color: AppTheme.textPrimary,
-                            fontWeight: FontWeight.w900,
-                          ),
-                        ),
-                      ),
-                      AarastStatusPill(
-                        label: '${review.rating}/5',
-                        icon: LucideIcons.star,
-                        color: AppTheme.focus,
-                        backgroundColor: AppTheme.brandMuted,
-                      ),
-                    ],
-                  ),
-                  if (review.comment?.trim().isNotEmpty == true) ...[
-                    const SizedBox(height: 8),
-                    Text(
-                      review.comment!.trim(),
-                      style: const TextStyle(
-                        color: AppTheme.textSecondary,
-                        height: 1.5,
-                      ),
-                    ),
-                  ],
-                ],
-              ),
-            ),
-            const SizedBox(height: 10),
-          ],
-      ],
-    );
-  }
-}
-
-class _ProfileMediaCard extends StatelessWidget {
-  const _ProfileMediaCard({
-    required this.profile,
-    required this.busy,
-    required this.onLogo,
-    required this.onCover,
-  });
-
-  final ProviderDashboardProfile profile;
-  final bool busy;
-
-  /// Null while the server keeps the profile read-only; the button is gone.
-  final VoidCallback? onLogo;
-  final VoidCallback? onCover;
-
-  @override
-  Widget build(BuildContext context) {
-    return AarastCard(
-      padding: EdgeInsets.zero,
-      child: Column(
-        children: [
-          Stack(
-            clipBehavior: Clip.none,
-            children: [
-              ClipRRect(
-                borderRadius: const BorderRadius.vertical(
-                  top: Radius.circular(AppTheme.radiusLg),
-                ),
-                child: Container(
-                  height: 150,
-                  width: double.infinity,
-                  color: AppTheme.brandMuted,
-                  child: profile.coverUrl == null
-                      ? const Icon(
-                          LucideIcons.image,
-                          color: AppTheme.brand,
-                          size: 36,
-                        )
-                      : Image.network(profile.coverUrl!, fit: BoxFit.cover),
-                ),
-              ),
-              if (onCover != null)
-                PositionedDirectional(
-                  top: 10,
-                  end: 10,
-                  child: IconButton.filledTonal(
-                    tooltip: 'تغيير الغلاف',
-                    onPressed: busy ? null : onCover,
-                    icon: const Icon(LucideIcons.camera),
-                  ),
-                ),
-              PositionedDirectional(
-                start: 18,
-                bottom: -34,
-                child: Stack(
-                  clipBehavior: Clip.none,
-                  children: [
-                    CircleAvatar(
-                      radius: 39,
-                      backgroundColor: AppTheme.surfaceRaised,
-                      backgroundImage: profile.logoUrl == null
-                          ? null
-                          : NetworkImage(profile.logoUrl!),
-                      child: profile.logoUrl == null
-                          ? const Icon(
-                              LucideIcons.store,
-                              color: AppTheme.focus,
-                              size: 30,
-                            )
-                          : null,
-                    ),
-                    if (onLogo != null)
-                      PositionedDirectional(
-                        end: -8,
-                        bottom: -4,
-                        child: IconButton.filled(
-                          tooltip: 'تغيير الشعار',
-                          visualDensity: VisualDensity.compact,
-                          onPressed: busy ? null : onLogo,
-                          icon: const Icon(LucideIcons.camera, size: 16),
-                        ),
-                      ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 44),
-        ],
-      ),
-    );
-  }
-}
-
-class _PortfolioGallery extends StatelessWidget {
-  const _PortfolioGallery({required this.services});
-
-  final List<MarketplaceService> services;
-
-  @override
-  Widget build(BuildContext context) {
-    final images = services.expand((service) => service.images).toList();
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        const AarastSectionHeader(
-          title: 'معرض الأعمال',
-          subtitle: 'مجمّع تلقائيًا من صور خدماتك.',
-          icon: LucideIcons.galleryThumbnails,
-        ),
-        const SizedBox(height: 12),
-        if (images.isEmpty)
-          const AarastEmptyState(
-            icon: LucideIcons.galleryThumbnails,
-            title: 'المعرض فارغ',
-            message: 'أضف صورًا داخل الخدمات لتظهر هنا وفي ملفك العام.',
-          )
-        else
-          GridView.builder(
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: 2,
-              crossAxisSpacing: 8,
-              mainAxisSpacing: 8,
-              childAspectRatio: 1.15,
-            ),
-            itemCount: images.length,
-            itemBuilder: (context, index) => ClipRRect(
-              borderRadius: BorderRadius.circular(AppTheme.radiusMd),
-              child: Image.network(images[index].imageUrl, fit: BoxFit.cover),
-            ),
-          ),
-      ],
-    );
   }
 }

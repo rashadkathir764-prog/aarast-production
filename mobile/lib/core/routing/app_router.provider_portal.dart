@@ -71,6 +71,45 @@ List<RouteBase> _providerPortalRoutes() => [
     ),
   ),
   GoRoute(
+    path: AppRouter.providerGallery,
+    builder: (context, state) => ProviderAuthGate(
+      resumeLocation: state.uri.toString(),
+      registerAsProvider: true,
+      providerAccountRequired: true,
+      providerOperationsRequired: true,
+      child: const ProviderGalleryScreen(),
+    ),
+  ),
+  GoRoute(
+    path: AppRouter.providerPerformance,
+    builder: (context, state) => ProviderAuthGate(
+      resumeLocation: state.uri.toString(),
+      registerAsProvider: true,
+      providerAccountRequired: true,
+      providerOperationsRequired: true,
+      child: const ProviderPerformanceScreen(),
+    ),
+  ),
+  GoRoute(
+    path: AppRouter.providerSettings,
+    builder: (context, state) => ProviderAuthGate(
+      resumeLocation: state.uri.toString(),
+      registerAsProvider: true,
+      providerAccountRequired: true,
+      child: const ProviderSettingsScreen(),
+    ),
+  ),
+  GoRoute(
+    path: AppRouter.providerShare,
+    builder: (context, state) => ProviderAuthGate(
+      resumeLocation: state.uri.toString(),
+      registerAsProvider: true,
+      providerAccountRequired: true,
+      providerOperationsRequired: true,
+      child: const ProviderShareScreen(),
+    ),
+  ),
+  GoRoute(
     path: AppRouter.providerServiceNew,
     builder: (context, state) => ProviderAuthGate(
       resumeLocation: state.uri.toString(),

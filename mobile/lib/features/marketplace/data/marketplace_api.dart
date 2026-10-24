@@ -687,6 +687,17 @@ class ProviderDashboardApi {
     return ProviderDashboardSummary.fromJson(json);
   }
 
+  /// How quickly he answers, as customers read it on his public page (F16:
+  /// 180 days, a median, null under three requests). Reading the page does
+  /// not count a view; only `POST /providers/:id/views` does.
+  Future<ProviderResponsiveness?> getResponsiveness(String providerId) async {
+    final json = await _apiClient.getJson('/api/v1/providers/$providerId');
+    final value = json['responsiveness'];
+    return value is Map
+        ? ProviderResponsiveness.fromJson(Map<String, dynamic>.from(value))
+        : null;
+  }
+
   Future<List<MarketplaceService>> getServices() async {
     final list = await _apiClient.getJsonList('/api/v1/provider/me/services');
     return list

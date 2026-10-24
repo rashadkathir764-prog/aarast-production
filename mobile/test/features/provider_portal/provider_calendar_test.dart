@@ -299,7 +299,9 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
-    expect(find.text('الخدمات والباقات'), findsOneWidget);
+    // p36 (D40) rebuilt the page the services list was parked on.
+    expect(find.text('خدماتك'), findsOneWidget);
+    expect(find.byKey(const Key('provider-services-empty')), findsOneWidget);
     expect(find.byTooltip('رجوع'), findsOneWidget);
   });
 }

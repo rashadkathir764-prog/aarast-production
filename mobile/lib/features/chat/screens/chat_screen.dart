@@ -21,6 +21,44 @@ import '../providers/chat_provider.dart';
 typedef ChatProviderLine =
     Future<String?> Function(BuildContext context, String providerId);
 
+/// What the provider's portal draws around one of his conversations (p34):
+/// the line under the customer's name, the strip about his offer, and the
+/// fixed quick replies. Chat keeps no copy of the provider's pages, so his
+/// portal supplies them; the customer's side never uses them.
+class ChatProviderCase {
+  const ChatProviderCase({
+    required this.subtitle,
+    required this.strip,
+    required this.replies,
+  });
+
+  final String? Function(BuildContext context, ChatConversation conversation)
+  subtitle;
+  final Widget? Function(BuildContext context, ChatConversation conversation)
+  strip;
+  final List<ChatQuickReply> Function(
+    BuildContext context,
+    ChatConversation conversation,
+  )
+  replies;
+}
+
+/// One fixed quick reply under the messages: it sends [message] as his
+/// message, or runs [onTap] (as «أعدّل العرض» opens the offer).
+class ChatQuickReply {
+  const ChatQuickReply({
+    required this.label,
+    this.message,
+    this.onTap,
+    this.key,
+  });
+
+  final String label;
+  final String? message;
+  final VoidCallback? onTap;
+  final Key? key;
+}
+
 /// f06: one conversation with a provider. The request opens it as the
 /// customer's own message, an offer arrives as a card to accept or compare,
 /// and the name on top opens the conversation's options (w32).
@@ -29,6 +67,7 @@ class ChatScreen extends StatefulWidget {
     required this.conversationId,
     this.returnQuoteToMarketplace = false,
     this.providerLine,
+    this.providerCase,
     this.now,
     super.key,
   });
@@ -36,6 +75,9 @@ class ChatScreen extends StatefulWidget {
   final String conversationId;
   final bool returnQuoteToMarketplace;
   final ChatProviderLine? providerLine;
+
+  /// The provider's own parts of p34; read only when he is the viewer.
+  final ChatProviderCase? providerCase;
 
   /// Fixed in tests so «ينتهي بعد 6 أيام» does not drift.
   final DateTime? now;
@@ -120,6 +162,16 @@ class _ChatScreenState extends State<ChatScreen> {
     final customerSide = !(conversation?.viewerIsProvider ?? false);
     final now = widget.now ?? DateTime.now();
     final hasOlder = chat.canLoadOlder(widget.conversationId);
+    // The provider's side is drawn in his teal (p34); the customer's keeps
+    // the providers section's cobalt (f06).
+    final accent = customerSide ? AarastV3Color.cobalt : AarastV3Color.primary;
+    final providerCase = customerSide || conversation == null
+        ? null
+        : widget.providerCase;
+    final strip = providerCase?.strip(context, conversation!);
+    final replies = providerCase == null || conversation?.canSend != true
+        ? const <ChatQuickReply>[]
+        : providerCase.replies(context, conversation!);
 
     final Widget body;
     if ((chat.isLoading || !_firstLoadDone) &&
@@ -150,8 +202,13 @@ class _ChatScreenState extends State<ChatScreen> {
       body = ListView.builder(
         controller: _scrollController,
         padding: const EdgeInsets.fromLTRB(16, 4, 16, 16),
-        itemCount: timeline.length + (hasOlder ? 1 : 0),
+        itemCount:
+            timeline.length + (hasOlder ? 1 : 0) + (replies.isEmpty ? 0 : 1),
         itemBuilder: (context, index) {
+          if (replies.isNotEmpty &&
+              index == timeline.length + (hasOlder ? 1 : 0)) {
+            return _QuickReplies(replies: replies, onSend: _sendReply);
+          }
           if (hasOlder && index == 0) {
             final loading = chat.isLoadingOlder(widget.conversationId);
             return Center(
@@ -159,7 +216,7 @@ class _ChatScreenState extends State<ChatScreen> {
                 key: const Key('chat-load-older'),
                 label: 'رسائل أقدم',
                 icon: LucideIcons.chevronUp,
-                color: AarastV3Color.cobalt,
+                color: accent,
                 onPressed: loading ? null : _loadOlder,
               ),
             );
@@ -169,6 +226,7 @@ class _ChatScreenState extends State<ChatScreen> {
           if (message != null) {
             return _Bubble(
               mine: message.senderUserId == chat.currentUserId,
+              providerSide: !customerSide,
               text: message.body,
               time: message.pending ? 'يرسل…' : _clock(message.createdAt),
               attachments: [
@@ -205,7 +263,9 @@ class _ChatScreenState extends State<ChatScreen> {
             padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
             child: JourneySubHeader(
               title: conversation?.counterpartName ?? '',
-              subtitle: customerSide ? _providerLine : null,
+              subtitle: customerSide
+                  ? _providerLine
+                  : providerCase?.subtitle(context, conversation!),
               onBack: () {
                 if (context.canPop()) context.pop();
               },
@@ -215,6 +275,11 @@ class _ChatScreenState extends State<ChatScreen> {
               titleTapLabel: 'خيارات المحادثة',
             ),
           ),
+          if (strip != null)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 14),
+              child: strip,
+            ),
           Expanded(child: body),
           if (conversation?.blocked == true)
             _Notice(
@@ -232,6 +297,7 @@ class _ChatScreenState extends State<ChatScreen> {
             )
           else if (conversation?.canSend == true)
             _Composer(
+              providerSide: !customerSide,
               controller: _controller,
               attachment: _attachment,
               isBusy: chat.isSending || _isUploading,
@@ -379,6 +445,18 @@ class _ChatScreenState extends State<ChatScreen> {
     _scrollToEnd();
   }
 
+  /// A quick reply goes as his own message, as if typed.
+  Future<void> _sendReply(String text) async {
+    final chat = context.read<ChatProvider>();
+    final ok = await chat.send(widget.conversationId, text);
+    if (!mounted) return;
+    if (!ok) {
+      _showError(chat.errorMessage);
+      return;
+    }
+    _scrollToEnd();
+  }
+
   Future<void> _loadOlder() async {
     final previousMax = _scrollController.hasClients
         ? _scrollController.position.maxScrollExtent
@@ -422,17 +500,20 @@ String _clock(DateTime at) {
   return '$hour:$minute';
 }
 
-/// Mine on the reading side in cobalt, theirs on the other in white.
+/// The customer's own messages sit on the reading side in cobalt (f06); the
+/// provider's sit on the far side in teal (p34). Theirs are white.
 class _Bubble extends StatelessWidget {
   const _Bubble({
     required this.mine,
     required this.text,
     required this.time,
+    this.providerSide = false,
     this.attachments = const [],
     super.key,
   });
 
   final bool mine;
+  final bool providerSide;
   final String text;
   final String time;
   final List<Widget> attachments;
@@ -440,16 +521,19 @@ class _Bubble extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final ink = mine ? AarastV3Color.onPrimary : AarastV3Color.text;
+    final onReadingSide = providerSide ? !mine : mine;
     return Align(
-      alignment: mine
+      alignment: onReadingSide
           ? AlignmentDirectional.centerStart
           : AlignmentDirectional.centerEnd,
       child: Container(
-        constraints: const BoxConstraints(maxWidth: 290),
+        constraints: BoxConstraints(maxWidth: providerSide ? 270 : 290),
         margin: const EdgeInsets.only(bottom: 8),
         padding: const EdgeInsets.fromLTRB(14, 10, 14, 8),
         decoration: BoxDecoration(
-          color: mine ? AarastV3Color.cobalt : AarastV3Color.paper,
+          color: mine
+              ? (providerSide ? AarastV3Color.primary : AarastV3Color.cobalt)
+              : AarastV3Color.paper,
           borderRadius: BorderRadius.circular(18),
         ),
         child: Column(
@@ -504,6 +588,7 @@ class _EventView extends StatelessWidget {
         return _Bubble(
           key: key,
           mine: customerSide,
+          providerSide: !customerSide,
           text: message.isNotEmpty
               ? message
               : service == null
@@ -511,7 +596,9 @@ class _EventView extends StatelessWidget {
               : '$asked عرض: $service',
           time: _clock(event.occurredAt),
         );
-      case 'QUOTE_OFFER_RECEIVED':
+      // The provider reads his own offer in the strip on top (p34), so on
+      // his side the event is one quiet line.
+      case 'QUOTE_OFFER_RECEIVED' when customerSide:
         return _OfferCard(
           key: key,
           offer: _offer,
@@ -522,6 +609,7 @@ class _EventView extends StatelessWidget {
         );
     }
     final label = switch (event.type) {
+      'QUOTE_OFFER_RECEIVED' => 'أرسلت عرضك',
       'QUOTE_REQUEST_CANCELLED' => 'تسكّر الطلب',
       'QUOTE_REQUEST_REJECTED' =>
         customerSide ? 'اعتذروا عن الطلب' : 'اعتذرت عن الطلب',
@@ -827,9 +915,42 @@ class _Notice extends StatelessWidget {
   }
 }
 
-/// The white field and the round send button.
+/// The fixed quick replies under the messages (p34): chips that send a line
+/// or open a page.
+class _QuickReplies extends StatelessWidget {
+  const _QuickReplies({required this.replies, required this.onSend});
+
+  final List<ChatQuickReply> replies;
+  final ValueChanged<String> onSend;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(top: 8),
+      child: Wrap(
+        spacing: 8,
+        runSpacing: 8,
+        children: [
+          for (final reply in replies)
+            JourneyChip(
+              key: reply.key,
+              label: reply.label,
+              onTap:
+                  reply.onTap ??
+                  (reply.message == null ? null : () => onSend(reply.message!)),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+/// The white field and the round send button. On the provider's side it is
+/// p34's one white bar holding the field, the picture button and a 38-point
+/// send circle in his teal.
 class _Composer extends StatelessWidget {
   const _Composer({
+    required this.providerSide,
     required this.controller,
     required this.attachment,
     required this.isBusy,
@@ -838,6 +959,7 @@ class _Composer extends StatelessWidget {
     required this.onSend,
   });
 
+  final bool providerSide;
   final TextEditingController controller;
   final MediaUploadTicket? attachment;
   final bool isBusy;
@@ -845,10 +967,15 @@ class _Composer extends StatelessWidget {
   final VoidCallback onRemoveAttachment;
   final VoidCallback onSend;
 
+  Color get _accent =>
+      providerSide ? AarastV3Color.primary : AarastV3Color.cobalt;
+
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(14, 6, 14, 12),
+      padding: providerSide
+          ? const EdgeInsets.fromLTRB(16, 6, 16, 12)
+          : const EdgeInsets.fromLTRB(14, 6, 14, 12),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
@@ -857,11 +984,7 @@ class _Composer extends StatelessWidget {
               padding: const EdgeInsets.only(bottom: 6),
               child: Row(
                 children: [
-                  const Icon(
-                    LucideIcons.image,
-                    size: 18,
-                    color: AarastV3Color.cobalt,
-                  ),
+                  Icon(LucideIcons.image, size: 18, color: _accent),
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text(
@@ -881,91 +1004,137 @@ class _Composer extends StatelessWidget {
                 ],
               ),
             ),
-          Row(
-            children: [
-              Expanded(
-                child: TextField(
-                  controller: controller,
-                  minLines: 1,
-                  maxLines: 4,
-                  maxLength: 2000,
-                  style: JourneyType.of(JourneyType.body),
-                  decoration: InputDecoration(
-                    hintText: 'اكتب رسالتك...',
-                    hintStyle: JourneyType.of(
-                      JourneyType.body,
-                      color: AarastV3Color.textFaint,
-                    ),
-                    counterText: '',
-                    filled: true,
-                    fillColor: AarastV3Color.paper,
-                    contentPadding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 13,
-                    ),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(22),
-                      borderSide: BorderSide.none,
-                    ),
-                    enabledBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(22),
-                      borderSide: BorderSide.none,
-                    ),
-                    focusedBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(22),
-                      borderSide: const BorderSide(
-                        color: AarastV3Color.cobalt,
-                        width: 2,
-                      ),
-                    ),
-                    suffixIcon: Semantics(
-                      button: true,
-                      label: 'أرسل صورة',
-                      child: AarastPressable(
-                        onTap: isBusy ? null : onPickImage,
-                        borderRadius: BorderRadius.circular(20),
-                        child: const Icon(
-                          LucideIcons.image,
-                          size: 20,
-                          color: AarastV3Color.textFaint,
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(width: 8),
-              Semantics(
-                button: true,
-                label: 'أرسل',
-                child: AarastPressable(
-                  onTap: isBusy ? null : onSend,
-                  borderRadius: BorderRadius.circular(23),
-                  child: Container(
-                    width: 46,
-                    height: 46,
-                    decoration: const BoxDecoration(
-                      color: AarastV3Color.cobalt,
-                      shape: BoxShape.circle,
-                    ),
-                    child: isBusy
-                        ? const Center(
-                            child: AarastInlineSpinner(
-                              color: AarastV3Color.onPrimary,
-                            ),
-                          )
-                        : const Icon(
-                            LucideIcons.send,
-                            size: 19,
-                            color: AarastV3Color.onPrimary,
-                          ),
-                  ),
-                ),
-              ),
-            ],
-          ),
+          if (providerSide) _drawnBar() else _fieldAndSend(),
         ],
       ),
+    );
+  }
+
+  Widget _imageButton() => Semantics(
+    button: true,
+    label: 'أرسل صورة',
+    child: AarastPressable(
+      onTap: isBusy ? null : onPickImage,
+      borderRadius: BorderRadius.circular(20),
+      child: Icon(
+        LucideIcons.image,
+        size: providerSide ? 22 : 20,
+        color: providerSide ? _accent : AarastV3Color.textFaint,
+      ),
+    ),
+  );
+
+  Widget _sendButton(double size, double icon) => Semantics(
+    button: true,
+    label: 'أرسل',
+    child: AarastPressable(
+      onTap: isBusy ? null : onSend,
+      borderRadius: BorderRadius.circular(size / 2),
+      child: Container(
+        width: size,
+        height: size,
+        decoration: BoxDecoration(color: _accent, shape: BoxShape.circle),
+        child: isBusy
+            ? const Center(
+                child: AarastInlineSpinner(color: AarastV3Color.onPrimary),
+              )
+            : Icon(
+                LucideIcons.send,
+                size: icon,
+                color: AarastV3Color.onPrimary,
+              ),
+      ),
+    ),
+  );
+
+  /// p34: one white bar with a hairline, the field, the picture button and
+  /// the send circle inside it.
+  Widget _drawnBar() {
+    return Container(
+      key: const Key('chat-composer-bar'),
+      padding: const EdgeInsetsDirectional.fromSTEB(14, 6, 8, 6),
+      decoration: BoxDecoration(
+        color: AarastV3Color.paper,
+        borderRadius: BorderRadius.circular(22),
+        border: Border.all(color: AarastV3Color.line),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: TextField(
+              controller: controller,
+              minLines: 1,
+              maxLines: 4,
+              maxLength: 2000,
+              style: JourneyType.of(JourneyType.body),
+              cursorColor: _accent,
+              decoration: InputDecoration(
+                hintText: 'اكتب رسالة…',
+                hintStyle: JourneyType.of(
+                  JourneyType.body,
+                  color: AarastV3Color.textFaint,
+                ),
+                counterText: '',
+                isDense: true,
+                filled: false,
+                border: InputBorder.none,
+                enabledBorder: InputBorder.none,
+                focusedBorder: InputBorder.none,
+                contentPadding: const EdgeInsets.symmetric(vertical: 10),
+              ),
+            ),
+          ),
+          const SizedBox(width: 6),
+          _imageButton(),
+          const SizedBox(width: 10),
+          _sendButton(38, 18),
+        ],
+      ),
+    );
+  }
+
+  Widget _fieldAndSend() {
+    return Row(
+      children: [
+        Expanded(
+          child: TextField(
+            controller: controller,
+            minLines: 1,
+            maxLines: 4,
+            maxLength: 2000,
+            style: JourneyType.of(JourneyType.body),
+            decoration: InputDecoration(
+              hintText: 'اكتب رسالتك...',
+              hintStyle: JourneyType.of(
+                JourneyType.body,
+                color: AarastV3Color.textFaint,
+              ),
+              counterText: '',
+              filled: true,
+              fillColor: AarastV3Color.paper,
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: 16,
+                vertical: 13,
+              ),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(22),
+                borderSide: BorderSide.none,
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(22),
+                borderSide: BorderSide.none,
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(22),
+                borderSide: BorderSide(color: _accent, width: 2),
+              ),
+              suffixIcon: _imageButton(),
+            ),
+          ),
+        ),
+        const SizedBox(width: 8),
+        _sendButton(46, 19),
+      ],
     );
   }
 }

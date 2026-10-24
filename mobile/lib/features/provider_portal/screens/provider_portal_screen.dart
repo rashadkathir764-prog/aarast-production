@@ -11,7 +11,7 @@ import '../../../core/experience_v3/aarast_v3.dart';
 import '../../../core/routing/app_router.dart';
 import '../../../core/widgets/aarast_ui.dart';
 import '../../../core/routing/root_tab_back_scope.dart';
-import '../../chat/chat_api.dart' show ChatProvider, ConversationListView;
+import '../../chat/chat_api.dart' show ChatProvider;
 import '../../marketplace/marketplace_api.dart' show ProviderDashboardProfile;
 import '../data/provider_approval_ledger.dart';
 import '../providers/provider_dashboard_provider.dart';
@@ -94,7 +94,7 @@ class _ProviderPortalScreenState extends State<ProviderPortalScreen> {
       case ProviderFirstStep.services:
         unawaited(context.push(AppRouter.providerServiceNew));
       case ProviderFirstStep.notifications:
-        unawaited(context.push(AppRouter.settings));
+        unawaited(context.push(AppRouter.providerSettings));
     }
   }
 
@@ -206,7 +206,7 @@ class _ProviderPortalScreenState extends State<ProviderPortalScreen> {
                 ? const ProviderCalendarTab()
                 : _ProviderOperationsUnavailable(profile: dashboard.profile),
             canUseOperations
-                ? const ConversationListView(embedded: true)
+                ? const ProviderChatsTab()
                 : _ProviderOperationsUnavailable(profile: dashboard.profile),
             const ProviderProfileTab(),
           ],

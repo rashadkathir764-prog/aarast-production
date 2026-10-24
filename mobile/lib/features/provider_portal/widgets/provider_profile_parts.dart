@@ -1,0 +1,194 @@
+import 'package:flutter/material.dart';
+import 'package:lucide_icons/lucide_icons.dart';
+
+import '../../../core/experience_v3/aarast_v3.dart';
+import '../../../core/utils/arabic_count.dart';
+import '../../../core/utils/currency_label.dart';
+import '../../marketplace/marketplace_api.dart'
+    show MarketplaceService, ProviderPackage, ProviderReview;
+import 'provider_request_parts.dart' show providerGroupedAmount;
+
+/// «قبل أسبوعين»: how long ago, in the words p36 and p35 use.
+String providerAgoLabel(DateTime then, {DateTime? now}) {
+  final clock = now ?? DateTime.now();
+  final local = then.toLocal();
+  final days = DateTime(
+    clock.year,
+    clock.month,
+    clock.day,
+  ).difference(DateTime(local.year, local.month, local.day)).inDays;
+  if (days < 1) return 'اليوم';
+  if (days == 1) return 'أمس';
+  if (days < 14) {
+    return 'قبل ${arabicCount(days, one: 'يوم', two: 'يومين', few: 'أيام', many: 'يوم')}';
+  }
+  if (days < 30) {
+    final weeks = days ~/ 7;
+    return 'قبل ${arabicCount(weeks, one: 'أسبوع', two: 'أسبوعين', few: 'أسابيع', many: 'أسبوع')}';
+  }
+  if (days >= 365) return 'قبل أكثر من سنة';
+  final months = days ~/ 30;
+  return 'قبل ${arabicCount(months, one: 'شهر', two: 'شهرين', few: 'شهور', many: 'شهر')}';
+}
+
+/// «3 ساعات», «يومين»: a reply time in hours, as p39 reads it.
+String providerHoursLabel(int hours) {
+  if (hours < 24) {
+    return arabicCount(
+      hours < 1 ? 1 : hours,
+      one: 'ساعة',
+      two: 'ساعتين',
+      few: 'ساعات',
+      many: 'ساعة',
+    );
+  }
+  final days = (hours / 24).ceil();
+  return arabicCount(days, one: 'يوم', two: 'يومين', few: 'أيام', many: 'يوم');
+}
+
+/// «4.7 · 38 تقييم».
+String providerRatingLabel(double average, int count) =>
+    '${average.toStringAsFixed(1)} · ${arabicCount(count, one: 'تقييم واحد', two: 'تقييمين', few: 'تقييمات', many: 'تقييم')}';
+
+/// The photos customers see on his page: every service image (F14 has no
+/// portfolio of its own).
+int providerPhotoCount(List<MarketplaceService> services) =>
+    services.fold(0, (sum, service) => sum + service.images.length);
+
+/// «3 خدمات · باقتين · من 350,000»: what he offers and the lowest price
+/// among the active ones; what to add first when he has none.
+String providerServicesLine(
+  List<MarketplaceService> services,
+  List<ProviderPackage> packages,
+) {
+  if (services.isEmpty && packages.isEmpty) return 'أضف خدماتك وأسعارك';
+  num? lowest;
+  for (final price in [
+    for (final service in services)
+      if (service.isActive) service.basePrice,
+    for (final package in packages)
+      if (package.isActive) package.price,
+  ]) {
+    final value = num.tryParse(price?.trim() ?? '');
+    if (value != null && value > 0 && (lowest == null || value < lowest)) {
+      lowest = value;
+    }
+  }
+  return [
+    if (services.isNotEmpty)
+      arabicCount(
+        services.length,
+        one: 'خدمة',
+        two: 'خدمتين',
+        few: 'خدمات',
+        many: 'خدمة',
+      ),
+    if (packages.isNotEmpty)
+      arabicCount(
+        packages.length,
+        one: 'باقة',
+        two: 'باقتين',
+        few: 'باقات',
+        many: 'باقة',
+      ),
+    if (lowest != null) 'من ${providerGroupedAmount('$lowest')}',
+  ].join(' · ');
+}
+
+/// «الأسعار بريال صنعاء»: the currency his prices are in, when they share
+/// one.
+String? providerPricesCurrencyLine(
+  List<MarketplaceService> services,
+  List<ProviderPackage> packages,
+) {
+  final currencies = {
+    for (final service in services)
+      if (service.basePrice?.trim().isNotEmpty == true)
+        (service.currency ?? defaultCurrencyCode).toUpperCase(),
+    for (final package in packages)
+      if (package.price?.trim().isNotEmpty == true)
+        (package.currency ?? defaultCurrencyCode).toUpperCase(),
+  };
+  if (currencies.length != 1) return null;
+  return 'الأسعار ب${currencySpokenLabelAr(currencies.single)}';
+}
+
+/// p35 «التقييمات»: the published reviews, as customers read them on his
+/// page (D35), and how many are not shown. A reply waits for its backend
+/// item (F15), so none is offered.
+class ProviderReviewsSheet extends StatelessWidget {
+  const ProviderReviewsSheet({required this.all, super.key});
+
+  final List<ProviderReview> all;
+
+  @override
+  Widget build(BuildContext context) {
+    final reviews = [
+      for (final review in all)
+        if (review.isPublished) review,
+    ];
+    final hidden = all.length - reviews.length;
+    return JourneySheetBody(
+      title: 'التقييمات',
+      subtitle: [
+        reviews.isEmpty
+            ? 'ما فيه تقييم منشور لسا'
+            : '${arabicCount(reviews.length, one: 'تقييم واحد', two: 'تقييمين', few: 'تقييمات', many: 'تقييم')} في ملفك',
+        // Hidden by the admin or waiting for review (D35).
+        if (hidden == 1) 'وتقييم ما يظهر للعرسان',
+        if (hidden > 1)
+          'و${arabicCount(hidden, one: '', two: 'تقييمين', few: 'تقييمات', many: 'تقييم')} ما تظهر للعرسان',
+      ].join('، '),
+      children: [
+        if (reviews.isEmpty)
+          const JourneyNote(
+            icon: LucideIcons.star,
+            text: 'التقييمات توصل من العرسان بعد أعراسهم، وتظهر هنا وفي ملفك.',
+          )
+        else
+          for (final review in reviews) ...[
+            JourneyBox(
+              key: Key('provider-review-${review.id}'),
+              padding: const EdgeInsets.all(14),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          review.userName?.trim().isNotEmpty == true
+                              ? review.userName!.trim()
+                              : 'عريس من اعّرست',
+                          style: JourneyType.of(
+                            JourneyType.body,
+                            weight: JourneyType.bold,
+                          ),
+                        ),
+                      ),
+                      JourneyTag(
+                        label: '★ ${review.rating}',
+                        color: AarastV3Color.brandAccentStrong,
+                        soft: AarastV3Color.brandAccentSoft,
+                      ),
+                    ],
+                  ),
+                  if (review.comment?.trim().isNotEmpty == true) ...[
+                    const SizedBox(height: 6),
+                    Text(
+                      review.comment!.trim(),
+                      style: JourneyType.of(
+                        JourneyType.body,
+                        color: AarastV3Color.textMuted,
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+            const SizedBox(height: 8),
+          ],
+      ],
+    );
+  }
+}

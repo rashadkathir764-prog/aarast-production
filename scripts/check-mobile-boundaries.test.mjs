@@ -1677,8 +1677,17 @@ const r19ProviderPortalApi = Object.freeze({
 // old booking panel and days-off sheet, deleted with their file (the setup
 // checklist moved out of it reads no owner API). +2 for p42 (D39): the
 // provider's notices read his notices through the notifications owner API
-// and their requests through the marketplace owner API.
-const r19LegalRecordCount = 226;
+// and their requests through the marketplace owner API. Provider slice 4
+// (D40), +6: +12 for the new files reading their owners (p33's list and
+// p34's chat parts read the conversation through the chat owner API and the
+// request through the marketplace owner API, two each; p37, p36, p48, the
+// listing sheet and the profile parts read the profile, services, packages
+// or reviews through the marketplace owner API; p40 reads the path, the
+// account and the notification settings through the account contexts, auth
+// and settings owner APIs), -6 for the deleted and rebuilt files («ملفي»'s
+// path, account and chat records moved to p40, the account actions, the
+// old services list and its edit dialogs).
+const r19LegalRecordCount = 232;
 const trackedOwnerApiContracts = [
   {
     area: 'features/account_contexts',
@@ -1757,8 +1766,14 @@ const trackedOwnerApiContracts = [
     exports: [
       { uri: 'data/chat_api.dart', show: ['ChatApi'] },
       { uri: 'data/chat_realtime_client.dart', show: ['ChatRealtimeClient'] },
+      // p33 and p34 (D40): the provider's own list reads his conversations,
+      // and his portal draws his side of one.
+      { uri: 'models/chat_models.dart', show: ['ChatConversation'] },
       { uri: 'providers/chat_provider.dart', show: ['ChatProvider'] },
-      { uri: 'screens/chat_screen.dart', show: ['ChatScreen'] },
+      {
+        uri: 'screens/chat_screen.dart',
+        show: ['ChatProviderCase', 'ChatQuickReply', 'ChatScreen'],
+      },
       {
         uri: 'screens/quote_conversation_entry_screen.dart',
         show: ['QuoteConversationEntryScreen'],
@@ -1883,6 +1898,8 @@ const trackedOwnerApiContracts = [
           'ProviderDashboardProfile',
           'ProviderDashboardSummary',
           'ProviderPackage',
+          // p35 and p39 (D40): his reply speed as customers read it.
+          'ProviderResponsiveness',
           'ProviderReview',
           'ProviderServiceImage',
           'QuoteRequest',
@@ -1927,7 +1944,8 @@ const trackedOwnerApiContracts = [
       { uri: 'widgets/provider_auth_gate.dart', show: ['ProviderAuthGate'] },
       {
         uri: 'widgets/provider_trust_signals.dart',
-        show: ['providerRespondsLine'],
+        // p35 and p36 (D40): the reply-speed tag and the prices' last change.
+        show: ['latestPriceUpdate', 'providerRespondsLabel', 'providerRespondsLine'],
       },
       { uri: 'widgets/quote_status_chip.dart', show: ['QuoteStatusChip'] },
     ],
@@ -2019,14 +2037,26 @@ const trackedOwnerApiContracts = [
         uri: 'screens/provider_apply_screen.dart',
         show: ['ProviderApplyScreen'],
       },
+      // p37 (D40).
+      { uri: 'screens/provider_gallery_screen.dart', show: ['ProviderGalleryScreen'] },
       {
         uri: 'screens/provider_notifications_screen.dart',
         show: ['ProviderNotificationsScreen'],
       },
       { uri: 'screens/provider_offer_screen.dart', show: ['ProviderOfferScreen'] },
+      // p39 (D40).
+      {
+        uri: 'screens/provider_performance_screen.dart',
+        show: ['ProviderPerformanceScreen'],
+      },
       { uri: 'screens/provider_portal_screen.dart', show: ['ProviderPortalScreen'] },
       { uri: 'screens/provider_request_screen.dart', show: ['ProviderRequestScreen'] },
       { uri: 'screens/provider_services_screen.dart', show: ['ProviderServicesScreen'] },
+      // p40 and p48 (D40).
+      { uri: 'screens/provider_settings_screen.dart', show: ['ProviderSettingsScreen'] },
+      { uri: 'screens/provider_share_screen.dart', show: ['ProviderShareScreen'] },
+      // p34 (D40): the router hands his side of a chat to the chat screen.
+      { uri: 'widgets/provider_chat_case.dart', show: ['providerChatCase'] },
     ],
   },
   {
@@ -2369,22 +2399,24 @@ const trackedCollaborationBatchContracts = [
   {
     source: 'mobile/lib/features/provider_portal/screens/provider_portal_screen.dart',
     target: 'mobile/lib/features/chat/chat_api.dart',
-    show: ['ChatProvider', 'ConversationListView'],
+    show: ['ChatProvider'],
   },
+  // p40 (D40): the provider's account (the path switch, logout and delete)
+  // left «ملفي» and the deleted account actions for his settings page.
   {
-    source: 'mobile/lib/features/provider_portal/screens/provider_profile_tab.dart',
+    source: 'mobile/lib/features/provider_portal/screens/provider_settings_screen.dart',
     target: 'mobile/lib/features/account_contexts/account_contexts_api.dart',
     show: ['AccountContextController'],
   },
   {
-    source: 'mobile/lib/features/provider_portal/screens/provider_profile_tab.dart',
+    source: 'mobile/lib/features/provider_portal/screens/provider_settings_screen.dart',
     target: 'mobile/lib/features/auth/auth_api.dart',
-    show: ['AuthController'],
+    show: ['AuthController', 'confirmAccountDeletion'],
   },
   {
-    source: 'mobile/lib/features/provider_portal/screens/provider_profile_tab.dart',
-    target: 'mobile/lib/features/chat/chat_api.dart',
-    show: ['ChatProvider'],
+    source: 'mobile/lib/features/provider_portal/screens/provider_settings_screen.dart',
+    target: 'mobile/lib/features/settings/settings_api.dart',
+    show: ['SettingsProvider'],
   },
   {
     source: 'mobile/lib/features/marketplace/screens/quote_request_screen.dart',
@@ -2410,11 +2442,6 @@ const trackedCollaborationBatchContracts = [
     source: 'mobile/lib/features/marketplace/screens/quote_request_screen.dart',
     target: 'mobile/lib/features/wedding_plans/wedding_plans_api.dart',
     show: ['DashboardSummaryProvider', 'WeddingPlansProvider'],
-  },
-  {
-    source: 'mobile/lib/features/provider_portal/widgets/provider_account_actions.dart',
-    target: 'mobile/lib/features/auth/auth_api.dart',
-    show: ['confirmAccountDeletion'],
   },
   {
     source: 'mobile/lib/features/marketplace/widgets/provider_auth_gate.dart',
@@ -2543,7 +2570,7 @@ const trackedCollaborationBatchContracts = [
   {
     source: 'mobile/lib/features/provider_portal/screens/provider_profile_tab.dart',
     target: 'mobile/lib/features/marketplace/marketplace_api.dart',
-    show: ['MarketplaceService', 'ProviderDashboardProfile', 'ProviderReview'],
+    show: ['ProviderDashboardProfile', 'providerRespondsLabel'],
   },
 ];
 
@@ -3171,11 +3198,16 @@ const trackedCompositionRootContracts = [
           'AddProviderServiceScreen',
           'EditProviderProfileScreen',
           'ProviderApplyScreen',
+          'ProviderGalleryScreen',
           'ProviderNotificationsScreen',
           'ProviderOfferScreen',
+          'ProviderPerformanceScreen',
           'ProviderPortalScreen',
           'ProviderRequestScreen',
           'ProviderServicesScreen',
+          'ProviderSettingsScreen',
+          'ProviderShareScreen',
+          'providerChatCase',
         ],
       },
       {

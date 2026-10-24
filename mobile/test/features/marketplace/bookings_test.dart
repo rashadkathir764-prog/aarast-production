@@ -4,7 +4,7 @@ import 'package:aarast_mobile/features/marketplace/data/marketplace_api.dart';
 import 'package:aarast_mobile/features/marketplace/models/marketplace_models.dart';
 import 'package:aarast_mobile/features/provider_portal/providers/provider_dashboard_provider.dart';
 import 'package:aarast_mobile/features/provider_portal/widgets/provider_booking_sheets.dart';
-import 'package:aarast_mobile/features/provider_portal/widgets/provider_setup_checklist.dart';
+import 'package:aarast_mobile/features/provider_portal/widgets/provider_first_steps.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:provider/provider.dart';
@@ -156,17 +156,24 @@ void main() {
     final api = _BookingsApiFake()..services = const [];
     final dashboard = ProviderDashboardProvider(api);
     await dashboard.loadDashboard();
-    expect(ProviderSetupChecklist.isIncomplete(dashboard), isTrue);
 
+    // p14 replaced the setup checklist (D40).
     await tester.pumpWidget(
       MaterialApp(
         theme: AppTheme.light(),
-        home: Scaffold(body: ProviderSetupChecklist(dashboard: dashboard)),
+        home: Scaffold(
+          body: SingleChildScrollView(
+            child: ProviderFirstSteps(
+              dashboard: dashboard,
+              onOpenProfile: () {},
+            ),
+          ),
+        ),
       ),
     );
 
-    expect(find.text('أكمل ملفك ليراك العملاء'), findsOneWidget);
-    expect(find.text('لن يظهر ملفك للعملاء قبلها.'), findsOneWidget);
+    expect(find.text('أضف خدمة بسعرها'), findsOneWidget);
+    expect(find.text('ملفك ما يظهر في الدليل قبل أول خدمة'), findsOneWidget);
   });
 }
 

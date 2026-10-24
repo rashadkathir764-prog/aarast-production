@@ -306,17 +306,13 @@ void main() {
       );
       await _pumpPortalTab(tester, api, const ProviderProfileTab());
 
-      await tester.scrollUntilVisible(
-        find.text('تصوير رائع'),
-        200,
-        scrollable: find.byType(Scrollable).first,
-      );
+      // p35 (D40): «التقييمات» opens the published reviews in a sheet.
+      await tester.tap(find.byKey(const Key('provider-me-reviews')));
+      await tester.pumpAndSettle();
       expect(find.text('تصوير رائع'), findsOneWidget);
       expect(find.text('تعليق مخفي'), findsNothing);
       expect(
-        find.text(
-          '1 مراجعة منشورة على ملفك. و1 ما تظهر للعملاء (مخفية أو تحت المراجعة).',
-        ),
+        find.text('تقييم واحد في ملفك، وتقييم ما يظهر للعرسان'),
         findsOneWidget,
       );
     });
@@ -329,14 +325,17 @@ void main() {
       for (final status in ['SUSPENDED', 'REJECTED']) {
         final api = _PortalApi(status: status);
         await _pumpPortalTab(tester, api, const ProviderProfileTab());
-        expect(find.text('تعديل البيانات'), findsNothing, reason: status);
-        expect(find.byTooltip('تغيير الشعار'), findsNothing, reason: status);
-        expect(find.byTooltip('تغيير الغلاف'), findsNothing, reason: status);
+        // p35 (D40): details, logo and cover sit behind «عدّل ملفك».
+        expect(find.byTooltip('عدّل ملفك'), findsNothing, reason: status);
       }
 
       await _pumpPortalTab(tester, _PortalApi(), const ProviderProfileTab());
-      expect(find.text('تعديل البيانات'), findsOneWidget);
-      expect(find.byTooltip('تغيير الشعار'), findsOneWidget);
+      expect(find.byTooltip('عدّل ملفك'), findsOneWidget);
+      await tester.tap(find.byTooltip('عدّل ملفك'));
+      await tester.pumpAndSettle();
+      expect(find.byKey(const Key('provider-me-edit-details')), findsOne);
+      expect(find.byKey(const Key('provider-me-edit-logo')), findsOne);
+      expect(find.byKey(const Key('provider-me-edit-cover')), findsOne);
     });
 
     testWidgets('a closed portal tab offers support and pulls to refresh', (

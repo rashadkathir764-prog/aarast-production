@@ -13,18 +13,21 @@ String providerKindLine({String? category, String? city}) => [
 ].where((part) => part.isNotEmpty).join(' · ');
 
 /// The provider's identity (prototype `pBiz`): a 46-point teal square with
-/// the business's first letter, the name, and the kind line under it.
+/// the business's first letter (or his logo once he added one), the name,
+/// and the kind line under it.
 class ProviderIdentityRow extends StatelessWidget {
   const ProviderIdentityRow({
     required this.name,
     this.kind = '',
     this.trailing,
+    this.logoUrl,
     super.key,
   });
 
   final String name;
   final String kind;
   final Widget? trailing;
+  final String? logoUrl;
 
   @override
   Widget build(BuildContext context) {
@@ -37,19 +40,20 @@ class ProviderIdentityRow extends StatelessWidget {
             width: 46,
             height: 46,
             alignment: Alignment.center,
+            clipBehavior: Clip.antiAlias,
             decoration: BoxDecoration(
               color: AarastV3Color.primary,
               borderRadius: BorderRadius.circular(14),
             ),
-            child: Text(
-              letter,
-              textScaler: TextScaler.noScaling,
-              style: JourneyType.of(
-                JourneyType.pageTitle,
-                weight: JourneyType.bold,
-                color: AarastV3Color.onPrimary,
-              ),
-            ),
+            child: logoUrl?.trim().isNotEmpty == true
+                ? Image.network(
+                    logoUrl!,
+                    width: 46,
+                    height: 46,
+                    fit: BoxFit.cover,
+                    errorBuilder: (_, _, _) => _letter(letter),
+                  )
+                : _letter(letter),
           ),
         ),
         const SizedBox(width: 12),
@@ -82,6 +86,16 @@ class ProviderIdentityRow extends StatelessWidget {
       ],
     );
   }
+
+  static Widget _letter(String letter) => Text(
+    letter,
+    textScaler: TextScaler.noScaling,
+    style: JourneyType.of(
+      JourneyType.pageTitle,
+      weight: JourneyType.bold,
+      color: AarastV3Color.onPrimary,
+    ),
+  );
 }
 
 /// One fact with its icon (prototype `eff`): what is true now, one line

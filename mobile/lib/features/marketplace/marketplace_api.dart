@@ -10,6 +10,7 @@ export 'models/marketplace_models.dart'
         ProviderDashboardProfile,
         ProviderDashboardSummary,
         ProviderPackage,
+        ProviderResponsiveness,
         ProviderReview,
         ProviderServiceImage,
         QuoteRequest;
@@ -31,5 +32,6 @@ export 'screens/provider_requests_screen.dart' show ProviderRequestsScreen;
 export 'screens/provider_reviews_screen.dart' show ProviderReviewsScreen;
 export 'screens/quote_request_screen.dart' show QuoteRequestScreen;
 export 'widgets/provider_auth_gate.dart' show ProviderAuthGate;
-export 'widgets/provider_trust_signals.dart' show providerRespondsLine;
+export 'widgets/provider_trust_signals.dart'
+    show latestPriceUpdate, providerRespondsLabel, providerRespondsLine;
 export 'widgets/quote_status_chip.dart' show QuoteStatusChip;

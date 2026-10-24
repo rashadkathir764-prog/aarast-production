@@ -301,7 +301,8 @@ Future<void> _pumpPortal(WidgetTester tester, _Api api, {String? seen}) async {
             Scaffold(appBar: AppBar(), body: const Text('حسابي')),
       ),
       GoRoute(
-        path: '/settings',
+        // p10's notification step opens p40 (D40).
+        path: '/provider/settings',
         builder: (_, _) =>
             Scaffold(appBar: AppBar(), body: const Text('التنبيهات')),
       ),

@@ -197,7 +197,8 @@ class _PlanSwitcherState extends State<_PlanSwitcher> {
         current?.contextKey == entry.contextKey &&
         helpedPlanId != null) {
       if (widget.inSheet) Navigator.of(context).pop();
-      router.go(AppRouter.planCenter(helpedPlanId));
+      // A plan helped in opens on the participant's tabs (x06).
+      router.go(AppRouter.home);
       return;
     }
     setState(() => _opening = true);
@@ -229,9 +230,7 @@ class _PlanSwitcherState extends State<_PlanSwitcher> {
     if (widget.inSheet) Navigator.of(context).pop();
     if (planId == null) return;
     router.go(
-      plan != null
-          ? AppRouter.weddingPlanDashboard(planId)
-          : AppRouter.planCenter(planId),
+      plan != null ? AppRouter.weddingPlanDashboard(planId) : AppRouter.home,
     );
   }
 }

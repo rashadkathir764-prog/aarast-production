@@ -14,6 +14,7 @@ import 'package:aarast_mobile/features/wedding_plans/screens/my_wedding_plans_sc
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -167,6 +168,62 @@ void main() {
     await tester.tap(find.text('عرس عادل'));
     await tester.pumpAndSettle();
     expect(accountContexts.selectedContext?.weddingPlanId, mine.id);
+  });
+
+  testWidgets('a plan helped in opens on the participant tabs (D34)', (
+    tester,
+  ) async {
+    final mine = _plan('mine', 'عرس محمد');
+    final apiClient = ApiClient(tokenProvider: () async => null);
+    final plans = _PlansWithActiveProvider(apiClient, [mine], mine);
+    final accountContexts = await _accountContexts([
+      accountContext(role: AccountContextRole.owner, planId: mine.id),
+      accountContext(
+        role: AccountContextRole.contributor,
+        planId: 'helped',
+        displayName: 'عرس صالح',
+      ),
+    ], selectedPlanId: mine.id);
+    final router = GoRouter(
+      routes: [
+        GoRoute(path: '/', builder: (_, _) => const MyWeddingPlansScreen()),
+        GoRoute(
+          path: '/home',
+          builder: (_, _) => const Scaffold(key: Key('participant-home')),
+        ),
+        GoRoute(
+          path: '/wedding-plans/:id/plan-center',
+          builder: (_, _) => const Scaffold(key: Key('plan-details')),
+        ),
+      ],
+    );
+    addTearDown(router.dispose);
+
+    await tester.pumpWidget(
+      MultiProvider(
+        providers: [
+          ChangeNotifierProvider<WeddingPlansProvider>.value(value: plans),
+          ChangeNotifierProvider<AccountContextController>.value(
+            value: accountContexts,
+          ),
+        ],
+        child: MaterialApp.router(
+          theme: AppTheme.light(),
+          routerConfig: router,
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('عرس صالح'));
+    await tester.pumpAndSettle();
+
+    expect(
+      accountContexts.selectedContext?.contextKey,
+      'plan:helped:contributor',
+    );
+    expect(find.byKey(const Key('participant-home')), findsOneWidget);
+    expect(find.byKey(const Key('plan-details')), findsNothing);
   });
 }
 

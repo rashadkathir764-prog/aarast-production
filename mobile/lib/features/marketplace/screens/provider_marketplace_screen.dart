@@ -30,6 +30,10 @@ part 'provider_marketplace_screen.results.dart';
 part 'provider_marketplace_screen.labels.dart';
 part 'provider_marketplace_screen.tabs.dart';
 
+/// f08: a conversation shows the icon of the service it is about.
+IconData _conversationIcon(String? serviceTitle) =>
+    providerServiceIcon(serviceTitle ?? '');
+
 class ProviderMarketplaceScreen extends StatefulWidget {
   const ProviderMarketplaceScreen({
     this.embedded = false,
@@ -253,7 +257,10 @@ class _ProviderMarketplaceScreenState extends State<ProviderMarketplaceScreen> {
                   ),
                   'طلباتي' when firstVisit == null => _firstVisitPending(),
                   'طلباتي' => _boardTab(provider, board, tabs),
-                  'المحادثات' => const ConversationListView(embedded: true),
+                  'المحادثات' => const ConversationListView(
+                    embedded: true,
+                    iconFor: _conversationIcon,
+                  ),
                   'المفضلة' => _favoritesTab(provider),
                   _ => _exploreTab(provider),
                 },

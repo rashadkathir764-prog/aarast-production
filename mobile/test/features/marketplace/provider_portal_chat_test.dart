@@ -264,7 +264,8 @@ void main() {
 
     await tester.tap(find.text('الرسائل'));
     await tester.pumpAndSettle();
-    expect(find.text('لا توجد محادثات بعد'), findsOneWidget);
+    // The shared conversations list speaks the journey's words (f08).
+    expect(find.text('ما في محادثات بعد'), findsOneWidget);
     expect(tester.takeException(), isNull);
 
     await tester.tap(find.text('ملفي'));

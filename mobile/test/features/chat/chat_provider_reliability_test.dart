@@ -387,6 +387,118 @@ void main() {
     chat.dispose();
   });
 
+  testWidgets('f08 rows say the last word, when, and how many are unread', (
+    tester,
+  ) async {
+    final now = DateTime(2026, 10, 24, 12);
+    ChatConversation row(
+      String id,
+      String name, {
+      String? last,
+      DateTime? at,
+      int unread = 0,
+      String? service,
+    }) {
+      final base = _conversation();
+      return ChatConversation(
+        id: id,
+        scope: base.scope,
+        weddingPlan: base.weddingPlan,
+        provider: ChatProviderSummary(id: 'p-$id', businessName: name),
+        quoteRequestCount: 1,
+        unreadMessageCount: unread,
+        muted: false,
+        blocked: false,
+        providerJoined: true,
+        canSend: true,
+        permissions: base.permissions,
+        latestQuoteRequest: service == null
+            ? null
+            : ChatQuoteRequestSummary(
+                id: 'q-$id',
+                status: 'SENT',
+                createdAt: now,
+                service: ChatQuoteService(id: 's-$id', title: service),
+              ),
+        lastMessage: last == null
+            ? null
+            : ChatMessage(
+                id: 'm-$id',
+                conversationId: id,
+                senderUserId: 'p-$id',
+                body: last,
+                createdAt: at!,
+              ),
+        lastActivityAt: at ?? now,
+        createdAt: now,
+        updatedAt: now,
+      );
+    }
+
+    final chat = ChatProvider(
+      api: _FakeChatApi(
+        conversations: [
+          row(
+            'c1',
+            'استوديو ضوء صنعاء',
+            last: 'وصلك عرض: صور وفيديو',
+            at: DateTime(2026, 10, 24, 10, 40),
+            unread: 2,
+            service: 'تصوير صور',
+          ),
+          row(
+            'c2',
+            'قاعة سبأ',
+            last: 'نأكد عدد المقاعد قبل شهر',
+            at: DateTime(2026, 10, 23, 9),
+          ),
+          row(
+            'c3',
+            'ضيافة الأصالة',
+            last: 'تمام، العشاء 124 شخص',
+            at: DateTime(2026, 10, 12, 9),
+          ),
+          row('c4', 'عدسة سبأ', service: 'تصوير'),
+        ],
+      ),
+      realtime: _FakeRealtimeClient(storage),
+      authStorage: storage,
+    );
+    await chat.initialize();
+    addTearDown(chat.dispose);
+
+    await tester.pumpWidget(
+      ChangeNotifierProvider<ChatProvider>.value(
+        value: chat,
+        child: MaterialApp(
+          theme: AppTheme.light(),
+          home: Scaffold(
+            body: ConversationListView(
+              embedded: true,
+              now: now,
+              iconFor: (title) =>
+                  title == null ? LucideIcons.store : LucideIcons.camera,
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('10:40'), findsOneWidget);
+    expect(find.text('2'), findsOneWidget);
+    expect(find.text('أمس'), findsOneWidget);
+    expect(find.text('12 أكتوبر'), findsOneWidget);
+    // No last message yet: what was asked, never an invented offer.
+    expect(find.text('طلبت: تصوير'), findsOneWidget);
+    expect(find.byIcon(LucideIcons.camera), findsNWidgets(2));
+    final unread = tester.widget<Text>(find.text('وصلك عرض: صور وفيديو'));
+    final read = tester.widget<Text>(find.text('نأكد عدد المقاعد قبل شهر'));
+    expect(unread.style?.fontWeight, FontWeight.w700);
+    expect(read.style?.fontWeight, FontWeight.w400);
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('provider-not-joined state disables the composer truthfully', (
     tester,
   ) async {

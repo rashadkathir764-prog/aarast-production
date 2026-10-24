@@ -3,16 +3,31 @@ import 'package:go_router/go_router.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:provider/provider.dart';
 
+import '../../../core/experience_v3/aarast_v3.dart';
 import '../../../core/routing/app_router.dart';
-import '../../../core/theme/app_theme.dart';
+import '../../../core/utils/arabic_date_formatter.dart';
 import '../../../core/widgets/aarast_ui.dart';
 import '../models/chat_models.dart';
 import '../providers/chat_provider.dart';
 
+/// f08 «المحادثات»: one row per provider, its kind's icon, the last
+/// message (bold while unread), when, and how many are unread.
 class ConversationListView extends StatefulWidget {
-  const ConversationListView({this.embedded = false, super.key});
+  const ConversationListView({
+    this.embedded = false,
+    this.iconFor,
+    this.now,
+    super.key,
+  });
 
   final bool embedded;
+
+  /// The icon of the service a conversation is about; the providers tab
+  /// owns that map. A store when not given.
+  final IconData Function(String? serviceTitle)? iconFor;
+
+  /// The clock for «أمس» and the weekday; tests pin it.
+  final DateTime? now;
 
   @override
   State<ConversationListView> createState() => _ConversationListViewState();
@@ -32,90 +47,145 @@ class _ConversationListViewState extends State<ConversationListView> {
   @override
   Widget build(BuildContext context) {
     final chat = context.watch<ChatProvider>();
+    final now = widget.now ?? DateTime.now();
     final content = RefreshIndicator(
-      color: AppTheme.brand,
+      color: AarastV3Color.cobalt,
       onRefresh: chat.initialize,
       child: ListView(
         physics: const AlwaysScrollableScrollPhysics(),
-        padding: EdgeInsets.fromLTRB(
-          20,
-          widget.embedded ? 18 : 4,
-          20,
-          widget.embedded ? 126 : 32,
-        ),
+        padding: EdgeInsets.fromLTRB(16, 14, 16, widget.embedded ? 124 : 28),
         children: [
-          if (widget.embedded) ...[
-            const AarastSectionHeader(
-              title: 'الرسائل',
-              subtitle: 'محادثة واحدة مع كل مزود داخل الخطة.',
-              icon: LucideIcons.messagesSquare,
+          if (!widget.embedded)
+            JourneySubHeader(
+              title: 'المحادثات',
+              onBack: () {
+                if (context.canPop()) context.pop();
+              },
             ),
-            const SizedBox(height: 18),
-          ],
           if (chat.isLoading && chat.conversations.isEmpty)
-            const AarastScreenLoading(label: 'جارٍ تحميل المحادثات...')
+            const JourneyListState(
+              phase: JourneyListPhase.loading,
+              section: JourneySection.providers,
+            )
           else if (chat.errorMessage != null && chat.conversations.isEmpty)
-            AarastErrorState(
-              title: 'تعذر تحميل الرسائل',
-              message: chat.errorMessage!,
+            JourneyListState(
+              phase: JourneyListPhase.error,
+              section: JourneySection.providers,
               onRetry: chat.initialize,
             )
           else if (chat.conversations.isEmpty)
-            const AarastEmptyState(
-              icon: LucideIcons.messageCircle,
-              title: 'لا توجد محادثات بعد',
-              message: 'تظهر المحادثة تلقائيًا عند إنشاء أول طلب سعر.',
+            const JourneyListState(
+              key: ValueKey('conversations-empty'),
+              phase: JourneyListPhase.empty,
+              section: JourneySection.providers,
+              emptyIcon: LucideIcons.messageCircle,
+              emptyTitle: 'ما في محادثات بعد',
+              emptyMessage: 'أول ما تطلب عرض من مزود، تبدأ محادثتكم هنا.',
             )
           else
-            for (final conversation in chat.conversations) ...[
-              _ConversationTile(
-                conversation: conversation,
-                onTap: () =>
-                    context.push(AppRouter.conversation(conversation.id)),
+            JourneyBox(
+              padding: EdgeInsets.zero,
+              child: JourneyList(
+                children: [
+                  for (final conversation in chat.conversations)
+                    _ConversationRow(
+                      key: ValueKey('conversation-${conversation.id}'),
+                      conversation: conversation,
+                      icon:
+                          widget.iconFor?.call(
+                            conversation.latestQuoteRequest?.service?.title,
+                          ) ??
+                          LucideIcons.store,
+                      when: _whenLabel(
+                        conversation.lastMessage?.createdAt ??
+                            conversation.lastActivityAt,
+                        now,
+                      ),
+                      onTap: () =>
+                          context.push(AppRouter.conversation(conversation.id)),
+                    ),
+                ],
               ),
-              const SizedBox(height: 10),
-            ],
+            ),
           if (chat.canLoadMoreConversations)
-            Padding(
-              padding: const EdgeInsets.only(top: 8),
-              child: AarastButton(
-                label: 'عرض المزيد',
-                icon: LucideIcons.chevronsDown,
-                isLoading: chat.isLoadingMoreConversations,
-                onPressed: chat.loadMoreConversations,
+            Center(
+              child: JourneyTextAction(
+                label: 'اعرض أكثر',
+                icon: LucideIcons.chevronDown,
+                color: AarastV3Color.cobalt,
+                onPressed: chat.isLoadingMoreConversations
+                    ? null
+                    : chat.loadMoreConversations,
               ),
             ),
         ],
       ),
     );
     if (widget.embedded) return content;
-    return AarastPageScaffold(title: 'الرسائل', showBack: true, child: content);
+    return AarastScreenFrame(
+      maxWidth: 520,
+      backgroundColor: AarastV3Color.canvas,
+      child: content,
+    );
   }
 }
 
-class _ConversationTile extends StatelessWidget {
-  const _ConversationTile({required this.conversation, required this.onTap});
+/// «10:40» today, «أمس», the weekday within a week, else «12 أكتوبر».
+String _whenLabel(DateTime at, DateTime now) {
+  final local = at.toLocal();
+  final day = DateTime(local.year, local.month, local.day);
+  final today = DateTime(now.year, now.month, now.day);
+  final days = today.difference(day).inDays;
+  if (days <= 0) {
+    final hour = local.hour.toString().padLeft(2, '0');
+    final minute = local.minute.toString().padLeft(2, '0');
+    return '$hour:$minute';
+  }
+  if (days == 1) return 'أمس';
+  if (days < 7) return formatArabicWeekday(local);
+  return formatArabicDayMonth(local);
+}
+
+class _ConversationRow extends StatelessWidget {
+  const _ConversationRow({
+    required this.conversation,
+    required this.icon,
+    required this.when,
+    required this.onTap,
+    super.key,
+  });
 
   final ChatConversation conversation;
+  final IconData icon;
+  final String when;
   final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
+    final unread = conversation.unreadMessageCount;
+    final service = conversation.latestQuoteRequest?.service?.title.trim();
+    final last = !conversation.providerJoined
+        ? 'المزود ما دخل المحادثة بعد'
+        : conversation.lastMessage?.body.trim().isNotEmpty == true
+        ? conversation.lastMessage!.body.trim()
+        : service != null && service.isNotEmpty
+        ? 'طلبت: $service'
+        : 'ما في رسائل بعد';
     return AarastPressable(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(AppTheme.radiusLg),
-      child: AarastCard(
+      semanticLabel: [
+        conversation.provider.businessName,
+        last,
+        if (unread > 0) '$unread غير مقروءة',
+      ].join('، '),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
         child: Row(
           children: [
-            CircleAvatar(
-              radius: 27,
-              backgroundColor: AppTheme.brandMuted,
-              backgroundImage: conversation.provider.logoUrl == null
-                  ? null
-                  : NetworkImage(conversation.provider.logoUrl!),
-              child: conversation.provider.logoUrl == null
-                  ? const Icon(LucideIcons.store, color: AppTheme.brand)
-                  : null,
+            JourneyIconTile(
+              icon: icon,
+              color: AarastV3Color.cobalt,
+              soft: AarastV3Color.cobaltSoft,
             ),
             const SizedBox(width: 12),
             Expanded(
@@ -126,84 +196,69 @@ class _ConversationTile extends StatelessWidget {
                     conversation.provider.businessName,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                      color: AppTheme.textPrimary,
-                      fontWeight: FontWeight.w900,
+                    style: JourneyType.of(
+                      JourneyType.body,
+                      weight: JourneyType.bold,
                     ),
                   ),
-                  const SizedBox(height: 4),
                   Text(
-                    _contextLabel(conversation),
+                    last,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                      color: AppTheme.textSecondary,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                  const SizedBox(height: 3),
-                  Text(
-                    conversation.providerJoined
-                        ? (conversation.lastMessage?.body ??
-                              'آخر نشاط على طلبات الأسعار')
-                        : 'المزود لم ينضم بعد',
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                      color: conversation.providerJoined
-                          ? AppTheme.textSecondary
-                          : AppTheme.focus,
-                      fontWeight: FontWeight.w700,
+                    style: JourneyType.of(
+                      JourneyType.small,
+                      weight: unread > 0 ? JourneyType.bold : FontWeight.w400,
+                      color: unread > 0
+                          ? AarastV3Color.ink
+                          : AarastV3Color.textMuted,
                     ),
                   ),
                 ],
               ),
             ),
-            if (conversation.muted) ...[
-              const Icon(
-                LucideIcons.bellOff,
-                size: 17,
-                color: AppTheme.textSecondary,
-              ),
-              const SizedBox(width: 8),
-            ],
-            if (conversation.unreadMessageCount > 0)
-              Container(
-                constraints: const BoxConstraints(minWidth: 24),
-                height: 24,
-                padding: const EdgeInsets.symmetric(horizontal: 7),
-                decoration: BoxDecoration(
-                  color: AppTheme.brand,
-                  borderRadius: BorderRadius.circular(999),
-                ),
-                alignment: Alignment.center,
-                child: Text(
-                  '${conversation.unreadMessageCount}',
-                  textDirection: TextDirection.ltr,
-                  style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                    color: Colors.white,
-                    fontWeight: FontWeight.w900,
+            const SizedBox(width: 8),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                Text(
+                  when,
+                  style: JourneyType.of(
+                    JourneyType.caption,
+                    color: AarastV3Color.textMuted,
                   ),
                 ),
-              )
-            else
-              const Icon(
-                LucideIcons.chevronLeft,
-                color: AppTheme.textSecondary,
-              ),
+                const SizedBox(height: 4),
+                if (unread > 0)
+                  Container(
+                    constraints: const BoxConstraints(minWidth: 22),
+                    height: 22,
+                    padding: const EdgeInsets.symmetric(horizontal: 6),
+                    alignment: Alignment.center,
+                    decoration: BoxDecoration(
+                      color: AarastV3Color.cobalt,
+                      borderRadius: BorderRadius.circular(11),
+                    ),
+                    child: Text(
+                      '$unread',
+                      style: JourneyType.of(
+                        JourneyType.caption,
+                        weight: JourneyType.bold,
+                        color: AarastV3Color.onPrimary,
+                      ),
+                    ),
+                  )
+                else if (conversation.muted)
+                  const Icon(
+                    LucideIcons.bellOff,
+                    size: 16,
+                    color: AarastV3Color.textMuted,
+                    semanticLabel: 'مكتومة',
+                  ),
+              ],
+            ),
           ],
         ),
       ),
     );
   }
-}
-
-String _contextLabel(ChatConversation conversation) {
-  final scope = conversation.scope == ChatConversationScope.plan
-      ? (conversation.weddingPlan?.title ?? 'خطة الزفاف')
-      : 'طلب مستقل عن الخطة';
-  final count = conversation.quoteRequestCount == 1
-      ? 'طلب واحد'
-      : '${conversation.quoteRequestCount} طلبات';
-  return '$scope · $count';
 }

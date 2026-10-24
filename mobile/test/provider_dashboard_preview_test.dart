@@ -244,15 +244,22 @@ Future<void> _pump(WidgetTester tester, {required Size size}) async {
     MaterialApp(
       debugShowCheckedModeBanner: false,
       theme: AppTheme.light(),
-      home: MediaQuery(
-        data: const MediaQueryData(disableAnimations: true),
-        child: Directionality(
-          textDirection: TextDirection.rtl,
-          child: Scaffold(
-            backgroundColor: AppTheme.canvas,
-            body: ListView(
-              padding: const EdgeInsets.fromLTRB(16, 18, 16, 24),
-              children: [_profileCard(), const SizedBox(height: 16), _stats()],
+      home: Builder(
+        builder: (context) => MediaQuery(
+          // copyWith keeps the real window size: a bare MediaQueryData is 0x0.
+          data: MediaQuery.of(context).copyWith(disableAnimations: true),
+          child: Directionality(
+            textDirection: TextDirection.rtl,
+            child: Scaffold(
+              backgroundColor: AppTheme.canvas,
+              body: ListView(
+                padding: const EdgeInsets.fromLTRB(16, 18, 16, 24),
+                children: [
+                  _profileCard(),
+                  const SizedBox(height: 16),
+                  _stats(),
+                ],
+              ),
             ),
           ),
         ),

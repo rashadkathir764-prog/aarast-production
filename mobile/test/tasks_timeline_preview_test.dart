@@ -48,11 +48,15 @@ void main() {
     final api = TaskTimelineApi(apiClient, offline: offline);
     final provider = TaskTimelineProvider(api);
 
-    final now = DateTime.now();
+    // Fixed dates: the screen reads today's clock, so a golden that leans on
+    // «اليوم» or «هذا الأسبوع» would age by the day. A past date is always
+    // late and a 2030 date is always «بعدين».
+    final late = DateTime(2026, 6, 4);
+    final later = DateTime(2030, 3, 4);
     await provider.createTask(
       weddingPlanId: _planId,
       title: 'تأكيد حجز الصالة',
-      dueDate: now.subtract(const Duration(days: 3)),
+      dueDate: late,
       taskCategory: 'VENUE',
       priority: 'HIGH',
       responsibleName: 'أحمد',
@@ -60,13 +64,13 @@ void main() {
     await provider.createTask(
       weddingPlanId: _planId,
       title: 'اختيار المصور والاتفاق على الباقة',
-      dueDate: now,
+      dueDate: later,
       taskCategory: 'PHOTOGRAPHY',
     );
     await provider.createTask(
       weddingPlanId: _planId,
       title: 'طباعة بطاقات الدعوة',
-      dueDate: now.add(const Duration(days: 3)),
+      dueDate: later.add(const Duration(days: 3)),
       taskCategory: 'DOCUMENTS',
     );
     await provider.createTask(
@@ -77,7 +81,7 @@ void main() {
     await provider.createTask(
       weddingPlanId: _planId,
       title: 'شراء بدلة العريس',
-      dueDate: now.subtract(const Duration(days: 10)),
+      dueDate: DateTime(2026, 5, 20),
       taskCategory: 'ATTIRE',
     );
     final doneTask = provider.tasks.firstWhere(

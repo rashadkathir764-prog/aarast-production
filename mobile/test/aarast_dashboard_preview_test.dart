@@ -153,8 +153,10 @@ void main() {
     );
     expect(tester.takeException(), isNull);
     final hero = find.byKey(const ValueKey('aarast-dashboard-plan-moment'));
-    // D8: the countdown hero is compact on a phone.
-    expect(tester.getSize(hero).height, inInclusiveRange(96, 140));
+    // D8: the countdown hero stays compact on a phone. D44: on a narrow phone
+    // the moment's tag drops above the bar instead of sitting on the count's
+    // row, so the card is taller than at 420 (172 here), still under 180.
+    expect(tester.getSize(hero).height, inInclusiveRange(96, 180));
     await expectLater(
       find.byType(PlanShellChrome),
       matchesGoldenFile('goldens/aarast_dashboard_fresh_320.png'),

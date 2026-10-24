@@ -62,6 +62,11 @@ void main() {
     );
     await tester.pump(const Duration(milliseconds: 600));
 
+    // «هذا الأسبوع» (the default) prints «قبل <weekday> <date>» from today's
+    // date, which would age the golden; «بدون موعد» prints no date.
+    await tester.tap(find.text('بدون موعد'));
+    await tester.pump(const Duration(milliseconds: 300));
+
     await expectLater(
       find.byType(CreateTaskScreen),
       matchesGoldenFile('goldens/create_task_form.png'),

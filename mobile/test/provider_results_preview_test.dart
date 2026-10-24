@@ -136,18 +136,17 @@ void main() {
 
     expect(find.byType(IntrinsicHeight), findsNothing);
     expect(find.byType(FilledButton), findsNothing);
-    expect(find.text('عرض التفاصيل'), findsOneWidget);
-    expect(find.text('قاعات ومناسبات'), findsOneWidget);
-    expect(find.text('الرياض، حي الملقا'), findsOneWidget);
+    // f02: the whole card opens the details (no «عرض التفاصيل» button); the
+    // kind and the place read as one line.
+    expect(find.text('قاعات ومناسبات · الرياض، حي الملقا'), findsOneWidget);
     expect(find.text('15,000 - 35,000 ر.س'), findsOneWidget);
     expect(find.text('ضمن الميزانية المقترحة'), findsOneWidget);
     expect(find.byKey(const Key('compact-vendor-details')), findsOneWidget);
     expect(find.byKey(const Key('compact-vendor-favorite')), findsOneWidget);
-    final imageStack = find.descendant(
-      of: find.byKey(const Key('compact-vendor-card')),
-      matching: find.byType(Stack),
-    );
-    expect(tester.getSize(imageStack), const Size(92, 92));
+    // At 320 with 1.3 text the card stays inside the screen.
+    final card = tester.getRect(find.byKey(const Key('compact-vendor-card')));
+    expect(card.left, greaterThanOrEqualTo(0));
+    expect(card.right, lessThanOrEqualTo(320));
     expect(tester.takeException(), isNull);
 
     await tester.tap(find.byKey(const Key('compact-vendor-details')));

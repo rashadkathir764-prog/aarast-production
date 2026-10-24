@@ -1,5 +1,5 @@
-// Full-screen visual preview for the dashboard-aligned guests tab: truthful
-// seat meter, compact follow-up priority, text filters, and flat guest rows.
+// Full-screen visual preview for the guests tab (e01): the summary, the
+// invite card and the families.
 // The second golden keeps the existing add-guest sheet covered.
 // Regenerate with:
 //   flutter test test/guests_screen_preview_test.dart --update-goldens
@@ -90,8 +90,9 @@ void main() {
     }
     await tester.pump(const Duration(seconds: 2));
 
-    expect(find.text('محمد علي'), findsOneWidget);
-    expect(find.text('ليلى سالم'), findsOneWidget);
+    // e01: the root lists the families; the names open inside a family.
+    expect(find.byKey(const ValueKey('guest-group-all')), findsOneWidget);
+    expect(find.byKey(const ValueKey('guests-add')), findsOneWidget);
 
     await expectLater(
       find.byType(Scaffold),
@@ -137,11 +138,13 @@ void main() {
       await tester.pump(const Duration(milliseconds: 80));
     }
 
-    await tester.tap(find.byType(FloatingActionButton));
+    // D32: guests add from their header «+».
+    await tester.tap(find.byKey(const ValueKey('guests-add')));
     await tester.pump(const Duration(milliseconds: 400));
     await tester.pump(const Duration(seconds: 1));
 
-    expect(find.text('إضافة ضيف'), findsWidgets);
+    // e06 «ضيف جديد» (GuestWords.newGuest).
+    expect(find.text('ضيف جديد'), findsWidgets);
 
     await expectLater(
       find.byType(MaterialApp),

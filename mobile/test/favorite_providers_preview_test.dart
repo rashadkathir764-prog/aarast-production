@@ -1,7 +1,6 @@
-// Visual preview for the saved-providers (المفضلة) screen after adopting the
-// shared image-forward ProviderResultCard — so the favorites tab matches the
-// vendors tab exactly. The heart here removes from favorites; the button opens
-// details. Cover images fall back to placeholders in the golden harness.
+// Visual preview for `FavoriteProvidersScreen`, which f09 turned into
+// «قارن الملفين»: the first two saved providers side by side (e0fba9d1). The
+// saved list itself lives on the providers tab (providers_board_tab_test).
 //
 // Regenerate with:
 //   flutter test test/favorite_providers_preview_test.dart --update-goldens
@@ -118,92 +117,45 @@ class _PreviewMarketplaceProvider extends ProviderMarketplaceProvider {
   Future<void> loadFavoriteProviders() async {}
 
   @override
+  Future<void> loadProviderDetails(
+    String providerId, {
+    String? weddingPlanId,
+  }) async {}
+
+  @override
+  MarketplaceProvider? providerDetails(String id) {
+    for (final favorite in favoriteProvidersData) {
+      if (favorite.providerId == id) return favorite.provider;
+    }
+    return null;
+  }
+
+  @override
+  List<MarketplaceService> servicesFor(String id) =>
+      providerDetails(id)?.services ?? const [];
+
+  @override
   Future<void> toggleFavorite(String providerId) async {}
 }
 
 void main() {
   setUpAll(loadPreviewAppFonts);
 
-  testWidgets('favorites — shared vendor cards (430)', (tester) async {
+  testWidgets('favorites — «قارن الملفين» of two saved providers (430)', (
+    tester,
+  ) async {
     await _pumpFavorites(
       tester,
       size: const Size(430, 1040),
       favorites: _favorites([_venue(), _photographer()]),
     );
 
+    expect(find.text('قارن الملفين'), findsOneWidget);
+    expect(tester.takeException(), isNull);
     await expectLater(
       find.byType(FavoriteProvidersScreen),
       matchesGoldenFile('goldens/favorite_providers.png'),
     );
-  });
-
-  testWidgets('favorites empty state stays RTL-safe at 320 and 1.3 text', (
-    tester,
-  ) async {
-    await _pumpFavorites(
-      tester,
-      size: const Size(320, 760),
-      textScale: 1.3,
-      favorites: const [],
-    );
-
-    expect(find.text('لا توجد مفضلة بعد'), findsOneWidget);
-    expect(find.text('تصفح المزودين'), findsOneWidget);
-    _expectRtlAndInsideView(tester, find.text('تصفح المزودين'), width: 320);
-    expect(tester.takeException(), isNull);
-  });
-
-  testWidgets('one favorite keeps its name and actions visible at 320', (
-    tester,
-  ) async {
-    await _pumpFavorites(
-      tester,
-      size: const Size(320, 900),
-      textScale: 1.3,
-      favorites: _favorites([_venue()]),
-    );
-    await tester.scrollUntilVisible(
-      find.byKey(const Key('favorite-provider-remove-fav-1')),
-      240,
-      scrollable: find.byType(Scrollable).first,
-    );
-
-    expect(find.text('قصر الماسة للاحتفالات'), findsOneWidget);
-    expect(find.text('عرض التفاصيل'), findsOneWidget);
-    _expectRtlAndInsideView(
-      tester,
-      find.byKey(const Key('favorite-provider-remove-fav-1')),
-      width: 320,
-    );
-    _expectInsideView(tester, find.text('عرض التفاصيل'), width: 320);
-    expect(tester.takeException(), isNull);
-  });
-
-  testWidgets('multiple favorites remain usable at 320 and 1.3 text', (
-    tester,
-  ) async {
-    await _pumpFavorites(
-      tester,
-      size: const Size(320, 900),
-      textScale: 1.3,
-      favorites: _favorites([_venue(), _photographer()]),
-    );
-    await tester.scrollUntilVisible(
-      find.byKey(const Key('favorite-provider-remove-fav-2')),
-      240,
-      scrollable: find.byType(Scrollable).first,
-    );
-
-    expect(find.text('قصر الماسة للاحتفالات'), findsOneWidget);
-    expect(find.text('عدسة الريم للتصوير'), findsOneWidget);
-    expect(find.text('عرض التفاصيل'), findsNWidgets(2));
-    _expectRtlAndInsideView(
-      tester,
-      find.byKey(const Key('favorite-provider-remove-fav-2')),
-      width: 320,
-    );
-    _expectInsideView(tester, find.text('عرض التفاصيل').last, width: 320);
-    expect(tester.takeException(), isNull);
   });
 }
 
@@ -211,7 +163,6 @@ Future<void> _pumpFavorites(
   WidgetTester tester, {
   required Size size,
   required List<FavoriteProvider> favorites,
-  double textScale = 1,
 }) async {
   SharedPreferences.setMockInitialValues({});
   final prefs = await SharedPreferences.getInstance();
@@ -228,9 +179,7 @@ Future<void> _pumpFavorites(
 
   tester.view.physicalSize = size;
   tester.view.devicePixelRatio = 1;
-  tester.platformDispatcher.textScaleFactorTestValue = textScale;
   addTearDown(tester.view.reset);
-  addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
 
   await tester.pumpWidget(
     MultiProvider(
@@ -249,34 +198,4 @@ Future<void> _pumpFavorites(
   );
   await tester.pump(const Duration(milliseconds: 400));
   await tester.pump(const Duration(seconds: 2));
-}
-
-void _expectRtlAndInsideView(
-  WidgetTester tester,
-  Finder finder, {
-  required double width,
-}) {
-  expect(
-    Directionality.of(tester.element(find.byType(ListView).first)),
-    TextDirection.rtl,
-  );
-  expect(
-    MediaQuery.textScalerOf(
-      tester.element(find.byType(ListView).first),
-    ).scale(10),
-    13,
-  );
-  _expectInsideView(tester, finder, width: width);
-}
-
-void _expectInsideView(
-  WidgetTester tester,
-  Finder finder, {
-  required double width,
-}) {
-  final rect = tester.getRect(finder);
-  expect(rect.left, greaterThanOrEqualTo(0));
-  expect(rect.right, lessThanOrEqualTo(width));
-  expect(rect.width, greaterThan(0));
-  expect(rect.height, greaterThan(0));
 }

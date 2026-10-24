@@ -217,87 +217,98 @@ class _JourneyHomeHero extends StatelessWidget {
       padding: EdgeInsets.zero,
       child: ClipRRect(
         borderRadius: BorderRadius.circular(28),
-        child: CustomPaint(
-          painter: JourneyQamariyaPainter(
-            alpha: 0.10,
-            centreX: rtl ? 0.12 : 0.88,
-            frieze: true,
+        // b01: deep at the far top corner, easing into the plan's colour
+        // (D45, the one gradient D3 allows).
+        child: DecoratedBox(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: AlignmentDirectional.topEnd,
+              end: AlignmentDirectional.bottomStart,
+              colors: [context.accent.primaryDark, context.accent.primary],
+            ),
           ),
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(20, 18, 20, 24),
-            child: LayoutBuilder(
-              builder: (context, constraints) {
-                // The tag sits on the count's row as drawn; on a narrow
-                // phone or a large text size it moves above the moments so
-                // it never crowds the count.
-                final scale = MediaQuery.textScalerOf(context).scale(1);
-                final wide = constraints.maxWidth / scale >= 300;
-                return Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    Row(
-                      crossAxisAlignment: CrossAxisAlignment.end,
-                      children: [
-                        if (days != null && days > 2) ...[
-                          Text(
-                            '$days',
-                            style: JourneyType.of(
-                              JourneyType.homeCount,
-                              weight: JourneyType.bold,
-                              color: AarastV3Color.onPrimary,
-                              height: 0.95,
+          child: CustomPaint(
+            painter: JourneyQamariyaPainter(
+              alpha: 0.10,
+              centreX: rtl ? 0.12 : 0.88,
+              frieze: true,
+            ),
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(20, 18, 20, 24),
+              child: LayoutBuilder(
+                builder: (context, constraints) {
+                  // The tag sits on the count's row as drawn; on a narrow
+                  // phone or a large text size it moves above the moments so
+                  // it never crowds the count.
+                  final scale = MediaQuery.textScalerOf(context).scale(1);
+                  final wide = constraints.maxWidth / scale >= 300;
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.end,
+                        children: [
+                          if (days != null && days > 2) ...[
+                            Text(
+                              '$days',
+                              style: JourneyType.of(
+                                JourneyType.homeCount,
+                                weight: JourneyType.bold,
+                                color: AarastV3Color.onPrimary,
+                                height: 0.95,
+                              ),
                             ),
-                          ),
-                          const SizedBox(width: 10),
-                        ],
-                        Expanded(
-                          child: Padding(
-                            padding: const EdgeInsets.only(bottom: 6),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  countLine,
-                                  style: JourneyType.of(
-                                    JourneyType.title,
-                                    weight: JourneyType.bold,
-                                    color: AarastV3Color.onPrimary,
-                                  ),
-                                ),
-                                Text(
-                                  dateLine,
-                                  style: JourneyType.of(
-                                    JourneyType.bodySmall,
-                                    color: AarastV3Color.onPrimary.withValues(
-                                      alpha: 0.78,
+                            const SizedBox(width: 10),
+                          ],
+                          Expanded(
+                            child: Padding(
+                              padding: const EdgeInsets.only(bottom: 6),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    countLine,
+                                    style: JourneyType.of(
+                                      JourneyType.title,
+                                      weight: JourneyType.bold,
+                                      color: AarastV3Color.onPrimary,
                                     ),
                                   ),
-                                ),
-                              ],
+                                  Text(
+                                    dateLine,
+                                    style: JourneyType.of(
+                                      JourneyType.bodySmall,
+                                      color: AarastV3Color.onPrimary.withValues(
+                                        alpha: 0.78,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
                             ),
                           ),
-                        ),
-                        if (wide) ...[
-                          const SizedBox(width: 8),
-                          Padding(
-                            padding: const EdgeInsets.only(bottom: 6),
-                            child: tag,
-                          ),
+                          if (wide) ...[
+                            const SizedBox(width: 8),
+                            Padding(
+                              padding: const EdgeInsets.only(bottom: 6),
+                              child: tag,
+                            ),
+                          ],
                         ],
-                      ],
-                    ),
-                    if (!wide) ...[
-                      const SizedBox(height: 12),
-                      Align(
-                        alignment: AlignmentDirectional.centerStart,
-                        child: tag,
                       ),
+                      if (!wide) ...[
+                        const SizedBox(height: 12),
+                        Align(
+                          alignment: AlignmentDirectional.centerStart,
+                          child: tag,
+                        ),
+                      ],
+                      const SizedBox(height: 16),
+                      _StagePath(current: moment),
                     ],
-                    const SizedBox(height: 16),
-                    _StagePath(current: moment),
-                  ],
-                );
-              },
+                  );
+                },
+              ),
             ),
           ),
         ),
@@ -468,7 +479,6 @@ String _currencyLabel(String currency) {
     _ => currency,
   };
 }
-
 
 /// b07: what is left to pay once the day has passed: agreements still
 /// unpaid plus loans still owed (C12), and what was paid of all of them.

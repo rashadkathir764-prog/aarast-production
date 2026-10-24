@@ -145,13 +145,24 @@ void main() {
       final decoration = RegExp(
         r'LinearGradient|RadialGradient|SweepGradient|BoxShadow\s*\(',
       );
+      // D45: the home countdown card is drawn with one linear gradient
+      // (b01); it stays the only one.
+      const countdownCard =
+          'wedding_plans/widgets/dashboard/aarast_dashboard_journey.dart';
       final offenders = <String>[];
+      var countdownGradients = 0;
 
       for (final root in roots.where((directory) => directory.existsSync())) {
         for (final entity in root.listSync(recursive: true)) {
           if (entity is! File || !entity.path.endsWith('.dart')) continue;
+          final path = entity.path.replaceAll('\\', '/');
           final lines = entity.readAsLinesSync();
           for (var index = 0; index < lines.length; index += 1) {
+            if (path.endsWith(countdownCard) &&
+                lines[index].contains('gradient: LinearGradient(')) {
+              countdownGradients += 1;
+              continue;
+            }
             if (decoration.hasMatch(lines[index])) {
               offenders.add(
                 '${entity.path}:${index + 1}: ${lines[index].trim()}',
@@ -162,6 +173,7 @@ void main() {
       }
 
       expect(offenders, isEmpty, reason: offenders.join('\n'));
+      expect(countdownGradients, 1);
     });
 
     test('retires Premium and Royal vocabulary from production source', () {

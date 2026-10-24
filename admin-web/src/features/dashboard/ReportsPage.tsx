@@ -37,7 +37,7 @@ export function ReportsPage() {
     return (
       <EmptyState
         title="لا توجد بيانات تقرير"
-        message="لم يرجع endpoint التقارير بيانات قابلة للعرض."
+        message="ما وصلت بيانات تقرير قابلة للعرض. حدّث الصفحة بعد قليل."
         tone="api"
       />
     );

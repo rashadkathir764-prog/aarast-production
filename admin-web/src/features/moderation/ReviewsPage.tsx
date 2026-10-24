@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { getReviews, hideReview, ProviderReview, updateReviewStatus } from './api';
 import { getProviders, type ProviderApplication } from '../providers/api';
 import { ActionButton } from '../../design_system/ActionButton';
+import { ConfirmDialog } from '../../design_system/ConfirmDialog';
 import { DataTable } from '../../design_system/DataTable';
 import { EmptyState } from '../../design_system/EmptyState';
 import { ErrorState } from '../../design_system/ErrorState';
@@ -41,6 +42,8 @@ export function ReviewsPage() {
     totalPages: 1,
   });
   const [error, setError] = useState<string | null>(null);
+  // A failed action keeps the list on screen and says why above it.
+  const [actionError, setActionError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   async function load() {
@@ -80,23 +83,21 @@ export function ReviewsPage() {
   }
 
   async function setReviewStatus(review: ProviderReview, nextStatus: string) {
-    setError(null);
+    setActionError(null);
     try {
       await updateReviewStatus(review.id, nextStatus);
-      await load();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'تعذر تحديث حالة التقييم.');
+      setActionError(err instanceof Error ? err.message : 'تعذر تحديث حالة التقييم.');
+      return;
     }
+    await load();
   }
 
+  // Thrown errors stay inside the confirmation, which shows them there.
   async function hide(review: ProviderReview) {
-    setError(null);
-    try {
-      await hideReview(review.id);
-      await load();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'تعذر إخفاء التقييم.');
-    }
+    setActionError(null);
+    await hideReview(review.id);
+    await load();
   }
 
   if (isLoading) return <LoadingState title="جاري تحميل التقييمات" />;
@@ -116,7 +117,7 @@ export function ReviewsPage() {
         eyebrow="إدارة التقييمات"
         icon="☆"
         title="رقابة تقييمات الموردين"
-        description="إدارة حقيقية من /admin/reviews: عرض كل الحالات، نشر، إخفاء، وإعادة احتساب تقييم المورد."
+        description="كل تقييمات الموردين بكل حالاتها: انشر أو أخفِ أو أرجع للمراجعة، ويُعاد حساب تقييم المورد بعدها."
         meta={<span>{pagination.total} تقييم مطابق</span>}
       />
 
@@ -176,6 +177,11 @@ export function ReviewsPage() {
       </SectionCard>
 
       <SectionCard title="قائمة التقييمات" subtitle="لا يوجد مسح محدود لأول 30 مورد؛ المصدر إداري مباشر.">
+        {actionError ? (
+          <p className="inline-error" role="alert">
+            {actionError}
+          </p>
+        ) : null}
         {reviews.length === 0 ? (
           <EmptyState title="لا توجد تقييمات مطابقة" message="غير الفلاتر أو ابحث بكلمة أخرى." tone="api" />
         ) : (
@@ -227,9 +233,18 @@ export function ReviewsPage() {
                     </ActionButton>
                     ) : null}
                     {review.status !== 'HIDDEN' ? (
-                    <ActionButton tone="danger" size="small" onClick={() => hide(review)}>
-                      إخفاء
-                    </ActionButton>
+                    <ConfirmDialog
+                      title="إخفاء التقييم"
+                      message="ما يظهر التقييم للعملاء بعد الإخفاء، ويُعاد حساب تقييم المورد بدونه. تقدر تنشره مرة ثانية لاحقًا."
+                      confirmLabel="إخفاء"
+                      tone="danger"
+                      trigger={
+                        <ActionButton tone="danger" size="small" type="button">
+                          إخفاء
+                        </ActionButton>
+                      }
+                      onConfirm={() => hide(review)}
+                    />
                     ) : null}
                   </Can>
                 </td>

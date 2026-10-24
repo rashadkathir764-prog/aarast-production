@@ -144,7 +144,7 @@ export function ProviderApplicationDetailsPage() {
           />
         </SectionCard>
 
-        <SectionCard title="المستندات والصور" subtitle="حسب ما يتيحه backend حاليا.">
+        <SectionCard title="المستندات والصور" subtitle="الشعار والغلاف المحفوظان في ملف المورد.">
           <div className="media-preview">
             {provider.logoUrl ? <img src={provider.logoUrl} alt="" /> : null}
             {provider.coverUrl ? <img src={provider.coverUrl} alt="" /> : null}

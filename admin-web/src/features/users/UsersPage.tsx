@@ -119,7 +119,7 @@ export function UsersPage() {
       <div className="content-with-aside">
         <SectionCard
           title="حسابات المنصة"
-          subtitle="الجدول يعرض حقولا آمنة فقط من استجابة backend."
+          subtitle="الجدول يعرض البيانات الآمنة فقط، بدون كلمات مرور أو رموز دخول."
         >
           {items.length === 0 ? (
             <EmptyState

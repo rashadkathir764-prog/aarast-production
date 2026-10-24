@@ -162,18 +162,37 @@ export function CitiesPage() {
                       >
                         تعديل
                       </ActionButton>
-                      <ConfirmDialog
-                        title="تعطيل المدينة"
-                        message="سيتم تعطيل المدينة من قوائم إدارة السوق دون حذفها نهائيا."
-                        confirmLabel="تعطيل"
-                        tone="danger"
-                        trigger={
-                          <ActionButton tone="danger" size="small" type="button">
-                            تعطيل
-                          </ActionButton>
-                        }
-                        onConfirm={() => deleteCity(city.id).then(load)}
-                      />
+                      {city.isActive ? (
+                        <ConfirmDialog
+                          title="تعطيل المدينة"
+                          message="سيتم تعطيل المدينة من قوائم إدارة السوق دون حذفها نهائيا."
+                          confirmLabel="تعطيل"
+                          tone="danger"
+                          trigger={
+                            <ActionButton tone="danger" size="small" type="button">
+                              تعطيل
+                            </ActionButton>
+                          }
+                          onConfirm={() => deleteCity(city.id).then(load)}
+                        />
+                      ) : (
+                        <ConfirmDialog
+                          title="تفعيل المدينة"
+                          message="سترجع المدينة لقوائم السوق ويقدر العملاء والموردون يختارونها."
+                          confirmLabel="تفعيل"
+                          trigger={
+                            <ActionButton tone="ghost" size="small" type="button">
+                              تفعيل
+                            </ActionButton>
+                          }
+                          onConfirm={() =>
+                            updateCity(city.id, {
+                              nameAr: city.nameAr,
+                              isActive: true,
+                            }).then(load)
+                          }
+                        />
+                      )}
                       </div>
                     </Can>
                   </td>

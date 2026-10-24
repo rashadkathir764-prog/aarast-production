@@ -1,10 +1,12 @@
 import { CheckCircle2, XCircle } from 'lucide-react';
 import { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 import {
   ConversationReport,
   getConversationReports,
   updateConversationReportStatus,
 } from './api';
+import { getProvider } from '../providers/api';
 import { ActionButton } from '../../design_system/ActionButton';
 import { DataTable } from '../../design_system/DataTable';
 import { EmptyState } from '../../design_system/EmptyState';
@@ -17,8 +19,27 @@ import { SectionCard } from '../../design_system/SectionCard';
 import { StatCard } from '../../design_system/StatCard';
 import { StatusBadge } from '../../design_system/StatusBadge';
 import { TableToolbar } from '../../design_system/TableToolbar';
-import { Can } from '../auth/api';
+import { Can, hasAdminPermission, useAuth } from '../auth/api';
 import { AdminPermission } from '../auth/api';
+
+/**
+ * The account that owns each reported provider: null when the provider has
+ * none (an admin-listed business), undefined when it could not be read. A
+ * report whose reporter owns the conversation's provider was filed by the
+ * provider, so the reported party is the customer.
+ */
+async function providerOwners(
+  reports: ConversationReport[],
+): Promise<Map<string, string | null | undefined>> {
+  const ids = [...new Set(reports.map((report) => report.conversation.provider.id))];
+  const results = await Promise.allSettled(ids.map((id) => getProvider(id)));
+  return new Map(
+    ids.map((id, index) => {
+      const result = results[index];
+      return [id, result.status === 'fulfilled' ? result.value.userId : undefined];
+    }),
+  );
+}
 
 const statuses = [
   { value: '', label: 'كل الحالات' },
@@ -40,6 +61,11 @@ export function ConversationReportsPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [updatingId, setUpdatingId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [owners, setOwners] = useState<Map<string, string | null | undefined>>(
+    new Map(),
+  );
+  const { user } = useAuth();
+  const canOpenUsers = hasAdminPermission(user, AdminPermission.USERS_READ);
 
   async function load() {
     setIsLoading(true);
@@ -50,6 +76,7 @@ export function ConversationReportsPage() {
         setPage(result.totalPages);
         return;
       }
+      setOwners(await providerOwners(result.items));
       setReports(result.items);
       setPagination({
         page: result.page,
@@ -145,7 +172,7 @@ export function ConversationReportsPage() {
             label="بلاغات المحادثات"
             columns={[
               'المبلّغ',
-              'المزود',
+              'المبلَّغ عنه',
               'السبب',
               'الحالة',
               'التاريخ',
@@ -153,19 +180,48 @@ export function ConversationReportsPage() {
             ]}
             minWidth={980}
           >
-            {reports.map((report) => (
+            {reports.map((report) => {
+              const provider = report.conversation.provider;
+              const owner = owners.get(provider.id);
+              const byProvider = owner != null && owner === report.reporter.id;
+              return (
               <tr key={report.id}>
                 <td>
-                  <strong>{report.reporter.name}</strong>
+                  {canOpenUsers ? (
+                    <Link className="table-strong-link" to={`/users/${report.reporter.id}`}>
+                      {report.reporter.name}
+                    </Link>
+                  ) : (
+                    <strong>{report.reporter.name}</strong>
+                  )}
                   <span className="table-subtle" dir="ltr">
                     {report.reporter.phone ?? 'لا يوجد رقم'}
                   </span>
+                  <span className="table-subtle">
+                    {byProvider
+                      ? 'المزود نفسه'
+                      : owner === undefined
+                        ? 'تعذر معرفة جهة المبلّغ'
+                        : 'العميل'}
+                  </span>
                 </td>
                 <td>
-                  {report.conversation.provider.businessName}
+                  {byProvider ? (
+                    <>
+                      <strong>العميل في المحادثة</strong>
+                      <span className="table-subtle">
+                        البلاغ من{' '}
+                        <Link to={`/providers/${provider.id}`}>{provider.businessName}</Link>
+                      </span>
+                    </>
+                  ) : (
+                    <Link className="table-strong-link" to={`/providers/${provider.id}`}>
+                      {provider.businessName}
+                    </Link>
+                  )}
                   <span className="table-subtle">
                     {report.conversation.quoteRequests[0]
-                      ? `آخر طلب ${report.conversation.quoteRequests[0].id}`
+                      ? 'مرتبطة بطلب عرض سعر'
                       : 'لا توجد طلبات مرتبطة'}
                   </span>
                 </td>
@@ -199,7 +255,8 @@ export function ConversationReportsPage() {
                   </Can>
                 </td>
               </tr>
-            ))}
+              );
+            })}
           </DataTable>
         )}
         <Pagination

@@ -164,7 +164,7 @@ export function ServicesPage() {
         eyebrow="إدارة الخدمات"
         icon="⌁"
         title="خدمات الموردين"
-        description="إدارة حقيقية من Admin API: إنشاء خدمة، تفعيلها، إيقافها، وتمييزها بدون بيانات وهمية."
+        description="خدمات الموردين الفعلية: أنشئ خدمة، فعّلها أو أوقفها، وميّزها."
         meta={<span>{pagination.total} خدمة مطابقة</span>}
       />
 

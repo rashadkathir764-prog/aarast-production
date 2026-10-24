@@ -68,7 +68,7 @@ export function UserDetailsPage() {
         eyebrow="تفاصيل مستخدم"
         icon="♙"
         title={user.name}
-        description="عرض آمن لبيانات الحساب المتاحة من Admin API فقط، بدون كلمات مرور أو رموز جلسات أو OTP."
+        description="عرض آمن لبيانات الحساب، بدون كلمات مرور أو رموز دخول أو رموز تحقق."
         actions={
           <>
             <Can permission={AdminPermission.USERS_WRITE}>

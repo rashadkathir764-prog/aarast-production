@@ -188,18 +188,37 @@ export function CategoriesPage() {
                         >
                           تعديل
                         </ActionButton>
-                        <ConfirmDialog
-                          title="تعطيل الفئة"
-                          message="سيتم تعطيل هذه الفئة من إدارة السوق دون حذفها نهائيا."
-                          confirmLabel="تعطيل"
-                          tone="danger"
-                          trigger={
-                            <ActionButton tone="danger" size="small" type="button">
-                              تعطيل
-                            </ActionButton>
-                          }
-                          onConfirm={() => deleteCategory(category.id).then(load)}
-                        />
+                        {category.isActive ? (
+                          <ConfirmDialog
+                            title="تعطيل الفئة"
+                            message="سيتم تعطيل هذه الفئة من إدارة السوق دون حذفها نهائيا."
+                            confirmLabel="تعطيل"
+                            tone="danger"
+                            trigger={
+                              <ActionButton tone="danger" size="small" type="button">
+                                تعطيل
+                              </ActionButton>
+                            }
+                            onConfirm={() => deleteCategory(category.id).then(load)}
+                          />
+                        ) : (
+                          <ConfirmDialog
+                            title="تفعيل الفئة"
+                            message="سترجع هذه الفئة للسوق وتظهر للعملاء في مساراتها."
+                            confirmLabel="تفعيل"
+                            trigger={
+                              <ActionButton tone="ghost" size="small" type="button">
+                                تفعيل
+                              </ActionButton>
+                            }
+                            onConfirm={() =>
+                              updateCategory(category.id, {
+                                nameAr: category.nameAr,
+                                isActive: true,
+                              }).then(load)
+                            }
+                          />
+                        )}
                       </div>
                     </Can>
                   </td>

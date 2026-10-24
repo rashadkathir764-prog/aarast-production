@@ -564,6 +564,7 @@
 }
 
 .desk-bold { font-weight: 700; }
+.desk-small { font-size: 13px; }
 .desk-num { direction: ltr; unicode-bidi: isolate; }
 
 .desk-note {

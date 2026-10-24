@@ -1,137 +1,96 @@
-import { useEffect, useState } from 'react';
-import { Link, useParams } from 'react-router-dom';
+// a13 «تفاصيل مستخدم» and disabling the account (mobile/test/prototype/admin/
+// admin_screens.dart `a13User`). The cards «صاحب خطة», «مشارك في خطة»,
+// «مسجّل دخول» and «طلب حذف» wait for A-10, and the window gives no counts
+// because the server returns none; what it says happens is what disabling
+// does (sessions and live invites revoked, the plan kept, no money shown).
+import { useCallback, useEffect, useState } from 'react';
+import { useParams } from 'react-router-dom';
 import { activateUser, disableUser, getUser, type AdminUserRecord } from './api';
-import { ActionButton, ActionLink } from '../../design_system/ActionButton';
-import { DetailField } from '../../design_system/DetailField';
-import { EmptyState } from '../../design_system/EmptyState';
-import { ErrorState } from '../../design_system/ErrorState';
-import { LoadingState } from '../../design_system/LoadingState';
-import { PageHeader } from '../../design_system/PageHeader';
-import { RoleBadge } from '../../design_system/RoleBadge';
-import { SectionCard } from '../../design_system/SectionCard';
-import { StatusBadge } from '../../design_system/StatusBadge';
-import { formatDate } from '../../platform/i18n/formatDate';
-import { AdminPermission, Can } from '../auth/api';
+import { AdminPermission, hasAdminPermission, useAuth } from '../auth/api';
+import { ConfirmDialog } from '../../design_system/ConfirmDialog';
+import {
+  DeskButton,
+  DeskHeader,
+  DeskNote,
+  DeskRetry,
+  phoneSpaced,
+} from '../../design_system/Desk';
+import { dayMonth } from '../../platform/i18n/deskTime';
 
 export function UserDetailsPage() {
-  const { id } = useParams();
+  const { id = '' } = useParams();
+  const { user: currentAdmin } = useAuth();
   const [user, setUser] = useState<AdminUserRecord | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
 
-  async function load() {
-    if (!id) return;
-    setIsLoading(true);
+  const load = useCallback(async () => {
     setError(null);
     try {
       setUser(await getUser(id));
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'تعذر تحميل تفاصيل المستخدم.');
-    } finally {
-      setIsLoading(false);
+    } catch (value) {
+      setError(value instanceof Error ? value.message : 'ما قدرنا نحمّل الحساب.');
     }
-  }
-
-  useEffect(() => {
-    load();
   }, [id]);
 
-  async function toggleUserStatus() {
-    if (!user) return;
-    setError(null);
-    try {
-      if (user.status === 'ACTIVE') {
-        await disableUser(user.id);
-      } else {
-        await activateUser(user.id);
-      }
-      await load();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'تعذر تحديث حالة الحساب.');
-    }
+  useEffect(() => {
+    void load();
+  }, [load]);
+
+  if (!user) {
+    return error ? <DeskRetry message={error} onRetry={() => void load()} /> : <DeskNote>لحظة، نحمّل الحساب…</DeskNote>;
   }
 
-  if (isLoading) return <LoadingState title="جاري تحميل تفاصيل المستخدم" />;
-  if (error) return <ErrorState message={error} onRetry={load} />;
-  if (!user) {
-    return (
-      <EmptyState
-        title="المستخدم غير موجود"
-        message="لا يمكن عرض هذا الحساب من واجهة الإدارة الحالية."
-      />
-    );
-  }
+  // The server refuses an admin account unless the actor is a super admin,
+  // and never lets an admin disable themself; the button follows it.
+  const canChange =
+    hasAdminPermission(currentAdmin, AdminPermission.USERS_WRITE) &&
+    user.id !== currentAdmin?.id &&
+    (user.role !== 'ADMIN' || currentAdmin?.adminRole === 'SUPER_ADMIN');
+
+  const sub = (
+    <>
+      {user.phone ? <span className="desk-num">{phoneSpaced(user.phone)}</span> : null}
+      {user.phone && user.createdAt ? ' · ' : null}
+      {user.createdAt ? `من ${dayMonth(user.createdAt)}` : null}
+    </>
+  );
+
+  const action = !canChange ? null : user.status === 'ACTIVE' ? (
+    <ConfirmDialog
+      variant="desk"
+      title={`تعطيل حساب ${user.name}`}
+      effects={[
+        'يطلع من كل أجهزته الآن.',
+        'الدعوات اللي أرسلها للمشاركين تنلغي.',
+        'خطته تبقى، والمشاركين معه يكملون.',
+        'ما تقدر تشوف مال خطته ولا ضيوفه.',
+      ]}
+      confirmLabel="عطّل"
+      confirmTone="coral"
+      trigger={<DeskButton tone="white-coral">تعطيل الحساب</DeskButton>}
+      onConfirm={async () => {
+        await disableUser(user.id);
+        await load();
+      }}
+    />
+  ) : (
+    <ConfirmDialog
+      variant="desk"
+      title={`تفعيل حساب ${user.name}`}
+      effects={['يقدر يدخل من جديد برقمه.']}
+      confirmLabel="فعّل"
+      trigger={<DeskButton>تفعيل الحساب</DeskButton>}
+      onConfirm={async () => {
+        await activateUser(user.id);
+        await load();
+      }}
+    />
+  );
 
   return (
-    <section className="page-stack">
-      <PageHeader
-        eyebrow="تفاصيل مستخدم"
-        icon="♙"
-        title={user.name}
-        description="عرض آمن لبيانات الحساب، بدون كلمات مرور أو رموز دخول أو رموز تحقق."
-        actions={
-          <>
-            <Can permission={AdminPermission.USERS_WRITE}>
-              <ActionButton
-                tone={user.status === 'ACTIVE' ? 'danger' : 'ghost'}
-                onClick={toggleUserStatus}
-              >
-                {user.status === 'ACTIVE' ? 'تعطيل الحساب' : 'تفعيل الحساب'}
-              </ActionButton>
-            </Can>
-            <ActionLink tone="ghost" to="/users">
-              العودة للمستخدمين
-            </ActionLink>
-          </>
-        }
-        meta={
-          <>
-            <RoleBadge role={user.role} />
-            <StatusBadge status={user.status} />
-          </>
-        }
-      />
-
-      <SectionCard title="بيانات الحساب" subtitle="حقول قراءة فقط من استجابة الإدارة.">
-        <div className="details-grid">
-          <DetailField label="الاسم">{user.name}</DetailField>
-          <DetailField label="الهاتف">
-            <span dir="ltr">{user.phone ?? 'غير محدد'}</span>
-          </DetailField>
-          <DetailField label="البريد">{user.email ?? 'غير محدد'}</DetailField>
-          <DetailField label="الدور">
-            <RoleBadge role={user.role} />
-          </DetailField>
-          <DetailField label="الحالة">
-            <StatusBadge status={user.status} />
-          </DetailField>
-          <DetailField label="تاريخ التسجيل">{formatDate(user.createdAt)}</DetailField>
-          <DetailField label="آخر تحديث">{formatDate(user.updatedAt)}</DetailField>
-        </div>
-      </SectionCard>
-
-      <SectionCard title="المزود المرتبط" subtitle="يظهر فقط إذا كان الحساب مرتبطا بملف مزود حقيقي.">
-        {user.provider ? (
-          <div className="compact-list">
-            <Link className="compact-row" to={`/providers/${user.provider.id}`}>
-              <b>ملف</b>
-              <div>
-                <strong>{user.provider.businessName}</strong>
-                <span>
-                  {user.provider.city?.nameAr ?? 'مدينة غير محددة'} ·{' '}
-                  {user.provider.primaryCategory?.nameAr ?? 'فئة غير محددة'}
-                </span>
-              </div>
-              <StatusBadge status={user.provider.status} />
-            </Link>
-          </div>
-        ) : (
-          <EmptyState
-            title="لا يوجد مزود مرتبط"
-            message="هذا الحساب غير مرتبط بملف مزود في بيانات الإدارة الحالية."
-          />
-        )}
-      </SectionCard>
+    <section>
+      <DeskHeader title={user.name} sub={sub} actions={action} />
+      {error ? <DeskRetry message={error} onRetry={() => void load()} /> : null}
     </section>
   );
 }

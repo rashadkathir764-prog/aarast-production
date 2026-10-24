@@ -29,7 +29,8 @@ describe('admin RBAC and audit UI contract', () => {
 
   it('exposes a paginated read-only audit surface', () => {
     expect(adminApiSource).toContain('/admin/audit-logs');
-    expect(auditPageSource).toContain('<Pagination');
+    // a15 pages through the desk pager, which renders the shared control.
+    expect(auditPageSource).toContain('<DeskPager');
     expect(auditPageSource).toContain('AdminAuditPhase');
     expect(auditPageSource).not.toContain('deleteAdminAudit');
     expect(auditPageSource).not.toContain('updateAdminAudit');

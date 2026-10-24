@@ -8,6 +8,8 @@ import { DashboardPage } from './features/dashboard/DashboardPage';
 import { getStats } from './features/dashboard/api';
 import { getCategories, getCities } from './features/catalog/api';
 import { getConversationReports } from './features/moderation/api';
+import { getProvider } from './features/providers/api';
+import { getUser } from './features/users/api';
 import { ProviderApplicationsPage } from './features/providers/ProviderApplicationsPage';
 import { ProviderApplicationDetailsPage } from './features/providers/ProviderApplicationDetailsPage';
 import { ProvidersPage } from './features/providers/ProvidersPage';
@@ -25,6 +27,12 @@ import { NotFoundPage } from './platform/routing/NotFoundPage';
 import { AuditLogsPage } from './features/audit/AuditLogsPage';
 import { ReferenceCatalogsPage } from './features/catalog/ReferenceCatalogsPage';
 import { AdministrativeAreasPage } from './features/catalog/AdministrativeAreasPage';
+
+// The audit page reads names through the owners' public reads (users,
+// providers) instead of importing those features.
+const userName = (id: string) => getUser(id).then((user) => user.name);
+const providerName = (id: string) =>
+  getProvider(id).then((provider) => provider.businessName);
 
 export default function App() {
   return (
@@ -200,7 +208,10 @@ export default function App() {
           path="audit-logs"
           element={
             <RequireAdminPermission permission={AdminPermission.AUDIT_READ}>
-              <AuditLogsPage />
+              <AuditLogsPage
+                getUserName={userName}
+                getProviderName={providerName}
+              />
             </RequireAdminPermission>
           }
         />

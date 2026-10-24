@@ -9,7 +9,6 @@ import '../../../core/phone/yemeni_phone_normalizer.dart';
 import '../../../core/utils/arabic_count.dart';
 import '../../../core/routing/app_router.dart';
 import '../../../core/widgets/aarast_toast.dart';
-import '../../../core/widgets/aarast_ui.dart';
 import '../providers/auth_controller.dart';
 import '../widgets/auth_wedding_widgets.dart';
 import 'otp_screen.dart';
@@ -296,17 +295,11 @@ class LoginExperience extends StatelessWidget {
         ),
         Align(
           alignment: AlignmentDirectional.centerEnd,
-          child: TextButton(
+          child: JourneyTextAction(
             key: const ValueKey('login-forgot-password-action'),
+            label: 'نسيت كلمة المرور؟',
+            color: AarastV3Color.primary,
             onPressed: onResetPassword,
-            child: Text(
-              'نسيت كلمة المرور؟',
-              style: JourneyType.of(
-                JourneyType.body,
-                weight: JourneyType.bold,
-                color: AarastV3Color.primary,
-              ),
-            ),
           ),
         ),
         if (errorMessage != null) ...[
@@ -349,37 +342,26 @@ class LoginActions extends StatelessWidget {
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        AarastButton(
+        JourneyButton(
+          key: const ValueKey('login-submit'),
           label: 'تسجيل الدخول',
-          icon: LucideIcons.logIn,
-          isLoading: isSubmitting,
+          expand: true,
+          large: true,
+          loading: isSubmitting,
           onPressed: onSubmit,
         ),
         const SizedBox(height: 10),
         const _InlineDivider(label: 'أو بدون كلمة مرور'),
         const SizedBox(height: 10),
-        SizedBox(
-          height: 52,
-          child: TextButton.icon(
-            key: const ValueKey('login-otp-action'),
-            onPressed: isSubmitting ? null : onRequestOtp,
-            style: TextButton.styleFrom(
-              foregroundColor: AarastV3Color.mint,
-              backgroundColor: AarastV3Color.mintSoft,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(18),
-              ),
-            ),
-            icon: const Icon(LucideIcons.messageCircle, size: 20),
-            label: Text(
-              'الدخول برمز واتساب',
-              style: JourneyType.of(
-                JourneyType.bodyLarge,
-                weight: JourneyType.bold,
-                color: AarastV3Color.mint,
-              ),
-            ),
-          ),
+        JourneyButton(
+          key: const ValueKey('login-otp-action'),
+          label: 'الدخول برمز واتساب',
+          icon: LucideIcons.messageCircle,
+          background: AarastV3Color.mintSoft,
+          foreground: AarastV3Color.mint,
+          expand: true,
+          large: true,
+          onPressed: isSubmitting ? null : onRequestOtp,
         ),
         AuthFooterLink(
           key: const ValueKey('login-register-action'),

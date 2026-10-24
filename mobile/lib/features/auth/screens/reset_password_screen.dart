@@ -6,21 +6,25 @@ import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
 import '../../../core/contacts/contact_phone_field_suffix.dart';
+import '../../../core/experience_v3/aarast_v3.dart';
 import '../../../core/network/api_client.dart';
+import '../../../core/phone/phone_number_utils.dart';
 import '../../../core/phone/yemeni_phone_normalizer.dart';
 import '../../../core/routing/app_router.dart';
-import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/aarast_otp_field.dart';
-import '../../../core/widgets/aarast_ui.dart';
 import '../data/auth_repository.dart';
 import '../providers/auth_controller.dart';
 import '../utils/application_password_policy.dart';
 import '../widgets/auth_wedding_widgets.dart';
 
-enum _ResetStep { phone, confirm, done }
+enum _ResetStep { phone, code, password, done }
 
-/// استعادة كلمة المرور — رمز تحقق على رقم الهاتف ثم كلمة مرور جديدة.
-/// الخادم لا يكشف وجود الحساب، ويبطل كل الجلسات بعد نجاح الاستعادة.
+/// w01 «نسيت كلمة المرور»: «رقمك», «الرمز», «كلمة جديدة». The server has no
+/// step that checks the code alone, so the code and the new password are
+/// sent together on the last step; a wrong code takes the person back to
+/// «الرمز». The reset signs every device out, this one too, so the app then
+/// signs in again with the new password. The server never says whether the
+/// number has an account.
 class ResetPasswordScreen extends StatefulWidget {
   const ResetPasswordScreen({this.initialPhone, super.key});
 
@@ -32,9 +36,10 @@ class ResetPasswordScreen extends StatefulWidget {
 
 class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
   static const _resendCooldown = 60;
+  static const _codeLength = 6;
 
   final _phoneFormKey = GlobalKey<FormState>();
-  final _confirmFormKey = GlobalKey<FormState>();
+  final _passwordFormKey = GlobalKey<FormState>();
   final _phoneController = TextEditingController();
   final _codeController = TextEditingController();
   final _passwordController = TextEditingController();
@@ -55,6 +60,7 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
   void initState() {
     super.initState();
     _phoneController.text = widget.initialPhone?.trim() ?? '';
+    _passwordController.addListener(_onPasswordChanged);
   }
 
   @override
@@ -67,289 +73,317 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
     super.dispose();
   }
 
+  void _onPasswordChanged() {
+    if (mounted && _step == _ResetStep.password) setState(() {});
+  }
+
   @override
   Widget build(BuildContext context) {
-    final textTheme = Theme.of(context).textTheme;
-
+    final (action, onAction, busy) = switch (_step) {
+      _ResetStep.phone => ('أرسل الرمز', _requestCode, _isSubmitting),
+      _ResetStep.code => ('التالي', _acceptCode, false),
+      _ResetStep.password => (
+        'حفظ وتسجيل الدخول',
+        _confirmReset,
+        _isSubmitting,
+      ),
+      _ResetStep.done => (
+        'تسجيل الدخول',
+        () => context.go(_authLocation(AppRouter.login)),
+        _signingIn,
+      ),
+    };
     return AuthWeddingScaffold(
+      leading: SizedBox(
+        width: double.infinity,
+        child: JourneySubHeader(title: 'نسيت كلمة المرور', onBack: _back),
+      ),
+      bottom: JourneyButton(
+        key: const ValueKey('reset-primary-action'),
+        label: action,
+        expand: true,
+        large: true,
+        loading: busy,
+        onPressed: onAction,
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          const SizedBox(height: 20),
-          Text(
-            'استعادة كلمة المرور',
-            textAlign: TextAlign.center,
-            style: textTheme.headlineSmall?.copyWith(
-              color: AppTheme.textPrimary,
-              fontWeight: FontWeight.w900,
-              height: 1.18,
-            ),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            switch (_step) {
-              _ResetStep.phone =>
-                'أدخل رقم هاتفك وسنرسل لك رمز تحقق لاستعادة حسابك.',
-              _ResetStep.confirm =>
-                'أدخل الرمز الذي وصلك ثم اختر كلمة مرور جديدة.',
-              _ResetStep.done =>
-                'تمت الاستعادة بنجاح — ادخل الآن بكلمة مرورك الجديدة.',
-            },
-            textAlign: TextAlign.center,
-            style: textTheme.bodyMedium?.copyWith(
-              color: AppTheme.textSecondary,
-              fontWeight: FontWeight.w700,
-              height: 1.45,
-            ),
-          ),
-          const SizedBox(height: 16),
-          switch (_step) {
-            _ResetStep.phone => _buildPhoneStep(),
-            _ResetStep.confirm => _buildConfirmStep(),
-            _ResetStep.done => _buildDoneStep(),
+          if (_step != _ResetStep.done) ...[
+            _ResetSteps(at: _step.index),
+            const SizedBox(height: 18),
+          ],
+          ...switch (_step) {
+            _ResetStep.phone => _phoneStep(),
+            _ResetStep.code => _codeStep(),
+            _ResetStep.password => _passwordStep(),
+            _ResetStep.done => _doneStep(),
           },
-          const SizedBox(height: 12),
-          if (_step != _ResetStep.done)
-            AuthFooterLink(
-              prefix: 'تذكرت كلمة المرور؟',
-              action: 'تسجيل الدخول',
-              onTap: _isSubmitting
-                  ? () {}
-                  : () => context.go(_authLocation(AppRouter.login)),
-            ),
         ],
       ),
     );
   }
 
-  Widget _buildPhoneStep() {
-    return AuthPanel(
-      child: Form(
+  List<Widget> _phoneStep() {
+    return [
+      const AuthHeading(
+        title: 'اكتب رقمك',
+        subtitle: 'نرسل لك رمز على واتساب، وبعده تختار كلمة مرور جديدة.',
+      ),
+      const SizedBox(height: 18),
+      Form(
         key: _phoneFormKey,
+        child: AuthTextField(
+          controller: _phoneController,
+          label: 'رقم الهاتف',
+          hint: '777 123 456',
+          icon: LucideIcons.phone,
+          keyboardType: TextInputType.phone,
+          textInputAction: TextInputAction.done,
+          onFieldSubmitted: (_) => _requestCode(),
+          suffixIcon: ContactPhoneFieldSuffix(controller: _phoneController),
+          validator: (value) {
+            if (value == null || value.trim().isEmpty) {
+              return 'رقم الهاتف مطلوب';
+            }
+            if (!isValidYemeniPhoneInput(value)) {
+              return 'رقم الهاتف غير صحيح';
+            }
+            return null;
+          },
+        ),
+      ),
+      if (_errorMessage != null) ...[
+        const SizedBox(height: 10),
+        AuthInlineError(message: _errorMessage!),
+      ],
+    ];
+  }
+
+  List<Widget> _codeStep() {
+    final phone = _normalizedPhone;
+    final waiting = _resendSeconds > 0;
+    return [
+      const AuthHeading(title: 'أرسلنا لك رمز على واتساب'),
+      if (phone != null) ...[
+        const SizedBox(height: 4),
+        Wrap(
+          crossAxisAlignment: WrapCrossAlignment.center,
+          spacing: 10,
+          children: [
+            Text(
+              'إلى الرقم',
+              style: JourneyType.of(
+                JourneyType.body,
+                color: AarastV3Color.textMuted,
+              ),
+            ),
+            Text(
+              PhoneNumberUtils.display(phone) ?? phone,
+              textDirection: TextDirection.ltr,
+              style: JourneyType.of(
+                JourneyType.body,
+                color: AarastV3Color.textMuted,
+              ),
+            ),
+            JourneyTextAction(
+              label: 'تغيير',
+              color: AarastV3Color.primary,
+              onPressed: _isSubmitting ? null : () => _goTo(_ResetStep.phone),
+            ),
+          ],
+        ),
+      ],
+      const SizedBox(height: 18),
+      if (_otpNoticeMessage != null) ...[
+        JourneyNote(
+          key: const ValueKey('reset-otp-notice'),
+          text: _otpNoticeMessage!,
+          icon: LucideIcons.messageCircle,
+        ),
+        const SizedBox(height: 16),
+      ],
+      AarastOtpField(
+        controller: _codeController,
+        length: _codeLength,
+        state: _codeFieldState,
+        enabled: !_isSubmitting,
+        fieldKey: const Key('reset-otp-field'),
+        onChanged: (value) {
+          if (value.isEmpty) return;
+          if (_codeFieldState == AarastOtpFieldState.error ||
+              _errorMessage != null) {
+            setState(() {
+              _codeFieldState = AarastOtpFieldState.idle;
+              _errorMessage = null;
+              _errorCode = null;
+            });
+          }
+        },
+        onCompleted: (_) => _acceptCode(),
+      ),
+      const SizedBox(height: 16),
+      if (_errorMessage != null) ...[
+        AuthInlineError(message: _errorMessage!),
+        const SizedBox(height: 10),
+      ],
+      Center(
+        child: AuthFooterLink(
+          key: const ValueKey('reset-otp-resend-button'),
+          prefix: 'ما وصلك؟',
+          action: waiting
+              ? 'نعيد الإرسال بعد ${_clock(_resendSeconds)}'
+              : 'أرسل رمز جديد',
+          onTap: waiting || _isSubmitting ? null : _requestCodeAgain,
+        ),
+      ),
+    ];
+  }
+
+  List<Widget> _passwordStep() {
+    final longEnough = _passwordController.text.length >= 6;
+    return [
+      const AuthHeading(
+        title: 'اختر كلمة مرور جديدة',
+        subtitle: 'خطتك وكل بياناتك كما هي.',
+      ),
+      const SizedBox(height: 18),
+      Form(
+        key: _passwordFormKey,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             AuthTextField(
-              controller: _phoneController,
-              label: 'رقم الهاتف',
-              hint: 'مثال: 77xxxxxxx',
-              icon: LucideIcons.phone,
-              keyboardType: TextInputType.phone,
-              textInputAction: TextInputAction.done,
-              onFieldSubmitted: (_) => _requestCode(),
-              suffixIcon: ContactPhoneFieldSuffix(controller: _phoneController),
+              controller: _passwordController,
+              label: 'كلمة المرور الجديدة',
+              icon: LucideIcons.lock,
+              obscureText: _obscurePassword,
+              textInputAction: TextInputAction.next,
+              suffixIcon: AuthObscureToggle(
+                obscured: _obscurePassword,
+                onPressed: () {
+                  setState(() => _obscurePassword = !_obscurePassword);
+                },
+              ),
               validator: (value) {
-                if (value == null || value.trim().isEmpty) {
-                  return 'رقم الهاتف مطلوب';
+                if (value == null || value.isEmpty) {
+                  return 'اكتب كلمة المرور الجديدة';
                 }
-                if (!isValidYemeniPhoneInput(value)) {
-                  return 'رقم الهاتف غير صحيح';
+                if (value.length < 6) {
+                  return 'قصيرة. خلّها 6 أحرف أو أكثر';
+                }
+                if (!isApplicationPasswordWithinByteLimit(value)) {
+                  return 'كلمة المرور طويلة جدًا. اختصرها ثم حاول مرة أخرى';
                 }
                 return null;
               },
             ),
-            if (_errorMessage != null) ...[
-              const SizedBox(height: 10),
-              AuthInlineError(message: _errorMessage!),
-            ],
-            const SizedBox(height: 12),
-            AarastButton(
-              label: 'إرسال رمز الاستعادة',
-              icon: LucideIcons.messageSquare,
-              isLoading: _isSubmitting,
-              compact: true,
-              onPressed: _isSubmitting ? null : _requestCode,
+            const SizedBox(height: 10),
+            AuthTextField(
+              controller: _confirmPasswordController,
+              label: 'أعد كتابتها',
+              icon: LucideIcons.lock,
+              obscureText: _obscurePassword,
+              textInputAction: TextInputAction.done,
+              onFieldSubmitted: (_) => _confirmReset(),
+              validator: (value) {
+                if (value != _passwordController.text) {
+                  return 'ما تطابقت مع الكلمة الجديدة';
+                }
+                return null;
+              },
             ),
           ],
         ),
       ),
-    );
-  }
-
-  Widget _buildConfirmStep() {
-    // عند نجاح الرمز تتحوّل البطاقة كاملة إلى لوحة ✓ الخضراء
-    // قبل الانتقال لخطوة النجاح النهائية.
-    return AuthPanel(
-      child: AnimatedSwitcher(
-        duration: MediaQuery.disableAnimationsOf(context)
-            ? Duration.zero
-            : const Duration(milliseconds: 280),
-        child: _codeFieldState == AarastOtpFieldState.success
-            ? const AarastOtpSuccessPanel(subtitle: 'تم التحقق من الرمز.')
-            : _buildConfirmForm(),
-      ),
-    );
-  }
-
-  Widget _buildConfirmForm() {
-    return Form(
-      key: _confirmFormKey,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          if (_otpNoticeMessage != null) ...[
-            _OtpNotice(message: _otpNoticeMessage!),
-            const SizedBox(height: 10),
-          ],
-          Padding(
-            padding: const EdgeInsets.only(bottom: 8),
-            child: Text(
-              'رمز التحقق',
-              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                color: AppTheme.textPrimary,
-                fontWeight: FontWeight.w900,
-              ),
-            ),
-          ),
-          AarastOtpField(
-            controller: _codeController,
-            state: _codeFieldState,
-            enabled: !_isSubmitting,
-            fieldKey: const Key('reset-otp-field'),
-            onChanged: (value) {
-              if (value.isEmpty) return;
-              if (_codeFieldState == AarastOtpFieldState.error ||
-                  _errorMessage != null) {
-                setState(() {
-                  _codeFieldState = AarastOtpFieldState.idle;
-                  _errorMessage = null;
-                  _errorCode = null;
-                });
-              }
-            },
-          ),
-          const SizedBox(height: 10),
-          AuthTextField(
-            controller: _passwordController,
-            label: 'كلمة المرور الجديدة',
-            icon: LucideIcons.lock,
-            obscureText: _obscurePassword,
-            textInputAction: TextInputAction.next,
-            suffixIcon: AuthObscureToggle(
-              obscured: _obscurePassword,
-              onPressed: () {
-                setState(() => _obscurePassword = !_obscurePassword);
-              },
-            ),
-            validator: (value) {
-              if (value == null || value.isEmpty) {
-                return 'كلمة المرور الجديدة مطلوبة';
-              }
-              if (value.length < 6) {
-                return 'كلمة المرور 6 أحرف على الأقل';
-              }
-              if (!isApplicationPasswordWithinByteLimit(value)) {
-                return 'كلمة المرور طويلة جدًا. اختصرها ثم حاول مرة أخرى';
-              }
-              return null;
-            },
-          ),
-          const SizedBox(height: 10),
-          AuthTextField(
-            controller: _confirmPasswordController,
-            label: 'تأكيد كلمة المرور',
-            icon: LucideIcons.lock,
-            obscureText: _obscurePassword,
-            textInputAction: TextInputAction.done,
-            onFieldSubmitted: (_) => _confirmReset(),
-            validator: (value) {
-              if (value != _passwordController.text) {
-                return 'كلمتا المرور غير متطابقتين';
-              }
-              return null;
-            },
-          ),
-          if (_errorMessage != null) ...[
-            const SizedBox(height: 10),
-            AuthInlineError(message: _errorMessage!),
-          ],
-          if (_errorCode == 'ACCOUNT_NOT_FOUND_AFTER_PHONE_PROOF') ...[
-            const SizedBox(height: 10),
-            TextButton.icon(
-              key: const ValueKey('reset-create-account-action'),
-              onPressed: _isSubmitting
-                  ? null
-                  : () => context.go(_authLocation(AppRouter.register)),
-              icon: const Icon(LucideIcons.userPlus, size: 18),
-              label: const Text('إنشاء حساب جديد بهذا الرقم'),
-            ),
-          ],
-          const SizedBox(height: 12),
-          AarastButton(
-            label: 'تغيير كلمة المرور',
-            icon: LucideIcons.rotateCcw,
-            isLoading: _isSubmitting,
-            compact: true,
-            onPressed: _isSubmitting ? null : _confirmReset,
-          ),
-          const SizedBox(height: 10),
-          TextButton.icon(
-            key: const ValueKey('reset-otp-resend-button'),
-            onPressed: _isSubmitting || _resendSeconds > 0
+      const SizedBox(height: 10),
+      _PasswordRule(met: longEnough),
+      if (_errorMessage != null) ...[
+        const SizedBox(height: 12),
+        AuthInlineError(message: _errorMessage!),
+      ],
+      if (_errorCode == 'ACCOUNT_NOT_FOUND_AFTER_PHONE_PROOF')
+        Align(
+          alignment: AlignmentDirectional.centerStart,
+          child: JourneyTextAction(
+            key: const ValueKey('reset-create-account-action'),
+            label: 'أنشئ حساب جديد بهذا الرقم',
+            icon: LucideIcons.userPlus,
+            color: AarastV3Color.primary,
+            onPressed: _isSubmitting
                 ? null
-                : _requestCodeAgain,
-            icon: const Icon(LucideIcons.refreshCw, size: 18),
-            label: Text(
-              _resendSeconds > 0
-                  ? 'إعادة الإرسال خلال $_resendSeconds ث'
-                  : 'إعادة إرسال الرمز',
-            ),
+                : () => context.go(_authLocation(AppRouter.register)),
           ),
-        ],
+        ),
+      const SizedBox(height: 18),
+      const JourneyNote(
+        icon: LucideIcons.shieldCheck,
+        text:
+            'بنطلعك من كل الأجهزة، احتياط لو أحد عرف كلمتك القديمة، وندخّلك هنا بالجديدة.',
       ),
-    );
+    ];
   }
 
-  Widget _buildDoneStep() {
-    return AuthPanel(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Container(
-            width: 62,
-            height: 62,
-            alignment: Alignment.center,
-            decoration: const BoxDecoration(
-              color: AppTheme.successSoft,
-              shape: BoxShape.circle,
-            ),
-            child: const Icon(
-              LucideIcons.checkCircle,
-              color: AppTheme.success,
-              size: 32,
-            ),
-          ),
-          const SizedBox(height: 16),
-          Text(
-            'غيّرنا كلمة المرور',
-            textAlign: TextAlign.center,
-            style: Theme.of(context).textTheme.titleLarge?.copyWith(
-              color: AppTheme.textPrimary,
-              fontWeight: FontWeight.w900,
-            ),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            _signingIn
-                ? 'وطلعناك من كل الأجهزة لحمايتك. ندخّلك الآن بكلمة المرور الجديدة.'
-                : 'وطلعناك من كل الأجهزة لحمايتك. ادخل بكلمة المرور الجديدة.',
-            textAlign: TextAlign.center,
-            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-              color: AppTheme.textSecondary,
-              fontWeight: FontWeight.w700,
-              height: 1.5,
-            ),
-          ),
-          const SizedBox(height: 20),
-          AarastButton(
-            label: 'تسجيل الدخول',
-            icon: LucideIcons.logIn,
-            isLoading: _signingIn,
-            onPressed: () => context.go(_authLocation(AppRouter.login)),
-          ),
-        ],
+  List<Widget> _doneStep() {
+    return [
+      const SizedBox(height: 24),
+      const Center(
+        child: JourneyIconTile(
+          icon: LucideIcons.checkCircle2,
+          color: AarastV3Color.mint,
+          soft: AarastV3Color.mintSoft,
+          size: 64,
+          radius: 20,
+        ),
       ),
-    );
+      const SizedBox(height: 16),
+      Semantics(
+        header: true,
+        child: Text(
+          'غيّرنا كلمة المرور',
+          textAlign: TextAlign.center,
+          style: JourneyType.of(JourneyType.display, weight: JourneyType.bold),
+        ),
+      ),
+      const SizedBox(height: 6),
+      Text(
+        _signingIn
+            ? 'وطلعناك من كل الأجهزة لحمايتك. ندخّلك الآن بكلمة المرور الجديدة.'
+            : 'وطلعناك من كل الأجهزة لحمايتك. ادخل بكلمة المرور الجديدة.',
+        textAlign: TextAlign.center,
+        style: JourneyType.of(JourneyType.body, color: AarastV3Color.textMuted),
+      ),
+    ];
+  }
+
+  String? get _normalizedPhone {
+    final raw = _phoneController.text.trim();
+    return isValidYemeniPhoneInput(raw) ? normalizeYemeniPhone(raw) : null;
+  }
+
+  void _goTo(_ResetStep step) {
+    setState(() {
+      _step = step;
+      _errorMessage = null;
+      _errorCode = null;
+    });
+  }
+
+  void _back() {
+    if (_isSubmitting) return;
+    switch (_step) {
+      case _ResetStep.code:
+        _goTo(_ResetStep.phone);
+      case _ResetStep.password:
+        _goTo(_ResetStep.code);
+      case _ResetStep.phone:
+      case _ResetStep.done:
+        if (context.canPop()) {
+          context.pop();
+        } else {
+          context.go(_authLocation(AppRouter.login));
+        }
+    }
   }
 
   Future<void> _requestCode() async {
@@ -357,8 +391,10 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
     if (!_phoneFormKey.currentState!.validate()) return;
     await _sendResetCode(
       onSuccess: () {
+        _codeController.clear();
         setState(() {
-          _step = _ResetStep.confirm;
+          _step = _ResetStep.code;
+          _codeFieldState = AarastOtpFieldState.idle;
           _errorMessage = null;
           _errorCode = null;
         });
@@ -413,21 +449,26 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
     }
   }
 
-  Future<void> _confirmReset() async {
-    if (_isSubmitting) return;
-    if (_codeController.text.trim().length < 6) {
+  /// «الرمز» only collects the six digits; the server checks them with the
+  /// new password.
+  void _acceptCode() {
+    if (_codeController.text.trim().length < _codeLength) {
       setState(() {
         _codeFieldState = AarastOtpFieldState.error;
-        _errorMessage = 'رمز التحقق غير مكتمل';
+        _errorMessage = 'اكتب الرمز كامل';
       });
       return;
     }
-    if (!_confirmFormKey.currentState!.validate()) return;
+    _goTo(_ResetStep.password);
+  }
+
+  Future<void> _confirmReset() async {
+    if (_isSubmitting) return;
+    if (!_passwordFormKey.currentState!.validate()) return;
     setState(() {
       _isSubmitting = true;
       _errorMessage = null;
       _errorCode = null;
-      _codeFieldState = AarastOtpFieldState.idle;
     });
     try {
       await context.read<AuthRepository>().confirmPasswordReset(
@@ -437,22 +478,25 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
       );
       if (!mounted) return;
       _resendTimer?.cancel();
-      setState(() => _codeFieldState = AarastOtpFieldState.success);
-      await Future<void>.delayed(AarastOtpField.successHold(context));
-      if (!mounted) return;
       setState(() => _step = _ResetStep.done);
       await _signInWithNewPassword();
     } on ApiException catch (error) {
       if (!mounted) return;
+      final codeRefused =
+          error.serverCode != 'ACCOUNT_NOT_FOUND_AFTER_PHONE_PROOF';
       setState(() {
         _errorMessage = error.message;
         _errorCode = error.serverCode;
-        _codeFieldState = AarastOtpFieldState.error;
+        // A refused code goes back to «الرمز», where it is typed again.
+        if (codeRefused) {
+          _step = _ResetStep.code;
+          _codeFieldState = AarastOtpFieldState.error;
+        }
       });
     } on Object {
       if (!mounted) return;
       setState(() {
-        _errorMessage = 'تعذر تغيير كلمة المرور الآن. حاول مرة أخرى.';
+        _errorMessage = 'تعذر تغيير كلمة المرور الآن. حاول مرة ثانية.';
       });
     } finally {
       if (mounted) setState(() => _isSubmitting = false);
@@ -524,29 +568,98 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
   }
 }
 
-class _OtpNotice extends StatelessWidget {
-  const _OtpNotice({required this.message});
+/// «0:42» for a countdown in seconds.
+String _clock(int seconds) =>
+    '${seconds ~/ 60}:${(seconds % 60).toString().padLeft(2, '0')}';
 
-  final String message;
+/// w01's three named steps: the current one filled, the ones behind soft.
+class _ResetSteps extends StatelessWidget {
+  const _ResetSteps({required this.at});
+
+  static const _labels = ['رقمك', 'الرمز', 'كلمة جديدة'];
+
+  final int at;
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-      decoration: BoxDecoration(
-        color: AppTheme.brandMuted,
-        borderRadius: BorderRadius.circular(AppTheme.radiusMd),
-        border: Border.all(color: AppTheme.focus.withValues(alpha: 0.35)),
-      ),
-      child: Text(
-        message,
-        textAlign: TextAlign.center,
-        style: Theme.of(context).textTheme.bodySmall?.copyWith(
-          color: AppTheme.textPrimary,
-          fontWeight: FontWeight.w800,
-          height: 1.45,
+    return Semantics(
+      label: 'الخطوة ${at + 1} من ${_labels.length}: ${_labels[at]}',
+      excludeSemantics: true,
+      child: Container(
+        key: const ValueKey('reset-steps'),
+        padding: const EdgeInsets.all(6),
+        decoration: BoxDecoration(
+          color: AarastV3Color.paper,
+          borderRadius: BorderRadius.circular(999),
+          border: Border.all(color: AarastV3Color.line),
+        ),
+        child: Row(
+          children: [
+            for (var index = 0; index < _labels.length; index++)
+              Expanded(
+                child: Container(
+                  padding: const EdgeInsets.symmetric(vertical: 8),
+                  alignment: Alignment.center,
+                  decoration: BoxDecoration(
+                    color: index == at
+                        ? AarastV3Color.primary
+                        : index < at
+                        ? AarastV3Color.primarySoft
+                        : null,
+                    borderRadius: BorderRadius.circular(999),
+                  ),
+                  child: FittedBox(
+                    fit: BoxFit.scaleDown,
+                    child: Text(
+                      _labels[index],
+                      maxLines: 1,
+                      style: JourneyType.of(
+                        JourneyType.small,
+                        weight: JourneyType.bold,
+                        color: index == at
+                            ? AarastV3Color.onPrimary
+                            : index < at
+                            ? AarastV3Color.primary
+                            : AarastV3Color.textMuted,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+          ],
         ),
       ),
+    );
+  }
+}
+
+/// «6 أحرف أو أكثر», green once the new password is long enough.
+class _PasswordRule extends StatelessWidget {
+  const _PasswordRule({required this.met});
+
+  final bool met;
+
+  @override
+  Widget build(BuildContext context) {
+    final color = met ? AarastV3Color.mint : AarastV3Color.textMuted;
+    return Row(
+      key: const ValueKey('reset-password-rule'),
+      children: [
+        Icon(
+          met ? LucideIcons.checkCircle2 : LucideIcons.circle,
+          size: 16,
+          color: color,
+        ),
+        const SizedBox(width: 6),
+        Text(
+          '6 أحرف أو أكثر',
+          style: JourneyType.of(
+            JourneyType.small,
+            weight: JourneyType.bold,
+            color: color,
+          ),
+        ),
+      ],
     );
   }
 }

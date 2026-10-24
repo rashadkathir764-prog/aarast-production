@@ -116,14 +116,16 @@ class _RegisterScreenState extends State<RegisterScreen> {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          AarastButton(
+          JourneyButton(
+            key: const ValueKey('register-submit'),
             label: providerMode
                 ? 'إرسال طلب الانضمام'
                 : keptPlan != null
                 ? 'احفظ خطتي'
                 : 'إنشاء حساب',
-            icon: providerMode ? LucideIcons.contact : LucideIcons.userPlus,
-            isLoading: auth.isSubmitting,
+            expand: true,
+            large: true,
+            loading: auth.isSubmitting,
             onPressed: _submit,
           ),
           AuthFooterLink(

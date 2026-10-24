@@ -2,7 +2,6 @@ import 'package:aarast_mobile/app.dart';
 import 'package:aarast_mobile/core/network/api_client.dart';
 import 'package:aarast_mobile/core/storage/auth_storage.dart';
 import 'package:aarast_mobile/core/theme/app_theme.dart';
-import 'package:aarast_mobile/core/widgets/aarast_ui.dart';
 import 'package:aarast_mobile/features/auth/data/auth_repository.dart';
 import 'package:aarast_mobile/features/auth/models/auth_otp.dart';
 import 'package:aarast_mobile/features/auth/models/auth_response.dart';
@@ -30,7 +29,7 @@ void main() {
 
       await _pump(tester, harness.controller, router);
       await tester.enterText(find.byType(TextFormField).at(1), 'correct-pass');
-      final submit = find.byType(AarastButton);
+      final submit = find.byKey(const ValueKey('login-submit'));
       await tester.ensureVisible(submit);
       await tester.tap(submit);
       await tester.pumpAndSettle();
@@ -70,7 +69,7 @@ void main() {
 
     await _pump(tester, harness.controller, router);
     await tester.enterText(find.byType(TextFormField).at(1), 'wrong-pass');
-    final submit = find.byType(AarastButton);
+    final submit = find.byKey(const ValueKey('login-submit'));
     await tester.ensureVisible(submit);
     await tester.tap(submit);
     await tester.pumpAndSettle();

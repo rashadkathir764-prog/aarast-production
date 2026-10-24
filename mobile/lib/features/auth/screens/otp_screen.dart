@@ -8,10 +8,8 @@ import 'package:provider/provider.dart';
 import '../../../core/experience_v3/aarast_v3.dart';
 import '../../../core/phone/phone_number_utils.dart';
 import '../../../core/routing/app_router.dart';
-import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/aarast_otp_field.dart';
 import '../../../core/widgets/aarast_toast.dart';
-import '../../../core/widgets/aarast_ui.dart';
 import '../../provider_portal/provider_portal_api.dart'
     show ProviderDashboardProvider;
 import '../models/pending_registration.dart';
@@ -300,7 +298,7 @@ class _OtpScreenState extends State<OtpScreen> {
   /// w03 «الرمز ما وصل؟»: what to check, then resend, sign in with the
   /// password, or fix the number.
   Future<void> _showCodeHelp(String phone) {
-    return showAarastBottomSheet<void>(
+    return showJourneySheet<void>(
       context: context,
       builder: (sheetContext) => _CodeHelpSheet(
         phone: phone,
@@ -353,23 +351,27 @@ class _OtpScreenState extends State<OtpScreen> {
       bottom: existingAccount || _fieldState == AarastOtpFieldState.success
           ? null
           : missingAccountAfterProof
-          ? AarastButton(
+          ? JourneyButton(
               key: const ValueKey('otp-go-to-register'),
               label: 'إنشاء حساب',
-              icon: LucideIcons.userPlus,
+              expand: true,
+              large: true,
               onPressed: phone.isEmpty ? null : () => _goToRegistration(phone),
             )
           : disabledAccountAfterProof
-          ? AarastButton(
+          ? JourneyButton(
               key: const ValueKey('otp-disabled-go-to-login'),
-              label: 'العودة إلى تسجيل الدخول',
-              icon: LucideIcons.arrowRight,
+              label: 'ارجع لتسجيل الدخول',
+              expand: true,
+              large: true,
               onPressed: phone.isEmpty ? null : () => _goToLogin(phone),
             )
-          : AarastButton(
+          : JourneyButton(
+              key: const ValueKey('otp-confirm'),
               label: 'تأكيد الرمز',
-              icon: LucideIcons.badgeCheck,
-              isLoading: verifying,
+              expand: true,
+              large: true,
+              loading: verifying,
               onPressed: _verifyOtp,
             ),
       child: AnimatedSwitcher(
@@ -414,7 +416,11 @@ class _OtpScreenState extends State<OtpScreen> {
                   ],
                   const SizedBox(height: 22),
                   if (otpNoticeMessage != null) ...[
-                    _OtpNotice(message: otpNoticeMessage),
+                    JourneyNote(
+                      key: const ValueKey('otp-notice'),
+                      text: otpNoticeMessage,
+                      icon: LucideIcons.messageCircle,
+                    ),
                     const SizedBox(height: 16),
                   ],
                   AarastOtpField(
@@ -441,13 +447,14 @@ class _OtpScreenState extends State<OtpScreen> {
                     ),
                     const SizedBox(height: 4),
                     Center(
-                      child: TextButton.icon(
+                      child: JourneyTextAction(
                         key: const ValueKey('otp-go-to-password-reset'),
+                        label: 'نسيت كلمة المرور؟',
+                        icon: LucideIcons.keyRound,
+                        color: AarastV3Color.primary,
                         onPressed: phone.isEmpty
                             ? null
                             : () => _goToPasswordReset(phone),
-                        icon: const Icon(LucideIcons.keyRound, size: 18),
-                        label: const Text('نسيت كلمة المرور؟'),
                       ),
                     ),
                   ] else ...[
@@ -579,94 +586,47 @@ class _CodeHelpSheetState extends State<_CodeHelpSheet> {
   @override
   Widget build(BuildContext context) {
     final seconds = widget.resendSeconds();
-    return SafeArea(
-      child: ListView(
-        shrinkWrap: true,
-        padding: const EdgeInsets.fromLTRB(20, 10, 20, 20),
-        children: [
-          Semantics(
-            header: true,
-            child: Text(
-              'الرمز ما وصل؟',
-              style: JourneyType.of(
-                JourneyType.title,
-                weight: JourneyType.bold,
+    return JourneySheetBody(
+      title: 'الرمز ما وصل؟',
+      subtitle: 'نرسله على واتساب فقط، وهذا اللي تقدر تسويه',
+      children: [
+        JourneyBox(
+          child: Column(
+            children: [
+              _tip(
+                LucideIcons.smartphone,
+                'تأكد إن واتساب شغّال على '
+                '${PhoneNumberUtils.directionalDisplay(widget.phone) ?? ''}',
               ),
-            ),
+              _tip(LucideIcons.wifi, 'تأكد إن النت واصل للجوال'),
+              _tip(LucideIcons.archive, 'شوف المحادثات المؤرشفة في واتساب'),
+            ],
           ),
-          Text(
-            'نرسله على واتساب فقط، وهذا اللي تقدر تسويه',
-            style: JourneyType.of(
-              JourneyType.body,
-              color: AarastV3Color.textMuted,
-            ),
-          ),
-          const SizedBox(height: 14),
-          JourneyBox(
-            child: Column(
-              children: [
-                _tip(
-                  LucideIcons.smartphone,
-                  'تأكد إن واتساب شغّال على '
-                  '${PhoneNumberUtils.directionalDisplay(widget.phone) ?? ''}',
-                ),
-                _tip(LucideIcons.wifi, 'تأكد إن النت واصل للجوال'),
-                _tip(LucideIcons.archive, 'شوف المحادثات المؤرشفة في واتساب'),
-              ],
-            ),
-          ),
-          const SizedBox(height: 14),
-          JourneyButton.quiet(
-            label: seconds > 0
-                ? 'أعد الإرسال بعد ${_clock(seconds)}'
-                : 'أعد الإرسال',
-            onPressed: seconds > 0 ? null : widget.onResend,
-            expand: true,
-          ),
-          const SizedBox(height: 10),
-          JourneyButton.quiet(
-            label: 'الدخول بكلمة المرور',
-            icon: LucideIcons.lock,
-            onPressed: widget.onPassword,
-            expand: true,
-          ),
-          const SizedBox(height: 6),
-          Center(
-            child: JourneyTextAction(
-              label: 'الرقم غلط؟ غيّره',
-              color: AarastV3Color.primary,
-              onPressed: widget.onChangeNumber,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _OtpNotice extends StatelessWidget {
-  const _OtpNotice({required this.message});
-
-  final String message;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: AppTheme.canvas,
-        borderRadius: BorderRadius.circular(AppTheme.radiusMd),
-        border: Border.all(color: AppTheme.border),
-      ),
-      child: Text(
-        message,
-        textAlign: TextAlign.center,
-        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-          color: AppTheme.textPrimary,
-          fontWeight: FontWeight.w900,
-          height: 1.4,
         ),
-      ),
+        const SizedBox(height: 14),
+        JourneyButton.quiet(
+          label: seconds > 0
+              ? 'أعد الإرسال بعد ${_clock(seconds)}'
+              : 'أعد الإرسال',
+          onPressed: seconds > 0 ? null : widget.onResend,
+          expand: true,
+        ),
+        const SizedBox(height: 10),
+        JourneyButton.quiet(
+          label: 'الدخول بكلمة المرور',
+          icon: LucideIcons.lock,
+          onPressed: widget.onPassword,
+          expand: true,
+        ),
+        const SizedBox(height: 6),
+        Center(
+          child: JourneyTextAction(
+            label: 'الرقم غلط؟ غيّره',
+            color: AarastV3Color.primary,
+            onPressed: widget.onChangeNumber,
+          ),
+        ),
+      ],
     );
   }
 }

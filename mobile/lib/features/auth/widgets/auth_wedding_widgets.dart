@@ -4,7 +4,7 @@ import 'package:lucide_icons/lucide_icons.dart';
 
 import '../../../core/experience_v3/aarast_v3.dart';
 import '../../../core/theme/aarast_motion.dart';
-import '../../../core/theme/app_theme.dart';
+import '../../../core/widgets/aarast_pressable.dart';
 
 /// A sign-in screen (prototype a08b to a10): the round back button on top,
 /// the form under it, and the main action held at the bottom.
@@ -125,7 +125,7 @@ class AuthHeading extends StatelessWidget {
   }
 }
 
-/// زر إظهار/إخفاء كلمة المرور — مضغوط بحجم موحد عبر شاشات الدخول.
+/// The eye inside a password field: shows or hides what is typed.
 class AuthObscureToggle extends StatelessWidget {
   const AuthObscureToggle({
     required this.obscured,
@@ -145,7 +145,7 @@ class AuthObscureToggle extends StatelessWidget {
       iconSize: 19,
       icon: Icon(
         obscured ? LucideIcons.eye : LucideIcons.eyeOff,
-        color: AppTheme.textSecondary,
+        color: AarastV3Color.textMuted,
       ),
     );
   }
@@ -182,7 +182,6 @@ class AuthTextField extends StatelessWidget {
     this.maxLines = 1,
     this.suffixIcon,
     this.onFieldSubmitted,
-    this.compact = true,
     super.key,
   });
 
@@ -198,7 +197,6 @@ class AuthTextField extends StatelessWidget {
   final int maxLines;
   final Widget? suffixIcon;
   final ValueChanged<String>? onFieldSubmitted;
-  final bool compact;
 
   static const _labelTop = 9.0;
 
@@ -388,31 +386,62 @@ class AuthFooterLink extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final enabled = onTap != null;
-    return TextButton(
-      onPressed: onTap,
-      style: TextButton.styleFrom(minimumSize: const Size(48, 48)),
-      child: Text.rich(
-        TextSpan(
-          text: '$prefix ',
-          style: JourneyType.of(
-            JourneyType.body,
-            color: AarastV3Color.textMuted,
-          ),
-          children: [
-            TextSpan(
-              text: action,
-              style: JourneyType.of(
-                JourneyType.body,
-                weight: JourneyType.bold,
-                color: enabled
-                    ? AarastV3Color.primary
-                    : AarastV3Color.textFaint,
+    return Semantics(
+      button: true,
+      enabled: enabled,
+      label: '$prefix $action',
+      onTap: onTap,
+      excludeSemantics: true,
+      child: AarastPressable(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(12),
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(minHeight: 48),
+          child: Center(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+              child: _FooterLinkText(
+                prefix: prefix,
+                action: action,
+                enabled: enabled,
               ),
             ),
-          ],
+          ),
         ),
-        textAlign: TextAlign.center,
       ),
+    );
+  }
+}
+
+class _FooterLinkText extends StatelessWidget {
+  const _FooterLinkText({
+    required this.prefix,
+    required this.action,
+    required this.enabled,
+  });
+
+  final String prefix;
+  final String action;
+  final bool enabled;
+
+  @override
+  Widget build(BuildContext context) {
+    return Text.rich(
+      TextSpan(
+        text: '$prefix ',
+        style: JourneyType.of(JourneyType.body, color: AarastV3Color.textMuted),
+        children: [
+          TextSpan(
+            text: action,
+            style: JourneyType.of(
+              JourneyType.body,
+              weight: JourneyType.bold,
+              color: enabled ? AarastV3Color.primary : AarastV3Color.textFaint,
+            ),
+          ),
+        ],
+      ),
+      textAlign: TextAlign.center,
     );
   }
 }

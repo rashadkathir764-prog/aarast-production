@@ -1,5 +1,6 @@
 import 'package:aarast_mobile/core/network/api_client.dart';
 import 'package:aarast_mobile/core/storage/auth_storage.dart';
+import 'package:aarast_mobile/core/widgets/aarast_pressable.dart';
 import 'package:aarast_mobile/features/auth/data/auth_repository.dart';
 import 'package:aarast_mobile/features/auth/models/auth_otp.dart';
 import 'package:aarast_mobile/features/auth/providers/auth_controller.dart';
@@ -157,10 +158,10 @@ void main() {
     await tester.ensureVisible(footer);
     expect(
       tester
-          .widget<TextButton>(
-            find.descendant(of: footer, matching: find.byType(TextButton)),
+          .widget<AarastPressable>(
+            find.descendant(of: footer, matching: find.byType(AarastPressable)),
           )
-          .onPressed,
+          .onTap,
       isNull,
     );
 
@@ -170,10 +171,10 @@ void main() {
     expect(find.text('ما وصلك؟ أرسل رمز جديد'), findsOneWidget);
     expect(
       tester
-          .widget<TextButton>(
-            find.descendant(of: footer, matching: find.byType(TextButton)),
+          .widget<AarastPressable>(
+            find.descendant(of: footer, matching: find.byType(AarastPressable)),
           )
-          .onPressed,
+          .onTap,
       isNotNull,
     );
   });

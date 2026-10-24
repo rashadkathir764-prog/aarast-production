@@ -1,11 +1,17 @@
 import 'package:aarast_mobile/core/theme/app_theme.dart';
-import 'package:aarast_mobile/core/widgets/aarast_button.dart';
+import 'package:aarast_mobile/core/experience_v3/aarast_journey.dart';
 import 'package:aarast_mobile/features/auth/screens/login_screen.dart';
 import 'package:aarast_mobile/features/auth/widgets/auth_wedding_widgets.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import '../../support/preview_fonts.dart';
+
 void main() {
+  // Measured with the app's own fonts: the test font draws every Arabic
+  // letter as a full square and wraps labels a phone never wraps.
+  setUpAll(loadPreviewAppFonts);
+
   // D7: the journey field holds its label inside the box (60 to 76 px);
   // actions stay one comfortable touch target (48 to 56 px).
   testWidgets('LoginExperience keeps its fields and actions to size', (
@@ -54,7 +60,7 @@ void main() {
     }
 
     final compactActions = {
-      'primary login': find.widgetWithText(AarastButton, 'تسجيل الدخول'),
+      'primary login': find.widgetWithText(JourneyButton, 'تسجيل الدخول'),
       'WhatsApp OTP': find.byKey(const ValueKey('login-otp-action')),
       'register prompt': find.byKey(const ValueKey('login-register-action')),
     };
@@ -129,7 +135,7 @@ void main() {
         expect(find.byType(TextFormField), findsNWidgets(2));
         expect(tester.takeException(), isNull);
 
-        final submit = find.widgetWithText(AarastButton, 'تسجيل الدخول');
+        final submit = find.widgetWithText(JourneyButton, 'تسجيل الدخول');
         await tester.ensureVisible(submit);
         await tester.pumpAndSettle();
         expect(submit, findsOneWidget);

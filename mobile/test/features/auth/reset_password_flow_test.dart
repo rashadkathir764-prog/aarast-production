@@ -1,3 +1,5 @@
+import 'package:aarast_mobile/core/experience_v3/aarast_journey.dart';
+import 'package:aarast_mobile/core/widgets/aarast_pressable.dart';
 import 'package:aarast_mobile/features/auth/providers/auth_controller.dart';
 import 'package:aarast_mobile/features/auth/models/auth_response.dart';
 import 'package:aarast_mobile/core/network/api_client.dart';
@@ -111,42 +113,77 @@ Future<void> _pumpResetScreen(
   await tester.pump(const Duration(milliseconds: 600));
 }
 
+final _primary = find.byKey(const ValueKey('reset-primary-action'));
+
+/// «رقمك»: the number, then «أرسل الرمز».
+Future<void> _sendCode(WidgetTester tester, {bool typePhone = true}) async {
+  if (typePhone) {
+    await tester.enterText(find.byType(TextFormField).first, '777123456');
+  }
+  await tester.tap(find.text('أرسل الرمز'));
+  await tester.pumpAndSettle();
+}
+
+/// «الرمز»: six digits move on to «كلمة جديدة».
+Future<void> _typeCode(WidgetTester tester, String code) async {
+  await tester.enterText(find.byKey(const Key('reset-otp-field')), code);
+  await tester.pumpAndSettle();
+}
+
+/// «كلمة جديدة»: both fields, then «حفظ وتسجيل الدخول».
+Future<void> _savePassword(
+  WidgetTester tester,
+  String password, {
+  String? again,
+  bool settle = true,
+}) async {
+  final fields = find.byType(TextFormField);
+  await tester.enterText(fields.at(0), password);
+  await tester.enterText(fields.at(1), again ?? password);
+  await tester.ensureVisible(_primary);
+  await tester.tap(find.text('حفظ وتسجيل الدخول'));
+  if (settle) {
+    await tester.pumpAndSettle();
+  } else {
+    await tester.pump();
+  }
+}
+
 void main() {
-  testWidgets('reset flow walks phone → code → new password → success', (
+  testWidgets('w01 walks «رقمك» → «الرمز» → «كلمة جديدة» → done', (
     tester,
   ) async {
     final repository = await _fakeRepository();
     await _pumpResetScreen(tester, repository);
 
-    expect(find.text('استعادة كلمة المرور'), findsOneWidget);
+    // w01: the sub-header, the three named steps and the kit's button.
+    expect(find.text('نسيت كلمة المرور'), findsOneWidget);
+    expect(find.byKey(const ValueKey('reset-steps')), findsOneWidget);
+    expect(find.text('رقمك'), findsOneWidget);
+    expect(find.text('الرمز'), findsOneWidget);
+    expect(find.text('كلمة جديدة'), findsOneWidget);
     expect(find.byType(AuthBrandMark), findsNothing);
+    expect(tester.widget(_primary), isA<JourneyButton>());
 
-    await tester.enterText(find.byType(TextFormField).first, '777123456');
-    await tester.tap(find.text('إرسال رمز الاستعادة'));
-    await tester.pumpAndSettle();
+    await _sendCode(tester);
 
     expect(repository.requestCalls, 1);
+    expect(find.text('أرسلنا لك رمز على واتساب'), findsOneWidget);
     expect(
       find.text('رمز التحقق مؤقت للتجربة المحلية: 123456'),
       findsOneWidget,
     );
 
-    final fields = find.byType(TextFormField);
-    await tester.enterText(fields.at(0), '123456');
-    await tester.enterText(fields.at(1), 'new-secret');
-    await tester.enterText(fields.at(2), 'new-secret');
-    await tester.ensureVisible(find.text('تغيير كلمة المرور'));
-    await tester.tap(find.text('تغيير كلمة المرور'));
-    await tester.pumpAndSettle();
+    await _typeCode(tester, '123456');
+    expect(find.text('اختر كلمة مرور جديدة'), findsOneWidget);
+    expect(find.text('6 أحرف أو أكثر'), findsOneWidget);
+    expect(find.textContaining('بنطلعك من كل الأجهزة'), findsOneWidget);
+
+    await _savePassword(tester, 'new-secret');
 
     expect(repository.lastConfirmCode, '123456');
     expect(repository.lastConfirmPassword, 'new-secret');
-
-    // لوحة النجاح الموحّدة (✓ الخضراء) تُعرض لثانية قبل خطوة الإتمام.
-    expect(find.byKey(const Key('otp-success-panel')), findsOneWidget);
-    await tester.pump(const Duration(seconds: 1));
-    await tester.pumpAndSettle();
-
+    expect(find.byKey(const Key('otp-success-panel')), findsNothing);
     expect(find.text('غيّرنا كلمة المرور'), findsOneWidget);
     expect(find.text('تسجيل الدخول'), findsOneWidget);
   });
@@ -157,43 +194,42 @@ void main() {
     final repository = await _fakeRepository();
     await _pumpResetScreen(tester, repository);
 
-    await tester.enterText(find.byType(TextFormField).first, '777123456');
-    await tester.tap(find.text('إرسال رمز الاستعادة'));
-    await tester.pumpAndSettle();
+    await _sendCode(tester);
+    await _typeCode(tester, '123456');
+    await _savePassword(tester, 'new-secret', again: 'different');
 
-    final fields = find.byType(TextFormField);
-    await tester.enterText(fields.at(0), '123456');
-    await tester.enterText(fields.at(1), 'new-secret');
-    await tester.enterText(fields.at(2), 'different');
-    await tester.ensureVisible(find.text('تغيير كلمة المرور'));
-    await tester.tap(find.text('تغيير كلمة المرور'));
-    await tester.pumpAndSettle();
-
-    expect(find.text('كلمتا المرور غير متطابقتين'), findsOneWidget);
+    expect(find.text('ما تطابقت مع الكلمة الجديدة'), findsOneWidget);
     expect(repository.lastConfirmPassword, isNull);
   });
 
-  testWidgets('reset flow surfaces the server error without leaking details', (
+  testWidgets('a short code stays on «الرمز»', (tester) async {
+    final repository = await _fakeRepository();
+    await _pumpResetScreen(tester, repository);
+
+    await _sendCode(tester);
+    await _typeCode(tester, '123');
+    await tester.tap(find.text('التالي'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('اكتب الرمز كامل'), findsOneWidget);
+    expect(find.byKey(const Key('reset-otp-field')), findsOneWidget);
+    expect(find.text('اختر كلمة مرور جديدة'), findsNothing);
+  });
+
+  testWidgets('a refused code goes back to «الرمز» with the server error', (
     tester,
   ) async {
     final repository = await _fakeRepository()
       ..failConfirm = true;
     await _pumpResetScreen(tester, repository);
 
-    await tester.enterText(find.byType(TextFormField).first, '777123456');
-    await tester.tap(find.text('إرسال رمز الاستعادة'));
-    await tester.pumpAndSettle();
-
-    final fields = find.byType(TextFormField);
-    await tester.enterText(fields.at(0), '999999');
-    await tester.enterText(fields.at(1), 'new-secret');
-    await tester.enterText(fields.at(2), 'new-secret');
-    await tester.ensureVisible(find.text('تغيير كلمة المرور'));
-    await tester.tap(find.text('تغيير كلمة المرور'));
-    await tester.pumpAndSettle();
+    await _sendCode(tester);
+    await _typeCode(tester, '999999');
+    await _savePassword(tester, 'new-secret');
 
     expect(find.text('رمز التحقق غير صحيح أو انتهت صلاحيته.'), findsOneWidget);
-    expect(find.text('تم تغيير كلمة المرور'), findsNothing);
+    expect(find.byKey(const Key('reset-otp-field')), findsOneWidget);
+    expect(find.text('غيّرنا كلمة المرور'), findsNothing);
 
     await tester.enterText(find.byKey(const Key('reset-otp-field')), '1');
     await tester.pump();
@@ -208,24 +244,16 @@ void main() {
       ..confirmFailureCode = 'ACCOUNT_NOT_FOUND_AFTER_PHONE_PROOF';
     await _pumpResetScreen(tester, repository);
 
-    await tester.enterText(find.byType(TextFormField).first, '777123456');
-    await tester.tap(find.text('إرسال رمز الاستعادة'));
-    await tester.pumpAndSettle();
-
-    final fields = find.byType(TextFormField);
-    await tester.enterText(fields.at(0), '123456');
-    await tester.enterText(fields.at(1), 'new-secret');
-    await tester.enterText(fields.at(2), 'new-secret');
-    await tester.ensureVisible(find.text('تغيير كلمة المرور'));
-    await tester.tap(find.text('تغيير كلمة المرور'));
-    await tester.pumpAndSettle();
+    await _sendCode(tester);
+    await _typeCode(tester, '123456');
+    await _savePassword(tester, 'new-secret');
 
     expect(find.textContaining('لا يوجد حساب تطبيق'), findsOneWidget);
     expect(
       find.byKey(const ValueKey('reset-create-account-action')),
       findsOneWidget,
     );
-    expect(find.text('إنشاء حساب جديد بهذا الرقم'), findsOneWidget);
+    expect(find.text('أنشئ حساب جديد بهذا الرقم'), findsOneWidget);
     expect(find.textContaining('No account'), findsNothing);
   });
 
@@ -236,9 +264,7 @@ void main() {
       ..failRequestWithNetworkError = true;
     await _pumpResetScreen(tester, repository);
 
-    await tester.enterText(find.byType(TextFormField).first, '777123456');
-    await tester.tap(find.text('إرسال رمز الاستعادة'));
-    await tester.pumpAndSettle();
+    await _sendCode(tester);
 
     expect(repository.requestCalls, 1);
     expect(
@@ -259,9 +285,7 @@ void main() {
       );
     await _pumpResetScreen(tester, repository);
 
-    await tester.enterText(find.byType(TextFormField).first, '777123456');
-    await tester.tap(find.text('إرسال رمز الاستعادة'));
-    await tester.pumpAndSettle();
+    await _sendCode(tester);
 
     expect(repository.requestCalls, 1);
     expect(
@@ -283,9 +307,7 @@ void main() {
         ..deliveryMessage = notice;
       await _pumpResetScreen(tester, repository);
 
-      await tester.enterText(find.byType(TextFormField).first, '777123456');
-      await tester.tap(find.text('إرسال رمز الاستعادة'));
-      await tester.pumpAndSettle();
+      await _sendCode(tester);
 
       expect(repository.requestCalls, 1);
       expect(find.byKey(const Key('reset-otp-field')), findsOneWidget);
@@ -303,28 +325,31 @@ void main() {
     final repository = await _fakeRepository();
     await _pumpResetScreen(tester, repository);
 
-    await tester.enterText(find.byType(TextFormField).first, '777123456');
-    await tester.tap(find.text('إرسال رمز الاستعادة'));
-    await tester.pumpAndSettle();
+    await _sendCode(tester);
 
     final resend = find.byKey(const ValueKey('reset-otp-resend-button'));
+    VoidCallback? onTap() => tester
+        .widget<AarastPressable>(
+          find.descendant(of: resend, matching: find.byType(AarastPressable)),
+        )
+        .onTap;
     expect(repository.requestCalls, 1);
-    expect(find.text('إعادة الإرسال خلال 60 ث'), findsOneWidget);
-    expect(tester.widget<TextButton>(resend).onPressed, isNull);
+    expect(find.text('ما وصلك؟ نعيد الإرسال بعد 1:00'), findsOneWidget);
+    expect(onTap(), isNull);
 
     await tester.pump(const Duration(seconds: 59));
-    expect(find.text('إعادة الإرسال خلال 1 ث'), findsOneWidget);
-    expect(tester.widget<TextButton>(resend).onPressed, isNull);
+    expect(find.text('ما وصلك؟ نعيد الإرسال بعد 0:01'), findsOneWidget);
+    expect(onTap(), isNull);
 
     await tester.pump(const Duration(seconds: 1));
-    expect(find.text('إعادة إرسال الرمز'), findsOneWidget);
-    expect(tester.widget<TextButton>(resend).onPressed, isNotNull);
+    expect(find.text('ما وصلك؟ أرسل رمز جديد'), findsOneWidget);
+    expect(onTap(), isNotNull);
 
     await tester.ensureVisible(resend);
     await tester.tap(resend);
     await tester.pump();
     expect(repository.requestCalls, 2);
-    expect(find.text('إعادة الإرسال خلال 60 ث'), findsOneWidget);
+    expect(find.text('ما وصلك؟ نعيد الإرسال بعد 1:00'), findsOneWidget);
   });
 
   testWidgets('reset confirmation is overflow-free at 320px and 1.3 scale', (
@@ -337,11 +362,12 @@ void main() {
     final repository = await _fakeRepository();
     await _pumpResetScreen(tester, repository, textScale: 1.3);
 
-    await tester.enterText(find.byType(TextFormField).first, '777123456');
-    await tester.tap(find.text('إرسال رمز الاستعادة'));
-    await tester.pumpAndSettle();
-
+    await _sendCode(tester);
     expect(find.byKey(const Key('reset-otp-field')), findsOneWidget);
+    expect(tester.takeException(), isNull);
+
+    await _typeCode(tester, '123456');
+    expect(find.text('اختر كلمة مرور جديدة'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 
@@ -355,18 +381,9 @@ void main() {
       final repository = await _fakeRepository();
       await _pumpResetScreen(tester, repository, textScale: 1.3);
 
-      await tester.enterText(find.byType(TextFormField).first, '777123456');
-      await tester.tap(find.text('إرسال رمز الاستعادة'));
-      await tester.pumpAndSettle();
-
-      final fields = find.byType(TextFormField);
-      final tooLongArabicPassword = 'ك' * 37;
-      await tester.enterText(fields.at(0), '123456');
-      await tester.enterText(fields.at(1), tooLongArabicPassword);
-      await tester.enterText(fields.at(2), tooLongArabicPassword);
-      await tester.ensureVisible(find.text('تغيير كلمة المرور'));
-      await tester.tap(find.text('تغيير كلمة المرور'));
-      await tester.pumpAndSettle();
+      await _sendCode(tester);
+      await _typeCode(tester, '123456');
+      await _savePassword(tester, 'ك' * 37);
 
       expect(find.textContaining('كلمة المرور طويلة جدًا'), findsOneWidget);
       expect(repository.lastConfirmPassword, isNull);
@@ -380,21 +397,12 @@ void main() {
     final repository = await _fakeRepository();
     await _pumpResetScreen(tester, repository);
 
-    await tester.enterText(find.byType(TextFormField).first, '777123456');
-    await tester.tap(find.text('إرسال رمز الاستعادة'));
-    await tester.pumpAndSettle();
-
-    final fields = find.byType(TextFormField);
+    await _sendCode(tester);
+    await _typeCode(tester, '123456');
     final boundaryArabicPassword = 'ك' * 36;
-    await tester.enterText(fields.at(0), '123456');
-    await tester.enterText(fields.at(1), boundaryArabicPassword);
-    await tester.enterText(fields.at(2), boundaryArabicPassword);
-    await tester.ensureVisible(find.text('تغيير كلمة المرور'));
-    await tester.tap(find.text('تغيير كلمة المرور'));
-    await tester.pump();
+    await _savePassword(tester, boundaryArabicPassword, settle: false);
 
     expect(repository.lastConfirmPassword, boundaryArabicPassword);
-    await tester.pump(const Duration(seconds: 1));
     await tester.pumpAndSettle();
   });
 
@@ -430,18 +438,9 @@ void main() {
       ),
     );
     await tester.pump(const Duration(milliseconds: 600));
-    await tester.tap(find.text('إرسال رمز الاستعادة'));
-    await tester.pumpAndSettle();
-
-    final fields = find.byType(TextFormField);
-    await tester.enterText(fields.at(0), '123456');
-    await tester.enterText(fields.at(1), 'new-secret');
-    await tester.enterText(fields.at(2), 'new-secret');
-    await tester.ensureVisible(find.text('تغيير كلمة المرور'));
-    await tester.tap(find.text('تغيير كلمة المرور'));
-    await tester.pumpAndSettle();
-    await tester.pump(const Duration(seconds: 1));
-    await tester.pumpAndSettle();
+    await _sendCode(tester, typePhone: false);
+    await _typeCode(tester, '123456');
+    await _savePassword(tester, 'new-secret');
     await tester.tap(find.text('تسجيل الدخول'));
     await tester.pumpAndSettle();
 
@@ -479,22 +478,32 @@ void main() {
       ),
     );
     await tester.pump(const Duration(milliseconds: 600));
-    await tester.enterText(find.byType(TextFormField).first, '777123456');
-    await tester.tap(find.text('إرسال رمز الاستعادة'));
-    await tester.pumpAndSettle();
-    final fields = find.byType(TextFormField);
-    await tester.enterText(fields.at(0), '123456');
-    await tester.enterText(fields.at(1), 'new-secret');
-    await tester.enterText(fields.at(2), 'new-secret');
-    await tester.ensureVisible(find.text('تغيير كلمة المرور'));
-    await tester.tap(find.text('تغيير كلمة المرور'));
-    await tester.pumpAndSettle();
-    await tester.pump(const Duration(seconds: 1));
-    await tester.pumpAndSettle();
+    await _sendCode(tester);
+    await _typeCode(tester, '123456');
+    await _savePassword(tester, 'new-secret');
 
     expect(repository.lastConfirmPassword, 'new-secret');
     expect(repository.loginCalls, ['+967777123456:new-secret']);
     expect(find.text('غيّرنا كلمة المرور'), findsOneWidget);
     expect(find.text('تسجيل الدخول'), findsOneWidget);
+  });
+
+  testWidgets('the back arrow walks the steps back before it leaves', (
+    tester,
+  ) async {
+    final repository = await _fakeRepository();
+    await _pumpResetScreen(tester, repository);
+
+    await _sendCode(tester);
+    await _typeCode(tester, '123456');
+    expect(find.text('اختر كلمة مرور جديدة'), findsOneWidget);
+
+    await tester.tap(find.byTooltip('رجوع'));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('reset-otp-field')), findsOneWidget);
+
+    await tester.tap(find.byTooltip('رجوع'));
+    await tester.pumpAndSettle();
+    expect(find.text('اكتب رقمك'), findsOneWidget);
   });
 }

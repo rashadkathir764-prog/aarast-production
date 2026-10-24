@@ -137,6 +137,10 @@ class AppRouter {
   static const providerApply = '/provider/apply';
   static const providerApplyStatus = '/provider/apply/status';
   static const providerDashboard = '/provider/dashboard';
+
+  /// The provider portal opened on its requests tab, where a request is
+  /// answered (a quote event tapped in the provider's chat).
+  static const providerRequestsTab = '/provider/dashboard?tab=requests';
   static const providerProfileEdit = '/provider/profile/edit';
   static const providerServiceNew = '/provider/services/new';
   static const providerPackageNew = '/provider/packages/new';

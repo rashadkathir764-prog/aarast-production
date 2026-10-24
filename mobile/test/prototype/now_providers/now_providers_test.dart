@@ -503,6 +503,13 @@ Map<String, dynamic> _conv(
   'unreadMessageCount': unread,
   'providerJoined': true,
   'canSend': true,
+  // The groom's side, as the server always sends it to the plan's owner.
+  'permissions': {
+    'canManageProviders': true,
+    'canViewMoney': true,
+    'canManageMoney': true,
+    'canViewContact': true,
+  },
   'lastActivityAt': at,
   'createdAt': '2026-10-01T09:00:00Z',
   'updatedAt': at,

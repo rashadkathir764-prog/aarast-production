@@ -34,6 +34,7 @@ class _ProviderProfileTabState extends State<ProviderProfileTab> {
   Widget build(BuildContext context) {
     final dashboard = context.watch<ProviderDashboardProvider>();
     final profile = dashboard.profile;
+    final canManage = dashboard.canManageProviderProfile;
     return ListView(
       padding: const EdgeInsets.fromLTRB(20, 14, 20, 128),
       children: [
@@ -53,8 +54,8 @@ class _ProviderProfileTabState extends State<ProviderProfileTab> {
           _ProfileMediaCard(
             profile: profile,
             busy: _busy,
-            onLogo: () => _upload('provider-logo'),
-            onCover: () => _upload('provider-cover'),
+            onLogo: canManage ? () => _upload('provider-logo') : null,
+            onCover: canManage ? () => _upload('provider-cover') : null,
           ),
           const SizedBox(height: 14),
           AarastCard(
@@ -80,12 +81,15 @@ class _ProviderProfileTabState extends State<ProviderProfileTab> {
                   ),
                 ),
                 const SizedBox(height: 14),
-                FilledButton.icon(
-                  onPressed: () => context.push(AppRouter.providerProfileEdit),
-                  icon: const Icon(LucideIcons.pencil),
-                  label: const Text('تعديل البيانات'),
-                ),
-                const SizedBox(height: 8),
+                if (canManage) ...[
+                  FilledButton.icon(
+                    onPressed: () =>
+                        context.push(AppRouter.providerProfileEdit),
+                    icon: const Icon(LucideIcons.pencil),
+                    label: const Text('تعديل البيانات'),
+                  ),
+                  const SizedBox(height: 8),
+                ],
                 ProviderPublicProfileAction(
                   status: profile.status,
                   onPreview: () =>
@@ -98,7 +102,7 @@ class _ProviderProfileTabState extends State<ProviderProfileTab> {
           _PortfolioGallery(services: dashboard.services),
           if (dashboard.canUseProviderOperations) ...[
             const SizedBox(height: 18),
-            _ProviderReviewsSection(reviews: dashboard.reviews),
+            _ProviderReviewsSection(all: dashboard.reviews),
           ],
         ],
         const SizedBox(height: 22),
@@ -196,20 +200,30 @@ class _ProviderProfileTabState extends State<ProviderProfileTab> {
 }
 
 class _ProviderReviewsSection extends StatelessWidget {
-  const _ProviderReviewsSection({required this.reviews});
+  const _ProviderReviewsSection({required this.all});
 
-  final List<ProviderReview> reviews;
+  /// Every review the server sends the provider, whatever its status; only
+  /// the published ones show on the public profile, so only those are listed.
+  final List<ProviderReview> all;
 
   @override
   Widget build(BuildContext context) {
+    final reviews = [
+      for (final review in all)
+        if (review.isPublished) review,
+    ];
+    final unpublished = all.length - reviews.length;
+    final published = reviews.isEmpty
+        ? 'لا توجد مراجعات منشورة حتى الآن.'
+        : '${reviews.length} مراجعة منشورة على ملفك.';
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         AarastSectionHeader(
           title: 'مراجعات العملاء',
-          subtitle: reviews.isEmpty
-              ? 'لا توجد مراجعات منشورة حتى الآن.'
-              : '${reviews.length} مراجعة منشورة على ملفك.',
+          subtitle: unpublished == 0
+              ? published
+              : '$published و$unpublished ما تظهر للعملاء (مخفية أو تحت المراجعة).',
           icon: LucideIcons.star,
         ),
         const SizedBox(height: 10),
@@ -276,8 +290,10 @@ class _ProfileMediaCard extends StatelessWidget {
 
   final ProviderDashboardProfile profile;
   final bool busy;
-  final VoidCallback onLogo;
-  final VoidCallback onCover;
+
+  /// Null while the server keeps the profile read-only; the button is gone.
+  final VoidCallback? onLogo;
+  final VoidCallback? onCover;
 
   @override
   Widget build(BuildContext context) {
@@ -305,15 +321,16 @@ class _ProfileMediaCard extends StatelessWidget {
                       : Image.network(profile.coverUrl!, fit: BoxFit.cover),
                 ),
               ),
-              PositionedDirectional(
-                top: 10,
-                end: 10,
-                child: IconButton.filledTonal(
-                  tooltip: 'تغيير الغلاف',
-                  onPressed: busy ? null : onCover,
-                  icon: const Icon(LucideIcons.camera),
+              if (onCover != null)
+                PositionedDirectional(
+                  top: 10,
+                  end: 10,
+                  child: IconButton.filledTonal(
+                    tooltip: 'تغيير الغلاف',
+                    onPressed: busy ? null : onCover,
+                    icon: const Icon(LucideIcons.camera),
+                  ),
                 ),
-              ),
               PositionedDirectional(
                 start: 18,
                 bottom: -34,
@@ -334,16 +351,17 @@ class _ProfileMediaCard extends StatelessWidget {
                             )
                           : null,
                     ),
-                    PositionedDirectional(
-                      end: -8,
-                      bottom: -4,
-                      child: IconButton.filled(
-                        tooltip: 'تغيير الشعار',
-                        visualDensity: VisualDensity.compact,
-                        onPressed: busy ? null : onLogo,
-                        icon: const Icon(LucideIcons.camera, size: 16),
+                    if (onLogo != null)
+                      PositionedDirectional(
+                        end: -8,
+                        bottom: -4,
+                        child: IconButton.filled(
+                          tooltip: 'تغيير الشعار',
+                          visualDensity: VisualDensity.compact,
+                          onPressed: busy ? null : onLogo,
+                          icon: const Icon(LucideIcons.camera, size: 16),
+                        ),
                       ),
-                    ),
                   ],
                 ),
               ),

@@ -88,11 +88,16 @@ class _ChatScreenState extends State<ChatScreen> {
     super.dispose();
   }
 
-  /// Asks once per provider for the line under the name.
+  /// Asks once per provider for the line under the name. The provider reads
+  /// the customer's name on top, so no line about himself goes under it.
   void _loadProviderLine(ChatConversation? conversation) {
     final read = widget.providerLine;
     final providerId = conversation?.provider.id ?? '';
-    if (read == null || providerId.isEmpty || providerId == _lineProviderId) {
+    if (read == null ||
+        conversation == null ||
+        conversation.viewerIsProvider ||
+        providerId.isEmpty ||
+        providerId == _lineProviderId) {
       return;
     }
     _lineProviderId = providerId;
@@ -112,9 +117,7 @@ class _ChatScreenState extends State<ChatScreen> {
     _loadProviderLine(conversation);
     final timeline = chat.timelineFor(widget.conversationId);
     final requests = chat.quoteRequestsFor(widget.conversationId);
-    // Shared members without provider rights never see the conversation, so
-    // this is the customer's side; the provider answers from the other one.
-    final customerSide = conversation?.permissions.canManageProviders ?? true;
+    final customerSide = !(conversation?.viewerIsProvider ?? false);
     final now = widget.now ?? DateTime.now();
     final hasOlder = chat.canLoadOlder(widget.conversationId);
 
@@ -201,8 +204,8 @@ class _ChatScreenState extends State<ChatScreen> {
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
             child: JourneySubHeader(
-              title: conversation?.provider.businessName ?? '',
-              subtitle: _providerLine,
+              title: conversation?.counterpartName ?? '',
+              subtitle: customerSide ? _providerLine : null,
               onBack: () {
                 if (context.canPop()) context.pop();
               },
@@ -263,6 +266,12 @@ class _ChatScreenState extends State<ChatScreen> {
     String quoteRequestId,
   ) async {
     if (_quoteNavigationInFlight) return;
+    // The provider answers a request from his portal's requests tab; the
+    // plan's providers and the marketplace belong to the customer.
+    if (conversation?.viewerIsProvider ?? false) {
+      context.go(AppRouter.providerRequestsTab);
+      return;
+    }
     _quoteNavigationInFlight = true;
     if (widget.returnQuoteToMarketplace && context.canPop()) {
       context.pop(ProviderMarketplaceRouteResult.focusQuote(quoteRequestId));
@@ -491,14 +500,15 @@ class _EventView extends StatelessWidget {
       case 'QUOTE_REQUEST_CREATED':
         final service = request?.service?.title;
         final message = request?.message?.trim() ?? '';
+        final asked = customerSide ? 'طلبت' : 'طلب';
         return _Bubble(
           key: key,
           mine: customerSide,
           text: message.isNotEmpty
               ? message
               : service == null
-              ? 'طلبت عرض سعر'
-              : 'طلبت عرض: $service',
+              ? '$asked عرض سعر'
+              : '$asked عرض: $service',
           time: _clock(event.occurredAt),
         );
       case 'QUOTE_OFFER_RECEIVED':
@@ -513,7 +523,8 @@ class _EventView extends StatelessWidget {
     }
     final label = switch (event.type) {
       'QUOTE_REQUEST_CANCELLED' => 'تسكّر الطلب',
-      'QUOTE_REQUEST_REJECTED' => 'اعتذروا عن الطلب',
+      'QUOTE_REQUEST_REJECTED' =>
+        customerSide ? 'اعتذروا عن الطلب' : 'اعتذرت عن الطلب',
       'QUOTE_OFFER_REJECTED' => 'انرفض العرض',
       'QUOTE_OFFER_ACCEPTED' => 'انقبل العرض',
       'QUOTE_OFFER_EXPIRED' => 'انتهت مدة العرض',
@@ -707,8 +718,9 @@ class _OptionsSheet extends StatelessWidget {
     }
     if (conversation == null) return const SizedBox.shrink();
     final current = conversation;
+    final provider = current.viewerIsProvider;
     return JourneySheetBody(
-      title: current.provider.businessName,
+      title: current.counterpartName,
       children: [
         JourneyList(
           children: [
@@ -747,7 +759,11 @@ class _OptionsSheet extends StatelessWidget {
               icon: LucideIcons.ban,
               color: AarastV3Color.danger,
               soft: AarastV3Color.dangerSoft,
-              title: current.blockedByMe ? 'ارفع الحظر' : 'احظر المزود',
+              title: current.blockedByMe
+                  ? 'ارفع الحظر'
+                  : provider
+                  ? 'احظر العميل'
+                  : 'احظر المزود',
               subtitle: current.blockedByMe
                   ? 'يقدر يراسلك من جديد'
                   : 'ما يقدر يراسلك',
@@ -756,8 +772,10 @@ class _OptionsSheet extends StatelessWidget {
           ],
         ),
         const SizedBox(height: 12),
-        const JourneyNote(
-          text: 'الحظر ما يلغي الحجز المؤكد. ألغه من "الحجوزات" لو تشتي.',
+        JourneyNote(
+          text: provider
+              ? 'الحظر ما يلغي حجز العميل المؤكد. ألغه من "حجوزاتك" في الرئيسية لو تشتي.'
+              : 'الحظر ما يلغي الحجز المؤكد. ألغه من "الحجوزات" لو تشتي.',
           color: AarastV3Color.danger,
           soft: AarastV3Color.dangerSoft,
         ),

@@ -61,6 +61,63 @@ void main() {
     expect(isSafeNotificationRouteTarget('/provider/dashboard/x'), isFalse);
   });
 
+  test('a provider notice about a request opens its conversation', () {
+    AarastNotification notice({
+      String audience = 'PROVIDER',
+      String? routeTarget = '/provider/dashboard',
+      String quoteId = 'quote-7',
+    }) => AarastNotification(
+      id: 'notification-provider',
+      userId: 'provider-user-1',
+      type: 'QUOTE_REQUEST_SUBMITTED',
+      title: 'طلب عرض سعر جديد',
+      body: 'وصلك طلب',
+      entityType: 'quote_request',
+      entityId: quoteId,
+      routeTarget: routeTarget,
+      data: {
+        'quoteRequestId': quoteId,
+        'providerId': 'provider-1',
+        'recipientAudience': audience,
+      },
+      createdAt: DateTime(2026),
+      updatedAt: DateTime(2026),
+    );
+
+    final target = resolveNotificationRouteTarget(notice());
+    expect(target, '/quotes/quote-7/conversation');
+    expect(isSafeNotificationRouteTarget(target!), isTrue);
+    expect(
+      resolveNotificationRouteTarget(notice(routeTarget: null)),
+      '/quotes/quote-7/conversation',
+    );
+    // An id that is not a bare route id keeps the portal's home.
+    expect(
+      resolveNotificationRouteTarget(notice(quoteId: '../admin')),
+      '/provider/dashboard',
+    );
+    // The groom's notices keep their own routing.
+    expect(
+      resolveNotificationRouteTarget(
+        notice(audience: 'CUSTOMER', routeTarget: '/providers?quoteId=quote-7'),
+      ),
+      '/providers?quoteId=quote-7',
+    );
+  });
+
+  test('only a bare quote conversation path is a safe target', () {
+    expect(
+      isSafeNotificationRouteTarget('/quotes/quote-7/conversation'),
+      isTrue,
+    );
+    expect(
+      isSafeNotificationRouteTarget('/quotes/quote-7/conversation?next=/x'),
+      isFalse,
+    );
+    expect(isSafeNotificationRouteTarget('/quotes/quote-7'), isFalse);
+    expect(isSafeNotificationRouteTarget('/quotes/a.b/conversation'), isFalse);
+  });
+
   test('marketplace quote deep links allow only one bounded quote id', () {
     expect(
       isSafeNotificationRouteTarget('/providers?quoteId=quote-123'),

@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:provider/provider.dart';
 
+import '../../../core/experience_v3/aarast_v3.dart';
 import '../../../core/routing/app_router.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/arabic_date_formatter.dart';
@@ -99,31 +100,20 @@ class ProviderBookingPanel extends StatelessWidget {
   }
 
   Future<void> _decide(BuildContext context, String action) async {
+    String? note;
     if (action != 'confirm') {
-      final sure = await showDialog<bool>(
+      // The reason travels with the decision; the customer reads it.
+      note = await showJourneySheet<String>(
         context: context,
-        builder: (dialogContext) => AarastDialog(
-          title: Text(action == 'decline' ? 'الاعتذار عن الحجز؟' : 'إلغاء الحجز؟'),
-          content: const Text('سيصل إشعار للعميل بقرارك.'),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(dialogContext).pop(false),
-              child: const Text('رجوع'),
-            ),
-            FilledButton(
-              style: FilledButton.styleFrom(backgroundColor: AppTheme.danger),
-              onPressed: () => Navigator.of(dialogContext).pop(true),
-              child: Text(action == 'decline' ? 'اعتذار' : 'إلغاء الحجز'),
-            ),
-          ],
-        ),
+        builder: (_) => _BookingDecisionSheet(decline: action == 'decline'),
       );
-      if (sure != true || !context.mounted) return;
+      if (note == null || !context.mounted) return;
     }
     final dashboard = context.read<ProviderDashboardProvider>();
     final ok = await dashboard.decideBooking(
       bookingId: booking.id,
       action: action,
+      note: note,
     );
     if (!context.mounted) return;
     if (ok) {
@@ -141,6 +131,62 @@ class ProviderBookingPanel extends StatelessWidget {
         dashboard.errorMessage ?? 'تعذر تحديث الحجز.',
       );
     }
+  }
+}
+
+/// Confirms declining or cancelling a booking, with an optional reason the
+/// customer reads. Pops the reason (empty when none) or null to go back.
+class _BookingDecisionSheet extends StatefulWidget {
+  const _BookingDecisionSheet({required this.decline});
+
+  final bool decline;
+
+  @override
+  State<_BookingDecisionSheet> createState() => _BookingDecisionSheetState();
+}
+
+class _BookingDecisionSheetState extends State<_BookingDecisionSheet> {
+  final _reason = TextEditingController();
+
+  @override
+  void dispose() {
+    _reason.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return JourneySheetBody(
+      title: widget.decline ? 'الاعتذار عن الحجز؟' : 'إلغاء الحجز؟',
+      subtitle: 'سيصل إشعار للعميل بقرارك.',
+      children: [
+        JourneyTextField(
+          key: const Key('provider-booking-reason'),
+          label: 'السبب (اختياري)',
+          hint: 'مثلًا: اليوم محجوز عندنا',
+          helper: 'يشوفه العميل مع القرار.',
+          controller: _reason,
+          maxLength: 500,
+          minLines: 2,
+          maxLines: 4,
+        ),
+        const SizedBox(height: 16),
+        JourneyButton(
+          key: const Key('provider-booking-decision-confirm'),
+          label: widget.decline ? 'اعتذار' : 'إلغاء الحجز',
+          background: AarastV3Color.danger,
+          expand: true,
+          large: true,
+          onPressed: () => Navigator.of(context).pop(_reason.text.trim()),
+        ),
+        const SizedBox(height: 8),
+        JourneyButton.quiet(
+          label: 'رجوع',
+          expand: true,
+          onPressed: () => Navigator.of(context).pop(),
+        ),
+      ],
+    );
   }
 }
 

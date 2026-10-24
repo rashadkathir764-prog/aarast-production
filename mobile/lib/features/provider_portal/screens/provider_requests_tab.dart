@@ -7,7 +7,6 @@ import '../../../core/experience_v3/aarast_v3.dart';
 import '../../../core/routing/app_router.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/arabic_date_formatter.dart';
-import '../../../core/utils/currency_label.dart';
 import '../../../core/widgets/aarast_ui.dart';
 import '../../../core/widgets/aarast_toast.dart';
 import '../../marketplace/marketplace_api.dart'
@@ -16,6 +15,9 @@ import '../../marketplace/marketplace_api.dart'
         QuoteStatusChip;
 import '../providers/provider_dashboard_provider.dart';
 import '../widgets/provider_bookings.dart' show ProviderBookingPanel;
+import 'provider_offer_dialog.dart';
+
+export 'provider_offer_dialog.dart' show validateProviderOfferAmount;
 
 class ProviderRequestsTab extends StatefulWidget {
   const ProviderRequestsTab({super.key});
@@ -91,14 +93,22 @@ class _ProviderRequestsTabState extends State<ProviderRequestsTab> {
             for (final quote in quotes) ...[
               _ProviderRequestCard(
                 quote: quote,
-                onChat: () =>
-                    context.push(AppRouter.quoteConversation(quote.id)),
-                onOffer:
-                    quote.lifecycleStatus == 'PENDING_PROVIDER' ||
-                        quote.pendingOffer != null
-                    ? () => _showOfferDialog(context, quote)
+                onChat: () {
+                  // Opening a new request is what the customer reads as
+                  // «شاف طلبك».
+                  dashboard.markQuoteViewed(quote.id);
+                  context.push(AppRouter.quoteConversation(quote.id));
+                },
+                onOffer: _offerModeOf(quote) == null
+                    ? null
+                    : () {
+                        dashboard.markQuoteViewed(quote.id);
+                        showProviderOfferDialog(context, quote);
+                      },
+                offerMode: _offerModeOf(quote),
+                onDecline: _canDecline(quote)
+                    ? () => _confirmDecline(context, quote)
                     : null,
-                isEditingOffer: quote.pendingOffer != null,
               ),
               const SizedBox(height: 12),
             ],
@@ -123,18 +133,78 @@ class _ProviderRequestsTabState extends State<ProviderRequestsTab> {
   }
 }
 
+/// What the offer button does on a request: send the first offer, edit the
+/// open one, or renew one whose time ran out (the server lets a provider
+/// change a pending offer, expired or not, while the request awaits a reply).
+enum _OfferMode { send, edit, renew }
+
+_OfferMode? _offerModeOf(QuoteRequest quote) {
+  if (quote.pendingOffer != null) return _OfferMode.edit;
+  if (quote.expiredOffer != null) return _OfferMode.renew;
+  if (quote.lifecycleStatus == 'PENDING_PROVIDER') return _OfferMode.send;
+  return null;
+}
+
+/// The server lets the provider decline a request until he sends an offer.
+bool _canDecline(QuoteRequest quote) =>
+    quote.status == 'SENT' || quote.status == 'VIEWED';
+
+Future<void> _confirmDecline(BuildContext context, QuoteRequest quote) async {
+  final dashboard = context.read<ProviderDashboardProvider>();
+  final confirmed = await showJourneySheet<bool>(
+    context: context,
+    builder: (sheetContext) => JourneySheetBody(
+      title: 'تعتذر عن الطلب؟',
+      subtitle:
+          'بيوصل العميل إنك اعتذرت، وما تقدر ترسل له عرض على هذا الطلب بعدها.',
+      children: [
+        JourneyButton(
+          key: const Key('provider-quote-decline-confirm'),
+          label: 'اعتذر عن الطلب',
+          background: AarastV3Color.danger,
+          expand: true,
+          large: true,
+          onPressed: () => Navigator.of(sheetContext).pop(true),
+        ),
+        const SizedBox(height: 8),
+        JourneyButton.quiet(
+          label: 'رجوع',
+          expand: true,
+          onPressed: () => Navigator.of(sheetContext).pop(false),
+        ),
+      ],
+    ),
+  );
+  if (confirmed != true || !context.mounted) return;
+  final ok = await dashboard.updateQuoteStatus(
+    quoteRequestId: quote.id,
+    status: 'REJECTED',
+  );
+  if (!context.mounted) return;
+  if (ok) {
+    AarastToast.showSuccess(context, 'اعتذرت عن الطلب، ووصل العميل خبر.');
+  } else {
+    AarastToast.showError(
+      context,
+      dashboard.errorMessage ?? 'تعذر الاعتذار عن الطلب. حاول مرة ثانية.',
+    );
+  }
+}
+
 class _ProviderRequestCard extends StatelessWidget {
   const _ProviderRequestCard({
     required this.quote,
     required this.onChat,
     this.onOffer,
-    this.isEditingOffer = false,
+    this.offerMode,
+    this.onDecline,
   });
 
   final QuoteRequest quote;
   final VoidCallback onChat;
   final VoidCallback? onOffer;
-  final bool isEditingOffer;
+  final _OfferMode? offerMode;
+  final VoidCallback? onDecline;
 
   @override
   Widget build(BuildContext context) {
@@ -188,16 +258,34 @@ class _ProviderRequestCard extends StatelessWidget {
                 const SizedBox(width: 8),
                 Expanded(
                   child: FilledButton.icon(
+                    key: Key('provider-offer-open-${quote.id}'),
                     onPressed: onOffer,
-                    icon: Icon(
-                      isEditingOffer ? LucideIcons.fileEdit : LucideIcons.send,
-                    ),
-                    label: Text(isEditingOffer ? 'تعديل العرض' : 'إرسال عرض'),
+                    icon: Icon(switch (offerMode) {
+                      _OfferMode.edit => LucideIcons.fileEdit,
+                      _OfferMode.renew => LucideIcons.refreshCw,
+                      _ => LucideIcons.send,
+                    }),
+                    label: Text(switch (offerMode) {
+                      _OfferMode.edit => 'تعديل العرض',
+                      _OfferMode.renew => 'جدّد العرض',
+                      _ => 'إرسال عرض',
+                    }),
                   ),
                 ),
               ],
             ],
           ),
+          if (onDecline != null)
+            Align(
+              alignment: AlignmentDirectional.centerEnd,
+              child: JourneyTextAction(
+                key: Key('provider-quote-decline-${quote.id}'),
+                label: 'اعتذار',
+                icon: LucideIcons.x,
+                color: AarastV3Color.danger,
+                onPressed: onDecline,
+              ),
+            ),
           if (quote.booking case final booking?) ...[
             const SizedBox(height: 12),
             ProviderBookingPanel(booking: booking),
@@ -257,172 +345,4 @@ class ProviderQuoteFacts extends StatelessWidget {
       ],
     );
   }
-}
-
-Future<void> _showOfferDialog(BuildContext context, QuoteRequest quote) async {
-  final existingOffer = quote.pendingOffer;
-  final message = TextEditingController(text: existingOffer?.message);
-  final amount = TextEditingController(text: existingOffer?.amount);
-  final formKey = GlobalKey<FormState>();
-  final currency =
-      quote.weddingPlanCurrency?.trim().toUpperCase() ??
-      existingOffer?.currency?.trim().toUpperCase() ??
-      defaultCurrencyCode;
-  final submitted = await showDialog<bool>(
-    context: context,
-    builder: (dialogContext) {
-      var isSubmitting = false;
-      String? errorMessage;
-      return StatefulBuilder(
-        builder: (context, setDialogState) => AarastDialog(
-          title: Text(
-            existingOffer == null ? 'إرسال عرض السعر' : 'تعديل عرض السعر',
-          ),
-          content: Form(
-            key: formKey,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                AarastV3FocusPrompt(
-                  question: existingOffer == null
-                      ? 'ما العرض الحقيقي الذي ستقدمه؟'
-                      : 'ما الذي تريد تعديله في عرضك؟',
-                  supportingText:
-                      'اكتب المبلغ والتفاصيل بوضوح؛ هذا عرض سعر وليس تأكيد حجز أو دفع.',
-                  icon: LucideIcons.fileCheck,
-                ),
-                const SizedBox(height: 14),
-                if (quote.weddingPlanTitle?.trim().isNotEmpty == true) ...[
-                  Align(
-                    alignment: AlignmentDirectional.centerStart,
-                    child: Text(
-                      'الخطة: ${quote.weddingPlanTitle}',
-                      style: const TextStyle(
-                        color: AppTheme.textSecondary,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 10),
-                ],
-                TextFormField(
-                  key: const Key('provider-offer-amount'),
-                  controller: amount,
-                  keyboardType: const TextInputType.numberWithOptions(
-                    decimal: true,
-                  ),
-                  decoration: InputDecoration(
-                    labelText: 'المبلغ (${currencyLabelAr(currency)})',
-                    helperText:
-                        'عملة العرض مرتبطة بعملة الخطة ولا يمكن تغييرها هنا.',
-                  ),
-                  validator: validateProviderOfferAmount,
-                ),
-                const SizedBox(height: 12),
-                TextFormField(
-                  key: const Key('provider-offer-message'),
-                  controller: message,
-                  minLines: 3,
-                  maxLines: 5,
-                  decoration: const InputDecoration(labelText: 'تفاصيل العرض'),
-                  validator: (value) => value?.trim().isEmpty != false
-                      ? 'اكتب تفاصيل العرض.'
-                      : null,
-                ),
-                if (errorMessage != null) ...[
-                  const SizedBox(height: 12),
-                  Text(
-                    errorMessage!,
-                    style: const TextStyle(
-                      color: AppTheme.danger,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                ],
-              ],
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: isSubmitting
-                  ? null
-                  : () => Navigator.pop(dialogContext, false),
-              child: const Text('إلغاء'),
-            ),
-            FilledButton(
-              key: const Key('provider-offer-submit'),
-              onPressed: isSubmitting
-                  ? null
-                  : () async {
-                      if (formKey.currentState?.validate() != true) return;
-                      setDialogState(() {
-                        isSubmitting = true;
-                        errorMessage = null;
-                      });
-                      final dashboard = context
-                          .read<ProviderDashboardProvider>();
-                      final normalizedAmount = amount.text.trim().replaceAll(
-                        ',',
-                        '',
-                      );
-                      final success = existingOffer == null
-                          ? await dashboard.createQuoteOffer(
-                              quoteRequestId: quote.id,
-                              message: message.text,
-                              amount: normalizedAmount,
-                              currency: currency,
-                            )
-                          : await dashboard.updateQuoteOffer(
-                              quoteOfferId: existingOffer.id,
-                              message: message.text,
-                              amount: normalizedAmount,
-                              currency: currency,
-                              title: existingOffer.title,
-                              validUntil: existingOffer.validUntil,
-                            );
-                      if (!dialogContext.mounted) return;
-                      if (success) {
-                        Navigator.pop(dialogContext, true);
-                        return;
-                      }
-                      setDialogState(() {
-                        isSubmitting = false;
-                        errorMessage =
-                            dashboard.errorMessage ??
-                            'تعذر حفظ عرض السعر. حاول مرة أخرى.';
-                      });
-                    },
-              child: Text(
-                isSubmitting
-                    ? 'جارٍ الحفظ...'
-                    : existingOffer == null
-                    ? 'إرسال'
-                    : 'حفظ التعديل',
-              ),
-            ),
-          ],
-        ),
-      );
-    },
-  );
-  if (submitted == true && context.mounted) {
-    AarastToast.showSuccess(
-      context,
-      existingOffer == null ? 'تم إرسال عرض السعر.' : 'تم تحديث عرض السعر.',
-    );
-  }
-  message.dispose();
-  amount.dispose();
-}
-
-@visibleForTesting
-String? validateProviderOfferAmount(String? value) {
-  final normalized = value?.trim().replaceAll(',', '') ?? '';
-  if (normalized.isEmpty) return 'أدخل مبلغ العرض.';
-  if (!RegExp(r'^\d{1,12}(\.\d{1,2})?$').hasMatch(normalized)) {
-    return 'أدخل مبلغًا صحيحًا بحد أقصى منزلتين عشريتين.';
-  }
-  final parsed = num.tryParse(normalized);
-  if (parsed == null || parsed <= 0) return 'يجب أن يكون المبلغ أكبر من صفر.';
-  return null;
 }

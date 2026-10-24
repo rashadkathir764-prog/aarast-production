@@ -333,7 +333,7 @@ class _LockedCategoryNote extends StatelessWidget {
           const SizedBox(width: 10),
           Expanded(
             child: Text(
-              'فئة الخدمة الحالية: $categoryName. تغيير الفئة يحتاج مسار مراجعة منفصل.',
+              'فئة الخدمة الحالية: $categoryName. تغيير الفئة ما يصير من هنا، كلّم الدعم لو تحتاج تغييرها.',
               textAlign: TextAlign.right,
               style: const TextStyle(
                 color: AppTheme.textPrimary,
@@ -429,6 +429,7 @@ String _providerStatusLabel(String status) {
   return switch (status) {
     'ACTIVE' => 'نشط',
     'PENDING' => 'قيد المراجعة',
+    'NEEDS_CHANGES' => 'يحتاج تعديل',
     'REJECTED' => 'مرفوض',
     'SUSPENDED' => 'موقوف',
     _ => 'قيد المراجعة',

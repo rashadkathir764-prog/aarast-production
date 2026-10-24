@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:provider/provider.dart';
 
 import '../../../core/diagnostics/app_logger.dart';
+import '../../../core/experience_v3/aarast_v3.dart';
+import '../../../core/routing/app_router.dart';
 import '../../../core/widgets/aarast_ui.dart';
 import '../../../core/routing/root_tab_back_scope.dart';
 import '../../chat/chat_api.dart' show ChatProvider, ConversationListView;
@@ -12,14 +15,33 @@ import '../widgets/provider_portal_bottom_nav.dart';
 import 'provider_portal_tabs.dart';
 
 class ProviderPortalScreen extends StatefulWidget {
-  const ProviderPortalScreen({super.key});
+  const ProviderPortalScreen({this.initialTab, super.key});
+
+  /// The tab a link opens on: `requests` for the requests tab
+  /// ([AppRouter.providerRequestsTab]); the home tab otherwise.
+  final String? initialTab;
 
   @override
   State<ProviderPortalScreen> createState() => _ProviderPortalScreenState();
 }
 
+int? _tabIndexOf(String? tab) => switch (tab) {
+  'requests' => 1,
+  _ => null,
+};
+
 class _ProviderPortalScreenState extends State<ProviderPortalScreen> {
-  int _activeIndex = 0;
+  late int _activeIndex = _tabIndexOf(widget.initialTab) ?? 0;
+
+  @override
+  void didUpdateWidget(covariant ProviderPortalScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // The portal keeps its state when a link to one of its tabs arrives.
+    final index = _tabIndexOf(widget.initialTab);
+    if (index != null && widget.initialTab != oldWidget.initialTab) {
+      _activeIndex = index;
+    }
+  }
 
   @override
   void initState() {
@@ -95,7 +117,14 @@ class _ProviderPortalScreenState extends State<ProviderPortalScreen> {
     await context.read<ChatProvider>().initialize();
   }
 
-  void _openTab(int index) => setState(() => _activeIndex = index);
+  void _openTab(int index) {
+    setState(() => _activeIndex = index);
+    // Once the provider moves on, the address drops the tab it was opened
+    // on, so the same link opens that tab again next time.
+    if (widget.initialTab != null) {
+      GoRouter.maybeOf(context)?.go(AppRouter.providerDashboard);
+    }
+  }
 }
 
 class _ProviderOperationsUnavailable extends StatelessWidget {
@@ -111,13 +140,13 @@ class _ProviderOperationsUnavailable extends StatelessWidget {
         'أكمل التعديلات المطلوبة',
         profile?.reviewNote?.trim().isNotEmpty == true
             ? profile!.reviewNote!.trim()
-            : 'راجع بيانات ملفك ثم حدّثها حسب ملاحظة الإدارة.',
+            : 'عدّل بيانات ملفك حسب ملاحظة الإدارة، وبعدها كلّم الدعم عشان يراجعونه.',
       ),
       'REJECTED' => (
         'الطلب غير معتمد',
         profile?.reviewNote?.trim().isNotEmpty == true
             ? profile!.reviewNote!.trim()
-            : 'راجع ملاحظة الإدارة قبل التواصل مع الدعم أو تحديث الملف.',
+            : 'الإدارة ما اعتمدت طلبك، والملف ما يتعدّل. لو عندك سؤال كلّم الدعم.',
       ),
       'SUSPENDED' => (
         'عمليات المزوّد موقوفة',
@@ -131,19 +160,33 @@ class _ProviderOperationsUnavailable extends StatelessWidget {
       ),
       _ => (
         'عمليات المزوّد غير متاحة',
-        'حدّث الصفحة للاطلاع على حالة حساب المزوّد الحالية.',
+        'اسحب الصفحة لتحت عشان تتحدّث حالة حسابك.',
       ),
     };
-    return ListView(
-      physics: const AlwaysScrollableScrollPhysics(),
-      padding: const EdgeInsets.fromLTRB(20, 32, 20, 128),
-      children: [
-        AarastEmptyState(
-          icon: LucideIcons.shieldAlert,
-          title: copy.$1,
-          message: copy.$2,
-        ),
-      ],
+    return RefreshIndicator(
+      color: AarastV3Color.primary,
+      onRefresh: context.read<ProviderDashboardProvider>().loadDashboard,
+      child: ListView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: const EdgeInsets.fromLTRB(20, 32, 20, 128),
+        children: [
+          AarastEmptyState(
+            icon: LucideIcons.shieldAlert,
+            title: copy.$1,
+            message: copy.$2,
+          ),
+          const SizedBox(height: 16),
+          JourneyButton(
+            key: const Key('provider-operations-support'),
+            label: 'تواصل مع الدعم',
+            icon: LucideIcons.lifeBuoy,
+            background: AarastV3Color.primarySoft,
+            foreground: AarastV3Color.primary,
+            expand: true,
+            onPressed: () => context.push(AppRouter.support),
+          ),
+        ],
+      ),
     );
   }
 }

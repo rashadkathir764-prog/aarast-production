@@ -973,7 +973,9 @@ class ProviderDashboardApi {
           if (title != null && title.trim().isNotEmpty) 'title': title.trim(),
           'amount': amount.trim(),
           'currency': currency.trim().toUpperCase(),
-          if (validUntil != null) 'validUntil': validUntil.toIso8601String(),
+          // An instant with its zone, so the server does not read local time.
+          if (validUntil != null)
+            'validUntil': validUntil.toUtc().toIso8601String(),
         });
     return QuoteOffer.fromJson(json);
   }
@@ -992,7 +994,8 @@ class ProviderDashboardApi {
           if (title != null && title.trim().isNotEmpty) 'title': title.trim(),
           'amount': amount.trim(),
           'currency': currency.trim().toUpperCase(),
-          if (validUntil != null) 'validUntil': validUntil.toIso8601String(),
+          if (validUntil != null)
+            'validUntil': validUntil.toUtc().toIso8601String(),
         });
     return QuoteOffer.fromJson(json);
   }

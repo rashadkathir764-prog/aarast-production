@@ -24,7 +24,9 @@ List<RouteBase> _providerPortalRoutes() => [
       resumeLocation: state.uri.toString(),
       registerAsProvider: true,
       providerAccountRequired: true,
-      child: const ProviderPortalScreen(),
+      child: ProviderPortalScreen(
+        initialTab: state.uri.queryParameters['tab'],
+      ),
     ),
   ),
   GoRoute(

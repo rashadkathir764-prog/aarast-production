@@ -1660,8 +1660,10 @@ const r19ProviderPortalApi = Object.freeze({
 // participant shell builds each tab's page or lock from the account
 // contexts, finance, guests, marketplace, sharing, tasks and wedding plans
 // owner APIs; q05 reports a finished task to the home through the wedding
-// plans owner API.
-const r19LegalRecordCount = 213;
+// plans owner API. +1 for the provider's offer form (D35), now its own file
+// beside the requests tab, reading the request through the marketplace
+// owner API.
+const r19LegalRecordCount = 214;
 const trackedOwnerApiContracts = [
   {
     area: 'features/account_contexts',

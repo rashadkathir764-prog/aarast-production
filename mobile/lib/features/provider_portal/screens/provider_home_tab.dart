@@ -122,11 +122,15 @@ class _ProviderLifecycleNotice extends StatelessWidget {
       'SUSPENDED' => 'حساب المزوّد موقوف',
       _ => 'طلبك قيد المراجعة',
     };
+    // The server keeps a rejected or suspended profile read-only, and an edit
+    // does not send a profile back to review by itself.
     final defaultMessage = switch (status) {
-      'NEEDS_CHANGES' => 'حدّث ملفك وفق ملاحظة الإدارة ليُراجع من جديد.',
-      'REJECTED' => 'راجع سبب الرفض قبل تحديث الملف أو التواصل مع الدعم.',
+      'NEEDS_CHANGES' =>
+        'عدّل ملفك حسب ملاحظة الإدارة، وبعدها كلّم الدعم عشان يراجعونه.',
+      'REJECTED' =>
+        'الإدارة ما اعتمدت طلبك، والملف ما يتعدّل. لو عندك سؤال كلّم الدعم.',
       'SUSPENDED' => 'توقفت العمليات مؤقتًا حتى تعيد الإدارة تفعيل الحساب.',
-      _ => 'يمكنك متابعة ملفك، وستتاح العمليات بعد الاعتماد.',
+      _ => 'تقدر تعدّل ملفك الحين، والخدمات والطلبات تفتح بعد الاعتماد.',
     };
     final note = profile.reviewNote?.trim();
     return AarastCard(
@@ -169,6 +173,16 @@ class _ProviderLifecycleNotice extends StatelessWidget {
               label: const Text('تحديث ملف المزوّد'),
             ),
           ],
+          const SizedBox(height: 10),
+          JourneyButton(
+            key: const Key('provider-lifecycle-support'),
+            label: 'تواصل مع الدعم',
+            icon: LucideIcons.lifeBuoy,
+            background: AarastV3Color.primarySoft,
+            foreground: AarastV3Color.primary,
+            expand: true,
+            onPressed: () => context.push(AppRouter.support),
+          ),
         ],
       ),
     );

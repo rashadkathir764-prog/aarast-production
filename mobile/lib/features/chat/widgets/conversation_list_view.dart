@@ -170,17 +170,18 @@ class _ConversationRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final unread = conversation.unreadMessageCount;
     final service = conversation.latestQuoteRequest?.service?.title.trim();
+    final name = conversation.counterpartName;
     final last = !conversation.providerJoined
         ? 'المزود ما دخل المحادثة بعد'
         : conversation.lastMessage?.body.trim().isNotEmpty == true
         ? conversation.lastMessage!.body.trim()
         : service != null && service.isNotEmpty
-        ? 'طلبت: $service'
+        ? '${conversation.viewerIsProvider ? 'طلب' : 'طلبت'}: $service'
         : 'ما في رسائل بعد';
     return AarastPressable(
       onTap: onTap,
       semanticLabel: [
-        conversation.provider.businessName,
+        name,
         last,
         if (unread > 0) '$unread غير مقروءة',
       ].join('، '),
@@ -199,7 +200,7 @@ class _ConversationRow extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    conversation.provider.businessName,
+                    name,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: JourneyType.of(

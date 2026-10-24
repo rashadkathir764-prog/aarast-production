@@ -104,6 +104,13 @@ class ProviderDashboardProvider extends ChangeNotifier
   bool get canUseProviderOperations =>
       profile?.status.toUpperCase() == 'ACTIVE' && !_operationsAccessDenied;
 
+  /// The server's provider access policy: a suspended or rejected profile is
+  /// read-only, so its details, logo and cover cannot be changed.
+  bool get canManageProviderProfile {
+    final status = profile?.status.toUpperCase();
+    return status != null && status != 'SUSPENDED' && status != 'REJECTED';
+  }
+
   Future<void> loadDashboard() async {
     _isLoading = true;
     _errorMessage = null;
@@ -606,6 +613,36 @@ class ProviderDashboardProvider extends ChangeNotifier
     } finally {
       _isSubmitting = false;
       notifyListeners();
+    }
+  }
+
+  final Set<String> _markingViewed = {};
+
+  /// Tells the customer a new request was opened (SENT to VIEWED, which the
+  /// server allows only from SENT). Only a courtesy: a failure leaves the
+  /// request as it was and is logged, the provider's work goes on.
+  Future<void> markQuoteViewed(String quoteRequestId) async {
+    final current = _quoteRequests.where((item) => item.id == quoteRequestId);
+    if (current.isEmpty ||
+        current.first.status != 'SENT' ||
+        !_markingViewed.add(quoteRequestId)) {
+      return;
+    }
+    try {
+      final quote = await _api.updateQuoteRequestStatus(
+        quoteRequestId: quoteRequestId,
+        status: 'VIEWED',
+      );
+      // A reload that already moved the request on keeps its newer copy.
+      _quoteRequests = [
+        for (final item in _quoteRequests)
+          item.id == quote.id && item.status == 'SENT' ? quote : item,
+      ];
+      notifyListeners();
+    } on Object catch (error) {
+      debugPrint('Quote request $quoteRequestId not marked viewed: $error');
+    } finally {
+      _markingViewed.remove(quoteRequestId);
     }
   }
 

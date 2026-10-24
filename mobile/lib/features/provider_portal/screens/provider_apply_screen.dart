@@ -325,7 +325,7 @@ class ProviderApplyStatusScreen extends StatelessWidget {
             icon: LucideIcons.mailCheck,
             title: 'تم استلام طلبك',
             message:
-                'سيتم مراجعة بياناتك، وبعد الموافقة ستظهر لوحة المزود وخدماتك في المكان المناسب.',
+                'الإدارة بتراجع بياناتك. بعد الموافقة تضيف خدماتك وتستقبل طلبات العملاء من لوحة المزود.',
             action: FilledButton.icon(
               onPressed: () => context.go(AppRouter.home),
               icon: const Icon(LucideIcons.home),
@@ -385,12 +385,11 @@ class _AlreadyProviderCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final (title, message) = providerApplicationStatusCopy(status);
     return AarastEmptyState(
       icon: LucideIcons.store,
-      title: status == 'ACTIVE' ? 'حساب المزود نشط' : 'طلبك قيد المراجعة',
-      message: status == 'ACTIVE'
-          ? 'يمكنك فتح لوحة المزود لإدارة الخدمات والطلبات.'
-          : 'تم استلام طلبك مسبقًا. ستظهر حالة الحساب من لوحة المزود.',
+      title: title,
+      message: message,
       action: FilledButton.icon(
         onPressed: onDashboard,
         icon: const Icon(LucideIcons.layoutDashboard),
@@ -399,6 +398,32 @@ class _AlreadyProviderCard extends StatelessWidget {
     );
   }
 }
+
+/// What an account that already applied reads, for each server status.
+@visibleForTesting
+(String, String) providerApplicationStatusCopy(String status) =>
+    switch (status.toUpperCase()) {
+      'ACTIVE' => (
+        'حساب المزود نشط',
+        'يمكنك فتح لوحة المزود لإدارة الخدمات والطلبات.',
+      ),
+      'NEEDS_CHANGES' => (
+        'طلبك يحتاج تعديلات',
+        'الإدارة طلبت تعديلات على ملفك. افتح لوحة المزود وشوف ملاحظتها.',
+      ),
+      'REJECTED' => (
+        'طلبك ما انقبل',
+        'الإدارة ما اعتمدت طلبك. افتح لوحة المزود للتفاصيل، أو كلّم الدعم.',
+      ),
+      'SUSPENDED' => (
+        'حساب المزود موقوف',
+        'الإدارة أوقفت حسابك. افتح لوحة المزود للتفاصيل، أو كلّم الدعم.',
+      ),
+      _ => (
+        'طلبك قيد المراجعة',
+        'استلمنا طلبك والإدارة تراجعه. تتابع حالته من لوحة المزود.',
+      ),
+    };
 
 class _ReferenceDataWarning extends StatelessWidget {
   const _ReferenceDataWarning();

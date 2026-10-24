@@ -422,6 +422,7 @@ class ProviderReview {
     this.userName,
     this.comment,
     this.createdAt,
+    this.status = 'PUBLISHED',
   });
 
   factory ProviderReview.fromJson(Map<String, dynamic> json) {
@@ -433,11 +434,19 @@ class ProviderReview {
       userName: user is Map ? user['name']?.toString() : null,
       comment: json['comment']?.toString(),
       createdAt: _dateOrNull(json['createdAt']),
+      // Public lists hold published reviews only and send no status; the
+      // provider's own list sends every review with its status.
+      status: json['status']?.toString().toUpperCase() ?? 'PUBLISHED',
     );
   }
 
   final String id;
   final int rating;
+
+  /// PUBLISHED, HIDDEN (by the admin) or PENDING.
+  final String status;
+
+  bool get isPublished => status == 'PUBLISHED';
 
   /// Whose review it is: the reviews screen (g04) finds the account's own.
   final String? userId;

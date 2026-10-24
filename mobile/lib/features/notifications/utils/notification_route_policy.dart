@@ -15,6 +15,13 @@ String? resolveNotificationRouteTarget(AarastNotification notification) {
   }
 
   final originalTarget = _nonEmpty(notification.routeTarget);
+  // The server points every provider notice about a request at the portal's
+  // home; the request's own conversation is where it is followed.
+  final providerQuoteId = _providerQuoteId(notification, originalTarget);
+  if (providerQuoteId != null) {
+    return '/quotes/$providerQuoteId/conversation';
+  }
+
   if (notification.entityType == 'quote_request' &&
       _isLegacyRequesterQuoteTarget(originalTarget)) {
     final data = notification.data;
@@ -40,6 +47,26 @@ String? resolveNotificationRouteTarget(AarastNotification notification) {
 }
 
 final RegExp _safeRouteId = RegExp(r'^[A-Za-z0-9_-]{1,128}$');
+
+/// The request a provider's portal notice is about, if it names a safe one.
+String? _providerQuoteId(AarastNotification notification, String? target) {
+  final data = notification.data;
+  if (data?['recipientAudience']?.toString() != 'PROVIDER') return null;
+  if (target != null && target != '/provider/dashboard') return null;
+  final quoteId = _nonEmpty(data?['quoteRequestId']);
+  if (quoteId == null || !_safeRouteId.hasMatch(quoteId)) return null;
+  return quoteId;
+}
+
+/// `/quotes/<id>/conversation` with nothing after it.
+bool _isQuoteConversationPath(Uri uri) {
+  final segments = uri.pathSegments;
+  return !uri.hasQuery &&
+      segments.length == 3 &&
+      segments[0] == 'quotes' &&
+      _safeRouteId.hasMatch(segments[1]) &&
+      segments[2] == 'conversation';
+}
 
 bool _isLegacyRequesterQuoteTarget(String? target) {
   if (target == null) return false;
@@ -72,6 +99,7 @@ bool isSafeNotificationRouteTarget(String target) {
   return
   // بوابة المزود: وجهة تنبيهات "طلب جديد" و"تم قبول عرضك" للمزود.
   target == '/provider/dashboard' ||
+      _isQuoteConversationPath(uri) ||
       uri.path.startsWith('/providers/') ||
       uri.path.startsWith('/conversations/') ||
       uri.path.startsWith('/invites/') ||

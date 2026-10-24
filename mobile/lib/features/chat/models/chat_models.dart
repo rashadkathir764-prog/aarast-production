@@ -127,6 +127,7 @@ class ChatQuoteRequestSummary {
     required this.createdAt,
     this.service,
     this.message,
+    this.contactName,
     this.offers = const [],
   });
 
@@ -138,6 +139,7 @@ class ChatQuoteRequestSummary {
             _date(json['createdAt']) ?? DateTime.fromMillisecondsSinceEpoch(0),
         service: _map(json['service'], ChatQuoteService.fromJson),
         message: json['message']?.toString(),
+        contactName: json['contactName']?.toString(),
         offers: _list(json['offers'], ChatQuoteOffer.fromJson),
       );
 
@@ -148,6 +150,10 @@ class ChatQuoteRequestSummary {
 
   /// What the customer wrote with the request.
   final String? message;
+
+  /// The name the customer left on the request; the server sends it only to
+  /// those allowed to see contact details.
+  final String? contactName;
   final List<ChatQuoteOffer> offers;
 }
 
@@ -377,6 +383,22 @@ class ChatConversation {
   final ChatConversationPermissions permissions;
   final DateTime createdAt;
   final DateTime updatedAt;
+
+  /// The provider answers this conversation: the server gives the provider's
+  /// side no right to manage providers, and a customer without that right
+  /// never sees the conversation at all.
+  bool get viewerIsProvider => !permissions.canManageProviders;
+
+  /// The other side's name: the provider's business for the customer, the
+  /// customer for the provider.
+  String get counterpartName {
+    if (!viewerIsProvider) return provider.businessName;
+    final name = counterpart?.name.trim();
+    if (name != null && name.isNotEmpty) return name;
+    final contact = latestQuoteRequest?.contactName?.trim();
+    if (contact != null && contact.isNotEmpty) return contact;
+    return 'العميل';
+  }
 
   ChatConversation copyWith({
     int? unreadMessageCount,

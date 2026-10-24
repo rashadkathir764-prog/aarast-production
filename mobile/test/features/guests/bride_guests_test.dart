@@ -110,6 +110,43 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  testWidgets('e01: the reminder sits in the summary card, the bar is drawn', (
+    tester,
+  ) async {
+    await _pumpList(tester, JourneyProfile.bride);
+
+    final card = find.ancestor(
+      of: find.byKey(const ValueKey('guests-summary')),
+      matching: find.byType(JourneyBox),
+    );
+    expect(
+      find.descendant(
+        of: card.first,
+        matching: find.byKey(const ValueKey('guests-remind')),
+      ),
+      findsOneWidget,
+    );
+    expect(find.text('ذكّري الـ 1 على واتساب'), findsOneWidget);
+    // The confirmed and waiting pieces are 10 high, not collapsed.
+    final pieces = tester.widgetList<ColoredBox>(
+      find.descendant(
+        of: find.byKey(const ValueKey('guests-summary-bar')),
+        matching: find.byType(ColoredBox),
+      ),
+    );
+    expect(pieces.map((piece) => piece.color), [
+      AarastV3Color.lilac,
+      AarastV3Color.saffron,
+    ]);
+    final shown = find.descendant(
+      of: find.byKey(const ValueKey('guests-summary-bar')),
+      matching: find.byType(ColoredBox),
+    );
+    for (final element in shown.evaluate()) {
+      expect(element.size!.height, 10);
+    }
+  });
+
   testWidgets('the groom keeps «الضيوف» and «أكدوا»', (tester) async {
     await _pumpList(tester, JourneyProfile.groom);
 

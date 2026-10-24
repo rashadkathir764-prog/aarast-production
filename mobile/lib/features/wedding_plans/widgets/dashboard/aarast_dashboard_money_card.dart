@@ -1,18 +1,45 @@
 part of 'aarast_dashboard_view.dart';
 
+// b02 «المال» on the home: the plan's soft fill, «المال» with the eye that
+// hides the amounts, the gap on the reading side and what is left to pay,
+// in hand and promised on the far side, the four-part bar under them.
+// Every number is a server field (C2): the gap is the server's shortfall,
+// which already counts what was promised, so it reads «ومع الموعود ناقصك»,
+// and the design's «ناقصك» without the promises and «وإذا وصل الموعود»
+// wait for the server formula. «حط 450 ألف كل شهر» is dropped (b02 row).
+
+/// The owner's funding from the money section (`GET P/money-summary`):
+/// what is in hand, what is promised and the server's shortfall.
+class DashboardHomeFunding {
+  const DashboardHomeFunding({
+    required this.inHand,
+    required this.pledged,
+    required this.shortfall,
+    required this.sourcesCount,
+  });
+
+  final double inHand;
+  final double pledged;
+
+  /// Agreements not covered by any source, promises counted; null once
+  /// covered or before any source.
+  final double? shortfall;
+  final int sourcesCount;
+
+  /// The server knows the money in only once a source is recorded.
+  bool get isKnown => sourcesCount > 0 || shortfall != null;
+}
+
 class _DashboardMoneyCard extends StatefulWidget {
   const _DashboardMoneyCard({
     required this.summary,
+    required this.funding,
     required this.onTap,
-    this.paymentShownAbove = false,
   });
 
   final DashboardSummary summary;
+  final DashboardHomeFunding? funding;
   final VoidCallback onTap;
-
-  /// The next step already names the due payment; the card does not repeat
-  /// it.
-  final bool paymentShownAbove;
 
   @override
   State<_DashboardMoneyCard> createState() => _DashboardMoneyCardState();
@@ -24,456 +51,225 @@ class _DashboardMoneyCardState extends State<_DashboardMoneyCard> {
   @override
   Widget build(BuildContext context) {
     final summary = widget.summary;
-    final budget = dashboardAmount(summary.totalBudgetForDisplay);
-    final confirmed = dashboardAmount(summary.confirmedCostForDisplay) ?? 0;
+    final currency = summary.currency;
+    final agreed = dashboardAmount(summary.confirmedCostForDisplay) ?? 0;
     final paid = dashboardAmount(summary.paidForDisplay) ?? 0;
-    final calculatedOutstanding = confirmed - paid;
-    final outstanding =
+    final unpaid = agreed - paid;
+    final left =
         dashboardAmount(summary.outstandingForDisplay) ??
-        (calculatedOutstanding < 0 ? 0.0 : calculatedOutstanding);
-    final remaining =
-        dashboardAmount(summary.remainingBudgetForDisplay) ??
-        (budget == null ? null : budget - confirmed);
-    final overBudget =
-        summary.moneySummary.overBudget == true ||
-        (remaining != null && remaining < 0);
-    final hasDuePayment =
-        !widget.paymentShownAbove &&
-        (summary.duePaymentSchedulesCount ?? 0) > 0;
-    final ratio = budget == null || budget <= 0
-        ? null
-        : (confirmed / budget).clamp(0.0, 1.0);
-    final percent = budget == null || budget <= 0
-        ? null
-        : ((confirmed / budget) * 100).round();
-    final tone = _DashboardMoneyTone.fromState(
-      overBudget: overBudget,
-      hasDuePayment: hasDuePayment,
-      accent: context.accent,
-    );
-    final headlineAmount = overBudget && remaining != null
-        ? remaining.abs()
-        : remaining;
+        (unpaid < 0 ? 0.0 : unpaid);
+    final funding = widget.funding;
+    final known = funding != null && funding.isKnown;
+    final gap = known ? funding.shortfall : null;
+    final covered = known && (gap == null || gap <= 0);
+
+    String amount(double value) =>
+        _amountsHidden ? '••••' : _money(value, currency);
+    String figure(double value) =>
+        _amountsHidden ? '••••' : _figure(value, currency);
+
+    final leftLabel = context.say('باقي تدفع', 'باقي تدفعين');
+
+    final Widget lead;
+    if (known && !covered) {
+      lead = _MoneyLead(
+        label: 'ومع الموعود ناقصك',
+        value: amount(gap!),
+        color: AarastV3Color.danger,
+      );
+    } else if (covered) {
+      lead = Text(
+        'فلوسك والموعود يغطون اتفاقاتك',
+        key: const ValueKey('dashboard-money-covered'),
+        style: JourneyType.of(
+          JourneyType.lead,
+          weight: JourneyType.bold,
+          color: AarastV3Color.mint,
+        ),
+      );
+    } else if (agreed <= 0) {
+      lead = Text(
+        context.say(
+          'لسا ما سجلت اتفاقات. أول ما تتفق مع مزود، سجّله ونحسب لك الباقي.',
+          'لسا ما سجلتِ اتفاقات. أول ما تتفقين مع مزود، سجّليه ونحسب لك الباقي.',
+        ),
+        style: JourneyType.of(
+          JourneyType.bodySmall,
+          color: AarastV3Color.textMuted,
+        ),
+      );
+    } else {
+      lead = _MoneyLead(
+        label: leftLabel,
+        value: amount(left),
+        color: AarastV3Color.ink,
+      );
+    }
+
+    final side = <Widget>[
+      if (known) ...[
+        _SideFigure('$leftLabel ${figure(left)}', AarastV3Color.ink),
+        _SideFigure('معك ${figure(funding.inHand)}', context.accent.primary),
+        if (funding.pledged > 0)
+          _SideFigure('موعود ${figure(funding.pledged)}', AarastV3Color.lilac),
+      ] else if (agreed > 0) ...[
+        _SideFigure(
+          '${context.say('اتفقت على', 'اتفقتِ على')} ${figure(agreed)}',
+          AarastV3Color.ink,
+        ),
+        _SideFigure(
+          '${context.say('دفعت', 'دفعتِ')} ${figure(paid)}',
+          context.accent.primary,
+        ),
+      ],
+    ];
+
+    final pieces = known
+        ? [
+            (paid, context.accent.primary),
+            (funding.inHand, context.accent.primaryMid),
+            (funding.pledged, AarastV3Color.lilac.withValues(alpha: 0.5)),
+            (gap ?? 0, AarastV3Color.danger),
+          ]
+        : [(paid, context.accent.primary), (left, context.accent.primaryMid)];
 
     return Semantics(
+      key: const ValueKey('aarast-dashboard-money-card'),
       container: true,
       button: true,
-      label: _dashboardMoneySemanticsLabel(
-        summary: summary,
-        budget: budget,
-        remaining: remaining,
-        paid: paid,
-        outstanding: outstanding,
-        hidden: _amountsHidden,
-      ),
-      child: Material(
-        color: AarastV3Color.paper,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(AarastV3Radius.surface),
-          side: BorderSide(color: tone.accent.withValues(alpha: .34)),
-        ),
-        clipBehavior: Clip.antiAlias,
-        child: InkWell(
-          key: const ValueKey('aarast-dashboard-money-card'),
-          onTap: widget.onTap,
-          child: Padding(
-            padding: const EdgeInsets.all(AarastV3Space.x3),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                _DashboardMoneyHeader(
-                  budgetIsSet: budget != null,
-                  overBudget: overBudget,
-                  hasDuePayment: hasDuePayment,
-                  amountsHidden: _amountsHidden,
-                  tone: tone,
-                  onTogglePrivacy: () =>
-                      setState(() => _amountsHidden = !_amountsHidden),
-                ),
-                const SizedBox(height: AarastV3Space.x2),
-                if (budget == null)
-                  _DashboardUnsetBudgetSummary(
-                    confirmed: confirmed,
-                    currency: summary.currency,
-                    hidden: _amountsHidden,
-                  )
-                else
-                  _DashboardMoneyOverview(
-                    budget: budget,
-                    headlineAmount: headlineAmount,
-                    confirmed: confirmed,
-                    paid: paid,
-                    outstanding: outstanding,
-                    ratio: ratio,
-                    percent: percent,
-                    overBudget: overBudget,
-                    hidden: _amountsHidden,
-                    currency: summary.currency,
-                    tone: tone,
+      label: _amountsHidden
+          ? 'المال، المبالغ مخفية مؤقتًا'
+          : [
+              'المال',
+              if (known && !covered)
+                'ومع الموعود ناقصك ${_money(gap!, currency)}',
+              if (covered) 'فلوسك والموعود يغطون اتفاقاتك',
+              if (agreed > 0) '$leftLabel ${_money(left, currency)}',
+              if (known) 'معك ${_money(funding.inHand, currency)}',
+              if (known && funding.pledged > 0)
+                'موعود ${_money(funding.pledged, currency)}',
+            ].join('، '),
+      child: AarastPressable(
+        onTap: widget.onTap,
+        borderRadius: BorderRadius.circular(24),
+        child: JourneyBox(
+          color: context.accent.primarySoft,
+          radius: 24,
+          padding: const EdgeInsets.all(18),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Row(
+                children: [
+                  Icon(
+                    LucideIcons.wallet,
+                    size: 17,
+                    color: context.accent.primary,
                   ),
-                if (hasDuePayment) ...[
-                  const SizedBox(height: AarastV3Space.x2),
-                  _DashboardPaymentAttention(
-                    label: _paymentAttentionLabel(summary, _amountsHidden),
+                  const SizedBox(width: 6),
+                  Expanded(
+                    child: Text(
+                      'المال',
+                      style: JourneyType.of(
+                        JourneyType.bodySmall,
+                        weight: JourneyType.bold,
+                        color: context.accent.primary,
+                      ),
+                    ),
+                  ),
+                  // b02 draws a bare eye; the tap area is wider than it.
+                  Semantics(
+                    button: true,
+                    label: _amountsHidden ? 'إظهار المبالغ' : 'إخفاء المبالغ',
+                    excludeSemantics: true,
+                    child: Material(
+                      type: MaterialType.transparency,
+                      child: InkResponse(
+                        key: const ValueKey('dashboard-money-privacy-toggle'),
+                        onTap: () =>
+                            setState(() => _amountsHidden = !_amountsHidden),
+                        radius: 20,
+                        child: SizedBox(
+                          width: 40,
+                          height: 28,
+                          child: Icon(
+                            _amountsHidden
+                                ? LucideIcons.eye
+                                : LucideIcons.eyeOff,
+                            color: AarastV3Color.textMuted,
+                            size: 17,
+                          ),
+                        ),
+                      ),
+                    ),
                   ),
                 ],
+              ),
+              const SizedBox(height: 6),
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  Expanded(flex: 3, child: lead),
+                  if (side.isNotEmpty) ...[
+                    const SizedBox(width: 12),
+                    Flexible(
+                      flex: 2,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.end,
+                        children: side,
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+              if (pieces.any((piece) => piece.$1 > 0)) ...[
+                const SizedBox(height: 12),
+                _MoneySplitBar(pieces: pieces),
               ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _DashboardMoneyHeader extends StatelessWidget {
-  const _DashboardMoneyHeader({
-    required this.budgetIsSet,
-    required this.overBudget,
-    required this.hasDuePayment,
-    required this.amountsHidden,
-    required this.tone,
-    required this.onTogglePrivacy,
-  });
-
-  final bool budgetIsSet;
-  final bool overBudget;
-  final bool hasDuePayment;
-  final bool amountsHidden;
-  final _DashboardMoneyTone tone;
-  final VoidCallback onTogglePrivacy;
-
-  @override
-  Widget build(BuildContext context) {
-    final subtitle = !budgetIsSet
-        ? context.say('ابدأ بصورة مالية واضحة', 'ابدئي بصورة مالية واضحة')
-        : overBudget
-        ? 'تجاوز يحتاج قرارك'
-        : hasDuePayment
-        ? 'موعد دفع يحتاج انتباهك'
-        : 'أمورك المالية ضمن الخطة';
-
-    return Row(
-      children: [
-        Container(
-          width: 36,
-          height: 36,
-          alignment: Alignment.center,
-          decoration: BoxDecoration(
-            color: tone.background,
-            borderRadius: BorderRadius.circular(AarastV3Radius.control),
-          ),
-          child: Icon(LucideIcons.walletCards, color: tone.accent, size: 18),
-        ),
-        const SizedBox(width: AarastV3Space.x2),
-        Expanded(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'المال',
-                style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                  color: AarastV3Color.ink,
-                  fontWeight: FontWeight.w900,
-                ),
-              ),
-              Text(
-                subtitle,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                  color: tone.accent,
-                  fontWeight: FontWeight.w800,
-                ),
-              ),
             ],
           ),
         ),
-        IconButton(
-          key: const ValueKey('dashboard-money-privacy-toggle'),
-          onPressed: onTogglePrivacy,
-          tooltip: amountsHidden ? 'إظهار المبالغ' : 'إخفاء المبالغ',
-          visualDensity: VisualDensity.compact,
-          padding: EdgeInsets.zero,
-          constraints: const BoxConstraints.tightFor(width: 40, height: 40),
-          icon: Icon(
-            amountsHidden ? LucideIcons.eye : LucideIcons.eyeOff,
-            color: AarastV3Color.textMuted,
-            size: 18,
-          ),
-        ),
-        const SizedBox(width: AarastV3Space.x1),
-        const Icon(
-          LucideIcons.chevronLeft,
-          color: AarastV3Color.textFaint,
-          size: 17,
-        ),
-      ],
+      ),
     );
   }
 }
 
-class _DashboardMoneyOverview extends StatelessWidget {
-  const _DashboardMoneyOverview({
-    required this.budget,
-    required this.headlineAmount,
-    required this.confirmed,
-    required this.paid,
-    required this.outstanding,
-    required this.ratio,
-    required this.percent,
-    required this.overBudget,
-    required this.hidden,
-    required this.currency,
-    required this.tone,
-  });
-
-  final double budget;
-  final double? headlineAmount;
-  final double confirmed;
-  final double paid;
-  final double outstanding;
-  final double? ratio;
-  final int? percent;
-  final bool overBudget;
-  final bool hidden;
-  final String currency;
-  final _DashboardMoneyTone tone;
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        Row(
-          crossAxisAlignment: CrossAxisAlignment.end,
-          children: [
-            Expanded(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    overBudget ? 'تجاوز الميزانية' : 'المتاح من الميزانية',
-                    style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                      color: AarastV3Color.textMuted,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                  const SizedBox(height: 2),
-                  _DashboardAnimatedAmount(
-                    value: hidden
-                        ? '••••'
-                        : _displayAmount(headlineAmount, currency),
-                    color: overBudget
-                        ? AarastV3Color.danger
-                        : AarastV3Color.ink,
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(width: AarastV3Space.x2),
-            Flexible(
-              child: Text(
-                hidden
-                    ? 'من ميزانية ••••'
-                    : 'من ميزانية ${_displayAmount(budget, currency)}',
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                textAlign: TextAlign.end,
-                style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                  color: AarastV3Color.textMuted,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: AarastV3Space.x2),
-        Row(
-          children: [
-            Expanded(
-              child: _DashboardMoneyFigure(
-                label: 'التكاليف',
-                value: hidden ? '••••' : _displayAmount(confirmed, currency),
-                accent: context.accent.primary,
-              ),
-            ),
-            const SizedBox(width: AarastV3Space.x2),
-            Expanded(
-              child: _DashboardMoneyFigure(
-                label: 'المدفوع',
-                value: hidden ? '••••' : _displayAmount(paid, currency),
-                accent: AarastV3Color.mint,
-              ),
-            ),
-            const SizedBox(width: AarastV3Space.x2),
-            Expanded(
-              child: _DashboardMoneyFigure(
-                label: 'غير المدفوع',
-                value: hidden ? '••••' : _displayAmount(outstanding, currency),
-                accent: outstanding > 0
-                    ? AarastV3Color.amber
-                    : AarastV3Color.mint,
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: AarastV3Space.x2),
-        AarastV3ProgressLine(
-          height: 5,
-          value: ratio,
-          color: tone.accent,
-          backgroundColor: tone.background,
-          semanticsLabel: 'نسبة استخدام الميزانية',
-        ),
-        const SizedBox(height: AarastV3Space.x1),
-        Text(
-          hidden
-              ? 'نسبة الاستخدام مخفية مؤقتًا'
-              : overBudget
-              ? 'مستخدمة $percent% · ${context.say('راجع', 'راجعي')} التكاليف الآن'
-              : 'مستخدمة $percent% من الميزانية',
-          textAlign: TextAlign.end,
-          style: Theme.of(context).textTheme.labelSmall?.copyWith(
-            color: overBudget ? AarastV3Color.danger : tone.accent,
-            fontWeight: FontWeight.w700,
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-class _DashboardMoneyFigure extends StatelessWidget {
-  const _DashboardMoneyFigure({
+/// «ومع الموعود ناقصك» over its 28 figure.
+class _MoneyLead extends StatelessWidget {
+  const _MoneyLead({
     required this.label,
     required this.value,
-    required this.accent,
+    required this.color,
   });
 
   final String label;
-  final String value;
-  final Color accent;
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          label,
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-          style: Theme.of(context).textTheme.labelSmall?.copyWith(
-            color: AarastV3Color.textMuted,
-            fontWeight: FontWeight.w700,
-          ),
-        ),
-        const SizedBox(height: 2),
-        FittedBox(
-          fit: BoxFit.scaleDown,
-          alignment: AlignmentDirectional.centerStart,
-          child: Text(
-            value,
-            maxLines: 1,
-            style: Theme.of(context).textTheme.labelLarge?.copyWith(
-              color: accent,
-              fontFamily: AarastV3Type.displayFamily,
-              fontWeight: FontWeight.w900,
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-class _DashboardAnimatedAmount extends StatelessWidget {
-  const _DashboardAnimatedAmount({required this.value, required this.color});
-
   final String value;
   final Color color;
 
   @override
   Widget build(BuildContext context) {
-    return AnimatedSwitcher(
-      duration: const Duration(milliseconds: 180),
-      child: FittedBox(
-        key: ValueKey(value),
-        fit: BoxFit.scaleDown,
-        alignment: AlignmentDirectional.centerStart,
-        child: Text(
-          value,
-          maxLines: 1,
-          style: Theme.of(context).textTheme.titleLarge?.copyWith(
-            color: color,
-            fontFamily: AarastV3Type.displayFamily,
-            fontWeight: FontWeight.w900,
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _DashboardUnsetBudgetSummary extends StatelessWidget {
-  const _DashboardUnsetBudgetSummary({
-    required this.confirmed,
-    required this.currency,
-    required this.hidden,
-  });
-
-  final double confirmed;
-  final String currency;
-  final bool hidden;
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Expanded(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                context.say('حدّد ميزانية تقريبية', 'حدّدي ميزانية تقريبية'),
-                style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                  color: AarastV3Color.ink,
-                  fontWeight: FontWeight.w900,
-                ),
-              ),
-              const SizedBox(height: AarastV3Space.x1),
-              Text(
-                confirmed > 0
-                    ? hidden
-                          ? 'لديك تكاليف مؤكدة · المبلغ مخفي'
-                          : 'التكاليف المؤكدة ${_displayAmount(confirmed, currency)}'
-                    : context.say(
-                        'ابدأ برقم أولي وعدّله لاحقًا.',
-                        'ابدئي برقم أولي وعدّليه لاحقًا.',
-                      ),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                  color: AarastV3Color.textMuted,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ],
+        Text(
+          label,
+          style: JourneyType.of(
+            JourneyType.bodySmall,
+            color: AarastV3Color.textMuted,
           ),
         ),
-        const SizedBox(width: AarastV3Space.x2),
-        Text(
-          'إعداد الميزانية',
-          style: Theme.of(context).textTheme.labelSmall?.copyWith(
-            color: context.accent.primary,
-            fontWeight: FontWeight.w900,
+        FittedBox(
+          fit: BoxFit.scaleDown,
+          alignment: AlignmentDirectional.centerStart,
+          child: Text(
+            value,
+            key: const ValueKey('dashboard-money-lead'),
+            style: JourneyType.of(
+              JourneyType.amount,
+              weight: JourneyType.bold,
+              color: color,
+              height: 1.2,
+            ),
           ),
         ),
       ],
@@ -481,118 +277,70 @@ class _DashboardUnsetBudgetSummary extends StatelessWidget {
   }
 }
 
-class _DashboardPaymentAttention extends StatelessWidget {
-  const _DashboardPaymentAttention({required this.label});
+/// One line of the far column: «باقي تدفع 5.4», «معك 2.9», «موعود 1.2».
+class _SideFigure extends StatelessWidget {
+  const _SideFigure(this.text, this.color);
 
-  final String label;
+  final String text;
+  final Color color;
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(
-        horizontal: AarastV3Space.x2,
-        vertical: AarastV3Space.x2,
-      ),
-      decoration: BoxDecoration(
-        color: AarastV3Color.amberSoft,
-        borderRadius: BorderRadius.circular(AarastV3Radius.control),
-      ),
-      child: Row(
-        children: [
-          const Icon(
-            LucideIcons.calendarClock,
-            color: AarastV3Color.amber,
-            size: 16,
-          ),
-          const SizedBox(width: AarastV3Space.x2),
-          Expanded(
-            child: Text(
-              label,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                color: AarastV3Color.ink,
-                fontWeight: FontWeight.w800,
-              ),
-            ),
-          ),
-          const Icon(
-            LucideIcons.arrowLeft,
-            color: AarastV3Color.amber,
-            size: 15,
-          ),
-        ],
+    return Text(
+      text,
+      textAlign: TextAlign.end,
+      style: JourneyType.of(
+        JourneyType.bodySmall,
+        weight: JourneyType.bold,
+        color: color,
       ),
     );
   }
 }
 
-class _DashboardMoneyTone {
-  const _DashboardMoneyTone({required this.accent, required this.background});
+/// The 10-high bar split by amount; empty pieces are left out.
+class _MoneySplitBar extends StatelessWidget {
+  const _MoneySplitBar({required this.pieces});
 
-  factory _DashboardMoneyTone.fromState({
-    required bool overBudget,
-    required bool hasDuePayment,
-    required JourneyAccent accent,
-  }) {
-    if (overBudget) {
-      return const _DashboardMoneyTone(
-        accent: AarastV3Color.danger,
-        background: AarastV3Color.dangerSoft,
-      );
-    }
-    if (hasDuePayment) {
-      return const _DashboardMoneyTone(
-        accent: AarastV3Color.amber,
-        background: AarastV3Color.amberSoft,
-      );
-    }
-    return _DashboardMoneyTone(
-      accent: accent.primary,
-      background: accent.primarySoft,
+  final List<(double, Color)> pieces;
+
+  @override
+  Widget build(BuildContext context) {
+    final shown = [
+      for (final piece in pieces)
+        if (piece.$1 > 0) piece,
+    ];
+    final total = shown.fold<double>(0, (sum, piece) => sum + piece.$1);
+    return ExcludeSemantics(
+      child: ClipRRect(
+        key: const ValueKey('dashboard-money-bar'),
+        borderRadius: BorderRadius.circular(5),
+        child: SizedBox(
+          height: 10,
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              for (var index = 0; index < shown.length; index++) ...[
+                if (index > 0) const SizedBox(width: 3),
+                Expanded(
+                  flex: (shown[index].$1 / total * 1000).round().clamp(1, 1000),
+                  child: ColoredBox(color: shown[index].$2),
+                ),
+              ],
+            ],
+          ),
+        ),
+      ),
     );
   }
-
-  final Color accent;
-  final Color background;
-}
-
-String _dashboardMoneySemanticsLabel({
-  required DashboardSummary summary,
-  required double? budget,
-  required double? remaining,
-  required double paid,
-  required double outstanding,
-  required bool hidden,
-}) {
-  if (hidden) return 'المال، المبالغ مخفية مؤقتًا';
-  if (budget == null) return 'المال، الميزانية غير محددة';
-  return 'المال، المتاح ${_displayAmount(remaining, summary.currency)}، '
-      'المدفوع ${_displayAmount(paid, summary.currency)}، '
-      'غير المدفوع ${_displayAmount(outstanding, summary.currency)}';
-}
-
-String _displayAmount(double? value, String currency) {
-  if (value == null) return 'غير محسوب';
-  return _money(value, currency);
-}
-
-String _paymentAttentionLabel(DashboardSummary summary, bool hidden) {
-  final next = summary.nextPaymentScheduleDue;
-  final count = summary.duePaymentSchedulesCount ?? 0;
-  if (next == null) {
-    return count == 1
-        ? 'لديك موعد دفع يحتاج مراجعة'
-        : 'لديك $count مواعيد دفع تحتاج مراجعة';
-  }
-  final title = next.title.trim().isEmpty ? 'موعد دفع قريب' : next.title.trim();
-  if (hidden) return 'موعد دفع قريب · $title';
-  final amount = dashboardAmount(next.amount);
-  return amount == null
-      ? 'موعد دفع قريب · $title'
-      : 'موعد دفع قريب · $title · ${_displayAmount(amount, summary.currency)}';
 }
 
 String _money(double value, String currency) {
   return compactMoneyParts(value, currencyCode: currency).plainText;
+}
+
+/// b02's far column: «5.4» for millions, the full figure below a million.
+String _figure(double value, String currency) {
+  final parts = compactMoneyParts(value, currencyCode: currency);
+  return parts.millionUnit == null ? parts.plainText : parts.number;
 }

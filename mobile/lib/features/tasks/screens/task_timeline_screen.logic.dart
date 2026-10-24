@@ -76,7 +76,7 @@ List<String> _people(List<WeddingTask> tasks, String? userId) {
   return counts.keys.toList()..sort((a, b) => counts[b]!.compareTo(counts[a]!));
 }
 
-/// «باقي 3 هذا الأسبوع، ووحدة متأخرة», from the real counts (C6).
+/// «باقي 3 هذا الأسبوع، وواحدة متأخرة» (d01), from the real counts (C6).
 String _statusLine(
   List<WeddingTask> tasks,
   DateTime today,
@@ -97,7 +97,7 @@ String _statusLine(
       ? null
       : arabicCount(
           overdue,
-          one: 'وحدة متأخرة',
+          one: 'واحدة متأخرة',
           two: 'ثنتين متأخرة',
           few: 'متأخرة',
           many: 'متأخرة',

@@ -232,7 +232,7 @@ class _GuestImportScreenState extends State<GuestImportScreen> {
             const SizedBox(height: 12),
             JourneyButton(
               key: const ValueKey('import-retry'),
-              label: 'حاول مرة ثانية',
+              label: context.say('حاول مرة ثانية', 'حاولي مرة ثانية'),
               icon: LucideIcons.refreshCw,
               onPressed: _loadContacts,
             ),

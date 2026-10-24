@@ -76,7 +76,9 @@ class JourneyListState extends StatelessWidget {
         AarastV3Color.danger,
         AarastV3Color.dangerSoft,
         'ما قدرنا نجيبها',
-        onRetry == null ? null : 'حاول مرة ثانية',
+        onRetry == null
+            ? null
+            : context.say('حاول مرة ثانية', 'حاولي مرة ثانية'),
         onRetry,
       ),
       _ => (
@@ -192,7 +194,7 @@ class JourneyListNotice extends StatelessWidget {
             ),
             if (onRetry != null && !offline)
               JourneyTextAction(
-                label: 'حاول مرة ثانية',
+                label: context.say('حاول مرة ثانية', 'حاولي مرة ثانية'),
                 color: color,
                 onPressed: onRetry,
               ),

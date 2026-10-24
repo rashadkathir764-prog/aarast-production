@@ -186,10 +186,20 @@ class JourneyGlassRows extends StatelessWidget {
 
 /// Sanaa's signature: the half-moon of a qamariya window as faint arcs
 /// with its stained-glass ribs, centred at the bottom.
+///
+/// The home countdown (b01, b02) moves the window toward the card's far
+/// end ([centreX], a share of the width from the left) and adds the gypsum
+/// zigzag [frieze] along the bottom edge.
 class JourneyQamariyaPainter extends CustomPainter {
-  const JourneyQamariyaPainter({this.alpha = 0.14});
+  const JourneyQamariyaPainter({
+    this.alpha = 0.14,
+    this.centreX = 0.5,
+    this.frieze = false,
+  });
 
   final double alpha;
+  final double centreX;
+  final bool frieze;
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -197,7 +207,7 @@ class JourneyQamariyaPainter extends CustomPainter {
       ..style = PaintingStyle.stroke
       ..color = AarastV3Color.paper.withValues(alpha: alpha);
     final radius = size.height * 0.95;
-    final centre = Offset(size.width / 2, size.height + radius * 0.18);
+    final centre = Offset(size.width * centreX, size.height + radius * 0.18);
     for (final fraction in [1.0, 0.78, 0.56]) {
       paint.strokeWidth = fraction == 1.0 ? 2.2 : 1.4;
       canvas.drawArc(
@@ -218,11 +228,27 @@ class JourneyQamariyaPainter extends CustomPainter {
         paint,
       );
     }
+    if (frieze) {
+      final fill = Paint()
+        ..color = AarastV3Color.paper.withValues(alpha: alpha * 0.9);
+      const tooth = 10.0;
+      final base = size.height - 3;
+      for (double x = 0; x < size.width; x += tooth) {
+        canvas.drawPath(
+          Path()
+            ..moveTo(x, base)
+            ..lineTo(x + tooth / 2, base - 5)
+            ..lineTo(x + tooth, base)
+            ..close(),
+          fill,
+        );
+      }
+    }
   }
 
   @override
   bool shouldRepaint(covariant JourneyQamariyaPainter old) =>
-      old.alpha != alpha;
+      old.alpha != alpha || old.centreX != centreX || old.frieze != frieze;
 }
 
 /// Saffron, white and mint confetti, the same scatter every time.

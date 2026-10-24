@@ -168,6 +168,36 @@ class _WeddingPlanDashboardScreenState extends State<WeddingPlanDashboardScreen>
     return DashboardAfterWedding(left: left, paid: total - left, total: total);
   }
 
+  /// b02: the owner's money in hand, promised and short from the money
+  /// section (only the owner receives funding). Null until it is loaded.
+  DashboardHomeFunding? _homeFunding(DashboardSummary summary, String planId) {
+    if (_isLocalGuestPlan ||
+        !summary.canViewMoney ||
+        !summary.permissions.isOwner) {
+      return null;
+    }
+    final finance = context.watch<FinanceProvider?>();
+    if (finance == null) return null;
+    if (finance.loadedPlanId != planId) {
+      if (!finance.isLoading) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) finance.loadMoney(planId);
+        });
+      }
+      return null;
+    }
+    final funding = finance.hasLoadedMoney ? finance.summary.funding : null;
+    if (funding == null) return null;
+    double value(String? text) => double.tryParse(text ?? '') ?? 0;
+    final shortfall = funding.shortfall;
+    return DashboardHomeFunding(
+      inHand: value(funding.availableCash),
+      pledged: value(funding.pledged),
+      shortfall: shortfall == null ? null : value(shortfall),
+      sourcesCount: funding.sourcesCount,
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final provider = context.watch<DashboardSummaryProvider>();
@@ -291,6 +321,7 @@ class _WeddingPlanDashboardScreenState extends State<WeddingPlanDashboardScreen>
               // w39: an account whose phone turned notifications off.
               notice: _isLocalGuestPlan ? null : const PushOffCard(),
               afterWedding: _afterWedding(summary, selectedPlanId),
+              funding: _homeFunding(summary, selectedPlanId),
               showHijri:
                   context.watch<DevicePreferences?>()?.showHijri ?? true,
               onOpenReviews: _isLocalGuestPlan

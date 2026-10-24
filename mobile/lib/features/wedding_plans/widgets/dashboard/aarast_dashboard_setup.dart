@@ -35,6 +35,13 @@ bool _showsSetupSteps(DashboardSummary summary) {
       summary.guestCount > 0);
 }
 
+/// b01 «7 مليون لعرسك»: the budget without the currency.
+String _budgetWords(double budget, String currency) {
+  final parts = compactMoneyParts(budget, currencyCode: currency);
+  final unit = parts.millionUnit;
+  return unit == null ? parts.plainText : '${parts.number} $unit';
+}
+
 bool _budgetIsSet(DashboardSummary summary) {
   final budget = dashboardAmount(summary.totalBudgetForDisplay);
   return budget != null && budget > 0;
@@ -61,7 +68,7 @@ class _JourneySetupSteps extends StatelessWidget {
         title: 'ميزانيتك',
         doneLine: budget == null
             ? 'محددة'
-            : '${_money(budget, summary.currency)} لعرسك، والمهر لحاله',
+            : '${_budgetWords(budget, summary.currency)} لعرسك، والمهر لحاله',
         todoLine: context.say(
           'رقم تقريبي يكفي، وتقدر تغيّره بعدين',
           'رقم تقريبي يكفي، وتقدرين تغيّرينه بعدين',
@@ -127,17 +134,22 @@ class _JourneySetupSteps extends StatelessWidget {
                 color: AarastV3Color.mint,
               ),
             ),
-            const SizedBox(width: 10),
+            const SizedBox(width: 12),
+            // b01: done green, the current step in the plan's colour, the
+            // rest white.
             for (var index = 0; index < steps.length; index++) ...[
-              if (index > 0) const SizedBox(width: 4),
+              if (index > 0) const SizedBox(width: 5),
               Expanded(
                 child: Container(
-                  height: 5,
+                  key: ValueKey('aarast-dashboard-setup-bar-$index'),
+                  height: 6,
                   decoration: BoxDecoration(
                     color: steps[index].done
                         ? AarastV3Color.mint
-                        : AarastV3Color.line,
-                    borderRadius: BorderRadius.circular(3),
+                        : index == current
+                        ? context.accent.primary
+                        : AarastV3Color.paper,
+                    borderRadius: BorderRadius.circular(6),
                   ),
                 ),
               ),
@@ -219,6 +231,9 @@ class _SetupStepCard extends StatelessWidget {
                       style: JourneyType.of(
                         JourneyType.bodyLarge,
                         weight: JourneyType.bold,
+                        color: step.done
+                            ? AarastV3Color.textMuted
+                            : AarastV3Color.ink,
                       ),
                     ),
                     Text(

@@ -160,7 +160,11 @@ class _PlanDetailsViewState extends State<PlanDetailsView> {
                 key: const ValueKey('plan-details-day'),
                 label: 'موعد العرس',
                 icon: LucideIcons.calendarDays,
-                value: day == null ? null : formatArabicDate(day),
+                // w10 «الخميس 21 يناير 2027», without the comma.
+                value: day == null
+                    ? null
+                    : '${formatArabicWeekday(day)} '
+                          '${formatArabicDate(day, includeWeekday: false)}',
                 placeholder: context.say('اختر اليوم', 'اختاري اليوم'),
                 onTap: hasStoredDay
                     ? (widget.onChangeDate ?? () {})

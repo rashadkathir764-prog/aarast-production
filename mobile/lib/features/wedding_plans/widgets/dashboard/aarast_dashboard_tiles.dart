@@ -20,13 +20,8 @@ class _JourneyHomeTiles extends StatelessWidget {
     final s = summary;
     final tasksNote = s.overdueTasks > 0
         ? (
-            arabicCount(
-              s.overdueTasks,
-              one: 'وحدة متأخرة',
-              two: 'ثنتين متأخرة',
-              few: 'متأخرة',
-              many: 'متأخرة',
-            ),
+            // b02 «1 متأخرة».
+            '${s.overdueTasks} متأخرة',
             AarastV3Color.danger,
           )
         : s.todayTasks > 0
@@ -73,7 +68,7 @@ class _JourneyHomeTiles extends StatelessWidget {
               value: s.completedTasks,
               of: s.totalTasks == 0
                   ? 'ما في مهام بعد'
-                  : 'خلصت من ${s.totalTasks}',
+                  : 'من ${arabicCount(s.totalTasks, one: 'مهمة وحدة', two: 'مهمتين', few: 'مهام', many: 'مهمة')}',
               note: tasksNote,
               progress: s.totalTasks == 0
                   ? null
@@ -154,12 +149,12 @@ class _HomeTile extends StatelessWidget {
       excludeSemantics: true,
       child: AarastPressable(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(22),
         child: Container(
-          padding: const EdgeInsets.fromLTRB(12, 12, 12, 12),
+          padding: const EdgeInsets.all(13),
           decoration: BoxDecoration(
             color: soft,
-            borderRadius: BorderRadius.circular(20),
+            borderRadius: BorderRadius.circular(22),
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -174,7 +169,7 @@ class _HomeTile extends StatelessWidget {
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: JourneyType.of(
-                        JourneyType.small,
+                        JourneyType.detail,
                         weight: JourneyType.bold,
                         color: color,
                       ),
@@ -182,7 +177,7 @@ class _HomeTile extends StatelessWidget {
                   ),
                 ],
               ),
-              const SizedBox(height: 6),
+              const SizedBox(height: 8),
               Text(
                 '$value',
                 style: JourneyType.of(
@@ -194,7 +189,7 @@ class _HomeTile extends StatelessWidget {
               Text(
                 of,
                 style: JourneyType.of(
-                  JourneyType.caption,
+                  JourneyType.label,
                   color: AarastV3Color.textMuted,
                 ),
               ),

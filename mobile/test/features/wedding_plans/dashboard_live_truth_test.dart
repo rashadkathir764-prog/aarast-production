@@ -141,11 +141,16 @@ void main() {
     );
     await tester.pumpAndSettle();
 
+    // b02 before any funding source: what is left to pay leads, what was
+    // agreed and paid sit on the far side, the bar splits paid and left.
     expect(find.text('المال'), findsOneWidget);
-    expect(find.text('المتاح من الميزانية'), findsOneWidget);
-    expect(find.text('التكاليف'), findsOneWidget);
-    expect(find.text('المدفوع'), findsOneWidget);
-    expect(find.text('غير المدفوع'), findsOneWidget);
+    expect(find.text('باقي تدفع'), findsOneWidget);
+    expect(find.text('500,000 ر.س'), findsOneWidget);
+    expect(find.text('اتفقت على 900,000 ر.س'), findsOneWidget);
+    expect(find.text('دفعت 400,000 ر.س'), findsOneWidget);
+    expect(find.byKey(const ValueKey('dashboard-money-bar')), findsOneWidget);
+    // The budget is not on b02's card.
+    expect(find.text('المتاح من الميزانية'), findsNothing);
     expect(
       find.byKey(const ValueKey('dashboard-money-privacy-toggle')),
       findsOneWidget,
@@ -156,8 +161,10 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(find.text('••••'), findsNWidgets(4));
-    expect(find.text('من ميزانية ••••'), findsOneWidget);
+    expect(find.text('••••'), findsOneWidget);
+    expect(find.text('اتفقت على ••••'), findsOneWidget);
+    expect(find.text('دفعت ••••'), findsOneWidget);
+    expect(find.text('500,000 ر.س'), findsNothing);
     expect(
       tester
           .getSemantics(

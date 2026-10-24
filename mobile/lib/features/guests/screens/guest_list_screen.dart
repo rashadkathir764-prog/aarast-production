@@ -249,21 +249,20 @@ class _GuestListScreenState extends State<GuestListScreen> {
           summary: summary,
           onTap: () =>
               context.push(AppRouter.guestAttendance(widget.weddingPlanId)),
+          action: !_isLocalPlan && summary.pending > 0
+              ? JourneyButton(
+                  key: const ValueKey('guests-remind'),
+                  label:
+                      '${context.say('ذكّر', 'ذكّري')} الـ ${summary.pending} على واتساب',
+                  icon: LucideIcons.send,
+                  background: AarastV3Color.lilac,
+                  expand: true,
+                  onPressed: () => context.push(
+                    AppRouter.guestInvite(widget.weddingPlanId, reminder: true),
+                  ),
+                )
+              : null,
         ),
-        if (!_isLocalPlan && summary.pending > 0) ...[
-          const SizedBox(height: 10),
-          JourneyButton(
-            key: const ValueKey('guests-remind'),
-            label:
-                '${context.say('ذكّر', 'ذكّري')} الـ ${summary.pending} على واتساب',
-            icon: LucideIcons.send,
-            background: AarastV3Color.lilac,
-            expand: true,
-            onPressed: () => context.push(
-              AppRouter.guestInvite(widget.weddingPlanId, reminder: true),
-            ),
-          ),
-        ],
         if (!_isLocalPlan) ...[
           const SizedBox(height: 4),
           Align(

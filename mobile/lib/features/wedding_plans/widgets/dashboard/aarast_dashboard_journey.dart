@@ -110,11 +110,12 @@ class _JourneyHomeHeader extends StatelessWidget {
   }
 }
 
-/// The countdown (b02), or «الموعد لسا ما ثبت» (x01).
+/// The countdown (b01, b02), or «الموعد لسا ما ثبت» (x01).
 class _JourneyHomeHero extends StatelessWidget {
   const _JourneyHomeHero({
     required this.summary,
     required this.stage,
+    required this.startingOut,
     required this.onTap,
     required this.showHijri,
   });
@@ -124,6 +125,9 @@ class _JourneyHomeHero extends StatelessWidget {
 
   final DashboardSummary summary;
   final WeddingPlanStageState stage;
+
+  /// The first steps lead the home (b01), so the moment is «البداية».
+  final bool startingOut;
   final VoidCallback onTap;
 
   @override
@@ -165,71 +169,137 @@ class _JourneyHomeHero extends StatelessWidget {
       child: AarastPressable(
         key: const ValueKey('aarast-dashboard-plan-moment'),
         onTap: onTap,
-        borderRadius: BorderRadius.circular(24),
-        child: JourneyBox(
-          color: context.accent.primary,
-          radius: 24,
-          padding: const EdgeInsets.fromLTRB(20, 18, 20, 18),
-          child: date == null
-              ? _noDate(context)
-              : Column(
+        borderRadius: BorderRadius.circular(28),
+        child: date == null
+            ? JourneyBox(
+                color: context.accent.primary,
+                radius: 28,
+                padding: const EdgeInsets.fromLTRB(20, 18, 20, 18),
+                child: _noDate(context),
+              )
+            : _countdown(
+                context,
+                days: days,
+                countLine: countLine,
+                dateLine: dateLine!,
+              ),
+      ),
+    );
+  }
+
+  /// b01, b02: the count, its line and the moment's tag on one row, the
+  /// five moments under them, on the plan's colour with the qamariya
+  /// window and the gypsum frieze.
+  Widget _countdown(
+    BuildContext context, {
+    required int? days,
+    required String countLine,
+    required String dateLine,
+  }) {
+    final moment = _homeMoment(stage.stage, startingOut: startingOut);
+    final rtl = Directionality.of(context) == TextDirection.rtl;
+    final tag = Container(
+      key: const ValueKey('aarast-dashboard-moment-tag'),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+      decoration: BoxDecoration(
+        color: AarastV3Color.saffron,
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Text(
+        _homeMoments[moment],
+        style: JourneyType.of(JourneyType.small, weight: JourneyType.bold),
+      ),
+    );
+    return JourneyBox(
+      key: const ValueKey('aarast-dashboard-countdown'),
+      color: context.accent.primary,
+      radius: 28,
+      padding: EdgeInsets.zero,
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(28),
+        child: CustomPaint(
+          painter: JourneyQamariyaPainter(
+            alpha: 0.10,
+            centreX: rtl ? 0.12 : 0.88,
+            frieze: true,
+          ),
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(20, 18, 20, 24),
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                // The tag sits on the count's row as drawn; on a narrow
+                // phone or a large text size it moves above the moments so
+                // it never crowds the count.
+                final scale = MediaQuery.textScalerOf(context).scale(1);
+                final wide = constraints.maxWidth / scale >= 300;
+                return Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
                     Row(
-                      crossAxisAlignment: CrossAxisAlignment.center,
+                      crossAxisAlignment: CrossAxisAlignment.end,
                       children: [
                         if (days != null && days > 2) ...[
                           Text(
                             '$days',
                             style: JourneyType.of(
-                              JourneyType.count,
+                              JourneyType.homeCount,
                               weight: JourneyType.bold,
                               color: AarastV3Color.onPrimary,
-                              height: 1,
+                              height: 0.95,
                             ),
                           ),
-                          const SizedBox(width: 12),
+                          const SizedBox(width: 10),
                         ],
                         Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                countLine,
-                                style: JourneyType.of(
-                                  JourneyType.title,
-                                  weight: JourneyType.bold,
-                                  color: AarastV3Color.onPrimary,
+                          child: Padding(
+                            padding: const EdgeInsets.only(bottom: 6),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  countLine,
+                                  style: JourneyType.of(
+                                    JourneyType.title,
+                                    weight: JourneyType.bold,
+                                    color: AarastV3Color.onPrimary,
+                                  ),
                                 ),
-                              ),
-                              Text(
-                                dateLine!,
-                                style: JourneyType.of(
-                                  JourneyType.small,
-                                  color: context.accent.onPrimaryMuted,
+                                Text(
+                                  dateLine,
+                                  style: JourneyType.of(
+                                    JourneyType.bodySmall,
+                                    color: AarastV3Color.onPrimary.withValues(
+                                      alpha: 0.78,
+                                    ),
+                                  ),
                                 ),
-                              ),
-                            ],
+                              ],
+                            ),
                           ),
                         ),
+                        if (wide) ...[
+                          const SizedBox(width: 8),
+                          Padding(
+                            padding: const EdgeInsets.only(bottom: 6),
+                            child: tag,
+                          ),
+                        ],
                       ],
                     ),
-                    const SizedBox(height: 14),
-                    // The stage sits with its path, so a long stage name
-                    // never crowds the count on a narrow phone.
-                    Row(
-                      children: [
-                        JourneyTag(
-                          label: stage.compactLabel,
-                          color: AarastV3Color.ink,
-                          soft: AarastV3Color.saffron,
-                        ),
-                        const SizedBox(width: 10),
-                        Expanded(child: _StagePath(stage: stage.stage)),
-                      ],
-                    ),
+                    if (!wide) ...[
+                      const SizedBox(height: 12),
+                      Align(
+                        alignment: AlignmentDirectional.centerStart,
+                        child: tag,
+                      ),
+                    ],
+                    const SizedBox(height: 16),
+                    _StagePath(current: moment),
                   ],
-                ),
+                );
+              },
+            ),
+          ),
         ),
       ),
     );
@@ -275,50 +345,6 @@ class _JourneyHomeHero extends StatelessWidget {
           size: 20,
         ),
       ],
-    );
-  }
-}
-
-/// The five stages as a quiet line; the current one is saffron.
-class _StagePath extends StatelessWidget {
-  const _StagePath({required this.stage});
-
-  final WeddingPlanStage stage;
-
-  static const _order = [
-    WeddingPlanStage.foundation,
-    WeddingPlanStage.planning,
-    WeddingPlanStage.finalMonth,
-    WeddingPlanStage.finalWeek,
-    WeddingPlanStage.weddingDay,
-  ];
-
-  @override
-  Widget build(BuildContext context) {
-    final current = stage == WeddingPlanStage.wrapUp
-        ? _order.length - 1
-        : _order.indexOf(stage);
-    return ExcludeSemantics(
-      child: Row(
-        children: [
-          for (var index = 0; index < _order.length; index++) ...[
-            if (index > 0) const SizedBox(width: 6),
-            Expanded(
-              child: Container(
-                height: 5,
-                decoration: BoxDecoration(
-                  color: index == current
-                      ? AarastV3Color.saffron
-                      : index < current
-                      ? AarastV3Color.onPrimary
-                      : context.accent.primaryDark,
-                  borderRadius: BorderRadius.circular(3),
-                ),
-              ),
-            ),
-          ],
-        ],
-      ),
     );
   }
 }

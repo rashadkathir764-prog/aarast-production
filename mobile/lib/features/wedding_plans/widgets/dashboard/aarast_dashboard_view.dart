@@ -17,6 +17,7 @@ part 'aarast_dashboard_money_card.dart';
 part 'aarast_dashboard_states.dart';
 part 'aarast_dashboard_support.dart';
 part 'aarast_dashboard_journey.dart';
+part 'aarast_dashboard_moments.dart';
 part 'aarast_dashboard_tiles.dart';
 part 'aarast_dashboard_setup.dart';
 
@@ -42,6 +43,7 @@ class AarastDashboardView extends StatelessWidget {
     this.now,
     this.onOpenPayment,
     this.afterWedding,
+    this.funding,
     this.onOpenReviews,
     this.showHijri = true,
     super.key,
@@ -73,6 +75,10 @@ class AarastDashboardView extends StatelessWidget {
 
   /// b07: the debt left after the wedding, once the money is loaded.
   final DashboardAfterWedding? afterWedding;
+
+  /// b02: the owner's money in hand, promised and short, once the money
+  /// section is loaded.
+  final DashboardHomeFunding? funding;
 
   /// b07 «قيّم مزودينك».
   final VoidCallback? onOpenReviews;
@@ -135,6 +141,7 @@ class AarastDashboardView extends StatelessWidget {
                     _JourneyHomeHero(
                       summary: summary,
                       stage: planStage,
+                      startingOut: !married && _showsSetupSteps(summary),
                       onTap: onOpenPlan,
                       showHijri: showHijri,
                     ),
@@ -190,8 +197,8 @@ class AarastDashboardView extends StatelessWidget {
                       const SizedBox(height: 12),
                       _DashboardMoneyCard(
                         summary: summary,
+                        funding: funding,
                         onTap: onOpenMoney,
-                        paymentShownAbove: payment != null,
                       ),
                     ],
                     const SizedBox(height: 12),

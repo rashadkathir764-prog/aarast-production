@@ -67,7 +67,7 @@ void main() {
 
     expect(find.text('بيانات الخطة'), findsOneWidget);
     expect(find.text('عرس محمد'), findsOneWidget);
-    expect(find.text('الخميس، 21 يناير 2027'), findsOneWidget);
+    expect(find.text('الخميس 21 يناير 2027'), findsOneWidget);
     expect(find.text('7,000,000'), findsOneWidget);
     expect(find.text('غيّر الموعد'), findsOneWidget);
     expect(find.text('موعد تقريبي'), findsNothing);

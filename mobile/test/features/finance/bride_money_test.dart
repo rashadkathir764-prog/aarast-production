@@ -14,13 +14,17 @@ import 'package:provider/provider.dart';
 // The bride's money (bride_profile/out c01, c02, c12): the groom's money in
 // her rose and her feminine address, from the plan's one profile.
 
-Future<void> _pump(WidgetTester tester, JourneyProfile profile) async {
+Future<void> _pump(
+  WidgetTester tester,
+  JourneyProfile profile, {
+  MoneyFundingSummary? funding,
+}) async {
   tester.view.physicalSize = const Size(390, 1400);
   tester.view.devicePixelRatio = 1;
   addTearDown(tester.view.reset);
   await tester.pumpWidget(
     ChangeNotifierProvider<FinanceProvider>(
-      create: (_) => FinanceProvider(_Api()),
+      create: (_) => FinanceProvider(_Api(funding: funding)),
       child: MaterialApp(
         home: JourneyProfileScope(
           profile: profile,
@@ -55,6 +59,38 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  testWidgets('c01: the four-part bar names paid, in hand, promised, short', (
+    tester,
+  ) async {
+    await _pump(
+      tester,
+      JourneyProfile.bride,
+      funding: const MoneyFundingSummary(
+        received: '700',
+        pledged: '400',
+        availableCash: '200',
+        shortfall: '400',
+        sourcesCount: 2,
+      ),
+    );
+
+    expect(find.byKey(const ValueKey('money-funding-bar')), findsOneWidget);
+    for (final label in ['دفعتِ', 'معك', 'موعود', 'ناقصك']) {
+      expect(find.text(label), findsOneWidget);
+    }
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('c01: no bar before any funding source', (tester) async {
+    await _pump(
+      tester,
+      JourneyProfile.bride,
+      funding: const MoneyFundingSummary(),
+    );
+
+    expect(find.byKey(const ValueKey('money-funding-bar')), findsNothing);
+  });
+
   testWidgets('c02: her items say what she paid and invite her to add', (
     tester,
   ) async {
@@ -81,7 +117,9 @@ void main() {
 }
 
 class _Api extends FinanceApi {
-  _Api() : super(ApiClient(tokenProvider: () async => null));
+  _Api({this.funding}) : super(ApiClient(tokenProvider: () async => null));
+
+  final MoneyFundingSummary? funding;
 
   @override
   Future<MoneySummary> getMoneySummary(String planId) async => MoneySummary(
@@ -93,6 +131,7 @@ class _Api extends FinanceApi {
       outstanding: '1500',
       count: 1,
     ),
+    funding: funding,
   );
 
   @override

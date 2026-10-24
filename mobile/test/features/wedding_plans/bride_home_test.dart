@@ -22,6 +22,7 @@ DashboardSummary _summary({
   int pending = 0,
   String dataScope = 'ACCOUNT',
   String? persona,
+  Map<String, String> costs = const {},
 }) {
   return DashboardSummary.fromJson({
     'planId': 'plan-1',
@@ -47,7 +48,7 @@ DashboardSummary _summary({
     'unreadNotificationsCount': 0,
     'nextBestActions': const [],
     'venueSecured': venueSecured,
-    'moneySummary': {'totalBudget': budget},
+    'moneySummary': {'totalBudget': budget, ...costs},
     'permissions': {
       'isOwner': true,
       'canViewMoney': true,
@@ -62,8 +63,9 @@ DashboardSummary _summary({
 Future<void> _pump(
   WidgetTester tester,
   DashboardSummary summary,
-  JourneyProfile profile,
-) async {
+  JourneyProfile profile, {
+  DashboardHomeFunding? funding,
+}) async {
   tester.view.devicePixelRatio = 1;
   tester.view.physicalSize = const Size(384, 1600);
   addTearDown(tester.view.reset);
@@ -77,6 +79,7 @@ Future<void> _pump(
           child: Scaffold(
             body: AarastDashboardView(
               summary: summary,
+              funding: funding,
               userName: 'سلمى',
               bottomPadding: 24,
               now: DateTime(2026, 10, 17, 9),
@@ -203,6 +206,170 @@ void main() {
     expect(_heroColor(tester), AarastV3Color.primary);
     expect(find.text('الضيوف'), findsOneWidget);
     expect(find.text('أكدوا من 124'), findsOneWidget);
+  });
+
+  Color? barColor(WidgetTester tester, String key) =>
+      (tester.widget<Container>(find.byKey(ValueKey(key))).decoration!
+              as BoxDecoration)
+          .color;
+
+  testWidgets('b01: the countdown is «البداية» with the first moment lit', (
+    tester,
+  ) async {
+    await _pump(tester, _summary(budget: '7000000'), JourneyProfile.bride);
+
+    expect(find.text('البداية'), findsOneWidget);
+    expect(find.text('التخطيط'), findsNothing);
+    expect(
+      barColor(tester, 'aarast-dashboard-moment-0'),
+      AarastV3Color.saffron,
+    );
+    for (var index = 1; index < 5; index++) {
+      expect(
+        barColor(tester, 'aarast-dashboard-moment-$index'),
+        AarastV3Color.onPrimary.withValues(alpha: 0.22),
+      );
+    }
+    // The qamariya window and the frieze are painted on the countdown.
+    final painter = tester
+        .widgetList<CustomPaint>(
+          find.descendant(
+            of: find.byKey(const ValueKey('aarast-dashboard-countdown')),
+            matching: find.byType(CustomPaint),
+          ),
+        )
+        .map((paint) => paint.painter)
+        .whereType<JourneyQamariyaPainter>()
+        .single;
+    expect(painter.frieze, isTrue);
+    expect(painter.centreX, 0.12);
+  });
+
+  testWidgets('b01: the step bar is done green, current rose, the rest white', (
+    tester,
+  ) async {
+    await _pump(tester, _summary(budget: '7000000'), JourneyProfile.bride);
+
+    expect(find.text('7 مليون لعرسك، والمهر لحاله'), findsOneWidget);
+    expect(
+      barColor(tester, 'aarast-dashboard-setup-bar-0'),
+      AarastV3Color.mint,
+    );
+    expect(
+      barColor(tester, 'aarast-dashboard-setup-bar-1'),
+      AarastV3Color.rose,
+    );
+    expect(
+      barColor(tester, 'aarast-dashboard-setup-bar-2'),
+      AarastV3Color.paper,
+    );
+  });
+
+  testWidgets('b02: after the first steps the countdown is «التجهيز»', (
+    tester,
+  ) async {
+    await _pump(
+      tester,
+      _summary(budget: '7000000', venueSecured: true, guests: 124),
+      JourneyProfile.bride,
+    );
+
+    expect(find.text('التجهيز'), findsOneWidget);
+    expect(
+      barColor(tester, 'aarast-dashboard-moment-0'),
+      AarastV3Color.onPrimary,
+    );
+    expect(
+      barColor(tester, 'aarast-dashboard-moment-1'),
+      AarastV3Color.saffron,
+    );
+  });
+
+  testWidgets('b02: her money card shows the gap, in hand and promised', (
+    tester,
+  ) async {
+    await _pump(
+      tester,
+      _summary(
+        budget: '7000000',
+        venueSecured: true,
+        guests: 124,
+        costs: const {
+          'confirmedCost': '4500000',
+          'paid': '2600000',
+          'outstanding': '1900000',
+        },
+      ),
+      JourneyProfile.bride,
+      funding: const DashboardHomeFunding(
+        inHand: 1900000,
+        pledged: 2200000,
+        shortfall: 300000,
+        sourcesCount: 3,
+      ),
+    );
+
+    expect(find.text('ومع الموعود ناقصك'), findsOneWidget);
+    expect(find.text('300,000 ر.ي'), findsOneWidget);
+    expect(find.text('معك 1.9'), findsOneWidget);
+    expect(find.text('موعود 2.2'), findsOneWidget);
+    expect(find.textContaining('باقي تدفعين'), findsOneWidget);
+    expect(find.byKey(const ValueKey('dashboard-money-bar')), findsOneWidget);
+    // The design's «حطي 100 ألف كل شهر» is not built (b02 row).
+    expect(find.textContaining('كل شهر'), findsNothing);
+  });
+
+  testWidgets('b02: covered agreements say so instead of a gap', (
+    tester,
+  ) async {
+    await _pump(
+      tester,
+      _summary(budget: '7000000', venueSecured: true, guests: 124),
+      JourneyProfile.bride,
+      funding: const DashboardHomeFunding(
+        inHand: 5000000,
+        pledged: 0,
+        shortfall: null,
+        sourcesCount: 2,
+      ),
+    );
+
+    expect(
+      find.byKey(const ValueKey('dashboard-money-covered')),
+      findsOneWidget,
+    );
+    expect(find.text('ومع الموعود ناقصك'), findsNothing);
+    // Nothing promised: no «موعود» line on the far side.
+    expect(find.textContaining(RegExp('^موعود ')), findsNothing);
+    expect(find.text('معك 5'), findsOneWidget);
+  });
+
+  testWidgets('a failed load asks her «حاولي مرة ثانية»', (tester) async {
+    for (final (profile, words) in [
+      (JourneyProfile.bride, 'حاولي مرة ثانية'),
+      (JourneyProfile.groom, 'حاول مرة ثانية'),
+    ]) {
+      await tester.pumpWidget(
+        MaterialApp(
+          home: JourneyProfileScope(
+            profile: profile,
+            child: Scaffold(
+              body: ListView(
+                children: [
+                  JourneyListState(
+                    phase: JourneyListPhase.error,
+                    section: JourneySection.guests,
+                    onRetry: () {},
+                  ),
+                  JourneyListNotice(offline: false, onRetry: () {}),
+                ],
+              ),
+            ),
+          ),
+        ),
+      );
+      expect(find.text(words), findsNWidgets(2));
+    }
   });
 
   testWidgets('her tab bar names «الضيفات» and her home pill is rose', (

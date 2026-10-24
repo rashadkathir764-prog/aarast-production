@@ -118,7 +118,103 @@ class _MoneySummaryCard extends StatelessWidget {
           if (funding != null && hasAgreements) ...[
             const SizedBox(height: 12),
             _ShortfallLine(funding: funding, currency: currency),
+            if (funding.sourcesCount > 0 || funding.shortfall != null) ...[
+              const SizedBox(height: 14),
+              _FundingSplit(
+                paid: moneyValue(summary.costs.paid),
+                inHand: moneyValue(funding.availableCash),
+                pledged: moneyValue(funding.pledged),
+                gap: moneyValue(funding.shortfall),
+              ),
+            ],
           ],
+        ],
+      ),
+    );
+  }
+}
+
+/// c01's four-part bar and its legend: paid, in hand, promised and the
+/// server's shortfall (C2: the gap left once everything else is counted).
+class _FundingSplit extends StatelessWidget {
+  const _FundingSplit({
+    required this.paid,
+    required this.inHand,
+    required this.pledged,
+    required this.gap,
+  });
+
+  final num paid;
+  final num inHand;
+  final num pledged;
+  final num gap;
+
+  @override
+  Widget build(BuildContext context) {
+    final pieces = [
+      (paid, context.accent.primary, context.say('دفعت', 'دفعتِ')),
+      (inHand, context.accent.primaryMid, 'معك'),
+      (pledged, AarastV3Color.lilac.withValues(alpha: 0.5), 'موعود'),
+      (gap, AarastV3Color.danger, 'ناقصك'),
+    ].where((piece) => piece.$1 > 0).toList(growable: false);
+    if (pieces.isEmpty) return const SizedBox.shrink();
+    final total = pieces.fold<num>(0, (sum, piece) => sum + piece.$1);
+    return ExcludeSemantics(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          ClipRRect(
+            key: const ValueKey('money-funding-bar'),
+            borderRadius: BorderRadius.circular(5),
+            child: SizedBox(
+              height: 10,
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  for (var index = 0; index < pieces.length; index++) ...[
+                    if (index > 0) const SizedBox(width: 3),
+                    Expanded(
+                      flex: (pieces[index].$1 / total * 1000).round().clamp(
+                        1,
+                        1000,
+                      ),
+                      child: ColoredBox(color: pieces[index].$2),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 10),
+          Wrap(
+            spacing: 14,
+            runSpacing: 4,
+            children: [
+              for (final piece in pieces)
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    SizedBox.square(
+                      dimension: 8,
+                      child: DecoratedBox(
+                        decoration: BoxDecoration(
+                          color: piece.$2,
+                          shape: BoxShape.circle,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 5),
+                    Text(
+                      piece.$3,
+                      style: JourneyType.of(
+                        JourneyType.label,
+                        color: AarastV3Color.textMuted,
+                      ),
+                    ),
+                  ],
+                ),
+            ],
+          ),
         ],
       ),
     );

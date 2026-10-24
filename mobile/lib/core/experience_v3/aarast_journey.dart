@@ -25,6 +25,9 @@ abstract final class JourneyType {
   /// The one big number of a screen, such as the days to the wedding.
   static const count = 40.0;
 
+  /// The home countdown's days (b01, b02: 64).
+  static const homeCount = 64.0;
+
   /// The money summary's big gap («2.5 مليون»).
   static const headline = 34.0;
 

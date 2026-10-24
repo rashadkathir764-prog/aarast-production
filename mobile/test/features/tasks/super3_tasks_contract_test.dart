@@ -228,7 +228,7 @@ void main() {
 
     await _pumpTasksScreen(tester, harness);
 
-    expect(find.text('باقي مهمتين، منها وحدة متأخرة'), findsOneWidget);
+    expect(find.text('باقي مهمتين، منها واحدة متأخرة'), findsOneWidget);
     final overdue = find.byKey(const ValueKey('task-group-overdue'));
     final month = find.byKey(const ValueKey('task-group-month'));
     expect(overdue, findsOneWidget);

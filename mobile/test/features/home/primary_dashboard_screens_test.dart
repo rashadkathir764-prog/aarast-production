@@ -10,6 +10,8 @@ import 'package:aarast_mobile/features/auth/data/auth_repository.dart';
 import 'package:aarast_mobile/features/auth/providers/auth_controller.dart';
 import 'package:aarast_mobile/features/home/screens/dashboard_entry_screen.dart';
 import 'package:aarast_mobile/features/home/screens/local_guest_dashboard_screen.dart';
+import 'package:aarast_mobile/features/finance/data/finance_api.dart';
+import 'package:aarast_mobile/features/finance/providers/finance_provider.dart';
 import 'package:aarast_mobile/features/onboarding/data/guest_onboarding_storage.dart';
 import 'package:aarast_mobile/features/onboarding/models/guest_onboarding_draft.dart';
 import 'package:aarast_mobile/features/wedding_plans/data/wedding_plans_api.dart';
@@ -18,7 +20,7 @@ import 'package:aarast_mobile/features/wedding_plans/providers/wedding_plans_pro
 import 'package:aarast_mobile/features/wedding_plans/screens/plan_management_screen.dart';
 import 'package:aarast_mobile/features/wedding_plans/screens/wedding_plan_dashboard_screen.dart';
 import 'package:aarast_mobile/features/wedding_plans/widgets/dashboard/aarast_dashboard_view.dart';
-import 'package:aarast_mobile/features/wedding_plans/widgets/plan_management_view.dart';
+import 'package:aarast_mobile/features/wedding_plans/widgets/plan_details_view.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
@@ -115,8 +117,9 @@ void main() {
     await _pumpState(tester, frames: 2);
 
     expect(find.byType(PlanCenterScreen), findsOneWidget);
-    expect(find.byType(AarastScreenLoading), findsOneWidget);
-    _expectRtl(tester, find.byType(AarastScreenLoading));
+    // w10 loads in the journey's skeleton (D27).
+    expect(find.byType(JourneyListState), findsOneWidget);
+    _expectRtl(tester, find.byType(JourneyListState));
     expect(tester.takeException(), isNull);
 
     pending.complete(null);
@@ -155,9 +158,9 @@ void main() {
     await _pumpState(tester);
 
     expect(find.byType(PlanCenterScreen), findsOneWidget);
-    expect(find.byType(PlanManagementView), findsOneWidget);
+    expect(find.byType(PlanDetailsView), findsOneWidget);
     expect(find.text(_planTitle), findsWidgets);
-    _expectRtl(tester, find.byType(PlanManagementView));
+    _expectRtl(tester, find.byType(PlanDetailsView));
     expect(tester.takeException(), isNull);
   });
 
@@ -298,6 +301,7 @@ class _Harness {
     required this.auth,
     required this.weddingPlans,
     required this.dashboard,
+    required this.finance,
   });
 
   final AuthStorage authStorage;
@@ -305,6 +309,7 @@ class _Harness {
   final AuthController auth;
   final WeddingPlansProvider weddingPlans;
   final DashboardSummaryProvider dashboard;
+  final FinanceProvider finance;
 
   static Future<_Harness> create({
     GuestOnboardingStorage Function(SharedPreferences preferences)?
@@ -328,6 +333,7 @@ class _Harness {
       ),
       weddingPlans: WeddingPlansProvider(weddingPlansApi),
       dashboard: DashboardSummaryProvider(weddingPlansApi: weddingPlansApi),
+      finance: FinanceProvider(FinanceApi(apiClient)),
     );
   }
 
@@ -341,6 +347,7 @@ class _Harness {
         ChangeNotifierProvider<DashboardSummaryProvider>.value(
           value: dashboard,
         ),
+        ChangeNotifierProvider<FinanceProvider>.value(value: finance),
       ],
       child: child,
     );
@@ -350,6 +357,7 @@ class _Harness {
     auth.dispose();
     weddingPlans.dispose();
     dashboard.dispose();
+    finance.dispose();
   }
 }
 

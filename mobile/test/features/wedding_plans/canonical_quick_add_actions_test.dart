@@ -621,10 +621,8 @@ void main() {
       expect(source, isNot(contains('context.push(AppRouter.tasks')));
       expect(source, isNot(contains('context.push(AppRouter.guestList')));
       expect(source, isNot(contains('context.push(AppRouter.planProviders')));
-      expect(source, contains('context.go(AppRouter.money'));
-      expect(source, contains('context.go(AppRouter.tasks'));
-      expect(source, contains('context.go(AppRouter.guestList'));
-      expect(source, contains('context.go(AppRouter.planProviders'));
+      // w10 is a sub screen of «حسابي» with no tab bar (D27).
+      expect(source, isNot(contains('AarastPlanNavigationBar')));
     });
   });
 }

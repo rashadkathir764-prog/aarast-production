@@ -38,6 +38,7 @@ export 'widgets/quick_add_actions.dart'
         planQuickAddLabelForTab,
         rememberCanonicalQuickAddAction,
         shouldShowPlanQuickAdd;
+export 'widgets/postpone_sheet.dart' show showPostponeSheet;
 export 'widgets/wedding_plan_creation_form.dart'
     show WeddingPlanCreationFields, WeddingPlanCreationScope;
 export 'widgets/wedding_stage_context_line.dart' show WeddingStageContextLine;

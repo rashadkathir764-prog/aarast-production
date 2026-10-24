@@ -134,7 +134,7 @@ The word «أقساط» is banned. Use «على دفعات».
 | 5 Tasks (10) | Done, except **y14**, which no commit names. Its hero must be a CustomPainter, with no gradient (D3). |
 | 6 Guests (12) | Done, except **w38**, which no commit names. Verify it. |
 | 7 Providers, customer side (24) | **Done.** Done: f01, f02, f03, f04, f05, f06, f07, f08, f09, x10, x11, x22, w30 (filter sheet), w31, w32, w33, w34, w35, x09, x12, y09, g04, b07; y13 needs no code (f02 with the «زينة البيت» category, which is admin data). |
-| 8 Account / settings / plan (15) | **In progress.** Done: g02, g07, g08, w07, w08, w39, g10, g11. Left: w10, g03, w11, g01, g06, x07, x20. |
+| 8 Account / settings / plan (15) | **In progress.** Done: g02, g07, g08, w07, w08, w39, g10, g11, w10, g03. Left: w11, g01, g06, x07, x20. |
 | 9 Participant (15) | Not started: x04, q01, q02, q03, q04, x06, q17, q05, q18, q07, q08, q10, q12, q19, q21 |
 | 10 V1.1 extras | Out of scope until after V1 |
 

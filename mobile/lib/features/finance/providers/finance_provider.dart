@@ -449,6 +449,22 @@ class FinanceProvider extends ChangeNotifier with SessionScopedNotifier {
     });
   }
 
+  /// w10 «بيانات الخطة»: sets the wedding budget (null clears it) and
+  /// keeps every item's share. The plan's money must be loaded first.
+  Future<bool> setTotalBudget({
+    required String planId,
+    required String? totalBudget,
+  }) {
+    return _submit(planId, () async {
+      await _replaceBudget(
+        planId: planId,
+        totalBudget: totalBudget,
+        currency: _summary.currency,
+        categories: _budgetCategoryInputs(_categories),
+      );
+    });
+  }
+
   /// w18 «زِد الميزانية»: raises the wedding budget and [category]'s share
   /// by the same [amount], so the other items keep theirs.
   Future<bool> growCategory({

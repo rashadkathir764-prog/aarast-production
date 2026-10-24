@@ -1640,7 +1640,7 @@ const r19ProviderPortalApi = Object.freeze({
 // so «ضمن بندك» compares the price with the item's amount; -1 for the f09
 // comparison, which no longer gates on the account itself (D14); +1 for
 // f07 reading the plan's item through the finance owner API (D15).
-const r19LegalRecordCount = 197;
+const r19LegalRecordCount = 198;
 const trackedOwnerApiContracts = [
   {
     area: 'features/account_contexts',
@@ -2175,6 +2175,10 @@ const trackedOwnerApiContracts = [
         ],
       },
       {
+        uri: 'widgets/postpone_sheet.dart',
+        show: ['showPostponeSheet'],
+      },
+      {
         uri: 'widgets/wedding_plan_creation_form.dart',
         show: ['WeddingPlanCreationFields', 'WeddingPlanCreationScope'],
       },
@@ -2422,7 +2426,7 @@ const trackedCollaborationBatchContracts = [
   {
     source: 'mobile/lib/features/more/screens/more_screen.dart',
     target: 'mobile/lib/features/wedding_plans/wedding_plans_api.dart',
-    show: ['DashboardSummaryProvider'],
+    show: ['DashboardSummaryProvider', 'showPostponeSheet'],
   },
   {
     source: 'mobile/lib/features/notifications/screens/notifications_screen.dart',
@@ -2731,21 +2735,27 @@ const trackedPlanningBatchContracts = [
   {
     source: 'mobile/lib/features/wedding_plans/screens/plan_management_screen.dart',
     target: 'mobile/lib/features/onboarding/onboarding_api.dart',
-    show: ['GuestOnboardingDraft', 'GuestOnboardingStorage', 'WeddingLocationDraft'],
+    show: ['GuestOnboardingDraft', 'GuestOnboardingStorage'],
   },
   {
     source: 'mobile/lib/features/wedding_plans/screens/plan_management_screen.dart',
     target: 'mobile/lib/features/sharing/sharing_api.dart',
     show: ['PlanLeaveCoordinator', 'SharedMember'],
   },
+  // w10 saves the wedding budget through the plan's money (D27).
   {
     source: 'mobile/lib/features/wedding_plans/screens/plan_management_screen.dart',
-    target: 'mobile/lib/features/shell/shell_api.dart',
-    show: ['AarastPlanNavigationBar'],
+    target: 'mobile/lib/features/finance/finance_api.dart',
+    show: ['FinanceProvider'],
   },
-  // V1 checklist 4.13: after the wedding moves, the owner may move tasks.
   {
-    source: 'mobile/lib/features/wedding_plans/screens/plan_management_screen.dart',
+    source: 'mobile/lib/features/wedding_plans/widgets/plan_details_view.dart',
+    target: 'mobile/lib/features/finance/finance_api.dart',
+    show: ['MoneyInputFormatter', 'formatMoneyInputValue'],
+  },
+  // g03: after the wedding moves, the open tasks move by the same days.
+  {
+    source: 'mobile/lib/features/wedding_plans/widgets/postpone_sheet.dart',
     target: 'mobile/lib/features/tasks/tasks_api.dart',
     show: ['TaskTimelineApi'],
   },

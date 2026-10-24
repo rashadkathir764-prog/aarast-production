@@ -19,7 +19,7 @@ import '../../auth/auth_api.dart'
 import '../../settings/settings_api.dart' show showChangePhoneSheet;
 import '../widgets/logout_sheet.dart';
 import '../../wedding_plans/wedding_plans_api.dart'
-    show DashboardSummaryProvider;
+    show DashboardSummaryProvider, showPostponeSheet;
 
 /// g02 «حسابي»: who you are, your wedding, how the app looks, safety and
 /// privacy, and the account (C51 adds «الحساب»: notifications, plans,
@@ -92,11 +92,18 @@ class _MoreScreenState extends State<MoreScreen> {
                   value: plan == null ? null : '${plan.participantCount}',
                   onTap: () => context.push(AppRouter.sharing(planId)),
                 ),
+                // g03 moves a set day; without one, w10 picks it.
                 _Row(
                   key: const ValueKey('account-postpone'),
                   icon: LucideIcons.calendarClock,
                   title: 'تأجيل العرس',
-                  onTap: () => context.push(AppRouter.planCenter(planId)),
+                  onTap: plan?.weddingDate == null
+                      ? () => context.push(AppRouter.planCenter(planId))
+                      : () => showPostponeSheet(
+                          context,
+                          planId: planId,
+                          weddingDate: plan!.weddingDate!,
+                        ),
                 ),
               ],
             ),

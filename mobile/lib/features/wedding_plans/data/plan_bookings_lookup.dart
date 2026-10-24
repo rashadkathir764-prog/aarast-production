@@ -1,4 +1,5 @@
 import '../../../core/network/api_client.dart';
+import '../../../core/utils/plan_day.dart';
 
 /// One booking a plan holds with a provider, as the wedding-day move check
 /// needs it (V1 checklist 4.13).
@@ -14,8 +15,9 @@ class PlanBookingDay {
       providerName: json['providerName']?.toString().trim().isNotEmpty == true
           ? json['providerName'].toString().trim()
           : 'مزوّد',
+      // The day in Sana'a, as the plan's wedding date is read (D11).
       eventDate:
-          DateTime.tryParse(json['eventDate']?.toString() ?? '') ??
+          planDayFromJson(json['eventDate']) ??
           DateTime.fromMillisecondsSinceEpoch(0),
       confirmed: json['status'] == 'CONFIRMED',
     );

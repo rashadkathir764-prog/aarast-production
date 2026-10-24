@@ -20,7 +20,7 @@ void main() {
       );
     });
 
-    test('management screen loads real plan and administrative summary data', () {
+    test('the owner sees w10 with the plan and its budget (D27)', () {
       // The plan management library spans part files (spec M6).
       final source = readLibrarySource(
         '${mobileRoot}lib/features/wedding_plans/screens/plan_management_screen.dart',
@@ -31,38 +31,24 @@ void main() {
         matches(RegExp(r'loadWeddingPlan\(\s*widget\.weddingPlanId,?\s*\)')),
       );
       expect(source, contains('loadDashboard('));
-      expect(source, contains('PlanManagementView('));
-      expect(source, contains('summary?.participantCount'));
+      expect(source, contains('PlanDetailsView('));
       expect(source, contains('summary?.permissions.canManagePlan'));
+      expect(source, contains('setTotalBudget('));
+      expect(source, contains('showPostponeSheet('));
     });
 
-    test('server and local edits preserve structured administrative fields', () {
-      // The plan management library spans part files (spec M6).
+    test('w10 saves only what changed, and a day as a plan day', () {
       final source = readLibrarySource(
         '${mobileRoot}lib/features/wedding_plans/screens/plan_management_screen.dart',
       );
 
-      // The server payload lives in PlanEditResult. Currency is fixed at plan
-      // creation and rejected by UpdateWeddingPlanDto (F01), so only a local
-      // plan applies it; plan_edit_result_test.dart pins the payload keys.
-      final payloadSource = File(
-        '${mobileRoot}lib/features/wedding_plans/screens/plan_management_screen.plan_edit_result.dart',
-      ).readAsStringSync();
-      for (final field in [
-        "'title':",
-        "'weddingDate':",
-        "'location':",
-        "'priorities':",
-      ]) {
-        expect(payloadSource, contains(field));
-      }
-      expect(payloadSource, isNot(contains("'currency':")));
-      expect(source, contains('currency: result.currency'));
+      // The place and the currency stay as the plan was made (D27).
+      expect(source, contains("'weddingDate': planDayToJson(firstDay)"));
+      expect(source, isNot(contains("'currency':")));
+      expect(source, isNot(contains("'location':")));
+      // A plan kept on this phone saves to its draft.
       expect(source, contains('GuestOnboardingStorage'));
       expect(source, contains('saveDraft('));
-      expect(source, contains('governorate'));
-      expect(source, contains('areaOrNeighborhood'));
-      expect(source, contains('detailedAddress'));
     });
 
     test(

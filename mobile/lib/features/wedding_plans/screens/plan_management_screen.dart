@@ -7,9 +7,10 @@ import 'package:go_router/go_router.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:provider/provider.dart';
 
+import '../../../core/experience_v3/aarast_v3.dart';
 import '../../../core/routing/app_router.dart';
 import '../../../core/theme/app_theme.dart';
-import '../../../core/utils/currency_label.dart';
+import '../../../core/utils/plan_day.dart';
 import '../../../core/widgets/aarast_toast.dart';
 import '../../../core/widgets/aarast_ui.dart';
 import '../../account_contexts/account_contexts_api.dart'
@@ -20,23 +21,20 @@ import '../../account_contexts/account_contexts_api.dart'
 import '../../auth/auth_api.dart'
     show AuthActionGuard, AuthController, confirmAccountDeletion;
 import '../../onboarding/onboarding_api.dart'
-    show GuestOnboardingDraft, GuestOnboardingStorage, WeddingLocationDraft;
+    show GuestOnboardingDraft, GuestOnboardingStorage;
 import '../../sharing/sharing_api.dart' show PlanLeaveCoordinator, SharedMember;
-import '../../tasks/tasks_api.dart' show TaskTimelineApi;
-import '../../../core/network/api_client.dart';
-import '../data/plan_bookings_lookup.dart';
+import '../../finance/finance_api.dart' show FinanceProvider;
 import '../models/dashboard_summary.dart';
 import '../models/wedding_plan.dart';
 import '../providers/dashboard_summary_provider.dart';
 import '../providers/wedding_plans_provider.dart';
 import '../widgets/contributor_permissions_sheet.dart';
 import '../widgets/contributor_workspace_view.dart';
-import '../widgets/plan_management_view.dart';
-import '../../shell/shell_api.dart' show AarastPlanNavigationBar;
+import '../widgets/plan_details_view.dart';
+import '../widgets/postpone_sheet.dart';
 
 part 'plan_management_screen.contributor_account.dart';
 part 'plan_management_screen.plan_edit.dart';
-part 'plan_management_screen.plan_edit_result.dart';
 
 class PlanCenterScreen extends StatefulWidget {
   const PlanCenterScreen({
@@ -60,6 +58,7 @@ class _PlanCenterScreenState extends State<PlanCenterScreen>
   bool _localLoading = false;
   String? _localError;
   String? _leavePlanClientRequestId;
+  FinanceProvider? _financeAsked;
 
   bool get _isLocalPlan =>
       AuthActionGuard.isLocalGuestPlanId(widget.weddingPlanId);
@@ -112,6 +111,9 @@ class _PlanCenterScreenState extends State<PlanCenterScreen>
         return;
       }
     }
+    final isContributor =
+        selectedContext?.role == AccountContextRole.contributor &&
+        selectedContext?.weddingPlanId == widget.weddingPlanId;
     await Future.wait([
       context.read<WeddingPlansProvider>().loadWeddingPlan(
         widget.weddingPlanId,
@@ -120,6 +122,9 @@ class _PlanCenterScreenState extends State<PlanCenterScreen>
         widget.weddingPlanId,
         sharedMember: widget.sharedMember,
       ),
+      // w10 shows the wedding budget.
+      if (!isContributor)
+        context.read<FinanceProvider>().loadMoney(widget.weddingPlanId),
     ]);
   }
 
@@ -288,39 +293,54 @@ class _PlanCenterScreenState extends State<PlanCenterScreen>
       );
     }
 
+    // w10 «بيانات الخطة» for the plan's owner (D27).
+    final finance = context.watch<FinanceProvider>();
+    // The plan scope may hand over a new money provider after the first
+    // load (a cold open): load the budget into that one too.
+    if (!identical(finance, _financeAsked) &&
+        finance.loadedPlanId != widget.weddingPlanId) {
+      _financeAsked = finance;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) finance.loadMoney(widget.weddingPlanId);
+      });
+    }
+    final canManage = plan != null && _canManagePlan(auth, dashboard, plan);
     return AarastScreenFrame(
       maxWidth: 560,
-      safeAreaBottom: false,
-      bottomNavigationBar: _buildBottomNav(widget.weddingPlanId),
+      backgroundColor: AarastV3Color.canvas,
       child: isLoading
-          ? const AarastScreenLoading(label: 'جارٍ تحميل بيانات الخطة...')
+          ? const Padding(
+              padding: EdgeInsets.fromLTRB(16, 16, 16, 0),
+              child: JourneyListState(
+                phase: JourneyListPhase.loading,
+                section: JourneySection.home,
+              ),
+            )
           : plan == null
           ? _ManagementLoadError(message: error, onRetry: _load)
-          : RefreshIndicator(
-              color: AppTheme.brand,
-              onRefresh: _load,
-              child: PlanManagementView(
-                plan: plan,
-                ownerName: _ownerName(auth, plan),
-                participantCount: _isLocalPlan
-                    ? 1
-                    : dashboard.summary?.participantCount,
-                pendingInvites: _isLocalPlan
-                    ? 0
-                    : dashboard.summary?.pendingInvites ?? 0,
-                canManagePlan: _canManagePlan(auth, dashboard, plan),
-                canManageSharing:
-                    !_isLocalPlan &&
-                    widget.sharedMember == null &&
-                    auth.user?.id == plan.ownerUserId,
-                isLocalPlan: _isLocalPlan,
-                onBack: _goBack,
-                onEditBasics: () => _showEditPlan(plan),
-                onEditLocation: () =>
-                    _showEditPlan(plan, requireCompleteLocation: true),
-                onManageSharing: () => _openSharing(plan.id),
-                onArchive: _isLocalPlan ? null : () => _confirmArchive(plan),
+          : PlanDetailsView(
+              key: ValueKey(plan.id),
+              plan: plan,
+              budgetTotal:
+                  finance.loadedPlanId == plan.id && finance.hasLoadedMoney
+                  ? finance.summary.budget.total
+                  : null,
+              onBack: _goBack,
+              onSave: ({title, firstDay, budgetTotal}) => _saveDetails(
+                plan,
+                title: title,
+                firstDay: firstDay,
+                budgetTotal: budgetTotal,
               ),
+              onChangeDate: canManage && !_isLocalPlan
+                  ? () => _postpone(plan)
+                  : null,
+              onArchive:
+                  canManage &&
+                      !_isLocalPlan &&
+                      auth.user?.id == plan.ownerUserId
+                  ? () => _confirmArchive(plan)
+                  : null,
             ),
     );
   }
@@ -375,20 +395,6 @@ class _PlanCenterScreenState extends State<PlanCenterScreen>
     );
   }
 
-  Future<void> _openSharing(String weddingPlanId) async {
-    await context.push(AppRouter.sharing(weddingPlanId));
-    if (!mounted) return;
-    await _load();
-  }
-
-  String _ownerName(AuthController auth, WeddingPlan plan) {
-    if (_isLocalPlan || auth.user?.id == plan.ownerUserId) {
-      final name = auth.user?.name.trim() ?? '';
-      return name.isNotEmpty ? name : 'أنت';
-    }
-    return 'صاحب الخطة';
-  }
-
   WeddingPlan _weddingPlanFromDraft(GuestOnboardingDraft draft) {
     return WeddingPlan(
       id: draft.guestPlanId ?? widget.weddingPlanId,
@@ -421,26 +427,6 @@ class _PlanCenterScreenState extends State<PlanCenterScreen>
     } else {
       context.go(AppRouter.home);
     }
-  }
-
-  Widget _buildBottomNav(String planId) {
-    return AarastPlanNavigationBar.plan(
-      activeIndex: 0,
-      onSelected: (index) {
-        switch (index) {
-          case 0:
-            context.go(AppRouter.weddingPlanDashboard(planId));
-          case 1:
-            context.go(AppRouter.money(planId), extra: widget.sharedMember);
-          case 2:
-            context.go(AppRouter.tasks(planId));
-          case 3:
-            context.go(AppRouter.guestList(planId));
-          case 4:
-            context.go(AppRouter.planProviders(planId));
-        }
-      },
-    );
   }
 }
 

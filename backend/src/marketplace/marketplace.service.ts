@@ -158,11 +158,16 @@ export class MarketplaceService {
   }
 
   async findProviders(query: ListProvidersQueryDto) {
-    const { pagination, where } = MarketplaceQuery.providerSearch(query);
-    const [total, providerRows] = await this.prisma.$transaction([
-      core.countActiveProviders(this.prisma, where),
-      core.searchActiveProviders(this.prisma, where, pagination),
-    ]);
+    const now = new Date();
+    const { pagination, where } = MarketplaceQuery.providerSearch(query, now);
+    // One snapshot for the count and both featured and regular reads (B-43).
+    const [total, providerRows] = await this.prisma.$transaction(
+      async (tx) => [
+        await core.countActiveProviders(tx, where),
+        await core.searchActiveProviders(tx, where, pagination, now),
+      ] as const,
+      { isolationLevel: Prisma.TransactionIsolationLevel.RepeatableRead },
+    );
     // Catalog's city and category rows are attached after the own-table read.
     const providers = await this.relations.attachProviderListCatalog(
       this.prisma,
@@ -188,7 +193,7 @@ export class MarketplaceService {
 
   async findProvider(id: string) {
     MarketplaceQuery.assertUuid(id, "providerId");
-    const providerRow = await core.findActiveProviderWithServices(this.prisma, id);
+    const providerRow = await core.findActiveProviderWithServices(this.prisma, id, new Date());
 
     if (!providerRow) {
       throw new NotFoundException("Provider not found");
@@ -304,7 +309,7 @@ export class MarketplaceService {
         );
         assertMarketplaceProviderActive(provider);
         return this.relations.attachFavoriteProviders(tx, [
-          await core.saveFavoriteProvider(tx, currentUser.id, providerId),
+          await core.saveFavoriteProvider(tx, currentUser.id, providerId, new Date()),
         ]);
       },
     );
@@ -325,7 +330,7 @@ export class MarketplaceService {
   async findMyFavoriteProviders(currentUser: AuthenticatedUser) {
     const favorites = await this.relations.attachFavoriteProviders(
       this.prisma,
-      await core.listMyActiveFavoriteProviders(this.prisma, currentUser.id),
+      await core.listMyActiveFavoriteProviders(this.prisma, currentUser.id, new Date()),
     );
 
     return favorites.map((favorite) =>

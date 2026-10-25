@@ -65,7 +65,6 @@ const providerRow = (userId: string | null) => ({
   reopenedAt: null,
   reviewedAt: null,
   reviewedById: null,
-  isFeatured: false,
   ratingAverage: 0,
   ratingCount: 0,
   createdAt: new Date(),

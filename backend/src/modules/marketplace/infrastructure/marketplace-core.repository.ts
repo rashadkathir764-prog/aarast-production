@@ -7,6 +7,10 @@ import type {
 } from "../../../marketplace/marketplace.contracts";
 import { MARKETPLACE_QUOTE_INCLUDE } from "../../../marketplace/marketplace.contracts";
 import type { ProviderResponseSample } from "../../../marketplace/provider-responsiveness";
+import {
+  activeFeaturedPeriodInclude,
+  activeFeaturedPeriodWhere,
+} from "../public/featured-placement";
 
 type Client = Prisma.TransactionClient;
 
@@ -14,26 +18,53 @@ export function countActiveProviders(client: Client, where: ProviderSearchWhere)
   return client.provider.count({ where });
 }
 
-export function searchActiveProviders(client: Client, where: ProviderSearchWhere, pagination: MarketplacePagination) {
+function searchProviderPage(client: Client, where: ProviderSearchWhere, now: Date, skip: number, take: number) {
   return client.provider.findMany({
-      where,
-      include: {
-        services: {
-          where: { isActive: true }, orderBy: [{ isFeatured: "desc" }, { createdAt: "desc" }],
-          select: { title: true, basePrice: true, currency: true, priceUpdatedAt: true, categoryId: true },
-        },
+    where,
+    include: {
+      services: {
+        where: { isActive: true }, orderBy: [{ isFeatured: "desc" }, { createdAt: "desc" }],
+        select: { title: true, basePrice: true, currency: true, priceUpdatedAt: true, categoryId: true },
       },
-      orderBy: [
-        { isFeatured: "desc" },
-        { ratingAverage: "desc" },
-        { createdAt: "desc" },
-      ],
-      skip: pagination.skip,
-      take: pagination.limit,
+      featuredPeriods: activeFeaturedPeriodInclude(now),
+    },
+    orderBy: [
+      { ratingAverage: "desc" },
+      { createdAt: "desc" },
+      { id: "asc" },
+    ],
+    skip,
+    take,
   });
 }
 
-export function findActiveProviderWithServices(client: Client, id: string) {
+/**
+ * The customers' list: providers featured at `now` first (B-43), then the
+ * rest, each group by rating and age. "Featured" is read from the periods
+ * at request time, so the page is cut across the two groups here: the
+ * featured rows fill the page first and the others continue after them.
+ */
+export async function searchActiveProviders(client: Client, where: ProviderSearchWhere, pagination: MarketplacePagination, now: Date) {
+  const active = activeFeaturedPeriodWhere(now);
+  const featuredWhere: ProviderSearchWhere = { AND: [...where.AND, { featuredPeriods: { some: active } }] };
+  const regularWhere: ProviderSearchWhere = { AND: [...where.AND, { featuredPeriods: { none: active } }] };
+  const featuredCount = await client.provider.count({ where: featuredWhere });
+  const featured = pagination.skip < featuredCount
+    ? await searchProviderPage(client, featuredWhere, now, pagination.skip, pagination.limit)
+    : [];
+  const room = pagination.limit - featured.length;
+  if (room <= 0) return featured;
+  const regular = await searchProviderPage(
+    client,
+    regularWhere,
+    now,
+    Math.max(0, pagination.skip - featuredCount),
+    room,
+  );
+  return [...featured, ...regular];
+}
+
+export function findActiveProviderWithServices(client: Client, id: string, now: Date) {
   return client.provider.findFirst({
     where: { id, status: ProviderStatus.ACTIVE },
     include: {
@@ -42,6 +73,7 @@ export function findActiveProviderWithServices(client: Client, id: string) {
         include: { images: { orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }] } },
         orderBy: [{ isFeatured: "desc" }, { createdAt: "desc" }],
       },
+      featuredPeriods: activeFeaturedPeriodInclude(now),
     },
   });
 }
@@ -147,12 +179,12 @@ export function findProviderAccountForFavorite(client: Client, providerId: strin
   return client.provider.findUnique({ where: { id: providerId }, select: { userId: true } });
 }
 
-export function saveFavoriteProvider(client: Client, userId: string, providerId: string) {
+export function saveFavoriteProvider(client: Client, userId: string, providerId: string, now: Date) {
   return client.favoriteProvider.upsert({
     where: { userId_providerId: { userId, providerId } },
     create: { userId, providerId },
     update: {},
-    include: { provider: true },
+    include: { provider: { include: { featuredPeriods: activeFeaturedPeriodInclude(now) } } },
   });
 }
 
@@ -160,10 +192,10 @@ export function deleteFavoriteProvider(client: Client, userId: string, providerI
   return client.favoriteProvider.deleteMany({ where: { userId, providerId } });
 }
 
-export function listMyActiveFavoriteProviders(client: Client, userId: string) {
+export function listMyActiveFavoriteProviders(client: Client, userId: string, now: Date) {
   return client.favoriteProvider.findMany({
     where: { userId, provider: { status: ProviderStatus.ACTIVE } },
-    include: { provider: true },
+    include: { provider: { include: { featuredPeriods: activeFeaturedPeriodInclude(now) } } },
     orderBy: { createdAt: "desc" },
   });
 }

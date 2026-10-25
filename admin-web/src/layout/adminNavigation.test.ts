@@ -49,6 +49,17 @@ describe('admin navigation', () => {
     });
   });
 
+  it('puts the plans page (a17) under the providers, as drawn', () => {
+    expect(resolveAdminLocation('/featured')).toMatchObject({
+      group: 'المزودين',
+      title: 'الباقات والظهور المميز',
+      route: '/featured',
+      crumb: ['المزودين'],
+      isDetail: false,
+    });
+    expect(itemFor('/providers').isActive('/featured')).toBe(false);
+  });
+
   it('resolves the crumb the designs draw for list and detail routes', () => {
     expect(resolveAdminLocation('/')).toMatchObject({
       group: 'اليوم',

@@ -4,6 +4,7 @@ import type {
   Provider,
   ProviderCategory,
   ProviderClaimRequest,
+  ProviderFeaturedPeriod,
   ProviderPackage,
   ProviderReview,
   ProviderReviewEvent,
@@ -18,6 +19,11 @@ import {
   sortProviderFieldNotes,
   toProviderLatestDecision,
 } from '../modules/marketplace/public/provider-review';
+import {
+  featuredLastDay,
+  featuredPeriodState,
+  yemenDayOf,
+} from '../modules/marketplace/public/featured-placement';
 import { toReviewIdentity } from '../shared-kernel/privacy/review-identity';
 import {
   maskPhone,
@@ -70,6 +76,8 @@ export type AdminProviderRecord = Provider & {
     quoteRequests: number;
     reviews: number;
   };
+  /** The end of the placement active now (B-43), null when not featured. */
+  featuredUntil: Date | null;
 };
 
 /** A claim of a listing (B-12) as the back office shows it. */
@@ -106,6 +114,44 @@ export function toAdminClaimRequestResponse(claim: AdminClaimRequestRecord) {
     decidedBy: claim.decidedBy
       ? { id: claim.decidedBy.id, name: claim.decidedBy.name }
       : null,
+  };
+}
+
+/** A featured placement (B-43) with its listing and the administrators who recorded and ended it. */
+export type AdminFeaturedPeriodRecord = ProviderFeaturedPeriod & {
+  provider: Provider & {
+    city?: City | null;
+    primaryCategory?: ProviderCategory | null;
+  };
+  grantedBy: SafeAdminUser | null;
+  endedBy: SafeAdminUser | null;
+};
+
+export function toAdminFeaturedPeriodResponse(
+  period: AdminFeaturedPeriodRecord,
+  now: Date,
+) {
+  return {
+    id: period.id,
+    state: featuredPeriodState(period, now),
+    startsAt: period.startsAt,
+    endsAt: period.endsAt,
+    // Yemen calendar days: the first day and the last day covered.
+    startsOn: yemenDayOf(period.startsAt),
+    lastDay: featuredLastDay(period.endsAt),
+    note: period.note,
+    createdAt: period.createdAt,
+    grantedBy: period.grantedBy
+      ? { id: period.grantedBy.id, name: period.grantedBy.name }
+      : null,
+    endedAt: period.endedAt,
+    endedBy: period.endedBy
+      ? { id: period.endedBy.id, name: period.endedBy.name }
+      : null,
+    endNote: period.endNote,
+    endingNoticeAt: period.endingNoticeAt,
+    endNoticeAt: period.endNoticeAt,
+    provider: toProviderSummary(period.provider),
   };
 }
 
@@ -354,7 +400,8 @@ export function toProviderResponse(provider: AdminProviderRecord) {
       ? toSafeUser(provider.reviewedBy)
       : null,
     verifiedAt: provider.verifiedAt,
-    isFeatured: provider.isFeatured,
+    isFeatured: provider.featuredUntil !== null,
+    featuredUntil: provider.featuredUntil,
     ratingAverage: provider.ratingAverage.toString(),
     ratingCount: provider.ratingCount,
     servicesCount: provider._count?.services ?? provider.services?.length ?? 0,

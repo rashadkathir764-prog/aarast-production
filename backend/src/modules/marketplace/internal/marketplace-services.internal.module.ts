@@ -3,6 +3,8 @@ import { ConversationLifecyclePublicModule } from '../../messaging/public/conver
 import { BookingRemindersScheduler } from '../../../marketplace/booking-reminders.scheduler';
 import { QuoteRequestExpiryScheduler } from '../../../marketplace/quote-request-expiry.scheduler';
 import { QuoteRequestExpiryService } from '../../../marketplace/quote-request-expiry.service';
+import { FeaturedPeriodNoticesScheduler } from '../../../marketplace/featured-period-notices.scheduler';
+import { FeaturedPeriodNoticesService } from '../../../marketplace/featured-period-notices.service';
 import { BookingsService } from '../../../marketplace/bookings.service';
 import { MarketplaceRelationsService } from '../../../marketplace/marketplace-relations';
 import { MarketplaceService } from '../../../marketplace/marketplace.service';
@@ -42,6 +44,8 @@ import { NotificationsPublicModule } from '../../notifications/public/notificati
     BookingRemindersScheduler,
     QuoteRequestExpiryService,
     QuoteRequestExpiryScheduler,
+    FeaturedPeriodNoticesService,
+    FeaturedPeriodNoticesScheduler,
   ],
   exports: [MarketplaceService, ProviderDashboardService, BookingsService],
 })

@@ -43,7 +43,7 @@ async function getMarketplaceSummary(
 ) {
   const [featuredProvidersCount, favoriteProvidersCount, quoteRequestsCount] =
     await Promise.all([
-      ports.providers.countFeaturedActiveProviders(client),
+      ports.providers.countFeaturedActiveProviders(client, new Date()),
       ports.providers.countUserFavorites(client, userId),
       ports.quotes.countUserQuoteRequests(client, userId),
     ]);

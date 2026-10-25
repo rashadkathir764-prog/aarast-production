@@ -119,7 +119,6 @@ function providerFor(status: ProviderStatus) {
     reopenedAt: null,
     reviewedAt: null,
     reviewedById: null,
-    isFeatured: false,
     ratingAverage: { toString: () => '0' },
     ratingCount: 0,
     createdAt: now,
@@ -222,6 +221,8 @@ function createProviderDashboard(status: ProviderStatus) {
     },
     // No review decision is on record for these profiles.
     providerReviewEvent: { findFirst: async () => null },
+    // Nor a featured placement (B-43).
+    providerFeaturedPeriod: { findFirst: async () => null },
     providerService: {
       // The one service the provider joined with (B-10).
       findMany: async () => [joiningService()],

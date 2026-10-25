@@ -28,6 +28,7 @@ import {
   type PlanReadPort,
 } from "../modules/planning/public/plan-read.port";
 import type {
+  ProviderWithFeature,
   QuoteRow,
   QuoteWithRelations,
   ReviewWithUser,
@@ -42,10 +43,10 @@ type ServicePreview = Pick<
   ProviderService,
   "title" | "basePrice" | "currency" | "priceUpdatedAt"
 >;
-type ProviderListRow = Provider & {
+type ProviderListRow = ProviderWithFeature & {
   services: Array<ServicePreview & { categoryId: string }>;
 };
-type ProviderListEntry = WithCatalog<Provider> & {
+type ProviderListEntry = WithCatalog<ProviderWithFeature> & {
   servicePreviews: Array<ServicePreview & { category: ProviderCategory }>;
 };
 
@@ -89,10 +90,10 @@ export class MarketplaceRelationsService {
     }));
   }
 
-  async attachFavoriteProviders<T extends { provider: Provider }>(
+  async attachFavoriteProviders<T extends { provider: ProviderWithFeature }>(
     client: Prisma.TransactionClient,
     favorites: T[],
-  ): Promise<Array<T & { provider: WithCatalog<Provider> }>> {
+  ): Promise<Array<T & { provider: WithCatalog<T["provider"]> }>> {
     const providers = await this.attachProviderCatalog(
       client,
       favorites.map((favorite) => favorite.provider),

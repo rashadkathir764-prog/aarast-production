@@ -43,6 +43,8 @@ function verificationPrisma(status: ProviderStatus, ownerId = "provider-owner") 
       if (text.includes('FROM "Provider"')) return [{ id: "provider-1" }];
       throw new Error(`Unexpected lock: ${text}`);
     },
+    // No featured placement on record (B-43).
+    providerFeaturedPeriod: { findMany: async () => [] },
     provider: {
       findUnique: async () => ({ userId: ownerId, status }),
       update: async ({ data }: any) => {
@@ -69,7 +71,6 @@ function verificationPrisma(status: ProviderStatus, ownerId = "provider-owner") 
           reviewedById: null,
           verifiedAt: data.verifiedAt,
           verifiedById: data.verifiedById,
-          isFeatured: false,
           ratingAverage: 0,
           ratingCount: 0,
           _count: { services: 0, packages: 0, quoteRequests: 0, reviews: 0 },
@@ -240,7 +241,7 @@ test("the provider list shows when its prices last changed", () => {
     coverUrl: null,
     status: ProviderStatus.ACTIVE,
     verifiedAt: now,
-    isFeatured: false,
+    featuredPeriods: [],
     ratingAverage: new Prisma.Decimal(0),
     ratingCount: 0,
     createdAt: now,

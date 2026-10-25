@@ -25,7 +25,7 @@ run the local demo seed `backend/prisma/demo-seed.ts`, see
 | Entity | Purpose |
 | --- | --- |
 | User | Represents one person using Aarast, such as groom, bride, family member, provider, or admin. `phone` is important for Yemen-first usage. `passwordHash` stores the application password for ordinary users/providers and the browser-administration password for admins. `appPasswordConfiguredAt` proves that an application credential was explicitly chosen; a bcrypt hash alone is insufficient because the historical invite flow generated an unreachable random password. An admin may separately enroll `appPasswordHash` plus `appName`, `appEmail`, and `appAvatarUrl` for the wedding application; app responses project this identity as a normal user and never expose admin metadata. Neither password hash is returned or stored as plaintext. `role`/`appRole` are legacy account-mode fields and are not sufficient to discover or authorize an active product context. Owner contexts derive from `WeddingPlan.ownerUserId`, contributor contexts from `SharedMember`, and provider contexts from `Provider.userId`. |
-| Provider | Represents a vendor or business that offers wedding-related services. |
+| Provider | Represents a vendor or business that offers wedding-related services. It has no featured flag: «مميز» is a `ProviderFeaturedPeriod` covering now (B-43; migration `20261025220000_add_provider_featured_periods` dropped `Provider.isFeatured`, which no back-office path ever wrote). |
 | Service | Represents a specific service offered by a provider, such as hall rental, photography, salon, catering, or decoration. |
 | Category | `ProviderCategory` groups services into one discoverable catalog. `showForGroom` and `showForBride` control customer-path discovery without duplicating provider categories; provider services and tags remain the flexible specialization layer. |
 | City | Compatibility catalog currently referenced by providers, services, and quote requests. It supports existing market filtering but is not a synonym for a governorate or district. |
@@ -44,6 +44,7 @@ run the local demo seed `backend/prisma/demo-seed.ts`, see
 | ProviderReviewEvent | One step of a provider's review (B-01, B-02): an administrator's decision (`CHANGES_REQUESTED`, `REJECTED`, `APPROVED`, `SUSPENDED`, `ACTIVATED`) or the provider's own (`RESUBMITTED`, `REOPENED`), with `actorId` (a plain account id), `createdAt` and `sequence`, a serial that orders the steps (migration `20261025180000_order_provider_review_events`; every step is written under the provider's row lock, so it grows in the order the steps happened even when two share a `createdAt`; the steps already written were numbered by time, then id). Every read of «the latest decision» and of the history orders by `sequence`. Cascades with the provider. Replaces the single `Provider.reviewNote`, which migration `20261025120000_add_provider_review_and_claim_requests` moved into it (one event and one `GENERAL` note per stored note) before dropping the column. `Provider` keeps `reviewedAt`/`reviewedById` for the latest decision and gains `resubmittedAt`, `resubmitCount` and `reopenedAt`. |
 | ProviderReviewNote | A note written with a review step: `GENERAL` (the whole profile) or one field the provider can fix before approval (`BUSINESS_NAME`, `CATEGORY`, `CITY`, `DESCRIPTION`, `SERVICE`); unique per step and field. The latest decision's notes are the ones the provider reads while `NEEDS_CHANGES`, `REJECTED` or `SUSPENDED`. |
 | ProviderClaimRequest | An account asking for a listing the back office made under its phone (B-12, D41): `providerId`, `userId` (plain id; removed with the account), `status` `PENDING → APPROVED / REJECTED`, the team's `note`, `decidedAt`, `decidedById`. Partial unique indexes keep one `PENDING` claim per listing and per account. Only approval links the listing to the account. |
+| ProviderFeaturedPeriod | A featured placement the back office recorded by hand after the provider paid outside the app (B-43, D41, D51): `providerId` (cascades with the provider), `startsAt`, `endsAt` (the start of the day after the last day covered, Sana'a time; a CHECK keeps `endsAt > startsAt`), the administrator's `note` (how he paid; no amount, no payment status), `grantedById` and `createdAt`, `endedAt`/`endedById`/`endNote` when an administrator stopped it early or cancelled it before its start, and `endingNoticeAt`/`endNoticeAt` so the hourly job tells the provider once. Featured = a row with `startsAt <= now < endsAt` and no `endedAt`, read at request time; one provider's rows never overlap (checked under the provider's row lock). `grantedById` and `endedById` are plain ids. |
 
 ## Wedding Financial OS Entities
 
@@ -500,6 +501,7 @@ rewrite as permission to restore a removed live model.
 | `ProviderReviewNote` | 5 | `id`, `eventId` |
 | `ProviderClaimRequest` | 9 | `id`, `providerId`, `userId`, `createdAt`, `decidedAt`, `decidedById` |
 | `QuoteOfferVersion` | 11 | `id`, `quoteOfferId`, `createdAt` |
+| `ProviderFeaturedPeriod` | 13 | `id`, `providerId`, `startsAt`, `endsAt`, `grantedById`, `createdAt`, `endedAt`, `endedById` |
 | `Conversation` | 23 | `id`, `weddingPlanId`, `accountRequesterUserId`, `providerId`, `createdByUserId`, `lastActivityAt`, `closedAt`, `customerSideBlockedAt` |
 | `ConversationParticipant` | 11 | `id`, `conversationId`, `userId`, `joinedAt`, `revokedAt`, `lastReadAt`, `mutedAt`, `createdAt` |
 | `ConversationEvent` | 14 | `id`, `conversationId`, `quoteRequestId`, `quoteOfferId`, `actorUserId`, `occurredAt`, `createdAt` |
@@ -507,5 +509,5 @@ rewrite as permission to restore a removed live model.
 | `ChatAttachment` | 7 | `id`, `messageId`, `createdAt` |
 | `ConversationReport` | 9 | `id`, `conversationId`, `reporterUserId`, `createdAt`, `updatedAt` |
 
-Total models: 63
+Total models: 64
 <!-- DOCS-SYNC:END -->

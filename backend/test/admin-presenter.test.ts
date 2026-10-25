@@ -202,6 +202,7 @@ test('admin provider mapper preserves nested shape and money serialization', () 
     'reviewedBy',
     'verifiedAt',
     'isFeatured',
+    'featuredUntil',
     'ratingAverage',
     'ratingCount',
     'servicesCount',
@@ -214,6 +215,10 @@ test('admin provider mapper preserves nested shape and money serialization', () 
     'updatedAt',
   ]);
   assert.equal(response.ratingAverage, '4.75');
+  // B-43: featured while a recorded placement covers now.
+  assert.equal(response.isFeatured, true);
+  assert.deepEqual(response.featuredUntil, new Date('2026-12-31T21:00:00.000Z'));
+  assert.equal(currentPresenter().toProviderResponse({ ...providerFixture(), featuredUntil: null }).isFeatured, false);
   assert.equal(response.servicesCount, 7);
   assert.equal(response.packagesCount, 2);
   assert.equal(response.services[0].basePrice, '1250.5');
@@ -480,7 +485,7 @@ function providerFixture() {
     reviewedById: 'reviewer-1',
     verifiedAt: null,
     verifiedById: null,
-    isFeatured: true,
+    featuredUntil: new Date('2026-12-31T21:00:00.000Z'),
     ratingAverage: new Prisma.Decimal('4.75'),
     ratingCount: 18,
     createdAt,

@@ -25,7 +25,13 @@ import {
   type ProviderFieldNote,
 } from '../modules/marketplace/public/provider-review';
 import { AdminProviderClaims } from './admin-provider-claims';
+import { AdminFeaturedPlacements } from './admin-featured-placements';
 import { lockProviderReviewAccountsInTransaction } from './admin-provider-review-lock';
+import {
+  AdminEndFeaturedPeriodDto,
+  AdminFeaturedPeriodQueryDto,
+  AdminGrantFeaturedPeriodDto,
+} from './dto/admin-featured-period.dto';
 import {
   AdminClaimDecisionDto,
   AdminClaimRequestQueryDto,
@@ -103,6 +109,7 @@ interface Pagination {
 export class AdminService {
   private readonly mutations: AdminMutationExecutor;
   private readonly claims: AdminProviderClaims;
+  private readonly featured: AdminFeaturedPlacements;
 
   constructor(
     private readonly prisma: PrismaService,
@@ -113,6 +120,33 @@ export class AdminService {
   ) {
     this.mutations = new AdminMutationExecutor(prisma, owners);
     this.claims = new AdminProviderClaims({ prisma, owners, notifications });
+    this.featured = new AdminFeaturedPlacements({ prisma, owners, notifications });
+  }
+
+  // B-43: featured placement, recorded by hand after the provider paid
+  // outside the app.
+  async listFeaturedPeriods(query: AdminFeaturedPeriodQueryDto) {
+    return this.featured.list(query, this.parsePagination(query.page, query.limit));
+  }
+
+  async getFeaturedSummary() {
+    return this.featured.summary();
+  }
+
+  async grantFeaturedPeriod(
+    currentUser: AuthenticatedUser,
+    providerId: string,
+    dto: AdminGrantFeaturedPeriodDto,
+  ) {
+    return this.featured.grant(currentUser, providerId, dto);
+  }
+
+  async endFeaturedPeriod(
+    currentUser: AuthenticatedUser,
+    periodId: string,
+    dto: AdminEndFeaturedPeriodDto,
+  ) {
+    return this.featured.end(currentUser, periodId, dto);
   }
 
   async getDashboardStats() {

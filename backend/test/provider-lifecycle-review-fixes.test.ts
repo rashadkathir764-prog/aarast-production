@@ -194,7 +194,6 @@ function dashboardFor(
     reopenedAt: null,
     reviewedAt: null,
     reviewedById: null,
-    isFeatured: false,
     ratingAverage: { toString: () => '0' },
     ratingCount: 0,
     createdAt: now,
@@ -238,6 +237,8 @@ function dashboardFor(
           : null,
       create: async ({ data }: any) => ({ id: 'resubmitted-step', ...data, notes: [] }),
     },
+    // No featured placement on record (B-43).
+    providerFeaturedPeriod: { findFirst: async () => null },
     providerService: {
       count: async () => options.activePriced ?? 1,
       findMany: async () => options.services ?? [joiningService()],

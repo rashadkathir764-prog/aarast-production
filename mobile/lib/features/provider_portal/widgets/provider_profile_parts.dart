@@ -3,6 +3,7 @@ import 'package:lucide_icons/lucide_icons.dart';
 
 import '../../../core/experience_v3/aarast_v3.dart';
 import '../../../core/utils/arabic_count.dart';
+import '../../../core/utils/arabic_date_formatter.dart';
 import '../../../core/utils/currency_label.dart';
 import '../../marketplace/marketplace_api.dart'
     show MarketplaceService, ProviderPackage, ProviderReview;
@@ -29,6 +30,32 @@ String providerAgoLabel(DateTime then, {DateTime? now}) {
   if (days >= 365) return 'قبل أكثر من سنة';
   final months = days ~/ 30;
   return 'قبل ${arabicCount(months, one: 'شهر', two: 'شهرين', few: 'شهور', many: 'شهر')}';
+}
+
+/// p35's «الظهور المميز» line (B-43): «مميز لين 31 ديسمبر» while the team's
+/// recorded placement runs, «يبدأ 1 يناير · لين 31 مارس» for one booked
+/// later, or how to ask for it. `endsAt` starts the day after the last one
+/// covered, in Sana'a time.
+String providerFeaturedLine({
+  DateTime? startsAt,
+  DateTime? endsAt,
+  DateTime? now,
+}) {
+  if (startsAt == null || endsAt == null) {
+    return 'ظهور عادي · تبي تطلع أول؟ كلّم فريق اعّرست';
+  }
+  final lastDay = formatArabicDayMonth(
+    _sanaaDay(endsAt.subtract(const Duration(milliseconds: 1))),
+  );
+  if (startsAt.isAfter(now ?? DateTime.now())) {
+    return 'يبدأ ${formatArabicDayMonth(_sanaaDay(startsAt))} · لين $lastDay';
+  }
+  return 'مميز لين $lastDay';
+}
+
+DateTime _sanaaDay(DateTime at) {
+  final sanaa = at.toUtc().add(const Duration(hours: 3));
+  return DateTime(sanaa.year, sanaa.month, sanaa.day);
 }
 
 /// «3 ساعات», «يومين»: a reply time in hours, as p39 reads it.

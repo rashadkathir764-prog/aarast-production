@@ -71,7 +71,12 @@ class ProfileApi extends RequestsApi {
     this.description = 'تصوير أعراس من 2015',
     this.logoUrl,
     this.views = 14,
+    this.featuredStartsAt,
+    this.featuredEndsAt,
   });
+
+  final DateTime? featuredStartsAt;
+  final DateTime? featuredEndsAt;
 
   final String status;
   final DateTime? verifiedAt;
@@ -101,6 +106,8 @@ class ProfileApi extends RequestsApi {
         description: description,
         logoUrl: logoUrl,
         address: 'شارع حدة',
+        featuredStartsAt: featuredStartsAt,
+        featuredEndsAt: featuredEndsAt,
       );
 
   @override
@@ -267,6 +274,7 @@ _pump(
         '/provider/share',
         '/provider/profile/edit',
         '/providers/:id',
+        '/support',
       ])
         GoRoute(path: path, builder: (_, state) => page(path)),
     ],
@@ -362,7 +370,52 @@ void main() {
       expect(find.byKey(const Key('provider-me-preview')), findsNothing);
       expect(find.byKey(const Key('provider-profile-services')), findsNothing);
       expect(find.byKey(const Key('provider-me-edit')), findsNothing);
+      expect(find.byKey(const Key('provider-me-featured')), findsNothing);
       expect(find.byKey(const Key('provider-me-settings')), findsOneWidget);
+    });
+
+    // B-43: the placement the team records after he pays them outside the
+    // app; asking for it or renewing it goes to the team.
+    testWidgets('his featured placement and until when, or how to ask for '
+        'it', (tester) async {
+      final pumped = await _pump(
+        tester,
+        ProfileApi(
+          // Through 31 December in Sana'a: the next day starts at 21:00 UTC.
+          featuredStartsAt: DateTime.utc(2026, 9, 30, 21),
+          featuredEndsAt: DateTime.utc(2026, 12, 31, 21),
+        ),
+        () => ProviderProfileTab(now: DateTime.utc(2026, 10, 25, 9)),
+      );
+      expect(find.text('الظهور المميز'), findsOneWidget);
+      expect(find.text('مميز لين 31 ديسمبر'), findsOneWidget);
+      await tester.tap(find.byKey(const Key('provider-me-featured')));
+      await tester.pumpAndSettle();
+      expect(pumped.opened.last, '/support');
+    });
+
+    test('the featured line reads the days in Sana\'a', () {
+      final now = DateTime.utc(2026, 10, 25, 9);
+      expect(
+        providerFeaturedLine(now: now),
+        'ظهور عادي · تبي تطلع أول؟ كلّم فريق اعّرست',
+      );
+      expect(
+        providerFeaturedLine(
+          startsAt: DateTime.utc(2026, 12, 31, 21),
+          endsAt: DateTime.utc(2027, 3, 31, 21),
+          now: now,
+        ),
+        'يبدأ 1 يناير · لين 31 مارس',
+      );
+      expect(
+        providerFeaturedLine(
+          startsAt: DateTime.utc(2026, 10, 20, 9),
+          endsAt: DateTime.utc(2026, 10, 31, 21),
+          now: now,
+        ),
+        'مميز لين 31 أكتوبر',
+      );
     });
   });
 

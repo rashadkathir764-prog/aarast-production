@@ -54,7 +54,12 @@ export interface ProviderSpec {
    */
   review?: ReviewStepSpec[];
   verified?: boolean;
-  featured?: boolean;
+  /**
+   * A featured placement the back office recorded (B-43): its first and
+   * last day as offsets from today, and the note. `told` marks the end
+   * notice as sent (a placement that already ended).
+   */
+  featured?: { firstDay: number; lastDay: number; note: string; told?: boolean };
   services: ServiceSpec[];
 }
 
@@ -81,7 +86,8 @@ export const PROVIDERS: readonly ProviderSpec[] = [
     address: 'شارع الزبيري، صنعاء',
     status: ProviderStatus.ACTIVE,
     verified: true,
-    featured: true,
+    // a17: its month ended ten days ago and he was told.
+    featured: { firstDay: -40, lastDay: -11, note: 'حوالة الكريمي · شهر', told: true },
     services: [
       {
         id: 'f0300000-0000-4000-8000-000000000011',
@@ -115,7 +121,8 @@ export const PROVIDERS: readonly ProviderSpec[] = [
     address: 'شارع الستين، صنعاء',
     status: ProviderStatus.ACTIVE,
     verified: true,
-    featured: true,
+    // a17: featured now, for three months.
+    featured: { firstDay: -24, lastDay: 66, note: 'كاش · 3 شهور' },
     services: [
       {
         key: 'hall',
@@ -138,7 +145,6 @@ export const PROVIDERS: readonly ProviderSpec[] = [
     description: 'ضيافة وعشاء للأعراس بالمأكولات اليمنية.',
     address: 'حدة، صنعاء',
     status: ProviderStatus.ACTIVE,
-    featured: true,
     services: [
       {
         key: 'dinner',
@@ -209,7 +215,6 @@ export const PROVIDERS: readonly ProviderSpec[] = [
     description: 'صالة نسائية تتسع 150 ضيفة.',
     address: 'شارع حدة، صنعاء',
     status: ProviderStatus.ACTIVE,
-    featured: true,
     services: [
       { key: 'hall', title: 'حجز الصالة', description: 'صالة نسائية رئيسية.', price: 2_000_000, unit: 'event' },
     ],

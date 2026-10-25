@@ -3,6 +3,7 @@ import type {
   Provider,
   ProviderClaimRequest,
   ProviderClaimStatus,
+  ProviderFeaturedPeriod,
   ProviderPackage,
   ProviderReview,
   ProviderReviewEvent,
@@ -213,6 +214,49 @@ export interface AdminMarketplaceSuccessCounts {
 }
 
 
+/** A featured placement (B-43) with the provider it ranks first. */
+export type AdminFeaturedPeriodRow = ProviderFeaturedPeriod & { provider: Provider };
+
+/**
+ * CURRENT: active or booked to start; ACTIVE: covers now; SCHEDULED: starts
+ * later; FINISHED: reached its end or ended by an administrator.
+ */
+export type AdminFeaturedPeriodState = 'CURRENT' | 'ACTIVE' | 'SCHEDULED' | 'FINISHED';
+
+export interface AdminFeaturedPeriodFilter {
+  state: AdminFeaturedPeriodState | null;
+  providerId: string | null;
+}
+
+export interface AdminFeaturedSummary {
+  /** Active providers with an active service: the ones customers see. */
+  listedProviders: number;
+  /** Of those, featured now. */
+  featured: number;
+  /** Active placements that end within the week with nothing booked after. */
+  endingSoon: number;
+}
+
+export interface AdminActiveFeaturedPeriod {
+  providerId: string;
+  startsAt: Date;
+  endsAt: Date;
+}
+
+export interface FeaturedPeriodGrantFields {
+  providerId: string;
+  startsAt: Date;
+  endsAt: Date;
+  note: string | null;
+  grantedById: string;
+}
+
+export interface FeaturedPeriodEndFields {
+  endedAt: Date;
+  endedById: string;
+  endNote: string | null;
+}
+
 /** How many providers and services reference a catalog entry. */
 export interface CatalogUsage {
   id: string;
@@ -385,4 +429,46 @@ export interface MarketplaceAdminPort {
     client: Prisma.TransactionClient,
     cityIds: readonly string[],
   ): Promise<CatalogUsage[]>;
+  /** Featured placements (B-43), latest start first. */
+  listFeaturedPeriods(
+    client: Prisma.TransactionClient,
+    filter: AdminFeaturedPeriodFilter,
+    page: AdminPage,
+    now: Date,
+  ): Promise<AdminListing<AdminFeaturedPeriodRow>>;
+  /** a17's counts at `now`; `endingSoon` ends before `weekEnd` with nothing booked after it. */
+  getFeaturedSummary(
+    client: Prisma.TransactionClient,
+    now: Date,
+    weekEnd: Date,
+  ): Promise<AdminFeaturedSummary>;
+  /** Each provider's period active at `now` (at most one per provider). */
+  listActiveFeaturedPeriods(
+    client: Prisma.TransactionClient,
+    providerIds: readonly string[],
+    now: Date,
+  ): Promise<AdminActiveFeaturedPeriod[]>;
+  /** A period of the provider, not ended, that overlaps [startsAt, endsAt); null when none. */
+  findOverlappingFeaturedPeriod(
+    tx: Prisma.TransactionClient,
+    providerId: string,
+    startsAt: Date,
+    endsAt: Date,
+  ): Promise<{ id: string; startsAt: Date; endsAt: Date } | null>;
+  /** Records a placement; the caller holds the provider's row lock. */
+  createFeaturedPeriodInTransaction(
+    tx: Prisma.TransactionClient,
+    fields: FeaturedPeriodGrantFields,
+  ): Promise<AdminFeaturedPeriodRow>;
+  /** Locks the period FOR UPDATE; null when it does not exist. */
+  lockFeaturedPeriodForUpdateInTransaction(
+    tx: Prisma.TransactionClient,
+    periodId: string,
+  ): Promise<AdminFeaturedPeriodRow | null>;
+  /** Ends a period nobody ended yet (the provider is told now); null when it was already ended. */
+  endFeaturedPeriodInTransaction(
+    tx: Prisma.TransactionClient,
+    periodId: string,
+    fields: FeaturedPeriodEndFields,
+  ): Promise<AdminFeaturedPeriodRow | null>;
 }

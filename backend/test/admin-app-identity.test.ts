@@ -163,7 +163,6 @@ test("an administrator app session can create a provider profile without changin
           reviewedById: null,
           ratingAverage: 0,
           ratingCount: 0,
-          isFeatured: false,
           createdAt: now,
           updatedAt: now,
           city: {
@@ -202,6 +201,8 @@ test("an administrator app session can create a provider profile without changin
     },
     // A new application has no review step yet.
     providerReviewEvent: { findFirst: async () => null },
+    // Nor a featured placement (B-43).
+    providerFeaturedPeriod: { findFirst: async () => null },
   };
   const prisma = {
     provider: { findUnique: async () => null },
@@ -334,6 +335,8 @@ test("a different administrator can review a provider application", async () => 
             return event;
           },
         },
+        // No featured placement on record (B-43).
+        providerFeaturedPeriod: { findMany: async () => [] },
         $queryRaw: async (query: any) => {
           const text = query.strings?.join("") ?? String(query);
           if (text.includes('FROM "User"')) {
@@ -398,7 +401,6 @@ test("a different administrator can review a provider application", async () => 
               reopenedAt: null,
               reviewedAt: data.reviewedAt,
               reviewedBy: null,
-              isFeatured: false,
               ratingAverage: 0,
               ratingCount: 0,
               _count: {

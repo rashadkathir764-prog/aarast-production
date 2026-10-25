@@ -242,6 +242,21 @@ class _ProviderProfileTabState extends State<ProviderProfileTab> {
               subtitle: 'آخر 30 يوم',
               onTap: () => context.push(AppRouter.providerPerformance),
             ),
+            // B-43: the placement the team records after he pays them
+            // outside the app; not drawn on p35 (handoff design differences).
+            JourneyListRow(
+              key: const Key('provider-me-featured'),
+              icon: LucideIcons.crown,
+              color: AarastV3Color.primary,
+              soft: AarastV3Color.primarySoft,
+              title: 'الظهور المميز',
+              subtitle: providerFeaturedLine(
+                startsAt: profile.featuredStartsAt,
+                endsAt: profile.featuredEndsAt,
+                now: widget.now,
+              ),
+              onTap: () => context.push(AppRouter.support),
+            ),
             JourneyListRow(
               key: const Key('provider-me-share'),
               icon: LucideIcons.share2,

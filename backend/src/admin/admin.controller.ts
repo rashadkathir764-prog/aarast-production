@@ -29,6 +29,11 @@ import {
 import { AdminReviewActionDto } from './dto/admin-review-action.dto';
 import { AdminRequestChangesDto } from './dto/admin-request-changes.dto';
 import {
+  AdminEndFeaturedPeriodDto,
+  AdminFeaturedPeriodQueryDto,
+  AdminGrantFeaturedPeriodDto,
+} from './dto/admin-featured-period.dto';
+import {
   AdminClaimDecisionDto,
   AdminClaimRequestQueryDto,
 } from './dto/admin-claim-request.dto';
@@ -135,6 +140,40 @@ export class AdminController {
     @Body() dto: AdminClaimDecisionDto,
   ) {
     return this.adminService.rejectClaimRequest(currentUser, id, dto);
+  }
+
+  // B-43: featured placement the provider paid for outside the app, switched
+  // on by hand. No money is taken or kept; every write is audited.
+  @Get('featured-periods')
+  @RequireAdminPermission(AdminPermission.PROVIDERS_READ)
+  listFeaturedPeriods(@Query() query: AdminFeaturedPeriodQueryDto) {
+    return this.adminService.listFeaturedPeriods(query);
+  }
+
+  @Get('featured-periods/summary')
+  @RequireAdminPermission(AdminPermission.PROVIDERS_READ)
+  getFeaturedSummary() {
+    return this.adminService.getFeaturedSummary();
+  }
+
+  @Post('providers/:id/featured-periods')
+  @RequireAdminPermission(AdminPermission.PROVIDERS_WRITE)
+  grantFeaturedPeriod(
+    @CurrentUser() currentUser: AuthenticatedUser,
+    @Param('id') id: string,
+    @Body() dto: AdminGrantFeaturedPeriodDto,
+  ) {
+    return this.adminService.grantFeaturedPeriod(currentUser, id, dto);
+  }
+
+  @Post('featured-periods/:id/end')
+  @RequireAdminPermission(AdminPermission.PROVIDERS_WRITE)
+  endFeaturedPeriod(
+    @CurrentUser() currentUser: AuthenticatedUser,
+    @Param('id') id: string,
+    @Body() dto: AdminEndFeaturedPeriodDto,
+  ) {
+    return this.adminService.endFeaturedPeriod(currentUser, id, dto);
   }
 
   @Patch('providers/:id/suspend')

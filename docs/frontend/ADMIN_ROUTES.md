@@ -8,6 +8,7 @@
 - `/cities`
 - `/cities/new`
 - `/conversation-reports`
+- `/featured`
 - `/login`
 - `/notifications`
 - `/providers`
@@ -24,4 +25,4 @@
 - `/users`
 - `/users/:id`
 
-Total: 23 routes
+Total: 24 routes

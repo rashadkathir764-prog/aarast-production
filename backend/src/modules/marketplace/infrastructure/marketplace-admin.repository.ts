@@ -9,8 +9,14 @@ import {
   ReviewStatus,
 } from '@prisma/client';
 import type {
+  AdminActiveFeaturedPeriod,
   AdminClaimRequestFilter,
   AdminClaimRequestRow,
+  AdminFeaturedPeriodFilter,
+  AdminFeaturedPeriodRow,
+  AdminFeaturedSummary,
+  FeaturedPeriodEndFields,
+  FeaturedPeriodGrantFields,
   AdminListedProviderFields,
   AdminListing,
   AdminProviderReviewEvent,
@@ -34,6 +40,8 @@ import type {
   ProviderVerification,
 } from '../public/marketplace-admin.port';
 import type { PricedService } from '../public/market-prices';
+import { activeFeaturedPeriodWhere } from '../public/featured-placement';
+import * as featured from './featured-period.repository';
 import { listPricedServices } from './market-prices.repository';
 import {
   hasJoiningService,
@@ -707,6 +715,64 @@ export class MarketplaceAdminRepository implements MarketplaceAdminPort {
     );
   }
 
+  async listFeaturedPeriods(
+    client: Prisma.TransactionClient,
+    filter: AdminFeaturedPeriodFilter,
+    page: AdminPage,
+    now: Date,
+  ): Promise<AdminListing<AdminFeaturedPeriodRow>> {
+    return featured.listFeaturedPeriods(client, filter, page, now);
+  }
+
+  async getFeaturedSummary(
+    client: Prisma.TransactionClient,
+    now: Date,
+    weekEnd: Date,
+  ): Promise<AdminFeaturedSummary> {
+    return featured.countFeaturedSummary(client, now, weekEnd);
+  }
+
+  async listActiveFeaturedPeriods(
+    client: Prisma.TransactionClient,
+    providerIds: readonly string[],
+    now: Date,
+  ): Promise<AdminActiveFeaturedPeriod[]> {
+    return featured.listActiveFeaturedPeriods(client, providerIds, now);
+  }
+
+  async findOverlappingFeaturedPeriod(
+    tx: Prisma.TransactionClient,
+    providerId: string,
+    startsAt: Date,
+    endsAt: Date,
+  ): Promise<{ id: string; startsAt: Date; endsAt: Date } | null> {
+    return featured.findOverlappingFeaturedPeriod(tx, providerId, startsAt, endsAt);
+  }
+
+  async createFeaturedPeriodInTransaction(
+    tx: Prisma.TransactionClient,
+    fields: FeaturedPeriodGrantFields,
+  ): Promise<AdminFeaturedPeriodRow> {
+    return featured.createFeaturedPeriod(tx, fields);
+  }
+
+  async lockFeaturedPeriodForUpdateInTransaction(
+    tx: Prisma.TransactionClient,
+    periodId: string,
+  ): Promise<AdminFeaturedPeriodRow | null> {
+    return featured.lockFeaturedPeriodForUpdate(tx, periodId);
+  }
+
+  async endFeaturedPeriodInTransaction(
+    tx: Prisma.TransactionClient,
+    periodId: string,
+    fields: FeaturedPeriodEndFields,
+  ): Promise<AdminFeaturedPeriodRow | null> {
+    const ended = await featured.endFeaturedPeriod(tx, periodId, fields);
+    if (ended.count !== 1) return null;
+    return featured.findFeaturedPeriod(tx, periodId);
+  }
+
   private async providerReport(
     client: Prisma.TransactionClient,
     createdAt?: { gte?: Date; lte?: Date },
@@ -729,7 +795,13 @@ export class MarketplaceAdminRepository implements MarketplaceAdminPort {
         client.provider.count({
           where: { createdAt, status: ProviderStatus.REJECTED },
         }),
-        client.provider.count({ where: { createdAt, isFeatured: true } }),
+        // Featured now (B-43): a recorded placement covers this moment.
+        client.provider.count({
+          where: {
+            createdAt,
+            featuredPeriods: { some: activeFeaturedPeriodWhere(new Date()) },
+          },
+        }),
       ]);
     return { total, pending, active, needsChanges, suspended, rejected, featured };
   }

@@ -16,6 +16,7 @@ import {
   User,
   WeddingPlan,
 } from "@prisma/client";
+import type { ActiveFeaturedPeriodWhere, FeaturedWindow } from "../modules/marketplace/public/featured-placement";
 
 // The search and access filters name marketplace's own columns and relations
 // exactly (the ownership scan proves a declared shape; a generated Prisma
@@ -25,7 +26,7 @@ export interface ProviderSearchWhere {
   AND: Array<
     | { status: ProviderStatus } | { services: { some: { isActive: boolean } } }
     | { cityId: string }
-    | { isFeatured: boolean }
+    | { featuredPeriods: { some: ActiveFeaturedPeriodWhere } | { none: ActiveFeaturedPeriodWhere } }
     | { OR: Array<{ primaryCategoryId: string } | { services: { some: { categoryId: string; isActive: boolean } } }> }
     | { OR: Array<{ businessName: TextMatch } | { ownerName: TextMatch } | { description: TextMatch } | { address: TextMatch } | { services: { some: { isActive: boolean; OR: Array<{ title: TextMatch } | { description: TextMatch }> } } }> }
   >;
@@ -86,8 +87,11 @@ export type ReviewWithUser = ProviderReview & {
   user: Pick<User, "id" | "name" | "appName" | "role">;
 };
 
+/** A provider read with its active featured period (B-43): «مميز» is read from it. */
+export type ProviderWithFeature = Provider & { featuredPeriods: FeaturedWindow[] };
+
 export type FavoriteWithProvider = FavoriteProvider & {
-  provider: ProviderWithCity;
+  provider: ProviderWithCity & ProviderWithFeature;
 };
 
 export type QuoteWithRelations = QuoteRequest & {

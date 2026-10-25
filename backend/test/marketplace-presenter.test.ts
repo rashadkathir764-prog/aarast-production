@@ -32,6 +32,7 @@ test("marketplace pagination is bounded and rejects invalid values", () => {
 });
 
 test("provider and service filters keep canonical active-only constraints", () => {
+  const now = new Date("2026-10-25T09:00:00.000Z");
   const providers = MarketplaceQuery.providerSearch({
     page: "2",
     limit: "10",
@@ -39,9 +40,14 @@ test("provider and service filters keep canonical active-only constraints", () =
     categoryId: "27f8d6f4-18ee-4b57-b732-2c21a2bd0d92",
     featured: "true",
     search: " قاعة ",
-  });
+  }, now);
   assert.equal(providers.pagination.skip, 10);
   assert.ok(Array.isArray(providers.where.AND));
+  // B-43: «featured» is a recorded placement covering this moment.
+  assert.ok(providers.where.AND.some((condition) =>
+    JSON.stringify(condition) === JSON.stringify({
+      featuredPeriods: { some: { startsAt: { lte: now }, endsAt: { gt: now }, endedAt: null } },
+    })));
   const providerWhere = JSON.stringify(providers.where);
   assert.match(providerWhere, /ACTIVE/);
   assert.match(providerWhere, /قاعة/);
@@ -62,7 +68,7 @@ test("provider and service filters keep canonical active-only constraints", () =
 // Field test Q14: an approved provider with no service was listed as an empty
 // card leading to an empty page.
 test("the directory lists only providers that offer an active service", () => {
-  const { where } = MarketplaceQuery.providerSearch({});
+  const { where } = MarketplaceQuery.providerSearch({}, new Date());
   assert.deepEqual(where.AND, [
     { status: "ACTIVE" },
     { services: { some: { isActive: true } } },
@@ -97,7 +103,7 @@ test("provider list response keeps category and active service summary", () => {
     logoUrl: null,
     coverUrl: null,
     status: "ACTIVE",
-    isFeatured: false,
+    featuredPeriods: [],
     ratingAverage: new Prisma.Decimal("0"),
     ratingCount: 0,
     createdAt: new Date("2026-07-25T00:00:00.000Z"),
@@ -188,8 +194,11 @@ test("marketplace service keeps Prisma orchestration outside pure presenters", (
 
   // B2 (B-03, B-04, B-06, B-08): the shared offer version view's import and
   // spread with its comment (+3) and the quote's sharing and deadline
-  // fields (+4): 605 lines, 606 with the trailing newline.
-  assert.ok(presenter.split("\n").length <= 606);
+  // fields (+4): 605 lines, 606 with the trailing newline. B-43: «مميز» is
+  // read from the placement covering now: its import, the `now` the search
+  // takes with the featured filter's two branches, and the flag's comment
+  // (+6): 611 lines, 612 with the trailing newline.
+  assert.ok(presenter.split("\n").length <= 612);
   for (const forbidden of [
     "PrismaService",
     "NotificationsService",
@@ -204,8 +213,10 @@ test("marketplace service keeps Prisma orchestration outside pure presenters", (
   // scan proves their shape, and shrink the quote include to marketplace's
   // own relations (-12): 124 lines, 125 with the trailing newline. Bookings
   // (V1 checklist 4.6) add the quote's booking relation to the include, its
-  // type and the Booking import (+3): 128 with the trailing newline.
-  assert.ok(contracts.split("\n").length <= 128);
+  // type and the Booking import (+3): 128 with the trailing newline. B-43:
+  // the featured placement's import, and the provider read with its active
+  // placement with its comment and blank line (+4): 132.
+  assert.ok(contracts.split("\n").length <= 132);
 });
 
 test("marketplace reference catalog is installed by an idempotent migration", () => {

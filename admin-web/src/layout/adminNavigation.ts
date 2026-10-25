@@ -1,6 +1,7 @@
 import {
   BarChart3,
   BookOpen,
+  Crown,
   Flag,
   History,
   Inbox,
@@ -144,6 +145,14 @@ export const adminNavigationGroups: AdminNavigationGroup[] = [
         permission: AdminPermission.SERVICES_READ,
         icon: Package,
         isActive: nestedRoute('/services'),
+      },
+      {
+        // a17: featured placement recorded after a payment outside the app (B-43).
+        route: '/featured',
+        label: 'الباقات والظهور المميز',
+        permission: AdminPermission.PROVIDERS_READ,
+        icon: Crown,
+        isActive: nestedRoute('/featured'),
       },
     ],
   },

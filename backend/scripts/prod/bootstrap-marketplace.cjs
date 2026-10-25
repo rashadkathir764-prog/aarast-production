@@ -164,8 +164,9 @@ async function upsertProvider(prisma, user, city, category) {
     description:
       'ملف تجريبي للتحقق من مسار المورد وعرض الخدمات داخل أعرست. لا يمثل حجزا فعليا.',
     address: 'صنعاء',
+    // Not featured: «مميز» is only a placement the back office records
+    // after a real payment outside the app (B-43).
     status: ProviderStatus.ACTIVE,
-    isFeatured: true,
   };
 
   if (!existing) {

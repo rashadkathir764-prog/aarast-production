@@ -15,6 +15,7 @@ import { ProviderApplicationDetailsPage } from './features/providers/ProviderApp
 import { ProvidersPage } from './features/providers/ProvidersPage';
 import { ProviderDetailsPage } from './features/providers/ProviderDetailsPage';
 import { ProviderClaimsPage } from './features/providers/ProviderClaimsPage';
+import { FeaturedPlacementsPage } from './features/providers/FeaturedPlacementsPage';
 import { CategoriesPage } from './features/catalog/CategoriesPage';
 import { CitiesPage } from './features/catalog/CitiesPage';
 import { UsersPage } from './features/users/UsersPage';
@@ -88,6 +89,14 @@ export default function App() {
           element={
             <RequireAdminPermission permission={AdminPermission.PROVIDERS_READ}>
               <ProviderClaimsPage />
+            </RequireAdminPermission>
+          }
+        />
+        <Route
+          path="featured"
+          element={
+            <RequireAdminPermission permission={AdminPermission.PROVIDERS_READ}>
+              <FeaturedPlacementsPage />
             </RequireAdminPermission>
           }
         />

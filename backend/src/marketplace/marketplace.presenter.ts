@@ -2,7 +2,6 @@ import { BadRequestException } from "@nestjs/common";
 import {
   City,
   PlanProviderLinkStatus,
-  Provider,
   ProviderCategory,
   ProviderService,
   ProviderServiceImage,
@@ -14,6 +13,7 @@ import {
 } from "@prisma/client";
 import { isQuoteOfferExpired } from "./quote-offer-expiry";
 import { quoteOfferVersionView } from "../modules/marketplace/public/quote-offer-versions";
+import { activeFeaturedPeriodWhere, featuredUntil } from "../modules/marketplace/public/featured-placement";
 import { toReviewIdentity } from "../shared-kernel/privacy/review-identity";
 import { optionalMoneyAmount } from "../shared-kernel/money/money";
 import { weddingLocationResponse } from "../modules/planning/public/wedding-location";
@@ -25,6 +25,7 @@ import {
   PaginatedResponse,
   ProviderSearchWhere,
   ProviderWithCity,
+  ProviderWithFeature,
   QuoteVisibility,
   QuoteWithRelations,
   ReviewWithUser,
@@ -51,7 +52,8 @@ export class MarketplaceQuery {
     return { page, limit, skip: (page - 1) * limit };
   }
 
-  static providerSearch(query: ListProvidersQueryDto): {
+  /** `now` decides which providers are featured (B-43). */
+  static providerSearch(query: ListProvidersQueryDto, now: Date): {
     pagination: MarketplacePagination;
     where: ProviderSearchWhere;
   } {
@@ -83,7 +85,10 @@ export class MarketplaceQuery {
       });
     }
     const featured = this.optionalBoolean(query.featured, "featured");
-    if (featured !== null) and.push({ isFeatured: featured });
+    if (featured !== null) {
+      const active = activeFeaturedPeriodWhere(now);
+      and.push({ featuredPeriods: featured ? { some: active } : { none: active } });
+    }
     const search = this.optionalText(query.search);
     if (search) {
       and.push({
@@ -265,7 +270,7 @@ export class MarketplacePresenter {
   }
 
   static toProviderResponse(
-    provider: Provider & {
+    provider: ProviderWithFeature & {
       city?: City | null;
       primaryCategory?: ProviderCategory | null;
       services?: (ProviderService & {
@@ -298,7 +303,8 @@ export class MarketplacePresenter {
       // A back-office listing its owner has not claimed (V1 4.18): it takes
       // no quote requests; customers reach it by phone or WhatsApp.
       isClaimed: provider.userId !== null,
-      isFeatured: provider.isFeatured,
+      // A placement recorded after a payment outside the app (B-43), read at `now`.
+      isFeatured: featuredUntil(provider.featuredPeriods) !== null,
       ratingAverage: provider.ratingAverage.toString(),
       ratingCount: provider.ratingCount,
       createdAt: provider.createdAt,
@@ -325,7 +331,7 @@ export class MarketplacePresenter {
   }
 
   static toProviderListResponse(
-    provider: Provider & {
+    provider: ProviderWithFeature & {
       city?: City | null;
       primaryCategory?: ProviderCategory | null;
       servicePreviews: (Pick<

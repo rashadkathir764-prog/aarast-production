@@ -38,6 +38,14 @@ const PROVIDER_ERROR_MESSAGES: Record<string, string> = {
   // D41 (B-10): approval needs an active service with its price.
   PROVIDER_SERVICE_REQUIRED:
     'ما عنده خدمة نشطة بسعرها. اطلب منه تعديل يضيف خدمته وسعرها، وبعدها اعتمده.',
+  // B-43: what a featured placement may cover.
+  FEATURED_PROVIDER_UNCLAIMED: 'هذا الملف ما استلمه صاحبه، فما يستقبل طلبات. ما نميّزه لين يستلمه.',
+  FEATURED_PROVIDER_NOT_ACTIVE: 'المزود مو نشط الحين. ما نميّز إلا مزود نشط.',
+  FEATURED_PERIOD_OVERLAP: 'عنده ظهور مميز في نفس الأيام. خلّ الجديد يبدأ بعد آخر يوم في الحالي.',
+  FEATURED_PERIOD_START_PAST: 'ما نسجّل ظهور بتاريخ فات. خلّه يبدأ اليوم أو بعده.',
+  FEATURED_PERIOD_TOO_LONG: 'الظهور المميز سنة بالكثير. سجّل سنة، وجدّدها بعدين.',
+  FEATURED_PERIOD_INVALID: 'آخر يوم لازم يكون بعد يوم البداية، وما يكون فات.',
+  FEATURED_PERIOD_FINISHED: 'هذا الظهور خلص أو انوقف قبل. حدّث الصفحة.',
 };
 
 export function providerErrorMessage(error: unknown, fallback = 'ما قدرنا ننفذ الطلب.'): string {

@@ -103,7 +103,6 @@ model Provider {
   // Set when an admin has checked the provider's documents (not just approved the listing).
   verifiedAt        DateTime?
   verifiedById      String?
-  isFeatured        Boolean                  @default(false)
   ratingAverage     Decimal                  @default(0) @db.Decimal(3, 2)
   ratingCount       Int                      @default(0)
   createdAt         DateTime                 @default(now())
@@ -126,8 +125,8 @@ model Provider {
   profileViewDays   ProviderProfileViewDay[]
   reviewEvents      ProviderReviewEvent[]
   claimRequests     ProviderClaimRequest[]
+  featuredPeriods   ProviderFeaturedPeriod[]
 
-  @@index([status, isFeatured])
   @@index([cityId, status])
   @@index([primaryCategoryId, status])
 }
@@ -445,4 +444,34 @@ model QuoteOfferVersion {
   quoteOffer   QuoteOffer @relation(fields: [quoteOfferId], references: [id], onDelete: Cascade)
 
   @@unique([quoteOfferId, versionNo])
+}
+
+/// A featured placement the back office switched on by hand after the
+/// provider paid outside the app (B-43, D41): no amount and no payment is
+/// kept, only the period, who switched it on and their note. The provider
+/// is featured while `startsAt <= now < endsAt` and `endedAt` is null; it
+/// is read at request time, so the placement lapses at `endsAt` by itself.
+/// One provider's periods never overlap (checked under the provider's row
+/// lock). `grantedById` and `endedById` are plain ids like
+/// `ProviderClaimRequest.decidedById`. The notice markers make the hourly
+/// job tell the provider once.
+model ProviderFeaturedPeriod {
+  id             String    @id @default(uuid())
+  providerId     String
+  startsAt       DateTime
+  endsAt         DateTime
+  note           String?   @db.Text
+  grantedById    String
+  createdAt      DateTime  @default(now())
+  // Ended (or, before it started, cancelled) by an administrator.
+  endedAt        DateTime?
+  endedById      String?
+  endNote        String?   @db.Text
+  // When the provider was told it ends within seven days, and that it ended.
+  endingNoticeAt DateTime?
+  endNoticeAt    DateTime?
+  provider       Provider  @relation(fields: [providerId], references: [id], onDelete: Cascade)
+
+  @@index([providerId, startsAt])
+  @@index([endsAt])
 }

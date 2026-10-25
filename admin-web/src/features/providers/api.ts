@@ -104,7 +104,10 @@ export type ProviderApplication = {
   reviewedBy: AdminUser | null;
   /** When an admin checked the provider's documents; null when not verified. */
   verifiedAt: string | null;
+  /** Featured now: a recorded placement covers this moment (B-43). */
   isFeatured: boolean;
+  /** When that placement ends; null when not featured. */
+  featuredUntil: string | null;
   ratingAverage: string;
   ratingCount: number;
   servicesCount: number;
@@ -314,4 +317,71 @@ export function setProviderVerified(
     `/admin/providers/${id}/${verified ? 'verify' : 'unverify'}`,
     { method: 'PATCH', body: {} },
   );
+}
+
+/**
+ * A featured placement (B-43): the provider paid outside the app and an
+ * administrator recorded its days. Days are Yemen calendar days; `lastDay`
+ * is the last one covered. No amount is kept.
+ */
+export type FeaturedPeriod = {
+  id: string;
+  state: 'ACTIVE' | 'SCHEDULED' | 'EXPIRED' | 'ENDED';
+  startsAt: string;
+  endsAt: string;
+  startsOn: string;
+  lastDay: string;
+  /** How he paid outside the app, as the administrator wrote it. */
+  note: string | null;
+  createdAt: string;
+  grantedBy: { id: string; name: string } | null;
+  endedAt: string | null;
+  endedBy: { id: string; name: string } | null;
+  endNote: string | null;
+  endingNoticeAt: string | null;
+  endNoticeAt: string | null;
+  provider: ProviderReference;
+};
+
+/** CURRENT: active or booked; FINISHED: over or ended early. */
+export type FeaturedPeriodList = 'CURRENT' | 'ACTIVE' | 'SCHEDULED' | 'FINISHED' | 'ALL';
+
+export type FeaturedSummary = {
+  /** Active providers with an active service: the ones customers see. */
+  listedProviders: number;
+  featured: number;
+  free: number;
+  endingThisWeek: number;
+};
+
+export function getFeaturedPeriods(params?: {
+  state?: FeaturedPeriodList;
+  providerId?: string;
+  page?: number;
+  limit?: number;
+}): Promise<Paginated<FeaturedPeriod>> {
+  return apiRequest<Paginated<FeaturedPeriod>>(
+    `/admin/featured-periods${toQuery(params ?? {})}`,
+  );
+}
+
+export function getFeaturedSummary(): Promise<FeaturedSummary> {
+  return apiRequest<FeaturedSummary>('/admin/featured-periods/summary');
+}
+
+export function grantFeaturedPeriod(
+  providerId: string,
+  input: { endsOn: string; startsOn?: string; note?: string },
+): Promise<FeaturedPeriod> {
+  return apiRequest<FeaturedPeriod>(`/admin/providers/${providerId}/featured-periods`, {
+    method: 'POST',
+    body: input,
+  });
+}
+
+export function endFeaturedPeriod(id: string, note?: string): Promise<FeaturedPeriod> {
+  return apiRequest<FeaturedPeriod>(`/admin/featured-periods/${id}/end`, {
+    method: 'POST',
+    body: note ? { note } : {},
+  });
 }

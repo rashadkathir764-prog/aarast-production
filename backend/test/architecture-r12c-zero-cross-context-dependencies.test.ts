@@ -94,7 +94,10 @@ test('R12C closure record binds the phase, the frozen manifests and real history
   const result = api.scanR12cZeroCrossContextDependencies({ repositoryRoot: root, manifest });
   // Bookings (V1 checklist 4.6) add two marketplace-owned consumers: the
   // bookings service and controller (7 -> 9); dependency records stay 0.
-  assert.deepEqual(result, { ok: true, stage: 'strict', closed: true, dependencyRecords: 0, marketplaceConsumers: 9, ...liveOwnershipCounts() });
+  // Featured placement (B-43) adds two that route the provider's notices to
+  // his portal through the policy's route: the back office's placements and
+  // the hourly notices job (9 -> 11).
+  assert.deepEqual(result, { ok: true, stage: 'strict', closed: true, dependencyRecords: 0, marketplaceConsumers: 11, ...liveOwnershipCounts() });
   assert.deepEqual(api.readR12cStrictDependencyBytes(root), Buffer.from('[]\n', 'utf8'));
   assert.throws(() => api.projectR12cWorkingTreeToPredecessor({ repositoryRoot: root, manifest }), /R12C is closed/u);
   // The record is validated exactly: shape, phase, frozen manifests, history.

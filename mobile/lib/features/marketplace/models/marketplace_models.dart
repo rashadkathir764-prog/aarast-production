@@ -826,9 +826,14 @@ class ProviderDashboardProfile {
     this.address,
     this.createdAt,
     this.verifiedAt,
+    this.featuredStartsAt,
+    this.featuredEndsAt,
   });
 
   factory ProviderDashboardProfile.fromJson(Map<String, dynamic> json) {
+    final featured = json['featured'] is Map
+        ? Map<String, dynamic>.from(json['featured'] as Map)
+        : null;
     return ProviderDashboardProfile(
       id: json['id'].toString(),
       businessName: json['businessName']?.toString() ?? '',
@@ -866,6 +871,8 @@ class ProviderDashboardProfile {
       address: json['address']?.toString(),
       createdAt: _dateOrNull(json['createdAt']),
       verifiedAt: _dateOrNull(json['verifiedAt']),
+      featuredStartsAt: _dateOrNull(featured?['startsAt']),
+      featuredEndsAt: _dateOrNull(featured?['endsAt']),
     );
   }
 
@@ -916,6 +923,12 @@ class ProviderDashboardProfile {
   /// When an admin verified the provider; null while not verified (p35,
   /// p48 «موثّق»).
   final DateTime? verifiedAt;
+
+  /// His featured placement now, else the next one booked (B-43): the team
+  /// records it after he pays outside the app. `featuredEndsAt` is the
+  /// start of the day after the last one covered (Sana'a time).
+  final DateTime? featuredStartsAt;
+  final DateTime? featuredEndsAt;
 }
 
 class ProviderDashboardSummary {

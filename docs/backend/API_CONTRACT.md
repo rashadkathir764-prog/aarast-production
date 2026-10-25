@@ -2313,6 +2313,56 @@ checklist 4.18):
 - `POST /api/v1/provider/apply` is `409 PROVIDER_LISTING_CLAIMABLE` while such a
   listing waits under the caller's phone.
 
+Featured placement (B-43, D41, D51): the provider pays the owner outside the
+app; an administrator records the days. No amount, payment or payment status
+is taken or kept anywhere.
+
+- A provider is featured while one of its `ProviderFeaturedPeriod` rows covers
+  the moment of the request (`startsAt <= now < endsAt`, not ended early).
+  It is read at request time, so a placement lapses at its end by itself.
+- `GET /api/v1/providers` lists the providers featured now first, then the
+  others, each group by rating then age (the page is cut across both
+  groups). `isFeatured` on every provider response (list, page, favorites)
+  is that placement; `featured=true|false` filters by it. The customer card
+  labels it «مميز».
+- `GET /api/v1/provider/me/profile` returns `featured: { startsAt, endsAt,
+  active } | null`: the placement covering now (`active: true`) or the next
+  one booked (`active: false`). `endsAt` is the start of the day after the
+  last day covered (Sana'a, UTC+3). The profile has no `isFeatured`.
+- `GET /admin/featured-periods?state&providerId&page&limit`
+  (`PROVIDERS_READ`): `state` is `CURRENT` (default: active or booked),
+  `ACTIVE`, `SCHEDULED`, `FINISHED` or `ALL`; latest start first. Each item:
+  `{ id, state: ACTIVE|SCHEDULED|EXPIRED|ENDED, startsAt, endsAt, startsOn,
+  lastDay, note, createdAt, grantedBy: { id, name } | null, endedAt,
+  endedBy, endNote, endingNoticeAt, endNoticeAt, provider }` (`startsOn` and
+  `lastDay` are Sana'a `YYYY-MM-DD` days).
+- `GET /admin/featured-periods/summary` (`PROVIDERS_READ`): `{
+  listedProviders, featured, free, endingThisWeek }` over the providers
+  customers see (active with an active service); `endingThisWeek` counts
+  active placements ending within seven days with nothing booked after.
+- `POST /admin/providers/:id/featured-periods` (`PROVIDERS_WRITE`, re-checked
+  live under the account locks) with `{ endsOn: "YYYY-MM-DD", startsOn?,
+  note? }` (`note` up to 500 characters: how he paid, as the administrator
+  writes it). It starts now, or on a later day `startsOn`; it covers whole
+  days through `endsOn`. Refusals: `404` unknown provider; `400` the
+  administrator's own listing; `409 FEATURED_PROVIDER_NOT_ACTIVE`;
+  `409 FEATURED_PROVIDER_UNCLAIMED` (an unclaimed listing takes no requests);
+  `409 FEATURED_PERIOD_OVERLAP` with the clashing `startsOn` and `lastDay`
+  (periods of one provider never overlap; a renewal starts the day after);
+  `422 FEATURED_PERIOD_START_PAST` (never back-dated);
+  `422 FEATURED_PERIOD_INVALID` (not a day, or over before it starts);
+  `422 FEATURED_PERIOD_TOO_LONG` (more than 366 days). The provider is told
+  «تفعّل ظهورك المميز» (or «ظهورك المميز محجوز» for a later start).
+- `POST /admin/featured-periods/:id/end` (`PROVIDERS_WRITE`) with `{ note? }`
+  stops an active placement now or cancels a booked one; the provider is told
+  «وقّفنا ظهورك المميز» or «لغينا ظهورك المميز» with the note. One that is
+  over is `409 FEATURED_PERIOD_FINISHED`.
+- Every write is in the admin audit log (route and target). An hourly job
+  tells the provider once «ظهورك المميز ينتهي قريب» in the last seven days
+  and once «خلص ظهورك المميز» at the end, unless a period booked right after
+  carries it on. All these notices are `GENERAL`, provider-audience, routed
+  to the provider portal.
+
 Joining, changes and reopening (B-01, B-02, B-10):
 
 - `POST /api/v1/provider/apply` takes `categoryIds` (at least one; the first
@@ -2659,6 +2709,11 @@ returns the admin refresh token.
   provider is fixing; the newest decision's notes are the ones he reads.
 - `GET /admin/provider-claims`, `POST /admin/provider-claims/:id/approve`,
   `POST /admin/provider-claims/:id/reject` (see Provider References)
+- `GET /admin/featured-periods`, `GET /admin/featured-periods/summary`,
+  `POST /admin/providers/:id/featured-periods`,
+  `POST /admin/featured-periods/:id/end` (featured placement, B-43; see
+  Provider References). Admin provider rows carry `isFeatured` and
+  `featuredUntil` from the placement covering now.
 - `PATCH /admin/providers/:id/suspend`
 - `PATCH /admin/providers/:id/activate`
 - `PATCH /admin/providers/:id/verify`
@@ -2819,6 +2874,9 @@ configuration, and smoke checks.
 | PATCH | `/admin/districts/:id` | `catalogs.updateDistrict` | 🔒 |
 | GET | `/admin/districts/:id/localities` | `catalogs.listLocalities` | 🔒 |
 | POST | `/admin/districts/:id/localities` | `catalogs.createLocality` | 🔒 |
+| GET | `/admin/featured-periods` | `admin.listFeaturedPeriods` | 🔒 |
+| POST | `/admin/featured-periods/:id/end` | `admin.endFeaturedPeriod` | 🔒 |
+| GET | `/admin/featured-periods/summary` | `admin.getFeaturedSummary` | 🔒 |
 | GET | `/admin/governorates` | `catalogs.listGovernorates` | 🔒 |
 | POST | `/admin/governorates` | `catalogs.createGovernorate` | 🔒 |
 | DELETE | `/admin/governorates/:id` | `catalogs.disableGovernorate` | 🔒 |
@@ -2844,6 +2902,7 @@ configuration, and smoke checks.
 | GET | `/admin/providers/:id` | `admin.getProvider` | 🔒 |
 | PATCH | `/admin/providers/:id/activate` | `admin.activateProvider` | 🔒 |
 | PATCH | `/admin/providers/:id/approve` | `admin.approveProvider` | 🔒 |
+| POST | `/admin/providers/:id/featured-periods` | `admin.grantFeaturedPeriod` | 🔒 |
 | PATCH | `/admin/providers/:id/reject` | `admin.rejectProvider` | 🔒 |
 | PATCH | `/admin/providers/:id/request-changes` | `admin.requestProviderChanges` | 🔒 |
 | GET | `/admin/providers/:id/review-history` | `admin.getProviderReviewHistory` | 🔒 |

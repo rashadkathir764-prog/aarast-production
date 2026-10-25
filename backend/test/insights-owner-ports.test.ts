@@ -148,7 +148,8 @@ test('marketplace serves the home counters, the active plan provider links and t
   const { client, calls } = recorder();
   const providers = new ProviderReadService();
   const quotes = new QuoteReadService();
-  await providers.countFeaturedActiveProviders(client);
+  const now = new Date('2026-10-25T09:00:00.000Z');
+  await providers.countFeaturedActiveProviders(client, now);
   await providers.countUserFavorites(client, 'user-1');
   await providers.countActivePlanProviderLinks(client, 'plan-1');
   await providers.listActivePlanProviderLinks(client, 'plan-1', ['quote-1'], 3);
@@ -163,7 +164,12 @@ test('marketplace serves the home counters, the active plan provider links and t
   });
   const planQuotes = { weddingPlanId: 'plan-1' };
   assert.deepEqual(calls, [
-    ['provider.count', { where: { status: ProviderStatus.ACTIVE, isFeatured: true } }],
+    ['provider.count', {
+      where: {
+        status: ProviderStatus.ACTIVE,
+        featuredPeriods: { some: { startsAt: { lte: now }, endsAt: { gt: now }, endedAt: null } },
+      },
+    }],
     ['favoriteProvider.count', { where: { userId: 'user-1' } }],
     ['planProviderLink.count', { where: links() }],
     ['planProviderLink.findMany', {

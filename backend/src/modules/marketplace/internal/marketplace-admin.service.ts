@@ -7,8 +7,14 @@ import {
   ReviewStatus,
 } from '@prisma/client';
 import type {
+  AdminActiveFeaturedPeriod,
   AdminClaimRequestFilter,
   AdminClaimRequestRow,
+  AdminFeaturedPeriodFilter,
+  AdminFeaturedPeriodRow,
+  AdminFeaturedSummary,
+  FeaturedPeriodEndFields,
+  FeaturedPeriodGrantFields,
   AdminListedProviderFields,
   AdminListing,
   AdminProviderReviewEvent,
@@ -272,5 +278,61 @@ export class MarketplaceAdminService implements MarketplaceAdminPort {
     cityIds: readonly string[],
   ): Promise<CatalogUsage[]> {
     return this.repository.countCityUsage(client, cityIds);
+  }
+
+  async listFeaturedPeriods(
+    client: Prisma.TransactionClient,
+    filter: AdminFeaturedPeriodFilter,
+    page: AdminPage,
+    now: Date,
+  ): Promise<AdminListing<AdminFeaturedPeriodRow>> {
+    return this.repository.listFeaturedPeriods(client, filter, page, now);
+  }
+
+  async getFeaturedSummary(
+    client: Prisma.TransactionClient,
+    now: Date,
+    weekEnd: Date,
+  ): Promise<AdminFeaturedSummary> {
+    return this.repository.getFeaturedSummary(client, now, weekEnd);
+  }
+
+  async listActiveFeaturedPeriods(
+    client: Prisma.TransactionClient,
+    providerIds: readonly string[],
+    now: Date,
+  ): Promise<AdminActiveFeaturedPeriod[]> {
+    return this.repository.listActiveFeaturedPeriods(client, providerIds, now);
+  }
+
+  async findOverlappingFeaturedPeriod(
+    tx: Prisma.TransactionClient,
+    providerId: string,
+    startsAt: Date,
+    endsAt: Date,
+  ): Promise<{ id: string; startsAt: Date; endsAt: Date } | null> {
+    return this.repository.findOverlappingFeaturedPeriod(tx, providerId, startsAt, endsAt);
+  }
+
+  async createFeaturedPeriodInTransaction(
+    tx: Prisma.TransactionClient,
+    fields: FeaturedPeriodGrantFields,
+  ): Promise<AdminFeaturedPeriodRow> {
+    return this.repository.createFeaturedPeriodInTransaction(tx, fields);
+  }
+
+  async lockFeaturedPeriodForUpdateInTransaction(
+    tx: Prisma.TransactionClient,
+    periodId: string,
+  ): Promise<AdminFeaturedPeriodRow | null> {
+    return this.repository.lockFeaturedPeriodForUpdateInTransaction(tx, periodId);
+  }
+
+  async endFeaturedPeriodInTransaction(
+    tx: Prisma.TransactionClient,
+    periodId: string,
+    fields: FeaturedPeriodEndFields,
+  ): Promise<AdminFeaturedPeriodRow | null> {
+    return this.repository.endFeaturedPeriodInTransaction(tx, periodId, fields);
   }
 }

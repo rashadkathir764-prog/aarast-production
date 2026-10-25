@@ -11,6 +11,7 @@ import type {
   ProviderReadPort,
 } from '../public/provider-read.port';
 import { groupPrices, type PriceGroup } from '../public/market-prices';
+import { activeFeaturedPeriodWhere } from '../public/featured-placement';
 import { listPricedServices } from './market-prices.repository';
 
 @Injectable()
@@ -65,9 +66,13 @@ export class ProviderReadService implements ProviderReadPort {
 
   async countFeaturedActiveProviders(
     client: Prisma.TransactionClient,
+    now: Date,
   ): Promise<number> {
     return client.provider.count({
-      where: { status: ProviderStatus.ACTIVE, isFeatured: true },
+      where: {
+        status: ProviderStatus.ACTIVE,
+        featuredPeriods: { some: activeFeaturedPeriodWhere(now) },
+      },
     });
   }
 

@@ -36,6 +36,7 @@ import {
 } from '../modules/identity/public/user-read.port';
 import {
   type AdminClaimRequestRow,
+  type AdminFeaturedPeriodRow,
   type AdminProviderDetailRow,
   type AdminProviderReviewEvent,
   type AdminProviderRow,
@@ -69,6 +70,7 @@ import type {
   AdminCategoryRecord,
   AdminCityRecord,
   AdminClaimRequestRecord,
+  AdminFeaturedPeriodRecord,
   AdminNotificationWithDetails,
   AdminProviderRecord,
   AdminProviderReviewEventRecord,
@@ -131,16 +133,25 @@ export class AdminOwners {
     client: Client,
     rows: readonly AdminProviderRow[],
   ): Promise<AdminProviderRecord[]> {
-    const [accounts, cities, categories] = await Promise.all([
+    const [accounts, cities, categories, featured] = await Promise.all([
       this.accountMap(
         client,
         rows.flatMap((row) => [row.userId, row.reviewedById]),
       ),
       this.cityMap(client, rows.map((row) => row.cityId)),
       this.categoryMap(client, rows.map((row) => row.primaryCategoryId)),
+      this.marketplace.listActiveFeaturedPeriods(
+        client,
+        rows.map((row) => row.id),
+        new Date(),
+      ),
     ]);
+    const featuredUntil = new Map(
+      featured.map((period) => [period.providerId, period.endsAt]),
+    );
     return rows.map((row) => ({
       ...row,
+      featuredUntil: featuredUntil.get(row.id) ?? null,
       user: row.userId ? (accounts.get(row.userId) ?? null) : null,
       reviewedBy: row.reviewedById
         ? (accounts.get(row.reviewedById) ?? null)
@@ -169,6 +180,33 @@ export class AdminOwners {
       ...row,
       claimant: accounts.get(row.userId) ?? null,
       decidedBy: row.decidedById ? (accounts.get(row.decidedById) ?? null) : null,
+      provider: {
+        ...row.provider,
+        city: required(cities, row.provider.cityId, 'City'),
+        primaryCategory: row.provider.primaryCategoryId
+          ? required(categories, row.provider.primaryCategoryId, 'Provider category')
+          : null,
+      },
+    }));
+  }
+
+  /** A placement's listing (with its city and category) and who recorded and ended it (B-43). */
+  async attachFeaturedPeriods(
+    client: Client,
+    rows: readonly AdminFeaturedPeriodRow[],
+  ): Promise<AdminFeaturedPeriodRecord[]> {
+    const [accounts, cities, categories] = await Promise.all([
+      this.accountMap(
+        client,
+        rows.flatMap((row) => [row.grantedById, row.endedById]),
+      ),
+      this.cityMap(client, rows.map((row) => row.provider.cityId)),
+      this.categoryMap(client, rows.map((row) => row.provider.primaryCategoryId)),
+    ]);
+    return rows.map((row) => ({
+      ...row,
+      grantedBy: accounts.get(row.grantedById) ?? null,
+      endedBy: row.endedById ? (accounts.get(row.endedById) ?? null) : null,
       provider: {
         ...row.provider,
         city: required(cities, row.provider.cityId, 'City'),

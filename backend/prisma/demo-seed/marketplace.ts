@@ -39,6 +39,11 @@ import {
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
+/** The instant a Sanaa calendar day that many days from today starts (UTC+3). */
+function yemenDayStart(offset: number): Date {
+  return new Date(inDays(offset).getTime() - 3 * 60 * 60 * 1000);
+}
+
 async function resolveCities(prisma: PrismaClient): Promise<Map<string, string>> {
   const result = new Map<string, string>();
   const names = new Set(PROVIDERS.map((provider) => provider.city));
@@ -119,9 +124,39 @@ async function seedProvider(
     reopenedAt: reopens.length ? stepAt(reopens[reopens.length - 1]!) : null,
     verifiedAt: spec.verified ? inDays(-14) : null,
     verifiedById: spec.verified ? reviewer : null,
-    isFeatured: spec.featured ?? false,
   };
   await prisma.provider.upsert({ where: { id }, create: { id, ...data }, update: data });
+
+  // B-43: the placement Nadia recorded after he paid outside the app,
+  // rewritten whole on every run like the review history.
+  const featuredId = demoUuid(`featured:${spec.key}`);
+  await prisma.providerFeaturedPeriod.deleteMany({
+    where: { providerId: id, id: { not: featuredId } },
+  });
+  if (spec.featured) {
+    const startsAt = yemenDayStart(spec.featured.firstDay);
+    const endsAt = yemenDayStart(spec.featured.lastDay + 1);
+    const period = {
+      providerId: id,
+      startsAt,
+      endsAt,
+      note: spec.featured.note,
+      grantedById: reviewer,
+      createdAt: startsAt,
+      endedAt: null,
+      endedById: null,
+      endNote: null,
+      endingNoticeAt: spec.featured.told ? new Date(endsAt.getTime() - 7 * DAY_MS) : null,
+      endNoticeAt: spec.featured.told ? endsAt : null,
+    };
+    await prisma.providerFeaturedPeriod.upsert({
+      where: { id: featuredId },
+      create: { id: featuredId, ...period },
+      update: period,
+    });
+  } else {
+    await prisma.providerFeaturedPeriod.deleteMany({ where: { providerId: id } });
+  }
 
   // The history is rewritten whole on every run, so it never doubles.
   await prisma.providerReviewEvent.deleteMany({ where: { providerId: id } });

@@ -117,7 +117,6 @@ async function ensureFixture() {
         whatsapp: phone,
         description: 'مزود نشط لاختبارات السوق.',
         status: ProviderStatus.ACTIVE,
-        isFeatured: true,
       },
     }));
 
@@ -127,7 +126,19 @@ async function ensureFixture() {
       cityId: city.id,
       primaryCategoryId: category.id,
       status: ProviderStatus.ACTIVE,
-      isFeatured: true,
+    },
+  });
+
+  // Featured = a placement covering now (B-43); the list filter reads it.
+  const now = Date.now();
+  await prisma.providerFeaturedPeriod.deleteMany({ where: { providerId: provider.id } });
+  await prisma.providerFeaturedPeriod.create({
+    data: {
+      providerId: provider.id,
+      startsAt: new Date(now - 24 * 60 * 60 * 1000),
+      endsAt: new Date(now + 30 * 24 * 60 * 60 * 1000),
+      note: 'smoke fixture',
+      grantedById: 'smoke-marketplace',
     },
   });
 

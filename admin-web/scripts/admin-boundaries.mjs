@@ -17,7 +17,8 @@ const EXACT = Object.freeze({
   allowedFeatureEdges: '801d8ca4699d0879dd4dc535eba2345d5d9cd358e0bba5dbc4fae2632ec36f61',
   compositionRoots: '18e34932763ebde50f663bae2c92aeb7a4aea4d7aaa2bc57d7a12247d6174aa5',
   // Re-pinned 2026-10-25: the a07 claims page ProviderClaimsPage (B-12).
-  appScreenAllowlist: 'bb353c005de1245987bcbc927b15a4abf7c7c1ca2af8a191519be705f1f8d876',
+  // Re-pinned 2026-10-25: the a17 plans page FeaturedPlacementsPage (B-43).
+  appScreenAllowlist: '0aa7dca53c99b014f9b6fe2b4f72e62781fb5ef59d58c810783cae9a19e04fd4',
   publicSurfaceFirstTask: '8c16474435f8c71a05735b8d25810f6acd1d558c73dd55cd5bf5eaa5e97a0e2a',
   // Re-pinned 2026-10-11: providers gained setProviderVerified (V1 checklist 4.11).
   // Re-pinned 2026-10-15: providers gained createListedProvider (V1 checklist 4.18).
@@ -26,7 +27,9 @@ const EXACT = Object.freeze({
   // notes and the claims of a listing (B-01, B-02, B-12).
   // Re-pinned 2026-10-25: providers gained sentBackAfterRefusal, the one
   // reading of «كان مرفوض» the queue and the inbox share (B-02).
-  publicSurfaces: '75bc118173d8fdc0999b98c38088ecee2779b6a0a4b4b8ec88bece168ad6cb3d',
+  // Re-pinned 2026-10-25: providers gained the featured placements, their
+  // summary, recording one and ending one (B-43).
+  publicSurfaces: '4494d846b223708393dea58307ad07937601160aa0e2b23ff96dff27eb595b40',
   sourceFates: '2b0bc1b903a3a861b0400d398fd091a4078d9e4d2bde4a3b06166f9b764699b5',
   createdTargets: '3d658daecf9de9a7040443a75c630a8ba732b2627c5ea929fb741205fe0019a1',
   stages: 'd799c92b42714969d4570dd925a34912ea05ec6b4b4107c4ef0fbb3c93e09ab6',
@@ -175,7 +178,7 @@ export function validateR10Manifest(value) {
   requireExactArray(Object.keys(value.allowedFeatureEdges || {}), EXACT_FEATURES);
   if (
     !Array.isArray(value.appScreenAllowlist)
-    || value.appScreenAllowlist.length !== 20
+    || value.appScreenAllowlist.length !== 21
     || JSON.stringify(value.appScreenAllowlist) !== JSON.stringify(uniqueSorted(value.appScreenAllowlist))
   ) throw new Error('screen allowlist invalid');
   for (const fate of value.sourceFates) {

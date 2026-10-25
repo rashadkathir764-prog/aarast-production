@@ -57,8 +57,8 @@ export interface ProviderReadPort {
     tx: Prisma.TransactionClient,
     providerIds: readonly string[],
   ): Promise<LockedProviderRow[]>;
-  /** Active, featured providers (the home dashboard counter). */
-  countFeaturedActiveProviders(client: Prisma.TransactionClient): Promise<number>;
+  /** Active providers featured at `now` (the home dashboard counter, B-43). */
+  countFeaturedActiveProviders(client: Prisma.TransactionClient, now: Date): Promise<number>;
   /** The user's favorite providers (the home dashboard counter). */
   countUserFavorites(
     client: Prisma.TransactionClient,

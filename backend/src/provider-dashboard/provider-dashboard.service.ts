@@ -121,6 +121,8 @@ import {
   recordProviderReviewEvent,
 } from '../modules/marketplace/infrastructure/provider-review.repository';
 import { claimPhoneSpellings } from '../modules/marketplace/public/provider-claim-phone';
+import type { FeaturedWindow } from '../modules/marketplace/public/featured-placement';
+import { findProviderFeaturedView } from '../modules/marketplace/infrastructure/featured-period.repository';
 import { ResubmitApplicationDto } from './dto/resubmit-application.dto';
 import {
   lockOwnedProviderAfterUsersInTransaction,
@@ -136,6 +138,8 @@ type ProviderProfile = Provider & {
   latestDecision:
     | (ProviderReviewDecisionView & { id: string; createdAt: Date })
     | null;
+  /** His featured placement now, else the next one booked (B-43). */
+  featuredPeriod: FeaturedWindow | null;
 };
 type ProviderDashboardServiceRecord = ProviderService & {
   category: ProviderCategory;
@@ -1754,11 +1758,12 @@ export class ProviderDashboardService {
     client: Prisma.TransactionClient,
     provider: Provider,
   ): Promise<ProviderProfile> {
-    const [[profile], latestDecision] = await Promise.all([
+    const [[profile], latestDecision, featuredPeriod] = await Promise.all([
       this.relations.attachProviderCatalog(client, [provider]),
       findLatestProviderDecision(client, provider.id),
+      findProviderFeaturedView(client, provider.id, new Date()),
     ]);
-    return { ...profile, latestDecision };
+    return { ...profile, latestDecision, featuredPeriod };
   }
 
   private async withServiceCatalog<
@@ -1891,7 +1896,15 @@ export class ProviderDashboardService {
       reviewedAt: provider.reviewedAt,
       reviewedById: provider.reviewedById,
       verifiedAt: provider.verifiedAt,
-      isFeatured: provider.isFeatured,
+      // B-43: the placement the back office recorded after he paid outside
+      // the app; `active` is false while it waits for its start.
+      featured: provider.featuredPeriod
+        ? {
+            startsAt: provider.featuredPeriod.startsAt,
+            endsAt: provider.featuredPeriod.endsAt,
+            active: provider.featuredPeriod.startsAt.getTime() <= Date.now(),
+          }
+        : null,
       ratingAverage: provider.ratingAverage.toString(),
       ratingCount: provider.ratingCount,
       createdAt: provider.createdAt,

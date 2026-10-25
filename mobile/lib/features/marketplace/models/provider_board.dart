@@ -2,9 +2,6 @@ import '../../../core/experience_v3/aarast_journey_profile.dart';
 import '../../../core/utils/arabic_count.dart';
 import '../../../core/utils/arabic_date_formatter.dart';
 import 'marketplace_models.dart';
-import 'provider_service_groups.dart';
-
-export 'provider_service_groups.dart' show providerServiceGroupOf;
 
 /// f01 «خدمات عرسك»: one row per service the wedding needs, and how far it
 /// got: 0 ما بدأت, 1 طلب, 2 عرض, 3 طلب حجز, 4 محجوز.
@@ -16,6 +13,7 @@ class ProviderBoardRow {
     required this.detail,
     this.budgetCategoryId,
     this.providerCategoryName,
+    this.providerCategoryIds = const [],
     this.waitingOffers = 0,
     this.quotes = const [],
     this.outside = false,
@@ -29,8 +27,12 @@ class ProviderBoardRow {
   final String detail;
   final String? budgetCategoryId;
 
-  /// The directory category to search when nothing started yet.
+  /// The kind of service the row is about, as said to the user.
   final String? providerCategoryName;
+
+  /// G40: the directory categories «ابحث» searches (the item's, from the
+  /// server, or the request's own kind). Empty: no «ابحث».
+  final List<String> providerCategoryIds;
 
   /// Offers that arrived and still wait for an answer.
   final int waitingOffers;
@@ -42,8 +44,9 @@ class ProviderBoardRow {
   bool get booked => stage == 4;
 }
 
-/// A money item the board reads: its id and name.
-typedef BoardItem = ({String id, String name});
+/// A money item the board reads: its id, its name, and the directory
+/// categories whose offers land in it (G40, from the money summary).
+typedef BoardItem = ({String id, String name, List<String> providerCategoryIds});
 
 /// A recorded cost the board reads: its item and who it is with.
 typedef BoardCost = ({
@@ -54,6 +57,10 @@ typedef BoardCost = ({
 
 String? _quoteCategoryName(QuoteRequest quote) =>
     quote.service?.category?.nameAr ?? quote.costSuggestion?.category;
+
+/// The category acceptance files the request's offer by.
+String? _quoteCategoryId(QuoteRequest quote) =>
+    quote.costSuggestion?.categoryId ?? quote.service?.category?.id;
 
 String _providerName(QuoteRequest quote) =>
     quote.provider?.businessName.trim().isNotEmpty == true
@@ -75,8 +82,9 @@ String _offerCount(int count) => switch (count) {
 };
 
 /// Builds the board from the plan's money items, its recorded costs, and its
-/// quote requests. Items that are services (or already have a provider)
-/// become rows; a request whose service matches no item gets its own row.
+/// quote requests. Items providers are searched for (the server lists their
+/// categories, G40), or that already have a provider, become rows; a request
+/// whose kind lands in no item gets its own row.
 ///
 /// [reader] is who reads the board (B5): «اطلب الحجز» is said to them. The
 /// screens pass the open plan's reader; the groom's form is Arabic's general
@@ -90,17 +98,16 @@ List<ProviderBoardRow> buildProviderBoard({
 }) {
   final quotesByKey = <String, List<QuoteRequest>>{};
   final extraTitles = <String, String>{};
+  final extraCategories = <String, String>{};
   for (final quote in quotes) {
     final costId = quote.costSuggestion?.costId;
     String? key = costId == null ? null : costItemById[costId];
-    if (key == null) {
-      final group = providerServiceGroupOf(_quoteCategoryName(quote));
-      if (group >= 0) {
-        for (final item in items) {
-          if (providerServiceGroupOf(item.name) == group) {
-            key = item.id;
-            break;
-          }
+    final categoryId = _quoteCategoryId(quote);
+    if (key == null && categoryId != null) {
+      for (final item in items) {
+        if (item.providerCategoryIds.contains(categoryId)) {
+          key = item.id;
+          break;
         }
       }
     }
@@ -108,6 +115,7 @@ List<ProviderBoardRow> buildProviderBoard({
       final name = _quoteCategoryName(quote)?.trim();
       key = 'category:${name?.isNotEmpty == true ? name : _providerName(quote)}';
       extraTitles[key] = name?.isNotEmpty == true ? name! : _providerName(quote);
+      if (categoryId != null) extraCategories[key] = categoryId;
     }
     (quotesByKey[key] ??= []).add(quote);
   }
@@ -117,7 +125,7 @@ List<ProviderBoardRow> buildProviderBoard({
     final itemCosts = costs.where((cost) => cost.budgetCategoryId == item.id);
     final related = quotesByKey.remove(item.id) ?? const [];
     final isService =
-        providerServiceGroupOf(item.name) >= 0 ||
+        item.providerCategoryIds.isNotEmpty ||
         related.isNotEmpty ||
         itemCosts.any(
           (cost) =>
@@ -137,6 +145,7 @@ List<ProviderBoardRow> buildProviderBoard({
         key: item.id,
         title: item.name,
         budgetCategoryId: item.id,
+        providerCategoryIds: item.providerCategoryIds,
         quotes: related,
         outsideParty: outside?.partyName?.trim(),
         reader: reader,
@@ -144,10 +153,12 @@ List<ProviderBoardRow> buildProviderBoard({
     );
   }
   for (final entry in quotesByKey.entries) {
+    final categoryId = extraCategories[entry.key];
     rows.add(
       _row(
         key: entry.key,
         title: extraTitles[entry.key] ?? 'خدمة',
+        providerCategoryIds: [?categoryId],
         quotes: entry.value,
         reader: reader,
       ),
@@ -168,6 +179,7 @@ ProviderBoardRow _row({
   required String title,
   required List<QuoteRequest> quotes,
   required JourneyProfile reader,
+  required List<String> providerCategoryIds,
   String? budgetCategoryId,
   String? outsideParty,
 }) {
@@ -206,6 +218,7 @@ ProviderBoardRow _row({
         detail: detail,
         budgetCategoryId: budgetCategoryId,
         providerCategoryName: _searchCategory(title, quotes),
+        providerCategoryIds: providerCategoryIds,
         waitingOffers: waiting,
         quotes: quotes,
         outside: outside,

@@ -152,7 +152,8 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(popped, ['الفنان والفرقة']);
+    // G40: the declined kind's category; «المزودين» searches its item.
+    expect(popped, ['cat-band']);
   });
 
   testWidgets('a cancelled booking can be asked for again', (tester) async {

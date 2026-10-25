@@ -459,6 +459,9 @@ Future<void> runOwnerWalk(WidgetTester tester, OwnerPersona p) async {
       );
       walk.expectNotSee('اطلب الحجز', why: 'كلام مذكّر للعروسة');
       walk.expectNotSee('اخترت ضيافة', why: 'البيانات: الضيافة محجوزة لها');
+      // G40: her items are services too (the server lists their kinds).
+      walk.expectSee('البخور', why: 'بند البخور له مزودين عطور');
+      walk.expectSee('المزينة والنقاشة', why: 'بند النقاشة له مزودين نقش');
     }
   });
 
@@ -509,21 +512,33 @@ Future<void> runOwnerWalk(WidgetTester tester, OwnerPersona p) async {
   await walk.back();
   await walk.back();
 
-  await walk.step('f07_quote', 'طلب عرض سعر من مزود جديد (بدون إرسال)', () async {
+  // The demo's provider of that kind with an account (f02 draws them).
+  final itemProvider = p.say('فرقة الأفراح', 'المزينة أم فهد');
+  await walk.step('f02_item_search', 'ابحث من بند لم يبدأ', () async {
     await walk.tab('المزودين');
     await walk.tapText('طلباتي', wait: 2.5);
-    // «الفنان والفرقة · ما بدأت · ابحث»: the way to a provider not asked yet.
-    if (!await walk.tapText('ابحث', last: true, wait: 3.5)) return;
-    if (walk.sees('ما لقينا مزودين')) {
-      walk.fail(
-        'البحث عن «الفنان والفرقة» فاضي، وشريحة القسم المختار مقصوصة برا '
-        'الشاشة؛ ما فيه طريق لطلب عرض سعر جديد في هذي البيانات',
-      );
+    // «الفنان والفرقة · ما بدأت · ابحث» (hers «المزينة والنقاشة»): the way
+    // to a provider not asked yet. G40: it searches every kind the server
+    // lists for the item, and the item's chip comes first.
+    final searched = p.say('الفنان والفرقة', 'المزينة والنقاشة');
+    if (!await walk.tapText(p.say('ابحث', 'ابحثي'), last: true, wait: 3.5)) {
       return;
     }
-    final asks = p.say('اطلب عرض', 'اطلبي عرض');
+    if (walk.sees('ما لقينا مزودين')) {
+      walk.fail('البحث عن «$searched» فاضي');
+      return;
+    }
+    walk.expectSee(searched, why: 'شريحة البند المختار أول الشرائح');
+    walk.expectSee(itemProvider, why: 'البحث من البند يلقى مزودينه');
+  });
+
+  await walk.step('f07_quote', 'طلب عرض سعر من مزود جديد (بدون إرسال)', () async {
+    if (!await walk.tapText(itemProvider, wait: 3.5)) return;
+    final asks = p.say('اطلب عرض سعر', 'اطلبي عرض سعر');
     if (!await walk.tapText(asks, wait: 3)) return;
     walk.expectSee(p.say('أرسل الطلب', 'أرسلي الطلب'));
+    // Leave f07 unsent; the back below leaves the provider's page.
+    await walk.back();
   });
   await walk.back();
 

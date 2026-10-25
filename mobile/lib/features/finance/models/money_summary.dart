@@ -335,9 +335,11 @@ class MoneyCategorySummary {
     this.remainingAllocation,
     this.costsCount = 0,
     this.isMahr = false,
+    this.providerCategoryIds = const [],
   });
 
   factory MoneyCategorySummary.fromJson(Map<String, dynamic> json) {
+    final providerCategoryIds = json['providerCategoryIds'];
     return MoneyCategorySummary(
       categoryId: json['categoryId']?.toString() ?? '',
       name: json['name']?.toString() ?? '',
@@ -348,6 +350,9 @@ class MoneyCategorySummary {
       outstanding: json['outstanding']?.toString() ?? '0',
       remainingAllocation: _nullableString(json['remainingAllocation']),
       costsCount: intOrNull(json['costsCount']) ?? 0,
+      providerCategoryIds: providerCategoryIds is List
+          ? [for (final id in providerCategoryIds) ?stringOrNull(id)]
+          : const [],
     );
   }
 
@@ -362,6 +367,11 @@ class MoneyCategorySummary {
 
   /// The groom's mahr item: outside the wedding budget (C1).
   final bool isMahr;
+
+  /// G40: the directory categories whose accepted offers land in this item,
+  /// from the server (acceptance's own rule). Empty: no provider is searched
+  /// for it, so it has no «ابحث» (also offline, where it is not known).
+  final List<String> providerCategoryIds;
 }
 
 class MoneyWarning {

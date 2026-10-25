@@ -108,6 +108,15 @@ class FinanceProvider extends ChangeNotifier with SessionScopedNotifier {
     return null;
   }
 
+  /// G40: the directory categories «ابحث» on item [itemId] searches, as the
+  /// server's money summary lists them; empty when none (no «ابحث»).
+  List<String> providerCategoryIdsFor(String itemId) {
+    for (final category in _summary.categories) {
+      if (category.categoryId == itemId) return category.providerCategoryIds;
+    }
+    return const [];
+  }
+
   CostPayment? paymentById(String id) {
     for (final payment in _payments) {
       if (payment.id == id) return payment;

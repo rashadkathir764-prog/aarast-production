@@ -522,6 +522,7 @@ void main() {
     await tester.pumpAndSettle();
     expect(state.budgetIntents.single.budgetCategoryName, 'القاعة');
     expect(state.budgetIntents.single.allocatedAmount, '1500000');
+    expect(state.budgetIntents.single.providerCategoryIds, ['cat-halls']);
     expect(find.byKey(const ValueKey('providers-tabs')), findsOneWidget);
   });
 
@@ -574,6 +575,44 @@ void main() {
 
     expect(find.text('نبدأ بالقاعة'), findsNothing);
     expect(find.text('قاعة سبأ · خارج اعّرست'), findsOneWidget);
+  });
+
+  testWidgets('the mahr agreed with the bride\'s family is no service row', (
+    tester,
+  ) async {
+    final finance = _LoadedFinance(
+      items: const [
+        BudgetCategory(
+          id: 'item-hall',
+          weddingPlanId: 'plan-1',
+          name: 'القاعة',
+        ),
+        BudgetCategory(
+          id: 'item-mahr',
+          weddingPlanId: 'plan-1',
+          name: 'المهر',
+          isMahr: true,
+        ),
+      ],
+      agreements: const [
+        WeddingCost(
+          id: 'cost-mahr',
+          weddingPlanId: 'plan-1',
+          budgetCategoryId: 'item-mahr',
+          title: 'المهر',
+          totalAmount: '1000000',
+          paidAmount: '0',
+          remainingAmount: '1000000',
+          status: 'ACTIVE',
+          partyName: 'أهل العروسة',
+        ),
+      ],
+    );
+
+    await _pump(tester, _FakeMarketplaceProvider(), finance: finance);
+
+    expect(find.text('أهل العروسة · خارج اعّرست'), findsNothing);
+    expect(find.text('المهر'), findsNothing);
   });
 
   testWidgets('f09 cards grow with large text at 320px', (tester) async {
@@ -899,6 +938,11 @@ class _LoadedFinance extends FinanceProvider {
   @override
   List<BudgetCategory> get categories => items;
 
+  // G40: as the money summary lists them, the hall item searches halls.
+  @override
+  List<String> providerCategoryIdsFor(String itemId) =>
+      itemId == 'item-hall' ? const ['cat-halls'] : const [];
+
   @override
   List<WeddingCost> get costs => agreements;
 
@@ -991,8 +1035,11 @@ class _FakeMarketplaceProvider extends ProviderMarketplaceProvider {
   @override
   List<MarketplaceCity> get cities => const [];
 
+  // The directory's venue kind, by the catalog's slug (G40, x22).
   @override
-  List<ProviderCategory> get categories => const [];
+  List<ProviderCategory> get categories => const [
+    ProviderCategory(id: 'cat-halls', nameAr: 'صالة', slug: 'wedding-halls'),
+  ];
 
   @override
   List<MarketplaceProvider> get providers => const [];

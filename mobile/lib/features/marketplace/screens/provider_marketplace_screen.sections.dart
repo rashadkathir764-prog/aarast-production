@@ -72,6 +72,13 @@ class _FilterChips extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final selectedCategory = provider.categoryId;
+    // G40: a search from a money item filters by all of its categories; its
+    // chip comes first, selected, so it is never cut off the screen (f02
+    // draws the searched kind first).
+    final item = provider.budgetMatchIntent;
+    final itemChip = item != null && item.providerCategoryIds.isNotEmpty
+        ? item
+        : null;
     final city = provider.cities
         .where((city) => city.id == provider.cityId)
         .firstOrNull;
@@ -84,10 +91,21 @@ class _FilterChips extends StatelessWidget {
               scrollDirection: Axis.horizontal,
               padding: EdgeInsets.zero,
               children: [
+                if (itemChip != null) ...[
+                  JourneyChip(
+                    key: const ValueKey('category-chip-item'),
+                    label: itemChip.budgetCategoryName,
+                    icon: providerServiceIcon(itemChip.budgetCategoryName),
+                    selected: true,
+                    selectedColor: AarastV3Color.cobalt,
+                    onTap: () {},
+                  ),
+                  const SizedBox(width: 8),
+                ],
                 JourneyChip(
                   key: const ValueKey('category-chip-all'),
                   label: 'الكل',
-                  selected: selectedCategory == null,
+                  selected: selectedCategory == null && itemChip == null,
                   selectedColor: AarastV3Color.cobalt,
                   onTap: () => provider.setCategory(null),
                 ),
@@ -156,7 +174,11 @@ class _DirectoryFilterSheet extends StatelessWidget {
               children: [
                 JourneyChip(
                   label: 'الكل',
-                  selected: provider.categoryId == null,
+                  selected:
+                      provider.categoryId == null &&
+                      (provider.budgetMatchIntent?.providerCategoryIds
+                              .isEmpty ??
+                          true),
                   selectedColor: AarastV3Color.cobalt,
                   onTap: () => provider.setCategory(null),
                 ),

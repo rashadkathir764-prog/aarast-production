@@ -73,14 +73,24 @@ class MarketplaceApi {
     return result.items;
   }
 
+  /// [categoryIds] (G40) are a money item's categories: a provider in any of
+  /// them is listed. It replaces [categoryId] when given.
   Future<MarketplaceProviderPage> getProvidersPage({
     String? search,
     String? cityId,
     String? categoryId,
+    List<String>? categoryIds,
     bool? featured,
     int page = 1,
     int limit = 30,
   }) async {
+    final categories = {
+      for (final id in categoryIds ?? const <String>[])
+        if (id.trim().isNotEmpty) id.trim(),
+    };
+    if (categories.isEmpty && categoryId != null && categoryId.trim().isNotEmpty) {
+      categories.add(categoryId.trim());
+    }
     try {
       final json = await _apiClient.getJson(
         _path('/api/v1/providers', {
@@ -89,14 +99,16 @@ class MarketplaceApi {
           if (search != null && search.trim().isNotEmpty)
             'search': search.trim(),
           if (cityId != null && cityId.trim().isNotEmpty) 'cityId': cityId,
-          if (categoryId != null && categoryId.trim().isNotEmpty)
-            'categoryId': categoryId,
+          if (categories.length == 1)
+            'categoryId': categories.single
+          else if (categories.length > 1)
+            'categoryIds': categories.join(','),
           if (featured != null) 'featured': featured.toString(),
         }),
       );
 
       final items = _itemsFromPagedJson(json);
-      if (_isUnfiltered(search, cityId, categoryId, featured)) {
+      if (_isUnfiltered(search, cityId, categories, featured)) {
         await _offline?.database.replaceCachedList(
           table: OfflineTables.cachedProviders,
           items: items,
@@ -128,7 +140,7 @@ class MarketplaceApi {
       final cached = await _offline.database.readCachedList(
         table: OfflineTables.cachedProviders,
       );
-      final filtered = _filterProviders(cached, search, cityId, categoryId);
+      final filtered = _filterProviders(cached, search, cityId, categories);
       if (filtered.isEmpty) rethrow;
       final items = filtered.map(MarketplaceProvider.fromJson).toList();
       return MarketplaceProviderPage(
@@ -585,12 +597,12 @@ class MarketplaceApi {
   bool _isUnfiltered(
     String? search,
     String? cityId,
-    String? categoryId,
+    Set<String> categoryIds,
     bool? featured,
   ) {
     return (search == null || search.trim().isEmpty) &&
         (cityId == null || cityId.trim().isEmpty) &&
-        (categoryId == null || categoryId.trim().isEmpty) &&
+        categoryIds.isEmpty &&
         featured == null;
   }
 
@@ -598,7 +610,7 @@ class MarketplaceApi {
     List<Map<String, dynamic>> providers,
     String? search,
     String? cityId,
-    String? categoryId,
+    Set<String> categoryIds,
   ) {
     final query = search?.trim().toLowerCase();
     return providers.where((provider) {
@@ -607,7 +619,7 @@ class MarketplaceApi {
           provider['cityId']?.toString() != cityId) {
         return false;
       }
-      if (categoryId != null && categoryId.trim().isNotEmpty) {
+      if (categoryIds.isNotEmpty) {
         final primary = provider['primaryCategoryId']?.toString();
         final services = provider['services'];
         final serviceSummary = provider['serviceSummary'];
@@ -617,13 +629,15 @@ class MarketplaceApi {
         final hasServiceCategory =
             (services is List &&
                 services.whereType<Map>().any(
-                  (service) => service['categoryId']?.toString() == categoryId,
+                  (service) =>
+                      categoryIds.contains(service['categoryId']?.toString()),
                 )) ||
             (summaryCategories is List &&
                 summaryCategories.whereType<Map>().any(
-                  (category) => category['id']?.toString() == categoryId,
+                  (category) =>
+                      categoryIds.contains(category['id']?.toString()),
                 ));
-        if (primary != categoryId && !hasServiceCategory) {
+        if (!categoryIds.contains(primary) && !hasServiceCategory) {
           return false;
         }
       }

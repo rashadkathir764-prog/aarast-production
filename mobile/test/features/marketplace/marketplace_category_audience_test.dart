@@ -70,6 +70,7 @@ class _AudienceMarketplaceApi extends MarketplaceApi {
     String? search,
     String? cityId,
     String? categoryId,
+    List<String>? categoryIds,
     bool? featured,
     int page = 1,
     int limit = 30,

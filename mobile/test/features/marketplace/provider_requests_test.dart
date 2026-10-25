@@ -111,12 +111,55 @@ QuoteRequest _accepted({MarketplaceBooking? booking}) => _offer(
 
 void main() {
   group('f01 board', () {
+    // G40: each item's directory categories as the money summary lists
+    // them; المهر has none.
     const items = [
-      (id: 'hall', name: 'القاعة'),
-      (id: 'photo', name: 'التصوير'),
-      (id: 'qat', name: 'القات'),
-      (id: 'mahr', name: 'المهر'),
+      (id: 'hall', name: 'القاعة', providerCategoryIds: ['cat-hall']),
+      (id: 'photo', name: 'التصوير', providerCategoryIds: ['cat-photo']),
+      (id: 'qat', name: 'القات', providerCategoryIds: ['cat-qat']),
+      (id: 'mahr', name: 'المهر', providerCategoryIds: <String>[]),
     ];
+
+    test('G40: an item is a service by its server categories, not its name', () {
+      final rows = buildProviderBoard(
+        items: const [
+          (id: 'incense', name: 'البخور', providerCategoryIds: ['cat-perfume']),
+          (
+            id: 'naqsh',
+            name: 'المزينة والنقاشة',
+            providerCategoryIds: ['cat-henna'],
+          ),
+          (id: 'subhia', name: 'الصبحية', providerCategoryIds: <String>[]),
+        ],
+        costs: const [],
+        costItemById: const {},
+        quotes: [
+          QuoteRequest(
+            id: 'q5',
+            providerId: 'provider-q5',
+            weddingPlanId: 'plan-1',
+            status: 'SENT',
+            lifecycleStatus: 'PENDING_PROVIDER',
+            provider: const ProviderSummary(
+              id: 'provider-q5',
+              businessName: 'عطور الريان',
+              ratingAverage: 0,
+              ratingCount: 0,
+            ),
+            service: const MarketplaceService(
+              id: 'service-oud',
+              providerId: 'provider-q5',
+              title: 'بخور وعود',
+              category: ProviderCategory(id: 'cat-perfume', nameAr: 'عطور'),
+              isActive: true,
+            ),
+          ),
+        ],
+      );
+      expect(rows.map((row) => row.title), ['البخور', 'المزينة والنقاشة']);
+      expect(rows.first.stage, 1);
+      expect(rows.last.providerCategoryIds, ['cat-henna']);
+    });
 
     test('rows are the wedding services, with how far each got', () {
       final rows = buildProviderBoard(
@@ -570,6 +613,8 @@ class _Finance extends FinanceApi {
             confirmedCost: '0',
             outstanding: '0',
             costsCount: 0,
+            // G40: the server lists the photo kind under this item.
+            providerCategoryIds: ['cat-photo'],
           ),
         ],
       );

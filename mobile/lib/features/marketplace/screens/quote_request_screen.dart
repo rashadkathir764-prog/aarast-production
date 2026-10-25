@@ -25,7 +25,6 @@ import '../../wedding_plans/wedding_plans_api.dart'
     show DashboardSummaryProvider, WeddingPlansProvider;
 import '../models/marketplace_models.dart';
 import '../models/provider_budget_match_intent.dart';
-import '../models/provider_service_groups.dart';
 import '../providers/marketplace_provider.dart';
 
 /// f07 «اطلب عرض سعر»: what is needed, what the plan already says (the day,
@@ -415,37 +414,43 @@ class _QuoteRequestScreenState extends State<QuoteRequestScreen> {
     if (given != null && given.hasBudget) return given;
     final finance = context.read<FinanceProvider?>();
     if (planId == null || finance?.loadedPlanId != planId) return null;
-    final group = providerServiceGroupOf(_kindName(provider, services));
-    if (group < 0) return null;
-    final item = finance!.categories
-        .where((item) => providerServiceGroupOf(item.name) == group)
-        .firstOrNull;
+    // G40: the item this request's offer would land in, as the server
+    // lists each item's categories.
+    final kind = _kind(provider, services);
+    final item = budgetItemForCategories(
+      finance!.categories,
+      (item) => finance.providerCategoryIdsFor(item.id),
+      [kind?.id ?? provider?.primaryCategoryId],
+    );
     if (item == null) return null;
     final intent = ProviderBudgetMatchIntent(
       budgetCategoryName: item.name,
       allocatedAmount: item.allocatedAmount,
+      providerCategoryIds: finance.providerCategoryIdsFor(item.id),
     );
     return intent.hasBudget ? intent : null;
   }
 
-  /// C45: only halls and catering are told how many guests come.
+  /// C45: only halls and catering are told how many guests come; the
+  /// catalog's own slugs say which those are.
   bool _asksGuests(
     MarketplaceProvider? provider,
     List<MarketplaceService> services,
   ) {
-    final group = providerServiceGroupOf(_kindName(provider, services));
-    return group == 0 || group == 1;
+    final slug = _kind(provider, services)?.slug;
+    return slug == venueCategorySlug || slug == cateringCategorySlug;
   }
 
-  String? _kindName(
+  /// The kind of the chosen service, else the provider's own kind (the
+  /// category acceptance files the offer by).
+  ProviderCategory? _kind(
     MarketplaceProvider? provider,
     List<MarketplaceService> services,
   ) {
     for (final service in services) {
-      if (service.id == _serviceId) return service.category?.nameAr;
+      if (service.id == _serviceId) return service.category;
     }
-    return provider?.primaryCategory?.nameAr ??
-        services.firstOrNull?.category?.nameAr;
+    return provider?.primaryCategory ?? services.firstOrNull?.category;
   }
 
   String? _placeLabel(ProviderMarketplaceProvider marketplace) {

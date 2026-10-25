@@ -809,6 +809,7 @@ class QuoteCostSuggestion {
     required this.suggestedAction,
     required this.automaticCostCreated,
     this.category,
+    this.categoryId,
     this.quotedAmount,
     this.currency,
     this.quoteOfferId,
@@ -822,6 +823,7 @@ class QuoteCostSuggestion {
       providerId: json['providerId']?.toString() ?? '',
       providerName: json['providerName']?.toString() ?? '',
       category: json['category']?.toString(),
+      categoryId: json['categoryId']?.toString(),
       quotedAmount: json['quotedAmount']?.toString(),
       currency: json['currency']?.toString(),
       suggestedAction: json['suggestedAction']?.toString() ?? 'NONE',
@@ -837,6 +839,10 @@ class QuoteCostSuggestion {
   final String providerId;
   final String providerName;
   final String? category;
+
+  /// G40: the category acceptance files the offer by (the service's, else
+  /// the provider's own kind).
+  final String? categoryId;
   final String? quotedAmount;
   final String? currency;
   final String suggestedAction;

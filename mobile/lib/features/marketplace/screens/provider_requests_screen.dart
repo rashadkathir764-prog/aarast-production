@@ -75,8 +75,14 @@ class _ProviderRequestsScreenState extends State<ProviderRequestsScreen> {
     final costs = money?.costs ?? const [];
     final rows = buildProviderBoard(
       items: [
+        // The mahr is no provider's service (C1, D55).
         for (final category in money?.categories ?? const [])
-          (id: category.id, name: category.name),
+          if (!category.isMahr)
+            (
+              id: category.id,
+              name: category.name,
+              providerCategoryIds: money!.providerCategoryIdsFor(category.id),
+            ),
       ],
       costs: [
         for (final cost in costs)

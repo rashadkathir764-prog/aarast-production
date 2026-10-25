@@ -10,8 +10,14 @@ extension _ProviderTabs on _ProviderMarketplaceScreenState {
     final costs = money?.costs ?? const [];
     return buildProviderBoard(
       items: [
+        // The mahr is no provider's service (C1, D55).
         for (final category in money?.categories ?? const [])
-          (id: category.id, name: category.name),
+          if (!category.isMahr)
+            (
+              id: category.id,
+              name: category.name,
+              providerCategoryIds: money!.providerCategoryIdsFor(category.id),
+            ),
       ],
       costs: [
         for (final cost in costs)
@@ -90,14 +96,24 @@ extension _ProviderTabs on _ProviderMarketplaceScreenState {
   ) {
     final planId = _weddingLocationPlanId!;
     final finance = context.read<FinanceProvider?>();
-    final hall = finance?.categories
-        .where((item) => providerServiceGroupOf(item.name) == 0)
+    // The venue kind by the catalog's own slug, and the item it lands in by
+    // the server's list (G40).
+    final venue = marketplace.categories
+        .where((category) => category.slug == venueCategorySlug)
         .firstOrNull;
+    final hall = venue == null || finance == null
+        ? null
+        : budgetItemForCategories(
+            finance.categories,
+            (item) => finance.providerCategoryIdsFor(item.id),
+            [venue.id],
+          );
     final hallIntent = hall == null
         ? null
         : ProviderBudgetMatchIntent(
             budgetCategoryName: hall.name,
             allocatedAmount: hall.allocatedAmount,
+            providerCategoryIds: finance!.providerCategoryIdsFor(hall.id),
           );
     final city =
         [_weddingLocation?.cityOrDistrict, _weddingLocation?.governorate]
@@ -134,18 +150,12 @@ extension _ProviderTabs on _ProviderMarketplaceScreenState {
               onTap: () async {
                 _leaveFirstVisit();
                 _selectTab('استكشف', tabs);
-                if (hallIntent?.hasBudget == true) {
-                  await marketplace.applyBudgetMatchIntent(hallIntent!);
+                if (hallIntent != null) {
+                  await marketplace.applyBudgetMatchIntent(hallIntent);
                   return;
                 }
-                final category = marketplace.categories
-                    .where(
-                      (category) =>
-                          providerServiceGroupOf(category.nameAr) == 0,
-                    )
-                    .firstOrNull;
-                if (category != null && marketplace.categoryId != category.id) {
-                  await marketplace.setCategory(category.id);
+                if (venue != null && marketplace.categoryId != venue.id) {
+                  await marketplace.setCategory(venue.id);
                 }
               },
             ),
@@ -210,11 +220,8 @@ extension _ProviderTabs on _ProviderMarketplaceScreenState {
             ProviderHardCaseCard(
               hardCase: hardCase,
               now: DateTime.now(),
-              onFindOthers: () => _searchServiceNamed(
-                hardCase.row.providerCategoryName ?? hardCase.row.title,
-                marketplace,
-                tabs,
-              ),
+              onFindOthers: () =>
+                  _searchService(hardCase.row, marketplace, tabs),
               onAnotherDay: () => _pushOnce<void>(
                 AppRouter.providerQuote(hardCase.quote.providerId),
               ),
@@ -257,49 +264,57 @@ extension _ProviderTabs on _ProviderMarketplaceScreenState {
     );
   }
 
-  /// «ابحث» on a service that has not started: the directory, filtered to
-  /// that kind of provider when the directory has one.
+  /// «ابحث» (and a hard case's «شوف غيرهم»): the directory, filtered to the
+  /// categories the server lists for the row's item (G40), with the item's
+  /// amount for «قريبين من بندك».
   Future<void> _searchService(
     ProviderBoardRow row,
     ProviderMarketplaceProvider marketplace,
     List<String> tabs,
   ) async {
-    await _searchServiceNamed(
-      row.providerCategoryName ?? row.title,
-      marketplace,
-      tabs,
+    if (row.providerCategoryIds.isEmpty) {
+      // A hard case of a kind no item holds: the whole directory.
+      _selectTab('استكشف', tabs);
+      return;
+    }
+    final itemId = row.budgetCategoryId;
+    final item = itemId == null
+        ? null
+        : context.read<FinanceProvider?>()?.categoryById(itemId);
+    _selectTab('استكشف', tabs);
+    await marketplace.applyBudgetMatchIntent(
+      ProviderBudgetMatchIntent(
+        budgetCategoryName: row.title,
+        allocatedAmount: item?.allocatedAmount,
+        providerCategoryIds: row.providerCategoryIds,
+      ),
     );
+    // A new search starts at its top: the item's chip, its line and the
+    // first results, not where an earlier browse left the list.
+    if (mounted && _scrollController.hasClients) _scrollController.jumpTo(0);
   }
 
-  /// w34 «الحجوزات», which comes back with a declined service's name for
-  /// «شوف غيرهم».
+  /// w34 «الحجوزات», which comes back with a declined service's category
+  /// for «شوف غيرهم»: the item it lands in, else that category alone.
   Future<void> _openBookings(
     ProviderMarketplaceProvider marketplace,
     List<String> tabs,
+    List<ProviderBoardRow> board,
   ) async {
     final planId = _weddingLocationPlanId;
     if (planId == null) return;
-    final service = await _pushOnce<String>(AppRouter.planBookings(planId));
-    if (!mounted || service == null || service.isEmpty) return;
-    await _searchServiceNamed(service, marketplace, tabs);
-  }
-
-  Future<void> _searchServiceNamed(
-    String name,
-    ProviderMarketplaceProvider marketplace,
-    List<String> tabs,
-  ) async {
+    final categoryId = await _pushOnce<String>(AppRouter.planBookings(planId));
+    if (!mounted || categoryId == null || categoryId.isEmpty) return;
+    final row = board
+        .where((row) => row.providerCategoryIds.contains(categoryId))
+        .firstOrNull;
+    if (row != null) {
+      await _searchService(row, marketplace, tabs);
+      return;
+    }
     _selectTab('استكشف', tabs);
-    final group = providerServiceGroupOf(name);
-    final category = group < 0
-        ? null
-        : marketplace.categories
-              .where(
-                (category) => providerServiceGroupOf(category.nameAr) == group,
-              )
-              .firstOrNull;
-    if (category != null && marketplace.categoryId != category.id) {
-      await marketplace.setCategory(category.id);
+    if (marketplace.categoryId != categoryId) {
+      await marketplace.setCategory(categoryId);
     }
   }
 

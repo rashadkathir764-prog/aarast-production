@@ -19,7 +19,8 @@ import '../../auth/auth_api.dart' show AuthActionGuard;
 import '../../finance/finance_api.dart' show FinanceProvider;
 import '../data/provider_contact_links.dart';
 import '../models/marketplace_models.dart';
-import '../models/provider_service_groups.dart';
+import '../models/provider_budget_match_intent.dart'
+    show budgetItemForCategories;
 import '../providers/marketplace_provider.dart';
 import '../widgets/provider_details_view.dart';
 
@@ -181,14 +182,15 @@ class _ProviderDetailsScreenState extends State<ProviderDetailsScreen> {
   ) {
     final finance = context.read<FinanceProvider?>();
     if (planId == null || finance?.loadedPlanId != planId) return false;
-    final group = providerServiceGroupOf(
-      provider.primaryCategory?.nameAr ??
-          services.firstOrNull?.category?.nameAr,
+    // G40: the item this provider's offers land in, as the server lists it.
+    final item = budgetItemForCategories(
+      finance!.categories,
+      (item) => finance.providerCategoryIdsFor(item.id),
+      [
+        provider.primaryCategory?.id ?? provider.primaryCategoryId,
+        for (final service in services) service.category?.id,
+      ],
     );
-    if (group < 0) return false;
-    final item = finance!.categories
-        .where((item) => providerServiceGroupOf(item.name) == group)
-        .firstOrNull;
     final allocated = num.tryParse(item?.allocatedAmount ?? '') ?? 0;
     if (allocated <= 0) return false;
     final prices = [

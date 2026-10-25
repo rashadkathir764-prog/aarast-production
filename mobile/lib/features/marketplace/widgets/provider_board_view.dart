@@ -93,18 +93,47 @@ class ProviderBoardView extends StatelessWidget {
   }
 }
 
-IconData providerServiceIcon(String name) =>
-    switch (providerServiceGroupOf(name)) {
-      0 => LucideIcons.building2,
-      1 => LucideIcons.utensils,
-      2 => LucideIcons.camera,
-      3 => LucideIcons.flower2,
-      4 => LucideIcons.music,
-      5 => LucideIcons.shirt,
-      6 => LucideIcons.scissors,
-      7 => LucideIcons.leaf,
-      _ => LucideIcons.store,
-    };
+/// The picture beside a service's name. Only a picture: which providers an
+/// item searches and where an offer is filed come from the server (G40,
+/// `providerCategoryIds`), never from these words.
+IconData providerServiceIcon(String name) {
+  final source = _iconKey(name);
+  if (source.isEmpty) return LucideIcons.store;
+  for (final (words, icon) in _serviceIcons) {
+    if (words.any((word) => source.contains(_iconKey(word)))) return icon;
+  }
+  return LucideIcons.store;
+}
+
+const _serviceIcons = <(List<String>, IconData)>[
+  (['صالة', 'صالات', 'قاعة', 'قاعات', 'hall', 'venue'], LucideIcons.building2),
+  (
+    ['غداء', 'عشاء', 'ضيافة', 'بوفيه', 'تموين', 'وجبات', 'ماء', 'cater'],
+    LucideIcons.utensils,
+  ),
+  (['تصوير', 'مصور', 'فيديو', 'كاميرا', 'photo', 'video'], LucideIcons.camera),
+  (['كوشة', 'ديكور', 'ورد', 'زفة', 'decor'], LucideIcons.flower2),
+  (
+    ['فنان', 'فرقة', 'منشد', 'مزمار', 'مبرع', 'ديجي', 'dj', 'music', 'ترفيه'],
+    LucideIcons.music,
+  ),
+  (['فستان', 'أزياء', 'ملابس', 'ملبوسات', 'بدلة', 'dress'], LucideIcons.shirt),
+  (
+    ['صالون', 'مكياج', 'تجميل', 'كوافير', 'beauty', 'salon'],
+    LucideIcons.scissors,
+  ),
+  (['قات', 'مقوت', 'qat'], LucideIcons.leaf),
+  (['بخور', 'عطور', 'عطر', 'perfume'], LucideIcons.flame),
+  (['نقش', 'نقاش', 'حناء', 'مزين', 'henna'], LucideIcons.sparkles),
+];
+
+String _iconKey(String value) => value
+    .trim()
+    .toLowerCase()
+    .replaceAll(RegExp('[أإآ]'), 'ا')
+    .replaceAll('ة', 'ه')
+    .replaceAll('ى', 'ي')
+    .replaceAll(RegExp(r'[ً-ْـ]'), '');
 
 class _BoardRow extends StatelessWidget {
   const _BoardRow({
@@ -121,12 +150,17 @@ class _BoardRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final Widget trailing;
+    // G40: «ابحث» only where the server lists categories to search; an
+    // empty directory search would not be the truth.
+    final searchable = row.providerCategoryIds.isNotEmpty;
     if (row.booked) {
       trailing = const JourneyTag(
         label: 'محجوز',
         color: AarastV3Color.mint,
         soft: AarastV3Color.mintSoft,
       );
+    } else if (row.stage == 0 && !searchable) {
+      trailing = const SizedBox.shrink();
     } else if (row.stage == 0) {
       trailing = _SoftAction(
         label: context.say('ابحث', 'ابحثي'),
@@ -150,7 +184,11 @@ class _BoardRow extends StatelessWidget {
       );
     }
     return InkWell(
-      onTap: row.stage == 0 ? onSearch : onOpen,
+      onTap: row.stage != 0
+          ? onOpen
+          : searchable
+          ? onSearch
+          : null,
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
         child: Row(

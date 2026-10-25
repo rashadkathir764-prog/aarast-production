@@ -89,7 +89,9 @@ class _PlanBookingsScreenState extends State<PlanBookingsScreen> {
                 quote: quote,
                 now: now,
                 busy: marketplace.isSubmitting,
-                onFindOthers: () => context.pop(_serviceName(quote)),
+                // G40: the declined kind's category; «المزودين» searches
+                // the money item it lands in.
+                onFindOthers: () => context.pop(quote.service?.category?.id),
                 onAskAgain: () => _askAgain(marketplace, quote),
                 onRate: () => context.push(
                   AppRouter.planReviews(

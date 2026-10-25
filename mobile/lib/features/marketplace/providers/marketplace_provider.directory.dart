@@ -47,6 +47,7 @@ mixin _MarketplaceDirectory on _MarketplaceProviderCore {
           search: _search,
           cityId: _cityId,
           categoryId: _categoryId,
+          categoryIds: _budgetMatchIntent?.providerCategoryIds,
         ),
         _includeAccountData
             ? _loadFavorites()
@@ -106,6 +107,7 @@ mixin _MarketplaceDirectory on _MarketplaceProviderCore {
         search: _search,
         cityId: _cityId,
         categoryId: _categoryId,
+        categoryIds: _budgetMatchIntent?.providerCategoryIds,
         page: nextPage,
       );
       if (generation != _loadGeneration) return;
@@ -210,15 +212,11 @@ mixin _MarketplaceDirectory on _MarketplaceProviderCore {
     await loadMarketplace();
   }
 
+  /// G40: the directory filtered to a money item's categories, as the
+  /// server listed them; one category chip no longer stands for the item.
   Future<void> applyBudgetMatchIntent(ProviderBudgetMatchIntent intent) async {
     _budgetMatchIntent = intent;
-    if (_categories.isEmpty) {
-      await loadReferenceData();
-    }
-    final categoryId = intent.matchingCategoryId(_categories);
-    if (categoryId != null) {
-      _categoryId = categoryId;
-    }
+    if (intent.providerCategoryIds.isNotEmpty) _categoryId = null;
     await loadMarketplace();
   }
 

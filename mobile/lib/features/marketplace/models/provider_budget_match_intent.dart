@@ -1,15 +1,18 @@
-import 'marketplace_models.dart';
-import 'provider_service_groups.dart';
-
+/// A search started from one of the plan's money items (G40): the item's
+/// name and amount, and the directory categories the server says land in it
+/// (`providerCategoryIds`, the rule an accepted offer is filed by). The
+/// directory lists the providers of any of those categories.
 class ProviderBudgetMatchIntent {
   const ProviderBudgetMatchIntent({
     required this.budgetCategoryName,
     required this.allocatedAmount,
+    this.providerCategoryIds = const [],
     this.tolerance = 0.20,
   });
 
   final String budgetCategoryName;
   final String? allocatedAmount;
+  final List<String> providerCategoryIds;
   final double tolerance;
 
   double get allocatedValue => _moneyValue(allocatedAmount);
@@ -18,29 +21,28 @@ class ProviderBudgetMatchIntent {
   double? get maxPrice => hasBudget ? allocatedValue * (1 + tolerance) : null;
   double? get requestMin => hasBudget ? allocatedValue * 0.80 : null;
   double? get requestMax => hasBudget ? allocatedValue : null;
+}
 
-  String? matchingCategoryId(List<ProviderCategory> categories) {
-    final source = _normalize(budgetCategoryName);
-    if (source.isEmpty) return null;
+/// The catalog's slugs for the wedding venue (the server's
+/// `VENUE_PROVIDER_CATEGORY_SLUG`) and for meals (C45: both are told how
+/// many guests come).
+const venueCategorySlug = 'wedding-halls';
+const cateringCategorySlug = 'catering';
 
-    for (final category in categories) {
-      final haystack = _normalize(
-        [category.nameAr, category.nameEn ?? '', category.slug ?? ''].join(' '),
-      );
-      if (haystack.isEmpty) continue;
-      if (haystack.contains(source) || source.contains(haystack)) {
-        return category.id;
-      }
+/// G40: the money item whose server-listed categories hold the first of
+/// [categoryIds] that any item holds (a category lands in one item only).
+T? budgetItemForCategories<T>(
+  Iterable<T> items,
+  List<String> Function(T item) categoriesOf,
+  Iterable<String?> categoryIds,
+) {
+  for (final id in categoryIds) {
+    if (id == null || id.isEmpty) continue;
+    for (final item in items) {
+      if (categoriesOf(item).contains(id)) return item;
     }
-
-    final group = providerServiceGroupOf(budgetCategoryName);
-    if (group < 0) return null;
-    for (final category in categories) {
-      final names = [category.nameAr, category.nameEn ?? '', category.slug ?? ''];
-      if (providerServiceGroupOf(names.join(' ')) == group) return category.id;
-    }
-    return null;
   }
+  return null;
 }
 
 class ProviderQuoteInitialContext {
@@ -48,19 +50,6 @@ class ProviderQuoteInitialContext {
 
   final String? serviceId;
   final ProviderBudgetMatchIntent? budgetIntent;
-}
-
-String _normalize(String value) {
-  return value
-      .toLowerCase()
-      .replaceAll('أ', 'ا')
-      .replaceAll('إ', 'ا')
-      .replaceAll('آ', 'ا')
-      .replaceAll('ى', 'ي')
-      .replaceAll('ة', 'ه')
-      .replaceAll(RegExp(r'[\u064B-\u065F]'), '')
-      .replaceAll(RegExp(r'[^a-z0-9\u0621-\u064A]+'), ' ')
-      .trim();
 }
 
 double _moneyValue(String? value) {

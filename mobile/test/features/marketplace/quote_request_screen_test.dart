@@ -118,7 +118,10 @@ void main() {
   testWidgets('a hall request asks how many guests and sends them (C45)', (
     tester,
   ) async {
-    final marketplace = _Marketplace(kind: 'الصالات والقاعات');
+    final marketplace = _Marketplace(
+      kind: 'الصالات والقاعات',
+      slug: 'wedding-halls',
+    );
     await _pump(tester, marketplace, item: 'قاعة أو مخدرة الرجال');
 
     expect(find.text('الضيوف'), findsOneWidget);
@@ -137,7 +140,7 @@ void main() {
   testWidgets('f07 stays readable at 320px and 1.3 text', (tester) async {
     await _pump(
       tester,
-      _Marketplace(kind: 'الصالات والقاعات'),
+      _Marketplace(kind: 'الصالات والقاعات', slug: 'wedding-halls'),
       item: 'قاعة أو مخدرة الرجال',
       width: 320,
       textScale: 1.3,
@@ -284,17 +287,25 @@ class _Money extends FinanceProvider {
       allocatedAmount: '500000',
     ),
   ];
+
+  // G40: the money summary lists the provider's kind under this item.
+  @override
+  List<String> providerCategoryIdsFor(String itemId) =>
+      itemId == 'item-1' ? const ['cat-1'] : const [];
 }
 
 class _Marketplace extends ProviderMarketplaceProvider {
-  _Marketplace({required this.kind})
+  _Marketplace({required this.kind, this.slug})
     : super(MarketplaceApi(ApiClient(tokenProvider: () async => null)));
 
   final String kind;
+
+  /// The catalog's slug: C45 asks the guests of `wedding-halls` only.
+  final String? slug;
   final sent = <Map<String, Object?>>[];
 
   ProviderCategory get _category =>
-      ProviderCategory(id: 'cat-1', nameAr: kind);
+      ProviderCategory(id: 'cat-1', nameAr: kind, slug: slug);
 
   @override
   MarketplaceProvider? providerDetails(String id) => MarketplaceProvider(

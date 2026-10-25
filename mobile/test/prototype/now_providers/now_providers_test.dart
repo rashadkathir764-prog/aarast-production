@@ -51,7 +51,11 @@ import '../../support/preview_fonts.dart';
 
 const _sanaa = MarketplaceCity(id: 'city-sanaa', nameAr: 'صنعاء');
 const _aden = MarketplaceCity(id: 'city-aden', nameAr: 'عدن');
-const _halls = ProviderCategory(id: 'cat-hall', nameAr: 'قاعات');
+const _halls = ProviderCategory(
+  id: 'cat-hall',
+  nameAr: 'قاعات',
+  slug: 'wedding-halls',
+);
 const _photo = ProviderCategory(id: 'cat-photo', nameAr: 'تصوير');
 const _band = ProviderCategory(id: 'cat-band', nameAr: 'فرق وفنانين');
 const _food = ProviderCategory(id: 'cat-food', nameAr: 'ضيافة');
@@ -483,6 +487,15 @@ class _LoadedFinance extends FinanceProvider {
       allocatedAmount: '1000000',
     ),
   ];
+  // G40: each item's directory categories, as the money summary lists them.
+  @override
+  List<String> providerCategoryIdsFor(String itemId) => switch (itemId) {
+    'item-hall' => const ['cat-hall'],
+    'item-photo' => const ['cat-photo'],
+    'item-band' => const ['cat-band'],
+    'item-food' => const ['cat-food'],
+    _ => const [],
+  };
   @override
   List<WeddingCost> get costs => const [];
   @override

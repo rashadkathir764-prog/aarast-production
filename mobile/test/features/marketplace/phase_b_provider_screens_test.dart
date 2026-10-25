@@ -674,6 +674,11 @@ class _PlanMoney extends FinanceProvider {
   @override
   List<BudgetCategory> get categories => [item];
 
+  // G40: the money summary lists the halls' category under this item.
+  @override
+  List<String> providerCategoryIdsFor(String itemId) =>
+      itemId == item.id ? const ['cat-1'] : const [];
+
   @override
   Future<void> loadMoney(
     String planId, {

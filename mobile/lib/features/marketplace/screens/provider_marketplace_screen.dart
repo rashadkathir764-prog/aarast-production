@@ -247,7 +247,7 @@ class _ProviderMarketplaceScreenState extends State<ProviderMarketplaceScreen> {
                               (quote) => quote.booking != null,
                             ),
                           )
-                      ? () => _openBookings(provider, tabs)
+                      ? () => _openBookings(provider, tabs, board)
                       : null,
                   statusTapLabel: 'الحجوزات',
                   actions: [

@@ -126,11 +126,12 @@ async function main(): Promise<void> {
       status: UserStatus.ACTIVE,
     },
   });
-  const [joiner, refused, claimant, customer] = await Promise.all([
+  const [joiner, refused, claimant, customer, legacy] = await Promise.all([
     account("joiner"),
     account("refused"),
     account("claimant"),
     account("customer"),
+    account("legacy"),
   ]);
   const city = await prisma.city.create({
     data: { nameAr: `${label} مدينة`, countryCode: "YE" },
@@ -173,8 +174,19 @@ async function main(): Promise<void> {
     "apply with an unpriced service",
     "PROVIDER_SERVICE_REQUIRED",
   );
+  expect(
+    await call(
+      "POST",
+      "/api/v1/provider/apply",
+      joinerToken,
+      application(joiner.phone, [{ title: "زفة", basePrice: "500", currency: "USD" }]),
+    ),
+    422,
+    "apply with a service priced in dollars",
+    "PROVIDER_JOINING_CURRENCY",
+  );
   assert.equal(await prisma.provider.count({ where: { userId: joiner.id } }), 0);
-  pass("joining without a priced service is refused with 422 and writes nothing");
+  pass("joining without a priced service, or priced in another currency than YER, is refused with 422 and writes nothing");
 
   const applied = expect(
     await call(
@@ -208,8 +220,10 @@ async function main(): Promise<void> {
   pass("the joining service is created with the application and the admin sees it with its price");
 
   // ---------------------------------------------------------------- B-01
+  const resubmit = (token: string, latestDecisionId: string | null) =>
+    call("POST", "/api/v1/provider/me/application/resubmit", token, { latestDecisionId });
   expect(
-    await call("POST", "/api/v1/provider/me/application/resubmit", joinerToken),
+    await resubmit(joinerToken, null),
     409,
     "resubmit while PENDING",
     "PROVIDER_NOT_AWAITING_CHANGES",
@@ -230,6 +244,13 @@ async function main(): Promise<void> {
     200,
     "request changes per field",
   );
+  // The provider reads these notes; the team then rewrites them.
+  const firstRead = expect(
+    await call("GET", "/api/v1/provider/me/profile", joinerToken),
+    200,
+    "profile after the first request",
+  );
+  assert.equal(firstRead.latestDecision?.kind, "CHANGES_REQUESTED");
   // The team rewrites its notes while the provider is still fixing.
   expect(
     await call("PATCH", `/admin/providers/${applied.id}/request-changes`, adminToken, {
@@ -248,7 +269,25 @@ async function main(): Promise<void> {
   assert.deepEqual(needsChanges.fieldNotes, [
     { field: "SERVICE", note: "حدد سعر الليلة، مو «حسب الطلب»." },
   ]);
+  assert.notEqual(needsChanges.latestDecision.id, firstRead.latestDecision.id);
   pass("per-field notes reach the provider, and the newest request replaces the old notes");
+
+  // Finding 7: sent after notes he never read, the fix does not go back.
+  expect(
+    await resubmit(joinerToken, firstRead.latestDecision.id),
+    409,
+    "resubmit naming the notes the team rewrote",
+    "PROVIDER_REVIEW_CHANGED",
+  );
+  const stillFixing = await prisma.provider.findUniqueOrThrow({ where: { id: applied.id } });
+  assert.equal(stillFixing.status, "NEEDS_CHANGES");
+  assert.equal(stillFixing.resubmitCount, 0);
+  expect(
+    await call("POST", "/api/v1/provider/me/application/resubmit", joinerToken, {}),
+    400,
+    "resubmit naming no decision",
+  );
+  pass("«أرسلت التعديل» after notes the provider never read is refused, and the profile stays with him");
 
   expect(
     await call("PATCH", `/api/v1/provider/me/services/${serviceId}`, joinerToken, {
@@ -268,6 +307,22 @@ async function main(): Promise<void> {
     "a second service before approval",
     "PROVIDER_JOINING_SERVICE_ONLY",
   );
+  expect(
+    await call("PATCH", `/api/v1/provider/me/services/${serviceId}`, joinerToken, {
+      priceUnit: "لليلة",
+    }),
+    403,
+    "change the joining service's unit before approval",
+    "PROVIDER_JOINING_SERVICE_ONLY",
+  );
+  expect(
+    await call("PATCH", `/api/v1/provider/me/services/${serviceId}`, joinerToken, {
+      currency: "USD",
+    }),
+    422,
+    "price the joining service in dollars",
+    "PROVIDER_JOINING_CURRENCY",
+  );
   const fixedService = expect(
     await call("PATCH", `/api/v1/provider/me/services/${serviceId}`, joinerToken, {
       basePrice: "180000",
@@ -276,10 +331,36 @@ async function main(): Promise<void> {
     "fix the joining service's price",
   );
   assert.equal(fixedService.basePrice, "180000");
-  pass("before approval only the joining service's name, price and words change");
+  pass("before approval only the joining service's name, price and words change, in YER");
+
+  // Finding 8: the team switches the joining service off; the provider is
+  // not stuck, he adds another one and sends the profile back.
+  expect(
+    await call("PATCH", `/admin/services/${serviceId}`, adminToken, { isActive: false }),
+    200,
+    "the team switches the joining service off",
+  );
+  expect(
+    await resubmit(joinerToken, needsChanges.latestDecision.id),
+    422,
+    "resubmit with the joining service switched off",
+    "PROVIDER_SERVICE_REQUIRED",
+  );
+  const replacement = expect(
+    await call("POST", "/api/v1/provider/me/services", joinerToken, {
+      categoryId: category.id,
+      title: "مزمار الليلة كاملة",
+      basePrice: "200000",
+      currency: "YER",
+    }),
+    201,
+    "add a joining service after the first was switched off",
+  );
+  assert.equal(replacement.isActive, true);
+  pass("a provider whose joining service was switched off adds another before approval");
 
   const resubmitted = expect(
-    await call("POST", "/api/v1/provider/me/application/resubmit", joinerToken),
+    await resubmit(joinerToken, needsChanges.latestDecision.id),
     200,
     "resubmit",
   );
@@ -288,7 +369,7 @@ async function main(): Promise<void> {
   assert.ok(resubmitted.resubmittedAt);
   assert.deepEqual(resubmitted.fieldNotes, []);
   expect(
-    await call("POST", "/api/v1/provider/me/application/resubmit", joinerToken),
+    await resubmit(joinerToken, needsChanges.latestDecision.id),
     409,
     "resubmit twice",
     "PROVIDER_NOT_AWAITING_CHANGES",
@@ -306,7 +387,10 @@ async function main(): Promise<void> {
     200,
     "the «أُعيد إرسالها» queue",
   );
-  assert.ok(queue.items.some((item: any) => item.id === applied.id));
+  const queuedRow = queue.items.find((item: any) => item.id === applied.id);
+  assert.ok(queuedRow);
+  // Finding 6: the row reads «كان يحتاج تعديل» from the decision before it.
+  assert.equal(queuedRow.latestDecision.kind, "CHANGES_REQUESTED");
   const fresh = expect(
     await call(
       "GET",
@@ -331,6 +415,70 @@ async function main(): Promise<void> {
   assert.equal(history.events[0].actor.id, admin.id);
   assert.equal(history.events[0].notes.length, 3);
   pass("«أرسلت التعديل» sends the profile back once, confirms it, and the admin sees it in its own queue with its history");
+
+  // Finding 11: «أُعيد إرسالها» holds only the profiles waiting for review.
+  expect(
+    await call("PATCH", `/admin/providers/${applied.id}/request-changes`, adminToken, {
+      fieldNotes: [{ field: "DESCRIPTION", note: "اكتب وين تشتغل." }],
+    }),
+    200,
+    "ask for changes again after a resubmission",
+  );
+  const sentBackBefore = expect(
+    await call("GET", "/admin/providers/applications?resubmitted=true", adminToken),
+    200,
+    "the «أُعيد إرسالها» queue while he fixes again",
+  );
+  assert.ok(!sentBackBefore.items.some((item: any) => item.id === applied.id));
+  assert.ok(sentBackBefore.items.every((item: any) => item.status === "PENDING"));
+  expect(
+    await call(
+      "GET",
+      "/admin/providers/applications?status=NEEDS_CHANGES&resubmitted=true",
+      adminToken,
+    ),
+    400,
+    "«أُعيد إرسالها» with another status",
+  );
+  const secondRead = expect(
+    await call("GET", "/api/v1/provider/me/profile", joinerToken),
+    200,
+    "profile asked for changes again",
+  );
+  const secondSend = expect(
+    await resubmit(joinerToken, secondRead.latestDecision.id),
+    200,
+    "resubmit again",
+  );
+  assert.equal(secondSend.resubmitCount, 2);
+  const sentBackAfter = expect(
+    await call("GET", "/admin/providers/applications?resubmitted=true", adminToken),
+    200,
+    "the «أُعيد إرسالها» queue after the second send",
+  );
+  assert.ok(sentBackAfter.items.some((item: any) => item.id === applied.id));
+  pass("«أُعيد إرسالها» lists only profiles waiting for review, never one the provider is fixing");
+
+  // Finding 9: a profile from before B-10, with no service, is not approved.
+  const legacyProfile = await prisma.provider.create({
+    data: {
+      userId: legacy.id,
+      cityId: city.id,
+      primaryCategoryId: category.id,
+      businessName: `${label} قديم بلا خدمة`,
+      phone: legacy.phone!,
+      status: "PENDING",
+    },
+  });
+  expect(
+    await call("PATCH", `/admin/providers/${legacyProfile.id}/approve`, adminToken),
+    422,
+    "approve a profile without a priced service",
+    "PROVIDER_SERVICE_REQUIRED",
+  );
+  const legacyAfter = await prisma.provider.findUniqueOrThrow({ where: { id: legacyProfile.id } });
+  assert.equal(legacyAfter.status, "PENDING");
+  pass("a profile without an active priced service is not approved");
 
   const approved = expect(
     await call("PATCH", `/admin/providers/${applied.id}/approve`, adminToken),
@@ -409,8 +557,9 @@ async function main(): Promise<void> {
     200,
     "edit after reopening",
   );
+  assert.equal(reopened.latestDecision.kind, "REJECTED");
   const back = expect(
-    await call("POST", "/api/v1/provider/me/application/resubmit", refusedToken),
+    await resubmit(refusedToken, reopened.latestDecision.id),
     200,
     "resubmit after reopening",
   );
@@ -432,6 +581,8 @@ async function main(): Promise<void> {
   );
   assert.ok(refusedRow.reopenedAt);
   assert.equal(refusedRow.resubmitCount, 1);
+  // Finding 6: it reads «كان مرفوض» from the decision before the send.
+  assert.equal(refusedRow.latestDecision.kind, "REJECTED");
   expect(
     await call("PATCH", `/admin/providers/${refusedApplication.id}/approve`, adminToken),
     200,
@@ -456,6 +607,9 @@ async function main(): Promise<void> {
     "claimable listing",
   );
   assert.equal(offered.listing?.id, listing.id);
+  // Finding 13: p02 names the listing's category and city.
+  assert.equal(offered.listing.primaryCategory?.nameAr, category.nameAr);
+  assert.equal(offered.listing.city?.nameAr, city.nameAr);
   assert.deepEqual(
     expect(await call("GET", "/api/v1/provider/me/claim", claimantToken), 200, "no claim yet"),
     { claim: null },
@@ -524,6 +678,23 @@ async function main(): Promise<void> {
     201,
     "claim again",
   );
+  // Finding 4: the account's phone changed after the claim was sent; it no
+  // longer proves the listing is his.
+  await prisma.user.update({
+    where: { id: claimant.id },
+    data: { phone: scopedPhone("claimant-moved") },
+  });
+  expect(
+    await call("POST", `/admin/provider-claims/${second.id}/approve`, adminToken),
+    409,
+    "approve a claim whose phone changed",
+    "PROVIDER_CLAIM_PHONE_CHANGED",
+  );
+  const unlinked = await prisma.provider.findUniqueOrThrow({ where: { id: listing.id } });
+  assert.equal(unlinked.userId, null);
+  await prisma.user.update({ where: { id: claimant.id }, data: { phone: claimant.phone } });
+  pass("a claim is not approved once the claimant's phone no longer matches the listing");
+
   const decided = expect(
     await call("POST", `/admin/provider-claims/${second.id}/approve`, adminToken),
     201,

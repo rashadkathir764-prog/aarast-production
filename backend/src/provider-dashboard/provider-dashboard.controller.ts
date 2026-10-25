@@ -16,6 +16,7 @@ import { ApplyProviderDto } from "./dto/apply-provider.dto";
 import { CreateProviderPackageDto } from "./dto/create-provider-package.dto";
 import { CreateProviderServiceDto } from "./dto/create-provider-service.dto";
 import { CreateQuoteOfferDto } from "./dto/create-quote-offer.dto";
+import { ResubmitApplicationDto } from "./dto/resubmit-application.dto";
 import { UpdateProviderPackageDto } from "./dto/update-provider-package.dto";
 import { UpdateProviderProfileDto } from "./dto/update-provider-profile.dto";
 import { UpdateProviderQuoteStatusDto } from "./dto/update-provider-quote-status.dto";
@@ -86,8 +87,11 @@ export class ProviderDashboardController {
   // B-01: «أرسلت التعديل», NEEDS_CHANGES back to PENDING.
   @Post("application/resubmit")
   @HttpCode(200)
-  resubmitApplication(@CurrentUser() currentUser: AuthenticatedUser) {
-    return this.providerDashboardService.resubmitApplication(currentUser);
+  resubmitApplication(
+    @CurrentUser() currentUser: AuthenticatedUser,
+    @Body() dto: ResubmitApplicationDto,
+  ) {
+    return this.providerDashboardService.resubmitApplication(currentUser, dto);
   }
 
   // B-02: «صلّح وقدّم من جديد», REJECTED to NEEDS_CHANGES.

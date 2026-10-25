@@ -252,11 +252,16 @@ export interface MarketplaceAdminPort {
     client: Prisma.TransactionClient,
     providerId: string,
   ): Promise<{ userId: string | null } | null>;
-  /** Locks the provider FOR UPDATE; its account and status, null when it does not exist. */
+  /** Locks the provider FOR UPDATE; its account, status and phone, null when it does not exist. */
   lockProviderForUpdateInTransaction(
     tx: Prisma.TransactionClient,
     providerId: string,
-  ): Promise<{ userId: string | null; status: ProviderStatus } | null>;
+  ): Promise<{ userId: string | null; status: ProviderStatus; phone: string } | null>;
+  /** The joining rule (B-10, D41): whether the provider has an active service priced above zero. */
+  hasJoiningService(
+    client: Prisma.TransactionClient,
+    providerId: string,
+  ): Promise<boolean>;
   /** Sets the status and records the decision with its notes in the review history. */
   recordProviderReviewInTransaction(
     tx: Prisma.TransactionClient,

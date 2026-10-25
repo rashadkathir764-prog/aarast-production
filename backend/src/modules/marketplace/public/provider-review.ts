@@ -1,8 +1,49 @@
+import { UnprocessableEntityException } from '@nestjs/common';
 import {
   ProviderReviewEventKind,
   ProviderReviewField,
   ProviderStatus,
 } from '@prisma/client';
+
+/** The joining service is priced in Yemeni riyals (D48). */
+export const JOINING_SERVICE_CURRENCY = 'YER';
+
+/**
+ * The joining rule refused (B-10, D41): no active service priced above
+ * zero. Apply, resubmit, the joining service added before approval and the
+ * approval itself refuse with this one error.
+ */
+export function providerServiceRequired(): UnprocessableEntityException {
+  return new UnprocessableEntityException({
+    statusCode: 422,
+    code: 'PROVIDER_SERVICE_REQUIRED',
+    message: 'At least one active service with its price is required before review',
+  });
+}
+
+/** The joining service is priced in another currency than YER (D48). */
+export function joiningCurrencyRequired(): UnprocessableEntityException {
+  return new UnprocessableEntityException({
+    statusCode: 422,
+    code: 'PROVIDER_JOINING_CURRENCY',
+    message: `The joining service is priced in ${JOINING_SERVICE_CURRENCY}`,
+  });
+}
+
+/** The latest decision as the profile and the admin rows name it (B-01). */
+export interface ProviderLatestDecision {
+  id: string;
+  kind: ProviderReviewEventKind;
+  at: Date;
+}
+
+export function toProviderLatestDecision(
+  decision: { id: string; kind: ProviderReviewEventKind; createdAt: Date } | null | undefined,
+): ProviderLatestDecision | null {
+  return decision
+    ? { id: decision.id, kind: decision.kind, at: decision.createdAt }
+    : null;
+}
 
 /**
  * Waiting for approval: the review has the profile (PENDING) or the provider

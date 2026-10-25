@@ -36,6 +36,7 @@ import type {
 import type { PricedService } from '../public/market-prices';
 import { listPricedServices } from './market-prices.repository';
 import {
+  hasJoiningService,
   latestProviderDecisionInclude,
   listProviderReviewEvents,
   recordProviderReviewEvent,
@@ -210,7 +211,10 @@ export class MarketplaceAdminRepository implements MarketplaceAdminPort {
     const and: ProviderAdminCondition[] = [
       { status: { in: [...filter.statuses] } },
     ];
+    // «أُعيد إرسالها» (B-01) narrows the profiles waiting for review: the
+    // ones sent back after changes, or the others.
     if (filter.resubmitted !== null) {
+      and.push({ status: { in: [ProviderStatus.PENDING] } });
       and.push({
         resubmittedAt: filter.resubmitted ? { not: null } : null,
       });
@@ -281,7 +285,7 @@ export class MarketplaceAdminRepository implements MarketplaceAdminPort {
   async lockProviderForUpdateInTransaction(
     tx: Prisma.TransactionClient,
     providerId: string,
-  ): Promise<{ userId: string | null; status: ProviderStatus } | null> {
+  ): Promise<{ userId: string | null; status: ProviderStatus; phone: string } | null> {
     const rows = await tx.$queryRaw<Array<{ id: string }>>(
       Prisma.sql`
         SELECT "id"
@@ -293,8 +297,15 @@ export class MarketplaceAdminRepository implements MarketplaceAdminPort {
     if (rows.length !== 1) return null;
     return tx.provider.findUnique({
       where: { id: providerId },
-      select: { userId: true, status: true },
+      select: { userId: true, status: true, phone: true },
     });
+  }
+
+  async hasJoiningService(
+    client: Prisma.TransactionClient,
+    providerId: string,
+  ): Promise<boolean> {
+    return hasJoiningService(client, providerId);
   }
 
   async recordProviderReviewInTransaction(

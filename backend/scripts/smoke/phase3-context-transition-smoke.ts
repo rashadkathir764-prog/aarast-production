@@ -322,7 +322,7 @@ async function main(): Promise<void> {
 
   // B-02: a refused profile is approved only after its provider reopens it
   // and sends it back to review.
-  await providerDashboard.reopenApplication(authenticated(account));
+  const reopened = await providerDashboard.reopenApplication(authenticated(account));
   await assertWeddingContextsPreserved(
     account.id,
     ProviderStatus.NEEDS_CHANGES,
@@ -330,7 +330,10 @@ async function main(): Promise<void> {
     true,
     false,
   );
-  await providerDashboard.resubmitApplication(authenticated(account));
+  // He sends it back naming the decision he read (the refusal).
+  await providerDashboard.resubmitApplication(authenticated(account), {
+    latestDecisionId: reopened.latestDecision?.id ?? null,
+  });
   await assertWeddingContextsPreserved(
     account.id,
     ProviderStatus.PENDING,

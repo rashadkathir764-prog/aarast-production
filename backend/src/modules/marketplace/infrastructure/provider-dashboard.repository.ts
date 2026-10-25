@@ -369,11 +369,14 @@ export function providerActivity(client: Client, providerId: string, from: Date,
   ]);
 }
 
-/** An active listing the back office made under one of these phone spellings, not yet claimed (V1 checklist 4.18). */
+/**
+ * An active listing the back office made under one of these phone spellings,
+ * not yet claimed (V1 checklist 4.18), with the city and category p02 names.
+ */
 export function findUnclaimedListing(client: Client, phones: readonly string[]) {
   return client.provider.findFirst({
     where: { userId: null, status: ProviderStatus.ACTIVE, phone: { in: [...phones] } },
-    select: { id: true, businessName: true, phone: true },
+    select: { id: true, businessName: true, phone: true, cityId: true, primaryCategoryId: true },
     orderBy: { createdAt: 'asc' },
   });
 }
@@ -424,13 +427,6 @@ export function markProviderReopened(client: Client, providerId: string, at: Dat
   return client.provider.update({
     where: { id: providerId },
     data: { status: ProviderStatus.NEEDS_CHANGES, reopenedAt: at },
-  });
-}
-
-/** The provider's priced, active services: a profile goes to review with at least one (B-10). */
-export function countPricedActiveServices(client: Client, providerId: string) {
-  return client.providerService.count({
-    where: { providerId, isActive: true, basePrice: { gt: 0 } },
   });
 }
 

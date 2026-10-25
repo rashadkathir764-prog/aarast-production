@@ -97,12 +97,19 @@ import {
 import {
   currentProviderReviewNotes,
   isProviderAwaitingApproval,
+  JOINING_SERVICE_CURRENCY,
+  joiningCurrencyRequired,
+  providerServiceRequired,
+  toProviderLatestDecision,
   type ProviderReviewDecisionView,
 } from '../modules/marketplace/public/provider-review';
 import {
   findLatestProviderDecision,
+  hasJoiningService,
   recordProviderReviewEvent,
 } from '../modules/marketplace/infrastructure/provider-review.repository';
+import { claimPhoneSpellings } from '../modules/marketplace/public/provider-claim-phone';
+import { ResubmitApplicationDto } from './dto/resubmit-application.dto';
 import {
   lockOwnedProviderAfterUsersInTransaction,
   lockOwnedProviderForMutationInTransaction,
@@ -114,7 +121,9 @@ type ProviderProfile = Provider & {
   city: City;
   primaryCategory?: ProviderCategory | null;
   /** The latest administrator decision, whose notes the profile shows (B-01). */
-  latestDecision: ProviderReviewDecisionView | null;
+  latestDecision:
+    | (ProviderReviewDecisionView & { id: string; createdAt: Date })
+    | null;
 };
 type ProviderDashboardServiceRecord = ProviderService & {
   category: ProviderCategory;
@@ -235,20 +244,30 @@ export class ProviderDashboardService {
   private joiningServices(
     services: ApplyProviderDto['services'],
   ): dashboardStore.JoiningServiceFields[] {
-    const priced = (services ?? []).map((service) => {
-      const basePrice = optionalMoneyAmount(service.basePrice, 'basePrice');
-      if (basePrice === null || Number(basePrice) <= 0) {
-        throw this.serviceRequired();
-      }
-      return {
-        title: this.requiredText(service.title, 'title'),
-        description: this.optionalText(service.description),
-        basePrice,
-        currency: this.serviceCurrency(service.currency),
-      };
-    });
-    if (priced.length === 0) throw this.serviceRequired();
+    const priced = (services ?? []).map((service) => ({
+      title: this.requiredText(service.title, 'title'),
+      description: this.optionalText(service.description),
+      basePrice: this.joiningPrice(service.basePrice),
+      currency: this.joiningCurrency(service.currency),
+    }));
+    if (priced.length === 0) throw providerServiceRequired();
     return priced;
+  }
+
+  /** A joining service's price: above zero (B-10). */
+  private joiningPrice(value: string | null | undefined): string {
+    const basePrice = optionalMoneyAmount(value, 'basePrice');
+    if (basePrice === null || Number(basePrice) <= 0) {
+      throw providerServiceRequired();
+    }
+    return basePrice;
+  }
+
+  /** A joining service is priced in YER (D48); left out, it is YER. */
+  private joiningCurrency(value: string | null | undefined): string {
+    const currency = value?.trim().toUpperCase() || JOINING_SERVICE_CURRENCY;
+    if (currency !== JOINING_SERVICE_CURRENCY) throw joiningCurrencyRequired();
+    return currency;
   }
 
   private joiningServiceOnly(): ForbiddenException {
@@ -258,22 +277,6 @@ export class ProviderDashboardService {
       message:
         'Before approval only the joining service’s name, price and description can change',
     });
-  }
-
-  private serviceRequired(): UnprocessableEntityException {
-    return new UnprocessableEntityException({
-      statusCode: 422,
-      code: 'PROVIDER_SERVICE_REQUIRED',
-      message: 'At least one service with its price is required before review',
-    });
-  }
-
-  private serviceCurrency(value: string | null | undefined): string {
-    const currency = (value?.trim() || 'YER').toUpperCase();
-    if (!/^[A-Z]{3}$/.test(currency)) {
-      throw new BadRequestException('currency must be a three-letter ISO code');
-    }
-    return currency;
   }
 
   /**
@@ -286,12 +289,22 @@ export class ProviderDashboardService {
     if (await dashboardStore.findProviderByUserId(this.prisma, currentUser.id)) {
       return { listing: null };
     }
-    const listing = await dashboardStore.findUnclaimedListing(
+    const found = await dashboardStore.findUnclaimedListing(
       this.prisma,
       PhoneNormalizer.lookupVariants(currentUser.phone),
     );
+    if (!found) return { listing: null };
+    // p02 names the listing's category and city («تصوير · صنعاء»).
+    const [listing] = await this.relations.attachProviderCatalog(this.prisma, [found]);
     return {
-      listing: listing ? { id: listing.id, businessName: listing.businessName } : null,
+      listing: {
+        id: listing.id,
+        businessName: listing.businessName,
+        city: { id: listing.city.id, nameAr: listing.city.nameAr },
+        primaryCategory: listing.primaryCategory
+          ? { id: listing.primaryCategory.id, nameAr: listing.primaryCategory.nameAr }
+          : null,
+      },
     };
   }
 
@@ -302,9 +315,7 @@ export class ProviderDashboardService {
    * requests (PROVIDER_NOT_CLAIMED).
    */
   async claimListing(currentUser: AuthenticatedUser, providerId: string) {
-    const phones = currentUser.phone
-      ? PhoneNormalizer.lookupVariants(currentUser.phone)
-      : [];
+    const phones = claimPhoneSpellings(currentUser.phone);
     const claim = await runSerializableTransaction(this.prisma, async (tx) => {
       const [actor] = await lockUserLifecycleRowsForUpdateInTransaction(tx, [
         currentUser.id,
@@ -349,9 +360,15 @@ export class ProviderDashboardService {
 
   /**
    * «أرسلت التعديل» (B-01): the provider sends the fixed profile back to
-   * review. Only from NEEDS_CHANGES, and with a priced service (B-10).
+   * review. Only from NEEDS_CHANGES, with a priced service (B-10), and only
+   * after the notes he read: the request names the latest decision he saw,
+   * and a newer one (the team rewrote its notes meanwhile) is refused so he
+   * reads it first.
    */
-  async resubmitApplication(currentUser: AuthenticatedUser) {
+  async resubmitApplication(
+    currentUser: AuthenticatedUser,
+    dto: ResubmitApplicationDto,
+  ) {
     const updated = await runSerializableTransaction(this.prisma, async (tx) => {
       const provider = await lockOwnedProviderForMutationInTransaction(
         tx,
@@ -367,8 +384,19 @@ export class ProviderDashboardService {
           currentStatus: provider.status,
         });
       }
-      if ((await dashboardStore.countPricedActiveServices(tx, provider.id)) === 0) {
-        throw this.serviceRequired();
+      // Every decision is written under the provider's row lock held here,
+      // so the latest one cannot change before this transaction ends.
+      const latest = await findLatestProviderDecision(tx, provider.id);
+      if ((latest?.id ?? null) !== dto.latestDecisionId) {
+        throw new ConflictException({
+          statusCode: 409,
+          code: 'PROVIDER_REVIEW_CHANGED',
+          message: 'The review team changed its notes; read them before sending',
+          latestDecisionId: latest?.id ?? null,
+        });
+      }
+      if (!(await hasJoiningService(tx, provider.id))) {
+        throw providerServiceRequired();
       }
       const at = new Date();
       const resubmitted = await dashboardStore.markProviderResubmitted(
@@ -634,11 +662,17 @@ export class ProviderDashboardService {
         'JOINING_SERVICE',
         'UPDATE',
       );
-      if (isProviderAwaitingApproval(provider)) {
-        // Before approval he joins with one priced service in his category;
-        // the others come after approval (B-10, D41). This lets a profile
-        // that applied before B-10 add the one it goes to review with.
-        if ((await dashboardStore.listOwnedServices(tx, provider.id)).length > 0) {
+      const joining = isProviderAwaitingApproval(provider);
+      if (joining) {
+        // Before approval he joins with one priced service in his category,
+        // its name, price and words, in YER; the others come after approval
+        // (B-10, D41, D48). He adds it while he has no active priced
+        // service: a profile that applied before B-10, or whose service the
+        // team switched off.
+        if (await hasJoiningService(tx, provider.id)) {
+          throw this.joiningServiceOnly();
+        }
+        if (dto.priceUnit !== undefined || dto.cityId !== undefined) {
           throw this.joiningServiceOnly();
         }
         if (dto.categoryId !== provider.primaryCategoryId) {
@@ -646,10 +680,11 @@ export class ProviderDashboardService {
             'categoryId must be the profile category before approval',
           );
         }
-        if (basePrice === null || Number(basePrice) <= 0) {
-          throw this.serviceRequired();
-        }
+        this.joiningPrice(dto.basePrice);
       }
+      const currency = joining
+        ? this.joiningCurrency(dto.currency)
+        : (this.optionalText(dto.currency) ?? 'YER');
       await this.lockActiveCategoryInTransaction(tx, dto.categoryId);
       if (dto.cityId) {
         await this.lockActiveCityInTransaction(tx, dto.cityId);
@@ -664,7 +699,7 @@ export class ProviderDashboardService {
             description: this.optionalText(dto.description),
             basePrice,
             priceUnit: this.optionalText(dto.priceUnit),
-            currency: this.optionalText(dto.currency) ?? 'YER',
+            currency,
             cityId: this.optionalText(dto.cityId),
         }),
       );
@@ -694,23 +729,27 @@ export class ProviderDashboardService {
         currentUser.id,
         'JOINING_SERVICE',
       );
-      if (isProviderAwaitingApproval(provider)) {
+      const joining = isProviderAwaitingApproval(provider);
+      if (joining) {
         // Before approval only the joining service's name, price and words
-        // change (B-10); its category follows the profile's.
+        // change (B-10); its category follows the profile's and its price
+        // stays in YER (D48).
         if (
           dto.categoryId !== undefined ||
           dto.cityId !== undefined ||
-          dto.isActive !== undefined
+          dto.isActive !== undefined ||
+          dto.priceUnit !== undefined
         ) {
           throw this.joiningServiceOnly();
         }
-        if (
-          dto.basePrice !== undefined &&
-          (basePrice === null || Number(basePrice) <= 0)
-        ) {
-          throw this.serviceRequired();
-        }
+        if (dto.basePrice !== undefined) this.joiningPrice(dto.basePrice);
       }
+      const currency =
+        dto.currency === undefined
+          ? undefined
+          : joining
+            ? this.joiningCurrency(dto.currency)
+            : this.requiredText(dto.currency, 'currency');
       if (dto.categoryId !== undefined) {
         await this.lockActiveCategoryInTransaction(tx, dto.categoryId);
       }
@@ -735,9 +774,7 @@ export class ProviderDashboardService {
           ...(dto.priceUnit !== undefined
             ? { priceUnit: this.optionalText(dto.priceUnit) }
             : {}),
-          ...(dto.currency !== undefined
-            ? { currency: this.requiredText(dto.currency, 'currency') }
-            : {}),
+          ...(currency !== undefined ? { currency } : {}),
           ...(dto.cityId !== undefined
             ? { cityId: this.optionalText(dto.cityId) }
             : {}),
@@ -1672,6 +1709,8 @@ export class ProviderDashboardService {
       coverUrl: provider.coverUrl,
       status: provider.status,
       ...currentProviderReviewNotes(provider.status, provider.latestDecision),
+      // The decision he reads now; «أرسلت التعديل» names it (B-01).
+      latestDecision: toProviderLatestDecision(provider.latestDecision),
       resubmittedAt: provider.resubmittedAt,
       resubmitCount: provider.resubmitCount,
       reopenedAt: provider.reopenedAt,

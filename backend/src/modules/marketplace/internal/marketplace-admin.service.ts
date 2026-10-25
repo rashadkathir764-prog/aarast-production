@@ -83,8 +83,15 @@ export class MarketplaceAdminService implements MarketplaceAdminPort {
   async lockProviderForUpdateInTransaction(
     tx: Prisma.TransactionClient,
     providerId: string,
-  ): Promise<{ userId: string | null; status: ProviderStatus } | null> {
+  ): Promise<{ userId: string | null; status: ProviderStatus; phone: string } | null> {
     return this.repository.lockProviderForUpdateInTransaction(tx, providerId);
+  }
+
+  async hasJoiningService(
+    client: Prisma.TransactionClient,
+    providerId: string,
+  ): Promise<boolean> {
+    return this.repository.hasJoiningService(client, providerId);
   }
 
   async recordProviderReviewInTransaction(

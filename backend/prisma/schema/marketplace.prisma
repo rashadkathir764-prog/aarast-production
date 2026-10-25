@@ -354,8 +354,12 @@ model ProviderProfileViewDay {
 /// The provider's review history (B-01, B-02). `actorId` is the account
 /// that acted (an administrator, or the provider for RESUBMITTED and
 /// REOPENED), kept as a plain id like `Booking.requestedByUserId`.
+/// `sequence` orders the steps: every step is written under the provider's
+/// row lock, so it grows in the order the steps happened, even when two
+/// share a `createdAt`.
 model ProviderReviewEvent {
   id         String                  @id @default(uuid())
+  sequence   Int                     @unique @default(autoincrement())
   providerId String
   kind       ProviderReviewEventKind
   actorId    String?
@@ -363,7 +367,7 @@ model ProviderReviewEvent {
   provider   Provider                @relation(fields: [providerId], references: [id], onDelete: Cascade)
   notes      ProviderReviewNote[]
 
-  @@index([providerId, createdAt])
+  @@index([providerId, sequence])
 }
 
 /// A note an administrator wrote with a decision: one for the whole

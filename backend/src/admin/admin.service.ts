@@ -20,7 +20,10 @@ import {
   UserRole,
   UserStatus,
 } from '@prisma/client';
-import type { ProviderFieldNote } from '../modules/marketplace/public/provider-review';
+import {
+  providerServiceRequired,
+  type ProviderFieldNote,
+} from '../modules/marketplace/public/provider-review';
 import { AdminProviderClaims } from './admin-provider-claims';
 import { lockProviderReviewAccountsInTransaction } from './admin-provider-review-lock';
 import {
@@ -173,6 +176,10 @@ export class AdminService {
     const status = this.parseProviderStatus(query.status);
     const searchText = this.optionalText(query.search);
     const resubmitted = this.optionalBoolean(query.resubmitted, 'resubmitted');
+    // «أُعيد إرسالها» narrows the profiles waiting for review (B-01).
+    if (resubmitted !== null && status !== null && status !== ProviderStatus.PENDING) {
+      throw new BadRequestException('resubmitted narrows PENDING profiles only');
+    }
     const { total, providers } = await this.prisma.$transaction(async (tx) => {
       const search = await this.textSearch(tx, searchText, ['name', 'phone']);
       const listing = await this.owners.marketplace.listProviders(
@@ -836,6 +843,14 @@ export class AdminService {
         throw new NotFoundException('Provider application not found');
       }
       assertProviderAdminAction(action, currentProvider.status);
+      // D41 (B-10): a profile is approved only with an active priced
+      // service, the same rule resubmitting reads.
+      if (
+        action === 'APPROVE' &&
+        !(await this.owners.marketplace.hasJoiningService(tx, id))
+      ) {
+        throw providerServiceRequired();
+      }
       const reviewedAt = new Date();
 
       const updated = await this.owners.marketplace.recordProviderReviewInTransaction(

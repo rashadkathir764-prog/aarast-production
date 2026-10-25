@@ -194,6 +194,7 @@ test('admin provider mapper preserves nested shape and money serialization', () 
     'status',
     'reviewNote',
     'fieldNotes',
+    'latestDecision',
     'resubmittedAt',
     'resubmitCount',
     'reopenedAt',

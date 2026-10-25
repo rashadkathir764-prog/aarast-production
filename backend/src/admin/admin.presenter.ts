@@ -16,6 +16,7 @@ import type {
 import {
   currentProviderReviewNotes,
   sortProviderFieldNotes,
+  toProviderLatestDecision,
 } from '../modules/marketplace/public/provider-review';
 import { toReviewIdentity } from '../shared-kernel/privacy/review-identity';
 import {
@@ -342,6 +343,9 @@ export function toProviderResponse(provider: AdminProviderRecord) {
       provider.status,
       provider.reviewEvents?.[0] ?? null,
     ),
+    // The latest decision; a profile sent back reads «كان مرفوض» or «كان
+    // يحتاج تعديل» from its kind (B-01, B-02).
+    latestDecision: toProviderLatestDecision(provider.reviewEvents?.[0]),
     resubmittedAt: provider.resubmittedAt,
     resubmitCount: provider.resubmitCount,
     reopenedAt: provider.reopenedAt,

@@ -227,6 +227,8 @@ function createProviderDashboard(status: ProviderStatus) {
       findMany: async () => [joiningService()],
       findFirst: async () => joiningService(),
       findUnique: async () => joiningService(),
+      // The joining rule counts that service: active, priced above zero.
+      count: async () => 1,
       update: async ({ data }: any) => ({ ...joiningService(), ...data }),
       create: async ({ data }: any) => ({
         id: serviceId,

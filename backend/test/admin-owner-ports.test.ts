@@ -214,7 +214,9 @@ test('marketplace filters providers by its own columns and the accounts identity
   const where = {
     AND: [
       { status: { in: [ProviderStatus.PENDING, ProviderStatus.NEEDS_CHANGES] } },
-      // B-01: the «أُعيد إرسالها» queue.
+      // B-01: the «أُعيد إرسالها» queue narrows the profiles waiting for
+      // review, whatever statuses the page asked for.
+      { status: { in: [ProviderStatus.PENDING] } },
       { resubmittedAt: { not: null } },
       { cityId: 'city-1' },
       { OR: [{ primaryCategoryId: 'category-1' }, { services: { some: { categoryId: 'category-1' } } }] },

@@ -13,6 +13,7 @@ import {
   UserStatus,
 } from '@prisma/client';
 import { AuthenticatedUser } from '../modules/identity/public/identity-session.types';
+import { claimPhoneMatchesListing } from '../modules/marketplace/public/provider-claim-phone';
 import type { NotificationsPort } from '../modules/notifications/public/notifications.port';
 import { runSerializableTransaction } from '../platform/database/serializable-transaction';
 import { PrismaService } from '../platform/database/prisma.service';
@@ -66,6 +67,17 @@ export class AdminProviderClaims {
           statusCode: 409,
           code: 'PROVIDER_CLAIM_ACCOUNT_INACTIVE',
           message: 'The claiming account is not active',
+        });
+      }
+      // The phone proved the claim when it was sent; the account row is
+      // locked above, so the phone read here is the one that would own the
+      // listing. A changed phone no longer proves it.
+      const account = await this.owners.accounts.getAccount(tx, current.userId);
+      if (!claimPhoneMatchesListing(account?.phone, listing.phone)) {
+        throw new ConflictException({
+          statusCode: 409,
+          code: 'PROVIDER_CLAIM_PHONE_CHANGED',
+          message: "The claiming account's phone no longer matches the listing",
         });
       }
       const owned = await this.owners.marketplace.getAccountProviders(tx, [

@@ -4,6 +4,7 @@
 - `/admin`
 - `/administrative-areas`
 - `/audit-logs`
+- `/bookings`
 - `/categories`
 - `/cities`
 - `/cities/new`
@@ -24,4 +25,4 @@
 - `/users`
 - `/users/:id`
 
-Total: 23 routes
+Total: 24 routes

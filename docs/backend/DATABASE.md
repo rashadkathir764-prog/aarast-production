@@ -38,7 +38,7 @@ run the local demo seed `backend/prisma/demo-seed.ts`, see
 | Favorite | Lets users save providers or services for later comparison. |
 | Review | Captures user feedback about a provider/service reference. Reviews are implemented as provider-reference support, not as paid marketplace monetization. A review requires a confirmed `Booking` with the provider whose day has passed (F10). |
 | Package | Represents bundled provider offerings, such as full hall packages or photography packages. |
-| Booking | The wedding day reserved with a provider after their offer was accepted (V1 checklist 4.6). One per quote request (`quoteRequestId` unique); the plan and the customer are the quote's. `status` is `REQUESTED → CONFIRMED / DECLINED`, or `CANCELLED` by either side (`cancelledBy`). `eventDate` is a calendar day. A partial unique index (`providerId`, `eventDate`) `WHERE status = 'CONFIRMED'` allows one confirmed booking per provider per day. Tracking only: no deposit or payment. |
+| Booking | The wedding day reserved with a provider after their offer was accepted (V1 checklist 4.6). One per quote request (`quoteRequestId` unique); the plan and the customer are the quote's. `status` is `REQUESTED → CONFIRMED / DECLINED`, `CANCELLED` by either side (`cancelledBy`), or `EXPIRED` (`expiredAt`) when the back office suspends the provider while it waits (B-42). `eventDate` is a calendar day. A provider holds at most `Provider.dailyBookingCapacity` (1 to 20, default 1, CHECK `Provider_dailyBookingCapacity_range`) `CONFIRMED` bookings on one day, counted under the provider's row lock (B-20); migration `20261027100000_provider_daily_capacity_and_expired_bookings` dropped the old one-a-day partial unique index `Booking_provider_confirmed_date_key`. Tracking only: no deposit or payment; the provider reads the customer's agreed, paid and left through finance's public port (B-18). |
 | ProviderBlockedDate | A day the provider marked unavailable on their calendar; unique per provider and day. Requests and confirmations for it are refused. |
 | ProviderProfileViewDay | How many times customers opened a provider's page on one day (`providerId`, `day` primary key, `views`). A daily total only: who viewed is not stored (V1 checklist 4.19). |
 | ProviderReviewEvent | One step of a provider's review (B-01, B-02): an administrator's decision (`CHANGES_REQUESTED`, `REJECTED`, `APPROVED`, `SUSPENDED`, `ACTIVATED`) or the provider's own (`RESUBMITTED`, `REOPENED`), with `actorId` (a plain account id), `createdAt` and `sequence`, a serial that orders the steps (migration `20261025180000_order_provider_review_events`; every step is written under the provider's row lock, so it grows in the order the steps happened even when two share a `createdAt`; the steps already written were numbered by time, then id). Every read of «the latest decision» and of the history orders by `sequence`. Cascades with the provider. Replaces the single `Provider.reviewNote`, which migration `20261025120000_add_provider_review_and_claim_requests` moved into it (one event and one `GENERAL` note per stored note) before dropping the column. `Provider` keeps `reviewedAt`/`reviewedById` for the latest decision and gains `resubmittedAt`, `resubmitCount` and `reopenedAt`. |
@@ -385,6 +385,11 @@ The backend now includes the approved provider-reference and quote-lead foundati
   the notices already written to their types and to the routes the server
   writes now, and names each booking step in `data.bookingEvent`; their
   words stay as written.
+- B3 (D60): migration `20261027100000_provider_daily_capacity_and_expired_bookings`
+  adds `Provider.dailyBookingCapacity` (INTEGER NOT NULL DEFAULT 1, CHECK 1 to
+  20), drops the partial unique index `Booking_provider_confirmed_date_key`,
+  adds `BookingStatus.EXPIRED` and `Booking.expiredAt`. Existing providers
+  keep one wedding a day; no row changes.
 - `Notification` for persisted task, payment-schedule, sharing, and quote alerts
   with deduplication. Migration
   `20260726010000_scrub_notification_contact_pii` rewrites historical
@@ -515,7 +520,7 @@ rewrite as permission to restore a removed live model.
 | `ReferenceCatalogItem` | 9 | `id`, `catalogId`, `createdAt`, `updatedAt` |
 | `ReferenceCatalogItemRevision` | 19 | `id`, `itemId`, `createdAt` |
 | `ProviderCategory` | 13 | `id`, `createdAt`, `updatedAt` |
-| `Provider` | 46 | `id`, `userId`, `cityId`, `primaryCategoryId`, `reviewedAt`, `reviewedById`, `resubmittedAt`, `reopenedAt` |
+| `Provider` | 47 | `id`, `userId`, `cityId`, `primaryCategoryId`, `reviewedAt`, `reviewedById`, `resubmittedAt`, `reopenedAt` |
 | `ProviderService` | 19 | `id`, `providerId`, `categoryId`, `priceUpdatedAt`, `cityId`, `createdAt`, `updatedAt` |
 | `ProviderServiceImage` | 7 | `id`, `serviceId`, `createdAt` |
 | `ProviderPackage` | 13 | `id`, `providerId`, `serviceId`, `createdAt`, `updatedAt` |
@@ -524,7 +529,7 @@ rewrite as permission to restore a removed live model.
 | `QuoteRequest` | 37 | `id`, `userId`, `weddingPlanId`, `providerId`, `serviceId`, `cityId`, `acceptedAt`, `rejectedAt` |
 | `QuoteOffer` | 24 | `id`, `quoteRequestId`, `providerId`, `revisedAt`, `revisionNoticeAt`, `withdrawnAt`, `createdAt`, `updatedAt` |
 | `PlanProviderLink` | 12 | `id`, `weddingPlanId`, `providerId`, `quoteRequestId`, `quoteOfferId`, `createdAt`, `updatedAt` |
-| `Booking` | 17 | `id`, `quoteRequestId`, `quoteOfferId`, `providerId`, `requestedByUserId`, `confirmedAt`, `declinedAt`, `cancelledAt` |
+| `Booking` | 18 | `id`, `quoteRequestId`, `quoteOfferId`, `providerId`, `requestedByUserId`, `confirmedAt`, `declinedAt`, `cancelledAt` |
 | `ProviderBlockedDate` | 5 | `id`, `providerId`, `createdAt` |
 | `ProviderProfileViewDay` | 4 | `providerId` |
 | `ProviderReviewEvent` | 8 | `id`, `providerId`, `actorId`, `createdAt` |

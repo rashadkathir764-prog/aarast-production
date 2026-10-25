@@ -873,6 +873,17 @@ The dashboard summary powers the mobile Home / Today Center. Existing count and 
   provider in the venue category (`wedding-halls`), or, for a caller who sees
   money, a non-cancelled cost in a venue budget category (قاعة، صالة). The
   home's «القاعة» step reads it; clients never work it out themselves.
+- `bookedServices` (D60, the one «محجوز»): `{ count, budgetCategoryIds,
+  quoteRequestIds }`. A service is booked when its provider `CONFIRMED` a
+  booking (a past day included), or when its money item has a live cost with
+  a named party and no provider or offer (booked outside اعّرست; the mahr is
+  never one). A booked offer counts once under the money item its cost was
+  filed in; one without an item (or whose cost is another account's private
+  one) counts once by its request (`quoteRequestIds`). An accepted offer
+  without a confirmed booking is never booked («اخترت X · اطلب الحجز»). A
+  contributor reads his own requests; nobody reads another account's private
+  costs; no amount is read. The home's «محجوز» tile and the providers board
+  (f01) both read it (`plan-booked-services.ts`).
 - `membershipId` and `membershipAuthorityVersion`: the same current
   contributor-membership identity returned by `/api/v1/contexts`, or `null`
   for an owner. Clients must not construct or guess these values.
@@ -2625,6 +2636,16 @@ is taken or kept anywhere.
   renewals ends (a renewal booked from the day after the current one carries
   it on). `endsAt` is the start of the day after the last day covered
   (Sana'a, UTC+3). The profile has no `isFeatured`.
+- `GET /admin/bookings?providerId&status&from&to&page&limit` and
+  `GET /admin/bookings/:id` (`PROVIDERS_READ`; a12, B-40) — read only,
+  newest day first: `{ id, eventDate, status, lifecycleStatus, provider: {
+  id, businessName, status }, customer: { userId, name, weddingPlanId },
+  quoteRequestId, guestCount, cancelledBy, note, requestedAt, confirmedAt,
+  declinedAt, cancelledAt, expiredAt, updatedAt }`. `from`/`to` are days
+  (`YYYY-MM-DD`, inclusive); a bad status or day is `400`, an unknown id
+  `404`. No amount, offer or payment; the «ما صار» reports (B-22) are not
+  built.
+- `GET /api/v1/provider/me/profile` also returns `dailyBookingCapacity` (B-20).
 - `GET /admin/featured-periods?state&providerId&page&limit`
   (`PROVIDERS_READ`): `state` is `CURRENT` (default: active or booked),
   `ACTIVE`, `SCHEDULED`, `FINISHED` or `ALL`; latest start first, then
@@ -2792,27 +2813,71 @@ money moves through it.
   requested or confirmed booking before its day.
 - `GET /api/v1/provider/me/bookings` — the provider's open requests and
   confirmed bookings from today on, with `customerName`, `guestCount`,
-  `location`.
+  `location`, `day: { confirmed, capacity }` (B-20: the day's confirmed
+  bookings and his daily number, p28 «باقي N») and `money` (B-18, below).
 - `PATCH /api/v1/provider/me/bookings/:id/confirm|decline|cancel` `{ note? }`.
+- `GET /api/v1/provider/me/ledger?month=YYYY-MM` (B-18, p47) — `{ month,
+  totals: [{ currency, agreed, paid, left, bookings }], bookings: [{
+  bookingId, quoteRequestId, customerName, eventDate, money }] }`: the month's
+  `CONFIRMED` bookings (a past day included), each currency on its own line.
+  A malformed month is `400 LEDGER_INVALID_MONTH`.
 - `GET|POST /api/v1/provider/me/blocked-dates` (`{ date }`) and
   `DELETE /api/v1/provider/me/blocked-dates/:date` — days the provider marks
-  unavailable.
+  unavailable. Closing a day needs an approved (`ACTIVE`) account: otherwise
+  `403 PROVIDER_NOT_ACTIVE` (B-42).
 
 A booking response is `{ id, quoteRequestId, quoteOfferId, providerId,
 eventDate, status, lifecycleStatus, cancelledBy, note, confirmedAt, declinedAt,
-cancelledAt, createdAt, updatedAt }`. `status` is `REQUESTED | CONFIRMED |
-DECLINED | CANCELLED`; `lifecycleStatus` adds `COMPLETED` for a confirmed
-booking whose day has passed. Quote responses (customer and provider) carry
-`booking` (or `null`).
+cancelledAt, expiredAt, createdAt, updatedAt }`. `status` is `REQUESTED |
+CONFIRMED | DECLINED | CANCELLED | EXPIRED` (`EXPIRED`: an open request of a
+provider the back office suspended, B-42; the customer may ask again);
+`lifecycleStatus` adds `COMPLETED` for a confirmed booking whose day has
+passed. Quote responses (customer and provider) carry `booking` (or `null`);
+on the provider's request responses the booking also carries `money`.
 
-Availability: a request or a confirmation for a blocked day, or for a day the
-provider is already confirmed on, returns `409 BOOKING_DATE_UNAVAILABLE`; a
-partial unique index keeps one `CONFIRMED` booking per provider per day, so of
-two racing confirmations exactly one succeeds. Blocking a day that holds a
-confirmed booking returns `409 BOOKING_DATE_HAS_BOOKING`. A past day returns
-`400 BOOKING_DATE_IN_PAST`; a step the status does not allow returns
+**Money for the provider (B-18, D41, D60).** `money` is `{ agreed, paid, left,
+currency, lastPaidAt } | null`: the customer's agreement filed from the
+accepted offer (finance's `listCostsForOffers`), its total, everyone's
+payments net of reversals, what is left (never below zero), the offer's
+currency (the plan's, G19) and the last payment's time. `null` when the
+customer keeps no agreement for the offer. The provider reads these three
+totals only: never a payment, who paid, a receipt or a note, and he records
+nothing.
+
+**Capacity (B-20).** `Provider.dailyBookingCapacity` (1 to 20, default 1;
+`PATCH /api/v1/provider/me/profile { dailyBookingCapacity }`, outside the
+range `400`; the profile returns it) is how many `CONFIRMED` bookings he takes
+on one day. A request or a confirmation for a blocked day returns
+`409 BOOKING_DATE_UNAVAILABLE`; for a day whose confirmed bookings (the
+booking itself excluded) already reach his number, `409 BOOKING_DAY_FULL`. A
+`REQUESTED` booking takes no seat. Both checks run under the provider's row
+lock, the only guard (the one-a-day partial unique index is dropped by
+migration `20261027100000`), so of racing confirmations exactly the number's
+worth succeed (`smoke:booking`). Lowering the number keeps the bookings
+already confirmed and refuses the next confirmation. Blocking a day that
+holds a confirmed booking returns `409 BOOKING_DATE_HAS_BOOKING`. A past day
+returns `400 BOOKING_DATE_IN_PAST`; a step the status does not allow returns
 `409 BOOKING_NOT_ALLOWED`. Each step notifies the other side
 (`BOOKING_UPDATED`).
+
+**Suspension (B-42).** `PATCH /admin/providers/:id/suspend` also, in its
+transaction and under the provider's row lock, moves his `REQUESTED` bookings
+to `EXPIRED` (`expiredAt`) and tells each customer «[المزود] موقوف مؤقتًا ·
+انتهى طلب حجز يوم …»; his `CONFIRMED` bookings from today on stay and their
+customers are told «[المزود] موقوف مؤقتًا · حجزك المؤكد يوم … باقي»
+(`BOOKING_UPDATED`, `data.bookingEvent = PROVIDER_SUSPENDED`,
+`data.bookingKept`). A suspended provider requests, confirms and closes
+nothing (`403 PROVIDER_NOT_ACTIVE`). V1 has no provider-side pause switch.
+
+**Deleting a provider's account (B-33).** `DELETE /api/v1/users/me` by the
+owner of a provider with `CONFIRMED` bookings from today on (Sana'a) returns
+`409 PROVIDER_HAS_UPCOMING_BOOKINGS { count, bookingIds }`; the check reads
+under the provider rows' locks and the refusal rolls the whole erasure back.
+Otherwise every customer whose open request (`SENT`, `VIEWED`, `RESPONDED`,
+or `ACCEPTED` without a confirmed booking) goes with the account is told
+«[المزود] أغلق حسابه» (`BOOKING_UPDATED`, `data.bookingEvent =
+PROVIDER_CLOSED`, opening the phone's f01 «طلباتي» of the plan, or f02
+without a plan), written after the purge and naming nothing erased.
 
 Reviews (F10): `POST /api/v1/providers/:id/reviews` requires a confirmed
 booking with the provider whose day has passed; otherwise
@@ -3194,6 +3259,8 @@ configuration, and smoke checks.
 | Method | Path | Controller.Handler | Auth |
 | --- | --- | --- | --- |
 | GET | `/admin/audit-logs` | `admin-audit.list` | 🔒 |
+| GET | `/admin/bookings` | `admin.listBookings` | 🔒 |
+| GET | `/admin/bookings/:id` | `admin.getBooking` | 🔒 |
 | GET | `/admin/cities` | `admin.listCities` | 🔒 |
 | POST | `/admin/cities` | `admin.createCity` | 🔒 |
 | DELETE | `/admin/cities/:id` | `admin.deleteCity` | 🔒 |
@@ -3366,6 +3433,7 @@ configuration, and smoke checks.
 | PATCH | `/api/v1/provider/me/bookings/:id/confirm` | `bookings.confirm` | 🔒 |
 | PATCH | `/api/v1/provider/me/bookings/:id/decline` | `bookings.decline` | 🔒 |
 | GET | `/api/v1/provider/me/claim` | `provider-dashboard.getClaim` | 🔒 |
+| GET | `/api/v1/provider/me/ledger` | `bookings.ledger` | 🔒 |
 | GET | `/api/v1/provider/me/packages` | `provider-dashboard.findPackages` | 🔒 |
 | POST | `/api/v1/provider/me/packages` | `provider-dashboard.createPackage` | 🔒 |
 | DELETE | `/api/v1/provider/me/packages/:id` | `provider-dashboard.deactivatePackage` | 🔒 |

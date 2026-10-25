@@ -16,6 +16,7 @@
 - `/provider/apply`
 - `/provider/dashboard`
 - `/provider/gallery`
+- `/provider/ledger`
 - `/provider/notifications`
 - `/provider/packages/new`
 - `/provider/performance`
@@ -85,4 +86,4 @@
 - `/wedding-plans/create`
 - `/welcome`
 
-Total: 84 unique routes
+Total: 85 unique routes

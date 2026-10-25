@@ -65,6 +65,8 @@ All numbers are fake. Password: see above (never stored in the repository).
 | +967777000206 | فارس الوصابي | مزود أرسل التعديل وينتظر المراجعة: فرقة النجوم للمزمار / Provider who sent the fixes back |
 | +967777000207 | عبده الوصابي | مزود نشط: فرقة الأفراح (مبرع)، يلقاه العريس من «ابحث» في «الفنان والفرقة» (G40) / Active provider found from the groom's artist item |
 | +967777000208 | أم فهد | مزودة نشطة: المزينة أم فهد (نقاشة)، تلقاها العروسة من «ابحثي» في «المزينة والنقاشة» (G40) / Active provider found from the bride's naqsh item |
+| +967777000209 | عبدالرحمن الأصبحي | مزود نشط: ضيافة الأصالة (وجبات)، يأخذ عرسين في اليوم ومحجوز ليلة 21 يناير لمحمد وسلمى (B-20، D60) / Active provider: Al-Asala catering, two weddings a day, full on 21 January |
+| +967777000210 | هدى المتوكل | مزودة نشطة: صالة الياسمين (صالات)، محجوزة لسلمى / Active provider: Al-Yasmine hall, booked for Salma |
 | +967777000506 | عبدالله الحارثي | طلب استلام ملف «مصور الحارة» ينتظر الإدارة / Claim of a listing waiting for review |
 | +967777000502 | نبيل المقطري | صاحب ملف «عدسة سبأ» بلا حساب مزود، يقدر يطلب استلامه / Owner of an unclaimed listing, free to claim it |
 | +967777000301 | عادل الريمي | عميل: عرض الاستوديو له انتهى، وشارك ميزانيته ورقمه مع الطلب / Customer with an expired studio offer who shared his budget and phone |

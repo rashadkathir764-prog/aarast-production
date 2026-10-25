@@ -50,4 +50,13 @@ export class UpdateProviderProfileDto {
   @IsString()
   @IsOptional()
   coverUrl?: string | null;
+
+  /**
+   * The profile's category, changeable only before approval (PENDING or
+   * NEEDS_CHANGES), when the review team may ask for it (B-01); the joining
+   * services follow it. After approval a change goes through review (B-39).
+   */
+  @IsString()
+  @IsOptional()
+  primaryCategoryId?: string;
 }

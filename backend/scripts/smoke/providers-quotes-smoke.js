@@ -151,6 +151,7 @@ async function run() {
       cityId: reference.city.id,
       categoryIds: [reference.category.id],
       description: 'Phase8 provider profile',
+      services: [{ title: 'Phase8 joining service', basePrice: '100000' }],
     }, providerUser.token);
     check('POST /api/v1/provider/apply - HTTP 201', res.status === 201);
     check('provider profile has id', typeof res.body?.id === 'string');

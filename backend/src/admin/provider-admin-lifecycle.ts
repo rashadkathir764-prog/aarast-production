@@ -8,6 +8,9 @@ export type ProviderAdminAction =
   | 'SUSPEND'
   | 'ACTIVATE';
 
+// A refused profile leaves REJECTED only by its provider reopening it
+// (B-02), so a fresh review follows; the review team can rewrite its notes
+// while the provider is still fixing (NEEDS_CHANGES, B-01).
 const allowedStatusesByAction: Record<
   ProviderAdminAction,
   ReadonlySet<ProviderStatus>
@@ -15,7 +18,6 @@ const allowedStatusesByAction: Record<
   APPROVE: new Set([
     ProviderStatus.PENDING,
     ProviderStatus.NEEDS_CHANGES,
-    ProviderStatus.REJECTED,
   ]),
   REJECT: new Set([
     ProviderStatus.PENDING,
@@ -23,7 +25,7 @@ const allowedStatusesByAction: Record<
   ]),
   REQUEST_CHANGES: new Set([
     ProviderStatus.PENDING,
-    ProviderStatus.REJECTED,
+    ProviderStatus.NEEDS_CHANGES,
   ]),
   SUSPEND: new Set([ProviderStatus.ACTIVE]),
   ACTIVATE: new Set([ProviderStatus.SUSPENDED]),

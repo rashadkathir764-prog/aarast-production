@@ -205,6 +205,7 @@ test('marketplace filters providers by its own columns and the accounts identity
       cityId: 'city-1',
       categoryId: 'category-1',
       search: { text: 'hall', userIds: ['u1'] },
+      resubmitted: true,
     },
     { skip: 0, take: 20 },
   );
@@ -213,6 +214,8 @@ test('marketplace filters providers by its own columns and the accounts identity
   const where = {
     AND: [
       { status: { in: [ProviderStatus.PENDING, ProviderStatus.NEEDS_CHANGES] } },
+      // B-01: the «أُعيد إرسالها» queue.
+      { resubmittedAt: { not: null } },
       { cityId: 'city-1' },
       { OR: [{ primaryCategoryId: 'category-1' }, { services: { some: { categoryId: 'category-1' } } }] },
       { OR: [{ businessName: text }, { ownerName: text }, { phone: text }, { email: text }, { userId: { in: ['u1'] } }] },
@@ -221,7 +224,8 @@ test('marketplace filters providers by its own columns and the accounts identity
   assert.deepEqual(calls[0], ['provider.count', { where }]);
   const [, list] = calls[1] as [string, any];
   assert.deepEqual(list.where, where);
-  assert.deepEqual(Object.keys(list.include), ['_count']);
+  // The counts, and the latest decision whose notes the row shows (B-01).
+  assert.deepEqual(Object.keys(list.include), ['_count', 'reviewEvents']);
 });
 
 test('marketplace locks a review only under its provider and sets its moderation status', async () => {

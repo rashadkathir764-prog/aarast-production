@@ -12,11 +12,22 @@ import {
   NotificationPriority,
   NotificationType,
   Prisma,
+  ProviderClaimStatus,
+  ProviderReviewEventKind,
+  ProviderReviewField,
   ProviderStatus,
   ReviewStatus,
   UserRole,
   UserStatus,
 } from '@prisma/client';
+import type { ProviderFieldNote } from '../modules/marketplace/public/provider-review';
+import { AdminProviderClaims } from './admin-provider-claims';
+import { lockProviderReviewAccountsInTransaction } from './admin-provider-review-lock';
+import {
+  AdminClaimDecisionDto,
+  AdminClaimRequestQueryDto,
+} from './dto/admin-claim-request.dto';
+import { AdminRequestChangesDto } from './dto/admin-request-changes.dto';
 import { AuthenticatedUser } from '../modules/identity/public/identity-session.types';
 import {
   AdminPermission,
@@ -48,6 +59,7 @@ import {
 import { AdminCategoryDto, AdminCityDto } from './dto/admin-catalog.dto';
 import { AdminNotificationQueryDto } from './dto/admin-notification.dto';
 import {
+  toAdminClaimRequestResponse,
   toAdminNotificationResponse,
   toAdminQuoteReport,
   toAdminReportsOverviewResponse,
@@ -58,6 +70,7 @@ import {
   toCategoryResponse,
   toCityResponse,
   toProviderResponse,
+  toProviderReviewHistoryResponse,
   toUserResponse,
 } from './admin.presenter';
 import { AdminProviderQueryDto } from './dto/admin-provider-query.dto';
@@ -86,6 +99,7 @@ interface Pagination {
 @Injectable()
 export class AdminService {
   private readonly mutations: AdminMutationExecutor;
+  private readonly claims: AdminProviderClaims;
 
   constructor(
     private readonly prisma: PrismaService,
@@ -95,6 +109,7 @@ export class AdminService {
     private readonly owners: AdminOwners,
   ) {
     this.mutations = new AdminMutationExecutor(prisma, owners);
+    this.claims = new AdminProviderClaims({ prisma, owners, notifications });
   }
 
   async getDashboardStats() {
@@ -123,6 +138,8 @@ export class AdminService {
       rejectedProviders: marketplace.rejectedProviders,
       needsChangesProviders: marketplace.needsChangesProviders,
       suspendedProviders: marketplace.suspendedProviders,
+      resubmittedProviders: marketplace.resubmittedProviders,
+      pendingClaims: marketplace.pendingClaims,
       totalQuoteRequests: marketplace.totalQuoteRequests,
       totalWeddingPlans,
       totalCities,
@@ -155,6 +172,7 @@ export class AdminService {
     const pagination = this.parsePagination(query.page, query.limit);
     const status = this.parseProviderStatus(query.status);
     const searchText = this.optionalText(query.search);
+    const resubmitted = this.optionalBoolean(query.resubmitted, 'resubmitted');
     const { total, providers } = await this.prisma.$transaction(async (tx) => {
       const search = await this.textSearch(tx, searchText, ['name', 'phone']);
       const listing = await this.owners.marketplace.listProviders(
@@ -164,6 +182,7 @@ export class AdminService {
           cityId: query.cityId || null,
           categoryId: query.categoryId || null,
           search,
+          resubmitted,
         },
         { skip: pagination.skip, take: pagination.limit },
       );
@@ -446,7 +465,8 @@ export class AdminService {
       id,
       'APPROVE',
       ProviderStatus.ACTIVE,
-      null,
+      ProviderReviewEventKind.APPROVED,
+      [],
     );
   }
 
@@ -456,18 +476,44 @@ export class AdminService {
       id,
       'REJECT',
       ProviderStatus.REJECTED,
-      this.optionalText(dto.reason),
+      ProviderReviewEventKind.REJECTED,
+      this.generalNote(dto.reason),
     );
   }
 
-  async requestProviderChanges(currentUser: AuthenticatedUser, id: string, dto: AdminReviewActionDto) {
-    const note = this.requiredText(dto.note, 'note');
+  /**
+   * «اطلب تعديل» (B-01): a note about the whole profile, one per field to
+   * fix, or both. Allowed again while the provider is still fixing, so the
+   * team can rewrite its notes; the newest decision's notes are the ones the
+   * provider reads.
+   */
+  async requestProviderChanges(
+    currentUser: AuthenticatedUser,
+    id: string,
+    dto: AdminRequestChangesDto,
+  ) {
+    const notes: ProviderFieldNote[] = [...this.generalNote(dto.note)];
+    const seen = new Set<string>();
+    for (const fieldNote of dto.fieldNotes ?? []) {
+      if (seen.has(fieldNote.field)) {
+        throw new BadRequestException('fieldNotes must name each field once');
+      }
+      seen.add(fieldNote.field);
+      notes.push({
+        field: ProviderReviewField[fieldNote.field],
+        note: this.requiredText(fieldNote.note, 'fieldNotes.note'),
+      });
+    }
+    if (notes.length === 0) {
+      throw new BadRequestException('note or fieldNotes must not be empty');
+    }
     return this.reviewProvider(
       currentUser,
       id,
       'REQUEST_CHANGES',
       ProviderStatus.NEEDS_CHANGES,
-      note,
+      ProviderReviewEventKind.CHANGES_REQUESTED,
+      notes,
     );
   }
 
@@ -477,7 +523,8 @@ export class AdminService {
       id,
       'SUSPEND',
       ProviderStatus.SUSPENDED,
-      this.optionalText(dto.reason),
+      ProviderReviewEventKind.SUSPENDED,
+      this.generalNote(dto.reason),
     );
   }
 
@@ -487,7 +534,62 @@ export class AdminService {
       id,
       'ACTIVATE',
       ProviderStatus.ACTIVE,
-      null,
+      ProviderReviewEventKind.ACTIVATED,
+      [],
+    );
+  }
+
+  /** When the provider applied and every review step since (B-01, B-02). */
+  async getProviderReviewHistory(id: string) {
+    const history = await this.prisma.$transaction(async (tx) => {
+      const provider = await this.owners.marketplace.getProvider(tx, id);
+      if (!provider) return null;
+      const events = await this.owners.attachReviewEvents(
+        tx,
+        await this.owners.marketplace.listProviderReviewEvents(tx, id),
+      );
+      return { provider, events };
+    });
+    if (!history) {
+      throw new NotFoundException('Provider application not found');
+    }
+    return toProviderReviewHistoryResponse(history.provider, history.events);
+  }
+
+  async listClaimRequests(query: AdminClaimRequestQueryDto) {
+    const pagination = this.parsePagination(query.page, query.limit);
+    const status = this.parseClaimStatus(query.status);
+    const { total, claims } = await this.prisma.$transaction(async (tx) => {
+      const listing = await this.owners.marketplace.listClaimRequests(
+        tx,
+        { status },
+        { skip: pagination.skip, take: pagination.limit },
+      );
+      return {
+        total: listing.total,
+        claims: await this.owners.attachClaimRequests(tx, listing.items),
+      };
+    });
+    return this.paginate(
+      claims.map((claim) => toAdminClaimRequestResponse(claim)),
+      total,
+      pagination,
+    );
+  }
+
+  async approveClaimRequest(currentUser: AuthenticatedUser, id: string) {
+    return this.claims.approve(currentUser, id);
+  }
+
+  async rejectClaimRequest(
+    currentUser: AuthenticatedUser,
+    id: string,
+    dto: AdminClaimDecisionDto,
+  ) {
+    return this.claims.reject(
+      currentUser,
+      id,
+      this.requiredText(dto.note, 'note'),
     );
   }
 
@@ -688,13 +790,32 @@ export class AdminService {
     return toUserResponse(user);
   }
 
+  /** The note about the whole profile, when the text has one. */
+  private generalNote(text: string | null | undefined): ProviderFieldNote[] {
+    const note = this.optionalText(text);
+    return note ? [{ field: ProviderReviewField.GENERAL, note }] : [];
+  }
+
+  private parseClaimStatus(value?: string): ProviderClaimStatus | null {
+    const normalized = value?.trim().toUpperCase();
+    if (!normalized) return null;
+    if (normalized in ProviderClaimStatus) {
+      return ProviderClaimStatus[normalized as keyof typeof ProviderClaimStatus];
+    }
+    throw new BadRequestException('claim status is not supported');
+  }
+
   private async reviewProvider(
     currentUser: AuthenticatedUser,
     id: string,
     action: ProviderAdminAction,
     status: ProviderStatus,
-    reviewNote: string | null,
+    kind: ProviderReviewEventKind,
+    notes: readonly ProviderFieldNote[],
   ) {
+    const reviewNote =
+      notes.find((note) => note.field === ProviderReviewField.GENERAL)?.note ??
+      null;
     const result = await runSerializableTransaction(this.prisma, async (tx) => {
       const seed = await this.owners.marketplace.findProviderAccount(tx, id);
       if (!seed) {
@@ -722,7 +843,8 @@ export class AdminService {
         id,
         {
           status,
-          reviewNote,
+          kind,
+          notes,
           reviewedAt,
           reviewedById: currentUser.id,
         },
@@ -757,7 +879,7 @@ export class AdminService {
         const notification = switchProviderStatusNotification(
           updated.businessName,
           status,
-          reviewNote?.trim() || null,
+          reviewNote,
         );
         await this.notifications.createNotificationInTransaction(tx, {
           userId: updated.userId,
@@ -803,27 +925,13 @@ export class AdminService {
     currentUser: AuthenticatedUser,
     providerOwnerUserId: string | null,
   ): Promise<void> {
-    const userIds = [...new Set(
-      [currentUser.id, providerOwnerUserId].filter(
-        (userId): userId is string => Boolean(userId),
-      ),
-    )];
-    const users = await this.owners.accounts.lockAccountsForUpdateInTransaction(
+    await lockProviderReviewAccountsInTransaction(
       tx,
-      userIds,
+      this.owners,
+      currentUser,
+      providerOwnerUserId,
+      'Provider application not found',
     );
-    if (users.length !== userIds.length) {
-      throw new NotFoundException('Provider application not found');
-    }
-    const actor = users.find((user) => user.id === currentUser.id);
-    if (
-      !actor ||
-      actor.role !== UserRole.ADMIN ||
-      actor.status !== UserStatus.ACTIVE ||
-      !hasAdminPermission(actor.adminRole, AdminPermission.PROVIDERS_WRITE)
-    ) {
-      throw new ForbiddenException('Admin permission is required');
-    }
   }
 
   /** The accounts identity matches for a search text; null without one. */

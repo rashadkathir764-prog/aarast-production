@@ -1,8 +1,18 @@
 import { Injectable } from '@nestjs/common';
-import { Prisma, type Provider, ProviderStatus, ReviewStatus } from '@prisma/client';
+import {
+  Prisma,
+  type Provider,
+  type ProviderClaimRequest,
+  ProviderStatus,
+  ReviewStatus,
+} from '@prisma/client';
 import type {
+  AdminClaimRequestFilter,
+  AdminClaimRequestRow,
   AdminListedProviderFields,
   AdminListing,
+  AdminProviderReviewEvent,
+  ProviderClaimDecision,
   AdminMarketplaceSuccessCounts,
   AdminMarketplaceCounters,
   AdminMarketplaceReport,
@@ -83,6 +93,51 @@ export class MarketplaceAdminService implements MarketplaceAdminPort {
     decision: ProviderReviewDecision,
   ): Promise<AdminProviderDetailRow> {
     return this.repository.recordProviderReviewInTransaction(tx, providerId, decision);
+  }
+
+  async listProviderReviewEvents(
+    client: Prisma.TransactionClient,
+    providerId: string,
+  ): Promise<AdminProviderReviewEvent[]> {
+    return this.repository.listProviderReviewEvents(client, providerId);
+  }
+
+  async listClaimRequests(
+    client: Prisma.TransactionClient,
+    filter: AdminClaimRequestFilter,
+    page: AdminPage,
+  ): Promise<AdminListing<AdminClaimRequestRow>> {
+    return this.repository.listClaimRequests(client, filter, page);
+  }
+
+  async findClaimRequestParties(
+    client: Prisma.TransactionClient,
+    claimId: string,
+  ): Promise<{ userId: string; providerId: string } | null> {
+    return this.repository.findClaimRequestParties(client, claimId);
+  }
+
+  async lockClaimRequestForUpdateInTransaction(
+    tx: Prisma.TransactionClient,
+    claimId: string,
+  ): Promise<ProviderClaimRequest | null> {
+    return this.repository.lockClaimRequestForUpdateInTransaction(tx, claimId);
+  }
+
+  async decideClaimRequestInTransaction(
+    tx: Prisma.TransactionClient,
+    claimId: string,
+    decision: ProviderClaimDecision,
+  ): Promise<AdminClaimRequestRow> {
+    return this.repository.decideClaimRequestInTransaction(tx, claimId, decision);
+  }
+
+  async linkClaimedListingInTransaction(
+    tx: Prisma.TransactionClient,
+    providerId: string,
+    userId: string,
+  ): Promise<void> {
+    return this.repository.linkClaimedListingInTransaction(tx, providerId, userId);
   }
 
   async recordProviderVerificationInTransaction(

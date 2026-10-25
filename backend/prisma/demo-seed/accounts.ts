@@ -24,6 +24,9 @@ export type DemoAccountKey =
   | 'providerPending'
   | 'providerNeedsChanges'
   | 'providerRejected'
+  | 'providerResubmitted'
+  | 'claimantHarah'
+  | 'claimantLens'
   | 'customerAdel'
   | 'customerFahd'
   | 'customerKhaled'
@@ -32,7 +35,8 @@ export type DemoAccountKey =
   | 'adminSara'
   | 'adminOmar';
 
-type AccountKind = 'owner' | 'participant' | 'provider' | 'customer' | 'admin';
+/** `applicant`: signed up on the provider path and has no provider profile yet (claims wait for review, B-12). */
+type AccountKind = 'owner' | 'participant' | 'provider' | 'applicant' | 'customer' | 'admin';
 
 export interface DemoAccount {
   key: DemoAccountKey;
@@ -57,7 +61,10 @@ export const DEMO_ACCOUNTS: readonly DemoAccount[] = [
   { key: 'providerHall', name: 'أمجد الحيمي', phone: '+967777000202', kind: 'provider', roleAr: 'مزود نشط: قاعة سبأ (صالات)', roleEn: 'Active provider: Saba Hall (halls)' },
   { key: 'providerPending', name: 'صالح العزي', phone: '+967777000203', kind: 'provider', roleAr: 'مزود بانتظار المراجعة: فرقة الأمجاد للبرع', roleEn: 'Pending provider: Al-Amjad Bara\' Troupe' },
   { key: 'providerNeedsChanges', name: 'منصور الحداد', phone: '+967777000204', kind: 'provider', roleAr: 'مزود «يحتاج تعديل»: محلات الأناقة', roleEn: 'Needs-changes provider: Al-Anaqa Shops' },
-  { key: 'providerRejected', name: 'أم ريان', phone: '+967777000205', kind: 'provider', roleAr: 'مزود مرفوض: كوافيرة أم ريان', roleEn: 'Rejected provider: Um Rayan Salon' },
+  { key: 'providerRejected', name: 'أم ريان', phone: '+967777000205', kind: 'provider', roleAr: 'مزود مرفوض بسبب يقدر يصلّحه: كوافيرة أم ريان («قدّم من جديد»)', roleEn: 'Rejected provider with a fixable reason: Um Rayan Salon (reopen)' },
+  { key: 'providerResubmitted', name: 'فارس الوصابي', phone: '+967777000206', kind: 'provider', roleAr: 'مزود أرسل التعديل وينتظر المراجعة: فرقة النجوم للمزمار', roleEn: 'Provider who sent the fixes back: Al-Nujoom Mizmar Troupe' },
+  { key: 'claimantHarah', name: 'عبدالله الحارثي', phone: '+967777000506', kind: 'applicant', roleAr: 'طلب استلام ملف «مصور الحارة» ينتظر الإدارة', roleEn: 'Claim of the "Musawwir Al-Harah" listing waiting for review' },
+  { key: 'claimantLens', name: 'نبيل المقطري', phone: '+967777000502', kind: 'applicant', roleAr: 'صاحب ملف «عدسة سبأ» بلا حساب مزود، يقدر يطلب استلامه', roleEn: 'Owner of the unclaimed "Adasat Saba" listing, free to claim it' },
   { key: 'customerAdel', name: 'عادل الريمي', phone: '+967777000301', kind: 'customer', persona: WeddingPersona.GROOM, roleAr: 'عميل: طلب من الاستوديو انتهى عرضه', roleEn: 'Customer whose studio offer expired' },
   { key: 'customerFahd', name: 'فهد العمري', phone: '+967777000302', kind: 'customer', persona: WeddingPersona.GROOM, roleAr: 'عميل: حجز مؤكد عند الاستوديو', roleEn: 'Customer with a confirmed studio booking' },
   { key: 'customerKhaled', name: 'خالد القاضي', phone: '+967777000303', kind: 'customer', persona: WeddingPersona.GROOM, roleAr: 'عميل سابق: حجز تم وتقييم 4 نجوم', roleEn: 'Past customer: completed booking and a 4-star review' },
@@ -95,7 +102,7 @@ export async function seedAccounts(
       locale: 'ar',
       onboardingPath: isAdmin
         ? null
-        : isProvider
+        : isProvider || account.kind === 'applicant'
           ? OnboardingPath.PROVIDER
           : OnboardingPath.USER,
       persona: account.persona ?? null,

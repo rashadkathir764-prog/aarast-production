@@ -95,4 +95,11 @@ export class MarketplaceErasureService implements MarketplaceErasurePort {
   ): Promise<void> {
     await tx.favoriteProvider.deleteMany({ where: { userId } });
   }
+
+  async deleteUserClaimRequestsInTransaction(
+    tx: Prisma.TransactionClient,
+    userId: string,
+  ): Promise<void> {
+    await tx.providerClaimRequest.deleteMany({ where: { userId } });
+  }
 }

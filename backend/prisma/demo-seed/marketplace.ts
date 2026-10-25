@@ -6,6 +6,7 @@ import {
   ConversationScope,
   PlanProviderLinkStatus,
   PrismaClient,
+  ProviderReviewEventKind,
   ProviderStatus,
   QuoteOfferStatus,
   QuoteRequestStatus,
@@ -13,6 +14,7 @@ import {
 } from '@prisma/client';
 import { DEMO_ACCOUNTS, userId } from './accounts';
 import {
+  CLAIMS,
   offerId,
   PROVIDERS,
   providerId,
@@ -24,6 +26,7 @@ import {
   STUDIO_REVIEW,
   type ProviderSpec,
   type RequestSpec,
+  type ReviewStepSpec,
 } from './market-data';
 import { planId } from './plan';
 import { day, demoId, demoUuid, inDays } from './support';
@@ -68,6 +71,7 @@ export async function seedMarketplace(prisma: PrismaClient): Promise<void> {
   const categories = await resolveCategories(prisma);
 
   for (const spec of PROVIDERS) await seedProvider(prisma, spec, cities, categories);
+  await seedClaims(prisma);
   await seedStudioCalendar(prisma);
   await seedProfileViews(prisma);
 
@@ -86,7 +90,11 @@ async function seedProvider(
 ): Promise<void> {
   const id = providerId(spec);
   const reviewer = userId('adminNadia');
-  const decided = spec.status !== ProviderStatus.PENDING;
+  const steps = reviewSteps(spec);
+  const decisions = steps.filter((step) => !PROVIDER_STEPS.has(step.kind));
+  const lastDecision = decisions[decisions.length - 1];
+  const resubmits = steps.filter((step) => step.kind === ProviderReviewEventKind.RESUBMITTED);
+  const reopens = steps.filter((step) => step.kind === ProviderReviewEventKind.REOPENED);
   const data = {
     userId: spec.owner ? userId(spec.owner) : null,
     cityId: cities.get(spec.city)!,
@@ -98,14 +106,35 @@ async function seedProvider(
     description: spec.description,
     address: spec.address,
     status: spec.status,
-    reviewNote: spec.reviewNote ?? null,
-    reviewedAt: decided ? inDays(-30) : null,
-    reviewedById: decided ? reviewer : null,
+    reviewedAt: lastDecision ? stepAt(lastDecision) : null,
+    reviewedById: lastDecision ? reviewer : null,
+    resubmittedAt: resubmits.length ? stepAt(resubmits[resubmits.length - 1]!) : null,
+    resubmitCount: resubmits.length,
+    reopenedAt: reopens.length ? stepAt(reopens[reopens.length - 1]!) : null,
     verifiedAt: spec.verified ? inDays(-14) : null,
     verifiedById: spec.verified ? reviewer : null,
     isFeatured: spec.featured ?? false,
   };
   await prisma.provider.upsert({ where: { id }, create: { id, ...data }, update: data });
+
+  // The history is rewritten whole on every run, so it never doubles.
+  await prisma.providerReviewEvent.deleteMany({ where: { providerId: id } });
+  for (const [index, step] of steps.entries()) {
+    await prisma.providerReviewEvent.create({
+      data: {
+        id: demoUuid(`review:${spec.key}:${index}`),
+        providerId: id,
+        kind: step.kind,
+        actorId: PROVIDER_STEPS.has(step.kind)
+          ? (spec.owner ? userId(spec.owner) : null)
+          : reviewer,
+        createdAt: stepAt(step),
+        notes: {
+          create: (step.notes ?? []).map((note) => ({ field: note.field, note: note.note })),
+        },
+      },
+    });
+  }
 
   const keepServices: string[] = [];
   const keepPackages: string[] = [];
@@ -154,6 +183,48 @@ async function seedProvider(
     // The studio's earlier hand-made rows: keep exactly the designed services and packages.
     await prisma.providerPackage.deleteMany({ where: { providerId: id, id: { notIn: keepPackages } } });
     await prisma.providerService.deleteMany({ where: { providerId: id, id: { notIn: keepServices } } });
+  }
+}
+
+/** The steps the provider takes himself; the rest are an administrator's decisions. */
+const PROVIDER_STEPS: ReadonlySet<ProviderReviewEventKind> = new Set([
+  ProviderReviewEventKind.RESUBMITTED,
+  ProviderReviewEventKind.REOPENED,
+]);
+
+/**
+ * The provider's review history: as written, or one approval 30 days ago
+ * for an owned provider that was decided. A listing nobody claimed was
+ * made by the back office and was never reviewed.
+ */
+function reviewSteps(spec: ProviderSpec): ReviewStepSpec[] {
+  if (spec.review) return spec.review;
+  if (!spec.owner || spec.status !== ProviderStatus.ACTIVE) return [];
+  return [{ kind: ProviderReviewEventKind.APPROVED, daysAgo: 30 }];
+}
+
+/** A step's time: its day at 10:02 (a04's «اليوم 10:02»), never later than now. */
+function stepAt(step: ReviewStepSpec): Date {
+  const at = inDays(-step.daysAgo);
+  at.setHours(10, 2, 0, 0);
+  const now = Date.now() - 60_000;
+  return at.getTime() > now ? new Date(now) : at;
+}
+
+/** B-12: claims of listings, rewritten on every run. */
+async function seedClaims(prisma: PrismaClient): Promise<void> {
+  const claimants = CLAIMS.map((claim) => userId(claim.claimant));
+  await prisma.providerClaimRequest.deleteMany({ where: { userId: { in: claimants } } });
+  for (const claim of CLAIMS) {
+    const listing = PROVIDERS.find((spec) => spec.key === claim.provider)!;
+    await prisma.providerClaimRequest.create({
+      data: {
+        id: demoUuid(`claim:${claim.provider}`),
+        providerId: providerId(listing),
+        userId: userId(claim.claimant),
+        createdAt: inDays(-claim.daysAgo),
+      },
+    });
   }
 }
 

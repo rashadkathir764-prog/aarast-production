@@ -1,4 +1,11 @@
-import { BookingStatus, Prisma, ProviderStatus, QuoteOfferStatus, QuoteRequestStatus } from '@prisma/client';
+import {
+  BookingStatus,
+  Prisma,
+  ProviderClaimStatus,
+  ProviderStatus,
+  QuoteOfferStatus,
+  QuoteRequestStatus,
+} from '@prisma/client';
 import { priceStampForNewService, priceStampForServiceUpdate } from './service-price-stamp';
 
 type Client = Prisma.TransactionClient;
@@ -22,6 +29,7 @@ export interface ProviderProfileChanges {
   description?: string | null;
   address?: string | null;
   cityId?: string;
+  primaryCategoryId?: string;
   latitude?: string | null;
   longitude?: string | null;
   logoUrl?: string | null;
@@ -107,11 +115,37 @@ export function lockExistingApplication(client: Client, userId: string) {
   );
 }
 
+export interface JoiningServiceFields {
+  title: string;
+  description: string | null;
+  basePrice: string;
+  currency: string;
+}
+
+/**
+ * The application with its priced services (B-10), in one write: the
+ * services sit in the profile's category and stay hidden until approval,
+ * since every customer read requires an ACTIVE provider.
+ */
 export function createProviderApplication(client: Client, fields: {
-  userId: string; cityId: string; primaryCategoryId: string | null;
+  userId: string; cityId: string; primaryCategoryId: string;
   businessName: string; phone: string; description: string | null;
+  services: readonly JoiningServiceFields[];
 }) {
-  return client.provider.create({ data: { ...fields, status: ProviderStatus.PENDING } });
+  const { services, ...provider } = fields;
+  return client.provider.create({
+    data: {
+      ...provider,
+      status: ProviderStatus.PENDING,
+      services: {
+        create: services.map((service) => ({
+          ...service,
+          categoryId: provider.primaryCategoryId,
+          priceUpdatedAt: priceStampForNewService(service.basePrice),
+        })),
+      },
+    },
+  });
 }
 
 export function updateProviderProfile(client: Client, providerId: string, changes: ProviderProfileChanges) {
@@ -344,7 +378,63 @@ export function findUnclaimedListing(client: Client, phones: readonly string[]) 
   });
 }
 
-/** Hands a locked, unclaimed listing to the account that proved its phone. */
-export function claimListing(client: Client, providerId: string, userId: string) {
-  return client.provider.update({ where: { id: providerId }, data: { userId } });
+/** An open claim of this listing, or by this account (B-12): at most one of each. */
+export function findPendingClaim(client: Client, where: { providerId: string } | { userId: string }) {
+  return client.providerClaimRequest.findFirst({
+    where: { ...where, status: ProviderClaimStatus.PENDING },
+    select: { id: true, providerId: true, userId: true },
+  });
+}
+
+const claimInclude = {
+  provider: { select: { id: true, businessName: true } },
+} satisfies Prisma.ProviderClaimRequestInclude;
+
+/** Asks the back office to hand a locked, unclaimed listing to the account that proved its phone (B-12). */
+export function createClaimRequest(client: Client, providerId: string, userId: string) {
+  return client.providerClaimRequest.create({
+    data: { providerId, userId },
+    include: claimInclude,
+  });
+}
+
+/** The account's latest claim of a listing, whatever came of it. */
+export function findLatestClaim(client: Client, userId: string) {
+  return client.providerClaimRequest.findFirst({
+    where: { userId },
+    orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+    include: claimInclude,
+  });
+}
+
+/** B-01: the provider sends the profile back to review. */
+export function markProviderResubmitted(client: Client, providerId: string, at: Date) {
+  return client.provider.update({
+    where: { id: providerId },
+    data: {
+      status: ProviderStatus.PENDING,
+      resubmittedAt: at,
+      resubmitCount: { increment: 1 },
+    },
+  });
+}
+
+/** B-02: a refused provider reopens the profile to fix it. */
+export function markProviderReopened(client: Client, providerId: string, at: Date) {
+  return client.provider.update({
+    where: { id: providerId },
+    data: { status: ProviderStatus.NEEDS_CHANGES, reopenedAt: at },
+  });
+}
+
+/** The provider's priced, active services: a profile goes to review with at least one (B-10). */
+export function countPricedActiveServices(client: Client, providerId: string) {
+  return client.providerService.count({
+    where: { providerId, isActive: true, basePrice: { gt: 0 } },
+  });
+}
+
+/** Before approval every service is a joining service and follows the profile's category (B-10). */
+export function moveJoiningServicesToCategory(client: Client, providerId: string, categoryId: string) {
+  return client.providerService.updateMany({ where: { providerId }, data: { categoryId } });
 }

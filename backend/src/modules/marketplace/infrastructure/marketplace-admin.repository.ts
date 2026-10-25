@@ -2,13 +2,19 @@ import {
   BookingStatus,
   Prisma,
   type Provider,
+  ProviderClaimStatus,
+  type ProviderClaimRequest,
   ProviderStatus,
   QuoteRequestStatus,
   ReviewStatus,
 } from '@prisma/client';
 import type {
+  AdminClaimRequestFilter,
+  AdminClaimRequestRow,
   AdminListedProviderFields,
   AdminListing,
+  AdminProviderReviewEvent,
+  ProviderClaimDecision,
   AdminMarketplaceSuccessCounts,
   AdminMarketplaceCounters,
   AdminMarketplaceReport,
@@ -30,6 +36,11 @@ import type {
 import type { PricedService } from '../public/market-prices';
 import { listPricedServices } from './market-prices.repository';
 import {
+  latestProviderDecisionInclude,
+  listProviderReviewEvents,
+  recordProviderReviewEvent,
+} from './provider-review.repository';
+import {
   priceStampForNewService,
   priceStampForServiceUpdate,
 } from './service-price-stamp';
@@ -45,6 +56,7 @@ interface AccountMatch {
 
 type ProviderAdminCondition =
   | { status: { in: ProviderStatus[] } }
+  | { resubmittedAt: { not: null } | null }
   | { cityId: string }
   | {
       OR: Array<
@@ -101,6 +113,7 @@ const providerCounts = {
       reviews: true,
     },
   },
+  ...latestProviderDecisionInclude,
 } satisfies Prisma.ProviderInclude;
 
 const imageOrder = [
@@ -136,6 +149,8 @@ export class MarketplaceAdminRepository implements MarketplaceAdminPort {
       rejectedProviders,
       needsChangesProviders,
       suspendedProviders,
+      resubmittedProviders,
+      pendingClaims,
       totalQuoteRequests,
     ] = await Promise.all([
       client.provider.count(),
@@ -146,6 +161,12 @@ export class MarketplaceAdminRepository implements MarketplaceAdminPort {
         where: { status: ProviderStatus.NEEDS_CHANGES },
       }),
       client.provider.count({ where: { status: ProviderStatus.SUSPENDED } }),
+      client.provider.count({
+        where: { status: ProviderStatus.PENDING, resubmittedAt: { not: null } },
+      }),
+      client.providerClaimRequest.count({
+        where: { status: ProviderClaimStatus.PENDING },
+      }),
       client.quoteRequest.count(),
     ]);
     return {
@@ -155,6 +176,8 @@ export class MarketplaceAdminRepository implements MarketplaceAdminPort {
       rejectedProviders,
       needsChangesProviders,
       suspendedProviders,
+      resubmittedProviders,
+      pendingClaims,
       totalQuoteRequests,
     };
   }
@@ -187,6 +210,11 @@ export class MarketplaceAdminRepository implements MarketplaceAdminPort {
     const and: ProviderAdminCondition[] = [
       { status: { in: [...filter.statuses] } },
     ];
+    if (filter.resubmitted !== null) {
+      and.push({
+        resubmittedAt: filter.resubmitted ? { not: null } : null,
+      });
+    }
     if (filter.cityId) and.push({ cityId: filter.cityId });
     if (filter.categoryId) {
       and.push({
@@ -274,16 +302,97 @@ export class MarketplaceAdminRepository implements MarketplaceAdminPort {
     providerId: string,
     decision: ProviderReviewDecision,
   ): Promise<AdminProviderDetailRow> {
+    await recordProviderReviewEvent(tx, {
+      providerId,
+      kind: decision.kind,
+      actorId: decision.reviewedById,
+      createdAt: decision.reviewedAt,
+      notes: decision.notes,
+    });
     return tx.provider.update({
       where: { id: providerId },
       data: {
         status: decision.status,
-        reviewNote: decision.reviewNote,
         reviewedAt: decision.reviewedAt,
         reviewedById: decision.reviewedById,
       },
       include: providerDetailInclude,
     });
+  }
+
+  async listProviderReviewEvents(
+    client: Prisma.TransactionClient,
+    providerId: string,
+  ): Promise<AdminProviderReviewEvent[]> {
+    return listProviderReviewEvents(client, providerId);
+  }
+
+  async listClaimRequests(
+    client: Prisma.TransactionClient,
+    filter: AdminClaimRequestFilter,
+    page: AdminPage,
+  ): Promise<AdminListing<AdminClaimRequestRow>> {
+    const where = filter.status ? { status: filter.status } : {};
+    const total = await client.providerClaimRequest.count({ where });
+    const items = await client.providerClaimRequest.findMany({
+      where,
+      include: { provider: true },
+      orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
+      skip: page.skip,
+      take: page.take,
+    });
+    return { total, items };
+  }
+
+  async findClaimRequestParties(
+    client: Prisma.TransactionClient,
+    claimId: string,
+  ): Promise<{ userId: string; providerId: string } | null> {
+    return client.providerClaimRequest.findUnique({
+      where: { id: claimId },
+      select: { userId: true, providerId: true },
+    });
+  }
+
+  async lockClaimRequestForUpdateInTransaction(
+    tx: Prisma.TransactionClient,
+    claimId: string,
+  ): Promise<ProviderClaimRequest | null> {
+    const rows = await tx.$queryRaw<Array<{ id: string }>>(
+      Prisma.sql`
+        SELECT "id"
+        FROM "ProviderClaimRequest"
+        WHERE "id" = ${claimId}
+        FOR UPDATE
+      `,
+    );
+    if (rows.length !== 1) return null;
+    return tx.providerClaimRequest.findUnique({ where: { id: claimId } });
+  }
+
+  async decideClaimRequestInTransaction(
+    tx: Prisma.TransactionClient,
+    claimId: string,
+    decision: ProviderClaimDecision,
+  ): Promise<AdminClaimRequestRow> {
+    return tx.providerClaimRequest.update({
+      where: { id: claimId },
+      data: {
+        status: decision.status,
+        note: decision.note,
+        decidedAt: decision.decidedAt,
+        decidedById: decision.decidedById,
+      },
+      include: { provider: true },
+    });
+  }
+
+  async linkClaimedListingInTransaction(
+    tx: Prisma.TransactionClient,
+    providerId: string,
+    userId: string,
+  ): Promise<void> {
+    await tx.provider.update({ where: { id: providerId }, data: { userId } });
   }
 
   async recordProviderVerificationInTransaction(

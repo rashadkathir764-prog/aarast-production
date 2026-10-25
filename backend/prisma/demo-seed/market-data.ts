@@ -3,12 +3,25 @@
 // and admin prototypes.
 import {
   BookingStatus,
+  ProviderReviewEventKind,
+  ProviderReviewField,
   ProviderStatus,
   QuoteOfferStatus,
   QuoteRequestStatus,
 } from '@prisma/client';
 import type { DemoAccountKey } from './accounts';
 import { day, demoUuid, hoursAgo, inDays } from './support';
+
+/**
+ * One step of a provider's review history (B-01, B-02), `daysAgo` before the
+ * seed runs. Administrator steps are Nadia's (operations); RESUBMITTED and
+ * REOPENED are the provider's own.
+ */
+export interface ReviewStepSpec {
+  kind: ProviderReviewEventKind;
+  daysAgo: number;
+  notes?: Array<{ field: ProviderReviewField; note: string }>;
+}
 
 export interface ServiceSpec {
   /** Fixed id (only for the studio, whose service rows already exist locally). */
@@ -34,7 +47,12 @@ export interface ProviderSpec {
   description: string;
   address: string;
   status: ProviderStatus;
-  reviewNote?: string;
+  /**
+   * The review history, oldest first. Without it, an owned provider that
+   * was decided has one approval 30 days ago; a listing nobody claimed has
+   * none.
+   */
+  review?: ReviewStepSpec[];
   verified?: boolean;
   featured?: boolean;
   services: ServiceSpec[];
@@ -220,7 +238,13 @@ export const PROVIDERS: readonly ProviderSpec[] = [
     description: 'مزود موقوف بعد بلاغات تأخير تسليم.',
     address: 'كريتر، عدن',
     status: ProviderStatus.SUSPENDED,
-    reviewNote: 'أُوقف بعد 3 بلاغات تأخير تسليم.',
+    review: [
+      {
+        kind: ProviderReviewEventKind.SUSPENDED,
+        daysAgo: 30,
+        notes: [{ field: ProviderReviewField.GENERAL, note: 'أُوقف بعد 3 بلاغات تأخير تسليم.' }],
+      },
+    ],
     services: [
       { key: 'photos', title: 'تصوير أعراس', description: 'تصوير أعراس في عدن.', price: 300_000, unit: 'package' },
     ],
@@ -251,9 +275,46 @@ export const PROVIDERS: readonly ProviderSpec[] = [
     description: 'بيع وتفصيل ملابس العريس.',
     address: 'باب اليمن، صنعاء',
     status: ProviderStatus.NEEDS_CHANGES,
-    reviewNote: 'ضيف صورة واضحة للمحل، وحدد سعر الثوب الأبيض في الخدمة.',
+    // a04/p09: a note on two fields, written yesterday.
+    review: [
+      {
+        kind: ProviderReviewEventKind.CHANGES_REQUESTED,
+        daysAgo: 1,
+        notes: [
+          { field: ProviderReviewField.DESCRIPTION, note: 'اكتب وش تبيع بالضبط: تفصيل أو جاهز، وللعريس بس أو للأهل كمان.' },
+          { field: ProviderReviewField.SERVICE, note: 'اكتب ايش يشمل سعر الثوب: القماش والتفصيل والتسليم.' },
+        ],
+      },
+    ],
     services: [
       { key: 'thawb', title: 'ثوب أبيض', description: 'تفصيل ثوب أبيض.', price: 45_000, unit: 'package' },
+    ],
+  },
+  {
+    key: 'resubmitted',
+    owner: 'providerResubmitted',
+    city: 'صنعاء',
+    categorySlug: 'mabra',
+    businessName: 'فرقة النجوم للمزمار',
+    ownerName: 'فارس الوصابي',
+    phone: '+967777000206',
+    description: 'مزمار وطبل للأعراس في صنعاء.',
+    address: 'شارع الزبيري، صنعاء',
+    status: ProviderStatus.PENDING,
+    // a03 «أُعيد إرسالها»: asked for changes 2 days ago, fixed and sent today.
+    review: [
+      {
+        kind: ProviderReviewEventKind.CHANGES_REQUESTED,
+        daysAgo: 2,
+        notes: [
+          { field: ProviderReviewField.BUSINESS_NAME, note: 'اكتب الاسم اللي يعرفك فيه الناس.' },
+          { field: ProviderReviewField.SERVICE, note: 'حدد سعر الليلة بدل «حسب الطلب».' },
+        ],
+      },
+      { kind: ProviderReviewEventKind.RESUBMITTED, daysAgo: 0 },
+    ],
+    services: [
+      { key: 'mizmar', title: 'مزمار الليلة', description: 'مزمار وطبلين من العصر لين الزفة.', price: 150_000, unit: 'event' },
     ],
   },
   {
@@ -267,7 +328,14 @@ export const PROVIDERS: readonly ProviderSpec[] = [
     description: 'كوافيرة من البيت.',
     address: 'المنصورة، عدن',
     status: ProviderStatus.REJECTED,
-    reviewNote: 'الرقم مسجل في ملف آخر. تقدر تعيد التقديم برقم مختلف.',
+    // p11: refused with a reason she can fix; «قدّم من جديد» reopens it (B-02).
+    review: [
+      {
+        kind: ProviderReviewEventKind.REJECTED,
+        daysAgo: 3,
+        notes: [{ field: ProviderReviewField.GENERAL, note: 'ما وضّحتي وين تشتغلين ولا ايش تشمل التسريحة. وضّحيها وقدّمي من جديد.' }],
+      },
+    ],
     services: [
       { key: 'hair', title: 'تسريحة عروس', description: 'تسريحة عروس.', price: 60_000, unit: 'package' },
     ],
@@ -526,3 +594,19 @@ export const STUDIO_REVIEW = {
 
 /** Days the studio closed on its calendar (January 2027, as drawn in p28). */
 export const STUDIO_BLOCKED_DAYS = ['2027-01-10', '2027-01-11'];
+
+/**
+ * Claims of a listing the back office made (B-12), by the account that
+ * signed in with the listing's phone. «عدسة سبأ»'s owner has an account and
+ * no claim yet, so the claim can be walked from the start.
+ */
+export interface ClaimSpec {
+  provider: string;
+  claimant: DemoAccountKey;
+  daysAgo: number;
+}
+
+export const CLAIMS: readonly ClaimSpec[] = [
+  // a07, p08: «مصور الحارة» waits for the review team since yesterday.
+  { provider: 'harah', claimant: 'claimantHarah', daysAgo: 1 },
+];

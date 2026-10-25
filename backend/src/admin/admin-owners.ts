@@ -35,7 +35,9 @@ import {
   type UserReadPort,
 } from '../modules/identity/public/user-read.port';
 import {
+  type AdminClaimRequestRow,
   type AdminProviderDetailRow,
+  type AdminProviderReviewEvent,
   type AdminProviderRow,
   type AdminReviewRow,
   type AdminServiceRow,
@@ -66,8 +68,10 @@ import {
 import type {
   AdminCategoryRecord,
   AdminCityRecord,
+  AdminClaimRequestRecord,
   AdminNotificationWithDetails,
   AdminProviderRecord,
+  AdminProviderReviewEventRecord,
   AdminReviewWithDetails,
   AdminServiceWithDetails,
   AdminUserRecord,
@@ -145,6 +149,48 @@ export class AdminOwners {
       primaryCategory: row.primaryCategoryId
         ? required(categories, row.primaryCategoryId, 'Provider category')
         : null,
+    }));
+  }
+
+  /** A claim's listing (with its city and category) and the accounts that asked and decided (B-12). */
+  async attachClaimRequests(
+    client: Client,
+    rows: readonly AdminClaimRequestRow[],
+  ): Promise<AdminClaimRequestRecord[]> {
+    const [accounts, cities, categories] = await Promise.all([
+      this.accountMap(
+        client,
+        rows.flatMap((row) => [row.userId, row.decidedById]),
+      ),
+      this.cityMap(client, rows.map((row) => row.provider.cityId)),
+      this.categoryMap(client, rows.map((row) => row.provider.primaryCategoryId)),
+    ]);
+    return rows.map((row) => ({
+      ...row,
+      claimant: accounts.get(row.userId) ?? null,
+      decidedBy: row.decidedById ? (accounts.get(row.decidedById) ?? null) : null,
+      provider: {
+        ...row.provider,
+        city: required(cities, row.provider.cityId, 'City'),
+        primaryCategory: row.provider.primaryCategoryId
+          ? required(categories, row.provider.primaryCategoryId, 'Provider category')
+          : null,
+      },
+    }));
+  }
+
+  /** The accounts that took these review steps (B-01, B-02). */
+  async attachReviewEvents(
+    client: Client,
+    events: readonly AdminProviderReviewEvent[],
+  ): Promise<AdminProviderReviewEventRecord[]> {
+    const accounts = await this.accountMap(
+      client,
+      events.map((event) => event.actorId),
+    );
+    return events.map((event) => ({
+      ...event,
+      actor: event.actorId ? (accounts.get(event.actorId) ?? null) : null,
     }));
   }
 

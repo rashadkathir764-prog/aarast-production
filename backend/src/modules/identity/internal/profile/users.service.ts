@@ -507,6 +507,11 @@ export class UsersService {
           tx,
           providerIds,
         );
+        // A claim of a listing (B-12) is the account's own request.
+        await this.marketplaceErasure.deleteUserClaimRequestsInTransaction(
+          tx,
+          userId,
+        );
 
         if (preservesAdministratorIdentity) {
           await this.eraseAdministratorApplicationIdentity(

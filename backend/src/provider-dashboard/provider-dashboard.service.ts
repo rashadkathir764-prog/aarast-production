@@ -1,17 +1,23 @@
 import {
   BadRequestException,
   ConflictException,
+  ForbiddenException,
   Inject,
   Injectable,
   NotFoundException,
+  UnprocessableEntityException,
 } from '@nestjs/common';
 import {
   Booking,
   City,
   ConversationEventType,
+  NotificationPriority,
+  NotificationType,
   Prisma,
   Provider,
   ProviderCategory,
+  ProviderClaimStatus,
+  ProviderReviewEventKind,
   ProviderPackage,
   ProviderReview,
   ProviderService,
@@ -85,7 +91,17 @@ import {
 } from './dto/upsert-service-image.dto';
 import {
   assertProviderOperational,
+  PROVIDER_PORTAL_ROUTE,
 } from '../modules/marketplace/public/provider-access-policy';
+import {
+  currentProviderReviewNotes,
+  isProviderAwaitingApproval,
+  type ProviderReviewDecisionView,
+} from '../modules/marketplace/public/provider-review';
+import {
+  findLatestProviderDecision,
+  recordProviderReviewEvent,
+} from '../modules/marketplace/infrastructure/provider-review.repository';
 import {
   lockOwnedProviderAfterUsersInTransaction,
   lockOwnedProviderForMutationInTransaction,
@@ -96,6 +112,8 @@ import * as dashboardStore from '../modules/marketplace/infrastructure/provider-
 type ProviderProfile = Provider & {
   city: City;
   primaryCategory?: ProviderCategory | null;
+  /** The latest administrator decision, whose notes the profile shows (B-01). */
+  latestDecision: ProviderReviewDecisionView | null;
 };
 type ProviderDashboardServiceRecord = ProviderService & {
   category: ProviderCategory;
@@ -138,10 +156,14 @@ export class ProviderDashboardService {
 
   async apply(currentUser: AuthenticatedUser, dto: ApplyProviderDto) {
     const categoryIds = [...new Set(dto.categoryIds ?? [])];
-    const primaryCategoryId = categoryIds[0] ?? null;
+    const primaryCategoryId = categoryIds[0];
+    if (!primaryCategoryId) {
+      throw new BadRequestException('categoryIds must name the category');
+    }
     const businessName = this.requiredText(dto.businessName, 'businessName');
     const phone = PhoneNormalizer.normalizeRequired(dto.phone);
     const description = this.optionalText(dto.description);
+    const services = this.joiningServices(dto.services);
 
     const provider = await runSerializableTransaction(this.prisma, async (tx) => {
       // The applicant's lifecycle row is identity's: locked for update there.
@@ -196,12 +218,61 @@ export class ProviderDashboardService {
           businessName,
           phone,
           description,
+          services,
       });
 
       return this.withProviderCatalog(tx, created);
     });
 
     return this.toProviderProfileResponse(provider);
+  }
+
+  /**
+   * The services the provider joins with (B-10, D41): at least one, each
+   * with a price above zero, before the review sees the profile.
+   */
+  private joiningServices(
+    services: ApplyProviderDto['services'],
+  ): dashboardStore.JoiningServiceFields[] {
+    const priced = (services ?? []).map((service) => {
+      const basePrice = optionalMoneyAmount(service.basePrice, 'basePrice');
+      if (basePrice === null || Number(basePrice) <= 0) {
+        throw this.serviceRequired();
+      }
+      return {
+        title: this.requiredText(service.title, 'title'),
+        description: this.optionalText(service.description),
+        basePrice,
+        currency: this.serviceCurrency(service.currency),
+      };
+    });
+    if (priced.length === 0) throw this.serviceRequired();
+    return priced;
+  }
+
+  private joiningServiceOnly(): ForbiddenException {
+    return new ForbiddenException({
+      statusCode: 403,
+      code: 'PROVIDER_JOINING_SERVICE_ONLY',
+      message:
+        'Before approval only the joining service’s name, price and description can change',
+    });
+  }
+
+  private serviceRequired(): UnprocessableEntityException {
+    return new UnprocessableEntityException({
+      statusCode: 422,
+      code: 'PROVIDER_SERVICE_REQUIRED',
+      message: 'At least one service with its price is required before review',
+    });
+  }
+
+  private serviceCurrency(value: string | null | undefined): string {
+    const currency = (value?.trim() || 'YER').toUpperCase();
+    if (!/^[A-Z]{3}$/.test(currency)) {
+      throw new BadRequestException('currency must be a three-letter ISO code');
+    }
+    return currency;
   }
 
   /**
@@ -223,12 +294,17 @@ export class ProviderDashboardService {
     };
   }
 
-  /** Claims that listing: the account becomes its provider, already approved. */
+  /**
+   * Asks to take that listing over (B-12, D41). The phone proves the
+   * account may ask; the listing becomes the account's only when an
+   * administrator approves, and until then it stays unclaimed and takes no
+   * requests (PROVIDER_NOT_CLAIMED).
+   */
   async claimListing(currentUser: AuthenticatedUser, providerId: string) {
     const phones = currentUser.phone
       ? PhoneNormalizer.lookupVariants(currentUser.phone)
       : [];
-    const provider = await runSerializableTransaction(this.prisma, async (tx) => {
+    const claim = await runSerializableTransaction(this.prisma, async (tx) => {
       const [actor] = await lockUserLifecycleRowsForUpdateInTransaction(tx, [
         currentUser.id,
       ]);
@@ -248,20 +324,130 @@ export class ProviderDashboardService {
       ) {
         throw new NotFoundException('Provider listing not found');
       }
-      if (
-        !(await this.providerAccount.promoteToProviderInTransaction(
-          tx,
-          currentUser.id,
-        ))
-      ) {
-        throw new ConflictException(
-          'The application identity is not eligible for a provider account',
-        );
+      const open =
+        (await dashboardStore.findPendingClaim(tx, { providerId: listing.id })) ??
+        (await dashboardStore.findPendingClaim(tx, { userId: currentUser.id }));
+      if (open) {
+        throw new ConflictException({
+          statusCode: 409,
+          code: 'PROVIDER_CLAIM_PENDING',
+          message: 'A claim of this listing is already waiting for review',
+          claimRequestId: open.userId === currentUser.id ? open.id : undefined,
+        });
       }
-      const claimed = await dashboardStore.claimListing(tx, listing.id, currentUser.id);
-      return this.withProviderCatalog(tx, claimed);
+      return dashboardStore.createClaimRequest(tx, listing.id, currentUser.id);
     });
-    return this.toProviderProfileResponse(provider);
+    return this.toClaimResponse(claim);
+  }
+
+  /** The account's latest claim of a listing and what came of it (B-12). */
+  async getClaim(currentUser: AuthenticatedUser) {
+    const claim = await dashboardStore.findLatestClaim(this.prisma, currentUser.id);
+    return { claim: claim ? this.toClaimResponse(claim) : null };
+  }
+
+  /**
+   * «أرسلت التعديل» (B-01): the provider sends the fixed profile back to
+   * review. Only from NEEDS_CHANGES, and with a priced service (B-10).
+   */
+  async resubmitApplication(currentUser: AuthenticatedUser) {
+    const updated = await runSerializableTransaction(this.prisma, async (tx) => {
+      const provider = await lockOwnedProviderForMutationInTransaction(
+        tx,
+        currentUser.id,
+        'LIFECYCLE',
+        'UPDATE',
+      );
+      if (provider.status !== ProviderStatus.NEEDS_CHANGES) {
+        throw new ConflictException({
+          statusCode: 409,
+          code: 'PROVIDER_NOT_AWAITING_CHANGES',
+          message: 'Only a profile waiting for changes can be sent back to review',
+          currentStatus: provider.status,
+        });
+      }
+      if ((await dashboardStore.countPricedActiveServices(tx, provider.id)) === 0) {
+        throw this.serviceRequired();
+      }
+      const at = new Date();
+      const resubmitted = await dashboardStore.markProviderResubmitted(
+        tx,
+        provider.id,
+        at,
+      );
+      await recordProviderReviewEvent(tx, {
+        providerId: provider.id,
+        kind: ProviderReviewEventKind.RESUBMITTED,
+        actorId: currentUser.id,
+        createdAt: at,
+      });
+      await this.notifications.createNotificationInTransaction(tx, {
+        userId: currentUser.id,
+        type: NotificationType.GENERAL,
+        priority: NotificationPriority.NORMAL,
+        title: 'وصلنا تعديلك',
+        body: `نراجع ملف ${resubmitted.businessName} من جديد ونبلغك هنا.`,
+        entityType: 'Provider',
+        entityId: provider.id,
+        routeTarget: PROVIDER_PORTAL_ROUTE,
+        data: { providerId: provider.id, providerStatus: ProviderStatus.PENDING },
+        dedupeKey: `provider-resubmitted:${provider.id}:${at.toISOString()}`,
+      });
+      return this.withProviderCatalog(tx, resubmitted);
+    });
+    return this.toProviderProfileResponse(updated);
+  }
+
+  /**
+   * «صلّح وقدّم من جديد» (B-02): a refused provider reopens the profile to
+   * fix it. The refusal's reason stays the note he reads, and the fixed
+   * profile goes back to review by resubmitting (B-01).
+   */
+  async reopenApplication(currentUser: AuthenticatedUser) {
+    const updated = await runSerializableTransaction(this.prisma, async (tx) => {
+      const provider = await lockOwnedProviderForMutationInTransaction(
+        tx,
+        currentUser.id,
+        'LIFECYCLE',
+        'UPDATE',
+      );
+      if (provider.status !== ProviderStatus.REJECTED) {
+        throw new ConflictException({
+          statusCode: 409,
+          code: 'PROVIDER_NOT_REJECTED',
+          message: 'Only a refused profile can be reopened',
+          currentStatus: provider.status,
+        });
+      }
+      const at = new Date();
+      const reopened = await dashboardStore.markProviderReopened(tx, provider.id, at);
+      await recordProviderReviewEvent(tx, {
+        providerId: provider.id,
+        kind: ProviderReviewEventKind.REOPENED,
+        actorId: currentUser.id,
+        createdAt: at,
+      });
+      return this.withProviderCatalog(tx, reopened);
+    });
+    return this.toProviderProfileResponse(updated);
+  }
+
+  private toClaimResponse(claim: {
+    id: string;
+    status: ProviderClaimStatus;
+    note: string | null;
+    createdAt: Date;
+    decidedAt: Date | null;
+    provider: { id: string; businessName: string };
+  }) {
+    return {
+      id: claim.id,
+      status: claim.status,
+      note: claim.note,
+      createdAt: claim.createdAt,
+      decidedAt: claim.decidedAt,
+      provider: { id: claim.provider.id, businessName: claim.provider.businessName },
+    };
   }
 
   async getProfile(currentUser: AuthenticatedUser) {
@@ -299,6 +485,24 @@ export class ProviderDashboardService {
       );
       if (dto.cityId !== undefined) {
         await this.lockActiveCityInTransaction(tx, dto.cityId);
+      }
+      const categoryChanged =
+        dto.primaryCategoryId !== undefined &&
+        dto.primaryCategoryId !== provider.primaryCategoryId;
+      if (categoryChanged) {
+        if (!isProviderAwaitingApproval(provider)) {
+          throw new ConflictException({
+            statusCode: 409,
+            code: 'PROVIDER_CATEGORY_LOCKED',
+            message: 'The category changes only before approval',
+          });
+        }
+        await this.lockActiveCategoryInTransaction(tx, dto.primaryCategoryId!);
+        await dashboardStore.moveJoiningServicesToCategory(
+          tx,
+          provider.id,
+          dto.primaryCategoryId!,
+        );
       }
 
       const logoChanged =
@@ -363,6 +567,7 @@ export class ProviderDashboardService {
           ? { address: this.optionalText(dto.address) }
           : {}),
         ...(dto.cityId !== undefined ? { cityId: dto.cityId } : {}),
+        ...(categoryChanged ? { primaryCategoryId: dto.primaryCategoryId } : {}),
         ...(dto.latitude !== undefined
           ? { latitude: this.optionalSignedDecimal(dto.latitude, 'latitude') }
           : {}),
@@ -405,8 +610,9 @@ export class ProviderDashboardService {
     };
   }
 
+  /** His services; before approval, the one he joined with (B-10). */
   async findServices(currentUser: AuthenticatedUser) {
-    const provider = await this.findActiveOwnedProviderOrThrow(currentUser.id);
+    const provider = await this.findServiceOwnerOrThrow(currentUser.id);
     const services = await this.relations.attachServiceCatalog(
       this.prisma,
       await dashboardStore.listOwnedServices(this.prisma, provider.id),
@@ -424,8 +630,25 @@ export class ProviderDashboardService {
       const provider = await lockOwnedProviderForMutationInTransaction(
         tx,
         currentUser.id,
-        'OPERATIONAL',
+        'JOINING_SERVICE',
+        'UPDATE',
       );
+      if (isProviderAwaitingApproval(provider)) {
+        // Before approval he joins with one priced service in his category;
+        // the others come after approval (B-10, D41). This lets a profile
+        // that applied before B-10 add the one it goes to review with.
+        if ((await dashboardStore.listOwnedServices(tx, provider.id)).length > 0) {
+          throw this.joiningServiceOnly();
+        }
+        if (dto.categoryId !== provider.primaryCategoryId) {
+          throw new BadRequestException(
+            'categoryId must be the profile category before approval',
+          );
+        }
+        if (basePrice === null || Number(basePrice) <= 0) {
+          throw this.serviceRequired();
+        }
+      }
       await this.lockActiveCategoryInTransaction(tx, dto.categoryId);
       if (dto.cityId) {
         await this.lockActiveCityInTransaction(tx, dto.cityId);
@@ -468,8 +691,25 @@ export class ProviderDashboardService {
       const provider = await lockOwnedProviderForMutationInTransaction(
         tx,
         currentUser.id,
-        'OPERATIONAL',
+        'JOINING_SERVICE',
       );
+      if (isProviderAwaitingApproval(provider)) {
+        // Before approval only the joining service's name, price and words
+        // change (B-10); its category follows the profile's.
+        if (
+          dto.categoryId !== undefined ||
+          dto.cityId !== undefined ||
+          dto.isActive !== undefined
+        ) {
+          throw this.joiningServiceOnly();
+        }
+        if (
+          dto.basePrice !== undefined &&
+          (basePrice === null || Number(basePrice) <= 0)
+        ) {
+          throw this.serviceRequired();
+        }
+      }
       if (dto.categoryId !== undefined) {
         await this.lockActiveCategoryInTransaction(tx, dto.categoryId);
       }
@@ -1240,6 +1480,13 @@ export class ProviderDashboardService {
     return provider;
   }
 
+  /** An approved provider, or one waiting for approval reading the service he joined with (B-10). */
+  private async findServiceOwnerOrThrow(userId: string): Promise<Provider> {
+    const provider = await this.findOwnedProviderOrThrow(userId);
+    if (!isProviderAwaitingApproval(provider)) assertProviderOperational(provider);
+    return provider;
+  }
+
   private async findActiveOwnedProviderOrThrow(
     userId: string,
   ): Promise<Provider> {
@@ -1263,7 +1510,8 @@ export class ProviderDashboardService {
     serviceId: string,
   ): Promise<ProviderDashboardServiceRecord> {
     this.assertUuid(serviceId, 'serviceId');
-    const provider = await this.findActiveOwnedProviderOrThrow(userId);
+    // Before approval it is the service he joined with (B-10).
+    const provider = await this.findServiceOwnerOrThrow(userId);
     const service = await dashboardStore.findOwnedService(this.prisma, serviceId, provider.id);
 
     if (!service) {
@@ -1294,10 +1542,11 @@ export class ProviderDashboardService {
     client: Prisma.TransactionClient,
     provider: Provider,
   ): Promise<ProviderProfile> {
-    const [profile] = await this.relations.attachProviderCatalog(client, [
-      provider,
+    const [[profile], latestDecision] = await Promise.all([
+      this.relations.attachProviderCatalog(client, [provider]),
+      findLatestProviderDecision(client, provider.id),
     ]);
-    return profile;
+    return { ...profile, latestDecision };
   }
 
   private async withServiceCatalog<
@@ -1423,7 +1672,10 @@ export class ProviderDashboardService {
       logoUrl: provider.logoUrl,
       coverUrl: provider.coverUrl,
       status: provider.status,
-      reviewNote: provider.reviewNote,
+      ...currentProviderReviewNotes(provider.status, provider.latestDecision),
+      resubmittedAt: provider.resubmittedAt,
+      resubmitCount: provider.resubmitCount,
+      reopenedAt: provider.reopenedAt,
       reviewedAt: provider.reviewedAt,
       reviewedById: provider.reviewedById,
       verifiedAt: provider.verifiedAt,

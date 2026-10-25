@@ -135,18 +135,33 @@ async function main(): Promise<void> {
         phone: ownerPhone,
         cityId: city.id,
         categoryIds: [category.id],
+        services: [{ title: "خدمة", basePrice: "100000" }],
       } as any),
       (error: any) => code(error) === "PROVIDER_LISTING_CLAIMABLE",
     );
     console.log("PASS - the phone's owner is offered the listing and cannot apply twice");
 
-    const claimed = await dashboard.claimListing(asUser(owner), listed.id);
-    assert.equal(claimed.userId, owner.id);
+    // B-12: the claim waits for an administrator; the listing stays unclaimed.
+    const claim = await dashboard.claimListing(asUser(owner), listed.id);
+    assert.equal(claim.status, "PENDING");
+    assert.equal(
+      (await prisma.provider.findUniqueOrThrow({ where: { id: listed.id } })).userId,
+      null,
+    );
+    await assert.rejects(
+      dashboard.claimListing(asUser(owner), listed.id),
+      (error: any) => code(error) === "PROVIDER_CLAIM_PENDING",
+    );
+    console.log("PASS - a claim waits for review and is not sent twice");
+
+    await admins.approveClaimRequest(adminActor, claim.id);
+    const claimedRow = await prisma.provider.findUniqueOrThrow({ where: { id: listed.id } });
+    assert.equal(claimedRow.userId, owner.id);
     const promoted = await prisma.user.findUniqueOrThrow({ where: { id: owner.id } });
     assert.equal(promoted.role, UserRole.PROVIDER);
     assert.deepEqual(await dashboard.findClaimableListing(asUser(owner)), { listing: null });
     await assert.rejects(dashboard.claimListing(asUser(owner), listed.id), /already exists/i);
-    console.log("PASS - claiming makes the account the listing's provider, once");
+    console.log("PASS - the approved claim makes the account the listing's provider, once");
 
     // V1 checklist 4.21 on this isolated database: the owner used the app,
     // the claimed listing plus two more price services in the same city and

@@ -3,13 +3,20 @@ import type {
   Notification,
   Provider,
   ProviderCategory,
+  ProviderClaimRequest,
   ProviderPackage,
   ProviderReview,
+  ProviderReviewEvent,
+  ProviderReviewNote,
   ProviderService,
   ProviderServiceImage,
   QuoteRequestStatus,
   User,
 } from '@prisma/client';
+import {
+  currentProviderReviewNotes,
+  sortProviderFieldNotes,
+} from '../modules/marketplace/public/provider-review';
 import { toReviewIdentity } from '../shared-kernel/privacy/review-identity';
 import {
   maskPhone,
@@ -54,6 +61,8 @@ export type AdminProviderRecord = Provider & {
   primaryCategory?: ProviderCategory | null;
   services?: AdminServiceRecord[];
   packages?: AdminPackageRecord[];
+  /** The latest administrator decision with its notes (at most one). */
+  reviewEvents?: Array<ProviderReviewEvent & { notes: ProviderReviewNote[] }>;
   _count?: {
     services: number;
     packages: number;
@@ -61,6 +70,66 @@ export type AdminProviderRecord = Provider & {
     reviews: number;
   };
 };
+
+/** A claim of a listing (B-12) as the back office shows it. */
+export type AdminClaimRequestRecord = ProviderClaimRequest & {
+  provider: Provider & {
+    city?: City | null;
+    primaryCategory?: ProviderCategory | null;
+  };
+  claimant: SafeAdminUser | null;
+  decidedBy: SafeAdminUser | null;
+};
+
+/** One review step (B-01, B-02) with the account that took it. */
+export type AdminProviderReviewEventRecord = ProviderReviewEvent & {
+  notes: ProviderReviewNote[];
+  actor: SafeAdminUser | null;
+};
+
+export function toAdminClaimRequestResponse(claim: AdminClaimRequestRecord) {
+  return {
+    id: claim.id,
+    status: claim.status,
+    note: claim.note,
+    createdAt: claim.createdAt,
+    decidedAt: claim.decidedAt,
+    provider: toProviderSummary(claim.provider),
+    claimant: claim.claimant
+      ? {
+          id: claim.claimant.id,
+          name: claim.claimant.name,
+          phone: claim.claimant.phone,
+        }
+      : null,
+    decidedBy: claim.decidedBy
+      ? { id: claim.decidedBy.id, name: claim.decidedBy.name }
+      : null,
+  };
+}
+
+/** When the provider applied, then every review step, oldest first. */
+export function toProviderReviewHistoryResponse(
+  provider: Pick<Provider, 'id' | 'createdAt'>,
+  events: readonly AdminProviderReviewEventRecord[],
+) {
+  return {
+    providerId: provider.id,
+    appliedAt: provider.createdAt,
+    events: events.map((event) => ({
+      id: event.id,
+      kind: event.kind,
+      at: event.createdAt,
+      actor: event.actor
+        ? { id: event.actor.id, name: event.actor.name }
+        : null,
+      notes: sortProviderFieldNotes(event.notes).map((note) => ({
+        field: note.field,
+        note: note.note,
+      })),
+    })),
+  };
+}
 
 export type AdminUserRecord = SafeAdminUser & {
   providerProfile?: (Provider & {
@@ -269,7 +338,13 @@ export function toProviderResponse(provider: AdminProviderRecord) {
     logoUrl: provider.logoUrl,
     coverUrl: provider.coverUrl,
     status: provider.status,
-    reviewNote: provider.reviewNote,
+    ...currentProviderReviewNotes(
+      provider.status,
+      provider.reviewEvents?.[0] ?? null,
+    ),
+    resubmittedAt: provider.resubmittedAt,
+    resubmitCount: provider.resubmitCount,
+    reopenedAt: provider.reopenedAt,
     reviewedAt: provider.reviewedAt,
     reviewedBy: provider.reviewedBy
       ? toSafeUser(provider.reviewedBy)

@@ -1,8 +1,13 @@
 import type {
   Prisma,
   Provider,
+  ProviderClaimRequest,
+  ProviderClaimStatus,
   ProviderPackage,
   ProviderReview,
+  ProviderReviewEvent,
+  ProviderReviewEventKind,
+  ProviderReviewNote,
   ProviderService,
   ProviderServiceImage,
   ProviderStatus,
@@ -10,6 +15,7 @@ import type {
   ReviewStatus,
 } from '@prisma/client';
 import type { PricedService } from './market-prices';
+import type { ProviderFieldNote } from './provider-review';
 
 export const MARKETPLACE_ADMIN_PORT = Symbol('MARKETPLACE_ADMIN_PORT');
 
@@ -20,7 +26,33 @@ export interface AdminProviderCounts {
   reviews: number;
 }
 
-export type AdminProviderRow = Provider & { _count: AdminProviderCounts };
+/** A review step with the notes written with it (B-01, B-02). */
+export type AdminProviderReviewEvent = ProviderReviewEvent & {
+  notes: ProviderReviewNote[];
+};
+
+/**
+ * A provider row with its counts and its latest administrator decision
+ * (at most one event), whose notes are the current ones.
+ */
+export type AdminProviderRow = Provider & {
+  _count: AdminProviderCounts;
+  reviewEvents: AdminProviderReviewEvent[];
+};
+
+/** A claim of a listing (B-12) with the listing it asks for. */
+export type AdminClaimRequestRow = ProviderClaimRequest & { provider: Provider };
+
+export interface AdminClaimRequestFilter {
+  status: ProviderClaimStatus | null;
+}
+
+export interface ProviderClaimDecision {
+  status: ProviderClaimStatus;
+  note: string | null;
+  decidedAt: Date;
+  decidedById: string;
+}
 
 export type AdminProviderServiceRow = ProviderService & {
   images: ProviderServiceImage[];
@@ -64,6 +96,8 @@ export interface AdminProviderFilter {
   /** The primary category, or any service's category. */
   categoryId: string | null;
   search: AdminTextSearch | null;
+  /** True: only providers that sent the profile back after changes (B-01); false: only the others. */
+  resubmitted: boolean | null;
 }
 
 export interface AdminServiceFilter {
@@ -97,9 +131,11 @@ export interface AdminServiceFields {
 
 export type AdminServiceChanges = Partial<Omit<AdminServiceFields, 'providerId'>>;
 
+/** An administrator's decision: the new status and the review step it records with its notes. */
 export interface ProviderReviewDecision {
   status: ProviderStatus;
-  reviewNote: string | null;
+  kind: ProviderReviewEventKind;
+  notes: readonly ProviderFieldNote[];
   reviewedAt: Date;
   reviewedById: string;
 }
@@ -133,6 +169,10 @@ export interface AdminMarketplaceCounters {
   rejectedProviders: number;
   needsChangesProviders: number;
   suspendedProviders: number;
+  /** PENDING providers that sent the profile back after changes (B-01). */
+  resubmittedProviders: number;
+  /** Claims of a listing waiting for an administrator (B-12). */
+  pendingClaims: number;
   totalQuoteRequests: number;
 }
 
@@ -217,11 +257,44 @@ export interface MarketplaceAdminPort {
     tx: Prisma.TransactionClient,
     providerId: string,
   ): Promise<{ userId: string | null; status: ProviderStatus } | null>;
+  /** Sets the status and records the decision with its notes in the review history. */
   recordProviderReviewInTransaction(
     tx: Prisma.TransactionClient,
     providerId: string,
     decision: ProviderReviewDecision,
   ): Promise<AdminProviderDetailRow>;
+  /** Every review step of the provider, oldest first (B-01, B-02). */
+  listProviderReviewEvents(
+    client: Prisma.TransactionClient,
+    providerId: string,
+  ): Promise<AdminProviderReviewEvent[]>;
+  /** Claims of listings (B-12), oldest first. */
+  listClaimRequests(
+    client: Prisma.TransactionClient,
+    filter: AdminClaimRequestFilter,
+    page: AdminPage,
+  ): Promise<AdminListing<AdminClaimRequestRow>>;
+  /** The claim's account and listing; null when it does not exist. */
+  findClaimRequestParties(
+    client: Prisma.TransactionClient,
+    claimId: string,
+  ): Promise<{ userId: string; providerId: string } | null>;
+  /** Locks the claim FOR UPDATE; null when it does not exist. */
+  lockClaimRequestForUpdateInTransaction(
+    tx: Prisma.TransactionClient,
+    claimId: string,
+  ): Promise<ProviderClaimRequest | null>;
+  decideClaimRequestInTransaction(
+    tx: Prisma.TransactionClient,
+    claimId: string,
+    decision: ProviderClaimDecision,
+  ): Promise<AdminClaimRequestRow>;
+  /** Hands a locked, unclaimed listing to the account an administrator approved. */
+  linkClaimedListingInTransaction(
+    tx: Prisma.TransactionClient,
+    providerId: string,
+    userId: string,
+  ): Promise<void>;
   /** Records that an admin checked the provider's documents, or clears it with nulls. */
   recordProviderVerificationInTransaction(
     tx: Prisma.TransactionClient,

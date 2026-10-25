@@ -233,6 +233,7 @@ async function run() {
       cityId: reference.city.id,
       categoryIds: [reference.category.id],
       description: 'Phase9 provider',
+      services: [{ title: 'Phase9 service', basePrice: '100000' }],
     }, providerUser.token);
     check('provider creates profile - HTTP 201', res.status === 201);
     providerId = requireResponseId('provider creates profile', res);

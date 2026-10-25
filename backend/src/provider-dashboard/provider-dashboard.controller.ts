@@ -3,6 +3,7 @@ import {
   Controller,
   Delete,
   Get,
+  HttpCode,
   Param,
   Patch,
   Post,
@@ -74,6 +75,26 @@ export class ProviderDashboardController {
     @Body() dto: UpdateProviderProfileDto,
   ) {
     return this.providerDashboardService.updateProfile(currentUser, dto);
+  }
+
+  // B-12: the account's claim of a listing and what came of it.
+  @Get("claim")
+  getClaim(@CurrentUser() currentUser: AuthenticatedUser) {
+    return this.providerDashboardService.getClaim(currentUser);
+  }
+
+  // B-01: «أرسلت التعديل», NEEDS_CHANGES back to PENDING.
+  @Post("application/resubmit")
+  @HttpCode(200)
+  resubmitApplication(@CurrentUser() currentUser: AuthenticatedUser) {
+    return this.providerDashboardService.resubmitApplication(currentUser);
+  }
+
+  // B-02: «صلّح وقدّم من جديد», REJECTED to NEEDS_CHANGES.
+  @Post("application/reopen")
+  @HttpCode(200)
+  reopenApplication(@CurrentUser() currentUser: AuthenticatedUser) {
+    return this.providerDashboardService.reopenApplication(currentUser);
   }
 
   @Get("summary")

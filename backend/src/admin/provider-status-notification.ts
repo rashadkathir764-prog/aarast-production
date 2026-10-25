@@ -24,7 +24,7 @@ export function switchProviderStatusNotification(
         title: 'لم يُعتمد طلب المزوّد',
         body:
           reviewNote ??
-          `راجع حالة ${name} قبل تحديث الملف أو التواصل مع الدعم.`,
+          `صلّح ملف ${name} وقدّم من جديد من حسابك.`,
       };
     case ProviderStatus.SUSPENDED:
       return {

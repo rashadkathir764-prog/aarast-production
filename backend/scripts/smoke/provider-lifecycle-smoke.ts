@@ -1,0 +1,562 @@
+import "reflect-metadata";
+
+import assert from "node:assert/strict";
+import { createHash } from "node:crypto";
+import { JwtService } from "@nestjs/jwt";
+import {
+  AdminRole,
+  AuthSessionScope,
+  PrismaClient,
+  UserRole,
+  UserStatus,
+  type User,
+} from "@prisma/client";
+
+// The provider lifecycle over HTTP on a real database (B-01, B-02, B-10,
+// B-12): joining with a priced service, changes per field and «أرسلت
+// التعديل», reopening a refusal, and claiming a listing through the review
+// team. Run it with `npm run smoke:provider-lifecycle`: the managed runner
+// gives it an isolated database and its own API.
+
+const { assertManagedSmokeEnvironment } = require("./smoke-utils.js") as {
+  assertManagedSmokeEnvironment: (environment: NodeJS.ProcessEnv) => unknown;
+};
+
+assertManagedSmokeEnvironment(process.env);
+const runId = process.env.AARAST_SMOKE_RUN_ID!;
+const baseUrl = process.env.SMOKE_BASE_URL!;
+const prisma = new PrismaClient();
+const jwt = new JwtService({ secret: process.env.JWT_SECRET });
+const label = `Lifecycle ${runId}`;
+let checks = 0;
+
+/** A Yemeni mobile number unique to this run and role. */
+function scopedPhone(role: string): string {
+  const digits = createHash("sha256")
+    .update(`${runId}:${role}`)
+    .digest("hex")
+    .split("")
+    .map((character) => String(Number.parseInt(character, 16) % 10))
+    .join("")
+    .slice(0, 8);
+  return `+9677${digits}`;
+}
+
+function pass(message: string): void {
+  checks += 1;
+  console.log(`PASS - ${message}`);
+}
+
+interface Reply {
+  status: number;
+  body: any;
+}
+
+async function call(
+  method: string,
+  path: string,
+  token: string,
+  body?: unknown,
+): Promise<Reply> {
+  const response = await fetch(`${baseUrl}${path}`, {
+    method,
+    headers: {
+      authorization: `Bearer ${token}`,
+      ...(body === undefined ? {} : { "content-type": "application/json" }),
+    },
+    body: body === undefined ? undefined : JSON.stringify(body),
+  });
+  const text = await response.text();
+  return { status: response.status, body: text ? JSON.parse(text) : null };
+}
+
+function expect(reply: Reply, status: number, what: string, code?: string): any {
+  assert.equal(
+    reply.status,
+    status,
+    `${what}: expected ${status}, got ${reply.status} ${JSON.stringify(reply.body)}`,
+  );
+  if (code) assert.equal(reply.body?.code, code, `${what}: code`);
+  return reply.body;
+}
+
+/** A signed session in the realm the account works in. */
+async function session(user: User, scope: "admin" | "application"): Promise<string> {
+  const stored = await prisma.refreshToken.create({
+    data: {
+      userId: user.id,
+      tokenHash: `lifecycle-${runId}-${user.id}-${scope}`,
+      scope: scope === "admin" ? AuthSessionScope.ADMIN : AuthSessionScope.APPLICATION,
+      expiresAt: new Date(Date.now() + 60 * 60 * 1000),
+    },
+  });
+  return jwt.sign({
+    sub: user.id,
+    phone: user.phone,
+    scope,
+    sid: stored.id,
+    ...(scope === "admin" ? { amr: "admin_mfa" } : {}),
+  });
+}
+
+async function account(role: string): Promise<User> {
+  return prisma.user.create({
+    data: {
+      name: `${label} ${role}`,
+      phone: scopedPhone(role),
+      phoneVerifiedAt: new Date(),
+      passwordHash: "managed-smoke-not-a-credential",
+      // An application session needs an account that finished signing up.
+      appPasswordConfiguredAt: new Date(),
+      role: UserRole.USER,
+      status: UserStatus.ACTIVE,
+    },
+  });
+}
+
+async function main(): Promise<void> {
+  const admin = await prisma.user.create({
+    data: {
+      name: `${label} admin`,
+      phone: scopedPhone("admin"),
+      phoneVerifiedAt: new Date(),
+      passwordHash: "managed-smoke-not-a-credential",
+      role: UserRole.ADMIN,
+      adminRole: AdminRole.OPERATIONS,
+      status: UserStatus.ACTIVE,
+    },
+  });
+  const [joiner, refused, claimant, customer] = await Promise.all([
+    account("joiner"),
+    account("refused"),
+    account("claimant"),
+    account("customer"),
+  ]);
+  const city = await prisma.city.create({
+    data: { nameAr: `${label} مدينة`, countryCode: "YE" },
+  });
+  const category = await prisma.providerCategory.create({
+    data: {
+      nameAr: `${label} قسم`,
+      slug: `lifecycle-${runId}`.replace(/_/g, "-").toLowerCase(),
+    },
+  });
+  const adminToken = await session(admin, "admin");
+  const joinerToken = await session(joiner, "application");
+  const refusedToken = await session(refused, "application");
+  const claimantToken = await session(claimant, "application");
+  const customerToken = await session(customer, "application");
+
+  const application = (phone: string | null, services?: unknown) => ({
+    businessName: `${label} نشاط`,
+    phone,
+    cityId: city.id,
+    categoryIds: [category.id],
+    ...(services === undefined ? {} : { services }),
+  });
+
+  // ---------------------------------------------------------------- B-10
+  expect(
+    await call("POST", "/api/v1/provider/apply", joinerToken, application(joiner.phone)),
+    422,
+    "apply without a service",
+    "PROVIDER_SERVICE_REQUIRED",
+  );
+  expect(
+    await call(
+      "POST",
+      "/api/v1/provider/apply",
+      joinerToken,
+      application(joiner.phone, [{ title: "زفة", basePrice: "0" }]),
+    ),
+    422,
+    "apply with an unpriced service",
+    "PROVIDER_SERVICE_REQUIRED",
+  );
+  assert.equal(await prisma.provider.count({ where: { userId: joiner.id } }), 0);
+  pass("joining without a priced service is refused with 422 and writes nothing");
+
+  const applied = expect(
+    await call(
+      "POST",
+      "/api/v1/provider/apply",
+      joinerToken,
+      application(joiner.phone, [
+        { title: "مزمار الليلة", basePrice: "150000", description: "مزمار وطبلين" },
+      ]),
+    ),
+    201,
+    "apply with a priced service",
+  );
+  assert.equal(applied.status, "PENDING");
+  const joinerServices = expect(
+    await call("GET", "/api/v1/provider/me/services", joinerToken),
+    200,
+    "joining service read before approval",
+  );
+  assert.equal(joinerServices.length, 1);
+  assert.equal(joinerServices[0].basePrice, "150000");
+  assert.equal(joinerServices[0].categoryId, category.id);
+  const serviceId = joinerServices[0].id as string;
+  const detail = expect(
+    await call("GET", `/admin/providers/applications/${applied.id}`, adminToken),
+    200,
+    "admin reads the application",
+  );
+  assert.equal(detail.services.length, 1);
+  assert.equal(detail.services[0].basePrice, "150000");
+  pass("the joining service is created with the application and the admin sees it with its price");
+
+  // ---------------------------------------------------------------- B-01
+  expect(
+    await call("POST", "/api/v1/provider/me/application/resubmit", joinerToken),
+    409,
+    "resubmit while PENDING",
+    "PROVIDER_NOT_AWAITING_CHANGES",
+  );
+  expect(
+    await call("PATCH", `/admin/providers/${applied.id}/request-changes`, adminToken, {}),
+    400,
+    "request changes without a note",
+  );
+  expect(
+    await call("PATCH", `/admin/providers/${applied.id}/request-changes`, adminToken, {
+      note: "ملفك قريب.",
+      fieldNotes: [
+        { field: "SERVICE", note: "حدد سعر الليلة." },
+        { field: "BUSINESS_NAME", note: "الاسم اللي يعرفونك فيه." },
+      ],
+    }),
+    200,
+    "request changes per field",
+  );
+  // The team rewrites its notes while the provider is still fixing.
+  expect(
+    await call("PATCH", `/admin/providers/${applied.id}/request-changes`, adminToken, {
+      fieldNotes: [{ field: "SERVICE", note: "حدد سعر الليلة، مو «حسب الطلب»." }],
+    }),
+    200,
+    "rewrite the notes while NEEDS_CHANGES",
+  );
+  const needsChanges = expect(
+    await call("GET", "/api/v1/provider/me/profile", joinerToken),
+    200,
+    "profile while NEEDS_CHANGES",
+  );
+  assert.equal(needsChanges.status, "NEEDS_CHANGES");
+  assert.equal(needsChanges.reviewNote, null);
+  assert.deepEqual(needsChanges.fieldNotes, [
+    { field: "SERVICE", note: "حدد سعر الليلة، مو «حسب الطلب»." },
+  ]);
+  pass("per-field notes reach the provider, and the newest request replaces the old notes");
+
+  expect(
+    await call("PATCH", `/api/v1/provider/me/services/${serviceId}`, joinerToken, {
+      isActive: false,
+    }),
+    403,
+    "switch the joining service off before approval",
+    "PROVIDER_JOINING_SERVICE_ONLY",
+  );
+  expect(
+    await call("POST", "/api/v1/provider/me/services", joinerToken, {
+      categoryId: category.id,
+      title: "خدمة ثانية",
+      basePrice: "50000",
+    }),
+    403,
+    "a second service before approval",
+    "PROVIDER_JOINING_SERVICE_ONLY",
+  );
+  const fixedService = expect(
+    await call("PATCH", `/api/v1/provider/me/services/${serviceId}`, joinerToken, {
+      basePrice: "180000",
+    }),
+    200,
+    "fix the joining service's price",
+  );
+  assert.equal(fixedService.basePrice, "180000");
+  pass("before approval only the joining service's name, price and words change");
+
+  const resubmitted = expect(
+    await call("POST", "/api/v1/provider/me/application/resubmit", joinerToken),
+    200,
+    "resubmit",
+  );
+  assert.equal(resubmitted.status, "PENDING");
+  assert.equal(resubmitted.resubmitCount, 1);
+  assert.ok(resubmitted.resubmittedAt);
+  assert.deepEqual(resubmitted.fieldNotes, []);
+  expect(
+    await call("POST", "/api/v1/provider/me/application/resubmit", joinerToken),
+    409,
+    "resubmit twice",
+    "PROVIDER_NOT_AWAITING_CHANGES",
+  );
+  const confirmation = await prisma.notification.findFirst({
+    where: { userId: joiner.id, title: "وصلنا تعديلك" },
+  });
+  assert.ok(confirmation, "the provider is told the fixes arrived");
+  const queue = expect(
+    await call(
+      "GET",
+      "/admin/providers/applications?status=PENDING&resubmitted=true",
+      adminToken,
+    ),
+    200,
+    "the «أُعيد إرسالها» queue",
+  );
+  assert.ok(queue.items.some((item: any) => item.id === applied.id));
+  const fresh = expect(
+    await call(
+      "GET",
+      "/admin/providers/applications?status=PENDING&resubmitted=false",
+      adminToken,
+    ),
+    200,
+    "the «جديد» queue",
+  );
+  assert.ok(!fresh.items.some((item: any) => item.id === applied.id));
+  const stats = expect(await call("GET", "/admin/dashboard/stats", adminToken), 200, "stats");
+  assert.ok(stats.resubmittedProviders >= 1);
+  const history = expect(
+    await call("GET", `/admin/providers/${applied.id}/review-history`, adminToken),
+    200,
+    "review history",
+  );
+  assert.deepEqual(
+    history.events.map((event: any) => event.kind),
+    ["CHANGES_REQUESTED", "CHANGES_REQUESTED", "RESUBMITTED"],
+  );
+  assert.equal(history.events[0].actor.id, admin.id);
+  assert.equal(history.events[0].notes.length, 3);
+  pass("«أرسلت التعديل» sends the profile back once, confirms it, and the admin sees it in its own queue with its history");
+
+  const approved = expect(
+    await call("PATCH", `/admin/providers/${applied.id}/approve`, adminToken),
+    200,
+    "approve after the fixes",
+  );
+  assert.equal(approved.status, "ACTIVE");
+  pass("the fixed profile is approved");
+
+  // ---------------------------------------------------------------- B-02
+  const refusedApplication = expect(
+    await call(
+      "POST",
+      "/api/v1/provider/apply",
+      refusedToken,
+      application(refused.phone, [{ title: "تسريحة عروس", basePrice: "60000" }]),
+    ),
+    201,
+    "second application",
+  );
+  expect(
+    await call("POST", "/api/v1/provider/me/application/reopen", refusedToken),
+    409,
+    "reopen while PENDING",
+    "PROVIDER_NOT_REJECTED",
+  );
+  expect(
+    await call("PATCH", `/admin/providers/${refusedApplication.id}/reject`, adminToken, {
+      reason: "وضّحي الخدمة.",
+    }),
+    200,
+    "reject",
+  );
+  expect(
+    await call("PATCH", `/admin/providers/${refusedApplication.id}/approve`, adminToken),
+    409,
+    "approve straight from REJECTED",
+    "INVALID_PROVIDER_STATUS_TRANSITION",
+  );
+  expect(
+    await call("PATCH", `/admin/providers/${refusedApplication.id}/request-changes`, adminToken, {
+      note: "x",
+    }),
+    409,
+    "request changes from REJECTED",
+    "INVALID_PROVIDER_STATUS_TRANSITION",
+  );
+  expect(
+    await call("PATCH", "/api/v1/provider/me/profile", refusedToken, {
+      description: "وين أشتغل",
+    }),
+    403,
+    "edit a refused profile",
+    "PROVIDER_PROFILE_READ_ONLY",
+  );
+  pass("a refused profile is read-only and the review team cannot approve it without a fresh review");
+
+  const reopened = expect(
+    await call("POST", "/api/v1/provider/me/application/reopen", refusedToken),
+    200,
+    "reopen",
+  );
+  assert.equal(reopened.status, "NEEDS_CHANGES");
+  assert.equal(reopened.reviewNote, "وضّحي الخدمة.");
+  assert.ok(reopened.reopenedAt);
+  expect(
+    await call("POST", "/api/v1/provider/me/application/reopen", refusedToken),
+    409,
+    "reopen twice",
+    "PROVIDER_NOT_REJECTED",
+  );
+  expect(
+    await call("PATCH", "/api/v1/provider/me/profile", refusedToken, {
+      description: "كوافيرة من البيت في المنصورة.",
+    }),
+    200,
+    "edit after reopening",
+  );
+  const back = expect(
+    await call("POST", "/api/v1/provider/me/application/resubmit", refusedToken),
+    200,
+    "resubmit after reopening",
+  );
+  assert.equal(back.status, "PENDING");
+  const refusedHistory = expect(
+    await call("GET", `/admin/providers/${refusedApplication.id}/review-history`, adminToken),
+    200,
+    "history of a refused profile",
+  );
+  assert.deepEqual(
+    refusedHistory.events.map((event: any) => event.kind),
+    ["REJECTED", "REOPENED", "RESUBMITTED"],
+  );
+  assert.equal(refusedHistory.events[0].notes[0].note, "وضّحي الخدمة.");
+  const refusedRow = expect(
+    await call("GET", `/admin/providers/applications/${refusedApplication.id}`, adminToken),
+    200,
+    "the refused profile in the queue",
+  );
+  assert.ok(refusedRow.reopenedAt);
+  assert.equal(refusedRow.resubmitCount, 1);
+  expect(
+    await call("PATCH", `/admin/providers/${refusedApplication.id}/approve`, adminToken),
+    200,
+    "approve after the fresh review",
+  );
+  pass("«قدّم من جديد» reopens the refusal with its reason as the note, then the fix goes back to review");
+
+  // ---------------------------------------------------------------- B-12
+  const listing = expect(
+    await call("POST", "/admin/providers", adminToken, {
+      businessName: `${label} ملف بلا حساب`,
+      phone: claimant.phone,
+      cityId: city.id,
+      categoryId: category.id,
+    }),
+    201,
+    "list a provider without an account",
+  );
+  const offered = expect(
+    await call("GET", "/api/v1/provider/claimable", claimantToken),
+    200,
+    "claimable listing",
+  );
+  assert.equal(offered.listing?.id, listing.id);
+  assert.deepEqual(
+    expect(await call("GET", "/api/v1/provider/me/claim", claimantToken), 200, "no claim yet"),
+    { claim: null },
+  );
+  const claim = expect(
+    await call("POST", `/api/v1/provider/claim/${listing.id}`, claimantToken),
+    201,
+    "claim",
+  );
+  assert.equal(claim.status, "PENDING");
+  expect(
+    await call("POST", `/api/v1/provider/claim/${listing.id}`, claimantToken),
+    409,
+    "claim twice",
+    "PROVIDER_CLAIM_PENDING",
+  );
+  const listingRow = await prisma.provider.findUniqueOrThrow({ where: { id: listing.id } });
+  assert.equal(listingRow.userId, null);
+  expect(
+    await call("POST", `/api/v1/providers/${listing.id}/quote-requests`, customerToken, {
+      message: "عندك الخميس؟",
+    }),
+    409,
+    "a request to the listing while the claim waits",
+    "PROVIDER_NOT_CLAIMED",
+  );
+  pass("a claim waits for review; the listing stays unclaimed and takes no requests");
+
+  const waiting = expect(
+    await call("GET", "/admin/provider-claims?status=PENDING", adminToken),
+    200,
+    "claims queue",
+  );
+  const queued = waiting.items.find((item: any) => item.id === claim.id);
+  assert.ok(queued);
+  assert.equal(queued.provider.id, listing.id);
+  assert.equal(queued.claimant.phone, claimant.phone);
+  expect(
+    await call("POST", `/admin/provider-claims/${claim.id}/reject`, adminToken, {}),
+    400,
+    "refuse without a reason",
+  );
+  expect(
+    await call("POST", `/admin/provider-claims/${claim.id}/reject`, adminToken, {
+      note: "اتصلنا بالرقم وما رد.",
+    }),
+    201,
+    "refuse the claim",
+  );
+  const refusedClaim = expect(
+    await call("GET", "/api/v1/provider/me/claim", claimantToken),
+    200,
+    "claim after refusal",
+  );
+  assert.equal(refusedClaim.claim.status, "REJECTED");
+  assert.equal(refusedClaim.claim.note, "اتصلنا بالرقم وما رد.");
+  assert.ok(
+    await prisma.notification.findFirst({
+      where: { userId: claimant.id, title: "ما قبلنا الاستلام" },
+    }),
+  );
+  pass("a refused claim tells the claimant why");
+
+  const second = expect(
+    await call("POST", `/api/v1/provider/claim/${listing.id}`, claimantToken),
+    201,
+    "claim again",
+  );
+  const decided = expect(
+    await call("POST", `/admin/provider-claims/${second.id}/approve`, adminToken),
+    201,
+    "approve the claim",
+  );
+  assert.equal(decided.status, "APPROVED");
+  expect(
+    await call("POST", `/admin/provider-claims/${second.id}/approve`, adminToken),
+    409,
+    "approve twice",
+    "PROVIDER_CLAIM_NOT_PENDING",
+  );
+  const linked = await prisma.provider.findUniqueOrThrow({ where: { id: listing.id } });
+  assert.equal(linked.userId, claimant.id);
+  const promoted = await prisma.user.findUniqueOrThrow({ where: { id: claimant.id } });
+  assert.equal(promoted.role, UserRole.PROVIDER);
+  const claimedProfile = expect(
+    await call("GET", "/api/v1/provider/me/profile", claimantToken),
+    200,
+    "the claimed profile",
+  );
+  assert.equal(claimedProfile.id, listing.id);
+  assert.equal(claimedProfile.status, "ACTIVE");
+  pass("an approved claim links the listing to the account, once");
+
+  console.log(`\nProvider lifecycle smoke: ${checks} checks passed.`);
+}
+
+main()
+  .catch((error) => {
+    console.error(error);
+    process.exitCode = 1;
+  })
+  .finally(async () => {
+    await prisma.$disconnect();
+  });

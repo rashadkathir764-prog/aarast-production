@@ -147,7 +147,7 @@ async function assertWeddingContextsPreserved(
 }
 
 async function main(): Promise<void> {
-  const [account, contributorOwner, inviteOwner, adminUser, city] =
+  const [account, contributorOwner, inviteOwner, adminUser, city, category] =
     await prisma.$transaction(async (tx) => {
       const accountRow = await tx.user.create({
         data: {
@@ -197,6 +197,13 @@ async function main(): Promise<void> {
         data: {
           nameAr: `Phase 3 city ${runId}`,
           countryCode: "YE",
+        },
+      });
+      // B-10: an application names its category and joins with a priced service.
+      const categoryRow = await tx.providerCategory.create({
+        data: {
+          nameAr: `Phase 3 category ${runId}`,
+          slug: `phase3-${runId}`.replace(/_/g, "-").toLowerCase(),
         },
       });
       await tx.weddingPlan.create({
@@ -257,6 +264,7 @@ async function main(): Promise<void> {
         inviteOwnerRow,
         adminRow,
         cityRow,
+        categoryRow,
       ] as const;
     });
 
@@ -277,6 +285,8 @@ async function main(): Promise<void> {
     businessName: `Phase 3 provider ${runId}`,
     phone: phone("provider"),
     cityId: city.id,
+    categoryIds: [category.id],
+    services: [{ title: `Phase 3 service ${runId}`, basePrice: "100000" }],
   });
   await assertWeddingContextsPreserved(
     account.id,
@@ -307,6 +317,25 @@ async function main(): Promise<void> {
     ProviderStatus.REJECTED,
     "READ_ONLY",
     false,
+    false,
+  );
+
+  // B-02: a refused profile is approved only after its provider reopens it
+  // and sends it back to review.
+  await providerDashboard.reopenApplication(authenticated(account));
+  await assertWeddingContextsPreserved(
+    account.id,
+    ProviderStatus.NEEDS_CHANGES,
+    "LIMITED",
+    true,
+    false,
+  );
+  await providerDashboard.resubmitApplication(authenticated(account));
+  await assertWeddingContextsPreserved(
+    account.id,
+    ProviderStatus.PENDING,
+    "LIMITED",
+    true,
     false,
   );
 

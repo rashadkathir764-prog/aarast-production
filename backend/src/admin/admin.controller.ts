@@ -27,6 +27,11 @@ import {
   AdminReviewStatusDto,
 } from './dto/admin-review.dto';
 import { AdminReviewActionDto } from './dto/admin-review-action.dto';
+import { AdminRequestChangesDto } from './dto/admin-request-changes.dto';
+import {
+  AdminClaimDecisionDto,
+  AdminClaimRequestQueryDto,
+} from './dto/admin-claim-request.dto';
 import { AdminServiceDto, AdminServiceQueryDto } from './dto/admin-service.dto';
 import {
   AdminConversationReportQueryDto,
@@ -93,9 +98,43 @@ export class AdminController {
   requestProviderChanges(
     @CurrentUser() currentUser: AuthenticatedUser,
     @Param('id') id: string,
-    @Body() dto: AdminReviewActionDto,
+    @Body() dto: AdminRequestChangesDto,
   ) {
     return this.adminService.requestProviderChanges(currentUser, id, dto);
+  }
+
+  // B-01, B-02: when the provider applied and every review step since.
+  @Get('providers/:id/review-history')
+  @RequireAdminPermission(AdminPermission.PROVIDERS_READ)
+  getProviderReviewHistory(@Param('id') id: string) {
+    return this.adminService.getProviderReviewHistory(id);
+  }
+
+  // B-12: claims of a listing the back office made, reviewed before the
+  // listing becomes the account's.
+  @Get('provider-claims')
+  @RequireAdminPermission(AdminPermission.PROVIDERS_READ)
+  listClaimRequests(@Query() query: AdminClaimRequestQueryDto) {
+    return this.adminService.listClaimRequests(query);
+  }
+
+  @Post('provider-claims/:id/approve')
+  @RequireAdminPermission(AdminPermission.PROVIDERS_WRITE)
+  approveClaimRequest(
+    @CurrentUser() currentUser: AuthenticatedUser,
+    @Param('id') id: string,
+  ) {
+    return this.adminService.approveClaimRequest(currentUser, id);
+  }
+
+  @Post('provider-claims/:id/reject')
+  @RequireAdminPermission(AdminPermission.PROVIDERS_WRITE)
+  rejectClaimRequest(
+    @CurrentUser() currentUser: AuthenticatedUser,
+    @Param('id') id: string,
+    @Body() dto: AdminClaimDecisionDto,
+  ) {
+    return this.adminService.rejectClaimRequest(currentUser, id, dto);
   }
 
   @Patch('providers/:id/suspend')

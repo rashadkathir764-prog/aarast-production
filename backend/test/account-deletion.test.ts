@@ -103,6 +103,8 @@ function recordingTx(
       },
       ...del("provider"),
     },
+    // B-12: the account's claims of listings go with it.
+    providerClaimRequest: del("providerClaimRequest"),
     providerReview: {
       findMany: async () =>
         [...(graph.reviewedProviderIds ?? [])]
@@ -417,6 +419,11 @@ test("account deletion clears plan children before plans and deletes the user la
   }
   // Non-cascading rows are cleaned explicitly, and the user is deleted last.
   assert.equal(at("provider"), -1);
+  assert.ok(
+    at("providerClaimRequest") >= 0 &&
+      at("providerClaimRequest") < at("user.delete"),
+    "the account's claims of listings are removed before the user (B-12)",
+  );
   assert.ok(at("outboxEvent") >= 0 && at("outboxEvent") < at("user.delete"));
   assert.ok(
     at("outboxEvent.create") >= 0 &&

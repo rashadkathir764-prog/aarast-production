@@ -49,6 +49,36 @@ test('provider administration actions follow the lifecycle matrix', () => {
   );
 });
 
+test('a refused profile leaves REJECTED only by its provider reopening it (B-02)', () => {
+  for (const action of ['APPROVE', 'REQUEST_CHANGES', 'REJECT'] as const) {
+    assert.equal(
+      providerAdminActionAllowed(action, ProviderStatus.REJECTED),
+      false,
+      `${action} from REJECTED`,
+    );
+  }
+});
+
+test('the review team can rewrite its notes while the provider is fixing (B-01)', () => {
+  assert.equal(
+    providerAdminActionAllowed('REQUEST_CHANGES', ProviderStatus.NEEDS_CHANGES),
+    true,
+  );
+  assert.equal(
+    providerAdminActionAllowed('APPROVE', ProviderStatus.NEEDS_CHANGES),
+    true,
+  );
+});
+
+test('a refusal without a reason tells the provider to fix and apply again (B-02)', () => {
+  const result = switchProviderStatusNotification(
+    'استديو اعّرست',
+    ProviderStatus.REJECTED,
+    null,
+  );
+  assert.equal(result.body, 'صلّح ملف استديو اعّرست وقدّم من جديد من حسابك.');
+});
+
 test('provider lifecycle notification preserves the administration note', () => {
   const result = switchProviderStatusNotification(
     'استديو اعّرست',

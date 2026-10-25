@@ -46,4 +46,9 @@ export interface MarketplaceErasurePort {
     tx: Prisma.TransactionClient,
     userId: string,
   ): Promise<void>;
+  /** The account's claims of listings (B-12), whatever their status. */
+  deleteUserClaimRequestsInTransaction(
+    tx: Prisma.TransactionClient,
+    userId: string,
+  ): Promise<void>;
 }

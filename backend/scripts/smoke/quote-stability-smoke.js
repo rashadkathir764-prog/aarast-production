@@ -161,6 +161,7 @@ async function run() {
         cityId: city.id,
         categoryIds: [category.id],
         description: marker,
+        services: [{ title: `${marker}-service`, basePrice: '100000' }],
       },
       providerAccount.token,
     );

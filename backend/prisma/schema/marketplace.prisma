@@ -45,6 +45,35 @@ enum BookingParty {
   PROVIDER
 }
 
+// One step of a provider's review: an administrator's decision, or the
+// provider sending the profile back (B-01) or reopening a refused one (B-02).
+enum ProviderReviewEventKind {
+  CHANGES_REQUESTED
+  REJECTED
+  APPROVED
+  SUSPENDED
+  ACTIVATED
+  RESUBMITTED
+  REOPENED
+}
+
+// What a review note is about: the whole profile, or one field the
+// provider can fix before approval (B-01).
+enum ProviderReviewField {
+  GENERAL
+  BUSINESS_NAME
+  CATEGORY
+  CITY
+  DESCRIPTION
+  SERVICE
+}
+
+enum ProviderClaimStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
 model Provider {
   id                String                   @id @default(uuid())
   userId            String?                  @unique
@@ -62,9 +91,13 @@ model Provider {
   logoUrl           String?
   coverUrl          String?
   status            ProviderStatus           @default(PENDING)
-  reviewNote        String?                  @db.Text
   reviewedAt        DateTime?
   reviewedById      String?
+  // B-01: when the provider last sent the profile back after «يحتاج تعديل», and how often.
+  resubmittedAt     DateTime?
+  resubmitCount     Int                      @default(0)
+  // B-02: when a refused provider last reopened the profile to fix it.
+  reopenedAt        DateTime?
   // Set when an admin has checked the provider's documents (not just approved the listing).
   verifiedAt        DateTime?
   verifiedById      String?
@@ -89,6 +122,8 @@ model Provider {
   bookings          Booking[]
   blockedDates      ProviderBlockedDate[]
   profileViewDays   ProviderProfileViewDay[]
+  reviewEvents      ProviderReviewEvent[]
+  claimRequests     ProviderClaimRequest[]
 
   @@index([status, isFeatured])
   @@index([cityId, status])
@@ -314,4 +349,54 @@ model ProviderProfileViewDay {
   provider   Provider @relation(fields: [providerId], references: [id], onDelete: Cascade)
 
   @@id([providerId, day])
+}
+
+/// The provider's review history (B-01, B-02). `actorId` is the account
+/// that acted (an administrator, or the provider for RESUBMITTED and
+/// REOPENED), kept as a plain id like `Booking.requestedByUserId`.
+model ProviderReviewEvent {
+  id         String                  @id @default(uuid())
+  providerId String
+  kind       ProviderReviewEventKind
+  actorId    String?
+  createdAt  DateTime                @default(now())
+  provider   Provider                @relation(fields: [providerId], references: [id], onDelete: Cascade)
+  notes      ProviderReviewNote[]
+
+  @@index([providerId, createdAt])
+}
+
+/// A note an administrator wrote with a decision: one for the whole
+/// profile (GENERAL) and one per field to fix. The notes of the latest
+/// decision are the ones the provider sees.
+model ProviderReviewNote {
+  id      String              @id @default(uuid())
+  eventId String
+  field   ProviderReviewField
+  note    String              @db.Text
+  event   ProviderReviewEvent @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  @@unique([eventId, field])
+}
+
+/// An account asking to take over a listing the back office made under
+/// its phone (B-12). The listing becomes the account's only when an
+/// administrator approves. A partial unique index (migration) keeps one
+/// PENDING request per listing and one per account. `userId` and
+/// `decidedById` are plain ids like `Booking.requestedByUserId`; the
+/// requester's rows go with the account (marketplace erasure).
+model ProviderClaimRequest {
+  id          String              @id @default(uuid())
+  providerId  String
+  userId      String
+  status      ProviderClaimStatus @default(PENDING)
+  note        String?             @db.Text
+  createdAt   DateTime            @default(now())
+  decidedAt   DateTime?
+  decidedById String?
+  provider    Provider            @relation(fields: [providerId], references: [id], onDelete: Cascade)
+
+  @@index([status, createdAt])
+  @@index([userId, createdAt])
+  @@index([providerId, status])
 }

@@ -130,7 +130,9 @@ test("an administrator app session can create a provider profile without changin
       if (text.includes('FROM "City"')) {
         return [{ id: "11111111-1111-4111-8111-111111111111" }];
       }
-      if (text.includes('FROM "ProviderCategory"')) return [];
+      if (text.includes('FROM "ProviderCategory"')) {
+        return [{ id: "22222222-2222-4222-8222-222222222222" }];
+      }
       throw new Error(`Unexpected provider-apply lock: ${text}`);
     },
     user: {
@@ -154,7 +156,9 @@ test("an administrator app session can create a provider profile without changin
           address: null,
           latitude: null,
           longitude: null,
-          reviewNote: null,
+          resubmittedAt: null,
+          resubmitCount: 0,
+          reopenedAt: null,
           reviewedAt: null,
           reviewedById: null,
           ratingAverage: 0,
@@ -179,7 +183,25 @@ test("an administrator app session can create a provider profile without changin
         id: "11111111-1111-4111-8111-111111111111",
       }),
     },
-    providerCategory: { count: async () => 0 },
+    // The one category the application names is active.
+    providerCategory: {
+      count: async () => 1,
+      findMany: async () => [
+        {
+          id: "22222222-2222-4222-8222-222222222222",
+          nameAr: "تصوير",
+          nameEn: null,
+          slug: "photography",
+          icon: null,
+          showForGroom: true,
+          showForBride: true,
+          isActive: true,
+          sortOrder: 0,
+        },
+      ],
+    },
+    // A new application has no review step yet.
+    providerReviewEvent: { findFirst: async () => null },
   };
   const prisma = {
     provider: { findUnique: async () => null },
@@ -205,7 +227,8 @@ test("an administrator app session can create a provider profile without changin
       businessName: "Admin Provider",
       phone: "+967777123456",
       cityId: "11111111-1111-4111-8111-111111111111",
-      categoryIds: [],
+      categoryIds: ["22222222-2222-4222-8222-222222222222"],
+      services: [{ title: "Admin service", basePrice: "100000" }],
     },
   );
   assert.equal(providerCreates, 1);
@@ -289,9 +312,28 @@ test("a different administrator can review a provider application", async () => 
   let persistedStatus: ProviderStatus | null = null;
   const revocations: Array<{ userId: string; conversationIds: string[] }> = [];
   const outboxEvents: any[] = [];
+  const recordedEvents: any[] = [];
   const prisma = {
     $transaction: async (operation: any) =>
       operation({
+        providerReviewEvent: {
+          create: async ({ data }: any) => {
+            const event = {
+              id: `event-${recordedEvents.length + 1}`,
+              providerId: data.providerId,
+              kind: data.kind,
+              actorId: data.actorId,
+              createdAt: data.createdAt,
+              notes: data.notes.create.map((note: any, index: number) => ({
+                id: `note-${index + 1}`,
+                eventId: `event-${recordedEvents.length + 1}`,
+                ...note,
+              })),
+            };
+            recordedEvents.push(event);
+            return event;
+          },
+        },
         $queryRaw: async (query: any) => {
           const text = query.strings?.join("") ?? String(query);
           if (text.includes('FROM "User"')) {
@@ -349,7 +391,11 @@ test("a different administrator can review a provider application", async () => 
               logoUrl: null,
               coverUrl: null,
               status: data.status,
-              reviewNote: data.reviewNote,
+              // The include's latest decision: the step recorded just before.
+              reviewEvents: recordedEvents.slice(-1),
+              resubmittedAt: null,
+              resubmitCount: 0,
+              reopenedAt: null,
               reviewedAt: data.reviewedAt,
               reviewedBy: null,
               isFeatured: false,
@@ -401,6 +447,17 @@ test("a different administrator can review a provider application", async () => 
 
   assert.equal(persistedStatus, ProviderStatus.REJECTED);
   assert.equal(response.status, ProviderStatus.REJECTED);
+  // B-01/B-02: the decision and its reason are a review step, and the
+  // reason reads back as the profile's note.
+  assert.equal(recordedEvents.length, 1);
+  assert.equal(recordedEvents[0].kind, "REJECTED");
+  assert.equal(recordedEvents[0].actorId, "reviewer-admin");
+  assert.deepEqual(
+    recordedEvents[0].notes.map((note: any) => [note.field, note.note]),
+    [["GENERAL", "Incomplete evidence"]],
+  );
+  assert.equal(response.reviewNote, "Incomplete evidence");
+  assert.deepEqual(response.fieldNotes, []);
   assert.deepEqual(revocations, [
     {
       userId: "provider-owner",

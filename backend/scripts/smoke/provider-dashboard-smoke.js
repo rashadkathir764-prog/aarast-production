@@ -168,6 +168,7 @@ async function run() {
       cityId: reference.city.id,
       categoryIds: [reference.category.id],
       description: 'طلب مزود لاختبار لوحة المزود.',
+      services: [{ title: 'خدمة الانضمام', basePrice: '90000' }],
     }, providerToken);
     check('POST /api/v1/provider/apply - HTTP 201', res.status === 201);
     check('provider apply status is PENDING', res.body?.status === 'PENDING');
@@ -200,9 +201,13 @@ async function run() {
   }
 
   {
+    // B-10: before approval he reads the one service he joined with.
     const res = await request('GET', '/api/v1/provider/me/services', null, providerToken);
-    check('PENDING provider services are denied - HTTP 403', res.status === 403);
-    check('PENDING provider services use PROVIDER_NOT_ACTIVE', res.body?.code === 'PROVIDER_NOT_ACTIVE');
+    check('PENDING provider reads the joining service - HTTP 200', res.status === 200);
+    check(
+      'PENDING provider has exactly the joining service',
+      Array.isArray(res.body) && res.body.length === 1 && res.body[0].basePrice === '90000',
+    );
   }
 
   {
@@ -211,11 +216,14 @@ async function run() {
       title: 'Pending provider service must not persist',
       basePrice: '125000',
     }, providerToken);
-    check('PENDING provider service create is denied - HTTP 403', res.status === 403);
-    check('PENDING provider service create uses PROVIDER_NOT_ACTIVE', res.body?.code === 'PROVIDER_NOT_ACTIVE');
+    check('PENDING provider second service is denied - HTTP 403', res.status === 403);
     check(
-      'PENDING provider service create writes nothing',
-      await prisma.providerService.count({ where: { providerId } }) === 0,
+      'PENDING provider second service uses PROVIDER_JOINING_SERVICE_ONLY',
+      res.body?.code === 'PROVIDER_JOINING_SERVICE_ONLY',
+    );
+    check(
+      'PENDING provider second service writes nothing',
+      await prisma.providerService.count({ where: { providerId } }) === 1,
     );
   }
 
@@ -227,7 +235,7 @@ async function run() {
   {
     const res = await request('GET', '/api/v1/provider/me/summary', null, providerToken);
     check('GET /api/v1/provider/me/summary - HTTP 200', res.status === 200);
-    check('summary starts with zero services', res.body?.servicesCount === 0);
+    check('summary starts with the joining service', res.body?.servicesCount === 1);
   }
 
   {
@@ -239,7 +247,7 @@ async function run() {
     check('oversized provider service price - HTTP 400', res.status === 400);
     check(
       'oversized provider service price writes nothing',
-      await prisma.providerService.count({ where: { providerId } }) === 0,
+      await prisma.providerService.count({ where: { providerId } }) === 1,
     );
   }
 

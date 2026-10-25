@@ -395,6 +395,7 @@ async function run() {
     cityId: city.id,
     categoryIds: [category.id],
     description: 'Isolated conversation unification smoke provider.',
+    services: [{ title: `Service ${marker}`, basePrice: '100000' }],
   }, providerUser.token);
   const providerBody = await expectStatus('Create provider profile', providerApply, 201);
   const providerId = providerBody?.id;

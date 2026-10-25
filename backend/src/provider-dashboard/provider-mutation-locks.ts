@@ -5,12 +5,23 @@ import {
   assertProviderOperational,
   assertProviderProfileWritable,
 } from "../modules/marketplace/public/provider-access-policy";
+import { isProviderAwaitingApproval } from "../modules/marketplace/public/provider-review";
 import {
   findProviderForMutation,
   lockOwnedProviderRow,
 } from "../modules/marketplace/infrastructure/provider-mutation-lock.repository";
 
-export type ProviderMutationAccess = "OPERATIONAL" | "PROFILE";
+/**
+ * OPERATIONAL: an approved provider. PROFILE: a provider whose profile is
+ * writable. JOINING_SERVICE: an approved provider, or one waiting for
+ * approval editing the service he joined with (B-10). LIFECYCLE: any
+ * status; the caller checks the transition (resubmit, reopen).
+ */
+export type ProviderMutationAccess =
+  | "OPERATIONAL"
+  | "PROFILE"
+  | "JOINING_SERVICE"
+  | "LIFECYCLE";
 export type ProviderMutationLockMode = "SHARE" | "UPDATE";
 
 export async function lockProviderMutationUsersInTransaction(
@@ -52,7 +63,9 @@ export async function lockOwnedProviderAfterUsersInTransaction(
   }
   if (access === "PROFILE") {
     assertProviderProfileWritable(provider);
-  } else {
+  } else if (access === "JOINING_SERVICE") {
+    if (!isProviderAwaitingApproval(provider)) assertProviderOperational(provider);
+  } else if (access === "OPERATIONAL") {
     assertProviderOperational(provider);
   }
   return provider;

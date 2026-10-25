@@ -114,7 +114,9 @@ function providerFor(status: ProviderStatus) {
     logoUrl: null,
     coverUrl: null,
     status,
-    reviewNote: null,
+    resubmittedAt: null,
+    resubmitCount: 0,
+    reopenedAt: null,
     reviewedAt: null,
     reviewedById: null,
     isFeatured: false,
@@ -124,6 +126,27 @@ function providerFor(status: ProviderStatus) {
     updatedAt: now,
     city,
     primaryCategory: category,
+  };
+}
+
+/** The priced service the provider joined with (B-10), in his category. */
+function joiningService() {
+  return {
+    id: serviceId,
+    providerId,
+    categoryId,
+    title: 'Joining service',
+    description: null,
+    basePrice: new Prisma.Decimal('150000'),
+    priceUnit: null,
+    currency: 'YER',
+    priceUpdatedAt: now,
+    cityId: null,
+    isActive: true,
+    isFeatured: false,
+    images: [],
+    createdAt: now,
+    updatedAt: now,
   };
 }
 
@@ -184,6 +207,9 @@ function createProviderDashboard(status: ProviderStatus) {
       if (sql.includes('FROM "ProviderCategory"')) {
         return [{ id: categoryId }];
       }
+      if (sql.includes('FROM "ProviderService"')) {
+        return [{ id: serviceId }];
+      }
       return [];
     },
     provider: {
@@ -194,7 +220,14 @@ function createProviderDashboard(status: ProviderStatus) {
       findFirst: async () => category,
       count: async () => 1,
     },
+    // No review decision is on record for these profiles.
+    providerReviewEvent: { findFirst: async () => null },
     providerService: {
+      // The one service the provider joined with (B-10).
+      findMany: async () => [joiningService()],
+      findFirst: async () => joiningService(),
+      findUnique: async () => joiningService(),
+      update: async ({ data }: any) => ({ ...joiningService(), ...data }),
       create: async ({ data }: any) => ({
         id: serviceId,
         ...data,
@@ -468,6 +501,83 @@ function expectDenied(
   }
 }
 
+const AWAITING_APPROVAL: ProviderStatus[] = [
+  ProviderStatus.PENDING,
+  ProviderStatus.NEEDS_CHANGES,
+];
+const JOINING_SERVICE_OPERATIONS = new Set([
+  'service list',
+  'service create',
+  'service detail',
+  'service update',
+]);
+
+test('waiting for approval, a provider reads and edits only the service he joined with (B-10)', async () => {
+  const violations: string[] = [];
+  for (const status of AWAITING_APPROVAL) {
+    const dashboard = createProviderDashboard(status);
+    const list = await outcome(() => dashboard.findServices(currentProvider));
+    if (!list.ok || (list.value as unknown[]).length !== 1) {
+      violations.push(`${status}: the joining service was not readable`);
+    }
+    const detail = await outcome(() => dashboard.findService(currentProvider, serviceId));
+    if (!detail.ok) violations.push(`${status}: the joining service detail was not readable`);
+    const rename = await outcome(() =>
+      dashboard.updateService(currentProvider, serviceId, {
+        title: 'Renamed joining service',
+        basePrice: '180000',
+      }),
+    );
+    if (!rename.ok) violations.push(`${status}: the joining service could not be fixed`);
+    const joiningOnly: Array<[string, () => Promise<unknown>]> = [
+      [
+        'second service',
+        () => dashboard.createService(currentProvider, { categoryId, title: 'Second', basePrice: '1000' }),
+      ],
+      [
+        'switch the service off',
+        () => dashboard.updateService(currentProvider, serviceId, { isActive: false }),
+      ],
+      [
+        'move the service to another category',
+        () => dashboard.updateService(currentProvider, serviceId, { categoryId }),
+      ],
+    ];
+    for (const [label, run] of joiningOnly) {
+      expectDenied(
+        `${status}: ${label}`,
+        await outcome(run),
+        'PROVIDER_JOINING_SERVICE_ONLY',
+        violations,
+      );
+    }
+    const operational: Array<[string, () => Promise<unknown>]> = [
+      ['deactivate', () => dashboard.deactivateService(currentProvider, serviceId)],
+      ['package list', () => dashboard.findPackages(currentProvider)],
+      [
+        'service image create',
+        () =>
+          dashboard.createServiceImage(currentProvider, serviceId, {
+            imageUrl: 'https://media.example.test/service.jpg',
+          }),
+      ],
+    ];
+    for (const [label, run] of operational) {
+      expectDenied(`${status}: ${label}`, await outcome(run), 'PROVIDER_NOT_ACTIVE', violations);
+    }
+  }
+  for (const status of [ProviderStatus.SUSPENDED, ProviderStatus.REJECTED]) {
+    const dashboard = createProviderDashboard(status);
+    expectDenied(
+      `${status}: service list`,
+      await outcome(() => dashboard.findServices(currentProvider)),
+      'PROVIDER_NOT_ACTIVE',
+      violations,
+    );
+  }
+  assert.deepEqual(violations, []);
+});
+
 test('only ACTIVE providers can perform provider operations or receive quote/contact PII', async () => {
   const violations: string[] = [];
   const inactiveStatuses = [
@@ -596,6 +706,14 @@ test('only ACTIVE providers can perform provider operations or receive quote/con
       },
     ];
     for (const operation of dashboardOperations) {
+      // B-10: waiting for approval he reads and edits the service he joined
+      // with; that rule has its own test below.
+      if (
+        AWAITING_APPROVAL.includes(status) &&
+        JOINING_SERVICE_OPERATIONS.has(operation.label)
+      ) {
+        continue;
+      }
       expectDenied(
         `${status}: ${operation.label}`,
         await outcome(operation.run),

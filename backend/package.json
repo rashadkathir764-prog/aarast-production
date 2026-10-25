@@ -47,6 +47,7 @@
     "smoke:booking": "node scripts/smoke/run-isolated-smoke.js booking-smoke.ts",
     "smoke:guest-rsvp": "node scripts/smoke/run-isolated-smoke.js guest-rsvp-smoke.ts",
     "smoke:provider-claim": "node scripts/smoke/run-isolated-smoke.js provider-claim-smoke.ts",
+    "smoke:provider-lifecycle": "node scripts/smoke/run-isolated-smoke.js provider-lifecycle-smoke.ts",
     "smoke:cost-receipts": "node scripts/smoke/run-isolated-smoke.js cost-receipts-smoke.js",
     "smoke:phone-change": "node scripts/smoke/run-isolated-smoke.js phone-change-smoke.js",
     "smoke:task-shift": "node scripts/smoke/run-isolated-smoke.js task-shift-smoke.js",

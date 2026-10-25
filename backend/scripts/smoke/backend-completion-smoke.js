@@ -347,6 +347,7 @@ async function run() {
       cityId: reference.city.id,
       categoryIds: [reference.category.id],
       description: 'Provider used by backend completion smoke.',
+      services: [{ title: 'Backend completion service', basePrice: '100000' }],
     }, providerUser.token);
     check('POST provider profile - HTTP 201', res.status === 201);
     providerId = requireResponseId('POST provider profile', res);

@@ -117,6 +117,7 @@ async function run() {
       phone: PROVIDER_PHONE,
       cityId: city.id,
       categoryIds: [category.id],
+      services: [{ title: 'C4-C7 service', basePrice: '100000' }],
     },
     providerUser.token,
   );

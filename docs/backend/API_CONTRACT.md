@@ -830,6 +830,16 @@ Protected routes:
 
 Onboarding completion creates real server-owned plan data, selected budget categories, and active-plan state for an authenticated user. Guest-first mobile drafts remain a mobile/local strategy until the user reaches an account gate.
 
+`POST /api/v1/onboarding/complete` and `POST /api/v1/onboarding/import-local`
+take an optional `mahr` (a06, B5): `{ total, settled?, remainingDueDate? }`
+(amounts as money strings or numbers, the day as `YYYY-MM-DD`). It is
+recorded in the new plan's money in the same transaction, exactly as
+`POST /api/v1/wedding-plans/:planId/mahr` records it (below); a helper's plan answers
+`409 MAHR_NOT_FOR_PLAN`. Completing onboarding for a helper's plan never
+overwrites the account's known persona: an account that is a groom or a bride
+stays so when it starts a plan for someone else, because the account's persona
+is who the app speaks to (B5).
+
 ## WeddingPlan Dashboard Summary
 
 Protected routes:
@@ -1261,6 +1271,7 @@ The response is one nested contract with no legacy aliases:
     "allocated": "900000.00",
     "unallocated": "600000.00",
     "confirmedCost": "700000.00",
+    "paid": "250000.00",
     "remaining": "800000.00"
   },
   "costs": {
@@ -1287,6 +1298,7 @@ The response is one nested contract with no legacy aliases:
     {
       "categoryId": "category_id",
       "name": "Hall",
+      "kind": "WEDDING",
       "allocatedAmount": "500000.00",
       "confirmedCost": "400000.00",
       "paid": "100000.00",
@@ -1301,7 +1313,25 @@ The response is one nested contract with no legacy aliases:
   "permissions": {
     "canViewMoney": true,
     "canManageMoney": true
-  }
+  },
+  "mahr": {
+    "side": "PAYS",
+    "total": "3000000.00",
+    "settled": "2000000.00",
+    "remaining": "1000000.00",
+    "nextDueAt": "2026-11-15T00:00:00.000Z",
+    "complete": false
+  },
+  "payers": [
+    {
+      "payer": "GROOM",
+      "payerName": null,
+      "agreed": "3000000.00",
+      "paid": "2000000.00",
+      "outstanding": "1000000.00",
+      "costsCount": 1
+    }
+  ]
 }
 ```
 
@@ -1326,6 +1356,52 @@ summary built inside its own successful mutation transaction.
 Removed prelaunch expense, commitment, financial-payment, and financial-
 installment routes are not aliases and must return `404`.
 
+### The mahr (B5, D55)
+
+- `POST /api/v1/wedding-plans/:planId/mahr` (`money-summary.recordMahr`)
+
+a06 «اتفقتوا على المهر؟» for a plan that exists: `{ total, settled?,
+remainingDueDate? }`. Only the plan owner records it (a member, even with
+money rights, gets `404`), once per plan (`409 MAHR_ALREADY_RECORDED`, then it
+is edited through the ordinary cost, payment, schedule or funding routes). The
+side follows the plan's persona: a groom's plan **pays** it, a bride's plan
+**receives** it, a helper's plan has none (`409 MAHR_NOT_FOR_PLAN`). `total`
+must be above zero and `settled` within it (`400`). The answer is the money
+summary built in the same transaction.
+
+- **Groom (PAYS):** a budget item `kind: "MAHR"` named «المهر», outside the
+  wedding budget (it never holds an allocation: `PATCH` with an allocation is
+  `400 MAHR_OUTSIDE_BUDGET`, and the database refuses it too), with one
+  agreement «المهر» with «أهل العروسة» (`payer: GROOM`), the handed-over part
+  as a payment and the rest as a payment schedule on its day. An item the
+  plan already named «المهر» without agreements becomes that item. A budget
+  replacement (`PUT /api/v1/wedding-plans/:planId/money-budget`) never
+  touches the mahr item.
+- **Bride (RECEIVES):** funding sources `kind: "MAHR"`: «المهر من العريس»
+  `RECEIVED` and «باقي المهر» `PLEDGED` with `expectedAt` (the rest's day).
+  Funding stays the owner's private picture (below).
+
+The summary's `mahr` (null before it is recorded, and for a reader who may
+not see it: the bride's mahr is funding, owner only) reads both sides in one
+shape: `side`, `total`, `settled` (handed over or received), `remaining`,
+`nextDueAt` (the earliest pending schedule for the groom, the earliest
+expected day for the bride; null once nothing is left) and `complete`.
+
+The mahr is money of the plan but not of the wedding budget: `costs.*` and
+`categories` include the mahr agreement; `budget.confirmedCost`,
+`budget.paid` and `budget.remaining` (and the `BUDGET_EXCEEDED` warning, and
+the dashboard's `remainingBudget`) count only items of `kind: "WEDDING"`.
+`budget.paid` is what was paid of those (c01 «عرسك · دفعت»).
+
+### Who paid what (G14)
+
+`payers` groups the plan's non-cancelled agreements by their `payer` and the
+trimmed `payerName` («الوالد» and «خالي أحمد» are two groups of `FAMILY`), in
+the order GROOM, BRIDE, FAMILY, SHARED, OTHER, unset: `agreed`, `paid` (the
+net payments), `outstanding`, `costsCount`. A payment carries no payer of its
+own; it counts under its agreement's payer. It is part of the money summary,
+so it follows `canViewMoney`.
+
 ### Cost payer
 
 `POST /api/v1/wedding-plans/:id/costs` and `PATCH /api/v1/costs/:id` accept
@@ -1344,9 +1420,12 @@ collects or moves this money.
 - `PATCH|DELETE /api/v1/loan-repayments/:id`
 
 A funding source has `kind` (`SAVINGS`, `FAMILY_SUPPORT`, `GIFT` — rifd and
-nuqut, `LOAN`, `OTHER`), `sourceName`, optional `sourcePhone`, positive
-`amount`, and `status` `PLEDGED` (promised) or `RECEIVED` (default; then
-`receivedAt` defaults to now). Responses include the ordered `repayments`
+nuqut, `LOAN`, `MAHR` — the bride's mahr from the groom, `OTHER`),
+`sourceName`, optional `sourcePhone`, positive `amount`, and `status`
+`PLEDGED` (promised) or `RECEIVED` (default; then `receivedAt` defaults to
+now). A source may carry `expectedAt` (an ISO date, the day pledged money is
+expected; c05 «يوصلك يوم العقد 15 نوفمبر»; `null` clears it); responses
+return it (null when unset). Responses include the ordered `repayments`
 and, for a loan, `repaidAmount` and `outstandingAmount`.
 
 Only a `LOAN` takes repayments (`amount`, optional `dueDate`). Planned and
@@ -3255,6 +3334,7 @@ configuration, and smoke checks.
 | GET | `/api/v1/wedding-plans/:planId/dashboard-summary` | `dashboard.getDashboardSummary` | 🔒 |
 | GET | `/api/v1/wedding-plans/:planId/funding-sources` | `funding-sources.findForPlan` | 🔒 |
 | POST | `/api/v1/wedding-plans/:planId/funding-sources` | `funding-sources.create` | 🔒 |
+| POST | `/api/v1/wedding-plans/:planId/mahr` | `money-summary.recordMahr` | 🔒 |
 | PUT | `/api/v1/wedding-plans/:planId/money-budget` | `money-summary.replaceMoneyBudget` | 🔒 |
 | GET | `/api/v1/wedding-plans/:planId/money-summary` | `money-summary.getMoneySummary` | 🔒 |
 | GET | `/api/v1/wedding-plans/:planId/plan-view` | `dashboard.getPlanReadView` | 🔒 |

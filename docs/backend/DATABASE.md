@@ -54,7 +54,7 @@ run the local demo seed `backend/prisma/demo-seed.ts`, see
 | Notification | Implemented for persisted user-owned alerts with optional WeddingPlan context, type, title, body, JSON data, read timestamp, dedupe key, and timestamps. Notifications are private to the authenticated user; inbox indexes cover account-wide and plan-scoped pagination without scanning another user's rows. New provider-audience quote/chat alerts store generic text and explicit audience metadata instead of requester/sender contact identity. |
 | PushInstallation | One Firebase Installation ID bound to one authenticated account and platform. The globally unique FID is moved atomically when a shared device signs into another account; account deletion cascades installations. |
 | OutboxEvent | Durable PostgreSQL queue for conversation message/activity availability, notification availability, FCM delivery requests, conversation-access revocation, all-user-session revocation, and one-session revocation. Domain/session rows and their events commit together. Workers claim with `FOR UPDATE SKIP LOCKED`, reclaim stale locks, retry with bounded exponential delay, and retain exhausted events as `FAILED` dead letters. Strict realtime and push dispatch are processed only after their adapter action resolves; unavailable or rejected delivery remains retryable. |
-| BudgetCategory | One plan-owned budget group with an optional allocation. Allocations never replace `WeddingPlan.estimatedBudget`. A positive allocation requires a non-null general budget, and total allocations may not exceed it. |
+| BudgetCategory | One plan-owned budget group with an optional allocation. Allocations never replace `WeddingPlan.estimatedBudget`. A positive allocation requires a non-null general budget, and total allocations may not exceed it. `kind` (B5, D55) is `WEDDING` (default) or `MAHR`: the groom's mahr item, outside the wedding budget, at most one per plan (partial unique index `BudgetCategory_one_mahr_per_plan`) and never with an allocation (CHECK `BudgetCategory_mahr_has_no_allocation`); a budget replacement reads and replaces only `WEDDING` items, and the budget's confirmed cost, paid and remaining count only them. Migration `20261026100000_add_mahr_and_starter_defaults`. |
 | WeddingCost | The only cost backbone. Every cost belongs to a WeddingPlan and exactly one BudgetCategory, has a positive total, and may reference either an Aarast provider/accepted quote context or an external party. Paid and outstanding values come from its payment ledger. It has no due-date field; payment timing belongs only to `PaymentSchedule.dueDate`. `privateToUserId` (V1 checklist 4.10), when set, is the one account (the owner or the partner who recorded it) that sees the cost; null is the shared plan's. |
 | CostPayment | An append-only money-out ledger under one WeddingCost. `PAYMENT` and `REVERSAL` are immutable rows; the original payment remains, one payment may have at most one reversal, and category/provider context is inherited through the cost instead of duplicated client input. This is planning data, not payment processing. |
 | PaymentSchedule | A dated, non-reserving reminder under one WeddingCost. `dueDate` is required and is the only payment-reminder date. A pending schedule never changes totals, reserves outstanding balance, or blocks a direct payment. Each schedule is independently capped by the row-locked outstanding cost on create/update. Paying creates one linked CostPayment; reversing it reopens that schedule, while fully paying the cost cancels all other pending reminders. |
@@ -411,6 +411,16 @@ The backend now includes the approved provider-reference and quote-lead foundati
   shared groom/bride catalog, moves provider and service references from eight
   known Arabic-slug duplicates, and deactivates those duplicates without
   deleting rows or losing relationships.
+- The money starter items (`money.starter.categories`, G12, D55): honeymoon
+  (groom, bride, shared) and the bride's home are recommended. Migration
+  `20261026100000_add_mahr_and_starter_defaults` publishes revision 2 with
+  `isRecommended = true` only for those items still on the system's first
+  revision; an item an administrator edited keeps his revision. New items (the
+  shared gold item, the bride's gold and trousseau tasks) reach a database
+  from the system defaults like every system item.
+- The mahr (B5, D55): `BudgetCategory.kind = MAHR` for the groom (above),
+  `FundingSourceKind.MAHR` for the bride, and `FundingSource.expectedAt`, the
+  day pledged money is expected (the mahr's rest).
 - `Provider`, `ProviderService`, `ProviderServiceImage`, and `ProviderPackage`
   for public planning references. Every externally supplied `numeric(14,2)`
   provider price is bounded by the central money validator before persistence;
@@ -459,12 +469,12 @@ rewrite as permission to restore a removed live model.
 | `OtpDispatchQuota` | 5 | `windowStartedAt`, `updatedAt` |
 | `AssistantUsageDay` | 8 | `userId`, `updatedAt` |
 | `WeddingPlan` | 31 | `id`, `ownerUserId`, `onboardingCompletedAt`, `importMigrationId`, `createdAt`, `updatedAt` |
-| `BudgetCategory` | 9 | `id`, `weddingPlanId`, `createdAt`, `updatedAt` |
+| `BudgetCategory` | 10 | `id`, `weddingPlanId`, `createdAt`, `updatedAt` |
 | `WeddingCost` | 25 | `id`, `weddingPlanId`, `budgetCategoryId`, `providerId`, `quoteOfferId`, `privateToUserId`, `createdAt`, `updatedAt` |
 | `CostPayment` | 15 | `id`, `weddingCostId`, `paidAt`, `paymentScheduleId`, `reversalOfId`, `createdAt` |
 | `CostReceipt` | 10 | `id`, `weddingCostId`, `costPaymentId`, `uploadedByUserId`, `createdAt` |
 | `PaymentSchedule` | 11 | `id`, `weddingCostId`, `paidAt`, `createdAt`, `updatedAt` |
-| `FundingSource` | 13 | `id`, `weddingPlanId`, `receivedAt`, `createdAt`, `updatedAt` |
+| `FundingSource` | 14 | `id`, `weddingPlanId`, `receivedAt`, `expectedAt`, `createdAt`, `updatedAt` |
 | `LoanRepayment` | 10 | `id`, `fundingSourceId`, `paidAt`, `createdAt`, `updatedAt` |
 | `WeddingTask` | 19 | `id`, `weddingPlanId`, `assigneeUserId`, `reminderAt`, `privateToUserId`, `createdAt`, `updatedAt` |
 | `WeddingTaskChecklistItem` | 8 | `id`, `taskId`, `createdAt`, `updatedAt` |

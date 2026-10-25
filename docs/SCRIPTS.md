@@ -59,6 +59,7 @@
 | `backend` | `npm run smoke:guests` | `node scripts/smoke/run-isolated-smoke.js guests-smoke.js` |
 | `backend` | `npm run smoke:guests-apis` | `node scripts/smoke/run-isolated-smoke.js guests-apis-smoke.js` |
 | `backend` | `npm run smoke:health` | `node scripts/smoke/run-isolated-smoke.js health-smoke.js` |
+| `backend` | `npm run smoke:mahr` | `node scripts/smoke/run-isolated-smoke.js mahr-smoke.js` |
 | `backend` | `npm run smoke:marketplace` | `node scripts/smoke/run-isolated-smoke.js marketplace-smoke.js` |
 | `backend` | `npm run smoke:money-apis` | `node scripts/smoke/run-isolated-smoke.js money-apis-smoke.js` |
 | `backend` | `npm run smoke:money-budget` | `node scripts/smoke/run-isolated-smoke.js money-budget-smoke.js` |

@@ -49,6 +49,7 @@ import {
   quoteLifecycleStatus,
 } from '../marketplace/quote-lifecycle';
 import { isQuoteOfferExpired } from '../marketplace/quote-offer-expiry';
+import { quoteOfferCurrencyMismatch } from '../marketplace/quote-offer-currency';
 import { lockMarketplaceProvider } from '../marketplace/marketplace-write-locks';
 import {
   providerRejectedRequestNotification,
@@ -1605,9 +1606,7 @@ export class ProviderDashboardService {
       weddingPlanCurrency &&
       currency !== weddingPlanCurrency.toUpperCase()
     ) {
-      throw new BadRequestException(
-        'Quote offer currency must match the wedding plan currency',
-      );
+      throw quoteOfferCurrencyMismatch(weddingPlanCurrency, 'provider');
     }
     return currency;
   }

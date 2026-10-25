@@ -48,7 +48,7 @@ export function findOfferForAcceptance(client: Client, id: string, weddingPlanId
     where: { id },
     include: {
       quoteRequest: { include: { service: true } },
-      provider: { select: { businessName: true, userId: true } },
+      provider: { select: { businessName: true, userId: true, primaryCategoryId: true } },
       providerLinks: { where: { weddingPlanId } },
     },
   });
@@ -59,7 +59,7 @@ export function requireOfferForAcceptance(client: Client, id: string, weddingPla
     where: { id },
     include: {
       quoteRequest: { include: { service: true } },
-      provider: { select: { businessName: true, userId: true } },
+      provider: { select: { businessName: true, userId: true, primaryCategoryId: true } },
       providerLinks: { where: { weddingPlanId } },
     },
   });

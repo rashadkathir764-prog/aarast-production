@@ -75,7 +75,12 @@ test('an accepted offer creates its cost under the matching plan category', asyn
   });
   assert.equal(created.id, 'cost-1');
   assert.deepEqual(calls, [
-    ['budgetCategory.findMany', { where: { weddingPlanId: 'plan-1' }, select: { id: true, name: true, normalizedName: true } }],
+    // G38: the plan's items in their own order, so the first fit is stable.
+    ['budgetCategory.findMany', {
+      where: { weddingPlanId: 'plan-1' },
+      select: { id: true, name: true, normalizedName: true },
+      orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
+    }],
     ['weddingCost.create', {
       data: {
         weddingPlanId: 'plan-1',

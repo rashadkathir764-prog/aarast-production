@@ -38,6 +38,7 @@ import {
   offerAcceptedProviderNotification,
   offerAcceptedRequesterNotification,
 } from "./quote-notifications";
+import { quoteOfferCurrencyMismatch } from "./quote-offer-currency";
 
 interface AcceptQuoteOfferInput {
   id: string;
@@ -161,9 +162,7 @@ export async function acceptQuoteOfferInTransaction(
       );
     }
     if (current.currency.toUpperCase() !== plan.currency.toUpperCase()) {
-      throw new BadRequestException(
-        "Quote offer currency must match the wedding plan currency",
-      );
+      throw quoteOfferCurrencyMismatch(plan.currency, "customer");
     }
 
     if (!acceptedNow) {
@@ -203,8 +202,7 @@ export async function acceptQuoteOfferInTransaction(
         quoteOfferId: current.id,
         title,
         amount: current.amount,
-        providerCategoryName:
-          current.quoteRequest.service?.category.nameAr ?? null,
+        providerCategoryName: await relations.offerCategoryName(tx, current),
       });
     }
 

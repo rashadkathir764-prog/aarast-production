@@ -292,6 +292,27 @@ export class MarketplaceRelationsService {
     };
   }
 
+  /**
+   * The category an accepted offer's cost is filed under (G38): the
+   * requested service's, else the provider's own category for a request
+   * made to the provider without a service.
+   */
+  async offerCategoryName(
+    client: Prisma.TransactionClient,
+    offer: {
+      quoteRequest: { service: { category: ProviderCategory } | null };
+      provider: { primaryCategoryId: string | null };
+    },
+  ): Promise<string | null> {
+    if (offer.quoteRequest.service) {
+      return offer.quoteRequest.service.category.nameAr;
+    }
+    const categoryId = offer.provider.primaryCategoryId;
+    if (!categoryId) return null;
+    const [category] = await this.catalog.getCategories(client, [categoryId]);
+    return category?.nameAr ?? null;
+  }
+
   async attachReviewUsers<T extends ProviderReview>(
     client: Prisma.TransactionClient,
     reviews: T[],

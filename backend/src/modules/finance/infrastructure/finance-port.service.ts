@@ -497,6 +497,8 @@ export class FinancePortService implements FinancePort {
     const categories = await tx.budgetCategory.findMany({
       where: { weddingPlanId: input.weddingPlanId },
       select: { id: true, name: true, normalizedName: true },
+      // The matcher takes the first item that fits: the plan's own order.
+      orderBy: [{ createdAt: "asc" }, { id: "asc" }],
     });
     let category = findLogicalBudgetCategory(
       categories,

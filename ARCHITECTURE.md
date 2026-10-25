@@ -419,9 +419,10 @@ changed no Backend product source, Mobile, Prisma, database, dependency,
 lockfile, deployment, route, API, permission, Arabic copy, OTP, session, or
 observable Admin behavior.
 
-The eight Admin feature owners are exactly `auth`, `dashboard`, `users`,
-`providers`, `catalog`, `moderation`, `notifications`, and `audit`. Their only
-allowed cross-feature edges are:
+The seven Admin feature owners are exactly `auth`, `dashboard`, `users`,
+`providers`, `catalog`, `moderation`, and `audit` (the eighth, `notifications`,
+was deleted with its undrawn page on 2026-10-25, D56). Their only allowed
+cross-feature edges are:
 
 ```text
 dashboard     -> auth, providers
@@ -429,7 +430,6 @@ users         -> auth
 providers     -> auth
 catalog       -> auth, providers
 moderation    -> auth, providers
-notifications -> auth
 audit         -> (none)
 auth          -> (none)
 ```
@@ -445,14 +445,15 @@ The public APIs are owner-controlled: Auth owns session/permission symbols;
 Dashboard owns statistics and report overview; Users owns user projections and
 lifecycle; Providers owns provider/application projections and lifecycle;
 Catalog owns services, categories, cities, reference catalogs, and geography;
-Moderation owns reviews and conversation reports; Notifications owns Admin
-notification operations; Audit owns the read-only audit log. The exact symbol
+Moderation owns reviews and conversation reports; Audit owns the read-only
+audit log. The exact symbol
 sets are machine-enforced by
 `admin-web/architecture/r10-admin-boundaries.json`; no owner may forward a
 foreign public API as its own.
 
-`App.tsx` alone may directly import these exact 18 feature screens plus the
-Platform NotFound screen:
+`App.tsx` alone may directly import these exact 19 feature screens plus the
+Platform NotFound screen (the claims page and the featured placements page
+joined on 2026-10-25 with B-12 and B-43; NotificationsPage left with D56):
 
 ```text
 features/auth/LoginPage.tsx
@@ -464,6 +465,8 @@ features/providers/ProviderApplicationsPage.tsx
 features/providers/ProviderApplicationDetailsPage.tsx
 features/providers/ProvidersPage.tsx
 features/providers/ProviderDetailsPage.tsx
+features/providers/ProviderClaimsPage.tsx
+features/providers/FeaturedPlacementsPage.tsx
 features/catalog/CategoriesPage.tsx
 features/catalog/CitiesPage.tsx
 features/catalog/ServicesPage.tsx
@@ -471,7 +474,6 @@ features/catalog/ReferenceCatalogsPage.tsx
 features/catalog/AdministrativeAreasPage.tsx
 features/moderation/ReviewsPage.tsx
 features/moderation/ConversationReportsPage.tsx
-features/notifications/NotificationsPage.tsx
 features/audit/AuditLogsPage.tsx
 platform/routing/NotFoundPage.tsx
 ```

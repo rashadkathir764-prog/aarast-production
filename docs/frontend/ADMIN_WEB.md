@@ -1,11 +1,15 @@
 # Admin Web
 
-Snapshot date: 2026-08-31
+Snapshot date: 2026-10-25
 
 The admin web app is a React/Vite dashboard under `admin-web/`. It supports
-admin-facing management for dashboard stats, users, catalog references,
-providers, services, reviews, notifications, operational reports, and
-conversation-report moderation through the backend admin APIs.
+admin-facing management for the inbox, users, catalog references, providers,
+services, featured placement, reviews, operational reports, the audit log, and
+conversation-report moderation through the backend admin APIs. Every page is
+drawn with the admin desk kit (`src/design_system/Desk.tsx`, `DeskModal.tsx`,
+`src/styles/desk.css`) from the admin designs in
+`mobile/test/prototype/admin/out/`; which design each page follows, and the
+differences, are in `docs/superpowers/audit/admin_build_classification.md`.
 
 ## Commands
 
@@ -53,9 +57,10 @@ browser-administration password; it cannot overwrite the wedding-app password.
 
 ## R10 Admin Architecture
 
-Admin source is owned by the eight directories under `src/features/` (Auth,
-Dashboard, Users, Providers, Catalog, Moderation, Notifications, and Audit),
-plus `src/platform` and `src/design_system`.
+Admin source is owned by the seven directories under `src/features/` (Auth,
+Dashboard, Users, Providers, Catalog, Moderation, and Audit), plus
+`src/platform` and `src/design_system`. The eighth, Notifications, was deleted
+with its undrawn page on 2026-10-25 (D56).
 `App.tsx`, `main.tsx`, and `layout/**` are the only production composition
 roots; `src/test/contracts/**` is test-only. Cross-feature imports target only
 the owner's exact `api.ts` surface. The old `src/api`, `src/auth`,
@@ -63,8 +68,7 @@ the owner's exact `api.ts` surface. The old `src/api`, `src/auth`,
 
 The approved feature graph is acyclic: Dashboard may consume Auth and
 Providers; Users and Providers may consume Auth; Catalog and Moderation may
-consume Auth and Providers; Notifications may consume Auth; Audit and Auth
-consume no other feature. Platform and Design System import no feature.
+consume Auth and Providers; Audit and Auth consume no other feature. Platform and Design System import no feature.
 `App.tsx` owns the narrow Dashboard/Catalog loader injection needed by Provider
 screens, avoiding reverse feature edges while preserving the same requests and
 rendered behavior.
@@ -86,8 +90,16 @@ phone widths. The shared confirmation dialog now traps and restores focus,
 blocks dismissal while an operation is pending, and reports mutation failures.
 All 12 current Admin tables use one token-based, labelled, horizontally
 scrollable `DataTable`, and all current search filters expose a visible label
-and named search landmark. The remaining management pages still require
-migration onto the shared page-header, field, and state primitives.
+and named search landmark.
+
+2026-10-25 (D56): the pages without a design of their own (services, users,
+cities, governorates and districts, sign-in, the unknown-address page, the
+error page and the listed-provider and import windows) moved onto the same desk
+kit as the designed pages; no page renders the older `PageHeader`,
+`SectionCard`, `DataTable` or `StatCard` primitives any more. Those older
+components are still in `src/design_system/` (unused, pinned as move targets by
+the R10 manifest, two with their own tests); deleting them is a recorded
+follow-up.
 
 ## Rules
 
@@ -102,14 +114,16 @@ migration onto the shared page-header, field, and state primitives.
 
 | Path | Page | Notes |
 | --- | --- | --- |
-| `/` | Dashboard | Overview stats and quick actions |
-| `/users` | Users | List and manage end users |
-| `/providers` | Providers | Active/suspended provider directory by default |
-| `/providers/applications` | Provider Applications | Pending/change-requested/rejected applications by default |
-| `/services` | Services | Provider service CRUD |
-| `/reviews` | Reviews | Moderate provider reviews |
-| `/notifications` | Notifications | Operational notifications |
-| `/reports` | Reports | Operational reports from `/admin/reports/overview` |
+| `/` | «الصندوق» (n01) | One inbox of joining, claim and report items |
+| `/users` | Users (no design) | Search and list accounts; a row opens `/users/:id` (a13), where an account is disabled or enabled |
+| `/providers` | Providers (a05) | Active/suspended provider directory by default |
+| `/providers/applications` | Provider Applications (a03, a04) | New, resubmitted, needs-changes and refused queues |
+| `/providers/listed` | Listed providers (a07) | Claims of a listed provider |
+| `/featured` | Featured placement (a17) | Record, renew, stop or cancel a paid placement |
+| `/services` | Services (no design) | List, stop/run and add provider services |
+| `/reviews` | Reviews (a10) | Moderate provider reviews |
+| `/reports` | Reports (a02) | Success report and market prices |
+| `/audit-logs` | Audit log (a15) | Read-only audit log |
 | `/conversation-reports` | Conversation Reports | Review participant reports without exposing messages |
 | `/categories` | Provider Categories | Catalog CRUD |
 | `/cities` | Cities | Catalog CRUD |
@@ -124,8 +138,8 @@ data through this page.
 
 ## List Pagination
 
-Users, provider applications, providers, services, reviews, conversation
-reports, and notifications request 20 rows per page and render the backend
+Users, provider applications, providers, services, reviews, and conversation
+reports request 20 rows per page and render the backend
 `page`, `limit`, `total`, and `totalPages` metadata through one RTL control.
 Changing a filter or submitting a new search returns to page 1. If an action
 removes the last row on the current page, the screen clamps to the last valid
@@ -153,9 +167,8 @@ after creation. All reads require `CATALOG_READ`, all writes require
 `CATALOG_WRITE`, and the existing append-only admin audit interceptor records
 every attempt and terminal outcome.
 
-List summary cards distinguish complete filtered totals from counts derived
-only from the current 20-row page. Page-local cards are labeled
-`في الصفحة`; they must not be presented as full-dataset statistics.
+Lists show the server's complete total only (for example «17 خدمة»); no page
+shows a count derived from the 20 rows in view.
 
 ## Latest Local Verification — 2026-08-31
 

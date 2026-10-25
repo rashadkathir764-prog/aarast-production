@@ -23,7 +23,8 @@ const EXACT = Object.freeze({
   // Re-pinned 2026-10-25: the a07 claims page ProviderClaimsPage (B-12).
   // Re-pinned 2026-10-25: the a17 plans page FeaturedPlacementsPage (B-43).
   // Re-pinned 2026-10-25: NotificationsPage left (D56).
-  appScreenAllowlist: '07e18e96f8dbb580524d79503e6314eea053c9f313913adb233e062bd66ef031',
+  // Re-pinned 2026-10-26: the a12 bookings page BookingsPage (B-40).
+  appScreenAllowlist: '84fdeec662825af3549e3de6e7e68c577311543d1c3084f1dd1728b8fb1f4e43',
   publicSurfaceFirstTask: '84cf74e0a2242688515d08b8c9809596267b16b1d45acd9c8de382499254f2cf',
   // Re-pinned 2026-10-11: providers gained setProviderVerified (V1 checklist 4.11).
   // Re-pinned 2026-10-15: providers gained createListedProvider (V1 checklist 4.18).
@@ -37,7 +38,9 @@ const EXACT = Object.freeze({
   // Re-pinned 2026-10-25: the notifications surface left with its page (D56).
   // Re-pinned 2026-10-25: moderation gained updateReviewReplyStatus, a10's
   // «أخفِ الرد» / «أظهر الرد» (B-09); no other surface changed.
-  publicSurfaces: '4009225e114173fb0c91602864ba502ca3ab13efa373a7467a34cda870ddc879',
+  // Re-pinned 2026-10-26: moderation gained the a12 bookings read
+  // (AdminBooking, AdminBookingQuery, getBookings, getBooking; B-40).
+  publicSurfaces: '08085096e0299fc02d7c5a7bcc9b7ff8370f566197c666d98b594dc8789e2d36',
   // Re-pinned 2026-10-25 (D56): 19 old-kit components and the 2 tests that
   // belonged only to them (DataTable, SearchInput) changed fate from move to
   // delete; no other fate changed.
@@ -189,7 +192,8 @@ export function validateR10Manifest(value) {
   requireExactArray(Object.keys(value.allowedFeatureEdges || {}), EXACT_FEATURES);
   if (
     !Array.isArray(value.appScreenAllowlist)
-    || value.appScreenAllowlist.length !== 20
+    // 20 -> 21 (2026-10-26): the a12 bookings page (B-40).
+    || value.appScreenAllowlist.length !== 21
     || JSON.stringify(value.appScreenAllowlist) !== JSON.stringify(uniqueSorted(value.appScreenAllowlist))
   ) throw new Error('screen allowlist invalid');
   for (const fate of value.sourceFates) {

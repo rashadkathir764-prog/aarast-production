@@ -3,6 +3,7 @@ import {
   adminNavigationItems,
   resolveAdminLocation,
 } from './adminNavigation';
+import { AdminPermission } from '../features/auth/api';
 
 function itemFor(route: string) {
   const item = adminNavigationItems.find((candidate) => candidate.route === route);
@@ -58,6 +59,16 @@ describe('admin navigation', () => {
       isDetail: false,
     });
     expect(itemFor('/providers').isActive('/featured')).toBe(false);
+  });
+
+  it('puts the bookings page (a12) under the moderation, as drawn', () => {
+    expect(resolveAdminLocation('/bookings')).toMatchObject({
+      group: 'الرقابة',
+      title: 'الحجوزات',
+      route: '/bookings',
+      isDetail: false,
+    });
+    expect(itemFor('/bookings').permission).toBe(AdminPermission.PROVIDERS_READ);
   });
 
   it('resolves the crumb the designs draw for list and detail routes', () => {

@@ -39,6 +39,45 @@ export type ConversationReport = {
   };
 };
 
+/** a12 (B-40): a booking as the back office reads it; no amount, offer or payment. */
+export type AdminBooking = {
+  id: string;
+  eventDate: string;
+  status: 'REQUESTED' | 'CONFIRMED' | 'DECLINED' | 'CANCELLED' | 'EXPIRED';
+  /** CONFIRMED whose day passed reads COMPLETED. */
+  lifecycleStatus: AdminBooking['status'] | 'COMPLETED';
+  provider: { id: string; businessName: string; status: string };
+  customer: { userId: string; name: string | null; weddingPlanId: string | null };
+  quoteRequestId: string;
+  guestCount: number | null;
+  cancelledBy: 'CUSTOMER' | 'PROVIDER' | null;
+  /** The decline's or the cancel's reason. */
+  note: string | null;
+  requestedAt: string;
+  confirmedAt: string | null;
+  declinedAt: string | null;
+  cancelledAt: string | null;
+  expiredAt: string | null;
+  updatedAt: string;
+};
+
+export type AdminBookingQuery = {
+  providerId?: string;
+  status?: string;
+  from?: string;
+  to?: string;
+  page?: number;
+  limit?: number;
+};
+
+export function getBookings(params: AdminBookingQuery = {}) {
+  return apiRequest<Paginated<AdminBooking>>(`/admin/bookings${toQuery(params)}`);
+}
+
+export function getBooking(id: string) {
+  return apiRequest<AdminBooking>(`/admin/bookings/${id}`);
+}
+
 type QueryParams = {
   status?: string;
   providerId?: string;

@@ -15,6 +15,7 @@ const routes = [
   '/cities',
   '/services',
   '/reviews',
+  '/bookings',
   '/conversation-reports',
   '/providers/listed',
   '/featured',

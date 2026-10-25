@@ -7,6 +7,7 @@ import {
   Inbox,
   LayoutGrid,
   Package,
+  Scale,
   Star,
   Store,
   UserPlus,
@@ -186,6 +187,14 @@ export const adminNavigationGroups: AdminNavigationGroup[] = [
         permission: AdminPermission.REVIEWS_READ,
         icon: Star,
         isActive: nestedRoute('/reviews'),
+      },
+      // a12 (B-40): read only; «الخلافات» wait for B-22.
+      {
+        route: '/bookings',
+        label: 'الحجوزات',
+        permission: AdminPermission.PROVIDERS_READ,
+        icon: Scale,
+        isActive: nestedRoute('/bookings'),
       },
     ],
   },

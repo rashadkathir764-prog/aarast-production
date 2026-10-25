@@ -21,6 +21,7 @@ import { CitiesPage } from './features/catalog/CitiesPage';
 import { UsersPage } from './features/users/UsersPage';
 import { UserDetailsPage } from './features/users/UserDetailsPage';
 import { ServicesPage } from './features/catalog/ServicesPage';
+import { BookingsPage } from './features/moderation/BookingsPage';
 import { ReviewsPage } from './features/moderation/ReviewsPage';
 import { ReportsPage } from './features/dashboard/ReportsPage';
 import { ConversationReportsPage } from './features/moderation/ConversationReportsPage';
@@ -192,6 +193,15 @@ export default function App() {
           element={
             <RequireAdminPermission permission={AdminPermission.REVIEWS_READ}>
               <ReviewsPage />
+            </RequireAdminPermission>
+          }
+        />
+        {/* a12 (B-40): bookings, read only. */}
+        <Route
+          path="bookings"
+          element={
+            <RequireAdminPermission permission={AdminPermission.PROVIDERS_READ}>
+              <BookingsPage />
             </RequireAdminPermission>
           }
         />

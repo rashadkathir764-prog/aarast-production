@@ -810,8 +810,13 @@ test('pins Task 5 Catalog loader injection and Provider request ordering', () =>
 test('requires the exact Task 6 Moderation and Audit public surfaces', () => {
   const task6PublicSurfaces = {
     moderation: [
+      // a12 (B-40): the bookings, read only.
+      'AdminBooking',
+      'AdminBookingQuery',
       'ConversationReport',
       'ProviderReview',
+      'getBooking',
+      'getBookings',
       'getConversationReports',
       'getReviews',
       'hideReview',

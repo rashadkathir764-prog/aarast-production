@@ -2413,33 +2413,54 @@ checklist 4.18):
 - `POST /api/v1/provider/apply` is `409 PROVIDER_LISTING_CLAIMABLE` while such a
   listing waits under the caller's phone.
 
-Featured placement (B-43, D41, D51): the provider pays the owner outside the
+Featured placement (B-43, D41, D51, D54): the provider pays the owner outside the
 app; an administrator records the days. No amount, payment or payment status
 is taken or kept anywhere.
 
-- A provider is featured while one of its `ProviderFeaturedPeriod` rows covers
-  the moment of the request (`startsAt <= now < endsAt`, not ended early).
-  It is read at request time, so a placement lapses at its end by itself.
+- **The placement rule (one, D54):** a placement shows only on a provider
+  listed to customers (`ACTIVE` with at least one active service, the same
+  rule as the customers' list) whose owner claimed the listing. The grant,
+  a17's state and counts, the provider's notices, the ranking, the home
+  counter and the admin report all read it (`featuredShowsWhere`).
+- A provider is featured while that rule holds and one of its
+  `ProviderFeaturedPeriod` rows covers the moment of the request
+  (`startsAt <= now < endsAt`, not ended early). It is read at request time,
+  so a placement lapses at its end by itself.
 - `GET /api/v1/providers` lists the providers featured now first, then the
-  others, each group by rating then age (the page is cut across both
-  groups). `isFeatured` on every provider response (list, page, favorites)
-  is that placement; `featured=true|false` filters by it. The customer card
-  labels it «مميز».
+  others, each group by rating, age and id (a total order; the page is cut
+  across both groups in one snapshot). `isFeatured` on every provider
+  response (list, page, favorites) is that placement and `featuredUntil` its
+  end (`null` when not featured): a phone showing a saved copy drops «مميز»
+  once `featuredUntil` passed. `featured=true|false` filters by it. The
+  customer card labels it «مميز»; a tap explains it is paid, not a
+  recommendation.
+- A service has no featured flag of its own (`ProviderService.isFeatured` and
+  the admin «تمييز» are gone, D54): a provider's services read newest first
+  (then id), the services search cheapest first, then newest, then id;
+  `status=FEATURED` on `GET /admin/services` is `400`, and an `isFeatured`
+  field in a service write is `400` (not whitelisted).
 - `GET /api/v1/provider/me/profile` returns `featured: { startsAt, endsAt,
   active } | null`: the placement covering now (`active: true`) or the next
-  one booked (`active: false`). `endsAt` is the start of the day after the
-  last day covered (Sana'a, UTC+3). The profile has no `isFeatured`.
+  one booked (`active: false`); `endsAt` is where its run of back-to-back
+  renewals ends (a renewal booked from the day after the current one carries
+  it on). `endsAt` is the start of the day after the last day covered
+  (Sana'a, UTC+3). The profile has no `isFeatured`.
 - `GET /admin/featured-periods?state&providerId&page&limit`
   (`PROVIDERS_READ`): `state` is `CURRENT` (default: active or booked),
-  `ACTIVE`, `SCHEDULED`, `FINISHED` or `ALL`; latest start first. Each item:
-  `{ id, state: ACTIVE|SCHEDULED|EXPIRED|ENDED, startsAt, endsAt, startsOn,
-  lastDay, note, createdAt, grantedBy: { id, name } | null, endedAt,
-  endedBy, endNote, endingNoticeAt, endNoticeAt, provider }` (`startsOn` and
-  `lastDay` are Sana'a `YYYY-MM-DD` days).
+  `ACTIVE`, `SCHEDULED`, `FINISHED` or `ALL`; latest start first, then
+  creation and id. Each item: `{ id, state: ACTIVE|SCHEDULED|EXPIRED|ENDED,
+  providerShown, startsAt, endsAt, startsOn, lastDay, note, createdAt,
+  grantedBy: { id, name } | null, endedAt, endedBy, endNote, startNoticeAt,
+  endingNoticeAt, endNoticeAt, provider }` (`startsOn` and `lastDay` are
+  Sana'a `YYYY-MM-DD` days; `providerShown` is the placement rule for its
+  provider now: a running placement without it ranks and badges nothing, and
+  a17 reads «مو ظاهر للعرسان»).
 - `GET /admin/featured-periods/summary` (`PROVIDERS_READ`): `{
-  listedProviders, featured, free, endingThisWeek }` over the providers
-  customers see (active with an active service); `endingThisWeek` counts
-  active placements ending within seven days with nothing booked after.
+  listedProviders, featured, free, endingThisWeek }`: `listedProviders` are
+  the providers customers see (active with an active service), `featured`
+  those featured now by the rule, `free` the rest; `endingThisWeek` counts
+  the rule's running placements ending within seven days with nothing booked
+  right after. Four reads, whatever the number of placements.
 - `POST /admin/providers/:id/featured-periods` (`PROVIDERS_WRITE`, re-checked
   live under the account locks) with `{ endsOn: "YYYY-MM-DD", startsOn?,
   note? }` (`note` up to 500 characters: how he paid, as the administrator
@@ -2447,21 +2468,39 @@ is taken or kept anywhere.
   days through `endsOn`. Refusals: `404` unknown provider; `400` the
   administrator's own listing; `409 FEATURED_PROVIDER_NOT_ACTIVE`;
   `409 FEATURED_PROVIDER_UNCLAIMED` (an unclaimed listing takes no requests);
+  `409 FEATURED_PROVIDER_NOT_LISTED` (no active service: customers do not find
+  him, so the placement would rank and badge nothing);
   `409 FEATURED_PERIOD_OVERLAP` with the clashing `startsOn` and `lastDay`
-  (periods of one provider never overlap; a renewal starts the day after);
+  (periods of one provider never overlap; a renewal starts the day after; the
+  provider's row lock serialises two grants, so of two at the same moment one
+  is recorded and the other is this `409`, and the database's exclusion
+  constraint `ProviderFeaturedPeriod_no_overlap` refuses an overlap from any
+  other writer, read as the same `409`);
   `422 FEATURED_PERIOD_START_PAST` (never back-dated);
   `422 FEATURED_PERIOD_INVALID` (not a day, or over before it starts);
   `422 FEATURED_PERIOD_TOO_LONG` (more than 366 days). The provider is told
-  «تفعّل ظهورك المميز» (or «ظهورك المميز محجوز» for a later start).
+  «تفعّل ظهورك المميز» «… ملفك يطلع مع المميزين أول، وعليه علامة «مميز».» (or
+  «ظهورك المميز محجوز» for a later start). It does not promise «أول في قسمك
+  ومدينتك»: several featured providers share the top.
 - `POST /admin/featured-periods/:id/end` (`PROVIDERS_WRITE`) with `{ note? }`
   stops an active placement now or cancels a booked one; the provider is told
-  «وقّفنا ظهورك المميز» or «لغينا ظهورك المميز» with the note. One that is
-  over is `409 FEATURED_PERIOD_FINISHED`.
+  «وقّفنا ظهورك المميز» or «لغينا ظهورك المميز»: the standard sentence, then
+  «ملاحظة الفريق: …» when a note was written (the note never replaces it;
+  «يظهر عادي» is said only while the placement rule holds). One that is over
+  is `409 FEATURED_PERIOD_FINISHED`.
 - Every write is in the admin audit log (route and target). An hourly job
-  tells the provider once «ظهورك المميز ينتهي قريب» in the last seven days
-  and once «خلص ظهورك المميز» at the end, unless a period booked right after
-  carries it on. All these notices are `GENERAL`, provider-audience, routed
-  to the provider portal.
+  tells the provider, once each: «بدأ ظهورك المميز» when a placement booked
+  for a later day starts (`startNoticeAt`; one recorded to start at once was
+  told by the grant); «ظهورك المميز ينتهي قريب» in the last seven days, only
+  of a run longer than seven days (no warning minutes after it started);
+  «خلص ظهورك المميز» at the end. It says nothing where a renewal right before
+  (start) or right after (warning, end) carries the run on. Where the rule
+  does not hold it says the truth or nothing: the start says he is not shown
+  to customers, no «جدّده» warning is sent, and the end says only which day
+  was the last. Each notice is marked in its own serializable transaction
+  under the period's row lock, so a retry or a second instance tells nobody
+  twice. All these notices are `GENERAL`, provider-audience, routed to the
+  provider portal.
 
 Joining, changes and reopening (B-01, B-02, B-10):
 
@@ -2813,7 +2852,9 @@ returns the admin refresh token.
   `POST /admin/providers/:id/featured-periods`,
   `POST /admin/featured-periods/:id/end` (featured placement, B-43; see
   Provider References). Admin provider rows carry `isFeatured` and
-  `featuredUntil` from the placement covering now.
+  `featuredUntil` from the placement covering now, by the placement rule.
+  Admin services carry no `isFeatured` and the services report no
+  `services.featured` (D54).
 - `PATCH /admin/providers/:id/suspend`
 - `PATCH /admin/providers/:id/activate`
 - `PATCH /admin/providers/:id/verify`

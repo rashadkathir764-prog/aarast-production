@@ -44,7 +44,7 @@ run the local demo seed `backend/prisma/demo-seed.ts`, see
 | ProviderReviewEvent | One step of a provider's review (B-01, B-02): an administrator's decision (`CHANGES_REQUESTED`, `REJECTED`, `APPROVED`, `SUSPENDED`, `ACTIVATED`) or the provider's own (`RESUBMITTED`, `REOPENED`), with `actorId` (a plain account id), `createdAt` and `sequence`, a serial that orders the steps (migration `20261025180000_order_provider_review_events`; every step is written under the provider's row lock, so it grows in the order the steps happened even when two share a `createdAt`; the steps already written were numbered by time, then id). Every read of «the latest decision» and of the history orders by `sequence`. Cascades with the provider. Replaces the single `Provider.reviewNote`, which migration `20261025120000_add_provider_review_and_claim_requests` moved into it (one event and one `GENERAL` note per stored note) before dropping the column. `Provider` keeps `reviewedAt`/`reviewedById` for the latest decision and gains `resubmittedAt`, `resubmitCount` and `reopenedAt`. |
 | ProviderReviewNote | A note written with a review step: `GENERAL` (the whole profile) or one field the provider can fix before approval (`BUSINESS_NAME`, `CATEGORY`, `CITY`, `DESCRIPTION`, `SERVICE`); unique per step and field. The latest decision's notes are the ones the provider reads while `NEEDS_CHANGES`, `REJECTED` or `SUSPENDED`. |
 | ProviderClaimRequest | An account asking for a listing the back office made under its phone (B-12, D41): `providerId`, `userId` (plain id; removed with the account), `status` `PENDING → APPROVED / REJECTED`, the team's `note`, `decidedAt`, `decidedById`. Partial unique indexes keep one `PENDING` claim per listing and per account. Only approval links the listing to the account. |
-| ProviderFeaturedPeriod | A featured placement the back office recorded by hand after the provider paid outside the app (B-43, D41, D51): `providerId` (cascades with the provider), `startsAt`, `endsAt` (the start of the day after the last day covered, Sana'a time; a CHECK keeps `endsAt > startsAt`), the administrator's `note` (how he paid; no amount, no payment status), `grantedById` and `createdAt`, `endedAt`/`endedById`/`endNote` when an administrator stopped it early or cancelled it before its start, and `endingNoticeAt`/`endNoticeAt` so the hourly job tells the provider once. Featured = a row with `startsAt <= now < endsAt` and no `endedAt`, read at request time; one provider's rows never overlap (checked under the provider's row lock). `grantedById` and `endedById` are plain ids. |
+| ProviderFeaturedPeriod | A featured placement the back office recorded by hand after the provider paid outside the app (B-43, D41, D51): `providerId` (cascades with the provider), `startsAt`, `endsAt` (the start of the day after the last day covered, Sana'a time; a CHECK keeps `endsAt > startsAt`), the administrator's `note` (how he paid; no amount, no payment status), `grantedById` and `createdAt`, `endedAt`/`endedById`/`endNote` when an administrator stopped it early or cancelled it before its start, and `startNoticeAt`/`endingNoticeAt`/`endNoticeAt` so the hourly job tells the provider once that a booked placement started, that it ends within the week and that it ended (D54; `startNoticeAt` is set at the grant when it starts at once). Featured = a row with `startsAt <= now < endsAt` and no `endedAt` on a provider the placement rule holds for (listed: `ACTIVE` with an active service, and claimed), read at request time. One provider's rows that nobody ended never overlap: checked under the provider's row lock, and enforced by the exclusion constraint `ProviderFeaturedPeriod_no_overlap` (`EXCLUDE USING gist ("providerId" WITH =, tsrange("startsAt", "endsAt") WITH &&) WHERE ("endedAt" IS NULL)`, extension `btree_gist`, migration `20261026000000_featured_placement_review_fixes`; Prisma does not model it). `grantedById` and `endedById` are plain ids. |
 
 ## Wedding Financial OS Entities
 
@@ -415,7 +415,10 @@ The backend now includes the approved provider-reference and quote-lead foundati
   for public planning references. Every externally supplied `numeric(14,2)`
   provider price is bounded by the central money validator before persistence;
   null/blank optional values remain null and extra precision is never delegated
-  to database rounding.
+  to database rounding. A service has no featured flag: migration
+  `20261026000000_featured_placement_review_fixes` dropped
+  `ProviderService.isFeatured` (the admin «تمييز» button); featuring is the
+  provider's placement only (D54).
 - `FavoriteProvider`, `ProviderReview`, `QuoteRequest`, `QuoteOffer`, and
   `PlanProviderLink` for saved providers, reviews, quote leads, and accepted
   planning provider links. The unused prelaunch `BookingLead` model was removed;
@@ -486,7 +489,7 @@ rewrite as permission to restore a removed live model.
 | `ReferenceCatalogItemRevision` | 19 | `id`, `itemId`, `createdAt` |
 | `ProviderCategory` | 13 | `id`, `createdAt`, `updatedAt` |
 | `Provider` | 46 | `id`, `userId`, `cityId`, `primaryCategoryId`, `reviewedAt`, `reviewedById`, `resubmittedAt`, `reopenedAt` |
-| `ProviderService` | 20 | `id`, `providerId`, `categoryId`, `priceUpdatedAt`, `cityId`, `createdAt`, `updatedAt` |
+| `ProviderService` | 19 | `id`, `providerId`, `categoryId`, `priceUpdatedAt`, `cityId`, `createdAt`, `updatedAt` |
 | `ProviderServiceImage` | 7 | `id`, `serviceId`, `createdAt` |
 | `ProviderPackage` | 13 | `id`, `providerId`, `serviceId`, `createdAt`, `updatedAt` |
 | `FavoriteProvider` | 6 | `id`, `userId`, `providerId`, `createdAt` |
@@ -501,7 +504,7 @@ rewrite as permission to restore a removed live model.
 | `ProviderReviewNote` | 5 | `id`, `eventId` |
 | `ProviderClaimRequest` | 9 | `id`, `providerId`, `userId`, `createdAt`, `decidedAt`, `decidedById` |
 | `QuoteOfferVersion` | 11 | `id`, `quoteOfferId`, `createdAt` |
-| `ProviderFeaturedPeriod` | 13 | `id`, `providerId`, `startsAt`, `endsAt`, `grantedById`, `createdAt`, `endedAt`, `endedById` |
+| `ProviderFeaturedPeriod` | 14 | `id`, `providerId`, `startsAt`, `endsAt`, `grantedById`, `createdAt`, `endedAt`, `endedById` |
 | `Conversation` | 23 | `id`, `weddingPlanId`, `accountRequesterUserId`, `providerId`, `createdByUserId`, `lastActivityAt`, `closedAt`, `customerSideBlockedAt` |
 | `ConversationParticipant` | 11 | `id`, `conversationId`, `userId`, `joinedAt`, `revokedAt`, `lastReadAt`, `mutedAt`, `createdAt` |
 | `ConversationEvent` | 14 | `id`, `conversationId`, `quoteRequestId`, `quoteOfferId`, `actorUserId`, `occurredAt`, `createdAt` |

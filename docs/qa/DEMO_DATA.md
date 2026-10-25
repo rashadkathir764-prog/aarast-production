@@ -54,7 +54,7 @@ All numbers are fake. Password: see above (never stored in the repository).
 | +967777000101 | محمد الحمدي | العريس، صاحب خطة «عرس محمد» / Groom, owner of «عرس محمد» |
 | +967777000102 | سلمى السقاف | العروسة، صاحبة «عرس سلمى» + مشاركة (أهل) في خطة محمد / Bride, owner of «عرس سلمى» + family participant in Mohammed's plan |
 | +967777000103 | صالح | مساعد (أخو العريس) في خطة محمد / Helper in Mohammed's plan |
-| +967777000104 | الوالد | يشوف بس في خطة محمد / Viewer in Mohammed's plan |
+| +967777000104 | الوالد | يشوف بس في خطة محمد: يقرأ المهام (12 من 20) والضيوف (124 بالاسم والرد، بدون أرقام) والحجوزات، وما يعدّل شي ولا يشوف المال (D52) / Viewer in Mohammed's plan |
 | +967777000105 | نورة | مساعدة (أخت العروسة) في خطة سلمى / Helper in Salma's plan |
 | +967777000106 | الوالدة | تشوف بس في خطة سلمى / Viewer in Salma's plan |
 | +967777000201 | علي الشامي | مزود نشط: استوديو ضوء صنعاء (تصوير) / Active provider: photography studio |

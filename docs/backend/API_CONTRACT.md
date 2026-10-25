@@ -701,6 +701,13 @@ but inaccessible plan/provider returns privacy-preserving `404` with
 Validation never replaces route-level `PermissionService`, provider ownership,
 conversation authorization, or other domain checks.
 
+`permissions.canViewPlan` is the read right (D52): `true` for the owner and
+every member of a plan context, whatever the role, because every member reads
+the plan's tasks, guests by name and reply, and bookings
+(`GET /api/v1/wedding-plans/:planId/plan-view`). The `canManage*` flags are
+edit rights only; a client decides what a member sees by `canViewPlan` and
+what they may change by the manage flags. Money stays behind `canViewMoney`.
+
 Provider contexts remain available for profile/status display in all five
 states:
 
@@ -864,6 +871,80 @@ user. Provider cards are planning/reference data only and do not imply paid
 booking, deposits, provider settlement/payment-processing status, loans,
 credit, financing, or AI. This does not refer to the user's manual CostPayment
 ledger.
+
+## Plan Read View (D52)
+
+Protected route:
+
+- `GET /api/v1/wedding-plans/:planId/plan-view`
+
+Reading is separate from editing. The owner and every member, in every role
+(«يشوف بس» = `VIEWER` included), read the plan's non-money sections here;
+the only rule is membership (`readsPlanSections` in the collaboration
+permission port, enforced by `assertPlanReadable*`, the same rule the
+contexts publish as `permissions.canViewPlan: true`). There is no stored read
+flag because the rule has no exception. A non-member gets `404`, an
+anonymous call `401`. Editing is unchanged: each write still needs the
+section's manage flag and stays inside the editor's own work (contributor
+scope); money still needs `canViewMoney`; phones stay with the members who
+manage that section.
+
+Response, every field listed by hand (nothing is spread from a row, so no
+amount, budget, payment, funding source, task description, checklist, phone,
+note, invitation link, offer or message can reach a reader through it):
+
+```json
+{
+  "weddingPlanId": "…",
+  "tasks": {
+    "total": 20,
+    "done": 12,
+    "items": [
+      {
+        "id": "…",
+        "title": "حدد موعد عقد القران",
+        "status": "TODO",
+        "dueDate": "2026-10-18T00:00:00.000Z",
+        "assignee": { "kind": "OWNER", "firstName": "محمد" }
+      }
+    ]
+  },
+  "guests": {
+    "total": 124,
+    "confirmed": 86,
+    "pending": 20,
+    "declined": 18,
+    "items": [{ "id": "…", "name": "عبدالله الحمدي", "attendanceStatus": "CONFIRMED" }]
+  },
+  "bookings": {
+    "items": [
+      {
+        "id": "…",
+        "businessName": "قاعة سبأ",
+        "categoryName": "قاعات",
+        "serviceTitle": "…",
+        "status": "CONFIRMED",
+        "eventDate": "2027-01-21T00:00:00.000Z"
+      }
+    ]
+  }
+}
+```
+
+- `tasks`: not cancelled, never another account's private task (V1
+  checklist 4.10), in due order (undated last). `assignee.kind` is `YOU`
+  (`firstName: null`), `OWNER`, `MEMBER` (first word of the name the app
+  shows) or `PERSON` (the name the owner typed); `null` when nobody is named.
+  No user id is returned.
+- `guests`: every guest by name and reply (`attendanceStatus`), counted the
+  same way; never a phone.
+- `bookings`: the plan's live bookings (`REQUESTED` or `CONFIRMED`) by day,
+  whoever made them; no amount or offer (q16).
+
+The existing section lists (`GET /api/v1/wedding-plans/:weddingPlanId/tasks`,
+`GET /api/v1/wedding-plans/:weddingPlanId/guests`,
+`GET /api/v1/me/wedding-plans/:weddingPlanId/bookings` and the plan's quote
+requests) keep their meaning: what the reader may work on.
 
 ## Notifications
 
@@ -3108,6 +3189,7 @@ configuration, and smoke checks.
 | POST | `/api/v1/wedding-plans/:planId/funding-sources` | `funding-sources.create` | 🔒 |
 | PUT | `/api/v1/wedding-plans/:planId/money-budget` | `money-summary.replaceMoneyBudget` | 🔒 |
 | GET | `/api/v1/wedding-plans/:planId/money-summary` | `money-summary.getMoneySummary` | 🔒 |
+| GET | `/api/v1/wedding-plans/:planId/plan-view` | `dashboard.getPlanReadView` | 🔒 |
 | GET | `/api/v1/wedding-plans/:weddingPlanId/assistant` | `assistant.status` | 🔒 |
 | POST | `/api/v1/wedding-plans/:weddingPlanId/assistant/questions` | `assistant.ask` | 🔒 |
 | GET | `/api/v1/wedding-plans/:weddingPlanId/budget-categories` | `budget-categories.findForPlan` | 🔒 |

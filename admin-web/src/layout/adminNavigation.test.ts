@@ -31,7 +31,22 @@ describe('admin navigation', () => {
   it('only counts the queues the server can size', () => {
     expect(
       adminNavigationItems.filter((item) => item.count).map((item) => item.route),
-    ).toEqual(['/', '/providers/applications', '/conversation-reports']);
+    ).toEqual([
+      '/',
+      '/providers/applications',
+      // B-12: the claims waiting for review.
+      '/providers/listed',
+      '/conversation-reports',
+    ]);
+  });
+
+  it('keeps the claims page (a07) apart from the provider directory', () => {
+    expect(resolveAdminLocation('/providers/listed')).toMatchObject({
+      group: 'المزودين',
+      title: 'ملفات بلا حساب',
+      route: '/providers/listed',
+      isDetail: false,
+    });
   });
 
   it('resolves the crumb the designs draw for list and detail routes', () => {

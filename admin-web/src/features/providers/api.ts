@@ -89,7 +89,15 @@ export type ProviderApplication = {
   logoUrl: string | null;
   coverUrl: string | null;
   status: string;
+  /** The current decision's note about the whole profile (B-01). */
   reviewNote: string | null;
+  /** The current decision's note on each field to fix (B-01). */
+  fieldNotes: ProviderFieldNote[];
+  /** When the provider last sent the profile back after changes, and how often (B-01). */
+  resubmittedAt: string | null;
+  resubmitCount: number;
+  /** When a refused provider last reopened the profile (B-02). */
+  reopenedAt: string | null;
   reviewedAt: string | null;
   reviewedBy: AdminUser | null;
   /** When an admin checked the provider's documents; null when not verified. */
@@ -107,11 +115,45 @@ export type ProviderApplication = {
   updatedAt: string;
 };
 
+/** The fields a review note can point at (B-01). */
+export type ProviderReviewField =
+  | 'BUSINESS_NAME'
+  | 'CATEGORY'
+  | 'CITY'
+  | 'DESCRIPTION'
+  | 'SERVICE';
+
+export type ProviderFieldNote = { field: ProviderReviewField; note: string };
+
+/** One step of the review (B-01, B-02), oldest first. */
+export type ProviderReviewEvent = {
+  id: string;
+  kind:
+    | 'CHANGES_REQUESTED'
+    | 'REJECTED'
+    | 'APPROVED'
+    | 'SUSPENDED'
+    | 'ACTIVATED'
+    | 'RESUBMITTED'
+    | 'REOPENED';
+  at: string;
+  actor: { id: string; name: string } | null;
+  notes: Array<{ field: ProviderReviewField | 'GENERAL'; note: string }>;
+};
+
+export type ProviderReviewHistory = {
+  providerId: string;
+  appliedAt: string;
+  events: ProviderReviewEvent[];
+};
+
 export type ProviderQueryParams = {
   status?: string;
   cityId?: string;
   categoryId?: string;
   search?: string;
+  /** Only the profiles sent back after changes (`true`), or the others (`false`). */
+  resubmitted?: boolean;
   page?: number;
   limit?: number;
 };
@@ -177,14 +219,61 @@ export function rejectProvider(
   });
 }
 
+/** «اطلب تعديل» (B-01): a note about the whole profile, one per field, or both. */
 export function requestProviderChanges(
   id: string,
-  note: string,
+  changes: { note?: string; fieldNotes: ProviderFieldNote[] },
 ): Promise<ProviderApplication> {
   return apiRequest<ProviderApplication>(
     `/admin/providers/${id}/request-changes`,
-    { method: 'PATCH', body: { note } },
+    {
+      method: 'PATCH',
+      body: {
+        ...(changes.note ? { note: changes.note } : {}),
+        fieldNotes: changes.fieldNotes,
+      },
+    },
   );
+}
+
+export function getProviderReviewHistory(id: string): Promise<ProviderReviewHistory> {
+  return apiRequest<ProviderReviewHistory>(`/admin/providers/${id}/review-history`);
+}
+
+/** A claim of a listing the back office made (B-12). */
+export type ProviderClaimRequest = {
+  id: string;
+  status: 'PENDING' | 'APPROVED' | 'REJECTED';
+  note: string | null;
+  createdAt: string;
+  decidedAt: string | null;
+  provider: ProviderReference;
+  claimant: { id: string; name: string; phone: string | null } | null;
+  decidedBy: { id: string; name: string } | null;
+};
+
+export function getProviderClaims(params?: {
+  status?: ProviderClaimRequest['status'];
+  page?: number;
+  limit?: number;
+}): Promise<Paginated<ProviderClaimRequest>> {
+  return apiRequest<Paginated<ProviderClaimRequest>>(
+    `/admin/provider-claims${toQuery(params ?? {})}`,
+  );
+}
+
+export function approveProviderClaim(id: string): Promise<ProviderClaimRequest> {
+  return apiRequest<ProviderClaimRequest>(`/admin/provider-claims/${id}/approve`, {
+    method: 'POST',
+    body: {},
+  });
+}
+
+export function rejectProviderClaim(id: string, note: string): Promise<ProviderClaimRequest> {
+  return apiRequest<ProviderClaimRequest>(`/admin/provider-claims/${id}/reject`, {
+    method: 'POST',
+    body: { note },
+  });
 }
 
 export function suspendProvider(

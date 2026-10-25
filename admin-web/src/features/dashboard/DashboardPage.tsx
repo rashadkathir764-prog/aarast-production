@@ -10,7 +10,9 @@ import { Clock } from 'lucide-react';
 import {
   getProvider,
   getProviderApplications,
+  getProviderClaims,
   type ProviderApplication,
+  type ProviderClaimRequest,
 } from '../providers/api';
 import { AdminPermission, hasAdminPermission, useAuth } from '../auth/api';
 import {
@@ -44,7 +46,7 @@ type DashboardPageProps = {
   }) => Promise<InboxPage<InboxReport>>;
 };
 
-type Kind = 'join' | 'report';
+type Kind = 'join' | 'claim' | 'report';
 
 type InboxItem = {
   key: string;
@@ -59,6 +61,9 @@ type InboxItem = {
 const PROMISES: Record<Kind, { label: string; words: string; ms: number; tag: string; tone: 'sky' | 'coral' }> = {
   report: { label: 'بلاغ', words: '4 ساعات', ms: 4 * PROMISE.HOUR, tag: 'بلاغ', tone: 'coral' },
   join: { label: 'انضمام', words: 'يومين', ms: 2 * PROMISE.DAY, tag: 'انضمام', tone: 'sky' },
+  // Not drawn in n01: a claim (B-12) is a joining by another door, so it
+  // takes the joining's promise.
+  claim: { label: 'استلام ملف', words: 'يومين', ms: 2 * PROMISE.DAY, tag: 'استلام', tone: 'sky' },
 };
 
 const LIMIT = 100;
@@ -67,6 +72,18 @@ function joinItem(provider: ProviderApplication): InboxItem {
   const where = [provider.primaryCategory?.nameAr, provider.city?.nameAr]
     .filter(Boolean)
     .join(' · ');
+  // A profile sent back after changes (B-01) or after a reopened refusal
+  // (B-02) waits from the time it came back, as n01 draws it.
+  if (provider.resubmittedAt) {
+    return {
+      key: `join-${provider.id}`,
+      kind: 'join',
+      title: provider.businessName,
+      sub: provider.reopenedAt ? 'قدّم من جديد بعد الرفض' : 'أُعيد إرساله بعد التعديل',
+      start: provider.resubmittedAt,
+      to: `/providers/applications/${provider.id}`,
+    };
+  }
   return {
     key: `join-${provider.id}`,
     kind: 'join',
@@ -74,6 +91,18 @@ function joinItem(provider: ProviderApplication): InboxItem {
     sub: where ? `${where} · ${agoWords(provider.createdAt)}` : agoWords(provider.createdAt),
     start: provider.createdAt,
     to: `/providers/applications/${provider.id}`,
+  };
+}
+
+/** A claim of a listing waiting for review (B-12). */
+function claimItem(claim: ProviderClaimRequest): InboxItem {
+  return {
+    key: `claim-${claim.id}`,
+    kind: 'claim',
+    title: claim.provider.businessName,
+    sub: `${claim.claimant?.name ?? 'حساب'} يطلب استلام الملف · ${agoWords(claim.createdAt)}`,
+    start: claim.createdAt,
+    to: '/providers/listed',
   };
 }
 
@@ -106,10 +135,13 @@ export function DashboardPage({ getOpenReports }: DashboardPageProps) {
   const load = useCallback(async () => {
     setError(null);
     try {
-      const [joins, reports] = await Promise.all([
+      const [joins, claims, reports] = await Promise.all([
         actsOnJoins
           ? getProviderApplications({ status: 'PENDING', page: 1, limit: LIMIT })
           : Promise.resolve({ items: [] as ProviderApplication[], total: 0 }),
+        actsOnJoins
+          ? getProviderClaims({ status: 'PENDING', page: 1, limit: LIMIT })
+          : Promise.resolve({ items: [] as ProviderClaimRequest[], total: 0 }),
         actsOnReports
           ? getOpenReports({ status: 'OPEN', page: 1, limit: LIMIT })
           : Promise.resolve({ items: [] as InboxReport[], total: 0 }),
@@ -124,6 +156,7 @@ export function DashboardPage({ getOpenReports }: DashboardPageProps) {
       );
       const next = [
         ...joins.items.map(joinItem),
+        ...claims.items.map(claimItem),
         ...reports.items.map((report) =>
           reportItem(report, ownerOf.get(report.conversation.provider.id)),
         ),
@@ -146,7 +179,7 @@ export function DashboardPage({ getOpenReports }: DashboardPageProps) {
   }, [load]);
 
   const kinds = (Object.keys(PROMISES) as Kind[]).filter((kind) =>
-    kind === 'join' ? actsOnJoins : actsOnReports,
+    kind === 'report' ? actsOnReports : actsOnJoins,
   );
   const late = items?.filter((item) => deadline(item.start, PROMISES[item.kind].ms, now).overdue).length ?? 0;
   const sub = items

@@ -28,6 +28,23 @@ describe('provider administration lifecycle', () => {
     });
   });
 
+  it('leaves a refused profile to its provider reopening it, and lets notes be rewritten (B-01, B-02)', () => {
+    expect(providerActionVisibility('REJECTED')).toEqual({
+      approve: false,
+      activate: false,
+      requestChanges: false,
+      reject: false,
+      suspend: false,
+    });
+    expect(providerActionVisibility('NEEDS_CHANGES')).toEqual({
+      approve: true,
+      activate: false,
+      requestChanges: true,
+      reject: true,
+      suspend: false,
+    });
+  });
+
   it('offers verification only on active providers and clearing always', () => {
     expect(providerVerificationAction({ status: 'ACTIVE', verifiedAt: null })).toBe('verify');
     for (const status of ['PENDING', 'NEEDS_CHANGES', 'SUSPENDED', 'REJECTED']) {
@@ -39,9 +56,11 @@ describe('provider administration lifecycle', () => {
   });
 
   it('keeps applications and provider directory defaults distinct', () => {
-    // a03 opens on the new applications; a05 leaves the status to the
-    // server, which lists the active and suspended providers.
-    expect(applicationsSource).toContain("useState<Status>('PENDING')");
+    // a03 opens on the new applications (not the ones sent back, B-01); a05
+    // leaves the status to the server, which lists the active and suspended
+    // providers.
+    expect(applicationsSource).toContain("useState<Queue>('NEW')");
+    expect(applicationsSource).toContain("NEW: { status: 'PENDING', resubmitted: false }");
     expect(applicationsSource).toContain('getProviderApplications');
     expect(providersSource).toContain('getProviders({ page, limit: 20 })');
   });

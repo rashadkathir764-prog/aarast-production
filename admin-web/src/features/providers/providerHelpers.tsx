@@ -7,18 +7,30 @@ import {
   setProviderVerified,
   suspendProvider,
   type ProviderApplication,
+  type ProviderFieldNote,
 } from './api';
+
+function fieldNotesWord(count: number): string {
+  if (count === 1) return 'ملاحظتك على الحقل';
+  if (count === 2) return 'ملاحظاتك على الحقلين';
+  return `ملاحظاتك على ${count} حقول`;
+}
 import { ConfirmDialog } from '../../design_system/ConfirmDialog';
 import { DeskButton, Tag } from '../../design_system/Desk';
 import { AdminPermission, Can } from '../auth/api';
 
+/**
+ * The server's lifecycle matrix: a refused profile leaves REJECTED only by
+ * its provider reopening it (B-02), and the notes can be rewritten while the
+ * provider is still fixing (B-01).
+ */
 export function providerActionVisibility(
   status: ProviderApplication['status'],
 ) {
   return {
-    approve: ['PENDING', 'NEEDS_CHANGES', 'REJECTED'].includes(status),
+    approve: ['PENDING', 'NEEDS_CHANGES'].includes(status),
     activate: status === 'SUSPENDED',
-    requestChanges: ['PENDING', 'REJECTED'].includes(status),
+    requestChanges: ['PENDING', 'NEEDS_CHANGES'].includes(status),
     reject: ['PENDING', 'NEEDS_CHANGES'].includes(status),
     suspend: status === 'ACTIVE',
   };
@@ -65,9 +77,12 @@ type Decision = {
  */
 export function ProviderDecisions({
   provider,
+  fieldNotes = [],
   onChanged,
 }: {
   provider: ProviderApplication;
+  /** The notes written on the fields (a04), sent with «اطلب تعديل» (B-01). */
+  fieldNotes?: ProviderFieldNote[];
   onChanged: () => Promise<void> | void;
 }) {
   const actions = providerActionVisibility(provider.status);
@@ -88,13 +103,24 @@ export function ProviderDecisions({
         <ConfirmDialog
           variant="desk"
           title={`اطلب تعديل من ${name}`}
-          effects={['يبقى مخفي عن العرسان لين يعدّل.', 'ملاحظتك توصله في تنبيه.']}
+          effects={[
+            'يبقى مخفي عن العرسان لين يعدّل.',
+            fieldNotes.length > 0
+              ? `${fieldNotesWord(fieldNotes.length)} تظهر له جنب الحقل نفسه.`
+              : 'اكتب ملاحظة عامة هنا، أو اضغط «ملاحظة» على الحقل اللي يحتاج تعديل.',
+            provider.status === 'NEEDS_CHANGES'
+              ? 'ملاحظاتك الجديدة تحل محل اللي قبلها.'
+              : 'لما يصلّح ويرسل التعديل، يرجع لقائمة «أُعيد إرسالها».',
+          ]}
           needsNote
-          noteLabel="الملاحظة (توصل المزود)"
-          confirmLabel="أرسل الملاحظة"
+          noteRequired={fieldNotes.length === 0}
+          noteLabel="ملاحظة عامة (توصل المزود)"
+          confirmLabel="أرسل الملاحظات"
           confirmTone="saffron"
           trigger={trigger}
-          onConfirm={(note) => run(() => requestProviderChanges(provider.id, note))}
+          onConfirm={(note) =>
+            run(() => requestProviderChanges(provider.id, { note, fieldNotes }))
+          }
         />
       ),
     });

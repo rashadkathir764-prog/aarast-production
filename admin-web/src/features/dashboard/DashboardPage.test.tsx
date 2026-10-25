@@ -4,13 +4,16 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   getProvider,
   getProviderApplications,
+  getProviderClaims,
   type ProviderApplication,
+  type ProviderClaimRequest,
 } from '../providers/api';
 import { AdminPermission } from '../auth/api';
 import { DashboardPage, type InboxReport } from './DashboardPage';
 
 vi.mock('../providers/api', () => ({
   getProviderApplications: vi.fn(),
+  getProviderClaims: vi.fn(),
   getProvider: vi.fn(),
 }));
 
@@ -64,6 +67,14 @@ describe('DashboardPage (n01 الصندوق)', () => {
     vi.useFakeTimers({ toFake: ['Date'] });
     vi.setSystemTime(NOW);
     vi.mocked(getProviderApplications).mockReset();
+    vi.mocked(getProviderClaims).mockReset();
+    vi.mocked(getProviderClaims).mockResolvedValue({
+      items: [],
+      page: 1,
+      limit: 100,
+      total: 0,
+      totalPages: 1,
+    });
     vi.mocked(getProvider).mockReset();
     getOpenReports.mockReset();
     vi.mocked(getProvider).mockResolvedValue({ userId: 'owner-9' } as ProviderApplication);
@@ -108,6 +119,51 @@ describe('DashboardPage (n01 الصندوق)', () => {
     expect(screen.queryByText('ضغط الفريق')).not.toBeInTheDocument();
   });
 
+  it('shows a profile sent back after changes from the time it came back, and a claim waiting for review (B-01, B-12)', async () => {
+    authState.adminPermissions = [AdminPermission.PROVIDERS_WRITE];
+    vi.mocked(getProviderApplications).mockResolvedValue({
+      items: [
+        {
+          ...application('p-back', 'استوديو ضوء صنعاء', '2026-10-10T09:00:00.000Z'),
+          resubmittedAt: '2026-10-24T07:00:00.000Z',
+          reopenedAt: null,
+        } as ProviderApplication,
+      ],
+      page: 1,
+      limit: 100,
+      total: 1,
+      totalPages: 1,
+    });
+    vi.mocked(getProviderClaims).mockResolvedValue({
+      items: [
+        {
+          id: 'claim-1',
+          status: 'PENDING',
+          note: null,
+          createdAt: '2026-10-23T09:00:00.000Z',
+          decidedAt: null,
+          provider: { id: 'listing-1', businessName: 'مصور الحارة' },
+          claimant: { id: 'u-1', name: 'عبدالله الحارثي', phone: '+967777000506' },
+          decidedBy: null,
+        } as ProviderClaimRequest,
+      ],
+      page: 1,
+      limit: 100,
+      total: 1,
+      totalPages: 1,
+    });
+
+    renderInbox();
+
+    const back = (await screen.findByText('استوديو ضوء صنعاء')).closest('tr');
+    expect(back).toHaveTextContent('أُعيد إرساله بعد التعديل');
+    expect(back).toHaveTextContent('باقي يوم');
+    const claim = screen.getByText('مصور الحارة').closest('tr');
+    expect(claim).toHaveTextContent('عبدالله الحارثي يطلب استلام الملف');
+    expect(claim).toHaveTextContent('استلام');
+    expect(getProviderClaims).toHaveBeenCalledWith({ status: 'PENDING', page: 1, limit: 100 });
+  });
+
   it('lists open reports with the four-hour promise and names who reported whom', async () => {
     authState.adminPermissions = [AdminPermission.CONVERSATION_REPORTS_WRITE];
     getOpenReports.mockResolvedValue({ items: [report], total: 1 });
@@ -120,6 +176,7 @@ describe('DashboardPage (n01 الصندوق)', () => {
     expect(row).toHaveTextContent('باقي ساعة');
     expect(row?.querySelector('.desk-sla')).toHaveClass('is-late');
     expect(getProviderApplications).not.toHaveBeenCalled();
+    expect(getProviderClaims).not.toHaveBeenCalled();
   });
 
   it('names the customer side when the provider filed the report', async () => {

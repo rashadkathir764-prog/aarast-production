@@ -9,6 +9,10 @@ export type AdminStats = {
   rejectedProviders: number;
   needsChangesProviders: number;
   suspendedProviders: number;
+  /** PENDING profiles sent back after changes (B-01); part of `pendingProviders`. */
+  resubmittedProviders: number;
+  /** Claims of a listing waiting for review (B-12). */
+  pendingClaims: number;
   totalQuoteRequests: number;
   totalWeddingPlans: number;
   totalCities: number;

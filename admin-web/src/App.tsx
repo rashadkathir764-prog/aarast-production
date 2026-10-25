@@ -14,6 +14,7 @@ import { ProviderApplicationsPage } from './features/providers/ProviderApplicati
 import { ProviderApplicationDetailsPage } from './features/providers/ProviderApplicationDetailsPage';
 import { ProvidersPage } from './features/providers/ProvidersPage';
 import { ProviderDetailsPage } from './features/providers/ProviderDetailsPage';
+import { ProviderClaimsPage } from './features/providers/ProviderClaimsPage';
 import { CategoriesPage } from './features/catalog/CategoriesPage';
 import { CitiesPage } from './features/catalog/CitiesPage';
 import { UsersPage } from './features/users/UsersPage';
@@ -79,6 +80,14 @@ export default function App() {
                 getCities={getCities}
                 getStats={getStats}
               />
+            </RequireAdminPermission>
+          }
+        />
+        <Route
+          path="providers/listed"
+          element={
+            <RequireAdminPermission permission={AdminPermission.PROVIDERS_READ}>
+              <ProviderClaimsPage />
             </RequireAdminPermission>
           }
         />

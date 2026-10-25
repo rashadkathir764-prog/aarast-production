@@ -627,6 +627,56 @@
   color: var(--d-muted);
 }
 
+/* A table cell holding a tag and, under it, a quiet line (a03, a07). */
+.desk-tag-cell {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+}
+
+/* a04: the field and its «ملاحظة» pill on one row (B-01). */
+.desk-field-card__row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.desk-field-card--noting {
+  border-color: var(--d-coral);
+}
+
+/* The note the provider reads now on this field. */
+.desk-field-card__note {
+  margin: 8px 0 0;
+  padding: 8px 10px;
+  border-radius: 10px;
+  background: var(--d-coral-soft);
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--d-coral);
+}
+
+.desk-field-card__editor {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-top: 8px;
+  font-size: 12.5px;
+  color: var(--d-muted);
+}
+
+.desk-field-card__editor textarea {
+  padding: 8px 10px;
+  border: 1px solid var(--d-line);
+  border-radius: 10px;
+  font: inherit;
+  font-size: 14px;
+  color: var(--d-ink);
+  resize: vertical;
+}
+
 .desk-fill-page .desk-split__side.desk-split__side--fill {
   align-self: stretch;
 }

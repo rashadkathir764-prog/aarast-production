@@ -1,5 +1,6 @@
 import {
   BarChart3,
+  BookOpen,
   Flag,
   History,
   Inbox,
@@ -14,7 +15,7 @@ import {
 import { AdminPermission } from '../features/auth/api';
 
 /** A queue whose size the sidebar shows beside its link. */
-export type AdminQueueCount = 'inbox' | 'applications' | 'reports';
+export type AdminQueueCount = 'inbox' | 'applications' | 'claims' | 'reports';
 
 export type AdminNavigationItem = {
   route: string;
@@ -66,7 +67,8 @@ function nestedRoute(...routes: string[]) {
 function providerDirectoryRoute(pathname: string) {
   return (
     matchesRoute(pathname, '/providers') &&
-    !matchesRoute(pathname, '/providers/applications')
+    !matchesRoute(pathname, '/providers/applications') &&
+    !matchesRoute(pathname, '/providers/listed')
   );
 }
 
@@ -126,6 +128,15 @@ export const adminNavigationGroups: AdminNavigationGroup[] = [
         permission: AdminPermission.PROVIDERS_READ,
         icon: Store,
         isActive: providerDirectoryRoute,
+      },
+      {
+        // a07: the claims of a listing the back office made (B-12).
+        route: '/providers/listed',
+        label: 'ملفات بلا حساب',
+        permission: AdminPermission.PROVIDERS_READ,
+        icon: BookOpen,
+        isActive: nestedRoute('/providers/listed'),
+        count: 'claims',
       },
       {
         route: '/services',
@@ -215,7 +226,7 @@ const detailLocations = [
     route: '/providers',
     title: 'تفاصيل مزود',
     matches: (pathname: string) =>
-      /^\/providers\/(?!applications(?:\/|$)|new$)[^/]+$/.test(pathname),
+      /^\/providers\/(?!applications(?:\/|$)|new$|listed$)[^/]+$/.test(pathname),
   },
   {
     route: '/users',

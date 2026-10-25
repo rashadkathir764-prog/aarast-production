@@ -89,6 +89,7 @@
     "features/notifications/NotificationsPage.tsx",
     "features/providers/ProviderApplicationDetailsPage.tsx",
     "features/providers/ProviderApplicationsPage.tsx",
+    "features/providers/ProviderClaimsPage.tsx",
     "features/providers/ProviderDetailsPage.tsx",
     "features/providers/ProvidersPage.tsx",
     "features/users/UserDetailsPage.tsx",
@@ -112,7 +113,7 @@
     "dashboard": ["AdminReport", "AdminStats", "AdminSuccessReport", "getReportOverview", "getStats", "getSuccessReport"],
     "moderation": ["ConversationReport", "ProviderReview", "getConversationReports", "getReviews", "hideReview", "updateConversationReportStatus", "updateReviewStatus"],
     "notifications": ["AdminNotification", "archiveAdminNotification", "deleteAdminNotification", "getAdminNotifications", "getAdminUnreadNotificationCount", "markAdminNotificationRead"],
-    "providers": ["CityProjection", "ListedProviderInput", "ProviderApplication", "ProviderCategoryProjection", "ProviderPackageProjection", "ProviderQueryParams", "ProviderReference", "ProviderServiceProjection", "activateProvider", "approveProvider", "createListedProvider", "getProvider", "getProviderApplication", "getProviderApplications", "getProviders", "rejectProvider", "requestProviderChanges", "setProviderVerified", "suspendProvider"],
+    "providers": ["CityProjection", "ListedProviderInput", "ProviderApplication", "ProviderCategoryProjection", "ProviderClaimRequest", "ProviderFieldNote", "ProviderPackageProjection", "ProviderQueryParams", "ProviderReference", "ProviderReviewEvent", "ProviderReviewField", "ProviderReviewHistory", "ProviderServiceProjection", "activateProvider", "approveProvider", "approveProviderClaim", "createListedProvider", "getProvider", "getProviderApplication", "getProviderApplications", "getProviderClaims", "getProviderReviewHistory", "getProviders", "rejectProvider", "rejectProviderClaim", "requestProviderChanges", "setProviderVerified", "suspendProvider"],
     "users": ["AdminUserRecord", "UserProviderSummary", "activateUser", "disableUser", "getUser", "getUsers"]
   },
   "sourceFates": [

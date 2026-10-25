@@ -36,7 +36,10 @@ const EXACT = Object.freeze({
   // summary, recording one and ending one (B-43).
   // Re-pinned 2026-10-25: the notifications surface left with its page (D56).
   publicSurfaces: 'a48087fa19c75b9b2520d49d795ea7400c5e6cbdfc890282b8afbfa1a6338f38',
-  sourceFates: 'ee303d9d3d7d0f6ad9916070f3e5b623c87fa59571b3a22d99a904dd4caf40d0',
+  // Re-pinned 2026-10-25 (D56): 19 old-kit components and the 2 tests that
+  // belonged only to them (DataTable, SearchInput) changed fate from move to
+  // delete; no other fate changed.
+  sourceFates: '5d8e15adf9eda24d5db4754d708a3382b41597d91ef4f6c9493212f9e15255d3',
   createdTargets: 'c74d09c036596e387e9254d4c2c3f4be9281e76d04bc389eb484416dd9cfa600',
   stages: 'd799c92b42714969d4570dd925a34912ea05ec6b4b4107c4ef0fbb3c93e09ab6',
   paginationStages: 'b48499f606f88062ff02c30e90038fc9a06cd19bec30d5201f62428bafb07e35',

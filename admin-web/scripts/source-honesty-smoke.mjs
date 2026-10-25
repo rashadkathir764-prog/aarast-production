@@ -32,14 +32,23 @@ addCheck(
   mojibakeHits.map(({ file }) => file).join(', '),
 );
 
-const statusBadge = read(join(srcRoot, 'design_system', 'StatusBadge.tsx'));
+// The shared StatusBadge status map was deleted as dead code (D56); the
+// same two promises now hold over every source file: no status label says
+// «confirmed» for ACTIVE, and none says «canceled» for REJECTED.
+const appSources = sourceFiles
+  .filter((file) => !/\.test\.tsx?$/.test(file))
+  .map((file) => read(file));
+addCheck(
+  'The deleted StatusBadge stays deleted',
+  !existsSync(join(srcRoot, 'design_system', 'StatusBadge.tsx')),
+);
 addCheck(
   'Provider ACTIVE status is not labeled confirmed',
-  !statusBadge.includes('مؤكد') && statusBadge.includes("ACTIVE: { label: 'نشط'"),
+  !appSources.some((text) => /ACTIVE\s*:\s*\{\s*label\s*:\s*'مؤكد'/.test(text)),
 );
 addCheck(
   'Rejected status is not labeled canceled',
-  statusBadge.includes("REJECTED: { label: 'مرفوض'"),
+  !appSources.some((text) => /REJECTED\s*:\s*\{\s*label\s*:\s*'ملغ/.test(text)),
 );
 
 addCheck(

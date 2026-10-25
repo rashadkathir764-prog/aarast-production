@@ -97,9 +97,10 @@ cities, governorates and districts, sign-in, the unknown-address page, the
 error page and the listed-provider and import windows) moved onto the same desk
 kit as the designed pages; no page renders the older `PageHeader`,
 `SectionCard`, `DataTable` or `StatCard` primitives any more. Those older
-components are still in `src/design_system/` (unused, pinned as move targets by
-the R10 manifest, two with their own tests); deleting them is a recorded
-follow-up.
+components (19, with the `DataTable` and `SearchInput` tests) were deleted the
+same day as dead code; the R10 manifest records them as deleted, and
+`src/design_system/` keeps only `ConfirmDialog`, `Desk`, `DeskModal` and
+`Pagination`. The old rules in `globals.css` remain a recorded follow-up.
 
 ## Rules
 

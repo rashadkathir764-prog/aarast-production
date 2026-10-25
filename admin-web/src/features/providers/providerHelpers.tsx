@@ -17,7 +17,36 @@ function fieldNotesWord(count: number): string {
 }
 import { ConfirmDialog } from '../../design_system/ConfirmDialog';
 import { DeskButton, Tag } from '../../design_system/Desk';
+import { ApiError } from '../../platform/api/client';
 import { AdminPermission, Can } from '../auth/api';
+
+/**
+ * What the reviewer reads, and does next, when the server refuses a
+ * provider action for a known reason. The API client keeps the server's
+ * code on the error and leaves its meaning to the pages that act on it;
+ * every provider page reads it here.
+ */
+const PROVIDER_ERROR_MESSAGES: Record<string, string> = {
+  PROVIDER_PHONE_TAKEN: 'هذا الرقم مسجّل لمزوّد آخر. ابحث عنه في القائمة بدل إضافته من جديد.',
+  // B-12: a claim that can no longer be honoured.
+  PROVIDER_CLAIM_LISTING_TAKEN: 'الملف صار له صاحب أو ما عاد نشط. ارفض الطلب.',
+  PROVIDER_CLAIM_ACCOUNT_INACTIVE: 'حساب صاحب الطلب موقوف. ارفض الطلب.',
+  PROVIDER_CLAIM_ACCOUNT_HAS_PROVIDER: 'صاحب الطلب عنده ملف مزود ثاني. ارفض الطلب.',
+  PROVIDER_CLAIM_PHONE_CHANGED:
+    'رقم صاحب الطلب تغيّر وما عاد نفس رقم الملف. ارفض الطلب، ويقدر يطلبه من جديد من رقم الملف.',
+  PROVIDER_CLAIM_NOT_PENDING: 'انحسم هذا الطلب قبل. حدّث الصفحة.',
+  // D41 (B-10): approval needs an active service with its price.
+  PROVIDER_SERVICE_REQUIRED:
+    'ما عنده خدمة نشطة بسعرها. اطلب منه تعديل يضيف خدمته وسعرها، وبعدها اعتمده.',
+};
+
+export function providerErrorMessage(error: unknown, fallback = 'ما قدرنا ننفذ الطلب.'): string {
+  if (error instanceof ApiError && error.code) {
+    const known = PROVIDER_ERROR_MESSAGES[error.code];
+    if (known) return known;
+  }
+  return error instanceof Error ? error.message : fallback;
+}
 
 /**
  * The server's lifecycle matrix: a refused profile leaves REJECTED only by
@@ -109,12 +138,16 @@ export function ProviderDecisions({
               ? `${fieldNotesWord(fieldNotes.length)} تظهر له جنب الحقل نفسه.`
               : 'اكتب ملاحظة عامة هنا، أو اضغط «ملاحظة» على الحقل اللي يحتاج تعديل.',
             provider.status === 'NEEDS_CHANGES'
-              ? 'ملاحظاتك الجديدة تحل محل اللي قبلها.'
+              ? 'اللي ترسله الحين يحل محل كل ملاحظاته: الملاحظة العامة هنا، وملاحظات الحقول جنب كل حقل. اللي تمسحه ما يوصله.'
               : 'لما يصلّح ويرسل التعديل، يرجع لقائمة «أُعيد إرسالها».',
           ]}
           needsNote
           noteRequired={fieldNotes.length === 0}
           noteLabel="ملاحظة عامة (توصل المزود)"
+          // While he fixes, the box opens with the note he reads now, so
+          // sending replaces what the reviewer sees (B-01).
+          initialNote={provider.status === 'NEEDS_CHANGES' ? (provider.reviewNote ?? '') : ''}
+          describeError={(error) => providerErrorMessage(error)}
           confirmLabel="أرسل الملاحظات"
           confirmTone="saffron"
           trigger={trigger}
@@ -140,6 +173,7 @@ export function ProviderDecisions({
           confirmLabel="اعتمد"
           confirmTone="green"
           trigger={trigger}
+          describeError={(error) => providerErrorMessage(error)}
           onConfirm={() => run(() => approveProvider(provider.id))}
         />
       ),

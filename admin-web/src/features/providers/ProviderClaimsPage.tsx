@@ -14,6 +14,7 @@ import {
   type ProviderClaimRequest,
 } from './api';
 import { ConfirmDialog } from '../../design_system/ConfirmDialog';
+import { providerErrorMessage } from './providerHelpers';
 import {
   DeskButton,
   DeskHeader,
@@ -163,6 +164,7 @@ export function ProviderClaimsPage() {
                       confirmLabel="سلّمه الملف"
                       confirmTone="green"
                       trigger={<SoftAction tone="green">اقبل</SoftAction>}
+                      describeError={(error) => providerErrorMessage(error)}
                       onConfirm={async () => {
                         await approveProviderClaim(claim.id);
                         await load();
@@ -177,6 +179,7 @@ export function ProviderClaimsPage() {
                       confirmLabel="ارفض"
                       confirmTone="coral"
                       trigger={<SoftAction tone="coral">ارفض</SoftAction>}
+                      describeError={(error) => providerErrorMessage(error)}
                       onConfirm={async (note) => {
                         await rejectProviderClaim(claim.id, note);
                         await load();

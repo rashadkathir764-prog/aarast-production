@@ -6,7 +6,11 @@
 // to 100 and puts the oldest first (A-06).
 import { useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { getProviderApplications, type ProviderApplication } from './api';
+import {
+  getProviderApplications,
+  sentBackAfterRefusal,
+  type ProviderApplication,
+} from './api';
 import {
   DeskButton,
   DeskHeader,
@@ -54,12 +58,17 @@ function owner(provider: ProviderApplication) {
   );
 }
 
-/** «أُعيد إرساله · كان يحتاج تعديل» (B-01), or «كان مرفوض» after a reopened refusal (B-02). */
-export function resubmittedLine(provider: Pick<ProviderApplication, 'resubmitCount' | 'reopenedAt'>): string {
+/**
+ * «أُعيد إرساله · كان يحتاج تعديل» (B-01), or «كان مرفوض» when the decision
+ * before this send was a refusal (B-02).
+ */
+export function resubmittedLine(
+  provider: Pick<ProviderApplication, 'resubmitCount' | 'latestDecision'>,
+): string {
   const sent = provider.resubmitCount > 1
     ? `أُعيد إرساله ${provider.resubmitCount} مرات`
     : 'أُعيد إرساله';
-  return `${sent} · ${provider.reopenedAt ? 'كان مرفوض' : 'كان يحتاج تعديل'}`;
+  return `${sent} · ${sentBackAfterRefusal(provider) ? 'كان مرفوض' : 'كان يحتاج تعديل'}`;
 }
 
 /** The team's note a row shows: the whole-profile note, or the first field note. */

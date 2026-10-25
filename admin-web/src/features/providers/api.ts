@@ -93,6 +93,8 @@ export type ProviderApplication = {
   reviewNote: string | null;
   /** The current decision's note on each field to fix (B-01). */
   fieldNotes: ProviderFieldNote[];
+  /** The latest administrator decision; null when none was taken. */
+  latestDecision: { id: string; kind: ProviderReviewEvent['kind']; at: string } | null;
   /** When the provider last sent the profile back after changes, and how often (B-01). */
   resubmittedAt: string | null;
   resubmitCount: number;
@@ -146,6 +148,17 @@ export type ProviderReviewHistory = {
   appliedAt: string;
   events: ProviderReviewEvent[];
 };
+
+/**
+ * A profile sent back for review came from a refusal (B-02) when the
+ * decision before the send was the refusal; a reopened refusal the team
+ * then asked to change came from changes (B-01), like any other.
+ */
+export function sentBackAfterRefusal(
+  provider: Pick<ProviderApplication, 'latestDecision'>,
+): boolean {
+  return provider.latestDecision?.kind === 'REJECTED';
+}
 
 export type ProviderQueryParams = {
   status?: string;

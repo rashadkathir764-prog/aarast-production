@@ -24,7 +24,9 @@ const EXACT = Object.freeze({
   // Re-pinned 2026-10-15: dashboard gained getSuccessReport (V1 checklist 4.21).
   // Re-pinned 2026-10-25: providers gained the review history, per-field
   // notes and the claims of a listing (B-01, B-02, B-12).
-  publicSurfaces: '71ae4e420955a3b2a94605d27ca08fd87f5f05f382e3450d2d51e6c7e78130f9',
+  // Re-pinned 2026-10-25: providers gained sentBackAfterRefusal, the one
+  // reading of «كان مرفوض» the queue and the inbox share (B-02).
+  publicSurfaces: '75bc118173d8fdc0999b98c38088ecee2779b6a0a4b4b8ec88bece168ad6cb3d',
   sourceFates: '2b0bc1b903a3a861b0400d398fd091a4078d9e4d2bde4a3b06166f9b764699b5',
   createdTargets: '3d658daecf9de9a7040443a75c630a8ba732b2627c5ea929fb741205fe0019a1',
   stages: 'd799c92b42714969d4570dd925a34912ea05ec6b4b4107c4ef0fbb3c93e09ab6',

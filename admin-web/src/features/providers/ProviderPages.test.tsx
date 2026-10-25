@@ -2,6 +2,7 @@ import { fireEvent, render, screen, waitFor, within } from '@testing-library/rea
 import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
+  approveProvider,
   approveProviderClaim,
   getProvider,
   getProviderApplication,
@@ -17,13 +18,17 @@ import {
   type ProviderReviewEvent,
 } from './api';
 import { AdminPermission } from '../auth/api';
-import { ProviderApplicationsPage } from './ProviderApplicationsPage';
+import { ApiError } from '../../platform/api/client';
+import { ProviderApplicationsPage, resubmittedLine } from './ProviderApplicationsPage';
 import { ProviderApplicationDetailsPage } from './ProviderApplicationDetailsPage';
 import { ProviderClaimsPage } from './ProviderClaimsPage';
 import { ProvidersPage } from './ProvidersPage';
 import { ProviderDetailsPage } from './ProviderDetailsPage';
 
-vi.mock('./api', () => ({
+vi.mock('./api', async () => ({
+  // The reading of a row stays the real one; only the requests are stubbed.
+  sentBackAfterRefusal: (await vi.importActual<typeof import('./api')>('./api'))
+    .sentBackAfterRefusal,
   getProviderApplications: vi.fn(),
   getProviderApplication: vi.fn(),
   getProviderReviewHistory: vi.fn(),
@@ -60,6 +65,7 @@ function provider(input: Partial<ProviderApplication> & { id: string; businessNa
     status: 'ACTIVE',
     reviewNote: null,
     fieldNotes: [],
+    latestDecision: null,
     resubmittedAt: null,
     resubmitCount: 0,
     reopenedAt: null,
@@ -170,6 +176,7 @@ describe('a03 طلبات الانضمام', () => {
             createdAt: ago(240),
             resubmittedAt: ago(49),
             resubmitCount: 1,
+            latestDecision: { id: 'd1', kind: 'CHANGES_REQUESTED', at: ago(60) },
           }),
           provider({
             id: 'refused',
@@ -179,6 +186,7 @@ describe('a03 طلبات الانضمام', () => {
             resubmittedAt: ago(2),
             resubmitCount: 2,
             reopenedAt: ago(3),
+            latestDecision: { id: 'd2', kind: 'REJECTED', at: ago(4) },
           }),
         ],
         100,
@@ -198,6 +206,33 @@ describe('a03 طلبات الانضمام', () => {
       page: 1,
       limit: 100,
     });
+  });
+
+  it('reads «كان مرفوض» from the decision before the send, not from a refusal long ago (finding 6)', () => {
+    // Refused, reopened, then asked for changes and sent back: it came from
+    // changes, whatever happened before.
+    expect(
+      resubmittedLine(
+        provider({
+          id: 'later',
+          businessName: 'x',
+          resubmitCount: 2,
+          reopenedAt: ago(100),
+          latestDecision: { id: 'd3', kind: 'CHANGES_REQUESTED', at: ago(50) },
+        }),
+      ),
+    ).toBe('أُعيد إرساله 2 مرات · كان يحتاج تعديل');
+    expect(
+      resubmittedLine(
+        provider({
+          id: 'now',
+          businessName: 'x',
+          resubmitCount: 1,
+          reopenedAt: ago(10),
+          latestDecision: { id: 'd4', kind: 'REJECTED', at: ago(20) },
+        }),
+      ),
+    ).toBe('أُعيد إرساله · كان مرفوض');
   });
 
   it('switches to the ones that need changes and shows the admin note', async () => {
@@ -376,6 +411,94 @@ describe('a04 مراجعة طلب', () => {
     expect(screen.getByLabelText('ملاحظتك على برع الزفة')).toHaveValue('حدد سعر الليلة');
   });
 
+  it('shows each step’s field notes under the field’s name (finding 2)', async () => {
+    vi.mocked(getProviderApplication).mockResolvedValue(
+      provider({ id: 'p4', businessName: 'فرقة الأمجاد', status: 'PENDING' }),
+    );
+    vi.mocked(getProviderReviewHistory).mockResolvedValue({
+      providerId: 'p4',
+      appliedAt: ago(300),
+      events: [
+        {
+          id: 'e1',
+          kind: 'CHANGES_REQUESTED',
+          at: '2026-10-19T07:00:00.000Z',
+          actor: { id: 'a', name: 'رشاد' },
+          notes: [
+            { field: 'GENERAL', note: 'ملفك قريب' },
+            { field: 'SERVICE', note: 'حدد سعر الليلة' },
+            { field: 'CITY', note: 'حدد الأحياء' },
+          ],
+        },
+        { id: 'e2', kind: 'RESUBMITTED', at: '2026-10-20T07:00:00.000Z', actor: null, notes: [] },
+      ],
+    });
+    renderAt('/r/p4', '/r/:id', <ProviderApplicationDetailsPage />);
+    expect(await screen.findByText('رشاد طلب تعديل في حقلين')).toBeVisible();
+    expect(screen.getByText('للمزود: ملفك قريب')).toBeVisible();
+    expect(screen.getByText('الخدمة وسعرها: حدد سعر الليلة')).toBeVisible();
+    expect(screen.getByText('المناطق: حدد الأحياء')).toBeVisible();
+  });
+
+  it('rewriting while he fixes starts from what he reads, so an unopened note is not lost (finding 3)', async () => {
+    vi.mocked(getProviderApplication).mockResolvedValue(
+      provider({
+        id: 'p5',
+        businessName: 'فرقة الأمجاد',
+        status: 'NEEDS_CHANGES',
+        reviewNote: 'ملفك قريب',
+        fieldNotes: [
+          { field: 'BUSINESS_NAME', note: 'الاسم اللي يعرفونك فيه' },
+          { field: 'SERVICE', note: 'حدد سعر الليلة' },
+          { field: 'DESCRIPTION', note: 'اكتب نبذة' },
+        ],
+      }),
+    );
+    vi.mocked(requestProviderChanges).mockResolvedValue(provider({ id: 'p5', businessName: 'x' }));
+    renderAt('/r/p5', '/r/:id', <ProviderApplicationDetailsPage />);
+
+    // A new note on the areas; the bio's note emptied on purpose; the name
+    // and service notes never opened.
+    fireEvent.click(await screen.findByRole('button', { name: 'ملاحظة على المناطق' }));
+    fireEvent.change(screen.getByLabelText('ملاحظتك على المناطق'), {
+      target: { value: 'حدد الأحياء' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'ملاحظة على النبذة' }));
+    fireEvent.change(screen.getByLabelText('ملاحظتك على النبذة'), { target: { value: '' } });
+
+    fireEvent.click(screen.getByRole('button', { name: 'اطلب تعديل' }));
+    const dialog = screen.getByRole('dialog', { name: 'اطلب تعديل من فرقة الأمجاد' });
+    expect(within(dialog).getByLabelText('ملاحظة عامة (توصل المزود)')).toHaveValue('ملفك قريب');
+    expect(dialog).toHaveTextContent('ملاحظاتك على 3 حقول تظهر له جنب الحقل نفسه.');
+    fireEvent.click(within(dialog).getByRole('button', { name: 'أرسل الملاحظات' }));
+    await waitFor(() =>
+      expect(requestProviderChanges).toHaveBeenCalledWith('p5', {
+        note: 'ملفك قريب',
+        fieldNotes: [
+          { field: 'BUSINESS_NAME', note: 'الاسم اللي يعرفونك فيه' },
+          { field: 'SERVICE', note: 'حدد سعر الليلة' },
+          { field: 'CITY', note: 'حدد الأحياء' },
+        ],
+      }),
+    );
+  });
+
+  it('tells the reviewer why an approval was refused (finding 9)', async () => {
+    vi.mocked(getProviderApplication).mockResolvedValue(
+      provider({ id: 'p6', businessName: 'محلات قديمة', status: 'PENDING' }),
+    );
+    vi.mocked(approveProvider).mockRejectedValue(
+      new ApiError('تعذّر الحفظ', 422, 'PROVIDER_SERVICE_REQUIRED'),
+    );
+    renderAt('/r/p6', '/r/:id', <ProviderApplicationDetailsPage />);
+    fireEvent.click(await screen.findByRole('button', { name: 'اعتماد' }));
+    const dialog = screen.getByRole('dialog', { name: 'اعتماد محلات قديمة' });
+    fireEvent.click(within(dialog).getByRole('button', { name: 'اعتمد' }));
+    expect(await within(dialog).findByRole('alert')).toHaveTextContent(
+      'ما عنده خدمة نشطة بسعرها. اطلب منه تعديل يضيف خدمته وسعرها، وبعدها اعتمده.',
+    );
+  });
+
   it('hides the decisions from read-only roles', async () => {
     authState.adminPermissions = [AdminPermission.PROVIDERS_READ];
     vi.mocked(getProviderApplication).mockResolvedValue(
@@ -483,6 +606,37 @@ describe('a07 ملفات بلا حساب (B-12)', () => {
     const dialog = screen.getByRole('dialog', { name: 'سلّم «مصور الحارة» لصاحب الطلب' });
     fireEvent.click(within(dialog).getByRole('button', { name: 'سلّمه الملف' }));
     await waitFor(() => expect(approveProviderClaim).toHaveBeenCalledWith('c1'));
+  });
+
+  it('tells the reviewer what to do when a claim can no longer be approved (finding 5)', async () => {
+    vi.mocked(getProviderClaims).mockResolvedValue({
+      items: [claim({ id: 'c4' })],
+      page: 1,
+      limit: 50,
+      total: 1,
+      totalPages: 1,
+    });
+    const cases: Array<[string, string]> = [
+      [
+        'PROVIDER_CLAIM_PHONE_CHANGED',
+        'رقم صاحب الطلب تغيّر وما عاد نفس رقم الملف. ارفض الطلب، ويقدر يطلبه من جديد من رقم الملف.',
+      ],
+      ['PROVIDER_CLAIM_LISTING_TAKEN', 'الملف صار له صاحب أو ما عاد نشط. ارفض الطلب.'],
+      ['PROVIDER_CLAIM_ACCOUNT_INACTIVE', 'حساب صاحب الطلب موقوف. ارفض الطلب.'],
+      ['PROVIDER_CLAIM_ACCOUNT_HAS_PROVIDER', 'صاحب الطلب عنده ملف مزود ثاني. ارفض الطلب.'],
+    ];
+    renderAt('/l', '/l', <ProviderClaimsPage />);
+    const row = (await screen.findByText('مصور الحارة')).closest('tr') as HTMLElement;
+    for (const [code, words] of cases) {
+      vi.mocked(approveProviderClaim).mockRejectedValueOnce(
+        new ApiError('تغيّرت البيانات قبل الحفظ. حدّث الصفحة ثم حاول مرة أخرى.', 409, code),
+      );
+      fireEvent.click(within(row).getByRole('button', { name: 'اقبل' }));
+      const dialog = screen.getByRole('dialog', { name: 'سلّم «مصور الحارة» لصاحب الطلب' });
+      fireEvent.click(within(dialog).getByRole('button', { name: 'سلّمه الملف' }));
+      expect(await within(dialog).findByRole('alert')).toHaveTextContent(words);
+      fireEvent.click(within(dialog).getByRole('button', { name: 'تراجع' }));
+    }
   });
 
   it('refuses a claim only with a reason the claimant reads', async () => {

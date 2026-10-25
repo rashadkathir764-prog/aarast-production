@@ -11,6 +11,7 @@ import {
   getProvider,
   getProviderApplications,
   getProviderClaims,
+  sentBackAfterRefusal,
   type ProviderApplication,
   type ProviderClaimRequest,
 } from '../providers/api';
@@ -79,7 +80,7 @@ function joinItem(provider: ProviderApplication): InboxItem {
       key: `join-${provider.id}`,
       kind: 'join',
       title: provider.businessName,
-      sub: provider.reopenedAt ? 'قدّم من جديد بعد الرفض' : 'أُعيد إرساله بعد التعديل',
+      sub: sentBackAfterRefusal(provider) ? 'قدّم من جديد بعد الرفض' : 'أُعيد إرساله بعد التعديل',
       start: provider.resubmittedAt,
       to: `/providers/applications/${provider.id}`,
     };

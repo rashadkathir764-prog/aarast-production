@@ -625,6 +625,7 @@ test('requires the exact Task 4 owner public surfaces', () => {
       'rejectProvider',
       'rejectProviderClaim',
       'requestProviderChanges',
+      'sentBackAfterRefusal',
       'setProviderVerified',
       'suspendProvider',
     ],

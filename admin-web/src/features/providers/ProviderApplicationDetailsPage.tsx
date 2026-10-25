@@ -91,6 +91,49 @@ function generalNote(event: ProviderReviewEvent): string | null {
   return event.notes.find((note) => note.field === 'GENERAL')?.note ?? null;
 }
 
+/** Each field a note can point at, named as its card names it. */
+const FIELD_LABELS: Record<ProviderReviewField, string> = {
+  BUSINESS_NAME: 'النشاط',
+  CATEGORY: 'القسم',
+  DESCRIPTION: 'النبذة',
+  SERVICE: 'الخدمة وسعرها',
+  CITY: 'المناطق',
+};
+
+/** The fields in the order the page shows them. */
+const FIELD_ORDER: ProviderReviewField[] = [
+  'BUSINESS_NAME',
+  'CATEGORY',
+  'DESCRIPTION',
+  'SERVICE',
+  'CITY',
+];
+
+/** The step's note on each field, under the field's name. */
+function fieldNotesOf(event: ProviderReviewEvent): ProviderFieldNote[] {
+  return event.notes.filter(
+    (note): note is ProviderFieldNote => note.field !== 'GENERAL',
+  );
+}
+
+/**
+ * What «اطلب تعديل» sends: the notes he reads now on every field, each one
+ * replaced by what the reviewer wrote in its open box (an emptied box drops
+ * it). A rewrite while he fixes (B-01) replaces every note, so a note the
+ * reviewer did not open is sent again rather than lost.
+ */
+export function outgoingFieldNotes(
+  current: readonly ProviderFieldNote[],
+  drafts: Partial<Record<ProviderReviewField, string>>,
+): ProviderFieldNote[] {
+  const now = new Map(current.map((note) => [note.field, note.note]));
+  return FIELD_ORDER.flatMap((field) => {
+    const draft = drafts[field];
+    const note = (draft !== undefined ? draft : now.get(field))?.trim();
+    return note ? [{ field, note }] : [];
+  });
+}
+
 type FieldProps = {
   label: string;
   value: string;
@@ -180,9 +223,7 @@ export function ProviderApplicationDetailsPage() {
     providerActionVisibility(provider.status).requestChanges &&
     hasAdminPermission(user, AdminPermission.PROVIDERS_WRITE);
   const current = new Map(provider.fieldNotes.map((note) => [note.field, note.note]));
-  const draftNotes: ProviderFieldNote[] = Object.entries(drafts)
-    .filter((entry): entry is [ProviderReviewField, string] => Boolean(entry[1]?.trim()))
-    .map(([field, note]) => ({ field, note: note.trim() }));
+  const draftNotes = outgoingFieldNotes(provider.fieldNotes, drafts);
   const onDraft = (field: ProviderReviewField, note: string | undefined) =>
     setDrafts((previous) => ({ ...previous, [field]: note }));
   const fieldProps = (field: ProviderReviewField) => ({
@@ -203,19 +244,23 @@ export function ProviderApplicationDetailsPage() {
       {error ? <DeskRetry message={error} onRetry={() => void load()} /> : null}
       <div className="desk-split">
         <div className="desk-split__main desk-field-stack" style={{ flex: 3 }}>
-          <Field label="النشاط" value={provider.businessName} {...fieldProps('BUSINESS_NAME')} />
           <Field
-            label="القسم"
+            label={FIELD_LABELS.BUSINESS_NAME}
+            value={provider.businessName}
+            {...fieldProps('BUSINESS_NAME')}
+          />
+          <Field
+            label={FIELD_LABELS.CATEGORY}
             value={provider.primaryCategory?.nameAr ?? '—'}
             {...fieldProps('CATEGORY')}
           />
           <Field
-            label="النبذة"
+            label={FIELD_LABELS.DESCRIPTION}
             value={provider.description ?? 'ما كتب نبذة'}
             {...fieldProps('DESCRIPTION')}
           />
           {services.length === 0 ? (
-            <Field label="الخدمة وسعرها" value="ما أضاف خدمة" {...fieldProps('SERVICE')} />
+            <Field label={FIELD_LABELS.SERVICE} value="ما أضاف خدمة" {...fieldProps('SERVICE')} />
           ) : null}
           {services.map((service, index) => (
             <Field
@@ -236,7 +281,7 @@ export function ProviderApplicationDetailsPage() {
             />
           ))}
           <Field
-            label="المناطق"
+            label={FIELD_LABELS.CITY}
             value={[provider.city?.nameAr, provider.address].filter(Boolean).join(' · ') || '—'}
             {...fieldProps('CITY')}
           />
@@ -257,6 +302,11 @@ export function ProviderApplicationDetailsPage() {
                     <span>
                       {reviewStepLine(event)}
                       {note ? <strong className="desk-timeline__note">للمزود: {note}</strong> : null}
+                      {fieldNotesOf(event).map((fieldNote) => (
+                        <strong key={fieldNote.field} className="desk-timeline__note">
+                          {FIELD_LABELS[fieldNote.field]}: {fieldNote.note}
+                        </strong>
+                      ))}
                     </span>
                   </li>
                 );

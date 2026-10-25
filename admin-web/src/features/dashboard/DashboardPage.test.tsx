@@ -11,7 +11,11 @@ import {
 import { AdminPermission } from '../auth/api';
 import { DashboardPage, type InboxReport } from './DashboardPage';
 
-vi.mock('../providers/api', () => ({
+vi.mock('../providers/api', async () => ({
+  // The reading of a row stays the real one; only the requests are stubbed.
+  sentBackAfterRefusal: (
+    await vi.importActual<typeof import('../providers/api')>('../providers/api')
+  ).sentBackAfterRefusal,
   getProviderApplications: vi.fn(),
   getProviderClaims: vi.fn(),
   getProvider: vi.fn(),
@@ -126,7 +130,16 @@ describe('DashboardPage (n01 الصندوق)', () => {
         {
           ...application('p-back', 'استوديو ضوء صنعاء', '2026-10-10T09:00:00.000Z'),
           resubmittedAt: '2026-10-24T07:00:00.000Z',
-          reopenedAt: null,
+          // Refused long ago, then asked for changes: it came from changes
+          // (finding 6).
+          reopenedAt: '2026-10-12T09:00:00.000Z',
+          latestDecision: { id: 'd1', kind: 'CHANGES_REQUESTED', at: '2026-10-20T09:00:00.000Z' },
+        } as ProviderApplication,
+        {
+          ...application('p-refused', 'كوافيرة أم ريان', '2026-10-11T09:00:00.000Z'),
+          resubmittedAt: '2026-10-24T06:00:00.000Z',
+          reopenedAt: '2026-10-23T09:00:00.000Z',
+          latestDecision: { id: 'd2', kind: 'REJECTED', at: '2026-10-22T09:00:00.000Z' },
         } as ProviderApplication,
       ],
       page: 1,
@@ -158,6 +171,9 @@ describe('DashboardPage (n01 الصندوق)', () => {
     const back = (await screen.findByText('استوديو ضوء صنعاء')).closest('tr');
     expect(back).toHaveTextContent('أُعيد إرساله بعد التعديل');
     expect(back).toHaveTextContent('باقي يوم');
+    expect(screen.getByText('كوافيرة أم ريان').closest('tr')).toHaveTextContent(
+      'قدّم من جديد بعد الرفض',
+    );
     const claim = screen.getByText('مصور الحارة').closest('tr');
     expect(claim).toHaveTextContent('عبدالله الحارثي يطلب استلام الملف');
     expect(claim).toHaveTextContent('استلام');

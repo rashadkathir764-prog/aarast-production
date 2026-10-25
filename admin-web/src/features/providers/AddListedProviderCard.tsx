@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { ActionButton } from '../../design_system/ActionButton';
 import { FormCard } from '../../design_system/FormCard';
 import { FormField, TextAreaField } from '../../design_system/FormField';
-import { ApiError } from '../../platform/api/client';
+import { providerErrorMessage } from './providerHelpers';
 import {
   createListedProvider,
   type CityProjection,
@@ -155,8 +155,5 @@ export function AddListedProviderCard({
 }
 
 export function listedProviderErrorMessage(error: unknown): string {
-  if (error instanceof ApiError && error.code === 'PROVIDER_PHONE_TAKEN') {
-    return 'هذا الرقم مسجّل لمزوّد آخر. ابحث عنه في القائمة بدل إضافته من جديد.';
-  }
-  return error instanceof Error ? error.message : 'تعذر إضافة المزوّد.';
+  return providerErrorMessage(error, 'تعذر إضافة المزوّد.');
 }

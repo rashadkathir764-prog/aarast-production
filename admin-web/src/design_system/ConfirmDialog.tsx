@@ -37,6 +37,10 @@ type ConfirmDialogProps = {
   confirmTone?: 'teal' | 'coral' | 'green' | 'saffron';
   cancelLabel?: string;
   noteRequired?: boolean;
+  /** The note the box opens with (the one the reader sees now); empty by default. */
+  initialNote?: string;
+  /** Words for a refused action; the error's own message by default. */
+  describeError?: (error: unknown) => string;
 };
 
 export function ConfirmDialog({
@@ -53,6 +57,8 @@ export function ConfirmDialog({
   confirmTone = 'teal',
   cancelLabel = 'تراجع',
   noteRequired = true,
+  initialNote = '',
+  describeError,
 }: ConfirmDialogProps) {
   const [open, setOpen] = useState(false);
   const [note, setNote] = useState('');
@@ -143,7 +149,11 @@ export function ConfirmDialog({
       setNote('');
     } catch (value) {
       setError(
-        value instanceof Error ? value.message : 'تعذر تنفيذ الإجراء الإداري.',
+        describeError
+          ? describeError(value)
+          : value instanceof Error
+            ? value.message
+            : 'تعذر تنفيذ الإجراء الإداري.',
       );
     } finally {
       setIsSubmitting(false);
@@ -153,6 +163,7 @@ export function ConfirmDialog({
   function openDialog(event: ReactMouseEvent<HTMLElement>) {
     triggerRef.current = event.currentTarget;
     setError(null);
+    setNote(initialNote);
     setOpen(true);
   }
 

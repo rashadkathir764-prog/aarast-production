@@ -112,6 +112,17 @@ class ProviderDashboardProvider extends ChangeNotifier
     return null;
   }
 
+  /// Offers kept on the phone that were not sent, and why: shown until he
+  /// dismisses them.
+  List<ProviderDroppedOffer> get droppedOffers => _droppedOffers;
+  List<ProviderDroppedOffer> _droppedOffers = const [];
+
+  void dismissDroppedOffers() {
+    if (_droppedOffers.isEmpty) return;
+    _droppedOffers = const [];
+    notifyListeners();
+  }
+
   /// While offers wait and the network is gone, the data is read again
   /// every half minute, which sends them once it is back.
   Timer? _retry;
@@ -529,9 +540,27 @@ class ProviderDashboardProvider extends ChangeNotifier
     super.dispose();
   }
 
-  /// Sends the offers kept on this phone (p43). One the request no longer
-  /// waits for (answered, cancelled or gone from his list) is dropped; one
-  /// the server already holds answers 409 and counts as sent (F6).
+  /// Why a kept offer cannot go to this request, or null when it can: the
+  /// request still waits for his answer (SENT or VIEWED, inside its seven
+  /// days) and holds no live offer of his. A withdrawn offer leaves room for
+  /// a new one (B-03).
+  static ProviderOfferDropReason? _queuedOfferBlocker(QuoteRequest? quote) {
+    if (quote == null) return ProviderOfferDropReason.requestGone;
+    if (quote.offers.any((offer) => !offer.isWithdrawn)) {
+      return ProviderOfferDropReason.alreadyAnswered;
+    }
+    return switch (quote.status.toUpperCase()) {
+      'SENT' || 'VIEWED' => null,
+      'EXPIRED' => ProviderOfferDropReason.expired,
+      'CANCELLED' => ProviderOfferDropReason.cancelled,
+      'REJECTED' => ProviderOfferDropReason.declined,
+      _ => ProviderOfferDropReason.closed,
+    };
+  }
+
+  /// Sends the offers kept on this phone (p43). One the request can no
+  /// longer take is dropped and told to him with its reason; one the server
+  /// already holds answers 409 and counts as sent (F6).
   Future<void> _sendQueuedOffers(
     String providerId, {
     required bool quotesRead,
@@ -544,14 +573,20 @@ class ProviderDashboardProvider extends ChangeNotifier
       return;
     }
     final kept = <ProviderQueuedOffer>[];
+    final dropped = <ProviderDroppedOffer>[];
     var sent = false;
     for (final offer in waiting) {
       final quote = _quoteRequests
           .where((item) => item.id == offer.quoteRequestId)
           .firstOrNull;
-      if (quote == null ||
-          quote.offers.isNotEmpty ||
-          !const {'SENT', 'VIEWED'}.contains(quote.status.toUpperCase())) {
+      final blocker = _queuedOfferBlocker(quote);
+      if (blocker != null) {
+        dropped.add(
+          ProviderDroppedOffer(
+            quoteRequestId: offer.quoteRequestId,
+            reason: blocker,
+          ),
+        );
         continue;
       }
       if (_offline) {
@@ -575,8 +610,13 @@ class ProviderDashboardProvider extends ChangeNotifier
           _offline = true;
           kept.add(offer);
         } else {
-          _errorMessage =
-              'ما وصل عرضك المحفوظ: ${marketplaceErrorMessage(error.message)}';
+          dropped.add(
+            ProviderDroppedOffer(
+              quoteRequestId: offer.quoteRequestId,
+              reason: ProviderOfferDropReason.refused,
+              serverMessage: marketplaceErrorMessage(error.message),
+            ),
+          );
         }
       } on Object catch (error) {
         debugPrint('Queued offer not sent: $error');
@@ -584,6 +624,7 @@ class ProviderDashboardProvider extends ChangeNotifier
       }
     }
     _queuedOffers = kept;
+    if (dropped.isNotEmpty) _droppedOffers = [..._droppedOffers, ...dropped];
     await queue.write(providerId, kept);
     if (sent) {
       try {
@@ -647,6 +688,7 @@ class ProviderDashboardProvider extends ChangeNotifier
     _bookingsLoadFailed = false;
     _blockedDates = const [];
     _responsiveness = null;
+    _droppedOffers = const [];
   }
 
   /// Sends the joining (p07) with the service he joins with and its price

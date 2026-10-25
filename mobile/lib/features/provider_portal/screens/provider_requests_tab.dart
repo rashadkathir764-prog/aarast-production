@@ -91,6 +91,20 @@ class _ProviderRequestsTabState extends State<ProviderRequestsTab> {
             const ProviderOfflineBar(),
             const SizedBox(height: 14),
           ],
+          if (dashboard.droppedOffers.isNotEmpty) ...[
+            ProviderDroppedOffersBox(
+              key: const Key('provider-dropped-offers'),
+              lines: [
+                for (final dropped in dashboard.droppedOffers)
+                  providerDroppedOfferLine(
+                    dropped,
+                    _queuedName(cases, dropped.quoteRequestId),
+                  ),
+              ],
+              onDismiss: dashboard.dismissDroppedOffers,
+            ),
+            const SizedBox(height: 10),
+          ],
           for (final offer in dashboard.queuedOffers) ...[
             ProviderQueuedOfferBox(
               key: Key('provider-queued-offer-${offer.quoteRequestId}'),

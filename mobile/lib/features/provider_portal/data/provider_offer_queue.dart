@@ -3,9 +3,10 @@ import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
 
 /// An offer he sent with no network (p43), kept on this phone until it
-/// reaches the server. Replaying it is safe: the server keeps one offer per
-/// request and answers a second create with 409 `QUOTE_OFFER_ALREADY_EXISTS`
-/// (F6), so an offer that did arrive is never doubled.
+/// reaches the server. Replaying it is safe: the server keeps one live
+/// (not withdrawn) offer per request and answers a second create with 409
+/// `QUOTE_OFFER_ALREADY_EXISTS` (F6), so an offer that did arrive is never
+/// doubled.
 class ProviderQueuedOffer {
   const ProviderQueuedOffer({
     required this.quoteRequestId,
@@ -47,6 +48,44 @@ class ProviderQueuedOffer {
     'validUntil': ?validUntil?.toUtc().toIso8601String(),
     'queuedAt': queuedAt.toUtc().toIso8601String(),
   };
+}
+
+/// Why an offer kept on the phone was not sent when the network came back.
+enum ProviderOfferDropReason {
+  /// The request is no longer in his list.
+  requestGone,
+
+  /// The request already holds a live offer of his.
+  alreadyAnswered,
+
+  /// Its seven days ended before the network came back (B-04).
+  expired,
+
+  /// The customer cancelled it.
+  cancelled,
+
+  /// He declined it (from another phone).
+  declined,
+
+  /// It no longer waits for his answer for another reason.
+  closed,
+
+  /// The server refused the offer; [ProviderDroppedOffer.serverMessage].
+  refused,
+}
+
+/// An offer kept on the phone that will not be sent, told to him once in
+/// clear words (never dropped silently).
+class ProviderDroppedOffer {
+  const ProviderDroppedOffer({
+    required this.quoteRequestId,
+    required this.reason,
+    this.serverMessage,
+  });
+
+  final String quoteRequestId;
+  final ProviderOfferDropReason reason;
+  final String? serverMessage;
 }
 
 /// The offers waiting on this phone, per provider. Only offers wait: every

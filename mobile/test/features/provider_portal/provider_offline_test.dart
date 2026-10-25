@@ -23,7 +23,17 @@ class OfflineApi extends RequestsApi {
   bool offline = false;
   bool alreadyExists = false;
 
+  /// What the server answers for the requests from now on, when set.
+  List<Map<String, dynamic>>? replaced;
+
   static const _noNetwork = ApiException('بدون نت', isNetworkFailure: true);
+
+  @override
+  Future<List<QuoteRequest>> getQuoteRequests() async {
+    final answer = replaced;
+    if (answer == null) return super.getQuoteRequests();
+    return [for (final quote in answer) QuoteRequest.fromJson(quote)];
+  }
 
   @override
   Future<ProviderDashboardProfile> getProfile() {
@@ -247,6 +257,101 @@ void main() {
     await dashboard.loadDashboard();
     expect(api.created, isEmpty);
     expect(dashboard.queuedOffers, isEmpty);
+    dashboard.dispose();
+  });
+
+  test('after he withdrew his offer, the offer kept offline goes', () async {
+    final api = OfflineApi(
+      quotes: [
+        quoteJson(
+          name: 'عادل الريمي',
+          status: 'VIEWED',
+          offers: [offerJson(status: 'WITHDRAWN')],
+        ),
+      ],
+    );
+    final dashboard = ProviderDashboardProvider(
+      api,
+      offerQueue: await _queue(),
+    );
+    await dashboard.loadDashboard();
+    await _offerOffline(dashboard, api);
+
+    api.offline = false;
+    await dashboard.loadDashboard();
+    expect(api.created.single.message, 'تصوير ليلة كاملة');
+    expect(dashboard.queuedOffers, isEmpty);
+    expect(dashboard.droppedOffers, isEmpty);
+    dashboard.dispose();
+  });
+
+  testWidgets('an offer that cannot go is said, with why, until he closes it', (
+    tester,
+  ) async {
+    final api = _api();
+    final dashboard = ProviderDashboardProvider(
+      api,
+      offerQueue: await _queue(),
+    );
+    await tester.runAsync(dashboard.loadDashboard);
+    await tester.runAsync(() => _offerOffline(dashboard, api));
+    await tester.runAsync(
+      () => api.updateQuoteRequestStatus(
+        quoteRequestId: 'quote-1',
+        status: 'CANCELLED',
+      ),
+    );
+    api.offline = false;
+    await tester.runAsync(dashboard.loadDashboard);
+    expect(api.created, isEmpty);
+    expect(dashboard.queuedOffers, isEmpty);
+    expect(
+      dashboard.droppedOffers.single.reason,
+      ProviderOfferDropReason.cancelled,
+    );
+
+    await _pumpTab(tester, dashboard);
+    expect(
+      find.text('ما أرسلنا عرضك المحفوظ لعادل: ألغى الطلب'),
+      findsOneWidget,
+    );
+    await tester.tap(
+      find.byKey(const Key('provider-dropped-offers-dismiss')),
+    );
+    await tester.pump();
+    expect(find.byKey(const Key('provider-dropped-offers')), findsNothing);
+    await _done(tester, dashboard);
+  });
+
+  test('a request whose seven days ended keeps its offer, and says so', () async {
+    final api = _api();
+    final dashboard = ProviderDashboardProvider(
+      api,
+      offerQueue: await _queue(),
+    );
+    await dashboard.loadDashboard();
+    await _offerOffline(dashboard, api);
+
+    // The network comes back after the request's deadline.
+    api
+      ..offline = false
+      ..replaced = [
+        quoteJson(
+          name: 'عادل الريمي',
+          createdAt: DateTime.now().subtract(const Duration(days: 8)),
+        ),
+      ];
+    await dashboard.loadDashboard();
+    expect(api.created, isEmpty);
+    expect(
+      dashboard.droppedOffers.single.reason,
+      ProviderOfferDropReason.expired,
+    );
+    expect(
+      dashboard.quoteRequests.single.status,
+      'EXPIRED',
+      reason: 'the server takes no answer past the deadline',
+    );
     dashboard.dispose();
   });
 

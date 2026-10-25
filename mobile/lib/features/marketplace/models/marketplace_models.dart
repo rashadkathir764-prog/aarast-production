@@ -483,8 +483,8 @@ class QuoteRequest {
   const QuoteRequest({
     required this.id,
     required this.providerId,
-    required this.status,
-    required this.lifecycleStatus,
+    required String status,
+    required String lifecycleStatus,
     this.weddingPlanId,
     this.serviceId,
     this.userName,
@@ -512,7 +512,8 @@ class QuoteRequest {
     this.expiredAt,
     this.shareBudget = false,
     this.shareContact = false,
-  });
+  }) : _status = status,
+       _lifecycleStatus = lifecycleStatus;
 
   factory QuoteRequest.fromJson(Map<String, dynamic> json) {
     final user = json['user'];
@@ -594,8 +595,27 @@ class QuoteRequest {
   final String? message;
   final String? budgetMin;
   final String? budgetMax;
-  final String status;
-  final String lifecycleStatus;
+  final String _status;
+  final String _lifecycleStatus;
+
+  /// B-04: still waiting for the provider (SENT or VIEWED) while its seven
+  /// days are over. The server refuses his answer from that moment, before
+  /// the hourly job marks it EXPIRED, so the app reads it as ended too.
+  bool get isPastAnswerDeadline {
+    final deadline = expiresAt;
+    return (_status == 'SENT' || _status == 'VIEWED') &&
+        deadline != null &&
+        !deadline.isAfter(DateTime.now());
+  }
+
+  /// The request's state as the server holds it, except that a request past
+  /// its answer deadline is EXPIRED at once (one rule for both sides).
+  String get status => isPastAnswerDeadline ? 'EXPIRED' : _status;
+
+  /// The customer-facing state, with the same deadline rule.
+  String get lifecycleStatus =>
+      isPastAnswerDeadline ? 'EXPIRED' : _lifecycleStatus;
+
   final List<QuoteOffer> offers;
   final QuoteCostSuggestion? costSuggestion;
 
@@ -620,6 +640,13 @@ class QuoteRequest {
   final bool shareContact;
 
   bool get isExpiredUnanswered => status == 'EXPIRED';
+
+  /// A REJECTED request the customer closed by rejecting an offer he
+  /// received; otherwise the provider declined it (none sent, or his offer
+  /// withdrawn, B-03). The offers' statuses are the record of who said no.
+  bool get rejectedByCustomer =>
+      status == 'REJECTED' &&
+      offers.any((offer) => offer.status == 'REJECTED');
 
   /// B-03: the latest offer, when the provider took it back and has not
   /// answered again (the request waits for him: VIEWED).

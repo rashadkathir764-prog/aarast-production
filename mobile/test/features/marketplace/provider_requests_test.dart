@@ -268,6 +268,59 @@ void main() {
     expect(find.text('opened /providers/provider-q4/quote'), findsOneWidget);
   });
 
+  testWidgets('the earlier list says who said no, and a request past its '
+      'seven days has ended', (tester) async {
+    QuoteRequest bare(
+      String id,
+      String provider, {
+      required String status,
+      required String lifecycle,
+      DateTime? expiresAt,
+    }) => QuoteRequest(
+      id: id,
+      providerId: 'provider-$id',
+      weddingPlanId: 'plan-1',
+      status: status,
+      lifecycleStatus: lifecycle,
+      provider: ProviderSummary(
+        id: 'provider-$id',
+        businessName: provider,
+        ratingAverage: 0,
+        ratingCount: 0,
+      ),
+      service: _photo,
+      expiresAt: expiresAt,
+    );
+    await _pump(tester, [
+      _offer(
+        'q5',
+        'عدسة سبأ',
+        '350000',
+        lifecycle: 'REJECTED',
+        offerStatus: 'REJECTED',
+      ),
+      bare('q6', 'استوديو الريان', status: 'REJECTED', lifecycle: 'REJECTED'),
+      bare(
+        'q7',
+        'ستوديو النور',
+        status: 'SENT',
+        lifecycle: 'PENDING_PROVIDER',
+        expiresAt: DateTime.now().subtract(const Duration(minutes: 1)),
+      ),
+    ]);
+
+    Finder line(String id, String text) => find.descendant(
+      of: find.byKey(ValueKey('requests-earlier-$id')),
+      matching: find.text(text),
+    );
+    // He rejected their offer; they declined his request.
+    expect(line('q5', 'اعتذرت عن عرضهم'), findsOneWidget);
+    expect(line('q6', 'اعتذروا عن الطلب'), findsOneWidget);
+    // Past its deadline the server takes no answer: ended, not waiting.
+    expect(line('q7', 'ما ردوا خلال 7 أيام'), findsOneWidget);
+    expect(find.byKey(const ValueKey('requests-waiting-q7')), findsNothing);
+  });
+
   testWidgets('the chosen provider: book, see the cost in money', (tester) async {
     final h = await _pump(tester, [_accepted()]);
 

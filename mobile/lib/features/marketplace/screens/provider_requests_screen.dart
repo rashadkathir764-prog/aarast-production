@@ -274,10 +274,14 @@ class _ProviderRequestsScreenState extends State<ProviderRequestsScreen> {
                               soft: AarastV3Color.canvas,
                               title: quoteProviderName(quote),
                               subtitle: switch (quote.lifecycleStatus) {
-                                'REJECTED' => context.say(
-                                  'اعتذرت عن عرضهم',
-                                  'اعتذرتِ عن عرضهم',
-                                ),
+                                // Who said no: an offer he rejected, or
+                                // their apology (as the chat says it).
+                                'REJECTED' when quote.rejectedByCustomer =>
+                                  context.say(
+                                    'اعتذرت عن عرضهم',
+                                    'اعتذرتِ عن عرضهم',
+                                  ),
+                                'REJECTED' => 'اعتذروا عن الطلب',
                                 // B-04.
                                 'EXPIRED' => 'ما ردوا خلال 7 أيام',
                                 _ => 'انلغى الطلب',

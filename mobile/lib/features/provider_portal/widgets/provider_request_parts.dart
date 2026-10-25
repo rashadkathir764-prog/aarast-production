@@ -8,6 +8,8 @@ import '../../../core/utils/currency_label.dart';
 import '../../../core/utils/hijri_date.dart';
 import '../../marketplace/marketplace_api.dart'
     show MarketplaceBooking, ProviderPackage, QuoteRequest;
+import '../data/provider_offer_queue.dart'
+    show ProviderDroppedOffer, ProviderOfferDropReason;
 import '../providers/provider_dashboard_provider.dart';
 import 'provider_join_parts.dart' show providerMomentLabel;
 
@@ -19,7 +21,8 @@ enum ProviderCaseState {
   /// withdrew his offer, B-03).
   fresh,
 
-  /// EXPIRED: seven days passed without his answer (B-04).
+  /// EXPIRED: seven days passed without his answer (B-04), from the moment
+  /// the deadline passes (`QuoteRequest.isPastAnswerDeadline`).
   unanswered,
 
   /// The customer accepted and asked to book the day: confirm or decline.
@@ -155,7 +158,7 @@ ProviderCaseState providerCaseOf(
     // The provider declines with no open offer (none sent, or his offer
     // withdrawn, B-03); the customer rejects an offer he received.
     'REJECTED' =>
-      quote.offers.any((offer) => offer.status == 'REJECTED')
+      quote.rejectedByCustomer
           ? ProviderCaseState.notChosen
           : ProviderCaseState.declined,
     _ => ProviderCaseState.cancelled,
@@ -374,6 +377,88 @@ class ProviderQueuedOfferBox extends StatelessWidget {
               color: AarastV3Color.textMuted,
             ),
           ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Why an offer kept on the phone did not go, in his words: «ما أرسلنا
+/// عرضك المحفوظ لعادل: انتهت مدة الرد قبل ما يرجع النت».
+String providerDroppedOfferLine(ProviderDroppedOffer dropped, String name) {
+  final why = switch (dropped.reason) {
+    ProviderOfferDropReason.requestGone => 'الطلب ما عاد في قائمتك',
+    ProviderOfferDropReason.alreadyAnswered => 'الطلب عليه عرض منك من قبل',
+    ProviderOfferDropReason.expired => 'انتهت مدة الرد قبل ما يرجع النت',
+    ProviderOfferDropReason.cancelled => 'ألغى الطلب',
+    ProviderOfferDropReason.declined => 'اعتذرت عن الطلب',
+    ProviderOfferDropReason.closed => 'الطلب ما عاد ينتظر ردك',
+    ProviderOfferDropReason.refused =>
+      dropped.serverMessage?.trim().isNotEmpty == true
+          ? dropped.serverMessage!.trim()
+          : 'ما قبله النظام',
+  };
+  return 'ما أرسلنا عرضك المحفوظ ل$name: $why';
+}
+
+/// p43's companion to the waiting offer (undrawn): the kept offers that did
+/// not go when the network came back, each with its reason, until he closes
+/// the note. A kept offer is never dropped without a word.
+class ProviderDroppedOffersBox extends StatelessWidget {
+  const ProviderDroppedOffersBox({
+    required this.lines,
+    required this.onDismiss,
+    super.key,
+  });
+
+  final List<String> lines;
+  final VoidCallback onDismiss;
+
+  @override
+  Widget build(BuildContext context) {
+    return JourneyBox(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(
+                LucideIcons.alertCircle,
+                size: 18,
+                color: AarastV3Color.danger,
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  lines.length == 1
+                      ? 'عرض محفوظ ما انرسل'
+                      : 'عروض محفوظة ما انرسلت',
+                  style: JourneyType.of(
+                    JourneyType.body,
+                    weight: JourneyType.bold,
+                  ),
+                ),
+              ),
+              JourneyTextAction(
+                key: const Key('provider-dropped-offers-dismiss'),
+                label: 'تمام',
+                onPressed: onDismiss,
+                color: AarastV3Color.primary,
+              ),
+            ],
+          ),
+          for (final line in lines)
+            Padding(
+              padding: const EdgeInsets.only(top: 4),
+              child: Text(
+                line,
+                style: JourneyType.of(
+                  JourneyType.small,
+                  color: AarastV3Color.textMuted,
+                ),
+              ),
+            ),
         ],
       ),
     );

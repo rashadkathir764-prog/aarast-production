@@ -218,6 +218,9 @@ class _ConfirmSheetState extends State<_ConfirmSheet> {
         _error = switch (dashboard.errorCode) {
           'BOOKING_DATE_UNAVAILABLE' =>
             'يوم $day ما عاد فاضي عندك، فما تأكد الحجز.',
+          // B-20: the day already has as many weddings as he takes.
+          'BOOKING_DAY_FULL' =>
+            'يوم $day مليان عندك، فما تأكد الحجز. تقدر ترفع عدد الأعراس في اليوم من «ملفي».',
           _ => dashboard.errorMessage ?? 'ما قدرنا نحفظ قرارك. جرّب مرة ثانية.',
         };
       });

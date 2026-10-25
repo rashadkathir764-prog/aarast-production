@@ -13,6 +13,7 @@ import '../../marketplace/marketplace_api.dart'
         ProviderDashboardApi,
         ProviderDashboardProfile,
         ProviderDashboardSummary,
+        ProviderLedger,
         ProviderPackage,
         ProviderResponsiveness,
         ProviderReview,
@@ -1261,6 +1262,35 @@ class ProviderDashboardProvider extends ChangeNotifier
     // The quote cards, the booking list and the calendar all change together.
     if (decided) await loadDashboard();
     return decided;
+  }
+
+  /// B-20: how many weddings he takes on one day (1 to 20). A lower number
+  /// keeps the bookings he has; the calendar reads it at once.
+  Future<bool> updateDailyCapacity(int capacity) => _lifecycleStep(
+    () => _api.updateDailyBookingCapacity(capacity),
+    fallback: 'ما قدرنا نحفظ العدد. جرّب مرة ثانية.',
+  );
+
+  /// p47 (B-18): the month he reads, by `YYYY-MM`, once loaded.
+  final Map<String, ProviderLedger> _ledgers = {};
+  ProviderLedger? ledgerOf(DateTime month) => _ledgers[_monthKey(month)];
+  String? _ledgerError;
+  String? get ledgerError => _ledgerError;
+
+  static String _monthKey(DateTime month) => '${month.year}-${month.month}';
+
+  Future<void> loadLedger(DateTime month) async {
+    _ledgerError = null;
+    try {
+      _ledgers[_monthKey(month)] = await _api.getLedger(month);
+    } on ApiException catch (error) {
+      _ledgerError = error.isNetworkFailure
+          ? 'ما فيه نت. حساباتك تظهر لما يرجع.'
+          : marketplaceErrorMessage(error.message);
+    } catch (_) {
+      _ledgerError = 'ما قدرنا نقرأ حساباتك. جرّب مرة ثانية.';
+    }
+    notifyListeners();
   }
 
   Future<bool> blockDate(DateTime day) {

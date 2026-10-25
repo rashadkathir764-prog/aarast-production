@@ -19,7 +19,11 @@ import '../../auth/auth_api.dart' show AuthActionGuard;
 import '../../onboarding/onboarding_api.dart'
     show GuestOnboardingStorage, GuestPersona, WeddingLocationDraft;
 import '../../wedding_plans/wedding_plans_api.dart'
-    show PlanReadBooking, PlanReadViewProvider, WeddingPlansProvider;
+    show
+        DashboardSummaryProvider,
+        PlanReadBooking,
+        PlanReadViewProvider,
+        WeddingPlansProvider;
 import '../../chat/chat_api.dart' show ChatProvider, ConversationListView;
 import '../../finance/finance_api.dart' show CostDraftIntent, FinanceProvider;
 import '../data/booking_moment_ledger.dart';

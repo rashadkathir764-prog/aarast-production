@@ -94,6 +94,7 @@ class DashboardSummary {
     this.contributionHistory = const {},
     this.venueSecured = false,
     this.persona,
+    this.bookedServices = DashboardBookedServices.none,
   });
 
   factory DashboardSummary.fromJson(Map<String, dynamic> json) {
@@ -217,6 +218,9 @@ class DashboardSummary {
       contributionHistory: _intMapOrEmpty(json['contributionHistory']),
       venueSecured: json['venueSecured'] == true,
       persona: json['persona']?.toString(),
+      bookedServices: DashboardBookedServices.fromJson(
+        _mapOrEmpty(json['bookedServices']),
+      ),
       permissions: DashboardPermissionSummary.fromJson(
         _mapOrEmpty(json['permissions']),
       ),
@@ -277,6 +281,11 @@ class DashboardSummary {
   /// C24: the venue is secured by a confirmed booking or a recorded venue
   /// agreement, as the server decides.
   final bool venueSecured;
+
+  /// D60, «محجوز»: the plan's booked services by the server's one rule (a
+  /// confirmed booking, or a cost with someone outside اعّرست). The home
+  /// tile and the providers board both read it.
+  final DashboardBookedServices bookedServices;
 
   /// Whose plan it is: `GROOM` or `BRIDE`. A plan kept on the phone has it
   /// only here, so the starters read it from the summary.
@@ -350,6 +359,7 @@ class DashboardSummary {
       contributionHistory: contributionHistory,
       venueSecured: venueSecured,
       persona: persona,
+      bookedServices: bookedServices,
     );
   }
 
@@ -430,6 +440,39 @@ class DashboardSummary {
     final map = _mapOrEmpty(value);
     return map.map((key, value) => MapEntry(key, _intOrZero(value)));
   }
+}
+
+/// D60: the plan's booked services as the server counts them: the money
+/// items booked, and the booked requests that have no item.
+class DashboardBookedServices {
+  const DashboardBookedServices({
+    required this.count,
+    this.itemIds = const [],
+    this.quoteRequestIds = const [],
+  });
+
+  factory DashboardBookedServices.fromJson(Map<String, dynamic> json) =>
+      DashboardBookedServices(
+        count: json['count'] is num ? (json['count'] as num).toInt() : 0,
+        itemIds: [
+          for (final id in (json['budgetCategoryIds'] is List
+              ? json['budgetCategoryIds'] as List
+              : const []))
+            id.toString(),
+        ],
+        quoteRequestIds: [
+          for (final id in (json['quoteRequestIds'] is List
+              ? json['quoteRequestIds'] as List
+              : const []))
+            id.toString(),
+        ],
+      );
+
+  static const none = DashboardBookedServices(count: 0);
+
+  final int count;
+  final List<String> itemIds;
+  final List<String> quoteRequestIds;
 }
 
 class DashboardMoneySummary {

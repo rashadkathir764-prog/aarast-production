@@ -853,6 +853,9 @@ class ApiException implements Exception {
       'PROVIDER_CATEGORY_LOCKED' =>
         'القسم يتغير قبل الموافقة بس. كلّم الدعم لو تحتاج تغيّره.',
       'PROVIDER_CLAIM_PENDING' => 'طلب استلام هذا الملف وصل الإدارة وينتظر.',
+      // B-33: a provider hands over or cancels his coming weddings first.
+      'PROVIDER_HAS_UPCOMING_BOOKINGS' =>
+        'عندك حجوزات مؤكدة جاية. الغها أو سلّمها قبل ما تحذف حسابك.',
       'PROVIDER_REVIEW_CHANGED' =>
         'فريق المراجعة غيّر ملاحظاته قبل ما يوصلهم تعديلك. شوف الملاحظات الجديدة تحت، صلّحها وأرسل.',
       'PROVIDER_JOINING_CURRENCY' => 'سعر خدمتك يكون بالريال اليمني.',

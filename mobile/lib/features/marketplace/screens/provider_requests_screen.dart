@@ -94,6 +94,14 @@ class _ProviderRequestsScreenState extends State<ProviderRequestsScreen> {
       ],
       costItemById: {for (final cost in costs) cost.id: cost.budgetCategoryId},
       reader: context.journeyProfile,
+      // D60: booked as the server counts it (the home's «محجوز»).
+      booked: switch (context.watch<DashboardSummaryProvider?>()?.summary) {
+        final summary? when summary.planId == widget.weddingPlanId => (
+          items: summary.bookedServices.itemIds.toSet(),
+          quotes: summary.bookedServices.quoteRequestIds.toSet(),
+        ),
+        _ => null,
+      },
       // Never another plan's request, even if one leaks into the provider.
       quotes: marketplace
           .quotesForPlan(widget.weddingPlanId)

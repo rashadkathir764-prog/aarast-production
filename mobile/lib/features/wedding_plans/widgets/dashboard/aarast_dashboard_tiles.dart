@@ -103,7 +103,8 @@ class _JourneyHomeTiles extends StatelessWidget {
               icon: LucideIcons.store,
               color: AarastV3Color.cobalt,
               soft: AarastV3Color.cobaltSoft,
-              value: s.acceptedProviders,
+              // D60: the server's one count, the board's «محجوز N» too.
+              value: s.bookedServices.count,
               of: 'محجوز',
               note: providersNote,
               progress: null,

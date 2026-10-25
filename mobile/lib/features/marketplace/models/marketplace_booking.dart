@@ -20,6 +20,7 @@ class MarketplaceBooking {
     this.customerName,
     this.guestCount,
     this.weddingPlanId,
+    this.money,
   });
 
   factory MarketplaceBooking.fromJson(Map<String, dynamic> json) {
@@ -46,6 +47,9 @@ class MarketplaceBooking {
           ? (json['guestCount'] as num).toInt()
           : null,
       weddingPlanId: json['weddingPlanId']?.toString(),
+      money: json['money'] is Map
+          ? BookingMoney.fromJson(Map<String, dynamic>.from(json['money'] as Map))
+          : null,
     );
   }
 
@@ -81,18 +85,123 @@ class MarketplaceBooking {
   final int? guestCount;
   final String? weddingPlanId;
 
+  /// Provider side only (B-18): what the customer agreed, paid and still
+  /// owes on this booking's item; null without an agreement.
+  final BookingMoney? money;
+
   bool get isRequested => status == 'REQUESTED';
   bool get isConfirmed => status == 'CONFIRMED';
   bool get isOpen => isRequested || isConfirmed;
 
-  /// The customer may ask (again) when there is no open booking.
-  bool get canRequestAgain => status == 'DECLINED' || status == 'CANCELLED';
+  /// The customer may ask (again) when there is no open booking; a request
+  /// that expired with the provider's suspension (B-42) too.
+  bool get canRequestAgain =>
+      status == 'DECLINED' || status == 'CANCELLED' || status == 'EXPIRED';
 
   /// `YYYY-MM-DD`, the format the API takes.
   static String dayParam(DateTime day) =>
       '${day.year.toString().padLeft(4, '0')}-'
       '${day.month.toString().padLeft(2, '0')}-'
       '${day.day.toString().padLeft(2, '0')}';
+}
+
+/// B-18: the three totals the provider reads, read only. The customer
+/// records every payment; the provider never sees one, nor who paid.
+class BookingMoney {
+  const BookingMoney({
+    required this.agreed,
+    required this.paid,
+    required this.left,
+    required this.currency,
+    this.lastPaidAt,
+  });
+
+  factory BookingMoney.fromJson(Map<String, dynamic> json) => BookingMoney(
+    agreed: json['agreed']?.toString() ?? '0',
+    paid: json['paid']?.toString() ?? '0',
+    left: json['left']?.toString() ?? '0',
+    currency: json['currency']?.toString() ?? 'YER',
+    lastPaidAt: _moment(json['lastPaidAt']),
+  );
+
+  /// Decimal strings as the server sends them («550000.00»).
+  final String agreed;
+  final String paid;
+  final String left;
+  final String currency;
+  final DateTime? lastPaidAt;
+}
+
+/// p47 «حساباتك» (B-18): one month of his confirmed bookings and what their
+/// customers recorded, each currency on its own (never added together).
+class ProviderLedger {
+  const ProviderLedger({required this.totals, required this.bookings});
+
+  factory ProviderLedger.fromJson(Map<String, dynamic> json) => ProviderLedger(
+    totals: [
+      for (final row in (json['totals'] is List ? json['totals'] as List : const []))
+        if (row is Map)
+          ProviderLedgerTotal(
+            currency: row['currency']?.toString() ?? 'YER',
+            agreed: row['agreed']?.toString() ?? '0',
+            paid: row['paid']?.toString() ?? '0',
+            left: row['left']?.toString() ?? '0',
+            bookings: row['bookings'] is num ? (row['bookings'] as num).toInt() : 0,
+          ),
+    ],
+    bookings: [
+      for (final row in (json['bookings'] is List ? json['bookings'] as List : const []))
+        if (row is Map)
+          ProviderLedgerBooking(
+            bookingId: row['bookingId']?.toString() ?? '',
+            quoteRequestId: row['quoteRequestId']?.toString() ?? '',
+            customerName: _text(row['customerName']),
+            eventDate:
+                planDayFromJson(row['eventDate']) ??
+                DateTime.fromMillisecondsSinceEpoch(0),
+            money: row['money'] is Map
+                ? BookingMoney.fromJson(Map<String, dynamic>.from(row['money'] as Map))
+                : null,
+          ),
+    ],
+  );
+
+  final List<ProviderLedgerTotal> totals;
+  final List<ProviderLedgerBooking> bookings;
+}
+
+class ProviderLedgerTotal {
+  const ProviderLedgerTotal({
+    required this.currency,
+    required this.agreed,
+    required this.paid,
+    required this.left,
+    required this.bookings,
+  });
+
+  final String currency;
+  final String agreed;
+  final String paid;
+  final String left;
+  final int bookings;
+}
+
+class ProviderLedgerBooking {
+  const ProviderLedgerBooking({
+    required this.bookingId,
+    required this.quoteRequestId,
+    required this.eventDate,
+    this.customerName,
+    this.money,
+  });
+
+  final String bookingId;
+  final String quoteRequestId;
+  final String? customerName;
+  final DateTime eventDate;
+
+  /// Null when the customer keeps no agreement for this booking.
+  final BookingMoney? money;
 }
 
 DateTime? _moment(Object? value) =>
@@ -113,6 +222,8 @@ String bookingStatusLabel(MarketplaceBooking booking, {bool forProvider = false}
     'CANCELLED' => booking.cancelledBy == 'PROVIDER'
         ? (forProvider ? 'ألغيته' : 'ألغاه المزوّد')
         : (forProvider ? 'ألغاه العميل' : 'ألغيته'),
+    // B-42: his account was stopped while the request waited.
+    'EXPIRED' => forProvider ? 'انتهى مع إيقاف حسابك' : 'انتهى، المزوّد موقوف مؤقتًا',
     _ => booking.lifecycleStatus,
   };
 }
@@ -121,6 +232,7 @@ String bookingStatusLabel(MarketplaceBooking booking, {bool forProvider = false}
 String? bookingErrorMessage(String? code) {
   return switch (code) {
     'BOOKING_DATE_UNAVAILABLE' => 'المزوّد غير متاح في هذا اليوم. اختر يومًا آخر.',
+    'BOOKING_DAY_FULL' => 'المزوّد محجوز بالكامل في هذا اليوم. اختر يومًا آخر.',
     'BOOKING_DATE_HAS_BOOKING' => 'لديك حجز مؤكد في هذا اليوم.',
     'BOOKING_DATE_IN_PAST' => 'هذا اليوم مضى. اختر يومًا قادمًا.',
     'BOOKING_INVALID_DATE' => 'اختر يوم العرس أولًا.',

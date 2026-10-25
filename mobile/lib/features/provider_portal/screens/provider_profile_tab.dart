@@ -242,6 +242,45 @@ class _ProviderProfileTabState extends State<ProviderProfileTab> {
               subtitle: 'آخر 30 يوم',
               onTap: () => context.push(AppRouter.providerPerformance),
             ),
+            // B-18 (p47): the customers' agreed, paid and left, read only.
+            JourneyListRow(
+              key: const Key('provider-me-ledger'),
+              icon: LucideIcons.wallet,
+              color: AarastV3Color.primary,
+              soft: AarastV3Color.primarySoft,
+              title: 'حساباتك',
+              subtitle: 'وصلك وباقي لك من حجوزاتك',
+              onTap: () => context.push(AppRouter.providerLedger),
+            ),
+            // B-20: how many weddings he takes on one day; not drawn on
+            // p35 (the drawn teams are gone for good, D41).
+            JourneyListRow(
+              key: const Key('provider-me-capacity'),
+              icon: LucideIcons.calendarDays,
+              color: AarastV3Color.primary,
+              soft: AarastV3Color.primarySoft,
+              title: 'كم عرس تاخذ في اليوم',
+              subtitle: profile.dailyBookingCapacity == 1
+                  ? 'عرس واحد'
+                  : arabicCount(
+                      profile.dailyBookingCapacity,
+                      one: 'عرس واحد',
+                      two: 'عرسين',
+                      few: 'أعراس',
+                      many: 'عرس',
+                    ),
+              onTap: () => showJourneySheet<void>(
+                context: context,
+                builder: (_) => ProviderCapacitySheet(
+                  initial: profile.dailyBookingCapacity,
+                  save: (value) async =>
+                      await dashboard.updateDailyCapacity(value)
+                      ? null
+                      : dashboard.errorMessage ??
+                            'ما قدرنا نحفظ العدد. جرّب مرة ثانية.',
+                ),
+              ),
+            ),
             // B-43: the placement the team records after he pays them
             // outside the app; not drawn on p35 (handoff design differences).
             JourneyListRow(

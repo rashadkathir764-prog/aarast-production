@@ -197,6 +197,9 @@ const _loc = WeddingLocationDraft(
   cityOrDistrict: 'صنعاء',
 );
 
+/// Today on the phone, as a day: offers end relative to it.
+final _today = DateUtils.dateOnly(DateTime.now());
+
 QuoteRequest _received() => QuoteRequest(
   id: 'q-light',
   providerId: 'p-light',
@@ -217,7 +220,9 @@ QuoteRequest _received() => QuoteRequest(
       amount: '550000',
       currency: 'YER',
       message: 'مصورين اثنين، فيلم 10 دقائق، وألبوم مطبوع.',
-      validUntil: DateTime(2026, 10, 26),
+      // Relative to the phone's day: the screens read the wall clock, so a
+      // fixed date expired the offer on 26 October 2026 and broke the walk.
+      validUntil: _today.add(const Duration(days: 1)),
     ),
   ],
 );
@@ -835,7 +840,7 @@ QuoteRequest _receivedLens() => QuoteRequest(
       amount: '480000',
       currency: 'YER',
       message: 'مصور واحد، فيلم 6 دقائق، وألبوم صغير.',
-      validUntil: DateTime(2026, 10, 30),
+      validUntil: _today.add(const Duration(days: 5)),
     ),
   ],
 );

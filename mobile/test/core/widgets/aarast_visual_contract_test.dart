@@ -376,6 +376,8 @@ void main() {
         // B-09 (p27): a review of his and his one reply.
         'lib/features/provider_portal/screens/provider_review_screen.dart',
         'lib/features/provider_portal/screens/provider_booking_screen.dart',
+        // p47 (B-18).
+        'lib/features/provider_portal/screens/provider_ledger_screen.dart',
         'lib/features/provider_portal/screens/provider_notifications_screen.dart',
         'lib/features/provider_portal/screens/provider_offer_screen.dart',
         'lib/features/provider_portal/screens/provider_services_screen.dart',

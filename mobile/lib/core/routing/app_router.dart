@@ -73,6 +73,7 @@ import '../../features/provider_portal/provider_portal_api.dart'
         EditProviderProfileScreen,
         ProviderApplyScreen,
         ProviderGalleryScreen,
+        ProviderLedgerScreen,
         ProviderNotificationsScreen,
         ProviderOfferScreen,
         ProviderPerformanceScreen,
@@ -167,6 +168,9 @@ class AppRouter {
 
   /// His last 30 days (p39).
   static const providerPerformance = '/provider/performance';
+
+  /// A month's agreed, paid and left on his bookings (p47, B-18).
+  static const providerLedger = '/provider/ledger';
 
   /// His notifications and account (p40).
   static const providerSettings = '/provider/settings';

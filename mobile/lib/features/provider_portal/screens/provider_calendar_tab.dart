@@ -91,7 +91,9 @@ class _ProviderCalendarTabState extends State<ProviderCalendarTab> {
                   onDay: (day) => _onDay(day, dashboard),
                 ),
                 const SizedBox(height: 10),
-                const ProviderCalendarLegend(),
+                ProviderCalendarLegend(
+                  capacity: dashboard.profile?.dailyBookingCapacity ?? 1,
+                ),
                 if (dashboard.errorMessage case final error?) ...[
                   const SizedBox(height: 12),
                   JourneyNote(

@@ -8,14 +8,17 @@ import '../../marketplace/marketplace_api.dart'
     show MarketplaceBooking, QuoteRequest;
 import '../providers/provider_dashboard_provider.dart';
 
-/// What one day holds in the provider's calendar (p28), at day level: the
-/// server keeps one confirmed booking per day and whole closed days (F9,
-/// F11), so there is no «باقي N», no team and no period.
+/// What one day holds in the provider's calendar (p28), at day level: he
+/// takes his daily number of weddings (B-20, one by default) and closes
+/// whole days (F11); no team and no period.
 enum ProviderDayState {
   /// Nothing on it.
   free,
 
-  /// A confirmed booking.
+  /// Confirmed bookings, with room for more (p28 «باقي N»).
+  room,
+
+  /// As many confirmed bookings as he takes in a day.
   booked,
 
   /// A booking request waits for his confirmation (REQUESTED).
@@ -32,6 +35,7 @@ class ProviderDay {
     required this.confirmed,
     required this.asked,
     required this.closed,
+    this.capacity = 1,
   });
 
   final DateTime day;
@@ -39,13 +43,22 @@ class ProviderDay {
   final List<MarketplaceBooking> asked;
   final bool closed;
 
-  /// A confirmed booking first, then a request to answer, then a closed
-  /// day: a closed day with a request still shows the request, which waits
-  /// for his answer either way.
-  ProviderDayState get state => confirmed.isNotEmpty
+  /// B-20: the weddings he takes on one day.
+  final int capacity;
+
+  /// Places left for another confirmation (never below zero: a number he
+  /// lowered under the day's bookings keeps them).
+  int get left => capacity - confirmed.length < 0 ? 0 : capacity - confirmed.length;
+
+  /// A full day first, then a request to answer, then a day with room, then
+  /// a closed day: a closed day with a request still shows the request,
+  /// which waits for his answer either way.
+  ProviderDayState get state => confirmed.isNotEmpty && left == 0
       ? ProviderDayState.booked
       : asked.isNotEmpty
       ? ProviderDayState.waiting
+      : confirmed.isNotEmpty
+      ? ProviderDayState.room
       : closed
       ? ProviderDayState.closed
       : ProviderDayState.free;
@@ -92,6 +105,7 @@ ProviderDay providerDayOf(DateTime day, ProviderDashboardProvider dashboard) {
     closed: dashboard.blockedDates.any(
       (closed) => providerSameDay(closed, day),
     ),
+    capacity: dashboard.profile?.dailyBookingCapacity ?? 1,
   );
 }
 
@@ -131,6 +145,7 @@ String? providerHijriMonthsLabel(DateTime month) {
 /// waiting, grey closed, white free).
 (Color, Color) providerDayColors(ProviderDayState state) => switch (state) {
   ProviderDayState.booked => (AarastV3Color.danger, AarastV3Color.dangerSoft),
+  ProviderDayState.room => (AarastV3Color.mint, AarastV3Color.mintSoft),
   ProviderDayState.waiting => (
     AarastV3Color.brandAccentStrong,
     AarastV3Color.brandAccentSoft,
@@ -139,9 +154,11 @@ String? providerHijriMonthsLabel(DateTime month) {
   ProviderDayState.free => (AarastV3Color.ink, AarastV3Color.paper),
 };
 
-/// The word under a day's number.
-String? providerDayWord(ProviderDayState state) => switch (state) {
+/// The word under a day's number; [left] is the room a day has (B-20).
+String? providerDayWord(ProviderDayState state, {int left = 0}) =>
+    switch (state) {
   ProviderDayState.booked => 'محجوز',
+  ProviderDayState.room => 'باقي $left',
   ProviderDayState.waiting => 'ينتظرك',
   ProviderDayState.closed => 'مقفول',
   ProviderDayState.free => null,
@@ -248,7 +265,7 @@ class _DayCell extends StatelessWidget {
   Widget build(BuildContext context) {
     final state = day.state;
     var (fg, bg) = providerDayColors(state);
-    var word = providerDayWord(state);
+    var word = providerDayWord(state, left: day.left);
     if (selected) {
       (fg, bg) = (AarastV3Color.onPrimary, AarastV3Color.primary);
       word = 'تقفله';
@@ -316,12 +333,16 @@ class _DayCell extends StatelessWidget {
 
 /// The calendar's legend: a 10-point dot and its word per state shown.
 class ProviderCalendarLegend extends StatelessWidget {
-  const ProviderCalendarLegend({super.key});
+  const ProviderCalendarLegend({this.capacity = 1, super.key});
+
+  /// B-20: a day with room only exists when he takes more than one.
+  final int capacity;
 
   @override
   Widget build(BuildContext context) {
-    const items = [
-      ('محجوز', ProviderDayState.booked),
+    final items = [
+      if (capacity > 1) ('فيه مكان', ProviderDayState.room),
+      (capacity > 1 ? 'مليان' : 'محجوز', ProviderDayState.booked),
       ('طلب ينتظرك', ProviderDayState.waiting),
       ('مقفول', ProviderDayState.closed),
     ];

@@ -103,6 +103,16 @@ List<RouteBase> _providerPortalRoutes() => [
     ),
   ),
   GoRoute(
+    path: AppRouter.providerLedger,
+    builder: (context, state) => ProviderAuthGate(
+      resumeLocation: state.uri.toString(),
+      registerAsProvider: true,
+      providerAccountRequired: true,
+      providerOperationsRequired: true,
+      child: const ProviderLedgerScreen(),
+    ),
+  ),
+  GoRoute(
     path: AppRouter.providerSettings,
     builder: (context, state) => ProviderAuthGate(
       resumeLocation: state.uri.toString(),

@@ -21,8 +21,9 @@ import '../widgets/provider_request_parts.dart';
 /// The facts the request holds, the agreement (the accepted offer's title,
 /// amount and line, without «نسخة»: offers have no versions, B-07), the
 /// reminders the server sends (7 days and 1 day before, F9), the chat and
-/// the cancel. The drawn team, deposit, remaining and delivery rows have no
-/// field (D-2; deposits wait for decision D-1, B-18; delivery B-23).
+/// the cancel. «وصلك» and «الباقي» are the customer's own record on the
+/// agreement (B-18, D41: no deposit system). The drawn team and delivery
+/// rows have no field (D-2; delivery B-23).
 class ProviderBookingScreen extends StatelessWidget {
   const ProviderBookingScreen({
     required this.quote,
@@ -92,6 +93,27 @@ class ProviderBookingScreen extends StatelessWidget {
                     Text(
                       offer.message!.trim(),
                       style: JourneyType.of(JourneyType.body, height: 1.5),
+                    ),
+                  ],
+                  // B-18: what the customer recorded on this agreement in
+                  // his money, read only (no payment system, D41).
+                  if ((booking.money ?? quote.booking?.money) case final money?) ...[
+                    const SizedBox(height: 10),
+                    _MoneyRow(
+                      key: const Key('provider-booking-paid'),
+                      label: 'وصلك',
+                      value: [
+                        providerMoneyLabel(money.paid, money.currency),
+                        if (money.lastPaidAt case final at?)
+                          'آخرها ${formatArabicDayMonth(at.toLocal())}',
+                      ].join(' · '),
+                      color: AarastV3Color.mint,
+                    ),
+                    const SizedBox(height: 6),
+                    _MoneyRow(
+                      key: const Key('provider-booking-left'),
+                      label: 'الباقي',
+                      value: providerMoneyLabel(money.left, money.currency),
                     ),
                   ],
                 ],
@@ -165,6 +187,47 @@ class ProviderBookingScreen extends StatelessWidget {
     if (!cancelled || !context.mounted) return;
     AarastToast.showSuccess(context, 'انلغى الحجز، ووصله خبر.');
   }
+}
+
+/// p22's «وصلك» / «الباقي» rows: a muted label and its value.
+class _MoneyRow extends StatelessWidget {
+  const _MoneyRow({
+    required this.label,
+    required this.value,
+    this.color = AarastV3Color.ink,
+    super.key,
+  });
+
+  final String label;
+  final String value;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) => Row(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      SizedBox(
+        width: 72,
+        child: Text(
+          label,
+          style: JourneyType.of(
+            JourneyType.small,
+            color: AarastV3Color.textMuted,
+          ),
+        ),
+      ),
+      Expanded(
+        child: Text(
+          value,
+          style: JourneyType.of(
+            JourneyType.body,
+            weight: JourneyType.bold,
+            color: color,
+          ),
+        ),
+      ),
+    ],
+  );
 }
 
 /// p25 «حجز فهد ملغي»: a booking that ended before its day, cancelled by

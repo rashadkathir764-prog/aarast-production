@@ -8,6 +8,7 @@ export 'screens/edit_provider_profile_screen.dart'
     show EditProviderProfileScreen;
 export 'screens/provider_apply_screen.dart' show ProviderApplyScreen;
 export 'screens/provider_gallery_screen.dart' show ProviderGalleryScreen;
+export 'screens/provider_ledger_screen.dart' show ProviderLedgerScreen;
 export 'screens/provider_notifications_screen.dart'
     show ProviderNotificationsScreen;
 export 'screens/provider_offer_screen.dart' show ProviderOfferScreen;

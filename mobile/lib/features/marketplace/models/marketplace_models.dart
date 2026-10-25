@@ -902,6 +902,7 @@ class ProviderDashboardProfile {
     this.verifiedAt,
     this.featuredStartsAt,
     this.featuredEndsAt,
+    this.dailyBookingCapacity = 1,
   });
 
   factory ProviderDashboardProfile.fromJson(Map<String, dynamic> json) {
@@ -947,6 +948,9 @@ class ProviderDashboardProfile {
       verifiedAt: _dateOrNull(json['verifiedAt']),
       featuredStartsAt: _dateOrNull(featured?['startsAt']),
       featuredEndsAt: _dateOrNull(featured?['endsAt']),
+      dailyBookingCapacity: _intOrZero(json['dailyBookingCapacity']) < 1
+          ? 1
+          : _intOrZero(json['dailyBookingCapacity']),
     );
   }
 
@@ -1003,6 +1007,10 @@ class ProviderDashboardProfile {
   /// start of the day after the last one covered (Sana'a time).
   final DateTime? featuredStartsAt;
   final DateTime? featuredEndsAt;
+
+  /// B-20: the weddings he takes on one day (1 to 20); a day with that many
+  /// confirmed bookings is full.
+  final int dailyBookingCapacity;
 }
 
 class ProviderDashboardSummary {

@@ -37,7 +37,9 @@ class _ProviderDaySheet extends StatelessWidget {
     final info = providerDayOf(day, dashboard);
     final hijri = showHijri ? HijriDate.fromGregorian(day) : null;
     final stateLine = switch (info.state) {
-      ProviderDayState.booked => 'عندك حجز مؤكد',
+      ProviderDayState.booked =>
+        info.capacity > 1 ? 'اليوم مليان' : 'عندك حجز مؤكد',
+      ProviderDayState.room => 'باقي ${info.left} من ${info.capacity}',
       ProviderDayState.waiting =>
         info.asked.length == 1 ? 'طلب ينتظر تأكيدك' : 'طلبات تنتظر تأكيدك',
       ProviderDayState.closed => 'قفلته في تقويمك',

@@ -29,11 +29,23 @@ extension _ProviderTabs on _ProviderMarketplaceScreenState {
       ],
       costItemById: {for (final cost in costs) cost.id: cost.budgetCategoryId},
       reader: context.journeyProfile,
+      booked: _serverBooked(planId),
       // Never another plan's request, even if one leaks into the provider.
       quotes: marketplace
           .quotesForPlan(planId)
           .where((quote) => quote.weddingPlanId == planId)
           .toList(),
+    );
+  }
+
+  /// D60: what the server counts as booked in this plan, the home's count;
+  /// null until the plan's summary is read.
+  ({Set<String> items, Set<String> quotes})? _serverBooked(String planId) {
+    final summary = context.watch<DashboardSummaryProvider?>()?.summary;
+    if (summary == null || summary.planId != planId) return null;
+    return (
+      items: summary.bookedServices.itemIds.toSet(),
+      quotes: summary.bookedServices.quoteRequestIds.toSet(),
     );
   }
 

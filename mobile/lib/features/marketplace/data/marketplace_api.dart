@@ -913,6 +913,28 @@ class ProviderDashboardApi {
     return ProviderDashboardProfile.fromJson(json);
   }
 
+  /// B-20: how many weddings he takes on one day (1 to 20).
+  Future<ProviderDashboardProfile> updateDailyBookingCapacity(
+    int capacity,
+  ) async {
+    final json = await _apiClient.patchJson('/api/v1/provider/me/profile', {
+      'dailyBookingCapacity': capacity,
+    });
+    return ProviderDashboardProfile.fromJson(json);
+  }
+
+  /// p47 (B-18): a month's agreed, paid and left on his confirmed bookings,
+  /// as the customers recorded them; read only.
+  Future<ProviderLedger> getLedger(DateTime month) async {
+    final key =
+        '${month.year.toString().padLeft(4, '0')}-'
+        '${month.month.toString().padLeft(2, '0')}';
+    final json = await _apiClient.getJson(
+      '/api/v1/provider/me/ledger?month=$key',
+    );
+    return ProviderLedger.fromJson(json);
+  }
+
   /// Sets the shop's place only (p04): apply takes no address, so joining
   /// sends it right after the application.
   Future<ProviderDashboardProfile> updateProfileAddress(String address) async {

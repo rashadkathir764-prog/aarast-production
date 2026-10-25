@@ -4,6 +4,7 @@ import 'package:lucide_icons/lucide_icons.dart';
 
 import '../../../core/experience_v3/aarast_v3.dart';
 import '../../../core/routing/app_router.dart';
+import '../../../core/widgets/aarast_toast.dart';
 import '../../../core/widgets/aarast_ui.dart';
 import '../../../core/utils/arabic_count.dart';
 import '../../../core/utils/arabic_date_formatter.dart';
@@ -319,6 +320,99 @@ class ProviderReviewReplyBox extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+/// B-20: «كم عرس تاخذ في اليوم», 1 to 20. A lower number keeps the
+/// bookings he already confirmed; a day that reaches it is full. [save]
+/// returns the error to show, or null once saved.
+class ProviderCapacitySheet extends StatefulWidget {
+  const ProviderCapacitySheet({
+    required this.initial,
+    required this.save,
+    super.key,
+  });
+
+  final int initial;
+  final Future<String?> Function(int value) save;
+
+  @override
+  State<ProviderCapacitySheet> createState() => _ProviderCapacitySheetState();
+}
+
+class _ProviderCapacitySheetState extends State<ProviderCapacitySheet> {
+  late int _value = widget.initial;
+  bool _busy = false;
+
+  Future<void> _save() async {
+    setState(() => _busy = true);
+    final error = await widget.save(_value);
+    if (!mounted) return;
+    setState(() => _busy = false);
+    if (error != null) {
+      AarastToast.showError(context, error);
+      return;
+    }
+    AarastToast.showSuccess(context, 'تغيّر عدد الأعراس في اليوم.');
+    Navigator.of(context).pop();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return JourneySheetBody(
+      title: 'كم عرس تاخذ في اليوم',
+      subtitle: 'اليوم يمتلي لما توصل حجوزاته المؤكدة هذا العدد.',
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            IconButton(
+              key: const Key('provider-capacity-less'),
+              tooltip: 'أقل',
+              icon: const Icon(LucideIcons.minus),
+              onPressed: _value > 1 && !_busy
+                  ? () => setState(() => _value -= 1)
+                  : null,
+            ),
+            SizedBox(
+              width: 72,
+              child: Text(
+                '$_value',
+                key: const Key('provider-capacity-value'),
+                textAlign: TextAlign.center,
+                style: JourneyType.of(
+                  JourneyType.title,
+                  weight: JourneyType.bold,
+                ),
+              ),
+            ),
+            IconButton(
+              key: const Key('provider-capacity-more'),
+              tooltip: 'أكثر',
+              icon: const Icon(LucideIcons.plus),
+              onPressed: _value < 20 && !_busy
+                  ? () => setState(() => _value += 1)
+                  : null,
+            ),
+          ],
+        ),
+        if (_value < widget.initial) ...[
+          const SizedBox(height: 8),
+          const JourneyNote(
+            text:
+                'الحجوزات اللي أكّدتها تبقى. بس ما تقدر تأكد زيادة في يوم مليان.',
+          ),
+        ],
+        const SizedBox(height: 14),
+        JourneyButton(
+          key: const Key('provider-capacity-save'),
+          label: 'احفظ',
+          expand: true,
+          loading: _busy,
+          onPressed: _busy || _value == widget.initial ? null : _save,
+        ),
+      ],
     );
   }
 }

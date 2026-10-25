@@ -1,7 +1,11 @@
 // Owner-controlled public API. Cross-feature consumers import this library.
 export 'data/marketplace_api.dart' show MarketplaceApi, ProviderDashboardApi;
 export 'models/marketplace_booking.dart'
-    show MarketplaceBooking, bookingErrorMessage, bookingStatusLabel;
+    show
+        MarketplaceBooking,
+        ProviderLedger,
+        bookingErrorMessage,
+        bookingStatusLabel;
 export 'models/marketplace_models.dart'
     show
         MarketplaceProvider,

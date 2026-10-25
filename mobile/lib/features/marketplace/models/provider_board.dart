@@ -89,12 +89,19 @@ String _offerCount(int count) => switch (count) {
 /// [reader] is who reads the board (B5): «اطلب الحجز» is said to them. The
 /// screens pass the open plan's reader; the groom's form is Arabic's general
 /// one for a caller that reads no one.
+///
+/// [booked] is the server's «محجوز» (D60, the home's count too): the money
+/// items and the requests it counts as booked. A row is booked exactly when
+/// the server says so; the phone's own reading (a confirmed booking, or a
+/// cost with someone outside) only stands in while the plan's summary has
+/// not arrived, and names who and when.
 List<ProviderBoardRow> buildProviderBoard({
   required List<BoardItem> items,
   required List<BoardCost> costs,
   required List<QuoteRequest> quotes,
   required Map<String, String> costItemById,
   JourneyProfile reader = JourneyProfile.groom,
+  ({Set<String> items, Set<String> quotes})? booked,
 }) {
   final quotesByKey = <String, List<QuoteRequest>>{};
   final extraTitles = <String, String>{};
@@ -149,6 +156,10 @@ List<ProviderBoardRow> buildProviderBoard({
         quotes: related,
         outsideParty: outside?.partyName?.trim(),
         reader: reader,
+        serverBooked: booked == null
+            ? null
+            : booked.items.contains(item.id) ||
+                  related.any((quote) => booked.quotes.contains(quote.id)),
       ),
     );
   }
@@ -161,6 +172,9 @@ List<ProviderBoardRow> buildProviderBoard({
         providerCategoryIds: [?categoryId],
         quotes: entry.value,
         reader: reader,
+        serverBooked: booked == null
+            ? null
+            : entry.value.any((quote) => booked.quotes.contains(quote.id)),
       ),
     );
   }
@@ -182,6 +196,7 @@ ProviderBoardRow _row({
   required List<String> providerCategoryIds,
   String? budgetCategoryId,
   String? outsideParty,
+  bool? serverBooked,
 }) {
   final live = quotes
       .where(
@@ -224,12 +239,21 @@ ProviderBoardRow _row({
         outside: outside,
       );
 
-  if (confirmed != null) {
-    final day = confirmed.booking!.eventDate;
-    return make(4, '${_providerName(confirmed)} · أكّد ${formatArabicDayMonth(day)}');
-  }
-  if (outsideParty != null) {
-    return make(4, '$outsideParty · خارج اعّرست', outside: true);
+  // D60: the server decides «محجوز»; the phone names who and when.
+  final isBooked = serverBooked ?? (confirmed != null || outsideParty != null);
+  if (isBooked) {
+    if (confirmed != null) {
+      final day = confirmed.booking!.eventDate;
+      return make(
+        4,
+        '${_providerName(confirmed)} · أكّد ${formatArabicDayMonth(day)}',
+      );
+    }
+    if (outsideParty != null) {
+      return make(4, '$outsideParty · خارج اعّرست', outside: true);
+    }
+    // Booked on the server through a request this phone has not read yet.
+    return make(4, 'محجوز');
   }
   if (requested != null) {
     return make(3, '${_providerName(requested)} · ينتظر تأكيده');

@@ -1922,10 +1922,16 @@ const trackedOwnerApiContracts = [
         uri: 'data/marketplace_api.dart',
         show: ['MarketplaceApi', 'ProviderDashboardApi'],
       },
-      // V1 checklist 4.6: the provider portal reads and decides bookings.
+      // V1 checklist 4.6: the provider portal reads and decides bookings;
+      // p47 (B-18) reads a month's agreed, paid and left.
       {
         uri: 'models/marketplace_booking.dart',
-        show: ['MarketplaceBooking', 'bookingErrorMessage', 'bookingStatusLabel'],
+        show: [
+          'MarketplaceBooking',
+          'ProviderLedger',
+          'bookingErrorMessage',
+          'bookingStatusLabel',
+        ],
       },
       {
         uri: 'models/marketplace_models.dart',
@@ -2095,6 +2101,8 @@ const trackedOwnerApiContracts = [
       },
       // p37 (D40).
       { uri: 'screens/provider_gallery_screen.dart', show: ['ProviderGalleryScreen'] },
+      // p47 (B-18): a month's agreed, paid and left, read only.
+      { uri: 'screens/provider_ledger_screen.dart', show: ['ProviderLedgerScreen'] },
       {
         uri: 'screens/provider_notifications_screen.dart',
         show: ['ProviderNotificationsScreen'],
@@ -2454,7 +2462,13 @@ const trackedCollaborationBatchContracts = [
   {
     source: 'mobile/lib/features/marketplace/screens/provider_marketplace_screen.dart',
     target: 'mobile/lib/features/wedding_plans/wedding_plans_api.dart',
-    show: ['PlanReadBooking', 'PlanReadViewProvider', 'WeddingPlansProvider'],
+    // D60: the board reads the server's «محجوز» from the plan's summary.
+    show: [
+      'DashboardSummaryProvider',
+      'PlanReadBooking',
+      'PlanReadViewProvider',
+      'WeddingPlansProvider',
+    ],
   },
   {
     source: 'mobile/lib/features/marketplace/screens/provider_requests_screen.dart',
@@ -3300,6 +3314,8 @@ const trackedCompositionRootContracts = [
           'EditProviderProfileScreen',
           'ProviderApplyScreen',
           'ProviderGalleryScreen',
+          // p47 (B-18).
+          'ProviderLedgerScreen',
           'ProviderNotificationsScreen',
           'ProviderOfferScreen',
           'ProviderPerformanceScreen',

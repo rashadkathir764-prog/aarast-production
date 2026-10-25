@@ -202,7 +202,7 @@ test("an administrator app session can create a provider profile without changin
     // A new application has no review step yet.
     providerReviewEvent: { findFirst: async () => null },
     // Nor a featured placement (B-43).
-    providerFeaturedPeriod: { findFirst: async () => null },
+    providerFeaturedPeriod: { findMany: async () => [] },
   };
   const prisma = {
     provider: { findUnique: async () => null },

@@ -85,9 +85,7 @@ MarketplaceService _service(
 }) => MarketplaceService(
   id: id,
   providerId: 'provider-1',
-  title: title,
-  isFeatured: false,
-  isActive: active,
+  title: title,  isActive: active,
   category: _photo,
   categoryId: 'cat-photo',
   description: 'الزفاف كامل، من دخول العريس إلى نهاية الحفل.',

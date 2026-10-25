@@ -147,7 +147,6 @@ function joiningService(overrides: Record<string, unknown> = {}) {
     priceUpdatedAt: now,
     cityId: null,
     isActive: true,
-    isFeatured: false,
     images: [],
     category,
     city: null,
@@ -238,7 +237,7 @@ function dashboardFor(
       create: async ({ data }: any) => ({ id: 'resubmitted-step', ...data, notes: [] }),
     },
     // No featured placement on record (B-43).
-    providerFeaturedPeriod: { findFirst: async () => null },
+    providerFeaturedPeriod: { findMany: async () => [] },
     providerService: {
       count: async () => options.activePriced ?? 1,
       findMany: async () => options.services ?? [joiningService()],

@@ -297,6 +297,13 @@ export class MarketplaceAdminService implements MarketplaceAdminPort {
     return this.repository.getFeaturedSummary(client, now, weekEnd);
   }
 
+  async listFeaturedShownProviderIds(
+    client: Prisma.TransactionClient,
+    providerIds: readonly string[],
+  ): Promise<string[]> {
+    return this.repository.listFeaturedShownProviderIds(client, providerIds);
+  }
+
   async listActiveFeaturedPeriods(
     client: Prisma.TransactionClient,
     providerIds: readonly string[],

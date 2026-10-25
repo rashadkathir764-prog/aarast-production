@@ -13,7 +13,7 @@ import {
 } from "@prisma/client";
 import { isQuoteOfferExpired } from "./quote-offer-expiry";
 import { quoteOfferVersionView } from "../modules/marketplace/public/quote-offer-versions";
-import { activeFeaturedPeriodWhere, featuredUntil } from "../modules/marketplace/public/featured-placement";
+import { featuredNowConditions, featuredUntil, listedProviderConditions, notFeaturedNowCondition } from "../modules/marketplace/public/featured-placement";
 import { toReviewIdentity } from "../shared-kernel/privacy/review-identity";
 import { optionalMoneyAmount } from "../shared-kernel/money/money";
 import { weddingLocationResponse } from "../modules/planning/public/wedding-location";
@@ -58,13 +58,9 @@ export class MarketplaceQuery {
     where: ProviderSearchWhere;
   } {
     const pagination = this.parsePagination(query.page, query.limit);
-    const and: ProviderSearchWhere["AND"] = [
-      { status: ProviderStatus.ACTIVE },
-      // An approved provider is listed once it offers something: a profile
-      // with no service showed customers an empty card and an empty page
-      // (field test Q14). Its page stays reachable by id.
-      { services: { some: { isActive: true } } },
-    ];
+    // An approved provider is listed once it offers something; its page
+    // stays reachable by id. The same rule decides where a placement shows.
+    const and: ProviderSearchWhere["AND"] = [...listedProviderConditions()];
     const where: ProviderSearchWhere = { AND: and };
 
     if (query.cityId) {
@@ -86,8 +82,8 @@ export class MarketplaceQuery {
     }
     const featured = this.optionalBoolean(query.featured, "featured");
     if (featured !== null) {
-      const active = activeFeaturedPeriodWhere(now);
-      and.push({ featuredPeriods: featured ? { some: active } : { none: active } });
+      if (featured) and.push(...featuredNowConditions(now));
+      else and.push(notFeaturedNowCondition(now));
     }
     const search = this.optionalText(query.search);
     if (search) {
@@ -305,6 +301,8 @@ export class MarketplacePresenter {
       isClaimed: provider.userId !== null,
       // A placement recorded after a payment outside the app (B-43), read at `now`.
       isFeatured: featuredUntil(provider.featuredPeriods) !== null,
+      // Until when: a phone showing a saved copy drops «مميز» once it passed.
+      featuredUntil: featuredUntil(provider.featuredPeriods),
       ratingAverage: provider.ratingAverage.toString(),
       ratingCount: provider.ratingCount,
       createdAt: provider.createdAt,
@@ -319,7 +317,6 @@ export class MarketplacePresenter {
               priceUnit: service.priceUnit,
               currency: service.currency,
               priceUpdatedAt: service.priceUpdatedAt,
-              isFeatured: service.isFeatured,
               category: this.toCategoryResponse(service.category),
               images: service.images.map((image) =>
                 this.toImageResponse(image),
@@ -416,7 +413,6 @@ export class MarketplacePresenter {
       cityId: service.cityId,
       city: service.city ? this.toCityResponse(service.city) : null,
       isActive: service.isActive,
-      isFeatured: service.isFeatured,
       images: service.images.map((image) => this.toImageResponse(image)),
       createdAt: service.createdAt,
       updatedAt: service.updatedAt,

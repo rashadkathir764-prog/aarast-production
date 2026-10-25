@@ -66,8 +66,4 @@ export class AdminServiceDto {
   @IsBoolean()
   @IsOptional()
   isActive?: boolean;
-
-  @IsBoolean()
-  @IsOptional()
-  isFeatured?: boolean;
 }

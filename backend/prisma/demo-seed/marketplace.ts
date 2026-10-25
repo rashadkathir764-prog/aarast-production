@@ -146,6 +146,8 @@ async function seedProvider(
       endedAt: null,
       endedById: null,
       endNote: null,
+      // Recorded on its first day: the grant's notice told him it started.
+      startNoticeAt: startsAt,
       endingNoticeAt: spec.featured.told ? new Date(endsAt.getTime() - 7 * DAY_MS) : null,
       endNoticeAt: spec.featured.told ? endsAt : null,
     };
@@ -193,7 +195,6 @@ async function seedProvider(
       priceUpdatedAt: inDays(-14),
       cityId: cities.get(spec.city)!,
       isActive: true,
-      isFeatured: false,
     };
     await prisma.providerService.upsert({
       where: { id: sid },

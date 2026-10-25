@@ -59,7 +59,6 @@ export type ProviderService = {
   currency: string;
   cityId?: string | null;
   isActive: boolean;
-  isFeatured?: boolean;
   category?: ProviderCategory;
   city?: City | null;
   images?: Array<{
@@ -94,7 +93,6 @@ export type ServicePayload = {
   currency?: string;
   cityId?: string | null;
   isActive?: boolean;
-  isFeatured?: boolean;
 };
 
 export type CatalogPayload = {

@@ -67,9 +67,7 @@ class _RecordingMarketplaceApi extends MarketplaceApi {
         businessName: search ?? 'مزود',
         ownerName: 'مالك المزود',
         ratingAverage: 0,
-        ratingCount: 0,
-        isFeatured: false,
-      ),
+        ratingCount: 0,      ),
     ];
   }
 }

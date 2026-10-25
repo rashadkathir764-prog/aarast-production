@@ -164,10 +164,16 @@ test('marketplace serves the home counters, the active plan provider links and t
   });
   const planQuotes = { weddingPlanId: 'plan-1' };
   assert.deepEqual(calls, [
+    // B-43: the home counter counts by the placement rule, as the list ranks:
+    // listed (active, with an active service), claimed, and a period now.
     ['provider.count', {
       where: {
-        status: ProviderStatus.ACTIVE,
-        featuredPeriods: { some: { startsAt: { lte: now }, endsAt: { gt: now }, endedAt: null } },
+        AND: [
+          { status: ProviderStatus.ACTIVE },
+          { services: { some: { isActive: true } } },
+          { userId: { not: null } },
+          { featuredPeriods: { some: { startsAt: { lte: now }, endsAt: { gt: now }, endedAt: null } } },
+        ],
       },
     }],
     ['favoriteProvider.count', { where: { userId: 'user-1' } }],
@@ -179,7 +185,7 @@ test('marketplace serves the home counters, the active plan provider links and t
           include: {
             services: {
               where: { isActive: true },
-              orderBy: [{ isFeatured: 'desc' }, { createdAt: 'desc' }],
+              orderBy: [{ createdAt: 'desc' }, { id: 'asc' }],
               take: 1,
               select: {
                 id: true,

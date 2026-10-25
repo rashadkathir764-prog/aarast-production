@@ -39,7 +39,6 @@ export type ProviderServiceProjection = {
   currency: string;
   cityId?: string | null;
   isActive: boolean;
-  isFeatured?: boolean;
   category?: ProviderCategoryProjection;
   city?: CityProjection | null;
   images?: Array<{ id: string; serviceId: string; imageUrl: string; altText: string | null; sortOrder: number; createdAt: string }>;
@@ -327,6 +326,12 @@ export function setProviderVerified(
 export type FeaturedPeriod = {
   id: string;
   state: 'ACTIVE' | 'SCHEDULED' | 'EXPIRED' | 'ENDED';
+  /**
+   * The placement rule holds for the provider now (in the customers' list:
+   * active, with an active service, claimed); a running placement without
+   * it ranks and badges nothing.
+   */
+  providerShown: boolean;
   startsAt: string;
   endsAt: string;
   startsOn: string;
@@ -338,6 +343,7 @@ export type FeaturedPeriod = {
   endedAt: string | null;
   endedBy: { id: string; name: string } | null;
   endNote: string | null;
+  startNoticeAt: string | null;
   endingNoticeAt: string | null;
   endNoticeAt: string | null;
   provider: ProviderReference;
@@ -349,6 +355,7 @@ export type FeaturedPeriodList = 'CURRENT' | 'ACTIVE' | 'SCHEDULED' | 'FINISHED'
 export type FeaturedSummary = {
   /** Active providers with an active service: the ones customers see. */
   listedProviders: number;
+  /** Of those, featured now by the placement rule (claimed, a period running). */
   featured: number;
   free: number;
   endingThisWeek: number;

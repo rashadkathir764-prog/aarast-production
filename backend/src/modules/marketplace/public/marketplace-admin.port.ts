@@ -103,7 +103,6 @@ export interface AdminProviderFilter {
 
 export interface AdminServiceFilter {
   isActive?: boolean;
-  isFeatured?: boolean;
   providerId?: string;
   categoryId?: string;
   /** The service's own city, or the provider's when the service has none. */
@@ -127,7 +126,6 @@ export interface AdminServiceFields {
   currency: string;
   cityId: string | null;
   isActive: boolean;
-  isFeatured: boolean;
 }
 
 export type AdminServiceChanges = Partial<Omit<AdminServiceFields, 'providerId'>>;
@@ -191,7 +189,6 @@ export interface AdminMarketplaceReport {
     total: number;
     active: number;
     disabled: number;
-    featured: number;
   };
   reviews: {
     total: number;
@@ -249,6 +246,8 @@ export interface FeaturedPeriodGrantFields {
   endsAt: Date;
   note: string | null;
   grantedById: string;
+  /** Set when it starts now: the grant's own notice tells him it started. */
+  startNoticeAt: Date | null;
 }
 
 export interface FeaturedPeriodEndFields {
@@ -442,7 +441,12 @@ export interface MarketplaceAdminPort {
     now: Date,
     weekEnd: Date,
   ): Promise<AdminFeaturedSummary>;
-  /** Each provider's period active at `now` (at most one per provider). */
+  /** Of these providers, the ones a placement shows on (`featuredShowsWhere`). */
+  listFeaturedShownProviderIds(
+    client: Prisma.TransactionClient,
+    providerIds: readonly string[],
+  ): Promise<string[]>;
+  /** Each provider's period active at `now` (at most one per provider), where a placement shows. */
   listActiveFeaturedPeriods(
     client: Prisma.TransactionClient,
     providerIds: readonly string[],

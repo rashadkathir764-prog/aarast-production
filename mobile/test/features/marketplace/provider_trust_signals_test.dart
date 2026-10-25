@@ -155,9 +155,7 @@ MarketplaceService _service(String id, DateTime? priceUpdatedAt) {
   return MarketplaceService(
     id: id,
     providerId: 'provider-1',
-    title: 'خدمة $id',
-    isFeatured: false,
-    isActive: true,
+    title: 'خدمة $id',    isActive: true,
     basePrice: priceUpdatedAt == null ? null : '1000',
     currency: 'YER',
     priceUpdatedAt: priceUpdatedAt,

@@ -144,7 +144,6 @@ model ProviderService {
   priceUpdatedAt DateTime?
   cityId         String?
   isActive       Boolean                @default(true)
-  isFeatured     Boolean                @default(false)
   createdAt      DateTime               @default(now())
   updatedAt      DateTime               @updatedAt
   provider       Provider               @relation(fields: [providerId], references: [id], onDelete: Cascade)
@@ -454,8 +453,10 @@ model QuoteOfferVersion {
 /// kept, only the period, who switched it on and their note. The provider
 /// is featured while `startsAt <= now < endsAt` and `endedAt` is null; it
 /// is read at request time, so the placement lapses at `endsAt` by itself.
-/// One provider's periods never overlap (checked under the provider's row
-/// lock). `grantedById` and `endedById` are plain ids like
+/// One provider's periods that nobody ended never overlap (checked under the
+/// provider's row lock, and by the exclusion constraint
+/// `ProviderFeaturedPeriod_no_overlap` the migration adds, which Prisma does
+/// not model). `grantedById` and `endedById` are plain ids like
 /// `ProviderClaimRequest.decidedById`. The notice markers make the hourly
 /// job tell the provider once.
 model ProviderFeaturedPeriod {
@@ -470,7 +471,9 @@ model ProviderFeaturedPeriod {
   endedAt        DateTime?
   endedById      String?
   endNote        String?   @db.Text
-  // When the provider was told it ends within seven days, and that it ended.
+  // When the provider was told it started, that it ends within seven days,
+  // and that it ended.
+  startNoticeAt  DateTime?
   endingNoticeAt DateTime?
   endNoticeAt    DateTime?
   provider       Provider  @relation(fields: [providerId], references: [id], onDelete: Cascade)

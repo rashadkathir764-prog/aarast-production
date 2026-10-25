@@ -34,6 +34,7 @@ void main() {
     WidgetTester tester, {
     required bool isClaimed,
     bool isVerified = false,
+    bool isFeatured = false,
     String? priceLabel,
     String? priceAgeLabel,
   }) async {
@@ -53,7 +54,7 @@ void main() {
             body: SingleChildScrollView(
               child: ProviderResultCard(
                 businessName: 'قاعة السعادة للأفراح',
-                isFeatured: false,
+                isFeatured: isFeatured,
                 ratingAverage: 4.8,
                 ratingCount: 63,
                 isFavorite: false,
@@ -116,5 +117,33 @@ void main() {
     expect(find.text('اطلب عرض تعرف السعر'), findsOneWidget);
     expect(find.byKey(const Key('provider-card-unclaimed-note')), findsNothing);
     expect(tester.takeException(), isNull);
+  });
+
+  testWidgets(
+    'B-43 the drawn «مميز» says, when tapped, that he paid and it is no recommendation',
+    (tester) async {
+      await pumpCard(tester, isClaimed: true, isFeatured: true);
+
+      expect(find.text('مميز'), findsOneWidget);
+      await tester.tap(find.byKey(const Key('provider-card-featured')));
+      await tester.pumpAndSettle();
+      expect(find.byKey(const Key('provider-featured-sheet')), findsOneWidget);
+      expect(
+        find.text('هذا المزود دفع عشان يطلع أول. مو ترشيح من اعّرست.'),
+        findsOneWidget,
+      );
+      await tester.tap(find.text('فهمت'));
+      await tester.pumpAndSettle();
+      expect(find.byKey(const Key('provider-featured-sheet')), findsNothing);
+      expect(tester.takeException(), isNull);
+    },
+  );
+
+  testWidgets('a provider that is not featured carries no «مميز»', (
+    tester,
+  ) async {
+    await pumpCard(tester, isClaimed: true);
+    expect(find.byKey(const Key('provider-card-featured')), findsNothing);
+    expect(find.text('مميز'), findsNothing);
   });
 }

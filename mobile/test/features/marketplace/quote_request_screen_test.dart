@@ -302,9 +302,7 @@ class _Marketplace extends ProviderMarketplaceProvider {
     businessName: 'فرقة الأفراح',
     ownerName: 'مالك',
     ratingAverage: 4.9,
-    ratingCount: 88,
-    isFeatured: false,
-    primaryCategory: _category,
+    ratingCount: 88,    primaryCategory: _category,
   );
 
   @override
@@ -312,17 +310,13 @@ class _Marketplace extends ProviderMarketplaceProvider {
     MarketplaceService(
       id: 'service-full',
       providerId: 'p-afrah',
-      title: 'فرقة كاملة',
-      isFeatured: false,
-      isActive: true,
+      title: 'فرقة كاملة',      isActive: true,
       category: _category,
     ),
     MarketplaceService(
       id: 'service-solo',
       providerId: 'p-afrah',
-      title: 'فنان بس',
-      isFeatured: false,
-      isActive: true,
+      title: 'فنان بس',      isActive: true,
       category: _category,
     ),
   ];

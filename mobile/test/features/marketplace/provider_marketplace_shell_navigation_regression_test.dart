@@ -327,15 +327,12 @@ const _provider = MarketplaceProvider(
   ownerName: 'مالك القاعة',
   ratingAverage: 4.7,
   ratingCount: 12,
-  isFeatured: true,
   city: MarketplaceCity(id: 'city-1', nameAr: 'صنعاء'),
   services: [
     MarketplaceService(
       id: 'service-1',
       providerId: _providerId,
-      title: 'تنسيق القاعة',
-      isFeatured: false,
-      isActive: true,
+      title: 'تنسيق القاعة',      isActive: true,
       basePrice: '120000',
       currency: 'YER',
     ),

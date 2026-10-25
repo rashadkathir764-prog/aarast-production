@@ -51,9 +51,7 @@ QuoteRequest _receivedQuote() => QuoteRequest(
   service: MarketplaceService(
     id: 'service-1',
     providerId: 'provider-1',
-    title: 'تصوير فوتوغرافي',
-    isFeatured: false,
-    isActive: true,
+    title: 'تصوير فوتوغرافي',    isActive: true,
   ),
   offers: [
     QuoteOffer(
@@ -225,9 +223,7 @@ void main() {
         id: 'service-band',
         providerId: 'provider-band',
         title: 'زفة',
-        category: ProviderCategory(id: 'cat-band', nameAr: 'الفنان والفرقة'),
-        isFeatured: false,
-        isActive: true,
+        category: ProviderCategory(id: 'cat-band', nameAr: 'الفنان والفرقة'),        isActive: true,
       ),
       updatedAt: updatedAt,
       rejectedAt: rejectedAt,
@@ -597,9 +593,7 @@ void main() {
         businessName: 'قاعة السعادة للأفراح والمناسبات $id',
         ownerName: 'مالك',
         ratingAverage: 0,
-        ratingCount: 0,
-        isFeatured: false,
-        primaryCategory: const ProviderCategory(
+        ratingCount: 0,        primaryCategory: const ProviderCategory(
           id: 'cat-hall',
           nameAr: 'الصالات والقاعات',
         ),
@@ -635,9 +629,7 @@ void main() {
         businessName: name,
         ownerName: 'مالك',
         ratingAverage: 0,
-        ratingCount: 0,
-        isFeatured: false,
-        primaryCategory: const ProviderCategory(
+        ratingCount: 0,        primaryCategory: const ProviderCategory(
           id: 'cat-photo',
           nameAr: 'تصوير',
         ),
@@ -646,9 +638,7 @@ void main() {
     MarketplaceService priced(String id, String price) => MarketplaceService(
       id: 'service-$id',
       providerId: id,
-      title: 'باقة',
-      isFeatured: false,
-      isActive: true,
+      title: 'باقة',      isActive: true,
       basePrice: price,
       currency: 'YER',
     );

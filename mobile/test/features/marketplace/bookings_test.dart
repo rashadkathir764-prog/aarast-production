@@ -188,9 +188,7 @@ class _BookingsApiFake extends ProviderDashboardApi {
     MarketplaceService(
       id: 'service-1',
       providerId: 'provider-1',
-      title: 'زفة كاملة',
-      isFeatured: false,
-      isActive: true,
+      title: 'زفة كاملة',      isActive: true,
     ),
   ];
 

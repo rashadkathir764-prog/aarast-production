@@ -36,9 +36,7 @@ QuoteRequest _booked(
     id: 'service-$id',
     providerId: 'provider-$id',
     title: category,
-    category: ProviderCategory(id: 'cat-$id', nameAr: category),
-    isFeatured: false,
-    isActive: true,
+    category: ProviderCategory(id: 'cat-$id', nameAr: category),    isActive: true,
   ),
   booking: MarketplaceBooking.fromJson({
     'id': 'booking-$id',

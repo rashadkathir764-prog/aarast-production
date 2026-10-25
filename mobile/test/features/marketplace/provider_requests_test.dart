@@ -23,9 +23,7 @@ const _photo = MarketplaceService(
   id: 'service-photo',
   providerId: 'p1',
   title: 'صور وفيديو',
-  category: ProviderCategory(id: 'cat-photo', nameAr: 'تصوير'),
-  isFeatured: false,
-  isActive: true,
+  category: ProviderCategory(id: 'cat-photo', nameAr: 'تصوير'),  isActive: true,
 );
 
 QuoteRequest _offer(

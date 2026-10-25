@@ -18,6 +18,30 @@ String? providerPriceAgeLabel(DateTime? updatedAt, {DateTime? now}) {
   return 'محدّث قبل ${arabicCount(months, one: 'شهر', two: 'شهرين', few: 'شهور', many: 'شهر')}';
 }
 
+/// What «مميز» means, from the badge on a provider's card (an undrawn sheet
+/// on the journey kit; the handoff's design differences): he paid to come up
+/// first; it is no recommendation from اعّرست.
+Future<void> showProviderFeaturedSheet(BuildContext context) {
+  return showJourneySheet<void>(
+    context: context,
+    builder: (sheetContext) => JourneySheetBody(
+      key: const Key('provider-featured-sheet'),
+      title: 'مميز',
+      bottom: JourneyButton(
+        label: 'فهمت',
+        expand: true,
+        onPressed: () => Navigator.of(sheetContext).pop(),
+      ),
+      children: [
+        Text(
+          'هذا المزود دفع عشان يطلع أول. مو ترشيح من اعّرست.',
+          style: JourneyType.of(JourneyType.bodyLarge),
+        ),
+      ],
+    ),
+  );
+}
+
 /// f02 a provider in «استكشف»: the photo, the name and rating, where, the
 /// facts that matter (ضمن بندك، موثّق، جديد، غير مفعّل) and the price with
 /// how old it is (w33). Only real facts; nothing is invented.
@@ -106,11 +130,23 @@ class ProviderResultCard extends StatelessWidget {
           color: AarastV3Color.textMuted,
           soft: AarastV3Color.line,
         ),
+      // The drawn «مميز» (f02). It is a paid placement (B-43), so a tap
+      // says so plainly: not a recommendation from اعّرست.
       if (isFeatured)
-        JourneyTag(
-          label: 'مميز',
-          color: context.accent.primary,
-          soft: context.accent.primarySoft,
+        Semantics(
+          button: true,
+          label: 'مميز: ليش يطلع أول؟',
+          excludeSemantics: true,
+          child: GestureDetector(
+            key: const Key('provider-card-featured'),
+            behavior: HitTestBehavior.opaque,
+            onTap: () => showProviderFeaturedSheet(context),
+            child: JourneyTag(
+              label: 'مميز',
+              color: context.accent.primary,
+              soft: context.accent.primarySoft,
+            ),
+          ),
         ),
     ];
     return Semantics(

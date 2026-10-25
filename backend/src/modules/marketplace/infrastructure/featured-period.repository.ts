@@ -1,7 +1,12 @@
-import { Prisma, ProviderStatus } from '@prisma/client';
+import { Prisma } from '@prisma/client';
 import {
   activeFeaturedPeriodWhere,
+  featuredNowProviderWhere,
+  featuredRunAround,
+  featuredShowsWhere,
+  listedProviderConditions,
   type FeaturedWindow,
+  type OpenFeaturedPeriod,
 } from '../public/featured-placement';
 import type {
   AdminFeaturedPeriodFilter,
@@ -20,20 +25,49 @@ const periodOrder = [
   { id: 'desc' },
 ] satisfies Prisma.ProviderFeaturedPeriodOrderByWithRelationInput[];
 
-/** The provider's placement he reads: the active one, else the next one booked. */
-export function findProviderFeaturedView(
+/** Every period of these providers that nobody ended, oldest first. */
+export async function listOpenFeaturedPeriods(
+  client: Client,
+  providerIds: readonly string[],
+): Promise<Array<OpenFeaturedPeriod & { providerId: string }>> {
+  if (providerIds.length === 0) return [];
+  return client.providerFeaturedPeriod.findMany({
+    where: { providerId: { in: [...new Set(providerIds)] }, endedAt: null },
+    select: { id: true, providerId: true, startsAt: true, endsAt: true },
+    orderBy: [{ startsAt: 'asc' }, { id: 'asc' }],
+  });
+}
+
+/**
+ * The provider's placement he reads: the active one, else the next one
+ * booked, ending where its run of back-to-back renewals really ends.
+ */
+export async function findProviderFeaturedView(
   client: Client,
   providerId: string,
   now: Date,
 ): Promise<FeaturedWindow | null> {
-  return client.providerFeaturedPeriod.findFirst({
-    where: { providerId, endedAt: null, endsAt: { gt: now } },
-    orderBy: [{ startsAt: 'asc' }, { id: 'asc' }],
-    select: { startsAt: true, endsAt: true },
-  });
+  const open = await listOpenFeaturedPeriods(client, [providerId]);
+  const first = open.find((period) => period.endsAt.getTime() > now.getTime());
+  if (!first) return null;
+  const run = featuredRunAround(open, first.id)!;
+  return { startsAt: first.startsAt, endsAt: run.endsAt };
 }
 
-/** Each provider's active period at `now`. */
+/** Of these providers, the ones a placement shows on (the one rule). */
+export async function listFeaturedShownProviderIds(
+  client: Client,
+  providerIds: readonly string[],
+): Promise<string[]> {
+  if (providerIds.length === 0) return [];
+  const rows = await client.provider.findMany({
+    where: { AND: [{ id: { in: [...new Set(providerIds)] } }, ...featuredShowsWhere().AND] },
+    select: { id: true },
+  });
+  return rows.map((row) => row.id);
+}
+
+/** Each provider's active period at `now`, for the providers featured by the rule. */
 export async function listActiveFeaturedPeriods(
   client: Client,
   providerIds: readonly string[],
@@ -41,7 +75,11 @@ export async function listActiveFeaturedPeriods(
 ): Promise<Array<FeaturedWindow & { providerId: string }>> {
   if (providerIds.length === 0) return [];
   return client.providerFeaturedPeriod.findMany({
-    where: { providerId: { in: [...new Set(providerIds)] }, ...activeFeaturedPeriodWhere(now) },
+    where: {
+      providerId: { in: [...new Set(providerIds)] },
+      ...activeFeaturedPeriodWhere(now),
+      provider: featuredShowsWhere(),
+    },
     select: { providerId: true, startsAt: true, endsAt: true },
   });
 }
@@ -85,28 +123,32 @@ export async function listFeaturedPeriods(
 }
 
 /**
- * a17's cards: the providers customers see (active, with an active
- * service), how many of them are featured now, and how many placements end
- * before `weekEnd` with no period booked right after.
+ * a17's cards: the providers customers see (listed), how many of them are
+ * featured now by the placement rule, and how many of those placements end
+ * before `weekEnd` with no period booked right after. Four reads, whatever
+ * the number of placements.
  */
 export async function countFeaturedSummary(client: Client, now: Date, weekEnd: Date) {
-  const listed = {
-    status: ProviderStatus.ACTIVE,
-    services: { some: { isActive: true } },
-  };
-  const active = activeFeaturedPeriodWhere(now);
   const [listedProviders, featured, ending] = await Promise.all([
-    client.provider.count({ where: listed }),
-    client.provider.count({ where: { ...listed, featuredPeriods: { some: active } } }),
+    client.provider.count({ where: { AND: [...listedProviderConditions()] } }),
+    client.provider.count({ where: featuredNowProviderWhere(now) }),
     client.providerFeaturedPeriod.findMany({
-      where: { ...active, endsAt: { gt: now, lte: weekEnd } },
+      where: {
+        ...activeFeaturedPeriodWhere(now),
+        endsAt: { gt: now, lte: weekEnd },
+        provider: featuredShowsWhere(),
+      },
       select: { id: true, providerId: true, endsAt: true },
     }),
   ]);
-  let endingSoon = 0;
-  for (const period of ending) {
-    if (!(await findFeaturedContinuation(client, period))) endingSoon += 1;
-  }
+  const open = await listOpenFeaturedPeriods(client, ending.map((period) => period.providerId));
+  const endingSoon = ending.filter((period) => {
+    const run = featuredRunAround(
+      open.filter((candidate) => candidate.providerId === period.providerId),
+      period.id,
+    );
+    return run !== null && run.endsAt.getTime() === period.endsAt.getTime();
+  }).length;
   return { listedProviders, featured, endingSoon };
 }
 
@@ -134,6 +176,8 @@ export interface FeaturedPeriodGrant {
   endsAt: Date;
   note: string | null;
   grantedById: string;
+  /** Set when it starts now: the grant's own notice tells him it started. */
+  startNoticeAt: Date | null;
 }
 
 export function createFeaturedPeriod(client: Client, grant: FeaturedPeriodGrant) {
@@ -212,20 +256,21 @@ export function listFeaturedPeriodIdsEnded(client: Client, now: Date, take: numb
   });
 }
 
-/** A period of the same provider that picks up where this one ends. */
-export function findFeaturedContinuation(
-  client: Client,
-  period: { id: string; providerId: string; endsAt: Date },
-) {
-  return client.providerFeaturedPeriod.findFirst({
-    where: {
-      id: { not: period.id },
-      providerId: period.providerId,
-      endedAt: null,
-      startsAt: { lte: period.endsAt },
-      endsAt: { gt: period.endsAt },
-    },
-    select: { id: true, endsAt: true },
+/** Booked periods that started, whose provider was not told yet. */
+export function listFeaturedPeriodIdsStarted(client: Client, now: Date, take: number) {
+  return client.providerFeaturedPeriod.findMany({
+    where: { ...activeFeaturedPeriodWhere(now), startNoticeAt: null },
+    select: { id: true },
+    orderBy: [{ startsAt: 'asc' }, { id: 'asc' }],
+    take,
+  });
+}
+
+/** Marks the start notice as given, only once. */
+export function markFeaturedStartNotice(client: Client, id: string, at: Date) {
+  return client.providerFeaturedPeriod.updateMany({
+    where: { id, startNoticeAt: null, endedAt: null },
+    data: { startNoticeAt: at },
   });
 }
 

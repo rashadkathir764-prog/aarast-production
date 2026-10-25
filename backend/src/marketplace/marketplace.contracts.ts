@@ -26,7 +26,7 @@ export interface ProviderSearchWhere {
   AND: Array<
     | { status: ProviderStatus } | { services: { some: { isActive: boolean } } }
     | { cityId: string }
-    | { featuredPeriods: { some: ActiveFeaturedPeriodWhere } | { none: ActiveFeaturedPeriodWhere } }
+    | { userId: { not: null } } | { featuredPeriods: { some: ActiveFeaturedPeriodWhere } } | { OR: Array<{ userId: null } | { featuredPeriods: { none: ActiveFeaturedPeriodWhere } }> }
     | { OR: Array<{ primaryCategoryId: string } | { services: { some: { categoryId: string; isActive: boolean } } }> }
     | { OR: Array<{ businessName: TextMatch } | { ownerName: TextMatch } | { description: TextMatch } | { address: TextMatch } | { services: { some: { isActive: boolean; OR: Array<{ title: TextMatch } | { description: TextMatch }> } } }> }
   >;

@@ -33,9 +33,7 @@ final _band = QuoteRequest(
     id: 'service-band',
     providerId: 'provider-band',
     title: 'الزفة',
-    category: ProviderCategory(id: 'cat-band', nameAr: 'الفنان والفرقة'),
-    isFeatured: false,
-    isActive: true,
+    category: ProviderCategory(id: 'cat-band', nameAr: 'الفنان والفرقة'),    isActive: true,
   ),
   offers: const [
     QuoteOffer(

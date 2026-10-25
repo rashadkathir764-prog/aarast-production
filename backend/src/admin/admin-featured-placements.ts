@@ -16,6 +16,7 @@ import {
   featuredEndAfter,
   featuredLastDay,
   featuredPeriodState,
+  isFeaturedOverlapViolation,
   yemenDayOf,
   yemenDayStart,
 } from '../modules/marketplace/public/featured-placement';
@@ -73,7 +74,7 @@ export class AdminFeaturedPlacements {
     const now = new Date();
     const state = this.parseState(query.state);
     const providerId = query.providerId?.trim() || null;
-    const { total, items } = await this.prisma.$transaction(async (tx) => {
+    const { total, items, shown } = await this.prisma.$transaction(async (tx) => {
       const listing = await this.owners.marketplace.listFeaturedPeriods(
         tx,
         { state, providerId },
@@ -83,10 +84,18 @@ export class AdminFeaturedPlacements {
       return {
         total: listing.total,
         items: await this.owners.attachFeaturedPeriods(tx, listing.items),
+        shown: new Set(
+          await this.owners.marketplace.listFeaturedShownProviderIds(
+            tx,
+            listing.items.map((item) => item.providerId),
+          ),
+        ),
       };
     });
     return {
-      items: items.map((item) => toAdminFeaturedPeriodResponse(item, now)),
+      items: items.map((item) =>
+        toAdminFeaturedPeriodResponse(item, now, shown.has(item.providerId)),
+      ),
       page: pagination.page,
       limit: pagination.limit,
       total,
@@ -153,6 +162,16 @@ export class AdminFeaturedPlacements {
           message: 'A listing its owner has not claimed cannot be featured',
         });
       }
+      // The one placement rule: customers must find him in the list, or the
+      // placement would rank and badge nothing (no active service).
+      const [shown] = await this.owners.marketplace.listFeaturedShownProviderIds(tx, [providerId]);
+      if (!shown) {
+        throw new ConflictException({
+          statusCode: 409,
+          code: 'FEATURED_PROVIDER_NOT_LISTED',
+          message: 'The provider is not in the customers\' list: no active service',
+        });
+      }
       const overlap = await this.owners.marketplace.findOverlappingFeaturedPeriod(
         tx,
         providerId,
@@ -168,17 +187,33 @@ export class AdminFeaturedPlacements {
           lastDay: featuredLastDay(overlap.endsAt),
         });
       }
-      const created = await this.owners.marketplace.createFeaturedPeriodInTransaction(tx, {
-        providerId,
-        startsAt,
-        endsAt,
-        note,
-        grantedById: currentUser.id,
-      });
-      await this.notifyProvider(tx, listing.userId, created, 'granted', now);
+      const created = await this.owners.marketplace
+        .createFeaturedPeriodInTransaction(tx, {
+          providerId,
+          startsAt,
+          endsAt,
+          note,
+          grantedById: currentUser.id,
+          // Starting now, the grant's notice below tells him it started.
+          startNoticeAt: startsAt.getTime() <= now.getTime() ? now : null,
+        })
+        .catch((error: unknown) => {
+          // The database's own refusal (ProviderFeaturedPeriod_no_overlap)
+          // reads as the check above: the row lock makes it unreachable from
+          // here, and it stays the last word for any other writer.
+          if (isFeaturedOverlapViolation(error)) {
+            throw new ConflictException({
+              statusCode: 409,
+              code: 'FEATURED_PERIOD_OVERLAP',
+              message: 'The provider already has a placement in these days',
+            });
+          }
+          throw error;
+        });
+      await this.notifyProvider(tx, listing.userId, created, 'granted', now, true);
       return (await this.owners.attachFeaturedPeriods(tx, [created]))[0]!;
     });
-    return toAdminFeaturedPeriodResponse(period, new Date());
+    return toAdminFeaturedPeriodResponse(period, new Date(), true);
   }
 
   /** Stops a placement now, or cancels one that has not started. */
@@ -223,6 +258,9 @@ export class AdminFeaturedPlacements {
           message: 'The placement is already over',
         });
       }
+      const [shown] = await this.owners.marketplace.listFeaturedShownProviderIds(tx, [
+        ended.providerId,
+      ]);
       if (ended.provider.userId) {
         await this.notifyProvider(
           tx,
@@ -230,11 +268,15 @@ export class AdminFeaturedPlacements {
           ended,
           state === 'SCHEDULED' ? 'cancelled' : 'stopped',
           now,
+          shown !== undefined,
         );
       }
-      return (await this.owners.attachFeaturedPeriods(tx, [ended]))[0]!;
+      return {
+        record: (await this.owners.attachFeaturedPeriods(tx, [ended]))[0]!,
+        shown: shown !== undefined,
+      };
     });
-    return toAdminFeaturedPeriodResponse(period, new Date());
+    return toAdminFeaturedPeriodResponse(period.record, new Date(), period.shown);
   }
 
   /**
@@ -287,24 +329,34 @@ export class AdminFeaturedPlacements {
     period: AdminFeaturedPeriodRow,
     event: 'granted' | 'stopped' | 'cancelled',
     now: Date,
+    /** The placement rule holds for him now (he is in the customers' list). */
+    shown: boolean,
   ) {
     const from = arabicDayLabel(yemenDayOf(period.startsAt));
     const until = arabicDayLabel(featuredLastDay(period.endsAt));
     const startsLater = period.startsAt.getTime() > now.getTime();
+    // The administrator's note is added to the standard sentence, never
+    // instead of it: he always reads what happened.
+    const withNote = (sentence: string) =>
+      period.endNote ? `${sentence}\nملاحظة الفريق: ${period.endNote}` : sentence;
     const message = {
       granted: {
         title: startsLater ? 'ظهورك المميز محجوز' : 'تفعّل ظهورك المميز',
         body: startsLater
-          ? `يبدأ ${from} ويستمر لين ${until}. ملفك يطلع أول في قسمك ومدينتك، وعليه علامة «مميز».`
-          : `من اليوم لين ${until} ملفك يطلع أول في قسمك ومدينتك، وعليه علامة «مميز».`,
+          ? `يبدأ ${from} ويستمر لين ${until}. ملفك يطلع مع المميزين أول، وعليه علامة «مميز».`
+          : `من اليوم لين ${until} ملفك يطلع مع المميزين أول، وعليه علامة «مميز».`,
       },
       stopped: {
         title: 'وقّفنا ظهورك المميز',
-        body: period.endNote ?? 'من اليوم ملفك يظهر عادي. لو عندك سؤال كلّم فريق اعّرست.',
+        body: withNote(
+          shown
+            ? 'من اليوم ملفك يظهر عادي. لو عندك سؤال كلّم فريق اعّرست.'
+            : 'من اليوم ما عاد عندك ظهور مميز. لو عندك سؤال كلّم فريق اعّرست.',
+        ),
       },
       cancelled: {
         title: 'لغينا ظهورك المميز',
-        body: period.endNote ?? `الظهور اللي كان يبدأ ${from} انلغى. لو عندك سؤال كلّم فريق اعّرست.`,
+        body: withNote(`الظهور اللي كان يبدأ ${from} انلغى. لو عندك سؤال كلّم فريق اعّرست.`),
       },
     }[event];
     await this.notifications.createNotificationInTransaction(tx, {

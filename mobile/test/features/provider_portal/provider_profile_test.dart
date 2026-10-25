@@ -35,9 +35,7 @@ final _now = DateTime.now();
 const _service = MarketplaceService(
   id: 'service-1',
   providerId: 'provider-1',
-  title: 'صور وفيديو',
-  isFeatured: false,
-  isActive: true,
+  title: 'صور وفيديو',  isActive: true,
   basePrice: '550000',
   currency: 'YER',
   description: 'مصوّرين، 300 صورة، فيلم 10 دقايق',
@@ -415,6 +413,16 @@ void main() {
           now: now,
         ),
         'مميز لين 31 أكتوبر',
+      );
+      // Read against the clock when shown: a profile loaded before the end
+      // does not keep saying «مميز» after it.
+      expect(
+        providerFeaturedLine(
+          startsAt: DateTime.utc(2026, 10, 20, 9),
+          endsAt: DateTime.utc(2026, 10, 31, 21),
+          now: DateTime.utc(2026, 10, 31, 21),
+        ),
+        'ظهور عادي · تبي تطلع أول؟ كلّم فريق اعّرست',
       );
     });
   });

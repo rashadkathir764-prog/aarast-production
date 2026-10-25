@@ -82,7 +82,7 @@ class MarketplaceProvider {
     required this.ownerName,
     required this.ratingAverage,
     required this.ratingCount,
-    required this.isFeatured,
+    this.featuredUntil,
     this.city,
     this.cityId,
     this.primaryCategory,
@@ -130,7 +130,7 @@ class MarketplaceProvider {
         json['responsiveness'],
         ProviderResponsiveness.fromJson,
       ),
-      isFeatured: json['isFeatured'] == true,
+      featuredUntil: _dateOrNull(json['featuredUntil']),
       ratingAverage: _doubleOrZero(json['ratingAverage']),
       ratingCount: _intOrZero(json['ratingCount']),
       services: _listFromJson(json['services'], MarketplaceService.fromJson),
@@ -167,13 +167,22 @@ class MarketplaceProvider {
 
   /// Only on the provider details response, and null with too little history.
   final ProviderResponsiveness? responsiveness;
-  final bool isFeatured;
+
+  /// Until when his paid placement runs (B-43); null when he is not
+  /// featured. A saved copy outlives it, so «مميز» is read from it at the
+  /// moment it is shown ([isFeaturedAt]), never kept as a flag.
+  final DateTime? featuredUntil;
   final double ratingAverage;
   final int ratingCount;
   final List<MarketplaceService> services;
   final MarketplaceProviderServiceSummary? serviceSummary;
 
   bool get isVerified => verifiedAt != null;
+
+  /// «مميز» now: the one reading every card, list and page uses, so an
+  /// offline copy drops the badge once the placement passed.
+  bool isFeaturedAt(DateTime now) =>
+      featuredUntil != null && featuredUntil!.isAfter(now);
 }
 
 /// How quickly a provider answers quote requests, from its own history.
@@ -277,7 +286,6 @@ class MarketplaceService {
     required this.id,
     required this.providerId,
     required this.title,
-    required this.isFeatured,
     required this.isActive,
     this.provider,
     this.category,
@@ -306,7 +314,6 @@ class MarketplaceService {
       priceUpdatedAt: _dateOrNull(json['priceUpdatedAt']),
       city: _mapOrNull(json['city'], MarketplaceCity.fromJson),
       isActive: json['isActive'] != false,
-      isFeatured: json['isFeatured'] == true,
       images: _listFromJson(json['images'], ProviderServiceImage.fromJson),
     );
   }
@@ -326,7 +333,6 @@ class MarketplaceService {
   final DateTime? priceUpdatedAt;
   final MarketplaceCity? city;
   final bool isActive;
-  final bool isFeatured;
   final List<ProviderServiceImage> images;
 
   MarketplaceService copyWith({List<ProviderServiceImage>? images}) {
@@ -334,7 +340,6 @@ class MarketplaceService {
       id: id,
       providerId: providerId,
       title: title,
-      isFeatured: isFeatured,
       isActive: isActive,
       provider: provider,
       category: category,

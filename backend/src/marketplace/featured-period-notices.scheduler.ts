@@ -2,7 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { Cron } from '@nestjs/schedule';
 import { FeaturedPeriodNoticesService } from './featured-period-notices.service';
 
-/** Hourly: tell the provider his featured placement ends within a week, and that it ended (B-43). */
+/** Hourly: tell the provider his booked featured placement started, that it ends within a week, and that it ended (B-43). */
 @Injectable()
 export class FeaturedPeriodNoticesScheduler {
   private readonly logger = new Logger(FeaturedPeriodNoticesScheduler.name);
@@ -11,9 +11,9 @@ export class FeaturedPeriodNoticesScheduler {
 
   @Cron('50 * * * *')
   async tellProviders(): Promise<void> {
-    const { warned, ended, failures } = await this.notices.run();
-    if (warned > 0 || ended > 0) {
-      this.logger.log(`Featured placement notices warned=${warned} ended=${ended}`);
+    const { started, warned, ended, failures } = await this.notices.run();
+    if (started > 0 || warned > 0 || ended > 0) {
+      this.logger.log(`Featured placement notices started=${started} warned=${warned} ended=${ended}`);
     }
     for (const failure of failures) {
       this.logger.error(

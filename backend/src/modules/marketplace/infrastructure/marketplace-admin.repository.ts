@@ -40,7 +40,7 @@ import type {
   ProviderVerification,
 } from '../public/marketplace-admin.port';
 import type { PricedService } from '../public/market-prices';
-import { activeFeaturedPeriodWhere } from '../public/featured-placement';
+import { featuredNowProviderWhere } from '../public/featured-placement';
 import * as featured from './featured-period.repository';
 import { listPricedServices } from './market-prices.repository';
 import {
@@ -85,7 +85,6 @@ type ProviderAdminCondition =
 
 type ServiceAdminCondition =
   | { isActive: boolean }
-  | { isFeatured: boolean }
   | { providerId: string }
   | { categoryId: string }
   | {
@@ -505,9 +504,6 @@ export class MarketplaceAdminRepository implements MarketplaceAdminPort {
   ): Promise<AdminListing<AdminServiceRow>> {
     const and: ServiceAdminCondition[] = [];
     if (filter.isActive !== undefined) and.push({ isActive: filter.isActive });
-    if (filter.isFeatured !== undefined) {
-      and.push({ isFeatured: filter.isFeatured });
-    }
     if (filter.providerId) and.push({ providerId: filter.providerId });
     if (filter.categoryId) and.push({ categoryId: filter.categoryId });
     if (filter.cityId) {
@@ -534,7 +530,8 @@ export class MarketplaceAdminRepository implements MarketplaceAdminPort {
     const items = await client.providerService.findMany({
       where,
       include: serviceInclude,
-      orderBy: [{ isFeatured: 'desc' }, { createdAt: 'desc' }],
+      // Newest first; the id makes the order total across pages.
+      orderBy: [{ createdAt: 'desc' }, { id: 'asc' }],
       skip: page.skip,
       take: page.take,
     });
@@ -732,6 +729,13 @@ export class MarketplaceAdminRepository implements MarketplaceAdminPort {
     return featured.countFeaturedSummary(client, now, weekEnd);
   }
 
+  async listFeaturedShownProviderIds(
+    client: Prisma.TransactionClient,
+    providerIds: readonly string[],
+  ): Promise<string[]> {
+    return featured.listFeaturedShownProviderIds(client, providerIds);
+  }
+
   async listActiveFeaturedPeriods(
     client: Prisma.TransactionClient,
     providerIds: readonly string[],
@@ -795,11 +799,10 @@ export class MarketplaceAdminRepository implements MarketplaceAdminPort {
         client.provider.count({
           where: { createdAt, status: ProviderStatus.REJECTED },
         }),
-        // Featured now (B-43): a recorded placement covers this moment.
+        // Featured now (B-43), by the placement rule.
         client.provider.count({
           where: {
-            createdAt,
-            featuredPeriods: { some: activeFeaturedPeriodWhere(new Date()) },
+            AND: [{ createdAt }, ...featuredNowProviderWhere(new Date()).AND],
           },
         }),
       ]);
@@ -810,13 +813,12 @@ export class MarketplaceAdminRepository implements MarketplaceAdminPort {
     client: Prisma.TransactionClient,
     createdAt?: { gte?: Date; lte?: Date },
   ): Promise<AdminMarketplaceReport['services']> {
-    const [total, active, disabled, featured] = await Promise.all([
+    const [total, active, disabled] = await Promise.all([
       client.providerService.count({ where: { createdAt } }),
       client.providerService.count({ where: { createdAt, isActive: true } }),
       client.providerService.count({ where: { createdAt, isActive: false } }),
-      client.providerService.count({ where: { createdAt, isFeatured: true } }),
     ]);
-    return { total, active, disabled, featured };
+    return { total, active, disabled };
   }
 
   private async reviewReport(

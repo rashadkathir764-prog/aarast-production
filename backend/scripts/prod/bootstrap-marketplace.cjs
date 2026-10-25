@@ -198,7 +198,6 @@ async function upsertProviderService(prisma, provider, city, category) {
     priceUnit: 'حجز مبدئي',
     currency: 'YER',
     isActive: true,
-    isFeatured: true,
   };
 
   if (!existing) {

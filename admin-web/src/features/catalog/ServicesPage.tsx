@@ -33,7 +33,6 @@ const statuses = [
   { value: '', label: 'كل الحالات' },
   { value: 'ACTIVE', label: 'نشطة' },
   { value: 'DISABLED', label: 'متوقفة' },
-  { value: 'FEATURED', label: 'مميزة' },
 ];
 
 export function ServicesPage() {
@@ -140,22 +139,11 @@ export function ServicesPage() {
     }
   }
 
-  async function toggleFeatured(service: ProviderService) {
-    setError(null);
-    try {
-      await updateService(service.id, { isFeatured: !service.isFeatured });
-      await load();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'تعذر تحديث تمييز الخدمة.');
-    }
-  }
-
   if (isLoading) return <LoadingState title="جاري تحميل خدمات الموردين" />;
   if (error) return <ErrorState message={error} onRetry={load} />;
 
   const activeCount = items.filter((service) => service.isActive).length;
   const disabledCount = items.filter((service) => !service.isActive).length;
-  const featuredCount = items.filter((service) => service.isFeatured).length;
   const pricedCount = items.filter((service) => service.basePrice).length;
 
   return (
@@ -164,7 +152,7 @@ export function ServicesPage() {
         eyebrow="إدارة الخدمات"
         icon="⌁"
         title="خدمات الموردين"
-        description="خدمات الموردين الفعلية: أنشئ خدمة، فعّلها أو أوقفها، وميّزها."
+        description="خدمات الموردين الفعلية: أنشئ خدمة، فعّلها أو أوقفها. الظهور المميز للمزود من «الباقات والظهور المميز»."
         meta={<span>{pagination.total} خدمة مطابقة</span>}
       />
 
@@ -172,7 +160,6 @@ export function ServicesPage() {
         <StatCard title="كل النتائج" value={pagination.total} tone="gold" />
         <StatCard title="نشطة في الصفحة" value={activeCount} tone="success" />
         <StatCard title="متوقفة في الصفحة" value={disabledCount} tone="danger" />
-        <StatCard title="مميزة في الصفحة" value={featuredCount} tone="warning" />
         <StatCard title="بسعر في الصفحة" value={pricedCount} tone="info" />
       </div>
 
@@ -342,15 +329,11 @@ export function ServicesPage() {
                 </td>
                 <td>
                   <StatusBadge status={service.isActive ? 'ACTIVE' : 'DISABLED'} />
-                  {service.isFeatured ? <StatusBadge status="FEATURED" /> : null}
                 </td>
                 <td className="actions-cell">
                   <Can permission={AdminPermission.SERVICES_WRITE}>
                     <ActionButton tone="ghost" size="small" onClick={() => toggleActive(service)}>
                       {service.isActive ? 'إيقاف' : 'تفعيل'}
-                    </ActionButton>
-                    <ActionButton tone="ghost" size="small" onClick={() => toggleFeatured(service)}>
-                      {service.isFeatured ? 'إلغاء التمييز' : 'تمييز'}
                     </ActionButton>
                   </Can>
                 </td>

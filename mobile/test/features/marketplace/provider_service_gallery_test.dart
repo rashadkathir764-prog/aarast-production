@@ -113,7 +113,5 @@ class _GalleryDashboardProvider extends ProviderDashboardProvider {
 const _service = MarketplaceService(
   id: 'service-hall',
   providerId: 'provider-1',
-  title: 'قاعة اللؤلؤة',
-  isFeatured: false,
-  isActive: true,
+  title: 'قاعة اللؤلؤة',  isActive: true,
 );

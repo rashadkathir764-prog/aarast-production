@@ -108,7 +108,7 @@ test('admin report aggregation preserves totals, formatting and honesty flags', 
       rejected: 0,
       featured: 1,
     },
-    services: { total: 6, active: 5, disabled: 1, featured: 2 },
+    services: { total: 6, active: 5, disabled: 1 },
     reviews,
     quotes,
     notifications: { total: 9, unread: 2, archived: 1, high: 3, urgent: 1 },
@@ -239,6 +239,8 @@ test('admin service and review mappers preserve public shape and review privacy'
 
   assert.equal(serviceResponse.basePrice, '1250.5');
   assert.equal(serviceResponse.provider.businessName, 'قاعة النور');
+  // B-43: featuring is the provider's placement only; a service has no flag.
+  assert.equal('isFeatured' in serviceResponse, false);
   assert.deepEqual(serviceResponse.images[0], {
     id: 'image-1',
     serviceId: 'service-1',
@@ -441,7 +443,6 @@ function serviceFixture() {
     currency: 'YER',
     cityId: 'city-1',
     isActive: true,
-    isFeatured: true,
     createdAt,
     updatedAt,
     category: categoryFixture(),

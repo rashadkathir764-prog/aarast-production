@@ -336,9 +336,7 @@ class _MarketplaceLoadingTruthApi extends MarketplaceApi {
           businessName: 'قاعة الأمل',
           ownerName: 'مالك القاعة',
           ratingAverage: 0,
-          ratingCount: 0,
-          isFeatured: false,
-        ),
+          ratingCount: 0,        ),
       ),
     ];
   }
@@ -363,9 +361,7 @@ class _MarketplaceLoadingTruthApi extends MarketplaceApi {
       MarketplaceService(
         id: 'service-1',
         providerId: 'provider-1',
-        title: 'خدمة القاعة',
-        isFeatured: false,
-        isActive: true,
+        title: 'خدمة القاعة',        isActive: true,
       ),
     ];
   }
@@ -397,6 +393,4 @@ const _provider = MarketplaceProvider(
   businessName: 'قاعة الأمل',
   ownerName: 'مالك القاعة',
   ratingAverage: 0,
-  ratingCount: 0,
-  isFeatured: false,
-);
+  ratingCount: 0,);

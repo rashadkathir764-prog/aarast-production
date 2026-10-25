@@ -889,9 +889,7 @@ MarketplaceProvider _provider({
     businessName: businessName,
     ownerName: 'owner',
     ratingAverage: 0,
-    ratingCount: 0,
-    isFeatured: false,
-    city: city,
+    ratingCount: 0,    city: city,
     services: services,
   );
 }
@@ -904,9 +902,7 @@ MarketplaceService _service({
   return MarketplaceService(
     id: 'service-$title',
     providerId: 'provider-1',
-    title: title,
-    isFeatured: false,
-    isActive: true,
+    title: title,    isActive: true,
     category: const ProviderCategory(id: 'cat-venue', nameAr: 'القاعات'),
     basePrice: basePrice,
     city: city,

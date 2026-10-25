@@ -122,7 +122,6 @@ export class AdminMutationExecutor {
           currency: this.optionalText(dto.currency) ?? 'YER',
           cityId: this.optionalText(dto.cityId),
           isActive: dto.isActive ?? true,
-          isFeatured: dto.isFeatured ?? false,
         });
         const [attached] = await this.owners.attachServices(tx, [created]);
         return attached!;
@@ -195,9 +194,6 @@ export class AdminMutationExecutor {
             ? { cityId: this.optionalText(dto.cityId) }
             : {}),
           ...(dto.isActive !== undefined ? { isActive: dto.isActive } : {}),
-          ...(dto.isFeatured !== undefined
-            ? { isFeatured: dto.isFeatured }
-            : {}),
         });
         const [attached] = await this.owners.attachServices(tx, [updated]);
         return attached!;
@@ -223,7 +219,6 @@ export class AdminMutationExecutor {
         await this.lockService(tx, id, seedProviderId);
         const updated = await this.owners.marketplace.updateServiceInTransaction(tx, id, {
           isActive: false,
-          isFeatured: false,
         });
         const [attached] = await this.owners.attachServices(tx, [updated]);
         return attached!;

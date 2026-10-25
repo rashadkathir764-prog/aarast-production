@@ -56,6 +56,7 @@ const listing = {
 function period(input: Partial<FeaturedPeriod> & { id: string }): FeaturedPeriod {
   return {
     state: 'ACTIVE',
+    providerShown: true,
     startsAt: '2026-09-30T21:00:00.000Z',
     endsAt: '2026-12-31T21:00:00.000Z',
     startsOn: '2026-10-01',
@@ -66,6 +67,7 @@ function period(input: Partial<FeaturedPeriod> & { id: string }): FeaturedPeriod
     endedAt: null,
     endedBy: null,
     endNote: null,
+    startNoticeAt: '2026-10-01T09:00:00.000Z',
     endingNoticeAt: null,
     endNoticeAt: null,
     provider: listing,
@@ -137,7 +139,34 @@ describe('a17 featured placements', () => {
     expect(screen.queryByText('احترافي')).not.toBeInTheDocument();
     expect(screen.queryByText('ينتظر الدفع')).not.toBeInTheDocument();
     expect(screen.getByText(/التطبيق ما يستلم فلوس/)).toBeVisible();
-    expect(getFeaturedPeriods).toHaveBeenCalledWith({ state: 'ALL', page: 1, limit: 50 });
+    // The table lists what runs or is booked, under a title that says so.
+    expect(getFeaturedPeriods).toHaveBeenCalledWith({ state: 'CURRENT', page: 1, limit: 50 });
+    expect(screen.getByRole('table', { name: 'الشغّالة والمحجوزة' })).toBeVisible();
+  });
+
+  it('lists the finished placements behind their own filter', async () => {
+    renderPage();
+    await screen.findByText('قاعة سبأ');
+    fireEvent.click(screen.getByRole('button', { name: 'اللي خلصت' }));
+    await waitFor(() =>
+      expect(getFeaturedPeriods).toHaveBeenLastCalledWith({ state: 'FINISHED', page: 1, limit: 50 }),
+    );
+    expect(await screen.findByRole('table', { name: 'اللي خلصت' })).toBeVisible();
+    expect(screen.getByRole('button', { name: 'اللي خلصت' })).toHaveAttribute('aria-pressed', 'true');
+  });
+
+  it('says «مو ظاهر للعرسان» instead of «شغّال» when customers cannot find the provider', async () => {
+    vi.mocked(getFeaturedPeriods).mockResolvedValue({
+      items: [period({ id: 'p1', providerShown: false })],
+      page: 1,
+      limit: 50,
+      total: 1,
+      totalPages: 1,
+    });
+    renderPage();
+    const hall = (await screen.findByText('قاعة سبأ')).closest('tr') as HTMLElement;
+    expect(hall).toHaveTextContent('مو ظاهر للعرسان');
+    expect(hall).not.toHaveTextContent('شغّال');
   });
 
   it('records a placement for an active provider from today to the chosen last day', async () => {
@@ -164,7 +193,9 @@ describe('a17 featured placements', () => {
     fireEvent.change(within(dialog).getByLabelText('كيف دفع برا التطبيق (اختياري)'), {
       target: { value: 'كاش · 3 شهور' },
     });
-    expect(within(dialog).getByText(/من 25 أكتوبر لين 31 ديسمبر يطلع أول/)).toBeVisible();
+    // The truth: he comes up with the featured, not «أول في قسمه ومدينته».
+    expect(within(dialog).getByText(/من 25 أكتوبر لين 31 ديسمبر يطلع مع المميزين أول/)).toBeVisible();
+    expect(within(dialog).queryByText(/قسمه ومدينته/)).not.toBeInTheDocument();
     fireEvent.click(within(dialog).getByRole('button', { name: 'فعّل' }));
     await waitFor(() =>
       expect(grantFeaturedPeriod).toHaveBeenCalledWith('hall', { endsOn: '2026-12-31', note: 'كاش · 3 شهور' }),
@@ -187,6 +218,18 @@ describe('a17 featured placements', () => {
     expect(
       await within(dialog).findByText('عنده ظهور مميز في نفس الأيام. خلّ الجديد يبدأ بعد آخر يوم في الحالي.'),
     ).toBeVisible();
+  });
+
+  it('reads the refusal of a provider customers cannot find in Arabic', async () => {
+    vi.mocked(grantFeaturedPeriod).mockRejectedValue(
+      new ApiError('not listed', 409, 'FEATURED_PROVIDER_NOT_LISTED'),
+    );
+    renderPage();
+    const hall = (await screen.findByText('قاعة سبأ')).closest('tr') as HTMLElement;
+    fireEvent.click(within(hall).getByRole('button', { name: 'جدّد' }));
+    const dialog = screen.getByRole('dialog', { name: 'فعّل باقة «مميز»' });
+    fireEvent.click(within(dialog).getByRole('button', { name: 'فعّل' }));
+    expect(await within(dialog).findByText(/المزود مو ظاهر للعرسان: ما عنده خدمة شغّالة/)).toBeVisible();
   });
 
   it('stops an active placement with a note the provider reads', async () => {

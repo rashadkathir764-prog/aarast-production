@@ -200,9 +200,7 @@ class _ProviderDashboardApiFake extends ProviderDashboardApi {
     return MarketplaceService(
       id: 'service-1',
       providerId: 'provider-1',
-      title: 'تنسيق كامل',
-      isFeatured: false,
-      isActive: isActive,
+      title: 'تنسيق كامل',      isActive: isActive,
     );
   }
 

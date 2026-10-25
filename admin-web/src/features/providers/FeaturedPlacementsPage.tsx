@@ -6,7 +6,9 @@
 // the «الدفع» column is the administrator's note on how he paid (no amount,
 // no «ينتظر الدفع»: a placement exists only once it is recorded); «خلص ·
 // ذكّره» is «خلص» because the hourly job tells the provider at the end; and
-// the form, «وقّفه», «ألغه» and «جدّد» are not drawn.
+// the form, «وقّفه», «ألغه» and «جدّد» are not drawn. The table lists the
+// running and booked placements, the finished ones behind «اللي خلصت»; a
+// running one on a provider customers cannot find reads «مو ظاهر للعرسان».
 import { type FormEvent, useCallback, useEffect, useState } from 'react';
 import { Crown } from 'lucide-react';
 import {
@@ -42,6 +44,14 @@ import { providerErrorMessage } from './providerHelpers';
 
 const LIMIT = 50;
 
+/** The table lists what runs or is booked; the ones that are over sit behind their own filter. */
+const VIEWS = [
+  { state: 'CURRENT', label: 'الشغّالة والمحجوزة', empty: 'ما فيه ظهور مميز شغّال أو محجوز. كل المزودين على الظهور العادي.' },
+  { state: 'FINISHED', label: 'اللي خلصت', empty: 'ما فيه ظهور مميز خلص أو انوقف.' },
+] as const;
+
+type View = (typeof VIEWS)[number]['state'];
+
 /** Today in Sana'a as `YYYY-MM-DD`: placements are bought by the day there. */
 export function yemenToday(now: Date = new Date()): string {
   return new Intl.DateTimeFormat('en-CA', {
@@ -63,11 +73,15 @@ function dayLabel(day: string): string {
   return dayMonth(`${day}T12:00:00.000Z`);
 }
 
-/** The placement's state as a17 tags it. */
-export function featuredStateTag(period: Pick<FeaturedPeriod, 'state' | 'startsOn'>) {
+/**
+ * The placement's state as a17 tags it. A running placement on a provider
+ * customers cannot find (no active service, not active, unclaimed) ranks
+ * and badges nothing, so it is not «شغّال».
+ */
+export function featuredStateTag(period: Pick<FeaturedPeriod, 'state' | 'startsOn' | 'providerShown'>) {
   switch (period.state) {
     case 'ACTIVE':
-      return <Tag tone="green">شغّال</Tag>;
+      return period.providerShown ? <Tag tone="green">شغّال</Tag> : <Tag tone="coral">مو ظاهر للعرسان</Tag>;
     case 'SCHEDULED':
       return <Tag tone="sky">يبدأ {dayLabel(period.startsOn)}</Tag>;
     case 'EXPIRED':
@@ -84,6 +98,7 @@ function placeLine(provider: ProviderReference): string {
 type GrantTarget = { provider: ProviderReference; startsOn: string | null };
 
 export function FeaturedPlacementsPage() {
+  const [view, setView] = useState<View>('CURRENT');
   const [page, setPage] = useState(1);
   const [result, setResult] = useState<{
     items: FeaturedPeriod[];
@@ -100,7 +115,7 @@ export function FeaturedPlacementsPage() {
     setError(null);
     try {
       const [list, counts] = await Promise.all([
-        getFeaturedPeriods({ state: 'ALL', page, limit: LIMIT }),
+        getFeaturedPeriods({ state: view, page, limit: LIMIT }),
         getFeaturedSummary(),
       ]);
       setResult(list);
@@ -108,7 +123,14 @@ export function FeaturedPlacementsPage() {
     } catch (value) {
       setError(value instanceof Error ? value.message : 'ما قدرنا نحمّل الباقات.');
     }
-  }, [page]);
+  }, [view, page]);
+
+  const current = VIEWS.find((item) => item.state === view)!;
+  function pick(next: View) {
+    setView(next);
+    setPage(1);
+    setResult(null);
+  }
 
   useEffect(() => {
     void load();
@@ -131,11 +153,23 @@ export function FeaturedPlacementsPage() {
         title="الباقات والظهور المميز"
         sub="المزود يدفع لكم برا التطبيق، وأنتم تفعّلون الباقة من هنا"
         actions={
-          <Can permission={AdminPermission.PROVIDERS_WRITE}>
-            <DeskButton icon={Crown} onClick={() => setGranting('pick')}>
-              فعّل باقة لمزود
-            </DeskButton>
-          </Can>
+          <>
+            {VIEWS.map((item) => (
+              <DeskButton
+                key={item.state}
+                tone={item.state === view ? 'teal' : 'soft'}
+                pressed={item.state === view}
+                onClick={() => pick(item.state)}
+              >
+                {item.label}
+              </DeskButton>
+            ))}
+            <Can permission={AdminPermission.PROVIDERS_WRITE}>
+              <DeskButton icon={Crown} onClick={() => setGranting('pick')}>
+                فعّل باقة لمزود
+              </DeskButton>
+            </Can>
+          </>
         }
       />
       {error ? <DeskRetry message={error} onRetry={() => void load()} /> : null}
@@ -149,13 +183,13 @@ export function FeaturedPlacementsPage() {
       {result === null && !error ? <DeskNote>لحظة، نحمّل الباقات…</DeskNote> : null}
       {result && result.items.length === 0 ? (
         <Panel>
-          <DeskNote>ما فيه مزود مميز للحين. كل المزودين على الباقة المجانية.</DeskNote>
+          <DeskNote>{current.empty}</DeskNote>
         </Panel>
       ) : null}
       {result && result.items.length > 0 ? (
         <>
           <DeskTable
-            caption="الباقات المفعّلة"
+            caption={current.label}
             columns={[
               { label: 'المزود', flex: 4 },
               { label: 'الباقة', flex: 2 },
@@ -348,7 +382,7 @@ function GrantDialog({
           </label>
           <ul className="desk-dialog__effects">
             <li>
-              من {dayLabel(from)} لين {dayLabel(endsOn)} يطلع أول في قسمه ومدينته، وعليه «مميز» عند العرسان.
+              من {dayLabel(from)} لين {dayLabel(endsOn)} يطلع مع المميزين أول، وعليه «مميز» عند العرسان.
             </li>
             <li>يوصله تنبيه الحين، وقبل النهاية بأسبوع، ولما تخلص.</li>
             <li>التطبيق ما يستلم فلوس، ولا يسجّل مبلغ.</li>

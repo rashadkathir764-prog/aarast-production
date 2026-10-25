@@ -129,13 +129,20 @@ export type AdminFeaturedPeriodRecord = ProviderFeaturedPeriod & {
   endedBy: SafeAdminUser | null;
 };
 
+/**
+ * `providerShown`: the placement rule holds for its provider now (listed and
+ * claimed); a running period on a provider customers cannot find ranks and
+ * badges nothing, and a17 says so instead of «شغّال».
+ */
 export function toAdminFeaturedPeriodResponse(
   period: AdminFeaturedPeriodRecord,
   now: Date,
+  providerShown: boolean,
 ) {
   return {
     id: period.id,
     state: featuredPeriodState(period, now),
+    providerShown,
     startsAt: period.startsAt,
     endsAt: period.endsAt,
     // Yemen calendar days: the first day and the last day covered.
@@ -151,6 +158,7 @@ export function toAdminFeaturedPeriodResponse(
       ? { id: period.endedBy.id, name: period.endedBy.name }
       : null,
     endNote: period.endNote,
+    startNoticeAt: period.startNoticeAt,
     endingNoticeAt: period.endingNoticeAt,
     endNoticeAt: period.endNoticeAt,
     provider: toProviderSummary(period.provider),
@@ -233,7 +241,6 @@ export interface AdminServiceReport {
   total: number;
   active: number;
   disabled: number;
-  featured: number;
 }
 
 export interface AdminReviewReport {
@@ -451,7 +458,6 @@ export function toProviderResponse(provider: AdminProviderRecord) {
       priceUnit: service.priceUnit,
       currency: service.currency,
       isActive: service.isActive,
-      isFeatured: service.isFeatured,
       images: service.images.map((image) => ({
         id: image.id,
         imageUrl: image.imageUrl,
@@ -496,7 +502,6 @@ export function toAdminServiceResponse(service: AdminServiceWithDetails) {
     cityId: service.cityId,
     city: service.city ? toCityResponse(service.city) : null,
     isActive: service.isActive,
-    isFeatured: service.isFeatured,
     images: service.images.map((image) => ({
       id: image.id,
       serviceId: image.serviceId,

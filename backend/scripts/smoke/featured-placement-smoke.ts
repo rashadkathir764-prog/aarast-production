@@ -20,7 +20,10 @@ import { notificationsService, ownerPorts } from "./support/owner-ports";
 // record it, what a placement may cover, the customers' list ranking the
 // featured first with «مميز», the provider reading his placement, a renewal
 // booked after it, cancelling and stopping one, the placement lapsing at its
-// end by itself, and the hourly job telling the provider once. No money is
+// end by itself, the one placement rule (a provider customers cannot find is
+// not featured, shown as such and counted nowhere), two grants at the same
+// moment and the database's own refusal of an overlap, and the hourly job
+// telling the provider once of a booked start, a last week and an end. No money is
 // sent or kept anywhere. Run it with `npm run smoke:featured-placement`: the
 // managed runner gives it an isolated database and its own API.
 
@@ -166,6 +169,17 @@ async function main(): Promise<void> {
   const providerB = await listing("B", ownerB.id, "4.90");
   const unclaimed = await listing("unclaimed", null, "4.00");
   const pending = await listing("pending", ownerPending.id, "4.00", ProviderStatus.PENDING);
+  // Approved and claimed, but his only service is switched off: customers
+  // do not find him, so a placement would rank and badge nothing.
+  const ownerHidden = await account("owner-hidden", UserRole.PROVIDER);
+  const hidden = await listing("hidden", ownerHidden.id, "4.00");
+  await prisma.providerService.updateMany({ where: { providerId: hidden.id }, data: { isActive: false } });
+  // Two administrators record a placement for him at the same moment; he
+  // works in another city, out of the list this smoke reads.
+  const ownerRace = await account("owner-race", UserRole.PROVIDER);
+  const elsewhere = await prisma.city.create({ data: { nameAr: `${label} مدينة ثانية`, countryCode: "YE" } });
+  const race = await listing("race", ownerRace.id, "1.00");
+  await prisma.provider.update({ where: { id: race.id }, data: { cityId: elsewhere.id } });
 
   const opsToken = await session(operations, "admin");
   const supportToken = await session(support, "admin");
@@ -199,7 +213,14 @@ async function main(): Promise<void> {
   expect(await grant(opsToken, providerA.id, { endsOn: yemenDay(400) }), 422, "more than a year", "FEATURED_PERIOD_TOO_LONG");
   expect(await grant(opsToken, providerA.id, { endsOn: yemenDay(-1) }), 422, "a placement already over", "FEATURED_PERIOD_INVALID");
   expect(await grant(opsToken, providerA.id, { endsOn: "2026-02-30" }), 422, "a day that does not exist", "FEATURED_PERIOD_INVALID");
-  pass("a placement needs a claimed, active provider, starts now or later, and covers at most a year");
+  expect(
+    await grant(opsToken, hidden.id, { endsOn: yemenDay(30) }),
+    409,
+    "a provider customers cannot find",
+    "FEATURED_PROVIDER_NOT_LISTED",
+  );
+  assert.equal(await prisma.providerFeaturedPeriod.count({ where: { providerId: hidden.id } }), 0);
+  pass("a placement needs a claimed, active, listed provider, starts now or later, and covers at most a year");
 
   // ------------------------------------------------------------ grant and ranking
   const before = expect(await list(), 200, "the list before");
@@ -223,11 +244,16 @@ async function main(): Promise<void> {
     where: { userId: ownerA.id, entityId: granted.id },
   });
   assert.equal(startNotice?.title, "تفعّل ظهورك المميز");
+  assert.ok(startNotice?.body.includes("يطلع مع المميزين أول"), "the provider is told what is true");
+  assert.equal(startNotice?.body.includes("قسمك ومدينتك"), false);
   pass("a recorded month is audited, keeps no amount, and tells the provider it started");
 
   const after = expect(await list(), 200, "the list after");
   assert.deepEqual(after.items.map((item: any) => item.id), [providerA.id, providerB.id, unclaimed.id]);
   assert.deepEqual(after.items.map((item: any) => item.isFeatured), [true, false, false]);
+  // Until when: a phone showing a saved copy drops «مميز» once it passed.
+  assert.equal(new Date(after.items[0].featuredUntil).toISOString(), granted.endsAt);
+  assert.deepEqual(after.items.slice(1).map((item: any) => item.featuredUntil), [null, null]);
   const pageTwo = expect(await list("&limit=1&page=2"), 200, "the second page of one");
   assert.deepEqual(pageTwo.items.map((item: any) => item.id), [providerB.id]);
   assert.equal(pageTwo.total, 3);
@@ -235,6 +261,8 @@ async function main(): Promise<void> {
   assert.deepEqual(onlyFeatured.items.map((item: any) => item.id), [providerA.id]);
   const page = expect(await call("GET", `/api/v1/providers/${providerA.id}`, customerToken), 200, "the provider's page");
   assert.equal(page.isFeatured, true);
+  // One source of featuring: a service carries no flag of its own.
+  assert.ok(page.services.length > 0 && page.services.every((service: any) => !("isFeatured" in service)));
   pass("the featured provider comes first with «مميز» across pages; the filter and the page agree");
 
   const profile = expect(await call("GET", "/api/v1/provider/me/profile", ownerAToken), 200, "the provider's profile");
@@ -255,6 +283,9 @@ async function main(): Promise<void> {
     "a renewal booked after it",
   );
   assert.equal(renewal.state, "SCHEDULED");
+  // The renewal starts the day after: he reads where the run really ends.
+  const runProfile = expect(await call("GET", "/api/v1/provider/me/profile", ownerAToken), 200, "his profile with a renewal");
+  assert.equal(new Date(runProfile.featured.endsAt).toISOString(), renewal.endsAt);
   const cancelled = expect(
     await call("POST", `/admin/featured-periods/${renewal.id}/end`, opsToken, {}),
     201,
@@ -304,22 +335,97 @@ async function main(): Promise<void> {
   );
   pass("at its end the placement lapses by itself: no badge, no ranking, nothing for the provider to read");
 
-  // B gets five days: the week-before warning is due.
-  const short = expect(await grant(opsToken, providerB.id, { endsOn: yemenDay(4) }), 201, "a short placement");
+  // ------------------------------------------------------------ the database refuses overlaps too
+  // Two administrators record a month for the same provider at the same
+  // moment: one placement is recorded, the other is refused.
+  const raced = await Promise.all([
+    grant(opsToken, race.id, { endsOn: yemenDay(30), note: "أول" }),
+    grant(opsToken, race.id, { endsOn: yemenDay(30), note: "ثاني" }),
+  ]);
+  assert.deepEqual(raced.map((reply) => reply.status).sort(), [201, 409], JSON.stringify(raced));
+  assert.equal(raced.find((reply) => reply.status === 409)!.body.code, "FEATURED_PERIOD_OVERLAP");
+  assert.equal(await prisma.providerFeaturedPeriod.count({ where: { providerId: race.id } }), 1);
+  // A writer that skips the check (a script, a seed) is refused by the
+  // constraint itself; an ended period does not count.
+  const racedPeriod = raced.find((reply) => reply.status === 201)!.body;
+  await assert.rejects(
+    prisma.providerFeaturedPeriod.create({
+      data: {
+        providerId: race.id,
+        startsAt: new Date(Date.now() + 2 * DAY_MS),
+        endsAt: new Date(Date.now() + 5 * DAY_MS),
+        grantedById: operations.id,
+      },
+    }),
+    /ProviderFeaturedPeriod_no_overlap|23P01|exclusion/i,
+  );
+  await prisma.providerFeaturedPeriod.create({
+    data: {
+      providerId: race.id,
+      startsAt: new Date(Date.now() + 2 * DAY_MS),
+      endsAt: new Date(Date.now() + 5 * DAY_MS),
+      grantedById: operations.id,
+      endedAt: new Date(),
+      endedById: operations.id,
+    },
+  });
+  pass("two grants at the same moment record one placement; the database refuses any overlap");
+
+  // ------------------------------------------------------------ the hourly job
+  // B gets three days: no «ينتهي قريب» minutes after it started.
+  const short = expect(await grant(opsToken, providerB.id, { endsOn: yemenDay(2) }), 201, "a short placement");
+  // The raced month is in its last week: 25 of its days passed.
+  await prisma.providerFeaturedPeriod.update({
+    where: { id: racedPeriod.id },
+    data: { startsAt: new Date(Date.now() - 25 * DAY_MS), endsAt: new Date(Date.now() + 4 * DAY_MS) },
+  });
   const firstRun = await notices.run();
-  assert.equal(firstRun.failures.length, 0);
+  assert.deepEqual(firstRun.failures, []);
   assert.ok(firstRun.ended >= 1 && firstRun.warned >= 1);
   const secondRun = await notices.run();
-  assert.equal(secondRun.ended + secondRun.warned, 0, "the job tells nobody twice");
+  assert.equal(secondRun.started + secondRun.ended + secondRun.warned, 0, "the job tells nobody twice");
   const endedNotices = await prisma.notification.count({ where: { userId: ownerA.id, title: "خلص ظهورك المميز" } });
-  const warnings = await prisma.notification.count({ where: { userId: ownerB.id, entityId: short.id, title: "ظهورك المميز ينتهي قريب" } });
+  const warnings = await prisma.notification.count({ where: { userId: ownerRace.id, entityId: racedPeriod.id, title: "ظهورك المميز ينتهي قريب" } });
+  const shortWarnings = await prisma.notification.count({ where: { userId: ownerB.id, entityId: short.id, title: "ظهورك المميز ينتهي قريب" } });
   assert.equal(endedNotices, 1);
   assert.equal(warnings, 1);
-  pass("the hourly job tells the provider once that it ends within a week and once that it ended");
+  assert.equal(shortWarnings, 0, "a three-day placement is not warned about as it starts");
+  // A booked from tomorrow; the day comes: he is told once that it started.
+  const booked = expect(
+    await grant(opsToken, providerA.id, { startsOn: yemenDay(1), endsOn: yemenDay(20) }),
+    201,
+    "a placement booked from tomorrow",
+  );
+  await prisma.providerFeaturedPeriod.update({
+    where: { id: booked.id },
+    data: { startsAt: new Date(Date.now() - 30 * 1000) },
+  });
+  const startRun = await notices.run();
+  assert.equal(startRun.started, 1);
+  assert.equal((await notices.run()).started, 0);
+  const started = await prisma.notification.findMany({ where: { userId: ownerA.id, entityId: booked.id, title: "بدأ ظهورك المميز" } });
+  assert.equal(started.length, 1);
+  assert.ok(started[0]!.body.includes("يطلع مع المميزين أول"));
+  pass("the hourly job tells a booked start once, warns a long placement once in its last week, and its end once");
 
   // ------------------------------------------------------------ stop early and the summary
   const summaryBefore = expect(await call("GET", "/admin/featured-periods/summary", opsToken), 200, "the summary");
   assert.ok(summaryBefore.featured >= 1 && summaryBefore.endingThisWeek >= 1);
+  // B's only service is switched off while his placement runs: customers do
+  // not find him, so a17 says so instead of «شغّال», and nothing counts him.
+  await prisma.providerService.updateMany({ where: { providerId: providerB.id }, data: { isActive: false } });
+  const hiddenRows = expect(
+    await call("GET", `/admin/featured-periods?state=ACTIVE&providerId=${providerB.id}`, opsToken),
+    200,
+    "B's placements while he is out of the list",
+  );
+  assert.deepEqual(hiddenRows.items.map((item: any) => [item.id, item.state, item.providerShown]), [[short.id, "ACTIVE", false]]);
+  const summaryHidden = expect(await call("GET", "/admin/featured-periods/summary", opsToken), 200, "the summary while B is out");
+  assert.equal(summaryHidden.featured, summaryBefore.featured - 1);
+  assert.equal(summaryHidden.endingThisWeek, summaryBefore.endingThisWeek - 1);
+  await prisma.providerService.updateMany({ where: { providerId: providerB.id }, data: { isActive: true } });
+  pass("a running placement on a provider customers cannot find is shown as such and counted nowhere");
+
   const stopped = expect(
     await call("POST", `/admin/featured-periods/${short.id}/end`, opsToken, { note: "طلب يوقفها" }),
     201,
@@ -331,9 +437,14 @@ async function main(): Promise<void> {
   const stopNotice = await prisma.notification.findFirst({
     where: { userId: ownerB.id, entityId: short.id, title: "وقّفنا ظهورك المميز" },
   });
-  assert.equal(stopNotice?.body, "طلب يوقفها");
+  // The note is added to the standard sentence, never instead of it.
+  assert.equal(stopNotice?.body, "من اليوم ملفك يظهر عادي. لو عندك سؤال كلّم فريق اعّرست.\nملاحظة الفريق: طلب يوقفها");
   const afterStop = expect(await list(), 200, "the list after stopping");
-  assert.ok(afterStop.items.every((item: any) => item.isFeatured === false));
+  // Only A's placement (booked, now started) still runs.
+  assert.deepEqual(
+    afterStop.items.filter((item: any) => item.isFeatured).map((item: any) => item.id),
+    [providerA.id],
+  );
   const summaryAfter = expect(await call("GET", "/admin/featured-periods/summary", opsToken), 200, "the summary after");
   assert.equal(summaryAfter.featured, summaryBefore.featured - 1);
   assert.equal(summaryAfter.free, summaryBefore.free + 1);

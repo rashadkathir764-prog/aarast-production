@@ -41,6 +41,8 @@ const PROVIDER_ERROR_MESSAGES: Record<string, string> = {
   // B-43: what a featured placement may cover.
   FEATURED_PROVIDER_UNCLAIMED: 'هذا الملف ما استلمه صاحبه، فما يستقبل طلبات. ما نميّزه لين يستلمه.',
   FEATURED_PROVIDER_NOT_ACTIVE: 'المزود مو نشط الحين. ما نميّز إلا مزود نشط.',
+  FEATURED_PROVIDER_NOT_LISTED:
+    'المزود مو ظاهر للعرسان: ما عنده خدمة شغّالة. خلّه يشغّل خدمة، وبعدها فعّل له الظهور المميز.',
   FEATURED_PERIOD_OVERLAP: 'عنده ظهور مميز في نفس الأيام. خلّ الجديد يبدأ بعد آخر يوم في الحالي.',
   FEATURED_PERIOD_START_PAST: 'ما نسجّل ظهور بتاريخ فات. خلّه يبدأ اليوم أو بعده.',
   FEATURED_PERIOD_TOO_LONG: 'الظهور المميز سنة بالكثير. سجّل سنة، وجدّدها بعدين.',

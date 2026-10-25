@@ -132,7 +132,8 @@ async function ensureFixture() {
     },
   });
 
-  // Featured = a placement covering now (B-43); the list filter reads it.
+  // A placement covering now (B-43) on a listing nobody claimed: the
+  // placement rule does not show it (D54).
   const now = Date.now();
   await prisma.providerFeaturedPeriod.deleteMany({ where: { providerId: provider.id } });
   await prisma.providerFeaturedPeriod.create({
@@ -295,11 +296,15 @@ async function run() {
   }
 
   {
-    const res = await request('GET', `/api/v1/providers?cityId=${fixture.city.id}&categoryId=${fixture.category.id}&featured=true`);
+    // The fixture is a listing nobody claimed with a placement written
+    // straight into the table: the placement rule (D54) shows it on claimed
+    // listings only, so it is listed as an ordinary provider, never «مميز».
+    const res = await request('GET', `/api/v1/providers?cityId=${fixture.city.id}&categoryId=${fixture.category.id}&featured=false`);
     check('GET /api/v1/providers - HTTP 200', res.status === 200);
     check('providers response is paginated', Array.isArray(res.body?.items));
     check('providers include active fixture', res.body?.items?.some((provider) => provider.id === fixture.provider.id));
     const provider = res.body?.items?.find((item) => item.id === fixture.provider.id);
+    check('an unclaimed listing is never featured', provider?.isFeatured === false && provider?.featuredUntil === null);
     check('provider list includes primary category', provider?.primaryCategory?.id === fixture.category.id);
     check('provider list includes active service summary', provider?.serviceSummary?.activeCount >= 1 && provider.serviceSummary.titles?.includes('خدمة سموك للسوق'));
     check('provider list includes published price range', provider?.serviceSummary?.minPrice === '100000' && provider?.serviceSummary?.maxPrice === '100000');

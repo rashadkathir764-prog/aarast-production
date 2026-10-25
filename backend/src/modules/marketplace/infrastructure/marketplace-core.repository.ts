@@ -9,7 +9,8 @@ import { MARKETPLACE_QUOTE_INCLUDE } from "../../../marketplace/marketplace.cont
 import type { ProviderResponseSample } from "../../../marketplace/provider-responsiveness";
 import {
   activeFeaturedPeriodInclude,
-  activeFeaturedPeriodWhere,
+  featuredNowConditions,
+  notFeaturedNowCondition,
 } from "../public/featured-placement";
 
 type Client = Prisma.TransactionClient;
@@ -23,7 +24,7 @@ function searchProviderPage(client: Client, where: ProviderSearchWhere, now: Dat
     where,
     include: {
       services: {
-        where: { isActive: true }, orderBy: [{ isFeatured: "desc" }, { createdAt: "desc" }],
+        where: { isActive: true }, orderBy: [{ createdAt: "desc" }, { id: "asc" }],
         select: { title: true, basePrice: true, currency: true, priceUpdatedAt: true, categoryId: true },
       },
       featuredPeriods: activeFeaturedPeriodInclude(now),
@@ -40,14 +41,17 @@ function searchProviderPage(client: Client, where: ProviderSearchWhere, now: Dat
 
 /**
  * The customers' list: providers featured at `now` first (B-43), then the
- * rest, each group by rating and age. "Featured" is read from the periods
- * at request time, so the page is cut across the two groups here: the
- * featured rows fill the page first and the others continue after them.
+ * rest, each group by rating, age and id (a total order, so a page never
+ * skips or repeats a provider inside one snapshot). "Featured" is read from
+ * the periods at request time by the placement rule (`where` is already the
+ * listed providers), so the page is cut across the two groups here: the
+ * featured rows fill the page first and the others continue after them. A
+ * row of the other group is never «مميز», even with a period running (an
+ * unclaimed listing).
  */
 export async function searchActiveProviders(client: Client, where: ProviderSearchWhere, pagination: MarketplacePagination, now: Date) {
-  const active = activeFeaturedPeriodWhere(now);
-  const featuredWhere: ProviderSearchWhere = { AND: [...where.AND, { featuredPeriods: { some: active } }] };
-  const regularWhere: ProviderSearchWhere = { AND: [...where.AND, { featuredPeriods: { none: active } }] };
+  const featuredWhere: ProviderSearchWhere = { AND: [...where.AND, ...featuredNowConditions(now)] };
+  const regularWhere: ProviderSearchWhere = { AND: [...where.AND, notFeaturedNowCondition(now)] };
   const featuredCount = await client.provider.count({ where: featuredWhere });
   const featured = pagination.skip < featuredCount
     ? await searchProviderPage(client, featuredWhere, now, pagination.skip, pagination.limit)
@@ -61,7 +65,7 @@ export async function searchActiveProviders(client: Client, where: ProviderSearc
     Math.max(0, pagination.skip - featuredCount),
     room,
   );
-  return [...featured, ...regular];
+  return [...featured, ...regular.map((row) => ({ ...row, featuredPeriods: [] }))];
 }
 
 export function findActiveProviderWithServices(client: Client, id: string, now: Date) {
@@ -71,7 +75,7 @@ export function findActiveProviderWithServices(client: Client, id: string, now: 
       services: {
         where: { isActive: true },
         include: { images: { orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }] } },
-        orderBy: [{ isFeatured: "desc" }, { createdAt: "desc" }],
+        orderBy: [{ createdAt: "desc" }, { id: "asc" }],
       },
       featuredPeriods: activeFeaturedPeriodInclude(now),
     },
@@ -128,7 +132,7 @@ export function listActiveProviderServices(client: Client, providerId: string) {
       provider: true,
       images: { orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }] },
     },
-    orderBy: [{ isFeatured: "desc" }, { createdAt: "desc" }],
+    orderBy: [{ createdAt: "desc" }, { id: "asc" }],
   });
 }
 
@@ -143,10 +147,12 @@ export function searchActiveServices(client: Client, where: ServiceSearchWhere, 
         provider: true,
         images: { orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }] },
       },
+      // Cheapest first, then newest; the id makes the order total, so a page
+      // never skips or repeats a service.
       orderBy: [
-        { isFeatured: "desc" },
         { basePrice: "asc" },
         { createdAt: "desc" },
+        { id: "asc" },
       ],
       skip: pagination.skip,
       take: pagination.limit,

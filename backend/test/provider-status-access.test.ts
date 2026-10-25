@@ -142,7 +142,6 @@ function joiningService() {
     priceUpdatedAt: now,
     cityId: null,
     isActive: true,
-    isFeatured: false,
     images: [],
     createdAt: now,
     updatedAt: now,
@@ -222,7 +221,7 @@ function createProviderDashboard(status: ProviderStatus) {
     // No review decision is on record for these profiles.
     providerReviewEvent: { findFirst: async () => null },
     // Nor a featured placement (B-43).
-    providerFeaturedPeriod: { findFirst: async () => null },
+    providerFeaturedPeriod: { findMany: async () => [] },
     providerService: {
       // The one service the provider joined with (B-10).
       findMany: async () => [joiningService()],
@@ -240,7 +239,6 @@ function createProviderDashboard(status: ProviderStatus) {
         cityId: data.cityId ?? null,
         currency: data.currency ?? 'YER',
         isActive: true,
-        isFeatured: false,
         category,
         city: null,
         images: [],

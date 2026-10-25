@@ -1001,14 +1001,14 @@ export class AdminService {
 
   private serviceFilter(query: AdminServiceQueryDto): AdminServiceFilter {
     const status = query.status?.trim().toUpperCase();
-    if (status && !['ACTIVE', 'DISABLED', 'INACTIVE', 'FEATURED'].includes(status)) {
+    // A service is never «featured» on its own: placement is the provider's (B-43).
+    if (status && !['ACTIVE', 'DISABLED', 'INACTIVE'].includes(status)) {
       throw new BadRequestException('service status is not supported');
     }
     const search = this.optionalText(query.search);
     return {
       ...(status === 'ACTIVE' ? { isActive: true } : {}),
       ...(status === 'DISABLED' || status === 'INACTIVE' ? { isActive: false } : {}),
-      ...(status === 'FEATURED' ? { isFeatured: true } : {}),
       ...(query.providerId ? { providerId: query.providerId } : {}),
       ...(query.categoryId ? { categoryId: query.categoryId } : {}),
       ...(query.cityId ? { cityId: query.cityId } : {}),

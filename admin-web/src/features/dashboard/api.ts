@@ -39,7 +39,7 @@ export type AdminReport = {
     rejected: number;
     featured: number;
   };
-  services: { total: number; active: number; disabled: number; featured: number };
+  services: { total: number; active: number; disabled: number };
   reviews: { total: number; published: number; hidden: number; pending: number; averageRating: string };
   quotes: { total: number; byStatus: Array<{ status: string; count: number }> };
   notifications: { total: number; unread: number; archived: number; high: number; urgent: number };

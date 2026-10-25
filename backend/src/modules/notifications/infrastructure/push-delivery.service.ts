@@ -104,7 +104,7 @@ export class PushDeliveryService implements PushDeliveryPort {
   }
 
   private messagePayload(notification: Notification) {
-    const copy = pushNotificationCopy(notification.type);
+    const copy = pushNotificationCopy(notification.type, notification.data);
     const data: Record<string, string> = {
       notificationId: notification.id,
       type: notification.type,

@@ -492,7 +492,7 @@ rewrite as permission to restore a removed live model.
 | `FavoriteProvider` | 6 | `id`, `userId`, `providerId`, `createdAt` |
 | `ProviderReview` | 10 | `id`, `userId`, `providerId`, `createdAt`, `updatedAt` |
 | `QuoteRequest` | 37 | `id`, `userId`, `weddingPlanId`, `providerId`, `serviceId`, `cityId`, `acceptedAt`, `rejectedAt` |
-| `QuoteOffer` | 23 | `id`, `quoteRequestId`, `providerId`, `revisedAt`, `withdrawnAt`, `createdAt`, `updatedAt` |
+| `QuoteOffer` | 24 | `id`, `quoteRequestId`, `providerId`, `revisedAt`, `revisionNoticeAt`, `withdrawnAt`, `createdAt`, `updatedAt` |
 | `PlanProviderLink` | 12 | `id`, `weddingPlanId`, `providerId`, `quoteRequestId`, `quoteOfferId`, `createdAt`, `updatedAt` |
 | `Booking` | 17 | `id`, `quoteRequestId`, `quoteOfferId`, `providerId`, `requestedByUserId`, `confirmedAt`, `declinedAt`, `cancelledAt` |
 | `ProviderBlockedDate` | 5 | `id`, `providerId`, `createdAt` |

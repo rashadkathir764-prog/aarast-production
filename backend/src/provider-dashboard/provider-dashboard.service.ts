@@ -60,6 +60,7 @@ import {
 } from '../modules/marketplace/public/quote-offer-versions';
 import { lockMarketplaceProvider } from '../marketplace/marketplace-write-locks';
 import {
+  isQuoteOfferRevisionNoticeDue,
   providerRejectedRequestNotification,
   quoteOfferReceivedNotification,
   quoteOfferRevisedNotification,
@@ -1359,6 +1360,10 @@ export class ProviderDashboardService {
 
       const versionNo = existing.currentVersionNo + 1;
       const revisedAt = new Date();
+      const tellCustomer = isQuoteOfferRevisionNoticeDue(
+        existing.revisionNoticeAt,
+        revisedAt,
+      );
       const revised = await offerStore.reviseQuoteOffer(
         tx,
         id,
@@ -1368,6 +1373,7 @@ export class ProviderDashboardService {
           currentVersionNo: versionNo,
           versionChanges: toQuoteOfferChangesJson(changes),
           revisedAt,
+          ...(tellCustomer ? { revisionNoticeAt: revisedAt } : {}),
         },
       );
       if (revised.count !== 1) throw quoteOfferLocked(existing.status);
@@ -1385,26 +1391,34 @@ export class ProviderDashboardService {
         type: ConversationEventType.QUOTE_OFFER_REVISED,
         occurredAt: revisedAt,
         dedupeKey: `quote-offer:${id}:revised:${versionNo}`,
-        data: { versionNo, changes: toQuoteOfferChangesJson(changes) },
+        // Only the number: every reader of the plan's conversation reads its
+        // events, and «ايش تغيّر» comes from the offer through its
+        // money-aware view.
+        data: { versionNo },
       });
-      const recipientId =
-        await this.notifications.resolveProviderUpdateRecipientInTransaction(
+      // Revisions are told once per offer per ten minutes: a provider fixing
+      // his offer several times in a row tells the customer once; the
+      // timeline keeps each version.
+      if (tellCustomer) {
+        const recipientId =
+          await this.notifications.resolveProviderUpdateRecipientInTransaction(
+            tx,
+            existing.quoteRequest.weddingPlanId,
+            existing.quoteRequest.userId,
+          );
+        await this.notifications.createNotificationInTransaction(
           tx,
-          existing.quoteRequest.weddingPlanId,
-          existing.quoteRequest.userId,
+          quoteOfferRevisedNotification({
+            requesterId: recipientId,
+            weddingPlanId: existing.quoteRequest.weddingPlanId,
+            quoteRequestId: existing.quoteRequestId,
+            quoteOfferId: id,
+            versionNo,
+            providerId: provider.id,
+            providerName: provider.businessName,
+          }),
         );
-      await this.notifications.createNotificationInTransaction(
-        tx,
-        quoteOfferRevisedNotification({
-          requesterId: recipientId,
-          weddingPlanId: existing.quoteRequest.weddingPlanId,
-          quoteRequestId: existing.quoteRequestId,
-          quoteOfferId: id,
-          versionNo,
-          providerId: provider.id,
-          providerName: provider.businessName,
-        }),
-      );
+      }
       return dashboardStore.requireQuoteOffer(tx, id);
     });
 
@@ -1949,7 +1963,6 @@ export class ProviderDashboardService {
       cityId: service.cityId,
       city: service.city ? this.toCityResponse(service.city) : null,
       isActive: service.isActive,
-      isFeatured: service.isFeatured,
       images: service.images.map((image) => this.toImageResponse(image)),
       createdAt: service.createdAt,
       updatedAt: service.updatedAt,

@@ -11,9 +11,12 @@ const VENUE_WORDS = ["صالة", "صالات", "قاعة", "قاعات", "hall",
  * «و» and «ال» set aside, never inside another word («قات» is not in
  * «الاتفاقات»). A topic with no
  * budget words is a category no starter item covers: its cost goes to «أخرى»
- * on purpose. Every production category is pinned to its item by
- * `test/cost-category-matching.test.ts`, which reads the categories from the
- * migrations, so a new category cannot fall into «أخرى» unnoticed.
+ * on purpose. Every category a migration wrote is pinned to its item by
+ * `test/cost-category-matching.test.ts`, which reads them from the
+ * migrations. A category an administrator creates or renames at run time is
+ * not in a migration: the admin categories page shows the item it lands in
+ * (`providerCategoryBudgetItem`, this same matcher) and warns when it is
+ * «أخرى», since a name the topics do not know falls there silently.
  */
 interface BudgetTopic {
   readonly provider: readonly string[];

@@ -13,6 +13,7 @@ import { runSerializableTransaction } from "../platform/database/serializable-tr
 import { PrismaService } from "../platform/database/prisma.service";
 import {
   assertQuoteRequestTransition,
+  isQuoteRequestExpiryNoticeTimely,
   isQuoteRequestOverdue,
   lockQuoteRequestTransitionRow,
   QUOTE_REQUEST_ANSWER_DAYS,
@@ -29,16 +30,21 @@ const WARNING_WINDOW_MS = 24 * 60 * 60 * 1000;
 export interface QuoteRequestExpiryRun {
   expired: number;
   warned: number;
+  /** Listed but left as they were (answered, cancelled or moved meanwhile). */
+  skipped: number;
   failures: Array<{ quoteRequestId: string; error: unknown }>;
 }
 
 /**
  * B-04: a request waits seven days for the provider. The day before, the
  * provider is told; at the deadline the request ends EXPIRED and the
- * customer is told «ما رد … خلال 7 أيام». Each request moves in its own
- * transaction under the conversation and request locks every quote
- * transition takes, and only from the state it was read in, so a retry or a
- * second instance of the job finds nothing left to do.
+ * customer is told «ما رد … خلال 7 أيام» (unless the job reaches it more
+ * than a day late). Each request moves in its own transaction under the
+ * conversation and request locks every quote transition takes, and only
+ * from the state it was read in, so a retry or a second instance of the job
+ * finds nothing left to do. A run walks the due requests once, in deadline
+ * order: one that fails or is left as it was is counted and passed, never
+ * listed again by the same run.
  */
 @Injectable()
 export class QuoteRequestExpiryService {
@@ -51,42 +57,60 @@ export class QuoteRequestExpiryService {
   ) {}
 
   async run(now: Date = new Date()): Promise<QuoteRequestExpiryRun> {
-    const result: QuoteRequestExpiryRun = { expired: 0, warned: 0, failures: [] };
-    const failed = new Set<string>();
+    const result: QuoteRequestExpiryRun = {
+      expired: 0,
+      warned: 0,
+      skipped: 0,
+      failures: [],
+    };
 
-    for (let batch = 0; batch < MAX_BATCHES_PER_RUN; batch += 1) {
-      const due = (
-        await deadlines.listOverdueQuoteRequestIds(this.prisma, now, BATCH_SIZE + failed.size)
-      ).filter((row) => !failed.has(row.id));
-      if (due.length === 0) break;
-      for (const { id } of due) {
-        try {
-          if (await this.expire(id, now)) result.expired += 1;
-        } catch (error) {
-          failed.add(id);
-          result.failures.push({ quoteRequestId: id, error });
-        }
-      }
-      if (due.length < BATCH_SIZE) break;
-    }
+    await this.walk(
+      (cursor) => deadlines.listOverdueQuoteRequestIds(this.prisma, now, BATCH_SIZE, cursor),
+      (id) => this.expire(id, now),
+      (done) => {
+        if (done) result.expired += 1;
+        else result.skipped += 1;
+      },
+      result,
+    );
 
     const until = new Date(now.getTime() + WARNING_WINDOW_MS);
+    await this.walk(
+      (cursor) =>
+        deadlines.listQuoteRequestIdsToWarn(this.prisma, now, until, BATCH_SIZE, cursor),
+      (id) => this.warn(id, now, until),
+      (done) => {
+        if (done) result.warned += 1;
+        else result.skipped += 1;
+      },
+      result,
+    );
+    return result;
+  }
+
+  /** Each listed request once, batch after batch, from where the last stopped. */
+  private async walk(
+    list: (
+      cursor: deadlines.QuoteRequestDeadlineCursor | null,
+    ) => Promise<deadlines.QuoteRequestDeadlineCursor[]>,
+    act: (id: string) => Promise<boolean>,
+    count: (done: boolean) => void,
+    result: QuoteRequestExpiryRun,
+  ): Promise<void> {
+    let cursor: deadlines.QuoteRequestDeadlineCursor | null = null;
     for (let batch = 0; batch < MAX_BATCHES_PER_RUN; batch += 1) {
-      const due = (
-        await deadlines.listQuoteRequestIdsToWarn(this.prisma, now, until, BATCH_SIZE + failed.size)
-      ).filter((row) => !failed.has(row.id));
-      if (due.length === 0) break;
-      for (const { id } of due) {
+      const due = await list(cursor);
+      if (due.length === 0) return;
+      for (const row of due) {
         try {
-          if (await this.warn(id, now, until)) result.warned += 1;
+          count(await act(row.id));
         } catch (error) {
-          failed.add(id);
-          result.failures.push({ quoteRequestId: id, error });
+          result.failures.push({ quoteRequestId: row.id, error });
         }
       }
-      if (due.length < BATCH_SIZE) break;
+      cursor = due[due.length - 1]!;
+      if (due.length < BATCH_SIZE) return;
     }
-    return result;
   }
 
   /** Ends one overdue request; false when it was answered, cancelled or ended meanwhile. */
@@ -108,6 +132,7 @@ export class QuoteRequestExpiryService {
         dedupeKey: `quote-request:${id}:expired`,
         data: { status: QuoteRequestStatus.EXPIRED, answerDays: QUOTE_REQUEST_ANSWER_DAYS },
       });
+      if (!isQuoteRequestExpiryNoticeTimely(request.expiresAt, now)) return true;
       const recipientId = await this.notifications.resolveProviderUpdateRecipientInTransaction(
         tx,
         request.weddingPlanId,

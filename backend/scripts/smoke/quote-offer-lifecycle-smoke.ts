@@ -15,6 +15,7 @@ import {
   type User,
 } from "@prisma/client";
 import { QuoteRequestExpiryService } from "../../src/marketplace/quote-request-expiry.service";
+import { providerResponseSample } from "../../src/modules/marketplace/infrastructure/marketplace-core.repository";
 import { normalizeBudgetCategoryName } from "../../src/modules/finance/domain/cost-category-matching";
 import { ConversationLifecycleService } from "../../src/modules/messaging/internal/conversation-lifecycle.internal.module";
 import { PermissionService } from "../../src/modules/collaboration/internal/permission.service";
@@ -301,6 +302,52 @@ async function main(): Promise<void> {
   assert.equal(customerOffer.changes[0].field, "amount");
   pass("an edit before acceptance is version 2 with «ايش تغيّر», one event and one notice; repeating it changes nothing");
 
+  // A member who manages the providers but sees no money reads the
+  // conversation's timeline: the revision is there, its amounts are not.
+  const member = await account("member", `${label} مساعد`);
+  await prisma.sharedMember.create({
+    data: {
+      weddingPlanId: plan.id,
+      userId: member.id,
+      canManageProviders: true,
+      canViewMoney: false,
+    },
+  });
+  const memberToken = await session(member);
+  const timeline = expect(
+    await call("GET", `/api/v1/conversations/${planChat.id}/timeline`, memberToken),
+    200,
+    "the member reads the timeline",
+  );
+  const revisedEvent = timeline.items.find(
+    (item: any) => item.kind === "EVENT" && item.event?.type === "QUOTE_OFFER_REVISED",
+  );
+  assert.ok(revisedEvent, "the revision is on the timeline");
+  assert.deepEqual(revisedEvent.event.data, { versionNo: 2 });
+  for (const item of timeline.items) {
+    if (item.kind !== "EVENT") continue;
+    assert.doesNotMatch(
+      JSON.stringify(item.event.data ?? {}),
+      /amount|changes|500000|450000/u,
+      `${item.event.type} carries no money`,
+    );
+  }
+  const memberRequests = expect(
+    await call("GET", `/api/v1/conversations/${planChat.id}/quote-requests`, memberToken),
+    200,
+    "the member reads the conversation's requests",
+  );
+  const memberOffer = memberRequests.items
+    .flatMap((quote: any) => quote.offers)
+    .find((item: any) => item.id === offer.id);
+  assert.equal(memberOffer.amount, undefined);
+  assert.deepEqual(
+    memberOffer.changes.map((change: any) => change.field),
+    ["message"],
+    "«ايش تغيّر» without the amount",
+  );
+  pass("a member without money reads the revision on the timeline and «ايش تغيّر» without any amount");
+
   expect(
     await call("PATCH", `/api/v1/quote-offers/${offer.id}/accept`, customerToken, { versionNo: 1 }),
     409,
@@ -358,6 +405,12 @@ async function main(): Promise<void> {
   );
   pass("a withdrawn offer gives the request back for seven days, tells the customer once, and can be neither accepted nor edited");
 
+  const responseWindow = { since: new Date(0), settledBefore: new Date(Date.now() + DAY_MS) };
+  const afterWithdrawal = await providerResponseSample(prisma as any, provider.id, responseWindow);
+  assert.equal(afterWithdrawal.answered, 0, "a withdrawn offer is no answer");
+  assert.equal(afterWithdrawal.requests, 2);
+  pass("the response speed does not count a withdrawn offer as an answer");
+
   // ---------------------------------------------------------------- G38
   const second = expect(
     await call("POST", `/api/v1/provider/me/quote-requests/${privateQuote.id}/offers`, providerToken, {
@@ -370,8 +423,45 @@ async function main(): Promise<void> {
     "a new offer after the withdrawal",
   );
   assert.equal(second.versionNo, 1);
+  assert.equal(
+    (await providerResponseSample(prisma as any, provider.id, responseWindow)).answered,
+    1,
+    "the new offer answers the request",
+  );
+
+  // Revisions are told once per offer per ten minutes; the timeline keeps each.
+  const revise = async (message: string, versionNo: number) => {
+    const body = expect(
+      await call("PATCH", `/api/v1/provider/me/quote-offers/${second.id}`, providerToken, { message }),
+      200,
+      `revision ${versionNo}`,
+    );
+    assert.equal(body.versionNo, versionNo);
+  };
+  const toldOf = (versionNo: number) =>
+    prisma.notification.count({
+      where: { userId: customer.id, dedupeKey: `${customer.id}:quote-offer:${second.id}:v${versionNo}` },
+    });
+  await revise("لحم ورز وسلطات وحلى وعصير", 2);
+  await revise("لحم ورز وسلطات وحلى وعصير وشاي", 3);
+  assert.equal(await toldOf(2), 1, "the first revision is told");
+  assert.equal(await toldOf(3), 0, "a revision a minute later is not told again");
+  await prisma.quoteOffer.update({
+    where: { id: second.id },
+    data: { revisionNoticeAt: new Date(Date.now() - 11 * 60 * 1000) },
+  });
+  await revise("لحم ورز وسلطات وحلى وعصير وشاي وقهوة", 4);
+  assert.equal(await toldOf(4), 1, "ten minutes later a revision is told again");
+  assert.equal(
+    await prisma.conversationEvent.count({
+      where: { quoteOfferId: second.id, type: ConversationEventType.QUOTE_OFFER_REVISED },
+    }),
+    3,
+  );
+  pass("revisions of one offer are told once per ten minutes, and the timeline records every version");
+
   const accepted = expect(
-    await call("PATCH", `/api/v1/quote-offers/${second.id}/accept`, customerToken, { versionNo: 1 }),
+    await call("PATCH", `/api/v1/quote-offers/${second.id}/accept`, customerToken, { versionNo: 4 }),
     200,
     "accepting the version read",
   );
@@ -456,6 +546,34 @@ async function main(): Promise<void> {
   );
   expect(await request("2027-01-22", true), 201, "asking the same again after it ended");
   pass("past seven days the job ends the request once, the customer is told «ما رد … خلال 7 أيام», and may ask again");
+
+  // A request whose deadline passed long before the job reached it (the
+  // first run after B-04 shipped) ends without telling the customer.
+  const stale = expect(await request("2027-01-23", false), 201, "a request the job reaches late");
+  await prisma.quoteRequest.update({
+    where: { id: stale.id },
+    data: { expiresAt: new Date(Date.now() - 30 * DAY_MS) },
+  });
+  const lateRun = await expiry.run(new Date());
+  assert.deepEqual(lateRun.failures, []);
+  assert.equal(lateRun.expired, 1);
+  assert.equal(
+    (await prisma.quoteRequest.findUniqueOrThrow({ where: { id: stale.id } })).status,
+    QuoteRequestStatus.EXPIRED,
+  );
+  assert.equal(
+    await prisma.conversationEvent.count({
+      where: { quoteRequestId: stale.id, type: ConversationEventType.QUOTE_REQUEST_EXPIRED },
+    }),
+    1,
+  );
+  assert.equal(
+    await prisma.notification.count({
+      where: { dedupeKey: `${customer.id}:quote-request-expired:${stale.id}` },
+    }),
+    0,
+  );
+  pass("a request ended more than a day after its deadline is closed without telling the customer late news");
 
   console.log(`\nQuote offer lifecycle smoke: ${checks} checks passed.`);
 }

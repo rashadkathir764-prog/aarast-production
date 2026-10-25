@@ -4,6 +4,9 @@
 // groom and bride columns show it or «ما يظهر» by the section's audience
 // (a name per side waits for A-20). Editing and disabling open from the
 // section's name, which the design does not draw but the catalog needs.
+// Under each side, the money item its accepted offers are filed under
+// (undrawn, the offers review): «أخرى» shows in coral, and a save that lands
+// there says so.
 import { type FormEvent, useCallback, useEffect, useState } from 'react';
 import { Plus } from 'lucide-react';
 import {
@@ -60,8 +63,44 @@ function draftOf(category: ProviderCategory): Draft {
   };
 }
 
-function side(category: ProviderCategory, shown: boolean) {
-  return shown ? category.nameAr : <span className="desk-ink--muted">ما يظهر</span>;
+/**
+ * Where an accepted offer of the section is filed in that side's money
+ * (G38), under its name: the item, or «أخرى» in coral when no item fits.
+ * Undrawn on a08: a section the matcher does not know would otherwise fall
+ * into «أخرى» unseen.
+ */
+function budgetLine(item: string | null | undefined, key: string) {
+  if (item === undefined) return null;
+  return item === null ? (
+    <small key={key} className="desk-ink--coral" style={{ display: 'block' }}>
+      في المال: «أخرى»، ما فيه بند يناسبه
+    </small>
+  ) : (
+    <small key={key} className="desk-ink--muted" style={{ display: 'block' }}>
+      في المال: {item}
+    </small>
+  );
+}
+
+function side(category: ProviderCategory, shown: boolean, item: string | null | undefined) {
+  if (!shown) return <span className="desk-ink--muted">ما يظهر</span>;
+  return (
+    <span>
+      {category.nameAr}
+      {budgetLine(item, 'b')}
+    </span>
+  );
+}
+
+const SIDE_NAMES = { groom: 'العريس', bride: 'العروسة', shared: 'الخطة المشتركة' } as const;
+
+/** After a save: the sides where the section's costs would go to «أخرى». */
+function otherSides(category: ProviderCategory): string[] {
+  const items = category.budgetItems;
+  if (!items) return [];
+  return (Object.keys(SIDE_NAMES) as Array<keyof typeof SIDE_NAMES>)
+    .filter((key) => items[key] === null)
+    .map((key) => SIDE_NAMES[key]);
 }
 
 export function CategoriesPage() {
@@ -73,6 +112,7 @@ export function CategoriesPage() {
   const [draft, setDraft] = useState<Draft>(EMPTY);
   const [formError, setFormError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState<ProviderCategory | null>(null);
 
   const load = useCallback(async () => {
     setError(null);
@@ -108,8 +148,13 @@ export function CategoriesPage() {
         showForBride: draft.showForBride,
         sortOrder: Number(draft.sortOrder) || 0,
       };
-      if (editing === 'new') await createCategory(payload);
-      else if (editing) await updateCategory(editing.id, payload);
+      const result =
+        editing === 'new'
+          ? await createCategory(payload)
+          : editing
+            ? await updateCategory(editing.id, payload)
+            : null;
+      setSaved(result);
       setEditing(null);
       await load();
     } catch (value) {
@@ -135,6 +180,11 @@ export function CategoriesPage() {
         }
       />
       <CatalogTabs />
+      {saved && otherSides(saved).length > 0 ? (
+        <DeskNote tone="coral">
+          {`تكاليف «${saved.nameAr}» تروح «أخرى» عند ${otherSides(saved).join(' و')}: ما فيه بند في المال يناسب اسمه.`}
+        </DeskNote>
+      ) : null}
       {error ? <DeskRetry message={error} onRetry={() => void load()} /> : null}
       {items === null && !error ? <DeskNote>لحظة، نحمّل الأقسام…</DeskNote> : null}
       {items && items.length === 0 ? (
@@ -167,8 +217,8 @@ export function CategoriesPage() {
             ) : (
               <strong key="n">{category.nameAr}</strong>
             ),
-            side(category, category.showForGroom),
-            side(category, category.showForBride),
+            side(category, category.showForGroom, category.budgetItems?.groom),
+            side(category, category.showForBride, category.budgetItems?.bride),
             category.isActive ? (
               <Tag key="s" tone="green">نشط</Tag>
             ) : (

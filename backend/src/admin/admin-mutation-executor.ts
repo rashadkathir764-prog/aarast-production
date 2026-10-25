@@ -6,6 +6,7 @@ import {
 import {
   ConversationReportStatus,
   Prisma,
+  type ProviderCategory,
   ReviewStatus,
 } from '@prisma/client';
 import { AuthenticatedUser } from '../modules/identity/public/identity-session.types';
@@ -24,7 +25,7 @@ import {
   toAdminNotificationResponse,
   toAdminReviewResponse,
   toAdminServiceResponse,
-  toCategoryResponse,
+  toCategoryAdminResponse,
   toCityResponse,
   toProviderResponse,
 } from './admin.presenter';
@@ -376,12 +377,23 @@ export class AdminMutationExecutor {
           isActive,
           sortOrder: dto.sortOrder ?? 0,
         });
-        const [attached] = await this.owners.attachCategories(tx, [created]);
-        return attached!;
+        return this.categoryWithStarterItems(tx, created);
       },
     );
 
-    return toCategoryResponse(category);
+    return toCategoryAdminResponse(category.attached, category.starterItems);
+  }
+
+  /** The category as the admin reads it, and the starter items its budget line is read against. */
+  private async categoryWithStarterItems(
+    tx: Prisma.TransactionClient,
+    category: ProviderCategory,
+  ) {
+    const [attached] = await this.owners.attachCategories(tx, [category]);
+    return {
+      attached: attached!,
+      starterItems: await this.owners.catalog.listStarterBudgetItems(tx),
+    };
   }
 
   async updateCategory(
@@ -429,12 +441,11 @@ export class AdminMutationExecutor {
             ? { sortOrder: dto.sortOrder }
             : {}),
         });
-        const [attached] = await this.owners.attachCategories(tx, [updated]);
-        return attached!;
+        return this.categoryWithStarterItems(tx, updated);
       },
     );
 
-    return toCategoryResponse(category);
+    return toCategoryAdminResponse(category.attached, category.starterItems);
   }
 
   async deleteCategory(currentUser: AuthenticatedUser, id: string) {
@@ -452,12 +463,14 @@ export class AdminMutationExecutor {
           id,
           { isActive: false },
         );
-        const [attached] = await this.owners.attachCategories(tx, [updated]);
-        return attached!;
+        return this.categoryWithStarterItems(tx, updated);
       },
     );
 
-    return { ...toCategoryResponse(category), deleted: false };
+    return {
+      ...toCategoryAdminResponse(category.attached, category.starterItems),
+      deleted: false,
+    };
   }
 
   async createCity(currentUser: AuthenticatedUser, dto: AdminCityDto) {

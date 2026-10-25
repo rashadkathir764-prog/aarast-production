@@ -25,6 +25,8 @@ import {
   yemenDayOf,
 } from '../modules/marketplace/public/featured-placement';
 import { toReviewIdentity } from '../shared-kernel/privacy/review-identity';
+import { providerCategoryBudgetItem } from '../modules/finance/public/provider-category-budget-item';
+import type { StarterBudgetItem } from '../modules/catalog/public/catalog-admin.port';
 import {
   maskPhone,
   toAdminNotificationPrivacyView,
@@ -343,6 +345,37 @@ export function toCityResponse(city: AdminCityRecord) {
     updatedAt: city.updatedAt,
     providersCount: city._count?.providers ?? 0,
     servicesCount: city._count?.services ?? 0,
+  };
+}
+
+/**
+ * Where an accepted offer of this category is filed in a new plan of each
+ * kind, by the same matcher acceptance uses: the starter item's name, or
+ * null for «أخرى» (the admin page warns then). A new or renamed category
+ * that no item fits is seen here, not discovered in a customer's money.
+ */
+function categoryBudgetItems(
+  categoryName: string,
+  starterItems: readonly StarterBudgetItem[],
+) {
+  const of = (persona: StarterBudgetItem['persona']) =>
+    providerCategoryBudgetItem(
+      starterItems
+        .filter((item) => item.persona === persona)
+        .map((item) => item.nameAr),
+      categoryName,
+    );
+  return { groom: of('GROOM'), bride: of('BRIDE'), shared: of('NEUTRAL') };
+}
+
+/** a08's row: the category and where its accepted offers are filed. */
+export function toCategoryAdminResponse(
+  category: AdminCategoryRecord,
+  starterItems: readonly StarterBudgetItem[],
+) {
+  return {
+    ...toCategoryResponse(category),
+    budgetItems: categoryBudgetItems(category.nameAr, starterItems),
   };
 }
 

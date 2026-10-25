@@ -11,9 +11,11 @@ export class QuoteRequestExpiryScheduler {
 
   @Cron('40 * * * *')
   async expireOverdueRequests(): Promise<void> {
-    const { expired, warned, failures } = await this.expiry.run();
-    if (expired > 0 || warned > 0) {
-      this.logger.log(`Quote requests expired=${expired} warned=${warned}`);
+    const { expired, warned, skipped, failures } = await this.expiry.run();
+    if (expired > 0 || warned > 0 || skipped > 0) {
+      this.logger.log(
+        `Quote requests expired=${expired} warned=${warned} skipped=${skipped}`,
+      );
     }
     for (const failure of failures) {
       this.logger.error(

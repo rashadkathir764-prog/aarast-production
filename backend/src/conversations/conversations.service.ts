@@ -97,6 +97,20 @@ interface TimelineCursor {
 }
 
 /**
+ * B-14: a customer-side person as the provider side reads them: the name
+ * (p16 and p19 draw «محمد الحمدي») with no picture, so the app draws the
+ * initial. Messages carry it to both sides, so a customer sender is shown
+ * this way to everyone.
+ */
+function customerSummaryForProvider(user: ApplicationAvatarSource & { id: string }) {
+  return {
+    id: user.id,
+    name: applicationDisplayName(user),
+    avatarUrl: null,
+  };
+}
+
+/**
  * B-14: who the provider talks to in a plan's conversation: the customer's
  * first name, the wedding and its day. No phone, no picture, no surname.
  */
@@ -212,7 +226,7 @@ export class ConversationsService {
     cursor?: string,
     limitValue?: string,
   ) {
-    await this.assertAccess(currentUser, conversationId);
+    const { conversation } = await this.assertAccess(currentUser, conversationId);
     const limit = normalizeMessagePageSize(limitValue);
     await this.assertMessageCursor(conversationId, cursor);
     const messages = await this.relations.attachMessageSenders(
@@ -221,8 +235,11 @@ export class ConversationsService {
     );
     const hasMore = messages.length > limit;
     const page = messages.slice(0, limit);
+    const providerUserId = conversation.provider.userId;
     return {
-      items: await Promise.all(page.reverse().map((message) => this.toMessageResponse(message))),
+      items: await Promise.all(
+        page.reverse().map((message) => this.toMessageResponse(message, providerUserId)),
+      ),
       nextCursor: hasMore ? (page[0]?.id ?? null) : null,
     };
   }
@@ -233,7 +250,8 @@ export class ConversationsService {
     cursorValue?: string,
     limitValue?: string,
   ) {
-    await this.assertAccess(currentUser, conversationId);
+    const { conversation } = await this.assertAccess(currentUser, conversationId);
+    const providerUserId = conversation.provider.userId;
     const limit = normalizeMessagePageSize(limitValue);
     const cursor = this.decodeTimelineCursor(cursorValue);
     const before = cursor ? new Date(cursor.occurredAt) : undefined;
@@ -295,7 +313,7 @@ export class ConversationsService {
             ? {
                 kind: 'MESSAGE',
                 occurredAt: item.occurredAt,
-                message: await this.toMessageResponse(item.source),
+                message: await this.toMessageResponse(item.source, providerUserId),
               }
             : {
                 kind: 'EVENT',
@@ -471,7 +489,12 @@ export class ConversationsService {
       return created;
     });
 
-    const response = await this.toMessageResponse(message, signedDownloads);
+    // The room holds both sides: the message carries no customer picture.
+    const response = await this.toMessageResponse(
+      message,
+      conversation.provider.userId,
+      signedDownloads,
+    );
     this.realtime.message(conversationId, response);
     this.realtime.activityAvailable(conversationId, {
       conversationId,
@@ -994,7 +1017,7 @@ export class ConversationsService {
           : null
         : conversation.scope === ConversationScope.ACCOUNT && conversation.accountRequester
           ? {
-              ...toApplicationUserSummary(conversation.accountRequester),
+              ...customerSummaryForProvider(conversation.accountRequester),
               appRole: conversation.accountRequester.appRole,
             }
           : conversation.scope === ConversationScope.PLAN && latestQuote
@@ -1017,7 +1040,10 @@ export class ConversationsService {
         ? this.toQuoteRequestResponse(latestQuote, access)
         : null,
       lastMessage: conversation.messages[0]
-        ? await this.toMessageResponse(conversation.messages[0])
+        ? await this.toMessageResponse(
+            conversation.messages[0],
+            conversation.provider.userId,
+          )
         : null,
       lastActivityAt: conversation.lastActivityAt,
       unreadMessageCount,
@@ -1058,6 +1084,7 @@ export class ConversationsService {
         amount: Prisma.Decimal | null;
         currentVersionNo: number;
         versionChanges: Prisma.JsonValue | null;
+        revisionNoticeAt?: Date | null;
       }>;
       budgetMin: Prisma.Decimal | null;
       budgetMax: Prisma.Decimal | null;
@@ -1085,8 +1112,16 @@ export class ConversationsService {
     const showPhone = access.canViewContact && (!provider || quote.shareContact);
     return {
       ...safe,
-      user: toApplicationUserSummary(user),
-      offers: offers.map(({ amount, currentVersionNo, versionChanges, ...offer }) => ({
+      // B-14: his name as drawn, never his picture.
+      user: provider ? customerSummaryForProvider(user) : toApplicationUserSummary(user),
+      offers: offers.map(
+        ({
+          amount,
+          currentVersionNo,
+          versionChanges,
+          revisionNoticeAt: _revisionNoticeAt,
+          ...offer
+        }) => ({
         ...offer,
         ...(access.canViewMoney ? { amount } : {}),
         // B-06: the version and «ايش تغيّر», named as the quote APIs name
@@ -1190,6 +1225,10 @@ export class ConversationsService {
     },
   >(
     message: T,
+    // B-14: a message is read by both sides (and pushed to both in the
+    // room), so only the provider's own account shows its picture; a
+    // customer-side sender is a name.
+    providerUserId: string | null,
     signedDownloads?: Map<string, Awaited<ReturnType<MediaStoragePort['createDownloadUrl']>>>,
   ) {
     const { sender, ...messageWithoutSender } = message;
@@ -1210,7 +1249,14 @@ export class ConversationsService {
     );
     return {
       ...messageWithoutSender,
-      ...(sender ? { sender: toApplicationUserSummary(sender) } : {}),
+      ...(sender
+        ? {
+            sender:
+              sender.id === providerUserId
+                ? toApplicationUserSummary(sender)
+                : customerSummaryForProvider(sender),
+          }
+        : {}),
       attachments,
     };
   }

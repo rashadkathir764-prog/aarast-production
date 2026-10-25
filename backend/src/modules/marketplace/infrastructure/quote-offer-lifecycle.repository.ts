@@ -44,6 +44,8 @@ export interface QuoteOfferRevision {
   currentVersionNo: number;
   versionChanges: Prisma.InputJsonValue;
   revisedAt: Date;
+  /** Set when this version is told to the customer; kept otherwise. */
+  revisionNoticeAt?: Date;
 }
 
 /** The new current version, only while the offer is still the one read (PENDING, that version). */
@@ -64,6 +66,9 @@ export function reviseQuoteOffer(
       currentVersionNo: revision.currentVersionNo,
       versionChanges: revision.versionChanges,
       revisedAt: revision.revisedAt,
+      ...(revision.revisionNoticeAt
+        ? { revisionNoticeAt: revision.revisionNoticeAt }
+        : {}),
     },
   });
 }
@@ -83,25 +88,64 @@ export function reopenAnsweredRequest(client: Client, id: string, expiresAt: Dat
   });
 }
 
-/** Requests still waiting for the provider whose deadline has passed, oldest first. */
-export function listOverdueQuoteRequestIds(client: Client, now: Date, take: number) {
+/** Where a batch of the hourly job stopped: the last request it listed. */
+export interface QuoteRequestDeadlineCursor {
+  expiresAt: Date;
+  id: string;
+}
+
+/**
+ * Requests still waiting for the provider whose deadline has passed, oldest
+ * first, after the cursor in (expiresAt, id) order: every request is listed
+ * once per run.
+ */
+export function listOverdueQuoteRequestIds(
+  client: Client,
+  now: Date,
+  take: number,
+  cursor: QuoteRequestDeadlineCursor | null = null,
+) {
   return client.quoteRequest.findMany({
-    where: { status: { in: WAITING_FOR_PROVIDER }, expiresAt: { lte: now } },
-    select: { id: true },
+    where: {
+      status: { in: WAITING_FOR_PROVIDER },
+      expiresAt: { lte: now },
+      OR: cursor
+        ? [
+            { expiresAt: { gt: cursor.expiresAt } },
+            { expiresAt: cursor.expiresAt, id: { gt: cursor.id } },
+          ]
+        : undefined,
+    },
+    select: { id: true, expiresAt: true },
     orderBy: [{ expiresAt: 'asc' }, { id: 'asc' }],
     take,
   });
 }
 
-/** Requests waiting for the provider that end within the window and were not warned yet. */
-export function listQuoteRequestIdsToWarn(client: Client, now: Date, until: Date, take: number) {
+/**
+ * Requests waiting for the provider that end within the window and were not
+ * warned yet, after the cursor as above.
+ */
+export function listQuoteRequestIdsToWarn(
+  client: Client,
+  now: Date,
+  until: Date,
+  take: number,
+  cursor: QuoteRequestDeadlineCursor | null = null,
+) {
   return client.quoteRequest.findMany({
     where: {
       status: { in: WAITING_FOR_PROVIDER },
       expiresAt: { gt: now, lte: until },
       expiryWarnedAt: null,
+      OR: cursor
+        ? [
+            { expiresAt: { gt: cursor.expiresAt } },
+            { expiresAt: cursor.expiresAt, id: { gt: cursor.id } },
+          ]
+        : undefined,
     },
-    select: { id: true },
+    select: { id: true, expiresAt: true },
     orderBy: [{ expiresAt: 'asc' }, { id: 'asc' }],
     take,
   });

@@ -224,6 +224,25 @@ export function quoteOfferWithdrawnNotification(args: {
   };
 }
 
+/** How long after a told revision the next revision of the same offer stays untold. */
+export const QUOTE_OFFER_NOTICE_WINDOW_MS = 10 * 60 * 1000;
+
+/**
+ * Whether a revision at `at` tells the customer: revisions of one offer are
+ * told once per ten minutes (counted from the last told revision), so a
+ * provider fixing his offer several times in a row sends one notice. The
+ * conversation's timeline records every version either way.
+ */
+export function isQuoteOfferRevisionNoticeDue(
+  lastNoticeAt: Date | null,
+  at: Date,
+): boolean {
+  return (
+    lastNoticeAt === null ||
+    at.getTime() - lastNoticeAt.getTime() >= QUOTE_OFFER_NOTICE_WINDOW_MS
+  );
+}
+
 /**
  * B-06: a new version of an offer. The amount stays out of the notice (a
  * member who reads notices may not see money); the request shows the change.

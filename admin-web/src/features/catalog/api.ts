@@ -24,6 +24,16 @@ export type ProviderCategory = {
   sortOrder: number;
   providersCount?: number;
   servicesCount?: number;
+  /**
+   * The money item an accepted offer of this section is filed under in a
+   * new plan of the groom, the bride and a shared plan; null is «أخرى».
+   * Read on the categories page and in its save responses.
+   */
+  budgetItems?: {
+    groom: string | null;
+    bride: string | null;
+    shared: string | null;
+  };
 };
 
 export type ProviderService = {

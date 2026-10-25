@@ -18,7 +18,25 @@ export function isPushNotificationType(type: NotificationType): boolean {
   return PUSH_NOTIFICATION_TYPES.has(type);
 }
 
-export function pushNotificationCopy(type: NotificationType): {
+/**
+ * A QUOTE_OFFER_RECEIVED notice about a new version (B-06) carries the
+ * version number from 2 up; the first offer carries none.
+ */
+function isRevisedOfferNotice(data: unknown): boolean {
+  if (!data || typeof data !== "object" || Array.isArray(data)) return false;
+  const versionNo = (data as Record<string, unknown>).versionNo;
+  return typeof versionNo === "number" && versionNo > 1;
+}
+
+/**
+ * The words on the lock screen: generic, never a name or an amount. `data`
+ * is the notification's own data, read only to tell a revised offer from a
+ * new one.
+ */
+export function pushNotificationCopy(
+  type: NotificationType,
+  data?: unknown,
+): {
   title: string;
   body: string;
 } {
@@ -45,10 +63,15 @@ export function pushNotificationCopy(type: NotificationType): {
         body: "موعد العرس يقترب. افتح اعّرست لمراجعة ما تبقى.",
       };
     case NotificationType.QUOTE_OFFER_RECEIVED:
-      return {
-        title: "وصل عرض سعر",
-        body: "وصلك عرض سعر جديد. افتح اعّرست لمراجعته.",
-      };
+      return isRevisedOfferNotice(data)
+        ? {
+            title: "عدّلوا عرضهم",
+            body: "وصلتك نسخة جديدة من العرض. افتح اعّرست وشوف ايش تغيّر.",
+          }
+        : {
+            title: "وصل عرض سعر",
+            body: "وصلك عرض سعر جديد. افتح اعّرست لمراجعته.",
+          };
     case NotificationType.QUOTE_REQUEST_EXPIRING:
       return {
         title: "طلب ينتهي بكرة",

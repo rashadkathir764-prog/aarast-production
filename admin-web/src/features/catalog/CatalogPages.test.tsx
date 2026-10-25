@@ -70,6 +70,49 @@ describe('CategoriesPage (a08)', () => {
     expect(screen.getByRole('navigation', { name: 'صفحات الكتالوج' })).toBeVisible();
   });
 
+  it('shows the money item each side files the section under, «أخرى» in coral', async () => {
+    vi.mocked(getCategories).mockResolvedValue([
+      {
+        ...section('التصوير', true, true),
+        budgetItems: { groom: 'التصوير والفيديو', bride: 'التصوير', shared: 'التصوير' },
+      },
+      {
+        ...section('تنظيف', true, true),
+        budgetItems: { groom: null, bride: null, shared: null },
+      },
+    ]);
+    withRouter(<CategoriesPage />);
+
+    const photo = (await screen.findByRole('button', { name: 'عدّل التصوير' })).closest('tr') as HTMLElement;
+    expect(within(photo).getAllByRole('cell')[1]).toHaveTextContent('في المال: التصوير والفيديو');
+    expect(within(photo).getAllByRole('cell')[2]).toHaveTextContent('في المال: التصوير');
+    const cleaning = screen.getByRole('button', { name: 'عدّل تنظيف' }).closest('tr') as HTMLElement;
+    const warning = within(within(cleaning).getAllByRole('cell')[1]).getByText(
+      'في المال: «أخرى»، ما فيه بند يناسبه',
+    );
+    expect(warning).toHaveClass('desk-ink--coral');
+  });
+
+  it('says after a save when the section lands in «أخرى»', async () => {
+    vi.mocked(getCategories).mockResolvedValue([]);
+    vi.mocked(createCategory).mockResolvedValue({
+      ...section('تنظيف', true, true),
+      budgetItems: { groom: null, bride: 'النظافة', shared: null },
+    });
+    withRouter(<CategoriesPage />);
+
+    fireEvent.click(await screen.findByRole('button', { name: 'قسم جديد' }));
+    const form = screen.getByRole('dialog', { name: 'قسم جديد' });
+    fireEvent.change(within(form).getByLabelText('الاسم العربي'), { target: { value: 'تنظيف' } });
+    fireEvent.click(within(form).getByRole('button', { name: 'احفظ' }));
+
+    expect(
+      await screen.findByText(
+        'تكاليف «تنظيف» تروح «أخرى» عند العريس والخطة المشتركة: ما فيه بند في المال يناسب اسمه.',
+      ),
+    ).toBeVisible();
+  });
+
   it('adds a section from «قسم جديد» and asks for one side at least', async () => {
     vi.mocked(getCategories).mockResolvedValue([]);
     vi.mocked(createCategory).mockResolvedValue(section('الكوش', true, true));

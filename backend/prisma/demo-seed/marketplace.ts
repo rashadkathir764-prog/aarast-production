@@ -461,7 +461,8 @@ async function seedRequest(prisma: PrismaClient, request: RequestSpec, cityId: s
       type: ConversationEventType.QUOTE_OFFER_RECEIVED,
       occurredAt: offerCreated,
       dedupeKey: `demo:${request.key}:offer-received`,
-      data: { amount: request.offer.amount },
+      // As the app writes them: no amount in an event every plan reader opens.
+      data: { status: QuoteOfferStatus.PENDING },
     });
     if (firstSpec && changes) {
       await upsertEvent(prisma, {
@@ -472,7 +473,7 @@ async function seedRequest(prisma: PrismaClient, request: RequestSpec, cityId: s
         type: ConversationEventType.QUOTE_OFFER_REVISED,
         occurredAt: firstSpec.revisedAt,
         dedupeKey: `demo:${request.key}:offer-revised:2`,
-        data: { versionNo: 2, changes },
+        data: { versionNo: 2 },
       });
     }
     if (withdrawnAt) {
@@ -496,7 +497,7 @@ async function seedRequest(prisma: PrismaClient, request: RequestSpec, cityId: s
         type: ConversationEventType.QUOTE_OFFER_ACCEPTED,
         occurredAt: new Date(request.createdAt.getTime() + 2 * DAY_MS),
         dedupeKey: `demo:${request.key}:offer-accepted`,
-        data: { amount: request.offer.amount },
+        data: { status: QuoteOfferStatus.ACCEPTED },
       });
       if (weddingPlanId) {
         await prisma.planProviderLink.upsert({

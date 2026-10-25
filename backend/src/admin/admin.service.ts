@@ -76,7 +76,7 @@ import {
   toAdminReviewReport,
   toAdminServiceResponse,
   toAdminUserReport,
-  toCategoryResponse,
+  toCategoryAdminResponse,
   toCityResponse,
   toProviderResponse,
   toProviderReviewHistoryResponse,
@@ -674,14 +674,17 @@ export class AdminService {
   }
 
   async listCategories() {
-    const categories = await this.prisma.$transaction(async (tx) =>
-      this.owners.attachCategories(
-        tx,
-        await this.owners.catalog.listCategories(tx),
-      ),
+    const { categories, starterItems } = await this.prisma.$transaction(
+      async (tx) => ({
+        categories: await this.owners.attachCategories(
+          tx,
+          await this.owners.catalog.listCategories(tx),
+        ),
+        starterItems: await this.owners.catalog.listStarterBudgetItems(tx),
+      }),
     );
 
-    return categories.map((category) => toCategoryResponse(category));
+    return categories.map((category) => toCategoryAdminResponse(category, starterItems));
   }
 
   async createCategory(

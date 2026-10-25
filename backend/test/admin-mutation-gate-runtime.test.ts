@@ -75,6 +75,9 @@ test("catalog mutation locks and reauthorizes the live actor before its target",
     // The category's provider and service counts are marketplace's now.
     provider: { groupBy: async () => [] },
     providerService: { groupBy: async () => [] },
+    // Where the category's costs land is read against the money starter
+    // catalog, catalog's own row, after the write.
+    referenceCatalog: { findUnique: async () => null },
   };
   let isolationLevel: Prisma.TransactionIsolationLevel | undefined;
   const prisma = {

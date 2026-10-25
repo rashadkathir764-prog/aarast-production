@@ -134,6 +134,20 @@ export function isQuoteRequestOverdue(
 }
 
 /**
+ * Whether the customer is told «ما رد … خلال 7 أيام» when the hourly job
+ * ends a request. A request the job reaches more than a day after its
+ * deadline (the first run after B-04 shipped meets requests months old, or
+ * the job was down) ends without that notice: it would announce as news a
+ * wait that ended long ago. The timeline still records the end.
+ */
+export function isQuoteRequestExpiryNoticeTimely(
+  expiresAt: Date,
+  now: Date = new Date(),
+): boolean {
+  return now.getTime() - expiresAt.getTime() <= DAY_MS;
+}
+
+/**
  * The provider answers (an offer or an apology) only before the deadline.
  * Between the deadline and the hourly job the request is already over.
  */

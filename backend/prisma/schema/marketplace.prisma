@@ -286,6 +286,9 @@ model QuoteOffer {
   // `[{ field, from, to }]` against the previous version; null on version 1.
   versionChanges     Json?
   revisedAt          DateTime?
+  // When the customer was last told of a revision: a revision less than ten
+  // minutes after it is not told again; the timeline records each (B-06).
+  revisionNoticeAt   DateTime?
   // B-03: the provider took the offer back before the customer decided.
   withdrawnAt        DateTime?
   withdrawnReason    String?             @db.Text

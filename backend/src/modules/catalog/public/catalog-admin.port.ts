@@ -13,6 +13,15 @@ export interface CategoryFields {
   sortOrder: number;
 }
 
+/** Whose new plan a money starter item is offered to. */
+export type StarterBudgetPersona = 'GROOM' | 'BRIDE' | 'NEUTRAL';
+
+/** A published money starter item: what a new plan's budget items are named. */
+export interface StarterBudgetItem {
+  persona: StarterBudgetPersona;
+  nameAr: string;
+}
+
 export interface CityFields {
   nameAr: string;
   nameEn: string | null;
@@ -29,6 +38,13 @@ export interface CityFields {
 export interface CatalogAdminPort {
   /** Every category, by sort order then Arabic name. */
   listCategories(client: Prisma.TransactionClient): Promise<ProviderCategory[]>;
+  /**
+   * The published, active money starter items with their persona, in the
+   * catalog's order: the budget items a new plan starts with.
+   */
+  listStarterBudgetItems(
+    client: Prisma.TransactionClient,
+  ): Promise<StarterBudgetItem[]>;
   /** Every city, by sort order then Arabic name. */
   listCities(client: Prisma.TransactionClient): Promise<City[]>;
   countCategories(client: Prisma.TransactionClient): Promise<number>;

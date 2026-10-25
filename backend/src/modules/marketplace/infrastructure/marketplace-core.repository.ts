@@ -81,7 +81,9 @@ export function findActiveProviderWithServices(client: Client, id: string, now: 
 /**
  * The provider's quote requests since `since` that count toward its response
  * time: answered ones, and unanswered ones that were neither cancelled nor
- * made after `settledBefore` (still inside the grace period).
+ * made after `settledBefore` (still inside the grace period). An offer the
+ * provider withdrew (B-03) is no answer: the request is answered by the
+ * first offer that still stands.
  */
 export async function providerResponseSample(
   client: Client,
@@ -101,6 +103,7 @@ export async function providerResponseSample(
     LEFT JOIN (
       SELECT "quoteRequestId", MIN("createdAt") AS "firstOfferAt"
       FROM "QuoteOffer"
+      WHERE "status" <> 'WITHDRAWN'
       GROUP BY "quoteRequestId"
     ) o ON o."quoteRequestId" = q."id"
     WHERE q."providerId" = ${providerId}

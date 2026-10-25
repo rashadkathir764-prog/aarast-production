@@ -1700,7 +1700,11 @@ const r19ProviderPortalApi = Object.freeze({
 // guests and providers pages and q16's bookings card read the plan's view
 // through the wedding plans owner API, and that view hands its tasks to the
 // task widgets through the tasks owner API.
-const r19LegalRecordCount = 240;
+// +4 (D55, B5): a06 for a plan that exists (MahrScreen) reads the sign-in
+// guard, the mahr fields and the phone draft through the auth, finance and
+// onboarding owner APIs; w20 (PayerPaymentsScreen) reads whose plan is open
+// through the account contexts owner API.
+const r19LegalRecordCount = 244;
 const trackedOwnerApiContracts = [
   {
     area: 'features/account_contexts',
@@ -1829,6 +1833,11 @@ const trackedOwnerApiContracts = [
         ],
       },
       { uri: 'screens/money_budget_screen.dart', show: ['MoneyBudgetScreen'] },
+      // B5 (D55, G14): w20 «مين دفع ايش».
+      {
+        uri: 'screens/payer_payments_screen.dart',
+        show: ['PayerPaymentsScreen'],
+      },
       {
         uri: 'screens/money_receipts_screen.dart',
         show: ['MoneyReceiptsScreen'],
@@ -1840,6 +1849,11 @@ const trackedOwnerApiContracts = [
       {
         uri: 'widgets/money_cost_action_picker.dart',
         show: ['MoneyCostActionIntent', 'openMoneyCostAction'],
+      },
+      // B5 (D55): a06's mahr fields, for the welcome steps and MahrScreen.
+      {
+        uri: 'widgets/mahr_fields.dart',
+        show: ['MahrFields', 'pickMahrDueDate'],
       },
       {
         uri: 'widgets/money_input_formatter.dart',
@@ -2017,7 +2031,13 @@ const trackedOwnerApiContracts = [
       { uri: 'models/generated_dashboard_seed.dart', show: ['GeneratedDashboardSeed'] },
       {
         uri: 'models/guest_onboarding_draft.dart',
-        show: ['GuestOnboardingDraft', 'GuestOnboardingPath', 'GuestPersona'],
+        // B5 (D55): the draft keeps a06's mahr until the account saves it.
+        show: [
+          'DraftMahr',
+          'GuestOnboardingDraft',
+          'GuestOnboardingPath',
+          'GuestPersona',
+        ],
       },
       {
         uri: 'models/persona_copy.dart',
@@ -2261,6 +2281,8 @@ const trackedOwnerApiContracts = [
         uri: 'providers/wedding_plans_provider.dart',
         show: ['WeddingPlansProvider'],
       },
+      // B5 (D55): a06 for a plan that exists (b01's mahr step).
+      { uri: 'screens/mahr_screen.dart', show: ['MahrScreen'] },
       {
         uri: 'screens/my_wedding_plans_screen.dart',
         show: ['MyWeddingPlansScreen', 'showPlanSwitcherSheet'],
@@ -2869,7 +2891,8 @@ const trackedPlanningBatchContracts = [
   {
     source: 'mobile/lib/features/wedding_plans/screens/wedding_plan_dashboard_screen.dart',
     target: 'mobile/lib/features/account_contexts/account_contexts_api.dart',
-    show: ['AccountContextController'],
+    // B5 (D55): the plan's side of the mahr follows its persona.
+    show: ['AccountContextController', 'AccountContextPersona'],
   },
   {
     source: 'mobile/lib/features/wedding_plans/screens/wedding_plan_dashboard_screen.dart',
@@ -2889,7 +2912,8 @@ const trackedPlanningBatchContracts = [
   {
     source: 'mobile/lib/features/wedding_plans/screens/wedding_plan_dashboard_screen.dart',
     target: 'mobile/lib/features/onboarding/onboarding_api.dart',
-    show: ['GuestOnboardingStorage'],
+    // B5 (D55): a plan kept on the phone carries its mahr in its draft.
+    show: ['GuestOnboardingStorage', 'GuestPersona'],
   },
   {
     source: 'mobile/lib/features/wedding_plans/screens/wedding_plan_dashboard_screen.dart',
@@ -3094,11 +3118,14 @@ const trackedShellEntryBatchContracts = [
   {
     source: 'mobile/lib/features/welcome_gateway/screens/smart_welcome_screen.dart',
     target: 'mobile/lib/features/finance/finance_api.dart',
+    // B5 (D55): a06's mahr fields are the welcome's third step.
     show: [
       'FinanceApi',
+      'MahrFields',
       'MoneyInputFormatter',
       'formatMoneyInputValue',
       'moneyStarterPlanItemNames',
+      'pickMahrDueDate',
     ],
   },
   {
@@ -3110,6 +3137,7 @@ const trackedShellEntryBatchContracts = [
     source: 'mobile/lib/features/welcome_gateway/screens/smart_welcome_screen.dart',
     target: 'mobile/lib/features/onboarding/onboarding_api.dart',
     show: [
+      'DraftMahr',
       'GuestOnboardingDraft',
       'GuestOnboardingPath',
       'GuestOnboardingStorage',
@@ -3199,6 +3227,8 @@ const trackedCompositionRootContracts = [
           'MoneyOverviewScreen',
           'MoneyReceiptsScreen',
           'PayPaymentScheduleScreen',
+          // B5 (D55, G14): w20 «مين دفع ايش».
+          'PayerPaymentsScreen',
           'RecordCostPaymentScreen',
           'WeddingCost',
         ],
@@ -3303,6 +3333,8 @@ const trackedCompositionRootContracts = [
         target: 'mobile/lib/features/wedding_plans/wedding_plans_api.dart',
         show: [
           'DashboardSummary',
+          // B5 (D55): a06 for a plan that exists.
+          'MahrScreen',
           'MyWeddingPlansScreen',
           'PlanAssistantScreen',
           'PlanCenterScreen',

@@ -184,6 +184,8 @@ const _starterTaskCategories = <String, String>{
   'task-bride-singer': 'PROVIDERS',
   'task-bride-naqsh': 'PROVIDERS',
   'task-bride-subhia': 'CATERING',
+  'task-bride-gold': 'MONEY',
+  'task-bride-trousseau': 'ATTIRE',
   'task-family-stay': 'GUESTS',
   'task-family-hosting': 'CATERING',
   'task-family-helpers': 'GUESTS',
@@ -376,6 +378,20 @@ const _fallbackGroups = [
         key: 'task-bride-subhia',
         title: 'تجهيز الصبحية',
         daysBefore: 14,
+      ),
+      // G12 (R2): her gold and her trousseau, as the groom has his gold and
+      // kiswa; appended on the server too, so the sort orders above stay.
+      TaskStarterTemplate(
+        key: 'task-bride-gold',
+        title: 'شراء الذهب والإكسسوارات',
+        daysBefore: 150,
+        recommended: true,
+      ),
+      TaskStarterTemplate(
+        key: 'task-bride-trousseau',
+        title: 'تجهيز جهاز العروسة',
+        daysBefore: 120,
+        recommended: true,
       ),
     ],
   ),

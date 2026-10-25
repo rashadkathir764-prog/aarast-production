@@ -22,6 +22,7 @@ extension _ProviderTabs on _ProviderMarketplaceScreenState {
           ),
       ],
       costItemById: {for (final cost in costs) cost.id: cost.budgetCategoryId},
+      reader: context.journeyProfile,
       // Never another plan's request, even if one leaks into the provider.
       quotes: marketplace
           .quotesForPlan(planId)
@@ -117,7 +118,7 @@ extension _ProviderTabs on _ProviderMarketplaceScreenState {
           icon: LucideIcons.store,
           color: AarastV3Color.cobalt,
           soft: AarastV3Color.cobaltSoft,
-          title: context.say('نبدأ بالقاعة', 'نبدأ بالصالة'),
+          title: context.planWord('نبدأ بالقاعة', 'نبدأ بالصالة'),
           message: context.say(
             'لأنها تحدد يومك وعدد ضيوفك،\nوالقاعات تنحجز قبل بشهرين.',
             'لأنها تحدد يومك وعدد ضيفاتك،\nوالصالات تنحجز قبل بشهرين.',

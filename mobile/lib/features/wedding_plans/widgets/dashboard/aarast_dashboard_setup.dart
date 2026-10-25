@@ -1,8 +1,10 @@
 part of 'aarast_dashboard_view.dart';
 
-// b01: a new plan's three first steps. The mahr step waits for the
-// agreement section (C1), so there are three. Each step is done by a server
-// fact: a budget, a secured venue (C24), a first guest.
+// b01: a new plan's first steps. Each step is done by a server fact: a
+// budget, the mahr recorded (a06, C1; a groom's or a bride's plan only), a
+// secured venue (C24), a first guest. The home leaves the steps once the
+// budget, the venue and a guest are there: the mahr is a step to take, and
+// «ما اتفقنا بعد» is a real answer that must not hold the home back.
 
 class _SetupStep {
   const _SetupStep({
@@ -53,6 +55,8 @@ class _JourneySetupSteps extends StatelessWidget {
     required this.onOpenMoney,
     required this.onOpenProviders,
     required this.onOpenGuests,
+    this.mahr,
+    this.onOpenMahr,
   });
 
   final DashboardSummary summary;
@@ -60,9 +64,15 @@ class _JourneySetupSteps extends StatelessWidget {
   final VoidCallback onOpenProviders;
   final VoidCallback onOpenGuests;
 
+  /// The plan's mahr step, when the plan is a groom's or a bride's and the
+  /// money is read; null leaves the step out.
+  final DashboardHomeMahr? mahr;
+  final VoidCallback? onOpenMahr;
+
   @override
   Widget build(BuildContext context) {
     final budget = dashboardAmount(summary.totalBudgetForDisplay);
+    final mahr = this.mahr;
     final steps = [
       _SetupStep(
         title: 'ميزانيتك',
@@ -79,10 +89,35 @@ class _JourneySetupSteps extends StatelessWidget {
         done: _budgetIsSet(summary),
         onOpen: onOpenMoney,
       ),
+      if (mahr != null)
+        _SetupStep(
+          title: 'المهر',
+          // b01: «3 مليون لأهل العروسة · سلّمت 2», «3 مليون من العريس ·
+          // استلمتِ 2».
+          doneLine: mahr.side == MahrHomeSide.pays
+              ? '${mahrHomeWords(mahr.total)} لأهل العروسة · '
+                    '${context.say('سلّمت', 'سلّمتِ')} ${mahrHomeNumber(mahr.settled)}'
+              : '${mahrHomeWords(mahr.total)} من العريس · '
+                    '${context.say('استلمت', 'استلمتِ')} ${mahrHomeNumber(mahr.settled)}',
+          todoLine: mahr.side == MahrHomeSide.pays
+              ? context.say(
+                  'اللي بتسلّمه لأهل العروسة، نحسبه لحاله',
+                  'اللي بتسلّمينه لأهل العروسة، نحسبه لحاله',
+                )
+              : context.say(
+                  'اللي بتستلمه من العريس، نحسبه لحاله',
+                  'اللي بتستلمينه من العريس، نحسبه لحاله',
+                ),
+          icon: LucideIcons.heartHandshake,
+          color: AarastV3Color.brandAccentStrong,
+          soft: AarastV3Color.brandAccentSoft,
+          done: mahr.recorded,
+          onOpen: mahr.recorded ? onOpenMoney : (onOpenMahr ?? onOpenMoney),
+        ),
       _SetupStep(
-        title: context.say('القاعة', 'الصالة'),
+        title: context.planWord('القاعة', 'الصالة'),
         doneLine: 'محجوزة',
-        todoLine: context.say(
+        todoLine: context.planWord(
           'أهم حجز، والقاعات تمتلي بدري',
           'أهم حجز، والصالات تمتلي بدري',
         ),
@@ -93,13 +128,13 @@ class _JourneySetupSteps extends StatelessWidget {
         onOpen: onOpenProviders,
       ),
       _SetupStep(
-        title: context.say('ضيوفك', 'ضيفاتك'),
+        title: context.planWord('ضيوفك', 'ضيفاتك'),
         doneLine: arabicCount(
           summary.guestCount,
-          one: context.say('ضيف واحد', 'ضيفة وحدة'),
-          two: context.say('ضيفين', 'ضيفتين'),
-          few: context.say('ضيوف', 'ضيفات'),
-          many: context.say('ضيف', 'ضيفة'),
+          one: context.planWord('ضيف واحد', 'ضيفة وحدة'),
+          two: context.planWord('ضيفين', 'ضيفتين'),
+          few: context.planWord('ضيوف', 'ضيفات'),
+          many: context.planWord('ضيف', 'ضيفة'),
         ),
         todoLine: 'من جهات الاتصال بضغطة',
         icon: LucideIcons.users,
@@ -119,7 +154,9 @@ class _JourneySetupSteps extends StatelessWidget {
         Semantics(
           header: true,
           child: Text(
-            'ثلاث خطوات وعرسك منظم',
+            steps.length == 4
+                ? 'أربع خطوات وعرسك منظم'
+                : 'ثلاث خطوات وعرسك منظم',
             style: JourneyType.of(JourneyType.title, weight: JourneyType.bold),
           ),
         ),

@@ -67,7 +67,9 @@ class MoneyStarterCatalog {
 }
 
 /// Starter rows for the mahr. The mahr sits outside the wedding budget
-/// (DECISIONS 2026-10-22, C1), so they are never offered as budget items.
+/// (DECISIONS 2026-10-22, C1), so they are never offered as budget items:
+/// a06 records it in its own item (the groom) or as money coming in (the
+/// bride).
 const mahrStarterIds = {'groom-mahr', 'neutral-mahr'};
 
 MoneyStarterCatalog moneyStarterCatalogFor(MoneyStarterPersona persona) {
@@ -363,6 +365,8 @@ const _groomCatalog = MoneyStarterCatalog(
           id: 'groom-honeymoon',
           name: 'شهر العسل',
           icon: LucideIcons.plane,
+          // G12 (R2): honeymoon is one of the six the owner named.
+          recommended: true,
         ),
         MoneyStarterCategory(
           id: 'groom-invites',
@@ -520,6 +524,8 @@ const _brideCatalog = MoneyStarterCatalog(
           id: 'bride-home',
           name: 'تجهيز المنزل',
           icon: LucideIcons.home,
+          // G12 (R2): the home, as the groom's.
+          recommended: true,
         ),
         MoneyStarterCategory(
           id: 'bride-room',
@@ -530,6 +536,7 @@ const _brideCatalog = MoneyStarterCatalog(
           id: 'bride-honeymoon',
           name: 'شهر العسل',
           icon: LucideIcons.plane,
+          recommended: true,
         ),
         MoneyStarterCategory(
           id: 'bride-gifts',
@@ -606,6 +613,13 @@ const _neutralCatalog = MoneyStarterCatalog(
           name: 'المهر والذهب',
           icon: LucideIcons.gem,
         ),
+        // G12: the gold on its own, since the mahr row above is never
+        // offered (C1).
+        MoneyStarterCategory(
+          id: 'neutral-gold',
+          name: 'الذهب والشبكة',
+          icon: LucideIcons.gem,
+        ),
       ],
     ),
     MoneyStarterGroup(
@@ -633,6 +647,7 @@ const _neutralCatalog = MoneyStarterCatalog(
           id: 'neutral-honeymoon',
           name: 'شهر العسل',
           icon: LucideIcons.plane,
+          recommended: true,
         ),
         MoneyStarterCategory(
           id: 'neutral-transport',

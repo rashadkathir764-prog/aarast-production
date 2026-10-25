@@ -51,8 +51,9 @@ class FundingFormResult {
 String fundingKindChoice(String kind, JourneyProfile profile) => switch (kind) {
   FundingKind.savings => 'مدخراتي',
   FundingKind.familySupport => 'دعم من الأهل',
-  FundingKind.gift => profile.say('رفد ونقوط', 'هدايا ونقوط'),
+  FundingKind.gift => profile.plan('رفد ونقوط', 'هدايا ونقوط'),
   FundingKind.loan => 'سلفة',
+  FundingKind.mahr => 'المهر',
   _ => 'غيره',
 };
 
@@ -61,6 +62,7 @@ IconData fundingKindIcon(String kind) => switch (kind) {
   FundingKind.familySupport => LucideIcons.heartHandshake,
   FundingKind.gift => LucideIcons.gift,
   FundingKind.loan => LucideIcons.calendarClock,
+  FundingKind.mahr => LucideIcons.heartHandshake,
   _ => LucideIcons.wallet,
 };
 
@@ -186,7 +188,11 @@ class _FundingSourceFormSheetState extends State<FundingSourceFormSheet> {
           spacing: 8,
           runSpacing: 8,
           children: [
-            for (final kind in FundingKind.all)
+            // The mahr is recorded by a06; editing its part keeps its kind.
+            for (final kind in [
+              ...FundingKind.all,
+              if (widget.source?.isMahr == true) FundingKind.mahr,
+            ])
               JourneyChip(
                 key: ValueKey('funding-kind-$kind'),
                 label: fundingKindChoice(kind, context.journeyProfile),
@@ -203,7 +209,7 @@ class _FundingSourceFormSheetState extends State<FundingSourceFormSheet> {
           hint: switch (_kind) {
             FundingKind.savings => 'مثلًا: مدخراتي',
             FundingKind.loan => 'مثلًا: خالي أحمد',
-            _ => context.say('مثلًا: الوالد', 'مثلًا: الوالدة'),
+            _ => context.planWord('مثلًا: الوالد', 'مثلًا: الوالدة'),
           },
           controller: _name,
           icon: LucideIcons.user,

@@ -264,7 +264,11 @@ class _PlanCard extends StatelessWidget {
     final (String? tag, Color tagColor, Color tagSoft) = archived
         ? ('مؤرشفة', AarastV3Color.textMuted, AarastV3Color.line)
         : helped
-        ? ('مشارك', AarastV3Color.amber, AarastV3Color.amberSoft)
+        ? (
+            context.say('مشارك', 'مشاركة'),
+            AarastV3Color.amber,
+            AarastV3Color.amberSoft,
+          )
         : open
         ? ('مفتوحة', context.accent.primary, context.accent.primarySoft)
         : (null, context.accent.primary, context.accent.primarySoft);
@@ -301,7 +305,7 @@ class _PlanCard extends StatelessWidget {
                   ),
                 ),
                 Text(
-                  _subtitle(entry),
+                  _subtitle(entry, context.journeyProfile),
                   style: JourneyType.of(
                     JourneyType.small,
                     color: AarastV3Color.textMuted,
@@ -316,12 +320,15 @@ class _PlanCard extends StatelessWidget {
       ),
     );
     if (onTap == null) {
-      return Semantics(label: '$name، ${_subtitle(entry)}', child: card);
+      return Semantics(
+        label: '$name، ${_subtitle(entry, context.journeyProfile)}',
+        child: card,
+      );
     }
     return AarastPressable(
       onTap: onTap,
       borderRadius: BorderRadius.circular(22),
-      semanticLabel: '$name، ${_subtitle(entry)}',
+      semanticLabel: '$name، ${_subtitle(entry, context.journeyProfile)}',
       child: card,
     );
   }
@@ -333,10 +340,11 @@ class _PlanCard extends StatelessWidget {
     return word.characters.first;
   }
 
-  /// «خطتك · 96 يوم», «أنت مشارك», «في الذكريات · 2025».
-  static String _subtitle(_PlanEntry entry) {
+  /// «خطتك · 96 يوم», «أنت مشارك», «في الذكريات · 2025», said to the
+  /// reader as who they are (B5): «أنتِ مشاركة» for سلمى.
+  static String _subtitle(_PlanEntry entry, JourneyProfile reader) {
     final plan = entry.plan;
-    if (plan == null) return 'أنت مشارك';
+    if (plan == null) return reader.say('أنت مشارك', 'أنتِ مشاركة');
     final day = plan.weddingDate;
     if (entry.archived) {
       return 'في الذكريات · ${(day ?? plan.updatedAt).year}';

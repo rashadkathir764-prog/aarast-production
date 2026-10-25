@@ -102,7 +102,7 @@ class CreateTaskResponsibleSection extends StatelessWidget {
           JourneyTextField(
             key: const ValueKey('task-other-name'),
             label: 'اسمه',
-            hint: context.say('مثلًا: الوالد', 'مثلًا: الوالدة'),
+            hint: context.planWord('مثلًا: الوالد', 'مثلًا: الوالدة'),
             controller: otherNameController,
             icon: LucideIcons.user,
             textDirection: nameIsPhone ? TextDirection.ltr : null,

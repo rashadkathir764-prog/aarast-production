@@ -207,7 +207,9 @@ class _NewRequest extends StatelessWidget {
                 Center(
                   child: JourneyTextAction(
                     key: const Key('provider-request-ask'),
-                    label: 'اسأله قبل ما ترد',
+                    // D55: the customer's gender is not known to the
+                    // provider's words, so p16's «اسأله» names no one.
+                    label: 'اسأل قبل ما ترد',
                     color: AarastV3Color.primary,
                     onPressed: () =>
                         context.push(AppRouter.quoteConversation(quote.id)),

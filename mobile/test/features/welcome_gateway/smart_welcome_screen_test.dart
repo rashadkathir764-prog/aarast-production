@@ -152,7 +152,9 @@ Future<void> _answerUpToReady(WidgetTester tester) async {
   await _tap(tester, 'صنعاء');
   await tester.enterText(find.byType(TextField).first, '7000000');
   await tester.pumpAndSettle();
-  await _tap(tester, 'جهّز خطتي');
+  await _tap(tester, 'التالي');
+  // a06: the mahr, not agreed yet.
+  await _tap(tester, 'ما اتفقنا بعد');
 }
 
 void main() {
@@ -216,7 +218,7 @@ void main() {
     await _tap(tester, 'ابدأ');
     await _tap(tester, 'التالي');
     expect(find.text('ايش اسمك، ومتى العرس؟'), findsOneWidget);
-    expect(find.text('1 من 2'), findsOneWidget);
+    expect(find.text('1 من 3'), findsOneWidget);
 
     await _tap(tester, 'التالي');
     expect(find.text('ايش اسمك، ومتى العرس؟'), findsOneWidget);
@@ -233,7 +235,7 @@ void main() {
     await _tap(tester, 'ما حددنا الموعد بعد');
     await _tap(tester, 'التالي');
     expect(find.text('وين العرس، وكم ميزانيتك تقريبًا؟'), findsOneWidget);
-    expect(find.text('2 من 2'), findsOneWidget);
+    expect(find.text('2 من 3'), findsOneWidget);
   });
 
   testWidgets('a05 spells the budget and needs a city', (tester) async {
@@ -248,12 +250,105 @@ void main() {
     await tester.enterText(find.byType(TextField).first, '7000000');
     await tester.pumpAndSettle();
     expect(find.text('سبعة مليون ريال'), findsOneWidget);
-    await _tap(tester, 'جهّز خطتي');
-    expect(find.textContaining('خطتك جاهزة'), findsNothing);
+    await _tap(tester, 'التالي');
+    expect(find.text('اتفقتوا على المهر؟'), findsNothing);
 
     await _tap(tester, 'صنعاء');
-    await _tap(tester, 'جهّز خطتي');
+    await _tap(tester, 'التالي');
+    expect(find.text('اتفقتوا على المهر؟'), findsOneWidget);
+    await _tap(tester, 'ما اتفقنا بعد');
     expect(find.text('خطتك جاهزة يا محمد'), findsOneWidget);
+  });
+
+  testWidgets('a06: the groom\'s mahr goes with his plan, outside the budget', (
+    tester,
+  ) async {
+    final plans = _RecordingPlans(succeed: true);
+    await _pump(tester, signedInPlans: plans);
+    await _tap(tester, 'ابدأ');
+    await _tap(tester, 'التالي');
+    await tester.enterText(find.byType(TextField).first, 'محمد');
+    await tester.pumpAndSettle();
+    await _tap(tester, 'ما حددنا الموعد بعد');
+    await _tap(tester, 'التالي');
+    await _tap(tester, 'صنعاء');
+    await tester.enterText(find.byType(TextField).first, '7000000');
+    await tester.pumpAndSettle();
+    await _tap(tester, 'التالي');
+
+    expect(find.text('3 من 3'), findsOneWidget);
+    expect(find.text('اتفقتوا على المهر؟'), findsOneWidget);
+    expect(
+      find.text('اللي بتسلّمه لأهل العروسة. نحسبه لحاله ونذكرك بموعد تسليمه.'),
+      findsOneWidget,
+    );
+    // Nothing typed: «التالي» asks for the mahr.
+    await _tap(tester, 'التالي');
+    expect(find.text('اكتب كم المهر'), findsOneWidget);
+
+    await tester.enterText(
+      find.descendant(
+        of: find.byKey(const ValueKey('mahr-total')),
+        matching: find.byType(TextField),
+      ),
+      '3000000',
+    );
+    await tester.enterText(
+      find.descendant(
+        of: find.byKey(const ValueKey('mahr-settled')),
+        matching: find.byType(TextField),
+      ),
+      '2000000',
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('ثلاثة مليون ريال'), findsOneWidget);
+    expect(find.text('سلّمت منه'), findsOneWidget);
+    expect(find.text('باقي مليون'), findsOneWidget);
+    expect(find.text('موعد تسليم الباقي'), findsOneWidget);
+    await _tap(tester, 'التالي');
+    await _tap(tester, 'افتح خطتي');
+
+    expect(plans.request!.mahr, {'total': '3000000', 'settled': '2000000'});
+  });
+
+  testWidgets('a06: the bride receives her mahr, in her words', (tester) async {
+    final finance = _RecordingFinance();
+    final storage = await _pump(tester, finance: finance);
+    await _tap(tester, 'ابدأ');
+    await _tap(tester, 'العروسة');
+    await _tap(tester, 'التالي');
+    await tester.enterText(find.byType(TextField).first, 'سلمى');
+    await tester.pumpAndSettle();
+    await _tap(tester, 'ما حددنا الموعد بعد');
+    await _tap(tester, 'التالي');
+    await _tap(tester, 'صنعاء');
+    await tester.enterText(find.byType(TextField).first, '7000000');
+    await tester.pumpAndSettle();
+    await _tap(tester, 'التالي');
+
+    expect(
+      find.text('اللي بتستلمينه من العريس. نحسبه لحاله ونذكرك بموعد استلامه.'),
+      findsOneWidget,
+    );
+    expect(find.text('استلمتِ منه'), findsOneWidget);
+    expect(
+      find.text('عرس الرجال عند العريس وأهله. خطتك لعرسك أنتِ: عرس النساء.'),
+      findsOneWidget,
+    );
+    await tester.enterText(
+      find.descendant(
+        of: find.byKey(const ValueKey('mahr-total')),
+        matching: find.byType(TextField),
+      ),
+      '3000000',
+    );
+    await tester.pumpAndSettle();
+    await _tap(tester, 'التالي');
+    await _tap(tester, 'بعدين، خلني أشوف أول');
+
+    final draft = await storage.loadDraft();
+    expect(draft!.mahr?.total, '3000000');
+    expect(draft.mahr?.settled, '0');
   });
 
   testWidgets('a05 groups the amount as typed and keeps whole riyals', (
@@ -298,7 +393,8 @@ void main() {
 
     expect(find.text('اختر المدينة'), findsNothing);
     await _tap(tester, 'أكمل بدون ميزانية');
-    await _tap(tester, 'جهّز خطتي');
+    await _tap(tester, 'التالي');
+    await _tap(tester, 'ما اتفقنا بعد');
     expect(find.text('عرس محمد · ذمار'), findsOneWidget);
   });
 
@@ -448,11 +544,14 @@ void main() {
     await _tap(tester, 'صنعاء');
     await tester.enterText(find.byType(TextField).first, '7000000');
     await tester.pumpAndSettle();
-    await _tap(tester, 'جهّز خطتي');
+    await _tap(tester, 'التالي');
+    await _tap(tester, 'ما اتفقنا بعد');
     await _tap(tester, 'افتح خطتي');
 
     expect(find.text('opened:/home'), findsOneWidget);
     expect(plans.request!.title, 'عرس محمد');
+    // «ما اتفقنا بعد»: the plan goes without a mahr.
+    expect(plans.request!.mahr, isNull);
   });
 
   testWidgets('back on a new plan\'s first step leaves the steps', (
@@ -482,7 +581,10 @@ void main() {
     expect(tester.takeException(), isNull);
     await _tap(tester, 'صنعاء');
     await _tap(tester, 'أكمل بدون ميزانية');
-    await _tap(tester, 'جهّز خطتي');
+    await _tap(tester, 'التالي');
+    expect(find.text('اتفقتوا على المهر؟'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+    await _tap(tester, 'ما اتفقنا بعد');
     expect(find.text('خطتك جاهزة يا عبدالرحمن'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });

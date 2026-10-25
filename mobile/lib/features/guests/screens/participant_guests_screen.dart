@@ -19,7 +19,6 @@ class ParticipantGuestsScreen extends StatefulWidget {
   const ParticipantGuestsScreen({
     required this.weddingPlanId,
     required this.ownerWord,
-    this.feminine = false,
     super.key,
   });
 
@@ -27,10 +26,6 @@ class ParticipantGuestsScreen extends StatefulWidget {
 
   /// «العريس», «العروسة»: who keeps the numbers and edits.
   final String ownerWord;
-
-  /// A bride's plan: her guests are women and the reader is spoken to as
-  /// a woman (D34).
-  final bool feminine;
 
   @override
   State<ParticipantGuestsScreen> createState() =>
@@ -53,9 +48,9 @@ class _ParticipantGuestsScreenState extends State<ParticipantGuestsScreen> {
   Widget build(BuildContext context) {
     final provider = context.watch<PlanReadViewProvider?>();
     final view = provider?.viewOf(widget.weddingPlanId);
-    // A participant has no plan profile of their own (D43); a bride's plan
-    // speaks to them as a woman and counts women (D34).
-    final voice = widget.feminine ? JourneyProfile.bride : JourneyProfile.groom;
+    // B5: a bride's plan counts women; the reader is spoken to as who they
+    // are.
+    final voice = context.journeyProfile;
     final words = GuestWords(voice);
 
     final children = <Widget>[];
@@ -190,17 +185,17 @@ class _GuestLine extends StatelessWidget {
     final name = guest.name.isEmpty ? 'بدون اسم' : guest.name;
     final (label, color, soft) = switch (guest.attendance) {
       'CONFIRMED' => (
-        voice.say('أكّد', 'أكّدت'),
+        voice.plan('أكّد', 'أكّدت'),
         AarastV3Color.mint,
         AarastV3Color.mintSoft,
       ),
       'DECLINED' => (
-        voice.say('اعتذر', 'اعتذرت'),
+        voice.plan('اعتذر', 'اعتذرت'),
         AarastV3Color.textMuted,
         AarastV3Color.paper,
       ),
       _ => (
-        voice.say('ما ردّ', 'ما ردّت'),
+        voice.plan('ما ردّ', 'ما ردّت'),
         AarastV3Color.brandAccentStrong,
         AarastV3Color.brandAccentSoft,
       ),

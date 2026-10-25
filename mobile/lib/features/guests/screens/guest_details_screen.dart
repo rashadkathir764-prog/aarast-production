@@ -82,7 +82,7 @@ class _GuestDetailsScreenState extends State<GuestDetailsScreen> {
             : JourneyListPhase.error,
         section: JourneySection.guests,
         emptyIcon: LucideIcons.userX,
-        emptyTitle: context.say(
+        emptyTitle: context.planWord(
           'هذا الضيف ما عاد موجود',
           'هذي الضيفة ما عادت موجودة',
         ),
@@ -109,7 +109,10 @@ class _GuestDetailsScreenState extends State<GuestDetailsScreen> {
                   ? null
                   : PopupMenuButton<bool>(
                       key: const ValueKey('guest-menu'),
-                      tooltip: context.say('خيارات الضيف', 'خيارات الضيفة'),
+                      tooltip: context.planWord(
+                        'خيارات الضيف',
+                        'خيارات الضيفة',
+                      ),
                       enabled: !provider.isSubmitting,
                       icon: const Icon(LucideIcons.moreHorizontal),
                       onSelected: (edit) =>
@@ -119,14 +122,18 @@ class _GuestDetailsScreenState extends State<GuestDetailsScreen> {
                           key: const ValueKey('guest-menu-edit'),
                           value: true,
                           child: Text(
-                            context.say('عدّل بياناته', 'عدّلي بياناتها'),
+                            // The reader edits; the guest is the plan's.
+                            '${context.say('عدّل', 'عدّلي')} '
+                            '${context.planWord('بياناته', 'بياناتها')}',
                           ),
                         ),
                         PopupMenuItem(
                           key: const ValueKey('guest-menu-delete'),
                           value: false,
                           child: Text(
-                            context.say('شيله من القائمة', 'شيليها من القائمة'),
+                            // «شيله», «شيلها», «شيليه», «شيليها».
+                            '${context.say('شيل', 'شيلي')}'
+                            '${context.planWord('ه', 'ها')} من القائمة',
                             style: const TextStyle(color: AarastV3Color.danger),
                           ),
                         ),
@@ -230,9 +237,9 @@ class _GuestDetailsScreenState extends State<GuestDetailsScreen> {
           runSpacing: 8,
           children: [
             for (final (value, label) in [
-              ('CONFIRMED', context.say('أكّد', 'أكّدت')),
-              ('DECLINED', context.say('اعتذر', 'اعتذرت')),
-              ('INVITED', context.say('ما ردّ', 'ما ردّت')),
+              ('CONFIRMED', context.planWord('أكّد', 'أكّدت')),
+              ('DECLINED', context.planWord('اعتذر', 'اعتذرت')),
+              ('INVITED', context.planWord('ما ردّ', 'ما ردّت')),
             ])
               JourneyChip(
                 key: ValueKey('guest-reply-$value'),
@@ -271,8 +278,14 @@ class _GuestDetailsScreenState extends State<GuestDetailsScreen> {
                 Expanded(
                   child: Text(
                     guest.invitationStatus == 'NOT_SENT'
-                        ? context.say('ما انرسلت له دعوة', 'ما انرسلت لها دعوة')
-                        : context.say('انرسلت له الدعوة', 'انرسلت لها الدعوة'),
+                        ? context.planWord(
+                            'ما انرسلت له دعوة',
+                            'ما انرسلت لها دعوة',
+                          )
+                        : context.planWord(
+                            'انرسلت له الدعوة',
+                            'انرسلت لها الدعوة',
+                          ),
                     style: JourneyType.of(
                       JourneyType.body,
                       weight: JourneyType.bold,
@@ -296,10 +309,10 @@ class _GuestDetailsScreenState extends State<GuestDetailsScreen> {
             Padding(
               padding: const EdgeInsets.only(top: 6),
               child: Text(
-                context.say(
-                  'أضف رقمه عشان توصله الدعوة على واتساب.',
-                  'أضيفي رقمها عشان توصلها الدعوة على واتساب.',
-                ),
+                // The reader adds; the guest is the plan's.
+                '${context.say('أضف', 'أضيفي')} '
+                '${context.planWord('رقمه عشان توصله', 'رقمها عشان توصلها')} '
+                'الدعوة على واتساب.',
                 style: JourneyType.of(
                   JourneyType.small,
                   color: AarastV3Color.brandAccentStrong,
@@ -430,7 +443,7 @@ class _GuestDetailsScreenState extends State<GuestDetailsScreen> {
       AarastToast.showError(
         context,
         provider.errorMessage ??
-            context.say('ما قدرنا نحفظ الضيف', 'ما قدرنا نحفظ الضيفة'),
+            context.planWord('ما قدرنا نحفظ الضيف', 'ما قدرنا نحفظ الضيفة'),
       );
     }
   }
@@ -441,7 +454,7 @@ class _GuestDetailsScreenState extends State<GuestDetailsScreen> {
       context: context,
       builder: (sheetContext) => JourneySheetBody(
         title: '${context.say('تشيل', 'تشيلين')} ${guest.name}؟',
-        subtitle: context.say(
+        subtitle: context.planWord(
           'ينشال من قائمة الضيوف ورابطه ما يعود يشتغل.',
           'تنشال من قائمة الضيفات ورابطها ما يعود يشتغل.',
         ),
@@ -464,7 +477,7 @@ class _GuestDetailsScreenState extends State<GuestDetailsScreen> {
       _pulse(provider);
       AarastToast.showSuccess(
         context,
-        context.say('انشال الضيف', 'انشالت الضيفة'),
+        context.planWord('انشال الضيف', 'انشالت الضيفة'),
       );
       _back();
     } else {

@@ -117,7 +117,8 @@ void main() {
     AccountContext context(AccountContextRole role, AccountContextPersona p) =>
         AccountContext.fromJson(accountContextJson(role: role, persona: p));
 
-    test('her own plan is the bride\'s, a helped one keeps the app look', () {
+    test('her own plan is the bride\'s; a helped plan keeps its owner\'s '
+        'colours and speaks to the reader as who they are (q09, q17)', () {
       expect(
         planJourneyProfile(
           selected: context(
@@ -136,6 +137,8 @@ void main() {
         ),
         JourneyProfile.groom,
       );
+      // B5: nothing known of the reader: the bride's plan is the women's
+      // wedding, so her rose and the feminine (q17, نورة).
       expect(
         planJourneyProfile(
           selected: context(
@@ -143,8 +146,34 @@ void main() {
             AccountContextPersona.bride,
           ),
         ),
-        JourneyProfile.groom,
+        JourneyProfile.bride,
       );
+      // محمد (a groom's account) helping in سلمى's plan: her rose, his voice.
+      final groomReading = planJourneyProfile(
+        selected: context(
+          AccountContextRole.contributor,
+          AccountContextPersona.bride,
+        ),
+        accountPersona: 'GROOM',
+      );
+      expect(groomReading.isBride, isTrue);
+      expect(groomReading.feminine, isFalse);
+      expect(groomReading.say('تساعد', 'تساعدين'), 'تساعد');
+      expect(groomReading.plan('القاعة', 'الصالة'), 'الصالة');
+      // سلمى (a bride's account) helping in محمد's plan: his teal, her voice
+      // (q09 «هذي خطة محمد بألوانها»).
+      final brideReading = planJourneyProfile(
+        selected: context(
+          AccountContextRole.contributor,
+          AccountContextPersona.groom,
+        ),
+        accountPersona: 'BRIDE',
+      );
+      expect(brideReading.accent, JourneyAccent.groom);
+      expect(brideReading.feminine, isTrue);
+      // Outside any plan, the account's own voice.
+      expect(planJourneyProfile(accountPersona: 'BRIDE').feminine, isTrue);
+      expect(planJourneyProfile(accountPersona: 'BRIDE').isBride, isFalse);
     });
 
     test('a bride\'s plan kept on the phone is hers, before any account', () {

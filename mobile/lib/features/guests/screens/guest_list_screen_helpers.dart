@@ -42,7 +42,7 @@ List<Guest> _search(List<Guest> guests, String query) {
 /// «124 مدعو · 86 أكدوا · 20 ما ردّوا».
 String _statusLine(GuestSummary summary, GuestWords words) {
   if (summary.totalGuests == 0) {
-    return words.profile.say('ابدأ بقائمة ضيوفك', 'ابدئي بقائمة ضيفاتك');
+    return '${words.profile.say('ابدأ', 'ابدئي')} بقائمة ${words.yourGuests}';
   }
   return [
     '${summary.totalGuests} ${words.invited}',
@@ -149,7 +149,7 @@ class _GroupRow extends StatelessWidget {
     final words = GuestWords.of(context);
     return Semantics(
       button: true,
-      label: '$name، ${words.profile.say('أكد', 'أكّدت')} $yes من $all',
+      label: '$name، ${words.profile.plan('أكد', 'أكّدت')} $yes من $all',
       onTap: onTap,
       excludeSemantics: true,
       child: AarastPressable(
@@ -271,7 +271,7 @@ class _FirstGuests extends StatelessWidget {
         JourneyChoiceCard(
           key: const ValueKey('guests-first-paste'),
           title: context.say('الصق قائمة', 'الصقي قائمة'),
-          subtitle: context.say(
+          subtitle: context.planWord(
             'اسم في كل سطر، ورقمه لو عندك',
             'اسم في كل سطر، ورقمها لو عندك',
           ),
@@ -281,8 +281,11 @@ class _FirstGuests extends StatelessWidget {
         const SizedBox(height: 10),
         JourneyChoiceCard(
           key: const ValueKey('guests-first-one'),
-          title: context.say('ضيف واحد', 'ضيفة وحدة'),
-          subtitle: context.say('اسمه ورقمه وكم معه', 'اسمها ورقمها وكم معها'),
+          title: context.planWord('ضيف واحد', 'ضيفة وحدة'),
+          subtitle: context.planWord(
+            'اسمه ورقمه وكم معه',
+            'اسمها ورقمها وكم معها',
+          ),
           leading: icon(LucideIcons.userPlus),
           onTap: onOne,
         ),

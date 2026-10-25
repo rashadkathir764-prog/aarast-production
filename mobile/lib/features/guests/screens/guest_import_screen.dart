@@ -132,7 +132,8 @@ class _GuestImportScreenState extends State<GuestImportScreen> {
             child: JourneySubHeader(
               title: _fromContacts
                   ? 'من جهات الاتصال'
-                  : say('أضف مجموعة ضيوف', 'أضيفي مجموعة ضيفات'),
+                  : '${say('أضف', 'أضيفي')} مجموعة '
+                        '${words.profile.plan('ضيوف', 'ضيفات')}',
               subtitle: _fromContacts
                   ? say(
                       'اختر مين تعزم، والمكرر نعلّمه لك',
@@ -175,11 +176,11 @@ class _GuestImportScreenState extends State<GuestImportScreen> {
       children: [
         JourneyTextField(
           key: const ValueKey('import-paste'),
-          label: context.say(
-            'الصق قائمة: اسم في كل سطر، ورقمه لو عندك',
-            'الصقي قائمة: اسم في كل سطر، ورقمها لو عندك',
-          ),
-          hint: context.say(
+          // The reader pastes; the names are the plan's guests.
+          label:
+              '${context.say('الصق', 'الصقي')} قائمة: اسم في كل سطر، '
+              '${context.planWord('ورقمه', 'ورقمها')} لو عندك',
+          hint: context.planWord(
             'عبدالله الحمدي 771234567\nيحيى السنيدار',
             'عبير الحمدي 771234567\nهدى السنيدار',
           ),
@@ -394,7 +395,7 @@ class _GuestImportScreenState extends State<GuestImportScreen> {
       AarastToast.showError(
         context,
         provider.errorMessage ??
-            context.say('ما قدرنا نضيف الضيوف', 'ما قدرنا نضيف الضيفات'),
+            context.planWord('ما قدرنا نضيف الضيوف', 'ما قدرنا نضيف الضيفات'),
       );
       return;
     }

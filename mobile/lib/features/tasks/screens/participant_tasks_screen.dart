@@ -35,7 +35,6 @@ class ParticipantTasksScreen extends StatefulWidget {
     required this.planTitle,
     required this.canManage,
     required this.ownerWord,
-    this.feminine = false,
     super.key,
   });
 
@@ -49,9 +48,6 @@ class ParticipantTasksScreen extends StatefulWidget {
 
   /// «العريس», «العروسة»: who edits the rest.
   final String ownerWord;
-
-  /// A bride's plan speaks to a woman (D34).
-  final bool feminine;
 
   @override
   State<ParticipantTasksScreen> createState() => _ParticipantTasksScreenState();
@@ -195,7 +191,6 @@ class _ParticipantTasksScreenState extends State<ParticipantTasksScreen> {
                 weddingPlanId: widget.weddingPlanId,
                 provider: plan,
                 ownerWord: widget.ownerWord,
-                feminine: widget.feminine,
                 readOnlyNote: !widget.canManage,
                 onRetry: _loadPlan,
               )
@@ -236,8 +231,11 @@ class _ParticipantTasksScreenState extends State<ParticipantTasksScreen> {
           section: JourneySection.tasks,
           emptyIcon: LucideIcons.listChecks,
           emptyTitle: 'ما عليك مهام الحين',
-          emptyMessage: 'لما يعطونك مهمة أو تضيف وحدة، تطلع هنا.',
-          emptyAction: 'أضف مهمة',
+          emptyMessage: context.say(
+            'لما يعطونك مهمة أو تضيف وحدة، تطلع هنا.',
+            'لما يعطونك مهمة أو تضيفين وحدة، تطلع هنا.',
+          ),
+          emptyAction: context.say('أضف مهمة', 'أضيفي مهمة'),
           onEmptyAction: _add,
         ),
       ];
@@ -275,7 +273,7 @@ class _ParticipantTasksScreenState extends State<ParticipantTasksScreen> {
       Padding(
         padding: const EdgeInsets.symmetric(horizontal: 4),
         child: Text(
-          _voiceOf(widget.feminine).say(
+          context.say(
             'المهام اللي ما هي لك تشوفها في «كل مهام الخطة»، وما تقدر تعدّلها.',
             'المهام اللي ما هي لك تشوفينها في «كل مهام الخطة»، وما تقدرين تعدّلينها.',
           ),
@@ -290,11 +288,6 @@ class _ParticipantTasksScreenState extends State<ParticipantTasksScreen> {
 
   void _add() => context.push(AppRouter.createTask(widget.weddingPlanId));
 }
-
-/// A participant has no plan profile of their own (D43); a bride's plan
-/// speaks to them as a woman (D34), through the profile's own `say`.
-JourneyProfile _voiceOf(bool feminine) =>
-    feminine ? JourneyProfile.bride : JourneyProfile.groom;
 
 int _byDue(WeddingTask a, WeddingTask b) {
   final first = a.dueDate;

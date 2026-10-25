@@ -98,8 +98,8 @@ class _GuestAttendanceScreenState extends State<GuestAttendanceScreen> {
     final say = words.profile.say;
     final waiting = [
       summary.pending == 0
-          ? say('كل ضيوفك ردوا', 'كل ضيفاتك ردّن')
-          : '${summary.pending} ${say('لسا ما ردوا', 'لسا ما ردّن')}',
+          ? words.profile.plan('كل ضيوفك ردوا', 'كل ضيفاتك ردّن')
+          : '${summary.pending} ${words.profile.plan('لسا ما ردوا', 'لسا ما ردّن')}',
       if (summary.declined > 0) '${summary.declined} ${words.declined}',
     ].join(' · ');
     return [
@@ -156,7 +156,10 @@ class _GuestAttendanceScreenState extends State<GuestAttendanceScreen> {
         const SizedBox(height: 14),
         JourneyButton(
           key: const ValueKey('guest-attendance-remind'),
-          label: say('ذكّر اللي ما ردوا', 'ذكّري اللي ما ردّن'),
+          // The reader reminds; the guests are the plan's.
+          label:
+              '${say('ذكّر', 'ذكّري')} اللي '
+              '${words.profile.plan('ما ردوا', 'ما ردّن')}',
           icon: LucideIcons.send,
           background: AarastV3Color.lilac,
           expand: true,

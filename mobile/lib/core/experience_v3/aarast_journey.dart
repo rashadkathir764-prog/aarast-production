@@ -121,8 +121,10 @@ enum JourneySection {
   final String _brideLabel;
   final IconData icon;
 
-  /// The tab's name in the open plan's profile.
-  String labelOf(BuildContext context) => context.say(_groomLabel, _brideLabel);
+  /// The tab's name in the open plan's words (B5): a bride's guests are
+  /// «الضيفات» whoever reads her plan.
+  String labelOf(BuildContext context) =>
+      context.planWord(_groomLabel, _brideLabel);
 
   Color colorOf(BuildContext context) => switch (this) {
     JourneySection.home || JourneySection.money => context.accent.primary,

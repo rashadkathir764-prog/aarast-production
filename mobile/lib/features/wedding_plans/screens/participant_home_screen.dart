@@ -222,7 +222,11 @@ class _ParticipantHomeScreenState extends State<ParticipantHomeScreen> {
       _Greeting(
         name: user?.name ?? '',
         planTitle: title,
-        roleTag: participantRoleTag(role, feminine: voice.bride),
+        // B5: the role is said to the participant as who they are.
+        roleTag: participantRoleTag(
+          role,
+          feminine: context.journeyProfile.feminine,
+        ),
         voice: voice,
         unread: summary?.unreadNotificationsCount ?? 0,
         onNotifications: () =>
@@ -344,13 +348,16 @@ class _ParticipantHomeScreenState extends State<ParticipantHomeScreen> {
       } else if (!canTasks && selected.permissions.canViewPlan) {
         children.addAll(_planTasks(context, voice));
       }
-      if (voice.bride) {
+      // q17 (the bride's plan) and q09 (the groom's plan read by a woman):
+      // the plan keeps its owner's colours, the reader has her own plan.
+      if (voice.bride || context.journeyProfile.feminine) {
         children.addAll([
           const SizedBox(height: 12),
           JourneyNote(
             key: const ValueKey('participant-owner-colours'),
             text:
-                'الخطة بألوان صاحبتها. لو عندك خطة أنتِ، تبدّلين لها من «حسابي».',
+                '${voice.bride ? 'الخطة بألوان صاحبتها' : 'الخطة بألوان صاحبها'}. '
+                '${context.say('لو عندك خطة أنت، تبدّل لها من «حسابي».', 'لو عندك خطة أنتِ، تبدّلين لها من «حسابي».')}',
             icon: LucideIcons.palette,
             color: voice.accent,
             soft: voice.soft,

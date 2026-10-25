@@ -115,7 +115,10 @@ class _AccountContextSelectionScreenState
           const SizedBox(height: 6),
           Center(
             child: Text(
-              'تقدر تبدّل بينهم من حسابي',
+              context.say(
+                'تقدر تبدّل بينهم من حسابي',
+                'تقدرين تبدّلين بينهم من حسابي',
+              ),
               style: JourneyType.of(
                 JourneyType.small,
                 color: AarastV3Color.textMuted,
@@ -144,17 +147,20 @@ class _PathCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // The plan's colour and whose wedding it is follow the plan; what it is
+    // to you is said to you, as who you are (B5): محمد helping in سلمى's
+    // plan reads «تساعد فيها».
     final bride = path.persona == AccountContextPersona.bride;
     final (Color color, String tag, String line) = switch (path.role) {
       AccountContextRole.owner => (
         AarastV3Color.brandAccentStrong,
         bride ? 'عروسة' : 'عريس',
-        bride ? 'خطتكِ' : 'خطتك',
+        context.say('خطتك', 'خطتكِ'),
       ),
       AccountContextRole.contributor => (
         bride ? AarastV3Color.rose : AarastV3Color.primary,
-        bride ? 'مشاركة' : 'مشارك',
-        bride ? 'تساعدين فيها' : 'تساعد فيها',
+        context.say('مشارك', 'مشاركة'),
+        context.say('تساعد فيها', 'تساعدين فيها'),
       ),
       AccountContextRole.provider => (
         AarastV3Color.cobalt,

@@ -120,6 +120,8 @@ class _ParticipantAccountSectionsState
         if (path.role == AccountContextRole.owner && path.isAvailable) path,
     ];
     final count = widget.recordedCount;
+    // B5: every line here is said to the reader, as who they are.
+    final reader = context.journeyProfile;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -132,6 +134,7 @@ class _ParticipantAccountSectionsState
                 path: path,
                 line: _helpedLine(
                   path,
+                  reader,
                   role: path.contextKey == current.contextKey
                       ? widget.roleLabel
                       : null,
@@ -139,8 +142,8 @@ class _ParticipantAccountSectionsState
                 tag: !path.isAvailable
                     ? 'في الذكريات'
                     : path.contextKey == current.contextKey
-                    ? widget.roleLabel ?? _participantWord(path)
-                    : _participantWord(path),
+                    ? widget.roleLabel ?? reader.say('مشارك', 'مشاركة')
+                    : reader.say('مشارك', 'مشاركة'),
                 onTap: () => _open(path),
               ),
           ],
@@ -154,7 +157,7 @@ class _ParticipantAccountSectionsState
                 icon: LucideIcons.plus,
                 color: AarastV3Color.brandAccentStrong,
                 soft: AarastV3Color.brandAccentSoft,
-                title: 'ابدأ خطة عرسك',
+                title: reader.say('ابدأ خطة عرسك', 'ابدئي خطة عرسك'),
                 subtitle: 'بنفس حسابك',
                 onTap: () => context.push(AppRouter.createWeddingPlan),
               )
@@ -163,9 +166,7 @@ class _ParticipantAccountSectionsState
                 _PlanRow(
                   key: ValueKey('participant-plan-${path.contextKey}'),
                   path: path,
-                  line: path.persona == AccountContextPersona.bride
-                      ? 'خطتكِ'
-                      : 'خطتك',
+                  line: reader.say('خطتك', 'خطتكِ'),
                   tag: path.persona == AccountContextPersona.bride
                       ? 'عروسة'
                       : 'عريس',
@@ -194,7 +195,7 @@ class _ParticipantAccountSectionsState
                 color: AarastV3Color.primary,
                 soft: AarastV3Color.primarySoft,
                 title: 'المشاركين',
-                subtitle: 'تضيف ناس للخطة',
+                subtitle: reader.say('تضيف ناس للخطة', 'تضيفين ناس للخطة'),
                 onTap: () => context.push(AppRouter.sharing(planId)),
               ),
             JourneyListRow(
@@ -202,8 +203,11 @@ class _ParticipantAccountSectionsState
               icon: LucideIcons.logOut,
               color: AarastV3Color.danger,
               soft: AarastV3Color.dangerSoft,
-              title: 'اطلع من الخطة',
-              subtitle: 'تقدر ترجع لو أرسل لك دعوة ثانية',
+              title: reader.say('اطلع من الخطة', 'اطلعي من الخطة'),
+              subtitle: reader.say(
+                'تقدر ترجع لو أرسل لك دعوة ثانية',
+                'تقدرين ترجعين لو أرسل لك دعوة ثانية',
+              ),
               onTap: _leave,
             ),
           ],
@@ -214,13 +218,11 @@ class _ParticipantAccountSectionsState
 }
 
 /// «المهام والضيوف»: the sections a plan opens to you, from its flags.
-String _helpedLine(AccountContext path, {String? role}) {
+String _helpedLine(AccountContext path, JourneyProfile reader, {String? role}) {
   if (!path.isAvailable) return 'العرس تم';
   final sections = _openSections(path.permissions);
   final line = sections.isEmpty
-      ? (path.persona == AccountContextPersona.bride
-            ? 'تتابعين الخطة بس'
-            : 'تتابع الخطة بس')
+      ? reader.say('تتابع الخطة بس', 'تتابعين الخطة بس')
       : sections.join(' و');
   return role == null ? line : '$role · $line';
 }
@@ -231,9 +233,6 @@ List<String> _openSections(AccountContextPermissions permissions) => [
   if (permissions.canManageProviders) 'المزودين',
   if (permissions.canViewMoney) 'المال',
 ];
-
-String _participantWord(AccountContext path) =>
-    path.persona == AccountContextPersona.bride ? 'مشاركة' : 'مشارك';
 
 /// One plan: a letter in the plan's colour, its name, its line and a tag.
 class _PlanRow extends StatelessWidget {

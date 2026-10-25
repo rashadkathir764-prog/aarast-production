@@ -12,6 +12,7 @@ class BudgetCategory {
     this.costsCount = 0,
     this.createdAt,
     this.updatedAt,
+    this.isMahr = false,
   });
 
   factory BudgetCategory.fromJson(Map<String, dynamic> json) {
@@ -19,6 +20,7 @@ class BudgetCategory {
       id: json['id']?.toString() ?? '',
       weddingPlanId: json['weddingPlanId']?.toString() ?? '',
       name: json['name']?.toString() ?? '',
+      isMahr: json['kind']?.toString() == 'MAHR',
       clientId: json['clientId']?.toString(),
       allocatedAmount: json['allocatedAmount']?.toString(),
       confirmedCost: json['confirmedCost']?.toString() ?? '0',
@@ -43,6 +45,10 @@ class BudgetCategory {
   final int costsCount;
   final DateTime? createdAt;
   final DateTime? updatedAt;
+
+  /// The groom's mahr item (a06): outside the wedding budget (C1), so it
+  /// has no allocation and is never part of the budget's items.
+  final bool isMahr;
 
   bool get hasAllocation =>
       allocatedAmount != null && allocatedAmount!.trim().isNotEmpty;

@@ -162,6 +162,8 @@ class LocalPlanMigrationService {
       // removed there), not the list the plan started with.
       if (_itemNames(snapshot).isNotEmpty)
         'selectedCategories': _itemNames(snapshot),
+      // a06: the server records the mahr with the plan (C1).
+      if (draft.mahr case final mahr?) 'mahr': mahr.toRequestJson(),
       if (costs.isNotEmpty) 'costs': costs,
       if (snapshot.tasks.isNotEmpty)
         'tasks': [for (final row in snapshot.tasks) _taskPayload(row)],

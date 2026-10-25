@@ -202,14 +202,35 @@ class _FundingSourceRow extends StatelessWidget {
         AarastV3Color.brandAccentStrong,
         AarastV3Color.brandAccentSoft,
       ),
+      // c05: the mahr from the groom, received or still to come.
+      FundingKind.mahr =>
+        received
+            ? (
+                LucideIcons.piggyBank,
+                context.accent.primary,
+                context.accent.primarySoft,
+              )
+            : (
+                LucideIcons.heartHandshake,
+                AarastV3Color.lilac,
+                AarastV3Color.lilacSoft,
+              ),
       _ => (LucideIcons.gift, AarastV3Color.lilac, AarastV3Color.lilacSoft),
     };
+    final expected = source.expectedAt;
     return JourneyListRow(
       icon: icon,
       color: color,
       soft: soft,
       title: source.sourceName,
-      subtitle: FundingKind.label(source.kind, context.journeyProfile),
+      // c05: «يوصلك يوم العقد 15 نوفمبر» for the mahr's rest.
+      subtitle: source.isMahr
+          ? (!received && expected != null
+                ? 'يوصلك ${formatArabicDayMonth(expected)}'
+                : (source.note?.trim().isNotEmpty == true
+                      ? source.note!.trim()
+                      : FundingKind.label(source.kind, context.journeyProfile)))
+          : FundingKind.label(source.kind, context.journeyProfile),
       onTap: onTap,
       trailing: Column(
         mainAxisSize: MainAxisSize.min,

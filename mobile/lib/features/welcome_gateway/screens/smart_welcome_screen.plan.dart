@@ -288,7 +288,8 @@ class _PlaceBudgetStep extends StatelessWidget {
       total: _questionCount,
       question: 'وين العرس، وكم ميزانيتك تقريبًا؟',
       help: 'نعرض لك مزودين وأسعار من مدينتك. رقم تقريبي يكفي.',
-      primaryLabel: 'جهّز خطتي',
+      // a06 (the mahr) follows.
+      primaryLabel: 'التالي',
       onPrimary: onNext,
       onBack: onBack,
       children: [
@@ -343,8 +344,8 @@ class _PlaceBudgetStep extends StatelessWidget {
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 6),
           child: Text(
-            // C1: the budget is the wedding only. Nothing tracks the mahr
-            // yet (a06), so nothing may claim it is counted.
+            // C1: the budget is the wedding only; the mahr is its own
+            // question next (a06), outside the budget.
             context.say(
               'الميزانية لعرسك بس، والمهر مش منها. وتقدر تغيّرها بعدين من المال.',
               'الميزانية لعرسك بس، والمهر مش منها. وتقدرين تغيّرينها بعدين من المال.',

@@ -87,6 +87,7 @@ class _ProviderRequestsScreenState extends State<ProviderRequestsScreen> {
           ),
       ],
       costItemById: {for (final cost in costs) cost.id: cost.budgetCategoryId},
+      reader: context.journeyProfile,
       // Never another plan's request, even if one leaks into the provider.
       quotes: marketplace
           .quotesForPlan(widget.weddingPlanId)

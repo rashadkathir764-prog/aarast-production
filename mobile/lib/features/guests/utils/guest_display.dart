@@ -25,7 +25,8 @@ class GuestWords {
 
   final JourneyProfile profile;
 
-  String _say(String groom, String bride) => profile.say(groom, bride);
+  /// The plan's guest word: the bride's guests are women whoever reads.
+  String _say(String groom, String bride) => profile.plan(groom, bride);
 
   /// «الضيوف» / «الضيفات».
   String get guests => _say('الضيوف', 'الضيفات');
@@ -51,8 +52,8 @@ class GuestWords {
   /// «اعتذروا» / «اعتذرن».
   String get declined => _say('اعتذروا', 'اعتذرن');
 
-  /// «ما أضفت أحد بعد» / «ما أضفتِ أحد بعد».
-  String get noneAdded => _say('ما أضفت أحد بعد', 'ما أضفتِ أحد بعد');
+  /// «ما أضفت أحد بعد» / «ما أضفتِ أحد بعد»: said to the reader.
+  String get noneAdded => profile.say('ما أضفت أحد بعد', 'ما أضفتِ أحد بعد');
 
   /// «ضيف واحد», «ضيفين», «12 ضيف» or their feminine forms.
   String count(int count) => arabicCount(
@@ -68,7 +69,8 @@ class GuestWords {
 /// «ما ردّ», or «ما وصلته دعوة» before any was sent; a bride's guest in
 /// the feminine («أكّدت»، «اعتذرت»).
 String guestReplyLabel(Guest guest, JourneyProfile profile) {
-  final say = profile.say;
+  // The guest's own gender: the plan's guests.
+  final say = profile.plan;
   if (guest.isConfirmed) {
     return guest.companionsCount > 0
         ? '${say('أكّد', 'أكّدت')} مع ${guest.companionsCount}'

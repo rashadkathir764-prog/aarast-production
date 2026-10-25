@@ -25,6 +25,7 @@ export 'providers/dashboard_summary_provider.dart'
     show DashboardSummaryProvider;
 export 'providers/plan_read_view_provider.dart' show PlanReadViewProvider;
 export 'providers/wedding_plans_provider.dart' show WeddingPlansProvider;
+export 'screens/mahr_screen.dart' show MahrScreen;
 export 'screens/my_wedding_plans_screen.dart'
     show MyWeddingPlansScreen, showPlanSwitcherSheet;
 export 'screens/participant_home_screen.dart' show ParticipantHomeScreen;

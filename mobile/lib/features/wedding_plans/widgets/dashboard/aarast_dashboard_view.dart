@@ -20,6 +20,7 @@ part 'aarast_dashboard_journey.dart';
 part 'aarast_dashboard_moments.dart';
 part 'aarast_dashboard_tiles.dart';
 part 'aarast_dashboard_setup.dart';
+part 'aarast_dashboard_mahr.dart';
 
 class AarastDashboardView extends StatelessWidget {
   const AarastDashboardView({
@@ -44,6 +45,8 @@ class AarastDashboardView extends StatelessWidget {
     this.onOpenPayment,
     this.afterWedding,
     this.funding,
+    this.mahr,
+    this.onOpenMahr,
     this.onOpenReviews,
     this.showHijri = true,
     super.key,
@@ -79,6 +82,13 @@ class AarastDashboardView extends StatelessWidget {
   /// b02: the owner's money in hand, promised and short, once the money
   /// section is loaded.
   final DashboardHomeFunding? funding;
+
+  /// The plan's mahr for b01's step and b02's card (a groom's or a bride's
+  /// plan, the owner, once the money section is read); null leaves both out.
+  final DashboardHomeMahr? mahr;
+
+  /// a06 for a plan without its mahr yet (b01's step).
+  final VoidCallback? onOpenMahr;
 
   /// b07 «قيّم مزودينك».
   final VoidCallback? onOpenReviews;
@@ -172,6 +182,8 @@ class AarastDashboardView extends StatelessWidget {
                     const SizedBox(height: 20),
                     _JourneySetupSteps(
                       summary: summary,
+                      mahr: mahr,
+                      onOpenMahr: onOpenMahr,
                       onOpenMoney: onOpenMoney,
                       onOpenProviders: onOpenProviders,
                       onOpenGuests: onOpenGuests,
@@ -193,6 +205,11 @@ class AarastDashboardView extends StatelessWidget {
                         }
                       },
                     ),
+                    if (mahr case final mahr?
+                        when mahr.recorded && !mahr.complete) ...[
+                      const SizedBox(height: 12),
+                      _MahrAgreementCard(mahr: mahr, onTap: onOpenMoney),
+                    ],
                     if (summary.canViewMoney) ...[
                       const SizedBox(height: 12),
                       _DashboardMoneyCard(

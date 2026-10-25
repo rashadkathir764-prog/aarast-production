@@ -260,7 +260,7 @@ class _GuestFormSheetState extends State<GuestFormSheet> {
     final duplicate = _duplicatePhoneGuest;
     return JourneySheetBody(
       title: _editing
-          ? context.say('تعديل ضيف', 'تعديل ضيفة')
+          ? context.planWord('تعديل ضيف', 'تعديل ضيفة')
           : GuestWords.of(context).newGuest,
       children: [
         if (_draft != null) ...[
@@ -444,7 +444,9 @@ class _GuestFormSheetState extends State<GuestFormSheet> {
               const SizedBox(width: 10),
               JourneyButton(
                 key: const ValueKey('guest-form-save-next'),
-                label: context.say('حفظ وأضف التالي', 'حفظ وأضيفي التالية'),
+                label:
+                    'حفظ و${context.say('أضف', 'أضيفي')} '
+                    '${context.planWord('التالي', 'التالية')}',
                 background: AarastV3Color.lilacSoft,
                 foreground: AarastV3Color.lilac,
                 large: true,

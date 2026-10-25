@@ -417,7 +417,10 @@ class _CostFormScreenState extends State<CostFormScreen> {
                         _partyNameController.text,
                         category,
                       ) ??
-                      context.say('مثلًا: حجز القاعة', 'مثلًا: حجز الصالة'),
+                      context.planWord(
+                        'مثلًا: حجز القاعة',
+                        'مثلًا: حجز الصالة',
+                      ),
                   controller: _titleController,
                   maxLength: 200,
                 ),

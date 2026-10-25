@@ -19,16 +19,40 @@ class _MoneyItemsTab extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final currency = provider.summary.currency;
+    // c02: the mahr is its own section above «عرسك» (C1): the groom's
+    // agreement with the bride's family, or the bride's mahr coming in.
+    final mahrItemIds = {
+      for (final category in provider.categories)
+        if (category.isMahr) category.id,
+    };
+    final mahrCosts = [
+      for (final cost in provider.costs)
+        if (mahrItemIds.contains(cost.budgetCategoryId) && !cost.isCancelled)
+          cost,
+    ];
     final costs = [
-      ...provider.costs.where((cost) => !cost.isCancelled),
-      ...provider.costs.where((cost) => cost.isCancelled),
+      ...provider.costs.where(
+        (cost) =>
+            !cost.isCancelled && !mahrItemIds.contains(cost.budgetCategoryId),
+      ),
+      ...provider.costs.where(
+        (cost) =>
+            cost.isCancelled && !mahrItemIds.contains(cost.budgetCategoryId),
+      ),
     ];
     final withCosts = {
       for (final cost in provider.costs) cost.budgetCategoryId,
     };
     final waiting = provider.categories
-        .where((category) => !withCosts.contains(category.id))
+        .where(
+          (category) => !category.isMahr && !withCosts.contains(category.id),
+        )
         .toList(growable: false);
+    final mahr = provider.summary.mahr;
+    final brideMahr = mahr != null && mahr.side == MahrSide.receives
+        ? mahr
+        : null;
+    final hasMahrSection = mahrCosts.isNotEmpty || brideMahr != null;
     final starterIcons = {
       for (final group in catalog.groups)
         for (final item in group.categories) item.name: item.icon,
@@ -93,9 +117,77 @@ class _MoneyItemsTab extends StatelessWidget {
         ),
     ];
 
+    String? mahrDue(DateTime? day) =>
+        day == null ? null : 'الباقي ${formatArabicDayMonth(day)}';
+    final mahrRows = <Widget>[
+      for (final cost in mahrCosts)
+        _MoneyItemRow(
+          key: ValueKey('money-item-mahr-${cost.id}'),
+          icon: LucideIcons.heartHandshake,
+          title: cost.title,
+          amount: _amount(context, cost.totalAmount, currency),
+          paidRatio: moneyValue(cost.totalAmount) <= 0
+              ? 0
+              : moneyValue(cost.paidAmount) / moneyValue(cost.totalAmount),
+          paidLine: moneyValue(cost.paidAmount) <= 0
+              ? context.say('ما سلّمت شي', 'ما سلّمتِ شي')
+              : moneyValue(cost.paidAmount) >= moneyValue(cost.totalAmount)
+              ? 'سُلّم كامل'
+              : '${context.say('سلّمت', 'سلّمتِ')} ${_amount(context, cost.paidAmount, currency)}',
+          note: switch (mahrDue(_nextDueDay(provider, cost))) {
+            final due? => (due, AarastV3Color.brandAccentStrong),
+            null => null,
+          },
+          private: cost.isPrivate,
+          onTap: () =>
+              context.push(AppRouter.moneyCostDetails(planId, cost.id)),
+        ),
+      if (brideMahr != null)
+        _MoneyItemRow(
+          key: const ValueKey('money-item-mahr-received'),
+          icon: LucideIcons.heartHandshake,
+          title: 'المهر',
+          amount: _amount(context, brideMahr.total, currency),
+          paidRatio: moneyValue(brideMahr.total) <= 0
+              ? 0
+              : moneyValue(brideMahr.settled) / moneyValue(brideMahr.total),
+          paidLine: 'وصلك ${_amount(context, brideMahr.settled, currency)}',
+          note: switch (mahrDue(brideMahr.nextDueAt)) {
+            final due? => (due, AarastV3Color.brandAccentStrong),
+            null => null,
+          },
+          onTap: () => context.push(AppRouter.moneyFunding(planId)),
+        ),
+    ];
+
+    Widget sectionTitle(String title, String? total) => JourneySectionTitle(
+      title,
+      action: total,
+      actionColor: AarastV3Color.textMuted,
+    );
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
+        if (hasMahrSection) ...[
+          sectionTitle(
+            brideMahr != null
+                ? 'المهر يوصلك من العريس'
+                : 'الاتفاق مع أهل العروسة',
+            mahr == null ? null : _amount(context, mahr.total, currency),
+          ),
+          JourneyBox(
+            key: const ValueKey('money-mahr-section'),
+            padding: EdgeInsets.zero,
+            child: Column(children: mahrRows),
+          ),
+          sectionTitle(
+            'عرسك',
+            provider.summary.budget.total == null
+                ? null
+                : _amount(context, provider.summary.budget.total, currency),
+          ),
+        ],
         if (rows.isEmpty)
           JourneyListState(
             phase: JourneyListPhase.empty,
@@ -186,6 +278,19 @@ class _MoneyItemsTab extends StatelessWidget {
         ],
       ],
     );
+  }
+
+  /// The day the cost's next payment is due, if one is pending.
+  DateTime? _nextDueDay(FinanceProvider provider, WeddingCost cost) {
+    final due =
+        provider.dueSchedules
+            .where((schedule) => schedule.costId == cost.id)
+            .toList()
+          ..sort((a, b) => a.dueDate.compareTo(b.dueDate));
+    if (due.isNotEmpty) return due.first.dueDate;
+    // The mahr's rest is usually weeks away, past the due list's 30 days:
+    // the summary names its day.
+    return provider.summary.mahr?.nextDueAt;
   }
 
   /// «دفعة بعد 5 أيام» or «دفعة متأخرة» from the cost's own schedules.

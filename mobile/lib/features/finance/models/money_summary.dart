@@ -1,3 +1,4 @@
+import '../../../core/utils/plan_day.dart';
 import 'wedding_cost.dart';
 
 class MoneySummary {
@@ -11,6 +12,8 @@ class MoneySummary {
     this.warnings = const [],
     this.permissions = const MoneyPermissions(),
     this.funding,
+    this.mahr,
+    this.payers = const [],
   });
 
   factory MoneySummary.empty(String planId, {String currency = 'YER'}) {
@@ -37,6 +40,12 @@ class MoneySummary {
       funding: json['funding'] is Map
           ? MoneyFundingSummary.fromJson(_map(json['funding']))
           : null,
+      mahr: json['mahr'] is Map
+          ? MoneyMahrSummary.fromJson(_map(json['mahr']))
+          : null,
+      payers: _listOfMaps(
+        json['payers'],
+      ).map(MoneyPayerSummary.fromJson).toList(),
     );
   }
 
@@ -51,6 +60,24 @@ class MoneySummary {
 
   /// Money in versus money committed. Only the plan owner receives it.
   final MoneyFundingSummary? funding;
+
+  /// The plan's mahr as the server reads it (a06, C1): the groom's agreement
+  /// with the bride's family, or the bride's mahr coming in. Null before it
+  /// is recorded, or for a reader who may not see it.
+  final MoneyMahrSummary? mahr;
+
+  /// G14: what each payer agreed to and paid, by each item's payer.
+  final List<MoneyPayerSummary> payers;
+
+  /// The groom's mahr item (outside the budget), if the plan has one.
+  MoneyCategorySummary? get mahrCategory =>
+      categories.where((category) => category.isMahr).firstOrNull;
+
+  /// The wedding's own items: every item but the mahr's (C1).
+  List<MoneyCategorySummary> get weddingCategories => [
+    for (final category in categories)
+      if (!category.isMahr) category,
+  ];
 
   String get weddingPlanId => planId;
   bool get hasAnyData =>
@@ -140,12 +167,84 @@ class MoneyFundingSummary {
   final int sourcesCount;
 }
 
+/// The plan's mahr (a06, C1), one shape for both sides.
+class MoneyMahrSummary {
+  const MoneyMahrSummary({
+    required this.side,
+    required this.total,
+    required this.settled,
+    required this.remaining,
+    this.nextDueAt,
+    this.complete = false,
+  });
+
+  factory MoneyMahrSummary.fromJson(Map<String, dynamic> json) {
+    return MoneyMahrSummary(
+      side: json['side']?.toString() == 'RECEIVES'
+          ? MahrSide.receives
+          : MahrSide.pays,
+      total: json['total']?.toString() ?? '0',
+      settled: json['settled']?.toString() ?? '0',
+      remaining: json['remaining']?.toString() ?? '0',
+      // A day, read as the server keeps it (Sana'a).
+      nextDueAt: planDayFromJson(json['nextDueAt']),
+      complete: json['complete'] == true,
+    );
+  }
+
+  /// The groom pays it to the bride's family; the bride receives it.
+  final MahrSide side;
+  final String total;
+
+  /// Handed over (the groom) or received (the bride).
+  final String settled;
+  final String remaining;
+
+  /// When the rest is due (the groom) or expected (the bride).
+  final DateTime? nextDueAt;
+  final bool complete;
+}
+
+enum MahrSide { pays, receives }
+
+/// G14: one payer's agreements and payments («الوالد دفع 2.2 مليون»).
+class MoneyPayerSummary {
+  const MoneyPayerSummary({
+    this.payer,
+    this.payerName,
+    this.agreed = '0',
+    this.paid = '0',
+    this.outstanding = '0',
+    this.costsCount = 0,
+  });
+
+  factory MoneyPayerSummary.fromJson(Map<String, dynamic> json) {
+    return MoneyPayerSummary(
+      payer: _nullableString(json['payer']),
+      payerName: _nullableString(json['payerName']),
+      agreed: json['agreed']?.toString() ?? '0',
+      paid: json['paid']?.toString() ?? '0',
+      outstanding: json['outstanding']?.toString() ?? '0',
+      costsCount: intOrNull(json['costsCount']) ?? 0,
+    );
+  }
+
+  /// GROOM, BRIDE, FAMILY, SHARED, OTHER, or null when no payer was set.
+  final String? payer;
+  final String? payerName;
+  final String agreed;
+  final String paid;
+  final String outstanding;
+  final int costsCount;
+}
+
 class MoneyBudgetSummary {
   const MoneyBudgetSummary({
     this.total,
     this.allocated = '0',
     this.unallocated,
     this.confirmedCost = '0',
+    this.paid = '0',
     this.remaining,
   });
 
@@ -155,6 +254,7 @@ class MoneyBudgetSummary {
       allocated: json['allocated']?.toString() ?? '0',
       unallocated: _nullableString(json['unallocated']),
       confirmedCost: json['confirmedCost']?.toString() ?? '0',
+      paid: json['paid']?.toString() ?? '0',
       remaining: _nullableString(json['remaining']),
     );
   }
@@ -162,7 +262,12 @@ class MoneyBudgetSummary {
   final String? total;
   final String allocated;
   final String? unallocated;
+
+  /// The wedding's agreements: the mahr item is outside the budget (C1).
   final String confirmedCost;
+
+  /// What was paid of the wedding's agreements (c01 «عرسك · دفعت»).
+  final String paid;
   final String? remaining;
 }
 
@@ -229,12 +334,14 @@ class MoneyCategorySummary {
     this.outstanding = '0',
     this.remainingAllocation,
     this.costsCount = 0,
+    this.isMahr = false,
   });
 
   factory MoneyCategorySummary.fromJson(Map<String, dynamic> json) {
     return MoneyCategorySummary(
       categoryId: json['categoryId']?.toString() ?? '',
       name: json['name']?.toString() ?? '',
+      isMahr: json['kind']?.toString() == 'MAHR',
       allocatedAmount: _nullableString(json['allocatedAmount']),
       confirmedCost: json['confirmedCost']?.toString() ?? '0',
       paid: json['paid']?.toString() ?? '0',
@@ -252,6 +359,9 @@ class MoneyCategorySummary {
   final String outstanding;
   final String? remainingAllocation;
   final int costsCount;
+
+  /// The groom's mahr item: outside the wedding budget (C1).
+  final bool isMahr;
 }
 
 class MoneyWarning {

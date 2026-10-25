@@ -218,8 +218,31 @@ class _MoneyOverviewScreenState extends State<MoneyOverviewScreen> {
 
   List<Widget> _summaryTab(FinanceProvider provider) {
     final summary = provider.summary;
+    final mahr = summary.mahr;
     return [
       _MoneySummaryCard(summary: summary),
+      if (mahr != null) ...[
+        const SizedBox(height: 14),
+        _MahrAndWeddingCards(
+          summary: summary,
+          mahr: mahr,
+          // The groom's mahr is his agreement (c07); the bride's is in «من
+          // وين» (c05).
+          onMahr: mahr.side == MahrSide.pays
+              ? () {
+                  final cost = _mahrCost(provider);
+                  if (cost != null) {
+                    context.push(
+                      AppRouter.moneyCostDetails(widget.weddingPlanId, cost.id),
+                    );
+                  } else {
+                    setState(() => _tab = 1);
+                  }
+                }
+              : () => setState(() => _tab = 3),
+          onWedding: () => setState(() => _tab = 1),
+        ),
+      ],
       // Field test Q03: an overspent category shows the moment money opens.
       for (final exceeded in summary.exceededCategories) ...[
         const SizedBox(height: 12),
@@ -284,6 +307,15 @@ class _MoneyOverviewScreenState extends State<MoneyOverviewScreen> {
       return moneyStarterPersonaFromCode(summary?.persona);
     }
     return MoneyStarterPersona.neutral;
+  }
+
+  /// The groom's mahr agreement (C1), the live one first.
+  WeddingCost? _mahrCost(FinanceProvider provider) {
+    final item = provider.categories.where((item) => item.isMahr).firstOrNull;
+    if (item == null) return null;
+    return provider.costs
+        .where((cost) => cost.budgetCategoryId == item.id && !cost.isCancelled)
+        .firstOrNull;
   }
 
   PaymentSchedule? _nextSchedule(FinanceProvider provider) {

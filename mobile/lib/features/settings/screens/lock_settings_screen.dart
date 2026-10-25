@@ -76,7 +76,8 @@ class _LockSettingsScreenState extends State<LockSettingsScreen> {
           Text(
             context.say(
               'لا تستخدم تاريخ ميلاد أو رقم يعرفه غيرك.',
-              'لا تستخدمين تاريخ ميلاد أو رقم يعرفه غيرك.',
+              // «لا» forbids: the jussive, «لا تستخدمي».
+              'لا تستخدمي تاريخ ميلاد أو رقم يعرفه غيرك.',
             ),
             textAlign: TextAlign.center,
             style: JourneyType.of(

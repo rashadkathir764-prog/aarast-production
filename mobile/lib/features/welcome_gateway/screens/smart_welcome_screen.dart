@@ -19,12 +19,15 @@ import '../../catalogs/catalogs_api.dart' show ReferenceCatalogProvider;
 import '../../finance/finance_api.dart'
     show
         FinanceApi,
+        MahrFields,
         MoneyInputFormatter,
         formatMoneyInputValue,
-        moneyStarterPlanItemNames;
+        moneyStarterPlanItemNames,
+        pickMahrDueDate;
 import '../../marketplace/marketplace_api.dart' show MarketplaceApi;
 import '../../onboarding/onboarding_api.dart'
     show
+        DraftMahr,
         GuestOnboardingDraft,
         GuestOnboardingPath,
         GuestOnboardingStorage,
@@ -39,14 +42,14 @@ part 'smart_welcome_screen.plan.dart';
 part 'smart_welcome_screen.day.dart';
 
 /// The start of the journey (prototype a02 to a08): what you want to do,
-/// whose wedding, your name and the date, the city and a rough budget, and
-/// «خطتك جاهزة». The plan is kept on the phone first; the account is asked
-/// for only when it is saved.
-enum _WelcomeStep { start, whose, nameDate, placeBudget, ready }
+/// whose wedding, your name and the date, the city and a rough budget, the
+/// mahr (a06), and «خطتك جاهزة». The plan is kept on the phone first; the
+/// account is asked for only when it is saved.
+enum _WelcomeStep { start, whose, nameDate, placeBudget, mahr, ready }
 
-/// The questions after «خطة مين؟». The mahr question joins when the
-/// agreement section exists on the server.
-const _questionCount = 2;
+/// The questions after «خطة مين؟»: the name and the day, the city and the
+/// budget, the mahr. a06's «في اليمن ولا برا؟» is after V1 (y01).
+const _questionCount = 3;
 
 /// The cities seeded in the provider directory, used until the live list
 /// arrives (or when offline with nothing cached).
@@ -73,6 +76,11 @@ class _SmartWelcomeScreenState extends State<SmartWelcomeScreen> {
 
   final _nameController = TextEditingController();
   final _budgetController = TextEditingController();
+  // a06: the mahr, what was handed over or received, the rest's day.
+  final _mahrTotalController = TextEditingController();
+  final _mahrSettledController = TextEditingController();
+  DateTime? _mahrDueDate;
+  String? _mahrError;
   DateTime? _date;
   bool _dateUnknown = false;
   String? _city;
@@ -92,7 +100,51 @@ class _SmartWelcomeScreenState extends State<SmartWelcomeScreen> {
   void dispose() {
     _nameController.dispose();
     _budgetController.dispose();
+    _mahrTotalController.dispose();
+    _mahrSettledController.dispose();
     super.dispose();
+  }
+
+  /// a06's answer, or null for «ما اتفقنا بعد» (nothing typed).
+  DraftMahr? get _mahr {
+    final total = MahrFields.amountOf(_mahrTotalController);
+    if (total == null || total <= 0) return null;
+    final settled = MahrFields.amountOf(_mahrSettledController) ?? 0;
+    return DraftMahr(
+      total: '$total',
+      settled: '$settled',
+      remainingDueDate: settled < total ? _mahrDueDate : null,
+    );
+  }
+
+  /// «التالي» on a06: what is typed must hold together.
+  void _confirmMahr() {
+    final total = MahrFields.amountOf(_mahrTotalController) ?? 0;
+    final settled = MahrFields.amountOf(_mahrSettledController) ?? 0;
+    if (total <= 0) {
+      setState(
+        () => _mahrError = context.say('اكتب كم المهر', 'اكتبي كم المهر'),
+      );
+      return;
+    }
+    if (settled > total) {
+      setState(() => _mahrError = 'أكثر من المهر نفسه');
+      return;
+    }
+    _goTo(_WelcomeStep.ready);
+  }
+
+  /// «ما اتفقنا بعد»: a real answer; the home keeps the step to take later.
+  void _skipMahr() {
+    _mahrTotalController.clear();
+    _mahrSettledController.clear();
+    _mahrDueDate = null;
+    _goTo(_WelcomeStep.ready);
+  }
+
+  Future<void> _pickMahrDueDate() async {
+    final picked = await pickMahrDueDate(context, _mahrDueDate);
+    if (picked != null && mounted) setState(() => _mahrDueDate = picked);
   }
 
   String get _name => _nameController.text.trim();
@@ -128,8 +180,10 @@ class _SmartWelcomeScreenState extends State<SmartWelcomeScreen> {
         _goTo(_WelcomeStep.whose);
       case _WelcomeStep.placeBudget:
         _goTo(_WelcomeStep.nameDate);
-      case _WelcomeStep.ready:
+      case _WelcomeStep.mahr:
         _goTo(_WelcomeStep.placeBudget);
+      case _WelcomeStep.ready:
+        _goTo(_WelcomeStep.mahr);
     }
   }
 
@@ -183,6 +237,12 @@ class _SmartWelcomeScreenState extends State<SmartWelcomeScreen> {
       _dateUnknown = draft.weddingDateUnknown;
       _city = draft.city;
       _budgetSkipped = draft.budgetSkipped;
+      final mahr = draft.mahr;
+      if (mahr != null) {
+        _mahrTotalController.text = formatMoneyInputValue(mahr.total);
+        _mahrSettledController.text = formatMoneyInputValue(mahr.settled);
+        _mahrDueDate = mahr.remainingDueDate;
+      }
       if (draft.hasPersona) _step = _WelcomeStep.nameDate;
     });
   }
@@ -212,6 +272,7 @@ class _SmartWelcomeScreenState extends State<SmartWelcomeScreen> {
       currency: 'YER',
       estimatedBudget: _budgetSkipped ? null : _budget?.toString(),
       startingItemNames: _catalogs().items,
+      mahr: _mahr,
     );
   }
 
@@ -285,6 +346,7 @@ class _SmartWelcomeScreenState extends State<SmartWelcomeScreen> {
         estimatedBudget: _budgetSkipped ? null : _budget?.toString(),
         currency: 'YER',
         selectedCategories: _catalogs().items,
+        mahr: _mahr?.toRequestJson(),
       ),
     );
     if (!mounted) return;
@@ -354,8 +416,32 @@ class _SmartWelcomeScreenState extends State<SmartWelcomeScreen> {
         }),
         onNext: _city == null || (_budget == null && !_budgetSkipped)
             ? null
-            : () => _goTo(_WelcomeStep.ready),
+            : () => _goTo(_WelcomeStep.mahr),
         onBack: _back,
+      ),
+      _WelcomeStep.mahr => JourneyQuestionPage(
+        step: 2,
+        total: _questionCount,
+        question: 'اتفقتوا على المهر؟',
+        help: _persona == GuestPersona.bride
+            ? 'اللي بتستلمينه من العريس. نحسبه لحاله ونذكرك بموعد استلامه.'
+            : 'اللي بتسلّمه لأهل العروسة. نحسبه لحاله ونذكرك بموعد تسليمه.',
+        primaryLabel: 'التالي',
+        onPrimary: _confirmMahr,
+        onBack: _back,
+        skipLabel: 'ما اتفقنا بعد',
+        onSkip: _skipMahr,
+        children: [
+          MahrFields(
+            pays: _persona != GuestPersona.bride,
+            totalController: _mahrTotalController,
+            settledController: _mahrSettledController,
+            dueDate: _mahrDueDate,
+            onPickDueDate: _pickMahrDueDate,
+            onChanged: () => setState(() => _mahrError = null),
+            totalError: _mahrError,
+          ),
+        ],
       ),
       _WelcomeStep.ready => _ReadyStep(
         name: _name,

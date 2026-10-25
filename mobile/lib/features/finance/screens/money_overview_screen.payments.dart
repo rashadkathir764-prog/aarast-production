@@ -33,6 +33,19 @@ class _MoneyPaymentsTab extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
+        // w20 «مين دفع ايش» (G14): an undrawn way in from c03.
+        if (provider.summary.payers.isNotEmpty) ...[
+          Align(
+            alignment: AlignmentDirectional.centerStart,
+            child: JourneyTextAction(
+              key: const ValueKey('money-payers'),
+              label: 'مين دفع ايش',
+              color: context.accent.primary,
+              onPressed: () => context.push(AppRouter.moneyPayers(planId)),
+            ),
+          ),
+          const SizedBox(height: 4),
+        ],
         if (schedules.isEmpty)
           const JourneyListState(
             phase: JourneyListPhase.empty,

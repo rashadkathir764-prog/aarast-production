@@ -104,11 +104,11 @@ void main() {
     );
     expect(find.byType(JourneyWordmark), findsOneWidget);
     expect(find.text('عرس محمد'), findsOneWidget);
-    expect(find.text('تساعد فيها'), findsOneWidget);
-    expect(find.text('مشارك'), findsOneWidget);
-    // A bride's plan speaks to her helper as a woman.
-    expect(find.text('تساعدين فيها'), findsOneWidget);
-    expect(find.text('مشاركة'), findsOneWidget);
+    // B5: what each path is to you is said to you, as who you are, whoever
+    // owns the plan: محمد helping in سلمى's plan reads «تساعد فيها» too.
+    expect(find.text('تساعد فيها'), findsNWidgets(2));
+    expect(find.text('مشارك'), findsNWidgets(2));
+    expect(find.text('تساعدين فيها'), findsNothing);
     expect(find.text('خطتك'), findsOneWidget);
     expect(find.text('عريس'), findsOneWidget);
     // The letter is the name after «عرس».
@@ -125,6 +125,44 @@ void main() {
     );
     await tester.pumpAndSettle();
     expect(controller.selectedContext, helped);
+  });
+
+  testWidgets('B5: a bride choosing her paths is spoken to as a woman', (
+    tester,
+  ) async {
+    final helped = accountContext(
+      role: AccountContextRole.contributor,
+      planId: 'plan-mohammed',
+      displayName: 'عرس محمد',
+    );
+    final own = accountContext(
+      role: AccountContextRole.owner,
+      planId: 'plan-salma',
+      displayName: 'عرس سلمى',
+      persona: AccountContextPersona.bride,
+    );
+    final controller = await _controller([helped, own]);
+
+    await tester.pumpWidget(
+      ChangeNotifierProvider<AccountContextController>.value(
+        value: controller,
+        child: MaterialApp(
+          home: JourneyProfileScope(
+            // The chooser is outside any plan: the app's teal, her voice.
+            profile: JourneyProfile.groom.readBy(feminine: true),
+            child: const AccountContextSelectionScreen(),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('تساعدين فيها'), findsOneWidget);
+    expect(find.text('مشاركة'), findsOneWidget);
+    expect(find.text('خطتكِ'), findsOneWidget);
+    expect(find.text('عروسة'), findsOneWidget);
+    expect(find.text('تقدرين تبدّلين بينهم من حسابي'), findsOneWidget);
+    expect(find.text('تساعد فيها'), findsNothing);
   });
 }
 

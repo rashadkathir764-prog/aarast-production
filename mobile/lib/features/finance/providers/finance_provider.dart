@@ -66,6 +66,10 @@ class FinanceProvider extends ChangeNotifier with SessionScopedNotifier {
   /// came with a notice (stale view or local-only plan) the user must see.
   String savedMessage(String success) => _noticeMessage ?? success;
   List<BudgetCategory> get categories => List.unmodifiable(_categories);
+
+  /// The wedding budget's items: every item but the groom's mahr, which is
+  /// outside the budget (C1) and never sent with it.
+  List<BudgetCategory> get budgetItems => List.unmodifiable(_budgetItems);
   List<WeddingCost> get costs => List.unmodifiable(_costs);
   List<CostPayment> get payments => List.unmodifiable(_payments);
   List<PaymentSchedule> get dueSchedules => List.unmodifiable(_dueSchedules);
@@ -340,6 +344,27 @@ class FinanceProvider extends ChangeNotifier with SessionScopedNotifier {
     });
   }
 
+  /// a06 (b01's mahr step): records the plan's mahr on the server, then
+  /// reads the money again (the groom's agreement is a new item with its
+  /// payment and its date; the bride's is in «من وين»).
+  Future<bool> recordMahr({
+    required String planId,
+    required String total,
+    required String settled,
+    DateTime? remainingDueDate,
+  }) {
+    return _submit(
+      planId,
+      () => _api.recordMahr(
+        planId,
+        total: total,
+        settled: settled,
+        remainingDueDate: remainingDueDate,
+      ),
+      refresh: () => _reloadData(planId),
+    );
+  }
+
   Future<String?> createCategory({
     required String planId,
     required String name,
@@ -354,7 +379,7 @@ class FinanceProvider extends ChangeNotifier with SessionScopedNotifier {
         totalBudget: _summary.budget.total,
         currency: _summary.currency,
         categories: [
-          ..._budgetCategoryInputs(_categories),
+          ..._budgetCategoryInputs(_budgetItems),
           (id: null, name: name, allocatedAmount: allocatedAmount),
         ],
       );
@@ -380,7 +405,7 @@ class FinanceProvider extends ChangeNotifier with SessionScopedNotifier {
         totalBudget: _summary.budget.total,
         currency: _summary.currency,
         categories: [
-          for (final item in _categories)
+          for (final item in _budgetItems)
             (
               id: item.id,
               name: item.id == category.id ? name : item.name,
@@ -404,7 +429,7 @@ class FinanceProvider extends ChangeNotifier with SessionScopedNotifier {
         planId: planId,
         totalBudget: totalBudget,
         currency: _summary.currency,
-        categories: _budgetCategoryInputs(_categories),
+        categories: _budgetCategoryInputs(_budgetItems),
       );
     });
   }
@@ -422,7 +447,7 @@ class FinanceProvider extends ChangeNotifier with SessionScopedNotifier {
         totalBudget: '${total.round()}',
         currency: _summary.currency,
         categories: [
-          for (final item in _categories)
+          for (final item in _budgetItems)
             (
               id: item.id,
               name: item.name,
@@ -447,7 +472,7 @@ class FinanceProvider extends ChangeNotifier with SessionScopedNotifier {
         totalBudget: _summary.budget.total,
         currency: _summary.currency,
         categories: _budgetCategoryInputs(
-          _categories.where((item) => item.id != category.id),
+          _budgetItems.where((item) => item.id != category.id),
         ),
       );
     });
@@ -790,8 +815,16 @@ class FinanceProvider extends ChangeNotifier with SessionScopedNotifier {
     );
     if (_loadedPlanId != planId || isSessionDisposed) return;
     _summary = result.summary;
-    _categories = result.categories;
+    // The budget's reply lists the budget's items only; the mahr item is
+    // outside the budget (C1) and stays as it was.
+    _categories = [
+      ...result.categories,
+      ..._categories.where((category) => category.isMahr),
+    ];
   }
+
+  Iterable<BudgetCategory> get _budgetItems =>
+      _categories.where((category) => !category.isMahr);
 
   List<({String? id, String name, String? allocatedAmount})>
   _budgetCategoryInputs(Iterable<BudgetCategory> categories) {
@@ -818,6 +851,7 @@ class FinanceProvider extends ChangeNotifier with SessionScopedNotifier {
           outstanding: category.outstanding,
           remainingAllocation: category.remainingAllocation,
           costsCount: category.costsCount,
+          isMahr: category.isMahr,
         ),
     ];
   }

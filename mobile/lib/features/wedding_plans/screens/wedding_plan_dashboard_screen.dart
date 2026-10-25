@@ -11,12 +11,13 @@ import '../../../core/preferences/device_preferences.dart';
 import '../../../core/routing/app_router.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../account_contexts/account_contexts_api.dart'
-    show AccountContextController;
+    show AccountContextController, AccountContextPersona;
 import '../../auth/auth_api.dart' show AuthActionGuard, AuthController;
 import '../../finance/finance_api.dart' show FinanceProvider;
 import '../../home/home_api.dart'
     show LocalGuestDashboardSummary, LocalGuestDashboardSummarySource;
-import '../../onboarding/onboarding_api.dart' show GuestOnboardingStorage;
+import '../../onboarding/onboarding_api.dart'
+    show GuestOnboardingStorage, GuestPersona;
 import '../../sharing/sharing_api.dart' show SharedMember;
 import '../models/dashboard_summary.dart';
 import '../models/wedding_plan_stage.dart';
@@ -198,6 +199,68 @@ class _WeddingPlanDashboardScreenState extends State<WeddingPlanDashboardScreen>
     );
   }
 
+  /// b01's mahr step and b02's card (a06, C1): only the owner of a groom's
+  /// or a bride's plan, once the money section is read. A plan still on the
+  /// phone keeps a06's answer in its draft until the account saves it.
+  DashboardHomeMahr? _homeMahr(DashboardSummary summary, String planId) {
+    final MahrHomeSide side;
+    if (_isLocalGuestPlan) {
+      final plan = _localSummary?.plan;
+      switch (plan?.persona) {
+        case GuestPersona.groom:
+          side = MahrHomeSide.pays;
+        case GuestPersona.bride:
+          side = MahrHomeSide.receives;
+        default:
+          return null;
+      }
+      final draft = plan?.mahr;
+      if (draft == null) return DashboardHomeMahr.notRecorded(side);
+      final total = double.tryParse(draft.total.replaceAll(',', '')) ?? 0;
+      final settled = double.tryParse(draft.settled.replaceAll(',', '')) ?? 0;
+      return DashboardHomeMahr(
+        side: side,
+        recorded: true,
+        total: total,
+        settled: settled,
+        nextDueAt: settled < total ? draft.remainingDueDate : null,
+        complete: total > 0 && settled >= total,
+      );
+    }
+    final selected = context.watch<AccountContextController?>()?.selectedContext;
+    if (!summary.permissions.isOwner ||
+        !summary.canViewMoney ||
+        selected?.weddingPlanId != planId) {
+      return null;
+    }
+    switch (selected?.persona) {
+      case AccountContextPersona.groom:
+        side = MahrHomeSide.pays;
+      case AccountContextPersona.bride:
+        side = MahrHomeSide.receives;
+      default:
+        return null;
+    }
+    final finance = context.watch<FinanceProvider?>();
+    if (finance == null ||
+        finance.loadedPlanId != planId ||
+        !finance.hasLoadedMoney) {
+      // _homeFunding loads the money section for the owner.
+      return null;
+    }
+    final mahr = finance.summary.mahr;
+    if (mahr == null) return DashboardHomeMahr.notRecorded(side);
+    double value(String text) => double.tryParse(text) ?? 0;
+    return DashboardHomeMahr(
+      side: side,
+      recorded: true,
+      total: value(mahr.total),
+      settled: value(mahr.settled),
+      nextDueAt: mahr.nextDueAt,
+      complete: mahr.complete,
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final provider = context.watch<DashboardSummaryProvider>();
@@ -322,6 +385,8 @@ class _WeddingPlanDashboardScreenState extends State<WeddingPlanDashboardScreen>
               notice: _isLocalGuestPlan ? null : const PushOffCard(),
               afterWedding: _afterWedding(summary, selectedPlanId),
               funding: _homeFunding(summary, selectedPlanId),
+              mahr: _homeMahr(summary, selectedPlanId),
+              onOpenMahr: () => _openMahr(selectedPlanId),
               showHijri:
                   context.watch<DevicePreferences?>()?.showHijri ?? true,
               onOpenReviews: _isLocalGuestPlan
@@ -384,6 +449,17 @@ class _WeddingPlanDashboardScreenState extends State<WeddingPlanDashboardScreen>
       reason:
           'المشاركة تحتاج حساباً حتى نحفظ الصلاحيات والدعوات ونربطها بخطتك بأمان.',
     );
+  }
+
+  /// a06 for a plan without its mahr yet; the home reads the money again.
+  Future<void> _openMahr(String weddingPlanId) async {
+    await context.push(AppRouter.moneyMahr(weddingPlanId));
+    if (!mounted) return;
+    if (_isLocalGuestPlan) {
+      await _loadLocalDashboard();
+    } else {
+      await context.read<FinanceProvider?>()?.loadMoney(weddingPlanId);
+    }
   }
 
   Future<void> _openSharing(String weddingPlanId) async {

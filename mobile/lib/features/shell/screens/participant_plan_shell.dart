@@ -6,7 +6,7 @@ import '../../../core/offline/offline_status_widgets.dart';
 import '../../../core/routing/root_tab_back_scope.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../account_contexts/account_contexts_api.dart'
-    show AccountContextController, AccountContextPersona, AccountContextRole;
+    show AccountContextController, AccountContextRole;
 import '../../finance/finance_api.dart' show MoneyOverviewScreen;
 import '../../guests/guests_api.dart'
     show GuestListScreen, ParticipantGuestsScreen;
@@ -38,7 +38,8 @@ Widget? participantPlanTab(
   final summary = context.read<DashboardSummaryProvider?>()?.summary;
   final ofPlan = summary?.planId == weddingPlanId ? summary : null;
   final title = (ofPlan?.title ?? selected.displayName).trim();
-  final feminine = selected.persona == AccountContextPersona.bride;
+  // B5: the participant is spoken to as who they are, in the plan's colours.
+  final feminine = context.journeyProfile.feminine;
   final owner = selected.planOwnerWord;
   // D52: reading is separate from editing. Every participant reads the
   // tasks, the guests and the bookings (`canViewPlan`); a section's manage
@@ -70,7 +71,6 @@ Widget? participantPlanTab(
               planTitle: title,
               canManage: permissions.canManageTasks,
               ownerWord: owner,
-              feminine: feminine,
             )
           : locked(JourneySection.tasks),
     3 =>
@@ -84,7 +84,6 @@ Widget? participantPlanTab(
               key: ValueKey('participant-guests-read-$weddingPlanId'),
               weddingPlanId: weddingPlanId,
               ownerWord: owner,
-              feminine: feminine,
             )
           : locked(JourneySection.guests),
     4 =>
@@ -100,7 +99,6 @@ Widget? participantPlanTab(
               weddingPlanId: weddingPlanId,
               planTitle: title,
               ownerWord: owner,
-              feminine: feminine,
             )
           : locked(JourneySection.providers),
     _ => ParticipantHomeScreen(

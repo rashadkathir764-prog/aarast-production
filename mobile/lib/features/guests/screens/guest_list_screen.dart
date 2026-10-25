@@ -175,7 +175,8 @@ class _GuestListScreenState extends State<GuestListScreen> {
                     icon: _searching ? LucideIcons.x : LucideIcons.search,
                     tooltip: _searching
                         ? context.say('سكّر البحث', 'سكّري البحث')
-                        : context.say('دوّر على ضيف', 'دوّري على ضيفة'),
+                        : '${context.say('دوّر', 'دوّري')} على '
+                              '${context.planWord('ضيف', 'ضيفة')}',
                     onPressed: () => setState(() {
                       _searching = !_searching;
                       if (!_searching) _query = '';
@@ -546,7 +547,7 @@ class _GuestListScreenState extends State<GuestListScreen> {
       AarastToast.showError(
         context,
         provider.errorMessage ??
-            context.say('ما قدرنا نحفظ الضيف', 'ما قدرنا نحفظ الضيفة'),
+            context.planWord('ما قدرنا نحفظ الضيف', 'ما قدرنا نحفظ الضيفة'),
       );
       return;
     }
@@ -565,8 +566,11 @@ class _GuestListScreenState extends State<GuestListScreen> {
     AarastFormSuccess.show(
       context,
       message:
-          provider.noticeMessage ?? context.say('انضاف الضيف', 'انضافت الضيفة'),
-      nextLabel: context.say('أضف ثاني', 'أضيفي ثانية'),
+          provider.noticeMessage ??
+          context.planWord('انضاف الضيف', 'انضافت الضيفة'),
+      // The verb is the reader's, «ثاني/ثانية» the plan's guest.
+      nextLabel:
+          '${context.say('أضف', 'أضيفي')} ${context.planWord('ثاني', 'ثانية')}',
       onNext: () => _showGuestSheet(provider: provider),
     );
   }

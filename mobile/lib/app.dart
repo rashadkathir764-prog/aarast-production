@@ -136,26 +136,47 @@ class _AarastAppState extends State<AarastApp> {
   }
 }
 
-/// The open plan's profile for the whole app (JOURNEY_PROFILE.md): the
-/// bride's when the selected context is her own plan, or when no account is
-/// signed in and the plan kept on the phone is hers. A participant keeps
-/// the app's own look (D34 paints the bride's plan for them where drawn),
-/// and the provider portal never takes a wedding's profile.
+/// The open plan's profile for the whole app (JOURNEY_PROFILE.md, B5).
+///
+/// The colours and the plan's words follow whose plan is open: the
+/// selected plan, owned or helped in (q09 draws the groom's plan in his
+/// teal for the bride who helps in it, q17 the bride's in her rose for her
+/// sister), or the plan kept on the phone before an account. The words to
+/// the reader follow the reader ([readerIsFeminine]): the account's own
+/// persona ([accountPersona]), else the plan's own party. The provider
+/// portal and the screens outside a plan take the app's teal, still
+/// speaking to the reader as who they are.
 @visibleForTesting
 JourneyProfile planJourneyProfile({
   AccountContext? selected,
   DashboardSummary? summary,
+  String? accountPersona,
 }) {
+  final String? planPersona;
   if (selected != null) {
-    return selected.role == AccountContextRole.owner &&
-            selected.persona == AccountContextPersona.bride
-        ? JourneyProfile.bride
-        : JourneyProfile.groom;
+    planPersona = selected.role == AccountContextRole.provider
+        ? null
+        : switch (selected.persona) {
+            AccountContextPersona.bride => 'BRIDE',
+            AccountContextPersona.groom => 'GROOM',
+            _ => null,
+          };
+  } else if (summary != null && summary.isLocalOnly) {
+    planPersona = summary.persona;
+  } else {
+    planPersona = null;
   }
-  if (summary != null && summary.isLocalOnly) {
-    return JourneyProfile.fromPersona(summary.persona);
-  }
-  return JourneyProfile.groom;
+  // A plan on the phone has no account yet: its owner is the plan's party.
+  final reader = selected == null && summary != null && summary.isLocalOnly
+      ? summary.persona
+      : accountPersona;
+  return JourneyProfile.of(
+    planPersona: planPersona,
+    readerFeminine: readerIsFeminine(
+      accountPersona: reader,
+      planPersona: planPersona,
+    ),
+  );
 }
 
 /// Provides [planJourneyProfile] above the router, so every page, sheet and
@@ -184,8 +205,20 @@ class AarastPlanProfileScope extends StatelessWidget {
     } on ProviderNotFoundException {
       summary = null;
     }
+    String? accountPersona;
+    try {
+      accountPersona = context.select<AuthController, String?>(
+        (auth) => auth.user?.persona,
+      );
+    } on ProviderNotFoundException {
+      accountPersona = null;
+    }
     return JourneyProfileScope(
-      profile: planJourneyProfile(selected: selected, summary: summary),
+      profile: planJourneyProfile(
+        selected: selected,
+        summary: summary,
+        accountPersona: accountPersona,
+      ),
       child: child,
     );
   }

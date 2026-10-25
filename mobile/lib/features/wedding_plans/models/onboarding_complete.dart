@@ -14,6 +14,7 @@ class OnboardingCompleteRequest {
     this.estimatedBudget,
     this.currency,
     this.selectedCategories = const [],
+    this.mahr,
   });
 
   final String? path;
@@ -26,6 +27,10 @@ class OnboardingCompleteRequest {
   final String? estimatedBudget;
   final String? currency;
   final List<String> selectedCategories;
+
+  /// a06's answer (`{total, settled, remainingDueDate}`); the server records
+  /// it with the plan (C1).
+  final Map<String, dynamic>? mahr;
 
   Map<String, dynamic> toJson() {
     return {
@@ -40,6 +45,7 @@ class OnboardingCompleteRequest {
       if (_hasText(currency)) 'currency': currency!.trim(),
       if (selectedCategories.isNotEmpty)
         'selectedCategories': selectedCategories,
+      if (mahr != null) 'mahr': mahr,
     };
   }
 

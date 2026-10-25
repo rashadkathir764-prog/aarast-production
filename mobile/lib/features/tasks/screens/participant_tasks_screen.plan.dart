@@ -8,7 +8,6 @@ class _PlanTasks extends StatelessWidget {
     required this.weddingPlanId,
     required this.provider,
     required this.ownerWord,
-    required this.feminine,
     required this.readOnlyNote,
     required this.onRetry,
   });
@@ -16,7 +15,6 @@ class _PlanTasks extends StatelessWidget {
   final String weddingPlanId;
   final PlanReadViewProvider? provider;
   final String ownerWord;
-  final bool feminine;
 
   /// «يشوف بس»: say once that the tasks are followed, not edited.
   final bool readOnlyNote;
@@ -48,7 +46,7 @@ class _PlanTasks extends StatelessWidget {
           const SizedBox(height: 12),
           JourneyNote(
             key: const ValueKey('participant-tasks-read-only'),
-            text: _voiceOf(feminine).say(
+            text: context.say(
               'تتابع المهام وين وصلت. الإضافة والتعديل عند $ownerWord.',
               'تتابعين المهام وين وصلت. الإضافة والتعديل عند $ownerWord.',
             ),

@@ -158,7 +158,7 @@ class _AddParticipantSheetState extends State<_AddParticipantSheet> {
           JourneyTextField(
             key: const ValueKey('participant-name'),
             label: 'اسمه',
-            hint: context.say('صالح', 'نورة'),
+            hint: context.planWord('صالح', 'نورة'),
             controller: _name,
             textInputAction: TextInputAction.next,
             onChanged: (_) => setState(() {}),

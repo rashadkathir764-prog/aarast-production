@@ -17,7 +17,6 @@ class ParticipantProvidersScreen extends StatefulWidget {
     required this.weddingPlanId,
     required this.planTitle,
     required this.ownerWord,
-    this.feminine = false,
     super.key,
   });
 
@@ -28,9 +27,6 @@ class ParticipantProvidersScreen extends StatefulWidget {
 
   /// «العريس», «العروسة»: who keeps the prices and offers.
   final String ownerWord;
-
-  /// A bride's plan speaks to a woman (D34).
-  final bool feminine;
 
   @override
   State<ParticipantProvidersScreen> createState() =>
@@ -74,10 +70,8 @@ class _ParticipantProvidersScreenState
               title: 'المزودين',
               status: [
                 if (title.isNotEmpty) title,
-                // A participant has no plan profile of their own (D43); a
-                // bride's plan speaks to them as a woman (D34).
-                (widget.feminine ? JourneyProfile.bride : JourneyProfile.groom)
-                    .say('تشوف بس', 'تشوفين بس'),
+                // B5: said to the reader as who they are.
+                context.say('تشوف بس', 'تشوفين بس'),
               ].join(' · '),
             ),
             const SizedBox(height: 12),

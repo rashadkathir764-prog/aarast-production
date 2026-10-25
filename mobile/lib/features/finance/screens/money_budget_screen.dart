@@ -380,7 +380,7 @@ class _MoneyBudgetScreenState extends State<MoneyBudgetScreen> {
     _rows
       ..clear()
       ..addAll(
-        provider.categories.map(
+        provider.budgetItems.map(
           (category) => _CategoryDraft(
             id: category.id,
             name: category.name,

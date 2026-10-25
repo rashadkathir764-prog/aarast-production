@@ -34,6 +34,7 @@ import '../../features/finance/finance_api.dart'
         FinanceProvider,
         FundingSourcesScreen,
         MoneyBudgetScreen,
+        PayerPaymentsScreen,
         MoneyOverviewScreen,
         MoneyReceiptsScreen,
         PayPaymentScheduleScreen,
@@ -102,6 +103,7 @@ import '../../features/wedding_day/wedding_day_api.dart'
 import '../../features/wedding_plans/wedding_plans_api.dart'
     show
         DashboardSummary,
+        MahrScreen,
         MyWeddingPlansScreen,
         PlanAssistantScreen,
         PlanCenterScreen,
@@ -281,6 +283,16 @@ class AppRouter {
 
   static String moneyFunding(String id) {
     return '/wedding-plans/$id/money/funding';
+  }
+
+  /// a06 for a plan that exists (b01's mahr step).
+  static String moneyMahr(String id) {
+    return '/wedding-plans/$id/money/mahr';
+  }
+
+  /// w20 «مين دفع ايش» (G14).
+  static String moneyPayers(String id) {
+    return '/wedding-plans/$id/money/payers';
   }
 
   static String moneyCategoryCreate(String id) {

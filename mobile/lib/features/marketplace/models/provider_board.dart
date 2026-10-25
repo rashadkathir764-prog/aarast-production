@@ -1,3 +1,4 @@
+import '../../../core/experience_v3/aarast_journey_profile.dart';
 import '../../../core/utils/arabic_count.dart';
 import '../../../core/utils/arabic_date_formatter.dart';
 import 'marketplace_models.dart';
@@ -76,11 +77,16 @@ String _offerCount(int count) => switch (count) {
 /// Builds the board from the plan's money items, its recorded costs, and its
 /// quote requests. Items that are services (or already have a provider)
 /// become rows; a request whose service matches no item gets its own row.
+///
+/// [reader] is who reads the board (B5): «اطلب الحجز» is said to them. The
+/// screens pass the open plan's reader; the groom's form is Arabic's general
+/// one for a caller that reads no one.
 List<ProviderBoardRow> buildProviderBoard({
   required List<BoardItem> items,
   required List<BoardCost> costs,
   required List<QuoteRequest> quotes,
   required Map<String, String> costItemById,
+  JourneyProfile reader = JourneyProfile.groom,
 }) {
   final quotesByKey = <String, List<QuoteRequest>>{};
   final extraTitles = <String, String>{};
@@ -133,6 +139,7 @@ List<ProviderBoardRow> buildProviderBoard({
         budgetCategoryId: item.id,
         quotes: related,
         outsideParty: outside?.partyName?.trim(),
+        reader: reader,
       ),
     );
   }
@@ -142,6 +149,7 @@ List<ProviderBoardRow> buildProviderBoard({
         key: entry.key,
         title: extraTitles[entry.key] ?? 'خدمة',
         quotes: entry.value,
+        reader: reader,
       ),
     );
   }
@@ -159,6 +167,7 @@ ProviderBoardRow _row({
   required String key,
   required String title,
   required List<QuoteRequest> quotes,
+  required JourneyProfile reader,
   String? budgetCategoryId,
   String? outsideParty,
 }) {
@@ -213,7 +222,11 @@ ProviderBoardRow _row({
     return make(3, '${_providerName(requested)} · ينتظر تأكيده');
   }
   if (accepted != null) {
-    return make(2, 'اخترت ${_providerName(accepted)} · اطلب الحجز');
+    return make(
+      2,
+      'اخترت ${_providerName(accepted)} · '
+      '${reader.say('اطلب الحجز', 'اطلبي الحجز')}',
+    );
   }
   if (waiting > 0) return make(2, _offerCount(waiting));
   if (asked > 0) return make(1, 'طلبت من ${_requestCount(asked)} · ينتظر الرد');

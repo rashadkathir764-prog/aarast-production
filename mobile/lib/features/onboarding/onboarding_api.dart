@@ -5,7 +5,7 @@ export 'data/local_plan_migration.dart'
 export 'data/yemen_administrative_api.dart' show YemenAdministrativeApi;
 export 'models/generated_dashboard_seed.dart' show GeneratedDashboardSeed;
 export 'models/guest_onboarding_draft.dart'
-    show GuestOnboardingDraft, GuestOnboardingPath, GuestPersona;
+    show DraftMahr, GuestOnboardingDraft, GuestOnboardingPath, GuestPersona;
 export 'models/persona_copy.dart' show appRoleLabel, personaCopyForGuest;
 export 'models/wedding_location_draft.dart' show WeddingLocationDraft;
 export 'providers/yemen_administrative_provider.dart'

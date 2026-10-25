@@ -64,6 +64,24 @@ void main() {
     expect(templates['task-shared-date']?.taskCategory, isNull);
   });
 
+  // G12 (R2): the bride has her gold and her trousseau, as the server seeds.
+  test('the bride is offered her gold and her trousseau', () {
+    final templates = {
+      for (final group in taskStarterGroupsFor(null, TaskStarterPersona.bride))
+        for (final item in group.templates) item.key: item,
+    };
+    expect(templates['task-bride-gold']?.title, 'شراء الذهب والإكسسوارات');
+    expect(templates['task-bride-gold']?.recommended, isTrue);
+    expect(templates['task-bride-gold']?.taskCategory, 'MONEY');
+    expect(templates['task-bride-trousseau']?.title, 'تجهيز جهاز العروسة');
+    expect(templates['task-bride-trousseau']?.recommended, isTrue);
+    final groom = {
+      for (final group in taskStarterGroupsFor(null, TaskStarterPersona.groom))
+        for (final item in group.templates) item.key,
+    };
+    expect(groom, isNot(contains('task-bride-gold')));
+  });
+
   // Field test Q06: "set the wedding date" was offered to a plan with a date.
   test('a plan with a wedding date is not offered to set it', () {
     final groups = taskStarterGroupsFor(null, TaskStarterPersona.groom);

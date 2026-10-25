@@ -1,3 +1,4 @@
+import 'package:aarast_mobile/app.dart' show AarastPlanProfileScope;
 import 'package:aarast_mobile/core/diagnostics/app_logger.dart';
 import 'package:aarast_mobile/core/experience_v3/aarast_v3.dart';
 import 'package:aarast_mobile/core/network/api_client.dart';
@@ -302,8 +303,7 @@ void main() {
       findsOneWidget,
     );
 
-    await _openTab(tester, 'الضيوف');
-    expect(find.text('الضيفات'), findsWidgets);
+    await _openTab(tester, 'الضيفات');
     expect(find.text('أكّدت'), findsOneWidget);
 
     await _openTab(tester, 'المزودين');
@@ -337,6 +337,39 @@ void main() {
     await _openTab(tester, 'المال');
     expect(find.text('المال خاص بالعروسة'), findsOneWidget);
     expect(find.text('عرس سلمى · أنتِ مساعدة'), findsOneWidget);
+  });
+
+  testWidgets('B5: a groom helping in the bride\'s plan sees her colours and '
+      'is spoken to as a man', (tester) async {
+    final harness = await _Harness.create(
+      persona: AccountContextPersona.bride,
+      title: 'عرس سلمى',
+      userName: 'محمد',
+      role: 'VIEWER',
+      userPersona: 'GROOM',
+      canManageTasks: false,
+      canManageGuests: false,
+    );
+    await harness.pump(tester);
+
+    expect(find.text('أنت تتابع بس'), findsOneWidget);
+    expect(find.text('أنتِ تتابعين بس'), findsNothing);
+    final hero = tester.widget<JourneyBox>(
+      find.byKey(const ValueKey('participant-count-hero')),
+    );
+    expect(hero.color, AarastV3Color.rose);
+    expect(
+      find.text('الخطة بألوان صاحبتها. لو عندك خطة أنت، تبدّل لها من «حسابي».'),
+      findsOneWidget,
+    );
+
+    // Her guests stay women whoever reads: the tab is hers.
+    await _openTab(tester, 'الضيفات');
+    expect(find.text('أكّدت'), findsOneWidget);
+
+    await _openTab(tester, 'المزودين');
+    expect(find.text('عرس سلمى · تشوف بس'), findsOneWidget);
+    expect(tester.takeException(), isNull);
   });
 
   testWidgets('q18: on the day the home is the wedding and today\'s tasks', (
@@ -563,6 +596,7 @@ class _Harness {
     bool canManageGuests = true,
     bool keptCanViewMoney = false,
     List<WeddingTask> tasks = const [],
+    String? userPersona,
   }) async {
     SharedPreferences.setMockInitialValues({});
     final storage = AuthStorage(await SharedPreferences.getInstance());
@@ -572,6 +606,7 @@ class _Harness {
       phone: '+967771554220',
       role: 'USER',
       status: 'ACTIVE',
+      persona: userPersona,
     );
     await storage.saveSession(
       accessToken: 'token',
@@ -653,14 +688,18 @@ class _Harness {
           ChangeNotifierProvider<PlanReadViewProvider>.value(value: planView),
           ChangeNotifierProvider<TaskTimelineProvider>.value(value: tasks),
         ],
-        child: MaterialApp(
-          builder: (context, child) => MediaQuery(
-            data: MediaQuery.of(
-              context,
-            ).copyWith(textScaler: TextScaler.linear(textScale)),
-            child: child!,
+        // The app's root profile (B5): the plan's colours, the reader's
+        // voice, as `AarastApp` provides them.
+        child: AarastPlanProfileScope(
+          child: MaterialApp(
+            builder: (context, child) => MediaQuery(
+              data: MediaQuery.of(
+                context,
+              ).copyWith(textScaler: TextScaler.linear(textScale)),
+              child: child!,
+            ),
+            home: const MainShell(),
           ),
-          home: const MainShell(),
         ),
       ),
     );

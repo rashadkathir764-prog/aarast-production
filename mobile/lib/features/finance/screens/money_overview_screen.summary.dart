@@ -134,6 +134,161 @@ class _MoneySummaryCard extends StatelessWidget {
   }
 }
 
+/// c01 «وين تروح الفلوس» (the groom) / «المهر وعرسك» (the bride): the
+/// mahr beside the wedding, each from the server (C1, C2). The groom's mahr
+/// is his agreement with the bride's family, handed over bit by bit; the
+/// bride's is money coming to her. The wedding is its budget (or its
+/// agreements before a budget) and what was paid of it.
+class _MahrAndWeddingCards extends StatelessWidget {
+  const _MahrAndWeddingCards({
+    required this.summary,
+    required this.mahr,
+    required this.onMahr,
+    required this.onWedding,
+  });
+
+  final MoneySummary summary;
+  final MoneyMahrSummary mahr;
+  final VoidCallback onMahr;
+  final VoidCallback onWedding;
+
+  @override
+  Widget build(BuildContext context) {
+    final currency = summary.currency;
+    final pays = mahr.side == MahrSide.pays;
+    final weddingTotal = summary.budget.total ?? summary.budget.confirmedCost;
+    double ratio(String part, String? whole) {
+      final total = moneyValue(whole);
+      return total <= 0 ? 0 : (moneyValue(part) / total).clamp(0.0, 1.0);
+    }
+
+    return Column(
+      key: const ValueKey('money-mahr-and-wedding'),
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        JourneySectionTitle(pays ? 'وين تروح الفلوس' : 'المهر وعرسك'),
+        IntrinsicHeight(
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Expanded(
+                child: _SplitCard(
+                  key: const ValueKey('money-mahr-card'),
+                  icon: LucideIcons.heartHandshake,
+                  label: pays ? 'الاتفاق مع أهل العروسة' : 'المهر يوصلك',
+                  amount: _amount(context, mahr.total, currency),
+                  line: pays
+                      ? '${context.say('سلّمت', 'سلّمتِ')} ${_amount(context, mahr.settled, currency)}'
+                      : 'وصلك ${_amount(context, mahr.settled, currency)}',
+                  ratio: ratio(mahr.settled, mahr.total),
+                  onTap: onMahr,
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: _SplitCard(
+                  key: const ValueKey('money-wedding-card'),
+                  icon: LucideIcons.building2,
+                  label: 'عرسك',
+                  amount: _amount(context, weddingTotal, currency),
+                  line:
+                      '${context.say('دفعت', 'دفعتِ')} ${_amount(context, summary.budget.paid, currency)}',
+                  ratio: ratio(summary.budget.paid, weddingTotal),
+                  onTap: onWedding,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _SplitCard extends StatelessWidget {
+  const _SplitCard({
+    required this.icon,
+    required this.label,
+    required this.amount,
+    required this.line,
+    required this.ratio,
+    required this.onTap,
+    super.key,
+  });
+
+  final IconData icon;
+  final String label;
+  final String amount;
+  final String line;
+  final double ratio;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Semantics(
+      button: true,
+      label: '$label، $amount، $line',
+      onTap: onTap,
+      excludeSemantics: true,
+      child: AarastPressable(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(22),
+        child: JourneyBox(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Icon(icon, size: 18, color: context.accent.primary),
+                  const SizedBox(width: 6),
+                  Expanded(
+                    child: Text(
+                      label,
+                      style: JourneyType.of(
+                        JourneyType.small,
+                        weight: JourneyType.bold,
+                        color: context.accent.primary,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 10),
+              FittedBox(
+                fit: BoxFit.scaleDown,
+                alignment: AlignmentDirectional.centerStart,
+                child: Text(
+                  amount,
+                  style: JourneyType.of(
+                    JourneyType.title,
+                    weight: JourneyType.bold,
+                  ),
+                ),
+              ),
+              Text(
+                line,
+                style: JourneyType.of(
+                  JourneyType.small,
+                  color: AarastV3Color.textMuted,
+                ),
+              ),
+              const Spacer(),
+              const SizedBox(height: 10),
+              JourneyBar(
+                value: ratio,
+                color: context.accent.primary,
+                height: 5,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 /// c01's four-part bar and its legend: paid, in hand, promised and the
 /// server's shortfall (C2: the gap left once everything else is counted).
 class _FundingSplit extends StatelessWidget {

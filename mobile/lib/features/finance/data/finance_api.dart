@@ -4,6 +4,7 @@ import '../../../core/network/api_client.dart';
 import '../../../core/offline/cache_policy.dart';
 import '../../../core/offline/offline_sync_service.dart';
 import '../../../core/offline/offline_tables.dart';
+import '../../../core/utils/plan_day.dart';
 import '../models/budget_category.dart';
 import '../models/money_summary.dart';
 import '../models/wedding_cost.dart';
@@ -66,6 +67,28 @@ class FinanceApi extends _FinanceApiCore
         currency: context?.currency,
       );
     }
+  }
+
+  /// a06 for a saved plan (b01's mahr step): the owner records the mahr
+  /// once; the server files it as the groom's agreement with the bride's
+  /// family or the bride's money coming in (C1) and answers with the
+  /// summary. A plan kept on the phone carries it in its draft instead.
+  Future<MoneySummary> recordMahr(
+    String planId, {
+    required String total,
+    required String settled,
+    DateTime? remainingDueDate,
+  }) async {
+    // A write is sent once with its request id (retries reconcile).
+    final json = await _mutation('POST', '/api/v1/wedding-plans/$planId/mahr', {
+      'total': total,
+      'settled': settled,
+      if (remainingDueDate != null)
+        'remainingDueDate': planDayToJson(remainingDueDate),
+    }).send();
+    final summary = MoneySummary.fromJson(json);
+    await _cacheSummary(summary, planId);
+    return summary;
   }
 }
 

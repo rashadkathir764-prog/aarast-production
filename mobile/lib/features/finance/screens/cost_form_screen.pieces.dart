@@ -495,7 +495,7 @@ class _MoreDetails extends StatelessWidget {
           const SizedBox(height: 10),
           JourneyTextField(
             label: 'مين بالضبط؟',
-            hint: context.say('مثلًا: الوالد', 'مثلًا: الوالدة'),
+            hint: context.planWord('مثلًا: الوالد', 'مثلًا: الوالدة'),
             controller: payerNameController,
             icon: LucideIcons.user,
           ),

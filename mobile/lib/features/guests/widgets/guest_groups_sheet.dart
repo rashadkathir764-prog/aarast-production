@@ -72,7 +72,7 @@ class _GuestGroupsSheetState extends State<GuestGroupsSheet> {
         title: Text('حذف مجموعة «${group.name}»؟'),
         content: Text(
           count == 0
-              ? context.say('ما فيها ضيوف.', 'ما فيها ضيفات.')
+              ? context.planWord('ما فيها ضيوف.', 'ما فيها ضيفات.')
               : context.say(
                   'ضيوفها ($count) يبقون في قائمتك بدون مجموعة.',
                   'ضيفاتها ($count) يبقين في قائمتك بدون مجموعة.',

@@ -1,4 +1,5 @@
 import '../../../core/experience_v3/aarast_journey_profile.dart';
+import '../../../core/utils/plan_day.dart';
 
 /// Where wedding money comes from, as `/api/v1/.../funding-sources` returns
 /// it. Tracking only: the app records money; it never moves it.
@@ -12,6 +13,7 @@ class FundingSource {
     required this.status,
     this.sourcePhone,
     this.receivedAt,
+    this.expectedAt,
     this.note,
     this.repaidAmount,
     this.outstandingAmount,
@@ -28,6 +30,8 @@ class FundingSource {
       amount: json['amount']?.toString() ?? '0',
       status: json['status']?.toString() ?? FundingStatus.received,
       receivedAt: DateTime.tryParse(json['receivedAt']?.toString() ?? ''),
+      // A day, read as the server keeps it (Sana'a).
+      expectedAt: planDayFromJson(json['expectedAt']),
       note: json['note']?.toString(),
       repaidAmount: json['repaidAmount']?.toString(),
       outstandingAmount: json['outstandingAmount']?.toString(),
@@ -47,6 +51,10 @@ class FundingSource {
   final String amount;
   final String status;
   final DateTime? receivedAt;
+
+  /// Promised money: the day it is expected (the mahr's rest, c05 «يوصلك
+  /// يوم العقد 15 نوفمبر»).
+  final DateTime? expectedAt;
   final String? note;
 
   /// Loans only.
@@ -55,6 +63,7 @@ class FundingSource {
   final List<LoanRepayment> repayments;
 
   bool get isLoan => kind == FundingKind.loan;
+  bool get isMahr => kind == FundingKind.mahr;
   bool get isPledged => status == FundingStatus.pledged;
 
   Map<String, dynamic> toJson() => {
@@ -66,6 +75,7 @@ class FundingSource {
     'amount': amount,
     'status': status,
     'receivedAt': receivedAt?.toIso8601String(),
+    'expectedAt': expectedAt?.toIso8601String(),
     'note': note,
     'repaidAmount': repaidAmount,
     'outstandingAmount': outstandingAmount,
@@ -125,14 +135,19 @@ abstract final class FundingKind {
   static const loan = 'LOAN';
   static const other = 'OTHER';
 
+  /// The bride's mahr from the groom (C1). Recorded by a06 (the server makes
+  /// it), so it is not one of the kinds a new source is added as.
+  static const mahr = 'MAHR';
+
   static const all = [savings, familySupport, gift, loan, other];
 
   /// The kind's name; the groom's rafd is the bride's gifts.
   static String label(String kind, JourneyProfile profile) => switch (kind) {
     savings => 'مدخرات',
     familySupport => 'دعم الأهل',
-    gift => profile.say('رفد ونقوط', 'هدايا ونقوط'),
+    gift => profile.plan('رفد ونقوط', 'هدايا ونقوط'),
     loan => 'سلفة (دين)',
+    mahr => 'المهر',
     _ => 'مصدر آخر',
   };
 }

@@ -37,7 +37,8 @@ String guestInviteMessage(
   required String url,
 }) {
   final host = card.host?.trim();
-  final say = card.profile.say;
+  // The plan's words: its host and its guests, whoever sends it.
+  final say = card.profile.plan;
   return [
     'أهلًا ${guestName.trim()} 🌸',
     host == null || host.isEmpty

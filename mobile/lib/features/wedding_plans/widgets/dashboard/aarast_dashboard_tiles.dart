@@ -86,7 +86,7 @@ class _JourneyHomeTiles extends StatelessWidget {
               soft: AarastV3Color.lilacSoft,
               value: s.confirmedGuests,
               of: s.guestCount == 0
-                  ? context.say('ما في ضيوف بعد', 'ما في ضيفات بعد')
+                  ? context.planWord('ما في ضيوف بعد', 'ما في ضيفات بعد')
                   : '${context.say('أكدوا', 'أكدن')} من ${s.guestCount}',
               note: guestsNote,
               progress: s.guestCount == 0

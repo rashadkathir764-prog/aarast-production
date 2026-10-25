@@ -1,8 +1,61 @@
+import '../../../core/utils/plan_day.dart';
 import 'wedding_location_draft.dart';
 
 enum GuestOnboardingPath { weddingUser, provider }
 
 enum GuestPersona { groom, bride, helper }
+
+/// a06 «اتفقتوا على المهر؟» kept with the plan until the account saves it:
+/// the mahr, what was handed over (the groom) or received (the bride), and
+/// when the rest is due. The server records it with the plan (C1).
+class DraftMahr {
+  const DraftMahr({
+    required this.total,
+    this.settled = '0',
+    this.remainingDueDate,
+  });
+
+  final String total;
+  final String settled;
+  final DateTime? remainingDueDate;
+
+  Map<String, dynamic> toJson() => {
+    'total': total,
+    'settled': settled,
+    'remainingDueDate': remainingDueDate?.toIso8601String(),
+  };
+
+  /// The body the server's `mahr` field takes (onboarding and import).
+  Map<String, dynamic> toRequestJson() => {
+    'total': total,
+    'settled': settled,
+    if (remainingDueDate != null)
+      'remainingDueDate': planDayToJson(remainingDueDate!),
+  };
+
+  static DraftMahr? fromJson(Object? json) {
+    if (json is! Map) return null;
+    final total = json['total']?.toString().trim() ?? '';
+    if (total.isEmpty) return null;
+    return DraftMahr(
+      total: total,
+      settled: json['settled']?.toString().trim() ?? '0',
+      remainingDueDate: DateTime.tryParse(
+        json['remainingDueDate']?.toString() ?? '',
+      ),
+    );
+  }
+
+  @override
+  bool operator ==(Object other) =>
+      other is DraftMahr &&
+      other.total == total &&
+      other.settled == settled &&
+      other.remainingDueDate == remainingDueDate;
+
+  @override
+  int get hashCode => Object.hash(total, settled, remainingDueDate);
+}
 
 class GuestOnboardingDraft {
   const GuestOnboardingDraft({
@@ -26,6 +79,7 @@ class GuestOnboardingDraft {
     required this.currency,
     required this.estimatedBudget,
     required this.selectedCategoryKeys,
+    this.mahr,
   });
 
   const GuestOnboardingDraft.empty()
@@ -48,7 +102,8 @@ class GuestOnboardingDraft {
       priorities = const [],
       currency = null,
       estimatedBudget = null,
-      selectedCategoryKeys = const [];
+      selectedCategoryKeys = const [],
+      mahr = null;
 
   factory GuestOnboardingDraft.quickLocalPlanSetup({
     required String planName,
@@ -60,6 +115,7 @@ class GuestOnboardingDraft {
     String? neighborhood,
     String? estimatedBudget,
     List<String> startingItemNames = const [],
+    DraftMahr? mahr,
   }) {
     final budget = estimatedBudget?.replaceAll(',', '').trim();
     final skipped = budget == null || budget.isEmpty;
@@ -86,6 +142,7 @@ class GuestOnboardingDraft {
       budgetSkipped: skipped,
       // The plan's starting budget items, sent by name on import.
       selectedCategoryKeys: List.unmodifiable(startingItemNames),
+      mahr: mahr,
     );
   }
 
@@ -109,6 +166,9 @@ class GuestOnboardingDraft {
   final String? currency;
   final String? estimatedBudget;
   final List<String> selectedCategoryKeys;
+
+  /// a06's answer; null when the mahr was not agreed yet («ما اتفقنا بعد»).
+  final DraftMahr? mahr;
 
   bool get hasPath => selectedPath != null;
 
@@ -208,6 +268,8 @@ class GuestOnboardingDraft {
     String? estimatedBudget,
     bool clearBudget = false,
     List<String>? selectedCategoryKeys,
+    DraftMahr? mahr,
+    bool clearMahr = false,
   }) {
     final nextWeddingDateUnknown =
         weddingDateUnknown ?? this.weddingDateUnknown;
@@ -244,6 +306,7 @@ class GuestOnboardingDraft {
       selectedCategoryKeys: List.unmodifiable(
         selectedCategoryKeys ?? this.selectedCategoryKeys,
       ),
+      mahr: clearMahr ? null : mahr ?? this.mahr,
     );
   }
 
@@ -269,6 +332,7 @@ class GuestOnboardingDraft {
       'currency': currency,
       'estimatedBudget': estimatedBudget,
       'selectedCategoryKeys': selectedCategoryKeys,
+      'mahr': mahr?.toJson(),
     };
   }
 
@@ -315,6 +379,7 @@ class GuestOnboardingDraft {
       selectedCategoryKeys: List.unmodifiable(
         _stringList(json['selectedCategoryKeys']),
       ),
+      mahr: DraftMahr.fromJson(json['mahr']),
     );
   }
 
@@ -364,12 +429,13 @@ class GuestOnboardingDraft {
         _sameList(other.priorities, priorities) &&
         other.currency == currency &&
         other.estimatedBudget == estimatedBudget &&
-        _sameList(other.selectedCategoryKeys, selectedCategoryKeys);
+        _sameList(other.selectedCategoryKeys, selectedCategoryKeys) &&
+        other.mahr == mahr;
   }
 
   @override
   int get hashCode {
-    return Object.hash(
+    return Object.hashAll([
       guestPlanId,
       planName,
       createdAt,
@@ -390,7 +456,8 @@ class GuestOnboardingDraft {
       currency,
       estimatedBudget,
       Object.hashAll(selectedCategoryKeys),
-    );
+      mahr,
+    ]);
   }
 
   static bool _sameList(List<String> left, List<String> right) {

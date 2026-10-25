@@ -20,6 +20,7 @@ const BASE_URL = process.env.SMOKE_BASE_URL ?? 'http://127.0.0.1:3115';
 const timestamp = Date.now();
 const suffix = `${timestamp.toString().slice(-5)}${Math.floor(Math.random() * 90 + 10)}`;
 const TEST_PHONE = `+9676${suffix}`;
+const OWNER_PHONE = `+9675${suffix}`;
 const TEST_PASSWORD = 'SmokeTest123!';
 
 let passed = 0;
@@ -126,6 +127,8 @@ async function ensureFixture() {
       cityId: city.id,
       primaryCategoryId: category.id,
       status: ProviderStatus.ACTIVE,
+      // Every run starts from a listing nobody claimed (V1 4.18).
+      userId: null,
     },
   });
 
@@ -352,15 +355,46 @@ async function run() {
     check('favorites include fixture', Array.isArray(res.body) && res.body.some((favorite) => favorite.providerId === fixture.provider.id));
   }
 
+  const quoteBody = {
+    serviceId: fixture.service.id,
+    cityId: fixture.city.id,
+    guestCount: 120,
+    message: 'Smoke quote request',
+    budgetMin: '50000',
+    budgetMax: '150000',
+  };
+
   {
-    const res = await request('POST', `/api/v1/providers/${fixture.provider.id}/quote-requests`, {
-      serviceId: fixture.service.id,
-      cityId: fixture.city.id,
-      guestCount: 120,
-      message: 'Smoke quote request',
-      budgetMin: '50000',
-      budgetMax: '150000',
-    }, token);
+    // V1 4.18: a listing nobody claimed takes no quote request.
+    const quotesBefore = await prisma.quoteRequest.count({ where: { providerId: fixture.provider.id } });
+    const res = await request('POST', `/api/v1/providers/${fixture.provider.id}/quote-requests`, quoteBody, token);
+    check('unclaimed provider quote request - HTTP 409', res.status === 409);
+    check('unclaimed provider quote request uses PROVIDER_NOT_CLAIMED', res.body?.code === 'PROVIDER_NOT_CLAIMED');
+    check(
+      'unclaimed provider quote request writes nothing',
+      await prisma.quoteRequest.count({ where: { providerId: fixture.provider.id } }) === quotesBefore,
+    );
+  }
+
+  // The listing's owner signs in and holds it (the claim flow itself is
+  // proven by smoke:provider-claim).
+  let ownerToken = null;
+  {
+    const res = await registerVerified(request, {
+      name: 'Marketplace Smoke Provider Owner',
+      phone: OWNER_PHONE,
+      password: TEST_PASSWORD,
+    });
+    check('provider owner register - HTTP 201', res.status === 201);
+    ownerToken = res.body?.accessToken;
+    await prisma.provider.update({
+      where: { id: fixture.provider.id },
+      data: { userId: res.body?.user?.id },
+    });
+  }
+
+  {
+    const res = await request('POST', `/api/v1/providers/${fixture.provider.id}/quote-requests`, quoteBody, token);
     check('POST /api/v1/providers/:id/quote-requests - HTTP 201', res.status === 201);
     check('quote request providerId matches', res.body?.providerId === fixture.provider.id);
     quoteId = res.body?.id;
@@ -384,11 +418,81 @@ async function run() {
     check('quote status is CANCELLED', res.body?.status === 'CANCELLED');
   }
 
+  // F10: a customer reviews a provider only after a confirmed booking whose
+  // day has passed (403 REVIEW_REQUIRES_COMPLETED_BOOKING before that).
+  const reviewBody = { rating: 5, comment: 'Smoke review' };
+  const expectReviewRefused = async (label) => {
+    const res = await request('POST', `/api/v1/providers/${fixture.provider.id}/reviews`, reviewBody, token);
+    check(`${label} - HTTP 403`, res.status === 403);
+    check(`${label} uses REVIEW_REQUIRES_COMPLETED_BOOKING`, res.body?.code === 'REVIEW_REQUIRES_COMPLETED_BOOKING');
+  };
+
+  await expectReviewRefused('review without a booking');
+
+  // A booking follows an offer accepted inside a wedding plan.
+  const dayOffset = Number(suffix) % 3000;
+  let planId = null;
+  let planQuoteId = null;
+  let offerId = null;
+  let bookingId = null;
   {
-    const res = await request('POST', `/api/v1/providers/${fixture.provider.id}/reviews`, {
-      rating: 5,
-      comment: 'Smoke review',
+    const res = await request('POST', '/api/v1/wedding-plans', {
+      title: 'Marketplace smoke booking plan',
+      city: 'Sanaa',
+      estimatedBudget: '900000.00',
     }, token);
+    check('customer creates booking plan - HTTP 201', res.status === 201);
+    planId = res.body?.id;
+  }
+
+  {
+    const res = await request('POST', `/api/v1/wedding-plans/${planId}/quote-requests`, {
+      providerId: fixture.provider.id,
+      ...quoteBody,
+    }, token);
+    check('customer creates plan quote - HTTP 201', res.status === 201);
+    planQuoteId = res.body?.id;
+  }
+
+  {
+    const res = await request('POST', `/api/v1/provider/me/quote-requests/${planQuoteId}/offers`, {
+      message: 'Marketplace smoke offer',
+      amount: '100000',
+      currency: 'YER',
+    }, ownerToken);
+    check('provider owner offers on plan quote - HTTP 201', res.status === 201);
+    offerId = res.body?.id;
+  }
+
+  {
+    const res = await request('PATCH', `/api/v1/quote-offers/${offerId}/accept`, null, token);
+    check('customer accepts the offer - HTTP 200', res.status === 200);
+  }
+
+  {
+    const day = new Date(Date.now() + (60 + dayOffset) * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+    const res = await request('POST', `/api/v1/me/quote-requests/${planQuoteId}/booking`, { eventDate: day }, token);
+    check('customer requests booking - HTTP 201', res.status === 201);
+    bookingId = res.body?.id;
+  }
+
+  {
+    const res = await request('PATCH', `/api/v1/provider/me/bookings/${bookingId}/confirm`, {}, ownerToken);
+    check('provider owner confirms booking - HTTP 200', res.status === 200);
+    check('booking status is CONFIRMED', res.body?.status === 'CONFIRMED');
+  }
+
+  await expectReviewRefused('review before the booking day');
+
+  // The day passes: the only fixture step, since HTTP cannot move the clock.
+  if (bookingId) {
+    const now = new Date();
+    const pastDay = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() - 2 - dayOffset));
+    await prisma.booking.update({ where: { id: bookingId }, data: { eventDate: pastDay } });
+  }
+
+  {
+    const res = await request('POST', `/api/v1/providers/${fixture.provider.id}/reviews`, reviewBody, token);
     check('POST /api/v1/providers/:id/reviews - HTTP 201', res.status === 201);
     check('review rating saved', res.body?.rating === 5);
     check('created review hides reviewer phone', !Object.hasOwn(res.body?.user ?? {}, 'phone'));

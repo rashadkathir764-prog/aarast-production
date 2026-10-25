@@ -176,16 +176,25 @@ async function run() {
   }
 
   {
+    // B-10 (D48, D49): he joined with one priced service; while it is active,
+    // a second one waits for approval.
     const res = await request('POST', '/api/v1/provider/me/services', {
       categoryId: reference.category.id,
       title: 'Pending provider service must not persist',
       basePrice: '250000.00',
     }, providerUser.token);
-    check('PENDING provider service create is denied - HTTP 403', res.status === 403);
-    check('PENDING provider service create uses PROVIDER_NOT_ACTIVE', res.body?.code === 'PROVIDER_NOT_ACTIVE');
+    check('PENDING provider second service is denied - HTTP 403', res.status === 403);
     check(
-      'PENDING provider service create writes nothing',
-      await prisma.providerService.count({ where: { providerId } }) === 0,
+      'PENDING provider second service uses PROVIDER_JOINING_SERVICE_ONLY',
+      res.body?.code === 'PROVIDER_JOINING_SERVICE_ONLY',
+    );
+    const services = await prisma.providerService.findMany({
+      where: { providerId },
+      select: { title: true },
+    });
+    check(
+      'PENDING provider second service writes nothing',
+      services.length === 1 && services[0].title === 'Phase8 joining service',
     );
   }
 

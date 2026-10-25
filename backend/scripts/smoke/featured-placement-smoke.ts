@@ -39,8 +39,10 @@ let checks = 0;
 
 /** A Yemeni mobile number unique to this run and role. */
 function scopedPhone(role: string): string {
+  // smoke:all runs every suite under one run id: the suite name keeps
+  // another suite's «customer» from taking this one's phone.
   const digits = createHash("sha256")
-    .update(`${runId}:${role}`)
+    .update(`${runId}:featured-placement:${role}`)
     .digest("hex")
     .split("")
     .map((character) => String(Number.parseInt(character, 16) % 10))

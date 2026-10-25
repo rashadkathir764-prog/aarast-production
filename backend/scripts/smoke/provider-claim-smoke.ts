@@ -33,8 +33,10 @@ const label = `Provider claim ${runId}`;
 
 /** A Yemeni mobile number unique to this run and role. */
 function scopedPhone(role: string): string {
+  // smoke:all runs every suite under one run id: the suite name keeps
+  // another suite's «owner» from taking this one's phone.
   const digits = createHash("sha256")
-    .update(`${runId}:${role}`)
+    .update(`${runId}:provider-claim:${role}`)
     .digest("hex")
     .split("")
     .map((character) => String(Number.parseInt(character, 16) % 10))
@@ -163,9 +165,12 @@ async function main(): Promise<void> {
     await assert.rejects(dashboard.claimListing(asUser(owner), listed.id), /already exists/i);
     console.log("PASS - the approved claim makes the account the listing's provider, once");
 
-    // V1 checklist 4.21 on this isolated database: the owner used the app,
-    // the claimed listing plus two more price services in the same city and
-    // category, so the price group (3 providers) is reported.
+    // V1 checklist 4.21: the owner used the app, the claimed listing plus
+    // two more price services in the same city and category, so the price
+    // group (3 providers) is reported. The report is database-wide and
+    // smoke:all runs every suite on one database, so the counts are read as
+    // what this run adds to the report taken before it.
+    const before = await admins.getSuccessReport();
     await prisma.refreshToken.create({
       data: {
         userId: owner.id,
@@ -198,11 +203,12 @@ async function main(): Promise<void> {
       });
     }
     const report = await admins.getSuccessReport();
-    assert.equal(report.activeUsers.active, 1);
-    assert.equal(report.visibleProviders, 3);
-    assert.equal(report.costs.recorded, 0);
-    assert.equal(report.costs.perPlan, null);
-    assert.equal(report.conversion.rate, null);
+    assert.equal(report.activeUsers.active, before.activeUsers.active + 1);
+    assert.equal(report.visibleProviders, before.visibleProviders + 3);
+    assert.deepEqual(report.costs, before.costs);
+    assert.deepEqual(report.conversion, before.conversion);
+    if (before.costs.recorded === 0) assert.equal(report.costs.perPlan, null);
+    if (before.conversion.quoteRequests === 0) assert.equal(report.conversion.rate, null);
     const group = report.prices.find((item) => item.cityId === city.id);
     assert.ok(group, "the city and category price group is reported");
     assert.equal(group.providers, 3);

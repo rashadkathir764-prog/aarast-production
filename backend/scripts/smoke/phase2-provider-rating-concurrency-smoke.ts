@@ -297,6 +297,8 @@ async function main(): Promise<void> {
         lockAccountDeletionBoundary: async () => undefined,
         scheduleAllOwnedMediaDeletion: async () => [],
         scheduleChatAttachmentDeletion: async () => undefined,
+        // Receipt files go with the account (V1 4.4); this reviewer has none.
+        scheduleCostReceiptDeletion: async () => undefined,
       } as any,
       ...identityErasurePorts,
     );

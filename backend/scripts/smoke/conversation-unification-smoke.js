@@ -414,13 +414,20 @@ async function run() {
     },
     providerUser.token,
   );
+  // B-10 (D48, D49): he joined with one priced service; while it is active,
+  // a second one waits for approval.
   check(
-    'PENDING provider cannot create conversation service',
-    pendingService.status === 403 && responseCode(pendingService) === 'PROVIDER_NOT_ACTIVE',
+    'PENDING provider cannot create a second conversation service',
+    pendingService.status === 403 &&
+      responseCode(pendingService) === 'PROVIDER_JOINING_SERVICE_ONLY',
   );
+  const pendingServices = await prisma.providerService.findMany({
+    where: { providerId },
+    select: { title: true },
+  });
   check(
     'PENDING provider service denial writes nothing',
-    await prisma.providerService.count({ where: { providerId } }) === 0,
+    pendingServices.length === 1 && pendingServices[0].title === `Service ${marker}`,
   );
 
   await prisma.provider.update({ where: { id: providerId }, data: { status: ProviderStatus.ACTIVE } });
@@ -736,13 +743,32 @@ async function run() {
     },
   });
   fixture.serviceIds.push(catalogService.id);
-  const catalogQuote = await request('POST', `/api/v1/providers/${catalogProvider.id}/quote-requests`, {
+  const catalogQuoteRequest = () => request('POST', `/api/v1/providers/${catalogProvider.id}/quote-requests`, {
     serviceId: catalogService.id,
     cityId: city.id,
     message: `Catalog request ${marker}`,
   }, owner.token);
-  const catalogQuoteBody = await expectStatus('Create quote for provider without User', catalogQuote, 201);
+  // V1 4.18: a listing nobody claimed takes no quote request.
+  const unclaimedQuote = await catalogQuoteRequest();
+  check(
+    'Unclaimed provider refuses a quote request',
+    unclaimedQuote.status === 409 && responseCode(unclaimedQuote) === 'PROVIDER_NOT_CLAIMED',
+  );
+  check(
+    'Unclaimed provider refusal writes nothing',
+    await prisma.quoteRequest.count({ where: { providerId: catalogProvider.id } }) === 0
+      && await prisma.conversation.count({ where: { providerId: catalogProvider.id } }) === 0,
+  );
+  // A provider can still lose its User after a request: its owner deletes
+  // the account (Provider.user is SetNull). The request is sent while the
+  // listing is owned, then the owner link goes the way account deletion
+  // takes it, and the account that claims the listing later joins the same
+  // conversation.
+  await prisma.provider.update({ where: { id: catalogProvider.id }, data: { userId: lateProviderUser.user.id } });
+  const catalogQuote = await catalogQuoteRequest();
+  const catalogQuoteBody = await expectStatus('Create quote while the provider has a User', catalogQuote, 201);
   fixture.quoteIds.push(catalogQuoteBody.id);
+  await prisma.provider.update({ where: { id: catalogProvider.id }, data: { userId: null } });
   const catalogConversation = await request('GET', `/api/v1/quote-requests/${catalogQuoteBody.id}/conversation`, null, owner.token);
   const catalogConversationBody = await expectStatus('Read pre-link catalog conversation', catalogConversation, 200);
   check('Provider without User is not falsely joined', catalogConversationBody.providerJoined === false && catalogConversationBody.canSend === false);

@@ -538,12 +538,95 @@ async function run() {
     );
   }
 
+  // F10: a customer reviews a provider only after a confirmed booking whose
+  // day has passed (403 REVIEW_REQUIRES_COMPLETED_BOOKING before that).
+  const reviewBody = { rating: 5, comment: 'Provider dashboard review smoke' };
+  const expectReviewRefused = async (label) => {
+    const res = await request('POST', `/api/v1/providers/${providerId}/reviews`, reviewBody, customerToken);
+    check(`${label} - HTTP 403`, res.status === 403);
+    check(
+      `${label} uses REVIEW_REQUIRES_COMPLETED_BOOKING`,
+      res.body?.code === 'REVIEW_REQUIRES_COMPLETED_BOOKING',
+    );
+    check(
+      `${label} writes nothing`,
+      await prisma.providerReview.count({ where: { providerId } }) === 0,
+    );
+  };
+
+  await expectReviewRefused('review without a booking');
+
+  // A booking follows an accepted offer, and an offer is accepted inside a
+  // wedding plan, so the customer books through a plan quote.
+  let bookingPlanId = null;
+  let bookingQuoteId = null;
+  let bookingOfferId = null;
+  let bookingId = null;
   {
-    const res = await request('POST', `/api/v1/providers/${providerId}/reviews`, {
-      rating: 5,
-      comment: 'Provider dashboard review smoke',
+    const res = await request('POST', '/api/v1/wedding-plans', {
+      title: 'Provider dashboard booking plan',
+      city: 'Sanaa',
+      estimatedBudget: '900000.00',
     }, customerToken);
-    check('customer review provider - HTTP 201', res.status === 201);
+    check('customer creates booking plan - HTTP 201', res.status === 201);
+    bookingPlanId = requireResponseId('customer creates booking plan', res);
+  }
+
+  {
+    const res = await request('POST', `/api/v1/wedding-plans/${bookingPlanId}/quote-requests`, {
+      providerId,
+      serviceId,
+      cityId: reference.city.id,
+      guestCount: 80,
+      message: 'Provider dashboard booking quote',
+    }, customerToken);
+    check('customer creates plan quote - HTTP 201', res.status === 201);
+    bookingQuoteId = requireResponseId('customer creates plan quote', res);
+  }
+
+  {
+    const res = await request('POST', `/api/v1/provider/me/quote-requests/${bookingQuoteId}/offers`, {
+      message: 'Provider dashboard booking offer',
+      amount: '150000',
+      currency: 'YER',
+    }, providerToken);
+    check('provider offers on plan quote - HTTP 201', res.status === 201);
+    bookingOfferId = requireResponseId('provider offers on plan quote', res);
+  }
+
+  {
+    const res = await request('PATCH', `/api/v1/quote-offers/${bookingOfferId}/accept`, null, customerToken);
+    check('customer accepts provider offer - HTTP 200', res.status === 200);
+    check('accepted provider offer status is ACCEPTED', res.body?.offer?.status === 'ACCEPTED');
+  }
+
+  {
+    const day = new Date(Date.now() + 60 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+    const res = await request('POST', `/api/v1/me/quote-requests/${bookingQuoteId}/booking`, {
+      eventDate: day,
+    }, customerToken);
+    check('customer requests booking - HTTP 201', res.status === 201);
+    bookingId = requireResponseId('customer requests booking', res);
+  }
+
+  {
+    const res = await request('PATCH', `/api/v1/provider/me/bookings/${bookingId}/confirm`, {}, providerToken);
+    check('provider confirms booking - HTTP 200', res.status === 200);
+    check('confirmed booking status is CONFIRMED', res.body?.status === 'CONFIRMED');
+  }
+
+  await expectReviewRefused('review before the booking day');
+
+  // The day passes: the only fixture step, since HTTP cannot move the clock.
+  {
+    const now = new Date();
+    const pastDay = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() - 2));
+    await prisma.booking.update({ where: { id: bookingId }, data: { eventDate: pastDay } });
+  }
+
+  {
+    const res = await request('POST', `/api/v1/providers/${providerId}/reviews`, reviewBody, customerToken);
+    check('customer review provider after the booking day - HTTP 201', res.status === 201);
     reviewId = res.body?.id;
   }
 

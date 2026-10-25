@@ -1,9 +1,10 @@
 import type { ConversationLifecyclePort } from "../../src/modules/messaging/public/conversation-lifecycle.port";
-import { findConversationProviderId, lockConversationForShare, lockConversationForUpdate } from "../../src/conversations/conversation-lifecycle";
+import { findConversationProviderId, lockConversationForShare, lockConversationForUpdate, recordConversationEvent } from "../../src/conversations/conversation-lifecycle";
 
 const lifecycle: ConversationLifecyclePort = {
   ensureConversationContext: async () => { throw new Error("Unexpected ensureConversationContext"); },
-  recordConversationEvent: async () => { throw new Error("Unexpected recordConversationEvent"); },
+  // A revised offer is a new version in its conversation (D50).
+  recordConversationEvent,
   lockConversationForUpdateInTransaction: lockConversationForUpdate,
   lockConversationForShareInTransaction: lockConversationForShare,
   findConversationProviderId,
@@ -50,6 +51,11 @@ assertManagedSmokeEnvironment(process.env);
 const prisma = new PrismaClient();
 const notifications = {
   createNotificationInTransaction: async () => null,
+  resolveProviderUpdateRecipientInTransaction: async (
+    _tx: unknown,
+    _weddingPlanId: string | null,
+    requestedUserId: string,
+  ) => requestedUserId,
 };
 const media = {
   verifyPublicMediaUrl: async (
@@ -284,6 +290,17 @@ async function conversationPrecedesQuoteRow() {
         });
         await blocker.commit();
         await update;
+        assert.equal(
+          await prisma.conversationEvent.count({
+            where: {
+              conversationId: fixture.conversation.id,
+              quoteOfferId: fixture.offer.id,
+              type: "QUOTE_OFFER_REVISED",
+            },
+          }),
+          1,
+          "the committed revision records one QUOTE_OFFER_REVISED event",
+        );
       } finally {
         await blocker.commit();
         await Promise.allSettled([update]);

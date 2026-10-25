@@ -221,6 +221,7 @@ export function createQuoteRequestInTransaction(
           providerUserId,
           quoteId: quote.id,
           providerId: quote.providerId,
+          customerName: quote.contactName,
         }),
       );
     }

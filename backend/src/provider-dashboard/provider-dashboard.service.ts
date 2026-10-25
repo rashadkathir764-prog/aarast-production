@@ -27,6 +27,7 @@ import {
   QuoteOfferStatus,
   QuoteRequest,
   QuoteRequestStatus,
+  ReviewStatus,
   User,
   UserStatus,
   WeddingPlan,
@@ -103,10 +104,15 @@ import {
   CreateServiceImageDto,
   UpdateServiceImageDto,
 } from './dto/upsert-service-image.dto';
+import { assertProviderOperational } from '../modules/marketplace/public/provider-access-policy';
+import { noticeRoutes } from '../shared-kernel/routes/notification-routes';
 import {
-  assertProviderOperational,
-  PROVIDER_PORTAL_ROUTE,
-} from '../modules/marketplace/public/provider-access-policy';
+  ownerReviewReply,
+  reviewAlreadyReplied,
+  reviewNotFound,
+} from '../modules/marketplace/public/review-reply';
+import { reviewRepliedNotification } from '../marketplace/review-notifications';
+import { ReplyToReviewDto } from './dto/reply-to-review.dto';
 import {
   currentProviderReviewNotes,
   isProviderAwaitingApproval,
@@ -429,13 +435,13 @@ export class ProviderDashboardService {
       });
       await this.notifications.createNotificationInTransaction(tx, {
         userId: currentUser.id,
-        type: NotificationType.GENERAL,
+        type: NotificationType.PROVIDER_IN_REVIEW,
         priority: NotificationPriority.NORMAL,
         title: 'وصلنا تعديلك',
         body: `نراجع ملف ${resubmitted.businessName} من جديد ونبلغك هنا.`,
         entityType: 'Provider',
         entityId: provider.id,
-        routeTarget: PROVIDER_PORTAL_ROUTE,
+        routeTarget: noticeRoutes.providerPortal(),
         data: { providerId: provider.id, providerStatus: ProviderStatus.PENDING },
         dedupeKey: `provider-resubmitted:${provider.id}:${at.toISOString()}`,
       });
@@ -1535,6 +1541,51 @@ export class ProviderDashboardService {
     return reviews.map((review) => this.toReviewResponse(review));
   }
 
+  /**
+   * B-09 (p27): his one reply to a review of his. Once only (409
+   * `REVIEW_ALREADY_REPLIED`, decided by the conditional write so two sends
+   * at once cannot both land); the reviewer is told and reads it on his page.
+   * A review the team hid takes no reply (404, as he cannot answer what
+   * customers do not see).
+   */
+  async replyToReview(
+    currentUser: AuthenticatedUser,
+    reviewId: string,
+    dto: ReplyToReviewDto,
+  ) {
+    const body = dto.body.trim();
+    if (!body) throw new BadRequestException('body must not be empty');
+    const review = await runSerializableTransaction(this.prisma, async (tx) => {
+      const provider = await lockOwnedProviderForMutationInTransaction(
+        tx,
+        currentUser.id,
+        'OPERATIONAL',
+      );
+      const current = await dashboardStore.findProviderReview(tx, reviewId, provider.id);
+      if (!current || current.status !== ReviewStatus.PUBLISHED) {
+        throw reviewNotFound();
+      }
+      if (current.replyBody !== null) throw reviewAlreadyReplied();
+      const at = new Date();
+      const written = await dashboardStore.writeReviewReply(tx, reviewId, provider.id, body, at);
+      if (written.count !== 1) throw reviewAlreadyReplied();
+      await this.notifications.createNotificationInTransaction(
+        tx,
+        reviewRepliedNotification({
+          reviewerId: current.userId,
+          providerId: provider.id,
+          providerName: provider.businessName,
+          reviewId,
+        }),
+      );
+      const [replied] = await this.relations.attachReviewUsers(tx, [
+        (await dashboardStore.findProviderReview(tx, reviewId, provider.id))!,
+      ]);
+      return replied!;
+    });
+    return this.toReviewResponse(review);
+  }
+
   private async lockQuoteMutationContext(
     tx: Prisma.TransactionClient,
     actorUserId: string,
@@ -2059,6 +2110,8 @@ export class ProviderDashboardService {
       rating: review.rating,
       comment: review.comment,
       status: review.status,
+      // B-09: his reply in any state (the team may have hidden it).
+      reply: ownerReviewReply(review),
       createdAt: review.createdAt,
       updatedAt: review.updatedAt,
     };

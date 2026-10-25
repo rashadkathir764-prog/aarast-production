@@ -130,7 +130,15 @@ test("concurrent review creation cannot leave a stale provider rating cache", as
       },
     },
   };
-  const service = marketplaceService(prisma, {} as any, {} as any, lifecycle, new FinancePortService());
+  // B-09: a new review tells the provider in the same transaction.
+  const told: unknown[] = [];
+  const notifications = {
+    createNotificationInTransaction: async (_tx: unknown, input: unknown) => {
+      told.push(input);
+      return null;
+    },
+  };
+  const service = marketplaceService(prisma, {} as any, notifications, lifecycle, new FinancePortService());
   const user = (id: string) =>
     ({
       id,
@@ -160,6 +168,7 @@ test("concurrent review creation cannot leave a stale provider rating cache", as
 
   assert.equal(provider.ratingCount, reviews.length);
   assert.equal(Number(provider.ratingAverage), 3);
+  assert.equal(told.length, 2);
 });
 
 test("every product review mutation uses the shared locked aggregate boundary", () => {
@@ -179,7 +188,11 @@ test("every product review mutation uses the shared locked aggregate boundary", 
   assert.equal((admin.match(/lockProviderRatingRows\(/g) ?? []).length, 1);
   assert.equal((admin.match(/refreshProviderRating\(/g) ?? []).length, 1);
   assert.equal((admin.match(/this\.moderateReview\(/g) ?? []).length, 2);
-  assert.equal((admin.match(/AdminPermission\.REVIEWS_WRITE/g) ?? []).length, 2);
+  // B-09: the third REVIEWS_WRITE mutation hides or shows the provider's
+  // reply; it locks the review row and changes no rating, so it does not
+  // run the rating helper.
+  assert.equal((admin.match(/AdminPermission\.REVIEWS_WRITE/g) ?? []).length, 3);
+  assert.match(admin, /async updateReviewReplyStatus\([\s\S]*?lockReviewForUpdateInTransaction[\s\S]*?setReviewReplyStatusInTransaction/);
   assert.doesNotMatch(marketplace, /recalculateProviderRating/);
   assert.doesNotMatch(admin, /recalculateProviderRating/);
   assert.match(aggregate, /runSerializableTransaction/);

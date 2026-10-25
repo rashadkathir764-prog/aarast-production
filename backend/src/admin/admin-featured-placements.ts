@@ -20,7 +20,8 @@ import {
   yemenDayOf,
   yemenDayStart,
 } from '../modules/marketplace/public/featured-placement';
-import { PROVIDER_PORTAL_ROUTE } from '../modules/marketplace/public/provider-access-policy';
+import { noticeRoutes } from '../shared-kernel/routes/notification-routes';
+import { withTeamNote } from './provider-status-notification';
 import type {
   AdminFeaturedPeriodRow,
   AdminFeaturedPeriodState,
@@ -337,8 +338,7 @@ export class AdminFeaturedPlacements {
     const startsLater = period.startsAt.getTime() > now.getTime();
     // The administrator's note is added to the standard sentence, never
     // instead of it: he always reads what happened.
-    const withNote = (sentence: string) =>
-      period.endNote ? `${sentence}\nملاحظة الفريق: ${period.endNote}` : sentence;
+    const withNote = (sentence: string) => withTeamNote(sentence, period.endNote);
     const message = {
       granted: {
         title: startsLater ? 'ظهورك المميز محجوز' : 'تفعّل ظهورك المميز',
@@ -361,13 +361,13 @@ export class AdminFeaturedPlacements {
     }[event];
     await this.notifications.createNotificationInTransaction(tx, {
       userId,
-      type: NotificationType.GENERAL,
+      type: NotificationType.LISTING_PLAN_CHANGED,
       priority: NotificationPriority.NORMAL,
       title: message.title,
       body: message.body,
       entityType: 'ProviderFeaturedPeriod',
       entityId: period.id,
-      routeTarget: PROVIDER_PORTAL_ROUTE,
+      routeTarget: noticeRoutes.providerProfile(),
       data: {
         providerId: period.providerId,
         featuredPeriodId: period.id,

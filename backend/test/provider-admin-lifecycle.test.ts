@@ -86,6 +86,19 @@ test('provider lifecycle notification preserves the administration note', () => 
     'أكمل صور الهوية التجارية.',
   );
 
-  assert.equal(result.title, 'مطلوب تعديل ملف المزوّد');
-  assert.equal(result.body, 'أكمل صور الهوية التجارية.');
+  // B-38: «مزود» words; the note is added to the standard sentence, never
+  // instead of it (D54), so he always reads what happened.
+  assert.equal(result.type, 'PROVIDER_NEEDS_CHANGES');
+  assert.equal(result.title, 'ملفك يحتاج تعديل');
+  assert.equal(
+    result.body,
+    'صلّح ملف استديو اعّرست على ملاحظات فريق اعّرست، وبعدها أرسل التعديل.\nملاحظة الفريق: أكمل صور الهوية التجارية.',
+  );
+});
+
+test('a suspension says what stops and what stays (B-38)', () => {
+  const result = switchProviderStatusNotification('استديو اعّرست', ProviderStatus.SUSPENDED, null);
+  assert.equal(result.type, 'PROVIDER_SUSPENDED');
+  assert.match(result.body, /الحجوزات المؤكدة ما تنلغى/u);
+  assert.doesNotMatch(result.body, /حتى تعيد الإدارة/u);
 });

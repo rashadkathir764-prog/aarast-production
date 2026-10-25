@@ -30,7 +30,7 @@ import {
   type ReviewStepSpec,
 } from './market-data';
 import { planId } from './plan';
-import { day, demoId, demoUuid, inDays } from './support';
+import { day, demoId, demoUuid, hoursAgo, inDays } from './support';
 import { quoteRequestAnswerDeadline } from '../../src/marketplace/quote-lifecycle';
 import {
   quoteOfferChanges,
@@ -594,6 +594,10 @@ async function seedStudioReview(prisma: PrismaClient): Promise<void> {
     rating: STUDIO_REVIEW.rating,
     comment: STUDIO_REVIEW.comment,
     status: ReviewStatus.PUBLISHED,
+    // B-09 (p27): the studio's one reply, shown under the review.
+    replyBody: STUDIO_REVIEW.reply,
+    repliedAt: hoursAgo(190),
+    replyStatus: ReviewStatus.PUBLISHED,
   };
   await prisma.providerReview.upsert({ where: { id }, create: { id, ...data }, update: data });
   const aggregate = await prisma.providerReview.aggregate({

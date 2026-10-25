@@ -7,8 +7,6 @@ import {
 } from '@nestjs/common';
 import {
   ConversationScope,
-  NotificationPriority,
-  NotificationType,
   Prisma,
   ProviderStatus,
   UserStatus,
@@ -36,6 +34,7 @@ import {
   assertProviderOperational,
   isProviderOperational,
 } from '../modules/marketplace/public/provider-access-policy';
+import { chatMessageNotification } from './chat-notifications';
 import {
   readQuoteOfferChanges,
   visibleQuoteOfferChanges,
@@ -460,30 +459,17 @@ export class ConversationsService {
           if (preferenceByUser.get(recipientId)?.providerMessagesEnabled === false) continue;
           const participantState = participantByUser.get(recipientId);
           if (!participantState || participantState.mutedAt) continue;
-          await this.notifications.createNotificationInTransaction(tx, {
-            userId: recipientId,
-            weddingPlanId: current.weddingPlanId,
-            type: NotificationType.CHAT_MESSAGE_RECEIVED,
-            priority: NotificationPriority.NORMAL,
-            title: 'رسالة جديدة',
-            body: 'لديك رسالة جديدة في محادثة عرض سعر.',
-            entityType: 'conversation',
-            entityId: conversationId,
-            routeTarget: `/conversations/${conversationId}`,
-            data: {
+          await this.notifications.createNotificationInTransaction(
+            tx,
+            chatMessageNotification({
+              recipientId,
+              weddingPlanId: current.weddingPlanId,
               conversationId,
               providerId: current.providerId,
-              recipientAudience:
-                current.provider.userId === recipientId
-                  ? 'PROVIDER'
-                  : 'CUSTOMER',
-              ...(current.weddingPlanId
-                ? { weddingPlanId: current.weddingPlanId }
-                : {}),
+              recipientIsProvider: current.provider.userId === recipientId,
               messageId: created.id,
-            },
-            dedupeKey: `chat:${created.id}:${recipientId}`,
-          });
+            }),
+          );
         }
       }
       return created;
@@ -859,7 +845,7 @@ export class ConversationsService {
     ) {
       throw new ConflictException({
         code: 'PROVIDER_NOT_JOINED',
-        message: 'المورد لم ينضم للمحادثة بعد',
+        message: 'المزود ما دخل المحادثة لسا.',
       });
     }
     if (this.isBlocked(conversation)) {

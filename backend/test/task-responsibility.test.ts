@@ -195,7 +195,8 @@ test("assigning a notification-enabled contributor creates one durable task noti
   );
   assert.equal(
     notificationCalls[0]?.input.routeTarget,
-    "/wedding-plans/plan-1/tasks",
+    // B-19: the notice opens the task itself.
+    "/wedding-plans/plan-1/tasks/task-1",
   );
   assert.deepEqual(notificationCalls[0]?.input.data, {
     taskId: "task-1",

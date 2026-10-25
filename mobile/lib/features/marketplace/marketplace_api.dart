@@ -13,6 +13,7 @@ export 'models/marketplace_models.dart'
         ProviderPackage,
         ProviderResponsiveness,
         ProviderReview,
+        ProviderReviewReply,
         ProviderServiceImage,
         QuoteRequest;
 export 'models/provider_budget_match_intent.dart'

@@ -31,8 +31,9 @@ class ProviderPortalScreen extends StatefulWidget {
   const ProviderPortalScreen({this.initialTab, super.key});
 
   /// The tab a link opens on: `requests` for the requests tab
-  /// ([AppRouter.providerRequestsTab]), `calendar` for the calendar; the
-  /// home tab otherwise.
+  /// ([AppRouter.providerRequestsTab]), `calendar` for the calendar,
+  /// `profile` for «ملفي» (p35, where his featured placement shows: the
+  /// notices about it open there, B-19); the home tab otherwise.
   final String? initialTab;
 
   @override
@@ -42,6 +43,7 @@ class ProviderPortalScreen extends StatefulWidget {
 int? _tabIndexOf(String? tab) => switch (tab) {
   'requests' => 1,
   'calendar' => 2,
+  'profile' => 4,
   _ => null,
 };
 

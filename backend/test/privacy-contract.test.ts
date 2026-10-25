@@ -1,10 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { NotificationType, UserRole } from "@prisma/client";
-import {
-  maskPhone,
-  toAdminNotificationPrivacyView,
-} from "../src/shared-kernel/privacy/admin-notification-privacy";
+import { UserRole } from "@prisma/client";
 import { toReviewIdentity } from "../src/shared-kernel/privacy/review-identity";
 import { safeTelemetryException } from "../src/platform/http/global-exception.filter";
 import { usersService } from "./support/owner-ports";
@@ -36,60 +32,11 @@ test("public review identity uses an administrator application name", () => {
   assert.deepEqual(response, { id: "admin-1", name: "Wedding User" });
 });
 
-test("known financial admin notifications disclose no amount or creditor", () => {
-  const response = toAdminNotificationPrivacyView({
-    type: NotificationType.PAYMENT_SCHEDULE_DUE_SOON,
-    title: "قسط بقيمة 50000 ر.ي",
-    body: "تبقى 25000 ر.ي للدائن أحمد",
-    entityType: "payment_schedule",
-    entityId: "schedule-secret-id",
-    routeTarget: "/wedding-plans/plan-1/money/costs/cost-1/schedules",
-    data: { amount: 50000, remaining: 25000, creditor: "أحمد" },
-  });
-
-  assert.equal(response.financialDetailsRedacted, true);
-  assert.equal(response.title, "إشعار مالي");
-  assert.equal(response.data, null);
-  assert.equal(response.entityId, null);
-  assert.equal(response.routeTarget, null);
-  assert.equal(JSON.stringify(response).includes("50000"), false);
-  assert.equal(JSON.stringify(response).includes("أحمد"), false);
-});
-
-test("financial data keys redact even a misclassified GENERAL notification", () => {
-  const response = toAdminNotificationPrivacyView({
-    type: NotificationType.GENERAL,
-    title: "تنبيه",
-    body: "محتوى خاص",
-    entityType: null,
-    entityId: null,
-    routeTarget: null,
-    data: { nested: { totalAmount: 1000 } },
-  });
-
-  assert.equal(response.financialDetailsRedacted, true);
-  assert.equal(response.data, null);
-});
-
-test("non-financial operational notification remains useful to admins", () => {
-  const response = toAdminNotificationPrivacyView({
-    type: NotificationType.SHARING_UPDATED,
-    title: "تحديث مشاركة",
-    body: "تم تحديث صلاحية عضو",
-    entityType: "shared_member",
-    entityId: "member-1",
-    routeTarget: "/sharing/member-1",
-    data: { role: "VIEWER" },
-  });
-
-  assert.equal(response.financialDetailsRedacted, false);
-  assert.equal(response.body, "تم تحديث صلاحية عضو");
-});
-
-test("admin notification phone references are masked", () => {
-  assert.equal(maskPhone("+967 777 123 456"), "••••3456");
-  assert.equal(maskPhone(null), null);
-});
+// The admin notification privacy mapper (redacted money notices, masked
+// phones) served only the desk's notification routes; it was deleted with
+// them (D56, B4), so no administrator reads anyone's notices at all
+// (admin-mutation-authorization and admin-presenter prove the routes and
+// the mapper are gone).
 
 test("Sentry receives a synthetic error without the original sensitive message", () => {
   const original = new Error(

@@ -413,7 +413,8 @@ async function run() {
         userId: providerUserId,
         entityType: 'quote_request',
         entityId: quoteId,
-        routeTarget: '/provider/dashboard',
+        // B-19: the provider's notice opens the request itself.
+        routeTarget: `/provider/requests/${quoteId}`,
       },
       orderBy: { createdAt: 'desc' },
     });

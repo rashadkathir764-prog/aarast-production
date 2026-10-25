@@ -1,14 +1,32 @@
 import { NotificationPriority, NotificationType } from "@prisma/client";
 import type { CreateNotificationInput } from "../modules/notifications/public/notifications.port";
-import { PROVIDER_PORTAL_ROUTE } from "../modules/marketplace/public/provider-access-policy";
 import { gendered } from "../shared-kernel/voice/address-form";
+import { noticeRoutes } from "../shared-kernel/routes/notification-routes";
 
-// بناة مدخلات إشعارات دورة عروض الأسعار — نقية بلا Prisma ولا خدمات،
-// حتى يبقى marketplace.service على التنسيق فقط (انظر عقد marketplace-presenter).
-// المبدأ: الطرفان يعلمان دائمًا — لا طلب صامت ولا قبول لا يعرفه المورد.
+// Pure builders of the request-and-offer notices (no Prisma, no services),
+// so marketplace.service stays on coordination (the marketplace-presenter
+// contract). Both sides always know: no silent request, no acceptance the
+// provider does not hear of. Each notice opens its own screen (B-19) and
+// speaks as the app does (B-38): «مزود», never «مورد» or «بوابة»; no
+// amount (a reader of notices may not see money, D53). A provider-facing
+// notice names the customer without a verb in their gender (D55).
 
-export function requesterQuoteRoute(quoteId: string): string {
-  return `/providers?quoteId=${encodeURIComponent(quoteId)}`;
+/** f04: the customer's request (the plan's request page, else the providers' list). */
+export function requesterQuoteRoute(
+  weddingPlanId: string | null,
+  quoteId: string,
+): string {
+  return noticeRoutes.customerRequest(weddingPlanId, quoteId);
+}
+
+/** The provider's own request page (D39), which the phone opens. */
+export function providerRequestRoute(quoteRequestId: string): string {
+  return noticeRoutes.providerRequest(quoteRequestId);
+}
+
+/** The customer's first name as the provider reads it (B-14), or null. */
+export function customerFirstName(name: string | null | undefined): string | null {
+  return name?.trim().split(/\s+/u)[0] || null;
 }
 
 export function quoteSubmittedRequesterNotification(args: {
@@ -23,11 +41,11 @@ export function quoteSubmittedRequesterNotification(args: {
     weddingPlanId: args.weddingPlanId,
     type: NotificationType.QUOTE_REQUEST_SUBMITTED,
     priority: NotificationPriority.NORMAL,
-    title: "تم إرسال طلب عرض السعر",
-    body: `تم إرسال طلبك إلى ${args.providerName}. سنعرض الرد عند وصول عرض حقيقي من المورد.`,
+    title: `وصل طلبك لـ${args.providerName}`,
+    body: "نبلغك هنا أول ما يرد بعرضه.",
     entityType: "quote_request",
     entityId: args.quoteId,
-    routeTarget: requesterQuoteRoute(args.quoteId),
+    routeTarget: requesterQuoteRoute(args.weddingPlanId, args.quoteId),
     data: {
       quoteRequestId: args.quoteId,
       providerId: args.providerId,
@@ -38,21 +56,24 @@ export function quoteSubmittedRequesterNotification(args: {
   };
 }
 
-// إشعار المورد بطلب جديد — بلا weddingPlanId: المورد ليس عضوًا في الخطة.
+// The provider's notice of a new request: no weddingPlanId, he is not a
+// member of the plan.
 export function quoteSubmittedProviderNotification(args: {
   providerUserId: string;
   quoteId: string;
   providerId: string;
+  customerName: string | null;
 }): CreateNotificationInput {
+  const who = customerFirstName(args.customerName);
   return {
     userId: args.providerUserId,
     type: NotificationType.QUOTE_REQUEST_SUBMITTED,
     priority: NotificationPriority.HIGH,
-    title: "طلب عرض سعر جديد",
-    body: "وصلك طلب عرض سعر جديد. افتح بوابة المورد لمراجعته والرد بعرضك.",
+    title: who ? `طلب جديد من ${who}` : "وصلك طلب جديد",
+    body: "ردّ بعرضك أو اعتذر خلال 7 أيام.",
     entityType: "quote_request",
     entityId: args.quoteId,
-    routeTarget: PROVIDER_PORTAL_ROUTE,
+    routeTarget: providerRequestRoute(args.quoteId),
     data: {
       quoteRequestId: args.quoteId,
       providerId: args.providerId,
@@ -68,17 +89,18 @@ export function offerAcceptedRequesterNotification(args: {
   quoteRequestId: string;
   quoteOfferId: string;
   providerId: string;
+  providerName: string;
 }): CreateNotificationInput {
   return {
     userId: args.requesterId,
     weddingPlanId: args.weddingPlanId,
     type: NotificationType.QUOTE_ACCEPTED,
     priority: NotificationPriority.HIGH,
-    title: "تم قبول عرض السعر",
-    body: "أصبح المزود ضمن مزودي الخطة المقبولين، وأنشئت التكلفة تلقائيًا دون إنشاء دفعة أو موعد دفع أو مهمة.",
+    title: `انقبل عرض ${args.providerName}`,
+    body: "انضاف اتفاقه في المال بدون أي دفعة، والحجز يُطلب من صفحة الطلب.",
     entityType: "quote_request",
     entityId: args.quoteRequestId,
-    routeTarget: requesterQuoteRoute(args.quoteRequestId),
+    routeTarget: requesterQuoteRoute(args.weddingPlanId, args.quoteRequestId),
     data: {
       quoteRequestId: args.quoteRequestId,
       quoteOfferId: args.quoteOfferId,
@@ -101,11 +123,14 @@ export function providerRejectedRequestNotification(args: {
     weddingPlanId: args.weddingPlanId,
     type: NotificationType.QUOTE_REJECTED,
     priority: NotificationPriority.NORMAL,
-    title: "اعتذر المورد عن الطلب",
-    body: `اعتذر ${args.providerName} عن طلب عرض السعر. يمكنك فتح الطلب ومراجعة حالته.`,
+    title: `اعتذر ${args.providerName} عن طلبك`,
+    body: gendered(
+      "تقدر تطلب من مزود غيره.",
+      "تقدرين تطلبين من مزود غيره.",
+    ),
     entityType: "quote_request",
     entityId: args.quoteRequestId,
-    routeTarget: requesterQuoteRoute(args.quoteRequestId),
+    routeTarget: requesterQuoteRoute(args.weddingPlanId, args.quoteRequestId),
     data: {
       quoteRequestId: args.quoteRequestId,
       providerId: args.providerId,
@@ -126,11 +151,11 @@ export function requesterRejectedOfferNotification(args: {
     userId: args.providerUserId,
     type: NotificationType.QUOTE_REJECTED,
     priority: NotificationPriority.NORMAL,
-    title: "لم يُقبل عرض السعر",
-    body: "اختار صاحب الطلب عدم قبول العرض. افتح بوابة المورد لمراجعة الطلب.",
+    title: "عرضك ما انقبل",
+    body: "الطلب انقفل بدون عرضك.",
     entityType: "quote_request",
     entityId: args.quoteRequestId,
-    routeTarget: PROVIDER_PORTAL_ROUTE,
+    routeTarget: providerRequestRoute(args.quoteRequestId),
     data: {
       quoteRequestId: args.quoteRequestId,
       quoteOfferId: args.quoteOfferId,
@@ -155,14 +180,14 @@ export function quoteOfferReceivedNotification(args: {
     weddingPlanId: args.weddingPlanId,
     type: NotificationType.QUOTE_OFFER_RECEIVED,
     priority: NotificationPriority.HIGH,
-    title: "وصل عرض سعر",
+    title: `وصلك عرض من ${args.providerName}`,
     body: gendered(
-      `أرسل ${args.providerName} عرضًا لطلبك. افتح الطلب لمراجعة التفاصيل.`,
-      `أرسل ${args.providerName} عرضًا لطلبك. افتحي الطلب لمراجعة التفاصيل.`,
+      "افتح الطلب وشوف التفاصيل.",
+      "افتحي الطلب وشوفي التفاصيل.",
     ),
     entityType: "quote_request",
     entityId: args.quoteRequestId,
-    routeTarget: requesterQuoteRoute(args.quoteRequestId),
+    routeTarget: requesterQuoteRoute(args.weddingPlanId, args.quoteRequestId),
     data: {
       quoteRequestId: args.quoteRequestId,
       quoteOfferId: args.quoteOfferId,
@@ -178,16 +203,20 @@ export function offerAcceptedProviderNotification(args: {
   quoteRequestId: string;
   quoteOfferId: string;
   providerId: string;
+  customerName: string | null;
 }): CreateNotificationInput {
+  const who = customerFirstName(args.customerName);
   return {
     userId: args.providerUserId,
     type: NotificationType.QUOTE_ACCEPTED,
     priority: NotificationPriority.HIGH,
-    title: "تم قبول عرضك",
-    body: "قبل صاحب الطلب عرض السعر الذي أرسلته. افتح بوابة المورد للمتابعة والتواصل.",
+    title: "انقبل عرضك",
+    body: who
+      ? `عرضك لطلب ${who} انقبل. الحجز يوصلك طلبه هنا.`
+      : "الحجز يوصلك طلبه هنا.",
     entityType: "quote_request",
     entityId: args.quoteRequestId,
-    routeTarget: PROVIDER_PORTAL_ROUTE,
+    routeTarget: providerRequestRoute(args.quoteRequestId),
     data: {
       quoteRequestId: args.quoteRequestId,
       quoteOfferId: args.quoteOfferId,
@@ -219,7 +248,7 @@ export function quoteOfferWithdrawnNotification(args: {
     ),
     entityType: "quote_request",
     entityId: args.quoteRequestId,
-    routeTarget: requesterQuoteRoute(args.quoteRequestId),
+    routeTarget: requesterQuoteRoute(args.weddingPlanId, args.quoteRequestId),
     data: {
       quoteRequestId: args.quoteRequestId,
       quoteOfferId: args.quoteOfferId,
@@ -275,7 +304,7 @@ export function quoteOfferRevisedNotification(args: {
     ),
     entityType: "quote_request",
     entityId: args.quoteRequestId,
-    routeTarget: requesterQuoteRoute(args.quoteRequestId),
+    routeTarget: requesterQuoteRoute(args.weddingPlanId, args.quoteRequestId),
     data: {
       quoteRequestId: args.quoteRequestId,
       quoteOfferId: args.quoteOfferId,
@@ -295,7 +324,7 @@ export function quoteRequestExpiringProviderNotification(args: {
   customerName: string | null;
   expiresAt: Date;
 }): CreateNotificationInput {
-  const who = args.customerName?.trim().split(/\s+/u)[0];
+  const who = customerFirstName(args.customerName);
   return {
     userId: args.providerUserId,
     type: NotificationType.QUOTE_REQUEST_EXPIRING,
@@ -336,7 +365,7 @@ export function quoteRequestExpiredRequesterNotification(args: {
     ),
     entityType: "quote_request",
     entityId: args.quoteRequestId,
-    routeTarget: requesterQuoteRoute(args.quoteRequestId),
+    routeTarget: requesterQuoteRoute(args.weddingPlanId, args.quoteRequestId),
     data: {
       quoteRequestId: args.quoteRequestId,
       providerId: args.providerId,
@@ -345,9 +374,4 @@ export function quoteRequestExpiredRequesterNotification(args: {
     },
     dedupeKey: `${args.requesterId}:quote-request-expired:${args.quoteRequestId}`,
   };
-}
-
-/** The provider's own request page (D39), which the phone opens. */
-export function providerRequestRoute(quoteRequestId: string): string {
-  return `/provider/requests/${encodeURIComponent(quoteRequestId)}`;
 }

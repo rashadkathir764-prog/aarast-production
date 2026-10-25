@@ -50,6 +50,8 @@ import { rejectQuoteOfferInTransaction } from "./quote-offer-rejection";
 import { createQuoteRequestInTransaction } from "./quote-request-creation";
 import { cancelQuoteRequestInTransaction } from "./quote-request-cancellation";
 import { runProviderReviewMutation } from "../modules/marketplace/public/provider-review-rating";
+import { reviewHasReply } from "../modules/marketplace/public/review-reply";
+import { reviewReceivedProviderNotification } from "./review-notifications";
 import {
   assertMarketplaceProviderActive,
   assertProviderAccountUnchanged,
@@ -702,6 +704,19 @@ export class MarketplaceService {
         const [review] = await this.relations.attachReviewUsers(tx, [
           await core.createProviderReview(tx, currentUser.id, providerId, dto.rating, MarketplaceQuery.optionalText(dto.comment)),
         ]);
+        // B-09: the provider hears of it (p42) and opens it to reply (p27).
+        if (provider.userId) {
+          await this.notifications.createNotificationInTransaction(
+            tx,
+            reviewReceivedProviderNotification({
+              providerUserId: provider.userId,
+              providerId,
+              reviewId: review.id,
+              rating: review.rating,
+              reviewerName: currentUser.name ?? null,
+            }),
+          );
+        }
         return MarketplacePresenter.toReviewResponse(review);
       },
     );
@@ -727,6 +742,8 @@ export class MarketplaceService {
         if (!current) {
           throw new NotFoundException("Review not found");
         }
+        // B-09: a reply answers these words; they stay as answered.
+        if (current.replyBody !== null) throw reviewHasReply();
         const [review] = await this.relations.attachReviewUsers(tx, [
           await core.updateProviderReview(tx, id, { ...(dto.rating !== undefined ? { rating: dto.rating } : {}), ...(dto.comment !== undefined ? { comment: MarketplaceQuery.optionalText(dto.comment) } : {}) }),
         ]);

@@ -825,6 +825,18 @@ class ProviderDashboardApi {
         .toList();
   }
 
+  /// B-09 (p27): the provider's one reply to a review of his.
+  Future<ProviderReview> replyToReview({
+    required String reviewId,
+    required String body,
+  }) async {
+    final json = await _apiClient.postJson(
+      '/api/v1/provider/me/reviews/$reviewId/reply',
+      {'body': body.trim()},
+    );
+    return ProviderReview.fromJson(json);
+  }
+
   Future<List<ProviderReview>> getReviews() async {
     final list = await _apiClient.getJsonList('/api/v1/provider/me/reviews');
     return list

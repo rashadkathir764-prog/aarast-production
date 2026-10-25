@@ -18,6 +18,8 @@ import {
   type WeddingPlan,
 } from "@prisma/client";
 import { AuthenticatedUser } from "../modules/identity/public/identity-session.types";
+import { noticeRoutes } from "../shared-kernel/routes/notification-routes";
+import { gendered } from "../shared-kernel/voice/address-form";
 import {
   COLLABORATION_PERMISSION_PORT,
   type CollaborationPermissionPort as PermissionService,
@@ -234,13 +236,19 @@ export class GuestRsvpService {
         weddingPlanId: plan.id,
         type: NotificationType.GUEST_RESPONDED,
         priority: NotificationPriority.NORMAL,
-        title: confirmed ? "ضيف أكّد حضوره" : "ضيف اعتذر عن الحضور",
-        body: confirmed
-          ? `${guest.name} أكّد حضوره${companions > 0 ? ` ومعه ${companions}` : ""}.`
-          : `${guest.name} اعتذر عن الحضور.`,
+        // The plan's guests are its own side's (a bride's plan: women), and
+        // its owner reads in that same form (D55), so the reader's form
+        // names the guest too.
+        title: confirmed
+          ? gendered(`${guest.name} أكّد حضوره`, `${guest.name} أكّدت حضورها`)
+          : gendered(`${guest.name} اعتذر عن الحضور`, `${guest.name} اعتذرت عن الحضور`),
+        body:
+          confirmed && companions > 0
+            ? gendered(`ومعه ${companions} من المرافقين.`, `ومعها ${companions} من المرافقات.`)
+            : "الرد وصل من رابط الدعوة.",
         entityType: "guest",
         entityId: guest.id,
-        routeTarget: `/wedding-plans/${plan.id}/guests`,
+        routeTarget: noticeRoutes.guest(plan.id, guest.id),
         data: { guestId: guest.id, weddingPlanId: plan.id, attendance },
         dedupeKey: `${plan.ownerUserId}:guest-responded:${guest.id}:${respondedAt.getTime()}`,
       });

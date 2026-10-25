@@ -32,22 +32,26 @@ test("an over-budget category alerts the owner once per allocation", () => {
     allocatedAmount: new Prisma.Decimal("500000"),
     committedAmount: new Prisma.Decimal("650000"),
   };
-  const row = budgetCategoryExceededRow("owner-1", category);
+  const row = budgetCategoryExceededRow("owner-1", category, "YER");
 
   assert.equal(row.userId, "owner-1");
   assert.equal(row.type, NotificationType.BUDGET_CATEGORY_EXCEEDED);
   assert.equal(row.priority, NotificationPriority.HIGH);
   assert.equal(row.entityType, "budget_category");
-  assert.equal(row.routeTarget, "/wedding-plans/plan-1/money");
-  assert.equal(row.body, "بند القاعة تجاوز المخطط (500000) بمبلغ 150000.");
+  // B-19: the item itself; B-38: by how much it is over travels in data.
+  assert.equal(row.routeTarget, "/wedding-plans/plan-1/money/categories/category-1");
+  assert.equal(row.title, "بند القاعة فات المخطط له");
+  assert.equal(row.body, "اتفاقاته صارت أكثر من المخطط.");
+  assert.equal((row.data as Record<string, unknown>).amount, "150000");
+  assert.equal((row.data as Record<string, unknown>).currency, "YER");
 
   const raised = budgetCategoryExceededRow("owner-1", {
     ...category,
     allocatedAmount: new Prisma.Decimal("600000"),
-  });
+  }, "YER");
   assert.notEqual(raised.dedupeKey, row.dedupeKey);
   assert.equal(
-    budgetCategoryExceededRow("owner-1", { ...category, committedAmount: new Prisma.Decimal("700000") }).dedupeKey,
+    budgetCategoryExceededRow("owner-1", { ...category, committedAmount: new Prisma.Decimal("700000") }, "YER").dedupeKey,
     row.dedupeKey,
     "a further cost on the same allocation does not alert again",
   );
@@ -61,10 +65,12 @@ test("a loan repayment reminder says due soon or overdue", () => {
     amount: new Prisma.Decimal("100000"),
     dueDate: new Date("2026-10-15T00:00:00.000Z"),
   };
-  const soon = loanRepaymentRow("owner-1", repayment, today);
+  const soon = loanRepaymentRow("owner-1", repayment, today, "YER");
   assert.equal(soon.type, NotificationType.LOAN_REPAYMENT_DUE_SOON);
-  assert.equal(soon.title, "موعد سداد قريب");
-  assert.equal(soon.body, "سداد العم أحمد بقيمة 100000 يستحق قريباً (15/10/2026).");
+  // B-38: «بعد 4 أيام», the day in words, the amount in data.
+  assert.equal(soon.title, "سداد العم أحمد بعد 4 أيام");
+  assert.equal(soon.body, "الخميس 15 أكتوبر");
+  assert.equal((soon.data as Record<string, unknown>).amount, "100000");
   assert.equal(soon.entityType, "loan_repayment");
   assert.equal(soon.routeTarget, "/wedding-plans/plan-1/money/funding");
 
@@ -72,7 +78,9 @@ test("a loan repayment reminder says due soon or overdue", () => {
     "owner-1",
     { ...repayment, dueDate: new Date("2026-10-01T00:00:00.000Z") },
     today,
+    "YER",
   );
+  assert.equal(late.title, "سداد العم أحمد متأخر");
   assert.equal(late.type, NotificationType.LOAN_REPAYMENT_OVERDUE);
   assert.equal(late.priority, NotificationPriority.HIGH);
   assert.notEqual(late.dedupeKey, soon.dedupeKey);
@@ -93,7 +101,9 @@ test("the wedding countdown reminds a month, a week and a day before", () => {
   const row = weddingCountdownRow("member-1", { id: "plan-1", weddingDate: wedding }, today);
   assert.ok(row);
   assert.equal(row.type, NotificationType.WEDDING_COUNTDOWN);
-  assert.equal(row.body, "باقي 30 يومًا على العرس. راجع المهام والدفعات القادمة.");
+  // B-38/D55: the day in words and no command in one gender to everyone.
+  assert.equal(row.title, "باقي 30 يوم على العرس");
+  assert.equal(row.body, "يوم الثلاثاء 10 نوفمبر. اللي باقي قبله في الخطة.");
   assert.equal(row.routeTarget, "/wedding-plans/plan-1/dashboard");
 
   const tomorrow = weddingCountdownRow(
@@ -101,7 +111,7 @@ test("the wedding countdown reminds a month, a week and a day before", () => {
     { id: "plan-1", weddingDate: new Date("2026-10-12T00:00:00.000Z") },
     today,
   );
-  assert.equal(tomorrow?.body, "العرس غدًا. راجع آخر المهام والدفعات.");
+  assert.equal(tomorrow?.title, "العرس بكرة");
   assert.equal(tomorrow?.priority, NotificationPriority.HIGH);
 
   assert.equal(
@@ -131,7 +141,7 @@ test("postponing the wedding restarts the countdown", () => {
 
 test("only the countdown is pushed; money reminders stay in the app", () => {
   assert.equal(isPushNotificationType(NotificationType.WEDDING_COUNTDOWN), true);
-  assert.equal(pushNotificationCopy(NotificationType.WEDDING_COUNTDOWN).title, "العد التنازلي للعرس");
+  assert.equal(pushNotificationCopy(NotificationType.WEDDING_COUNTDOWN).title, "العرس يقرب");
   for (const type of [
     NotificationType.BUDGET_CATEGORY_EXCEEDED,
     NotificationType.LOAN_REPAYMENT_DUE_SOON,

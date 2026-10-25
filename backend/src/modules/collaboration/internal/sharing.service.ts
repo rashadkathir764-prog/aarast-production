@@ -29,6 +29,8 @@ import { createHash, randomBytes } from "crypto";
 import { AuthenticatedUser } from "../../identity/public/identity-session.types";
 import { invitationDeliveryPersistenceFailuresTotal } from "../../../platform/observability/metrics";
 import { PhoneNormalizer } from "../../../shared-kernel/phone/phone-normalizer";
+import { noticeRoutes } from "../../../shared-kernel/routes/notification-routes";
+import { gendered } from "../../../shared-kernel/voice/address-form";
 import {
   runRetryableTransaction,
   runSerializableTransaction,
@@ -413,11 +415,14 @@ export class SharingService {
         weddingPlanId,
         type: NotificationType.SHARING_INVITATION,
         priority: NotificationPriority.HIGH,
-        title: "تمت إضافتك إلى خطة زفاف",
-        body: `أصبحت مشاركًا في "${transactionalAccess.plan.title}" بدور ${created.role}.`,
+        title: `انضفت لخطة ${transactionalAccess.plan.title}`,
+        body: gendered(
+          "افتحها وشوف ايش عليك فيها.",
+          "افتحيها وشوفي ايش عليك فيها.",
+        ),
         entityType: "shared_member",
         entityId: created.id,
-        routeTarget: `/wedding-plans/${weddingPlanId}/plan-center`,
+        routeTarget: noticeRoutes.planHome(weddingPlanId),
         data: {
           sharedMemberId: created.id,
           weddingPlanId,
@@ -655,11 +660,11 @@ export class SharingService {
             weddingPlanId,
             type: NotificationType.SHARING_INVITATION,
             priority: NotificationPriority.HIGH,
-            title: "دعوة للمشاركة في خطة زفاف",
-            body: `تلقيت دعوة للمشاركة في "${transactionalAccess.plan.title}".`,
+            title: `وصلتك دعوة لخطة ${transactionalAccess.plan.title}`,
+            body: gendered("افتح الدعوة وقرّر.", "افتحي الدعوة وقرّري."),
             entityType: "plan_invite",
             entityId: invite.id,
-            routeTarget: `/invites/${invite.id}`,
+            routeTarget: noticeRoutes.invite(invite.id),
             data: {
               inviteId: invite.id,
               weddingPlanId,
@@ -1067,11 +1072,11 @@ export class SharingService {
         weddingPlanId: invite.weddingPlanId,
         type: NotificationType.SHARING_INVITE_ACCEPTED,
         priority: NotificationPriority.HIGH,
-        title: "تم قبول الدعوة",
-        body: `${currentUser.name} قبل دعوة المشاركة في خطة الزفاف.`,
+        title: "الدعوة انقبلت",
+        body: `${currentUser.name} معك في الخطة الحين.`,
         entityType: "plan_invite",
         entityId: invite.id,
-        routeTarget: `/wedding-plans/${invite.weddingPlanId}/sharing`,
+        routeTarget: noticeRoutes.sharing(invite.weddingPlanId),
         data: {
           inviteId: invite.id,
           sharedMemberId: member.id,
@@ -1181,11 +1186,11 @@ export class SharingService {
           userId: currentInvite.inviterUserId,
           weddingPlanId: currentInvite.weddingPlanId,
           type: NotificationType.SHARING_INVITE_DECLINED,
-          title: "تم رفض الدعوة",
-          body: `${currentUser.name} رفض دعوة المشاركة في خطة الزفاف.`,
+          title: "الدعوة ما انقبلت",
+          body: `دعوتك لـ${currentUser.name} انرفضت.`,
           entityType: "plan_invite",
           entityId: currentInvite.id,
-          routeTarget: `/wedding-plans/${currentInvite.weddingPlanId}/sharing`,
+          routeTarget: noticeRoutes.sharing(currentInvite.weddingPlanId),
           data: {
             inviteId: currentInvite.id,
             weddingPlanId: currentInvite.weddingPlanId,

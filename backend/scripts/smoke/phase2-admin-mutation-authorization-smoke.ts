@@ -271,7 +271,9 @@ async function main(): Promise<void> {
     conversationIds: [conversation.id],
   });
   assert.deepEqual(revokedConversationIds, [[conversation.id]]);
-  assert.equal(lifecycleNotification?.type, "GENERAL");
+  // B-19: a suspension is its own notice type, opening the portal.
+  assert.equal(lifecycleNotification?.type, "PROVIDER_SUSPENDED");
+  assert.equal(lifecycleNotification?.routeTarget, "/provider/dashboard");
   assert.equal(
     (lifecycleNotification?.data as { providerStatus?: string })
       ?.providerStatus,

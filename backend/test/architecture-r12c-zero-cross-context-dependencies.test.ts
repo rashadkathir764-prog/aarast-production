@@ -97,7 +97,12 @@ test('R12C closure record binds the phase, the frozen manifests and real history
   // Featured placement (B-43) adds two that route the provider's notices to
   // his portal through the policy's route: the back office's placements and
   // the hourly notices job (9 -> 11).
-  assert.deepEqual(result, { ok: true, stage: 'strict', closed: true, dependencyRecords: 0, marketplaceConsumers: 11, ...liveOwnershipCounts() });
+  // B4 (B-19): every notice takes its route from the one route table
+  // (shared-kernel/routes/notification-routes.ts), so the four files that
+  // read the policy only for its portal route no longer import it: the
+  // quote and booking notice builders, the back office's placements and the
+  // hourly notices job (11 -> 7). Dependency records stay 0.
+  assert.deepEqual(result, { ok: true, stage: 'strict', closed: true, dependencyRecords: 0, marketplaceConsumers: 7, ...liveOwnershipCounts() });
   assert.deepEqual(api.readR12cStrictDependencyBytes(root), Buffer.from('[]\n', 'utf8'));
   assert.throws(() => api.projectR12cWorkingTreeToPredecessor({ repositoryRoot: root, manifest }), /R12C is closed/u);
   // The record is validated exactly: shape, phase, frozen manifests, history.
@@ -714,8 +719,15 @@ test('R12C Task 4 rewrites exactly seven consumers and removes only the exact li
   const { api } = load();
   for (const relative of task4Consumers) {
     const source = read(relative).toString('utf8');
-    assert.match(source, /marketplace\/public\/provider-access-policy/u, relative);
     assert.doesNotMatch(source, /provider-dashboard\/provider-access-policy/u, relative);
+    // B4 (B-19): the quote notices take their routes from the route table
+    // and read nothing of the policy any more; the other six still read it,
+    // through its public path only.
+    if (relative === 'backend/src/marketplace/quote-notifications.ts') {
+      assert.doesNotMatch(source, /provider-access-policy/u, relative);
+      continue;
+    }
+    assert.match(source, /marketplace\/public\/provider-access-policy/u, relative);
   }
   assert.doesNotMatch(read('backend/src/marketplace/quote-notifications.ts').toString('utf8'), /export\s*\{\s*PROVIDER_PORTAL_ROUTE\s*\}/u);
   const retiredNeedles = new Map<string, string[]>([

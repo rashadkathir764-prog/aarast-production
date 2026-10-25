@@ -177,7 +177,7 @@ export function buildImportantItems({
         weddingPlanId,
         "SET_LOCATION",
         say("أكمل موقع الزفاف", "أكملي موقع الزفاف"),
-        "الموقع يساعدك في تصفية الموردين وتوضيح طلبات الأسعار.",
+        "الموقع يساعدك في تصفية المزودين وتوضيح طلبات الأسعار.",
         `/wedding-plans/${weddingPlanId}/plan-center`,
       ),
     );

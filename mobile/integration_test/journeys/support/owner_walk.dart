@@ -129,8 +129,10 @@ const groomPersona = OwnerPersona(
   lateTask: 'حدد موعد عقد القران',
   guestFamily: 'آل الحمدي',
   agreed: '7.9 مليون',
-  paid: '4.6 مليون',
-  inHand: '2.9',
+  // D57: of the 4.6 million paid, his father paid 1.3 (the hall and the
+  // lunch): «دفعت منها 3.3»، and «معك» is 7.5 received less his 3.3.
+  paid: '3.3 مليون',
+  inHand: '4.2',
   promised: '1.2',
   fundingAmounts: ['4.5 مليون', '2.4 مليون', '600,000'],
   familyPayer: 'الوالد',
@@ -167,8 +169,9 @@ const bridePersona = OwnerPersona(
   lateTask: 'حددي موعد عقد القران',
   guestFamily: 'آل السقاف',
   agreed: '4.9 مليون',
-  paid: '2.6 مليون',
-  inHand: '1.9',
+  // D57: her father paid 1.3 of the 2.6: «دفعتِ منها 1.3»، «معك» 4.5 − 1.3.
+  paid: '1.3 مليون',
+  inHand: '3.2',
   promised: '2.2',
   fundingAmounts: ['900,000', '600,000'],
   familyPayer: 'أبوي',
@@ -239,14 +242,30 @@ Future<void> runOwnerWalk(WidgetTester tester, OwnerPersona p) async {
     await walk.scroll(pixels: -1200);
     if (!await walk.tapTooltip('التنبيهات', wait: 3)) return;
     walk.expectSee('التنبيهات');
-    // A notice must read as the app speaks: no raw amounts or dates.
+    // B-38: a notice reads as the app speaks: no raw amount, no numeric or
+    // ISO date, no English; an amount is the app's («500,000 ر.ي»).
     for (final line in walk.visibleTexts()) {
       if (RegExp(r'\d{4,}\b').hasMatch(line.replaceAll(',', '§')) ||
-          RegExp(r'\d{1,2}/\d{1,2}/\d{4}').hasMatch(line)) {
-        walk.fail('تنبيه بأرقام خام: «$line»');
+          RegExp(r'\d{1,2}/\d{1,2}/\d{4}').hasMatch(line) ||
+          RegExp(r'\d{4}-\d{2}-\d{2}').hasMatch(line) ||
+          RegExp(r'[A-Za-z]').hasMatch(line)) {
+        walk.fail('تنبيه بنص خام: «$line»');
         break;
       }
     }
+    for (final word in ['مورد', 'بوابة', 'لديك', 'المزوّد']) {
+      walk.expectNotSee(word, why: 'كلمات التنبيهات كلمات التطبيق (B-38)');
+    }
+  });
+
+  // B-19: every notice opens the screen it is about.
+  await walk.step('b08_open_each', 'كل تنبيه يفتح شاشته', () async {
+    final home = walk.currentLocation();
+    if (home == null) {
+      walk.fail('ما عرفنا مكان شاشة التنبيهات');
+      return;
+    }
+    await walk.openEachNotice(keyPrefix: 'notification-', home: home);
   });
   await walk.back();
 
@@ -255,6 +274,12 @@ Future<void> runOwnerWalk(WidgetTester tester, OwnerPersona p) async {
     await walk.tab('المال');
     walk.expectSee(p.say('اتفقت على ${p.agreed}', 'اتفقتِ على ${p.agreed}'));
     walk.expectSee(p.say('دفعت منها ${p.paid}', 'دفعتِ منها ${p.paid}'));
+    // D57: what the family paid is theirs, not the owner's.
+    walk.expectSee(
+      'ودفع عنك ${p.familyPayer} 1.3 مليون',
+      why: 'الدفع عن صاحب الخطة',
+    );
+    walk.expectSee('معك ${p.inHand} مليون');
     walk.expectSee('موعود لك ${p.promised} مليون');
   });
 
@@ -333,6 +358,11 @@ Future<void> runOwnerWalk(WidgetTester tester, OwnerPersona p) async {
   await walk.step('c05_money_funding', 'المال: من وين (المصادر)', () async {
     await walk.tab('المال');
     await walk.tapText('من وين', wait: 2.5);
+    // c05 as drawn (D57): «صرفت» is what the owner's own money paid.
+    walk.expectSee(
+      '${p.say('صرفت', 'صرفتِ')} ${p.paid} ر.ي · معك ${p.inHand} مليون',
+      why: 'وصلك = صرفت + معك',
+    );
     for (final name in p.fundingNames) {
       walk.expectSee(name);
     }

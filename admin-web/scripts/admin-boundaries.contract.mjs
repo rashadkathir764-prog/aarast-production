@@ -816,6 +816,8 @@ test('requires the exact Task 6 Moderation and Audit public surfaces', () => {
       'getReviews',
       'hideReview',
       'updateConversationReportStatus',
+      // B-09 (a10): hiding or showing the provider's reply.
+      'updateReviewReplyStatus',
       'updateReviewStatus',
     ],
     audit: ['AdminAuditLog', 'AdminAuditPhase', 'getAdminAuditLogs'],

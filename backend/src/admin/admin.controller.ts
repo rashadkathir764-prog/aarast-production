@@ -18,7 +18,6 @@ import { RequireAdminPermission } from '../modules/backoffice/public/admin-permi
 import { AdminPermission } from '../modules/backoffice/domain/admin-permissions';
 import { AdminService } from './admin.service';
 import { AdminCategoryDto, AdminCityDto } from './dto/admin-catalog.dto';
-import { AdminNotificationQueryDto } from './dto/admin-notification.dto';
 import { AdminListedProviderDto } from './dto/admin-listed-provider.dto';
 import { AdminProviderQueryDto } from './dto/admin-provider-query.dto';
 import { AdminReportQueryDto } from './dto/admin-report.dto';
@@ -285,6 +284,17 @@ export class AdminController {
     return this.adminService.updateReviewStatus(currentUser, id, dto);
   }
 
+  // B-09 (a10): hide or show the provider's reply.
+  @Patch('reviews/:id/reply-status')
+  @RequireAdminPermission(AdminPermission.REVIEWS_WRITE)
+  updateReviewReplyStatus(
+    @CurrentUser() currentUser: AuthenticatedUser,
+    @Param('id') id: string,
+    @Body() dto: AdminReviewStatusDto,
+  ) {
+    return this.adminService.updateReviewReplyStatus(currentUser, id, dto);
+  }
+
   @Delete('reviews/:id')
   @RequireAdminPermission(AdminPermission.REVIEWS_WRITE)
   hideReview(
@@ -312,45 +322,6 @@ export class AdminController {
       id,
       dto,
     );
-  }
-
-  @Get('notifications')
-  @RequireAdminPermission(AdminPermission.NOTIFICATIONS_READ)
-  listNotifications(@Query() query: AdminNotificationQueryDto) {
-    return this.adminService.listNotifications(query);
-  }
-
-  @Get('notifications/unread-count')
-  @RequireAdminPermission(AdminPermission.NOTIFICATIONS_READ)
-  getUnreadNotificationsCount() {
-    return this.adminService.getUnreadNotificationsCount();
-  }
-
-  @Patch('notifications/:id/read')
-  @RequireAdminPermission(AdminPermission.NOTIFICATIONS_WRITE)
-  markNotificationRead(
-    @CurrentUser() currentUser: AuthenticatedUser,
-    @Param('id') id: string,
-  ) {
-    return this.adminService.markNotificationRead(currentUser, id);
-  }
-
-  @Patch('notifications/:id/archive')
-  @RequireAdminPermission(AdminPermission.NOTIFICATIONS_WRITE)
-  archiveNotification(
-    @CurrentUser() currentUser: AuthenticatedUser,
-    @Param('id') id: string,
-  ) {
-    return this.adminService.archiveNotification(currentUser, id);
-  }
-
-  @Delete('notifications/:id')
-  @RequireAdminPermission(AdminPermission.NOTIFICATIONS_WRITE)
-  deleteNotification(
-    @CurrentUser() currentUser: AuthenticatedUser,
-    @Param('id') id: string,
-  ) {
-    return this.adminService.deleteNotification(currentUser, id);
   }
 
   @Get('provider-categories')

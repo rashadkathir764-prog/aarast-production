@@ -274,54 +274,15 @@ async function run() {
   );
   check("admin stats does not expose passwordHash", !hasPasswordHash(res.body));
 
-  res = await request("/admin/notifications?limit=5");
-  check(
-    "admin notifications returns paginated items",
-    res.status === 200 && Array.isArray(res.body?.items),
-    String(res.status),
-  );
-  check(
-    "admin notifications does not expose passwordHash",
-    !hasPasswordHash(res.body),
-  );
-  check(
-    "admin notifications never expose full user phones",
-    Array.isArray(res.body?.items) &&
-      res.body.items.every(
-        (item) =>
-          !item.user ||
-          (!Object.hasOwn(item.user, "phone") &&
-            !Object.hasOwn(item.user, "email")),
-      ),
-  );
-  check(
-    "admin financial notifications are redacted",
-    Array.isArray(res.body?.items) &&
-      res.body.items
-        .filter((item) =>
-          ["PAYMENT_SCHEDULE_DUE_SOON", "PAYMENT_SCHEDULE_OVERDUE"].includes(
-            item.type,
-          ),
-        )
-        .every(
-          (item) =>
-            item.financialDetailsRedacted === true &&
-            item.data === null &&
-            item.entityId === null &&
-            item.routeTarget === null,
-        ),
-  );
-
-  res = await request("/admin/notifications/unread-count");
-  check(
-    "admin unread notifications count returns number",
-    res.status === 200 && Number.isFinite(res.body?.count),
-    String(res.status),
-  );
-  check(
-    "admin unread notifications count does not expose passwordHash",
-    !hasPasswordHash(res.body),
-  );
+  // D56 (B4): the desk has no notifications page, so the server reads and
+  // changes no one's notifications for it: the five routes are gone.
+  for (const path of [
+    "/admin/notifications?limit=5",
+    "/admin/notifications/unread-count",
+  ]) {
+    res = await request(path);
+    check(`admin ${path} is not served`, res.status === 404, String(res.status));
+  }
 
   res = await request("/admin/reports/overview");
   check(

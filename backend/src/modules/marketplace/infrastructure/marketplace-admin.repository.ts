@@ -662,6 +662,22 @@ export class MarketplaceAdminRepository implements MarketplaceAdminPort {
     });
   }
 
+  async setReviewReplyStatusInTransaction(
+    tx: Prisma.TransactionClient,
+    reviewId: string,
+    status: ReviewStatus,
+  ): Promise<AdminReviewRow | null> {
+    const changed = await tx.providerReview.updateMany({
+      where: { id: reviewId, replyBody: { not: null } },
+      data: { replyStatus: status },
+    });
+    if (changed.count !== 1) return null;
+    return tx.providerReview.findUniqueOrThrow({
+      where: { id: reviewId },
+      include: { provider: true },
+    });
+  }
+
   async countCategoryUsage(
     client: Prisma.TransactionClient,
     categoryIds: readonly string[],

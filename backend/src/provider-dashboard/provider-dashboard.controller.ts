@@ -23,6 +23,7 @@ import { UpdateProviderQuoteStatusDto } from "./dto/update-provider-quote-status
 import { UpdateProviderServiceDto } from "./dto/update-provider-service.dto";
 import { UpdateQuoteOfferDto } from "./dto/update-quote-offer.dto";
 import { WithdrawQuoteOfferDto } from "./dto/withdraw-quote-offer.dto";
+import { ReplyToReviewDto } from "./dto/reply-to-review.dto";
 import {
   CreateServiceImageDto,
   UpdateServiceImageDto,
@@ -274,5 +275,16 @@ export class ProviderDashboardController {
   @Get("reviews")
   findReviews(@CurrentUser() currentUser: AuthenticatedUser) {
     return this.providerDashboardService.findReviews(currentUser);
+  }
+
+  // B-09 (p27): his one reply to a review.
+  @Post("reviews/:id/reply")
+  @HttpCode(200)
+  replyToReview(
+    @CurrentUser() currentUser: AuthenticatedUser,
+    @Param("id") id: string,
+    @Body() dto: ReplyToReviewDto,
+  ) {
+    return this.providerDashboardService.replyToReview(currentUser, id, dto);
   }
 }

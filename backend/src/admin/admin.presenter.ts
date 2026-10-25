@@ -1,6 +1,5 @@
 import type {
   City,
-  Notification,
   Provider,
   ProviderCategory,
   ProviderClaimRequest,
@@ -25,12 +24,9 @@ import {
   yemenDayOf,
 } from '../modules/marketplace/public/featured-placement';
 import { toReviewIdentity } from '../shared-kernel/privacy/review-identity';
+import { ownerReviewReply } from '../modules/marketplace/public/review-reply';
 import { providerCategoryBudgetItem } from '../modules/finance/public/provider-category-budget-item';
 import type { StarterBudgetItem } from '../modules/catalog/public/catalog-admin.port';
-import {
-  maskPhone,
-  toAdminNotificationPrivacyView,
-} from '../shared-kernel/privacy/admin-notification-privacy';
 
 export type SafeAdminUser = Pick<
   User,
@@ -211,11 +207,6 @@ export type AdminReviewWithDetails = ProviderReview & {
     city?: City | null;
     primaryCategory?: ProviderCategory | null;
   };
-};
-
-export type AdminNotificationWithDetails = Notification & {
-  user: Pick<User, 'id' | 'name' | 'phone'>;
-  weddingPlan?: { id: string; title: string; city: string | null } | null;
 };
 
 export interface AdminUserReport {
@@ -525,40 +516,10 @@ export function toAdminReviewResponse(review: AdminReviewWithDetails) {
     rating: review.rating,
     comment: review.comment,
     status: review.status,
+    // B-09: the provider's reply and whether it shows (a10).
+    reply: ownerReviewReply(review),
     createdAt: review.createdAt,
     updatedAt: review.updatedAt,
-  };
-}
-
-export function toAdminNotificationResponse(
-  notification: AdminNotificationWithDetails,
-) {
-  const privacy = toAdminNotificationPrivacyView(notification);
-  return {
-    id: notification.id,
-    userId: notification.userId,
-    user: {
-      id: notification.user.id,
-      name: notification.user.name,
-      phoneMasked: maskPhone(notification.user.phone),
-    },
-    weddingPlanId: notification.weddingPlanId,
-    weddingPlan: privacy.financialDetailsRedacted
-      ? null
-      : (notification.weddingPlan ?? null),
-    type: notification.type,
-    priority: notification.priority,
-    title: privacy.title,
-    body: privacy.body,
-    entityType: privacy.entityType,
-    entityId: privacy.entityId,
-    routeTarget: privacy.routeTarget,
-    data: privacy.data,
-    financialDetailsRedacted: privacy.financialDetailsRedacted,
-    readAt: notification.readAt,
-    archivedAt: notification.archivedAt,
-    createdAt: notification.createdAt,
-    updatedAt: notification.updatedAt,
   };
 }
 

@@ -1223,6 +1223,30 @@ class ProviderDashboardProvider extends ChangeNotifier
     }
   }
 
+  /// B-09 (p27): his one reply to a review; the review comes back with it.
+  Future<bool> replyToReview(String reviewId, String body) async {
+    _isSubmitting = true;
+    _errorMessage = null;
+    notifyListeners();
+
+    try {
+      final replied = await _api.replyToReview(reviewId: reviewId, body: body);
+      _reviews = [
+        for (final review in _reviews) review.id == replied.id ? replied : review,
+      ];
+      return true;
+    } on ApiException catch (error) {
+      _errorMessage = marketplaceErrorMessage(error.message);
+      return false;
+    } catch (_) {
+      _errorMessage = 'ما قدرنا ننشر ردك. حاول مرة ثانية.';
+      return false;
+    } finally {
+      _isSubmitting = false;
+      notifyListeners();
+    }
+  }
+
   /// Confirms, declines or cancels a booking (V1 checklist 4.6); [action] is
   /// `confirm`, `decline` or `cancel`.
   Future<bool> decideBooking({

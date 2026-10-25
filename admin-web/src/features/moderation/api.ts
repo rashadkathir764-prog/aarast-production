@@ -14,6 +14,8 @@ export type ProviderReview = {
   rating: number;
   comment: string | null;
   status: string;
+  /** B-09: the provider's one reply and whether customers read it. */
+  reply?: { body: string; repliedAt: string; status: 'PUBLISHED' | 'HIDDEN' } | null;
   createdAt: string;
   updatedAt: string;
 };
@@ -53,6 +55,14 @@ export function getReviews(params: QueryParams = {}) {
 
 export function updateReviewStatus(id: string, status: string) {
   return apiRequest<ProviderReview>(`/admin/reviews/${id}/status`, {
+    method: 'PATCH',
+    body: { status },
+  });
+}
+
+/** B-09 (a10): hide the provider's reply like a review, or show it again. */
+export function updateReviewReplyStatus(id: string, status: 'PUBLISHED' | 'HIDDEN') {
+  return apiRequest<ProviderReview>(`/admin/reviews/${id}/reply-status`, {
     method: 'PATCH',
     body: { status },
   });

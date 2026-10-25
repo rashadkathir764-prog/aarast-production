@@ -1704,7 +1704,11 @@ const r19ProviderPortalApi = Object.freeze({
 // guard, the mahr fields and the phone draft through the auth, finance and
 // onboarding owner APIs; w20 (PayerPaymentsScreen) reads whose plan is open
 // through the account contexts owner API.
-const r19LegalRecordCount = 244;
+// +2 (B4): the notices list reads «أخفِ المبالغ» through the finance owner
+// API, so a money notice's amount is left out when it is on (B-38); p27
+// (ProviderReviewScreen) reads the review through the marketplace owner API
+// (B-09).
+const r19LegalRecordCount = 246;
 const trackedOwnerApiContracts = [
   {
     area: 'features/account_contexts',
@@ -1935,6 +1939,8 @@ const trackedOwnerApiContracts = [
           // p35 and p39 (D40): his reply speed as customers read it.
           'ProviderResponsiveness',
           'ProviderReview',
+          // B-09 (p27, f03): the provider's one reply under a review.
+          'ProviderReviewReply',
           'ProviderServiceImage',
           'QuoteRequest',
         ],
@@ -2005,7 +2011,9 @@ const trackedOwnerApiContracts = [
         show: ['NotificationsProvider'],
       },
       { uri: 'screens/notifications_screen.dart', show: ['NotificationsScreen'] },
-      { uri: 'utils/notification_copy.dart', show: ['localizeNotification'] },
+      // B-38: the server writes Arabic only, so the copy rewriter left; the
+      // phone writes a money notice's amount (and hides it) itself.
+      { uri: 'utils/notification_line.dart', show: ['notificationLine'] },
       {
         uri: 'utils/notification_route_policy.dart',
         show: ['isSafeNotificationRouteTarget', 'resolveNotificationRouteTarget'],
@@ -2096,6 +2104,8 @@ const trackedOwnerApiContracts = [
       },
       { uri: 'screens/provider_portal_screen.dart', show: ['ProviderPortalScreen'] },
       { uri: 'screens/provider_request_screen.dart', show: ['ProviderRequestScreen'] },
+      // B-09 (p27): a review of his and his one reply.
+      { uri: 'screens/provider_review_screen.dart', show: ['ProviderReviewScreen'] },
       { uri: 'screens/provider_services_screen.dart', show: ['ProviderServicesScreen'] },
       // p40 and p48 (D40).
       { uri: 'screens/provider_settings_screen.dart', show: ['ProviderSettingsScreen'] },
@@ -2581,6 +2591,12 @@ const trackedCollaborationBatchContracts = [
     source: 'mobile/lib/features/notifications/screens/notifications_screen.dart',
     target: 'mobile/lib/features/auth/auth_api.dart',
     show: ['AuthActionGuard', 'AuthGatePanel'],
+  },
+  // B4 (B-38): «أخفِ المبالغ» leaves a money notice's amount out.
+  {
+    source: 'mobile/lib/features/notifications/screens/notifications_screen.dart',
+    target: 'mobile/lib/features/finance/finance_api.dart',
+    show: ['FinanceProvider'],
   },
   {
     source: 'mobile/lib/features/settings/screens/settings_screen.dart',
@@ -3286,6 +3302,7 @@ const trackedCompositionRootContracts = [
           'ProviderPerformanceScreen',
           'ProviderPortalScreen',
           'ProviderRequestScreen',
+          'ProviderReviewScreen',
           'ProviderServicesScreen',
           'ProviderSettingsScreen',
           'ProviderShareScreen',

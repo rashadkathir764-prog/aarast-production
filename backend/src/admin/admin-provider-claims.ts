@@ -20,6 +20,8 @@ import { PrismaService } from '../platform/database/prisma.service';
 import type { AdminOwners } from './admin-owners';
 import { lockProviderReviewAccountsInTransaction } from './admin-provider-review-lock';
 import { toAdminClaimRequestResponse } from './admin.presenter';
+import { withTeamNote } from './provider-status-notification';
+import { noticeRoutes } from '../shared-kernel/routes/notification-routes';
 
 const CLAIM_NOT_FOUND = 'Provider claim not found';
 
@@ -117,13 +119,13 @@ export class AdminProviderClaims {
       );
       await this.notifications.createNotificationInTransaction(tx, {
         userId: current.userId,
-        type: NotificationType.GENERAL,
+        type: NotificationType.PROVIDER_CLAIM_DECIDED,
         priority: NotificationPriority.NORMAL,
         title: 'انقبل استلامك للملف',
         body: `صار ملف ${decided.provider.businessName} لك. كمّل ملفك وابدأ استقبل طلبات العرسان.`,
         entityType: 'Provider',
         entityId: current.providerId,
-        routeTarget: '/provider/dashboard',
+        routeTarget: noticeRoutes.providerPortal(),
         data: {
           providerId: current.providerId,
           claimRequestId: id,
@@ -151,13 +153,16 @@ export class AdminProviderClaims {
       );
       await this.notifications.createNotificationInTransaction(tx, {
         userId: current.userId,
-        type: NotificationType.GENERAL,
+        type: NotificationType.PROVIDER_CLAIM_DECIDED,
         priority: NotificationPriority.HIGH,
         title: 'ما قبلنا الاستلام',
-        body: note,
+        body: withTeamNote(
+          `ما قبلنا استلامك لملف ${decided.provider.businessName}. تقدر تطلب الاستلام من جديد.`,
+          note,
+        ),
         entityType: 'ProviderClaimRequest',
         entityId: id,
-        routeTarget: '/provider/apply',
+        routeTarget: noticeRoutes.providerApply(),
         data: {
           providerId: current.providerId,
           claimRequestId: id,

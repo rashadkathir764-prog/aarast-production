@@ -146,7 +146,11 @@ test("the guest confirms with companions; the list updates and the owner is told
   assert.equal(db.notifications.length, 1);
   assert.equal(db.notifications[0].userId, "owner-1");
   assert.equal(db.notifications[0].type, "GUEST_RESPONDED");
-  assert.match(db.notifications[0].body, /ومعه 2/);
+  // D55: the guest is named in the plan's form (its owner's); B-19: the
+  // notice opens the guest.
+  assert.match(db.notifications[0].body.masculine, /ومعه 2/);
+  assert.match(db.notifications[0].body.feminine, /ومعها 2/);
+  assert.match(db.notifications[0].routeTarget, /\/guests\/view\/guest-1$/);
 
   const declined = await rsvp.respond(token, "DECLINED", 5);
   assert.equal(declined.attendanceStatus, "DECLINED");

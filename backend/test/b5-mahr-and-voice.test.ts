@@ -207,16 +207,22 @@ test('B5: notices to the customer come in both forms; to the provider they name 
     weddingPlanId: 'p1',
     providerName: 'صالة الياسمين',
   });
-  assert.match(textFor('FEMININE', cancelled.body), /تواصلي معه أو اختاري/u);
+  // B-38: the day in words; still her form.
+  assert.match(textFor('FEMININE', cancelled.body), /تقدرين تكلمينه أو تختارين/u);
+  assert.match(textFor('MASCULINE', cancelled.body), /تقدر تكلمه أو تختار/u);
 
   const requested = bookingProviderNotification('REQUESTED', {
     ...booking,
     providerUserId: 'pu',
     customerName: 'سلمى السقاف',
   });
+  assert.equal(typeof requested.title, 'string');
   assert.equal(typeof requested.body, 'string');
-  assert.equal(requested.body, 'طلب حجز يوم 2027-01-21 من سلمى السقاف. أكّد الحجز أو اعتذر من بوابة المزوّد.');
-  assert.doesNotMatch(String(requested.body), /سلمى السقاف يطلب/u);
+  // B-38: «طلب حجز … من …» names her without a verb in her gender, the day
+  // in words and no «بوابة المزوّد».
+  assert.equal(requested.title, 'طلب حجز من سلمى');
+  assert.equal(requested.body, 'يوم الخميس 21 يناير. أكّد الحجز أو اعتذر.');
+  assert.doesNotMatch(`${requested.title} ${requested.body}`, /سلمى يطلب|سلمى تطلب/u);
 
   const [customerReminder] = bookingReminderNotifications(
     {

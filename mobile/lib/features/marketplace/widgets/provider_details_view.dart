@@ -24,11 +24,17 @@ class ProviderDetailsView extends StatelessWidget {
     this.onRetryDetails,
     this.now,
     this.dataSaver = false,
+    this.reviews = const [],
     super.key,
   });
 
   /// g02 «توفير البيانات»: the photos load only once opened.
   final bool dataSaver;
+
+  /// The published reviews, newest first, each with the provider's reply
+  /// once published (B-09). f03 draws no reviews list; it is the place a
+  /// groom reads what others said and what the provider answered.
+  final List<ProviderReview> reviews;
 
   final MarketplaceProvider provider;
   final List<MarketplaceService> services;
@@ -177,6 +183,17 @@ class ProviderDetailsView extends StatelessWidget {
                   ),
                 ),
               ],
+              if (reviews.any((review) => review.isPublished)) ...[
+                const JourneySectionTitle('التقييمات'),
+                for (final review in reviews)
+                  if (review.isPublished) ...[
+                    _ReviewWithReply(
+                      review: review,
+                      providerName: provider.businessName,
+                    ),
+                    const SizedBox(height: 8),
+                  ],
+              ],
             ],
           ),
         ),
@@ -186,6 +203,102 @@ class ProviderDetailsView extends StatelessWidget {
 }
 
 /// The photo across the top, the way back, and how many photos there are.
+/// A review as customers read it: the name, the stars, the words, and the
+/// provider's published reply under them («رد استوديو ضوء صنعاء»).
+class _ReviewWithReply extends StatelessWidget {
+  const _ReviewWithReply({required this.review, required this.providerName});
+
+  final ProviderReview review;
+  final String providerName;
+
+  @override
+  Widget build(BuildContext context) {
+    final name = review.userName?.trim().isNotEmpty == true
+        ? review.userName!.trim()
+        : 'من اعّرست';
+    final comment = review.comment?.trim() ?? '';
+    final rating = review.rating.clamp(0, 5);
+    final reply = review.reply;
+    return JourneyBox(
+      key: ValueKey('provider-details-review-${review.id}'),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Flexible(
+                child: Text(
+                  name,
+                  style: JourneyType.of(
+                    JourneyType.body,
+                    weight: JourneyType.bold,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Semantics(
+                label: '$rating من 5',
+                child: ExcludeSemantics(
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      for (var star = 1; star <= 5; star++)
+                        Icon(
+                          LucideIcons.star,
+                          size: 15,
+                          color: star <= rating
+                              ? AarastV3Color.saffron
+                              : AarastV3Color.line,
+                        ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+          if (comment.isNotEmpty) ...[
+            const SizedBox(height: 6),
+            Text(
+              '«$comment»',
+              style: JourneyType.of(JourneyType.body, height: 1.6),
+            ),
+          ],
+          if (reply != null && reply.body.trim().isNotEmpty) ...[
+            const SizedBox(height: 10),
+            Container(
+              key: ValueKey('provider-details-review-reply-${review.id}'),
+              width: double.infinity,
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: AarastV3Color.canvas,
+                borderRadius: BorderRadius.circular(14),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'رد $providerName',
+                    style: JourneyType.of(
+                      JourneyType.small,
+                      weight: JourneyType.bold,
+                      color: AarastV3Color.textMuted,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    reply.body.trim(),
+                    style: JourneyType.of(JourneyType.body, height: 1.5),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
 class _ProviderHero extends StatelessWidget {
   const _ProviderHero({
     required this.photos,

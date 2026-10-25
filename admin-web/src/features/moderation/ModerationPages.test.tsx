@@ -6,6 +6,7 @@ import {
   getReviews,
   hideReview,
   updateConversationReportStatus,
+  updateReviewReplyStatus,
   updateReviewStatus,
   type ConversationReport,
   type ProviderReview,
@@ -19,6 +20,7 @@ vi.mock('./api', () => ({
   updateConversationReportStatus: vi.fn(),
   getReviews: vi.fn(),
   hideReview: vi.fn(),
+  updateReviewReplyStatus: vi.fn(),
   updateReviewStatus: vi.fn(),
 }));
 vi.mock('../providers/api', () => ({ getProvider: vi.fn(), getProviders: vi.fn() }));
@@ -196,5 +198,46 @@ describe('ReviewsPage (a10)', () => {
     expect(await screen.findByRole('alert')).toHaveTextContent('تعذر تحديث التقييم الآن.');
     expect(updateReviewStatus).toHaveBeenCalledWith('review-1', 'PUBLISHED');
     expect(screen.getByText(/ما جوا أصلًا/)).toBeInTheDocument();
+  });
+
+  // B-09: «رد المزود: «…»» as a10 draws it; the team hides it after asking,
+  // and brings a hidden one back.
+  it('shows the provider reply and hides it after asking', async () => {
+    vi.mocked(getReviews).mockResolvedValue(
+      page([
+        {
+          ...review('PUBLISHED'),
+          reply: { body: 'العريس لغى قبل يوم', repliedAt: '2026-01-21T10:00:00.000Z', status: 'PUBLISHED' },
+        },
+      ]),
+    );
+    vi.mocked(updateReviewReplyStatus).mockResolvedValue(review('PUBLISHED'));
+    renderReviews();
+    const row = (await screen.findByText(/ما جوا أصلًا/)).closest('tr') as HTMLElement;
+    expect(row).toHaveTextContent('عادل · 20 يناير · رد المزود: «العريس لغى قبل يوم»');
+
+    fireEvent.click(within(row).getByRole('button', { name: 'أخفِ الرد' }));
+    expect(updateReviewReplyStatus).not.toHaveBeenCalled();
+    const dialog = await screen.findByRole('dialog', { name: 'إخفاء رد فرقة الأفراح' });
+    fireEvent.click(within(dialog).getByRole('button', { name: 'أخفِ الرد' }));
+    await waitFor(() => expect(updateReviewReplyStatus).toHaveBeenCalledWith('review-1', 'HIDDEN'));
+  });
+
+  it('marks a hidden reply and shows it again', async () => {
+    vi.mocked(getReviews).mockResolvedValue(
+      page([
+        {
+          ...review('PUBLISHED'),
+          reply: { body: 'العريس لغى قبل يوم', repliedAt: '2026-01-21T10:00:00.000Z', status: 'HIDDEN' },
+        },
+      ]),
+    );
+    vi.mocked(updateReviewReplyStatus).mockResolvedValue(review('PUBLISHED'));
+    renderReviews();
+    const row = (await screen.findByText(/ما جوا أصلًا/)).closest('tr') as HTMLElement;
+    expect(row).toHaveTextContent('رد المزود (مخفي): «العريس لغى قبل يوم»');
+    expect(within(row).queryByRole('button', { name: 'أخفِ الرد' })).not.toBeInTheDocument();
+    fireEvent.click(within(row).getByRole('button', { name: 'أظهر الرد' }));
+    await waitFor(() => expect(updateReviewReplyStatus).toHaveBeenCalledWith('review-1', 'PUBLISHED'));
   });
 });

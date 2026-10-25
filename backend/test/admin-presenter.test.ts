@@ -7,8 +7,6 @@ import { test } from 'node:test';
 import { BadRequestException } from '@nestjs/common';
 import {
   AdminRole,
-  NotificationPriority,
-  NotificationType,
   Prisma,
   ProviderStatus,
   QuoteRequestStatus,
@@ -26,7 +24,6 @@ interface AdminPresenterHarness {
   toProviderResponse(value: unknown): Record<string, any>;
   toAdminServiceResponse(value: unknown): Record<string, any>;
   toAdminReviewResponse(value: unknown): Record<string, any>;
-  toAdminNotificationResponse(value: unknown): Record<string, any>;
   toUserResponse(value: unknown): Record<string, any>;
   toSafeUser(value: unknown): Record<string, unknown>;
 }
@@ -60,7 +57,8 @@ test('admin extraction keeps DI, mutations and query builders inside AdminServic
   // the service parses the query into the owners' declared filters.
   assert.match(serviceSource, /this\.owners\.marketplace\.listProviders\(/);
   assert.match(serviceSource, /private serviceFilter\(/);
-  assert.match(serviceSource, /private notificationFilter\(/);
+  // D56 (B4): the desk lists no one's notifications any more.
+  assert.doesNotMatch(serviceSource, /notificationFilter|listNotifications/);
   assert.doesNotMatch(serviceSource, /private to[A-Za-z]+Response\(/);
   assert.doesNotMatch(
     presenterSource,
@@ -268,6 +266,7 @@ test('admin service and review mappers preserve public shape and review privacy'
     provider,
   });
   assert.deepEqual(reviewResponse.user, { id: 'user-1', name: 'مستخدم' });
+  assert.equal(reviewResponse.reply, null);
   assert.equal('phone' in reviewResponse.user, false);
   assert.equal('email' in reviewResponse.user, false);
 });
@@ -324,41 +323,30 @@ test('admin cannot reassign a service whose media belongs to another provider', 
   assert.equal(updateCalls, 0);
 });
 
-test('admin notification mapper keeps financial privacy and masked identity', () => {
-  const response = currentPresenter().toAdminNotificationResponse({
-    id: 'notification-1',
+test('the desk maps no one\'s notifications: the admin notification mapper is gone (D56)', () => {
+  // The desk has no notifications page (c6cee4ac), so the server no longer
+  // serves an administrator anyone's notices; the privacy mapper that
+  // redacted them for that page went with it (B4).
+  assert.equal('toAdminNotificationResponse' in adminPresenter, false);
+});
+
+test('a review carries the provider reply and its state to the desk (B-09, a10)', () => {
+  const reply = currentPresenter().toAdminReviewResponse({
+    id: 'review-1',
     userId: 'user-1',
-    weddingPlanId: 'plan-1',
-    type: NotificationType.PAYMENT_SCHEDULE_DUE_SOON,
-    priority: NotificationPriority.HIGH,
-    title: 'قسط 5000 ر.ي',
-    body: 'ادفع للدائن الخاص',
-    entityType: 'payment_schedule',
-    entityId: 'schedule-1',
-    routeTarget: '/wedding-plans/plan-1/money/costs/cost-1/schedules',
-    data: { amount: '5000', creditor: 'private' },
-    dedupeKey: null,
-    readAt: null,
-    archivedAt: null,
+    user: { id: 'user-1', name: 'خالد', appName: null, role: UserRole.USER },
+    providerId: 'provider-1',
+    provider: providerFixture(),
+    rating: 4,
+    comment: 'تأخر الفيلم',
+    status: ReviewStatus.PUBLISHED,
+    replyBody: 'نعتذر',
+    repliedAt: createdAt,
+    replyStatus: ReviewStatus.HIDDEN,
     createdAt,
     updatedAt,
-    user: {
-      id: 'user-1',
-      name: 'مستخدم',
-      phone: '+967 777 123 456',
-    },
-    weddingPlan: { id: 'plan-1', title: 'زفاف خاص', city: 'صنعاء' },
-  });
-
-  assert.equal(response.user.phoneMasked, '••••3456');
-  assert.equal('phone' in response.user, false);
-  assert.equal(response.title, 'إشعار مالي');
-  assert.equal(response.body, 'تم إخفاء التفاصيل المالية لحماية خصوصية المستخدم.');
-  assert.equal(response.weddingPlan, null);
-  assert.equal(response.entityId, null);
-  assert.equal(response.routeTarget, null);
-  assert.equal(response.data, null);
-  assert.equal(response.financialDetailsRedacted, true);
+  }).reply;
+  assert.deepEqual(reply, { body: 'نعتذر', repliedAt: createdAt, status: ReviewStatus.HIDDEN });
 });
 
 test('admin user mapper preserves provider summary without account internals', () => {

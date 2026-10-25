@@ -29,9 +29,8 @@ const mutations = [
   ["updateReviewStatus", "REVIEWS_WRITE"],
   ["hideReview", "REVIEWS_WRITE"],
   ["updateConversationReportStatus", "CONVERSATION_REPORTS_WRITE"],
-  ["markNotificationRead", "NOTIFICATIONS_WRITE"],
-  ["archiveNotification", "NOTIFICATIONS_WRITE"],
-  ["deleteNotification", "NOTIFICATIONS_WRITE"],
+  // B-09 (a10): hiding or showing a provider's reply.
+  ["updateReviewReplyStatus", "REVIEWS_WRITE"],
   ["createCategory", "CATALOG_WRITE"],
   ["updateCategory", "CATALOG_WRITE"],
   ["deleteCategory", "CATALOG_WRITE"],
@@ -55,6 +54,16 @@ test("admin mutation controllers pass the authenticated actor to the service", (
       ),
       method,
     );
+  }
+});
+
+test("the desk changes no one's notifications: the admin notification routes are gone (D56)", () => {
+  const controller = source("admin.controller.ts");
+  const executor = source("admin-mutation-executor.ts");
+  assert.doesNotMatch(controller, /'notifications/u);
+  for (const method of ["markNotificationRead", "archiveNotification", "deleteNotification"]) {
+    assert.equal(controller.includes(`  ${method}(`), false, method);
+    assert.equal(executor.includes(`  async ${method}(`), false, method);
   }
 });
 

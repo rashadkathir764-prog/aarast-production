@@ -664,6 +664,8 @@ export const STUDIO_REVIEW = {
   customer: 'customerKhaled' as DemoAccountKey,
   rating: 4,
   comment: 'الفيلم وصل بعد أسبوعين بالضبط',
+  /** p27's reply, once (B-09). */
+  reply: 'شكرًا يا خالد، ونعتذر عن التأخير. ضغط الموسم، وعدّلنا طريقة التسليم.',
 };
 
 /** Days the studio closed on its calendar (January 2027, as drawn in p28). */

@@ -1,7 +1,6 @@
 import { Inject, Injectable } from '@nestjs/common';
 import type {
   City,
-  Notification,
   Prisma,
   ProviderCategory,
 } from '@prisma/client';
@@ -71,7 +70,6 @@ import type {
   AdminCityRecord,
   AdminClaimRequestRecord,
   AdminFeaturedPeriodRecord,
-  AdminNotificationWithDetails,
   AdminProviderRecord,
   AdminProviderReviewEventRecord,
   AdminReviewWithDetails,
@@ -307,32 +305,6 @@ export class AdminOwners {
             ? required(categories, row.provider.primaryCategoryId, 'Provider category')
             : null,
         },
-      };
-    });
-  }
-
-  async attachNotifications(
-    client: Client,
-    rows: readonly Notification[],
-  ): Promise<AdminNotificationWithDetails[]> {
-    const [recipients, plans] = await Promise.all([
-      this.users.getAppIdentities(client, unique(rows.map((row) => row.userId))),
-      this.plans.getPlans(
-        client,
-        unique(rows.map((row) => row.weddingPlanId)),
-      ),
-    ]);
-    const recipientById = new Map(recipients.map((user) => [user.id, user]));
-    const planById = new Map(plans.map((plan) => [plan.id, plan]));
-    return rows.map((row) => {
-      const recipient = required(recipientById, row.userId, 'Recipient');
-      const plan = row.weddingPlanId ? planById.get(row.weddingPlanId) : null;
-      return {
-        ...row,
-        user: { id: recipient.id, name: recipient.name, phone: recipient.phone },
-        weddingPlan: plan
-          ? { id: plan.id, title: plan.title, city: plan.city }
-          : null,
       };
     });
   }

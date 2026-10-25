@@ -287,13 +287,18 @@ test('R1 Task 5 shared kernel and backoffice domain exist only at canonical path
     ['src/common/phone/phone-normalizer.ts', 'src/shared-kernel/phone/phone-normalizer.ts'],
     ['src/common/privacy/review-identity.ts', 'src/shared-kernel/privacy/review-identity.ts'],
     ['src/users/application-user-identity.ts', 'src/shared-kernel/privacy/application-user-identity.ts'],
-    ['src/admin/admin-privacy.ts', 'src/shared-kernel/privacy/admin-notification-privacy.ts'],
     ['src/common/time/business-day.ts', 'src/shared-kernel/time/business-day.ts'],
     ['src/common/admin/admin-permissions.ts', 'src/modules/backoffice/domain/admin-permissions.ts'],
   ];
   for (const [legacy, canonical] of moved) {
     assert.equal(existsSync(path.join(backendRoot, legacy)), false, legacy);
     assert.equal(existsSync(path.join(backendRoot, canonical)), true, canonical);
+  }
+  // The admin notification privacy mapper moved to the shared kernel in R1
+  // and was deleted with the desk's notification routes it served (D56, B4):
+  // neither path may come back.
+  for (const gone of ['src/admin/admin-privacy.ts', 'src/shared-kernel/privacy/admin-notification-privacy.ts']) {
+    assert.equal(existsSync(path.join(backendRoot, gone)), false, gone);
   }
   assert.equal(existsSync(path.join(backendRoot, 'src/common')), false, 'src/common directory');
 });
@@ -343,7 +348,9 @@ test('R1 Task 5 platform ownership root and Admin permission contract are exact'
     'PROVIDERS_READ', 'PROVIDERS_WRITE', 'SERVICES_READ', 'SERVICES_WRITE',
     'CATALOG_READ', 'CATALOG_WRITE', 'REVIEWS_READ', 'REVIEWS_WRITE',
     'CONVERSATION_REPORTS_READ', 'CONVERSATION_REPORTS_WRITE',
-    'NOTIFICATIONS_READ', 'NOTIFICATIONS_WRITE', 'AUDIT_READ',
+    // NOTIFICATIONS_READ and NOTIFICATIONS_WRITE left with the desk's
+    // notification routes (D56, B4).
+    'AUDIT_READ',
   ];
   assert.deepEqual(Object.values(permissions.AdminPermission), expected);
 

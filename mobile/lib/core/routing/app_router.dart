@@ -78,6 +78,7 @@ import '../../features/provider_portal/provider_portal_api.dart'
         ProviderPerformanceScreen,
         ProviderPortalScreen,
         ProviderRequestScreen,
+        ProviderReviewScreen,
         ProviderServicesScreen,
         ProviderSettingsScreen,
         ProviderShareScreen,
@@ -176,6 +177,10 @@ class AppRouter {
   /// One request as the provider sees it (p16, p19).
   static String providerRequest(String quoteRequestId) =>
       '/provider/requests/$quoteRequestId';
+
+  /// p27: one review of his and his one reply (B-09).
+  static String providerReview(String reviewId) =>
+      '/provider/reviews/$reviewId';
 
   /// The provider's offer on a request (p17): send, edit or renew.
   static String providerRequestOffer(String quoteRequestId) =>

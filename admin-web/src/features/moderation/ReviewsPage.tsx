@@ -1,11 +1,15 @@
 // a10 «التقييمات» (mobile/test/prototype/admin/admin_screens.dart
-// `a10Reviews`). «مبلّغ عنها», the report column and «خلّه» wait for B-28,
-// the provider's reply for B-09 and «شوف الحجز» for B-40. Hiding takes no
-// reason and tells no one yet (A-08), so the page does not say it does.
+// `a10Reviews`). «مبلّغ عنها», the report column and «خلّه» wait for B-28
+// and «شوف الحجز» for B-40. The provider's reply (B-09) reads under the
+// review as drawn («رد المزود: «…»»); the team hides it like a review with
+// «أخفِ الرد» and brings it back with «أظهر الرد» (undrawn: needed to moderate
+// it). Hiding takes no reason and tells no one yet (A-08), so the page does
+// not say it does.
 import { useCallback, useEffect, useState } from 'react';
 import {
   getReviews,
   hideReview,
+  updateReviewReplyStatus,
   updateReviewStatus,
   type ProviderReview,
 } from './api';
@@ -84,6 +88,19 @@ export function ReviewsPage() {
     await load();
   }
 
+  async function setReply(review: ProviderReview, status: 'PUBLISHED' | 'HIDDEN') {
+    setBusyId(review.id);
+    setActionError(null);
+    try {
+      await updateReviewReplyStatus(review.id, status);
+      await load();
+    } catch (value) {
+      setActionError(value instanceof Error ? value.message : 'ما قدرنا نغيّر الرد.');
+    } finally {
+      setBusyId(null);
+    }
+  }
+
   return (
     <section>
       <DeskHeader
@@ -135,7 +152,15 @@ export function ReviewsPage() {
                     {review.comment ? `«${review.comment}»` : 'بدون تعليق'}
                   </>
                 }
-                sub={`${review.user.name} · ${dayMonth(review.createdAt)}`}
+                sub={[
+                  review.user.name,
+                  dayMonth(review.createdAt),
+                  ...(review.reply
+                    ? [
+                        `${review.reply.status === 'HIDDEN' ? 'رد المزود (مخفي)' : 'رد المزود'}: «${review.reply.body}»`,
+                      ]
+                    : []),
+                ].join(' · ')}
               />,
               review.provider?.businessName ?? '—',
               <Can key="a" permission={AdminPermission.REVIEWS_WRITE}>
@@ -157,6 +182,29 @@ export function ReviewsPage() {
                       confirmTone="coral"
                       trigger={<SoftAction tone="coral">أخفِ</SoftAction>}
                       onConfirm={() => hide(review)}
+                    />
+                  ) : null}
+                  {review.reply?.status === 'HIDDEN' ? (
+                    <SoftAction
+                      disabled={busyId === review.id}
+                      onClick={() => void setReply(review, 'PUBLISHED')}
+                    >
+                      أظهر الرد
+                    </SoftAction>
+                  ) : null}
+                  {review.reply?.status === 'PUBLISHED' ? (
+                    <ConfirmDialog
+                      variant="desk"
+                      title={`إخفاء رد ${review.provider?.businessName ?? 'المزود'}`}
+                      effects={[
+                        'الرد ما يظهر للعرسان تحت التقييم، والتقييم يبقى كما هو.',
+                        'المزود يشوف إن رده مخفي، وما يقدر يكتب رد ثاني.',
+                        'تقدر ترجّعه من «أظهر الرد».',
+                      ]}
+                      confirmLabel="أخفِ الرد"
+                      confirmTone="coral"
+                      trigger={<SoftAction tone="coral">أخفِ الرد</SoftAction>}
+                      onConfirm={() => setReply(review, 'HIDDEN')}
                     />
                   ) : null}
                 </span>

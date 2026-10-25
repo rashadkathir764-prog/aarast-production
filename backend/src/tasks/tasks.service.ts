@@ -54,6 +54,8 @@ import { CreateChecklistItemDto } from "./dto/create-checklist-item.dto";
 import { CreatePlanTaskDto } from "./dto/create-plan-task.dto";
 import { UpdateChecklistItemDto } from "./dto/update-checklist-item.dto";
 import { UpdateTaskDto } from "./dto/update-task.dto";
+import { noticeRoutes } from "../shared-kernel/routes/notification-routes";
+import { weekdayDayMonthWords } from "../shared-kernel/voice/day-words";
 import {
   assignTask,
   createChecklistItem,
@@ -460,11 +462,13 @@ export class TasksService {
             updated.priority === WeddingTaskPriority.URGENT
               ? NotificationPriority.HIGH
               : NotificationPriority.NORMAL,
-          title: "مهمة جديدة",
-          body: `تم إسناد مهمة «${updated.title}» إليك.`,
+          title: "مهمة جديدة عليك",
+          body: updated.dueDate
+            ? `${updated.title} · ${weekdayDayMonthWords(updated.dueDate)}`
+            : updated.title,
           entityType: "task",
           entityId: updated.id,
-          routeTarget: `/wedding-plans/${updated.weddingPlanId}/tasks`,
+          routeTarget: noticeRoutes.task(updated.weddingPlanId, updated.id),
           data: {
             taskId: updated.id,
             weddingPlanId: updated.weddingPlanId,

@@ -363,6 +363,7 @@ export async function acceptQuoteOfferInTransaction(
           quoteRequestId: current.quoteRequestId,
           quoteOfferId: current.id,
           providerId: current.providerId,
+          providerName: current.provider.businessName,
         }),
       );
       if (
@@ -376,6 +377,7 @@ export async function acceptQuoteOfferInTransaction(
             quoteRequestId: current.quoteRequestId,
             quoteOfferId: current.id,
             providerId: current.providerId,
+            customerName: current.quoteRequest.contactName,
           }),
         );
       }

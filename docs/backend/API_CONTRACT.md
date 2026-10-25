@@ -2446,7 +2446,31 @@ Provider dashboard routes:
 - `POST /api/v1/provider/me/quote-requests/:id/offers`
 - `PATCH /api/v1/provider/me/quote-offers/:id`
 - `POST /api/v1/provider/me/quote-offers/:id/withdraw`
-- `GET /api/v1/provider/me/reviews`
+- `GET /api/v1/provider/me/reviews` (each review with `reply: { body,
+  repliedAt, status } | null`, B-09)
+- `POST /api/v1/provider/me/reviews/:id/reply` `{ body }` (1 to 1000
+  characters; B-09, p27): his one reply to a published review of his. A
+  second reply, or two at once, is `409 REVIEW_ALREADY_REPLIED`; a review
+  that is not his or is hidden is `404`. The reviewer is told
+  (`REVIEW_REPLIED`, opening the provider's page in the app). The public
+  `GET /api/v1/providers/:id/reviews` returns `reply: { body, repliedAt }`
+  once published, else `null`; a reviewer's `PATCH /api/v1/reviews/:id` on
+  a replied review is `409 REVIEW_HAS_REPLY` (it may still be deleted). A
+  new review tells the provider (`REVIEW_RECEIVED`, «تقييم جديد · 4 نجوم من
+  …», opening p27 in the app).
+
+Notifications (B-19, B-38): every notice carries `routeTarget`, the phone
+route of its own screen, written once in
+`backend/src/shared-kernel/routes/notification-routes.ts` (the table of
+every type's route shapes, tested against the phone's router). Notice words
+never carry an amount or a numeric date: a money reminder sends its owner
+`data.amount` and `data.currency` for the phone to write (and hide under
+«أخفِ المبالغ»); days read «الجمعة 30 أكتوبر». Provider notices about his
+account have their own types (`PROVIDER_APPROVED`, `PROVIDER_NEEDS_CHANGES`,
+`PROVIDER_REJECTED`, `PROVIDER_SUSPENDED`, `PROVIDER_IN_REVIEW`,
+`PROVIDER_CLAIM_DECIDED`, `LISTING_PLAN_CHANGED`); a booking request is
+`BOOKING_REQUESTED`, and every booking notice names its step in
+`data.bookingEvent`.
 
 Listings the back office made before the provider had an account (V1
 checklist 4.18):
@@ -2946,14 +2970,16 @@ returns the admin refresh token.
 - `DELETE /admin/services/:id`
 - `GET /admin/reviews`
 - `PATCH /admin/reviews/:id/status`
+- `PATCH /admin/reviews/:id/reply-status` `{ status: PUBLISHED | HIDDEN }`
+  (`REVIEWS_WRITE`, B-09, a10): hides or shows the provider's reply; `404
+  REVIEW_REPLY_NOT_FOUND` without one. `GET /admin/reviews` carries
+  `reply: { body, repliedAt, status } | null`.
 - `DELETE /admin/reviews/:id`
 - `GET /admin/conversation-reports`
 - `PATCH /admin/conversation-reports/:id/status`
-- `GET /admin/notifications`
-- `GET /admin/notifications/unread-count`
-- `PATCH /admin/notifications/:id/read`
-- `PATCH /admin/notifications/:id/archive`
-- `DELETE /admin/notifications/:id`
+- The desk reads and changes no one's notifications: the five
+  `/admin/notifications` routes and `NOTIFICATIONS_READ` /
+  `NOTIFICATIONS_WRITE` were removed with the page they served (D56, B4).
 - `GET /admin/provider-categories`
 - `POST /admin/provider-categories`
 - `PATCH /admin/provider-categories/:id`
@@ -3113,11 +3139,6 @@ configuration, and smoke checks.
 | POST | `/admin/governorates/:id/districts` | `catalogs.createDistrict` | 🔒 |
 | DELETE | `/admin/localities/:id` | `catalogs.disableLocality` | 🔒 |
 | PATCH | `/admin/localities/:id` | `catalogs.updateLocality` | 🔒 |
-| GET | `/admin/notifications` | `admin.listNotifications` | 🔒 |
-| DELETE | `/admin/notifications/:id` | `admin.deleteNotification` | 🔒 |
-| PATCH | `/admin/notifications/:id/archive` | `admin.archiveNotification` | 🔒 |
-| PATCH | `/admin/notifications/:id/read` | `admin.markNotificationRead` | 🔒 |
-| GET | `/admin/notifications/unread-count` | `admin.getUnreadNotificationsCount` | 🔒 |
 | GET | `/admin/provider-categories` | `admin.listCategories` | 🔒 |
 | POST | `/admin/provider-categories` | `admin.createCategory` | 🔒 |
 | DELETE | `/admin/provider-categories/:id` | `admin.deleteCategory` | 🔒 |
@@ -3149,6 +3170,7 @@ configuration, and smoke checks.
 | GET | `/admin/reports/success` | `admin.getSuccessReport` | 🔒 |
 | GET | `/admin/reviews` | `admin.listReviews` | 🔒 |
 | DELETE | `/admin/reviews/:id` | `admin.hideReview` | 🔒 |
+| PATCH | `/admin/reviews/:id/reply-status` | `admin.updateReviewReplyStatus` | 🔒 |
 | PATCH | `/admin/reviews/:id/status` | `admin.updateReviewStatus` | 🔒 |
 | GET | `/admin/services` | `admin.listServices` | 🔒 |
 | POST | `/admin/services` | `admin.createService` | 🔒 |
@@ -3280,6 +3302,7 @@ configuration, and smoke checks.
 | POST | `/api/v1/provider/me/quote-requests/:id/offers` | `provider-dashboard.createQuoteOffer` | 🔒 |
 | PATCH | `/api/v1/provider/me/quote-requests/:id/status` | `provider-dashboard.updateQuoteRequestStatus` | 🔒 |
 | GET | `/api/v1/provider/me/reviews` | `provider-dashboard.findReviews` | 🔒 |
+| POST | `/api/v1/provider/me/reviews/:id/reply` | `provider-dashboard.replyToReview` | 🔒 |
 | GET | `/api/v1/provider/me/services` | `provider-dashboard.findServices` | 🔒 |
 | POST | `/api/v1/provider/me/services` | `provider-dashboard.createService` | 🔒 |
 | DELETE | `/api/v1/provider/me/services/:id` | `provider-dashboard.deactivateService` | 🔒 |

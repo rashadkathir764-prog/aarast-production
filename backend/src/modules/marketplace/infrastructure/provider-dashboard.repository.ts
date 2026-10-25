@@ -5,6 +5,7 @@ import {
   ProviderStatus,
   QuoteOfferStatus,
   QuoteRequestStatus,
+  ReviewStatus,
 } from '@prisma/client';
 import { priceStampForNewService, priceStampForServiceUpdate } from './service-price-stamp';
 
@@ -291,6 +292,25 @@ export function requireQuoteOffer(client: Client, id: string) {
 
 export function listProviderReviews(client: Client, providerId: string) {
   return client.providerReview.findMany({ where: { providerId }, orderBy: { createdAt: 'desc' } });
+}
+
+/** One review of this provider's, or null. */
+export function findProviderReview(client: Client, reviewId: string, providerId: string) {
+  return client.providerReview.findFirst({ where: { id: reviewId, providerId } });
+}
+
+/** B-09: writes his one reply; 0 rows when the review already has one. */
+export function writeReviewReply(
+  client: Client,
+  reviewId: string,
+  providerId: string,
+  body: string,
+  at: Date,
+) {
+  return client.providerReview.updateMany({
+    where: { id: reviewId, providerId, replyBody: null },
+    data: { replyBody: body, repliedAt: at, replyStatus: ReviewStatus.PUBLISHED },
+  });
 }
 
 export function findProviderByUserId(client: Client, userId: string) {

@@ -543,11 +543,12 @@ test("scheduled reminders respect notification and financial permissions", async
     (row) => row.entityType === "payment_schedule" && row.userId === "owner-1",
   );
   assert.ok(ownerSchedule);
-  assert.match(String(ownerSchedule.body), /100/);
-  assert.equal(
-    ownerSchedule.routeTarget,
-    "/wedding-plans/plan-1/money/costs/cost-1/schedules/schedule-1",
-  );
+  // B-38: the owner's amount travels in data for the phone to write (and
+  // to hide under «أخفِ المبالغ»); the words carry no figure. B-19: the
+  // notice opens the agreement (c07), which lists every payment date.
+  assert.equal((ownerSchedule.data as Record<string, unknown>).amount, "100");
+  assert.doesNotMatch(String(ownerSchedule.body), /100/);
+  assert.equal(ownerSchedule.routeTarget, "/wedding-plans/plan-1/money/costs/cost-1");
 });
 
 test("revoking financial access purges stored financial notifications atomically", async () => {

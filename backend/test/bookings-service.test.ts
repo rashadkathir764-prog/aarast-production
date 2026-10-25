@@ -180,7 +180,9 @@ test("a customer asks for the quote's day and the provider is told", async () =>
   assert.equal(booking.eventDate, "2027-02-18");
   assert.equal(db.notifications.length, 1);
   assert.equal(db.notifications[0].userId, "provider-user-1");
-  assert.equal(db.notifications[0].type, "BOOKING_UPDATED");
+  // B-19: a booking request is its own type, opening the request.
+  assert.equal(db.notifications[0].type, "BOOKING_REQUESTED");
+  assert.equal(db.notifications[0].routeTarget, "/provider/requests/quote-1");
 });
 
 test("a booking needs an accepted offer and a single open request", async () => {
@@ -210,7 +212,7 @@ test("the provider confirms, the customer is told, and the day is taken", async 
   const confirmed = await bookings.decideAsProvider(providerUser, first.id, "CONFIRM", {});
   assert.equal(confirmed.status, "CONFIRMED");
   assert.equal(db.notifications.slice(-1)[0].userId, "customer-1");
-  assert.equal(db.notifications.slice(-1)[0].title, "تم تأكيد الحجز");
+  assert.match(db.notifications.slice(-1)[0].title, /^تأكد حجزك مع /);
 
   // Another customer cannot even ask for a day the provider is confirmed on.
   await rejects(
@@ -242,7 +244,7 @@ test("a decline can be followed by a new request for another day", async () => {
 
   const declined = await bookings.decideAsProvider(providerUser, first.id, "DECLINE", { note: "مشغول" });
   assert.equal(declined.status, "DECLINED");
-  assert.equal(db.notifications.slice(-1)[0].title, "اعتذر المزوّد عن الحجز");
+  assert.match(db.notifications.slice(-1)[0].title, /^اعتذر .+ عن يوم الخميس 18 فبراير$/);
 
   const again = await bookings.requestBooking(customer, "quote-1", { eventDate: "2027-02-19" });
   assert.equal(again.id, first.id);
@@ -369,15 +371,17 @@ test("a confirmed booking reminds both sides a week and a day before, once each"
   assert.equal(week.sent, 2);
   assert.deepEqual(db.notifications.map((n) => n.userId).sort(), ["customer-1", "provider-user-1"]);
   // B5: the customer's line comes in both forms; the writer picks hers.
-  assert.match(textFor("MASCULINE", db.notifications[0].body), /بعد 7 أيام \(2027-02-18\)/);
-  assert.match(textFor("FEMININE", db.notifications[0].body), /بعد 7 أيام \(2027-02-18\)/);
+  // B-38: how far and the day in words (no «2027-02-18»).
+  assert.match(textFor("MASCULINE", db.notifications[0].title), /بعد 7 أيام$/);
+  assert.match(textFor("MASCULINE", db.notifications[0].body), /^يوم الخميس 18 فبراير\. تواصل معه/);
+  assert.match(textFor("FEMININE", db.notifications[0].body), /^يوم الخميس 18 فبراير\. تواصلي معه/);
 
   // The next hourly scans inside the same window send nothing again.
   assert.equal((await bookings.sendDueReminders(at("2027-02-12"))).sent, 0);
 
   const dayBefore = await bookings.sendDueReminders(at("2027-02-17"));
   assert.equal(dayBefore.sent, 2);
-  assert.match(textFor("MASCULINE", db.notifications.slice(-1)[0].body), /غدًا/);
+  assert.match(textFor("MASCULINE", db.notifications.slice(-1)[0].title), /بكرة$/);
   assert.equal(db.notifications.slice(-1)[0].priority, "HIGH");
 
   // The day itself and after: nothing.

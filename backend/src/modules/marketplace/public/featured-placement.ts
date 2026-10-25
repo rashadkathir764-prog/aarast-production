@@ -7,6 +7,7 @@
  */
 
 import { ProviderStatus } from '@prisma/client';
+import { dayMonthWords } from '../../../shared-kernel/voice/day-words';
 
 /** The provider is told this many days before the placement ends. */
 export const FEATURED_ENDING_NOTICE_DAYS = 7;
@@ -36,15 +37,9 @@ export function featuredLastDay(endsAt: Date): string {
   return yemenDayOf(new Date(endsAt.getTime() - 1));
 }
 
-const ARABIC_MONTHS = [
-  'يناير', 'فبراير', 'مارس', 'أبريل', 'مايو', 'يونيو',
-  'يوليو', 'أغسطس', 'سبتمبر', 'أكتوبر', 'نوفمبر', 'ديسمبر',
-];
-
-/** «31 ديسمبر» for a `YYYY-MM-DD` day, as the provider's notices write it. */
+/** «31 ديسمبر» for a `YYYY-MM-DD` day, as every notice writes a day (B-38). */
 export function arabicDayLabel(day: string): string {
-  const [, month, date] = day.split('-').map(Number);
-  return `${date} ${ARABIC_MONTHS[month! - 1]}`;
+  return dayMonthWords(day);
 }
 
 /** The instant after the last covered day (`YYYY-MM-DD`) ends. */

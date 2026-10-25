@@ -16,12 +16,15 @@ import 'dart:convert';
 import 'dart:io';
 import 'dart:ui' as ui;
 
+import 'package:aarast_mobile/features/notifications/notifications_api.dart'
+    show NotificationsProvider, resolveNotificationRouteTarget;
 import 'package:aarast_mobile/main.dart' as app;
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
+import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 const demoPassword = String.fromEnvironment('DEMO_PASSWORD');
@@ -419,6 +422,70 @@ class JourneyWalk {
     } on Object {
       return null;
     }
+  }
+
+  /// B-19: taps every notice on the list (rows keyed `<keyPrefix><id>`),
+  /// checks the app lands on the screen the notice names, not on the error
+  /// page, and comes back to [home] for the next one. Opening a notice reads
+  /// it (the only thing the walk changes). Each landing is written in the
+  /// step's notes.
+  Future<void> openEachNotice({
+    required String keyPrefix,
+    required String home,
+    int limit = 12,
+  }) async {
+    final element = find.byType(Navigator).evaluate().first;
+    final notices = [
+      ...Provider.of<NotificationsProvider>(
+        element,
+        listen: false,
+      ).notifications,
+    ];
+    var opened = 0;
+    for (final notice in notices) {
+      if (opened >= limit) break;
+      final row = find.byKey(ValueKey('$keyPrefix${notice.id}'));
+      if (row.evaluate().isEmpty) await _scrollUntilVisible(row);
+      if (row.evaluate().isEmpty) continue;
+      final expected = resolveNotificationRouteTarget(notice);
+      await tester.ensureVisible(row.first);
+      await tester.pump(const Duration(milliseconds: 200));
+      await tester.tap(row.first, warnIfMissed: false);
+      await settle(seconds: 3);
+      opened += 1;
+      final landed = currentLocation();
+      final errorPage = find.byWidgetPredicate(
+        (widget) => widget.runtimeType.toString() == 'RouterErrorScreen',
+      );
+      if (expected == null) {
+        fail('تنبيه «${notice.title}» ما له شاشة');
+      } else if (errorPage.evaluate().isNotEmpty) {
+        fail('تنبيه «${notice.title}» فتح صفحة الخطأ ($expected)');
+      } else if (landed == null ||
+          !_sameScreen(Uri.parse(landed), Uri.parse(expected))) {
+        fail('تنبيه «${notice.title}» فتح $landed بدل $expected');
+      } else {
+        note('${notice.type} «${notice.title}» → $landed');
+      }
+      GoRouter.of(find.byType(Navigator).evaluate().first).go(home);
+      await settle(seconds: 3);
+    }
+    if (opened == 0) fail('ما فيه تنبيه يُفتح في القائمة');
+  }
+
+  /// The same screen: the same path, or the requests page a quote link of
+  /// the providers' list opens (`/providers?quoteId=` passes the plan's).
+  static bool _sameScreen(Uri landed, Uri expected) {
+    if (landed.path == expected.path) {
+      return expected.queryParameters.entries.every(
+        (entry) => landed.queryParameters[entry.key] == entry.value,
+      );
+    }
+    final quoteId = expected.queryParameters['quoteId'];
+    return expected.path == '/providers' &&
+        quoteId != null &&
+        landed.path.endsWith('/providers/requests') &&
+        landed.queryParameters['quote'] == quoteId;
   }
 
   // ------------------------------------------------------------ sign in

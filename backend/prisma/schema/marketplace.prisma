@@ -210,6 +210,12 @@ model ProviderReview {
   status     ReviewStatus @default(PUBLISHED)
   createdAt  DateTime     @default(now())
   updatedAt  DateTime     @updatedAt
+  // B-09: the provider's one reply (p27), shown under the review; the
+  // moderation team may hide it (HIDDEN) like a review. A CHECK keeps the
+  // three set together or not at all.
+  replyBody   String?       @db.Text
+  repliedAt   DateTime?
+  replyStatus ReviewStatus?
   user       User         @relation(fields: [userId], references: [id], onDelete: Cascade)
   provider   Provider     @relation(fields: [providerId], references: [id], onDelete: Cascade)
 

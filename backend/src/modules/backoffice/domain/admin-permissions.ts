@@ -16,8 +16,6 @@ export enum AdminPermission {
   REVIEWS_WRITE = 'REVIEWS_WRITE',
   CONVERSATION_REPORTS_READ = 'CONVERSATION_REPORTS_READ',
   CONVERSATION_REPORTS_WRITE = 'CONVERSATION_REPORTS_WRITE',
-  NOTIFICATIONS_READ = 'NOTIFICATIONS_READ',
-  NOTIFICATIONS_WRITE = 'NOTIFICATIONS_WRITE',
   AUDIT_READ = 'AUDIT_READ',
 }
 
@@ -37,7 +35,6 @@ const rolePermissions: Record<AdminRole, readonly AdminPermission[]> = {
     AdminPermission.CATALOG_READ,
     AdminPermission.CATALOG_WRITE,
     AdminPermission.REVIEWS_READ,
-    AdminPermission.NOTIFICATIONS_READ,
   ],
   MODERATOR: [
     AdminPermission.DASHBOARD_READ,
@@ -46,8 +43,6 @@ const rolePermissions: Record<AdminRole, readonly AdminPermission[]> = {
     AdminPermission.REVIEWS_WRITE,
     AdminPermission.CONVERSATION_REPORTS_READ,
     AdminPermission.CONVERSATION_REPORTS_WRITE,
-    AdminPermission.NOTIFICATIONS_READ,
-    AdminPermission.NOTIFICATIONS_WRITE,
   ],
   SUPPORT: [
     AdminPermission.DASHBOARD_READ,
@@ -55,7 +50,6 @@ const rolePermissions: Record<AdminRole, readonly AdminPermission[]> = {
     AdminPermission.PROVIDERS_READ,
     AdminPermission.SERVICES_READ,
     AdminPermission.CATALOG_READ,
-    AdminPermission.NOTIFICATIONS_READ,
   ],
 };
 

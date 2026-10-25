@@ -75,7 +75,7 @@ test("no conversation event stores an amount or the offer's changes", () => {
 
 // 3. A revision has its own words on the lock screen, never an amount, and
 // is told once per offer per ten minutes.
-test("a revised offer pushes «عدّلوا عرضهم», a new one «وصل عرض سعر»", () => {
+test("a revised offer pushes «عدّلوا عرضهم», a new one «وصلك عرض»", () => {
   const base = {
     requesterId: "customer",
     weddingPlanId: "plan",
@@ -90,7 +90,8 @@ test("a revised offer pushes «عدّلوا عرضهم», a new one «وصل ع�
   assert.equal(revised.type, NotificationType.QUOTE_OFFER_RECEIVED);
   const freshCopy = pushNotificationCopy(fresh.type, fresh.data);
   const revisedCopy = pushNotificationCopy(revised.type, revised.data);
-  assert.equal(freshCopy.title, "وصل عرض سعر");
+  // B-38: the app's words on the lock screen too.
+  assert.equal(freshCopy.title, "وصلك عرض");
   assert.equal(revisedCopy.title, "عدّلوا عرضهم");
   assert.match(revisedCopy.body, /ايش تغيّر/u);
   for (const copy of [freshCopy, revisedCopy]) {

@@ -12,18 +12,34 @@ import '../../notifications/notifications_api.dart'
         AarastNotification,
         NotificationsProvider,
         isSafeNotificationRouteTarget,
-        localizeNotification,
         resolveNotificationRouteTarget;
 import '../providers/provider_dashboard_provider.dart';
 import '../widgets/provider_request_parts.dart';
 
-/// p42 «التنبيهات»: his notices (the ones the server addresses to the
-/// provider), each opening its case: a request or its booking opens the
-/// request screen, a message its chat (F12). The line is written on the
-/// phone from the request the notice names; one whose request is not in his
-/// list keeps the server's own words. Deposit, postpone, hold and review
-/// notices do not exist on the server (B-18, B-22, B-19, F12), so none is
-/// shown.
+/// The notices about his account: approved, to fix, refused, stopped, back
+/// in review, a claim decided (B-19). They name no audience, because the
+/// server shows a provider-audience notice only to an operational provider.
+const _accountNoticeTypes = {
+  'PROVIDER_APPROVED',
+  'PROVIDER_NEEDS_CHANGES',
+  'PROVIDER_REJECTED',
+  'PROVIDER_SUSPENDED',
+  'PROVIDER_IN_REVIEW',
+  'PROVIDER_CLAIM_DECIDED',
+};
+
+/// A notice of his: addressed to the provider, or about his account.
+bool isProviderNotice(AarastNotification notice) =>
+    notice.data?['recipientAudience']?.toString() == 'PROVIDER' ||
+    _accountNoticeTypes.contains(notice.type.toUpperCase());
+
+/// p42 «التنبيهات»: his notices, each opening its own screen (B-19): a
+/// request or its booking opens the request (p16, p19), a message its chat,
+/// a review p27, his featured placement «ملفي» (p35), his account the
+/// portal. The line of a request notice is written on the phone from the
+/// request it names (p42 «طلب جديد من سلمى · حفلة نساء · 21 يناير»); any
+/// other keeps the server's words. Deposit, postpone and hold notices do
+/// not exist on the server (B-18, B-22, B-25), so none is shown.
 class ProviderNotificationsScreen extends StatefulWidget {
   const ProviderNotificationsScreen({super.key});
 
@@ -58,7 +74,7 @@ class _ProviderNotificationsScreenState
     final dashboard = context.watch<ProviderDashboardProvider>();
     final mine = [
       for (final notice in notices.notifications)
-        if (notice.data?['recipientAudience']?.toString() == 'PROVIDER') notice,
+        if (isProviderNotice(notice)) notice,
     ];
     return AarastScreenFrame(
       maxWidth: 520,
@@ -174,29 +190,57 @@ ProviderNoticeLook providerNoticeLook(
   ProviderDashboardProvider dashboard,
 ) {
   final type = notice.type.toUpperCase();
-  ProviderNoticeLook server(IconData icon, Color color, Color soft) {
-    final copy = localizeNotification(
-      type: notice.type,
-      title: notice.title,
-      body: notice.body,
-    );
-    return (
-      icon: icon,
-      color: color,
-      soft: soft,
-      title: copy.title,
-      subtitle: copy.body,
-    );
-  }
+  ProviderNoticeLook server(IconData icon, Color color, Color soft) => (
+    icon: icon,
+    color: color,
+    soft: soft,
+    title: notice.title,
+    subtitle: notice.body,
+  );
 
-  if (type == 'CHAT_MESSAGE_RECEIVED') {
-    return (
-      icon: LucideIcons.messageCircle,
-      color: AarastV3Color.primary,
-      soft: AarastV3Color.primarySoft,
-      title: 'رسالة جديدة',
-      subtitle: 'افتح المحادثة',
-    );
+  switch (type) {
+    case 'CHAT_MESSAGE_RECEIVED':
+      return (
+        icon: LucideIcons.messageCircle,
+        color: AarastV3Color.primary,
+        soft: AarastV3Color.primarySoft,
+        title: 'رسالة جديدة',
+        subtitle: 'افتح المحادثة',
+      );
+    // p42 «تقييم جديد · 4 نجوم من محمد»: the server's words, as drawn.
+    case 'REVIEW_RECEIVED':
+      return server(
+        LucideIcons.star,
+        AarastV3Color.brandAccentStrong,
+        AarastV3Color.brandAccentSoft,
+      );
+    case 'LISTING_PLAN_CHANGED':
+      return server(
+        LucideIcons.crown,
+        AarastV3Color.brandAccentStrong,
+        AarastV3Color.brandAccentSoft,
+      );
+    case 'PROVIDER_APPROVED':
+      return server(
+        LucideIcons.badgeCheck,
+        AarastV3Color.mint,
+        AarastV3Color.mintSoft,
+      );
+    case 'PROVIDER_NEEDS_CHANGES':
+    case 'PROVIDER_REJECTED':
+    case 'PROVIDER_SUSPENDED':
+      return server(
+        LucideIcons.alertTriangle,
+        AarastV3Color.danger,
+        AarastV3Color.dangerSoft,
+      );
+    case 'PROVIDER_IN_REVIEW':
+    case 'PROVIDER_CLAIM_DECIDED':
+      return server(
+        LucideIcons.store,
+        AarastV3Color.primary,
+        AarastV3Color.primarySoft,
+      );
   }
   // Without the request the phone cannot name it: the server's words.
   if (quote == null) {
@@ -248,6 +292,15 @@ ProviderNoticeLook providerNoticeLook(
         title: '$first ما اختار عرضك',
         subtitle: requestLine,
       );
+    // B-19: a booking request is its own type.
+    case 'BOOKING_REQUESTED':
+      return (
+        icon: LucideIcons.calendarCheck,
+        color: AarastV3Color.brandAccentStrong,
+        soft: AarastV3Color.brandAccentSoft,
+        title: '$first يشتي يحجز',
+        subtitle: asked ? 'أكّد الحجز' : requestLine,
+      );
     case 'BOOKING_UPDATED':
       final daysUntil = int.tryParse(
         notice.data?['daysUntil']?.toString() ?? '',
@@ -266,18 +319,7 @@ ProviderNoticeLook providerNoticeLook(
           subtitle: requestLine,
         );
       }
-      // The server words a booking notice by its event; its title is the
-      // only field that tells a request from a cancellation (F12).
-      if (notice.title.trim() == 'طلب حجز جديد') {
-        return (
-          icon: LucideIcons.calendarCheck,
-          color: AarastV3Color.brandAccentStrong,
-          soft: AarastV3Color.brandAccentSoft,
-          title: '$first يشتي يحجز',
-          subtitle: asked ? 'أكّد الحجز' : requestLine,
-        );
-      }
-      if (notice.title.trim() == 'أُلغي حجز') {
+      if (notice.data?['bookingEvent']?.toString() == 'CANCELLED') {
         return (
           icon: LucideIcons.calendarX,
           color: AarastV3Color.cobalt,

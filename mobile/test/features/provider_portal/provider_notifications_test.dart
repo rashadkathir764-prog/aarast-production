@@ -14,8 +14,11 @@ import 'provider_requests_test.dart'
     show RequestsApi, bookingJson, offerJson, pumpHarness, quoteJson;
 
 // Provider slice 3 (D39): p42, his notices, each opening its case. Lines
-// are written from the request the notice names; deposit, postpone, hold
-// and review notices do not exist and are never shown.
+// are written from the request the notice names; deposit, postpone and hold
+// notices do not exist and are never shown. B-19: each notice carries the
+// route of its own screen, which the phone opens as written; a booking
+// request is its own type and every booking step names itself. B-09: a new
+// review reads «تقييم جديد» and opens p27.
 
 AarastNotification _notice(
   String id,
@@ -23,8 +26,8 @@ AarastNotification _notice(
   String title = 'عنوان',
   String body = 'نص',
   String? quoteId = 'quote-1',
-  String audience = 'PROVIDER',
-  String routeTarget = '/provider/dashboard',
+  String? audience = 'PROVIDER',
+  String? routeTarget,
   Map<String, dynamic> extra = const {},
   bool read = false,
 }) => AarastNotification.fromJson({
@@ -33,8 +36,14 @@ AarastNotification _notice(
   'type': type,
   'title': title,
   'body': body,
-  'routeTarget': routeTarget,
-  'data': {'quoteRequestId': ?quoteId, 'recipientAudience': audience, ...extra},
+  'routeTarget':
+      routeTarget ??
+      (quoteId == null ? '/provider/dashboard' : '/provider/requests/$quoteId'),
+  'data': {
+    'quoteRequestId': ?quoteId,
+    'recipientAudience': ?audience,
+    ...extra,
+  },
   'readAt': read ? '2026-10-01T10:00:00.000Z' : null,
   'createdAt': '2026-10-01T09:00:00.000Z',
   'updatedAt': '2026-10-01T09:00:00.000Z',
@@ -132,6 +141,17 @@ Future<_NoticesApi> _pump(
         builder: (_, state) =>
             Scaffold(body: Text('محادثة ${state.pathParameters['id']}')),
       ),
+      GoRoute(
+        path: '/provider/reviews/:id',
+        builder: (_, state) =>
+            Scaffold(body: Text('تقييم ${state.pathParameters['id']}')),
+      ),
+      GoRoute(
+        path: '/provider/dashboard',
+        builder: (_, state) => Scaffold(
+          body: Text('البوابة ${state.uri.queryParameters['tab'] ?? ''}'),
+        ),
+      ),
     ],
   );
   addTearDown(router.dispose);
@@ -157,16 +177,17 @@ void main() {
       _notice('n1', 'QUOTE_REQUEST_SUBMITTED'),
       _notice(
         'n2',
-        'BOOKING_UPDATED',
-        title: 'طلب حجز جديد',
+        'BOOKING_REQUESTED',
+        title: 'طلب حجز من محمد',
         quoteId: 'quote-2',
-        extra: {'bookingId': 'booking-2'},
+        extra: {'bookingId': 'booking-2', 'bookingEvent': 'REQUESTED'},
       ),
       _notice(
         'n3',
         'BOOKING_UPDATED',
-        title: 'أُلغي حجز',
+        title: 'انلغى حجز فهد',
         quoteId: 'quote-3',
+        extra: {'bookingEvent': 'CANCELLED'},
         read: true,
       ),
       _notice('n4', 'QUOTE_ACCEPTED', quoteId: 'quote-2', read: true),
@@ -201,7 +222,7 @@ void main() {
     // Unread ones carry the dot.
     expect(find.byKey(const Key('provider-notice-unread-n1')), findsOne);
     expect(find.byKey(const Key('provider-notice-unread-n3')), findsNothing);
-    for (final missing in ['دفعة', 'أجّل', 'المبدئي', 'تقييم']) {
+    for (final missing in ['دفعة', 'أجّل', 'المبدئي']) {
       expect(find.textContaining(missing), findsNothing, reason: missing);
     }
   });
@@ -210,10 +231,10 @@ void main() {
     final api = await _pump(tester, [
       _notice(
         'n2',
-        'BOOKING_UPDATED',
-        title: 'طلب حجز جديد',
+        'BOOKING_REQUESTED',
+        title: 'طلب حجز من محمد',
         quoteId: 'quote-2',
-        extra: {'bookingId': 'booking-2'},
+        extra: {'bookingId': 'booking-2', 'bookingEvent': 'REQUESTED'},
       ),
     ]);
     await tester.tap(find.byKey(const Key('provider-notice-n2')));
@@ -236,6 +257,57 @@ void main() {
     await tester.tap(find.byKey(const Key('provider-notice-n7')));
     await tester.pumpAndSettle();
     expect(find.text('محادثة chat-1'), findsOne);
+  });
+
+  // B-09 (p42): «تقييم جديد · 4 نجوم من خالد» opens p27.
+  testWidgets('a new review reads as p42 draws it and opens p27', (tester) async {
+    await _pump(tester, [
+      _notice(
+        'n9',
+        'REVIEW_RECEIVED',
+        title: 'تقييم جديد',
+        body: '4 نجوم من خالد',
+        quoteId: null,
+        routeTarget: '/provider/reviews/review-1',
+        extra: {'reviewId': 'review-1'},
+      ),
+    ]);
+    expect(find.text('تقييم جديد'), findsOne);
+    expect(find.text('4 نجوم من خالد'), findsOne);
+    await tester.tap(find.byKey(const Key('provider-notice-n9')));
+    await tester.pumpAndSettle();
+    expect(find.text('تقييم review-1'), findsOne);
+  });
+
+  // B-19: his account's notices (no audience: the server shows a provider
+  // notice only to an operational provider) and his featured placement's
+  // are his too, and open the portal or «ملفي».
+  testWidgets('his account and placement notices are his and open their screens', (
+    tester,
+  ) async {
+    await _pump(tester, [
+      _notice(
+        'n10',
+        'PROVIDER_APPROVED',
+        title: 'اعتمدنا ملفك',
+        body: 'ملف الاستوديو صار ظاهر للعرسان.',
+        quoteId: null,
+        audience: null,
+      ),
+      _notice(
+        'n11',
+        'LISTING_PLAN_CHANGED',
+        title: 'تفعّل ظهورك المميز',
+        body: 'من اليوم لين 31 ديسمبر.',
+        quoteId: null,
+        routeTarget: '/provider/dashboard?tab=profile',
+      ),
+    ]);
+    expect(find.text('اعتمدنا ملفك'), findsOne);
+    expect(find.text('تفعّل ظهورك المميز'), findsOne);
+    await tester.tap(find.byKey(const Key('provider-notice-n11')));
+    await tester.pumpAndSettle();
+    expect(find.text('البوابة profile'), findsOne);
   });
 
   testWidgets('a request not in his list keeps the server\'s words', (

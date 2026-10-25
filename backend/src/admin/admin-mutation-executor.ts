@@ -22,7 +22,6 @@ import { PrismaService } from '../platform/database/prisma.service';
 import { runAuthorizedAdminMutation } from '../modules/backoffice/public/admin-mutation-gate';
 import { AdminOwners } from './admin-owners';
 import {
-  toAdminNotificationResponse,
   toAdminReviewResponse,
   toAdminServiceResponse,
   toCategoryAdminResponse,
@@ -247,6 +246,50 @@ export class AdminMutationExecutor {
     );
   }
 
+  /**
+   * B-09 (a10): the team hides the provider's reply like a review, or shows
+   * it again. A reply is PUBLISHED or HIDDEN; the rating does not change.
+   */
+  async updateReviewReplyStatus(
+    currentUser: AuthenticatedUser,
+    id: string,
+    dto: AdminReviewStatusDto,
+  ) {
+    return runAuthorizedAdminMutation(
+      this.prisma,
+      this.owners.accounts,
+      currentUser,
+      AdminPermission.REVIEWS_WRITE,
+      async (tx) => {
+        const providerId = await this.owners.marketplace.findReviewProviderId(tx, id);
+        if (
+          !providerId ||
+          !(await this.owners.marketplace.lockReviewForUpdateInTransaction(tx, id, providerId))
+        ) {
+          throw new NotFoundException('Review not found');
+        }
+        const status = this.parseReviewStatus(dto.status);
+        if (status !== ReviewStatus.PUBLISHED && status !== ReviewStatus.HIDDEN) {
+          throw new BadRequestException('reply status is PUBLISHED or HIDDEN');
+        }
+        const review = await this.owners.marketplace.setReviewReplyStatusInTransaction(
+          tx,
+          id,
+          status,
+        );
+        if (!review) {
+          throw new NotFoundException({
+            statusCode: 404,
+            code: 'REVIEW_REPLY_NOT_FOUND',
+            message: 'Review has no reply',
+          });
+        }
+        const [attached] = await this.owners.attachReviews(tx, [review]);
+        return toAdminReviewResponse(attached!);
+      },
+    );
+  }
+
   async hideReview(currentUser: AuthenticatedUser, id: string) {
     return runAuthorizedAdminMutation(
       this.prisma,
@@ -291,57 +334,6 @@ export class AdminMutationExecutor {
         );
       },
     );
-  }
-
-  async markNotificationRead(currentUser: AuthenticatedUser, id: string) {
-    const notification = await runAuthorizedAdminMutation(
-      this.prisma,
-      this.owners.accounts,
-      currentUser,
-      AdminPermission.NOTIFICATIONS_WRITE,
-      async (tx) => {
-        const read =
-          await this.owners.notifications.markNotificationReadInTransaction(tx, id);
-        if (!read) throw new NotFoundException('Notification not found');
-        const [attached] = await this.owners.attachNotifications(tx, [read]);
-        return attached!;
-      },
-    );
-    return toAdminNotificationResponse(notification);
-  }
-
-  async archiveNotification(currentUser: AuthenticatedUser, id: string) {
-    const notification = await runAuthorizedAdminMutation(
-      this.prisma,
-      this.owners.accounts,
-      currentUser,
-      AdminPermission.NOTIFICATIONS_WRITE,
-      async (tx) => {
-        const archived =
-          await this.owners.notifications.archiveNotificationInTransaction(tx, id);
-        if (!archived) throw new NotFoundException('Notification not found');
-        const [attached] = await this.owners.attachNotifications(tx, [archived]);
-        return attached!;
-      },
-    );
-    return toAdminNotificationResponse(notification);
-  }
-
-  async deleteNotification(currentUser: AuthenticatedUser, id: string) {
-    await runAuthorizedAdminMutation(
-      this.prisma,
-      this.owners.accounts,
-      currentUser,
-      AdminPermission.NOTIFICATIONS_WRITE,
-      async (tx) => {
-        if (
-          !(await this.owners.notifications.deleteNotificationInTransaction(tx, id))
-        ) {
-          throw new NotFoundException('Notification not found');
-        }
-      },
-    );
-    return { id, deleted: true };
   }
 
   async createCategory(

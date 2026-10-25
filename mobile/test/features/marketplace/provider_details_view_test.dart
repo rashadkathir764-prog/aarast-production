@@ -141,6 +141,36 @@ void main() {
     expect(retries, 1);
   });
 
+  // B-09: the published reviews with the provider's published reply under
+  // each (f03 draws no list; undrawn, built on the journey kit).
+  testWidgets('the reviews read with the provider reply under each', (tester) async {
+    await _pumpView(
+      tester,
+      reviews: [
+        ProviderReview(
+          id: 'review-1',
+          rating: 4,
+          userName: 'خالد',
+          comment: 'الفيلم وصل بعد أسبوعين بالضبط',
+          reply: const ProviderReviewReply(body: 'شكرًا يا خالد، ونعتذر عن التأخير.'),
+        ),
+        const ProviderReview(id: 'review-2', rating: 5, userName: 'سالم'),
+        const ProviderReview(id: 'review-3', rating: 1, status: 'HIDDEN'),
+      ],
+    );
+    await tester.scrollUntilVisible(
+      find.byKey(const ValueKey('provider-details-review-reply-review-1')),
+      300,
+    );
+    expect(find.text('التقييمات'), findsOneWidget);
+    expect(find.text('«الفيلم وصل بعد أسبوعين بالضبط»'), findsOneWidget);
+    expect(find.text('رد استوديو ضوء صنعاء'), findsOneWidget);
+    expect(find.text('شكرًا يا خالد، ونعتذر عن التأخير.'), findsOneWidget);
+    expect(find.byKey(const ValueKey('provider-details-review-review-2')), findsOneWidget);
+    // A review the team hid is not shown.
+    expect(find.byKey(const ValueKey('provider-details-review-review-3')), findsNothing);
+  });
+
   testWidgets('f03 stays readable at 320px and 1.3 text', (tester) async {
     await _pumpView(tester, width: 320, textScale: 1.3, withinBudget: true);
 
@@ -236,6 +266,7 @@ Future<void> _pumpView(
   double width = 384,
   double textScale = 1,
   bool dataSaver = false,
+  List<ProviderReview> reviews = const [],
 }) async {
   tester.view.devicePixelRatio = 1;
   tester.view.physicalSize = Size(width, 1400);
@@ -264,6 +295,7 @@ Future<void> _pumpView(
             onRetryDetails: onRetryDetails,
             now: _now,
             dataSaver: dataSaver,
+            reviews: reviews,
           ),
         ),
       ),

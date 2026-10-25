@@ -35,7 +35,9 @@ const EXACT = Object.freeze({
   // Re-pinned 2026-10-25: providers gained the featured placements, their
   // summary, recording one and ending one (B-43).
   // Re-pinned 2026-10-25: the notifications surface left with its page (D56).
-  publicSurfaces: 'a48087fa19c75b9b2520d49d795ea7400c5e6cbdfc890282b8afbfa1a6338f38',
+  // Re-pinned 2026-10-25: moderation gained updateReviewReplyStatus, a10's
+  // «أخفِ الرد» / «أظهر الرد» (B-09); no other surface changed.
+  publicSurfaces: '4009225e114173fb0c91602864ba502ca3ab13efa373a7467a34cda870ddc879',
   // Re-pinned 2026-10-25 (D56): 19 old-kit components and the 2 tests that
   // belonged only to them (DataTable, SearchInput) changed fate from move to
   // delete; no other fate changed.

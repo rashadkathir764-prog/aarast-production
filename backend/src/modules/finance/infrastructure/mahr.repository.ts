@@ -33,10 +33,12 @@ export function mahrNotForPlan(): ConflictException {
   });
 }
 
+// D55: a refusal has no reader to address, so its words are the same for
+// the groom and the bride: a statement, never a command in one gender.
 function mahrAlreadyRecorded(): ConflictException {
   return new ConflictException({
     code: 'MAHR_ALREADY_RECORDED',
-    message: 'المهر مسجّل في هذي الخطة. عدّله من المال.',
+    message: 'المهر مسجّل في هذي الخطة، وتعديله يكون من المال.',
   });
 }
 

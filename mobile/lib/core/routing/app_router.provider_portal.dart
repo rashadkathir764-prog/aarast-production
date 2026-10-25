@@ -31,6 +31,18 @@ List<RouteBase> _providerPortalRoutes() => [
       child: ProviderRequestScreen(quoteId: state.pathParameters['id']!),
     ),
   ),
+  // p27 (B-09): a review of his and his one reply; the notice «تقييم جديد»
+  // opens it.
+  GoRoute(
+    path: '/provider/reviews/:id',
+    builder: (context, state) => ProviderAuthGate(
+      resumeLocation: state.uri.toString(),
+      registerAsProvider: true,
+      providerAccountRequired: true,
+      providerOperationsRequired: true,
+      child: ProviderReviewScreen(reviewId: state.pathParameters['id']!),
+    ),
+  ),
   GoRoute(
     path: '/provider/requests/:id/offer',
     builder: (context, state) => ProviderAuthGate(

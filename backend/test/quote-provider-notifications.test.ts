@@ -198,7 +198,8 @@ test("a new quote request notifies the provider account too", async () => {
   );
   assert.equal(toProvider.type, "QUOTE_REQUEST_SUBMITTED");
   assert.equal(toProvider.priority, "HIGH");
-  assert.equal(toProvider.routeTarget, "/provider/dashboard");
+  // B-19: the provider's notice opens the request itself (p16).
+  assert.equal(toProvider.routeTarget, `/provider/requests/${QUOTE_ID}`);
   assert.equal(
     toProvider.body.includes(quoteRow(PROVIDER_USER_ID).contactName),
     false,
@@ -786,12 +787,13 @@ test("accepting an offer atomically creates one linked cost and is idempotent", 
   );
   assert.equal(
     toRequester.routeTarget,
-    `/providers?quoteId=${QUOTE_ID}`,
-    "accepted-offer notification returns to the exact marketplace quote",
+    // B-19: the plan's request page (f04) for a request of the plan.
+    `/wedding-plans/${PLAN_ID}/providers/requests?quote=${QUOTE_ID}`,
+    "accepted-offer notification returns to the exact quote",
   );
   assert.equal(toProvider.type, "QUOTE_ACCEPTED");
   assert.equal(toProvider.priority, "HIGH");
-  assert.equal(toProvider.routeTarget, "/provider/dashboard");
+  assert.equal(toProvider.routeTarget, `/provider/requests/${QUOTE_ID}`);
   assert.ok(
     toProvider.dedupeKey.includes(OFFER_ID),
     "dedupe is per accepted offer",
@@ -968,7 +970,7 @@ test("rejecting an offer notifies the provider rather than the requester", async
   assert.equal(sent[0].type, "QUOTE_REJECTED");
   assert.equal(sent[0].userId, PROVIDER_USER_ID);
   assert.notEqual(sent[0].userId, requester.id);
-  assert.equal(sent[0].routeTarget, "/provider/dashboard");
+  assert.equal(sent[0].routeTarget, `/provider/requests/${QUOTE_ID}`);
 });
 
 test("rejecting an offer succeeds when the provider has no linked user", async () => {
@@ -1106,5 +1108,5 @@ test("a received provider offer opens its exact marketplace quote", async () => 
 
   assert.equal(sent.length, 1);
   assert.equal(sent[0].type, "QUOTE_OFFER_RECEIVED");
-  assert.equal(sent[0].routeTarget, `/providers?quoteId=${QUOTE_ID}`);
+  assert.equal(sent[0].routeTarget, `/wedding-plans/${PLAN_ID}/providers/requests?quote=${QUOTE_ID}`);
 });

@@ -15,6 +15,7 @@ import { isQuoteOfferExpired } from "./quote-offer-expiry";
 import { quoteOfferVersionView } from "../modules/marketplace/public/quote-offer-versions";
 import { featuredNowConditions, featuredUntil, listedProviderConditions, notFeaturedNowCondition } from "../modules/marketplace/public/featured-placement";
 import { toReviewIdentity } from "../shared-kernel/privacy/review-identity";
+import { publicReviewReply } from "../modules/marketplace/public/review-reply";
 import { optionalMoneyAmount } from "../shared-kernel/money/money";
 import { weddingLocationResponse } from "../modules/planning/public/wedding-location";
 import {
@@ -488,6 +489,8 @@ export class MarketplacePresenter {
       rating: review.rating,
       comment: review.comment,
       status: review.status,
+      // B-09: the provider's reply, once published.
+      reply: publicReviewReply(review),
       createdAt: review.createdAt,
       updatedAt: review.updatedAt,
     };

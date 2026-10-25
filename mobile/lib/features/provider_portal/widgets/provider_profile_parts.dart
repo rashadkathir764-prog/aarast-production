@@ -1,12 +1,19 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 
 import '../../../core/experience_v3/aarast_v3.dart';
+import '../../../core/routing/app_router.dart';
+import '../../../core/widgets/aarast_ui.dart';
 import '../../../core/utils/arabic_count.dart';
 import '../../../core/utils/arabic_date_formatter.dart';
 import '../../../core/utils/currency_label.dart';
 import '../../marketplace/marketplace_api.dart'
-    show MarketplaceService, ProviderPackage, ProviderReview;
+    show
+        MarketplaceService,
+        ProviderPackage,
+        ProviderReview,
+        ProviderReviewReply;
 import 'provider_request_parts.dart' show providerGroupedAmount;
 
 /// «قبل أسبوعين»: how long ago, in the words p36 and p35 use.
@@ -145,10 +152,10 @@ String? providerPricesCurrencyLine(
 
 /// p35 «التقييمات»: the published reviews, as customers read them on his
 /// page (D35), and how many are not shown. Each card is p27's: the name,
-/// the stars and the words in quotes. The server keeps no occasion, tags,
-/// reply or report (F15; B-09, B-28), so the card says when the review was
-/// written instead of «الزفة · 21 يناير», and no reply box or «بلّغ عنه» is
-/// offered.
+/// the stars and the words in quotes, with his reply under it (B-09); a
+/// card opens p27, where he replies once. The server keeps no occasion or
+/// tags (F15) and no reports (B-28), so the card says when the review was
+/// written instead of «الزفة · 21 يناير», and no «بلّغ عنه» is offered.
 class ProviderReviewsSheet extends StatelessWidget {
   const ProviderReviewsSheet({required this.all, super.key});
 
@@ -180,7 +187,18 @@ class ProviderReviewsSheet extends StatelessWidget {
           )
         else
           for (final review in reviews) ...[
-            ProviderReviewCard(review: review),
+            AarastPressable(
+              key: Key('provider-review-open-${review.id}'),
+              onTap: () {
+                Navigator.of(context).pop();
+                context.push(AppRouter.providerReview(review.id));
+              },
+              child: ProviderReviewCard(review: review),
+            ),
+            if (review.reply case final reply?) ...[
+              const SizedBox(height: 6),
+              ProviderReviewReplyBox(reply: reply),
+            ],
             const SizedBox(height: 8),
           ],
       ],
@@ -258,6 +276,47 @@ class ProviderReviewCard extends StatelessWidget {
               style: JourneyType.of(JourneyType.body, height: 1.6),
             ),
           ],
+        ],
+      ),
+    );
+  }
+}
+
+/// p27's «ردك» once he replied: his words as customers read them under the
+/// review, or that the team hid them (a10).
+class ProviderReviewReplyBox extends StatelessWidget {
+  const ProviderReviewReplyBox({required this.reply, super.key});
+
+  final ProviderReviewReply reply;
+
+  @override
+  Widget build(BuildContext context) {
+    return JourneyBox(
+      key: const Key('provider-review-reply'),
+      borderColor: AarastV3Color.primary,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            reply.isHidden
+                ? 'ردك · فريق اعّرست أخفاه، فما يشوفه العرسان'
+                : 'ردك · يشوفه الكل تحت التقييم',
+            style: JourneyType.of(
+              JourneyType.small,
+              color: reply.isHidden
+                  ? AarastV3Color.danger
+                  : AarastV3Color.textMuted,
+            ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            reply.body,
+            style: JourneyType.of(
+              JourneyType.bodyLarge,
+              weight: JourneyType.bold,
+              height: 1.5,
+            ),
+          ),
         ],
       ),
     );

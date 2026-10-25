@@ -13,10 +13,11 @@ import '../../../core/widgets/aarast_ui.dart';
 import '../../account_contexts/account_contexts_api.dart'
     show AccountContextController, AccountContextRole;
 import '../../auth/auth_api.dart' show AuthActionGuard, AuthGatePanel;
+import '../../finance/finance_api.dart' show FinanceProvider;
 import '../models/aarast_notification.dart';
 import '../providers/notifications_provider.dart';
 import '../utils/notification_route_policy.dart';
-import '../utils/notification_copy.dart';
+import '../utils/notification_line.dart';
 
 class NotificationsScreen extends StatefulWidget {
   const NotificationsScreen({this.weddingPlanId, super.key});
@@ -436,10 +437,12 @@ class _NotificationRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final tone = _tone(notification.type, context.accent);
-    final copy = localizeNotification(
-      type: notification.type,
+    final hideAmounts = context.select<FinanceProvider?, bool>(
+      (finance) => finance?.amountsHidden ?? false,
+    );
+    final copy = (
       title: notification.title,
-      body: notification.body,
+      body: notificationLine(notification, hideAmounts: hideAmounts),
     );
     final urgent = notification.priority.toUpperCase() == 'URGENT';
     final when = notificationWhenLabel(notification.createdAt, DateTime.now());
@@ -457,6 +460,7 @@ class _NotificationRow extends StatelessWidget {
         const CustomSemanticsAction(label: 'أرشفة التنبيه'): onArchive,
       },
       child: AarastPressable(
+        key: ValueKey('notification-${notification.id}'),
         onTap: onTap,
         child: Padding(
           padding: const EdgeInsets.fromLTRB(16, 14, 8, 14),

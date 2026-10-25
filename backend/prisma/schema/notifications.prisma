@@ -24,6 +24,22 @@ enum NotificationType {
   GUEST_RESPONDED
   // B-04 (named in B-19): a request the provider has not answered ends tomorrow.
   QUOTE_REQUEST_EXPIRING
+  // B-19: each notice its own type, so each opens its own screen.
+  // The provider: a booking request (BOOKING_UPDATED keeps the other steps).
+  BOOKING_REQUESTED
+  // B-09: a new review for the provider; the provider's reply for the reviewer.
+  REVIEW_RECEIVED
+  REVIEW_REPLIED
+  // The provider's account: approved, to fix, refused, stopped, back in review.
+  PROVIDER_APPROVED
+  PROVIDER_NEEDS_CHANGES
+  PROVIDER_REJECTED
+  PROVIDER_SUSPENDED
+  PROVIDER_IN_REVIEW
+  // B-12: a claim of a listing approved or refused.
+  PROVIDER_CLAIM_DECIDED
+  // B-43: his featured placement started, booked, ending, ended, stopped or cancelled.
+  LISTING_PLAN_CHANGED
 }
 
 enum NotificationPriority {

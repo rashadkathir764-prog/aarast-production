@@ -321,7 +321,8 @@ async function run() {
         type: 'QUOTE_REJECTED',
       },
     });
-    check('requester rejection notifies the provider account', requesterRejectionNotification?.routeTarget === '/provider/dashboard');
+    // B-19: the provider's notice opens the request itself.
+    check('requester rejection notifies the provider account', requesterRejectionNotification?.routeTarget === `/provider/requests/${offerCycleId}`);
     check('requester rejection does not notify the actor', wrongRequesterNotificationCount === 0);
 
     const expiredCycle = await createPlanQuote({

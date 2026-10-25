@@ -266,6 +266,14 @@ export class MarketplaceAdminService implements MarketplaceAdminPort {
     return this.repository.setReviewStatusInTransaction(tx, reviewId, status);
   }
 
+  async setReviewReplyStatusInTransaction(
+    tx: Prisma.TransactionClient,
+    reviewId: string,
+    status: ReviewStatus,
+  ): Promise<AdminReviewRow | null> {
+    return this.repository.setReviewReplyStatusInTransaction(tx, reviewId, status);
+  }
+
   async countCategoryUsage(
     client: Prisma.TransactionClient,
     categoryIds: readonly string[],

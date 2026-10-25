@@ -98,8 +98,14 @@ import {
   textFor,
 } from "../shared-kernel/voice/address-form";
 import {
+  addressDueNotice,
   budgetCategoryExceededRow,
+  type DueNotice,
   loanRepaymentRow,
+  paymentDueNotice,
+  taskDueContent,
+  taskDueKey,
+  taskDueNotice,
   weddingCountdownRow,
 } from "./plan-reminders";
 import {
@@ -680,27 +686,13 @@ export class NotificationsService implements NotificationsPort {
     dueWindowEnd.setDate(dueWindowEnd.getDate() + 7);
     if (task.dueDate > endOfRiyadhDay(dueWindowEnd)) return null;
 
-    const overdue = task.dueDate < today;
-    const type = overdue
-      ? NotificationType.TASK_OVERDUE
-      : NotificationType.TASK_DUE_SOON;
-    return {
-      type,
-      title: overdue ? "مهمة متأخرة" : "مهمة قريبة",
-      body: `${task.title} - ${overdue ? "تجاوزت موعدها" : "تستحق قريباً"} (${this.formatDate(task.dueDate)}).`,
-      data: {
-        taskId: task.id,
-        weddingPlanId: task.weddingPlanId,
-        dueDate: task.dueDate.toISOString(),
-      },
-      priority: overdue
-        ? NotificationPriority.HIGH
-        : NotificationPriority.NORMAL,
-      entityType: "task",
-      entityId: task.id,
-      routeTarget: `/wedding-plans/${task.weddingPlanId}/tasks`,
-      dedupeKey: `${type}:task:${task.id}`,
-    };
+    // The hourly scan's words; each reader's key adds the reader
+    // (createForPlanParticipantsAtomically).
+    const { weddingPlanId: _planId, ...content } = taskDueContent(
+      { id: task.id, weddingPlanId: task.weddingPlanId, title: task.title, dueDate: task.dueDate },
+      today,
+    );
+    return { ...content, dedupeKey: taskDueKey(content.type, task.id) };
   }
 
   async generateDueNotifications(): Promise<number | null> {
@@ -854,14 +846,11 @@ export class NotificationsService implements NotificationsPort {
         const preferencesByUserId = new Map(
           preferences.map((preference) => [preference.userId, preference]),
         );
-        const rows: DueNotificationRow[] = [];
+        const rows: DueNotice[] = [];
         for (const task of tasks) {
           const plan = plansById.get(task.weddingPlanId);
           if (!plan || !task.dueDate) continue;
-          const overdue = task.dueDate < today;
-          const type = overdue
-            ? NotificationType.TASK_OVERDUE
-            : NotificationType.TASK_DUE_SOON;
+          const dueDate = task.dueDate;
           const planTaskRecipients = new Set([
             plan.ownerUserId,
             ...plan.sharedMembers
@@ -893,35 +882,19 @@ export class NotificationsService implements NotificationsPort {
             ) {
               continue;
             }
-            rows.push({
-              userId,
-              weddingPlanId: plan.id,
-              type,
-              priority: overdue
-                ? NotificationPriority.HIGH
-                : NotificationPriority.NORMAL,
-              title: overdue ? "مهمة متأخرة" : "مهمة قريبة",
-              body: `${task.title} - ${overdue ? "تجاوزت موعدها" : "تستحق قريباً"} (${this.formatDate(task.dueDate)}).`,
-              data: {
-                taskId: task.id,
-                weddingPlanId: plan.id,
-                dueDate: task.dueDate.toISOString(),
-              },
-              entityType: "task",
-              entityId: task.id,
-              routeTarget: `/wedding-plans/${plan.id}/tasks`,
-              dedupeKey: `${userId}:${type}:task:${task.id}`,
-            });
+            rows.push(
+              taskDueNotice(
+                userId,
+                { id: task.id, weddingPlanId: plan.id, title: task.title, dueDate },
+                today,
+              ),
+            );
           }
         }
 
         for (const schedule of paymentSchedules) {
           const plan = plansById.get(schedule.weddingCost.weddingPlanId);
           if (!plan) continue;
-          const overdue = schedule.dueDate < today;
-          const type = overdue
-            ? NotificationType.PAYMENT_SCHEDULE_OVERDUE
-            : NotificationType.PAYMENT_SCHEDULE_DUE_SOON;
           const planRecipients = [
             plan.ownerUserId,
             ...plan.sharedMembers
@@ -950,36 +923,22 @@ export class NotificationsService implements NotificationsPort {
               continue;
             }
             const isOwnerRecipient = userId === plan.ownerUserId;
-            rows.push({
-              userId,
-              weddingPlanId: plan.id,
-              type,
-              priority: overdue
-                ? NotificationPriority.HIGH
-                : NotificationPriority.NORMAL,
-              title: overdue ? "موعد دفع متأخر" : "موعد دفع قريب",
-              body: isOwnerRecipient
-                ? `${schedule.weddingCost.title} - دفعة بقيمة ${schedule.amount.toString()} ${overdue ? "متأخرة" : "تستحق قريباً"} (${this.formatDate(schedule.dueDate)}).`
-                : `لديك موعد دفع ${overdue ? "متأخر" : "قريب"} (${this.formatDate(schedule.dueDate)}). افتح تبويب المال لعرض التفاصيل.`,
-              data: {
-                paymentScheduleId: schedule.id,
-                weddingCostId: schedule.weddingCostId,
-                weddingPlanId: plan.id,
-                dueDate: schedule.dueDate.toISOString(),
-                ...(isOwnerRecipient
+            rows.push(
+              paymentDueNotice(
+                userId,
+                schedule,
+                plan,
+                today,
+                isOwnerRecipient
                   ? {
                       partyName:
                         (schedule.weddingCost.providerId
                           ? providerNames.get(schedule.weddingCost.providerId)
                           : undefined) ?? schedule.weddingCost.partyName,
                     }
-                  : {}),
-              },
-              entityType: "payment_schedule",
-              entityId: schedule.id,
-              routeTarget: `/wedding-plans/${plan.id}/money/costs/${schedule.weddingCostId}/schedules/${schedule.id}`,
-              dedupeKey: `${userId}:${type}:payment-schedule:${schedule.id}`,
-            });
+                  : null,
+              ),
+            );
           }
         }
 
@@ -1000,11 +959,17 @@ export class NotificationsService implements NotificationsPort {
         };
         for (const category of exceededCategories) {
           const ownerUserId = ownerWants(category.weddingPlanId, "paymentRemindersEnabled");
-          if (ownerUserId) rows.push(budgetCategoryExceededRow(ownerUserId, category));
+          const plan = plansById.get(category.weddingPlanId);
+          if (ownerUserId && plan) {
+            rows.push(budgetCategoryExceededRow(ownerUserId, category, plan.currency));
+          }
         }
         for (const repayment of dueLoanRepayments) {
           const ownerUserId = ownerWants(repayment.weddingPlanId, "paymentRemindersEnabled");
-          if (ownerUserId) rows.push(loanRepaymentRow(ownerUserId, repayment, today));
+          const plan = plansById.get(repayment.weddingPlanId);
+          if (ownerUserId && plan) {
+            rows.push(loanRepaymentRow(ownerUserId, repayment, today, plan.currency));
+          }
         }
         for (const plan of lockedPlans) {
           const recipients = new Set([
@@ -1021,7 +986,20 @@ export class NotificationsService implements NotificationsPort {
         }
 
         if (rows.length === 0) return 0;
-        const created = await this.repository.createDueNotifications(tx, rows);
+        // D55: each reminder in its reader's form, by the same rule as every
+        // single notice (`recipientAddressForm`, `textFor`).
+        const forms = new Map<string, AddressForm>();
+        const written: DueNotificationRow[] = [];
+        for (const row of rows) {
+          const key = this.planRecipientScopeKey(row.weddingPlanId, row.userId);
+          let form = forms.get(key);
+          if (!form) {
+            form = await this.recipientAddressForm(tx, row.userId, row.weddingPlanId);
+            forms.set(key, form);
+          }
+          written.push(addressDueNotice(row, form));
+        }
+        const created = await this.repository.createDueNotifications(tx, written);
         for (const notification of created) {
           await this.enqueueNotificationDelivery(tx, notification);
         }
@@ -1054,6 +1032,9 @@ export class NotificationsService implements NotificationsPort {
       case NotificationType.QUOTE_REJECTED:
       case NotificationType.CHAT_MESSAGE_RECEIVED:
       case NotificationType.BOOKING_UPDATED:
+      case NotificationType.BOOKING_REQUESTED:
+      case NotificationType.REVIEW_RECEIVED:
+      case NotificationType.REVIEW_REPLIED:
         return "providerMessagesEnabled";
       default:
         return null;
@@ -1958,11 +1939,6 @@ export class NotificationsService implements NotificationsPort {
       throw new BadRequestException(`${field} must be a positive integer`);
     }
     return parsed;
-  }
-
-  private formatDate(date: Date | null): string {
-    if (!date) return "بدون تاريخ";
-    return `${date.getUTCDate()}/${date.getUTCMonth() + 1}/${date.getUTCFullYear()}`;
   }
 
   private toResponse(notification: Notification): NotificationResponse {

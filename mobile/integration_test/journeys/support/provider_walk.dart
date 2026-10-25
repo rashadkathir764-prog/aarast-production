@@ -21,6 +21,47 @@ Future<void> runStudioWalk(WidgetTester tester) async {
     walk.expectSee('ردّ الآن');
   });
 
+  // p42 (B-19, B-38, B-09): his notices in the app's words, each opening its
+  // own screen; «تقييم جديد» opens p27 with his one reply.
+  await walk.step('p42_notifications', 'التنبيهات', () async {
+    if (!await walk.tapKey('provider-home-notifications', wait: 3)) return;
+    walk.expectSee('كل واحد يفتح طلبه');
+    walk.expectSee('طلب جديد من سلمى');
+    walk.expectSee('تقييم جديد');
+    walk.expectSee('4 نجوم من خالد');
+    for (final line in walk.visibleTexts()) {
+      if (RegExp(r'\d{4,}\b').hasMatch(line.replaceAll(',', '§')) ||
+          RegExp(r'\d{1,2}/\d{1,2}/\d{4}').hasMatch(line) ||
+          RegExp(r'\d{4}-\d{2}-\d{2}').hasMatch(line) ||
+          RegExp(r'[A-Za-z]').hasMatch(line)) {
+        walk.fail('تنبيه بنص خام: «$line»');
+        break;
+      }
+    }
+    for (final word in ['مورد', 'بوابة', 'المزوّد']) {
+      walk.expectNotSee(word, why: 'كلمات التنبيهات كلمات التطبيق (B-38)');
+    }
+  });
+
+  await walk.step('p42_open_each', 'كل تنبيه يفتح شاشته', () async {
+    final home = walk.currentLocation();
+    if (home == null) {
+      walk.fail('ما عرفنا مكان شاشة التنبيهات');
+      return;
+    }
+    await walk.openEachNotice(keyPrefix: 'provider-notice-', home: home);
+  });
+
+  await walk.step('p27_review', 'تقييم خالد ورد الاستوديو', () async {
+    if (!await walk.tapText('تقييم جديد', wait: 3)) return;
+    walk.expectSee('خالد');
+    walk.expectSee('الفيلم وصل بعد أسبوعين بالضبط');
+    walk.expectSee('ردك · يشوفه الكل تحت التقييم');
+    walk.expectSee('شكرًا يا خالد');
+  });
+  await walk.back();
+  await walk.back();
+
   await walk.step('p15_requests_new', 'الطلبات: جديد', () async {
     await walk.tab('الطلبات');
     walk.expectSee('ينتظرون ردك');

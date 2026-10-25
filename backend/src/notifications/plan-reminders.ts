@@ -1,51 +1,195 @@
 import { NotificationPriority, NotificationType } from "@prisma/client";
 import type {
   DueLoanRepayment,
+  DuePaymentSchedule,
   ExceededBudgetCategory,
 } from "../modules/finance/public/finance.port";
 import type { DueNotificationRow } from "../modules/notifications/infrastructure/notifications.repository";
 import { startOfRiyadhDay } from "../shared-kernel/time/business-day";
+import { noticeRoutes } from "../shared-kernel/routes/notification-routes";
+import {
+  type AddressedText,
+  type AddressForm,
+  textFor,
+} from "../shared-kernel/voice/address-form";
+import {
+  dayCountWords,
+  daysBetween,
+  weekdayDayMonthWords,
+  whenWords,
+} from "../shared-kernel/voice/day-words";
 
-// The hourly reminder scan's plan-level reminders (V1 checklist 4.8, 4.17):
-// a budget category over its allocation, a loan repayment coming due, and
-// the wedding countdown. Each row's dedupe key makes the scan idempotent.
+// The hourly reminder scan's reminders (V1 checklist 4.8, 4.17): a task or a
+// payment coming due, a budget item over its allocation, a loan repayment
+// coming due, and the wedding countdown. Each row's dedupe key makes the
+// scan idempotent.
+//
+// B-38: the words are the app's: a day reads «الجمعة 30 أكتوبر», a distance
+// «بكرة» or «بعد 5 أيام», and no notice text carries an amount. A money
+// reminder carries its amount in `data` (`amount`, `currency`) for a reader
+// with money rights; the phone writes it the app's one way and leaves it
+// out under «أخفِ المبالغ» (a setting that lives on the phone only).
+//
+// D55: every reminder is written in its reader's form; a row's words may
+// come in two forms and `addressDueNotice` picks the reader's, the same
+// `textFor` every single notice goes through.
 
 const DAY_MS = 24 * 60 * 60 * 1000;
+
+/** A reminder before it is written for its reader: its words may have two forms. */
+export type DueNotice = Omit<DueNotificationRow, "title" | "body"> & {
+  title: AddressedText;
+  body: AddressedText;
+};
+
+/** The reminder in its reader's form, ready to write. */
+export function addressDueNotice(
+  notice: DueNotice,
+  form: AddressForm,
+): DueNotificationRow {
+  return {
+    ...notice,
+    title: textFor(form, notice.title),
+    body: textFor(form, notice.body),
+  };
+}
 
 /** The countdown reminds once inside each window: a month, a week, a day. */
 export const WEDDING_COUNTDOWN_MILESTONES = [30, 7, 1] as const;
 
-export function formatReminderDate(date: Date): string {
-  return `${date.getUTCDate()}/${date.getUTCMonth() + 1}/${date.getUTCFullYear()}`;
+/** A task due within the window or overdue, for one reader. */
+export function taskDueNotice(
+  userId: string,
+  task: { id: string; weddingPlanId: string; title: string; dueDate: Date },
+  today: Date,
+): DueNotice {
+  const content = taskDueContent(task, today);
+  return {
+    ...content,
+    userId,
+    dedupeKey: `${userId}:${taskDueKey(content.type, task.id)}`,
+  };
+}
+
+/** The reader-free part of a task's reminder key (each reader's key adds the reader). */
+export function taskDueKey(type: NotificationType, taskId: string): string {
+  return `${type}:task:${taskId}`;
+}
+
+/** What a task's reminder says and opens, whoever reads it. */
+export function taskDueContent(
+  task: { id: string; weddingPlanId: string; title: string; dueDate: Date },
+  today: Date,
+): Omit<DueNotice, "userId" | "dedupeKey"> {
+  const days = daysBetween(today, task.dueDate);
+  const overdue = days < 0;
+  const type = overdue
+    ? NotificationType.TASK_OVERDUE
+    : NotificationType.TASK_DUE_SOON;
+  const day = weekdayDayMonthWords(task.dueDate);
+  return {
+    weddingPlanId: task.weddingPlanId,
+    type,
+    priority: overdue ? NotificationPriority.HIGH : NotificationPriority.NORMAL,
+    title: overdue ? "مهمة متأخرة" : `مهمة ${whenWords(days)}`,
+    body: overdue
+      ? `${task.title} · كان موعدها ${day}`
+      : `${task.title} · ${day}`,
+    data: {
+      taskId: task.id,
+      weddingPlanId: task.weddingPlanId,
+      dueDate: task.dueDate.toISOString(),
+    },
+    entityType: "task",
+    entityId: task.id,
+    routeTarget: noticeRoutes.task(task.weddingPlanId, task.id),
+  };
 }
 
 /**
- * An over-budget category, for the plan owner only: a contributor's money
- * view covers just the categories they created, so a plan-wide alert would
- * tell them more than their summary does. The key carries the allocation, so
- * raising it and overspending again alerts again.
+ * A payment date coming due or overdue. The owner reads which agreement and
+ * its amount (in `data`); another member with money rights reads only that
+ * a payment is due (V1 checklist 4.10: no name or amount of a cost that is
+ * not theirs to see whole).
+ */
+export function paymentDueNotice(
+  userId: string,
+  schedule: DuePaymentSchedule,
+  plan: { id: string; currency: string },
+  today: Date,
+  owner: { partyName: string | null } | null,
+): DueNotice {
+  const days = daysBetween(today, schedule.dueDate);
+  const overdue = days < 0;
+  const type = overdue
+    ? NotificationType.PAYMENT_SCHEDULE_OVERDUE
+    : NotificationType.PAYMENT_SCHEDULE_DUE_SOON;
+  const day = weekdayDayMonthWords(schedule.dueDate);
+  const title = owner
+    ? overdue
+      ? `دفعة ${schedule.weddingCost.title} متأخرة`
+      : `دفعة ${schedule.weddingCost.title} ${whenWords(days)}`
+    : overdue
+      ? "موعد دفع متأخر"
+      : `موعد دفع ${whenWords(days)}`;
+  const when = overdue ? `كان موعدها ${day}` : day;
+  return {
+    userId,
+    weddingPlanId: plan.id,
+    type,
+    priority: overdue ? NotificationPriority.HIGH : NotificationPriority.NORMAL,
+    title,
+    body: owner ? when : `${when} · التفاصيل في المال`,
+    data: {
+      paymentScheduleId: schedule.id,
+      weddingCostId: schedule.weddingCostId,
+      weddingPlanId: plan.id,
+      dueDate: schedule.dueDate.toISOString(),
+      ...(owner
+        ? {
+            amount: schedule.amount.toString(),
+            currency: plan.currency,
+            ...(owner.partyName ? { partyName: owner.partyName } : {}),
+          }
+        : {}),
+    },
+    entityType: "payment_schedule",
+    entityId: schedule.id,
+    routeTarget: noticeRoutes.cost(plan.id, schedule.weddingCostId),
+    dedupeKey: `${userId}:${type}:payment-schedule:${schedule.id}`,
+  };
+}
+
+/**
+ * An over-budget item, for the plan owner only: a contributor's money view
+ * covers just the items they created, so a plan-wide alert would tell them
+ * more than their summary does. The key carries the allocation, so raising
+ * it and overspending again alerts again. `amount` is by how much it is over.
  */
 export function budgetCategoryExceededRow(
   ownerUserId: string,
   category: ExceededBudgetCategory,
-): DueNotificationRow {
+  currency: string,
+): DueNotice {
   const over = category.committedAmount.minus(category.allocatedAmount);
   return {
     userId: ownerUserId,
     weddingPlanId: category.weddingPlanId,
     type: NotificationType.BUDGET_CATEGORY_EXCEEDED,
     priority: NotificationPriority.HIGH,
-    title: "تجاوز بند في الميزانية",
-    body: `بند ${category.name} تجاوز المخطط (${category.allocatedAmount.toString()}) بمبلغ ${over.toString()}.`,
+    title: `بند ${category.name} فات المخطط له`,
+    body: "اتفاقاته صارت أكثر من المخطط.",
     data: {
       budgetCategoryId: category.id,
       weddingPlanId: category.weddingPlanId,
+      amount: over.toString(),
+      currency,
       allocatedAmount: category.allocatedAmount.toString(),
       committedAmount: category.committedAmount.toString(),
     },
     entityType: "budget_category",
     entityId: category.id,
-    routeTarget: `/wedding-plans/${category.weddingPlanId}/money`,
+    routeTarget: noticeRoutes.budgetItem(category.weddingPlanId, category.id),
     dedupeKey: `${ownerUserId}:${NotificationType.BUDGET_CATEGORY_EXCEEDED}:budget-category:${category.id}:${category.allocatedAmount.toFixed()}`,
   };
 }
@@ -55,26 +199,33 @@ export function loanRepaymentRow(
   ownerUserId: string,
   repayment: DueLoanRepayment,
   today: Date,
-): DueNotificationRow {
-  const overdue = repayment.dueDate < today;
+  currency: string,
+): DueNotice {
+  const days = daysBetween(today, repayment.dueDate);
+  const overdue = days < 0;
   const type = overdue
     ? NotificationType.LOAN_REPAYMENT_OVERDUE
     : NotificationType.LOAN_REPAYMENT_DUE_SOON;
+  const day = weekdayDayMonthWords(repayment.dueDate);
   return {
     userId: ownerUserId,
     weddingPlanId: repayment.weddingPlanId,
     type,
     priority: overdue ? NotificationPriority.HIGH : NotificationPriority.NORMAL,
-    title: overdue ? "موعد سداد متأخر" : "موعد سداد قريب",
-    body: `سداد ${repayment.sourceName} بقيمة ${repayment.amount.toString()} ${overdue ? "متأخر" : "يستحق قريباً"} (${formatReminderDate(repayment.dueDate)}).`,
+    title: overdue
+      ? `سداد ${repayment.sourceName} متأخر`
+      : `سداد ${repayment.sourceName} ${whenWords(days)}`,
+    body: overdue ? `كان موعده ${day}` : day,
     data: {
       loanRepaymentId: repayment.id,
       weddingPlanId: repayment.weddingPlanId,
       dueDate: repayment.dueDate.toISOString(),
+      amount: repayment.amount.toString(),
+      currency,
     },
     entityType: "loan_repayment",
     entityId: repayment.id,
-    routeTarget: `/wedding-plans/${repayment.weddingPlanId}/money/funding`,
+    routeTarget: noticeRoutes.funding(repayment.weddingPlanId),
     dedupeKey: `${ownerUserId}:${type}:loan-repayment:${repayment.id}`,
   };
 }
@@ -100,7 +251,7 @@ export function weddingCountdownRow(
   userId: string,
   plan: { id: string; weddingDate: Date | null },
   today: Date,
-): DueNotificationRow | null {
+): DueNotice | null {
   if (!plan.weddingDate) return null;
   const daysUntil = daysUntilWedding(plan.weddingDate, today);
   const milestone = weddingCountdownMilestone(daysUntil);
@@ -110,8 +261,8 @@ export function weddingCountdownRow(
     weddingPlanId: plan.id,
     type: NotificationType.WEDDING_COUNTDOWN,
     priority: daysUntil <= 1 ? NotificationPriority.HIGH : NotificationPriority.NORMAL,
-    title: "العد التنازلي للعرس",
-    body: countdownBody(daysUntil),
+    title: countdownTitle(daysUntil),
+    body: countdownBody(daysUntil, plan.weddingDate),
     data: {
       weddingPlanId: plan.id,
       daysUntil,
@@ -119,20 +270,19 @@ export function weddingCountdownRow(
     },
     entityType: "wedding_plan",
     entityId: plan.id,
-    routeTarget: `/wedding-plans/${plan.id}/dashboard`,
+    routeTarget: noticeRoutes.planHome(plan.id),
     // A new wedding date (postponed) starts the countdown again.
     dedupeKey: `${userId}:${NotificationType.WEDDING_COUNTDOWN}:plan:${plan.id}:${milestone}:${plan.weddingDate.toISOString().slice(0, 10)}`,
   };
 }
 
-function countdownBody(daysUntil: number): string {
-  if (daysUntil === 0) return "اليوم يوم العرس. ألف مبروك!";
-  if (daysUntil === 1) return "العرس غدًا. راجع آخر المهام والدفعات.";
-  return `باقي ${daysLabel(daysUntil)} على العرس. راجع المهام والدفعات القادمة.`;
+function countdownTitle(daysUntil: number): string {
+  if (daysUntil === 0) return "اليوم يوم العرس";
+  if (daysUntil === 1) return "العرس بكرة";
+  return `باقي ${dayCountWords(daysUntil)} على العرس`;
 }
 
-function daysLabel(days: number): string {
-  if (days === 2) return "يومان";
-  if (days <= 10) return `${days} أيام`;
-  return `${days} يومًا`;
+function countdownBody(daysUntil: number, weddingDate: Date): AddressedText {
+  if (daysUntil === 0) return "ألف مبروك!";
+  return `يوم ${weekdayDayMonthWords(weddingDate)}. اللي باقي قبله في الخطة.`;
 }

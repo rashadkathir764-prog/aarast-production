@@ -96,6 +96,8 @@
     "20261025220000_add_provider_featured_periods": "8581961ddc11d51eaa0fa783c8e50496ebdf43905613e8efedcb1fa0c1ea48cd",
     "20261025230000_quote_offer_event_privacy_and_revision_notice": "9fa659953b5e70be22da45fbf1e86a121b37eed71cc6bff4a0dc0eedd7de517e",
     "20261026000000_featured_placement_review_fixes": "7bd353675a34ba5e9ceda27dec6fbad44da6ff3bb8938aec2b0a07aa0fea1ed5",
-    "20261026100000_add_mahr_and_starter_defaults": "5231c8b90c18e8921e3ecca4ef21764451744b1f5748808b781145e4f0276f6b"
+    "20261026100000_add_mahr_and_starter_defaults": "5231c8b90c18e8921e3ecca4ef21764451744b1f5748808b781145e4f0276f6b",
+    "20261027000000_review_reply_and_notification_types": "2a19f71e6deae1fc24273a6c18fcefd3bdfb2a94b501b31057b9b37ff2e8ec64",
+    "20261027000100_notice_types_and_routes_backfill": "3546538e81a816079efdf928953523188d684dc6f997a4c5084d047382207475"
   }
 }

@@ -12,7 +12,7 @@ import {
   featuredRunAround,
   featuredRunWarnsBeforeEnd,
 } from "../modules/marketplace/public/featured-placement";
-import { PROVIDER_PORTAL_ROUTE } from "../modules/marketplace/public/provider-access-policy";
+import { noticeRoutes } from "../shared-kernel/routes/notification-routes";
 import { runSerializableTransaction } from "../platform/database/serializable-transaction";
 import { PrismaService } from "../platform/database/prisma.service";
 
@@ -142,13 +142,13 @@ export class FeaturedPeriodNoticesService {
       if (!message) return false;
       await this.notifications.createNotificationInTransaction(tx, {
         userId,
-        type: NotificationType.GENERAL,
+        type: NotificationType.LISTING_PLAN_CHANGED,
         priority: notice === "ending" ? NotificationPriority.HIGH : NotificationPriority.NORMAL,
         title: message.title,
         body: message.body,
         entityType: "ProviderFeaturedPeriod",
         entityId: period.id,
-        routeTarget: PROVIDER_PORTAL_ROUTE,
+        routeTarget: noticeRoutes.providerProfile(),
         data: {
           providerId: period.providerId,
           featuredPeriodId: period.id,

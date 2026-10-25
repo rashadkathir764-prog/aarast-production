@@ -1,90 +1,45 @@
 import '../models/aarast_notification.dart';
 
+/// The screen a notice opens (B-19). The server writes the exact route of
+/// every notice in one place (`backend/src/shared-kernel/routes/
+/// notification-routes.ts`), and the notices written before moved to the
+/// same routes by migration, so the phone opens the route as it is written;
+/// [isSafeNotificationRouteTarget] keeps it to the app's own screens.
 String? resolveNotificationRouteTarget(AarastNotification notification) {
-  final type = notification.type.toUpperCase();
-  if (type.startsWith('PAYMENT_SCHEDULE_')) {
-    final data = notification.data;
-    final planId = _nonEmpty(
-      notification.weddingPlanId ?? data?['weddingPlanId'],
-    );
-    final costId = _nonEmpty(data?['weddingCostId']);
-    // A payment date opens its agreement (c07), which lists every date.
-    if (planId != null && costId != null) {
-      return Uri(path: '/wedding-plans/$planId/money/costs/$costId').toString();
-    }
-  }
-
-  final originalTarget = _nonEmpty(notification.routeTarget);
-  // The server points every provider notice about a request or its booking
-  // at the portal's home; each opens its own case, the request screen, which
-  // shows the booking once there is one (p42, D39).
-  final providerQuoteId = _providerQuoteId(notification, originalTarget);
-  if (providerQuoteId != null) {
-    return '/provider/requests/$providerQuoteId';
-  }
-
-  if (notification.entityType == 'quote_request' &&
-      _isLegacyRequesterQuoteTarget(originalTarget)) {
-    final data = notification.data;
-    final quoteId = _nonEmpty(notification.entityId ?? data?['quoteRequestId']);
-    if (quoteId != null && _safeRouteId.hasMatch(quoteId)) {
-      final planId = _nonEmpty(
-        notification.weddingPlanId ?? data?['weddingPlanId'],
-      );
-      if (planId != null && _safeRouteId.hasMatch(planId)) {
-        return Uri(
-          path: '/wedding-plans/$planId/providers',
-          queryParameters: {'quoteId': quoteId},
-        ).toString();
-      }
-      return Uri(
-        path: '/providers',
-        queryParameters: {'quoteId': quoteId},
-      ).toString();
-    }
-  }
-
-  return originalTarget;
+  final text = notification.routeTarget?.trim();
+  return text == null || text.isEmpty ? null : text;
 }
 
 final RegExp _safeRouteId = RegExp(r'^[A-Za-z0-9_-]{1,128}$');
 
-/// The request a provider's portal notice is about, if it names a safe one.
-String? _providerQuoteId(AarastNotification notification, String? target) {
-  final data = notification.data;
-  if (data?['recipientAudience']?.toString() != 'PROVIDER') return null;
-  if (target != null && target != '/provider/dashboard') return null;
-  final quoteId = _nonEmpty(data?['quoteRequestId']);
-  if (quoteId == null || !_safeRouteId.hasMatch(quoteId)) return null;
-  return quoteId;
-}
+/// The portal tabs a link may open on.
+const _providerPortalTabs = {'requests', 'calendar', 'profile'};
 
-/// `/provider/requests/<id>` with nothing after it.
-bool _isProviderRequestPath(Uri uri) {
+/// A path of exactly this shape (`:id` a bare route id), with no query.
+bool _isBareIdPath(Uri uri, List<String> shape) {
   final segments = uri.pathSegments;
-  return !uri.hasQuery &&
-      segments.length == 3 &&
-      segments[0] == 'provider' &&
-      segments[1] == 'requests' &&
-      _safeRouteId.hasMatch(segments[2]);
+  if (uri.hasQuery || segments.length != shape.length) return false;
+  for (var i = 0; i < shape.length; i++) {
+    final part = shape[i];
+    if (part == ':id') {
+      if (!_safeRouteId.hasMatch(segments[i])) return false;
+    } else if (segments[i] != part) {
+      return false;
+    }
+  }
+  return true;
 }
 
-/// `/quotes/<id>/conversation` with nothing after it.
-bool _isQuoteConversationPath(Uri uri) {
-  final segments = uri.pathSegments;
-  return !uri.hasQuery &&
-      segments.length == 3 &&
-      segments[0] == 'quotes' &&
-      _safeRouteId.hasMatch(segments[1]) &&
-      segments[2] == 'conversation';
-}
-
-bool _isLegacyRequesterQuoteTarget(String? target) {
-  if (target == null) return false;
-  final uri = Uri.tryParse(target);
-  if (uri == null) return false;
-  return uri.path.startsWith('/providers/') ||
-      uri.path.endsWith('/plan-center');
+/// The provider portal, on its home or on one of its tabs.
+bool _isProviderPortalPath(Uri uri) {
+  if (uri.path != '/provider/dashboard') return false;
+  if (!uri.hasQuery) return true;
+  final parameters = uri.queryParametersAll;
+  final tabs = parameters['tab'];
+  return parameters.length == 1 &&
+      tabs != null &&
+      tabs.length == 1 &&
+      _providerPortalTabs.contains(tabs.single);
 }
 
 bool isSafeNotificationRouteTarget(String target) {
@@ -107,11 +62,11 @@ bool isSafeNotificationRouteTarget(String target) {
         _safeRouteId.hasMatch(quoteIds.single);
   }
 
-  return
-  // بوابة المزود: وجهة تنبيهات "طلب جديد" و"تم قبول عرضك" للمزود.
-  target == '/provider/dashboard' ||
-      _isProviderRequestPath(uri) ||
-      _isQuoteConversationPath(uri) ||
+  return _isProviderPortalPath(uri) ||
+      target == '/provider/apply' ||
+      _isBareIdPath(uri, const ['provider', 'requests', ':id']) ||
+      _isBareIdPath(uri, const ['provider', 'reviews', ':id']) ||
+      _isBareIdPath(uri, const ['quotes', ':id', 'conversation']) ||
       uri.path.startsWith('/providers/') ||
       uri.path.startsWith('/conversations/') ||
       uri.path.startsWith('/invites/') ||
@@ -136,9 +91,4 @@ bool isPlanShellNotificationRouteTarget(String target) {
         area == 'providers';
   }
   return area == 'guests' && segments.length == 4 && segments[3] == 'add';
-}
-
-String? _nonEmpty(Object? value) {
-  final text = value?.toString().trim();
-  return text == null || text.isEmpty ? null : text;
 }

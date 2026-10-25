@@ -374,6 +374,17 @@ The backend now includes the approved provider-reference and quote-lead foundati
   `userId`, platform, enabled state, and last-seen/timestamps. Migration
   `20260729020000_add_firebase_push_installations` also adds
   `NotificationType.TASK_ASSIGNED`.
+- B4 (D58): migration `20261027000000_review_reply_and_notification_types`
+  adds `NotificationType` values `BOOKING_REQUESTED`, `REVIEW_RECEIVED`,
+  `REVIEW_REPLIED`, `PROVIDER_APPROVED`, `PROVIDER_NEEDS_CHANGES`,
+  `PROVIDER_REJECTED`, `PROVIDER_SUSPENDED`, `PROVIDER_IN_REVIEW`,
+  `PROVIDER_CLAIM_DECIDED`, `LISTING_PLAN_CHANGED`, and the provider's one
+  reply on `ProviderReview` (`replyBody`, `repliedAt`, `replyStatus`
+  PUBLISHED or HIDDEN; CHECK `ProviderReview_reply_complete`: all three or
+  none). Migration `20261027000100_notice_types_and_routes_backfill` moves
+  the notices already written to their types and to the routes the server
+  writes now, and names each booking step in `data.bookingEvent`; their
+  words stay as written.
 - `Notification` for persisted task, payment-schedule, sharing, and quote alerts
   with deduplication. Migration
   `20260726010000_scrub_notification_contact_pii` rewrites historical
@@ -503,7 +514,7 @@ rewrite as permission to restore a removed live model.
 | `ProviderServiceImage` | 7 | `id`, `serviceId`, `createdAt` |
 | `ProviderPackage` | 13 | `id`, `providerId`, `serviceId`, `createdAt`, `updatedAt` |
 | `FavoriteProvider` | 6 | `id`, `userId`, `providerId`, `createdAt` |
-| `ProviderReview` | 10 | `id`, `userId`, `providerId`, `createdAt`, `updatedAt` |
+| `ProviderReview` | 13 | `id`, `userId`, `providerId`, `createdAt`, `updatedAt`, `repliedAt` |
 | `QuoteRequest` | 37 | `id`, `userId`, `weddingPlanId`, `providerId`, `serviceId`, `cityId`, `acceptedAt`, `rejectedAt` |
 | `QuoteOffer` | 24 | `id`, `quoteRequestId`, `providerId`, `revisedAt`, `revisionNoticeAt`, `withdrawnAt`, `createdAt`, `updatedAt` |
 | `PlanProviderLink` | 12 | `id`, `weddingPlanId`, `providerId`, `quoteRequestId`, `quoteOfferId`, `createdAt`, `updatedAt` |

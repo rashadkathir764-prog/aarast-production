@@ -415,6 +415,15 @@ export interface MarketplaceAdminPort {
     reviewId: string,
     status: ReviewStatus,
   ): Promise<AdminReviewRow>;
+  /**
+   * B-09: hides or shows the provider's reply (the review is locked first);
+   * null when the review has no reply.
+   */
+  setReviewReplyStatusInTransaction(
+    tx: Prisma.TransactionClient,
+    reviewId: string,
+    status: ReviewStatus,
+  ): Promise<AdminReviewRow | null>;
   getSuccessCounts(
     client: Prisma.TransactionClient,
     since: Date,

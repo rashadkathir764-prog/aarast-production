@@ -429,6 +429,7 @@ class ProviderReview {
     this.comment,
     this.createdAt,
     this.status = 'PUBLISHED',
+    this.reply,
   });
 
   factory ProviderReview.fromJson(Map<String, dynamic> json) {
@@ -443,6 +444,11 @@ class ProviderReview {
       // Public lists hold published reviews only and send no status; the
       // provider's own list sends every review with its status.
       status: json['status']?.toString().toUpperCase() ?? 'PUBLISHED',
+      reply: json['reply'] is Map
+          ? ProviderReviewReply.fromJson(
+              Map<String, dynamic>.from(json['reply'] as Map),
+            )
+          : null,
     );
   }
 
@@ -459,6 +465,36 @@ class ProviderReview {
   final String? userName;
   final String? comment;
   final DateTime? createdAt;
+
+  /// B-09: the provider's one reply. Customers receive it only once it is
+  /// published; the provider receives it in any state.
+  final ProviderReviewReply? reply;
+}
+
+/// B-09 (p27): the provider's reply under a review.
+class ProviderReviewReply {
+  const ProviderReviewReply({
+    required this.body,
+    this.repliedAt,
+    this.status = 'PUBLISHED',
+  });
+
+  factory ProviderReviewReply.fromJson(Map<String, dynamic> json) {
+    return ProviderReviewReply(
+      body: json['body']?.toString() ?? '',
+      repliedAt: _dateOrNull(json['repliedAt']),
+      // The public lists send published replies only, with no status.
+      status: json['status']?.toString().toUpperCase() ?? 'PUBLISHED',
+    );
+  }
+
+  final String body;
+  final DateTime? repliedAt;
+
+  /// PUBLISHED, or HIDDEN by the moderation team (a10).
+  final String status;
+
+  bool get isHidden => status == 'HIDDEN';
 }
 
 class FavoriteProvider {

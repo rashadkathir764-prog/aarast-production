@@ -10,7 +10,6 @@ import {
   AdminRole,
   ConversationReportStatus,
   NotificationPriority,
-  NotificationType,
   Prisma,
   ProviderClaimStatus,
   ProviderReviewEventKind,
@@ -50,7 +49,6 @@ import {
 import { PrismaService } from '../platform/database/prisma.service';
 import { MESSAGING_REALTIME_PORT, type MessagingRealtimePort } from '../modules/messaging/public/messaging-realtime.port';
 import { NOTIFICATIONS_PORT, type NotificationsPort } from '../modules/notifications/public/notifications.port';
-import type { AdminNotificationFilter } from '../modules/notifications/public/notifications-admin.port';
 import type {
   AdminServiceFilter,
   AdminTextSearch,
@@ -59,6 +57,7 @@ import type { AccountSearchField } from '../modules/identity/public/identity-adm
 import { AdminMutationExecutor } from './admin-mutation-executor';
 import { AdminOwners } from './admin-owners';
 import { switchProviderStatusNotification } from './provider-status-notification';
+import { noticeRoutes } from '../shared-kernel/routes/notification-routes';
 import {
   assertProviderAdminAction,
   ProviderAdminAction,
@@ -66,10 +65,8 @@ import {
   providerDirectoryDefaultStatuses,
 } from './provider-admin-lifecycle';
 import { AdminCategoryDto, AdminCityDto } from './dto/admin-catalog.dto';
-import { AdminNotificationQueryDto } from './dto/admin-notification.dto';
 import {
   toAdminClaimRequestResponse,
-  toAdminNotificationResponse,
   toAdminQuoteReport,
   toAdminReportsOverviewResponse,
   toAdminReviewResponse,
@@ -336,6 +333,14 @@ export class AdminService {
     return this.mutations.updateReviewStatus(currentUser, id, dto);
   }
 
+  async updateReviewReplyStatus(
+    currentUser: AuthenticatedUser,
+    id: string,
+    dto: AdminReviewStatusDto,
+  ) {
+    return this.mutations.updateReviewReplyStatus(currentUser, id, dto);
+  }
+
   async hideReview(currentUser: AuthenticatedUser, id: string) {
     return this.mutations.hideReview(currentUser, id);
   }
@@ -369,49 +374,6 @@ export class AdminService {
       id,
       dto,
     );
-  }
-
-  async listNotifications(query: AdminNotificationQueryDto) {
-    const pagination = this.parsePagination(query.page, query.limit);
-    const filter = this.notificationFilter(query);
-    const searchText = this.optionalText(query.search);
-    const { total, notifications } = await this.prisma.$transaction(async (tx) => {
-      const search = await this.textSearch(tx, searchText, ['name']);
-      const listing = await this.owners.notifications.listNotifications(
-        tx,
-        { ...filter, ...(search ? { search } : {}) },
-        { skip: pagination.skip, take: pagination.limit },
-      );
-      return {
-        total: listing.total,
-        notifications: await this.owners.attachNotifications(tx, listing.items),
-      };
-    });
-
-    return this.paginate(
-      notifications.map((notification) => toAdminNotificationResponse(notification)),
-      total,
-      pagination,
-    );
-  }
-
-  async getUnreadNotificationsCount() {
-    const count = await this.owners.notifications.countUnreadNotifications(
-      this.prisma,
-    );
-    return { count };
-  }
-
-  async markNotificationRead(currentUser: AuthenticatedUser, id: string) {
-    return this.mutations.markNotificationRead(currentUser, id);
-  }
-
-  async archiveNotification(currentUser: AuthenticatedUser, id: string) {
-    return this.mutations.archiveNotification(currentUser, id);
-  }
-
-  async deleteNotification(currentUser: AuthenticatedUser, id: string) {
-    return this.mutations.deleteNotification(currentUser, id);
   }
 
   /**
@@ -935,7 +897,7 @@ export class AdminService {
         );
         await this.notifications.createNotificationInTransaction(tx, {
           userId: updated.userId,
-          type: NotificationType.GENERAL,
+          type: notification.type,
           priority:
             status === ProviderStatus.REJECTED ||
             status === ProviderStatus.SUSPENDED
@@ -945,7 +907,7 @@ export class AdminService {
           body: notification.body,
           entityType: 'Provider',
           entityId: updated.id,
-          routeTarget: '/provider/dashboard',
+          routeTarget: noticeRoutes.providerPortal(),
           data: {
             providerId: updated.id,
             providerStatus: status,
@@ -1016,21 +978,6 @@ export class AdminService {
     };
   }
 
-  private notificationFilter(
-    query: AdminNotificationQueryDto,
-  ): Omit<AdminNotificationFilter, 'search'> {
-    const type = query.type ? this.parseNotificationType(query.type) : null;
-    const priority = query.priority
-      ? this.parseNotificationPriority(query.priority)
-      : null;
-    const unreadOnly = this.optionalBoolean(query.unreadOnly, 'unreadOnly');
-    return {
-      ...(type ? { type } : {}),
-      ...(priority ? { priority } : {}),
-      ...(unreadOnly === true ? { unreadOnly } : {}),
-    };
-  }
-
   private parseProviderStatus(value?: string): ProviderStatus | null {
     const normalized = value?.trim().toUpperCase();
     if (!normalized) return null;
@@ -1056,22 +1003,6 @@ export class AdminService {
       return ConversationReportStatus[normalized as keyof typeof ConversationReportStatus];
     }
     throw new BadRequestException('conversation report status is not supported');
-  }
-
-  private parseNotificationType(value: string): NotificationType {
-    const normalized = this.requiredText(value, 'type').toUpperCase();
-    if (normalized in NotificationType) {
-      return NotificationType[normalized as keyof typeof NotificationType];
-    }
-    throw new BadRequestException('notification type is not supported');
-  }
-
-  private parseNotificationPriority(value: string): NotificationPriority {
-    const normalized = this.requiredText(value, 'priority').toUpperCase();
-    if (normalized in NotificationPriority) {
-      return NotificationPriority[normalized as keyof typeof NotificationPriority];
-    }
-    throw new BadRequestException('notification priority is not supported');
   }
 
   private parsePagination(pageValue?: string, limitValue?: string): Pagination {

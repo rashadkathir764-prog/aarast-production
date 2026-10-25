@@ -331,22 +331,23 @@ test('messaging locks a report before its status is set', async () => {
   ]);
 });
 
-test('notifications archive keeps the first read time and deletes only a locked row', async () => {
+test('the desk only counts notifications for the report; it reads or changes none (D56)', async () => {
   const service = new NotificationsAdminService();
-  const readAt = new Date('2026-09-01T00:00:00.000Z');
-  const { client, calls } = recordingClient({
-    $queryRaw: [{ id: 'n1', readAt }],
-    'notification.update': (args: unknown) => args,
+  assert.deepEqual(
+    Object.getOwnPropertyNames(NotificationsAdminService.prototype).sort(),
+    ['constructor', 'getReport'],
+  );
+  const { client, calls } = recordingClient({ 'notification.count': 2 });
+  const range = { gte: new Date('2026-01-01T00:00:00.000Z') };
+  assert.deepEqual(await service.getReport(client, range), {
+    total: 2,
+    unread: 2,
+    archived: 2,
+    high: 2,
+    urgent: 2,
   });
-
-  const archived: any = await service.archiveNotificationInTransaction(client, 'n1');
-  assert.equal(archived.data.readAt, readAt);
-  assert.ok(archived.data.archivedAt instanceof Date);
-  assert.match((calls[0]?.[1] as any).sql, /FROM "Notification"[\s\S]*FOR UPDATE/);
-
-  const missing = recordingClient({ $queryRaw: [] });
-  assert.equal(await service.deleteNotificationInTransaction(missing.client, 'gone'), false);
-  assert.deepEqual(missing.calls.map(([name]) => name), ['$queryRaw']);
+  assert.deepEqual(calls.map(([name]) => name), Array(5).fill('notification.count'));
+  assert.deepEqual((calls[1]?.[1] as any).where, { createdAt: range, readAt: null, archivedAt: null });
 });
 
 test('planning counts plans and collaboration revokes the live invites a user issued', async () => {

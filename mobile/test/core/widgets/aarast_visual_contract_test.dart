@@ -373,6 +373,8 @@ void main() {
         'lib/features/provider_portal/screens/provider_changes_screen.dart',
         'lib/features/provider_portal/screens/provider_rejected_screen.dart',
         'lib/features/provider_portal/screens/provider_request_screen.dart',
+        // B-09 (p27): a review of his and his one reply.
+        'lib/features/provider_portal/screens/provider_review_screen.dart',
         'lib/features/provider_portal/screens/provider_booking_screen.dart',
         'lib/features/provider_portal/screens/provider_notifications_screen.dart',
         'lib/features/provider_portal/screens/provider_offer_screen.dart',

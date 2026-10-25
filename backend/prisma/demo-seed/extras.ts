@@ -4,66 +4,170 @@ import {
   AdminAuditPhase,
   AdminRole,
   NotificationPriority,
-  NotificationType,
   PrismaClient,
 } from '@prisma/client';
-import { type DemoAccountKey, userId } from './accounts';
-import { offerId, requestId } from './market-data';
+import type { CreateNotificationInput } from '../../src/modules/notifications/public/notifications.port';
+import { quoteOfferReceivedNotification, quoteSubmittedProviderNotification } from '../../src/marketplace/quote-notifications';
+import { bookingCustomerNotification } from '../../src/marketplace/booking-notifications';
+import { reviewReceivedProviderNotification, reviewRepliedNotification } from '../../src/marketplace/review-notifications';
+import { chatMessageNotification } from '../../src/conversations/chat-notifications';
+import { type AddressForm, addressFormOf, textFor } from '../../src/shared-kernel/voice/address-form';
+import { DEMO_ACCOUNTS, type DemoAccountKey, userId } from './accounts';
+import { offerId, PROVIDERS, providerId, requestId, STUDIO_ID } from './market-data';
 import { planId } from './plan';
-import { demoId, hoursAgo } from './support';
+import { day, demoId, demoUuid, hoursAgo } from './support';
 
-interface NotificationSpec {
-  key: string;
-  to: DemoAccountKey;
-  plan?: 'groom' | 'bride';
-  type: NotificationType;
-  priority?: NotificationPriority;
-  title: string;
-  body: string;
-  route?: string;
-  request?: string;
+/**
+ * B-19/B-38: the demo's notices are the server's own, written by the same
+ * builders the events use (each one's words, route and data), so a walk
+ * reads exactly what a real request, booking, message or review writes. The
+ * reminders (payments, tasks, the countdown) are not seeded: the hourly scan
+ * writes them from the plans' dates.
+ */
+interface DemoNotice {
+  input: CreateNotificationInput;
   hours: number;
   read?: boolean;
 }
 
-const NOTIFICATIONS: readonly NotificationSpec[] = [
-  { key: 'g-offer', to: 'groom', plan: 'groom', type: NotificationType.QUOTE_OFFER_RECEIVED, title: 'وصلك عرض تصوير ثاني', body: 'عدسة سبأ · 480 ألف', request: 'lens', hours: 1 },
-  { key: 'g-saleh', to: 'groom', plan: 'groom', type: NotificationType.PLAN_UPDATED, title: 'صالح خلّص مهمتين', body: 'استلم البدلة · رتّب الغداء', hours: 3 },
-  { key: 'g-payment', to: 'groom', plan: 'groom', type: NotificationType.PAYMENT_SCHEDULE_DUE_SOON, priority: NotificationPriority.HIGH, title: 'دفعة القاعة بعد 5 أيام', body: '500,000 ر.ي · قاعة سبأ', hours: 6 },
-  { key: 'g-booking', to: 'groom', plan: 'groom', type: NotificationType.BOOKING_UPDATED, title: 'قاعة سبأ أكدت حجز 21 يناير', body: 'محجوز · بدون أي دفع داخل التطبيق', hours: 80, read: true },
-  { key: 'g-friday', to: 'groom', plan: 'groom', type: NotificationType.GENERAL, title: 'جمعة مباركة', body: 'هذا الأسبوع: دفعة وحدة، و3 مهام، و5 ضيوف ردّوا', hours: 120, read: true },
-  { key: 'b-payment', to: 'bride', plan: 'bride', type: NotificationType.PAYMENT_SCHEDULE_DUE_SOON, priority: NotificationPriority.HIGH, title: 'دفعة الصالة بعد 5 أيام', body: '500,000 ر.ي · صالة الياسمين', hours: 6 },
-  { key: 'b-booking', to: 'bride', plan: 'bride', type: NotificationType.BOOKING_UPDATED, title: 'صالة الياسمين أكدت حجز 21 يناير', body: 'محجوز · بدون أي دفع داخل التطبيق', hours: 80, read: true },
-  { key: 'p-new', to: 'providerStudio', type: NotificationType.QUOTE_REQUEST_SUBMITTED, priority: NotificationPriority.HIGH, title: 'طلب جديد من سلمى', body: 'حفلة نساء · 21 يناير', request: 'studioBride', hours: 10 },
-  { key: 'p-chat', to: 'providerStudio', type: NotificationType.CHAT_MESSAGE_RECEIVED, title: 'رسالة جديدة', body: 'ممكن تضيفون تصوير جوي؟', request: 'studio', hours: 118 },
-  { key: 'p-review', to: 'providerStudio', type: NotificationType.GENERAL, title: 'تقييم جديد', body: '4 نجوم من خالد', hours: 200, read: true },
-  { key: 'h-chat', to: 'providerHall', type: NotificationType.QUOTE_REQUEST_SUBMITTED, title: 'حجز مؤكد', body: 'عرس محمد · 21 يناير', request: 'hall', hours: 300, read: true },
-];
+const WEDDING_DAY = day('2027-01-21');
+
+function providerSpec(key: string) {
+  const spec = PROVIDERS.find((candidate) => candidate.key === key);
+  if (!spec) throw new Error(`Unknown provider ${key}`);
+  return spec;
+}
+
+function providerIdOf(key: string): string {
+  return providerId(providerSpec(key));
+}
+
+function providerNameOf(key: string): string {
+  return providerSpec(key).businessName;
+}
+
+function nameOf(key: DemoAccountKey): string {
+  const account = DEMO_ACCOUNTS.find((candidate) => candidate.key === key);
+  if (!account) throw new Error(`Unknown account ${key}`);
+  return account.name;
+}
+
+function formOf(key: DemoAccountKey): AddressForm {
+  const account = DEMO_ACCOUNTS.find((candidate) => candidate.key === key);
+  return addressFormOf({ accountPersona: account?.persona ?? null });
+}
+
+function demoNotices(): DemoNotice[] {
+  return [
+    {
+      input: quoteOfferReceivedNotification({
+        requesterId: userId('groom'),
+        weddingPlanId: planId('groom'),
+        quoteRequestId: requestId('lens'),
+        quoteOfferId: offerId('lens'),
+        providerId: providerIdOf('lens'),
+        providerName: providerNameOf('lens'),
+      }),
+      hours: 1,
+    },
+    {
+      input: bookingCustomerNotification('CONFIRMED', {
+        bookingId: demoUuid('booking:hall'),
+        quoteRequestId: requestId('hall'),
+        providerId: providerIdOf('hall'),
+        eventDate: WEDDING_DAY,
+        revision: 0,
+        customerUserId: userId('groom'),
+        weddingPlanId: planId('groom'),
+        providerName: providerNameOf('hall'),
+      }),
+      hours: 80,
+      read: true,
+    },
+    {
+      input: bookingCustomerNotification('CONFIRMED', {
+        bookingId: demoUuid('booking:yasmine'),
+        quoteRequestId: requestId('yasmine'),
+        providerId: providerIdOf('yasmine'),
+        eventDate: WEDDING_DAY,
+        revision: 0,
+        customerUserId: userId('bride'),
+        weddingPlanId: planId('bride'),
+        providerName: providerNameOf('yasmine'),
+      }),
+      hours: 80,
+      read: true,
+    },
+    {
+      input: quoteSubmittedProviderNotification({
+        providerUserId: userId('providerStudio'),
+        quoteId: requestId('studioBride'),
+        providerId: STUDIO_ID,
+        customerName: nameOf('bride'),
+      }),
+      hours: 10,
+    },
+    {
+      input: chatMessageNotification({
+        recipientId: userId('providerStudio'),
+        weddingPlanId: planId('groom'),
+        conversationId: demoId('conv', 'studio'),
+        providerId: STUDIO_ID,
+        recipientIsProvider: true,
+        messageId: demoId('msg', 'studio-3'),
+      }),
+      hours: 118,
+    },
+    {
+      input: reviewReceivedProviderNotification({
+        providerUserId: userId('providerStudio'),
+        providerId: STUDIO_ID,
+        reviewId: demoUuid('review:studio:khaled'),
+        rating: 4,
+        reviewerName: nameOf('customerKhaled'),
+      }),
+      hours: 200,
+      read: true,
+    },
+    {
+      input: reviewRepliedNotification({
+        reviewerId: userId('customerKhaled'),
+        providerId: STUDIO_ID,
+        providerName: providerNameOf('studio'),
+        reviewId: demoUuid('review:studio:khaled'),
+      }),
+      hours: 190,
+    },
+  ];
+}
 
 export async function seedNotifications(prisma: PrismaClient): Promise<void> {
-  for (const spec of NOTIFICATIONS) {
-    const requestKey = spec.request;
+  // The hand-written notices of earlier seeds (some of a kind the server
+  // never writes) go; the demo keeps only real ones.
+  await prisma.notification.deleteMany({ where: { dedupeKey: { startsWith: 'demo:' } } });
+  for (const notice of demoNotices()) {
+    const { input } = notice;
+    const key = DEMO_ACCOUNTS.find((account) => userId(account.key) === input.userId)?.key;
+    if (!key) throw new Error(`Unknown recipient ${input.userId}`);
+    const form = formOf(key);
     const data = {
-      userId: userId(spec.to),
-      weddingPlanId: spec.plan ? planId(spec.plan) : null,
-      type: spec.type,
-      priority: spec.priority ?? NotificationPriority.NORMAL,
-      title: spec.title,
-      body: spec.body,
-      entityType: requestKey ? 'quote_request' : null,
-      entityId: requestKey ? requestId(requestKey) : null,
-      routeTarget: requestKey ? `/providers?quoteId=${requestId(requestKey)}` : null,
-      data: requestKey
-        ? { quoteRequestId: requestId(requestKey), quoteOfferId: offerId(requestKey) }
-        : undefined,
-      readAt: spec.read ? hoursAgo(spec.hours - 1) : null,
+      userId: input.userId,
+      weddingPlanId: input.weddingPlanId ?? null,
+      type: input.type,
+      priority: input.priority ?? NotificationPriority.NORMAL,
+      title: textFor(form, input.title),
+      body: textFor(form, input.body),
+      entityType: input.entityType ?? null,
+      entityId: input.entityId ?? null,
+      routeTarget: input.routeTarget ?? null,
+      data: input.data,
+      readAt: notice.read ? hoursAgo(notice.hours - 1) : null,
       archivedAt: null,
     };
-    const id = demoId('notif', spec.key);
-    const createdAt = hoursAgo(spec.hours);
+    const dedupeKey = input.dedupeKey!;
     await prisma.notification.upsert({
-      where: { dedupeKey: `demo:${spec.key}` },
-      create: { id, dedupeKey: `demo:${spec.key}`, createdAt, ...data },
+      where: { dedupeKey },
+      create: { id: demoId('notif', dedupeKey), dedupeKey, createdAt: hoursAgo(notice.hours), ...data },
       update: data,
     });
   }

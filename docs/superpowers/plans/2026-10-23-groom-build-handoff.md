@@ -245,6 +245,8 @@ Each line is a place where the app differs from the prototype:
 - w11 (D32): «خطة جديدة» starts the welcome steps at a02b.
 - b11/w36/w37 (D32): no «لو» box, market range or microphone; w36 without «ويقرأ الفواتير» and the account switch line; w37 only the limit and offline cards, without «سجّل يدوي».
 - Participant (D34): no relation («أخوك»)، owner name or participant gender is sent, so the owner is «العريس/العروسة» and a bride's plan speaks in the feminine; no «اطلب من محمد» or request buttons (q13), no rafd rows, no programme or time of day, no custody step; x06 has a bell; q05 has no «كل مهام الخطة»; q10 leave says «تقدر ترجع لو أرسل لك دعوة ثانية» and keeps g02's settings below; q19 only «في الذكريات»; q21 plain rows.
+- Provider «خدمتك وسعرها» sheet (D48, D49): not drawn. p09's service field and p08's «عدّل طلبك» open a journey-kit sheet (`provider_joining_service_sheet.dart`) with the team's note, the name, the price in ر.ي and «ايش تشمل»; before approval only these change (B-10), so the drawn p06/p36 service form is not reused.
+- p08 (D49): «عدّل طلبك» first asks «ايش تبي تعدّل؟» (the journey kit's option sheet) with «بيانات ملفك» and «خدمة «…» وسعرها»; the design draws only the button. «تقدر تعدّل وتضيف صور وأنت تنتظر» stays «تقدر تعدّل بيانات ملفك وأنت تنتظر» (photos after approval, F2).
 
 ## At the end of the groom path
 

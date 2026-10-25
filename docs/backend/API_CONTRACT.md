@@ -2216,10 +2216,11 @@ checklist 4.18):
   already uses (in any of its spellings) is `409 PROVIDER_PHONE_TAKEN`. The
   listing shows in the directory once it has an active service
   (`POST /admin/services`).
-- `GET /api/v1/provider/claimable` returns `{ listing: { id, businessName } }`
-  when an active, unclaimed listing carries the caller's phone and the caller
-  owns no provider; otherwise `{ listing: null }`. Every session's phone is
-  verified by OTP, which is the proof of ownership.
+- `GET /api/v1/provider/claimable` returns `{ listing: { id, businessName,
+  city: { id, nameAr }, primaryCategory: { id, nameAr } | null } }` (p02's
+  «تصوير · صنعاء») when an active, unclaimed listing carries the caller's
+  phone and the caller owns no provider; otherwise `{ listing: null }`. Every
+  session's phone is verified by OTP, which is the proof of ownership.
 - `POST /api/v1/provider/claim/:providerId` (B-12, D41) asks the review team
   for that listing after the same phone check and returns the claim
   `{ id, status: "PENDING", note, createdAt, decidedAt, provider: { id,
@@ -2237,9 +2238,12 @@ checklist 4.18):
   listing, its city and category, and the claimant's name and phone),
   `POST /admin/provider-claims/:id/approve` (links the listing to the
   claimant, promotes the account, notifies «انقبل استلامك للملف»; `409
-  PROVIDER_CLAIM_LISTING_TAKEN`, `PROVIDER_CLAIM_ACCOUNT_INACTIVE` or
-  `PROVIDER_CLAIM_ACCOUNT_HAS_PROVIDER` when the claim can no longer be
-  honoured) and `POST /admin/provider-claims/:id/reject` with `{ note }`
+  PROVIDER_CLAIM_LISTING_TAKEN`, `PROVIDER_CLAIM_ACCOUNT_INACTIVE`,
+  `PROVIDER_CLAIM_ACCOUNT_HAS_PROVIDER` or `PROVIDER_CLAIM_PHONE_CHANGED`
+  when the claim can no longer be honoured; the last when the claimant's
+  phone, re-read under the account's lock, no longer matches the listing's
+  phone in any of its spellings, the same match the claim was sent with) and
+  `POST /admin/provider-claims/:id/reject` with `{ note }`
   (required; the claimant is notified «ما قبلنا الاستلام» with it). A claim
   already decided is `409 PROVIDER_CLAIM_NOT_PENDING`. Account deletion
   removes the account's claims. There is no claim token, link or WhatsApp
@@ -2252,24 +2256,35 @@ Joining, changes and reopening (B-01, B-02, B-10):
 - `POST /api/v1/provider/apply` takes `categoryIds` (at least one; the first
   is the profile's category) and `services: [{ title, basePrice, currency?,
   description? }]` (1 to 5). Without a service whose `basePrice` is above zero
-  it is `422 PROVIDER_SERVICE_REQUIRED` and nothing is written. The services
+  it is `422 PROVIDER_SERVICE_REQUIRED` and nothing is written; a `currency`
+  other than `YER` (D48) is `422 PROVIDER_JOINING_CURRENCY`. The services
   are created in the same write, in the profile's category, and stay hidden
   until approval (every customer read requires an `ACTIVE` provider).
+- The joining rule (B-10, D41) is one rule: the profile has an **active**
+  service priced above zero. Resubmitting, approving
+  (`PATCH /admin/providers/:id/approve` is `422 PROVIDER_SERVICE_REQUIRED`
+  without one) and adding the joining service before approval all read it.
 - While `PENDING` or `NEEDS_CHANGES` the provider reads his services
   (`GET /api/v1/provider/me/services[/:id]`) and changes only a service's
-  `title`, `basePrice`, `priceUnit`, `currency` and `description`; another
-  service, `categoryId`, `cityId`, `isActive`, images and packages are `403
-  PROVIDER_JOINING_SERVICE_ONLY` / `PROVIDER_NOT_ACTIVE`. A profile with no
-  service (applied before B-10) may add one in its category.
+  `title`, `basePrice` and `description` (a `currency` other than `YER` is
+  `422 PROVIDER_JOINING_CURRENCY`); another service, `categoryId`, `cityId`,
+  `priceUnit`, `isActive`, images and packages are `403
+  PROVIDER_JOINING_SERVICE_ONLY` / `PROVIDER_NOT_ACTIVE`. A profile without
+  an active priced service (it applied before B-10, or the team switched its
+  service off) may add one in its category with the same fields, in `YER`.
   `PATCH /api/v1/provider/me/profile` takes `primaryCategoryId` only before
   approval (`409 PROVIDER_CATEGORY_LOCKED` after); the joining services move
   with it.
-- `POST /api/v1/provider/me/application/resubmit` (`200`, no body) moves
-  `NEEDS_CHANGES` to `PENDING`, sets `resubmittedAt`, increments
+- `POST /api/v1/provider/me/application/resubmit` (`200`) takes
+  `{ latestDecisionId: string | null }`, the `latestDecision.id` of the
+  profile he read (required; `null` only when no decision is on record). It
+  moves `NEEDS_CHANGES` to `PENDING`, sets `resubmittedAt`, increments
   `resubmitCount`, records a `RESUBMITTED` review step and notifies the
   provider «وصلنا تعديلك». From any other state it is
-  `409 PROVIDER_NOT_AWAITING_CHANGES`; without a priced active service it is
-  `422 PROVIDER_SERVICE_REQUIRED`.
+  `409 PROVIDER_NOT_AWAITING_CHANGES`; when a newer decision exists (the team
+  rewrote its notes after he read them) it is `409 PROVIDER_REVIEW_CHANGED`
+  with the current `latestDecisionId`, and nothing changes; without an active
+  priced service it is `422 PROVIDER_SERVICE_REQUIRED`.
 - `POST /api/v1/provider/me/application/reopen` (`200`, no body) moves
   `REJECTED` to `NEEDS_CHANGES`, sets `reopenedAt` and records a `REOPENED`
   step; the refusal's reason stays the note he reads. From any other state it
@@ -2279,9 +2294,13 @@ Joining, changes and reopening (B-01, B-02, B-10):
 - The provider profile (and the admin provider rows) return `reviewNote` (the
   latest decision's note on the whole profile), `fieldNotes: [{ field, note
   }]` (`BUSINESS_NAME`, `CATEGORY`, `CITY`, `DESCRIPTION`, `SERVICE`),
-  `resubmittedAt`, `resubmitCount` and `reopenedAt`. The notes are those of
-  the latest administrator decision while the status is `NEEDS_CHANGES`,
-  `REJECTED` or `SUSPENDED`, and empty otherwise.
+  `latestDecision: { id, kind, at } | null`, `resubmittedAt`,
+  `resubmitCount` and `reopenedAt`. The notes are those of the latest
+  administrator decision while the status is `NEEDS_CHANGES`, `REJECTED` or
+  `SUSPENDED`, and empty otherwise. «The latest» is by the review steps'
+  `sequence`, never by time alone. A profile sent back reads «كان مرفوض»
+  when its `latestDecision.kind` is `REJECTED` and «كان يحتاج تعديل»
+  otherwise.
 - Public provider responses carry `isClaimed`. A quote request to a provider
   without an account (unclaimed, or whose owner deleted their account) is
   `409 PROVIDER_NOT_CLAIMED`; customers reach it by phone or WhatsApp.
@@ -2556,8 +2575,10 @@ returns the admin refresh token.
   category and currency `{ cityName, categoryName, providers, services, min,
   median, max }` from active services of active providers, only for groups
   priced by at least 3 different providers so no provider's own price shows.
-- `GET /admin/providers/applications` (`resubmitted=true|false` narrows
-  `PENDING` to the profiles sent back after changes, or to the others, B-01);
+- `GET /admin/providers/applications` (`resubmitted=true|false` narrows the
+  list to `PENDING` profiles sent back after changes, or to the other
+  `PENDING` ones, B-01, whatever statuses the list would hold otherwise; with
+  a `status` other than `PENDING` it is `400`);
   `GET /admin/dashboard/stats` adds `resubmittedProviders` and
   `pendingClaims`.
 - `GET /admin/providers/applications/:id`
@@ -2567,7 +2588,8 @@ returns the admin refresh token.
   `CHANGES_REQUESTED`, `REJECTED`, `APPROVED`, `SUSPENDED`, `ACTIVATED`,
   `RESUBMITTED` or `REOPENED`.
 - `POST /admin/providers` (a listing without an account, see Provider References)
-- `PATCH /admin/providers/:id/approve` (from `PENDING` or `NEEDS_CHANGES`)
+- `PATCH /admin/providers/:id/approve` (from `PENDING` or `NEEDS_CHANGES`;
+  `422 PROVIDER_SERVICE_REQUIRED` without an active priced service, D41)
 - `PATCH /admin/providers/:id/reject`
 - `PATCH /admin/providers/:id/request-changes` with `{ note?, fieldNotes?:
   [{ field, note }] }` (at least one note; each field once). Allowed from

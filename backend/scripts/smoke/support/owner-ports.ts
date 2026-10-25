@@ -174,7 +174,19 @@ export function notificationsService(
   );
 }
 
-/** The eight owner ports `UsersService` takes after the media storage port. */
+/** What `UsersService` wrote through the notifications port (B-33), for assertions. */
+export const erasureNotices = {
+  written: [] as Array<{ userId: string; title: unknown; routeTarget?: string | null }>,
+  async createNotificationInTransaction(
+    _tx: unknown,
+    input: { userId: string; title: unknown; routeTarget?: string | null },
+  ) {
+    erasureNotices.written.push(input);
+    return null;
+  },
+};
+
+/** The nine owner ports `UsersService` takes after the media storage port. */
 export const identityErasurePorts = [
   ownerPorts.planErasure,
   ownerPorts.marketplaceErasure,
@@ -184,6 +196,7 @@ export const identityErasurePorts = [
   ownerPorts.finance,
   ownerPorts.tasks,
   ownerPorts.guests,
+  erasureNotices as unknown as import('../../../src/modules/notifications/public/notifications.port').NotificationsPort,
 ] as const;
 
 /** `AdminService` over the smoke's client with every owner's admin port (AdminOwners). */

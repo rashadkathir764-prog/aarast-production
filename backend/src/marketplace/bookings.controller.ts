@@ -7,6 +7,7 @@ import {
   ParseUUIDPipe,
   Patch,
   Post,
+  Query,
   UseGuards,
 } from "@nestjs/common";
 import { AuthenticatedUser } from "../modules/identity/public/identity-session.types";
@@ -62,6 +63,15 @@ export class ProviderBookingsController {
   @Get("bookings")
   listBookings(@CurrentUser() currentUser: AuthenticatedUser) {
     return this.bookings.listForProvider(currentUser);
+  }
+
+  /** p47 «حساباتك»: a month's agreed, paid and left (B-18, read only). */
+  @Get("ledger")
+  ledger(
+    @CurrentUser() currentUser: AuthenticatedUser,
+    @Query("month") month: string,
+  ) {
+    return this.bookings.ledgerForProvider(currentUser, month);
   }
 
   @Patch("bookings/:id/confirm")

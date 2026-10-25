@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import {
+  BookingStatus,
   PlanProviderLinkStatus,
   Prisma,
   type Provider,
@@ -77,6 +78,22 @@ export class ProviderReadService implements ProviderReadPort {
     userId: string,
   ): Promise<number> {
     return client.favoriteProvider.count({ where: { userId } });
+  }
+
+  async listPlanConfirmedBookings(
+    client: Prisma.TransactionClient,
+    weddingPlanId: string,
+    quoteRequestIds: readonly string[] | null,
+  ): Promise<Array<{ quoteRequestId: string; quoteOfferId: string | null }>> {
+    return client.booking.findMany({
+      where: {
+        status: BookingStatus.CONFIRMED,
+        quoteRequest: { weddingPlanId },
+        ...(quoteRequestIds ? { quoteRequestId: { in: [...quoteRequestIds] } } : {}),
+      },
+      orderBy: { quoteRequestId: 'asc' },
+      select: { quoteRequestId: true, quoteOfferId: true },
+    });
   }
 
   async countActivePlanProviderLinks(

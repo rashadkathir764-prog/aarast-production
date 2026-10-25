@@ -64,6 +64,16 @@ export interface ProviderReadPort {
     client: Prisma.TransactionClient,
     userId: string,
   ): Promise<number>;
+  /**
+   * D60 «محجوز»: the plan's CONFIRMED bookings (a day already past
+   * included), each with the request and the accepted offer it follows;
+   * `quoteRequestIds` narrows to a contributor's quotes.
+   */
+  listPlanConfirmedBookings(
+    client: Prisma.TransactionClient,
+    weddingPlanId: string,
+    quoteRequestIds: readonly string[] | null,
+  ): Promise<Array<{ quoteRequestId: string; quoteOfferId: string | null }>>;
   /** The plan's active links to active providers; `quoteRequestIds` narrows to a contributor's quotes. */
   countActivePlanProviderLinks(
     client: Prisma.TransactionClient,

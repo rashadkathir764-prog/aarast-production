@@ -47,18 +47,52 @@ test('the costs linked to a set of offers are read by offer id, none for an empt
     weddingCost: {
       findMany: async (args: unknown) => {
         calls.push(args);
-        return [{ id: 'cost-1', quoteOfferId: 'offer-1' }, { id: 'cost-2', quoteOfferId: null }];
+        const money = {
+          budgetCategoryId: 'item-1',
+          totalAmount: new Prisma.Decimal(550000),
+          paidAmount: new Prisma.Decimal(100000),
+          status: 'PARTIALLY_PAID',
+        };
+        return [
+          { id: 'cost-1', quoteOfferId: 'offer-1', ...money, payments: [{ paidAt: new Date('2026-12-12T00:00:00Z') }] },
+          { id: 'cost-2', quoteOfferId: null, ...money, payments: [] },
+        ];
       },
     },
   } as unknown as Prisma.TransactionClient;
   const service = new FinancePortService();
 
   assert.deepEqual(await service.listCostsForOffers(client, []), []);
+  // B-18: the item and the three totals, never the payments themselves.
   assert.deepEqual(await service.listCostsForOffers(client, ['offer-1', 'offer-2']), [
-    { id: 'cost-1', quoteOfferId: 'offer-1' },
+    {
+      id: 'cost-1',
+      quoteOfferId: 'offer-1',
+      budgetCategoryId: 'item-1',
+      totalAmount: new Prisma.Decimal(550000),
+      paidAmount: new Prisma.Decimal(100000),
+      status: 'PARTIALLY_PAID',
+      lastPaidAt: new Date('2026-12-12T00:00:00Z'),
+    },
   ]);
   assert.deepEqual(calls, [
-    { where: { quoteOfferId: { in: ['offer-1', 'offer-2'] } }, select: { id: true, quoteOfferId: true } },
+    {
+      where: { quoteOfferId: { in: ['offer-1', 'offer-2'] } },
+      select: {
+        id: true,
+        quoteOfferId: true,
+        budgetCategoryId: true,
+        totalAmount: true,
+        paidAmount: true,
+        status: true,
+        payments: {
+          where: { entryType: 'PAYMENT', reversedBy: null },
+          orderBy: { paidAt: 'desc' },
+          take: 1,
+          select: { paidAt: true },
+        },
+      },
+    },
   ]);
 });
 

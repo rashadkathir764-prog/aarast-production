@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import {
   type BudgetCategory,
   BudgetCategoryKind,
+  CostPaymentType,
   FundingSourceKind,
   FundingSourceStatus,
   LoanRepaymentStatus,
@@ -38,6 +39,7 @@ import type {
   FinancePort,
   ImportedCostInput,
   MahrAgreementRequest,
+  OfferCost,
   PendingPaymentSchedule,
   PlanImportCounts,
   RecordedCostCounts,
@@ -519,15 +521,69 @@ export class FinancePortService implements FinancePort {
   async listCostsForOffers(
     client: Prisma.TransactionClient,
     quoteOfferIds: readonly string[],
-  ): Promise<Array<{ id: string; quoteOfferId: string }>> {
+  ): Promise<OfferCost[]> {
     if (quoteOfferIds.length === 0) return [];
     const costs = await client.weddingCost.findMany({
       where: { quoteOfferId: { in: [...quoteOfferIds] } },
-      select: { id: true, quoteOfferId: true },
+      select: {
+        id: true,
+        quoteOfferId: true,
+        budgetCategoryId: true,
+        totalAmount: true,
+        paidAmount: true,
+        status: true,
+        // B-18: when money last reached him (a reversal is not a payment).
+        payments: {
+          where: { entryType: CostPaymentType.PAYMENT, reversedBy: null },
+          orderBy: { paidAt: 'desc' },
+          take: 1,
+          select: { paidAt: true },
+        },
+      },
     });
     return costs.flatMap((cost) =>
-      cost.quoteOfferId ? [{ id: cost.id, quoteOfferId: cost.quoteOfferId }] : [],
+      cost.quoteOfferId
+        ? [
+            {
+              id: cost.id,
+              quoteOfferId: cost.quoteOfferId,
+              budgetCategoryId: cost.budgetCategoryId,
+              totalAmount: cost.totalAmount,
+              paidAmount: cost.paidAmount,
+              status: cost.status,
+              lastPaidAt: cost.payments[0]?.paidAt ?? null,
+            },
+          ]
+        : [],
     );
+  }
+
+  async listOutsidePartyItemIds(
+    client: Prisma.TransactionClient,
+    weddingPlanId: string,
+    costIds: readonly string[] | null,
+  ): Promise<string[]> {
+    const costs = await client.weddingCost.findMany({
+      where: {
+        weddingPlanId,
+        providerId: null,
+        quoteOfferId: null,
+        status: { not: WeddingCostStatus.CANCELLED },
+        partyName: { not: null },
+        NOT: { partyName: '' },
+        budgetCategory: { kind: { not: BudgetCategoryKind.MAHR } },
+        ...(costIds ? { id: { in: [...costIds] } } : {}),
+      },
+      select: { budgetCategoryId: true, partyName: true },
+      orderBy: { budgetCategoryId: 'asc' },
+    });
+    return [
+      ...new Set(
+        costs
+          .filter((cost) => (cost.partyName ?? '').trim() !== '')
+          .map((cost) => cost.budgetCategoryId),
+      ),
+    ];
   }
 
   async createCostFromAcceptedOffer(

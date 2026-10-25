@@ -4,11 +4,13 @@ import {
   Delete,
   Get,
   Param,
+  ParseUUIDPipe,
   Patch,
   Post,
   Query,
   UseGuards,
 } from '@nestjs/common';
+import { AdminBookingQueryDto } from './dto/admin-booking.dto';
 import { AuthenticatedUser } from '../modules/identity/public/identity-session.types';
 import { CurrentUser } from '../modules/identity/public/current-user.decorator';
 import { JwtSessionGuard } from '../modules/identity/public/jwt-session.guard';
@@ -272,6 +274,19 @@ export class AdminController {
   @RequireAdminPermission(AdminPermission.REVIEWS_READ)
   listReviews(@Query() query: AdminReviewQueryDto) {
     return this.adminService.listReviews(query);
+  }
+
+  // a12 (B-40): bookings, read only. No amount, offer or payment.
+  @Get('bookings')
+  @RequireAdminPermission(AdminPermission.PROVIDERS_READ)
+  listBookings(@Query() query: AdminBookingQueryDto) {
+    return this.adminService.listBookings(query);
+  }
+
+  @Get('bookings/:id')
+  @RequireAdminPermission(AdminPermission.PROVIDERS_READ)
+  getBooking(@Param('id', ParseUUIDPipe) id: string) {
+    return this.adminService.getBooking(id);
   }
 
   @Patch('reviews/:id/status')

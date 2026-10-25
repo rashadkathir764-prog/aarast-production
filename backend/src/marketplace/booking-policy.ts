@@ -11,7 +11,8 @@ export type BookingLifecycle =
   | "CONFIRMED"
   | "COMPLETED"
   | "DECLINED"
-  | "CANCELLED";
+  | "CANCELLED"
+  | "EXPIRED";
 
 export type BookingAction = "CONFIRM" | "DECLINE" | "CANCEL";
 
@@ -92,14 +93,32 @@ export function bookingActionViolation(
   }
 }
 
-/** A customer may ask (again) unless the booking is already open. */
+/**
+ * A customer may ask (again) unless the booking is already open; a request
+ * that expired with its provider's suspension (B-42) may be asked again once
+ * he is back.
+ */
 export function canRequestBooking(existing: BookingStatus | null): boolean {
   return (
     existing === null ||
     existing === BookingStatus.DECLINED ||
-    existing === BookingStatus.CANCELLED
+    existing === BookingStatus.CANCELLED ||
+    existing === BookingStatus.EXPIRED
   );
 }
+
+/**
+ * B-20: a day takes `capacity` confirmed bookings. `taken` counts the
+ * others confirmed that day; a capacity lowered below them keeps them and
+ * refuses the next.
+ */
+export function bookingDayFull(taken: number, capacity: number): boolean {
+  return taken >= capacity;
+}
+
+/** B-20: the provider's capacity, 1 to 20 confirmed bookings a day. */
+export const DAILY_BOOKING_CAPACITY_MIN = 1;
+export const DAILY_BOOKING_CAPACITY_MAX = 20;
 
 export function bookingLifecycle(
   status: BookingStatus,
@@ -127,6 +146,7 @@ export interface BookingRow {
   confirmedAt: Date | null;
   declinedAt: Date | null;
   cancelledAt: Date | null;
+  expiredAt?: Date | null;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -145,6 +165,7 @@ export function toBookingResponse(booking: BookingRow, now: Date = new Date()) {
     confirmedAt: booking.confirmedAt,
     declinedAt: booking.declinedAt,
     cancelledAt: booking.cancelledAt,
+    expiredAt: booking.expiredAt ?? null,
     createdAt: booking.createdAt,
     updatedAt: booking.updatedAt,
   };

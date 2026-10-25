@@ -33,7 +33,13 @@ import {
   WeddingPlan,
 } from '@prisma/client';
 import { AuthenticatedUser } from '../modules/identity/public/identity-session.types';
-import { bookingToday, toBookingResponse } from '../marketplace/booking-policy';
+import {
+  bookingToday,
+  DAILY_BOOKING_CAPACITY_MAX,
+  DAILY_BOOKING_CAPACITY_MIN,
+  toBookingResponse,
+} from '../marketplace/booking-policy';
+import type { ProviderBookingMoney } from '../marketplace/provider-booking-money';
 import { providerStatsWindowStart, toProviderStats } from './provider-stats';
 import { toReviewIdentity } from '../shared-kernel/privacy/review-identity';
 import { PhoneNormalizer } from '../shared-kernel/phone/phone-normalizer';
@@ -165,6 +171,7 @@ type ProviderQuoteRecord = QuoteRequest & {
   > | null;
   offers?: QuoteOffer[];
   booking?: Booking | null;
+  bookingMoney?: ProviderBookingMoney | null;
 };
 type ProviderReviewRecord = ProviderReview & {
   user: Pick<User, 'id' | 'name' | 'appName' | 'role'>;
@@ -628,6 +635,9 @@ export class ProviderDashboardService {
           : {}),
         ...(dto.logoUrl !== undefined ? { logoUrl } : {}),
         ...(dto.coverUrl !== undefined ? { coverUrl } : {}),
+        ...(dto.dailyBookingCapacity !== undefined
+          ? { dailyBookingCapacity: this.dailyCapacity(dto.dailyBookingCapacity) }
+          : {}),
         }),
       );
     });
@@ -1930,6 +1940,22 @@ export class ProviderDashboardService {
     }
   }
 
+  /** B-20: the validation pipe checks it too; this is the service's own guard. */
+  private dailyCapacity(value: number): number {
+    if (
+      !Number.isInteger(value) ||
+      value < DAILY_BOOKING_CAPACITY_MIN ||
+      value > DAILY_BOOKING_CAPACITY_MAX
+    ) {
+      throw new BadRequestException({
+        statusCode: 400,
+        code: 'PROVIDER_DAILY_CAPACITY_RANGE',
+        message: 'dailyBookingCapacity is a whole number from 1 to 20',
+      });
+    }
+    return value;
+  }
+
   private toProviderProfileResponse(provider: ProviderProfile) {
     return {
       id: provider.id,
@@ -1972,6 +1998,8 @@ export class ProviderDashboardService {
         : null,
       ratingAverage: provider.ratingAverage.toString(),
       ratingCount: provider.ratingCount,
+      // B-20: confirmed bookings he takes on one day.
+      dailyBookingCapacity: provider.dailyBookingCapacity,
       createdAt: provider.createdAt,
       updatedAt: provider.updatedAt,
     };
@@ -2089,7 +2117,11 @@ export class ProviderDashboardService {
       status: quote.status,
       lifecycleStatus: quoteLifecycleStatus(quote.status),
       offers: quote.offers?.map((offer) => this.toQuoteOfferResponse(offer)) ?? [],
-      booking: quote.booking ? toBookingResponse(quote.booking) : null,
+      // B-18 (p22, p25): the customer's agreed, paid and left on this
+      // booking's item, three totals only; null without an agreement.
+      booking: quote.booking
+        ? { ...toBookingResponse(quote.booking), money: quote.bookingMoney ?? null }
+        : null,
       acceptedAt: quote.acceptedAt,
       rejectedAt: quote.rejectedAt,
       cancelledAt: quote.cancelledAt,

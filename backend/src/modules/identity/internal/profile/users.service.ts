@@ -58,6 +58,10 @@ import {
   type NotificationsErasurePort,
 } from "../../../notifications/public/notifications-erasure.port";
 import {
+  NOTIFICATIONS_PORT,
+  type NotificationsPort,
+} from "../../../notifications/public/notifications.port";
+import {
   PLAN_ERASURE_PORT,
   type PlanErasurePort,
 } from "../../../planning/public/plan-erasure.port";
@@ -193,6 +197,8 @@ export class UsersService {
     private readonly tasks: TasksPort,
     @Inject(GUESTS_PORT)
     private readonly guests: GuestsPort,
+    @Inject(NOTIFICATIONS_PORT)
+    private readonly notifications: NotificationsPort,
     @Optional()
     @Inject(MESSAGING_REALTIME_PORT)
     private readonly realtime?: MessagingRealtimePort,
@@ -329,7 +335,6 @@ export class UsersService {
         }
         const preservesAdministratorIdentity =
           lockedUsers[0].role === UserRole.ADMIN;
-
         // An administrator may separately enroll in the application. Deleting
         // that application identity must never delete the administrator's
         // login/profile media, while every ordinary application account keeps
@@ -372,6 +377,35 @@ export class UsersService {
         const ratingsToRefresh = externalRatedProviderIds.filter((providerId) =>
           lockedProviderIds.has(providerId),
         );
+
+        // B-33: a provider with weddings still to do hands them over or
+        // cancels them first. Read under the provider rows' locks (taken
+        // above in the saga's order), so no confirmation slips in after it;
+        // the refusal rolls back this whole transaction, so nothing was
+        // erased.
+        const upcomingBookingIds =
+          await this.marketplaceErasure.lockUpcomingConfirmedBookingIdsInTransaction(
+            tx,
+            providerIds,
+            new Date(),
+          );
+        if (upcomingBookingIds.length > 0) {
+          throw new ConflictException({
+            statusCode: 409,
+            code: "PROVIDER_HAS_UPCOMING_BOOKINGS",
+            message: "Hand over or cancel the upcoming bookings first",
+            count: upcomingBookingIds.length,
+            bookingIds: upcomingBookingIds,
+          });
+        }
+        // Told after the purge below; built now, while the requests exist.
+        const closedProviderNotices = (
+          await this.marketplaceErasure.closedProviderNoticesInTransaction(
+            tx,
+            providerIds,
+            new Date(),
+          )
+        ).filter((notice) => notice.userId !== userId);
 
         if (reviewedProviderIds.length > 0) {
           // ProviderReview cascades from User, but the provider cache does not.
@@ -507,6 +541,11 @@ export class UsersService {
           tx,
           providerIds,
         );
+        // B-33: «المزود أغلق حسابه» to the customers whose open requests
+        // went with it (written after the notification purge above).
+        for (const notice of closedProviderNotices) {
+          await this.notifications.createNotificationInTransaction(tx, notice);
+        }
         // A claim of a listing (B-12) is the account's own request.
         await this.marketplaceErasure.deleteUserClaimRequestsInTransaction(
           tx,

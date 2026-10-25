@@ -92,6 +92,17 @@ export function mediaStorageWithOwners<T extends object>(fake: T) {
   };
 }
 
+type NotificationsPort = import('../../src/modules/notifications/public/notifications.port').NotificationsPort;
+
+/** What `UsersService` wrote through the notifications port (B-33), for assertions. */
+export const erasureNotices = {
+  written: [] as unknown[],
+  async createNotificationInTransaction(_tx: unknown, input: unknown) {
+    erasureNotices.written.push(input);
+    return null;
+  },
+};
+
 export const identityErasurePorts = [
   new PlanErasureService(),
   new MarketplaceErasureService(),
@@ -101,6 +112,8 @@ export const identityErasurePorts = [
   ownerPorts.finance,
   ownerPorts.tasks,
   ownerPorts.guests,
+  // B-33: the notices to customers of a closed provider account.
+  erasureNotices as unknown as NotificationsPort,
 ] as const;
 
 type UsersServiceOptional = [realtime?: unknown, firebasePush?: unknown];
@@ -538,7 +551,8 @@ function install<T extends FakeClient>(fake: T, store: OwnerStore): T {
       // the way the real rows do: a plan's members, an offer's costs, a
       // conversation's quote requests and their count.
       if (key === 'weddingCosts' && Array.isArray(related) && typeof value.id === 'string') {
-        for (const cost of related) if (isRow(cost)) remember('weddingCost', { ...cost, quoteOfferId: value.id });
+        // A cost row selected with its latest payment (B-18) has a list there.
+        for (const cost of related) if (isRow(cost)) remember('weddingCost', { payments: [], ...cost, quoteOfferId: value.id });
       }
       if (key === 'sharedMembers' && Array.isArray(related) && typeof value.id === 'string') {
         for (const member of related) if (isRow(member)) remember('sharedMember', { id: `${value.id}:${member.userId}`, weddingPlanId: value.id, ...member });

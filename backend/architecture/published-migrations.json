@@ -98,6 +98,7 @@
     "20261026000000_featured_placement_review_fixes": "7bd353675a34ba5e9ceda27dec6fbad44da6ff3bb8938aec2b0a07aa0fea1ed5",
     "20261026100000_add_mahr_and_starter_defaults": "5231c8b90c18e8921e3ecca4ef21764451744b1f5748808b781145e4f0276f6b",
     "20261027000000_review_reply_and_notification_types": "2a19f71e6deae1fc24273a6c18fcefd3bdfb2a94b501b31057b9b37ff2e8ec64",
-    "20261027000100_notice_types_and_routes_backfill": "3546538e81a816079efdf928953523188d684dc6f997a4c5084d047382207475"
+    "20261027000100_notice_types_and_routes_backfill": "3546538e81a816079efdf928953523188d684dc6f997a4c5084d047382207475",
+    "20261027100000_provider_daily_capacity_and_expired_bookings": "b3eb5cf035098eddcbc0c8f5507ed780b5b8d77d898c239b28af6d62b3e35083"
   }
 }

@@ -1,4 +1,12 @@
-import { IsEmail, IsOptional, IsString, MaxLength } from 'class-validator';
+import {
+  IsEmail,
+  IsInt,
+  IsOptional,
+  IsString,
+  Max,
+  MaxLength,
+  Min,
+} from 'class-validator';
 
 export class UpdateProviderProfileDto {
   @IsString()
@@ -59,4 +67,14 @@ export class UpdateProviderProfileDto {
   @IsString()
   @IsOptional()
   primaryCategoryId?: string;
+
+  /**
+   * B-20: how many weddings he takes on one day, 1 to 20. Lowering it below
+   * a day's confirmed bookings keeps them and refuses the next confirm.
+   */
+  @IsInt()
+  @Min(1)
+  @Max(20)
+  @IsOptional()
+  dailyBookingCapacity?: number;
 }

@@ -124,6 +124,7 @@ async function seedProvider(
     reopenedAt: reopens.length ? stepAt(reopens[reopens.length - 1]!) : null,
     verifiedAt: spec.verified ? inDays(-14) : null,
     verifiedById: spec.verified ? reviewer : null,
+    dailyBookingCapacity: spec.dailyBookingCapacity ?? 1,
   };
   await prisma.provider.upsert({ where: { id }, create: { id, ...data }, update: data });
 

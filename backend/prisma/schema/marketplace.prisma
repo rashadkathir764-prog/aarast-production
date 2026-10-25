@@ -40,6 +40,8 @@ enum BookingStatus {
   CONFIRMED
   DECLINED
   CANCELLED
+  // B-42: an open request of a provider the back office suspended.
+  EXPIRED
 }
 
 enum BookingParty {
@@ -105,6 +107,8 @@ model Provider {
   verifiedById      String?
   ratingAverage     Decimal                  @default(0) @db.Decimal(3, 2)
   ratingCount       Int                      @default(0)
+  // B-20: confirmed bookings he takes on one day, 1 to 20 (a CHECK in the migration).
+  dailyBookingCapacity Int                   @default(1)
   createdAt         DateTime                 @default(now())
   updatedAt         DateTime                 @updatedAt
   user              User?                    @relation(fields: [userId], references: [id], onDelete: SetNull)
@@ -334,8 +338,9 @@ model PlanProviderLink {
 /// The wedding date reserved with a provider once their offer was accepted
 /// (V1 checklist 4.6). Tracking only: no deposit and no payment move through
 /// it. One booking per quote request; the plan and the customer are the
-/// quote's. A partial unique index (migration) allows one CONFIRMED booking
-/// per provider per date, so a provider cannot be double-booked.
+/// quote's. A provider holds at most `Provider.dailyBookingCapacity`
+/// CONFIRMED bookings on one date, counted under the provider's row lock
+/// (B-20).
 model Booking {
   id                String        @id @default(uuid())
   quoteRequestId    String        @unique
@@ -349,6 +354,7 @@ model Booking {
   confirmedAt       DateTime?
   declinedAt        DateTime?
   cancelledAt       DateTime?
+  expiredAt         DateTime?
   createdAt         DateTime      @default(now())
   updatedAt         DateTime      @updatedAt
   quoteRequest      QuoteRequest  @relation(fields: [quoteRequestId], references: [id], onDelete: Cascade)

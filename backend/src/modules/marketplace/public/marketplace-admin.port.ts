@@ -1,6 +1,9 @@
 import type {
+  Booking,
+  BookingStatus,
   Prisma,
   Provider,
+  QuoteRequest,
   ProviderClaimRequest,
   ProviderClaimStatus,
   ProviderFeaturedPeriod,
@@ -15,6 +18,7 @@ import type {
   QuoteRequestStatus,
   ReviewStatus,
 } from '@prisma/client';
+import type { CreateNotificationInput } from '../../notifications/public/notifications.port';
 import type { PricedService } from './market-prices';
 import type { ProviderFieldNote } from './provider-review';
 
@@ -269,6 +273,23 @@ export interface CatalogUsage {
 // transaction, or the shared Prisma service); the catalog entries and the
 // accounts the rows reference are attached by the back office from their
 // owners.
+/** a12 (B-40): the filters of the back office's bookings list. */
+export interface AdminBookingFilter {
+  providerId: string | null;
+  status: BookingStatus | null;
+  /** The booked day, inclusive. */
+  from: Date | null;
+  to: Date | null;
+}
+
+/** A booking as the back office reads it: the day, the parties, who ended it and why. */
+export type AdminBookingRow = Booking & {
+  provider: Pick<Provider, 'id' | 'businessName' | 'status'>;
+  quoteRequest: Pick<QuoteRequest, 'id' | 'userId' | 'weddingPlanId' | 'contactName' | 'guestCount'>;
+  /** The status as people read it: a confirmed booking whose day passed is COMPLETED. */
+  lifecycleStatus: BookingStatus | 'COMPLETED';
+};
+
 export interface MarketplaceAdminPort {
   getCounters(client: Prisma.TransactionClient): Promise<AdminMarketplaceCounters>;
   getReport(
@@ -311,6 +332,24 @@ export interface MarketplaceAdminPort {
     providerId: string,
     decision: ProviderReviewDecision,
   ): Promise<AdminProviderDetailRow>;
+  /**
+   * B-42: on a suspension, inside its transaction and under the provider's
+   * row lock: his open booking requests expire and their customers are told;
+   * his confirmed bookings from today on stay and their customers are told
+   * «موقوف مؤقتًا، حجزك المؤكد باقي». Returns the notices to write.
+   */
+  settleBookingsOnSuspensionInTransaction(
+    tx: Prisma.TransactionClient,
+    providerId: string,
+    suspendedAt: Date,
+  ): Promise<CreateNotificationInput[]>;
+  /** a12 (B-40): bookings, newest day first, read only. */
+  listBookings(
+    client: Prisma.TransactionClient,
+    filter: AdminBookingFilter,
+    page: AdminPage,
+  ): Promise<AdminListing<AdminBookingRow>>;
+  getBooking(client: Prisma.TransactionClient, id: string): Promise<AdminBookingRow | null>;
   /** Every review step of the provider, oldest first (B-01, B-02). */
   listProviderReviewEvents(
     client: Prisma.TransactionClient,

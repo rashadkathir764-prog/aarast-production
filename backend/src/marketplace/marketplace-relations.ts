@@ -33,6 +33,10 @@ import type {
   QuoteWithRelations,
   ReviewWithUser,
 } from "./marketplace.contracts";
+import {
+  type ProviderBookingMoney,
+  readProviderBookingMoney,
+} from "./provider-booking-money";
 
 type WithCatalog<T> = T & {
   city: City;
@@ -119,7 +123,11 @@ export class MarketplaceRelationsService {
 
   /** The provider dashboard's quotes: the requester, the service category and the plan (with its currency). */
   async attachDashboardQuoteRelations<
-    T extends QuoteRequest & { service: ProviderService | null },
+    T extends QuoteRequest & {
+      service: ProviderService | null;
+      booking?: { quoteOfferId: string | null } | null;
+      offers?: ReadonlyArray<{ id: string; currency: string }>;
+    },
   >(
     client: Prisma.TransactionClient,
     quotes: T[],
@@ -129,9 +137,17 @@ export class MarketplaceRelationsService {
         user: AppIdentity;
         service: (ProviderService & { category: ProviderCategory }) | null;
         weddingPlan: Pick<WeddingPlan, "id" | "title" | "city" | "weddingDate" | "currency"> | null;
+        bookingMoney: ProviderBookingMoney | null;
       }
     >
   > {
+    // B-18: the booking's offer, with what its customer agreed and paid.
+    const bookedOffers = quotes.flatMap((quote) => {
+      const offerId = quote.booking?.quoteOfferId;
+      const offer = offerId ? quote.offers?.find((row) => row.id === offerId) : undefined;
+      return offer ? [offer] : [];
+    });
+    const money = await readProviderBookingMoney(this.finance, client, bookedOffers);
     const { categories } = await this.catalogFor(
       client,
       [],
@@ -169,6 +185,9 @@ export class MarketplaceRelationsService {
               weddingDate: plan.weddingDate,
               currency: plan.currency,
             }
+          : null,
+        bookingMoney: quote.booking?.quoteOfferId
+          ? (money.get(quote.booking.quoteOfferId) ?? null)
           : null,
       };
     });

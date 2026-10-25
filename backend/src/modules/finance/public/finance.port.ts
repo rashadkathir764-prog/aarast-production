@@ -3,6 +3,7 @@ import type {
   PaymentSchedule,
   Prisma,
   WeddingCost,
+  WeddingCostStatus,
 } from '@prisma/client';
 import type { WeddingCostWithDetails } from './wedding-cost.presenter';
 import type { MoneyPicture, MoneyPictureQuery } from './money-picture';
@@ -108,6 +109,18 @@ export interface DueLoanRepayment {
   sourceName: string;
   amount: Prisma.Decimal;
   dueDate: Date;
+}
+
+/** A cost an accepted offer created, with its money totals (B-18). */
+export interface OfferCost {
+  id: string;
+  quoteOfferId: string;
+  budgetCategoryId: string;
+  totalAmount: Prisma.Decimal;
+  /** Everyone's payments on it, net of reversals (D59 keeps who paid inside finance). */
+  paidAmount: Prisma.Decimal;
+  status: WeddingCostStatus;
+  lastPaidAt: Date | null;
 }
 
 export interface CreateCostFromAcceptedOfferInput {
@@ -287,11 +300,26 @@ export interface FinancePort {
     tx: Prisma.TransactionClient,
     scheduleIds: readonly string[],
   ): Promise<void>;
-  /** The costs linked to any of the offers (a quote shows whether its accepted offer already has one). */
+  /**
+   * The costs linked to any of the offers: whether a quote's accepted offer
+   * already has one, the money item it is filed under («محجوز», D60), and
+   * what was agreed and paid on it (B-18: the provider reads those totals,
+   * never the payments).
+   */
   listCostsForOffers(
     client: Prisma.TransactionClient,
     quoteOfferIds: readonly string[],
-  ): Promise<Array<{ id: string; quoteOfferId: string }>>;
+  ): Promise<OfferCost[]>;
+  /**
+   * D60: the plan's wedding items booked with someone outside اعّرست: a
+   * live cost with a named party and no provider or offer. `costIds` narrows
+   * to the reader's costs (null: the whole plan).
+   */
+  listOutsidePartyItemIds(
+    client: Prisma.TransactionClient,
+    weddingPlanId: string,
+    costIds: readonly string[] | null,
+  ): Promise<string[]>;
   createCostFromAcceptedOffer(
     tx: Prisma.TransactionClient,
     input: CreateCostFromAcceptedOfferInput,

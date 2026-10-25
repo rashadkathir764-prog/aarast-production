@@ -113,7 +113,11 @@ function fakeDatabase() {
         [...bookings.values()]
           .filter((row) =>
             where.providerId
-              ? row.providerId === where.providerId
+              ? row.providerId === where.providerId &&
+                (!where.status || row.status === where.status) &&
+                (!where.eventDate ||
+                  ((!where.eventDate.gte || row.eventDate >= where.eventDate.gte) &&
+                    (!where.eventDate.lt || row.eventDate < where.eventDate.lt)))
               : row.status === where.status &&
                 row.eventDate >= where.eventDate.gte &&
                 row.eventDate <= where.eventDate.lte,
@@ -121,6 +125,7 @@ function fakeDatabase() {
           .map((row) => ({
             ...row,
             quoteRequest: quotes.get(row.quoteRequestId),
+            quoteOffer: row.quoteOfferId ? (offers.get(row.quoteOfferId) ?? null) : null,
             provider: providers.get(row.providerId),
           })),
     },
@@ -144,7 +149,7 @@ function fakeDatabase() {
     ...tx,
     $transaction: async (operation: (client: any) => Promise<unknown>) => operation(tx),
   };
-  return { prisma, quotes, bookings, notifications, addQuote, providers };
+  return { prisma, quotes, bookings, notifications, addQuote, providers, offers };
 }
 
 function service(db: ReturnType<typeof fakeDatabase>) {
@@ -162,8 +167,11 @@ function service(db: ReturnType<typeof fakeDatabase>) {
       return null;
     },
   };
-  return new BookingsService(db.prisma, permissions, notifications);
+  return new BookingsService(db.prisma, permissions, notifications, noAgreements);
 }
+
+/** No customer keeps an agreement for these offers (B-18 is tested on its own). */
+const noAgreements: any = { listCostsForOffers: async () => [] };
 
 async function rejects(promise: Promise<unknown>, code: string) {
   await assert.rejects(promise, (error: any) => error?.response?.code === code);
@@ -214,14 +222,15 @@ test("the provider confirms, the customer is told, and the day is taken", async 
   assert.equal(db.notifications.slice(-1)[0].userId, "customer-1");
   assert.match(db.notifications.slice(-1)[0].title, /^تأكد حجزك مع /);
 
-  // Another customer cannot even ask for a day the provider is confirmed on.
+  // B-20: one wedding a day by default; another customer cannot even ask
+  // for the day once it is full.
   await rejects(
     bookings.requestBooking({ id: "customer-2" } as any, "quote-2", {}),
-    "BOOKING_DATE_UNAVAILABLE",
+    "BOOKING_DAY_FULL",
   );
 });
 
-test("two requests for one day: the second confirmation is refused", async () => {
+test("two requests for one day: the second confirmation is refused (the day is full)", async () => {
   const db = fakeDatabase();
   db.addQuote("quote-1");
   db.addQuote("quote-2");
@@ -232,7 +241,7 @@ test("two requests for one day: the second confirmation is refused", async () =>
   await bookings.decideAsProvider(providerUser, first.id, "CONFIRM", {});
   await rejects(
     bookings.decideAsProvider(providerUser, second.id, "CONFIRM", {}),
-    "BOOKING_DATE_UNAVAILABLE",
+    "BOOKING_DAY_FULL",
   );
 });
 
@@ -287,21 +296,106 @@ test("a blocked day refuses requests and cannot block over a confirmed booking",
   assert.equal((await bookings.requestBooking(customer, "quote-1", {})).status, "REQUESTED");
 });
 
-test("a racing confirmation that hits the unique index reads as unavailable", async () => {
+// B-20: the old one-a-day unique index (and its P2002 mapping) is gone; the
+// count under the provider's row lock is the guard. Its race on a real
+// database is in `scripts/smoke/booking-smoke.ts`.
+test("a day takes the provider's number of confirmations, and a lowered number keeps them", async () => {
+  const db = fakeDatabase();
+  db.providers.get("provider-1").dailyBookingCapacity = 2;
+  for (const id of ["quote-1", "quote-2", "quote-3"]) db.addQuote(id);
+  const bookings = service(db);
+  const [a, b, c] = [
+    await bookings.requestBooking(customer, "quote-1", {}),
+    await bookings.requestBooking(customer, "quote-2", {}),
+    await bookings.requestBooking(customer, "quote-3", {}),
+  ];
+
+  await bookings.decideAsProvider(providerUser, a.id, "CONFIRM", {});
+  await bookings.decideAsProvider(providerUser, b.id, "CONFIRM", {});
+  await rejects(bookings.decideAsProvider(providerUser, c.id, "CONFIRM", {}), "BOOKING_DAY_FULL");
+
+  // He lowers it to one: both confirmed bookings stay, the day stays full.
+  db.providers.get("provider-1").dailyBookingCapacity = 1;
+  assert.equal(db.bookings.get(a.id).status, "CONFIRMED");
+  assert.equal(db.bookings.get(b.id).status, "CONFIRMED");
+  await rejects(bookings.decideAsProvider(providerUser, c.id, "CONFIRM", {}), "BOOKING_DAY_FULL");
+
+  // A cancellation frees a seat only once the count is under the number.
+  await bookings.cancelAsCustomer(customer, a.id, {});
+  await rejects(bookings.decideAsProvider(providerUser, c.id, "CONFIRM", {}), "BOOKING_DAY_FULL");
+  await bookings.cancelAsCustomer(customer, b.id, {});
+  assert.equal(
+    (await bookings.decideAsProvider(providerUser, c.id, "CONFIRM", {})).status,
+    "CONFIRMED",
+  );
+});
+
+test("a suspended provider confirms nothing and closes no day", async () => {
   const db = fakeDatabase();
   db.addQuote("quote-1");
+  db.addQuote("quote-2");
   const bookings = service(db);
   const first = await bookings.requestBooking(customer, "quote-1", {});
-  db.prisma.$transaction = async () => {
-    throw new Prisma.PrismaClientKnownRequestError("unique", {
-      code: "P2002",
-      clientVersion: "test",
-    });
-  };
+  db.providers.get("provider-1").status = "SUSPENDED";
+
   await rejects(
     bookings.decideAsProvider(providerUser, first.id, "CONFIRM", {}),
-    "BOOKING_DATE_UNAVAILABLE",
+    "PROVIDER_NOT_ACTIVE",
   );
+  await rejects(bookings.blockDate(providerUser, "2027-03-01"), "PROVIDER_NOT_ACTIVE");
+  await rejects(bookings.requestBooking(customer, "quote-2", {}), "PROVIDER_NOT_ACTIVE");
+});
+
+test("the provider reads agreed, paid and left on his booking, and the month's totals per currency", async () => {
+  const db = fakeDatabase();
+  db.addQuote("quote-1");
+  db.offers.get("offer-quote-1").currency = "YER";
+  const finance: any = {
+    listCostsForOffers: async (_client: unknown, ids: string[]) =>
+      ids.includes("offer-quote-1")
+        ? [
+            {
+              id: "cost-1",
+              quoteOfferId: "offer-quote-1",
+              budgetCategoryId: "item-1",
+              totalAmount: new Prisma.Decimal(550000),
+              paidAmount: new Prisma.Decimal(100000),
+              status: "PARTIALLY_PAID",
+              lastPaidAt: new Date("2026-12-12T10:00:00Z"),
+            },
+          ]
+        : [],
+  };
+  const bookings = new BookingsService(
+    db.prisma,
+    { assertPlanReadableInTransaction: async () => ({ plan: { id: "plan-1", status: "PLANNING" }, isOwner: true, sharedMember: null }), canManageProviders: () => true } as any,
+    { createNotificationInTransaction: async () => null } as any,
+    finance,
+  );
+  const requested = await bookings.requestBooking(customer, "quote-1", {});
+  await bookings.decideAsProvider(providerUser, requested.id, "CONFIRM", {});
+
+  const ledger = await bookings.ledgerForProvider(providerUser, "2027-02");
+  assert.deepEqual(ledger.totals, [
+    { currency: "YER", agreed: "550000.00", paid: "100000.00", left: "450000.00", bookings: 1 },
+  ]);
+  assert.deepEqual(ledger.bookings[0].money, {
+    agreed: "550000.00",
+    paid: "100000.00",
+    left: "450000.00",
+    currency: "YER",
+    lastPaidAt: new Date("2026-12-12T10:00:00Z"),
+  });
+  // Only the three totals: no payment, payer, receipt or note.
+  assert.deepEqual(Object.keys(ledger.bookings[0].money!).sort(), [
+    "agreed",
+    "currency",
+    "lastPaidAt",
+    "left",
+    "paid",
+  ]);
+  assert.deepEqual((await bookings.ledgerForProvider(providerUser, "2027-03")).totals, []);
+  await rejects(bookings.ledgerForProvider(providerUser, "2027-13"), "LEDGER_INVALID_MONTH");
 });
 
 // F10: a review needs a confirmed booking whose day has passed.
@@ -358,6 +452,7 @@ test("a confirmed booking reminds both sides a week and a day before, once each"
         return { id: input.dedupeKey };
       },
     } as any,
+    noAgreements,
   );
   const requested = await bookings.requestBooking(customer, "quote-1", {});
   await bookings.decideAsProvider(providerUser, requested.id, "CONFIRM", {});

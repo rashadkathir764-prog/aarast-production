@@ -36,7 +36,7 @@ export const NOTIFICATION_ROUTES = {
   LOAN_REPAYMENT_DUE_SOON: ['/wedding-plans/:planId/money/funding'],
   LOAN_REPAYMENT_OVERDUE: ['/wedding-plans/:planId/money/funding'],
   WEDDING_COUNTDOWN: ['/wedding-plans/:planId/dashboard'],
-  BOOKING_UPDATED: ['/wedding-plans/:planId/providers/requests?quote=:quoteRequestId', '/providers?quoteId=:quoteRequestId', '/provider/requests/:quoteRequestId'],
+  BOOKING_UPDATED: ['/wedding-plans/:planId/providers/requests?quote=:quoteRequestId', '/providers?quoteId=:quoteRequestId', '/provider/requests/:quoteRequestId', '/wedding-plans/:planId/providers/requests', '/providers'],
   GUEST_RESPONDED: ['/wedding-plans/:planId/guests/view/:guestId'],
   QUOTE_REQUEST_EXPIRING: ['/provider/requests/:quoteRequestId'],
   BOOKING_REQUESTED: ['/provider/requests/:quoteRequestId'],
@@ -60,6 +60,12 @@ export const noticeRoutes = {
     return weddingPlanId
       ? `/wedding-plans/${part(weddingPlanId)}/providers/requests?quote=${part(quoteRequestId)}`
       : `/providers?quoteId=${part(quoteRequestId)}`;
+  },
+  /** f01: the plan's requests, when the request itself is gone (B-33: its provider closed his account). */
+  customerRequests(weddingPlanId: string | null): string {
+    return weddingPlanId
+      ? `/wedding-plans/${part(weddingPlanId)}/providers/requests`
+      : '/providers';
   },
   /** p16/p19: one request as the provider sees it (D39). */
   providerRequest(quoteRequestId: string): string {

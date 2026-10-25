@@ -8,8 +8,19 @@ import {
   QuoteRequestStatus,
   ReviewStatus,
 } from '@prisma/client';
+import type { CreateNotificationInput } from '../../notifications/public/notifications.port';
+import * as bookingStore from './marketplace-booking.repository';
+import {
+  type BookingLifecycle,
+  bookingLifecycle,
+  bookingToday,
+} from '../../../marketplace/booking-policy';
+import { providerSuspendedCustomerNotification } from '../../../marketplace/booking-notifications';
+import { lockMarketplaceProvider } from '../../../marketplace/marketplace-write-locks';
 import type {
   AdminActiveFeaturedPeriod,
+  AdminBookingFilter,
+  AdminBookingRow,
   AdminClaimRequestFilter,
   AdminClaimRequestRow,
   AdminFeaturedPeriodFilter,
@@ -111,6 +122,13 @@ type ReviewAdminCondition =
         | { provider: { businessName: TextMatch } }
       >;
     };
+
+/** a12 (B-40): what a booking is to the people (COMPLETED once its day passed). */
+function withLifecycle<T extends { status: BookingStatus; eventDate: Date }>(
+  booking: T,
+): T & { lifecycleStatus: BookingLifecycle } {
+  return { ...booking, lifecycleStatus: bookingLifecycle(booking.status, booking.eventDate) };
+}
 
 const providerCounts = {
   _count: {
@@ -590,6 +608,94 @@ export class MarketplaceAdminRepository implements MarketplaceAdminPort {
       data: { ...changes, ...priceStamp },
       include: serviceInclude,
     });
+  }
+
+  async settleBookingsOnSuspensionInTransaction(
+    tx: Prisma.TransactionClient,
+    providerId: string,
+    suspendedAt: Date,
+  ): Promise<CreateNotificationInput[]> {
+    // The row every booking decision locks first (marketplace-write-locks).
+    const provider = await lockMarketplaceProvider(tx, providerId, 'UPDATE');
+    const open = await bookingStore.listOpenBookingRequests(tx, providerId);
+    await bookingStore.expireOpenBookingRequests(
+      tx,
+      providerId,
+      open.map((booking) => booking.id),
+      suspendedAt,
+    );
+    const kept = await bookingStore.listUpcomingConfirmedBookings(
+      tx,
+      providerId,
+      bookingToday(suspendedAt),
+    );
+    return [
+      ...open.map((booking) => ({ booking, confirmed: false })),
+      ...kept.map((booking) => ({ booking, confirmed: true })),
+    ].map(({ booking, confirmed }) =>
+      providerSuspendedCustomerNotification({
+        bookingId: booking.id,
+        quoteRequestId: booking.quoteRequestId,
+        providerId,
+        eventDate: booking.eventDate,
+        customerUserId: booking.quoteRequest.userId,
+        weddingPlanId: booking.quoteRequest.weddingPlanId,
+        providerName: provider.businessName,
+        confirmed,
+        at: suspendedAt,
+      }),
+    );
+  }
+
+  async listBookings(
+    client: Prisma.TransactionClient,
+    filter: AdminBookingFilter,
+    page: AdminPage,
+  ): Promise<AdminListing<AdminBookingRow>> {
+    const eventDate =
+      filter.from || filter.to
+        ? {
+            ...(filter.from ? { gte: filter.from } : {}),
+            ...(filter.to ? { lte: filter.to } : {}),
+          }
+        : null;
+    const total = await client.booking.count({
+      where: {
+        ...(filter.providerId ? { providerId: filter.providerId } : {}),
+        ...(filter.status ? { status: filter.status } : {}),
+        ...(eventDate ? { eventDate } : {}),
+      },
+    });
+    const items = await client.booking.findMany({
+      where: {
+        ...(filter.providerId ? { providerId: filter.providerId } : {}),
+        ...(filter.status ? { status: filter.status } : {}),
+        ...(eventDate ? { eventDate } : {}),
+      },
+      include: {
+        provider: { select: { id: true, businessName: true, status: true } },
+        quoteRequest: {
+          select: { id: true, userId: true, weddingPlanId: true, contactName: true, guestCount: true },
+        },
+      },
+      orderBy: [{ eventDate: 'desc' }, { id: 'asc' }],
+      skip: page.skip,
+      take: page.take,
+    });
+    return { total, items: items.map(withLifecycle) };
+  }
+
+  async getBooking(client: Prisma.TransactionClient, id: string): Promise<AdminBookingRow | null> {
+    const booking = await client.booking.findUnique({
+      where: { id },
+      include: {
+        provider: { select: { id: true, businessName: true, status: true } },
+        quoteRequest: {
+          select: { id: true, userId: true, weddingPlanId: true, contactName: true, guestCount: true },
+        },
+      },
+    });
+    return booking ? withLifecycle(booking) : null;
   }
 
   async listReviews(

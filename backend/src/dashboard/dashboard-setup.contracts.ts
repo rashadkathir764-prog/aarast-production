@@ -1,3 +1,5 @@
+import type { PlanBookedServices } from './plan-booked-services';
+
 // The home's setup facts (prototype b01). They sit beside the summary
 // contract, which is closed (R12B byte parity), and extend its response.
 export interface DashboardSetupFacts {
@@ -6,6 +8,11 @@ export interface DashboardSetupFacts {
    * or (for those who see money) a cost in a venue budget category.
    */
   venueSecured: boolean;
+  /**
+   * D60: the plan's booked services by the one definition of «محجوز»
+   * (`plan-booked-services.ts`): the home's tile and the providers board.
+   */
+  bookedServices: PlanBookedServices;
   /**
    * D59: of `moneySummary.paid`, what the plan owner's own money paid and
    * what the other party, the family or others paid for the owner (finance's

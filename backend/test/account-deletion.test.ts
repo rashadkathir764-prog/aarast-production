@@ -3,7 +3,7 @@ import "reflect-metadata";
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { Prisma, UserRole } from "@prisma/client";
-import { usersService } from "./support/owner-ports";
+import { erasureNotices, usersService } from "./support/owner-ports";
 
 const PLAN_CHILDREN = [
   "costPayment",
@@ -28,6 +28,10 @@ interface RecordedGraph {
   /** V1 checklist 4.10: the account's private costs and tasks in other plans. */
   privateCostIds?: string[];
   privateTaskIds?: string[];
+  /** B-33: the owned provider's confirmed bookings from today on. */
+  upcomingBookingIds?: string[];
+  /** B-33: the open requests customers sent the owned provider. */
+  openQuotes?: Array<{ id: string; userId: string; weddingPlanId: string | null }>;
 }
 
 function recordingTx(
@@ -135,7 +139,20 @@ function recordingTx(
         return { count: graph.attachmentIds?.length ?? 0 };
       },
     },
-    quoteRequest: del("quoteRequest"),
+    quoteRequest: {
+      ...del("quoteRequest"),
+      findMany: async () =>
+        (graph.openQuotes ?? []).map((quote) => ({
+          ...quote,
+          provider: { businessName: "ضيافة الأصالة" },
+        })),
+    },
+    booking: {
+      findMany: async () => {
+        calls.push("readUpcomingBookings");
+        return (graph.upcomingBookingIds ?? []).map((id) => ({ id }));
+      },
+    },
     conversation: del("conversation"),
     outboxEvent: {
       ...del("outboxEvent"),
@@ -538,6 +555,53 @@ test("deleting a provider account purges its quote conversations without touchin
   assert.equal(calls.includes("weddingPlan"), false);
   for (const child of PLAN_CHILDREN) assert.equal(calls.includes(child), false);
   assert.equal(calls[calls.length - 1], "user.delete");
+});
+
+test("B-33: a provider with a wedding still to do cannot delete his account, and nothing is erased", async () => {
+  const { tx, calls } = recordingTx([], {
+    providerIds: ["provider-owned"],
+    upcomingBookingIds: ["booking-2", "booking-1"],
+  });
+  const svc = serviceFor(tx);
+
+  await assert.rejects(
+    svc.deleteMe({ id: "u1", phone: null } as any, "delete-u1"),
+    (error: any) =>
+      error?.response?.code === "PROVIDER_HAS_UPCOMING_BOOKINGS" &&
+      error.response.count === 2 &&
+      error.response.bookingIds.join() === "booking-2,booking-1",
+  );
+  // Read under the provider's lock, before anything is purged.
+  assert.ok(calls.indexOf("lockProviders") < calls.indexOf("readUpcomingBookings"));
+  for (const purge of ["quoteRequest", "conversation", "provider", "notification", "user.delete"]) {
+    assert.equal(calls.includes(purge), false, `${purge} is not erased`);
+  }
+});
+
+test("B-33: customers with an open request are told «أغلق حسابه» after the purge", async () => {
+  erasureNotices.written.length = 0;
+  const { tx, calls } = recordingTx([], {
+    providerIds: ["provider-owned"],
+    quoteRequestIds: ["customer-quote-1"],
+    openQuotes: [
+      { id: "customer-quote-1", userId: "customer-1", weddingPlanId: "plan-9" },
+      // His own request to himself is not a customer to tell.
+      { id: "self-quote", userId: "u1", weddingPlanId: null },
+    ],
+  });
+  const svc = serviceFor(tx);
+
+  await svc.deleteMe({ id: "u1", phone: null } as any, "delete-u1");
+
+  const notices = erasureNotices.written as any[];
+  assert.equal(notices.length, 1);
+  assert.equal(notices[0].userId, "customer-1");
+  assert.equal(notices[0].title, "ضيافة الأصالة أغلق حسابه");
+  assert.equal(notices[0].routeTarget, "/wedding-plans/plan-9/providers/requests");
+  // The notice names nothing that is erased.
+  assert.equal(notices[0].entityId, null);
+  assert.equal(notices[0].data.quoteRequestId, undefined);
+  assert.ok(calls.includes("quoteRequest"));
 });
 
 test("deleting a shared member removes only that member's request and preserves the owner's conversation", async () => {

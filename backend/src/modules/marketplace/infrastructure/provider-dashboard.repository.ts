@@ -35,6 +35,7 @@ export interface ProviderProfileChanges {
   longitude?: string | null;
   logoUrl?: string | null;
   coverUrl?: string | null;
+  dailyBookingCapacity?: number;
 }
 
 export interface ServiceFields {

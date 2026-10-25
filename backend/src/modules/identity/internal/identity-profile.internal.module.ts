@@ -11,6 +11,7 @@ import { ProviderReadPublicModule } from "../../marketplace/public/provider-read
 import { MediaStoragePublicModule } from "../../media/public/media-storage-public.module";
 import { MessagingErasurePublicModule } from "../../messaging/public/messaging-erasure-public.module";
 import { NotificationsErasurePublicModule } from "../../notifications/public/notifications-erasure-public.module";
+import { NotificationsPublicModule } from "../../notifications/public/notifications-public.module";
 import { PlanErasurePublicModule } from "../../planning/public/plan-erasure-public.module";
 import { PlanReadPublicModule } from "../../planning/public/plan-read-public.module";
 import { TasksPublicModule } from "../../tasks/public/tasks-public.module";
@@ -34,6 +35,7 @@ import { PushCapabilityPublicModule } from "../../notifications/public/push-capa
     FinancePublicModule,
     TasksPublicModule,
     GuestsPublicModule,
+    NotificationsPublicModule,
   ],
   providers: [UsersService, ContextsService],
   exports: [UsersService, ContextsService],

@@ -39,6 +39,7 @@ import {
 } from "./dashboard-contributor-scope";
 import { loadDashboardHomeSections } from "./dashboard-home-queries";
 import { loadPlanReadView, type PlanReadViewResponse } from "./plan-read-view";
+import { readPlanBookedServices } from "./plan-booked-services";
 import {
   buildFinancialWarnings,
   buildImportantItems,
@@ -320,6 +321,24 @@ export class DashboardService {
         quoteIds,
       ),
     ]);
+    // D60: «محجوز», the one definition the providers board reads too. No
+    // amount is read; another account's private costs count nowhere.
+    const bookedServices = await readPlanBookedServices(
+      tx,
+      this.owners,
+      weddingPlanId,
+      {
+        quoteRequestIds: quoteIds,
+        costIds: canViewMoney
+          ? costIds
+          : await this.owners.finance.excludeOthersPrivateCosts(
+              tx,
+              weddingPlanId,
+              currentUser.id,
+              contributorIds ? contributorIds.costIds : null,
+            ),
+      },
+    );
     const venueBooked =
       bookedCategoryIds.length > 0 &&
       (await this.owners.catalog.getCategories(tx, bookedCategoryIds)).some(
@@ -483,6 +502,7 @@ export class DashboardService {
           }
         : null,
       venueSecured: venueCost || venueBooked,
+      bookedServices,
       // D59: beside the closed summary contract (R12B), whose money paid.
       paidByOwner: moneyOrNull(paidByOwnerNumber),
       paidByOthers: moneyOrNull(paidByOthersNumber),

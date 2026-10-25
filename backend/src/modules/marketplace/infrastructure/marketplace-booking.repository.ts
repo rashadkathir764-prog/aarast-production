@@ -45,14 +45,14 @@ export function findBooking(tx: Tx, id: string) {
 
 export type BookingWithQuote = NonNullable<Awaited<ReturnType<typeof findBooking>>>;
 
-/** Is the provider already confirmed on that day by another booking? */
-export async function hasConfirmedBookingOn(
+/** How many other bookings the provider has confirmed on that day (B-20: the seats taken). */
+export function countConfirmedBookingsOn(
   tx: Tx,
   providerId: string,
   day: Date,
   exceptBookingId?: string,
-): Promise<boolean> {
-  const count = await tx.booking.count({
+): Promise<number> {
+  return tx.booking.count({
     where: {
       providerId,
       eventDate: day,
@@ -60,7 +60,71 @@ export async function hasConfirmedBookingOn(
       ...(exceptBookingId ? { id: { not: exceptBookingId } } : {}),
     },
   });
-  return count > 0;
+}
+
+/** The provider's seats per day (B-20), read under his row lock. */
+export async function findProviderDailyCapacity(tx: Tx, providerId: string): Promise<number> {
+  const row = await tx.provider.findUnique({
+    where: { id: providerId },
+    select: { dailyBookingCapacity: true },
+  });
+  return row?.dailyBookingCapacity ?? 1;
+}
+
+/** Confirmed bookings per day from `today` on (p28 «باقي N»). */
+export async function countConfirmedBookingsByDay(
+  tx: Tx,
+  providerId: string,
+  today: Date,
+): Promise<Map<string, number>> {
+  const groups = await tx.booking.groupBy({
+    by: ['eventDate'],
+    where: { providerId, status: BookingStatus.CONFIRMED, eventDate: { gte: today } },
+    _count: { _all: true },
+  });
+  return new Map(
+    groups.map((group) => [group.eventDate.toISOString().slice(0, 10), group._count._all]),
+  );
+}
+
+/** B-42: the open requests of a provider being suspended, with whom to tell. */
+export function listOpenBookingRequests(tx: Tx, providerId: string) {
+  return tx.booking.findMany({
+    where: { providerId, status: BookingStatus.REQUESTED },
+    include: { quoteRequest: { select: bookingQuoteSelect } },
+    orderBy: [{ eventDate: 'asc' }, { id: 'asc' }],
+  });
+}
+
+/** B-42: ends the provider's open requests; the confirmed bookings stay. */
+export function expireOpenBookingRequests(
+  tx: Tx,
+  providerId: string,
+  bookingIds: readonly string[],
+  now: Date,
+) {
+  return tx.booking.updateMany({
+    where: { providerId, status: BookingStatus.REQUESTED, id: { in: [...bookingIds] } },
+    data: { status: BookingStatus.EXPIRED, expiredAt: now },
+  });
+}
+
+/** The provider's confirmed bookings from `today` on, with whom to tell (B-42, B-33). */
+export function listUpcomingConfirmedBookings(tx: Tx, providerId: string, today: Date) {
+  return tx.booking.findMany({
+    where: { providerId, status: BookingStatus.CONFIRMED, eventDate: { gte: today } },
+    include: { quoteRequest: { select: bookingQuoteSelect } },
+    orderBy: [{ eventDate: 'asc' }, { id: 'asc' }],
+  });
+}
+
+/** Is any booking confirmed on that day (a day with a booking cannot be blocked)? */
+export async function hasConfirmedBookingOn(
+  tx: Tx,
+  providerId: string,
+  day: Date,
+): Promise<boolean> {
+  return (await countConfirmedBookingsOn(tx, providerId, day)) > 0;
 }
 
 export async function isProviderDateBlocked(
@@ -143,8 +207,32 @@ export function listProviderBookings(tx: Tx, providerId: string, today: Date) {
         { status: BookingStatus.CONFIRMED, eventDate: { gte: today } },
       ],
     },
-    include: { quoteRequest: { select: bookingQuoteSelect } },
+    include: {
+      quoteRequest: { select: bookingQuoteSelect },
+      quoteOffer: { select: { id: true, currency: true } },
+    },
     orderBy: [{ eventDate: 'asc' }, { createdAt: 'asc' }],
+  });
+}
+
+/** p47: the provider's confirmed bookings whose day falls in [from, until). */
+export function listConfirmedBookingsInRange(
+  tx: Tx,
+  providerId: string,
+  from: Date,
+  until: Date,
+) {
+  return tx.booking.findMany({
+    where: {
+      providerId,
+      status: BookingStatus.CONFIRMED,
+      eventDate: { gte: from, lt: until },
+    },
+    include: {
+      quoteRequest: { select: bookingQuoteSelect },
+      quoteOffer: { select: { id: true, currency: true } },
+    },
+    orderBy: [{ eventDate: 'asc' }, { id: 'asc' }],
   });
 }
 

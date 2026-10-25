@@ -10,14 +10,15 @@ import {
   QuoteRequestStatus,
 } from "@prisma/client";
 import { BookingsService } from "../../src/marketplace/bookings.service";
+import { MarketplaceAdminService } from "../../src/modules/marketplace/internal/marketplace-admin.service";
 import * as core from "../../src/modules/marketplace/infrastructure/marketplace-core.repository";
 import * as dashboardStore from "../../src/modules/marketplace/infrastructure/provider-dashboard.repository";
 import { PermissionService } from "../../src/modules/collaboration/internal/permission.service";
 import { ownerPorts } from "./support/owner-ports";
 
 // Bookings without payment (V1 checklist 4.6) on a real database: requests,
-// the provider's decisions, the calendar, and the partial unique index that
-// lets only one of two racing confirmations for the same day succeed.
+// the provider's decisions, the calendar, and the provider's daily number
+// (B-20): racing confirmations counted under his row lock never pass it.
 
 const { assertManagedSmokeEnvironment } = require("./smoke-utils.js") as {
   assertManagedSmokeEnvironment: (environment: NodeJS.ProcessEnv) => unknown;
@@ -103,6 +104,7 @@ async function main(): Promise<void> {
         return null;
       },
     } as any,
+    ownerPorts.finance,
   );
 
   let planId: string | null = null;
@@ -139,12 +141,12 @@ async function main(): Promise<void> {
     const refused = results.filter((result) => result.status === "rejected");
     assert.equal(confirmed.length, 1);
     assert.equal(refused.length, 1);
-    assert.equal(code((refused[0] as PromiseRejectedResult).reason), "BOOKING_DATE_UNAVAILABLE");
+    assert.equal(code((refused[0] as PromiseRejectedResult).reason), "BOOKING_DAY_FULL");
     const confirmedRows = await prisma.booking.count({
       where: { providerId: provider.id, status: "CONFIRMED" },
     });
     assert.equal(confirmedRows, 1);
-    console.log("PASS - two racing confirmations for one day: exactly one wins");
+    console.log("PASS - two racing confirmations for a one-wedding day: exactly one wins (no unique index)");
 
     const winner = (confirmed[0] as PromiseFulfilledResult<any>).value;
     const loserId = winner.id === bookingA.id ? bookingB.id : bookingA.id;
@@ -256,6 +258,85 @@ async function main(): Promise<void> {
     assert.equal(planBookings[0].eventDate, "2027-04-10");
     await assert.rejects(bookings.listForPlan(customerB as any, plan.id));
     console.log("PASS - a plan lists its bookings with the provider's name, to its people only");
+
+    // B-20: three customers race for a day of a provider who takes two.
+    await prisma.provider.update({
+      where: { id: provider.id },
+      data: { dailyBookingCapacity: 2 },
+    });
+    const raceDay = "2027-05-06";
+    const raceCustomers = [customerA, customerB, customerA];
+    const raceBookings = [];
+    for (const customer of raceCustomers) {
+      const quote = await acceptedQuote(customer.id, raceDay);
+      raceBookings.push(await bookings.requestBooking(customer as any, quote.id, {}));
+    }
+    const raced = await Promise.allSettled(
+      raceBookings.map((booking) =>
+        bookings.decideAsProvider(providerUser as any, booking.id, "CONFIRM", {}),
+      ),
+    );
+    assert.equal(raced.filter((result) => result.status === "fulfilled").length, 2);
+    const raceRefused = raced.filter((result) => result.status === "rejected");
+    assert.equal(raceRefused.length, 1);
+    assert.equal(code((raceRefused[0] as PromiseRejectedResult).reason), "BOOKING_DAY_FULL");
+    const raceDate = new Date(`${raceDay}T00:00:00Z`);
+    assert.equal(
+      await prisma.booking.count({
+        where: { providerId: provider.id, status: "CONFIRMED", eventDate: raceDate },
+      }),
+      2,
+    );
+    const seats = (await bookings.listForProvider(providerUser as any)).find(
+      (item) => item.eventDate === raceDay && item.status === "CONFIRMED",
+    )!.day;
+    assert.deepEqual(seats, { confirmed: 2, capacity: 2 });
+    console.log("PASS - a two-wedding day: three racing confirmations, exactly two win");
+
+    // He lowers his number under the day's bookings: they stay, nothing new fits.
+    await prisma.provider.update({
+      where: { id: provider.id },
+      data: { dailyBookingCapacity: 1 },
+    });
+    assert.equal(
+      await prisma.booking.count({
+        where: { providerId: provider.id, status: "CONFIRMED", eventDate: raceDate },
+      }),
+      2,
+    );
+    await assert.rejects(
+      prisma.provider.update({ where: { id: provider.id }, data: { dailyBookingCapacity: 21 } }),
+    );
+    console.log("PASS - a lowered number keeps the bookings; the database refuses 21");
+
+    // B-42: a suspension expires the open request and keeps the confirmed
+    // bookings; every customer concerned is told which.
+    const openQuote = await acceptedQuote(customerB.id, "2027-06-03");
+    const open = await bookings.requestBooking(customerB as any, openQuote.id, {});
+    const suspendedAt = new Date();
+    const notices = await prisma.$transaction((tx) =>
+      new MarketplaceAdminService().settleBookingsOnSuspensionInTransaction(
+        tx,
+        provider.id,
+        suspendedAt,
+      ),
+    );
+    const expired = await prisma.booking.findUniqueOrThrow({ where: { id: open.id } });
+    assert.equal(expired.status, "EXPIRED");
+    assert.ok(expired.expiredAt);
+    assert.equal(
+      await prisma.booking.count({ where: { providerId: provider.id, status: "CONFIRMED", eventDate: raceDate } }),
+      2,
+    );
+    assert.ok(notices.some((notice: any) => notice.data.bookingId === open.id && notice.data.bookingKept === false));
+    assert.ok(notices.some((notice: any) => notice.data.bookingKept === true));
+    assert.ok(notices.every((notice: any) => String(notice.title).endsWith("موقوف مؤقتًا")));
+    // Once back, the customer may ask again.
+    assert.equal(
+      (await bookings.requestBooking(customerB as any, openQuote.id, {})).status,
+      "REQUESTED",
+    );
+    console.log("PASS - a suspension expires the open request, keeps the confirmed ones and tells both");
   } finally {
     if (planId) {
       await prisma.quoteRequest.updateMany({

@@ -38,6 +38,11 @@ import type {
   ProviderVerification,
 } from '../public/marketplace-admin.port';
 import type { PricedService } from '../public/market-prices';
+import type {
+  AdminBookingFilter,
+  AdminBookingRow,
+} from '../public/marketplace-admin.port';
+import type { CreateNotificationInput } from '../../notifications/public/notifications.port';
 import { MarketplaceAdminRepository } from '../infrastructure/marketplace-admin.repository';
 
 @Injectable()
@@ -98,6 +103,33 @@ export class MarketplaceAdminService implements MarketplaceAdminPort {
     providerId: string,
   ): Promise<boolean> {
     return this.repository.hasJoiningService(client, providerId);
+  }
+
+  async settleBookingsOnSuspensionInTransaction(
+    tx: Prisma.TransactionClient,
+    providerId: string,
+    suspendedAt: Date,
+  ): Promise<CreateNotificationInput[]> {
+    return this.repository.settleBookingsOnSuspensionInTransaction(
+      tx,
+      providerId,
+      suspendedAt,
+    );
+  }
+
+  async listBookings(
+    client: Prisma.TransactionClient,
+    filter: AdminBookingFilter,
+    page: AdminPage,
+  ): Promise<AdminListing<AdminBookingRow>> {
+    return this.repository.listBookings(client, filter, page);
+  }
+
+  async getBooking(
+    client: Prisma.TransactionClient,
+    id: string,
+  ): Promise<AdminBookingRow | null> {
+    return this.repository.getBooking(client, id);
   }
 
   async recordProviderReviewInTransaction(

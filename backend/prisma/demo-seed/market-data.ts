@@ -60,6 +60,8 @@ export interface ProviderSpec {
    * notice as sent (a placement that already ended).
    */
   featured?: { firstDay: number; lastDay: number; note: string; told?: boolean };
+  /** B-20: confirmed bookings he takes on one day (1 without it). */
+  dailyBookingCapacity?: number;
   services: ServiceSpec[];
 }
 
@@ -136,6 +138,9 @@ export const PROVIDERS: readonly ProviderSpec[] = [
   },
   {
     key: 'hospitality',
+    // A provider who confirmed bookings has an account (D60: no booked
+    // provider reads «غير مفعّل» in «استكشف»).
+    owner: 'providerHospitality',
     city: 'صنعاء',
     // The production catalog's «وجبات» (migration 20260729050000).
     categorySlug: 'catering',
@@ -145,6 +150,9 @@ export const PROVIDERS: readonly ProviderSpec[] = [
     description: 'ضيافة وعشاء للأعراس بالمأكولات اليمنية.',
     address: 'حدة، صنعاء',
     status: ProviderStatus.ACTIVE,
+    // B-20: two kitchens, so Mohammed's and Salma's nights of 21 January
+    // are both confirmed (and the day is full).
+    dailyBookingCapacity: 2,
     services: [
       {
         key: 'dinner',
@@ -207,6 +215,7 @@ export const PROVIDERS: readonly ProviderSpec[] = [
   },
   {
     key: 'yasmine',
+    owner: 'providerYasmine',
     city: 'صنعاء',
     categorySlug: 'wedding-halls',
     businessName: 'صالة الياسمين',
@@ -605,6 +614,9 @@ export const REQUESTS: readonly RequestSpec[] = [
       validUntil: day('2026-08-20'),
       status: QuoteOfferStatus.ACCEPTED,
     },
+    // An accepted offer is «اخترت · اطلبي الحجز» until the provider
+    // confirms (D60); the hospitality takes two weddings a day (B-20).
+    booking: { date: WEDDING_DAY, status: BookingStatus.CONFIRMED },
   },
   {
     key: 'studioBride',

@@ -6,6 +6,7 @@ import {
   requesterQuoteRoute,
 } from "./quote-notifications";
 import { type AddressedText, gendered } from "../shared-kernel/voice/address-form";
+import { noticeRoutes } from "../shared-kernel/routes/notification-routes";
 import {
   daysBetween,
   weekdayDayMonthWords,
@@ -121,6 +122,98 @@ export function bookingCustomerNotification(
       recipientAudience: "CUSTOMER",
     },
     dedupeKey: `${args.customerUserId}:booking:${args.bookingId}:${event}:${args.revision}`,
+  };
+}
+
+// ── When the provider stops (B-42) or closes his account (B-33) ────────
+
+export interface ProviderSuspendedArgs {
+  bookingId: string;
+  quoteRequestId: string;
+  providerId: string;
+  eventDate: Date;
+  customerUserId: string;
+  weddingPlanId: string | null;
+  providerName: string;
+  /** The booking stays confirmed; otherwise the request expired. */
+  confirmed: boolean;
+  /** The suspension's moment: one notice per booking and suspension. */
+  at: Date;
+}
+
+/**
+ * B-42: the customer of a suspended provider's booking. His open requests
+ * expire; his confirmed bookings stay: «موقوف مؤقتًا، حجزك المؤكد باقي».
+ */
+export function providerSuspendedCustomerNotification(
+  args: ProviderSuspendedArgs,
+): CreateNotificationInput {
+  const day = weekdayDayMonthWords(args.eventDate);
+  const body: AddressedText = args.confirmed
+    ? `حجزك المؤكد يوم ${day} باقي.`
+    : gendered(
+        `انتهى طلب حجز يوم ${day}. تقدر تطلبه مرة ثانية لما يرجع، أو تختار مزود غيره.`,
+        `انتهى طلب حجز يوم ${day}. تقدرين تطلبينه مرة ثانية لما يرجع، أو تختارين مزود غيره.`,
+      );
+  return {
+    userId: args.customerUserId,
+    weddingPlanId: args.weddingPlanId,
+    type: NotificationType.BOOKING_UPDATED,
+    priority: NotificationPriority.HIGH,
+    title: `${args.providerName} موقوف مؤقتًا`,
+    body,
+    entityType: "booking",
+    entityId: args.bookingId,
+    routeTarget: requesterQuoteRoute(args.weddingPlanId, args.quoteRequestId),
+    data: {
+      bookingId: args.bookingId,
+      quoteRequestId: args.quoteRequestId,
+      providerId: args.providerId,
+      weddingPlanId: args.weddingPlanId,
+      bookingEvent: "PROVIDER_SUSPENDED",
+      bookingKept: args.confirmed,
+      recipientAudience: "CUSTOMER",
+    },
+    dedupeKey: `${args.customerUserId}:booking:${args.bookingId}:PROVIDER_SUSPENDED:${args.at.getTime()}`,
+  };
+}
+
+export interface ProviderClosedArgs {
+  /** The request being erased: it keys the notice only, it is not kept. */
+  quoteRequestId: string;
+  customerUserId: string;
+  weddingPlanId: string | null;
+  providerName: string;
+  at: Date;
+}
+
+/**
+ * B-33: a customer whose open request goes with the provider's closed
+ * account. The request, its offers and its booking are erased right after,
+ * so the notice names none of them and opens the plan's requests.
+ */
+export function providerClosedCustomerNotification(
+  args: ProviderClosedArgs,
+): CreateNotificationInput {
+  return {
+    userId: args.customerUserId,
+    weddingPlanId: args.weddingPlanId,
+    type: NotificationType.BOOKING_UPDATED,
+    priority: NotificationPriority.HIGH,
+    title: `${args.providerName} أغلق حسابه`,
+    body: gendered(
+      "طلبك معه انتهى. تقدر تختار مزود غيره.",
+      "طلبك معه انتهى. تقدرين تختارين مزود غيره.",
+    ),
+    entityType: "provider_closed",
+    entityId: null,
+    routeTarget: noticeRoutes.customerRequests(args.weddingPlanId),
+    data: {
+      weddingPlanId: args.weddingPlanId,
+      bookingEvent: "PROVIDER_CLOSED",
+      recipientAudience: "CUSTOMER",
+    },
+    dedupeKey: `${args.customerUserId}:provider-closed:${args.quoteRequestId}:${args.at.getTime()}`,
   };
 }
 

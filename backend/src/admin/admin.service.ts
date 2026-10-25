@@ -95,6 +95,8 @@ import { AdminListedProviderDto } from './dto/admin-listed-provider.dto';
 import { AdminServiceDto, AdminServiceQueryDto } from './dto/admin-service.dto';
 import { AdminConversationReportQueryDto, AdminConversationReportStatusDto } from './dto/admin-conversation-report.dto';
 import { authorizeAdminUserStatusChange } from './admin-user-status';
+import { adminBookingFilter, toAdminBookingResponse } from './admin-bookings';
+import type { AdminBookingQueryDto } from './dto/admin-booking.dto';
 
 interface Pagination {
   page: number;
@@ -295,6 +297,31 @@ export class AdminService {
 
   async deleteService(currentUser: AuthenticatedUser, id: string) {
     return this.mutations.deleteService(currentUser, id);
+  }
+
+  /** a12 (B-40): bookings, read only, newest day first. */
+  async listBookings(query: AdminBookingQueryDto) {
+    const pagination = this.parsePagination(query.page, query.limit);
+    const filter = adminBookingFilter(query);
+    const listing = await this.prisma.$transaction((tx) =>
+      this.owners.marketplace.listBookings(tx, filter, {
+        skip: pagination.skip,
+        take: pagination.limit,
+      }),
+    );
+    return this.paginate(
+      listing.items.map((booking) => toAdminBookingResponse(booking)),
+      listing.total,
+      pagination,
+    );
+  }
+
+  async getBooking(id: string) {
+    const booking = await this.prisma.$transaction((tx) =>
+      this.owners.marketplace.getBooking(tx, id),
+    );
+    if (!booking) throw new NotFoundException('Booking not found');
+    return toAdminBookingResponse(booking);
   }
 
   async listReviews(query: AdminReviewQueryDto) {
@@ -875,6 +902,20 @@ export class AdminService {
         throw new BadRequestException(
           'The application identity is not eligible for provider approval',
         );
+      }
+
+      // B-42: a suspension ends his open booking requests and keeps the
+      // confirmed bookings; every customer concerned is told which.
+      if (status === ProviderStatus.SUSPENDED) {
+        const notices =
+          await this.owners.marketplace.settleBookingsOnSuspensionInTransaction(
+            tx,
+            id,
+            reviewedAt,
+          );
+        for (const notice of notices) {
+          await this.notifications.createNotificationInTransaction(tx, notice);
+        }
       }
 
       const revokedConversationIds =

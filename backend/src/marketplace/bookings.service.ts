@@ -20,6 +20,10 @@ import {
   seesWholePlan,
 } from "../modules/collaboration/public/collaboration-permission.port";
 import {
+  FINANCE_PORT,
+  type FinancePort,
+} from "../modules/finance/public/finance.port";
+import {
   NOTIFICATIONS_PORT,
   type NotificationsPort,
 } from "../modules/notifications/public/notifications.port";
@@ -33,6 +37,7 @@ import {
 import { PrismaService } from "../platform/database/prisma.service";
 import {
   bookingActionViolation,
+  bookingDayFull,
   bookingToday,
   canRequestBooking,
   parseBookingDate,
@@ -48,6 +53,11 @@ import {
 } from "./booking-notifications";
 import { BookingDecisionDto, RequestBookingDto } from "./dto/booking.dto";
 import { lockMarketplaceProvider } from "./marketplace-write-locks";
+import {
+  ledgerMonthRange,
+  providerLedgerTotals,
+  readProviderBookingMoney,
+} from "./provider-booking-money";
 
 type Tx = Prisma.TransactionClient;
 
@@ -78,8 +88,9 @@ function isUniqueViolation(error: unknown): boolean {
  * Bookings without payment and the provider's calendar (V1 checklist 4.6).
  * A customer who accepted a provider's offer asks them to reserve the day;
  * the provider confirms or declines; either side may cancel before the day.
- * A provider is never confirmed twice on one day: the provider row is locked
- * for every availability decision and a partial unique index backs it.
+ * A provider holds at most his daily number of confirmed bookings on one
+ * day (B-20): every availability decision counts them under his row lock,
+ * which is the only guard (the old one-a-day unique index is dropped).
  */
 @Injectable()
 export class BookingsService {
@@ -89,6 +100,8 @@ export class BookingsService {
     private readonly permissions: PermissionService,
     @Inject(NOTIFICATIONS_PORT)
     private readonly notifications: NotificationsPort,
+    @Inject(FINANCE_PORT)
+    private readonly finance: FinancePort,
   ) {}
 
   // ── Customer ─────────────────────────────────────────────────────────
@@ -227,18 +240,78 @@ export class BookingsService {
       this.prisma,
       async (tx) => {
         const provider = await this.ownedProvider(tx, currentUser);
-        const rows = await bookings.listProviderBookings(
+        const today = bookingToday();
+        const rows = await bookings.listProviderBookings(tx, provider.id, today);
+        const [confirmedByDay, money] = await Promise.all([
+          bookings.countConfirmedBookingsByDay(tx, provider.id, today),
+          readProviderBookingMoney(
+            this.finance,
+            tx,
+            rows.flatMap((row) => (row.quoteOffer ? [row.quoteOffer] : [])),
+          ),
+        ]);
+        return rows.map((row) => {
+          const day = row.eventDate.toISOString().slice(0, 10);
+          return {
+            ...toBookingResponse(row),
+            customerName: row.quoteRequest.contactName,
+            guestCount: row.quoteRequest.guestCount,
+            location: row.quoteRequest.location,
+            weddingPlanId: row.quoteRequest.weddingPlanId,
+            // B-20: the day's seats (p28 «باقي N», p21 «اليوم امتلى»).
+            day: {
+              confirmed: confirmedByDay.get(day) ?? 0,
+              capacity: provider.dailyBookingCapacity,
+            },
+            // B-18: agreed, paid and left on the customer's item; null
+            // when he keeps no agreement for this offer.
+            money: row.quoteOfferId ? (money.get(row.quoteOfferId) ?? null) : null,
+          };
+        });
+      },
+      { isolationLevel: Prisma.TransactionIsolationLevel.RepeatableRead },
+    );
+  }
+
+  /**
+   * p47 «حساباتك»: the month's confirmed bookings (a past day included) and
+   * what their customers agreed, paid and still owe, each currency on its
+   * own. Read only: the customer records every payment.
+   */
+  async ledgerForProvider(currentUser: AuthenticatedUser, month: string) {
+    const range = ledgerMonthRange(month ?? "");
+    if (!range) {
+      bookingError("BAD_REQUEST", "LEDGER_INVALID_MONTH", "month is YYYY-MM");
+    }
+    return runRetryableTransaction(
+      this.prisma,
+      async (tx) => {
+        const provider = await this.ownedProvider(tx, currentUser);
+        const rows = await bookings.listConfirmedBookingsInRange(
           tx,
           provider.id,
-          bookingToday(),
+          range.from,
+          range.until,
         );
-        return rows.map((row) => ({
-          ...toBookingResponse(row),
+        const money = await readProviderBookingMoney(
+          this.finance,
+          tx,
+          rows.flatMap((row) => (row.quoteOffer ? [row.quoteOffer] : [])),
+        );
+        const items = rows.map((row) => ({
+          bookingId: row.id,
+          quoteRequestId: row.quoteRequestId,
           customerName: row.quoteRequest.contactName,
-          guestCount: row.quoteRequest.guestCount,
-          location: row.quoteRequest.location,
-          weddingPlanId: row.quoteRequest.weddingPlanId,
+          eventDate: row.eventDate.toISOString().slice(0, 10),
+          money: row.quoteOfferId ? (money.get(row.quoteOfferId) ?? null) : null,
         }));
+        return {
+          month: month.trim(),
+          totals: providerLedgerTotals(
+            items.flatMap((item) => (item.money ? [item.money] : [])),
+          ),
+          bookings: items,
+        };
       },
       { isolationLevel: Prisma.TransactionIsolationLevel.RepeatableRead },
     );
@@ -250,14 +323,15 @@ export class BookingsService {
     action: BookingAction,
     dto: BookingDecisionDto,
   ): Promise<BookingResponse> {
-    try {
-      return await runSerializableTransaction(this.prisma, async (tx) => {
-        const provider = await this.ownedProvider(tx, currentUser);
+    return runSerializableTransaction(this.prisma, async (tx) => {
+        const owned = await this.ownedProvider(tx, currentUser);
         const booking = await bookings.findBooking(tx, bookingId);
-        if (!booking || booking.providerId !== provider.id) {
+        if (!booking || booking.providerId !== owned.id) {
           throw new NotFoundException("Booking not found");
         }
-        await lockMarketplaceProvider(tx, provider.id, "UPDATE");
+        // Re-read under the row lock: a suspension or a lowered capacity
+        // that committed meanwhile is the one this decision sees.
+        const provider = await lockMarketplaceProvider(tx, owned.id, "UPDATE");
         if (action === "CONFIRM") {
           assertProviderOperational(provider);
           await this.assertDayAvailable(tx, provider.id, booking.eventDate, booking.id);
@@ -285,12 +359,7 @@ export class BookingsService {
           }),
         );
         return toBookingResponse(updated);
-      });
-    } catch (error) {
-      // Two confirmations raced for one day: the partial unique index won.
-      if (isUniqueViolation(error)) this.dayUnavailable();
-      throw error;
-    }
+    });
   }
 
   async listBlockedDates(currentUser: AuthenticatedUser) {
@@ -306,7 +375,8 @@ export class BookingsService {
       if (typeof day === "string") {
         bookingError("BAD_REQUEST", "BOOKING_INVALID_DATE", "Choose a day from today on");
       }
-      await lockMarketplaceProvider(tx, provider.id, "UPDATE");
+      // B-42: closing days is an approved provider's calendar work.
+      assertProviderOperational(await lockMarketplaceProvider(tx, provider.id, "UPDATE"));
       if (await bookings.hasConfirmedBookingOn(tx, provider.id, day)) {
         bookingError(
           "CONFLICT",
@@ -433,20 +503,26 @@ export class BookingsService {
     day: Date,
     exceptBookingId?: string,
   ) {
-    if (
-      (await bookings.isProviderDateBlocked(tx, providerId, day)) ||
-      (await bookings.hasConfirmedBookingOn(tx, providerId, day, exceptBookingId))
-    ) {
-      this.dayUnavailable();
+    // The caller holds the provider's row lock, so the count and the write
+    // it guards cannot interleave with another decision for this provider.
+    if (await bookings.isProviderDateBlocked(tx, providerId, day)) {
+      bookingError(
+        "CONFLICT",
+        "BOOKING_DATE_UNAVAILABLE",
+        "The provider is not available on this day",
+      );
     }
-  }
-
-  private dayUnavailable(): never {
-    bookingError(
-      "CONFLICT",
-      "BOOKING_DATE_UNAVAILABLE",
-      "The provider is not available on this day",
-    );
+    const [taken, capacity] = await Promise.all([
+      bookings.countConfirmedBookingsOn(tx, providerId, day, exceptBookingId),
+      bookings.findProviderDailyCapacity(tx, providerId),
+    ]);
+    if (bookingDayFull(taken, capacity)) {
+      bookingError(
+        "CONFLICT",
+        "BOOKING_DAY_FULL",
+        "The provider's day is full",
+      );
+    }
   }
 
   private async transition(

@@ -76,9 +76,12 @@ describe('provider administration lifecycle', () => {
   });
 
   it('labels page-local aggregates honestly', () => {
+    // On the desk kit (D56) the services and users pages show the server's
+    // total only, like the designed lists, and no sum of the page in view.
     for (const source of [servicesSource, usersSource]) {
-      expect(source).toContain('value={pagination.total}');
-      expect(source).toContain('في الصفحة');
+      expect(source).toContain('grouped(result.total)');
+      expect(source).not.toContain('في الصفحة');
+      expect(source).not.toContain('<StatCard');
     }
   });
 });

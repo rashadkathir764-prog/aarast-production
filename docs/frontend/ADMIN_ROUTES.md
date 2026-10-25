@@ -10,7 +10,6 @@
 - `/conversation-reports`
 - `/featured`
 - `/login`
-- `/notifications`
 - `/providers`
 - `/providers/:id`
 - `/providers/applications`
@@ -25,4 +24,4 @@
 - `/users`
 - `/users/:id`
 
-Total: 24 routes
+Total: 23 routes

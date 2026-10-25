@@ -219,11 +219,6 @@ export const adminNavigationItems = adminNavigationGroups.flatMap(
   (group) => group.links.map((link) => ({ ...link, group: group.label })),
 );
 
-/** Pages kept without a link of their own. */
-const unlinkedLocations = [
-  { route: '/notifications', group: 'النظام', title: 'الإشعارات' },
-];
-
 const detailLocations = [
   {
     route: '/providers/applications',
@@ -254,19 +249,6 @@ export function resolveAdminLocation(pathname: string): AdminLocation {
   );
 
   if (!item) {
-    const unlinked = unlinkedLocations.find((location) =>
-      matchesRoute(normalizedPathname, location.route),
-    );
-    if (unlinked) {
-      return {
-        group: unlinked.group,
-        title: unlinked.title,
-        parentTitle: unlinked.title,
-        route: unlinked.route,
-        isDetail: false,
-        crumb: [unlinked.group],
-      };
-    }
     return {
       group: 'لوحة الإدارة',
       title: 'صفحة غير معروفة',

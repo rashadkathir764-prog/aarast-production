@@ -145,8 +145,15 @@ function send(
     },
     body: options.body === undefined ? undefined : JSON.stringify(options.body),
     credentials: 'include',
+  }).catch(() => {
+    // The browser's own failure («Failed to fetch») is English and says
+    // nothing to the team; every page shows this line instead. It stays a
+    // plain Error, not an ApiError: the server never answered.
+    throw new Error(connectionError);
   });
 }
+
+const connectionError = 'تعذر الاتصال بالخادم. تأكد من الإنترنت ثم حاول مرة ثانية.';
 
 async function parseResponse<T>(response: Response): Promise<T> {
   const payload = await readJson(response);

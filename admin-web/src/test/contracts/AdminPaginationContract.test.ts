@@ -1,6 +1,5 @@
 import { describe, expect, it } from 'vitest';
 import conversationReportsSource from '../../features/moderation/ConversationReportsPage.tsx?raw';
-import notificationsSource from '../../features/notifications/NotificationsPage.tsx?raw';
 import providerApplicationsSource from '../../features/providers/ProviderApplicationsPage.tsx?raw';
 import providersSource from '../../features/providers/ProvidersPage.tsx?raw';
 import reviewsSource from '../../features/moderation/ReviewsPage.tsx?raw';
@@ -11,13 +10,12 @@ import deskSource from '../../design_system/Desk.tsx?raw';
 // Pages rebuilt on the admin desk render the same shared control through
 // `DeskPager` (design_system/Desk.tsx), fed by the server's page answer.
 const paginatedPages = [
-  ['UsersPage.tsx', usersSource, 'shared'],
+  ['UsersPage.tsx', usersSource, 'desk'],
   ['ProviderApplicationsPage.tsx', providerApplicationsSource, 'desk'],
   ['ProvidersPage.tsx', providersSource, 'desk'],
-  ['ServicesPage.tsx', servicesSource, 'shared'],
+  ['ServicesPage.tsx', servicesSource, 'desk'],
   ['ReviewsPage.tsx', reviewsSource, 'desk'],
   ['ConversationReportsPage.tsx', conversationReportsSource, 'desk'],
-  ['NotificationsPage.tsx', notificationsSource, 'shared'],
 ] as const;
 
 describe('admin list pagination contract', () => {

@@ -27,6 +27,7 @@
 }
 
 .desk-shell,
+.desk-gate,
 .desk-dialog-backdrop {
   font-family: var(--d-font);
   line-height: 1.35;
@@ -40,8 +41,50 @@
 }
 
 .desk-shell *,
+.desk-gate *,
 .desk-dialog-backdrop * {
   box-sizing: border-box;
+}
+
+/* Pages outside the desk frame (sign-in, an unknown address; not drawn,
+   D56): one desk panel in the middle of the desk's background. */
+.desk-gate {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  padding: 24px 16px;
+  background: var(--d-bg);
+}
+
+.desk-gate__card {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  width: 100%;
+  max-width: 420px;
+}
+
+.desk-gate__brand {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  padding: 14px 16px;
+  border-radius: 12px;
+  background: var(--d-dark);
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.desk-gate__title {
+  margin: 0;
+  font-size: 22px;
+  font-weight: 700;
+}
+
+.desk-btn--full {
+  width: 100%;
+  justify-content: center;
 }
 
 /* ---------------------------------------------------------------- sidebar */
@@ -351,6 +394,7 @@
   font-weight: 700;
   line-height: 1.35;
   white-space: nowrap;
+  text-decoration: none;
   cursor: pointer;
 }
 

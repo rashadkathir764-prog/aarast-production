@@ -14,12 +14,17 @@ const EXACT = Object.freeze({
   arabic: 'db93ddc6d31d7e79410fb6e1d711e9cdb56ee69cfd2563dab549124bf398f0d0',
   transportInputs: '68da423fc5fa3e8750b39a1b77fde96d89b9f9244847904f38a1808646a7fce2',
   documents: '011005cf9d8714792973202440be6ff06223aa58aac17154d0d5fa0e21c73505',
-  allowedFeatureEdges: '801d8ca4699d0879dd4dc535eba2345d5d9cd358e0bba5dbc4fae2632ec36f61',
+  // Re-pinned 2026-10-25 (D56): the notifications feature was deleted with
+  // its undrawn page; this pin, the screen list, the public surfaces, the
+  // first tasks, the page's fate (now a delete) and its created api.ts
+  // follow it. No other entry changed.
+  allowedFeatureEdges: '01e8d3c5d719ce8d96042f8c46f02dd9bd3b1028b10c15443e767800ced908c1',
   compositionRoots: '18e34932763ebde50f663bae2c92aeb7a4aea4d7aaa2bc57d7a12247d6174aa5',
   // Re-pinned 2026-10-25: the a07 claims page ProviderClaimsPage (B-12).
   // Re-pinned 2026-10-25: the a17 plans page FeaturedPlacementsPage (B-43).
-  appScreenAllowlist: '0aa7dca53c99b014f9b6fe2b4f72e62781fb5ef59d58c810783cae9a19e04fd4',
-  publicSurfaceFirstTask: '8c16474435f8c71a05735b8d25810f6acd1d558c73dd55cd5bf5eaa5e97a0e2a',
+  // Re-pinned 2026-10-25: NotificationsPage left (D56).
+  appScreenAllowlist: '07e18e96f8dbb580524d79503e6314eea053c9f313913adb233e062bd66ef031',
+  publicSurfaceFirstTask: '84cf74e0a2242688515d08b8c9809596267b16b1d45acd9c8de382499254f2cf',
   // Re-pinned 2026-10-11: providers gained setProviderVerified (V1 checklist 4.11).
   // Re-pinned 2026-10-15: providers gained createListedProvider (V1 checklist 4.18).
   // Re-pinned 2026-10-15: dashboard gained getSuccessReport (V1 checklist 4.21).
@@ -29,9 +34,10 @@ const EXACT = Object.freeze({
   // reading of «كان مرفوض» the queue and the inbox share (B-02).
   // Re-pinned 2026-10-25: providers gained the featured placements, their
   // summary, recording one and ending one (B-43).
-  publicSurfaces: '4494d846b223708393dea58307ad07937601160aa0e2b23ff96dff27eb595b40',
-  sourceFates: '2b0bc1b903a3a861b0400d398fd091a4078d9e4d2bde4a3b06166f9b764699b5',
-  createdTargets: '3d658daecf9de9a7040443a75c630a8ba732b2627c5ea929fb741205fe0019a1',
+  // Re-pinned 2026-10-25: the notifications surface left with its page (D56).
+  publicSurfaces: 'a48087fa19c75b9b2520d49d795ea7400c5e6cbdfc890282b8afbfa1a6338f38',
+  sourceFates: 'ee303d9d3d7d0f6ad9916070f3e5b623c87fa59571b3a22d99a904dd4caf40d0',
+  createdTargets: 'c74d09c036596e387e9254d4c2c3f4be9281e76d04bc389eb484416dd9cfa600',
   stages: 'd799c92b42714969d4570dd925a34912ea05ec6b4b4107c4ef0fbb3c93e09ab6',
   paginationStages: 'b48499f606f88062ff02c30e90038fc9a06cd19bec30d5201f62428bafb07e35',
   changedPathFence: '6f07c7232cd8712d693ab7a7ff5d4e12ba287fc15c1747031369ac3f7276a4bc',
@@ -43,7 +49,7 @@ const EXACT_ADMIN_RUNTIME_SMOKE = Object.freeze({
 });
 
 const EXACT_FEATURES = Object.freeze([
-  'auth', 'audit', 'catalog', 'dashboard', 'moderation', 'notifications', 'providers', 'users',
+  'auth', 'audit', 'catalog', 'dashboard', 'moderation', 'providers', 'users',
 ]);
 const EXACT_STAGE_KEYS = Object.freeze([
   'task-1', 'task-2', 'task-3', 'task-4', 'task-5', 'task-6',
@@ -178,7 +184,7 @@ export function validateR10Manifest(value) {
   requireExactArray(Object.keys(value.allowedFeatureEdges || {}), EXACT_FEATURES);
   if (
     !Array.isArray(value.appScreenAllowlist)
-    || value.appScreenAllowlist.length !== 21
+    || value.appScreenAllowlist.length !== 20
     || JSON.stringify(value.appScreenAllowlist) !== JSON.stringify(uniqueSorted(value.appScreenAllowlist))
   ) throw new Error('screen allowlist invalid');
   for (const fate of value.sourceFates) {

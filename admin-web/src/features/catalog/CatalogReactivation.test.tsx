@@ -100,15 +100,31 @@ describe('catalog reactivation', () => {
     );
   });
 
-  it('offers to enable a disabled city', async () => {
-    render(<CitiesPage />);
+  it('offers to enable a disabled city and not to disable it again', async () => {
+    // The cities page follows a08 on the desk kit (D56): an active city is
+    // disabled from its edit window; a disabled one shows «فعّلها».
+    render(
+      <MemoryRouter>
+        <CitiesPage />
+      </MemoryRouter>,
+    );
     await waitFor(() => expect(screen.getByText('عدن')).toBeInTheDocument());
 
+    expect(within(rowOf('صنعاء')).queryByRole('button', { name: 'فعّلها' })).toBeNull();
+    fireEvent.click(within(rowOf('صنعاء')).getByRole('button', { name: 'عدّل صنعاء' }));
+    const editor = screen.getByRole('dialog', { name: 'تعديل صنعاء' });
+    expect(within(editor).getByRole('button', { name: 'عطّل المدينة' })).toBeInTheDocument();
+    fireEvent.click(within(editor).getByRole('button', { name: 'سكّر' }));
+
     const disabledRow = rowOf('عدن');
-    expect(within(disabledRow).queryByRole('button', { name: 'تعطيل' })).toBeNull();
-    fireEvent.click(within(disabledRow).getByRole('button', { name: 'تفعيل' }));
-    const dialog = await screen.findByRole('dialog');
-    fireEvent.click(within(dialog).getByRole('button', { name: 'تفعيل' }));
+    expect(within(disabledRow).getByText('معطّلة')).toBeInTheDocument();
+    fireEvent.click(within(disabledRow).getByRole('button', { name: 'عدّل عدن' }));
+    expect(screen.queryByRole('button', { name: 'عطّل المدينة' })).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: 'سكّر' }));
+
+    fireEvent.click(within(disabledRow).getByRole('button', { name: 'فعّلها' }));
+    const dialog = await screen.findByRole('dialog', { name: 'تفعيل عدن' });
+    fireEvent.click(within(dialog).getByRole('button', { name: 'فعّلها' }));
 
     await waitFor(() =>
       expect(updateCity).toHaveBeenCalledWith('disabled', {

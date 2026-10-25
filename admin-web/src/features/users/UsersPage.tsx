@@ -1,244 +1,154 @@
-import { useEffect, useState } from 'react';
-import { Link, useSearchParams } from 'react-router-dom';
-import { activateUser, disableUser, getUsers, type AdminUserRecord } from './api';
-import { ActionButton } from '../../design_system/ActionButton';
-import { DataTable } from '../../design_system/DataTable';
-import { EmptyState } from '../../design_system/EmptyState';
-import { ErrorState } from '../../design_system/ErrorState';
-import { LoadingState } from '../../design_system/LoadingState';
-import { PageHeader } from '../../design_system/PageHeader';
-import { Pagination } from '../../design_system/Pagination';
-import { RoleBadge } from '../../design_system/RoleBadge';
-import { SearchInput } from '../../design_system/SearchInput';
-import { SectionCard } from '../../design_system/SectionCard';
-import { StatCard } from '../../design_system/StatCard';
-import { StatusBadge } from '../../design_system/StatusBadge';
-import { formatDate } from '../../platform/i18n/formatDate';
-import { AdminPermission, Can, useAuth } from '../auth/api';
+// «المستخدمون»: drawn in the designs' sidebar but without a page of its own
+// (D56), so it uses the desk kit the designed pages use. The desk's top
+// search («ابحث برقم أو اسم…») lands here as ?search= until n05 «ابحث برقم»
+// exists (A-14). A row opens a13, where an account is disabled or enabled
+// with what that does; the list itself changes nothing.
+import { type FormEvent, useCallback, useEffect, useState } from 'react';import { useNavigate, useSearchParams } from 'react-router-dom';
+import { getUsers, type AdminUserRecord } from './api';
+import {
+  DeskButton,
+  DeskHeader,
+  DeskNote,
+  DeskPager,
+  DeskRetry,
+  DeskTable,
+  Panel,
+  Tag,
+  TwoLine,
+  grouped,
+  phoneSpaced,
+} from '../../design_system/Desk';
+import { dayMonth } from '../../platform/i18n/deskTime';
+
+type Page = {
+  items: AdminUserRecord[];
+  page: number;
+  limit: number;
+  total: number;
+  totalPages: number;
+};
+
+const ROLE_TAGS: Record<string, { label: string; tone: 'teal' | 'sky' | 'muted' }> = {
+  ADMIN: { label: 'إدارة', tone: 'teal' },
+  PROVIDER: { label: 'مزود', tone: 'sky' },
+  USER: { label: 'مستخدم', tone: 'muted' },
+};
 
 export function UsersPage() {
-  const { user: currentAdmin } = useAuth();
-  const [items, setItems] = useState<AdminUserRecord[]>([]);
-  // The desk's top search («ابحث برقم أو اسم») lands here as ?search=.
-  const [searchParams] = useSearchParams();
-  const urlSearch = searchParams.get('search') ?? '';
-  const [search, setSearch] = useState(urlSearch);
-  const [page, setPage] = useState(1);
-  const [pagination, setPagination] = useState({
-    page: 1,
-    limit: 20,
-    total: 0,
-    totalPages: 1,
-  });
+  const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const search = searchParams.get('search') ?? '';
+  const [draft, setDraft] = useState(search);
+  // The page belongs to its search: a new search from the top bar or this
+  // page starts from its first page.
+  const [paging, setPaging] = useState({ search, page: 1 });
+  const page = paging.search === search ? paging.page : 1;
+  const setPage = useCallback((next: number) => setPaging({ search, page: next }), [search]);
+  const [attempt, setAttempt] = useState(0);
+  const [result, setResult] = useState<Page | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-
-  async function load(term: string = search) {
-    setIsLoading(true);
-    setError(null);
-    try {
-      const result = await getUsers({ search: term, page, limit: 20 });
-      if (page > result.totalPages) {
-        setPage(result.totalPages);
-        return;
-      }
-      setItems(result.items as AdminUserRecord[]);
-      setPagination({
-        page: result.page,
-        limit: result.limit,
-        total: result.total,
-        totalPages: result.totalPages,
-      });
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'تعذر تحميل المستخدمين.');
-    } finally {
-      setIsLoading(false);
-    }
-  }
 
   useEffect(() => {
-    load();
-  }, [page]);
+    setDraft(search);
+  }, [search]);
 
-  const [lastUrlSearch, setLastUrlSearch] = useState(urlSearch);
   useEffect(() => {
-    if (urlSearch === lastUrlSearch) return;
-    setLastUrlSearch(urlSearch);
-    setSearch(urlSearch);
-    if (page === 1) void load(urlSearch);
-    else setPage(1);
-  }, [urlSearch]);
-
-  function submitSearch() {
-    if (page === 1) void load();
-    else setPage(1);
-  }
-
-  async function toggleUser(user: AdminUserRecord) {
+    // Only the answer to the latest search and page is shown.
+    let current = true;
     setError(null);
-    try {
-      if (user.status === 'ACTIVE') {
-        await disableUser(user.id);
-      } else {
-        await activateUser(user.id);
-      }
-      await load();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'تعذر تحديث حالة الحساب.');
-    }
+    getUsers({ search, page, limit: 20 }).then(
+      (next) => {
+        if (!current) return;
+        if (page > next.totalPages && next.totalPages > 0) setPage(next.totalPages);
+        else setResult(next as Page);
+      },
+      (value: unknown) => {
+        if (current) setError(value instanceof Error ? value.message : 'ما قدرنا نحمّل المستخدمين.');
+      },
+    );
+    return () => {
+      current = false;
+    };
+  }, [search, page, attempt, setPage]);
+
+  const load = () => setAttempt((value) => value + 1);
+
+  function submit(event: FormEvent) {
+    event.preventDefault();
+    const term = draft.trim();
+    setSearchParams(term ? { search: term } : {});
   }
-
-  if (isLoading) return <LoadingState title="جاري تحميل المستخدمين" />;
-  if (error) return <ErrorState message={error} onRetry={() => load()} />;
-
-  const adminCount = items.filter((user) => user.role === 'ADMIN').length;
-  const providerCount = items.filter((user) => user.role === 'PROVIDER').length;
-  const regularCount = items.filter((user) => user.role === 'USER').length;
-  const activeCount = items.filter((user) => user.status === 'ACTIVE').length;
-  const roleDistribution = [
-    { label: 'إدارة', value: adminCount, tone: 'gold' },
-    { label: 'موردون', value: providerCount, tone: 'info' },
-    { label: 'مستخدمون', value: regularCount, tone: 'success' },
-  ];
 
   return (
-    <section className="page-stack">
-      <PageHeader
-        eyebrow="المستخدمون"
-        icon="♙"
-        title="حسابات المستخدمين دون بيانات حساسة"
-        description="عرض الحسابات والأدوار والحالة العامة فقط. لا يتم عرض كلمات مرور أو OTP أو رموز جلسات."
-        meta={<span>{pagination.total} حساب مطابق</span>}
+    <section>
+      <DeskHeader
+        title="المستخدمون"
+        sub={result ? `${grouped(result.total)} حساب${search ? ` يطابق «${search}»` : ''}` : undefined}
       />
-
-      <div className="stats-grid">
-        <StatCard title="كل النتائج" value={pagination.total} tone="gold" />
-        <StatCard title="نشطة في الصفحة" value={activeCount} tone="success" />
-        <StatCard title="إدارة في الصفحة" value={adminCount} tone="warning" />
-        <StatCard title="موردون في الصفحة" value={providerCount} tone="info" />
-      </div>
-
-      <SectionCard className="filters-card">
-        <SearchInput
-          label="بحث في حسابات المنصة"
-          value={search}
-          onChange={setSearch}
-          onSubmit={submitSearch}
-          placeholder="بحث بالاسم أو الهاتف"
-        />
-      </SectionCard>
-
-      <div className="content-with-aside">
-        <SectionCard
-          title="حسابات المنصة"
-          subtitle="الجدول يعرض البيانات الآمنة فقط، بدون كلمات مرور أو رموز دخول."
-        >
-          {items.length === 0 ? (
-            <EmptyState
-              title="لا يوجد مستخدمون"
-              message="لا توجد حسابات مطابقة."
-            />
-          ) : (
-            <DataTable
-              label="حسابات المنصة"
-              columns={[
-                'الاسم',
-                'الهاتف',
-                'البريد',
-                'الدور',
-                'الحالة',
-                'المورد المرتبط',
-                'تاريخ التسجيل',
-                'إجراءات',
-              ]}
-              minWidth={1060}
-            >
-              {items.map((user) => (
-                <tr key={user.id}>
-                  <td>
-                    <Link className="table-strong-link" to={`/users/${user.id}`}>
-                      {user.name}
-                    </Link>
-                    <span className="table-subtle">معرف آمن للعرض الإداري</span>
-                  </td>
-                  <td dir="ltr">{user.phone ?? 'غير محدد'}</td>
-                  <td className="truncate-cell">{user.email ?? 'غير محدد'}</td>
-                  <td>
-                    <RoleBadge role={user.role} />
-                  </td>
-                  <td>
-                    <StatusBadge status={user.status} />
-                  </td>
-                  <td>
-                    {user.provider ? (
-                      <span className="provider-cell">
-                        {user.provider.businessName}
-                        <StatusBadge status={user.provider.status} />
-                      </span>
-                    ) : (
-                      'لا يوجد'
-                    )}
-                  </td>
-                  <td className="nowrap">{formatDate(user.createdAt)}</td>
-                  <td className="actions-cell">
-                    <Link className="readonly-pill" to={`/users/${user.id}`}>
-                      عرض التفاصيل
-                    </Link>
-                    <Can permission={AdminPermission.USERS_WRITE}>
-                      {user.role !== 'ADMIN' ||
-                      currentAdmin?.adminRole === 'SUPER_ADMIN' ? (
-                        <ActionButton
-                          tone={user.status === 'ACTIVE' ? 'danger' : 'ghost'}
-                          size="small"
-                          disabled={
-                            user.id === currentAdmin?.id &&
-                            user.status === 'ACTIVE'
-                          }
-                          onClick={() => toggleUser(user)}
-                        >
-                          {user.status === 'ACTIVE' ? 'تعطيل' : 'تفعيل'}
-                        </ActionButton>
-                      ) : null}
-                    </Can>
-                  </td>
-                </tr>
-              ))}
-            </DataTable>
-          )}
-          <Pagination
-            page={pagination.page}
-            limit={pagination.limit}
-            total={pagination.total}
-            totalPages={pagination.totalPages}
+      <Panel>
+        <form className="desk-row" onSubmit={submit} role="search" style={{ alignItems: 'flex-end' }}>
+          <label className="desk-field">
+            ابحث بالاسم أو الرقم
+            <input value={draft} onChange={(event) => setDraft(event.target.value)} />
+          </label>
+          <DeskButton type="submit">ابحث</DeskButton>
+        </form>
+      </Panel>
+      <div className="desk-gap" />
+      {error ? <DeskRetry message={error} onRetry={load} /> : null}
+      {result === null && !error ? <DeskNote>لحظة، نحمّل المستخدمين…</DeskNote> : null}
+      {result && result.items.length === 0 ? (
+        <Panel>
+          <DeskNote>{search ? `ما فيه حساب يطابق «${search}».` : 'ما فيه حسابات بعد.'}</DeskNote>
+        </Panel>
+      ) : null}
+      {result && result.items.length > 0 ? (
+        <>
+          <DeskTable
+            caption="المستخدمون"
+            columns={[
+              { label: 'الحساب', flex: 3 },
+              { label: 'النوع', flex: 2 },
+              { label: 'ملف المزود', flex: 3 },
+              { label: 'الحالة', flex: 2 },
+              { label: 'من', flex: 2 },
+            ]}
+            rows={result.items}
+            rowKey={(user) => user.id}
+            onRowClick={(user) => navigate(`/users/${user.id}`)}
+            rowLabel={(user) => `افتح ${user.name}`}
+            renderRow={(user) => {
+              const role = ROLE_TAGS[user.role] ?? { label: user.role, tone: 'muted' as const };
+              return [
+                <TwoLine
+                  key="a"
+                  main={user.name}
+                  sub={user.phone ? <span className="desk-num">{phoneSpaced(user.phone)}</span> : undefined}
+                />,
+                <Tag key="r" tone={role.tone}>{role.label}</Tag>,
+                user.provider ? (
+                  <TwoLine key="p" main={user.provider.businessName} sub={user.provider.primaryCategory?.nameAr} />
+                ) : (
+                  <span key="p" className="desk-ink--muted">—</span>
+                ),
+                user.status === 'ACTIVE' ? (
+                  <Tag key="s" tone="green">نشط</Tag>
+                ) : (
+                  <Tag key="s" tone="coral">معطّل</Tag>
+                ),
+                user.createdAt ? dayMonth(user.createdAt) : '—',
+              ];
+            }}
+          />
+          <DeskPager
+            page={result.page}
+            limit={result.limit}
+            total={result.total}
+            totalPages={result.totalPages}
             onPageChange={setPage}
           />
-        </SectionCard>
-
-        <SectionCard
-          title="توزيع الأدوار"
-          subtitle="محسوب من الحسابات المعروضة حاليا فقط."
-          className="sticky-panel"
-        >
-          <div className="distribution-list">
-            {roleDistribution.map((item) => {
-              const percent = Math.round(
-                (item.value / Math.max(items.length, 1)) * 100,
-              );
-              return (
-                <div className={`distribution-item tone-${item.tone}`} key={item.label}>
-                  <div>
-                    <span>{item.label}</span>
-                    <strong>{item.value}</strong>
-                  </div>
-                  <span className="distribution-bar">
-                    <span style={{ width: `${percent}%` }} />
-                  </span>
-                </div>
-              );
-            })}
-          </div>
-        </SectionCard>
-      </div>
+        </>
+      ) : null}
     </section>
   );
 }

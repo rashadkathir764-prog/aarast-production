@@ -1,249 +1,234 @@
-import { FormEvent, useEffect, useState } from 'react';
-import {
-  City,
-  createCity,
-  deleteCity,
-  getCities,
-  updateCity,
-} from './api';
-import { ActionButton } from '../../design_system/ActionButton';
+// «المدن»: no design of its own (D56). It sits behind the one «الكتالوج»
+// link with the catalog's other pages and is drawn with the desk kit the
+// designed a08 uses: the table, the name that opens the edit window, a
+// disabled city with «فعّلها», and disabling from the edit window.
+import { type FormEvent, useCallback, useEffect, useState } from 'react';
+import { Plus } from 'lucide-react';
+import { type City, createCity, deleteCity, getCities, updateCity } from './api';
+import { CatalogTabs } from './CatalogTabs';
+import { AdminPermission, Can, hasAdminPermission, useAuth } from '../auth/api';
 import { ConfirmDialog } from '../../design_system/ConfirmDialog';
-import { DataTable } from '../../design_system/DataTable';
-import { EmptyState } from '../../design_system/EmptyState';
-import { ErrorState } from '../../design_system/ErrorState';
-import { FormCard } from '../../design_system/FormCard';
-import { FormField } from '../../design_system/FormField';
-import { LoadingState } from '../../design_system/LoadingState';
-import { PageHeader } from '../../design_system/PageHeader';
-import { SectionCard } from '../../design_system/SectionCard';
-import { StatCard } from '../../design_system/StatCard';
-import { StatusBadge } from '../../design_system/StatusBadge';
-import { Can } from '../auth/api';
-import { AdminPermission } from '../auth/api';
+import {
+  DeskButton,
+  DeskHeader,
+  DeskNote,
+  DeskRetry,
+  DeskTable,
+  Panel,
+  SoftAction,
+  Tag,
+  TwoLine,
+  grouped,
+} from '../../design_system/Desk';
+import { DeskModal } from '../../design_system/DeskModal';
+
+type Draft = { nameAr: string; nameEn: string; countryCode: string; sortOrder: string };
+
+const EMPTY: Draft = { nameAr: '', nameEn: '', countryCode: 'YE', sortOrder: '0' };
+
+function draftOf(city: City): Draft {
+  return {
+    nameAr: city.nameAr,
+    nameEn: city.nameEn ?? '',
+    countryCode: city.countryCode,
+    sortOrder: String(city.sortOrder),
+  };
+}
 
 export function CitiesPage() {
-  const [items, setItems] = useState<City[]>([]);
-  const [editing, setEditing] = useState<City | null>(null);
-  const [nameAr, setNameAr] = useState('');
-  const [nameEn, setNameEn] = useState('');
-  const [countryCode, setCountryCode] = useState('YE');
-  const [sortOrder, setSortOrder] = useState('0');
+  const { user } = useAuth();
+  const canWrite = hasAdminPermission(user, AdminPermission.CATALOG_WRITE);
+  const [items, setItems] = useState<City[] | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const [editing, setEditing] = useState<City | 'new' | null>(null);
+  const [draft, setDraft] = useState<Draft>(EMPTY);
+  const [formError, setFormError] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
 
-  async function load() {
-    setIsLoading(true);
+  const load = useCallback(async () => {
     setError(null);
     try {
       setItems(await getCities());
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'تعذر تحميل المدن.');
-    } finally {
-      setIsLoading(false);
+    } catch (value) {
+      setError(value instanceof Error ? value.message : 'ما قدرنا نحمّل المدن.');
     }
-  }
-
-  useEffect(() => {
-    load();
   }, []);
 
-  function startEdit(city: City) {
-    setEditing(city);
-    setNameAr(city.nameAr);
-    setNameEn(city.nameEn ?? '');
-    setCountryCode(city.countryCode);
-    setSortOrder(String(city.sortOrder));
-  }
+  useEffect(() => {
+    void load();
+  }, [load]);
 
-  function resetForm() {
-    setEditing(null);
-    setNameAr('');
-    setNameEn('');
-    setCountryCode('YE');
-    setSortOrder('0');
+  function open(target: City | 'new') {
+    setEditing(target);
+    setDraft(target === 'new' ? EMPTY : draftOf(target));
+    setFormError(null);
   }
 
   async function submit(event: FormEvent) {
     event.preventDefault();
-    setError(null);
+    if (!draft.nameAr.trim()) return;
+    setSaving(true);
+    setFormError(null);
     try {
       const payload = {
-        nameAr,
-        nameEn: nameEn || null,
-        countryCode: countryCode || 'YE',
-        sortOrder: Number(sortOrder) || 0,
+        nameAr: draft.nameAr.trim(),
+        nameEn: draft.nameEn.trim() || null,
+        countryCode: draft.countryCode.trim() || 'YE',
+        sortOrder: Number(draft.sortOrder) || 0,
       };
-      if (editing) {
-        await updateCity(editing.id, payload);
-      } else {
-        await createCity(payload);
-      }
-      resetForm();
+      if (editing === 'new') await createCity(payload);
+      else if (editing) await updateCity(editing.id, payload);
+      setEditing(null);
       await load();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'تعذر حفظ المدينة.');
+    } catch (value) {
+      setFormError(value instanceof Error ? value.message : 'ما قدرنا نحفظ المدينة.');
+    } finally {
+      setSaving(false);
     }
   }
 
-  if (isLoading) return <LoadingState title="جاري تحميل المدن" />;
-  if (error) return <ErrorState message={error} onRetry={load} />;
-
-  const activeCount = items.filter((city) => city.isActive).length;
-  const totalProviders = items.reduce(
-    (total, city) => total + (city.providersCount ?? 0),
-    0,
-  );
-  const totalServices = items.reduce(
-    (total, city) => total + (city.servicesCount ?? 0),
-    0,
-  );
+  const active = items?.filter((city) => city.isActive).length ?? 0;
 
   return (
-    <section className="page-stack">
-      <PageHeader
-        eyebrow="المدن"
-        icon="⌖"
-        title="إدارة المدن اليمنية"
-        description="إدارة المدن المتاحة للموردين والخدمات داخل اعّرست."
-        meta={<span>{items.length} مدينة</span>}
+    <section>
+      <DeskHeader
+        title="المدن"
+        sub={items ? `${items.length} مدينة · ${active} نشطة` : undefined}
+        actions={
+          <Can permission={AdminPermission.CATALOG_WRITE}>
+            <DeskButton icon={Plus} onClick={() => open('new')}>
+              مدينة جديدة
+            </DeskButton>
+          </Can>
+        }
       />
+      <CatalogTabs />
+      {error ? <DeskRetry message={error} onRetry={() => void load()} /> : null}
+      {items === null && !error ? <DeskNote>لحظة، نحمّل المدن…</DeskNote> : null}
+      {items && items.length === 0 ? (
+        <Panel>
+          <DeskNote>ما فيه مدن بعد.</DeskNote>
+        </Panel>
+      ) : null}
+      {items && items.length > 0 ? (
+        <DeskTable
+          caption="المدن"
+          columns={[
+            { label: 'المدينة', flex: 3 },
+            { label: 'المزودين', flex: 2 },
+            { label: 'الخدمات', flex: 2 },
+            { label: 'الترتيب', flex: 1 },
+            { label: 'الحالة', flex: 2 },
+          ]}
+          rows={items}
+          rowKey={(city) => city.id}
+          renderRow={(city) => [
+            canWrite ? (
+              <button
+                key="n"
+                type="button"
+                className="desk-link-button"
+                onClick={() => open(city)}
+                aria-label={`عدّل ${city.nameAr}`}
+              >
+                {city.nameAr}
+              </button>
+            ) : (
+              <TwoLine key="n" main={city.nameAr} sub={city.nameEn ?? undefined} />
+            ),
+            grouped(city.providersCount ?? 0),
+            grouped(city.servicesCount ?? 0),
+            city.sortOrder,
+            city.isActive ? (
+              <Tag key="s" tone="green">نشطة</Tag>
+            ) : (
+              <span key="s" className="desk-actions">
+                <Tag tone="muted">معطّلة</Tag>
+                <Can permission={AdminPermission.CATALOG_WRITE}>
+                  <ConfirmDialog
+                    variant="desk"
+                    title={`تفعيل ${city.nameAr}`}
+                    effects={['ترجع في قوائم المدن، ويقدر العرسان والمزودين يختارونها.']}
+                    confirmLabel="فعّلها"
+                    trigger={<SoftAction>فعّلها</SoftAction>}
+                    onConfirm={async () => {
+                      await updateCity(city.id, { nameAr: city.nameAr, isActive: true });
+                      await load();
+                    }}
+                  />
+                </Can>
+              </span>
+            ),
+          ]}
+        />
+      ) : null}
 
-      <div className="stats-grid">
-        <StatCard title="إجمالي المدن" value={items.length} tone="gold" />
-        <StatCard title="نشطة" value={activeCount} tone="success" />
-        <StatCard title="الموردون" value={totalProviders} tone="info" />
-        <StatCard title="الخدمات" value={totalServices} tone="warning" />
-      </div>
-
-      <div className="management-layout">
-        <SectionCard
-          title="مدن السوق"
-          subtitle="الاسم العربي، الاسم الإنجليزي، رمز الدولة، الترتيب، والحالة."
-        >
-          {items.length === 0 ? (
-            <EmptyState title="لا توجد مدن" message="أضف أول مدينة." />
-          ) : (
-            <DataTable
-              label="مدن السوق"
-              columns={[
-                'الاسم العربي',
-                'الاسم الإنجليزي',
-                'رمز الدولة',
-                'الترتيب',
-                'الحالة',
-                'الموردون',
-                'الخدمات',
-                'إجراءات',
-              ]}
-              dense
-              minWidth={920}
-            >
-              {items.map((city) => (
-                <tr key={city.id}>
-                  <td>
-                    <strong>{city.nameAr}</strong>
-                  </td>
-                  <td>{city.nameEn ?? 'غير محدد'}</td>
-                  <td>{city.countryCode}</td>
-                  <td>{city.sortOrder}</td>
-                  <td>
-                    <StatusBadge status={city.isActive ? 'ACTIVE' : 'DISABLED'} />
-                  </td>
-                  <td>{city.providersCount ?? 0}</td>
-                  <td>{city.servicesCount ?? 0}</td>
-                  <td className="actions-cell">
-                    <Can permission={AdminPermission.CATALOG_WRITE}>
-                      <div className="actions">
-                      <ActionButton
-                        tone="ghost"
-                        size="small"
-                        type="button"
-                        onClick={() => startEdit(city)}
-                      >
-                        تعديل
-                      </ActionButton>
-                      {city.isActive ? (
-                        <ConfirmDialog
-                          title="تعطيل المدينة"
-                          message="سيتم تعطيل المدينة من قوائم إدارة السوق دون حذفها نهائيا."
-                          confirmLabel="تعطيل"
-                          tone="danger"
-                          trigger={
-                            <ActionButton tone="danger" size="small" type="button">
-                              تعطيل
-                            </ActionButton>
-                          }
-                          onConfirm={() => deleteCity(city.id).then(load)}
-                        />
-                      ) : (
-                        <ConfirmDialog
-                          title="تفعيل المدينة"
-                          message="سترجع المدينة لقوائم السوق ويقدر العملاء والموردون يختارونها."
-                          confirmLabel="تفعيل"
-                          trigger={
-                            <ActionButton tone="ghost" size="small" type="button">
-                              تفعيل
-                            </ActionButton>
-                          }
-                          onConfirm={() =>
-                            updateCity(city.id, {
-                              nameAr: city.nameAr,
-                              isActive: true,
-                            }).then(load)
-                          }
-                        />
-                      )}
-                      </div>
-                    </Can>
-                  </td>
-                </tr>
-              ))}
-            </DataTable>
-          )}
-        </SectionCard>
-
-        <Can permission={AdminPermission.CATALOG_WRITE}>
-          <FormCard
-            title={editing ? 'تعديل مدينة' : 'إضافة مدينة'}
-            subtitle="الأسماء العربية تظهر للمستخدمين في الواجهة."
-          >
-            <form className="side-form" onSubmit={submit}>
-            <FormField
-              label="الاسم العربي"
-              value={nameAr}
-              onChange={(event) => setNameAr(event.target.value)}
+      <DeskModal
+        title={editing === 'new' ? 'مدينة جديدة' : editing ? `تعديل ${editing.nameAr}` : ''}
+        open={editing !== null}
+        onClose={() => setEditing(null)}
+      >
+        <form className="desk-form" onSubmit={submit}>
+          <label className="desk-field">
+            الاسم العربي
+            <input
+              value={draft.nameAr}
+              onChange={(event) => setDraft({ ...draft, nameAr: event.target.value })}
               required
             />
-            <FormField
-              label="الاسم الإنجليزي"
-              value={nameEn}
-              onChange={(event) => setNameEn(event.target.value)}
+          </label>
+          <label className="desk-field">
+            الاسم الإنجليزي
+            <input
+              value={draft.nameEn}
+              onChange={(event) => setDraft({ ...draft, nameEn: event.target.value })}
+              dir="ltr"
             />
-            <FormField
-              label="رمز الدولة"
-              value={countryCode}
-              onChange={(event) => setCountryCode(event.target.value)}
-            />
-            <FormField
-              label="الترتيب"
-              type="number"
-              value={sortOrder}
-              onChange={(event) => setSortOrder(event.target.value)}
-            />
-            <div className="form-actions">
-              <ActionButton type="submit">
-                {editing ? 'حفظ التعديل' : 'إضافة مدينة'}
-              </ActionButton>
-              {editing ? (
-                <ActionButton tone="ghost" type="button" onClick={resetForm}>
-                  إلغاء
-                </ActionButton>
-              ) : null}
-            </div>
-            </form>
-          </FormCard>
-        </Can>
-      </div>
+          </label>
+          <div className="desk-row">
+            <label className="desk-field">
+              رمز الدولة
+              <input
+                value={draft.countryCode}
+                onChange={(event) => setDraft({ ...draft, countryCode: event.target.value })}
+                dir="ltr"
+              />
+            </label>
+            <label className="desk-field">
+              الترتيب
+              <input
+                type="number"
+                value={draft.sortOrder}
+                onChange={(event) => setDraft({ ...draft, sortOrder: event.target.value })}
+              />
+            </label>
+          </div>
+          {formError ? <DeskNote tone="coral">{formError}</DeskNote> : null}
+          <div className="desk-dialog__actions">
+            <DeskButton type="submit" disabled={saving || !draft.nameAr.trim()}>
+              احفظ
+            </DeskButton>
+            {editing && editing !== 'new' && editing.isActive ? (
+              <ConfirmDialog
+                variant="desk"
+                title={`تعطيل ${editing.nameAr}`}
+                effects={[
+                  'تختفي من قوائم المدن عند العرسان والمزودين.',
+                  'ما تنحذف، وتقدر ترجّعها بـ«فعّلها».',
+                ]}
+                confirmLabel="عطّلها"
+                confirmTone="coral"
+                trigger={<DeskButton tone="white-coral">عطّل المدينة</DeskButton>}
+                onConfirm={async () => {
+                  await deleteCity(editing.id);
+                  setEditing(null);
+                  await load();
+                }}
+              />
+            ) : null}
+          </div>
+        </form>
+      </DeskModal>
     </section>
   );
 }

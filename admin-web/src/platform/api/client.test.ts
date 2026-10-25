@@ -235,4 +235,12 @@ describe('apiRequest', () => {
     fetchMock.mockResolvedValueOnce(response(500, ''));
     await expect(apiRequest('/x')).rejects.toBeInstanceOf(ApiError);
   });
+
+  it('says in Arabic that the server was not reached instead of the browser text', async () => {
+    fetchMock.mockRejectedValueOnce(new TypeError('Failed to fetch'));
+    const error = (await apiRequest('/admin/users').catch((caught: unknown) => caught)) as Error;
+    expect(error).not.toBeInstanceOf(ApiError);
+    expect(error.message).toBe('تعذر الاتصال بالخادم. تأكد من الإنترنت ثم حاول مرة ثانية.');
+    expect(error.message).not.toContain('fetch');
+  });
 });

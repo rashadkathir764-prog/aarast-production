@@ -7,11 +7,11 @@ import auditPageSource from '../../features/audit/AuditLogsPage.tsx?raw';
 import categoriesSource from '../../features/catalog/CategoriesPage.tsx?raw';
 import citiesSource from '../../features/catalog/CitiesPage.tsx?raw';
 import conversationReportsSource from '../../features/moderation/ConversationReportsPage.tsx?raw';
-import notificationsSource from '../../features/notifications/NotificationsPage.tsx?raw';
 import providerHelpersSource from '../../features/providers/providerHelpers.tsx?raw';
 import reviewsSource from '../../features/moderation/ReviewsPage.tsx?raw';
 import servicesSource from '../../features/catalog/ServicesPage.tsx?raw';
 import usersSource from '../../features/users/UsersPage.tsx?raw';
+import userDetailsSource from '../../features/users/UserDetailsPage.tsx?raw';
 import topbarSource from '../../layout/Topbar.tsx?raw';
 
 describe('admin RBAC and audit UI contract', () => {
@@ -41,18 +41,20 @@ describe('admin RBAC and audit UI contract', () => {
     expect(servicesSource).toContain('AdminPermission.SERVICES_WRITE');
     expect(categoriesSource).toContain('AdminPermission.CATALOG_WRITE');
     expect(citiesSource).toContain('AdminPermission.CATALOG_WRITE');
-    expect(usersSource).toContain('AdminPermission.USERS_WRITE');
+    // An account is disabled or enabled on a13 only; the list changes nothing (D56).
+    expect(userDetailsSource).toContain('AdminPermission.USERS_WRITE');
+    expect(usersSource).not.toContain('disableUser');
+    expect(usersSource).not.toContain('activateUser');
     expect(reviewsSource).toContain('AdminPermission.REVIEWS_WRITE');
     expect(conversationReportsSource).toContain(
       'AdminPermission.CONVERSATION_REPORTS_WRITE',
     );
-    expect(notificationsSource).toContain('AdminPermission.NOTIFICATIONS_WRITE');
   });
 
   it('does not offer admin-account status actions to delegated administrators', () => {
-    expect(usersSource).toContain("currentAdmin?.adminRole === 'SUPER_ADMIN'");
-    expect(usersSource).toContain("user.role !== 'ADMIN'");
-    expect(usersSource).toContain('user.id === currentAdmin?.id');
+    expect(userDetailsSource).toContain("currentAdmin?.adminRole === 'SUPER_ADMIN'");
+    expect(userDetailsSource).toContain("user.role !== 'ADMIN'");
+    expect(userDetailsSource).toContain('user.id !== currentAdmin?.id');
   });
 
   it('keeps the admin avatar local to the CSP policy', () => {

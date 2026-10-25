@@ -18,7 +18,6 @@ const owners = [
   'catalog',
   'dashboard',
   'moderation',
-  'notifications',
   'providers',
   'users',
 ];
@@ -41,7 +40,6 @@ function testManifest(overrides = {}) {
       catalog: ['auth', 'providers'],
       dashboard: ['auth', 'providers'],
       moderation: ['auth', 'providers'],
-      notifications: ['auth'],
       providers: ['auth'],
       users: ['auth'],
     },
@@ -807,7 +805,9 @@ test('pins Task 5 Catalog loader injection and Provider request ordering', () =>
   assert.ok(providersSource.indexOf('getProviders(') < providersSource.indexOf('getCities()'));
 });
 
-test('requires the exact Task 6 Moderation Notifications and Audit public surfaces', () => {
+// The notifications feature left with its undrawn page (D56); its surface
+// and edge cases left with it.
+test('requires the exact Task 6 Moderation and Audit public surfaces', () => {
   const task6PublicSurfaces = {
     moderation: [
       'ConversationReport',
@@ -817,14 +817,6 @@ test('requires the exact Task 6 Moderation Notifications and Audit public surfac
       'hideReview',
       'updateConversationReportStatus',
       'updateReviewStatus',
-    ],
-    notifications: [
-      'AdminNotification',
-      'archiveAdminNotification',
-      'deleteAdminNotification',
-      'getAdminNotifications',
-      'getAdminUnreadNotificationCount',
-      'markAdminNotificationRead',
     ],
     audit: ['AdminAuditLog', 'AdminAuditPhase', 'getAdminAuditLogs'],
   };
@@ -844,7 +836,6 @@ test('requires the exact Task 6 Moderation Notifications and Audit public surfac
     publicSurfaceFirstTask: {
       ...testManifest().publicSurfaceFirstTask,
       moderation: 1,
-      notifications: 1,
       audit: 1,
     },
     publicSurfaces: { ...testManifest().publicSurfaces, ...task6PublicSurfaces },
@@ -852,13 +843,12 @@ test('requires the exact Task 6 Moderation Notifications and Audit public surfac
   assert.deepEqual(result.errors, []);
 });
 
-test('accepts only the Task 6 Moderation Notifications and Audit feature edges', () => {
+test('accepts only the Task 6 Moderation and Audit feature edges', () => {
   const allowed = scan({
     'features/moderation/view.ts': [
       "import '../auth/api';",
       "import '../providers/api';",
     ].join('\n'),
-    'features/notifications/view.ts': "import '../auth/api';\n",
     'features/audit/view.ts': "import '../../platform/api/client';\n",
     'features/auth/api.ts': 'export {};\n',
     'features/providers/api.ts': 'export {};\n',
@@ -868,12 +858,15 @@ test('accepts only the Task 6 Moderation Notifications and Audit feature edges',
   assert.deepEqual(allowed.edges, [
     'moderation -> auth',
     'moderation -> providers',
-    'notifications -> auth',
   ]);
 
+  // A file back under the deleted notifications feature is unknown.
+  const deleted = scan({ 'features/notifications/view.ts': "import '../auth/api';\n" });
+  assert.ok(errorKinds(deleted).includes('unknown-admin-zone'));
+
   for (const [sourcePath, targetOwner] of [
-    ['features/moderation/view.ts', 'notifications'],
-    ['features/notifications/view.ts', 'providers'],
+    ['features/moderation/view.ts', 'users'],
+    ['features/audit/view.ts', 'providers'],
     ['features/audit/view.ts', 'auth'],
   ]) {
     const result = scan({

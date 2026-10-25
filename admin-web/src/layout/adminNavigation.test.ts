@@ -91,9 +91,10 @@ describe('admin navigation', () => {
     expect(resolveAdminLocation('/categories')).toMatchObject({
       crumb: ['النظام', 'الكتالوج'],
     });
+    // The old «الإشعارات» page was deleted (no design, D56).
     expect(resolveAdminLocation('/notifications')).toMatchObject({
-      title: 'الإشعارات',
-      crumb: ['النظام'],
+      title: 'صفحة غير معروفة',
+      crumb: [],
     });
     expect(resolveAdminLocation('/providers2')).toMatchObject({
       title: 'صفحة غير معروفة',

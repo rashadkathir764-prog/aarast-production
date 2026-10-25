@@ -1,4 +1,5 @@
 import { Component, ReactNode } from 'react';
+import '../../styles/desk.css';
 
 type Props = {
   children: ReactNode;
@@ -33,17 +34,23 @@ export class ErrorBoundary extends Component<Props, State> {
 
   render(): ReactNode {
     if (this.state.error) {
+      // The desk kit's outside frame (D56); «الصندوق» is the desk's home.
       return (
-        <div dir="rtl" className="error-boundary" role="alert">
-          <h1>حدث خطأ غير متوقع</h1>
-          <p>
-            تعذر عرض هذه الصفحة. تم تسجيل الخطأ. يمكنك العودة إلى لوحة
-            التحكم والمحاولة مرة أخرى.
-          </p>
-          <button type="button" onClick={this.handleReload}>
-            العودة إلى لوحة التحكم
-          </button>
-        </div>
+        <main dir="rtl" className="desk-gate" role="alert">
+          <section className="desk-panel desk-gate__card">
+            <h1 className="desk-gate__title">حدث خطأ غير متوقع</h1>
+            <p className="desk-note">
+              ما قدرنا نعرض هذه الصفحة، وانسجل الخطأ. ارجع للصندوق وجرّب مرة ثانية.
+            </p>
+            <button
+              type="button"
+              className="desk-btn desk-btn--teal desk-btn--full"
+              onClick={this.handleReload}
+            >
+              ارجع للصندوق
+            </button>
+          </section>
+        </main>
       );
     }
 

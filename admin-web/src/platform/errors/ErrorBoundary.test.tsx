@@ -30,9 +30,8 @@ describe('ErrorBoundary', () => {
 
     expect(screen.getByRole('alert')).toBeInTheDocument();
     expect(screen.getByText('حدث خطأ غير متوقع')).toBeInTheDocument();
-    expect(
-      screen.getByRole('button', { name: 'العودة إلى لوحة التحكم' }),
-    ).toBeInTheDocument();
+    // The desk's home is «الصندوق» (n01); «لوحة التحكم» was retired.
+    expect(screen.getByRole('button', { name: 'ارجع للصندوق' })).toBeInTheDocument();
 
     consoleError.mockRestore();
   });

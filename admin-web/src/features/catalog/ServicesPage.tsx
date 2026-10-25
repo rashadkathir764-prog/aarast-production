@@ -1,354 +1,409 @@
-import { FormEvent, useEffect, useState } from 'react';
+// «الخدمات»: drawn in the designs' sidebar but without a page of its own
+// (D56), so it uses the desk kit the designed pages use. The providers'
+// services with their section, city and price; a service is stopped or run
+// again after a confirmation that says what it does, and the team adds a
+// service to a provider (the listed-provider form on a05 sends them here).
+// Featuring is the provider's placement on a17 only (B-43).
+import { type FormEvent, useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { Plus } from 'lucide-react';
 import {
-  City,
+  type City,
   createService,
   getCategories,
   getCities,
   getServices,
-  ProviderCategory,
-  ProviderService,
+  type ProviderCategory,
+  type ProviderService,
   updateService,
 } from './api';
 import { getProviders, type ProviderApplication } from '../providers/api';
-import { ActionButton } from '../../design_system/ActionButton';
-import { DataTable } from '../../design_system/DataTable';
-import { EmptyState } from '../../design_system/EmptyState';
-import { ErrorState } from '../../design_system/ErrorState';
-import { FilterSelect } from '../../design_system/FilterSelect';
-import { FormCard } from '../../design_system/FormCard';
-import { FormField } from '../../design_system/FormField';
-import { LoadingState } from '../../design_system/LoadingState';
-import { PageHeader } from '../../design_system/PageHeader';
-import { Pagination } from '../../design_system/Pagination';
-import { SearchInput } from '../../design_system/SearchInput';
-import { SectionCard } from '../../design_system/SectionCard';
-import { StatCard } from '../../design_system/StatCard';
-import { StatusBadge } from '../../design_system/StatusBadge';
-import { TableToolbar } from '../../design_system/TableToolbar';
-import { Can } from '../auth/api';
-import { AdminPermission } from '../auth/api';
+import { AdminPermission, Can } from '../auth/api';
+import { ConfirmDialog } from '../../design_system/ConfirmDialog';
+import {
+  DeskButton,
+  DeskHeader,
+  DeskNote,
+  DeskPager,
+  DeskRetry,
+  DeskTable,
+  Panel,
+  SoftAction,
+  Tag,
+  TwoLine,
+  grouped,
+  phoneSpaced,
+} from '../../design_system/Desk';
+import { DeskModal } from '../../design_system/DeskModal';
 
-const statuses = [
-  { value: '', label: 'كل الحالات' },
-  { value: 'ACTIVE', label: 'نشطة' },
-  { value: 'DISABLED', label: 'متوقفة' },
-];
+type Page = {
+  items: ProviderService[];
+  page: number;
+  limit: number;
+  total: number;
+  totalPages: number;
+};
+
+type Filters = { search: string; status: string; cityId: string; categoryId: string };
+
+const NO_FILTERS: Filters = { search: '', status: '', cityId: '', categoryId: '' };
+
+function price(service: ProviderService) {
+  if (!service.basePrice) return 'حسب الطلب';
+  const amount = grouped(service.basePrice);
+  return service.currency && service.currency !== 'YER' ? `${amount} ${service.currency}` : amount;
+}
 
 export function ServicesPage() {
-  const [items, setItems] = useState<ProviderService[]>([]);
-  const [providers, setProviders] = useState<ProviderApplication[]>([]);
+  const [filters, setFilters] = useState<Filters>(NO_FILTERS);
+  const [searchDraft, setSearchDraft] = useState('');
+  const [page, setPage] = useState(1);
+  const [attempt, setAttempt] = useState(0);
+  const [result, setResult] = useState<Page | null>(null);
+  const [error, setError] = useState<string | null>(null);
   const [cities, setCities] = useState<City[]>([]);
   const [categories, setCategories] = useState<ProviderCategory[]>([]);
-  const [search, setSearch] = useState('');
-  const [providerSearch, setProviderSearch] = useState('');
-  const [providerSearchQuery, setProviderSearchQuery] = useState('');
-  const [status, setStatus] = useState('');
-  const [cityId, setCityId] = useState('');
-  const [categoryId, setCategoryId] = useState('');
-  const [page, setPage] = useState(1);
-  const [pagination, setPagination] = useState({
-    page: 1,
-    limit: 20,
-    total: 0,
-    totalPages: 1,
-  });
-  const [form, setForm] = useState({
-    providerId: '',
-    categoryId: '',
-    title: '',
-    basePrice: '',
-  });
-  const [error, setError] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [isSaving, setIsSaving] = useState(false);
-
-  async function load() {
-    setIsLoading(true);
-    setError(null);
-    try {
-      const [services, providerPage, cityList, categoryList] = await Promise.all([
-        getServices({ search, status, cityId, categoryId, page, limit: 20 }),
-        getProviders({
-          search: providerSearchQuery,
-          page: 1,
-          limit: 20,
-        }),
-        getCities(),
-        getCategories(),
-      ]);
-      if (page > services.totalPages) {
-        setPage(services.totalPages);
-        return;
-      }
-      setItems(services.items);
-      setPagination({
-        page: services.page,
-        limit: services.limit,
-        total: services.total,
-        totalPages: services.totalPages,
-      });
-      setProviders(providerPage.items);
-      setCities(cityList);
-      setCategories(categoryList);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'تعذر تحميل خدمات الموردين.');
-    } finally {
-      setIsLoading(false);
-    }
-  }
+  const [adding, setAdding] = useState(false);
 
   useEffect(() => {
-    load();
-  }, [status, cityId, categoryId, page, providerSearchQuery]);
+    // Only the answer to the latest filters and page is shown.
+    let current = true;
+    setError(null);
+    const { search, status, cityId, categoryId } = filters;
+    getServices({ search, status, cityId, categoryId, page, limit: 20 }).then(
+      (next) => {
+        if (!current) return;
+        if (page > next.totalPages && next.totalPages > 0) setPage(next.totalPages);
+        else setResult(next);
+      },
+      (value: unknown) => {
+        if (current) setError(value instanceof Error ? value.message : 'ما قدرنا نحمّل الخدمات.');
+      },
+    );
+    return () => {
+      current = false;
+    };
+  }, [filters, page, attempt]);
 
-  function submitSearch() {
-    if (page === 1) void load();
-    else setPage(1);
+  // The filter lists; the table works without them.
+  useEffect(() => {
+    getCities().then(setCities, () => setCities([]));
+    getCategories().then(setCategories, () => setCategories([]));
+  }, []);
+
+  const reload = useCallback(() => setAttempt((value) => value + 1), []);
+
+  function filter(next: Partial<Filters>) {
+    setFilters((current) => ({ ...current, ...next }));
+    setPage(1);
   }
 
-  async function submit(event: FormEvent) {
+  function submitSearch(event: FormEvent) {
     event.preventDefault();
-    setIsSaving(true);
-    setError(null);
-    try {
-      await createService({
-        providerId: form.providerId,
-        categoryId: form.categoryId,
-        title: form.title,
-        basePrice: form.basePrice || null,
-        currency: 'YER',
-        isActive: true,
-      });
-      setForm({ providerId: '', categoryId: '', title: '', basePrice: '' });
-      await load();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'تعذر حفظ الخدمة.');
-    } finally {
-      setIsSaving(false);
-    }
+    filter({ search: searchDraft.trim() });
   }
 
-  async function toggleActive(service: ProviderService) {
-    setError(null);
-    try {
-      await updateService(service.id, { isActive: !service.isActive });
-      await load();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'تعذر تحديث حالة الخدمة.');
-    }
-  }
-
-  if (isLoading) return <LoadingState title="جاري تحميل خدمات الموردين" />;
-  if (error) return <ErrorState message={error} onRetry={load} />;
-
-  const activeCount = items.filter((service) => service.isActive).length;
-  const disabledCount = items.filter((service) => !service.isActive).length;
-  const pricedCount = items.filter((service) => service.basePrice).length;
+  const filtered = Object.values(filters).some(Boolean);
 
   return (
-    <section className="page-stack">
-      <PageHeader
-        eyebrow="إدارة الخدمات"
-        icon="⌁"
-        title="خدمات الموردين"
-        description="خدمات الموردين الفعلية: أنشئ خدمة، فعّلها أو أوقفها. الظهور المميز للمزود من «الباقات والظهور المميز»."
-        meta={<span>{pagination.total} خدمة مطابقة</span>}
+    <section>
+      <DeskHeader
+        title="الخدمات"
+        sub={result ? `${grouped(result.total)} خدمة${filtered ? ' تطابق البحث' : ''}` : undefined}
+        actions={
+          <Can permission={AdminPermission.SERVICES_WRITE}>
+            <DeskButton icon={Plus} onClick={() => setAdding(true)}>
+              أضف خدمة لمزود
+            </DeskButton>
+          </Can>
+        }
       />
-
-      <div className="stats-grid">
-        <StatCard title="كل النتائج" value={pagination.total} tone="gold" />
-        <StatCard title="نشطة في الصفحة" value={activeCount} tone="success" />
-        <StatCard title="متوقفة في الصفحة" value={disabledCount} tone="danger" />
-        <StatCard title="بسعر في الصفحة" value={pricedCount} tone="info" />
-      </div>
-
-      <Can permission={AdminPermission.SERVICES_WRITE}>
-        <FormCard title="إضافة خدمة لمورد" subtitle="تُحفظ مباشرة في /admin/services.">
-          <form className="form-grid" onSubmit={submit}>
-          <label className="form-field">
-            <span>المورد</span>
-            <select
-              value={form.providerId}
-              onChange={(event) =>
-                setForm((current) => ({ ...current, providerId: event.target.value }))
-              }
-              required
-            >
-              <option value="">اختر مورد</option>
-              {providers.map((provider) => (
-                <option value={provider.id} key={provider.id}>
-                  {provider.businessName}
+      <Panel>
+        <form className="desk-row" onSubmit={submitSearch} role="search" style={{ alignItems: 'flex-end' }}>
+          <label className="desk-field">
+            ابحث بالخدمة أو المزود
+            <input value={searchDraft} onChange={(event) => setSearchDraft(event.target.value)} />
+          </label>
+          <label className="desk-field">
+            الحالة
+            <select value={filters.status} onChange={(event) => filter({ status: event.target.value })}>
+              <option value="">الكل</option>
+              <option value="ACTIVE">شغّالة</option>
+              <option value="DISABLED">موقوفة</option>
+            </select>
+          </label>
+          <label className="desk-field">
+            المدينة
+            <select value={filters.cityId} onChange={(event) => filter({ cityId: event.target.value })}>
+              <option value="">كل المدن</option>
+              {cities.map((city) => (
+                <option key={city.id} value={city.id}>
+                  {city.nameAr}
                 </option>
               ))}
             </select>
           </label>
-          <label className="form-field">
-            <span>الفئة</span>
-            <select
-              value={form.categoryId}
-              onChange={(event) =>
-                setForm((current) => ({ ...current, categoryId: event.target.value }))
-              }
-              required
-            >
-              <option value="">اختر فئة</option>
+          <label className="desk-field">
+            القسم
+            <select value={filters.categoryId} onChange={(event) => filter({ categoryId: event.target.value })}>
+              <option value="">كل الأقسام</option>
               {categories.map((category) => (
-                <option value={category.id} key={category.id}>
+                <option key={category.id} value={category.id}>
                   {category.nameAr}
                 </option>
               ))}
             </select>
           </label>
-          <label className="form-field">
-            <span>بحث المورد</span>
-            <div style={{ display: 'flex', gap: '8px' }}>
-              <input
-                value={providerSearch}
-                onChange={(event) => setProviderSearch(event.target.value)}
-                onKeyDown={(event) => {
-                  if (event.key === 'Enter') {
-                    event.preventDefault();
-                    setProviderSearchQuery(providerSearch);
-                  }
-                }}
-                placeholder="اكتب اسم المورد أو هاتفه"
-              />
-              <button
-                className="button button--ghost"
-                type="button"
-                onClick={() => setProviderSearchQuery(providerSearch)}
-              >
-                بحث
-              </button>
-            </div>
-          </label>
-          <FormField
-            label="اسم الخدمة"
-            value={form.title}
-            onChange={(event) =>
-              setForm((current) => ({ ...current, title: event.target.value }))
-            }
-            required
-          />
-          <FormField
-            label="السعر الأساسي"
-            value={form.basePrice}
-            onChange={(event) =>
-              setForm((current) => ({ ...current, basePrice: event.target.value }))
-            }
-            inputMode="decimal"
-            placeholder="اختياري"
-          />
-          <ActionButton type="submit" disabled={isSaving}>
-            {isSaving ? 'جاري الحفظ...' : 'إضافة الخدمة'}
-          </ActionButton>
-          </form>
-        </FormCard>
-      </Can>
-
-      <SectionCard className="filters-card">
-        <TableToolbar>
-          <SearchInput
-            label="بحث في الخدمات"
-            value={search}
-            onChange={setSearch}
-            onSubmit={submitSearch}
-            placeholder="بحث بالخدمة أو المورد"
-          />
-          <FilterSelect
-            label="الحالة"
-            value={status}
-            onChange={(value) => {
-              setStatus(value);
-              setPage(1);
-            }}
-            options={statuses}
-          />
-          <FilterSelect
-            label="المدينة"
-            value={cityId}
-            onChange={(value) => {
-              setCityId(value);
-              setPage(1);
-            }}
-            options={[
-              { value: '', label: 'كل المدن' },
-              ...cities.map((city) => ({ value: city.id, label: city.nameAr })),
+          <DeskButton type="submit">ابحث</DeskButton>
+        </form>
+      </Panel>
+      <div className="desk-gap" />
+      {error ? <DeskRetry message={error} onRetry={reload} /> : null}
+      {result === null && !error ? <DeskNote>لحظة، نحمّل الخدمات…</DeskNote> : null}
+      {result && result.items.length === 0 ? (
+        <Panel>
+          <DeskNote>{filtered ? 'ما فيه خدمة تطابق البحث.' : 'ما فيه خدمات بعد.'}</DeskNote>
+        </Panel>
+      ) : null}
+      {result && result.items.length > 0 ? (
+        <>
+          <DeskTable
+            caption="الخدمات"
+            columns={[
+              { label: 'الخدمة', flex: 3 },
+              { label: 'المزود', flex: 3 },
+              { label: 'القسم', flex: 2 },
+              { label: 'المدينة', flex: 2 },
+              { label: 'السعر', flex: 2 },
+              { label: 'الحالة', flex: 2 },
+            ]}
+            rows={result.items}
+            rowKey={(service) => service.id}
+            renderRow={(service) => [
+              <TwoLine key="t" main={service.title} sub={service.description ?? undefined} />,
+              service.provider ? (
+                <span key="p" className="desk-two">
+                  <Link to={`/providers/${service.provider.id}`}>
+                    <strong>{service.provider.businessName}</strong>
+                  </Link>
+                  <small className="desk-num">{phoneSpaced(service.provider.phone)}</small>
+                </span>
+              ) : (
+                <span key="p" className="desk-ink--muted">—</span>
+              ),
+              service.category?.nameAr ?? '—',
+              service.city?.nameAr ?? service.provider?.city?.nameAr ?? '—',
+              <span key="m" className="desk-num">{price(service)}</span>,
+              <ServiceState key="s" service={service} onChanged={reload} />,
             ]}
           />
-          <FilterSelect
-            label="الفئة"
-            value={categoryId}
-            onChange={(value) => {
-              setCategoryId(value);
-              setPage(1);
-            }}
-            options={[
-              { value: '', label: 'كل الفئات' },
-              ...categories.map((category) => ({
-                value: category.id,
-                label: category.nameAr,
-              })),
-            ]}
+          <DeskPager
+            page={result.page}
+            limit={result.limit}
+            total={result.total}
+            totalPages={result.totalPages}
+            onPageChange={setPage}
           />
-        </TableToolbar>
-      </SectionCard>
+        </>
+      ) : null}
 
-      <SectionCard title="قائمة الخدمات" subtitle="هذه ليست قراءة عامة؛ كل صف من /admin/services.">
-        {items.length === 0 ? (
-          <EmptyState title="لا توجد خدمات مطابقة" message="غير الفلاتر أو أضف خدمة جديدة لمورد." tone="api" />
-        ) : (
-          <DataTable
-            label="قائمة خدمات الموردين"
-            columns={['الخدمة', 'المورد', 'الفئة', 'المدينة', 'السعر', 'الحالة', 'إجراءات']}
-            minWidth={1080}
-          >
-            {items.map((service) => (
-              <tr key={service.id}>
-                <td>
-                  <strong>{service.title}</strong>
-                  <span className="table-subtle">{service.description ?? 'لا يوجد وصف'}</span>
-                </td>
-                <td>
-                  {service.provider ? (
-                    <Link className="table-strong-link" to={`/providers/${service.provider.id}`}>
-                      {service.provider.businessName}
-                    </Link>
-                  ) : (
-                    'غير محدد'
-                  )}
-                  <span className="table-subtle" dir="ltr">
-                    {service.provider?.phone ?? ''}
-                  </span>
-                </td>
-                <td>{service.category?.nameAr ?? 'غير محددة'}</td>
-                <td>{service.city?.nameAr ?? service.provider?.city?.nameAr ?? 'غير محددة'}</td>
-                <td>
-                  {service.basePrice ? `${service.basePrice} ${service.currency}` : 'حسب الطلب'}
-                </td>
-                <td>
-                  <StatusBadge status={service.isActive ? 'ACTIVE' : 'DISABLED'} />
-                </td>
-                <td className="actions-cell">
-                  <Can permission={AdminPermission.SERVICES_WRITE}>
-                    <ActionButton tone="ghost" size="small" onClick={() => toggleActive(service)}>
-                      {service.isActive ? 'إيقاف' : 'تفعيل'}
-                    </ActionButton>
-                  </Can>
-                </td>
-              </tr>
-            ))}
-          </DataTable>
-        )}
-        <Pagination
-          page={pagination.page}
-          limit={pagination.limit}
-          total={pagination.total}
-          totalPages={pagination.totalPages}
-          onPageChange={setPage}
-        />
-      </SectionCard>
+      <AddServiceWindow
+        open={adding}
+        categories={categories.filter((category) => category.isActive)}
+        onClose={() => setAdding(false)}
+        onAdded={() => {
+          setAdding(false);
+          reload();
+        }}
+      />
     </section>
+  );
+}
+
+function ServiceState({ service, onChanged }: { service: ProviderService; onChanged: () => void }) {
+  const running = service.isActive;
+  return (
+    <span className="desk-actions">
+      {running ? <Tag tone="green">شغّالة</Tag> : <Tag tone="muted">موقوفة</Tag>}
+      <Can permission={AdminPermission.SERVICES_WRITE}>
+        <ConfirmDialog
+          variant="desk"
+          title={`${running ? 'إيقاف' : 'تشغيل'} «${service.title}»`}
+          effects={
+            running
+              ? [
+                  'ما تظهر للعرسان، ولا تنطلب عليها عروض جديدة.',
+                  'لو كانت آخر خدمة شغّالة عند المزود، المزود نفسه ما يظهر للعرسان.',
+                ]
+              : ['ترجع تظهر للعرسان مع ملف المزود.']
+          }
+          confirmLabel={running ? 'أوقفها' : 'شغّلها'}
+          confirmTone={running ? 'coral' : 'teal'}
+          trigger={<SoftAction tone={running ? 'coral' : 'soft'}>{running ? 'أوقفها' : 'شغّلها'}</SoftAction>}
+          onConfirm={async () => {
+            await updateService(service.id, { isActive: !running });
+            onChanged();
+          }}
+        />
+      </Can>
+    </span>
+  );
+}
+
+type Draft = { categoryId: string; title: string; basePrice: string };
+
+const EMPTY: Draft = { categoryId: '', title: '', basePrice: '' };
+
+/** «أضف خدمة لمزود»: find the provider, then the section, name and price. */
+function AddServiceWindow({
+  open,
+  categories,
+  onClose,
+  onAdded,
+}: {
+  open: boolean;
+  categories: ProviderCategory[];
+  onClose: () => void;
+  onAdded: () => void;
+}) {
+  const [providerSearch, setProviderSearch] = useState('');
+  const [providerSearchQuery, setProviderSearchQuery] = useState<string | null>(null);
+  const [found, setFound] = useState<ProviderApplication[] | null>(null);
+  const [provider, setProvider] = useState<ProviderApplication | null>(null);
+  const [draft, setDraft] = useState<Draft>(EMPTY);
+  const [error, setError] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    if (!open) {
+      setProviderSearch('');
+      setProviderSearchQuery(null);
+      setFound(null);
+      setProvider(null);
+      setDraft(EMPTY);
+      setError(null);
+    }
+  }, [open]);
+
+  useEffect(() => {
+    if (providerSearchQuery === null) return undefined;
+    let current = true;
+    setError(null);
+    getProviders({ search: providerSearchQuery, page: 1, limit: 20 }).then(
+      (page) => {
+        if (current) setFound(page.items);
+      },
+      (value: unknown) => {
+        if (current) setError(value instanceof Error ? value.message : 'ما قدرنا ندوّر على المزود.');
+      },
+    );
+    return () => {
+      current = false;
+    };
+  }, [providerSearchQuery]);
+
+  function find(event: FormEvent) {
+    event.preventDefault();
+    setFound(null);
+    setProviderSearchQuery(providerSearch.trim());
+  }
+
+  async function submit(event: FormEvent) {
+    event.preventDefault();
+    if (!provider || !draft.categoryId || !draft.title.trim()) return;
+    setSaving(true);
+    setError(null);
+    try {
+      await createService({
+        providerId: provider.id,
+        categoryId: draft.categoryId,
+        title: draft.title.trim(),
+        basePrice: draft.basePrice.trim() || null,
+        currency: 'YER',
+        isActive: true,
+      });
+      onAdded();
+    } catch (value) {
+      setError(value instanceof Error ? value.message : 'ما قدرنا نحفظ الخدمة.');
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <DeskModal title="أضف خدمة لمزود" open={open} onClose={onClose}>
+      {provider ? (
+        <form className="desk-form" onSubmit={submit}>
+          <div className="desk-actions">
+            <strong>{provider.businessName}</strong>
+            <SoftAction onClick={() => setProvider(null)}>غيّر المزود</SoftAction>
+          </div>
+          <label className="desk-field">
+            القسم
+            <select
+              value={draft.categoryId}
+              onChange={(event) => setDraft({ ...draft, categoryId: event.target.value })}
+              required
+            >
+              <option value="">اختر القسم</option>
+              {categories.map((category) => (
+                <option key={category.id} value={category.id}>
+                  {category.nameAr}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="desk-field">
+            اسم الخدمة
+            <input
+              value={draft.title}
+              onChange={(event) => setDraft({ ...draft, title: event.target.value })}
+              required
+            />
+          </label>
+          <label className="desk-field">
+            السعر (اختياري)
+            <input
+              value={draft.basePrice}
+              inputMode="decimal"
+              dir="ltr"
+              onChange={(event) => setDraft({ ...draft, basePrice: event.target.value })}
+            />
+          </label>
+          {error ? <DeskNote tone="coral">{error}</DeskNote> : null}
+          <div className="desk-dialog__actions">
+            <DeskButton type="submit" disabled={saving || !draft.categoryId || !draft.title.trim()}>
+              أضف الخدمة
+            </DeskButton>
+          </div>
+        </form>
+      ) : (
+        <form className="desk-form" onSubmit={find}>
+          <label className="desk-field">
+            المزود
+            <input
+              value={providerSearch}
+              placeholder="ابحث باسم النشاط أو الرقم"
+              onChange={(event) => setProviderSearch(event.target.value)}
+              required
+            />
+          </label>
+          <div className="desk-dialog__actions">
+            <DeskButton type="submit">ابحث</DeskButton>
+          </div>
+          {found && found.length === 0 ? <DeskNote>ما لقينا مزود بهذا الاسم أو الرقم.</DeskNote> : null}
+          {found && found.length > 0 ? (
+            <div className="desk-actions">
+              {found.map((item) => (
+                <SoftAction key={item.id} onClick={() => setProvider(item)}>
+                  {item.businessName}
+                </SoftAction>
+              ))}
+            </div>
+          ) : null}
+          {error ? <DeskNote tone="coral">{error}</DeskNote> : null}
+        </form>
+      )}
+    </DeskModal>
   );
 }

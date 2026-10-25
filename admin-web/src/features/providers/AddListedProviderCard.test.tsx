@@ -46,7 +46,8 @@ describe('AddListedProviderCard', () => {
     fill('اسم النشاط', 'الفنان علي');
     fill('رقم الجوال (رقم صاحب النشاط)', '777123456');
     fill('المدينة', 'city-1');
-    fill('الفئة', 'category-1');
+    // The desk names a category «القسم», as a08 does.
+    fill('القسم', 'category-1');
     fireEvent.click(screen.getByRole('button', { name: 'إضافة المزوّد' }));
 
     await waitFor(() => expect(onCreated).toHaveBeenCalled());

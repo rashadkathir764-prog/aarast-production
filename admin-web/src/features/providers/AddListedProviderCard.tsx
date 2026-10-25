@@ -1,8 +1,6 @@
 import { FormEvent, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { ActionButton } from '../../design_system/ActionButton';
-import { FormCard } from '../../design_system/FormCard';
-import { FormField, TextAreaField } from '../../design_system/FormField';
+import { DeskButton, DeskNote } from '../../design_system/Desk';
 import { providerErrorMessage } from './providerHelpers';
 import {
   createListedProvider,
@@ -66,35 +64,41 @@ export function AddListedProviderCard({
     }
   }
 
+  // Inside a05's «أضف مزود بلا حساب» window, on the desk kit (D56); the
+  // window carries the title.
   return (
-    <FormCard
-      title="إضافة مزوّد بلا حساب"
-      subtitle="يظهر في الدليل بعد إضافة خدمة نشطة له، ويستلمه صاحبه من التطبيق حين يسجّل بنفس الرقم."
-    >
-      <form className="side-form" onSubmit={submit}>
-        <FormField
-          label="اسم النشاط"
-          value={businessName}
-          onChange={(event) => setBusinessName(event.target.value)}
-          required
-        />
-        <FormField
-          label="رقم الجوال (رقم صاحب النشاط)"
-          dir="ltr"
-          inputMode="tel"
-          value={phone}
-          onChange={(event) => setPhone(event.target.value)}
-          required
-        />
-        <FormField
-          label="رقم واتساب (اختياري)"
-          dir="ltr"
-          inputMode="tel"
-          value={whatsapp}
-          onChange={(event) => setWhatsapp(event.target.value)}
-        />
-        <label className="form-field">
-          <span>المدينة</span>
+    <form className="desk-form" onSubmit={submit}>
+      <DeskNote>
+        يظهر في الدليل بعد ما تضيف له خدمة شغّالة، ويستلمه صاحبه من التطبيق لما يسجّل بنفس الرقم.
+      </DeskNote>
+      <label className="desk-field">
+        اسم النشاط
+        <input value={businessName} onChange={(event) => setBusinessName(event.target.value)} required />
+      </label>
+      <div className="desk-row">
+        <label className="desk-field">
+          رقم الجوال (رقم صاحب النشاط)
+          <input
+            dir="ltr"
+            inputMode="tel"
+            value={phone}
+            onChange={(event) => setPhone(event.target.value)}
+            required
+          />
+        </label>
+        <label className="desk-field">
+          رقم واتساب (اختياري)
+          <input
+            dir="ltr"
+            inputMode="tel"
+            value={whatsapp}
+            onChange={(event) => setWhatsapp(event.target.value)}
+          />
+        </label>
+      </div>
+      <div className="desk-row">
+        <label className="desk-field">
+          المدينة
           <select
             value={cityId}
             onChange={(event) => setCityId(event.target.value)}
@@ -108,14 +112,14 @@ export function AddListedProviderCard({
             ))}
           </select>
         </label>
-        <label className="form-field">
-          <span>الفئة</span>
+        <label className="desk-field">
+          القسم
           <select
             value={categoryId}
             onChange={(event) => setCategoryId(event.target.value)}
             required
           >
-            <option value="">اختر الفئة</option>
+            <option value="">اختر القسم</option>
             {categories.map((category) => (
               <option key={category.id} value={category.id}>
                 {category.nameAr}
@@ -123,34 +127,28 @@ export function AddListedProviderCard({
             ))}
           </select>
         </label>
-        <FormField
-          label="العنوان (اختياري)"
-          value={address}
-          onChange={(event) => setAddress(event.target.value)}
-        />
-        <TextAreaField
-          label="نبذة (اختياري)"
-          value={description}
-          onChange={(event) => setDescription(event.target.value)}
-        />
-        {error ? (
-          <p className="inline-error" role="alert">
-            {error}
-          </p>
-        ) : null}
-        {created ? (
-          <p className="security-note" role="status">
-            أُضيف «{created.businessName}».{' '}
-            <Link to="/services">أضف له خدمة</Link> ليظهر في الدليل.
-          </p>
-        ) : null}
-        <div className="form-actions">
-          <ActionButton type="submit" disabled={saving}>
-            {saving ? 'جارٍ الإضافة…' : 'إضافة المزوّد'}
-          </ActionButton>
-        </div>
-      </form>
-    </FormCard>
+      </div>
+      <label className="desk-field">
+        العنوان (اختياري)
+        <input value={address} onChange={(event) => setAddress(event.target.value)} />
+      </label>
+      <label className="desk-field">
+        نبذة (اختياري)
+        <textarea rows={3} value={description} onChange={(event) => setDescription(event.target.value)} />
+      </label>
+      {error ? <DeskNote tone="coral">{error}</DeskNote> : null}
+      {created ? (
+        <p className="desk-note" role="status">
+          أُضيف «{created.businessName}».{' '}
+          <Link to="/services">أضف له خدمة</Link> ليظهر في الدليل.
+        </p>
+      ) : null}
+      <div className="desk-dialog__actions">
+        <DeskButton type="submit" disabled={saving}>
+          إضافة المزوّد
+        </DeskButton>
+      </div>
+    </form>
   );
 }
 

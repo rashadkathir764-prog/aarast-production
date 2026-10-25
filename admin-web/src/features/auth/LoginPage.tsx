@@ -1,5 +1,4 @@
-import { FormEvent, useEffect, useState } from 'react';
-import { ShieldCheck } from 'lucide-react';
+import { FormEvent, type InputHTMLAttributes, useEffect, useState } from 'react';
 import { Navigate, useLocation, useNavigate } from 'react-router-dom';
 import {
   confirmAdminPasswordReset,
@@ -9,7 +8,18 @@ import {
 } from './transport';
 import { safeAdminReturnPath } from './admin-return-path';
 import { useAuth } from './AuthProvider';
-import { FormField } from '../../design_system/FormField';
+import { DeskButton, DeskNote } from '../../design_system/Desk';
+import '../../styles/desk.css';
+
+/** A desk field: the label above its box (akit). */
+function Field({ label, ...input }: InputHTMLAttributes<HTMLInputElement> & { label: string }) {
+  return (
+    <label className="desk-field">
+      {label}
+      <input {...input} />
+    </label>
+  );
+}
 
 // Recovery is three screens: the phone, the WhatsApp code, then the new
 // password. The code is verified on its own screen, so choosing a password
@@ -248,50 +258,24 @@ export function LoginPage() {
             ? 'حفظ كلمة المرور'
             : 'دخول';
 
+  // Sign-in has no design (D56): one desk panel with the desk's wordmark,
+  // fields and buttons. The old maroon frame and its slogan panel are gone.
   return (
-    <main className="login-page">
-      <section className="login-shell" aria-label="تسجيل دخول إدارة اعّرست">
-        <aside className="login-context" aria-labelledby="admin-login-context-title">
-          <div className="login-context__brand">
-            <span className="login-context__mark" aria-hidden="true">
-              <ShieldCheck size={20} strokeWidth={1.9} />
-            </span>
-            <div>
-              <strong>اعّرست</strong>
-              <span>إدارة المنصة</span>
-            </div>
-          </div>
-
-          <div className="login-context__copy">
-            <span className="eyebrow">مساحة تشغيل محمية</span>
-            <h1 id="admin-login-context-title">قرارات واضحة، وبيانات مصونة.</h1>
-            <p>
-              راجع الطلبات والكتالوج وسلامة الحسابات من مكان واحد، وبصلاحيات
-              إدارية محددة.
-            </p>
-          </div>
-
-          <ul className="login-context__principles">
-            <li>اعتماد الموردين ومراجعة التغييرات حسب صلاحيتك.</li>
-            <li>إدارة الكتالوج دون كشف تفاصيل التخطيط والمال الخاصة.</li>
-            <li>رمز تحقق وجلسات خاضعة للإبطال للحفاظ على الوصول الإداري.</li>
-          </ul>
-        </aside>
-
-        <form className="login-card" onSubmit={handleSubmit}>
-          <header className="login-card__header">
-            <span className="login-card__mark" aria-hidden="true">
-              <ShieldCheck size={22} strokeWidth={1.9} />
-            </span>
-            <div>
-              <span className="eyebrow">بوابة الإدارة</span>
-              <h2>{heading}</h2>
-              <p>{description}</p>
-            </div>
-          </header>
+    <main className="desk-gate">
+      <section className="desk-panel desk-gate__card" aria-label="تسجيل دخول إدارة اعّرست">
+        <div className="desk-gate__brand">
+          <span className="desk-wordmark">
+            اعّرست
+            <span className="desk-wordmark__dot" />
+          </span>
+          <span>لوحة الإدارة</span>
+        </div>
+        <form className="desk-form" onSubmit={handleSubmit}>
+          <h1 className="desk-gate__title">{heading}</h1>
+          <p className="desk-note">{description}</p>
           {challenge ? (
             <>
-              <FormField
+              <Field
                 label="رمز التحقق"
                 value={code}
                 onChange={(event) =>
@@ -306,11 +290,11 @@ export function LoginPage() {
                 autoFocus
               />
               {challenge.delivery === 'LOCAL_DEV' && challenge.code ? (
-                <p className="security-note">رمز التطوير المحلي: {challenge.code}</p>
+                <DeskNote>رمز التطوير المحلي: {challenge.code}</DeskNote>
               ) : null}
             </>
           ) : recoveryStep === 'phone' ? (
-            <FormField
+            <Field
               label="رقم هاتف المسؤول"
               value={recoveryPhone}
               onChange={(event) => setRecoveryPhone(event.target.value)}
@@ -321,7 +305,7 @@ export function LoginPage() {
               autoFocus
             />
           ) : recoveryStep === 'code' ? (
-            <FormField
+            <Field
               label="رمز الاستعادة"
               value={recoveryCode}
               onChange={(event) =>
@@ -337,7 +321,7 @@ export function LoginPage() {
             />
           ) : recoveryStep === 'password' ? (
             <>
-              <FormField
+              <Field
                 label="كلمة المرور الجديدة"
                 type="password"
                 value={newPassword}
@@ -348,7 +332,7 @@ export function LoginPage() {
                 required
                 autoFocus
               />
-              <FormField
+              <Field
                 label="تأكيد كلمة المرور الجديدة"
                 type="password"
                 value={newPasswordConfirmation}
@@ -360,13 +344,11 @@ export function LoginPage() {
                 maxLength={72}
                 required
               />
-              <p className="security-note">
-                6 خانات على الأقل: أرقام أو حروف أو الاثنان معًا.
-              </p>
+              <DeskNote>6 خانات على الأقل: أرقام أو حروف أو الاثنان معًا.</DeskNote>
             </>
           ) : (
             <>
-              <FormField
+              <Field
                 label="رقم الهاتف"
                 value={phone}
                 onChange={(event) => setPhone(event.target.value)}
@@ -375,7 +357,7 @@ export function LoginPage() {
                 inputMode="tel"
                 required
               />
-              <FormField
+              <Field
                 label="كلمة المرور"
                 type="password"
                 value={password}
@@ -383,46 +365,30 @@ export function LoginPage() {
                 autoComplete="current-password"
                 required
               />
-              <button
-                className="button button--ghost button--full"
-                type="button"
-                disabled={isBusy}
-                onClick={startRecovery}
-              >
-                نسيت كلمة المرور؟
-              </button>
             </>
           )}
           {loginNotice && !recoveryStep && !challenge ? (
-            <p className="security-note" role="status">
+            <p className="desk-note" role="status">
               {loginNotice}
             </p>
           ) : null}
           {recoveryNotice ? (
-            <p className="security-note" role="status">
+            <p className="desk-note" role="status">
               {recoveryNotice}
             </p>
           ) : null}
           {recoveryStep && recoveryError ? (
-            <p className="inline-error" role="alert">
-              {recoveryError}
-            </p>
+            <DeskNote tone="coral">{recoveryError}</DeskNote>
           ) : !recoveryStep && error ? (
-            <p className="inline-error" role="alert">
-              {error}
-            </p>
+            <DeskNote tone="coral">{error}</DeskNote>
           ) : null}
-          <button
-            className="button button--full"
-            disabled={isBusy}
-            type="submit"
-          >
+          <DeskButton className="desk-btn--full" disabled={isBusy} type="submit">
             {primaryLabel}
-          </button>
+          </DeskButton>
           {challenge ? (
-            <button
-              className="button button--ghost button--full"
-              type="button"
+            <DeskButton
+              tone="soft"
+              className="desk-btn--full"
               disabled={isBusy}
               onClick={() => {
                 setCode('');
@@ -430,34 +396,30 @@ export function LoginPage() {
               }}
             >
               العودة وتسجيل الدخول من جديد
-            </button>
+            </DeskButton>
           ) : recoveryStep ? (
             <>
               {recoveryStep === 'code' ? (
-                <button
-                  className="button button--ghost button--full"
-                  type="button"
+                <DeskButton
+                  tone="soft"
+                  className="desk-btn--full"
                   disabled={isBusy || retryRemaining > 0}
                   onClick={() => void requestRecoveryCode()}
                 >
                   {retryRemaining > 0
                     ? `إعادة الإرسال خلال ${retryRemaining} ث`
                     : 'إعادة إرسال الرمز'}
-                </button>
+                </DeskButton>
               ) : null}
-              <button
-                className="button button--ghost button--full"
-                type="button"
-                disabled={isBusy}
-                onClick={cancelRecovery}
-              >
+              <DeskButton tone="soft" className="desk-btn--full" disabled={isBusy} onClick={cancelRecovery}>
                 العودة إلى تسجيل الدخول
-              </button>
+              </DeskButton>
             </>
-          ) : null}
-          <p className="security-note login-card__security-note">
-            لا تُحفظ رموز الجلسة في تخزين المتصفح، وتُبطل الجلسة عند تسجيل الخروج.
-          </p>
+          ) : (
+            <DeskButton tone="soft" className="desk-btn--full" disabled={isBusy} onClick={startRecovery}>
+              نسيت كلمة المرور؟
+            </DeskButton>
+          )}
         </form>
       </section>
     </main>

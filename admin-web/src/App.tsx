@@ -22,7 +22,6 @@ import { UsersPage } from './features/users/UsersPage';
 import { UserDetailsPage } from './features/users/UserDetailsPage';
 import { ServicesPage } from './features/catalog/ServicesPage';
 import { ReviewsPage } from './features/moderation/ReviewsPage';
-import { NotificationsPage } from './features/notifications/NotificationsPage';
 import { ReportsPage } from './features/dashboard/ReportsPage';
 import { ConversationReportsPage } from './features/moderation/ConversationReportsPage';
 import { NotFoundPage } from './platform/routing/NotFoundPage';
@@ -203,14 +202,6 @@ export default function App() {
               permission={AdminPermission.CONVERSATION_REPORTS_READ}
             >
               <ConversationReportsPage />
-            </RequireAdminPermission>
-          }
-        />
-        <Route
-          path="notifications"
-          element={
-            <RequireAdminPermission permission={AdminPermission.NOTIFICATIONS_READ}>
-              <NotificationsPage />
             </RequireAdminPermission>
           }
         />

@@ -83,16 +83,16 @@ describe('admin login surface', () => {
   it('keeps the entry point operational and free of retired decorative branding', () => {
     renderPage();
 
-    expect(
-      screen.getByRole('heading', {
-        name: 'قرارات واضحة، وبيانات مصونة.',
-        level: 1,
-      }),
-    ).toBeInTheDocument();
-    expect(screen.getByText('مساحة تشغيل محمية')).toBeInTheDocument();
-    expect(screen.getByRole('heading', { name: 'مرحباً بك', level: 2 })).toBeInTheDocument();
+    // Sign-in is one desk panel (D56): the desk's wordmark and heading, no
+    // slogan panel and none of the old maroon frame.
+    expect(screen.getByRole('heading', { name: 'مرحباً بك', level: 1 })).toBeInTheDocument();
+    expect(screen.getByText('لوحة الإدارة')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'دخول' })).toHaveClass('desk-btn');
+    expect(screen.queryByText('قرارات واضحة، وبيانات مصونة.')).not.toBeInTheDocument();
+    expect(screen.queryByText('مساحة تشغيل محمية')).not.toBeInTheDocument();
     expect(screen.queryByText('♕')).not.toBeInTheDocument();
     expect(document.querySelector('.login-brand-panel')).toBeNull();
+    expect(document.querySelector('.login-card')).toBeNull();
   });
 });
 
@@ -119,7 +119,7 @@ describe('admin password recovery', () => {
     await openRecoveryCode();
 
     expect(
-      screen.getByRole('heading', { name: 'أدخل رمز الاستعادة', level: 2 }),
+      screen.getByRole('heading', { name: 'أدخل رمز الاستعادة', level: 1 }),
     ).toBeInTheDocument();
     expect(screen.queryByLabelText('كلمة المرور الجديدة')).not.toBeInTheDocument();
   });

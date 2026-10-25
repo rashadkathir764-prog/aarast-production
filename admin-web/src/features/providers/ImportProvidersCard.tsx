@@ -1,6 +1,5 @@
 import { ChangeEvent, useState } from 'react';
-import { ActionButton } from '../../design_system/ActionButton';
-import { FormCard } from '../../design_system/FormCard';
+import { DeskButton, DeskNote } from '../../design_system/Desk';
 import { listedProviderErrorMessage } from './AddListedProviderCard';
 import {
   createListedProvider,
@@ -73,62 +72,64 @@ export function ImportProvidersCard({
   const added = outcomes.filter((outcome) => outcome.ok).length;
   const templateHref = `data:text/csv;charset=utf-8,${encodeURIComponent(providerCsvTemplate())}`;
 
+  // Inside a05's «استيراد ملف» window, on the desk kit (D56); the window
+  // carries the title.
   return (
-    <FormCard
-      title="استيراد مزوّدين من ملف"
-      subtitle="ملف CSV (احفظه من Excel بصيغة CSV UTF-8). كل صف يصبح مزوّدًا بلا حساب يستلمه صاحبه برقمه."
-    >
-      <div className="side-form">
-        <a href={templateHref} download="aarast-providers-template.csv">
+    <div className="desk-form">
+      <DeskNote>
+        ملف CSV (احفظه من Excel بصيغة CSV UTF-8). كل صف يصير مزود بلا حساب يستلمه صاحبه برقمه.
+      </DeskNote>
+      <div className="desk-actions">
+        <a
+          className="desk-soft desk-soft--soft"
+          href={templateHref}
+          download="aarast-providers-template.csv"
+        >
           تنزيل القالب
         </a>
-        <label className="form-field">
-          <span>ملف المزوّدين</span>
-          <input type="file" accept=".csv,text/csv" onChange={readFile} disabled={importing} />
-        </label>
-        {fileError ? (
-          <p className="inline-error" role="alert">
-            {fileError}
-          </p>
-        ) : null}
-        {rows.length > 0 ? (
-          <>
-            <p className="security-note" role="status">
-              {valid} صف جاهز{invalid > 0 ? `، و${invalid} فيها مشاكل لن تُستورد` : ''}.
-            </p>
-            {invalid > 0 ? (
-              <ul className="compact-list" aria-label="صفوف فيها مشاكل">
-                {rows
-                  .filter((row) => row.errors.length > 0)
-                  .map((row) => (
-                    <li key={row.line}>
-                      الصف {row.line}: {row.errors.join('، ')}
-                    </li>
-                  ))}
-              </ul>
-            ) : null}
-            <div className="form-actions">
-              <ActionButton type="button" onClick={importRows} disabled={importing || valid === 0}>
-                {importing ? 'جارٍ الاستيراد…' : `استيراد ${valid} مزوّد`}
-              </ActionButton>
-            </div>
-          </>
-        ) : null}
-        {outcomes.length > 0 ? (
-          <>
-            <p className="security-note" role="status">
-              أُضيف {added} من {outcomes.length}. أضف لكل مزوّد خدمة نشطة ليظهر في الدليل.
-            </p>
-            <ul className="compact-list" aria-label="نتيجة الاستيراد">
-              {outcomes.map((outcome) => (
-                <li key={outcome.line} className={outcome.ok ? undefined : 'inline-error'}>
-                  الصف {outcome.line}: {outcome.message}
-                </li>
-              ))}
-            </ul>
-          </>
-        ) : null}
       </div>
-    </FormCard>
+      <label className="desk-field">
+        ملف المزوّدين
+        <input type="file" accept=".csv,text/csv" onChange={readFile} disabled={importing} />
+      </label>
+      {fileError ? <DeskNote tone="coral">{fileError}</DeskNote> : null}
+      {rows.length > 0 ? (
+        <>
+          <p className="desk-note" role="status">
+            {valid} صف جاهز{invalid > 0 ? `، و${invalid} فيها مشاكل لن تُستورد` : ''}.
+          </p>
+          {invalid > 0 ? (
+            <ul className="desk-note" aria-label="صفوف فيها مشاكل">
+              {rows
+                .filter((row) => row.errors.length > 0)
+                .map((row) => (
+                  <li key={row.line}>
+                    الصف {row.line}: {row.errors.join('، ')}
+                  </li>
+                ))}
+            </ul>
+          ) : null}
+          <div className="desk-dialog__actions">
+            <DeskButton onClick={importRows} disabled={importing || valid === 0}>
+              {importing ? 'لحظة، نستورد…' : `استيراد ${valid} مزوّد`}
+            </DeskButton>
+          </div>
+        </>
+      ) : null}
+      {outcomes.length > 0 ? (
+        <>
+          <p className="desk-note" role="status">
+            أُضيف {added} من {outcomes.length}. أضف لكل مزوّد خدمة شغّالة ليظهر في الدليل.
+          </p>
+          <ul className="desk-note" aria-label="نتيجة الاستيراد">
+            {outcomes.map((outcome) => (
+              <li key={outcome.line} className={outcome.ok ? undefined : 'desk-ink--coral'}>
+                الصف {outcome.line}: {outcome.message}
+              </li>
+            ))}
+          </ul>
+        </>
+      ) : null}
+    </div>
   );
 }

@@ -48,7 +48,6 @@ import {
   nextProviderAction,
   progressPercentage,
   resolveBudgetDecimal,
-  sumMoney,
   toPaymentScheduleDueMoneyItem,
   toNotificationPreview,
   toPlanResponse,
@@ -180,7 +179,7 @@ export class DashboardService {
       : null;
 
     const [
-      costs,
+      money,
       paymentSchedules,
       taskDashboard,
       guestCounters,
@@ -191,9 +190,21 @@ export class DashboardService {
       pendingInvites,
       notificationDashboard,
     ] = await Promise.all([
+      // D59: finance's one money read; the home adds nothing up itself.
       canViewMoney
-        ? this.owners.finance.listPlanCostAmounts(tx, weddingPlanId, costIds)
-        : Promise.resolve([]),
+        ? this.owners.finance.readMoneyPicture(tx, {
+            weddingPlanId,
+            persona: context.plan.persona,
+            totalBudget: seesWholePlan(context)
+              ? resolveBudgetDecimal(context.plan)
+              : null,
+            scope: contributorIds
+              ? { costIds: contributorIds.costIds, categoryIds: [] }
+              : null,
+            readerUserId: currentUser.id,
+            fundingVisible: false,
+          })
+        : Promise.resolve(null),
       canViewMoney
         ? this.owners.finance.listPendingPaymentSchedules(
             tx,
@@ -338,25 +349,17 @@ export class DashboardService {
       canViewMoney && seesWholePlan(context)
         ? resolveBudgetDecimal(context.plan)
         : null;
-    const confirmedCostNumber = canViewMoney
-      ? sumMoney(costs.map((cost) => cost.totalAmount))
-      : null;
-    const paidNumber = canViewMoney
-      ? sumMoney(costs.map((cost) => cost.paidAmount))
-      : null;
-    const outstandingNumber =
-      confirmedCostNumber !== null && paidNumber !== null
-        ? confirmedCostNumber.minus(paidNumber)
-        : null;
+    const decimalOrNull = (value: string | null | undefined) =>
+      value === null || value === undefined ? null : new Prisma.Decimal(value);
+    // Every agreement (the mahr's included) and what was paid of it; D59:
+    // what the owner's own money paid and what others paid for him.
+    const confirmedCostNumber = decimalOrNull(money?.costs.total);
+    const paidNumber = decimalOrNull(money?.costs.paid);
+    const paidByOwnerNumber = decimalOrNull(money?.costs.paidByOwner);
+    const paidByOthersNumber = decimalOrNull(money?.costs.paidByOthers);
+    const outstandingNumber = decimalOrNull(money?.costs.outstanding);
     // C1: the budget is the wedding's; the groom's mahr item is outside it.
-    const remainingBudgetNumber =
-      budgetTotalNumber !== null && canViewMoney
-        ? budgetTotalNumber.minus(
-            sumMoney(
-              costs.filter((cost) => cost.inBudget).map((cost) => cost.totalAmount),
-            ),
-          )
-        : null;
+    const remainingBudgetNumber = decimalOrNull(money?.budget.remaining);
     const location = weddingLocationResponse(
       context.plan.location,
       context.plan.city,
@@ -480,6 +483,9 @@ export class DashboardService {
           }
         : null,
       venueSecured: venueCost || venueBooked,
+      // D59: beside the closed summary contract (R12B), whose money paid.
+      paidByOwner: moneyOrNull(paidByOwnerNumber),
+      paidByOthers: moneyOrNull(paidByOthersNumber),
       moneySummary: {
         totalBudget: moneyOrNull(budgetTotalNumber),
         confirmedCost: moneyOrNull(confirmedCostNumber),

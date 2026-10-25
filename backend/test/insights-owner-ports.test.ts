@@ -60,11 +60,22 @@ test('planning finds the owner\'s current planning plan by wedding date', async 
   ]);
 });
 
-test('finance serves a plan\'s cost amounts and pending schedules, narrowed to a contributor\'s costs', async () => {
+test('finance serves a plan\'s money picture and pending schedules, narrowed to a contributor\'s costs', async () => {
   const { client, calls } = recorder();
   const finance = new FinancePortService();
-  await finance.listPlanCostAmounts(client, 'plan-1');
-  await finance.listPlanCostAmounts(client, 'plan-1', ['cost-1']);
+  const query = {
+    weddingPlanId: 'plan-1',
+    persona: 'GROOM',
+    totalBudget: null,
+    readerUserId: 'reader-1',
+    fundingVisible: false,
+  };
+  await finance.readMoneyPicture(client, { ...query, scope: null });
+  await finance.readMoneyPicture(client, {
+    ...query,
+    scope: { costIds: ['cost-1'], categoryIds: ['category-1'] },
+  });
+  const pictureCalls = calls.splice(0);
   await finance.listPendingPaymentSchedules(client, 'plan-1', null);
   await finance.listPendingPaymentSchedules(client, 'plan-1', ['cost-1']);
   const costWhere = (ids?: string[]) => ({
@@ -72,10 +83,34 @@ test('finance serves a plan\'s cost amounts and pending schedules, narrowed to a
     ...(ids ? { id: { in: ids } } : {}),
     status: { not: WeddingCostStatus.CANCELLED },
   });
+  // D59: one read of finance's own rows; the costs and items narrow to a
+  // contributor's, another account's private costs are found to be left
+  // out, and the owner's funding is read only when it may be shown.
+  const costReads = pictureCalls.filter(
+    ([name, args]) =>
+      name === 'weddingCost.findMany' &&
+      !(args as { where: Record<string, unknown> }).where.privateToUserId,
+  );
+  assert.deepEqual(
+    costReads.map(([, args]) => (args as { where: unknown }).where),
+    [costWhere(), costWhere(['cost-1'])],
+  );
+  assert.deepEqual(
+    pictureCalls
+      .filter(([name]) => name === 'budgetCategory.findMany')
+      .map(([, args]) => (args as { where: unknown }).where),
+    [{ weddingPlanId: 'plan-1' }, { weddingPlanId: 'plan-1', id: { in: ['category-1'] } }],
+  );
+  assert.equal(
+    pictureCalls.filter(
+      ([name, args]) =>
+        name === 'weddingCost.findMany' &&
+        JSON.stringify((args as { where: unknown }).where).includes('reader-1'),
+    ).length,
+    2,
+  );
+  assert.equal(pictureCalls.some(([name]) => name.startsWith('fundingSource.')), false);
   assert.deepEqual(calls, [
-    // C1: each cost says whether its item is in the wedding budget.
-    ['weddingCost.findMany', { where: costWhere(), select: { id: true, budgetCategoryId: true, totalAmount: true, paidAmount: true, budgetCategory: { select: { kind: true } } } }],
-    ['weddingCost.findMany', { where: costWhere(['cost-1']), select: { id: true, budgetCategoryId: true, totalAmount: true, paidAmount: true, budgetCategory: { select: { kind: true } } } }],
     ['paymentSchedule.findMany', {
       where: { status: PaymentScheduleStatus.PENDING, weddingCost: costWhere() },
       include: { weddingCost: { select: { title: true } } },

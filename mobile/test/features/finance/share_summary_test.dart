@@ -12,7 +12,15 @@ import 'package:flutter_test/flutter_test.dart';
 MoneySummary _summary() => MoneySummary.fromJson({
   'planId': 'plan-1',
   'currency': 'YER',
-  'budget': {'total': '5000000', 'remaining': '1800000'},
+  // The server's wedding budget (no mahr in this plan: the same as costs).
+  'budget': {
+    'total': '5000000',
+    'remaining': '1800000',
+    'confirmedCost': '3200000',
+    'paid': '1000000',
+    'outstanding': '2200000',
+    'count': 4,
+  },
   'costs': {
     'total': '3200000',
     'paid': '1000000',
@@ -75,6 +83,94 @@ void main() {
     expect(text, contains('• الذهب'));
     expect(text, isNot(contains('مليون')));
     expect(text, isNot(contains('ر.ي')));
+  });
+
+  // The review's groom: 7 million budget, 4.9 million of wedding agreements,
+  // the 3 million mahr (2 handed over), the father paid 1.3 million.
+  MoneySummary groomWithMahr() => MoneySummary.fromJson({
+    'planId': 'plan-1',
+    'currency': 'YER',
+    'budget': {
+      'total': '7000000',
+      'remaining': '2100000',
+      'confirmedCost': '4900000',
+      'paid': '2600000',
+      'paidByOwner': '1300000',
+      'paidByOthers': '1300000',
+      'outstanding': '2300000',
+      'count': 4,
+    },
+    'costs': {
+      'total': '7900000',
+      'paid': '4600000',
+      'outstanding': '3300000',
+      'count': 5,
+    },
+    'mahr': {
+      'side': 'PAYS',
+      'total': '3000000',
+      'settled': '2000000',
+      'remaining': '1000000',
+    },
+    'categories': [
+      {
+        'categoryId': 'mahr',
+        'name': 'المهر',
+        'kind': 'MAHR',
+        'confirmedCost': '3000000',
+        'paid': '2000000',
+      },
+      {'categoryId': 'hall', 'name': 'القاعة', 'confirmedCost': '2000000', 'paid': '500000'},
+    ],
+  });
+
+  test('D59: the shared summary is the wedding budget\'s, the mahr its own line', () {
+    final text = moneyShareText(
+      groomWithMahr(),
+      planTitle: 'عرس محمد',
+      hideAmounts: false,
+    );
+
+    // Before D59: «الملتزم به: 7.9 مليون (113٪ من الميزانية)».
+    expect(text, contains('• الملتزم به: 4.9 مليون ر.ي (70٪ من الميزانية)'));
+    expect(text, isNot(contains('7.9')));
+    expect(text, contains('• المدفوع: 2.6 مليون ر.ي'));
+    expect(text, contains('• منه دفعه غير العريس: 1.3 مليون ر.ي'));
+    expect(text, contains('• المتبقي للدفع: 2.3 مليون ر.ي'));
+    expect(text, contains('• المهر (خارج الميزانية): 3 مليون ر.ي، سُلّم منه 2 مليون ر.ي'));
+    // Never among the biggest items.
+    expect(text, isNot(contains('• المهر: ')));
+    expect(text, contains('• القاعة: 2 مليون ر.ي'));
+
+    final hidden = moneyShareText(
+      groomWithMahr(),
+      planTitle: 'عرس محمد',
+      hideAmounts: true,
+    );
+    expect(hidden, contains('استُخدم 70٪ من الميزانية'));
+    expect(hidden, contains('سُلّم 67٪ منه'));
+  });
+
+  test('D59: the bride\'s mahr is her money in: never shared', () {
+    final bride = MoneySummary.fromJson({
+      'planId': 'plan-1',
+      'currency': 'YER',
+      'budget': {'total': '7000000', 'confirmedCost': '0', 'paid': '0'},
+      'mahr': {
+        'side': 'RECEIVES',
+        'total': '3000000',
+        'settled': '2000000',
+        'remaining': '1000000',
+      },
+    });
+    final text = moneyShareText(
+      bride,
+      planTitle: 'عرس سلمى',
+      hideAmounts: false,
+      bridePlan: true,
+    );
+    expect(text, isNot(contains('المهر')));
+    expect(text, isNot(contains('3 مليون')));
   });
 
   test('the task summary counts progress and lists the next open tasks', () {

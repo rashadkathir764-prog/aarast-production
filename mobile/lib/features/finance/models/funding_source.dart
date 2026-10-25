@@ -14,6 +14,7 @@ class FundingSource {
     this.sourcePhone,
     this.receivedAt,
     this.expectedAt,
+    this.isOverdue = false,
     this.note,
     this.repaidAmount,
     this.outstandingAmount,
@@ -32,6 +33,7 @@ class FundingSource {
       receivedAt: DateTime.tryParse(json['receivedAt']?.toString() ?? ''),
       // A day, read as the server keeps it (Sana'a).
       expectedAt: planDayFromJson(json['expectedAt']),
+      isOverdue: json['isOverdue'] == true,
       note: json['note']?.toString(),
       repaidAmount: json['repaidAmount']?.toString(),
       outstandingAmount: json['outstandingAmount']?.toString(),
@@ -55,6 +57,10 @@ class FundingSource {
   /// Promised money: the day it is expected (the mahr's rest, c05 «يوصلك
   /// يوم العقد 15 نوفمبر»).
   final DateTime? expectedAt;
+
+  /// D59, the server's: promised money whose day passed without it arriving
+  /// («متأخر»).
+  final bool isOverdue;
   final String? note;
 
   /// Loans only.
@@ -76,6 +82,7 @@ class FundingSource {
     'status': status,
     'receivedAt': receivedAt?.toIso8601String(),
     'expectedAt': expectedAt?.toIso8601String(),
+    'isOverdue': isOverdue,
     'note': note,
     'repaidAmount': repaidAmount,
     'outstandingAmount': outstandingAmount,

@@ -70,6 +70,13 @@ class _MoneyItemsTab extends StatelessWidget {
     ].take(3).toList(growable: false);
 
     final now = DateTime.now();
+    // D59: the owner reads what they did; anyone else reads it unowned.
+    final nothingPaid = context.ownerDid(
+      'ما دفعت شي',
+      'ما دفعتِ شي',
+      groom: 'ما اندفع شي',
+      bride: 'ما اندفع شي',
+    );
     final rows = <Widget>[
       for (final cost in costs)
         _MoneyItemRow(
@@ -86,10 +93,10 @@ class _MoneyItemsTab extends StatelessWidget {
           paidLine: cost.isCancelled
               ? 'ملغي'
               : moneyValue(cost.paidAmount) <= 0
-              ? context.say('ما دفعت شي', 'ما دفعتِ شي')
+              ? nothingPaid
               : moneyValue(cost.paidAmount) >= moneyValue(cost.totalAmount)
               ? 'خالص'
-              : '${context.say('دفعت', 'دفعتِ')} ${_amount(context, cost.paidAmount, currency)}',
+              : '${_whoPaid(context, provider.summary, cost)} ${_amount(context, cost.paidAmount, currency)}',
           note: cost.isCancelled ? null : _nextDueNote(provider, cost, now),
           muted: cost.isCancelled,
           private: cost.isPrivate,
@@ -105,7 +112,7 @@ class _MoneyItemsTab extends StatelessWidget {
               ? ''
               : _amount(context, category.allocatedAmount, currency),
           paidRatio: 0,
-          paidLine: context.say('ما دفعت شي', 'ما دفعتِ شي'),
+          paidLine: nothingPaid,
           note: ('ما انحجز', AarastV3Color.brandAccentStrong),
           onTap: provider.canManageMoney
               ? () => context.push(
@@ -130,10 +137,15 @@ class _MoneyItemsTab extends StatelessWidget {
               ? 0
               : moneyValue(cost.paidAmount) / moneyValue(cost.totalAmount),
           paidLine: moneyValue(cost.paidAmount) <= 0
-              ? context.say('ما سلّمت شي', 'ما سلّمتِ شي')
+              ? context.ownerDid(
+                  'ما سلّمت شي',
+                  'ما سلّمتِ شي',
+                  groom: 'العريس ما سلّم شي',
+                  bride: 'العروسة ما سلّمت شي',
+                )
               : moneyValue(cost.paidAmount) >= moneyValue(cost.totalAmount)
               ? 'سُلّم كامل'
-              : '${context.say('سلّمت', 'سلّمتِ')} ${_amount(context, cost.paidAmount, currency)}',
+              : '${context.ownerDid('سلّمت', 'سلّمتِ', groom: 'العريس سلّم', bride: 'العروسة سلّمت')} ${_amount(context, cost.paidAmount, currency)}',
           note: switch (mahrDue(_nextDueDay(provider, cost))) {
             final due? => (due, AarastV3Color.brandAccentStrong),
             null => null,
@@ -277,6 +289,36 @@ class _MoneyItemsTab extends StatelessWidget {
           ),
         ],
       ],
+    );
+  }
+
+  /// Who paid what was paid of an agreement (D59): the owner in their own
+  /// voice (or named to anyone else), someone who paid for the owner by
+  /// their name with the verb agreeing («الوالد دفع», «العروسة دفعت»). The
+  /// server says whose money each payer's payments were.
+  String _whoPaid(BuildContext context, MoneySummary summary, WeddingCost cost) {
+    final profile = context.journeyProfile;
+    final key = payerKey(cost.payer, cost.payerName);
+    final group = summary.payers
+        .where((group) => payerKey(group.payer, group.payerName) == key)
+        .firstOrNull;
+    if (group == null || group.ownerMoney) {
+      return profile.ownerDid(
+        'دفعت',
+        'دفعتِ',
+        groom: 'العريس دفع',
+        bride: 'العروسة دفعت',
+      );
+    }
+    return payerPaidLine(
+      group.payer,
+      payerLabel(
+        group.payer,
+        group.payerName,
+        bridePlan: profile.isBride,
+        owner: profile.readerIsOwner,
+      ),
+      profile,
     );
   }
 

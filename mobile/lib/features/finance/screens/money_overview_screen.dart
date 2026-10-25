@@ -20,12 +20,14 @@ import '../../wedding_plans/wedding_plans_api.dart'
     show DashboardSummaryProvider, WeddingPlansProvider;
 import '../data/finance_local_data_source.dart';
 import '../models/funding_source.dart';
+import '../models/money_payer_words.dart';
 import '../models/money_share_text.dart';
 import '../models/money_summary.dart';
 import '../models/money_starter_catalog.dart';
 import '../models/wedding_cost.dart';
 import '../providers/finance_provider.dart';
 import '../providers/funding_provider.dart';
+import '../widgets/funding_widgets.dart' show fundingStateTag;
 import '../widgets/money_widgets.dart';
 
 part 'money_overview_screen.funding.dart';
@@ -140,6 +142,7 @@ class _MoneyOverviewScreenState extends State<MoneyOverviewScreen> {
                         provider.summary,
                         planTitle: _planTitle(context),
                         hideAmounts: hideAmounts,
+                        bridePlan: context.journeyProfile.isBride,
                       ),
                     )
                   : null,
@@ -169,6 +172,10 @@ class _MoneyOverviewScreenState extends State<MoneyOverviewScreen> {
             ...switch (tab) {
               0 => _summaryTab(provider),
               1 => [
+                if (_mahrToRecord(context, provider)) ...[
+                  _RecordMahrEntry(onTap: _openMahr),
+                  const SizedBox(height: 12),
+                ],
                 _MoneyItemsTab(
                   planId: widget.weddingPlanId,
                   provider: provider,
@@ -221,6 +228,10 @@ class _MoneyOverviewScreenState extends State<MoneyOverviewScreen> {
     final mahr = summary.mahr;
     return [
       _MoneySummaryCard(summary: summary),
+      if (_mahrToRecord(context, provider)) ...[
+        const SizedBox(height: 14),
+        _RecordMahrEntry(onTap: _openMahr),
+      ],
       if (mahr != null) ...[
         const SizedBox(height: 14),
         _MahrAndWeddingCards(
@@ -307,6 +318,28 @@ class _MoneyOverviewScreenState extends State<MoneyOverviewScreen> {
       return moneyStarterPersonaFromCode(summary?.persona);
     }
     return MoneyStarterPersona.neutral;
+  }
+
+  /// D59: the way back to a06 whenever a groom's or a bride's plan has no
+  /// mahr: its owner skipped «اتفقتوا على المهر؟», the plan predates it, or
+  /// its agreement was deleted. Only the owner records it (D55); a plan
+  /// kept on the phone keeps a06's answer in its draft and the home leads
+  /// to it.
+  bool _mahrToRecord(BuildContext context, FinanceProvider provider) {
+    if (!provider.hasLoadedMoney ||
+        provider.summary.mahr != null ||
+        !provider.canManageMoney ||
+        !context.journeyProfile.readerIsOwner ||
+        FinanceLocalDataSource.isLocalGuestPlanId(widget.weddingPlanId)) {
+      return false;
+    }
+    return _starterPersona(context) != MoneyStarterPersona.neutral;
+  }
+
+  /// a06 for this plan; the money is read again when it closes.
+  Future<void> _openMahr() async {
+    await context.push(AppRouter.moneyMahr(widget.weddingPlanId));
+    if (mounted) await _load();
   }
 
   /// The groom's mahr agreement (C1), the live one first.

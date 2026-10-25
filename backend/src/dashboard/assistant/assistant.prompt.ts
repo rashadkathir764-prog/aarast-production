@@ -49,10 +49,27 @@ export interface AssistantPlanFacts {
   persona: 'GROOM' | 'BRIDE' | 'HELPER' | null;
   currency: string;
   priorities: string[];
+  /**
+   * The money as the app shows it (D59): the wedding's budget and what is
+   * committed and paid against it (the wedding's items only), whose money
+   * paid, and the mahr on its own line.
+   */
   money: {
     budgetTotal: string | null;
     committedTotal: string;
     paidTotal: string;
+    /** Every agreement's payments (the mahr's included) out of the owner's own money. */
+    paidByOwner: string;
+    /** What others paid for the owner, by payer. */
+    paidByOthers: Array<{ payer: string; paid: string }>;
+    mahr: {
+      /** PAYS: the groom's agreement with the bride's family; RECEIVES: the bride's mahr. */
+      side: 'PAYS' | 'RECEIVES';
+      total: string;
+      settled: string;
+      remaining: string;
+      nextDueAt: string | null;
+    } | null;
     categories: AssistantCategoryFacts[];
   } | null;
   guests: { total: number; confirmed: number; pending: number; declined: number };
@@ -118,8 +135,23 @@ export function renderPlanData(facts: AssistantPlanFacts): string {
   if (facts.money) {
     const money = facts.money;
     lines.push('', 'المال:');
-    lines.push(`- الميزانية الإجمالية: ${money.budgetTotal ?? 'غير محددة'}`);
-    lines.push(`- الملتزم به: ${money.committedTotal}، المدفوع: ${money.paidTotal}`);
+    lines.push(`- الميزانية الإجمالية للعرس (المهر خارجها): ${money.budgetTotal ?? 'غير محددة'}`);
+    lines.push(
+      `- الملتزم به من ميزانية العرس: ${money.committedTotal}، المدفوع منه: ${money.paidTotal}`,
+    );
+    lines.push(`- دفعه صاحب الخطة من فلوسه (كل الاتفاقات): ${money.paidByOwner}`);
+    for (const other of money.paidByOthers) {
+      lines.push(`- دفع عنه ${data(other.payer)}: ${other.paid}`);
+    }
+    if (money.mahr) {
+      const mahr = money.mahr;
+      const due = mahr.nextDueAt ? `، موعد الباقي ${mahr.nextDueAt}` : '';
+      lines.push(
+        mahr.side === 'PAYS'
+          ? `- المهر (اتفاق العريس مع أهل العروسة، خارج ميزانية العرس): ${mahr.total}، سلّم منه ${mahr.settled}، الباقي ${mahr.remaining}${due}`
+          : `- المهر (يصل العروسة من العريس، خارج ميزانية العرس): ${mahr.total}، وصل منه ${mahr.settled}، الباقي ${mahr.remaining}${due}`,
+      );
+    }
     if (money.categories.length === 0) {
       lines.push('- لا توجد بنود ميزانية بعد.');
     }

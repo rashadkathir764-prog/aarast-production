@@ -20,6 +20,7 @@ class FundingFormResult {
     required this.status,
     this.sourcePhone,
     this.note,
+    this.expectedAt,
     this.repayments = const [],
     this.delete = false,
   });
@@ -31,6 +32,7 @@ class FundingFormResult {
       status = '',
       sourcePhone = null,
       note = null,
+      expectedAt = null,
       repayments = const [],
       delete = true;
 
@@ -40,6 +42,10 @@ class FundingFormResult {
   final String status;
   final String? sourcePhone;
   final String? note;
+
+  /// Promised money: the day it should arrive (D59: reminded the day
+  /// before and on the day, «متأخر» once it passed); null for none.
+  final DateTime? expectedAt;
 
   /// A new loan's repayments, added after it is saved.
   final List<({String amount, DateTime dueDate})> repayments;
@@ -66,6 +72,31 @@ IconData fundingKindIcon(String kind) => switch (kind) {
   _ => LucideIcons.wallet,
 };
 
+/// A source's state as c05 tags it: «وصل», «موعود», or (D59, the server's
+/// `isOverdue`) «متأخر» once a promise's day passed without it arriving.
+Widget fundingStateTag(FundingSource source) {
+  if (!source.isPledged) {
+    return const JourneyTag(
+      label: 'وصل',
+      color: AarastV3Color.mint,
+      soft: AarastV3Color.mintSoft,
+    );
+  }
+  if (source.isOverdue) {
+    return const JourneyTag(
+      key: ValueKey('funding-overdue'),
+      label: 'متأخر',
+      color: AarastV3Color.danger,
+      soft: AarastV3Color.dangerSoft,
+    );
+  }
+  return const JourneyTag(
+    label: 'موعود',
+    color: AarastV3Color.lilac,
+    soft: AarastV3Color.lilacSoft,
+  );
+}
+
 /// c12 «مصدر فلوس»: what kind, from whom, how much, whether it arrived,
 /// and, for a new loan, how it will be paid back. Tracking only: nothing is
 /// moved.
@@ -88,6 +119,10 @@ class _FundingSourceFormSheetState extends State<FundingSourceFormSheet> {
   late final _note = TextEditingController(text: widget.source?.note);
   late String _kind = widget.source?.kind ?? FundingKind.familySupport;
   late bool _pledged = widget.source?.isPledged ?? false;
+
+  /// Promised money's day (D59); kept when it arrives, as the record of
+  /// when it was due.
+  late DateTime? _expectedAt = widget.source?.expectedAt;
   late bool _showMore =
       (widget.source?.sourcePhone ?? '').isNotEmpty ||
       (widget.source?.note ?? '').isNotEmpty;
@@ -146,6 +181,21 @@ class _FundingSourceFormSheetState extends State<FundingSourceFormSheet> {
     if (picked != null && mounted) setState(() => _firstRepayment = picked);
   }
 
+  Future<void> _pickExpectedAt() async {
+    releaseFieldFocus();
+    final now = DateUtils.dateOnly(DateTime.now());
+    final current = _expectedAt;
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: current == null || current.isBefore(now) ? now : current,
+      // A promise already late keeps its day; a new one is today or later.
+      firstDate: current != null && current.isBefore(now) ? current : now,
+      lastDate: now.add(const Duration(days: 3650)),
+      locale: const Locale('ar'),
+    );
+    if (picked != null && mounted) setState(() => _expectedAt = picked);
+  }
+
   void _submit() {
     setState(() {
       _nameError = _name.text.trim().isEmpty
@@ -167,6 +217,7 @@ class _FundingSourceFormSheetState extends State<FundingSourceFormSheet> {
             : FundingStatus.received,
         sourcePhone: _phone.text,
         note: _note.text,
+        expectedAt: _pledged && !_isLoan ? _expectedAt : widget.source?.expectedAt,
         repayments: _repayments,
       ),
     );
@@ -188,11 +239,11 @@ class _FundingSourceFormSheetState extends State<FundingSourceFormSheet> {
           spacing: 8,
           runSpacing: 8,
           children: [
-            // The mahr is recorded by a06; editing its part keeps its kind.
-            for (final kind in [
-              ...FundingKind.all,
-              if (widget.source?.isMahr == true) FundingKind.mahr,
-            ])
+            // The mahr is recorded by a06 and a mahr source keeps its kind
+            // (D59, as the server rules): editing one shows only its kind.
+            for (final kind in widget.source?.isMahr == true
+                ? const [FundingKind.mahr]
+                : FundingKind.all)
               JourneyChip(
                 key: ValueKey('funding-kind-$kind'),
                 label: fundingKindChoice(kind, context.journeyProfile),
@@ -255,6 +306,21 @@ class _FundingSourceFormSheetState extends State<FundingSourceFormSheet> {
               ),
             ],
           ),
+          if (_pledged) ...[
+            const SizedBox(height: 10),
+            // D59: the day it should arrive; we remind the day before and
+            // on the day, and it reads «متأخر» once the day passes.
+            JourneyPickerField(
+              key: const ValueKey('funding-expected-at'),
+              label: 'متى توصل؟',
+              value: _expectedAt == null
+                  ? 'ما تحدد'
+                  : formatArabicDayMonth(_expectedAt!),
+              icon: LucideIcons.calendarDays,
+              helper: 'نذكّرك قبلها بيوم ويومها',
+              onTap: _pickExpectedAt,
+            ),
+          ],
         ],
         if (_isLoan && !_editing) ...[
           const SizedBox(height: 14),

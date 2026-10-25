@@ -482,6 +482,7 @@ AccountContext _context({
         ? 1
         : null,
     persona: null,
+    readerFeminine: false,
     displayName: displayName,
     lifecycle: 'PLANNING',
     accessMode: AccountContextAccessMode.full,

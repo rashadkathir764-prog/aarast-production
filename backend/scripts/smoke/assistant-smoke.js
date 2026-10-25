@@ -190,7 +190,7 @@ async function run() {
     const ownerText = lastUserText();
     check('the model sees the owner\'s plan', ownerText.includes('بند Hall') && ownerText.includes('Book the hall') && ownerText.includes('المدينة: صنعاء'));
     check('the model never sees the partner\'s private cost or task', !ownerText.includes('Bride secret gift') && !ownerText.includes('Bride secret errand'));
-    check('the owner\'s figures leave the private cost out', ownerText.includes('الملتزم به: 3000.00'));
+    check('the owner\'s figures leave the private cost out', ownerText.includes('الملتزم به من ميزانية العرس: 3000.00'));
 
     const second = await request('POST', `${path}/questions`, { kind: 'QUESTION', question: 'كم أخصص للتصوير؟', consent: true }, owner.token);
     check('a second question is answered', second.status === 200 && second.body?.remainingToday === 0);
@@ -202,7 +202,7 @@ async function run() {
     const brideAsk = await request('POST', `${path}/questions`, { kind: 'FORGOTTEN', consent: true }, bride.token);
     check('the partner gets an answer', brideAsk.status === 200 && brideAsk.body?.remainingToday === 1);
     const brideText = lastUserText();
-    check('the partner\'s own private cost and task reach her answer', brideText.includes('الملتزم به: 3700.00') && brideText.includes('Bride secret errand'));
+    check('the partner\'s own private cost and task reach her answer', brideText.includes('الملتزم به من ميزانية العرس: 3700.00') && brideText.includes('Bride secret errand'));
 
     overloaded = true;
     const busy = await request('POST', `${path}/questions`, { kind: 'CHEAPER', consent: true }, bride.token);

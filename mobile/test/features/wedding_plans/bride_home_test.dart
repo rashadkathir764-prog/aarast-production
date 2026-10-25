@@ -23,8 +23,11 @@ DashboardSummary _summary({
   String dataScope = 'ACCOUNT',
   String? persona,
   Map<String, String> costs = const {},
+  // D59: whose money paid, beside `moneySummary` as the server sends it.
+  Map<String, String> paidBy = const {},
 }) {
   return DashboardSummary.fromJson({
+    ...paidBy,
     'planId': 'plan-1',
     'title': 'عرس سلمى',
     'city': 'صنعاء',
@@ -114,8 +117,13 @@ Color? _heroColor(WidgetTester tester) => tester
 
 void main() {
   group('the plan profile comes from the open plan', () {
-    AccountContext context(AccountContextRole role, AccountContextPersona p) =>
-        AccountContext.fromJson(accountContextJson(role: role, persona: p));
+    AccountContext context(
+      AccountContextRole role,
+      AccountContextPersona p, {
+      String? readerForm,
+    }) => AccountContext.fromJson(
+      accountContextJson(role: role, persona: p, readerForm: readerForm),
+    );
 
     test('her own plan is the bride\'s; a helped plan keeps its owner\'s '
         'colours and speaks to the reader as who they are (q09, q17)', () {
@@ -138,21 +146,33 @@ void main() {
         JourneyProfile.groom,
       );
       // B5: nothing known of the reader: the bride's plan is the women's
-      // wedding, so her rose and the feminine (q17, نورة).
-      expect(
-        planJourneyProfile(
-          selected: context(
-            AccountContextRole.contributor,
-            AccountContextPersona.bride,
-          ),
+      // wedding, so her rose and the feminine (q17, نورة); a participant
+      // reads the owner's money with the owner named (D59).
+      final helperReading = planJourneyProfile(
+        selected: context(
+          AccountContextRole.contributor,
+          AccountContextPersona.bride,
         ),
-        JourneyProfile.bride,
       );
-      // محمد (a groom's account) helping in سلمى's plan: her rose, his voice.
+      expect(helperReading.isBride, isTrue);
+      expect(helperReading.feminine, isTrue);
+      expect(helperReading.readerIsOwner, isFalse);
+      expect(
+        helperReading.ownerDid(
+          'دفعت',
+          'دفعتِ',
+          groom: 'العريس دفع',
+          bride: 'العروسة دفعت',
+        ),
+        'العروسة دفعت',
+      );
+      // محمد (a groom's account) helping in سلمى's plan: her rose, his voice,
+      // as the server resolved it.
       final groomReading = planJourneyProfile(
         selected: context(
           AccountContextRole.contributor,
           AccountContextPersona.bride,
+          readerForm: 'MASCULINE',
         ),
         accountPersona: 'GROOM',
       );
@@ -166,11 +186,24 @@ void main() {
         selected: context(
           AccountContextRole.contributor,
           AccountContextPersona.groom,
+          readerForm: 'FEMININE',
         ),
         accountPersona: 'BRIDE',
       );
       expect(brideReading.accent, JourneyAccent.groom);
       expect(brideReading.feminine, isTrue);
+      // D59: an invited bride with no persona of her own (the review's
+      // case): the phone used to read the plan's side and spoke to her as a
+      // man; the server's form (her partner role) is the one rule now.
+      final invitedBride = planJourneyProfile(
+        selected: context(
+          AccountContextRole.contributor,
+          AccountContextPersona.groom,
+          readerForm: 'FEMININE',
+        ),
+      );
+      expect(invitedBride.feminine, isTrue);
+      expect(invitedBride.isBride, isFalse);
       // Outside any plan, the account's own voice.
       expect(planJourneyProfile(accountPersona: 'BRIDE').feminine, isTrue);
       expect(planJourneyProfile(accountPersona: 'BRIDE').isBride, isFalse);
@@ -346,6 +379,36 @@ void main() {
     expect(find.byKey(const ValueKey('dashboard-money-bar')), findsOneWidget);
     // The design's «حطي 100 ألف كل شهر» is not built (b02 row).
     expect(find.textContaining('كل شهر'), findsNothing);
+  });
+
+  testWidgets('D59: someone helping in her plan reads her money as hers, '
+      'and what her father paid as his', (tester) async {
+    await _pump(
+      tester,
+      _summary(
+        budget: '7000000',
+        venueSecured: true,
+        guests: 124,
+        costs: const {
+          'confirmedCost': '4500000',
+          'paid': '2600000',
+          'outstanding': '1900000',
+        },
+        paidBy: const {'paidByOwner': '1300000', 'paidByOthers': '1300000'},
+      ),
+      JourneyProfile.of(
+        planPersona: 'BRIDE',
+        readerFeminine: false,
+        readerIsOwner: false,
+      ),
+    );
+
+    expect(find.textContaining('باقي على العروسة'), findsWidgets);
+    expect(find.textContaining('اتفقت العروسة على 4.5'), findsOneWidget);
+    expect(find.textContaining('العروسة دفعت 1.3'), findsOneWidget);
+    expect(find.textContaining('دفع عنها 1.3'), findsOneWidget);
+    expect(find.textContaining('باقي تدفع'), findsNothing);
+    expect(find.textContaining('دفعت 2.6'), findsNothing);
   });
 
   testWidgets('b02: covered agreements say so instead of a gap', (

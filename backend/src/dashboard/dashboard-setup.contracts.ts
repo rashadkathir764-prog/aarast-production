@@ -6,4 +6,11 @@ export interface DashboardSetupFacts {
    * or (for those who see money) a cost in a venue budget category.
    */
   venueSecured: boolean;
+  /**
+   * D59: of `moneySummary.paid`, what the plan owner's own money paid and
+   * what the other party, the family or others paid for the owner (finance's
+   * one money read); null for a reader without money rights.
+   */
+  paidByOwner: string | null;
+  paidByOthers: string | null;
 }

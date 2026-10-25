@@ -631,6 +631,12 @@ class _Harness {
       canManageTasks: canManageTasks,
       canManageGuests: canManageGuests,
       canViewMoney: keptCanViewMoney,
+      // The server speaks to the account's persona first (addressFormOf).
+      readerForm: switch (userPersona) {
+        'GROOM' => 'MASCULINE',
+        'BRIDE' => 'FEMININE',
+        _ => null,
+      },
     );
     final controller = AccountContextController(
       contextsApi: gateway,
@@ -757,10 +763,15 @@ class _Gateway implements AccountContextsGateway {
     required this.canManageTasks,
     required this.canManageGuests,
     required this.canViewMoney,
+    this.readerForm,
   });
 
   final AccountContextPersona persona;
   final String title;
+
+  /// The server's resolved form for this reader (D59), when the test's
+  /// reader is known; otherwise the plan's side.
+  final String? readerForm;
   bool canManageTasks;
   bool canManageGuests;
   bool canViewMoney;
@@ -775,6 +786,7 @@ class _Gateway implements AccountContextsGateway {
       planId: _planId,
       displayName: title,
       persona: persona,
+      readerForm: readerForm,
     );
     final permissions = Map<String, dynamic>.from(json['permissions'] as Map)
       ..['canManageTasks'] = canManageTasks

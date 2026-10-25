@@ -235,8 +235,24 @@ function dashboardFixture(input: {
           budgetCategory: { name: "أخرى" },
         })),
   };
+  // D59: the dashboard reads finance's one money read, which counts the
+  // payment ledger; each fixture cost's paid amount is one payment.
+  const costPayment = {
+    findMany: async ({ where }: any) =>
+      (input.costs ?? [])
+        .filter(
+          (cost) =>
+            !where.weddingCost?.id?.in || where.weddingCost.id.in.includes(cost.id),
+        )
+        .filter((cost) => new Prisma.Decimal(cost.paidAmount).gt(0))
+        .map((cost) => ({
+          weddingCostId: cost.id,
+          amount: new Prisma.Decimal(cost.paidAmount),
+          entryType: "PAYMENT",
+        })),
+  };
   const tx = new Proxy(
-    { weddingTask, weddingCost } as Record<string, unknown>,
+    { weddingTask, weddingCost, costPayment } as Record<string, unknown>,
     {
       get: (target, property: string) => target[property] ?? emptyModel,
     },

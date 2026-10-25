@@ -112,8 +112,10 @@ import {
   lockWeddingCost,
   lockCostPayment,
   lockPaymentSchedule,
+  readBudgetCategoryKinds,
 } from "../modules/finance/infrastructure/wedding-costs.repository";
 import { raiseFinanceViolation } from "../modules/finance/internal/finance-violation.http";
+import { mahrItemMoveViolation } from "../modules/finance/domain/mahr-policy";
 
 const paymentInclude = Prisma.validator<Prisma.CostPaymentInclude>()({
   weddingCost: {
@@ -488,6 +490,19 @@ export class WeddingCostsService {
           snapshot.weddingPlanId,
           [snapshot.budgetCategoryId],
         );
+        if (targetBudgetCategoryId !== snapshot.budgetCategoryId) {
+          // C1 (D59): the agreement stays on its side of the budget.
+          const kinds = await readBudgetCategoryKinds(tx, [
+            snapshot.budgetCategoryId,
+            targetBudgetCategoryId,
+          ]);
+          raiseFinanceViolation(
+            mahrItemMoveViolation(
+              kinds.get(snapshot.budgetCategoryId) ?? "WEDDING",
+              kinds.get(targetBudgetCategoryId) ?? "WEDDING",
+            ),
+          );
+        }
         const locked = await this.lockCost(tx, id);
         if (
           locked.weddingPlanId !== snapshot.weddingPlanId ||

@@ -12,6 +12,7 @@ Map<String, dynamic> accountContextJson({
   AccountContextAccessMode? accessMode,
   bool isAvailable = true,
   String? unavailableReason,
+  String? readerForm,
 }) {
   final isProvider = role == AccountContextRole.provider;
   final resolvedLifecycle = lifecycle ?? (isProvider ? 'ACTIVE' : 'PLANNING');
@@ -45,6 +46,13 @@ Map<String, dynamic> accountContextJson({
         ? membershipAuthorityVersion
         : null,
     'persona': isProvider ? null : persona?.name.toUpperCase(),
+    // The server resolves the reader's form for every plan context (D59).
+    'readerForm': isProvider
+        ? null
+        : readerForm ??
+              (persona == AccountContextPersona.bride
+                  ? 'FEMININE'
+                  : 'MASCULINE'),
     'displayName':
         displayName ?? (isProvider ? 'Provider $providerId' : 'Plan $planId'),
     'lifecycle': resolvedLifecycle,
@@ -84,9 +92,11 @@ AccountContext accountContext({
   AccountContextAccessMode? accessMode,
   bool isAvailable = true,
   String? unavailableReason,
+  String? readerForm,
 }) {
   return AccountContext.fromJson(
     accountContextJson(
+      readerForm: readerForm,
       role: role,
       planId: planId,
       providerId: providerId,

@@ -68,7 +68,19 @@ class _DashboardMoneyCardState extends State<_DashboardMoneyCard> {
     String figure(double value) =>
         _amountsHidden ? '••••' : _figure(value, currency);
 
-    final leftLabel = context.say('باقي تدفع', 'باقي تدفعين');
+    // D59: the owner reads what is left to them; anyone else reads it as
+    // the owner's, and what others paid for the owner is said as theirs.
+    final leftLabel = context.ownerDid(
+      'باقي تدفع',
+      'باقي تدفعين',
+      groom: 'باقي على العريس',
+      bride: 'باقي على العروسة',
+    );
+    final paidByOthers =
+        dashboardAmount(summary.moneySummary.paidByOthers) ?? 0;
+    final paidByOwner =
+        dashboardAmount(summary.moneySummary.paidByOwner) ??
+        (paid - paidByOthers);
 
     final Widget lead;
     if (known && !covered) {
@@ -114,13 +126,19 @@ class _DashboardMoneyCardState extends State<_DashboardMoneyCard> {
           _SideFigure('موعود ${figure(funding.pledged)}', AarastV3Color.lilac),
       ] else if (agreed > 0) ...[
         _SideFigure(
-          '${context.say('اتفقت على', 'اتفقتِ على')} ${figure(agreed)}',
+          '${context.ownerDid('اتفقت على', 'اتفقتِ على', groom: 'اتفق العريس على', bride: 'اتفقت العروسة على')} ${figure(agreed)}',
           AarastV3Color.ink,
         ),
-        _SideFigure(
-          '${context.say('دفعت', 'دفعتِ')} ${figure(paid)}',
-          context.accent.primary,
-        ),
+        if (paidByOwner > 0 || paidByOthers <= 0)
+          _SideFigure(
+            '${context.ownerDid('دفعت', 'دفعتِ', groom: 'العريس دفع', bride: 'العروسة دفعت')} ${figure(paidByOwner)}',
+            context.accent.primary,
+          ),
+        if (paidByOthers > 0)
+          _SideFigure(
+            'دفع ${context.ownerDid('عنك', 'عنك', groom: 'عنه', bride: 'عنها')} ${figure(paidByOthers)}',
+            context.accent.primaryDark,
+          ),
       ],
     ];
 

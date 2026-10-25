@@ -8,11 +8,12 @@ import '../../../core/routing/pop_or_go.dart';
 import '../../../core/utils/arabic_date_formatter.dart';
 import '../../../core/utils/money_formatters.dart';
 import '../../../core/widgets/aarast_ui.dart';
-import '../../account_contexts/account_contexts_api.dart'
-    show AccountContextController, AccountContextRole;
+import '../models/money_payer_words.dart';
 import '../models/money_summary.dart';
 import '../models/wedding_cost.dart';
 import '../providers/finance_provider.dart';
+
+export '../models/money_payer_words.dart' show payerKey, payerLabel;
 
 /// w20 «الدفعات · مين دفع ايش» (G14): who paid what. The server sums each
 /// payer's agreements and payments (`money-summary` `payers`); a payment is
@@ -49,13 +50,9 @@ class _PayerPaymentsScreenState extends State<PayerPaymentsScreen> {
     final loaded = finance.loadedPlanId == widget.weddingPlanId;
     final summary = finance.summary;
     final currency = summary.currency;
-    final selected = context
-        .watch<AccountContextController?>()
-        ?.selectedContext;
-    final owner =
-        selected?.weddingPlanId == widget.weddingPlanId &&
-        selected?.role == AccountContextRole.owner;
     final profile = context.journeyProfile;
+    // D59: «أنا» only for the plan's owner; anyone else reads the parties.
+    final owner = profile.readerIsOwner;
     String label(MoneyPayerSummary group) => payerLabel(
       group.payer,
       group.payerName,
@@ -130,7 +127,7 @@ class _PayerPaymentsScreenState extends State<PayerPaymentsScreen> {
                   JourneyAvatar(
                     letter: chosen == null
                         ? 'ك'
-                        : label(chosen).characters.first,
+                        : payerAvatarLetter(label(chosen)),
                     color: context.accent.primary,
                     size: 40,
                   ),
@@ -139,9 +136,11 @@ class _PayerPaymentsScreenState extends State<PayerPaymentsScreen> {
                     child: Text(
                       chosen == null
                           ? 'اللي انحسب دفعه'
-                          : label(chosen) == 'أنا'
-                          ? context.say('دفعت أنا', 'دفعتِ أنا')
-                          : '${label(chosen)} دفع',
+                          : payerPaidLine(
+                              chosen.payer,
+                              label(chosen),
+                              profile,
+                            ),
                       style: JourneyType.of(
                         JourneyType.bodyLarge,
                         weight: JourneyType.bold,
@@ -218,28 +217,4 @@ class _PayerPaymentsScreenState extends State<PayerPaymentsScreen> {
     return payerKey(cost.payer, cost.payerName) ==
         payerKey(chosen.payer, chosen.payerName);
   }
-}
-
-/// One payer group's key: its payer and the name written with it.
-String payerKey(String? payer, String? payerName) =>
-    '${payer ?? ''}|${payerName?.trim() ?? ''}';
-
-/// The payer as the plan's owner says it: «أنا» for the plan's own party,
-/// the other party by their word, the family or someone else by the name
-/// written with it.
-String payerLabel(
-  String? payer,
-  String? payerName, {
-  required bool bridePlan,
-  required bool owner,
-}) {
-  final name = payerName?.trim();
-  return switch (payer) {
-    'GROOM' => owner && !bridePlan ? 'أنا' : 'العريس',
-    'BRIDE' => owner && bridePlan ? 'أنا' : 'العروسة',
-    'FAMILY' => name == null || name.isEmpty ? 'الأهل' : name,
-    'SHARED' => 'مشترك',
-    'OTHER' => name == null || name.isEmpty ? 'غيره' : name,
-    _ => 'ما تحدد',
-  };
 }

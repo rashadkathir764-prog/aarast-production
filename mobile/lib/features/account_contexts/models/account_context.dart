@@ -137,6 +137,7 @@ class AccountContext {
     required this.membershipId,
     required this.membershipAuthorityVersion,
     required this.persona,
+    required this.readerFeminine,
     required this.displayName,
     required this.lifecycle,
     required this.accessMode,
@@ -157,6 +158,9 @@ class AccountContext {
       'membershipAuthorityVersion',
     );
     final persona = _parsePersona(_requiredNullableString(json, 'persona'));
+    final readerFeminine = _parseReaderForm(
+      _requiredNullableString(json, 'readerForm'),
+    );
     final displayName = _requiredString(json, 'displayName');
     final lifecycle = _requiredString(json, 'lifecycle');
     final accessMode = _parseAccessMode(_requiredString(json, 'accessMode'));
@@ -180,6 +184,7 @@ class AccountContext {
       membershipId: membershipId,
       membershipAuthorityVersion: membershipAuthorityVersion,
       persona: persona,
+      readerFeminine: readerFeminine,
       displayName: displayName,
       lifecycle: lifecycle,
       accessMode: accessMode,
@@ -199,6 +204,12 @@ class AccountContext {
   final String? membershipId;
   final int? membershipAuthorityVersion;
   final AccountContextPersona? persona;
+
+  /// B5/D59: whether this reader is spoken to in the feminine in this plan,
+  /// as the server resolved it once (`readerForm`: the account's persona,
+  /// else the member's partner role, else the plan's side). Null for a
+  /// provider context.
+  final bool? readerFeminine;
   final String displayName;
   final String lifecycle;
   final AccountContextAccessMode accessMode;
@@ -237,6 +248,11 @@ class AccountContext {
       AccountContextPersona.bride => 'BRIDE',
       AccountContextPersona.helper => 'HELPER',
     },
+    'readerForm': switch (readerFeminine) {
+      null => null,
+      true => 'FEMININE',
+      false => 'MASCULINE',
+    },
     'displayName': displayName,
     'lifecycle': lifecycle,
     'accessMode': switch (accessMode) {
@@ -252,13 +268,16 @@ class AccountContext {
 
   void _validateContract() {
     if (role == AccountContextRole.provider) {
-      if (persona != null) {
+      if (persona != null || readerFeminine != null) {
         throw const FormatException(
           'Provider context cannot expose a wedding persona',
         );
       }
       _validateProviderContract();
       return;
+    }
+    if (readerFeminine == null) {
+      throw const FormatException('Plan context requires the reader form');
     }
     _validatePlanContract();
   }
@@ -385,6 +404,15 @@ AccountContextPersona? _parsePersona(String? value) {
     'BRIDE' => AccountContextPersona.bride,
     'HELPER' => AccountContextPersona.helper,
     _ => throw const FormatException('Unknown account context persona'),
+  };
+}
+
+bool? _parseReaderForm(String? value) {
+  return switch (value) {
+    null => null,
+    'MASCULINE' => false,
+    'FEMININE' => true,
+    _ => throw const FormatException('Unknown account context reader form'),
   };
 }
 

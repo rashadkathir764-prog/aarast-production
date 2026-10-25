@@ -47,10 +47,13 @@ function mahrAlreadyRecorded(): ConflictException {
  *
  * The groom (PAYS): a MAHR item outside the budget with one agreement with
  * the bride's family, its handed-over part as a payment and the rest as a
- * payment schedule on its day; an item the plan already named «المهر» with no
- * agreement becomes that item (its allocation is dropped: the mahr is outside
- * the budget). The bride (RECEIVES): MAHR funding sources, the received part
- * RECEIVED and the rest PLEDGED with its expected day.
+ * payment schedule on its day. The mahr is recorded while the MAHR item holds
+ * a live agreement (D59): once that agreement is deleted the empty item is
+ * reused. An item the plan already named «المهر» becomes the MAHR item with
+ * the agreements in it (its allocation is dropped: the mahr is outside the
+ * budget). The bride (RECEIVES): MAHR funding sources, the received part
+ * RECEIVED and the rest PLEDGED with its expected day; deleting them all
+ * lets it be recorded again.
  */
 export async function recordMahrInTransaction(
   tx: Prisma.TransactionClient,
@@ -94,25 +97,33 @@ export async function recordMahrInTransaction(
     return;
   }
 
-  const existingMahr = await tx.budgetCategory.findFirst({
-    where: { weddingPlanId, kind: BudgetCategoryKind.MAHR },
-    select: { id: true },
-  });
-  if (existingMahr) throw mahrAlreadyRecorded();
-  const normalizedName = normalizeBudgetCategoryName(GROOM_MAHR_ITEM_NAME);
-  const named = await tx.budgetCategory.findUnique({
-    where: { weddingPlanId_normalizedName: { weddingPlanId, normalizedName } },
-    select: {
-      id: true,
-      _count: {
-        select: {
-          weddingCosts: { where: { status: { not: WeddingCostStatus.CANCELLED } } },
-        },
+  // Recorded means a live agreement in the MAHR item: an item whose
+  // agreement was deleted is reused, so the mahr can be recorded again.
+  const liveAgreements = {
+    _count: {
+      select: {
+        weddingCosts: { where: { status: { not: WeddingCostStatus.CANCELLED } } },
       },
     },
+  } as const;
+  const mahrItem = await tx.budgetCategory.findFirst({
+    where: { weddingPlanId, kind: BudgetCategoryKind.MAHR },
+    select: { id: true, ...liveAgreements },
   });
-  if (named && named._count.weddingCosts > 0) throw mahrAlreadyRecorded();
-  const category = named
+  if (mahrItem && mahrItem._count.weddingCosts > 0) throw mahrAlreadyRecorded();
+  const normalizedName = normalizeBudgetCategoryName(GROOM_MAHR_ITEM_NAME);
+  const named = mahrItem
+    ? null
+    : await tx.budgetCategory.findUnique({
+        where: { weddingPlanId_normalizedName: { weddingPlanId, normalizedName } },
+        select: { id: true },
+      });
+  // An item the plan already named «المهر» becomes the MAHR item with the
+  // agreements already in it: they were the mahr, outside the wedding
+  // budget (C1), so its allocation is dropped too.
+  const category = mahrItem
+    ? mahrItem
+    : named
     ? await tx.budgetCategory.update({
         where: { id: named.id },
         data: { kind: BudgetCategoryKind.MAHR, allocatedAmount: null },
@@ -162,20 +173,4 @@ export async function recordPlanMahrInTransaction(
   if (!side) throw mahrNotForPlan();
   raiseFinanceViolation(mahrAgreementViolation(agreement));
   await recordMahrInTransaction(tx, weddingPlanId, side, agreement, recordedAt);
-}
-
-/** Whether the plan's mahr is recorded, on either side. */
-export async function hasRecordedMahr(
-  client: Prisma.TransactionClient,
-  weddingPlanId: string,
-): Promise<boolean> {
-  const [items, sources] = await Promise.all([
-    client.budgetCategory.count({
-      where: { weddingPlanId, kind: BudgetCategoryKind.MAHR },
-    }),
-    client.fundingSource.count({
-      where: { weddingPlanId, kind: FundingSourceKind.MAHR },
-    }),
-  ]);
-  return items + sources > 0;
 }

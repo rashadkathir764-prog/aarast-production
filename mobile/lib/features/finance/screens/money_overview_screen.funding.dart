@@ -37,9 +37,19 @@ class _MoneyFundingTabState extends State<_MoneyFundingTab> {
     final funding = widget.funding;
     final currency = widget.currency;
     final sources = context.watch<FundingProvider?>();
-    final list = sources?.loadedPlanId == widget.planId
+    final loaded = sources?.loadedPlanId == widget.planId
         ? sources!.sources
         : const <FundingSource>[];
+    // c05 as drawn: what reached her first, the mahr leading it, then what
+    // is still promised, each kept in the order it was recorded.
+    final list = [
+      for (final source in loaded)
+        if (!source.isPledged && source.isMahr) source,
+      for (final source in loaded)
+        if (!source.isPledged && !source.isMahr) source,
+      for (final source in loaded)
+        if (source.isPledged) source,
+    ];
     void open() => context.push(AppRouter.moneyFunding(widget.planId));
 
     return Column(
@@ -53,7 +63,10 @@ class _MoneyFundingTabState extends State<_MoneyFundingTab> {
                 child: _FundingTotal(
                   label: 'وصلك',
                   amount: _amount(context, funding.received, currency),
+                  // c05 «صرفت 4.6 · معك 2.9»: what came in is what the
+                  // owner's own money paid plus what is in hand (D59).
                   line:
+                      '${context.say('صرفت', 'صرفتِ')} ${_amount(context, funding.spent, currency)} · '
                       'معك ${_amount(context, funding.availableCash, currency)}',
                   color: context.accent.primary,
                   background: AarastV3Color.paper,
@@ -223,8 +236,11 @@ class _FundingSourceRow extends StatelessWidget {
       color: color,
       soft: soft,
       title: source.sourceName,
-      // c05: «يوصلك يوم العقد 15 نوفمبر» for the mahr's rest.
-      subtitle: source.isMahr
+      // c05: «يوصلك يوم العقد 15 نوفمبر» for the mahr's rest; D59: a
+      // promise whose day passed says so («كان موعده 15 نوفمبر»).
+      subtitle: source.isOverdue && expected != null
+          ? 'كان موعده ${formatArabicDayMonth(expected)}'
+          : source.isMahr
           ? (!received && expected != null
                 ? 'يوصلك ${formatArabicDayMonth(expected)}'
                 : (source.note?.trim().isNotEmpty == true
@@ -244,11 +260,7 @@ class _FundingSourceRow extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 4),
-          JourneyTag(
-            label: received ? 'وصل' : 'موعود',
-            color: received ? AarastV3Color.mint : AarastV3Color.lilac,
-            soft: received ? AarastV3Color.mintSoft : AarastV3Color.lilacSoft,
-          ),
+          fundingStateTag(source),
         ],
       ),
     );

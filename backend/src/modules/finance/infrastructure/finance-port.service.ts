@@ -3,6 +3,7 @@ import {
   type BudgetCategory,
   BudgetCategoryKind,
   FundingSourceKind,
+  FundingSourceStatus,
   LoanRepaymentStatus,
   PaymentScheduleStatus,
   Prisma,
@@ -26,9 +27,10 @@ import {
   listPrivateCostReceiptIds,
   listReceiptIdsUploadedBy,
 } from './cost-receipts.repository';
+import { type MoneyPicture, type MoneyPictureQuery, readMoneyPicture } from './money-picture';
 import type {
-  CostAmounts,
   CreateCostFromAcceptedOfferInput,
+  DueExpectedFunding,
   DueLoanRepayment,
   DuePaymentSchedule,
   DuePaymentScheduleQuery,
@@ -251,29 +253,11 @@ export class FinancePortService implements FinancePort {
     });
   }
 
-  async listPlanCostAmounts(
+  readMoneyPicture(
     client: Prisma.TransactionClient,
-    weddingPlanId: string,
-    costIds?: readonly string[] | null,
-  ): Promise<CostAmounts[]> {
-    const rows = await client.weddingCost.findMany({
-      where: {
-        weddingPlanId,
-        ...(costIds ? { id: { in: [...costIds] } } : {}),
-        status: { not: WeddingCostStatus.CANCELLED },
-      },
-      select: {
-        id: true,
-        budgetCategoryId: true,
-        totalAmount: true,
-        paidAmount: true,
-        budgetCategory: { select: { kind: true } },
-      },
-    });
-    return rows.map(({ budgetCategory, ...cost }) => ({
-      ...cost,
-      inBudget: budgetCategory.kind !== BudgetCategoryKind.MAHR,
-    }));
+    query: MoneyPictureQuery,
+  ): Promise<MoneyPicture> {
+    return readMoneyPicture(client, query);
   }
 
   async recordMahrInTransaction(
@@ -432,6 +416,32 @@ export class FinancePortService implements FinancePort {
             },
           ]
         : [],
+    );
+  }
+
+  async listDueExpectedFunding(
+    client: Prisma.TransactionClient,
+    query: { weddingPlanIds: readonly string[]; dueBefore: Date },
+  ): Promise<DueExpectedFunding[]> {
+    if (query.weddingPlanIds.length === 0) return [];
+    const sources = await client.fundingSource.findMany({
+      where: {
+        weddingPlanId: { in: [...query.weddingPlanIds] },
+        status: FundingSourceStatus.PLEDGED,
+        expectedAt: { not: null, lte: query.dueBefore },
+      },
+      select: {
+        id: true,
+        weddingPlanId: true,
+        kind: true,
+        sourceName: true,
+        amount: true,
+        expectedAt: true,
+      },
+      orderBy: [{ expectedAt: 'asc' }, { id: 'asc' }],
+    });
+    return sources.flatMap((source) =>
+      source.expectedAt ? [{ ...source, expectedAt: source.expectedAt }] : [],
     );
   }
 

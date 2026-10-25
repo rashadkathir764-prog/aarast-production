@@ -34,6 +34,47 @@ void main() {
       expect(context.persona, AccountContextPersona.bride);
     });
 
+    test('D59: reads the reader form the server resolved for the plan', () {
+      // An invited bride in the groom's plan: the plan is his, the voice hers.
+      final bride = AccountContext.fromJson(
+        accountContextJson(
+          role: AccountContextRole.contributor,
+          persona: AccountContextPersona.groom,
+          readerForm: 'FEMININE',
+        ),
+      );
+      expect(bride.readerFeminine, isTrue);
+      expect(bride.toJson()['readerForm'], 'FEMININE');
+      expect(
+        AccountContext.fromJson(
+          accountContextJson(role: AccountContextRole.provider),
+        ).readerFeminine,
+        isNull,
+      );
+      for (final payload in <Map<String, dynamic>>[
+        {...accountContextJson(role: AccountContextRole.owner)}
+          ..remove('readerForm'),
+        {
+          ...accountContextJson(role: AccountContextRole.owner),
+          'readerForm': null,
+        },
+        {
+          ...accountContextJson(role: AccountContextRole.owner),
+          'readerForm': 'NEUTRAL',
+        },
+        {
+          ...accountContextJson(role: AccountContextRole.provider),
+          'readerForm': 'MASCULINE',
+        },
+      ]) {
+        expect(
+          () => AccountContext.fromJson(payload),
+          throwsFormatException,
+          reason: payload.toString(),
+        );
+      }
+    });
+
     test('parses contributor and every provider lifecycle additively', () {
       final contributor = AccountContext.fromJson(
         accountContextJson(role: AccountContextRole.contributor),

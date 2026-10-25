@@ -94,6 +94,9 @@ test('hidden money and missing market prices are said, never guessed', () => {
         budgetTotal: '20000.00',
         committedTotal: '3000.00',
         paidTotal: '1000.00',
+        paidByOwner: '1000.00',
+        paidByOthers: [],
+        mahr: null,
         categories: [{ name: 'القاعة', allocated: '9000.00', committed: '3000.00', paid: '1000.00' }],
       },
       market: [{ category: 'قاعات', currency: 'YER', providers: 3, min: '100.00', median: '200.00', max: '300.00' }],
@@ -116,6 +119,15 @@ const plan = {
   estimatedBudget: new Prisma.Decimal('20000'),
 };
 
+/** Finance's money picture with nothing in it. */
+const emptyMoney = {
+  budget: { total: '20000', confirmedCost: '0', paid: '0' },
+  costs: { paidByOwner: '0' },
+  mahr: null,
+  payers: [],
+  categories: [],
+};
+
 function serviceFor(options: {
   isOwner?: boolean;
   canViewMoney?: boolean;
@@ -123,10 +135,21 @@ function serviceFor(options: {
   modelError?: AssistantModelError;
   spent?: bigint;
   reserve?: boolean;
+  money?: unknown;
+  sharedMember?: unknown;
 } = {}) {
-  const calls = { asked: [] as string[], released: 0, recorded: [] as bigint[] };
+  const calls = {
+    asked: [] as string[],
+    released: 0,
+    recorded: [] as bigint[],
+    moneyQueries: [] as unknown[],
+  };
   const permissions = {
-    assertPlanReadable: async () => ({ plan, isOwner: options.isOwner ?? true, sharedMember: null }),
+    assertPlanReadable: async () => ({
+      plan,
+      isOwner: options.isOwner ?? true,
+      sharedMember: options.sharedMember ?? null,
+    }),
     canViewMoney: () => options.canViewMoney ?? true,
     canManageProviders: () => true,
   };
@@ -137,9 +160,10 @@ function serviceFor(options: {
       listUpcomingTasks: async () => [],
     },
     finance: {
-      excludeOthersPrivateCosts: async () => null,
-      listBudgetCategories: async () => [],
-      listPlanCostAmounts: async () => [],
+      readMoneyPicture: async (_tx: unknown, query: unknown) => {
+        calls.moneyQueries.push(query);
+        return options.money ?? emptyMoney;
+      },
     },
     quotes: { listPlanQuoteOffers: async () => [] },
     providers: {
@@ -216,6 +240,62 @@ test('money stays out of the request without money permission', async () => {
   await service.ask(user, 'plan-1', ask);
   assert.match(calls.asked[0], /لا يملك المستخدم صلاحية رؤية أرقام المال/);
   assert.doesNotMatch(calls.asked[0], /الميزانية الإجمالية/);
+});
+
+test('the assistant reads the money the app shows: the budget is the wedding\'s, the mahr its own line (D59)', async () => {
+  // The review's plan: 7 million budget, 4.9 million of wedding agreements
+  // and the 3 million mahr; the father paid 1.3 million of the lunch and
+  // the hall. Before D59 the assistant added every agreement up itself and
+  // read «7,900,000 of 7,000,000».
+  const money = {
+    budget: { total: '7000000', confirmedCost: '4900000', paid: '2600000' },
+    costs: { total: '7900000', paid: '4600000', paidByOwner: '3300000' },
+    mahr: {
+      side: 'PAYS',
+      total: '3000000',
+      settled: '2000000',
+      remaining: '1000000',
+      nextDueAt: new Date('2026-11-14T21:00:00.000Z'),
+      complete: false,
+    },
+    payers: [
+      { payer: 'GROOM', payerName: null, ownerMoney: true, paid: '3300000' },
+      { payer: 'FAMILY', payerName: 'الوالد', ownerMoney: false, paid: '1300000' },
+    ],
+    categories: [
+      { name: 'المهر', kind: 'MAHR', allocatedAmount: null, confirmedCost: '3000000', paid: '2000000' },
+      { name: 'القاعة', kind: 'WEDDING', allocatedAmount: '2500000', confirmedCost: '2000000', paid: '500000' },
+    ],
+  };
+  const { service, calls } = serviceFor({ money });
+  await service.ask(user, 'plan-1', ask);
+  const text = calls.asked[0];
+  assert.match(text, /الملتزم به من ميزانية العرس: 4900000.00، المدفوع منه: 2600000.00/);
+  assert.doesNotMatch(text, /7900000/, 'the mahr is not in the wedding budget');
+  assert.match(text, /المهر \(اتفاق العريس مع أهل العروسة، خارج ميزانية العرس\): 3000000.00، سلّم منه 2000000.00، الباقي 1000000.00، موعد الباقي 2026-11-15/);
+  assert.match(text, /دفعه صاحب الخطة من فلوسه \(كل الاتفاقات\): 3300000.00/);
+  assert.match(text, /دفع عنه الوالد: 1300000.00/);
+  assert.doesNotMatch(text, /بند المهر/, 'the mahr item is not one of the budget items');
+  assert.deepEqual(calls.moneyQueries, [
+    {
+      weddingPlanId: 'plan-1',
+      persona: 'GROOM',
+      totalBudget: plan.estimatedBudget,
+      scope: null,
+      readerUserId: 'user-1',
+      // The bride's mahr is her funding: only the owner's read carries it.
+      fundingVisible: true,
+    },
+  ]);
+});
+
+test('a partner\'s assistant never reads the owner\'s funding (the bride\'s mahr included)', async () => {
+  const { service, calls } = serviceFor({
+    isOwner: false,
+    sharedMember: { userId: 'user-1', role: 'BRIDE' },
+  });
+  await service.ask(user, 'plan-1', ask);
+  assert.equal((calls.moneyQueries[0] as { fundingVisible: boolean }).fundingVisible, false);
 });
 
 test('the cost is priced by the model that answered (a fallback may differ)', async () => {

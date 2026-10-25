@@ -142,10 +142,13 @@ class _AarastAppState extends State<AarastApp> {
 /// selected plan, owned or helped in (q09 draws the groom's plan in his
 /// teal for the bride who helps in it, q17 the bride's in her rose for her
 /// sister), or the plan kept on the phone before an account. The words to
-/// the reader follow the reader ([readerIsFeminine]): the account's own
-/// persona ([accountPersona]), else the plan's own party. The provider
-/// portal and the screens outside a plan take the app's teal, still
-/// speaking to the reader as who they are.
+/// the reader follow the reader: in a plan the server resolved how it
+/// speaks to them once (`readerForm`: the account's persona, else their
+/// partner role, else the plan's side, D59), so the phone never decides it
+/// again; outside a plan ([readerIsFeminine]) the account's own persona
+/// ([accountPersona]), or a plan kept on the phone's own party. The
+/// provider portal and the screens outside a plan take the app's teal,
+/// still speaking to the reader as who they are.
 @visibleForTesting
 JourneyProfile planJourneyProfile({
   AccountContext? selected,
@@ -172,10 +175,11 @@ JourneyProfile planJourneyProfile({
       : accountPersona;
   return JourneyProfile.of(
     planPersona: planPersona,
-    readerFeminine: readerIsFeminine(
-      accountPersona: reader,
-      planPersona: planPersona,
-    ),
+    readerFeminine:
+        selected?.readerFeminine ??
+        readerIsFeminine(accountPersona: reader, planPersona: planPersona),
+    // D59: a participant reads the owner's money with the owner named.
+    readerIsOwner: selected?.role != AccountContextRole.contributor,
   );
 }
 

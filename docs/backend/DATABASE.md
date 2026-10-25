@@ -431,7 +431,13 @@ The backend now includes the approved provider-reference and quote-lead foundati
   from the system defaults like every system item.
 - The mahr (B5, D55): `BudgetCategory.kind = MAHR` for the groom (above),
   `FundingSourceKind.MAHR` for the bride, and `FundingSource.expectedAt`, the
-  day pledged money is expected (the mahr's rest).
+  day pledged money is expected (the mahr's rest). D59, no schema change: the
+  groom's mahr counts as recorded while the MAHR item holds a non-cancelled
+  `WeddingCost` (an emptied item is reused, never a second one); a
+  `WeddingCost` never moves between a `WEDDING` and the `MAHR` item; `MAHR`
+  funding exists only on a `BRIDE` plan and a source never changes kind to or
+  from it; a pledged source past its `expectedAt` is reported overdue (read,
+  not stored).
 - `Provider`, `ProviderService`, `ProviderServiceImage`, and `ProviderPackage`
   for public planning references. Every externally supplied `numeric(14,2)`
   provider price is bounded by the central money validator before persistence;

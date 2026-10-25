@@ -29,9 +29,39 @@ String _moneyStatusLine(MoneySummary summary, JourneyProfile profile) {
   }
   if (moneyValue(summary.budget.remaining) < 0) return 'فوق الميزانية';
   if (summary.costs.count == 0) {
-    return profile.say('ما سجلت اتفاقات بعد', 'ما سجلتِ اتفاقات بعد');
+    return profile.ownerDid(
+      'ما سجلت اتفاقات بعد',
+      'ما سجلتِ اتفاقات بعد',
+      groom: 'ما انسجلت اتفاقات بعد',
+      bride: 'ما انسجلت اتفاقات بعد',
+    );
   }
   return 'ماشية';
+}
+
+/// D59: what was paid, said by whose money paid it: the owner's own part
+/// («دفعت 1.3»), then what others paid for the owner («دفع عنك 1.3»).
+String _paidSplitLine(
+  BuildContext context, {
+  required String byOwner,
+  required String byOthers,
+  required String currency,
+}) {
+  final profile = context.journeyProfile;
+  final ownerPaid = profile.ownerDid(
+    'دفعت',
+    'دفعتِ',
+    groom: 'العريس دفع',
+    bride: 'العروسة دفعت',
+  );
+  final others = moneyValue(byOthers) > 0;
+  return [
+    if (moneyValue(byOwner) > 0 || !others)
+      '$ownerPaid ${_amount(context, byOwner, currency)}',
+    if (others)
+      'دفع ${profile.ownerDid('عنك', 'عنك', groom: 'عنه', bride: 'عنها')} '
+          '${_amount(context, byOthers, currency)}',
+  ].join(' · ');
 }
 
 class _MoneySummaryCard extends StatelessWidget {
@@ -43,10 +73,20 @@ class _MoneySummaryCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final currency = summary.currency;
     final funding = summary.funding;
+    final profile = context.journeyProfile;
     final agreed = _amount(context, summary.costs.total, currency);
-    final paid = _amount(context, summary.costs.paid, currency);
+    final ownPaid = _amount(context, summary.costs.paidByOwner, currency);
     final left = _amount(context, summary.costs.outstanding, currency);
     final hasAgreements = summary.costs.count > 0;
+    // D59: what others paid for the owner, by payer, from the server.
+    final paidForOwner = [
+      for (final group in payersForOwner(summary))
+        paidForOwnerPhrase(
+          group,
+          _amount(context, group.paid, currency),
+          profile,
+        ),
+    ];
 
     // c01: a 17 sentence (1.7 apart) in a box padded 20, then the 34 gap.
     final strong = JourneyType.of(JourneyType.lead, weight: JourneyType.bold);
@@ -67,16 +107,39 @@ class _MoneySummaryCard extends StatelessWidget {
               style: plain,
               children: hasAgreements
                   ? [
-                      TextSpan(text: context.say('اتفقت على ', 'اتفقتِ على ')),
-                      TextSpan(text: agreed, style: strong),
                       TextSpan(
-                        text: context.say('، دفعت منها ', '، دفعتِ منها '),
+                        text: context.ownerDid(
+                          'اتفقت على ',
+                          'اتفقتِ على ',
+                          groom: 'اتفق العريس على ',
+                          bride: 'اتفقت العروسة على ',
+                        ),
+                      ),
+                      TextSpan(text: agreed, style: strong),
+                      // D59: «دفعت منها» is the owner's own money; what
+                      // others paid for the owner is named after it.
+                      TextSpan(
+                        text: context.ownerDid(
+                          '، دفعت منها ',
+                          '، دفعتِ منها ',
+                          groom: '، دفع منها ',
+                          bride: '، دفعت منها ',
+                        ),
                       ),
                       TextSpan(
-                        text: paid,
+                        text: ownPaid,
                         style: strong.copyWith(color: AarastV3Color.mint),
                       ),
-                      const TextSpan(text: '. باقي عليك '),
+                      for (final phrase in paidForOwner)
+                        TextSpan(text: '، و$phrase'),
+                      TextSpan(
+                        text: context.ownerDid(
+                          '. باقي عليك ',
+                          '. باقي عليك ',
+                          groom: '. باقي عليه ',
+                          bride: '. باقي عليها ',
+                        ),
+                      ),
                       TextSpan(text: left, style: strong),
                       const TextSpan(text: '.'),
                       // «معك» only once a source is recorded; before that
@@ -121,7 +184,8 @@ class _MoneySummaryCard extends StatelessWidget {
             if (funding.sourcesCount > 0 || funding.shortfall != null) ...[
               const SizedBox(height: 14),
               _FundingSplit(
-                paid: moneyValue(summary.costs.paid),
+                paidByOwner: moneyValue(summary.costs.paidByOwner),
+                paidByOthers: moneyValue(summary.costs.paidByOthers),
                 inHand: moneyValue(funding.availableCash),
                 pledged: moneyValue(funding.pledged),
                 gap: moneyValue(funding.shortfall),
@@ -129,6 +193,40 @@ class _MoneySummaryCard extends StatelessWidget {
             ],
           ],
         ],
+      ),
+    );
+  }
+}
+
+/// D59: «سجّل المهر» in c01 and c02 while a groom's or a bride's plan has
+/// no mahr (a06 skipped, a plan from before a06, or its agreement deleted).
+/// Not drawn: the design has the mahr always recorded; it reuses the
+/// journey kit's row (design difference in the handoff).
+class _RecordMahrEntry extends StatelessWidget {
+  const _RecordMahrEntry({required this.onTap});
+
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final pays = !context.journeyProfile.isBride;
+    return JourneyBox(
+      key: const ValueKey('money-record-mahr'),
+      padding: EdgeInsets.zero,
+      child: JourneyListRow(
+        icon: LucideIcons.heartHandshake,
+        color: context.accent.primary,
+        soft: context.accent.primarySoft,
+        title: context.say('سجّل المهر', 'سجّلي المهر'),
+        subtitle: pays
+            ? 'اتفاقك مع أهل العروسة، برّا ميزانية العرس'
+            : 'المهر يوصلك من العريس، ونحسبه من فلوسك',
+        trailing: const Icon(
+          LucideIcons.chevronLeft,
+          size: 18,
+          color: AarastV3Color.textMuted,
+        ),
+        onTap: onTap,
       ),
     );
   }
@@ -178,7 +276,7 @@ class _MahrAndWeddingCards extends StatelessWidget {
                   label: pays ? 'الاتفاق مع أهل العروسة' : 'المهر يوصلك',
                   amount: _amount(context, mahr.total, currency),
                   line: pays
-                      ? '${context.say('سلّمت', 'سلّمتِ')} ${_amount(context, mahr.settled, currency)}'
+                      ? '${context.ownerDid('سلّمت', 'سلّمتِ', groom: 'العريس سلّم', bride: 'العروسة سلّمت')} ${_amount(context, mahr.settled, currency)}'
                       : 'وصلك ${_amount(context, mahr.settled, currency)}',
                   ratio: ratio(mahr.settled, mahr.total),
                   onTap: onMahr,
@@ -191,8 +289,12 @@ class _MahrAndWeddingCards extends StatelessWidget {
                   icon: LucideIcons.building2,
                   label: 'عرسك',
                   amount: _amount(context, weddingTotal, currency),
-                  line:
-                      '${context.say('دفعت', 'دفعتِ')} ${_amount(context, summary.budget.paid, currency)}',
+                  line: _paidSplitLine(
+                    context,
+                    byOwner: summary.budget.paidByOwner,
+                    byOthers: summary.budget.paidByOthers,
+                    currency: currency,
+                  ),
                   ratio: ratio(summary.budget.paid, weddingTotal),
                   onTap: onWedding,
                 ),
@@ -289,17 +391,21 @@ class _SplitCard extends StatelessWidget {
   }
 }
 
-/// c01's four-part bar and its legend: paid, in hand, promised and the
-/// server's shortfall (C2: the gap left once everything else is counted).
+/// c01's bar and its legend: paid, in hand, promised and the server's
+/// shortfall (C2: the gap left once everything else is counted). D59: what
+/// others paid for the owner is its own piece, beside what the owner paid;
+/// together they make every agreement.
 class _FundingSplit extends StatelessWidget {
   const _FundingSplit({
-    required this.paid,
+    required this.paidByOwner,
+    required this.paidByOthers,
     required this.inHand,
     required this.pledged,
     required this.gap,
   });
 
-  final num paid;
+  final num paidByOwner;
+  final num paidByOthers;
   final num inHand;
   final num pledged;
   final num gap;
@@ -307,7 +413,21 @@ class _FundingSplit extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final pieces = [
-      (paid, context.accent.primary, context.say('دفعت', 'دفعتِ')),
+      (
+        paidByOwner,
+        context.accent.primary,
+        context.ownerDid(
+          'دفعت',
+          'دفعتِ',
+          groom: 'دفع العريس',
+          bride: 'دفعت العروسة',
+        ),
+      ),
+      (
+        paidByOthers,
+        context.accent.primaryDark,
+        'دفع ${context.ownerDid('عنك', 'عنك', groom: 'عنه', bride: 'عنها')}',
+      ),
       (inHand, context.accent.primaryMid, 'معك'),
       (pledged, AarastV3Color.lilac.withValues(alpha: 0.5), 'موعود'),
       (gap, AarastV3Color.danger, 'ناقصك'),

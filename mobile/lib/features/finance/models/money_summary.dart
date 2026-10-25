@@ -128,11 +128,13 @@ class MoneyFundingSummary {
     this.total = '0',
     this.received = '0',
     this.pledged = '0',
+    this.spent = '0',
     this.availableCash = '0',
     this.shortfall,
     this.loanTotal = '0',
     this.loanOutstanding = '0',
     this.overdueLoanRepayments = 0,
+    this.overduePledges = 0,
     this.sourcesCount = 0,
   });
 
@@ -141,12 +143,15 @@ class MoneyFundingSummary {
       total: json['total']?.toString() ?? '0',
       received: json['received']?.toString() ?? '0',
       pledged: json['pledged']?.toString() ?? '0',
+      spent: json['spent']?.toString() ?? '0',
       availableCash: json['availableCash']?.toString() ?? '0',
       shortfall: _nullableString(json['shortfall']),
       loanTotal: json['loanTotal']?.toString() ?? '0',
       loanOutstanding: json['loanOutstanding']?.toString() ?? '0',
       overdueLoanRepayments:
           int.tryParse(json['overdueLoanRepayments']?.toString() ?? '') ?? 0,
+      overduePledges:
+          int.tryParse(json['overduePledges']?.toString() ?? '') ?? 0,
       sourcesCount: int.tryParse(json['sourcesCount']?.toString() ?? '') ?? 0,
     );
   }
@@ -156,7 +161,12 @@ class MoneyFundingSummary {
   final String received;
   final String pledged;
 
-  /// Received minus what was already paid out.
+  /// D59: what the owner's own money paid (c05 «صرفت»): received is spent
+  /// plus in hand.
+  final String spent;
+
+  /// Received minus what the owner's own money paid («معك»): what someone
+  /// else paid for the owner never left the owner's hands (D59).
   final String availableCash;
 
   /// Confirmed cost not yet covered by any source; null once covered.
@@ -164,6 +174,9 @@ class MoneyFundingSummary {
   final String loanTotal;
   final String loanOutstanding;
   final int overdueLoanRepayments;
+
+  /// Promised money whose day passed without it arriving («متأخر»).
+  final int overduePledges;
   final int sourcesCount;
 }
 
@@ -212,6 +225,7 @@ class MoneyPayerSummary {
   const MoneyPayerSummary({
     this.payer,
     this.payerName,
+    this.ownerMoney = true,
     this.agreed = '0',
     this.paid = '0',
     this.outstanding = '0',
@@ -222,6 +236,7 @@ class MoneyPayerSummary {
     return MoneyPayerSummary(
       payer: _nullableString(json['payer']),
       payerName: _nullableString(json['payerName']),
+      ownerMoney: json['ownerMoney'] != false,
       agreed: json['agreed']?.toString() ?? '0',
       paid: json['paid']?.toString() ?? '0',
       outstanding: json['outstanding']?.toString() ?? '0',
@@ -232,6 +247,10 @@ class MoneyPayerSummary {
   /// GROOM, BRIDE, FAMILY, SHARED, OTHER, or null when no payer was set.
   final String? payer;
   final String? payerName;
+
+  /// D59 (the server's rule): the group's payments came out of the plan
+  /// owner's own money; false when someone else paid for the owner.
+  final bool ownerMoney;
   final String agreed;
   final String paid;
   final String outstanding;
@@ -245,6 +264,10 @@ class MoneyBudgetSummary {
     this.unallocated,
     this.confirmedCost = '0',
     this.paid = '0',
+    this.paidByOwner = '0',
+    this.paidByOthers = '0',
+    this.outstanding = '0',
+    this.count = 0,
     this.remaining,
   });
 
@@ -255,6 +278,10 @@ class MoneyBudgetSummary {
       unallocated: _nullableString(json['unallocated']),
       confirmedCost: json['confirmedCost']?.toString() ?? '0',
       paid: json['paid']?.toString() ?? '0',
+      paidByOwner: json['paidByOwner']?.toString() ?? '0',
+      paidByOthers: json['paidByOthers']?.toString() ?? '0',
+      outstanding: json['outstanding']?.toString() ?? '0',
+      count: intOrNull(json['count']) ?? 0,
       remaining: _nullableString(json['remaining']),
     );
   }
@@ -268,6 +295,16 @@ class MoneyBudgetSummary {
 
   /// What was paid of the wedding's agreements (c01 «عرسك · دفعت»).
   final String paid;
+
+  /// D59: of [paid], what the owner's own money paid and what others paid.
+  final String paidByOwner;
+  final String paidByOthers;
+
+  /// The wedding's agreements not paid yet.
+  final String outstanding;
+
+  /// How many wedding agreements there are.
+  final int count;
   final String? remaining;
 }
 
@@ -275,6 +312,8 @@ class MoneyCostsSummary {
   const MoneyCostsSummary({
     this.total = '0',
     this.paid = '0',
+    this.paidByOwner = '0',
+    this.paidByOthers = '0',
     this.outstanding = '0',
     this.count = 0,
   });
@@ -283,13 +322,24 @@ class MoneyCostsSummary {
     return MoneyCostsSummary(
       total: json['total']?.toString() ?? '0',
       paid: json['paid']?.toString() ?? '0',
+      paidByOwner: json['paidByOwner']?.toString() ?? '0',
+      paidByOthers: json['paidByOthers']?.toString() ?? '0',
       outstanding: json['outstanding']?.toString() ?? '0',
       count: intOrNull(json['count']) ?? 0,
     );
   }
 
   final String total;
+
+  /// Every payment, whoever made it.
   final String paid;
+
+  /// D59: what the owner's own money paid («دفعت أنت»).
+  final String paidByOwner;
+
+  /// D59: what the other party, the family or others paid for the owner
+  /// («دفع عنك …»), by payer in [MoneySummary.payers].
+  final String paidByOthers;
   final String outstanding;
   final int count;
 }

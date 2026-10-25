@@ -5,6 +5,7 @@ import type {
   WeddingCost,
 } from '@prisma/client';
 import type { WeddingCostWithDetails } from './wedding-cost.presenter';
+import type { MoneyPicture, MoneyPictureQuery } from './money-picture';
 
 export const FINANCE_PORT = Symbol('FINANCE_PORT');
 
@@ -53,14 +54,7 @@ export type DuePaymentSchedule = PaymentSchedule & {
   };
 };
 
-/** A cost's amounts and category for a money summary (non-cancelled costs of the plan, optionally only the given ones). */
-export type CostAmounts = Pick<
-  WeddingCost,
-  'id' | 'budgetCategoryId' | 'totalAmount' | 'paidAmount'
-> & {
-  /** False for the groom's mahr item: it is outside the wedding budget (C1). */
-  inBudget: boolean;
-};
+export type { MoneyPicture, MoneyPictureQuery };
 
 /** a06: the agreed mahr, what was handed over, and when the rest is due. */
 export interface MahrAgreementInput {
@@ -95,6 +89,16 @@ export interface ExceededBudgetCategory {
   name: string;
   allocatedAmount: Prisma.Decimal;
   committedAmount: Prisma.Decimal;
+}
+
+/** D59: promised money with the day it is expected (the bride's mahr rest, a promise). */
+export interface DueExpectedFunding {
+  id: string;
+  weddingPlanId: string;
+  kind: string;
+  sourceName: string;
+  amount: Prisma.Decimal;
+  expectedAt: Date;
 }
 
 /** A planned repayment of one of the plan's loans that has a due date. */
@@ -214,12 +218,17 @@ export interface FinancePort {
     tx: Prisma.TransactionClient,
     quoteOfferId: string,
   ): Promise<WeddingCostWithDetails | null>;
-  /** The plan's non-cancelled cost amounts; `costIds` narrows to a contributor's costs. */
-  listPlanCostAmounts(
+  /**
+   * D59: the plan's money in one read, the one `money-summary` serves: the
+   * wedding budget (WEDDING items only), every agreement, the mahr on its
+   * own line, who paid what and whose money it was, and the owner's money
+   * in (only when `fundingVisible`). The dashboards and the assistant read
+   * it instead of adding the costs up again.
+   */
+  readMoneyPicture(
     client: Prisma.TransactionClient,
-    weddingPlanId: string,
-    costIds?: readonly string[] | null,
-  ): Promise<CostAmounts[]>;
+    query: MoneyPictureQuery,
+  ): Promise<MoneyPicture>;
   /** C24: whether a non-cancelled cost sits in a venue budget category (a recorded venue agreement); `costIds` narrows to a contributor's costs. */
   hasVenueCost(
     client: Prisma.TransactionClient,
@@ -247,6 +256,15 @@ export interface FinancePort {
     client: Prisma.TransactionClient,
     query: { weddingPlanIds: readonly string[]; dueBefore: Date },
   ): Promise<DueLoanRepayment[]>;
+  /**
+   * D59: the plans' promised money (PLEDGED sources) expected at or before
+   * `dueBefore`, the soonest first: the owner's private money, reminded to
+   * the owner only (`expectedFundingReminder` says on which day).
+   */
+  listDueExpectedFunding(
+    client: Prisma.TransactionClient,
+    query: { weddingPlanIds: readonly string[]; dueBefore: Date },
+  ): Promise<DueExpectedFunding[]>;
   /** The schedules of the given costs of the plan (a contributor's payment reminders). */
   listPaymentScheduleIdsForCosts(
     client: Prisma.TransactionClient,

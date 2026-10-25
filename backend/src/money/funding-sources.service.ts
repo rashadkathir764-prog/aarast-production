@@ -23,6 +23,11 @@ import {
   repaymentKindViolation,
   repaymentTotalViolation,
 } from "../modules/finance/domain/funding-policy";
+import { mahrFundingViolation } from "../modules/finance/domain/mahr-policy";
+import {
+  isPledgeOverdue,
+  startOfTodayInRiyadh,
+} from "../modules/finance/infrastructure/money-picture";
 import {
   deleteFundingSource,
   deleteLoanRepayment,
@@ -71,6 +76,8 @@ export interface FundingSourceResponse {
   receivedAt: Date | null;
   /** PLEDGED money: the day it is expected (the mahr's rest, a promise). */
   expectedAt: Date | null;
+  /** D59: promised money whose expected day passed without it arriving («متأخر»). */
+  isOverdue: boolean;
   note: string | null;
   createdAt: Date;
   updatedAt: Date;
@@ -120,12 +127,18 @@ export class FundingSourcesService {
     dto: CreateFundingSourceDto,
   ): Promise<FundingSourceResponse> {
     const created = await runSerializableTransaction(this.prisma, async (tx) => {
-      this.requireOwner(
-        await this.permissions.assertMoneyManageableInTransaction(
-          tx,
-          weddingPlanId,
-          currentUser,
-        ),
+      const access = await this.permissions.assertMoneyManageableInTransaction(
+        tx,
+        weddingPlanId,
+        currentUser,
+      );
+      this.requireOwner(access);
+      raiseFinanceViolation(
+        mahrFundingViolation({
+          planPersona: access.plan.persona,
+          currentKind: null,
+          nextKind: dto.kind,
+        }),
       );
       const status = dto.status ?? FundingSourceStatus.RECEIVED;
       return insertFundingSource(tx, weddingPlanId, {
@@ -147,8 +160,15 @@ export class FundingSourcesService {
     id: string,
     dto: UpdateFundingSourceDto,
   ): Promise<FundingSourceResponse> {
-    const updated = await this.withOwnedSource(currentUser, id, async (tx, source) => {
+    const updated = await this.withOwnedSource(currentUser, id, async (tx, source, access) => {
       const nextKind = dto.kind ?? source.kind;
+      raiseFinanceViolation(
+        mahrFundingViolation({
+          planPersona: access.plan.persona,
+          currentKind: source.kind,
+          nextKind,
+        }),
+      );
       const nextAmount =
         dto.amount !== undefined ? this.amount(dto.amount, "amount") : source.amount;
       raiseFinanceViolation(
@@ -296,6 +316,7 @@ export class FundingSourcesService {
     work: (
       tx: Prisma.TransactionClient,
       source: FundingSourceWithRepayments,
+      access: PlanAccessContext,
     ) => Promise<T>,
   ): Promise<T> {
     const existing = await runRetryableTransaction(this.prisma, (tx) =>
@@ -303,16 +324,14 @@ export class FundingSourcesService {
     );
     if (!existing) throw new NotFoundException("Funding source not found");
     return runSerializableTransaction(this.prisma, async (tx) => {
-      this.requireOwner(
-        await this.permissions.assertMoneyManageableInTransaction(
-          tx,
-          existing.weddingPlanId,
-          currentUser,
-        ),
-        "Funding source not found",
+      const access = await this.permissions.assertMoneyManageableInTransaction(
+        tx,
+        existing.weddingPlanId,
+        currentUser,
       );
+      this.requireOwner(access, "Funding source not found");
       const locked = await lockFundingSource(tx, id);
-      return work(tx, locked);
+      return work(tx, locked, access);
     });
   }
 
@@ -399,6 +418,7 @@ export function toFundingSourceResponse(
     status: source.status,
     receivedAt: source.receivedAt,
     expectedAt: source.expectedAt,
+    isOverdue: isPledgeOverdue(source, startOfTodayInRiyadh(new Date())),
     note: source.note,
     createdAt: source.createdAt,
     updatedAt: source.updatedAt,

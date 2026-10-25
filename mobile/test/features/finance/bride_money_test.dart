@@ -128,6 +128,8 @@ class _Api extends FinanceApi {
     costs: const MoneyCostsSummary(
       total: '2000',
       paid: '500',
+      // D59: she paid it from her own money.
+      paidByOwner: '500',
       outstanding: '1500',
       count: 1,
     ),

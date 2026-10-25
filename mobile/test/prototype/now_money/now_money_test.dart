@@ -484,11 +484,17 @@ class _Api extends FinanceApi {
         allocated: '6300000',
         unallocated: noBudget ? null : '1700000',
         confirmedCost: '4250000',
+        // The server's wedding figures and whose money paid (D59): all his.
+        paid: '2600000',
+        paidByOwner: '2600000',
+        outstanding: '1650000',
+        count: 3,
         remaining: noBudget ? null : '3750000',
       ),
       costs: const MoneyCostsSummary(
         total: '4250000',
         paid: '2600000',
+        paidByOwner: '2600000',
         outstanding: '1650000',
         count: 3,
       ),

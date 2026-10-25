@@ -8,7 +8,9 @@ import 'package:aarast_mobile/features/finance/models/funding_source.dart';
 import 'package:aarast_mobile/features/finance/models/money_summary.dart';
 import 'package:aarast_mobile/features/finance/models/wedding_cost.dart';
 import 'package:aarast_mobile/features/finance/providers/funding_provider.dart';
+import 'package:aarast_mobile/core/experience_v3/aarast_v3.dart';
 import 'package:aarast_mobile/features/finance/screens/funding_sources_screen.dart';
+import 'package:aarast_mobile/features/finance/widgets/funding_widgets.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -208,6 +210,126 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  testWidgets('D59: promised money asks for its day and keeps it when saved', (
+    tester,
+  ) async {
+    FundingFormResult? result;
+    final promise = FundingSource(
+      id: 'promise',
+      weddingPlanId: 'plan-1',
+      kind: FundingKind.gift,
+      sourceName: 'صاحبتي عبلة',
+      amount: '1200000',
+      status: FundingStatus.pledged,
+      expectedAt: DateTime(2026, 11, 15),
+    );
+    Future<void> open(WidgetTester tester, FundingSource? source) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Directionality(
+            textDirection: TextDirection.rtl,
+            child: Builder(
+              builder: (context) => TextButton(
+                onPressed: () async => result =
+                    await showJourneySheet<FundingFormResult>(
+                      context: context,
+                      builder: (_) => FundingSourceFormSheet(source: source),
+                    ),
+                child: const Text('open'),
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.tap(find.text('open'));
+      await tester.pumpAndSettle();
+    }
+
+    // A new source: no day until it is promised.
+    await open(tester, null);
+    expect(find.byKey(const ValueKey('funding-expected-at')), findsNothing);
+    await tester.tap(find.byKey(const ValueKey('funding-pledged')));
+    await tester.pump();
+    expect(find.byKey(const ValueKey('funding-expected-at')), findsOneWidget);
+    expect(find.text('ما تحدد'), findsOneWidget);
+    // Close it (a fresh app below, not the same navigator).
+    await tester.pumpWidget(const SizedBox.shrink());
+
+    // A promise with its day: shown, and sent back as it is.
+    await open(tester, promise);
+    expect(find.text('15 نوفمبر'), findsOneWidget);
+    final save = find.byKey(const ValueKey('funding-save'));
+    await tester.ensureVisible(save);
+    await tester.tap(save);
+    await tester.pumpAndSettle();
+    expect(result?.expectedAt, DateTime(2026, 11, 15));
+    expect(result?.status, FundingStatus.pledged);
+    expect(tester.takeException(), isNull);
+  });
+
+  test('D59: the provider sends the promised day it is given', () async {
+    final api = _FakeFundingApi();
+    final provider = FundingProvider(api);
+    await provider.load('plan-1');
+    final day = DateTime(2026, 11, 15);
+    await provider.create(
+      weddingPlanId: 'plan-1',
+      kind: FundingKind.gift,
+      sourceName: 'عبلة',
+      amount: '1000',
+      status: FundingStatus.pledged,
+      expectedAt: day,
+    );
+    await provider.update(
+      provider.sources.first,
+      kind: FundingKind.familySupport,
+      sourceName: 'الوالد',
+      amount: '300000',
+      status: FundingStatus.received,
+      expectedAt: null,
+    );
+    expect(api.sentExpectedAt, [day, null]);
+  });
+
+  testWidgets('D59: a promise past its day reads «متأخر»; the mahr keeps its kind', (
+    tester,
+  ) async {
+    final api = _FakeFundingApi()
+      ..seed(
+        FundingSource.fromJson({
+          'id': 'late',
+          'weddingPlanId': 'plan-1',
+          'kind': 'GIFT',
+          'sourceName': 'صاحبتي عبلة',
+          'amount': '1200000',
+          'status': 'PLEDGED',
+          'expectedAt': '2026-10-01T00:00:00.000Z',
+          'isOverdue': true,
+        }),
+      )
+      ..seed(
+        FundingSource.fromJson({
+          'id': 'mahr-rest',
+          'weddingPlanId': 'plan-1',
+          'kind': 'MAHR',
+          'sourceName': 'باقي المهر',
+          'amount': '1000000',
+          'status': 'RECEIVED',
+        }),
+      );
+    await _pumpFunding(tester, api);
+
+    expect(find.byKey(const ValueKey('funding-overdue')), findsOneWidget);
+    expect(find.text('متأخر'), findsOneWidget);
+
+    await tester.tap(find.byKey(const ValueKey('funding-row-mahr-rest')));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const ValueKey('funding-kind-MAHR')), findsOneWidget);
+    expect(find.byKey(const ValueKey('funding-kind-GIFT')), findsNothing);
+    expect(find.byKey(const ValueKey('funding-kind-SAVINGS')), findsNothing);
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('promised money that will not come is removed (x08)', (
     tester,
   ) async {
@@ -304,8 +426,13 @@ class _FakeFundingApi extends FundingApi {
   final updatedStatuses = <String>[];
   final deleted = <String>[];
 
+  /// The promised day each create or update sent (D59).
+  final sentExpectedAt = <DateTime?>[];
+
   FundingSource sourceNamed(String name) =>
       _sources.firstWhere((item) => item.sourceName == name);
+
+  void seed(FundingSource source) => _sources.add(source);
 
   @override
   Future<FundingSource> updateFundingSource(
@@ -316,9 +443,11 @@ class _FakeFundingApi extends FundingApi {
     required String status,
     String? sourcePhone,
     String? note,
+    DateTime? expectedAt,
   }) async {
     _gate();
     updatedStatuses.add(status);
+    sentExpectedAt.add(expectedAt);
     final index = _sources.indexWhere((item) => item.id == source.id);
     final updated = FundingSource(
       id: source.id,
@@ -327,6 +456,7 @@ class _FakeFundingApi extends FundingApi {
       sourceName: sourceName,
       amount: amount,
       status: status,
+      expectedAt: expectedAt,
       outstandingAmount: source.outstandingAmount,
       repayments: source.repayments,
     );
@@ -369,9 +499,11 @@ class _FakeFundingApi extends FundingApi {
     required String status,
     String? sourcePhone,
     String? note,
+    DateTime? expectedAt,
   }) async {
     _gate();
     created.add((kind, sourceName));
+    sentExpectedAt.add(expectedAt);
     final source = FundingSource(
       id: 'source-${++_sequence}',
       weddingPlanId: weddingPlanId,
@@ -379,6 +511,7 @@ class _FakeFundingApi extends FundingApi {
       sourceName: sourceName,
       amount: amount,
       status: status,
+      expectedAt: expectedAt,
       outstandingAmount: kind == FundingKind.loan ? amount : null,
     );
     _sources.add(source);

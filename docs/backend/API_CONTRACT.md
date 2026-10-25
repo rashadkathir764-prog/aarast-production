@@ -562,6 +562,11 @@ and adds:
   contexts, and `null` for provider contexts. Clients use this only through
   the selected account context; route ids and legacy active-plan fields are
   not persona or navigation fallbacks.
+- `readerForm` (D59): `MASCULINE` or `FEMININE`, how the app speaks to this
+  reader in this plan, resolved once by the server with the notifications'
+  rule (`addressFormOf`: the account's persona, else the member's partner
+  role `GROOM`/`BRIDE`, else the plan's side); `null` for provider contexts.
+  The phone takes it as it is.
 - `lifecycle`: the live `WeddingPlan.status` or `Provider.status`.
 - `accessMode`: `FULL`, `LIMITED`, or `READ_ONLY`. `FULL` means the lifecycle
   permits the context's normal feature set; it does not grant a route action
@@ -591,6 +596,7 @@ Owner example:
   "membershipId": null,
   "membershipAuthorityVersion": null,
   "persona": "GROOM",
+  "readerForm": "MASCULINE",
   "displayName": "خطة زفاف محمد",
   "lifecycle": "PLANNING",
   "accessMode": "FULL",
@@ -626,6 +632,7 @@ Contributor example:
   "membershipId": "member-clx456-user-7",
   "membershipAuthorityVersion": 7,
   "persona": "BRIDE",
+  "readerForm": "MASCULINE",
   "displayName": "خطة زفاف أحمد",
   "lifecycle": "PLANNING",
   "accessMode": "FULL",
@@ -661,6 +668,7 @@ Provider example:
   "membershipId": null,
   "membershipAuthorityVersion": null,
   "persona": null,
+  "readerForm": null,
   "displayName": "قاعة السعادة",
   "lifecycle": "ACTIVE",
   "accessMode": "FULL",
@@ -870,7 +878,15 @@ The dashboard summary powers the mobile Home / Today Center. Existing count and 
   for an owner. Clients must not construct or guess these values.
 
 Dashboard `remainingBudget` and the money-card usage ratio use confirmed cost:
-the sum of non-cancelled WeddingCost totals. CostPayment rows change the
+the sum of non-cancelled WeddingCost totals of the wedding's items (C1).
+D59: these figures and `moneySummary` (`confirmedCost`, `paid`, `outstanding`,
+`remainingBudget`) are finance's one money read, the same as
+`money-summary`'s `costs` and `budget.remaining`, as is
+`GET /api/v1/dashboard/home`'s `moneySummary` (which also carries
+`paidByOwner` and `paidByOthers`). The plan dashboard returns `paidByOwner` and
+`paidByOthers` at the top level, beside the closed `moneySummary` shape (R12B
+byte parity): of `paid`, what the owner's own money paid and what others paid
+for the owner; `null` without money rights. CostPayment rows change the
 paid/outstanding split and are not added to cost a second time. A pending
 PaymentSchedule changes reminder state only; it does not deduct or reserve
 outstanding money and cannot block a direct payment.
@@ -1272,11 +1288,17 @@ The response is one nested contract with no legacy aliases:
     "unallocated": "600000.00",
     "confirmedCost": "700000.00",
     "paid": "250000.00",
+    "paidByOwner": "150000.00",
+    "paidByOthers": "100000.00",
+    "outstanding": "450000.00",
+    "count": 3,
     "remaining": "800000.00"
   },
   "costs": {
     "total": "700000.00",
     "paid": "250000.00",
+    "paidByOwner": "150000.00",
+    "paidByOthers": "100000.00",
     "outstanding": "450000.00",
     "count": 3
   },
@@ -1327,6 +1349,7 @@ The response is one nested contract with no legacy aliases:
     {
       "payer": "GROOM",
       "payerName": null,
+      "ownerMoney": true,
       "agreed": "3000000.00",
       "paid": "2000000.00",
       "outstanding": "1000000.00",
@@ -1357,14 +1380,33 @@ summary built inside its own successful mutation transaction.
 Removed prelaunch expense, commitment, financial-payment, and financial-
 installment routes are not aliases and must return `404`.
 
+**One money read (D59).** The summary is finance's one money read
+(`readMoneyPicture`); the plan dashboard's `moneySummary` (and the home's),
+and the planning assistant's money facts read the same picture through the
+finance port, so no other figure adds the costs up again.
+
+**Whose money paid (D59).** A payment carries no payer: it is the payer of its
+agreement. The plan owner's own money paid an agreement whose payer is unset,
+is the owner's own party (`GROOM` on a groom's plan, `BRIDE` on a bride's), or
+is `SHARED` (the owner pays part of it, so it is counted as the owner's: «معك»
+never shows money the owner may not have). Every other payer paid for the
+owner. `paidByOwner` + `paidByOthers` = `paid`, in `costs` (every agreement)
+and in `budget` (the wedding's items). `budget.outstanding` and `budget.count`
+are the wedding's agreements not paid yet and how many there are. What was
+agreed and what is left (`outstanding`) count every payment, whoever made it.
+
 ### The mahr (B5, D55)
 
 - `POST /api/v1/wedding-plans/:planId/mahr` (`money-summary.recordMahr`)
 
 a06 «اتفقتوا على المهر؟» for a plan that exists: `{ total, settled?,
 remainingDueDate? }`. Only the plan owner records it (a member, even with
-money rights, gets `404`), once per plan (`409 MAHR_ALREADY_RECORDED`, then it
-is edited through the ordinary cost, payment, schedule or funding routes). The
+money rights, gets `404`), once while it is recorded (`409
+MAHR_ALREADY_RECORDED`, then it is edited through the ordinary cost, payment,
+schedule or funding routes). D59: the groom's mahr is recorded while the MAHR
+item holds a non-cancelled agreement, the bride's while a MAHR source exists;
+once the agreement (or every source) is deleted it can be recorded again, in
+the same MAHR item. The
 side follows the plan's persona: a groom's plan **pays** it, a bride's plan
 **receives** it, a helper's plan has none (`409 MAHR_NOT_FOR_PLAN`). `total`
 must be above zero and `settled` within it (`400`). The answer is the money
@@ -1375,12 +1417,17 @@ summary built in the same transaction.
   `400 MAHR_OUTSIDE_BUDGET`, and the database refuses it too), with one
   agreement «المهر» with «أهل العروسة» (`payer: GROOM`), the handed-over part
   as a payment and the rest as a payment schedule on its day. An item the
-  plan already named «المهر» without agreements becomes that item. A budget
+  plan already named «المهر» becomes that item with the agreements already in
+  it (its allocation dropped; D59, no longer refused). A budget
   replacement (`PUT /api/v1/wedding-plans/:planId/money-budget`) never
-  touches the mahr item.
+  touches the mahr item. An agreement never moves between a wedding item and
+  the MAHR item: `PATCH /api/v1/costs/:id` with such a `budgetCategoryId` is
+  `409` (D59).
 - **Bride (RECEIVES):** funding sources `kind: "MAHR"`: «المهر من العريس»
   `RECEIVED` and «باقي المهر» `PLEDGED` with `expectedAt` (the rest's day).
-  Funding stays the owner's private picture (below).
+  Funding stays the owner's private picture (below). D59: only a bride's plan
+  creates `MAHR` funding (`400` elsewhere), and a source never changes to or
+  from `MAHR` (`409`).
 
 The summary's `mahr` (null before it is recorded, and for a reader who may
 not see it: the bride's mahr is funding, owner only) reads both sides in one
@@ -1399,9 +1446,10 @@ the dashboard's `remainingBudget`) count only items of `kind: "WEDDING"`.
 `payers` groups the plan's non-cancelled agreements by their `payer` and the
 trimmed `payerName` («الوالد» and «خالي أحمد» are two groups of `FAMILY`), in
 the order GROOM, BRIDE, FAMILY, SHARED, OTHER, unset: `agreed`, `paid` (the
-net payments), `outstanding`, `costsCount`. A payment carries no payer of its
-own; it counts under its agreement's payer. It is part of the money summary,
-so it follows `canViewMoney`.
+net payments), `outstanding`, `costsCount`, and `ownerMoney` (D59: whether
+the group's payments came out of the plan owner's own money). A payment
+carries no payer of its own; it counts under its agreement's payer. It is
+part of the money summary, so it follows `canViewMoney`.
 
 ### Cost payer
 
@@ -1426,8 +1474,9 @@ nuqut, `LOAN`, `MAHR` — the bride's mahr from the groom, `OTHER`),
 `PLEDGED` (promised) or `RECEIVED` (default; then `receivedAt` defaults to
 now). A source may carry `expectedAt` (an ISO date, the day pledged money is
 expected; c05 «يوصلك يوم العقد 15 نوفمبر»; `null` clears it); responses
-return it (null when unset). Responses include the ordered `repayments`
-and, for a loan, `repaidAmount` and `outstandingAmount`.
+return it (null when unset) and `isOverdue` (D59: `PLEDGED` and its
+`expectedAt` before today, Sana'a time; c05 «متأخر»). Responses include the
+ordered `repayments` and, for a loan, `repaidAmount` and `outstandingAmount`.
 
 Only a `LOAN` takes repayments (`amount`, optional `dueDate`). Planned and
 paid repayments together never exceed the loan amount (`400`). `PATCH`
@@ -1439,8 +1488,13 @@ below its scheduled repayments (`400`).
 Privacy: funding is the plan owner's private money picture. A member, even
 with money rights, gets an empty list from `GET` and `404` from every write.
 The owner's `money-summary` adds `funding` (`total`, `received`, `pledged`,
-`availableCash` = received − paid, `shortfall` = confirmed cost not covered
-by any source, loan totals, `overdueLoanRepayments`, `nextLoanRepayment`) and
+`spent` = what the owner's own money paid (`costs.paidByOwner`, c05 «صرفت»),
+`availableCash` = received − spent («معك»: a payment someone else made for
+the owner never leaves the owner's hands, D59), `shortfall` = every agreement
+less what others paid for the owner less every source (null once covered;
+paid + in hand + promised + shortfall make up every agreement), loan totals,
+`overdueLoanRepayments`, `overduePledges` (promises past their day),
+`nextLoanRepayment`) and
 the warnings `FUNDING_SHORTFALL` and `LOAN_REPAYMENT_OVERDUE`; a member's
 summary has `funding: null`. Account erasure deletes the plan's funding
 sources and, by cascade, their repayments.

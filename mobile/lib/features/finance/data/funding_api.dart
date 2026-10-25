@@ -52,6 +52,7 @@ class FundingApi {
     required String status,
     String? sourcePhone,
     String? note,
+    DateTime? expectedAt,
   }) async {
     final json = await _apiClient
         .postJson('/api/v1/wedding-plans/$weddingPlanId/funding-sources', {
@@ -61,6 +62,7 @@ class FundingApi {
           'status': status,
           'sourcePhone': ?_trimmedOrNull(sourcePhone),
           'note': ?_trimmedOrNull(note),
+          'expectedAt': ?_date(expectedAt),
         });
     return FundingSource.fromJson(json);
   }
@@ -73,6 +75,7 @@ class FundingApi {
     required String status,
     String? sourcePhone,
     String? note,
+    DateTime? expectedAt,
   }) async {
     final json = await _apiClient
         .patchJson('/api/v1/funding-sources/${source.id}', {
@@ -82,6 +85,8 @@ class FundingApi {
           'status': status,
           'sourcePhone': _trimmedOrNull(sourcePhone),
           'note': _trimmedOrNull(note),
+          // D59: the promised day is the whole field: null clears it.
+          'expectedAt': _date(expectedAt),
         });
     return FundingSource.fromJson(json);
   }

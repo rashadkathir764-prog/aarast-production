@@ -40,6 +40,26 @@ export function fundingSourceChangeViolation(input: {
     : null;
 }
 
+/**
+ * D59: when promised money's day calls for a reminder (a06 «ونذكرك بموعد
+ * استلامه»): the day before and on the day, once each. `expectedAt` is the
+ * stored day and `today` the start of today in Sana'a; any other day asks
+ * for none (a past day is read as «متأخر», not reminded again).
+ */
+export type ExpectedFundingReminder = 'DAY_BEFORE' | 'ON_THE_DAY';
+
+export function expectedFundingReminder(
+  expectedAt: Date,
+  today: Date,
+): ExpectedFundingReminder | null {
+  const days = Math.floor(
+    (expectedAt.getTime() - today.getTime()) / (24 * 60 * 60 * 1000),
+  );
+  if (days === 1) return 'DAY_BEFORE';
+  if (days === 0) return 'ON_THE_DAY';
+  return null;
+}
+
 /** A paid repayment is only reopened, never edited or cancelled directly. */
 export function repaymentEditViolation(
   status: LoanRepaymentStatus,

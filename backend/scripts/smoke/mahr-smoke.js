@@ -12,7 +12,10 @@ const { registerVerified } = require('./verified-registration');
  * family, a MAHR item outside the wedding budget; the bride's mahr is money
  * coming in, MAHR funding sources. Recorded once, from a06 at onboarding or
  * from b01's step; private money: a member without money rights never reads
- * it, and the bride's funding stays hers.
+ * it, and the bride's funding stays hers. D59: an agreement never moves in
+ * or out of the mahr item, mahr funding is the bride's only, what someone
+ * else paid never leaves the owner's «معك», a late promise reads late, and a
+ * deleted mahr agreement can be recorded again.
  */
 
 const BASE_URL = process.env.SMOKE_BASE_URL ?? 'http://127.0.0.1:3115';
@@ -227,6 +230,102 @@ async function run() {
     check('the groom records handing over the rest', pay.status === 201 || pay.status === 200);
     const done = await request('GET', `/api/v1/wedding-plans/${groomPlanId}/money-summary`, null, groom.token);
     check('his mahr is complete (y08)', done.body?.mahr?.complete === true && done.body?.mahr?.remaining === '0');
+
+    // D59: an agreement stays on its side of the budget.
+    const lunchItem = await request('POST', `/api/v1/wedding-plans/${groomPlanId}/budget-categories`, {
+      name: 'الغداء',
+    }, groom.token);
+    check('the groom adds a wedding item', lunchItem.status === 201);
+    const lunch = await request('POST', `/api/v1/wedding-plans/${groomPlanId}/costs`, {
+      budgetCategoryId: lunchItem.body?.id,
+      title: 'غداء العرس',
+      totalAmount: '1000000',
+      initialPaymentAmount: '400000',
+      payer: 'FAMILY',
+      payerName: 'الوالد',
+    }, groom.token, randomUUID());
+    check('the father\'s lunch is recorded with his first payment', lunch.status === 201);
+    const intoMahr = await request('PATCH', `/api/v1/costs/${lunch.body?.id}`, {
+      budgetCategoryId: mahrItem?.categoryId,
+    }, groom.token);
+    check('a wedding agreement cannot move into the mahr item', intoMahr.status === 409);
+    const outOfMahr = await request('PATCH', `/api/v1/costs/${mahrCost?.id}`, {
+      budgetCategoryId: lunchItem.body?.id,
+    }, groom.token);
+    check('the mahr agreement cannot move into a wedding item', outOfMahr.status === 409);
+
+    // D59: what the father paid never leaves the groom's hands.
+    const savings = await request('POST', `/api/v1/wedding-plans/${groomPlanId}/funding-sources`, {
+      kind: 'SAVINGS',
+      sourceName: 'مدخراتي',
+      amount: '5000000',
+    }, groom.token);
+    check('the groom records his savings', savings.status === 201);
+    const split = await request('GET', `/api/v1/wedding-plans/${groomPlanId}/money-summary`, null, groom.token);
+    check('payments split by whose money paid: 3,000,000 his (the mahr), 400,000 the father\'s',
+      split.body?.costs?.paid === '3400000' &&
+      split.body?.costs?.paidByOwner === '3000000' &&
+      split.body?.costs?.paidByOthers === '400000');
+    check('«معك» is his savings less only what he paid: 2,000,000',
+      split.body?.funding?.availableCash === '2000000' && split.body?.funding?.spent === '3000000');
+    check('the father is a payer whose money is not the groom\'s',
+      (split.body?.payers ?? []).some((group) =>
+        group.payerName === 'الوالد' && group.ownerMoney === false && group.paid === '400000'));
+    check('what is left counts every payment', split.body?.costs?.outstanding === '600000');
+    const home = await request('GET', `/api/v1/wedding-plans/${groomPlanId}/dashboard-summary`, null, groom.token);
+    check('the home reads the same money (one read)',
+      home.body?.moneySummary?.paid === '3400000.00' &&
+      home.body?.paidByOwner === '3000000.00' &&
+      home.body?.paidByOthers === '400000.00' &&
+      home.body?.moneySummary?.remainingBudget === '6000000.00');
+
+    // D59: the mahr as money coming in is the bride's only.
+    const groomMahrSource = await request('POST', `/api/v1/wedding-plans/${groomPlanId}/funding-sources`, {
+      kind: 'MAHR',
+      sourceName: 'المهر',
+      amount: '1000000',
+    }, groom.token);
+    check('a groom\'s plan takes no mahr funding', groomMahrSource.status === 400);
+    const brideRest = mahrSources.find((source) => source.status === 'PLEDGED');
+    const retype = await request('PATCH', `/api/v1/funding-sources/${brideRest?.id}`, { kind: 'GIFT' }, bride.token);
+    check('a mahr source keeps its kind', retype.status === 409);
+    const latePromise = await request('POST', `/api/v1/wedding-plans/${bridePlanId}/funding-sources`, {
+      kind: 'GIFT',
+      sourceName: 'هدية',
+      amount: '100000',
+      status: 'PLEDGED',
+      expectedAt: inDays(-3),
+    }, bride.token);
+    check('promised money past its day reads late («متأخر»)',
+      latePromise.status === 201 && latePromise.body?.isOverdue === true);
+    const becomeMahr = await request('PATCH', `/api/v1/funding-sources/${latePromise.body?.id}`, { kind: 'MAHR' }, bride.token);
+    check('other money never becomes the mahr', becomeMahr.status === 409);
+    const lateSummary = await request('GET', `/api/v1/wedding-plans/${bridePlanId}/money-summary`, null, bride.token);
+    check('the summary counts the late promise', lateSummary.body?.funding?.overduePledges === 1);
+
+    // D59: deleting the mahr agreement lets it be recorded again.
+    const second = await register('Mahr groom again', phone(16));
+    accounts.unshift(['second groom', second.token]);
+    const secondPlan = await onboard(second.token, 'GROOM');
+    const secondPlanId = secondPlan.body?.activeWeddingPlan?.id;
+    const firstTry = await request('POST', `/api/v1/wedding-plans/${secondPlanId}/mahr`, { total: '2000000' }, second.token);
+    check('the second groom records his mahr from b01', firstTry.status === 201 && firstTry.body?.mahr?.total === '2000000');
+    const secondMahrItem = (firstTry.body?.categories ?? []).find((item) => item.kind === 'MAHR');
+    const secondCosts = await request('GET', `/api/v1/wedding-plans/${secondPlanId}/costs`, null, second.token);
+    const wrong = (secondCosts.body?.items ?? secondCosts.body ?? [])
+      .find((cost) => cost.budgetCategoryId === secondMahrItem?.categoryId);
+    const removed = await request('DELETE', `/api/v1/costs/${wrong?.id}`, null, second.token);
+    check('he deletes the agreement he got wrong', removed.status === 200);
+    const gone = await request('GET', `/api/v1/wedding-plans/${secondPlanId}/money-summary`, null, second.token);
+    check('without its agreement the mahr reads as not recorded', gone.status === 200 && gone.body?.mahr === null);
+    const reRecord = await request('POST', `/api/v1/wedding-plans/${secondPlanId}/mahr`, {
+      total: '2500000',
+      settled: '500000',
+    }, second.token);
+    const reItems = (reRecord.body?.categories ?? []).filter((item) => item.kind === 'MAHR');
+    check('and records it again in the same item',
+      reRecord.status === 201 && reRecord.body?.mahr?.total === '2500000' &&
+      reItems.length === 1 && reItems[0].categoryId === secondMahrItem?.categoryId);
   } catch (error) {
     check(`mahr smoke completes without error: ${error.message}`, false);
   } finally {

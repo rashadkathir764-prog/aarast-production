@@ -24,8 +24,10 @@ import {
   COLLABORATION_PERMISSION_PORT,
   type CollaborationPermissionPort as PermissionService,
   PlanAccessContext,
+  readerAddressForm,
   readsPlanSections,
 } from "../../../collaboration/public/collaboration-permission.port";
+import type { AddressForm } from "../../../../shared-kernel/voice/address-form";
 import {
   canonicalPlanContextKey,
   canonicalProviderContextKey,
@@ -69,6 +71,13 @@ export interface AvailableContext {
   membershipId: string | null;
   membershipAuthorityVersion: number | null;
   persona: WeddingPersona | null;
+  /**
+   * B5/D59: how the app speaks to this reader in this plan, resolved once
+   * by the server (`addressFormOf`: the account's persona, else the member
+   * role, else the plan's side) so the phone never works it out itself.
+   * Null for a provider context.
+   */
+  readerForm: AddressForm | null;
   displayName: string;
   lifecycle: ContextLifecycle;
   accessMode: ContextAccessMode;
@@ -121,7 +130,9 @@ export class ContextsService {
 
     for (const plan of this.sortPlans(ownedPlans)) {
       ownedPlanIds.add(plan.id);
-      contexts.push(this.planContext(plan, AvailableContextRole.OWNER, null));
+      contexts.push(
+        this.planContext(currentUser, plan, AvailableContextRole.OWNER, null),
+      );
     }
 
     const contributorMemberships = memberships
@@ -140,7 +151,12 @@ export class ContextsService {
       );
     for (const { membership, plan } of contributorMemberships) {
       contexts.push(
-        this.planContext(plan, AvailableContextRole.CONTRIBUTOR, membership),
+        this.planContext(
+          currentUser,
+          plan,
+          AvailableContextRole.CONTRIBUTOR,
+          membership,
+        ),
       );
     }
 
@@ -166,6 +182,7 @@ export class ContextsService {
       );
       if (plan) {
         context = this.planContext(
+          currentUser,
           plan,
           AvailableContextRole.OWNER,
           null,
@@ -182,6 +199,7 @@ export class ContextsService {
         : null;
       if (membership && plan && plan.ownerUserId !== currentUser.id) {
         context = this.planContext(
+          currentUser,
           plan,
           AvailableContextRole.CONTRIBUTOR,
           membership,
@@ -218,6 +236,7 @@ export class ContextsService {
   }
 
   private planContext(
+    reader: Pick<AuthenticatedUser, "persona">,
     plan: WeddingPlan,
     role: AvailableContextRole.OWNER | AvailableContextRole.CONTRIBUTOR,
     sharedMember: SharedMember | null,
@@ -249,6 +268,7 @@ export class ContextsService {
       membershipId: sharedMember?.id ?? null,
       membershipAuthorityVersion: sharedMember?.authorityVersion ?? null,
       persona: plan.persona,
+      readerForm: readerAddressForm(reader, access),
       displayName: plan.title,
       lifecycle: plan.status,
       accessMode: isAvailable ? "FULL" : "READ_ONLY",
@@ -284,6 +304,7 @@ export class ContextsService {
       membershipId: null,
       membershipAuthorityVersion: null,
       persona: null,
+      readerForm: null,
       displayName: provider.businessName,
       lifecycle: provider.status,
       accessMode: policy.accessMode,

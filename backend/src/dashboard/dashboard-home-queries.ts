@@ -1,10 +1,9 @@
-import type { Prisma, WeddingPlan } from "@prisma/client";
+import { Prisma, type WeddingPlan } from "@prisma/client";
 import type { CollaborationPermissionPort } from "../modules/collaboration/public/collaboration-permission.port";
 import { toApplicationUserContact } from "../shared-kernel/privacy/application-user-identity";
 import {
   moneyOrNull,
   resolveBudgetDecimal,
-  sumMoney,
 } from "./dashboard-summary.presenter";
 import type { InsightsReadPorts } from "./insights-read-ports";
 
@@ -55,34 +54,36 @@ async function getMarketplaceSummary(
 }
 
 // The plan row is the one the home just read (its budget and currency);
-// the costs are finance's.
+// the money is finance's one read (D59): the remaining budget counts only
+// the wedding's items (C1), and another account's private costs count
+// nowhere (V1 checklist 4.10).
 async function getMoneyHomeSummary(
   client: Prisma.TransactionClient,
   ports: InsightsReadPorts,
-  plan: Pick<WeddingPlan, "id" | "estimatedBudget" | "currency">,
+  plan: Pick<WeddingPlan, "id" | "estimatedBudget" | "currency" | "persona">,
   userId: string,
 ) {
-  // V1 checklist 4.10: another account's private costs count nowhere.
-  const costIds = await ports.finance.excludeOthersPrivateCosts(
-    client,
-    plan.id,
-    userId,
-    null,
-  );
-  const costs = await ports.finance.listPlanCostAmounts(client, plan.id, costIds);
-  // Exact decimal sums: the home summary must agree with Finance to the cent.
-  const confirmedCost = sumMoney(costs.map((cost) => cost.totalAmount));
-  const paid = sumMoney(costs.map((cost) => cost.paidAmount));
-  const totalBudget = resolveBudgetDecimal(plan);
+  const money = await ports.finance.readMoneyPicture(client, {
+    weddingPlanId: plan.id,
+    persona: plan.persona,
+    totalBudget: resolveBudgetDecimal(plan),
+    scope: null,
+    readerUserId: userId,
+    fundingVisible: false,
+  });
+  // Finance serves exact decimal strings; the home shows two places.
+  const fixed = (value: string | null) =>
+    moneyOrNull(value === null ? null : new Prisma.Decimal(value));
   return {
     currency: plan.currency,
-    totalBudget: moneyOrNull(totalBudget),
-    confirmedCost: moneyOrNull(confirmedCost),
-    paid: moneyOrNull(paid),
-    outstanding: moneyOrNull(confirmedCost.minus(paid)),
-    remainingBudget:
-      totalBudget === null ? null : moneyOrNull(totalBudget.minus(confirmedCost)),
-    costsCount: costs.length,
+    totalBudget: fixed(money.budget.total),
+    confirmedCost: fixed(money.costs.total),
+    paid: fixed(money.costs.paid),
+    paidByOwner: fixed(money.costs.paidByOwner),
+    paidByOthers: fixed(money.costs.paidByOthers),
+    outstanding: fixed(money.costs.outstanding),
+    remainingBudget: fixed(money.budget.remaining),
+    costsCount: money.costs.count,
   };
 }
 

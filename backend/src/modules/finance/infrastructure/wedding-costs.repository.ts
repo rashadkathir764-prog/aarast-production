@@ -248,6 +248,18 @@ export async function lockBudgetCategoriesForCost(
   return rows.map((row) => row.id);
 }
 
+/** Each item's kind (WEDDING or MAHR), read under the caller's lock. */
+export async function readBudgetCategoryKinds(
+  tx: Prisma.TransactionClient,
+  ids: readonly string[],
+): Promise<Map<string, string>> {
+  const rows = await tx.budgetCategory.findMany({
+    where: { id: { in: [...ids] } },
+    select: { id: true, kind: true },
+  });
+  return new Map(rows.map((row) => [row.id, row.kind]));
+}
+
 export async function lockWeddingCost(tx: Prisma.TransactionClient, id: string) {
   const rows = await tx.$queryRaw<Array<{ id: string }>>(
     Prisma.sql`SELECT "id" FROM "WeddingCost" WHERE "id" = ${id} FOR UPDATE`,

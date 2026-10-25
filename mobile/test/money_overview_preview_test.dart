@@ -150,11 +150,17 @@ class _FakeFinanceApi extends FinanceApi {
         allocated: '3500000',
         unallocated: '6500000',
         confirmedCost: '2600000',
+        // The server's wedding figures and whose money paid (D59).
+        paid: '1500000',
+        paidByOwner: '1500000',
+        outstanding: '1100000',
+        count: 3,
         remaining: '7400000',
       ),
       costs: const MoneyCostsSummary(
         total: '2600000',
         paid: '1500000',
+        paidByOwner: '1500000',
         outstanding: '1100000',
         count: 3,
       ),

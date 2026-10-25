@@ -77,6 +77,20 @@ function money(value: Prisma.Decimal | null | undefined): string | null {
   return value === null || value === undefined ? null : value.toFixed(2);
 }
 
+/** A payer group without a written name, as the plan's people say it. */
+function payerWord(payer: string | null): string {
+  switch (payer) {
+    case 'GROOM':
+      return 'العريس';
+    case 'BRIDE':
+      return 'العروسة';
+    case 'FAMILY':
+      return 'الأهل';
+    default:
+      return 'شخص آخر';
+  }
+}
+
 /**
  * The planning assistant (V1 checklist 4.12). It answers the plan's owner or
  * partner from the plan as they see it (never another account's private
@@ -240,7 +254,7 @@ export class AssistantService {
           this.ports.tasks.listUpcomingTasks(tx, plan.id, OPEN_TASKS_SHOWN, readerUserId),
         ]);
         const [moneyFacts, quotes, market] = await Promise.all([
-          canViewMoney ? this.moneyFacts(tx, plan.id, plan.estimatedBudget, readerUserId) : null,
+          canViewMoney ? this.moneyFacts(tx, context, readerUserId) : null,
           canSeeQuotes ? this.quoteFacts(tx, plan.id) : null,
           this.marketFacts(tx, plan.city),
         ]);
@@ -279,49 +293,56 @@ export class AssistantService {
     );
   }
 
+  /**
+   * The money as the app shows it (D59): finance's one money read, the one
+   * `money-summary` serves. The wedding's budget counts the wedding's items
+   * only; the mahr is its own line (the groom's agreement, or the bride's
+   * mahr coming in, which is her private funding and so the owner's only).
+   */
   private async moneyFacts(
     tx: Prisma.TransactionClient,
-    weddingPlanId: string,
-    estimatedBudget: Prisma.Decimal | null,
+    context: PlanAccessContext,
     readerUserId: string,
   ): Promise<NonNullable<AssistantPlanFacts['money']>> {
-    // V1 checklist 4.10: another account's private costs count nowhere.
-    const costIds = await this.ports.finance.excludeOthersPrivateCosts(
-      tx,
-      weddingPlanId,
+    const picture = await this.ports.finance.readMoneyPicture(tx, {
+      weddingPlanId: context.plan.id,
+      persona: context.plan.persona,
+      totalBudget: context.plan.estimatedBudget,
+      scope: null,
       readerUserId,
-      null,
-    );
-    const [categories, costs] = await Promise.all([
-      this.ports.finance.listBudgetCategories(tx, weddingPlanId),
-      this.ports.finance.listPlanCostAmounts(tx, weddingPlanId, costIds),
-    ]);
-    const zero = new Prisma.Decimal(0);
-    const byCategory = new Map<string, { committed: Prisma.Decimal; paid: Prisma.Decimal }>();
-    let committedTotal = zero;
-    let paidTotal = zero;
-    for (const cost of costs) {
-      const sums = byCategory.get(cost.budgetCategoryId) ?? { committed: zero, paid: zero };
-      byCategory.set(cost.budgetCategoryId, {
-        committed: sums.committed.plus(cost.totalAmount),
-        paid: sums.paid.plus(cost.paidAmount),
-      });
-      committedTotal = committedTotal.plus(cost.totalAmount);
-      paidTotal = paidTotal.plus(cost.paidAmount);
-    }
+      fundingVisible: context.isOwner,
+    });
+    const fixed = (value: string | null) =>
+      value === null ? null : new Prisma.Decimal(value).toFixed(2);
+    const mahr = picture.mahr;
     return {
-      budgetTotal: money(estimatedBudget),
-      committedTotal: committedTotal.toFixed(2),
-      paidTotal: paidTotal.toFixed(2),
-      categories: categories.map((category) => {
-        const sums = byCategory.get(category.id);
-        return {
+      budgetTotal: fixed(picture.budget.total),
+      committedTotal: fixed(picture.budget.confirmedCost) ?? '0.00',
+      paidTotal: fixed(picture.budget.paid) ?? '0.00',
+      paidByOwner: fixed(picture.costs.paidByOwner) ?? '0.00',
+      paidByOthers: picture.payers
+        .filter((group) => !group.ownerMoney && new Prisma.Decimal(group.paid).gt(0))
+        .map((group) => ({
+          payer: group.payerName ?? payerWord(group.payer),
+          paid: fixed(group.paid) ?? '0.00',
+        })),
+      mahr: mahr
+        ? {
+            side: mahr.side,
+            total: fixed(mahr.total) ?? '0.00',
+            settled: fixed(mahr.settled) ?? '0.00',
+            remaining: fixed(mahr.remaining) ?? '0.00',
+            nextDueAt: mahr.nextDueAt ? localDate(mahr.nextDueAt) : null,
+          }
+        : null,
+      categories: picture.categories
+        .filter((category) => category.kind !== 'MAHR')
+        .map((category) => ({
           name: category.name,
-          allocated: money(category.allocatedAmount),
-          committed: (sums?.committed ?? zero).toFixed(2),
-          paid: (sums?.paid ?? zero).toFixed(2),
-        };
-      }),
+          allocated: fixed(category.allocatedAmount),
+          committed: fixed(category.confirmedCost) ?? '0.00',
+          paid: fixed(category.paid) ?? '0.00',
+        })),
     };
   }
 

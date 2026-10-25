@@ -135,6 +135,9 @@ AccountContext _ctx({
     'membershipId': owner ? null : 'member-$planId',
     'membershipAuthorityVersion': owner ? null : 1,
     'persona': persona,
+    // The server's resolved form; these readers have no persona of their
+    // own, so the plan's side (D59).
+    'readerForm': persona == 'BRIDE' ? 'FEMININE' : 'MASCULINE',
     'displayName': name,
     'lifecycle': lifecycle,
     'accessMode': accessMode,

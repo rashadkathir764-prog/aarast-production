@@ -5,6 +5,8 @@ import 'package:aarast_mobile/features/finance/data/finance_api.dart';
 import 'package:aarast_mobile/features/finance/data/funding_api.dart';
 import 'package:aarast_mobile/features/finance/models/budget_category.dart';
 import 'package:aarast_mobile/features/finance/models/funding_source.dart';
+import 'package:aarast_mobile/features/finance/models/money_payer_words.dart'
+    show payerAvatarLetter, payerPaidLine;
 import 'package:aarast_mobile/features/finance/models/money_summary.dart';
 import 'package:aarast_mobile/features/finance/models/wedding_cost.dart';
 import 'package:aarast_mobile/features/finance/providers/finance_provider.dart';
@@ -117,16 +119,100 @@ void main() {
         find.descendant(of: mahrCard, matching: find.textContaining('وصلك ')),
         findsOneWidget,
       );
+      // D59: the hall was paid by her father, so it is not «دفعتِ».
       final weddingCard = find.byKey(const ValueKey('money-wedding-card'));
       expect(
         find.descendant(
           of: weddingCard,
-          matching: find.textContaining('دفعتِ '),
+          matching: find.textContaining('دفع عنك 1.2 مليون'),
         ),
         findsOneWidget,
       );
+      expect(find.textContaining('اتفقتِ على'), findsOneWidget);
       expect(find.text('الاتفاق مع أهل العروسة'), findsNothing);
       expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('D59: the groom reads what he paid and what his father paid '
+        'for him', (tester) async {
+      await _pumpMoney(
+        tester,
+        profile: JourneyProfile.groom,
+        persona: 'GROOM',
+        mahr: _groomMahr,
+      );
+
+      final hero = find.byKey(const ValueKey('money-dashboard-hero'));
+      expect(
+        find.descendant(
+          of: hero,
+          matching: find.textContaining('دفعت منها 2 مليون'),
+        ),
+        findsOneWidget,
+      );
+      expect(
+        find.descendant(
+          of: hero,
+          matching: find.textContaining('، ودفع عنك الوالد 1.2 مليون'),
+        ),
+        findsOneWidget,
+      );
+      // His mahr is recorded: no way to record it again.
+      expect(find.byKey(const ValueKey('money-record-mahr')), findsNothing);
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('D59: someone helping in his plan reads the groom named, never '
+        'as if they had paid', (tester) async {
+      await _pumpMoney(
+        tester,
+        profile: JourneyProfile.of(
+          planPersona: 'GROOM',
+          readerFeminine: true,
+          readerIsOwner: false,
+        ),
+        persona: 'GROOM',
+        mahr: _groomMahr,
+      );
+
+      expect(find.textContaining('اتفق العريس على'), findsOneWidget);
+      expect(find.textContaining('دفعتِ'), findsNothing);
+      expect(find.textContaining('سلّمتِ'), findsNothing);
+      final mahrCard = find.byKey(const ValueKey('money-mahr-card'));
+      expect(
+        find.descendant(
+          of: mahrCard,
+          matching: find.textContaining('العريس سلّم 2 مليون'),
+        ),
+        findsOneWidget,
+      );
+      expect(find.textContaining('دفع عنه الوالد'), findsOneWidget);
+      expect(find.textContaining('باقي عليه'), findsOneWidget);
+      // Only the owner records the mahr.
+      expect(find.byKey(const ValueKey('money-record-mahr')), findsNothing);
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('D59: a groom\'s or a bride\'s plan without its mahr always '
+        'has the way back to record it, in c01 and c02', (tester) async {
+      await _pumpMoney(tester, profile: JourneyProfile.bride, persona: 'BRIDE');
+
+      expect(find.byKey(const ValueKey('money-record-mahr')), findsOneWidget);
+      expect(find.text('سجّلي المهر'), findsOneWidget);
+      await tester.tap(find.text('البنود'));
+      await tester.pumpAndSettle();
+      expect(find.byKey(const ValueKey('money-record-mahr')), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('D59: a helper\'s plan has no mahr to record', (tester) async {
+      await _pumpMoney(
+        tester,
+        profile: JourneyProfile.groom,
+        persona: 'HELPER',
+      );
+
+      expect(find.byKey(const ValueKey('money-record-mahr')), findsNothing);
     });
 
     testWidgets('no mahr from the server, no mahr cards', (tester) async {
@@ -239,6 +325,53 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  testWidgets('D59 c05 as drawn: «صرفتِ · معك», what came first with the '
+      'mahr leading it, then what is promised, a late one «متأخر»', (
+    tester,
+  ) async {
+    FundingSource source(
+      String id,
+      String kind,
+      String name, {
+      required bool received,
+      bool overdue = false,
+    }) => FundingSource.fromJson({
+      'id': id,
+      'weddingPlanId': 'plan-1',
+      'kind': kind,
+      'sourceName': name,
+      'amount': '1000000',
+      'status': received ? 'RECEIVED' : 'PLEDGED',
+      'isOverdue': overdue,
+    });
+    await _pumpMoney(
+      tester,
+      profile: JourneyProfile.bride,
+      persona: 'BRIDE',
+      mahr: _brideMahr,
+      // In the order recorded: the mahr came last.
+      sources: [
+        source('savings', 'SAVINGS', 'مدخراتي', received: true),
+        source('friend', 'OTHER', 'صاحبتي عبلة', received: false, overdue: true),
+        source('mahr-in', 'MAHR', 'المهر من العريس', received: true),
+        source('mahr-rest', 'MAHR', 'باقي المهر', received: false),
+      ],
+    );
+    await tester.tap(find.text('من وين'));
+    await tester.pumpAndSettle();
+
+    expect(
+      find.text('صرفتِ 1.2 مليون ر.ي · معك 800,000 ر.ي'),
+      findsOneWidget,
+    );
+    double top(String text) => tester.getTopLeft(find.text(text)).dy;
+    expect(top('المهر من العريس'), lessThan(top('مدخراتي')));
+    expect(top('مدخراتي'), lessThan(top('صاحبتي عبلة')));
+    expect(top('صاحبتي عبلة'), lessThan(top('باقي المهر')));
+    expect(find.text('متأخر'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
   group('a06 for a saved plan', () {
     testWidgets('the groom records what he handed over and the rest\'s day', (
       tester,
@@ -348,6 +481,47 @@ void main() {
       expect(payerLabel('FAMILY', ' ', bridePlan: false, owner: true), 'الأهل');
       expect(payerLabel(null, null, bridePlan: false, owner: true), 'ما تحدد');
     });
+
+    test('D59: the verb agrees with who paid; the avatar drops the article', () {
+      const groom = JourneyProfile.groom;
+      expect(payerPaidLine('BRIDE', 'العروسة', groom), 'العروسة دفعت');
+      expect(payerPaidLine('FAMILY', 'الأهل', groom), 'الأهل دفعوا');
+      expect(payerPaidLine('FAMILY', 'الوالد', groom), 'الوالد دفع');
+      expect(payerPaidLine('GROOM', 'العريس', groom), 'العريس دفع');
+      expect(payerPaidLine('SHARED', 'المشترك', groom), 'المدفوع المشترك');
+      expect(payerPaidLine('GROOM', 'أنا', groom), 'دفعت أنا');
+      expect(payerPaidLine('BRIDE', 'أنا', JourneyProfile.bride), 'دفعتِ أنا');
+      expect(
+        payerLabel('SHARED', null, bridePlan: false, owner: true),
+        'المشترك',
+      );
+      expect(payerAvatarLetter('الوالد'), 'و');
+      expect(payerAvatarLetter('العروسة'), 'ع');
+      expect(payerAvatarLetter('خالي أحمد'), 'خ');
+      expect(payerAvatarLetter('أنا'), 'أ');
+    });
+
+    testWidgets('D59: the groom reads his own payments as his, his father\'s '
+        'as his father\'s', (
+      tester,
+    ) async {
+      await _pumpPayers(tester, profile: JourneyProfile.groom);
+
+      // The owner reads his own payments as his.
+      expect(find.text('أنا'), findsWidgets);
+      await tester.tap(find.byKey(const ValueKey('payer-FAMILY|الوالد')));
+      await tester.pumpAndSettle();
+      final total = find.byKey(const ValueKey('payer-total'));
+      expect(
+        find.descendant(of: total, matching: find.text('الوالد دفع')),
+        findsOneWidget,
+      );
+      expect(
+        find.descendant(of: total, matching: find.text('و')),
+        findsOneWidget,
+      );
+      expect(tester.takeException(), isNull);
+    });
   });
 }
 
@@ -384,17 +558,25 @@ Future<_Api> _pumpMahr(WidgetTester tester, JourneyProfile profile) async {
   return api;
 }
 
-Future<void> _pumpPayers(WidgetTester tester) async {
+/// w20 as someone helping in the groom's plan reads it (the parties by
+/// their words), or as [profile] reads it.
+Future<void> _pumpPayers(WidgetTester tester, {JourneyProfile? profile}) async {
   tester.view.physicalSize = const Size(390, 1400);
   tester.view.devicePixelRatio = 1;
   addTearDown(tester.view.reset);
   await tester.pumpWidget(
     ChangeNotifierProvider<FinanceProvider>(
       create: (_) => FinanceProvider(_Api(mahr: _groomMahr, groomItem: true)),
-      child: const MaterialApp(
+      child: MaterialApp(
         home: JourneyProfileScope(
-          profile: JourneyProfile.groom,
-          child: PayerPaymentsScreen(weddingPlanId: 'plan-1'),
+          profile:
+              profile ??
+              JourneyProfile.of(
+                planPersona: 'GROOM',
+                readerFeminine: false,
+                readerIsOwner: false,
+              ),
+          child: const PayerPaymentsScreen(weddingPlanId: 'plan-1'),
         ),
       ),
     ),
@@ -433,15 +615,21 @@ class _Api extends FinanceApi {
   Future<MoneySummary> getMoneySummary(String planId) async => MoneySummary(
     planId: planId,
     currency: 'YER',
+    // The hall is the father's (D59): its payments are not the owner's.
     budget: const MoneyBudgetSummary(
       total: '7000000',
       confirmedCost: '2400000',
       paid: '1200000',
+      paidByOthers: '1200000',
+      outstanding: '1200000',
+      count: 1,
       remaining: '4600000',
     ),
     costs: MoneyCostsSummary(
       total: groomItem ? '5400000' : '2400000',
       paid: groomItem ? '3200000' : '1200000',
+      paidByOwner: groomItem ? '2000000' : '0',
+      paidByOthers: '1200000',
       outstanding: '2200000',
       count: groomItem ? 2 : 1,
     ),
@@ -467,6 +655,7 @@ class _Api extends FinanceApi {
     funding: const MoneyFundingSummary(
       received: '2000000',
       pledged: '1000000',
+      spent: '1200000',
       availableCash: '800000',
       sourcesCount: 2,
     ),
@@ -483,6 +672,7 @@ class _Api extends FinanceApi {
       const MoneyPayerSummary(
         payer: 'FAMILY',
         payerName: 'الوالد',
+        ownerMoney: false,
         agreed: '2400000',
         paid: '1200000',
         outstanding: '1200000',

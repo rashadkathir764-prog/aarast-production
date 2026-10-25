@@ -65,6 +65,7 @@ class FundingProvider extends ChangeNotifier with SessionScopedNotifier {
     required String status,
     String? sourcePhone,
     String? note,
+    DateTime? expectedAt,
   }) {
     return _save(weddingPlanId, () async {
       final created = await _api.createFundingSource(
@@ -75,6 +76,7 @@ class FundingProvider extends ChangeNotifier with SessionScopedNotifier {
         status: status,
         sourcePhone: sourcePhone,
         note: note,
+        expectedAt: expectedAt,
       );
       _sources = [..._sources, created];
     });
@@ -86,6 +88,8 @@ class FundingProvider extends ChangeNotifier with SessionScopedNotifier {
     required String sourceName,
     required String amount,
     required String status,
+    // The whole field is sent (null clears the day), so every caller says it.
+    required DateTime? expectedAt,
     String? sourcePhone,
     String? note,
   }) {
@@ -99,6 +103,7 @@ class FundingProvider extends ChangeNotifier with SessionScopedNotifier {
           status: status,
           sourcePhone: sourcePhone,
           note: note,
+          expectedAt: expectedAt,
         ),
       );
     });

@@ -674,3 +674,39 @@ test("contexts routes are canonical, authenticated, and module-wired", () => {
   assert.match(appModule, /IdentityModule/);
   assert.doesNotMatch(appModule, /ContextsModule/);
 });
+
+test("D59: each plan context carries the reader's form, resolved once by the server", async () => {
+  const { prisma, service } = contextsHarness();
+  // An invited bride without a persona of her own, helping in محمد's plan:
+  // her partner role says she is a woman (the phone used to read the plan's
+  // side and spoke to her as a man).
+  const groomPlan = plan("plan-groom", "owner-2", "عرس محمد");
+  groomPlan.persona = WeddingPersona.GROOM;
+  prisma.memberships.push(membership(groomPlan, { role: SharedMemberRole.BRIDE }));
+  // Her own plan, then a helper in a bride's plan: the plan's side.
+  const ownPlan = plan("plan-own", currentUser.id, "عرس سلمى");
+  ownPlan.persona = WeddingPersona.BRIDE;
+  prisma.plans.push(ownPlan);
+  const sisterPlan = plan("plan-sister", "owner-3", "عرس نورة");
+  sisterPlan.persona = WeddingPersona.BRIDE;
+  prisma.memberships.push({
+    ...membership(sisterPlan, { role: SharedMemberRole.HELPER }),
+    id: "member-plan-sister",
+  });
+  prisma.providers.push(provider("provider-1"));
+
+  const contexts = await service.list({ ...currentUser, persona: null });
+  const formOf = (key: string) =>
+    contexts.find((context) => context.contextKey === key)?.readerForm;
+  assert.equal(formOf("plan:plan-groom:contributor"), "FEMININE");
+  assert.equal(formOf("plan:plan-own:owner"), "FEMININE");
+  assert.equal(formOf("plan:plan-sister:contributor"), "FEMININE");
+  assert.equal(formOf("provider:provider-1"), null);
+
+  // A groom's account is spoken to as a man in a bride's plan (q09, q17).
+  const asGroom = await service.validate(
+    { ...currentUser, persona: WeddingPersona.GROOM },
+    "plan:plan-sister:contributor",
+  );
+  assert.equal(asGroom.readerForm, "MASCULINE");
+});

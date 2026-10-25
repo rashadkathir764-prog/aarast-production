@@ -124,15 +124,7 @@ class _FundingSourcesScreenState extends State<FundingSourcesScreen> {
                       ),
                     ),
                     const SizedBox(height: 4),
-                    JourneyTag(
-                      label: source.isPledged ? 'موعود' : 'وصل',
-                      color: source.isPledged
-                          ? AarastV3Color.lilac
-                          : AarastV3Color.mint,
-                      soft: source.isPledged
-                          ? AarastV3Color.lilacSoft
-                          : AarastV3Color.mintSoft,
-                    ),
+                    fundingStateTag(source),
                   ],
                 ),
                 onTap: () => source.isLoan
@@ -240,6 +232,7 @@ class _FundingSourcesScreenState extends State<FundingSourcesScreen> {
         status: result.status,
         sourcePhone: result.sourcePhone,
         note: result.note,
+        expectedAt: result.expectedAt,
       );
       if (ok && result.repayments.isNotEmpty) {
         await _addRepayments(funding.sources.last.id, result.repayments);
@@ -254,6 +247,7 @@ class _FundingSourcesScreenState extends State<FundingSourcesScreen> {
         status: result.status,
         sourcePhone: result.sourcePhone,
         note: result.note,
+        expectedAt: result.expectedAt,
       );
     }
     if (!mounted) return;
@@ -334,6 +328,7 @@ class _FundingSourcesScreenState extends State<FundingSourcesScreen> {
           status: FundingStatus.received,
           sourcePhone: source.sourcePhone,
           note: source.note,
+          expectedAt: source.expectedAt,
         );
       case PledgeAnswer.notComing:
         ok = await funding.delete(source);

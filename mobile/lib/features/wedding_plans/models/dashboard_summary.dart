@@ -201,9 +201,12 @@ class DashboardSummary {
       nextPaymentScheduleDue: DashboardNextPaymentSchedule.fromJsonOrNull(
         json['nextPaymentScheduleDue'],
       ),
-      moneySummary: DashboardMoneySummary.fromJson(
-        _mapOrEmpty(json['moneySummary']),
-      ),
+      // D59: whose money paid sits beside the closed `moneySummary` shape.
+      moneySummary: DashboardMoneySummary.fromJson({
+        ..._mapOrEmpty(json['moneySummary']),
+        'paidByOwner': json['paidByOwner'],
+        'paidByOthers': json['paidByOthers'],
+      }),
       financialWarnings: _listOfMaps(
         json['financialWarnings'],
       ).map(DashboardFinancialWarning.fromJson).toList(),
@@ -434,6 +437,8 @@ class DashboardMoneySummary {
     this.totalBudget,
     this.confirmedCost,
     this.paid,
+    this.paidByOwner,
+    this.paidByOthers,
     this.outstanding,
     this.remainingBudget,
     this.overBudget,
@@ -444,6 +449,8 @@ class DashboardMoneySummary {
       totalBudget: json['totalBudget']?.toString(),
       confirmedCost: json['confirmedCost']?.toString(),
       paid: json['paid']?.toString(),
+      paidByOwner: json['paidByOwner']?.toString(),
+      paidByOthers: json['paidByOthers']?.toString(),
       outstanding: json['outstanding']?.toString(),
       remainingBudget: json['remainingBudget']?.toString(),
       overBudget: json['overBudget'] is bool
@@ -455,6 +462,12 @@ class DashboardMoneySummary {
   final String? totalBudget;
   final String? confirmedCost;
   final String? paid;
+
+  /// D59: of [paid], what the plan owner's own money paid and what others
+  /// paid for the owner (the server's one money read). Null when unknown
+  /// (a plan kept on the phone): then [paid] is the owner's.
+  final String? paidByOwner;
+  final String? paidByOthers;
   final String? outstanding;
   final String? remainingBudget;
   final bool? overBudget;

@@ -14,7 +14,11 @@ import 'aarast_v3_foundations.dart';
 /// colours and words, and each reader is spoken to as who they are.
 @immutable
 class JourneyProfile {
-  const JourneyProfile._({required this.isBride, required this.feminine});
+  const JourneyProfile._({
+    required this.isBride,
+    required this.feminine,
+    this.readerIsOwner = true,
+  });
 
   /// The groom's plan, read by the groom.
   static const groom = JourneyProfile._(isBride: false, feminine: false);
@@ -27,13 +31,16 @@ class JourneyProfile {
   static JourneyProfile fromPersona(String? persona) =>
       _isBridePersona(persona) ? JourneyProfile.bride : JourneyProfile.groom;
 
-  /// Whose plan it is ([planPersona]) and who reads it ([readerFeminine]).
+  /// Whose plan it is ([planPersona]), who reads it ([readerFeminine]) and
+  /// whether the reader is the plan's owner ([readerIsOwner]).
   static JourneyProfile of({
     required String? planPersona,
     required bool readerFeminine,
+    bool readerIsOwner = true,
   }) => JourneyProfile._(
     isBride: _isBridePersona(planPersona),
     feminine: readerFeminine,
+    readerIsOwner: readerIsOwner,
   );
 
   /// The bride's plan: her colour and her words.
@@ -42,13 +49,20 @@ class JourneyProfile {
   /// The reader is spoken to in the feminine.
   final bool feminine;
 
+  /// The reader owns the plan; a participant reads the owner's money with
+  /// the owner named ([ownerDid]).
+  final bool readerIsOwner;
+
   /// The plan's own colour: teal for the groom, rose for the bride.
   JourneyAccent get accent =>
       isBride ? JourneyAccent.bride : JourneyAccent.groom;
 
   /// The same plan, read by someone spoken to in [feminine]'s form.
-  JourneyProfile readBy({required bool feminine}) =>
-      JourneyProfile._(isBride: isBride, feminine: feminine);
+  JourneyProfile readBy({required bool feminine}) => JourneyProfile._(
+    isBride: isBride,
+    feminine: feminine,
+    readerIsOwner: readerIsOwner,
+  );
 
   /// One sentence to the reader in its two forms: masculine or feminine
   /// address («سجّل», «سجّلي»).
@@ -59,6 +73,17 @@ class JourneyProfile {
   /// «ضيوف», his «القاعة») or the bride's.
   String plan(String groom, String bride) => isBride ? bride : groom;
 
+  /// What the plan's owner did with the money, said to this reader (D59):
+  /// to the owner in their own form («دفعت», «دفعتِ»), to anyone else with
+  /// the owner named («العريس دفع», «العروسة دفعت»), never as if the reader
+  /// had done it.
+  String ownerDid(
+    String masculine,
+    String feminine, {
+    required String groom,
+    required String bride,
+  }) => readerIsOwner ? say(masculine, feminine) : plan(groom, bride);
+
   static bool _isBridePersona(String? persona) =>
       persona?.trim().toUpperCase() == 'BRIDE';
 
@@ -66,36 +91,31 @@ class JourneyProfile {
   bool operator ==(Object other) =>
       other is JourneyProfile &&
       other.isBride == isBride &&
-      other.feminine == feminine;
+      other.feminine == feminine &&
+      other.readerIsOwner == readerIsOwner;
 
   @override
-  int get hashCode => Object.hash(isBride, feminine);
+  int get hashCode => Object.hash(isBride, feminine, readerIsOwner);
 
   @override
   String toString() =>
       'JourneyProfile(${isBride ? 'bride' : 'groom'} plan, '
-      '${feminine ? 'feminine' : 'masculine'} reader)';
+      '${feminine ? 'feminine' : 'masculine'} reader'
+      '${readerIsOwner ? '' : ', not its owner'})';
 }
 
-/// B5: how a reader is spoken to, from what is known of them, best first:
-/// the account's own persona (the person chose «عريس» or «عروسة»), then the
-/// partner role they hold in the plan (GROOM or BRIDE). Someone the app
-/// knows nothing about (a helper, a parent) is spoken to as the plan's own
-/// party: the bride's plan is the women's wedding, so the feminine. The
-/// server follows the same rule (`addressFormOf`).
-bool readerIsFeminine({
-  String? accountPersona,
-  String? memberRole,
-  String? planPersona,
-}) {
-  bool? known(String? value) => switch (value?.trim().toUpperCase()) {
+/// B5: how a reader is spoken to where the server has not said it: outside
+/// a plan, or in a plan still kept on the phone. The account's own persona
+/// (the person chose «عريس» or «عروسة»), else the plan's own party: the
+/// bride's plan is the women's wedding, so the feminine. Inside a plan the
+/// server resolves it once, the member's partner role included
+/// (`readerForm`, `addressFormOf`, D59), and the phone takes that.
+bool readerIsFeminine({String? accountPersona, String? planPersona}) {
+  return switch (accountPersona?.trim().toUpperCase()) {
     'GROOM' => false,
     'BRIDE' => true,
-    _ => null,
+    _ => planPersona?.trim().toUpperCase() == 'BRIDE',
   };
-  return known(accountPersona) ??
-      known(memberRole) ??
-      (planPersona?.trim().toUpperCase() == 'BRIDE');
 }
 
 /// The plan's colour roles. Section colours (tasks, guests, providers) and
@@ -193,4 +213,18 @@ extension JourneyProfileContext on BuildContext {
   /// [JourneyProfile.plan]).
   String planWord(String groom, String bride) =>
       journeyProfile.plan(groom, bride);
+
+  /// What the plan's owner did, said to this reader (see
+  /// [JourneyProfile.ownerDid]).
+  String ownerDid(
+    String masculine,
+    String feminine, {
+    required String groom,
+    required String bride,
+  }) => journeyProfile.ownerDid(
+    masculine,
+    feminine,
+    groom: groom,
+    bride: bride,
+  );
 }

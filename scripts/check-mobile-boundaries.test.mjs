@@ -1708,7 +1708,10 @@ const r19ProviderPortalApi = Object.freeze({
 // API, so a money notice's amount is left out when it is on (B-38); p27
 // (ProviderReviewScreen) reads the review through the marketplace owner API
 // (B-09).
-const r19LegalRecordCount = 246;
+// -1 (D59): w20 reads whether its reader owns the plan from the journey
+// profile (the server's reader form), no longer from the account contexts
+// owner API.
+const r19LegalRecordCount = 245;
 const trackedOwnerApiContracts = [
   {
     area: 'features/account_contexts',

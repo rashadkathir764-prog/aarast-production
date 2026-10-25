@@ -1692,7 +1692,9 @@ const r19ProviderPortalApi = Object.freeze({
 // the profile.
 // +1: the app root reads the plan's persona through the wedding plans owner
 // API, so the whole app takes the open plan's profile (the bride's slice 1).
-const r19LegalRecordCount = 234;
+// +1: the provider portal reads the categories through the marketplace owner
+// API, so p09 moves the profile to another category before approval (B-01).
+const r19LegalRecordCount = 235;
 const trackedOwnerApiContracts = [
   {
     area: 'features/account_contexts',
@@ -1898,6 +1900,8 @@ const trackedOwnerApiContracts = [
         show: [
           'MarketplaceProvider',
           'MarketplaceService',
+          // B-12: the claim of that listing waits for the review team.
+          'ProviderClaim',
           // V1 checklist 4.18: the provider portal offers the admin's listing.
           'ProviderClaimableListing',
           'ProviderDashboardProfile',
@@ -2405,6 +2409,12 @@ const trackedCollaborationBatchContracts = [
     source: 'mobile/lib/features/provider_portal/screens/provider_portal_screen.dart',
     target: 'mobile/lib/features/chat/chat_api.dart',
     show: ['ChatProvider'],
+  },
+  // p09 (B-01): the categories the profile can move to before approval.
+  {
+    source: 'mobile/lib/features/provider_portal/screens/provider_portal_screen.dart',
+    target: 'mobile/lib/features/marketplace/marketplace_api.dart',
+    show: ['ProviderMarketplaceProvider'],
   },
   // p40 (D40): the provider's account (the path switch, logout and delete)
   // left «ملفي» and the deleted account actions for his settings page.

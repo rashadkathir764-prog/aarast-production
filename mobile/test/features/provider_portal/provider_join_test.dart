@@ -21,9 +21,10 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../account_contexts/account_context_test_data.dart';
 
-// The joining after the account: p02 claims a listing under this phone;
-// otherwise p03 «نشاطك», p04 «وين تشتغل؟» and p07 «كذا بيشوفك العرسان» are
-// kept on the phone and sent together (apply creates PENDING at once, F1).
+// The joining after the account: p02 asks the review team for a listing
+// under this phone (B-12); otherwise p03 «نشاطك», p04 «وين تشتغل؟», p06
+// «خدمتك وسعرها» and p07 «كذا بيشوفك العرسان» are kept on the phone and sent
+// together with the priced service the review needs (F1, B-10).
 
 const _sanaa = MarketplaceCity(id: 'city-sanaa', nameAr: 'صنعاء');
 const _photo = ProviderCategory(id: 'cat-photo', nameAr: 'التصوير');
@@ -69,13 +70,20 @@ void main() {
     expect(find.text('تسافر لمحافظة ثانية؟'), findsNothing);
     await _where(tester, address: 'شارع الزبيري، جنب جولة كنتاكي');
 
+    // p06 as D41 keeps it: one service with its price, no teams.
+    expect(find.text('خدمتك وسعرها'), findsOneWidget);
+    expect(find.textContaining('فريق'), findsNothing);
+    await _service(tester, about: '300 صورة معدّلة وفيلم 10 دقايق');
+
     expect(find.text('كذا بيشوفك العرسان'), findsOneWidget);
     expect(find.text('استوديو ضوء صنعاء'), findsOneWidget);
     expect(find.text('التصوير · صنعاء'), findsOneWidget);
+    expect(find.text('من 550,000 ر.ي'), findsOneWidget);
     expect(find.text('نشاطك ومدينتك'), findsOneWidget);
     expect(find.text('مكان المحل'), findsOneWidget);
+    expect(find.text('صور وفيديو للزفاف'), findsOneWidget);
     expect(
-      find.text('الصور والخدمات والأسعار تضيفها بعد الموافقة'),
+      find.text('الصور والخدمات الثانية تضيفها بعد الموافقة'),
       findsOneWidget,
     );
     expect(find.text('نراجع طلبك ونبلغك هنا.'), findsOneWidget);
@@ -83,7 +91,6 @@ void main() {
     expect(find.textContaining('يومين'), findsNothing);
     expect(find.textContaining('6 صور'), findsNothing);
     expect(find.textContaining('فرق'), findsNothing);
-    expect(find.textContaining('ر.ي'), findsNothing);
     expect(find.textContaining('يرفع ظهورك'), findsNothing);
     expect(harness.api.applications, isEmpty);
 
@@ -93,10 +100,27 @@ void main() {
     expect(harness.api.applications, [
       ('استوديو ضوء صنعاء', '+967773210455', 'city-sanaa', 'cat-photo'),
     ]);
+    expect(harness.api.services, [
+      ('صور وفيديو للزفاف', '550000', '300 صورة معدّلة وفيلم 10 دقايق'),
+    ]);
     expect(harness.api.addresses, ['شارع الزبيري، جنب جولة كنتاكي']);
     expect(harness.auth.refreshes, 1);
     expect(harness.contexts.selectedContext?.isProvider, isTrue);
     expect(find.text('بوابة المزود'), findsOneWidget);
+  });
+
+  testWidgets('p06 holds the next step until the service and its price are given', (
+    tester,
+  ) async {
+    await _Harness.pump(tester);
+
+    await _business(tester);
+    await _where(tester);
+    await tester.tap(find.byKey(const ValueKey('provider-apply-next')));
+    await tester.pumpAndSettle();
+    expect(find.text('اكتب اسم خدمتك'), findsOneWidget);
+    expect(find.text('اكتب سعر خدمتك'), findsOneWidget);
+    expect(find.text('كذا بيشوفك العرسان'), findsNothing);
   });
 
   testWidgets('without a shop place only the application is sent', (
@@ -106,6 +130,7 @@ void main() {
 
     await _business(tester);
     await _where(tester);
+    await _service(tester);
     expect(find.text('مكان المحل'), findsNothing);
     await tester.tap(find.byKey(const ValueKey('provider-apply-send')));
     await tester.pumpAndSettle();
@@ -121,6 +146,7 @@ void main() {
 
     await _business(tester);
     await _where(tester);
+    await _service(tester);
     await tester.tap(find.byKey(const ValueKey('provider-apply-send')));
     await tester.pumpAndSettle();
 
@@ -183,21 +209,55 @@ void main() {
     expect(harness.api.claims, isEmpty);
   });
 
-  testWidgets('claiming opens the portal and welcomes the listing once', (
-    tester,
-  ) async {
+  testWidgets('a claim waits for the team, then its approval opens the portal '
+      'and welcomes the listing once', (tester) async {
     final harness = await _Harness.pump(tester, claimable: true);
 
     await tester.tap(find.byKey(const Key('provider-claim-confirm')));
     await tester.pumpAndSettle();
 
+    // B-12: the team decides; the account is no provider meanwhile.
     expect(harness.api.claims, ['listing-1']);
+    expect(find.text('طلب الاستلام قيد المراجعة'), findsOneWidget);
+    expect(find.text('الملف ما يستقبل طلبات لين نسلّمك إياه'), findsOneWidget);
+    expect(harness.contexts.selectedContext, isNull);
+    expect(find.text('بوابة المزود'), findsNothing);
+
+    // The team approves: a pull reads the listing as this account's.
+    harness.api.approveClaim();
+    await tester.fling(
+      find.byType(RefreshIndicator),
+      const Offset(0, 400),
+      1000,
+    );
+    await tester.pumpAndSettle();
     expect(harness.contexts.selectedContext?.isProvider, isTrue);
     expect(find.text('بوابة المزود'), findsOneWidget);
     final ledger = ProviderApprovalLedger(
       await SharedPreferences.getInstance(),
     );
     expect(await ledger.welcomeDue('listing-1', 'ACTIVE'), isTrue);
+  });
+
+  testWidgets('a waiting claim opens on its waiting state', (tester) async {
+    final harness = await _Harness.pump(tester, claimable: true);
+    harness.api.claimStatus = 'PENDING';
+    await harness.dashboard.loadClaim();
+    await tester.pumpAndSettle();
+    expect(find.text('طلب الاستلام قيد المراجعة'), findsOneWidget);
+  });
+
+  testWidgets('a refused claim shows the reason on p02 and can be sent again', (
+    tester,
+  ) async {
+    final harness = await _Harness.pump(tester, claimable: true);
+    harness.api.claimStatus = 'REJECTED';
+    await harness.dashboard.loadClaim();
+    await tester.pumpAndSettle();
+    expect(find.text('ما قبلنا الاستلام: اتصلنا بالرقم وما رد.'), findsOneWidget);
+    await tester.tap(find.byKey(const Key('provider-claim-confirm')));
+    await tester.pumpAndSettle();
+    expect(find.text('طلب الاستلام قيد المراجعة'), findsOneWidget);
   });
 
   testWidgets('a failed claim stays on p02 and says why', (tester) async {
@@ -220,6 +280,7 @@ void main() {
 
     await _business(tester);
     await _where(tester);
+    await _service(tester);
     await tester.tap(find.byKey(const ValueKey('provider-apply-send')));
     await tester.pumpAndSettle();
 
@@ -240,8 +301,28 @@ void main() {
     await _Harness.pump(tester, width: 320, textScale: 1.3);
     await _business(tester);
     await _where(tester, address: 'شارع الزبيري');
+    await _service(tester, about: 'مصوّرين، 300 صورة معدّلة وفيلم 10 دقايق');
     expect(tester.takeException(), isNull);
   });
+}
+
+Future<void> _service(WidgetTester tester, {String? about}) async {
+  await tester.enterText(
+    find.byKey(const Key('provider-apply-service')).first,
+    'صور وفيديو للزفاف',
+  );
+  await tester.enterText(
+    find.byKey(const Key('provider-apply-price')).first,
+    '550000',
+  );
+  if (about != null) {
+    await tester.enterText(
+      find.byKey(const Key('provider-apply-service-about')).first,
+      about,
+    );
+  }
+  await tester.tap(find.byKey(const ValueKey('provider-apply-next')));
+  await tester.pumpAndSettle();
 }
 
 Future<void> _business(WidgetTester tester) async {
@@ -277,12 +358,13 @@ Future<void> _where(WidgetTester tester, {String? address}) async {
 }
 
 class _Harness {
-  _Harness(this.api, this.auth, this.contexts, this.market);
+  _Harness(this.api, this.auth, this.contexts, this.market, this.dashboard);
 
   final _JoinApi api;
   final _SignedIn auth;
   final AccountContextController contexts;
   final _Market market;
+  final ProviderDashboardProvider dashboard;
 
   static Future<_Harness> pump(
     WidgetTester tester, {
@@ -371,7 +453,7 @@ class _Harness {
       ),
     );
     await tester.pumpAndSettle();
-    return _Harness(api, auth, contexts, market);
+    return _Harness(api, auth, contexts, market, dashboard);
   }
 }
 
@@ -466,8 +548,31 @@ class _JoinApi extends ProviderDashboardApi {
   String? status;
   String providerId = 'provider-1';
   final applications = <(String, String, String, String)>[];
+  final services = <(String, String, String?)>[];
   final addresses = <String>[];
   final claims = <String>[];
+
+  /// The account's latest claim (B-12): null, PENDING or REJECTED.
+  String? claimStatus;
+
+  ProviderClaim? _claim() => claimStatus == null
+      ? null
+      : ProviderClaim(
+          id: 'claim-1',
+          status: claimStatus!,
+          providerId: 'listing-1',
+          businessName: 'الفنان علي',
+          note: claimStatus == 'REJECTED' ? 'اتصلنا بالرقم وما رد.' : null,
+          createdAt: DateTime.now(),
+        );
+
+  /// The review team hands the listing over.
+  void approveClaim() {
+    providerId = 'listing-1';
+    claimable = false;
+    claimStatus = 'APPROVED';
+    status = 'ACTIVE';
+  }
 
   ProviderDashboardProfile _profile() => ProviderDashboardProfile(
     id: providerId,
@@ -494,21 +599,25 @@ class _JoinApi extends ProviderDashboardApi {
       : null;
 
   @override
-  Future<ProviderDashboardProfile> claimListing(String providerId) async {
+  Future<ProviderClaim> claimListing(String providerId) async {
     if (failClaim) throw const ApiException('ما قدرنا نستلم الملف.');
     claims.add(providerId);
-    this.providerId = providerId;
-    claimable = false;
-    status = 'ACTIVE';
-    return _profile();
+    claimStatus = 'PENDING';
+    return _claim()!;
   }
+
+  @override
+  Future<ProviderClaim?> getClaim() async => _claim();
 
   @override
   Future<ProviderDashboardProfile> applyProvider({
     required String businessName,
     required String phone,
     required String cityId,
-    List<String> categoryIds = const [],
+    required List<String> categoryIds,
+    required String serviceTitle,
+    required String servicePrice,
+    String? serviceDescription,
     String? description,
   }) async {
     if (listingOnApply) {
@@ -521,6 +630,11 @@ class _JoinApi extends ProviderDashboardApi {
     }
     if (failApply) throw const ApiException('المدينة غير متاحة الآن.');
     applications.add((businessName, phone, cityId, categoryIds.join(',')));
+    services.add((
+      serviceTitle,
+      servicePrice,
+      serviceDescription?.trim().isEmpty == true ? null : serviceDescription,
+    ));
     status = 'PENDING';
     return _profile();
   }

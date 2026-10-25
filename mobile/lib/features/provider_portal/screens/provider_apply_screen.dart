@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:provider/provider.dart';
@@ -20,16 +21,20 @@ import '../../marketplace/marketplace_api.dart'
 import '../data/provider_approval_ledger.dart';
 import '../providers/provider_dashboard_provider.dart';
 import '../widgets/provider_join_parts.dart';
+import '../widgets/provider_request_parts.dart' show providerMoneyLabel;
 import 'provider_claim_screen.dart';
 
+part 'provider_apply_screen.steps.dart';
+
 /// The joining, after the account (p01): a listing under this phone is
-/// claimed (p02); otherwise three steps, p03 «نشاطك», p04 «وين تشتغل؟» and
-/// p07 «كذا بيشوفك العرسان».
+/// claimed through the review team (p02, then its waiting state, B-12);
+/// otherwise four steps, p03 «نشاطك», p04 «وين تشتغل؟», p06 «خدمتك
+/// وسعرها» and p07 «كذا بيشوفك العرسان».
 ///
 /// Apply creates the provider as PENDING at once (F1), so the steps are kept
-/// on the phone and sent together from p07. The design's steps for photos,
-/// the way of working and the services (p05, p05b, p06) need writes the
-/// server allows only after approval (F2), so they are not asked here.
+/// on the phone and sent together from p07 with the one priced service the
+/// review needs (B-10, D41). Photos and the way of working (p05, p05b) come
+/// after V1, and the other services after approval, so they are not asked.
 class ProviderApplyScreen extends StatefulWidget {
   const ProviderApplyScreen({super.key});
 
@@ -38,10 +43,13 @@ class ProviderApplyScreen extends StatefulWidget {
 }
 
 class _ProviderApplyScreenState extends State<ProviderApplyScreen> {
-  static const _steps = ['نشاطك', 'وين', 'أرسل'];
+  static const _steps = ['نشاطك', 'وين', 'خدمتك', 'أرسل'];
 
   final _nameController = TextEditingController();
   final _addressController = TextEditingController();
+  final _serviceController = TextEditingController();
+  final _priceController = TextEditingController();
+  final _serviceAboutController = TextEditingController();
   String? _cityId;
   String? _categoryId;
   int _step = 0;
@@ -49,8 +57,8 @@ class _ProviderApplyScreenState extends State<ProviderApplyScreen> {
   bool _ready = false;
   bool _leaving = false;
 
-  /// A send or a claim is running; it opens the portal itself once the
-  /// account's paths are read again.
+  /// A send is running; it opens the portal itself once the account's paths
+  /// are read again.
   bool _joining = false;
   String? _sendError;
   String? _claimError;
@@ -67,12 +75,14 @@ class _ProviderApplyScreenState extends State<ProviderApplyScreen> {
     });
   }
 
-  /// Whether this account already has a profile or a listing to claim.
+  /// Whether this account already has a profile, a claim waiting for the
+  /// team, or a listing to claim.
   Future<void> _lookup() async {
     final dashboard = context.read<ProviderDashboardProvider>();
     await Future.wait([
       dashboard.loadDashboard(),
       dashboard.loadClaimableListing(),
+      dashboard.loadClaim(),
     ]);
     if (mounted) setState(() => _ready = true);
   }
@@ -82,6 +92,9 @@ class _ProviderApplyScreenState extends State<ProviderApplyScreen> {
     _draft?.dispose();
     _nameController.dispose();
     _addressController.dispose();
+    _serviceController.dispose();
+    _priceController.dispose();
+    _serviceAboutController.dispose();
     super.dispose();
   }
 
@@ -90,13 +103,23 @@ class _ProviderApplyScreenState extends State<ProviderApplyScreen> {
     final dashboard = context.watch<ProviderDashboardProvider>();
     if (!_ready || _leaving) return _loading();
     if (dashboard.hasProviderProfile && !_joining) {
-      // This account already applied or claimed: its portal shows where it
-      // stands (p08, p10, p12).
+      // This account already applied, or the team handed it the listing it
+      // claimed: its portal shows where it stands (p08 to p12).
       _leaving = true;
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted) _enterPortal();
       });
       return _loading();
+    }
+    final claim = dashboard.claim;
+    if (claim != null && claim.isPending) {
+      return ProviderClaimPendingScreen(
+        businessName: claim.businessName,
+        sentAt: claim.createdAt,
+        onRefresh: _lookup,
+        onBack: _leave,
+        onSupport: () => context.push(AppRouter.support),
+      );
     }
     final listing = dashboard.claimableListing;
     if (listing != null) {
@@ -104,6 +127,7 @@ class _ProviderApplyScreenState extends State<ProviderApplyScreen> {
         businessName: listing.businessName,
         submitting: dashboard.isSubmitting,
         errorMessage: _claimError,
+        refusal: claim != null && claim.isRejected ? claim.note ?? '' : null,
         onBack: _leave,
         onClaim: _claim,
         onSupport: () => context.push(AppRouter.support),
@@ -134,6 +158,7 @@ class _ProviderApplyScreenState extends State<ProviderApplyScreen> {
     final children = switch (_step) {
       0 => _businessStep(marketplace),
       1 => _whereStep(marketplace),
+      2 => _serviceStep(),
       _ => _sendStep(marketplace, dashboard),
     };
     return PopScope(
@@ -194,7 +219,7 @@ class _ProviderApplyScreenState extends State<ProviderApplyScreen> {
   List<Widget> _businessStep(ProviderMarketplaceProvider marketplace) {
     final name = _nameController.text.trim();
     return [
-      _StepTitle('نشاطك'),
+      const _StepTitle('نشاطك'),
       const SizedBox(height: 12),
       JourneyTextField(
         key: const Key('provider-apply-name'),
@@ -224,7 +249,7 @@ class _ProviderApplyScreenState extends State<ProviderApplyScreen> {
 
   List<Widget> _whereStep(ProviderMarketplaceProvider marketplace) {
     return [
-      _StepTitle('وين تشتغل؟'),
+      const _StepTitle('وين تشتغل؟'),
       const SizedBox(height: 12),
       JourneyPickerField(
         key: const Key('provider-apply-city'),
@@ -247,6 +272,64 @@ class _ProviderApplyScreenState extends State<ProviderApplyScreen> {
     ];
   }
 
+  // ------------------------------------------------------------ p06
+
+  /// «خدمتك وسعرها» (p06 as D41 keeps it): the one service the review needs,
+  /// with its price. Teams are not asked (D41), and packages come after
+  /// approval (p36).
+  List<Widget> _serviceStep() {
+    final title = _serviceController.text.trim();
+    final price = int.tryParse(_priceController.text.trim()) ?? 0;
+    return [
+      const _StepTitle(
+        'خدمتك وسعرها',
+        sub: 'خدمة وحدة بسعرها تكفي للمراجعة. الخدمات الثانية والصور تضيفها بعد الموافقة.',
+      ),
+      const SizedBox(height: 12),
+      JourneyTextField(
+        key: const Key('provider-apply-service'),
+        label: 'اسم الخدمة',
+        hint: 'مثلًا: صور وفيديو للزفاف',
+        controller: _serviceController,
+        icon: LucideIcons.package,
+        textInputAction: TextInputAction.next,
+        errorText: _attempted && title.length < 2 ? 'اكتب اسم خدمتك' : null,
+        onChanged: (_) {
+          if (_attempted) setState(() {});
+        },
+      ),
+      const SizedBox(height: 10),
+      JourneyTextField(
+        key: const Key('provider-apply-price'),
+        label: 'السعر',
+        controller: _priceController,
+        suffix: 'ر.ي',
+        keyboardType: TextInputType.number,
+        inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+        textInputAction: TextInputAction.next,
+        errorText: _attempted && price <= 0 ? 'اكتب سعر خدمتك' : null,
+        onChanged: (_) {
+          if (_attempted) setState(() {});
+        },
+      ),
+      const SizedBox(height: 10),
+      JourneyTextField(
+        key: const Key('provider-apply-service-about'),
+        label: 'ايش تشمل (اختياري)',
+        hint: 'مثلًا: 300 صورة معدّلة وفيلم 10 دقايق',
+        controller: _serviceAboutController,
+        textInputAction: TextInputAction.done,
+        minLines: 2,
+        maxLines: 4,
+      ),
+      const SizedBox(height: 8),
+      Text(
+        'الأسعار بالريال اليمني.',
+        style: JourneyType.of(JourneyType.small, color: AarastV3Color.textMuted),
+      ),
+    ];
+  }
+
   // ------------------------------------------------------------ p07
 
   List<Widget> _sendStep(
@@ -256,7 +339,7 @@ class _ProviderApplyScreenState extends State<ProviderApplyScreen> {
     final hasAddress = _addressController.text.trim().isNotEmpty;
     final error = _sendError;
     return [
-      _StepTitle('كذا بيشوفك العرسان'),
+      const _StepTitle('كذا بيشوفك العرسان'),
       const SizedBox(height: 12),
       ProviderPreviewCard(
         name: _nameController.text.trim(),
@@ -264,6 +347,7 @@ class _ProviderApplyScreenState extends State<ProviderApplyScreen> {
           category: _categoryName(marketplace),
           city: _cityName(marketplace),
         ),
+        priceTag: 'من ${providerMoneyLabel(_priceController.text, 'YER')}',
       ),
       const SizedBox(height: 12),
       JourneyBox(
@@ -280,9 +364,14 @@ class _ProviderApplyScreenState extends State<ProviderApplyScreen> {
                 text: 'مكان المحل',
                 color: AarastV3Color.mint,
               ),
+            ProviderFactRow(
+              icon: LucideIcons.checkCircle2,
+              text: _serviceController.text.trim(),
+              color: AarastV3Color.mint,
+            ),
             const ProviderFactRow(
               icon: LucideIcons.circle,
-              text: 'الصور والخدمات والأسعار تضيفها بعد الموافقة',
+              text: 'الصور والخدمات الثانية تضيفها بعد الموافقة',
               color: AarastV3Color.textFaint,
             ),
           ],
@@ -354,8 +443,10 @@ class _ProviderApplyScreenState extends State<ProviderApplyScreen> {
   }
 
   Future<void> _pickCategory(ProviderMarketplaceProvider marketplace) async {
-    final picked = await _pick(
+    final picked = await providerPickOption(
+      context,
       title: 'القسم',
+      keyPrefix: 'provider-apply-option',
       options: [
         for (final category in marketplace.categories)
           (category.id, category.nameAr),
@@ -368,8 +459,10 @@ class _ProviderApplyScreenState extends State<ProviderApplyScreen> {
   }
 
   Future<void> _pickCity(ProviderMarketplaceProvider marketplace) async {
-    final picked = await _pick(
+    final picked = await providerPickOption(
+      context,
       title: 'المدينة',
+      keyPrefix: 'provider-apply-option',
       options: [for (final city in marketplace.cities) (city.id, city.nameAr)],
       current: _cityId,
     );
@@ -378,37 +471,14 @@ class _ProviderApplyScreenState extends State<ProviderApplyScreen> {
     _draft?.changed();
   }
 
-  Future<String?> _pick({
-    required String title,
-    required List<(String, String)> options,
-    required String? current,
-  }) {
-    if (options.isEmpty) return Future.value();
-    return showJourneySheet<String>(
-      context: context,
-      builder: (sheetContext) => JourneySheetBody(
-        title: title,
-        children: [
-          for (final (id, name) in options)
-            Padding(
-              padding: const EdgeInsets.only(bottom: 8),
-              child: JourneyOption(
-                key: ValueKey('provider-apply-option-$id'),
-                title: name,
-                selected: id == current,
-                onTap: () => Navigator.of(sheetContext).pop(id),
-              ),
-            ),
-        ],
-      ),
-    );
-  }
-
   bool _stepValid(ProviderMarketplaceProvider marketplace) => switch (_step) {
     0 =>
       _nameController.text.trim().length >= 2 &&
           _categoryName(marketplace) != null,
     1 => _cityName(marketplace) != null,
+    2 =>
+      _serviceController.text.trim().length >= 2 &&
+          (int.tryParse(_priceController.text.trim()) ?? 0) > 0,
     _ => true,
   };
 
@@ -461,6 +531,9 @@ class _ProviderApplyScreenState extends State<ProviderApplyScreen> {
       phone: phone,
       cityId: _cityId!,
       categoryId: _categoryId!,
+      serviceTitle: _serviceController.text.trim(),
+      servicePrice: _priceController.text.trim(),
+      serviceDescription: _serviceAboutController.text,
       address: _addressController.text,
     );
     if (!mounted) return;
@@ -489,36 +562,31 @@ class _ProviderApplyScreenState extends State<ProviderApplyScreen> {
     }
   }
 
-  /// p02: the listing becomes this account's, already approved (F4).
+  /// p02: the claim goes to the review team (B-12) and waits there. This
+  /// phone remembers it, so the approval is welcomed (p10).
   Future<void> _claim() async {
     final dashboard = context.read<ProviderDashboardProvider>();
-    setState(() {
-      _claimError = null;
-      _joining = true;
-    });
-    final claimed = await dashboard.claimListing();
+    setState(() => _claimError = null);
+    final sent = await dashboard.claimListing();
     if (!mounted) return;
-    if (!claimed) {
+    if (!sent) {
       setState(() {
-        _joining = false;
         _claimError =
-            dashboard.errorMessage ?? 'ما قدرنا نستلم الملف. جرّب مرة ثانية.';
+            dashboard.errorMessage ?? 'ما قدرنا نرسل طلب الاستلام. جرّب مرة ثانية.';
       });
       return;
     }
-    final profileId = dashboard.profile?.id;
-    if (profileId != null) {
+    final providerId = dashboard.claim?.providerId;
+    if (providerId != null && providerId.isNotEmpty) {
       try {
         final ledger = ProviderApprovalLedger(
           await SharedPreferences.getInstance(),
         );
-        await ledger.markClaimed(profileId);
+        await ledger.markClaimed(providerId);
       } on Object catch (error) {
         debugPrint('Provider claim not remembered: $error');
       }
     }
-    if (!mounted) return;
-    await _enterPortal();
   }
 
   /// The account now has a provider profile: its user and its paths are
@@ -548,7 +616,13 @@ class _ProviderApplyScreenState extends State<ProviderApplyScreen> {
     _draft = AarastFormDraftBinding(
       store: context.read<AarastFormDraftStore?>(),
       scope: 'provider:application:new',
-      fields: {'businessName': _nameController, 'address': _addressController},
+      fields: {
+        'businessName': _nameController,
+        'address': _addressController,
+        'serviceTitle': _serviceController,
+        'servicePrice': _priceController,
+        'serviceAbout': _serviceAboutController,
+      },
       readExtras: () => {'cityId': _cityId, 'categoryId': _categoryId},
       restoreExtras: (data) {
         if (!mounted) return;
@@ -559,118 +633,5 @@ class _ProviderApplyScreenState extends State<ProviderApplyScreen> {
       },
     );
     unawaited(_draft!.restore());
-  }
-}
-
-/// A step's heading (24 bold).
-class _StepTitle extends StatelessWidget {
-  const _StepTitle(this.text);
-
-  final String text;
-
-  @override
-  Widget build(BuildContext context) {
-    return Semantics(
-      header: true,
-      child: Text(
-        text,
-        style: JourneyType.of(JourneyType.display, weight: JourneyType.bold),
-      ),
-    );
-  }
-}
-
-/// Why a picker is not done yet, as a text field says it.
-class _FieldError extends StatelessWidget {
-  const _FieldError(this.text);
-
-  final String text;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(8, 6, 8, 0),
-      child: Row(
-        children: [
-          const Icon(
-            LucideIcons.alertCircle,
-            size: 16,
-            color: AarastV3Color.danger,
-          ),
-          const SizedBox(width: 6),
-          Expanded(
-            child: Text(
-              text,
-              style: JourneyType.of(
-                JourneyType.small,
-                weight: JourneyType.bold,
-                color: AarastV3Color.danger,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-/// «نشاطك · وين · أرسل» (prototype `pSteps`): the current step is filled,
-/// the ones behind it are soft.
-class _JoinSteps extends StatelessWidget {
-  const _JoinSteps({required this.labels, required this.current});
-
-  final List<String> labels;
-  final int current;
-
-  @override
-  Widget build(BuildContext context) {
-    return Semantics(
-      label: 'الخطوة ${current + 1} من ${labels.length}: ${labels[current]}',
-      excludeSemantics: true,
-      child: Container(
-        padding: const EdgeInsets.all(6),
-        decoration: BoxDecoration(
-          color: AarastV3Color.paper,
-          borderRadius: BorderRadius.circular(AarastV3Radius.pill),
-          border: Border.all(color: AarastV3Color.line),
-        ),
-        child: Row(
-          children: [
-            for (var index = 0; index < labels.length; index++)
-              Expanded(
-                child: Container(
-                  key: ValueKey('provider-apply-step-$index'),
-                  padding: const EdgeInsets.symmetric(vertical: 7),
-                  alignment: Alignment.center,
-                  decoration: BoxDecoration(
-                    color: index == current
-                        ? AarastV3Color.primary
-                        : index < current
-                        ? AarastV3Color.primarySoft
-                        : null,
-                    borderRadius: BorderRadius.circular(AarastV3Radius.pill),
-                  ),
-                  child: FittedBox(
-                    fit: BoxFit.scaleDown,
-                    child: Text(
-                      labels[index],
-                      maxLines: 1,
-                      style: JourneyType.of(
-                        JourneyType.caption,
-                        weight: JourneyType.bold,
-                        color: index == current
-                            ? AarastV3Color.onPrimary
-                            : index < current
-                            ? AarastV3Color.primary
-                            : AarastV3Color.textMuted,
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-          ],
-        ),
-      ),
-    );
   }
 }

@@ -6,14 +6,16 @@ import '../../../core/widgets/aarast_ui.dart';
 import '../widgets/provider_join_parts.dart';
 
 /// p02 «لقينا ملف بنفس رقمك»: the team listed this business under the
-/// account's phone (F4). Claiming makes it this account's, already approved,
-/// so «بعد ما تستلمه تعدّل كل شيء فيه» is true.
+/// account's phone (F4). «إيه، هذا ملفي» asks the review team for it
+/// (B-12, D41); it becomes this account's once they approve, so «بعد ما
+/// تستلمه تعدّل كل شيء فيه» is true.
 ///
 /// The server's claim lookup gives the name only, so the category, the city,
 /// the waiting requests and the views the design draws are not shown (an
 /// unclaimed listing cannot receive requests). «مو أنا، أشتي ملف جديد» cannot
-/// work (apply refuses a phone with a listing), so the other way out is
-/// support.
+/// work (apply refuses a phone with a listing, B-13), so the other way out
+/// is support. After a refused claim, the team's reason shows and the claim
+/// can be sent again.
 class ProviderClaimScreen extends StatelessWidget {
   const ProviderClaimScreen({
     required this.businessName,
@@ -22,18 +24,24 @@ class ProviderClaimScreen extends StatelessWidget {
     required this.onClaim,
     required this.onSupport,
     this.errorMessage,
+    this.refusal,
     super.key,
   });
 
   final String businessName;
   final bool submitting;
   final String? errorMessage;
+
+  /// The team's reason when they refused this account's last claim; empty
+  /// when they gave none, null when nothing was refused.
+  final String? refusal;
   final VoidCallback onBack;
   final VoidCallback onClaim;
   final VoidCallback onSupport;
 
   @override
   Widget build(BuildContext context) {
+    final refusal = this.refusal;
     return AarastScreenFrame(
       maxWidth: 520,
       backgroundColor: AarastV3Color.canvas,
@@ -75,6 +83,18 @@ class ProviderClaimScreen extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 18),
+                if (refusal != null) ...[
+                  JourneyNote(
+                    key: const Key('provider-claim-refusal'),
+                    text: refusal.trim().isEmpty
+                        ? 'ما قبلنا طلب الاستلام اللي قبل. تقدر ترسله من جديد.'
+                        : 'ما قبلنا الاستلام: ${refusal.trim()}',
+                    icon: LucideIcons.messageSquare,
+                    color: AarastV3Color.danger,
+                    soft: AarastV3Color.dangerSoft,
+                  ),
+                  const SizedBox(height: 12),
+                ],
                 JourneyBox(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -120,6 +140,98 @@ class ProviderClaimScreen extends StatelessWidget {
               large: true,
               loading: submitting,
               onPressed: onClaim,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// p08 for a claim (B-12, D41): «طلب الاستلام قيد المراجعة». The listing
+/// stays unclaimed and takes no requests until the team hands it over, and
+/// the answer comes as a notice here.
+class ProviderClaimPendingScreen extends StatelessWidget {
+  const ProviderClaimPendingScreen({
+    required this.businessName,
+    required this.sentAt,
+    required this.onRefresh,
+    required this.onBack,
+    required this.onSupport,
+    super.key,
+  });
+
+  /// The listing asked for.
+  final String businessName;
+
+  /// When the claim was sent; null when the server did not say.
+  final DateTime? sentAt;
+  final Future<void> Function() onRefresh;
+  final VoidCallback onBack;
+  final VoidCallback onSupport;
+
+  @override
+  Widget build(BuildContext context) {
+    final sentAt = this.sentAt;
+    return AarastScreenFrame(
+      maxWidth: 520,
+      backgroundColor: AarastV3Color.canvas,
+      child: Column(
+        children: [
+          Expanded(
+            child: RefreshIndicator(
+              color: AarastV3Color.primary,
+              onRefresh: onRefresh,
+              child: ListView(
+                physics: const AlwaysScrollableScrollPhysics(),
+                padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
+                children: [
+                  ProviderStateHeading(
+                    name: businessName,
+                    kind: '',
+                    icon: LucideIcons.hourglass,
+                    color: AarastV3Color.brandAccentStrong,
+                    soft: AarastV3Color.brandAccentSoft,
+                    title: 'طلب الاستلام قيد المراجعة',
+                    message: sentAt == null
+                        ? 'وصلنا طلبك. نبلغك هنا.'
+                        : 'أرسلته ${providerMomentLabel(sentAt)}. نبلغك هنا.',
+                    trailing: JourneyRoundButton(
+                      key: const Key('provider-claim-pending-back'),
+                      icon: LucideIcons.arrowRight,
+                      tooltip: 'رجوع',
+                      onPressed: onBack,
+                    ),
+                  ),
+                  const JourneyBox(
+                    child: Column(
+                      children: [
+                        ProviderFactRow(
+                          icon: LucideIcons.eyeOff,
+                          text: 'الملف ما يستقبل طلبات لين نسلّمك إياه',
+                        ),
+                        ProviderFactRow(
+                          icon: LucideIcons.phone,
+                          text: 'ممكن يتصل بك فريق اعّرست يتأكد إنك صاحبه',
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(20, 8, 20, 16),
+            child: JourneyButton(
+              key: const Key('provider-claim-pending-support'),
+              label: 'تكلّم مع الدعم',
+              icon: LucideIcons.messageCircle,
+              background: AarastV3Color.paper,
+              foreground: AarastV3Color.primary,
+              expand: true,
+              large: true,
+              onPressed: onSupport,
             ),
           ),
         ],

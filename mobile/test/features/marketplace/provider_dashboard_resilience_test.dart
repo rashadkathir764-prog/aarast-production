@@ -19,6 +19,9 @@ void main() {
       expect(dashboard.profile?.reviewNote, 'أكمل صور الهوية.');
       expect(dashboard.canUseProviderOperations, isFalse);
       expect(api.operationalCalls, 0);
+      // Waiting for approval he reads the service he joined with (B-10).
+      expect(api.serviceReads, 1);
+      expect(dashboard.joiningService?.title, 'تنسيق كامل');
       expect(dashboard.errorMessage, isNull);
     },
   );
@@ -137,9 +140,14 @@ class _ProviderDashboardApiFake extends ProviderDashboardApi {
     );
   }
 
+  /// Reads of his services: before approval only the one he joined with
+  /// (B-10), which is not an operational read.
+  int serviceReads = 0;
+
   @override
   Future<List<MarketplaceService>> getServices() async {
-    operationalCalls++;
+    serviceReads++;
+    if (status == 'ACTIVE') operationalCalls++;
     return [_service()];
   }
 

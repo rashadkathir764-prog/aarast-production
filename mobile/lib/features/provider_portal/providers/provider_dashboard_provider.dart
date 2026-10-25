@@ -8,6 +8,7 @@ import '../../marketplace/marketplace_api.dart'
     show
         MarketplaceBooking,
         MarketplaceService,
+        ProviderClaim,
         ProviderClaimableListing,
         ProviderDashboardApi,
         ProviderDashboardProfile,
@@ -140,7 +141,25 @@ class ProviderDashboardProvider extends ChangeNotifier
     notifyListeners();
   }
 
-  /// Claims the listing: the account becomes its (already approved) provider.
+  /// The account's latest claim of a listing (B-12); null when it made none
+  /// or it was not read.
+  ProviderClaim? get claim => _claim;
+  ProviderClaim? _claim;
+
+  /// Reads [claim]. A failure leaves it unknown, and the claim screen
+  /// offers the claim again, which the server answers if one waits.
+  Future<void> loadClaim() async {
+    try {
+      _claim = await _api.getClaim();
+    } on Object catch (error) {
+      debugPrint('Provider claim not read: $error');
+      _claim = null;
+    }
+    notifyListeners();
+  }
+
+  /// Asks the review team for the listing (B-12): the claim waits for them,
+  /// and the listing becomes this account's only when they approve.
   Future<bool> claimListing() async {
     final listing = _claimableListing;
     if (listing == null) return false;
@@ -148,19 +167,143 @@ class ProviderDashboardProvider extends ChangeNotifier
     _errorMessage = null;
     notifyListeners();
     try {
-      _profile = await _api.claimListing(listing.id);
+      _claim = await _api.claimListing(listing.id);
+      return true;
+    } on ApiException catch (error) {
+      if (error.serverCode == 'PROVIDER_CLAIM_PENDING') {
+        // One already waits (sent from another phone): show it.
+        _isSubmitting = false;
+        await loadClaim();
+        return _claim?.isPending ?? false;
+      }
+      _errorMessage = marketplaceErrorMessage(error.message);
+      return false;
+    } catch (_) {
+      _errorMessage = 'ما قدرنا نرسل طلب الاستلام. جرّب مرة ثانية.';
+      return false;
+    } finally {
+      _isSubmitting = false;
+      notifyListeners();
+    }
+  }
+
+  /// «أرسلت التعديل» (B-01): the fixed profile goes back to review.
+  Future<bool> resubmitApplication() => _lifecycleStep(
+    _api.resubmitApplication,
+    fallback: 'ما قدرنا نرسل التعديل. جرّب مرة ثانية.',
+  );
+
+  /// «صلّح وقدّم من جديد» (B-02): the refused profile opens for fixing,
+  /// with the refusal's reason as its note.
+  Future<bool> reopenApplication() => _lifecycleStep(
+    _api.reopenApplication,
+    fallback: 'ما قدرنا نفتح ملفك للتعديل. جرّب مرة ثانية.',
+  );
+
+  /// Moves the profile to another category before approval (B-01); the
+  /// service he joined with follows it.
+  Future<bool> updateProfileCategory(String categoryId) => _lifecycleStep(
+    () => _api.updateProfileCategory(categoryId),
+    fallback: 'ما قدرنا نغيّر القسم. جرّب مرة ثانية.',
+  );
+
+  Future<bool> _lifecycleStep(
+    Future<ProviderDashboardProfile> Function() step, {
+    required String fallback,
+  }) async {
+    if (_isSubmitting) return false;
+    _isSubmitting = true;
+    _errorMessage = null;
+    _errorCode = null;
+    notifyListeners();
+    try {
+      _profile = await step();
       _hasProviderProfile = true;
-      _claimableListing = null;
+      await _loadJoiningServices();
+      return true;
+    } on ApiException catch (error) {
+      _errorCode = error.serverCode;
+      _errorMessage = switch (error.serverCode) {
+        'PROVIDER_SERVICE_REQUIRED' =>
+          'أضف خدمة وحدة بسعرها قبل ما ترسل ملفك.',
+        _ => marketplaceErrorMessage(error.message),
+      };
+      // The state changed elsewhere (the team decided meanwhile): read it.
+      if (error.statusCode == 409) await loadDashboard();
+      return false;
+    } catch (_) {
+      _errorMessage = fallback;
+      return false;
+    } finally {
+      _isSubmitting = false;
+      notifyListeners();
+    }
+  }
+
+  /// The service he joined with (B-10): the one service read before
+  /// approval; null when none was read (a profile from before B-10).
+  MarketplaceService? get joiningService =>
+      awaitingApproval ? _services.firstOrNull : null;
+
+  /// Fixes the service he joined with before approval, or adds it when the
+  /// profile has none (it applied before B-10): its name, price and words
+  /// only (p09, B-10).
+  Future<bool> saveJoiningService({
+    required String title,
+    required String price,
+    String? about,
+  }) async {
+    final current = joiningService;
+    final categoryId = profile?.primaryCategoryId;
+    if (_isSubmitting || (current == null && categoryId == null)) return false;
+    _isSubmitting = true;
+    _errorMessage = null;
+    notifyListeners();
+    try {
+      if (current != null) {
+        await _api.updateService(
+          serviceId: current.id,
+          title: title,
+          basePrice: price,
+          description: about ?? '',
+        );
+      } else {
+        await _api.createService(
+          title: title,
+          categoryId: categoryId!,
+          basePrice: price,
+          currency: 'YER',
+          description: about,
+        );
+      }
+      await _loadJoiningServices();
       return true;
     } on ApiException catch (error) {
       _errorMessage = marketplaceErrorMessage(error.message);
       return false;
     } catch (_) {
-      _errorMessage = 'تعذر استلام ملف المزوّد. حاول مرة أخرى.';
+      _errorMessage = 'ما قدرنا نحفظ خدمتك. جرّب مرة ثانية.';
       return false;
     } finally {
       _isSubmitting = false;
       notifyListeners();
+    }
+  }
+
+  /// Waiting for approval he has the service he joined with (B-10), the
+  /// one service he can read and fix before approval.
+  bool get awaitingApproval {
+    final status = profile?.status.toUpperCase();
+    return status == 'PENDING' || status == 'NEEDS_CHANGES';
+  }
+
+  Future<void> _loadJoiningServices() async {
+    if (!awaitingApproval) return;
+    try {
+      _services = await _api.getServices();
+    } on Object catch (error) {
+      debugPrint('Joining service not read: $error');
+      _services = const [];
     }
   }
 
@@ -254,6 +397,8 @@ class ProviderDashboardProvider extends ChangeNotifier
         if (profile.status.toUpperCase() == 'SUSPENDED') {
           await _loadClosedBookings();
         }
+        // Waiting for approval, p09 shows the service he joined with.
+        await _loadJoiningServices();
         return;
       }
 
@@ -494,14 +639,18 @@ class ProviderDashboardProvider extends ChangeNotifier
     _responsiveness = null;
   }
 
-  /// Sends the joining (p07): the server creates the provider as PENDING at
-  /// once (F1), then the shop's place goes in a profile update, since apply
-  /// takes no address.
+  /// Sends the joining (p07) with the service he joins with and its price
+  /// (p06, B-10): the server creates the provider as PENDING at once (F1),
+  /// then the shop's place goes in a profile update, since apply takes no
+  /// address.
   Future<ProviderJoinResult> applyProvider({
     required String businessName,
     required String phone,
     required String cityId,
     required String categoryId,
+    required String serviceTitle,
+    required String servicePrice,
+    String? serviceDescription,
     String? address,
   }) async {
     _isSubmitting = true;
@@ -514,6 +663,9 @@ class ProviderDashboardProvider extends ChangeNotifier
         phone: phone,
         cityId: cityId,
         categoryIds: [categoryId],
+        serviceTitle: serviceTitle,
+        servicePrice: servicePrice,
+        serviceDescription: serviceDescription,
       );
       _hasProviderProfile = true;
       _clearOperationalData();
@@ -528,7 +680,9 @@ class ProviderDashboardProvider extends ChangeNotifier
         await loadDashboard();
         return ProviderJoinResult.alreadyApplied;
       }
-      _errorMessage = marketplaceErrorMessage(error.message);
+      _errorMessage = error.serverCode == 'PROVIDER_SERVICE_REQUIRED'
+          ? 'اكتب خدمتك وسعرها قبل ما ترسل.'
+          : marketplaceErrorMessage(error.message);
       return ProviderJoinResult.failed;
     } catch (_) {
       _errorMessage = 'ما قدرنا نرسل طلبك. جرّب مرة ثانية.';

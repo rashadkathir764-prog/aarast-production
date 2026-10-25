@@ -842,6 +842,17 @@ class ApiException implements Exception {
   static String? _localizedServerMessage(String? code) {
     return switch (code) {
       'TASK_PERMISSION_REVOKED' => 'لم تعد لديك صلاحية لتنفيذ هذه المهمة',
+      // B-01, B-02, B-10, B-12: the provider lifecycle.
+      'PROVIDER_SERVICE_REQUIRED' => 'اكتب خدمتك وسعرها قبل ما ترسل.',
+      'PROVIDER_NOT_AWAITING_CHANGES' =>
+        'ملفك وصل فريق المراجعة. اسحب الصفحة عشان تتحدّث حالته.',
+      'PROVIDER_NOT_REJECTED' =>
+        'تغيّرت حالة ملفك. اسحب الصفحة عشان تتحدّث.',
+      'PROVIDER_JOINING_SERVICE_ONLY' =>
+        'قبل الموافقة تعدّل اسم خدمتك وسعرها بس. الخدمات الثانية بعد الموافقة.',
+      'PROVIDER_CATEGORY_LOCKED' =>
+        'القسم يتغير قبل الموافقة بس. كلّم الدعم لو تحتاج تغيّره.',
+      'PROVIDER_CLAIM_PENDING' => 'طلب استلام هذا الملف وصل الإدارة وينتظر.',
       // V1 checklist 4.10: private costs and tasks.
       'COST_PRIVACY_NOT_ALLOWED' =>
         'التكلفة الخاصة متاحة لصاحب الخطة والشريك فقط.',

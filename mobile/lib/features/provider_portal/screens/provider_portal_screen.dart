@@ -9,11 +9,16 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../../../core/diagnostics/app_logger.dart';
 import '../../../core/experience_v3/aarast_v3.dart';
 import '../../../core/routing/app_router.dart';
+import '../../../core/widgets/aarast_toast.dart';
 import '../../../core/widgets/aarast_ui.dart';
 import '../../../core/routing/root_tab_back_scope.dart';
 import '../../chat/chat_api.dart' show ChatProvider;
+import '../../marketplace/marketplace_api.dart'
+    show ProviderMarketplaceProvider;
 import '../data/provider_approval_ledger.dart';
 import '../providers/provider_dashboard_provider.dart';
+import '../widgets/provider_join_parts.dart' show providerPickOption;
+import '../widgets/provider_joining_service_sheet.dart';
 import '../widgets/provider_portal_bottom_nav.dart';
 import 'provider_approved_screen.dart';
 import 'provider_changes_screen.dart';
@@ -155,15 +160,23 @@ class _ProviderPortalScreenState extends State<ProviderPortalScreen> {
         case 'NEEDS_CHANGES':
           return ProviderChangesScreen(
             profile: profile,
+            service: dashboard.joiningService,
+            submitting: dashboard.isSubmitting,
+            errorMessage: dashboard.errorMessage,
             onRefresh: dashboard.loadDashboard,
             onEdit: () => context.push(AppRouter.providerProfileEdit),
-            onSupport: () => context.push(AppRouter.support),
+            onPickCategory: () => _pickCategory(profile.primaryCategoryId),
+            onEditService: () => _editJoiningService(profile.fieldNotes),
+            onResubmit: _resubmit,
             onAccount: () => context.push(AppRouter.more),
           );
         case 'REJECTED':
           return ProviderRejectedScreen(
             profile: profile,
+            submitting: dashboard.isSubmitting,
+            errorMessage: dashboard.errorMessage,
             onRefresh: dashboard.loadDashboard,
+            onReopen: dashboard.reopenApplication,
             onSupport: () => context.push(AppRouter.support),
             onAccount: () => context.push(AppRouter.more),
           );
@@ -228,6 +241,60 @@ class _ProviderPortalScreenState extends State<ProviderPortalScreen> {
           ],
         ),
       ),
+    );
+  }
+
+  /// p09 «أرسلت التعديل» (B-01): back to review, which p08 then shows.
+  Future<void> _resubmit() async {
+    final sent = await context
+        .read<ProviderDashboardProvider>()
+        .resubmitApplication();
+    if (!mounted || !sent) return;
+    AarastToast.showSuccess(context, 'وصلنا تعديلك. نراجعه ونبلغك هنا.');
+  }
+
+  /// p09's category: before approval he moves the profile, and the service
+  /// he joined with follows (B-01).
+  Future<void> _pickCategory(String? current) async {
+    final marketplace = context.read<ProviderMarketplaceProvider>();
+    if (marketplace.categories.isEmpty) await marketplace.loadReferenceData();
+    if (!mounted) return;
+    final picked = await providerPickOption(
+      context,
+      title: 'القسم',
+      keyPrefix: 'provider-changes-category-option',
+      options: [
+        for (final category in marketplace.categories)
+          (category.id, category.nameAr),
+      ],
+      current: current,
+    );
+    if (picked == null || picked == current || !mounted) return;
+    await context.read<ProviderDashboardProvider>().updateProfileCategory(
+      picked,
+    );
+  }
+
+  /// p09's service: its name, price and words before approval (B-10).
+  Future<void> _editJoiningService(Map<String, String> notes) {
+    final dashboard = context.read<ProviderDashboardProvider>();
+    final service = dashboard.joiningService;
+    return showProviderJoiningServiceSheet(
+      context,
+      title: service?.title,
+      price: service?.basePrice,
+      about: service?.description,
+      note: notes['SERVICE'],
+      onSave: (input) async {
+        final saved = await dashboard.saveJoiningService(
+          title: input.title,
+          price: input.price,
+          about: input.about,
+        );
+        return saved
+            ? null
+            : dashboard.errorMessage ?? 'ما قدرنا نحفظ خدمتك. جرّب مرة ثانية.';
+      },
     );
   }
 

@@ -4,6 +4,37 @@ import 'package:lucide_icons/lucide_icons.dart';
 import '../../../core/experience_v3/aarast_v3.dart';
 import '../../../core/utils/arabic_date_formatter.dart';
 
+/// A sheet of options (the joining's category and city, p09's category):
+/// the picked id, or null when closed. Each option is keyed
+/// `$keyPrefix-<id>`.
+Future<String?> providerPickOption(
+  BuildContext context, {
+  required String title,
+  required String keyPrefix,
+  required List<(String, String)> options,
+  required String? current,
+}) {
+  if (options.isEmpty) return Future.value();
+  return showJourneySheet<String>(
+    context: context,
+    builder: (sheetContext) => JourneySheetBody(
+      title: title,
+      children: [
+        for (final (id, name) in options)
+          Padding(
+            padding: const EdgeInsets.only(bottom: 8),
+            child: JourneyOption(
+              key: ValueKey('$keyPrefix-$id'),
+              title: name,
+              selected: id == current,
+              onTap: () => Navigator.of(sheetContext).pop(id),
+            ),
+          ),
+      ],
+    ),
+  );
+}
+
 /// «تصوير · صنعاء»: the provider's kind line, from what the server holds.
 /// Parts the server does not have (teams, audience, travel) are never
 /// added.
@@ -134,17 +165,22 @@ class ProviderFactRow extends StatelessWidget {
 }
 
 /// «كذا بيشوفك العرسان» (p07, and p08's preview): the cover and the
-/// identity, built on the phone from what was entered. No photo, tag or
-/// price is drawn until the server has one.
+/// identity, built on the phone from what was entered, and the price of the
+/// service he joins with as p07's green tag (B-10). No photo is drawn until
+/// the server has one.
 class ProviderPreviewCard extends StatelessWidget {
   const ProviderPreviewCard({
     required this.name,
     required this.kind,
+    this.priceTag,
     super.key,
   });
 
   final String name;
   final String kind;
+
+  /// «من 150,000 ر.ي»: the joining service's price.
+  final String? priceTag;
 
   @override
   Widget build(BuildContext context) {
@@ -168,7 +204,21 @@ class ProviderPreviewCard extends StatelessWidget {
             ),
             Padding(
               padding: const EdgeInsets.all(14),
-              child: ProviderIdentityRow(name: name, kind: kind),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  ProviderIdentityRow(name: name, kind: kind),
+                  if (priceTag case final price?) ...[
+                    const SizedBox(height: 10),
+                    JourneyTag(
+                      key: const Key('provider-preview-price'),
+                      label: price,
+                      color: AarastV3Color.mint,
+                      soft: AarastV3Color.mintSoft,
+                    ),
+                  ],
+                ],
+              ),
             ),
           ],
         ),

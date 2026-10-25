@@ -1811,6 +1811,9 @@ class _JourneyTextFieldState extends State<JourneyTextField> {
 }
 
 /// A tappable field that opens a picker (date, place).
+///
+/// With a [note] it is the provider prototype's `pField(note:)`: a 2 coral
+/// border and the reviewer's note under the value (p09).
 class JourneyPickerField extends StatelessWidget {
   const JourneyPickerField({
     required this.label,
@@ -1819,6 +1822,7 @@ class JourneyPickerField extends StatelessWidget {
     this.icon,
     this.placeholder = 'اختر',
     this.helper,
+    this.note,
     super.key,
   });
 
@@ -1829,56 +1833,105 @@ class JourneyPickerField extends StatelessWidget {
   final String placeholder;
   final String? helper;
 
+  /// A note asking for a change to this field, drawn in coral under it.
+  final String? note;
+
   @override
   Widget build(BuildContext context) {
     final has = value != null && value!.isNotEmpty;
+    final note = this.note;
     return AarastPressable(
       onTap: onTap,
-      semanticLabel: '$label، ${has ? value : placeholder}',
+      semanticLabel: [
+        '$label، ${has ? value : placeholder}',
+        ?note,
+      ].join('، '),
       borderRadius: BorderRadius.circular(18),
       child: Container(
         padding: const EdgeInsets.fromLTRB(16, 10, 16, 12),
         decoration: BoxDecoration(
           color: AarastV3Color.paper,
           borderRadius: BorderRadius.circular(18),
-          border: Border.all(color: AarastV3Color.line),
+          border: Border.all(
+            color: note != null ? AarastV3Color.danger : AarastV3Color.line,
+            width: note != null ? 2 : 1,
+          ),
         ),
-        child: Row(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            if (icon != null) ...[
-              Icon(icon, size: 20, color: AarastV3Color.textMuted),
-              const SizedBox(width: 10),
-            ],
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    label,
-                    style: JourneyType.of(
-                      JourneyType.label,
-                      color: AarastV3Color.textMuted,
-                    ),
+            Row(
+              children: [
+                if (icon != null) ...[
+                  Icon(icon, size: 20, color: AarastV3Color.textMuted),
+                  const SizedBox(width: 10),
+                ],
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        label,
+                        style: JourneyType.of(
+                          JourneyType.label,
+                          color: AarastV3Color.textMuted,
+                        ),
+                      ),
+                      Text(
+                        has ? value! : placeholder,
+                        style: JourneyType.of(
+                          JourneyType.lead,
+                          weight: JourneyType.bold,
+                          color: has
+                              ? AarastV3Color.ink
+                              : AarastV3Color.textFaint,
+                        ),
+                      ),
+                      if (helper != null)
+                        Text(
+                          helper!,
+                          style: JourneyType.of(
+                            JourneyType.small,
+                            color: AarastV3Color.textMuted,
+                          ),
+                        ),
+                    ],
                   ),
-                  Text(
-                    has ? value! : placeholder,
-                    style: JourneyType.of(
-                      JourneyType.lead,
-                      weight: JourneyType.bold,
-                      color: has ? AarastV3Color.ink : AarastV3Color.textFaint,
+                ),
+              ],
+            ),
+            if (note != null) ...[
+              const SizedBox(height: 8),
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: AarastV3Color.dangerSoft,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Icon(
+                      LucideIcons.messageSquare,
+                      size: 16,
+                      color: AarastV3Color.danger,
                     ),
-                  ),
-                  if (helper != null)
-                    Text(
-                      helper!,
-                      style: JourneyType.of(
-                        JourneyType.small,
-                        color: AarastV3Color.textMuted,
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        note,
+                        style: JourneyType.of(
+                          JourneyType.small,
+                          weight: JourneyType.bold,
+                          color: AarastV3Color.danger,
+                          height: 1.45,
+                        ),
                       ),
                     ),
-                ],
+                  ],
+                ),
               ),
-            ),
+            ],
           ],
         ),
       ),

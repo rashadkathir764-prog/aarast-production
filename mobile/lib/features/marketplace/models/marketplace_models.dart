@@ -756,7 +756,11 @@ class ProviderDashboardProfile {
     this.phone,
     this.description,
     this.reviewNote,
+    this.fieldNotes = const {},
     this.reviewedAt,
+    this.resubmittedAt,
+    this.resubmitCount = 0,
+    this.reopenedAt,
     this.logoUrl,
     this.coverUrl,
     this.address,
@@ -781,7 +785,19 @@ class ProviderDashboardProfile {
       phone: json['phone']?.toString(),
       description: json['description']?.toString(),
       reviewNote: json['reviewNote']?.toString(),
+      fieldNotes: {
+        for (final entry in (json['fieldNotes'] is List
+            ? json['fieldNotes'] as List
+            : const []))
+          if (entry is Map &&
+              entry['field'] != null &&
+              (entry['note']?.toString().trim().isNotEmpty ?? false))
+            entry['field'].toString(): entry['note'].toString().trim(),
+      },
       reviewedAt: _dateOrNull(json['reviewedAt']),
+      resubmittedAt: _dateOrNull(json['resubmittedAt']),
+      resubmitCount: _intOrZero(json['resubmitCount']),
+      reopenedAt: _dateOrNull(json['reopenedAt']),
       logoUrl: json['logoUrl']?.toString(),
       coverUrl: json['coverUrl']?.toString(),
       address: json['address']?.toString(),
@@ -801,8 +817,22 @@ class ProviderDashboardProfile {
   final String? primaryCategoryId;
   final String? phone;
   final String? description;
+
+  /// The review team's note about the whole profile, from its latest
+  /// decision (the refusal's reason stays it after reopening, B-02).
   final String? reviewNote;
+
+  /// The team's note on each field to fix, by field (B-01):
+  /// `BUSINESS_NAME`, `CATEGORY`, `CITY`, `DESCRIPTION`, `SERVICE`.
+  final Map<String, String> fieldNotes;
   final DateTime? reviewedAt;
+
+  /// When he last sent the profile back after changes, and how often (B-01).
+  final DateTime? resubmittedAt;
+  final int resubmitCount;
+
+  /// When he last reopened a refused profile (B-02).
+  final DateTime? reopenedAt;
   final String? logoUrl;
   final String? coverUrl;
 
@@ -863,6 +893,50 @@ class ProviderDashboardSummary {
 }
 
 /// A listing the admin made under the account's phone (V1 checklist 4.18).
+/// The account's claim of a listing the back office made (B-12): it waits
+/// for the review team, which hands the listing over or says why not.
+class ProviderClaim {
+  const ProviderClaim({
+    required this.id,
+    required this.status,
+    required this.providerId,
+    required this.businessName,
+    this.note,
+    this.createdAt,
+    this.decidedAt,
+  });
+
+  factory ProviderClaim.fromJson(Map<String, dynamic> json) {
+    final provider = json['provider'] is Map
+        ? Map<String, dynamic>.from(json['provider'] as Map)
+        : const <String, dynamic>{};
+    return ProviderClaim(
+      id: json['id'].toString(),
+      status: json['status']?.toString() ?? 'PENDING',
+      providerId: provider['id']?.toString() ?? '',
+      businessName: provider['businessName']?.toString() ?? '',
+      note: json['note']?.toString(),
+      createdAt: _dateOrNull(json['createdAt']),
+      decidedAt: _dateOrNull(json['decidedAt']),
+    );
+  }
+
+  final String id;
+
+  /// `PENDING`, `APPROVED` or `REJECTED`.
+  final String status;
+  final String providerId;
+  final String businessName;
+
+  /// Why the team refused the claim.
+  final String? note;
+  final DateTime? createdAt;
+  final DateTime? decidedAt;
+
+  bool get isPending => status.toUpperCase() == 'PENDING';
+  bool get isRejected => status.toUpperCase() == 'REJECTED';
+}
+
 class ProviderClaimableListing {
   const ProviderClaimableListing({required this.id, required this.businessName});
 

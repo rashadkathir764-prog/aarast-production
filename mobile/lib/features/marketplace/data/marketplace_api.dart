@@ -669,11 +669,51 @@ class ProviderDashboardApi {
         : null;
   }
 
-  Future<ProviderDashboardProfile> claimListing(String providerId) async {
+  /// Asks the review team to hand this listing over (B-12); the claim
+  /// waits until they decide.
+  Future<ProviderClaim> claimListing(String providerId) async {
     final json = await _apiClient.postJson(
       '/api/v1/provider/claim/$providerId',
       {},
     );
+    return ProviderClaim.fromJson(json);
+  }
+
+  /// The account's latest claim of a listing; null when it made none.
+  Future<ProviderClaim?> getClaim() async {
+    final json = await _apiClient.getJson('/api/v1/provider/me/claim');
+    final claim = json['claim'];
+    return claim is Map
+        ? ProviderClaim.fromJson(Map<String, dynamic>.from(claim))
+        : null;
+  }
+
+  /// «أرسلت التعديل» (B-01): the fixed profile goes back to review.
+  Future<ProviderDashboardProfile> resubmitApplication() async {
+    final json = await _apiClient.postJson(
+      '/api/v1/provider/me/application/resubmit',
+      {},
+    );
+    return ProviderDashboardProfile.fromJson(json);
+  }
+
+  /// «صلّح وقدّم من جديد» (B-02): a refused profile opens for fixing.
+  Future<ProviderDashboardProfile> reopenApplication() async {
+    final json = await _apiClient.postJson(
+      '/api/v1/provider/me/application/reopen',
+      {},
+    );
+    return ProviderDashboardProfile.fromJson(json);
+  }
+
+  /// Moves the profile to another category before approval (B-01); its
+  /// joining service follows.
+  Future<ProviderDashboardProfile> updateProfileCategory(
+    String categoryId,
+  ) async {
+    final json = await _apiClient.patchJson('/api/v1/provider/me/profile', {
+      'primaryCategoryId': categoryId,
+    });
     return ProviderDashboardProfile.fromJson(json);
   }
 
@@ -782,11 +822,16 @@ class ProviderDashboardApi {
         .toList();
   }
 
+  /// The application with the service the provider joins with and its
+  /// price (B-10): the server refuses it without one.
   Future<ProviderDashboardProfile> applyProvider({
     required String businessName,
     required String phone,
     required String cityId,
-    List<String> categoryIds = const [],
+    required List<String> categoryIds,
+    required String serviceTitle,
+    required String servicePrice,
+    String? serviceDescription,
     String? description,
   }) async {
     final normalizedPhone = _normalizePhone(phone);
@@ -794,9 +839,19 @@ class ProviderDashboardApi {
       'businessName': businessName.trim(),
       'phone': normalizedPhone,
       'cityId': cityId.trim(),
-      if (categoryIds.isNotEmpty) 'categoryIds': categoryIds,
+      'categoryIds': categoryIds,
       if (description != null && description.trim().isNotEmpty)
         'description': description.trim(),
+      'services': [
+        {
+          'title': serviceTitle.trim(),
+          'basePrice': servicePrice.trim(),
+          'currency': 'YER',
+          if (serviceDescription != null &&
+              serviceDescription.trim().isNotEmpty)
+            'description': serviceDescription.trim(),
+        },
+      ],
     });
     return ProviderDashboardProfile.fromJson(json);
   }

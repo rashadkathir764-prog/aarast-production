@@ -3,39 +3,70 @@ import 'package:lucide_icons/lucide_icons.dart';
 
 import '../../../core/experience_v3/aarast_v3.dart';
 import '../../../core/widgets/aarast_ui.dart';
-import '../../marketplace/marketplace_api.dart' show ProviderDashboardProfile;
+import '../../marketplace/marketplace_api.dart'
+    show MarketplaceService, ProviderDashboardProfile;
 import '../widgets/provider_join_parts.dart';
+import '../widgets/provider_request_parts.dart' show providerMoneyLabel;
 
-/// p09 «يحتاج تعديل بسيط»: the review team asked for changes.
+/// p09 «يحتاج تعديل بسيط»: the review team asked for changes (B-01).
 ///
-/// The server keeps one free-text note (`reviewNote`), not a note per field,
-/// and has no way for the provider to send the profile back to review (F3,
-/// B-01). So the note shows once, above the fields he can edit, and the
-/// main action is support, which tells the team he is done. Nothing says
-/// «أرسلت التعديل» or «نراجعه أول بأول». The drawn photo and package fields
-/// need approval first (F2, B-10), so only the profile's own fields show.
+/// Each note sits under the field it is about, with the coral border the
+/// design draws; a note about the whole profile (and a reopened refusal's
+/// reason, B-02) shows above the fields. The fields are the ones he can fix
+/// before approval: the name, the category, the city, the bio and the
+/// service he joined with (B-10). The drawn photo and package fields wait
+/// for approval (D41). «أرسلت التعديل» sends the profile back to review. The
+/// back arrow stays «حسابي» (D42): this state has nowhere to go back to.
 class ProviderChangesScreen extends StatelessWidget {
   const ProviderChangesScreen({
     required this.profile,
+    required this.service,
+    required this.submitting,
     required this.onRefresh,
     required this.onEdit,
-    required this.onSupport,
+    required this.onPickCategory,
+    required this.onEditService,
+    required this.onResubmit,
     required this.onAccount,
+    this.errorMessage,
     super.key,
   });
 
   final ProviderDashboardProfile profile;
+
+  /// The service he joined with; null when the profile has none yet.
+  final MarketplaceService? service;
+  final bool submitting;
+  final String? errorMessage;
   final Future<void> Function() onRefresh;
   final VoidCallback onEdit;
-  final VoidCallback onSupport;
+  final VoidCallback onPickCategory;
+  final VoidCallback onEditService;
+  final VoidCallback onResubmit;
   final VoidCallback onAccount;
+
+  /// «ملفك قريب. صلّح الملاحظتين تحت وأرسله، ونراجعه أول بأول.»
+  static String leadLine(int fieldNotes, {required bool general}) {
+    final what = switch (fieldNotes) {
+      0 when general => 'صلّح اللي في الملاحظة',
+      0 => 'صلّح بياناته',
+      1 => 'صلّح الملاحظة تحت',
+      2 => 'صلّح الملاحظتين تحت',
+      _ => 'صلّح الملاحظات تحت',
+    };
+    return 'ملفك قريب. $what وأرسله، ونراجعه أول بأول.';
+  }
 
   @override
   Widget build(BuildContext context) {
     final note = profile.reviewNote?.trim() ?? '';
+    final notes = profile.fieldNotes;
     final city = profile.city?.nameAr.trim() ?? '';
+    final category = profile.primaryCategory?.nameAr.trim() ?? '';
     final about = profile.description?.trim() ?? '';
+    final service = this.service;
     final notedAt = profile.reviewedAt;
+    final error = errorMessage;
     return AarastScreenFrame(
       maxWidth: 520,
       backgroundColor: AarastV3Color.canvas,
@@ -74,9 +105,7 @@ class ProviderChangesScreen extends StatelessWidget {
                     icon: LucideIcons.clipboardCheck,
                     color: AarastV3Color.brandAccentStrong,
                     soft: AarastV3Color.brandAccentSoft,
-                    text: note.isEmpty
-                        ? 'ملفك قريب. صلّح بياناته، وبعدها كلّم الدعم يراجعونه.'
-                        : 'ملفك قريب. صلّح الملاحظة تحت، وبعدها كلّم الدعم يراجعونه.',
+                    text: leadLine(notes.length, general: note.isNotEmpty),
                   ),
                   if (note.isNotEmpty) ...[
                     const SizedBox(height: 14),
@@ -93,36 +122,72 @@ class ProviderChangesScreen extends StatelessWidget {
                     key: const Key('provider-changes-name'),
                     label: 'اسم النشاط',
                     value: profile.businessName.trim(),
+                    note: notes['BUSINESS_NAME'],
                     onTap: onEdit,
                   ),
-                  if (city.isNotEmpty) ...[
-                    const SizedBox(height: 10),
-                    JourneyPickerField(
-                      key: const Key('provider-changes-city'),
-                      label: 'المدينة',
-                      value: city,
-                      onTap: onEdit,
-                    ),
-                  ],
-                  if (about.isNotEmpty) ...[
+                  const SizedBox(height: 10),
+                  JourneyPickerField(
+                    key: const Key('provider-changes-category'),
+                    label: 'القسم',
+                    value: category,
+                    note: notes['CATEGORY'],
+                    onTap: onPickCategory,
+                  ),
+                  const SizedBox(height: 10),
+                  JourneyPickerField(
+                    key: const Key('provider-changes-city'),
+                    label: 'المدينة',
+                    value: city,
+                    note: notes['CITY'],
+                    onTap: onEdit,
+                  ),
+                  if (about.isNotEmpty || notes['DESCRIPTION'] != null) ...[
                     const SizedBox(height: 10),
                     JourneyPickerField(
                       key: const Key('provider-changes-about'),
                       label: 'نبذة النشاط',
                       value: about,
+                      placeholder: 'اكتب نبذة عن نشاطك',
+                      note: notes['DESCRIPTION'],
                       onTap: onEdit,
                     ),
                   ],
-                  if (note.isNotEmpty) ...[
+                  const SizedBox(height: 10),
+                  JourneyPickerField(
+                    key: const Key('provider-changes-service'),
+                    label: service == null
+                        ? 'خدمتك وسعرها'
+                        : 'خدمة «${service.title.trim()}»',
+                    value: service == null
+                        ? null
+                        : providerMoneyLabel(service.basePrice, service.currency),
+                    placeholder: 'أضف خدمة بسعرها',
+                    helper: service?.description?.trim().isNotEmpty == true
+                        ? service!.description!.trim()
+                        : null,
+                    note: notes['SERVICE'],
+                    onTap: onEditService,
+                  ),
+                  if (note.isNotEmpty || notes.isNotEmpty) ...[
                     const SizedBox(height: 10),
                     Text(
                       notedAt == null
-                          ? 'الملاحظة من فريق المراجعة'
-                          : 'الملاحظة من فريق المراجعة · ${providerDayLabel(notedAt)}',
+                          ? 'الملاحظات من فريق المراجعة'
+                          : 'الملاحظات من فريق المراجعة · ${providerDayLabel(notedAt)}',
                       style: JourneyType.of(
                         JourneyType.small,
                         color: AarastV3Color.textMuted,
                       ),
+                    ),
+                  ],
+                  if (error != null) ...[
+                    const SizedBox(height: 12),
+                    JourneyNote(
+                      key: const Key('provider-changes-error'),
+                      text: error,
+                      icon: LucideIcons.alertCircle,
+                      color: AarastV3Color.danger,
+                      soft: AarastV3Color.dangerSoft,
                     ),
                   ],
                 ],
@@ -132,12 +197,13 @@ class ProviderChangesScreen extends StatelessWidget {
           Padding(
             padding: const EdgeInsets.fromLTRB(20, 8, 20, 16),
             child: JourneyButton(
-              key: const Key('provider-changes-support'),
-              label: 'تكلّم مع الدعم',
-              icon: LucideIcons.messageCircle,
+              key: const Key('provider-changes-resubmit'),
+              label: 'أرسلت التعديل',
+              icon: LucideIcons.send,
               expand: true,
               large: true,
-              onPressed: onSupport,
+              loading: submitting,
+              onPressed: onResubmit,
             ),
           ),
         ],

@@ -56,7 +56,11 @@ const _loc = WeddingLocationDraft(
 
 // ---------------------------------------------------------------- data
 
-ProviderDashboardProfile _profile(String status, {String? note}) =>
+ProviderDashboardProfile _profile(
+  String status, {
+  String? note,
+  Map<String, String> fieldNotes = const {},
+}) =>
     ProviderDashboardProfile(
       id: 'provider-1',
       businessName: 'استوديو لحظة',
@@ -70,6 +74,7 @@ ProviderDashboardProfile _profile(String status, {String? note}) =>
       phone: '+967773210455',
       description: 'تصوير أعراس الرجال والنساء في صنعاء. 4 فرق.',
       reviewNote: note,
+      fieldNotes: fieldNotes,
     );
 
 MarketplaceService _service(
@@ -215,16 +220,33 @@ class _DashApi extends ProviderDashboardApi {
   _DashApi({
     this.status = 'ACTIVE',
     this.note,
+    this.fieldNotes = const {},
     this.hasProfile = true,
     this.empty = false,
     this.claimable = false,
+    this.claimPending = false,
   }) : super(ApiClient(tokenProvider: () async => null));
 
   final String status;
   final String? note;
+  final Map<String, String> fieldNotes;
   final bool hasProfile;
   final bool empty;
   final bool claimable;
+
+  /// A claim of the listing waits for the review team (B-12).
+  final bool claimPending;
+
+  @override
+  Future<ProviderClaim?> getClaim() async => claimPending
+      ? ProviderClaim(
+          id: 'claim-1',
+          status: 'PENDING',
+          providerId: 'listing-1',
+          businessName: 'استوديو لحظة',
+          createdAt: DateTime(2026, 10, 24, 10),
+        )
+      : null;
 
   @override
   Future<ProviderClaimableListing?> getClaimableListing() async => claimable
@@ -239,7 +261,7 @@ class _DashApi extends ProviderDashboardApi {
     if (!hasProfile) {
       throw const ApiException('Provider profile not found', statusCode: 404);
     }
-    return _profile(status, note: note);
+    return _profile(status, note: note, fieldNotes: fieldNotes);
   }
 
   @override
@@ -578,6 +600,49 @@ void main() {
     );
   });
 
+  // p06 «خدمتك وسعرها» (B-10, D41): the joining's service step.
+  testWidgets('apply service step', (tester) async {
+    await _shot(
+      tester,
+      'v02b_apply_service',
+      const ProviderApplyScreen(),
+      await _session(_DashApi(hasProfile: false)),
+      h: 1100,
+      act: () async {
+        await tester.enterText(
+          find.byKey(const Key('provider-apply-name')).first,
+          'استوديو لحظة',
+        );
+        Future<void> pick(String field, String option) async {
+          await tester.tap(find.byKey(Key(field)));
+          await tester.pumpAndSettle();
+          await tester.tap(find.byKey(ValueKey(option)));
+          await tester.pumpAndSettle();
+        }
+
+        await pick('provider-apply-category', 'provider-apply-option-cat-photo');
+        await tester.tap(find.byKey(const ValueKey('provider-apply-next')));
+        await tester.pumpAndSettle();
+        await pick('provider-apply-city', 'provider-apply-option-city-sanaa');
+        await tester.tap(find.byKey(const ValueKey('provider-apply-next')));
+        await tester.pumpAndSettle();
+        await tester.enterText(
+          find.byKey(const Key('provider-apply-service')).first,
+          'صور وفيديو',
+        );
+        await tester.enterText(
+          find.byKey(const Key('provider-apply-price')).first,
+          '550000',
+        );
+        await tester.enterText(
+          find.byKey(const Key('provider-apply-service-about')).first,
+          'الزفاف · فيلم 10 دقايق',
+        );
+        await tester.pump(const Duration(seconds: 1));
+      },
+    );
+  });
+
   testWidgets('claim listing', (tester) async {
     await _shot(
       tester,
@@ -587,22 +652,51 @@ void main() {
     );
   });
 
-  for (final (name, status, note) in [
-    ('v04_pending', 'PENDING', null),
+  // p08 for a claim (B-12): waiting for the review team.
+  testWidgets('claim waiting', (tester) async {
+    await _shot(
+      tester,
+      'v03b_claim_pending',
+      const ProviderApplyScreen(),
+      await _session(
+        _DashApi(hasProfile: false, claimable: true, claimPending: true),
+      ),
+    );
+  });
+
+  for (final (name, status, note, fieldNotes) in [
+    ('v04_pending', 'PENDING', null, const <String, String>{}),
+    // p09 as drawn: a note on two fields (B-01).
     (
       'v05_needs_changes',
       'NEEDS_CHANGES',
-      'صورتين فيهن وجوه نساء واضحة. شيلهن.',
+      null,
+      const {
+        'DESCRIPTION': 'اكتب المناطق اللي تغطيها في صنعاء.',
+        'SERVICE': 'اكتب ايش تشمل: كم صورة، ومدة الفيلم، والألبوم.',
+      },
     ),
-    ('v06_rejected', 'REJECTED', 'الصور مأخوذة من حساب ثاني على إنستغرام.'),
-    ('v07_suspended', 'SUSPENDED', '3 بلاغات عن تأخير تسليم الصور.'),
+    (
+      'v06_rejected',
+      'REJECTED',
+      'الصور مأخوذة من حساب ثاني على إنستغرام.',
+      const <String, String>{},
+    ),
+    (
+      'v07_suspended',
+      'SUSPENDED',
+      '3 بلاغات عن تأخير تسليم الصور.',
+      const <String, String>{},
+    ),
   ]) {
     testWidgets('portal $status', (tester) async {
       await _shot(
         tester,
         name,
         const ProviderPortalScreen(),
-        await _session(_DashApi(status: status, note: note)),
+        await _session(
+          _DashApi(status: status, note: note, fieldNotes: fieldNotes),
+        ),
         h: 1100,
       );
     });

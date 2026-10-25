@@ -7,6 +7,7 @@ import 'package:aarast_mobile/features/chat/models/chat_models.dart';
 import 'package:aarast_mobile/features/chat/providers/chat_provider.dart';
 import 'package:aarast_mobile/features/marketplace/data/marketplace_api.dart';
 import 'package:aarast_mobile/features/marketplace/models/marketplace_models.dart';
+import 'package:aarast_mobile/features/marketplace/providers/marketplace_provider.dart';
 import 'package:aarast_mobile/features/provider_portal/data/provider_approval_ledger.dart';
 import 'package:aarast_mobile/features/provider_portal/providers/provider_dashboard_provider.dart';
 import 'package:aarast_mobile/features/provider_portal/screens/provider_approved_screen.dart';
@@ -168,37 +169,44 @@ void main() {
   });
 
   group('p09 needs changes', () {
-    testWidgets('the team note once, his fields to edit, and support', (
-      tester,
-    ) async {
+    testWidgets('each note under its field, his fields to fix, and «أرسلت '
+        'التعديل» back to review (B-01)', (tester) async {
       final now = DateTime.now();
       final api = _Api(
         status: 'NEEDS_CHANGES',
-        reviewNote: 'اكتب ايش تشمل باقتك: كم صورة، ومدة الفيلم، والألبوم.',
+        fieldNotes: const {
+          'BUSINESS_NAME': 'اكتب الاسم اللي يعرفك فيه الناس.',
+          'SERVICE': 'اكتب ايش تشمل: كم صورة، ومدة الفيلم، والألبوم.',
+        },
         reviewedAt: DateTime(now.year, now.month, now.day - 1, 9),
         description: 'تصوير أعراس رجال ونساء.',
+        service: _joiningService(),
       );
       await _pumpPortal(tester, api);
 
       expect(find.byType(ProviderChangesScreen), findsOneWidget);
       expect(find.text('يحتاج تعديل بسيط'), findsOneWidget);
       expect(
-        find.text('ملفك قريب. صلّح الملاحظة تحت، وبعدها كلّم الدعم يراجعونه.'),
+        find.text('ملفك قريب. صلّح الملاحظتين تحت وأرسله، ونراجعه أول بأول.'),
         findsOneWidget,
       );
-      expect(
-        find.text('اكتب ايش تشمل باقتك: كم صورة، ومدة الفيلم، والألبوم.'),
-        findsOneWidget,
-      );
+      expect(find.byKey(const Key('provider-changes-note')), findsNothing);
       expect(find.text('اسم النشاط'), findsOneWidget);
       expect(find.text('استوديو ضوء صنعاء'), findsOneWidget);
+      expect(find.text('اكتب الاسم اللي يعرفك فيه الناس.'), findsOneWidget);
+      expect(find.text('القسم'), findsOneWidget);
+      expect(find.text('التصوير'), findsOneWidget);
       expect(find.text('المدينة'), findsOneWidget);
       expect(find.text('صنعاء'), findsOneWidget);
       expect(find.text('نبذة النشاط'), findsOneWidget);
-      expect(find.text('الملاحظة من فريق المراجعة · أمس'), findsOneWidget);
-      // No resubmit on the server (F3, B-01): nothing promises one.
-      expect(find.text('أرسلت التعديل'), findsNothing);
-      expect(find.textContaining('أول بأول'), findsNothing);
+      expect(find.text('خدمة «صور وفيديو»'), findsOneWidget);
+      expect(find.text('550,000 ر.ي'), findsOneWidget);
+      expect(
+        find.text('اكتب ايش تشمل: كم صورة، ومدة الفيلم، والألبوم.'),
+        findsOneWidget,
+      );
+      expect(find.text('الملاحظات من فريق المراجعة · أمس'), findsOneWidget);
+      expect(find.text('أرسلت التعديل'), findsOneWidget);
       // No tabs while changes are asked.
       expect(find.text('الطلبات'), findsNothing);
 
@@ -208,9 +216,85 @@ void main() {
       await tester.pageBack();
       await tester.pumpAndSettle();
 
-      await tester.tap(find.byKey(const Key('provider-changes-support')));
+      await tester.tap(find.byKey(const Key('provider-changes-resubmit')));
       await tester.pumpAndSettle();
-      expect(find.text('صفحة الدعم'), findsOneWidget);
+      expect(api.resubmits, 1);
+      // Back to review: p08 shows, and the confirmation says so.
+      expect(find.byType(ProviderPendingScreen), findsOneWidget);
+      expect(find.text('وصلنا تعديلك. نراجعه ونبلغك هنا.'), findsOneWidget);
+    });
+
+    testWidgets('the service he joined with is fixed in a sheet, with its note', (
+      tester,
+    ) async {
+      final api = _Api(
+        status: 'NEEDS_CHANGES',
+        fieldNotes: const {'SERVICE': 'حدد سعر الليلة.'},
+        service: _joiningService(),
+      );
+      await _pumpPortal(tester, api);
+
+      await tester.tap(find.byKey(const Key('provider-changes-service')));
+      await tester.pumpAndSettle();
+      expect(find.text('خدمتك وسعرها'), findsOneWidget);
+      expect(find.text('حدد سعر الليلة.'), findsNWidgets(2));
+      await tester.enterText(
+        find.byKey(const Key('provider-service-sheet-price')).first,
+        '600000',
+      );
+      await tester.tap(find.byKey(const Key('provider-service-sheet-save')));
+      await tester.pumpAndSettle();
+      expect(api.serviceUpdates, [('صور وفيديو', '600000')]);
+      expect(find.text('600,000 ر.ي'), findsOneWidget);
+    });
+
+    testWidgets('a refusal reopened keeps its reason as the note (B-02)', (
+      tester,
+    ) async {
+      await _pumpPortal(
+        tester,
+        _Api(status: 'NEEDS_CHANGES', reviewNote: 'وضّحي الخدمة.'),
+      );
+      expect(find.byKey(const Key('provider-changes-note')), findsOneWidget);
+      expect(find.text('وضّحي الخدمة.'), findsOneWidget);
+      expect(
+        find.text('ملفك قريب. صلّح اللي في الملاحظة وأرسله، ونراجعه أول بأول.'),
+        findsOneWidget,
+      );
+      // A profile from before B-10 adds its service here.
+      expect(find.text('أضف خدمة بسعرها'), findsOneWidget);
+    });
+
+    testWidgets('the category is picked again before approval (B-01)', (
+      tester,
+    ) async {
+      final api = _Api(
+        status: 'NEEDS_CHANGES',
+        fieldNotes: const {'CATEGORY': 'نشاطك مزمار مو تصوير.'},
+      );
+      await _pumpPortal(tester, api);
+      expect(find.text('نشاطك مزمار مو تصوير.'), findsOneWidget);
+      await tester.tap(find.byKey(const Key('provider-changes-category')));
+      await tester.pumpAndSettle();
+      await tester.tap(
+        find.byKey(
+          const ValueKey('provider-changes-category-option-cat-mizmar'),
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(api.categoryMoves, ['cat-mizmar']);
+    });
+
+    testWidgets('a refused resubmit stays and says why', (tester) async {
+      final api = _Api(status: 'NEEDS_CHANGES', failResubmit: true);
+      await _pumpPortal(tester, api);
+      await tester.tap(find.byKey(const Key('provider-changes-resubmit')));
+      await tester.pumpAndSettle();
+      expect(find.byType(ProviderChangesScreen), findsOneWidget);
+      expect(
+        find.text('أضف خدمة وحدة بسعرها قبل ما ترسل ملفك.'),
+        findsOneWidget,
+      );
     });
 
     testWidgets('without a note it asks him to fix his profile and pulls '
@@ -220,11 +304,11 @@ void main() {
 
       expect(find.byKey(const Key('provider-changes-note')), findsNothing);
       expect(
-        find.text('ملفك قريب. صلّح بياناته، وبعدها كلّم الدعم يراجعونه.'),
+        find.text('ملفك قريب. صلّح بياناته وأرسله، ونراجعه أول بأول.'),
         findsOneWidget,
       );
       expect(find.byKey(const Key('provider-changes-about')), findsNothing);
-      expect(find.textContaining('الملاحظة من فريق'), findsNothing);
+      expect(find.textContaining('الملاحظات من فريق'), findsNothing);
 
       final loads = api.profileLoads;
       await tester.fling(
@@ -242,9 +326,8 @@ void main() {
   });
 
   group('p11 rejected', () {
-    testWidgets('the reason and support, and no way back the server lacks', (
-      tester,
-    ) async {
+    testWidgets('the reason, support, and «صلّح وقدّم من جديد» reopens it '
+        'for fixing (B-02)', (tester) async {
       final api = _Api(
         status: 'REJECTED',
         reviewNote: 'الصور مأخوذة من حساب ثاني. نحتاج صور شغلك أنت.',
@@ -253,7 +336,10 @@ void main() {
 
       expect(find.byType(ProviderRejectedScreen), findsOneWidget);
       expect(find.text('ما قدرنا نوافق الآن'), findsOneWidget);
-      expect(find.text('لو عندك سؤال عن القرار، كلّم الدعم.'), findsOneWidget);
+      expect(
+        find.text('مو نهاية الطريق. صلّح اللي تحت وقدّم من جديد.'),
+        findsOneWidget,
+      );
       expect(find.text('استوديو ضوء صنعاء'), findsOneWidget);
       expect(find.text('التصوير · صنعاء'), findsOneWidget);
       expect(find.text('السبب'), findsOneWidget);
@@ -261,11 +347,22 @@ void main() {
         find.text('الصور مأخوذة من حساب ثاني. نحتاج صور شغلك أنت.'),
         findsOneWidget,
       );
-      // A refused profile is read-only and cannot apply again (B-02).
-      expect(find.text('صلّح وقدّم من جديد'), findsNothing);
-      expect(find.textContaining('نهاية الطريق'), findsNothing);
       expect(find.text('الطلبات'), findsNothing);
+      expect(find.byKey(const Key('provider-rejected-support')), findsOneWidget);
 
+      await tester.tap(find.byKey(const Key('provider-rejected-reopen')));
+      await tester.pumpAndSettle();
+      expect(api.reopens, 1);
+      // Open for fixing, the reason as its note (p09).
+      expect(find.byType(ProviderChangesScreen), findsOneWidget);
+      expect(
+        find.text('الصور مأخوذة من حساب ثاني. نحتاج صور شغلك أنت.'),
+        findsOneWidget,
+      );
+    });
+
+    testWidgets('support stays one tap away', (tester) async {
+      await _pumpPortal(tester, _Api(status: 'REJECTED'));
       await tester.tap(find.byKey(const Key('provider-rejected-support')));
       await tester.pumpAndSettle();
       expect(find.text('صفحة الدعم'), findsOneWidget);
@@ -276,7 +373,7 @@ void main() {
       await _pumpPortal(tester, api);
       expect(find.byKey(const Key('provider-rejected-reason')), findsNothing);
 
-      // The team can still approve a refused profile: a pull reads it.
+      // The state changed meanwhile: a pull reads it.
       api.status = 'ACTIVE';
       await tester.fling(
         find.byType(RefreshIndicator),
@@ -448,12 +545,29 @@ Future<void> _pumpPortal(WidgetTester tester, _Api api, {String? seen}) async {
         ChangeNotifierProvider<ProviderDashboardProvider>(
           create: (_) => ProviderDashboardProvider(api),
         ),
+        ChangeNotifierProvider<ProviderMarketplaceProvider>(
+          create: (_) => _Market(),
+        ),
         ChangeNotifierProvider<ChatProvider>.value(value: chat),
       ],
       child: MaterialApp.router(theme: AppTheme.light(), routerConfig: router),
     ),
   );
   await tester.pumpAndSettle();
+}
+
+/// The categories p09's picker offers.
+class _Market extends ProviderMarketplaceProvider {
+  _Market() : super(MarketplaceApi(ApiClient(tokenProvider: () async => null)));
+
+  @override
+  List<ProviderCategory> get categories => const [
+    ProviderCategory(id: 'cat-photo', nameAr: 'التصوير'),
+    ProviderCategory(id: 'cat-mizmar', nameAr: 'المزمار'),
+  ];
+
+  @override
+  Future<void> loadReferenceData() async {}
 }
 
 class _IdleChat extends ChatProvider {
@@ -471,50 +585,125 @@ class _IdleChat extends ChatProvider {
   Future<void> initialize() async {}
 }
 
+/// «صور وفيديو» at 550,000: the service the provider joined with (B-10).
+MarketplaceService _joiningService({String price = '550000'}) =>
+    MarketplaceService.fromJson({
+      'id': 'service-1',
+      'providerId': 'provider-1',
+      'title': 'صور وفيديو',
+      'basePrice': price,
+      'currency': 'YER',
+      'isActive': true,
+      'isFeatured': false,
+    });
+
 class _Api extends ProviderDashboardApi {
   _Api({
     required this.status,
     this.createdAt,
     this.reviewNote,
+    this.fieldNotes = const {},
     this.reviewedAt,
     this.description,
+    this.service,
     this.bookings = const [],
     this.failBookings = false,
+    this.failResubmit = false,
   }) : super(ApiClient(tokenProvider: () async => null));
 
   String status;
   final String? description;
   final DateTime? createdAt;
-  final String? reviewNote;
+  String? reviewNote;
+  Map<String, String> fieldNotes;
   final DateTime? reviewedAt;
+  MarketplaceService? service;
   final List<MarketplaceBooking> bookings;
   final bool failBookings;
+  final bool failResubmit;
   int profileLoads = 0;
   int bookingLoads = 0;
+  int resubmits = 0;
+  int reopens = 0;
+  final serviceUpdates = <(String, String?)>[];
 
   @override
   Future<ProviderDashboardProfile> getProfile() async {
     profileLoads += 1;
-    return ProviderDashboardProfile.fromJson({
-      'id': 'provider-1',
-      'businessName': 'استوديو ضوء صنعاء',
-      'status': status,
-      'ratingAverage': '0',
-      'ratingCount': 0,
-      'cityId': 'city-sanaa',
-      'city': {'id': 'city-sanaa', 'nameAr': 'صنعاء'},
-      'primaryCategoryId': 'cat-photo',
-      'primaryCategory': {
-        'id': 'cat-photo',
-        'nameAr': 'التصوير',
-        'showForGroom': true,
-        'showForBride': true,
-      },
-      'reviewNote': reviewNote,
-      'description': description,
-      'reviewedAt': reviewedAt?.toIso8601String(),
-      'createdAt': createdAt?.toIso8601String(),
-    });
+    return _profile();
+  }
+
+  ProviderDashboardProfile _profile() => ProviderDashboardProfile.fromJson({
+    'id': 'provider-1',
+    'businessName': 'استوديو ضوء صنعاء',
+    'status': status,
+    'ratingAverage': '0',
+    'ratingCount': 0,
+    'cityId': 'city-sanaa',
+    'city': {'id': 'city-sanaa', 'nameAr': 'صنعاء'},
+    'primaryCategoryId': 'cat-photo',
+    'primaryCategory': {
+      'id': 'cat-photo',
+      'nameAr': 'التصوير',
+      'showForGroom': true,
+      'showForBride': true,
+    },
+    'reviewNote': reviewNote,
+    'fieldNotes': [
+      for (final entry in fieldNotes.entries)
+        {'field': entry.key, 'note': entry.value},
+    ],
+    'description': description,
+    'reviewedAt': reviewedAt?.toIso8601String(),
+    'createdAt': createdAt?.toIso8601String(),
+  });
+
+  @override
+  Future<ProviderDashboardProfile> resubmitApplication() async {
+    if (failResubmit) {
+      throw const ApiException(
+        'At least one service with its price is required before review',
+        statusCode: 422,
+        serverCode: 'PROVIDER_SERVICE_REQUIRED',
+      );
+    }
+    resubmits += 1;
+    status = 'PENDING';
+    fieldNotes = const {};
+    reviewNote = null;
+    return _profile();
+  }
+
+  final categoryMoves = <String>[];
+
+  @override
+  Future<ProviderDashboardProfile> updateProfileCategory(
+    String categoryId,
+  ) async {
+    categoryMoves.add(categoryId);
+    return _profile();
+  }
+
+  @override
+  Future<ProviderDashboardProfile> reopenApplication() async {
+    reopens += 1;
+    status = 'NEEDS_CHANGES';
+    return _profile();
+  }
+
+  @override
+  Future<MarketplaceService> updateService({
+    required String serviceId,
+    String? title,
+    String? description,
+    String? basePrice,
+    String? priceUnit,
+    String? currency,
+    bool? isActive,
+  }) async {
+    serviceUpdates.add((title ?? '', basePrice));
+    service = _joiningService(price: basePrice ?? '550000');
+    return service!;
   }
 
   @override
@@ -522,7 +711,8 @@ class _Api extends ProviderDashboardApi {
       ProviderDashboardSummary.empty();
 
   @override
-  Future<List<MarketplaceService>> getServices() async => const [];
+  Future<List<MarketplaceService>> getServices() async =>
+      service == null ? const [] : [service!];
 
   @override
   Future<List<ProviderPackage>> getPackages() async => const [];

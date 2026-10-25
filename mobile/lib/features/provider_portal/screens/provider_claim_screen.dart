@@ -10,8 +10,8 @@ import '../widgets/provider_join_parts.dart';
 /// (B-12, D41); it becomes this account's once they approve, so «بعد ما
 /// تستلمه تعدّل كل شيء فيه» is true.
 ///
-/// The server's claim lookup gives the name only, so the category, the city,
-/// the waiting requests and the views the design draws are not shown (an
+/// The listing reads with its category and city («تصوير · صنعاء»); the
+/// waiting requests and the views the design draws are not shown (an
 /// unclaimed listing cannot receive requests). «مو أنا، أشتي ملف جديد» cannot
 /// work (apply refuses a phone with a listing, B-13), so the other way out
 /// is support. After a refused claim, the team's reason shows and the claim
@@ -23,12 +23,16 @@ class ProviderClaimScreen extends StatelessWidget {
     required this.onBack,
     required this.onClaim,
     required this.onSupport,
+    this.kind = '',
     this.errorMessage,
     this.refusal,
     super.key,
   });
 
   final String businessName;
+
+  /// The listing's category and city, under its name (p02).
+  final String kind;
   final bool submitting;
   final String? errorMessage;
 
@@ -99,7 +103,7 @@ class ProviderClaimScreen extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      ProviderIdentityRow(name: businessName),
+                      ProviderIdentityRow(name: businessName, kind: kind),
                       const SizedBox(height: 12),
                       const ProviderFactRow(
                         icon: LucideIcons.pencil,

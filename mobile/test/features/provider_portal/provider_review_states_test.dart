@@ -17,6 +17,7 @@ import 'package:aarast_mobile/features/provider_portal/screens/provider_portal_s
 import 'package:aarast_mobile/features/provider_portal/screens/provider_rejected_screen.dart';
 import 'package:aarast_mobile/features/provider_portal/screens/provider_suspended_screen.dart';
 import 'package:aarast_mobile/features/provider_portal/widgets/provider_join_parts.dart';
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
@@ -68,7 +69,13 @@ void main() {
       await tester.tapAt(const Offset(20, 20));
       await tester.pumpAndSettle();
 
+      // «عدّل طلبك» asks which part: his profile's details or his service.
       await tester.tap(find.byKey(const Key('provider-pending-edit')));
+      await tester.pumpAndSettle();
+      expect(find.text('ايش تبي تعدّل؟'), findsOneWidget);
+      await tester.tap(
+        find.byKey(const ValueKey('provider-pending-edit-option-profile')),
+      );
       await tester.pumpAndSettle();
       expect(find.text('تعديل الملف'), findsOneWidget);
       await tester.pageBack();
@@ -91,6 +98,41 @@ void main() {
       );
       await tester.pumpAndSettle();
       expect(api.profileLoads, greaterThan(loads));
+    });
+
+    testWidgets('after «أرسلت التعديل» it says when he last sent it, not when '
+        'he applied (finding 1)', (tester) async {
+      final now = DateTime.now();
+      final api = _Api(
+        status: 'PENDING',
+        createdAt: now.subtract(const Duration(days: 20)),
+        resubmittedAt: DateTime(now.year, now.month, now.day, 9),
+      );
+      await _pumpPortal(tester, api);
+      expect(find.text('أرسلته اليوم 9 الصبح. نبلغك هنا.'), findsOneWidget);
+    });
+
+    testWidgets('waiting for review he fixes the service he joined with from '
+        '«عدّل طلبك» (finding 14)', (tester) async {
+      final api = _Api(status: 'PENDING', service: _joiningService());
+      await _pumpPortal(tester, api);
+
+      await tester.tap(find.byKey(const Key('provider-pending-edit')));
+      await tester.pumpAndSettle();
+      expect(find.text('خدمة «صور وفيديو» وسعرها'), findsOneWidget);
+      await tester.tap(
+        find.byKey(const ValueKey('provider-pending-edit-option-service')),
+      );
+      await tester.pumpAndSettle();
+      expect(find.text('خدمتك وسعرها'), findsOneWidget);
+      await tester.enterText(
+        find.byKey(const Key('provider-service-sheet-price')).first,
+        '600000',
+      );
+      await tester.tap(find.byKey(const Key('provider-service-sheet-save')));
+      await tester.pumpAndSettle();
+      expect(api.serviceUpdates, [('صور وفيديو', '600000')]);
+      expect(find.byType(ProviderPendingScreen), findsOneWidget);
     });
   });
 
@@ -283,6 +325,91 @@ void main() {
       );
       await tester.pumpAndSettle();
       expect(api.categoryMoves, ['cat-mizmar']);
+    });
+
+    testWidgets('«أرسلت التعديل» names the notes he read; notes rewritten '
+        'meanwhile show with the reason it did not go (finding 7)', (
+      tester,
+    ) async {
+      final api = _Api(
+        status: 'NEEDS_CHANGES',
+        fieldNotes: const {'SERVICE': 'حدد سعر الليلة.'},
+        latestDecisionId: 'decision-read',
+        rewriteBeforeSend: const {'BUSINESS_NAME': 'الاسم اللي يعرفونك فيه.'},
+        service: _joiningService(),
+      );
+      await _pumpPortal(tester, api);
+
+      await tester.tap(find.byKey(const Key('provider-changes-resubmit')));
+      await tester.pumpAndSettle();
+      expect(api.resubmittedWith, ['decision-read']);
+      expect(api.resubmits, 0);
+      // Still p09, with the team's new notes and why the send did not go.
+      expect(find.byType(ProviderChangesScreen), findsOneWidget);
+      expect(find.text('الاسم اللي يعرفونك فيه.'), findsOneWidget);
+      expect(find.text('حدد سعر الليلة.'), findsNothing);
+      expect(
+        find.text(
+          'فريق المراجعة غيّر ملاحظاته قبل ما يوصلهم تعديلك. شوف الملاحظات الجديدة تحت، صلّحها وأرسل.',
+        ),
+        findsOneWidget,
+      );
+
+      await tester.tap(find.byKey(const Key('provider-changes-resubmit')));
+      await tester.pumpAndSettle();
+      expect(api.resubmittedWith, ['decision-read', 'decision-rewritten']);
+      expect(api.resubmits, 1);
+      expect(find.byType(ProviderPendingScreen), findsOneWidget);
+    });
+
+    testWidgets('a service the team switched off is replaced by a new one '
+        '(finding 8)', (tester) async {
+      final api = _Api(
+        status: 'NEEDS_CHANGES',
+        service: _joiningService(active: false),
+      );
+      await _pumpPortal(tester, api);
+
+      // The switched-off service is not his joining service.
+      expect(find.text('أضف خدمة بسعرها'), findsOneWidget);
+      await tester.tap(find.byKey(const Key('provider-changes-service')));
+      await tester.pumpAndSettle();
+      await tester.enterText(
+        find.byKey(const Key('provider-service-sheet-title')).first,
+        'تصوير الليلة',
+      );
+      await tester.enterText(
+        find.byKey(const Key('provider-service-sheet-price')).first,
+        '400000',
+      );
+      await tester.tap(find.byKey(const Key('provider-service-sheet-save')));
+      await tester.pumpAndSettle();
+      expect(api.serviceCreates, [('تصوير الليلة', '400000', 'YER')]);
+      expect(api.serviceUpdates, isEmpty);
+      expect(find.text('خدمة «تصوير الليلة»'), findsOneWidget);
+    });
+
+    testWidgets('a failed save stays in the service sheet, not under p09 '
+        '(finding 14)', (tester) async {
+      final api = _Api(
+        status: 'NEEDS_CHANGES',
+        service: _joiningService(),
+        failServiceSave: true,
+      );
+      await _pumpPortal(tester, api);
+
+      await tester.tap(find.byKey(const Key('provider-changes-service')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('provider-service-sheet-save')));
+      await tester.pumpAndSettle();
+      expect(
+        find.byKey(const Key('provider-service-sheet-error')),
+        findsOneWidget,
+      );
+      await tester.tapAt(const Offset(20, 20));
+      await tester.pumpAndSettle();
+      expect(find.byType(ProviderChangesScreen), findsOneWidget);
+      expect(find.byKey(const Key('provider-changes-error')), findsNothing);
     });
 
     testWidgets('a refused resubmit stays and says why', (tester) async {
@@ -586,16 +713,20 @@ class _IdleChat extends ChatProvider {
 }
 
 /// «صور وفيديو» at 550,000: the service the provider joined with (B-10).
-MarketplaceService _joiningService({String price = '550000'}) =>
-    MarketplaceService.fromJson({
-      'id': 'service-1',
-      'providerId': 'provider-1',
-      'title': 'صور وفيديو',
-      'basePrice': price,
-      'currency': 'YER',
-      'isActive': true,
-      'isFeatured': false,
-    });
+MarketplaceService _joiningService({
+  String price = '550000',
+  String title = 'صور وفيديو',
+  String id = 'service-1',
+  bool active = true,
+}) => MarketplaceService.fromJson({
+  'id': id,
+  'providerId': 'provider-1',
+  'title': title,
+  'basePrice': price,
+  'currency': 'YER',
+  'isActive': active,
+  'isFeatured': false,
+});
 
 class _Api extends ProviderDashboardApi {
   _Api({
@@ -609,13 +740,27 @@ class _Api extends ProviderDashboardApi {
     this.bookings = const [],
     this.failBookings = false,
     this.failResubmit = false,
+    this.resubmittedAt,
+    this.latestDecisionId,
+    this.rewriteBeforeSend,
+    this.failServiceSave = false,
   }) : super(ApiClient(tokenProvider: () async => null));
 
   String status;
   final String? description;
   final DateTime? createdAt;
+  final DateTime? resubmittedAt;
   String? reviewNote;
   Map<String, String> fieldNotes;
+
+  /// The decision whose notes the profile shows.
+  String? latestDecisionId;
+
+  /// Notes the team writes while he fixes, before his first send lands.
+  Map<String, String>? rewriteBeforeSend;
+  final bool failServiceSave;
+  final resubmittedWith = <String?>[];
+  final serviceCreates = <(String, String?, String?)>[];
   final DateTime? reviewedAt;
   MarketplaceService? service;
   final List<MarketplaceBooking> bookings;
@@ -654,12 +799,46 @@ class _Api extends ProviderDashboardApi {
         {'field': entry.key, 'note': entry.value},
     ],
     'description': description,
+    'latestDecision': latestDecisionId == null
+        ? null
+        : {'id': latestDecisionId, 'kind': 'CHANGES_REQUESTED'},
     'reviewedAt': reviewedAt?.toIso8601String(),
+    'resubmittedAt': resubmittedAt?.toIso8601String(),
     'createdAt': createdAt?.toIso8601String(),
   });
 
   @override
-  Future<ProviderDashboardProfile> resubmitApplication() async {
+  Future<ProviderDashboardProfile> resubmitApplication({
+    required String? latestDecisionId,
+  }) async {
+    resubmittedWith.add(latestDecisionId);
+    final rewrite = rewriteBeforeSend;
+    if (rewrite != null) {
+      // The team rewrote its notes before this send arrived (B-01).
+      rewriteBeforeSend = null;
+      fieldNotes = rewrite;
+      this.latestDecisionId = 'decision-rewritten';
+      // As the network boundary turns the server's refusal into words.
+      final request = RequestOptions(
+        path: '/api/v1/provider/me/application/resubmit',
+      );
+      throw ApiException.fromDio(
+        DioException(
+          requestOptions: request,
+          type: DioExceptionType.badResponse,
+          response: Response(
+            requestOptions: request,
+            statusCode: 409,
+            data: const {
+              'statusCode': 409,
+              'code': 'PROVIDER_REVIEW_CHANGED',
+              'message':
+                  'The review team changed its notes; read them before sending',
+            },
+          ),
+        ),
+      );
+    }
     if (failResubmit) {
       throw const ApiException(
         'At least one service with its price is required before review',
@@ -701,8 +880,30 @@ class _Api extends ProviderDashboardApi {
     String? currency,
     bool? isActive,
   }) async {
+    if (failServiceSave) {
+      throw const ApiException('offline', statusCode: 503);
+    }
     serviceUpdates.add((title ?? '', basePrice));
     service = _joiningService(price: basePrice ?? '550000');
+    return service!;
+  }
+
+  @override
+  Future<MarketplaceService> createService({
+    required String title,
+    required String categoryId,
+    String? description,
+    String? basePrice,
+    String? priceUnit,
+    String? currency,
+    String? cityId,
+  }) async {
+    serviceCreates.add((title, basePrice, currency));
+    service = _joiningService(
+      id: 'service-2',
+      title: title,
+      price: basePrice ?? '0',
+    );
     return service!;
   }
 

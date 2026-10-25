@@ -197,6 +197,8 @@ void main() {
       findsOneWidget,
     );
     expect(find.text('الفنان علي'), findsOneWidget);
+    // The kind line under the name, as p02 draws «تصوير · صنعاء» (finding 13).
+    expect(find.text('زفة · صنعاء'), findsOneWidget);
     expect(find.text('بعد ما تستلمه تعدّل كل شيء فيه'), findsOneWidget);
     // The lookup gives the name only: no requests, views or new profile.
     expect(find.textContaining('طلبين'), findsNothing);
@@ -592,10 +594,12 @@ class _JoinApi extends ProviderDashboardApi {
 
   @override
   Future<ProviderClaimableListing?> getClaimableListing() async => claimable
-      ? const ProviderClaimableListing(
-          id: 'listing-1',
-          businessName: 'الفنان علي',
-        )
+      ? ProviderClaimableListing.fromJson(const {
+          'id': 'listing-1',
+          'businessName': 'الفنان علي',
+          'city': {'id': 'city-sanaa', 'nameAr': 'صنعاء'},
+          'primaryCategory': {'id': 'cat-zaffa', 'nameAr': 'زفة'},
+        })
       : null;
 
   @override

@@ -187,9 +187,14 @@ class ProviderDashboardProvider extends ChangeNotifier
     }
   }
 
-  /// «أرسلت التعديل» (B-01): the fixed profile goes back to review.
+  /// «أرسلت التعديل» (B-01): the fixed profile goes back to review, naming
+  /// the decision whose notes he read. When the team rewrote its notes
+  /// meanwhile the server refuses it, the profile is read again, and the
+  /// new notes show with [errorMessage] saying so.
   Future<bool> resubmitApplication() => _lifecycleStep(
-    _api.resubmitApplication,
+    () => _api.resubmitApplication(
+      latestDecisionId: _profile?.latestDecisionId,
+    ),
     fallback: 'ما قدرنا نرسل التعديل. جرّب مرة ثانية.',
   );
 
@@ -222,14 +227,17 @@ class ProviderDashboardProvider extends ChangeNotifier
       await _loadJoiningServices();
       return true;
     } on ApiException catch (error) {
-      _errorCode = error.serverCode;
-      _errorMessage = switch (error.serverCode) {
+      final message = switch (error.serverCode) {
         'PROVIDER_SERVICE_REQUIRED' =>
           'أضف خدمة وحدة بسعرها قبل ما ترسل ملفك.',
         _ => marketplaceErrorMessage(error.message),
       };
-      // The state changed elsewhere (the team decided meanwhile): read it.
+      // The state changed elsewhere (the team decided, or rewrote its
+      // notes, meanwhile): read it, then say why; reading it clears the
+      // last message, so the reason is set after.
       if (error.statusCode == 409) await loadDashboard();
+      _errorCode = error.serverCode;
+      _errorMessage = message;
       return false;
     } catch (_) {
       _errorMessage = fallback;
@@ -240,10 +248,12 @@ class ProviderDashboardProvider extends ChangeNotifier
     }
   }
 
-  /// The service he joined with (B-10): the one service read before
-  /// approval; null when none was read (a profile from before B-10).
-  MarketplaceService? get joiningService =>
-      awaitingApproval ? _services.firstOrNull : null;
+  /// The service he joined with (B-10): the active one read before
+  /// approval; null when he has none (a profile from before B-10, or one
+  /// whose service the team switched off), so he adds a new one.
+  MarketplaceService? get joiningService => awaitingApproval
+      ? _services.where((service) => service.isActive).firstOrNull
+      : null;
 
   /// Fixes the service he joined with before approval, or adds it when the
   /// profile has none (it applied before B-10): its name, price and words

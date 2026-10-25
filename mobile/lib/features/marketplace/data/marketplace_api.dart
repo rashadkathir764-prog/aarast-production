@@ -688,11 +688,14 @@ class ProviderDashboardApi {
         : null;
   }
 
-  /// «أرسلت التعديل» (B-01): the fixed profile goes back to review.
-  Future<ProviderDashboardProfile> resubmitApplication() async {
+  /// «أرسلت التعديل» (B-01): the fixed profile goes back to review, naming
+  /// the review decision whose notes he read ([latestDecisionId]).
+  Future<ProviderDashboardProfile> resubmitApplication({
+    required String? latestDecisionId,
+  }) async {
     final json = await _apiClient.postJson(
       '/api/v1/provider/me/application/resubmit',
-      {},
+      {'latestDecisionId': latestDecisionId},
     );
     return ProviderDashboardProfile.fromJson(json);
   }

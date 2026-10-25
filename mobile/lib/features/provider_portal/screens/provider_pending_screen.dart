@@ -27,7 +27,8 @@ class ProviderPendingScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final sentAt = profile.createdAt;
+    // After «أرسلت التعديل» it is the latest send, not the application.
+    final sentAt = profile.sentForReviewAt;
     final kind = providerKindLine(
       category: profile.primaryCategory?.nameAr,
       city: profile.city?.nameAr,

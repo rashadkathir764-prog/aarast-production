@@ -757,6 +757,7 @@ class ProviderDashboardProfile {
     this.description,
     this.reviewNote,
     this.fieldNotes = const {},
+    this.latestDecisionId,
     this.reviewedAt,
     this.resubmittedAt,
     this.resubmitCount = 0,
@@ -794,6 +795,9 @@ class ProviderDashboardProfile {
               (entry['note']?.toString().trim().isNotEmpty ?? false))
             entry['field'].toString(): entry['note'].toString().trim(),
       },
+      latestDecisionId: json['latestDecision'] is Map
+          ? (json['latestDecision'] as Map)['id']?.toString()
+          : null,
       reviewedAt: _dateOrNull(json['reviewedAt']),
       resubmittedAt: _dateOrNull(json['resubmittedAt']),
       resubmitCount: _intOrZero(json['resubmitCount']),
@@ -825,11 +829,19 @@ class ProviderDashboardProfile {
   /// The team's note on each field to fix, by field (B-01):
   /// `BUSINESS_NAME`, `CATEGORY`, `CITY`, `DESCRIPTION`, `SERVICE`.
   final Map<String, String> fieldNotes;
+
+  /// The review decision whose notes he reads now; «أرسلت التعديل» names
+  /// it, and the server refuses the send once a newer one exists (B-01).
+  final String? latestDecisionId;
   final DateTime? reviewedAt;
 
   /// When he last sent the profile back after changes, and how often (B-01).
   final DateTime? resubmittedAt;
   final int resubmitCount;
+
+  /// When the profile last went to the review team: the latest «أرسلت
+  /// التعديل», or the application itself (p08 «أرسلته…»).
+  DateTime? get sentForReviewAt => resubmittedAt ?? createdAt;
 
   /// When he last reopened a refused profile (B-02).
   final DateTime? reopenedAt;
@@ -938,17 +950,30 @@ class ProviderClaim {
 }
 
 class ProviderClaimableListing {
-  const ProviderClaimableListing({required this.id, required this.businessName});
+  const ProviderClaimableListing({
+    required this.id,
+    required this.businessName,
+    this.categoryName,
+    this.cityName,
+  });
 
   factory ProviderClaimableListing.fromJson(Map<String, dynamic> json) {
+    String? nameOf(Object? value) =>
+        value is Map ? value['nameAr']?.toString() : null;
     return ProviderClaimableListing(
       id: json['id'].toString(),
       businessName: json['businessName']?.toString() ?? '',
+      categoryName: nameOf(json['primaryCategory']),
+      cityName: nameOf(json['city']),
     );
   }
 
   final String id;
   final String businessName;
+
+  /// The listing's category and city, p02's «تصوير · صنعاء».
+  final String? categoryName;
+  final String? cityName;
 }
 
 /// What customers did with the provider's listing (V1 checklist 4.19).

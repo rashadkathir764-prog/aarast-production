@@ -53,10 +53,16 @@ class _ProviderPortalScreenState extends State<ProviderPortalScreen> {
   bool? _welcome;
   String? _notedStatus;
 
+  /// Why p09's or p11's own last step failed (sending, reopening, the
+  /// category, a refresh). Each screen and sheet shows only its own error:
+  /// a failed save in the joining-service sheet stays in that sheet.
+  String? _stepError;
+
   void _noteStatus(String providerId, String status) {
     final key = '$providerId:$status';
     if (key == _notedStatus) return;
     _notedStatus = key;
+    _stepError = null;
     _welcome = status == 'ACTIVE' ? null : false;
     unawaited(_readWelcome(providerId, status, key));
   }
@@ -154,7 +160,7 @@ class _ProviderPortalScreenState extends State<ProviderPortalScreen> {
           return ProviderPendingScreen(
             profile: profile,
             onRefresh: dashboard.loadDashboard,
-            onEdit: () => context.push(AppRouter.providerProfileEdit),
+            onEdit: () => _editApplication(profile.fieldNotes),
             onAccount: () => context.push(AppRouter.more),
           );
         case 'NEEDS_CHANGES':
@@ -162,8 +168,8 @@ class _ProviderPortalScreenState extends State<ProviderPortalScreen> {
             profile: profile,
             service: dashboard.joiningService,
             submitting: dashboard.isSubmitting,
-            errorMessage: dashboard.errorMessage,
-            onRefresh: dashboard.loadDashboard,
+            errorMessage: _stepError,
+            onRefresh: _refreshStep,
             onEdit: () => context.push(AppRouter.providerProfileEdit),
             onPickCategory: () => _pickCategory(profile.primaryCategoryId),
             onEditService: () => _editJoiningService(profile.fieldNotes),
@@ -174,9 +180,9 @@ class _ProviderPortalScreenState extends State<ProviderPortalScreen> {
           return ProviderRejectedScreen(
             profile: profile,
             submitting: dashboard.isSubmitting,
-            errorMessage: dashboard.errorMessage,
-            onRefresh: dashboard.loadDashboard,
-            onReopen: dashboard.reopenApplication,
+            errorMessage: _stepError,
+            onRefresh: _refreshStep,
+            onReopen: _reopen,
             onSupport: () => context.push(AppRouter.support),
             onAccount: () => context.push(AppRouter.more),
           );
@@ -245,12 +251,77 @@ class _ProviderPortalScreenState extends State<ProviderPortalScreen> {
   }
 
   /// p09 «أرسلت التعديل» (B-01): back to review, which p08 then shows.
+  /// When the team rewrote its notes meanwhile, p09 shows the new ones with
+  /// the reason the send did not go.
   Future<void> _resubmit() async {
-    final sent = await context
-        .read<ProviderDashboardProvider>()
-        .resubmitApplication();
+    final sent = await _step(
+      (dashboard) => dashboard.resubmitApplication(),
+      fallback: 'ما قدرنا نرسل التعديل. جرّب مرة ثانية.',
+    );
     if (!mounted || !sent) return;
     AarastToast.showSuccess(context, 'وصلنا تعديلك. نراجعه ونبلغك هنا.');
+  }
+
+  /// p11 «صلّح وقدّم من جديد» (B-02).
+  void _reopen() {
+    unawaited(
+      _step(
+        (dashboard) => dashboard.reopenApplication(),
+        fallback: 'ما قدرنا نفتح ملفك للتعديل. جرّب مرة ثانية.',
+      ),
+    );
+  }
+
+  /// Runs one of p09's or p11's own steps; its failure is that screen's
+  /// error, read right after the step and kept here.
+  Future<bool> _step(
+    Future<bool> Function(ProviderDashboardProvider dashboard) run, {
+    required String fallback,
+  }) async {
+    final dashboard = context.read<ProviderDashboardProvider>();
+    setState(() => _stepError = null);
+    final done = await run(dashboard);
+    if (!mounted) return done;
+    setState(
+      () => _stepError = done ? null : dashboard.errorMessage ?? fallback,
+    );
+    return done;
+  }
+
+  /// Pulling p09 or p11 down reads the profile again; a failed read is
+  /// that screen's error.
+  Future<void> _refreshStep() async {
+    final dashboard = context.read<ProviderDashboardProvider>();
+    await dashboard.loadDashboard();
+    if (!mounted) return;
+    setState(() => _stepError = dashboard.errorMessage);
+  }
+
+  /// p08 «عدّل طلبك»: waiting for review he can fix his profile's details
+  /// and the service he joined with (B-10), so the button asks which.
+  Future<void> _editApplication(Map<String, String> notes) async {
+    final service = context.read<ProviderDashboardProvider>().joiningService;
+    final picked = await providerPickOption(
+      context,
+      title: 'ايش تبي تعدّل؟',
+      keyPrefix: 'provider-pending-edit-option',
+      options: [
+        ('profile', 'بيانات ملفك'),
+        (
+          'service',
+          service == null
+              ? 'خدمتك وسعرها'
+              : 'خدمة «${service.title.trim()}» وسعرها',
+        ),
+      ],
+      current: null,
+    );
+    if (!mounted || picked == null) return;
+    if (picked == 'service') {
+      await _editJoiningService(notes);
+    } else {
+      unawaited(context.push(AppRouter.providerProfileEdit));
+    }
   }
 
   /// p09's category: before approval he moves the profile, and the service
@@ -270,8 +341,9 @@ class _ProviderPortalScreenState extends State<ProviderPortalScreen> {
       current: current,
     );
     if (picked == null || picked == current || !mounted) return;
-    await context.read<ProviderDashboardProvider>().updateProfileCategory(
-      picked,
+    await _step(
+      (dashboard) => dashboard.updateProfileCategory(picked),
+      fallback: 'ما قدرنا نغيّر القسم. جرّب مرة ثانية.',
     );
   }
 

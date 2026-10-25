@@ -125,6 +125,10 @@ class _ProviderApplyScreenState extends State<ProviderApplyScreen> {
     if (listing != null) {
       return ProviderClaimScreen(
         businessName: listing.businessName,
+        kind: providerKindLine(
+          category: listing.categoryName,
+          city: listing.cityName,
+        ),
         submitting: dashboard.isSubmitting,
         errorMessage: _claimError,
         refusal: claim != null && claim.isRejected ? claim.note ?? '' : null,

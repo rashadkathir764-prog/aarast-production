@@ -853,6 +853,9 @@ class ApiException implements Exception {
       'PROVIDER_CATEGORY_LOCKED' =>
         'القسم يتغير قبل الموافقة بس. كلّم الدعم لو تحتاج تغيّره.',
       'PROVIDER_CLAIM_PENDING' => 'طلب استلام هذا الملف وصل الإدارة وينتظر.',
+      'PROVIDER_REVIEW_CHANGED' =>
+        'فريق المراجعة غيّر ملاحظاته قبل ما يوصلهم تعديلك. شوف الملاحظات الجديدة تحت، صلّحها وأرسل.',
+      'PROVIDER_JOINING_CURRENCY' => 'سعر خدمتك يكون بالريال اليمني.',
       // V1 checklist 4.10: private costs and tasks.
       'COST_PRIVACY_NOT_ALLOWED' =>
         'التكلفة الخاصة متاحة لصاحب الخطة والشريك فقط.',

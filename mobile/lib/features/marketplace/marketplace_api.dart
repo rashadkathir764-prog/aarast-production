@@ -25,6 +25,8 @@ export 'providers/marketplace_provider.dart'
         providerReferenceDataErrorMessage;
 export 'screens/booking_moment_screen.dart' show BookingMomentScreen;
 export 'screens/favorite_providers_screen.dart' show FavoriteProvidersScreen;
+export 'screens/participant_providers_screen.dart'
+    show ParticipantProvidersScreen;
 export 'screens/plan_bookings_screen.dart' show PlanBookingsScreen;
 export 'screens/provider_details_screen.dart' show ProviderDetailsScreen;
 export 'screens/provider_marketplace_screen.dart'

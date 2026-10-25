@@ -112,84 +112,17 @@ class _GuestSummaryCard extends StatelessWidget {
             semanticLabel:
                 'كم بيحضر؟ ${summary.confirmed} ${words.confirmed} من $total',
             borderRadius: BorderRadius.circular(12),
-            child: _figures(total, words),
+            child: GuestSummaryFigures(
+              words: words,
+              total: total,
+              confirmed: summary.confirmed,
+              pending: summary.pending,
+              expectedSeats: summary.expectedSeatsCount,
+            ),
           ),
           if (action != null) ...[const SizedBox(height: 14), action!],
         ],
       ),
-    );
-  }
-
-  Widget _figures(int total, GuestWords words) {
-    // e01's grey is everyone who neither confirmed nor is still waited on.
-    final rest = total - summary.confirmed - summary.pending;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        Row(
-          crossAxisAlignment: CrossAxisAlignment.end,
-          children: [
-            Text(
-              '${summary.confirmed}',
-              style: JourneyType.of(
-                JourneyType.count,
-                weight: JourneyType.bold,
-                height: 1,
-              ),
-            ),
-            const SizedBox(width: 8),
-            Expanded(
-              child: Text(
-                '${words.confirmed} من $total',
-                style: JourneyType.of(
-                  JourneyType.body,
-                  color: AarastV3Color.textMuted,
-                ),
-              ),
-            ),
-            if (summary.pending > 0)
-              Text(
-                '${summary.pending} ${words.pending}',
-                style: JourneyType.of(
-                  JourneyType.body,
-                  weight: JourneyType.bold,
-                  color: AarastV3Color.brandAccentStrong,
-                ),
-              ),
-          ],
-        ),
-        const SizedBox(height: 12),
-        ClipRRect(
-          borderRadius: BorderRadius.circular(5),
-          child: SizedBox(
-            key: const ValueKey('guests-summary-bar'),
-            height: 10,
-            child: Row(
-              // Stretch, or the empty pieces would be drawn 0 high.
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                for (final (count, color) in [
-                  (summary.confirmed, AarastV3Color.lilac),
-                  (summary.pending, AarastV3Color.saffron),
-                  (rest, AarastV3Color.line),
-                ])
-                  if (count > 0)
-                    Expanded(flex: count, child: ColoredBox(color: color)),
-              ],
-            ),
-          ),
-        ),
-        if (summary.expectedSeatsCount > summary.confirmed) ...[
-          const SizedBox(height: 8),
-          Text(
-            'مع المرافقين: ${summary.expectedSeatsCount} مقعد',
-            style: JourneyType.of(
-              JourneyType.small,
-              color: AarastV3Color.textMuted,
-            ),
-          ),
-        ],
-      ],
     );
   }
 }

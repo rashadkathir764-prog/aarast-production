@@ -25,6 +25,7 @@ import '../../sharing/sharing_api.dart' show participantRoleTag;
 import '../../tasks/tasks_api.dart'
     show TaskTimelineProvider, WeddingTask, taskCategoryIcon, taskWhenLabel;
 import '../providers/dashboard_summary_provider.dart';
+import '../providers/plan_read_view_provider.dart';
 import '../utils/plan_pulse_sync.dart';
 
 part 'participant_home_screen.cards.dart';
@@ -55,12 +56,16 @@ class _ParticipantHomeScreenState extends State<ParticipantHomeScreen> {
   Future<void> _load() async {
     if (!mounted) return;
     final selected = context.read<AccountContextController>().selectedContext;
+    final canTasks = selected?.permissions.canManageTasks == true;
     await Future.wait([
       context.read<DashboardSummaryProvider>().loadDashboard(
         widget.weddingPlanId,
       ),
-      if (selected?.permissions.canManageTasks == true)
-        ?context.read<TaskTimelineProvider?>()?.load(widget.weddingPlanId),
+      if (canTasks)
+        ?context.read<TaskTimelineProvider?>()?.load(widget.weddingPlanId)
+      // D52: whoever only follows the plan reads the plan's tasks.
+      else if (selected?.permissions.canViewPlan == true)
+        ?context.read<PlanReadViewProvider?>()?.load(widget.weddingPlanId),
     ]);
   }
 
@@ -100,6 +105,71 @@ class _ParticipantHomeScreenState extends State<ParticipantHomeScreen> {
       summary: provider.summary,
     );
     AarastToast.showSuccess(context, 'خلصت ${task.title}');
+  }
+
+  /// D52, x06 without its controls: for whoever only follows the plan, the
+  /// plan's nearest open task with who does it, then the next few, and how
+  /// many of the plan's tasks are done. Nothing here opens or finishes one.
+  List<Widget> _planTasks(BuildContext context, _PlanVoice voice) {
+    final plan = context.watch<PlanReadViewProvider?>();
+    final view = plan?.viewOf(widget.weddingPlanId);
+    if (view == null) {
+      final failed = plan?.errorMessage != null && plan?.isLoading != true;
+      return [
+        const SizedBox(height: 12),
+        JourneyListState(
+          phase: failed ? JourneyListPhase.error : JourneyListPhase.loading,
+          section: JourneySection.tasks,
+          onRetry: failed ? _load : null,
+        ),
+      ];
+    }
+    final open = [
+      for (final task in view.tasks)
+        if (!task.isDone) task,
+    ];
+    if (open.isEmpty) {
+      return [
+        const SizedBox(height: 12),
+        JourneyNote(
+          key: const ValueKey('participant-plan-all-done'),
+          text: view.tasksTotal == 0
+              ? 'ما فيه مهام في الخطة بعد.'
+              : 'خلصت كل مهام الخطة.',
+          icon: LucideIcons.listChecks,
+          color: AarastV3Color.brandAccentStrong,
+          soft: AarastV3Color.brandAccentSoft,
+        ),
+      ];
+    }
+    final next = open.first;
+    final rest = open.skip(1).take(3).toList();
+    return [
+      const SizedBox(height: 12),
+      _NextTaskCard(
+        task: next.toTask(),
+        who: next.whoLine(ownerWord: voice.owner),
+      ),
+      JourneySectionTitle(
+        'مهام الخطة',
+        action: 'خلصت ${view.tasksDone} من ${view.tasksTotal}',
+        actionColor: voice.accent,
+      ),
+      if (rest.isNotEmpty)
+        JourneyList(
+          children: [
+            for (final task in rest)
+              _TaskLine(
+                key: ValueKey('participant-plan-task-${task.id}'),
+                task: task.toTask(),
+                subtitle: [
+                  taskWhenLabel(task.toTask()),
+                  ?task.whoLine(ownerWord: voice.owner),
+                ].join(' · '),
+              ),
+          ],
+        ),
+    ];
   }
 
   void _openTask(WeddingTask task) => context.push(
@@ -232,8 +302,9 @@ class _ParticipantHomeScreenState extends State<ParticipantHomeScreen> {
           const SizedBox(height: 12),
           _NextTaskCard(
             task: next,
-            mine:
-                next.assigneeUserId != null && next.assigneeUserId == user?.id,
+            who: next.assigneeUserId != null && next.assigneeUserId == user?.id
+                ? 'هذي المهمة عليك'
+                : null,
             busy: taskProvider!.isSubmitting,
             onDone: () => _finish(taskProvider, next),
             onOpen: () => _openTask(next),
@@ -270,6 +341,8 @@ class _ParticipantHomeScreenState extends State<ParticipantHomeScreen> {
             soft: AarastV3Color.brandAccentSoft,
           ),
         ]);
+      } else if (!canTasks && selected.permissions.canViewPlan) {
+        children.addAll(_planTasks(context, voice));
       }
       if (voice.bride) {
         children.addAll([

@@ -24,6 +24,8 @@ import '../models/task_starter_catalog.dart';
 import '../models/wedding_task.dart';
 import '../providers/task_timeline_provider.dart';
 import '../utils/task_display.dart';
+import '../utils/task_groups.dart';
+import '../widgets/task_group_title.dart';
 import '../widgets/task_postpone.dart';
 import '../widgets/task_row.dart';
 import '../widgets/task_starter_sheet.dart';
@@ -129,7 +131,7 @@ class _TaskTimelineScreenState extends State<TaskTimelineScreen> {
         onEmptyAction: _add,
       );
     } else {
-      final groups = _grouped(visible, today);
+      final groups = groupTasks(visible, today);
       body = _byMonth
           ? _MonthsTimeline(
               tasks: visible,
@@ -142,11 +144,11 @@ class _TaskTimelineScreenState extends State<TaskTimelineScreen> {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 for (final entry in groups.entries)
-                  if (entry.key != _TaskGroup.done) ...[
-                    _GroupTitle(group: entry.key, count: entry.value.length),
+                  if (entry.key != TaskGroup.done) ...[
+                    TaskGroupTitle(group: entry.key, count: entry.value.length),
                     _taskBox(provider, entry.value, person, selfLetter),
                   ],
-                if (groups[_TaskGroup.done] case final finished?) ...[
+                if (groups[TaskGroup.done] case final finished?) ...[
                   const SizedBox(height: 6),
                   Align(
                     alignment: AlignmentDirectional.centerStart,
@@ -165,7 +167,7 @@ class _TaskTimelineScreenState extends State<TaskTimelineScreen> {
                   if (_showDone)
                     _taskBox(provider, finished, person, selfLetter),
                 ],
-                if (groups.keys.any((group) => group != _TaskGroup.done)) ...[
+                if (groups.keys.any((group) => group != TaskGroup.done)) ...[
                   const SizedBox(height: 10),
                   Center(
                     child: Text(
@@ -434,42 +436,6 @@ class _TaskTimelineScreenState extends State<TaskTimelineScreen> {
         provider.errorMessage ?? 'ما قدرنا نفتح المهمة',
       );
     }
-  }
-}
-
-class _GroupTitle extends StatelessWidget {
-  const _GroupTitle({required this.group, required this.count});
-
-  final _TaskGroup group;
-  final int count;
-
-  @override
-  Widget build(BuildContext context) {
-    final late = group == _TaskGroup.overdue;
-    return Padding(
-      key: ValueKey('task-group-${group.name}'),
-      padding: const EdgeInsets.fromLTRB(6, 14, 6, 8),
-      child: Row(
-        children: [
-          Text(
-            group.label,
-            style: JourneyType.of(
-              JourneyType.bodyLarge,
-              weight: JourneyType.bold,
-              color: late ? AarastV3Color.danger : AarastV3Color.ink,
-            ),
-          ),
-          const SizedBox(width: 8),
-          Text(
-            '$count',
-            style: JourneyType.of(
-              JourneyType.body,
-              color: AarastV3Color.textMuted,
-            ),
-          ),
-        ],
-      ),
-    );
   }
 }
 

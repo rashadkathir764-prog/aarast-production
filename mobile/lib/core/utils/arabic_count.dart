@@ -18,6 +18,15 @@ String arabicCount(
 String arabicDays(int count) =>
     arabicCount(count, one: 'يوم واحد', two: 'يومين', few: 'أيام', many: 'يوم');
 
+/// «مقعد واحد», «مقعدين», «4 مقاعد», «152 مقعد».
+String arabicSeats(int count) => arabicCount(
+  count,
+  one: 'مقعد واحد',
+  two: 'مقعدين',
+  few: 'مقاعد',
+  many: 'مقعد',
+);
+
 /// «الأولى», «الثانية» … the way people number payments; from the
 /// eleventh on, the number itself.
 String arabicOrdinal(int index) {

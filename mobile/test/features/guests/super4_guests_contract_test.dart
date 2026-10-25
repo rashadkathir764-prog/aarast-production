@@ -117,7 +117,8 @@ void main() {
     // e01: one confirmed guest, with his two companions counted once.
     expect(find.text('2 مدعو · 1 أكدوا · 1 ما ردّوا'), findsOneWidget);
     expect(find.text('أكدوا من 2'), findsOneWidget);
-    expect(find.text('مع المرافقين: 4 مقعد'), findsOneWidget);
+    // 3 to 10 take the plural (arabicSeats).
+    expect(find.text('مع المرافقين: 4 مقاعد'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 

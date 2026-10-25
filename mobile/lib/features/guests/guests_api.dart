@@ -8,3 +8,4 @@ export 'screens/guest_import_screen.dart'
     show GuestImportScreen, GuestImportSource;
 export 'screens/guest_invite_screen.dart' show GuestInviteScreen;
 export 'screens/guest_list_screen.dart' show GuestListScreen;
+export 'screens/participant_guests_screen.dart' show ParticipantGuestsScreen;

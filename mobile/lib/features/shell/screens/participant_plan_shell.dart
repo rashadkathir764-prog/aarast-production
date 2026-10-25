@@ -8,8 +8,10 @@ import '../../../core/theme/app_theme.dart';
 import '../../account_contexts/account_contexts_api.dart'
     show AccountContextController, AccountContextPersona, AccountContextRole;
 import '../../finance/finance_api.dart' show MoneyOverviewScreen;
-import '../../guests/guests_api.dart' show GuestListScreen;
-import '../../marketplace/marketplace_api.dart' show ProviderMarketplaceScreen;
+import '../../guests/guests_api.dart'
+    show GuestListScreen, ParticipantGuestsScreen;
+import '../../marketplace/marketplace_api.dart'
+    show ParticipantProvidersScreen, ProviderMarketplaceScreen;
 import '../../sharing/sharing_api.dart' show participantRoleTag;
 import '../../tasks/tasks_api.dart' show ParticipantTasksScreen;
 import '../../wedding_plans/wedding_plans_api.dart'
@@ -36,15 +38,18 @@ Widget? participantPlanTab(
   final summary = context.read<DashboardSummaryProvider?>()?.summary;
   final ofPlan = summary?.planId == weddingPlanId ? summary : null;
   final title = (ofPlan?.title ?? selected.displayName).trim();
+  final feminine = selected.persona == AccountContextPersona.bride;
+  final owner = selected.planOwnerWord;
+  // D52: reading is separate from editing. Every participant reads the
+  // tasks, the guests and the bookings (`canViewPlan`); a section's manage
+  // right opens its working page instead. Money keeps its own right.
+  final reads = permissions.canViewPlan;
   Widget locked(JourneySection section) => ParticipantLockedScreen(
     key: ValueKey('participant-locked-$weddingPlanId-${section.name}'),
     section: section,
     planTitle: title,
-    roleTag: participantRoleTag(
-      ofPlan?.permissions.role,
-      feminine: selected.persona == AccountContextPersona.bride,
-    ),
-    owner: selected.planOwnerWord,
+    roleTag: participantRoleTag(ofPlan?.permissions.role, feminine: feminine),
+    owner: owner,
   );
   return switch (index) {
     1 =>
@@ -56,11 +61,16 @@ Widget? participantPlanTab(
             )
           : locked(JourneySection.money),
     2 =>
-      permissions.canManageTasks
+      permissions.canManageTasks || reads
           ? ParticipantTasksScreen(
-              key: ValueKey('participant-tasks-$weddingPlanId'),
+              key: ValueKey(
+                'participant-tasks-$weddingPlanId-${permissions.canManageTasks}',
+              ),
               weddingPlanId: weddingPlanId,
               planTitle: title,
+              canManage: permissions.canManageTasks,
+              ownerWord: owner,
+              feminine: feminine,
             )
           : locked(JourneySection.tasks),
     3 =>
@@ -69,6 +79,13 @@ Widget? participantPlanTab(
               key: ValueKey('participant-guests-$weddingPlanId'),
               weddingPlanId: weddingPlanId,
             )
+          : reads
+          ? ParticipantGuestsScreen(
+              key: ValueKey('participant-guests-read-$weddingPlanId'),
+              weddingPlanId: weddingPlanId,
+              ownerWord: owner,
+              feminine: feminine,
+            )
           : locked(JourneySection.guests),
     4 =>
       permissions.canManageProviders
@@ -76,6 +93,14 @@ Widget? participantPlanTab(
               key: ValueKey('participant-providers-$weddingPlanId'),
               embedded: true,
               weddingPlanId: weddingPlanId,
+            )
+          : reads
+          ? ParticipantProvidersScreen(
+              key: ValueKey('participant-providers-read-$weddingPlanId'),
+              weddingPlanId: weddingPlanId,
+              planTitle: title,
+              ownerWord: owner,
+              feminine: feminine,
             )
           : locked(JourneySection.providers),
     _ => ParticipantHomeScreen(

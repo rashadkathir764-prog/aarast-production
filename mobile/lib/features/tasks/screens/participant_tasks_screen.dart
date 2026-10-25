@@ -9,20 +9,33 @@ import '../../../core/experience_v3/aarast_v3.dart';
 import '../../../core/routing/app_router.dart';
 import '../../../core/widgets/aarast_toast.dart';
 import '../../../core/widgets/aarast_ui.dart';
-import '../../wedding_plans/wedding_plans_api.dart' show publishTaskPlanPulse;
+import '../../wedding_plans/wedding_plans_api.dart'
+    show
+        PlanReadAssignee,
+        PlanReadTask,
+        PlanReadViewProvider,
+        publishTaskPlanPulse;
 import '../models/wedding_task.dart';
 import '../providers/task_timeline_provider.dart';
 import '../utils/task_display.dart';
+import '../utils/task_groups.dart';
+import '../widgets/task_group_title.dart';
 import '../widgets/task_row.dart' show taskWhenLabel;
 
-/// q05 «المهام» for a participant: the tasks given to them or that they
-/// added (the server shows a participant nothing else), open first, then
-/// the ones they finished. The circle finishes a task or opens it again;
-/// «+» adds a task (C27).
+part 'participant_tasks_screen.plan.dart';
+
+/// q05 «المهام» for a participant. Reading is separate from editing (D52):
+/// every participant reads all the plan's tasks; one who may work on tasks
+/// also has «لي», the tasks given to them or that they added, which the
+/// circle finishes or opens again and «+» adds to (C27). «يشوف بس» reads
+/// the plan's tasks without a single control.
 class ParticipantTasksScreen extends StatefulWidget {
   const ParticipantTasksScreen({
     required this.weddingPlanId,
     required this.planTitle,
+    required this.canManage,
+    required this.ownerWord,
+    this.feminine = false,
     super.key,
   });
 
@@ -31,20 +44,41 @@ class ParticipantTasksScreen extends StatefulWidget {
   /// «عرس محمد», for the status line.
   final String planTitle;
 
+  /// The participant may add tasks and finish their own.
+  final bool canManage;
+
+  /// «العريس», «العروسة»: who edits the rest.
+  final String ownerWord;
+
+  /// A bride's plan speaks to a woman (D34).
+  final bool feminine;
+
   @override
   State<ParticipantTasksScreen> createState() => _ParticipantTasksScreenState();
 }
 
 class _ParticipantTasksScreenState extends State<ParticipantTasksScreen> {
+  /// «لي» (false) or «كل مهام الخطة» (true); only «كل مهام الخطة» without
+  /// the right to work on tasks.
+  bool _planTasks = false;
+
+  bool get _showsPlan => _planTasks || !widget.canManage;
+
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) {
+      if (!mounted) return;
+      if (widget.canManage) {
         context.read<TaskTimelineProvider>().load(widget.weddingPlanId);
+      } else {
+        unawaited(_loadPlan());
       }
     });
   }
+
+  Future<void> _loadPlan() async =>
+      context.read<PlanReadViewProvider?>()?.load(widget.weddingPlanId);
 
   Future<void> _toggle(TaskTimelineProvider provider, WeddingTask task) async {
     final ok = task.isDone
@@ -65,129 +99,202 @@ class _ParticipantTasksScreenState extends State<ParticipantTasksScreen> {
     );
   }
 
+  void _select(bool planTasks) {
+    if (planTasks == _planTasks) return;
+    setState(() => _planTasks = planTasks);
+    if (planTasks) unawaited(_loadPlan());
+  }
+
   @override
   Widget build(BuildContext context) {
-    final provider = context.watch<TaskTimelineProvider>();
-    final tasks = [
-      for (final task in provider.tasks)
+    final title = widget.planTitle.trim();
+    final plan = context.watch<PlanReadViewProvider?>();
+    final view = plan?.viewOf(widget.weddingPlanId);
+    final provider = widget.canManage
+        ? context.watch<TaskTimelineProvider>()
+        : null;
+    final mine = [
+      for (final task in provider?.tasks ?? const <WeddingTask>[])
         if (task.weddingPlanId == widget.weddingPlanId &&
             task.status != 'CANCELLED')
           task,
     ];
-    final open = tasks.where((task) => !task.isDone).toList()..sort(_byDue);
-    final done = tasks.where((task) => task.isDone).toList();
-    final title = widget.planTitle.trim();
+    final done = view == null ? null : '${view.tasksDone} من ${view.tasksTotal}';
 
-    final Widget body;
-    if (provider.isLoading && tasks.isEmpty) {
-      body = const JourneyListState(
-        phase: JourneyListPhase.loading,
-        section: JourneySection.tasks,
-      );
-    } else if (provider.errorMessage != null && tasks.isEmpty) {
-      body = JourneyListState(
-        phase: JourneyListPhase.error,
-        section: JourneySection.tasks,
-        onRetry: () => provider.load(widget.weddingPlanId),
-      );
-    } else if (tasks.isEmpty) {
-      body = JourneyListState(
-        key: const ValueKey('participant-tasks-empty'),
-        phase: JourneyListPhase.empty,
-        section: JourneySection.tasks,
-        emptyIcon: LucideIcons.listChecks,
-        emptyTitle: 'ما عليك مهام الحين',
-        emptyMessage: 'لما يعطونك مهمة أو تضيف وحدة، تطلع هنا.',
-        emptyAction: 'أضف مهمة',
-        onEmptyAction: _add,
-      );
-    } else {
-      body = Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          const JourneySectionTitle('لك'),
-          JourneyBox(
-            padding: const EdgeInsets.symmetric(vertical: 4),
-            child: Column(
-              children: [
-                for (final (index, task) in [...open, ...done].indexed) ...[
-                  if (index > 0)
-                    const Divider(
-                      height: 1,
-                      indent: 62,
-                      endIndent: 14,
-                      color: AarastV3Color.line,
-                    ),
-                  _MineRow(
-                    key: ValueKey('participant-task-${task.id}'),
-                    task: task,
-                    busy: provider.isSubmitting,
-                    onToggle: () => unawaited(_toggle(provider, task)),
-                    onOpen: () => context.push(
-                      AppRouter.taskDetails(widget.weddingPlanId, task.id),
-                      extra: task,
-                    ),
-                  ),
-                ],
-              ],
-            ),
-          ),
-          const SizedBox(height: 12),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 4),
-            child: Text(
-              'تشوف هنا المهام اللي عليك أو اللي أضفتها.',
-              style: JourneyType.of(
-                JourneyType.small,
-                color: AarastV3Color.textMuted,
-              ),
-            ),
-          ),
-        ],
-      );
-    }
+    // «عرس محمد · معك 3» for whoever works on tasks; «عرس محمد · خلصت 12
+    // من 20» for whoever only follows the plan.
+    final status = [
+      if (title.isNotEmpty) title,
+      if (widget.canManage)
+        'معك ${mine.length}'
+      else if (done != null)
+        'خلصت $done',
+    ].join(' · ');
+
+    final Future<void> Function() onRefresh = _showsPlan
+        ? _loadPlan
+        : () => provider!.load(widget.weddingPlanId);
 
     return AarastScreenFrame(
       maxWidth: 520,
       backgroundColor: AarastV3Color.canvas,
       child: RefreshIndicator(
         color: AarastV3Color.brandAccentStrong,
-        onRefresh: () => provider.load(widget.weddingPlanId),
+        onRefresh: onRefresh,
         child: ListView(
           physics: const AlwaysScrollableScrollPhysics(),
           padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
           children: [
             JourneyTabHeader(
               title: 'المهام',
-              status: [
-                if (title.isNotEmpty) title,
-                'معك ${tasks.length}',
-              ].join(' · '),
+              status: status,
               actions: [
-                JourneyRoundButton(
-                  key: const Key('participant-tasks-add'),
-                  icon: LucideIcons.plus,
-                  tooltip: 'مهمة جديدة',
-                  onPressed: _add,
-                ),
+                if (widget.canManage)
+                  JourneyRoundButton(
+                    key: const Key('participant-tasks-add'),
+                    icon: LucideIcons.plus,
+                    tooltip: 'مهمة جديدة',
+                    onPressed: _add,
+                  ),
               ],
             ),
-            if (provider.errorMessage != null && tasks.isNotEmpty) ...[
-              JourneyListNotice(
-                offline: false,
-                onRetry: () => provider.load(widget.weddingPlanId),
-              ),
+            if (widget.canManage) ...[
               const SizedBox(height: 12),
+              Row(
+                children: [
+                  JourneyChip(
+                    key: const ValueKey('participant-tasks-mine'),
+                    label: 'لي',
+                    selected: !_planTasks,
+                    selectedColor: AarastV3Color.brandAccentStrong,
+                    onTap: () => _select(false),
+                  ),
+                  const SizedBox(width: 8),
+                  JourneyChip(
+                    key: const ValueKey('participant-tasks-plan'),
+                    label: 'كل مهام الخطة',
+                    selected: _planTasks,
+                    selectedColor: AarastV3Color.brandAccentStrong,
+                    onTap: () => _select(true),
+                  ),
+                  const Spacer(),
+                  if (_planTasks && done != null)
+                    Text(
+                      done,
+                      style: JourneyType.of(
+                        JourneyType.body,
+                        weight: JourneyType.bold,
+                        color: AarastV3Color.brandAccentStrong,
+                      ),
+                    ),
+                ],
+              ),
             ],
-            body,
+            if (_showsPlan)
+              _PlanTasks(
+                weddingPlanId: widget.weddingPlanId,
+                provider: plan,
+                ownerWord: widget.ownerWord,
+                feminine: widget.feminine,
+                readOnlyNote: !widget.canManage,
+                onRetry: _loadPlan,
+              )
+            else
+              ..._mine(provider!, mine),
           ],
         ),
       ),
     );
   }
 
+  /// «لي»: open first, then the ones they finished.
+  List<Widget> _mine(TaskTimelineProvider provider, List<WeddingTask> tasks) {
+    final open = tasks.where((task) => !task.isDone).toList()..sort(_byDue);
+    final done = tasks.where((task) => task.isDone).toList();
+    if (provider.isLoading && tasks.isEmpty) {
+      return const [
+        JourneyListState(
+          phase: JourneyListPhase.loading,
+          section: JourneySection.tasks,
+        ),
+      ];
+    }
+    if (provider.errorMessage != null && tasks.isEmpty) {
+      return [
+        JourneyListState(
+          phase: JourneyListPhase.error,
+          section: JourneySection.tasks,
+          onRetry: () => provider.load(widget.weddingPlanId),
+        ),
+      ];
+    }
+    if (tasks.isEmpty) {
+      return [
+        JourneyListState(
+          key: const ValueKey('participant-tasks-empty'),
+          phase: JourneyListPhase.empty,
+          section: JourneySection.tasks,
+          emptyIcon: LucideIcons.listChecks,
+          emptyTitle: 'ما عليك مهام الحين',
+          emptyMessage: 'لما يعطونك مهمة أو تضيف وحدة، تطلع هنا.',
+          emptyAction: 'أضف مهمة',
+          onEmptyAction: _add,
+        ),
+      ];
+    }
+    return [
+      if (provider.errorMessage != null) ...[
+        const SizedBox(height: 12),
+        JourneyListNotice(
+          offline: false,
+          onRetry: () => provider.load(widget.weddingPlanId),
+        ),
+      ],
+      const JourneySectionTitle('لك'),
+      JourneyBox(
+        padding: const EdgeInsets.symmetric(vertical: 4),
+        child: Column(
+          children: [
+            for (final (index, task) in [...open, ...done].indexed) ...[
+              if (index > 0) const _RowDivider(),
+              _MineRow(
+                key: ValueKey('participant-task-${task.id}'),
+                task: task,
+                busy: provider.isSubmitting,
+                onToggle: () => unawaited(_toggle(provider, task)),
+                onOpen: () => context.push(
+                  AppRouter.taskDetails(widget.weddingPlanId, task.id),
+                  extra: task,
+                ),
+              ),
+            ],
+          ],
+        ),
+      ),
+      const SizedBox(height: 12),
+      Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 4),
+        child: Text(
+          _voiceOf(widget.feminine).say(
+            'المهام اللي ما هي لك تشوفها في «كل مهام الخطة»، وما تقدر تعدّلها.',
+            'المهام اللي ما هي لك تشوفينها في «كل مهام الخطة»، وما تقدرين تعدّلينها.',
+          ),
+          style: JourneyType.of(
+            JourneyType.small,
+            color: AarastV3Color.textMuted,
+          ),
+        ),
+      ),
+    ];
+  }
+
   void _add() => context.push(AppRouter.createTask(widget.weddingPlanId));
 }
+
+/// A participant has no plan profile of their own (D43); a bride's plan
+/// speaks to them as a woman (D34), through the profile's own `say`.
+JourneyProfile _voiceOf(bool feminine) =>
+    feminine ? JourneyProfile.bride : JourneyProfile.groom;
 
 int _byDue(WeddingTask a, WeddingTask b) {
   final first = a.dueDate;
@@ -198,8 +305,54 @@ int _byDue(WeddingTask a, WeddingTask b) {
   return first.compareTo(second);
 }
 
-/// One task: the circle that finishes it (green once done), its title and
-/// when it is due.
+class _RowDivider extends StatelessWidget {
+  const _RowDivider();
+
+  @override
+  Widget build(BuildContext context) => const Divider(
+    height: 1,
+    indent: 62,
+    endIndent: 14,
+    color: AarastV3Color.line,
+  );
+}
+
+/// The circle of a task: green with a tick once done. A button only on the
+/// participant's own tasks.
+class _TaskCircle extends StatelessWidget {
+  const _TaskCircle({required this.done});
+
+  final bool done;
+
+  @override
+  Widget build(BuildContext context) => SizedBox.square(
+    dimension: 44,
+    child: Center(
+      child: Container(
+        width: 26,
+        height: 26,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          color: done ? AarastV3Color.mint : null,
+          border: Border.all(
+            color: done ? AarastV3Color.mint : AarastV3Color.line,
+            width: 2,
+          ),
+        ),
+        child: done
+            ? const Icon(
+                LucideIcons.check,
+                size: 14,
+                color: AarastV3Color.onPrimary,
+              )
+            : null,
+      ),
+    ),
+  );
+}
+
+/// One of the participant's tasks: the circle that finishes it, its title
+/// and when it is due.
 class _MineRow extends StatelessWidget {
   const _MineRow({
     required this.task,
@@ -239,62 +392,49 @@ class _MineRow extends StatelessWidget {
                 key: ValueKey('participant-task-toggle-${task.id}'),
                 onTap: busy ? null : onToggle,
                 borderRadius: BorderRadius.circular(22),
-                child: SizedBox.square(
-                  dimension: 44,
-                  child: Center(
-                    child: Container(
-                      width: 26,
-                      height: 26,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: done ? AarastV3Color.mint : null,
-                        border: Border.all(
-                          color: done ? AarastV3Color.mint : AarastV3Color.line,
-                          width: 2,
-                        ),
-                      ),
-                      child: done
-                          ? const Icon(
-                              LucideIcons.check,
-                              size: 14,
-                              color: AarastV3Color.onPrimary,
-                            )
-                          : null,
-                    ),
-                  ),
-                ),
+                child: _TaskCircle(done: done),
               ),
             ),
             const SizedBox(width: 4),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    task.title,
-                    style: JourneyType.of(
-                      JourneyType.body,
-                      weight: JourneyType.bold,
-                      color: done ? AarastV3Color.textMuted : AarastV3Color.ink,
-                    ),
-                  ),
-                  Text(
-                    meta,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: JourneyType.of(
-                      JourneyType.label,
-                      color: late && !done
-                          ? AarastV3Color.danger
-                          : AarastV3Color.textMuted,
-                    ),
-                  ),
-                ],
-              ),
-            ),
+            Expanded(child: _TaskText(task: task, meta: meta, late: late)),
           ],
         ),
       ),
+    );
+  }
+}
+
+class _TaskText extends StatelessWidget {
+  const _TaskText({required this.task, required this.meta, required this.late});
+
+  final WeddingTask task;
+  final String meta;
+  final bool late;
+
+  @override
+  Widget build(BuildContext context) {
+    final done = task.isDone;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          task.title,
+          style: JourneyType.of(
+            JourneyType.body,
+            weight: JourneyType.bold,
+            color: done ? AarastV3Color.textMuted : AarastV3Color.ink,
+          ),
+        ),
+        Text(
+          meta,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: JourneyType.of(
+            JourneyType.label,
+            color: late && !done ? AarastV3Color.danger : AarastV3Color.textMuted,
+          ),
+        ),
+      ],
     );
   }
 }

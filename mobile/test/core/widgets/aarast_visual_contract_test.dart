@@ -349,6 +349,8 @@ void main() {
         'lib/features/guests/screens/guest_details_screen.dart',
         'lib/features/guests/screens/guest_import_screen.dart',
         'lib/features/guests/screens/guest_invite_screen.dart',
+        'lib/features/guests/screens/participant_guests_screen.dart',
+        'lib/features/marketplace/screens/participant_providers_screen.dart',
         'lib/features/wedding_day/screens/wedding_day_mode_screen.dart',
         'lib/features/sharing/screens/sharing_screen.dart',
         'lib/features/sharing/screens/contribution_history_screen.dart',

@@ -1,55 +1,5 @@
 part of 'task_timeline_screen.dart';
 
-/// d01's sections, in the order they are shown.
-enum _TaskGroup { overdue, week, month, later, undated, done }
-
-extension on _TaskGroup {
-  String get label => switch (this) {
-    _TaskGroup.overdue => 'متأخرة',
-    _TaskGroup.week => 'هذا الأسبوع',
-    _TaskGroup.month => 'هذا الشهر',
-    _TaskGroup.later => 'بعدين',
-    _TaskGroup.undated => 'بدون موعد',
-    _TaskGroup.done => 'خلصت',
-  };
-}
-
-_TaskGroup _groupOf(WeddingTask task, DateTime today) {
-  if (task.isDone || task.status == 'CANCELLED') return _TaskGroup.done;
-  if (isTaskLate(task, now: today)) return _TaskGroup.overdue;
-  final due = task.dueDate;
-  if (due == null) return _TaskGroup.undated;
-  final days = taskDateOnly(due).difference(taskDateOnly(today)).inDays;
-  if (days < 7) return _TaskGroup.week;
-  if (days <= 30) return _TaskGroup.month;
-  return _TaskGroup.later;
-}
-
-/// Each section's tasks, soonest first; empty sections are left out.
-Map<_TaskGroup, List<WeddingTask>> _grouped(
-  List<WeddingTask> tasks,
-  DateTime today,
-) {
-  final groups = <_TaskGroup, List<WeddingTask>>{};
-  for (final task in tasks) {
-    groups.putIfAbsent(_groupOf(task, today), () => []).add(task);
-  }
-  for (final list in groups.values) {
-    list.sort((a, b) {
-      final first = a.dueDate;
-      final second = b.dueDate;
-      if (first == null || second == null) {
-        return a.createdAt.compareTo(b.createdAt);
-      }
-      return first.compareTo(second);
-    });
-  }
-  return {
-    for (final group in _TaskGroup.values)
-      if (groups[group] != null) group: groups[group]!,
-  };
-}
-
 /// The person filter: everyone, the owner's own tasks («لي»), or one
 /// responsible person by name.
 const _everyone = '';
@@ -84,14 +34,14 @@ String _statusLine(
 ) {
   if (tasks.isEmpty) return profile.say('ابدأ بأول مهمة', 'ابدئي بأول مهمة');
   final open = tasks
-      .where((task) => _groupOf(task, today) != _TaskGroup.done)
+      .where((task) => taskGroupOf(task, today) != TaskGroup.done)
       .toList();
   if (open.isEmpty) return 'خلصت كل المهام';
   final overdue = open
-      .where((task) => _groupOf(task, today) == _TaskGroup.overdue)
+      .where((task) => taskGroupOf(task, today) == TaskGroup.overdue)
       .length;
   final week = open
-      .where((task) => _groupOf(task, today) == _TaskGroup.week)
+      .where((task) => taskGroupOf(task, today) == TaskGroup.week)
       .length;
   final late = overdue == 0
       ? null

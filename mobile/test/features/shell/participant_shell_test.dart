@@ -19,8 +19,12 @@ import 'package:aarast_mobile/features/tasks/models/wedding_task.dart';
 import 'package:aarast_mobile/features/tasks/providers/task_timeline_provider.dart';
 import 'package:aarast_mobile/features/tasks/screens/participant_tasks_screen.dart';
 import 'package:aarast_mobile/features/wedding_plans/data/wedding_plans_api.dart';
+import 'package:aarast_mobile/features/guests/screens/participant_guests_screen.dart';
+import 'package:aarast_mobile/features/marketplace/screens/participant_providers_screen.dart';
 import 'package:aarast_mobile/features/wedding_plans/models/dashboard_summary.dart';
+import 'package:aarast_mobile/features/wedding_plans/models/plan_read_view.dart';
 import 'package:aarast_mobile/features/wedding_plans/providers/dashboard_summary_provider.dart';
+import 'package:aarast_mobile/features/wedding_plans/providers/plan_read_view_provider.dart';
 import 'package:aarast_mobile/features/wedding_plans/screens/participant_home_screen.dart';
 import 'package:aarast_mobile/features/wedding_plans/screens/wedding_plan_dashboard_screen.dart';
 import 'package:dio/dio.dart';
@@ -115,7 +119,7 @@ void main() {
   });
 
   testWidgets(
-    'q07, q08: money and providers without the right show a calm lock',
+    'q07: money without the right is a calm lock; q16: the providers are read',
     (tester) async {
       final harness = await _Harness.create();
       await harness.pump(tester);
@@ -132,16 +136,28 @@ void main() {
       expect(find.text('اطلب من محمد'), findsNothing);
       expect(harness.wedding.moneyRequests, 0);
 
+      // D52: without the providers right the plan's bookings are read (q16),
+      // never locked away.
       await _openTab(tester, 'المزودين');
-      expect(find.text('المزودين عند العريس'), findsOneWidget);
-      expect(find.text('الطلبات والعروض خاصة بالعريس.'), findsOneWidget);
+      expect(find.byType(ParticipantProvidersScreen), findsOneWidget);
+      expect(find.byType(ParticipantLockedScreen), findsNothing);
+      expect(find.text('عرس محمد · تشوف بس'), findsOneWidget);
+      expect(
+        find.text('المواعيد ومين محجوز. الأسعار والعروض عند العريس.'),
+        findsOneWidget,
+      );
+      expect(find.text('قاعة سبأ'), findsOneWidget);
+      expect(find.text('محجوز'), findsOneWidget);
+      expect(find.text('ضوء صنعاء'), findsOneWidget);
+      expect(find.text('ينتظر تأكيدهم'), findsOneWidget);
+      expect(find.text('ينتظر'), findsOneWidget);
+      expect(find.textContaining('ر.ي'), findsNothing);
       expect(find.text('اطلب صلاحية'), findsNothing);
-      expect(find.textContaining('مواعيدهم في البرنامج'), findsNothing);
       expect(tester.takeException(), isNull);
     },
   );
 
-  testWidgets('q05: the tasks tab lists only the participant\'s tasks', (
+  testWidgets('q05: «لي» and «كل مهام الخطة», only one\'s own tasks edited', (
     tester,
   ) async {
     final harness = await _Harness.create(
@@ -155,13 +171,14 @@ void main() {
 
     expect(find.byType(ParticipantTasksScreen), findsOneWidget);
     expect(find.text('عرس محمد · معك 2'), findsOneWidget);
+    expect(find.text('لي'), findsOneWidget);
+    expect(find.text('كل مهام الخطة'), findsOneWidget);
     expect(find.text('لك'), findsOneWidget);
     expect(find.text('استلم البدلة'), findsOneWidget);
-    // «كل مهام الخطة» needs the plan's other tasks, which a participant
-    // cannot read.
-    expect(find.text('كل مهام الخطة'), findsNothing);
     expect(
-      find.text('تشوف هنا المهام اللي عليك أو اللي أضفتها.'),
+      find.text(
+        'المهام اللي ما هي لك تشوفها في «كل مهام الخطة»، وما تقدر تعدّلها.',
+      ),
       findsOneWidget,
     );
     // C27: a participant with the tasks right adds tasks.
@@ -172,19 +189,126 @@ void main() {
     expect(harness.tasksApi.updates, [
       {'status': 'DONE'},
     ]);
+
+    // D52: the plan's tasks are read; none of them has a control.
+    await tester.tap(find.byKey(const ValueKey('participant-tasks-plan')));
+    await tester.pumpAndSettle();
+    expect(harness.wedding.readViewCalls, greaterThan(0));
+    expect(find.text('1 من 4'), findsOneWidget);
+    expect(find.text('حدد موعد عقد القران'), findsOneWidget);
+    expect(find.text('متأخرة'), findsOneWidget);
+    expect(find.text('خلصت'), findsWidgets);
+    expect(
+      find.byKey(const ValueKey('participant-plan-task-p1')),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const ValueKey('participant-task-toggle-p1')),
+      findsNothing,
+    );
+    expect(find.textContaining('ر.ي'), findsNothing);
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('a participant without the tasks right sees the tasks locked', (
+  testWidgets(
+    'D52: «يشوف بس» reads the plan\'s tasks, guests and bookings, edits nothing',
+    (tester) async {
+      final harness = await _Harness.create(
+        role: 'VIEWER',
+        userName: 'الوالد',
+        canManageTasks: false,
+        canManageGuests: false,
+      );
+      await harness.pump(tester);
+
+      // x06 without its controls: the plan's next step and who does it.
+      expect(find.text('أهلًا الوالد'), findsOneWidget);
+      expect(find.text('أنت تتابع بس'), findsOneWidget);
+      expect(find.text('أنت يشوف بس'), findsNothing);
+      expect(find.textContaining('الخطوة الجاية'), findsOneWidget);
+      expect(find.text('حدد موعد عقد القران'), findsOneWidget);
+      expect(find.text('على محمد'), findsOneWidget);
+      expect(find.text('مهام الخطة'), findsOneWidget);
+      expect(find.text('خلصت 1 من 4'), findsOneWidget);
+      expect(find.byKey(const ValueKey('participant-next-done')), findsNothing);
+      expect(find.text('المال مخفي عنك.'), findsOneWidget);
+      expect(harness.tasksApi.listCalls, 0);
+
+      await _openTab(tester, 'المهام');
+      expect(find.byType(ParticipantTasksScreen), findsOneWidget);
+      expect(find.text('عرس محمد · خلصت 1 من 4'), findsOneWidget);
+      expect(
+        find.text('تتابع المهام وين وصلت. الإضافة والتعديل عند العريس.'),
+        findsOneWidget,
+      );
+      expect(find.text('رتّب الغداء'), findsOneWidget);
+      expect(find.text('كل مهام الخطة'), findsNothing);
+      expect(find.byKey(const Key('participant-tasks-add')), findsNothing);
+      expect(
+        find.byKey(const ValueKey('participant-task-toggle-p1')),
+        findsNothing,
+      );
+      expect(find.text('المهام عند العريس'), findsNothing);
+      expect(harness.tasksApi.listCalls, 0);
+
+      await _openTab(tester, 'الضيوف');
+      expect(find.byType(ParticipantGuestsScreen), findsOneWidget);
+      expect(find.text('3 مدعو · 1 أكدوا · 1 ما ردّوا'), findsOneWidget);
+      expect(find.text('عبدالله الحمدي'), findsOneWidget);
+      expect(find.text('أكّد'), findsOneWidget);
+      expect(find.text('اعتذر'), findsOneWidget);
+      expect(find.text('ما ردّ'), findsOneWidget);
+      expect(
+        find.text(
+          'تشوف الأسماء والردود. أرقام الجوالات والإضافة والتعديل عند العريس.',
+        ),
+        findsOneWidget,
+      );
+      // No phone, no add, no reminder.
+      expect(find.textContaining('777'), findsNothing);
+      expect(find.textContaining('ذكّر'), findsNothing);
+      expect(find.text('الضيوف عند العريس'), findsNothing);
+
+      await _openTab(tester, 'المزودين');
+      expect(find.byType(ParticipantProvidersScreen), findsOneWidget);
+      expect(find.text('قاعة سبأ'), findsOneWidget);
+
+      await _openTab(tester, 'المال');
+      expect(find.text('المال خاص بالعريس'), findsOneWidget);
+      expect(find.textContaining('ر.ي'), findsNothing);
+      expect(tester.takeException(), isNull);
+    },
+  );
+
+  testWidgets('D52: in a bride\'s plan «يشوف بس» is spoken to a woman', (
     tester,
   ) async {
-    final harness = await _Harness.create(canManageTasks: false);
+    final harness = await _Harness.create(
+      role: 'VIEWER',
+      persona: AccountContextPersona.bride,
+      title: 'عرس سلمى',
+      userName: 'الوالدة',
+      canManageTasks: false,
+      canManageGuests: false,
+    );
     await harness.pump(tester);
-    await _openTab(tester, 'المهام');
 
-    expect(find.text('المهام عند العريس'), findsOneWidget);
-    expect(find.byType(ParticipantTasksScreen), findsNothing);
-    expect(harness.tasksApi.listCalls, 0);
+    expect(find.text('أنتِ تتابعين بس'), findsOneWidget);
+    expect(find.text('على العروسة'), findsNothing);
+
+    await _openTab(tester, 'المهام');
+    expect(
+      find.text('تتابعين المهام وين وصلت. الإضافة والتعديل عند العروسة.'),
+      findsOneWidget,
+    );
+
+    await _openTab(tester, 'الضيوف');
+    expect(find.text('الضيفات'), findsWidgets);
+    expect(find.text('أكّدت'), findsOneWidget);
+
+    await _openTab(tester, 'المزودين');
+    expect(find.text('عرس سلمى · تشوفين بس'), findsOneWidget);
+    expect(tester.takeException(), isNull);
   });
 
   testWidgets('q17: a bride\'s plan speaks in her colour to a woman', (
@@ -334,6 +458,80 @@ WeddingTask _task(
   );
 }
 
+/// D52: the plan as every member reads it; nothing of money or phones.
+PlanReadView _readView() {
+  final today = DateUtils.dateOnly(DateTime.now());
+  String day(int days) => today.add(Duration(days: days)).toIso8601String();
+  return PlanReadView.fromJson({
+    'weddingPlanId': _planId,
+    'tasks': {
+      'total': 4,
+      'done': 1,
+      'items': [
+        {
+          'id': 'p1',
+          'title': 'حدد موعد عقد القران',
+          'status': 'TODO',
+          'dueDate': day(-7),
+          'assignee': {'kind': 'OWNER', 'firstName': 'محمد'},
+        },
+        {
+          'id': 'p2',
+          'title': 'رتّب الغداء',
+          'status': 'TODO',
+          'dueDate': day(3),
+          'assignee': {'kind': 'MEMBER', 'firstName': 'صالح'},
+        },
+        {
+          'id': 'p4',
+          'title': 'حجز سيارات الزفة',
+          'status': 'TODO',
+          'dueDate': day(30),
+          'assignee': {'kind': 'PERSON', 'firstName': 'الوالد'},
+        },
+        {
+          'id': 'p3',
+          'title': 'احجز القاعة',
+          'status': 'DONE',
+          'dueDate': day(-60),
+          'assignee': null,
+        },
+      ],
+    },
+    'guests': {
+      'total': 3,
+      'confirmed': 1,
+      'pending': 1,
+      'declined': 1,
+      'items': [
+        {'id': 'g1', 'name': 'عبدالله الحمدي', 'attendanceStatus': 'CONFIRMED'},
+        {'id': 'g2', 'name': 'ياسر الأهدل', 'attendanceStatus': 'DECLINED'},
+        {'id': 'g3', 'name': 'يحيى السنيدار', 'attendanceStatus': 'PENDING'},
+      ],
+    },
+    'bookings': {
+      'items': [
+        {
+          'id': 'b1',
+          'businessName': 'قاعة سبأ',
+          'categoryName': 'قاعات',
+          'serviceTitle': 'قاعة الأفراح',
+          'status': 'CONFIRMED',
+          'eventDate': '2027-01-21',
+        },
+        {
+          'id': 'b2',
+          'businessName': 'ضوء صنعاء',
+          'categoryName': 'تصوير',
+          'serviceTitle': null,
+          'status': 'REQUESTED',
+          'eventDate': '2027-01-21',
+        },
+      ],
+    },
+  });
+}
+
 class _Harness {
   _Harness({
     required this.controller,
@@ -341,6 +539,7 @@ class _Harness {
     required this.auth,
     required this.wedding,
     required this.dashboard,
+    required this.planView,
     required this.tasksApi,
     required this.tasks,
   });
@@ -350,6 +549,7 @@ class _Harness {
   final AuthController auth;
   final _WeddingPlansApi wedding;
   final DashboardSummaryProvider dashboard;
+  final PlanReadViewProvider planView;
   final _TasksApi tasksApi;
   final TaskTimelineProvider tasks;
 
@@ -357,8 +557,10 @@ class _Harness {
     AccountContextPersona persona = AccountContextPersona.groom,
     String title = 'عرس محمد',
     String userName = 'صالح الحمدي',
+    String role = 'HELPER',
     int daysRemaining = 96,
     bool canManageTasks = true,
+    bool canManageGuests = true,
     bool keptCanViewMoney = false,
     List<WeddingTask> tasks = const [],
   }) async {
@@ -392,6 +594,7 @@ class _Harness {
       persona: persona,
       title: title,
       canManageTasks: canManageTasks,
+      canManageGuests: canManageGuests,
       canViewMoney: keptCanViewMoney,
     );
     final controller = AccountContextController(
@@ -408,8 +611,10 @@ class _Harness {
       apiClient,
       _summary(
         title: title,
+        role: role,
         daysRemaining: daysRemaining,
         canManageTasks: canManageTasks,
+        canManageGuests: canManageGuests,
       ),
     );
     final tasksApi = _TasksApi(apiClient, tasks);
@@ -419,6 +624,7 @@ class _Harness {
       auth: auth,
       wedding: wedding,
       dashboard: DashboardSummaryProvider(weddingPlansApi: wedding),
+      planView: PlanReadViewProvider(weddingPlansApi: wedding),
       tasksApi: tasksApi,
       tasks: TaskTimelineProvider(tasksApi),
     );
@@ -444,6 +650,7 @@ class _Harness {
           ChangeNotifierProvider<DashboardSummaryProvider>.value(
             value: dashboard,
           ),
+          ChangeNotifierProvider<PlanReadViewProvider>.value(value: planView),
           ChangeNotifierProvider<TaskTimelineProvider>.value(value: tasks),
         ],
         child: MaterialApp(
@@ -463,8 +670,10 @@ class _Harness {
 
 DashboardSummary _summary({
   required String title,
+  required String role,
   required int daysRemaining,
   required bool canManageTasks,
+  required bool canManageGuests,
 }) {
   final today = DateUtils.dateOnly(DateTime.now());
   return DashboardSummary(
@@ -490,10 +699,10 @@ DashboardSummary _summary({
     importantNotifications: const [],
     permissions: DashboardPermissionSummary(
       isOwner: false,
-      role: 'HELPER',
+      role: role,
       canViewMoney: false,
       canManageTasks: canManageTasks,
-      canManageGuests: true,
+      canManageGuests: canManageGuests,
       canManageProviders: false,
       canManageMembers: false,
       canManageMoney: false,
@@ -507,12 +716,14 @@ class _Gateway implements AccountContextsGateway {
     required this.persona,
     required this.title,
     required this.canManageTasks,
+    required this.canManageGuests,
     required this.canViewMoney,
   });
 
   final AccountContextPersona persona;
   final String title;
   bool canManageTasks;
+  bool canManageGuests;
   bool canViewMoney;
 
   void replaceGateway({required bool canViewMoney}) {
@@ -528,6 +739,7 @@ class _Gateway implements AccountContextsGateway {
     );
     final permissions = Map<String, dynamic>.from(json['permissions'] as Map)
       ..['canManageTasks'] = canManageTasks
+      ..['canManageGuests'] = canManageGuests
       ..['canViewMoney'] = canViewMoney;
     return AccountContext.fromJson({...json, 'permissions': permissions});
   }
@@ -544,9 +756,16 @@ class _WeddingPlansApi extends WeddingPlansApi {
 
   final DashboardSummary summary;
   int moneyRequests = 0;
+  int readViewCalls = 0;
 
   @override
   Future<DashboardSummary> getDashboardSummary(String planId) async => summary;
+
+  @override
+  Future<PlanReadView> getPlanReadView(String planId) async {
+    readViewCalls += 1;
+    return _readView();
+  }
 }
 
 class _TasksApi extends TaskTimelineApi {

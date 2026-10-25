@@ -1,7 +1,8 @@
 // A participant's walk in «عرس محمد»: what they may see, and above all what
-// they must not (the owner's private money). Seed rights
+// they must not (the owner's private money, the guests' phones). Seed rights
 // (backend/prisma/demo-seed/plan-data.ts): صالح is a HELPER (tasks, guests,
-// providers; no money), الوالد a VIEWER (no section rights).
+// providers; no money), الوالد a VIEWER (no edit right). Reading is separate
+// from editing (D52): الوالد reads the plan's tasks, guests and bookings.
 import 'package:flutter_test/flutter_test.dart';
 
 import 'journey_harness.dart';
@@ -42,7 +43,7 @@ const viewerFather = ParticipantPersona(
   journey: 'participant_father',
   phone: '777000104',
   name: 'الوالد',
-  roleLine: 'أنت تشوف بس',
+  roleLine: 'أنت تتابع بس',
   managesTasks: false,
   managesGuests: false,
   managesProviders: false,
@@ -61,6 +62,10 @@ const _privateMoney = [
   'خالي أحمد',
   '500,000',
 ];
+
+/// The seeded guests' phones start +96777; a participant who does not work
+/// on guests sees none of them, in any spelling.
+const _guestPhones = ['+967', '967 7', '77 0'];
 
 Future<void> runParticipantWalk(
   WidgetTester tester,
@@ -86,7 +91,16 @@ Future<void> runParticipantWalk(
     walk.expectSee('21 يناير');
     walk.expectSee('المال مخفي عنك');
     noPrivateMoney();
-    if (p.managesTasks) walk.expectSee('رتّب الغداء', why: 'مهمته المتأخرة');
+    if (p.managesTasks) {
+      walk.expectSee('رتّب الغداء', why: 'مهمته المتأخرة');
+    } else {
+      // D52: x06 without its controls, from the plan's own tasks.
+      walk.expectSee('الخطوة الجاية', why: 'خطوة الخطة الجاية');
+      walk.expectSee('حدد موعد عقد القران', why: 'أقرب مهمة مفتوحة في الخطة');
+      walk.expectSee('مهام الخطة');
+      walk.expectSee('خلصت 12 من 20', why: 'تقدّم الخطة الحقيقي');
+      walk.expectNotSee('أنت يشوف بس', why: 'عربي مكسور');
+    }
   });
 
   await walk.step('q07_money_locked', 'المال: مقفول', () async {
@@ -110,7 +124,15 @@ Future<void> runParticipantWalk(
         why: 'الدور اسمه «يشوف بس» ومع ذلك المهام مقفولة كلها '
             '(V1_DELIVERY_CHECKLIST: يشوف نفس شاشات الخطة بحسب صلاحياته)',
       );
+      // D52: all the plan's tasks, read only.
+      walk.expectSee('خلصت 12 من 20', why: 'المهام 12 من 20');
+      walk.expectSee('حدد موعد عقد القران');
+      walk.expectSee('متأخرة', why: 'مهمة متأخرة وحدة');
+      walk.expectSee('التعديل عند العريس', why: 'يقال له إنه يتابع بس');
+      walk.expectNotSee('أضف مهمة', why: 'ما يضيف');
+      walk.expectNotSee('500,000', why: 'وصف المهمة فيه مبلغ');
     }
+    noPrivateMoney();
   });
 
   await walk.step('participant_guests', 'الضيوف', () async {
@@ -119,8 +141,18 @@ Future<void> runParticipantWalk(
       walk.expectNotSee('124', why: 'يشوف بس الضيوف اللي أضافهم');
       walk.expectNotSee(' 4 مقعد', why: 'العدد 3–10 جمعه «مقاعد»');
     } else {
-      walk.expectSee('ما عندك صلاحية');
+      // D52: the plan's guests by name and reply, never their phones.
+      walk.expectNotSee('ما عندك صلاحية');
+      walk.expectSee('124 مدعو', why: 'عدد الضيوف كله');
+      walk.expectSee('أكدوا من 124');
+      walk.expectSee('كل الضيوف');
+      walk.expectSee('أرقام الجوالات والإضافة والتعديل عند العريس');
+      for (final phone in _guestPhones) {
+        walk.expectNotSee(phone, why: 'رقم جوال ضيف');
+      }
+      walk.expectNotSee('ذكّر', why: 'ما يرسل تذكير');
     }
+    noPrivateMoney();
   });
 
   await walk.step('q16_providers', 'المزودين', () async {
@@ -134,8 +166,16 @@ Future<void> runParticipantWalk(
         'نبدأ بالقاعة',
         why: 'القاعة محجوزة من قبل، الجملة غير صحيحة',
       );
+      // D52: the plan's bookings whoever made them.
+      walk.expectSee('قاعة سبأ', why: 'القاعة المحجوزة في الخطة');
+      walk.expectSee('محجوز');
     } else {
-      walk.expectSee('الطلبات والعروض خاصة');
+      // q16: the plan's bookings by day and status, no price.
+      walk.expectNotSee('الطلبات والعروض خاصة');
+      walk.expectSee('تشوف بس');
+      walk.expectSee('الأسعار والعروض عند العريس');
+      walk.expectSee('قاعة سبأ', why: 'القاعة المحجوزة');
+      walk.expectSee('محجوز');
     }
     noPrivateMoney();
   });

@@ -9,6 +9,7 @@ import '../../../core/utils/plan_day.dart';
 import '../models/active_wedding_plan.dart';
 import '../models/dashboard_summary.dart';
 import '../models/onboarding_complete.dart';
+import '../models/plan_read_view.dart';
 import '../models/wedding_plan.dart';
 
 class WeddingPlansApi {
@@ -82,6 +83,15 @@ class WeddingPlansApi {
       if (plan.status == 'ARCHIVED') throw apiError;
       return plan;
     }
+  }
+
+  /// D52: the plan's tasks, guests and bookings as every member reads them.
+  /// Not kept for offline use: a participant's access fails closed (C64).
+  Future<PlanReadView> getPlanReadView(String planId) async {
+    final json = await _apiClient.getJson(
+      '/api/v1/wedding-plans/$planId/plan-view',
+    );
+    return PlanReadView.fromJson(json);
   }
 
   Future<DashboardSummary> getDashboardSummary(String planId) async {

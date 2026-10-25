@@ -1696,7 +1696,11 @@ const r19ProviderPortalApi = Object.freeze({
 // API, so p09 moves the profile to another category before approval (B-01).
 // +1: p19's withdraw sheet reads the request through the marketplace owner
 // API (B-03, D50).
-const r19LegalRecordCount = 236;
+// +4 (D52, reading is separate from editing): the participant's read-only
+// guests and providers pages and q16's bookings card read the plan's view
+// through the wedding plans owner API, and that view hands its tasks to the
+// task widgets through the tasks owner API.
+const r19LegalRecordCount = 240;
 const trackedOwnerApiContracts = [
   {
     area: 'features/account_contexts',
@@ -1867,6 +1871,11 @@ const trackedOwnerApiContracts = [
         show: ['GuestInviteScreen'],
       },
       { uri: 'screens/guest_list_screen.dart', show: ['GuestListScreen'] },
+      // D52: a participant who follows the plan reads its guests.
+      {
+        uri: 'screens/participant_guests_screen.dart',
+        show: ['ParticipantGuestsScreen'],
+      },
     ],
   },
   {
@@ -1936,6 +1945,11 @@ const trackedOwnerApiContracts = [
       {
         uri: 'screens/favorite_providers_screen.dart',
         show: ['FavoriteProvidersScreen'],
+      },
+      // q16 (D52): the plan's bookings for a participant who follows it.
+      {
+        uri: 'screens/participant_providers_screen.dart',
+        show: ['ParticipantProvidersScreen'],
       },
       { uri: 'screens/plan_bookings_screen.dart', show: ['PlanBookingsScreen'] },
       { uri: 'screens/provider_details_screen.dart', show: ['ProviderDetailsScreen'] },
@@ -2219,6 +2233,17 @@ const trackedOwnerApiContracts = [
         uri: 'models/onboarding_complete.dart',
         show: ['OnboardingCompleteRequest', 'OnboardingCompleteResponse'],
       },
+      // D52: the plan as every member reads it.
+      {
+        uri: 'models/plan_read_view.dart',
+        show: [
+          'PlanReadAssignee',
+          'PlanReadBooking',
+          'PlanReadGuest',
+          'PlanReadTask',
+          'PlanReadView',
+        ],
+      },
       {
         uri: 'models/wedding_plan_stage.dart',
         show: ['WeddingPlanStage', 'WeddingPlanStageState', 'resolveWeddingPlanStage'],
@@ -2227,6 +2252,10 @@ const trackedOwnerApiContracts = [
       {
         uri: 'providers/dashboard_summary_provider.dart',
         show: ['DashboardSummaryProvider'],
+      },
+      {
+        uri: 'providers/plan_read_view_provider.dart',
+        show: ['PlanReadViewProvider'],
       },
       {
         uri: 'providers/wedding_plans_provider.dart',
@@ -2365,7 +2394,7 @@ const trackedCollaborationBatchContracts = [
   {
     source: 'mobile/lib/features/marketplace/screens/provider_marketplace_screen.dart',
     target: 'mobile/lib/features/account_contexts/account_contexts_api.dart',
-    show: ['AccountContextController'],
+    show: ['AccountContextController', 'AccountContextRole'],
   },
   {
     source: 'mobile/lib/features/marketplace/screens/provider_marketplace_screen.dart',
@@ -2390,7 +2419,7 @@ const trackedCollaborationBatchContracts = [
   {
     source: 'mobile/lib/features/marketplace/screens/provider_marketplace_screen.dart',
     target: 'mobile/lib/features/wedding_plans/wedding_plans_api.dart',
-    show: ['WeddingPlansProvider'],
+    show: ['PlanReadBooking', 'PlanReadViewProvider', 'WeddingPlansProvider'],
   },
   {
     source: 'mobile/lib/features/marketplace/screens/provider_requests_screen.dart',
@@ -3366,7 +3395,12 @@ const trackedCompositionRootContracts = [
       },
       {
         target: 'mobile/lib/features/wedding_plans/wedding_plans_api.dart',
-        show: ['DashboardSummaryProvider', 'WeddingPlansApi', 'WeddingPlansProvider'],
+        show: [
+          'DashboardSummaryProvider',
+          'PlanReadViewProvider',
+          'WeddingPlansApi',
+          'WeddingPlansProvider',
+        ],
       },
     ],
   },

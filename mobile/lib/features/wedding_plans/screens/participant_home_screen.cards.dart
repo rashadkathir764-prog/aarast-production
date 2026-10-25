@@ -315,23 +315,27 @@ class _DayHero extends StatelessWidget {
 }
 
 /// x06 «الخطوة الجاية»: the participant's nearest open task, finished from
-/// here, with a call to the person it names when there is a number.
+/// here, with a call to the person it names when there is a number. For a
+/// participant who only follows the plan (D52) it is the plan's nearest
+/// open task with who does it, and nothing to press.
 class _NextTaskCard extends StatelessWidget {
   const _NextTaskCard({
     required this.task,
-    required this.mine,
-    required this.busy,
-    required this.onDone,
-    required this.onOpen,
+    required this.who,
+    this.busy = false,
+    this.onDone,
+    this.onOpen,
   });
 
   final WeddingTask task;
 
-  /// Given to this participant (the assignee is them).
-  final bool mine;
+  /// «هذي المهمة عليك», «على صالح», or null.
+  final String? who;
   final bool busy;
-  final VoidCallback onDone;
-  final VoidCallback onOpen;
+
+  /// Null when the reader may not finish it.
+  final VoidCallback? onDone;
+  final VoidCallback? onOpen;
 
   @override
   Widget build(BuildContext context) {
@@ -339,6 +343,8 @@ class _NextTaskCard extends StatelessWidget {
     final call = contact.isEmpty
         ? null
         : phoneCallUri(task.responsiblePhone ?? task.assigneePhone);
+    final done = onDone;
+    final who = this.who;
     return JourneyBox(
       key: ValueKey('participant-next-${task.id}'),
       padding: const EdgeInsets.all(18),
@@ -379,9 +385,9 @@ class _NextTaskCard extends StatelessWidget {
                           weight: JourneyType.bold,
                         ),
                       ),
-                      if (mine)
+                      if (who != null)
                         Text(
-                          'هذي المهمة عليك',
+                          who,
                           style: JourneyType.of(
                             JourneyType.small,
                             color: AarastV3Color.textMuted,
@@ -393,25 +399,27 @@ class _NextTaskCard extends StatelessWidget {
               ],
             ),
           ),
-          const SizedBox(height: 14),
-          Wrap(
-            spacing: 10,
-            runSpacing: 8,
-            children: [
-              JourneyButton(
-                key: const ValueKey('participant-next-done'),
-                label: 'خلصت',
-                loading: busy,
-                onPressed: onDone,
-              ),
-              if (call != null)
-                JourneyButton.quiet(
-                  key: const ValueKey('participant-next-call'),
-                  label: 'كلّم $contact',
-                  onPressed: () => unawaited(launchUrl(call)),
+          if (done != null) ...[
+            const SizedBox(height: 14),
+            Wrap(
+              spacing: 10,
+              runSpacing: 8,
+              children: [
+                JourneyButton(
+                  key: const ValueKey('participant-next-done'),
+                  label: 'خلصت',
+                  loading: busy,
+                  onPressed: done,
                 ),
-            ],
-          ),
+                if (call != null)
+                  JourneyButton.quiet(
+                    key: const ValueKey('participant-next-call'),
+                    label: 'كلّم $contact',
+                    onPressed: () => unawaited(launchUrl(call)),
+                  ),
+              ],
+            ),
+          ],
         ],
       ),
     );
@@ -422,13 +430,19 @@ class _NextTaskCard extends StatelessWidget {
 class _TaskLine extends StatelessWidget {
   const _TaskLine({
     required this.task,
-    required this.onTap,
+    this.onTap,
+    this.subtitle,
     this.trailing,
     super.key,
   });
 
   final WeddingTask task;
-  final VoidCallback onTap;
+
+  /// Null on a task the reader only follows (D52).
+  final VoidCallback? onTap;
+
+  /// When and who; when it is due by default.
+  final String? subtitle;
   final Widget? trailing;
 
   @override
@@ -439,7 +453,7 @@ class _TaskLine extends StatelessWidget {
       color: guests ? AarastV3Color.lilac : AarastV3Color.brandAccentStrong,
       soft: guests ? AarastV3Color.lilacSoft : AarastV3Color.brandAccentSoft,
       title: task.title,
-      subtitle: taskWhenLabel(task),
+      subtitle: subtitle ?? taskWhenLabel(task),
       trailing: trailing,
       onTap: onTap,
     );

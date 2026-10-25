@@ -75,19 +75,20 @@ String participantRoleLabel(String role) {
 }
 
 /// «أنت مساعد» beside the plan's name on a participant's own screens; a
-/// bride's plan speaks to a woman («أنتِ مساعدة», q17).
+/// bride's plan speaks to a woman («أنتِ مساعدة», q17). The role words are
+/// said about someone («يشوف بس» beside a name), so a sentence to the
+/// participant takes its own words: «أنت تتابع بس», «أنت من الأهل».
 String participantRoleTag(String? role, {bool feminine = false}) {
-  final word = role == null ? 'مشارك' : participantRoleLabel(role);
-  if (!feminine) return 'أنت $word';
-  final her = switch (word) {
-    'مساعد' => 'مساعدة',
-    'مشارك' => 'مشاركة',
-    'مساهم' => 'مساهمة',
-    'مدير' => 'مديرة',
-    'شريك' => 'شريكة',
-    _ => word,
+  final you = feminine ? 'أنتِ' : 'أنت';
+  return switch (role) {
+    'VIEWER' => feminine ? 'أنتِ تتابعين بس' : 'أنت تتابع بس',
+    'FAMILY' => '$you من الأهل',
+    'HELPER' => feminine ? 'أنتِ مساعدة' : 'أنت مساعد',
+    'CONTRIBUTOR' => feminine ? 'أنتِ مساهمة' : 'أنت مساهم',
+    'MANAGER' => feminine ? 'أنتِ مديرة' : 'أنت مدير',
+    'GROOM' || 'BRIDE' => feminine ? 'أنتِ شريكة' : 'أنت شريك',
+    _ => feminine ? 'أنتِ مشاركة' : 'أنت مشارك',
   };
-  return 'أنتِ $her';
 }
 
 /// «771 554 220»: a Yemeni mobile the way it is read out at home; any other

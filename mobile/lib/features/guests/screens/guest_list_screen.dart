@@ -25,6 +25,7 @@ import '../widgets/guest_form_sheet.dart';
 import '../widgets/guest_groups_sheet.dart';
 import '../widgets/guest_row.dart';
 import '../widgets/guest_search_field.dart';
+import '../widgets/guest_summary_figures.dart';
 
 part 'guest_list_screen_helpers.dart';
 

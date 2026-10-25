@@ -45,8 +45,10 @@ import 'package:aarast_mobile/features/tasks/models/wedding_task.dart';
 import 'package:aarast_mobile/features/tasks/providers/task_timeline_provider.dart';
 import 'package:aarast_mobile/features/wedding_plans/data/wedding_plans_api.dart';
 import 'package:aarast_mobile/features/wedding_plans/models/dashboard_summary.dart';
+import 'package:aarast_mobile/features/wedding_plans/models/plan_read_view.dart';
 import 'package:aarast_mobile/features/wedding_plans/models/wedding_plan.dart';
 import 'package:aarast_mobile/features/wedding_plans/providers/dashboard_summary_provider.dart';
+import 'package:aarast_mobile/features/wedding_plans/providers/plan_read_view_provider.dart';
 import 'package:aarast_mobile/features/wedding_plans/screens/participant_home_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
@@ -455,6 +457,46 @@ class _PlansApi extends WeddingPlansApi {
   @override
   Future<WeddingPlan> getWeddingPlan(String id) async =>
       throw const ApiException('not used');
+
+  // D52: the plan as every member reads it. No due days, so the capture
+  // reads the same whatever today is.
+  @override
+  Future<PlanReadView> getPlanReadView(String planId) async =>
+      PlanReadView.fromJson({
+        'weddingPlanId': planId,
+        'tasks': {
+          'total': 20,
+          'done': 12,
+          'items': [
+            {
+              'id': 'r1',
+              'title': 'حدد موعد عقد القران',
+              'status': 'TODO',
+              'assignee': {'kind': 'OWNER', 'firstName': 'محمد'},
+            },
+            {
+              'id': 'r2',
+              'title': 'رتّب الغداء',
+              'status': 'TODO',
+              'assignee': {'kind': 'MEMBER', 'firstName': 'صالح'},
+            },
+            {
+              'id': 'r3',
+              'title': 'حجز سيارات الزفة',
+              'status': 'TODO',
+              'assignee': {'kind': 'PERSON', 'firstName': 'الوالد'},
+            },
+          ],
+        },
+        'guests': {
+          'total': 0,
+          'confirmed': 0,
+          'pending': 0,
+          'declined': 0,
+          'items': <Object>[],
+        },
+        'bookings': {'items': <Object>[]},
+      });
 }
 
 class _TasksApi extends TaskTimelineApi {
@@ -536,6 +578,9 @@ Future<(List<SingleChildWidget>, GoRouter)> _workspace({
       ChangeNotifierProvider<AccountContextController>.value(value: contexts),
       ChangeNotifierProvider<AuthController>.value(value: auth),
       ChangeNotifierProvider<DashboardSummaryProvider>.value(value: dashboard),
+      ChangeNotifierProvider<PlanReadViewProvider>.value(
+        value: PlanReadViewProvider(weddingPlansApi: api),
+      ),
       ChangeNotifierProvider<TaskTimelineProvider>.value(
         value: TaskTimelineProvider(
           _TasksApi(apiClient, [

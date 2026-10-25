@@ -69,7 +69,11 @@ import 'features/sharing/sharing_api.dart'
 import 'features/tasks/tasks_api.dart'
     show TaskTimelineApi, TaskTimelineProvider;
 import 'features/wedding_plans/wedding_plans_api.dart'
-    show DashboardSummaryProvider, WeddingPlansApi, WeddingPlansProvider;
+    show
+        DashboardSummaryProvider,
+        PlanReadViewProvider,
+        WeddingPlansApi,
+        WeddingPlansProvider;
 
 Future<void> main() async {
   const observability = ObservabilityConfig.fromEnvironment();
@@ -556,6 +560,20 @@ class _AarastSessionProviders extends StatelessWidget {
               current,
               _planScope(accountContexts),
               () => DashboardSummaryProvider(weddingPlansApi: weddingPlansApi),
+            ),
+          ),
+          ChangeNotifierProxyProvider<
+            AccountContextController,
+            PlanReadViewProvider
+          >(
+            create: (_) => _bindPlanScope(
+              PlanReadViewProvider(weddingPlansApi: weddingPlansApi),
+              _unselectedPlanScope,
+            ),
+            update: (_, accountContexts, current) => _forPlanScope(
+              current,
+              _planScope(accountContexts),
+              () => PlanReadViewProvider(weddingPlansApi: weddingPlansApi),
             ),
           ),
           ChangeNotifierProxyProvider<

@@ -12,12 +12,14 @@ import '../../../core/utils/currency_label.dart';
 import '../../../core/utils/money_formatters.dart';
 import '../../../core/widgets/aarast_ui.dart';
 import '../../account_contexts/account_contexts_api.dart'
-    show AccountContextController;
+    show AccountContextController, AccountContextRole;
+import '../widgets/plan_read_bookings.dart';
 import '../widgets/provider_result_card.dart';
 import '../../auth/auth_api.dart' show AuthActionGuard;
 import '../../onboarding/onboarding_api.dart'
     show GuestOnboardingStorage, GuestPersona, WeddingLocationDraft;
-import '../../wedding_plans/wedding_plans_api.dart' show WeddingPlansProvider;
+import '../../wedding_plans/wedding_plans_api.dart'
+    show PlanReadBooking, PlanReadViewProvider, WeddingPlansProvider;
 import '../../chat/chat_api.dart' show ChatProvider, ConversationListView;
 import '../../finance/finance_api.dart' show CostDraftIntent, FinanceProvider;
 import '../data/booking_moment_ledger.dart';
@@ -32,6 +34,7 @@ import '../providers/marketplace_provider.dart';
 part 'provider_marketplace_screen.sections.dart';
 part 'provider_marketplace_screen.results.dart';
 part 'provider_marketplace_screen.labels.dart';
+part 'provider_marketplace_screen.participant.dart';
 part 'provider_marketplace_screen.tabs.dart';
 
 /// f08: a conversation shows the icon of the service it is about.
@@ -122,6 +125,7 @@ class _ProviderMarketplaceScreenState extends State<ProviderMarketplaceScreen> {
         hasAccount: includeAccountData,
         marketplace: provider,
       );
+      if (mounted) _loadParticipantPlan();
       final budgetIntent = widget.initialBudgetIntent;
       if (budgetIntent != null && mounted) {
         await provider.applyBudgetMatchIntent(budgetIntent);
@@ -230,7 +234,7 @@ class _ProviderMarketplaceScreenState extends State<ProviderMarketplaceScreen> {
                   status: firstVisit != false
                       ? context.say('ما طلبت من أحد بعد', 'ما طلبتِ من أحد بعد')
                       : planMode
-                      ? providerBoardStatus(board)
+                      ? _boardStatus(board)
                       : context.say(
                           'دوّر على مزودين عرسك',
                           'دوّري على مزودين عرسك',

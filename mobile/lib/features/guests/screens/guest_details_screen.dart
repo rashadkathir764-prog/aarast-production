@@ -10,6 +10,7 @@ import '../../../core/phone/phone_links.dart';
 import '../../../core/phone/phone_number_utils.dart';
 import '../../../core/routing/app_router.dart';
 import '../../../core/routing/pop_or_go.dart';
+import '../../../core/utils/arabic_count.dart';
 import '../../../core/widgets/aarast_toast.dart';
 import '../../../core/widgets/aarast_ui.dart';
 import '../../auth/auth_api.dart' show AuthActionGuard;
@@ -247,7 +248,7 @@ class _GuestDetailsScreenState extends State<GuestDetailsScreen> {
         if (guest.isConfirmed && guest.companionsCount > 0) ...[
           const SizedBox(height: 6),
           Text(
-            '${context.say('معه', 'معها')} ${guest.companionsCount} · ${guest.seatsCount} مقعد',
+            '${context.say('معه', 'معها')} ${guest.companionsCount} · ${arabicSeats(guest.seatsCount)}',
             style: JourneyType.of(
               JourneyType.small,
               color: AarastV3Color.textMuted,

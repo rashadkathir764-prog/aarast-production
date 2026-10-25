@@ -53,10 +53,12 @@ extension _ProviderTabs on _ProviderMarketplaceScreenState {
     }
     if (marketplace.quotesForPlan(planId).isNotEmpty ||
         marketplace.favoriteProviders.isNotEmpty ||
-        board.any((row) => row.stage > 0)) {
+        board.any((row) => row.stage > 0) ||
+        // D52: a participant's plan has started when anyone booked.
+        _participantBookings(watch: true)?.isNotEmpty == true) {
       return false;
     }
-    if (marketplace.isLoading) return null;
+    if (marketplace.isLoading || _participantPlanPending) return null;
     if (marketplace.quoteRequestsErrorMessage != null) return false;
     final finance = context.read<FinanceProvider?>();
     if (finance != null &&
@@ -202,6 +204,7 @@ extension _ProviderTabs on _ProviderMarketplaceScreenState {
             ),
             const SizedBox(height: 12),
           ],
+          ..._participantBookingsSection(),
           for (final hardCase in providerHardCases(board, DateTime.now()))
             ProviderHardCaseCard(
               hardCase: hardCase,
@@ -229,11 +232,25 @@ extension _ProviderTabs on _ProviderMarketplaceScreenState {
                 AppRouter.quoteConversation(hardCase.quote.id),
               ),
             ),
-          ProviderBoardView(
-            rows: board,
-            onOpen: _openBoardRow,
-            onSearch: (row) => _searchService(row, marketplace, tabs),
-          ),
+          if (board.isEmpty && _participantBookings()?.isNotEmpty == true)
+            // The plan's bookings are above; the participant has asked
+            // nobody themselves yet, and the money items are not theirs.
+            JourneyNote(
+              key: const ValueKey('participant-own-requests-empty'),
+              text: context.say(
+                'اللي تطلب منهم عروض يطلعون هنا. دوّر عليهم في «استكشف».',
+                'اللي تطلبين منهم عروض يطلعون هنا. دوّري عليهم في «استكشف».',
+              ),
+              icon: LucideIcons.search,
+              color: AarastV3Color.cobalt,
+              soft: AarastV3Color.cobaltSoft,
+            )
+          else
+            ProviderBoardView(
+              rows: board,
+              onOpen: _openBoardRow,
+              onSearch: (row) => _searchService(row, marketplace, tabs),
+            ),
         ],
       ),
     );

@@ -107,7 +107,11 @@ const BUDGET_TOPICS: readonly BudgetTopic[] = [
     provider: ["كوافير", "صالون", "شعر", "hair", "salon"],
     budget: ["شعر", "كوافير", "مكياج", "عناية"],
   },
-  { provider: ["نقاش", "نقش", "حناء", "henna"], budget: ["نقش", "حناء"] },
+  // «المزينة والنقاشة» names the نقاشة herself, not the نقش (G40).
+  {
+    provider: ["نقاش", "نقش", "حناء", "henna"],
+    budget: ["نقش", "حناء", "نقاش"],
+  },
   { provider: ["ذهب", "شبكة", "gold"], budget: ["ذهب", "شبكة"] },
   { provider: ["إكسسوار", "accessor"], budget: ["إكسسوار"] },
   { provider: ["عطور", "عطر", "بخور", "perfume"], budget: ["عطور", "بخور"] },
@@ -180,6 +184,47 @@ export function findLogicalBudgetCategory<T extends BudgetCategoryCandidate>(
     if (match) return match.category;
   }
   return null;
+}
+
+/**
+ * The plan's item an accepted offer of this provider category is filed
+ * under: its topic's item, else the plan's «أخرى» (null when the plan has
+ * no «أخرى» yet; acceptance then creates it).
+ */
+export function budgetItemForProviderCategory<T extends BudgetCategoryCandidate>(
+  categories: readonly T[],
+  providerCategoryName: string | null | undefined,
+): T | null {
+  return (
+    findLogicalBudgetCategory(categories, providerCategoryName) ??
+    findOtherBudgetCategory(categories)
+  );
+}
+
+/**
+ * G40: the provider categories each item is searched by, read from the very
+ * rule that files an accepted offer (`budgetItemForProviderCategory`), so
+ * «ابحث» on an item lists exactly the providers whose offers land in it.
+ * Every item is a key, in the plan's order; one no category lands in has an
+ * empty list (no «ابحث»). A category appears under one item at most.
+ */
+export function providerCategoryIdsByBudgetItem<
+  T extends BudgetCategoryCandidate,
+>(
+  categories: readonly T[],
+  providerCategories: ReadonlyArray<{ id: string; nameAr: string }>,
+): Map<string, string[]> {
+  const byItem = new Map<string, string[]>(
+    categories.map((category) => [category.id, []]),
+  );
+  for (const providerCategory of providerCategories) {
+    const item = budgetItemForProviderCategory(
+      categories,
+      providerCategory.nameAr,
+    );
+    if (item) byItem.get(item.id)?.push(providerCategory.id);
+  }
+  return byItem;
 }
 
 /** Each word with its «و», «ال», «بال» or «لل» set aside as well. */

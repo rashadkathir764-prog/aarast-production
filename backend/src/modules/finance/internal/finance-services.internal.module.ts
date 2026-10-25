@@ -6,6 +6,7 @@ import { MoneySummaryService } from "../../../money/money-summary.service";
 import { PrismaModule } from "../../../platform/database/prisma.module";
 import { CostReceiptsService } from "../../../wedding-costs/cost-receipts.service";
 import { WeddingCostsService } from "../../../wedding-costs/wedding-costs.service";
+import { CatalogReadPublicModule } from "../../catalog/public/catalog-read-public.module";
 import { CollaborationHistoryPublicModule } from "../../collaboration/public/collaboration-history-public.module";
 import { CollaborationPermissionPublicModule } from "../../collaboration/public/collaboration-permission-public.module";
 import { CollaborationScopePublicModule } from "../../collaboration/public/collaboration-scope-public.module";
@@ -26,6 +27,8 @@ import { PlanningBudgetWritePublicModule } from "../../planning/public/planning-
     ProviderReadPublicModule,
     QuoteReadPublicModule,
     MediaStoragePublicModule,
+    // G40: the directory categories each money item searches.
+    CatalogReadPublicModule,
   ],
   providers: [
     MoneySummaryService,

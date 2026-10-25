@@ -32,6 +32,10 @@ import { ProviderReadService } from "../src/modules/marketplace/infrastructure/p
 import { QuoteReadService } from "../src/modules/marketplace/infrastructure/quote-read.service";
 import { PlanReadService } from "../src/modules/planning/infrastructure/plan-read.service";
 
+// G40: the money summary reads the directory's categories; these fixtures
+// have none, so every item's `providerCategoryIds` is empty.
+const noCatalog = { listActiveCategories: async () => [] } as any;
+
 test("money validation accepts bounded amounts and rejects unsafe values", () => {
   assert.equal(requiredMoneyAmount("1500000", "amount"), "1500000");
   assert.equal(requiredMoneyAmount("99.25", "amount"), "99.25");
@@ -54,7 +58,7 @@ test("money validation accepts bounded amounts and rejects unsafe values", () =>
     updateBudgetInTransaction: async () => {
       throw new Error("validation-only fixture must not write a plan");
     },
-  }, new PlanReadService());
+  }, new PlanReadService(), noCatalog);
   assert.throws(() => (budget as any).totalBudget([]), BadRequestException);
   assert.throws(
     () =>
@@ -98,7 +102,7 @@ test("money-budget rejects ambiguous categories and impossible allocations befor
     updateBudgetInTransaction: async () => {
       throw new Error("invalid input must not write a plan");
     },
-  }, new PlanReadService());
+  }, new PlanReadService(), noCatalog);
   const user = { id: "user-1" } as any;
 
   await assert.rejects(
@@ -225,6 +229,7 @@ test("money budget accepts an empty category list but still protects categories 
     permissions as any,
     planningBudgetWriter,
     new PlanReadService(),
+    noCatalog,
   );
   const cleared = await service.replace(
     { id: "owner-1" } as any,
@@ -259,6 +264,7 @@ test("money budget accepts an empty category list but still protects categories 
     permissions as any,
     planningBudgetWriter,
     new PlanReadService(),
+    noCatalog,
   );
   await assert.rejects(
     () => usedService.replace({ id: "owner-1" } as any, "plan-1", dto),
@@ -320,6 +326,7 @@ test("money budget delegates the Planning write through the same serializable tr
     permissions,
     planningBudgetWriter,
     new PlanReadService(),
+    noCatalog,
   ) as MoneyBudgetService;
 
   const result = await service.replace(
@@ -655,6 +662,7 @@ test("money summary uses cost totals and the net append-only ledger exactly once
     prisma as any,
     permissions as any,
     new PlanReadService(),
+    noCatalog,
   ).getSummary({ id: "user-1" } as any, "plan-1");
 
   assert.equal(summary.budget.total, "1000");
@@ -720,6 +728,7 @@ test("payment schedule warnings expose counts without adding overlapping reminde
     prisma as any,
     permissions as any,
     new PlanReadService(),
+    noCatalog,
   ).getSummary({ id: "owner-1" } as any, "plan-1");
   const scheduleWarnings = summary.warnings.filter((warning) =>
     warning.type.startsWith("PAYMENT_SCHEDULE_"),
@@ -761,6 +770,7 @@ test("money access remains fail-closed when the plan is not visible", async () =
     } as any,
     permissions as any,
     new PlanReadService(),
+    noCatalog,
   );
   await assert.rejects(
     () => service.getSummary({ id: "outsider" } as any, "plan-1"),
@@ -797,6 +807,7 @@ test("money summary fails closed if the plan disappears before its snapshot is r
     } as any,
     permissions as any,
     new PlanReadService(),
+    noCatalog,
   );
 
   await assert.rejects(

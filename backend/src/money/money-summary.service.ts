@@ -36,6 +36,12 @@ import {
   type PlanReadPort,
 } from "../modules/planning/public/plan-read.port";
 import {
+  CATALOG_READ_PORT,
+  type CatalogReadPort,
+} from "../modules/catalog/public/catalog-read.port";
+import { listPlanItemsForProviderSearch } from "../modules/finance/infrastructure/budget-item-search.repository";
+import { budgetItemSearchCategories } from "../modules/finance/public/provider-category-budget-item";
+import {
   COLLABORATION_PERMISSION_PORT,
   type CollaborationPermissionPort as PermissionService,
   PlanAccessContext,
@@ -58,6 +64,8 @@ export class MoneySummaryService {
     private readonly permissions: PermissionService,
     @Inject(PLAN_READ_PORT)
     private readonly plans: PlanReadPort,
+    @Inject(CATALOG_READ_PORT)
+    private readonly catalog: CatalogReadPort,
     @Inject(COLLABORATION_SCOPE_PORT)
     private readonly contributorScope?: ContributorScopeService,
   ) {}
@@ -98,6 +106,7 @@ export class MoneySummaryService {
           tx,
           this.permissions,
           this.plans,
+          this.catalog,
           access,
           contributionScope,
         );
@@ -118,6 +127,7 @@ export async function buildMoneySummaryInTransaction(
   tx: Prisma.TransactionClient,
   permissions: PermissionService,
   plans: PlanReadPort,
+  catalog: CatalogReadPort,
   access: PlanAccessContext,
   contributionScope: {
     costIds: readonly string[];
@@ -128,18 +138,26 @@ export async function buildMoneySummaryInTransaction(
   // Funding (savings, family support, gifts, loans) is the owner's private
   // money picture; a contributor's summary never includes it.
   const fundingVisible = access.isOwner && contributionScope === null;
-  const [plan, [categories, scopedCosts, scopedPayments, scopedSchedules], fundingSources, hidden] =
-    await Promise.all([
-      plans.getPlan(tx, weddingPlanId),
-      loadMoneySummaryRows(tx, weddingPlanId, contributionScope),
-      fundingVisible ? listFundingSources(tx, weddingPlanId, true) : null,
-      // V1 checklist 4.10: another account's private costs count nowhere.
-      listOthersPrivateCostIds(
-        tx,
-        weddingPlanId,
-        access.sharedMember?.userId ?? access.plan.ownerUserId,
-      ),
-    ]);
+  const [
+    plan,
+    [categories, scopedCosts, scopedPayments, scopedSchedules],
+    fundingSources,
+    hidden,
+    planItems,
+    providerCategories,
+  ] = await Promise.all([
+    plans.getPlan(tx, weddingPlanId),
+    loadMoneySummaryRows(tx, weddingPlanId, contributionScope),
+    fundingVisible ? listFundingSources(tx, weddingPlanId, true) : null,
+    // V1 checklist 4.10: another account's private costs count nowhere.
+    listOthersPrivateCostIds(
+      tx,
+      weddingPlanId,
+      access.sharedMember?.userId ?? access.plan.ownerUserId,
+    ),
+    listPlanItemsForProviderSearch(tx, weddingPlanId),
+    catalog.listActiveCategories(tx),
+  ]);
   const costs = scopedCosts.filter((cost) => !hidden.has(cost.id));
   const payments = scopedPayments.filter(
     (payment) => !hidden.has(payment.weddingCostId),
@@ -151,6 +169,13 @@ export async function buildMoneySummaryInTransaction(
   if (!plan) {
     throw new NotFoundException("Wedding plan not found");
   }
+  // G40: the directory categories «ابحث» on each item searches, by the rule
+  // acceptance files an offer with, over the whole plan's items.
+  const searchCategories = budgetItemSearchCategories(
+    planItems,
+    providerCategories,
+    plan.persona,
+  );
 
   const zero = () => new Prisma.Decimal(0);
   const totalCost = costs.reduce(
@@ -245,6 +270,8 @@ export async function buildMoneySummaryInTransaction(
         category.allocatedAmount === null
           ? null
           : confirmedCost.gt(category.allocatedAmount),
+      /** G40: empty when no provider's offer lands here (no «ابحث»). */
+      providerCategoryIds: searchCategories.get(category.id) ?? [],
     };
   });
 

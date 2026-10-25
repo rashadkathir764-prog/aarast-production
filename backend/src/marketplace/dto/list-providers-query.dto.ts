@@ -9,6 +9,15 @@ export class ListProvidersQueryDto {
   @IsOptional()
   categoryId?: string;
 
+  /**
+   * G40: several categories, comma-separated (a budget item's
+   * `providerCategoryIds`); a provider in any of them is listed. Not with
+   * `categoryId`.
+   */
+  @IsString()
+  @IsOptional()
+  categoryIds?: string;
+
   @IsString()
   @IsOptional()
   search?: string;

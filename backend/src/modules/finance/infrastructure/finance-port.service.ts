@@ -9,11 +9,11 @@ import {
   WeddingCostStatus,
 } from '@prisma/client';
 import {
-  findLogicalBudgetCategory,
-  findOtherBudgetCategory,
+  budgetItemForProviderCategory,
   normalizeBudgetCategoryName,
   OTHER_BUDGET_CATEGORY_NAME,
 } from '../domain/cost-category-matching';
+import { listPlanItemsForProviderSearch } from './budget-item-search.repository';
 import { isVenueBudgetCategoryName } from '../domain/cost-category-matching';
 import { deriveCostStatus } from '../domain/wedding-cost-aggregate';
 import { parseMahrAgreement } from '../public/mahr-agreement';
@@ -524,18 +524,17 @@ export class FinancePortService implements FinancePort {
     tx: Prisma.TransactionClient,
     input: CreateCostFromAcceptedOfferInput,
   ): Promise<WeddingCostWithDetails> {
-    const categories = await tx.budgetCategory.findMany({
-      // A provider's offer is wedding money, never the mahr (C1).
-      where: { weddingPlanId: input.weddingPlanId, kind: BudgetCategoryKind.WEDDING },
-      select: { id: true, name: true, normalizedName: true },
-      // The matcher takes the first item that fits: the plan's own order.
-      orderBy: [{ createdAt: "asc" }, { id: "asc" }],
-    });
-    let category = findLogicalBudgetCategory(
+    // A provider's offer is wedding money, never the mahr (C1). The matcher
+    // takes the first item that fits: the plan's own order. The money
+    // summary reads the same items and rule for «ابحث» (G40).
+    const categories = await listPlanItemsForProviderSearch(
+      tx,
+      input.weddingPlanId,
+    );
+    let category = budgetItemForProviderCategory(
       categories,
       input.providerCategoryName,
     );
-    category ??= findOtherBudgetCategory(categories);
     if (!category) {
       category = await tx.budgetCategory.upsert({
         where: {

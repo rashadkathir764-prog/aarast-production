@@ -69,6 +69,7 @@ const moneyBudget = new MoneyBudgetService(
   permissions,
   new WeddingPlanBudgetWriter(),
   ownerPorts.plans,
+  ownerPorts.catalog,
 );
 
 interface ControllerMutation {

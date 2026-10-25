@@ -233,6 +233,58 @@ export const PROVIDERS: readonly ProviderSpec[] = [
       { key: 'photos', title: 'تصوير حفلات', description: 'تصوير حفلات الحارة.', price: 250_000, unit: 'package' },
     ],
   },
+  // G40: f02 draws these under «فنانين وفرق» (groom) and «مزينات ونقاشات»
+  // (bride); the search from «الفنان والفرقة» and «المزينة والنقاشة» finds
+  // them. «صالون لمسة» is left out: a salon's offer files under the
+  // makeup-and-hair item, not the نقاشة's.
+  {
+    key: 'afrah',
+    owner: 'providerAfrah',
+    city: 'صنعاء',
+    categorySlug: 'mabra',
+    businessName: 'فرقة الأفراح',
+    ownerName: 'عبده الوصابي',
+    phone: '+967777000207',
+    description: 'فرقة برع وزفة للأعراس في صنعاء.',
+    address: 'حدة، صنعاء',
+    status: ProviderStatus.ACTIVE,
+    verified: true,
+    services: [
+      { key: 'bara', title: 'فرقة برع', description: 'برع الزفة من البيت لين القاعة.', price: 350_000, unit: 'event' },
+      { key: 'full', title: 'فرقة كاملة', description: 'برع وطبل ومزمار للّيلة كلها.', price: 450_000, unit: 'event' },
+    ],
+  },
+  {
+    key: 'ayman',
+    city: 'صنعاء',
+    categorySlug: 'male-singer',
+    businessName: 'الفنان أيمن القاضي',
+    ownerName: 'أيمن القاضي',
+    phone: '+967777000507',
+    description: 'فنان أعراس صنعاني.',
+    address: 'الأصبحي، صنعاء',
+    status: ProviderStatus.ACTIVE,
+    services: [
+      { key: 'night', title: 'سهرة العرس', description: 'فنان مع عازفين.', price: 500_000, unit: 'event' },
+      { key: 'full', title: 'السهرة والزفة', description: 'السهرة وزفة العريس.', price: 700_000, unit: 'event' },
+    ],
+  },
+  {
+    key: 'ummFahd',
+    owner: 'providerUmmFahd',
+    city: 'صنعاء',
+    categorySlug: 'henna',
+    businessName: 'المزينة أم فهد',
+    ownerName: 'أم فهد',
+    phone: '+967777000208',
+    description: 'مزينة ونقاشة للعروسة في البيت.',
+    address: 'الأصبحي، صنعاء',
+    status: ProviderStatus.ACTIVE,
+    services: [
+      { key: 'naqsh', title: 'نقش الحناء', description: 'نقش الحناء لليلة النقش.', price: 500_000, unit: 'event' },
+      { key: 'full', title: 'النقش والتزيين', description: 'النقش وتزيين العروسة يوم العرس.', price: 700_000, unit: 'event' },
+    ],
+  },
   {
     key: 'suspended',
     city: 'عدن',

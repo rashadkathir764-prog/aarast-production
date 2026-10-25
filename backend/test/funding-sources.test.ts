@@ -249,11 +249,19 @@ test("the owner's money summary weighs funding against confirmed costs", async (
   };
   const permissions: any = { canViewMoney: () => true, canManageMoney: () => true };
 
-  const summary = await buildMoneySummaryInTransaction(tx, permissions, plans, context(true));
+  const catalog: any = { listActiveCategories: async () => [] };
+  const summary = await buildMoneySummaryInTransaction(
+    tx,
+    permissions,
+    plans,
+    catalog,
+    context(true),
+  );
   const contributorSummary = await buildMoneySummaryInTransaction(
     tx,
     permissions,
     plans,
+    catalog,
     context(false),
     { costIds: ["cost-1"], categoryIds: [] },
   );

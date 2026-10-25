@@ -308,7 +308,12 @@ test("money summary applies contributor cost and category ids to every aggregate
       }),
     },
     budgetCategory: {
-      findMany: async ({ where }: { where: unknown }) => {
+      findMany: async ({ where, select }: { where: unknown; select?: unknown }) => {
+        // G40: «ابحث» reads the whole plan's items, apart from the rows.
+        if (select) {
+          captured.searchItems = where;
+          return [];
+        }
         captured.categories = where;
         return [];
       },
@@ -342,9 +347,15 @@ test("money summary applies contributor cost and category ids to every aggregate
     tx as any,
     { canViewMoney: () => true, canManageMoney: () => true } as any,
     new PlanReadService(),
+    { listActiveCategories: async () => [] } as any,
     contributorContext as any,
     { costIds: ["cost-mine"], categoryIds: ["category-mine"] },
   );
+  // A category lands in the same item for everyone: the whole plan's items.
+  assert.deepEqual(captured.searchItems, {
+    weddingPlanId: "plan-1",
+    kind: "WEDDING",
+  });
 
   assert.deepEqual((captured.costs as any).id, { in: ["cost-mine"] });
   assert.deepEqual(captured.privacy, {

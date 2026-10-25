@@ -195,6 +195,142 @@ async function ensureFixture() {
   return { city, category, provider, service };
 }
 
+/**
+ * G40: every production category's providers are found from the money item
+ * its accepted offers land in. One listed provider per category, then a
+ * groom's and a bride's plan with their starter items: each category the
+ * persona sees is listed under exactly one item of the money summary (or
+ * none, when only the «أخرى» acceptance creates would take it), and the
+ * directory searched with that item's `providerCategoryIds` finds it.
+ */
+async function checkBudgetItemSearch(fixture) {
+  const production = (
+    await prisma.providerCategory.findMany({
+      where: { isActive: true, NOT: { slug: fixture.category.slug } },
+      orderBy: { sortOrder: 'asc' },
+    })
+  );
+  check('G40: the production catalog is present', production.length >= 39);
+  const providerByCategory = new Map();
+  for (const [index, category] of production.entries()) {
+    const phone = `+96777${String(index).padStart(7, '0')}`;
+    const provider =
+      (await prisma.provider.findFirst({ where: { phone } })) ??
+      (await prisma.provider.create({
+        data: {
+          cityId: fixture.city.id,
+          primaryCategoryId: category.id,
+          businessName: `سموك ${category.nameAr}`,
+          phone,
+          status: ProviderStatus.ACTIVE,
+        },
+      }));
+    const listed = await prisma.providerService.findFirst({
+      where: { providerId: provider.id, categoryId: category.id, isActive: true },
+    });
+    if (!listed) {
+      await prisma.providerService.create({
+        data: {
+          providerId: provider.id,
+          categoryId: category.id,
+          cityId: fixture.city.id,
+          title: `خدمة ${category.nameAr}`,
+          basePrice: '100000',
+          priceUnit: 'package',
+          isActive: true,
+        },
+      });
+    }
+    providerByCategory.set(category.id, provider.id);
+  }
+
+  const bootstrap = await request('GET', '/api/v1/catalogs/bootstrap');
+  const starter =
+    bootstrap.body?.catalogs?.find((catalog) => catalog.key === 'money.starter.categories')
+      ?.items ?? [];
+
+  for (const [persona, digit] of [['GROOM', '3'], ['BRIDE', '4']]) {
+    const phone = `+967${digit}${suffix}`;
+    const registered = await registerVerified(request, {
+      name: `G40 ${persona}`,
+      phone,
+      password: TEST_PASSWORD,
+    });
+    const token = registered.body?.accessToken;
+    const names = starter
+      .filter((item) => item.metadata?.persona === persona)
+      .filter((item) => !item.key.endsWith('-mahr'))
+      .map((item) => item.nameAr)
+      .slice(0, 25);
+    const onboarded = await request('POST', '/api/v1/onboarding/complete', {
+      path: 'USER',
+      persona,
+      location: { governorate: 'Sanaa', city: 'Sanaa', district: 'Old City' },
+      weddingDate: '2027-01-21T00:00:00.000Z',
+      priorities: ['providers'],
+      estimatedBudget: '7000000',
+      currency: 'YER',
+      selectedCategories: names,
+    }, token);
+    const planId = onboarded.body?.activeWeddingPlan?.id;
+    if (onboarded.status !== 201) {
+      console.log(`  G40 ${persona} onboarding: ${registered.status} ${onboarded.status} ${JSON.stringify(onboarded.body?.message ?? onboarded.body?.code ?? null)}`);
+    }
+    check(`G40 ${persona}: a plan with its starter items`, onboarded.status === 201 && names.length > 10);
+    const summary = await request('GET', `/api/v1/wedding-plans/${planId}/money-summary`, null, token);
+    const items = summary.body?.categories ?? [];
+    check(
+      `G40 ${persona}: every item carries providerCategoryIds`,
+      items.length > 0 && items.every((item) => Array.isArray(item.providerCategoryIds)),
+    );
+    const shown = production.filter((category) =>
+      persona === 'GROOM' ? category.showForGroom : category.showForBride,
+    );
+    let found = 0;
+    let unplaced = 0;
+    const missing = [];
+    for (const category of shown) {
+      const holders = items.filter((item) => item.providerCategoryIds.includes(category.id));
+      if (holders.length === 0) {
+        unplaced += 1;
+        continue;
+      }
+      if (holders.length !== 1) {
+        missing.push(`${category.slug}: ${holders.length} items`);
+        continue;
+      }
+      const ids = holders[0].providerCategoryIds;
+      const page = await request(
+        'GET',
+        `/api/v1/providers?categoryIds=${ids.join(',')}&limit=100`,
+      );
+      if (page.body?.items?.some((provider) => provider.id === providerByCategory.get(category.id))) {
+        found += 1;
+      } else {
+        missing.push(`${category.slug} from «${holders[0].name}»`);
+      }
+    }
+    if (missing.length) console.log(`  G40 ${persona} missing: ${missing.join('; ')}`);
+    check(
+      `G40 ${persona}: each category's providers are found from its item (${found} found, ${unplaced} only in «أخرى»)`,
+      missing.length === 0 && found > 0,
+    );
+    const hidden = production.filter((category) => !shown.includes(category));
+    check(
+      `G40 ${persona}: no item searches a category hidden from it`,
+      hidden.every((category) =>
+        items.every((item) => !item.providerCategoryIds.includes(category.id)),
+      ),
+    );
+  }
+
+  const both = await request(
+    'GET',
+    `/api/v1/providers?categoryId=${fixture.category.id}&categoryIds=${fixture.category.id}`,
+  );
+  check('G40: categoryId with categoryIds - HTTP 400', both.status === 400);
+}
+
 async function run() {
   console.log('\nMarketplace Smoke Report');
   console.log(`Target: ${BASE_URL}`);
@@ -526,6 +662,8 @@ async function run() {
     check('DELETE /api/v1/reviews/:id - HTTP 200', res.status === 200);
     check('review delete response', res.body?.deleted === true);
   }
+
+  await checkBudgetItemSearch(fixture);
 
   console.log(`\nOverall Result: ${failed === 0 ? 'PASS' : 'FAIL'}`);
   console.log(`Checks: ${passed} passed, ${failed} failed`);

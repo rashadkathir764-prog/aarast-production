@@ -25,6 +25,8 @@ export type DemoAccountKey =
   | 'providerNeedsChanges'
   | 'providerRejected'
   | 'providerResubmitted'
+  | 'providerAfrah'
+  | 'providerUmmFahd'
   | 'claimantHarah'
   | 'claimantLens'
   | 'customerAdel'
@@ -64,6 +66,8 @@ export const DEMO_ACCOUNTS: readonly DemoAccount[] = [
   { key: 'providerNeedsChanges', name: 'منصور الحداد', phone: '+967777000204', kind: 'provider', roleAr: 'مزود «يحتاج تعديل»: محلات الأناقة', roleEn: 'Needs-changes provider: Al-Anaqa Shops' },
   { key: 'providerRejected', name: 'أم ريان', phone: '+967777000205', kind: 'provider', roleAr: 'مزود مرفوض بسبب يقدر يصلّحه: كوافيرة أم ريان («قدّم من جديد»)', roleEn: 'Rejected provider with a fixable reason: Um Rayan Salon (reopen)' },
   { key: 'providerResubmitted', name: 'فارس الوصابي', phone: '+967777000206', kind: 'provider', roleAr: 'مزود أرسل التعديل وينتظر المراجعة: فرقة النجوم للمزمار', roleEn: 'Provider who sent the fixes back: Al-Nujoom Mizmar Troupe' },
+  { key: 'providerAfrah', name: 'عبده الوصابي', phone: '+967777000207', kind: 'provider', roleAr: 'مزود نشط: فرقة الأفراح (مبرع)، يلقاه العريس من «الفنان والفرقة»', roleEn: 'Active provider: Al-Afrah troupe (mabra), found from the groom\'s artist item' },
+  { key: 'providerUmmFahd', name: 'أم فهد', phone: '+967777000208', kind: 'provider', roleAr: 'مزودة نشطة: المزينة أم فهد (نقاشة)، تلقاها العروسة من «المزينة والنقاشة»', roleEn: 'Active provider: Um Fahd (henna), found from the bride\'s naqsh item' },
   { key: 'claimantHarah', name: 'عبدالله الحارثي', phone: '+967777000506', kind: 'applicant', roleAr: 'طلب استلام ملف «مصور الحارة» ينتظر الإدارة', roleEn: 'Claim of the "Musawwir Al-Harah" listing waiting for review' },
   { key: 'claimantLens', name: 'نبيل المقطري', phone: '+967777000502', kind: 'applicant', roleAr: 'صاحب ملف «عدسة سبأ» بلا حساب مزود، يقدر يطلب استلامه', roleEn: 'Owner of the unclaimed "Adasat Saba" listing, free to claim it' },
   { key: 'customerAdel', name: 'عادل الريمي', phone: '+967777000301', kind: 'customer', persona: WeddingPersona.GROOM, roleAr: 'عميل: طلب من الاستوديو انتهى عرضه', roleEn: 'Customer whose studio offer expired' },

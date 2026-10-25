@@ -35,6 +35,7 @@ import {
 } from "./marketplace.contracts";
 import { ListProvidersQueryDto } from "./dto/list-providers-query.dto";
 import { ListServicesQueryDto } from "./dto/list-services-query.dto";
+import { providerCategoryFilter } from "./provider-category-filter";
 import { quoteLifecycleStatus } from "./quote-lifecycle";
 import { toBookingResponse } from "./booking-policy";
 
@@ -68,19 +69,8 @@ export class MarketplaceQuery {
       this.assertUuid(query.cityId, "cityId");
       and.push({ cityId: query.cityId });
     }
-    if (query.categoryId) {
-      this.assertUuid(query.categoryId, "categoryId");
-      and.push({
-        OR: [
-          { primaryCategoryId: query.categoryId },
-          {
-            services: {
-              some: { categoryId: query.categoryId, isActive: true },
-            },
-          },
-        ],
-      });
-    }
+    const byCategory = providerCategoryFilter(query);
+    if (byCategory) and.push(byCategory);
     const featured = this.optionalBoolean(query.featured, "featured");
     if (featured !== null) {
       if (featured) and.push(...featuredNowConditions(now));
@@ -596,6 +586,10 @@ export class MarketplacePresenter {
         quote.service?.category.nameAr ??
         quote.provider.primaryCategory?.nameAr ??
         null,
+      // G40: the category acceptance files the offer by; the phone finds
+      // the money item whose `providerCategoryIds` hold it.
+      categoryId:
+        quote.service?.category.id ?? quote.provider.primaryCategory?.id ?? null,
       quotedAmount: acceptedOffer?.amount?.toString() ?? null,
       currency: acceptedOffer?.currency ?? null,
       suggestedAction:

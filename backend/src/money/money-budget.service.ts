@@ -25,6 +25,10 @@ import {
   type PlanReadPort,
 } from "../modules/planning/public/plan-read.port";
 import {
+  CATALOG_READ_PORT,
+  type CatalogReadPort,
+} from "../modules/catalog/public/catalog-read.port";
+import {
   MoneyBudgetCategoryDto,
   ReplaceMoneyBudgetDto,
 } from "./dto/replace-money-budget.dto";
@@ -71,6 +75,8 @@ export class MoneyBudgetService {
     private readonly planningBudgetWriter: PlanningBudgetWritePort,
     @Inject(PLAN_READ_PORT)
     private readonly plans: PlanReadPort,
+    @Inject(CATALOG_READ_PORT)
+    private readonly catalog: CatalogReadPort,
   ) {}
 
   async replace(
@@ -171,6 +177,7 @@ export class MoneyBudgetService {
           tx,
           this.permissions,
           this.plans,
+          this.catalog,
           context,
         );
         return {
@@ -241,6 +248,7 @@ export class MoneyBudgetService {
         tx,
         this.permissions,
         this.plans,
+        this.catalog,
         context,
       );
     });

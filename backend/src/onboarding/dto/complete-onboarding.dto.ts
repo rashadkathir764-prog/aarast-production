@@ -1,13 +1,30 @@
 import { OnboardingPath, WeddingPersona } from '@prisma/client';
+import { Type } from 'class-transformer';
 import {
   ArrayMaxSize,
   IsArray,
   IsEnum,
+  IsISO8601,
+  IsNotEmpty,
   IsObject,
   IsOptional,
   IsString,
   MaxLength,
+  ValidateNested,
 } from 'class-validator';
+
+/** a06 «اتفقتوا على المهر؟», answered before the plan exists. */
+export class OnboardingMahrDto {
+  @IsNotEmpty()
+  total!: string | number;
+
+  @IsOptional()
+  settled?: string | number | null;
+
+  @IsISO8601({ strict: true, strictSeparator: true })
+  @IsOptional()
+  remainingDueDate?: string | null;
+}
 
 export class CompleteOnboardingDto {
   @IsEnum(OnboardingPath)
@@ -55,4 +72,10 @@ export class CompleteOnboardingDto {
   @MaxLength(80, { each: true })
   @IsOptional()
   selectedCategories?: string[];
+
+  /** The mahr from a06; only a groom's or a bride's plan takes it (C1). */
+  @ValidateNested()
+  @Type(() => OnboardingMahrDto)
+  @IsOptional()
+  mahr?: OnboardingMahrDto;
 }

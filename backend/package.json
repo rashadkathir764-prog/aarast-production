@@ -50,6 +50,7 @@
     "smoke:provider-lifecycle": "node scripts/smoke/run-isolated-smoke.js provider-lifecycle-smoke.ts",
     "smoke:quote-offer-lifecycle": "node scripts/smoke/run-isolated-smoke.js quote-offer-lifecycle-smoke.ts",
     "smoke:featured-placement": "node scripts/smoke/run-isolated-smoke.js featured-placement-smoke.ts",
+    "smoke:mahr": "node scripts/smoke/run-isolated-smoke.js mahr-smoke.js",
     "smoke:cost-receipts": "node scripts/smoke/run-isolated-smoke.js cost-receipts-smoke.js",
     "smoke:phone-change": "node scripts/smoke/run-isolated-smoke.js phone-change-smoke.js",
     "smoke:task-shift": "node scripts/smoke/run-isolated-smoke.js task-shift-smoke.js",

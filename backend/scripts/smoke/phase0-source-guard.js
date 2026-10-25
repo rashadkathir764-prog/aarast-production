@@ -92,6 +92,7 @@ const managedCommandArguments = new Map([
   ['smoke:money-apis', 'money-apis-smoke.js'],
   ['smoke:financial-ledger-concurrency', 'financial-ledger-concurrency-smoke.js'],
   ['smoke:money-budget', 'money-budget-smoke.js'],
+  ['smoke:mahr', 'mahr-smoke.js'],
   ['smoke:money-routes', 'money-route-contract-smoke.js'],
   ['smoke:tasks-apis', 'tasks-apis-smoke.js'],
   ['smoke:task-timeline', 'task-timeline-smoke.js'],

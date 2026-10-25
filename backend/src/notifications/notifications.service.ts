@@ -88,6 +88,16 @@ import {
 } from "../modules/tasks/public/tasks.port";
 import { purgeOutboxEventsForAggregatesInTransaction } from "../platform/outbox/outbox-purge";
 import {
+  USER_READ_PORT,
+  type UserReadPort,
+} from "../modules/identity/public/user-read.port";
+import {
+  type AddressForm,
+  addressFormOf,
+  isGendered,
+  textFor,
+} from "../shared-kernel/voice/address-form";
+import {
   budgetCategoryExceededRow,
   loanRepaymentRow,
   weddingCountdownRow,
@@ -137,6 +147,7 @@ export class NotificationsService implements NotificationsPort {
     @Inject(PROVIDER_READ_PORT) private readonly providers: ProviderReadPort,
     @Inject(CONVERSATION_LIFECYCLE_PORT)
     private readonly conversations: ConversationLifecyclePort,
+    @Inject(USER_READ_PORT) private readonly users: UserReadPort,
   ) {}
 
   async list(
@@ -357,9 +368,45 @@ export class NotificationsService implements NotificationsPort {
       }
     }
 
-    const created = await this.repository.createNotification(client, input);
+    const form =
+      isGendered(input.title) || isGendered(input.body)
+        ? await this.recipientAddressForm(
+            client,
+            input.userId,
+            input.weddingPlanId ?? null,
+          )
+        : "MASCULINE";
+    const created = await this.repository.createNotification(client, {
+      ...input,
+      title: textFor(form, input.title),
+      body: textFor(form, input.body),
+    });
     await this.enqueueNotificationDelivery(client, created);
     return this.toResponse(created);
+  }
+
+  /**
+   * B5: how this recipient is spoken to: their account's persona, else
+   * their partner role in the plan, else the plan's own party
+   * (`addressFormOf`). One rule for every notification the server writes.
+   */
+  private async recipientAddressForm(
+    client: Prisma.TransactionClient,
+    userId: string,
+    weddingPlanId: string | null,
+  ): Promise<AddressForm> {
+    const [account, plan, membership] = await Promise.all([
+      this.users.getSafeUser(client, userId),
+      weddingPlanId ? this.plans.getPlan(client, weddingPlanId) : null,
+      weddingPlanId
+        ? this.permissions.getMembership(client, weddingPlanId, userId)
+        : null,
+    ]);
+    return addressFormOf({
+      accountPersona: account?.persona ?? null,
+      memberRole: membership?.role ?? null,
+      planPersona: plan?.persona ?? null,
+    });
   }
 
   async getPlanNotificationDashboard(

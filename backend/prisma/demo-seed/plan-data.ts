@@ -2,6 +2,8 @@
 // (mobile/test/prototype/v3) and the bride's «عرس سلمى» (the same screens with
 // her words, mobile/test/prototype/bride_profile). Amounts are in Yemeni rial.
 import {
+  BudgetCategoryKind,
+  CostPayer,
   FundingSourceKind,
   FundingSourceStatus,
   GuestSide,
@@ -37,6 +39,11 @@ export interface CostSpec {
   providerKey?: string;
   offerKey?: string;
   partyName?: string;
+  /** The agreed amount when it is not the item's allocation (the mahr). */
+  total?: number;
+  /** Who pays it (G14). */
+  payer?: CostPayer;
+  payerName?: string;
   agreementDate: Date;
   payments: PaymentSpec[];
   schedules: ScheduleSpec[];
@@ -46,6 +53,8 @@ export interface ItemSpec {
   key: string;
   name: string;
   allocated: number;
+  /** MAHR is the groom's mahr item, outside the budget (C1): no allocation. */
+  kind?: BudgetCategoryKind;
   /** Items still without an agreement (not booked yet) have no cost. */
   cost?: CostSpec;
 }
@@ -57,6 +66,8 @@ export interface FundingSpec {
   amount: number;
   status: FundingSourceStatus;
   receivedAt?: Date;
+  /** A pledge's expected day (the rest of the mahr). */
+  expectedAt?: Date;
   note: string;
   repayments?: Array<{ key: string; amount: number; dueDate: Date; note: string }>;
 }
@@ -129,6 +140,9 @@ function moneyItems(words: {
   artist: string;
   outfit: string;
   lunchParty: string;
+  /** G14 (w20): who pays each item: the owner, or the family named here. */
+  owner: CostPayer;
+  family: string;
 }): ItemSpec[] {
   return [
     {
@@ -140,6 +154,8 @@ function moneyItems(words: {
         title: words.hallProvider,
         providerKey: words.hallKey,
         offerKey: words.hallKey,
+        payer: CostPayer.FAMILY,
+        payerName: words.family,
         agreementDate: day('2026-09-10'),
         payments: [
           {
@@ -167,6 +183,7 @@ function moneyItems(words: {
         title: 'ضيافة الأصالة',
         providerKey: 'hospitality',
         offerKey: 'hospitality',
+        payer: words.owner,
         agreementDate: day('2026-08-15'),
         payments: [
           { key: 'hosp-deposit', amount: 1_100_000, paidAt: day('2026-08-15'), method: 'نقدًا', note: 'العربون الأول' },
@@ -186,6 +203,8 @@ function moneyItems(words: {
         key: 'lunch',
         title: 'غداء العرس',
         partyName: words.lunchParty,
+        payer: CostPayer.FAMILY,
+        payerName: words.family,
         agreementDate: day('2026-10-01'),
         payments: [
           { key: 'lunch-deposit', amount: 800_000, paidAt: day('2026-10-01'), method: 'نقدًا', note: 'دفعة الغداء' },
@@ -203,6 +222,7 @@ function moneyItems(words: {
         key: 'outfit',
         title: words.outfit,
         partyName: 'الخياط',
+        payer: words.owner,
         agreementDate: day('2026-09-30'),
         payments: [
           { key: 'outfit-deposit', amount: 200_000, paidAt: day('2026-09-30'), method: 'نقدًا', note: 'الدفعة الأولى' },
@@ -215,13 +235,74 @@ function moneyItems(words: {
   ];
 }
 
-function funding(words: { father: string; friend: string }): FundingSpec[] {
+/** a06 and c02 (groom): 3 million, 2 handed over on the engagement day, the rest on the contract day. */
+const MAHR_TOTAL = 3_000_000;
+const MAHR_HANDED = 2_000_000;
+/** The contract day, the same day as the «سلّم باقي المهر» task. */
+const mahrRestDay = () => inDays(21);
+
+/** The groom's mahr (C1): his agreement with the bride's family, outside the budget. */
+function groomMahrItem(): ItemSpec {
+  return {
+    key: 'mahr',
+    name: 'المهر',
+    allocated: 0,
+    kind: BudgetCategoryKind.MAHR,
+    cost: {
+      key: 'mahr',
+      title: 'المهر',
+      partyName: 'أهل العروسة',
+      total: MAHR_TOTAL,
+      payer: CostPayer.GROOM,
+      agreementDate: day('2026-08-01'),
+      payments: [
+        { key: 'mahr-engagement', amount: MAHR_HANDED, paidAt: day('2026-08-01'), method: 'نقدًا', note: 'يوم الخطوبة' },
+      ],
+      schedules: [
+        { key: 'mahr-rest', amount: MAHR_TOTAL - MAHR_HANDED, dueDate: mahrRestDay(), paid: false, note: 'الباقي يوم العقد' },
+      ],
+    },
+  };
+}
+
+/** The bride's mahr (C1): money coming in (c05), received and the rest pledged. */
+function brideMahrFunding(): FundingSpec[] {
+  return [
+    {
+      key: 'mahr',
+      kind: FundingSourceKind.MAHR,
+      sourceName: 'المهر من العريس',
+      amount: MAHR_HANDED,
+      status: FundingSourceStatus.RECEIVED,
+      receivedAt: day('2026-08-01'),
+      note: 'استلمه الوالد يوم الخطوبة · للتجهيز',
+    },
+    {
+      key: 'mahr-rest',
+      kind: FundingSourceKind.MAHR,
+      sourceName: 'باقي المهر',
+      amount: MAHR_TOTAL - MAHR_HANDED,
+      status: FundingSourceStatus.PLEDGED,
+      expectedAt: mahrRestDay(),
+      note: 'يوصلك يوم العقد',
+    },
+  ];
+}
+
+function funding(words: {
+  father: string;
+  friend: string;
+  /** c05: the groom's «مدخراتي» is 4.5 million; the bride's 900 thousand. */
+  savings: number;
+  /** c05: the groom's father gives 2.4 million; the bride's mother 1 million. */
+  family: number;
+}): FundingSpec[] {
   return [
     {
       key: 'savings',
       kind: FundingSourceKind.SAVINGS,
       sourceName: 'مدخراتي',
-      amount: 4_500_000,
+      amount: words.savings,
       status: FundingSourceStatus.RECEIVED,
       receivedAt: day('2026-08-01'),
       note: 'من راتبي',
@@ -230,7 +311,7 @@ function funding(words: { father: string; friend: string }): FundingSpec[] {
       key: 'father',
       kind: FundingSourceKind.FAMILY_SUPPORT,
       sourceName: words.father,
-      amount: 2_400_000,
+      amount: words.family,
       status: FundingSourceStatus.RECEIVED,
       receivedAt: day('2026-08-20'),
       note: 'هدية',
@@ -280,16 +361,26 @@ export const GROOM_PLAN: PlanSpec = {
   title: 'عرس محمد',
   weddingDate: day(WEDDING_DAY),
   budget: 7_000_000,
-  items: moneyItems({
-    hall: 'القاعة',
-    hallProvider: 'قاعة سبأ',
-    hallKey: 'hall',
-    qat: 'القات',
-    artist: 'الفنان والفرقة',
-    outfit: 'بدلة العريس',
-    lunchParty: 'أبو علي',
+  items: [
+    groomMahrItem(),
+    ...moneyItems({
+      hall: 'القاعة',
+      hallProvider: 'قاعة سبأ',
+      hallKey: 'hall',
+      qat: 'القات',
+      artist: 'الفنان والفرقة',
+      outfit: 'بدلة العريس',
+      lunchParty: 'أبو علي',
+      owner: CostPayer.GROOM,
+      family: 'الوالد',
+    }),
+  ],
+  funding: funding({
+    father: 'دعم الوالد',
+    friend: 'صاحبي عادل',
+    savings: 4_500_000,
+    family: 2_400_000,
   }),
-  funding: funding({ father: 'دعم الوالد', friend: 'صاحبي عادل' }),
   tasks: [
     // Open: one late, three this week, four later (8 of 20 are open).
     {
@@ -411,13 +502,26 @@ export const BRIDE_PLAN: PlanSpec = {
     artist: 'المزينة والنقاشة',
     outfit: 'فستان الزفة',
     lunchParty: 'أم فدوى',
+    owner: CostPayer.BRIDE,
+    family: 'أبوي',
   }).map((item) =>
     // Her hospitality is the same caterer the groom booked.
     item.key === 'hospitality' && item.cost
       ? { ...item, cost: { ...item.cost, offerKey: 'hospitalityBride' } }
       : item,
   ),
-  funding: funding({ father: 'دعم الوالدة', friend: 'صاحبتي عبلة' }),
+  // c05: «وصلك 4.5 مليون» (the mahr 2, her savings 900 thousand, her
+  // mother's support a million, her uncle's loan 600 thousand) and «موعود
+  // لك 2.2» (the mahr's rest a million, her friend 1.2).
+  funding: [
+    ...brideMahrFunding(),
+    ...funding({
+      father: 'دعم الوالدة',
+      friend: 'صاحبتي عبلة',
+      savings: 900_000,
+      family: 1_000_000,
+    }),
+  ],
   tasks: [
     {
       key: 'contract-date', title: 'حددي موعد عقد القران', done: false, dueDate: inDays(-7),

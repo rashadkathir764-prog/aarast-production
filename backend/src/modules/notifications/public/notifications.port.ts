@@ -6,6 +6,8 @@ import {
   WeddingTask,
 } from '@prisma/client';
 
+import type { AddressedText } from '../../../shared-kernel/voice/address-form';
+
 export const NOTIFICATIONS_PORT = Symbol('NOTIFICATIONS_PORT');
 
 export interface NotificationResponse {
@@ -31,8 +33,12 @@ export interface CreateNotificationInput {
   weddingPlanId?: string | null;
   type: NotificationType;
   priority?: NotificationPriority;
-  title: string;
-  body: string;
+  /**
+   * A sentence spoken to the recipient may come in its two forms; the
+   * notification is written in the recipient's form (B5, `addressFormOf`).
+   */
+  title: AddressedText;
+  body: AddressedText;
   entityType?: string | null;
   entityId?: string | null;
   routeTarget?: string | null;

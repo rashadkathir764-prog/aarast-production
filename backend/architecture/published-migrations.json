@@ -95,6 +95,7 @@
     "20261025200000_add_quote_offer_versions_withdrawal_and_request_expiry": "a62cc93fac6df88726a94cc72a634383c092ea63a9e4b2611ab12f9c64bcf09d",
     "20261025220000_add_provider_featured_periods": "8581961ddc11d51eaa0fa783c8e50496ebdf43905613e8efedcb1fa0c1ea48cd",
     "20261025230000_quote_offer_event_privacy_and_revision_notice": "9fa659953b5e70be22da45fbf1e86a121b37eed71cc6bff4a0dc0eedd7de517e",
-    "20261026000000_featured_placement_review_fixes": "7bd353675a34ba5e9ceda27dec6fbad44da6ff3bb8938aec2b0a07aa0fea1ed5"
+    "20261026000000_featured_placement_review_fixes": "7bd353675a34ba5e9ceda27dec6fbad44da6ff3bb8938aec2b0a07aa0fea1ed5",
+    "20261026100000_add_mahr_and_starter_defaults": "5231c8b90c18e8921e3ecca4ef21764451744b1f5748808b781145e4f0276f6b"
   }
 }

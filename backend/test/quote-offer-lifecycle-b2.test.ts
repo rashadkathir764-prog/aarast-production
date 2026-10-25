@@ -25,6 +25,7 @@ import {
   quoteRequestExpiredRequesterNotification,
   quoteRequestExpiringProviderNotification,
 } from "../src/marketplace/quote-notifications";
+import { textFor } from "../src/shared-kernel/voice/address-form";
 
 const now = new Date("2026-10-25T12:00:00.000Z");
 
@@ -232,7 +233,10 @@ test("the B2 notices say what happened and keep money out", () => {
     providerName: "ضوء صنعاء",
   });
   assert.equal(revised.title, "عدّل ضوء صنعاء عرضه");
-  assert.doesNotMatch(revised.body, /\d/u);
+  // B5: the notice reads in the customer's own form, never with an amount.
+  assert.doesNotMatch(textFor("MASCULINE", revised.body), /\d/u);
+  assert.doesNotMatch(textFor("FEMININE", revised.body), /\d/u);
+  assert.match(textFor("FEMININE", revised.body), /افتحي الطلب وشوفي/u);
   // One notice per version: a retried edit does not notify twice.
   assert.equal(revised.dedupeKey, "u1:quote-offer:o1:v2");
 
@@ -260,6 +264,7 @@ test("the B2 notices say what happened and keep money out", () => {
     answerDays: 7,
   });
   assert.equal(expired.title, "ما رد مقوّت الروضة خلال 7 أيام");
-  assert.match(expired.body, /اطلب من غيره/u);
+  assert.match(textFor("MASCULINE", expired.body), /اطلب من غيره/u);
+  assert.match(textFor("FEMININE", expired.body), /اطلبي من غيره/u);
   assert.equal(expired.dedupeKey, "u1:quote-request-expired:q1");
 });

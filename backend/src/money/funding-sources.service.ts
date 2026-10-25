@@ -69,6 +69,8 @@ export interface FundingSourceResponse {
   amount: string;
   status: FundingSourceStatus;
   receivedAt: Date | null;
+  /** PLEDGED money: the day it is expected (the mahr's rest, a promise). */
+  expectedAt: Date | null;
   note: string | null;
   createdAt: Date;
   updatedAt: Date;
@@ -133,6 +135,7 @@ export class FundingSourcesService {
         amount: this.amount(dto.amount, "amount"),
         status,
         receivedAt: this.receivedAt(status, dto.receivedAt),
+        expectedAt: this.optionalDate(dto.expectedAt, "expectedAt"),
         note: this.optionalText(dto.note),
       });
     });
@@ -172,6 +175,9 @@ export class FundingSourcesService {
           dto.receivedAt !== undefined || dto.status !== undefined
             ? this.receivedAt(nextStatus, dto.receivedAt, source.receivedAt)
             : source.receivedAt,
+        ...(dto.expectedAt !== undefined
+          ? { expectedAt: this.optionalDate(dto.expectedAt, "expectedAt") }
+          : {}),
         ...(dto.note !== undefined ? { note: this.optionalText(dto.note) } : {}),
       });
     });
@@ -392,6 +398,7 @@ export function toFundingSourceResponse(
     amount: source.amount.toString(),
     status: source.status,
     receivedAt: source.receivedAt,
+    expectedAt: source.expectedAt,
     note: source.note,
     createdAt: source.createdAt,
     updatedAt: source.updatedAt,

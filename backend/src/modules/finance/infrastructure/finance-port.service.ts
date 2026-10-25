@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import {
   type BudgetCategory,
+  BudgetCategoryKind,
   FundingSourceKind,
   LoanRepaymentStatus,
   PaymentScheduleStatus,
@@ -15,7 +16,9 @@ import {
 } from '../domain/cost-category-matching';
 import { isVenueBudgetCategoryName } from '../domain/cost-category-matching';
 import { deriveCostStatus } from '../domain/wedding-cost-aggregate';
+import { parseMahrAgreement } from '../public/mahr-agreement';
 import { deletePlanFundingSources } from './funding-sources.repository';
+import { recordPlanMahrInTransaction } from './mahr.repository';
 import { excludeOthersPrivateCosts } from './cost-privacy.repository';
 import {
   deleteReceipts,
@@ -32,6 +35,7 @@ import type {
   ExceededBudgetCategory,
   FinancePort,
   ImportedCostInput,
+  MahrAgreementRequest,
   PendingPaymentSchedule,
   PlanImportCounts,
   RecordedCostCounts,
@@ -252,14 +256,40 @@ export class FinancePortService implements FinancePort {
     weddingPlanId: string,
     costIds?: readonly string[] | null,
   ): Promise<CostAmounts[]> {
-    return client.weddingCost.findMany({
+    const rows = await client.weddingCost.findMany({
       where: {
         weddingPlanId,
         ...(costIds ? { id: { in: [...costIds] } } : {}),
         status: { not: WeddingCostStatus.CANCELLED },
       },
-      select: { id: true, budgetCategoryId: true, totalAmount: true, paidAmount: true },
+      select: {
+        id: true,
+        budgetCategoryId: true,
+        totalAmount: true,
+        paidAmount: true,
+        budgetCategory: { select: { kind: true } },
+      },
     });
+    return rows.map(({ budgetCategory, ...cost }) => ({
+      ...cost,
+      inBudget: budgetCategory.kind !== BudgetCategoryKind.MAHR,
+    }));
+  }
+
+  async recordMahrInTransaction(
+    tx: Prisma.TransactionClient,
+    weddingPlanId: string,
+    persona: string | null,
+    request: MahrAgreementRequest,
+    recordedAt: Date,
+  ): Promise<void> {
+    await recordPlanMahrInTransaction(
+      tx,
+      weddingPlanId,
+      persona,
+      parseMahrAgreement(request),
+      recordedAt,
+    );
   }
 
   async hasVenueCost(
@@ -495,7 +525,8 @@ export class FinancePortService implements FinancePort {
     input: CreateCostFromAcceptedOfferInput,
   ): Promise<WeddingCostWithDetails> {
     const categories = await tx.budgetCategory.findMany({
-      where: { weddingPlanId: input.weddingPlanId },
+      // A provider's offer is wedding money, never the mahr (C1).
+      where: { weddingPlanId: input.weddingPlanId, kind: BudgetCategoryKind.WEDDING },
       select: { id: true, name: true, normalizedName: true },
       // The matcher takes the first item that fits: the plan's own order.
       orderBy: [{ createdAt: "asc" }, { id: "asc" }],

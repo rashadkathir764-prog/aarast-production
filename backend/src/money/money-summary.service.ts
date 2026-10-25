@@ -1,8 +1,10 @@
 import { listOthersPrivateCostIds } from "../modules/finance/infrastructure/cost-privacy.repository";
 import { Inject, Injectable, NotFoundException } from "@nestjs/common";
 import {
+  BudgetCategoryKind,
   ContributionAction,
   ContributionEntityType,
+  CostPayer,
   CostPaymentType,
   FundingSourceKind,
   FundingSourceStatus,
@@ -19,6 +21,12 @@ import {
 import { runRetryableTransaction } from "../platform/database/serializable-transaction";
 import { PrismaService } from "../platform/database/prisma.service";
 import { loadMoneySummaryRows } from "../modules/finance/infrastructure/money-summary.repository";
+import {
+  type MahrPicture,
+  type MahrSide,
+  mahrPicture,
+  mahrSideOf,
+} from "../modules/finance/domain/mahr-policy";
 import {
   listFundingSources,
   type FundingSourceWithRepayments,
@@ -149,6 +157,20 @@ export async function buildMoneySummaryInTransaction(
     (sum, cost) => sum.plus(cost.totalAmount),
     zero(),
   );
+  // C1: the groom's mahr item is outside the wedding budget. Its costs count
+  // in what he agreed, paid and owes, never against the budget.
+  const mahrCategoryIds = new Set(
+    categories
+      .filter((category) => category.kind === BudgetCategoryKind.MAHR)
+      .map((category) => category.id),
+  );
+  const weddingCosts = costs.filter(
+    (cost) => !mahrCategoryIds.has(cost.budgetCategoryId),
+  );
+  const weddingCost = weddingCosts.reduce(
+    (sum, cost) => sum.plus(cost.totalAmount),
+    zero(),
+  );
   const netPaidByCost = new Map<string, Prisma.Decimal>();
   for (const payment of payments) {
     const signed =
@@ -161,6 +183,10 @@ export async function buildMoneySummaryInTransaction(
     );
   }
   const paid = costs.reduce(
+    (sum, cost) => sum.plus(netPaidByCost.get(cost.id) ?? zero()),
+    zero(),
+  );
+  const weddingPaid = weddingCosts.reduce(
     (sum, cost) => sum.plus(netPaidByCost.get(cost.id) ?? zero()),
     zero(),
   );
@@ -206,6 +232,7 @@ export async function buildMoneySummaryInTransaction(
     return {
       categoryId: category.id,
       name: category.name,
+      kind: category.kind,
       allocatedAmount: category.allocatedAmount?.toString() ?? null,
       confirmedCost: confirmedCost.toString(),
       paid: categoryPaid.toString(),
@@ -228,12 +255,12 @@ export async function buildMoneySummaryInTransaction(
     count: number | null;
     amount: string | null;
   }> = [];
-  if (totalBudget !== null && totalCost.gt(totalBudget)) {
+  if (totalBudget !== null && weddingCost.gt(totalBudget)) {
     warnings.push({
       type: "BUDGET_EXCEEDED",
       severity: "DANGER",
       count: null,
-      amount: totalCost.minus(totalBudget).toString(),
+      amount: weddingCost.minus(totalBudget).toString(),
     });
   }
   for (const category of categoryRows) {
@@ -286,15 +313,26 @@ export async function buildMoneySummaryInTransaction(
   }
 
   const next = pendingSchedules[0] ?? null;
+  const mahr = summarizeMahr({
+    side: mahrSideOf(plan.persona),
+    costs: costs.filter((cost) => mahrCategoryIds.has(cost.budgetCategoryId)),
+    netPaidByCost,
+    pendingSchedules: pendingSchedules.filter((schedule) =>
+      mahrCategoryIds.has(schedule.weddingCost.budgetCategoryId),
+    ),
+    fundingSources,
+  });
   return {
     weddingPlanId,
     currency: plan.currency,
+    // The wedding budget (C1): the mahr item is not in it.
     budget: {
       total: totalBudget?.toString() ?? null,
       allocated: allocated.toString(),
       unallocated: totalBudget?.minus(allocated).toString() ?? null,
-      confirmedCost: totalCost.toString(),
-      remaining: totalBudget?.minus(totalCost).toString() ?? null,
+      confirmedCost: weddingCost.toString(),
+      paid: weddingPaid.toString(),
+      remaining: totalBudget?.minus(weddingCost).toString() ?? null,
     },
     costs: {
       total: totalCost.toString(),
@@ -321,6 +359,15 @@ export async function buildMoneySummaryInTransaction(
         : null,
     },
     categories: categoryRows,
+    /**
+     * The plan's mahr (a06): the groom's agreement with the bride's family
+     * (PAYS, from his MAHR item) or the bride's mahr coming in (RECEIVES,
+     * from her MAHR funding sources, so the owner's only). Null before it is
+     * recorded, on a plan without a persona, or for a reader who may not see it.
+     */
+    mahr,
+    /** G14: who pays what, by each item's payer (the payer is set per item). */
+    payers: summarizePayers(costs, netPaidByCost),
     /** Owner only; null for a contributor. */
     funding,
     warnings,
@@ -337,6 +384,117 @@ export async function buildMoneySummaryInTransaction(
 export type MoneySummaryResult = Awaited<
   ReturnType<typeof buildMoneySummaryInTransaction>
 >;
+
+function summarizeMahr(input: {
+  side: MahrSide | null;
+  costs: ReadonlyArray<{ id: string; totalAmount: Prisma.Decimal }>;
+  netPaidByCost: ReadonlyMap<string, Prisma.Decimal>;
+  pendingSchedules: ReadonlyArray<{ dueDate: Date }>;
+  fundingSources: readonly FundingSourceWithRepayments[] | null;
+}): MahrPicture | null {
+  const zero = new Prisma.Decimal(0);
+  if (input.side === "PAYS") {
+    if (input.costs.length === 0) return null;
+    const total = input.costs.reduce(
+      (sum, cost) => sum.plus(cost.totalAmount),
+      zero,
+    );
+    const settled = input.costs.reduce(
+      (sum, cost) => sum.plus(input.netPaidByCost.get(cost.id) ?? zero),
+      zero,
+    );
+    return mahrPicture(
+      "PAYS",
+      total,
+      settled,
+      input.pendingSchedules[0]?.dueDate ?? null,
+    );
+  }
+  if (input.side === "RECEIVES" && input.fundingSources) {
+    const sources = input.fundingSources.filter(
+      (source) => source.kind === FundingSourceKind.MAHR,
+    );
+    if (sources.length === 0) return null;
+    const total = sources.reduce((sum, source) => sum.plus(source.amount), zero);
+    const received = sources
+      .filter((source) => source.status === FundingSourceStatus.RECEIVED)
+      .reduce((sum, source) => sum.plus(source.amount), zero);
+    const expected = sources
+      .filter(
+        (source) =>
+          source.status === FundingSourceStatus.PLEDGED &&
+          source.expectedAt !== null,
+      )
+      .map((source) => source.expectedAt as Date)
+      .sort((a, b) => a.getTime() - b.getTime());
+    return mahrPicture("RECEIVES", total, received, expected[0] ?? null);
+  }
+  return null;
+}
+
+const PAYER_ORDER: ReadonlyArray<CostPayer | null> = [
+  CostPayer.GROOM,
+  CostPayer.BRIDE,
+  CostPayer.FAMILY,
+  CostPayer.SHARED,
+  CostPayer.OTHER,
+  null,
+];
+
+/**
+ * G14: what each payer agreed to and paid, grouped by the item's payer and
+ * the name written with it («الوالد», «خالي أحمد»); items without a payer
+ * are one group with `payer: null`.
+ */
+function summarizePayers(
+  costs: ReadonlyArray<{
+    id: string;
+    totalAmount: Prisma.Decimal;
+    payer: CostPayer | null;
+    payerName: string | null;
+  }>,
+  netPaidByCost: ReadonlyMap<string, Prisma.Decimal>,
+) {
+  const groups = new Map<
+    string,
+    {
+      payer: CostPayer | null;
+      payerName: string | null;
+      agreed: Prisma.Decimal;
+      paid: Prisma.Decimal;
+      costsCount: number;
+    }
+  >();
+  for (const cost of costs) {
+    const payerName = cost.payerName?.trim() || null;
+    const key = `${cost.payer ?? ""}|${payerName ?? ""}`;
+    const group = groups.get(key) ?? {
+      payer: cost.payer,
+      payerName,
+      agreed: new Prisma.Decimal(0),
+      paid: new Prisma.Decimal(0),
+      costsCount: 0,
+    };
+    group.agreed = group.agreed.plus(cost.totalAmount);
+    group.paid = group.paid.plus(netPaidByCost.get(cost.id) ?? 0);
+    group.costsCount += 1;
+    groups.set(key, group);
+  }
+  return [...groups.values()]
+    .sort(
+      (a, b) =>
+        PAYER_ORDER.indexOf(a.payer) - PAYER_ORDER.indexOf(b.payer) ||
+        (a.payerName ?? "").localeCompare(b.payerName ?? "", "ar"),
+    )
+    .map((group) => ({
+      payer: group.payer,
+      payerName: group.payerName,
+      agreed: group.agreed.toString(),
+      paid: group.paid.toString(),
+      outstanding: group.agreed.minus(group.paid).toString(),
+      costsCount: group.costsCount,
+    }));
+}
 
 /**
  * Money in versus money committed. `total` counts pledged and received

@@ -2,6 +2,7 @@ import { NotificationPriority, NotificationType } from "@prisma/client";
 import type { CreateNotificationInput } from "../modules/notifications/public/notifications.port";
 import { PROVIDER_PORTAL_ROUTE } from "../modules/marketplace/public/provider-access-policy";
 import { requesterQuoteRoute } from "./quote-notifications";
+import { type AddressedText, gendered } from "../shared-kernel/voice/address-form";
 
 // Each booking step tells the other side (V1 checklist 4.6): the provider
 // learns of a request or a cancellation, the customer of a confirmation, a
@@ -38,8 +39,10 @@ export function bookingProviderNotification(
     title: event === "REQUESTED" ? "طلب حجز جديد" : "أُلغي حجز",
     body:
       event === "REQUESTED"
-        ? `${who} يطلب حجز يوم ${day}. أكّد الحجز أو اعتذر من بوابة المزوّد.`
-        : `${who} ألغى الحجز ليوم ${day}. أصبح اليوم متاحًا في تقويمك.`,
+        ? // The customer may be the groom or the bride: the line names
+          // them without a verb in their gender (B5).
+          `طلب حجز يوم ${day} من ${who}. أكّد الحجز أو اعتذر من بوابة المزوّد.`
+        : `انلغى حجز ${who} ليوم ${day}. أصبح اليوم متاحًا في تقويمك.`,
     entityType: "booking",
     entityId: args.bookingId,
     routeTarget: PROVIDER_PORTAL_ROUTE,
@@ -62,7 +65,7 @@ export function bookingCustomerNotification(
   },
 ): CreateNotificationInput {
   const day = formatDay(args.eventDate);
-  const copy = {
+  const copies: Record<typeof event, { title: string; body: AddressedText }> = {
     CONFIRMED: {
       title: "تم تأكيد الحجز",
       body: `${args.providerName} أكّد حجز يوم ${day}.`,
@@ -73,9 +76,13 @@ export function bookingCustomerNotification(
     },
     CANCELLED: {
       title: "ألغى المزوّد الحجز",
-      body: `${args.providerName} ألغى حجز يوم ${day}. تواصل معه أو اختر مزوّدًا آخر.`,
+      body: gendered(
+        `${args.providerName} ألغى حجز يوم ${day}. تواصل معه أو اختر مزوّدًا آخر.`,
+        `${args.providerName} ألغى حجز يوم ${day}. تواصلي معه أو اختاري مزوّدًا آخر.`,
+      ),
     },
-  }[event];
+  };
+  const copy = copies[event];
   return {
     userId: args.customerUserId,
     weddingPlanId: args.weddingPlanId,
@@ -167,7 +174,10 @@ export function bookingReminderNotifications(
       type: NotificationType.BOOKING_UPDATED,
       priority,
       title: "تذكير بحجز",
-      body: `حجزك مع ${args.providerName} ${when} (${day}). تواصل معه لتأكيد التفاصيل.`,
+      body: gendered(
+        `حجزك مع ${args.providerName} ${when} (${day}). تواصل معه لتأكيد التفاصيل.`,
+        `حجزك مع ${args.providerName} ${when} (${day}). تواصلي معه لتأكيد التفاصيل.`,
+      ),
       entityType: "booking",
       entityId: args.bookingId,
       routeTarget: requesterQuoteRoute(args.quoteRequestId),

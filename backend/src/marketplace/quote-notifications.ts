@@ -1,6 +1,7 @@
 import { NotificationPriority, NotificationType } from "@prisma/client";
 import type { CreateNotificationInput } from "../modules/notifications/public/notifications.port";
 import { PROVIDER_PORTAL_ROUTE } from "../modules/marketplace/public/provider-access-policy";
+import { gendered } from "../shared-kernel/voice/address-form";
 
 // بناة مدخلات إشعارات دورة عروض الأسعار — نقية بلا Prisma ولا خدمات،
 // حتى يبقى marketplace.service على التنسيق فقط (انظر عقد marketplace-presenter).
@@ -155,7 +156,10 @@ export function quoteOfferReceivedNotification(args: {
     type: NotificationType.QUOTE_OFFER_RECEIVED,
     priority: NotificationPriority.HIGH,
     title: "وصل عرض سعر",
-    body: `أرسل ${args.providerName} عرضًا لطلبك. افتح الطلب لمراجعة التفاصيل.`,
+    body: gendered(
+      `أرسل ${args.providerName} عرضًا لطلبك. افتح الطلب لمراجعة التفاصيل.`,
+      `أرسل ${args.providerName} عرضًا لطلبك. افتحي الطلب لمراجعة التفاصيل.`,
+    ),
     entityType: "quote_request",
     entityId: args.quoteRequestId,
     routeTarget: requesterQuoteRoute(args.quoteRequestId),
@@ -209,7 +213,10 @@ export function quoteOfferWithdrawnNotification(args: {
     type: NotificationType.QUOTE_REJECTED,
     priority: NotificationPriority.NORMAL,
     title: `سحب ${args.providerName} عرضه`,
-    body: "عرضه ما عاد متاح. تقدر تسأله ليش في المحادثة، أو تنتظر عرضه الجديد.",
+    body: gendered(
+      "عرضه ما عاد متاح. تقدر تسأله ليش في المحادثة، أو تنتظر عرضه الجديد.",
+      "عرضه ما عاد متاح. تقدرين تسأليه ليش في المحادثة، أو تنتظرين عرضه الجديد.",
+    ),
     entityType: "quote_request",
     entityId: args.quoteRequestId,
     routeTarget: requesterQuoteRoute(args.quoteRequestId),
@@ -262,7 +269,10 @@ export function quoteOfferRevisedNotification(args: {
     type: NotificationType.QUOTE_OFFER_RECEIVED,
     priority: NotificationPriority.HIGH,
     title: `عدّل ${args.providerName} عرضه`,
-    body: "وصلتك نسخة جديدة من العرض. افتح الطلب وشوف ايش تغيّر.",
+    body: gendered(
+      "وصلتك نسخة جديدة من العرض. افتح الطلب وشوف ايش تغيّر.",
+      "وصلتك نسخة جديدة من العرض. افتحي الطلب وشوفي ايش تغيّر.",
+    ),
     entityType: "quote_request",
     entityId: args.quoteRequestId,
     routeTarget: requesterQuoteRoute(args.quoteRequestId),
@@ -320,7 +330,10 @@ export function quoteRequestExpiredRequesterNotification(args: {
     type: NotificationType.QUOTE_REJECTED,
     priority: NotificationPriority.NORMAL,
     title: `ما رد ${args.providerName} خلال ${args.answerDays} أيام`,
-    body: "انتهى طلبك بدون رد. اطلب من غيره من المزودين.",
+    body: gendered(
+      "انتهى طلبك بدون رد. اطلب من غيره من المزودين.",
+      "انتهى طلبك بدون رد. اطلبي من غيره من المزودين.",
+    ),
     entityType: "quote_request",
     entityId: args.quoteRequestId,
     routeTarget: requesterQuoteRoute(args.quoteRequestId),

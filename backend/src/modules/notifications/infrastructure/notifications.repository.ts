@@ -110,7 +110,11 @@ export class NotificationsRepository {
     });
   }
 
-  createNotification(client: Prisma.TransactionClient, input: CreateNotificationInput) {
+  /** Writes a notification whose words are already in the recipient's form. */
+  createNotification(
+    client: Prisma.TransactionClient,
+    input: CreateNotificationInput & { title: string; body: string },
+  ) {
     return client.notification.create({
       data: {
         userId: input.userId,

@@ -21,6 +21,7 @@ export interface FundingSourceValues {
   amount: Prisma.Decimal;
   status: FundingSourceStatus;
   receivedAt: Date | null;
+  expectedAt: Date | null;
   note: string | null;
 }
 

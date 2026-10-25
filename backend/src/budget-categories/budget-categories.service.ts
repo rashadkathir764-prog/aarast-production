@@ -8,6 +8,7 @@ import {
 } from "@nestjs/common";
 import {
   BudgetCategory,
+  BudgetCategoryKind,
   ContributionAction,
   ContributionEntityType,
   ContributionPermission,
@@ -56,6 +57,8 @@ export interface BudgetCategoryResponse {
   id: string;
   weddingPlanId: string;
   name: string;
+  /** MAHR is the groom's mahr item, outside the wedding budget (C1). */
+  kind: BudgetCategoryKind;
   allocatedAmount: string | null;
   costsCount: number;
   createdAt: Date;
@@ -199,6 +202,13 @@ export class BudgetCategoriesService {
           dto.allocatedAmount === undefined
             ? locked.allocatedAmount
             : this.optionalAllocation(dto.allocatedAmount);
+        if (locked.kind === BudgetCategoryKind.MAHR && allocation !== null) {
+          // C1: the mahr is outside the wedding budget.
+          throw new BadRequestException({
+            code: "MAHR_OUTSIDE_BUDGET",
+            message: "المهر خارج ميزانية العرس، فما ينحط له مبلغ من الميزانية.",
+          });
+        }
         await this.assertAllocationFits(
           tx,
           locked.weddingPlanId,
@@ -416,6 +426,7 @@ export class BudgetCategoriesService {
       id: category.id,
       weddingPlanId: category.weddingPlanId,
       name: category.name,
+      kind: category.kind,
       allocatedAmount: category.allocatedAmount?.toString() ?? null,
       costsCount: category._count.weddingCosts,
       createdAt: category.createdAt,

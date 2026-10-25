@@ -24,6 +24,7 @@ import {
   COLLABORATION_PERMISSION_PORT,
   type CollaborationPermissionPort as PermissionService,
   PlanAccessContext,
+  readerAddressForm,
   seesWholePlan,
 } from "../modules/collaboration/public/collaboration-permission.port";
 import { weddingLocationResponse } from "../modules/planning/public/wedding-location";
@@ -347,9 +348,14 @@ export class DashboardService {
       confirmedCostNumber !== null && paidNumber !== null
         ? confirmedCostNumber.minus(paidNumber)
         : null;
+    // C1: the budget is the wedding's; the groom's mahr item is outside it.
     const remainingBudgetNumber =
-      budgetTotalNumber !== null && confirmedCostNumber !== null
-        ? budgetTotalNumber.minus(confirmedCostNumber)
+      budgetTotalNumber !== null && canViewMoney
+        ? budgetTotalNumber.minus(
+            sumMoney(
+              costs.filter((cost) => cost.inBudget).map((cost) => cost.totalAmount),
+            ),
+          )
         : null;
     const location = weddingLocationResponse(
       context.plan.location,
@@ -384,6 +390,8 @@ export class DashboardService {
       quoteRequestsCount,
       acceptedProviders: providerCount,
       currency: context.plan.currency,
+      form: readerAddressForm(currentUser, context),
+      planPersona: context.plan.persona,
     });
     const currentUserRole = this.currentUserRole(context);
     const notificationPreviews = latestNotifications.map((notification) =>

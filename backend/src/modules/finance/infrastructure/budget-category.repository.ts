@@ -1,4 +1,4 @@
-import type { Prisma } from '@prisma/client';
+import { BudgetCategoryKind, type Prisma } from '@prisma/client';
 
 export function createBudgetCategory(
   tx: Prisma.TransactionClient,
@@ -91,12 +91,16 @@ export function countWeddingPlanCosts(tx: Prisma.TransactionClient, weddingPlanI
   return tx.weddingCost.count({ where: { weddingPlanId } });
 }
 
+/**
+ * The wedding budget's items (w19 replaces them as a whole). The mahr item is
+ * outside the budget (C1): it is neither replaced, nor omitted, nor listed.
+ */
 export function findBudgetCategoriesForReplacement(
   tx: Prisma.TransactionClient,
   weddingPlanId: string,
 ) {
   return tx.budgetCategory.findMany({
-    where: { weddingPlanId },
+    where: { weddingPlanId, kind: BudgetCategoryKind.WEDDING },
     include: { _count: { select: { weddingCosts: true } } },
   });
 }
@@ -145,7 +149,7 @@ export function listReplacedBudgetCategories(
   weddingPlanId: string,
 ) {
   return tx.budgetCategory.findMany({
-    where: { weddingPlanId },
+    where: { weddingPlanId, kind: BudgetCategoryKind.WEDDING },
     include: { _count: { select: { weddingCosts: true } } },
     orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
   });

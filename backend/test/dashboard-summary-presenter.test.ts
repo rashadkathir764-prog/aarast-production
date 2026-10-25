@@ -125,6 +125,8 @@ test('dashboard important items use WeddingCost routes and preserve priority', (
     quoteRequestsCount: 1,
     acceptedProviders: 0,
     currency: 'YER',
+    form: 'MASCULINE',
+    planPersona: 'GROOM',
   });
 
   assert.deepEqual(
@@ -163,6 +165,8 @@ test('dashboard setup actions and provider preview keep current product wording'
     quoteRequestsCount: 0,
     acceptedProviders: 0,
     currency: 'YER',
+    form: 'MASCULINE',
+    planPersona: 'GROOM',
   });
 
   assert.deepEqual(
@@ -187,6 +191,8 @@ test('dashboard setup actions and provider preview keep current product wording'
     quoteRequestsCount: 1,
     acceptedProviders: 1,
     currency: 'YER',
+    form: 'MASCULINE',
+    planPersona: 'GROOM',
   });
 
   assert.equal(providerItems.length, 1);
@@ -211,6 +217,8 @@ test('dashboard provider card describes a plan link without claiming proximity',
     quoteRequestsCount: 1,
     acceptedProviders: 1,
     currency: 'YER',
+    form: 'MASCULINE',
+    planPersona: 'GROOM',
   });
 
   assert.equal(items[0].title, 'مزود في خطتك');

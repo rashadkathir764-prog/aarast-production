@@ -1,10 +1,11 @@
-import { Body, Controller, Get, Param, Put, UseGuards } from "@nestjs/common";
+import { Body, Controller, Get, Param, Post, Put, UseGuards } from "@nestjs/common";
 import { AuthenticatedUser } from "../modules/identity/public/identity-session.types";
 import { CurrentUser } from "../modules/identity/public/current-user.decorator";
 import { JwtAuthGuard } from "../modules/identity/public/jwt-auth.guard";
 import { MoneySummaryService } from "./money-summary.service";
 import { MoneyBudgetService } from "./money-budget.service";
 import { ReplaceMoneyBudgetDto } from "./dto/replace-money-budget.dto";
+import { RecordMahrDto } from "./dto/record-mahr.dto";
 
 @Controller("api/v1/wedding-plans/:planId")
 @UseGuards(JwtAuthGuard)
@@ -20,6 +21,16 @@ export class MoneySummaryController {
     @Param("planId") planId: string,
   ) {
     return this.moneySummaryService.getSummary(currentUser, planId);
+  }
+
+  /** a06 / b01's mahr step: the owner records the mahr once (C1). */
+  @Post("mahr")
+  recordMahr(
+    @CurrentUser() currentUser: AuthenticatedUser,
+    @Param("planId") planId: string,
+    @Body() dto: RecordMahrDto,
+  ) {
+    return this.moneyBudgetService.recordMahr(currentUser, planId, dto);
   }
 
   @Put("money-budget")

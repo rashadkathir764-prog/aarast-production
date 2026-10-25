@@ -75,7 +75,7 @@ const groups: GroupSeed[] = [
     items: [
       ['groom-home', 'تجهيز المنزل', 'home', true],
       ['groom-housing', 'السكن والإيجار', 'key-round'],
-      ['groom-honeymoon', 'شهر العسل', 'plane'],
+      ['groom-honeymoon', 'شهر العسل', 'plane', true],
       ['groom-invites', 'الدعوات', 'mail'],
       ['groom-gifts', 'الهدايا والتوزيعات', 'gift'],
       ['groom-transport', 'المواصلات', 'navigation'],
@@ -122,9 +122,9 @@ const groups: GroupSeed[] = [
     persona: 'BRIDE',
     items: [
       ['bride-trousseau', 'جهاز العروسة', 'package-open', true],
-      ['bride-home', 'تجهيز المنزل', 'home'],
+      ['bride-home', 'تجهيز المنزل', 'home', true],
       ['bride-room', 'تجهيز غرفة العروسة', 'bed-double'],
-      ['bride-honeymoon', 'شهر العسل', 'plane'],
+      ['bride-honeymoon', 'شهر العسل', 'plane', true],
       ['bride-gifts', 'الهدايا', 'gift'],
       ['bride-transport', 'المواصلات', 'navigation'],
       ['bride-guest-stay', 'إقامة الضيوف', 'hotel'],
@@ -143,7 +143,10 @@ const groups: GroupSeed[] = [
       ['neutral-decor', 'التنسيق والديكور', 'layout-grid'],
       ['neutral-audio', 'الصوت والزفة', 'music-2'],
       ['neutral-qat', 'القات والمقيل', 'leaf'],
+      // Hidden from every starter list: the mahr is its own section (C1).
       ['neutral-mahr', 'المهر والذهب', 'gem'],
+      // G12: the gold on its own, so a plan without a persona still has it.
+      ['neutral-gold', 'الذهب والشبكة', 'gem'],
     ],
   },
   {
@@ -155,7 +158,7 @@ const groups: GroupSeed[] = [
       ['neutral-look', 'الملابس والتجهيز', 'shirt', true],
       ['neutral-invites', 'الدعوات والتوزيعات', 'mail'],
       ['neutral-home', 'تجهيز المنزل', 'home'],
-      ['neutral-honeymoon', 'شهر العسل', 'plane'],
+      ['neutral-honeymoon', 'شهر العسل', 'plane', true],
       ['neutral-transport', 'المواصلات', 'navigation'],
       ['neutral-buffer', 'مصاريف طارئة', 'shield-check', true],
     ],
@@ -240,6 +243,10 @@ const taskGroups: TaskGroupSeed[] = [
       ['task-bride-singer', 'الاتفاق مع الفنانة أو الزفافة', 'music-2', 90],
       ['task-bride-naqsh', 'حجز النقاشة لليلة النقش والحناء', 'flower-2', 60, true],
       ['task-bride-subhia', 'تجهيز الصبحية', 'cake-slice', 14],
+      // G12 (appended so the sort orders above stay): her gold and her
+      // trousseau, as the groom has his gold and kiswa.
+      ['task-bride-gold', 'شراء الذهب والإكسسوارات', 'gem', 150, true],
+      ['task-bride-trousseau', 'تجهيز جهاز العروسة', 'package-open', 120, true],
     ],
   },
   {

@@ -425,6 +425,15 @@ export class WeddingPlansService {
           plan.id,
           selectedCategories,
         );
+      if (dto.mahr) {
+        await this.finance.recordMahrInTransaction(
+          tx,
+          plan.id,
+          plan.persona,
+          dto.mahr,
+          now,
+        );
+      }
       const user = await this.activePlan.completeOnboardingInTransaction(
         tx,
         currentUser.id,
@@ -671,6 +680,16 @@ export class WeddingPlansService {
               payments: cost.payments,
               paymentSchedules: cost.paymentSchedules,
             },
+          );
+        }
+
+        if (dto.mahr) {
+          await this.finance.recordMahrInTransaction(
+            tx,
+            createdPlan.id,
+            createdPlan.persona,
+            dto.mahr,
+            now,
           );
         }
 

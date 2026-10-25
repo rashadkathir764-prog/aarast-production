@@ -28,6 +28,9 @@ import {
   MoneyBudgetCategoryDto,
   ReplaceMoneyBudgetDto,
 } from "./dto/replace-money-budget.dto";
+import { RecordMahrDto } from "./dto/record-mahr.dto";
+import { parseMahrAgreement } from "../modules/finance/public/mahr-agreement";
+import { recordPlanMahrInTransaction } from "../modules/finance/infrastructure/mahr.repository";
 import {
   buildMoneySummaryInTransaction,
   MoneySummaryResult,
@@ -204,6 +207,43 @@ export class MoneyBudgetService {
       }
       throw error;
     }
+  }
+
+  /**
+   * a06 after the plan exists (b01's mahr step): the owner records the mahr
+   * once; later changes go through the item and its payments (the groom) or
+   * the funding sources (the bride). Returns the money summary with it.
+   */
+  async recordMahr(
+    currentUser: AuthenticatedUser,
+    weddingPlanId: string,
+    dto: RecordMahrDto,
+  ): Promise<MoneySummaryResult> {
+    const agreement = parseMahrAgreement(dto);
+    return runSerializableTransaction(this.prisma, async (tx) => {
+      const context =
+        await this.permissions.assertMoneyManageableForUpdateInTransaction(
+          tx,
+          weddingPlanId,
+          currentUser,
+        );
+      if (!context.isOwner) {
+        throw new NotFoundException("Wedding plan not found");
+      }
+      await recordPlanMahrInTransaction(
+        tx,
+        weddingPlanId,
+        context.plan.persona,
+        agreement,
+        new Date(),
+      );
+      return buildMoneySummaryInTransaction(
+        tx,
+        this.permissions,
+        this.plans,
+        context,
+      );
+    });
   }
 
   private totalBudget(value: string | number | null | undefined) {

@@ -7,6 +7,7 @@ import { ProviderReadPublicModule } from '../../marketplace/public/provider-read
 import { ConversationLifecyclePublicModule } from '../../messaging/public/conversation-lifecycle-public.module';
 import { PlanReadPublicModule } from '../../planning/public/plan-read-public.module';
 import { TasksPublicModule } from '../../tasks/public/tasks-public.module';
+import { UserReadPublicModule } from '../../identity/public/user-read-public.module';
 import { PrismaModule } from '../../../platform/database/prisma.module';
 import { OutboxCoreModule } from '../../../platform/outbox/outbox-core.module';
 
@@ -25,6 +26,7 @@ export const NOTIFICATIONS_IMPLEMENTATION = Symbol(
     FinancePublicModule,
     ProviderReadPublicModule,
     ConversationLifecyclePublicModule,
+    UserReadPublicModule,
   ],
   providers: [
     NotificationsService,

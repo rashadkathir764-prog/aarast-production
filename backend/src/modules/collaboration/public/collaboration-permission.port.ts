@@ -7,6 +7,10 @@ import {
   WeddingPlanStatus,
 } from '@prisma/client';
 import type { AuthenticatedUser } from '../../identity/public/identity-session.types';
+import {
+  type AddressForm,
+  addressFormOf,
+} from '../../../shared-kernel/voice/address-form';
 
 export const COLLABORATION_PERMISSION_PORT = Symbol(
   'COLLABORATION_PERMISSION_PORT',
@@ -42,6 +46,22 @@ export function readsPlanSections(
   context: Pick<PlanAccessContext, 'isOwner' | 'sharedMember'>,
 ): boolean {
   return context.isOwner || context.sharedMember != null;
+}
+
+/**
+ * B5: how the server speaks to the reader of this plan (`addressFormOf`):
+ * their account's persona, else their partner role here, else the plan's
+ * own party.
+ */
+export function readerAddressForm(
+  reader: { persona?: string | null },
+  context: Pick<PlanAccessContext, 'plan' | 'sharedMember'>,
+): AddressForm {
+  return addressFormOf({
+    accountPersona: reader.persona ?? null,
+    memberRole: context.sharedMember?.role ?? null,
+    planPersona: context.plan.persona,
+  });
 }
 
 /** Whether the reader sees the whole plan rather than only their own contributions. */

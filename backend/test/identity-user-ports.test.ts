@@ -192,6 +192,7 @@ test('the active plan port writes the pointer and the onboarding columns identit
   const tx = {
     user: {
       update: async (args: unknown) => { updates.push(args); return userRow; },
+      findUniqueOrThrow: async () => ({ persona: null }),
     },
   } as unknown as Prisma.TransactionClient;
   const service = new IdentityUserPortService();
@@ -222,6 +223,38 @@ test('the active plan port writes the pointer and the onboarding columns identit
       },
     },
   ]);
+});
+
+test('B5: a plan made for someone else never replaces who the account is', async () => {
+  const written: Array<{ data: { persona: unknown } }> = [];
+  const txFor = (persona: string | null) =>
+    ({
+      user: {
+        update: async (args: { data: { persona: unknown } }) => {
+          written.push(args);
+          return userRow;
+        },
+        findUniqueOrThrow: async () => ({ persona }),
+      },
+    }) as unknown as Prisma.TransactionClient;
+  const service = new IdentityUserPortService();
+  const input = (persona: 'GROOM' | 'BRIDE' | 'HELPER') => ({
+    activeWeddingPlanId: 'plan-3',
+    appRole: AppRole.WEDDING_USER,
+    onboardingPath: OnboardingPath.USER,
+    persona,
+    onboardingCompletedAt: now,
+  });
+  // سلمى (a bride) makes a plan for her brother: she stays the bride.
+  await service.completeOnboardingInTransaction(txFor('BRIDE'), 'user-1', input('HELPER') as never);
+  // An account that knew nothing takes what it chose.
+  await service.completeOnboardingInTransaction(txFor(null), 'user-1', input('HELPER') as never);
+  // A groom or a bride always says who they are.
+  await service.completeOnboardingInTransaction(txFor('HELPER'), 'user-1', input('GROOM') as never);
+  assert.deepEqual(
+    written.map((args) => args.data.persona),
+    ['BRIDE', 'HELPER', 'GROOM'],
+  );
 });
 
 // The provider application used to change the applicant's role columns

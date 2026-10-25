@@ -1,5 +1,11 @@
 import { Injectable } from '@nestjs/common';
-import { AppRole, type Prisma, UserRole, UserStatus } from '@prisma/client';
+import {
+  AppRole,
+  type Prisma,
+  UserRole,
+  UserStatus,
+  WeddingPersona,
+} from '@prisma/client';
 import type {
   ActivePlanPort,
   CompleteOnboardingInput,
@@ -163,13 +169,27 @@ export class IdentityUserPortService
     userId: string,
     input: CompleteOnboardingInput,
   ): Promise<SafeUser> {
+    // The account's persona is who the person is (the groom or the bride),
+    // which is how the app and the server speak to them (B5). A plan made
+    // for someone else (HELPER) says nothing about that, so it never
+    // replaces a groom's or a bride's persona.
+    const current = await tx.user.findUniqueOrThrow({
+      where: { id: userId },
+      select: { persona: true },
+    });
+    const isPerson = (value: WeddingPersona | null) =>
+      value === WeddingPersona.GROOM || value === WeddingPersona.BRIDE;
+    const persona =
+      isPerson(input.persona) || !isPerson(current.persona)
+        ? input.persona
+        : current.persona;
     const user = await tx.user.update({
       where: { id: userId },
       data: {
         activeWeddingPlanId: input.activeWeddingPlanId,
         appRole: input.appRole,
         onboardingPath: input.onboardingPath,
-        persona: input.persona,
+        persona,
         onboardingCompletedAt: input.onboardingCompletedAt,
       },
     });

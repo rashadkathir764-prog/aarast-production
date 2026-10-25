@@ -170,6 +170,7 @@ export function notificationsService(
     ownerPorts.finance,
     ownerPorts.providers,
     new ConversationLifecycleService(ownerPorts.plans, ownerPorts.providers),
+    ownerPorts.users,
   );
 }
 

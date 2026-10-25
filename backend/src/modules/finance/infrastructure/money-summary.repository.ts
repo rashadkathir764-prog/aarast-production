@@ -32,6 +32,8 @@ export function loadMoneySummaryRows(
         budgetCategoryId: true,
         totalAmount: true,
         title: true,
+        payer: true,
+        payerName: true,
       },
     }),
     tx.costPayment.findMany({

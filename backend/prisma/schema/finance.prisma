@@ -17,12 +17,14 @@ enum PaymentScheduleStatus {
 }
 
 // Where the wedding money comes from. A LOAN is money that must be paid back.
+// MAHR is the bride's mahr from the groom (C1: money coming in for her).
 enum FundingSourceKind {
   SAVINGS
   FAMILY_SUPPORT
   GIFT
   LOAN
   OTHER
+  MAHR
 }
 
 // PLEDGED: promised and not yet in hand. RECEIVED: in hand.
@@ -46,15 +48,24 @@ enum CostPayer {
   OTHER
 }
 
+// WEDDING items share the wedding budget. MAHR is the groom's agreement with
+// the bride's family (C1): its costs count in what he owes and pays, never in
+// the budget, so it carries no allocation. One per plan.
+enum BudgetCategoryKind {
+  WEDDING
+  MAHR
+}
+
 model BudgetCategory {
-  id              String        @id @default(cuid())
+  id              String             @id @default(cuid())
   weddingPlanId   String
   name            String
   normalizedName  String
-  allocatedAmount Decimal?      @db.Decimal(14, 2)
-  createdAt       DateTime      @default(now())
-  updatedAt       DateTime      @updatedAt
-  weddingPlan     WeddingPlan   @relation(fields: [weddingPlanId], references: [id], onDelete: Restrict)
+  allocatedAmount Decimal?           @db.Decimal(14, 2)
+  kind            BudgetCategoryKind @default(WEDDING)
+  createdAt       DateTime           @default(now())
+  updatedAt       DateTime           @updatedAt
+  weddingPlan     WeddingPlan        @relation(fields: [weddingPlanId], references: [id], onDelete: Restrict)
   weddingCosts    WeddingCost[]
 
   @@unique([weddingPlanId, normalizedName])
@@ -169,6 +180,9 @@ model FundingSource {
   amount        Decimal             @db.Decimal(14, 2)
   status        FundingSourceStatus @default(RECEIVED)
   receivedAt    DateTime?
+  // PLEDGED money: the day it is expected (the rest of the mahr on the
+  // contract day, a promise «قبل العرس»).
+  expectedAt    DateTime?
   note          String?
   createdAt     DateTime            @default(now())
   updatedAt     DateTime            @updatedAt

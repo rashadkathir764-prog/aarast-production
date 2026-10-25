@@ -57,7 +57,24 @@ export type DuePaymentSchedule = PaymentSchedule & {
 export type CostAmounts = Pick<
   WeddingCost,
   'id' | 'budgetCategoryId' | 'totalAmount' | 'paidAmount'
->;
+> & {
+  /** False for the groom's mahr item: it is outside the wedding budget (C1). */
+  inBudget: boolean;
+};
+
+/** a06: the agreed mahr, what was handed over, and when the rest is due. */
+export interface MahrAgreementInput {
+  total: Prisma.Decimal;
+  settled: Prisma.Decimal;
+  remainingDueAt: Date | null;
+}
+
+/** a06 as a request carries it (the mahr endpoint and the onboarding). */
+export interface MahrAgreementRequest {
+  total: string | number;
+  settled?: string | number | null;
+  remainingDueDate?: string | null;
+}
 
 /** A pending schedule with the title of its cost (dashboard and timeline). */
 export type PendingPaymentSchedule = PaymentSchedule & {
@@ -142,6 +159,19 @@ export interface FinancePort {
     client: Prisma.TransactionClient,
     weddingPlanId: string,
   ): Promise<PlanImportCounts>;
+  /**
+   * Records a06's mahr once: the groom's agreement with the bride's family
+   * (a MAHR item outside the budget) or the bride's mahr coming in (MAHR
+   * funding sources), by the plan's persona. 409 `MAHR_NOT_FOR_PLAN` without
+   * a groom or bride persona, 409 `MAHR_ALREADY_RECORDED` the second time.
+   */
+  recordMahrInTransaction(
+    tx: Prisma.TransactionClient,
+    weddingPlanId: string,
+    persona: string | null,
+    request: MahrAgreementRequest,
+    recordedAt: Date,
+  ): Promise<void>;
   /** Account erasure: locks the plans' costs (`FOR UPDATE`, ascending) before any purge, in the money mutation order. */
   lockPlanCostsForUpdateInTransaction(
     tx: Prisma.TransactionClient,

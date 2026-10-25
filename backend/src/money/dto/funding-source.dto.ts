@@ -33,6 +33,11 @@ export class CreateFundingSourceDto {
   @IsOptional()
   receivedAt?: string | null;
 
+  /** PLEDGED money: the day it is expected. */
+  @IsISO8601({ strict: true, strictSeparator: true })
+  @IsOptional()
+  expectedAt?: string | null;
+
   @IsString()
   @MaxLength(2000)
   @IsOptional()
@@ -65,6 +70,11 @@ export class UpdateFundingSourceDto {
   @IsISO8601({ strict: true, strictSeparator: true })
   @IsOptional()
   receivedAt?: string | null;
+
+  /** PLEDGED money: the day it is expected. */
+  @IsISO8601({ strict: true, strictSeparator: true })
+  @IsOptional()
+  expectedAt?: string | null;
 
   @IsString()
   @MaxLength(2000)

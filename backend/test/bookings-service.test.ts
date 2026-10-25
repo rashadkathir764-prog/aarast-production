@@ -4,6 +4,7 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import { Prisma } from "@prisma/client";
 import { BookingsService } from "../src/marketplace/bookings.service";
+import { textFor } from "../src/shared-kernel/voice/address-form";
 
 // Bookings without payment (V1 checklist 4.6), end to end through the
 // service on an in-memory database: request, confirm, decline, cancel, the
@@ -367,14 +368,16 @@ test("a confirmed booking reminds both sides a week and a day before, once each"
   const week = await bookings.sendDueReminders(at("2027-02-11"));
   assert.equal(week.sent, 2);
   assert.deepEqual(db.notifications.map((n) => n.userId).sort(), ["customer-1", "provider-user-1"]);
-  assert.match(db.notifications[0].body, /بعد 7 أيام \(2027-02-18\)/);
+  // B5: the customer's line comes in both forms; the writer picks hers.
+  assert.match(textFor("MASCULINE", db.notifications[0].body), /بعد 7 أيام \(2027-02-18\)/);
+  assert.match(textFor("FEMININE", db.notifications[0].body), /بعد 7 أيام \(2027-02-18\)/);
 
   // The next hourly scans inside the same window send nothing again.
   assert.equal((await bookings.sendDueReminders(at("2027-02-12"))).sent, 0);
 
   const dayBefore = await bookings.sendDueReminders(at("2027-02-17"));
   assert.equal(dayBefore.sent, 2);
-  assert.match(db.notifications.slice(-1)[0].body, /غدًا/);
+  assert.match(textFor("MASCULINE", db.notifications.slice(-1)[0].body), /غدًا/);
   assert.equal(db.notifications.slice(-1)[0].priority, "HIGH");
 
   // The day itself and after: nothing.

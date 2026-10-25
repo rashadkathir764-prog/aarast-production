@@ -17,6 +17,11 @@ import {
   WeddingPlanDashboardSummaryResponse,
 } from "./dashboard.contracts";
 import { selectTopDashboardActions } from "./dashboard-priority";
+import {
+  type AddressForm,
+  gendered,
+  textFor,
+} from "../shared-kernel/voice/address-form";
 
 export function toPaymentScheduleDueMoneyItem(
   schedule: DashboardPaymentScheduleRecord,
@@ -49,6 +54,8 @@ export function buildImportantItems({
   quoteRequestsCount,
   acceptedProviders,
   currency,
+  form,
+  planPersona,
 }: {
   weddingPlanId: string;
   tasks: DashboardTaskRecord[];
@@ -63,8 +70,14 @@ export function buildImportantItems({
   quoteRequestsCount: number;
   acceptedProviders: number;
   currency: string;
+  /** The reader's form (B5): the next steps speak to them. */
+  form: AddressForm;
+  /** Whose wedding the plan is: the bride's guests are «الضيفات». */
+  planPersona: string | null;
 }): DashboardImportantItemResponse[] {
   const items: DashboardImportantItemResponse[] = [];
+  const say = (masculine: string, feminine: string) =>
+    textFor(form, gendered(masculine, feminine));
 
   for (const task of tasks) {
     const isOverdue = task.dueDate !== null && task.dueDate < today;
@@ -121,7 +134,10 @@ export function buildImportantItems({
       type: "QUOTE_RECEIVED",
       title: "وصل عرض سعر",
       subtitle: `${receivedQuotes} عرض بانتظار قرارك`,
-      body: "راجع العرض الحقيقي ثم اقبله أو ارفضه من مركز الخطة.",
+      body: say(
+        "راجع العرض الحقيقي ثم اقبله أو ارفضه من مركز الخطة.",
+        "راجعي العرض الحقيقي ثم اقبليه أو ارفضيه من مركز الخطة.",
+      ),
       icon: "provider",
       tone: "warning",
       priority: "HIGH",
@@ -160,7 +176,7 @@ export function buildImportantItems({
       setupAction(
         weddingPlanId,
         "SET_LOCATION",
-        "أكمل موقع الزفاف",
+        say("أكمل موقع الزفاف", "أكملي موقع الزفاف"),
         "الموقع يساعدك في تصفية الموردين وتوضيح طلبات الأسعار.",
         `/wedding-plans/${weddingPlanId}/plan-center`,
       ),
@@ -171,8 +187,11 @@ export function buildImportantItems({
       setupAction(
         weddingPlanId,
         "SET_BUDGET",
-        "حدد ميزانية الخطة",
-        "حدد سقفًا ماليًا واحدًا ثم وزّعه اختياريًا على التصنيفات.",
+        say("حدد ميزانية الخطة", "حددي ميزانية الخطة"),
+        say(
+          "حدد سقفًا ماليًا واحدًا ثم وزّعه اختياريًا على التصنيفات.",
+          "حددي سقفًا ماليًا واحدًا ثم وزّعيه اختياريًا على التصنيفات.",
+        ),
         `/wedding-plans/${weddingPlanId}/money/budget`,
       ),
     );
@@ -182,7 +201,7 @@ export function buildImportantItems({
       setupAction(
         weddingPlanId,
         "ADD_GUESTS",
-        "ابدأ قائمة الضيوف",
+        `${say("ابدأ", "ابدئي")} قائمة ${planPersona === "BRIDE" ? "الضيفات" : "الضيوف"}`,
         "لم تتم إضافة ضيوف إلى الخطة بعد.",
         `/wedding-plans/${weddingPlanId}/guests`,
       ),
@@ -193,7 +212,7 @@ export function buildImportantItems({
       setupAction(
         weddingPlanId,
         "REQUEST_QUOTE",
-        "اطلب أول عرض سعر",
+        say("اطلب أول عرض سعر", "اطلبي أول عرض سعر"),
         "لم يتم إرسال طلب عرض سعر لأي مزود بعد.",
         "/providers",
       ),

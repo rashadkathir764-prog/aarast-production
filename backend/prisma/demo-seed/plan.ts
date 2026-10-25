@@ -1,6 +1,7 @@
 // Builds one demo plan: the plan itself, its money (items, agreements,
 // payments, funding), tasks, guests and participants.
 import {
+  BudgetCategoryKind,
   ContributionAction,
   ContributionEntityType,
   ContributionPermission,
@@ -110,11 +111,14 @@ export async function seedPlanCore(prisma: PrismaClient, spec: PlanSpec): Promis
 }
 
 async function seedItem(tx: Tx, planKey: string, spec: PlanSpec, item: ItemSpec): Promise<void> {
+  const kind = item.kind ?? BudgetCategoryKind.WEDDING;
   const data = {
     weddingPlanId: planKey,
     name: item.name,
     normalizedName: normalizeCategoryName(item.name),
-    allocatedAmount: item.allocated,
+    // C1: the mahr item is outside the budget and holds no allocation.
+    allocatedAmount: kind === BudgetCategoryKind.MAHR ? null : item.allocated,
+    kind,
   };
   const id = demoId('cat', `${spec.key}-${item.key}`);
   await tx.budgetCategory.upsert({ where: { id }, create: { id, ...data }, update: data });
@@ -129,6 +133,7 @@ async function seedFunding(tx: Tx, planKey: string, spec: PlanSpec, source: Fund
     amount: source.amount,
     status: source.status,
     receivedAt: source.receivedAt ?? null,
+    expectedAt: source.expectedAt ?? null,
     note: source.note,
   };
   await tx.fundingSource.upsert({ where: { id }, create: { id, ...data }, update: data });
@@ -475,7 +480,7 @@ async function seedCost(
   const provider = cost.providerKey ? PROVIDERS.find((candidate) => candidate.key === cost.providerKey) : undefined;
   if (cost.providerKey && !provider) throw new Error(`Unknown provider ${cost.providerKey}`);
   const paidTotal = cost.payments.reduce((sum, payment) => sum + payment.amount, 0);
-  const total = item.allocated;
+  const total = cost.total ?? item.allocated;
   const status =
     paidTotal === 0
       ? WeddingCostStatus.OPEN
@@ -494,6 +499,8 @@ async function seedCost(
         partyName: provider ? null : (cost.partyName ?? null),
         partyPhone: null,
         totalAmount: total,
+        payer: cost.payer ?? null,
+        payerName: cost.payerName ?? null,
         agreementDate: cost.agreementDate,
       };
       const existing = await tx.weddingCost.findUnique({ where: { id } });
@@ -583,7 +590,11 @@ async function upsertSchedule(
 
 /** For the printed summary and the smoke checks: the headline numbers of a plan. */
 export function expectedTotals(spec: PlanSpec) {
-  const items = spec.items.reduce((sum, item) => sum + item.allocated, 0);
+  // The budget's items: the mahr item is outside it (C1).
+  const items = spec.items.reduce(
+    (sum, item) => sum + (item.kind === BudgetCategoryKind.MAHR ? 0 : item.allocated),
+    0,
+  );
   const paid = spec.items.reduce(
     (sum, item) => sum + (item.cost?.payments.reduce((inner, payment) => inner + payment.amount, 0) ?? 0),
     0,

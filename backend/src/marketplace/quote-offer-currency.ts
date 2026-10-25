@@ -1,4 +1,9 @@
 import { BadRequestException } from "@nestjs/common";
+import {
+  type AddressForm,
+  gendered,
+  textFor,
+} from "../shared-kernel/voice/address-form";
 
 // G19: a plan keeps one currency, and an offer must be in it. The refusal
 // says so in words both sides read, instead of an English detail the phone
@@ -20,6 +25,8 @@ export type QuoteOfferCurrencyReader = "provider" | "customer";
 export function quoteOfferCurrencyMismatch(
   planCurrency: string,
   reader: QuoteOfferCurrencyReader,
+  /** The customer's form (B5); the provider is spoken to as the business. */
+  form: AddressForm = "MASCULINE",
 ): BadRequestException {
   const name = currencyNameAr(planCurrency);
   return new BadRequestException({
@@ -27,7 +34,13 @@ export function quoteOfferCurrencyMismatch(
     message:
       reader === "provider"
         ? `خطة هذا العرس بـ${name}، فأرسل عرضك بـ${name}.`
-        : `هذا العرض بعملة غير عملة خطتك (${name}). اطلب من المزود يرسله بـ${name}.`,
+        : textFor(
+            form,
+            gendered(
+              `هذا العرض بعملة غير عملة خطتك (${name}). اطلب من المزود يرسله بـ${name}.`,
+              `هذا العرض بعملة غير عملة خطتك (${name}). اطلبي من المزود يرسله بـ${name}.`,
+            ),
+          ),
     planCurrency: planCurrency.trim().toUpperCase(),
   });
 }

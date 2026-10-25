@@ -24,6 +24,7 @@ import type { NotificationsPort } from "../modules/notifications/public/notifica
 import { PrismaService } from "../platform/database/prisma.service";
 import { assertProviderOperational } from "../modules/marketplace/public/provider-access-policy";
 import { type CollaborationPermissionPort as PermissionService, seesWholePlan } from "../modules/collaboration/public/collaboration-permission.port";
+import { addressFormOf, gendered, textFor } from "../shared-kernel/voice/address-form";
 import type { FinancePort } from "../modules/finance/public/finance.port";
 import type { MarketplaceRelationsService } from "./marketplace-relations";
 import {
@@ -131,10 +132,22 @@ export async function acceptQuoteOfferInTransaction(
         "Quote offer is not linked to this wedding plan",
       );
     }
+    // B5: the refusals below speak to the customer in their own form.
+    const form = addressFormOf({
+      accountPersona: input.currentUser.persona,
+      memberRole: planContext.sharedMember?.role ?? null,
+      planPersona: planSeed?.persona ?? null,
+    });
     if (current.status === QuoteOfferStatus.WITHDRAWN) {
       throw new ConflictException({
         code: "QUOTE_OFFER_WITHDRAWN",
-        message: "سحب المزود هذا العرض، فما عاد متاح. اسأله في المحادثة أو انتظر عرضه الجديد.",
+        message: textFor(
+          form,
+          gendered(
+            "سحب المزود هذا العرض، فما عاد متاح. اسأله في المحادثة أو انتظر عرضه الجديد.",
+            "سحب المزود هذا العرض، فما عاد متاح. اسأليه في المحادثة أو انتظري عرضه الجديد.",
+          ),
+        ),
       });
     }
     if (
@@ -150,7 +163,13 @@ export async function acceptQuoteOfferInTransaction(
     ) {
       throw new ConflictException({
         code: "QUOTE_OFFER_CHANGED",
-        message: "تغيّر العرض قبل ما تقبله. شوف النسخة الجديدة وبعدها اقبل.",
+        message: textFor(
+          form,
+          gendered(
+            "تغيّر العرض قبل ما تقبله. شوف النسخة الجديدة وبعدها اقبل.",
+            "تغيّر العرض قبل ما تقبليه. شوفي النسخة الجديدة وبعدها اقبلي.",
+          ),
+        ),
         currentVersionNo: current.currentVersionNo,
       });
     }
@@ -171,7 +190,13 @@ export async function acceptQuoteOfferInTransaction(
       if (current.validUntil && current.validUntil.getTime() < Date.now()) {
         throw new ConflictException({
           code: "QUOTE_OFFER_EXPIRED",
-          message: "انتهت صلاحية عرض السعر. أنشئ طلبًا جديدًا للمتابعة.",
+          message: textFor(
+            form,
+            gendered(
+              "انتهت صلاحية عرض السعر. أنشئ طلبًا جديدًا للمتابعة.",
+              "انتهت صلاحية عرض السعر. أنشئي طلبًا جديدًا للمتابعة.",
+            ),
+          ),
         });
       }
     }
@@ -181,7 +206,7 @@ export async function acceptQuoteOfferInTransaction(
       );
     }
     if (current.currency.toUpperCase() !== plan.currency.toUpperCase()) {
-      throw quoteOfferCurrencyMismatch(plan.currency, "customer");
+      throw quoteOfferCurrencyMismatch(plan.currency, "customer", form);
     }
 
     if (!acceptedNow) {

@@ -35,7 +35,8 @@ test("an offer and a booking step are pushed with generic copy", () => {
   ]) {
     assert.equal(isPushNotificationType(type), true);
     const copy = pushNotificationCopy(type);
-    assert.equal(copy.body.includes("افتح اعّرست"), true);
+    // B5: it points to the app without an imperative in either gender.
+    assert.equal(copy.body.includes("في اعّرست"), true);
   }
 });
 
@@ -65,7 +66,7 @@ test("push copy remains generic and does not expose notification body data", () 
 
   assert.equal(copy.title.includes("قاعة"), false);
   assert.equal(copy.body.includes("قاعة"), false);
-  assert.equal(copy.body.includes("افتح اعّرست"), true);
+  assert.equal(copy.body.includes("في اعّرست"), true);
 });
 
 test("disabled push delivery performs no database or Firebase work", async () => {

@@ -2182,8 +2182,8 @@ B-08, B-14, G19; D50):
   `SENT` or `VIEWED`, the provider answers (offer or apology) before
   `expiresAt`; after it, the answer is `409 QUOTE_REQUEST_EXPIRED`. An hourly
   job warns the provider once per window during the last day
-  (`QUOTE_REQUEST_EXPIRING`, «طلب … ينتهي بكرة», opens
-  `/provider/requests/<id>`), then moves the request to `EXPIRED`
+  (`QUOTE_REQUEST_EXPIRING`, «طلب … ينتهي بكرة», whose route target is the
+  app's own request page, D39), then moves the request to `EXPIRED`
   (`lifecycleStatus: "EXPIRED"`), records `QUOTE_REQUEST_EXPIRED` and tells
   the customer «ما رد … خلال 7 أيام» with «اطلب من غيره». Each request moves
   in its own serializable transaction from the state it was read in, so a

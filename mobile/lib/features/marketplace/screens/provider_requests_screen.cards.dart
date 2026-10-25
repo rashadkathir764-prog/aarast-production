@@ -101,6 +101,24 @@ class _OfferCard extends StatelessWidget {
                 color: AarastV3Color.textMuted,
               ),
             ),
+          // B-06: what changed in the version he chooses («ايش تغيّر»).
+          if (offer.versionNo > 1)
+            Text(
+              [
+                'نسخة ${offer.versionNo}',
+                ?quoteOfferChangeLine(
+                  changes: offer.changes,
+                  currency: offer.currency,
+                  own: false,
+                ),
+              ].join(' · '),
+              key: ValueKey('requests-offer-version-${quote.id}'),
+              style: JourneyType.of(
+                JourneyType.small,
+                weight: JourneyType.bold,
+                color: AarastV3Color.amber,
+              ),
+            ),
           const SizedBox(height: 10),
           for (final line in details)
             Padding(

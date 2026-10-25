@@ -1,6 +1,7 @@
 import 'package:aarast_mobile/core/network/api_client.dart';
 import 'package:aarast_mobile/core/storage/auth_storage.dart';
 import 'package:aarast_mobile/core/theme/app_theme.dart';
+import 'package:aarast_mobile/core/utils/money_formatters.dart';
 import 'package:aarast_mobile/features/account_contexts/data/account_contexts_api.dart';
 import 'package:aarast_mobile/features/account_contexts/models/account_context.dart';
 import 'package:aarast_mobile/features/account_contexts/providers/account_context_controller.dart';
@@ -205,12 +206,15 @@ void main() {
       String provider = 'الفنان أيمن القاضي',
       DateTime? updatedAt,
       DateTime? rejectedAt,
+      List<QuoteOffer> offers = const [],
+      String? lifecycle,
     }) => QuoteRequest(
       id: id,
       providerId: 'provider-$id',
       weddingPlanId: 'plan-1',
       status: status,
-      lifecycleStatus: status,
+      lifecycleStatus: lifecycle ?? status,
+      offers: offers,
       provider: ProviderSummary(
         id: 'provider-$id',
         businessName: provider,
@@ -298,6 +302,79 @@ void main() {
       );
 
       expect(find.text('اعتذر'), findsNothing);
+    });
+
+    testWidgets('a withdrawn offer names what is gone and the other offer '
+        '(B-03)', (tester) async {
+      final now = DateTime.now();
+      await _pump(
+        tester,
+        _FakeMarketplaceProvider(
+          quoteRequests: [
+            band(
+              'lens',
+              'VIEWED',
+              provider: 'عدسة سبأ',
+              lifecycle: 'PENDING_PROVIDER',
+              offers: [
+                QuoteOffer(
+                  id: 'offer-lens',
+                  status: 'WITHDRAWN',
+                  amount: '480000',
+                  currency: 'YER',
+                  withdrawnAt: now.subtract(const Duration(hours: 3)),
+                ),
+              ],
+            ),
+            band(
+              'studio',
+              'RESPONDED',
+              provider: 'ضوء صنعاء',
+              lifecycle: 'RECEIVED',
+              offers: [
+                QuoteOffer(
+                  id: 'offer-studio',
+                  status: 'PENDING',
+                  amount: '550000',
+                  currency: 'YER',
+                  validUntil: now.add(const Duration(days: 6)),
+                ),
+              ],
+            ),
+          ],
+        ),
+      );
+
+      expect(find.text('سحب عرضه'), findsOneWidget);
+      expect(
+        find.byWidgetPredicate(
+          (widget) =>
+              widget is Text &&
+              stripMoneyDirectionalityMarks(widget.data ?? '') ==
+                  'عرض 480,000 ر.ي ما عاد متاح. باقي عندك عرض ضوء صنعاء 550,000 ر.ي.',
+        ),
+        findsOneWidget,
+      );
+      expect(find.text('افتح العرض الثاني'), findsOneWidget);
+      expect(find.text('اسألهم ليش'), findsOneWidget);
+      // A withdrawn request is not «شاف وما رد».
+      expect(find.text('شاف وما رد'), findsNothing);
+    });
+
+    testWidgets('a request unanswered for seven days ends with «اطلب من '
+        'غيره» (B-04)', (tester) async {
+      await _pump(
+        tester,
+        _FakeMarketplaceProvider(
+          quoteRequests: [
+            band('hall', 'EXPIRED', provider: 'قاعة سبأ'),
+          ],
+        ),
+      );
+
+      expect(find.text('انتهى بدون رد'), findsOneWidget);
+      expect(find.text('ما ردوا خلال 7 أيام، وانتهى الطلب.'), findsOneWidget);
+      expect(find.text('اطلب من غيره'), findsOneWidget);
     });
   });
 

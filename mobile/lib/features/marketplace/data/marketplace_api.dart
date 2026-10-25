@@ -350,8 +350,10 @@ class MarketplaceApi {
     String? message,
     String? budgetMin,
     String? budgetMax,
+    bool shareBudget = false,
+    bool shareContact = false,
   }) async {
-    final payload = {
+    final payload = <String, dynamic>{
       if (weddingPlanId != null && weddingPlanId.trim().isNotEmpty)
         'weddingPlanId': weddingPlanId.trim(),
       if (serviceId != null && serviceId.trim().isNotEmpty)
@@ -369,6 +371,9 @@ class MarketplaceApi {
         'budgetMin': budgetMin.trim(),
       if (budgetMax != null && budgetMax.trim().isNotEmpty)
         'budgetMax': budgetMax.trim(),
+      // B-08: the provider reads the budget and the phone only when shared.
+      'shareBudget': shareBudget,
+      'shareContact': shareContact,
     };
     if (location != null) {
       payload['location'] = location;
@@ -466,13 +471,16 @@ class MarketplaceApi {
     return QuoteRequest.fromJson(json);
   }
 
+  /// Accepts the version the customer read (B-06): a newer one is refused
+  /// with `QUOTE_OFFER_CHANGED`, so nothing unseen is ever accepted.
   Future<QuoteRequest> acceptQuoteOffer({
     required String quoteRequestId,
     required String quoteOfferId,
+    required int versionNo,
   }) async {
     await _apiClient.patchJson(
       '/api/v1/quote-offers/$quoteOfferId/accept',
-      const {},
+      {'versionNo': versionNo},
     );
     return getQuoteRequest(quoteRequestId);
   }
@@ -1077,6 +1085,19 @@ class ProviderDashboardApi {
             'validUntil': validUntil.toUtc().toIso8601String(),
         });
     return QuoteOffer.fromJson(json);
+  }
+
+  /// B-03: takes back an offer the customer has not decided on; the
+  /// request waits for the provider again. Returns the request.
+  Future<QuoteRequest> withdrawQuoteOffer({
+    required String quoteOfferId,
+    String? reason,
+  }) async {
+    final json = await _apiClient.postJson(
+      '/api/v1/provider/me/quote-offers/$quoteOfferId/withdraw',
+      {if (reason != null && reason.trim().isNotEmpty) 'reason': reason.trim()},
+    );
+    return QuoteRequest.fromJson(json);
   }
 
   String _normalizePhone(String phone) {

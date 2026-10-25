@@ -6,6 +6,7 @@ import 'package:provider/provider.dart';
 import '../../../core/experience_v3/aarast_v3.dart';
 import '../../../core/routing/app_router.dart';
 import '../../../core/utils/arabic_date_formatter.dart';
+import '../../../core/utils/offer_ends.dart';
 import '../../marketplace/marketplace_api.dart'
     show MarketplaceBooking, QuoteRequest;
 import '../providers/provider_dashboard_provider.dart';
@@ -15,8 +16,8 @@ import '../widgets/provider_request_parts.dart';
 
 /// p13 «الرئيسية»: who waits for him, who accepted his offer and asks to
 /// book, and his confirmed weddings this week. The waiting count is the new
-/// requests (SENT and VIEWED); requests never expire on the server (F8), so
-/// no expiry is shown. Before his first request it is p14
+/// requests (SENT and VIEWED), with when the first of them ends (seven days
+/// to answer, B-04). Before his first request it is p14
 /// ([ProviderFirstSteps]).
 class ProviderHomeTab extends StatelessWidget {
   const ProviderHomeTab({required this.onOpenTab, super.key});
@@ -202,6 +203,17 @@ class _WaitingHero extends StatelessWidget {
       _ => '$count طلب ما رديت عليها',
     };
     final dates = [for (final quote in waiting) ?quote.createdAt]..sort();
+    // B-04: the first of them to end, «ينتهي بعد 6 أيام».
+    final deadlines = [for (final quote in waiting) ?quote.expiresAt]..sort();
+    final ends = deadlines.isEmpty
+        ? null
+        : offerEndsLabel(deadlines.first.toLocal(), DateTime.now());
+    final arrived = dates.isEmpty
+        ? null
+        : count == 1
+        ? 'وصل ${providerDayLabel(dates.first)}'
+        : 'أقدمها من ${providerDayLabel(dates.first)}';
+    final since = [?arrived, ?ends].join(' · ');
     return Container(
       key: const Key('provider-home-waiting'),
       padding: const EdgeInsets.all(18),
@@ -227,12 +239,10 @@ class _WaitingHero extends StatelessWidget {
               color: AarastV3Color.onPrimary,
             ),
           ),
-          if (dates.isNotEmpty) ...[
+          if (since.isNotEmpty) ...[
             const SizedBox(height: 4),
             Text(
-              count == 1
-                  ? 'وصل ${providerDayLabel(dates.first)}'
-                  : 'أقدمها من ${providerDayLabel(dates.first)}',
+              since,
               style: JourneyType.of(
                 JourneyType.small,
                 color: AarastV3Color.onPrimaryMuted,

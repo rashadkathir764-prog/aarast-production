@@ -1,3 +1,5 @@
+import '../../../core/utils/offer_changes.dart';
+
 enum ChatConversationScope { plan, account }
 
 class ChatUser {
@@ -5,7 +7,9 @@ class ChatUser {
 
   factory ChatUser.fromJson(Map<String, dynamic> json) => ChatUser(
     id: json['id']?.toString() ?? '',
-    name: json['name']?.toString() ?? '',
+    // B-14: the provider's side of a plan conversation names the customer
+    // by first name only (`{ firstName, weddingLabel, eventDate }`).
+    name: (json['name'] ?? json['firstName'])?.toString() ?? '',
     avatarUrl: json['avatarUrl']?.toString(),
   );
 
@@ -99,17 +103,31 @@ class ChatQuoteOffer {
     this.amount,
     this.currency,
     this.validUntil,
+    this.versionNo = 1,
+    this.changes = const [],
   });
 
-  factory ChatQuoteOffer.fromJson(Map<String, dynamic> json) => ChatQuoteOffer(
-    id: json['id']?.toString() ?? '',
-    status: json['status']?.toString() ?? '',
-    title: json['title']?.toString(),
-    message: json['message']?.toString(),
-    amount: json['amount']?.toString(),
-    currency: json['currency']?.toString(),
-    validUntil: _date(json['validUntil']),
-  );
+  factory ChatQuoteOffer.fromJson(Map<String, dynamic> json) {
+    final changes = json['changes'];
+    return ChatQuoteOffer(
+      id: json['id']?.toString() ?? '',
+      status: json['status']?.toString() ?? '',
+      title: json['title']?.toString(),
+      message: json['message']?.toString(),
+      amount: json['amount']?.toString(),
+      currency: json['currency']?.toString(),
+      validUntil: _date(json['validUntil']),
+      versionNo: json['versionNo'] is num
+          ? (json['versionNo'] as num).toInt()
+          : 1,
+      changes: changes is List
+          ? [
+              for (final item in changes.whereType<Map>())
+                QuoteOfferChange.fromJson(Map<String, dynamic>.from(item)),
+            ]
+          : const [],
+    );
+  }
 
   final String id;
   final String status;
@@ -118,6 +136,10 @@ class ChatQuoteOffer {
   final String? amount;
   final String? currency;
   final DateTime? validUntil;
+
+  /// B-06: the version read, and «ايش تغيّر» against the one before.
+  final int versionNo;
+  final List<QuoteOfferChange> changes;
 }
 
 class ChatQuoteRequestSummary {

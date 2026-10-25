@@ -166,7 +166,9 @@ ProviderBoardRow _row({
       .where(
         (quote) =>
             quote.lifecycleStatus != 'REJECTED' &&
-            quote.lifecycleStatus != 'CANCELLED',
+            quote.lifecycleStatus != 'CANCELLED' &&
+            // B-04: ended unanswered after seven days.
+            quote.lifecycleStatus != 'EXPIRED',
       )
       .toList();
   final confirmed = live

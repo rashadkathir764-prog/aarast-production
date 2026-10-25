@@ -12,11 +12,15 @@ import '../providers/provider_dashboard_provider.dart';
 import 'provider_join_parts.dart' show providerMomentLabel;
 
 /// Where a request stands for the provider, read on the phone from the
-/// request, its offer and its booking (classification p15). The server has
-/// no request expiry (F8), so nothing here counts time left on a request.
+/// request, its offer and its booking (classification p15). A new request
+/// has seven days to be answered (B-04, `expiresAt`), then it ends.
 enum ProviderCaseState {
-  /// SENT or VIEWED: waiting for his offer or his apology.
+  /// SENT or VIEWED: waiting for his offer or his apology (also after he
+  /// withdrew his offer, B-03).
   fresh,
+
+  /// EXPIRED: seven days passed without his answer (B-04).
+  unanswered,
 
   /// The customer accepted and asked to book the day: confirm or decline.
   bookingAsked,
@@ -147,12 +151,13 @@ ProviderCaseState providerCaseOf(
           ? ProviderCaseState.offerExpired
           : ProviderCaseState.replied,
     'ACCEPTED' => ProviderCaseState.waitingBooking,
-    // The provider can decline only before an offer; the customer rejects
-    // an offer he received.
+    'EXPIRED' => ProviderCaseState.unanswered,
+    // The provider declines with no open offer (none sent, or his offer
+    // withdrawn, B-03); the customer rejects an offer he received.
     'REJECTED' =>
-      quote.offers.isEmpty
-          ? ProviderCaseState.declined
-          : ProviderCaseState.notChosen,
+      quote.offers.any((offer) => offer.status == 'REJECTED')
+          ? ProviderCaseState.notChosen
+          : ProviderCaseState.declined,
     _ => ProviderCaseState.cancelled,
   };
 }
@@ -187,6 +192,19 @@ String? providerGroupedAmount(String? raw) {
       : '';
   if (fraction.isNotEmpty) buffer.write('.$fraction');
   return buffer.toString();
+}
+
+/// «400,000 لين 600,000 ر.ي» from the budget the customer shared (B-08);
+/// null when none came with the request.
+String? providerBudgetLabel(QuoteRequest quote) {
+  final min = providerGroupedAmount(quote.budgetMin);
+  final max = providerGroupedAmount(quote.budgetMax);
+  final currency = currencyLabelAr(quote.weddingPlanCurrency);
+  if (min != null && max != null && min != max) {
+    return '$min لين $max $currency';
+  }
+  final one = max ?? min;
+  return one == null ? null : '$one $currency';
 }
 
 /// «550,000 ر.ي».
@@ -480,6 +498,13 @@ class ProviderRequestFacts extends StatelessWidget {
       if (place.isNotEmpty) ('المكان', place),
       if (guests != null && guests > 0) ('الضيوف', '$guests تقريبًا'),
       if (wants.isNotEmpty) ('يشتي', wants),
+      // B-08: only what the customer chose to share reaches the provider.
+      if (quote.shareBudget)
+        if (providerBudgetLabel(quote) case final budget?) ('ميزانيته', budget),
+      if (quote.shareContact)
+        if (quote.contactPhone?.trim() case final phone?
+            when phone.isNotEmpty)
+          ('رقمه', phone),
     ];
     if (facts.isEmpty) return const SizedBox.shrink();
     return JourneyBox(

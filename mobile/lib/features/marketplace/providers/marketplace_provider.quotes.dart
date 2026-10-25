@@ -62,6 +62,8 @@ mixin _MarketplaceQuotes on _MarketplaceProviderCore {
     String? message,
     String? budgetMin,
     String? budgetMax,
+    bool shareBudget = false,
+    bool shareContact = false,
   }) async {
     if (_isSubmitting) return false;
     _isSubmitting = true;
@@ -85,6 +87,8 @@ mixin _MarketplaceQuotes on _MarketplaceProviderCore {
         'message': message?.trim(),
         'budgetMin': budgetMin?.trim(),
         'budgetMax': budgetMax?.trim(),
+        'shareBudget': shareBudget,
+        'shareContact': shareContact,
       });
       if (_quoteAttemptSignature != signature || _quoteAttemptId == null) {
         _quoteAttemptSignature = signature;
@@ -104,6 +108,8 @@ mixin _MarketplaceQuotes on _MarketplaceProviderCore {
         message: message,
         budgetMin: budgetMin,
         budgetMax: budgetMax,
+        shareBudget: shareBudget,
+        shareContact: shareContact,
       );
       _quoteRequests = [
         quote,
@@ -211,7 +217,9 @@ mixin _MarketplaceQuotes on _MarketplaceProviderCore {
       () => _api.acceptQuoteOffer(
         quoteRequestId: quote.id,
         quoteOfferId: offer.id,
+        versionNo: offer.versionNo,
       ),
+      quoteId: quote.id,
     );
   }
 
@@ -267,22 +275,33 @@ mixin _MarketplaceQuotes on _MarketplaceProviderCore {
     );
   }
 
-  Future<bool> _updateQuote(Future<QuoteRequest> Function() action) async {
+  Future<bool> _updateQuote(
+    Future<QuoteRequest> Function() action, {
+    String? quoteId,
+  }) async {
     if (_isSubmitting) return false;
     _isSubmitting = true;
     _errorMessage = null;
     notifyListeners();
     try {
       final updated = await action();
-      _quoteRequests = [
-        updated,
-        ..._quoteRequests.where((quote) => quote.id != updated.id),
-      ];
+      _replaceQuote(updated);
       return true;
     } on ApiException catch (error) {
       _errorMessage =
           bookingErrorMessage(error.serverCode) ??
           marketplaceErrorMessage(error.message);
+      // B-06/B-03: the offer changed or was taken back while he read it;
+      // show what it is now, so he decides on what he sees.
+      if (quoteId != null &&
+          (error.serverCode == 'QUOTE_OFFER_CHANGED' ||
+              error.serverCode == 'QUOTE_OFFER_WITHDRAWN')) {
+        try {
+          _replaceQuote(await _api.getQuoteRequest(quoteId));
+        } on ApiException {
+          // The refusal above already says what happened.
+        }
+      }
       return false;
     } catch (_) {
       _errorMessage = 'تعذر تحديث حالة عرض السعر.';
@@ -291,6 +310,13 @@ mixin _MarketplaceQuotes on _MarketplaceProviderCore {
       _isSubmitting = false;
       notifyListeners();
     }
+  }
+
+  void _replaceQuote(QuoteRequest updated) {
+    _quoteRequests = [
+      updated,
+      ..._quoteRequests.where((quote) => quote.id != updated.id),
+    ];
   }
 
   QuoteRequest? _findMatchingActiveQuote({

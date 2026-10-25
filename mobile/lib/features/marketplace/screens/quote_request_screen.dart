@@ -62,6 +62,9 @@ class _QuoteRequestScreenState extends State<QuoteRequestScreen> {
   DateTime? _eventDate;
   WeddingLocationDraft? _eventLocation;
   bool _shareBudget = false;
+
+  /// B-08: the phone reaches the provider only when shared.
+  bool _shareContact = false;
   String? _guestError;
   bool _didApplyInitialPlanContext = false;
   final Set<String> _routeLaunchesInFlight = <String>{};
@@ -303,57 +306,54 @@ class _QuoteRequestScreenState extends State<QuoteRequestScreen> {
               minLines: 1,
               maxLines: 3,
             ),
-            if (budget != null) ...[
-              const SizedBox(height: 12),
-              JourneyBox(
-                padding: const EdgeInsets.fromLTRB(16, 10, 8, 10),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            '${context.say('شاركهم', 'شاركيهم')} بندك: '
-                            '${_amountLabel(budget.allocatedValue, plans, selectedPlanId)}',
-                            style: JourneyType.of(
-                              JourneyType.body,
-                              weight: JourneyType.bold,
-                            ),
-                          ),
-                          Text(
-                            'يساعدهم يعطونك عرض على قدّك',
-                            style: JourneyType.of(
-                              JourneyType.small,
-                              color: AarastV3Color.textMuted,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    JourneyToggle(
-                      key: const Key('quote-share-budget'),
+            // B-08: the budget and the phone reach the provider only when
+            // shared; B-04: the request ends after seven days unanswered.
+            const SizedBox(height: 12),
+            JourneyBox(
+              padding: const EdgeInsets.fromLTRB(16, 10, 8, 10),
+              child: Column(
+                children: [
+                  if (budget != null)
+                    _ShareRow(
+                      toggleKey: const Key('quote-share-budget'),
+                      title:
+                          '${context.say('شاركهم', 'شاركيهم')} بندك: '
+                          '${_amountLabel(budget.allocatedValue, plans, selectedPlanId)}',
+                      subtitle: 'يساعدهم يعطونك عرض على قدّك',
                       value: _shareBudget,
-                      color: AarastV3Color.cobalt,
                       onChanged: (value) {
                         setState(() => _shareBudget = value);
                         _scheduleDraft();
                       },
                     ),
-                  ],
-                ),
+                  _ShareRow(
+                    toggleKey: const Key('quote-share-contact'),
+                    title: '${context.say('شاركهم', 'شاركيهم')} رقمك',
+                    subtitle: 'غير كذا يكلمونك من الرسائل بس',
+                    value: _shareContact,
+                    onChanged: (value) {
+                      setState(() => _shareContact = value);
+                      _scheduleDraft();
+                    },
+                  ),
+                ],
               ),
-              const SizedBox(height: 12),
-              JourneyNote(
-                text: context.say(
-                  'بندك ما يوصلهم إلا إذا فعّلته.',
-                  'بندك ما يوصلهم إلا إذا فعّلتيه.',
-                ),
-                icon: LucideIcons.lock,
-                color: AarastV3Color.cobalt,
-                soft: AarastV3Color.cobaltSoft,
-              ),
-            ],
+            ),
+            const SizedBox(height: 12),
+            JourneyNote(
+              text: budget != null
+                  ? context.say(
+                      'بندك ورقمك ما يوصلونهم إلا إذا فعّلتهم. والطلب ينتهي لو ما ردوا خلال 7 أيام.',
+                      'بندك ورقمك ما يوصلونهم إلا إذا فعّلتيهم. والطلب ينتهي لو ما ردوا خلال 7 أيام.',
+                    )
+                  : context.say(
+                      'رقمك ما يوصلهم إلا إذا فعّلته. والطلب ينتهي لو ما ردوا خلال 7 أيام.',
+                      'رقمك ما يوصلهم إلا إذا فعّلتيه. والطلب ينتهي لو ما ردوا خلال 7 أيام.',
+                    ),
+              icon: LucideIcons.lock,
+              color: AarastV3Color.cobalt,
+              soft: AarastV3Color.cobaltSoft,
+            ),
             if (submitError != null) ...[
               const SizedBox(height: 12),
               Text(
@@ -464,6 +464,7 @@ class _QuoteRequestScreenState extends State<QuoteRequestScreen> {
         _cityId ??= draft['cityId'] as String?;
         _period ??= draft['period'] as String?;
         _shareBudget = draft['shareBudget'] == true;
+        _shareContact = draft['shareContact'] == true;
         final rawDate = draft['eventDate'] as String?;
         _eventDate ??= rawDate == null ? null : DateTime.tryParse(rawDate);
         if (_guestCountController.text.isEmpty) {
@@ -485,6 +486,7 @@ class _QuoteRequestScreenState extends State<QuoteRequestScreen> {
       'cityId': _cityId,
       'period': _period,
       'shareBudget': _shareBudget,
+      'shareContact': _shareContact,
       'eventDate': _eventDate?.toIso8601String(),
       'guestCount': _guestCountController.text,
       'message': _messageController.text,
@@ -689,9 +691,11 @@ class _QuoteRequestScreenState extends State<QuoteRequestScreen> {
       guestCount: guestCount,
       contactName: context.read<AuthController>().user?.name,
       contactPhone: context.read<AuthController>().user?.phone,
-      // F8: the amount reaches the provider only when shared.
+      // B-08: the amount and the phone reach the provider only when shared.
       budgetMin: shared?.requestMin?.round().toString() ?? '',
       budgetMax: shared?.requestMax?.round().toString() ?? '',
+      shareBudget: shared != null,
+      shareContact: _shareContact,
       message: [
         if (_period != null) 'الفترة: $_period',
         if (_messageController.text.trim().isNotEmpty)
@@ -804,6 +808,61 @@ class _GuestsSheetState extends State<_GuestsSheet> {
           onPressed: () => Navigator.of(context).pop(_controller.text),
         ),
       ],
+    );
+  }
+}
+
+/// One f07 sharing switch: what is shared, why, and its toggle (B-08).
+class _ShareRow extends StatelessWidget {
+  const _ShareRow({
+    required this.toggleKey,
+    required this.title,
+    required this.subtitle,
+    required this.value,
+    required this.onChanged,
+  });
+
+  final Key toggleKey;
+  final String title;
+  final String subtitle;
+  final bool value;
+  final ValueChanged<bool> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 6),
+      child: Row(
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: JourneyType.of(
+                    JourneyType.body,
+                    weight: JourneyType.bold,
+                  ),
+                ),
+                Text(
+                  subtitle,
+                  style: JourneyType.of(
+                    JourneyType.small,
+                    color: AarastV3Color.textMuted,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          JourneyToggle(
+            key: toggleKey,
+            value: value,
+            color: AarastV3Color.cobalt,
+            onChanged: onChanged,
+          ),
+        ],
+      ),
     );
   }
 }

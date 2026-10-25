@@ -43,14 +43,19 @@ void main() {
     expect(find.text('صنعاء'), findsOneWidget);
     expect(find.text('كلمة لهم (اختياري)'), findsOneWidget);
     expect(find.text('شاركهم بندك: 500,000 ر.ي'), findsOneWidget);
-    expect(find.text('بندك ما يوصلهم إلا إذا فعّلته.'), findsOneWidget);
+    // B-08 (D50, replacing C46): the phone has its own switch, and B-04
+    // ends an unanswered request after seven days, as f07 draws them.
+    expect(find.text('شاركهم رقمك'), findsOneWidget);
+    expect(find.text('غير كذا يكلمونك من الرسائل بس'), findsOneWidget);
+    expect(
+      find.text(
+        'بندك ورقمك ما يوصلونهم إلا إذا فعّلتهم. والطلب ينتهي لو ما ردوا خلال 7 أيام.',
+      ),
+      findsOneWidget,
+    );
     expect(find.text('أرسل الطلب'), findsOneWidget);
     // C45: a band is not told how many guests come.
     expect(find.text('الضيوف'), findsNothing);
-    // C46: the phone always reaches the provider, so no switch pretends
-    // otherwise; and no request expires after 7 days.
-    expect(find.textContaining('رقمك'), findsNothing);
-    expect(find.textContaining('7 أيام'), findsNothing);
     // No wedding events exist in this build.
     expect(find.text('المناسبة'), findsNothing);
     expect(tester.takeException(), isNull);
@@ -73,6 +78,9 @@ void main() {
     expect(sent['budgetMin'], '');
     expect(sent['budgetMax'], '');
     expect(sent['eventDate'], DateTime(2027, 1, 21));
+    // B-08: nothing is shared unless switched on.
+    expect(sent['shareBudget'], false);
+    expect(sent['shareContact'], false);
   });
 
   testWidgets('a shared amount and a chosen time reach the provider', (
@@ -82,6 +90,8 @@ void main() {
     await _pump(tester, marketplace);
 
     await tester.tap(find.byKey(const Key('quote-share-budget')));
+    await tester.pump();
+    await tester.tap(find.byKey(const Key('quote-share-contact')));
     await tester.pump();
     await tester.tap(find.byKey(const Key('quote-period')));
     await tester.pumpAndSettle();
@@ -97,6 +107,8 @@ void main() {
     final sent = marketplace.sent.single;
     expect(sent['budgetMin'], '400000');
     expect(sent['budgetMax'], '500000');
+    expect(sent['shareBudget'], true);
+    expect(sent['shareContact'], true);
     expect(
       sent['message'],
       'الفترة: الليل · بعد المغرب\nنشتي زفة من باب القاعة لين المنصة',
@@ -346,6 +358,8 @@ class _Marketplace extends ProviderMarketplaceProvider {
     String? message,
     String? budgetMin,
     String? budgetMax,
+    bool shareBudget = false,
+    bool shareContact = false,
   }) async {
     sent.add({
       'serviceId': serviceId,
@@ -354,6 +368,8 @@ class _Marketplace extends ProviderMarketplaceProvider {
       'budgetMin': budgetMin,
       'budgetMax': budgetMax,
       'message': message,
+      'shareBudget': shareBudget,
+      'shareContact': shareContact,
     });
     return true;
   }

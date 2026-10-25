@@ -146,6 +146,8 @@ class _NoopMarketplaceProvider extends ProviderMarketplaceProvider {
     String? message,
     String? budgetMin,
     String? budgetMax,
+    bool shareBudget = false,
+    bool shareContact = false,
   }) async {
     createQuoteAttempted = true;
     return false;

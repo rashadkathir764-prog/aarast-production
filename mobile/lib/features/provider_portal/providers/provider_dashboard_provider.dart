@@ -1158,6 +1158,29 @@ class ProviderDashboardProvider extends ChangeNotifier
     }
   }
 
+  /// B-03: takes back the open offer; the request comes back to «جديد»
+  /// with seven new days to answer.
+  Future<bool> withdrawQuoteOffer(String quoteOfferId) async {
+    _isSubmitting = true;
+    _errorMessage = null;
+    notifyListeners();
+
+    try {
+      await _api.withdrawQuoteOffer(quoteOfferId: quoteOfferId);
+      await loadDashboard();
+      return true;
+    } on ApiException catch (error) {
+      _errorMessage = marketplaceErrorMessage(error.message);
+      return false;
+    } catch (_) {
+      _errorMessage = 'ما قدرنا نسحب العرض. حاول مرة ثانية.';
+      return false;
+    } finally {
+      _isSubmitting = false;
+      notifyListeners();
+    }
+  }
+
   /// Confirms, declines or cancels a booking (V1 checklist 4.6); [action] is
   /// `confirm`, `decline` or `cancel`.
   Future<bool> decideBooking({

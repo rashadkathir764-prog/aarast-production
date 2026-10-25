@@ -214,6 +214,20 @@ extension _ProviderTabs on _ProviderMarketplaceScreenState {
               onAnotherDay: () => _pushOnce<void>(
                 AppRouter.providerQuote(hardCase.quote.providerId),
               ),
+              // B-03: «افتح العرض الثاني» and «اسألهم ليش».
+              onOpenOther: switch ((hardCase.other, _weddingLocationPlanId)) {
+                (final other?, final planId?) => () => _pushOnce<void>(
+                  AppRouter.providerRequests(
+                    planId,
+                    itemKey: hardCase.row.key,
+                    quoteId: other.id,
+                  ),
+                ),
+                _ => null,
+              },
+              onAsk: () => _pushOnce<void>(
+                AppRouter.quoteConversation(hardCase.quote.id),
+              ),
             ),
           ProviderBoardView(
             rows: board,

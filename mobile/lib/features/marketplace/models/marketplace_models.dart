@@ -1,5 +1,6 @@
 import '../../../core/utils/plan_day.dart';
 import '../../onboarding/onboarding_api.dart' show WeddingLocationDraft;
+import '../../../core/utils/offer_changes.dart';
 import 'marketplace_booking.dart';
 
 export 'marketplace_booking.dart';
@@ -507,6 +508,10 @@ class QuoteRequest {
     this.createdAt,
     this.rejectedAt,
     this.updatedAt,
+    this.expiresAt,
+    this.expiredAt,
+    this.shareBudget = false,
+    this.shareContact = false,
   });
 
   factory QuoteRequest.fromJson(Map<String, dynamic> json) {
@@ -563,6 +568,10 @@ class QuoteRequest {
       createdAt: _dateOrNull(json['createdAt']),
       rejectedAt: _dateOrNull(json['rejectedAt']),
       updatedAt: _dateOrNull(json['updatedAt']),
+      expiresAt: _dateOrNull(json['expiresAt']),
+      expiredAt: _dateOrNull(json['expiredAt']),
+      shareBudget: json['shareBudget'] == true,
+      shareContact: json['shareContact'] == true,
     );
   }
 
@@ -599,6 +608,28 @@ class QuoteRequest {
 
   /// The last change; for a VIEWED request, about when it was opened.
   final DateTime? updatedAt;
+
+  /// B-04: the provider answers before this (seven days), else it ends.
+  final DateTime? expiresAt;
+
+  /// B-04: when it ended without an answer (status EXPIRED).
+  final DateTime? expiredAt;
+
+  /// B-08: what the customer showed the provider.
+  final bool shareBudget;
+  final bool shareContact;
+
+  bool get isExpiredUnanswered => status == 'EXPIRED';
+
+  /// B-03: the latest offer, when the provider took it back and has not
+  /// answered again (the request waits for him: VIEWED).
+  QuoteOffer? get withdrawnOffer {
+    if (status != 'VIEWED') return null;
+    for (final offer in offers) {
+      if (offer.isWithdrawn) return offer;
+    }
+    return null;
+  }
 
   QuoteOffer? get acceptedOffer {
     for (final offer in offers) {
@@ -640,9 +671,13 @@ class QuoteOffer {
     this.currency,
     this.validUntil,
     this.serverIsExpired,
+    this.versionNo = 1,
+    this.changes = const [],
+    this.withdrawnAt,
   });
 
   factory QuoteOffer.fromJson(Map<String, dynamic> json) {
+    final changes = json['changes'];
     return QuoteOffer(
       id: json['id'].toString(),
       status: json['status']?.toString() ?? 'PENDING',
@@ -654,6 +689,18 @@ class QuoteOffer {
       serverIsExpired: json['isExpired'] is bool
           ? json['isExpired'] as bool
           : null,
+      versionNo: _intOrNull(json['versionNo']) ?? 1,
+      changes: changes is List
+          ? changes
+                .whereType<Map>()
+                .map(
+                  (item) => QuoteOfferChange.fromJson(
+                    Map<String, dynamic>.from(item),
+                  ),
+                )
+                .toList()
+          : const [],
+      withdrawnAt: _dateOrNull(json['withdrawnAt']),
     );
   }
 
@@ -665,6 +712,17 @@ class QuoteOffer {
   final String? currency;
   final DateTime? validUntil;
   final bool? serverIsExpired;
+
+  /// B-06: which version the customer reads; accepting sends it back.
+  final int versionNo;
+
+  /// B-06: «ايش تغيّر» against the version before (empty on version 1).
+  final List<QuoteOfferChange> changes;
+
+  /// B-03: when the provider took the offer back.
+  final DateTime? withdrawnAt;
+
+  bool get isWithdrawn => status == 'WITHDRAWN';
 
   bool get isExpired {
     if (status != 'PENDING') return false;
@@ -734,6 +792,7 @@ String _quoteLifecycleStatus(String? status) {
     case 'ACCEPTED':
     case 'REJECTED':
     case 'CANCELLED':
+    case 'EXPIRED':
       return status!;
     case 'READY_TO_SEND':
       return 'READY_TO_SEND';

@@ -1694,7 +1694,9 @@ const r19ProviderPortalApi = Object.freeze({
 // API, so the whole app takes the open plan's profile (the bride's slice 1).
 // +1: the provider portal reads the categories through the marketplace owner
 // API, so p09 moves the profile to another category before approval (B-01).
-const r19LegalRecordCount = 235;
+// +1: p19's withdraw sheet reads the request through the marketplace owner
+// API (B-03, D50).
+const r19LegalRecordCount = 236;
 const trackedOwnerApiContracts = [
   {
     area: 'features/account_contexts',

@@ -272,6 +272,8 @@ class _RetryQuoteApi extends MarketplaceApi {
     String? message,
     String? budgetMin,
     String? budgetMax,
+    bool shareBudget = false,
+    bool shareContact = false,
   }) async {
     keys.add(clientRequestId);
     if (keys.length == 1) {
@@ -297,6 +299,8 @@ class _ActiveConflictApi extends _RetryQuoteApi {
     String? message,
     String? budgetMin,
     String? budgetMax,
+    bool shareBudget = false,
+    bool shareContact = false,
   }) => throw const ApiException(
     'يوجد طلب عرض سعر نشط مطابق. تابع الطلب الحالي.',
     statusCode: 409,
@@ -331,6 +335,8 @@ class _ConcurrentQuoteApi extends MarketplaceApi {
     String? message,
     String? budgetMin,
     String? budgetMax,
+    bool shareBudget = false,
+    bool shareContact = false,
   }) {
     createCalls += 1;
     return createResult.future;
@@ -340,6 +346,7 @@ class _ConcurrentQuoteApi extends MarketplaceApi {
   Future<QuoteRequest> acceptQuoteOffer({
     required String quoteRequestId,
     required String quoteOfferId,
+    required int versionNo,
   }) {
     acceptCalls += 1;
     return acceptResult.future;

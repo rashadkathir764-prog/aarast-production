@@ -21,7 +21,9 @@ import 'package:shared_preferences/shared_preferences.dart';
 // Provider slice 2 (D37): the request from its arrival to the offer. p13
 // home, p15 lists, p16 new request, p17 offer, p18 apology, p19 answered,
 // p20 ended, p45 quick offer. Nothing shows a figure or a promise the server
-// does not keep (time left, versions, reasons, phone, budget).
+// does not keep (reasons). Since B2 (D50) a request carries its seven-day
+// answer window, an offer its version, and the customer's phone and budget
+// reach the provider only when shared.
 
 final _now = DateTime.now();
 final _today = DateTime(_now.year, _now.month, _now.day);
@@ -36,14 +38,23 @@ Map<String, dynamic> quoteJson({
   List<Map<String, dynamic>> offers = const [],
   Map<String, dynamic>? booking,
   DateTime? createdAt,
+  bool share = false,
 }) => {
   'id': id,
   'providerId': 'provider-1',
   'status': status,
+  // B-04: seven days from the request to answer it.
+  'expiresAt': (createdAt ?? _now.subtract(const Duration(days: 1)))
+      .add(const Duration(days: 7))
+      .toUtc()
+      .toIso8601String(),
+  // B-08: the server sends the phone and the budget only when shared.
+  'shareBudget': share,
+  'shareContact': share,
   'contactName': name,
-  'contactPhone': '777123456',
-  'budgetMin': '300000',
-  'budgetMax': '600000',
+  'contactPhone': share ? '777123456' : null,
+  'budgetMin': share ? '300000' : null,
+  'budgetMax': share ? '600000' : null,
   'guestCount': 124,
   'eventDate': eventDate,
   'message': 'نشتي تصوير الزفة من دخول العريس',
@@ -113,8 +124,8 @@ void main() {
       expect(find.text('تصوير · صنعاء'), findsOneWidget);
       expect(find.text('ينتظرونك'), findsOneWidget);
       expect(find.text('3 طلبات ما رديت عليها'), findsOneWidget);
-      expect(find.text('أقدمها من أمس'), findsOneWidget);
-      expect(find.textContaining('ينتهي'), findsNothing);
+      // B-04: the first of them to end, as p13 draws it.
+      expect(find.text('أقدمها من أمس · ينتهي بعد 6 أيام'), findsOneWidget);
 
       await tester.tap(find.byKey(const Key('provider-home-answer')));
       expect(opened, [1]);
@@ -219,7 +230,8 @@ void main() {
       expect(find.text('الخميس 21 يناير · صور وفيديو'), findsWidgets);
       expect(find.text('أكّد الحجز: يشتي يحجز'), findsOneWidget);
       expect(find.text('قبلوا عرضك'), findsOneWidget);
-      expect(find.textContaining('باقي'), findsNothing);
+      // B-04: each new request counts its seven days, as p15 draws it.
+      expect(find.text('ردّ: باقي 6 أيام'), findsNWidgets(2));
       expect(find.text('أمس'), findsWidgets);
 
       await tester.tap(find.byKey(const Key('provider-requests-tab-replied')));
@@ -439,8 +451,8 @@ void main() {
   });
 
   group('p19 answered', () {
-    testWidgets('the offer, its end date and the edit; no version, no seen '
-        'line, no withdraw', (tester) async {
+    testWidgets('the offer, its version, its end date, the edit and the '
+        'withdrawal; no seen line', (tester) async {
       final api = RequestsApi(
         quotes: [
           quoteJson(status: 'RESPONDED', offers: [offerJson()]),
@@ -451,24 +463,108 @@ void main() {
       expect(find.text('محمد الحمدي'), findsOneWidget);
       expect(find.text('الخميس 21 يناير · صور وفيديو'), findsOneWidget);
       expect(find.text('ردّيت'), findsOneWidget);
-      expect(find.text('550,000 ر.ي'), findsOneWidget);
+      // B-06: p19 «550,000 ر.ي · نسخة 1».
+      expect(find.text('550,000 ر.ي · نسخة 1'), findsOneWidget);
       expect(find.textContaining('صالح لين'), findsOneWidget);
       expect(find.textContaining('باقي 8 أيام'), findsOneWidget);
       expect(find.text('عدّل العرض'), findsOneWidget);
+      expect(find.text('اسحب العرض'), findsOneWidget);
       expect(
         find.text(
-          'التعديل يغيّر العرض نفسه، وما يوصله تنبيه. لو غيّرت شيء، قله في المحادثة.',
+          'التعديل يوصله نسخة 2 فيها «ايش تغيّر». والسحب يقفل العرض ويوصله سطر هادي.',
         ),
         findsOneWidget,
       );
-      expect(find.textContaining('نسخة'), findsNothing);
       expect(find.textContaining('شافه'), findsNothing);
-      expect(find.text('اسحب العرض'), findsNothing);
       expect(
         find.byKey(const Key('provider-quote-decline-quote-1')),
         findsNothing,
       );
       expect(api.statusUpdates, isEmpty);
+    });
+
+    testWidgets('«اسحب العرض» asks first, then the request is new again with '
+        'seven days (B-03)', (tester) async {
+      final api = RequestsApi(
+        quotes: [
+          quoteJson(status: 'RESPONDED', offers: [offerJson()]),
+        ],
+      );
+      await pumpHarness(tester, api, initial: '/provider/requests/quote-1');
+
+      await tester.tap(find.byKey(const Key('provider-offer-withdraw-quote-1')));
+      await tester.pumpAndSettle();
+      expect(find.text('تسحب عرضك لمحمد؟'), findsOneWidget);
+      await tester.tap(find.byKey(const Key('provider-offer-withdraw-keep')));
+      await tester.pumpAndSettle();
+      expect(api.withdrawn, isEmpty);
+
+      await tester.tap(find.byKey(const Key('provider-offer-withdraw-quote-1')));
+      await tester.pumpAndSettle();
+      await tester.tap(
+        find.byKey(const Key('provider-offer-withdraw-confirm')),
+      );
+      await tester.pumpAndSettle();
+      expect(api.withdrawn, ['offer-1']);
+      // The request is p16 again, with what happened and his new deadline.
+      expect(find.text('طلب جديد'), findsOneWidget);
+      expect(
+        find.byKey(const Key('provider-request-withdrawn')),
+        findsOneWidget,
+      );
+      expect(find.textContaining('سحبت عرضك اليوم.'), findsOneWidget);
+    });
+  });
+
+  group('B-04 and B-08 on p15, p16 and p20', () {
+    testWidgets('a new request counts its days left, and an unanswered one '
+        'ends in «انتهى»', (tester) async {
+      final api = RequestsApi(
+        quotes: [
+          quoteJson(),
+          quoteJson(id: 'quote-2', name: 'يحيى السنيدار', status: 'EXPIRED'),
+        ],
+      );
+      await pumpHarness(tester, api);
+
+      expect(find.text('ردّ: باقي 6 أيام'), findsOneWidget);
+      await tester.tap(find.text('انتهى').first);
+      await tester.pumpAndSettle();
+      expect(find.text('طلب يحيى السنيدار انتهى بدون رد'), findsOneWidget);
+      expect(
+        find.text('7 أيام ما رديت. هذا ينحسب في سرعة ردك.'),
+        findsOneWidget,
+      );
+    });
+
+    testWidgets('p16 says what was not shared, and shows what was', (
+      tester,
+    ) async {
+      final api = RequestsApi(
+        quotes: [
+          quoteJson(),
+          quoteJson(id: 'quote-2', name: 'عادل الريمي', share: true),
+        ],
+      );
+      await pumpHarness(tester, api, initial: '/provider/requests/quote-1');
+      expect(
+        find.text(
+          'ميزانيته ورقمه ما يوصلونك إلا إذا شاركهم. تكلّم معه من «اسأل».',
+        ),
+        findsOneWidget,
+      );
+      expect(find.text('ميزانيته'), findsNothing);
+
+      final shared = RequestsApi(
+        quotes: [quoteJson(id: 'quote-2', name: 'عادل الريمي', share: true)],
+      );
+      await pumpHarness(tester, shared, initial: '/provider/requests/quote-2');
+      expect(find.text('300,000 لين 600,000 ر.ي'), findsOneWidget);
+      expect(find.text('777123456'), findsOneWidget);
+      expect(
+        find.byKey(const Key('provider-request-privacy')),
+        findsNothing,
+      );
     });
   });
 
@@ -477,7 +573,8 @@ void main() {
       final api = RequestsApi(quotes: [quoteJson()], packages: packages);
       await pumpHarness(tester, api);
 
-      expect(find.text('ردّ سريع'), findsOneWidget);
+      // B-04: the quick line keeps the days left of the request.
+      expect(find.text('ردّ سريع: باقي 6 أيام'), findsOneWidget);
       await tester.tap(find.byKey(const Key('provider-quick-offer-quote-1')));
       await tester.pumpAndSettle();
       expect(find.text('رد سريع'), findsOneWidget);
@@ -513,7 +610,7 @@ void main() {
       tester,
     ) async {
       await pumpHarness(tester, RequestsApi(quotes: [quoteJson()]));
-      expect(find.text('ردّ على طلبه'), findsOneWidget);
+      expect(find.text('ردّ: باقي 6 أيام'), findsOneWidget);
       expect(
         find.byKey(const Key('provider-quick-offer-quote-1')),
         findsNothing,
@@ -695,6 +792,39 @@ class RequestsApi extends ProviderDashboardApi {
   final statusUpdates = <String>[];
   final created = <CreatedOffer>[];
   final blocked = <DateTime>[];
+  final withdrawn = <String>[];
+
+  /// B-03 as the server does it: the offer is taken back and the request
+  /// waits for the provider again, seven days from now.
+  @override
+  Future<QuoteRequest> withdrawQuoteOffer({
+    required String quoteOfferId,
+    String? reason,
+  }) async {
+    withdrawn.add(quoteOfferId);
+    final quote = _quotes.firstWhere(
+      (item) => (item['offers'] as List).any(
+        (offer) => (offer as Map)['id'] == quoteOfferId,
+      ),
+    );
+    final now = DateTime.now();
+    quote['status'] = 'VIEWED';
+    quote['expiresAt'] = now
+        .add(const Duration(days: 7))
+        .toUtc()
+        .toIso8601String();
+    quote['offers'] = [
+      for (final offer in quote['offers'] as List)
+        (offer as Map)['id'] == quoteOfferId
+            ? {
+                ...Map<String, dynamic>.from(offer),
+                'status': 'WITHDRAWN',
+                'withdrawnAt': now.toUtc().toIso8601String(),
+              }
+            : offer,
+    ];
+    return QuoteRequest.fromJson(quote);
+  }
 
   @override
   Future<ProviderDashboardProfile> getProfile() async =>

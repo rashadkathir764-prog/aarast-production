@@ -12,9 +12,11 @@ import '../../marketplace/marketplace_api.dart' show QuoteRequest;
 import '../providers/provider_dashboard_provider.dart';
 import '../widgets/provider_booking_sheets.dart';
 import '../widgets/provider_decline_sheet.dart';
-import '../widgets/provider_join_parts.dart' show providerMomentLabel;
+import '../widgets/provider_join_parts.dart'
+    show providerDayLabel, providerMomentLabel;
 import '../widgets/provider_request_cards.dart' show ProviderEndedCard;
 import '../widgets/provider_request_parts.dart';
+import '../widgets/provider_withdraw_sheet.dart';
 import 'provider_booking_screen.dart';
 
 /// One request as the provider sees it. A new one (SENT or VIEWED) is p16
@@ -173,6 +175,14 @@ class _NewRequest extends StatelessWidget {
                   ),
                   const SizedBox(height: 10),
                 ],
+                // B-03: he took his offer back; the request waits for him.
+                if (quote.withdrawnOffer case final withdrawn?) ...[
+                  JourneyNote(
+                    key: const Key('provider-request-withdrawn'),
+                    text: _withdrawnLine(withdrawn.withdrawnAt, quote.expiresAt),
+                  ),
+                  const SizedBox(height: 10),
+                ],
                 if (quote.eventDate case final day?) ...[
                   ProviderDayStatus(
                     day: day,
@@ -181,6 +191,19 @@ class _NewRequest extends StatelessWidget {
                   ),
                   const SizedBox(height: 8),
                 ],
+                // p16, B-08: what the customer did not share stays his.
+                if (_privacyLine(quote) case final privacy?)
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 4),
+                    child: Text(
+                      privacy,
+                      key: const Key('provider-request-privacy'),
+                      style: JourneyType.of(
+                        JourneyType.small,
+                        color: AarastV3Color.textMuted,
+                      ),
+                    ),
+                  ),
                 Center(
                   child: JourneyTextAction(
                     key: const Key('provider-request-ask'),
@@ -222,6 +245,26 @@ class _NewRequest extends StatelessWidget {
         ],
       ),
     );
+  }
+
+  /// «سحبت عرضك أمس. أرسل عرض جديد أو اعتذر قبل 29 أكتوبر.»
+  static String _withdrawnLine(DateTime? withdrawnAt, DateTime? expiresAt) {
+    final when = withdrawnAt == null ? '' : ' ${providerDayLabel(withdrawnAt)}';
+    final until = expiresAt == null
+        ? ''
+        : ' قبل ${formatArabicDayMonth(expiresAt.toLocal())}';
+    return 'سحبت عرضك$when. أرسل عرض جديد أو اعتذر$until.';
+  }
+
+  /// The line under p16's facts, naming only what he does not have.
+  static String? _privacyLine(QuoteRequest quote) {
+    return switch ((quote.shareBudget, quote.shareContact)) {
+      (false, false) =>
+        'ميزانيته ورقمه ما يوصلونك إلا إذا شاركهم. تكلّم معه من «اسأل».',
+      (true, false) => 'رقمه ما يوصلك إلا إذا شاركه. تكلّم معه من «اسأل».',
+      (false, true) => 'ميزانيته ما توصلك إلا إذا شاركها.',
+      (true, true) => null,
+    };
   }
 
   Future<void> _decline(BuildContext context) async {
@@ -299,8 +342,10 @@ class _Answered extends StatelessWidget {
                       ProviderCaseTag(state: state),
                     ],
                   ),
+                  // p19 «550,000 ر.ي · نسخة 1» (B-06).
                   Text(
-                    providerMoneyLabel(offer.amount, offer.currency),
+                    '${providerMoneyLabel(offer.amount, offer.currency)}'
+                    ' · نسخة ${offer.versionNo}',
                     style: JourneyType.of(
                       JourneyType.bodySmall,
                       color: AarastV3Color.textMuted,
@@ -337,20 +382,43 @@ class _Answered extends StatelessWidget {
             ),
           if (canChange) ...[
             const SizedBox(height: 12),
-            JourneyButton(
-              key: Key('provider-offer-open-${quote.id}'),
-              label: renew ? 'جدّد العرض' : 'عدّل العرض',
-              icon: renew ? LucideIcons.refreshCw : LucideIcons.pencil,
-              background: AarastV3Color.primarySoft,
-              foreground: AarastV3Color.primary,
-              expand: true,
-              onPressed: () =>
-                  context.push(AppRouter.providerRequestOffer(quote.id)),
+            Row(
+              children: [
+                Expanded(
+                  child: JourneyButton(
+                    key: Key('provider-offer-open-${quote.id}'),
+                    label: renew ? 'جدّد العرض' : 'عدّل العرض',
+                    icon: renew ? LucideIcons.refreshCw : LucideIcons.pencil,
+                    background: AarastV3Color.primarySoft,
+                    foreground: AarastV3Color.primary,
+                    expand: true,
+                    onPressed: () =>
+                        context.push(AppRouter.providerRequestOffer(quote.id)),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                // B-03: an offer the customer has not decided on.
+                Expanded(
+                  child: JourneyButton(
+                    key: Key('provider-offer-withdraw-${quote.id}'),
+                    label: 'اسحب العرض',
+                    background: AarastV3Color.paper,
+                    foreground: AarastV3Color.danger,
+                    expand: true,
+                    onPressed: () => showProviderWithdrawSheet(
+                      context,
+                      quote: quote,
+                      offerId: (quote.pendingOffer ?? quote.expiredOffer)!.id,
+                    ),
+                  ),
+                ),
+              ],
             ),
             const SizedBox(height: 12),
-            const JourneyNote(
+            JourneyNote(
               text:
-                  'التعديل يغيّر العرض نفسه، وما يوصله تنبيه. لو غيّرت شيء، قله في المحادثة.',
+                  'التعديل يوصله نسخة ${offer!.versionNo + 1} فيها «ايش تغيّر». '
+                  'والسحب يقفل العرض ويوصله سطر هادي.',
             ),
           ],
           if (booking != null && state == ProviderCaseState.bookingAsked) ...[

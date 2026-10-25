@@ -10,8 +10,8 @@ import 'provider_join_parts.dart' show providerDayLabel;
 import 'provider_request_parts.dart';
 
 /// One request in p15: who, the day and what he asked for, its status, and
-/// the next step. The step never counts time left (F8). A new request with
-/// a package ready answers in one tap (p45) from its own line.
+/// the next step; a new one counts the days left to answer it (B-04). A new
+/// request with a package ready answers in one tap (p45) from its own line.
 class ProviderRequestCard extends StatelessWidget {
   const ProviderRequestCard({
     required this.quote,
@@ -136,8 +136,13 @@ class ProviderRequestCard extends StatelessWidget {
   }
 
   String _nextStep() => switch (state) {
-    ProviderCaseState.fresh =>
-      onQuickOffer == null ? 'ردّ على طلبه' : 'ردّ سريع',
+    // B-04: the time left of his seven days, as p15 draws it.
+    ProviderCaseState.fresh => switch (quote.expiresAt) {
+      final until? =>
+        '${onQuickOffer == null ? 'ردّ' : 'ردّ سريع'}: '
+            '${providerDaysLeftLabel(until.toLocal())}',
+      null => onQuickOffer == null ? 'ردّ على طلبه' : 'ردّ سريع',
+    },
     ProviderCaseState.bookingAsked => 'أكّد الحجز: يشتي يحجز',
     ProviderCaseState.replied => switch (quote.pendingOffer?.validUntil) {
       final until? => 'عرضك صالح لين ${formatArabicDayMonth(until.toLocal())}',
@@ -212,6 +217,14 @@ class ProviderEndedCard extends StatelessWidget {
         AarastV3Color.line,
         '$name لغى الطلب',
         'قبل ما ترد. ما عليك شيء.',
+      ),
+      // p20, B-04: an unanswered request counts against the reply rate.
+      ProviderCaseState.unanswered => (
+        LucideIcons.timerOff,
+        AarastV3Color.danger,
+        AarastV3Color.dangerSoft,
+        'طلب $name انتهى بدون رد',
+        '7 أيام ما رديت. هذا ينحسب في سرعة ردك.',
       ),
       ProviderCaseState.bookingDeclined => (
         LucideIcons.calendarX,

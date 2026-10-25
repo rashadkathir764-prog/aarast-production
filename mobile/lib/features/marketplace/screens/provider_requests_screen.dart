@@ -8,6 +8,7 @@ import '../../../core/routing/app_router.dart';
 import '../../../core/routing/pop_or_go.dart';
 import '../../../core/utils/arabic_date_formatter.dart';
 import '../../../core/utils/money_formatters.dart';
+import '../../../core/utils/offer_changes.dart';
 import '../../../core/utils/offer_ends.dart';
 import '../../../core/widgets/aarast_toast.dart';
 import '../../../core/widgets/aarast_ui.dart';
@@ -147,7 +148,8 @@ class _ProviderRequestsScreenState extends State<ProviderRequestsScreen> {
         .where(
           (quote) =>
               quote.lifecycleStatus == 'REJECTED' ||
-              quote.lifecycleStatus == 'CANCELLED',
+              quote.lifecycleStatus == 'CANCELLED' ||
+              quote.lifecycleStatus == 'EXPIRED',
         )
         .toList();
     final title = row == null
@@ -271,12 +273,15 @@ class _ProviderRequestsScreenState extends State<ProviderRequestsScreen> {
                               color: AarastV3Color.textMuted,
                               soft: AarastV3Color.canvas,
                               title: quoteProviderName(quote),
-                              subtitle: quote.lifecycleStatus == 'REJECTED'
-                                  ? context.say(
-                                      'اعتذرت عن عرضهم',
-                                      'اعتذرتِ عن عرضهم',
-                                    )
-                                  : 'انلغى الطلب',
+                              subtitle: switch (quote.lifecycleStatus) {
+                                'REJECTED' => context.say(
+                                  'اعتذرت عن عرضهم',
+                                  'اعتذرتِ عن عرضهم',
+                                ),
+                                // B-04.
+                                'EXPIRED' => 'ما ردوا خلال 7 أيام',
+                                _ => 'انلغى الطلب',
+                              },
                               onTap: () => _openChat(quote),
                             ),
                         ],

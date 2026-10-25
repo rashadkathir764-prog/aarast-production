@@ -8,6 +8,7 @@ import '../../../core/experience_v3/aarast_v3.dart';
 import '../../../core/media/media_upload_api.dart';
 import '../../../core/network/api_client.dart';
 import '../../../core/routing/app_router.dart';
+import '../../../core/utils/offer_changes.dart';
 import '../../../core/utils/offer_ends.dart';
 import '../../../core/utils/currency_label.dart';
 import '../../../core/widgets/aarast_toast.dart';
@@ -616,6 +617,11 @@ class _EventView extends StatelessWidget {
       'QUOTE_OFFER_REJECTED' => 'انرفض العرض',
       'QUOTE_OFFER_ACCEPTED' => 'انقبل العرض',
       'QUOTE_OFFER_EXPIRED' => 'انتهت مدة العرض',
+      // B-06, B-03, B-04.
+      'QUOTE_OFFER_REVISED' => customerSide ? 'عدّلوا العرض' : 'عدّلت عرضك',
+      'QUOTE_OFFER_WITHDRAWN' => customerSide ? 'سحبوا العرض' : 'سحبت عرضك',
+      'QUOTE_REQUEST_EXPIRED' =>
+        customerSide ? 'انتهى الطلب بدون رد' : 'انتهى الطلب: ما رديت خلال 7 أيام',
       _ => 'تغيّر شي في الطلب',
     };
     return Padding(
@@ -698,6 +704,17 @@ class _OfferCard extends StatelessWidget {
     final price = _money(offer?.amount, offer?.currency);
     final headline = [?title, ?price].join(' · ');
     final details = offer?.message?.trim() ?? '';
+    // f06 «نسخة 2 · …» (B-06): the version and what changed in it.
+    final version = offer == null || offer.versionNo < 2
+        ? null
+        : [
+            'نسخة ${offer.versionNo}',
+            ?quoteOfferChangeLine(
+              changes: offer.changes,
+              currency: offer.currency,
+              own: !customerSide,
+            ),
+          ].join(' · ');
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
@@ -734,6 +751,16 @@ class _OfferCard extends StatelessWidget {
                   ),
                 ),
               ],
+              if (version != null)
+                Text(
+                  version,
+                  key: const Key('chat-offer-version'),
+                  style: JourneyType.of(
+                    JourneyType.bodySmall,
+                    weight: JourneyType.bold,
+                    color: AarastV3Color.amber,
+                  ),
+                ),
               if (details.isNotEmpty)
                 Text(
                   details,

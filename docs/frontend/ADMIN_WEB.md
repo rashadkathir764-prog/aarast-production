@@ -100,7 +100,9 @@ kit as the designed pages; no page renders the older `PageHeader`,
 components (19, with the `DataTable` and `SearchInput` tests) were deleted the
 same day as dead code; the R10 manifest records them as deleted, and
 `src/design_system/` keeps only `ConfirmDialog`, `Desk`, `DeskModal` and
-`Pagination`. The old rules in `globals.css` remain a recorded follow-up.
+`Pagination`. The old rules in `globals.css` were pruned afterwards: only what
+`ConfirmDialog`, `Pagination`, the forms and tables, and the global base still use
+is left, and every admin route renders pixel-identical before and after.
 
 ## Rules
 

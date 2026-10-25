@@ -1306,7 +1306,8 @@ The response is one nested contract with no legacy aliases:
       "remainingAllocation": "100000.00",
       "costsCount": 1,
       "paymentSchedulesCount": 1,
-      "overBudget": false
+      "overBudget": false,
+      "providerCategoryIds": ["provider_category_id"]
     }
   ],
   "warnings": [],
@@ -1443,6 +1444,17 @@ by any source, loan totals, `overdueLoanRepayments`, `nextLoanRepayment`) and
 the warnings `FUNDING_SHORTFALL` and `LOAN_REPAYMENT_OVERDUE`; a member's
 summary has `funding: null`. Account erasure deletes the plan's funding
 sources and, by cascade, their repayments.
+
+G40 (D57): every `categories[]` row carries `providerCategoryIds`, the active
+directory categories whose accepted offers are filed under that item, by the
+rule acceptance uses (`budgetItemForProviderCategory`: the category's topic
+item among the plan's items in their own order, else the plan's «أخرى»),
+limited to the categories the plan's persona sees in the directory
+(`showForGroom` / `showForBride`; a plan without one sees both). It is read
+over the whole plan's items, so a contributor's rows say the same as the
+owner's. An empty list means no provider's offer lands there: the phone shows
+no «ابحث» for it. The phone searches the directory with
+`GET /api/v1/providers?categoryIds=<the list>`.
 
 ## Tasks
 
@@ -2186,6 +2198,11 @@ immutable after creation. Delete routes soft-disable rows. Security roles,
 permissions, finance lifecycle states, and payment semantics are code-owned
 contracts and are deliberately not administrator-editable catalogs.
 
+`GET /api/v1/providers` filters by `cityId`, `search`, `featured`, and one
+category (`categoryId`) or several (`categoryIds`, comma-separated, at most
+50; G40): a provider is listed when its own category or an active service's
+is among them. Sending both is `400`; a value that is not a UUID is `400`.
+
 `GET /api/v1/providers` keeps the paginated provider card contract compact but
 complete enough for discovery. Every item includes `primaryCategory` plus a
 `serviceSummary` built only from active services:
@@ -2394,7 +2411,8 @@ provider, and creates or returns the single `WeddingCost` identified by the
 unique `quoteOfferId`. The offer amount must be positive and use the plan
 currency. The service category is matched logically against
 `BudgetCategory.normalizedName`; otherwise `أخرى` is reused or created without
-an allocation. Acceptance first takes `WeddingPlan FOR SHARE` and re-reads its
+an allocation. The money summary lists the same placement per item
+(`providerCategoryIds`, G40), from the same function and the same item order. Acceptance first takes `WeddingPlan FOR SHARE` and re-reads its
 lifecycle state inside the serializable transaction. For a non-owner it then
 locks and re-reads the relevant `SharedMember` permission row before locking
 `QuoteRequest`, `QuoteOffer`, and finally the live `Provider` row. If plan
@@ -2416,6 +2434,11 @@ The response contains:
 - `costSuggestion` with `suggestedAction: "VIEW_COST"`, `costId`, and
   `availableActions: ["VIEW_COST"]`
 - `nextActions: ["viewCost", "viewAcceptedProvider"]`
+
+Every quote response's `costSuggestion` also carries `category` (the name)
+and `categoryId` (G40): the category acceptance files the offer by, the
+service's, else the provider's own. The phone places a request on the money
+item whose `providerCategoryIds` hold it.
 
 Retries return the existing cost and do not repeat notifications. Acceptance
 does not create a CostPayment, PaymentSchedule, task, deposit, paid booking, or

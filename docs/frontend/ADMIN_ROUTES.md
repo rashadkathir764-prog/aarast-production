@@ -14,6 +14,7 @@
 - `/providers/:id`
 - `/providers/applications`
 - `/providers/applications/:id`
+- `/providers/listed`
 - `/providers/new`
 - `/reference-catalogs`
 - `/reports`
@@ -23,4 +24,4 @@
 - `/users`
 - `/users/:id`
 
-Total: 22 routes
+Total: 23 routes

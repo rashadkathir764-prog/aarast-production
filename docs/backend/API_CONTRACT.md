@@ -2220,12 +2220,68 @@ checklist 4.18):
   when an active, unclaimed listing carries the caller's phone and the caller
   owns no provider; otherwise `{ listing: null }`. Every session's phone is
   verified by OTP, which is the proof of ownership.
-- `POST /api/v1/provider/claim/:providerId` makes the caller that listing's
-  provider (the account is promoted like an approved applicant) and returns
-  the provider profile. A listing that is not the caller's to claim is `404`;
-  a caller who already owns a provider is `409`.
+- `POST /api/v1/provider/claim/:providerId` (B-12, D41) asks the review team
+  for that listing after the same phone check and returns the claim
+  `{ id, status: "PENDING", note, createdAt, decidedAt, provider: { id,
+  businessName } }` (`201`). The listing stays unclaimed (and keeps refusing
+  quote requests) until an administrator approves. A listing that is not the
+  caller's to claim is `404`; a caller who already owns a provider is `409`;
+  an open claim of this listing or by this account is
+  `409 PROVIDER_CLAIM_PENDING`. One `PENDING` claim per listing and per
+  account is enforced by partial unique indexes.
+- `GET /api/v1/provider/me/claim` returns `{ claim }`, the caller's latest
+  claim (`PENDING`, `APPROVED`, or `REJECTED` with the team's `note`), or
+  `{ claim: null }`.
+- Administrators review claims (`PROVIDERS_READ` / `PROVIDERS_WRITE`):
+  `GET /admin/provider-claims?status&page&limit` (oldest first, with the
+  listing, its city and category, and the claimant's name and phone),
+  `POST /admin/provider-claims/:id/approve` (links the listing to the
+  claimant, promotes the account, notifies «انقبل استلامك للملف»; `409
+  PROVIDER_CLAIM_LISTING_TAKEN`, `PROVIDER_CLAIM_ACCOUNT_INACTIVE` or
+  `PROVIDER_CLAIM_ACCOUNT_HAS_PROVIDER` when the claim can no longer be
+  honoured) and `POST /admin/provider-claims/:id/reject` with `{ note }`
+  (required; the claimant is notified «ما قبلنا الاستلام» with it). A claim
+  already decided is `409 PROVIDER_CLAIM_NOT_PENDING`. Account deletion
+  removes the account's claims. There is no claim token, link or WhatsApp
+  message (D41).
 - `POST /api/v1/provider/apply` is `409 PROVIDER_LISTING_CLAIMABLE` while such a
   listing waits under the caller's phone.
+
+Joining, changes and reopening (B-01, B-02, B-10):
+
+- `POST /api/v1/provider/apply` takes `categoryIds` (at least one; the first
+  is the profile's category) and `services: [{ title, basePrice, currency?,
+  description? }]` (1 to 5). Without a service whose `basePrice` is above zero
+  it is `422 PROVIDER_SERVICE_REQUIRED` and nothing is written. The services
+  are created in the same write, in the profile's category, and stay hidden
+  until approval (every customer read requires an `ACTIVE` provider).
+- While `PENDING` or `NEEDS_CHANGES` the provider reads his services
+  (`GET /api/v1/provider/me/services[/:id]`) and changes only a service's
+  `title`, `basePrice`, `priceUnit`, `currency` and `description`; another
+  service, `categoryId`, `cityId`, `isActive`, images and packages are `403
+  PROVIDER_JOINING_SERVICE_ONLY` / `PROVIDER_NOT_ACTIVE`. A profile with no
+  service (applied before B-10) may add one in its category.
+  `PATCH /api/v1/provider/me/profile` takes `primaryCategoryId` only before
+  approval (`409 PROVIDER_CATEGORY_LOCKED` after); the joining services move
+  with it.
+- `POST /api/v1/provider/me/application/resubmit` (`200`, no body) moves
+  `NEEDS_CHANGES` to `PENDING`, sets `resubmittedAt`, increments
+  `resubmitCount`, records a `RESUBMITTED` review step and notifies the
+  provider «وصلنا تعديلك». From any other state it is
+  `409 PROVIDER_NOT_AWAITING_CHANGES`; without a priced active service it is
+  `422 PROVIDER_SERVICE_REQUIRED`.
+- `POST /api/v1/provider/me/application/reopen` (`200`, no body) moves
+  `REJECTED` to `NEEDS_CHANGES`, sets `reopenedAt` and records a `REOPENED`
+  step; the refusal's reason stays the note he reads. From any other state it
+  is `409 PROVIDER_NOT_REJECTED`. A refused profile is approved or asked for
+  changes only after this (approve and request-changes from `REJECTED` are
+  `409 INVALID_PROVIDER_STATUS_TRANSITION`).
+- The provider profile (and the admin provider rows) return `reviewNote` (the
+  latest decision's note on the whole profile), `fieldNotes: [{ field, note
+  }]` (`BUSINESS_NAME`, `CATEGORY`, `CITY`, `DESCRIPTION`, `SERVICE`),
+  `resubmittedAt`, `resubmitCount` and `reopenedAt`. The notes are those of
+  the latest administrator decision while the status is `NEEDS_CHANGES`,
+  `REJECTED` or `SUSPENDED`, and empty otherwise.
 - Public provider responses carry `isClaimed`. A quote request to a provider
   without an account (unclaimed, or whose owner deleted their account) is
   `409 PROVIDER_NOT_CLAIMED`; customers reach it by phone or WhatsApp.
@@ -2500,12 +2556,25 @@ returns the admin refresh token.
   category and currency `{ cityName, categoryName, providers, services, min,
   median, max }` from active services of active providers, only for groups
   priced by at least 3 different providers so no provider's own price shows.
-- `GET /admin/providers/applications`
+- `GET /admin/providers/applications` (`resubmitted=true|false` narrows
+  `PENDING` to the profiles sent back after changes, or to the others, B-01);
+  `GET /admin/dashboard/stats` adds `resubmittedProviders` and
+  `pendingClaims`.
 - `GET /admin/providers/applications/:id`
+- `GET /admin/providers/:id/review-history` (`PROVIDERS_READ`):
+  `{ providerId, appliedAt, events: [{ id, kind, at, actor: { id, name } |
+  null, notes: [{ field, note }] }] }`, oldest first; `kind` is
+  `CHANGES_REQUESTED`, `REJECTED`, `APPROVED`, `SUSPENDED`, `ACTIVATED`,
+  `RESUBMITTED` or `REOPENED`.
 - `POST /admin/providers` (a listing without an account, see Provider References)
-- `PATCH /admin/providers/:id/approve`
+- `PATCH /admin/providers/:id/approve` (from `PENDING` or `NEEDS_CHANGES`)
 - `PATCH /admin/providers/:id/reject`
-- `PATCH /admin/providers/:id/request-changes`
+- `PATCH /admin/providers/:id/request-changes` with `{ note?, fieldNotes?:
+  [{ field, note }] }` (at least one note; each field once). Allowed from
+  `PENDING` and `NEEDS_CHANGES`, so the team can rewrite its notes while the
+  provider is fixing; the newest decision's notes are the ones he reads.
+- `GET /admin/provider-claims`, `POST /admin/provider-claims/:id/approve`,
+  `POST /admin/provider-claims/:id/reject` (see Provider References)
 - `PATCH /admin/providers/:id/suspend`
 - `PATCH /admin/providers/:id/activate`
 - `PATCH /admin/providers/:id/verify`
@@ -2683,6 +2752,9 @@ configuration, and smoke checks.
 | POST | `/admin/provider-categories` | `admin.createCategory` | 🔒 |
 | DELETE | `/admin/provider-categories/:id` | `admin.deleteCategory` | 🔒 |
 | PATCH | `/admin/provider-categories/:id` | `admin.updateCategory` | 🔒 |
+| GET | `/admin/provider-claims` | `admin.listClaimRequests` | 🔒 |
+| POST | `/admin/provider-claims/:id/approve` | `admin.approveClaimRequest` | 🔒 |
+| POST | `/admin/provider-claims/:id/reject` | `admin.rejectClaimRequest` | 🔒 |
 | GET | `/admin/providers` | `admin.listProviders` | 🔒 |
 | POST | `/admin/providers` | `admin.createListedProvider` | 🔒 |
 | GET | `/admin/providers/:id` | `admin.getProvider` | 🔒 |
@@ -2690,6 +2762,7 @@ configuration, and smoke checks.
 | PATCH | `/admin/providers/:id/approve` | `admin.approveProvider` | 🔒 |
 | PATCH | `/admin/providers/:id/reject` | `admin.rejectProvider` | 🔒 |
 | PATCH | `/admin/providers/:id/request-changes` | `admin.requestProviderChanges` | 🔒 |
+| GET | `/admin/providers/:id/review-history` | `admin.getProviderReviewHistory` | 🔒 |
 | PATCH | `/admin/providers/:id/suspend` | `admin.suspendProvider` | 🔒 |
 | PATCH | `/admin/providers/:id/unverify` | `admin.unverifyProvider` | 🔒 |
 | PATCH | `/admin/providers/:id/verify` | `admin.verifyProvider` | 🔒 |
@@ -2813,6 +2886,8 @@ configuration, and smoke checks.
 | POST | `/api/v1/provider/apply` | `provider-dashboard.apply` | 🔒 |
 | POST | `/api/v1/provider/claim/:providerId` | `provider-dashboard.claimListing` | 🔒 |
 | GET | `/api/v1/provider/claimable` | `provider-dashboard.findClaimableListing` | 🔒 |
+| POST | `/api/v1/provider/me/application/reopen` | `provider-dashboard.reopenApplication` | 🔒 |
+| POST | `/api/v1/provider/me/application/resubmit` | `provider-dashboard.resubmitApplication` | 🔒 |
 | GET | `/api/v1/provider/me/blocked-dates` | `bookings.listBlockedDates` | 🔒 |
 | POST | `/api/v1/provider/me/blocked-dates` | `bookings.blockDate` | 🔒 |
 | DELETE | `/api/v1/provider/me/blocked-dates/:date` | `bookings.unblockDate` | 🔒 |
@@ -2820,6 +2895,7 @@ configuration, and smoke checks.
 | PATCH | `/api/v1/provider/me/bookings/:id/cancel` | `bookings.cancel` | 🔒 |
 | PATCH | `/api/v1/provider/me/bookings/:id/confirm` | `bookings.confirm` | 🔒 |
 | PATCH | `/api/v1/provider/me/bookings/:id/decline` | `bookings.decline` | 🔒 |
+| GET | `/api/v1/provider/me/claim` | `provider-dashboard.getClaim` | 🔒 |
 | GET | `/api/v1/provider/me/packages` | `provider-dashboard.findPackages` | 🔒 |
 | POST | `/api/v1/provider/me/packages` | `provider-dashboard.createPackage` | 🔒 |
 | DELETE | `/api/v1/provider/me/packages/:id` | `provider-dashboard.deactivatePackage` | 🔒 |

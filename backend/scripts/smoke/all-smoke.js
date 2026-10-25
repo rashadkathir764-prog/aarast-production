@@ -42,6 +42,7 @@ const smokeScripts = [
   ['smoke:guest-rsvp', 'guest-rsvp-smoke.ts', ['ts-node/register']],
   ['smoke:provider-claim', 'provider-claim-smoke.ts', ['ts-node/register']],
   ['smoke:provider-lifecycle', 'provider-lifecycle-smoke.ts', ['ts-node/register']],
+  ['smoke:quote-offer-lifecycle', 'quote-offer-lifecycle-smoke.ts', ['ts-node/register']],
   ['smoke:cost-receipts', 'cost-receipts-smoke.js'],
   ['smoke:phone-change', 'phone-change-smoke.js'],
   ['smoke:task-shift', 'task-shift-smoke.js'],

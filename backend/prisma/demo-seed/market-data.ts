@@ -356,17 +356,32 @@ export interface RequestSpec {
   customer: DemoAccountKey;
   /** The customer's plan (plan conversation) or none (account conversation). */
   plan?: 'groom' | 'bride';
+  /**
+   * A plan has one conversation per provider: a later request to the same
+   * provider names the earlier request (seeded first) whose conversation it joins.
+   */
+  conversationOf?: string;
   status: QuoteRequestStatus;
   eventDate: Date;
   guestCount?: number;
   message: string;
   createdAt: Date;
+  /** B-08: what the customer chose to show the provider (nothing by default). */
+  budget?: { min: number; max: number };
+  shareBudget?: boolean;
+  shareContact?: boolean;
+  /** B-04: when the hourly job ended it, for a request nobody answered (EXPIRED). */
+  expiredAt?: Date;
   offer?: {
     title: string;
     message: string;
     amount: number;
     validUntil: Date;
     status: QuoteOfferStatus;
+    /** B-06: version 1 as first sent, when the offer above is version 2. */
+    firstVersion?: { title?: string; message?: string; amount?: number; revisedAt: Date };
+    /** B-03: when the provider took it back (status WITHDRAWN). */
+    withdrawnAt?: Date;
   };
   booking?: { date: Date; status: BookingStatus; note?: string };
   messages?: MessageSpec[];
@@ -453,6 +468,8 @@ export const REQUESTS: readonly RequestSpec[] = [
       amount: 550_000,
       validUntil: inDays(8),
       status: QuoteOfferStatus.PENDING,
+      // f06: «نسخة 2 · أضافوا الألبوم بنفس السعر» (B-06).
+      firstVersion: { message: 'مصورين · فيلم 10 دقائق.', revisedAt: hoursAgo(100) },
     },
     messages: [
       { from: 'customer', body: 'السلام عليكم، نشتي تصوير زفاف يوم 21 يناير في قاعة سبأ', at: hoursAgo(120) },
@@ -479,6 +496,20 @@ export const REQUESTS: readonly RequestSpec[] = [
     eventDate: WEDDING_DAY,
     message: 'نشتي قات للمقيل يوم 21 يناير.',
     createdAt: inDays(-1),
+  },
+  // x09 «انتهى بدون رد» (B-04): the hall never answered about the samra night.
+  {
+    key: 'hallSamra',
+    provider: 'hall',
+    customer: 'groom',
+    plan: 'groom',
+    conversationOf: 'hall',
+    status: QuoteRequestStatus.EXPIRED,
+    eventDate: day('2027-01-20'),
+    guestCount: 80,
+    message: 'نشتي القاعة للسمرة ليلة 20 يناير.',
+    createdAt: inDays(-9),
+    expiredAt: inDays(-2),
   },
   // ---------------------------------------------------------------- bride
   {
@@ -529,6 +560,28 @@ export const REQUESTS: readonly RequestSpec[] = [
     message: 'نشتي مصورات لحفلة النساء يوم 21 يناير (فريق نساء).',
     createdAt: hoursAgo(10),
   },
+  // x09 «سحب عرضه» (B-03): the studio sent an offer for the henna night and
+  // took it back; the request waits for its answer again.
+  {
+    key: 'studioHenna',
+    provider: 'studio',
+    customer: 'bride',
+    plan: 'bride',
+    conversationOf: 'studioBride',
+    status: QuoteRequestStatus.VIEWED,
+    eventDate: day('2027-01-19'),
+    guestCount: 60,
+    message: 'نشتي مصورة لليلة الحناء 19 يناير.',
+    createdAt: hoursAgo(40),
+    offer: {
+      title: 'تصوير ليلة الحناء',
+      message: 'مصورة · 200 صورة معدّلة.',
+      amount: 300_000,
+      validUntil: inDays(9),
+      status: QuoteOfferStatus.WITHDRAWN,
+      withdrawnAt: hoursAgo(6),
+    },
+  },
   // ------------------------------------------------- other customers (studio)
   {
     key: 'adel',
@@ -539,6 +592,10 @@ export const REQUESTS: readonly RequestSpec[] = [
     guestCount: 100,
     message: 'نشتي تصوير السمرة يوم الأربعاء 20 يناير.',
     createdAt: inDays(-12),
+    // B-08: Adel shared his budget and his phone with the request.
+    budget: { min: 300_000, max: 400_000 },
+    shareBudget: true,
+    shareContact: true,
     offer: {
       title: 'صور فقط',
       message: 'مصور واحد · 300 صورة معدّلة.',
@@ -582,6 +639,18 @@ export const REQUESTS: readonly RequestSpec[] = [
       status: QuoteOfferStatus.ACCEPTED,
     },
     booking: { date: day('2026-09-17'), status: BookingStatus.CONFIRMED },
+  },
+  // p20 «طلب يحيى انتهى بدون رد» (B-04): seven days without the studio's answer.
+  {
+    key: 'yahya',
+    provider: 'studio',
+    customer: 'customerYahya',
+    status: QuoteRequestStatus.EXPIRED,
+    eventDate: day('2027-02-11'),
+    guestCount: 90,
+    message: 'نشتي تصوير الزفة يوم الخميس 11 فبراير.',
+    createdAt: inDays(-10),
+    expiredAt: inDays(-3),
   },
 ];
 

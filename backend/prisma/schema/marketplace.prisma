@@ -19,6 +19,8 @@ enum QuoteRequestStatus {
   ACCEPTED
   REJECTED
   CANCELLED
+  // B-04: the provider did not answer within seven days.
+  EXPIRED
 }
 
 enum QuoteOfferStatus {
@@ -233,10 +235,20 @@ model QuoteRequest {
   message                String?             @db.Text
   budgetMin              Decimal?            @db.Decimal(14, 2)
   budgetMax              Decimal?            @db.Decimal(14, 2)
+  // B-08: the provider reads the budget and the phone only when shared.
+  shareBudget            Boolean             @default(false)
+  shareContact           Boolean             @default(false)
   status                 QuoteRequestStatus  @default(SENT)
   acceptedAt             DateTime?
   rejectedAt             DateTime?
   cancelledAt            DateTime?
+  // B-04: the provider answers before this, or the request ends EXPIRED.
+  // Seven days from the request (QUOTE_REQUEST_ANSWER_DAYS), and seven
+  // more from a withdrawn offer, when the customer waits again.
+  expiresAt              DateTime            @default(dbgenerated("(CURRENT_TIMESTAMP + '7 days'::interval)"))
+  // The provider was told the day before; cleared with a new window.
+  expiryWarnedAt         DateTime?
+  expiredAt              DateTime?
   createdAt              DateTime            @default(now())
   updatedAt              DateTime            @updatedAt
   user                   User                @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -256,8 +268,11 @@ model QuoteRequest {
   @@index([weddingPlanId])
   @@index([conversationId, createdAt])
   @@index([contactNormalizedPhone])
+  @@index([status, expiresAt])
 }
 
+/// The row holds the current version (B-06): its words, its number and
+/// what changed from the version before; `QuoteOfferVersion` keeps them all.
 model QuoteOffer {
   id                 String              @id @default(uuid())
   quoteRequestId     String
@@ -268,6 +283,13 @@ model QuoteOffer {
   currency           String              @default("YER")
   validUntil         DateTime?
   status             QuoteOfferStatus    @default(PENDING)
+  currentVersionNo   Int                 @default(1)
+  // `[{ field, from, to }]` against the previous version; null on version 1.
+  versionChanges     Json?
+  revisedAt          DateTime?
+  // B-03: the provider took the offer back before the customer decided.
+  withdrawnAt        DateTime?
+  withdrawnReason    String?             @db.Text
   createdAt          DateTime            @default(now())
   updatedAt          DateTime            @updatedAt
   quoteRequest       QuoteRequest        @relation(fields: [quoteRequestId], references: [id], onDelete: Cascade)
@@ -276,6 +298,7 @@ model QuoteOffer {
   weddingCosts       WeddingCost[]
   conversationEvents ConversationEvent[]
   bookings           Booking[]
+  versions           QuoteOfferVersion[]
 
   @@index([quoteRequestId, status])
   @@index([providerId, status])
@@ -403,4 +426,23 @@ model ProviderClaimRequest {
   @@index([status, createdAt])
   @@index([userId, createdAt])
   @@index([providerId, status])
+}
+
+/// One version of an offer as the customer received it (B-06). Written
+/// once, never changed; the customer accepts a version by its number.
+model QuoteOfferVersion {
+  id           String     @id @default(uuid())
+  quoteOfferId String
+  versionNo    Int
+  title        String?
+  message      String?    @db.Text
+  amount       Decimal?   @db.Decimal(14, 2)
+  currency     String
+  validUntil   DateTime?
+  // `[{ field, from, to }]` against the version before; null on version 1.
+  changes      Json?
+  createdAt    DateTime   @default(now())
+  quoteOffer   QuoteOffer @relation(fields: [quoteOfferId], references: [id], onDelete: Cascade)
+
+  @@unique([quoteOfferId, versionNo])
 }

@@ -32,6 +32,7 @@ import {
   lockMarketplaceProvider,
 } from "./marketplace-write-locks";
 import { isQuoteOfferExpired } from "./quote-offer-expiry";
+import { isQuoteRequestOverdue, quoteRequestAnswerDeadline } from "./quote-lifecycle";
 import {
   quoteSubmittedProviderNotification,
   quoteSubmittedRequesterNotification,
@@ -147,7 +148,10 @@ export function createQuoteRequestInTransaction(
       existing?.status === QuoteRequestStatus.RESPONDED &&
       existing.offers.length > 0 &&
       existing.offers.every((offer) => isQuoteOfferExpired(offer));
-    if (existing && !expiredResponseCycle) {
+    // B-04: a request past its answer deadline is over even before the
+    // hourly job marks it EXPIRED.
+    const unansweredInTime = existing ? isQuoteRequestOverdue(existing) : false;
+    if (existing && !expiredResponseCycle && !unansweredInTime) {
       throw new ConflictException({
         code: "ACTIVE_QUOTE_REQUEST_EXISTS",
         message:
@@ -156,9 +160,19 @@ export function createQuoteRequestInTransaction(
       });
     }
 
+    // B-04: the answer deadline is seven days from this very instant.
+    const requestedAt = new Date();
     const quote = await relations.attachQuoteRelation(
       tx,
-      await quoteRepository.createQuoteRequest(tx, input.data, conversation.id),
+      await quoteRepository.createQuoteRequest(
+        tx,
+        {
+          ...input.data,
+          createdAt: requestedAt,
+          expiresAt: quoteRequestAnswerDeadline(requestedAt),
+        },
+        conversation.id,
+      ),
     );
     if (planContext && guard?.history) {
       await guard.history.recordForContextInTransaction(tx, planContext, {

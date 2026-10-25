@@ -22,6 +22,8 @@ enum NotificationType {
   WEDDING_COUNTDOWN
   BOOKING_UPDATED
   GUEST_RESPONDED
+  // B-04 (named in B-19): a request the provider has not answered ends tomorrow.
+  QUOTE_REQUEST_EXPIRING
 }
 
 enum NotificationPriority {

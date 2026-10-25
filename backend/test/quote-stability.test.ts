@@ -62,6 +62,8 @@ function creationHarness(
     contactName: requester.name,
     conversationId: "conversation-1",
     status: QuoteRequestStatus.SENT,
+    // B-04: still inside its seven-day answer window.
+    expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
     createdAt: now,
     provider,
     service: null,
@@ -313,6 +315,7 @@ test("concurrent provider submissions create exactly one offer", async () => {
     providerId,
     conversationId: "conversation-1",
     status: quoteStatus,
+    expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
   });
   const provider = {
     id: providerId,
@@ -357,12 +360,15 @@ test("concurrent provider submissions create exactly one offer", async () => {
           id: "offer-created",
           ...data,
           status: "PENDING",
+          currentVersionNo: 1,
           createdAt: now,
           updatedAt: now,
         };
       },
       findMany: async () => [],
     },
+    // B-06: the offer as sent is stored as its version 1.
+    quoteOfferVersion: { create: async () => ({ id: "version-1" }) },
     conversationEvent: {
       createMany: async () => ({ count: 1 }),
       findUniqueOrThrow: async ({ where }: any) => ({

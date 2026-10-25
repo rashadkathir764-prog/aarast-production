@@ -93,6 +93,7 @@
 | `backend` | `npm run smoke:provider-dashboard` | `node scripts/smoke/run-isolated-smoke.js provider-dashboard-smoke.js` |
 | `backend` | `npm run smoke:provider-lifecycle` | `node scripts/smoke/run-isolated-smoke.js provider-lifecycle-smoke.ts` |
 | `backend` | `npm run smoke:providers-quotes` | `node scripts/smoke/run-isolated-smoke.js providers-quotes-smoke.js` |
+| `backend` | `npm run smoke:quote-offer-lifecycle` | `node scripts/smoke/run-isolated-smoke.js quote-offer-lifecycle-smoke.ts` |
 | `backend` | `npm run smoke:quote-stability` | `node scripts/smoke/run-isolated-smoke.js quote-stability-smoke.js` |
 | `backend` | `npm run smoke:reference-catalog` | `node scripts/smoke/run-isolated-smoke.js reference-catalog-smoke.js` |
 | `backend` | `npm run smoke:schema-equivalence` | `node scripts/smoke/run-isolated-smoke.js --schema-equivalence` |

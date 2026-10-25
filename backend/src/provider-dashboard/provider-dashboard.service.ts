@@ -43,18 +43,29 @@ import {
 } from '../shared-kernel/money/money';
 import { CONVERSATION_LIFECYCLE_PORT, type ConversationLifecyclePort } from '../modules/messaging/public/conversation-lifecycle.port';
 import {
+  assertQuoteRequestAnswerable,
   assertQuoteRequestTransition,
   lockQuoteOfferTransitionRows,
   lockQuoteRequestTransitionRow,
   quoteLifecycleStatus,
+  quoteRequestAnswerDeadline,
 } from '../marketplace/quote-lifecycle';
 import { isQuoteOfferExpired } from '../marketplace/quote-offer-expiry';
 import { quoteOfferCurrencyMismatch } from '../marketplace/quote-offer-currency';
+import {
+  quoteOfferChanges,
+  quoteOfferLocked,
+  quoteOfferVersionView,
+  toQuoteOfferChangesJson,
+} from '../modules/marketplace/public/quote-offer-versions';
 import { lockMarketplaceProvider } from '../marketplace/marketplace-write-locks';
 import {
   providerRejectedRequestNotification,
   quoteOfferReceivedNotification,
+  quoteOfferRevisedNotification,
+  quoteOfferWithdrawnNotification,
 } from '../marketplace/quote-notifications';
+import * as offerStore from '../modules/marketplace/infrastructure/quote-offer-lifecycle.repository';
 import {
   MEDIA_STORAGE_PORT,
   MediaStoragePort,
@@ -86,6 +97,7 @@ import { UpdateProviderProfileDto } from './dto/update-provider-profile.dto';
 import { UpdateProviderQuoteStatusDto } from './dto/update-provider-quote-status.dto';
 import { UpdateProviderServiceDto } from './dto/update-provider-service.dto';
 import { UpdateQuoteOfferDto } from './dto/update-quote-offer.dto';
+import { WithdrawQuoteOfferDto } from './dto/withdraw-quote-offer.dto';
 import {
   CreateServiceImageDto,
   UpdateServiceImageDto,
@@ -1115,6 +1127,9 @@ export class ProviderDashboardService {
       }
       await this.assertQuotePlanWritable(tx, existing.weddingPlanId);
       assertQuoteRequestTransition(existing.status, dto.status, 'provider');
+      if (dto.status === QuoteRequestStatus.REJECTED) {
+        assertQuoteRequestAnswerable(existing);
+      }
 
       const transition = await dashboardStore.transitionProviderQuoteRequest(
         tx, id, existing.status, dto.status,
@@ -1196,6 +1211,7 @@ export class ProviderDashboardService {
         QuoteRequestStatus.RESPONDED,
         'provider_offer',
       );
+      assertQuoteRequestAnswerable(quote);
       const existingOffer = await dashboardStore.findExistingQuoteOffer(tx, quoteRequestId);
       if (existingOffer) {
         throw new ConflictException({
@@ -1217,6 +1233,17 @@ export class ProviderDashboardService {
           amount,
           currency,
           validUntil: this.optionalDate(dto.validUntil, 'validUntil'),
+      });
+      // B-06: the offer as sent is its version 1.
+      await offerStore.createQuoteOfferVersion(tx, {
+        quoteOfferId: created.id,
+        versionNo: created.currentVersionNo,
+        title: created.title,
+        message: created.message,
+        amount: created.amount,
+        currency: created.currency,
+        validUntil: created.validUntil,
+        changes: Prisma.DbNull,
       });
 
       await dashboardStore.markQuoteRequestResponded(tx, quoteRequestId);
@@ -1296,7 +1323,7 @@ export class ProviderDashboardService {
         existing.status !== QuoteOfferStatus.PENDING ||
         existing.quoteRequest.status !== QuoteRequestStatus.RESPONDED
       ) {
-        throw new ConflictException('Only pending quote offers can be updated');
+        throw quoteOfferLocked(existing.status);
       }
       const amount =
         requestedAmount ??
@@ -1308,29 +1335,176 @@ export class ProviderDashboardService {
         dto.currency ?? existing.currency,
         offerPlan?.currency,
       );
+      const next = {
+        title:
+          dto.title !== undefined ? this.optionalText(dto.title) : existing.title,
+        message:
+          dto.message !== undefined
+            ? this.requiredText(dto.message ?? '', 'message')
+            : existing.message,
+        amount,
+        currency,
+        validUntil:
+          dto.validUntil !== undefined
+            ? this.optionalDate(dto.validUntil, 'validUntil')
+            : existing.validUntil,
+      };
+      // B-06: an edit that changes nothing (a retry) is not a new version.
+      const changes = quoteOfferChanges(existing, next);
+      if (changes.length === 0) return existing;
 
-      const transition = await dashboardStore.updatePendingQuoteOffer(tx, id, {
-          ...(dto.title !== undefined
-            ? { title: this.optionalText(dto.title) }
-            : {}),
-          ...(dto.message !== undefined
-            ? { message: this.requiredText(dto.message ?? '', 'message') }
-            : {}),
-          ...(dto.amount !== undefined
-            ? { amount }
-            : {}),
-          ...(dto.currency !== undefined ? { currency } : {}),
-          ...(dto.validUntil !== undefined
-            ? { validUntil: this.optionalDate(dto.validUntil, 'validUntil') }
-            : {}),
+      const versionNo = existing.currentVersionNo + 1;
+      const revisedAt = new Date();
+      const revised = await offerStore.reviseQuoteOffer(
+        tx,
+        id,
+        existing.currentVersionNo,
+        {
+          ...next,
+          currentVersionNo: versionNo,
+          versionChanges: toQuoteOfferChangesJson(changes),
+          revisedAt,
+        },
+      );
+      if (revised.count !== 1) throw quoteOfferLocked(existing.status);
+      await offerStore.createQuoteOfferVersion(tx, {
+        quoteOfferId: id,
+        versionNo,
+        ...next,
+        changes: toQuoteOfferChangesJson(changes),
       });
-      if (transition.count !== 1) {
-        throw new ConflictException('Only pending quote offers can be updated');
-      }
+      await this.lifecycle.recordConversationEvent(tx, {
+        conversationId: existing.quoteRequest.conversationId,
+        quoteRequestId: existing.quoteRequestId,
+        quoteOfferId: id,
+        actorUserId: currentUser.id,
+        type: ConversationEventType.QUOTE_OFFER_REVISED,
+        occurredAt: revisedAt,
+        dedupeKey: `quote-offer:${id}:revised:${versionNo}`,
+        data: { versionNo, changes: toQuoteOfferChangesJson(changes) },
+      });
+      const recipientId =
+        await this.notifications.resolveProviderUpdateRecipientInTransaction(
+          tx,
+          existing.quoteRequest.weddingPlanId,
+          existing.quoteRequest.userId,
+        );
+      await this.notifications.createNotificationInTransaction(
+        tx,
+        quoteOfferRevisedNotification({
+          requesterId: recipientId,
+          weddingPlanId: existing.quoteRequest.weddingPlanId,
+          quoteRequestId: existing.quoteRequestId,
+          quoteOfferId: id,
+          versionNo,
+          providerId: provider.id,
+          providerName: provider.businessName,
+        }),
+      );
       return dashboardStore.requireQuoteOffer(tx, id);
     });
 
     return this.toQuoteOfferResponse(offer);
+  }
+
+  /**
+   * B-03: the provider takes back an offer the customer has not decided on.
+   * The request waits for him again, with a new seven-day window: he sends
+   * a new offer or declines. A retry of a done withdrawal returns it as is.
+   */
+  async withdrawQuoteOffer(
+    currentUser: AuthenticatedUser,
+    id: string,
+    dto: WithdrawQuoteOfferDto,
+  ) {
+    this.assertUuid(id, 'quoteOfferId');
+    const reason = this.optionalText(dto.reason);
+    const quote = await runSerializableTransaction(this.prisma, async (tx) => {
+      const seed = await dashboardStore.findOfferMutationSeed(tx, id);
+      if (!seed) {
+        throw new NotFoundException('Quote offer not found');
+      }
+      const provider = await this.lockQuoteMutationContext(
+        tx,
+        currentUser.id,
+        {
+          providerId: seed.providerId,
+          userId: seed.quoteRequest.userId,
+          weddingPlanId: seed.quoteRequest.weddingPlanId,
+          conversationId: seed.quoteRequest.conversationId,
+        },
+      );
+      if (!(await lockQuoteOfferTransitionRows(tx, this.lifecycle, id))) {
+        throw new NotFoundException('Quote offer not found');
+      }
+      const existing = await dashboardStore.findLockedProviderOffer(tx, id, provider.id);
+      if (!existing) {
+        throw new NotFoundException('Quote offer not found');
+      }
+      if (existing.status !== QuoteOfferStatus.WITHDRAWN) {
+        await this.assertQuotePlanWritable(tx, existing.quoteRequest.weddingPlanId);
+        if (
+          existing.status !== QuoteOfferStatus.PENDING ||
+          existing.quoteRequest.status !== QuoteRequestStatus.RESPONDED
+        ) {
+          throw new ConflictException({
+            code: 'QUOTE_OFFER_NOT_WITHDRAWABLE',
+            message:
+              existing.status === QuoteOfferStatus.ACCEPTED
+                ? 'العرض انقبل، فما تقدر تسحبه. لو ما تقدر توفي، تكلّم معه في المحادثة.'
+                : 'العرض انتهى أمره، فما فيه شي تسحبه.',
+          });
+        }
+        assertQuoteRequestTransition(
+          existing.quoteRequest.status,
+          QuoteRequestStatus.VIEWED,
+          'provider_withdraw',
+        );
+        const withdrawnAt = new Date();
+        const withdrawn = await offerStore.withdrawPendingOffer(tx, id, withdrawnAt, reason);
+        const reopened = await offerStore.reopenAnsweredRequest(
+          tx,
+          existing.quoteRequestId,
+          quoteRequestAnswerDeadline(withdrawnAt),
+        );
+        if (withdrawn.count !== 1 || reopened.count !== 1) {
+          throw new ConflictException('Quote offer changed concurrently; retry the request');
+        }
+        await this.lifecycle.recordConversationEvent(tx, {
+          conversationId: existing.quoteRequest.conversationId,
+          quoteRequestId: existing.quoteRequestId,
+          quoteOfferId: id,
+          actorUserId: currentUser.id,
+          type: ConversationEventType.QUOTE_OFFER_WITHDRAWN,
+          occurredAt: withdrawnAt,
+          dedupeKey: `quote-offer:${id}:withdrawn`,
+          data: { status: QuoteOfferStatus.WITHDRAWN, ...(reason ? { reason } : {}) },
+        });
+        const recipientId =
+          await this.notifications.resolveProviderUpdateRecipientInTransaction(
+            tx,
+            existing.quoteRequest.weddingPlanId,
+            existing.quoteRequest.userId,
+          );
+        await this.notifications.createNotificationInTransaction(
+          tx,
+          quoteOfferWithdrawnNotification({
+            requesterId: recipientId,
+            weddingPlanId: existing.quoteRequest.weddingPlanId,
+            quoteRequestId: existing.quoteRequestId,
+            quoteOfferId: id,
+            providerId: provider.id,
+            providerName: provider.businessName,
+          }),
+        );
+      }
+      const [updated] = await this.relations.attachDashboardQuoteRelations(tx, [
+        await dashboardStore.requireProviderQuoteRequest(tx, existing.quoteRequestId),
+      ]);
+      return updated;
+    });
+
+    return this.toQuoteResponse(quote);
   }
 
   async findReviews(currentUser: AuthenticatedUser) {
@@ -1803,10 +1977,13 @@ export class ProviderDashboardService {
   }
 
   private toQuoteResponse(quote: ProviderQuoteRecord) {
+    // B-08: the customer's phone and budget reach the provider only when he
+    // shared them with the request.
+    const contact = toApplicationUserContact(quote.user);
     return {
       id: quote.id,
       userId: quote.userId,
-      user: toApplicationUserContact(quote.user),
+      user: { ...contact, phone: quote.shareContact ? contact.phone : null },
       weddingPlanId: quote.weddingPlanId,
       weddingPlan: quote.weddingPlan ?? null,
       providerId: quote.providerId,
@@ -1823,11 +2000,15 @@ export class ProviderDashboardService {
       cityId: quote.cityId,
       guestCount: quote.guestCount,
       contactName: quote.contactName,
-      contactPhone: quote.contactPhone,
-      contactNormalizedPhone: quote.contactNormalizedPhone,
+      contactPhone: quote.shareContact ? quote.contactPhone : null,
+      contactNormalizedPhone: quote.shareContact
+        ? quote.contactNormalizedPhone
+        : null,
       message: quote.message,
-      budgetMin: quote.budgetMin?.toString() ?? null,
-      budgetMax: quote.budgetMax?.toString() ?? null,
+      budgetMin: quote.shareBudget ? (quote.budgetMin?.toString() ?? null) : null,
+      budgetMax: quote.shareBudget ? (quote.budgetMax?.toString() ?? null) : null,
+      shareBudget: quote.shareBudget,
+      shareContact: quote.shareContact,
       status: quote.status,
       lifecycleStatus: quoteLifecycleStatus(quote.status),
       offers: quote.offers?.map((offer) => this.toQuoteOfferResponse(offer)) ?? [],
@@ -1835,6 +2016,9 @@ export class ProviderDashboardService {
       acceptedAt: quote.acceptedAt,
       rejectedAt: quote.rejectedAt,
       cancelledAt: quote.cancelledAt,
+      // B-04: the provider answers before this; EXPIRED after.
+      expiresAt: quote.expiresAt,
+      expiredAt: quote.expiredAt,
       createdAt: quote.createdAt,
       updatedAt: quote.updatedAt,
     };
@@ -1868,6 +2052,8 @@ export class ProviderDashboardService {
       status: offer.status,
       isExpired,
       isActionable: offer.status === QuoteOfferStatus.PENDING && !isExpired,
+      // B-06 version and «ايش تغيّر», B-03 withdrawal: his own offer, in full.
+      ...quoteOfferVersionView(offer, true),
       createdAt: offer.createdAt,
       updatedAt: offer.updatedAt,
     };

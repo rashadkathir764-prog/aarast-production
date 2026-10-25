@@ -45,6 +45,8 @@ interface AcceptQuoteOfferInput {
   weddingPlanId: string;
   currentUser: AuthenticatedUser;
   actorUserId?: string;
+  /** B-06: the version the customer read; omitted, the current one. */
+  versionNo?: number;
 }
 
 export async function acceptQuoteOfferInTransaction(
@@ -129,11 +131,28 @@ export async function acceptQuoteOfferInTransaction(
         "Quote offer is not linked to this wedding plan",
       );
     }
+    if (current.status === QuoteOfferStatus.WITHDRAWN) {
+      throw new ConflictException({
+        code: "QUOTE_OFFER_WITHDRAWN",
+        message: "سحب المزود هذا العرض، فما عاد متاح. اسأله في المحادثة أو انتظر عرضه الجديد.",
+      });
+    }
     if (
       current.status !== QuoteOfferStatus.PENDING &&
       current.status !== QuoteOfferStatus.ACCEPTED
     ) {
       throw new ConflictException("Quote offer cannot be accepted");
+    }
+    // B-06: the customer accepts the version he read, never a newer one.
+    if (
+      input.versionNo !== undefined &&
+      input.versionNo !== current.currentVersionNo
+    ) {
+      throw new ConflictException({
+        code: "QUOTE_OFFER_CHANGED",
+        message: "تغيّر العرض قبل ما تقبله. شوف النسخة الجديدة وبعدها اقبل.",
+        currentVersionNo: current.currentVersionNo,
+      });
     }
     if (
       current.status === QuoteOfferStatus.ACCEPTED &&

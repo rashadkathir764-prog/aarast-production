@@ -110,10 +110,11 @@ test('Task 7 owner-private leaves register each remaining application service on
     // it attaches catalog's, planning's, identity's and finance's rows to
     // marketplace's own rows through their ports (its includes are gone).
     // Bookings and the provider calendar (V1 checklist 4.6) add BookingsService,
-    // and the reminders before a booking (4.17) its hourly scheduler.
+    // and the reminders before a booking (4.17) its hourly scheduler. A
+    // request's seven-day answer window (B-04) adds its service and hourly job.
     ['modules/marketplace/internal/marketplace-services.internal.module.ts#MarketplaceServicesInternalModule', [
       'BookingRemindersScheduler', 'BookingsService', 'MarketplaceRelationsService', 'MarketplaceService',
-      'ProviderDashboardService',
+      'ProviderDashboardService', 'QuoteRequestExpiryScheduler', 'QuoteRequestExpiryService',
     ]],
     ['modules/catalog/internal/catalog-services.internal.module.ts#CatalogServicesInternalModule', [
       'AdministrativeCatalogService', 'ReferenceCatalogService',

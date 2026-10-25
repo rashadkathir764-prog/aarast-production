@@ -424,6 +424,9 @@ export class MarketplaceService {
           message: MarketplaceQuery.optionalText(dto.message),
           budgetMin,
           budgetMax,
+          // B-08: nothing is shared unless the customer says so.
+          shareBudget: dto.shareBudget === true,
+          shareContact: dto.shareContact === true,
         },
       },
       {
@@ -537,7 +540,11 @@ export class MarketplaceService {
     );
   }
 
-  async acceptQuoteOffer(currentUser: AuthenticatedUser, id: string) {
+  async acceptQuoteOffer(
+    currentUser: AuthenticatedUser,
+    id: string,
+    versionNo?: number,
+  ) {
     const offer = await this.findAccessibleQuoteOfferOrThrow(currentUser, id);
     if (!offer.quoteRequest.weddingPlanId) {
       throw new BadRequestException(
@@ -561,6 +568,7 @@ export class MarketplaceService {
         weddingPlanId,
         currentUser,
         actorUserId: currentUser.id,
+        versionNo,
       },
       this.contributionHistory,
     );

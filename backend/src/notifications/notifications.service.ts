@@ -1001,6 +1001,7 @@ export class NotificationsService implements NotificationsPort {
       case NotificationType.WEDDING_COUNTDOWN:
         return "taskRemindersEnabled";
       case NotificationType.QUOTE_REQUEST_SUBMITTED:
+      case NotificationType.QUOTE_REQUEST_EXPIRING:
       case NotificationType.QUOTE_OFFER_RECEIVED:
       case NotificationType.QUOTE_ACCEPTED:
       case NotificationType.QUOTE_REJECTED:

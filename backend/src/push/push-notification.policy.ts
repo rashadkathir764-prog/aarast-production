@@ -10,6 +10,8 @@ const PUSH_NOTIFICATION_TYPES = new Set<NotificationType>([
   // side: each waits on a decision (V1 checklist 4.6).
   NotificationType.QUOTE_OFFER_RECEIVED,
   NotificationType.BOOKING_UPDATED,
+  // B-04: a request the provider has not answered ends tomorrow.
+  NotificationType.QUOTE_REQUEST_EXPIRING,
 ]);
 
 export function isPushNotificationType(type: NotificationType): boolean {
@@ -46,6 +48,11 @@ export function pushNotificationCopy(type: NotificationType): {
       return {
         title: "وصل عرض سعر",
         body: "وصلك عرض سعر جديد. افتح اعّرست لمراجعته.",
+      };
+    case NotificationType.QUOTE_REQUEST_EXPIRING:
+      return {
+        title: "طلب ينتهي بكرة",
+        body: "عندك طلب ما رديت عليه وينتهي بكرة. افتح اعّرست وردّ عليه.",
       };
     case NotificationType.BOOKING_UPDATED:
       return {

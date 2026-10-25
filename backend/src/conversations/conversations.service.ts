@@ -17,6 +17,7 @@ import {
   type ConversationRecord,
   ConversationRelationsService,
   conversationOwnInclude,
+  type QuoteRequestWithRequester,
 } from './conversation-relations';
 import { AuthenticatedUser } from '../modules/identity/public/identity-session.types';
 import { runSerializableTransaction } from '../platform/database/serializable-transaction';
@@ -36,11 +37,16 @@ import {
   isProviderOperational,
 } from '../modules/marketplace/public/provider-access-policy';
 import {
+  readQuoteOfferChanges,
+  visibleQuoteOfferChanges,
+} from '../modules/marketplace/public/quote-offer-versions';
+import {
   assertWeddingPlanWritable,
   isWeddingPlanWritable,
 } from '../modules/collaboration/public/collaboration-permission.port';
 import {
   ApplicationAvatarSource,
+  applicationDisplayName,
   toApplicationUserSummary,
 } from '../shared-kernel/privacy/application-user-identity';
 import { lockUserLifecycleRowsInTransaction } from '../modules/identity/public/user-lifecycle-lock';
@@ -88,6 +94,23 @@ interface ConversationMutationLockOptions {
 interface TimelineCursor {
   occurredAt: string;
   key: string;
+}
+
+/**
+ * B-14: who the provider talks to in a plan's conversation: the customer's
+ * first name, the wedding and its day. No phone, no picture, no surname.
+ */
+function planCustomerForProvider(
+  quote: QuoteRequestWithRequester,
+  plan: { title: string } | null,
+) {
+  const firstName =
+    applicationDisplayName(quote.user).trim().split(/\s+/u)[0] || null;
+  return {
+    firstName,
+    weddingLabel: plan?.title ?? null,
+    eventDate: quote.eventDate,
+  };
 }
 
 @Injectable()
@@ -974,7 +997,9 @@ export class ConversationsService {
               ...toApplicationUserSummary(conversation.accountRequester),
               appRole: conversation.accountRequester.appRole,
             }
-          : null;
+          : conversation.scope === ConversationScope.PLAN && latestQuote
+            ? planCustomerForProvider(latestQuote, conversation.weddingPlan)
+            : null;
     return {
       id: conversation.id,
       scope: conversation.scope,
@@ -1029,12 +1054,18 @@ export class ConversationsService {
   private toQuoteRequestResponse<
     T extends {
       user: ApplicationAvatarSource & { id: string };
-      offers: Array<{ amount: Prisma.Decimal | null }>;
+      offers: Array<{
+        amount: Prisma.Decimal | null;
+        currentVersionNo: number;
+        versionChanges: Prisma.JsonValue | null;
+      }>;
       budgetMin: Prisma.Decimal | null;
       budgetMax: Prisma.Decimal | null;
       contactName: string | null;
       contactPhone: string | null;
       contactNormalizedPhone: string | null;
+      shareBudget: boolean;
+      shareContact: boolean;
     },
   >(quote: T, access: ConversationAccess) {
     const {
@@ -1047,15 +1078,28 @@ export class ConversationsService {
       offers,
       ...safe
     } = quote;
+    // B-08: the provider reads the budget and the phone only when the
+    // customer shared them; his own side keeps its plan permissions.
+    const provider = access.side === 'PROVIDER';
+    const showBudget = access.canViewMoney && (!provider || quote.shareBudget);
+    const showPhone = access.canViewContact && (!provider || quote.shareContact);
     return {
       ...safe,
       user: toApplicationUserSummary(user),
-      offers: offers.map(({ amount, ...offer }) => ({
+      offers: offers.map(({ amount, currentVersionNo, versionChanges, ...offer }) => ({
         ...offer,
         ...(access.canViewMoney ? { amount } : {}),
+        // B-06: the version and «ايش تغيّر», named as the quote APIs name
+        // them, without amounts for a viewer who sees no money.
+        versionNo: currentVersionNo,
+        changes: visibleQuoteOfferChanges(
+          readQuoteOfferChanges(versionChanges),
+          access.canViewMoney,
+        ),
       })),
-      ...(access.canViewMoney ? { budgetMin, budgetMax } : {}),
-      ...(access.canViewContact ? { contactName, contactPhone } : {}),
+      ...(showBudget ? { budgetMin, budgetMax } : {}),
+      ...(access.canViewContact ? { contactName } : {}),
+      ...(showPhone ? { contactPhone } : {}),
     };
   }
 

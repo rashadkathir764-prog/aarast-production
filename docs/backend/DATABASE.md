@@ -67,8 +67,9 @@ run the local demo seed `backend/prisma/demo-seed.ts`, see
 | PlanInvite | Implemented for identity-bound sharing and atomic acceptance. Only a SHA-256 token fingerprint is persisted; raw external invite tokens are returned at creation time only. Invite-access OTP rows reference the exact invitation through `OtpCode.planInviteId` and cascade when it is deleted. Pending grants above a delegated inviter's newly narrowed stored ceiling are revoked in the same member-update transaction; acceptance also requires an active owner and active delegated inviter. |
 | Guest | Implemented for WeddingPlan guest management. A database unique constraint permits at most one non-null `normalizedPhone` per WeddingPlan regardless of display name; null phones remain repeatable. Stored `phone` and `normalizedPhone` are the same canonical value, enforced by a database CHECK. Migration `20260726030000_enforce_unique_guest_phone` fails closed for historical conflicts instead of merging or deleting private guest data. `rsvpTokenHash` (unique) is the SHA-256 of the guest's personal RSVP link token (V1 checklist 4.7; the token is never stored) and `respondedAt` the time of the guest's last answer through it. |
 | GuestGroup | Implemented for grouping WeddingPlan guests. |
-| QuoteRequest | Implemented for non-binding pricing/package requests tied to a user, provider, service/category/city, and optionally a WeddingPlan. Lifecycle mutations lock this row first, re-read its state, and update only from the expected prior state. |
-| QuoteOffer | Implemented for provider responses to quote requests. Lifecycle mutations lock the parent QuoteRequest and then the offer in one serializable transaction, so a losing accept/reject/update/cancel race cannot overwrite the winner. Accepting a plan-scoped offer rechecks provider and money permissions in that transaction and atomically creates or returns its one linked WeddingCost through the unique `WeddingCost.quoteOfferId`; this is still a planning record, not a paid booking. |
+| QuoteRequest | Implemented for non-binding pricing/package requests tied to a user, provider, service/category/city, and optionally a WeddingPlan. Lifecycle mutations lock this row first, re-read its state, and update only from the expected prior state. B-04 (D50): `expiresAt` (non-null; seven days from the request, or from a withdrawn offer; the database default is the same seven days for direct inserts), `expiryWarnedAt` (the provider was told the day before; cleared with a new window) and `expiredAt`; status `EXPIRED`, written only by the hourly job, never by a migration (`QuoteRequest_status_expiresAt_idx` serves it). B-08: `shareBudget` and `shareContact` (default `false`). Migration `20261025200000_add_quote_offer_versions_withdrawal_and_request_expiry` gave existing rows `expiresAt = createdAt + 7 days` and shares nothing. |
+| QuoteOffer | Implemented for provider responses to quote requests. Lifecycle mutations lock the parent QuoteRequest and then the offer in one serializable transaction, so a losing accept/reject/update/cancel race cannot overwrite the winner. Accepting a plan-scoped offer rechecks provider and money permissions in that transaction and atomically creates or returns its one linked WeddingCost through the unique `WeddingCost.quoteOfferId`; this is still a planning record, not a paid booking. The row is the current version (B-06): `currentVersionNo`, `versionChanges` (`[{ field, from, to }]` against the previous version) and `revisedAt`; a revision writes only from the version it read. B-03: `WITHDRAWN` is now written, with `withdrawnAt` and `withdrawnReason`. |
+| QuoteOfferVersion | Every version of an offer as the customer received it (B-06, D41): `versionNo` (unique per offer), title, message, amount, currency, `validUntil`, `changes` against the version before, `createdAt`. Written once, never updated; cascades with its offer. The migration wrote version 1 of every existing offer from its stored values. |
 | PlanProviderLink | Implemented to connect an accepted provider/offer to a WeddingPlan as planning context. |
 
 ## Conversation And Session Entities
@@ -489,8 +490,8 @@ rewrite as permission to restore a removed live model.
 | `ProviderPackage` | 13 | `id`, `providerId`, `serviceId`, `createdAt`, `updatedAt` |
 | `FavoriteProvider` | 6 | `id`, `userId`, `providerId`, `createdAt` |
 | `ProviderReview` | 10 | `id`, `userId`, `providerId`, `createdAt`, `updatedAt` |
-| `QuoteRequest` | 32 | `id`, `userId`, `weddingPlanId`, `providerId`, `serviceId`, `cityId`, `acceptedAt`, `rejectedAt` |
-| `QuoteOffer` | 17 | `id`, `quoteRequestId`, `providerId`, `createdAt`, `updatedAt` |
+| `QuoteRequest` | 37 | `id`, `userId`, `weddingPlanId`, `providerId`, `serviceId`, `cityId`, `acceptedAt`, `rejectedAt` |
+| `QuoteOffer` | 23 | `id`, `quoteRequestId`, `providerId`, `revisedAt`, `withdrawnAt`, `createdAt`, `updatedAt` |
 | `PlanProviderLink` | 12 | `id`, `weddingPlanId`, `providerId`, `quoteRequestId`, `quoteOfferId`, `createdAt`, `updatedAt` |
 | `Booking` | 17 | `id`, `quoteRequestId`, `quoteOfferId`, `providerId`, `requestedByUserId`, `confirmedAt`, `declinedAt`, `cancelledAt` |
 | `ProviderBlockedDate` | 5 | `id`, `providerId`, `createdAt` |
@@ -498,6 +499,7 @@ rewrite as permission to restore a removed live model.
 | `ProviderReviewEvent` | 8 | `id`, `providerId`, `actorId`, `createdAt` |
 | `ProviderReviewNote` | 5 | `id`, `eventId` |
 | `ProviderClaimRequest` | 9 | `id`, `providerId`, `userId`, `createdAt`, `decidedAt`, `decidedById` |
+| `QuoteOfferVersion` | 11 | `id`, `quoteOfferId`, `createdAt` |
 | `Conversation` | 23 | `id`, `weddingPlanId`, `accountRequesterUserId`, `providerId`, `createdByUserId`, `lastActivityAt`, `closedAt`, `customerSideBlockedAt` |
 | `ConversationParticipant` | 11 | `id`, `conversationId`, `userId`, `joinedAt`, `revokedAt`, `lastReadAt`, `mutedAt`, `createdAt` |
 | `ConversationEvent` | 14 | `id`, `conversationId`, `quoteRequestId`, `quoteOfferId`, `actorUserId`, `occurredAt`, `createdAt` |
@@ -505,5 +507,5 @@ rewrite as permission to restore a removed live model.
 | `ChatAttachment` | 7 | `id`, `messageId`, `createdAt` |
 | `ConversationReport` | 9 | `id`, `conversationId`, `reporterUserId`, `createdAt`, `updatedAt` |
 
-Total models: 62
+Total models: 63
 <!-- DOCS-SYNC:END -->

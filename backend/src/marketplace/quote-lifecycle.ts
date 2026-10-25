@@ -9,7 +9,12 @@ import {
   lockQuoteRequestRow,
 } from '../modules/marketplace/infrastructure/quote-lifecycle.repository';
 
-export type QuoteLifecycleActor = 'requester' | 'provider' | 'provider_offer';
+export type QuoteLifecycleActor =
+  | 'requester'
+  | 'provider'
+  | 'provider_offer'
+  | 'provider_withdraw'
+  | 'expiry';
 
 export async function lockQuoteRequestTransitionRow(
   tx: Prisma.TransactionClient,
@@ -81,6 +86,16 @@ const ALLOWED_TRANSITIONS: Record<
     [QuoteRequestStatus.SENT]: [QuoteRequestStatus.RESPONDED],
     [QuoteRequestStatus.VIEWED]: [QuoteRequestStatus.RESPONDED],
   },
+  // B-03: a withdrawn offer gives the request back to the provider, who
+  // sends a new offer or declines.
+  provider_withdraw: {
+    [QuoteRequestStatus.RESPONDED]: [QuoteRequestStatus.VIEWED],
+  },
+  // B-04: the hourly job ends a request nobody answered in time.
+  expiry: {
+    [QuoteRequestStatus.SENT]: [QuoteRequestStatus.EXPIRED],
+    [QuoteRequestStatus.VIEWED]: [QuoteRequestStatus.EXPIRED],
+  },
 };
 
 export function assertQuoteRequestTransition(
@@ -88,12 +103,57 @@ export function assertQuoteRequestTransition(
   next: QuoteRequestStatus,
   actor: QuoteLifecycleActor,
 ): void {
+  if (current === QuoteRequestStatus.EXPIRED) throw quoteRequestExpired();
   const allowed = ALLOWED_TRANSITIONS[actor][current] ?? [];
   if (!allowed.includes(next)) {
     throw new ConflictException(
       `Quote request cannot transition from ${current} to ${next}`,
     );
   }
+}
+
+/** B-04: the provider has this many days to answer a request. */
+export const QUOTE_REQUEST_ANSWER_DAYS = 7;
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+/** When a request waiting from `from` stops waiting for the provider. */
+export function quoteRequestAnswerDeadline(from: Date): Date {
+  return new Date(from.getTime() + QUOTE_REQUEST_ANSWER_DAYS * DAY_MS);
+}
+
+/** Waiting for the provider (SENT or VIEWED) and past its deadline. */
+export function isQuoteRequestOverdue(
+  request: { status: QuoteRequestStatus; expiresAt: Date },
+  now: Date = new Date(),
+): boolean {
+  return (
+    (request.status === QuoteRequestStatus.SENT ||
+      request.status === QuoteRequestStatus.VIEWED) &&
+    request.expiresAt.getTime() <= now.getTime()
+  );
+}
+
+/**
+ * The provider answers (an offer or an apology) only before the deadline.
+ * Between the deadline and the hourly job the request is already over.
+ */
+export function assertQuoteRequestAnswerable(
+  request: { status: QuoteRequestStatus; expiresAt: Date },
+  now: Date = new Date(),
+): void {
+  if (
+    request.status === QuoteRequestStatus.EXPIRED ||
+    isQuoteRequestOverdue(request, now)
+  ) {
+    throw quoteRequestExpired();
+  }
+}
+
+function quoteRequestExpired(): ConflictException {
+  return new ConflictException({
+    code: 'QUOTE_REQUEST_EXPIRED',
+    message: `انتهى هذا الطلب: مرت ${QUOTE_REQUEST_ANSWER_DAYS} أيام بدون رد.`,
+  });
 }
 
 export function quoteLifecycleStatus(status: QuoteRequestStatus): string {
@@ -109,5 +169,7 @@ export function quoteLifecycleStatus(status: QuoteRequestStatus): string {
       return 'REJECTED';
     case QuoteRequestStatus.CANCELLED:
       return 'CANCELLED';
+    case QuoteRequestStatus.EXPIRED:
+      return 'EXPIRED';
   }
 }

@@ -9,7 +9,7 @@
     "collaboration": ["SharedMember", "PlanInvite", "ContributorHistoryScope", "ContributorTenure", "ContributionEvent"],
     "tasks": ["WeddingTask", "WeddingTaskChecklistItem"],
     "guests": ["Guest", "GuestGroup"],
-    "marketplace": ["Provider", "ProviderService", "ProviderServiceImage", "ProviderPackage", "FavoriteProvider", "ProviderReview", "QuoteRequest", "QuoteOffer", "PlanProviderLink", "Booking", "ProviderBlockedDate", "ProviderProfileViewDay", "ProviderReviewEvent", "ProviderReviewNote", "ProviderClaimRequest"],
+    "marketplace": ["Provider", "ProviderService", "ProviderServiceImage", "ProviderPackage", "FavoriteProvider", "ProviderReview", "QuoteRequest", "QuoteOffer", "PlanProviderLink", "Booking", "ProviderBlockedDate", "ProviderProfileViewDay", "ProviderReviewEvent", "ProviderReviewNote", "ProviderClaimRequest", "QuoteOfferVersion"],
     "messaging": ["Conversation", "ConversationParticipant", "ConversationEvent", "ChatMessage", "ChatAttachment", "ConversationReport"],
     "notifications": ["Notification", "NotificationPreference", "PushInstallation"],
     "catalog": ["City", "Governorate", "District", "AdministrativeLocality", "ReferenceCatalog", "ReferenceCatalogItem", "ReferenceCatalogItemRevision", "ProviderCategory"],

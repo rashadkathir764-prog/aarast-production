@@ -14,6 +14,7 @@ import { Throttle } from "@nestjs/throttler";
 import { AuthenticatedUser } from "../modules/identity/public/identity-session.types";
 import { CurrentUser } from "../modules/identity/public/current-user.decorator";
 import { JwtAuthGuard } from "../modules/identity/public/jwt-auth.guard";
+import { AcceptQuoteOfferDto } from "./dto/accept-quote-offer.dto";
 import { CreatePlanQuoteRequestDto } from "./dto/create-plan-quote-request.dto";
 import { CreateProviderReviewDto } from "./dto/create-provider-review.dto";
 import { CreateQuoteRequestDto } from "./dto/create-quote-request.dto";
@@ -271,8 +272,13 @@ export class ApiV1QuoteOffersController {
   acceptOffer(
     @CurrentUser() currentUser: AuthenticatedUser,
     @Param("id") id: string,
+    @Body() dto: AcceptQuoteOfferDto,
   ) {
-    return this.marketplaceService.acceptQuoteOffer(currentUser, id);
+    return this.marketplaceService.acceptQuoteOffer(
+      currentUser,
+      id,
+      dto.versionNo,
+    );
   }
 
   @Patch(":id/reject")

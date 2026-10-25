@@ -1,4 +1,5 @@
 import {
+  IsBoolean,
   IsInt,
   IsNotEmpty,
   IsObject,
@@ -55,4 +56,14 @@ export class CreatePlanQuoteRequestDto {
   @IsString()
   @IsOptional()
   budgetMax?: string | null;
+
+  /** B-08: the provider reads the budget only when this is true. */
+  @IsBoolean()
+  @IsOptional()
+  shareBudget?: boolean;
+
+  /** B-08: the provider reads the phone only when this is true. */
+  @IsBoolean()
+  @IsOptional()
+  shareContact?: boolean;
 }

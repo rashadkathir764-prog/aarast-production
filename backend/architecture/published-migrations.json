@@ -91,6 +91,7 @@
     "20261016150000_add_private_tasks": "c6a274793643662f8ec58e2b0bef0bd43305d15f36d67518e9b1ca9718c7f536",
     "20261016180000_add_assistant_usage": "dde88202757a1812fed71294b8afa6281bc8725c9a566049a1c55a5d886cfc87",
     "20261025120000_add_provider_review_and_claim_requests": "b2ea4a726eb6db070b329d169a93f7a1108909106680d4252b8979873d6a8e23",
-    "20261025180000_order_provider_review_events": "c2b2d64fb80b6e45877787cb05f741340c7aa605c8330060edf129a4ba5ccbb0"
+    "20261025180000_order_provider_review_events": "c2b2d64fb80b6e45877787cb05f741340c7aa605c8330060edf129a4ba5ccbb0",
+    "20261025200000_add_quote_offer_versions_withdrawal_and_request_expiry": "a62cc93fac6df88726a94cc72a634383c092ea63a9e4b2611ab12f9c64bcf09d"
   }
 }

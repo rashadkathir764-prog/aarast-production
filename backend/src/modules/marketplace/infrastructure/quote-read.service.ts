@@ -132,7 +132,16 @@ export class QuoteReadService implements QuoteReadPort {
       client.quoteRequest.count({ where: { ...base, status: QuoteRequestStatus.RESPONDED } }),
       client.quoteRequest.count({ where: { ...base, status: QuoteRequestStatus.ACCEPTED } }),
       client.quoteRequest.count({
-        where: { ...base, status: { in: [QuoteRequestStatus.REJECTED, QuoteRequestStatus.CANCELLED] } },
+        where: {
+          ...base,
+          status: {
+            in: [
+              QuoteRequestStatus.REJECTED,
+              QuoteRequestStatus.CANCELLED,
+              QuoteRequestStatus.EXPIRED,
+            ],
+          },
+        },
       }),
     ]);
     return { total, pending, received, accepted, closed };

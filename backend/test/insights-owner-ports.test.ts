@@ -192,7 +192,8 @@ test('marketplace serves the home counters, the active plan provider links and t
     ['quoteRequest.count', { where: { ...planQuotes, status: { in: [QuoteRequestStatus.SENT, QuoteRequestStatus.VIEWED] } } }],
     ['quoteRequest.count', { where: { ...planQuotes, status: QuoteRequestStatus.RESPONDED } }],
     ['quoteRequest.count', { where: { ...planQuotes, status: QuoteRequestStatus.ACCEPTED } }],
-    ['quoteRequest.count', { where: { ...planQuotes, status: { in: [QuoteRequestStatus.REJECTED, QuoteRequestStatus.CANCELLED] } } }],
+    // B-04: a request that ended without an answer is closed too.
+    ['quoteRequest.count', { where: { ...planQuotes, status: { in: [QuoteRequestStatus.REJECTED, QuoteRequestStatus.CANCELLED, QuoteRequestStatus.EXPIRED] } } }],
   ]);
 });
 

@@ -574,6 +574,8 @@ test('R12C Task 3 lifecycle consumers require one port and keep exact tx with no
     'backend/src/marketplace/quote-request-cancellation.ts',
     'backend/src/marketplace/quote-request-creation.ts',
     'backend/src/provider-dashboard/provider-dashboard.service.ts',
+    // B-04: the hourly job that ends unanswered requests records through the same port.
+    'backend/src/marketplace/quote-request-expiry.service.ts',
   ];
   let lifecycleCalls = 0;
   for (const relative of files) {
@@ -597,7 +599,9 @@ test('R12C Task 3 lifecycle consumers require one port and keep exact tx with no
     };
     visit(ast);
   }
-  assert.equal(lifecycleCalls, 9);
+  // Nine before B2; an offer's new version (B-06) and its withdrawal (B-03)
+  // add one each in the dashboard, and the expiry job (B-04) one.
+  assert.equal(lifecycleCalls, 12);
   const market = require(path.join(root, 'backend/src/marketplace/marketplace.service.ts')).MarketplaceService;
   const dashboard = require(path.join(root, 'backend/src/provider-dashboard/provider-dashboard.service.ts')).ProviderDashboardService;
   const token = requireLifecycle().port.CONVERSATION_LIFECYCLE_PORT;

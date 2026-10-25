@@ -5,6 +5,7 @@ import {
   ConversationEventType,
   ConversationScope,
   PlanProviderLinkStatus,
+  Prisma,
   PrismaClient,
   ProviderReviewEventKind,
   ProviderStatus,
@@ -30,6 +31,11 @@ import {
 } from './market-data';
 import { planId } from './plan';
 import { day, demoId, demoUuid, inDays } from './support';
+import { quoteRequestAnswerDeadline } from '../../src/marketplace/quote-lifecycle';
+import {
+  quoteOfferChanges,
+  toQuoteOfferChangesJson,
+} from '../../src/modules/marketplace/public/quote-offer-versions';
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -273,29 +279,33 @@ async function seedRequest(prisma: PrismaClient, request: RequestSpec, cityId: s
   const providerUserId = provider.owner ? userId(provider.owner) : null;
   const pid = providerId(provider);
   const rid = requestId(request.key);
-  const conversationId = demoId('conv', request.key);
+  // A later request to the same provider in the same plan joins the earlier
+  // request's conversation, which that request created and keeps current.
+  const conversationId = demoId('conv', request.conversationOf ?? request.key);
   const weddingPlanId = request.plan ? planId(request.plan) : null;
   const lastMessageAt = request.messages?.length
     ? new Date(Math.max(...request.messages.map((message) => message.at.getTime())))
     : new Date(request.createdAt.getTime() + (request.offer ? DAY_MS : 0));
 
-  const conversationData = {
-    scope: weddingPlanId ? ConversationScope.PLAN : ConversationScope.ACCOUNT,
-    weddingPlanId,
-    accountRequesterUserId: weddingPlanId ? null : customerId,
-    providerId: pid,
-    createdByUserId: customerId,
-    lastActivityAt: lastMessageAt,
-  };
-  await prisma.conversation.upsert({
-    where: { id: conversationId },
-    create: { id: conversationId, createdAt: request.createdAt, ...conversationData },
-    update: conversationData,
-  });
+  if (!request.conversationOf) {
+    const conversationData = {
+      scope: weddingPlanId ? ConversationScope.PLAN : ConversationScope.ACCOUNT,
+      weddingPlanId,
+      accountRequesterUserId: weddingPlanId ? null : customerId,
+      providerId: pid,
+      createdByUserId: customerId,
+      lastActivityAt: lastMessageAt,
+    };
+    await prisma.conversation.upsert({
+      where: { id: conversationId },
+      create: { id: conversationId, createdAt: request.createdAt, ...conversationData },
+      update: conversationData,
+    });
 
-  const unreadForCustomer = request.messages?.some((message) => message.unread) ?? false;
-  await upsertParticipant(prisma, conversationId, customerId, unreadForCustomer ? null : lastMessageAt);
-  if (providerUserId) await upsertParticipant(prisma, conversationId, providerUserId, lastMessageAt);
+    const unreadForCustomer = request.messages?.some((message) => message.unread) ?? false;
+    await upsertParticipant(prisma, conversationId, customerId, unreadForCustomer ? null : lastMessageAt);
+    if (providerUserId) await upsertParticipant(prisma, conversationId, providerUserId, lastMessageAt);
+  }
 
   const service = serviceForRequest(provider, request);
   const accepted = request.status === QuoteRequestStatus.ACCEPTED;
@@ -311,8 +321,16 @@ async function seedRequest(prisma: PrismaClient, request: RequestSpec, cityId: s
     contactPhone: customer.phone,
     contactNormalizedPhone: customer.phone,
     message: request.message,
+    budgetMin: request.budget ? String(request.budget.min) : null,
+    budgetMax: request.budget ? String(request.budget.max) : null,
+    shareBudget: request.shareBudget ?? false,
+    shareContact: request.shareContact ?? false,
     status: request.status,
     acceptedAt: accepted ? new Date(request.createdAt.getTime() + 2 * DAY_MS) : null,
+    // B-04: seven days from the request, or from a withdrawn offer (B-03).
+    expiresAt: quoteRequestAnswerDeadline(request.offer?.withdrawnAt ?? request.createdAt),
+    expiryWarnedAt: null,
+    expiredAt: request.expiredAt ?? null,
     conversationId,
   };
   await prisma.quoteRequest.upsert({
@@ -329,24 +347,76 @@ async function seedRequest(prisma: PrismaClient, request: RequestSpec, cityId: s
     dedupeKey: `demo:${request.key}:request-created`,
     data: { status: QuoteRequestStatus.SENT },
   });
+  if (request.expiredAt) {
+    await upsertEvent(prisma, {
+      conversationId,
+      quoteRequestId: rid,
+      actorUserId: null,
+      type: ConversationEventType.QUOTE_REQUEST_EXPIRED,
+      occurredAt: request.expiredAt,
+      dedupeKey: `demo:${request.key}:request-expired`,
+      data: { status: QuoteRequestStatus.EXPIRED, answerDays: 7 },
+    });
+  }
 
   if (request.offer) {
     const oid = offerId(request.key);
     const offerCreated = new Date(request.createdAt.getTime() + DAY_MS);
+    // B-06: the offer row is its current version; a revised offer keeps its
+    // first version and «ايش تغيّر» between the two.
+    const current = {
+      title: request.offer.title,
+      message: request.offer.message,
+      amount: String(request.offer.amount),
+      currency: 'YER',
+      validUntil: request.offer.validUntil,
+    };
+    const firstSpec = request.offer.firstVersion;
+    const first = firstSpec
+      ? {
+          ...current,
+          title: firstSpec.title ?? current.title,
+          message: firstSpec.message ?? current.message,
+          amount: firstSpec.amount === undefined ? current.amount : String(firstSpec.amount),
+        }
+      : null;
+    const changes = first ? toQuoteOfferChangesJson(quoteOfferChanges(first, current)) : null;
+    const versionNo = first ? 2 : 1;
+    const withdrawnAt = request.offer.withdrawnAt ?? null;
     const offerData = {
       quoteRequestId: rid,
       providerId: pid,
-      title: request.offer.title,
-      message: request.offer.message,
-      amount: request.offer.amount,
-      currency: 'YER',
-      validUntil: request.offer.validUntil,
+      ...current,
       status: request.offer.status,
+      currentVersionNo: versionNo,
+      versionChanges: changes ?? Prisma.DbNull,
+      revisedAt: firstSpec?.revisedAt ?? null,
+      withdrawnAt,
+      withdrawnReason: null,
     };
     await prisma.quoteOffer.upsert({
       where: { id: oid },
       create: { id: oid, createdAt: offerCreated, ...offerData },
       update: offerData,
+    });
+    const versions = [
+      ...(first ? [{ versionNo: 1, terms: first, changes: null, at: offerCreated }] : []),
+      { versionNo, terms: current, changes, at: firstSpec?.revisedAt ?? offerCreated },
+    ];
+    for (const version of versions) {
+      const versionData = {
+        ...version.terms,
+        changes: version.changes ?? Prisma.DbNull,
+        createdAt: version.at,
+      };
+      await prisma.quoteOfferVersion.upsert({
+        where: { quoteOfferId_versionNo: { quoteOfferId: oid, versionNo: version.versionNo } },
+        create: { quoteOfferId: oid, versionNo: version.versionNo, ...versionData },
+        update: versionData,
+      });
+    }
+    await prisma.quoteOfferVersion.deleteMany({
+      where: { quoteOfferId: oid, versionNo: { gt: versionNo } },
     });
     await upsertEvent(prisma, {
       conversationId,
@@ -358,6 +428,30 @@ async function seedRequest(prisma: PrismaClient, request: RequestSpec, cityId: s
       dedupeKey: `demo:${request.key}:offer-received`,
       data: { amount: request.offer.amount },
     });
+    if (firstSpec && changes) {
+      await upsertEvent(prisma, {
+        conversationId,
+        quoteRequestId: rid,
+        quoteOfferId: oid,
+        actorUserId: providerUserId,
+        type: ConversationEventType.QUOTE_OFFER_REVISED,
+        occurredAt: firstSpec.revisedAt,
+        dedupeKey: `demo:${request.key}:offer-revised:2`,
+        data: { versionNo: 2, changes },
+      });
+    }
+    if (withdrawnAt) {
+      await upsertEvent(prisma, {
+        conversationId,
+        quoteRequestId: rid,
+        quoteOfferId: oid,
+        actorUserId: providerUserId,
+        type: ConversationEventType.QUOTE_OFFER_WITHDRAWN,
+        occurredAt: withdrawnAt,
+        dedupeKey: `demo:${request.key}:offer-withdrawn`,
+        data: { status: QuoteOfferStatus.WITHDRAWN },
+      });
+    }
     if (request.offer.status === QuoteOfferStatus.ACCEPTED) {
       await upsertEvent(prisma, {
         conversationId,
@@ -443,7 +537,7 @@ async function upsertEvent(
     type: ConversationEventType;
     occurredAt: Date;
     dedupeKey: string;
-    data: Record<string, string | number>;
+    data: Prisma.InputJsonObject;
   },
 ): Promise<void> {
   await prisma.conversationEvent.upsert({

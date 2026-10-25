@@ -24,6 +24,10 @@ export interface QuoteRequestCreateData {
   message?: string | null;
   budgetMin?: Prisma.Decimal | string | null;
   budgetMax?: Prisma.Decimal | string | null;
+  shareBudget?: boolean;
+  shareContact?: boolean;
+  createdAt?: Date;
+  expiresAt?: Date;
 }
 
 export function findOfferSeed(client: Client, id: string) {

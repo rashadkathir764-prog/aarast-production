@@ -95,6 +95,8 @@ const quoteRow = (providerUserId: string | null) => ({
   respondedAt: null,
   acceptedAt: null,
   cancelledAt: null,
+  // B-04: every request carries its answer deadline (seven days ahead).
+  expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
   createdAt: new Date(),
   updatedAt: new Date(),
   provider: providerRow(providerUserId),
@@ -1034,6 +1036,7 @@ test("a received provider offer opens its exact marketplace quote", async () => 
     weddingPlanId: PLAN_ID,
     conversationId: "conversation-1",
     status: "SENT",
+    expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
   };
   const createdOffer = {
     id: OFFER_ID,
@@ -1045,11 +1048,14 @@ test("a received provider offer opens its exact marketplace quote", async () => 
     currency: "YER",
     validUntil: null,
     status: "PENDING",
+    currentVersionNo: 1,
     createdAt: new Date(),
     updatedAt: new Date(),
   };
   const tx = {
     ...eventTxFields(),
+    // B-06: the offer as sent is stored as its version 1.
+    quoteOfferVersion: { create: async () => ({ id: "version-1" }) },
     $queryRaw: async (query: unknown) => {
       const sql = rawSqlText(query);
       if (sql.includes('FROM "User"')) {

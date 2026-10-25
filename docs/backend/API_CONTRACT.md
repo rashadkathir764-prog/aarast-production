@@ -2141,6 +2141,67 @@ current request cycle. The provider may edit that one offer only while the
 offer is `PENDING` and the request is `RESPONDED`; the resulting amount remains
 positive and its currency remains equal to the linked plan currency.
 
+Offer versions, withdrawal, the answer window and privacy (B-03, B-04, B-06,
+B-08, B-14, G19; D50):
+
+- **One currency per plan (G19).** An offer in another currency than the
+  plan's is `400 QUOTE_OFFER_CURRENCY_MISMATCH` with `planCurrency` and an
+  Arabic message for whoever reads it (the provider sending, the customer
+  accepting).
+- **Versions (B-06, D41).** Every offer response (provider dashboard, the
+  customer's quote reads, accept/reject and the conversation's latest quote)
+  carries `versionNo`, `changes: [{ field, from, to }]` against the version
+  before (`field` ∈ `amount`, `currency`, `title`, `message`, `validUntil`;
+  `[]` on version 1; without `amount`/`currency` for a viewer with no money
+  access), `revisedAt`, `withdrawnAt` and `withdrawnReason`. Sending an offer
+  stores it as version 1. `PATCH /api/v1/provider/me/quote-offers/:id` that
+  changes something writes version N+1 (one `QuoteOfferVersion` row), records
+  one `QUOTE_OFFER_REVISED` conversation event `{ versionNo, changes }` and
+  notifies the customer once per version («عدّل … عرضه», no amount); an edit
+  that changes nothing returns the offer unchanged. Renewing an expired offer
+  is an edit like any other. Editing an offer that is not `PENDING` on a
+  `RESPONDED` request is `409 QUOTE_OFFER_LOCKED`.
+- **Accepting a version.** `PATCH /api/v1/quote-offers/:id/accept` takes an
+  optional `{ versionNo }`; the app always sends the version it showed. A
+  version that is no longer current is `409 QUOTE_OFFER_CHANGED` with
+  `currentVersionNo` and writes nothing. A withdrawn offer is
+  `409 QUOTE_OFFER_WITHDRAWN`. The cost created from the accepted offer takes
+  the accepted version's amount, filed under the plan item of the service's
+  category, else the provider's own category (G38), else «أخرى».
+- **Withdrawal (B-03).** `POST /api/v1/provider/me/quote-offers/:id/withdraw`
+  (`200`) with `{ reason?: string ≤ 500 }` takes back a `PENDING` offer on a
+  `RESPONDED` request: the offer becomes `WITHDRAWN` (`withdrawnAt`,
+  `withdrawnReason`), the request goes back to `VIEWED` with a new seven-day
+  answer window, one `QUOTE_OFFER_WITHDRAWN` event and one customer notice
+  («سحب … عرضه»). It returns the provider's quote. An accepted, rejected or
+  otherwise decided offer is `409 QUOTE_OFFER_NOT_WITHDRAWABLE`; repeating a
+  done withdrawal returns the quote unchanged. A withdrawn offer leaves room
+  for one new offer on the same request.
+- **Answer window (B-04).** Every request carries `expiresAt` (seven days
+  after it was sent, or after a withdrawn offer) and `expiredAt`. While it is
+  `SENT` or `VIEWED`, the provider answers (offer or apology) before
+  `expiresAt`; after it, the answer is `409 QUOTE_REQUEST_EXPIRED`. An hourly
+  job warns the provider once per window during the last day
+  (`QUOTE_REQUEST_EXPIRING`, «طلب … ينتهي بكرة», opens
+  `/provider/requests/<id>`), then moves the request to `EXPIRED`
+  (`lifecycleStatus: "EXPIRED"`), records `QUOTE_REQUEST_EXPIRED` and tells
+  the customer «ما رد … خلال 7 أيام» with «اطلب من غيره». Each request moves
+  in its own serializable transaction from the state it was read in, so a
+  second instance of the job or a retry changes nothing twice. An expired
+  request does not block asking the same provider again; nor does one past
+  its deadline that the job has not reached yet. The plan quote counters
+  count `EXPIRED` as closed.
+- **Privacy (B-08).** Both request creation routes take `shareBudget` and
+  `shareContact` (default `false`; earlier requests share nothing). The
+  provider's quote reads return `budgetMin`/`budgetMax` only with
+  `shareBudget`, and `contactPhone`, `contactNormalizedPhone` and
+  `user.phone` only with `shareContact`; both flags are in the response. The
+  conversation's latest quote follows the same rule on the provider side.
+- **Who the provider talks to (B-14).** In a plan's conversation the provider
+  side's `counterpart` is `{ firstName, weddingLabel, eventDate }`: the
+  requester's first name, the plan's title and the request's day, with no
+  phone and no picture.
+
 Every quote decision uses one serializable transition policy. Request rows are
 locked before offer rows, the current request/offer states are re-read under
 those locks, and each write includes its expected prior state. A losing
@@ -2205,6 +2266,7 @@ Provider dashboard routes:
 - `PATCH /api/v1/provider/me/quote-requests/:id/status`
 - `POST /api/v1/provider/me/quote-requests/:id/offers`
 - `PATCH /api/v1/provider/me/quote-offers/:id`
+- `POST /api/v1/provider/me/quote-offers/:id/withdraw`
 - `GET /api/v1/provider/me/reviews`
 
 Listings the back office made before the provider had an account (V1
@@ -2925,6 +2987,7 @@ configuration, and smoke checks.
 | GET | `/api/v1/provider/me/profile` | `provider-dashboard.getProfile` | 🔒 |
 | PATCH | `/api/v1/provider/me/profile` | `provider-dashboard.updateProfile` | 🔒 |
 | PATCH | `/api/v1/provider/me/quote-offers/:id` | `provider-dashboard.updateQuoteOffer` | 🔒 |
+| POST | `/api/v1/provider/me/quote-offers/:id/withdraw` | `provider-dashboard.withdrawQuoteOffer` | 🔒 |
 | GET | `/api/v1/provider/me/quote-requests` | `provider-dashboard.findQuoteRequests` | 🔒 |
 | GET | `/api/v1/provider/me/quote-requests/:id` | `provider-dashboard.findQuoteRequest` | 🔒 |
 | POST | `/api/v1/provider/me/quote-requests/:id/offers` | `provider-dashboard.createQuoteOffer` | 🔒 |

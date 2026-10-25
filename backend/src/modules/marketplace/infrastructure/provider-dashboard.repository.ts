@@ -101,14 +101,6 @@ export interface OfferFields {
   validUntil: Date | null;
 }
 
-export interface OfferChanges {
-  title?: string | null;
-  message?: string;
-  amount?: string;
-  currency?: string;
-  validUntil?: Date | null;
-}
-
 export function lockExistingApplication(client: Client, userId: string) {
   return client.$queryRaw<Array<{ id: string }>>(
     Prisma.sql`SELECT "id" FROM "Provider" WHERE "userId" = ${userId} FOR UPDATE`,
@@ -254,8 +246,12 @@ export function requireProviderQuoteRequest(client: Client, id: string) {
   return client.quoteRequest.findUniqueOrThrow({ where: { id }, include: quoteInclude });
 }
 
+/** The request's live offer; a withdrawn one (B-03) leaves room for a new offer. */
 export function findExistingQuoteOffer(client: Client, quoteRequestId: string) {
-  return client.quoteOffer.findFirst({ where: { quoteRequestId }, select: { id: true } });
+  return client.quoteOffer.findFirst({
+    where: { quoteRequestId, status: { not: QuoteOfferStatus.WITHDRAWN } },
+    select: { id: true },
+  });
 }
 
 export function createQuoteOffer(client: Client, fields: OfferFields) {
@@ -281,13 +277,11 @@ export function findOfferMutationSeed(client: Client, id: string) {
 export function findLockedProviderOffer(client: Client, id: string, providerId: string) {
   return client.quoteOffer.findFirst({
     where: { id, providerId },
-    include: { quoteRequest: { select: { status: true, weddingPlanId: true } } },
-  });
-}
-
-export function updatePendingQuoteOffer(client: Client, id: string, changes: OfferChanges) {
-  return client.quoteOffer.updateMany({
-    where: { id, status: QuoteOfferStatus.PENDING }, data: changes,
+    include: {
+      quoteRequest: {
+        select: { status: true, weddingPlanId: true, userId: true, conversationId: true },
+      },
+    },
   });
 }
 

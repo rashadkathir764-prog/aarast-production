@@ -193,3 +193,129 @@ export function offerAcceptedProviderNotification(args: {
     dedupeKey: `${args.providerUserId}:quote-offer-accepted:${args.quoteOfferId}`,
   };
 }
+
+/** B-03: the provider took his offer back; the request waits for him again. */
+export function quoteOfferWithdrawnNotification(args: {
+  requesterId: string;
+  weddingPlanId: string | null;
+  quoteRequestId: string;
+  quoteOfferId: string;
+  providerId: string;
+  providerName: string;
+}): CreateNotificationInput {
+  return {
+    userId: args.requesterId,
+    weddingPlanId: args.weddingPlanId,
+    type: NotificationType.QUOTE_REJECTED,
+    priority: NotificationPriority.NORMAL,
+    title: `سحب ${args.providerName} عرضه`,
+    body: "عرضه ما عاد متاح. تقدر تسأله ليش في المحادثة، أو تنتظر عرضه الجديد.",
+    entityType: "quote_request",
+    entityId: args.quoteRequestId,
+    routeTarget: requesterQuoteRoute(args.quoteRequestId),
+    data: {
+      quoteRequestId: args.quoteRequestId,
+      quoteOfferId: args.quoteOfferId,
+      providerId: args.providerId,
+      status: "WITHDRAWN",
+      recipientAudience: "CUSTOMER",
+    },
+    dedupeKey: `${args.requesterId}:quote-offer-withdrawn:${args.quoteOfferId}`,
+  };
+}
+
+/**
+ * B-06: a new version of an offer. The amount stays out of the notice (a
+ * member who reads notices may not see money); the request shows the change.
+ */
+export function quoteOfferRevisedNotification(args: {
+  requesterId: string;
+  weddingPlanId: string | null;
+  quoteRequestId: string;
+  quoteOfferId: string;
+  versionNo: number;
+  providerId: string;
+  providerName: string;
+}): CreateNotificationInput {
+  return {
+    userId: args.requesterId,
+    weddingPlanId: args.weddingPlanId,
+    type: NotificationType.QUOTE_OFFER_RECEIVED,
+    priority: NotificationPriority.HIGH,
+    title: `عدّل ${args.providerName} عرضه`,
+    body: "وصلتك نسخة جديدة من العرض. افتح الطلب وشوف ايش تغيّر.",
+    entityType: "quote_request",
+    entityId: args.quoteRequestId,
+    routeTarget: requesterQuoteRoute(args.quoteRequestId),
+    data: {
+      quoteRequestId: args.quoteRequestId,
+      quoteOfferId: args.quoteOfferId,
+      versionNo: args.versionNo,
+      providerId: args.providerId,
+      recipientAudience: "CUSTOMER",
+    },
+    dedupeKey: `${args.requesterId}:quote-offer:${args.quoteOfferId}:v${args.versionNo}`,
+  };
+}
+
+/** B-04: told the day before; one notice per answer window. */
+export function quoteRequestExpiringProviderNotification(args: {
+  providerUserId: string;
+  quoteRequestId: string;
+  providerId: string;
+  customerName: string | null;
+  expiresAt: Date;
+}): CreateNotificationInput {
+  const who = args.customerName?.trim().split(/\s+/u)[0];
+  return {
+    userId: args.providerUserId,
+    type: NotificationType.QUOTE_REQUEST_EXPIRING,
+    priority: NotificationPriority.HIGH,
+    title: who ? `طلب ${who} ينتهي بكرة` : "عندك طلب ينتهي بكرة",
+    body: "ما رديت عليه للحين. أرسل عرضك أو اعتذر قبل ما ينتهي.",
+    entityType: "quote_request",
+    entityId: args.quoteRequestId,
+    routeTarget: providerRequestRoute(args.quoteRequestId),
+    data: {
+      quoteRequestId: args.quoteRequestId,
+      providerId: args.providerId,
+      expiresAt: args.expiresAt.toISOString(),
+      recipientAudience: "PROVIDER",
+    },
+    dedupeKey: `${args.providerUserId}:quote-request-expiring:${args.quoteRequestId}:${args.expiresAt.toISOString()}`,
+  };
+}
+
+/** B-04: the request ended without an answer; the customer asks someone else. */
+export function quoteRequestExpiredRequesterNotification(args: {
+  requesterId: string;
+  weddingPlanId: string | null;
+  quoteRequestId: string;
+  providerId: string;
+  providerName: string;
+  answerDays: number;
+}): CreateNotificationInput {
+  return {
+    userId: args.requesterId,
+    weddingPlanId: args.weddingPlanId,
+    type: NotificationType.QUOTE_REJECTED,
+    priority: NotificationPriority.NORMAL,
+    title: `ما رد ${args.providerName} خلال ${args.answerDays} أيام`,
+    body: "انتهى طلبك بدون رد. اطلب من غيره من المزودين.",
+    entityType: "quote_request",
+    entityId: args.quoteRequestId,
+    routeTarget: requesterQuoteRoute(args.quoteRequestId),
+    data: {
+      quoteRequestId: args.quoteRequestId,
+      providerId: args.providerId,
+      status: "EXPIRED",
+      recipientAudience: "CUSTOMER",
+    },
+    dedupeKey: `${args.requesterId}:quote-request-expired:${args.quoteRequestId}`,
+  };
+}
+
+/** The provider's own request page (D39), which the phone opens. */
+export function providerRequestRoute(quoteRequestId: string): string {
+  return `/provider/requests/${encodeURIComponent(quoteRequestId)}`;
+}

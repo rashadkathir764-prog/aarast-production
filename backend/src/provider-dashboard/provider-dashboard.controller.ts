@@ -22,6 +22,7 @@ import { UpdateProviderProfileDto } from "./dto/update-provider-profile.dto";
 import { UpdateProviderQuoteStatusDto } from "./dto/update-provider-quote-status.dto";
 import { UpdateProviderServiceDto } from "./dto/update-provider-service.dto";
 import { UpdateQuoteOfferDto } from "./dto/update-quote-offer.dto";
+import { WithdrawQuoteOfferDto } from "./dto/withdraw-quote-offer.dto";
 import {
   CreateServiceImageDto,
   UpdateServiceImageDto,
@@ -257,6 +258,17 @@ export class ProviderDashboardController {
     @Body() dto: UpdateQuoteOfferDto,
   ) {
     return this.providerDashboardService.updateQuoteOffer(currentUser, id, dto);
+  }
+
+  // B-03: take back an offer the customer has not decided on.
+  @Post("quote-offers/:id/withdraw")
+  @HttpCode(200)
+  withdrawQuoteOffer(
+    @CurrentUser() currentUser: AuthenticatedUser,
+    @Param("id") id: string,
+    @Body() dto: WithdrawQuoteOfferDto,
+  ) {
+    return this.providerDashboardService.withdrawQuoteOffer(currentUser, id, dto);
   }
 
   @Get("reviews")

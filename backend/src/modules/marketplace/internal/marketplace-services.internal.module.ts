@@ -1,6 +1,8 @@
 import { Module } from '@nestjs/common';
 import { ConversationLifecyclePublicModule } from '../../messaging/public/conversation-lifecycle-public.module';
 import { BookingRemindersScheduler } from '../../../marketplace/booking-reminders.scheduler';
+import { QuoteRequestExpiryScheduler } from '../../../marketplace/quote-request-expiry.scheduler';
+import { QuoteRequestExpiryService } from '../../../marketplace/quote-request-expiry.service';
 import { BookingsService } from '../../../marketplace/bookings.service';
 import { MarketplaceRelationsService } from '../../../marketplace/marketplace-relations';
 import { MarketplaceService } from '../../../marketplace/marketplace.service';
@@ -38,6 +40,8 @@ import { NotificationsPublicModule } from '../../notifications/public/notificati
     ProviderDashboardService,
     BookingsService,
     BookingRemindersScheduler,
+    QuoteRequestExpiryService,
+    QuoteRequestExpiryScheduler,
   ],
   exports: [MarketplaceService, ProviderDashboardService, BookingsService],
 })

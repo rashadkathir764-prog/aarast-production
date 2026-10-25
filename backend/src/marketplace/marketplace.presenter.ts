@@ -13,6 +13,7 @@ import {
   QuoteRequestStatus,
 } from "@prisma/client";
 import { isQuoteOfferExpired } from "./quote-offer-expiry";
+import { quoteOfferVersionView } from "../modules/marketplace/public/quote-offer-versions";
 import { toReviewIdentity } from "../shared-kernel/privacy/review-identity";
 import { optionalMoneyAmount } from "../shared-kernel/money/money";
 import { weddingLocationResponse } from "../modules/planning/public/wedding-location";
@@ -526,6 +527,8 @@ export class MarketplacePresenter {
       budgetMax: visibility.budget
         ? (quote.budgetMax?.toString() ?? null)
         : null,
+      shareBudget: quote.shareBudget, // B-08: shown to the provider
+      shareContact: quote.shareContact,
       status: quote.status,
       lifecycleStatus: quoteLifecycleStatus(quote.status),
       offers:
@@ -541,6 +544,8 @@ export class MarketplacePresenter {
       acceptedAt: quote.acceptedAt,
       rejectedAt: quote.rejectedAt,
       cancelledAt: quote.cancelledAt,
+      expiresAt: quote.expiresAt, // B-04: the answer deadline
+      expiredAt: quote.expiredAt,
       createdAt: quote.createdAt,
       updatedAt: quote.updatedAt,
     };
@@ -560,6 +565,8 @@ export class MarketplacePresenter {
       status: offer.status,
       isExpired,
       isActionable: offer.status === QuoteOfferStatus.PENDING && !isExpired,
+      // B-06 version and «ايش تغيّر», B-03 withdrawal.
+      ...quoteOfferVersionView(offer, showFinancials),
       createdAt: offer.createdAt,
       updatedAt: offer.updatedAt,
     };

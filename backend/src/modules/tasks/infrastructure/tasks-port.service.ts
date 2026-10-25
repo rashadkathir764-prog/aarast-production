@@ -4,6 +4,7 @@ import type {
   DueTaskQuery,
   ImportedTaskInput,
   PlanTaskDashboard,
+  ReadableTask,
   TaskReadScope,
   TasksPort,
 } from '../public/tasks.port';
@@ -36,6 +37,33 @@ function scopeWhere(scope: TaskReadScope) {
 
 @Injectable()
 export class TasksPortService implements TasksPort {
+  async listReadableTasks(
+    client: Prisma.TransactionClient,
+    weddingPlanId: string,
+    readerUserId: string,
+  ): Promise<ReadableTask[]> {
+    return client.weddingTask.findMany({
+      where: {
+        weddingPlanId,
+        status: { not: WeddingTaskStatus.CANCELLED },
+        ...visibleToReader(readerUserId),
+      },
+      select: {
+        id: true,
+        title: true,
+        status: true,
+        dueDate: true,
+        assigneeUserId: true,
+        responsibleName: true,
+      },
+      orderBy: [
+        { dueDate: { sort: 'asc', nulls: 'last' } },
+        { createdAt: 'asc' },
+        { id: 'asc' },
+      ],
+    });
+  }
+
   async listUpcomingTasks(
     client: Prisma.TransactionClient,
     weddingPlanId: string,

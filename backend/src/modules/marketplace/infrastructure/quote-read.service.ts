@@ -14,6 +14,7 @@ import type {
   QuoteOfferProviderRow,
   QuoteOfferWithRequest,
   QuoteReadPort,
+  ReadableBooking,
 } from '../public/quote-read.port';
 
 const conversationQuoteInclude = {
@@ -23,6 +24,37 @@ const conversationQuoteInclude = {
 
 @Injectable()
 export class QuoteReadService implements QuoteReadPort {
+  async listReadableBookings(
+    client: Prisma.TransactionClient,
+    weddingPlanId: string,
+  ): Promise<ReadableBooking[]> {
+    const bookings = await client.booking.findMany({
+      where: {
+        status: { in: [BookingStatus.REQUESTED, BookingStatus.CONFIRMED] },
+        quoteRequest: { weddingPlanId },
+      },
+      select: {
+        id: true,
+        providerId: true,
+        status: true,
+        eventDate: true,
+        provider: { select: { businessName: true, primaryCategoryId: true } },
+        quoteRequest: { select: { service: { select: { title: true } } } },
+      },
+      orderBy: [{ eventDate: 'asc' }, { createdAt: 'asc' }, { id: 'asc' }],
+    });
+    return bookings.map((booking) => ({
+      id: booking.id,
+      providerId: booking.providerId,
+      businessName: booking.provider.businessName,
+      primaryCategoryId: booking.provider.primaryCategoryId,
+      serviceTitle: booking.quoteRequest.service?.title ?? null,
+      status:
+        booking.status === BookingStatus.CONFIRMED ? 'CONFIRMED' : 'REQUESTED',
+      eventDate: booking.eventDate,
+    }));
+  }
+
   async getQuoteOfferWithRequest(
     client: Prisma.TransactionClient,
     quoteOfferId: string,

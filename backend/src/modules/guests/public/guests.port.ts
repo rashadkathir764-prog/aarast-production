@@ -33,7 +33,23 @@ export interface PlanGuestCounters {
   incomplete: number;
 }
 
+/**
+ * A guest as every plan member reads it (D52): the name and the reply.
+ * Never the phone, the notes or the invitation link; those stay with the
+ * members who manage guests.
+ */
+export interface ReadableGuest {
+  id: string;
+  name: string;
+  attendanceStatus: GuestAttendanceStatus;
+}
+
 export interface GuestsPort {
+  /** D52: every guest of the plan by name and reply, in name order. */
+  listReadableGuests(
+    client: Prisma.TransactionClient,
+    weddingPlanId: string,
+  ): Promise<ReadableGuest[]>;
   /** The plan dashboard's guest counters; `guestIds` narrows to a contributor's guests. */
   getPlanGuestCounters(
     client: Prisma.TransactionClient,

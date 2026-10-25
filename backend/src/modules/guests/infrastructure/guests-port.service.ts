@@ -4,10 +4,22 @@ import type {
   GuestsPort,
   ImportedGuestInput,
   PlanGuestCounters,
+  ReadableGuest,
 } from '../public/guests.port';
 
 @Injectable()
 export class GuestsPortService implements GuestsPort {
+  async listReadableGuests(
+    client: Prisma.TransactionClient,
+    weddingPlanId: string,
+  ): Promise<ReadableGuest[]> {
+    return client.guest.findMany({
+      where: { weddingPlanId },
+      select: { id: true, name: true, attendanceStatus: true },
+      orderBy: [{ name: 'asc' }, { id: 'asc' }],
+    });
+  }
+
   async getPlanGuestCounters(
     client: Prisma.TransactionClient,
     weddingPlanId: string,

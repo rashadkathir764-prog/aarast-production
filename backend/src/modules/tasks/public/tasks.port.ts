@@ -48,7 +48,23 @@ export interface PlanTaskDashboard {
   todayTasks: number;
 }
 
+/**
+ * A task as every plan member reads it (D52): what it is, where it stands,
+ * when it is due and who does it. Never its description (it may carry an
+ * amount), its checklist or the responsible person's phone.
+ */
+export type ReadableTask = Pick<
+  WeddingTask,
+  'id' | 'title' | 'status' | 'dueDate' | 'assigneeUserId' | 'responsibleName'
+>;
+
 export interface TasksPort {
+  /** D52: the plan's tasks every member reads (not cancelled, never another account's private task), in due order. */
+  listReadableTasks(
+    client: Prisma.TransactionClient,
+    weddingPlanId: string,
+    readerUserId: string,
+  ): Promise<ReadableTask[]>;
   /** The plan's open tasks the reader sees, in due order, at most `take` (the home dashboard). */
   listUpcomingTasks(
     client: Prisma.TransactionClient,

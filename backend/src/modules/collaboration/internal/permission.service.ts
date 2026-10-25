@@ -24,6 +24,7 @@ import {
   LivePlanPermission,
   NEVER_MATCHING_ROW_FILTER,
   PlanAccessContext,
+  readsPlanSections,
   TASK_PERMISSION_REVOKED,
   TASK_PERMISSION_REVOKED_MESSAGE,
 } from "../public/collaboration-permission.port";
@@ -77,7 +78,7 @@ export class PermissionService implements CollaborationPermissionPort {
     currentUser: AuthenticatedUser,
   ): Promise<PlanAccessContext> {
     const context = await this.getPlanAccessContext(weddingPlanId, currentUser);
-    if (!context.isOwner && !context.sharedMember) {
+    if (!readsPlanSections(context)) {
       throw new NotFoundException("Wedding plan not found");
     }
     return context;
@@ -93,7 +94,7 @@ export class PermissionService implements CollaborationPermissionPort {
       weddingPlanId,
       currentUser,
     );
-    if (!context.isOwner && !context.sharedMember) {
+    if (!readsPlanSections(context)) {
       throw new NotFoundException("Wedding plan not found");
     }
     return context;
@@ -111,7 +112,7 @@ export class PermissionService implements CollaborationPermissionPort {
       [],
       true,
     );
-    if (!context.isOwner && !context.sharedMember) {
+    if (!readsPlanSections(context)) {
       throw new NotFoundException("Wedding plan not found");
     }
     return context;

@@ -37,6 +37,7 @@ import {
   resolveDashboardContributorDataScope,
 } from "./dashboard-contributor-scope";
 import { loadDashboardHomeSections } from "./dashboard-home-queries";
+import { loadPlanReadView, type PlanReadViewResponse } from "./plan-read-view";
 import {
   buildFinancialWarnings,
   buildImportantItems,
@@ -97,6 +98,29 @@ export class DashboardService {
         : null,
       ...sections,
     };
+  }
+
+  /**
+   * D52: what every member of the plan reads, whatever their role: the
+   * tasks, the guests by name and reply, and the bookings, without money or
+   * phones. Membership is proved on the same snapshot as the read.
+   */
+  async getPlanReadView(
+    currentUser: AuthenticatedUser,
+    weddingPlanId: string,
+  ): Promise<PlanReadViewResponse> {
+    return runRetryableTransaction(
+      this.prisma,
+      async (tx) => {
+        const context = await this.permissions.assertPlanReadableInTransaction(
+          tx,
+          weddingPlanId,
+          currentUser,
+        );
+        return loadPlanReadView(tx, this.owners, context, currentUser.id);
+      },
+      { isolationLevel: Prisma.TransactionIsolationLevel.RepeatableRead },
+    );
   }
 
   async getWeddingPlanDashboardSummary(

@@ -29,6 +29,21 @@ export function isPlanPartnerRole(role: SharedMemberRole): boolean {
   return role === SharedMemberRole.GROOM || role === SharedMemberRole.BRIDE;
 }
 
+/**
+ * Reading is separate from editing (D52): the owner and every member, in
+ * every role, read the plan's non-money sections (the tasks, the guests by
+ * name and reply, the bookings by day and status, the countdown). Editing
+ * still needs the section's manage flag and stays inside the editor's own
+ * work; money still needs `canViewMoney`; phones stay with the members who
+ * manage that section. The stored flags hold no read flag because this rule
+ * has no exception; contexts publish it as `canViewPlan`.
+ */
+export function readsPlanSections(
+  context: Pick<PlanAccessContext, 'isOwner' | 'sharedMember'>,
+): boolean {
+  return context.isOwner || context.sharedMember != null;
+}
+
 /** Whether the reader sees the whole plan rather than only their own contributions. */
 export function seesWholePlan(
   context: Pick<PlanAccessContext, 'isOwner' | 'sharedMember'>,

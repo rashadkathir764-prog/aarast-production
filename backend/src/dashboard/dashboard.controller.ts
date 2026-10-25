@@ -30,4 +30,13 @@ export class WeddingPlanDashboardController {
       planId,
     );
   }
+
+  /** D52: the plan's non-money sections as every member reads them. */
+  @Get("plan-view")
+  getPlanReadView(
+    @CurrentUser() currentUser: AuthenticatedUser,
+    @Param("planId") planId: string,
+  ) {
+    return this.dashboardService.getPlanReadView(currentUser, planId);
+  }
 }

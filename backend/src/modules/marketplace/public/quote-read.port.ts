@@ -52,10 +52,30 @@ export type ExpiredPendingOffer = Pick<
   'id' | 'quoteRequestId' | 'validUntil'
 >;
 
+/**
+ * A booking of the plan as every member reads it (D52, q16): who, which
+ * service, which day and whether the provider confirmed. Never an amount,
+ * an offer, a phone or a message.
+ */
+export interface ReadableBooking {
+  id: string;
+  providerId: string;
+  businessName: string;
+  primaryCategoryId: string | null;
+  serviceTitle: string | null;
+  status: 'REQUESTED' | 'CONFIRMED';
+  eventDate: Date;
+}
+
 // Marketplace owns `QuoteRequest` and `QuoteOffer`. Finance links costs to
 // accepted offers and locks the offer rows it references; those reads and
 // locks run here, on the caller's client, in the caller's order.
 export interface QuoteReadPort {
+  /** D52: the plan's live bookings (waiting or confirmed), by day. */
+  listReadableBookings(
+    client: Prisma.TransactionClient,
+    weddingPlanId: string,
+  ): Promise<ReadableBooking[]>;
   getQuoteOfferWithRequest(
     client: Prisma.TransactionClient,
     quoteOfferId: string,

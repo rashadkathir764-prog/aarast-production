@@ -24,6 +24,7 @@ import {
   COLLABORATION_PERMISSION_PORT,
   type CollaborationPermissionPort as PermissionService,
   PlanAccessContext,
+  readsPlanSections,
 } from "../../../collaboration/public/collaboration-permission.port";
 import {
   canonicalPlanContextKey,
@@ -257,7 +258,8 @@ export class ContextsService {
         canUseProviderOperations: false,
       },
       permissions: {
-        canViewPlan: true,
+        // D52: every member reads the plan's non-money sections.
+        canViewPlan: readsPlanSections(access),
         canEditPlan,
         canManageTasks,
         canManageGuests,

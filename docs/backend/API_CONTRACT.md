@@ -2237,8 +2237,13 @@ B-08, B-14, G19; D50):
   access), `revisedAt`, `withdrawnAt` and `withdrawnReason`. Sending an offer
   stores it as version 1. `PATCH /api/v1/provider/me/quote-offers/:id` that
   changes something writes version N+1 (one `QuoteOfferVersion` row), records
-  one `QUOTE_OFFER_REVISED` conversation event `{ versionNo, changes }` and
-  notifies the customer once per version («عدّل … عرضه», no amount); an edit
+  one `QUOTE_OFFER_REVISED` conversation event whose data is only
+  `{ versionNo }` (D53: every plan reader with the providers right reads the
+  timeline's events as stored, so no event carries an amount or the
+  changes; «ايش تغيّر» is read from the offer, money-aware) and notifies the
+  customer («عدّل … عرضه», no amount; push «عدّلوا عرضهم»), at most once per
+  offer per ten minutes (`QuoteOffer.revisionNoticeAt`): a revision inside
+  that window is recorded on the timeline but not notified. An edit
   that changes nothing returns the offer unchanged. Renewing an expired offer
   is an edit like any other. Editing an offer that is not `PENDING` on a
   `RESPONDED` request is `409 QUOTE_OFFER_LOCKED`.
@@ -2266,9 +2271,14 @@ B-08, B-14, G19; D50):
   (`QUOTE_REQUEST_EXPIRING`, «طلب … ينتهي بكرة», whose route target is the
   app's own request page, D39), then moves the request to `EXPIRED`
   (`lifecycleStatus: "EXPIRED"`), records `QUOTE_REQUEST_EXPIRED` and tells
-  the customer «ما رد … خلال 7 أيام» with «اطلب من غيره». Each request moves
+  the customer «ما رد … خلال 7 أيام» with «اطلب من غيره», unless the job
+  reaches the request more than a day after its deadline (the first run
+  after B-04 shipped, or the job was down): then the request ends and the
+  event is recorded without that notice (D53). Each request moves
   in its own serializable transaction from the state it was read in, so a
-  second instance of the job or a retry changes nothing twice. An expired
+  second instance of the job or a retry changes nothing twice; a run lists
+  each due request once (cursor on `expiresAt`, `id`) and counts the ones it
+  leaves as they were as skipped. An expired
   request does not block asking the same provider again; nor does one past
   its deadline that the job has not reached yet. The plan quote counters
   count `EXPIRED` as closed.
@@ -2278,10 +2288,19 @@ B-08, B-14, G19; D50):
   `shareBudget`, and `contactPhone`, `contactNormalizedPhone` and
   `user.phone` only with `shareContact`; both flags are in the response. The
   conversation's latest quote follows the same rule on the provider side.
-- **Who the provider talks to (B-14).** In a plan's conversation the provider
-  side's `counterpart` is `{ firstName, weddingLabel, eventDate }`: the
-  requester's first name, the plan's title and the request's day, with no
-  phone and no picture.
+- **Who the provider talks to (B-14, D53).** In a plan's conversation the
+  provider side's `counterpart` is `{ firstName, weddingLabel, eventDate }`:
+  the requester's first name, the plan's title and the request's day, with no
+  phone and no picture. Wherever else the provider side reads a customer-side
+  person (the conversation's `latestQuoteRequest.user`, an account-scoped
+  conversation's `counterpart`, a message `sender`), it is
+  `{ id, name, avatarUrl: null }`: the full name as p16 and p19 draw it
+  («محمد الحمدي»), drawn with its initial, never the picture; the phone only
+  as B-08 allows. Messages reach both sides in one realtime room, so a
+  message carries a picture only for the provider's own account.
+- **Response speed.** The provider's median first answer counts the first
+  offer that was not withdrawn; a request whose only offer was withdrawn is
+  unanswered (D53).
 
 Every quote decision uses one serializable transition policy. Request rows are
 locked before offer rows, the current request/offer states are re-read under
@@ -2827,6 +2846,14 @@ returns the admin refresh token.
 - `PATCH /admin/users/:id/activate`
 - `PATCH /admin/users/:id/disable`
 - `GET /admin/users/:id`
+
+Every provider category the four `/admin/provider-categories` routes return
+carries `budgetItems: { groom, bride, shared }`: the money item an accepted
+offer of that category is filed under in a new groom's, bride's and shared
+plan, computed by the acceptance matcher (G38) against the published money
+starter items; `null` means «أخرى» (no item fits), which a08 shows in coral
+and says after a save (D53). A category an administrator creates or renames
+is not pinned by the migrations' test, so this is where its placement shows.
 
 Provider review actions require an independent administrator: an administrator
 who owns the application-side provider profile cannot approve, reject, request

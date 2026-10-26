@@ -1,0 +1,8 @@
+[Nest] 11497  - 10/26/2026, 2:05:58 PM   ERROR [OutboxWorker] Outbox drain failed: PrismaClientKnownRequestError
+reminder scan FAILED after 1160.3s: PrismaClientKnownRequestError P2028 
+Invalid `prisma.$queryRaw()` invocation:
+
+
+Transaction API error: Transaction already closed: A query cannot be executed on an expired transaction. The timeout for this transaction was 120000 ms, however 1160312 ms passed since the start of the transaction. Consider increasing the interactive trans
+[Nest] 11497  - 10/26/2026, 2:05:58 PM   ERROR [Scheduler] PrismaClientUnknownRequestError: 
+Invalid `client.providerFeaturedPeriod.findMany()` invocation in

@@ -20,9 +20,13 @@ import '../utils/notification_route_policy.dart';
 import '../utils/notification_line.dart';
 
 class NotificationsScreen extends StatefulWidget {
-  const NotificationsScreen({this.weddingPlanId, super.key});
+  const NotificationsScreen({this.weddingPlanId, this.clock, super.key});
 
   final String? weddingPlanId;
+
+  /// The time the «when» labels and groups are read against; the device
+  /// clock unless a caller (a golden) pins it.
+  final DateTime Function()? clock;
 
   @override
   State<NotificationsScreen> createState() => _NotificationsScreenState();
@@ -188,6 +192,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
       );
     }
 
+    final now = (widget.clock ?? DateTime.now)();
     if (participant) {
       return ListView(
         padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
@@ -197,6 +202,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
               for (final notification in notifications)
                 _NotificationRow(
                   notification: notification,
+                  now: now,
                   plain: true,
                   onTap: () => _openNotification(provider, notification),
                   onArchive: () => provider.archiveNotification(notification),
@@ -227,7 +233,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
       );
     }
 
-    final groups = groupNotificationsByTime(notifications, DateTime.now());
+    final groups = groupNotificationsByTime(notifications, now);
 
     return ListView(
       padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
@@ -241,6 +247,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                 for (final notification in group.$2)
                   _NotificationRow(
                     notification: notification,
+                    now: now,
                     onTap: () => _openNotification(provider, notification),
                     onArchive: () => provider.archiveNotification(notification),
                   ),
@@ -423,10 +430,12 @@ class _NotificationRow extends StatelessWidget {
     required this.notification,
     required this.onTap,
     required this.onArchive,
+    required this.now,
     this.plain = false,
   });
 
   final AarastNotification notification;
+  final DateTime now;
   final VoidCallback onTap;
   final VoidCallback onArchive;
 
@@ -445,7 +454,7 @@ class _NotificationRow extends StatelessWidget {
       body: notificationLine(notification, hideAmounts: hideAmounts),
     );
     final urgent = notification.priority.toUpperCase() == 'URGENT';
-    final when = notificationWhenLabel(notification.createdAt, DateTime.now());
+    final when = notificationWhenLabel(notification.createdAt, now);
     return Semantics(
       button: true,
       label: [

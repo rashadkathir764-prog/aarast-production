@@ -1024,7 +1024,8 @@ void main() {
     await _shot(
       tester,
       'p20_notifications',
-      const NotificationsScreen(),
+      // Pinned so «هذا الأسبوع · الثلاثاء» does not drift with the calendar.
+      NotificationsScreen(clock: () => DateTime(2026, 10, 26, 12)),
       h: 1000,
       providers: [
         Provider<AuthStorage>.value(value: storage),

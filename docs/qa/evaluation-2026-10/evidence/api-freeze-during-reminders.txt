@@ -1,0 +1,17 @@
+# Live API during the 14:15 UTC reminder cron (server pid 5558, 100k plans)
+14:27:47 rss=2300532KB cpu=28.2% health=000/10.001955s
+14:28:07 rss=2300532KB cpu=28.6% health=000/10.002302s
+14:28:27 rss=2304536KB cpu=28.9% health=000/10.002455s
+14:28:47 rss=2304536KB cpu=29.3% health=000/10.001884s
+14:29:07 rss=2304536KB cpu=29.7% health=000/10.002319s
+14:29:27 rss=2304536KB cpu=30.0% health=000/10.002273s
+# server log around the cron:
+[Nest] 5558  - 10/26/2026, 1:27:18 PM   ERROR [HTTP] GET /api/v1/wedding-plans/:weddingPlanId/costs -> 500 type=PrismaClientKnownRequestError
+[Nest] 5558  - 10/26/2026, 1:27:18 PM   ERROR [HTTP] GET /api/v1/wedding-plans/:weddingPlanId/costs -> 500 type=PrismaClientKnownRequestError
+[Nest] 5558  - 10/26/2026, 1:27:18 PM   ERROR [HTTP] GET /api/v1/wedding-plans/:weddingPlanId/costs -> 500 type=PrismaClientKnownRequestError
+[Nest] 5558  - 10/26/2026, 1:27:18 PM   ERROR [HTTP] GET /api/v1/wedding-plans/:weddingPlanId/costs -> 500 type=PrismaClientKnownRequestError
+[Nest] 5558  - 10/26/2026, 1:27:18 PM   ERROR [HTTP] GET /api/v1/wedding-plans/:weddingPlanId/costs -> 500 type=PrismaClientKnownRequestError
+[Nest] 5558  - 10/26/2026, 1:29:15 PM   ERROR [HTTP] GET /api/v1/wedding-plans/:planId/dashboard-summary -> 500 type=PrismaClientKnownRequestError
+[Nest] 5558  - 10/26/2026, 1:29:15 PM   ERROR [HTTP] GET /api/v1/wedding-plans/:planId/dashboard-summary -> 500 type=PrismaClientKnownRequestError
+[Nest] 5558  - 10/26/2026, 1:29:15 PM   ERROR [HTTP] GET /api/v1/wedding-plans/:planId/dashboard-summary -> 500 type=PrismaClientKnownRequestError
+# (SIGTERM did not stop it within 2s; it needed SIGKILL - graceful shutdown blocked by the scan)

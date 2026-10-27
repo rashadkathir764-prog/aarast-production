@@ -1,0 +1,17 @@
+# backend npm test (full history clone) - run stopped by the 30 min tool limit
+# tests 53
+# pass 53
+# fail 0
+main suite: ok=1686 not_ok=0
+
+# first run on a shallow clone (52 commits): 1258 pass / 22 fail, all 22 = architecture lineage tests: 'HEAD does not extend the lineage commit'
+
+# flutter analyze
+No issues found! (ran in 88.6s)
+# flutter test --no-pub (Linux)
+14:19 +1710 -511: Some tests failed.
+failures that are 'Pixel test failed' (Windows-made goldens): 511 of 511
+
+# admin-web
+ Test Files  33 passed (33)
+      Tests  203 passed (203)

@@ -1,0 +1,49 @@
+victim ids {"plan":"demo_plan_groom","cost":"demo_cost_groom-mahr","privateCost":null,"payment":"demo_pay_groom-mahr-engagement","schedule":"demo_sched_groom-mahr-rest","receipt":null,"category":"demo_cat_groom-photo","funding":"demo_fund_groom-savings","loanRepay":"demo_repay_groom-loan-r1","guest":"demo_guest_groom-hamdi-1","guestGroup":"demo_gg_groom-hamdi","task":"demo_task_groom-contract-date","notification":"demo_notif_demo_user_groom:booking:b3074e5b-da5a-5dea-9748-09f637430342:CONFIRMED:0","conversation":"demo_conv_hall","quote":"e73a6b9c-b056-5e4f-a8b7-939358a3b48c","booking":"b3074e5b-da5a-5dea-9748-09f637430342"}
+
+READS (status per actor)
+┌─────────┬───────┬───────────────────────────────────────────────────────────┬─────────┬────────────────┬───────────────┬──────────────┬───────────────┬──────────────┐
+│ (index) │ m     │ path                                                      │ kind    │ owner_mohammed │ outsider_adel │ family_salma │ viewer_father │ provider_ali │
+├─────────┼───────┼───────────────────────────────────────────────────────────┼─────────┼────────────────┼───────────────┼──────────────┼───────────────┼──────────────┤
+│ 0       │ 'GET' │ '/api/v1/wedding-plans/demo_plan_groom'                   │ 'plan'  │ 200            │ 404           │ 200          │ 200           │ 404          │
+│ 1       │ 'GET' │ '/api/v1/wedding-plans/demo_plan_groom/dashboard-summary' │ 'plan'  │ 200            │ 404           │ 200          │ 200           │ 404          │
+│ 2       │ 'GET' │ '/api/v1/wedding-plans/demo_plan_groom/funding-sources'   │ 'money' │ 200            │ 404           │ 404          │ 404           │ 404          │
+│ 3       │ 'GET' │ '/api/v1/me/wedding-plans/demo_plan_groom/bookings'       │ 'plan'  │ 200            │ 404           │ 200          │ 200           │ 404          │
+│ 4       │ 'GET' │ '/api/v1/costs/:id'                                       │ 'money' │ 200            │ 404           │ 404          │ 404           │ 404          │
+│ 5       │ 'GET' │ '/api/v1/costs/:id/payments'                              │ 'money' │ 200            │ 404           │ 404          │ 404           │ 404          │
+│ 6       │ 'GET' │ '/api/v1/costs/:id/payment-schedules'                     │ 'money' │ 200            │ 404           │ 404          │ 404           │ 404          │
+│ 7       │ 'GET' │ '/api/v1/costs//receipts'                                 │ 'money' │ 404            │ 404           │ 404          │ 404           │ 404          │
+│ 8       │ 'GET' │ '/api/v1/cost-payments/:id'                               │ 'money' │ 200            │ 404           │ 404          │ 404           │ 404          │
+│ 9       │ 'GET' │ '/api/v1/guests/:id'                                      │ 'plan'  │ 200            │ 404           │ 404          │ 404           │ 404          │
+│ 10      │ 'GET' │ '/api/v1/tasks/:id'                                       │ 'plan'  │ 200            │ 404           │ 404          │ 403           │ 404          │
+│ 11      │ 'GET' │ '/api/v1/notifications/:id:booking::id:CONFIRMED:0'       │ 'own'   │ 200            │ 404           │ 404          │ 404           │ 404          │
+│ 12      │ 'GET' │ '/api/v1/conversations/demo_conv_hall'                    │ 'own'   │ 200            │ 404           │ 404          │ 404           │ 404          │
+│ 13      │ 'GET' │ '/api/v1/conversations/demo_conv_hall/messages'           │ 'own'   │ 200            │ 404           │ 404          │ 404           │ 404          │
+│ 14      │ 'GET' │ '/api/v1/conversations/demo_conv_hall/timeline'           │ 'own'   │ 200            │ 404           │ 404          │ 404           │ 404          │
+│ 15      │ 'GET' │ '/api/v1/quote-requests/:id'                              │ 'plan'  │ 200            │ 404           │ 403          │ 403           │ 404          │
+│ 16      │ 'GET' │ '/api/v1/me/quote-requests/:id'                           │ 'own'   │ 200            │ 404           │ 404          │ 404           │ 404          │
+│ 17      │ 'GET' │ '/api/v1/costs?weddingPlanId=demo_plan_groom'             │ 'money' │ 404            │ 404           │ 404          │ 404           │ 404          │
+│ 18      │ 'GET' │ '/api/v1/guests?weddingPlanId=demo_plan_groom'            │ 'plan'  │ 404            │ 404           │ 404          │ 404           │ 404          │
+│ 19      │ 'GET' │ '/api/v1/tasks?weddingPlanId=demo_plan_groom'             │ 'plan'  │ 404            │ 404           │ 404          │ 404           │ 404          │
+│ 20      │ 'GET' │ '/api/v1/budget-categories?weddingPlanId=demo_plan_groom' │ 'money' │ 404            │ 404           │ 404          │ 404           │ 404          │
+│ 21      │ 'GET' │ '/api/v1/money/summary?weddingPlanId=demo_plan_groom'     │ 'money' │ 404            │ 404           │ 404          │ 404           │ 404          │
+└─────────┴───────┴───────────────────────────────────────────────────────────┴─────────┴────────────────┴───────────────┴──────────────┴───────────────┴──────────────┘
+
+WRITES by non-owners (any 2xx marked !)
+┌─────────┬──────────┬──────────────────────────────────────────────────────────┬───────────────┬───────────────┬───────────────┬──────────────┬──────────────┐
+│ (index) │ m        │ path                                                     │ kind          │ outsider_adel │ viewer_father │ family_salma │ provider_ali │
+├─────────┼──────────┼──────────────────────────────────────────────────────────┼───────────────┼───────────────┼───────────────┼──────────────┼──────────────┤
+│ 0       │ 'PATCH'  │ '/api/v1/costs/:id'                                      │ 'money'       │ '404'         │ '404'         │ '404'        │ '404'        │
+│ 1       │ 'PATCH'  │ '/api/v1/guests/:id'                                     │ 'plan-edit'   │ '404'         │ '404'         │ '404'        │ '404'        │
+│ 2       │ 'PATCH'  │ '/api/v1/tasks/:id'                                      │ 'plan-edit'   │ '404'         │ '403'         │ '404'        │ '404'        │
+│ 3       │ 'PATCH'  │ '/api/v1/budget-categories/:id'                          │ 'money'       │ '404'         │ '404'         │ '404'        │ '404'        │
+│ 4       │ 'PATCH'  │ '/api/v1/funding-sources/:id'                            │ 'owner-money' │ '404'         │ '404'         │ '404'        │ '404'        │
+│ 5       │ 'PATCH'  │ '/api/v1/notifications/:id:booking::id:CONFIRMED:0/read' │ 'own'         │ '404'         │ '404'         │ '404'        │ '404'        │
+│ 6       │ 'PATCH'  │ '/api/v1/wedding-plans/demo_plan_groom'                  │ 'plan-edit'   │ '404'         │ '404'         │ '404'        │ '404'        │
+│ 7       │ 'POST'   │ '/api/v1/costs/:id/payments'                             │ 'money'       │ '404'         │ '404'         │ '404'        │ '404'        │
+│ 8       │ 'DELETE' │ '/api/v1/payment-schedules/:id'                          │ 'money'       │ '404'         │ '404'         │ '404'        │ '404'        │
+│ 9       │ 'DELETE' │ '/api/v1/loan-repayments/:id'                            │ 'owner-money' │ '404'         │ '404'         │ '404'        │ '404'        │
+│ 10      │ 'DELETE' │ '/api/v1/guest-groups/demo_gg_groom-hamdi'               │ 'plan-edit'   │ '404'         │ '404'         │ '404'        │ '404'        │
+│ 11      │ 'DELETE' │ '/api/v1/costs//receipts/'                               │ 'money'       │ '404'         │ '404'         │ '404'        │ '404'        │
+│ 12      │ 'POST'   │ '/api/v1/conversations/demo_conv_hall/messages'          │ 'own'         │ '404'         │ '404'         │ '404'        │ '404'        │
+│ 13      │ 'PATCH'  │ '/api/v1/me/bookings/:id/cancel'                         │ 'own'         │ '404'         │ '403'         │ '403'        │ '404'        │
+└─────────┴──────────┴──────────────────────────────────────────────────────────┴───────────────┴───────────────┴───────────────┴──────────────┴──────────────┘

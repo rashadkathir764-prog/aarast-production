@@ -1,0 +1,15 @@
+# Auth experiments on the demo database (2026-10-26T15:08:33Z), server: node dist/main.js, AUTH_OTP_MODE=dev
+
+## P1-1 refresh reuse after a lost response
+1) first refresh -> new tokens issued (response assumed lost on the phone)
+2) retry with the old refresh token: HTTP 401
+3) the new refresh token: HTTP 401
+4) the new access token on /api/v1/me: HTTP 401
+
+## P1-2 lockout of someone else's account (+967777000105), five wrong passwords from five IPs
+401 401 401 401 401 429 
+owner, correct password, new IP: {"statusCode":429,"message":"Too many failed login attempts. Try again later."}
+
+## P1-3 thirteen registrations from one IP (5.0.0.1)
+201 201 201 201 201 201 201 201 201 201 429 429 429 
+(register route limit is @Throttle 10/min per IP, auth.controller.ts:45)

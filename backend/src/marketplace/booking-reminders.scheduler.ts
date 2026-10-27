@@ -11,9 +11,15 @@ export class BookingRemindersScheduler {
 
   @Cron('25 * * * *')
   async sendDueReminders(): Promise<void> {
-    // B-22: bookings two days past their day with no word complete first.
-    const completed = await this.bookings.completeOverdueBookings();
-    if (completed > 0) this.logger.log(`Completed ${completed} past booking(s)`);
+    // B-22: bookings past the outcome window with no word complete first.
+    const done = await this.bookings.completeOverdueBookings();
+    if (done.completed > 0) this.logger.log(`Completed ${done.completed} past booking(s)`);
+    for (const failure of done.failures) {
+      this.logger.error(
+        `Booking auto-completion failed for booking ${failure.bookingId}`,
+        failure.error instanceof Error ? failure.error.stack : String(failure.error),
+      );
+    }
     const { sent, failures } = await this.bookings.sendDueReminders();
     if (sent > 0) this.logger.log(`Sent ${sent} booking reminder(s)`);
     for (const failure of failures) {

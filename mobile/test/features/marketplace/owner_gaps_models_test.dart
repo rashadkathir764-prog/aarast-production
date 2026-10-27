@@ -26,6 +26,8 @@ void main() {
       final today = DateTime(2026, 11, 10);
       expect(booking.canRecordOutcome(today), isTrue);
       expect(booking.canRecordOutcome(DateTime(2026, 11, 7)), isFalse);
+      // Past two days the server completes it by itself (D61).
+      expect(booking.canRecordOutcome(DateTime(2026, 11, 11)), isFalse);
       expect(booking.canRecordOutcome(DateTime(2026, 11, 16)), isFalse);
       expect(booking.canDeliver, isFalse);
       expect(booking.change?.status, 'ACCEPTED');

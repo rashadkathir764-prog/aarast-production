@@ -2894,14 +2894,15 @@ asked change: `id`, `fromDate`, `toDate`, `status`, `note`, `declineReason`).
 `lifecycleStatus` reads `NOT_HAPPENED` once the provider reported it.
 
 - `POST /api/v1/provider/me/bookings/:id/complete` — «تم», from the day to
-  seven days after (`409 BOOKING_OUTCOME_TOO_EARLY`, `_TOO_LATE`,
+  two days after (`409 BOOKING_OUTCOME_TOO_EARLY`, `_TOO_LATE`,
   `_ALREADY_DECIDED`, `_NOT_CONFIRMED`). Sets `deliveryDueAt` from the accepted
   offer's `deliveryDays`. The customer is asked to review.
 - `POST /api/v1/provider/me/bookings/:id/not-happened`
   `{ reason: CUSTOMER_NO_SHOW | WE_DID_NOT_ATTEND | FORCE_MAJEURE | OFFICIAL_DECISION }`
   — «ما صار»; the booking is never reviewed. Same window and codes.
-- The hourly booking job completes a confirmed booking two days after its day
-  when the provider said nothing.
+- The hourly booking job completes a confirmed booking once that window has
+  passed and the provider said nothing (p26: «لو ما قلت شي خلال يومين ينحسب
+  تم»), so «ما صار» is never offered after the booking already completed.
 - `POST /api/v1/provider/me/bookings/:id/delivery` `{ link?: http(s) URL, note? }`
   — once, after «تم» (`409 BOOKING_DELIVERY_NOT_COMPLETED`, `_ALREADY_DELIVERED`).
 - `POST /api/v1/me/bookings/:id/delivery/confirm` — the customer confirms, once
@@ -2912,7 +2913,9 @@ asked change: `id`, `fromDate`, `toDate`, `status`, `note`, `declineReason`).
   `_NOT_CONFIRMED`).
 - `POST /api/v1/provider/me/booking-changes/:id/accept` — checks the new day
   against blocked days and the daily capacity (`409 BOOKING_DATE_UNAVAILABLE`,
-  `BOOKING_DAY_FULL`) and moves the booking.
+  `BOOKING_DAY_FULL`) and moves the booking. A change left waiting until the
+  booking's day or the new day passed can only be declined
+  (`409 BOOKING_CHANGE_DAY_PASSED`, `_NEW_DAY_PASSED`, `_NOT_CONFIRMED`).
 - `POST /api/v1/provider/me/booking-changes/:id/decline` `{ reason? }` — the
   booking keeps its day.
 

@@ -3,6 +3,7 @@ import { test } from 'node:test';
 import {
   autoCompleteBefore,
   bookingOutcome,
+  changeAcceptViolation,
   changeViolation,
   deliveryConfirmViolation,
   deliveryDueAt,
@@ -27,11 +28,11 @@ const confirmed = (eventDate: string) => ({
   notHappenedAt: null,
 });
 
-test('B-22: «تم» or «ما صار» from the day to a week after, once', () => {
+test('B-22: «تم» or «ما صار» from the day to two days after, once', () => {
   assert.equal(outcomeViolation(confirmed('2026-11-11'), now), 'TOO_EARLY');
   assert.equal(outcomeViolation(confirmed('2026-11-10'), now), null);
-  assert.equal(outcomeViolation(confirmed('2026-11-03'), now), null);
-  assert.equal(outcomeViolation(confirmed('2026-11-02'), now), 'TOO_LATE');
+  assert.equal(outcomeViolation(confirmed('2026-11-08'), now), null);
+  assert.equal(outcomeViolation(confirmed('2026-11-07'), now), 'TOO_LATE');
   assert.equal(
     outcomeViolation({ ...confirmed('2026-11-08'), completedAt: now }, now),
     'ALREADY_DECIDED',
@@ -40,7 +41,8 @@ test('B-22: «تم» or «ما صار» from the day to a week after, once', () 
     outcomeViolation({ ...confirmed('2026-11-08'), status: 'CANCELLED' as const }, now),
     'NOT_CONFIRMED',
   );
-  // Two days after the day with no word, it completes by itself.
+  // Past the window with no word, it completes by itself: the job takes days
+  // before 2026-11-08, exactly the days that read TOO_LATE above.
   assert.deepEqual(autoCompleteBefore(now), day('2026-11-08'));
   assert.equal(bookingOutcome({ completedAt: null, notHappenedAt: now }), 'NOT_HAPPENED');
   assert.equal(
@@ -79,6 +81,20 @@ test('B-24: a confirmed booking moves before its day, one change at a time', () 
   );
   assert.equal(
     changeViolation({ ...booking, status: 'REQUESTED' as const }, day('2026-12-15'), false, now),
+    'NOT_CONFIRMED',
+  );
+});
+
+test('B-24: a change left waiting past either day can no longer be accepted', () => {
+  const booking = { status: 'CONFIRMED' as const, eventDate: day('2026-12-01') };
+  assert.equal(changeAcceptViolation(booking, day('2026-11-10'), now), null);
+  assert.equal(changeAcceptViolation(booking, day('2026-11-09'), now), 'NEW_DAY_PASSED');
+  assert.equal(
+    changeAcceptViolation({ ...booking, eventDate: day('2026-11-09') }, day('2026-12-15'), now),
+    'DAY_PASSED',
+  );
+  assert.equal(
+    changeAcceptViolation({ ...booking, status: 'CANCELLED' as const }, day('2026-12-15'), now),
     'NOT_CONFIRMED',
   );
 });

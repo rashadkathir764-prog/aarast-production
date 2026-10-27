@@ -58,6 +58,7 @@ import {
   type AftercareViolation,
   autoCompleteBefore,
   type BookingNotHappenedReason,
+  changeAcceptViolation,
   changeViolation,
   deliveryConfirmViolation,
   deliveryDueAt,
@@ -77,7 +78,7 @@ type Tx = Prisma.TransactionClient;
 const aftercareWords: Record<AftercareViolation, string> = {
   NOT_CONFIRMED: "الحجز مو مؤكد.",
   TOO_EARLY: "تقدر تسجّل «تم» من يوم العرس.",
-  TOO_LATE: "فات أسبوع على يوم العرس، والحجز انحسب تم.",
+  TOO_LATE: "فات يومين على يوم العرس، والحجز انحسب تم.",
   ALREADY_DECIDED: "انسجّل قبل إن الحجز تم أو ما صار.",
   NOT_COMPLETED: "التسليم يكون بعد ما يتم العرس.",
   ALREADY_DELIVERED: "انسجّل التسليم من قبل.",
@@ -86,6 +87,7 @@ const aftercareWords: Record<AftercareViolation, string> = {
   DAY_PASSED: "يوم الحجز فات.",
   SAME_DAY: "هذا نفس يوم الحجز.",
   CHANGE_PENDING: "فيه طلب تغيير ينتظر رد المزود.",
+  NEW_DAY_PASSED: "اليوم المطلوب فات. اعتذر عن الطلب، والعميل يقدر يطلب يوم ثاني.",
 };
 
 function bookingError(
@@ -484,7 +486,7 @@ export class BookingsService {
 
   // ── After the booking (G25: B-22, B-23, B-24) ─────────────────────────
 
-  /** B-22: the provider says «تم» (or «ما صار» with why) from the day to a week after. */
+  /** B-22: the provider says «تم» (or «ما صار» with why) from the day to two days after. */
   async recordOutcomeAsProvider(
     currentUser: AuthenticatedUser,
     bookingId: string,
@@ -527,13 +529,17 @@ export class BookingsService {
   }
 
   /**
-   * B-22: confirmed bookings two days past their day with no word complete
+   * B-22: confirmed bookings past the outcome window with no word complete
    * by themselves (the provider may still deliver). Each in its own
-   * transaction, re-checked; one failure does not stop the rest.
+   * transaction, re-checked; one failure does not stop the rest, is
+   * reported, and is retried on the next hourly run.
    */
-  async completeOverdueBookings(now: Date = new Date()): Promise<number> {
+  async completeOverdueBookings(
+    now: Date = new Date(),
+  ): Promise<{ completed: number; failures: Array<{ bookingId: string; error: unknown }> }> {
     const due = await bookings.listBookingsToAutoComplete(this.prisma, autoCompleteBefore(now));
     let completed = 0;
+    const failures: Array<{ bookingId: string; error: unknown }> = [];
     for (const booking of due) {
       try {
         const moved = await runSerializableTransaction(this.prisma, (tx) =>
@@ -543,11 +549,11 @@ export class BookingsService {
           }),
         );
         completed += moved.count;
-      } catch {
-        // Retried on the next hourly run.
+      } catch (error) {
+        failures.push({ bookingId: booking.id, error });
       }
     }
-    return completed;
+    return { completed, failures };
   }
 
   /** B-23: the provider delivers a completed booking (a link, a note), once. */
@@ -681,8 +687,9 @@ export class BookingsService {
       }
       const provider = await lockMarketplaceProvider(tx, owned.id, "UPDATE");
       if (accept) {
-        if (booking.status !== BookingStatus.CONFIRMED) {
-          bookingError("CONFLICT", "BOOKING_CHANGE_NOT_CONFIRMED", aftercareWords.NOT_CONFIRMED);
+        const violation = changeAcceptViolation(booking, change.toDate);
+        if (violation) {
+          bookingError("CONFLICT", `BOOKING_CHANGE_${violation}`, aftercareWords[violation]);
         }
         assertProviderOperational(provider);
         await this.assertDayAvailable(tx, provider.id, change.toDate, booking.id);

@@ -328,7 +328,7 @@
 
 - **ايش وليش:** «تم» يُحسب من التاريخ بس. ما فيه زر «تم»، ولا بلاغ «ما صار»، ولا «ظرف قاهر ما يأثر على تقييمك».
 - **الشاشات:** p26.
-- **المقترح:** `POST /api/v1/provider/me/bookings/:id/complete`، و`POST /api/v1/provider/me/bookings/:id/not-happened` مع `{ reason: "CUSTOMER_NO_SHOW" | "WE_DID_NOT_ATTEND" | "FORCE_MAJEURE" | "OFFICIAL_DECISION" }`. مسموح من يوم العرس لين 7 أيام بعده. وبعد يومين بدون بلاغ يصير `COMPLETED` تلقائيًا (مهمة مجدولة)، مثل ما يقول التصميم.
+- **المقترح:** `POST /api/v1/provider/me/bookings/:id/complete`، و`POST /api/v1/provider/me/bookings/:id/not-happened` مع `{ reason: "CUSTOMER_NO_SHOW" | "WE_DID_NOT_ATTEND" | "FORCE_MAJEURE" | "OFFICIAL_DECISION" }`. مسموح من يوم العرس لين يومين بعده. وبعدها بدون بلاغ يصير `COMPLETED` تلقائيًا (مهمة مجدولة)، مثل ما يقول التصميم. كانت المهلة 7 أيام، بس بعد يومين ينحسب تم ويقفل الباب، فنزلت ليومين (D61).
 - **البيانات:** `COMPLETED` و`NOT_HAPPENED` في `BookingStatus`، و`completedAt` و`notHappenedReason`. والحجوزات المؤكدة اللي فات تاريخها تصير `COMPLETED` بالترحيل.
 - **التنبيهات:** للعريس بعد «تم»: «قيّم [المزود]». وللإدارة: بلاغ «ما صار».
 - **جهة الإدارة:** بلاغات «ما صار» تظهر في عرض الحجوزات (B-40).

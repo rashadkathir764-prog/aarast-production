@@ -92,14 +92,15 @@ class MarketplaceBooking {
   /// B-24: the last change of day the customer asked for.
   final BookingChange? change;
 
-  /// B-22: from the day to a week after, before any word.
+  /// B-22: from the day to two days after, before any word; past that the
+  /// server completes the booking by itself.
   bool canRecordOutcome(DateTime today) {
     if (!isConfirmed || completedAt != null || notHappenedAt != null) {
       return false;
     }
     final day = DateTime(eventDate.year, eventDate.month, eventDate.day);
     final now = DateTime(today.year, today.month, today.day);
-    return !now.isBefore(day) && now.difference(day).inDays <= 7;
+    return !now.isBefore(day) && now.difference(day).inDays <= 2;
   }
 
   /// B-23: a completed booking not delivered yet.

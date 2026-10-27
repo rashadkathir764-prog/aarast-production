@@ -2,18 +2,20 @@ import { BookingStatus } from "@prisma/client";
 import { bookingDay, bookingToday } from "./booking-policy";
 
 // G25 (owner-vision audit 2026-10-27): what follows a confirmed booking.
-// B-22: from the day to seven days after, the provider says «تم» or «ما
-// صار» (why); two days after the day without a word, it completes by
-// itself. B-23: an offer's delivery days set the delivery due day; the
+// B-22: from the day to two days after, the provider says «تم» or «ما
+// صار» (why); past that without a word, it completes by itself (p26:
+// «لو ما قلت شي خلال يومين ينحسب تم»). One window, so a «ما صار» is never
+// promised after the booking already completed. B-23: an offer's delivery days set the delivery due day; the
 // provider delivers (a link, a note), the customer confirms. B-24: before
 // the day, the customer moves it; the provider accepts or declines.
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
-/** B-22: how long after the day the provider may still say what happened. */
-export const BOOKING_OUTCOME_WINDOW_DAYS = 7;
-/** B-22: days after the day a booking with no word completes by itself. */
-export const BOOKING_AUTO_COMPLETE_DAYS = 2;
+/**
+ * B-22: days after the day the provider may still say what happened; past
+ * them a booking with no word completes by itself.
+ */
+export const BOOKING_OUTCOME_WINDOW_DAYS = 2;
 
 export const BOOKING_NOT_HAPPENED_REASONS = [
   "CUSTOMER_NO_SHOW",
@@ -34,7 +36,8 @@ export type AftercareViolation =
   | "ALREADY_CONFIRMED"
   | "DAY_PASSED"
   | "SAME_DAY"
-  | "CHANGE_PENDING";
+  | "CHANGE_PENDING"
+  | "NEW_DAY_PASSED";
 
 interface OutcomeState {
   status: BookingStatus;
@@ -47,7 +50,7 @@ function addDays(day: Date, days: number): Date {
   return new Date(bookingDay(day).getTime() + days * DAY_MS);
 }
 
-/** B-22: «تم» or «ما صار», by the provider, from the day to a week after. */
+/** B-22: «تم» or «ما صار», by the provider, from the day to two days after. */
 export function outcomeViolation(
   booking: OutcomeState,
   now: Date = new Date(),
@@ -62,9 +65,12 @@ export function outcomeViolation(
   return null;
 }
 
-/** B-22: the last day a confirmed booking with no word stays undecided. */
+/**
+ * B-22: confirmed bookings with no word whose day is before this one are
+ * past the window (`outcomeViolation` says TOO_LATE) and complete by themselves.
+ */
 export function autoCompleteBefore(now: Date = new Date()): Date {
-  return new Date(bookingToday(now).getTime() - BOOKING_AUTO_COMPLETE_DAYS * DAY_MS);
+  return new Date(bookingToday(now).getTime() - BOOKING_OUTCOME_WINDOW_DAYS * DAY_MS);
 }
 
 /** B-23: the delivery due day from the accepted offer's days; null without. */
@@ -103,6 +109,22 @@ export function changeViolation(
     return "SAME_DAY";
   }
   return hasPendingChange ? "CHANGE_PENDING" : null;
+}
+
+/**
+ * B-24: the provider accepts a waiting change only while the booking is
+ * confirmed and neither its day nor the new day has passed; a change left
+ * waiting past either can only be declined.
+ */
+export function changeAcceptViolation(
+  booking: { status: BookingStatus; eventDate: Date },
+  toDay: Date,
+  now: Date = new Date(),
+): AftercareViolation | null {
+  if (booking.status !== BookingStatus.CONFIRMED) return "NOT_CONFIRMED";
+  const today = bookingToday(now).getTime();
+  if (bookingDay(booking.eventDate).getTime() < today) return "DAY_PASSED";
+  return bookingDay(toDay).getTime() < today ? "NEW_DAY_PASSED" : null;
 }
 
 /** What the customer and the provider read of a booking's outcome. */

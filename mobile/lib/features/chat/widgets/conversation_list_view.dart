@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 
 import '../../../core/experience_v3/aarast_v3.dart';
 import '../../../core/routing/app_router.dart';
+import '../../../core/utils/app_clock.dart';
 import '../../../core/utils/arabic_date_formatter.dart';
 import '../../../core/widgets/aarast_ui.dart';
 import '../models/chat_models.dart';
@@ -53,7 +54,7 @@ class _ConversationListViewState extends State<ConversationListView> {
   @override
   Widget build(BuildContext context) {
     final chat = context.watch<ChatProvider>();
-    final now = widget.now ?? DateTime.now();
+    final now = widget.now ?? appNow();
     final content = RefreshIndicator(
       color: AarastV3Color.cobalt,
       onRefresh: chat.initialize,

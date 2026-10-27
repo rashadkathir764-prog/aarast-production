@@ -11,6 +11,7 @@ import '../../../core/phone/phone_links.dart';
 import '../../../core/phone/phone_number_utils.dart';
 import '../../../core/routing/app_router.dart';
 import '../../../core/routing/pop_or_go.dart';
+import '../../../core/utils/app_clock.dart';
 import '../../../core/utils/arabic_count.dart';
 import '../../../core/utils/arabic_date_formatter.dart';
 import '../../../core/widgets/aarast_toast.dart';
@@ -178,7 +179,7 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen> {
     final due = task.dueDate;
     final lateDays = due == null
         ? 0
-        : taskDateOnly(DateTime.now()).difference(taskDateOnly(due)).inDays;
+        : taskDateOnly(appNow()).difference(taskDateOnly(due)).inDays;
     final phone = task.responsiblePhone ?? task.assigneePhone;
     final steps = task.checklist;
     final fireworks = isFireworksTask(task);
@@ -452,7 +453,7 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen> {
     );
     if (time == null || !mounted) return;
     final at = DateTime(day.year, day.month, day.day, time.hour, time.minute);
-    if (!at.isAfter(DateTime.now())) {
+    if (!at.isAfter(appNow())) {
       AarastToast.showError(
         context,
         context.say('اختر وقت جاي، مو فات', 'اختاري وقت جاي، مو فات'),

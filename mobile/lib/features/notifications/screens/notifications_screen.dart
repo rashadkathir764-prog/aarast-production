@@ -6,6 +6,7 @@ import 'package:provider/provider.dart';
 
 import '../../../core/config/app_feature_flags.dart';
 import '../../../core/experience_v3/aarast_v3.dart';
+import '../../../core/utils/app_clock.dart';
 import '../../../core/utils/arabic_count.dart';
 import '../../../core/utils/arabic_date_formatter.dart';
 import '../../../core/widgets/aarast_toast.dart';
@@ -192,7 +193,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
       );
     }
 
-    final now = (widget.clock ?? DateTime.now)();
+    final now = (widget.clock ?? appNow)();
     if (participant) {
       return ListView(
         padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),

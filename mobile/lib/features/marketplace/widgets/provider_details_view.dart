@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 
 import '../../../core/experience_v3/aarast_v3.dart';
+import '../../../core/utils/app_clock.dart';
 import '../../../core/utils/currency_label.dart';
 import '../../../core/widgets/aarast_pressable.dart';
 import '../models/marketplace_models.dart';
@@ -67,7 +68,7 @@ class ProviderDetailsView extends StatelessWidget {
         ? null
         : priceAgeLine(
             priceUpdatedAt,
-            now ?? DateTime.now(),
+            now ?? appNow(),
             profile: context.journeyProfile,
           );
     final offers = _offers(packages, services);

@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 
 import '../../../core/experience_v3/aarast_v3.dart';
 import '../../../core/routing/app_router.dart';
+import '../../../core/utils/app_clock.dart';
 import '../../../core/utils/arabic_date_formatter.dart';
 import '../../../core/widgets/aarast_ui.dart';
 import '../../chat/chat_api.dart' show ChatConversation, ChatProvider;
@@ -26,7 +27,7 @@ class ProviderChatsTab extends StatelessWidget {
   Widget build(BuildContext context) {
     final chat = context.watch<ChatProvider>();
     final dashboard = context.watch<ProviderDashboardProvider>();
-    final clock = now ?? DateTime.now();
+    final clock = now ?? appNow();
     final conversations = chat.conversations;
     return RefreshIndicator(
       color: AarastV3Color.primary,

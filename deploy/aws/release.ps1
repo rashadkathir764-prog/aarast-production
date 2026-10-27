@@ -18,6 +18,7 @@ $value = { param($key) ($outputs | Where-Object OutputKey -eq $key).OutputValue 
 $instance = & $value 'InstanceId'
 $opsBucket = & $value 'OpsBucketName'
 $mediaBucket = & $value 'MediaBucketName'
+$publicIp = & $value 'PublicIp'
 
 $sha = (git -C $repo rev-parse HEAD).Trim()
 $dirty = git -C $repo status --porcelain -- backend admin-web deploy
@@ -36,7 +37,7 @@ mkdir -p "`$tree"
 aws s3 cp s3://$opsBucket/releases/$sha/source.tar.gz /tmp/aarast-$sha.tar.gz --only-show-errors
 tar -xzf /tmp/aarast-$sha.tar.gz -C "`$tree"
 rm -f /tmp/aarast-$sha.tar.gz
-bash "`$tree/deploy/aws/host/prepare-env.sh" $BaseHost $mediaBucket $Region $OpenWaLinkTarget
+bash "`$tree/deploy/aws/host/prepare-env.sh" $BaseHost $mediaBucket $Region $OpenWaLinkTarget $publicIp
 bash "`$tree/deploy/aws/host/deploy.sh" $sha $opsBucket
 "@
 $params = @{ commands = @($script -replace "`r", ''); executionTimeout = @('3600') } | ConvertTo-Json -Compress

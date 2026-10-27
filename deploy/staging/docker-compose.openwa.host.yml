@@ -1,0 +1,7 @@
+# The host systemd service owns restart and verifies the LUKS2 mounts first.
+# Use with docker-compose.openwa.yml and the reviewed routing overlay.
+services:
+  openwa:
+    restart: "no"
+  openwa-credential-rotator:
+    restart: "no"

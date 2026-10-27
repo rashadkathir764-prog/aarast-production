@@ -1,0 +1,22 @@
+[Unit]
+Description=Aarast OpenWA with verified encrypted session storage
+Requires=docker.service
+After=docker.service
+RequiresMountsFor=/var/lib/aarast-full-staging-openwa-test/secure /var/lib/aarast-staging-test/cutover-625c6569/openwa-credential
+BindsTo=var-lib-aarast\x2dfull\x2dstaging\x2dopenwa\x2dtest-secure.mount var-lib-aarast\x2dstaging\x2dtest-cutover\x2d625c6569-openwa\x2dcredential.mount
+After=var-lib-aarast\x2dfull\x2dstaging\x2dopenwa\x2dtest-secure.mount var-lib-aarast\x2dstaging\x2dtest-cutover\x2d625c6569-openwa\x2dcredential.mount
+StartLimitIntervalSec=120
+StartLimitBurst=3
+
+[Service]
+Type=simple
+EnvironmentFile=/etc/aarast/openwa-host.env
+ExecStartPre=/usr/bin/python3 /usr/local/lib/aarast/openwa_storage_check.py --secure ${OPENWA_SECURE_ROOT} --mapper ${OPENWA_MAPPER} --image ${OPENWA_STORAGE_IMAGE} --credential ${OPENWA_CREDENTIAL_BIND}
+ExecStart=/usr/bin/docker compose --env-file ${OPENWA_ENV_FILE} -f ${OPENWA_BASE_COMPOSE} -f ${OPENWA_ROUTE_COMPOSE} -f ${OPENWA_HOST_COMPOSE} up --no-deps --abort-on-container-exit openwa openwa-credential-rotator
+ExecStop=/usr/bin/docker compose --env-file ${OPENWA_ENV_FILE} -f ${OPENWA_BASE_COMPOSE} -f ${OPENWA_ROUTE_COMPOSE} -f ${OPENWA_HOST_COMPOSE} stop --timeout 45 openwa openwa-credential-rotator
+Restart=always
+RestartSec=10
+TimeoutStopSec=70
+
+[Install]
+WantedBy=multi-user.target

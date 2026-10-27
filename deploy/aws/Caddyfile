@@ -1,4 +1,24 @@
-# HTTPS for the three public names; Caddy obtains and renews the certificates.
+{
+	# TLS clients connecting to an IP may omit SNI. Select the public-IP
+	# certificate rather than the container's private address in that case.
+	default_sni {$AARAST_DIRECT_API_IP}
+}
+
+# The Elastic IP is an additional API origin, independent of client DNS.
+# Its public certificate is renewed automatically in the persistent Caddy volume.
+https://{$AARAST_DIRECT_API_IP} {
+	tls {
+		issuer acme {
+			dir https://acme-v02.api.letsencrypt.org/directory
+			profile shortlived
+			disable_tlsalpn_challenge
+		}
+	}
+	encode gzip
+	reverse_proxy backend:3000
+}
+
+# Existing names remain available for already-installed clients.
 {$AARAST_API_HOST} {
 	encode gzip
 	reverse_proxy backend:3000

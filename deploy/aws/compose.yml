@@ -208,6 +208,7 @@ services:
     image: caddy:2.10-alpine@sha256:4c6e91c6ed0e2fa03efd5b44747b625fec79bc9cd06ac5235a779726618e530d
     restart: unless-stopped
     environment:
+      AARAST_DIRECT_API_IP: ${AARAST_DIRECT_API_IP:?public Elastic IP is required for the direct HTTPS API}
       AARAST_API_HOST: ${AARAST_API_HOST}
       AARAST_ADMIN_HOST: ${AARAST_ADMIN_HOST}
       AARAST_SITE_HOST: ${AARAST_SITE_HOST:?AARAST_SITE_HOST is required}

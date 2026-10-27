@@ -287,7 +287,8 @@ class _ProviderApplyScreenState extends State<ProviderApplyScreen> {
     return [
       const _StepTitle(
         'خدمتك وسعرها',
-        sub: 'خدمة وحدة بسعرها تكفي للمراجعة. الخدمات الثانية والصور تضيفها بعد الموافقة.',
+        sub:
+            'خدمة وحدة بسعرها تكفي للمراجعة. الخدمات الثانية والصور تضيفها بعد الموافقة.',
       ),
       const SizedBox(height: 12),
       JourneyTextField(
@@ -329,7 +330,10 @@ class _ProviderApplyScreenState extends State<ProviderApplyScreen> {
       const SizedBox(height: 8),
       Text(
         'الأسعار بالريال اليمني.',
-        style: JourneyType.of(JourneyType.small, color: AarastV3Color.textMuted),
+        style: JourneyType.of(
+          JourneyType.small,
+          color: AarastV3Color.textMuted,
+        ),
       ),
     ];
   }
@@ -576,7 +580,8 @@ class _ProviderApplyScreenState extends State<ProviderApplyScreen> {
     if (!sent) {
       setState(() {
         _claimError =
-            dashboard.errorMessage ?? 'ما قدرنا نرسل طلب الاستلام. جرّب مرة ثانية.';
+            dashboard.errorMessage ??
+            'ما قدرنا نرسل طلب الاستلام. جرّب مرة ثانية.';
       });
       return;
     }

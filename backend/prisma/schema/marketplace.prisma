@@ -257,6 +257,9 @@ model QuoteRequest {
   // The provider was told the day before; cleared with a new window.
   expiryWarnedAt         DateTime?
   expiredAt              DateTime?
+  // B-05: why the provider declined («مشغول ذاك اليوم»…) and his words.
+  declineReason          String?
+  declineMessage         String?             @db.Text
   createdAt              DateTime            @default(now())
   updatedAt              DateTime            @updatedAt
   user                   User                @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -301,6 +304,13 @@ model QuoteOffer {
   // B-03: the provider took the offer back before the customer decided.
   withdrawnAt        DateTime?
   withdrawnReason    String?             @db.Text
+  // B-07: what the price covers: `[{ label, kind: INCLUDED|EXCLUDED|EXTRA, amount? }]`,
+  // and the days after the wedding to deliver (B-23).
+  lines              Json?
+  deliveryDays       Int?
+  // B-11: why the customer turned the offer down; never a budget figure.
+  rejectReason       String?
+  rejectMessage      String?             @db.Text
   createdAt          DateTime            @default(now())
   updatedAt          DateTime            @updatedAt
   quoteRequest       QuoteRequest        @relation(fields: [quoteRequestId], references: [id], onDelete: Cascade)
@@ -452,6 +462,8 @@ model QuoteOfferVersion {
   amount       Decimal?   @db.Decimal(14, 2)
   currency     String
   validUntil   DateTime?
+  lines        Json?
+  deliveryDays Int?
   // `[{ field, from, to }]` against the version before; null on version 1.
   changes      Json?
   createdAt    DateTime   @default(now())

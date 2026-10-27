@@ -2,6 +2,8 @@ import 'dart:convert';
 
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../../marketplace/marketplace_api.dart' show QuoteOfferLine;
+
 /// An offer he sent with no network (p43), kept on this phone until it
 /// reaches the server. Replaying it is safe: the server keeps one live
 /// (not withdrawn) offer per request and answers a second create with 409
@@ -16,6 +18,8 @@ class ProviderQueuedOffer {
     required this.queuedAt,
     this.title,
     this.validUntil,
+    this.lines,
+    this.deliveryDays,
   });
 
   factory ProviderQueuedOffer.fromJson(Map<String, dynamic> json) =>
@@ -26,6 +30,16 @@ class ProviderQueuedOffer {
         currency: json['currency'].toString(),
         title: json['title']?.toString(),
         validUntil: DateTime.tryParse(json['validUntil']?.toString() ?? ''),
+        lines: json['lines'] is List
+            ? [
+                for (final line in json['lines'] as List)
+                  if (line is Map)
+                    QuoteOfferLine.fromJson(Map<String, dynamic>.from(line)),
+              ]
+            : null,
+        deliveryDays: json['deliveryDays'] is num
+            ? (json['deliveryDays'] as num).toInt()
+            : null,
         queuedAt:
             DateTime.tryParse(json['queuedAt']?.toString() ?? '') ??
             DateTime.now(),
@@ -37,6 +51,10 @@ class ProviderQueuedOffer {
   final String currency;
   final String? title;
   final DateTime? validUntil;
+
+  /// B-07: what the price covers, and the delivery days.
+  final List<QuoteOfferLine>? lines;
+  final int? deliveryDays;
   final DateTime queuedAt;
 
   Map<String, dynamic> toJson() => {
@@ -46,6 +64,8 @@ class ProviderQueuedOffer {
     'currency': currency,
     'title': ?title,
     'validUntil': ?validUntil?.toUtc().toIso8601String(),
+    if (lines != null) 'lines': [for (final line in lines!) line.toJson()],
+    'deliveryDays': ?deliveryDays,
     'queuedAt': queuedAt.toUtc().toIso8601String(),
   };
 }

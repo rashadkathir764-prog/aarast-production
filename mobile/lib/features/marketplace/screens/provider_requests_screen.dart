@@ -247,8 +247,9 @@ class _ProviderRequestsScreenState extends State<ProviderRequestsScreen> {
                     const SizedBox(height: 12),
                     _ExpiredCard(
                       quote: quote,
-                      onAskAgain: () =>
-                          context.push(AppRouter.providerQuote(quote.providerId)),
+                      onAskAgain: () => context.push(
+                        AppRouter.providerQuote(quote.providerId),
+                      ),
                     ),
                   ],
                   if (waiting.isNotEmpty) ...[
@@ -359,8 +360,7 @@ class _ProviderRequestsScreenState extends State<ProviderRequestsScreen> {
     final summary = context.read<DashboardSummaryProvider?>()?.summary;
     final mine = summary?.planId == widget.weddingPlanId ? summary : null;
     final place =
-        mine?.location?['fullLabel']?.toString().trim() ??
-        mine?.city?.trim();
+        mine?.location?['fullLabel']?.toString().trim() ?? mine?.city?.trim();
     final day = await showJourneySheet<DateTime>(
       context: context,
       builder: (_) => BookingRequestSheet(
@@ -392,11 +392,12 @@ class _ProviderRequestsScreenState extends State<ProviderRequestsScreen> {
   /// arrived, so the provider never sees a silent «رفض».
   Future<void> _decline(QuoteRequest quote) async {
     if (!_ownQuote(quote)) return;
-    final message = await showJourneySheet<String>(
+    final choice = await showJourneySheet<DeclineOfferChoice>(
       context: context,
       builder: (_) => DeclineOfferSheet(quote: quote),
     );
-    if (message == null || !mounted) return;
+    if (choice == null || !mounted) return;
+    final message = choice.message;
     final chat = context.read<ChatApi>();
     final marketplace = context.read<ProviderMarketplaceProvider>();
     try {
@@ -414,7 +415,7 @@ class _ProviderRequestsScreenState extends State<ProviderRequestsScreen> {
       }
       return;
     }
-    final ok = await marketplace.rejectQuote(quote);
+    final ok = await marketplace.rejectQuote(quote, reason: choice.reason);
     if (!mounted) return;
     if (ok) {
       AarastToast.showSuccess(

@@ -46,7 +46,11 @@ class ProviderBoardRow {
 
 /// A money item the board reads: its id, its name, and the directory
 /// categories whose offers land in it (G40, from the money summary).
-typedef BoardItem = ({String id, String name, List<String> providerCategoryIds});
+typedef BoardItem = ({
+  String id,
+  String name,
+  List<String> providerCategoryIds,
+});
 
 /// A recorded cost the board reads: its item and who it is with.
 typedef BoardCost = ({
@@ -67,13 +71,8 @@ String _providerName(QuoteRequest quote) =>
     ? quote.provider!.businessName.trim()
     : quote.costSuggestion?.providerName ?? 'المزود';
 
-String _requestCount(int count) => arabicCount(
-  count,
-  one: 'واحد',
-  two: 'اثنين',
-  few: 'مزودين',
-  many: 'مزود',
-);
+String _requestCount(int count) =>
+    arabicCount(count, one: 'واحد', two: 'اثنين', few: 'مزودين', many: 'مزود');
 
 String _offerCount(int count) => switch (count) {
   1 => 'وصلك عرض',
@@ -120,8 +119,11 @@ List<ProviderBoardRow> buildProviderBoard({
     }
     if (key == null) {
       final name = _quoteCategoryName(quote)?.trim();
-      key = 'category:${name?.isNotEmpty == true ? name : _providerName(quote)}';
-      extraTitles[key] = name?.isNotEmpty == true ? name! : _providerName(quote);
+      key =
+          'category:${name?.isNotEmpty == true ? name : _providerName(quote)}';
+      extraTitles[key] = name?.isNotEmpty == true
+          ? name!
+          : _providerName(quote);
       if (categoryId != null) extraCategories[key] = categoryId;
     }
     (quotesByKey[key] ??= []).add(quote);

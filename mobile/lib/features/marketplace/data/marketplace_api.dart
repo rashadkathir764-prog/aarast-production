@@ -88,7 +88,9 @@ class MarketplaceApi {
       for (final id in categoryIds ?? const <String>[])
         if (id.trim().isNotEmpty) id.trim(),
     };
-    if (categories.isEmpty && categoryId != null && categoryId.trim().isNotEmpty) {
+    if (categories.isEmpty &&
+        categoryId != null &&
+        categoryId.trim().isNotEmpty) {
       categories.add(categoryId.trim());
     }
     try {
@@ -490,21 +492,23 @@ class MarketplaceApi {
     required String quoteOfferId,
     required int versionNo,
   }) async {
-    await _apiClient.patchJson(
-      '/api/v1/quote-offers/$quoteOfferId/accept',
-      {'versionNo': versionNo},
-    );
+    await _apiClient.patchJson('/api/v1/quote-offers/$quoteOfferId/accept', {
+      'versionNo': versionNo,
+    });
     return getQuoteRequest(quoteRequestId);
   }
 
+  /// B-11: [reason] is one of `PRICE`, `CHOSE_OTHER`, `DATE`, `NONE`.
   Future<QuoteRequest> rejectQuoteOffer({
     required String quoteRequestId,
     required String quoteOfferId,
+    String? reason,
+    String? message,
   }) async {
-    await _apiClient.patchJson(
-      '/api/v1/quote-offers/$quoteOfferId/reject',
-      const {},
-    );
+    await _apiClient.patchJson('/api/v1/quote-offers/$quoteOfferId/reject', {
+      'reason': ?reason,
+      'message': ?message,
+    });
     return getQuoteRequest(quoteRequestId);
   }
 
@@ -515,9 +519,13 @@ class MarketplaceApi {
     required String quoteRequestId,
     DateTime? eventDate,
   }) async {
-    await _apiClient.postJson('/api/v1/me/quote-requests/$quoteRequestId/booking', {
-      if (eventDate != null) 'eventDate': MarketplaceBooking.dayParam(eventDate),
-    });
+    await _apiClient.postJson(
+      '/api/v1/me/quote-requests/$quoteRequestId/booking',
+      {
+        if (eventDate != null)
+          'eventDate': MarketplaceBooking.dayParam(eventDate),
+      },
+    );
     return getQuoteRequest(quoteRequestId);
   }
 
@@ -538,7 +546,10 @@ class MarketplaceApi {
     required String quoteRequestId,
     required String bookingId,
   }) async {
-    await _apiClient.patchJson('/api/v1/me/bookings/$bookingId/cancel', const {});
+    await _apiClient.patchJson(
+      '/api/v1/me/bookings/$bookingId/cancel',
+      const {},
+    );
     return getQuoteRequest(quoteRequestId);
   }
 
@@ -1083,13 +1094,24 @@ class ProviderDashboardApi {
     return ProviderPackage.fromJson(json);
   }
 
+  /// [declineReason] (B-05) is one of `BUSY_THAT_DAY`, `OUT_OF_AREA`,
+  /// `NOT_MY_SERVICE`, `OTHER`; with [blockDay] the server closes the
+  /// request's day in the same step, unless a confirmed booking holds it.
   Future<QuoteRequest> updateQuoteRequestStatus({
     required String quoteRequestId,
     required String status,
+    String? declineReason,
+    String? declineMessage,
+    bool blockDay = false,
   }) async {
     final json = await _apiClient.patchJson(
       '/api/v1/provider/me/quote-requests/$quoteRequestId/status',
-      {'status': status},
+      {
+        'status': status,
+        'declineReason': ?declineReason,
+        'declineMessage': ?declineMessage,
+        if (blockDay) 'blockDay': true,
+      },
     );
     return QuoteRequest.fromJson(json);
   }
@@ -1101,17 +1123,23 @@ class ProviderDashboardApi {
     required String currency,
     String? title,
     DateTime? validUntil,
+    List<QuoteOfferLine>? lines,
+    int? deliveryDays,
   }) async {
-    final json = await _apiClient
-        .postJson('/api/v1/provider/me/quote-requests/$quoteRequestId/offers', {
-          'message': message.trim(),
-          if (title != null && title.trim().isNotEmpty) 'title': title.trim(),
-          'amount': amount.trim(),
-          'currency': currency.trim().toUpperCase(),
-          // An instant with its zone, so the server does not read local time.
-          if (validUntil != null)
-            'validUntil': validUntil.toUtc().toIso8601String(),
-        });
+    final json = await _apiClient.postJson(
+      '/api/v1/provider/me/quote-requests/$quoteRequestId/offers',
+      {
+        'message': message.trim(),
+        if (title != null && title.trim().isNotEmpty) 'title': title.trim(),
+        'amount': amount.trim(),
+        'currency': currency.trim().toUpperCase(),
+        // An instant with its zone, so the server does not read local time.
+        if (validUntil != null)
+          'validUntil': validUntil.toUtc().toIso8601String(),
+        if (lines != null) 'lines': [for (final line in lines) line.toJson()],
+        'deliveryDays': ?deliveryDays,
+      },
+    );
     return QuoteOffer.fromJson(json);
   }
 
@@ -1122,16 +1150,22 @@ class ProviderDashboardApi {
     required String currency,
     String? title,
     DateTime? validUntil,
+    List<QuoteOfferLine>? lines,
+    int? deliveryDays,
   }) async {
-    final json = await _apiClient
-        .patchJson('/api/v1/provider/me/quote-offers/$quoteOfferId', {
-          'message': message.trim(),
-          if (title != null && title.trim().isNotEmpty) 'title': title.trim(),
-          'amount': amount.trim(),
-          'currency': currency.trim().toUpperCase(),
-          if (validUntil != null)
-            'validUntil': validUntil.toUtc().toIso8601String(),
-        });
+    final json = await _apiClient.patchJson(
+      '/api/v1/provider/me/quote-offers/$quoteOfferId',
+      {
+        'message': message.trim(),
+        if (title != null && title.trim().isNotEmpty) 'title': title.trim(),
+        'amount': amount.trim(),
+        'currency': currency.trim().toUpperCase(),
+        if (validUntil != null)
+          'validUntil': validUntil.toUtc().toIso8601String(),
+        if (lines != null) 'lines': [for (final line in lines) line.toJson()],
+        'deliveryDays': ?deliveryDays,
+      },
+    );
     return QuoteOffer.fromJson(json);
   }
 

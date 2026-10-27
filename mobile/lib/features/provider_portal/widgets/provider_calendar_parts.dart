@@ -48,7 +48,8 @@ class ProviderDay {
 
   /// Places left for another confirmation (never below zero: a number he
   /// lowered under the day's bookings keeps them).
-  int get left => capacity - confirmed.length < 0 ? 0 : capacity - confirmed.length;
+  int get left =>
+      capacity - confirmed.length < 0 ? 0 : capacity - confirmed.length;
 
   /// A full day first, then a request to answer, then a day with room, then
   /// a closed day: a closed day with a request still shows the request,
@@ -157,12 +158,12 @@ String? providerHijriMonthsLabel(DateTime month) {
 /// The word under a day's number; [left] is the room a day has (B-20).
 String? providerDayWord(ProviderDayState state, {int left = 0}) =>
     switch (state) {
-  ProviderDayState.booked => 'محجوز',
-  ProviderDayState.room => 'باقي $left',
-  ProviderDayState.waiting => 'ينتظرك',
-  ProviderDayState.closed => 'مقفول',
-  ProviderDayState.free => null,
-};
+      ProviderDayState.booked => 'محجوز',
+      ProviderDayState.room => 'باقي $left',
+      ProviderDayState.waiting => 'ينتظرك',
+      ProviderDayState.closed => 'مقفول',
+      ProviderDayState.free => null,
+    };
 
 /// A month of days, Saturday first (prototype p28): 50-point rounded cells
 /// on the canvas, each with its number and, when it holds something, its

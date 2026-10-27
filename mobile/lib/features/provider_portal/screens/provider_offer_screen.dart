@@ -10,8 +10,9 @@ import '../../../core/utils/currency_label.dart';
 import '../../../core/widgets/aarast_toast.dart';
 import '../../../core/widgets/aarast_ui.dart';
 import '../../marketplace/marketplace_api.dart'
-    show ProviderPackage, QuoteRequest;
+    show ProviderPackage, QuoteOfferLine, QuoteRequest;
 import '../providers/provider_dashboard_provider.dart';
+import '../widgets/provider_offer_lines.dart';
 import '../widgets/provider_request_parts.dart';
 
 /// How long an offer stays open, in days (p17: 10 by default, D35).
@@ -47,6 +48,10 @@ class _ProviderOfferScreenState extends State<ProviderOfferScreen> {
   String? _amountError;
   String? _messageError;
 
+  /// B-07: what the price covers; B-23: the delivery days after the wedding.
+  List<QuoteOfferLine> _lines = const [];
+  int? _deliveryDays;
+
   @override
   void initState() {
     super.initState();
@@ -76,6 +81,8 @@ class _ProviderOfferScreenState extends State<ProviderOfferScreen> {
         _amount.text = providerGroupedAmount(offer.amount) ?? '';
         _message.text = offer.message ?? '';
         _title = offer.title;
+        _lines = offer.lines;
+        _deliveryDays = offer.deliveryDays;
         if (quote.pendingOffer != null) _validityDays = null;
         for (final package in providerOfferPackages(
           dashboard.packages,
@@ -208,6 +215,33 @@ class _ProviderOfferScreenState extends State<ProviderOfferScreen> {
                   },
                 ),
                 const SizedBox(height: 12),
+                ProviderOfferLinesEditor(
+                  lines: _lines,
+                  onChanged: (lines) => setState(() => _lines = lines),
+                ),
+                const SizedBox(height: 12),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  crossAxisAlignment: WrapCrossAlignment.center,
+                  children: [
+                    Text(
+                      'التسليم بعد العرس',
+                      style: JourneyType.of(
+                        JourneyType.bodySmall,
+                        color: AarastV3Color.textMuted,
+                      ),
+                    ),
+                    for (final days in providerOfferDeliveryChoices)
+                      JourneyChip(
+                        key: Key('provider-offer-delivery-${days ?? 0}'),
+                        label: providerOfferDeliveryLabel(days),
+                        selected: _deliveryDays == days,
+                        onTap: () => setState(() => _deliveryDays = days),
+                      ),
+                  ],
+                ),
+                const SizedBox(height: 12),
                 Wrap(
                   spacing: 8,
                   runSpacing: 8,
@@ -283,6 +317,8 @@ class _ProviderOfferScreenState extends State<ProviderOfferScreen> {
         amount: _amount.text.trim().replaceAll(',', ''),
         message: _message.text.trim(),
         validUntil: _validUntil(quote),
+        lines: _lines,
+        deliveryDays: _deliveryDays,
       ),
     );
     if (sent != true || !mounted) return;
@@ -340,6 +376,8 @@ class _OfferPreviewSheet extends StatefulWidget {
     required this.amount,
     required this.message,
     required this.validUntil,
+    this.lines = const [],
+    this.deliveryDays,
   });
 
   final QuoteRequest quote;
@@ -347,6 +385,8 @@ class _OfferPreviewSheet extends StatefulWidget {
   final String amount;
   final String message;
   final DateTime? validUntil;
+  final List<QuoteOfferLine> lines;
+  final int? deliveryDays;
 
   @override
   State<_OfferPreviewSheet> createState() => _OfferPreviewSheetState();
@@ -460,6 +500,8 @@ class _OfferPreviewSheetState extends State<_OfferPreviewSheet> {
             amount: widget.amount,
             currency: currency,
             validUntil: widget.validUntil,
+            lines: widget.lines,
+            deliveryDays: widget.deliveryDays,
           )
         : await dashboard.updateQuoteOffer(
             quoteOfferId: existing.id,
@@ -468,6 +510,8 @@ class _OfferPreviewSheetState extends State<_OfferPreviewSheet> {
             amount: widget.amount,
             currency: currency,
             validUntil: widget.validUntil,
+            lines: widget.lines,
+            deliveryDays: widget.deliveryDays,
           )
         ? ProviderOfferSend.sent
         : ProviderOfferSend.failed;

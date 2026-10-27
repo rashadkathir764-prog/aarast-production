@@ -538,6 +538,9 @@ export class MarketplacePresenter {
       booking: quote.booking ? toBookingResponse(quote.booking) : null,
       acceptedAt: quote.acceptedAt,
       rejectedAt: quote.rejectedAt,
+      // B-05: why the provider declined, and his words.
+      declineReason: quote.declineReason ?? null,
+      declineMessage: quote.declineMessage ?? null,
       cancelledAt: quote.cancelledAt,
       expiresAt: quote.expiresAt, // B-04: the answer deadline
       expiredAt: quote.expiredAt,

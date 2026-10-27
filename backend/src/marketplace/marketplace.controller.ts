@@ -22,6 +22,7 @@ import { ListProvidersQueryDto } from "./dto/list-providers-query.dto";
 import { ListServicesQueryDto } from "./dto/list-services-query.dto";
 import { UpdateProviderReviewDto } from "./dto/update-provider-review.dto";
 import { MarketplaceService } from "./marketplace.service";
+import { RejectQuoteOfferDto } from "./dto/reject-quote-offer.dto";
 
 @Controller("api/v1/cities")
 export class CitiesController {
@@ -285,7 +286,8 @@ export class ApiV1QuoteOffersController {
   rejectOffer(
     @CurrentUser() currentUser: AuthenticatedUser,
     @Param("id") id: string,
+    @Body() dto: RejectQuoteOfferDto = {},
   ) {
-    return this.marketplaceService.rejectQuoteOffer(currentUser, id);
+    return this.marketplaceService.rejectQuoteOffer(currentUser, id, dto);
   }
 }

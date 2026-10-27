@@ -17,7 +17,18 @@ export interface QuoteOfferVersionFields {
   amount: Prisma.Decimal | string | null;
   currency: string;
   validUntil: Date | null;
+  lines?: Prisma.JsonValue | null;
+  deliveryDays?: number | null;
   changes: Prisma.InputJsonValue | typeof Prisma.DbNull;
+}
+
+/** B-07: lines as stored, or the database null. */
+export function offerLinesJson(
+  lines: Prisma.JsonValue | null | undefined,
+): Prisma.InputJsonValue | typeof Prisma.DbNull {
+  return lines === null || lines === undefined
+    ? Prisma.DbNull
+    : (lines as Prisma.InputJsonValue);
 }
 
 export function createQuoteOfferVersion(client: Client, fields: QuoteOfferVersionFields) {
@@ -30,6 +41,8 @@ export function createQuoteOfferVersion(client: Client, fields: QuoteOfferVersio
       amount: fields.amount,
       currency: fields.currency,
       validUntil: fields.validUntil,
+      lines: offerLinesJson(fields.lines),
+      deliveryDays: fields.deliveryDays ?? null,
       changes: fields.changes,
     },
   });
@@ -41,6 +54,8 @@ export interface QuoteOfferRevision {
   amount: string;
   currency: string;
   validUntil: Date | null;
+  lines: Prisma.JsonValue | null;
+  deliveryDays: number | null;
   currentVersionNo: number;
   versionChanges: Prisma.InputJsonValue;
   revisedAt: Date;
@@ -63,6 +78,8 @@ export function reviseQuoteOffer(
       amount: revision.amount,
       currency: revision.currency,
       validUntil: revision.validUntil,
+      lines: offerLinesJson(revision.lines),
+      deliveryDays: revision.deliveryDays,
       currentVersionNo: revision.currentVersionNo,
       versionChanges: revision.versionChanges,
       revisedAt: revision.revisedAt,

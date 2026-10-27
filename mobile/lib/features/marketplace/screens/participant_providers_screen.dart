@@ -77,7 +77,8 @@ class _ParticipantProvidersScreenState
             const SizedBox(height: 12),
             JourneyNote(
               key: const ValueKey('participant-providers-read-only'),
-              text: 'المواعيد ومين محجوز. الأسعار والعروض عند ${widget.ownerWord}.',
+              text:
+                  'المواعيد ومين محجوز. الأسعار والعروض عند ${widget.ownerWord}.',
               icon: LucideIcons.eye,
               color: AarastV3Color.textMuted,
               soft: AarastV3Color.paper,

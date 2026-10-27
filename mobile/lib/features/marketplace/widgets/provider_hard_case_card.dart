@@ -7,6 +7,15 @@ import '../models/marketplace_models.dart';
 import '../models/provider_board.dart';
 import 'provider_board_view.dart' show providerServiceIcon;
 
+/// B-05: a provider's decline reason in the customer's words.
+String? providerDeclineReasonWords(String? reason) => switch (reason) {
+  'BUSY_THAT_DAY' => 'مشغولين ذاك اليوم',
+  'OUT_OF_AREA' => 'المكان خارج منطقتهم',
+  'NOT_MY_SERVICE' => 'ما يقدّمون هذي الخدمة',
+  'OTHER' => 'لسبب ثاني',
+  _ => null,
+};
+
 /// x09: a request that went wrong and still leaves its service open.
 enum ProviderHardCaseKind {
   /// The provider declined before sending any offer.
@@ -200,9 +209,12 @@ class ProviderHardCaseCard extends StatelessWidget {
     switch (hardCase.kind) {
       case ProviderHardCaseKind.declined:
         final when = quote.rejectedAt;
-        return when == null
-            ? 'اعتذروا عن طلبك.'
-            : 'اعتذروا عن طلبك ${_dayWord(when, now)}.';
+        final base = when == null
+            ? 'اعتذروا عن طلبك'
+            : 'اعتذروا عن طلبك ${_dayWord(when, now)}';
+        // B-05: the provider's reason, when he gave one.
+        final why = providerDeclineReasonWords(quote.declineReason);
+        return why == null ? '$base.' : '$base: $why.';
       case ProviderHardCaseKind.seenNoReply:
         return 'فتح طلبك ${_dayWord(quote.updatedAt!, now)}، وما رد بعد.';
       case ProviderHardCaseKind.withdrawn:

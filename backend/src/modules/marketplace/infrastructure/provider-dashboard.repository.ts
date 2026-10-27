@@ -101,6 +101,8 @@ export interface OfferFields {
   amount: string;
   currency: string;
   validUntil: Date | null;
+  lines: Prisma.JsonValue | null;
+  deliveryDays: number | null;
 }
 
 export function lockExistingApplication(client: Client, userId: string) {
@@ -237,10 +239,15 @@ export function findLockedProviderQuoteRequest(client: Client, id: string, provi
 export function transitionProviderQuoteRequest(
   client: Client, id: string, previousStatus: QuoteRequestStatus,
   status: QuoteRequestStatus, rejectedAt?: Date,
+  decline?: { reason: string | null; message: string | null },
 ) {
   return client.quoteRequest.updateMany({
     where: { id, status: previousStatus },
-    data: { status, ...(rejectedAt ? { rejectedAt } : {}) },
+    data: {
+      status,
+      ...(rejectedAt ? { rejectedAt } : {}),
+      ...(decline ? { declineReason: decline.reason, declineMessage: decline.message } : {}),
+    },
   });
 }
 
@@ -257,7 +264,13 @@ export function findExistingQuoteOffer(client: Client, quoteRequestId: string) {
 }
 
 export function createQuoteOffer(client: Client, fields: OfferFields) {
-  return client.quoteOffer.create({ data: fields });
+  const { lines, ...rest } = fields;
+  return client.quoteOffer.create({
+    data: {
+      ...rest,
+      lines: lines === null ? Prisma.DbNull : (lines as Prisma.InputJsonValue),
+    },
+  });
 }
 
 export function markQuoteRequestResponded(client: Client, quoteRequestId: string) {

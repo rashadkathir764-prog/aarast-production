@@ -56,9 +56,7 @@ class _JoiningServiceSheet extends StatefulWidget {
 
 class _JoiningServiceSheetState extends State<_JoiningServiceSheet> {
   late final _title = TextEditingController(text: widget.title ?? '');
-  late final _price = TextEditingController(
-    text: _wholeAmount(widget.price),
-  );
+  late final _price = TextEditingController(text: _wholeAmount(widget.price));
   late final _about = TextEditingController(text: widget.about ?? '');
   bool _attempted = false;
   bool _saving = false;

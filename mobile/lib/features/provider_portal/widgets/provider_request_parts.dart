@@ -587,8 +587,7 @@ class ProviderRequestFacts extends StatelessWidget {
       if (quote.shareBudget)
         if (providerBudgetLabel(quote) case final budget?) ('ميزانيته', budget),
       if (quote.shareContact)
-        if (quote.contactPhone?.trim() case final phone?
-            when phone.isNotEmpty)
+        if (quote.contactPhone?.trim() case final phone? when phone.isNotEmpty)
           ('رقمه', phone),
     ];
     if (facts.isEmpty) return const SizedBox.shrink();

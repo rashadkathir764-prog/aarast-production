@@ -33,6 +33,9 @@ import {
 interface RejectQuoteOfferInput {
   id: string;
   currentUser: AuthenticatedUser;
+  /** B-11: why, as the provider reads it; never a budget figure. */
+  reason?: string | null;
+  message?: string | null;
 }
 
 export async function rejectQuoteOfferInTransaction(
@@ -123,7 +126,10 @@ export async function rejectQuoteOfferInTransaction(
     );
 
     const rejectedAt = new Date();
-    const offerTransition = await quoteRepository.rejectPendingOffer(tx, id);
+    const offerTransition = await quoteRepository.rejectPendingOffer(tx, id, {
+      reason: input.reason ?? null,
+      message: input.message ?? null,
+    });
     if (offerTransition.count !== 1) {
       throw new ConflictException("Quote offer is not pending");
     }
@@ -180,6 +186,7 @@ export async function rejectQuoteOfferInTransaction(
           quoteRequestId: current.quoteRequestId,
           quoteOfferId: current.id,
           providerId: current.providerId,
+          reason: input.reason ?? null,
         }),
       );
     }

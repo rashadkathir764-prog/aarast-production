@@ -1092,7 +1092,7 @@ class _FakeMarketplaceProvider extends ProviderMarketplaceProvider {
   }
 
   @override
-  Future<bool> rejectQuote(QuoteRequest quote) async {
+  Future<bool> rejectQuote(QuoteRequest quote, {String? reason}) async {
     rejectedQuoteIds.add(quote.id);
     return true;
   }

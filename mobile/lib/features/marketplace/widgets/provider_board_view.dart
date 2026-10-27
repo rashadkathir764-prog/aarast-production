@@ -28,7 +28,10 @@ class ProviderBoardView extends StatelessWidget {
           children: [
             Text(
               'ما في خدمات في خطتك بعد',
-              style: JourneyType.of(JourneyType.title, weight: JourneyType.bold),
+              style: JourneyType.of(
+                JourneyType.title,
+                weight: JourneyType.bold,
+              ),
             ),
             const SizedBox(height: 4),
             Text(

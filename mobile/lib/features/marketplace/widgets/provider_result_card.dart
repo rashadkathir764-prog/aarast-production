@@ -96,10 +96,7 @@ class ProviderResultCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final where = [
-      ?_clean(categoryLabel),
-      ?_clean(locationLabel),
-    ].join(' · ');
+    final where = [?_clean(categoryLabel), ?_clean(locationLabel)].join(' · ');
     final price = _clean(priceLabel);
     final badges = <Widget>[
       if (_clean(budgetStatusLabel) case final budget?)
@@ -244,7 +241,9 @@ class ProviderResultCard extends StatelessWidget {
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
                         style: JourneyType.of(
-                          price == null ? JourneyType.bodyLarge : JourneyType.small,
+                          price == null
+                              ? JourneyType.bodyLarge
+                              : JourneyType.small,
                           weight: JourneyType.bold,
                           color: AarastV3Color.textMuted,
                         ),
@@ -303,7 +302,9 @@ class _Cover extends StatelessWidget {
         fit: StackFit.expand,
         children: [
           // g02 «توفير البيانات»: no photo loads in the list.
-          if (url == null || url.isEmpty || (context.watch<DevicePreferences?>()?.dataSaver ?? false))
+          if (url == null ||
+              url.isEmpty ||
+              (context.watch<DevicePreferences?>()?.dataSaver ?? false))
             placeholder
           else
             Image.network(

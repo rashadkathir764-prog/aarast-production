@@ -551,6 +551,8 @@ class QuoteRequest {
     this.updatedAt,
     this.expiresAt,
     this.expiredAt,
+    this.declineReason,
+    this.declineMessage,
     this.shareBudget = false,
     this.shareContact = false,
   }) : _status = status,
@@ -612,6 +614,8 @@ class QuoteRequest {
       updatedAt: _dateOrNull(json['updatedAt']),
       expiresAt: _dateOrNull(json['expiresAt']),
       expiredAt: _dateOrNull(json['expiredAt']),
+      declineReason: json['declineReason']?.toString(),
+      declineMessage: json['declineMessage']?.toString(),
       shareBudget: json['shareBudget'] == true,
       shareContact: json['shareContact'] == true,
     );
@@ -676,6 +680,11 @@ class QuoteRequest {
   /// B-04: when it ended without an answer (status EXPIRED).
   final DateTime? expiredAt;
 
+  /// B-05: why the provider declined (`BUSY_THAT_DAY`, `OUT_OF_AREA`,
+  /// `NOT_MY_SERVICE`, `OTHER`), and his words.
+  final String? declineReason;
+  final String? declineMessage;
+
   /// B-08: what the customer showed the provider.
   final bool shareBudget;
   final bool shareContact;
@@ -686,8 +695,15 @@ class QuoteRequest {
   /// received; otherwise the provider declined it (none sent, or his offer
   /// withdrawn, B-03). The offers' statuses are the record of who said no.
   bool get rejectedByCustomer =>
-      status == 'REJECTED' &&
-      offers.any((offer) => offer.status == 'REJECTED');
+      status == 'REJECTED' && offers.any((offer) => offer.status == 'REJECTED');
+
+  /// B-11: why the customer turned the offer down, when given.
+  String? get customerRejectReason {
+    for (final offer in offers.reversed) {
+      if (offer.status == 'REJECTED') return offer.rejectReason;
+    }
+    return null;
+  }
 
   /// B-03: the latest offer, when the provider took it back and has not
   /// answered again (the request waits for him: VIEWED).
@@ -729,6 +745,35 @@ class QuoteRequest {
       lifecycleStatus == 'READY_TO_SEND';
 }
 
+/// B-07: one line of what an offer's price covers.
+class QuoteOfferLine {
+  const QuoteOfferLine({required this.label, required this.kind, this.amount});
+
+  factory QuoteOfferLine.fromJson(Map<String, dynamic> json) => QuoteOfferLine(
+    label: json['label']?.toString() ?? '',
+    kind: json['kind']?.toString() ?? 'INCLUDED',
+    amount: json['amount']?.toString(),
+  );
+
+  final String label;
+
+  /// `INCLUDED` (يشمل), `EXCLUDED` (ما يشمل) or `EXTRA` (إضافة).
+  final String kind;
+
+  /// An extra's price; null for the other kinds or without money access.
+  final String? amount;
+
+  bool get isIncluded => kind == 'INCLUDED';
+  bool get isExcluded => kind == 'EXCLUDED';
+  bool get isExtra => kind == 'EXTRA';
+
+  Map<String, dynamic> toJson() => {
+    'label': label,
+    'kind': kind,
+    if (isExtra && amount != null && amount!.isNotEmpty) 'amount': amount,
+  };
+}
+
 class QuoteOffer {
   const QuoteOffer({
     required this.id,
@@ -742,10 +787,14 @@ class QuoteOffer {
     this.versionNo = 1,
     this.changes = const [],
     this.withdrawnAt,
+    this.lines = const [],
+    this.deliveryDays,
+    this.rejectReason,
   });
 
   factory QuoteOffer.fromJson(Map<String, dynamic> json) {
     final changes = json['changes'];
+    final lines = json['lines'];
     return QuoteOffer(
       id: json['id'].toString(),
       status: json['status']?.toString() ?? 'PENDING',
@@ -769,8 +818,28 @@ class QuoteOffer {
                 .toList()
           : const [],
       withdrawnAt: _dateOrNull(json['withdrawnAt']),
+      lines: lines is List
+          ? lines
+                .whereType<Map>()
+                .map(
+                  (item) =>
+                      QuoteOfferLine.fromJson(Map<String, dynamic>.from(item)),
+                )
+                .where((line) => line.label.isNotEmpty)
+                .toList()
+          : const [],
+      deliveryDays: _intOrNull(json['deliveryDays']),
+      rejectReason: json['rejectReason']?.toString(),
     );
   }
+
+  /// B-07: what the price covers, and the days after the wedding to deliver.
+  final List<QuoteOfferLine> lines;
+  final int? deliveryDays;
+
+  /// B-11: why the customer turned it down (`PRICE`, `CHOSE_OTHER`, `DATE`,
+  /// `NONE`).
+  final String? rejectReason;
 
   final String id;
   final String status;
@@ -926,9 +995,10 @@ class ProviderDashboardProfile {
       description: json['description']?.toString(),
       reviewNote: json['reviewNote']?.toString(),
       fieldNotes: {
-        for (final entry in (json['fieldNotes'] is List
-            ? json['fieldNotes'] as List
-            : const []))
+        for (final entry
+            in (json['fieldNotes'] is List
+                ? json['fieldNotes'] as List
+                : const []))
           if (entry is Map &&
               entry['field'] != null &&
               (entry['note']?.toString().trim().isNotEmpty ?? false))

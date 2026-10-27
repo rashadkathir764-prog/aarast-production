@@ -49,6 +49,8 @@ class OfflineApi extends RequestsApi {
     required String currency,
     String? title,
     DateTime? validUntil,
+    List<QuoteOfferLine>? lines,
+    int? deliveryDays,
   }) {
     if (offline) throw _noNetwork;
     if (alreadyExists) {
@@ -389,5 +391,7 @@ class _BookingOfflineApi extends RequestsApi {
     required String bookingId,
     required String action,
     String? note,
+    List<QuoteOfferLine>? lines,
+    int? deliveryDays,
   }) async => throw const ApiException('بدون نت', isNetworkFailure: true);
 }

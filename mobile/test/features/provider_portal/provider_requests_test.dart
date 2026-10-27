@@ -872,10 +872,17 @@ class RequestsApi extends ProviderDashboardApi {
   Future<QuoteRequest> updateQuoteRequestStatus({
     required String quoteRequestId,
     required String status,
+    String? declineReason,
+    String? declineMessage,
+    bool blockDay = false,
   }) async {
     statusUpdates.add('$quoteRequestId:$status');
     final quote = _quotes.firstWhere((item) => item['id'] == quoteRequestId);
     quote['status'] = status;
+    if (blockDay) {
+      final day = DateTime.parse(quote['eventDate'].toString());
+      blocked.add(DateTime(day.year, day.month, day.day));
+    }
     return QuoteRequest.fromJson(quote);
   }
 
@@ -887,6 +894,8 @@ class RequestsApi extends ProviderDashboardApi {
     required String currency,
     String? title,
     DateTime? validUntil,
+    List<QuoteOfferLine>? lines,
+    int? deliveryDays,
   }) async {
     created.add((
       title: title,

@@ -61,9 +61,11 @@ class _BookingLine extends StatelessWidget {
           children: [
             JourneyIconTile(
               icon: providerServiceIcon(
-                [booking.categoryName, booking.serviceTitle, service]
-                    .whereType<String>()
-                    .join(' '),
+                [
+                  booking.categoryName,
+                  booking.serviceTitle,
+                  service,
+                ].whereType<String>().join(' '),
               ),
               color: AarastV3Color.cobalt,
               soft: AarastV3Color.cobaltSoft,

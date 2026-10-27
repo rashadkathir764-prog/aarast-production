@@ -119,10 +119,18 @@ export function findOfferForRejection(client: Client, id: string) {
   return client.quoteOffer.findUnique({ where: { id }, include: { quoteRequest: true } });
 }
 
-export function rejectPendingOffer(client: Client, id: string) {
+export function rejectPendingOffer(
+  client: Client,
+  id: string,
+  why: { reason: string | null; message: string | null } = { reason: null, message: null },
+) {
   return client.quoteOffer.updateMany({
     where: { id, status: QuoteOfferStatus.PENDING },
-    data: { status: QuoteOfferStatus.REJECTED },
+    data: {
+      status: QuoteOfferStatus.REJECTED,
+      rejectReason: why.reason,
+      rejectMessage: why.message,
+    },
   });
 }
 

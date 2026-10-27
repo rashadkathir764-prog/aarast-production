@@ -52,6 +52,13 @@ class _OffersRow extends StatelessWidget {
   }
 }
 
+/// B-07: an extra's price, grouped, with the offer's currency.
+String providerOfferExtraPrice(String raw, String? currency) {
+  final value = num.tryParse(raw.replaceAll(',', ''));
+  if (value == null) return raw;
+  return formatCompactMoney(value, currencyCode: currency ?? 'YER');
+}
+
 class _OfferCard extends StatelessWidget {
   const _OfferCard({
     required this.quote,
@@ -86,7 +93,10 @@ class _OfferCard extends StatelessWidget {
         children: [
           Text(
             quoteProviderName(quote),
-            style: JourneyType.of(JourneyType.bodyLarge, weight: JourneyType.bold),
+            style: JourneyType.of(
+              JourneyType.bodyLarge,
+              weight: JourneyType.bold,
+            ),
           ),
           const SizedBox(height: 8),
           Text(
@@ -128,6 +138,55 @@ class _OfferCard extends StatelessWidget {
                 maxLines: 4,
                 overflow: TextOverflow.ellipsis,
                 style: JourneyType.of(JourneyType.body),
+              ),
+            ),
+          // B-07: what the price covers, and the delivery promise (B-23).
+          if (offer.lines.isNotEmpty) ...[
+            for (final line in offer.lines)
+              Padding(
+                key: ValueKey('requests-offer-line-${quote.id}-${line.label}'),
+                padding: const EdgeInsets.only(bottom: 4),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Icon(
+                      line.isExcluded
+                          ? LucideIcons.minus
+                          : line.isExtra
+                          ? LucideIcons.plus
+                          : LucideIcons.check,
+                      size: 16,
+                      color: line.isExcluded
+                          ? AarastV3Color.danger
+                          : AarastV3Color.mint,
+                    ),
+                    const SizedBox(width: 6),
+                    Expanded(
+                      child: Text(
+                        [
+                          line.isExcluded
+                              ? 'ما يشمل: ${line.label}'
+                              : line.isExtra
+                              ? 'إضافة: ${line.label}'
+                              : line.label,
+                          if (line.amount case final price?)
+                            providerOfferExtraPrice(price, offer.currency),
+                        ].join(' · '),
+                        style: JourneyType.of(JourneyType.body),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            const SizedBox(height: 4),
+          ],
+          if (offer.deliveryDays case final days?)
+            Text(
+              'التسليم خلال $days يوم بعد العرس',
+              key: ValueKey('requests-offer-delivery-${quote.id}'),
+              style: JourneyType.of(
+                JourneyType.small,
+                color: AarastV3Color.textMuted,
               ),
             ),
           if (provider != null && provider.ratingCount > 0)
@@ -230,7 +289,11 @@ class _ChosenCard extends StatelessWidget {
         AarastV3Color.brandAccentStrong,
         AarastV3Color.brandAccentSoft,
       ),
-      'DECLINED' => ('اعتذر المزود', AarastV3Color.danger, AarastV3Color.dangerSoft),
+      'DECLINED' => (
+        'اعتذر المزود',
+        AarastV3Color.danger,
+        AarastV3Color.dangerSoft,
+      ),
       'CANCELLED' => ('ملغي', AarastV3Color.textMuted, AarastV3Color.canvas),
       _ => (
         context.say('اخترته', 'اخترتيه'),
@@ -281,7 +344,10 @@ class _ChosenCard extends StatelessWidget {
           if (amount != null)
             Text(
               amount,
-              style: JourneyType.of(JourneyType.title, weight: JourneyType.bold),
+              style: JourneyType.of(
+                JourneyType.title,
+                weight: JourneyType.bold,
+              ),
             ),
           Text(
             detail,
@@ -421,7 +487,10 @@ class _ExpiredCard extends StatelessWidget {
         const SizedBox(height: 6),
         Text(
           'السعر ممكن يتغير في العرض الجديد.',
-          style: JourneyType.of(JourneyType.small, color: AarastV3Color.textMuted),
+          style: JourneyType.of(
+            JourneyType.small,
+            color: AarastV3Color.textMuted,
+          ),
         ),
       ],
     );

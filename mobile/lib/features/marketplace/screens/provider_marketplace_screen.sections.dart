@@ -26,7 +26,10 @@ class _MarketplaceSearch extends StatelessWidget {
           focusNode: focusNode,
           textInputAction: TextInputAction.search,
           onSubmitted: provider.setSearch,
-          style: JourneyType.of(JourneyType.bodyLarge, weight: JourneyType.bold),
+          style: JourneyType.of(
+            JourneyType.bodyLarge,
+            weight: JourneyType.bold,
+          ),
           cursorColor: AarastV3Color.cobalt,
           decoration: InputDecoration(
             hintText: context.say(
@@ -176,7 +179,9 @@ class _DirectoryFilterSheet extends StatelessWidget {
                   label: 'الكل',
                   selected:
                       provider.categoryId == null &&
-                      (provider.budgetMatchIntent?.providerCategoryIds
+                      (provider
+                              .budgetMatchIntent
+                              ?.providerCategoryIds
                               .isEmpty ??
                           true),
                   selectedColor: AarastV3Color.cobalt,

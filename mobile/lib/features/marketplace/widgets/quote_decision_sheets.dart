@@ -201,6 +201,10 @@ class _BookingRequestSheetState extends State<BookingRequestSheet> {
 
 /// x10 «ما يناسبك العرض؟»: a reason only picks the wording; the message goes
 /// to the provider and the budget is never mentioned. Returns the message.
+/// What [DeclineOfferSheet] returns: the words that go to the provider and
+/// the reason the server keeps (B-11: `PRICE`, `CHOSE_OTHER`, `DATE`, `NONE`).
+typedef DeclineOfferChoice = ({String message, String reason});
+
 class DeclineOfferSheet extends StatefulWidget {
   const DeclineOfferSheet({required this.quote, super.key});
 
@@ -218,6 +222,9 @@ class _DeclineOfferSheetState extends State<DeclineOfferSheet> {
     ('الموعد ما يناسب', 'الموعد ما يناسب'),
     ('بدون سبب', 'بدون سبب'),
   ];
+
+  /// B-11: the server's code for each reason, in the same order.
+  static const _reasonCodes = ['PRICE', 'CHOSE_OTHER', 'DATE', 'NONE'];
   int _reason = 0;
   bool _editing = false;
   final _message = TextEditingController();
@@ -238,8 +245,7 @@ class _DeclineOfferSheetState extends State<DeclineOfferSheet> {
     0 =>
       'الله يعطيكم العافية. شكرًا على العرض، السعر هذي المرة فوق اللي أقدر عليه. إذا عندكم باقة أخف نتشرف.',
     1 => 'الله يعطيكم العافية. شكرًا على العرض، اخترنا مزود ثاني هذي المرة.',
-    2 =>
-      'الله يعطيكم العافية. شكرًا على العرض، الموعد ما يناسبنا هذي المرة.',
+    2 => 'الله يعطيكم العافية. شكرًا على العرض، الموعد ما يناسبنا هذي المرة.',
     _ => 'الله يعطيكم العافية. شكرًا على العرض، ما نقدر نكمل معكم هذي المرة.',
   };
 
@@ -342,7 +348,10 @@ class _DeclineOfferSheetState extends State<DeclineOfferSheet> {
           large: true,
           onPressed: () {
             final text = _message.text.trim();
-            Navigator.of(context).pop(text.isEmpty ? _template(_reason) : text);
+            Navigator.of(context).pop<DeclineOfferChoice>((
+              message: text.isEmpty ? _template(_reason) : text,
+              reason: _reasonCodes[_reason],
+            ));
           },
         ),
       ],

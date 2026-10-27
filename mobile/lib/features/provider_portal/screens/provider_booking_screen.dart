@@ -97,7 +97,8 @@ class ProviderBookingScreen extends StatelessWidget {
                   ],
                   // B-18: what the customer recorded on this agreement in
                   // his money, read only (no payment system, D41).
-                  if ((booking.money ?? quote.booking?.money) case final money?) ...[
+                  if ((booking.money ?? quote.booking?.money)
+                      case final money?) ...[
                     const SizedBox(height: 10),
                     _MoneyRow(
                       key: const Key('provider-booking-paid'),

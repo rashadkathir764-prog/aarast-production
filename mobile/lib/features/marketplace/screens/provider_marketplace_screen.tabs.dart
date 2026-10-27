@@ -602,7 +602,9 @@ class _FavoriteCard extends StatelessWidget {
               child: Stack(
                 fit: StackFit.expand,
                 children: [
-                  if (cover == null || cover.isEmpty || (context.watch<DevicePreferences?>()?.dataSaver ?? false))
+                  if (cover == null ||
+                      cover.isEmpty ||
+                      (context.watch<DevicePreferences?>()?.dataSaver ?? false))
                     placeholder
                   else
                     Image.network(

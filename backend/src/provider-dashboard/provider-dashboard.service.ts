@@ -60,6 +60,7 @@ import {
 import { isQuoteOfferExpired } from '../marketplace/quote-offer-expiry';
 import { quoteOfferCurrencyMismatch } from '../marketplace/quote-offer-currency';
 import {
+  parseQuoteOfferLines,
   quoteOfferChanges,
   quoteOfferLocked,
   quoteOfferVersionView,
@@ -143,6 +144,7 @@ import {
   lockProviderMutationUsersInTransaction,
 } from './provider-mutation-locks';
 import * as dashboardStore from '../modules/marketplace/infrastructure/provider-dashboard.repository';
+import * as bookingStore from '../modules/marketplace/infrastructure/marketplace-booking.repository';
 
 type ProviderProfile = Provider & {
   city: City;
@@ -1129,6 +1131,7 @@ export class ProviderDashboardService {
     dto: UpdateProviderQuoteStatusDto,
   ) {
     this.assertUuid(id, 'quoteRequestId');
+    let blockedDay = false;
     const quote = await runSerializableTransaction(this.prisma, async (tx) => {
       const seed = await dashboardStore.findProviderQuoteMutationSeed(tx, id);
       if (!seed) {
@@ -1148,13 +1151,30 @@ export class ProviderDashboardService {
       }
       await this.assertQuotePlanWritable(tx, existing.weddingPlanId);
       assertQuoteRequestTransition(existing.status, dto.status, 'provider');
-      if (dto.status === QuoteRequestStatus.REJECTED) {
+      const declining = dto.status === QuoteRequestStatus.REJECTED;
+      if (declining) {
         assertQuoteRequestAnswerable(existing);
+      } else if (dto.declineReason || dto.declineMessage || dto.blockDay) {
+        throw new BadRequestException({
+          code: 'QUOTE_DECLINE_REASON_WITHOUT_DECLINE',
+          message: 'سبب الاعتذار يكون مع الاعتذار بس.',
+        });
+      }
+      const declineMessage = this.optionalText(dto.declineMessage) ?? null;
+      const declineReason = declining
+        ? (dto.declineReason ?? (declineMessage ? 'OTHER' : null))
+        : null;
+      if (dto.blockDay && (declineReason !== 'BUSY_THAT_DAY' || !existing.eventDate)) {
+        throw new BadRequestException({
+          code: 'QUOTE_DECLINE_BLOCK_DAY_INVALID',
+          message: 'قفل اليوم يكون مع «مشغول ذاك اليوم» على طلب فيه تاريخ.',
+        });
       }
 
       const transition = await dashboardStore.transitionProviderQuoteRequest(
         tx, id, existing.status, dto.status,
-        dto.status === QuoteRequestStatus.REJECTED ? new Date() : undefined,
+        declining ? new Date() : undefined,
+        declining ? { reason: declineReason, message: declineMessage } : undefined,
       );
       if (transition.count !== 1) {
         throw new ConflictException('Quote request status changed');
@@ -1172,8 +1192,23 @@ export class ProviderDashboardService {
           actorUserId: currentUser.id,
           type: ConversationEventType.QUOTE_REQUEST_REJECTED,
           dedupeKey: `quote-request:${existing.id}:rejected`,
-          data: { status: QuoteRequestStatus.REJECTED },
+          data: {
+            status: QuoteRequestStatus.REJECTED,
+            ...(declineReason ? { declineReason } : {}),
+            ...(declineMessage ? { declineMessage } : {}),
+          },
         });
+        // B-05: «مشغول ذاك اليوم» closes the day too, unless a confirmed
+        // booking already holds it (the decline stands either way).
+        let dayBlocked = false;
+        if (dto.blockDay && existing.eventDate) {
+          const day = new Date(`${existing.eventDate.toISOString().slice(0, 10)}T00:00:00.000Z`);
+          if (!(await bookingStore.hasConfirmedBookingOn(tx, provider.id, day))) {
+            await bookingStore.insertBlockedDate(tx, provider.id, day);
+            dayBlocked = true;
+          }
+        }
+        blockedDay = dayBlocked;
         const recipientId =
           await this.notifications.resolveProviderUpdateRecipientInTransaction(
             tx,
@@ -1188,13 +1223,14 @@ export class ProviderDashboardService {
             quoteRequestId: existing.id,
             providerId: provider.id,
             providerName: provider.businessName,
+            declineReason,
           }),
         );
       }
       return updated;
     });
 
-    return this.toQuoteResponse(quote);
+    return { ...this.toQuoteResponse(quote), ...(dto.blockDay ? { dayBlocked: blockedDay } : {}) };
   }
 
   async createQuoteOffer(
@@ -1254,6 +1290,8 @@ export class ProviderDashboardService {
           amount,
           currency,
           validUntil: this.optionalDate(dto.validUntil, 'validUntil'),
+          lines: (parseQuoteOfferLines(dto.lines) ?? null) as Prisma.JsonValue | null,
+          deliveryDays: dto.deliveryDays ?? null,
       });
       // B-06: the offer as sent is its version 1.
       await offerStore.createQuoteOfferVersion(tx, {
@@ -1264,6 +1302,8 @@ export class ProviderDashboardService {
         amount: created.amount,
         currency: created.currency,
         validUntil: created.validUntil,
+        lines: created.lines,
+        deliveryDays: created.deliveryDays,
         changes: Prisma.DbNull,
       });
 
@@ -1369,6 +1409,14 @@ export class ProviderDashboardService {
           dto.validUntil !== undefined
             ? this.optionalDate(dto.validUntil, 'validUntil')
             : existing.validUntil,
+        lines: (() => {
+          const lines = parseQuoteOfferLines(dto.lines);
+          return lines === undefined
+            ? existing.lines
+            : ((lines ?? null) as Prisma.JsonValue | null);
+        })(),
+        deliveryDays:
+          dto.deliveryDays !== undefined ? (dto.deliveryDays ?? null) : existing.deliveryDays,
       };
       // B-06: an edit that changes nothing (a retry) is not a new version.
       const changes = quoteOfferChanges(existing, next);
@@ -2124,6 +2172,9 @@ export class ProviderDashboardService {
         : null,
       acceptedAt: quote.acceptedAt,
       rejectedAt: quote.rejectedAt,
+      // B-05: why the provider declined, and his words.
+      declineReason: quote.declineReason ?? null,
+      declineMessage: quote.declineMessage ?? null,
       cancelledAt: quote.cancelledAt,
       // B-04: the provider answers before this; EXPIRED after.
       expiresAt: quote.expiresAt,

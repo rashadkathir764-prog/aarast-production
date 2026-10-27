@@ -155,8 +155,16 @@ class ProviderRequestCard extends StatelessWidget {
   };
 }
 
+/// B-11: the customer's reason in the provider's words.
+String? _rejectReasonWords(String? reason) => switch (reason) {
+  'PRICE' => 'السبب: السعر فوق اللي حاسب له',
+  'CHOSE_OTHER' => 'السبب: اختار مزود ثاني',
+  'DATE' => 'السبب: الموعد ما يناسبه',
+  _ => null,
+};
+
 /// One ended request in p20: what ended it, in one line, and the renewal of
-/// an expired offer (D35). No reason is shown: the server stores none (F7).
+/// an expired offer (D35), with the customer's reason when he gave one.
 class ProviderEndedCard extends StatelessWidget {
   const ProviderEndedCard({
     required this.quote,
@@ -197,10 +205,12 @@ class ProviderEndedCard extends StatelessWidget {
         LucideIcons.xCircle,
         AarastV3Color.danger,
         AarastV3Color.dangerSoft,
-        '$name اختار غيرك',
-        changed == null
-            ? 'رفض عرضك.'
-            : 'رفض عرضك ${providerDayLabel(changed)}.',
+        quote.customerRejectReason == 'CHOSE_OTHER' ||
+                quote.customerRejectReason == null
+            ? '$name اختار غيرك'
+            : '$name ما قبل عرضك',
+        // B-11: his reason, when he gave one; never his budget.
+        '${[changed == null ? 'رفض عرضك' : 'رفض عرضك ${providerDayLabel(changed)}', ?_rejectReasonWords(quote.customerRejectReason)].join('. ')}.',
       ),
       ProviderCaseState.declined => (
         LucideIcons.x,

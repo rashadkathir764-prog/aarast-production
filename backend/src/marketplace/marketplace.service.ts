@@ -615,7 +615,11 @@ export class MarketplaceService {
     };
   }
 
-  async rejectQuoteOffer(currentUser: AuthenticatedUser, id: string) {
+  async rejectQuoteOffer(
+    currentUser: AuthenticatedUser,
+    id: string,
+    dto: { reason?: string; message?: string } = {},
+  ) {
     await this.findAccessibleQuoteOfferOrThrow(currentUser, id);
 
     const rejected = await rejectQuoteOfferInTransaction(
@@ -624,7 +628,12 @@ export class MarketplaceService {
       this.permissions,
       this.notifications,
       this.relations,
-      { id, currentUser },
+      {
+        id,
+        currentUser,
+        reason: dto.reason ?? null,
+        message: dto.message?.trim() ? dto.message.trim() : null,
+      },
       this.contributionHistory,
     );
 

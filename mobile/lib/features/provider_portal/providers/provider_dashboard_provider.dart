@@ -7,6 +7,7 @@ import '../../../core/session/session_scoped_change_notifier.dart';
 import '../../marketplace/marketplace_api.dart'
     show
         MarketplaceBooking,
+        QuoteOfferLine,
         MarketplaceService,
         ProviderClaim,
         ProviderClaimableListing,
@@ -204,9 +205,8 @@ class ProviderDashboardProvider extends ChangeNotifier
   /// meanwhile the server refuses it, the profile is read again, and the
   /// new notes show with [errorMessage] saying so.
   Future<bool> resubmitApplication() => _lifecycleStep(
-    () => _api.resubmitApplication(
-      latestDecisionId: _profile?.latestDecisionId,
-    ),
+    () =>
+        _api.resubmitApplication(latestDecisionId: _profile?.latestDecisionId),
     fallback: 'ما قدرنا نرسل التعديل. جرّب مرة ثانية.',
   );
 
@@ -240,8 +240,7 @@ class ProviderDashboardProvider extends ChangeNotifier
       return true;
     } on ApiException catch (error) {
       final message = switch (error.serverCode) {
-        'PROVIDER_SERVICE_REQUIRED' =>
-          'أضف خدمة وحدة بسعرها قبل ما ترسل ملفك.',
+        'PROVIDER_SERVICE_REQUIRED' => 'أضف خدمة وحدة بسعرها قبل ما ترسل ملفك.',
         _ => marketplaceErrorMessage(error.message),
       };
       // The state changed elsewhere (the team decided, or rewrote its
@@ -602,6 +601,8 @@ class ProviderDashboardProvider extends ChangeNotifier
           currency: offer.currency,
           title: offer.title,
           validUntil: offer.validUntil,
+          lines: offer.lines,
+          deliveryDays: offer.deliveryDays,
         );
         sent = true;
       } on ApiException catch (error) {
@@ -1055,9 +1056,15 @@ class ProviderDashboardProvider extends ChangeNotifier
     }
   }
 
+  /// The day the last decline closed, as the server reported (B-05).
+  bool lastDeclineClosedDay = false;
+
   Future<bool> updateQuoteStatus({
     required String quoteRequestId,
     required String status,
+    String? declineReason,
+    String? declineMessage,
+    bool blockDay = false,
   }) async {
     _isSubmitting = true;
     _errorMessage = null;
@@ -1067,7 +1074,26 @@ class ProviderDashboardProvider extends ChangeNotifier
       final quote = await _api.updateQuoteRequestStatus(
         quoteRequestId: quoteRequestId,
         status: status,
+        declineReason: declineReason,
+        declineMessage: declineMessage,
+        blockDay: blockDay,
       );
+      if (blockDay) {
+        final day = quote.eventDate;
+        lastDeclineClosedDay = day != null;
+        if (day != null &&
+            !_blockedDates.any(
+              (blocked) =>
+                  blocked.year == day.year &&
+                  blocked.month == day.month &&
+                  blocked.day == day.day,
+            )) {
+          _blockedDates = [
+            ..._blockedDates,
+            DateTime(day.year, day.month, day.day),
+          ];
+        }
+      }
       _quoteRequests = [
         for (final item in _quoteRequests) item.id == quote.id ? quote : item,
       ];
@@ -1124,6 +1150,8 @@ class ProviderDashboardProvider extends ChangeNotifier
     required String currency,
     String? title,
     DateTime? validUntil,
+    List<QuoteOfferLine>? lines,
+    int? deliveryDays,
   }) async {
     _isSubmitting = true;
     _errorMessage = null;
@@ -1137,6 +1165,8 @@ class ProviderDashboardProvider extends ChangeNotifier
         currency: currency,
         title: title,
         validUntil: validUntil,
+        lines: lines,
+        deliveryDays: deliveryDays,
       );
       await loadDashboard();
       return ProviderOfferSend.sent;
@@ -1150,6 +1180,8 @@ class ProviderDashboardProvider extends ChangeNotifier
               currency: currency,
               title: title,
               validUntil: validUntil,
+              lines: lines,
+              deliveryDays: deliveryDays,
               queuedAt: DateTime.now(),
             ),
           )) {
@@ -1173,6 +1205,8 @@ class ProviderDashboardProvider extends ChangeNotifier
     required String currency,
     String? title,
     DateTime? validUntil,
+    List<QuoteOfferLine>? lines,
+    int? deliveryDays,
   }) async {
     _isSubmitting = true;
     _errorMessage = null;
@@ -1186,6 +1220,8 @@ class ProviderDashboardProvider extends ChangeNotifier
         currency: currency,
         title: title,
         validUntil: validUntil,
+        lines: lines,
+        deliveryDays: deliveryDays,
       );
       await loadDashboard();
       return true;
@@ -1233,7 +1269,8 @@ class ProviderDashboardProvider extends ChangeNotifier
     try {
       final replied = await _api.replyToReview(reviewId: reviewId, body: body);
       _reviews = [
-        for (final review in _reviews) review.id == replied.id ? replied : review,
+        for (final review in _reviews)
+          review.id == replied.id ? replied : review,
       ];
       return true;
     } on ApiException catch (error) {
@@ -1256,7 +1293,8 @@ class ProviderDashboardProvider extends ChangeNotifier
     String? note,
   }) async {
     final decided = await _calendarMutation(
-      () => _api.decideBooking(bookingId: bookingId, action: action, note: note),
+      () =>
+          _api.decideBooking(bookingId: bookingId, action: action, note: note),
       fallback: 'تعذر تحديث الحجز. حاول مرة أخرى.',
     );
     // The quote cards, the booking list and the calendar all change together.

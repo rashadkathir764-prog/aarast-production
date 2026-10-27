@@ -534,7 +534,8 @@ List<_Offer> _offers(
   }
   return [
     for (final service in services)
-      if (providerMoneyLabel(service.basePrice, service.currency) case final price?)
+      if (providerMoneyLabel(service.basePrice, service.currency)
+          case final price?)
         (
           key: service.id,
           title: service.title,

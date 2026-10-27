@@ -223,13 +223,15 @@ mixin _MarketplaceQuotes on _MarketplaceProviderCore {
     );
   }
 
-  Future<bool> rejectQuote(QuoteRequest quote) async {
+  /// B-11: [reason] is kept for the provider; the message went to the chat.
+  Future<bool> rejectQuote(QuoteRequest quote, {String? reason}) async {
     final offer = quote.pendingOffer;
     if (offer == null) return false;
     return _updateQuote(
       () => _api.rejectQuoteOffer(
         quoteRequestId: quote.id,
         quoteOfferId: offer.id,
+        reason: reason,
       ),
     );
   }

@@ -19,6 +19,7 @@ export 'models/marketplace_models.dart'
         ProviderReview,
         ProviderReviewReply,
         ProviderServiceImage,
+        QuoteOfferLine,
         QuoteRequest;
 export 'models/provider_budget_match_intent.dart'
     show ProviderBudgetMatchIntent, ProviderQuoteInitialContext;

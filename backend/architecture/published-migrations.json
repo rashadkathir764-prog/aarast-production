@@ -100,6 +100,7 @@
     "20261027000000_review_reply_and_notification_types": "2a19f71e6deae1fc24273a6c18fcefd3bdfb2a94b501b31057b9b37ff2e8ec64",
     "20261027000100_notice_types_and_routes_backfill": "3546538e81a816079efdf928953523188d684dc6f997a4c5084d047382207475",
     "20261027100000_provider_daily_capacity_and_expired_bookings": "b3eb5cf035098eddcbc0c8f5507ed780b5b8d77d898c239b28af6d62b3e35083",
-    "20261027200000_home_honeymoon_categories_and_groom_gold": "c54af574a9e1bfc26bf6ad0b93eb745e2041ac67a68670a40c51a55361993ec3"
+    "20261027200000_home_honeymoon_categories_and_groom_gold": "c54af574a9e1bfc26bf6ad0b93eb745e2041ac67a68670a40c51a55361993ec3",
+    "20261027210000_offer_lines_and_decline_reasons": "90770e14aa3b945100a6df15d5c0035f4147777e2606cf26da86c437e68456a6"
   }
 }

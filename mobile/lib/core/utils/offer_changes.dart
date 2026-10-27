@@ -47,7 +47,7 @@ String? quoteOfferChangeLine({
           : 'السعر صار $to $label بدل $from';
     }
   }
-  final words = find('message') ?? find('title');
+  final words = find('message') ?? find('title') ?? find('lines');
   if (words != null) {
     return own ? 'غيّرت التفاصيل بنفس السعر' : 'غيّروا التفاصيل بنفس السعر';
   }
@@ -56,6 +56,14 @@ String? quoteOfferChangeLine({
   if (day != null) {
     final label = formatArabicDayMonth(day.toLocal());
     return own ? 'مدّدت العرض لين $label' : 'مدّدوا العرض لين $label';
+  }
+  // B-07/B-23: the delivery promise.
+  final delivery = find('deliveryDays');
+  if (delivery != null) {
+    final days = int.tryParse(delivery.to ?? '');
+    return days == null
+        ? (own ? 'شلت موعد التسليم' : 'شالوا موعد التسليم')
+        : 'التسليم صار خلال $days يوم';
   }
   return own ? 'عدّلت العرض' : 'عدّلوا العرض';
 }

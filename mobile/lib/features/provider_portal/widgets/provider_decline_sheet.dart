@@ -10,17 +10,21 @@ import '../../marketplace/marketplace_api.dart' show QuoteRequest;
 import '../providers/provider_dashboard_provider.dart';
 import 'provider_request_parts.dart';
 
-/// Why the provider says no (p18). The server stores no reason (F7): the
-/// reason only picks the polite line the customer reads in the chat.
+/// Why the provider says no (p18). The server keeps the reason (B-05) and
+/// tells the customer «اعتذر … مشغول ذاك اليوم»; it also picks the polite
+/// line the customer reads in the chat.
 enum ProviderDeclineReason {
-  busy('مشغول ذاك اليوم'),
-  area('خارج منطقتي'),
-  service('ما أقدم هذي الخدمة'),
-  other('سبب ثاني');
+  busy('مشغول ذاك اليوم', 'BUSY_THAT_DAY'),
+  area('خارج منطقتي', 'OUT_OF_AREA'),
+  service('ما أقدم هذي الخدمة', 'NOT_MY_SERVICE'),
+  other('سبب ثاني', 'OTHER');
 
-  const ProviderDeclineReason(this.label);
+  const ProviderDeclineReason(this.label, this.code);
 
   final String label;
+
+  /// The server's reason code.
+  final String code;
 }
 
 /// The line the customer reads in the chat for [reason].
@@ -178,9 +182,13 @@ class _ProviderDeclineSheetState extends State<_ProviderDeclineSheet> {
       }
       _messageSent = true;
     }
+    final closeDay = reason == ProviderDeclineReason.busy && canClose;
     final declined = await dashboard.updateQuoteStatus(
       quoteRequestId: widget.quote.id,
       status: 'REJECTED',
+      declineReason: reason.code,
+      declineMessage: providerDeclineMessage(reason, _day),
+      blockDay: closeDay,
     );
     if (!mounted) return;
     if (!declined) {
@@ -191,12 +199,8 @@ class _ProviderDeclineSheetState extends State<_ProviderDeclineSheet> {
       });
       return;
     }
-    final day = _day;
-    var closed = true;
-    if (reason == ProviderDeclineReason.busy && canClose && day != null) {
-      closed = await dashboard.blockDate(day);
-    }
-    if (!mounted) return;
+    // B-05: the server closed the day in the same step as the decline.
+    final closed = !closeDay || dashboard.lastDeclineClosedDay;
     if (closed) {
       AarastToast.showSuccess(context, 'وصل اعتذارك.');
     } else {

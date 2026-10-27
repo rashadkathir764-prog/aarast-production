@@ -111,19 +111,40 @@ export function offerAcceptedRequesterNotification(args: {
   };
 }
 
+/** B-11: the customer's reasons as the provider reads them. */
+export const QUOTE_REJECT_REASON_WORDS: Readonly<Record<string, string>> = {
+  PRICE: "السعر فوق اللي حاسب له",
+  CHOSE_OTHER: "اختار مزود ثاني",
+  DATE: "الموعد ما يناسب",
+  NONE: "ما ذكر سبب",
+};
+
+/** B-05: the decline reasons as the customer reads them. */
+export const QUOTE_DECLINE_REASON_WORDS: Readonly<Record<string, string>> = {
+  BUSY_THAT_DAY: "مشغول ذاك اليوم",
+  OUT_OF_AREA: "خارج منطقته",
+  NOT_MY_SERVICE: "ما يقدّم هذي الخدمة",
+  OTHER: "سبب آخر",
+};
+
 export function providerRejectedRequestNotification(args: {
   requesterId: string;
   weddingPlanId: string | null;
   quoteRequestId: string;
   providerId: string;
   providerName: string;
+  /** B-05: why, when the provider said. */
+  declineReason?: string | null;
 }): CreateNotificationInput {
+  const why = args.declineReason ? QUOTE_DECLINE_REASON_WORDS[args.declineReason] : undefined;
   return {
     userId: args.requesterId,
     weddingPlanId: args.weddingPlanId,
     type: NotificationType.QUOTE_REJECTED,
     priority: NotificationPriority.NORMAL,
-    title: `اعتذر ${args.providerName} عن طلبك`,
+    title: why
+      ? `اعتذر ${args.providerName}: ${why}`
+      : `اعتذر ${args.providerName} عن طلبك`,
     body: gendered(
       "تقدر تطلب من مزود غيره.",
       "تقدرين تطلبين من مزود غيره.",
@@ -135,6 +156,7 @@ export function providerRejectedRequestNotification(args: {
       quoteRequestId: args.quoteRequestId,
       providerId: args.providerId,
       status: "REJECTED",
+      ...(args.declineReason ? { declineReason: args.declineReason } : {}),
       recipientAudience: "CUSTOMER",
     },
     dedupeKey: `${args.requesterId}:provider-rejected-quote:${args.quoteRequestId}`,
@@ -146,13 +168,16 @@ export function requesterRejectedOfferNotification(args: {
   quoteRequestId: string;
   quoteOfferId: string;
   providerId: string;
+  /** B-11: the customer's reason, when given. */
+  reason?: string | null;
 }): CreateNotificationInput {
+  const why = args.reason ? QUOTE_REJECT_REASON_WORDS[args.reason] : undefined;
   return {
     userId: args.providerUserId,
     type: NotificationType.QUOTE_REJECTED,
     priority: NotificationPriority.NORMAL,
     title: "عرضك ما انقبل",
-    body: "الطلب انقفل بدون عرضك.",
+    body: why ? `السبب: ${why}` : "الطلب انقفل بدون عرضك.",
     entityType: "quote_request",
     entityId: args.quoteRequestId,
     routeTarget: providerRequestRoute(args.quoteRequestId),

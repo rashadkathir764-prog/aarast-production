@@ -51,27 +51,36 @@ class ChatApi {
     );
   }
 
+  /// With [clientRequestId] (G38) a resend of the same message is answered
+  /// with the first answer, never a second message.
   Future<ChatMessage> send(
     String conversationId, {
     required String body,
     List<MediaUploadTicket> attachments = const [],
+    String? clientRequestId,
   }) async {
-    final json = await _apiClient.postJson(
-      '/api/v1/conversations/$conversationId/messages',
-      {
-        'body': body,
-        if (attachments.isNotEmpty)
-          'attachments': attachments
-              .map(
-                (item) => {
-                  'attachmentRef': item.attachmentRef,
-                  'contentType': item.contentType,
-                  'byteSize': item.byteSize,
-                },
-              )
-              .toList(),
-      },
-    );
+    final path = '/api/v1/conversations/$conversationId/messages';
+    final payload = {
+      'body': body,
+      if (attachments.isNotEmpty)
+        'attachments': attachments
+            .map(
+              (item) => {
+                'attachmentRef': item.attachmentRef,
+                'contentType': item.contentType,
+                'byteSize': item.byteSize,
+              },
+            )
+            .toList(),
+    };
+    final json = clientRequestId == null
+        ? await _apiClient.postJson(path, payload)
+        : await _apiClient.mutateJson(
+            path,
+            payload,
+            method: 'POST',
+            clientRequestId: clientRequestId,
+          );
     return ChatMessage.fromJson(json);
   }
 

@@ -1302,6 +1302,56 @@ class ProviderDashboardProvider extends ChangeNotifier
     return decided;
   }
 
+  /// B-22: «تم» or «ما صار» (with [reason]) after the day.
+  Future<bool> recordBookingOutcome({
+    required String bookingId,
+    required bool happened,
+    String? reason,
+  }) async {
+    final done = await _calendarMutation(
+      () => _api.recordBookingOutcome(
+        bookingId: bookingId,
+        happened: happened,
+        reason: reason,
+      ),
+      fallback: 'ما قدرنا نسجّل. جرّب مرة ثانية.',
+    );
+    if (done) await loadDashboard();
+    return done;
+  }
+
+  /// B-23: the delivery (a link and a note).
+  Future<bool> deliverBooking({
+    required String bookingId,
+    String? link,
+    String? note,
+  }) async {
+    final done = await _calendarMutation(
+      () => _api.deliverBooking(bookingId: bookingId, link: link, note: note),
+      fallback: 'ما قدرنا نسجّل التسليم. جرّب مرة ثانية.',
+    );
+    if (done) await loadDashboard();
+    return done;
+  }
+
+  /// B-24: takes or declines the customer's new day.
+  Future<bool> decideBookingChange({
+    required String changeId,
+    required bool accept,
+    String? reason,
+  }) async {
+    final done = await _calendarMutation(
+      () => _api.decideBookingChange(
+        changeId: changeId,
+        accept: accept,
+        reason: reason,
+      ),
+      fallback: 'ما قدرنا نحفظ ردك. جرّب مرة ثانية.',
+    );
+    if (done) await loadDashboard();
+    return done;
+  }
+
   /// B-20: how many weddings he takes on one day (1 to 20). A lower number
   /// keeps the bookings he has; the calendar reads it at once.
   Future<bool> updateDailyCapacity(int capacity) => _lifecycleStep(

@@ -123,7 +123,7 @@ export const MARKETPLACE_QUOTE_INCLUDE = {
   service: true,
   offers: { orderBy: { createdAt: "desc" } },
   providerLinks: true,
-  booking: true,
+  booking: { include: { changes: true } },
 } satisfies Prisma.QuoteRequestInclude;
 
 export type QuoteRow = Prisma.QuoteRequestGetPayload<{

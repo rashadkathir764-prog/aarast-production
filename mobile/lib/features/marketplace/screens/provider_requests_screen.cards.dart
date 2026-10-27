@@ -267,6 +267,8 @@ class _ChosenCard extends StatelessWidget {
     required this.onViewCost,
     required this.onRate,
     required this.onChat,
+    this.onChangeDay,
+    this.onConfirmDelivery,
   });
 
   final QuoteRequest quote;
@@ -277,11 +279,25 @@ class _ChosenCard extends StatelessWidget {
   final VoidCallback onRate;
   final VoidCallback onChat;
 
+  /// B-24: ask the provider for another day.
+  final VoidCallback? onChangeDay;
+
+  /// B-23: confirm the provider's delivery.
+  final VoidCallback? onConfirmDelivery;
+
   @override
   Widget build(BuildContext context) {
     final booking = quote.booking;
     final completed = booking?.lifecycleStatus == 'COMPLETED';
+    // B-22: the provider reported «ما صار».
+    final notHappened = booking?.lifecycleStatus == 'NOT_HAPPENED';
+    final change = booking?.change;
     final (String label, Color color, Color soft) = switch (booking?.status) {
+      _ when notHappened => (
+        'ما صار',
+        AarastV3Color.textMuted,
+        AarastV3Color.canvas,
+      ),
       _ when completed => ('تم', AarastV3Color.mint, AarastV3Color.mintSoft),
       'CONFIRMED' => ('محجوز', AarastV3Color.mint, AarastV3Color.mintSoft),
       'REQUESTED' => (
@@ -302,10 +318,18 @@ class _ChosenCard extends StatelessWidget {
       ),
     };
     final detail = switch (booking?.status) {
+      _ when notHappened => 'سجّلوا إن الحجز ما تم. لو عندك ملاحظة كلّم الدعم.',
+      // B-23: the delivery, then its confirmation.
+      _ when completed && booking!.canConfirmDelivery =>
+        'سلّموك${booking.deliveryLink == null ? '' : ' · الرابط في المحادثة وتحت'}',
       _ when completed => context.say(
         'مرّ يوم الحجز. قيّمهم يستفيد غيرك.',
         'مرّ يوم الحجز. قيّميهم يستفيد غيرك.',
       ),
+      'CONFIRMED' when change != null && change.isPending =>
+        '${context.say('طلبت', 'طلبتِ')} نقله إلى ${formatArabicDayMonth(change.toDate)} · ينتظر ردهم',
+      'CONFIRMED' when change != null && change.isDeclined =>
+        'ما قدروا على ${formatArabicDayMonth(change.toDate)}${change.declineReason == null ? '' : ': ${change.declineReason}'} · الحجز باقي ${formatArabicDayMonth(booking!.eventDate)}',
       'CONFIRMED' =>
         'أكدوا ${formatArabicDayMonth(booking!.eventDate)} · نذكّركم قبل بأسبوع وبيوم',
       'REQUESTED' =>
@@ -356,8 +380,29 @@ class _ChosenCard extends StatelessWidget {
               color: AarastV3Color.textMuted,
             ),
           ),
+          if (booking?.deliveryLink case final link?
+              when booking!.deliveredAt != null)
+            SelectableText(
+              link,
+              key: ValueKey('requests-delivery-link-${quote.id}'),
+              style: JourneyType.of(
+                JourneyType.small,
+                color: AarastV3Color.cobalt,
+              ),
+            ),
           const SizedBox(height: 10),
-          if (completed)
+          if (completed &&
+              booking!.canConfirmDelivery &&
+              onConfirmDelivery != null)
+            JourneyButton(
+              key: ValueKey('requests-confirm-delivery-${quote.id}'),
+              label: context.say('استلمت', 'استلمتِ'),
+              icon: LucideIcons.packageCheck,
+              background: AarastV3Color.mint,
+              expand: true,
+              onPressed: busy ? null : onConfirmDelivery,
+            )
+          else if (completed)
             JourneyButton(
               key: ValueKey('requests-rate-${quote.id}'),
               label:
@@ -399,6 +444,19 @@ class _ChosenCard extends StatelessWidget {
                 color: AarastV3Color.cobalt,
                 onPressed: onChat,
               ),
+              // B-24: a confirmed booking moves before its day.
+              if (booking != null &&
+                  onChangeDay != null &&
+                  !completed &&
+                  !notHappened &&
+                  booking.canAskChange(DateTime.now()))
+                JourneyTextAction(
+                  key: ValueKey('requests-change-day-${quote.id}'),
+                  label: context.say('غيّر الموعد', 'غيّري الموعد'),
+                  icon: LucideIcons.calendarClock,
+                  color: AarastV3Color.cobalt,
+                  onPressed: busy ? null : onChangeDay,
+                ),
               // The server cancels only before the day (booking-policy), so a
               // completed booking has no cancel to offer.
               if (booking != null && booking.isOpen && !completed)

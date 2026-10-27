@@ -277,6 +277,36 @@ mixin _MarketplaceQuotes on _MarketplaceProviderCore {
     );
   }
 
+  /// B-23: confirms the provider's delivery.
+  Future<bool> confirmBookingDelivery(QuoteRequest quote) async {
+    final booking = quote.booking;
+    if (booking == null || !booking.canConfirmDelivery) return false;
+    return _updateQuote(
+      () => _api.confirmBookingDelivery(
+        quoteRequestId: quote.id,
+        bookingId: booking.id,
+      ),
+    );
+  }
+
+  /// B-24: asks the provider to move the booking to [eventDate].
+  Future<bool> requestBookingChange(
+    QuoteRequest quote,
+    DateTime eventDate, {
+    String? note,
+  }) async {
+    final booking = quote.booking;
+    if (booking == null || !booking.isConfirmed) return false;
+    return _updateQuote(
+      () => _api.requestBookingChange(
+        quoteRequestId: quote.id,
+        bookingId: booking.id,
+        eventDate: eventDate,
+        note: note,
+      ),
+    );
+  }
+
   Future<bool> _updateQuote(
     Future<QuoteRequest> Function() action, {
     String? quoteId,

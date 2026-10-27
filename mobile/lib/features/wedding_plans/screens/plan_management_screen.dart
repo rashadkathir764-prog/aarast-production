@@ -17,8 +17,7 @@ import '../../auth/auth_api.dart' show AuthActionGuard, AuthController;
 import '../../onboarding/onboarding_api.dart'
     show GuestOnboardingDraft, GuestOnboardingStorage;
 import '../../sharing/sharing_api.dart' show SharedMember;
-import '../../finance/finance_api.dart' show FinanceProvider;
-import '../../finance/models/wedding_cost.dart' show moneyValue;
+import '../../finance/finance_api.dart' show FinanceProvider, moneyValue;
 import '../models/wedding_plan.dart';
 import '../providers/dashboard_summary_provider.dart';
 import '../providers/wedding_plans_provider.dart';

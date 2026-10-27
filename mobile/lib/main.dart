@@ -38,7 +38,7 @@ import 'features/auth/auth_api.dart' show AuthController, AuthRepository;
 import 'features/catalogs/catalogs_api.dart'
     show ReferenceCatalogApi, ReferenceCatalogProvider;
 import 'features/chat/chat_api.dart'
-    show ChatApi, ChatProvider, ChatRealtimeClient;
+    show ChatApi, ChatOutbox, ChatProvider, ChatRealtimeClient;
 import 'features/finance/finance_api.dart'
     show
         FinanceApi,
@@ -357,6 +357,7 @@ Future<void> _bootstrapApplication(ObservabilityConfig observability) async {
         marketplaceApi: marketplaceApi,
         providerDashboardApi: providerDashboardApi,
         providerOfferQueue: ProviderOfferQueue(preferences),
+        chatOutbox: ChatOutbox(preferences),
         chatApi: chatApi,
         chatRealtimeClient: chatRealtimeClient,
         notificationsApi: notificationsApi,
@@ -444,6 +445,7 @@ class _AarastSessionProviders extends StatelessWidget {
     required this.marketplaceApi,
     required this.providerDashboardApi,
     required this.providerOfferQueue,
+    required this.chatOutbox,
     required this.chatApi,
     required this.chatRealtimeClient,
     required this.notificationsApi,
@@ -466,6 +468,9 @@ class _AarastSessionProviders extends StatelessWidget {
 
   /// The provider's offers sent with no network (p43).
   final ProviderOfferQueue providerOfferQueue;
+
+  /// G38: chat messages written with no network.
+  final ChatOutbox chatOutbox;
   final ChatApi chatApi;
   final ChatRealtimeClient chatRealtimeClient;
   final NotificationsApi notificationsApi;
@@ -534,6 +539,7 @@ class _AarastSessionProviders extends StatelessWidget {
                 realtime: chatRealtimeClient,
                 authStorage: authStorage,
                 sessionUserId: sessionUserId,
+                outbox: chatOutbox,
               ),
               _unselectedPlanScope,
             ),
@@ -545,6 +551,7 @@ class _AarastSessionProviders extends StatelessWidget {
                 realtime: chatRealtimeClient,
                 authStorage: authStorage,
                 sessionUserId: sessionUserId,
+                outbox: chatOutbox,
               ),
             ),
           ),

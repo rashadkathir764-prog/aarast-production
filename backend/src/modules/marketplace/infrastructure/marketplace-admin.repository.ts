@@ -124,10 +124,18 @@ type ReviewAdminCondition =
     };
 
 /** a12 (B-40): what a booking is to the people (COMPLETED once its day passed). */
-function withLifecycle<T extends { status: BookingStatus; eventDate: Date }>(
-  booking: T,
-): T & { lifecycleStatus: BookingLifecycle } {
-  return { ...booking, lifecycleStatus: bookingLifecycle(booking.status, booking.eventDate) };
+function withLifecycle<
+  T extends { status: BookingStatus; eventDate: Date; notHappenedAt?: Date | null },
+>(booking: T): T & { lifecycleStatus: BookingLifecycle } {
+  return {
+    ...booking,
+    lifecycleStatus: bookingLifecycle(
+      booking.status,
+      booking.eventDate,
+      new Date(),
+      booking.notHappenedAt ?? null,
+    ),
+  };
 }
 
 const providerCounts = {

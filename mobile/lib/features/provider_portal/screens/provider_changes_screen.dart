@@ -160,10 +160,7 @@ class ProviderChangesScreen extends StatelessWidget {
                         : 'خدمة «${service.title.trim()}»',
                     value: service == null
                         ? null
-                        : providerMoneyLabel(
-                            service.basePrice,
-                            service.currency,
-                          ),
+                        : providerMoneyLabel(service.basePrice, service.currency),
                     placeholder: 'أضف خدمة بسعرها',
                     helper: service?.description?.trim().isNotEmpty == true
                         ? service!.description!.trim()

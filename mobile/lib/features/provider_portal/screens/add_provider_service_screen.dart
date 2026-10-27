@@ -14,7 +14,8 @@ import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/currency_label.dart';
 import '../../../core/widgets/aarast_ui.dart';
 import '../../marketplace/marketplace_api.dart'
-    show ProviderMarketplaceProvider;
+    show
+        ProviderMarketplaceProvider;
 import '../providers/provider_dashboard_provider.dart';
 
 class AddProviderServiceScreen extends StatefulWidget {

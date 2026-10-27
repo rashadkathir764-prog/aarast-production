@@ -47,11 +47,23 @@ import {
 } from "./booking-policy";
 import {
   BOOKING_REMINDER_MILESTONES,
+  bookingAftercareCustomerNotification,
+  bookingAftercareProviderNotification,
   bookingCustomerNotification,
   bookingProviderNotification,
   bookingReminderNotifications,
 } from "./booking-notifications";
 import { BookingDecisionDto, RequestBookingDto } from "./dto/booking.dto";
+import {
+  type AftercareViolation,
+  autoCompleteBefore,
+  type BookingNotHappenedReason,
+  changeViolation,
+  deliveryConfirmViolation,
+  deliveryDueAt,
+  deliveryViolation,
+  outcomeViolation,
+} from "./booking-aftercare";
 import { lockMarketplaceProvider } from "./marketplace-write-locks";
 import {
   ledgerMonthRange,
@@ -60,6 +72,21 @@ import {
 } from "./provider-booking-money";
 
 type Tx = Prisma.TransactionClient;
+
+/** G25: each aftercare refusal in the app's words. */
+const aftercareWords: Record<AftercareViolation, string> = {
+  NOT_CONFIRMED: "الحجز مو مؤكد.",
+  TOO_EARLY: "تقدر تسجّل «تم» من يوم العرس.",
+  TOO_LATE: "فات أسبوع على يوم العرس، والحجز انحسب تم.",
+  ALREADY_DECIDED: "انسجّل قبل إن الحجز تم أو ما صار.",
+  NOT_COMPLETED: "التسليم يكون بعد ما يتم العرس.",
+  ALREADY_DELIVERED: "انسجّل التسليم من قبل.",
+  NOT_DELIVERED: "المزود ما سلّم بعد.",
+  ALREADY_CONFIRMED: "أكّدت الاستلام من قبل.",
+  DAY_PASSED: "يوم الحجز فات.",
+  SAME_DAY: "هذا نفس يوم الحجز.",
+  CHANGE_PENDING: "فيه طلب تغيير ينتظر رد المزود.",
+};
 
 function bookingError(
   status: "BAD_REQUEST" | "CONFLICT",
@@ -453,6 +480,262 @@ export class BookingsService {
       }
     }
     return { sent, failures };
+  }
+
+  // ── After the booking (G25: B-22, B-23, B-24) ─────────────────────────
+
+  /** B-22: the provider says «تم» (or «ما صار» with why) from the day to a week after. */
+  async recordOutcomeAsProvider(
+    currentUser: AuthenticatedUser,
+    bookingId: string,
+    outcome: { happened: true } | { happened: false; reason: BookingNotHappenedReason },
+  ): Promise<BookingResponse> {
+    return runSerializableTransaction(this.prisma, async (tx) => {
+      const owned = await this.ownedProvider(tx, currentUser);
+      const booking = await bookings.findBooking(tx, bookingId);
+      if (!booking || booking.providerId !== owned.id) {
+        throw new NotFoundException("Booking not found");
+      }
+      const violation = outcomeViolation(booking);
+      if (violation) {
+        bookingError("CONFLICT", `BOOKING_OUTCOME_${violation}`, aftercareWords[violation]);
+      }
+      const now = new Date();
+      const data: bookings.BookingAftercare = outcome.happened
+        ? {
+            completedAt: now,
+            deliveryDueAt: deliveryDueAt(
+              booking.eventDate,
+              await bookings.findOfferDeliveryDays(tx, booking.quoteOfferId),
+            ),
+          }
+        : { notHappenedAt: now, notHappenedReason: outcome.reason };
+      await this.writeAftercare(tx, booking.id, data);
+      const updated = await bookings.requireBooking(tx, booking.id);
+      await this.notifications.createNotificationInTransaction(
+        tx,
+        bookingAftercareCustomerNotification(outcome.happened ? "COMPLETED" : "NOT_HAPPENED", {
+          ...this.noticeArgs(updated),
+          customerUserId: booking.quoteRequest.userId,
+          weddingPlanId: booking.quoteRequest.weddingPlanId,
+          providerName: owned.businessName,
+          reason: outcome.happened ? null : outcome.reason,
+        }),
+      );
+      return toBookingResponse(updated);
+    });
+  }
+
+  /**
+   * B-22: confirmed bookings two days past their day with no word complete
+   * by themselves (the provider may still deliver). Each in its own
+   * transaction, re-checked; one failure does not stop the rest.
+   */
+  async completeOverdueBookings(now: Date = new Date()): Promise<number> {
+    const due = await bookings.listBookingsToAutoComplete(this.prisma, autoCompleteBefore(now));
+    let completed = 0;
+    for (const booking of due) {
+      try {
+        const moved = await runSerializableTransaction(this.prisma, (tx) =>
+          bookings.completeBookingIfUndecided(tx, booking.id, {
+            completedAt: now,
+            deliveryDueAt: deliveryDueAt(booking.eventDate, booking.quoteOffer?.deliveryDays),
+          }),
+        );
+        completed += moved.count;
+      } catch {
+        // Retried on the next hourly run.
+      }
+    }
+    return completed;
+  }
+
+  /** B-23: the provider delivers a completed booking (a link, a note), once. */
+  async deliverAsProvider(
+    currentUser: AuthenticatedUser,
+    bookingId: string,
+    dto: { link?: string | null; note?: string | null },
+  ): Promise<BookingResponse> {
+    return runSerializableTransaction(this.prisma, async (tx) => {
+      const owned = await this.ownedProvider(tx, currentUser);
+      const booking = await bookings.findBooking(tx, bookingId);
+      if (!booking || booking.providerId !== owned.id) {
+        throw new NotFoundException("Booking not found");
+      }
+      const violation = deliveryViolation(booking);
+      if (violation) {
+        bookingError("CONFLICT", `BOOKING_DELIVERY_${violation}`, aftercareWords[violation]);
+      }
+      await this.writeAftercare(tx, booking.id, {
+        deliveredAt: new Date(),
+        deliveryLink: optionalNote(dto.link),
+        deliveryNote: optionalNote(dto.note),
+      });
+      const updated = await bookings.requireBooking(tx, booking.id);
+      await this.notifications.createNotificationInTransaction(
+        tx,
+        bookingAftercareCustomerNotification("DELIVERED", {
+          ...this.noticeArgs(updated),
+          customerUserId: booking.quoteRequest.userId,
+          weddingPlanId: booking.quoteRequest.weddingPlanId,
+          providerName: owned.businessName,
+        }),
+      );
+      return toBookingResponse(updated);
+    });
+  }
+
+  /** B-23: the customer confirms the delivery, once. */
+  async confirmDeliveryAsCustomer(
+    currentUser: AuthenticatedUser,
+    bookingId: string,
+  ): Promise<BookingResponse> {
+    return runSerializableTransaction(this.prisma, async (tx) => {
+      const booking = await bookings.findBooking(tx, bookingId);
+      if (!booking) throw new NotFoundException("Booking not found");
+      await this.assertCustomerAccess(tx, booking.quoteRequest, currentUser);
+      const violation = deliveryConfirmViolation(booking);
+      if (violation) {
+        bookingError("CONFLICT", `BOOKING_DELIVERY_${violation}`, aftercareWords[violation]);
+      }
+      await this.writeAftercare(tx, booking.id, { deliveryConfirmedAt: new Date() });
+      const updated = await bookings.requireBooking(tx, booking.id);
+      const provider = await lockMarketplaceProvider(tx, booking.providerId, "SHARE");
+      if (provider.userId) {
+        await this.notifications.createNotificationInTransaction(
+          tx,
+          bookingAftercareProviderNotification("DELIVERY_CONFIRMED", {
+            ...this.noticeArgs(updated),
+            providerUserId: provider.userId,
+            customerName: booking.quoteRequest.contactName,
+          }),
+        );
+      }
+      return toBookingResponse(updated);
+    });
+  }
+
+  /** B-24: the customer asks to move a confirmed booking to another day. */
+  async requestChangeAsCustomer(
+    currentUser: AuthenticatedUser,
+    bookingId: string,
+    dto: { eventDate: string; note?: string | null },
+  ): Promise<BookingResponse> {
+    return runSerializableTransaction(this.prisma, async (tx) => {
+      const booking = await bookings.findBooking(tx, bookingId);
+      if (!booking) throw new NotFoundException("Booking not found");
+      await this.assertCustomerAccess(tx, booking.quoteRequest, currentUser);
+      const day = parseBookingDate(dto.eventDate, null);
+      if (typeof day === "string") {
+        bookingError("BAD_REQUEST", "BOOKING_INVALID_DATE", "اختر يوم من اليوم وطالع.");
+      }
+      const pending = await bookings.findPendingBookingChange(tx, booking.id);
+      const violation = changeViolation(booking, day, pending !== null);
+      if (violation) {
+        bookingError("CONFLICT", `BOOKING_CHANGE_${violation}`, aftercareWords[violation]);
+      }
+      await bookings.createBookingChange(tx, {
+        bookingId: booking.id,
+        fromDate: booking.eventDate,
+        toDate: day,
+        requestedByUserId: currentUser.id,
+        note: optionalNote(dto.note),
+      });
+      const updated = await bookings.requireBooking(tx, booking.id);
+      const provider = await lockMarketplaceProvider(tx, booking.providerId, "SHARE");
+      if (provider.userId) {
+        await this.notifications.createNotificationInTransaction(
+          tx,
+          bookingAftercareProviderNotification("CHANGE_REQUESTED", {
+            ...this.noticeArgs(updated),
+            providerUserId: provider.userId,
+            customerName: booking.quoteRequest.contactName,
+            toDate: day,
+          }),
+        );
+      }
+      return toBookingResponse(updated);
+    });
+  }
+
+  /**
+   * B-24: the provider accepts the new day (his calendar and capacity, B-20,
+   * are checked under his row lock, and the booking moves) or declines it
+   * (the booking keeps its day). A decline here never counts against him.
+   */
+  async decideChangeAsProvider(
+    currentUser: AuthenticatedUser,
+    changeId: string,
+    accept: boolean,
+    dto: { reason?: string | null },
+  ): Promise<BookingResponse> {
+    return runSerializableTransaction(this.prisma, async (tx) => {
+      const owned = await this.ownedProvider(tx, currentUser);
+      const change = await bookings.findBookingChange(tx, changeId);
+      const booking = change ? await bookings.findBooking(tx, change.bookingId) : null;
+      if (!change || !booking || booking.providerId !== owned.id) {
+        throw new NotFoundException("Booking change not found");
+      }
+      if (change.status !== "PENDING") {
+        bookingError("CONFLICT", "BOOKING_CHANGE_DECIDED", "الطلب انحسم من قبل.");
+      }
+      const provider = await lockMarketplaceProvider(tx, owned.id, "UPDATE");
+      if (accept) {
+        if (booking.status !== BookingStatus.CONFIRMED) {
+          bookingError("CONFLICT", "BOOKING_CHANGE_NOT_CONFIRMED", aftercareWords.NOT_CONFIRMED);
+        }
+        assertProviderOperational(provider);
+        await this.assertDayAvailable(tx, provider.id, change.toDate, booking.id);
+        await this.writeAftercare(tx, booking.id, { eventDate: change.toDate });
+      }
+      const decided = await bookings.decideBookingChange(tx, change.id, {
+        status: accept ? "ACCEPTED" : "DECLINED",
+        declineReason: accept ? null : optionalNote(dto.reason),
+      });
+      if (decided.count !== 1) {
+        bookingError("CONFLICT", "BOOKING_CHANGE_DECIDED", "الطلب انحسم من قبل.");
+      }
+      const updated = await bookings.requireBooking(tx, booking.id);
+      await this.notifications.createNotificationInTransaction(
+        tx,
+        bookingAftercareCustomerNotification(accept ? "CHANGE_ACCEPTED" : "CHANGE_DECLINED", {
+          ...this.noticeArgs(updated),
+          customerUserId: booking.quoteRequest.userId,
+          weddingPlanId: booking.quoteRequest.weddingPlanId,
+          providerName: provider.businessName,
+          reason: accept ? null : optionalNote(dto.reason),
+        }),
+      );
+      return toBookingResponse(updated);
+    });
+  }
+
+  private async writeAftercare(tx: Tx, bookingId: string, data: bookings.BookingAftercare) {
+    const moved = await bookings.updateBookingAftercare(
+      tx,
+      bookingId,
+      BookingStatus.CONFIRMED,
+      data,
+    );
+    if (moved.count !== 1) {
+      bookingError("CONFLICT", "BOOKING_NOT_ALLOWED", "The booking changed meanwhile; refresh and retry");
+    }
+  }
+
+  private noticeArgs(booking: {
+    id: string;
+    quoteRequestId: string;
+    providerId: string;
+    eventDate: Date;
+    updatedAt: Date;
+  }) {
+    return {
+      bookingId: booking.id,
+      quoteRequestId: booking.quoteRequestId,
+      providerId: booking.providerId,
+      eventDate: booking.eventDate,
+      revision: booking.updatedAt.getTime(),
+    };
   }
 
   // ── Shared ───────────────────────────────────────────────────────────

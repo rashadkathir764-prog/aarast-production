@@ -553,6 +553,32 @@ class MarketplaceApi {
     return getQuoteRequest(quoteRequestId);
   }
 
+  /// B-23: the customer confirms the provider's delivery.
+  Future<QuoteRequest> confirmBookingDelivery({
+    required String quoteRequestId,
+    required String bookingId,
+  }) async {
+    await _apiClient.postJson(
+      '/api/v1/me/bookings/$bookingId/delivery/confirm',
+      const {},
+    );
+    return getQuoteRequest(quoteRequestId);
+  }
+
+  /// B-24: the customer asks to move a confirmed booking to [eventDate].
+  Future<QuoteRequest> requestBookingChange({
+    required String quoteRequestId,
+    required String bookingId,
+    required DateTime eventDate,
+    String? note,
+  }) async {
+    await _apiClient.postJson('/api/v1/me/bookings/$bookingId/change', {
+      'eventDate': MarketplaceBooking.dayParam(eventDate),
+      if (note != null && note.trim().isNotEmpty) 'note': note.trim(),
+    });
+    return getQuoteRequest(quoteRequestId);
+  }
+
   String _path(String path, Map<String, String> query) {
     return Uri(path: path, queryParameters: query).toString();
   }
@@ -816,6 +842,56 @@ class ProviderDashboardApi {
     final json = await _apiClient.patchJson(
       '/api/v1/provider/me/bookings/$bookingId/$action',
       {if (note != null && note.trim().isNotEmpty) 'note': note.trim()},
+    );
+    return MarketplaceBooking.fromJson(json);
+  }
+
+  /// B-22: «تم» when [happened], else «ما صار» with [reason]
+  /// (`CUSTOMER_NO_SHOW`, `WE_DID_NOT_ATTEND`, `FORCE_MAJEURE`,
+  /// `OFFICIAL_DECISION`).
+  Future<MarketplaceBooking> recordBookingOutcome({
+    required String bookingId,
+    required bool happened,
+    String? reason,
+  }) async {
+    final json = happened
+        ? await _apiClient.postJson(
+            '/api/v1/provider/me/bookings/$bookingId/complete',
+            const {},
+          )
+        : await _apiClient.postJson(
+            '/api/v1/provider/me/bookings/$bookingId/not-happened',
+            {'reason': reason},
+          );
+    return MarketplaceBooking.fromJson(json);
+  }
+
+  /// B-23: the delivery, with a download link and a note.
+  Future<MarketplaceBooking> deliverBooking({
+    required String bookingId,
+    String? link,
+    String? note,
+  }) async {
+    final json = await _apiClient
+        .postJson('/api/v1/provider/me/bookings/$bookingId/delivery', {
+          if (link != null && link.trim().isNotEmpty) 'link': link.trim(),
+          if (note != null && note.trim().isNotEmpty) 'note': note.trim(),
+        });
+    return MarketplaceBooking.fromJson(json);
+  }
+
+  /// B-24: takes or declines the customer's new day.
+  Future<MarketplaceBooking> decideBookingChange({
+    required String changeId,
+    required bool accept,
+    String? reason,
+  }) async {
+    final json = await _apiClient.postJson(
+      '/api/v1/provider/me/booking-changes/$changeId/${accept ? 'accept' : 'decline'}',
+      {
+        if (!accept && reason != null && reason.trim().isNotEmpty)
+          'reason': reason.trim(),
+      },
     );
     return MarketplaceBooking.fromJson(json);
   }

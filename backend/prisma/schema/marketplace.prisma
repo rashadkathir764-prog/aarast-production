@@ -365,14 +365,54 @@ model Booking {
   declinedAt        DateTime?
   cancelledAt       DateTime?
   expiredAt         DateTime?
+  // B-22: after the day, the provider says «تم» or «ما صار» (why); two
+  // days without a word complete it by itself.
+  completedAt       DateTime?
+  notHappenedAt     DateTime?
+  notHappenedReason String?
+  // B-23: the delivery promised by the accepted offer's days, the delivery
+  // (a link and a note) and the customer's confirmation.
+  deliveryDueAt       DateTime?
+  deliveredAt         DateTime?
+  deliveryLink        String?
+  deliveryNote        String?       @db.Text
+  deliveryConfirmedAt DateTime?
   createdAt         DateTime      @default(now())
   updatedAt         DateTime      @updatedAt
+  changes           BookingChange[]
   quoteRequest      QuoteRequest  @relation(fields: [quoteRequestId], references: [id], onDelete: Cascade)
   quoteOffer        QuoteOffer?   @relation(fields: [quoteOfferId], references: [id], onDelete: SetNull)
   provider          Provider      @relation(fields: [providerId], references: [id], onDelete: Cascade)
 
   @@index([providerId, eventDate, status])
   @@index([quoteOfferId])
+}
+
+enum BookingChangeStatus {
+  PENDING
+  ACCEPTED
+  DECLINED
+  CANCELLED
+}
+
+/// B-24: the customer moved the wedding; the provider accepts the new day
+/// (checked against his calendar and capacity, B-20) or declines it. One
+/// pending change per booking.
+model BookingChange {
+  id                String              @id @default(uuid())
+  bookingId         String
+  fromDate          DateTime            @db.Date
+  toDate            DateTime            @db.Date
+  status            BookingChangeStatus @default(PENDING)
+  requestedByUserId String
+  note              String?             @db.Text
+  declineReason     String?             @db.Text
+  decidedAt         DateTime?
+  createdAt         DateTime            @default(now())
+  updatedAt         DateTime            @updatedAt
+  booking           Booking             @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+
+  @@index([bookingId, status])
 }
 
 /// A day the provider marked as unavailable on their calendar.

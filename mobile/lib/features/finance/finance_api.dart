@@ -6,7 +6,7 @@ export 'screens/funding_sources_screen.dart' show FundingSourcesScreen;
 export 'models/budget_category.dart' show BudgetCategory;
 export 'models/cost_draft_intent.dart' show CostDraftIntent;
 export 'models/money_starter_catalog.dart' show moneyStarterPlanItemNames;
-export 'models/wedding_cost.dart' show WeddingCost;
+export 'models/wedding_cost.dart' show WeddingCost, moneyValue;
 export 'providers/finance_provider.dart' show FinanceProvider;
 export 'screens/budget_category_details_screen.dart'
     show BudgetCategoryDetailsScreen;

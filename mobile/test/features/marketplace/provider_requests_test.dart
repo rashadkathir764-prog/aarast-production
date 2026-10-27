@@ -587,6 +587,7 @@ class _Chat extends ChatApi {
     String conversationId, {
     required String body,
     List<Object> attachments = const [],
+    String? clientRequestId,
   }) async {
     sent.add(body);
     return ChatMessage.fromJson({

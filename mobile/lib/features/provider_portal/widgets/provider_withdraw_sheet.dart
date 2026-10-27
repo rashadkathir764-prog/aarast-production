@@ -89,8 +89,7 @@ class _ProviderWithdrawSheetState extends State<_ProviderWithdrawSheet> {
     if (!withdrawn) {
       setState(() {
         _busy = false;
-        _error =
-            dashboard.errorMessage ?? 'ما قدرنا نسحب العرض. حاول مرة ثانية.';
+        _error = dashboard.errorMessage ?? 'ما قدرنا نسحب العرض. حاول مرة ثانية.';
       });
       return;
     }

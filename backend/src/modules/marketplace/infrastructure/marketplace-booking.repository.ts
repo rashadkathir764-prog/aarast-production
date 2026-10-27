@@ -39,7 +39,7 @@ export function findQuoteForBooking(tx: Tx, quoteRequestId: string) {
 export function findBooking(tx: Tx, id: string) {
   return tx.booking.findUnique({
     where: { id },
-    include: { quoteRequest: { select: bookingQuoteSelect } },
+    include: { quoteRequest: { select: bookingQuoteSelect }, changes: true },
   });
 }
 
@@ -194,7 +194,94 @@ export function transitionBooking(
 }
 
 export function requireBooking(tx: Tx, id: string) {
-  return tx.booking.findUniqueOrThrow({ where: { id } });
+  return tx.booking.findUniqueOrThrow({ where: { id }, include: { changes: true } });
+}
+
+/** G25: B-22's outcome, B-23's delivery, set on a booking. */
+export interface BookingAftercare {
+  completedAt?: Date;
+  notHappenedAt?: Date;
+  notHappenedReason?: string;
+  deliveryDueAt?: Date | null;
+  deliveredAt?: Date;
+  deliveryLink?: string | null;
+  deliveryNote?: string | null;
+  deliveryConfirmedAt?: Date;
+  eventDate?: Date;
+}
+
+/** Writes the aftercare fields while the booking is still in `status`. */
+export function updateBookingAftercare(
+  tx: Tx,
+  id: string,
+  status: BookingStatus,
+  data: BookingAftercare,
+) {
+  return tx.booking.updateMany({ where: { id, status }, data });
+}
+
+/** B-22: confirmed bookings two days past their day with no word. */
+export function listBookingsToAutoComplete(tx: Tx, before: Date) {
+  return tx.booking.findMany({
+    where: {
+      status: BookingStatus.CONFIRMED,
+      eventDate: { lt: before },
+      completedAt: null,
+      notHappenedAt: null,
+    },
+    include: { quoteOffer: { select: { deliveryDays: true } } },
+    take: 500,
+  });
+}
+
+/** B-22: completes a booking only while no word was said (compare-and-set). */
+export function completeBookingIfUndecided(
+  tx: Tx,
+  id: string,
+  data: { completedAt: Date; deliveryDueAt: Date | null },
+) {
+  return tx.booking.updateMany({
+    where: { id, status: BookingStatus.CONFIRMED, completedAt: null, notHappenedAt: null },
+    data,
+  });
+}
+
+/** B-23: the accepted offer's delivery days. */
+export async function findOfferDeliveryDays(tx: Tx, quoteOfferId: string | null) {
+  if (!quoteOfferId) return null;
+  const offer = await tx.quoteOffer.findUnique({
+    where: { id: quoteOfferId },
+    select: { deliveryDays: true },
+  });
+  return offer?.deliveryDays ?? null;
+}
+
+/** B-24: a booking's pending change, if any. */
+export function findPendingBookingChange(tx: Tx, bookingId: string) {
+  return tx.bookingChange.findFirst({ where: { bookingId, status: 'PENDING' } });
+}
+
+export function findBookingChange(tx: Tx, id: string) {
+  return tx.bookingChange.findUnique({ where: { id } });
+}
+
+export function createBookingChange(
+  tx: Tx,
+  data: { bookingId: string; fromDate: Date; toDate: Date; requestedByUserId: string; note: string | null },
+) {
+  return tx.bookingChange.create({ data });
+}
+
+/** Decides a change only while it is still pending (compare-and-set). */
+export function decideBookingChange(
+  tx: Tx,
+  id: string,
+  data: { status: 'ACCEPTED' | 'DECLINED' | 'CANCELLED'; declineReason?: string | null },
+) {
+  return tx.bookingChange.updateMany({
+    where: { id, status: 'PENDING' },
+    data: { ...data, decidedAt: new Date() },
+  });
 }
 
 /** The provider's bookings that are still relevant: open requests and dates from today on. */
@@ -205,11 +292,21 @@ export function listProviderBookings(tx: Tx, providerId: string, today: Date) {
       OR: [
         { status: BookingStatus.REQUESTED },
         { status: BookingStatus.CONFIRMED, eventDate: { gte: today } },
+        // G25: a past booking still waiting for «تم» or for its delivery.
+        {
+          status: BookingStatus.CONFIRMED,
+          eventDate: { gte: new Date(today.getTime() - 90 * 24 * 60 * 60 * 1000) },
+          OR: [
+            { completedAt: null, notHappenedAt: null },
+            { notHappenedAt: null, deliveryDueAt: { not: null }, deliveredAt: null },
+          ],
+        },
       ],
     },
     include: {
       quoteRequest: { select: bookingQuoteSelect },
       quoteOffer: { select: { id: true, currency: true } },
+      changes: true,
     },
     orderBy: [{ eventDate: 'asc' }, { createdAt: 'asc' }],
   });
@@ -290,6 +387,8 @@ export async function hasCompletedBookingWith(
       providerId,
       status: BookingStatus.CONFIRMED,
       eventDate: { lt: today },
+      // B-22: a wedding the provider reported «ما صار» is not reviewed.
+      notHappenedAt: null,
       quoteRequestId: { in: quotes.map((quote) => quote.id) },
     },
   });

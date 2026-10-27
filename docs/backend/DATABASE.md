@@ -526,16 +526,17 @@ rewrite as permission to restore a removed live model.
 | `ProviderPackage` | 13 | `id`, `providerId`, `serviceId`, `createdAt`, `updatedAt` |
 | `FavoriteProvider` | 6 | `id`, `userId`, `providerId`, `createdAt` |
 | `ProviderReview` | 13 | `id`, `userId`, `providerId`, `createdAt`, `updatedAt`, `repliedAt` |
-| `QuoteRequest` | 37 | `id`, `userId`, `weddingPlanId`, `providerId`, `serviceId`, `cityId`, `acceptedAt`, `rejectedAt` |
-| `QuoteOffer` | 24 | `id`, `quoteRequestId`, `providerId`, `revisedAt`, `revisionNoticeAt`, `withdrawnAt`, `createdAt`, `updatedAt` |
+| `QuoteRequest` | 39 | `id`, `userId`, `weddingPlanId`, `providerId`, `serviceId`, `cityId`, `acceptedAt`, `rejectedAt` |
+| `QuoteOffer` | 28 | `id`, `quoteRequestId`, `providerId`, `revisedAt`, `revisionNoticeAt`, `withdrawnAt`, `createdAt`, `updatedAt` |
 | `PlanProviderLink` | 12 | `id`, `weddingPlanId`, `providerId`, `quoteRequestId`, `quoteOfferId`, `createdAt`, `updatedAt` |
-| `Booking` | 18 | `id`, `quoteRequestId`, `quoteOfferId`, `providerId`, `requestedByUserId`, `confirmedAt`, `declinedAt`, `cancelledAt` |
+| `Booking` | 27 | `id`, `quoteRequestId`, `quoteOfferId`, `providerId`, `requestedByUserId`, `confirmedAt`, `declinedAt`, `cancelledAt` |
+| `BookingChange` | 12 | `id`, `bookingId`, `requestedByUserId`, `decidedAt`, `createdAt`, `updatedAt` |
 | `ProviderBlockedDate` | 5 | `id`, `providerId`, `createdAt` |
 | `ProviderProfileViewDay` | 4 | `providerId` |
 | `ProviderReviewEvent` | 8 | `id`, `providerId`, `actorId`, `createdAt` |
 | `ProviderReviewNote` | 5 | `id`, `eventId` |
 | `ProviderClaimRequest` | 9 | `id`, `providerId`, `userId`, `createdAt`, `decidedAt`, `decidedById` |
-| `QuoteOfferVersion` | 11 | `id`, `quoteOfferId`, `createdAt` |
+| `QuoteOfferVersion` | 13 | `id`, `quoteOfferId`, `createdAt` |
 | `ProviderFeaturedPeriod` | 14 | `id`, `providerId`, `startsAt`, `endsAt`, `grantedById`, `createdAt`, `endedAt`, `endedById` |
 | `Conversation` | 23 | `id`, `weddingPlanId`, `accountRequesterUserId`, `providerId`, `createdByUserId`, `lastActivityAt`, `closedAt`, `customerSideBlockedAt` |
 | `ConversationParticipant` | 11 | `id`, `conversationId`, `userId`, `joinedAt`, `revokedAt`, `lastReadAt`, `mutedAt`, `createdAt` |
@@ -544,5 +545,5 @@ rewrite as permission to restore a removed live model.
 | `ChatAttachment` | 7 | `id`, `messageId`, `createdAt` |
 | `ConversationReport` | 9 | `id`, `conversationId`, `reporterUserId`, `createdAt`, `updatedAt` |
 
-Total models: 64
+Total models: 65
 <!-- DOCS-SYNC:END -->

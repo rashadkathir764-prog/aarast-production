@@ -16,7 +16,9 @@ import '../../../core/widgets/aarast_ui.dart';
 import '../../../shared/widgets/contact_phone_field.dart';
 import '../../auth/auth_api.dart' show AuthActionGuard;
 import '../../marketplace/marketplace_api.dart'
-    show ProviderDashboardProfile, ProviderMarketplaceProvider;
+    show
+        ProviderDashboardProfile,
+        ProviderMarketplaceProvider;
 import '../providers/provider_dashboard_provider.dart';
 
 class EditProviderProfileScreen extends StatefulWidget {

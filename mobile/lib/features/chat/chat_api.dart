@@ -1,5 +1,6 @@
 // Owner-controlled public API. Cross-feature consumers import this library.
 export 'data/chat_api.dart' show ChatApi;
+export 'data/chat_outbox.dart' show ChatOutbox;
 export 'data/chat_realtime_client.dart' show ChatRealtimeClient;
 export 'models/chat_models.dart' show ChatConversation;
 export 'providers/chat_provider.dart' show ChatProvider;

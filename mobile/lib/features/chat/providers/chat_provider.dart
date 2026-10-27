@@ -7,6 +7,7 @@ import '../../../core/network/api_client.dart';
 import '../../../core/session/session_scoped_change_notifier.dart';
 import '../../../core/storage/auth_storage.dart';
 import '../data/chat_api.dart';
+import '../data/chat_outbox.dart';
 import '../data/chat_realtime_client.dart';
 import '../models/chat_models.dart';
 
@@ -16,12 +17,16 @@ class ChatProvider extends ChangeNotifier with SessionScopedNotifier {
     required ChatRealtimeClient realtime,
     required AuthStorage authStorage,
     String? sessionUserId,
+    ChatOutbox? outbox,
   }) : _api = api,
        _realtime = realtime,
+       _outbox = outbox,
        _sessionUserId = sessionUserId ?? authStorage.readUser()?.id;
 
   final ChatApi _api;
   final ChatRealtimeClient _realtime;
+  final ChatOutbox? _outbox;
+  bool _flushing = false;
 
   bool _isLoading = false;
   bool _isSending = false;
@@ -129,6 +134,8 @@ class ChatProvider extends ChangeNotifier with SessionScopedNotifier {
       for (final conversation in _conversations) {
         _realtime.join(conversation.id);
       }
+      // G38: the server answers again; send what waited on the phone.
+      unawaited(flushOutbox());
     } on ApiException catch (error) {
       _errorMessage = error.message;
     } catch (_) {
@@ -202,8 +209,12 @@ class ChatProvider extends ChangeNotifier with SessionScopedNotifier {
       ]);
       final timeline = results[0] as ChatTimelinePage;
       final quoteRequests = results[1] as ChatQuoteRequestPage;
-      _timelines[conversationId] = timeline.items;
+      _timelines[conversationId] = [
+        ...timeline.items,
+        ..._queuedItems(conversationId),
+      ];
       _quoteRequests[conversationId] = quoteRequests.items;
+      unawaited(flushOutbox());
       _nextTimelineCursors[conversationId] = timeline.nextCursor;
       _realtime.join(conversationId);
       await _api.markRead(conversationId);
@@ -268,6 +279,7 @@ class ChatProvider extends ChangeNotifier with SessionScopedNotifier {
       return false;
     }
     final pendingId = 'pending-${DateTime.now().microsecondsSinceEpoch}';
+    final clientRequestId = 'chat-$pendingId-${normalized.hashCode.abs()}';
     final pending = ChatMessage(
       id: pendingId,
       conversationId: conversationId,
@@ -288,11 +300,29 @@ class ChatProvider extends ChangeNotifier with SessionScopedNotifier {
         conversationId,
         body: normalized,
         attachments: attachments,
+        clientRequestId: clientRequestId,
       );
       _replacePending(conversationId, pendingId, sent);
       _applyMessageToConversation(sent);
+      unawaited(flushOutbox());
       return true;
     } on ApiException catch (error) {
+      // G38: a text written with no network waits on the phone and goes
+      // when the network is back, with the same request id.
+      if (attachments.isEmpty &&
+          error.isAmbiguousMutationFailure &&
+          await _keep(
+            ChatOutboxMessage(
+              localId: pendingId,
+              conversationId: conversationId,
+              body: normalized,
+              clientRequestId: clientRequestId,
+              createdAt: pending.createdAt,
+            ),
+          )) {
+        _markQueued(conversationId, pendingId);
+        return true;
+      }
       _removeTimelineMessage(conversationId, pendingId);
       _errorMessage = error.message;
       return false;
@@ -302,6 +332,92 @@ class ChatProvider extends ChangeNotifier with SessionScopedNotifier {
       return false;
     } finally {
       _isSending = false;
+      notifyListeners();
+    }
+  }
+
+  /// G38: the messages waiting on this phone, in the order written.
+  List<ChatOutboxMessage> get queuedMessages {
+    final userId = currentUserId;
+    final outbox = _outbox;
+    if (userId == null || outbox == null) return const [];
+    return outbox.read(userId);
+  }
+
+  Iterable<ChatTimelineItem> _queuedItems(String conversationId) => [
+    for (final item in queuedMessages)
+      if (item.conversationId == conversationId)
+        ChatTimelineItem.pending(_queuedMessage(item)),
+  ];
+
+  ChatMessage _queuedMessage(ChatOutboxMessage item) => ChatMessage(
+    id: item.localId,
+    conversationId: item.conversationId,
+    senderUserId: currentUserId ?? '',
+    body: item.body,
+    createdAt: item.createdAt,
+    pending: true,
+    queued: true,
+  );
+
+  Future<bool> _keep(ChatOutboxMessage message) async {
+    final userId = currentUserId;
+    final outbox = _outbox;
+    if (userId == null || outbox == null) return false;
+    try {
+      await outbox.write(userId, [...outbox.read(userId), message]);
+      return true;
+    } on Object {
+      return false;
+    }
+  }
+
+  void _markQueued(String conversationId, String localId) {
+    _timelines[conversationId] = [
+      for (final item in timelineFor(conversationId))
+        if (item.message?.id == localId)
+          ChatTimelineItem.pending(
+            _queuedMessage(
+              queuedMessages.firstWhere((queued) => queued.localId == localId),
+            ),
+          )
+        else
+          item,
+    ];
+  }
+
+  /// G38: sends the waiting messages in order; stops at the first one that
+  /// still finds no network. A message the server refuses is dropped (it
+  /// would never go) and said once.
+  Future<void> flushOutbox() async {
+    final userId = currentUserId;
+    final outbox = _outbox;
+    if (userId == null || outbox == null || _flushing) return;
+    _flushing = true;
+    try {
+      for (final item in outbox.read(userId)) {
+        try {
+          final sent = await _api.send(
+            item.conversationId,
+            body: item.body,
+            clientRequestId: item.clientRequestId,
+          );
+          if (_timelines.containsKey(item.conversationId)) {
+            _replacePending(item.conversationId, item.localId, sent);
+          }
+          _applyMessageToConversation(sent);
+        } on ApiException catch (error) {
+          if (error.isAmbiguousMutationFailure) break;
+          _removeTimelineMessage(item.conversationId, item.localId);
+          _errorMessage = 'رسالة ما وصلت: ${error.message}';
+        }
+        await outbox.write(userId, [
+          for (final left in outbox.read(userId))
+            if (left.localId != item.localId) left,
+        ]);
+      }
+    } finally {
+      _flushing = false;
       notifyListeners();
     }
   }

@@ -600,9 +600,27 @@ async function run() {
       message: 'Marketplace smoke offer',
       amount: '100000',
       currency: 'YER',
+      // B-07: what the price covers, and the delivery days (B-23).
+      lines: [
+        { label: 'ألبوم 40 صورة', kind: 'INCLUDED' },
+        { label: 'الطباعة', kind: 'EXCLUDED' },
+        { label: 'فيديو درون', kind: 'EXTRA', amount: '80000' },
+      ],
+      deliveryDays: 30,
     }, ownerToken);
     check('provider owner offers on plan quote - HTTP 201', res.status === 201);
+    check('B-07 the offer keeps its three lines', res.body?.lines?.length === 3);
+    check('B-07 the extra keeps its price', res.body?.lines?.[2]?.amount === '80000');
+    check('B-07 the offer keeps its delivery days', res.body?.deliveryDays === 30);
     offerId = res.body?.id;
+  }
+
+  {
+    const res = await request('POST', `/api/v1/provider/me/quote-requests/${planQuoteId}/offers`, {
+      message: 'x', amount: '1', currency: 'YER',
+      lines: [{ label: 'x', kind: 'INCLUDED', amount: '5' }],
+    }, ownerToken);
+    check('B-07 a price on an included line is refused', res.status === 400 || res.status === 409);
   }
 
   {
@@ -623,7 +641,52 @@ async function run() {
     check('booking status is CONFIRMED', res.body?.status === 'CONFIRMED');
   }
 
+  // B-24: the customer moves the wedding; the provider takes the new day,
+  // then declines a second move, which leaves the booking where it was.
+  let movedDay = null;
+  {
+    movedDay = new Date(Date.now() + (75 + dayOffset) * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+    const res = await request('POST', `/api/v1/me/bookings/${bookingId}/change`, { eventDate: movedDay, note: 'أجّلنا العرس' }, token);
+    check('B-24 customer asks to move the booking - HTTP 201', res.status === 201);
+    check('B-24 the change waits for the provider', res.body?.change?.status === 'PENDING' && res.body?.change?.toDate === movedDay);
+    const again = await request('POST', `/api/v1/me/bookings/${bookingId}/change`, { eventDate: movedDay }, token);
+    check('B-24 a second change while one waits - HTTP 409', again.status === 409 && again.body?.code === 'BOOKING_CHANGE_CHANGE_PENDING');
+    const accepted = await request('POST', `/api/v1/provider/me/booking-changes/${res.body?.change?.id}/accept`, {}, ownerToken);
+    check('B-24 provider takes the new day - HTTP 201', accepted.status === 201);
+    check('B-24 the booking moved', accepted.body?.eventDate === movedDay && accepted.body?.change?.status === 'ACCEPTED');
+  }
+  {
+    const otherDay = new Date(Date.now() + (80 + dayOffset) * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+    const res = await request('POST', `/api/v1/me/bookings/${bookingId}/change`, { eventDate: otherDay }, token);
+    const declined = await request('POST', `/api/v1/provider/me/booking-changes/${res.body?.change?.id}/decline`, { reason: 'عندنا عرس ذاك اليوم' }, ownerToken);
+    check('B-24 provider declines a new day - HTTP 201', declined.status === 201);
+    check('B-24 the booking keeps its day', declined.body?.eventDate === movedDay && declined.body?.change?.status === 'DECLINED');
+  }
+  {
+    const res = await request('POST', `/api/v1/provider/me/bookings/${bookingId}/complete`, {}, ownerToken);
+    check('B-22 «تم» before the day - HTTP 409', res.status === 409 && res.body?.code === 'BOOKING_OUTCOME_TOO_EARLY');
+  }
+
   await expectReviewRefused('review before the booking day');
+
+  // B-22 and B-23: the day came; the provider says «تم», delivers, and the
+  // customer confirms. Only the clock is a fixture step.
+  if (bookingId) {
+    const now = new Date();
+    const yesterday = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() - 1));
+    await prisma.booking.update({ where: { id: bookingId }, data: { eventDate: yesterday } });
+    const early = await request('POST', `/api/v1/provider/me/bookings/${bookingId}/delivery`, { link: 'https://example.com/album' }, ownerToken);
+    check('B-23 delivery before «تم» - HTTP 409', early.status === 409 && early.body?.code === 'BOOKING_DELIVERY_NOT_COMPLETED');
+    const done = await request('POST', `/api/v1/provider/me/bookings/${bookingId}/complete`, {}, ownerToken);
+    check('B-22 provider says «تم» - HTTP 201', done.status === 201 && done.body?.completedAt != null);
+    check('B-23 the due day follows the offer\'s 30 days', typeof done.body?.deliveryDueAt === 'string');
+    const twice = await request('POST', `/api/v1/provider/me/bookings/${bookingId}/not-happened`, { reason: 'FORCE_MAJEURE' }, ownerToken);
+    check('B-22 a second word - HTTP 409', twice.status === 409 && twice.body?.code === 'BOOKING_OUTCOME_ALREADY_DECIDED');
+    const delivered = await request('POST', `/api/v1/provider/me/bookings/${bookingId}/delivery`, { link: 'https://example.com/album', note: 'الصور كاملة' }, ownerToken);
+    check('B-23 provider delivers - HTTP 201', delivered.status === 201 && delivered.body?.deliveredAt != null);
+    const confirmed = await request('POST', `/api/v1/me/bookings/${bookingId}/delivery/confirm`, {}, token);
+    check('B-23 customer confirms the delivery - HTTP 201', confirmed.status === 201 && confirmed.body?.deliveryConfirmedAt != null);
+  }
 
   // The day passes: the only fixture step, since HTTP cannot move the clock.
   if (bookingId) {
@@ -661,6 +724,30 @@ async function run() {
     const res = await request('DELETE', `/api/v1/reviews/${reviewId}`, null, token);
     check('DELETE /api/v1/reviews/:id - HTTP 200', res.status === 200);
     check('review delete response', res.body?.deleted === true);
+  }
+
+  // B-05: the provider declines a request with its reason; the customer
+  // reads it. B-11: the customer turns an offer down with a reason; the
+  // provider reads it.
+  {
+    const declinedQuote = await request('POST', `/api/v1/providers/${fixture.provider.id}/quote-requests`, quoteBody, token);
+    const declined = await request('PATCH', `/api/v1/provider/me/quote-requests/${declinedQuote.body?.id}/status`, {
+      status: 'REJECTED',
+      declineReason: 'BUSY_THAT_DAY',
+      declineMessage: 'نعتذر، ما نقدر ذاك اليوم.',
+    }, ownerToken);
+    check('B-05 provider declines with a reason - HTTP 200', declined.status === 200);
+    const read = await request('GET', `/api/v1/me/quote-requests/${declinedQuote.body?.id}`, null, token);
+    check('B-05 the customer reads the reason', read.body?.declineReason === 'BUSY_THAT_DAY');
+
+    const rejectedQuote = await request('POST', `/api/v1/providers/${fixture.provider.id}/quote-requests`, quoteBody, token);
+    const offer = await request('POST', `/api/v1/provider/me/quote-requests/${rejectedQuote.body?.id}/offers`, {
+      message: 'Smoke offer to reject', amount: '200000', currency: 'YER',
+    }, ownerToken);
+    const rejected = await request('PATCH', `/api/v1/quote-offers/${offer.body?.id}/reject`, { reason: 'PRICE' }, token);
+    check('B-11 customer rejects with a reason - HTTP 200', rejected.status === 200);
+    const seen = await request('GET', `/api/v1/provider/me/quote-requests/${rejectedQuote.body?.id}`, null, ownerToken);
+    check('B-11 the provider reads the reason', seen.body?.offers?.some((item) => item.rejectReason === 'PRICE'));
   }
 
   await checkBudgetItemSearch(fixture);

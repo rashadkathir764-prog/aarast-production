@@ -33,6 +33,36 @@ afterEach(() => {
 });
 
 describe('ReportsPage (a02)', () => {
+  it('G41: shows what plans agreed per item, anonymous, and saves it', async () => {
+    const withSpending: AdminSuccessReport = {
+      ...report,
+      spending: {
+        minPlans: 5,
+        groups: [
+          {
+            city: 'صنعاء',
+            itemName: 'قاعة',
+            currency: 'YER',
+            plans: 7,
+            min: '300000.00',
+            median: '500000.00',
+            max: '900000.00',
+          },
+        ],
+      },
+    };
+    vi.mocked(getSuccessReport).mockResolvedValue(withSpending);
+    render(<ReportsPage />);
+    const row = within(
+      await screen.findByRole('table', { name: 'اللي اتفق عليه العرسان فعلًا' }),
+    ).getAllByRole('row')[1];
+    expect(row).toHaveTextContent('قاعة');
+    expect(row).toHaveTextContent('7');
+    expect(within(row).getByText('500,000').tagName).toBe('STRONG');
+    expect(screen.getByText(/مجهول الهوية/)).toBeVisible();
+    expect(successReportCsv(withSpending)).toContain('صنعاء,قاعة,7,300000.00');
+  });
+
   it('shows the four indicators, the price ranges and the counted window', async () => {
     vi.mocked(getSuccessReport).mockResolvedValue(report);
     render(<ReportsPage />);

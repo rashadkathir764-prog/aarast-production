@@ -88,6 +88,19 @@ export type AdminSuccessReport = {
     median: string;
     max: string;
   }>;
+  /** G41: what plans really agreed per item, anonymous (groups of minPlans or more). */
+  spending?: {
+    minPlans: number;
+    groups: Array<{
+      city: string;
+      itemName: string;
+      currency: string;
+      plans: number;
+      min: string;
+      median: string;
+      max: string;
+    }>;
+  };
 };
 
 export function getSuccessReport(): Promise<AdminSuccessReport> {

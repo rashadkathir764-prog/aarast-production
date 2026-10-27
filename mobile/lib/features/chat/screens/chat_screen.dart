@@ -229,7 +229,11 @@ class _ChatScreenState extends State<ChatScreen> {
               mine: message.senderUserId == chat.currentUserId,
               providerSide: !customerSide,
               text: message.body,
-              time: message.pending ? 'يرسل…' : _clock(message.createdAt),
+              time: message.queued
+                  ? 'ينتظر النت'
+                  : message.pending
+                  ? 'يرسل…'
+                  : _clock(message.createdAt),
               attachments: [
                 for (final attachment in message.attachments)
                   _PrivateChatImage(
@@ -621,7 +625,9 @@ class _EventView extends StatelessWidget {
       'QUOTE_OFFER_REVISED' => customerSide ? 'عدّلوا العرض' : 'عدّلت عرضك',
       'QUOTE_OFFER_WITHDRAWN' => customerSide ? 'سحبوا العرض' : 'سحبت عرضك',
       'QUOTE_REQUEST_EXPIRED' =>
-        customerSide ? 'انتهى الطلب بدون رد' : 'انتهى الطلب: ما رديت خلال 7 أيام',
+        customerSide
+            ? 'انتهى الطلب بدون رد'
+            : 'انتهى الطلب: ما رديت خلال 7 أيام',
       _ => 'تغيّر شي في الطلب',
     };
     return Padding(

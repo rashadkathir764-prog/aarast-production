@@ -138,6 +138,14 @@ export interface CreateCostFromAcceptedOfferInput {
 // through this seam inside the caller's serializable transaction: finance
 // matches the budget category (its own policy, `أخرى` fallback included) and
 // creates the cost; the caller never touches the finance tables.
+export interface SpendingSample {
+  weddingPlanId: string;
+  /** The item's normalized name («قاعة أو مخدرة الرجال»). */
+  itemName: string;
+  /** In the plan's currency (planning's). */
+  total: Prisma.Decimal;
+}
+
 export interface RecordedCostCounts {
   costs: number;
   plans: number;
@@ -157,6 +165,12 @@ export interface FinancePort {
   ): Promise<string[] | null>;
   /** Every recorded cost, and how many plans have one (V1 checklist 4.21 back-office indicators). */
   countRecordedCosts(client: Prisma.TransactionClient): Promise<RecordedCostCounts>;
+  /**
+   * G41: what each plan agreed per wedding item and currency (cancelled,
+   * private and mahr agreements left out), for the back office's
+   * anonymous spending report. No names, parties or providers.
+   */
+  listSpendingSamples(client: Prisma.TransactionClient): Promise<SpendingSample[]>;
   createBudgetCategoriesInTransaction(
     tx: Prisma.TransactionClient,
     weddingPlanId: string,

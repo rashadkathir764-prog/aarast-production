@@ -12,6 +12,7 @@ import '../../../core/widgets/aarast_ui.dart';
 import '../../marketplace/marketplace_api.dart'
     show MarketplaceBooking, QuoteRequest;
 import '../providers/provider_dashboard_provider.dart';
+import '../widgets/provider_booking_aftercare.dart';
 import '../widgets/provider_booking_sheets.dart';
 import '../widgets/provider_calendar_parts.dart';
 import '../widgets/provider_join_parts.dart' show providerMomentLabel;
@@ -22,8 +23,9 @@ import '../widgets/provider_request_parts.dart';
 /// amount and line, without «نسخة»: offers have no versions, B-07), the
 /// reminders the server sends (7 days and 1 day before, F9), the chat and
 /// the cancel. «وصلك» and «الباقي» are the customer's own record on the
-/// agreement (B-18, D41: no deposit system). The drawn team and delivery
-/// rows have no field (D-2; delivery B-23).
+/// agreement (B-18, D41: no deposit system). The drawn team row has no
+/// field (D-2); a new day asked, «تم» and the delivery (B-22 to B-24) are
+/// [ProviderBookingAftercare].
 class ProviderBookingScreen extends StatelessWidget {
   const ProviderBookingScreen({
     required this.quote,
@@ -121,6 +123,8 @@ class ProviderBookingScreen extends StatelessWidget {
               ),
             ),
           ],
+          // G25: the new day asked, «تم» or «ما صار», and the delivery.
+          ProviderBookingAftercare(booking: booking, customerFirstName: first),
           if (!done) ...[
             const SizedBox(height: 10),
             JourneyBox(

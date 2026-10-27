@@ -129,6 +129,7 @@ class _ChatApi extends ChatApi {
     String conversationId, {
     required String body,
     List<MediaUploadTicket> attachments = const [],
+    String? clientRequestId,
   }) async {
     sent.add(body);
     return ChatMessage.fromJson({

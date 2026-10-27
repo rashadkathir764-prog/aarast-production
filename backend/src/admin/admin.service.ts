@@ -88,7 +88,10 @@ import {
   CONVERSION_WINDOW_DAYS,
   average,
   daysAgo,
+  groupSpending,
   percent,
+  SPENDING_MIN_PLANS,
+  type SpendingRow,
 } from './admin-success-report';
 import { groupPrices } from '../modules/marketplace/public/market-prices';
 import { AdminListedProviderDto } from './dto/admin-listed-provider.dto';
@@ -411,7 +414,7 @@ export class AdminService {
    */
   async getSuccessReport() {
     const now = new Date();
-    const [activeAccounts, totalAccounts, costs, marketplace, priced] =
+    const [activeAccounts, totalAccounts, costs, marketplace, priced, spending] =
       await this.prisma.$transaction(async (tx) =>
         Promise.all([
           this.owners.accounts.countActiveAccountsSince(
@@ -425,6 +428,7 @@ export class AdminService {
             daysAgo(now, CONVERSION_WINDOW_DAYS),
           ),
           this.owners.marketplace.listPricedServices(tx),
+          this.spendingRows(tx),
         ]),
       );
     const groups = groupPrices(priced);
@@ -457,7 +461,36 @@ export class AdminService {
         cityName: cities.get(group.cityId) ?? null,
         categoryName: categories.get(group.categoryId) ?? null,
       })),
+      // G41: what plans really agreed, anonymous (groups of 5 plans or more).
+      spending: {
+        minPlans: SPENDING_MIN_PLANS,
+        groups: groupSpending(spending),
+      },
     };
+  }
+
+  /** G41: finance's agreed totals per item, with each plan's city and currency. */
+  private async spendingRows(tx: Prisma.TransactionClient): Promise<SpendingRow[]> {
+    const samples = await this.owners.finance.listSpendingSamples(tx);
+    if (samples.length === 0) return [];
+    const plans = await this.owners.plans.getPlans(tx, [
+      ...new Set(samples.map((sample) => sample.weddingPlanId)),
+    ]);
+    const byId = new Map(plans.map((plan) => [plan.id, plan]));
+    return samples.flatMap((sample) => {
+      const plan = byId.get(sample.weddingPlanId);
+      return plan
+        ? [
+            {
+              weddingPlanId: sample.weddingPlanId,
+              itemName: sample.itemName,
+              city: plan.city,
+              currency: plan.currency,
+              total: sample.total.toString(),
+            },
+          ]
+        : [];
+    });
   }
 
   async getReportsOverview(query: AdminReportQueryDto) {

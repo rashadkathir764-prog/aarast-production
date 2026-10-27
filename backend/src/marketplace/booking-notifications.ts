@@ -312,3 +312,130 @@ export function bookingReminderNotifications(
   }
   return reminders;
 }
+
+// ── After the booking (G25: B-22, B-23, B-24) ──────────────────────────
+
+export type BookingAftercareEvent =
+  | "COMPLETED"
+  | "NOT_HAPPENED"
+  | "DELIVERED"
+  | "DELIVERY_CONFIRMED"
+  | "CHANGE_REQUESTED"
+  | "CHANGE_ACCEPTED"
+  | "CHANGE_DECLINED";
+
+/** B-22: «ما صار», as the customer reads why. */
+const NOT_HAPPENED_WORDS: Readonly<Record<string, string>> = {
+  CUSTOMER_NO_SHOW: "قال إن العرس ما صار في موعده",
+  WE_DID_NOT_ATTEND: "قال إنه ما حضر",
+  FORCE_MAJEURE: "ظرف قاهر",
+  OFFICIAL_DECISION: "قرار رسمي",
+};
+
+/** The customer's side of what follows a booking. */
+export function bookingAftercareCustomerNotification(
+  event: Extract<
+    BookingAftercareEvent,
+    "COMPLETED" | "NOT_HAPPENED" | "DELIVERED" | "CHANGE_ACCEPTED" | "CHANGE_DECLINED"
+  >,
+  args: BookingNotificationArgs & {
+    customerUserId: string;
+    weddingPlanId: string | null;
+    providerName: string;
+    reason?: string | null;
+  },
+): CreateNotificationInput {
+  const day = weekdayDayMonthWords(args.eventDate);
+  const copies: Record<typeof event, { title: string; body: AddressedText }> = {
+    COMPLETED: {
+      title: `ألف مبروك! كيف كان ${args.providerName}؟`,
+      body: gendered(
+        "قيّمه بنجمة إلى خمس، تقييمك يساعد غيرك.",
+        "قيّميه بنجمة إلى خمس، تقييمك يساعد غيرك.",
+      ),
+    },
+    NOT_HAPPENED: {
+      title: `${args.providerName}: الحجز ما تم`,
+      body: args.reason && NOT_HAPPENED_WORDS[args.reason]
+        ? `السبب: ${NOT_HAPPENED_WORDS[args.reason]}. لو عندك ملاحظة كلّم الدعم.`
+        : "لو عندك ملاحظة كلّم الدعم.",
+    },
+    DELIVERED: {
+      title: `سلّمك ${args.providerName}`,
+      body: gendered(
+        "افتح الحجز وأكّد إنك استلمت.",
+        "افتحي الحجز وأكّدي إنك استلمتِ.",
+      ),
+    },
+    CHANGE_ACCEPTED: {
+      title: `${args.providerName} ثبّت الموعد الجديد`,
+      body: `الحجز صار يوم ${day}.`,
+    },
+    CHANGE_DECLINED: {
+      title: `${args.providerName} ما يقدر على الموعد الجديد`,
+      body: args.reason
+        ? `«${args.reason}». الحجز باقي على موعده.`
+        : "الحجز باقي على موعده. تقدر تكلمه في المحادثة.",
+    },
+  };
+  const copy = copies[event];
+  return {
+    userId: args.customerUserId,
+    weddingPlanId: args.weddingPlanId,
+    type: NotificationType.BOOKING_UPDATED,
+    priority: event === "COMPLETED" ? NotificationPriority.NORMAL : NotificationPriority.HIGH,
+    title: copy.title,
+    body: copy.body,
+    entityType: "booking",
+    entityId: args.bookingId,
+    routeTarget: requesterQuoteRoute(args.weddingPlanId, args.quoteRequestId),
+    data: {
+      bookingId: args.bookingId,
+      quoteRequestId: args.quoteRequestId,
+      providerId: args.providerId,
+      weddingPlanId: args.weddingPlanId,
+      bookingEvent: event,
+      recipientAudience: "CUSTOMER",
+    },
+    dedupeKey: `${args.customerUserId}:booking:${args.bookingId}:${event}:${args.revision}`,
+  };
+}
+
+/** The provider's side: a delivery confirmed, a new day asked. */
+export function bookingAftercareProviderNotification(
+  event: Extract<BookingAftercareEvent, "DELIVERY_CONFIRMED" | "CHANGE_REQUESTED">,
+  args: BookingNotificationArgs & {
+    providerUserId: string;
+    customerName: string | null;
+    toDate?: Date;
+  },
+): CreateNotificationInput {
+  const who = customerFirstName(args.customerName) ?? "العميل";
+  const copy =
+    event === "DELIVERY_CONFIRMED"
+      ? { title: `${who} استلم التسليم`, body: "التسليم مأكد. شكرًا على شغلك." }
+      : {
+          title: `${who} غيّر موعد العرس`,
+          body: `من ${weekdayDayMonthWords(args.eventDate)} إلى ${weekdayDayMonthWords(
+            args.toDate ?? args.eventDate,
+          )}. ثبّت أو اعتذر.`,
+        };
+  return {
+    userId: args.providerUserId,
+    type: NotificationType.BOOKING_UPDATED,
+    priority: NotificationPriority.HIGH,
+    title: copy.title,
+    body: copy.body,
+    entityType: "booking",
+    entityId: args.bookingId,
+    routeTarget: providerRequestRoute(args.quoteRequestId),
+    data: {
+      bookingId: args.bookingId,
+      quoteRequestId: args.quoteRequestId,
+      providerId: args.providerId,
+      bookingEvent: event,
+      recipientAudience: "PROVIDER",
+    },
+    dedupeKey: `${args.providerUserId}:booking:${args.bookingId}:${event}:${args.revision}`,
+  };
+}

@@ -233,6 +233,8 @@ class _ProviderRequestsScreenState extends State<ProviderRequestsScreen> {
                       busy: marketplace.isSubmitting,
                       onBook: () => _book(quote),
                       onCancelBooking: () => _cancelBooking(quote),
+                      onChangeDay: () => _changeDay(quote),
+                      onConfirmDelivery: () => _confirmDelivery(quote),
                       onViewCost: () => _viewCost(quote),
                       onRate: () => context.push(
                         AppRouter.planReviews(
@@ -429,6 +431,57 @@ class _ProviderRequestsScreenState extends State<ProviderRequestsScreen> {
       AarastToast.showError(
         context,
         marketplace.errorMessage ?? 'وصلت رسالتك، بس ما قدرنا نسجّل الاعتذار.',
+      );
+    }
+  }
+
+  /// B-24: asks the provider to move the booking; it keeps its day until
+  /// they take the new one.
+  Future<void> _changeDay(QuoteRequest quote) async {
+    if (!_ownQuote(quote)) return;
+    final booking = quote.booking;
+    if (booking == null) return;
+    final today = DateUtils.dateOnly(DateTime.now());
+    final day = await showDatePicker(
+      context: context,
+      initialDate: booking.eventDate.isBefore(today)
+          ? today
+          : booking.eventDate,
+      firstDate: today,
+      lastDate: today.add(const Duration(days: 730)),
+    );
+    if (day == null || !mounted) return;
+    final marketplace = context.read<ProviderMarketplaceProvider>();
+    final ok = await marketplace.requestBookingChange(quote, day);
+    if (!mounted) return;
+    if (ok) {
+      AarastToast.showSuccess(
+        context,
+        'وصلهم طلبك يوم ${formatArabicDayMonth(day)}. الحجز باقي لين يردون.',
+      );
+    } else {
+      AarastToast.showError(
+        context,
+        marketplace.errorMessage ?? 'ما وصل طلبك. جرّب مرة ثانية.',
+      );
+    }
+  }
+
+  /// B-23: the customer confirms the provider's delivery.
+  Future<void> _confirmDelivery(QuoteRequest quote) async {
+    if (!_ownQuote(quote)) return;
+    final marketplace = context.read<ProviderMarketplaceProvider>();
+    final ok = await marketplace.confirmBookingDelivery(quote);
+    if (!mounted) return;
+    if (ok) {
+      AarastToast.showSuccess(
+        context,
+        'انسجّل إنك استلمت. ما يبقى إلا تقييمهم.',
+      );
+    } else {
+      AarastToast.showError(
+        context,
+        marketplace.errorMessage ?? 'ما قدرنا نسجّل. جرّب مرة ثانية.',
       );
     }
   }

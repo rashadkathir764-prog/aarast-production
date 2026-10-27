@@ -2883,6 +2883,56 @@ Reviews (F10): `POST /api/v1/providers/:id/reviews` requires a confirmed
 booking with the provider whose day has passed; otherwise
 `403 REVIEW_REQUIRES_COMPLETED_BOOKING`.
 
+### After The Booking (G25, 2026-10-27)
+
+B-22, B-23 and B-24 of `docs/superpowers/plans/2026-10-25-provider-backend-changes.md`.
+A booking stays `CONFIRMED`; its outcome, delivery and asked changes are
+fields beside the status. Every booking response carries `completedAt`,
+`notHappenedAt`, `notHappenedReason`, `deliveryDueAt`, `deliveredAt`,
+`deliveryLink`, `deliveryNote`, `deliveryConfirmedAt` and `change` (the last
+asked change: `id`, `fromDate`, `toDate`, `status`, `note`, `declineReason`).
+`lifecycleStatus` reads `NOT_HAPPENED` once the provider reported it.
+
+- `POST /api/v1/provider/me/bookings/:id/complete` — «تم», from the day to
+  seven days after (`409 BOOKING_OUTCOME_TOO_EARLY`, `_TOO_LATE`,
+  `_ALREADY_DECIDED`, `_NOT_CONFIRMED`). Sets `deliveryDueAt` from the accepted
+  offer's `deliveryDays`. The customer is asked to review.
+- `POST /api/v1/provider/me/bookings/:id/not-happened`
+  `{ reason: CUSTOMER_NO_SHOW | WE_DID_NOT_ATTEND | FORCE_MAJEURE | OFFICIAL_DECISION }`
+  — «ما صار»; the booking is never reviewed. Same window and codes.
+- The hourly booking job completes a confirmed booking two days after its day
+  when the provider said nothing.
+- `POST /api/v1/provider/me/bookings/:id/delivery` `{ link?: http(s) URL, note? }`
+  — once, after «تم» (`409 BOOKING_DELIVERY_NOT_COMPLETED`, `_ALREADY_DELIVERED`).
+- `POST /api/v1/me/bookings/:id/delivery/confirm` — the customer confirms, once
+  (`409 BOOKING_DELIVERY_NOT_DELIVERED`, `_ALREADY_CONFIRMED`).
+- `POST /api/v1/me/bookings/:id/change` `{ eventDate: "YYYY-MM-DD", note? }` — the
+  customer asks to move a confirmed booking before its day; one pending change
+  at a time (`409 BOOKING_CHANGE_CHANGE_PENDING`, `_SAME_DAY`, `_DAY_PASSED`,
+  `_NOT_CONFIRMED`).
+- `POST /api/v1/provider/me/booking-changes/:id/accept` — checks the new day
+  against blocked days and the daily capacity (`409 BOOKING_DATE_UNAVAILABLE`,
+  `BOOKING_DAY_FULL`) and moves the booking.
+- `POST /api/v1/provider/me/booking-changes/:id/decline` `{ reason? }` — the
+  booking keeps its day.
+
+### Offer Contents And Reasons (G24, 2026-10-27)
+
+- B-05: `PATCH /api/v1/provider/me/quote-requests/:id/status` with `REJECTED`
+  takes `declineReason` (`BUSY_THAT_DAY | OUT_OF_AREA | NOT_MY_SERVICE | OTHER`),
+  `declineMessage` and `blockDay` (only with `BUSY_THAT_DAY` on a dated request;
+  the day closes in the same transaction unless a confirmed booking holds it,
+  and the response says `dayBlocked`). Quote responses carry `declineReason`
+  and `declineMessage`.
+- B-07: offer create and update take `lines`
+  (`[{ label, kind: INCLUDED | EXCLUDED | EXTRA, amount? }]`, a positive amount
+  only on `EXTRA`, at most 30; `400 QUOTE_OFFER_LINES_INVALID`) and
+  `deliveryDays` (0 to 365). Both are part of each version and of «ايش تغيّر»;
+  a viewer without money access reads no extra price and no `lines` change.
+- B-11: `PATCH /api/v1/quote-offers/:id/reject` takes `{ reason?: PRICE |
+  CHOSE_OTHER | DATE | NONE, message? }`; offers carry `rejectReason` and
+  `rejectMessage`.
+
 ## Guest Invitations And RSVP
 
 V1 checklist 4.7. Each guest gets a personal link to confirm or decline,
@@ -3233,6 +3283,24 @@ Admin runtime smoke coverage exists in `admin-web/scripts/admin-runtime-smoke.mj
 - An administrator's general application token never carries `admin_mfa` and
   cannot access administration routes.
 
+### Money Refusals (G22, 2026-10-27)
+
+Every money rule a request can break answers `400` or `409` with
+`{ statusCode, code, message, detail }`: `code` is stable
+(`FINANCE_PAYMENT_EXCEEDS_REMAINING`, `FINANCE_FUNDING_HAS_PAID_REPAYMENTS`, …),
+`message` is the reason in Arabic for the person, and `detail` keeps the rule
+in English for logs. `DELETE /api/v1/funding-sources/:id` refuses a source with
+a paid repayment (`409 FINANCE_FUNDING_HAS_PAID_REPAYMENTS`).
+
+An archived plan still accepts settlement of money already agreed: a cost
+payment, a schedule paid, a payment reversal, and a loan repayment marked
+paid or unpaid (G15). Its payment-date and loan-repayment reminders continue.
+
+The dashboard summary carries `essentials` (G23): the six items the owner
+named (`VENUE`, `DRESS`, `PHOTO`, `GOLD`, `HOME`, `HONEYMOON`), each `BOOKED`,
+`AGREED`, `MISSING` or `NONE` with its `budgetCategoryId`; null without money
+rights.
+
 ## MVP Exclusions
 
 The current MVP backend contract does not include:
@@ -3398,6 +3466,8 @@ configuration, and smoke checks.
 | PATCH | `/api/v1/loan-repayments/:id` | `funding-sources.update` | 🔒 |
 | GET | `/api/v1/me` | `me.me` | 🔒 |
 | PATCH | `/api/v1/me/bookings/:id/cancel` | `bookings.cancelBooking` | 🔒 |
+| POST | `/api/v1/me/bookings/:id/change` | `bookings.requestChange` | 🔒 |
+| POST | `/api/v1/me/bookings/:id/delivery/confirm` | `bookings.confirmDelivery` | 🔒 |
 | GET | `/api/v1/me/favorite-providers` | `marketplace.findMyFavoriteProviders` | 🔒 |
 | GET | `/api/v1/me/quote-requests` | `marketplace.findMyQuoteRequests` | 🔒 |
 | GET | `/api/v1/me/quote-requests/:id` | `marketplace.findMyQuoteRequest` | 🔒 |
@@ -3428,10 +3498,15 @@ configuration, and smoke checks.
 | GET | `/api/v1/provider/me/blocked-dates` | `bookings.listBlockedDates` | 🔒 |
 | POST | `/api/v1/provider/me/blocked-dates` | `bookings.blockDate` | 🔒 |
 | DELETE | `/api/v1/provider/me/blocked-dates/:date` | `bookings.unblockDate` | 🔒 |
+| POST | `/api/v1/provider/me/booking-changes/:id/accept` | `bookings.acceptChange` | 🔒 |
+| POST | `/api/v1/provider/me/booking-changes/:id/decline` | `bookings.declineChange` | 🔒 |
 | GET | `/api/v1/provider/me/bookings` | `bookings.listBookings` | 🔒 |
 | PATCH | `/api/v1/provider/me/bookings/:id/cancel` | `bookings.cancel` | 🔒 |
+| POST | `/api/v1/provider/me/bookings/:id/complete` | `bookings.complete` | 🔒 |
 | PATCH | `/api/v1/provider/me/bookings/:id/confirm` | `bookings.confirm` | 🔒 |
 | PATCH | `/api/v1/provider/me/bookings/:id/decline` | `bookings.decline` | 🔒 |
+| POST | `/api/v1/provider/me/bookings/:id/delivery` | `bookings.deliver` | 🔒 |
+| POST | `/api/v1/provider/me/bookings/:id/not-happened` | `bookings.notHappened` | 🔒 |
 | GET | `/api/v1/provider/me/claim` | `provider-dashboard.getClaim` | 🔒 |
 | GET | `/api/v1/provider/me/ledger` | `bookings.ledger` | 🔒 |
 | GET | `/api/v1/provider/me/packages` | `provider-dashboard.findPackages` | 🔒 |

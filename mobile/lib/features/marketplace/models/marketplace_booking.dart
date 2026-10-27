@@ -21,6 +21,15 @@ class MarketplaceBooking {
     this.guestCount,
     this.weddingPlanId,
     this.money,
+    this.completedAt,
+    this.notHappenedAt,
+    this.notHappenedReason,
+    this.deliveryDueAt,
+    this.deliveredAt,
+    this.deliveryLink,
+    this.deliveryNote,
+    this.deliveryConfirmedAt,
+    this.change,
   });
 
   factory MarketplaceBooking.fromJson(Map<String, dynamic> json) {
@@ -48,12 +57,68 @@ class MarketplaceBooking {
           : null,
       weddingPlanId: json['weddingPlanId']?.toString(),
       money: json['money'] is Map
-          ? BookingMoney.fromJson(
-              Map<String, dynamic>.from(json['money'] as Map),
+          ? BookingMoney.fromJson(Map<String, dynamic>.from(json['money'] as Map))
+          : null,
+      completedAt: _moment(json['completedAt']),
+      notHappenedAt: _moment(json['notHappenedAt']),
+      notHappenedReason: _text(json['notHappenedReason']),
+      deliveryDueAt: _moment(json['deliveryDueAt']),
+      deliveredAt: _moment(json['deliveredAt']),
+      deliveryLink: _text(json['deliveryLink']),
+      deliveryNote: _text(json['deliveryNote']),
+      deliveryConfirmedAt: _moment(json['deliveryConfirmedAt']),
+      change: json['change'] is Map
+          ? BookingChange.fromJson(
+              Map<String, dynamic>.from(json['change'] as Map),
             )
           : null,
     );
   }
+
+  /// B-22: the provider said «تم», or «ما صار» and why
+  /// (`CUSTOMER_NO_SHOW`, `WE_DID_NOT_ATTEND`, `FORCE_MAJEURE`,
+  /// `OFFICIAL_DECISION`). Two days after the day it completes by itself.
+  final DateTime? completedAt;
+  final DateTime? notHappenedAt;
+  final String? notHappenedReason;
+
+  /// B-23: the delivery promised by the offer, the delivery, its confirmation.
+  final DateTime? deliveryDueAt;
+  final DateTime? deliveredAt;
+  final String? deliveryLink;
+  final String? deliveryNote;
+  final DateTime? deliveryConfirmedAt;
+
+  /// B-24: the last change of day the customer asked for.
+  final BookingChange? change;
+
+  /// B-22: from the day to a week after, before any word.
+  bool canRecordOutcome(DateTime today) {
+    if (!isConfirmed || completedAt != null || notHappenedAt != null) {
+      return false;
+    }
+    final day = DateTime(eventDate.year, eventDate.month, eventDate.day);
+    final now = DateTime(today.year, today.month, today.day);
+    return !now.isBefore(day) && now.difference(day).inDays <= 7;
+  }
+
+  /// B-23: a completed booking not delivered yet.
+  bool get canDeliver =>
+      isConfirmed && completedAt != null && deliveredAt == null;
+
+  /// B-23: delivered, not confirmed yet by the customer.
+  bool get canConfirmDelivery =>
+      deliveredAt != null && deliveryConfirmedAt == null;
+
+  /// B-24: a confirmed booking before its day, with no change waiting.
+  bool canAskChange(DateTime today) =>
+      isConfirmed &&
+      !DateTime(
+        eventDate.year,
+        eventDate.month,
+        eventDate.day,
+      ).isBefore(DateTime(today.year, today.month, today.day)) &&
+      change?.isPending != true;
 
   final String id;
   final String quoteRequestId;
@@ -107,6 +172,43 @@ class MarketplaceBooking {
       '${day.day.toString().padLeft(2, '0')}';
 }
 
+/// B-24: a change of day the customer asked for, and the provider's answer.
+class BookingChange {
+  const BookingChange({
+    required this.id,
+    required this.fromDate,
+    required this.toDate,
+    required this.status,
+    this.note,
+    this.declineReason,
+  });
+
+  factory BookingChange.fromJson(Map<String, dynamic> json) => BookingChange(
+    id: json['id'].toString(),
+    fromDate:
+        planDayFromJson(json['fromDate']) ??
+        DateTime.fromMillisecondsSinceEpoch(0),
+    toDate:
+        planDayFromJson(json['toDate']) ??
+        DateTime.fromMillisecondsSinceEpoch(0),
+    status: json['status']?.toString() ?? 'PENDING',
+    note: _text(json['note']),
+    declineReason: _text(json['declineReason']),
+  );
+
+  final String id;
+  final DateTime fromDate;
+  final DateTime toDate;
+
+  /// `PENDING`, `ACCEPTED`, `DECLINED` or `CANCELLED`.
+  final String status;
+  final String? note;
+  final String? declineReason;
+
+  bool get isPending => status == 'PENDING';
+  bool get isDeclined => status == 'DECLINED';
+}
+
 /// B-18: the three totals the provider reads, read only. The customer
 /// records every payment; the provider never sees one, nor who paid.
 class BookingMoney {
@@ -141,22 +243,18 @@ class ProviderLedger {
 
   factory ProviderLedger.fromJson(Map<String, dynamic> json) => ProviderLedger(
     totals: [
-      for (final row
-          in (json['totals'] is List ? json['totals'] as List : const []))
+      for (final row in (json['totals'] is List ? json['totals'] as List : const []))
         if (row is Map)
           ProviderLedgerTotal(
             currency: row['currency']?.toString() ?? 'YER',
             agreed: row['agreed']?.toString() ?? '0',
             paid: row['paid']?.toString() ?? '0',
             left: row['left']?.toString() ?? '0',
-            bookings: row['bookings'] is num
-                ? (row['bookings'] as num).toInt()
-                : 0,
+            bookings: row['bookings'] is num ? (row['bookings'] as num).toInt() : 0,
           ),
     ],
     bookings: [
-      for (final row
-          in (json['bookings'] is List ? json['bookings'] as List : const []))
+      for (final row in (json['bookings'] is List ? json['bookings'] as List : const []))
         if (row is Map)
           ProviderLedgerBooking(
             bookingId: row['bookingId']?.toString() ?? '',
@@ -166,9 +264,7 @@ class ProviderLedger {
                 planDayFromJson(row['eventDate']) ??
                 DateTime.fromMillisecondsSinceEpoch(0),
             money: row['money'] is Map
-                ? BookingMoney.fromJson(
-                    Map<String, dynamic>.from(row['money'] as Map),
-                  )
+                ? BookingMoney.fromJson(Map<String, dynamic>.from(row['money'] as Map))
                 : null,
           ),
     ],
@@ -221,23 +317,17 @@ String? _text(Object? value) {
 }
 
 /// The booking's state in words, from the customer's or the provider's side.
-String bookingStatusLabel(
-  MarketplaceBooking booking, {
-  bool forProvider = false,
-}) {
+String bookingStatusLabel(MarketplaceBooking booking, {bool forProvider = false}) {
   return switch (booking.lifecycleStatus) {
-    'REQUESTED' =>
-      forProvider ? 'طلب حجز بانتظار ردّك' : 'بانتظار تأكيد المزوّد',
+    'REQUESTED' => forProvider ? 'طلب حجز بانتظار ردّك' : 'بانتظار تأكيد المزوّد',
     'CONFIRMED' => 'محجوز',
     'COMPLETED' => 'تمّ',
     'DECLINED' => forProvider ? 'اعتذرت عنه' : 'اعتذر المزوّد',
-    'CANCELLED' =>
-      booking.cancelledBy == 'PROVIDER'
-          ? (forProvider ? 'ألغيته' : 'ألغاه المزوّد')
-          : (forProvider ? 'ألغاه العميل' : 'ألغيته'),
+    'CANCELLED' => booking.cancelledBy == 'PROVIDER'
+        ? (forProvider ? 'ألغيته' : 'ألغاه المزوّد')
+        : (forProvider ? 'ألغاه العميل' : 'ألغيته'),
     // B-42: his account was stopped while the request waited.
-    'EXPIRED' =>
-      forProvider ? 'انتهى مع إيقاف حسابك' : 'انتهى، المزوّد موقوف مؤقتًا',
+    'EXPIRED' => forProvider ? 'انتهى مع إيقاف حسابك' : 'انتهى، المزوّد موقوف مؤقتًا',
     _ => booking.lifecycleStatus,
   };
 }
@@ -245,8 +335,7 @@ String bookingStatusLabel(
 /// Arabic text for the booking API's error codes.
 String? bookingErrorMessage(String? code) {
   return switch (code) {
-    'BOOKING_DATE_UNAVAILABLE' =>
-      'المزوّد غير متاح في هذا اليوم. اختر يومًا آخر.',
+    'BOOKING_DATE_UNAVAILABLE' => 'المزوّد غير متاح في هذا اليوم. اختر يومًا آخر.',
     'BOOKING_DAY_FULL' => 'المزوّد محجوز بالكامل في هذا اليوم. اختر يومًا آخر.',
     'BOOKING_DATE_HAS_BOOKING' => 'لديك حجز مؤكد في هذا اليوم.',
     'BOOKING_DATE_IN_PAST' => 'هذا اليوم مضى. اختر يومًا قادمًا.',

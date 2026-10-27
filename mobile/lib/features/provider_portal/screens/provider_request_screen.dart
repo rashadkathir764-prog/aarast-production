@@ -179,10 +179,7 @@ class _NewRequest extends StatelessWidget {
                 if (quote.withdrawnOffer case final withdrawn?) ...[
                   JourneyNote(
                     key: const Key('provider-request-withdrawn'),
-                    text: _withdrawnLine(
-                      withdrawn.withdrawnAt,
-                      quote.expiresAt,
-                    ),
+                    text: _withdrawnLine(withdrawn.withdrawnAt, quote.expiresAt),
                   ),
                   const SizedBox(height: 10),
                 ],

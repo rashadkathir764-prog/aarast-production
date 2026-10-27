@@ -10,6 +10,7 @@ export type BookingLifecycle =
   | "REQUESTED"
   | "CONFIRMED"
   | "COMPLETED"
+  | "NOT_HAPPENED"
   | "DECLINED"
   | "CANCELLED"
   | "EXPIRED";
@@ -124,7 +125,10 @@ export function bookingLifecycle(
   status: BookingStatus,
   eventDate: Date,
   now: Date = new Date(),
+  /** B-22: the provider reported «ما صار». */
+  notHappenedAt: Date | null = null,
 ): BookingLifecycle {
+  if (status === BookingStatus.CONFIRMED && notHappenedAt) return "NOT_HAPPENED";
   if (
     status === BookingStatus.CONFIRMED &&
     eventDate.getTime() < bookingToday(now).getTime()
@@ -147,6 +151,24 @@ export interface BookingRow {
   declinedAt: Date | null;
   cancelledAt: Date | null;
   expiredAt?: Date | null;
+  completedAt?: Date | null;
+  notHappenedAt?: Date | null;
+  notHappenedReason?: string | null;
+  deliveryDueAt?: Date | null;
+  deliveredAt?: Date | null;
+  deliveryLink?: string | null;
+  deliveryNote?: string | null;
+  deliveryConfirmedAt?: Date | null;
+  changes?: Array<{
+    id: string;
+    fromDate: Date;
+    toDate: Date;
+    status: string;
+    note: string | null;
+    declineReason: string | null;
+    createdAt: Date;
+    decidedAt: Date | null;
+  }>;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -159,16 +181,48 @@ export function toBookingResponse(booking: BookingRow, now: Date = new Date()) {
     providerId: booking.providerId,
     eventDate: booking.eventDate.toISOString().slice(0, 10),
     status: booking.status,
-    lifecycleStatus: bookingLifecycle(booking.status, booking.eventDate, now),
+    lifecycleStatus: bookingLifecycle(
+      booking.status,
+      booking.eventDate,
+      now,
+      booking.notHappenedAt ?? null,
+    ),
     cancelledBy: booking.cancelledBy,
     note: booking.note,
     confirmedAt: booking.confirmedAt,
     declinedAt: booking.declinedAt,
     cancelledAt: booking.cancelledAt,
     expiredAt: booking.expiredAt ?? null,
+    // G25: B-22 the outcome, B-23 the delivery, B-24 the last change asked.
+    completedAt: booking.completedAt ?? null,
+    notHappenedAt: booking.notHappenedAt ?? null,
+    notHappenedReason: booking.notHappenedReason ?? null,
+    deliveryDueAt: booking.deliveryDueAt ?? null,
+    deliveredAt: booking.deliveredAt ?? null,
+    deliveryLink: booking.deliveryLink ?? null,
+    deliveryNote: booking.deliveryNote ?? null,
+    deliveryConfirmedAt: booking.deliveryConfirmedAt ?? null,
+    change: lastChange(booking.changes),
     createdAt: booking.createdAt,
     updatedAt: booking.updatedAt,
   };
 }
 
 export type BookingResponse = ReturnType<typeof toBookingResponse>;
+
+function lastChange(changes: BookingRow["changes"]) {
+  if (!changes || changes.length === 0) return null;
+  const last = [...changes].sort(
+    (a, b) => b.createdAt.getTime() - a.createdAt.getTime(),
+  )[0];
+  return {
+    id: last.id,
+    fromDate: last.fromDate.toISOString().slice(0, 10),
+    toDate: last.toDate.toISOString().slice(0, 10),
+    status: last.status,
+    note: last.note,
+    declineReason: last.declineReason,
+    createdAt: last.createdAt,
+    decidedAt: last.decidedAt,
+  };
+}

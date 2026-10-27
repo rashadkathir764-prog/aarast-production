@@ -286,8 +286,11 @@ export interface AdminBookingFilter {
 export type AdminBookingRow = Booking & {
   provider: Pick<Provider, 'id' | 'businessName' | 'status'>;
   quoteRequest: Pick<QuoteRequest, 'id' | 'userId' | 'weddingPlanId' | 'contactName' | 'guestCount'>;
-  /** The status as people read it: a confirmed booking whose day passed is COMPLETED. */
-  lifecycleStatus: BookingStatus | 'COMPLETED';
+  /**
+   * The status as people read it: a confirmed booking whose day passed is
+   * COMPLETED, or NOT_HAPPENED when the provider reported «ما صار» (B-22).
+   */
+  lifecycleStatus: BookingStatus | 'COMPLETED' | 'NOT_HAPPENED';
 };
 
 export interface MarketplaceAdminPort {

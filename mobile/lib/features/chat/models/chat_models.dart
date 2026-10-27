@@ -226,6 +226,7 @@ class ChatMessage {
     this.sender,
     this.attachments = const [],
     this.pending = false,
+    this.queued = false,
   });
 
   factory ChatMessage.fromJson(Map<String, dynamic> json) => ChatMessage(
@@ -248,6 +249,9 @@ class ChatMessage {
   final ChatUser? sender;
   final List<ChatAttachment> attachments;
   final bool pending;
+
+  /// G38: written with no network; it goes when the network is back.
+  final bool queued;
 }
 
 class ChatConversationEvent {

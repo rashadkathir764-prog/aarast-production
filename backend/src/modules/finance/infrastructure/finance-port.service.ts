@@ -43,6 +43,7 @@ import type {
   PendingPaymentSchedule,
   PlanImportCounts,
   RecordedCostCounts,
+  SpendingSample,
 } from '../public/finance.port';
 import {
   weddingCostResponseInclude,
@@ -120,6 +121,31 @@ export class FinancePortService implements FinancePort {
       client.weddingCost.groupBy({ by: ['weddingPlanId'] }),
     ]);
     return { costs, plans: plans.length };
+  }
+
+  async listSpendingSamples(client: Prisma.TransactionClient): Promise<SpendingSample[]> {
+    const groups = await client.weddingCost.groupBy({
+      by: ['weddingPlanId', 'budgetCategoryId'],
+      where: {
+        status: { not: WeddingCostStatus.CANCELLED },
+        privateToUserId: null,
+        budgetCategory: { kind: BudgetCategoryKind.WEDDING },
+      },
+      _sum: { totalAmount: true },
+    });
+    if (groups.length === 0) return [];
+    const categories = await client.budgetCategory.findMany({
+      where: { id: { in: [...new Set(groups.map((group) => group.budgetCategoryId))] } },
+      select: { id: true, normalizedName: true },
+    });
+    const names = new Map(categories.map((category) => [category.id, category.normalizedName]));
+    return groups.flatMap((group) => {
+      const itemName = names.get(group.budgetCategoryId);
+      const total = group._sum.totalAmount;
+      return itemName && total && total.gt(0)
+        ? [{ weddingPlanId: group.weddingPlanId, itemName, total }]
+        : [];
+    });
   }
 
   async createBudgetCategoriesInTransaction(

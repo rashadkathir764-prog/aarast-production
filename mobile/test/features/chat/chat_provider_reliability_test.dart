@@ -7,6 +7,7 @@ import 'package:aarast_mobile/core/storage/auth_storage.dart';
 import 'package:aarast_mobile/core/theme/app_theme.dart';
 import 'package:aarast_mobile/core/session/safe_user.dart';
 import 'package:aarast_mobile/features/chat/data/chat_api.dart';
+import 'package:aarast_mobile/features/chat/data/chat_outbox.dart';
 import 'package:aarast_mobile/features/chat/data/chat_realtime_client.dart';
 import 'package:aarast_mobile/features/chat/models/chat_models.dart';
 import 'package:aarast_mobile/features/chat/providers/chat_provider.dart';
@@ -22,6 +23,35 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
   late AuthStorage storage;
+
+  test(
+    'G38: a text written with no network waits, then goes with the same request id',
+    () async {
+      final preferences = await SharedPreferences.getInstance();
+      final outbox = ChatOutbox(preferences);
+      final api = _OfflineChatApi();
+      final chat = ChatProvider(
+        api: api,
+        realtime: _FakeRealtimeClient(storage),
+        authStorage: storage,
+        outbox: outbox,
+      );
+      await chat.openConversation('conversation-1');
+
+      expect(await chat.send('conversation-1', 'السلام عليكم'), isTrue);
+      final waiting = chat.timelineFor('conversation-1').last.message!;
+      expect(waiting.queued, isTrue);
+      expect(chat.queuedMessages, hasLength(1));
+      final firstId = api.sentRequestIds.single;
+      expect(firstId, isNotNull);
+
+      api.online = true;
+      await chat.flushOutbox();
+      expect(api.sentRequestIds.last, firstId);
+      expect(chat.queuedMessages, isEmpty);
+      expect(chat.timelineFor('conversation-1').last.message!.queued, isFalse);
+    },
+  );
 
   setUp(() async {
     SharedPreferences.setMockInitialValues({});
@@ -985,6 +1015,32 @@ Map<String, dynamic> _conversationJson({
   'updatedAt': '2026-07-11T00:00:00.000Z',
 };
 
+/// G38: a chat API with no network until [online] is set.
+class _OfflineChatApi extends _FakeChatApi {
+  _OfflineChatApi()
+    : super(conversations: [_conversation(id: 'conversation-1')]);
+
+  bool online = false;
+  final List<String?> sentRequestIds = [];
+
+  @override
+  Future<ChatMessage> send(
+    String conversationId, {
+    required String body,
+    List<MediaUploadTicket> attachments = const [],
+    String? clientRequestId,
+  }) async {
+    sentRequestIds.add(clientRequestId);
+    if (!online) {
+      throw const ApiException(
+        aarastBackendConnectionErrorMessage,
+        isNetworkFailure: true,
+      );
+    }
+    return _message(senderUserId: 'user-1', body: body);
+  }
+}
+
 class _FakeChatApi extends ChatApi {
   _FakeChatApi({
     this.conversations = const [],
@@ -1093,6 +1149,7 @@ class _FakeChatApi extends ChatApi {
     String conversationId, {
     required String body,
     List<MediaUploadTicket> attachments = const [],
+    String? clientRequestId,
   }) async {
     if (sendError != null) throw sendError!;
     final message = _message(senderUserId: 'user-1', body: body);

@@ -61,8 +61,7 @@ class _ProviderLedgerScreenState extends State<ProviderLedgerScreen> {
           children: [
             JourneySubHeader(
               title: 'حساباتك',
-              subtitle:
-                  '${arabicMonthName(_month.month)} ${_month.year} · من حجوزاتك المؤكدة',
+              subtitle: '${arabicMonthName(_month.month)} ${_month.year} · من حجوزاتك المؤكدة',
             ),
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -168,14 +167,11 @@ class _ProviderLedgerScreenState extends State<ProviderLedgerScreen> {
       ),
     );
   }
+
 }
 
 class _Figure extends StatelessWidget {
-  const _Figure({
-    required this.label,
-    required this.value,
-    required this.color,
-  });
+  const _Figure({required this.label, required this.value, required this.color});
 
   final String label;
   final String value;
@@ -187,10 +183,7 @@ class _Figure extends StatelessWidget {
     children: [
       Text(
         label,
-        style: JourneyType.of(
-          JourneyType.small,
-          color: AarastV3Color.onPrimary,
-        ),
+        style: JourneyType.of(JourneyType.small, color: AarastV3Color.onPrimary),
       ),
       const SizedBox(height: 4),
       FittedBox(

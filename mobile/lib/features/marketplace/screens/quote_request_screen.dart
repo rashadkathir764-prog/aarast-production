@@ -399,11 +399,8 @@ class _QuoteRequestScreenState extends State<QuoteRequestScreen> {
       value,
       currencyCode: currencyCodeFromDisplayInput(currency),
     );
-    return [
-      parts.number,
-      ?parts.millionUnit,
-      currencyLabelAr(currency),
-    ].join(' ');
+    return [parts.number, ?parts.millionUnit, currencyLabelAr(currency)]
+        .join(' ');
   }
 
   /// The amount the request may share: the item it came from, or the plan's

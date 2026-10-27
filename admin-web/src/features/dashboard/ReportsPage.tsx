@@ -3,6 +3,7 @@
 // checklist 4.21). The success report takes no date range, so «آخر 30 يوم»
 // waits for A-05 and the line under the title names the thirty days the
 // server counts the conversion over. «تنزيل» saves the same numbers as CSV.
+// G41: what plans really agreed per item, anonymous, under the prices.
 import { useCallback, useEffect, useState } from 'react';
 import { Download } from 'lucide-react';
 import { getSuccessReport, type AdminSuccessReport } from './api';
@@ -20,6 +21,7 @@ import {
 import { dayMonth, PROMISE } from '../../platform/i18n/deskTime';
 
 type PriceRow = AdminSuccessReport['prices'][number];
+type SpendingRow = NonNullable<AdminSuccessReport['spending']>['groups'][number];
 
 function amount(value: string, currency: string): string {
   const number = grouped(value);
@@ -50,6 +52,17 @@ export function successReportCsv(report: AdminSuccessReport): string {
       row.cityName,
       row.categoryName,
       row.providers,
+      row.min,
+      row.median,
+      row.max,
+      row.currency,
+    ]),
+    [],
+    ['المدينة', 'البند', 'الخطط', 'أقل اتفاق', 'الوسيط', 'أعلى اتفاق', 'العملة'],
+    ...(report.spending?.groups ?? []).map((row) => [
+      row.city,
+      row.itemName,
+      row.plans,
       row.min,
       row.median,
       row.max,
@@ -154,6 +167,35 @@ export function ReportsPage() {
             />
           )}
           <DeskNote>السعر يظهر لما يكون عندنا 3 مزودين على الأقل. وكل مدينة بعملتها.</DeskNote>
+          {report.spending && report.spending.groups.length > 0 ? (
+            <DeskTable<SpendingRow>
+              caption="اللي اتفق عليه العرسان فعلًا"
+              columns={[
+                { label: 'المدينة', flex: 2 },
+                { label: 'البند', flex: 2 },
+                { label: 'الخطط', flex: 1 },
+                { label: 'أقل اتفاق', flex: 2 },
+                { label: 'الوسيط', flex: 2 },
+                { label: 'أعلى اتفاق', flex: 2 },
+              ]}
+              rows={report.spending.groups}
+              rowKey={(row) => `${row.city}-${row.itemName}-${row.currency}`}
+              renderRow={(row) => [
+                row.city,
+                row.itemName,
+                grouped(row.plans),
+                amount(row.min, row.currency),
+                <strong key="m">{amount(row.median, row.currency)}</strong>,
+                amount(row.max, row.currency),
+              ]}
+            />
+          ) : null}
+          {report.spending ? (
+            <DeskNote>
+              مجهول الهوية: البند يظهر لما يكون فيه {report.spending.minPlans} خطط على الأقل،
+              بدون الاتفاقات الملغية والخاصة والمهر.
+            </DeskNote>
+          ) : null}
         </>
       ) : null}
     </section>

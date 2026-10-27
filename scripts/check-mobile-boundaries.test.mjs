@@ -1711,7 +1711,11 @@ const r19ProviderPortalApi = Object.freeze({
 // -1 (D59): w20 reads whether its reader owns the plan from the journey
 // profile (the server's reader form), no longer from the account contexts
 // owner API.
-const r19LegalRecordCount = 245;
+// +3 (G24, G25, 2026-10-27): the provider's offline offer queue and the
+// offer form's lines editor read an offer's lines (B-07), and the booking's
+// aftercare (B-22 to B-24) reads the booking, through the marketplace owner
+// API.
+const r19LegalRecordCount = 248;
 const trackedOwnerApiContracts = [
   {
     area: 'features/account_contexts',
@@ -1789,6 +1793,8 @@ const trackedOwnerApiContracts = [
     path: 'mobile/lib/features/chat/chat_api.dart',
     exports: [
       { uri: 'data/chat_api.dart', show: ['ChatApi'] },
+      // G38: chat messages written with no network, kept for the composition root.
+      { uri: 'data/chat_outbox.dart', show: ['ChatOutbox'] },
       { uri: 'data/chat_realtime_client.dart', show: ['ChatRealtimeClient'] },
       // p33 and p34 (D40): the provider's own list reads his conversations,
       // and his portal draws his side of one.
@@ -1819,7 +1825,8 @@ const trackedOwnerApiContracts = [
         uri: 'models/money_starter_catalog.dart',
         show: ['moneyStarterPlanItemNames'],
       },
-      { uri: 'models/wedding_cost.dart', show: ['WeddingCost'] },
+      // G15: the archive sheet reads what is still owed.
+      { uri: 'models/wedding_cost.dart', show: ['WeddingCost', 'moneyValue'] },
       { uri: 'providers/finance_provider.dart', show: ['FinanceProvider'] },
       {
         uri: 'screens/budget_category_details_screen.dart',
@@ -1951,6 +1958,8 @@ const trackedOwnerApiContracts = [
           // B-09 (p27, f03): the provider's one reply under a review.
           'ProviderReviewReply',
           'ProviderServiceImage',
+          // B-07: an offer's lines, which the provider's form edits.
+          'QuoteOfferLine',
           'QuoteRequest',
         ],
       },
@@ -2904,11 +2913,12 @@ const trackedPlanningBatchContracts = [
     target: 'mobile/lib/features/sharing/sharing_api.dart',
     show: ['SharedMember'],
   },
-  // w10 saves the wedding budget through the plan's money (D27).
+  // w10 saves the wedding budget through the plan's money (D27); G15: the
+  // archive sheet reads what is still owed.
   {
     source: 'mobile/lib/features/wedding_plans/screens/plan_management_screen.dart',
     target: 'mobile/lib/features/finance/finance_api.dart',
-    show: ['FinanceProvider'],
+    show: ['FinanceProvider', 'moneyValue'],
   },
   {
     source: 'mobile/lib/features/wedding_plans/widgets/plan_details_view.dart',
@@ -3400,7 +3410,7 @@ const trackedCompositionRootContracts = [
       },
       {
         target: 'mobile/lib/features/chat/chat_api.dart',
-        show: ['ChatApi', 'ChatProvider', 'ChatRealtimeClient'],
+        show: ['ChatApi', 'ChatOutbox', 'ChatProvider', 'ChatRealtimeClient'],
       },
       {
         target: 'mobile/lib/features/finance/finance_api.dart',

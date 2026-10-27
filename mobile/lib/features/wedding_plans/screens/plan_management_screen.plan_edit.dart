@@ -85,13 +85,24 @@ extension _PlanCenterPlanEdit on _PlanCenterScreenState {
   /// Archive stays reachable from w10 until the plan lifecycle screens
   /// (w12 to w15) ship (D27). An archived plan cannot be opened again.
   Future<void> _confirmArchive(WeddingPlan plan) async {
+    // G15: say what is still owed before the plan closes. The server keeps
+    // reminding of payment dates and loan repayments after archiving.
+    final money = context.read<FinanceProvider>().summary;
+    final owed =
+        moneyValue(money.costs.outstanding) +
+        moneyValue(money.funding?.loanOutstanding);
+    final owedLine = owed > 0
+        ? '\n\nباقي عليك ${formatCompactMoney(owed, currencyCode: money.currency)} من '
+              'الاتفاقات والسلف. التذكير بمواعيدها يستمر بعد الأرشفة، '
+              'والأفضل تخليها مفتوحة لين تسدّد.'
+        : '';
     final confirmed = await showJourneySheet<bool>(
       context: context,
       builder: (sheetContext) => JourneySheetBody(
         title: 'تحط الخطة في الأرشيف؟',
         subtitle:
             '«${plan.title}» تنتقل للأرشيف وبياناتها تبقى محفوظة، بس ما '
-            'تقدر تفتحها بعدها من التطبيق.',
+            'تقدر تفتحها بعدها من التطبيق.$owedLine',
         children: [
           JourneyButton(
             key: const ValueKey('plan-archive-confirm'),

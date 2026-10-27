@@ -19,6 +19,7 @@ import {
 import { PrismaService } from "../platform/database/prisma.service";
 import { InsightsReadPorts } from "./insights-read-ports";
 import type { DashboardSetupFacts } from "./dashboard-setup.contracts";
+import { planEssentials } from "./plan-essentials";
 import { VENUE_PROVIDER_CATEGORY_SLUG } from "../modules/catalog/public/catalog-read.port";
 import {
   COLLABORATION_PERMISSION_PORT,
@@ -503,6 +504,14 @@ export class DashboardService {
         : null,
       venueSecured: venueCost || venueBooked,
       bookedServices,
+      essentials: money
+        ? planEssentials({
+            persona: context.plan.persona,
+            categories: money.categories,
+            bookedCategoryIds: bookedServices.budgetCategoryIds,
+            venueSecured: venueCost || venueBooked,
+          })
+        : null,
       // D59: beside the closed summary contract (R12B), whose money paid.
       paidByOwner: moneyOrNull(paidByOwnerNumber),
       paidByOthers: moneyOrNull(paidByOthersNumber),

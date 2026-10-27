@@ -181,6 +181,19 @@ class _CostDetailsScreenState extends State<CostDetailsScreen> {
     );
   }
 
+  /// How much the pending dates ask beyond what is left; null if not over.
+  static double? _scheduledOver(
+    List<PaymentSchedule> pending,
+    WeddingCost cost,
+  ) {
+    final scheduled = pending.fold<double>(
+      0,
+      (sum, schedule) => sum + moneyValue(schedule.amount),
+    );
+    final over = scheduled - moneyValue(cost.remainingAmount);
+    return over > 0.009 ? over : null;
+  }
+
   Widget _details(
     BuildContext context,
     FinanceProvider provider,
@@ -297,6 +310,21 @@ class _CostDetailsScreenState extends State<CostDetailsScreen> {
           )
         else
           _PaymentTimeline(entries: entries, currency: currency),
+        // G32: the dates are reminders, each capped by what is left; say so
+        // when together they ask for more than is left to pay.
+        if (_scheduledOver(pending, cost) case final over? when over > 0) ...[
+          const SizedBox(height: 8),
+          JourneyNote(
+            key: const ValueKey('cost-schedules-over-remaining'),
+            text:
+                'مواعيد الدفع مجموعها أكثر من الباقي بـ '
+                '${_plainAmount(context, over, currency)}. '
+                '${context.say('عدّل', 'عدّلي')} المواعيد لين تساوي الباقي.',
+            icon: LucideIcons.alertTriangle,
+            color: AarastV3Color.danger,
+            soft: AarastV3Color.dangerSoft,
+          ),
+        ],
         // V1 checklist 4.4: receipts live on the server (an account's plan),
         // never in a guest's local plan.
         if (!FinanceLocalDataSource.isLocalGuestPlanId(

@@ -7,6 +7,7 @@ import 'package:provider/provider.dart';
 
 import '../../../core/experience_v3/aarast_v3.dart';
 import '../../../core/routing/app_router.dart';
+import '../../../core/utils/money_formatters.dart' show formatCompactMoney;
 import '../../../core/utils/plan_day.dart';
 import '../../../core/widgets/aarast_toast.dart';
 import '../../../core/widgets/aarast_ui.dart';
@@ -17,6 +18,7 @@ import '../../onboarding/onboarding_api.dart'
     show GuestOnboardingDraft, GuestOnboardingStorage;
 import '../../sharing/sharing_api.dart' show SharedMember;
 import '../../finance/finance_api.dart' show FinanceProvider;
+import '../../finance/models/wedding_cost.dart' show moneyValue;
 import '../models/wedding_plan.dart';
 import '../providers/dashboard_summary_provider.dart';
 import '../providers/wedding_plans_provider.dart';

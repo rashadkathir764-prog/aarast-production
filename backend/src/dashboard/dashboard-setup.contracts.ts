@@ -1,4 +1,5 @@
 import type { PlanBookedServices } from './plan-booked-services';
+import type { PlanEssential } from './plan-essentials';
 
 // The home's setup facts (prototype b01). They sit beside the summary
 // contract, which is closed (R12B byte parity), and extend its response.
@@ -19,5 +20,10 @@ export interface DashboardSetupFacts {
    * one money read); null for a reader without money rights.
    */
   paidByOwner: string | null;
+  /**
+   * G23: the six essentials the owner named and where each stands; null for
+   * a reader without money rights (the items are money).
+   */
+  essentials: PlanEssential[] | null;
   paidByOthers: string | null;
 }

@@ -126,7 +126,7 @@ test('tasks serves the assigned and due tasks, the contributor visibility check 
   const dueWhere = (ids?: string[]) => ({
     ...(ids ? { id: { in: ids } } : {}),
     weddingPlanId: { in: ['plan-1'] },
-    dueDate: { not: null, lte: before },
+    OR: [{ dueDate: { not: null, lte: before } }],
     status: { notIn: [WeddingTaskStatus.DONE, WeddingTaskStatus.CANCELLED] },
   });
   assert.deepEqual(calls, [

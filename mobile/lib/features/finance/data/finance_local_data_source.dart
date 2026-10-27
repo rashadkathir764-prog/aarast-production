@@ -84,6 +84,7 @@ class FinanceLocalDataSource {
     String planId, {
     String? estimatedBudget,
     String? currency,
+    MoneyFundingSummary? funding,
   }) async {
     final budget = await readBudget(planId);
     final totalBudget = _nullableMoney(
@@ -236,6 +237,7 @@ class FinanceLocalDataSource {
       ),
       categories: categorySummaries,
       warnings: warnings,
+      funding: funding,
       permissions: const MoneyPermissions(
         canViewMoney: true,
         canManageMoney: true,

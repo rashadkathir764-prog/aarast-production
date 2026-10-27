@@ -26,6 +26,11 @@ export interface DueTaskQuery {
   dueBefore: Date;
   /** Narrows to these tasks (the re-read under the row locks). */
   taskIds?: readonly string[];
+  /**
+   * G36: also the open tasks whose own «ذكّرني» time fell in this window,
+   * whatever their due date.
+   */
+  reminderWindow?: { from: Date; to: Date };
 }
 
 /**

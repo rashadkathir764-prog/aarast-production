@@ -250,6 +250,12 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen> {
                     ? context.say('أنت', 'أنتِ')
                     : task.directionalResponsibleLabel,
               ),
+              if (task.reminderAt != null)
+                _Fact(
+                  icon: LucideIcons.bellRing,
+                  label: 'ذكّرني',
+                  value: _reminderWords(task.reminderAt!),
+                ),
               if (task.hasDescription)
                 _Fact(
                   icon: LucideIcons.fileText,
@@ -259,6 +265,19 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen> {
             ],
           ),
         ),
+        if (!task.isDone && task.status != 'CANCELLED')
+          Align(
+            alignment: AlignmentDirectional.centerStart,
+            child: JourneyTextAction(
+              key: const ValueKey('task-detail-reminder'),
+              label: task.reminderAt == null
+                  ? context.say('ذكّرني بوقت', 'ذكّريني بوقت')
+                  : 'غيّر التذكير',
+              onPressed: provider.isSubmitting
+                  ? null
+                  : () => _pickReminder(provider, task),
+            ),
+          ),
         if (steps.isNotEmpty) ...[
           const SizedBox(height: 12),
           JourneyBox(
@@ -407,6 +426,52 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen> {
     final date = await showTaskPostponeSheet(context, task);
     if (date == null || !mounted) return;
     await _reschedule(provider, task, date);
+  }
+
+  static String _reminderWords(DateTime at) {
+    final local = at.toLocal();
+    final hour = local.hour % 12 == 0 ? 12 : local.hour % 12;
+    final minute = local.minute.toString().padLeft(2, '0');
+    final half = local.hour < 12 ? 'الصبح' : 'المساء';
+    return '${formatArabicWeekdayDayMonth(local)} · $hour:$minute $half';
+  }
+
+  /// G36: a day and a time to be reminded; clearing it removes the reminder.
+  Future<void> _pickReminder(
+    TaskTimelineProvider provider,
+    WeddingTask task,
+  ) async {
+    final current = task.reminderAt?.toLocal();
+    final day = await pickTaskDate(context, initial: current ?? task.dueDate);
+    if (day == null || !mounted) return;
+    final time = await showTimePicker(
+      context: context,
+      initialTime: current == null
+          ? const TimeOfDay(hour: 9, minute: 0)
+          : TimeOfDay.fromDateTime(current),
+    );
+    if (time == null || !mounted) return;
+    final at = DateTime(day.year, day.month, day.day, time.hour, time.minute);
+    if (!at.isAfter(DateTime.now())) {
+      AarastToast.showError(
+        context,
+        context.say('اختر وقت جاي، مو فات', 'اختاري وقت جاي، مو فات'),
+      );
+      return;
+    }
+    final ok = await provider.setTaskReminder(widget.weddingPlanId, task, at);
+    if (!mounted) return;
+    if (ok) {
+      AarastToast.showSuccess(
+        context,
+        'بنذكّرك ${_reminderWords(at)}',
+      );
+    } else {
+      AarastToast.showError(
+        context,
+        provider.errorMessage ?? 'ما قدرنا نحفظ التذكير',
+      );
+    }
   }
 
   Future<void> _pickDate(

@@ -172,7 +172,8 @@ test("a loan is paid back through planned repayments that never exceed it", asyn
     funding.addRepayment(owner, loan.id, { amount: "60000" }),
     (error: any) =>
       error?.getStatus?.() === 400 &&
-      error.message === "Repayments cannot exceed the loan amount",
+      error.getResponse().detail === "Repayments cannot exceed the loan amount" &&
+      error.getResponse().code === "FINANCE_REPAYMENTS_EXCEED_LOAN",
   );
 
   const paid = await funding.updateRepayment(owner, scheduled.repayments[0].id, {
@@ -208,7 +209,8 @@ test("only a loan takes repayments", async () => {
     funding.addRepayment(owner, gift.id, { amount: "1000" }),
     (error: any) =>
       error?.getStatus?.() === 400 &&
-      error.message === "Repayments can only be added to a loan",
+      error.getResponse().detail === "Repayments can only be added to a loan" &&
+      error.getResponse().code === "FINANCE_REPAYMENT_LOAN_ONLY",
   );
 });
 

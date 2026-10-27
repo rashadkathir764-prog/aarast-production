@@ -260,6 +260,7 @@ export class PermissionService implements CollaborationPermissionPort {
     tx: Prisma.TransactionClient,
     weddingPlanId: string,
     currentUser: AuthenticatedUser,
+    options?: { settlement?: boolean },
   ): Promise<PlanAccessContext> {
     const context = await this.getLockedPlanAccessContext(
       tx,
@@ -267,7 +268,7 @@ export class PermissionService implements CollaborationPermissionPort {
       currentUser,
     );
     if (this.canManageMoney(context)) {
-      assertWeddingPlanWritable(context.plan);
+      if (!options?.settlement) assertWeddingPlanWritable(context.plan);
       return context;
     }
     throw new NotFoundException("Wedding plan not found");

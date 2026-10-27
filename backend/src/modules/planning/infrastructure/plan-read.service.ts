@@ -81,9 +81,11 @@ export class PlanReadService implements PlanReadPort {
 
   async listPlansInStatus(
     client: Prisma.TransactionClient,
-    status: WeddingPlanStatus,
+    status: WeddingPlanStatus | readonly WeddingPlanStatus[],
   ): Promise<WeddingPlan[]> {
-    return client.weddingPlan.findMany({ where: { status } });
+    return client.weddingPlan.findMany({
+      where: { status: Array.isArray(status) ? { in: [...status] } : (status as WeddingPlanStatus) },
+    });
   }
 
   async lockPlanRowsForShareInTransaction(

@@ -22,6 +22,7 @@ class WeddingTask {
     this.responsibleSource,
     this.checklist = const [],
     this.isPrivate = false,
+    this.reminderAt,
   });
 
   factory WeddingTask.fromJson(Map<String, dynamic> json) {
@@ -65,6 +66,7 @@ class WeddingTask {
             TaskChecklistItem.fromJson(Map<String, dynamic>.from(item)),
       ],
       isPrivate: json['isPrivate'] == true,
+      reminderAt: _dateTimeOrNull(json['reminderAt']),
     );
   }
 
@@ -91,6 +93,9 @@ class WeddingTask {
 
   /// V1 checklist 4.10: kept to its account; no one else in the plan sees it.
   final bool isPrivate;
+
+  /// G36 «ذكّرني»: when the server reminds of this task, beside its due date.
+  final DateTime? reminderAt;
 
   int get checklistDoneCount => checklist.where((item) => item.isDone).length;
 
@@ -145,8 +150,12 @@ class WeddingTask {
     DateTime? updatedAt,
     List<TaskChecklistItem>? checklist,
     bool? isPrivate,
+    Object? reminderAt = _unchanged,
   }) {
     return WeddingTask(
+      reminderAt: identical(reminderAt, _unchanged)
+          ? this.reminderAt
+          : reminderAt as DateTime?,
       id: id,
       weddingPlanId: weddingPlanId,
       title: title ?? this.title,

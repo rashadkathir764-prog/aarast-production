@@ -400,6 +400,8 @@ export class FinancePortService implements FinancePort {
         fundingSource: {
           weddingPlanId: { in: [...query.weddingPlanIds] },
           kind: FundingSourceKind.LOAN,
+          // G33: a promised loan is no debt until it arrives.
+          status: FundingSourceStatus.RECEIVED,
         },
       },
       include: {

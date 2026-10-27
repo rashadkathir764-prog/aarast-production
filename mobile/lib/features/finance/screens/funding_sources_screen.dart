@@ -16,6 +16,7 @@ import '../providers/finance_provider.dart';
 import '../providers/funding_provider.dart';
 import '../widgets/funding_sheets.dart';
 import '../widgets/funding_widgets.dart';
+import '../widgets/money_widgets.dart' show shownMoney;
 
 /// «من وين»: where the wedding money comes from (savings, family support,
 /// rafd and nuqut, pledges, loans with their repayments). The plan owner's
@@ -48,8 +49,10 @@ class _FundingSourcesScreenState extends State<FundingSourcesScreen> {
         : 'YER';
   }
 
-  String _plain(Object? value) =>
-      compactMoneyParts(moneyValue(value), currencyCode: _currency).plainText;
+  String _plain(Object? value) => shownMoney(
+    context,
+    compactMoneyParts(moneyValue(value), currencyCode: _currency).plainText,
+  );
 
   @override
   Widget build(BuildContext context) {
@@ -69,8 +72,9 @@ class _FundingSourcesScreenState extends State<FundingSourcesScreen> {
       sources.where((item) => item.isPledged),
       (item) => item.amount,
     );
+    // G33: a promised loan is owed only once it arrived.
     final owed = sum(
-      sources.where((item) => item.isLoan),
+      sources.where((item) => item.isLoan && !item.isPledged),
       (item) => item.outstandingAmount ?? item.amount,
     );
 
@@ -212,6 +216,49 @@ class _FundingSourcesScreenState extends State<FundingSourcesScreen> {
     );
   }
 
+  /// G16: removing a source asks first, and says what goes with it. A loan
+  /// with a paid repayment is refused by the server; say so before asking.
+  Future<bool> _confirmDelete(FundingSource source) async {
+    final paid = source.repayments.where((item) => item.isPaid).length;
+    if (paid > 0) {
+      AarastToast.showError(
+        context,
+        context.say(
+          'السلفة عليها سداد مدفوع. رجّع الدفعات «غير مدفوعة» أول.',
+          'السلفة عليها سداد مدفوع. رجّعي الدفعات «غير مدفوعة» أول.',
+        ),
+      );
+      return false;
+    }
+    final planned = source.repayments.where((item) => !item.isCancelled).length;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AarastDialog(
+        title: Text(
+          context.say('تشيل «${source.sourceName}»؟', 'تشيلين «${source.sourceName}»؟'),
+        ),
+        content: Text(
+          planned > 0
+              ? 'المصدر ينشال ومعه $planned من مواعيد السداد.'
+              : 'المصدر ينشال من «من وين».',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: const Text('رجوع'),
+          ),
+          FilledButton(
+            key: const ValueKey('funding-delete-confirm'),
+            style: FilledButton.styleFrom(backgroundColor: AarastV3Color.danger),
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            child: Text(context.say('شيله', 'شيليه')),
+          ),
+        ],
+      ),
+    );
+    return confirmed == true;
+  }
+
   Future<void> _openSourceSheet({FundingSource? source}) async {
     final result = await showJourneySheet<FundingFormResult>(
       context: context,
@@ -222,6 +269,8 @@ class _FundingSourcesScreenState extends State<FundingSourcesScreen> {
     final funding = context.read<FundingProvider>();
     final bool ok;
     if (result.delete && source != null) {
+      if (!await _confirmDelete(source)) return;
+      if (!mounted) return;
       ok = await funding.delete(source);
     } else if (source == null) {
       ok = await funding.create(

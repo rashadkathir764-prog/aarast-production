@@ -113,6 +113,19 @@ const BUDGET_TOPICS: readonly BudgetTopic[] = [
     budget: ["نقش", "حناء", "نقاش"],
   },
   { provider: ["ذهب", "شبكة", "gold"], budget: ["ذهب", "شبكة"] },
+  // G11: the home, the apartment and the honeymoon (G10's categories).
+  {
+    provider: ["أثاث", "مفروشات", "furniture"],
+    budget: ["منزل", "أثاث", "جهاز"],
+  },
+  {
+    provider: ["شقق", "شقة", "عقارات", "عقار", "apartment"],
+    budget: ["سكن", "إيجار", "منزل"],
+  },
+  {
+    provider: ["سفر", "سياحة", "عسل", "travel", "honeymoon"],
+    budget: ["عسل", "سفر"],
+  },
   { provider: ["إكسسوار", "accessor"], budget: ["إكسسوار"] },
   { provider: ["عطور", "عطر", "بخور", "perfume"], budget: ["عطور", "بخور"] },
   { provider: ["دعوات", "دعوة", "كروت", "invitation"], budget: ["دعوات"] },

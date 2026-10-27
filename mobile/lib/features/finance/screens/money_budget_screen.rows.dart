@@ -129,7 +129,10 @@ class _AllocationRow extends StatelessWidget {
     final short = typed && share < agreed;
     final color = short ? AarastV3Color.danger : context.accent.primary;
     final value = typed
-        ? compactMoneyParts(share, currencyCode: currency).plainText
+        ? shownMoney(
+            context,
+            compactMoneyParts(share, currencyCode: currency).plainText,
+          )
         : 'بدون';
     return AarastPressable(
       key: ValueKey('money-budget-category-${row.id}'),
@@ -179,7 +182,7 @@ class _AllocationRow extends StatelessWidget {
               Padding(
                 padding: const EdgeInsets.only(top: 4),
                 child: Text(
-                  '${context.say('اتفقت', 'اتفقتِ')} عليه بـ ${compactMoneyParts(agreed, currencyCode: currency).plainText}',
+                  '${context.say('اتفقت', 'اتفقتِ')} عليه بـ ${shownMoney(context, compactMoneyParts(agreed, currencyCode: currency).plainText)}',
                   style: JourneyType.of(
                     JourneyType.small,
                     weight: JourneyType.bold,

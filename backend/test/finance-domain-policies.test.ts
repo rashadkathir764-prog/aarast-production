@@ -23,14 +23,22 @@ import {
   reversalViolation,
   totalAmountViolation,
 } from '../src/modules/finance/domain/wedding-cost-aggregate';
+import {
+  conflict as domainConflict,
+  invalid as domainInvalid,
+} from '../src/modules/finance/domain/finance-violation';
+import { fundingSourceDeletionViolation } from '../src/modules/finance/domain/funding-policy';
+import { raiseFinanceViolation } from '../src/modules/finance/internal/finance-violation.http';
 
 // O3 / R11 target item 4: the money invariants live in Finance's pure
 // domain. Each policy returns the violation the request would commit (the
 // application maps it to its transport error) or the value it derives.
 
 const d = (value: string | number) => new Prisma.Decimal(value);
-const invalid = (message: string) => ({ kind: 'invalid', message });
-const conflict = (message: string) => ({ kind: 'conflict', message });
+// The rule's English message and kind; its code and Arabic wording (G22)
+// come from the one wording table, checked whole below.
+const invalid = (message: string) => domainInvalid(message);
+const conflict = (message: string) => domainConflict(message);
 
 test('WeddingCostAggregate: positive amounts and the paid <= total invariant', () => {
   assert.equal(positiveAmountViolation(d('0.01'), 'amount'), null);
@@ -141,4 +149,54 @@ test('the Finance domain is pure: no framework, no runtime Prisma, no persistenc
       );
     }
   }
+});
+
+test('G22: every money rule a person can hit has a code and an Arabic reason', () => {
+  const domainDir = path.join(__dirname, '..', 'src', 'modules', 'finance', 'domain');
+  const servicePaths = [
+    path.join(__dirname, '..', 'src', 'wedding-costs', 'wedding-costs.service.ts'),
+    path.join(__dirname, '..', 'src', 'money', 'money-budget.service.ts'),
+  ];
+  const sources = [
+    ...readdirSync(domainDir)
+      .filter((name) => name.endsWith('.ts') && name !== 'finance-violation.ts')
+      .map((name) => readFileSync(path.join(domainDir, name), 'utf8')),
+    ...servicePaths.map((file) => readFileSync(file, 'utf8')),
+  ];
+  const messages = sources.flatMap((source) =>
+    [...source.matchAll(/(?:invalid|conflict|financeConflict)\(\s*(['"])((?:(?!\1).)+)\1/g)].map(
+      (match) => match[2],
+    ),
+  );
+  assert.ok(messages.length >= 30, `found ${messages.length}`);
+  for (const message of messages) {
+    const violation = domainInvalid(message);
+    assert.notEqual(violation.code, 'FINANCE_RULE', message);
+    assert.match(violation.userMessage, /[\u0600-\u06FF]/, message);
+  }
+  assert.equal(domainInvalid('amount must be greater than zero').code, 'FINANCE_AMOUNT_NOT_POSITIVE');
+});
+
+test('G22: the HTTP error carries the code, the Arabic reason and the rule', () => {
+  assert.throws(
+    () => raiseFinanceViolation(domainConflict('Cost is already fully paid')),
+    (error: any) => {
+      const body = error.getResponse();
+      return (
+        error.getStatus() === 409 &&
+        body.code === 'FINANCE_COST_FULLY_PAID' &&
+        body.message === 'الاتفاق مدفوع كامل.' &&
+        body.detail === 'Cost is already fully paid'
+      );
+    },
+  );
+});
+
+test('G16: a source with a paid repayment is not deleted; planned ones go with it', () => {
+  assert.equal(fundingSourceDeletionViolation([]), null);
+  assert.equal(fundingSourceDeletionViolation([{ status: 'PLANNED' }, { status: 'CANCELLED' }]), null);
+  assert.deepEqual(
+    fundingSourceDeletionViolation([{ status: 'PLANNED' }, { status: 'PAID' }]),
+    domainConflict('A funding source with paid repayments cannot be deleted'),
+  );
 });

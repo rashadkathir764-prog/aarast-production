@@ -52,7 +52,7 @@ export interface PlanReadPort {
   /** Every plan in the status (the reminder scan walks the planning plans). */
   listPlansInStatus(
     client: Prisma.TransactionClient,
-    status: WeddingPlanStatus,
+    status: WeddingPlanStatus | readonly WeddingPlanStatus[],
   ): Promise<WeddingPlan[]>;
   /** Locks the plan rows for share in id order. */
   lockPlanRowsForShareInTransaction(

@@ -95,6 +95,7 @@ class DashboardSummary {
     this.venueSecured = false,
     this.persona,
     this.bookedServices = DashboardBookedServices.none,
+    this.essentials = const [],
   });
 
   factory DashboardSummary.fromJson(Map<String, dynamic> json) {
@@ -218,6 +219,12 @@ class DashboardSummary {
       contributionHistory: _intMapOrEmpty(json['contributionHistory']),
       venueSecured: json['venueSecured'] == true,
       persona: json['persona']?.toString(),
+      essentials: [
+        for (final item in (json['essentials'] is List
+            ? json['essentials'] as List
+            : const []))
+          if (item is Map) DashboardEssential.fromJson(Map<String, dynamic>.from(item)),
+      ],
       bookedServices: DashboardBookedServices.fromJson(
         _mapOrEmpty(json['bookedServices']),
       ),
@@ -286,6 +293,11 @@ class DashboardSummary {
   /// confirmed booking, or a cost with someone outside اعّرست). The home
   /// tile and the providers board both read it.
   final DashboardBookedServices bookedServices;
+
+  /// G23 «ايش ناقص»: the six essentials and where each stands, as the
+  /// server reads them from the plan's money items; empty without money
+  /// rights.
+  final List<DashboardEssential> essentials;
 
   /// Whose plan it is: `GROOM` or `BRIDE`. A plan kept on the phone has it
   /// only here, so the starters read it from the summary.
@@ -360,6 +372,7 @@ class DashboardSummary {
       venueSecured: venueSecured,
       persona: persona,
       bookedServices: bookedServices,
+      essentials: essentials,
     );
   }
 
@@ -444,6 +457,37 @@ class DashboardSummary {
 
 /// D60: the plan's booked services as the server counts them: the money
 /// items booked, and the booked requests that have no item.
+enum DashboardEssentialStatus { booked, agreed, missing, none }
+
+class DashboardEssential {
+  const DashboardEssential({
+    required this.key,
+    required this.status,
+    this.budgetCategoryId,
+  });
+
+  factory DashboardEssential.fromJson(Map<String, dynamic> json) =>
+      DashboardEssential(
+        key: json['key']?.toString() ?? '',
+        status: switch (json['status']?.toString()) {
+          'BOOKED' => DashboardEssentialStatus.booked,
+          'AGREED' => DashboardEssentialStatus.agreed,
+          'MISSING' => DashboardEssentialStatus.missing,
+          _ => DashboardEssentialStatus.none,
+        },
+        budgetCategoryId: json['budgetCategoryId']?.toString(),
+      );
+
+  /// `VENUE`, `DRESS`, `PHOTO`, `GOLD`, `HOME` or `HONEYMOON`.
+  final String key;
+  final DashboardEssentialStatus status;
+  final String? budgetCategoryId;
+
+  bool get isSettled =>
+      status == DashboardEssentialStatus.booked ||
+      status == DashboardEssentialStatus.agreed;
+}
+
 class DashboardBookedServices {
   const DashboardBookedServices({
     required this.count,

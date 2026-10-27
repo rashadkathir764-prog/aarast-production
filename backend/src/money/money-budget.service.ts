@@ -9,7 +9,7 @@ import { Prisma } from "@prisma/client";
 import { AuthenticatedUser } from "../modules/identity/public/identity-session.types";
 import { requiredMoneyAmount } from "../shared-kernel/money/money";
 import { budgetAllocationViolation } from "../modules/finance/domain/budget-allocation-policy";
-import { raiseFinanceViolation } from "../modules/finance/internal/finance-violation.http";
+import { financeConflict, raiseFinanceViolation } from "../modules/finance/internal/finance-violation.http";
 import { runSerializableTransaction } from "../platform/database/serializable-transaction";
 import { PrismaService } from "../platform/database/prisma.service";
 import {
@@ -110,9 +110,7 @@ export class MoneyBudgetService {
           costsCount > 0 &&
           currency !== context.plan.currency.toUpperCase()
         ) {
-          throw new ConflictException(
-            "Currency cannot be changed after the first cost is created",
-          );
+          throw financeConflict("Currency cannot be changed after the first cost is created");
         }
 
         const existing = await findBudgetCategoriesForReplacement(tx, weddingPlanId);
@@ -133,9 +131,7 @@ export class MoneyBudgetService {
           (item) => item._count.weddingCosts > 0,
         );
         if (usedOmitted) {
-          throw new ConflictException(
-            `Category "${usedOmitted.name}" has costs and cannot be omitted`,
-          );
+          throw financeConflict(`Category "${usedOmitted.name}" has costs and cannot be omitted`);
         }
         if (omitted.length > 0) {
           await deleteOmittedBudgetCategories(tx, omitted.map((item) => item.id));
@@ -204,12 +200,10 @@ export class MoneyBudgetService {
       }
       if (error instanceof Prisma.PrismaClientKnownRequestError) {
         if (error.code === "P2002") {
-          throw new ConflictException(
-            "Category names must be unique in the plan",
-          );
+          throw financeConflict("Category names must be unique in the plan");
         }
         if (error.code === "P2003") {
-          throw new ConflictException("A category still has dependent records");
+          throw financeConflict("A category still has dependent records");
         }
       }
       throw error;

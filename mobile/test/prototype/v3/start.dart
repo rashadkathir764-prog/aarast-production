@@ -146,7 +146,7 @@ Widget vReady() => Phone(
     Padding(
       padding: const EdgeInsets.symmetric(horizontal: 6),
       child: Text(
-        'تشيل وتضيف براحتك، وكلها تتعدل لو تغيّر الموعد.',
+        'تشيل وتضيف براحتك، والمهام تمشي مع الموعد لو تغيّر.',
         style: tx(13.5, c: K.faint),
       ),
     ),

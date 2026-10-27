@@ -114,7 +114,7 @@ import {
   lockPaymentSchedule,
   readBudgetCategoryKinds,
 } from "../modules/finance/infrastructure/wedding-costs.repository";
-import { raiseFinanceViolation } from "../modules/finance/internal/finance-violation.http";
+import { financeConflict, raiseFinanceViolation } from "../modules/finance/internal/finance-violation.http";
 import { mahrItemMoveViolation } from "../modules/finance/domain/mahr-policy";
 
 const paymentInclude = Prisma.validator<Prisma.CostPaymentInclude>()({
@@ -515,7 +515,7 @@ export class WeddingCostsService {
           );
         }
         if (locked.status === WeddingCostStatus.CANCELLED) {
-          throw new ConflictException("Cancelled costs cannot be edited");
+          throw financeConflict("Cancelled costs cannot be edited");
         }
         const totalAmount =
           dto.totalAmount === undefined
@@ -710,6 +710,7 @@ export class WeddingCostsService {
           tx,
           current.weddingPlanId,
           currentUser,
+          { settlement: true },
         );
         await this.assertScopedCostInTransaction(tx, context, costId);
         const amount = this.positiveAmount(dto.amount, "amount");
@@ -915,7 +916,8 @@ export class WeddingCostsService {
         tx,
         current.weddingCost.weddingPlanId,
         currentUser,
-      );
+          { settlement: true },
+        );
       await this.assertScopedCostInTransaction(
         tx,
         context,
@@ -1144,17 +1146,13 @@ export class WeddingCostsService {
         where: { id },
       });
       if (schedule.status !== PaymentScheduleStatus.PENDING) {
-        throw new ConflictException(
-          "Only pending payment schedules can be edited",
-        );
+        throw financeConflict("Only pending payment schedules can be edited");
       }
       const paymentHistory = await countCostPayments(tx, {
         where: { paymentScheduleId: id },
       });
       if (paymentHistory > 0 && dto.amount !== undefined) {
-        throw new ConflictException(
-          "The amount of a payment schedule with ledger history cannot be changed",
-        );
+        throw financeConflict("The amount of a payment schedule with ledger history cannot be changed");
       }
       const amount =
         dto.amount === undefined
@@ -1218,17 +1216,13 @@ export class WeddingCostsService {
         where: { id },
       });
       if (schedule.status !== PaymentScheduleStatus.PENDING) {
-        throw new ConflictException(
-          "Only pending payment schedules can be deleted",
-        );
+        throw financeConflict("Only pending payment schedules can be deleted");
       }
       const paymentHistory = await countCostPayments(tx, {
         where: { paymentScheduleId: id },
       });
       if (paymentHistory > 0) {
-        throw new ConflictException(
-          "A payment schedule with ledger history cannot be deleted",
-        );
+        throw financeConflict("A payment schedule with ledger history cannot be deleted");
       }
       await this.recordMoneyEvent(tx, context, {
         entityType: ContributionEntityType.PAYMENT_SCHEDULE,
@@ -1280,9 +1274,7 @@ export class WeddingCostsService {
         );
       }
       if (schedule.status !== PaymentScheduleStatus.PENDING) {
-        throw new ConflictException(
-          "Reverse the payment before cancelling this payment schedule",
-        );
+        throw financeConflict("Reverse the payment before cancelling this payment schedule");
       }
       const activePayment = await findActiveSchedulePayment(tx, {
         where: {
@@ -1293,9 +1285,7 @@ export class WeddingCostsService {
         select: { id: true },
       });
       if (activePayment) {
-        throw new ConflictException(
-          "Reverse the payment before cancelling this payment schedule",
-        );
+        throw financeConflict("Reverse the payment before cancelling this payment schedule");
       }
       const cancelled = await updatePaymentSchedule(tx, {
         where: { id },
@@ -1332,7 +1322,8 @@ export class WeddingCostsService {
         tx,
         current.weddingCost.weddingPlanId,
         currentUser,
-      );
+          { settlement: true },
+        );
       await this.assertScopedCostInTransaction(
         tx,
         context,
@@ -1367,9 +1358,7 @@ export class WeddingCostsService {
         };
       }
       if (schedule.status !== PaymentScheduleStatus.PENDING) {
-        throw new ConflictException(
-          "Cancelled payment schedules cannot be paid",
-        );
+        throw financeConflict("Cancelled payment schedules cannot be paid");
       }
       const activePayment = await findActiveSchedulePayment(tx, {
         where: {
@@ -1380,9 +1369,7 @@ export class WeddingCostsService {
         select: { id: true },
       });
       if (activePayment) {
-        throw new ConflictException(
-          "Payment schedule already has an active payment",
-        );
+        throw financeConflict("Payment schedule already has an active payment");
       }
       this.assertCostPayable(cost.status);
       raiseFinanceViolation(

@@ -21,10 +21,14 @@ part 'aarast_dashboard_moments.dart';
 part 'aarast_dashboard_tiles.dart';
 part 'aarast_dashboard_setup.dart';
 part 'aarast_dashboard_mahr.dart';
+part 'aarast_dashboard_essentials.dart';
+
 
 class AarastDashboardView extends StatelessWidget {
   const AarastDashboardView({
     required this.summary,
+    this.amountsHidden = false,
+    this.onToggleAmounts,
     required this.userName,
     this.avatarUrl,
     required this.bottomPadding,
@@ -96,6 +100,12 @@ class AarastDashboardView extends StatelessWidget {
   /// g02: the Hijri date next to the Gregorian one.
   final bool showHijri;
 
+  /// G17: this phone's one «أخفِ المبالغ» switch (the money screens' eye and
+  /// «حسابي» set it too), and the home's eye that flips it. Without a
+  /// toggle, the money card keeps its own switch (a preview).
+  final bool amountsHidden;
+  final VoidCallback? onToggleAmounts;
+
   @override
   Widget build(BuildContext context) {
     final focus = resolveDashboardFocus(
@@ -145,6 +155,7 @@ class AarastDashboardView extends StatelessWidget {
                     _AfterWeddingHero(
                       debt: debt,
                       currency: summary.currency,
+                      hidden: amountsHidden,
                       onTap: onOpenMoney,
                     )
                   else
@@ -215,7 +226,16 @@ class AarastDashboardView extends StatelessWidget {
                       _DashboardMoneyCard(
                         summary: summary,
                         funding: funding,
+                        amountsHidden: amountsHidden,
+                        onToggleAmounts: onToggleAmounts,
                         onTap: onOpenMoney,
+                      ),
+                    ],
+                    if (_JourneyEssentials.shows(summary.essentials)) ...[
+                      const SizedBox(height: 12),
+                      _JourneyEssentials(
+                        essentials: summary.essentials,
+                        onOpen: onOpenMoney,
                       ),
                     ],
                     const SizedBox(height: 12),

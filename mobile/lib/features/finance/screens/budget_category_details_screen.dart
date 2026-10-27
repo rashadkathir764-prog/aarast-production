@@ -12,6 +12,7 @@ import '../../../core/widgets/aarast_ui.dart';
 import '../models/budget_category.dart';
 import '../models/wedding_cost.dart';
 import '../providers/finance_provider.dart';
+import '../widgets/money_widgets.dart' show shownMoney;
 
 part 'budget_category_details_screen.sheets.dart';
 
@@ -44,8 +45,10 @@ class _BudgetCategoryDetailsScreenState
     return context.read<FinanceProvider>().loadMoney(widget.weddingPlanId);
   }
 
-  String _plain(num value, String currency) =>
-      compactMoneyParts(value, currencyCode: currency).plainText;
+  String _plain(num value, String currency) => shownMoney(
+    context,
+    compactMoneyParts(value, currencyCode: currency).plainText,
+  );
 
   @override
   Widget build(BuildContext context) {

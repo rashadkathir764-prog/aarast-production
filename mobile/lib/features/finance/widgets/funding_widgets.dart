@@ -11,6 +11,7 @@ import '../../../core/utils/month_math.dart';
 import '../../../core/widgets/aarast_ui.dart';
 import '../models/funding_source.dart';
 import 'money_input_formatter.dart';
+import 'money_widgets.dart' show shownMoney;
 
 class FundingFormResult {
   const FundingFormResult({
@@ -165,8 +166,10 @@ class _FundingSourceFormSheetState extends State<FundingSourceFormSheet> {
     ];
   }
 
-  String _plain(num value) =>
-      compactMoneyParts(value, currencyCode: widget.currency).plainText;
+  String _plain(num value) => shownMoney(
+    context,
+    compactMoneyParts(value, currencyCode: widget.currency).plainText,
+  );
 
   Future<void> _pickFirstRepayment() async {
     releaseFieldFocus();

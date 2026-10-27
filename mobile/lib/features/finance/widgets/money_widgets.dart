@@ -29,3 +29,17 @@ class MoneyPrivacyButton extends StatelessWidget {
     );
   }
 }
+
+/// What an amount reads as while «أخفِ المبالغ» is on (G17).
+const hiddenMoneyText = '••••';
+
+/// G17: one rule for every money figure on screen: hidden while «أخفِ
+/// المبالغ» is on, whichever screen shows it. Safe outside build (it does
+/// not listen); the switch lives on other screens, which rebuild these on
+/// return.
+String shownMoney(BuildContext context, String text) {
+  final hidden =
+      Provider.of<FinanceProvider?>(context, listen: false)?.amountsHidden ??
+      false;
+  return hidden ? hiddenMoneyText : text;
+}

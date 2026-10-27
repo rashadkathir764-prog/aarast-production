@@ -35,21 +35,40 @@ class _DashboardMoneyCard extends StatefulWidget {
     required this.summary,
     required this.funding,
     required this.onTap,
+    this.amountsHidden = false,
+    this.onToggleAmounts,
   });
 
   final DashboardSummary summary;
   final DashboardHomeFunding? funding;
   final VoidCallback onTap;
 
+  /// G17: the phone's switch; with [onToggleAmounts] the eye flips it.
+  final bool amountsHidden;
+  final VoidCallback? onToggleAmounts;
+
   @override
   State<_DashboardMoneyCard> createState() => _DashboardMoneyCardState();
 }
 
 class _DashboardMoneyCardState extends State<_DashboardMoneyCard> {
-  bool _amountsHidden = false;
+  /// Used only where the phone has no preferences (a test or a preview).
+  bool _localHidden = false;
+
+  void _toggleAmounts() {
+    final toggle = widget.onToggleAmounts;
+    if (toggle != null) {
+      toggle();
+    } else {
+      setState(() => _localHidden = !_localHidden);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
+    final amountsHidden = widget.onToggleAmounts != null
+        ? widget.amountsHidden
+        : _localHidden;
     final summary = widget.summary;
     final currency = summary.currency;
     final agreed = dashboardAmount(summary.confirmedCostForDisplay) ?? 0;
@@ -64,9 +83,9 @@ class _DashboardMoneyCardState extends State<_DashboardMoneyCard> {
     final covered = known && (gap == null || gap <= 0);
 
     String amount(double value) =>
-        _amountsHidden ? '••••' : _money(value, currency);
+        amountsHidden ? '••••' : _money(value, currency);
     String figure(double value) =>
-        _amountsHidden ? '••••' : _figure(value, currency);
+        amountsHidden ? '••••' : _figure(value, currency);
 
     // D59: the owner reads what is left to them; anyone else reads it as
     // the owner's, and what others paid for the owner is said as theirs.
@@ -155,7 +174,7 @@ class _DashboardMoneyCardState extends State<_DashboardMoneyCard> {
       key: const ValueKey('aarast-dashboard-money-card'),
       container: true,
       button: true,
-      label: _amountsHidden
+      label: amountsHidden
           ? 'المال، المبالغ مخفية مؤقتًا'
           : [
               'المال',
@@ -198,20 +217,19 @@ class _DashboardMoneyCardState extends State<_DashboardMoneyCard> {
                   // b02 draws a bare eye; the tap area is wider than it.
                   Semantics(
                     button: true,
-                    label: _amountsHidden ? 'إظهار المبالغ' : 'إخفاء المبالغ',
+                    label: amountsHidden ? 'إظهار المبالغ' : 'إخفاء المبالغ',
                     excludeSemantics: true,
                     child: Material(
                       type: MaterialType.transparency,
                       child: InkResponse(
                         key: const ValueKey('dashboard-money-privacy-toggle'),
-                        onTap: () =>
-                            setState(() => _amountsHidden = !_amountsHidden),
+                        onTap: _toggleAmounts,
                         radius: 20,
                         child: SizedBox(
                           width: 40,
                           height: 28,
                           child: Icon(
-                            _amountsHidden
+                            amountsHidden
                                 ? LucideIcons.eye
                                 : LucideIcons.eyeOff,
                             color: AarastV3Color.textMuted,

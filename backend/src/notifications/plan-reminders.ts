@@ -71,6 +71,33 @@ export function taskDueNotice(
   };
 }
 
+/**
+ * G36: the task's own «ذكّرني» time came. Once per reader and reminder time:
+ * moving the time reminds again at the new time.
+ */
+export function taskReminderNotice(
+  userId: string,
+  task: { id: string; weddingPlanId: string; title: string; reminderAt: Date },
+): DueNotice {
+  return {
+    userId,
+    weddingPlanId: task.weddingPlanId,
+    type: NotificationType.TASK_DUE_SOON,
+    priority: NotificationPriority.NORMAL,
+    title: "تذكير بمهمة",
+    body: task.title,
+    data: {
+      taskId: task.id,
+      weddingPlanId: task.weddingPlanId,
+      reminderAt: task.reminderAt.toISOString(),
+    },
+    entityType: "task",
+    entityId: task.id,
+    routeTarget: noticeRoutes.task(task.weddingPlanId, task.id),
+    dedupeKey: `${userId}:TASK_REMINDER:task:${task.id}:${task.reminderAt.toISOString()}`,
+  };
+}
+
 /** The reader-free part of a task's reminder key (each reader's key adds the reader). */
 export function taskDueKey(type: NotificationType, taskId: string): string {
   return `${type}:task:${taskId}`;

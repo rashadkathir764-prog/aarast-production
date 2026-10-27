@@ -172,10 +172,16 @@ export interface CollaborationPermissionPort {
     weddingPlanId: string,
     currentUser: AuthenticatedUser,
   ): Promise<PlanAccessContext>;
+  /**
+   * `settlement` (G15): recording or undoing a payment of money already
+   * agreed, which an archived plan still accepts so its debts can be paid
+   * off after the wedding; every other money write stays closed there.
+   */
   assertMoneyManageableInTransaction(
     tx: Prisma.TransactionClient,
     weddingPlanId: string,
     currentUser: AuthenticatedUser,
+    options?: { settlement?: boolean },
   ): Promise<PlanAccessContext>;
   assertMoneyManageableForUpdateInTransaction(
     tx: Prisma.TransactionClient,

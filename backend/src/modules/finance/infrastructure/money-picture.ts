@@ -396,7 +396,7 @@ function summarizePayers(
  * source is recorded). Paid + in hand + promised + shortfall make up every
  * agreement (c01's four-part bar).
  */
-function summarizeFunding(
+export function summarizeFunding(
   sources: readonly FundingSourceWithRepayments[],
   spent: {
     confirmedCost: Prisma.Decimal;
@@ -427,7 +427,13 @@ function summarizeFunding(
       pledged = pledged.plus(source.amount);
       if (isPledgeOverdue(source, spent.today)) overduePledges += 1;
     }
-    if (source.kind !== FundingSourceKind.LOAN) continue;
+    // G33: a promised loan is owed only once it arrived.
+    if (
+      source.kind !== FundingSourceKind.LOAN ||
+      source.status !== FundingSourceStatus.RECEIVED
+    ) {
+      continue;
+    }
     loanTotal = loanTotal.plus(source.amount);
     for (const repayment of source.repayments) {
       if (repayment.status === LoanRepaymentStatus.PAID) {

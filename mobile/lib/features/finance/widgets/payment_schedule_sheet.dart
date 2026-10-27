@@ -15,6 +15,7 @@ import '../../../core/widgets/release_field_focus.dart';
 import '../models/wedding_cost.dart';
 import '../providers/finance_provider.dart';
 import 'money_input_formatter.dart';
+import 'money_widgets.dart' show shownMoney;
 
 /// One payment date of an agreement, in a journey sheet over c07 «جدول
 /// الدفعات»: how much, which day and an optional note. c10 makes an
@@ -97,8 +98,10 @@ class _PaymentScheduleSheetState extends State<_PaymentScheduleSheet> {
     super.dispose();
   }
 
-  String _plain(num value) =>
-      compactMoneyParts(value, currencyCode: widget.currency).plainText;
+  String _plain(num value) => shownMoney(
+    context,
+    compactMoneyParts(value, currencyCode: widget.currency).plainText,
+  );
 
   int? get _typedAmount =>
       int.tryParse(_amount.text.replaceAll(',', '').trim());

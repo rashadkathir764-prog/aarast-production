@@ -155,7 +155,19 @@ export class TasksPortService implements TasksPort {
       where: {
         ...(query.taskIds ? { id: { in: [...query.taskIds] } } : {}),
         weddingPlanId: { in: [...query.weddingPlanIds] },
-        dueDate: { not: null, lte: query.dueBefore },
+        OR: [
+          { dueDate: { not: null, lte: query.dueBefore } },
+          ...(query.reminderWindow
+            ? [
+                {
+                  reminderAt: {
+                    gte: query.reminderWindow.from,
+                    lte: query.reminderWindow.to,
+                  },
+                },
+              ]
+            : []),
+        ],
         status: {
           notIn: [WeddingTaskStatus.DONE, WeddingTaskStatus.CANCELLED],
         },

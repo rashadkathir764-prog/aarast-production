@@ -453,6 +453,36 @@ class TaskTimelineProvider extends ChangeNotifier with SessionScopedNotifier {
 
   /// «أجّلها» and «غيّر موعدها»: moves the day only, everything else is
   /// sent as the task has it.
+  /// G36: sets or clears the task's «ذكّرني» time; the server reminds then.
+  Future<bool> setTaskReminder(
+    String weddingPlanId,
+    WeddingTask task,
+    DateTime? reminderAt,
+  ) async {
+    _isSubmitting = true;
+    _errorMessage = null;
+    notifyListeners();
+    try {
+      final updated = await _api.updateTask(task.id, {
+        'reminderAt': reminderAt?.toUtc().toIso8601String(),
+      });
+      _replaceTask(updated);
+      if (updated.id.startsWith('local-')) {
+        _noticeMessage = CachePolicy.offlineWriteMessage;
+      }
+      return true;
+    } on ApiException catch (error) {
+      _errorMessage = error.message;
+      return false;
+    } catch (_) {
+      _errorMessage = 'ما قدرنا نحفظ التذكير';
+      return false;
+    } finally {
+      _isSubmitting = false;
+      notifyListeners();
+    }
+  }
+
   Future<bool> rescheduleTask(
     String weddingPlanId,
     WeddingTask task,

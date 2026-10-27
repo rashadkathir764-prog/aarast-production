@@ -118,6 +118,21 @@ const EXPECTED_BY_SLUG: Readonly<Record<string, Expected>> = {
     NEUTRAL: null,
   },
   qat: { GROOM: "groom-qat", BRIDE: null, NEUTRAL: "neutral-qat" },
+  "furniture-home": {
+    GROOM: "groom-home",
+    BRIDE: "bride-home",
+    NEUTRAL: "neutral-home",
+  },
+  apartments: {
+    GROOM: "groom-housing",
+    BRIDE: "bride-home",
+    NEUTRAL: "neutral-home",
+  },
+  "honeymoon-travel": {
+    GROOM: "groom-honeymoon",
+    BRIDE: "bride-honeymoon",
+    NEUTRAL: "neutral-honeymoon",
+  },
   "female-singer": artist,
   "female-vocalist": artist,
   "women-band": artist,

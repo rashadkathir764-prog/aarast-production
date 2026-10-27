@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:math';
 
 import '../../../core/network/api_client.dart';
@@ -56,6 +57,11 @@ class FinanceApi extends _FinanceApiCore
       );
       final summary = MoneySummary.fromJson(json);
       await _cacheSummary(summary, planId);
+      // G35: the owner's «من وين» as last read, for the offline summary.
+      await _offline?.database.setMeta(
+        _fundingKey(planId),
+        jsonEncode(json['funding']),
+      );
       return summary;
     } on Object catch (error) {
       if (!CachePolicy.shouldUseCache(error) || _offline == null) rethrow;
@@ -65,7 +71,24 @@ class FinanceApi extends _FinanceApiCore
         planId,
         estimatedBudget: context?.estimatedBudget,
         currency: context?.currency,
+        funding: await _cachedFunding(planId),
       );
+    }
+  }
+
+  static String _fundingKey(String planId) => 'money-funding:$planId';
+
+  /// G35: the funding block of the last server summary; it changes only
+  /// online (funding writes need a connection), so offline it stays true.
+  Future<MoneyFundingSummary?> _cachedFunding(String planId) async {
+    try {
+      final raw = await _offline?.database.getMeta(_fundingKey(planId));
+      final decoded = raw == null ? null : jsonDecode(raw);
+      return decoded is Map
+          ? MoneyFundingSummary.fromJson(Map<String, dynamic>.from(decoded))
+          : null;
+    } on FormatException {
+      return null;
     }
   }
 

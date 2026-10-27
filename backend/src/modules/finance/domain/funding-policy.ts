@@ -22,6 +22,18 @@ export function repaymentTotalViolation(
 }
 
 /**
+ * G16: a source whose loan was partly paid back keeps its history. Deleting
+ * it would erase the paid repayments with it; they are marked unpaid first.
+ */
+export function fundingSourceDeletionViolation(
+  repayments: ReadonlyArray<{ status: LoanRepaymentStatus }>,
+): FinanceViolation | null {
+  return repayments.some((repayment) => repayment.status === 'PAID')
+    ? conflict('A funding source with paid repayments cannot be deleted')
+    : null;
+}
+
+/**
  * A loan with repayments stays a loan, and its amount cannot drop below what
  * is already scheduled to be paid back.
  */

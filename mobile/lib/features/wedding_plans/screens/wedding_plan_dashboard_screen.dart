@@ -389,6 +389,13 @@ class _WeddingPlanDashboardScreenState extends State<WeddingPlanDashboardScreen>
               onOpenMahr: () => _openMahr(selectedPlanId),
               showHijri:
                   context.watch<DevicePreferences?>()?.showHijri ?? true,
+              // G17: the phone's one «أخفِ المبالغ» switch.
+              amountsHidden:
+                  context.watch<DevicePreferences?>()?.hideAmounts ?? false,
+              onToggleAmounts: () {
+                final preferences = context.read<DevicePreferences?>();
+                preferences?.setHideAmounts(!preferences.hideAmounts);
+              },
               onOpenReviews: _isLocalGuestPlan
                   ? null
                   : () => context.push(AppRouter.planReviews(selectedPlanId)),

@@ -106,6 +106,7 @@ import {
   taskDueContent,
   taskDueKey,
   taskDueNotice,
+  taskReminderNotice,
   weddingCountdownRow,
 } from "./plan-reminders";
 import {
@@ -708,9 +709,15 @@ export class NotificationsService implements NotificationsPort {
         // The planning plans and their notified members are planning's and
         // collaboration's rows, read through their ports on this
         // transaction (seed, then re-read under the row locks below).
+        // G15: an archived plan still reminds its owner of the money left to
+        // pay (payment dates and loan repayments); its tasks, countdown and
+        // budget warnings stop with the wedding.
         const plans = await this.plansWithNotifiedMembers(
           tx,
-          await this.plans.listPlansInStatus(tx, WeddingPlanStatus.PLANNING),
+          await this.plans.listPlansInStatus(tx, [
+            WeddingPlanStatus.PLANNING,
+            WeddingPlanStatus.ARCHIVED,
+          ]),
         );
         if (plans.length === 0) return 0;
 
@@ -741,7 +748,9 @@ export class NotificationsService implements NotificationsPort {
         const livePlans = await this.plansWithNotifiedMembers(
           tx,
           (await this.plans.getPlans(tx, seedPlanIds)).filter(
-            (plan) => plan.status === WeddingPlanStatus.PLANNING,
+            (plan) =>
+              plan.status === WeddingPlanStatus.PLANNING ||
+              plan.status === WeddingPlanStatus.ARCHIVED,
           ),
         );
         const lockedPlans = livePlans
@@ -755,6 +764,10 @@ export class NotificationsService implements NotificationsPort {
         if (lockedPlans.length === 0) return 0;
 
         const planIds = lockedPlans.map((plan) => plan.id);
+        const planningPlans = lockedPlans.filter(
+          (plan) => plan.status === WeddingPlanStatus.PLANNING,
+        );
+        const planningPlanIds = planningPlans.map((plan) => plan.id);
         const recipientUserIds = [
           ...new Set(
             lockedPlans.flatMap((plan) => [
@@ -766,10 +779,17 @@ export class NotificationsService implements NotificationsPort {
         // The due tasks and pending schedules are tasks' and finance's rows:
         // seeded, locked for share and re-read through their ports on this
         // transaction in the same order (tasks, costs, schedules).
-        const dueTasks = { weddingPlanIds: planIds, dueBefore: dueWindowEndOfDay };
+        // G36: a «ذكّرني» time that came within the last day (the job runs
+        // hourly; a missed run still reminds, an old time never does).
+        const now = new Date();
+        const dueTasks = {
+          weddingPlanIds: planningPlanIds,
+          dueBefore: dueWindowEndOfDay,
+          reminderWindow: { from: new Date(now.getTime() - 24 * 60 * 60 * 1000), to: now },
+        };
         const [taskSeeds, paymentScheduleSeeds] = await Promise.all([
           this.tasks.listDueTasks(tx, dueTasks),
-          this.finance.listDuePaymentSchedules(tx, dueTasks),
+          this.finance.listDuePaymentSchedules(tx, { ...dueTasks, weddingPlanIds: planIds }),
         ]);
         const taskIds = taskSeeds.map((task) => task.id).sort();
         await this.tasks.lockTaskRowsForShareInTransaction(tx, taskIds);
@@ -788,7 +808,11 @@ export class NotificationsService implements NotificationsPort {
         );
         const [tasks, paymentSchedules, preferences] = await Promise.all([
           this.tasks.listDueTasks(tx, { ...dueTasks, taskIds }),
-          this.finance.listDuePaymentSchedules(tx, { ...dueTasks, scheduleIds }),
+          this.finance.listDuePaymentSchedules(tx, {
+            ...dueTasks,
+            weddingPlanIds: planIds,
+            scheduleIds,
+          }),
           this.repository.dueReminderPreferences(tx, recipientUserIds),
         ]);
         // The provider a cost names is marketplace's row.
@@ -849,8 +873,16 @@ export class NotificationsService implements NotificationsPort {
         const rows: DueNotice[] = [];
         for (const task of tasks) {
           const plan = plansById.get(task.weddingPlanId);
-          if (!plan || !task.dueDate) continue;
-          const dueDate = task.dueDate;
+          if (!plan) continue;
+          const dueDate =
+            task.dueDate && task.dueDate <= dueWindowEndOfDay ? task.dueDate : null;
+          const reminderAt =
+            task.reminderAt &&
+            task.reminderAt >= dueTasks.reminderWindow.from &&
+            task.reminderAt <= now
+              ? task.reminderAt
+              : null;
+          if (!dueDate && !reminderAt) continue;
           const planTaskRecipients = new Set([
             plan.ownerUserId,
             ...plan.sharedMembers
@@ -882,13 +914,25 @@ export class NotificationsService implements NotificationsPort {
             ) {
               continue;
             }
-            rows.push(
-              taskDueNotice(
-                userId,
-                { id: task.id, weddingPlanId: plan.id, title: task.title, dueDate },
-                today,
-              ),
-            );
+            if (dueDate) {
+              rows.push(
+                taskDueNotice(
+                  userId,
+                  { id: task.id, weddingPlanId: plan.id, title: task.title, dueDate },
+                  today,
+                ),
+              );
+            }
+            if (reminderAt) {
+              rows.push(
+                taskReminderNotice(userId, {
+                  id: task.id,
+                  weddingPlanId: plan.id,
+                  title: task.title,
+                  reminderAt,
+                }),
+              );
+            }
           }
         }
 
@@ -945,7 +989,7 @@ export class NotificationsService implements NotificationsPort {
         // Plan-level reminders: over-budget categories and loan repayments
         // (finance's rows, owner only), and the wedding countdown.
         const [exceededCategories, dueLoanRepayments] = await Promise.all([
-          this.finance.listExceededBudgetCategories(tx, planIds),
+          this.finance.listExceededBudgetCategories(tx, planningPlanIds),
           this.finance.listDueLoanRepayments(tx, {
             weddingPlanIds: planIds,
             dueBefore: dueWindowEndOfDay,
@@ -971,7 +1015,7 @@ export class NotificationsService implements NotificationsPort {
             rows.push(loanRepaymentRow(ownerUserId, repayment, today, plan.currency));
           }
         }
-        for (const plan of lockedPlans) {
+        for (const plan of planningPlans) {
           const recipients = new Set([
             plan.ownerUserId,
             ...plan.sharedMembers.map((member) => member.userId),

@@ -19,6 +19,7 @@ import '../models/wedding_cost.dart';
 import '../providers/finance_provider.dart';
 import '../widgets/finance_write_access_block.dart';
 import '../widgets/money_input_formatter.dart';
+import '../widgets/money_widgets.dart' show shownMoney;
 
 part 'money_budget_screen.rows.dart';
 

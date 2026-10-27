@@ -501,11 +501,15 @@ class _AfterWeddingHero extends StatelessWidget {
     required this.debt,
     required this.currency,
     required this.onTap,
+    this.hidden = false,
   });
 
   final DashboardAfterWedding debt;
   final String currency;
   final VoidCallback onTap;
+
+  /// G17: «أخفِ المبالغ» is on.
+  final bool hidden;
 
   @override
   Widget build(BuildContext context) {
@@ -518,7 +522,9 @@ class _AfterWeddingHero extends StatelessWidget {
       key: const ValueKey('aarast-dashboard-after-hero'),
       onTap: onTap,
       semanticLabel:
-          '${left.semanticText} باقي عليك. ${context.say('سددت', 'سدّدتِ')} ${paid.semanticText} من ${total.semanticText}',
+          hidden
+          ? 'باقي عليك. المبالغ مخفية'
+          : '${left.semanticText} باقي عليك. ${context.say('سددت', 'سدّدتِ')} ${paid.semanticText} من ${total.semanticText}',
       borderRadius: BorderRadius.circular(24),
       child: JourneyBox(
         color: context.accent.primary,
@@ -541,7 +547,7 @@ class _AfterWeddingHero extends StatelessWidget {
                   Row(
                     children: [
                       Text(
-                        left.number,
+                        hidden ? '••••' : left.number,
                         style: JourneyType.of(
                           JourneyType.count,
                           weight: JourneyType.bold,
@@ -552,7 +558,9 @@ class _AfterWeddingHero extends StatelessWidget {
                       const SizedBox(width: 10),
                       Expanded(
                         child: Text(
-                          '${left.millionUnit ?? left.currency} باقي عليك',
+                          hidden
+                              ? 'باقي عليك'
+                              : '${left.millionUnit ?? left.currency} باقي عليك',
                           style: JourneyType.of(
                             JourneyType.title,
                             weight: JourneyType.bold,
@@ -588,7 +596,9 @@ class _AfterWeddingHero extends StatelessWidget {
                   ),
                   const SizedBox(height: 12),
                   Text(
-                    '${context.say('سددت', 'سدّدتِ')} ${paid.plainText} من ${total.plainText}',
+                    hidden
+                        ? 'المبالغ مخفية'
+                        : '${context.say('سددت', 'سدّدتِ')} ${paid.plainText} من ${total.plainText}',
                     style: JourneyType.of(
                       JourneyType.small,
                       color: context.accent.onPrimaryMuted,

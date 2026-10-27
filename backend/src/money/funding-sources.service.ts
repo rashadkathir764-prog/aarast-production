@@ -19,6 +19,7 @@ import {
 } from "../modules/collaboration/public/collaboration-permission.port";
 import {
   fundingSourceChangeViolation,
+  fundingSourceDeletionViolation,
   repaymentEditViolation,
   repaymentKindViolation,
   repaymentTotalViolation,
@@ -205,7 +206,8 @@ export class FundingSourcesService {
   }
 
   async remove(currentUser: AuthenticatedUser, id: string) {
-    await this.withOwnedSource(currentUser, id, async (tx) => {
+    await this.withOwnedSource(currentUser, id, async (tx, source) => {
+      raiseFinanceViolation(fundingSourceDeletionViolation(source.repayments));
       await deleteFundingSource(tx, id);
     });
     return { id, deleted: true as const };
@@ -283,6 +285,12 @@ export class FundingSourcesService {
         });
         return lockFundingSource(tx, source.id);
       },
+      // G15: marking a repayment paid or unpaid is settling the debt, which
+      // an archived plan still allows; changing it is not.
+      {
+        settlement:
+          dto.amount === undefined && dto.dueDate === undefined && dto.note === undefined,
+      },
     );
     return toFundingSourceResponse(updated);
   }
@@ -318,6 +326,7 @@ export class FundingSourcesService {
       source: FundingSourceWithRepayments,
       access: PlanAccessContext,
     ) => Promise<T>,
+    options?: { settlement?: boolean },
   ): Promise<T> {
     const existing = await runRetryableTransaction(this.prisma, (tx) =>
       findFundingSource(tx, id),
@@ -328,6 +337,7 @@ export class FundingSourcesService {
         tx,
         existing.weddingPlanId,
         currentUser,
+        options,
       );
       this.requireOwner(access, "Funding source not found");
       const locked = await lockFundingSource(tx, id);

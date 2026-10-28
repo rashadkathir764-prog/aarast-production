@@ -2966,11 +2966,6 @@ const trackedPlanningBatchContracts = [
     show: ['PlanEventsProvider'],
   },
   {
-    source: 'mobile/lib/features/wedding_plans/screens/participant_home_screen.dart',
-    target: 'mobile/lib/features/wedding_day/wedding_day_api.dart',
-    show: ['PlanEventsProvider'],
-  },
-  {
     source: 'mobile/lib/features/wedding_plans/screens/wedding_moment_screen.dart',
     target: 'mobile/lib/features/auth/auth_api.dart',
     show: ['AuthController'],

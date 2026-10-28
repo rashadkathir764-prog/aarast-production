@@ -331,6 +331,7 @@ void main() {
         'lib/features/wedding_plans/screens/plan_management_screen.dart',
         'lib/features/wedding_plans/screens/plan_assistant_screen.dart',
         'lib/features/wedding_plans/screens/participant_home_screen.dart',
+        'lib/features/wedding_plans/screens/mahr_moment_screen.dart',
         'lib/features/wedding_plans/screens/mahr_screen.dart',
         'lib/features/shell/screens/participant_locked_screen.dart',
         'lib/features/finance/screens/money_overview_screen.dart',

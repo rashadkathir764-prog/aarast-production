@@ -64,6 +64,7 @@
 - `/wedding-plans/:id/money/costs/create`
 - `/wedding-plans/:id/money/funding`
 - `/wedding-plans/:id/money/mahr`
+- `/wedding-plans/:id/money/mahr/moment`
 - `/wedding-plans/:id/money/payers`
 - `/wedding-plans/:id/money/payments/:paymentId`
 - `/wedding-plans/:id/money/receipts`
@@ -86,4 +87,4 @@
 - `/wedding-plans/create`
 - `/welcome`
 
-Total: 85 unique routes
+Total: 86 unique routes

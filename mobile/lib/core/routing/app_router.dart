@@ -105,6 +105,7 @@ import '../../features/wedding_day/wedding_day_api.dart'
 import '../../features/wedding_plans/wedding_plans_api.dart'
     show
         DashboardSummary,
+        MahrMomentScreen,
         MahrScreen,
         MyWeddingPlansScreen,
         PlanAssistantScreen,
@@ -297,6 +298,11 @@ class AppRouter {
   /// a06 for a plan that exists (b01's mahr step).
   static String moneyMahr(String id) {
     return '/wedding-plans/$id/money/mahr';
+  }
+
+  /// y08 «سلّمت المهر كامل», once per phone from the home.
+  static String moneyMahrMoment(String id) {
+    return '/wedding-plans/$id/money/mahr/moment';
   }
 
   /// w20 «مين دفع ايش» (G14).

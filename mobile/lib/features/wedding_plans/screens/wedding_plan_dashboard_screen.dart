@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../../core/diagnostics/app_logger.dart';
 import '../../../core/offline/local_database.dart';
@@ -19,6 +20,7 @@ import '../../home/home_api.dart'
 import '../../onboarding/onboarding_api.dart'
     show GuestOnboardingStorage, GuestPersona;
 import '../../sharing/sharing_api.dart' show SharedMember;
+import '../data/mahr_moment_ledger.dart';
 import '../models/dashboard_summary.dart';
 import '../models/wedding_plan_stage.dart';
 import '../providers/dashboard_summary_provider.dart';
@@ -55,6 +57,28 @@ class _WeddingPlanDashboardScreenState extends State<WeddingPlanDashboardScreen>
 
   bool get _isLocalGuestPlan =>
       AuthActionGuard.isLocalGuestPlanId(widget.weddingPlanId);
+
+  /// The plan and mahr state y08 last looked at, so one state is checked once.
+  String? _mahrMomentSignature;
+
+  /// y08: a mahr this phone last saw unfinished and now complete opens its
+  /// moment once, as its card leaves the home. Returns [mahr] unchanged.
+  DashboardHomeMahr? _watchMahrMoment(String planId, DashboardHomeMahr? mahr) {
+    if (mahr == null || !mahr.recorded) return mahr;
+    final signature = '$planId:${mahr.complete}';
+    if (signature == _mahrMomentSignature) return mahr;
+    _mahrMomentSignature = signature;
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      final ledger = MahrMomentLedger(await SharedPreferences.getInstance());
+      final celebrate = await ledger.becameComplete(
+        planId,
+        complete: mahr.complete,
+      );
+      if (!celebrate || !mounted) return;
+      await context.push<void>(AppRouter.moneyMahrMoment(planId));
+    });
+    return mahr;
+  }
 
   @override
   void initState() {
@@ -385,7 +409,10 @@ class _WeddingPlanDashboardScreenState extends State<WeddingPlanDashboardScreen>
               notice: _isLocalGuestPlan ? null : const PushOffCard(),
               afterWedding: _afterWedding(summary, selectedPlanId),
               funding: _homeFunding(summary, selectedPlanId),
-              mahr: _homeMahr(summary, selectedPlanId),
+              mahr: _watchMahrMoment(
+                selectedPlanId,
+                _homeMahr(summary, selectedPlanId),
+              ),
               onOpenMahr: () => _openMahr(selectedPlanId),
               showHijri:
                   context.watch<DevicePreferences?>()?.showHijri ?? true,

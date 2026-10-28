@@ -1715,7 +1715,9 @@ const r19ProviderPortalApi = Object.freeze({
 // offer form's lines editor read an offer's lines (B-07), and the booking's
 // aftercare (B-22 to B-24) reads the booking, through the marketplace owner
 // API.
-const r19LegalRecordCount = 248;
+// +1 (D64, y08): the mahr's moment reads the mahr, its payments and the
+// bride's received parts through the finance owner API.
+const r19LegalRecordCount = 249;
 const trackedOwnerApiContracts = [
   {
     area: 'features/account_contexts',
@@ -2311,6 +2313,8 @@ const trackedOwnerApiContracts = [
         uri: 'providers/wedding_plans_provider.dart',
         show: ['WeddingPlansProvider'],
       },
+      // y08 (D64): the mahr's moment, routed from the home.
+      { uri: 'screens/mahr_moment_screen.dart', show: ['MahrMomentScreen'] },
       // B5 (D55): a06 for a plan that exists (b01's mahr step).
       { uri: 'screens/mahr_screen.dart', show: ['MahrScreen'] },
       {
@@ -3379,6 +3383,8 @@ const trackedCompositionRootContracts = [
         target: 'mobile/lib/features/wedding_plans/wedding_plans_api.dart',
         show: [
           'DashboardSummary',
+          // y08 (D64): the mahr's moment.
+          'MahrMomentScreen',
           // B5 (D55): a06 for a plan that exists.
           'MahrScreen',
           'MyWeddingPlansScreen',

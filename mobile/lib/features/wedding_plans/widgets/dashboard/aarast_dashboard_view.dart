@@ -15,7 +15,6 @@ import '../../models/wedding_plan_stage.dart';
 import 'aarast_dashboard_focus.dart';
 
 part 'aarast_dashboard_week.dart';
-part 'aarast_dashboard_rafd.dart';
 part 'aarast_dashboard_money_card.dart';
 part 'aarast_dashboard_states.dart';
 part 'aarast_dashboard_support.dart';
@@ -57,21 +56,8 @@ class AarastDashboardView extends StatelessWidget {
     this.events,
     this.weekBookings,
     this.onOpenEvents,
-    this.rafd,
-    this.onRecordRafd,
-    this.onOpenRafdBook,
     super.key,
   });
-
-  /// D66: the owner's rafd book on the day (b05) and after it (b07); null
-  /// for anyone else, a plan on the phone, or before it is read.
-  final DashboardRafd? rafd;
-
-  /// b06 «سجّل رفد».
-  final VoidCallback? onRecordRafd;
-
-  /// e09 «دفتر الرفد».
-  final VoidCallback? onOpenRafdBook;
 
   /// D65: the plan's events, the wedding week (b04) and day (b05) are built
   /// from; null until read (or for a plan kept on the phone).
@@ -246,32 +232,15 @@ class AarastDashboardView extends StatelessWidget {
                           onTap: onOpenProviders,
                         ),
                       ],
-                    ] else ...[
-                      if (rafd case final rafd?
-                          when onRecordRafd != null &&
-                              onOpenRafdBook != null) ...[
-                        const SizedBox(height: 12),
-                        _RafdCard(
-                          rafd: rafd,
-                          onRecord: onRecordRafd!,
-                          onOpenBook: onOpenRafdBook!,
-                        ),
-                      ],
-                      if (events case final events?) ...[
+                    ] else if (events case final events?) ...[
                       const SizedBox(height: 8),
                       _DayProgram(
                         events: events.dayOf(weddingDate!),
                         now: now ?? appNow(),
                         onEdit: events.canEdit ? onOpenEvents : null,
                       ),
-                      ],
                     ],
                   ] else if (married) ...[
-                    if (rafd case final rafd?
-                        when rafd.toThank > 0 && onOpenRafdBook != null) ...[
-                      const SizedBox(height: 12),
-                      _RafdThanksCard(rafd: rafd, onOpen: onOpenRafdBook!),
-                    ],
                     if (payment != null) ...[
                       const SizedBox(height: 12),
                       _JourneyNextStep(

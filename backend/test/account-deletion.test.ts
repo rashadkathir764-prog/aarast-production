@@ -92,6 +92,13 @@ function recordingTx(
       calls.push("ledgerPurge");
       return 1;
     },
+    // D65: planning deletes the plans' events just before the plans.
+    planEvent: {
+      deleteMany: async () => {
+        calls.push("planEvent");
+        return { count: 0 };
+      },
+    },
     weddingPlan: {
       deleteMany: async () => {
         calls.push("weddingPlan");

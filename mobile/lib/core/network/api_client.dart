@@ -144,6 +144,8 @@ class ApiClient {
             onSessionExpired?.call();
           } else if (_isFinalUnauthorized(error)) {
             onSessionExpired?.call();
+          } else if (_isAccountDeletionPending(error)) {
+            onAccountDeletionPending?.call();
           }
           _logFinalFailure(error);
           handler.next(error);
@@ -173,6 +175,17 @@ class ApiClient {
   /// Wired by the auth layer after construction; invoked when any
   /// non-auth request returns 401 so the app can force a clean re-login.
   void Function()? onSessionExpired;
+
+  /// Wired by the auth layer; invoked when the server answers `403
+  /// ACCOUNT_DELETION_PENDING` (D63): the account asked to be deleted.
+  void Function()? onAccountDeletionPending;
+
+  bool _isAccountDeletionPending(DioException error) {
+    final data = error.response?.data;
+    return error.response?.statusCode == 403 &&
+        data is Map &&
+        data['code'] == 'ACCOUNT_DELETION_PENDING';
+  }
 
   void _beginRequestAttempt(RequestOptions options) {
     final requestId =
@@ -856,6 +869,11 @@ class ApiException implements Exception {
       // B-33: a provider hands over or cancels his coming weddings first.
       'PROVIDER_HAS_UPCOMING_BOOKINGS' =>
         'عندك حجوزات مؤكدة جاية. الغها أو سلّمها قبل ما تحذف حسابك.',
+      // D63: the 30 days before an account is erased, and its data download.
+      'ACCOUNT_DELETION_PENDING' => 'حسابك ينتظر الحذف. تراجع عنه عشان تكمل.',
+      'CONFIRM_WORD_MISMATCH' => 'اكتب «حذف» كما هي للتأكيد.',
+      'DELETION_NOT_PENDING' => 'حسابك ما ينتظر الحذف.',
+      'EXPORT_RATE_LIMITED' => 'نزّلت بياناتك كثير اليوم. جرّب بكرة.',
       'PROVIDER_REVIEW_CHANGED' =>
         'فريق المراجعة غيّر ملاحظاته قبل ما يوصلهم تعديلك. شوف الملاحظات الجديدة تحت، صلّحها وأرسل.',
       'PROVIDER_JOINING_CURRENCY' => 'سعر خدمتك يكون بالريال اليمني.',

@@ -7,8 +7,12 @@ import '../../../core/offline/sync_status.dart';
 import '../../../core/utils/arabic_count.dart';
 import '../../../core/widgets/aarast_ui.dart';
 
-/// g11 «الخروج»: one way out of this phone and «رجوع»; changes not yet sent
-/// are named first (C59). Pops true to sign out.
+/// What the person chose on g11.
+enum LogoutChoice { signOut, deleteAccount }
+
+/// g11 «الخروج»: out of this phone, «احذف حسابي نهائيًا» (w05, D63: erased
+/// after 30 days and can be taken back, C4) and «رجوع»; changes not yet sent
+/// are named first (C59). Pops the [LogoutChoice], or null for «رجوع».
 class LogoutSheet extends StatelessWidget {
   const LogoutSheet({required this.sync, super.key});
 
@@ -56,7 +60,7 @@ class LogoutSheet extends StatelessWidget {
         ],
         AarastPressable(
           key: const ValueKey('account-logout-confirm'),
-          onTap: () => Navigator.of(context).pop(true),
+          onTap: () => Navigator.of(context).pop(LogoutChoice.signOut),
           borderRadius: BorderRadius.circular(22),
           semanticLabel: context.say(
             'اخرج من هذا الجوال',
@@ -104,12 +108,61 @@ class LogoutSheet extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 14),
+        AarastPressable(
+          key: const ValueKey('account-delete-account'),
+          onTap: () => Navigator.of(context).pop(LogoutChoice.deleteAccount),
+          borderRadius: BorderRadius.circular(22),
+          semanticLabel: context.say(
+            'احذف حسابي نهائيًا',
+            'احذفي حسابي نهائيًا',
+          ),
+          child: JourneyBox(
+            color: AarastV3Color.dangerSoft,
+            padding: const EdgeInsets.all(16),
+            child: Row(
+              children: [
+                const Icon(LucideIcons.trash2, color: AarastV3Color.danger),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        context.say(
+                          'احذف حسابي نهائيًا',
+                          'احذفي حسابي نهائيًا',
+                        ),
+                        style: JourneyType.of(
+                          JourneyType.bodyLarge,
+                          weight: JourneyType.bold,
+                          color: AarastV3Color.danger,
+                        ),
+                      ),
+                      Text(
+                        // C4: the 30 days, not «وما ترجع».
+                        context.say(
+                          'تنحذف بعد 30 يوم، وتقدر تتراجع',
+                          'تنحذف بعد 30 يوم، وتقدرين تتراجعين',
+                        ),
+                        style: JourneyType.of(
+                          JourneyType.small,
+                          color: AarastV3Color.danger,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+        const SizedBox(height: 14),
         JourneyButton(
           label: 'رجوع',
           background: AarastV3Color.paper,
           foreground: AarastV3Color.ink,
           expand: true,
-          onPressed: () => Navigator.of(context).pop(false),
+          onPressed: () => Navigator.of(context).pop(),
         ),
       ],
     );

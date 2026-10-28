@@ -6,7 +6,6 @@ import '../../../core/diagnostics/app_logger.dart';
 import '../../../core/network/api_client.dart';
 import '../../../core/offline/cache_policy.dart';
 import '../../../core/offline/offline_sync_service.dart';
-import '../../../core/session/pending_account_deletion.dart';
 import '../../../core/session/session_teardown_coordinator.dart';
 import '../../onboarding/onboarding_api.dart' show GuestOnboardingStorage;
 import '../data/auth_repository.dart';
@@ -41,11 +40,9 @@ class AuthController extends _AuthControllerCore
     OfflineSyncService? offlineSyncService,
     GuestOnboardingStorage? guestOnboardingStorage,
     SessionTeardownCoordinator? sessionTeardownCoordinator,
-    PendingAccountDeletionStore? pendingAccountDeletionStore,
   }) : super(
          authRepository,
          offlineSyncService,
-         pendingAccountDeletionStore,
          sessionTeardownCoordinator ??
              SessionTeardownCoordinator(
                auth: authRepository,
@@ -66,6 +63,11 @@ class AuthController extends _AuthControllerCore
   AuthStatus get status => _status;
 
   SafeUser? get user => _user;
+
+  /// D63: the signed-in account waits out its 30 days before erasure; the
+  /// app shows only w06 until it is taken back.
+  bool get deletionPending =>
+      _status == AuthStatus.authenticated && _user?.deletionPending == true;
 
   bool get isSubmitting => _isSubmitting;
 
@@ -150,13 +152,11 @@ abstract class _AuthControllerCore extends ChangeNotifier {
   _AuthControllerCore(
     this._authRepository,
     this._offlineSyncService,
-    this._pendingAccountDeletionStore,
     this._sessionTeardownCoordinator,
   );
 
   final AuthRepository _authRepository;
   final OfflineSyncService? _offlineSyncService;
-  final PendingAccountDeletionStore? _pendingAccountDeletionStore;
   final SessionTeardownCoordinator _sessionTeardownCoordinator;
 
   AuthStatus _status = AuthStatus.checking;
@@ -179,8 +179,6 @@ abstract class _AuthControllerCore extends ChangeNotifier {
   bool _pendingLogoutRequestsLogin = true;
   bool _pendingLogoutMarksSessionExpired = false;
   Future<void>? _logoutInFlight;
-  bool _accountDeletionAwaitingServerConfirmation = false;
-  SafeUser? _pendingAccountDeletionUser;
 
   void _clearPendingInviteResume() {
     _pendingInviteResumeToken = null;

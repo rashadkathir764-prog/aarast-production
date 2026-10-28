@@ -3,7 +3,6 @@ import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:provider/provider.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../../core/experience_v3/aarast_v3.dart';
 import '../../../core/network/api_client.dart';
@@ -15,6 +14,7 @@ import '../../../core/widgets/aarast_ui.dart'
 import '../../auth/auth_api.dart' show AuthController;
 import '../data/plan_assistant_api.dart';
 import '../models/plan_assistant.dart';
+import '../utils/assistant_consent.dart';
 
 /// b11 «اسأل اعّرست»: the owner or partner asks about their own plan and
 /// reads the answer under the question. w36 asks once before the first
@@ -108,21 +108,16 @@ class _PlanAssistantScreenState extends State<PlanAssistantScreen> {
     }
   }
 
-  String get _consentKey {
-    final userId = context.read<AuthController?>()?.user?.id ?? 'device';
-    return 'aarast.assistant.consent.v1.$userId';
-  }
-
   Future<bool> _ensureConsent(int dailyLimit) async {
-    final preferences = await SharedPreferences.getInstance();
-    if (preferences.getBool(_consentKey) == true) return true;
+    final userId = context.read<AuthController?>()?.user?.id;
+    if (await AssistantConsent.isGiven(userId)) return true;
     if (!mounted) return false;
     final agreed = await showJourneySheet<bool>(
       context: context,
       builder: (_) => _ConsentSheet(dailyLimit: dailyLimit),
     );
     if (agreed != true) return false;
-    await preferences.setBool(_consentKey, true);
+    await AssistantConsent.set(userId, true);
     return true;
   }
 

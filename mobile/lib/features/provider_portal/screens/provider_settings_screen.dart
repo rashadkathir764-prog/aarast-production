@@ -11,7 +11,7 @@ import '../../../core/widgets/aarast_toast.dart';
 import '../../../core/widgets/aarast_ui.dart';
 import '../../account_contexts/account_contexts_api.dart'
     show AccountContextController;
-import '../../auth/auth_api.dart' show AuthController, confirmAccountDeletion;
+import '../../auth/auth_api.dart' show AuthController;
 import '../../settings/settings_api.dart' show SettingsProvider;
 import '../providers/provider_dashboard_provider.dart';
 
@@ -20,8 +20,9 @@ import '../providers/provider_dashboard_provider.dart';
 /// messages (F19); notices on the phone follow the phone's own permission
 /// (the server refuses to switch `pushEnabled` on), so they get a line, not
 /// a switch. The drawn «رقمك يظهر», «تعهّد…», «ملخص يومي» and «مين يدير
-/// الحساب» have nothing behind them (B-31, B-32, B-33, B-37). Deleting warns
-/// with his confirmed bookings ahead, which the server does not check.
+/// الحساب» have nothing behind them (B-31, B-32, B-37). Deleting opens w05
+/// (D63): the account waits 30 days, and a provider with confirmed bookings
+/// ahead is refused until they are handed over (B-33).
 class ProviderSettingsScreen extends StatefulWidget {
   const ProviderSettingsScreen({this.devicePushAvailableOverride, super.key});
 
@@ -126,8 +127,11 @@ class _ProviderSettingsScreenState extends State<ProviderSettingsScreen> {
                   title: 'حذف الحساب',
                   subtitle: ahead != null && ahead > 0
                       ? 'عندك ${arabicCount(ahead, one: 'حجز جاي', two: 'حجزين جاية', few: 'حجوزات جاية', many: 'حجز جاي')}، الغها قبل ما تحذف'
-                      : 'يحذف حسابك وملفك نهائيًا',
-                  onTap: _working ? null : _confirmDelete,
+                      : 'بعد 30 يوم، وتقدر تتراجع',
+                  // w05 (D63): one deletion for every account.
+                  onTap: _working
+                      ? null
+                      : () => context.push(AppRouter.deleteAccount),
                 ),
               ],
             ),
@@ -236,15 +240,6 @@ class _ProviderSettingsScreenState extends State<ProviderSettingsScreen> {
     await _run(_logout);
   }
 
-  Future<void> _confirmDelete() async {
-    final confirmed = await confirmAccountDeletion(
-      context,
-      keyPrefix: 'provider',
-    );
-    if (!confirmed || !mounted) return;
-    await _run(_deleteAccount);
-  }
-
   Future<String?> _exitWorkspace() async {
     final router = GoRouter.of(context);
     final accountContexts = context.read<AccountContextController>();
@@ -257,13 +252,6 @@ class _ProviderSettingsScreenState extends State<ProviderSettingsScreen> {
   Future<String?> _logout() async {
     await context.read<AuthController>().logout();
     return null;
-  }
-
-  Future<String?> _deleteAccount() async {
-    final auth = context.read<AuthController>();
-    final deleted = await auth.deleteAccount();
-    if (deleted) return null;
-    return auth.errorMessage ?? 'ما قدرنا نحذف الحساب، جرب مرة ثانية.';
   }
 }
 

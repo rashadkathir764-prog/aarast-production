@@ -45,10 +45,14 @@ mixin _MarketplaceProviderDetails on _MarketplaceProviderCore {
     try {
       _details[providerId] = await _api.getProvider(providerId);
       _detailsErrors.remove(providerId);
-      final results = await Future.wait<Object>([
+      final results = await Future.wait<Object?>([
         _loadProviderServices(providerId),
         _loadProviderPackages(providerId),
         _loadProviderReviews(providerId),
+        if (_includeAccountData)
+          _loadProviderPortfolio(providerId)
+        else
+          Future<Object?>.value(),
         if (canLoadPlanQuotes)
           _safeQuoteRequests(weddingPlanId: scopedPlanId)
         else
@@ -60,6 +64,10 @@ mixin _MarketplaceProviderDetails on _MarketplaceProviderCore {
           results[1] as _MarketplaceLoadResult<List<ProviderPackage>>;
       final reviewsResult =
           results[2] as _MarketplaceLoadResult<List<ProviderReview>>;
+      final portfolioResult =
+          results[3] as _MarketplaceLoadResult<PublicPortfolio>?;
+      final portfolio = portfolioResult?.data;
+      if (portfolio != null) _portfolios[providerId] = portfolio;
       _applyProviderDetailSection(
         values: _services,
         errors: _servicesErrors,
@@ -82,13 +90,14 @@ mixin _MarketplaceProviderDetails on _MarketplaceProviderCore {
         if (!servicesResult.isSuccess) 'الخدمات',
         if (!packagesResult.isSuccess) 'الباقات',
         if (!reviewsResult.isSuccess) 'التقييمات',
+        if (portfolioResult != null && !portfolioResult.isSuccess) 'الصور',
       ];
       if (failedSections.isNotEmpty) {
         _errorMessage =
             'تعذر تحديث ${failedSections.join('، ')}. أعد المحاولة.';
       }
       if (canLoadPlanQuotes) {
-        _mergeQuotes(results[3] as List<QuoteRequest>);
+        _mergeQuotes(results[4] as List<QuoteRequest>);
       }
     } on ApiException catch (error) {
       final message = providerDirectoryErrorMessage(error);
@@ -204,6 +213,23 @@ mixin _MarketplaceProviderDetails on _MarketplaceProviderCore {
     try {
       return _MarketplaceLoadResult.success(
         await _api.getProviderReviews(providerId),
+      );
+    } catch (error) {
+      return _MarketplaceLoadResult.failure(
+        providerDirectoryErrorMessage(error),
+      );
+    }
+  }
+
+  /// B-16: read for a signed-in reader only (the women's album follows who
+  /// reads); a guest's page shows the cover alone. A failure is reported
+  /// like the other sections' and keeps the photos read before.
+  Future<_MarketplaceLoadResult<PublicPortfolio>> _loadProviderPortfolio(
+    String providerId,
+  ) async {
+    try {
+      return _MarketplaceLoadResult.success(
+        await _api.getProviderPortfolio(providerId),
       );
     } catch (error) {
       return _MarketplaceLoadResult.failure(

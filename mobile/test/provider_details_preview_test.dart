@@ -16,6 +16,7 @@ import 'package:aarast_mobile/core/network/api_client.dart';
 import 'package:aarast_mobile/core/theme/app_theme.dart';
 import 'package:aarast_mobile/features/marketplace/data/marketplace_api.dart';
 import 'package:aarast_mobile/features/marketplace/models/marketplace_models.dart';
+import 'package:aarast_mobile/features/marketplace/models/provider_portfolio.dart';
 import 'package:aarast_mobile/features/marketplace/providers/marketplace_provider.dart';
 import 'package:aarast_mobile/features/marketplace/screens/provider_details_screen.dart';
 
@@ -59,25 +60,16 @@ MarketplaceProvider _provider() {
   );
 }
 
-List<MarketplaceService> _services() {
-  return [
-    _provider().services.first.copyWith(
-      images: const [
-        ProviderServiceImage(id: 'i1', imageUrl: 'https://example.com/1.jpg'),
-        ProviderServiceImage(id: 'i2', imageUrl: 'https://example.com/2.jpg'),
-        ProviderServiceImage(id: 'i3', imageUrl: 'https://example.com/3.jpg'),
-        ProviderServiceImage(id: 'i4', imageUrl: 'https://example.com/4.jpg'),
-        ProviderServiceImage(id: 'i5', imageUrl: 'https://example.com/5.jpg'),
-        ProviderServiceImage(id: 'i6', imageUrl: 'https://example.com/6.jpg'),
-        ProviderServiceImage(id: 'i7', imageUrl: 'https://example.com/7.jpg'),
-        ProviderServiceImage(id: 'i8', imageUrl: 'https://example.com/8.jpg'),
-        ProviderServiceImage(id: 'i9', imageUrl: 'https://example.com/9.jpg'),
-        ProviderServiceImage(id: 'i10', imageUrl: 'https://example.com/10.jpg'),
-      ],
-    ),
-    _provider().services[1],
-  ];
-}
+List<MarketplaceService> _services() => _provider().services;
+
+/// f03's photos are his approved «معرض الشغل» photos (B-16, D62).
+final _portfolio = PublicPortfolio(
+  items: [
+    for (final n in [1, 2, 3, 4, 5, 6, 7, 8, 9, 10])
+      PublicPortfolioPhoto(id: 'p$n', imageUrl: 'https://example.com/$n.jpg'),
+  ],
+  socialLinks: {},
+);
 
 const _packages = [
   ProviderPackage(
@@ -129,6 +121,9 @@ class _PreviewMarketplaceProvider extends ProviderMarketplaceProvider {
 
   @override
   List<ProviderPackage> packagesFor(String id) => _packages;
+
+  @override
+  PublicPortfolio? portfolioFor(String id) => _portfolio;
 
   @override
   List<ProviderReview> reviewsFor(String id) => _reviews;

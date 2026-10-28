@@ -9,6 +9,7 @@
 - `/cities`
 - `/cities/new`
 - `/conversation-reports`
+- `/data-requests`
 - `/featured`
 - `/login`
 - `/photos`
@@ -26,4 +27,4 @@
 - `/users`
 - `/users/:id`
 
-Total: 25 routes
+Total: 26 routes

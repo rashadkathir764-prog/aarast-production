@@ -256,6 +256,20 @@ matches digits, email, token, secret, or signature patterns; no production row
 is silently reassigned or deleted. `historyCoverageStartsAt` marks the point
 from which complete runtime event capture is expected.
 
+## Account Deletion Grace and Data Downloads (D63)
+
+Migration `20261028200000_account_deletion_grace_and_data_exports` adds to
+`User`: `deletionRequestedAt` and `deletionScheduledFor` (both null, or both set
+with the schedule after the request: `User_deletion_request_whole_check`),
+`deletionPurgeFailedAt` and `deletionPurgeFailure` (only on a pending request:
+`User_deletion_failure_pending_check`), `reviewFirstNameOnly` (default true),
+and the index on `deletionScheduledFor` the hourly purge reads. The new model
+`DataExport` (identity) is one download of an account's own data: `userId`
+(cascade), `tokenHash` (unique `CHAR(64)` digest; the token itself is never
+stored), `createdAt`, `expiresAt` (after `createdAt`), `downloadedAt`. Rows
+older than a week are removed by the purge job. The receipt below is written by
+the purge (request id `grace:<requestedAt>`), no longer by an HTTP command.
+
 ## Durable Account Deletion Receipt
 
 Migration `20260803110000_add_account_deletion_receipts` creates
@@ -489,7 +503,8 @@ rewrite as permission to restore a removed live model.
 | --- | --- | --- |
 | `IdempotencyKey` | 10 | `id`, `userId`, `completedAt`, `expiresAt`, `createdAt` |
 | `AccountDeletionReceipt` | 2 | `deletedAt` |
-| `User` | 51 | `id`, `appPasswordConfiguredAt`, `phoneVerifiedAt`, `lastLoginAt`, `activeWeddingPlanId`, `onboardingCompletedAt`, `createdAt`, `updatedAt` |
+| `User` | 57 | `id`, `appPasswordConfiguredAt`, `phoneVerifiedAt`, `lastLoginAt`, `activeWeddingPlanId`, `onboardingCompletedAt`, `deletionRequestedAt`, `deletionPurgeFailedAt` |
+| `DataExport` | 7 | `id`, `userId`, `createdAt`, `expiresAt`, `downloadedAt` |
 | `MediaUploadTicket` | 16 | `userId`, `expiresAt`, `verifiedAt`, `consumedAt`, `consumedById`, `deletedAt`, `createdAt`, `updatedAt` |
 | `AdminLoginChallenge` | 9 | `id`, `userId`, `otpId`, `expiresAt`, `consumedAt`, `createdAt` |
 | `AdminPasswordResetChallenge` | 13 | `id`, `userId`, `otpId`, `expiresAt`, `consumedAt`, `verifiedAt`, `createdAt` |
@@ -554,5 +569,5 @@ rewrite as permission to restore a removed live model.
 | `ChatAttachment` | 7 | `id`, `messageId`, `createdAt` |
 | `ConversationReport` | 9 | `id`, `conversationId`, `reporterUserId`, `createdAt`, `updatedAt` |
 
-Total models: 66
+Total models: 67
 <!-- DOCS-SYNC:END -->

@@ -37,7 +37,9 @@
 - `/register`
 - `/reset-password`
 - `/settings`
+- `/settings/delete-account`
 - `/settings/lock`
+- `/settings/privacy`
 - `/shared/wedding-plans`
 - `/shared/wedding-plans/:id`
 - `/support`
@@ -87,4 +89,4 @@
 - `/wedding-plans/create`
 - `/welcome`
 
-Total: 86 unique routes
+Total: 88 unique routes

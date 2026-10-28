@@ -28,7 +28,7 @@ export const NOTIFICATION_ROUTES = {
   QUOTE_OFFER_RECEIVED: ['/wedding-plans/:planId/providers/requests?quote=:quoteRequestId', '/providers?quoteId=:quoteRequestId'],
   QUOTE_ACCEPTED: ['/wedding-plans/:planId/providers/requests?quote=:quoteRequestId', '/providers?quoteId=:quoteRequestId', '/provider/requests/:quoteRequestId'],
   QUOTE_REJECTED: ['/wedding-plans/:planId/providers/requests?quote=:quoteRequestId', '/providers?quoteId=:quoteRequestId', '/provider/requests/:quoteRequestId'],
-  PLAN_UPDATED: [],
+  PLAN_UPDATED: ['/home', '/wedding-plans/:planId/dashboard'],
   SYNC_REQUIRED: [],
   CHAT_MESSAGE_RECEIVED: ['/conversations/:conversationId'],
   GENERAL: [],
@@ -36,7 +36,7 @@ export const NOTIFICATION_ROUTES = {
   LOAN_REPAYMENT_DUE_SOON: ['/wedding-plans/:planId/money/funding'],
   LOAN_REPAYMENT_OVERDUE: ['/wedding-plans/:planId/money/funding'],
   WEDDING_COUNTDOWN: ['/wedding-plans/:planId/dashboard'],
-  BOOKING_UPDATED: ['/wedding-plans/:planId/providers/requests?quote=:quoteRequestId', '/providers?quoteId=:quoteRequestId', '/provider/requests/:quoteRequestId', '/wedding-plans/:planId/providers/requests', '/providers'],
+  BOOKING_UPDATED: ['/wedding-plans/:planId/providers/requests?quote=:quoteRequestId', '/providers?quoteId=:quoteRequestId', '/provider/requests/:quoteRequestId', '/wedding-plans/:planId/providers/requests', '/providers', '/provider/dashboard?tab=:tab'],
   GUEST_RESPONDED: ['/wedding-plans/:planId/guests/view/:guestId'],
   QUOTE_REQUEST_EXPIRING: ['/provider/requests/:quoteRequestId'],
   BOOKING_REQUESTED: ['/provider/requests/:quoteRequestId'],
@@ -84,6 +84,14 @@ export const noticeRoutes = {
   },
   funding(weddingPlanId: string): string {
     return `/wedding-plans/${part(weddingPlanId)}/money/funding`;
+  },
+  /** The app's home, for a plan the reader can no longer open (D63). */
+  home(): string {
+    return '/home';
+  },
+  /** p15: the provider's requests tab, when the request itself is gone (D63: its customer closed his account). */
+  providerRequests(): string {
+    return '/provider/dashboard?tab=requests';
   },
   planHome(weddingPlanId: string): string {
     return `/wedding-plans/${part(weddingPlanId)}/dashboard`;

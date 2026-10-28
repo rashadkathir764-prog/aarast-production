@@ -2,10 +2,8 @@ import 'dart:async';
 
 import 'package:aarast_mobile/app.dart';
 import 'package:aarast_mobile/core/network/api_client.dart';
-import 'package:aarast_mobile/core/session/pending_account_deletion.dart';
 import 'package:aarast_mobile/core/session/session_teardown_coordinator.dart';
 import 'package:aarast_mobile/core/storage/auth_storage.dart';
-import 'package:aarast_mobile/core/storage/sensitive_value_vault.dart';
 import 'package:aarast_mobile/features/auth/data/auth_repository.dart';
 import 'package:aarast_mobile/core/session/safe_user.dart';
 import 'package:aarast_mobile/features/auth/providers/auth_controller.dart';
@@ -64,7 +62,6 @@ void main() {
           guestDraftClearCalls += 1;
         },
       ),
-      pendingAccountDeletionStore: harness.deletionStore,
     );
     await controller.restoreSession();
 
@@ -88,7 +85,6 @@ void main() {
             guestDraftClearCalls += 1;
           },
         ),
-        pendingAccountDeletionStore: harness.deletionStore,
       );
       await controller.restoreSession();
 
@@ -118,7 +114,6 @@ void main() {
           guestDraftClearCalls += 1;
         },
       ),
-      pendingAccountDeletionStore: harness.deletionStore,
     );
 
     await controller.restoreSession();
@@ -142,7 +137,6 @@ void main() {
     final controller = AuthController(
       harness.repository,
       sessionTeardownCoordinator: coordinator,
-      pendingAccountDeletionStore: harness.deletionStore,
     );
     await controller.restoreSession();
     await tester.pumpWidget(_app(controller));
@@ -168,170 +162,119 @@ void main() {
     expect(controller.status, AuthStatus.unauthenticated);
   });
 
-  testWidgets(
-    'server-confirmed account deletion enters teardown boundary before local clear',
-    (tester) async {
-      final harness = await _Harness.create();
-      final localAccountClear = Completer<void>();
-      var guestDraftClearCalls = 0;
-      final coordinator = SessionTeardownCoordinator(
-        auth: harness.repository,
-        clearLocalAccountData: () => localAccountClear.future,
-        clearGuestDraft: () async {
-          guestDraftClearCalls += 1;
-        },
-        clearDeletedAccountState: harness.deletionStore.removeForDeletedUser,
-      );
-      final controller = AuthController(
-        harness.repository,
-        sessionTeardownCoordinator: coordinator,
-        pendingAccountDeletionStore: harness.deletionStore,
-      );
-      await controller.restoreSession();
-      await tester.pumpWidget(_app(controller));
-
-      final deletion = controller.deleteAccount();
-      await tester.pump();
-
-      expect(harness.repository.deleteAccountCalls, 1);
-      expect(controller.user, isNull);
-      expect(controller.status, AuthStatus.terminating);
-      expect(find.byKey(const Key('old-provider-dashboard')), findsNothing);
-      expect(find.byKey(const Key('session-terminating-screen')), findsOne);
-
-      localAccountClear.complete();
-      expect(await deletion, isTrue);
-      await tester.pumpAndSettle();
-      expect(controller.status, AuthStatus.unauthenticated);
-      expect(harness.repository.remoteRevokeCalls, 0);
-      expect(guestDraftClearCalls, 1);
-    },
-  );
-
-  testWidgets(
-    'account deletion local failure stays gated and retry never deletes twice',
-    (tester) async {
-      final harness = await _Harness.create();
-      var shouldFailLocalClear = true;
-      final coordinator = SessionTeardownCoordinator(
-        auth: harness.repository,
-        clearLocalAccountData: () async {
-          if (shouldFailLocalClear) {
-            throw StateError('controlled account-cache clear failure');
-          }
-        },
-        clearGuestDraft: () async {},
-        clearDeletedAccountState: harness.deletionStore.removeForDeletedUser,
-      );
-      final controller = AuthController(
-        harness.repository,
-        sessionTeardownCoordinator: coordinator,
-        pendingAccountDeletionStore: harness.deletionStore,
-      );
-      await controller.restoreSession();
-      await tester.pumpWidget(_app(controller));
-
-      expect(await controller.deleteAccount(), isFalse);
-      await tester.pump();
-
-      expect(harness.repository.deleteAccountCalls, 1);
-      expect(harness.repository.remoteRevokeCalls, 0);
-      expect(controller.user, isNull);
-      expect(controller.status, AuthStatus.terminationFailed);
-      expect(find.byKey(const Key('old-provider-dashboard')), findsNothing);
-      expect(
-        find.byKey(const Key('session-termination-failed-screen')),
-        findsOneWidget,
-      );
-
-      shouldFailLocalClear = false;
-      await tester.tap(find.byKey(const Key('session-termination-retry')));
-      await tester.pumpAndSettle();
-
-      expect(harness.repository.deleteAccountCalls, 1);
-      expect(harness.repository.remoteRevokeCalls, 0);
-      expect(controller.status, AuthStatus.unauthenticated);
-      expect(
-        find.byKey(const Key('session-termination-failed-screen')),
-        findsNothing,
-      );
-    },
-  );
-
-  testWidgets('definitive NOT_STARTED rejection restores the same session', (
+  // D63: deleting the account asks for it; the session stays and only w06
+  // shows until the request is taken back or the account is erased.
+  testWidgets('w05: the request keeps the session and shows only w06', (
     tester,
   ) async {
     final harness = await _Harness.create();
-    harness.repository.deleteAccountFailure = const ApiException(
-      'تعذر حذف الحساب الآن.',
-      statusCode: 403,
-      serverCode: 'ACCOUNT_DELETE_UNAVAILABLE',
+    await harness.controller.restoreSession();
+    await tester.pumpWidget(_app(harness.controller));
+    expect(find.byKey(const Key('old-provider-dashboard')), findsOneWidget);
+
+    expect(await harness.controller.requestAccountDeletion(), isNull);
+    await tester.pumpAndSettle();
+
+    expect(harness.repository.requestCalls, 1);
+    expect(harness.repository.remoteRevokeCalls, 0);
+    expect(harness.controller.status, AuthStatus.authenticated);
+    expect(harness.controller.deletionPending, isTrue);
+    expect(
+      harness.controller.user?.deletionScheduledFor,
+      _SessionRepository.scheduledFor,
+    );
+    expect(find.byKey(const Key('old-provider-dashboard')), findsNothing);
+    expect(find.byKey(const Key('deletion-pending-screen')), findsOneWidget);
+    expect(find.text('حسابك ينحذف بعد 30 يوم'), findsOneWidget);
+  });
+
+  testWidgets('w06 «تراجعت، رجّع حسابي» brings the account back', (
+    tester,
+  ) async {
+    final harness = await _Harness.create();
+    harness.repository.pending = true;
+    await harness.controller.restoreSession();
+    await tester.pumpWidget(_app(harness.controller));
+    expect(find.byKey(const Key('deletion-pending-screen')), findsOneWidget);
+
+    harness.repository.pending = false;
+    await tester.tap(find.byKey(const Key('deletion-pending-restore')));
+    await tester.pumpAndSettle();
+
+    expect(harness.repository.cancelCalls, 1);
+    expect(harness.controller.deletionPending, isFalse);
+    expect(find.byKey(const Key('deletion-pending-screen')), findsNothing);
+    expect(find.byKey(const Key('old-provider-dashboard')), findsOneWidget);
+  });
+
+  testWidgets('a refused take-back stays on w06 and says why', (tester) async {
+    final harness = await _Harness.create();
+    harness.repository
+      ..pending = true
+      ..cancelFailure = const ApiException(
+        'ما قدرنا نوصل للسيرفر.',
+        isNetworkFailure: true,
+      );
+    await harness.controller.restoreSession();
+    await tester.pumpWidget(_app(harness.controller));
+
+    await tester.tap(find.byKey(const Key('deletion-pending-restore')));
+    await tester.pumpAndSettle();
+
+    expect(harness.controller.deletionPending, isTrue);
+    expect(find.byKey(const Key('deletion-pending-error')), findsOneWidget);
+    expect(find.text('ما قدرنا نوصل للسيرفر.'), findsOneWidget);
+  });
+
+  testWidgets('B-33: a refused request keeps the account as it was', (
+    tester,
+  ) async {
+    final harness = await _Harness.create();
+    harness.repository.requestFailure = const ApiException(
+      'عندك حجوزات مؤكدة جاية. الغها أو سلّمها قبل ما تحذف حسابك.',
+      statusCode: 409,
+      serverCode: 'PROVIDER_HAS_UPCOMING_BOOKINGS',
     );
     await harness.controller.restoreSession();
     await tester.pumpWidget(_app(harness.controller));
 
-    expect(await harness.controller.deleteAccount(), isFalse);
+    final error = await harness.controller.requestAccountDeletion();
     await tester.pump();
 
-    expect(harness.repository.deleteAccountCalls, 1);
-    expect(harness.controller.status, AuthStatus.authenticated);
-    expect(harness.controller.user, _SessionRepository.user);
+    expect(error, contains('حجوزات'));
+    expect(harness.controller.deletionPending, isFalse);
     expect(find.byKey(const Key('old-provider-dashboard')), findsOneWidget);
-    expect(harness.controller.errorCode, 'ACCOUNT_DELETE_UNAVAILABLE');
   });
 
-  testWidgets('lost deletion response stays gated and retries the same id', (
+  testWidgets(
+    'a01: signing in to a waiting account lands on w06 and sends nothing',
+    (tester) async {
+      final harness = await _Harness.create();
+      harness.repository.pending = true;
+
+      await harness.controller.restoreSession();
+      await tester.pumpWidget(_app(harness.controller));
+
+      expect(harness.controller.status, AuthStatus.authenticated);
+      expect(find.byKey(const Key('deletion-pending-screen')), findsOneWidget);
+      expect(find.byKey(const Key('old-provider-dashboard')), findsNothing);
+    },
+  );
+
+  testWidgets('a 403 ACCOUNT_DELETION_PENDING from another phone shows w06', (
     tester,
   ) async {
     final harness = await _Harness.create();
-    harness.repository
-      ..deleteAccountFailure = const ApiException(
-        'network lost',
-        isNetworkFailure: true,
-      )
-      ..deletionStatus = AccountDeletionServerStatus.pending;
     await harness.controller.restoreSession();
     await tester.pumpWidget(_app(harness.controller));
+    expect(find.byKey(const Key('old-provider-dashboard')), findsOneWidget);
 
-    expect(await harness.controller.deleteAccount(), isFalse);
-    await tester.pump();
+    harness.repository.pending = true;
+    await harness.controller.handleAccountDeletionPending();
+    await tester.pumpAndSettle();
 
-    expect(harness.controller.user, isNull);
-    expect(harness.controller.status, AuthStatus.terminationFailed);
-    expect(find.byKey(const Key('old-provider-dashboard')), findsNothing);
-    expect(find.text('نتأكد من حذف الحساب'), findsOneWidget);
-    final firstId = harness.repository.deletionRequestIds.first;
-    expect(harness.repository.deletionRequestIds, [firstId]);
-    expect(await harness.deletionStore.read(), isNotNull);
-
-    await harness.controller.logout();
-    expect(harness.repository.deletionRequestIds, [firstId]);
-    expect(await harness.deletionStore.read(), isNotNull);
-
-    harness.repository
-      ..deleteAccountFailure = null
-      ..deletionStatus = AccountDeletionServerStatus.notStarted;
-    await harness.controller.logout();
-    expect(harness.repository.deletionRequestIds, [firstId, firstId]);
-    expect(await harness.deletionStore.read(), isNull);
-    expect(harness.controller.status, AuthStatus.unauthenticated);
+    expect(find.byKey(const Key('deletion-pending-screen')), findsOneWidget);
   });
-
-  test(
-    'restart reconciles DELETED receipt before restoring a dashboard',
-    () async {
-      final harness = await _Harness.create();
-      await harness.deletionStore.putIfAbsent(_SessionRepository.user.id);
-      harness.repository.deletionStatus = AccountDeletionServerStatus.deleted;
-
-      await harness.controller.restoreSession();
-
-      expect(harness.controller.user, isNull);
-      expect(harness.controller.status, AuthStatus.unauthenticated);
-      expect(await harness.deletionStore.read(), isNull);
-      expect(harness.repository.deleteAccountCalls, 0);
-    },
-  );
 }
 
 Widget _app(AuthController controller) {
@@ -339,9 +282,11 @@ Widget _app(AuthController controller) {
     value: controller,
     child: const MaterialApp(
       home: AarastSessionTransitionGate(
-        child: ColoredBox(
-          key: Key('old-provider-dashboard'),
-          color: Colors.white,
+        child: AarastDeletionPendingGate(
+          child: ColoredBox(
+            key: Key('old-provider-dashboard'),
+            color: Colors.white,
+          ),
         ),
       ),
     ),
@@ -349,15 +294,10 @@ Widget _app(AuthController controller) {
 }
 
 class _Harness {
-  const _Harness({
-    required this.controller,
-    required this.repository,
-    required this.deletionStore,
-  });
+  const _Harness({required this.controller, required this.repository});
 
   final AuthController controller;
   final _SessionRepository repository;
-  final PendingAccountDeletionStore deletionStore;
 
   static Future<_Harness> create() async {
     SharedPreferences.setMockInitialValues({});
@@ -365,20 +305,16 @@ class _Harness {
     final storage = AuthStorage(preferences);
     final apiClient = ApiClient(tokenProvider: storage.readAccessToken);
     final repository = _SessionRepository(apiClient, storage);
-    final deletionStore = PendingAccountDeletionStore(_MemoryVault());
     return _Harness(
       controller: AuthController(
         repository,
-        pendingAccountDeletionStore: deletionStore,
         sessionTeardownCoordinator: SessionTeardownCoordinator(
           auth: repository,
           clearLocalAccountData: () async {},
           clearGuestDraft: () async {},
-          clearDeletedAccountState: deletionStore.removeForDeletedUser,
         ),
       ),
       repository: repository,
-      deletionStore: deletionStore,
     );
   }
 }
@@ -392,18 +328,24 @@ class _SessionRepository extends AuthRepository {
     role: 'USER',
     status: 'ACTIVE',
   );
+  static final requestedAt = DateTime.now();
+  static final scheduledFor = requestedAt.add(const Duration(days: 30));
 
   Future<void> Function() localClear = _completeImmediately;
-  int deleteAccountCalls = 0;
   int remoteRevokeCalls = 0;
-  Object? deleteAccountFailure;
+  int requestCalls = 0;
+  int cancelCalls = 0;
+  bool pending = false;
   Object? meFailure;
-  AccountDeletionServerStatus deletionStatus =
-      AccountDeletionServerStatus.notStarted;
-  final List<String> deletionRequestIds = [];
+  Object? requestFailure;
+  Object? cancelFailure;
+
+  SafeUser get _current => pending
+      ? user.withDeletion(requestedAt: requestedAt, scheduledFor: scheduledFor)
+      : user;
 
   @override
-  SafeUser? readCachedUser() => user;
+  SafeUser? readCachedUser() => _current;
 
   @override
   Future<String?> readAccessToken() async => 'access-a';
@@ -412,22 +354,26 @@ class _SessionRepository extends AuthRepository {
   Future<SafeUser> me() async {
     final failure = meFailure;
     if (failure != null) throw failure;
-    return user;
+    return _current;
   }
 
   @override
-  Future<void> deleteAccount({required String clientRequestId}) async {
-    deleteAccountCalls += 1;
-    deletionRequestIds.add(clientRequestId);
-    final failure = deleteAccountFailure;
+  Future<({DateTime requestedAt, DateTime scheduledFor})>
+  requestAccountDeletion() async {
+    requestCalls += 1;
+    final failure = requestFailure;
     if (failure != null) throw failure;
+    pending = true;
+    return (requestedAt: requestedAt, scheduledFor: scheduledFor);
   }
 
   @override
-  Future<AccountDeletionServerStatus> accountDeletionStatus({
-    required String userId,
-    required String clientRequestId,
-  }) async => deletionStatus;
+  Future<void> cancelAccountDeletion() async {
+    cancelCalls += 1;
+    final failure = cancelFailure;
+    if (failure != null) throw failure;
+    pending = false;
+  }
 
   @override
   Future<void> captureRemoteCredentials(SessionAuthTeardownLease lease) async {}
@@ -447,16 +393,3 @@ class _SessionRepository extends AuthRepository {
 }
 
 Future<void> _completeImmediately() async {}
-
-class _MemoryVault implements SensitiveValueVault {
-  final values = <String, String>{};
-
-  @override
-  Future<void> delete(String key) async => values.remove(key);
-
-  @override
-  Future<String?> read(String key) async => values[key];
-
-  @override
-  Future<void> write(String key, String value) async => values[key] = value;
-}

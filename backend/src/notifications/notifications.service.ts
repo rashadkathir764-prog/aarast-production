@@ -42,6 +42,8 @@ import {
 import { isPushNotificationType } from "../push/push-notification.policy";
 import {
   assertActiveMutationActorInTransaction,
+  isLiveAccount,
+  listDeletionPendingUserIds,
   lockUserLifecycleRowsInTransaction,
 } from "../modules/identity/public/user-lifecycle-lock";
 import {
@@ -360,6 +362,10 @@ export class NotificationsService implements NotificationsPort {
     client: NotificationCreateClient,
     input: CreateNotificationInput,
   ): Promise<NotificationResponse | null> {
+    // D63 (w06): nothing reaches an account waiting out its deletion.
+    if ((await listDeletionPendingUserIds(client, [input.userId])).size > 0) {
+      return null;
+    }
     const preferenceKey = this.preferenceKeyForType(input.type);
     if (preferenceKey) {
       // The recipient's lifecycle row is identity's: locked for share there.
@@ -513,11 +519,19 @@ export class NotificationsService implements NotificationsPort {
         tx,
         seedRecipientIds,
       );
+      // D63: nobody waiting out an account deletion is told anything, and a
+      // plan whose owner waits tells nobody (w06).
       const activeLockedUserIds = new Set(
-        lockedUsers
-          .filter((lockedUser) => lockedUser.status === UserStatus.ACTIVE)
-          .map((lockedUser) => lockedUser.id),
+        lockedUsers.filter(isLiveAccount).map((lockedUser) => lockedUser.id),
       );
+      if (
+        lockedUsers.some(
+          (lockedUser) =>
+            lockedUser.id === seed.ownerUserId && lockedUser.deletionPending,
+        )
+      ) {
+        return [];
+      }
 
       const planLock = await this.plans.lockPlanRowForShareInTransaction(
         tx,
@@ -734,10 +748,10 @@ export class NotificationsService implements NotificationsPort {
           tx,
           seedRecipientUserIds,
         );
+        // D63: the due reminders skip every account waiting out its
+        // deletion, and every plan its waiting owner closed (w06).
         const activeLockedUserIds = new Set(
-          lockedUsers
-            .filter((lockedUser) => lockedUser.status === UserStatus.ACTIVE)
-            .map((lockedUser) => lockedUser.id),
+          lockedUsers.filter(isLiveAccount).map((lockedUser) => lockedUser.id),
         );
         await this.plans.lockPlanRowsForShareInTransaction(tx, seedPlanIds);
         await this.permissions.lockPlanMembershipsForShareInTransaction(

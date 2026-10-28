@@ -1,6 +1,7 @@
 import { NotFoundException } from "@nestjs/common";
 import { Prisma, UserStatus } from "@prisma/client";
 import {
+  findDeletionPendingUserIds,
   lockUserLifecycleRowsForShare,
   lockUserLifecycleRowsForUpdate,
 } from "../infrastructure/user-lifecycle-lock.repository";
@@ -8,6 +9,25 @@ import {
 export interface LockedUserLifecycleRow {
   id: string;
   status: UserStatus;
+  /** D63: the account is waiting out its 30 days before erasure. */
+  deletionPending: boolean;
+}
+
+/**
+ * D63: an account that takes part in the app: active and not waiting out its
+ * deletion. A plan whose owner waits is closed to everyone (w06), and nobody
+ * waiting is reminded of anything.
+ */
+export function isLiveAccount(row: LockedUserLifecycleRow): boolean {
+  return row.status === UserStatus.ACTIVE && !row.deletionPending;
+}
+
+/** D63: which of these accounts wait out their deletion (a plain read, no lock). */
+export function listDeletionPendingUserIds(
+  client: Prisma.TransactionClient,
+  userIds: readonly string[],
+): Promise<Set<string>> {
+  return findDeletionPendingUserIds(client, userIds);
 }
 
 export async function lockUserLifecycleRowsInTransaction(

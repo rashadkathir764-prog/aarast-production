@@ -1,4 +1,11 @@
-import { AppRole, AuthSessionScope, OtpPurpose, Prisma, UserRole } from '@prisma/client';
+import {
+  AppRole,
+  AuthSessionScope,
+  OtpPurpose,
+  Prisma,
+  UserRole,
+  WeddingPersona,
+} from '@prisma/client';
 
 export function findAccountDeletionReceipt(
   tx: Prisma.TransactionClient,
@@ -17,10 +24,21 @@ export function createAccountDeletionReceipt(
   return tx.accountDeletionReceipt.create({ data: { receiptHash } });
 }
 
+export interface AccountDeletionRow {
+  id: string;
+  role: UserRole;
+  name: string;
+  phone: string | null;
+  persona: WeddingPersona | null;
+  deletionRequestedAt: Date | null;
+  deletionScheduledFor: Date | null;
+}
+
 export function lockUserForAccountDeletion(tx: Prisma.TransactionClient, userId: string) {
-  return tx.$queryRaw<Array<{ id: string; role: UserRole }>>(
+  return tx.$queryRaw<AccountDeletionRow[]>(
     Prisma.sql`
-      SELECT "id", "role"
+      SELECT "id", "role", "name", "phone", "persona",
+             "deletionRequestedAt", "deletionScheduledFor"
       FROM "User"
       WHERE "id" = ${userId}
       FOR UPDATE
@@ -28,15 +46,65 @@ export function lockUserForAccountDeletion(tx: Prisma.TransactionClient, userId:
   );
 }
 
-export function lockUserForDeletionStatus(tx: Prisma.TransactionClient, userId: string) {
-  return tx.$queryRaw<Array<{ id: string }>>(
-    Prisma.sql`
-      SELECT "id"
-      FROM "User"
-      WHERE "id" = ${userId}
-      FOR UPDATE
-    `,
-  );
+/** D63: the account asks to be erased at `scheduledFor`; a past failure is forgotten. */
+export function markAccountDeletionRequested(
+  tx: Prisma.TransactionClient,
+  userId: string,
+  requestedAt: Date,
+  scheduledFor: Date,
+) {
+  return tx.user.update({
+    where: { id: userId },
+    data: {
+      deletionRequestedAt: requestedAt,
+      deletionScheduledFor: scheduledFor,
+      deletionPurgeFailedAt: null,
+      deletionPurgeFailure: null,
+    },
+  });
+}
+
+/** D63: the request is taken back; the account is whole again. */
+export function clearAccountDeletionRequest(
+  tx: Prisma.TransactionClient,
+  userId: string,
+) {
+  return tx.user.update({
+    where: { id: userId },
+    data: {
+      deletionRequestedAt: null,
+      deletionScheduledFor: null,
+      deletionPurgeFailedAt: null,
+      deletionPurgeFailure: null,
+    },
+  });
+}
+
+/** D63: the accounts whose day of erasure has come, oldest first. */
+export function findDueAccountDeletionIds(
+  client: Prisma.TransactionClient,
+  now: Date,
+  take: number,
+) {
+  return client.user.findMany({
+    where: { deletionScheduledFor: { lte: now } },
+    orderBy: [{ deletionScheduledFor: 'asc' }, { id: 'asc' }],
+    select: { id: true },
+    take,
+  });
+}
+
+/** D63: the purge of a still pending account failed; n06 shows it. */
+export function recordAccountPurgeFailure(
+  client: Prisma.TransactionClient,
+  userId: string,
+  failedAt: Date,
+  code: string,
+) {
+  return client.user.updateMany({
+    where: { id: userId, deletionScheduledFor: { not: null } },
+    data: { deletionPurgeFailedAt: failedAt, deletionPurgeFailure: code },
+  });
 }
 
 export function deleteOtpCodesByPhone(tx: Prisma.TransactionClient, phone: string) {
@@ -90,6 +158,11 @@ export function clearAdministratorApplicationIdentity(
       onboardingPath: null,
       persona: null,
       onboardingCompletedAt: null,
+      // D63: the application identity's request is fulfilled.
+      deletionRequestedAt: null,
+      deletionScheduledFor: null,
+      deletionPurgeFailedAt: null,
+      deletionPurgeFailure: null,
     },
   });
 }

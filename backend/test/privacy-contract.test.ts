@@ -1,7 +1,10 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { UserRole } from "@prisma/client";
-import { toReviewIdentity } from "../src/shared-kernel/privacy/review-identity";
+import {
+  toModeratedReviewIdentity,
+  toReviewIdentity,
+} from "../src/shared-kernel/privacy/review-identity";
 import { safeTelemetryException } from "../src/platform/http/global-exception.filter";
 import { usersService } from "./support/owner-ports";
 
@@ -13,6 +16,7 @@ test("review identity uses an allowlist that excludes contact details", () => {
     role: UserRole.USER,
     phone: "+967777123456",
     email: "private@example.com",
+    reviewFirstNameOnly: false,
   };
   const response = toReviewIdentity(rawReviewer);
 
@@ -27,9 +31,25 @@ test("public review identity uses an administrator application name", () => {
     name: "Private Admin Identity",
     appName: "Wedding User",
     role: UserRole.ADMIN,
+    reviewFirstNameOnly: false,
   });
 
   assert.deepEqual(response, { id: "admin-1", name: "Wedding User" });
+});
+
+test("D63 (w40): a reviewer who keeps the first name only is read by it; moderation reads the whole name", () => {
+  const reviewer = {
+    id: "user-2",
+    name: "سلمان أحمد المنصور",
+    appName: null,
+    role: UserRole.USER,
+    reviewFirstNameOnly: true,
+  };
+  assert.deepEqual(toReviewIdentity(reviewer), { id: "user-2", name: "سلمان" });
+  assert.deepEqual(toModeratedReviewIdentity(reviewer), {
+    id: "user-2",
+    name: "سلمان أحمد المنصور",
+  });
 });
 
 // The admin notification privacy mapper (redacted money notices, masked

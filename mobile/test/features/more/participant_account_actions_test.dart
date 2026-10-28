@@ -8,10 +8,8 @@ import 'package:aarast_mobile/core/offline/offline_sync_service.dart';
 import 'package:aarast_mobile/core/offline/offline_tables.dart';
 import 'package:aarast_mobile/core/offline/pending_plan_cleanup.dart';
 import 'package:aarast_mobile/core/routing/app_router.dart';
-import 'package:aarast_mobile/core/session/pending_account_deletion.dart';
 import 'package:aarast_mobile/core/session/session_teardown_coordinator.dart';
 import 'package:aarast_mobile/core/storage/auth_storage.dart';
-import 'package:aarast_mobile/core/storage/sensitive_value_vault.dart';
 import 'package:aarast_mobile/core/theme/app_theme.dart';
 import 'package:aarast_mobile/features/account_contexts/data/account_contexts_api.dart';
 import 'package:aarast_mobile/features/account_contexts/models/account_context.dart';
@@ -651,18 +649,12 @@ class _ContributorActionHarness {
     await contexts.refresh();
     expect(await contexts.select(contributor.contextKey), isTrue);
     final authRepository = _ContributorAuthRepository(apiClient, storage);
-    final pendingAccountDeletionStore = PendingAccountDeletionStore(
-      _MemorySensitiveVault(),
-    );
     final auth = AuthController(
       authRepository,
-      pendingAccountDeletionStore: pendingAccountDeletionStore,
       sessionTeardownCoordinator: SessionTeardownCoordinator(
         auth: authRepository,
         clearLocalAccountData: offline.clearLocalData,
         clearGuestDraft: () async {},
-        clearDeletedAccountState:
-            pendingAccountDeletionStore.removeForDeletedUser,
       ),
     );
     await auth.restoreSession();
@@ -888,7 +880,6 @@ class _ContextsGateway implements AccountContextsGateway {
 
 class _ContributorAuthRepository extends AuthRepository {
   _ContributorAuthRepository(super.apiClient, super.authStorage);
-  int deleteCalls = 0;
 
   static const _user = SafeUser(
     id: 'contributor-user',
@@ -908,26 +899,8 @@ class _ContributorAuthRepository extends AuthRepository {
   Future<SafeUser> me() async => _user;
 
   @override
-  Future<void> deleteAccount({required String clientRequestId}) async {
-    deleteCalls += 1;
-  }
-
-  @override
   Future<void> revokeRemoteSession(
     SessionAuthTeardownLease lease, {
     required CancelToken cancelToken,
   }) async {}
-}
-
-class _MemorySensitiveVault implements SensitiveValueVault {
-  final values = <String, String>{};
-
-  @override
-  Future<void> delete(String key) async => values.remove(key);
-
-  @override
-  Future<String?> read(String key) async => values[key];
-
-  @override
-  Future<void> write(String key, String value) async => values[key] = value;
 }

@@ -11,6 +11,11 @@ const http = require('http');
 const { randomUUID } = require('crypto');
 const { PrismaClient } = require('@prisma/client');
 const { registerVerified } = require('./verified-registration');
+const {
+  isPendingDeletion,
+  purgePendingAccounts,
+  requestAccountDeletion,
+} = require('./account-grace');
 const { uploadVerifiedImage } = require('./verified-media-upload');
 
 /**
@@ -159,9 +164,13 @@ async function run() {
     const kept = await request('POST', `/api/v1/costs/${costId}/receipts`, { attachmentRef: second?.body?.attachmentRef }, owner.token);
     check('a second receipt is kept for the account-deletion check', kept.status === 201);
 
-    const deletion = await request('DELETE', '/api/v1/users/me', null, owner.token, randomUUID());
-    ownerDeleted = deletion.status === 200;
-    check('the owner deletes their account', ownerDeleted);
+    const deletion = await requestAccountDeletion(request, owner.token);
+    check('the owner asks to delete their account', isPendingDeletion(deletion));
+    const purge = await purgePendingAccounts();
+    ownerDeleted =
+      purge.failures.length === 0 &&
+      (await prisma.user.count({ where: { id: owner.userId } })) === 0;
+    check('after the 30 days the purge erases the account', ownerDeleted);
     const rows = await prisma.costReceipt.count({ where: { id: kept.body?.id } });
     const secondTicket = await prisma.mediaUploadTicket.findUnique({ where: { key: second?.body?.attachmentRef } });
     check('account deletion removes the plan receipts', rows === 0);
@@ -174,9 +183,11 @@ async function run() {
     if (!ownerDeleted) cleanups.push(['owner', owner.token]);
     for (const [label, token] of cleanups) {
       if (!token) continue;
-      const response = await request('DELETE', '/api/v1/users/me', null, token, randomUUID());
-      check(`${label} fixture account is cleaned`, response.status === 200);
+      const response = await requestAccountDeletion(request, token);
+      check(`${label} fixture account asks to be deleted`, isPendingDeletion(response));
     }
+    const cleanup = await purgePendingAccounts();
+    check('the fixture accounts are erased', cleanup.failures.length === 0);
     await prisma.$disconnect();
   }
 

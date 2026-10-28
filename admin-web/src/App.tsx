@@ -20,6 +20,7 @@ import { CategoriesPage } from './features/catalog/CategoriesPage';
 import { CitiesPage } from './features/catalog/CitiesPage';
 import { UsersPage } from './features/users/UsersPage';
 import { UserDetailsPage } from './features/users/UserDetailsPage';
+import { DataRequestsPage } from './features/users/DataRequestsPage';
 import { ServicesPage } from './features/catalog/ServicesPage';
 import { BookingsPage } from './features/moderation/BookingsPage';
 import { PhotosPage } from './features/moderation/PhotosPage';
@@ -203,6 +204,15 @@ export default function App() {
           element={
             <RequireAdminPermission permission={AdminPermission.PROVIDERS_READ}>
               <PhotosPage />
+            </RequireAdminPermission>
+          }
+        />
+        {/* n06 (A-15, D63): pending deletions and data downloads. */}
+        <Route
+          path="data-requests"
+          element={
+            <RequireAdminPermission permission={AdminPermission.USERS_READ}>
+              <DataRequestsPage />
             </RequireAdminPermission>
           }
         />

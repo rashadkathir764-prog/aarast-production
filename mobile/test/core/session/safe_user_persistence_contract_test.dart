@@ -22,6 +22,8 @@ void main() {
       phoneVerifiedAt: phoneVerifiedAt,
       lastLoginAt: lastLoginAt,
       onboardingCompletedAt: onboardingCompletedAt,
+      deletionRequestedAt: DateTime.parse('2026-10-19T09:00:00.000Z'),
+      deletionScheduledFor: DateTime.parse('2026-11-18T09:00:00.000Z'),
     );
 
     final json = user.toJson();
@@ -42,9 +44,19 @@ void main() {
       'phoneVerifiedAt': '2026-01-02T03:04:05.000Z',
       'lastLoginAt': '2026-02-03T04:05:06.000Z',
       'onboardingCompletedAt': '2026-03-04T05:06:07.000Z',
+      // D63: the account's pending deletion (w06).
+      'deletion': {
+        'requestedAt': '2026-10-19T09:00:00.000Z',
+        'scheduledFor': '2026-11-18T09:00:00.000Z',
+      },
     });
 
     final restored = SafeUser.fromJson(json);
+    expect(restored.deletionPending, isTrue);
+    expect(
+      restored.deletionScheduledFor,
+      DateTime.parse('2026-11-18T09:00:00.000Z'),
+    );
     expect(restored.id, user.id);
     expect(restored.name, user.name);
     expect(restored.phone, user.phone);
@@ -95,6 +107,8 @@ void main() {
       'phoneVerifiedAt': null,
       'lastLoginAt': null,
       'onboardingCompletedAt': null,
+      'deletion': null,
     });
+    expect(restored.deletionPending, isFalse);
   });
 }

@@ -99,6 +99,10 @@ import { AdminServiceDto, AdminServiceQueryDto } from './dto/admin-service.dto';
 import { AdminConversationReportQueryDto, AdminConversationReportStatusDto } from './dto/admin-conversation-report.dto';
 import { authorizeAdminUserStatusChange } from './admin-user-status';
 import { adminBookingFilter, toAdminBookingResponse } from './admin-bookings';
+import {
+  toAdminDataExportResponse,
+  toAdminPendingDeletionResponse,
+} from './admin-data-requests';
 import type { AdminBookingQueryDto } from './dto/admin-booking.dto';
 import { AdminPortfolioReview } from './admin-portfolio-review';
 import type {
@@ -321,6 +325,29 @@ export class AdminService {
 
   async deleteService(currentUser: AuthenticatedUser, id: string) {
     return this.mutations.deleteService(currentUser, id);
+  }
+
+  /** n06 (A-15, D63): the pending deletions, soonest first, and the week's downloads. */
+  async listDataRequests() {
+    const now = new Date();
+    const requests = await this.prisma.$transaction((tx) =>
+      this.owners.accountDeletions.listDataRequests(tx, now),
+    );
+    return {
+      deletions: requests.deletions.map((row) =>
+        toAdminPendingDeletionResponse(row, now),
+      ),
+      exports: requests.exports.map((row) => toAdminDataExportResponse(row, now)),
+    };
+  }
+
+  /** n06 «رجّعه بطلبه»: the account's deletion taken back, as its own w06 does. */
+  async restoreAccountDeletion(currentUser: AuthenticatedUser, id: string) {
+    await runSerializableTransaction(this.prisma, async (tx) => {
+      await authorizeAdminUserStatusChange(tx, this.owners.accounts, currentUser, id);
+      await this.owners.accountDeletions.restoreAccountDeletionInTransaction(tx, id);
+    });
+    return { userId: id, status: 'NONE' as const };
   }
 
   /** a12 (B-40): bookings, read only, newest day first. */

@@ -3,7 +3,7 @@
   "sourceRevision": "feafe3db0053d6c66d5f46b56ff9a512861dfbad",
   "owners": {
     "platform": ["IdempotencyKey", "OutboxEvent"],
-    "identity": ["User", "RefreshToken", "OtpCode", "LoginThrottle", "OtpDispatchQuota", "AssistantUsageDay", "AdminLoginChallenge", "AdminPasswordResetChallenge", "AccountDeletionReceipt"],
+    "identity": ["User", "RefreshToken", "OtpCode", "LoginThrottle", "OtpDispatchQuota", "AssistantUsageDay", "AdminLoginChallenge", "AdminPasswordResetChallenge", "AccountDeletionReceipt", "DataExport"],
     "planning": ["WeddingPlan"],
     "finance": ["BudgetCategory", "WeddingCost", "CostPayment", "CostReceipt", "PaymentSchedule", "FundingSource", "LoanRepayment"],
     "collaboration": ["SharedMember", "PlanInvite", "ContributorHistoryScope", "ContributorTenure", "ContributionEvent"],

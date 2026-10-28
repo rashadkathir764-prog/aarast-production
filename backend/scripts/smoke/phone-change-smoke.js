@@ -4,8 +4,8 @@
 require('./smoke-isolation-hook');
 
 const http = require('http');
-const { randomUUID } = require('crypto');
 const { registerVerified } = require('./verified-registration');
+const { eraseFixtureAccount } = require('./account-grace');
 
 /**
  * Phone change smoke (V1 checklist 4.14), through the HTTP stack: a code
@@ -111,8 +111,7 @@ async function run() {
   } finally {
     for (const [label, token] of [['mover', movedToken], ['holder', otherToken]]) {
       if (!token) continue;
-      const response = await request('DELETE', '/api/v1/users/me', null, token, randomUUID());
-      check(`${label} fixture account is cleaned`, response.status === 200);
+      check(`${label} fixture account is cleaned`, await eraseFixtureAccount(request, token));
     }
   }
 

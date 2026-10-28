@@ -4,6 +4,7 @@
 const http = require('http');
 const { randomUUID } = require('crypto');
 const { registerVerified } = require('./verified-registration');
+const { eraseFixtureAccount } = require('./account-grace');
 const { configureSmokeDatabaseUrl } = require('./smoke-utils');
 
 configureSmokeDatabaseUrl();
@@ -119,15 +120,7 @@ async function createPlanQuote({ planId, providerId, serviceId, cityId, token, d
 
 async function cleanupAccount(label, token) {
   if (!token) return;
-  const deletionRequestId = randomUUID();
-  const response = await request(
-    'DELETE',
-    '/api/v1/users/me',
-    null,
-    token,
-    deletionRequestId,
-  );
-  check(`${label} fixture account is cleaned`, response.status === 200 && response.body?.deleted === true);
+  check(`${label} fixture account is cleaned`, await eraseFixtureAccount(request, token));
 }
 
 async function run() {

@@ -76,16 +76,18 @@ void main() {
       320,
       scrollable: find.byType(Scrollable).first,
     );
-    // C4: deleting the account stays hidden until its 30-day grace exists.
-    expect(find.textContaining('حذف الحساب'), findsNothing);
+    // w40 «الخصوصية» (D63, L8) in the account's group.
+    expect(find.byKey(const ValueKey('account-privacy')), findsOneWidget);
     await tester.ensureVisible(find.text('الخروج'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('الخروج'));
     await tester.pumpAndSettle();
-    // g11 (D26): one way out of this phone, no delete (C4), and «رجوع».
+    // g11 (D26): out of this phone, the account's deletion after its 30
+    // days (C4, D63), and «رجوع».
     expect(find.text('اخرج من هذا الجوال'), findsOneWidget);
     expect(find.text('خطتك تبقى، وترجع لها برقمك'), findsOneWidget);
-    expect(find.textContaining('احذف حسابي'), findsNothing);
+    expect(find.text('احذف حسابي نهائيًا'), findsOneWidget);
+    expect(find.text('تنحذف بعد 30 يوم، وتقدر تتراجع'), findsOneWidget);
     expect(find.byKey(const ValueKey('account-logout-unsent')), findsNothing);
     expect(find.text('تسجيل الدخول'), findsNothing);
   });

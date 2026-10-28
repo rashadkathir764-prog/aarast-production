@@ -40,6 +40,7 @@ import {
   PROVIDER_READ_PORT,
   type ProviderReadPort,
 } from "../../../marketplace/public/provider-read.port";
+import { findDeletionPendingUserIds } from "../../infrastructure/user-lifecycle-lock.repository";
 
 export enum AvailableContextRole {
   OWNER = "OWNER",
@@ -135,6 +136,12 @@ export class ContextsService {
       );
     }
 
+    // D63 (w06): a plan whose owner waits out the account's deletion is
+    // closed to its members until he takes the request back.
+    const waitingOwners = await findDeletionPendingUserIds(
+      this.prisma,
+      [...memberPlans.values()].map((plan) => plan.ownerUserId),
+    );
     const contributorMemberships = memberships
       .filter((membership) => !ownedPlanIds.has(membership.weddingPlanId))
       .map((membership) => ({
@@ -143,7 +150,7 @@ export class ContextsService {
       }))
       .filter(
         (entry): entry is { membership: SharedMember; plan: WeddingPlan } =>
-          entry.plan !== undefined,
+          entry.plan !== undefined && !waitingOwners.has(entry.plan.ownerUserId),
       )
       .sort(
         (left, right) =>
@@ -197,7 +204,13 @@ export class ContextsService {
       const plan = membership
         ? await this.plans.getPlan(this.prisma, membership.weddingPlanId)
         : null;
-      if (membership && plan && plan.ownerUserId !== currentUser.id) {
+      if (
+        membership &&
+        plan &&
+        plan.ownerUserId !== currentUser.id &&
+        (await findDeletionPendingUserIds(this.prisma, [plan.ownerUserId]))
+          .size === 0
+      ) {
         context = this.planContext(
           currentUser,
           plan,

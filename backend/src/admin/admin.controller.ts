@@ -458,4 +458,20 @@ export class AdminController {
   getUser(@Param('id') id: string) {
     return this.adminService.getUser(id);
   }
+
+  // n06 (A-15, D63): pending deletions and data downloads.
+  @Get('data-requests')
+  @RequireAdminPermission(AdminPermission.USERS_READ)
+  listDataRequests() {
+    return this.adminService.listDataRequests();
+  }
+
+  @Post('data-requests/:id/restore')
+  @RequireAdminPermission(AdminPermission.USERS_WRITE)
+  restoreAccountDeletion(
+    @CurrentUser() currentUser: AuthenticatedUser,
+    @Param('id') id: string,
+  ) {
+    return this.adminService.restoreAccountDeletion(currentUser, id);
+  }
 }

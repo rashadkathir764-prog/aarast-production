@@ -70,6 +70,7 @@ export const planningOwnerPorts = [
 // fixture's fake client).
 import { AuthService } from '../../src/modules/identity/internal/auth/auth.service';
 import { UsersService } from '../../src/modules/identity/internal/profile/users.service';
+import { AccountDeletionService } from '../../src/modules/identity/internal/profile/account-deletion.service';
 import { MessagingErasureService } from '../../src/modules/messaging/infrastructure/messaging-erasure.service';
 import { MarketplaceErasureService } from '../../src/modules/marketplace/infrastructure/marketplace-erasure.service';
 import { NotificationsErasureService } from '../../src/modules/notifications/infrastructure/notifications-erasure.service';
@@ -481,7 +482,28 @@ export const adminOwners = new AdminOwners(
   ownerPorts.finance,
   // The tests decide no portfolio photo; a refusal's deletion is the smoke's.
   {} as never,
+  accountDeletionService({} as any, {} as any),
 );
+
+/**
+ * D63: `AccountDeletionService` over the real plan, membership, marketplace
+ * and provider ports; its notices land in `erasureNotices`.
+ */
+export function accountDeletionService(
+  prisma: unknown,
+  users: unknown,
+  permissions: unknown = realPermissions,
+): AccountDeletionService {
+  return new AccountDeletionService(
+    prisma as any,
+    users as any,
+    ownerPorts.plans,
+    permissions as any,
+    new MarketplaceErasureService(),
+    ownerPorts.providers,
+    erasureNotices as unknown as NotificationsPort,
+  );
+}
 
 export function adminService(
   prisma: unknown,

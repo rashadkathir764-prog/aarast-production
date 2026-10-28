@@ -182,7 +182,7 @@ type ProviderQuoteRecord = QuoteRequest & {
   bookingMoney?: ProviderBookingMoney | null;
 };
 type ProviderReviewRecord = ProviderReview & {
-  user: Pick<User, 'id' | 'name' | 'appName' | 'role'>;
+  user: Pick<User, 'id' | 'name' | 'appName' | 'role' | 'reviewFirstNameOnly'>;
 };
 
 @Injectable()

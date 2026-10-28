@@ -34,6 +34,24 @@ export interface MarketplaceErasurePort {
     providerIds: readonly string[],
     closedAt: Date,
   ): Promise<CreateNotificationInput[]>;
+  /**
+   * D63 (w05): «[العميل] حذف حسابه» for the provider of every open request
+   * of the account (its own, or in the plans it owns): not refused,
+   * cancelled, expired, or a wedding already done. Built before the
+   * requests are purged; written after.
+   */
+  closedCustomerNoticesInTransaction(
+    tx: Prisma.TransactionClient,
+    scope: { userId: string; weddingPlanIds: readonly string[] },
+    customerName: string | null,
+    closedAt: Date,
+  ): Promise<CreateNotificationInput[]>;
+  /** D63 (w05): the confirmed bookings of these plans from today on (the day in Sana'a at `now`). */
+  countUpcomingPlanBookings(
+    client: Prisma.TransactionClient,
+    weddingPlanIds: readonly string[],
+    now: Date,
+  ): Promise<number>;
   listOwnedProviderIds(
     tx: Prisma.TransactionClient,
     userId: string,

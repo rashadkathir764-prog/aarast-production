@@ -84,7 +84,7 @@ export type PackageWithService = ProviderPackage & {
 };
 
 export type ReviewWithUser = ProviderReview & {
-  user: Pick<User, "id" | "name" | "appName" | "role">;
+  user: Pick<User, "id" | "name" | "appName" | "role" | "reviewFirstNameOnly">;
 };
 
 /** A provider read with its active featured period (B-43): «مميز» is read from it. */

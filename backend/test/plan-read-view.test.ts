@@ -49,6 +49,8 @@ function permissionsFor(membership: ReturnType<typeof member> | null) {
     {
       weddingPlan: { findUnique: async () => PLAN },
       sharedMember: { findUnique: async () => membership },
+      // D63: the plan's owner waits out no deletion.
+      user: { findMany: async () => [] },
     } as any,
     new PlanReadService(),
   );

@@ -590,11 +590,17 @@ test('requires the exact Task 4 owner public surfaces', () => {
     ],
     users: [
       'AdminUserRecord',
+      // n06 (A-15, D63): pending deletions and data downloads.
+      'DataExportRequest',
+      'DataRequests',
+      'PendingDeletion',
       'UserProviderSummary',
       'activateUser',
       'disableUser',
+      'getDataRequests',
       'getUser',
       'getUsers',
+      'restoreAccountDeletion',
     ],
     providers: [
       'CityProjection',

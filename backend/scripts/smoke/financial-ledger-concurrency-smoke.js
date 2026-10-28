@@ -5,6 +5,7 @@ require('./smoke-isolation-hook');
 const http = require('http');
 const { randomUUID } = require('crypto');
 const { registerVerified } = require('./verified-registration');
+const { eraseFixtureAccount } = require('./account-grace');
 
 const BASE_URL = process.env.SMOKE_BASE_URL ?? 'http://127.0.0.1:3115';
 const TEST_PASSWORD = 'SmokePass123!';
@@ -319,15 +320,10 @@ async function run() {
   } finally {
     if (token) {
       try {
-        const deletionRequestId = randomUUID();
-        const cleanup = await request(
-          'DELETE',
-          '/api/v1/users/me',
-          null,
-          token,
-          deletionRequestId,
+        check(
+          'concurrency fixture account is cleaned',
+          await eraseFixtureAccount(request, token),
         );
-        check('concurrency fixture account is cleaned', cleanup.status === 200 && cleanup.body?.deleted === true);
       } catch (error) {
         check('concurrency fixture account cleanup completes', false);
         console.error(`Cleanup warning: ${error.message}`);

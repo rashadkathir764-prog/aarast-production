@@ -6,6 +6,7 @@ require('./smoke-isolation-hook');
 const http = require('http');
 const { randomUUID } = require('crypto');
 const { registerVerified } = require('./verified-registration');
+const { eraseFixtureAccount } = require('./account-grace');
 
 /**
  * Canonical money budget + costs smoke.
@@ -96,15 +97,7 @@ async function register(name, value) {
 
 async function cleanupAccount(label, token) {
   if (!token) return;
-  const deletionRequestId = randomUUID();
-  const response = await request(
-    'DELETE',
-    '/api/v1/users/me',
-    null,
-    token,
-    deletionRequestId,
-  );
-  check(`${label} fixture account is cleaned`, response.status === 200 && response.body?.deleted === true);
+  check(`${label} fixture account is cleaned`, await eraseFixtureAccount(request, token));
 }
 
 async function run() {

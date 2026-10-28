@@ -19,7 +19,14 @@ import sharp from 'sharp';
 import { MediaStorageService } from '../../src/media/media-storage.service';
 import { MediaUploadTicketService } from '../../src/modules/media/infrastructure/media-upload-ticket.service';
 import { UsersService } from '../../src/modules/identity/internal/profile/users.service';
-import { identityErasurePorts } from './support/owner-ports';
+import { DataExportService } from '../../src/modules/identity/internal/profile/data-export.service';
+import { PermissionService } from '../../src/modules/collaboration/internal/permission.service';
+import {
+  accountDeletionService,
+  erasureNotices,
+  identityErasurePorts,
+  ownerPorts,
+} from './support/owner-ports';
 
 const { assertManagedSmokeEnvironment } = require('./smoke-utils.js') as {
   assertManagedSmokeEnvironment: (environment?: NodeJS.ProcessEnv) => unknown;
@@ -70,12 +77,362 @@ async function main() {
   const prisma = new PrismaClient();
   const tickets = new MediaUploadTicketService(prisma as never);
   const media = new MediaStorageService(tickets);
+  const permissions = new PermissionService(prisma as never, ownerPorts.plans);
   const users = new UsersService(
     prisma as never,
-    {} as never,
+    permissions,
     media,
     ...identityErasurePorts,
   );
+  // D63: the app asks for the deletion; the hourly purge erases the account
+  // through the one saga once its 30 days are over.
+  const deletion = accountDeletionService(prisma, users);
+  const dataExports = new DataExportService(
+    prisma as never,
+    ownerPorts.plans,
+    permissions,
+    ownerPorts.finance,
+    ownerPorts.tasks,
+    ownerPorts.guests,
+    ownerPorts.providers,
+  );
+  const DAY = 24 * 60 * 60 * 1000;
+  /** Asks for the deletion, lets its 30 days pass, and runs the purge. */
+  async function eraseThroughGrace(account: { id: string }): Promise<void> {
+    await deletion.request(account as never, 'حذف');
+    const past = new Date(Date.now() - 60_000);
+    await prisma.user.update({
+      where: { id: account.id },
+      data: {
+        deletionRequestedAt: new Date(past.getTime() - 30 * DAY),
+        deletionScheduledFor: past,
+      },
+    });
+    const purge = await deletion.purgeDueAccounts(new Date());
+    if (purge.failures.length > 0) {
+      throw new Error(
+        `purge failed: ${purge.failures.map((failure) => failure.code).join(', ')}`,
+      );
+    }
+  }
+  async function refusal(promise: Promise<unknown>): Promise<string | null> {
+    try {
+      await promise;
+      return null;
+    } catch (error) {
+      const http = error as { getResponse?: () => unknown; getStatus?: () => number };
+      const body = http.getResponse?.();
+      if (typeof body === 'object' && body && 'code' in body) {
+        return String((body as { code: unknown }).code);
+      }
+      if (http.getStatus) return String(http.getStatus());
+      throw error;
+    }
+  }
+
+  /**
+   * D63: the 30 days between the request and the erasure (w05, w06), the
+   * one-time download (w40), B-33 at the request and at the purge, and n06.
+   */
+  async function graceChecks(): Promise<void> {
+    const stamp = Date.now();
+    const owner = await prisma.user.create({
+      data: {
+        name: 'سلمان المنصور',
+        phone: `+96777${String(stamp + 11).slice(-7)}`,
+        passwordHash: 'x',
+      },
+    });
+    const member = await prisma.user.create({
+      data: {
+        name: 'صالح المنصور',
+        phone: `+96777${String(stamp + 12).slice(-7)}`,
+        passwordHash: 'x',
+      },
+    });
+    const ownerSession = { id: owner.id } as never;
+    const memberSession = { id: member.id } as never;
+    const gracePlan = await prisma.weddingPlan.create({
+      data: { ownerUserId: owner.id, title: `${tag}-grace-plan` },
+    });
+    await prisma.sharedMember.create({
+      data: { weddingPlanId: gracePlan.id, userId: member.id },
+    });
+    const guestPhone = `+96777${String(stamp + 13).slice(-7)}`;
+    await prisma.guest.create({
+      data: {
+        weddingPlanId: gracePlan.id,
+        name: `${tag}-grace-guest`,
+        normalizedName: `${tag}-grace-guest`,
+        phone: guestPhone,
+      },
+    });
+    try {
+      const impact = await deletion.impact(ownerSession);
+      assertCheck(
+        impact.graceDays === 30 &&
+          impact.ownedPlans.length === 1 &&
+          impact.ownedPlans[0]?.memberNames.join() === 'صالح' &&
+          impact.ownedPlans[0]?.upcomingBookings === 0 &&
+          impact.provider === null &&
+          impact.blockedBy === null,
+        'w05: the impact names the plan, its member by first name and no booking',
+      );
+      assertCheck(
+        (await refusal(deletion.request(ownerSession, 'احذف'))) ===
+          'CONFIRM_WORD_MISMATCH',
+        'w05: a wrong confirm word is refused',
+      );
+      erasureNotices.written.length = 0;
+      const pending = await deletion.request(ownerSession, ' حذف ');
+      assertCheck(
+        pending.status === 'PENDING' &&
+          pending.scheduledFor.getTime() - pending.requestedAt.getTime() ===
+            30 * DAY,
+        'the request waits exactly 30 days',
+      );
+      const again = await deletion.request(ownerSession, 'حذف');
+      assertCheck(
+        again.status === 'PENDING' &&
+          again.scheduledFor.getTime() === pending.scheduledFor.getTime(),
+        'asking again answers the same request',
+      );
+      assertCheck(
+        erasureNotices.written.filter(
+          (notice) =>
+            notice.userId === member.id &&
+            notice.type === NotificationType.PLAN_UPDATED &&
+            notice.routeTarget === '/home',
+        ).length === 1,
+        'the member is told once that the plan is closed',
+      );
+      assertCheck(
+        (await refusal(permissions.assertPlanReadable(gracePlan.id, memberSession))) ===
+          '404',
+        'w06: the member cannot open the plan while its owner waits',
+      );
+      const early = await deletion.purgeDueAccounts(new Date());
+      assertCheck(
+        early.erased === 0 &&
+          early.failures.length === 0 &&
+          (await prisma.user.count({ where: { id: owner.id } })) === 1,
+        'the purge leaves an account whose 30 days are not over',
+      );
+
+      erasureNotices.written.length = 0;
+      const restored = await deletion.cancel(ownerSession);
+      const afterCancel = await prisma.user.findUniqueOrThrow({
+        where: { id: owner.id },
+      });
+      assertCheck(
+        restored.status === 'NONE' &&
+          afterCancel.deletionRequestedAt === null &&
+          afterCancel.deletionScheduledFor === null,
+        'w06 «تراجعت، رجّع حسابي» takes the request back',
+      );
+      assertCheck(
+        erasureNotices.written.some(
+          (notice) =>
+            notice.userId === member.id &&
+            notice.routeTarget === `/wedding-plans/${gracePlan.id}/dashboard`,
+        ),
+        'the member is told the plan is back',
+      );
+      assertCheck(
+        (await refusal(permissions.assertPlanReadable(gracePlan.id, memberSession))) ===
+          null,
+        'the member opens the plan again',
+      );
+      assertCheck(
+        (await refusal(deletion.cancel(ownerSession))) === 'DELETION_NOT_PENDING',
+        'taking back with nothing pending is refused',
+      );
+
+      const link = await dataExports.create(ownerSession);
+      const token = link.downloadPath.split('/').pop()!;
+      assertCheck(
+        link.downloadPath.startsWith('/api/v1/data-exports/') &&
+          link.expiresAt.getTime() - Date.now() <= 15 * 60_000 &&
+          (await prisma.dataExport.count({ where: { tokenHash: token } })) === 0,
+        'w40: the link expires within fifteen minutes and its token is not stored',
+      );
+      const file = (await dataExports.download(token)) as {
+        body: {
+          plans: Array<{
+            title: string;
+            members: Array<{ name: string | null }>;
+            guests: unknown[];
+          }>;
+        };
+      };
+      const text = JSON.stringify(file.body);
+      assertCheck(
+        file.body.plans[0]?.title === gracePlan.title &&
+          file.body.plans[0]?.members[0]?.name === 'صالح المنصور' &&
+          file.body.plans[0]?.guests.length === 1,
+        'the download holds the plan, its member and its guest',
+      );
+      assertCheck(
+        !text.includes(member.phone!) && !text.includes(guestPhone),
+        'the download holds no other person phone',
+      );
+      assertCheck(
+        (await refusal(dataExports.download(token))) === 'EXPORT_LINK_INVALID',
+        'the link works once',
+      );
+      const stale = await dataExports.create(ownerSession);
+      await prisma.dataExport.update({
+        where: { id: stale.id },
+        data: {
+          createdAt: new Date(Date.now() - 20 * 60_000),
+          expiresAt: new Date(Date.now() - 5 * 60_000),
+        },
+      });
+      assertCheck(
+        (await refusal(dataExports.download(stale.downloadPath.split('/').pop()!))) ===
+          'EXPORT_LINK_INVALID',
+        'an expired link is refused',
+      );
+
+      // B-33 at the request: a provider with a wedding still to do.
+      const graceCity = await prisma.city.create({
+        data: { nameAr: `${tag}-grace-city`, countryCode: 'YE' },
+      });
+      const graceCategory = await prisma.providerCategory.create({
+        data: { nameAr: `${tag}-grace-category`, slug: `${tag}-grace-category` },
+      });
+      const graceProvider = await prisma.provider.create({
+        data: {
+          userId: owner.id,
+          cityId: graceCity.id,
+          primaryCategoryId: graceCategory.id,
+          businessName: `${tag}-grace-provider`,
+          phone: `+96777${String(stamp + 14).slice(-7)}`,
+          status: ProviderStatus.ACTIVE,
+        },
+      });
+      const customerPlan = await prisma.weddingPlan.create({
+        data: { ownerUserId: member.id, title: `${tag}-customer-plan` },
+      });
+      const bookedQuote = await prisma.quoteRequest.create({
+        data: {
+          userId: member.id,
+          weddingPlanId: customerPlan.id,
+          providerId: graceProvider.id,
+          cityId: graceCity.id,
+          status: QuoteRequestStatus.ACCEPTED,
+          acceptedAt: new Date(),
+          message: `${tag}-booked`,
+        },
+      });
+      const booking = await prisma.booking.create({
+        data: {
+          quoteRequestId: bookedQuote.id,
+          providerId: graceProvider.id,
+          eventDate: new Date(
+            `${new Date(Date.now() + 10 * DAY).toISOString().slice(0, 10)}T00:00:00.000Z`,
+          ),
+          status: 'CONFIRMED',
+          confirmedAt: new Date(),
+          requestedByUserId: member.id,
+        },
+      });
+      const blockedImpact = await deletion.impact(ownerSession);
+      assertCheck(
+        blockedImpact.blockedBy === 'PROVIDER_HAS_UPCOMING_BOOKINGS' &&
+          blockedImpact.provider?.upcomingBookings === 1,
+        'w05: the impact shows the provider wedding that blocks the deletion',
+      );
+      assertCheck(
+        (await refusal(deletion.request(ownerSession, 'حذف'))) ===
+          'PROVIDER_HAS_UPCOMING_BOOKINGS',
+        'B-33 at the request: a provider with an upcoming wedding is refused',
+      );
+      // B-33 at the purge: a wedding confirmed while the account waited.
+      await prisma.user.update({
+        where: { id: owner.id },
+        data: {
+          deletionRequestedAt: new Date(Date.now() - 31 * DAY),
+          deletionScheduledFor: new Date(Date.now() - 60_000),
+        },
+      });
+      const blockedPurge = await deletion.purgeDueAccounts(new Date());
+      const failed = await prisma.user.findUniqueOrThrow({ where: { id: owner.id } });
+      assertCheck(
+        blockedPurge.failures.some(
+          (failure) =>
+            failure.userId === owner.id &&
+            failure.code === 'PROVIDER_HAS_UPCOMING_BOOKINGS',
+        ) &&
+          failed.deletionPurgeFailure === 'PROVIDER_HAS_UPCOMING_BOOKINGS' &&
+          failed.deletionPurgeFailedAt !== null,
+        'B-33 at the purge: the failure is returned and recorded, nothing erased',
+      );
+      const requests = await prisma.$transaction((tx) =>
+        deletion.listDataRequests(tx, new Date()),
+      );
+      assertCheck(
+        requests.deletions.some(
+          (row) =>
+            row.userId === owner.id &&
+            row.providerAccount &&
+            row.purgeFailure === 'PROVIDER_HAS_UPCOMING_BOOKINGS',
+        ) && requests.exports.filter((row) => row.userId === owner.id).length === 2,
+        'n06 lists the waiting provider account with its failure, and its two downloads',
+      );
+      await prisma.$transaction((tx) =>
+        deletion.restoreAccountDeletionInTransaction(tx, owner.id),
+      );
+      const restoredByAdmin = await prisma.user.findUniqueOrThrow({
+        where: { id: owner.id },
+      });
+      assertCheck(
+        restoredByAdmin.deletionScheduledFor === null &&
+          restoredByAdmin.deletionPurgeFailure === null,
+        'n06 «رجّعه بطلبه» takes the deletion back and forgets the failure',
+      );
+
+      await prisma.booking.update({
+        where: { id: booking.id },
+        data: { status: 'CANCELLED', cancelledAt: new Date(), cancelledBy: 'PROVIDER' },
+      });
+      erasureNotices.written.length = 0;
+      await eraseThroughGrace({ id: owner.id });
+      assertCheck(
+        (await prisma.user.count({ where: { id: owner.id } })) === 0 &&
+          (await prisma.weddingPlan.count({ where: { id: gracePlan.id } })) === 0 &&
+          (await prisma.dataExport.count({ where: { userId: owner.id } })) === 0,
+        'after its 30 days the account, its plan and its downloads are erased',
+      );
+      assertCheck(
+        erasureNotices.written.some(
+          (notice) =>
+            notice.userId === member.id &&
+            notice.type === NotificationType.PLAN_UPDATED &&
+            notice.routeTarget === '/home',
+        ),
+        'the member is told the plan went with its owner',
+      );
+    } finally {
+      for (const id of [owner.id, member.id]) {
+        if ((await prisma.user.count({ where: { id } })) === 0) continue;
+        await prisma.user.update({
+          where: { id },
+          data: {
+            deletionRequestedAt: new Date(Date.now() - 31 * DAY),
+            deletionScheduledFor: new Date(Date.now() - 60_000),
+            deletionPurgeFailedAt: null,
+            deletionPurgeFailure: null,
+          },
+        });
+        await prisma.booking.updateMany({
+          where: { providerId: { in: (await prisma.provider.findMany({ where: { userId: id }, select: { id: true } })).map((row) => row.id) }, status: 'CONFIRMED' },
+          data: { status: 'CANCELLED', cancelledAt: new Date(), cancelledBy: 'PROVIDER' },
+        });
+        await users.eraseDueAccount(id, new Date());
+      }
+    }
+  }
   const tag = `deltest-${Date.now()}`;
   const phone = `+96771${String(Date.now()).slice(-7)}`;
   let userId = '';
@@ -199,15 +556,14 @@ async function main() {
       },
     });
     bareUserId = bareUser.id;
-    await users.deleteMe(
-      { id: bareUser.id, phone: barePhone } as never,
-      'smoke-delete-bare-user',
-    );
+    await eraseThroughGrace({ id: bareUser.id });
     assertCheck(
       (await prisma.user.count({ where: { id: bareUser.id } })) === 0,
       'account with no plan deletes cleanly',
     );
     bareUserId = '';
+
+    await graceChecks();
 
     adminPhone = `+96776${String(Date.now() + 5).slice(-7)}`;
     const administrator = await prisma.user.create({
@@ -279,14 +635,7 @@ async function main() {
         },
       ],
     });
-    await users.deleteMe(
-      {
-        id: administrator.id,
-        phone: adminPhone,
-        sessionScope: 'application',
-      } as never,
-      'smoke-delete-admin-application-identity',
-    );
+    await eraseThroughGrace({ id: administrator.id });
     const retainedAdministrator = await prisma.user.findUniqueOrThrow({
       where: { id: administrator.id },
     });
@@ -299,6 +648,11 @@ async function main() {
         retainedAdministrator.appEmail === null &&
         retainedAdministrator.appAvatarUrl === null,
       'application deletion clears only the administrator application identity',
+    );
+    assertCheck(
+      retainedAdministrator.deletionRequestedAt === null &&
+        retainedAdministrator.deletionScheduledFor === null,
+      'the administrator keeps no pending deletion once its application identity is erased',
     );
     assertCheck(
       (await prisma.refreshToken.count({
@@ -828,7 +1182,17 @@ async function main() {
       ],
     });
 
-    await users.deleteMe(currentUser, 'smoke-delete-owner');
+    erasureNotices.written.length = 0;
+    await eraseThroughGrace({ id: user.id });
+    assertCheck(
+      erasureNotices.written.some(
+        (notice) =>
+          notice.userId === sentinel.id &&
+          notice.type === NotificationType.BOOKING_UPDATED &&
+          notice.routeTarget === '/provider/dashboard?tab=requests',
+      ),
+      'the provider of the erased customer open requests is told «حذف حسابه»',
+    );
     assertCheck(
       (await prisma.user.count({ where: { id: user.id } })) === 0,
       'account row is deleted after the complete Restrict chain',
@@ -1016,7 +1380,7 @@ async function main() {
       'deleting the plan owner preserves the provider account and business',
     );
 
-    await users.deleteMe(sentinelCurrent, 'smoke-delete-sentinel');
+    await eraseThroughGrace({ id: sentinel.id });
     sentinelUserId = '';
     const preservedClientCost = await prisma.weddingCost.findUnique({
       where: { id: clientCost.id },
@@ -1075,10 +1439,14 @@ async function main() {
           account.id &&
           (await prisma.user.count({ where: { id: account.id } })) > 0
         ) {
-          await users.deleteMe(
-            { id: account.id, phone: account.phone } as never,
-            `smoke-delete-${account.id}`,
-          );
+          await prisma.user.update({
+            where: { id: account.id },
+            data: {
+              deletionRequestedAt: new Date(Date.now() - 31 * DAY),
+              deletionScheduledFor: new Date(Date.now() - 60_000),
+            },
+          });
+          await users.eraseDueAccount(account.id, new Date());
         }
       }
       const ownedKeys = [

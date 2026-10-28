@@ -2,6 +2,7 @@ import { Module } from "@nestjs/common";
 import { AccountDeletionStatusController } from "./api/account-deletion-status.controller";
 import { AuthController } from "./api/auth.controller";
 import { ContextsController } from "./api/contexts.controller";
+import { DataExportsController } from "./api/data-exports.controller";
 import { MeController } from "./api/me.controller";
 import { UsersController } from "./api/users.controller";
 import { IdentityAuthInternalModule } from "./internal/identity-auth.internal.module";
@@ -28,6 +29,7 @@ import { UserReadPublicModule } from "./public/user-read-public.module";
     AuthController,
     UsersController,
     AccountDeletionStatusController,
+    DataExportsController,
     MeController,
     ContextsController,
   ],

@@ -111,8 +111,16 @@ class FakeContextsPrisma {
   plans: Array<ReturnType<typeof plan>> = [];
   memberships: Array<ReturnType<typeof membership>> = [];
   providers: Array<ReturnType<typeof provider>> = [];
+  /** D63: the accounts waiting out their deletion. */
+  deletionPendingUserIds = new Set<string>();
 
   weddingPlan: any;
+  user = {
+    findMany: async ({ where }: any) =>
+      (where.id.in as string[])
+        .filter((id) => this.deletionPendingUserIds.has(id))
+        .map((id) => ({ id })),
+  };
 
   constructor() {
     // Planning reads its rows through its port: owned plans by owner, the
@@ -534,6 +542,33 @@ test("removing a membership makes the same context key invalid immediately", asy
   await assert.rejects(
     service.validate(currentUser, "plan:plan-shared:contributor"),
     NotFoundException,
+  );
+});
+
+test("D63: a plan whose owner waits out his account deletion is closed to its members", async () => {
+  const { prisma, service } = contextsHarness();
+  prisma.memberships.push(
+    membership(plan("plan-waiting", "owner-2", "Waiting")),
+    membership(plan("plan-open", "owner-3", "Open")),
+  );
+  prisma.deletionPendingUserIds.add("owner-2");
+
+  const contexts = await service.list(currentUser);
+  assert.deepEqual(
+    contexts.map((context) => context.weddingPlanId),
+    ["plan-open"],
+  );
+  await assert.rejects(
+    service.validate(currentUser, "plan:plan-waiting:contributor"),
+    NotFoundException,
+  );
+
+  // Taken back: the plan is the member's again.
+  prisma.deletionPendingUserIds.clear();
+  assert.equal(
+    (await service.validate(currentUser, "plan:plan-waiting:contributor"))
+      .weddingPlanId,
+    "plan-waiting",
   );
 });
 

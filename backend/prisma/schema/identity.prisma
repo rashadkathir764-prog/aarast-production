@@ -62,8 +62,18 @@ model User {
   onboardingPath               OnboardingPath?
   persona                      WeddingPersona?
   onboardingCompletedAt        DateTime?
+  // D63: the account asked to be deleted; it is erased at `deletionScheduledFor`
+  // (30 days later) unless it takes the request back first.
+  deletionRequestedAt          DateTime?
+  deletionScheduledFor         DateTime?
+  // D63: the last purge attempt that failed, and its error code.
+  deletionPurgeFailedAt        DateTime?
+  deletionPurgeFailure         String?
+  // D63 (w40): reviews show only the first name while this is on.
+  reviewFirstNameOnly          Boolean                       @default(true)
   createdAt                    DateTime                      @default(now())
   updatedAt                    DateTime                      @updatedAt
+  dataExports                  DataExport[]
   weddingPlans                 WeddingPlan[]                 @relation("OwnedWeddingPlans")
   activeWeddingPlan            WeddingPlan?                  @relation("ActiveWeddingPlan", fields: [activeWeddingPlanId], references: [id], onDelete: SetNull)
   sharedWeddingPlans           SharedMember[]
@@ -91,6 +101,23 @@ model User {
   mediaUploadTickets           MediaUploadTicket[]
   contributorTenures           ContributorTenure[]           @relation("ContributorTenureActor")
   assistantUsageDays           AssistantUsageDay[]
+
+  @@index([deletionScheduledFor])
+}
+
+/// D63 (w40): one download of the account's own data. The link carries a
+/// random token; only its digest is kept, it works once and expires soon.
+model DataExport {
+  id           String    @id @default(cuid())
+  userId       String
+  tokenHash    String    @unique @db.Char(64)
+  createdAt    DateTime  @default(now())
+  expiresAt    DateTime
+  downloadedAt DateTime?
+  user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+  @@index([createdAt])
 }
 
 model AdminLoginChallenge {

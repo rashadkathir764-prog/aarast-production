@@ -217,6 +217,49 @@ export function providerClosedCustomerNotification(
   };
 }
 
+export interface CustomerClosedArgs {
+  /** The request being erased: it keys the notice only, it is not kept. */
+  quoteRequestId: string;
+  providerUserId: string;
+  customerName: string | null;
+  /** The booked day when the request had a confirmed booking. */
+  confirmedDay: Date | null;
+  at: Date;
+}
+
+/**
+ * D63 (w05 «الحجوزات المؤكدة تنلغي، ونبلّغ المزودين»): the provider of an
+ * open request whose customer's account was erased after its 30 days. The
+ * request and its booking go with the account, so the notice names neither
+ * and opens his requests.
+ */
+export function customerClosedProviderNotification(
+  args: CustomerClosedArgs,
+): CreateNotificationInput {
+  const who = customerFirstName(args.customerName) ?? "العميل";
+  return {
+    userId: args.providerUserId,
+    weddingPlanId: null,
+    type: NotificationType.BOOKING_UPDATED,
+    priority: NotificationPriority.HIGH,
+    title: `${who} حذف حسابه`,
+    body: args.confirmedDay
+      ? gendered(
+          `حجز ${weekdayDayMonthWords(args.confirmedDay)} انلغى، واليوم رجع لك فاضي.`,
+          `حجز ${weekdayDayMonthWords(args.confirmedDay)} انلغى، واليوم رجع لكِ فاضي.`,
+        )
+      : "طلبه انتهى مع حسابه.",
+    entityType: "customer_closed",
+    entityId: null,
+    routeTarget: noticeRoutes.providerRequests(),
+    data: {
+      bookingEvent: "CUSTOMER_CLOSED",
+      recipientAudience: "PROVIDER",
+    },
+    dedupeKey: `${args.providerUserId}:customer-closed:${args.quoteRequestId}:${args.at.getTime()}`,
+  };
+}
+
 // ── Reminders before a confirmed booking (V1 checklist 4.17) ───────────
 
 /** A confirmed booking reminds both sides once a week before and once the day before. */

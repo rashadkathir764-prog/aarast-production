@@ -32,6 +32,45 @@ interface RecordedGraph {
   upcomingBookingIds?: string[];
   /** B-33: the open requests customers sent the owned provider. */
   openQuotes?: Array<{ id: string; userId: string; weddingPlanId: string | null }>;
+  /** D63: the account's open requests whose providers are told it closed. */
+  customerQuotes?: Array<{
+    id: string;
+    provider: { userId: string };
+    booking: { status: string; eventDate: Date } | null;
+  }>;
+  /** D63: the members of the owned plans, told after the purge. */
+  members?: Array<{ userId: string; weddingPlanId: string }>;
+  /** The account's phone on its row (null skips the OTP cleanup). */
+  phone?: string | null;
+  /** D63: where the account's 30 days stand at the purge. */
+  deletion?: "DUE" | "NOT_YET" | "TAKEN_BACK" | "GONE";
+}
+
+/** The purge's clock in these tests. */
+const NOW = new Date("2026-11-27T09:00:00.000Z");
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+function accountRow(graph: RecordedGraph, userRole: UserRole) {
+  const deletion = graph.deletion ?? "DUE";
+  if (deletion === "GONE") return [];
+  const scheduledFor =
+    deletion === "NOT_YET"
+      ? new Date(NOW.getTime() + 60_000)
+      : new Date(NOW.getTime() - 60_000);
+  return [
+    {
+      id: "u1",
+      role: userRole,
+      name: "سلمان المنصور",
+      phone: graph.phone === undefined ? "+967700000000" : graph.phone,
+      persona: null,
+      deletionRequestedAt:
+        deletion === "TAKEN_BACK"
+          ? null
+          : new Date(scheduledFor.getTime() - 30 * DAY_MS),
+      deletionScheduledFor: deletion === "TAKEN_BACK" ? null : scheduledFor,
+    },
+  ];
 }
 
 function recordingTx(
@@ -57,7 +96,7 @@ function recordingTx(
       queries.push({ text, values });
       if (text.includes('FROM "User"')) {
         calls.push("lockUser");
-        return [{ id: "u1", role: userRole }];
+        return accountRow(graph, userRole);
       }
       if (text.includes('FROM "WeddingPlan"')) {
         calls.push("lockPlans");
@@ -141,11 +180,15 @@ function recordingTx(
     },
     quoteRequest: {
       ...del("quoteRequest"),
-      findMany: async () =>
-        (graph.openQuotes ?? []).map((quote) => ({
-          ...quote,
-          provider: { businessName: "ضيافة الأصالة" },
-        })),
+      findMany: async ({ where }: any) =>
+        // D63: the account's own open requests (by user or plan), whose
+        // providers are told; else B-33: the requests to its listing.
+        where?.OR
+          ? (graph.customerQuotes ?? [])
+          : (graph.openQuotes ?? []).map((quote) => ({
+              ...quote,
+              provider: { businessName: "ضيافة الأصالة" },
+            })),
     },
     booking: {
       findMany: async () => {
@@ -291,7 +334,16 @@ function recordingTx(
       return { count: 1 };
     },
   };
-  return { tx, calls, queries };
+  // D63: the members of the owned plans, read through collaboration's port.
+  const permissions = {
+    listPlanMembers: async (_client: unknown, weddingPlanIds: readonly string[]) => {
+      calls.push("listPlanMembers");
+      return (graph.members ?? []).filter((member) =>
+        weddingPlanIds.includes(member.weddingPlanId),
+      );
+    },
+  };
+  return { tx, calls, queries, permissions };
 }
 
 const serviceFor = (
@@ -301,13 +353,14 @@ const serviceFor = (
     scheduleAllOwnedMediaDeletion: async () => [],
   },
   realtime?: { disconnectUser: (userId: string) => void },
+  permissions: unknown = { listPlanMembers: async () => [] },
 ) =>
   usersService(
     {
       user: { findUnique: async () => ({ role: UserRole.USER }) },
       $transaction: async (fn: any) => fn(tx),
     } as any,
-    {} as any,
+    permissions,
     {
       lockAccountDeletionBoundary: async () => {},
       scheduleAllOwnedMediaDeletion: async () => [],
@@ -325,7 +378,7 @@ test("application account deletion erases only the administrator's application i
       $transaction: async (operation: (value: any) => Promise<unknown>) =>
         operation(tx),
     } as any,
-    {} as any,
+    { listPlanMembers: async () => [] },
     {
       lockAccountDeletionBoundary: async () => {},
       scheduleApplicationIdentityMediaDeletion: async () => {
@@ -334,17 +387,7 @@ test("application account deletion erases only the administrator's application i
     } as any,
   );
 
-  assert.deepEqual(
-    await service.deleteMe(
-      {
-        id: "u1",
-        phone: "+967700000000",
-        sessionScope: "application",
-      } as any,
-      "delete-admin-app",
-    ),
-    { deleted: true },
-  );
+  assert.equal(await service.eraseDueAccount("u1", NOW), "ERASED");
   assert.equal(adminMediaDeletes, 1);
   assert.equal(calls.includes("user.delete"), false);
   assert.ok(calls.includes("user.clearApplicationIdentity"));
@@ -364,7 +407,7 @@ test("account deletion rolls back when durable media scheduling fails", async ()
   });
 
   await assert.rejects(() =>
-    svc.deleteMe({ id: "u1", phone: null } as any, "delete-u1"),
+    svc.eraseDueAccount("u1", NOW),
   );
   assert.deepEqual(calls, ["lockUser"]);
 });
@@ -377,11 +420,8 @@ test("account deletion clears plan children before plans and deletes the user la
   });
   const svc = serviceFor(tx);
 
-  const result = await svc.deleteMe(
-    { id: "u1", phone: "+967700000000" } as any,
-    "delete-u1",
-  );
-  assert.deepEqual(result, { deleted: true });
+  const result = await svc.eraseDueAccount("u1", NOW);
+  assert.equal(result, "ERASED");
 
   const at = (name: string) => calls.indexOf(name);
   // Lock graph order is User -> ordered plans -> ordered costs -> payments.
@@ -461,10 +501,7 @@ test("account deletion with no owned plans still erases account-level data", asy
   });
   const svc = serviceFor(tx);
 
-  await svc.deleteMe(
-    { id: "u1", phone: "+967700000000" } as any,
-    "delete-u1",
-  );
+  await svc.eraseDueAccount("u1", NOW);
 
   // No plan children or plan rows were touched.
   assert.equal(calls.includes("weddingPlan"), false);
@@ -485,10 +522,7 @@ test("a partner's account deletion purges its private costs and tasks in the oth
   });
   const svc = serviceFor(tx);
 
-  await svc.deleteMe(
-    { id: "u1", phone: "+967700000000" } as any,
-    "delete-u1",
-  );
+  await svc.eraseDueAccount("u1", NOW);
 
   const at = (name: string) => calls.indexOf(name);
   // The private costs are locked in the money mutation order, then their
@@ -511,10 +545,10 @@ test("a partner's account deletion purges its private costs and tasks in the oth
 });
 
 test("account deletion without a phone skips OTP cleanup", async () => {
-  const { tx, calls } = recordingTx([]);
+  const { tx, calls } = recordingTx([], { phone: null });
   const svc = serviceFor(tx);
 
-  await svc.deleteMe({ id: "u1", phone: null } as any, "delete-u1");
+  await svc.eraseDueAccount("u1", NOW);
 
   assert.equal(calls.includes("otpCode"), false);
   assert.ok(calls.includes("idempotencyKey"));
@@ -530,7 +564,7 @@ test("account deletion disconnects live realtime sessions only after commit", as
     { disconnectUser: (userId) => disconnected.push(userId) },
   );
 
-  await svc.deleteMe({ id: "u1", phone: null } as any, "delete-u1");
+  await svc.eraseDueAccount("u1", NOW);
 
   assert.equal(calls[calls.length - 1], "user.delete");
   assert.deepEqual(disconnected, ["u1"]);
@@ -547,7 +581,7 @@ test("deleting a provider account purges its quote conversations without touchin
   });
   const svc = serviceFor(tx);
 
-  await svc.deleteMe({ id: "u1", phone: null } as any, "delete-u1");
+  await svc.eraseDueAccount("u1", NOW);
 
   const at = (name: string) => calls.indexOf(name);
   assert.ok(at("quoteRequest") < at("conversation"));
@@ -565,7 +599,7 @@ test("B-33: a provider with a wedding still to do cannot delete his account, and
   const svc = serviceFor(tx);
 
   await assert.rejects(
-    svc.deleteMe({ id: "u1", phone: null } as any, "delete-u1"),
+    svc.eraseDueAccount("u1", NOW),
     (error: any) =>
       error?.response?.code === "PROVIDER_HAS_UPCOMING_BOOKINGS" &&
       error.response.count === 2 &&
@@ -591,7 +625,7 @@ test("B-33: customers with an open request are told «أغلق حسابه» afte
   });
   const svc = serviceFor(tx);
 
-  await svc.deleteMe({ id: "u1", phone: null } as any, "delete-u1");
+  await svc.eraseDueAccount("u1", NOW);
 
   const notices = erasureNotices.written as any[];
   assert.equal(notices.length, 1);
@@ -610,7 +644,7 @@ test("deleting a shared member removes only that member's request and preserves 
   });
   const svc = serviceFor(tx);
 
-  await svc.deleteMe({ id: "u1", phone: null } as any, "delete-u1");
+  await svc.eraseDueAccount("u1", NOW);
 
   assert.ok(calls.includes("quoteRequest"));
   assert.equal(calls.includes("conversation"), false);
@@ -628,7 +662,7 @@ test("account deletion refreshes every surviving provider reviewed by the user",
   });
   const svc = serviceFor(tx);
 
-  await svc.deleteMe({ id: "u1", phone: null } as any, "delete-u1");
+  await svc.eraseDueAccount("u1", NOW);
 
   const providerLock = queries.find((query) =>
     query.text.includes('FROM "Provider"'),
@@ -671,16 +705,14 @@ test("account deletion retries a deadlock without changing its read-committed me
   };
   const service = usersService(
     prisma as any,
-    {} as any,
+    { listPlanMembers: async () => [] },
     {
       lockAccountDeletionBoundary: async () => {},
       scheduleAllOwnedMediaDeletion: async () => [],
     } as any,
   );
 
-  assert.deepEqual(await service.deleteMe({ id: "u1", phone: null } as any, "delete-u1"), {
-    deleted: true,
-  });
+  assert.equal(await service.eraseDueAccount("u1", NOW), "ERASED");
   assert.equal(attempts, 2);
   assert.deepEqual(transactionOptions, [
     {
@@ -692,4 +724,69 @@ test("account deletion retries a deadlock without changing its read-committed me
       isolationLevel: Prisma.TransactionIsolationLevel.ReadCommitted,
     },
   ]);
+});
+
+for (const [deletion, expected] of [
+  ["NOT_YET", "NOT_DUE"],
+  ["TAKEN_BACK", "NOT_DUE"],
+  ["GONE", "GONE"],
+] as const) {
+  test(`D63: the purge erases nothing when the account is ${deletion}`, async () => {
+    const { tx, calls } = recordingTx(["plan-1"], {
+      deletion,
+      providerIds: ["provider-owned"],
+    });
+    const disconnected: string[] = [];
+    const svc = serviceFor(tx, undefined, {
+      disconnectUser: (userId) => disconnected.push(userId),
+    });
+
+    assert.equal(await svc.eraseDueAccount("u1", NOW), expected);
+    // Decided under the account's lock, before any other lock or purge.
+    assert.deepEqual(calls, ["lockUser"]);
+    assert.deepEqual(disconnected, []);
+  });
+}
+
+test("D63: after the purge the members of its plans and the providers of its requests are told", async () => {
+  erasureNotices.written.length = 0;
+  const { tx, calls, permissions } = recordingTx(["plan-1"], {
+    quoteRequestIds: ["quote-1", "quote-2"],
+    members: [
+      { userId: "member-1", weddingPlanId: "plan-1" },
+      { userId: "member-2", weddingPlanId: "plan-1" },
+    ],
+    customerQuotes: [
+      {
+        id: "quote-1",
+        provider: { userId: "provider-user-1" },
+        booking: { status: "CONFIRMED", eventDate: new Date("2027-01-21T00:00:00.000Z") },
+      },
+      { id: "quote-2", provider: { userId: "provider-user-2" }, booking: null },
+    ],
+  });
+  const svc = serviceFor(tx, undefined, undefined, permissions);
+
+  assert.equal(await svc.eraseDueAccount("u1", NOW), "ERASED");
+
+  const notices = erasureNotices.written as any[];
+  const members = notices.filter((notice) => notice.type === "PLAN_UPDATED");
+  assert.deepEqual(members.map((notice) => notice.userId).sort(), ["member-1", "member-2"]);
+  for (const notice of members) {
+    assert.equal(notice.title, "انحذفت خطة سلمان");
+    assert.equal(notice.routeTarget, "/home");
+    // The plan is gone: the notice names none.
+    assert.equal(notice.weddingPlanId, null);
+  }
+  const providers = notices.filter((notice) => notice.type === "BOOKING_UPDATED");
+  assert.deepEqual(providers.map((notice) => notice.userId).sort(), [
+    "provider-user-1",
+    "provider-user-2",
+  ]);
+  const booked = providers.find((notice) => notice.userId === "provider-user-1");
+  assert.equal(booked.title, "سلمان حذف حسابه");
+  assert.match(String(booked.body.masculine ?? booked.body), /انلغى/u);
+  assert.equal(booked.routeTarget, "/provider/dashboard?tab=requests");
+  // Built while the memberships existed; written after the purge.
+  assert.ok(calls.indexOf("listPlanMembers") < calls.indexOf("sharedMember"));
 });

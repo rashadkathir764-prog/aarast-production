@@ -4,8 +4,8 @@
 require('./smoke-isolation-hook');
 
 const http = require('http');
-const { randomUUID } = require('crypto');
 const { registerVerified } = require('./verified-registration');
+const { eraseFixtureAccount } = require('./account-grace');
 
 /**
  * Task date shift smoke (V1 checklist 4.13), through the HTTP stack on
@@ -128,8 +128,7 @@ async function run() {
   } finally {
     for (const [label, token] of [['owner', ownerToken], ['stranger', strangerToken]]) {
       if (!token) continue;
-      const response = await request('DELETE', '/api/v1/users/me', null, token, randomUUID());
-      check(`${label} fixture account is cleaned`, response.status === 200);
+      check(`${label} fixture account is cleaned`, await eraseFixtureAccount(request, token));
     }
   }
 

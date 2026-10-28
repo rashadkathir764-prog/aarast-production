@@ -12,10 +12,10 @@ export function sanitizeRequestTarget(value: string | undefined): string {
   if (!value) return '';
   try {
     const parsed = new URL(value, 'http://aarast.internal');
-    const pathname = parsed.pathname.replace(
-      /(\/invites\/)(?!mine(?:\/|$))[^/?]+/gi,
-      '$1:token',
-    );
+    const pathname = parsed.pathname
+      .replace(/(\/invites\/)(?!mine(?:\/|$))[^/?]+/gi, '$1:token')
+      // D63: a data download link's token is its only credential.
+      .replace(/(\/data-exports\/)[^/?]+/gi, '$1:token');
     for (const key of [...parsed.searchParams.keys()]) {
       if (sensitiveQueryKey.test(key)) {
         parsed.searchParams.set(key, 'REDACTED');

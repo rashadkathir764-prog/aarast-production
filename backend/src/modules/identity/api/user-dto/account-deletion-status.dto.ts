@@ -1,15 +1,8 @@
-import { IsString, Matches, MaxLength } from "class-validator";
+import { IsString, MaxLength } from "class-validator";
 
-const SAFE_OPAQUE_ID = /^[A-Za-z0-9][A-Za-z0-9._:-]*$/;
-
-export class AccountDeletionStatusDto {
+/** D63 (w05): the word typed to confirm the deletion request («حذف»). */
+export class RequestAccountDeletionDto {
   @IsString()
-  @MaxLength(128)
-  @Matches(SAFE_OPAQUE_ID)
-  userId!: string;
-
-  @IsString()
-  @MaxLength(128)
-  @Matches(SAFE_OPAQUE_ID)
-  clientRequestId!: string;
+  @MaxLength(20)
+  confirmWord!: string;
 }

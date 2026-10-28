@@ -32,6 +32,8 @@ import { NotificationsErasureService } from '../../../src/modules/notifications/
 import { PlanErasureService } from '../../../src/modules/planning/infrastructure/plan-erasure.service';
 import { PlanReadService } from '../../../src/modules/planning/infrastructure/plan-read.service';
 import { TasksPortService } from '../../../src/modules/tasks/infrastructure/tasks-port.service';
+import { AccountDeletionService } from '../../../src/modules/identity/internal/profile/account-deletion.service';
+import type { UsersService } from '../../../src/modules/identity/internal/profile/users.service';
 
 export const ownerPorts = {
   plans: new PlanReadService(),
@@ -176,10 +178,15 @@ export function notificationsService(
 
 /** What `UsersService` wrote through the notifications port (B-33), for assertions. */
 export const erasureNotices = {
-  written: [] as Array<{ userId: string; title: unknown; routeTarget?: string | null }>,
+  written: [] as Array<{
+    userId: string;
+    type?: string;
+    title: unknown;
+    routeTarget?: string | null;
+  }>,
   async createNotificationInTransaction(
     _tx: unknown,
-    input: { userId: string; title: unknown; routeTarget?: string | null },
+    input: { userId: string; type?: string; title: unknown; routeTarget?: string | null },
   ) {
     erasureNotices.written.push(input);
     return null;
@@ -226,6 +233,27 @@ export function adminService(
       new PermissionService(prisma as any, ownerPorts.plans),
       ownerPorts.finance,
       media as any,
+      accountDeletionService(prisma, {} as any, notifications),
     ),
+  );
+}
+
+/**
+ * D63: `AccountDeletionService` over the smoke's client and the real owner
+ * ports; the purge runs the given `UsersService` (the one erasure saga).
+ */
+export function accountDeletionService(
+  prisma: unknown,
+  users: UsersService,
+  notifications: unknown = erasureNotices,
+): AccountDeletionService {
+  return new AccountDeletionService(
+    prisma as any,
+    users,
+    ownerPorts.plans,
+    new PermissionService(prisma as any, ownerPorts.plans),
+    ownerPorts.marketplaceErasure,
+    ownerPorts.providers,
+    notifications as any,
   );
 }

@@ -78,7 +78,10 @@ test('Task 6 AppModule composes the six contexts without legacy module imports',
 test('Task 6 full modules preserve the exact controller ownership', () => {
   const expected = new Map<string, string[]>([
     ['modules/identity/identity.module.ts#IdentityModule', [
+      // D63: the deletion request and its status (no immediate erasure), and
+      // the one-time download of the account's data.
       'AccountDeletionStatusController', 'AuthController', 'ContextsController',
+      'DataExportsController',
       'MeController', 'UsersController',
     ]],
     ['modules/planning/planning.module.ts#PlanningModule', [
@@ -116,7 +119,11 @@ test('Task 6 full modules preserve the exact controller ownership', () => {
 
 test('Task 6 internal leaves own each non-public implementation exactly once', () => {
   const expected = new Map<string, string[]>([
-    ['modules/identity/internal/identity-profile.internal.module.ts#IdentityProfileInternalModule', ['ContextsService', 'UsersService']],
+    ['modules/identity/internal/identity-profile.internal.module.ts#IdentityProfileInternalModule', [
+      // D63: the deletion grace, its hourly purge and the data download.
+      'AccountDeletionPurgeScheduler', 'AccountDeletionService', 'ContextsService',
+      'DataExportService', 'UsersService',
+    ]],
     ['modules/planning/internal/planning-services.internal.module.ts#PlanningServicesInternalModule', ['OnboardingService', 'WeddingPlansService']],
     ['modules/planning/internal/planning-budget-write.internal.module.ts#PlanningBudgetWriteInternalModule', ['WeddingPlanBudgetWriter']],
     // Receipts (V1 checklist 4.4) add CostReceiptsService.

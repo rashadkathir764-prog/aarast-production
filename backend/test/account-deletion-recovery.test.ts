@@ -1,205 +1,172 @@
 import "reflect-metadata";
 
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
+import { readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 import { test } from "node:test";
-import { BadRequestException } from "@nestjs/common";
-import { Prisma } from "@prisma/client";
+import { ForbiddenException, UnauthorizedException } from "@nestjs/common";
 import { UsersController } from "../src/modules/identity/api/users.controller";
+import { AccountDeletionStatusController } from "../src/modules/identity/api/account-deletion-status.controller";
+import { MeController } from "../src/modules/identity/api/me.controller";
+import { AuthController } from "../src/modules/identity/api/auth.controller";
+import { PushController } from "../src/push/push.controller";
+import { JwtAuthGuard } from "../src/modules/identity/public/jwt-auth.guard";
+import { accountDeletionReceiptHash } from "../src/modules/identity/internal/profile/users.service";
 import {
-  UsersService,
-  accountDeletionReceiptHash,
-} from "../src/modules/identity/internal/profile/users.service";
-import { usersService } from "./support/owner-ports";
+  ACCOUNT_DELETION_CONFIRM_WORD,
+  ACCOUNT_DELETION_GRACE_DAYS,
+} from "../src/modules/identity/internal/profile/account-deletion.service";
+import { toSafeUser } from "../src/modules/identity/internal/safe-user.presenter";
 
-test("DELETE /users/me rejects a missing client request id before deletion", () => {
-  let calls = 0;
-  const controller = new UsersController({
-    deleteMe: async () => {
-      calls += 1;
-      return { deleted: true };
-    },
+// D63: an account is deleted after 30 days. The app asks for it and may take
+// it back; while it waits it reaches only w06's routes; the hourly purge
+// erases it through the one saga (test/account-deletion.test.ts).
+
+function guardFor(handler: Function) {
+  const guard = new JwtAuthGuard();
+  const context = { getHandler: () => handler } as never;
+  return (user: Record<string, unknown>) =>
+    guard.handleRequest(null, { sessionScope: "application", ...user } as never, null, context);
+}
+
+test("D63: the deletion routes forward to the grace service", async () => {
+  const seen: unknown[] = [];
+  const controller = new AccountDeletionStatusController({
+    impact: async (user: unknown) => (seen.push(["impact", user]), { graceDays: 30 }),
+    request: async (user: unknown, word: string) => (seen.push(["request", user, word]), { status: "PENDING" }),
+    status: (user: unknown) => (seen.push(["status", user]), { status: "NONE" }),
+    cancel: async (user: unknown) => (seen.push(["cancel", user]), { status: "NONE" }),
   } as never);
+  const users = new UsersController(
+    {} as never,
+    { create: async (user: unknown) => (seen.push(["export", user]), { id: "export-1" }) } as never,
+  );
+  const user = { id: "user-a" } as never;
+  await controller.deletionImpact(user);
+  await controller.requestDeletion(user, { confirmWord: "حذف" });
+  controller.deletionStatus(user);
+  await controller.cancelDeletion(user);
+  await users.createExport(user);
+  assert.deepEqual(seen, [
+    ["impact", user],
+    ["request", user, "حذف"],
+    ["status", user],
+    ["cancel", user],
+    ["export", user],
+  ]);
+  assert.equal(ACCOUNT_DELETION_CONFIRM_WORD, "حذف");
+  assert.equal(ACCOUNT_DELETION_GRACE_DAYS, 30);
+  // The immediate erasure is no route of the app any more.
+  assert.equal("deleteMe" in UsersController.prototype, false);
+  assert.equal(
+    Reflect.getMetadata("path", AccountDeletionStatusController),
+    "api/v1/users/me/deletion",
+  );
+});
 
+test("D63: an account waiting out its deletion reaches only w06's routes", () => {
+  const pending = { id: "user-a", deletionScheduledFor: new Date("2026-11-27T09:00:00Z") };
+  const allowed = [
+    AccountDeletionStatusController.prototype.deletionStatus,
+    AccountDeletionStatusController.prototype.cancelDeletion,
+    MeController.prototype.me,
+    AuthController.prototype.me,
+    AuthController.prototype.logout,
+    PushController.prototype.unregister,
+  ];
+  for (const handler of allowed) {
+    assert.equal(guardFor(handler)(pending).id, "user-a", handler.name);
+  }
+  const refused = [
+    AccountDeletionStatusController.prototype.requestDeletion,
+    AccountDeletionStatusController.prototype.deletionImpact,
+    UsersController.prototype.createExport,
+    UsersController.prototype.updateMe,
+    UsersController.prototype.getSettings,
+    AuthController.prototype.logoutAll,
+    PushController.prototype.register,
+  ];
+  for (const handler of refused) {
+    assert.throws(
+      () => guardFor(handler)(pending),
+      (error: unknown) =>
+        error instanceof ForbiddenException &&
+        (error.getResponse() as { code?: string }).code === "ACCOUNT_DELETION_PENDING",
+      handler.name,
+    );
+  }
+  // An account that waits for nothing passes every route, and the guard
+  // still demands an application session.
+  assert.equal(guardFor(UsersController.prototype.updateMe)({ id: "user-b", deletionScheduledFor: null }).id, "user-b");
   assert.throws(
-    () => controller.deleteMe({ id: "user-a" } as never, undefined),
-    BadRequestException,
+    () =>
+      new JwtAuthGuard().handleRequest(
+        null,
+        { id: "admin", sessionScope: "admin" } as never,
+        null,
+        { getHandler: () => MeController.prototype.me } as never,
+      ),
+    UnauthorizedException,
   );
-  assert.equal(calls, 0);
 });
 
-test("DELETE /users/me forwards the validated client request id", async () => {
-  let forwarded: unknown;
-  const controller = new UsersController({
-    deleteMe: async (_user: unknown, requestId: string) => {
-      forwarded = requestId;
-      return { deleted: true };
-    },
-  } as never);
-
-  assert.deepEqual(
-    await controller.deleteMe(
-      { id: "user-a" } as never,
-      "account-delete-request-1",
-    ),
-    { deleted: true },
-  );
-  assert.equal(forwarded, "account-delete-request-1");
+test("D63: the session's user carries its pending deletion, never to an admin session", () => {
+  const base = {
+    id: "user-a",
+    name: "سلمان",
+    phone: null,
+    email: null,
+    role: "USER",
+    adminRole: null,
+    appRole: "WEDDING_USER",
+    status: "ACTIVE",
+    phoneVerifiedAt: null,
+    lastLoginAt: null,
+    avatarUrl: null,
+    locale: "ar",
+    activeWeddingPlanId: null,
+    onboardingPath: null,
+    persona: null,
+    onboardingCompletedAt: null,
+    createdAt: new Date(),
+    updatedAt: new Date(),
+    deletionRequestedAt: new Date("2026-10-28T09:00:00Z"),
+    deletionScheduledFor: new Date("2026-11-27T09:00:00Z"),
+  } as never;
+  const safe = toSafeUser(base) as unknown as Record<string, unknown>;
+  assert.deepEqual(safe.deletion, {
+    requestedAt: new Date("2026-10-28T09:00:00Z"),
+    scheduledFor: new Date("2026-11-27T09:00:00Z"),
+  });
+  assert.equal("deletionScheduledFor" in safe, false);
+  assert.equal((toSafeUser(base, true) as unknown as Record<string, unknown>).deletion, null);
 });
 
-test("HTTP smoke account cleanup always supplies a stable deletion request id", () => {
+test("HTTP smokes leave through the grace: they ask, then run the purge; none erases at once", () => {
+  const smokeDir = join(process.cwd(), "scripts", "smoke");
+  for (const fileName of readdirSync(smokeDir).filter((name) => name.endsWith("-smoke.js"))) {
+    const source = readFileSync(join(smokeDir, fileName), "utf8");
+    assert.doesNotMatch(
+      source,
+      /request\(\s*["']DELETE["'],\s*["']\/api\/v1\/users\/me["']/,
+      `${fileName} still calls the removed immediate erasure`,
+    );
+  }
   for (const fileName of [
+    "assistant-smoke.js",
+    "cost-receipts-smoke.js",
     "financial-ledger-concurrency-smoke.js",
+    "mahr-smoke.js",
     "money-apis-smoke.js",
     "money-budget-smoke.js",
+    "phone-change-smoke.js",
+    "plan-partner-smoke.js",
     "quote-stability-smoke.js",
+    "task-shift-smoke.js",
   ]) {
-    const source = readFileSync(
-      join(process.cwd(), "scripts", "smoke", fileName),
-      "utf8",
-    );
-    assert.match(source, /const deletionRequestId = randomUUID\(\);/, fileName);
-    assert.match(
-      source,
-      /request\(\s*["']DELETE["'],\s*["']\/api\/v1\/users\/me["'],\s*null,\s*token,\s*deletionRequestId,?\s*\)/,
-      fileName,
-    );
+    const source = readFileSync(join(smokeDir, fileName), "utf8");
+    assert.match(source, /require\('\.\/account-grace'\)/, fileName);
   }
-});
-
-test("public status exposes only DELETED PENDING or NOT_STARTED from one snapshot", async () => {
-  const statuses = [
-    {
-      receipt: { receiptHash: "a".repeat(64) },
-      reservation: null,
-      expected: "DELETED",
-    },
-    {
-      receipt: null,
-      reservation: { method: "DELETE", path: "/api/v1/users/me" },
-      expected: "PENDING",
-    },
-    { receipt: null, reservation: null, expected: "NOT_STARTED" },
-  ] as const;
-
-  for (const fixture of statuses) {
-    let options: unknown;
-    const service = usersService(
-      {
-        $transaction: async (operation: (tx: unknown) => unknown, value: unknown) => {
-          options = value;
-          return operation({
-            accountDeletionReceipt: {
-              findUnique: async () => fixture.receipt,
-            },
-            idempotencyKey: {
-              findUnique: async () =>
-                fixture.reservation == null
-                  ? null
-                  : {
-                      id: "reservation-a",
-                      completedAt: null,
-                      createdAt: new Date(),
-                      ...fixture.reservation,
-                    },
-              deleteMany: async () => ({ count: 0 }),
-            },
-          });
-        },
-      } as never,
-      {} as never,
-      {} as never,
-    );
-
-    assert.deepEqual(
-      await service.accountDeletionStatus("user-a", "request-a"),
-      { status: fixture.expected },
-    );
-    assert.deepEqual(options, {
-      isolationLevel: Prisma.TransactionIsolationLevel.ReadCommitted,
-    });
-  }
-});
-
-test("stale crashed reservation is reclaimed only after locking a live user and rechecking receipt", async () => {
-  const events: string[] = [];
-  const service = usersService(
-    {
-      $transaction: async (operation: (tx: unknown) => unknown) =>
-        operation({
-          accountDeletionReceipt: {
-            findUnique: async () => {
-              events.push("receipt");
-              return null;
-            },
-          },
-          idempotencyKey: {
-            findUnique: async () => ({
-              id: "stale-reservation",
-              method: "DELETE",
-              path: "/api/v1/users/me",
-              completedAt: null,
-              createdAt: new Date(Date.now() - 60_000),
-            }),
-            deleteMany: async () => {
-              events.push("reclaim");
-              return { count: 1 };
-            },
-          },
-          $queryRaw: async () => {
-            events.push("lock-user");
-            return [{ id: "user-a" }];
-          },
-        }),
-    } as never,
-    {} as never,
-    {} as never,
-  );
-
-  assert.deepEqual(
-    await service.accountDeletionStatus("user-a", "request-a"),
-    { status: "NOT_STARTED" },
-  );
-  assert.deepEqual(events, ["receipt", "lock-user", "receipt", "reclaim"]);
-});
-
-test("a receipt committed while the stale-status request waits wins the race", async () => {
-  let receiptReads = 0;
-  let reclaimed = false;
-  const service = usersService(
-    {
-      $transaction: async (operation: (tx: unknown) => unknown) =>
-        operation({
-          accountDeletionReceipt: {
-            findUnique: async () =>
-              ++receiptReads === 1 ? null : { receiptHash: "a".repeat(64) },
-          },
-          idempotencyKey: {
-            findUnique: async () => ({
-              id: "stale-reservation",
-              method: "DELETE",
-              path: "/api/v1/users/me",
-              completedAt: null,
-              createdAt: new Date(Date.now() - 60_000),
-            }),
-            deleteMany: async () => {
-              reclaimed = true;
-              return { count: 1 };
-            },
-          },
-          $queryRaw: async () => [{ id: "user-a" }],
-        }),
-    } as never,
-    {} as never,
-    {} as never,
-  );
-
-  assert.deepEqual(
-    await service.accountDeletionStatus("user-a", "request-a"),
-    { status: "DELETED" },
-  );
-  assert.equal(reclaimed, false);
 });
 
 test("receipt digest is stable and stores neither source identifier", () => {
@@ -230,4 +197,23 @@ test("receipt migration enforces append-only anonymous rows", () => {
   assert.match(migration, /BEFORE DELETE ON "AccountDeletionReceipt"/);
   assert.doesNotMatch(migration, /CREATE OR REPLACE FUNCTION/);
   assert.doesNotMatch(migration, /"userId"|"clientRequestId"/);
+});
+
+test("D63 migration: a deletion request is whole, and a download link keeps only its digest", () => {
+  const migration = readFileSync(
+    join(
+      process.cwd(),
+      "prisma",
+      "migrations",
+      "20261028200000_account_deletion_grace_and_data_exports",
+      "migration.sql",
+    ),
+    "utf8",
+  );
+  assert.match(migration, /"User_deletion_request_whole_check"/);
+  assert.match(migration, /"deletionScheduledFor" > "deletionRequestedAt"/);
+  assert.match(migration, /"tokenHash" CHAR\(64\) NOT NULL/);
+  assert.match(migration, /CREATE UNIQUE INDEX "DataExport_tokenHash_key"/);
+  assert.match(migration, /ON DELETE CASCADE/);
+  assert.doesNotMatch(migration, /"token" /);
 });

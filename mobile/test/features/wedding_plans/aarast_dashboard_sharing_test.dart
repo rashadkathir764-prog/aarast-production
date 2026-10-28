@@ -1,4 +1,5 @@
 import 'package:aarast_mobile/core/theme/app_theme.dart';
+import 'package:aarast_mobile/features/wedding_day/models/plan_event.dart';
 import 'package:aarast_mobile/features/wedding_plans/models/dashboard_summary.dart';
 import 'package:aarast_mobile/features/wedding_plans/widgets/dashboard/aarast_dashboard_view.dart';
 import 'package:flutter/material.dart';
@@ -33,7 +34,6 @@ void main() {
               onOpenProviders: () {},
               onOpenGuests: () {},
               onOpenSharing: () => sharingOpens += 1,
-              onOpenWeddingDay: () {},
               onOpenNextStep: () {},
               onOpenImportantItem: (_) {},
             ),
@@ -81,7 +81,6 @@ void main() {
                 onOpenProviders: () {},
                 onOpenGuests: () {},
                 onOpenSharing: () {},
-                onOpenWeddingDay: () {},
                 onOpenNextStep: () {},
                 onOpenImportantItem: (_) {},
               ),
@@ -118,13 +117,40 @@ void main() {
     },
   );
 
-  testWidgets('dashboard exposes wedding day mode only in its real window', (
+  testWidgets('the wedding day home is the day\'s programme (b05, D65)', (
     tester,
   ) async {
     tester.view.devicePixelRatio = 1;
-    tester.view.physicalSize = const Size(320, 900);
+    tester.view.physicalSize = const Size(320, 1400);
     addTearDown(tester.view.reset);
     var opens = 0;
+    final events = PlanEventsView(
+      weddingPlanId: 'plan-1',
+      canEdit: true,
+      suggestions: const [],
+      items: [
+        PlanEvent(
+          id: 'lunch',
+          type: PlanEventType.lunch,
+          date: DateTime(2026, 7, 7),
+          slot: PlanEventSlot.dhuhr,
+          placeLabel: 'بيت الوالد',
+        ),
+        PlanEvent(
+          id: 'wedding',
+          type: PlanEventType.wedding,
+          date: DateTime(2026, 7, 7),
+          slot: PlanEventSlot.afterAsr,
+          placeLabel: 'قاعة سبأ',
+        ),
+        PlanEvent(
+          id: 'samra',
+          type: PlanEventType.samra,
+          date: DateTime(2026, 7, 5),
+          slot: PlanEventSlot.afterIsha,
+        ),
+      ],
+    );
 
     await tester.pumpWidget(
       MaterialApp(
@@ -136,7 +162,9 @@ void main() {
               summary: _summary(weddingDate: DateTime(2026, 7, 7)),
               userName: 'رشاد',
               bottomPadding: 24,
-              now: DateTime(2026, 7, 7, 9),
+              now: DateTime(2026, 7, 7, 13),
+              events: events,
+              onOpenEvents: () => opens += 1,
               onNotifications: () {},
               onProfile: () {},
               onOpenPlan: () {},
@@ -145,7 +173,6 @@ void main() {
               onOpenProviders: () {},
               onOpenGuests: () {},
               onOpenSharing: () {},
-              onOpenWeddingDay: () => opens += 1,
               onOpenNextStep: () {},
               onOpenImportantItem: (_) {},
             ),
@@ -154,9 +181,18 @@ void main() {
       ),
     );
 
-    final entry = find.byKey(const Key('wedding-day-mode-entry'));
-    expect(entry, findsOneWidget);
-    await tester.tap(entry);
+    expect(find.text('مبروك يا عريس'), findsOneWidget);
+    expect(
+      find.byKey(const ValueKey('aarast-dashboard-day-hero')),
+      findsOneWidget,
+    );
+    expect(find.text('برنامج اليوم'), findsOneWidget);
+    // Only the day's events, by their time; the lunch has started.
+    expect(find.text('الغداء'), findsOneWidget);
+    expect(find.text('الزفاف'), findsOneWidget);
+    expect(find.text('السمرة'), findsNothing);
+    expect(find.text('الآن'), findsOneWidget);
+    await tester.tap(find.text('تعديل'));
     expect(opens, 1);
     expect(tester.takeException(), isNull);
   });

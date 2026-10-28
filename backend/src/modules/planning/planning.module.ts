@@ -1,6 +1,8 @@
 import { Module } from "@nestjs/common";
 import { OnboardingController } from "../../onboarding/onboarding.controller";
+import { WeddingPlanEventsController } from "../../wedding-plans/plan-events.controller";
 import { WeddingPlansController } from "../../wedding-plans/wedding-plans.controller";
+import { PlanEventsInternalModule } from "./internal/plan-events.internal.module";
 import { PlanningServicesInternalModule } from "./internal/planning-services.internal.module";
 import { PlanErasurePublicModule } from "./public/plan-erasure-public.module";
 import { PlanReadPublicModule } from "./public/plan-read-public.module";
@@ -12,7 +14,8 @@ import { PlanningBudgetWritePublicModule } from "./public/planning-budget-write-
     PlanErasurePublicModule,
     PlanningBudgetWritePublicModule,
     PlanningServicesInternalModule,
+    PlanEventsInternalModule,
   ],
-  controllers: [WeddingPlansController, OnboardingController],
+  controllers: [WeddingPlansController, OnboardingController, WeddingPlanEventsController],
 })
 export class PlanningModule {}

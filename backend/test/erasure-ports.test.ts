@@ -44,6 +44,7 @@ function recorder() {
       statements.push(strings.join('?').replace(/\s+/g, ' ').trim());
       return 1;
     },
+    planEvent: delegate('planEvent'),
     weddingPlan: delegate('weddingPlan'),
     provider: delegate('provider', [{ id: 'provider-1' }]),
     providerReview: delegate('providerReview', [{ providerId: 'provider-1' }]),
@@ -84,7 +85,11 @@ test('planning locks the owned plans first and deletes them last', async () => {
   await service.deletePlansInTransaction(tx, ['plan-1']);
   await service.deletePlansInTransaction(tx, []);
   assert.deepEqual(statements, ['SELECT "id" FROM "WeddingPlan" WHERE "ownerUserId" = ? ORDER BY "id" ASC FOR UPDATE']);
-  assert.deepEqual(calls.slice(1), [['weddingPlan.deleteMany', { where: { id: { in: ['plan-1'] } } }]]);
+  // D65: the plan's own events go before the plan.
+  assert.deepEqual(calls.slice(1), [
+    ['planEvent.deleteMany', { where: { weddingPlanId: { in: ['plan-1'] } } }],
+    ['weddingPlan.deleteMany', { where: { id: { in: ['plan-1'] } } }],
+  ]);
 });
 
 test('marketplace lists, locks and deletes its rows in the account scope', async () => {

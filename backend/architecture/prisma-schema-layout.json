@@ -66,8 +66,8 @@
     {
       "owner": "planning",
       "file": "planning.prisma",
-      "models": ["WeddingPlan"],
-      "enums": ["OnboardingPath", "WeddingPersona", "WeddingPlanStatus"]
+      "models": ["WeddingPlan", "PlanEvent"],
+      "enums": ["OnboardingPath", "WeddingPersona", "WeddingPlanStatus", "PlanEventType", "PlanEventTimeSlot"]
     },
     {
       "owner": "platform",
@@ -96,6 +96,7 @@
     "OtpDispatchQuota",
     "AssistantUsageDay",
     "WeddingPlan",
+    "PlanEvent",
     "BudgetCategory",
     "WeddingCost",
     "CostPayment",

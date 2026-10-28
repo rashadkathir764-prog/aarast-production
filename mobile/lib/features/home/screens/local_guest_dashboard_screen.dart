@@ -103,10 +103,6 @@ class _LocalGuestDashboardScreenState extends State<LocalGuestDashboardScreen> {
         onOpenProviders: () => context.push(AppRouter.planProviders(planId)),
         onOpenGuests: () => _openLocalBrowse(context, planId, area: 'الضيوف'),
         onOpenSharing: () => _requireAccountForSync(context),
-        onOpenWeddingDay: () => context.push(
-          AppRouter.weddingDayMode(planId),
-          extra: dashboardSummary,
-        ),
         onOpenImportantItem: (item) =>
             _openLocalDashboardItem(context, planId, item),
         onOpenNextStep: () =>

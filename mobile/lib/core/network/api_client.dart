@@ -859,8 +859,7 @@ class ApiException implements Exception {
       'PROVIDER_SERVICE_REQUIRED' => 'اكتب خدمتك وسعرها قبل ما ترسل.',
       'PROVIDER_NOT_AWAITING_CHANGES' =>
         'ملفك وصل فريق المراجعة. اسحب الصفحة عشان تتحدّث حالته.',
-      'PROVIDER_NOT_REJECTED' =>
-        'تغيّرت حالة ملفك. اسحب الصفحة عشان تتحدّث.',
+      'PROVIDER_NOT_REJECTED' => 'تغيّرت حالة ملفك. اسحب الصفحة عشان تتحدّث.',
       'PROVIDER_JOINING_SERVICE_ONLY' =>
         'قبل الموافقة تعدّل اسم خدمتك وسعرها بس. الخدمات الثانية بعد الموافقة.',
       'PROVIDER_CATEGORY_LOCKED' =>
@@ -888,6 +887,16 @@ class ApiException implements Exception {
         'المهمة المشتركة لا تصبح خاصة. اختر "مهمة خاصة بي" عند إضافتها.',
       'TASK_PRIVATE_ASSIGNMENT' =>
         'المهمة الخاصة تبقى لك وحدك. شاركها مع الخطة أولًا ثم اختر المسؤول.',
+      // D65: the wedding's events.
+      'EVENT_TYPE_EXISTS' => 'هذي المناسبة موجودة في خطتك.',
+      'EVENT_CUSTOM_TITLE_REQUIRED' => 'اكتب اسم المناسبة.',
+      'EVENT_WEDDING_DATE_IS_PLAN_DATE' =>
+        'يوم العرس يتغير من «أجّل العرس» في الخطة.',
+      'EVENT_IS_MAIN' => 'العرس نفسه ما ينحذف. موعده يتغير من الخطة.',
+      'EVENT_EXACT_TIME_REQUIRED' ||
+      'EVENT_EXACT_TIME_INVALID' => 'اختر الساعة.',
+      'EVENT_DATE_INVALID' => 'اختر يوم المناسبة.',
+      'EVENT_LIMIT_REACHED' => 'خطتك فيها مناسبات كثيرة. احذف وحدة قبل.',
       // V1 checklist 4.12: the planning assistant.
       'ASSISTANT_CONSENT_REQUIRED' =>
         'وافق على إرسال بيانات خطتك للمساعد أولًا.',

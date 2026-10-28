@@ -113,7 +113,6 @@ Future<void> _pumpDashboard(
             onOpenProviders: () {},
             onOpenGuests: () {},
             onOpenSharing: () {},
-            onOpenWeddingDay: () {},
             onOpenNextStep: () {},
             onOpenImportantItem: (_) {},
           ),

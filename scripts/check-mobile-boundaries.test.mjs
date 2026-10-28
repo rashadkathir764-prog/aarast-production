@@ -1720,7 +1720,12 @@ const r19ProviderPortalApi = Object.freeze({
 // +6 (D63, w05/w06/w40): the privacy screen reads the open plan, the account
 // and the assistant's consent; the deletion screens read the account; the
 // app's gate shows w06 from the settings owner API.
-const r19LegalRecordCount = 255;
+// -3 (D65): the old wedding-day mode and its view are gone with their seven
+// imports (auth, home, onboarding, tasks, wedding plans); the home, the
+// participant's day (q18) and the wedding moments (y06, y07) read the plan's
+// events through the wedding day owner API, and the moments the account name
+// through the auth owner API.
+const r19LegalRecordCount = 252;
 const trackedOwnerApiContracts = [
   {
     area: 'features/account_contexts',
@@ -2269,21 +2274,33 @@ const trackedOwnerApiContracts = [
   {
     area: 'features/wedding_day',
     path: 'mobile/lib/features/wedding_day/wedding_day_api.dart',
+    // D65: the wedding's events replace the old wedding-day mode.
     exports: [
+      { uri: 'data/plan_events_api.dart', show: ['PlanEventsApi'] },
       {
-        uri: 'models/wedding_day_mode.dart',
-        show: ['WeddingDayModeStatus', 'WeddingDayPhase', 'resolveWeddingDayMode'],
+        uri: 'models/plan_event.dart',
+        show: [
+          'PlanEvent',
+          'PlanEventMoment',
+          'PlanEventSlot',
+          'PlanEventType',
+          'PlanEventsView',
+          'programMoments',
+        ],
       },
       {
-        uri: 'screens/wedding_day_mode_screen.dart',
-        show: ['WeddingDayModeScreen'],
+        uri: 'providers/plan_events_provider.dart',
+        show: ['PlanEventsProvider'],
       },
+      { uri: 'screens/plan_events_screen.dart', show: ['PlanEventsScreen'] },
     ],
   },
   {
     area: 'features/wedding_plans',
     path: 'mobile/lib/features/wedding_plans/wedding_plans_api.dart',
     exports: [
+      // y06/y07 (D65): which wedding moment a route opens.
+      { uri: 'data/wedding_moment_ledger.dart', show: ['WeddingMoment'] },
       { uri: 'data/wedding_plans_api.dart', show: ['WeddingPlansApi'] },
       {
         uri: 'models/dashboard_summary.dart',
@@ -2348,6 +2365,11 @@ const trackedOwnerApiContracts = [
       {
         uri: 'screens/plan_management_screen.dart',
         show: ['PlanCenterScreen'],
+      },
+      // y06/y07 (D65): the wedding week's and day's moments.
+      {
+        uri: 'screens/wedding_moment_screen.dart',
+        show: ['WeddingMomentScreen'],
       },
       {
         uri: 'screens/wedding_plan_dashboard_screen.dart',
@@ -2851,46 +2873,6 @@ const trackedPlanningBatchContracts = [
     show: ['SharedMember'],
   },
   {
-    source: 'mobile/lib/features/wedding_day/models/wedding_day_mode.dart',
-    target: 'mobile/lib/features/tasks/tasks_api.dart',
-    show: ['WeddingTask'],
-  },
-  {
-    source: 'mobile/lib/features/wedding_day/screens/wedding_day_mode_screen.dart',
-    target: 'mobile/lib/features/auth/auth_api.dart',
-    show: ['AuthActionGuard'],
-  },
-  {
-    source: 'mobile/lib/features/wedding_day/screens/wedding_day_mode_screen.dart',
-    target: 'mobile/lib/features/home/home_api.dart',
-    show: ['LocalGuestDashboardSummarySource'],
-  },
-  {
-    source: 'mobile/lib/features/wedding_day/screens/wedding_day_mode_screen.dart',
-    target: 'mobile/lib/features/onboarding/onboarding_api.dart',
-    show: ['GuestOnboardingStorage'],
-  },
-  {
-    source: 'mobile/lib/features/wedding_day/screens/wedding_day_mode_screen.dart',
-    target: 'mobile/lib/features/tasks/tasks_api.dart',
-    show: ['TaskTimelineProvider', 'WeddingTask'],
-  },
-  {
-    source: 'mobile/lib/features/wedding_day/screens/wedding_day_mode_screen.dart',
-    target: 'mobile/lib/features/wedding_plans/wedding_plans_api.dart',
-    show: ['DashboardSummary', 'DashboardSummaryProvider', 'publishTaskPlanPulse'],
-  },
-  {
-    source: 'mobile/lib/features/wedding_day/widgets/wedding_day_mode_view.dart',
-    target: 'mobile/lib/features/tasks/tasks_api.dart',
-    show: ['WeddingTask'],
-  },
-  {
-    source: 'mobile/lib/features/wedding_day/widgets/wedding_day_mode_view.dart',
-    target: 'mobile/lib/features/wedding_plans/wedding_plans_api.dart',
-    show: ['DashboardProviderPreview', 'DashboardSummary'],
-  },
-  {
     source: 'mobile/lib/features/wedding_plans/models/active_wedding_plan.dart',
     target: 'mobile/lib/features/onboarding/onboarding_api.dart',
     show: ['WeddingLocationDraft'],
@@ -2985,6 +2967,22 @@ const trackedPlanningBatchContracts = [
     target: 'mobile/lib/features/sharing/sharing_api.dart',
     show: ['SharedMember'],
   },
+  // D65: the wedding week and day are built from the plan's events.
+  {
+    source: 'mobile/lib/features/wedding_plans/screens/wedding_plan_dashboard_screen.dart',
+    target: 'mobile/lib/features/wedding_day/wedding_day_api.dart',
+    show: ['PlanEventsProvider'],
+  },
+  {
+    source: 'mobile/lib/features/wedding_plans/screens/wedding_moment_screen.dart',
+    target: 'mobile/lib/features/auth/auth_api.dart',
+    show: ['AuthController'],
+  },
+  {
+    source: 'mobile/lib/features/wedding_plans/screens/wedding_moment_screen.dart',
+    target: 'mobile/lib/features/wedding_day/wedding_day_api.dart',
+    show: ['PlanEvent', 'PlanEventsProvider'],
+  },
   {
     source: 'mobile/lib/features/wedding_plans/utils/plan_pulse_sync.dart',
     target: 'mobile/lib/features/guests/guests_api.dart',
@@ -2998,7 +2996,7 @@ const trackedPlanningBatchContracts = [
   {
     source: 'mobile/lib/features/wedding_plans/widgets/dashboard/aarast_dashboard_view.dart',
     target: 'mobile/lib/features/wedding_day/wedding_day_api.dart',
-    show: ['WeddingDayModeStatus', 'WeddingDayPhase', 'resolveWeddingDayMode'],
+    show: ['PlanEvent', 'PlanEventMoment', 'PlanEventsView', 'programMoments'],
   },
 ];
 
@@ -3400,12 +3398,12 @@ const trackedCompositionRootContracts = [
       },
       {
         target: 'mobile/lib/features/wedding_day/wedding_day_api.dart',
-        show: ['WeddingDayModeScreen'],
+        // D65: b12 replaces the old wedding-day mode.
+        show: ['PlanEventsScreen'],
       },
       {
         target: 'mobile/lib/features/wedding_plans/wedding_plans_api.dart',
         show: [
-          'DashboardSummary',
           // y08 (D64): the mahr's moment.
           'MahrMomentScreen',
           // B5 (D55): a06 for a plan that exists.
@@ -3413,6 +3411,9 @@ const trackedCompositionRootContracts = [
           'MyWeddingPlansScreen',
           'PlanAssistantScreen',
           'PlanCenterScreen',
+          // y06/y07 (D65): the wedding week's and day's moments.
+          'WeddingMoment',
+          'WeddingMomentScreen',
           'WeddingPlanDashboardScreen',
         ],
       },
@@ -3499,6 +3500,11 @@ const trackedCompositionRootContracts = [
       {
         target: 'mobile/lib/features/tasks/tasks_api.dart',
         show: ['TaskTimelineApi', 'TaskTimelineProvider'],
+      },
+      // D65: the plan's events, shared by the home and b12.
+      {
+        target: 'mobile/lib/features/wedding_day/wedding_day_api.dart',
+        show: ['PlanEventsApi', 'PlanEventsProvider'],
       },
       {
         target: 'mobile/lib/features/wedding_plans/wedding_plans_api.dart',

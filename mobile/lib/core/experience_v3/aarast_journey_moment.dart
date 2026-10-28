@@ -21,8 +21,13 @@ class JourneyMoment extends StatelessWidget {
     required this.action,
     required this.onAction,
     this.color,
+    this.picture,
     super.key,
   });
+
+  /// The picture on top; the qamariya arcs and confetti when null. The
+  /// wedding week and day (y06, y07) hang the wedding lights there.
+  final Widget? picture;
 
   final String eyebrow;
   final String title;
@@ -54,20 +59,27 @@ class JourneyMoment extends StatelessWidget {
                         height: 200,
                         child: Stack(
                           children: [
-                            const Positioned.fill(
-                              child: ExcludeSemantics(
-                                child: CustomPaint(
-                                  painter: JourneyQamariyaPainter(),
+                            if (picture case final picture?)
+                              Positioned.fill(
+                                bottom: 28,
+                                child: ExcludeSemantics(child: picture),
+                              )
+                            else ...const [
+                              Positioned.fill(
+                                child: ExcludeSemantics(
+                                  child: CustomPaint(
+                                    painter: JourneyQamariyaPainter(),
+                                  ),
                                 ),
                               ),
-                            ),
-                            const Positioned.fill(
-                              child: ExcludeSemantics(
-                                child: CustomPaint(
-                                  painter: JourneyConfettiPainter(),
+                              Positioned.fill(
+                                child: ExcludeSemantics(
+                                  child: CustomPaint(
+                                    painter: JourneyConfettiPainter(),
+                                  ),
                                 ),
                               ),
-                            ),
+                            ],
                             Align(
                               alignment: const Alignment(0, 0.75),
                               child: Text(

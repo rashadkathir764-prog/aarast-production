@@ -2,17 +2,19 @@ import 'package:flutter/material.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 
 import '../../../../core/experience_v3/aarast_v3.dart';
+import '../../../../core/utils/app_clock.dart';
 import '../../../../core/utils/arabic_count.dart';
 import '../../../../core/utils/arabic_date_formatter.dart';
 import '../../../../core/utils/hijri_date.dart';
 import '../../../../core/utils/money_formatters.dart' show compactMoneyParts;
 import '../../../../core/widgets/aarast_pressable.dart';
 import '../../../wedding_day/wedding_day_api.dart'
-    show WeddingDayModeStatus, WeddingDayPhase, resolveWeddingDayMode;
+    show PlanEvent, PlanEventMoment, PlanEventsView, programMoments;
 import '../../models/dashboard_summary.dart';
 import '../../models/wedding_plan_stage.dart';
 import 'aarast_dashboard_focus.dart';
 
+part 'aarast_dashboard_week.dart';
 part 'aarast_dashboard_money_card.dart';
 part 'aarast_dashboard_states.dart';
 part 'aarast_dashboard_support.dart';
@@ -22,7 +24,6 @@ part 'aarast_dashboard_tiles.dart';
 part 'aarast_dashboard_setup.dart';
 part 'aarast_dashboard_mahr.dart';
 part 'aarast_dashboard_essentials.dart';
-
 
 class AarastDashboardView extends StatelessWidget {
   const AarastDashboardView({
@@ -40,7 +41,6 @@ class AarastDashboardView extends StatelessWidget {
     required this.onOpenProviders,
     required this.onOpenGuests,
     required this.onOpenSharing,
-    required this.onOpenWeddingDay,
     required this.onOpenNextStep,
     required this.onOpenImportantItem,
     this.notice,
@@ -53,8 +53,21 @@ class AarastDashboardView extends StatelessWidget {
     this.onOpenMahr,
     this.onOpenReviews,
     this.showHijri = true,
+    this.events,
+    this.weekBookings,
+    this.onOpenEvents,
     super.key,
   });
+
+  /// D65: the plan's events, the wedding week (b04) and day (b05) are built
+  /// from; null until read (or for a plan kept on the phone).
+  final PlanEventsView? events;
+
+  /// b04 «المزودين»: the plan's bookings for the coming days, once read.
+  final List<DashboardWeekBooking>? weekBookings;
+
+  /// b12 «مناسبات عرسك», for whoever may edit the plan's events.
+  final VoidCallback? onOpenEvents;
 
   final DashboardSummary summary;
   final String userName;
@@ -73,7 +86,6 @@ class AarastDashboardView extends StatelessWidget {
   final VoidCallback onOpenProviders;
   final VoidCallback onOpenGuests;
   final VoidCallback onOpenSharing;
-  final VoidCallback onOpenWeddingDay;
   final VoidCallback onOpenNextStep;
   final ValueChanged<DashboardImportantItem> onOpenImportantItem;
 
@@ -112,8 +124,13 @@ class AarastDashboardView extends StatelessWidget {
       summary,
       profile: context.journeyProfile,
     );
-    final weddingDay = resolveWeddingDayMode(summary.weddingDate, now: now);
     final planStage = resolveWeddingPlanStage(summary.weddingDate, now: now);
+    // b04 and b05: the six days before the wedding and its day.
+    final weddingDate = summary.weddingDate;
+    final window = weddingDate != null && planStage.isWeddingWindow
+        ? planStage.daysUntilWedding ?? 0
+        : null;
+    final today = DateUtils.dateOnly(now ?? appNow());
     // A due payment the server named leads the next step, and the money
     // card then does not repeat it.
     final payment =
@@ -148,10 +165,24 @@ class AarastDashboardView extends StatelessWidget {
                     onNotifications: onNotifications,
                     onProfile: onProfile,
                     married: married,
+                    greeting: window == null
+                        ? null
+                        : _weddingWindowGreeting(
+                            context,
+                            days: window,
+                            name: userName.trim().split(RegExp(r'\s+')).first,
+                          ),
                   ),
                   if (notice != null) ...[const SizedBox(height: 12), notice!],
                   const SizedBox(height: 16),
-                  if (debt != null && debt.left > 0)
+                  if (window != null)
+                    _WeddingSkyHero(
+                      days: window,
+                      date: weddingDate!,
+                      showHijri: showHijri,
+                      onTap: onOpenPlan,
+                    )
+                  else if (debt != null && debt.left > 0)
                     _AfterWeddingHero(
                       debt: debt,
                       currency: summary.currency,
@@ -167,14 +198,49 @@ class AarastDashboardView extends StatelessWidget {
                       showHijri: showHijri,
                     ),
                   ?assistantEntry,
-                  if (weddingDay.isVisible) ...[
-                    const SizedBox(height: 10),
-                    _WeddingDayEntry(
-                      status: weddingDay,
-                      onTap: onOpenWeddingDay,
-                    ),
-                  ],
-                  if (married) ...[
+                  if (window != null) ...[
+                    if (window > 0) ...[
+                      const SizedBox(height: 12),
+                      _JourneyNextStep(
+                        focus: focus,
+                        payment: payment,
+                        currency: summary.currency,
+                        now: now ?? appNow(),
+                        onOpen: () {
+                          final due = payment;
+                          final pay = onOpenPayment;
+                          if (due != null && pay != null) {
+                            pay(due);
+                          } else {
+                            _openFocus(focus);
+                          }
+                        },
+                      ),
+                      if (events case final events?) ...[
+                        const SizedBox(height: 8),
+                        _WeekProgram(
+                          events: events.weekOf(weddingDate!),
+                          today: today,
+                          onEdit: events.canEdit ? onOpenEvents : null,
+                        ),
+                      ],
+                      if (weekBookings case final bookings?
+                          when bookings.isNotEmpty) ...[
+                        const SizedBox(height: 8),
+                        _WeekProviders(
+                          bookings: bookings,
+                          onTap: onOpenProviders,
+                        ),
+                      ],
+                    ] else if (events case final events?) ...[
+                      const SizedBox(height: 8),
+                      _DayProgram(
+                        events: events.dayOf(weddingDate!),
+                        now: now ?? appNow(),
+                        onEdit: events.canEdit ? onOpenEvents : null,
+                      ),
+                    ],
+                  ] else if (married) ...[
                     if (payment != null) ...[
                       const SizedBox(height: 12),
                       _JourneyNextStep(
@@ -294,86 +360,5 @@ class AarastDashboardView extends StatelessWidget {
       case AarastDashboardFocusTarget.sharing:
         onOpenSharing();
     }
-  }
-}
-
-class _WeddingDayEntry extends StatelessWidget {
-  const _WeddingDayEntry({required this.status, required this.onTap});
-
-  final WeddingDayModeStatus status;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final isToday = status.phase == WeddingDayPhase.today;
-    return AarastPressable(
-      key: const Key('wedding-day-mode-entry'),
-      onTap: onTap,
-      semanticLabel: status.dashboardLabel,
-      borderRadius: BorderRadius.circular(AarastV3Radius.surface),
-      child: Container(
-        constraints: const BoxConstraints(minHeight: 62),
-        padding: const EdgeInsets.symmetric(
-          horizontal: AarastV3Space.x3,
-          vertical: AarastV3Space.x2,
-        ),
-        decoration: BoxDecoration(
-          color: AarastV3Color.paper,
-          borderRadius: BorderRadius.circular(AarastV3Radius.surface),
-          border: Border.all(
-            color: isToday ? context.accent.primary : AarastV3Color.line,
-          ),
-        ),
-        child: Row(
-          children: [
-            Container(
-              width: 40,
-              height: 40,
-              alignment: Alignment.center,
-              decoration: BoxDecoration(
-                color: context.accent.primarySoft,
-                borderRadius: BorderRadius.circular(AarastV3Radius.control),
-              ),
-              child: Icon(
-                LucideIcons.calendarHeart,
-                color: context.accent.primary,
-                size: 20,
-              ),
-            ),
-            const SizedBox(width: AarastV3Space.x3),
-            Expanded(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    status.eyebrow,
-                    style: AarastV3Type.label(
-                      context,
-                    ).copyWith(color: context.accent.primary),
-                  ),
-                  const SizedBox(height: AarastV3Space.x1),
-                  Text(
-                    status.dashboardLabel,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                      color: AarastV3Color.ink,
-                      fontWeight: FontWeight.w800,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(width: AarastV3Space.x2),
-            const Icon(
-              LucideIcons.chevronLeft,
-              color: AarastV3Color.textMuted,
-              size: 18,
-            ),
-          ],
-        ),
-      ),
-    );
   }
 }

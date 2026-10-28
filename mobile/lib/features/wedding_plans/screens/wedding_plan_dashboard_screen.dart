@@ -7,10 +7,12 @@ import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../../core/diagnostics/app_logger.dart';
+import '../../../core/network/api_client.dart';
 import '../../../core/offline/local_database.dart';
 import '../../../core/preferences/device_preferences.dart';
 import '../../../core/routing/app_router.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../core/utils/app_clock.dart';
 import '../../account_contexts/account_contexts_api.dart'
     show AccountContextController, AccountContextPersona;
 import '../../auth/auth_api.dart' show AuthActionGuard, AuthController;
@@ -20,7 +22,10 @@ import '../../home/home_api.dart'
 import '../../onboarding/onboarding_api.dart'
     show GuestOnboardingStorage, GuestPersona;
 import '../../sharing/sharing_api.dart' show SharedMember;
+import '../../wedding_day/wedding_day_api.dart' show PlanEventsProvider;
 import '../data/mahr_moment_ledger.dart';
+import '../data/plan_bookings_lookup.dart';
+import '../data/wedding_moment_ledger.dart';
 import '../models/dashboard_summary.dart';
 import '../models/wedding_plan_stage.dart';
 import '../providers/dashboard_summary_provider.dart';
@@ -132,12 +137,73 @@ class _WeddingPlanDashboardScreenState extends State<WeddingPlanDashboardScreen>
     if (_isLocalGuestPlan) {
       await _loadLocalDashboard();
     } else {
-      await context.read<DashboardSummaryProvider>().loadDashboard(
-        widget.weddingPlanId,
-        sharedMember: widget.sharedMember,
-      );
+      final events = context.read<PlanEventsProvider?>();
+      await Future.wait([
+        context.read<DashboardSummaryProvider>().loadDashboard(
+          widget.weddingPlanId,
+          sharedMember: widget.sharedMember,
+        ),
+        ?events?.load(widget.weddingPlanId),
+      ]);
+      if (mounted) await _loadWeekBookings();
     }
     if (mounted && !_loadedOnce) setState(() => _loadedOnce = true);
+  }
+
+  /// b04 «المزودين»: the plan's bookings, read only in the wedding week.
+  List<DashboardWeekBooking>? _weekBookings;
+
+  Future<void> _loadWeekBookings() async {
+    final summary = context.read<DashboardSummaryProvider>().summary;
+    final stage = resolveWeddingPlanStage(summary?.weddingDate, now: appNow());
+    if (summary?.planId != widget.weddingPlanId ||
+        stage.stage != WeddingPlanStage.finalWeek) {
+      if (_weekBookings != null) setState(() => _weekBookings = null);
+      return;
+    }
+    try {
+      final bookings = await PlanBookingsLookup(
+        context.read<ApiClient>(),
+      ).list(widget.weddingPlanId);
+      if (!mounted) return;
+      setState(
+        () => _weekBookings = [
+          for (final booking in bookings)
+            DashboardWeekBooking(
+              providerName: booking.providerName,
+              confirmed: booking.confirmed,
+            ),
+        ],
+      );
+    } on ApiException {
+      // Without a reading the card stays out; the week home shows the rest.
+      if (mounted) setState(() => _weekBookings = null);
+    }
+  }
+
+  /// The plan, moment and wedding date y06/y07 last looked at.
+  String? _weddingMomentSignature;
+
+  /// y06 on entering the wedding week, y07 on the day: each once per phone
+  /// for this plan and date (D65), opened over the home.
+  void _watchWeddingMoment(String planId, DateTime? weddingDate) {
+    if (_isLocalGuestPlan || weddingDate == null) return;
+    final stage = resolveWeddingPlanStage(weddingDate, now: appNow()).stage;
+    final moment = switch (stage) {
+      WeddingPlanStage.finalWeek => WeddingMoment.week,
+      WeddingPlanStage.weddingDay => WeddingMoment.day,
+      _ => null,
+    };
+    if (moment == null) return;
+    final signature = '$planId:${moment.name}:$weddingDate';
+    if (signature == _weddingMomentSignature) return;
+    _weddingMomentSignature = signature;
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      final ledger = WeddingMomentLedger(await SharedPreferences.getInstance());
+      final first = await ledger.firstTime(planId, moment, weddingDate);
+      if (!first || !mounted) return;
+      await context.push<void>(AppRouter.weddingMoment(planId, moment));
+    });
   }
 
   Future<void> _loadLocalDashboard() async {
@@ -168,7 +234,10 @@ class _WeddingPlanDashboardScreenState extends State<WeddingPlanDashboardScreen>
   /// b07: once the day has passed, what is left to pay from the money
   /// section (agreements unpaid plus loans still owed, C12). Null until
   /// the money is loaded, or for someone who may not see it.
-  DashboardAfterWedding? _afterWedding(DashboardSummary summary, String planId) {
+  DashboardAfterWedding? _afterWedding(
+    DashboardSummary summary,
+    String planId,
+  ) {
     if (_isLocalGuestPlan ||
         !summary.canViewMoney ||
         resolveWeddingPlanStage(summary.weddingDate).stage !=
@@ -189,7 +258,8 @@ class _WeddingPlanDashboardScreenState extends State<WeddingPlanDashboardScreen>
     final money = finance.summary;
     final funding = money.funding;
     final total = value(money.costs.total) + value(funding?.loanTotal);
-    final left = value(money.costs.outstanding) + value(funding?.loanOutstanding);
+    final left =
+        value(money.costs.outstanding) + value(funding?.loanOutstanding);
     return DashboardAfterWedding(left: left, paid: total - left, total: total);
   }
 
@@ -251,7 +321,9 @@ class _WeddingPlanDashboardScreenState extends State<WeddingPlanDashboardScreen>
         complete: total > 0 && settled >= total,
       );
     }
-    final selected = context.watch<AccountContextController?>()?.selectedContext;
+    final selected = context
+        .watch<AccountContextController?>()
+        ?.selectedContext;
     if (!summary.permissions.isOwner ||
         !summary.canViewMoney ||
         selected?.weddingPlanId != planId) {
@@ -393,6 +465,7 @@ class _WeddingPlanDashboardScreenState extends State<WeddingPlanDashboardScreen>
       );
     }
 
+    _watchWeddingMoment(selectedPlanId, summary.weddingDate);
     return AnimatedSwitcher(
       duration: const Duration(milliseconds: 380),
       switchInCurve: Curves.easeOutCubic,
@@ -414,8 +487,7 @@ class _WeddingPlanDashboardScreenState extends State<WeddingPlanDashboardScreen>
                 _homeMahr(summary, selectedPlanId),
               ),
               onOpenMahr: () => _openMahr(selectedPlanId),
-              showHijri:
-                  context.watch<DevicePreferences?>()?.showHijri ?? true,
+              showHijri: context.watch<DevicePreferences?>()?.showHijri ?? true,
               // G17: the phone's one «أخفِ المبالغ» switch.
               amountsHidden:
                   context.watch<DevicePreferences?>()?.hideAmounts ?? false,
@@ -448,10 +520,15 @@ class _WeddingPlanDashboardScreenState extends State<WeddingPlanDashboardScreen>
               onOpenSharing: () => _isLocalGuestPlan
                   ? _requireAccountForSharing()
                   : _openSharing(selectedPlanId),
-              onOpenWeddingDay: () => context.push(
-                AppRouter.weddingDayMode(selectedPlanId),
-                extra: summary,
-              ),
+              events: _isLocalGuestPlan
+                  ? null
+                  : context.watch<PlanEventsProvider?>()?.viewOf(
+                      selectedPlanId,
+                    ),
+              weekBookings: _weekBookings,
+              onOpenEvents: _isLocalGuestPlan
+                  ? null
+                  : () => context.push(AppRouter.planEvents(selectedPlanId)),
               onOpenImportantItem: (item) =>
                   _openDashboardItem(item, selectedPlanId),
               onOpenNextStep: () => _openNextStep(summary, selectedPlanId),

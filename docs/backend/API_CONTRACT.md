@@ -2971,6 +2971,44 @@ An unknown or malformed token, or an archived plan, returns
 calls these routes on its own origin; the edge proxy forwards
 `/api/v1/public/rsvp/*` on the site host to the API.
 
+## Wedding Events (b12, b13; D65)
+
+The wedding's events, from which the phone builds the wedding week (b04,
+y06, y12) and the wedding day (b05, y07). Planning owns them. Every plan
+member reads them (D52: the week and the day are not money); the owner, or a
+member with `canEditPlan`, changes them on a plan that is not archived.
+
+- `GET /api/v1/wedding-plans/:weddingPlanId/events` → `{ weddingPlanId,
+  party: "GROOM"|"BRIDE"|"HELPER"|null, canEdit, items: [PlanEvent],
+  suggestions: [type] }`. `items` are ordered by day (an undated one last),
+  then by the time of day each starts. The main event (`type: "WEDDING"`) is
+  always there: its `date` is the plan's wedding date and its `id` is null
+  until something about it is saved. `suggestions` are b12's «اقتراحات»: the
+  party's customary nights (groom `SAMRA`, `MAQEEL`; bride `HAFLA`,
+  `NASHMA`; a helper's plan both) and `AQD`, `LUNCH`, `DINNER` the plan has
+  not added, then `CUSTOM`.
+- `PlanEvent`: `{ id, type, title, date: "YYYY-MM-DD"|null, timeSlot,
+  exactTime: "HH:mm"|null, placeLabel, responsibleName, note, isMain }`.
+  `type` is one of `WEDDING SAMRA MAQEEL HAFLA NASHMA AQD LUNCH DINNER
+  CUSTOM`; `timeSlot` one of `DUHA DHUHR AFTER_DHUHR AFTER_ASR
+  AFTER_MAGHRIB AFTER_ISHA EXACT` (b13's times plus «الظهر», C8). The labels
+  are the phone's (the bride's wedding is «الزفة»).
+- `POST /api/v1/wedding-plans/:weddingPlanId/events` `{ type, title?, date?,
+  timeSlot?, exactTime?, placeLabel? (120), responsibleName? (60), note?
+  (120) }` → `201 PlanEvent`. Every kind but `CUSTOM` is once per plan; the
+  wedding's first details are saved by posting `WEDDING` once.
+- `PATCH /api/v1/wedding-plans/:weddingPlanId/events/:eventId` (the same
+  fields) → `PlanEvent`. An absent field keeps its value, `null` clears it;
+  a time other than `EXACT` drops a stored hour.
+- `DELETE /api/v1/wedding-plans/:weddingPlanId/events/:eventId` →
+  `{ deleted: true }`.
+- Refusals: `409 EVENT_TYPE_EXISTS`, `409 EVENT_IS_MAIN` (the wedding stays),
+  `409 EVENT_LIMIT_REACHED` (30 events), `400 EVENT_CUSTOM_TITLE_REQUIRED`,
+  `400 EVENT_WEDDING_DATE_IS_PLAN_DATE` (its day moves with «أجّل العرس»),
+  `400 EVENT_EXACT_TIME_REQUIRED`, `400 EVENT_EXACT_TIME_INVALID`,
+  `400 EVENT_DATE_INVALID`, `409 PLAN_ARCHIVED_READ_ONLY`, `404` for a
+  reader who may not edit or a stranger.
+
 ## Provider Portfolio («معرض الشغل», B-16, D62)
 
 Every new portfolio photo waits for the moderation team; customers see only
@@ -3673,6 +3711,10 @@ configuration, and smoke checks.
 | GET | `/api/v1/wedding-plans/:weddingPlanId/cost-payments` | `wedding-costs.list` | 🔒 |
 | GET | `/api/v1/wedding-plans/:weddingPlanId/costs` | `wedding-costs.list` | 🔒 |
 | POST | `/api/v1/wedding-plans/:weddingPlanId/costs` | `wedding-costs.create` | 🔒 |
+| GET | `/api/v1/wedding-plans/:weddingPlanId/events` | `plan-events.list` | 🔒 |
+| POST | `/api/v1/wedding-plans/:weddingPlanId/events` | `plan-events.create` | 🔒 |
+| DELETE | `/api/v1/wedding-plans/:weddingPlanId/events/:eventId` | `plan-events.remove` | 🔒 |
+| PATCH | `/api/v1/wedding-plans/:weddingPlanId/events/:eventId` | `plan-events.update` | 🔒 |
 | GET | `/api/v1/wedding-plans/:weddingPlanId/guest-groups` | `guests.findGroups` | 🔒 |
 | POST | `/api/v1/wedding-plans/:weddingPlanId/guest-groups` | `guests.createGroup` | 🔒 |
 | GET | `/api/v1/wedding-plans/:weddingPlanId/guests` | `guests.findForPlan` | 🔒 |

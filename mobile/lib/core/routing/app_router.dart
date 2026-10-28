@@ -100,16 +100,16 @@ import '../../features/shell/shell_api.dart'
 import '../../features/support/support_api.dart' show SupportScreen;
 import '../../features/tasks/tasks_api.dart'
     show CreateTaskScreen, TaskDetailsScreen, TaskTimelineScreen, WeddingTask;
-import '../../features/wedding_day/wedding_day_api.dart'
-    show WeddingDayModeScreen;
+import '../../features/wedding_day/wedding_day_api.dart' show PlanEventsScreen;
 import '../../features/wedding_plans/wedding_plans_api.dart'
     show
-        DashboardSummary,
         MahrMomentScreen,
         MahrScreen,
         MyWeddingPlansScreen,
         PlanAssistantScreen,
         PlanCenterScreen,
+        WeddingMoment,
+        WeddingMomentScreen,
         WeddingPlanDashboardScreen;
 import '../../features/welcome_gateway/welcome_gateway_api.dart'
     show SmartWelcomeScreen;
@@ -273,8 +273,14 @@ class AppRouter {
     return '/wedding-plans/$id/dashboard';
   }
 
-  static String weddingDayMode(String id) {
-    return '/wedding-plans/$id/wedding-day';
+  /// b12 «مناسبات عرسك» (D65).
+  static String planEvents(String id) {
+    return '/wedding-plans/$id/events';
+  }
+
+  /// y06 «دخلت أسبوع عرسك» or y07 «اليوم عرسك», once per phone (D65).
+  static String weddingMoment(String id, WeddingMoment moment) {
+    return '/wedding-plans/$id/moments/${moment.name}';
   }
 
   static String planCenter(String id) {
@@ -520,7 +526,8 @@ WeddingPlanRouteAccess weddingPlanRouteAccessForPath(String path) {
   return switch (section) {
     'dashboard' => WeddingPlanRouteAccess.ownerDashboard,
     'plan-center' ||
-    'wedding-day' ||
+    'events' ||
+    'moments' ||
     'notifications' ||
     'contributions' => WeddingPlanRouteAccess.viewPlan,
     'timeline' || 'tasks' => WeddingPlanRouteAccess.manageTasks,

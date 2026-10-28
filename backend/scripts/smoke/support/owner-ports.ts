@@ -204,6 +204,8 @@ export function adminService(
   prisma: unknown,
   realtime: unknown,
   notifications: unknown,
+  /** The media port, for a smoke that refuses portfolio photos (B-16). */
+  media: unknown = {},
 ): AdminService {
   return new AdminService(
     prisma as any,
@@ -223,6 +225,7 @@ export function adminService(
       ownerPorts.plans,
       new PermissionService(prisma as any, ownerPorts.plans),
       ownerPorts.finance,
+      media as any,
     ),
   );
 }

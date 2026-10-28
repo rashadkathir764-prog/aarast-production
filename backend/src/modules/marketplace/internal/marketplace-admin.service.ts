@@ -44,6 +44,11 @@ import type {
 } from '../public/marketplace-admin.port';
 import type { CreateNotificationInput } from '../../notifications/public/notifications.port';
 import { MarketplaceAdminRepository } from '../infrastructure/marketplace-admin.repository';
+import type { PortfolioItemStatus } from '@prisma/client';
+import type {
+  AdminPortfolioDecision,
+  AdminPortfolioRow,
+} from '../public/marketplace-admin.port';
 
 @Injectable()
 export class MarketplaceAdminService implements MarketplaceAdminPort {
@@ -130,6 +135,29 @@ export class MarketplaceAdminService implements MarketplaceAdminPort {
     id: string,
   ): Promise<AdminBookingRow | null> {
     return this.repository.getBooking(client, id);
+  }
+
+  async listPortfolioForReview(
+    client: Prisma.TransactionClient,
+    status: PortfolioItemStatus,
+    page: AdminPage,
+  ): Promise<AdminListing<AdminPortfolioRow>> {
+    return this.repository.listPortfolioForReview(client, status, page);
+  }
+
+  async lockPortfolioItemInTransaction(
+    tx: Prisma.TransactionClient,
+    id: string,
+  ): Promise<AdminPortfolioRow | null> {
+    return this.repository.lockPortfolioItemInTransaction(tx, id);
+  }
+
+  async decidePortfolioItemInTransaction(
+    tx: Prisma.TransactionClient,
+    id: string,
+    decision: AdminPortfolioDecision,
+  ): Promise<AdminPortfolioRow | null> {
+    return this.repository.decidePortfolioItemInTransaction(tx, id, decision);
   }
 
   async recordProviderReviewInTransaction(

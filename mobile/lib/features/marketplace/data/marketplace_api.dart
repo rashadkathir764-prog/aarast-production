@@ -7,6 +7,7 @@ import '../../../core/offline/offline_tables.dart';
 import '../../../core/phone/yemeni_phone_normalizer.dart';
 import '../../../core/utils/plan_day.dart';
 import '../models/marketplace_models.dart';
+import '../models/provider_portfolio.dart';
 
 class MarketplaceApi {
   const MarketplaceApi(this._apiClient, {OfflineSyncService? offline})
@@ -251,6 +252,14 @@ class MarketplaceApi {
       if (cached != null) return cached.map(ProviderPackage.fromJson).toList();
       rethrow;
     }
+  }
+
+  /// f03 (B-16): the approved photos this reader may see (the women's album
+  /// a bride only) and the provider's links. Needs a signed-in reader.
+  Future<PublicPortfolio> getProviderPortfolio(String providerId) async {
+    return PublicPortfolio.fromJson(
+      await _apiClient.getJson('/api/v1/providers/$providerId/portfolio'),
+    );
   }
 
   Future<List<ProviderReview>> getProviderReviews(String providerId) async {
@@ -1012,6 +1021,27 @@ class ProviderDashboardApi {
 
   /// p47 (B-18): a month's agreed, paid and left on his confirmed bookings,
   /// as the customers recorded them; read only.
+  /// p37 (B-16): his photos with their review state, and his links.
+  Future<ProviderPortfolio> getPortfolio() async {
+    return ProviderPortfolio.fromJson(
+      await _apiClient.getJson('/api/v1/provider/me/portfolio'),
+    );
+  }
+
+  /// p37 (B-16): the whole portfolio in its order, by upload key; new
+  /// photos wait for review. [socialLinks] replaces his links when given.
+  Future<ProviderPortfolio> savePortfolio({
+    required List<Map<String, Object?>> items,
+    Map<String, String>? socialLinks,
+  }) async {
+    return ProviderPortfolio.fromJson(
+      await _apiClient.putJson('/api/v1/provider/me/portfolio', {
+        'items': items,
+        'socialLinks': ?socialLinks,
+      }),
+    );
+  }
+
   Future<ProviderLedger> getLedger(DateTime month) async {
     final key =
         '${month.year.toString().padLeft(4, '0')}-'
@@ -1048,29 +1078,6 @@ class ProviderDashboardApi {
         'coverUrl': normalizedCover,
     });
     return ProviderDashboardProfile.fromJson(json);
-  }
-
-  Future<ProviderServiceImage> addServiceImage({
-    required String serviceId,
-    required String imageUrl,
-    String? altText,
-  }) async {
-    final json = await _apiClient
-        .postJson('/api/v1/provider/me/services/$serviceId/images', {
-          'imageUrl': imageUrl.trim(),
-          if (altText != null && altText.trim().isNotEmpty)
-            'altText': altText.trim(),
-        });
-    return ProviderServiceImage.fromJson(json);
-  }
-
-  Future<void> deleteServiceImage({
-    required String serviceId,
-    required String imageId,
-  }) async {
-    await _apiClient.deleteJson(
-      '/api/v1/provider/me/services/$serviceId/images/$imageId',
-    );
   }
 
   Future<MarketplaceService> createService({

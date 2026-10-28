@@ -238,6 +238,7 @@ function dashboardFor(
     },
     // No featured placement on record (B-43).
     providerFeaturedPeriod: { findMany: async () => [] },
+    portfolioItem: { findMany: async () => [] },
     providerService: {
       count: async () => options.activePriced ?? 1,
       findMany: async () => options.services ?? [joiningService()],

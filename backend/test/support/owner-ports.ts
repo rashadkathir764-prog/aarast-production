@@ -479,6 +479,8 @@ export const adminOwners = new AdminOwners(
   ownerPorts.plans,
   realPermissions,
   ownerPorts.finance,
+  // The tests decide no portfolio photo; a refusal's deletion is the smoke's.
+  {} as never,
 );
 
 export function adminService(

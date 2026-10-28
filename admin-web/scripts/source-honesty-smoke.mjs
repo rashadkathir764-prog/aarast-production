@@ -74,12 +74,20 @@ const conversationReportsPagePath = join(
 
 addCheck(
   'Unsupported admin pages are not routed',
-  !/path="(bookings|payments|settings|audit-log)"/.test(appRoutes),
+  // a12 «الحجوزات» is supported since B-40 (D60): `GET /admin/bookings`.
+  !/path="(payments|settings|audit-log)"/.test(appRoutes),
 );
 
 addCheck(
   'Unsupported admin pages are not in sidebar',
-  !/\/(bookings|payments|settings|audit-log)(?:[/'"`]|$)/.test(sidebar),
+  !/\/(payments|settings|audit-log)(?:[/'"`]|$)/.test(sidebar),
+);
+
+addCheck(
+  'The bookings page reads the bookings API, read only',
+  /path="bookings"/.test(appRoutes) &&
+    adminApi.includes('/admin/bookings') &&
+    !/method: '(?:POST|PATCH|PUT|DELETE)'[^}]*admin\/bookings/.test(adminApi),
 );
 
 addCheck(

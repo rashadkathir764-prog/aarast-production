@@ -11,6 +11,7 @@
 - `/conversation-reports`
 - `/featured`
 - `/login`
+- `/photos`
 - `/providers`
 - `/providers/:id`
 - `/providers/applications`
@@ -25,4 +26,4 @@
 - `/users`
 - `/users/:id`
 
-Total: 24 routes
+Total: 25 routes

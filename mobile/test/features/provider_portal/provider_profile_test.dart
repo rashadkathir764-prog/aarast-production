@@ -1,4 +1,9 @@
+import 'dart:typed_data';
+
 import 'package:aarast_mobile/core/experience_v3/aarast_v3.dart';
+import 'package:aarast_mobile/core/media/media_upload_api.dart';
+import 'package:aarast_mobile/features/marketplace/models/provider_portfolio.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:aarast_mobile/core/network/api_client.dart';
 import 'package:aarast_mobile/core/session/safe_user.dart';
 import 'package:aarast_mobile/core/storage/auth_storage.dart';
@@ -71,7 +76,10 @@ class ProfileApi extends RequestsApi {
     this.views = 14,
     this.featuredStartsAt,
     this.featuredEndsAt,
+    this.socialNetworks = const [],
   });
+
+  final List<String> socialNetworks;
 
   final DateTime? featuredStartsAt;
   final DateTime? featuredEndsAt;
@@ -88,7 +96,6 @@ class ProfileApi extends RequestsApi {
   final int views;
   final updated = <String>[];
   final activations = <String>[];
-  final deletedImages = <String>[];
 
   @override
   Future<ProviderDashboardProfile> getProfile() async =>
@@ -106,6 +113,10 @@ class ProfileApi extends RequestsApi {
         address: 'شارع حدة',
         featuredStartsAt: featuredStartsAt,
         featuredEndsAt: featuredEndsAt,
+        // B-16: two photos kept (one waiting), one refused aside.
+        portfolioPhotos: 2,
+        portfolioPending: 1,
+        socialNetworks: socialNetworks,
       );
 
   @override
@@ -169,12 +180,62 @@ class ProfileApi extends RequestsApi {
     );
   }
 
+  /// B-16: his portfolio as the server keeps it; a save replaces it.
+  ProviderPortfolio portfolio = ProviderPortfolio.fromJson({
+    'items': [
+      {
+        'id': 'photo-1',
+        'key': 'provider-portfolio/u/1.jpg',
+        'imageUrl': 'https://x.test/1.jpg',
+        'album': 'الزفة',
+        'status': 'APPROVED',
+      },
+      {
+        'id': 'photo-2',
+        'key': 'provider-portfolio/u/2.jpg',
+        'imageUrl': 'https://x.test/2.jpg',
+        'album': 'الزفة',
+        'status': 'PENDING',
+      },
+      {
+        'id': 'photo-3',
+        'key': 'provider-portfolio/u/3.jpg',
+        'imageUrl': null,
+        'album': 'الدرون',
+        'status': 'REJECTED',
+        'rejectionReason': 'الصورة مأخوذة من حساب ثاني',
+      },
+    ],
+    'socialLinks': {'tiktok': 'https://www.tiktok.com/@daw'},
+    'servesWomen': true,
+    'womenAlbum': 'حفلات النساء',
+    'maxItems': 60,
+  });
+  final savedPortfolios = <List<Map<String, Object?>>>[];
+  final savedLinks = <Map<String, String>?>[];
+
   @override
-  Future<void> deleteServiceImage({
-    required String serviceId,
-    required String imageId,
+  Future<ProviderPortfolio> getPortfolio() async => portfolio;
+
+  @override
+  Future<ProviderPortfolio> savePortfolio({
+    required List<Map<String, Object?>> items,
+    Map<String, String>? socialLinks,
   }) async {
-    deletedImages.add('$serviceId:$imageId');
+    savedPortfolios.add(items);
+    savedLinks.add(socialLinks);
+    final keys = [for (final item in items) item['key']];
+    portfolio = ProviderPortfolio(
+      items: [
+        for (final item in portfolio.items)
+          if (keys.contains(item.key)) item,
+      ],
+      socialLinks: socialLinks ?? portfolio.socialLinks,
+      servesWomen: portfolio.servesWomen,
+      womenAlbum: portfolio.womenAlbum,
+      maxItems: portfolio.maxItems,
+    );
+    return portfolio;
   }
 }
 
@@ -552,43 +613,107 @@ void main() {
   });
 
   group('p37 gallery', () {
-    testWidgets('one album per service, live photos, and where he works', (
-      tester,
-    ) async {
+    testWidgets('albums as drawn, «نراجعها», the refusal\'s reason, the '
+        'women\'s album and where he works (B-16)', (tester) async {
       final api = ProfileApi();
       await _pump(tester, api, ProviderGalleryScreen.new);
 
       expect(find.text('معرض الشغل'), findsOneWidget);
       expect(find.text('صورتين'), findsOneWidget);
+      for (final album in ['الزفة', 'الدرون', 'حفلات النساء']) {
+        expect(find.byKey(Key('provider-gallery-album-$album')), findsOne);
+      }
+      expect(find.byKey(const Key('provider-gallery-photo-photo-1')), findsOne);
+      expect(find.text('نراجعها'), findsOneWidget);
       expect(
-        find.byKey(const Key('provider-gallery-album-service-1')),
-        findsOne,
-      );
-      expect(find.byKey(const Key('provider-gallery-photo-image-1')), findsOne);
-      expect(find.textContaining('نراجع'), findsNothing);
-      expect(
-        find.text('الصور اللي تضيفها تظهر في ملفك للعرسان على طول.'),
+        find.text(
+          'ألبوم «حفلات النساء» يظهر للعرائس بس، وبدون وجوه. '
+          'كل صورة جديدة نراجعها قبل ما تظهر.',
+        ),
         findsOneWidget,
       );
+      expect(find.text('مربوط: تيك توك'), findsOneWidget);
       expect(find.text('المدينة'), findsOneWidget);
-      expect(find.text('صنعاء'), findsOneWidget);
       expect(find.text('شارع حدة'), findsOneWidget);
-      expect(find.textContaining('يسافر'), findsNothing);
 
-      await tester.tap(find.byKey(const Key('provider-gallery-photo-image-1')));
+      await tester.tap(find.byKey(const Key('provider-gallery-album-الدرون')));
       await tester.pumpAndSettle();
+      expect(find.text('ما انقبلت'), findsOneWidget);
+      await tester.tap(find.byKey(const Key('provider-gallery-photo-photo-3')));
+      await tester.pumpAndSettle();
+      expect(find.text('ما انقبلت: الصورة مأخوذة من حساب ثاني'), findsOneWidget);
       await tester.tap(find.byKey(const Key('provider-gallery-photo-delete')));
       await tester.pumpAndSettle();
-      expect(api.deletedImages, ['service-1:image-1']);
+      expect(api.savedPortfolios.single.map((item) => item['key']), [
+        'provider-portfolio/u/1.jpg',
+        'provider-portfolio/u/2.jpg',
+      ]);
+      expect(api.savedLinks.single, isNull);
     });
 
-    testWidgets('with no service, photos wait for one', (tester) async {
+    testWidgets('new photos go to the album he picks; the women\'s album '
+        'needs «بدون وجوه»', (tester) async {
+      final api = ProfileApi();
+      final uploads = <String>[];
       await _pump(
         tester,
-        ProfileApi(services: const []),
-        ProviderGalleryScreen.new,
+        api,
+        () => ProviderGalleryScreen(
+          pickImages: () async => [XFile.fromData(Uint8List(3), name: 'a.jpg')],
+          uploadImage: (file) async {
+            uploads.add('a.jpg');
+            return const MediaUploadTicket(
+              key: 'provider-portfolio/u/new.jpg',
+              attachmentRef: '',
+              uploadUrl: '',
+              publicUrl: '',
+              contentType: 'image/jpeg',
+              byteSize: 3,
+            );
+          },
+        ),
       );
-      expect(find.byKey(const Key('provider-gallery-empty')), findsOneWidget);
+
+      await tester.tap(find.byKey(const Key('provider-gallery-add')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('provider-gallery-pick-حفلات النساء')));
+      await tester.pumpAndSettle();
+      final choose = find.byKey(const Key('provider-gallery-choose'));
+      await tester.tap(choose);
+      await tester.pumpAndSettle();
+      expect(uploads, isEmpty);
+      await tester.tap(find.byKey(const Key('provider-gallery-no-faces')));
+      await tester.pumpAndSettle();
+      await tester.tap(choose);
+      await tester.pumpAndSettle();
+
+      expect(uploads, ['a.jpg']);
+      expect(api.savedPortfolios.single.last, {
+        'key': 'provider-portfolio/u/new.jpg',
+        'album': 'حفلات النساء',
+        'noFaces': true,
+      });
+    });
+
+    testWidgets('his links are saved with the portfolio', (tester) async {
+      final api = ProfileApi();
+      await _pump(tester, api, ProviderGalleryScreen.new);
+      await tester.tap(find.byKey(const Key('provider-gallery-links-edit')));
+      await tester.pumpAndSettle();
+      await tester.enterText(
+        find.descendant(
+          of: find.byKey(const Key('provider-gallery-link-instagram')),
+          matching: find.byType(EditableText),
+        ),
+        'https://www.instagram.com/daw',
+      );
+      await tester.tap(find.byKey(const Key('provider-gallery-links-save')));
+      await tester.pumpAndSettle();
+      expect(api.savedLinks.single, {
+        'tiktok': 'https://www.tiktok.com/@daw',
+        'instagram': 'https://www.instagram.com/daw',
+        'facebook': '',
+      });
     });
   });
 

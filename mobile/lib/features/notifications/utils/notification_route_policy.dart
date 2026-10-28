@@ -64,6 +64,8 @@ bool isSafeNotificationRouteTarget(String target) {
 
   return _isProviderPortalPath(uri) ||
       target == '/provider/apply' ||
+      // B-16: a portfolio photo approved or refused opens p37.
+      target == '/provider/gallery' ||
       _isBareIdPath(uri, const ['provider', 'requests', ':id']) ||
       _isBareIdPath(uri, const ['provider', 'reviews', ':id']) ||
       _isBareIdPath(uri, const ['quotes', ':id', 'conversation']) ||

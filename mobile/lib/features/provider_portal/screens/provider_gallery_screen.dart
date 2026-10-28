@@ -12,19 +12,23 @@ import '../../../core/utils/arabic_count.dart';
 import '../../../core/widgets/aarast_toast.dart';
 import '../../../core/widgets/aarast_ui.dart';
 import '../../marketplace/marketplace_api.dart'
-    show MarketplaceService, ProviderServiceImage;
+    show
+        PortfolioPhoto,
+        ProviderPortfolio,
+        portfolioSocialLabel,
+        portfolioSocialNetworks;
 import '../providers/provider_dashboard_provider.dart';
-import '../widgets/provider_profile_parts.dart';
 
 typedef ProviderGalleryImagePicker = Future<List<XFile>> Function();
 typedef ProviderGalleryImageUploader =
     Future<MediaUploadTicket> Function(XFile file);
 
-/// p37 «معرض الشغل + التغطية»: his work's photos, one album per service (the
-/// server keeps photos per service only, F14), and where he works, which is
-/// his city and the shop's place (F18). Photos go live when added, so no
-/// «نراجعها» tag and no review line; the women's album and the travel
-/// cities are not kept by the server (B-15, B-16).
+/// p37 «معرض الشغل» (B-16, D62): his photos by album, each new one marked
+/// «نراجعها» until the moderation team approves it, a refused one with the
+/// team's reason; the women's album «حفلات النساء» for a provider who serves
+/// women, shown to brides only and without faces; his TikTok, Instagram and
+/// Facebook links (the card p05 draws, kept here since p05's photo step was
+/// postponed); and where he works (his city and the shop's place).
 class ProviderGalleryScreen extends StatefulWidget {
   const ProviderGalleryScreen({this.pickImages, this.uploadImage, super.key});
 
@@ -38,99 +42,60 @@ class ProviderGalleryScreen extends StatefulWidget {
 class _ProviderGalleryScreenState extends State<ProviderGalleryScreen> {
   static const _maximumImagesPerSelection = 10;
 
-  String? _serviceId;
+  String? _album;
   bool _busy = false;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) context.read<ProviderDashboardProvider>().loadPortfolio();
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
     final dashboard = context.watch<ProviderDashboardProvider>();
-    final services = dashboard.services;
+    final portfolio = dashboard.portfolio;
     final profile = dashboard.profile;
-    final selected = _selected(services);
-    final photos = providerPhotoCount(services);
     final city = profile?.city?.nameAr.trim() ?? '';
     final address = profile?.address?.trim() ?? '';
+    final shown = portfolio?.items.where((item) => !item.isRejected).length;
     return AarastScreenFrame(
       maxWidth: 520,
       backgroundColor: AarastV3Color.canvas,
       child: RefreshIndicator(
         color: AarastV3Color.primary,
-        onRefresh: dashboard.loadDashboard,
+        onRefresh: dashboard.loadPortfolio,
         child: ListView(
           physics: const AlwaysScrollableScrollPhysics(),
           padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
           children: [
             JourneySubHeader(
               title: 'معرض الشغل',
-              subtitle: photos == 0
+              subtitle: shown == null
+                  ? null
+                  : shown == 0
                   ? 'ما فيه صور لسا'
                   : arabicCount(
-                      photos,
+                      shown,
                       one: 'صورة وحدة',
                       two: 'صورتين',
                       few: 'صور',
                       many: 'صورة',
                     ),
             ),
-            if (selected == null)
+            if (portfolio == null)
               JourneyListState(
-                key: const Key('provider-gallery-empty'),
-                phase: JourneyListPhase.empty,
+                key: const Key('provider-gallery-state'),
+                phase: dashboard.portfolioError == null
+                    ? JourneyListPhase.loading
+                    : JourneyListPhase.error,
                 section: JourneySection.home,
-                emptyIcon: LucideIcons.image,
-                emptyTitle: 'الصور تنضاف لكل خدمة',
-                emptyMessage: 'أضف خدمتك أول، وبعدها صور شغلها.',
-                emptyAction: 'أضف خدمة',
-                onEmptyAction: () => context.push(AppRouter.providerServiceNew),
+                onRetry: dashboard.loadPortfolio,
               )
-            else ...[
-              Wrap(
-                spacing: 8,
-                runSpacing: 8,
-                children: [
-                  for (final service in services)
-                    JourneyChip(
-                      key: Key('provider-gallery-album-${service.id}'),
-                      label: service.title,
-                      selected: service.id == selected.id,
-                      onTap: () => setState(() => _serviceId = service.id),
-                    ),
-                ],
-              ),
-              const SizedBox(height: 12),
-              if (selected.images.isNotEmpty)
-                GridView.count(
-                  crossAxisCount: 3,
-                  shrinkWrap: true,
-                  physics: const NeverScrollableScrollPhysics(),
-                  mainAxisSpacing: 8,
-                  crossAxisSpacing: 8,
-                  children: [
-                    for (final image in selected.images)
-                      _Photo(
-                        key: Key('provider-gallery-photo-${image.id}'),
-                        image: image,
-                        onTap: _busy ? null : () => _openPhoto(selected, image),
-                      ),
-                  ],
-                ),
-              if (selected.images.isNotEmpty) const SizedBox(height: 12),
-              JourneyButton(
-                key: const Key('provider-gallery-add'),
-                label: _busy ? 'نرفع الصور…' : 'أضف صور في ${selected.title}',
-                icon: LucideIcons.imagePlus,
-                background: AarastV3Color.primarySoft,
-                foreground: AarastV3Color.primary,
-                expand: true,
-                loading: _busy,
-                onPressed: () => _addImages(selected),
-              ),
-              const SizedBox(height: 12),
-              const JourneyNote(
-                icon: LucideIcons.eye,
-                text: 'الصور اللي تضيفها تظهر في ملفك للعرسان على طول.',
-              ),
-            ],
+            else
+              ..._gallery(context, dashboard, portfolio),
             if (city.isNotEmpty || address.isNotEmpty) ...[
               JourneySectionTitle(
                 'التغطية',
@@ -155,35 +120,200 @@ class _ProviderGalleryScreenState extends State<ProviderGalleryScreen> {
     );
   }
 
-  MarketplaceService? _selected(List<MarketplaceService> services) {
-    if (services.isEmpty) return null;
-    for (final service in services) {
-      if (service.id == _serviceId) return service;
-    }
-    return services.first;
+  List<Widget> _gallery(
+    BuildContext context,
+    ProviderDashboardProvider dashboard,
+    ProviderPortfolio portfolio,
+  ) {
+    final albums = _albums(portfolio);
+    final selected = albums.contains(_album)
+        ? _album
+        : (albums.isEmpty ? null : albums.first);
+    final photos = [
+      for (final item in portfolio.items)
+        if (albums.isEmpty || item.album == selected) item,
+    ];
+    final linked = [
+      for (final network in portfolioSocialNetworks)
+        if (portfolio.socialLinks[network] != null)
+          portfolioSocialLabel(network),
+    ];
+    return [
+      if (albums.isNotEmpty) ...[
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: [
+            for (final album in albums)
+              JourneyChip(
+                key: Key('provider-gallery-album-$album'),
+                label: album,
+                selected: album == selected,
+                onTap: () => setState(() => _album = album),
+              ),
+          ],
+        ),
+        const SizedBox(height: 12),
+      ],
+      if (photos.isNotEmpty) ...[
+        GridView.count(
+          crossAxisCount: 3,
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          mainAxisSpacing: 8,
+          crossAxisSpacing: 8,
+          children: [
+            for (final photo in photos)
+              _Photo(
+                key: Key('provider-gallery-photo-${photo.id}'),
+                photo: photo,
+                onTap: _busy ? null : () => _openPhoto(portfolio, photo),
+              ),
+          ],
+        ),
+        const SizedBox(height: 12),
+      ] else if (selected != null && selected == portfolio.womenAlbum) ...[
+        JourneyNote(
+          icon: LucideIcons.image,
+          text: 'ما فيه صور في «${portfolio.womenAlbum}» لسا.',
+        ),
+        const SizedBox(height: 12),
+      ],
+      if (portfolio.items.length < portfolio.maxItems)
+        JourneyButton(
+          key: const Key('provider-gallery-add'),
+          label: _busy ? 'نرفع الصور…' : 'أضف صور',
+          icon: LucideIcons.imagePlus,
+          background: AarastV3Color.primarySoft,
+          foreground: AarastV3Color.primary,
+          expand: true,
+          loading: _busy,
+          onPressed: () => _addImages(portfolio, selected),
+        ),
+      const SizedBox(height: 12),
+      JourneyNote(
+        key: const Key('provider-gallery-review-note'),
+        icon: LucideIcons.eyeOff,
+        color: AarastV3Color.danger,
+        soft: AarastV3Color.dangerSoft,
+        text: portfolio.servesWomen
+            ? 'ألبوم «${portfolio.womenAlbum}» يظهر للعرائس بس، وبدون وجوه. '
+                  'كل صورة جديدة نراجعها قبل ما تظهر.'
+            : 'كل صورة جديدة نراجعها قبل ما تظهر.',
+      ),
+      const SizedBox(height: 12),
+      JourneyBox(
+        key: const Key('provider-gallery-links'),
+        padding: const EdgeInsets.all(14),
+        child: Row(
+          children: [
+            const JourneyIconTile(
+              icon: LucideIcons.music2,
+              color: AarastV3Color.primary,
+              soft: AarastV3Color.primarySoft,
+              size: 40,
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'اربط تيك توك أو إنستغرام',
+                    style: JourneyType.of(
+                      JourneyType.body,
+                      weight: JourneyType.bold,
+                    ),
+                  ),
+                  Text(
+                    linked.isEmpty
+                        ? 'يظهر كمعرض شغلك، بدون ما ترفع كل شيء'
+                        : 'مربوط: ${linked.join('، ')}',
+                    style: JourneyType.of(
+                      JourneyType.detail,
+                      color: AarastV3Color.textMuted,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            JourneyTextAction(
+              key: const Key('provider-gallery-links-edit'),
+              label: linked.isEmpty ? 'اربط' : 'عدّل',
+              onPressed: _busy ? null : () => _editLinks(portfolio),
+            ),
+          ],
+        ),
+      ),
+    ];
   }
 
-  /// A photo opens large with «احذف الصورة».
-  Future<void> _openPhoto(
-    MarketplaceService service,
-    ProviderServiceImage image,
-  ) async {
+  /// The albums he uses, then the women's album when he serves women.
+  List<String> _albums(ProviderPortfolio portfolio) => {
+    ...portfolio.albums,
+    if (portfolio.servesWomen) portfolio.womenAlbum,
+  }.toList();
+
+  List<Map<String, Object?>> _itemsOf(Iterable<PortfolioPhoto> photos) => [
+    for (final photo in photos)
+      {'key': photo.key, 'album': photo.album, 'noFaces': photo.noFaces},
+  ];
+
+  Future<void> _save(
+    List<Map<String, Object?>> items, {
+    Map<String, String>? socialLinks,
+    required String success,
+  }) async {
+    final dashboard = context.read<ProviderDashboardProvider>();
+    final saved = await dashboard.savePortfolio(
+      items: items,
+      socialLinks: socialLinks,
+    );
+    if (!mounted) return;
+    if (saved) {
+      AarastToast.showSuccess(context, success);
+    } else {
+      AarastToast.showError(
+        context,
+        dashboard.portfolioError ?? 'ما انحفظ معرضك، جرب مرة ثانية.',
+      );
+    }
+  }
+
+  /// A photo opens large with its state and «احذف الصورة».
+  Future<void> _openPhoto(ProviderPortfolio portfolio, PortfolioPhoto photo) async {
     final remove = await showJourneySheet<bool>(
       context: context,
       builder: (sheetContext) => JourneySheetBody(
-        title: service.title,
+        title: photo.album ?? 'معرض الشغل',
         children: [
           ClipRRect(
             borderRadius: BorderRadius.circular(18),
             child: AspectRatio(
               aspectRatio: 1,
-              child: Image.network(
-                image.imageUrl,
-                fit: BoxFit.cover,
-                errorBuilder: (_, _, _) =>
-                    const ColoredBox(color: AarastV3Color.line),
-              ),
+              child: photo.imageUrl == null
+                  ? const ColoredBox(color: AarastV3Color.line)
+                  : Image.network(
+                      photo.imageUrl!,
+                      fit: BoxFit.cover,
+                      errorBuilder: (_, _, _) =>
+                          const ColoredBox(color: AarastV3Color.line),
+                    ),
             ),
+          ),
+          const SizedBox(height: 12),
+          JourneyNote(
+            key: const Key('provider-gallery-photo-state'),
+            icon: photo.isRejected ? LucideIcons.xCircle : LucideIcons.eye,
+            color: photo.isRejected ? AarastV3Color.danger : null,
+            soft: photo.isRejected ? AarastV3Color.dangerSoft : null,
+            text: photo.isRejected
+                ? 'ما انقبلت: ${photo.rejectionReason ?? ''}'
+                : photo.isPending
+                ? 'نراجعها، وما تظهر للعرسان لين نقبلها.'
+                : photo.forWomen
+                ? 'تظهر للعرائس بس.'
+                : 'تظهر في ملفك للعرسان.',
           ),
           const SizedBox(height: 14),
           JourneyButton(
@@ -201,26 +331,32 @@ class _ProviderGalleryScreenState extends State<ProviderGalleryScreen> {
     if (remove != true || !mounted) return;
     setState(() => _busy = true);
     try {
-      final dashboard = context.read<ProviderDashboardProvider>();
-      final deleted = await dashboard.deleteServiceImage(
-        serviceId: service.id,
-        imageId: image.id,
+      await _save(
+        _itemsOf(portfolio.items.where((item) => item.id != photo.id)),
+        success: 'انحذفت الصورة.',
       );
-      if (!mounted) return;
-      if (deleted) {
-        AarastToast.showSuccess(context, 'انحذفت الصورة.');
-      } else {
-        AarastToast.showError(
-          context,
-          dashboard.errorMessage ?? 'ما قدرنا نحذف الصورة، جرب مرة ثانية.',
-        );
-      }
     } finally {
       if (mounted) setState(() => _busy = false);
     }
   }
 
-  Future<void> _addImages(MarketplaceService service) async {
+  /// Where the new photos go: an album he uses, the women's album with his
+  /// «بدون وجوه», or a new one.
+  Future<({String? album, bool noFaces})?> _chooseAlbum(
+    ProviderPortfolio portfolio,
+    String? selected,
+  ) => showJourneySheet<({String? album, bool noFaces})>(
+    context: context,
+    builder: (_) => _AlbumSheet(
+      albums: _albums(portfolio),
+      womenAlbum: portfolio.womenAlbum,
+      selected: selected,
+    ),
+  );
+
+  Future<void> _addImages(ProviderPortfolio portfolio, String? selected) async {
+    final place = await _chooseAlbum(portfolio, selected);
+    if (place == null || !mounted) return;
     late final List<XFile> files;
     try {
       files =
@@ -240,84 +376,279 @@ class _ProviderGalleryScreenState extends State<ProviderGalleryScreen> {
       return;
     }
     if (files.isEmpty || !mounted) return;
+    final room = portfolio.maxItems - portfolio.items.length;
+    final chosen = files
+        .take(room < _maximumImagesPerSelection ? room : _maximumImagesPerSelection)
+        .toList();
     setState(() => _busy = true);
-    var saved = 0;
+    final keys = <String>[];
     String? lastError;
-    final chosen = files.take(_maximumImagesPerSelection).toList();
     try {
-      final dashboard = context.read<ProviderDashboardProvider>();
       final upload =
           widget.uploadImage ??
           (XFile file) => context.read<MediaUploadApi>().uploadImage(
             file: file,
-            purpose: 'service-image',
+            purpose: 'provider-portfolio',
           );
       for (final file in chosen) {
-        if (!mounted) return;
         try {
-          final ticket = await upload(file);
-          if (!mounted) return;
-          final ok = await dashboard.addServiceImage(
-            serviceId: service.id,
-            imageUrl: ticket.publicUrl,
-            altText: service.title,
-          );
-          if (ok) {
-            saved++;
-          } else {
-            lastError = dashboard.errorMessage ?? 'ما انحفظت صورة منها.';
-          }
+          keys.add((await upload(file)).key);
         } on ApiException catch (error) {
           lastError = error.message;
           if (error.statusCode != null && error.statusCode! >= 500) break;
         } catch (_) {
           lastError = 'ما قدرنا نرفع صورة منها.';
         }
+        if (!mounted) return;
       }
-      if (!mounted) return;
-      if (saved == chosen.length) {
-        AarastToast.showSuccess(
-          context,
-          saved == 1 ? 'انضافت الصورة.' : 'انضافت $saved صور.',
-        );
-      } else if (saved > 0) {
-        AarastToast.showInfo(
-          context,
-          'انضافت $saved من ${chosen.length} صور. '
-          '${lastError ?? 'جرب الباقي مرة ثانية.'}',
-        );
-      } else {
+      if (keys.isEmpty) {
         AarastToast.showError(
           context,
           lastError ?? 'ما قدرنا نرفع الصور، جرب مرة ثانية.',
         );
+        return;
       }
+      await _save(
+        [
+          ..._itemsOf(portfolio.items),
+          for (final key in keys)
+            {'key': key, 'album': place.album, 'noFaces': place.noFaces},
+        ],
+        success: keys.length == chosen.length
+            ? 'وصلتنا ${arabicCount(keys.length, one: 'صورة وحدة', two: 'صورتين', few: 'صور', many: 'صورة')}، نراجعها قبل ما تظهر.'
+            : 'وصلتنا ${keys.length} من ${chosen.length} صور، نراجعها قبل ما تظهر.',
+      );
+      if (mounted) setState(() => _album = place.album);
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  /// His TikTok, Instagram and Facebook links (empty removes one).
+  Future<void> _editLinks(ProviderPortfolio portfolio) async {
+    final links = await showJourneySheet<Map<String, String>>(
+      context: context,
+      builder: (_) => _LinksSheet(links: portfolio.socialLinks),
+    );
+    if (links == null || !mounted) return;
+    setState(() => _busy = true);
+    try {
+      await _save(
+        _itemsOf(portfolio.items),
+        socialLinks: links,
+        success: 'انحفظت روابطك.',
+      );
     } finally {
       if (mounted) setState(() => _busy = false);
     }
   }
 }
 
-class _Photo extends StatelessWidget {
-  const _Photo({required this.image, required this.onTap, super.key});
+/// «وين تحط الصور؟»: an album he uses, the women's album with his
+/// «بدون وجوه», or a new one. It owns its field, so the field outlives the
+/// sheet's closing.
+class _AlbumSheet extends StatefulWidget {
+  const _AlbumSheet({
+    required this.albums,
+    required this.womenAlbum,
+    required this.selected,
+  });
 
-  final ProviderServiceImage image;
+  final List<String> albums;
+  final String womenAlbum;
+  final String? selected;
+
+  @override
+  State<_AlbumSheet> createState() => _AlbumSheetState();
+}
+
+class _AlbumSheetState extends State<_AlbumSheet> {
+  final _name = TextEditingController();
+  late String? _album = widget.selected;
+  bool _noFaces = false;
+
+  @override
+  void dispose() {
+    _name.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final named = _name.text.trim();
+    final chosen = named.isNotEmpty ? named : _album;
+    final forWomen = chosen == widget.womenAlbum;
+    final ready = chosen != null && (!forWomen || _noFaces);
+    return JourneySheetBody(
+      title: 'وين تحط الصور؟',
+      children: [
+        if (widget.albums.isNotEmpty) ...[
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              for (final name in widget.albums)
+                JourneyChip(
+                  key: Key('provider-gallery-pick-$name'),
+                  label: name,
+                  selected: named.isEmpty && name == _album,
+                  onTap: () => setState(() {
+                    _album = name;
+                    _name.clear();
+                  }),
+                ),
+            ],
+          ),
+          const SizedBox(height: 12),
+        ],
+        JourneyTextField(
+          key: const Key('provider-gallery-new-album'),
+          label: 'أو ألبوم جديد',
+          hint: 'الزفة، الدرون…',
+          controller: _name,
+          maxLength: 30,
+          onChanged: (_) => setState(() {}),
+        ),
+        if (forWomen) ...[
+          const SizedBox(height: 8),
+          JourneyListRow(
+            key: const Key('provider-gallery-no-faces'),
+            icon: LucideIcons.eyeOff,
+            color: AarastV3Color.danger,
+            soft: AarastV3Color.dangerSoft,
+            title: 'أأكد إن الصور بدون وجوه',
+            subtitle: 'الكوشة، والزينة، والنقش، والفستان من الخلف',
+            trailing: JourneyToggle(
+              value: _noFaces,
+              onChanged: (value) => setState(() => _noFaces = value),
+              color: AarastV3Color.danger,
+              semanticLabel: 'الصور بدون وجوه',
+            ),
+            onTap: () => setState(() => _noFaces = !_noFaces),
+          ),
+        ],
+        const SizedBox(height: 14),
+        JourneyButton(
+          key: const Key('provider-gallery-choose'),
+          label: 'اختر الصور',
+          icon: LucideIcons.imagePlus,
+          expand: true,
+          onPressed: ready
+              ? () => Navigator.of(
+                  context,
+                ).pop((album: chosen, noFaces: forWomen && _noFaces))
+              : null,
+        ),
+      ],
+    );
+  }
+}
+
+/// His TikTok, Instagram and Facebook links; an empty field removes one.
+class _LinksSheet extends StatefulWidget {
+  const _LinksSheet({required this.links});
+
+  final Map<String, String> links;
+
+  @override
+  State<_LinksSheet> createState() => _LinksSheetState();
+}
+
+class _LinksSheetState extends State<_LinksSheet> {
+  late final _fields = {
+    for (final network in portfolioSocialNetworks)
+      network: TextEditingController(text: widget.links[network] ?? ''),
+  };
+
+  @override
+  void dispose() {
+    for (final field in _fields.values) {
+      field.dispose();
+    }
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return JourneySheetBody(
+      title: 'روابط شغلك',
+      subtitle: 'رابط حسابك، يبدأ بـ https',
+      children: [
+        for (final network in portfolioSocialNetworks) ...[
+          JourneyTextField(
+            key: Key('provider-gallery-link-$network'),
+            label: portfolioSocialLabel(network),
+            hint: switch (network) {
+              'tiktok' => 'https://www.tiktok.com/@اسمك',
+              'instagram' => 'https://www.instagram.com/اسمك',
+              _ => 'https://www.facebook.com/اسمك',
+            },
+            controller: _fields[network]!,
+            keyboardType: TextInputType.url,
+            textDirection: TextDirection.ltr,
+          ),
+          const SizedBox(height: 10),
+        ],
+        JourneyButton(
+          key: const Key('provider-gallery-links-save'),
+          label: 'احفظ الروابط',
+          expand: true,
+          onPressed: () => Navigator.of(context).pop({
+            for (final entry in _fields.entries)
+              entry.key: entry.value.text.trim(),
+          }),
+        ),
+      ],
+    );
+  }
+}
+
+class _Photo extends StatelessWidget {
+  const _Photo({required this.photo, required this.onTap, super.key});
+
+  final PortfolioPhoto photo;
   final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
     return AarastPressable(
       onTap: onTap,
-      semanticLabel: image.altText?.trim().isNotEmpty == true
-          ? image.altText!.trim()
+      semanticLabel: photo.isRejected
+          ? 'صورة ما انقبلت'
+          : photo.isPending
+          ? 'صورة نراجعها'
           : 'صورة',
       borderRadius: BorderRadius.circular(14),
       child: ColoredBox(
         color: AarastV3Color.line,
-        child: Image.network(
-          image.imageUrl,
-          fit: BoxFit.cover,
-          errorBuilder: (_, _, _) => const SizedBox.expand(),
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            if (photo.imageUrl != null)
+              Image.network(
+                photo.imageUrl!,
+                fit: BoxFit.cover,
+                errorBuilder: (_, _, _) => const SizedBox.expand(),
+              ),
+            if (photo.isPending || photo.isRejected)
+              Align(
+                alignment: Alignment.bottomCenter,
+                child: Padding(
+                  padding: const EdgeInsets.all(6),
+                  child: photo.isPending
+                      ? const JourneyTag(
+                          label: 'نراجعها',
+                          color: AarastV3Color.brandAccentStrong,
+                          soft: AarastV3Color.brandAccentSoft,
+                        )
+                      : const JourneyTag(
+                          label: 'ما انقبلت',
+                          color: AarastV3Color.danger,
+                          soft: AarastV3Color.dangerSoft,
+                        ),
+                ),
+              ),
+          ],
         ),
       ),
     );

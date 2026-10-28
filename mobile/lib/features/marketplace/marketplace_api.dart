@@ -21,6 +21,12 @@ export 'models/marketplace_models.dart'
         ProviderServiceImage,
         QuoteOfferLine,
         QuoteRequest;
+export 'models/provider_portfolio.dart'
+    show
+        PortfolioPhoto,
+        ProviderPortfolio,
+        portfolioSocialLabel,
+        portfolioSocialNetworks;
 export 'models/provider_budget_match_intent.dart'
     show ProviderBudgetMatchIntent, ProviderQuoteInitialContext;
 export 'providers/marketplace_provider.dart'

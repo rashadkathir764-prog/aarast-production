@@ -11,6 +11,7 @@ export const mediaPurposes = [
   'service-image',
   'chat-image',
   'cost-receipt',
+  'provider-portfolio',
 ] as const;
 
 const extensionByContentType = new Map([

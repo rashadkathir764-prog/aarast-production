@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:aarast_mobile/core/network/api_client.dart';
 import 'package:aarast_mobile/features/marketplace/data/marketplace_api.dart';
 import 'package:aarast_mobile/features/marketplace/models/marketplace_models.dart';
+import 'package:aarast_mobile/features/marketplace/models/provider_portfolio.dart';
 import 'package:aarast_mobile/features/marketplace/providers/marketplace_provider.dart';
 import 'package:aarast_mobile/features/marketplace/screens/provider_details_screen.dart';
 import 'package:flutter/material.dart';
@@ -65,6 +66,30 @@ void main() {
       expect(marketplace.packagesErrorFor('provider-1'), isNull);
       expect(marketplace.reviewsErrorFor('provider-1'), isNull);
       expect(marketplace.errorMessage, isNull);
+    },
+  );
+
+  test(
+    'B-16: a signed-in reader reads the portfolio; its failure is reported '
+    'and keeps the photos read before; a guest never asks',
+    () async {
+      final api = _MarketplaceLoadingTruthApi();
+      final guest = ProviderMarketplaceProvider(api);
+      await guest.loadProviderDetails('provider-1');
+      expect(api.portfolioCalls, 0);
+      expect(guest.portfolioFor('provider-1'), isNull);
+      expect(guest.errorMessage, isNull);
+
+      final marketplace = ProviderMarketplaceProvider(api);
+      await marketplace.loadMarketplace(includeAccountData: true);
+      await marketplace.loadProviderDetails('provider-1');
+      expect(api.portfolioCalls, 1);
+      expect(marketplace.portfolioFor('provider-1')?.items, hasLength(1));
+
+      api.portfolioError = const ApiException('تعذر تحميل الصور.');
+      await marketplace.loadProviderDetails('provider-1');
+      expect(marketplace.portfolioFor('provider-1')?.items, hasLength(1));
+      expect(marketplace.errorMessage, 'تعذر تحديث الصور. أعد المحاولة.');
     },
   );
 
@@ -282,6 +307,8 @@ class _MarketplaceLoadingTruthApi extends MarketplaceApi {
   Object? servicesError;
   Object? packagesError;
   Object? reviewsError;
+  Object? portfolioError;
+  int portfolioCalls = 0;
   Completer<MarketplaceProvider>? providerGate;
   int providerPageTotalPages = 1;
   int providerCalls = 0;
@@ -386,6 +413,17 @@ class _MarketplaceLoadingTruthApi extends MarketplaceApi {
     final error = reviewsError;
     if (error != null) throw error;
     return const [ProviderReview(id: 'review-1', rating: 5)];
+  }
+
+  @override
+  Future<PublicPortfolio> getProviderPortfolio(String providerId) async {
+    portfolioCalls += 1;
+    final error = portfolioError;
+    if (error != null) throw error;
+    return const PublicPortfolio(
+      items: [PublicPortfolioPhoto(id: 'photo-1', imageUrl: 'https://x.test/1.jpg')],
+      socialLinks: {},
+    );
   }
 }
 

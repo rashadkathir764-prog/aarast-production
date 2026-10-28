@@ -96,18 +96,13 @@ class _ProviderCard extends StatelessWidget {
   }
 }
 
-/// أفضل صورة تمثّل المزود في القائمة: الغلاف ثم الشعار ثم أول صورة خدمة.
+/// أفضل صورة تمثّل المزود في القائمة: الغلاف ثم الشعار. صور الخدمات ما
+/// تنعرض للعرسان لأنها ما تتراجع (D62).
 String? _providerImageUrl(MarketplaceProvider provider) {
   final cover = provider.coverUrl?.trim();
   if (cover != null && cover.isNotEmpty) return cover;
   final logo = provider.logoUrl?.trim();
   if (logo != null && logo.isNotEmpty) return logo;
-  for (final service in provider.services) {
-    for (final image in service.images) {
-      final url = image.imageUrl.trim();
-      if (url.isNotEmpty) return url;
-    }
-  }
   return null;
 }
 

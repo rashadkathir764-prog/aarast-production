@@ -20,12 +20,14 @@ write_aarast_backend_media_policy() {
         "arn:aws:s3:::%s/provider-logo/*",
         "arn:aws:s3:::%s/provider-cover/*",
         "arn:aws:s3:::%s/service-image/*",
+        "arn:aws:s3:::%s/provider-portfolio/*",
         "arn:aws:s3:::%s/chat-image/*"
       ]
     }
   ]
 }
 ' \
+    "$policy_bucket" \
     "$policy_bucket" \
     "$policy_bucket" \
     "$policy_bucket" \

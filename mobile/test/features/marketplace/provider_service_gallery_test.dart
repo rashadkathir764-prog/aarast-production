@@ -1,117 +1,123 @@
-import 'dart:typed_data';
-
-import 'package:aarast_mobile/core/media/media_upload_api.dart';
 import 'package:aarast_mobile/core/network/api_client.dart';
-import 'package:aarast_mobile/core/theme/app_theme.dart';
 import 'package:aarast_mobile/features/marketplace/data/marketplace_api.dart';
 import 'package:aarast_mobile/features/marketplace/models/marketplace_models.dart';
+import 'package:aarast_mobile/features/marketplace/models/provider_portfolio.dart';
 import 'package:aarast_mobile/features/provider_portal/providers/provider_dashboard_provider.dart';
-import 'package:aarast_mobile/features/provider_portal/screens/provider_gallery_screen.dart';
-import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:image_picker/image_picker.dart';
-import 'package:provider/provider.dart';
 
+// B-16 (D61): p37's photos are his «معرض الشغل», reviewed before customers
+// see them; service photos are no longer added from p37.
 void main() {
-  testWidgets(
-    'provider can select and publish several service photos at once',
-    (tester) async {
-      final dashboard = _GalleryDashboardProvider();
-      final selectedFiles = [
-        _imageFile('hall-1.jpg'),
-        _imageFile('hall-2.jpg'),
-        _imageFile('hall-3.jpg'),
-      ];
-      var uploadCalls = 0;
-      var pickerCalls = 0;
+  test('a saved portfolio replaces his photos and p35\'s line is read again', () async {
+    final api = _PortfolioApi();
+    final dashboard = ProviderDashboardProvider(api);
 
-      await tester.pumpWidget(
-        ChangeNotifierProvider<ProviderDashboardProvider>.value(
-          value: dashboard,
-          child: MaterialApp(
-            theme: AppTheme.light(),
-            home: Directionality(
-              textDirection: TextDirection.rtl,
-              child: Scaffold(
-                body: ProviderGalleryScreen(
-                  pickImages: () async {
-                    pickerCalls++;
-                    return selectedFiles;
-                  },
-                  uploadImage: (file) async {
-                    uploadCalls++;
-                    return _ticket('hall-$uploadCalls.jpg');
-                  },
-                ),
-              ),
-            ),
-          ),
+    await dashboard.loadPortfolio();
+    expect(dashboard.portfolio?.items.single.status, 'APPROVED');
+
+    final saved = await dashboard.savePortfolio(
+      items: [
+        {'key': 'provider-portfolio/u/1.jpg', 'album': 'الزفة', 'noFaces': false},
+        {'key': 'provider-portfolio/u/2.jpg', 'album': 'الزفة', 'noFaces': false},
+      ],
+    );
+
+    expect(saved, isTrue);
+    expect(api.sent.single.length, 2);
+    expect(dashboard.portfolio?.items.last.isPending, isTrue);
+    expect(dashboard.profile?.portfolioPhotos, 2);
+    expect(dashboard.profile?.socialNetworks, ['tiktok']);
+  });
+
+  test('the server\'s refusals reach him in his words', () async {
+    final api = _PortfolioApi()..refuseWith = 'PORTFOLIO_WOMEN_PHOTO_NEEDS_NO_FACES';
+    final dashboard = ProviderDashboardProvider(api);
+
+    final saved = await dashboard.savePortfolio(items: const []);
+
+    expect(saved, isFalse);
+    expect(dashboard.portfolioError, 'صور «حفلات النساء» لازم تكون بدون وجوه.');
+  });
+
+  test('the portfolio and the profile line read what the server sends', () {
+    final portfolio = ProviderPortfolio.fromJson({
+      'items': [
+        {
+          'id': 'p1',
+          'key': 'k1',
+          'imageUrl': null,
+          'album': 'حفلات النساء',
+          'forWomen': true,
+          'noFaces': true,
+          'status': 'REJECTED',
+          'rejectionReason': 'فيها وجه',
+        },
+      ],
+      'socialLinks': {'tiktok': 'https://www.tiktok.com/@daw', 'other': 'x'},
+      'servesWomen': true,
+    });
+    expect(portfolio.items.single.isRejected, isTrue);
+    expect(portfolio.items.single.rejectionReason, 'فيها وجه');
+    expect(portfolio.socialLinks, {'tiktok': 'https://www.tiktok.com/@daw'});
+    expect(portfolio.albums, ['حفلات النساء']);
+
+    final profile = ProviderDashboardProfile.fromJson({
+      'id': 'provider-1',
+      'portfolio': {'photos': 18, 'pending': 1, 'socialNetworks': ['tiktok']},
+    });
+    expect(profile.portfolioPhotos, 18);
+    expect(profile.portfolioPending, 1);
+    expect(profile.socialNetworks, ['tiktok']);
+  });
+}
+
+class _PortfolioApi extends ProviderDashboardApi {
+  _PortfolioApi() : super(ApiClient(tokenProvider: () async => null));
+
+  final sent = <List<Map<String, Object?>>>[];
+  String? refuseWith;
+
+  ProviderPortfolio _portfolio(List<String> statuses) => ProviderPortfolio(
+    items: [
+      for (final (index, status) in statuses.indexed)
+        PortfolioPhoto(
+          id: 'p$index',
+          key: 'provider-portfolio/u/${index + 1}.jpg',
+          status: status,
+          album: 'الزفة',
         ),
-      );
-
-      // p37: the photos are added to the album of the chosen service.
-      expect(find.text('أضف صور في قاعة اللؤلؤة'), findsOneWidget);
-      await tester.tap(find.byKey(const Key('provider-gallery-add')));
-      await tester.pumpAndSettle();
-
-      expect(pickerCalls, 1);
-      expect(uploadCalls, 3);
-      expect(dashboard.savedUrls, [
-        'https://media.example.test/hall-1.jpg',
-        'https://media.example.test/hall-2.jpg',
-        'https://media.example.test/hall-3.jpg',
-      ]);
-      expect(find.text('انضافت 3 صور.'), findsOneWidget);
-      expect(tester.takeException(), isNull);
-    },
+    ],
+    socialLinks: const {'tiktok': 'https://www.tiktok.com/@daw'},
+    servesWomen: true,
+    womenAlbum: 'حفلات النساء',
+    maxItems: 60,
   );
-}
-
-XFile _imageFile(String name) => XFile.fromData(
-  Uint8List.fromList([0xff, 0xd8, 0xff]),
-  name: name,
-  mimeType: 'image/jpeg',
-);
-
-MediaUploadTicket _ticket(String name) => MediaUploadTicket(
-  key: 'service-image/user-1/$name',
-  attachmentRef: '',
-  uploadUrl: 'https://upload.example.test/$name',
-  publicUrl: 'https://media.example.test/$name',
-  contentType: 'image/jpeg',
-  byteSize: 3,
-);
-
-class _GalleryDashboardProvider extends ProviderDashboardProvider {
-  _GalleryDashboardProvider()
-    : super(ProviderDashboardApi(ApiClient(tokenProvider: () async => null)));
-
-  final List<String> savedUrls = [];
 
   @override
-  List<MarketplaceService> get services => const [_service];
+  Future<ProviderPortfolio> getPortfolio() async => _portfolio(['APPROVED']);
 
   @override
-  List<ProviderPackage> get packages => const [];
-
-  @override
-  Future<void> loadDashboard() async {}
-
-  @override
-  Future<bool> addServiceImage({
-    required String serviceId,
-    required String imageUrl,
-    String? altText,
+  Future<ProviderPortfolio> savePortfolio({
+    required List<Map<String, Object?>> items,
+    Map<String, String>? socialLinks,
   }) async {
-    expect(serviceId, _service.id);
-    expect(altText, _service.title);
-    savedUrls.add(imageUrl);
-    return true;
+    if (refuseWith != null) {
+      throw ApiException('refused', statusCode: 422, serverCode: refuseWith);
+    }
+    sent.add(items);
+    return _portfolio(['APPROVED', 'PENDING']);
   }
-}
 
-const _service = MarketplaceService(
-  id: 'service-hall',
-  providerId: 'provider-1',
-  title: 'قاعة اللؤلؤة',  isActive: true,
-);
+  @override
+  Future<ProviderDashboardProfile> getProfile() async =>
+      const ProviderDashboardProfile(
+        id: 'provider-1',
+        businessName: 'استوديو ضوء صنعاء',
+        status: 'ACTIVE',
+        ratingAverage: 0,
+        ratingCount: 0,
+        portfolioPhotos: 2,
+        portfolioPending: 1,
+        socialNetworks: ['tiktok'],
+      );
+}

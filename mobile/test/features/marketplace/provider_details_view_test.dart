@@ -1,5 +1,6 @@
 import 'package:aarast_mobile/core/theme/app_theme.dart';
 import 'package:aarast_mobile/features/marketplace/models/marketplace_models.dart';
+import 'package:aarast_mobile/features/marketplace/models/provider_portfolio.dart';
 import 'package:aarast_mobile/features/marketplace/widgets/provider_details_view.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -22,7 +23,7 @@ void main() {
   });
 
   testWidgets('f03 shows the provider as the prototype does', (tester) async {
-    await _pumpView(tester, withinBudget: true);
+    await _pumpView(tester, withinBudget: true, portfolio: _twoPhotos);
 
     expect(find.text('استوديو ضوء صنعاء'), findsOneWidget);
     expect(find.byTooltip('موثّق'), findsOneWidget);
@@ -53,6 +54,27 @@ void main() {
     expect(find.byTooltip('حفظ المزود'), findsNothing);
     expect(find.textContaining('التقييمات'), findsNothing);
     expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('B-16: the approved portfolio photos join the count and the '
+      'links show', (tester) async {
+    await _pumpView(tester, portfolio: _twoPhotos);
+
+    expect(find.text('1 / 3 صورة'), findsOneWidget);
+    expect(find.text('روابط الشغل'), findsOneWidget);
+    expect(find.byKey(const ValueKey('provider-social-tiktok')), findsOne);
+    expect(find.byKey(const ValueKey('provider-social-facebook')), findsOne);
+    expect(find.byKey(const ValueKey('provider-social-instagram')), findsNothing);
+  });
+
+  testWidgets('D62: the services\' own photos, never reviewed, are not shown', (
+    tester,
+  ) async {
+    // Both services carry a photo; without a portfolio only the cover shows.
+    await _pumpView(tester);
+
+    expect(find.text('1 / 1 صورة'), findsOneWidget);
+    expect(find.byKey(const ValueKey('provider-social-tiktok')), findsNothing);
   });
 
   testWidgets('back and a package lead where they should', (tester) async {
@@ -217,6 +239,17 @@ MarketplaceService _photoService(String id, String price, DateTime updated) =>
       ],
     );
 
+final _twoPhotos = PublicPortfolio.fromJson({
+  'items': [
+    {'id': 'p1', 'imageUrl': 'https://x.test/p1.jpg', 'album': 'الزفة'},
+    {'id': 'p2', 'imageUrl': 'https://x.test/p2.jpg', 'album': 'الدرون'},
+  ],
+  'socialLinks': {
+    'tiktok': 'https://www.tiktok.com/@daw',
+    'facebook': 'https://www.facebook.com/daw.sanaa',
+  },
+});
+
 final _services = [
   _photoService(
     'service-photos',
@@ -267,6 +300,7 @@ Future<void> _pumpView(
   double textScale = 1,
   bool dataSaver = false,
   List<ProviderReview> reviews = const [],
+  PublicPortfolio? portfolio,
 }) async {
   tester.view.devicePixelRatio = 1;
   tester.view.physicalSize = Size(width, 1400);
@@ -296,6 +330,7 @@ Future<void> _pumpView(
             now: _now,
             dataSaver: dataSaver,
             reviews: reviews,
+            portfolio: portfolio,
           ),
         ),
       ),

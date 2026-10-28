@@ -2960,6 +2960,62 @@ An unknown or malformed token, or an archived plan, returns
 calls these routes on its own origin; the edge proxy forwards
 `/api/v1/public/rsvp/*` on the site host to the API.
 
+## Provider Portfolio («معرض الشغل», B-16, D62)
+
+Every new portfolio photo waits for the moderation team; customers see only
+approved photos; the women's album «حفلات النساء» is read by a bride only.
+
+- Upload: the ordinary signed upload (`POST /api/v1/media/uploads/presign`
+  then `verify`) with `purpose: "provider-portfolio"` (public object; JPEG,
+  PNG or WebP, 10 MB at most, the account's rolling daily upload quota). The
+  verify step re-encodes the image, which drops its EXIF (location, camera).
+- `GET /api/v1/provider/me/portfolio` (the provider, any status) returns
+  `{ items: [{ id, key, imageUrl, album, forWomen, noFaces, status,
+  rejectionReason, reviewedAt, createdAt }], socialLinks: { tiktok?,
+  instagram?, facebook? }, servesWomen, womenAlbum: "حفلات النساء",
+  maxItems: 60 }`, items in his order. `status` is `PENDING`, `APPROVED` or
+  `REJECTED`; a refused photo's `imageUrl` is null (its image is deleted)
+  and `rejectionReason` is the team's words.
+- `PUT /api/v1/provider/me/portfolio` (an approved provider only, else
+  `403 PROVIDER_NOT_ACTIVE`, D41) `{ items: [{ key, album?, noFaces? }],
+  socialLinks?: { tiktok?, instagram?, facebook? } }` replaces the whole
+  portfolio in that order and returns it as above. A new `key` must be his
+  own verified `provider-portfolio` upload, used once; it is created
+  `PENDING`. A kept photo keeps its decision unless its album or `noFaces`
+  changed (then `PENDING` again); a refused one stays refused. A photo left
+  out is removed and its image becomes a media deletion job. `socialLinks`
+  omitted keeps his links; given, it replaces them (an empty value removes
+  one). Refusals: `422 PORTFOLIO_TOO_MANY_ITEMS { max: 60 }`,
+  `422 PORTFOLIO_WOMEN_ALBUM_NOT_SERVED` (none of his sections is shown to
+  brides), `422 PORTFOLIO_WOMEN_PHOTO_NEEDS_NO_FACES`,
+  `422 PORTFOLIO_SOCIAL_LINK_INVALID { network }` (https only; hosts
+  `tiktok.com`/`www.`/`m.` with `/@name`, `instagram.com`/`www.`/`m.` with
+  `/name`, `facebook.com`/`www.`/`m.`/`web.` with `/name` or
+  `/profile.php?id=`; written back in one form), `409 PORTFOLIO_CHANGED`
+  (a new photo vanished meanwhile), `400` for a repeated key, an album over
+  30 characters or a key that is not his.
+- `GET /api/v1/provider/me/profile` adds `portfolio: { photos, pending,
+  rejected, socialNetworks }` for p35's line «18 صورة · تيك توك مربوط».
+- `GET /api/v1/providers/:id/portfolio` (signed in) returns `{ items: [{ id,
+  imageUrl, album, forWomen }], socialLinks }`: the approved photos in his
+  order, the women's album only when the reader's account persona is
+  `BRIDE`. f03's photos are the cover, then these; the app shows no
+  service photo (`ProviderServiceImage`) to customers, since those are
+  never reviewed (D62).
+- `GET /admin/portfolio-items?status=PENDING&page&limit` (n07,
+  `PROVIDERS_READ`) lists photos of one status (PENDING by default), oldest
+  first, with `provider { id, businessName, status }`.
+- `PATCH /admin/portfolio-items/:id/decision` (`REVIEWS_WRITE`: the
+  moderation team and the super admin) `{ decision: "APPROVE" | "REJECT",
+  reason?, noFacesChecked? }`. A refusal needs `reason` (1 to 300
+  characters); approving a women's photo needs `noFacesChecked: true` (else
+  `422 PORTFOLIO_NO_FACES_NOT_CHECKED`); a decided or removed photo is
+  `409 PORTFOLIO_ITEM_ALREADY_DECIDED` / `404`. A refusal deletes the image.
+  The provider is told (`PORTFOLIO_REVIEWED`; its route target, from the
+  notice registry's `providerPortfolio`, opens p37):
+  «انقبلت صورة من معرضك · صورتك في «الزفة» تظهر الحين للعرسان.» (للعرائس for
+  the women's album) or «ما قبلنا صورة من معرضك · … السبب: …». Audited.
+
 ## Quote Conversations And Media
 
 Conversations begin only with a real quote request; open or unsolicited
@@ -3354,6 +3410,8 @@ configuration, and smoke checks.
 | POST | `/admin/governorates/:id/districts` | `catalogs.createDistrict` | 🔒 |
 | DELETE | `/admin/localities/:id` | `catalogs.disableLocality` | 🔒 |
 | PATCH | `/admin/localities/:id` | `catalogs.updateLocality` | 🔒 |
+| GET | `/admin/portfolio-items` | `admin.listPortfolioItems` | 🔒 |
+| PATCH | `/admin/portfolio-items/:id/decision` | `admin.decidePortfolioItem` | 🔒 |
 | GET | `/admin/provider-categories` | `admin.listCategories` | 🔒 |
 | POST | `/admin/provider-categories` | `admin.createCategory` | 🔒 |
 | DELETE | `/admin/provider-categories/:id` | `admin.deleteCategory` | 🔒 |
@@ -3516,6 +3574,8 @@ configuration, and smoke checks.
 | POST | `/api/v1/provider/me/packages` | `provider-dashboard.createPackage` | 🔒 |
 | DELETE | `/api/v1/provider/me/packages/:id` | `provider-dashboard.deactivatePackage` | 🔒 |
 | PATCH | `/api/v1/provider/me/packages/:id` | `provider-dashboard.updatePackage` | 🔒 |
+| GET | `/api/v1/provider/me/portfolio` | `provider-dashboard.getPortfolio` | 🔒 |
+| PUT | `/api/v1/provider/me/portfolio` | `provider-dashboard.updatePortfolio` | 🔒 |
 | GET | `/api/v1/provider/me/profile` | `provider-dashboard.getProfile` | 🔒 |
 | PATCH | `/api/v1/provider/me/profile` | `provider-dashboard.updateProfile` | 🔒 |
 | PATCH | `/api/v1/provider/me/quote-offers/:id` | `provider-dashboard.updateQuoteOffer` | 🔒 |
@@ -3540,6 +3600,7 @@ configuration, and smoke checks.
 | DELETE | `/api/v1/providers/:id/favorite` | `marketplace.unfavoriteProvider` | 🔒 |
 | POST | `/api/v1/providers/:id/favorite` | `marketplace.favoriteProvider` | 🔒 |
 | GET | `/api/v1/providers/:id/packages` | `marketplace.findProviderPackages` |  |
+| GET | `/api/v1/providers/:id/portfolio` | `marketplace.findProviderPortfolio` | 🔒 |
 | POST | `/api/v1/providers/:id/quote-requests` | `marketplace.createQuoteRequest` | 🔒 |
 | GET | `/api/v1/providers/:id/reviews` | `marketplace.findProviderReviews` |  |
 | POST | `/api/v1/providers/:id/reviews` | `marketplace.createReview` | 🔒 |

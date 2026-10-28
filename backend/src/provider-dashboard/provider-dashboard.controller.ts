@@ -7,8 +7,10 @@ import {
   Param,
   Patch,
   Post,
+  Put,
   UseGuards,
 } from "@nestjs/common";
+import { UpdateProviderPortfolioDto } from "./dto/update-provider-portfolio.dto";
 import { AuthenticatedUser } from "../modules/identity/public/identity-session.types";
 import { CurrentUser } from "../modules/identity/public/current-user.decorator";
 import { JwtAuthGuard } from "../modules/identity/public/jwt-auth.guard";
@@ -78,6 +80,20 @@ export class ProviderDashboardController {
     @Body() dto: UpdateProviderProfileDto,
   ) {
     return this.providerDashboardService.updateProfile(currentUser, dto);
+  }
+
+  // B-16 (p37): «معرض الشغل», every photo with its review state, and his links.
+  @Get("portfolio")
+  getPortfolio(@CurrentUser() currentUser: AuthenticatedUser) {
+    return this.providerDashboardService.getPortfolio(currentUser);
+  }
+
+  @Put("portfolio")
+  updatePortfolio(
+    @CurrentUser() currentUser: AuthenticatedUser,
+    @Body() dto: UpdateProviderPortfolioDto,
+  ) {
+    return this.providerDashboardService.updatePortfolio(currentUser, dto);
   }
 
   // B-12: the account's claim of a listing and what came of it.

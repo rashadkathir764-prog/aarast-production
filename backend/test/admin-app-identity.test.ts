@@ -203,6 +203,8 @@ test("an administrator app session can create a provider profile without changin
     providerReviewEvent: { findFirst: async () => null },
     // Nor a featured placement (B-43).
     providerFeaturedPeriod: { findMany: async () => [] },
+    // Nor a portfolio photo (B-16).
+    portfolioItem: { findMany: async () => [] },
   };
   const prisma = {
     provider: { findUnique: async () => null },
@@ -337,6 +339,8 @@ test("a different administrator can review a provider application", async () => 
         },
         // No featured placement on record (B-43).
         providerFeaturedPeriod: { findMany: async () => [] },
+        // Nor a portfolio photo (B-16).
+        portfolioItem: { findMany: async () => [] },
         $queryRaw: async (query: any) => {
           const text = query.strings?.join("") ?? String(query);
           if (text.includes('FROM "User"')) {

@@ -21,6 +21,10 @@ import {
   type FinancePort,
 } from '../modules/finance/public/finance.port';
 import {
+  MEDIA_STORAGE_PORT,
+  type MediaStoragePort,
+} from '../modules/media/public/media-storage.port';
+import {
   type AdminAccountRow,
   IDENTITY_ADMIN_PORT,
   type IdentityAdminPort,
@@ -125,6 +129,8 @@ export class AdminOwners {
     readonly collaboration: CollaborationPermissionPort,
     // The success indicators count recorded costs (V1 checklist 4.21).
     @Inject(FINANCE_PORT) readonly finance: FinancePort,
+    // A refused portfolio photo's image is deleted (B-16, n07).
+    @Inject(MEDIA_STORAGE_PORT) readonly media: MediaStoragePort,
   ) {}
 
   async attachProviders(

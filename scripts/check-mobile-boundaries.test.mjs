@@ -1965,6 +1965,16 @@ const trackedOwnerApiContracts = [
           'QuoteRequest',
         ],
       },
+      // B-16 (p37, p35): his «معرض الشغل», its review states and his links.
+      {
+        uri: 'models/provider_portfolio.dart',
+        show: [
+          'PortfolioPhoto',
+          'ProviderPortfolio',
+          'portfolioSocialLabel',
+          'portfolioSocialNetworks',
+        ],
+      },
       {
         uri: 'models/provider_budget_match_intent.dart',
         show: ['ProviderBudgetMatchIntent', 'ProviderQuoteInitialContext'],

@@ -214,6 +214,13 @@ ProviderNoticeLook providerNoticeLook(
         AarastV3Color.brandAccentStrong,
         AarastV3Color.brandAccentSoft,
       );
+    // B-16: a portfolio photo approved or refused with its reason (p37).
+    case 'PORTFOLIO_REVIEWED':
+      return server(
+        LucideIcons.image,
+        AarastV3Color.primary,
+        AarastV3Color.primarySoft,
+      );
     case 'LISTING_PLAN_CHANGED':
       return server(
         LucideIcons.crown,

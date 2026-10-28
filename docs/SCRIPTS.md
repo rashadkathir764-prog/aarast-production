@@ -90,6 +90,7 @@
 | `backend` | `npm run smoke:phase3-context-transition` | `node scripts/smoke/run-isolated-smoke.js phase3-context-transition-smoke.ts` |
 | `backend` | `npm run smoke:phone-change` | `node scripts/smoke/run-isolated-smoke.js phone-change-smoke.js` |
 | `backend` | `npm run smoke:plan-partner` | `node scripts/smoke/run-isolated-smoke.js plan-partner-smoke.js` |
+| `backend` | `npm run smoke:portfolio` | `node scripts/smoke/run-isolated-smoke.js portfolio-smoke.ts` |
 | `backend` | `npm run smoke:private-chat-media` | `node scripts/smoke/run-isolated-smoke.js private-chat-media-smoke.js` |
 | `backend` | `npm run smoke:provider-claim` | `node scripts/smoke/run-isolated-smoke.js provider-claim-smoke.ts` |
 | `backend` | `npm run smoke:provider-dashboard` | `node scripts/smoke/run-isolated-smoke.js provider-dashboard-smoke.js` |

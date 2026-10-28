@@ -40,6 +40,8 @@ enum NotificationType {
   PROVIDER_CLAIM_DECIDED
   // B-43: his featured placement started, booked, ending, ended, stopped or cancelled.
   LISTING_PLAN_CHANGED
+  // B-16: a portfolio photo approved or refused (opens p37).
+  PORTFOLIO_REVIEWED
 }
 
 enum NotificationPriority {

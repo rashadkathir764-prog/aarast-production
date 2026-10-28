@@ -1,11 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:lucide_icons/lucide_icons.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../../core/experience_v3/aarast_v3.dart';
 import '../../../core/utils/app_clock.dart';
 import '../../../core/utils/currency_label.dart';
 import '../../../core/widgets/aarast_pressable.dart';
+import '../../../core/widgets/aarast_toast.dart';
 import '../models/marketplace_models.dart';
+import '../models/provider_portfolio.dart';
 import 'provider_board_view.dart' show providerServiceIcon;
 import 'provider_photo_gallery.dart';
 import 'provider_trust_signals.dart';
@@ -26,11 +29,16 @@ class ProviderDetailsView extends StatelessWidget {
     this.now,
     this.dataSaver = false,
     this.reviews = const [],
+    this.portfolio,
     super.key,
   });
 
   /// g02 «توفير البيانات»: the photos load only once opened.
   final bool dataSaver;
+
+  /// B-16: his approved «معرض الشغل» photos this reader may see (the women's
+  /// album a bride only) and his TikTok, Instagram and Facebook links.
+  final PublicPortfolio? portfolio;
 
   /// The published reviews, newest first, each with the provider's reply
   /// once published (B-09). f03 draws no reviews list; it is the place a
@@ -59,7 +67,8 @@ class ProviderDetailsView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final photos = _photoUrls(provider, services);
+    final photos = _photoUrls(provider, portfolio);
+    final links = portfolio?.socialLinks ?? const <String, String>{};
     final category = _categoryName(provider, services);
     final price = providerPriceRange(services);
     final priceUpdatedAt =
@@ -182,6 +191,23 @@ class ProviderDetailsView extends StatelessWidget {
                         ),
                     ],
                   ),
+                ),
+              ],
+              if (links.isNotEmpty) ...[
+                // Not drawn on f03 (recorded, D62): the links, words neutral (D55).
+                const JourneySectionTitle('روابط الشغل'),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    for (final network in portfolioSocialNetworks)
+                      if (links[network] != null)
+                        JourneyChip(
+                          key: ValueKey('provider-social-$network'),
+                          label: portfolioSocialLabel(network),
+                          onTap: () => _openLink(context, links[network]!),
+                        ),
+                  ],
                 ),
               ],
               if (reviews.any((review) => review.isPublished)) ...[
@@ -618,16 +644,25 @@ String? _categoryName(
   return null;
 }
 
-/// The cover first, then the services' photos, once each.
-List<String> _photoUrls(
-  MarketplaceProvider provider,
-  List<MarketplaceService> services,
-) {
+/// His TikTok, Instagram or Facebook page, outside the app (the server keeps
+/// only https profile links on those hosts, D62).
+Future<void> _openLink(BuildContext context, String link) async {
+  final uri = Uri.tryParse(link);
+  final opened =
+      uri != null && await launchUrl(uri, mode: LaunchMode.externalApplication);
+  if (!opened && context.mounted) {
+    AarastToast.showError(context, 'ما قدرنا نفتح الرابط.');
+  }
+}
+
+/// The cover first, then his approved portfolio photos (B-16), once each.
+/// Only reviewed photos reach customers (D62): the services' own photos,
+/// never reviewed, are not shown.
+List<String> _photoUrls(MarketplaceProvider provider, PublicPortfolio? portfolio) {
   final cover = provider.coverUrl?.trim();
   return <String>{
     if (cover != null && cover.isNotEmpty) cover,
-    for (final service in services)
-      for (final image in service.images)
-        if (image.imageUrl.trim().isNotEmpty) image.imageUrl.trim(),
+    for (final photo in portfolio?.items ?? const <PublicPortfolioPhoto>[])
+      if (photo.imageUrl.trim().isNotEmpty) photo.imageUrl.trim(),
   }.toList();
 }

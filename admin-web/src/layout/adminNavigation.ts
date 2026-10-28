@@ -2,6 +2,7 @@ import {
   BarChart3,
   BookOpen,
   Crown,
+  EyeOff,
   Flag,
   History,
   Inbox,
@@ -187,6 +188,14 @@ export const adminNavigationGroups: AdminNavigationGroup[] = [
         permission: AdminPermission.REVIEWS_READ,
         icon: Star,
         isActive: nestedRoute('/reviews'),
+      },
+      // n07 (B-16): portfolio photos waiting for review.
+      {
+        route: '/photos',
+        label: 'صور تحتاج مراجعة',
+        permission: AdminPermission.PROVIDERS_READ,
+        icon: EyeOff,
+        isActive: nestedRoute('/photos'),
       },
       // a12 (B-40): read only; «الخلافات» wait for B-22.
       {

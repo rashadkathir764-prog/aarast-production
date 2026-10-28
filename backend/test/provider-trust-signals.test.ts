@@ -45,6 +45,7 @@ function verificationPrisma(status: ProviderStatus, ownerId = "provider-owner") 
     },
     // No featured placement on record (B-43).
     providerFeaturedPeriod: { findMany: async () => [] },
+    portfolioItem: { findMany: async () => [] },
     provider: {
       findUnique: async () => ({ userId: ownerId, status }),
       update: async ({ data }: any) => {

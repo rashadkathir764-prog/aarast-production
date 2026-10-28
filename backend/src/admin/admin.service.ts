@@ -100,6 +100,11 @@ import { AdminConversationReportQueryDto, AdminConversationReportStatusDto } fro
 import { authorizeAdminUserStatusChange } from './admin-user-status';
 import { adminBookingFilter, toAdminBookingResponse } from './admin-bookings';
 import type { AdminBookingQueryDto } from './dto/admin-booking.dto';
+import { AdminPortfolioReview } from './admin-portfolio-review';
+import type {
+  AdminPortfolioDecisionDto,
+  AdminPortfolioQueryDto,
+} from './dto/admin-portfolio.dto';
 
 interface Pagination {
   page: number;
@@ -123,6 +128,22 @@ export class AdminService {
     this.mutations = new AdminMutationExecutor(prisma, owners);
     this.claims = new AdminProviderClaims({ prisma, owners, notifications });
     this.featured = new AdminFeaturedPlacements({ prisma, owners, notifications });
+    this.portfolio = new AdminPortfolioReview({ prisma, owners, notifications });
+  }
+
+  private readonly portfolio: AdminPortfolioReview;
+
+  // n07 (B-16): portfolio photos waiting for review, oldest first.
+  async listPortfolioItems(query: AdminPortfolioQueryDto) {
+    return this.portfolio.list(query, this.parsePagination(query.page, query.limit));
+  }
+
+  async decidePortfolioItem(
+    currentUser: AuthenticatedUser,
+    id: string,
+    dto: AdminPortfolioDecisionDto,
+  ) {
+    return this.portfolio.decide(currentUser, id, dto);
   }
 
   // B-43: featured placement, recorded by hand after the provider paid

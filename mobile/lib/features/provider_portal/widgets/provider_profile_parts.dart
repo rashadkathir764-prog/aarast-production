@@ -12,9 +12,12 @@ import '../../../core/utils/currency_label.dart';
 import '../../marketplace/marketplace_api.dart'
     show
         MarketplaceService,
+        ProviderDashboardProfile,
         ProviderPackage,
         ProviderReview,
-        ProviderReviewReply;
+        ProviderReviewReply,
+        portfolioSocialLabel,
+        portfolioSocialNetworks;
 import 'provider_request_parts.dart' show providerGroupedAmount;
 
 /// «قبل أسبوعين»: how long ago, in the words p36 and p35 use.
@@ -88,10 +91,26 @@ String providerHoursLabel(int hours) {
 String providerRatingLabel(double average, int count) =>
     '${average.toStringAsFixed(1)} · ${arabicCount(count, one: 'تقييم واحد', two: 'تقييمين', few: 'تقييمات', many: 'تقييم')}';
 
-/// The photos customers see on his page: every service image (F14 has no
-/// portfolio of its own).
-int providerPhotoCount(List<MarketplaceService> services) =>
-    services.fold(0, (sum, service) => sum + service.images.length);
+/// p35 «معرض الشغل» (B-16): «18 صورة · تيك توك مربوط», the photos he keeps
+/// (refused ones aside) and the networks he linked.
+String providerGalleryLine(ProviderDashboardProfile profile) {
+  final photos = profile.portfolioPhotos;
+  final parts = [
+    photos == 0
+        ? 'ما فيه صور لسا'
+        : arabicCount(
+            photos,
+            one: 'صورة وحدة',
+            two: 'صورتين',
+            few: 'صور',
+            many: 'صورة',
+          ),
+    for (final network in portfolioSocialNetworks)
+      if (profile.socialNetworks.contains(network))
+        '${portfolioSocialLabel(network)} مربوط',
+  ];
+  return parts.join(' · ');
+}
 
 /// «3 خدمات · باقتين · من 350,000»: what he offers and the lowest price
 /// among the active ones; what to add first when he has none.

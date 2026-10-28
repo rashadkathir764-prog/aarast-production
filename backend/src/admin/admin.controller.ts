@@ -11,6 +11,10 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { AdminBookingQueryDto } from './dto/admin-booking.dto';
+import {
+  AdminPortfolioDecisionDto,
+  AdminPortfolioQueryDto,
+} from './dto/admin-portfolio.dto';
 import { AuthenticatedUser } from '../modules/identity/public/identity-session.types';
 import { CurrentUser } from '../modules/identity/public/current-user.decorator';
 import { JwtSessionGuard } from '../modules/identity/public/jwt-session.guard';
@@ -274,6 +278,24 @@ export class AdminController {
   @RequireAdminPermission(AdminPermission.REVIEWS_READ)
   listReviews(@Query() query: AdminReviewQueryDto) {
     return this.adminService.listReviews(query);
+  }
+
+  // n07 (B-16, D62): portfolio photos for review, oldest first. Everyone who
+  // reads providers reads the queue; the moderation team decides.
+  @Get('portfolio-items')
+  @RequireAdminPermission(AdminPermission.PROVIDERS_READ)
+  listPortfolioItems(@Query() query: AdminPortfolioQueryDto) {
+    return this.adminService.listPortfolioItems(query);
+  }
+
+  @Patch('portfolio-items/:id/decision')
+  @RequireAdminPermission(AdminPermission.REVIEWS_WRITE)
+  decidePortfolioItem(
+    @CurrentUser() currentUser: AuthenticatedUser,
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: AdminPortfolioDecisionDto,
+  ) {
+    return this.adminService.decidePortfolioItem(currentUser, id, dto);
   }
 
   // a12 (B-40): bookings, read only. No amount, offer or payment.

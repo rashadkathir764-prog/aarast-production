@@ -222,6 +222,7 @@ function createProviderDashboard(status: ProviderStatus) {
     providerReviewEvent: { findFirst: async () => null },
     // Nor a featured placement (B-43).
     providerFeaturedPeriod: { findMany: async () => [] },
+    portfolioItem: { findMany: async () => [] },
     providerService: {
       // The one service the provider joined with (B-10).
       findMany: async () => [joiningService()],

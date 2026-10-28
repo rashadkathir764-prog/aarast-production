@@ -19,6 +19,7 @@ import { MessagingRealtimePublicModule } from '../../messaging/public/messaging-
 import { NotificationsAdminPublicModule } from '../../notifications/public/notifications-admin-public.module';
 import { NotificationsPublicModule } from '../../notifications/public/notifications-public.module';
 import { PlanReadPublicModule } from '../../planning/public/plan-read-public.module';
+import { MediaStoragePublicModule } from '../../media/public/media-storage-public.module';
 
 @Module({
   imports: [
@@ -39,6 +40,7 @@ import { PlanReadPublicModule } from '../../planning/public/plan-read-public.mod
     PlanReadPublicModule,
     CollaborationPermissionPublicModule,
     FinancePublicModule,
+    MediaStoragePublicModule,
   ],
   providers: [AdminOwners, AdminService, AdminAuditService],
   exports: [AdminService, AdminAuditService],

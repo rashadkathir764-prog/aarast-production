@@ -1,6 +1,8 @@
 import type {
   Booking,
   BookingStatus,
+  PortfolioItem,
+  PortfolioItemStatus,
   Prisma,
   Provider,
   QuoteRequest,
@@ -83,6 +85,18 @@ export interface AdminPage {
 export interface AdminListing<T> {
   total: number;
   items: T[];
+}
+
+/** n07 (B-16): a portfolio photo with the provider it belongs to. */
+export type AdminPortfolioRow = PortfolioItem & {
+  provider: Pick<Provider, 'id' | 'businessName' | 'userId' | 'status'>;
+};
+
+export interface AdminPortfolioDecision {
+  status: 'APPROVED' | 'REJECTED';
+  reason: string | null;
+  reviewedAt: Date;
+  reviewedById: string;
 }
 
 /**
@@ -353,6 +367,23 @@ export interface MarketplaceAdminPort {
     page: AdminPage,
   ): Promise<AdminListing<AdminBookingRow>>;
   getBooking(client: Prisma.TransactionClient, id: string): Promise<AdminBookingRow | null>;
+  /** n07 (B-16): portfolio photos of one status, oldest first. */
+  listPortfolioForReview(
+    client: Prisma.TransactionClient,
+    status: PortfolioItemStatus,
+    page: AdminPage,
+  ): Promise<AdminListing<AdminPortfolioRow>>;
+  /** Locks one photo for its decision; null when there is none. */
+  lockPortfolioItemInTransaction(
+    tx: Prisma.TransactionClient,
+    id: string,
+  ): Promise<AdminPortfolioRow | null>;
+  /** Decides a PENDING photo; null when it was decided or removed meanwhile. */
+  decidePortfolioItemInTransaction(
+    tx: Prisma.TransactionClient,
+    id: string,
+    decision: AdminPortfolioDecision,
+  ): Promise<AdminPortfolioRow | null>;
   /** Every review step of the provider, oldest first (B-01, B-02). */
   listProviderReviewEvents(
     client: Prisma.TransactionClient,

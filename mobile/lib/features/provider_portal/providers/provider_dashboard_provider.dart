@@ -16,6 +16,7 @@ import '../../marketplace/marketplace_api.dart'
         ProviderDashboardSummary,
         ProviderLedger,
         ProviderPackage,
+        ProviderPortfolio,
         ProviderResponsiveness,
         ProviderReview,
         QuoteRequest,
@@ -24,6 +25,21 @@ import '../../marketplace/marketplace_api.dart'
 import '../data/provider_offer_queue.dart';
 
 export '../data/provider_offer_queue.dart' show ProviderQueuedOffer;
+
+/// The server's portfolio refusals in his words (B-16).
+String portfolioErrorMessage(ApiException error) =>
+    switch (error.serverCode) {
+      'PORTFOLIO_SOCIAL_LINK_INVALID' =>
+        'الرابط لازم يكون رابط حسابك في تيك توك أو إنستغرام أو فيسبوك، ويبدأ بـ https.',
+      'PORTFOLIO_TOO_MANY_ITEMS' => 'المعرض ياخذ 60 صورة بالكثير.',
+      'PORTFOLIO_WOMEN_PHOTO_NEEDS_NO_FACES' =>
+        'صور «حفلات النساء» لازم تكون بدون وجوه.',
+      'PORTFOLIO_WOMEN_ALBUM_NOT_SERVED' =>
+        'ألبوم «حفلات النساء» لمن عنده قسم يخدم العرائس.',
+      'PORTFOLIO_CHANGED' => 'معرضك تغيّر من جهاز ثاني، حدّث وجرب مرة ثانية.',
+      'PROVIDER_NOT_ACTIVE' => 'الصور تنضاف بعد ما ينقبل ملفك.',
+      _ => marketplaceErrorMessage(error.message),
+    };
 
 /// What sending an offer came to.
 enum ProviderOfferSend {
@@ -691,6 +707,7 @@ class ProviderDashboardProvider extends ChangeNotifier
     _blockedDates = const [];
     _responsiveness = null;
     _droppedOffers = const [];
+    _portfolio = null;
   }
 
   /// Sends the joining (p07) with the service he joins with and its price
@@ -818,58 +835,55 @@ class ProviderDashboardProvider extends ChangeNotifier
     }
   }
 
-  Future<bool> addServiceImage({
-    required String serviceId,
-    required String imageUrl,
-    String? altText,
-  }) async {
-    _errorMessage = null;
+  /// p37 (B-16): his «معرض الشغل», each photo with its review state, and
+  /// his links; null until read.
+  ProviderPortfolio? get portfolio => _portfolio;
+  ProviderPortfolio? _portfolio;
+
+  /// The last portfolio read or save failed, in words for him.
+  String? get portfolioError => _portfolioError;
+  String? _portfolioError;
+
+  Future<void> loadPortfolio() async {
+    _portfolioError = null;
     try {
-      final image = await _api.addServiceImage(
-        serviceId: serviceId,
-        imageUrl: imageUrl,
-        altText: altText,
-      );
-      _services = _services
-          .map(
-            (service) => service.id == serviceId
-                ? service.copyWith(images: [...service.images, image])
-                : service,
-          )
-          .toList(growable: false);
-      notifyListeners();
-      return true;
+      _portfolio = await _api.getPortfolio();
     } on ApiException catch (error) {
-      _errorMessage = marketplaceErrorMessage(error.message);
+      _portfolioError = portfolioErrorMessage(error);
+    } catch (_) {
+      _portfolioError = 'ما قدرنا نقرأ معرضك، جرب مرة ثانية.';
+    } finally {
       notifyListeners();
-      return false;
     }
   }
 
-  Future<bool> deleteServiceImage({
-    required String serviceId,
-    required String imageId,
+  /// Sends the whole portfolio in its order (`{ key, album, noFaces }` per
+  /// photo); new photos wait for review. [socialLinks] replaces his links
+  /// when given. p35's line is read again after a save.
+  Future<bool> savePortfolio({
+    required List<Map<String, Object?>> items,
+    Map<String, String>? socialLinks,
   }) async {
-    _errorMessage = null;
+    _portfolioError = null;
     try {
-      await _api.deleteServiceImage(serviceId: serviceId, imageId: imageId);
-      _services = _services
-          .map(
-            (service) => service.id == serviceId
-                ? service.copyWith(
-                    images: service.images
-                        .where((image) => image.id != imageId)
-                        .toList(growable: false),
-                  )
-                : service,
-          )
-          .toList(growable: false);
-      notifyListeners();
+      _portfolio = await _api.savePortfolio(
+        items: items,
+        socialLinks: socialLinks,
+      );
+      try {
+        _profile = await _api.getProfile();
+      } catch (_) {
+        // The saved portfolio shows; p35's line catches up on the next read.
+      }
       return true;
     } on ApiException catch (error) {
-      _errorMessage = marketplaceErrorMessage(error.message);
-      notifyListeners();
+      _portfolioError = portfolioErrorMessage(error);
       return false;
+    } catch (_) {
+      _portfolioError = 'ما انحفظ معرضك، جرب مرة ثانية.';
+      return false;
+    } finally {
+      notifyListeners();
     }
   }
 

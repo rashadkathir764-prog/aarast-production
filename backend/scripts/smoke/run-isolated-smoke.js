@@ -437,6 +437,8 @@ async function configureBucket(client, identity) {
     'provider-logo',
     'provider-cover',
     'service-image',
+    // B-16: listed to customers only after review; a refused one is deleted.
+    'provider-portfolio',
   ];
   await client.send(new PutBucketPolicyCommand({
     Bucket: identity.bucketName,

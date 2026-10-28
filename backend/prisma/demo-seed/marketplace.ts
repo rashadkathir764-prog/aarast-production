@@ -5,6 +5,7 @@ import {
   ConversationEventType,
   ConversationScope,
   PlanProviderLinkStatus,
+  PortfolioItemStatus,
   Prisma,
   PrismaClient,
   ProviderReviewEventKind,
@@ -90,7 +91,70 @@ export async function seedMarketplace(prisma: PrismaClient): Promise<void> {
   for (const request of REQUESTS) await seedRequest(prisma, request, sanaa);
 
   await seedStudioReview(prisma);
+  await seedStudioPortfolio(prisma);
   await seedFavorites(prisma);
+}
+
+/**
+ * B-16 (D62): the studio's «معرض الشغل» (p37, f03, n07): three approved
+ * photos (one in «حفلات النساء», shown to brides only), one waiting for
+ * review and one refused with its reason; his TikTok link. Rewritten whole on
+ * every run. The demo has no stored image objects: the screens show their
+ * placeholder tiles.
+ */
+async function seedStudioPortfolio(prisma: PrismaClient): Promise<void> {
+  const ownerId = userId('providerStudio');
+  const reviewer = userId('adminNadia');
+  const base = (process.env.AARAST_MEDIA_PUBLIC_BASE_URL?.trim() || 'https://media.example.invalid').replace(/\/+$/, '');
+  const photos: ReadonlyArray<{
+    key: string;
+    album: string | null;
+    noFaces: boolean;
+    status: PortfolioItemStatus;
+    reason?: string;
+    daysAgo: number;
+  }> = [
+    { key: 'zaffa-1', album: 'الزفة', noFaces: false, status: PortfolioItemStatus.APPROVED, daysAgo: 20 },
+    { key: 'zaffa-2', album: 'الزفة', noFaces: false, status: PortfolioItemStatus.APPROVED, daysAgo: 20 },
+    { key: 'women-1', album: 'حفلات النساء', noFaces: true, status: PortfolioItemStatus.APPROVED, daysAgo: 12 },
+    { key: 'drone-1', album: 'الدرون', noFaces: false, status: PortfolioItemStatus.PENDING, daysAgo: 0 },
+    {
+      key: 'women-2',
+      album: 'حفلات النساء',
+      noFaces: true,
+      status: PortfolioItemStatus.REJECTED,
+      reason: 'فيها وجه واضح في الخلف. صوّر الكوشة أو الفستان من الخلف.',
+      daysAgo: 3,
+    },
+  ];
+  await prisma.portfolioItem.deleteMany({ where: { providerId: STUDIO_ID } });
+  for (const [index, photo] of photos.entries()) {
+    const id = demoUuid(`portfolio:studio:${photo.key}`);
+    const mediaKey = `provider-portfolio/${ownerId}/${id}.jpg`;
+    const createdAt = inDays(-photo.daysAgo);
+    const decided = photo.status !== PortfolioItemStatus.PENDING;
+    await prisma.portfolioItem.create({
+      data: {
+        id,
+        providerId: STUDIO_ID,
+        mediaKey,
+        imageUrl: `${base}/${mediaKey}`,
+        album: photo.album,
+        forWomen: photo.album === 'حفلات النساء',
+        noFaces: photo.noFaces,
+        status: photo.status,
+        rejectionReason: photo.reason ?? null,
+        reviewedAt: decided ? createdAt : null,
+        reviewedById: decided ? reviewer : null,
+        sortOrder: index,
+        createdAt,
+      },
+    });
+  }
+  await prisma.provider.update({
+    where: { id: STUDIO_ID },
+    data: { socialLinks: { tiktok: 'https://www.tiktok.com/@daw.sanaa' } },
+  });
 }
 
 async function seedProvider(

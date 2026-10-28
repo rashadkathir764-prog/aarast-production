@@ -150,6 +150,7 @@ class _ProviderDetailsScreenState extends State<ProviderDetailsScreen> {
             services: services,
             packages: state.packagesFor(widget.providerId),
             reviews: state.reviewsFor(widget.providerId),
+            portfolio: state.portfolioFor(widget.providerId),
             onBack: () {
               if (context.canPop()) context.pop();
             },

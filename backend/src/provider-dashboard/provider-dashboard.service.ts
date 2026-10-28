@@ -145,6 +145,10 @@ import {
 } from './provider-mutation-locks';
 import * as dashboardStore from '../modules/marketplace/infrastructure/provider-dashboard.repository';
 import * as bookingStore from '../modules/marketplace/infrastructure/marketplace-booking.repository';
+import { UpdateProviderPortfolioDto } from './dto/update-provider-portfolio.dto';
+import { ProviderPortfolio } from './provider-portfolio';
+import { countProviderPortfolio } from '../modules/marketplace/infrastructure/portfolio.repository';
+import { readSocialLinks } from '../modules/marketplace/public/provider-portfolio';
 
 type ProviderProfile = Provider & {
   city: City;
@@ -155,6 +159,8 @@ type ProviderProfile = Provider & {
     | null;
   /** His featured placement now, else the next one booked (B-43). */
   featuredPeriod: FeaturedWindow | null;
+  /** B-16: his photos (refused ones aside) and those waiting for review. */
+  portfolio: { photos: number; pending: number; rejected: number };
 };
 type ProviderDashboardServiceRecord = ProviderService & {
   category: ProviderCategory;
@@ -194,7 +200,21 @@ export class ProviderDashboardService {
     @Inject(PROVIDER_ACCOUNT_PORT)
     private readonly providerAccount: ProviderAccountPort,
     private readonly relations: MarketplaceRelationsService,
-  ) {}
+  ) {
+    this.portfolio = new ProviderPortfolio({ prisma, mediaStorage, catalog });
+  }
+
+  private readonly portfolio: ProviderPortfolio;
+
+  /** p37 (B-16): his photos with their review state, and his links. */
+  async getPortfolio(currentUser: AuthenticatedUser) {
+    return this.portfolio.get(await this.findOwnedProviderOrThrow(currentUser.id));
+  }
+
+  /** p37 (B-16, D62): the whole portfolio in its order; new photos wait for review. */
+  async updatePortfolio(currentUser: AuthenticatedUser, dto: UpdateProviderPortfolioDto) {
+    return this.portfolio.replace(currentUser, dto);
+  }
 
   async apply(currentUser: AuthenticatedUser, dto: ApplyProviderDto) {
     const categoryIds = [...new Set(dto.categoryIds ?? [])];
@@ -1881,12 +1901,13 @@ export class ProviderDashboardService {
     client: Prisma.TransactionClient,
     provider: Provider,
   ): Promise<ProviderProfile> {
-    const [[profile], latestDecision, featuredPeriod] = await Promise.all([
+    const [[profile], latestDecision, featuredPeriod, portfolio] = await Promise.all([
       this.relations.attachProviderCatalog(client, [provider]),
       findLatestProviderDecision(client, provider.id),
       findProviderFeaturedView(client, provider.id, new Date()),
+      countProviderPortfolio(client, provider.id),
     ]);
-    return { ...profile, latestDecision, featuredPeriod };
+    return { ...profile, latestDecision, featuredPeriod, portfolio };
   }
 
   private async withServiceCatalog<
@@ -2048,6 +2069,12 @@ export class ProviderDashboardService {
       ratingCount: provider.ratingCount,
       // B-20: confirmed bookings he takes on one day.
       dailyBookingCapacity: provider.dailyBookingCapacity,
+      // B-16 (p35 «معرض الشغل»): his photos (refused ones aside), those
+      // waiting for review, and the networks he linked.
+      portfolio: {
+        ...provider.portfolio,
+        socialNetworks: Object.keys(readSocialLinks(provider.socialLinks)),
+      },
       createdAt: provider.createdAt,
       updatedAt: provider.updatedAt,
     };

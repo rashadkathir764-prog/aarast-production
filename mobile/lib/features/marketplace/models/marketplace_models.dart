@@ -972,12 +972,18 @@ class ProviderDashboardProfile {
     this.featuredStartsAt,
     this.featuredEndsAt,
     this.dailyBookingCapacity = 1,
+    this.portfolioPhotos = 0,
+    this.portfolioPending = 0,
+    this.socialNetworks = const [],
   });
 
   factory ProviderDashboardProfile.fromJson(Map<String, dynamic> json) {
     final featured = json['featured'] is Map
         ? Map<String, dynamic>.from(json['featured'] as Map)
         : null;
+    final portfolio = json['portfolio'] is Map
+        ? Map<String, dynamic>.from(json['portfolio'] as Map)
+        : const <String, dynamic>{};
     return ProviderDashboardProfile(
       id: json['id'].toString(),
       businessName: json['businessName']?.toString() ?? '',
@@ -1021,6 +1027,14 @@ class ProviderDashboardProfile {
       dailyBookingCapacity: _intOrZero(json['dailyBookingCapacity']) < 1
           ? 1
           : _intOrZero(json['dailyBookingCapacity']),
+      portfolioPhotos: _intOrZero(portfolio['photos']),
+      portfolioPending: _intOrZero(portfolio['pending']),
+      socialNetworks: [
+        for (final network in (portfolio['socialNetworks'] is List
+            ? portfolio['socialNetworks'] as List
+            : const []))
+          network.toString(),
+      ],
     );
   }
 
@@ -1081,6 +1095,13 @@ class ProviderDashboardProfile {
   /// B-20: the weddings he takes on one day (1 to 20); a day with that many
   /// confirmed bookings is full.
   final int dailyBookingCapacity;
+
+  /// B-16 (p35 «معرض الشغل»): his portfolio photos, refused ones aside;
+  /// those still waiting for review; the networks he linked
+  /// (`tiktok`, `instagram`, `facebook`).
+  final int portfolioPhotos;
+  final int portfolioPending;
+  final List<String> socialNetworks;
 }
 
 class ProviderDashboardSummary {

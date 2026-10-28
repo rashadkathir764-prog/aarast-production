@@ -83,6 +83,17 @@ export class ProvidersController {
     return this.marketplaceService.findProviderReviews(id);
   }
 
+  // B-16 (f03): approved photos only; the women's album for a bride only, so
+  // the reader must be known.
+  @Get(":id/portfolio")
+  @UseGuards(JwtAuthGuard)
+  findProviderPortfolio(
+    @CurrentUser() currentUser: AuthenticatedUser,
+    @Param("id") id: string,
+  ) {
+    return this.marketplaceService.findProviderPortfolio(currentUser, id);
+  }
+
   @Post(":id/favorite")
   @UseGuards(JwtAuthGuard)
   favoriteProvider(

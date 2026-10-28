@@ -6,7 +6,6 @@ import '../../../core/experience_v3/aarast_v3.dart';
 import '../../../core/routing/app_router.dart';
 import '../../../core/utils/arabic_count.dart';
 import '../providers/provider_dashboard_provider.dart';
-import 'provider_profile_parts.dart';
 
 /// p14 «ما وصلك طلب لسا»: the home before his first request. It lists what
 /// still makes his profile complete for customers, each with its place, and
@@ -30,7 +29,7 @@ class ProviderFirstSteps extends StatelessWidget {
   Widget build(BuildContext context) {
     final profile = dashboard.profile;
     final hasService = dashboard.services.any((service) => service.isActive);
-    final photos = providerPhotoCount(dashboard.services);
+    final photos = profile?.portfolioPhotos ?? 0;
     final steps = <Widget>[
       if (!hasService)
         _Step(

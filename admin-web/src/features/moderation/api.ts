@@ -78,6 +78,37 @@ export function getBooking(id: string) {
   return apiRequest<AdminBooking>(`/admin/bookings/${id}`);
 }
 
+/** n07 (B-16): a portfolio photo waiting for review, or decided. */
+export type PortfolioPhoto = {
+  id: string;
+  /** Null once refused: the image is deleted. */
+  imageUrl: string | null;
+  album: string | null;
+  /** «حفلات النساء»: brides only, and only without faces. */
+  forWomen: boolean;
+  noFaces: boolean;
+  status: 'PENDING' | 'APPROVED' | 'REJECTED';
+  rejectionReason: string | null;
+  reviewedAt: string | null;
+  createdAt: string;
+  provider: { id: string; businessName: string; status: string };
+};
+
+export function getPortfolioPhotos(params: { status?: string; page?: number; limit?: number } = {}) {
+  return apiRequest<Paginated<PortfolioPhoto>>(`/admin/portfolio-items${toQuery(params)}`);
+}
+
+/** «سليمة» approves (a women's photo with the no-faces check); «شِل» refuses with its reason. */
+export function decidePortfolioPhoto(
+  id: string,
+  decision: { decision: 'APPROVE'; noFacesChecked?: boolean } | { decision: 'REJECT'; reason: string },
+) {
+  return apiRequest<PortfolioPhoto>(`/admin/portfolio-items/${id}/decision`, {
+    method: 'PATCH',
+    body: decision,
+  });
+}
+
 type QueryParams = {
   status?: string;
   providerId?: string;

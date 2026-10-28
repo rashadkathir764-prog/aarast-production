@@ -446,6 +446,57 @@
   gap: 6px;
 }
 
+/* n07: photo cards, four to a row */
+.desk-photos {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 16px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.desk-photo {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 12px;
+  border-radius: 18px;
+  background: var(--d-surface);
+}
+
+.desk-photo__image {
+  width: 100%;
+  aspect-ratio: 10 / 7;
+  border-radius: 14px;
+  object-fit: cover;
+  background: var(--d-line);
+}
+
+.desk-photo__image--empty {
+  display: grid;
+  place-items: center;
+  color: var(--d-faint);
+}
+
+.desk-photo strong {
+  margin-top: 6px;
+  font-size: 15px;
+}
+
+.desk-photo small {
+  color: var(--d-muted);
+  font-size: 13px;
+}
+
+.desk-photo small.desk-photo__flag {
+  color: var(--d-coral);
+}
+
+.desk-photo .desk-actions {
+  margin-top: 4px;
+}
+
 /* -------------------------------------------------------- panels, stats */
 
 .desk-panel {

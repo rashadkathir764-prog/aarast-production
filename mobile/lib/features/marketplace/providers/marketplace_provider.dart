@@ -8,6 +8,7 @@ import '../../../core/session/session_scoped_change_notifier.dart';
 import '../data/marketplace_api.dart';
 import '../models/marketplace_models.dart';
 import '../models/provider_budget_match_intent.dart';
+import '../models/provider_portfolio.dart';
 
 part 'marketplace_provider.directory.dart';
 part 'marketplace_provider.details.dart';
@@ -28,6 +29,10 @@ class ProviderMarketplaceProvider extends _MarketplaceProviderCore
   List<ProviderPackage> packagesFor(String id) => _packages[id] ?? const [];
 
   List<ProviderReview> reviewsFor(String id) => _reviews[id] ?? const [];
+
+  /// f03 (B-16): his approved photos this reader may see, and his links;
+  /// null until read (a signed-in reader only).
+  PublicPortfolio? portfolioFor(String id) => _portfolios[id];
 
   bool isProviderQuoteContextLoading(String providerId) =>
       _providerQuoteContextsLoading.contains(providerId);
@@ -76,6 +81,7 @@ abstract class _MarketplaceProviderCore extends ChangeNotifier
   final Map<String, List<MarketplaceService>> _services = {};
   final Map<String, List<ProviderPackage>> _packages = {};
   final Map<String, List<ProviderReview>> _reviews = {};
+  final Map<String, PublicPortfolio> _portfolios = {};
   final Map<String, String> _detailsErrors = {};
   final Map<String, String> _servicesErrors = {};
   final Map<String, String> _packagesErrors = {};

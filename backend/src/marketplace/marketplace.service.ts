@@ -70,6 +70,11 @@ import {
 } from "./marketplace.presenter";
 import { YemenAdministrativePresenter } from "./yemen-administrative.presenter";
 import { acceptQuoteOfferInTransaction } from "./quote-offer-acceptance";
+import { listApprovedPortfolio } from "../modules/marketplace/infrastructure/portfolio.repository";
+import {
+  isPortfolioItemVisibleTo,
+  readSocialLinks,
+} from "../modules/marketplace/public/provider-portfolio";
 import {
   FINANCE_PORT,
   type FinancePort,
@@ -278,6 +283,27 @@ export class MarketplaceService {
     return packages.map((providerPackage) =>
       MarketplacePresenter.toPackageResponse(providerPackage),
     );
+  }
+
+  /**
+   * f03 (B-16, D62): the provider's approved photos and his links. The women's
+   * album «حفلات النساء» is read by a bride only (her account's persona).
+   */
+  async findProviderPortfolio(currentUser: AuthenticatedUser, providerId: string) {
+    const provider = await this.findActiveProviderOrThrow(providerId);
+    const readerIsBride = currentUser.persona === "BRIDE";
+    const items = (await listApprovedPortfolio(this.prisma, provider.id)).filter((item) =>
+      isPortfolioItemVisibleTo(item, readerIsBride),
+    );
+    return {
+      items: items.map((item) => ({
+        id: item.id,
+        imageUrl: item.imageUrl,
+        album: item.album,
+        forWomen: item.forWomen,
+      })),
+      socialLinks: readSocialLinks(provider.socialLinks),
+    };
   }
 
   async findProviderReviews(providerId: string) {

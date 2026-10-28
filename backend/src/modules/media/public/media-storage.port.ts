@@ -9,7 +9,10 @@ export type MediaPurpose =
   | 'provider-cover'
   | 'service-image'
   | 'chat-image'
-  | 'cost-receipt';
+  | 'cost-receipt'
+  // B-16 (D62): public like service images; a photo is listed to customers
+  // only after review, and a refused one is deleted.
+  | 'provider-portfolio';
 
 /**
  * Purposes kept off the public CDN: read only through a short-lived signed
@@ -30,7 +33,8 @@ export interface MediaConsumptionTarget {
     | 'PROVIDER_COVER'
     | 'SERVICE_IMAGE'
     | 'CHAT_ATTACHMENT'
-    | 'COST_RECEIPT';
+    | 'COST_RECEIPT'
+    | 'PORTFOLIO_ITEM';
   id: string;
 }
 

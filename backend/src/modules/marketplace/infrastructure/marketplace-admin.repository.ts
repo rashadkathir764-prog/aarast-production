@@ -10,6 +10,9 @@ import {
 } from '@prisma/client';
 import type { CreateNotificationInput } from '../../notifications/public/notifications.port';
 import * as bookingStore from './marketplace-booking.repository';
+import * as portfolioStore from './portfolio.repository';
+import type { PortfolioItemStatus } from '@prisma/client';
+import type { AdminPortfolioDecision } from '../public/marketplace-admin.port';
 import {
   type BookingLifecycle,
   bookingLifecycle,
@@ -704,6 +707,27 @@ export class MarketplaceAdminRepository implements MarketplaceAdminPort {
       },
     });
     return booking ? withLifecycle(booking) : null;
+  }
+
+  // n07 (B-16): the portfolio photos and their decisions.
+  async listPortfolioForReview(
+    client: Prisma.TransactionClient,
+    status: PortfolioItemStatus,
+    page: { skip: number; take: number },
+  ) {
+    return portfolioStore.listPortfolioForReview(client, status, page);
+  }
+
+  async lockPortfolioItemInTransaction(tx: Prisma.TransactionClient, id: string) {
+    return portfolioStore.lockPortfolioItem(tx, id);
+  }
+
+  async decidePortfolioItemInTransaction(
+    tx: Prisma.TransactionClient,
+    id: string,
+    decision: AdminPortfolioDecision,
+  ) {
+    return portfolioStore.decidePortfolioItem(tx, id, decision);
   }
 
   async listReviews(

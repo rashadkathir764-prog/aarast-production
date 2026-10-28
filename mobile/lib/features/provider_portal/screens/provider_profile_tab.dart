@@ -91,7 +91,6 @@ class _ProviderProfileTabState extends State<ProviderProfileTab> {
         : null;
     final verifiedAt = profile.verifiedAt;
     final city = profile.city?.nameAr.trim() ?? '';
-    final photos = providerPhotoCount(dashboard.services);
     final published = dashboard.reviews.where((r) => r.isPublished).length;
     final tags = [
       if (verifiedAt != null)
@@ -174,15 +173,7 @@ class _ProviderProfileTabState extends State<ProviderProfileTab> {
               color: AarastV3Color.primary,
               soft: AarastV3Color.primarySoft,
               title: 'معرض الشغل',
-              subtitle: photos == 0
-                  ? 'ما فيه صور لسا'
-                  : arabicCount(
-                      photos,
-                      one: 'صورة وحدة',
-                      two: 'صورتين',
-                      few: 'صور',
-                      many: 'صورة',
-                    ),
+              subtitle: providerGalleryLine(profile),
               onTap: () => context.push(AppRouter.providerGallery),
             ),
           ],

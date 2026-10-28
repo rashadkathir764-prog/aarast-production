@@ -61,6 +61,16 @@ describe('admin navigation', () => {
     expect(itemFor('/providers').isActive('/featured')).toBe(false);
   });
 
+  it('puts the photos page (n07) under the moderation, as drawn', () => {
+    expect(resolveAdminLocation('/photos')).toMatchObject({
+      group: 'الرقابة',
+      title: 'صور تحتاج مراجعة',
+      route: '/photos',
+      isDetail: false,
+    });
+    expect(itemFor('/photos').permission).toBe(AdminPermission.PROVIDERS_READ);
+  });
+
   it('puts the bookings page (a12) under the moderation, as drawn', () => {
     expect(resolveAdminLocation('/bookings')).toMatchObject({
       group: 'الرقابة',

@@ -31,7 +31,7 @@ const expectedOwners: ManifestOwner[] = [
   { owner: 'finance', file: 'finance.prisma', models: ['BudgetCategory', 'WeddingCost', 'CostPayment', 'CostReceipt', 'PaymentSchedule', 'FundingSource', 'LoanRepayment'], enums: ['WeddingCostStatus', 'CostPaymentType', 'PaymentScheduleStatus', 'FundingSourceKind', 'FundingSourceStatus', 'LoanRepaymentStatus', 'CostPayer', 'BudgetCategoryKind'] },
   { owner: 'guests', file: 'guests.prisma', models: ['Guest', 'GuestGroup'], enums: ['GuestSide', 'GuestStatus', 'GuestInvitationStatus', 'GuestAttendanceStatus'] },
   { owner: 'identity', file: 'identity.prisma', models: ['AccountDeletionReceipt', 'User', 'AdminLoginChallenge', 'AdminPasswordResetChallenge', 'RefreshToken', 'LoginThrottle', 'OtpDispatchQuota', 'AssistantUsageDay', 'OtpCode'], enums: ['UserRole', 'AppRole', 'UserStatus', 'OtpPurpose', 'AuthSessionScope'] },
-  { owner: 'marketplace', file: 'marketplace.prisma', models: ['Provider', 'ProviderService', 'ProviderServiceImage', 'ProviderPackage', 'FavoriteProvider', 'ProviderReview', 'QuoteRequest', 'QuoteOffer', 'PlanProviderLink', 'Booking', 'BookingChange', 'ProviderBlockedDate', 'ProviderProfileViewDay', 'ProviderReviewEvent', 'ProviderReviewNote', 'ProviderClaimRequest', 'QuoteOfferVersion', 'ProviderFeaturedPeriod'], enums: ['ProviderStatus', 'ReviewStatus', 'QuoteRequestStatus', 'QuoteOfferStatus', 'PlanProviderLinkStatus', 'BookingStatus', 'BookingParty', 'ProviderReviewEventKind', 'ProviderReviewField', 'ProviderClaimStatus', 'BookingChangeStatus'] },
+  { owner: 'marketplace', file: 'marketplace.prisma', models: ['Provider', 'ProviderService', 'ProviderServiceImage', 'ProviderPackage', 'FavoriteProvider', 'ProviderReview', 'QuoteRequest', 'QuoteOffer', 'PlanProviderLink', 'Booking', 'BookingChange', 'ProviderBlockedDate', 'ProviderProfileViewDay', 'ProviderReviewEvent', 'ProviderReviewNote', 'ProviderClaimRequest', 'QuoteOfferVersion', 'ProviderFeaturedPeriod', 'PortfolioItem'], enums: ['ProviderStatus', 'ReviewStatus', 'QuoteRequestStatus', 'QuoteOfferStatus', 'PlanProviderLinkStatus', 'BookingStatus', 'BookingParty', 'ProviderReviewEventKind', 'ProviderReviewField', 'ProviderClaimStatus', 'BookingChangeStatus', 'PortfolioItemStatus'] },
   { owner: 'media', file: 'media.prisma', models: ['MediaUploadTicket'], enums: ['MediaUploadStatus'] },
   { owner: 'messaging', file: 'messaging.prisma', models: ['Conversation', 'ConversationParticipant', 'ConversationEvent', 'ChatMessage', 'ChatAttachment', 'ConversationReport'], enums: ['ConversationScope', 'ConversationEventType', 'ConversationReportStatus'] },
   { owner: 'notifications', file: 'notifications.prisma', models: ['NotificationPreference', 'PushInstallation', 'Notification'], enums: ['NotificationType', 'NotificationPriority', 'PushPlatform'] },
@@ -91,12 +91,13 @@ test('R2 Prisma manifest is exact plain data with immutable provenance and deter
   }
 
   exactStringList(manifest.modelOrder);
-  assert.equal(manifest.modelOrder.length, 65);
-  assert.equal(manifest.owners.flatMap((entry) => entry.models).length, 65);
+  // B-16: + PortfolioItem and PortfolioItemStatus (D62).
+  assert.equal(manifest.modelOrder.length, 66);
+  assert.equal(manifest.owners.flatMap((entry) => entry.models).length, 66);
   // B5: + BudgetCategoryKind (the groom's mahr item, C1).
-  assert.equal(manifest.owners.flatMap((entry) => entry.enums).length, 52);
-  assert.equal(new Set(manifest.owners.flatMap((entry) => entry.models)).size, 65);
-  assert.equal(new Set(manifest.owners.flatMap((entry) => entry.enums)).size, 52);
+  assert.equal(manifest.owners.flatMap((entry) => entry.enums).length, 53);
+  assert.equal(new Set(manifest.owners.flatMap((entry) => entry.models)).size, 66);
+  assert.equal(new Set(manifest.owners.flatMap((entry) => entry.enums)).size, 53);
 });
 
 test('R2 Prisma manifest equals the current registry and ordered live single-schema declarations', () => {
@@ -117,8 +118,8 @@ test('R2 Prisma manifest equals the current registry and ordered live single-sch
   assert.deepEqual(registryOwnerModels(manifest.owners, registry), expectedRegistryOwners);
   assert.deepEqual(manifest.modelOrder, readLivePrismaModelOrder());
   assert.deepEqual(manifest.owners.flatMap((entry) => entry.enums).sort(), orderedDeclarations('enum').sort());
-  assert.equal(manifest.modelOrder.length, 65);
-  assert.equal(orderedDeclarations('enum').length, 52);
+  assert.equal(manifest.modelOrder.length, 66);
+  assert.equal(orderedDeclarations('enum').length, 53);
 });
 
 test('manifest registry comparison rejects a User and IdempotencyKey owner swap', () => {

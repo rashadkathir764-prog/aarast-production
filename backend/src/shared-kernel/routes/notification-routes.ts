@@ -49,6 +49,7 @@ export const NOTIFICATION_ROUTES = {
   PROVIDER_IN_REVIEW: ['/provider/dashboard'],
   PROVIDER_CLAIM_DECIDED: ['/provider/dashboard', '/provider/apply'],
   LISTING_PLAN_CHANGED: ['/provider/dashboard?tab=:tab'],
+  PORTFOLIO_REVIEWED: ['/provider/gallery'],
 } as const satisfies Record<NotificationType, readonly string[]>;
 
 const part = (value: string) => encodeURIComponent(value);
@@ -106,6 +107,10 @@ export const noticeRoutes = {
   /** p35 «ملفي», where his featured placement shows. */
   providerProfile(): string {
     return '/provider/dashboard?tab=profile';
+  },
+  /** p37 «معرض الشغل»: his photos, each approved, waiting or refused with its reason (B-16). */
+  providerPortfolio(): string {
+    return '/provider/gallery';
   },
   /** The joining screen, where a refused claim is read (p02). */
   providerApply(): string {

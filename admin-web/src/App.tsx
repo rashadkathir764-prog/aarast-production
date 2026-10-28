@@ -22,6 +22,7 @@ import { UsersPage } from './features/users/UsersPage';
 import { UserDetailsPage } from './features/users/UserDetailsPage';
 import { ServicesPage } from './features/catalog/ServicesPage';
 import { BookingsPage } from './features/moderation/BookingsPage';
+import { PhotosPage } from './features/moderation/PhotosPage';
 import { ReviewsPage } from './features/moderation/ReviewsPage';
 import { ReportsPage } from './features/dashboard/ReportsPage';
 import { ConversationReportsPage } from './features/moderation/ConversationReportsPage';
@@ -193,6 +194,15 @@ export default function App() {
           element={
             <RequireAdminPermission permission={AdminPermission.REVIEWS_READ}>
               <ReviewsPage />
+            </RequireAdminPermission>
+          }
+        />
+        {/* n07 (B-16): portfolio photos waiting for review. */}
+        <Route
+          path="photos"
+          element={
+            <RequireAdminPermission permission={AdminPermission.PROVIDERS_READ}>
+              <PhotosPage />
             </RequireAdminPermission>
           }
         />

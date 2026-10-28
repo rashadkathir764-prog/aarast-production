@@ -31,6 +31,7 @@ import {
 import { PrismaService } from "../../../platform/database/prisma.service";
 import { PermissionRepository } from "../infrastructure/permission.repository";
 import {
+  listDeletionPendingUserIds,
   lockUserLifecycleRowsForUpdateInTransaction,
   lockUserLifecycleRowsInTransaction,
 } from "../../identity/public/user-lifecycle-lock";
@@ -66,6 +67,14 @@ export class PermissionService implements CollaborationPermissionPort {
     }
 
     const isOwner = plan.ownerUserId === currentUser.id;
+    // D63 (w06): while its owner waits out the account's deletion, nobody
+    // else enters the plan.
+    if (
+      !isOwner &&
+      (await listDeletionPendingUserIds(client, [plan.ownerUserId])).size > 0
+    ) {
+      throw new NotFoundException("Wedding plan not found");
+    }
     const sharedMember = isOwner
       ? null
       : await this.repository.getMembership(client, weddingPlanId, currentUser.id);
@@ -677,6 +686,9 @@ export class PermissionService implements CollaborationPermissionPort {
       !actor ||
       actor.status !== UserStatus.ACTIVE ||
       !owner ||
+      // D63 (w06): a plan whose owner waits out the account's deletion is
+      // closed to everyone else.
+      (owner.deletionPending && owner.id !== actor.id) ||
       !allAdditionalUsersExist
     ) {
       throw new NotFoundException("Wedding plan not found");

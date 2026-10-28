@@ -23,6 +23,7 @@ import 'features/account_contexts/account_contexts_api.dart'
         AccountContextPersona,
         AccountContextRole;
 import 'features/auth/auth_api.dart' show AuthController, AuthStatus;
+import 'features/settings/settings_api.dart' show DeletionPendingScreen;
 import 'features/wedding_plans/wedding_plans_api.dart'
     show DashboardSummary, DashboardSummaryProvider;
 
@@ -121,7 +122,9 @@ class _AarastAppState extends State<AarastApp> {
                         child: AppLockGate(
                           onForgotCode: auth.logout,
                           name: auth.user?.name,
-                          child: child ?? const SizedBox.shrink(),
+                          child: AarastDeletionPendingGate(
+                            child: child ?? const SizedBox.shrink(),
+                          ),
                         ),
                       ),
                     ),
@@ -263,7 +266,6 @@ class AarastSessionTransitionGate extends StatelessWidget {
       final failure = context.select<AuthController, (String?, String?)>(
         (controller) => (controller.errorCode, controller.errorMessage),
       );
-      final deletionPending = failure.$1 == 'ACCOUNT_DELETION_PENDING';
       return Scaffold(
         key: const Key('session-termination-failed-screen'),
         backgroundColor: AarastV3Color.canvas,
@@ -283,9 +285,7 @@ class AarastSessionTransitionGate extends StatelessWidget {
                   ),
                   const SizedBox(height: 16),
                   Text(
-                    deletionPending
-                        ? 'نتأكد من حذف الحساب'
-                        : 'ما قدرنا نطلّعك من هذا الجوال',
+                    'ما قدرنا نطلّعك من هذا الجوال',
                     textAlign: TextAlign.center,
                     style: JourneyType.of(
                       JourneyType.pageTitle,
@@ -322,6 +322,29 @@ class AarastSessionTransitionGate extends StatelessWidget {
     }
 
     return child;
+  }
+}
+
+/// D63 (w06, a01): an account waiting out its deletion sees only w06,
+/// whether it just asked or signed in on any phone. It sits under the app
+/// lock, so taking the request back needs the phone's code like anything else.
+@visibleForTesting
+class AarastDeletionPendingGate extends StatelessWidget {
+  const AarastDeletionPendingGate({required this.child, super.key});
+
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    bool pending;
+    try {
+      pending = context.select<AuthController, bool>(
+        (controller) => controller.deletionPending,
+      );
+    } on ProviderNotFoundException {
+      return child;
+    }
+    return pending ? const DeletionPendingScreen() : child;
   }
 }
 

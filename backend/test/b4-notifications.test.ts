@@ -23,7 +23,13 @@ import {
   bookingCustomerNotification,
   bookingProviderNotification,
   bookingReminderNotifications,
+  customerClosedProviderNotification,
 } from '../src/marketplace/booking-notifications';
+import {
+  planClosedForDeletionNotice,
+  planErasedNotice,
+  planReopenedNotice,
+} from '../src/modules/identity/internal/profile/account-deletion-notices';
 import {
   reviewReceivedProviderNotification,
   reviewRepliedNotification,
@@ -156,6 +162,19 @@ function allBuiltNotices(): Array<{ label: string; notice: CreateNotificationInp
       label: `countdown/${days}`,
       notice: weddingCountdownRow(ids.requester, { id: ids.plan, weddingDate: new Date(today.getTime() + days * 24 * 60 * 60 * 1000) }, today)!,
     })),
+    // D63: the owner's deletion, told to the members and the providers.
+    ...(['GROOM', 'BRIDE'] as const).flatMap((persona) => {
+      const owner = { name: persona === 'BRIDE' ? 'سلمى أحمد' : 'محمد علي', persona };
+      return [
+        { label: `deletion/${persona}/closed`, notice: planClosedForDeletionNotice({ memberUserId: 'user-3', weddingPlanId: ids.plan, owner, scheduledFor: new Date('2026-11-27T09:00:00.000Z'), requestedAt: new Date('2026-10-28T09:00:00.000Z') }) },
+        { label: `deletion/${persona}/reopened`, notice: planReopenedNotice({ memberUserId: 'user-3', weddingPlanId: ids.plan, owner, requestedAt: new Date('2026-10-28T09:00:00.000Z') }) },
+        { label: `deletion/${persona}/erased`, notice: planErasedNotice({ memberUserId: 'user-3', weddingPlanId: ids.plan, owner, erasedAt: new Date('2026-11-27T09:00:00.000Z') }) },
+      ];
+    }),
+    ...[new Date('2027-01-21T00:00:00.000Z'), null].map((confirmedDay) => ({
+      label: `deletion/provider/${confirmedDay ? 'booked' : 'request'}`,
+      notice: customerClosedProviderNotification({ quoteRequestId: ids.quote, providerUserId: ids.provider, customerName: 'محمد علي', confirmedDay, at: new Date('2026-11-27T09:00:00.000Z') }),
+    })),
   ];
   return list;
 }
@@ -217,7 +236,9 @@ test('B-19: every notification type has a route table entry, and a type with non
   const enumValues = Object.values(NotificationType).sort();
   assert.deepEqual(Object.keys(NOTIFICATION_ROUTES).sort(), enumValues);
   const unrouted = enumValues.filter((type) => NOTIFICATION_ROUTES[type].length === 0);
-  assert.deepEqual(unrouted, ['GENERAL', 'PLAN_UPDATED', 'SHARING_UPDATED', 'SYNC_REQUIRED']);
+  // D63: PLAN_UPDATED tells a plan's members its owner asked to delete his
+  // account, took it back, or was erased.
+  assert.deepEqual(unrouted, ['GENERAL', 'SHARING_UPDATED', 'SYNC_REQUIRED']);
   const sources = sourceFiles(path.join(backendRoot, 'src'));
   for (const type of unrouted) {
     const writers = sources.filter((file) =>

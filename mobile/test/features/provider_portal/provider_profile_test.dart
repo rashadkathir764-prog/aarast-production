@@ -40,7 +40,8 @@ final _now = DateTime.now();
 const _service = MarketplaceService(
   id: 'service-1',
   providerId: 'provider-1',
-  title: 'صور وفيديو',  isActive: true,
+  title: 'صور وفيديو',
+  isActive: true,
   basePrice: '550000',
   currency: 'YER',
   description: 'مصوّرين، 300 صورة، فيلم 10 دقايق',
@@ -641,7 +642,10 @@ void main() {
       expect(find.text('ما انقبلت'), findsOneWidget);
       await tester.tap(find.byKey(const Key('provider-gallery-photo-photo-3')));
       await tester.pumpAndSettle();
-      expect(find.text('ما انقبلت: الصورة مأخوذة من حساب ثاني'), findsOneWidget);
+      expect(
+        find.text('ما انقبلت: الصورة مأخوذة من حساب ثاني'),
+        findsOneWidget,
+      );
       await tester.tap(find.byKey(const Key('provider-gallery-photo-delete')));
       await tester.pumpAndSettle();
       expect(api.savedPortfolios.single.map((item) => item['key']), [
@@ -676,7 +680,9 @@ void main() {
 
       await tester.tap(find.byKey(const Key('provider-gallery-add')));
       await tester.pumpAndSettle();
-      await tester.tap(find.byKey(const Key('provider-gallery-pick-حفلات النساء')));
+      await tester.tap(
+        find.byKey(const Key('provider-gallery-pick-حفلات النساء')),
+      );
       await tester.pumpAndSettle();
       final choose = find.byKey(const Key('provider-gallery-choose'));
       await tester.tap(choose);
@@ -764,7 +770,7 @@ void main() {
       expect(pumped.auth.logouts, 1);
     });
 
-    testWidgets('with no booking ahead, deleting says what it removes', (
+    testWidgets('with no booking ahead, deleting says it waits 30 days (D63)', (
       tester,
     ) async {
       await _pump(
@@ -772,7 +778,7 @@ void main() {
         ProfileApi(),
         () => const ProviderSettingsScreen(devicePushAvailableOverride: false),
       );
-      expect(find.text('يحذف حسابك وملفك نهائيًا'), findsOneWidget);
+      expect(find.text('بعد 30 يوم، وتقدر تتراجع'), findsOneWidget);
       expect(
         find.text('هذي النسخة ما توصلها تنبيهات الجوال، تلقاها داخل التطبيق.'),
         findsOneWidget,

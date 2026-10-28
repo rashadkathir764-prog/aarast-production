@@ -102,6 +102,8 @@ test("a known contributor whose task permission was revoked receives the stable 
   const permissions = new PermissionService({
     weddingPlan: { findUnique: async () => plan },
     sharedMember: { findUnique: async () => member },
+    // D63: the plan's owner waits out no deletion.
+    user: { findMany: async () => [] },
   } as any, new PlanReadService());
 
   await assert.rejects(

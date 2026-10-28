@@ -1,7 +1,10 @@
 import { Injectable } from '@nestjs/common';
 import { BookingStatus, Prisma, QuoteRequestStatus } from '@prisma/client';
 import type { CreateNotificationInput } from '../../notifications/public/notifications.port';
-import { providerClosedCustomerNotification } from '../../../marketplace/booking-notifications';
+import {
+  customerClosedProviderNotification,
+  providerClosedCustomerNotification,
+} from '../../../marketplace/booking-notifications';
 import { bookingToday } from '../../../marketplace/booking-policy';
 import type {
   MarketplaceErasurePort,
@@ -71,6 +74,69 @@ export class MarketplaceErasureService implements MarketplaceErasurePort {
         at: closedAt,
       }),
     );
+  }
+
+  async closedCustomerNoticesInTransaction(
+    tx: Prisma.TransactionClient,
+    scope: { userId: string; weddingPlanIds: readonly string[] },
+    customerName: string | null,
+    closedAt: Date,
+  ): Promise<CreateNotificationInput[]> {
+    const today = bookingToday(closedAt);
+    const open = await tx.quoteRequest.findMany({
+      where: {
+        OR: [
+          { userId: scope.userId },
+          ...(scope.weddingPlanIds.length > 0
+            ? [{ weddingPlanId: { in: [...scope.weddingPlanIds] } }]
+            : []),
+        ],
+        status: {
+          in: [
+            QuoteRequestStatus.SENT,
+            QuoteRequestStatus.VIEWED,
+            QuoteRequestStatus.RESPONDED,
+            QuoteRequestStatus.ACCEPTED,
+          ],
+        },
+        // A wedding the provider already did is no open request.
+        NOT: { booking: { status: BookingStatus.CONFIRMED, eventDate: { lt: today } } },
+        provider: { userId: { not: null } },
+      },
+      orderBy: { id: 'asc' },
+      select: {
+        id: true,
+        provider: { select: { userId: true } },
+        booking: { select: { status: true, eventDate: true } },
+      },
+    });
+    return open.map((quote) =>
+      customerClosedProviderNotification({
+        quoteRequestId: quote.id,
+        providerUserId: quote.provider.userId!,
+        customerName,
+        confirmedDay:
+          quote.booking?.status === BookingStatus.CONFIRMED
+            ? quote.booking.eventDate
+            : null,
+        at: closedAt,
+      }),
+    );
+  }
+
+  async countUpcomingPlanBookings(
+    client: Prisma.TransactionClient,
+    weddingPlanIds: readonly string[],
+    now: Date,
+  ): Promise<number> {
+    if (weddingPlanIds.length === 0) return 0;
+    return client.booking.count({
+      where: {
+        status: BookingStatus.CONFIRMED,
+        eventDate: { gte: bookingToday(now) },
+        quoteRequest: { weddingPlanId: { in: [...weddingPlanIds] } },
+      },
+    });
   }
 
   async listOwnedProviderIds(

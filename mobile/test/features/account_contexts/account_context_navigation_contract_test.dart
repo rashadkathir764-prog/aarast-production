@@ -103,7 +103,8 @@ void main() {
           path:
               'lib/features/provider_portal/screens/provider_settings_screen.dart',
           startMarker: 'Future<String?> _logout()',
-          endMarker: 'Future<String?> _deleteAccount()',
+          // D63: deleting opens w05; _logout is the class's last method.
+          endMarker: 'bool _devicePushAvailable(BuildContext context)',
         ),
         (
           name: 'MoreScreen._logout',

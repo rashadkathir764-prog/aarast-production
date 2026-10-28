@@ -395,7 +395,11 @@ void main() {
         'lib/features/marketplace/screens/provider_reviews_screen.dart',
         'lib/features/notifications/screens/notifications_screen.dart',
         'lib/features/more/screens/more_screen.dart',
+        // D63: w05, w06 and w40.
+        'lib/features/settings/screens/delete_account_screen.dart',
+        'lib/features/settings/screens/deletion_pending_screen.dart',
         'lib/features/settings/screens/lock_settings_screen.dart',
+        'lib/features/settings/screens/privacy_screen.dart',
         'lib/features/settings/screens/settings_screen.dart',
         'lib/features/support/screens/support_screen.dart',
       ];

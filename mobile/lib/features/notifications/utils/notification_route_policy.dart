@@ -64,6 +64,9 @@ bool isSafeNotificationRouteTarget(String target) {
 
   return _isProviderPortalPath(uri) ||
       target == '/provider/apply' ||
+      // D63: a plan the reader can no longer open (its owner asked to delete
+      // the account, or was erased) sends the reader home.
+      target == '/home' ||
       // B-16: a portfolio photo approved or refused opens p37.
       target == '/provider/gallery' ||
       _isBareIdPath(uri, const ['provider', 'requests', ':id']) ||

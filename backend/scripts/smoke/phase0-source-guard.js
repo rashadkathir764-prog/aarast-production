@@ -55,6 +55,8 @@ const allowedDirectDatabaseClients = new Map([
   'backend/scripts/smoke/providers-quotes-smoke.js',
   'backend/scripts/smoke/quote-stability-smoke.js',
   'backend/scripts/smoke/sharing-security-smoke.js',
+  // D63: the HTTP smokes run the account purge on their isolated database.
+  'backend/scripts/smoke/account-purge.ts',
   'backend/scripts/smoke/ux-c4-c7-smoke.js',
 ].map((label) => [label, new Set(['@prisma/client'])]));
 const exactEnvironmentInfrastructure = new Set([

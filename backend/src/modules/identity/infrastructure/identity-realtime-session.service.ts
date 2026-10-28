@@ -22,6 +22,8 @@ export class IdentityRealtimeSessionService
     if (
       !user ||
       user.status === UserStatus.DISABLED ||
+      // D63: an account waiting out its deletion holds no live channel.
+      user.deletionScheduledFor != null ||
       !user.phoneVerifiedAt ||
       !live
     ) {

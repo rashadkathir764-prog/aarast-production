@@ -33,8 +33,6 @@ import { purgeOutboxEventsForAggregatesInTransaction } from "../../../../platfor
 import {
   deleteApplicationIdempotencyKeysForUser,
   deleteIdempotencyKeysForUser,
-  deleteStaleIdempotencyReservation,
-  findIdempotencyReservation,
 } from "../../../../platform/idempotency/idempotency-keys";
 import {
   COLLABORATION_ERASURE_PORT,
@@ -102,8 +100,13 @@ import {
   deleteOtpCodesByPhone,
   findAccountDeletionReceipt,
   lockUserForAccountDeletion,
-  lockUserForDeletionStatus,
 } from '../../infrastructure/account-erasure.repository';
+import { planErasedNotice } from "./account-deletion-notices";
+import {
+  findPrivacySettings,
+  updatePrivacySettings,
+} from "../../infrastructure/data-request.repository";
+import type { UpdatePrivacyDto } from "../../api/user-dto/privacy.dto";
 
 export interface NotificationPreferenceResponse {
   id: string;
@@ -159,8 +162,11 @@ export interface UserLookupResponse {
   phone: string | null;
 }
 
-export type AccountDeletionStatus = "DELETED" | "PENDING" | "NOT_STARTED";
-const ACCOUNT_DELETION_STALE_RESERVATION_MS = 30_000;
+/**
+ * D63: what one purge attempt did: erased the account, found its request
+ * taken back or its day not come, or found it already gone.
+ */
+export type AccountErasureOutcome = "ERASED" | "NOT_DUE" | "GONE";
 
 export function accountDeletionReceiptHash(
   userId: string,
@@ -293,7 +299,11 @@ export class UsersService {
   }
 
   /**
-   * Permanently delete the current account and every piece of data it owns.
+   * D63: permanently erase an account whose 30 days of grace are over, and
+   * every piece of data it owns. Only the purge job calls it (the app asks
+   * for the deletion and may take it back, `AccountDeletionService`); under
+   * the account's row lock it erases nothing unless the request still stands
+   * and its day has come, so a take-back that commits first always wins.
    *
    * Wedding-plan children are protected by `onDelete: Restrict` (a deliberate
    * guard against accidental cascade of financial data), so an owned plan
@@ -304,19 +314,13 @@ export class UsersService {
    * are removed explicitly. Everything runs in one transaction: any ordering
    * mistake rolls back rather than leaving the account half-deleted.
    */
-  async deleteMe(
-    currentUser: AuthenticatedUser,
-    clientRequestId: string,
-  ): Promise<{ deleted: true }> {
-    const userId = currentUser.id;
-    const receiptHash = accountDeletionReceiptHash(userId, clientRequestId);
-
-    await runRetryableTransaction(
+  async eraseDueAccount(
+    userId: string,
+    now: Date,
+  ): Promise<AccountErasureOutcome> {
+    const outcome = await runRetryableTransaction(
       this.prisma,
-      async (tx) => {
-        const priorReceipt = await findAccountDeletionReceipt(tx, receiptHash);
-        if (priorReceipt) return;
-
+      async (tx): Promise<AccountErasureOutcome> => {
         // The same advisory account lock used by presigning prevents a new
         // upload ticket from escaping this snapshot. It must be acquired
         // before the User row so media consumption and account deletion keep
@@ -327,14 +331,24 @@ export class UsersService {
         // create needs a foreign-key key-share lock on this row and therefore
         // cannot slip a new owned plan past the deletion snapshot.
         const lockedUsers = await lockUserForAccountDeletion(tx, userId);
-        if (lockedUsers.length === 0) {
-          const committedWhileWaiting =
-            await findAccountDeletionReceipt(tx, receiptHash);
-          if (committedWhileWaiting) return;
-          throw new NotFoundException("User not found");
+        const account = lockedUsers[0];
+        if (!account) return "GONE";
+        if (
+          !account.deletionRequestedAt ||
+          !account.deletionScheduledFor ||
+          account.deletionScheduledFor.getTime() > now.getTime()
+        ) {
+          return "NOT_DUE";
         }
+        // One receipt per request: the same request erased twice (a second
+        // job instance) finds the account gone above.
+        const receiptHash = accountDeletionReceiptHash(
+          userId,
+          `grace:${account.deletionRequestedAt.toISOString()}`,
+        );
+        if (await findAccountDeletionReceipt(tx, receiptHash)) return "GONE";
         const preservesAdministratorIdentity =
-          lockedUsers[0].role === UserRole.ADMIN;
+          account.role === UserRole.ADMIN;
         // An administrator may separately enroll in the application. Deleting
         // that application identity must never delete the administrator's
         // login/profile media, while every ordinary application account keeps
@@ -382,12 +396,12 @@ export class UsersService {
         // cancels them first. Read under the provider rows' locks (taken
         // above in the saga's order), so no confirmation slips in after it;
         // the refusal rolls back this whole transaction, so nothing was
-        // erased.
+        // erased (the purge job records it and the admin sees it on n06).
         const upcomingBookingIds =
           await this.marketplaceErasure.lockUpcomingConfirmedBookingIdsInTransaction(
             tx,
             providerIds,
-            new Date(),
+            now,
           );
         if (upcomingBookingIds.length > 0) {
           throw new ConflictException({
@@ -398,14 +412,31 @@ export class UsersService {
             bookingIds: upcomingBookingIds,
           });
         }
-        // Told after the purge below; built now, while the requests exist.
-        const closedProviderNotices = (
-          await this.marketplaceErasure.closedProviderNoticesInTransaction(
+        // Told after the purge below; built now, while the requests and the
+        // memberships exist: the customers of his listing (B-33), the
+        // providers of his requests and the members of his plans (D63).
+        const notices = [
+          ...(await this.marketplaceErasure.closedProviderNoticesInTransaction(
             tx,
             providerIds,
-            new Date(),
-          )
-        ).filter((notice) => notice.userId !== userId);
+            now,
+          )),
+          ...(await this.marketplaceErasure.closedCustomerNoticesInTransaction(
+            tx,
+            { userId, weddingPlanIds: planIds },
+            account.name,
+            now,
+          )),
+          ...(await this.permissionService.listPlanMembers(tx, planIds)).map(
+            (member) =>
+              planErasedNotice({
+                memberUserId: member.userId,
+                weddingPlanId: member.weddingPlanId,
+                owner: { name: account.name, persona: account.persona },
+                erasedAt: now,
+              }),
+          ),
+        ].filter((notice) => notice.userId !== userId);
 
         if (reviewedProviderIds.length > 0) {
           // ProviderReview cascades from User, but the provider cache does not.
@@ -497,7 +528,7 @@ export class UsersService {
         // and tasks; they leave with it (their receipts went above).
         await this.finance.purgePrivateCostsInTransaction(tx, userId);
         await this.tasks.deletePrivateTasksInTransaction(tx, userId);
-        const tenureEndedAt = new Date();
+        const tenureEndedAt = now;
         if (planIds.length > 0) {
           // Contribution history is retained independently from the live plan.
           // Close every active tenure before the plan/member graph disappears;
@@ -541,9 +572,8 @@ export class UsersService {
           tx,
           providerIds,
         );
-        // B-33: «المزود أغلق حسابه» to the customers whose open requests
-        // went with it (written after the notification purge above).
-        for (const notice of closedProviderNotices) {
+        // B-33 and D63: written after the notification purge above.
+        for (const notice of notices) {
           await this.notifications.createNotificationInTransaction(tx, notice);
         }
         // A claim of a listing (B-12) is the account's own request.
@@ -556,20 +586,20 @@ export class UsersService {
           await this.eraseAdministratorApplicationIdentity(
             tx,
             userId,
-            currentUser.phone,
+            account.phone,
           );
         }
 
         // The anonymous receipt commits atomically with erasure. It contains
-        // neither the former user id nor the request id and is immutable at the
-        // database boundary, so a lost HTTP response remains recoverable.
+        // neither the former user id nor the request's time and is immutable
+        // at the database boundary.
         await createAccountDeletionReceipt(tx, receiptHash);
 
         if (!preservesAdministratorIdentity) {
           // Keyed by userId / phone with no User foreign key: never cascades.
           await deleteIdempotencyKeysForUser(tx, userId);
-          if (currentUser.phone) {
-            await deleteOtpCodesByPhone(tx, currentUser.phone);
+          if (account.phone) {
+            await deleteOtpCodesByPhone(tx, account.phone);
           }
 
           // Finally the user. Cascades refresh tokens, memberships, personal
@@ -579,6 +609,7 @@ export class UsersService {
           await enqueueUserSessionsRevoked(tx, userId);
           await deleteAccountUser(tx, userId);
         }
+        return "ERASED";
       },
       {
         timeout: 15_000,
@@ -588,8 +619,8 @@ export class UsersService {
 
     // The account no longer exists, so every authenticated realtime channel
     // must be severed immediately instead of surviving until token expiry.
-    this.realtime?.disconnectUser(userId);
-    return { deleted: true };
+    if (outcome === "ERASED") this.realtime?.disconnectUser(userId);
+    return outcome;
   }
 
   private async eraseAdministratorApplicationIdentity(
@@ -618,62 +649,6 @@ export class UsersService {
     await clearAdministratorApplicationIdentity(tx, userId);
   }
 
-  async accountDeletionStatus(
-    userId: string,
-    clientRequestId: string,
-  ): Promise<{ status: AccountDeletionStatus }> {
-    const receiptHash = accountDeletionReceiptHash(userId, clientRequestId);
-    return this.prisma.$transaction(
-      async (tx) => {
-        const receipt = await findAccountDeletionReceipt(tx, receiptHash);
-        if (receipt) return { status: "DELETED" as const };
-
-        const reservation = await findIdempotencyReservation(
-          tx,
-          userId,
-          clientRequestId,
-        );
-        if (
-          reservation?.method === "DELETE" &&
-          reservation.path === "/api/v1/users/me"
-        ) {
-          if (
-            reservation.completedAt === null &&
-            reservation.createdAt.getTime() <=
-              Date.now() - ACCOUNT_DELETION_STALE_RESERVATION_MS
-          ) {
-            // The deletion transaction has a hard 15-second timeout. A
-            // reservation twice that old with no atomic receipt is a crashed
-            // interceptor owner. Reclaim only that exact unfinished command;
-            // deleteMe remains concurrent-safe through the User lock and the
-            // unique receipt.
-            const lockedUser = await lockUserForDeletionStatus(tx, userId);
-            const receiptAfterLock =
-              await findAccountDeletionReceipt(tx, receiptHash);
-            if (receiptAfterLock) return { status: "DELETED" as const };
-            if (lockedUser.length === 0) {
-              return { status: "NOT_STARTED" as const };
-            }
-            await deleteStaleIdempotencyReservation(
-              tx,
-              reservation.id,
-              new Date(Date.now() - ACCOUNT_DELETION_STALE_RESERVATION_MS),
-            );
-            return { status: "NOT_STARTED" as const };
-          }
-          return { status: "PENDING" as const };
-        }
-        const receiptAfterReservationRead =
-          await findAccountDeletionReceipt(tx, receiptHash);
-        if (receiptAfterReservationRead) {
-          return { status: "DELETED" as const };
-        }
-        return { status: "NOT_STARTED" as const };
-      },
-      { isolationLevel: Prisma.TransactionIsolationLevel.ReadCommitted },
-    );
-  }
-
   async lookupByPhone(
     currentUser: AuthenticatedUser,
     weddingPlanId: string,
@@ -694,6 +669,27 @@ export class UsersService {
     }
 
     return toApplicationUserContact(user);
+  }
+
+  /** D63 (w40): the privacy choices kept on the server. */
+  async getPrivacy(
+    currentUser: AuthenticatedUser,
+  ): Promise<{ reviewFirstNameOnly: boolean }> {
+    const privacy = await findPrivacySettings(this.prisma, currentUser.id);
+    if (!privacy) throw new NotFoundException("User not found");
+    return privacy;
+  }
+
+  async updatePrivacy(
+    currentUser: AuthenticatedUser,
+    dto: UpdatePrivacyDto,
+  ): Promise<{ reviewFirstNameOnly: boolean }> {
+    return runRetryableTransaction(this.prisma, async (tx) => {
+      await assertActiveMutationActorForUpdateInTransaction(tx, currentUser.id);
+      return updatePrivacySettings(tx, currentUser.id, {
+        reviewFirstNameOnly: dto.reviewFirstNameOnly,
+      });
+    });
   }
 
   async getSettings(

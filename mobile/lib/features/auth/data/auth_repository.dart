@@ -12,7 +12,8 @@ import '../models/auth_otp.dart';
 import '../models/auth_response.dart';
 import '../../../core/session/safe_user.dart';
 
-enum AccountDeletionServerStatus { deleted, pending, notStarted }
+/// w05: the word typed to confirm the deletion.
+const accountDeletionConfirmWord = 'حذف';
 
 class AuthRepository implements SessionAuthTeardownPort {
   const AuthRepository(this._apiClient, this._authStorage);
@@ -387,40 +388,33 @@ class AuthRepository implements SessionAuthTeardownPort {
     }
   }
 
-  /// Permanently deletes the account server-side.
-  ///
-  /// Local credentials and account data are owned by the central session
-  /// teardown boundary after this request succeeds.
-  Future<void> deleteAccount({required String clientRequestId}) async {
-    final response = await _apiClient.mutateJson(
-      '/api/v1/users/me',
-      const {},
-      method: 'DELETE',
-      clientRequestId: clientRequestId,
-    );
-    if (response['deleted'] != true) {
+  /// D63 (w05): the account will be erased after its 30 days. Returns the
+  /// day it was asked and the day of the erasure.
+  Future<({DateTime requestedAt, DateTime scheduledFor})>
+  requestAccountDeletion() async {
+    final response = await _apiClient.postJson('/api/v1/users/me/deletion', {
+      'confirmWord': accountDeletionConfirmWord,
+    });
+    final requestedAt = DateTime.tryParse('${response['requestedAt']}');
+    final scheduledFor = DateTime.tryParse('${response['scheduledFor']}');
+    if (response['status'] != 'PENDING' ||
+        requestedAt == null ||
+        scheduledFor == null) {
       throw const FormatException(
-        'Account deletion response did not confirm deletion',
+        'Account deletion response did not confirm the request',
       );
     }
+    return (requestedAt: requestedAt, scheduledFor: scheduledFor);
   }
 
-  Future<AccountDeletionServerStatus> accountDeletionStatus({
-    required String userId,
-    required String clientRequestId,
-  }) async {
-    final response = await _apiClient.postJson(
-      '/api/v1/account-deletions/status',
-      {'userId': userId, 'clientRequestId': clientRequestId},
-    );
-    return switch (response['status']) {
-      'DELETED' => AccountDeletionServerStatus.deleted,
-      'PENDING' => AccountDeletionServerStatus.pending,
-      'NOT_STARTED' => AccountDeletionServerStatus.notStarted,
-      _ => throw const FormatException(
-        'Account deletion status response is invalid',
-      ),
-    };
+  /// D63 (w06 «تراجعت، رجّع حسابي»): the request is taken back.
+  Future<void> cancelAccountDeletion() async {
+    final response = await _apiClient.deleteJson('/api/v1/users/me/deletion');
+    if (response['status'] != 'NONE') {
+      throw const FormatException(
+        'Account deletion response did not confirm the take-back',
+      );
+    }
   }
 
   @override

@@ -18,6 +18,8 @@ export interface AppIdentity {
   appAvatarUrl: string | null;
   appRole: AppRole;
   status: UserStatus;
+  /** D63 (w40): the account's reviews show only its first name. */
+  reviewFirstNameOnly: boolean;
 }
 
 /**
@@ -41,6 +43,7 @@ export const appIdentitySelect = {
   appAvatarUrl: true,
   appRole: true,
   status: true,
+  reviewFirstNameOnly: true,
 } as const;
 
 // Identity owns `User`. Other contexts read users through this port on the

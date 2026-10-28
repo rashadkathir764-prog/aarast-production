@@ -1,11 +1,11 @@
 import {
-  BadRequestException,
   Body,
   Controller,
-  Delete,
   Get,
-  Headers,
+  HttpCode,
+  HttpStatus,
   Patch,
+  Post,
   Query,
   UseGuards,
 } from "@nestjs/common";
@@ -16,13 +16,17 @@ import { JwtAuthGuard } from "../public/jwt-auth.guard";
 import { UpdateProfileDto } from "./user-dto/update-profile.dto";
 import { UpdateSettingsDto } from "./user-dto/update-settings.dto";
 import { UserLookupDto } from "./user-dto/user-lookup.dto";
+import { UpdatePrivacyDto } from "./user-dto/privacy.dto";
 import { UsersService } from "../internal/profile/users.service";
-import { safeClientRequestId } from "../../../platform/observability/sanitize-request-target";
+import { DataExportService } from "../internal/profile/data-export.service";
 
 @Controller("api/v1/users")
 @UseGuards(JwtAuthGuard)
 export class UsersController {
-  constructor(private readonly usersService: UsersService) {}
+  constructor(
+    private readonly usersService: UsersService,
+    private readonly dataExports: DataExportService,
+  ) {}
 
   @Patch("me")
   updateMe(
@@ -32,19 +36,25 @@ export class UsersController {
     return this.usersService.updateMe(currentUser, dto);
   }
 
-  @Delete("me")
-  deleteMe(
+  // D63 (w40): a one-time link to the account's own data.
+  @Post("me/exports")
+  @HttpCode(HttpStatus.CREATED)
+  @Throttle({ default: { limit: 5, ttl: 60_000 } })
+  createExport(@CurrentUser() currentUser: AuthenticatedUser) {
+    return this.dataExports.create(currentUser);
+  }
+
+  @Get("me/privacy")
+  getPrivacy(@CurrentUser() currentUser: AuthenticatedUser) {
+    return this.usersService.getPrivacy(currentUser);
+  }
+
+  @Patch("me/privacy")
+  updatePrivacy(
     @CurrentUser() currentUser: AuthenticatedUser,
-    @Headers("x-client-request-id") rawClientRequestId: string | undefined,
+    @Body() dto: UpdatePrivacyDto,
   ) {
-    const clientRequestId = safeClientRequestId(rawClientRequestId);
-    if (!clientRequestId) {
-      throw new BadRequestException({
-        code: "ACCOUNT_DELETION_REQUEST_ID_REQUIRED",
-        message: "X-Client-Request-Id is required for account deletion",
-      });
-    }
-    return this.usersService.deleteMe(currentUser, clientRequestId);
+    return this.usersService.updatePrivacy(currentUser, dto);
   }
 
   @Get("lookup")

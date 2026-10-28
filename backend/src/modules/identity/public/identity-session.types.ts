@@ -30,6 +30,9 @@ export interface AuthenticatedUser {
   onboardingPath: OnboardingPath | null;
   persona: WeddingPersona | null;
   onboardingCompletedAt: Date | null;
+  /** D63: set while the account waits out its 30 days before erasure. */
+  deletionRequestedAt?: Date | null;
+  deletionScheduledFor?: Date | null;
   createdAt: Date;
   updatedAt: Date;
   /** True only for a JWT minted after the admin password + OTP boundary. */

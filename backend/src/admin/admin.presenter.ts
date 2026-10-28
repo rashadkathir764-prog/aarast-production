@@ -23,7 +23,7 @@ import {
   featuredPeriodState,
   yemenDayOf,
 } from '../modules/marketplace/public/featured-placement';
-import { toReviewIdentity } from '../shared-kernel/privacy/review-identity';
+import { toModeratedReviewIdentity } from '../shared-kernel/privacy/review-identity';
 import { ownerReviewReply } from '../modules/marketplace/public/review-reply';
 import { providerCategoryBudgetItem } from '../modules/finance/public/provider-category-budget-item';
 import type { StarterBudgetItem } from '../modules/catalog/public/catalog-admin.port';
@@ -510,7 +510,7 @@ export function toAdminReviewResponse(review: AdminReviewWithDetails) {
   return {
     id: review.id,
     userId: review.userId,
-    user: toReviewIdentity(review.user),
+    user: toModeratedReviewIdentity(review.user),
     providerId: review.providerId,
     provider: toProviderSummary(review.provider),
     rating: review.rating,

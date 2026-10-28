@@ -6,6 +6,7 @@ require('./smoke-isolation-hook');
 const http = require('http');
 const { randomUUID } = require('crypto');
 const { registerVerified } = require('./verified-registration');
+const { eraseFixtureAccount } = require('./account-grace');
 
 /**
  * B5 mahr smoke (C1): the groom's mahr is his agreement with the bride's
@@ -88,8 +89,7 @@ async function register(name, value) {
 
 async function cleanupAccount(label, token) {
   if (!token) return;
-  const response = await request('DELETE', '/api/v1/users/me', null, token, randomUUID());
-  check(`${label} fixture account is cleaned`, response.status === 200 && response.body?.deleted === true);
+  check(`${label} fixture account is cleaned`, await eraseFixtureAccount(request, token));
 }
 
 function inDays(days) {

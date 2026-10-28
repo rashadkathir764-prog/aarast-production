@@ -85,7 +85,9 @@ test('the user read port projects users to the application identity, never a cre
     ['findUnique', { where: { id: 'user-1' }, select: { activeWeddingPlanId: true } }],
   ]);
   assert.deepEqual(Object.keys(appIdentitySelect).sort(), [
-    'appAvatarUrl', 'appName', 'appRole', 'avatarUrl', 'id', 'name', 'phone', 'role', 'status',
+    // D63 (w40): the reviewer's choice of a first name only travels with it.
+    'appAvatarUrl', 'appName', 'appRole', 'avatarUrl', 'id', 'name', 'phone',
+    'reviewFirstNameOnly', 'role', 'status',
   ]);
 });
 

@@ -6,6 +6,7 @@ require('./smoke-isolation-hook');
 const http = require('http');
 const { randomUUID } = require('crypto');
 const { registerVerified } = require('./verified-registration');
+const { eraseFixtureAccount } = require('./account-grace');
 
 /**
  * Planning assistant smoke (V1 checklist 4.12), through the HTTP stack and a
@@ -213,8 +214,10 @@ async function run() {
   } finally {
     for (const [label, account] of [['family', family], ['bride', bride], ['owner', owner]]) {
       if (!account.token) continue;
-      const response = await request('DELETE', '/api/v1/users/me', null, account.token, randomUUID());
-      check(`${label} fixture account is cleaned (with its assistant usage)`, response.status === 200);
+      check(
+        `${label} fixture account is cleaned (with its assistant usage)`,
+        await eraseFixtureAccount(request, account.token),
+      );
     }
     modelServer.close();
   }

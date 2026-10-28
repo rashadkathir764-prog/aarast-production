@@ -52,67 +52,80 @@ void main() {
         return match.group(1) == 'tab' ? 'profile' : 'id-${match.group(1)}';
       });
 
-  test('every notification type of the schema has an entry in the server route table', () {
-    final types = notificationTypes();
-    final table = routeTable();
-    expect(types, isNotEmpty);
-    expect(table.keys.toSet(), types.toSet());
-    // Written by no code (the server test proves it): nothing to open.
-    expect(
-      [
-        for (final entry in table.entries)
-          if (entry.value.isEmpty) entry.key,
-      ]..sort(),
-      ['GENERAL', 'PLAN_UPDATED', 'SHARING_UPDATED', 'SYNC_REQUIRED'],
-    );
-  });
+  test(
+    'every notification type of the schema has an entry in the server route table',
+    () {
+      final types = notificationTypes();
+      final table = routeTable();
+      expect(types, isNotEmpty);
+      expect(table.keys.toSet(), types.toSet());
+      // Written by no code (the server test proves it): nothing to open.
+      expect(
+        [
+          for (final entry in table.entries)
+            if (entry.value.isEmpty) entry.key,
+        ]..sort(),
+        // D63: PLAN_UPDATED tells a plan's members about its owner's deletion.
+        ['GENERAL', 'SHARING_UPDATED', 'SYNC_REQUIRED'],
+      );
+    },
+  );
 
-  test('every route a notice carries opens as written, is allowed and is a registered route', () {
-    final router = AppRouter.create();
-    addTearDown(router.dispose);
-    final table = routeTable();
-    var checked = 0;
-    for (final entry in table.entries) {
-      for (final shape in entry.value) {
-        final location = sample(shape);
-        final notice = AarastNotification(
-          id: 'notice-${entry.key}',
-          userId: 'user-1',
-          type: entry.key,
-          title: 'عنوان',
-          body: 'سطر',
-          routeTarget: location,
-          createdAt: DateTime(2026),
-          updatedAt: DateTime(2026),
-        );
-        expect(
-          resolveNotificationRouteTarget(notice),
-          location,
-          reason: '${entry.key}: the phone opens the route as written',
-        );
-        expect(
-          isSafeNotificationRouteTarget(location),
-          isTrue,
-          reason: '${entry.key}: $location must be an allowed target',
-        );
-        final match = router.configuration.findMatch(Uri.parse(location));
-        expect(
-          match.isError,
-          isFalse,
-          reason: '${entry.key}: $location must be a registered route',
-        );
-        expect(match.isNotEmpty, isTrue, reason: '${entry.key}: $location');
-        checked += 1;
+  test(
+    'every route a notice carries opens as written, is allowed and is a registered route',
+    () {
+      final router = AppRouter.create();
+      addTearDown(router.dispose);
+      final table = routeTable();
+      var checked = 0;
+      for (final entry in table.entries) {
+        for (final shape in entry.value) {
+          final location = sample(shape);
+          final notice = AarastNotification(
+            id: 'notice-${entry.key}',
+            userId: 'user-1',
+            type: entry.key,
+            title: 'عنوان',
+            body: 'سطر',
+            routeTarget: location,
+            createdAt: DateTime(2026),
+            updatedAt: DateTime(2026),
+          );
+          expect(
+            resolveNotificationRouteTarget(notice),
+            location,
+            reason: '${entry.key}: the phone opens the route as written',
+          );
+          expect(
+            isSafeNotificationRouteTarget(location),
+            isTrue,
+            reason: '${entry.key}: $location must be an allowed target',
+          );
+          final match = router.configuration.findMatch(Uri.parse(location));
+          expect(
+            match.isError,
+            isFalse,
+            reason: '${entry.key}: $location must be a registered route',
+          );
+          expect(match.isNotEmpty, isTrue, reason: '${entry.key}: $location');
+          checked += 1;
+        }
       }
-    }
-    expect(checked, greaterThanOrEqualTo(30));
-  });
+      expect(checked, greaterThanOrEqualTo(30));
+    },
+  );
 
   test('a route outside the app stays closed', () {
     expect(isSafeNotificationRouteTarget('https://example.com/x'), isFalse);
     expect(isSafeNotificationRouteTarget('/admin/users'), isFalse);
-    expect(isSafeNotificationRouteTarget('/provider/dashboard?tab=../x'), isFalse);
+    expect(
+      isSafeNotificationRouteTarget('/provider/dashboard?tab=../x'),
+      isFalse,
+    );
     expect(isSafeNotificationRouteTarget('/provider/reviews/a.b'), isFalse);
-    expect(isSafeNotificationRouteTarget('/provider/reviews/r-1?next=/x'), isFalse);
+    expect(
+      isSafeNotificationRouteTarget('/provider/reviews/r-1?next=/x'),
+      isFalse,
+    );
   });
 }

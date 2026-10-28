@@ -3,6 +3,7 @@ import {
   BookOpen,
   Crown,
   EyeOff,
+  FileLock,
   Flag,
   History,
   Inbox,
@@ -167,6 +168,14 @@ export const adminNavigationGroups: AdminNavigationGroup[] = [
         permission: AdminPermission.USERS_READ,
         icon: Users,
         isActive: nestedRoute('/users'),
+      },
+      // n06 (A-15, D63): pending deletions and data downloads.
+      {
+        route: '/data-requests',
+        label: 'طلبات البيانات',
+        permission: AdminPermission.USERS_READ,
+        icon: FileLock,
+        isActive: nestedRoute('/data-requests'),
       },
     ],
   },

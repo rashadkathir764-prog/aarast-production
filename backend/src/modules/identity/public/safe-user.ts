@@ -21,8 +21,30 @@ export interface SafeUser {
   onboardingPath: string | null;
   persona: string | null;
   onboardingCompletedAt: Date | null;
+  /**
+   * D63: the application account's pending deletion (w06), or null. An
+   * administrator's own session never carries it: only the application
+   * identity is ever erased.
+   */
+  deletion: AccountDeletionSchedule | null;
   createdAt: Date;
   updatedAt: Date;
+}
+
+export interface AccountDeletionSchedule {
+  requestedAt: Date;
+  scheduledFor: Date;
+}
+
+/** D63: the pending deletion of the application account, or null. */
+export function accountDeletionSchedule(
+  user: Pick<AuthenticatedUser, 'deletionRequestedAt' | 'deletionScheduledFor'>,
+): AccountDeletionSchedule | null {
+  if (!user.deletionRequestedAt || !user.deletionScheduledFor) return null;
+  return {
+    requestedAt: user.deletionRequestedAt,
+    scheduledFor: user.deletionScheduledFor,
+  };
 }
 
 export function toSafeUser(
@@ -32,10 +54,13 @@ export function toSafeUser(
 ): SafeUser {
   const authenticated = toAuthenticatedUser(user, includeAdminMetadata);
   const adminRole = includeAdminMetadata ? authenticated.adminRole : null;
+  const { deletionRequestedAt: _requestedAt, deletionScheduledFor: _scheduledFor, ...rest } =
+    authenticated;
   return {
-    ...authenticated,
+    ...rest,
     adminRole,
     adminPermissions: permissionsForAdminRole(adminRole),
+    deletion: includeAdminMetadata ? null : accountDeletionSchedule(authenticated),
   };
 }
 
@@ -62,6 +87,8 @@ export function toAuthenticatedUser(
     onboardingPath: user.onboardingPath,
     persona: user.persona,
     onboardingCompletedAt: user.onboardingCompletedAt,
+    deletionRequestedAt: user.deletionRequestedAt ?? null,
+    deletionScheduledFor: user.deletionScheduledFor ?? null,
     createdAt: user.createdAt,
     updatedAt: user.updatedAt,
   };

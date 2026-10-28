@@ -9,7 +9,10 @@ import {
 import { Throttle } from "@nestjs/throttler";
 import { AuthenticatedUser } from "../modules/identity/public/identity-session.types";
 import { CurrentUser } from "../modules/identity/public/current-user.decorator";
-import { JwtAuthGuard } from "../modules/identity/public/jwt-auth.guard";
+import {
+  AllowedWhileDeletionPending,
+  JwtAuthGuard,
+} from "../modules/identity/public/jwt-auth.guard";
 import { PushInstallationDto } from "./dto/push-installation.dto";
 import { PushInstallationsService } from "../modules/notifications/infrastructure/push-installations.service";
 
@@ -29,6 +32,7 @@ export class PushController {
   }
 
   @Delete("current")
+  @AllowedWhileDeletionPending()
   @Header("Cache-Control", "private, no-store")
   unregister(
     @CurrentUser() currentUser: AuthenticatedUser,

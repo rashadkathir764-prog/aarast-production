@@ -59,7 +59,7 @@ These either correct an api_map row or decide a borderline case.
 
 | id | Title | Phase | Map | Endpoints used | Drop or defer to stay honest | Depends on |
 |---|---|---|---|---|---|---|
-| a01_splash | شاشة البداية | V1 | 🔧→A | `POST /auth/refresh`, `GET /me`, `GET /contexts` | Drop the "deletion pending" route (w06 is B). The PIN check is local. | a02, home (b01/b02), w07 |
+| a01_splash | شاشة البداية | V1 | 🔧→A | `POST /auth/refresh`, `GET /me`, `GET /contexts` | A waiting account lands on w06 after sign-in, under the app lock (D63, built). The PIN check is local. | a02, home (b01/b02), w07 |
 | a02_who | أهلًا فيك | V1 | 📱 | none | Main button reads «التالي», not «أنشئ حسابي» (C52). «مزود خدمة» is out of this journey. | a02b, a10, x04/q01 |
 | a02b_whose | خطة مين؟ | V1 | 📱 | none (the choice is kept in the local draft and later sent as the existing `persona` field) | — | a03 |
 | a03_name | اسمك | V1 | 🔧→A | name goes to `POST /auth/register`; plan `title` («عرس محمد وسلمى») is built on the client and sent as `title` | The partner name is not stored as its own field. It lives only inside the title. | a08b |
@@ -192,7 +192,7 @@ These either correct an api_map row or decide a borderline case.
 | g07_notif | التنبيهات (الإعدادات) | V1 | 🔧→A | `GET` / `PATCH /users/me/settings` (task, payment and provider reminders; channels) | Drop the quiet hours, «ملخص الجمعة», guest-reply batching, participant activity, and the «قبل بثلاثة أيام» timing (C60). | b08 |
 | g09_change_phone | تغيير الرقم | 1.1 | 🔧→A | `POST /auth/phone-change/request`, `POST /auth/phone-change/confirm`, then sign in again | Confirm signs out every device, this one too; copy «بنطلعك من كل الأجهزة وتدخل من جديد». | g02 |
 | g10_support | المساعدة | V1 | 📱 | static public site, WhatsApp link | — | g02 |
-| g11_logout | الخروج | V1 | 🔧→A | `POST /auth/logout`, `DELETE /push/installations/current` | Hide «احذف حسابي نهائيًا» until w05 ships (C4). Warn when unsent changes exist (C59). | w41, C4 |
+| g11_logout | الخروج | V1 | 🔧→A | `POST /auth/logout`, `DELETE /push/installations/current` | «احذف حسابي نهائيًا · تنحذف بعد 30 يوم، وتقدر تتراجع» opens w05 (C4, D63, built). Warn when unsent changes exist (C59). | w41, C4 |
 | w10_edit_plan | بيانات الخطة | new | 🔧→A | `PATCH P` {title, city, location, weddingDate}, `PUT P/money-budget` {totalBudget} | Drop «موعد تقريبي» and «ما حددنا» once a date exists (cannot clear), «المحافظة والمديرية» and the currency. A date change goes through g03. | g03, x01 |
 | w11_plan_switcher | خططك | new | 🔧→A | `GET /contexts`, `POST P/set-active`, `POST /wedding-plans` | Archived plans are listed but cannot be opened (`set-active` refuses them). The rule «خطة واحدة مفتوحة» waits for C5. | C5 |
 | w36_ai_consent | تشغيل المساعد | new | 🔧→A | `GET P/assistant`; consent kept on the device and sent as `consent: true` | «30 طلب في اليوم» becomes the server's `dailyLimit`. Account-level consent comes later. | b11 |
@@ -271,13 +271,13 @@ Contracts are summarised; the full shape is in the api_map section given. Size: 
 | g05_book | كتاب عرسك | later | No summary book or shareable template. | Out of the api_maps except the template rule (map D g05). | M |
 | z07_agreement | اللي اتفقنا عليه | later | No agreement points or provider confirmation. | `GET /bookings/:id/agreement`, points, provider confirm (map D z07). AI extraction gated (C66). | L |
 | w04_devices | الأجهزة | new | Refresh tokens carry no device data. | `AuthSession`; `GET /auth/sessions`, `DELETE /auth/sessions/:id`, `POST /auth/sessions/revoke-others` (map A §1.2). | M |
-| w05_delete_account | حذف الحساب | new | Deletion is immediate; no grace, impact or notices. | `POST /users/me/deletion`, `GET /users/me/deletion/impact`, purge cron (map A §1.3). Needs C4. | L |
-| w06_delete_pending | الحذف بعد 30 يوم | new | Same. | `GET/DELETE /users/me/deletion` (map A §1.3). Needs w05. | S |
+| w05_delete_account | حذف الحساب | new | Deletion is immediate; no grace, impact or notices. | Built (D63): `POST /users/me/deletion`, `GET /users/me/deletion/impact`, hourly purge through the one saga; «نزّلها» is the one-time download. | L |
+| w06_delete_pending | الحذف بعد 30 يوم | new | Same. | Built (D63): `GET/DELETE /users/me/deletion`; the real 30 days (19 Oct → 18 Nov); «اطلع» signs out. | S |
 | w12_date_passed | تم العرس؟ | new | No DONE status, no date-passed prompt. | `POST P/complete`, `date-prompt/snooze`, `WEDDING_DATE_PASSED` cron (map A §1.6). | M |
 | w13_archive_plan | الذكريات | new | Archive is one-way, any editor can do it, and it blocks all writes. | Owner-only archive from DONE or PAUSED with a write allow-list (map A §1.6, map B §7.5). | M |
 | w14_archived_view | خطة في الذكريات | new | No memories summary or restore. | `GET P/memories`, `POST P/restore` (map A §1.6). Needs w13. | S |
 | w15_delete_plan | حذف الخطة | new | Only whole-account erasure exists. | `GET P/deletion-impact`, `DELETE P {confirmTitle}`, receipt, notices (map A §1.6). Needs C4. | L |
-| w40_privacy | الخصوصية | new | No privacy settings or data export. | `GET/PATCH /users/me/privacy`, `POST /users/me/exports` (map A §1.3). | M |
+| w40_privacy | الخصوصية | new | No privacy settings or data export. | Built (D63): `GET/PATCH /users/me/privacy` (review name), crash reports on the device, the assistant's consent, `POST /users/me/exports`; «الأجهزة» (w04) not built, so not shown. | M |
 | x02_date_approx | تقريبًا متى؟ | V1 | No approximate date mode or tentative tasks. | `dateMode: APPROX`, `approxKey/Start/End` on `PATCH P`, tentative tasks (map A §1.6). | M |
 | x19_conflict | تعديلين على نفس البند | 1.1 | No versions, no conflict store. | `version` columns, `409 EDIT_CONFLICT`, `PlanEditConflict` + resolve (map A §1.5). | L |
 | x23_pause_plan | إيقاف الخطة | 1.1 | No PAUSED status or write policy. | `GET P/pause/preview`, `POST P/pause`, `planWritePolicy` (map A §1.6). Needs C57. | L |

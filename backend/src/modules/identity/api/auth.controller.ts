@@ -21,7 +21,7 @@ import { LoginDto } from "./auth-dto/login.dto";
 import { RequestOtpDto } from "./auth-dto/request-otp.dto";
 import { VerifyOtpDto } from "./auth-dto/verify-otp.dto";
 import { ConfirmPhoneChangeDto, RequestPhoneChangeDto } from "./auth-dto/change-phone.dto";
-import { JwtAuthGuard } from "../public/jwt-auth.guard";
+import { AllowedWhileDeletionPending, JwtAuthGuard } from "../public/jwt-auth.guard";
 import { CurrentUser } from "../public/current-user.decorator";
 import { AuthenticatedUser } from "../public/identity-session.types";
 import { toSafeUser } from "../internal/safe-user.presenter";
@@ -198,6 +198,7 @@ export class AuthController {
   @Post("logout")
   @HttpCode(HttpStatus.OK)
   @UseGuards(JwtAuthGuard)
+  @AllowedWhileDeletionPending()
   logout(@CurrentUser() user: AuthenticatedUser, @Body() dto: LogoutDto) {
     return this.authService.logout(user.id, dto);
   }
@@ -266,6 +267,7 @@ export class AuthController {
 
   @Get("me")
   @UseGuards(JwtAuthGuard)
+  @AllowedWhileDeletionPending()
   me(@CurrentUser() user: AuthenticatedUser) {
     return toSafeUser(user);
   }

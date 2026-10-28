@@ -92,6 +92,7 @@
     "features/providers/ProviderClaimsPage.tsx",
     "features/providers/ProviderDetailsPage.tsx",
     "features/providers/ProvidersPage.tsx",
+    "features/users/DataRequestsPage.tsx",
     "features/users/UserDetailsPage.tsx",
     "features/users/UsersPage.tsx",
     "platform/routing/NotFoundPage.tsx"
@@ -112,7 +113,7 @@
     "dashboard": ["AdminReport", "AdminStats", "AdminSuccessReport", "getReportOverview", "getStats", "getSuccessReport"],
     "moderation": ["AdminBooking", "AdminBookingQuery", "ConversationReport", "PortfolioPhoto", "ProviderReview", "decidePortfolioPhoto", "getBooking", "getBookings", "getConversationReports", "getPortfolioPhotos", "getReviews", "hideReview", "updateConversationReportStatus", "updateReviewReplyStatus", "updateReviewStatus"],
     "providers": ["CityProjection", "FeaturedPeriod", "FeaturedPeriodList", "FeaturedSummary", "ListedProviderInput", "ProviderApplication", "ProviderCategoryProjection", "ProviderClaimRequest", "ProviderFieldNote", "ProviderPackageProjection", "ProviderQueryParams", "ProviderReference", "ProviderReviewEvent", "ProviderReviewField", "ProviderReviewHistory", "ProviderServiceProjection", "activateProvider", "approveProvider", "approveProviderClaim", "createListedProvider", "endFeaturedPeriod", "getFeaturedPeriods", "getFeaturedSummary", "getProvider", "getProviderApplication", "getProviderApplications", "getProviderClaims", "getProviderReviewHistory", "getProviders", "grantFeaturedPeriod", "rejectProvider", "rejectProviderClaim", "requestProviderChanges", "sentBackAfterRefusal", "setProviderVerified", "suspendProvider"],
-    "users": ["AdminUserRecord", "UserProviderSummary", "activateUser", "disableUser", "getUser", "getUsers"]
+    "users": ["AdminUserRecord", "DataExportRequest", "DataRequests", "PendingDeletion", "UserProviderSummary", "activateUser", "disableUser", "getDataRequests", "getUser", "getUsers", "restoreAccountDeletion"]
   },
   "sourceFates": [
     {"source":"api/admin.ts","target":null,"action":"split-delete","sourceFirstTask":2,"targetTask":6},

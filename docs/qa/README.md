@@ -855,7 +855,7 @@ whether each item is PASS, FAIL, or BLOCKED.
 - Before the first account-delete request, require a secure durable marker with
   one stable high-entropy client request id and unmount all dashboards. Simulate
   a committed DELETE whose HTTP response is lost, restart the client, and prove
-  `POST /api/v1/account-deletions/status` returns `DELETED` from the immutable
+  the then public deletion-status route (removed by D63) returns `DELETED` from the immutable
   anonymous receipt. A fresh in-flight reservation returns `PENDING`; only a
   definitive rejection plus `NOT_STARTED` may clear the marker and restore the
   still-live account. The status response must never reveal account fields or

@@ -71,6 +71,16 @@ describe('admin navigation', () => {
     expect(itemFor('/photos').permission).toBe(AdminPermission.PROVIDERS_READ);
   });
 
+  it('puts the data requests page (n06) under the people, as drawn', () => {
+    expect(resolveAdminLocation('/data-requests')).toMatchObject({
+      group: 'الناس',
+      title: 'طلبات البيانات',
+      route: '/data-requests',
+      isDetail: false,
+    });
+    expect(itemFor('/data-requests').permission).toBe(AdminPermission.USERS_READ);
+  });
+
   it('puts the bookings page (a12) under the moderation, as drawn', () => {
     expect(resolveAdminLocation('/bookings')).toMatchObject({
       group: 'الرقابة',

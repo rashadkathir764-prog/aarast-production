@@ -25,6 +25,10 @@ import {
   type MediaStoragePort,
 } from '../modules/media/public/media-storage.port';
 import {
+  ACCOUNT_DELETION_ADMIN_PORT,
+  type AccountDeletionAdminPort,
+} from '../modules/identity/public/account-deletion-admin.port';
+import {
   type AdminAccountRow,
   IDENTITY_ADMIN_PORT,
   type IdentityAdminPort,
@@ -131,6 +135,9 @@ export class AdminOwners {
     @Inject(FINANCE_PORT) readonly finance: FinancePort,
     // A refused portfolio photo's image is deleted (B-16, n07).
     @Inject(MEDIA_STORAGE_PORT) readonly media: MediaStoragePort,
+    // n06 (D63): the pending deletions and the downloads of the accounts' data.
+    @Inject(ACCOUNT_DELETION_ADMIN_PORT)
+    readonly accountDeletions: AccountDeletionAdminPort,
   ) {}
 
   async attachProviders(

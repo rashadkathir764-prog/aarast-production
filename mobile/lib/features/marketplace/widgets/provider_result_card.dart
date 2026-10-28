@@ -6,13 +6,14 @@ import 'package:provider/provider.dart';
 import '../../../core/experience_v3/aarast_v3.dart';
 import '../../../core/preferences/device_preferences.dart';
 import '../../../core/theme/aarast_motion.dart';
+import '../../../core/utils/app_clock.dart';
 import '../../../core/utils/arabic_count.dart';
 
 /// w33 how old a published price is: «محدّث هذا الشهر», «محدّث قبل 8
 /// شهور». An old price may have changed; a quote confirms it.
 String? providerPriceAgeLabel(DateTime? updatedAt, {DateTime? now}) {
   if (updatedAt == null) return null;
-  final days = (now ?? DateTime.now()).difference(updatedAt).inDays;
+  final days = (now ?? appNow()).difference(updatedAt).inDays;
   if (days < 31) return 'محدّث هذا الشهر';
   final months = days ~/ 30;
   return 'محدّث قبل ${arabicCount(months, one: 'شهر', two: 'شهرين', few: 'شهور', many: 'شهر')}';

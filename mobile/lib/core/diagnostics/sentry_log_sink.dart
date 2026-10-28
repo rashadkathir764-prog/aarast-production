@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:aarast_mobile/core/diagnostics/app_logger.dart';
+import 'package:aarast_mobile/core/diagnostics/crash_report_switch.dart';
 import 'package:sentry_flutter/sentry_flutter.dart';
 
 /// Narrow seam around the Sentry SDK so the sink can be verified without
@@ -23,6 +24,8 @@ final class SentryAppLogSink implements AppLogSink {
 
   @override
   void add(AppLogEvent event) {
+    // D63 (w40): reports off on this phone, nothing is sent.
+    if (!CrashReportSwitch.enabled) return;
     final safeEvent = _redactor.redactEvent(event);
     if (safeEvent.level == AppLogLevel.error ||
         safeEvent.level == AppLogLevel.fatal) {
@@ -37,6 +40,8 @@ final class SentryAppLogSink implements AppLogSink {
   ///
   /// This must be assigned to [SentryOptions.beforeSend] during initialization.
   SentryEvent? beforeSend(SentryEvent event, Hint hint) {
+    // D63 (w40): reports off on this phone, the SDK's own events stay too.
+    if (!CrashReportSwitch.enabled) return null;
     event
       ..serverName = null
       ..user = null

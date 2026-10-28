@@ -25,7 +25,8 @@ const EXACT = Object.freeze({
   // Re-pinned 2026-10-25: NotificationsPage left (D56).
   // Re-pinned 2026-10-26: the a12 bookings page BookingsPage (B-40).
   // Re-pinned 2026-10-26: the n07 photos page PhotosPage (B-16).
-  appScreenAllowlist: 'bbd051bb674d9f1e330eb294dacb79552884ff683ee973afbfdc26376fb7ac4d',
+  // Re-pinned 2026-10-28: the n06 data requests page DataRequestsPage (A-15, D63).
+  appScreenAllowlist: '75d1db9a67c93131d2d8a5c304b52a99ba709f93b31c7b8449c039fcc1dae64e',
   publicSurfaceFirstTask: '84cf74e0a2242688515d08b8c9809596267b16b1d45acd9c8de382499254f2cf',
   // Re-pinned 2026-10-11: providers gained setProviderVerified (V1 checklist 4.11).
   // Re-pinned 2026-10-15: providers gained createListedProvider (V1 checklist 4.18).
@@ -43,7 +44,10 @@ const EXACT = Object.freeze({
   // (AdminBooking, AdminBookingQuery, getBookings, getBooking; B-40).
   // Re-pinned 2026-10-26: moderation gained the n07 photo review
   // (PortfolioPhoto, getPortfolioPhotos, decidePortfolioPhoto; B-16).
-  publicSurfaces: '21c24a62484f01dba3f188f29895e87d41e80ba6b1677432af6c23e118277833',
+  // Re-pinned 2026-10-28: users gained the n06 data requests (DataRequests,
+  // PendingDeletion, DataExportRequest, getDataRequests,
+  // restoreAccountDeletion; A-15, D63).
+  publicSurfaces: '1e2ce0dc1ddb1b722dd44114e8f873866980dba346239f7c70f6cb161c4d9259',
   // Re-pinned 2026-10-25 (D56): 19 old-kit components and the 2 tests that
   // belonged only to them (DataTable, SearchInput) changed fate from move to
   // delete; no other fate changed.
@@ -197,7 +201,8 @@ export function validateR10Manifest(value) {
     !Array.isArray(value.appScreenAllowlist)
     // 20 -> 21 (2026-10-26): the a12 bookings page (B-40).
     // 21 -> 22 (2026-10-26): the n07 photos page (B-16).
-    || value.appScreenAllowlist.length !== 22
+    // 22 -> 23 (2026-10-28): the n06 data requests page (A-15, D63).
+    || value.appScreenAllowlist.length !== 23
     || JSON.stringify(value.appScreenAllowlist) !== JSON.stringify(uniqueSorted(value.appScreenAllowlist))
   ) throw new Error('screen allowlist invalid');
   for (const fate of value.sourceFates) {

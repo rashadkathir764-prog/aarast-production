@@ -329,28 +329,38 @@ Additional current auth/profile routes:
 - `POST /api/v1/auth/otp/request`
 - `POST /api/v1/auth/otp/verify`
 - `PATCH /api/v1/users/me`
-- `DELETE /api/v1/users/me`
-  - requires a valid, stable `X-Client-Request-Id`; a missing or malformed
-    value returns `400` with `ACCOUNT_DELETION_REQUEST_ID_REQUIRED`;
-  - deletes an ordinary wedding-app account and its owned data in the same
-    transaction that commits an anonymous immutable deletion receipt;
-  - when the underlying database row is also an administrator, deletes only
-    the enrolled wedding-application identity and application-owned graph. It
-    clears `appPasswordHash`, application profile/onboarding fields, app media,
-    memberships, plans, provider/customer data, application OTPs and
-    `APPLICATION` refresh sessions, while retaining the administrator
-    password/profile/role, admin avatar, admin challenges, audit links,
-    administrator idempotency history, and `ADMIN` refresh sessions;
-  - is reachable only with an application-scoped bearer. An administrator
-    bearer cannot call this product route or be downgraded into an application
-    session.
-- `POST /api/v1/account-deletions/status`
-  - is intentionally unauthenticated because the successful command removes
-    the account and its session;
-  - is throttled to 10 requests per minute and accepts only
-    `{ userId, clientRequestId }` safe opaque identifiers;
-  - returns only `{ status: "DELETED" | "PENDING" | "NOT_STARTED" }` and no
-    account, profile, or deletion-graph data.
+- Account deletion waits 30 days (D63; the immediate erasure route on
+  `/api/v1/users/me` and the public deletion-status route are removed):
+  - `GET /api/v1/users/me/deletion/impact` → `{ graceDays: 30, ownedPlans:
+    [{ id, title, memberNames, upcomingBookings }], memberOfPlans, provider:
+    { businessName, upcomingBookings } | null, blockedBy:
+    "PROVIDER_HAS_UPCOMING_BOOKINGS" | null }`.
+  - `POST /api/v1/users/me/deletion { confirmWord: "حذف" }` → `200 { status:
+    "PENDING", requestedAt, scheduledFor }` (asking again answers the same
+    request). `400 CONFIRM_WORD_MISMATCH`; `409 PROVIDER_HAS_UPCOMING_BOOKINGS
+    { count, bookingIds }` (B-33). Members of owned plans get `PLAN_UPDATED`
+    «خطة X متوقفة».
+  - `GET /api/v1/users/me/deletion` → the same state, or `{ status: "NONE" }`;
+    `DELETE /api/v1/users/me/deletion` takes it back (`409
+    DELETION_NOT_PENDING` when nothing waits); members are told «رجعت».
+  - While pending, every other application route answers `403
+    ACCOUNT_DELETION_PENDING { scheduledFor }`; only `GET /api/v1/me`,
+    `GET /api/v1/auth/me`, the two routes above, `POST /api/v1/auth/logout`
+    and `DELETE /api/v1/push/installations/current` pass. The signed-in user
+    carries `deletion: { requestedAt, scheduledFor } | null`. Owned plans are
+    closed to members.
+  - An hourly job erases due accounts through the one erasure saga (job only;
+    an administrator's row keeps its admin identity as before). A failure
+    (B-33 again, or any error) is recorded for n06 and retried next hour.
+- `POST /api/v1/users/me/exports` → `201 { id, downloadPath, expiresAt }`
+  (15 minutes, 5 a day: `429 EXPORT_RATE_LIMITED`); `GET
+  /api/v1/data-exports/:token` (no session; the token is the credential)
+  returns the account's own data as a JSON attachment once, then `404
+  EXPORT_LINK_INVALID`.
+- `GET`/`PATCH /api/v1/users/me/privacy` → `{ reviewFirstNameOnly }` (reviews
+  show the first name only while on; default on).
+- `GET /admin/data-requests` (`USERS_READ`) and `POST
+  /admin/data-requests/:id/restore` (`USERS_WRITE`): n06.
 - `GET /api/v1/users/lookup?weddingPlanId=<planId>&phone=<phone>`
   - requires an authenticated owner/member with permission to invite members
 - `GET /api/v1/users/me/settings`
@@ -2869,7 +2879,8 @@ customers are told «[المزود] موقوف مؤقتًا · حجزك المؤ
 `data.bookingKept`). A suspended provider requests, confirms and closes
 nothing (`403 PROVIDER_NOT_ACTIVE`). V1 has no provider-side pause switch.
 
-**Deleting a provider's account (B-33).** `DELETE /api/v1/users/me` by the
+**Deleting a provider's account (B-33).** Asking for the deletion (`POST
+/api/v1/users/me/deletion`, D63) and the erasure after 30 days, by the
 owner of a provider with `CONFIRMED` bookings from today on (Sana'a) returns
 `409 PROVIDER_HAS_UPCOMING_BOOKINGS { count, bookingIds }`; the check reads
 under the provider rows' locks and the refusal rolls the whole erasure back.
@@ -3395,6 +3406,8 @@ configuration, and smoke checks.
 | GET | `/admin/conversation-reports` | `admin.listConversationReports` | 🔒 |
 | PATCH | `/admin/conversation-reports/:id/status` | `admin.updateConversationReportStatus` | 🔒 |
 | GET | `/admin/dashboard/stats` | `admin.getDashboardStats` | 🔒 |
+| GET | `/admin/data-requests` | `admin.listDataRequests` | 🔒 |
+| POST | `/admin/data-requests/:id/restore` | `admin.restoreAccountDeletion` | 🔒 |
 | DELETE | `/admin/districts/:id` | `catalogs.disableDistrict` | 🔒 |
 | PATCH | `/admin/districts/:id` | `catalogs.updateDistrict` | 🔒 |
 | GET | `/admin/districts/:id/localities` | `catalogs.listLocalities` | 🔒 |
@@ -3453,7 +3466,6 @@ configuration, and smoke checks.
 | GET | `/admin/users/:id` | `admin.getUser` | 🔒 |
 | PATCH | `/admin/users/:id/activate` | `admin.activateUser` | 🔒 |
 | PATCH | `/admin/users/:id/disable` | `admin.disableUser` | 🔒 |
-| POST | `/api/v1/account-deletions/status` | `account-deletion-status.status` |  |
 | POST | `/api/v1/auth/admin/login` | `auth.startAdminLogin` |  |
 | POST | `/api/v1/auth/admin/login/complete` | `auth.completeAdminLogin` |  |
 | POST | `/api/v1/auth/admin/logout` | `auth.logoutAdmin` |  |
@@ -3505,6 +3517,7 @@ configuration, and smoke checks.
 | GET | `/api/v1/costs/:id/payments` | `wedding-costs.listPayments` | 🔒 |
 | POST | `/api/v1/costs/:id/payments` | `wedding-costs.createPayment` | 🔒 |
 | GET | `/api/v1/dashboard/home` | `dashboard.getHome` | 🔒 |
+| GET | `/api/v1/data-exports/:token` | `data-exports.download` |  |
 | GET | `/api/v1/districts/:id/localities` | `catalogs.listLocalities` |  |
 | DELETE | `/api/v1/funding-sources/:id` | `funding-sources.remove` | 🔒 |
 | PATCH | `/api/v1/funding-sources/:id` | `funding-sources.update` | 🔒 |
@@ -3628,8 +3641,14 @@ configuration, and smoke checks.
 | DELETE | `/api/v1/tasks/:id/checklist/:itemId` | `tasks.removeChecklistItem` | 🔒 |
 | PATCH | `/api/v1/tasks/:id/checklist/:itemId` | `tasks.updateChecklistItem` | 🔒 |
 | GET | `/api/v1/users/lookup` | `users.lookupByPhone` | 🔒 |
-| DELETE | `/api/v1/users/me` | `users.deleteMe` | 🔒 |
 | PATCH | `/api/v1/users/me` | `users.updateMe` | 🔒 |
+| DELETE | `/api/v1/users/me/deletion` | `account-deletion-status.cancelDeletion` | 🔒 |
+| GET | `/api/v1/users/me/deletion` | `account-deletion-status.deletionStatus` | 🔒 |
+| POST | `/api/v1/users/me/deletion` | `account-deletion-status.requestDeletion` | 🔒 |
+| GET | `/api/v1/users/me/deletion/impact` | `account-deletion-status.deletionImpact` | 🔒 |
+| POST | `/api/v1/users/me/exports` | `users.createExport` | 🔒 |
+| GET | `/api/v1/users/me/privacy` | `users.getPrivacy` | 🔒 |
+| PATCH | `/api/v1/users/me/privacy` | `users.updatePrivacy` | 🔒 |
 | GET | `/api/v1/users/me/settings` | `users.getSettings` | 🔒 |
 | PATCH | `/api/v1/users/me/settings` | `users.updateSettings` | 🔒 |
 | GET | `/api/v1/wedding-plans` | `wedding-plans.findAccessible` | 🔒 |

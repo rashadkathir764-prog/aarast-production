@@ -2,10 +2,14 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/painting.dart' show TextScaler;
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../diagnostics/crash_report_switch.dart';
+
 /// How the app looks and behaves on this phone (g02 «شكل التطبيق» and
 /// «أخفِ المبالغ»). Kept on the device, never sent to the server.
 class DevicePreferences extends ChangeNotifier {
-  DevicePreferences(this._preferences);
+  DevicePreferences(this._preferences) {
+    CrashReportSwitch.set(crashReports);
+  }
 
   final SharedPreferences _preferences;
 
@@ -14,6 +18,7 @@ class DevicePreferences extends ChangeNotifier {
   static const _dataSaverKey = 'aarast_pref_data_saver';
   static const _hideAmountsKey = 'aarast_pref_hide_amounts';
   static const _pushCardKey = 'aarast_pref_push_card_hidden_until';
+  static const _crashReportsKey = 'aarast_pref_crash_reports';
 
   /// How long «لاحقًا» on w39 keeps the card away.
   static const pushCardPause = Duration(days: 7);
@@ -67,6 +72,14 @@ class DevicePreferences extends ChangeNotifier {
   Future<void> setLargeText(bool value) => _set(_largeTextKey, value);
   Future<void> setDataSaver(bool value) => _set(_dataSaverKey, value);
   Future<void> setHideAmounts(bool value) => _set(_hideAmountsKey, value);
+
+  /// D63 (w40): crash and error reports leave this phone (on by default).
+  bool get crashReports => _preferences.getBool(_crashReportsKey) ?? true;
+
+  Future<void> setCrashReports(bool value) async {
+    CrashReportSwitch.set(value);
+    await _set(_crashReportsKey, value);
+  }
 
   Future<void> _set(String key, bool value) async {
     await _preferences.setBool(key, value);

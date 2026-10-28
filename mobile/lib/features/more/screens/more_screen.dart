@@ -217,6 +217,14 @@ class _MoreScreenState extends State<MoreScreen> {
                   title: 'التنبيهات',
                   onTap: () => context.push(AppRouter.settings),
                 ),
+              // w40 (D63, L8): privacy, the data download and w05.
+              if (hasAccount)
+                _Row(
+                  key: const ValueKey('account-privacy'),
+                  icon: LucideIcons.shieldCheck,
+                  title: 'الخصوصية',
+                  onTap: () => context.push(AppRouter.privacy),
+                ),
               // A participant's plans are listed above (q10).
               if (!participant)
                 _Row(
@@ -253,9 +261,9 @@ class _MoreScreenState extends State<MoreScreen> {
     );
   }
 
-  /// g11 «الخروج». Deleting the account stays out until its 30-day grace
-  /// exists (C4); changes not yet sent are named first, because signing out
-  /// wipes them from this phone (C59).
+  /// g11 «الخروج»: out of this phone, or w05 to delete the account after
+  /// its 30 days (C4, D63); changes not yet sent are named first, because
+  /// signing out wipes them from this phone (C59).
   static Future<void> _logout(BuildContext context) async {
     OfflineSyncService? sync;
     try {
@@ -263,13 +271,18 @@ class _MoreScreenState extends State<MoreScreen> {
     } on ProviderNotFoundException {
       sync = null;
     }
-    final confirmed = await showJourneySheet<bool>(
+    final choice = await showJourneySheet<LogoutChoice>(
       context: context,
       builder: (sheetContext) => LogoutSheet(sync: sync),
     );
-
-    if (confirmed == true && context.mounted) {
-      await context.read<AuthController>().logout();
+    if (!context.mounted) return;
+    switch (choice) {
+      case LogoutChoice.signOut:
+        await context.read<AuthController>().logout();
+      case LogoutChoice.deleteAccount:
+        await context.push(AppRouter.deleteAccount);
+      case null:
+        break;
     }
   }
 

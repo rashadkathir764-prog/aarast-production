@@ -85,7 +85,7 @@ import '../../features/provider_portal/provider_portal_api.dart'
         ProviderShareScreen,
         providerChatCase;
 import '../../features/settings/settings_api.dart'
-    show LockSettingsScreen, SettingsScreen;
+    show DeleteAccountScreen, LockSettingsScreen, PrivacyScreen, SettingsScreen;
 import '../../features/sharing/sharing_api.dart'
     show
         ContributionHistoryScreen,
@@ -216,6 +216,8 @@ class AppRouter {
   static const more = '/more';
   static const settings = '/settings';
   static const lockSettings = '/settings/lock';
+  static const privacy = '/settings/privacy';
+  static const deleteAccount = '/settings/delete-account';
   static const support = '/support';
   static const guestOnboardingPreview = '/dev/guest-onboarding';
   static const userNavigationShellPreview = '/dev/user-navigation-shell';

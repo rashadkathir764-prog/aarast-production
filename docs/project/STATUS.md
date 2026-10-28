@@ -1603,7 +1603,8 @@ Observed validation for this checkpoint:
 
 - A physical Android report exposed one dual-identity defect in the deployed
   revision: an administrator enrolled in the wedding application was projected
-  correctly as an application user at login, but `DELETE /api/v1/users/me`
+  correctly as an application user at login, but the then immediate account
+  deletion route (replaced by the 30-day grace, D63)
   re-read the shared database `role=ADMIN` and returned `403`. The durable
   idempotency reservation then appeared `PENDING`, and an immediate Mobile
   replay could surface `503` while the first reservation was still live.

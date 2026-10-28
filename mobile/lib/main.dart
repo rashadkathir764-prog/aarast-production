@@ -26,7 +26,6 @@ import 'core/push/push_notifications_controller.dart';
 import 'core/push/push_registration_api.dart';
 import 'core/security/app_lock_controller.dart';
 import 'core/session/session_boundary.dart';
-import 'core/session/pending_account_deletion.dart';
 import 'core/session/session_scoped_change_notifier.dart';
 import 'core/session/session_teardown_coordinator.dart';
 import 'core/storage/auth_storage.dart';
@@ -145,9 +144,6 @@ Future<void> _bootstrapApplication(ObservabilityConfig observability) async {
 
   ApiConfig.validateForStartup();
   const sensitiveValueVault = SecureSensitiveValueVault();
-  final pendingAccountDeletionStore = PendingAccountDeletionStore(
-    sensitiveValueVault,
-  );
   final authStorage = AuthStorage(
     preferences,
     tokenVault: const SecureTokenVault(),
@@ -222,7 +218,6 @@ Future<void> _bootstrapApplication(ObservabilityConfig observability) async {
     clearGuestDraft: guestOnboardingStorage.clearDraft,
     clearDeletedAccountState: (userId) async {
       await pendingPlanCleanupStore.removeForUser(userId);
-      await pendingAccountDeletionStore.removeForDeletedUser(userId);
     },
   );
   final accountContextsApi = AccountContextsApi(apiClient);
@@ -331,12 +326,15 @@ Future<void> _bootstrapApplication(ObservabilityConfig observability) async {
               offlineSyncService: offlineSyncService,
               guestOnboardingStorage: guestOnboardingStorage,
               sessionTeardownCoordinator: sessionTeardownCoordinator,
-              pendingAccountDeletionStore: pendingAccountDeletionStore,
             );
             // A mid-session 401 anywhere forces a clean re-login instead of
             // degrading every screen into misleading errors.
             apiClient.onSessionExpired = () {
               unawaited(controller.handleSessionExpired());
+            };
+            // D63: another phone asked to delete the account; w06 shows.
+            apiClient.onAccountDeletionPending = () {
+              unawaited(controller.handleAccountDeletionPending());
             };
             unawaited(controller.restoreSession());
             return controller;

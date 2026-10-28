@@ -1717,7 +1717,10 @@ const r19ProviderPortalApi = Object.freeze({
 // API.
 // +1 (D64, y08): the mahr's moment reads the mahr, its payments and the
 // bride's received parts through the finance owner API.
-const r19LegalRecordCount = 249;
+// +6 (D63, w05/w06/w40): the privacy screen reads the open plan, the account
+// and the assistant's consent; the deletion screens read the account; the
+// app's gate shows w06 from the settings owner API.
+const r19LegalRecordCount = 255;
 const trackedOwnerApiContracts = [
   {
     area: 'features/account_contexts',
@@ -1768,7 +1771,6 @@ const trackedOwnerApiContracts = [
       { uri: 'screens/reset_password_screen.dart', show: ['ResetPasswordScreen'] },
       { uri: 'screens/splash_screen.dart', show: ['SplashScreen'] },
       { uri: 'utils/auth_action_guard.dart', show: ['AuthActionGuard', 'AuthGatePanel'] },
-      { uri: 'widgets/account_deletion_flow.dart', show: ['confirmAccountDeletion'] },
       {
         uri: 'widgets/auth_wedding_widgets.dart',
         show: ['AuthObscureToggle', 'AuthTextField'],
@@ -2152,10 +2154,14 @@ const trackedOwnerApiContracts = [
     exports: [
       { uri: 'data/settings_api.dart', show: ['SettingsApi'] },
       { uri: 'providers/settings_provider.dart', show: ['SettingsProvider'] },
+      // D63: w05, w06 and w40.
+      { uri: 'screens/delete_account_screen.dart', show: ['DeleteAccountScreen'] },
+      { uri: 'screens/deletion_pending_screen.dart', show: ['DeletionPendingScreen'] },
       {
         uri: 'screens/lock_settings_screen.dart',
         show: ['LockSettingsScreen'],
       },
+      { uri: 'screens/privacy_screen.dart', show: ['PrivacyScreen'] },
       { uri: 'screens/settings_screen.dart', show: ['SettingsScreen'] },
       {
         uri: 'widgets/change_phone_sheet.dart',
@@ -2347,6 +2353,8 @@ const trackedOwnerApiContracts = [
         uri: 'screens/wedding_plan_dashboard_screen.dart',
         show: ['WeddingPlanDashboardScreen'],
       },
+      // D63 (w40): the assistant's consent, shown and taken back.
+      { uri: 'utils/assistant_consent.dart', show: ['AssistantConsent'] },
       {
         uri: 'utils/plan_pulse_sync.dart',
         show: ['publishGuestPlanPulse', 'publishTaskPlanPulse'],
@@ -2529,7 +2537,7 @@ const trackedCollaborationBatchContracts = [
   {
     source: 'mobile/lib/features/provider_portal/screens/provider_settings_screen.dart',
     target: 'mobile/lib/features/auth/auth_api.dart',
-    show: ['AuthController', 'confirmAccountDeletion'],
+    show: ['AuthController'],
   },
   {
     source: 'mobile/lib/features/provider_portal/screens/provider_settings_screen.dart',
@@ -3232,6 +3240,11 @@ const trackedCompositionRootContracts = [
         show: ['AuthController', 'AuthStatus'],
       },
       {
+        // D63 (w06): an account waiting out its deletion sees only w06.
+        target: 'mobile/lib/features/settings/settings_api.dart',
+        show: ['DeletionPendingScreen'],
+      },
+      {
         // The open plan's profile (JOURNEY_PROFILE.md) reads the phone
         // plan's persona from the home summary.
         target: 'mobile/lib/features/wedding_plans/wedding_plans_api.dart',
@@ -3354,7 +3367,7 @@ const trackedCompositionRootContracts = [
       },
       {
         target: 'mobile/lib/features/settings/settings_api.dart',
-        show: ['LockSettingsScreen', 'SettingsScreen'],
+        show: ['DeleteAccountScreen', 'LockSettingsScreen', 'PrivacyScreen', 'SettingsScreen'],
       },
       {
         target: 'mobile/lib/features/sharing/sharing_api.dart',

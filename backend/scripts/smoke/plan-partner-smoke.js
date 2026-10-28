@@ -6,6 +6,11 @@ require('./smoke-isolation-hook');
 const http = require('http');
 const { randomUUID } = require('crypto');
 const { registerVerified } = require('./verified-registration');
+const {
+  isPendingDeletion,
+  purgePendingAccounts,
+  requestAccountDeletion,
+} = require('./account-grace');
 
 /**
  * Plan partner smoke (V1 checklist 4.10), through the HTTP stack: the owner
@@ -263,17 +268,24 @@ async function run() {
       'the partner keeps a private cost with a payment and a schedule, and a private task',
       keptCost.status === 201 && keptPayment.status === 201 && keptSchedule.status === 201 && keptTask.status === 201,
     );
-    const brideGone = await request('DELETE', '/api/v1/users/me', null, bride.token, randomUUID());
-    check('the partner deletes her account with her private money and tasks', brideGone.status === 200);
+    const brideAsked = await requestAccountDeletion(request, bride.token);
+    check('the partner asks to delete her account', isPendingDeletion(brideAsked));
+    const brideGone = await purgePendingAccounts();
+    check(
+      'after the 30 days the partner account goes with her private money and tasks',
+      brideGone.erased === 1 && brideGone.failures.length === 0,
+    );
     bride.token = null;
     const ownerAfter = await request('GET', `/api/v1/wedding-plans/${planId}/money-summary`, null, owner.token);
     check('the owner plan still reads after the partner left', ownerAfter.status === 200 && Number(ownerAfter.body?.costs?.total) === 5700);
   } finally {
     for (const [label, account] of [['family', family], ['bride', bride], ['owner', owner]]) {
       if (!account.token) continue;
-      const response = await request('DELETE', '/api/v1/users/me', null, account.token, randomUUID());
-      check(`${label} fixture account is cleaned`, response.status === 200);
+      const response = await requestAccountDeletion(request, account.token);
+      check(`${label} fixture account asks to be deleted`, isPendingDeletion(response));
     }
+    const cleanup = await purgePendingAccounts();
+    check('the fixture accounts are erased', cleanup.failures.length === 0);
   }
 
   console.log(`Overall Result: ${failed === 0 ? 'PASS' : 'FAIL'}`);

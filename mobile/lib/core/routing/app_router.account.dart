@@ -29,6 +29,16 @@ List<RouteBase> _accountRoutes() => [
     path: AppRouter.lockSettings,
     builder: (context, state) => const LockSettingsScreen(),
   ),
+  // w40 «الخصوصية» and w05 «حذف الحساب» (D63); w06 shows over everything
+  // while the account waits (the gate in app.dart).
+  GoRoute(
+    path: AppRouter.privacy,
+    builder: (context, state) => const PrivacyScreen(),
+  ),
+  GoRoute(
+    path: AppRouter.deleteAccount,
+    builder: (context, state) => const DeleteAccountScreen(),
+  ),
   GoRoute(
     path: AppRouter.support,
     builder: (context, state) => const SupportScreen(),

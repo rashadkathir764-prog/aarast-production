@@ -9,6 +9,7 @@ import { CatalogReadPublicModule } from '../../catalog/public/catalog-read-publi
 import { CollaborationPermissionPublicModule } from '../../collaboration/public/collaboration-permission-public.module';
 import { FinancePublicModule } from '../../finance/public/finance-public.module';
 import { IdentityAdminPublicModule } from '../../identity/public/identity-admin-public.module';
+import { AccountDeletionAdminPublicModule } from '../../identity/public/account-deletion-admin-public.module';
 import { ProviderAccountPublicModule } from '../../identity/public/provider-account-public.module';
 import { UserReadPublicModule } from '../../identity/public/user-read-public.module';
 import { MarketplaceAdminPublicModule } from '../../marketplace/public/marketplace-admin-public.module';
@@ -28,6 +29,7 @@ import { MediaStoragePublicModule } from '../../media/public/media-storage-publi
     MessagingRealtimePublicModule,
     NotificationsPublicModule,
     IdentityAdminPublicModule,
+    AccountDeletionAdminPublicModule,
     ProviderAccountPublicModule,
     UserReadPublicModule,
     CatalogAdminPublicModule,

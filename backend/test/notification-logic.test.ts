@@ -17,6 +17,8 @@ import { PermissionService } from "../src/modules/collaboration/internal/permiss
 import { notificationsService, sharingService } from "./support/owner-ports";
 
 const user = { id: "user-1" } as AuthenticatedUser;
+/** D63: the account table, where no recipient waits out its deletion. */
+const noDeletionPending = { findMany: async () => [] };
 
 function createHarness() {
   const records = new Map<string, Notification>();
@@ -117,6 +119,7 @@ function createHarness() {
     provider,
     conversation,
     sharedMember,
+    user: noDeletionPending,
     $transaction: async (operation: unknown) =>
       Array.isArray(operation)
         ? Promise.all(operation)
@@ -138,7 +141,9 @@ function createHarness() {
             provider,
             conversation,
             sharedMember,
-          }),
+            // D63: no recipient waits out an account deletion.
+            user: noDeletionPending,
+          } as never),
   } as unknown as PrismaService;
   const permissions = {} as PermissionService;
   return {
@@ -173,6 +178,7 @@ test("transaction-scoped notification creation reuses the caller transaction", a
   let outboxRows = 0;
   const now = new Date();
   const client = {
+    user: noDeletionPending,
     notification: {
       create: async ({ data }: { data: Record<string, unknown> }) => ({
         id: "notification-invite",
@@ -256,6 +262,7 @@ test("disabled provider-message preference suppresses quote notifications and ou
   let outboxRows = 0;
   const client = {
     $queryRaw: async () => [{ id: user.id }],
+    user: noDeletionPending,
     notificationPreference: {
       findUnique: async () => ({
         taskRemindersEnabled: true,

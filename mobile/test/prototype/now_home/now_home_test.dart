@@ -15,7 +15,6 @@ import 'package:aarast_mobile/core/offline/sync_status.dart';
 import 'package:aarast_mobile/core/session/safe_user.dart';
 import 'package:aarast_mobile/core/storage/auth_storage.dart';
 import 'package:aarast_mobile/core/theme/app_theme.dart';
-import 'package:aarast_mobile/core/widgets/aarast_ui.dart';
 import 'package:aarast_mobile/features/auth/data/auth_repository.dart';
 import 'package:aarast_mobile/features/auth/providers/auth_controller.dart';
 import 'package:aarast_mobile/features/home/providers/home_dashboard_provider.dart';
@@ -30,8 +29,7 @@ import 'package:aarast_mobile/features/onboarding/models/guest_onboarding_draft.
 import 'package:aarast_mobile/features/sharing/data/sharing_api.dart';
 import 'package:aarast_mobile/features/sharing/models/shared_wedding_plan.dart';
 import 'package:aarast_mobile/features/shell/widgets/plan_shell_chrome.dart';
-import 'package:aarast_mobile/features/tasks/models/wedding_task.dart';
-import 'package:aarast_mobile/features/wedding_day/widgets/wedding_day_mode_view.dart';
+import 'package:aarast_mobile/features/wedding_day/models/plan_event.dart';
 import 'package:aarast_mobile/features/wedding_plans/data/plan_assistant_api.dart';
 import 'package:aarast_mobile/features/wedding_plans/data/wedding_plans_api.dart';
 import 'package:aarast_mobile/features/wedding_plans/models/dashboard_summary.dart';
@@ -359,6 +357,7 @@ class _FakeSync extends OfflineSyncService {
   int get unsyncedCount => _pending + _blocked;
   @override
   DateTime? get lastSyncedAt => DateTime(2026, 10, 20, 9, 40);
+
   /// w41: the sheet lists every change still on the phone, the refused one
   /// with its reason, the rest waiting for the network.
   @override
@@ -408,25 +407,78 @@ void main() {
     topStatus: top,
   );
 
-  Widget dash(DashboardSummary s, DateTime now, {Widget? assistant}) =>
-      AarastDashboardView(
-        summary: s,
-        userName: 'محمد',
-        bottomPadding: 158,
-        now: now,
-        assistantEntry: assistant,
-        onNotifications: () {},
-        onProfile: () {},
-        onOpenPlan: () {},
-        onOpenMoney: () {},
-        onOpenTasks: () {},
-        onOpenProviders: () {},
-        onOpenGuests: () {},
-        onOpenSharing: () {},
-        onOpenWeddingDay: () {},
-        onOpenNextStep: () {},
-        onOpenImportantItem: (_) {},
-      );
+  Widget dash(
+    DashboardSummary s,
+    DateTime now, {
+    Widget? assistant,
+    PlanEventsView? events,
+  }) => AarastDashboardView(
+    summary: s,
+    userName: 'محمد',
+    bottomPadding: 158,
+    now: now,
+    assistantEntry: assistant,
+    events: events,
+    onOpenEvents: () {},
+    onNotifications: () {},
+    onProfile: () {},
+    onOpenPlan: () {},
+    onOpenMoney: () {},
+    onOpenTasks: () {},
+    onOpenProviders: () {},
+    onOpenGuests: () {},
+    onOpenSharing: () {},
+    onOpenNextStep: () {},
+    onOpenImportantItem: (_) {},
+  );
+
+  // b04 and b05's events (D65): السمرة, المقيل and the wedding, with the
+  // day's lunch and dinner (C8).
+  final weekEvents = PlanEventsView(
+    weddingPlanId: _planId,
+    canEdit: true,
+    suggestions: const [],
+    items: [
+      PlanEvent(
+        id: 'e1',
+        type: PlanEventType.samra,
+        date: DateTime(2027, 1, 19),
+        slot: PlanEventSlot.afterIsha,
+        placeLabel: 'الديوان',
+      ),
+      PlanEvent(
+        id: 'e2',
+        type: PlanEventType.maqeel,
+        date: DateTime(2027, 1, 20),
+        slot: PlanEventSlot.afterDhuhr,
+        placeLabel: 'بيت الوالد',
+        note: 'القات عند صالح',
+      ),
+      PlanEvent(
+        id: 'e3',
+        type: PlanEventType.lunch,
+        date: DateTime(2027, 1, 21),
+        slot: PlanEventSlot.dhuhr,
+        placeLabel: 'بيت الوالد',
+        responsibleName: 'أبو علي',
+      ),
+      PlanEvent(
+        id: 'e4',
+        type: PlanEventType.wedding,
+        date: DateTime(2027, 1, 21),
+        slot: PlanEventSlot.afterAsr,
+        placeLabel: 'قاعة سبأ',
+      ),
+      PlanEvent(
+        id: 'e5',
+        type: PlanEventType.dinner,
+        date: DateTime(2027, 1, 21),
+        slot: PlanEventSlot.afterIsha,
+        placeLabel: 'قاعة سبأ',
+        responsibleName: 'ضيافة الأصالة',
+      ),
+    ],
+  );
 
   final now = DateTime(2026, 10, 20, 10);
 
@@ -473,7 +525,11 @@ void main() {
       tester,
       'home_week',
       shell(
-        dash(_stage(2, _wedding), DateTime(2027, 1, 19, 10)),
+        dash(
+          _stage(2, _wedding),
+          DateTime(2027, 1, 19, 10),
+          events: weekEvents,
+        ),
         stage: 'الأسبوع الأخير',
       ),
       h: 1000,
@@ -485,7 +541,11 @@ void main() {
       tester,
       'home_day',
       shell(
-        dash(_stage(0, _wedding), DateTime(2027, 1, 21, 10)),
+        dash(
+          _stage(0, _wedding),
+          DateTime(2027, 1, 21, 16),
+          events: weekEvents,
+        ),
         stage: 'اليوم الكبير',
       ),
       h: 1000,
@@ -501,72 +561,6 @@ void main() {
         stage: 'ما بعد العرس',
       ),
       h: 1000,
-    );
-  });
-
-  testWidgets('wedding day mode', (tester) async {
-    final s = _stage(0, _wedding);
-    final tasks = [
-      WeddingTask(
-        id: 't1',
-        weddingPlanId: _planId,
-        title: 'تأكيد وصول فرقة الأفراح',
-        dueDate: DateTime(2027, 1, 21, 12),
-        responsibleName: 'صالح',
-        responsiblePhone: '+967777123456',
-        status: 'TODO',
-        priority: 'URGENT',
-        createdAt: DateTime(2027, 1, 1),
-        updatedAt: DateTime(2027, 1, 1),
-      ),
-      WeddingTask(
-        id: 't2',
-        weddingPlanId: _planId,
-        title: 'استلام البدلة',
-        dueDate: DateTime(2027, 1, 20),
-        responsibleName: 'محمد',
-        status: 'IN_PROGRESS',
-        priority: 'HIGH',
-        createdAt: DateTime(2027, 1, 1),
-        updatedAt: DateTime(2027, 1, 1),
-      ),
-    ];
-    await _shot(
-      tester,
-      'wedding_day_mode',
-      Directionality(
-        textDirection: TextDirection.rtl,
-        child: AarastScreenFrame(
-          maxWidth: 600,
-          child: Column(
-            children: [
-              Padding(
-                padding: const EdgeInsets.fromLTRB(20, 10, 20, 8),
-                child: AarastPageHeader(
-                  title: 'اليوم الكبير',
-                  showBack: true,
-                  onBack: () {},
-                ),
-              ),
-              Expanded(
-                child: WeddingDayModeView(
-                  summary: s,
-                  tasks: tasks,
-                  now: DateTime(2027, 1, 21, 10),
-                  onRefresh: () async {},
-                  onCompleteTask: (_) {},
-                  onCopyPhone: (_) {},
-                  onOpenTasks: () {},
-                  onOpenGuests: () {},
-                  onOpenProviders: () {},
-                  onOpenProvider: (_) {},
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-      h: 1400,
     );
   });
 
@@ -724,12 +718,7 @@ void main() {
 
   testWidgets('assistant start', (tester) async {
     SharedPreferences.setMockInitialValues({});
-    await _shot(
-      tester,
-      'assistant',
-      assistant(_FakeAssistantApi()),
-      h: 1000,
-    );
+    await _shot(tester, 'assistant', assistant(_FakeAssistantApi()), h: 1000);
   });
 
   testWidgets('assistant consent', (tester) async {

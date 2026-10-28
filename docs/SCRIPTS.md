@@ -52,6 +52,7 @@
 | `backend` | `npm run smoke:conversation-unification` | `node scripts/smoke/run-isolated-smoke.js conversation-unification-smoke.js` |
 | `backend` | `npm run smoke:cost-receipts` | `node scripts/smoke/run-isolated-smoke.js cost-receipts-smoke.js` |
 | `backend` | `npm run smoke:dashboard-summary` | `node scripts/smoke/run-isolated-smoke.js dashboard-summary-smoke.js` |
+| `backend` | `npm run smoke:events` | `node scripts/smoke/run-isolated-smoke.js events-smoke.ts` |
 | `backend` | `npm run smoke:featured-placement` | `node scripts/smoke/run-isolated-smoke.js featured-placement-smoke.ts` |
 | `backend` | `npm run smoke:financial-ledger-concurrency` | `node scripts/smoke/run-isolated-smoke.js financial-ledger-concurrency-smoke.js` |
 | `backend` | `npm run smoke:guest-phone-migration` | `node scripts/smoke/run-isolated-smoke.js --guest-phone-migration` |

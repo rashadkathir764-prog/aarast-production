@@ -82,7 +82,8 @@ test('Task 6 full modules preserve the exact controller ownership', () => {
       'MeController', 'UsersController',
     ]],
     ['modules/planning/planning.module.ts#PlanningModule', [
-      'OnboardingController', 'WeddingPlansController',
+      // The wedding's events (D65) add WeddingPlanEventsController.
+      'OnboardingController', 'WeddingPlanEventsController', 'WeddingPlansController',
     ]],
     ['modules/finance/finance.module.ts#FinanceModule', [
       // Receipts (V1 checklist 4.4) add CostReceiptsController.
@@ -119,6 +120,7 @@ test('Task 6 internal leaves own each non-public implementation exactly once', (
     ['modules/identity/internal/identity-profile.internal.module.ts#IdentityProfileInternalModule', ['ContextsService', 'UsersService']],
     ['modules/planning/internal/planning-services.internal.module.ts#PlanningServicesInternalModule', ['OnboardingService', 'WeddingPlansService']],
     ['modules/planning/internal/planning-budget-write.internal.module.ts#PlanningBudgetWriteInternalModule', ['WeddingPlanBudgetWriter']],
+    ['modules/planning/internal/plan-events.internal.module.ts#PlanEventsInternalModule', ['PlanEventsService']],
     // Receipts (V1 checklist 4.4) add CostReceiptsService.
     ['modules/finance/internal/finance-services.internal.module.ts#FinanceServicesInternalModule', ['BudgetCategoriesService', 'CostReceiptsService', 'FundingSourcesService', 'MoneyBudgetService', 'MoneySummaryService', 'WeddingCostsService']],
     ['modules/collaboration/internal/collaboration-services.internal.module.ts#CollaborationServicesInternalModule', ['InvitationDeliveryService', 'InviteAccessService', 'SharingService']],

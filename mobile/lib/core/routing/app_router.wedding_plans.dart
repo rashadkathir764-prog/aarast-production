@@ -32,20 +32,31 @@ List<RouteBase> _weddingPlanRoutes() => [
       );
     },
   ),
+  // b12 «مناسبات عرسك» (D65): every member reads it; the screen itself
+  // offers changes only to whoever may edit the plan.
   GoRoute(
-    path: '/wedding-plans/:id/wedding-day',
+    path: '/wedding-plans/:id/events',
     builder: (context, state) {
       final id = state.pathParameters['id'] ?? '';
-      final initialSummary = state.extra is DashboardSummary
-          ? state.extra! as DashboardSummary
-          : null;
       return WeddingPlanContextGate(
         weddingPlanId: id,
         requiredAccess: WeddingPlanRouteAccess.viewPlan,
-        child: WeddingDayModeScreen(
-          weddingPlanId: id,
-          initialSummary: initialSummary,
-        ),
+        child: PlanEventsScreen(weddingPlanId: id),
+      );
+    },
+  ),
+  // y06 and y07, opened once per phone by the owner's home (D65).
+  GoRoute(
+    path: '/wedding-plans/:id/moments/:moment',
+    builder: (context, state) {
+      final id = state.pathParameters['id'] ?? '';
+      final moment = state.pathParameters['moment'] == WeddingMoment.day.name
+          ? WeddingMoment.day
+          : WeddingMoment.week;
+      return WeddingPlanContextGate(
+        weddingPlanId: id,
+        requiredAccess: WeddingPlanRouteAccess.viewPlan,
+        child: WeddingMomentScreen(weddingPlanId: id, moment: moment),
       );
     },
   ),

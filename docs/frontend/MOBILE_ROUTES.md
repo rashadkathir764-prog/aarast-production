@@ -45,12 +45,14 @@
 - `/wedding-plans/:id/assistant`
 - `/wedding-plans/:id/contributions`
 - `/wedding-plans/:id/dashboard`
+- `/wedding-plans/:id/events`
 - `/wedding-plans/:id/guests`
 - `/wedding-plans/:id/guests/add`
 - `/wedding-plans/:id/guests/attendance`
 - `/wedding-plans/:id/guests/import`
 - `/wedding-plans/:id/guests/invite`
 - `/wedding-plans/:id/guests/view/:guestId`
+- `/wedding-plans/:id/moments/:moment`
 - `/wedding-plans/:id/money`
 - `/wedding-plans/:id/money/budget`
 - `/wedding-plans/:id/money/categories/:categoryId`
@@ -83,8 +85,7 @@
 - `/wedding-plans/:id/tasks/:taskId/edit`
 - `/wedding-plans/:id/tasks/create`
 - `/wedding-plans/:id/timeline`
-- `/wedding-plans/:id/wedding-day`
 - `/wedding-plans/create`
 - `/welcome`
 
-Total: 86 unique routes
+Total: 87 unique routes

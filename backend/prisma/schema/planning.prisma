@@ -46,7 +46,53 @@ model WeddingPlan {
   providerLinks           PlanProviderLink[]
   conversations           Conversation[]
   contributorHistoryScope ContributorHistoryScope?
+  events                  PlanEvent[]
 
   @@unique([ownerUserId, importMigrationId])
   @@index([ownerUserId, status])
+}
+
+// D65: the wedding's events (b12, b13). WEDDING is the main event: its day
+// is the plan's wedding date, so it stores no date of its own, and a plan
+// has at most one of it. Every other kind but CUSTOM is also once per plan
+// (partial unique index in the migration). The labels are the phone's.
+enum PlanEventType {
+  WEDDING
+  SAMRA
+  MAQEEL
+  HAFLA
+  NASHMA
+  AQD
+  LUNCH
+  DINNER
+  CUSTOM
+}
+
+// b13's times of day, plus «الظهر» (C8); EXACT reads `exactTime`.
+enum PlanEventTimeSlot {
+  DUHA
+  DHUHR
+  AFTER_DHUHR
+  AFTER_ASR
+  AFTER_MAGHRIB
+  AFTER_ISHA
+  EXACT
+}
+
+model PlanEvent {
+  id              String             @id @default(cuid())
+  weddingPlanId   String
+  type            PlanEventType
+  title           String?
+  date            DateTime?          @db.Date
+  timeSlot        PlanEventTimeSlot?
+  exactTime       String?
+  placeLabel      String?
+  responsibleName String?
+  note            String?
+  createdAt       DateTime           @default(now())
+  updatedAt       DateTime           @updatedAt
+  weddingPlan     WeddingPlan        @relation(fields: [weddingPlanId], references: [id], onDelete: Restrict)
+
+  @@index([weddingPlanId, date])
 }

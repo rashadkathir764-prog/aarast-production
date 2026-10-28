@@ -68,6 +68,8 @@ import 'features/sharing/sharing_api.dart'
         SharingProvider;
 import 'features/tasks/tasks_api.dart'
     show TaskTimelineApi, TaskTimelineProvider;
+import 'features/wedding_day/wedding_day_api.dart'
+    show PlanEventsApi, PlanEventsProvider;
 import 'features/wedding_plans/wedding_plans_api.dart'
     show
         DashboardSummaryProvider,
@@ -581,6 +583,22 @@ class _AarastSessionProviders extends StatelessWidget {
               current,
               _planScope(accountContexts),
               () => PlanReadViewProvider(weddingPlansApi: weddingPlansApi),
+            ),
+          ),
+          ChangeNotifierProxyProvider<
+            AccountContextController,
+            PlanEventsProvider
+          >(
+            create: (context) => _bindPlanScope(
+              PlanEventsProvider(api: PlanEventsApi(context.read<ApiClient>())),
+              _unselectedPlanScope,
+            ),
+            update: (context, accountContexts, current) => _forPlanScope(
+              current,
+              _planScope(accountContexts),
+              () => PlanEventsProvider(
+                api: PlanEventsApi(context.read<ApiClient>()),
+              ),
             ),
           ),
           ChangeNotifierProxyProvider<

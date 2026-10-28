@@ -1,4 +1,5 @@
 // Owner-controlled public API. Cross-feature consumers import this library.
+export 'data/wedding_moment_ledger.dart' show WeddingMoment;
 export 'data/wedding_plans_api.dart' show WeddingPlansApi;
 export 'models/dashboard_summary.dart'
     show
@@ -32,6 +33,7 @@ export 'screens/my_wedding_plans_screen.dart'
 export 'screens/participant_home_screen.dart' show ParticipantHomeScreen;
 export 'screens/plan_assistant_screen.dart' show PlanAssistantScreen;
 export 'screens/plan_management_screen.dart' show PlanCenterScreen;
+export 'screens/wedding_moment_screen.dart' show WeddingMomentScreen;
 export 'screens/wedding_plan_dashboard_screen.dart'
     show WeddingPlanDashboardScreen;
 export 'utils/plan_pulse_sync.dart'

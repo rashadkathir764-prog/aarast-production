@@ -35,7 +35,7 @@ const expectedOwners: ManifestOwner[] = [
   { owner: 'media', file: 'media.prisma', models: ['MediaUploadTicket'], enums: ['MediaUploadStatus'] },
   { owner: 'messaging', file: 'messaging.prisma', models: ['Conversation', 'ConversationParticipant', 'ConversationEvent', 'ChatMessage', 'ChatAttachment', 'ConversationReport'], enums: ['ConversationScope', 'ConversationEventType', 'ConversationReportStatus'] },
   { owner: 'notifications', file: 'notifications.prisma', models: ['NotificationPreference', 'PushInstallation', 'Notification'], enums: ['NotificationType', 'NotificationPriority', 'PushPlatform'] },
-  { owner: 'planning', file: 'planning.prisma', models: ['WeddingPlan'], enums: ['OnboardingPath', 'WeddingPersona', 'WeddingPlanStatus'] },
+  { owner: 'planning', file: 'planning.prisma', models: ['WeddingPlan', 'PlanEvent'], enums: ['OnboardingPath', 'WeddingPersona', 'WeddingPlanStatus', 'PlanEventType', 'PlanEventTimeSlot'] },
   { owner: 'platform', file: 'platform.prisma', models: ['IdempotencyKey', 'OutboxEvent'], enums: [] },
   { owner: 'tasks', file: 'tasks.prisma', models: ['WeddingTask', 'WeddingTaskChecklistItem'], enums: ['WeddingTaskStatus', 'WeddingTaskPriority'] },
 ];
@@ -92,12 +92,12 @@ test('R2 Prisma manifest is exact plain data with immutable provenance and deter
 
   exactStringList(manifest.modelOrder);
   // B-16: + PortfolioItem and PortfolioItemStatus (D62).
-  assert.equal(manifest.modelOrder.length, 66);
-  assert.equal(manifest.owners.flatMap((entry) => entry.models).length, 66);
+  assert.equal(manifest.modelOrder.length, 67);
+  assert.equal(manifest.owners.flatMap((entry) => entry.models).length, 67);
   // B5: + BudgetCategoryKind (the groom's mahr item, C1).
-  assert.equal(manifest.owners.flatMap((entry) => entry.enums).length, 53);
-  assert.equal(new Set(manifest.owners.flatMap((entry) => entry.models)).size, 66);
-  assert.equal(new Set(manifest.owners.flatMap((entry) => entry.enums)).size, 53);
+  assert.equal(manifest.owners.flatMap((entry) => entry.enums).length, 55);
+  assert.equal(new Set(manifest.owners.flatMap((entry) => entry.models)).size, 67);
+  assert.equal(new Set(manifest.owners.flatMap((entry) => entry.enums)).size, 55);
 });
 
 test('R2 Prisma manifest equals the current registry and ordered live single-schema declarations', () => {
@@ -118,8 +118,8 @@ test('R2 Prisma manifest equals the current registry and ordered live single-sch
   assert.deepEqual(registryOwnerModels(manifest.owners, registry), expectedRegistryOwners);
   assert.deepEqual(manifest.modelOrder, readLivePrismaModelOrder());
   assert.deepEqual(manifest.owners.flatMap((entry) => entry.enums).sort(), orderedDeclarations('enum').sort());
-  assert.equal(manifest.modelOrder.length, 66);
-  assert.equal(orderedDeclarations('enum').length, 53);
+  assert.equal(manifest.modelOrder.length, 67);
+  assert.equal(orderedDeclarations('enum').length, 55);
 });
 
 test('manifest registry comparison rejects a User and IdempotencyKey owner swap', () => {

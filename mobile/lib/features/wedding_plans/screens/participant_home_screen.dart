@@ -24,6 +24,7 @@ import '../../auth/auth_api.dart' show AuthController;
 import '../../sharing/sharing_api.dart' show participantRoleTag;
 import '../../tasks/tasks_api.dart'
     show TaskTimelineProvider, WeddingTask, taskCategoryIcon, taskWhenLabel;
+import '../../wedding_day/wedding_day_api.dart' show PlanEventsProvider;
 import '../providers/dashboard_summary_provider.dart';
 import '../providers/plan_read_view_provider.dart';
 import '../utils/plan_pulse_sync.dart';
@@ -66,6 +67,8 @@ class _ParticipantHomeScreenState extends State<ParticipantHomeScreen> {
       // D52: whoever only follows the plan reads the plan's tasks.
       else if (selected?.permissions.canViewPlan == true)
         ?context.read<PlanReadViewProvider?>()?.load(widget.weddingPlanId),
+      // q18's programme (D65): every member reads the plan's events.
+      ?context.read<PlanEventsProvider?>()?.load(widget.weddingPlanId),
     ]);
   }
 
@@ -347,6 +350,31 @@ class _ParticipantHomeScreenState extends State<ParticipantHomeScreen> {
         ]);
       } else if (!canTasks && selected.permissions.canViewPlan) {
         children.addAll(_planTasks(context, voice));
+      }
+      // q18 «برنامج اليوم»: the day's events, read by every member (D52, D65).
+      if (weddingDay) {
+        final program = context
+            .watch<PlanEventsProvider?>()
+            ?.viewOf(widget.weddingPlanId)
+            ?.dayOf(date);
+        if (program != null && program.isNotEmpty) {
+          children.addAll([
+            const JourneySectionTitle('برنامج اليوم'),
+            JourneyList(
+              key: const ValueKey('participant-day-program'),
+              children: [
+                for (final event in program)
+                  JourneyListRow(
+                    icon: event.type.icon,
+                    color: voice.accent,
+                    soft: voice.soft,
+                    title: event.name(context.journeyProfile),
+                    subtitle: [?event.timeLabel, ?event.placeLabel].join(' · '),
+                  ),
+              ],
+            ),
+          ]);
+        }
       }
       // q17 (the bride's plan) and q09 (the groom's plan read by a woman):
       // the plan keeps its owner's colours, the reader has her own plan.

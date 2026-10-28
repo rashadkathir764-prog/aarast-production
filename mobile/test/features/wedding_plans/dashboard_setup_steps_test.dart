@@ -87,7 +87,6 @@ Future<void> _pump(
               onOpenProviders: () {},
               onOpenGuests: () {},
               onOpenSharing: () {},
-              onOpenWeddingDay: () {},
               onOpenNextStep: () {},
               onOpenImportantItem: (_) {},
             ),

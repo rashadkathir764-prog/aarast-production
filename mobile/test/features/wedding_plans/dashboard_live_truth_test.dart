@@ -132,7 +132,6 @@ void main() {
             onOpenProviders: () {},
             onOpenGuests: () {},
             onOpenSharing: () {},
-            onOpenWeddingDay: () {},
             onOpenNextStep: () {},
             onOpenImportantItem: (_) {},
           ),

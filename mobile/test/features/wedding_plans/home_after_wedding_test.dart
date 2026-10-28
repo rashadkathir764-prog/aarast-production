@@ -40,7 +40,6 @@ Future<int Function()> _pump(
             onOpenProviders: () {},
             onOpenGuests: () {},
             onOpenSharing: () {},
-            onOpenWeddingDay: () {},
             onOpenNextStep: () {},
             onOpenImportantItem: (_) {},
           ),

@@ -11,6 +11,7 @@ class _JourneyHomeHeader extends StatelessWidget {
     required this.onNotifications,
     required this.onProfile,
     this.married = false,
+    this.greeting,
   });
 
   final String userName;
@@ -21,9 +22,13 @@ class _JourneyHomeHeader extends StatelessWidget {
   /// b07: once the day has passed the greeting congratulates.
   final bool married;
 
+  /// b04/b05: «باقي يومين يا محمد», «مبروك يا عريس».
+  final String? greeting;
+
   @override
   Widget build(BuildContext context) {
     final name = userName.trim().split(RegExp(r'\s+')).first;
+    final greeting = this.greeting;
     final line = [
       summary.title.trim(),
       if ((summary.city ?? '').trim().isNotEmpty) summary.city!.trim(),
@@ -40,9 +45,10 @@ class _JourneyHomeHeader extends StatelessWidget {
               Semantics(
                 header: true,
                 child: Text(
-                  married
-                      ? (name.isEmpty ? 'ألف مبروك' : 'ألف مبروك يا $name')
-                      : (name.isEmpty ? 'أهلًا فيك' : 'أهلًا $name'),
+                  greeting ??
+                      (married
+                          ? (name.isEmpty ? 'ألف مبروك' : 'ألف مبروك يا $name')
+                          : (name.isEmpty ? 'أهلًا فيك' : 'أهلًا $name')),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: JourneyType.of(
@@ -521,8 +527,7 @@ class _AfterWeddingHero extends StatelessWidget {
     return AarastPressable(
       key: const ValueKey('aarast-dashboard-after-hero'),
       onTap: onTap,
-      semanticLabel:
-          hidden
+      semanticLabel: hidden
           ? 'باقي عليك. المبالغ مخفية'
           : '${left.semanticText} باقي عليك. ${context.say('سددت', 'سدّدتِ')} ${paid.semanticText} من ${total.semanticText}',
       borderRadius: BorderRadius.circular(24),

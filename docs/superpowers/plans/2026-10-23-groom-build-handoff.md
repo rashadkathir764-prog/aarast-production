@@ -58,9 +58,8 @@ comparison. That must never happen again.
 7. **Old screens to delete, not to polish:** done in the cleanup (D32): the
    money starter, `costs_screen.dart`, the old payment schedule screens,
    quick add, `WeddingStageContextLine`, the old plan creation form and
-   `GuestOnboardingProvider` are gone with their tests and pins. Still
-   undesigned and reachable: `WeddingDayModeScreen` (from the home on the
-   day; map it to b05/y07 or remove it).
+   `GuestOnboardingProvider` are gone with their tests and pins.
+   `WeddingDayModeScreen` is gone too (D65): b05 and y07 replaced it.
 
 ## For the next agent: read this first
 
@@ -201,7 +200,7 @@ Nothing is called done without all of these:
 
 - **Money starter:** deleted (D32). Money with nothing in it opens on «البنود» with «أضف أول بند».
 - **Dead code:** removed (D32). Still without a screen: the Yemen governorate provider, API and offline cache (leave with the offline database's next schema step) and the unrouted `HomeScreen`.
-- **`AarastButton`** keeps one user, `WeddingDayModeScreen`. Delete it once that screen moves to the kit (or is removed).
+- **`AarastButton`**: its last screen user (`WeddingDayModeScreen`) is gone (D65); `AarastLoadingState` still uses it.
 - **Tasks:** the «تحديد الميزانية» starter task stays open after the budget is divided.
 - **Promised to the client in `V1_DELIVERY_CHECKLIST.md` but not in this build (section B: needs backend):**
   - 4.1 the wedding events (المقيل، السمرة، الزفاف، الحناء);
@@ -265,7 +264,7 @@ Each line is a place where the app differs from the prototype:
 
 ## At the end of the groom path
 
-1. ~~Clean up the old screens~~: done (D32), except `WeddingDayModeScreen`.
+1. ~~Clean up the old screens~~: done (D32; `WeddingDayModeScreen` in D65).
 2. Regenerate the goldens.
 3. Build the release APK. Firebase dart-defines are read at build time from `%USERPROFILE%\Downloads\google-services (3).json`, and their values are never printed. A cloud session cannot do this step; it needs Rashad's machine.
 4. Update the prototype with the differences above.

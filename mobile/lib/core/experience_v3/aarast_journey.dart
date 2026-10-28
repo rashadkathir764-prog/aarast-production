@@ -1830,7 +1830,10 @@ class JourneyPickerField extends StatelessWidget {
 
   final String label;
   final String? value;
-  final VoidCallback onTap;
+
+  /// Null shows a value that is read here and changed elsewhere (b13's
+  /// Hijri day, the wedding's own day).
+  final VoidCallback? onTap;
   final IconData? icon;
   final String placeholder;
   final String? helper;
@@ -1844,10 +1847,7 @@ class JourneyPickerField extends StatelessWidget {
     final note = this.note;
     return AarastPressable(
       onTap: onTap,
-      semanticLabel: [
-        '$label، ${has ? value : placeholder}',
-        ?note,
-      ].join('، '),
+      semanticLabel: ['$label، ${has ? value : placeholder}', ?note].join('، '),
       borderRadius: BorderRadius.circular(18),
       child: Container(
         padding: const EdgeInsets.fromLTRB(16, 10, 16, 12),

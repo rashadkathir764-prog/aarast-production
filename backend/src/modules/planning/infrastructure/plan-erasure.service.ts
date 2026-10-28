@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import type { PlanErasurePort } from '../public/plan-erasure.port';
+import { deletePlanEventRowsOfPlans } from './plan-events.repository';
 
 @Injectable()
 export class PlanErasureService implements PlanErasurePort {
@@ -25,6 +26,8 @@ export class PlanErasureService implements PlanErasurePort {
     weddingPlanIds: readonly string[],
   ): Promise<void> {
     if (weddingPlanIds.length === 0) return;
+    // The plan's own children (its events, D65) go with it.
+    await deletePlanEventRowsOfPlans(tx, weddingPlanIds);
     await tx.weddingPlan.deleteMany({
       where: { id: { in: [...weddingPlanIds] } },
     });

@@ -46,6 +46,7 @@ run the local demo seed `backend/prisma/demo-seed.ts`, see
 | ProviderClaimRequest | An account asking for a listing the back office made under its phone (B-12, D41): `providerId`, `userId` (plain id; removed with the account), `status` `PENDING → APPROVED / REJECTED`, the team's `note`, `decidedAt`, `decidedById`. Partial unique indexes keep one `PENDING` claim per listing and per account. Only approval links the listing to the account. |
 | ProviderFeaturedPeriod | A featured placement the back office recorded by hand after the provider paid outside the app (B-43, D41, D51): `providerId` (cascades with the provider), `startsAt`, `endsAt` (the start of the day after the last day covered, Sana'a time; a CHECK keeps `endsAt > startsAt`), the administrator's `note` (how he paid; no amount, no payment status), `grantedById` and `createdAt`, `endedAt`/`endedById`/`endNote` when an administrator stopped it early or cancelled it before its start, and `startNoticeAt`/`endingNoticeAt`/`endNoticeAt` so the hourly job tells the provider once that a booked placement started, that it ends within the week and that it ended (D54; `startNoticeAt` is set at the grant when it starts at once). Featured = a row with `startsAt <= now < endsAt` and no `endedAt` on a provider the placement rule holds for (listed: `ACTIVE` with an active service, and claimed), read at request time. One provider's rows that nobody ended never overlap: checked under the provider's row lock, and enforced by the exclusion constraint `ProviderFeaturedPeriod_no_overlap` (`EXCLUDE USING gist ("providerId" WITH =, tsrange("startsAt", "endsAt") WITH &&) WHERE ("endedAt" IS NULL)`, extension `btree_gist`, migration `20261026000000_featured_placement_review_fixes`; Prisma does not model it). `grantedById` and `endedById` are plain ids. |
 | PortfolioItem | One photo of the provider's «معرض الشغل» (B-16, D62; p37, f03, n07): `providerId` (cascades with the provider), `mediaKey` (unique: the verified `provider-portfolio` upload, consumed by the item as `PORTFOLIO_ITEM`), `imageUrl`, `album` (a label of 1 to 30 characters, or none), `forWomen` (exactly when the album is «حفلات النساء»), `noFaces` (the provider's confirmation; required for a women's photo), `status` `PENDING → APPROVED / REJECTED` (every new photo, and a kept one whose album or `noFaces` changed, is PENDING), `rejectionReason` (REJECTED only), `reviewedAt`, `reviewedById` (a plain id), `sortOrder` (the provider's order). Customers read APPROVED photos only, the women's album a bride only. A refused or removed photo's image becomes a media deletion job. CHECKs `PortfolioItem_album_check`, `PortfolioItem_for_women_check`, `PortfolioItem_women_no_faces_check`, `PortfolioItem_decision_check`. `Provider.socialLinks` keeps `{ tiktok?, instagram?, facebook? }` (https profile links on those hosts only). |
+| PlanEvent | One of the wedding's events (D65; b12, b13): the wedding itself (`WEDDING`, on the plan's date), the customary nights (السمرة، المقيل؛ الحفلة، النسمة), عقد القران, الغداء, العشاء or a named one, with its day, time of day (or exact hour), place, who is in charge and a note. The wedding week (b04) and the wedding day (b05) are built from them. Owned by planning; read by every plan member, changed by the owner or a plan editor. |
 
 ## Wedding Financial OS Entities
 
@@ -398,6 +399,17 @@ The backend now includes the approved provider-reference and quote-lead foundati
   `forWomen` exactly when the album is «حفلات النساء»; a women's photo has
   `noFaces`; PENDING has no decision, APPROVED a time, REJECTED a time and a
   reason). No row changes.
+- D65: migration `20261029000000_plan_events` adds the enums `PlanEventType`
+  (WEDDING, SAMRA, MAQEEL, HAFLA, NASHMA, AQD, LUNCH, DINNER, CUSTOM) and
+  `PlanEventTimeSlot` (DUHA, DHUHR, AFTER_DHUHR, AFTER_ASR, AFTER_MAGHRIB,
+  AFTER_ISHA, EXACT) and the planning-owned table `PlanEvent`
+  (`weddingPlanId` RESTRICT, `type`, `title`, `date` DATE, `timeSlot`,
+  `exactTime` `HH:mm`, `placeLabel`, `responsibleName`, `note`). The partial
+  unique index `PlanEvent_one_per_type` keeps every kind but CUSTOM once per
+  plan; CHECKs keep a CUSTOM event's name, keep the WEDDING event without a
+  date of its own (it is the plan's wedding date) and tie `exactTime` to
+  `EXACT`. Planning's plan erasure deletes a plan's events before the plan.
+  No row changes.
 - `Notification` for persisted task, payment-schedule, sharing, and quote alerts
   with deduplication. Migration
   `20260726010000_scrub_notification_contact_pii` rewrites historical
@@ -498,7 +510,8 @@ rewrite as permission to restore a removed live model.
 | `LoginThrottle` | 5 | `windowStartedAt`, `updatedAt` |
 | `OtpDispatchQuota` | 5 | `windowStartedAt`, `updatedAt` |
 | `AssistantUsageDay` | 8 | `userId`, `updatedAt` |
-| `WeddingPlan` | 31 | `id`, `ownerUserId`, `onboardingCompletedAt`, `importMigrationId`, `createdAt`, `updatedAt` |
+| `WeddingPlan` | 32 | `id`, `ownerUserId`, `onboardingCompletedAt`, `importMigrationId`, `createdAt`, `updatedAt` |
+| `PlanEvent` | 13 | `id`, `weddingPlanId`, `createdAt`, `updatedAt` |
 | `BudgetCategory` | 10 | `id`, `weddingPlanId`, `createdAt`, `updatedAt` |
 | `WeddingCost` | 25 | `id`, `weddingPlanId`, `budgetCategoryId`, `providerId`, `quoteOfferId`, `privateToUserId`, `createdAt`, `updatedAt` |
 | `CostPayment` | 15 | `id`, `weddingCostId`, `paidAt`, `paymentScheduleId`, `reversalOfId`, `createdAt` |
@@ -554,5 +567,5 @@ rewrite as permission to restore a removed live model.
 | `ChatAttachment` | 7 | `id`, `messageId`, `createdAt` |
 | `ConversationReport` | 9 | `id`, `conversationId`, `reporterUserId`, `createdAt`, `updatedAt` |
 
-Total models: 66
+Total models: 67
 <!-- DOCS-SYNC:END -->

@@ -19,6 +19,9 @@ import 'package:aarast_mobile/features/tasks/models/timeline.dart';
 import 'package:aarast_mobile/features/tasks/models/wedding_task.dart';
 import 'package:aarast_mobile/features/tasks/providers/task_timeline_provider.dart';
 import 'package:aarast_mobile/features/tasks/screens/participant_tasks_screen.dart';
+import 'package:aarast_mobile/features/wedding_day/data/plan_events_api.dart';
+import 'package:aarast_mobile/features/wedding_day/models/plan_event.dart';
+import 'package:aarast_mobile/features/wedding_day/providers/plan_events_provider.dart';
 import 'package:aarast_mobile/features/wedding_plans/data/wedding_plans_api.dart';
 import 'package:aarast_mobile/features/guests/screens/participant_guests_screen.dart';
 import 'package:aarast_mobile/features/marketplace/screens/participant_providers_screen.dart';
@@ -407,6 +410,48 @@ void main() {
     ]);
   });
 
+  testWidgets('q18: every member reads the day\'s programme (D52, D65)', (
+    tester,
+  ) async {
+    final today = DateUtils.dateOnly(DateTime.now());
+    String day(DateTime value) =>
+        '${value.year}-${value.month.toString().padLeft(2, '0')}-'
+        '${value.day.toString().padLeft(2, '0')}';
+    final harness = await _Harness.create(
+      daysRemaining: 0,
+      events: [
+        {
+          'id': 'm',
+          'type': 'MAQEEL',
+          'date': day(today),
+          'timeSlot': 'AFTER_ASR',
+          'placeLabel': 'بيت الوالد',
+        },
+        {
+          'id': 'w',
+          'type': 'WEDDING',
+          'date': day(today),
+          'timeSlot': 'AFTER_MAGHRIB',
+          'placeLabel': 'قاعة سبأ',
+        },
+        {
+          'id': 's',
+          'type': 'SAMRA',
+          'date': day(today.subtract(const Duration(days: 2))),
+          'timeSlot': 'AFTER_ISHA',
+        },
+      ],
+    );
+    await harness.pump(tester);
+
+    expect(find.text('برنامج اليوم'), findsOneWidget);
+    expect(find.text('المقيل'), findsOneWidget);
+    expect(find.text('بعد العصر · بيت الوالد'), findsOneWidget);
+    expect(find.text('الزفاف'), findsOneWidget);
+    expect(find.text('السمرة'), findsNothing);
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets(
     'q12: a right the owner opened is told once, from the kept path',
     (tester) async {
@@ -565,6 +610,21 @@ PlanReadView _readView() {
   });
 }
 
+class _EventsApi extends PlanEventsApi {
+  _EventsApi(super.apiClient, this.items);
+
+  final List<Map<String, dynamic>> items;
+
+  @override
+  Future<PlanEventsView> list(String weddingPlanId) async =>
+      PlanEventsView.fromJson({
+        'weddingPlanId': weddingPlanId,
+        'canEdit': false,
+        'items': items,
+        'suggestions': const [],
+      });
+}
+
 class _Harness {
   _Harness({
     required this.controller,
@@ -575,7 +635,11 @@ class _Harness {
     required this.planView,
     required this.tasksApi,
     required this.tasks,
+    this.events,
   });
+
+  /// D65: the plan's events, when the test gives them (q18's programme).
+  final PlanEventsProvider? events;
 
   final AccountContextController controller;
   final _Gateway contexts;
@@ -597,6 +661,7 @@ class _Harness {
     bool keptCanViewMoney = false,
     List<WeddingTask> tasks = const [],
     String? userPersona,
+    List<Map<String, dynamic>>? events,
   }) async {
     SharedPreferences.setMockInitialValues({});
     final storage = AuthStorage(await SharedPreferences.getInstance());
@@ -668,6 +733,9 @@ class _Harness {
       planView: PlanReadViewProvider(weddingPlansApi: wedding),
       tasksApi: tasksApi,
       tasks: TaskTimelineProvider(tasksApi),
+      events: events == null
+          ? null
+          : PlanEventsProvider(api: _EventsApi(apiClient, events)),
     );
   }
 
@@ -693,6 +761,8 @@ class _Harness {
           ),
           ChangeNotifierProvider<PlanReadViewProvider>.value(value: planView),
           ChangeNotifierProvider<TaskTimelineProvider>.value(value: tasks),
+          if (events case final events?)
+            ChangeNotifierProvider<PlanEventsProvider>.value(value: events),
         ],
         // The app's root profile (B5): the plan's colours, the reader's
         // voice, as `AarastApp` provides them.

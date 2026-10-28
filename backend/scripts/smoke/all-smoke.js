@@ -47,6 +47,7 @@ const smokeScripts = [
   ['smoke:featured-placement', 'featured-placement-smoke.ts', ['ts-node/register']],
   ['smoke:review-reply', 'review-reply-smoke.ts', ['ts-node/register']],
   ['smoke:portfolio', 'portfolio-smoke.ts', ['ts-node/register']],
+  ['smoke:events', 'events-smoke.ts', ['ts-node/register']],
   ['smoke:cost-receipts', 'cost-receipts-smoke.js'],
   ['smoke:phone-change', 'phone-change-smoke.js'],
   ['smoke:task-shift', 'task-shift-smoke.js'],

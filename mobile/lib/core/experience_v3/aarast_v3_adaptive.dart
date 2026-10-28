@@ -318,15 +318,16 @@ abstract final class AarastV3ScreenCatalog {
     supportsOffline: true,
   );
 
-  static const weddingDay = AarastV3ScreenContract(
-    id: 'wedding-day',
-    location: 'اليوم الكبير',
-    purpose: 'إظهار الأمور الحرجة القابلة للتنفيذ بيد واحدة',
-    archetype: AarastV3ScreenArchetype.root,
+  /// b12 «مناسبات عرسك» (D65): the events the wedding week and day are
+  /// built from.
+  static const planEvents = AarastV3ScreenContract(
+    id: 'plan-events',
+    location: 'مناسبات عرسك',
+    purpose: 'ترتيب مناسبات العرس اللي يتبنى منها أسبوع العرس ويومه',
+    archetype: AarastV3ScreenArchetype.list,
     states: _protectedStates,
-    privacy: AarastV3PrivacyLevel.sensitive,
+    privacy: AarastV3PrivacyLevel.personal,
     supportsOffline: true,
-    oneHandCritical: true,
   );
 
   static const utility = AarastV3ScreenContract(
@@ -412,7 +413,9 @@ abstract final class AarastV3ScreenCatalog {
 
     if (normalized.endsWith('/dashboard')) return home;
     if (normalized.endsWith('/plan-center')) return planDetail;
-    if (normalized.endsWith('/wedding-day')) return weddingDay;
+    if (normalized.endsWith('/events')) return planEvents;
+    // y06 and y07 are the home's own moments.
+    if (RegExp(r'/moments/[^/]+$').hasMatch(normalized)) return home;
     if (normalized.endsWith('/timeline')) return tasks;
     if (normalized.endsWith('/contributions')) return contributionHistory;
     if (normalized.endsWith('/notifications')) return notifications;

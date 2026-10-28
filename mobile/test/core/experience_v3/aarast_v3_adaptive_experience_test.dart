@@ -28,7 +28,8 @@ void main() {
       '/wedding-plans/create': 'plan-form',
       '/wedding-plans/plan-1/dashboard': 'home',
       '/wedding-plans/plan-1/plan-center': 'plan-detail',
-      '/wedding-plans/plan-1/wedding-day': 'wedding-day',
+      '/wedding-plans/plan-1/events': 'plan-events',
+      '/wedding-plans/plan-1/moments/week': 'home',
       '/wedding-plans/plan-1/tasks': 'tasks',
       '/wedding-plans/plan-1/tasks/create': 'task-form',
       '/wedding-plans/plan-1/guests': 'guests',
@@ -66,17 +67,13 @@ void main() {
       expect(AarastV3ScreenCatalog.resolve('/future/unknown').id, 'unmapped');
     });
 
-    test(
-      'money remains sensitive and Wedding Day remains offline critical',
-      () {
-        expect(
-          AarastV3ScreenCatalog.money.privacy,
-          AarastV3PrivacyLevel.sensitive,
-        );
-        expect(AarastV3ScreenCatalog.weddingDay.supportsOffline, isTrue);
-        expect(AarastV3ScreenCatalog.weddingDay.oneHandCritical, isTrue);
-      },
-    );
+    test('money remains sensitive and the wedding events read offline', () {
+      expect(
+        AarastV3ScreenCatalog.money.privacy,
+        AarastV3PrivacyLevel.sensitive,
+      );
+      expect(AarastV3ScreenCatalog.planEvents.supportsOffline, isTrue);
+    });
   });
 
   testWidgets('attention surface stays compact at 320px and enlarged text', (

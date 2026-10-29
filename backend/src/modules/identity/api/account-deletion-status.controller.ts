@@ -31,10 +31,12 @@ export class AccountDeletionStatusController {
     return this.accountDeletion.impact(currentUser);
   }
 
-  // w05: the account is erased after 30 days unless taken back.
+  // w05: the account is erased after 30 days unless taken back. The limit is
+  // per address, and Yemeni carriers put many phones behind one, so it is the
+  // sign-in's 10 a minute rather than tighter.
   @Post()
   @HttpCode(HttpStatus.OK)
-  @Throttle({ default: { limit: 5, ttl: 60_000 } })
+  @Throttle({ default: { limit: 10, ttl: 60_000 } })
   requestDeletion(
     @CurrentUser() currentUser: AuthenticatedUser,
     @Body() dto: RequestAccountDeletionDto,

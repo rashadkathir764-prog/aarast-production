@@ -164,7 +164,9 @@ async function main() {
         weddingPlanId: gracePlan.id,
         name: `${tag}-grace-guest`,
         normalizedName: `${tag}-grace-guest`,
+        // The guests' CHECK: the stored phone is its normalized form.
         phone: guestPhone,
+        normalizedPhone: guestPhone,
       },
     });
     try {
@@ -314,12 +316,23 @@ async function main() {
       const customerPlan = await prisma.weddingPlan.create({
         data: { ownerUserId: member.id, title: `${tag}-customer-plan` },
       });
+      // A quote request lives in its plan's conversation with the provider.
+      const bookedConversation = await prisma.conversation.create({
+        data: {
+          scope: ConversationScope.PLAN,
+          weddingPlanId: customerPlan.id,
+          providerId: graceProvider.id,
+          createdByUserId: member.id,
+          participants: { create: [{ userId: member.id }] },
+        },
+      });
       const bookedQuote = await prisma.quoteRequest.create({
         data: {
           userId: member.id,
           weddingPlanId: customerPlan.id,
           providerId: graceProvider.id,
           cityId: graceCity.id,
+          conversationId: bookedConversation.id,
           status: QuoteRequestStatus.ACCEPTED,
           acceptedAt: new Date(),
           message: `${tag}-booked`,

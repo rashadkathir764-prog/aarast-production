@@ -8,7 +8,6 @@ import '../../../core/experience_v3/aarast_v3.dart';
 import '../../../core/media/media_upload_api.dart';
 import '../../../core/network/api_client.dart';
 import '../../../core/routing/app_router.dart';
-import '../../../core/routing/pop_or_go.dart';
 import '../../../core/utils/offer_changes.dart';
 import '../../../core/utils/offer_ends.dart';
 import '../../../core/utils/currency_label.dart';
@@ -352,7 +351,7 @@ class _ChatScreenState extends State<ChatScreen> {
     final planId = conversation?.weddingPlan?.id;
     try {
       if (planId != null && planId.isNotEmpty) {
-        await context.pushPlanPage(
+        await context.push(
           AppRouter.planProviders(planId, quoteId: quoteRequestId),
         );
         return;

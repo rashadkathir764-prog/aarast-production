@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:provider/provider.dart';
 
+import 'plan_shell_router.dart';
 import '../diagnostics/app_logger.dart';
 import '../../features/account_contexts/account_contexts_api.dart'
     show
@@ -490,7 +491,7 @@ class AppRouter {
   }
 
   static GoRouter create({AppFeatureFlags flags = AppFeatureFlags.defaults}) {
-    return GoRouter(
+    return PlanShellRouter(
       initialLocation: splash,
       errorBuilder: (context, state) {
         final safeLocation = safeRouterErrorLocation(state.uri);

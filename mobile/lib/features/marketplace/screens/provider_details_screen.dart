@@ -10,7 +10,6 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../../core/experience_v3/aarast_v3.dart';
 import '../../../core/preferences/device_preferences.dart';
 import '../../../core/routing/app_router.dart';
-import '../../../core/routing/pop_or_go.dart';
 import '../../../core/utils/currency_label.dart';
 import '../../../core/widgets/aarast_toast.dart';
 import '../../../core/widgets/aarast_ui.dart';
@@ -302,12 +301,7 @@ class _ProviderDetailsScreenState extends State<ProviderDetailsScreen> {
     )) {
       return;
     }
-    final requests = AppRouter.planProviders(selectedPlanId, quoteId: quote.id);
-    if (context.isAbovePlanShell) {
-      context.go(requests);
-    } else {
-      _pushOnce(requests);
-    }
+    _pushOnce(AppRouter.planProviders(selectedPlanId, quoteId: quote.id));
   }
 
   Future<void> _openQuoteConversation(String quoteId) async {

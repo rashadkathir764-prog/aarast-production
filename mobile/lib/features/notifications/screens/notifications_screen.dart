@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/semantics.dart';
 import 'package:go_router/go_router.dart';
-
-import '../../../core/routing/pop_or_go.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:provider/provider.dart';
 
@@ -361,7 +359,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
       context.go(target);
       return;
     }
-    await context.pushPlanPage(target);
+    await context.push(target);
   }
 
   bool _isNotificationTargetCompatible(String target) {

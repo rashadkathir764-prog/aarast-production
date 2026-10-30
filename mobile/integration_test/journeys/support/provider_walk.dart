@@ -59,8 +59,7 @@ Future<void> runStudioWalk(WidgetTester tester) async {
     walk.expectSee('ردك · يشوفه الكل تحت التقييم');
     walk.expectSee('شكرًا يا خالد');
   });
-  await walk.back();
-  await walk.back();
+  await walk.leaveTo('/provider/dashboard');
 
   await walk.step('p15_requests_new', 'الطلبات: جديد', () async {
     await walk.tab('الطلبات');

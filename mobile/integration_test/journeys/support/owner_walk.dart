@@ -267,7 +267,7 @@ Future<void> runOwnerWalk(WidgetTester tester, OwnerPersona p) async {
     }
     await walk.openEachNotice(keyPrefix: 'notification-', home: home);
   });
-  await walk.back();
+  await walk.leaveTo('/home');
 
   // ------------------------------------------------------------ money
   await walk.step('c01_money_summary', 'المال: الملخص', () async {

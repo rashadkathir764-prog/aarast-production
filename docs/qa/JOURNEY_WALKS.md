@@ -69,6 +69,15 @@ screen, and assert what a user must see. A failing step is a finding.
 - يوم 25 أكتوبر شغّلنا المشي من نسخة نظيفة من `HEAD` (`git archive`) لأن وكيل ثاني كان يعدّل `lib/`
   وقتها؛ النسخة النظيفة نفس الكود المعتمد بالضبط.
 
+**تحديث 2026-10-31 (D67):**
+- **الخادم المحلي:** `$env:AUTH_OTP_MODE='dev'; npm run start:dev`، والمنفذ من `backend/.env` (الآن 3115). بدون `AUTH_OTP_MODE=dev` يطلب إعدادات واتساب الحقيقي ويقف. و`/ready` يرد `200` لما يجهز.
+- **JDK:** موجود في `C:\Users\Rashad\.gradle\jdks\eclipse_adoptium-17-amd64-windows.2`، فاضبط `JAVA_HOME` عليه في نفس التشغيل.
+- **ATL:** `generated_plugins.cmake` و`generated_plugin_registrant.cc` المحفوظان فيهما `flutter_secure_storage_windows`. شيل الإضافة منهما محليًا قبل المشي، ورجّعهما بعده بـ`git checkout -- mobile/windows`، ولا تحفظهما أبدًا.
+- **ملفان جديدان:**
+  - `fresh_groom_walk_test.dart`: عريس جديد من أول شاشة، **ويحفظ فعلًا**: خطة، وحساب، واتفاق، ودفعة، وضيف، ومهمة، ثم يتأكد إن كل شي وصل لمكانه. ينشئ حسابًا جديدًا في القاعدة المحلية كل مرة.
+  - `route_sweep_walk_test.dart`: يفتح مسارات العريس بمعرفات حقيقية، ويكشف صفحة الخطأ والشاشة بلا نص. يأخذ المعرفات من `--dart-define=AARAST_SWEEP_IDS=planId=...,costId=...` (من قاعدة البيانات المحلية).
+- **النتائج الحالية والأعطال:** في `docs/superpowers/plans/2026-10-25-delivery-ledger.md`، قسم «أعطال المرحلة 1». ونتائج 25 أكتوبر تحت هذا القسم تاريخ.
+
 **ما يدخل في `flutter test` العادي:** ملفات `integration_test/` ما تشتغل مع `flutter test` (يشغّل
 `test/` بس). تأكدنا: `flutter test --no-pub` على `db0270e7` مع ملفات المشي = 2144 اختبار، «All tests
 passed!»، وما فيه ولا ملف من `journeys`.

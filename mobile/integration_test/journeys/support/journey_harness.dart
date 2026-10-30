@@ -413,12 +413,19 @@ class JourneyWalk {
     await settle(seconds: wait);
   }
 
+  /// Back to a tab after [openEachNotice], which leaves the app on the notices
+  /// page with no back stack and no bottom bar.
+  Future<void> leaveTo(String location, {double wait = 3}) async {
+    GoRouter.of(find.byType(Navigator).evaluate().first).go(location);
+    await settle(seconds: wait);
+  }
+
   String? currentLocation() {
     final navigators = find.byType(Navigator).evaluate();
     if (navigators.isEmpty) return null;
     try {
-      final router = GoRouter.of(navigators.first);
-      return router.routeInformationProvider.value.uri.toString();
+      // The router's state follows a push too; the route information does not.
+      return GoRouter.of(navigators.first).state.uri.toString();
     } on Object {
       return null;
     }
@@ -454,6 +461,7 @@ class JourneyWalk {
       await settle(seconds: 3);
       opened += 1;
       final landed = currentLocation();
+      await capture('notice_$opened');
       final errorPage = find.byWidgetPredicate(
         (widget) => widget.runtimeType.toString() == 'RouterErrorScreen',
       );

@@ -2,6 +2,18 @@
 
 These rules apply to AI agents and automation working on Aarast / اعّرست.
 
+## Frontend Freeze - 2026-10-31 (D67)
+
+The owner approved this after a year of redesigns. It overrides older phase notes, including «the prototype is the law» in the 2026-10-23 handoff.
+
+- The look is frozen on «فيروز». No new palette, visual direction or redesign before real users are on the app. The `frontend-design` skill stays off until then.
+- No new screen or feature unless it completes a broken journey.
+- Every frontend change needs one of three reasons: a proven defect, a journey that stops, or a real user who stumbled. Taste requests go to «بعد الإطلاق» in the delivery ledger. The owner may still overrule, after seeing the cost.
+- Prototypes are a reference for logic, not a law of pixels. Anything drawn from now on uses the app's own widgets.
+- Before touching a screen, fill the card in `.claude/skills/aarast-screen/SKILL.md`.
+- «خلص» needs three proofs: checks you ran, a shot from the real app, and a walk with the user's eyes.
+- One design reference: `docs/frontend/DESIGN_SYSTEM.md`. One progress record: `docs/superpowers/plans/2026-10-25-delivery-ledger.md`; add no new tracking files.
+
 ## Current Agent Checklist - 2026-08-11
 
 - Inspect before editing: read the approved docs and confirm the actual code/config state.

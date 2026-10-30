@@ -67,6 +67,8 @@ abstract final class AarastV3Space {
 abstract final class AarastV3Radius {
   static const control = 12.0;
   static const surface = 16.0;
+  static const card = 22.0;
+  static const sheet = 28.0;
   static const feature = 30.0;
   static const pill = 999.0;
 }

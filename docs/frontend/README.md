@@ -12,8 +12,8 @@ Frontend in this repository includes:
 - `docs/frontend/MOBILE.md`
 - `docs/frontend/MOBILE_ARCHITECTURE.md`
 - `docs/frontend/DESIGN_SYSTEM.md`
-- `docs/design/AARAST_MOBILE_EXPERIENCE_SYSTEM_V3.docx` - rendered V3 system
-  architecture and screen-composition reference.
+- `docs/design/AARAST_MOBILE_EXPERIENCE_SYSTEM_V3.docx` - the August V3 system,
+  historical; `DESIGN_SYSTEM.md` wins.
 - `docs/frontend/OFFLINE_SQLITE.md`
 - `docs/frontend/ADMIN_WEB.md`
 - `docs/frontend/MOBILE_ROUTES.md` - generated mobile route reference.

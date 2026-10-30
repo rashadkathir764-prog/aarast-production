@@ -11,6 +11,7 @@ import '../../../core/forms/aarast_form_success.dart';
 import '../../../core/phone/phone_number_utils.dart';
 import '../../../core/routing/app_router.dart';
 import '../../../core/routing/pop_or_go.dart';
+import '../../../core/utils/app_clock.dart';
 import '../../../core/utils/arabic_date_formatter.dart';
 import '../../../core/widgets/aarast_toast.dart';
 import '../../../core/widgets/aarast_ui.dart';
@@ -290,7 +291,7 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
 
   Future<void> _pickDate() async {
     releaseFieldFocus();
-    final today = DateUtils.dateOnly(DateTime.now());
+    final today = DateUtils.dateOnly(appNow());
     final initial = _pickedDate != null && !_pickedDate!.isBefore(today)
         ? _pickedDate!
         : today;

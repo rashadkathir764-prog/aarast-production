@@ -130,8 +130,7 @@ changing behavior.
 - `docs/frontend/README.md`
 - `docs/frontend/MOBILE.md`
 - `docs/frontend/MOBILE_ARCHITECTURE.md`
-- `docs/frontend/DESIGN_SYSTEM.md`
-- `docs/frontend/DESIGN_DIRECTION.md` - the V1 design reference (draft for the owner's approval).
+- `docs/frontend/DESIGN_SYSTEM.md` - the one design reference; the look is frozen (D67).
 - `docs/frontend/OFFLINE_SQLITE.md`
 - `docs/frontend/ADMIN_WEB.md`
 
@@ -395,7 +394,7 @@ changing behavior.
 | Mobile product and UX | `docs/frontend/MOBILE.md` |
 | Mobile architecture | `docs/frontend/MOBILE_ARCHITECTURE.md` |
 | Design system and tokens | `docs/frontend/DESIGN_SYSTEM.md` |
-| Mobile V3 architecture artifact | `docs/design/AARAST_MOBILE_EXPERIENCE_SYSTEM_V3.docx` |
+| Mobile V3 architecture artifact (August, historical) | `docs/design/AARAST_MOBILE_EXPERIENCE_SYSTEM_V3.docx` |
 | Mobile offline layer | `docs/frontend/OFFLINE_SQLITE.md` |
 | Admin web | `docs/frontend/ADMIN_WEB.md` |
 | Testing and QA | `docs/qa/README.md` |

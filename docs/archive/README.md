@@ -15,6 +15,11 @@ under:
 
 `docs/archive/2026-08-modernization-consolidation/`
 
+The burgundy `DESIGN_SYSTEM.md` and the unapproved `DESIGN_DIRECTION.md` draft,
+superseded by «فيروز» (D67), are under:
+
+`docs/archive/2026-10-burgundy-direction/`
+
 Non-Markdown prototype assets remain outside the active source map until the
 design-system migration records their replacement and captures any required
 visual evidence. They are reference artifacts, not implementation authority.

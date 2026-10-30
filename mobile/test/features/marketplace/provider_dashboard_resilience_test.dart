@@ -170,6 +170,18 @@ class _ProviderDashboardApiFake extends ProviderDashboardApi {
   }
 
   @override
+  Future<List<MarketplaceBooking>> getBookings() async {
+    operationalCalls++;
+    return const [];
+  }
+
+  @override
+  Future<List<DateTime>> getBlockedDates() async {
+    operationalCalls++;
+    return const [];
+  }
+
+  @override
   Future<MarketplaceService> updateService({
     required String serviceId,
     String? title,

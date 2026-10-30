@@ -147,8 +147,8 @@ class JourneyBox extends StatelessWidget {
   const JourneyBox({
     required this.child,
     this.color = AarastV3Color.paper,
-    this.padding = const EdgeInsets.all(16),
-    this.radius = 22,
+    this.padding = const EdgeInsets.all(AarastV3Space.x4),
+    this.radius = AarastV3Radius.card,
     this.borderColor,
     super.key,
   });

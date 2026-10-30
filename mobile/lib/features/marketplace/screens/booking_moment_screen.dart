@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 
 import '../../../core/experience_v3/aarast_v3.dart';
 import '../../../core/routing/app_router.dart';
+import '../../../core/routing/pop_or_go.dart';
 import '../../../core/utils/arabic_date_formatter.dart';
 import '../../../core/widgets/aarast_ui.dart';
 import '../../finance/finance_api.dart' show FinanceProvider;
@@ -154,7 +155,9 @@ class _BookingMomentScreenState extends State<BookingMomentScreen> {
     }
   }
 
-  void _go(String location) => context.pushReplacement(location);
+  void _go(String location) => context.isAbovePlanShell
+      ? context.go(location)
+      : context.pushReplacement(location);
 }
 
 /// «بعد المغرب» from the request's «الفترة: الليل · بعد المغرب» (f07).

@@ -12,4 +12,25 @@ extension PopOrGo on BuildContext {
       go(fallback);
     }
   }
+
+  /// This page was pushed above the plan's shell: a chat, a provider page.
+  bool get isAbovePlanShell {
+    final matches = GoRouter.of(
+      this,
+    ).routerDelegate.currentConfiguration.matches;
+    return matches.last.route is! ShellRouteBase &&
+        matches.any((match) => match.route is ShellRouteBase);
+  }
+
+  /// Opens [location], a page inside the plan's shell. A page above the shell
+  /// must not push it: the shell would enter the stack twice with one
+  /// navigator key, which go_router asserts on in a debug build and leaves
+  /// undefined in a release build, so it goes there instead.
+  Future<void> pushPlanPage(String location) async {
+    if (isAbovePlanShell) {
+      go(location);
+      return;
+    }
+    await push<void>(location);
+  }
 }

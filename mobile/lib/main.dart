@@ -560,13 +560,19 @@ class _AarastSessionProviders extends StatelessWidget {
             DashboardSummaryProvider
           >(
             create: (_) => _bindPlanScope(
-              DashboardSummaryProvider(weddingPlansApi: weddingPlansApi),
+              DashboardSummaryProvider(
+                weddingPlansApi: weddingPlansApi,
+                acceptedWrites: apiClient.acceptedWrites,
+              ),
               _unselectedPlanScope,
             ),
             update: (_, accountContexts, current) => _forPlanScope(
               current,
               _planScope(accountContexts),
-              () => DashboardSummaryProvider(weddingPlansApi: weddingPlansApi),
+              () => DashboardSummaryProvider(
+                weddingPlansApi: weddingPlansApi,
+                acceptedWrites: apiClient.acceptedWrites,
+              ),
             ),
           ),
           ChangeNotifierProxyProvider<

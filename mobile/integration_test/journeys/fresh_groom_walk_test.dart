@@ -173,8 +173,8 @@ void main() {
       await walk.step('d02_add_task', 'أضف مهمة', () async {
         await walk.tab('المهام');
         walk.note(walk.visibleTexts().take(16).join(' · '));
-        await walk.tapText('إضافة مهمة', required: false, wait: 3) ||
-            await walk.tapTooltip('إضافة', wait: 3);
+        await walk.tapText('أضف مهمة', required: false, wait: 3) ||
+            await walk.tapText('إضافة مهمة', wait: 3);
         final title = find.byKey(const ValueKey('task-title'));
         if (title.evaluate().isEmpty) {
           walk.fail('ما فتحت شاشة إضافة المهمة');
@@ -197,6 +197,8 @@ void main() {
       await walk.step('b02_home_after', 'الرئيسية تعرف كل هذا', () async {
         await walk.tab('الرئيسية');
         walk.note(walk.visibleTexts().take(30).join(' · '));
+        walk.expectSee('250,000', why: 'الرئيسية تعرف الدفعة (R1)');
+        walk.expectNotSee('ابدأ قائمة الضيوف', why: 'أضفنا ضيفًا (R1)');
       });
 
       await walk.finish();

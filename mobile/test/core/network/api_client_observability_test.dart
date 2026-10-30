@@ -21,6 +21,20 @@ void main() {
 
   tearDown(AppLogger.clearGlobal);
 
+  test('tells who listens about a write the server accepted, not a read', () async {
+    final client = ApiClient(tokenProvider: () async => 'token');
+    client.dio.httpClientAdapter = _SuccessAdapter();
+    final accepted = <String>[];
+    final subscription = client.acceptedWrites.listen(accepted.add);
+    addTearDown(subscription.cancel);
+
+    await client.getJson('/api/v1/wedding-plans/plan-1/dashboard-summary');
+    await client.postJson('/api/v1/wedding-plans/plan-1/tasks', const {});
+    await Future<void>.delayed(Duration.zero);
+
+    expect(accepted, ['/api/v1/wedding-plans/plan-1/tasks']);
+  });
+
   test(
     'adds a safe client request id and logs only safe HTTP metadata',
     () async {

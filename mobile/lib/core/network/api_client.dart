@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:math';
 import 'dart:typed_data';
 
@@ -93,6 +94,10 @@ class ApiClient {
             return;
           }
           _logResponse(response);
+          final method = response.requestOptions.method.toUpperCase();
+          if (method != 'GET' && method != 'HEAD') {
+            _acceptedWrites.add(response.requestOptions.path);
+          }
           handler.next(response);
         },
         onError: (error, handler) async {
@@ -157,6 +162,12 @@ class ApiClient {
   final Dio dio;
   final Dio _uploadDio;
   final TokenProvider _tokenProvider;
+  final _acceptedWrites = StreamController<String>.broadcast();
+
+  /// The path of every write the server accepted. Whatever is derived from
+  /// the plan, such as the home, reads again from this one place, so a screen
+  /// that saves never has to know who else shows its data.
+  Stream<String> get acceptedWrites => _acceptedWrites.stream;
   static const clientRequestIdHeader = 'X-Client-Request-Id';
   static const backendRequestIdHeader = 'X-Request-Id';
   static const _refreshRetryKey = 'aarast_refresh_retried';

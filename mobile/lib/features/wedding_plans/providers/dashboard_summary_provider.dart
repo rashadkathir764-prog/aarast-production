@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 
 import '../../../core/network/api_client.dart';
@@ -9,9 +11,18 @@ import '../models/wedding_plan.dart';
 
 class DashboardSummaryProvider extends ChangeNotifier
     with SessionScopedNotifier {
-  DashboardSummaryProvider({required this.weddingPlansApi});
+  DashboardSummaryProvider({
+    required this.weddingPlansApi,
+    Stream<String>? acceptedWrites,
+    Duration writeSettle = const Duration(milliseconds: 400),
+  }) : _writeSettle = writeSettle {
+    _writes = acceptedWrites?.listen(_onAcceptedWrite);
+  }
 
   final WeddingPlansApi weddingPlansApi;
+  final Duration _writeSettle;
+  StreamSubscription<String>? _writes;
+  Timer? _readAgain;
 
   bool _isLoading = false;
   String? _errorMessage;
@@ -23,6 +34,30 @@ class DashboardSummaryProvider extends ChangeNotifier
   String? get errorMessage => _errorMessage;
   DashboardSummary? get summary => _summary;
   WeddingPlan? get plan => _plan;
+
+  /// The home is a projection of the plan: a write anywhere reads it again,
+  /// once for a burst of writes.
+  void _onAcceptedWrite(String path) {
+    final planId = _summary?.planId;
+    if (planId == null || !_summary!.accountBacked) return;
+    const outsideThePlan = [
+      '/auth/',
+      '/notifications',
+      '/push',
+      '/conversations',
+      '/media',
+    ];
+    if (outsideThePlan.any(path.contains)) return;
+    _readAgain?.cancel();
+    _readAgain = Timer(_writeSettle, () => loadDashboard(planId));
+  }
+
+  @override
+  void dispose() {
+    _readAgain?.cancel();
+    _writes?.cancel();
+    super.dispose();
+  }
 
   /// Publishes the already-persisted local guest summary to the shared plan
   /// chrome. This keeps plan identity and stage stable while local planning

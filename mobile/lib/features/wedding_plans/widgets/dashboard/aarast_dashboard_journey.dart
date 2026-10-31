@@ -374,6 +374,7 @@ class _JourneyNextStep extends StatelessWidget {
     required this.payment,
     required this.currency,
     required this.now,
+    required this.amountsHidden,
     required this.onOpen,
   });
 
@@ -381,7 +382,16 @@ class _JourneyNextStep extends StatelessWidget {
   final DashboardNextPaymentSchedule? payment;
   final String currency;
   final DateTime now;
+
+  /// G17: «أخفِ المبالغ» reaches the next step's amount too.
+  final bool amountsHidden;
   final VoidCallback onOpen;
+
+  String _withAmount(String title, String? amount) {
+    final value = dashboardAmount(amount);
+    if (amountsHidden || value == null) return title;
+    return '$title: ${formatDashboardAmount(value)} ${_currencyLabel(currency)}';
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -403,14 +413,13 @@ class _JourneyNextStep extends StatelessWidget {
           ? 'اليوم'
           : 'متأخرة ${arabicCount(-days, one: 'يوم', two: 'يومين', few: 'أيام', many: 'يوم')}';
       eyebrow = 'الخطوة الجاية · $when';
-      title =
-          '${due.title}: ${formatDashboardAmount(dashboardAmount(due.amount) ?? 0)} ${_currencyLabel(currency)}';
-      reason = 'موعدها ${formatArabicWeekdayDayMonth(due.dueDate)}';
+      title = _withAmount(due.title, due.amount);
+      reason ='موعدها ${formatArabicWeekdayDayMonth(due.dueDate)}';
       action = context.say('سجّل الدفعة', 'سجّلي الدفعة');
       icon = LucideIcons.calendarClock;
     } else {
       eyebrow = 'الخطوة الجاية';
-      title = focus.title;
+      title = _withAmount(focus.title, focus.item?.amount);
       reason = focus.reason;
       action = focus.actionLabel;
       icon = focus.icon;

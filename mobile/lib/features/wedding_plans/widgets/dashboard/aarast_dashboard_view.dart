@@ -206,6 +206,7 @@ class AarastDashboardView extends StatelessWidget {
                         payment: payment,
                         currency: summary.currency,
                         now: now ?? appNow(),
+                        amountsHidden: amountsHidden,
                         onOpen: () {
                           final due = payment;
                           final pay = onOpenPayment;
@@ -247,7 +248,8 @@ class AarastDashboardView extends StatelessWidget {
                         focus: focus,
                         payment: payment,
                         currency: summary.currency,
-                        now: now ?? DateTime.now(),
+                        now: now ?? appNow(),
+                        amountsHidden: amountsHidden,
                         onOpen: () => onOpenPayment?.call(payment),
                       ),
                     ],
@@ -271,7 +273,8 @@ class AarastDashboardView extends StatelessWidget {
                       focus: focus,
                       payment: payment,
                       currency: summary.currency,
-                      now: now ?? DateTime.now(),
+                      now: now ?? appNow(),
+                      amountsHidden: amountsHidden,
                       onOpen: () {
                         final due = payment;
                         final pay = onOpenPayment;

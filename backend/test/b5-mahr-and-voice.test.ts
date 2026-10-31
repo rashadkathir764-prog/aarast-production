@@ -136,7 +136,7 @@ test('B5: the home next steps speak to a bride in the feminine and name her gues
     guestCount: 0,
     quoteRequestsCount: 0,
     acceptedProviders: 0,
-    currency: 'YER',
+    canManageMoney: true,
   };
   const bride = presenter.buildImportantItems({
     ...base,
@@ -157,8 +157,8 @@ test('B5: the home next steps speak to a bride in the feminine and name her gues
     planPersona: 'BRIDE',
   });
   assert.equal(
-    offers.find((item) => item.type === 'QUOTE_RECEIVED')?.body,
-    'راجعي العرض الحقيقي ثم اقبليه أو ارفضيه من مركز الخطة.',
+    offers.find((item) => item.type === 'QUOTE_RECEIVED')?.actionLabel,
+    'شوفي العرض',
   );
 
   // A groom helping in the bride's plan: his own form, her plan's guests.

@@ -124,7 +124,7 @@ test('dashboard important items use WeddingCost routes and preserve priority', (
     guestCount: 10,
     quoteRequestsCount: 1,
     acceptedProviders: 0,
-    currency: 'YER',
+    canManageMoney: true,
     form: 'MASCULINE',
     planPersona: 'GROOM',
   });
@@ -133,21 +133,65 @@ test('dashboard important items use WeddingCost routes and preserve priority', (
     items.map((item) => item.type),
     ['TASK_OVERDUE', 'PAYMENT_SCHEDULE_DUE', 'QUOTE_RECEIVED'],
   );
-  assert.equal(items[0].title, 'مهمة متأخرة');
-  assert.equal(items[0].routeTarget, '/wedding-plans/plan-1/tasks');
-  assert.equal(items[1].title, 'موعد دفع متأخر');
-  assert.equal(items[1].subtitle, 'دفعة القاعة');
+  // A next step names the thing, says why, and offers its own action.
+  assert.equal(items[0].title, 'تأكيد القاعة');
+  assert.equal(items[0].subtitle, 'متأخرة يومين');
+  assert.equal(items[0].actionLabel, 'افتح المهمة');
+  assert.equal(items[0].routeTarget, '/wedding-plans/plan-1/tasks/task-1');
+  assert.equal(items[1].title, 'دفعة القاعة');
+  assert.equal(items[1].subtitle, 'فات موعدها من يوم واحد');
+  assert.equal(items[1].actionLabel, 'سجّل الدفعة');
   assert.equal(items[1].amount, '2500');
+  // The amount is data, so «أخفِ المبالغ» can hide it.
+  assert.ok(!`${items[1].title}${items[1].subtitle}${items[1].body}`.includes('2500'));
   assert.equal(
     items[1].routeTarget,
-    '/wedding-plans/plan-1/money/costs/cost-1/schedules/schedule-1',
+    '/wedding-plans/plan-1/money/costs/cost-1/schedules/schedule-1/pay',
   );
   assert.deepEqual(items[1].data, {
     weddingPlanId: 'plan-1',
     weddingCostId: 'cost-1',
     paymentScheduleId: 'schedule-1',
   });
-  assert.equal(items[2].subtitle, '2 عرض بانتظار قرارك');
+  assert.equal(items[2].title, 'وصلك عرضين');
+  assert.equal(items[2].actionLabel, 'قارن العروض');
+  assert.equal(items[2].routeTarget, '/wedding-plans/plan-1/providers');
+});
+
+test('dashboard next step: a reader who cannot record money only reads the payment', () => {
+  const [item] = dashboardPresenter.buildImportantItems({
+    weddingPlanId: 'plan-1',
+    tasks: [],
+    paymentSchedules: [
+      {
+        id: 'schedule-1',
+        weddingCostId: 'cost-1',
+        title: 'دفعة القاعة',
+        amount: new Prisma.Decimal('2500'),
+        dueDate: new Date(2026, 6, 16),
+        status: PaymentScheduleStatus.PENDING,
+      },
+    ],
+    providers: [],
+    today: new Date(2026, 6, 11),
+    receivedQuotes: 0,
+    pendingInvites: 0,
+    hasLocation: true,
+    hasBudget: true,
+    guestCount: 10,
+    quoteRequestsCount: 1,
+    acceptedProviders: 0,
+    canManageMoney: false,
+    form: 'FEMININE',
+    planPersona: 'BRIDE',
+  });
+
+  assert.equal(item.subtitle, 'موعدها بعد 5 أيام');
+  assert.equal(item.actionLabel, 'شوفي الدفعة');
+  assert.equal(
+    item.routeTarget,
+    '/wedding-plans/plan-1/money/costs/cost-1/schedules/schedule-1',
+  );
 });
 
 test('dashboard setup actions and provider preview keep current product wording', () => {
@@ -164,7 +208,7 @@ test('dashboard setup actions and provider preview keep current product wording'
     guestCount: 0,
     quoteRequestsCount: 0,
     acceptedProviders: 0,
-    currency: 'YER',
+    canManageMoney: true,
     form: 'MASCULINE',
     planPersona: 'GROOM',
   });
@@ -190,7 +234,7 @@ test('dashboard setup actions and provider preview keep current product wording'
     guestCount: 1,
     quoteRequestsCount: 1,
     acceptedProviders: 1,
-    currency: 'YER',
+    canManageMoney: true,
     form: 'MASCULINE',
     planPersona: 'GROOM',
   });
@@ -216,7 +260,7 @@ test('dashboard provider card describes a plan link without claiming proximity',
     guestCount: 1,
     quoteRequestsCount: 1,
     acceptedProviders: 1,
-    currency: 'YER',
+    canManageMoney: true,
     form: 'MASCULINE',
     planPersona: 'GROOM',
   });
@@ -349,12 +393,6 @@ test('dashboard numeric and date helpers keep exact behavior', () => {
   assert.equal(dashboardPresenter.daysRemaining(null, later), null);
   assert.equal(dashboardPresenter.progressPercentage(3, 1), 33);
   assert.equal(dashboardPresenter.progressPercentage(0, 0), 0);
-
-  const expectedArabicDate = new Intl.DateTimeFormat('ar-YE', {
-    day: 'numeric',
-    month: 'long',
-  }).format(later);
-  assert.equal(dashboardPresenter.formatDateArabic(later), expectedArabicDate);
 });
 
 function providerLink() {

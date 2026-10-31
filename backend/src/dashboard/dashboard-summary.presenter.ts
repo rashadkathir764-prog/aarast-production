@@ -22,6 +22,12 @@ import {
   gendered,
   textFor,
 } from "../shared-kernel/voice/address-form";
+import {
+  dayCountWords,
+  daysBetween,
+  weekdayDayMonthWords,
+  whenWords,
+} from "../shared-kernel/voice/day-words";
 
 export function toPaymentScheduleDueMoneyItem(
   schedule: DashboardPaymentScheduleRecord,
@@ -53,7 +59,7 @@ export function buildImportantItems({
   guestCount,
   quoteRequestsCount,
   acceptedProviders,
-  currency,
+  canManageMoney,
   form,
   planPersona,
 }: {
@@ -69,7 +75,8 @@ export function buildImportantItems({
   guestCount: number;
   quoteRequestsCount: number;
   acceptedProviders: number;
-  currency: string;
+  /** A reader who may record a payment is offered that; others only read it. */
+  canManageMoney: boolean;
   /** The reader's form (B5): the next steps speak to them. */
   form: AddressForm;
   /** Whose wedding the plan is: the bride's guests are «الضيفات». */
@@ -79,24 +86,31 @@ export function buildImportantItems({
   const say = (masculine: string, feminine: string) =>
     textFor(form, gendered(masculine, feminine));
 
+  // A next step names the thing, says why it is first, and offers the one
+  // action that moves it; the amount stays data so «أخفِ المبالغ» can hide it.
   for (const task of tasks) {
     const isOverdue = task.dueDate !== null && task.dueDate < today;
+    const days = task.dueDate ? daysBetween(today, task.dueDate) : null;
+    const taskRoute = `/wedding-plans/${weddingPlanId}/tasks/${task.id}`;
     items.push({
       id: task.id,
       type: isOverdue ? "TASK_OVERDUE" : "TASK_TODAY",
-      title: isOverdue ? "مهمة متأخرة" : "مهمة اليوم",
-      subtitle: task.title,
-      body: task.dueDate
-        ? `${isOverdue ? "كان موعدها" : "موعدها"} ${formatDateArabic(task.dueDate)}`
-        : null,
+      title: task.title,
+      subtitle:
+        days === null
+          ? say("حدد لها موعد عشان ما تنساها", "حددي لها موعد عشان ما تنسيها")
+          : isOverdue
+            ? `متأخرة ${dayCountWords(-days)}`
+            : `موعدها ${whenWords(days)}`,
+      body: task.dueDate ? weekdayDayMonthWords(task.dueDate) : null,
       icon: "calendar",
       tone: isOverdue ? "danger" : toneForTaskPriority(task.priority),
       priority: isOverdue ? "URGENT" : "HIGH",
-      actionLabel: "تنفيذ الآن",
+      actionLabel: say("افتح المهمة", "افتحي المهمة"),
       dueDate: task.dueDate,
       amount: null,
-      route: `/wedding-plans/${weddingPlanId}/tasks`,
-      routeTarget: `/wedding-plans/${weddingPlanId}/tasks`,
+      route: taskRoute,
+      routeTarget: taskRoute,
       entityId: task.id,
       data: { weddingPlanId, taskId: task.id },
     });
@@ -104,17 +118,23 @@ export function buildImportantItems({
 
   for (const schedule of paymentSchedules) {
     const overdue = schedule.dueDate < today;
-    const routeTarget = `/wedding-plans/${weddingPlanId}/money/costs/${schedule.weddingCostId}/schedules/${schedule.id}`;
+    const days = daysBetween(today, schedule.dueDate);
+    const scheduleRoute = `/wedding-plans/${weddingPlanId}/money/costs/${schedule.weddingCostId}/schedules/${schedule.id}`;
+    const routeTarget = canManageMoney ? `${scheduleRoute}/pay` : scheduleRoute;
     items.push({
       id: schedule.id,
       type: "PAYMENT_SCHEDULE_DUE",
-      title: overdue ? "موعد دفع متأخر" : "موعد دفع قريب",
-      subtitle: schedule.title,
-      body: `${formatDateArabic(schedule.dueDate)} · ${schedule.amount.toString()} ${currency}`,
+      title: schedule.title,
+      subtitle: overdue
+        ? `فات موعدها من ${dayCountWords(-days)}`
+        : `موعدها ${whenWords(days)}`,
+      body: weekdayDayMonthWords(schedule.dueDate),
       icon: "wallet",
       tone: overdue ? "danger" : "warning",
       priority: overdue ? "URGENT" : "HIGH",
-      actionLabel: "عرض موعد الدفع",
+      actionLabel: canManageMoney
+        ? say("سجّل الدفعة", "سجّلي الدفعة")
+        : say("شوف الدفعة", "شوفي الدفعة"),
       dueDate: schedule.dueDate,
       amount: schedule.amount.toString(),
       route: routeTarget,
@@ -129,23 +149,30 @@ export function buildImportantItems({
   }
 
   if (receivedQuotes > 0) {
+    const single = receivedQuotes === 1;
+    const providersRoute = `/wedding-plans/${weddingPlanId}/providers`;
     items.push({
       id: `quote-received:${weddingPlanId}`,
       type: "QUOTE_RECEIVED",
-      title: "وصل عرض سعر",
-      subtitle: `${receivedQuotes} عرض بانتظار قرارك`,
-      body: say(
-        "راجع العرض الحقيقي ثم اقبله أو ارفضه من مركز الخطة.",
-        "راجعي العرض الحقيقي ثم اقبليه أو ارفضيه من مركز الخطة.",
-      ),
+      title: single
+        ? "وصلك عرض سعر"
+        : receivedQuotes === 2
+          ? "وصلك عرضين"
+          : `وصلك ${receivedQuotes} ${receivedQuotes <= 10 ? "عروض" : "عرض"}`,
+      subtitle: single
+        ? say("شوفه قبل ما تنتهي مدته", "شوفيه قبل ما تنتهي مدته")
+        : say("قارن بينها قبل ما تنتهي مدتها", "قارني بينها قبل ما تنتهي مدتها"),
+      body: null,
       icon: "provider",
       tone: "warning",
       priority: "HIGH",
-      actionLabel: "مراجعة العروض",
+      actionLabel: single
+        ? say("شوف العرض", "شوفي العرض")
+        : say("قارن العروض", "قارني العروض"),
       dueDate: null,
       amount: null,
-      route: `/wedding-plans/${weddingPlanId}/plan-center`,
-      routeTarget: `/wedding-plans/${weddingPlanId}/plan-center`,
+      route: providersRoute,
+      routeTarget: providersRoute,
       entityId: null,
       data: { weddingPlanId },
     });
@@ -155,13 +182,18 @@ export function buildImportantItems({
     items.push({
       id: `pending-invites:${weddingPlanId}`,
       type: "INVITE_PENDING",
-      title: "دعوات مشاركة معلقة",
-      subtitle: `${pendingInvites} دعوة لم تُحسم بعد`,
+      title:
+        pendingInvites === 1
+          ? "دعوة مشاركة تنتظر الرد"
+          : pendingInvites === 2
+            ? "دعوتين تنتظر الرد"
+            : `${pendingInvites} ${pendingInvites <= 10 ? "دعوات" : "دعوة"} تنتظر الرد`,
+      subtitle: "ما يشوفون الخطة لين يقبلون",
       body: null,
       icon: "calendar",
       tone: "info",
       priority: "NORMAL",
-      actionLabel: "إدارة المشاركين",
+      actionLabel: say("شوف الدعوات", "شوفي الدعوات"),
       dueDate: null,
       amount: null,
       route: `/wedding-plans/${weddingPlanId}/sharing`,
@@ -177,7 +209,8 @@ export function buildImportantItems({
         weddingPlanId,
         "SET_LOCATION",
         say("أكمل موقع الزفاف", "أكملي موقع الزفاف"),
-        "الموقع يساعدك في تصفية المزودين وتوضيح طلبات الأسعار.",
+        "عشان تشوف مزودين مدينتك وتوصلهم طلباتك بوضوح",
+        say("حدد الموقع", "حددي الموقع"),
         `/wedding-plans/${weddingPlanId}/plan-center`,
       ),
     );
@@ -189,9 +222,10 @@ export function buildImportantItems({
         "SET_BUDGET",
         say("حدد ميزانية الخطة", "حددي ميزانية الخطة"),
         say(
-          "حدد سقفًا ماليًا واحدًا ثم وزّعه اختياريًا على التصنيفات.",
-          "حددي سقفًا ماليًا واحدًا ثم وزّعيه اختياريًا على التصنيفات.",
+          "رقم تقريبي يكفي، ومنه تعرف كم تقدر تصرف على كل بند",
+          "رقم تقريبي يكفي، ومنه تعرفي كم تقدري تصرفي على كل بند",
         ),
+        say("حدد الميزانية", "حددي الميزانية"),
         `/wedding-plans/${weddingPlanId}/money/budget`,
       ),
     );
@@ -202,7 +236,10 @@ export function buildImportantItems({
         weddingPlanId,
         "ADD_GUESTS",
         `${say("ابدأ", "ابدئي")} قائمة ${planPersona === "BRIDE" ? "الضيفات" : "الضيوف"}`,
-        "لم تتم إضافة ضيوف إلى الخطة بعد.",
+        planPersona === "BRIDE"
+          ? "العدد يحدد حجم الصالة وتكلفة الضيافة"
+          : "العدد يحدد حجم القاعة وتكلفة الضيافة",
+        say("أضف أول ضيف", "أضيفي أول ضيف"),
         `/wedding-plans/${weddingPlanId}/guests`,
       ),
     );
@@ -213,8 +250,9 @@ export function buildImportantItems({
         weddingPlanId,
         "REQUEST_QUOTE",
         say("اطلب أول عرض سعر", "اطلبي أول عرض سعر"),
-        "لم يتم إرسال طلب عرض سعر لأي مزود بعد.",
-        "/providers",
+        "الليالي تنحجز بدري، والعرض يعطيك سعر حقيقي بدل التخمين",
+        say("شوف المزودين", "شوفي المزودين"),
+        `/wedding-plans/${weddingPlanId}/providers`,
       ),
     );
   }
@@ -344,13 +382,6 @@ export function toNotificationPreview(
   };
 }
 
-export function formatDateArabic(date: Date): string {
-  return new Intl.DateTimeFormat("ar-YE", {
-    day: "numeric",
-    month: "long",
-  }).format(date);
-}
-
 export function toPlanResponse(plan: WeddingPlan) {
   return {
     id: plan.id,
@@ -423,19 +454,20 @@ function setupAction(
     "SET_LOCATION" | "SET_BUDGET" | "ADD_GUESTS" | "REQUEST_QUOTE"
   >,
   title: string,
-  body: string,
+  reason: string,
+  actionLabel: string,
   routeTarget: string,
 ): DashboardImportantItemResponse {
   return {
     id: `${type.toLowerCase()}:${weddingPlanId}`,
     type,
     title,
-    subtitle: "إعداد الخطة",
-    body,
+    subtitle: reason,
+    body: null,
     icon: type === "SET_BUDGET" ? "wallet" : "calendar",
     tone: "info",
     priority: "LOW",
-    actionLabel: "إكمال الآن",
+    actionLabel,
     dueDate: null,
     amount: null,
     route: routeTarget,

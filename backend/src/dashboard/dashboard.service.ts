@@ -412,7 +412,7 @@ export class DashboardService {
       guestCount,
       quoteRequestsCount,
       acceptedProviders: providerCount,
-      currency: context.plan.currency,
+      canManageMoney: this.permissions.canManageMoney(context),
       form: readerAddressForm(currentUser, context),
       planPersona: context.plan.persona,
     });

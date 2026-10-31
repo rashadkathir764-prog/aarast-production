@@ -174,6 +174,81 @@ void main() {
     );
   });
 
+  testWidgets('the next step says its amount only while amounts are shown', (
+    tester,
+  ) async {
+    final summary = DashboardSummary.fromJson({
+      'planId': 'plan-1',
+      'title': 'خطة',
+      'currency': 'YER',
+      'status': 'PLANNING',
+      'progressPercentage': 0,
+      'totalTasks': 0,
+      'completedTasks': 0,
+      'overdueTasks': 0,
+      'todayTasks': 0,
+      'guestCount': 40,
+      'venueSecured': true,
+      'confirmedGuests': 0,
+      'providerCount': 0,
+      'quoteRequestsCount': 0,
+      'unreadNotificationsCount': 0,
+      'moneySummary': {'totalBudget': '1000000'},
+      'nextBestActions': [
+        {
+          'id': 'schedule-1',
+          'type': 'PAYMENT_SCHEDULE_DUE',
+          'title': 'القاعة',
+          'subtitle': 'موعدها بعد 5 أيام',
+          'icon': 'wallet',
+          'tone': 'warning',
+          'priority': 'HIGH',
+          'actionLabel': 'سجّل الدفعة',
+          'amount': '500000',
+          'routeTarget': '/wedding-plans/plan-1/money',
+          'data': <String, dynamic>{},
+        },
+      ],
+      'permissions': {
+        'isOwner': true,
+        'canViewMoney': true,
+        'canManageMoney': true,
+      },
+    });
+
+    Widget home({required bool hidden}) => MaterialApp(
+      home: Scaffold(
+        body: AarastDashboardView(
+          summary: summary,
+          amountsHidden: hidden,
+          userName: 'العريس',
+          bottomPadding: 24,
+          onNotifications: () {},
+          onProfile: () {},
+          onOpenPlan: () {},
+          onOpenMoney: () {},
+          onOpenTasks: () {},
+          onOpenProviders: () {},
+          onOpenGuests: () {},
+          onOpenSharing: () {},
+          onOpenNextStep: () {},
+          onOpenImportantItem: (_) {},
+        ),
+      ),
+    );
+
+    await tester.pumpWidget(home(hidden: false));
+    await tester.pumpAndSettle();
+    expect(find.text('القاعة: 500,000 ر.ي'), findsOneWidget);
+    expect(find.text('موعدها بعد 5 أيام'), findsOneWidget);
+    expect(find.text('سجّل الدفعة'), findsOneWidget);
+
+    await tester.pumpWidget(home(hidden: true));
+    await tester.pumpAndSettle();
+    expect(find.text('القاعة'), findsOneWidget);
+    expect(find.textContaining('500,000'), findsNothing);
+  });
+
   test('dashboard compact response does not require full entity lists', () {
     final summary = DashboardSummary.fromJson({
       'planId': 'plan-1',

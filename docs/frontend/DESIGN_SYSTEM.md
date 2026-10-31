@@ -3,9 +3,7 @@
 Snapshot date: 2026-10-31
 
 Status: the one active Mobile design reference. The look is **frozen on
-«فيروز»** until the first real users are on the app (AGENTS.md, D67). The
-August burgundy system and the unapproved `DESIGN_DIRECTION.md` draft are
-archived under `docs/archive/2026-10-burgundy-direction/` and must not be used.
+«فيروز»** until the first real users are on the app (AGENTS.md, D67).
 
 Where this file and the code disagree, the code in the boundary below wins and
 this file is corrected in the same change.

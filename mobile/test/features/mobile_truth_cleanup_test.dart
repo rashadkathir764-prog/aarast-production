@@ -1,8 +1,6 @@
 // Mobile truth-cleanup invariants.
 //
-// These tests lock in the canonical screen content cleanup that prevents
-// regressions of the issues listed in
-// docs/mobile-ux/AARAST_FULL_SCREEN_TRUTH_AUDIT.md.
+// These tests lock in the canonical screen content cleanup.
 //
 // Scope: production-reachable Arabic copy inside lib/features/** and
 // lib/core/widgets/**. Test code (test/**) is excluded on purpose so it
@@ -115,17 +113,6 @@ void main() {
         reason:
             'ProviderPortalScreen is the only routed provider dashboard. '
             'The unreachable legacy implementation must stay deleted.',
-      );
-
-      final planCenter = File(
-        '${mobileRoot}lib/features/wedding_plans/screens/plan_center_screen.dart',
-      ).readAsStringSync();
-      expect(
-        planCenter,
-        isNot(contains('AppRouter.createWeddingPlan')),
-        reason:
-            'Plan Center must not expose create-plan as a quick operational '
-            'action. Plan creation belongs to onboarding or More -> My Plans.',
       );
     });
 

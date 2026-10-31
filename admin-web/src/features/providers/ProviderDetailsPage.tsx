@@ -1,5 +1,4 @@
-// a06 «تفاصيل مزود» and its suspension (mobile/test/prototype/admin/
-// admin_screens.dart `a06ProviderSuspend`). «حجوزات جاية» waits for B-40 and
+// a06 «تفاصيل مزود» and its suspension. «حجوزات جاية» waits for B-40 and
 // «بلاغات» for A-21; the server counts every quote request, so the card says
 // «طلبات العروض». The suspension window keeps only what the server does
 // today: the two lines about bookings and open requests wait for B-42.

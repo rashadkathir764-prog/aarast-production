@@ -170,16 +170,10 @@ conversations, signed image uploads, and rotating refresh sessions.
   unmapped routes fail visibly instead of inheriting a silent generic design.
   Complete physical loading/error/offline/read-only coverage at both 320px and
   420px remains an open release gate. See
-  `docs/frontend/DESIGN_SYSTEM.md` and
-  `docs/design/AARAST_MOBILE_EXPERIENCE_SYSTEM_V3.docx`.
-- `/wedding-plans/:id/wedding-day` is the permission-aware Wedding Day command
-  view. Home exposes it only from seven days before the event through the day
-  after. It uses real plan time/location, urgent unfinished tasks, responsible
-  contacts, and existing providers; missing provider contact data is not
-  invented. Mobile schema version 8 caches the complete dashboard summary, so
-  date/time/location, permission snapshot, important items, and provider
-  previews remain available with cached tasks after a cold offline start. This
-  adds no backend, booking, payment-processing, or open-messaging contract.
+  `docs/frontend/DESIGN_SYSTEM.md`.
+- The wedding week and day live on the home and in the plan's events (D65).
+  Mobile schema version 8 caches the complete dashboard summary for a cold
+  offline start.
 - Product builds require a public HTTPS API origin and cannot enable the
   development login bypass. Android refuses debug signing for Release.
 - Canonical invitation links are

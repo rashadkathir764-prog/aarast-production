@@ -121,8 +121,7 @@ Future<void> runParticipantWalk(
     } else {
       walk.expectNotSee(
         'ما عندك صلاحية على المهام',
-        why: 'الدور اسمه «يشوف بس» ومع ذلك المهام مقفولة كلها '
-            '(V1_DELIVERY_CHECKLIST: يشوف نفس شاشات الخطة بحسب صلاحياته)',
+        why: 'الدور اسمه «يشوف بس» ومع ذلك المهام مقفولة كلها (D52)',
       );
       // D52: all the plan's tasks, read only.
       walk.expectSee('خلصت 12 من 20', why: 'المهام 12 من 20');

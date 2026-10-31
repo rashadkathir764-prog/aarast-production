@@ -1,5 +1,4 @@
-// a11 «البلاغات» (mobile/test/prototype/admin/admin_screens.dart
-// `a11ChatReports`): the open reports beside the one being read. The
+// a11 «البلاغات»: the open reports beside the one being read. The
 // reported message, «احذف الرسالة» and the history on the same party wait
 // for B-41; «نبّه المزود» and «اطلب إيقافه» wait for A-09. What stays is
 // closing the report: «ما فيه شيء» (dismissed) and «تمت المراجعة».

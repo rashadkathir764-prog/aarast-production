@@ -7,8 +7,7 @@ import '../widgets/aarast_pressable.dart';
 import 'aarast_journey_profile.dart';
 import 'aarast_v3_foundations.dart';
 
-/// The journey kit: the building blocks of the redesigned groom journey
-/// (`mobile/test/prototype/v3`), as production widgets.
+/// The journey kit: the building blocks of every journey screen.
 ///
 /// Screens are composed from these so the app looks like the approved design
 /// and every section keeps its colour. Everything reads its colour from

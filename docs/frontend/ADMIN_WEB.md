@@ -7,9 +7,7 @@ admin-facing management for the inbox, users, catalog references, providers,
 services, featured placement, reviews, operational reports, the audit log, and
 conversation-report moderation through the backend admin APIs. Every page is
 drawn with the admin desk kit (`src/design_system/Desk.tsx`, `DeskModal.tsx`,
-`src/styles/desk.css`) from the admin designs in
-`mobile/test/prototype/admin/out/`; which design each page follows, and the
-differences, are in `docs/superpowers/audit/admin_build_classification.md`.
+`src/styles/desk.css`).
 
 ## Commands
 

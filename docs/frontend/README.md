@@ -12,8 +12,6 @@ Frontend in this repository includes:
 - `docs/frontend/MOBILE.md`
 - `docs/frontend/MOBILE_ARCHITECTURE.md`
 - `docs/frontend/DESIGN_SYSTEM.md`
-- `docs/design/AARAST_MOBILE_EXPERIENCE_SYSTEM_V3.docx` - the August V3 system,
-  historical; `DESIGN_SYSTEM.md` wins.
 - `docs/frontend/OFFLINE_SQLITE.md`
 - `docs/frontend/ADMIN_WEB.md`
 - `docs/frontend/MOBILE_ROUTES.md` - generated mobile route reference.
@@ -32,7 +30,6 @@ flutter test --tags golden
 
 Run targeted widget/provider tests for the touched flow. For visual work, use
 `docs/frontend/DESIGN_SYSTEM.md` and verify phone-width Arabic/RTL behavior.
-The former Premium/Royal roadmap is archived and must not be extended.
 
 ## Admin Checks
 

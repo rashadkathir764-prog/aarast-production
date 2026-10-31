@@ -1,5 +1,4 @@
-// a03 «طلبات الانضمام» (mobile/test/prototype/admin/admin_screens.dart
-// `a03Applications`). The method column and the automatic checks in
+// a03 «طلبات الانضمام». The method column and the automatic checks in
 // «ملاحظة» have no field (D41, B-16, B-13, B-31), so the note column carries
 // the review's own state: a profile sent back after changes (B-01, B-02) or
 // the team's note. The server lists the newest first, so the page reads up

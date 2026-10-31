@@ -1,5 +1,4 @@
-// a15 «سجل التدقيق» (mobile/test/prototype/admin/admin_screens.dart
-// `a15Audit`): names instead of raw ids and the action in words. The server
+// a15 «سجل التدقيق»: names instead of raw ids and the action in words. The server
 // keeps ids only, so the page reads each admin's and provider's name once
 // (A-12 would send them); a target other than a provider or a user shows its
 // kind. «السبب» waits for A-12, which would store the note of the action.

@@ -1,4 +1,4 @@
-// The admin desk kit, drawn from mobile/test/prototype/admin/akit.dart: the
+// The admin desk kit: the
 // page head, buttons, panels, tables, tags and stats every admin page uses.
 import type { ButtonHTMLAttributes, ReactNode } from 'react';
 import type { LucideIcon } from 'lucide-react';

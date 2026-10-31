@@ -1,5 +1,4 @@
-// a04 «مراجعة طلب» (mobile/test/prototype/admin/admin_screens.dart
-// `a04Review`): the application field by field, a «ملاحظة» on each field the
+// a04 «مراجعة طلب»: the application field by field, a «ملاحظة» on each field the
 // provider can fix (B-01), and the review line from the history (B-01,
 // B-02). «قبل التعديل» needs the earlier values, which are not kept; «يخدم»
 // has no field; the teams left with D41; the quick checks need B-16, B-07

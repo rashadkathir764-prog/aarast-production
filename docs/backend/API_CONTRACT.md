@@ -7,11 +7,7 @@ Current documentation snapshot: 2026-08-11.
 Source status:
 
 - Backend source contains the Wedding Financial OS API surface plus provider-reference and quote-lead support.
-- Archived backend reports record a 2026-06-19 local PASS for backend completion
-  smoke and a later 2026-06-20 Docker runtime/source mismatch in dashboard
-  summary smoke. Current backend risks are summarized in
-  `docs/backend/STATUS_AND_RISKS.md`.
-- Provider/quote routes are planning and lead workflows only. They are not paid marketplace, payment, deposit, or confirmed booking flows.
+- Bookings are confirmed by the provider and carry no payment. No route moves money.
 
 ## Base URL
 
@@ -2896,7 +2892,6 @@ booking with the provider whose day has passed; otherwise
 
 ### After The Booking (G25, 2026-10-27)
 
-B-22, B-23 and B-24 of `docs/superpowers/plans/2026-10-25-provider-backend-changes.md`.
 A booking stays `CONFIRMED`; its outcome, delivery and asked changes are
 fields beside the status. Every booking response carries `completedAt`,
 `notHappenedAt`, `notHappenedReason`, `deliveryDueAt`, `deliveredAt`,

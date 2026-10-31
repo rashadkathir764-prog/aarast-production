@@ -1,5 +1,4 @@
-// a07 «ملفات بلا حساب» (mobile/test/prototype/admin/admin_screens.dart
-// `a07Listed`), the part B-12 brings: the claims of a listing the back
+// a07 «ملفات بلا حساب», the part B-12 brings: the claims of a listing the back
 // office made, each waiting for an administrator who approves (the listing
 // becomes the account's) or refuses with a reason the claimant reads. The
 // list of every unclaimed listing and its claim date wait for A-07; the

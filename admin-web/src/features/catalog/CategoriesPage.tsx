@@ -1,5 +1,4 @@
-// a08 «الأقسام» (mobile/test/prototype/admin/admin_screens.dart
-// `a08Categories`): one section for the groom and the bride. «الطريقة
+// a08 «الأقسام»: one section for the groom and the bride. «الطريقة
 // المقترحة» and «المدة» left with D41; one name per section exists, so the
 // groom and bride columns show it or «ما يظهر» by the section's audience
 // (a name per side waits for A-20). Editing and disabling open from the

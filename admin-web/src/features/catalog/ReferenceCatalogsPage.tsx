@@ -1,5 +1,4 @@
-// a09 «الكتالوجات» (mobile/test/prototype/admin/admin_screens.dart
-// `a09Catalogs`): the starter catalogs that change in the app without a
+// a09 «الكتالوجات»: the starter catalogs that change in the app without a
 // release, each item with its days before the wedding and its audience, and
 // the published version beside the draft. «ارجع للمنشور» waits for A-19 (no
 // call drops a draft). Adding and editing are not drawn and stay, in a

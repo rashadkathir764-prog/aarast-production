@@ -1,5 +1,4 @@
-// n07 «صور تحتاج مراجعة» (mobile/test/prototype/admin/out/n07_photos.png),
-// B-16 / D62. Every new portfolio photo waits here, the oldest first; the
+// n07 «صور تحتاج مراجعة» (D62). Every new portfolio photo waits here, the oldest first; the
 // moderation team approves it («سليمة») or refuses it with its reason
 // («شِل»), and the provider is told either way. A women's-album photo is
 // approved only after the reviewer confirms it shows no faces. Not built

@@ -14,10 +14,9 @@ governorate → district → locality hierarchy consumed by Admin and Mobile.
 ## Active Backend Docs
 
 - `ARCHITECTURE.md` - canonical modular-monolith boundaries, module ownership,
-  dependency direction, and phase gates.
+  and dependency direction.
 - `docs/backend/API_CONTRACT.md` - route-level API contract.
 - `docs/backend/DATABASE.md` - data-model intent and privacy rules.
-- `docs/backend/STATUS_AND_RISKS.md` - current backend status and known risks.
 
 ## Modular Monolith Boundary
 

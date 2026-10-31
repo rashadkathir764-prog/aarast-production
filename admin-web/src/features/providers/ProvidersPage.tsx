@@ -1,5 +1,4 @@
-// a05 «دليل المزودين» (mobile/test/prototype/admin/admin_screens.dart
-// `a05Directory`): the active and suspended providers with their marks. The
+// a05 «دليل المزودين»: the active and suspended providers with their marks. The
 // bookings column waits for B-40 and «تقويم قديم» for B-25; the teams under
 // the name left with D41. Adding a listed provider and importing a file open
 // the existing forms in a window.

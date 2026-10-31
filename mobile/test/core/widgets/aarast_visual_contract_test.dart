@@ -48,15 +48,8 @@ void main() {
         'lib/core/experience_v3/aarast_v3_adaptive.dart',
         'lib/core/experience_v3/aarast_v3_content.dart',
         'lib/core/theme/aarast_design_tokens.dart',
-        'lib/core/theme/aarast_theme.dart',
         'lib/core/theme/aarast_motion.dart',
-        'lib/core/widgets/aarast_scaffold.dart',
-        'lib/core/widgets/aarast_screen_frame.dart',
-        'lib/core/widgets/aarast_app_bar.dart',
-        'lib/core/widgets/aarast_card.dart',
         'lib/core/widgets/aarast_button.dart',
-        'lib/core/widgets/aarast_section_header.dart',
-        'lib/core/widgets/aarast_empty_state.dart',
         'lib/core/widgets/aarast_loading_state.dart',
         'lib/core/widgets/aarast_error_state.dart',
         'lib/core/widgets/aarast_status_badge.dart',
@@ -690,13 +683,8 @@ void main() {
 
     test('keeps the retired premium roadmap out of active documentation', () {
       final retiredRoadmap = File('../docs/frontend/PREMIUM_ROADMAP.md');
-      final archivedRoadmap = File(
-        '../docs/archive/2026-08-modernization-consolidation/frontend/'
-        'PREMIUM_ROADMAP.md.txt',
-      );
 
       expect(retiredRoadmap.existsSync(), isFalse);
-      expect(archivedRoadmap.existsSync(), isTrue);
     });
   });
 }

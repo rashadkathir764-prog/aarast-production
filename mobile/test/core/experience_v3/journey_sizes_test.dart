@@ -3,8 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 
-/// D30: the kit draws the approved design's sizes (the prototype kit,
-/// `test/prototype/c_journey/kit.dart`), not the shrunken D8 headings.
+/// D30: the kit draws the approved design's sizes, not the shrunken D8
+/// headings.
 /// A phone's content column (390 wide, 16 each side), as screens use them.
 Widget _host(Widget child) {
   return MaterialApp(

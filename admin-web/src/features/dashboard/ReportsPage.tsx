@@ -1,6 +1,5 @@
-// a02 «التقارير» (mobile/test/prototype/admin/admin_screens.dart
-// `a02Reports`): the success numbers and the market price report (V1
-// checklist 4.21). The success report takes no date range, so «آخر 30 يوم»
+// a02 «التقارير»: the success numbers and the market price report.
+// The success report takes no date range, so «آخر 30 يوم»
 // waits for A-05 and the line under the title names the thirty days the
 // server counts the conversion over. «تنزيل» saves the same numbers as CSV.
 // G41: what plans really agreed per item, anonymous, under the prices.

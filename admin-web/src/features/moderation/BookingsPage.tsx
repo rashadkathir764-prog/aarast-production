@@ -1,5 +1,4 @@
-// a12 «الحجوزات» (mobile/test/prototype/admin/admin_screens.dart
-// `a12Bookings`), read only (B-40). The drawn «الخلافات» card and its
+// a12 «الحجوزات», read only (B-40). The drawn «الخلافات» card and its
 // actions are the «ما صار» reports of B-22, which are not built, so the page
 // lists the bookings with their filters and opens one: the day, the two
 // sides, who ended it and why. No amount, offer or payment is shown: اعّرست

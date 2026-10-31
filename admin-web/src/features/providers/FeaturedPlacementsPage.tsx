@@ -1,5 +1,4 @@
-// a17 «الباقات والظهور المميز» (mobile/test/prototype/admin/admin_screens.dart
-// `a17Plans`), built on B-43: the provider pays outside the app and an
+// a17 «الباقات والظهور المميز»: the provider pays outside the app and an
 // administrator records the days of his featured placement here. The
 // differences from the drawing (recorded in docs/project/DECISIONS.md with
 // B-43): one paid plan, «مميز», since nothing in the app would make «احترافي» differ;

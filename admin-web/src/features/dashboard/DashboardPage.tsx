@@ -1,9 +1,7 @@
-// n01 «الصندوق» (mobile/test/prototype/admin/admin_center.dart `n01Inbox`):
-// one inbox for the queues this admin can act on, each item with its
+// n01 «الصندوق»: one inbox for the queues this admin can act on, each item with its
 // promise. Only the queues the server has are here: provider applications
 // waiting for review and open conversation reports. The owner column, the
-// «لي / بدون مسؤول / الكل» filters and «ضغط الفريق» wait for A-01
-// (docs/superpowers/audit/admin_build_classification.md).
+// «لي / بدون مسؤول / الكل» filters and «ضغط الفريق» are not built.
 import { useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Clock } from 'lucide-react';

@@ -1,5 +1,4 @@
-// a13 «تفاصيل مستخدم» and disabling the account (mobile/test/prototype/admin/
-// admin_screens.dart `a13User`). The cards «صاحب خطة», «مشارك في خطة»,
+// a13 «تفاصيل مستخدم» and disabling the account. The cards «صاحب خطة», «مشارك في خطة»,
 // «مسجّل دخول» and «طلب حذف» wait for A-10, and the window gives no counts
 // because the server returns none; what it says happens is what disabling
 // does (sessions and live invites revoked, the plan kept, no money shown).

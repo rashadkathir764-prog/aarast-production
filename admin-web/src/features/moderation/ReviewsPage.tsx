@@ -1,5 +1,4 @@
-// a10 «التقييمات» (mobile/test/prototype/admin/admin_screens.dart
-// `a10Reviews`). «مبلّغ عنها», the report column and «خلّه» wait for B-28
+// a10 «التقييمات». «مبلّغ عنها», the report column and «خلّه» wait for B-28
 // and «شوف الحجز» for B-40. The provider's reply (B-09) reads under the
 // review as drawn («رد المزود: «…»»); the team hides it like a review with
 // «أخفِ الرد» and brings it back with «أظهر الرد» (undrawn: needed to moderate

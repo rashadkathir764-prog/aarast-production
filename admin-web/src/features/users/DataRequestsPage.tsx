@@ -1,5 +1,4 @@
-// n06 «طلبات البيانات» (mobile/test/prototype/admin/out/n06_data_requests.png,
-// A-15, D63). The accounts waiting out their 30 days before erasure, soonest
+// n06 «طلبات البيانات» (D63). The accounts waiting out their 30 days before erasure, soonest
 // first, and the downloads of their own data from the last week. The desk
 // takes a deletion back only at the account's request («رجّعه بطلبه»); the
 // account does the same itself from w06. A download's link belongs to its

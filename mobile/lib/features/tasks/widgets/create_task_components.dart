@@ -70,7 +70,7 @@ class CreateTaskResponsibleSection extends StatelessWidget {
                 key: ValueKey('task-who-$key'),
                 label: label,
                 selected: selected == key,
-                selectedColor: AarastV3Color.brandAccentStrong,
+                selectedColor: context.accent.primary,
                 onTap: locked && key != choices.first.$1
                     ? null
                     : () => onSelected(key),
@@ -81,7 +81,7 @@ class CreateTaskResponsibleSection extends StatelessWidget {
                 label: 'شخص ثاني',
                 icon: LucideIcons.plus,
                 selected: selected == createTaskOtherPerson,
-                selectedColor: AarastV3Color.brandAccentStrong,
+                selectedColor: context.accent.primary,
                 onTap: () => onSelected(createTaskOtherPerson),
               ),
           ],

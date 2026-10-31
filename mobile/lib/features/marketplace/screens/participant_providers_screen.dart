@@ -60,7 +60,7 @@ class _ParticipantProvidersScreenState
       maxWidth: 520,
       backgroundColor: AarastV3Color.canvas,
       child: RefreshIndicator(
-        color: AarastV3Color.cobalt,
+        color: context.accent.primary,
         onRefresh: _load,
         child: ListView(
           physics: const AlwaysScrollableScrollPhysics(),

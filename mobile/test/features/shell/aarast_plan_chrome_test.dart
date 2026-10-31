@@ -128,7 +128,7 @@ void main() {
       expect(tester.getRect(fab).left, lessThan(32));
       final decoration =
           tester.widget<AnimatedContainer>(fab).decoration! as BoxDecoration;
-      expect(decoration.color, AarastV3Color.brandAccentStrong);
+      expect(decoration.color, AarastV3Color.primary);
       // The tab starts at the top; no bar sits above it.
       expect(tester.getTopLeft(find.text('مهمة 0')).dy, 0);
 
@@ -149,7 +149,9 @@ void main() {
     },
   );
 
-  testWidgets('each tab names and colours its «+»', (tester) async {
+  testWidgets('each tab names its «+» and all wear the plan colour', (
+    tester,
+  ) async {
     Future<void> pumpTab(int index) => tester.pumpWidget(
       MaterialApp(
         theme: AppTheme.light(),
@@ -162,12 +164,11 @@ void main() {
       ),
     );
 
-    // The groom's colours: home and money teal, tasks saffron, guests lilac.
-    for (final (index, label, color) in [
-      (0, 'إضافة', AarastV3Color.primary),
-      (1, 'إضافة اتفاق', AarastV3Color.primary),
-      (2, 'إضافة مهمة', AarastV3Color.brandAccentStrong),
-      (3, 'إضافة ضيف', AarastV3Color.lilac),
+    for (final (index, label) in [
+      (0, 'إضافة'),
+      (1, 'إضافة اتفاق'),
+      (2, 'إضافة مهمة'),
+      (3, 'إضافة ضيف'),
     ]) {
       await pumpTab(index);
       expect(find.bySemanticsLabel(label), findsOneWidget, reason: label);
@@ -178,7 +179,7 @@ void main() {
                   )
                   .decoration!
               as BoxDecoration;
-      expect(decoration.color, color, reason: label);
+      expect(decoration.color, AarastV3Color.primary, reason: label);
     }
   });
 

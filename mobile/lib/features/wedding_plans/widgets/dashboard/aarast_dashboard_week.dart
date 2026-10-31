@@ -439,7 +439,7 @@ class _WeekProviders extends StatelessWidget {
                 JourneySegments(
                   total: bookings.length,
                   done: confirmed,
-                  filled: AarastV3Color.cobalt,
+                  filled: context.accent.primary,
                   current: AarastV3Color.danger,
                   empty: AarastV3Color.line,
                 ),

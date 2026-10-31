@@ -163,7 +163,7 @@ class TaskRow extends StatelessWidget {
                 letter: letter,
                 color: mine
                     ? context.accent.primary
-                    : AarastV3Color.brandAccentStrong,
+                    : context.accent.primary,
               ),
             ],
           ),

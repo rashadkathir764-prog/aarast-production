@@ -125,7 +125,7 @@ class _GuestAttendanceScreenState extends State<GuestAttendanceScreen> {
             const SizedBox(height: 8),
             JourneyBar(
               value: summary.confirmed / total,
-              color: AarastV3Color.lilac,
+              color: context.accent.primary,
               height: 10,
             ),
             const SizedBox(height: 8),
@@ -161,7 +161,7 @@ class _GuestAttendanceScreenState extends State<GuestAttendanceScreen> {
               '${say('ذكّر', 'ذكّري')} اللي '
               '${words.profile.plan('ما ردوا', 'ما ردّن')}',
           icon: LucideIcons.send,
-          background: AarastV3Color.lilac,
+          background: context.accent.primary,
           expand: true,
           large: true,
           onPressed: () => context.push(

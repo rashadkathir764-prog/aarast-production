@@ -184,7 +184,7 @@ class _QuoteRequestScreenState extends State<QuoteRequestScreen> {
                   key: const ValueKey('quote-send'),
                   label: context.say('أرسل الطلب', 'أرسلي الطلب'),
                   icon: LucideIcons.send,
-                  background: AarastV3Color.cobalt,
+                  background: context.accent.primary,
                   large: true,
                   expand: true,
                   loading: marketplace.isSubmitting,
@@ -230,7 +230,7 @@ class _QuoteRequestScreenState extends State<QuoteRequestScreen> {
                       key: ValueKey('quote-service-${service.id}'),
                       label: service.title,
                       selected: _serviceId == service.id,
-                      selectedColor: AarastV3Color.cobalt,
+                      selectedColor: context.accent.primary,
                       onTap: () {
                         setState(
                           () => _serviceId = _serviceId == service.id
@@ -350,8 +350,8 @@ class _QuoteRequestScreenState extends State<QuoteRequestScreen> {
                       'رقمك ما يوصلهم إلا إذا فعّلتيه. والطلب ينتهي لو ما ردوا خلال 7 أيام.',
                     ),
               icon: LucideIcons.lock,
-              color: AarastV3Color.cobalt,
-              soft: AarastV3Color.cobaltSoft,
+              color: context.accent.primary,
+              soft: context.accent.primarySoft,
             ),
             if (submitError != null) ...[
               const SizedBox(height: 12),
@@ -370,7 +370,7 @@ class _QuoteRequestScreenState extends State<QuoteRequestScreen> {
                     key: const Key('continue-active-quote'),
                     label: context.say('كمّل طلبك الحالي', 'كمّلي طلبك الحالي'),
                     icon: LucideIcons.messageCircle,
-                    color: AarastV3Color.cobalt,
+                    color: context.accent.primary,
                     onPressed: () =>
                         _pushOnce(AppRouter.quoteConversation(quote.id)),
                   ),
@@ -807,7 +807,7 @@ class _GuestsSheetState extends State<_GuestsSheet> {
         const SizedBox(height: 12),
         JourneyButton(
           label: 'تمام',
-          background: AarastV3Color.cobalt,
+          background: context.accent.primary,
           large: true,
           expand: true,
           onPressed: () => Navigator.of(context).pop(_controller.text),
@@ -863,7 +863,7 @@ class _ShareRow extends StatelessWidget {
           JourneyToggle(
             key: toggleKey,
             value: value,
-            color: AarastV3Color.cobalt,
+            color: context.accent.primary,
             onChanged: onChanged,
           ),
         ],
@@ -920,7 +920,7 @@ class _PlanRow extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 11),
         child: Row(
           children: [
-            Icon(icon, size: 20, color: AarastV3Color.cobalt),
+            Icon(icon, size: 20, color: context.accent.primary),
             const SizedBox(width: 10),
             SizedBox(
               width: 64,

@@ -165,7 +165,7 @@ class _ChatScreenState extends State<ChatScreen> {
     final hasOlder = chat.canLoadOlder(widget.conversationId);
     // The provider's side is drawn in his teal (p34); the customer's keeps
     // the providers section's cobalt (f06).
-    final accent = customerSide ? AarastV3Color.cobalt : AarastV3Color.primary;
+    final accent = customerSide ? context.accent.primary : AarastV3Color.primary;
     final providerCase = customerSide || conversation == null
         ? null
         : widget.providerCase;
@@ -537,7 +537,7 @@ class _Bubble extends StatelessWidget {
         padding: const EdgeInsets.fromLTRB(14, 10, 14, 8),
         decoration: BoxDecoration(
           color: mine
-              ? (providerSide ? AarastV3Color.primary : AarastV3Color.cobalt)
+              ? (providerSide ? AarastV3Color.primary : context.accent.primary)
               : AarastV3Color.paper,
           borderRadius: BorderRadius.circular(18),
         ),
@@ -699,10 +699,10 @@ class _OfferCard extends StatelessWidget {
       ),
       _ when customerSide => (
         'وصلك عرض',
-        AarastV3Color.cobalt,
-        AarastV3Color.cobaltSoft,
+        context.accent.primary,
+        context.accent.primarySoft,
       ),
-      _ => ('عرضك', AarastV3Color.cobalt, AarastV3Color.cobaltSoft),
+      _ => ('عرضك', context.accent.primary, context.accent.primarySoft),
     };
     final title = offer?.title?.trim().isNotEmpty == true
         ? offer!.title!.trim()
@@ -729,7 +729,7 @@ class _OfferCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(22),
         child: JourneyBox(
           padding: const EdgeInsets.all(14),
-          borderColor: open ? AarastV3Color.cobalt : AarastV3Color.line,
+          borderColor: open ? context.accent.primary : AarastV3Color.line,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -783,7 +783,7 @@ class _OfferCard extends StatelessWidget {
                       child: JourneyButton(
                         key: const Key('chat-offer-accept'),
                         label: 'اقبل العرض',
-                        background: AarastV3Color.cobalt,
+                        background: context.accent.primary,
                         expand: true,
                         onPressed: onOpen,
                       ),
@@ -793,8 +793,8 @@ class _OfferCard extends StatelessWidget {
                       child: JourneyButton(
                         key: const Key('chat-offer-compare'),
                         label: 'قارن',
-                        background: AarastV3Color.cobaltSoft,
-                        foreground: AarastV3Color.cobalt,
+                        background: context.accent.primarySoft,
+                        foreground: context.accent.primary,
                         expand: true,
                         onPressed: onOpen,
                       ),
@@ -854,7 +854,7 @@ class _OptionsSheet extends StatelessWidget {
               subtitle: 'الرسائل توصل بدون تنبيه',
               trailing: JourneyToggle(
                 value: current.muted,
-                color: AarastV3Color.cobalt,
+                color: context.accent.primary,
                 onChanged: (value) async {
                   final ok = await chat.setMuted(current, value);
                   if (!ok && context.mounted) {
@@ -1000,8 +1000,8 @@ class _Composer extends StatelessWidget {
   final VoidCallback onRemoveAttachment;
   final VoidCallback onSend;
 
-  Color get _accent =>
-      providerSide ? AarastV3Color.primary : AarastV3Color.cobalt;
+  Color _accentOf(BuildContext context) =>
+      providerSide ? AarastV3Color.primary : context.accent.primary;
 
   @override
   Widget build(BuildContext context) {
@@ -1017,7 +1017,7 @@ class _Composer extends StatelessWidget {
               padding: const EdgeInsets.only(bottom: 6),
               child: Row(
                 children: [
-                  Icon(LucideIcons.image, size: 18, color: _accent),
+                  Icon(LucideIcons.image, size: 18, color: _accentOf(context)),
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text(
@@ -1037,13 +1037,13 @@ class _Composer extends StatelessWidget {
                 ],
               ),
             ),
-          if (providerSide) _drawnBar() else _fieldAndSend(),
+          if (providerSide) _drawnBar(context) else _fieldAndSend(context),
         ],
       ),
     );
   }
 
-  Widget _imageButton() => Semantics(
+  Widget _imageButton(BuildContext context) => Semantics(
     button: true,
     label: 'أرسل صورة',
     child: AarastPressable(
@@ -1052,12 +1052,12 @@ class _Composer extends StatelessWidget {
       child: Icon(
         LucideIcons.image,
         size: providerSide ? 22 : 20,
-        color: providerSide ? _accent : AarastV3Color.textFaint,
+        color: providerSide ? _accentOf(context) : AarastV3Color.textFaint,
       ),
     ),
   );
 
-  Widget _sendButton(double size, double icon) => Semantics(
+  Widget _sendButton(BuildContext context, double size, double icon) => Semantics(
     button: true,
     label: 'أرسل',
     child: AarastPressable(
@@ -1066,7 +1066,7 @@ class _Composer extends StatelessWidget {
       child: Container(
         width: size,
         height: size,
-        decoration: BoxDecoration(color: _accent, shape: BoxShape.circle),
+        decoration: BoxDecoration(color: _accentOf(context), shape: BoxShape.circle),
         child: isBusy
             ? const Center(
                 child: AarastInlineSpinner(color: AarastV3Color.onPrimary),
@@ -1082,7 +1082,7 @@ class _Composer extends StatelessWidget {
 
   /// p34: one white bar with a hairline, the field, the picture button and
   /// the send circle inside it.
-  Widget _drawnBar() {
+  Widget _drawnBar(BuildContext context) {
     return Container(
       key: const Key('chat-composer-bar'),
       padding: const EdgeInsetsDirectional.fromSTEB(14, 6, 8, 6),
@@ -1100,7 +1100,7 @@ class _Composer extends StatelessWidget {
               maxLines: 4,
               maxLength: 2000,
               style: JourneyType.of(JourneyType.body),
-              cursorColor: _accent,
+              cursorColor: _accentOf(context),
               decoration: InputDecoration(
                 hintText: 'اكتب رسالة…',
                 hintStyle: JourneyType.of(
@@ -1118,15 +1118,15 @@ class _Composer extends StatelessWidget {
             ),
           ),
           const SizedBox(width: 6),
-          _imageButton(),
+          _imageButton(context),
           const SizedBox(width: 10),
-          _sendButton(38, 18),
+          _sendButton(context, 38, 18),
         ],
       ),
     );
   }
 
-  Widget _fieldAndSend() {
+  Widget _fieldAndSend(BuildContext context) {
     return Row(
       children: [
         Expanded(
@@ -1159,14 +1159,14 @@ class _Composer extends StatelessWidget {
               ),
               focusedBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(22),
-                borderSide: BorderSide(color: _accent, width: 2),
+                borderSide: BorderSide(color: _accentOf(context), width: 2),
               ),
-              suffixIcon: _imageButton(),
+              suffixIcon: _imageButton(context),
             ),
           ),
         ),
         const SizedBox(width: 8),
-        _sendButton(46, 19),
+        _sendButton(context, 46, 19),
       ],
     );
   }

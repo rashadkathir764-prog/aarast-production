@@ -16,8 +16,8 @@ class _LocationContextCard extends StatelessWidget {
       padding: EdgeInsets.zero,
       child: JourneyListRow(
         icon: LucideIcons.mapPin,
-        color: AarastV3Color.cobalt,
-        soft: AarastV3Color.cobaltSoft,
+        color: context.accent.primary,
+        soft: context.accent.primarySoft,
         title: 'وين عرسك؟',
         subtitle: context.say(
           'كمّل مكان العرس ونرتب لك مزودين مدينتك أول',
@@ -67,7 +67,7 @@ class _ProviderCard extends StatelessWidget {
         : _serviceBudgetStatus(budgetIntent!, price);
     final budgetColor = budgetStatus == null
         ? AarastV3Color.brandAccentStrong
-        : _serviceBudgetStatusColor(budgetStatus);
+        : _serviceBudgetStatusColor(context, budgetStatus);
 
     return ProviderResultCard(
       key: Key('provider-marketplace-card-${provider.id}'),

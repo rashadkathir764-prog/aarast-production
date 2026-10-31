@@ -56,7 +56,7 @@ class _ConversationListViewState extends State<ConversationListView> {
     final chat = context.watch<ChatProvider>();
     final now = widget.now ?? appNow();
     final content = RefreshIndicator(
-      color: AarastV3Color.cobalt,
+      color: context.accent.primary,
       onRefresh: chat.initialize,
       child: ListView(
         physics: const AlwaysScrollableScrollPhysics(),
@@ -119,7 +119,7 @@ class _ConversationListViewState extends State<ConversationListView> {
               child: JourneyTextAction(
                 label: 'اعرض أكثر',
                 icon: LucideIcons.chevronDown,
-                color: AarastV3Color.cobalt,
+                color: context.accent.primary,
                 onPressed: chat.isLoadingMoreConversations
                     ? null
                     : chat.loadMoreConversations,
@@ -192,8 +192,8 @@ class _ConversationRow extends StatelessWidget {
           children: [
             JourneyIconTile(
               icon: icon,
-              color: AarastV3Color.cobalt,
-              soft: AarastV3Color.cobaltSoft,
+              color: context.accent.primary,
+              soft: context.accent.primarySoft,
             ),
             const SizedBox(width: 12),
             Expanded(
@@ -243,7 +243,7 @@ class _ConversationRow extends StatelessWidget {
                     padding: const EdgeInsets.symmetric(horizontal: 6),
                     alignment: Alignment.center,
                     decoration: BoxDecoration(
-                      color: AarastV3Color.cobalt,
+                      color: context.accent.primary,
                       borderRadius: BorderRadius.circular(11),
                     ),
                     child: Text(

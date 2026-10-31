@@ -195,8 +195,8 @@ class _BoardRow extends StatelessWidget {
           children: [
             JourneyIconTile(
               icon: providerServiceIcon(row.title),
-              color: AarastV3Color.cobalt,
-              soft: AarastV3Color.cobaltSoft,
+              color: context.accent.primary,
+              soft: context.accent.primarySoft,
               size: 42,
             ),
             const SizedBox(width: 12),
@@ -260,7 +260,7 @@ class _StageBar extends StatelessWidget {
                 height: 5,
                 decoration: BoxDecoration(
                   color: i < stage
-                      ? (stage == 4 ? AarastV3Color.mint : AarastV3Color.cobalt)
+                      ? (stage == 4 ? AarastV3Color.mint : context.accent.primary)
                       : AarastV3Color.line,
                   borderRadius: BorderRadius.circular(3),
                 ),
@@ -283,7 +283,7 @@ class _SoftAction extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Material(
-      color: AarastV3Color.cobaltSoft,
+      color: context.accent.primarySoft,
       borderRadius: BorderRadius.circular(12),
       child: InkWell(
         onTap: onTap,
@@ -297,7 +297,7 @@ class _SoftAction extends StatelessWidget {
             style: JourneyType.of(
               JourneyType.body,
               weight: JourneyType.bold,
-              color: AarastV3Color.cobalt,
+              color: context.accent.primary,
             ),
           ),
         ),

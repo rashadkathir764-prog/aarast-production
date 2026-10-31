@@ -93,7 +93,7 @@ class _BookingRequestSheetState extends State<BookingRequestSheet> {
       padding: const EdgeInsets.symmetric(vertical: 6),
       child: Row(
         children: [
-          Icon(icon, size: 18, color: AarastV3Color.cobalt),
+          Icon(icon, size: 18, color: context.accent.primary),
           const SizedBox(width: 10),
           Expanded(
             child: Text(
@@ -115,8 +115,8 @@ class _BookingRequestSheetState extends State<BookingRequestSheet> {
             width: 26,
             height: 26,
             alignment: Alignment.center,
-            decoration: const BoxDecoration(
-              color: AarastV3Color.cobaltSoft,
+            decoration: BoxDecoration(
+              color: context.accent.primarySoft,
               shape: BoxShape.circle,
             ),
             child: Text(
@@ -124,7 +124,7 @@ class _BookingRequestSheetState extends State<BookingRequestSheet> {
               style: JourneyType.of(
                 JourneyType.small,
                 weight: JourneyType.bold,
-                color: AarastV3Color.cobalt,
+                color: context.accent.primary,
               ),
             ),
           ),
@@ -162,7 +162,7 @@ class _BookingRequestSheetState extends State<BookingRequestSheet> {
                       ? context.say('اختر اليوم', 'اختاري اليوم')
                       : 'يوم ثاني',
                   icon: LucideIcons.calendarPlus,
-                  color: AarastV3Color.cobalt,
+                  color: context.accent.primary,
                   onPressed: _changeDay,
                 ),
               ),
@@ -189,7 +189,7 @@ class _BookingRequestSheetState extends State<BookingRequestSheet> {
           key: const ValueKey('booking-request'),
           label: context.say('اطلب الحجز', 'اطلبي الحجز'),
           icon: LucideIcons.calendarCheck,
-          background: AarastV3Color.cobalt,
+          background: context.accent.primary,
           expand: true,
           large: true,
           onPressed: day == null ? null : () => Navigator.of(context).pop(day),
@@ -284,7 +284,7 @@ class _DeclineOfferSheetState extends State<DeclineOfferSheet> {
                 key: ValueKey('decline-reason-$i'),
                 label: context.say(_reasons[i].$1, _reasons[i].$2),
                 selected: _reason == i,
-                selectedColor: AarastV3Color.cobalt,
+                selectedColor: context.accent.primary,
                 onTap: () => setState(() {
                   _reason = i;
                   if (!_editing) _message.text = _template(i);
@@ -326,7 +326,7 @@ class _DeclineOfferSheetState extends State<DeclineOfferSheet> {
                 key: const ValueKey('decline-edit'),
                 label: context.say('عدّل الرسالة', 'عدّلي الرسالة'),
                 icon: LucideIcons.pencil,
-                color: AarastV3Color.cobalt,
+                color: context.accent.primary,
                 onPressed: () => setState(() => _editing = true),
               ),
             const Spacer(),
@@ -343,7 +343,7 @@ class _DeclineOfferSheetState extends State<DeclineOfferSheet> {
         JourneyButton(
           key: const ValueKey('decline-send'),
           label: context.say('أرسل واعتذر', 'أرسلي واعتذري'),
-          background: AarastV3Color.cobalt,
+          background: context.accent.primary,
           expand: true,
           large: true,
           onPressed: () {

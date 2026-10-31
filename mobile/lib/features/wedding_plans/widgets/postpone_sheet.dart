@@ -221,7 +221,7 @@ class _PostponeSheetState extends State<_PostponeSheet> {
                   _ImpactRow(
                     key: const ValueKey('postpone-old-bookings'),
                     icon: LucideIcons.building2,
-                    color: AarastV3Color.cobalt,
+                    color: context.accent.primary,
                     title:
                         '${arabicCount(_oldDayBookings.length, one: 'حجز واحد', two: 'حجزين', few: 'حجوزات', many: 'حجز')} '
                         'على اليوم القديم',

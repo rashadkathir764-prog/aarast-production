@@ -119,12 +119,12 @@ class ProviderDetailsView extends StatelessWidget {
                   ),
                   if (provider.isVerified) ...[
                     const SizedBox(width: 8),
-                    const Tooltip(
+                    Tooltip(
                       message: 'موثّق',
                       child: Icon(
                         LucideIcons.badgeCheck,
                         size: 22,
-                        color: AarastV3Color.cobalt,
+                        color: context.accent.primary,
                         semanticLabel: 'موثّق',
                       ),
                     ),
@@ -172,8 +172,8 @@ class ProviderDetailsView extends StatelessWidget {
                         JourneyListRow(
                           key: ValueKey('provider-offer-${offer.key}'),
                           icon: providerServiceIcon(offer.category ?? ''),
-                          color: AarastV3Color.cobalt,
-                          soft: AarastV3Color.cobaltSoft,
+                          color: context.accent.primary,
+                          soft: context.accent.primarySoft,
                           title: offer.title,
                           subtitle: offer.detail,
                           trailing: offer.price == null
@@ -344,9 +344,9 @@ class _ProviderHero extends StatelessWidget {
   Widget build(BuildContext context) {
     final placeholder = ColoredBox(
       key: const Key('provider-media-fallback'),
-      color: AarastV3Color.cobalt,
+      color: context.accent.primary,
       child: Center(
-        child: Icon(icon, size: 70, color: AarastV3Color.cobaltSoft),
+        child: Icon(icon, size: 70, color: context.accent.primarySoft),
       ),
     );
     return SizedBox(
@@ -465,7 +465,7 @@ class _PriceBox extends StatelessWidget {
   Widget build(BuildContext context) {
     return JourneyBox(
       key: const ValueKey('provider-details-price'),
-      color: AarastV3Color.cobaltSoft,
+      color: context.accent.primarySoft,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -487,7 +487,7 @@ class _PriceBox extends StatelessWidget {
                       style: JourneyType.of(
                         JourneyType.figure,
                         weight: JourneyType.bold,
-                        color: AarastV3Color.cobalt,
+                        color: context.accent.primary,
                       ),
                     ),
                   ],

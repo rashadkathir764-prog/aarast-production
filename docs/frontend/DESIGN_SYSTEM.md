@@ -13,8 +13,8 @@ this file is corrected in the same change.
 ## Product Direction
 
 Aarast is an Arabic-first wedding planning workspace whose centre is the money.
-It should feel calm and useful: a quiet grey-green canvas, white cards, one teal
-identity with saffron accents, and each section keeping its own colour.
+It should feel calm and useful: a quiet grey-green canvas, white cards, and one
+colour for the whole plan across every tab (D68).
 
 The app earns trust by knowing the wedding, not by decoration. Every screen says
 what is true now and what to do next, in the reader's own gender.
@@ -78,17 +78,18 @@ Feature code uses `AarastV3Color` roles or `context.accent`, never a hex value.
 | `primary` | `#0B6E69` | The identity, main actions |
 | `primaryDark` | `#064B47` | The countdown card's deep end |
 | `primarySoft` | `#DCEFEC` | Soft fills |
-| `brandAccentStrong` | `#9A5F0E` | Saffron as text, the tasks section |
+| `brandAccentStrong` | `#9A5F0E` | Saffron as text: attention and waiting |
 | `brandAccentSoft` | `#FCEFD8` | Saffron fill |
 | `saffron` | `#F2A93B` | Decoration only, never text on paper |
-| `cobalt` | `#2F6E9E` | The providers section |
-| `lilac` | `#6A4FA3` | The guests section, tentative states |
+| `cobalt` | `#2F6E9E` | Money and event categories only, never a tab |
+| `lilac` | `#6A4FA3` | Tentative states such as promised money, never a tab |
 | `mint` | `#25774F` | Done, good |
 | `danger` | `#B8432A` | Overdue, short, destructive |
 | `rose` | `#B4536A` | The bride's identity |
 
-Section colours are fixed: home and money take the plan's colour (teal for the
-groom, rose for the bride), tasks are saffron, guests lilac, providers cobalt.
+One colour per plan (D68): every tab and its actions take the plan's colour,
+`context.accent` (teal for the groom, rose for the bride). No tab has a colour
+of its own. Other colours carry a status or a category, never a section.
 Status colour always comes with text or an icon. One gradient exists, the
 countdown card (D45).
 

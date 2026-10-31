@@ -65,8 +65,8 @@ class _BookingLine extends StatelessWidget {
                     .whereType<String>()
                     .join(' '),
               ),
-              color: AarastV3Color.cobalt,
-              soft: AarastV3Color.cobaltSoft,
+              color: context.accent.primary,
+              soft: context.accent.primarySoft,
               size: 48,
             ),
             const SizedBox(width: 12),

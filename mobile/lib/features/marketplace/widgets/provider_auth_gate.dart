@@ -42,13 +42,13 @@ class ProviderAuthGate extends StatelessWidget {
 
     final auth = context.watch<AuthController>();
     if (auth.status == AuthStatus.checking) {
-      return const AarastScreenFrame(
+      return AarastScreenFrame(
         maxWidth: 520,
         backgroundColor: AarastV3Color.canvas,
         child: Center(
           child: AarastInlineSpinner(
             dimension: 28,
-            color: AarastV3Color.cobalt,
+            color: context.accent.primary,
           ),
         ),
       );
@@ -91,7 +91,7 @@ class ProviderAuthGate extends StatelessWidget {
         JourneyButton(
           key: const Key('provider-auth-gate-login'),
           label: 'تسجيل الدخول',
-          background: AarastV3Color.cobalt,
+          background: context.accent.primary,
           expand: true,
           large: true,
           onPressed: () =>
@@ -145,7 +145,7 @@ class _ProviderAccountRequiredGate extends StatelessWidget {
         JourneyButton(
           key: const Key('provider-account-required-apply'),
           label: 'قدّم طلب مزود',
-          background: AarastV3Color.cobalt,
+          background: context.accent.primary,
           expand: true,
           large: true,
           onPressed: () => context.go(AppRouter.providerApply),
@@ -196,8 +196,8 @@ class _GateCard extends StatelessWidget {
                 Center(
                   child: JourneyIconTile(
                     icon: icon,
-                    color: AarastV3Color.cobalt,
-                    soft: AarastV3Color.cobaltSoft,
+                    color: context.accent.primary,
+                    soft: context.accent.primarySoft,
                     size: 64,
                     radius: 20,
                   ),

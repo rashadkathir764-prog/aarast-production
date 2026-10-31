@@ -167,7 +167,7 @@ class _GuestDetailsScreenState extends State<GuestDetailsScreen> {
         Center(
           child: JourneyAvatar(
             letter: name.isEmpty ? '؟' : name.characters.first,
-            color: AarastV3Color.lilac,
+            color: context.accent.primary,
             size: 76,
           ),
         ),
@@ -245,7 +245,7 @@ class _GuestDetailsScreenState extends State<GuestDetailsScreen> {
                 key: ValueKey('guest-reply-$value'),
                 label: label,
                 selected: status == value,
-                selectedColor: AarastV3Color.lilac,
+                selectedColor: context.accent.primary,
                 onTap: provider.isSubmitting || status == value
                     ? null
                     : () => _setReply(provider, guest, value),
@@ -272,7 +272,7 @@ class _GuestDetailsScreenState extends State<GuestDetailsScreen> {
                   guest.invitationStatus == 'NOT_SENT'
                       ? LucideIcons.mail
                       : LucideIcons.mailCheck,
-                  color: AarastV3Color.lilac,
+                  color: context.accent.primary,
                 ),
                 const SizedBox(width: 10),
                 Expanded(
@@ -298,7 +298,7 @@ class _GuestDetailsScreenState extends State<GuestDetailsScreen> {
                     label: guest.invitationStatus == 'NOT_SENT'
                         ? context.say('أرسلها', 'أرسليها')
                         : 'رابط جديد',
-                    background: AarastV3Color.lilac,
+                    background: context.accent.primary,
                     loading: _sending,
                     onPressed: _sending ? null : () => _sendInvitation(guest),
                   ),

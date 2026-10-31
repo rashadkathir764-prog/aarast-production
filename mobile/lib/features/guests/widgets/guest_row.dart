@@ -46,7 +46,7 @@ class GuestRow extends StatelessWidget {
             children: [
               JourneyAvatar(
                 letter: name.isEmpty ? '؟' : name.characters.first,
-                color: AarastV3Color.lilac,
+                color: context.accent.primary,
                 size: 38,
               ),
               const SizedBox(width: 12),

@@ -77,7 +77,7 @@ class GuestSummaryFigures extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 for (final (count, color) in [
-                  (confirmed, AarastV3Color.lilac),
+                  (confirmed, context.accent.primary),
                   (pending, AarastV3Color.saffron),
                   (rest, AarastV3Color.line),
                 ])

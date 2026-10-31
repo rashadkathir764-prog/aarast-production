@@ -182,7 +182,7 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
                             : label,
                         icon: icon,
                         selected: _when == option,
-                        selectedColor: AarastV3Color.brandAccentStrong,
+                        selectedColor: context.accent.primary,
                         onTap: () => option == _When.date
                             ? _pickDate()
                             : _mutateDraft(() => _when = option),
@@ -265,7 +265,7 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
             child: JourneyButton(
               key: const ValueKey('task-save'),
               label: _isEditMode ? 'حفظ التعديلات' : 'حفظ المهمة',
-              background: AarastV3Color.brandAccentStrong,
+              background: context.accent.primary,
               expand: true,
               large: true,
               loading: provider.isSubmitting,

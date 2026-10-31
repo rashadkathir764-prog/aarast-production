@@ -107,14 +107,14 @@ class _StarterTasksCard extends StatelessWidget {
         key: const Key('task-starter-open'),
         onTap: onOpen,
         child: JourneyBox(
-          color: AarastV3Color.brandAccentSoft,
+          color: context.accent.primarySoft,
           padding: const EdgeInsets.all(16),
           child: Row(
             children: [
-              const JourneyIconTile(
+              JourneyIconTile(
                 icon: LucideIcons.sparkles,
                 color: AarastV3Color.onPrimary,
-                soft: AarastV3Color.brandAccentStrong,
+                soft: context.accent.primary,
               ),
               const SizedBox(width: 12),
               Expanded(
@@ -141,9 +141,9 @@ class _StarterTasksCard extends StatelessWidget {
                   ],
                 ),
               ),
-              const Icon(
+              Icon(
                 LucideIcons.chevronLeft,
-                color: AarastV3Color.brandAccentStrong,
+                color: context.accent.primary,
               ),
             ],
           ),

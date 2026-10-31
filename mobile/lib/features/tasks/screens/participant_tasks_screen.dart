@@ -135,7 +135,7 @@ class _ParticipantTasksScreenState extends State<ParticipantTasksScreen> {
       maxWidth: 520,
       backgroundColor: AarastV3Color.canvas,
       child: RefreshIndicator(
-        color: AarastV3Color.brandAccentStrong,
+        color: context.accent.primary,
         onRefresh: onRefresh,
         child: ListView(
           physics: const AlwaysScrollableScrollPhysics(),
@@ -162,7 +162,7 @@ class _ParticipantTasksScreenState extends State<ParticipantTasksScreen> {
                     key: const ValueKey('participant-tasks-mine'),
                     label: 'لي',
                     selected: !_planTasks,
-                    selectedColor: AarastV3Color.brandAccentStrong,
+                    selectedColor: context.accent.primary,
                     onTap: () => _select(false),
                   ),
                   const SizedBox(width: 8),
@@ -170,7 +170,7 @@ class _ParticipantTasksScreenState extends State<ParticipantTasksScreen> {
                     key: const ValueKey('participant-tasks-plan'),
                     label: 'كل مهام الخطة',
                     selected: _planTasks,
-                    selectedColor: AarastV3Color.brandAccentStrong,
+                    selectedColor: context.accent.primary,
                     onTap: () => _select(true),
                   ),
                   const Spacer(),
@@ -180,7 +180,7 @@ class _ParticipantTasksScreenState extends State<ParticipantTasksScreen> {
                       style: JourneyType.of(
                         JourneyType.body,
                         weight: JourneyType.bold,
-                        color: AarastV3Color.brandAccentStrong,
+                        color: context.accent.primary,
                       ),
                     ),
                 ],

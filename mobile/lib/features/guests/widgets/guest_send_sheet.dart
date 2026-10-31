@@ -101,7 +101,7 @@ class _GuestSendSheetState extends State<GuestSendSheet> {
                   letter: widget.guests[_index].name.trim().isEmpty
                       ? '؟'
                       : widget.guests[_index].name.trim().characters.first,
-                  color: AarastV3Color.lilac,
+                  color: context.accent.primary,
                   size: 40,
                 ),
                 const SizedBox(width: 12),

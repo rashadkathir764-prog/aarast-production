@@ -157,7 +157,7 @@ class _GuestImportScreenState extends State<GuestImportScreen> {
                   ? say('أضف', 'أضيفي')
                   : '${say('أضف', 'أضيفي')} $count',
               icon: LucideIcons.userPlus,
-              background: AarastV3Color.lilac,
+              background: context.accent.primary,
               expand: true,
               large: true,
               onPressed: toAdd.isEmpty || _saving
@@ -354,7 +354,7 @@ class _GuestImportScreenState extends State<GuestImportScreen> {
                 key: const ValueKey('import-group-none'),
                 label: 'بدون مجموعة',
                 selected: _groupId == null,
-                selectedColor: AarastV3Color.lilac,
+                selectedColor: context.accent.primary,
                 onTap: () => setState(() => _groupId = null),
               ),
               for (final group in groups)
@@ -362,7 +362,7 @@ class _GuestImportScreenState extends State<GuestImportScreen> {
                   key: ValueKey('import-group-${group.id}'),
                   label: group.name,
                   selected: _groupId == group.id,
-                  selectedColor: AarastV3Color.lilac,
+                  selectedColor: context.accent.primary,
                   onTap: () => setState(() => _groupId = group.id),
                 ),
             ],
@@ -448,7 +448,7 @@ class _CandidateRow extends StatelessWidget {
           children: [
             JourneyAvatar(
               letter: name.isEmpty ? '؟' : name.characters.first,
-              color: duplicate ? AarastV3Color.textFaint : AarastV3Color.lilac,
+              color: duplicate ? AarastV3Color.textFaint : context.accent.primary,
               size: 36,
             ),
             const SizedBox(width: 12),
@@ -485,7 +485,7 @@ class _CandidateRow extends StatelessWidget {
                     : isPicked
                     ? LucideIcons.checkCircle2
                     : LucideIcons.circle,
-                color: isPicked ? AarastV3Color.lilac : AarastV3Color.textFaint,
+                color: isPicked ? context.accent.primary : AarastV3Color.textFaint,
                 semanticLabel: isPicked ? 'مختار' : 'غير مختار',
               ),
           ],

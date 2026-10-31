@@ -397,8 +397,8 @@ class _Rate extends StatelessWidget {
                 children: [
                   JourneyIconTile(
                     icon: providerServiceIcon(provider.service),
-                    color: AarastV3Color.cobalt,
-                    soft: AarastV3Color.cobaltSoft,
+                    color: context.accent.primary,
+                    soft: context.accent.primarySoft,
                     size: 52,
                   ),
                   const SizedBox(width: 12),
@@ -626,8 +626,8 @@ class _Sent extends StatelessWidget {
               for (final item in left)
                 JourneyListRow(
                   icon: providerServiceIcon(item.service),
-                  color: AarastV3Color.cobalt,
-                  soft: AarastV3Color.cobaltSoft,
+                  color: context.accent.primary,
+                  soft: context.accent.primarySoft,
                   title: item.name,
                   subtitle: item.service,
                 ),

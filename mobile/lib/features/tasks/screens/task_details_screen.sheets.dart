@@ -14,7 +14,7 @@ class _Fact extends StatelessWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(icon, size: 18, color: AarastV3Color.brandAccentStrong),
+          Icon(icon, size: 18, color: context.accent.primary),
           const SizedBox(width: 10),
           SizedBox(
             width: 64,
@@ -61,7 +61,7 @@ class _ContactCard extends StatelessWidget {
         children: [
           JourneyAvatar(
             letter: name.isEmpty ? '؟' : name.characters.first,
-            color: AarastV3Color.brandAccentStrong,
+            color: context.accent.primary,
             size: 40,
           ),
           const SizedBox(width: 12),

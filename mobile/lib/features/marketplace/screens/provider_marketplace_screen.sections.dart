@@ -27,7 +27,7 @@ class _MarketplaceSearch extends StatelessWidget {
           textInputAction: TextInputAction.search,
           onSubmitted: provider.setSearch,
           style: JourneyType.of(JourneyType.bodyLarge, weight: JourneyType.bold),
-          cursorColor: AarastV3Color.cobalt,
+          cursorColor: context.accent.primary,
           decoration: InputDecoration(
             hintText: context.say(
               'دوّر على مزود أو خدمة',
@@ -45,7 +45,7 @@ class _MarketplaceSearch extends StatelessWidget {
             ),
             border: border(AarastV3Color.line, 1),
             enabledBorder: border(AarastV3Color.line, 1),
-            focusedBorder: border(AarastV3Color.cobalt, 2),
+            focusedBorder: border(context.accent.primary, 2),
             suffixIcon: value.text.isEmpty
                 ? null
                 : IconButton(
@@ -97,7 +97,7 @@ class _FilterChips extends StatelessWidget {
                     label: itemChip.budgetCategoryName,
                     icon: providerServiceIcon(itemChip.budgetCategoryName),
                     selected: true,
-                    selectedColor: AarastV3Color.cobalt,
+                    selectedColor: context.accent.primary,
                     onTap: () {},
                   ),
                   const SizedBox(width: 8),
@@ -106,7 +106,7 @@ class _FilterChips extends StatelessWidget {
                   key: const ValueKey('category-chip-all'),
                   label: 'الكل',
                   selected: selectedCategory == null && itemChip == null,
-                  selectedColor: AarastV3Color.cobalt,
+                  selectedColor: context.accent.primary,
                   onTap: () => provider.setCategory(null),
                 ),
                 for (final category in provider.categories) ...[
@@ -116,7 +116,7 @@ class _FilterChips extends StatelessWidget {
                     label: category.nameAr,
                     icon: providerServiceIcon(category.nameAr),
                     selected: selectedCategory == category.id,
-                    selectedColor: AarastV3Color.cobalt,
+                    selectedColor: context.accent.primary,
                     onTap: () => provider.setCategory(category.id),
                   ),
                 ],
@@ -129,7 +129,7 @@ class _FilterChips extends StatelessWidget {
             label: city?.nameAr ?? 'فلتر',
             icon: LucideIcons.slidersHorizontal,
             selected: city != null,
-            selectedColor: AarastV3Color.cobalt,
+            selectedColor: context.accent.primary,
             onTap: () => showJourneySheet<void>(
               context: context,
               builder: (_) => _DirectoryFilterSheet(provider: provider),
@@ -179,14 +179,14 @@ class _DirectoryFilterSheet extends StatelessWidget {
                       (provider.budgetMatchIntent?.providerCategoryIds
                               .isEmpty ??
                           true),
-                  selectedColor: AarastV3Color.cobalt,
+                  selectedColor: context.accent.primary,
                   onTap: () => provider.setCategory(null),
                 ),
                 for (final category in provider.categories)
                   JourneyChip(
                     label: category.nameAr,
                     selected: provider.categoryId == category.id,
-                    selectedColor: AarastV3Color.cobalt,
+                    selectedColor: context.accent.primary,
                     onTap: () => provider.setCategory(category.id),
                   ),
               ],
@@ -201,7 +201,7 @@ class _DirectoryFilterSheet extends StatelessWidget {
                   key: const ValueKey('city-pill-all'),
                   label: 'كل المدن',
                   selected: provider.cityId == null,
-                  selectedColor: AarastV3Color.cobalt,
+                  selectedColor: context.accent.primary,
                   onTap: () => provider.setCity(null),
                 ),
                 for (final city in provider.cities)
@@ -209,7 +209,7 @@ class _DirectoryFilterSheet extends StatelessWidget {
                     key: ValueKey('city-pill-${city.id}'),
                     label: city.nameAr,
                     selected: provider.cityId == city.id,
-                    selectedColor: AarastV3Color.cobalt,
+                    selectedColor: context.accent.primary,
                     onTap: () => provider.setCity(city.id),
                   ),
               ],
@@ -222,7 +222,7 @@ class _DirectoryFilterSheet extends StatelessWidget {
                   : total == 0
                   ? 'ما في مزودين بهذا الفلتر'
                   : 'اعرض ${arabicCount(total, one: 'مزود واحد', two: 'مزودين اثنين', few: 'مزودين', many: 'مزود')}',
-              background: AarastV3Color.cobalt,
+              background: context.accent.primary,
               expand: true,
               large: true,
               onPressed: () => Navigator.of(context).pop(),
@@ -252,14 +252,14 @@ class _BudgetMatchContextCard extends StatelessWidget {
         ? 'قريبين من بند ${intent.budgetCategoryName} ${compactYemeniMoneyParts(intent.allocatedValue).plainText}'
         : 'حسب بند ${intent.budgetCategoryName}';
     return JourneyBox(
-      color: AarastV3Color.cobaltSoft,
+      color: context.accent.primarySoft,
       padding: const EdgeInsetsDirectional.fromSTEB(14, 6, 4, 6),
       child: Row(
         children: [
-          const Icon(
+          Icon(
             LucideIcons.sparkles,
             size: 18,
-            color: AarastV3Color.cobalt,
+            color: context.accent.primary,
           ),
           const SizedBox(width: 8),
           Expanded(
@@ -270,14 +270,14 @@ class _BudgetMatchContextCard extends StatelessWidget {
               style: JourneyType.of(
                 JourneyType.body,
                 weight: JourneyType.bold,
-                color: AarastV3Color.cobalt,
+                color: context.accent.primary,
               ),
             ),
           ),
           IconButton(
             tooltip: 'إزالة فلتر الميزانية',
             onPressed: onClear,
-            icon: const Icon(LucideIcons.x, color: AarastV3Color.cobalt),
+            icon: Icon(LucideIcons.x, color: context.accent.primary),
           ),
         ],
       ),

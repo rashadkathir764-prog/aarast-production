@@ -144,8 +144,8 @@ extension _ProviderTabs on _ProviderMarketplaceScreenState {
         JourneyStartWays(
           key: const ValueKey('providers-first-visit'),
           icon: LucideIcons.store,
-          color: AarastV3Color.cobalt,
-          soft: AarastV3Color.cobaltSoft,
+          color: context.accent.primary,
+          soft: context.accent.primarySoft,
           title: context.planWord('نبدأ بالقاعة', 'نبدأ بالصالة'),
           message: context.say(
             'لأنها تحدد يومك وعدد ضيوفك،\nوالقاعات تنحجز قبل بشهرين.',
@@ -213,7 +213,7 @@ extension _ProviderTabs on _ProviderMarketplaceScreenState {
       if (mounted) _ensureMoneyLoaded();
     });
     return RefreshIndicator(
-      color: AarastV3Color.cobalt,
+      color: context.accent.primary,
       onRefresh: () => _refreshMarketplace(marketplace),
       child: ListView(
         key: const PageStorageKey('providers-board'),
@@ -262,8 +262,8 @@ extension _ProviderTabs on _ProviderMarketplaceScreenState {
                 'اللي تطلبين منهم عروض يطلعون هنا. دوّري عليهم في «استكشف».',
               ),
               icon: LucideIcons.search,
-              color: AarastV3Color.cobalt,
-              soft: AarastV3Color.cobaltSoft,
+              color: context.accent.primary,
+              soft: context.accent.primarySoft,
             )
           else
             ProviderBoardView(
@@ -419,7 +419,7 @@ extension _ProviderTabs on _ProviderMarketplaceScreenState {
               key: const ValueKey('providers-favorites-compare'),
               label: context.say('قارن الملفين', 'قارني الملفين'),
               icon: LucideIcons.columns,
-              background: AarastV3Color.cobalt,
+              background: context.accent.primary,
               large: true,
               expand: true,
               onPressed: picked.length == 2
@@ -465,7 +465,7 @@ extension _ProviderTabs on _ProviderMarketplaceScreenState {
 
   Widget _exploreTab(ProviderMarketplaceProvider provider) {
     return RefreshIndicator(
-      color: AarastV3Color.cobalt,
+      color: context.accent.primary,
       onRefresh: () => _refreshMarketplace(provider),
       child: ListView(
         controller: _scrollController,
@@ -479,8 +479,8 @@ extension _ProviderTabs on _ProviderMarketplaceScreenState {
                 'تقدرين تتصفحين الآن. تطلبين عروض وتتابعينها بعد ما تحفظين خطتك برقم جوالك.',
               ),
               icon: LucideIcons.logIn,
-              color: AarastV3Color.cobalt,
-              soft: AarastV3Color.cobaltSoft,
+              color: context.accent.primary,
+              soft: context.accent.primarySoft,
             ),
             const SizedBox(height: 12),
           ],
@@ -530,11 +530,11 @@ extension _ProviderTabs on _ProviderMarketplaceScreenState {
           ],
           if (provider.isLoading && provider.providers.isNotEmpty) ...[
             const SizedBox(height: 10),
-            const AarastV3ProgressLine(
-              key: Key('marketplace-results-refreshing'),
+            AarastV3ProgressLine(
+              key: const Key('marketplace-results-refreshing'),
               height: 3,
-              color: AarastV3Color.cobalt,
-              backgroundColor: AarastV3Color.cobaltSoft,
+              color: context.accent.primary,
+              backgroundColor: context.accent.primarySoft,
               semanticsLabel: 'تحديث نتائج المزودين',
             ),
           ],
@@ -572,12 +572,12 @@ class _FavoriteCard extends StatelessWidget {
     final cover = provider.coverUrl?.trim();
     // Soft, as on the f02 card, so the picking box shows on it.
     final placeholder = ColoredBox(
-      color: AarastV3Color.cobaltSoft,
+      color: context.accent.primarySoft,
       child: Center(
         child: Icon(
           providerServiceIcon(kind ?? ''),
           size: 32,
-          color: AarastV3Color.cobalt,
+          color: context.accent.primary,
         ),
       ),
     );
@@ -591,7 +591,7 @@ class _FavoriteCard extends StatelessWidget {
           color: AarastV3Color.paper,
           borderRadius: BorderRadius.circular(20),
           border: picked
-              ? Border.all(color: AarastV3Color.cobalt, width: 2)
+              ? Border.all(color: context.accent.primary, width: 2)
               : null,
         ),
         child: Column(
@@ -629,7 +629,7 @@ class _FavoriteCard extends StatelessWidget {
                             height: 24,
                             decoration: BoxDecoration(
                               color: picked
-                                  ? AarastV3Color.cobalt
+                                  ? context.accent.primary
                                   : AarastV3Color.paper,
                               borderRadius: BorderRadius.circular(7),
                             ),
@@ -680,7 +680,7 @@ class _FavoriteCard extends StatelessWidget {
                       style: JourneyType.of(
                         JourneyType.small,
                         weight: JourneyType.bold,
-                        color: AarastV3Color.cobalt,
+                        color: context.accent.primary,
                       ),
                     ),
                 ],

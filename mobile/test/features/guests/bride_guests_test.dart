@@ -135,7 +135,7 @@ void main() {
       ),
     );
     expect(pieces.map((piece) => piece.color), [
-      AarastV3Color.lilac,
+      AarastV3Color.rose,
       AarastV3Color.saffron,
     ]);
     final shown = find.descendant(

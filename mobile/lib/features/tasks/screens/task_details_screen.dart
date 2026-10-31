@@ -148,8 +148,8 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen> {
                         JourneyButton(
                           key: const ValueKey('task-detail-postpone'),
                           label: context.say('أجّلها', 'أجّليها'),
-                          background: AarastV3Color.brandAccentSoft,
-                          foreground: AarastV3Color.brandAccentStrong,
+                          background: context.accent.primarySoft,
+                          foreground: context.accent.primary,
                           large: true,
                           onPressed: provider.isSubmitting
                               ? null
@@ -219,8 +219,8 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen> {
               ),
             JourneyTag(
               label: mine ? 'لك' : 'ل${task.responsibleLabel}',
-              color: AarastV3Color.brandAccentStrong,
-              soft: AarastV3Color.brandAccentSoft,
+              color: context.accent.primary,
+              soft: context.accent.primarySoft,
             ),
             if (task.isPrivate)
               const JourneyTag(
@@ -283,7 +283,7 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen> {
           const SizedBox(height: 12),
           JourneyBox(
             key: const ValueKey('task-steps-progress'),
-            color: AarastV3Color.brandAccentSoft,
+            color: context.accent.primarySoft,
             padding: const EdgeInsets.all(16),
             child: Row(
               children: [
@@ -295,14 +295,14 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen> {
                     style: JourneyType.of(
                       JourneyType.title,
                       weight: JourneyType.bold,
-                      color: AarastV3Color.brandAccentStrong,
+                      color: context.accent.primary,
                     ),
                   ),
                 ),
-                const JourneyIconTile(
+                JourneyIconTile(
                   icon: LucideIcons.listChecks,
                   color: AarastV3Color.onPrimary,
-                  soft: AarastV3Color.brandAccentStrong,
+                  soft: context.accent.primary,
                 ),
               ],
             ),

@@ -33,13 +33,13 @@ class _JourneyHomeTiles extends StatelessWidget {
               few: 'اليوم',
               many: 'اليوم',
             ),
-            AarastV3Color.brandAccentStrong,
+            context.accent.primary,
           )
         : null;
     final guestsNote = s.pendingGuests > 0
         ? (
             '${s.pendingGuests} ${context.say('ما ردّوا', 'ما ردّن')}',
-            AarastV3Color.lilac,
+            context.accent.primary,
           )
         : null;
     final providersNote = s.receivedQuotes > 0
@@ -51,7 +51,7 @@ class _JourneyHomeTiles extends StatelessWidget {
               few: 'عروض تنتظرك',
               many: 'عرض ينتظرك',
             ),
-            AarastV3Color.cobalt,
+            context.accent.primary,
           )
         : null;
     return IntrinsicHeight(
@@ -63,8 +63,8 @@ class _JourneyHomeTiles extends StatelessWidget {
               key: const ValueKey('aarast-dashboard-tile-tasks'),
               label: 'المهام',
               icon: LucideIcons.listChecks,
-              color: AarastV3Color.brandAccentStrong,
-              soft: AarastV3Color.brandAccentSoft,
+              color: context.accent.primary,
+              soft: context.accent.primarySoft,
               value: s.completedTasks,
               of: s.totalTasks == 0
                   ? 'ما في مهام بعد'
@@ -82,8 +82,8 @@ class _JourneyHomeTiles extends StatelessWidget {
               key: const ValueKey('aarast-dashboard-tile-guests'),
               label: JourneySection.guests.labelOf(context),
               icon: LucideIcons.users,
-              color: AarastV3Color.lilac,
-              soft: AarastV3Color.lilacSoft,
+              color: context.accent.primary,
+              soft: context.accent.primarySoft,
               value: s.confirmedGuests,
               of: s.guestCount == 0
                   ? context.planWord('ما في ضيوف بعد', 'ما في ضيفات بعد')
@@ -101,8 +101,8 @@ class _JourneyHomeTiles extends StatelessWidget {
               key: const ValueKey('aarast-dashboard-tile-providers'),
               label: 'المزودين',
               icon: LucideIcons.store,
-              color: AarastV3Color.cobalt,
-              soft: AarastV3Color.cobaltSoft,
+              color: context.accent.primary,
+              soft: context.accent.primarySoft,
               // D60: the server's one count, the board's «محجوز N» too.
               value: s.bookedServices.count,
               of: 'محجوز',
@@ -242,8 +242,8 @@ class _JourneyAfterwards extends StatelessWidget {
               for (final item in items)
                 JourneyListRow(
                   icon: _iconForItem(item.type),
-                  color: _colorForItem(item.type, context.accent).$1,
-                  soft: _colorForItem(item.type, context.accent).$2,
+                  color: context.accent.primary,
+                  soft: context.accent.primarySoft,
                   title: item.title,
                   subtitle: item.subtitle,
                   trailing: const Icon(
@@ -273,21 +273,5 @@ class _JourneyAfterwards extends StatelessWidget {
     }
     if (t.contains('GUEST')) return LucideIcons.users;
     return LucideIcons.sparkles;
-  }
-
-  static (Color, Color) _colorForItem(String type, JourneyAccent accent) {
-    final t = type.toUpperCase();
-    if (t.contains('TASK')) {
-      return (AarastV3Color.brandAccentStrong, AarastV3Color.brandAccentSoft);
-    }
-    if (t.contains('GUEST')) {
-      return (AarastV3Color.lilac, AarastV3Color.lilacSoft);
-    }
-    if (t.contains('QUOTE') ||
-        t.contains('PROVIDER') ||
-        t.contains('BOOKING')) {
-      return (AarastV3Color.cobalt, AarastV3Color.cobaltSoft);
-    }
-    return (accent.primary, accent.primarySoft);
   }
 }

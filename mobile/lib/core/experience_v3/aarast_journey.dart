@@ -126,19 +126,10 @@ enum JourneySection {
   String labelOf(BuildContext context) =>
       context.planWord(_groomLabel, _brideLabel);
 
-  Color colorOf(BuildContext context) => switch (this) {
-    JourneySection.home || JourneySection.money => context.accent.primary,
-    JourneySection.tasks => AarastV3Color.brandAccentStrong,
-    JourneySection.guests => AarastV3Color.lilac,
-    JourneySection.providers => AarastV3Color.cobalt,
-  };
+  /// One colour for the whole plan: every tab wears the plan's own colour.
+  Color colorOf(BuildContext context) => context.accent.primary;
 
-  Color softOf(BuildContext context) => switch (this) {
-    JourneySection.home || JourneySection.money => context.accent.primarySoft,
-    JourneySection.tasks => AarastV3Color.brandAccentSoft,
-    JourneySection.guests => AarastV3Color.lilacSoft,
-    JourneySection.providers => AarastV3Color.cobaltSoft,
-  };
+  Color softOf(BuildContext context) => context.accent.primarySoft;
 }
 
 /// A white rounded surface. [borderColor] draws a 2px outline (selection or

@@ -160,8 +160,8 @@ class _GroupRow extends StatelessWidget {
             children: [
               JourneyIconTile(
                 icon: icon,
-                color: AarastV3Color.lilac,
-                soft: AarastV3Color.lilacSoft,
+                color: context.accent.primary,
+                soft: context.accent.primarySoft,
                 size: 42,
               ),
               const SizedBox(width: 12),
@@ -179,7 +179,7 @@ class _GroupRow extends StatelessWidget {
                     const SizedBox(height: 6),
                     JourneyBar(
                       value: all == 0 ? 0 : yes / all,
-                      color: AarastV3Color.lilac,
+                      color: context.accent.primary,
                     ),
                   ],
                 ),
@@ -232,10 +232,10 @@ class _FirstGuests extends StatelessWidget {
       width: 44,
       height: 44,
       decoration: BoxDecoration(
-        color: AarastV3Color.lilacSoft,
+        color: context.accent.primarySoft,
         borderRadius: BorderRadius.circular(14),
       ),
-      child: Icon(data, color: AarastV3Color.lilac),
+      child: Icon(data, color: context.accent.primary),
     );
     return Column(
       key: const ValueKey('guests-first'),

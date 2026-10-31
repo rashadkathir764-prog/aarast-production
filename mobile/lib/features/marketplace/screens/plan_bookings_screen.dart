@@ -262,8 +262,8 @@ class _BookingCard extends StatelessWidget {
                 icon: findOthers
                     ? providerServiceIcon(_serviceName(quote))
                     : null,
-                background: AarastV3Color.cobaltSoft,
-                foreground: AarastV3Color.cobalt,
+                background: context.accent.primarySoft,
+                foreground: context.accent.primary,
                 onPressed: busy
                     ? null
                     : (findOthers ? onFindOthers : onAskAgain),

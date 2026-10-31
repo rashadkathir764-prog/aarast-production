@@ -139,7 +139,7 @@ class _ParticipantGuestsScreenState extends State<ParticipantGuestsScreen> {
       maxWidth: 520,
       backgroundColor: AarastV3Color.canvas,
       child: RefreshIndicator(
-        color: AarastV3Color.lilac,
+        color: context.accent.primary,
         onRefresh: _load,
         child: ListView(
           physics: const AlwaysScrollableScrollPhysics(),

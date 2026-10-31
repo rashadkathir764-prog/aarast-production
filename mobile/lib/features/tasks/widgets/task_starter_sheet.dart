@@ -93,7 +93,7 @@ class _TaskStarterSheetState extends State<TaskStarterSheet> {
               )
             : '${context.say('أضف', 'أضيفي')} ${arabicCount(count, one: 'مهمة وحدة', two: 'مهمتين', few: 'مهام', many: 'مهمة')} لخطتي',
         icon: LucideIcons.listPlus,
-        background: AarastV3Color.brandAccentStrong,
+        background: context.accent.primary,
         expand: true,
         large: true,
         loading: _saving,
@@ -195,7 +195,7 @@ class _TemplateRow extends StatelessWidget {
                     color: on
                         ? (added
                               ? AarastV3Color.textFaint
-                              : AarastV3Color.brandAccentStrong)
+                              : context.accent.primary)
                         : null,
                     borderRadius: BorderRadius.circular(7),
                     border: on

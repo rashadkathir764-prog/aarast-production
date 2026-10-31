@@ -170,8 +170,8 @@ class ProviderHardCaseCard extends StatelessWidget {
               children: [
                 JourneyIconTile(
                   icon: providerServiceIcon(service),
-                  color: AarastV3Color.cobalt,
-                  soft: AarastV3Color.cobaltSoft,
+                  color: context.accent.primary,
+                  soft: context.accent.primarySoft,
                   size: 44,
                 ),
                 const SizedBox(width: 12),
@@ -247,7 +247,7 @@ class ProviderHardCaseCard extends StatelessWidget {
           JourneyButton(
             key: ValueKey('provider-hard-case-others-${quote.id}'),
             label: context.say('شوف البدائل', 'شوفي البدائل'),
-            background: AarastV3Color.cobalt,
+            background: context.accent.primary,
             onPressed: onFindOthers,
           ),
           if (onAnotherDay != null)
@@ -271,7 +271,7 @@ class ProviderHardCaseCard extends StatelessWidget {
             JourneyButton(
               key: ValueKey('provider-hard-case-other-${quote.id}'),
               label: context.say('افتح العرض الثاني', 'افتحي العرض الثاني'),
-              background: AarastV3Color.cobalt,
+              background: context.accent.primary,
               onPressed: onOpenOther,
             ),
           if (onAsk != null)
@@ -286,7 +286,7 @@ class ProviderHardCaseCard extends StatelessWidget {
           JourneyButton(
             key: ValueKey('provider-hard-case-others-${quote.id}'),
             label: findOthers,
-            background: AarastV3Color.cobalt,
+            background: context.accent.primary,
             onPressed: onFindOthers,
           ),
         ];

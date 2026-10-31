@@ -325,7 +325,7 @@ class _GuestFormSheetState extends State<GuestFormSheet> {
                   key: ValueKey('guest-form-group-${group.id}'),
                   label: group.name,
                   selected: _groupId == group.id,
-                  selectedColor: AarastV3Color.lilac,
+                  selectedColor: context.accent.primary,
                   onTap: () => _mutate(
                     () => _groupId = _groupId == group.id ? null : group.id,
                   ),
@@ -353,7 +353,7 @@ class _GuestFormSheetState extends State<GuestFormSheet> {
                     ? context.say('لحاله', 'لحالها')
                     : PhoneNumberUtils.isolateLtr('+$count'),
                 selected: _companionsCount == count,
-                selectedColor: AarastV3Color.lilac,
+                selectedColor: context.accent.primary,
                 onTap: () => _setCompanions(count),
               ),
             JourneyChip(
@@ -362,7 +362,7 @@ class _GuestFormSheetState extends State<GuestFormSheet> {
                   ? PhoneNumberUtils.isolateLtr('+$_companionsCount')
                   : 'أكثر',
               selected: _companionsCount > 3,
-              selectedColor: AarastV3Color.lilac,
+              selectedColor: context.accent.primary,
               onTap: _companionsCount < 20
                   ? () => _setCompanions(
                       _companionsCount < 4 ? 4 : _companionsCount + 1,
@@ -378,7 +378,7 @@ class _GuestFormSheetState extends State<GuestFormSheet> {
             key: const ValueKey('guest-form-more'),
             label: _showMore ? 'أقل' : 'تفاصيل أكثر',
             icon: _showMore ? LucideIcons.chevronUp : LucideIcons.chevronDown,
-            color: AarastV3Color.lilac,
+            color: context.accent.primary,
             onPressed: () => setState(() => _showMore = !_showMore),
           ),
         ),
@@ -393,7 +393,7 @@ class _GuestFormSheetState extends State<GuestFormSheet> {
                   key: ValueKey('guest-form-side-$side'),
                   label: guestSideLabel(side),
                   selected: _side == side,
-                  selectedColor: AarastV3Color.lilac,
+                  selectedColor: context.accent.primary,
                   onTap: () => _mutate(() => _side = side),
                 ),
             ],
@@ -414,7 +414,7 @@ class _GuestFormSheetState extends State<GuestFormSheet> {
                   selected:
                       _status == status ||
                       (status == 'INVITED' && _status == 'PENDING'),
-                  selectedColor: AarastV3Color.lilac,
+                  selectedColor: context.accent.primary,
                   onTap: () => _mutate(() => _status = status),
                 ),
             ],
@@ -434,7 +434,7 @@ class _GuestFormSheetState extends State<GuestFormSheet> {
               child: JourneyButton(
                 key: const ValueKey('guest-form-save'),
                 label: _editing ? 'حفظ التعديل' : 'حفظ',
-                background: AarastV3Color.lilac,
+                background: context.accent.primary,
                 expand: true,
                 large: true,
                 onPressed: _submit,
@@ -447,8 +447,8 @@ class _GuestFormSheetState extends State<GuestFormSheet> {
                 label:
                     'حفظ و${context.say('أضف', 'أضيفي')} '
                     '${context.planWord('التالي', 'التالية')}',
-                background: AarastV3Color.lilacSoft,
-                foreground: AarastV3Color.lilac,
+                background: context.accent.primarySoft,
+                foreground: context.accent.primary,
                 large: true,
                 onPressed: () => _submit(addAnother: true),
               ),
@@ -534,7 +534,7 @@ class _NewGroupSheetState extends State<_NewGroupSheet> {
         JourneyButton(
           key: const ValueKey('guest-form-group-create'),
           label: context.say('أضفها', 'أضيفيها'),
-          background: AarastV3Color.lilac,
+          background: context.accent.primary,
           expand: true,
           large: true,
           onPressed: () => Navigator.pop(context, _controller.text),

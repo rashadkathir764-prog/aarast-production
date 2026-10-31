@@ -59,12 +59,15 @@ String _serviceBudgetStatusLabel(_ServiceBudgetStatus status) {
   };
 }
 
-Color _serviceBudgetStatusColor(_ServiceBudgetStatus status) {
+Color _serviceBudgetStatusColor(
+  BuildContext context,
+  _ServiceBudgetStatus status,
+) {
   return switch (status) {
     _ServiceBudgetStatus.inRange => AarastV3Color.mint,
     _ServiceBudgetStatus.underBudget => AarastV3Color.mint,
     _ServiceBudgetStatus.nearby => AarastV3Color.brandAccentStrong,
-    _ServiceBudgetStatus.categoryOnly => AarastV3Color.cobalt,
+    _ServiceBudgetStatus.categoryOnly => context.accent.primary,
     _ServiceBudgetStatus.unknown => AarastV3Color.textMuted,
   };
 }

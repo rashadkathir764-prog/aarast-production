@@ -227,7 +227,7 @@ class _OfferCard extends StatelessWidget {
           JourneyButton(
             key: ValueKey('requests-choose-${quote.id}'),
             label: context.say('اختر هذا', 'اختاري هذا'),
-            background: AarastV3Color.cobalt,
+            background: context.accent.primary,
             expand: true,
             loading: busy,
             onPressed: busy ? null : onChoose,
@@ -246,7 +246,7 @@ class _OfferCard extends StatelessWidget {
                 key: ValueKey('requests-chat-${quote.id}'),
                 label: 'المحادثة',
                 icon: LucideIcons.messageCircle,
-                color: AarastV3Color.cobalt,
+                color: context.accent.primary,
                 onPressed: onChat,
               ),
             ],
@@ -313,8 +313,8 @@ class _ChosenCard extends StatelessWidget {
       'CANCELLED' => ('ملغي', AarastV3Color.textMuted, AarastV3Color.canvas),
       _ => (
         context.say('اخترته', 'اخترتيه'),
-        AarastV3Color.cobalt,
-        AarastV3Color.cobaltSoft,
+        context.accent.primary,
+        context.accent.primarySoft,
       ),
     };
     final detail = switch (booking?.status) {
@@ -387,7 +387,7 @@ class _ChosenCard extends StatelessWidget {
               key: ValueKey('requests-delivery-link-${quote.id}'),
               style: JourneyType.of(
                 JourneyType.small,
-                color: AarastV3Color.cobalt,
+                color: context.accent.primary,
               ),
             ),
           const SizedBox(height: 10),
@@ -419,7 +419,7 @@ class _ChosenCard extends StatelessWidget {
                   ? context.say('اطلب الحجز', 'اطلبي الحجز')
                   : context.say('اطلب حجز مرة ثانية', 'اطلبي حجز مرة ثانية'),
               icon: LucideIcons.calendarCheck,
-              background: AarastV3Color.cobalt,
+              background: context.accent.primary,
               expand: true,
               onPressed: busy ? null : onBook,
             ),
@@ -441,7 +441,7 @@ class _ChosenCard extends StatelessWidget {
                 key: ValueKey('requests-chosen-chat-${quote.id}'),
                 label: 'المحادثة',
                 icon: LucideIcons.messageCircle,
-                color: AarastV3Color.cobalt,
+                color: context.accent.primary,
                 onPressed: onChat,
               ),
               // B-24: a confirmed booking moves before its day.
@@ -454,7 +454,7 @@ class _ChosenCard extends StatelessWidget {
                   key: ValueKey('requests-change-day-${quote.id}'),
                   label: context.say('غيّر الموعد', 'غيّري الموعد'),
                   icon: LucideIcons.calendarClock,
-                  color: AarastV3Color.cobalt,
+                  color: context.accent.primary,
                   onPressed: busy ? null : onChangeDay,
                 ),
               // The server cancels only before the day (booking-policy), so a
@@ -538,7 +538,7 @@ class _ExpiredCard extends StatelessWidget {
           key: ValueKey('requests-new-${quote.id}'),
           label: context.say('اطلب عرض جديد', 'اطلبي عرض جديد'),
           icon: LucideIcons.refreshCw,
-          background: AarastV3Color.cobalt,
+          background: context.accent.primary,
           expand: true,
           onPressed: onAskAgain,
         ),

@@ -55,7 +55,7 @@ class _BookingMomentScreenState extends State<BookingMomentScreen> {
     if (quote == null || booking == null) {
       return _framed(
         JourneyMoment(
-          color: AarastV3Color.cobalt,
+          color: context.accent.primary,
           eyebrow: 'طلب الحجز انقبل',
           title: 'ليلتك محجوزة',
           subtitle: '',
@@ -115,7 +115,7 @@ class _BookingMomentScreenState extends State<BookingMomentScreen> {
 
     return _framed(
       JourneyMoment(
-        color: AarastV3Color.cobalt,
+        color: context.accent.primary,
         eyebrow: 'طلب الحجز انقبل',
         title: 'ليلتك محجوزة\nعند $name',
         subtitle: [
@@ -142,7 +142,7 @@ class _BookingMomentScreenState extends State<BookingMomentScreen> {
 
   Widget _framed(Widget moment) => AarastScreenFrame(
     maxWidth: 520,
-    backgroundColor: AarastV3Color.cobalt,
+    backgroundColor: context.accent.primary,
     child: moment,
   );
 

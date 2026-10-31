@@ -40,9 +40,9 @@ extension _CreateTaskPrivacy on _CreateTaskScreenState {
         child: SwitchListTile(
           key: const ValueKey('task-private'),
           contentPadding: EdgeInsets.zero,
-          secondary: const Icon(
+          secondary: Icon(
             LucideIcons.eyeOff,
-            color: AarastV3Color.brandAccentStrong,
+            color: context.accent.primary,
           ),
           title: Text(
             'خاصة',

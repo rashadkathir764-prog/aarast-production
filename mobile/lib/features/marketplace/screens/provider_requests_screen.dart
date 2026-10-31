@@ -191,7 +191,7 @@ class _ProviderRequestsScreenState extends State<ProviderRequestsScreen> {
           ),
           Expanded(
             child: RefreshIndicator(
-              color: AarastV3Color.cobalt,
+              color: context.accent.primary,
               onRefresh: marketplace.loadScopedQuoteRequests,
               child: ListView(
                 physics: const AlwaysScrollableScrollPhysics(),
@@ -265,8 +265,8 @@ class _ProviderRequestsScreenState extends State<ProviderRequestsScreen> {
                             JourneyListRow(
                               key: ValueKey('requests-waiting-${quote.id}'),
                               icon: LucideIcons.hourglass,
-                              color: AarastV3Color.cobalt,
-                              soft: AarastV3Color.cobaltSoft,
+                              color: context.accent.primary,
+                              soft: context.accent.primarySoft,
                               title: quoteProviderName(quote),
                               subtitle: quote.createdAt == null
                                   ? 'ينتظر الرد'

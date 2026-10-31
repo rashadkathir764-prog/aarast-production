@@ -214,7 +214,7 @@ class _RenameStepSheetState extends State<_RenameStepSheet> {
         JourneyButton(
           key: const ValueKey('task-checklist-rename-save'),
           label: 'حفظ',
-          background: AarastV3Color.brandAccentStrong,
+          background: context.accent.primary,
           expand: true,
           large: true,
           onPressed: () => Navigator.pop(context, _controller.text),

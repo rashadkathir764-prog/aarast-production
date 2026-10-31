@@ -82,9 +82,9 @@ class _MonthBlock extends StatelessWidget {
                 margin: const EdgeInsets.only(top: 4),
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  color: now ? AarastV3Color.brandAccentStrong : null,
+                  color: now ? context.accent.primary : null,
                   border: Border.all(
-                    color: AarastV3Color.brandAccentStrong,
+                    color: context.accent.primary,
                     width: 2,
                   ),
                 ),
@@ -111,7 +111,7 @@ class _MonthBlock extends StatelessWidget {
                       JourneyType.body,
                       weight: JourneyType.bold,
                       color: now
-                          ? AarastV3Color.brandAccentStrong
+                          ? context.accent.primary
                           : AarastV3Color.textMuted,
                     ),
                   ),

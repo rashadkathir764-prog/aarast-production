@@ -119,11 +119,11 @@ class ProviderResultCard extends StatelessWidget {
           soft: AarastV3Color.brandAccentSoft,
         )
       else if (isVerified)
-        const JourneyTag(
-          key: Key('provider-card-verified'),
+        JourneyTag(
+          key: const Key('provider-card-verified'),
           label: 'موثّق',
-          color: AarastV3Color.cobalt,
-          soft: AarastV3Color.cobaltSoft,
+          color: context.accent.primary,
+          soft: context.accent.primarySoft,
         )
       else
         const JourneyTag(
@@ -226,7 +226,7 @@ class ProviderResultCard extends StatelessWidget {
                         style: JourneyType.of(
                           JourneyType.bodyLarge,
                           weight: JourneyType.bold,
-                          color: AarastV3Color.cobalt,
+                          color: context.accent.primary,
                         ),
                       ),
                     // An unclaimed listing has no one to answer a request
@@ -286,14 +286,14 @@ class _Cover extends StatelessWidget {
     final url = imageUrl?.trim();
     final initial = name.trim().isNotEmpty ? name.trim().characters.first : 'م';
     final placeholder = ColoredBox(
-      color: AarastV3Color.cobaltSoft,
+      color: context.accent.primarySoft,
       child: Center(
         child: Text(
           initial,
           style: JourneyType.of(
             JourneyType.count,
             weight: JourneyType.bold,
-            color: AarastV3Color.cobalt,
+            color: context.accent.primary,
           ),
         ),
       ),

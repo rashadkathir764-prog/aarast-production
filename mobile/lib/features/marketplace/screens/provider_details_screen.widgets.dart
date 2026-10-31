@@ -52,7 +52,7 @@ extension _ProviderQuoteFooter on _ProviderDetailsScreenState {
                             latest,
                             context.journeyProfile,
                           ),
-                          background: AarastV3Color.cobalt,
+                          background: context.accent.primary,
                           large: true,
                           expand: true,
                           loading: loadingQuote,

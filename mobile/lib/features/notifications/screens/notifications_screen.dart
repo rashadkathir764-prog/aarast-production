@@ -596,10 +596,10 @@ _NotificationTone _tone(String type, JourneyAccent accent) {
     );
   }
   if (t.contains('QUOTE')) {
-    return const _NotificationTone(
+    return _NotificationTone(
       icon: LucideIcons.mailOpen,
-      color: AarastV3Color.cobalt,
-      soft: AarastV3Color.cobaltSoft,
+      color: accent.primary,
+      soft: accent.primarySoft,
     );
   }
   if (t == 'BOOKING_UPDATED') {
@@ -617,10 +617,10 @@ _NotificationTone _tone(String type, JourneyAccent accent) {
     );
   }
   if (t == 'GUEST_RESPONDED') {
-    return const _NotificationTone(
+    return _NotificationTone(
       icon: LucideIcons.userCheck,
-      color: AarastV3Color.lilac,
-      soft: AarastV3Color.lilacSoft,
+      color: accent.primary,
+      soft: accent.primarySoft,
     );
   }
   if (t.contains('TASK')) {

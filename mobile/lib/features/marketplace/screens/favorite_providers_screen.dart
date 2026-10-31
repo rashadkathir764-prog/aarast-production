@@ -190,7 +190,7 @@ class _CompareColumn extends StatelessWidget {
             style: JourneyType.of(
               JourneyType.bodyLarge,
               weight: JourneyType.bold,
-              color: AarastV3Color.cobalt,
+              color: context.accent.primary,
             ),
           ),
           const SizedBox(height: 8),
@@ -258,8 +258,8 @@ class _CompareColumn extends StatelessWidget {
             JourneyButton(
               key: ValueKey('compare-quote-${provider.id}'),
               label: context.say('اطلب عرض سعر', 'اطلبي عرض سعر'),
-              background: AarastV3Color.cobaltSoft,
-              foreground: AarastV3Color.cobalt,
+              background: context.accent.primarySoft,
+              foreground: context.accent.primary,
               expand: true,
               onPressed: onQuote,
             )

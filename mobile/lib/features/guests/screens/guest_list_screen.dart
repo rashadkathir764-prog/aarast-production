@@ -154,7 +154,7 @@ class _GuestListScreenState extends State<GuestListScreen> {
       maxWidth: 600,
       backgroundColor: AarastV3Color.canvas,
       child: RefreshIndicator(
-        color: AarastV3Color.lilac,
+        color: context.accent.primary,
         onRefresh: _isLocalPlan ? () async {} : _load,
         child: ListView(
           physics: const AlwaysScrollableScrollPhysics(),
@@ -257,7 +257,7 @@ class _GuestListScreenState extends State<GuestListScreen> {
                   label:
                       '${context.say('ذكّر', 'ذكّري')} الـ ${summary.pending} على واتساب',
                   icon: LucideIcons.send,
-                  background: AarastV3Color.lilac,
+                  background: context.accent.primary,
                   expand: true,
                   onPressed: () => context.push(
                     AppRouter.guestInvite(widget.weddingPlanId, reminder: true),
@@ -273,7 +273,7 @@ class _GuestListScreenState extends State<GuestListScreen> {
               key: const ValueKey('guests-invite-card'),
               label: 'بطاقة الدعوة',
               icon: LucideIcons.mail,
-              color: AarastV3Color.lilac,
+              color: context.accent.primary,
               onPressed: () =>
                   context.push(AppRouter.guestInvite(widget.weddingPlanId)),
             ),
@@ -288,14 +288,14 @@ class _GuestListScreenState extends State<GuestListScreen> {
                 key: const ValueKey('guests-from-contacts'),
                 label: 'من جهات الاتصال',
                 icon: LucideIcons.contact,
-                color: AarastV3Color.lilac,
+                color: context.accent.primary,
                 onPressed: () => _openImport(contacts: true),
               ),
             JourneyTextAction(
               key: const ValueKey('guests-paste-list'),
               label: context.say('الصق قائمة', 'الصقي قائمة'),
               icon: LucideIcons.clipboardList,
-              color: AarastV3Color.lilac,
+              color: context.accent.primary,
               onPressed: () => _openImport(contacts: false),
             ),
           ],
@@ -306,7 +306,7 @@ class _GuestListScreenState extends State<GuestListScreen> {
           action: _isLocalPlan ? null : 'المجموعات',
           onAction: _isLocalPlan ? null : _showGroupsSheet,
           // The guests' own colour, as e01 draws the section's link.
-          actionColor: AarastV3Color.lilac,
+          actionColor: context.accent.primary,
         ),
         JourneyBox(
           padding: EdgeInsets.zero,
@@ -380,7 +380,7 @@ class _GuestListScreenState extends State<GuestListScreen> {
             key: const ValueKey('guest-group-back'),
             label: 'كل العائلات',
             icon: LucideIcons.chevronRight,
-            color: AarastV3Color.lilac,
+            color: context.accent.primary,
             onPressed: () => setState(() => _openGroup = null),
           ),
         ),
@@ -401,7 +401,7 @@ class _GuestListScreenState extends State<GuestListScreen> {
                   label:
                       '${filter.labelFor(words)} ${_filtered(inGroup, filter).length}',
                   selected: _reply == filter,
-                  selectedColor: AarastV3Color.lilac,
+                  selectedColor: context.accent.primary,
                   onTap: () => setState(() => _reply = filter),
                 ),
                 const SizedBox(width: 8),

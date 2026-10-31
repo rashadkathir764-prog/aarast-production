@@ -59,8 +59,8 @@ class TaskPostponeSheet extends StatelessWidget {
                 JourneyListRow(
                   key: ValueKey('task-postpone-$label'),
                   icon: LucideIcons.calendarClock,
-                  color: AarastV3Color.brandAccentStrong,
-                  soft: AarastV3Color.brandAccentSoft,
+                  color: context.accent.primary,
+                  soft: context.accent.primarySoft,
                   title: label,
                   subtitle: formatArabicWeekdayDayMonth(date),
                   onTap: () => Navigator.pop(context, date),

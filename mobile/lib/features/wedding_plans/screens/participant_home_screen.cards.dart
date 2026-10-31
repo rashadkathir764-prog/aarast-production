@@ -450,8 +450,8 @@ class _TaskLine extends StatelessWidget {
     final guests = task.taskCategory == 'GUESTS';
     return JourneyListRow(
       icon: taskCategoryIcon(task.taskCategory),
-      color: guests ? AarastV3Color.lilac : AarastV3Color.brandAccentStrong,
-      soft: guests ? AarastV3Color.lilacSoft : AarastV3Color.brandAccentSoft,
+      color: guests ? context.accent.primary : AarastV3Color.brandAccentStrong,
+      soft: guests ? context.accent.primarySoft : AarastV3Color.brandAccentSoft,
       title: task.title,
       subtitle: subtitle ?? taskWhenLabel(task),
       trailing: trailing,

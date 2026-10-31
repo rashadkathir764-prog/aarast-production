@@ -114,8 +114,8 @@ class _GuestGroupsSheetState extends State<GuestGroupsSheet> {
                 JourneyListRow(
                   key: ValueKey('guest-group-${group.id}'),
                   icon: LucideIcons.users,
-                  color: AarastV3Color.lilac,
-                  soft: AarastV3Color.lilacSoft,
+                  color: context.accent.primary,
+                  soft: context.accent.primarySoft,
                   title: group.name,
                   subtitle: count(widget.guestCounts[group.id] ?? 0),
                   onTap: widget.saving ? null : () => _rename(group),

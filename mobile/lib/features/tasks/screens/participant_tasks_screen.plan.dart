@@ -133,7 +133,7 @@ class _PlanRow extends StatelessWidget {
               JourneyAvatar(
                 letter: letter,
                 color: read.assignee == PlanReadAssignee.you
-                    ? AarastV3Color.brandAccentStrong
+                    ? context.accent.primary
                     : AarastV3Color.primary,
               ),
             ],

@@ -26,7 +26,7 @@ class _NameDateStep extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final name = controller.text.trim();
-    final today = DateUtils.dateOnly(DateTime.now());
+    final today = DateUtils.dateOnly(appNow());
     final months = [
       for (var i = 0; i < 6; i++) DateTime(today.year, today.month + i),
     ];

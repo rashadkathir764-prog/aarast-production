@@ -10,7 +10,7 @@ class _MonthsTimeline extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final now = DateTime.now();
+    final now = appNow();
     final months = <DateTime, List<WeddingTask>>{};
     final undated = <WeddingTask>[];
     for (final task in tasks) {

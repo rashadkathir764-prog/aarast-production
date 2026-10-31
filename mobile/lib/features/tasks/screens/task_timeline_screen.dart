@@ -7,6 +7,7 @@ import 'package:provider/provider.dart';
 
 import '../../../core/experience_v3/aarast_v3.dart';
 import '../../../core/routing/app_router.dart';
+import '../../../core/utils/app_clock.dart';
 import '../../../core/utils/arabic_count.dart';
 import '../../../core/utils/arabic_date_formatter.dart';
 import '../../../core/widgets/aarast_share_sheet.dart';
@@ -93,7 +94,7 @@ class _TaskTimelineScreenState extends State<TaskTimelineScreen> {
     final userId = user?.id;
     final selfName = user?.name.trim() ?? '';
     final selfLetter = selfName.isEmpty ? 'أ' : selfName.characters.first;
-    final today = DateTime.now();
+    final today = appNow();
     final tasks = provider.tasks
         .where((task) => task.weddingPlanId == widget.weddingPlanId)
         .map((task) => _hydrateTaskParticipant(task, members))
@@ -387,7 +388,7 @@ class _TaskTimelineScreenState extends State<TaskTimelineScreen> {
       buildText: (_) => taskShareText(
         tasks,
         planTitle: name.isEmpty ? 'خطتنا' : name,
-        today: DateTime.now(),
+        today: appNow(),
       ),
     );
   }

@@ -14,12 +14,14 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:aarast_mobile/core/storage/auth_storage.dart';
 import 'package:aarast_mobile/core/theme/app_theme.dart';
+import 'package:aarast_mobile/core/utils/app_clock.dart';
 import 'package:aarast_mobile/features/onboarding/data/guest_onboarding_storage.dart';
 import 'package:aarast_mobile/features/welcome_gateway/screens/smart_welcome_screen.dart';
 
 import 'support/preview_fonts.dart';
 
 Future<void> _pumpGateway(WidgetTester tester) async {
+  pinAppClock(DateTime(2026, 10, 26, 12));
   SharedPreferences.setMockInitialValues({});
   final prefs = await SharedPreferences.getInstance();
 

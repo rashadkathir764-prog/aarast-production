@@ -8,6 +8,7 @@ import '../../../core/experience_v3/aarast_v3.dart';
 import '../../../core/routing/app_router.dart';
 import '../../../core/storage/auth_storage.dart';
 import '../../../core/utils/amount_words.dart';
+import '../../../core/utils/app_clock.dart';
 import '../../../core/utils/arabic_count.dart';
 import '../../../core/utils/arabic_date_formatter.dart';
 import '../../../core/utils/hijri_date.dart';
@@ -495,7 +496,7 @@ class _SmartWelcomeScreenState extends State<SmartWelcomeScreen> {
       builder: (sheetContext) => _DaySheet(
         month: DateTime(month.year, month.month),
         selected: _date,
-        today: DateUtils.dateOnly(DateTime.now()),
+        today: DateUtils.dateOnly(appNow()),
       ),
     );
     if (picked == null || !mounted) return;

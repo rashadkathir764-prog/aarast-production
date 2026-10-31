@@ -1,3 +1,0 @@
-# bcryptjs timing on the evaluation machine (4 cores), 10 hashes each, 2026-10-26T15:21:23Z
-cost 10: 96.1 ms per hash (JS on the event loop thread)
-cost 12: 326.6 ms per hash (JS on the event loop thread)

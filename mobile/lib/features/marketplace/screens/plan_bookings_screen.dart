@@ -71,7 +71,9 @@ class _PlanBookingsScreenState extends State<PlanBookingsScreen> {
           ),
           if (booked.isEmpty)
             JourneyListState(
-              phase: marketplace.quoteRequestsErrorMessage != null
+              phase: marketplace.isLoadingQuoteRequests
+                  ? JourneyListPhase.loading
+                  : marketplace.quoteRequestsErrorMessage != null
                   ? JourneyListPhase.error
                   : JourneyListPhase.empty,
               section: JourneySection.providers,

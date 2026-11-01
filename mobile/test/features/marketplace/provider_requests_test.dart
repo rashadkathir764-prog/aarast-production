@@ -25,7 +25,8 @@ const _photo = MarketplaceService(
   id: 'service-photo',
   providerId: 'p1',
   title: 'صور وفيديو',
-  category: ProviderCategory(id: 'cat-photo', nameAr: 'تصوير'),  isActive: true,
+  category: ProviderCategory(id: 'cat-photo', nameAr: 'تصوير'),
+  isActive: true,
 );
 
 QuoteRequest _offer(
@@ -122,46 +123,53 @@ void main() {
       (id: 'mahr', name: 'المهر', providerCategoryIds: <String>[]),
     ];
 
-    test('G40: an item is a service by its server categories, not its name', () {
-      final rows = buildProviderBoard(
-        items: const [
-          (id: 'incense', name: 'البخور', providerCategoryIds: ['cat-perfume']),
-          (
-            id: 'naqsh',
-            name: 'المزينة والنقاشة',
-            providerCategoryIds: ['cat-henna'],
-          ),
-          (id: 'subhia', name: 'الصبحية', providerCategoryIds: <String>[]),
-        ],
-        costs: const [],
-        costItemById: const {},
-        quotes: [
-          QuoteRequest(
-            id: 'q5',
-            providerId: 'provider-q5',
-            weddingPlanId: 'plan-1',
-            status: 'SENT',
-            lifecycleStatus: 'PENDING_PROVIDER',
-            provider: const ProviderSummary(
-              id: 'provider-q5',
-              businessName: 'عطور الريان',
-              ratingAverage: 0,
-              ratingCount: 0,
+    test(
+      'G40: an item is a service by its server categories, not its name',
+      () {
+        final rows = buildProviderBoard(
+          items: const [
+            (
+              id: 'incense',
+              name: 'البخور',
+              providerCategoryIds: ['cat-perfume'],
             ),
-            service: const MarketplaceService(
-              id: 'service-oud',
+            (
+              id: 'naqsh',
+              name: 'المزينة والنقاشة',
+              providerCategoryIds: ['cat-henna'],
+            ),
+            (id: 'subhia', name: 'الصبحية', providerCategoryIds: <String>[]),
+          ],
+          costs: const [],
+          costItemById: const {},
+          quotes: [
+            QuoteRequest(
+              id: 'q5',
               providerId: 'provider-q5',
-              title: 'بخور وعود',
-              category: ProviderCategory(id: 'cat-perfume', nameAr: 'عطور'),
-              isActive: true,
+              weddingPlanId: 'plan-1',
+              status: 'SENT',
+              lifecycleStatus: 'PENDING_PROVIDER',
+              provider: const ProviderSummary(
+                id: 'provider-q5',
+                businessName: 'عطور الريان',
+                ratingAverage: 0,
+                ratingCount: 0,
+              ),
+              service: const MarketplaceService(
+                id: 'service-oud',
+                providerId: 'provider-q5',
+                title: 'بخور وعود',
+                category: ProviderCategory(id: 'cat-perfume', nameAr: 'عطور'),
+                isActive: true,
+              ),
             ),
-          ),
-        ],
-      );
-      expect(rows.map((row) => row.title), ['البخور', 'المزينة والنقاشة']);
-      expect(rows.first.stage, 1);
-      expect(rows.last.providerCategoryIds, ['cat-henna']);
-    });
+          ],
+        );
+        expect(rows.map((row) => row.title), ['البخور', 'المزينة والنقاشة']);
+        expect(rows.first.stage, 1);
+        expect(rows.last.providerCategoryIds, ['cat-henna']);
+      },
+    );
 
     test('rows are the wedding services, with how far each got', () {
       final rows = buildProviderBoard(
@@ -193,7 +201,11 @@ void main() {
       final rows = buildProviderBoard(
         items: items,
         costs: const [
-          (budgetCategoryId: 'photo', providerId: 'provider-q1', partyName: null),
+          (
+            budgetCategoryId: 'photo',
+            providerId: 'provider-q1',
+            partyName: null,
+          ),
         ],
         costItemById: const {'cost-q1': 'photo'},
         quotes: [
@@ -216,8 +228,10 @@ void main() {
         costItemById: const {},
         quotes: [_waiting('q3', 'أ'), _waiting('q4', 'ب')],
       );
-      expect(rows.firstWhere((row) => row.key == 'photo').detail,
-          'طلبت من اثنين · ينتظر الرد');
+      expect(
+        rows.firstWhere((row) => row.key == 'photo').detail,
+        'طلبت من اثنين · ينتظر الرد',
+      );
       final booked = buildProviderBoard(
         items: items,
         costs: const [],
@@ -230,33 +244,37 @@ void main() {
     });
   });
 
-  testWidgets('f04 two offers side by side; choosing one asks for the booking', (
-    tester,
-  ) async {
-    final h = await _pump(tester, [
-      _offer('q1', 'ضوء صنعاء', '550000'),
-      _offer('q2', 'عدسة سبأ', '480000'),
-    ]);
+  testWidgets(
+    'f04 two offers side by side; choosing one asks for the booking',
+    (tester) async {
+      final h = await _pump(tester, [
+        _offer('q1', 'ضوء صنعاء', '550000'),
+        _offer('q2', 'عدسة سبأ', '480000'),
+      ]);
 
-    expect(find.text('قارن عروض التصوير'), findsOneWidget);
-    expect(find.byKey(const ValueKey('requests-offer-q1')), findsOneWidget);
-    expect(find.byKey(const ValueKey('requests-offer-q2')), findsOneWidget);
-    expect(find.text('فيلم 10 دقائق'), findsNWidgets(2));
-    expect(find.byKey(const ValueKey('requests-choose-note')), findsOneWidget);
+      expect(find.text('قارن عروض التصوير'), findsOneWidget);
+      expect(find.byKey(const ValueKey('requests-offer-q1')), findsOneWidget);
+      expect(find.byKey(const ValueKey('requests-offer-q2')), findsOneWidget);
+      expect(find.text('فيلم 10 دقائق'), findsNWidgets(2));
+      expect(
+        find.byKey(const ValueKey('requests-choose-note')),
+        findsOneWidget,
+      );
 
-    await tester.tap(find.byKey(const ValueKey('requests-choose-q1')));
-    await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const ValueKey('requests-choose-q1')));
+      await tester.pumpAndSettle();
 
-    expect(h.marketplace.acceptedQuoteIds, ['q1']);
-    // Money reloads with the cost the server created from the offer.
-    expect(h.finance.loadedPlanId, 'plan-1');
-    // f05 opens on the request's day.
-    expect(find.text('نطلب الحجز؟'), findsOneWidget);
-    expect(find.byKey(const ValueKey('booking-no-payment')), findsOneWidget);
-    await tester.tap(find.byKey(const ValueKey('booking-request')));
-    await tester.pumpAndSettle();
-    expect(h.marketplace.bookingDays, [DateTime(2027, 1, 21)]);
-  });
+      expect(h.marketplace.acceptedQuoteIds, ['q1']);
+      // Money reloads with the cost the server created from the offer.
+      expect(h.finance.loadedPlanId, 'plan-1');
+      // f05 opens on the request's day.
+      expect(find.text('نطلب الحجز؟'), findsOneWidget);
+      expect(find.byKey(const ValueKey('booking-no-payment')), findsOneWidget);
+      await tester.tap(find.byKey(const ValueKey('booking-request')));
+      await tester.pumpAndSettle();
+      expect(h.marketplace.bookingDays, [DateTime(2027, 1, 21)]);
+    },
+  );
 
   testWidgets('x10 the polite message goes first, then the offer is declined', (
     tester,
@@ -279,11 +297,9 @@ void main() {
   testWidgets('x10 nothing is declined when the message did not arrive', (
     tester,
   ) async {
-    final h = await _pump(
-      tester,
-      [_offer('q1', 'ضوء صنعاء', '550000')],
-      chatFails: true,
-    );
+    final h = await _pump(tester, [
+      _offer('q1', 'ضوء صنعاء', '550000'),
+    ], chatFails: true);
 
     await tester.tap(find.byKey(const ValueKey('requests-decline-q1')));
     await tester.pumpAndSettle();
@@ -292,6 +308,42 @@ void main() {
 
     expect(h.marketplace.rejectedQuoteIds, isEmpty);
     expect(find.text('ما وصلت رسالتك. جرّب مرة ثانية.'), findsOneWidget);
+  });
+
+  testWidgets('x10 a refused decline keeps the words and sends them once', (
+    tester,
+  ) async {
+    final marketplace = _Marketplace([_offer('q1', 'ضوء صنعاء', '550000')])
+      ..refuseDeclines = 1;
+    final h = await _pump(tester, const [], marketplace: marketplace);
+
+    await tester.tap(find.byKey(const ValueKey('requests-decline-q1')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('decline-edit')));
+    await tester.pumpAndSettle();
+    await tester.enterText(
+      find.descendant(
+        of: find.byKey(const ValueKey('decline-message')),
+        matching: find.byType(EditableText),
+      ),
+      'شكرًا لكم، لقينا قاعة أقرب',
+    );
+    await tester.tap(find.byKey(const ValueKey('decline-send')));
+    await tester.pumpAndSettle();
+
+    // The message arrived, the decline did not: the sheet stays with the
+    // groom's own words.
+    expect(h.chat.sent, ['شكرًا لكم، لقينا قاعة أقرب']);
+    expect(h.marketplace.rejectedQuoteIds, isEmpty);
+    expect(find.text('ما يناسبك العرض؟'), findsOneWidget);
+    expect(find.text('شكرًا لكم، لقينا قاعة أقرب'), findsOneWidget);
+
+    // Trying again records the decline without a second message.
+    await tester.tap(find.byKey(const ValueKey('decline-send')));
+    await tester.pumpAndSettle();
+    expect(h.chat.sent, hasLength(1));
+    expect(h.marketplace.rejectedQuoteIds, ['q1']);
+    expect(find.text('ما يناسبك العرض؟'), findsNothing);
   });
 
   testWidgets('waiting and expired requests: no decisions, ask again', (
@@ -364,7 +416,9 @@ void main() {
     expect(find.byKey(const ValueKey('requests-waiting-q7')), findsNothing);
   });
 
-  testWidgets('the chosen provider: book, see the cost in money', (tester) async {
+  testWidgets('the chosen provider: book, see the cost in money', (
+    tester,
+  ) async {
     final h = await _pump(tester, [_accepted()]);
 
     expect(find.text('باقي تطلب منهم حجز يوم عرسك'), findsOneWidget);
@@ -391,21 +445,26 @@ void main() {
     expect(find.byKey(const ValueKey('requests-book-q1')), findsNothing);
   });
 
-  testWidgets('a confirmed booking can be cancelled after seeing what happens', (
-    tester,
-  ) async {
-    final h = await _pump(tester, [_accepted(booking: _booking('CONFIRMED'))]);
+  testWidgets(
+    'a confirmed booking can be cancelled after seeing what happens',
+    (tester) async {
+      final h = await _pump(tester, [
+        _accepted(booking: _booking('CONFIRMED')),
+      ]);
 
-    expect(find.text('محجوز'), findsOneWidget);
-    await tester.tap(find.byKey(const ValueKey('requests-cancel-booking-q1')));
-    await tester.pumpAndSettle();
-    expect(find.text('يوصلهم إن الحجز انلغى'), findsOneWidget);
-    await tester.tap(
-      find.byKey(const ValueKey('requests-cancel-booking-confirm')),
-    );
-    await tester.pumpAndSettle();
-    expect(h.marketplace.cancelledBookings, ['q1']);
-  });
+      expect(find.text('محجوز'), findsOneWidget);
+      await tester.tap(
+        find.byKey(const ValueKey('requests-cancel-booking-q1')),
+      );
+      await tester.pumpAndSettle();
+      expect(find.text('يوصلهم إن الحجز انلغى'), findsOneWidget);
+      await tester.tap(
+        find.byKey(const ValueKey('requests-cancel-booking-confirm')),
+      );
+      await tester.pumpAndSettle();
+      expect(h.marketplace.cancelledBookings, ['q1']);
+    },
+  );
 
   testWidgets('after the day, the groom rates the provider', (tester) async {
     await _pump(tester, [
@@ -422,7 +481,9 @@ void main() {
     await tester.tap(find.byKey(const ValueKey('requests-rate-q1')));
     await tester.pumpAndSettle();
     expect(
-      find.text('opened /wedding-plans/plan-1/providers/reviews?provider=provider-q1'),
+      find.text(
+        'opened /wedding-plans/plan-1/providers/reviews?provider=provider-q1',
+      ),
       findsOneWidget,
     );
   });
@@ -551,7 +612,8 @@ Future<_Harness> _pump(
         ),
       ),
     ],
-    errorBuilder: (context, state) => Scaffold(body: Text('opened ${state.uri}')),
+    errorBuilder: (context, state) =>
+        Scaffold(body: Text('opened ${state.uri}')),
   );
   addTearDown(router.dispose);
   await tester.pumpWidget(
@@ -631,8 +693,15 @@ class _Marketplace extends ProviderMarketplaceProvider {
     return true;
   }
 
+  /// How many declines the server refuses before taking one.
+  int refuseDeclines = 0;
+
   @override
   Future<bool> rejectQuote(QuoteRequest quote, {String? reason}) async {
+    if (refuseDeclines > 0) {
+      refuseDeclines -= 1;
+      return false;
+    }
     rejectedQuoteIds.add(quote.id);
     return true;
   }

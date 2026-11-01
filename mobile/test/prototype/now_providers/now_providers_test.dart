@@ -70,7 +70,8 @@ MarketplaceService _svc(
 ) => MarketplaceService(
   id: id,
   providerId: providerId,
-  title: title,  isActive: true,
+  title: title,
+  isActive: true,
   category: cat,
   basePrice: price,
   currency: 'YER',
@@ -90,7 +91,13 @@ final _saba = MarketplaceProvider(
   phone: '777000111',
   verifiedAt: DateTime(2026, 3, 1),
   services: [
-    _svc('s-saba-1', 'p-saba', 'القاعة الكبرى · ليلة الزفاف', _halls, '1500000'),
+    _svc(
+      's-saba-1',
+      'p-saba',
+      'القاعة الكبرى · ليلة الزفاف',
+      _halls,
+      '1500000',
+    ),
   ],
   serviceSummary: MarketplaceProviderServiceSummary(
     activeCount: 1,
@@ -108,7 +115,8 @@ final _light = MarketplaceProvider(
   businessName: 'استوديو ضوء صنعاء',
   ownerName: 'ياسر',
   ratingAverage: 4.8,
-  ratingCount: 63,  city: _sanaa,
+  ratingCount: 63,
+  city: _sanaa,
   primaryCategory: _photo,
   address: 'حدة',
   phone: '777000222',
@@ -141,7 +149,8 @@ final _afrah = MarketplaceProvider(
   businessName: 'فرقة الأفراح',
   ownerName: 'أبو صالح',
   ratingAverage: 4.9,
-  ratingCount: 88,  city: _sanaa,
+  ratingCount: 88,
+  city: _sanaa,
   primaryCategory: _band,
   verifiedAt: DateTime(2026, 2, 1),
   services: [_svc('s-afrah-1', 'p-afrah', 'زفة وفرقة كاملة', _band, '400000')],
@@ -160,7 +169,8 @@ final _asala = MarketplaceProvider(
   businessName: 'ضيافة الأصالة',
   ownerName: 'علي',
   ratingAverage: 4.5,
-  ratingCount: 30,  city: _sanaa,
+  ratingCount: 30,
+  city: _sanaa,
   primaryCategory: _food,
   services: [_svc('s-asala-1', 'p-asala', 'عشاء 124 شخص', _food, '900000')],
   serviceSummary: const MarketplaceProviderServiceSummary(
@@ -178,7 +188,8 @@ const _hara = MarketplaceProvider(
   businessName: 'مصور الحارة',
   ownerName: '',
   ratingAverage: 0,
-  ratingCount: 0,  city: _sanaa,
+  ratingCount: 0,
+  city: _sanaa,
   primaryCategory: _photo,
   isClaimed: false,
 );
@@ -446,7 +457,7 @@ class _Market extends ProviderMarketplaceProvider {
   @override
   Future<void> setSearch(String value) async {}
   @override
-  Future<void> toggleFavorite(String providerId) async {}
+  Future<String?> toggleFavorite(String providerId) async => null;
   @override
   Future<void> loadScopedQuoteRequests() async {}
   @override
@@ -593,7 +604,8 @@ Map<String, dynamic> _conv(
 };
 
 class _Chat extends ChatApi {
-  _Chat({this.empty = false}) : super(ApiClient(tokenProvider: () async => null));
+  _Chat({this.empty = false})
+    : super(ApiClient(tokenProvider: () async => null));
   final bool empty;
 
   List<ChatConversation> get _items => empty
@@ -680,12 +692,7 @@ class _Chat extends ChatApi {
           '2026-10-20T07:40:00Z',
         ),
         ev('e2', 'QUOTE_OFFER_RECEIVED', '2026-10-20T07:41:00Z'),
-        msg(
-          'm3',
-          'user-1',
-          'ممكن تضيفون تصوير جوي؟',
-          '2026-10-20T08:02:00Z',
-        ),
+        msg('m3', 'user-1', 'ممكن تضيفون تصوير جوي؟', '2026-10-20T08:02:00Z'),
       ],
     });
   }
@@ -1035,7 +1042,9 @@ void main() {
       ),
       await _session(m),
       act: () async {
-        final key = find.byKey(const ValueKey('requests-cancel-booking-q-asala'));
+        final key = find.byKey(
+          const ValueKey('requests-cancel-booking-q-asala'),
+        );
         await tester.ensureVisible(key);
         await tester.pump(const Duration(milliseconds: 300));
         await tester.tap(key);
@@ -1080,7 +1089,10 @@ void main() {
     await _shot(
       tester,
       'details',
-      const ProviderDetailsScreen(providerId: 'p-light', weddingPlanId: 'plan-1'),
+      const ProviderDetailsScreen(
+        providerId: 'p-light',
+        weddingPlanId: 'plan-1',
+      ),
       await _session(m),
       h: 1000,
     );
@@ -1152,13 +1164,7 @@ void main() {
   testWidgets('chat thread', (tester) async {
     final m = _Market();
     final providers = await _session(m);
-    await _shot(
-      tester,
-      'chat',
-      const _ChatHost(),
-      providers,
-      h: 844,
-    );
+    await _shot(tester, 'chat', const _ChatHost(), providers, h: 844);
   });
 
   testWidgets('chat menu', (tester) async {
@@ -1198,7 +1204,6 @@ class _ChatHostState extends State<_ChatHost> {
   }
 
   @override
-  Widget build(BuildContext context) => ready
-      ? const ChatScreen(conversationId: 'c-light')
-      : const SizedBox();
+  Widget build(BuildContext context) =>
+      ready ? const ChatScreen(conversationId: 'c-light') : const SizedBox();
 }

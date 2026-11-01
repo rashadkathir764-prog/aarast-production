@@ -206,7 +206,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                   now: now,
                   plain: true,
                   onTap: () => _openNotification(provider, notification),
-                  onArchive: () => provider.archiveNotification(notification),
+                  onArchive: () => _archive(provider, notification),
                 ),
             ],
           ),
@@ -250,7 +250,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                     notification: notification,
                     now: now,
                     onTap: () => _openNotification(provider, notification),
-                    onArchive: () => provider.archiveNotification(notification),
+                    onArchive: () => _archive(provider, notification),
                   ),
               ],
             ),
@@ -353,13 +353,27 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
       );
       return;
     }
-    final marked = await provider.markRead(notification);
-    if (!mounted || !marked) return;
+    // Being marked read is secondary: a failure (offline) still opens what
+    // the notification points to, and it stays unread to be marked later.
+    await provider.markRead(notification);
+    if (!mounted) return;
     if (isPlanShellNotificationRouteTarget(target)) {
       context.go(target);
       return;
     }
     await context.push(target);
+  }
+
+  Future<void> _archive(
+    NotificationsProvider provider,
+    AarastNotification notification,
+  ) async {
+    final archived = await provider.archiveNotification(notification);
+    if (archived || !mounted) return;
+    AarastToast.showError(
+      context,
+      provider.errorMessage ?? 'ما قدرنا نشيل التنبيه',
+    );
   }
 
   bool _isNotificationTargetCompatible(String target) {

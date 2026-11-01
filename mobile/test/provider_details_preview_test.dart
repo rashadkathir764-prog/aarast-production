@@ -43,7 +43,8 @@ MarketplaceProvider _provider() {
       MarketplaceService(
         id: 'svc-1',
         providerId: _providerId,
-        title: 'الباقة الماسية للقاعة الكبرى',        isActive: true,
+        title: 'الباقة الماسية للقاعة الكبرى',
+        isActive: true,
         category: ProviderCategory(id: 'cat-venue', nameAr: 'صالات'),
         basePrice: '35000',
         currency: 'SAR',
@@ -51,7 +52,8 @@ MarketplaceProvider _provider() {
       MarketplaceService(
         id: 'svc-2',
         providerId: _providerId,
-        title: 'الباقة الفضية للمناسبات الصغيرة',        isActive: true,
+        title: 'الباقة الفضية للمناسبات الصغيرة',
+        isActive: true,
         category: ProviderCategory(id: 'cat-venue', nameAr: 'صالات'),
         basePrice: '15000',
         currency: 'SAR',
@@ -138,7 +140,7 @@ class _PreviewMarketplaceProvider extends ProviderMarketplaceProvider {
   }) async {}
 
   @override
-  Future<void> toggleFavorite(String providerId) async {}
+  Future<String?> toggleFavorite(String providerId) async => null;
 }
 
 void main() {

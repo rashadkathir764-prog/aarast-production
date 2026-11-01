@@ -95,63 +95,62 @@ void main() {
     },
   );
 
-  testWidgets(
-    'a board row opens its service page once per launch',
-    (tester) async {
-      final state = _FakeMarketplaceProvider(
-        quoteRequests: const [
-          QuoteRequest(
-            id: 'quote-user-1',
-            providerId: 'provider-1',
-            weddingPlanId: 'plan-1',
-            status: 'SENT',
-            lifecycleStatus: 'PENDING_PROVIDER',
-            provider: ProviderSummary(
-              id: 'provider-1',
-              businessName: 'استديو وعد',
-              ratingAverage: 0,
-              ratingCount: 0,
-            ),
+  testWidgets('a board row opens its service page once per launch', (
+    tester,
+  ) async {
+    final state = _FakeMarketplaceProvider(
+      quoteRequests: const [
+        QuoteRequest(
+          id: 'quote-user-1',
+          providerId: 'provider-1',
+          weddingPlanId: 'plan-1',
+          status: 'SENT',
+          lifecycleStatus: 'PENDING_PROVIDER',
+          provider: ProviderSummary(
+            id: 'provider-1',
+            businessName: 'استديو وعد',
+            ratingAverage: 0,
+            ratingCount: 0,
           ),
-        ],
-      );
-
-      await _pumpMarketplace(
-        tester,
-        state,
-        authenticated: true,
-        withRouter: true,
-      );
-
-      await tester.tap(
-        find.descendant(
-          of: find.byKey(const ValueKey('providers-tabs')),
-          matching: find.text('طلباتي'),
         ),
-      );
-      await tester.pumpAndSettle();
-      final row = find.byKey(
-        const ValueKey('provider-board-category:استديو وعد'),
-      );
-      expect(row, findsOneWidget);
-      final inkWell = tester.widget<InkWell>(
-        find.descendant(of: row, matching: find.byType(InkWell)).first,
-      );
-      inkWell.onTap!();
-      inkWell.onTap!();
-      await tester.pumpAndSettle();
+      ],
+    );
 
-      expect(find.textContaining('requests-item='), findsOneWidget);
-      final router = GoRouter.of(
-        tester.element(find.textContaining('requests-item=')),
-      );
-      router.pop();
-      await tester.pumpAndSettle();
-      expect(find.byType(ProviderMarketplaceScreen), findsOneWidget);
-      expect(find.textContaining('requests-item='), findsNothing);
-      expect(tester.takeException(), isNull);
-    },
-  );
+    await _pumpMarketplace(
+      tester,
+      state,
+      authenticated: true,
+      withRouter: true,
+    );
+
+    await tester.tap(
+      find.descendant(
+        of: find.byKey(const ValueKey('providers-tabs')),
+        matching: find.text('طلباتي'),
+      ),
+    );
+    await tester.pumpAndSettle();
+    final row = find.byKey(
+      const ValueKey('provider-board-category:استديو وعد'),
+    );
+    expect(row, findsOneWidget);
+    final inkWell = tester.widget<InkWell>(
+      find.descendant(of: row, matching: find.byType(InkWell)).first,
+    );
+    inkWell.onTap!();
+    inkWell.onTap!();
+    await tester.pumpAndSettle();
+
+    expect(find.textContaining('requests-item='), findsOneWidget);
+    final router = GoRouter.of(
+      tester.element(find.textContaining('requests-item=')),
+    );
+    router.pop();
+    await tester.pumpAndSettle();
+    expect(find.byType(ProviderMarketplaceScreen), findsOneWidget);
+    expect(find.textContaining('requests-item='), findsNothing);
+    expect(tester.takeException(), isNull);
+  });
 
   testWidgets(
     'Super 5 providers tab is public and does not render fake provider facts',
@@ -307,39 +306,42 @@ void main() {
     expect(find.byKey(const Key('marketplace-search-field')), findsNothing);
   });
 
-  testWidgets('f02 on an item shows its note, then cards that say where they stand', (
-    tester,
-  ) async {
-    final state = _FakeMarketplaceProvider(
-      providers: [
-        _provider(
-          id: 'provider-1',
-          businessName: 'قاعة السلام',
-          services: [_service(title: 'قاعة كبيرة', basePrice: '450000')],
+  testWidgets(
+    'f02 on an item shows its note, then cards that say where they stand',
+    (tester) async {
+      final state = _FakeMarketplaceProvider(
+        providers: [
+          _provider(
+            id: 'provider-1',
+            businessName: 'قاعة السلام',
+            services: [_service(title: 'قاعة كبيرة', basePrice: '450000')],
+          ),
+        ],
+        categories: const [
+          ProviderCategory(id: 'cat-venue', nameAr: 'القاعات'),
+        ],
+        budgetMatchIntent: const ProviderBudgetMatchIntent(
+          budgetCategoryName: 'الصالة',
+          allocatedAmount: '300000',
         ),
-      ],
-      categories: const [ProviderCategory(id: 'cat-venue', nameAr: 'القاعات')],
-      budgetMatchIntent: const ProviderBudgetMatchIntent(
-        budgetCategoryName: 'الصالة',
-        allocatedAmount: '300000',
-      ),
-    );
+      );
 
-    await _pumpMarketplace(tester, state);
+      await _pumpMarketplace(tester, state);
 
-    expect(find.textContaining('قريبين من بند الصالة'), findsOneWidget);
-    await tester.scrollUntilVisible(
-      find.text('450,000 ر.ي'),
-      320,
-      scrollable: find.byType(Scrollable).first,
-    );
-    expect(find.text('أعلى من بندك'), findsOneWidget);
-    // Not in the prototype: a second list of services, its fallback note,
-    // and a results count above the cards.
-    expect(find.text('خدمات قريبة من بندك'), findsNothing);
-    expect(find.textContaining('ما لقينا سعر منشور'), findsNothing);
-    expect(find.textContaining('مزود واحد'), findsNothing);
-  });
+      expect(find.textContaining('قريبين من بند الصالة'), findsOneWidget);
+      await tester.scrollUntilVisible(
+        find.text('450,000 ر.ي'),
+        320,
+        scrollable: find.byType(Scrollable).first,
+      );
+      expect(find.text('أعلى من بندك'), findsOneWidget);
+      // Not in the prototype: a second list of services, its fallback note,
+      // and a results count above the cards.
+      expect(find.text('خدمات قريبة من بندك'), findsNothing);
+      expect(find.textContaining('ما لقينا سعر منشور'), findsNothing);
+      expect(find.textContaining('مزود واحد'), findsNothing);
+    },
+  );
 
   testWidgets('provider card opens the provider details screen', (
     tester,
@@ -889,7 +891,8 @@ MarketplaceProvider _provider({
     businessName: businessName,
     ownerName: 'owner',
     ratingAverage: 0,
-    ratingCount: 0,    city: city,
+    ratingCount: 0,
+    city: city,
     services: services,
   );
 }
@@ -902,7 +905,8 @@ MarketplaceService _service({
   return MarketplaceService(
     id: 'service-$title',
     providerId: 'provider-1',
-    title: title,    isActive: true,
+    title: title,
+    isActive: true,
     category: const ProviderCategory(id: 'cat-venue', nameAr: 'القاعات'),
     basePrice: basePrice,
     city: city,
@@ -1054,7 +1058,7 @@ class _FakeMarketplaceProvider extends ProviderMarketplaceProvider {
   }
 
   @override
-  Future<void> toggleFavorite(String providerId) async {}
+  Future<String?> toggleFavorite(String providerId) async => null;
 }
 
 class _AuthenticatedAuthController extends AuthController {

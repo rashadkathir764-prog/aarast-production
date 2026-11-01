@@ -352,10 +352,26 @@ extension _ProviderTabs on _ProviderMarketplaceScreenState {
         .toList();
     final picked = _comparePicks(favorites);
     final bottomGap = widget.embedded ? 124.0 : 28.0;
+    final listPadding = EdgeInsets.fromLTRB(16, 14, 16, bottomGap);
     if (favorites.isEmpty) {
+      // Saved hearts that could not be read are not «nothing saved».
+      final failed = marketplace.favoriteProvidersErrorMessage != null;
+      if (failed || marketplace.isLoading) {
+        return ListView(
+          key: const PageStorageKey('providers-favorites'),
+          padding: listPadding,
+          children: [
+            JourneyListState(
+              phase: failed ? JourneyListPhase.error : JourneyListPhase.loading,
+              section: JourneySection.providers,
+              onRetry: marketplace.loadFavoriteProviders,
+            ),
+          ],
+        );
+      }
       return ListView(
         key: const PageStorageKey('providers-favorites'),
-        padding: EdgeInsets.fromLTRB(16, 14, 16, bottomGap),
+        padding: listPadding,
         children: [
           JourneyBox(
             key: const ValueKey('providers-favorites-empty'),

@@ -206,9 +206,15 @@ class _BookingRequestSheetState extends State<BookingRequestSheet> {
 typedef DeclineOfferChoice = ({String message, String reason});
 
 class DeclineOfferSheet extends StatefulWidget {
-  const DeclineOfferSheet({required this.quote, super.key});
+  const DeclineOfferSheet({required this.quote, this.onSend, super.key});
 
   final QuoteRequest quote;
+
+  /// Sends the choice: null once done, or why not. The sheet closes only
+  /// once done, so a failure keeps the reason and the words as edited, and
+  /// it takes no second tap while sending. Without it the sheet only
+  /// returns the choice.
+  final Future<String?> Function(DeclineOfferChoice choice)? onSend;
 
   @override
   State<DeclineOfferSheet> createState() => _DeclineOfferSheetState();
@@ -227,6 +233,8 @@ class _DeclineOfferSheetState extends State<DeclineOfferSheet> {
   static const _reasonCodes = ['PRICE', 'CHOSE_OTHER', 'DATE', 'NONE'];
   int _reason = 0;
   bool _editing = false;
+  bool _sending = false;
+  String? _failure;
   final _message = TextEditingController();
 
   @override
@@ -248,6 +256,34 @@ class _DeclineOfferSheetState extends State<DeclineOfferSheet> {
     2 => 'الله يعطيكم العافية. شكرًا على العرض، الموعد ما يناسبنا هذي المرة.',
     _ => 'الله يعطيكم العافية. شكرًا على العرض، ما نقدر نكمل معكم هذي المرة.',
   };
+
+  Future<void> _send() async {
+    if (_sending) return;
+    final text = _message.text.trim();
+    final DeclineOfferChoice choice = (
+      message: text.isEmpty ? _template(_reason) : text,
+      reason: _reasonCodes[_reason],
+    );
+    final send = widget.onSend;
+    if (send == null) {
+      Navigator.of(context).pop<DeclineOfferChoice>(choice);
+      return;
+    }
+    setState(() {
+      _sending = true;
+      _failure = null;
+    });
+    final failure = await send(choice);
+    if (!mounted) return;
+    if (failure == null) {
+      Navigator.of(context).pop<DeclineOfferChoice>(choice);
+      return;
+    }
+    setState(() {
+      _sending = false;
+      _failure = failure;
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -339,6 +375,16 @@ class _DeclineOfferSheetState extends State<DeclineOfferSheet> {
             ),
           ],
         ),
+        if (_failure != null) ...[
+          const SizedBox(height: AarastV3Space.x3),
+          JourneyNote(
+            key: const ValueKey('decline-failure'),
+            text: _failure!,
+            icon: LucideIcons.alertCircle,
+            color: AarastV3Color.danger,
+            soft: AarastV3Color.dangerSoft,
+          ),
+        ],
         const SizedBox(height: 16),
         JourneyButton(
           key: const ValueKey('decline-send'),
@@ -346,13 +392,8 @@ class _DeclineOfferSheetState extends State<DeclineOfferSheet> {
           background: context.accent.primary,
           expand: true,
           large: true,
-          onPressed: () {
-            final text = _message.text.trim();
-            Navigator.of(context).pop<DeclineOfferChoice>((
-              message: text.isEmpty ? _template(_reason) : text,
-              reason: _reasonCodes[_reason],
-            ));
-          },
+          loading: _sending,
+          onPressed: _sending ? null : _send,
         ),
       ],
     );

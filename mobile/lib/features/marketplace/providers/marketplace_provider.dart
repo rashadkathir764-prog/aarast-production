@@ -88,6 +88,12 @@ abstract class _MarketplaceProviderCore extends ChangeNotifier
   final Map<String, String> _reviewsErrors = {};
   final Map<String, Future<void>> _providerDetailsLoads = {};
   Set<String> _favoriteProviderIds = {};
+
+  /// Hearts being saved; a second tap on the same one waits for it.
+  final Set<String> _favoriteTogglesInFlight = {};
+
+  /// The plan's requests are being read; until then none is not «none».
+  bool _isLoadingQuoteRequests = false;
   List<FavoriteProvider> _favoriteProviders = const [];
   List<QuoteRequest> _quoteRequests = const [];
   final Set<String> _providerQuoteContextsLoading = {};
@@ -98,6 +104,7 @@ abstract class _MarketplaceProviderCore extends ChangeNotifier
   Future<void>? _referenceDataLoadInFlight;
 
   bool get isLoading => _isLoading;
+  bool get isLoadingQuoteRequests => _isLoadingQuoteRequests;
   bool get isSubmitting => _isSubmitting;
   bool get isReferenceDataLoading => _isReferenceDataLoading;
   String? get errorMessage => _errorMessage;

@@ -178,52 +178,56 @@ void main() {
       expect(tester.takeException(), isNull);
     });
 
-    testWidgets('f03 says «ضمن بندك» only when the lowest price fits the item', (
-      tester,
-    ) async {
-      _setTallView(tester);
-      final account = await _authenticatedPlanContext();
-      addTearDown(account.controller.dispose);
+    testWidgets(
+      'f03 says «ضمن بندك» only when the lowest price fits the item',
+      (tester) async {
+        _setTallView(tester);
+        final account = await _authenticatedPlanContext();
+        addTearDown(account.controller.dispose);
 
-      for (final (allocated, shown) in [('500000', true), ('400000', false)]) {
-        final money = _PlanMoney(
-          BudgetCategory(
-            id: 'item-hall',
-            weddingPlanId: 'plan-1',
-            name: 'قاعة أو مخدرة الرجال',
-            allocatedAmount: allocated,
-          ),
-        );
-        await tester.pumpWidget(
-          MultiProvider(
-            providers: [
-              Provider<AuthStorage>.value(value: account.authStorage),
-              ChangeNotifierProvider<AccountContextController>.value(
-                value: account.controller,
-              ),
-              ChangeNotifierProvider<ProviderMarketplaceProvider>.value(
-                value: _RiyalMarketplace(),
-              ),
-              ChangeNotifierProvider<FinanceProvider>.value(value: money),
-            ],
-            child: const MaterialApp(
-              home: ProviderDetailsScreen(
-                providerId: _providerId,
-                weddingPlanId: 'plan-1',
+        for (final (allocated, shown) in [
+          ('500000', true),
+          ('400000', false),
+        ]) {
+          final money = _PlanMoney(
+            BudgetCategory(
+              id: 'item-hall',
+              weddingPlanId: 'plan-1',
+              name: 'قاعة أو مخدرة الرجال',
+              allocatedAmount: allocated,
+            ),
+          );
+          await tester.pumpWidget(
+            MultiProvider(
+              providers: [
+                Provider<AuthStorage>.value(value: account.authStorage),
+                ChangeNotifierProvider<AccountContextController>.value(
+                  value: account.controller,
+                ),
+                ChangeNotifierProvider<ProviderMarketplaceProvider>.value(
+                  value: _RiyalMarketplace(),
+                ),
+                ChangeNotifierProvider<FinanceProvider>.value(value: money),
+              ],
+              child: const MaterialApp(
+                home: ProviderDetailsScreen(
+                  providerId: _providerId,
+                  weddingPlanId: 'plan-1',
+                ),
               ),
             ),
-          ),
-        );
-        await tester.pumpAndSettle();
+          );
+          await tester.pumpAndSettle();
 
-        expect(find.text('450,000 - 600,000 ر.ي'), findsOneWidget);
-        expect(
-          find.text('ضمن بندك'),
-          shown ? findsOneWidget : findsNothing,
-          reason: 'item $allocated',
-        );
-      }
-    });
+          expect(find.text('450,000 - 600,000 ر.ي'), findsOneWidget);
+          expect(
+            find.text('ضمن بندك'),
+            shown ? findsOneWidget : findsNothing,
+            reason: 'item $allocated',
+          );
+        }
+      },
+    );
 
     testWidgets('provider details CTA follows the latest quote lifecycle', (
       tester,
@@ -489,10 +493,7 @@ void main() {
       // Neither is marked better (C47, «أنسب لك» dropped).
       expect(find.text('أنسب لك'), findsNothing);
       expect(find.text('اطلب عرض سعر'), findsOneWidget);
-      expect(
-        find.text('ما يستقبل طلبات لين يستلم صاحبه ملفه'),
-        findsOneWidget,
-      );
+      expect(find.text('ما يستقبل طلبات لين يستلم صاحبه ملفه'), findsOneWidget);
       expect(tester.takeException(), isNull);
     });
 
@@ -585,7 +586,8 @@ MarketplaceProvider _provider() {
       MarketplaceService(
         id: 'service-1',
         providerId: _providerId,
-        title: 'تنسيق قاعة',        isActive: true,
+        title: 'تنسيق قاعة',
+        isActive: true,
         basePrice: '1200',
         currency: 'SAR',
         category: ProviderCategory(id: 'cat-1', nameAr: 'القاعات'),
@@ -632,7 +634,8 @@ class _TwoSaved extends _FakeMarketplaceProvider {
       businessName: 'قاعة الأمل',
       ownerName: 'مالك',
       ratingAverage: 0,
-      ratingCount: 0,      isClaimed: false,
+      ratingCount: 0,
+      isClaimed: false,
     ),
     _ => null,
   };
@@ -653,7 +656,8 @@ class _RiyalMarketplace extends _FakeMarketplaceProvider {
       MarketplaceService(
         id: 'service-yer-$index',
         providerId: _providerId,
-        title: 'حجز القاعة $index',        isActive: true,
+        title: 'حجز القاعة $index',
+        isActive: true,
         basePrice: price,
         currency: 'YER',
         category: const ProviderCategory(id: 'cat-1', nameAr: 'القاعات'),
@@ -760,8 +764,9 @@ class _FakeMarketplaceProvider extends ProviderMarketplaceProvider {
   Future<void> loadFavoriteProviders() async {}
 
   @override
-  Future<void> toggleFavorite(String providerId) async {
+  Future<String?> toggleFavorite(String providerId) async {
     toggleFavoriteCallCount += 1;
+    return null;
   }
 }
 

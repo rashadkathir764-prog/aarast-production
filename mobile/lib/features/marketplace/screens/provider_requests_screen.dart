@@ -426,45 +426,48 @@ class _ProviderRequestsScreenState extends State<ProviderRequestsScreen> {
   /// arrived, so the provider never sees a silent «رفض».
   Future<void> _decline(QuoteRequest quote) async {
     if (!_ownQuote(quote)) return;
-    final choice = await showJourneySheet<DeclineOfferChoice>(
-      context: context,
-      builder: (_) => DeclineOfferSheet(quote: quote),
-    );
-    if (choice == null || !mounted) return;
-    final message = choice.message;
     final chat = context.read<ChatApi>();
     final marketplace = context.read<ProviderMarketplaceProvider>();
-    try {
-      final conversation = await chat.conversationForQuote(quote.id);
-      await chat.send(conversation.id, body: message);
-    } catch (_) {
-      if (mounted) {
-        AarastToast.showError(
-          context,
-          context.say(
-            'ما وصلت رسالتك. جرّب مرة ثانية.',
-            'ما وصلت رسالتك. جرّبي مرة ثانية.',
-          ),
-        );
-      }
-      return;
-    }
-    final ok = await marketplace.rejectQuote(quote, reason: choice.reason);
-    if (!mounted) return;
-    if (ok) {
-      AarastToast.showSuccess(
-        context,
-        context.say(
-          'وصلتهم رسالتك واعتذرت عن العرض.',
-          'وصلتهم رسالتك واعتذرتِ عن العرض.',
-        ),
-      );
-    } else {
-      AarastToast.showError(
-        context,
-        marketplace.errorMessage ?? 'وصلت رسالتك، بس ما قدرنا نسجّل الاعتذار.',
-      );
-    }
+    final failedToSend = context.say(
+      'ما وصلت رسالتك. جرّب مرة ثانية.',
+      'ما وصلت رسالتك. جرّبي مرة ثانية.',
+    );
+    // Once the message arrived, a retry only records the decline: the
+    // provider never gets the polite message twice.
+    var messageArrived = false;
+    final choice = await showJourneySheet<DeclineOfferChoice>(
+      context: context,
+      builder: (_) => DeclineOfferSheet(
+        quote: quote,
+        onSend: (choice) async {
+          if (!messageArrived) {
+            try {
+              final conversation = await chat.conversationForQuote(quote.id);
+              await chat.send(conversation.id, body: choice.message);
+              messageArrived = true;
+            } catch (_) {
+              return failedToSend;
+            }
+          }
+          final ok = await marketplace.rejectQuote(
+            quote,
+            reason: choice.reason,
+          );
+          return ok
+              ? null
+              : (marketplace.errorMessage ??
+                    'وصلت رسالتك، بس ما قدرنا نسجّل الاعتذار.');
+        },
+      ),
+    );
+    if (choice == null || !mounted) return;
+    AarastToast.showSuccess(
+      context,
+      context.say(
+        'وصلتهم رسالتك واعتذرت عن العرض.',
+        'وصلتهم رسالتك واعتذرتِ عن العرض.',
+      ),
+    );
   }
 
   /// B-24: asks the provider to move the booking; it keeps its day until

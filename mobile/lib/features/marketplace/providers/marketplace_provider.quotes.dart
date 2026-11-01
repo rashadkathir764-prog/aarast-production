@@ -169,8 +169,14 @@ mixin _MarketplaceQuotes on _MarketplaceProviderCore {
       notifyListeners();
       return;
     }
-    _quoteRequests = await _safeQuoteRequests(weddingPlanId: _quotePlanId);
+    _isLoadingQuoteRequests = true;
     notifyListeners();
+    try {
+      _quoteRequests = await _safeQuoteRequests(weddingPlanId: _quotePlanId);
+    } finally {
+      _isLoadingQuoteRequests = false;
+      notifyListeners();
+    }
   }
 
   Future<bool> loadQuoteRequest(

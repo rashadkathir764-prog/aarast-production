@@ -10,6 +10,7 @@ import '../../../core/routing/app_router.dart';
 import '../../../core/utils/arabic_count.dart';
 import '../../../core/utils/currency_label.dart';
 import '../../../core/utils/money_formatters.dart';
+import '../../../core/widgets/aarast_toast.dart';
 import '../../../core/widgets/aarast_ui.dart';
 import '../../account_contexts/account_contexts_api.dart'
     show AccountContextController, AccountContextRole;
@@ -442,7 +443,10 @@ class _ProviderMarketplaceScreenState extends State<ProviderMarketplaceScreen> {
               )) {
                 return;
               }
-              await provider.toggleFavorite(item.id);
+              final failure = await provider.toggleFavorite(item.id);
+              if (failure != null && mounted) {
+                AarastToast.showError(context, failure);
+              }
             },
             onTap: () => _openProviderDetails(item.id),
           ),

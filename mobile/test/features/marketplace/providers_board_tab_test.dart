@@ -51,7 +51,8 @@ QuoteRequest _receivedQuote() => QuoteRequest(
   service: MarketplaceService(
     id: 'service-1',
     providerId: 'provider-1',
-    title: 'تصوير فوتوغرافي',    isActive: true,
+    title: 'تصوير فوتوغرافي',
+    isActive: true,
   ),
   offers: [
     QuoteOffer(
@@ -223,7 +224,8 @@ void main() {
         id: 'service-band',
         providerId: 'provider-band',
         title: 'زفة',
-        category: ProviderCategory(id: 'cat-band', nameAr: 'الفنان والفرقة'),        isActive: true,
+        category: ProviderCategory(id: 'cat-band', nameAr: 'الفنان والفرقة'),
+        isActive: true,
       ),
       updatedAt: updatedAt,
       rejectedAt: rejectedAt,
@@ -362,9 +364,7 @@ void main() {
       await _pump(
         tester,
         _FakeMarketplaceProvider(
-          quoteRequests: [
-            band('hall', 'EXPIRED', provider: 'قاعة سبأ'),
-          ],
+          quoteRequests: [band('hall', 'EXPIRED', provider: 'قاعة سبأ')],
         ),
       );
 
@@ -632,7 +632,8 @@ void main() {
         businessName: 'قاعة السعادة للأفراح والمناسبات $id',
         ownerName: 'مالك',
         ratingAverage: 0,
-        ratingCount: 0,        primaryCategory: const ProviderCategory(
+        ratingCount: 0,
+        primaryCategory: const ProviderCategory(
           id: 'cat-hall',
           nameAr: 'الصالات والقاعات',
         ),
@@ -657,6 +658,32 @@ void main() {
     expect(find.byKey(const ValueKey('providers-favorite-p3')), findsOneWidget);
   });
 
+  testWidgets('saved hearts that could not be read are not «nothing saved»', (
+    tester,
+  ) async {
+    await _pump(
+      tester,
+      _FakeMarketplaceProvider(
+        quoteRequests: [_waitingQuote('quote-waiting')],
+        favoritesError: 'ما وصلنا للخادم',
+      ),
+      finance: _LoadedFinance(),
+    );
+    await tester.tap(
+      find.descendant(
+        of: find.byKey(const ValueKey('providers-tabs')),
+        matching: find.text('المفضلة'),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(
+      find.byKey(const ValueKey('providers-favorites-empty')),
+      findsNothing,
+    );
+    expect(find.textContaining('مرة ثانية'), findsWidgets);
+  });
+
   testWidgets('f09 picks two saved providers and compares them', (
     tester,
   ) async {
@@ -668,7 +695,8 @@ void main() {
         businessName: name,
         ownerName: 'مالك',
         ratingAverage: 0,
-        ratingCount: 0,        primaryCategory: const ProviderCategory(
+        ratingCount: 0,
+        primaryCategory: const ProviderCategory(
           id: 'cat-photo',
           nameAr: 'تصوير',
         ),
@@ -677,7 +705,8 @@ void main() {
     MarketplaceService priced(String id, String price) => MarketplaceService(
       id: 'service-$id',
       providerId: id,
-      title: 'باقة',      isActive: true,
+      title: 'باقة',
+      isActive: true,
       basePrice: price,
       currency: 'YER',
     );
@@ -960,11 +989,16 @@ class _FakeMarketplaceProvider extends ProviderMarketplaceProvider {
     this.quoteOnDirectLoad,
     this.quoteRequestsError,
     this.favorites = const [],
+    this.favoritesError,
     this.pages = const {},
   }) : quoteRequestsData = List.of(quoteRequests),
        super(MarketplaceApi(ApiClient(tokenProvider: () async => null)));
 
   final List<FavoriteProvider> favorites;
+  final String? favoritesError;
+
+  @override
+  String? get favoriteProvidersErrorMessage => favoritesError;
 
   /// Provider pages the app has read: their services by provider id.
   final Map<String, List<MarketplaceService>> pages;

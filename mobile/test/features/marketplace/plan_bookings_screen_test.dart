@@ -35,7 +35,8 @@ QuoteRequest _quote(
     id: 'service-$id',
     providerId: 'provider-$id',
     title: category,
-    category: ProviderCategory(id: 'cat-$id', nameAr: category),    isActive: true,
+    category: ProviderCategory(id: 'cat-$id', nameAr: category),
+    isActive: true,
   ),
   booking: MarketplaceBooking.fromJson({
     'id': 'booking-$id',
@@ -204,13 +205,37 @@ void main() {
 
     expect(find.text('ما حجزت عند أحد بعد'), findsOneWidget);
   });
+
+  testWidgets('while the requests load, no bookings is not «none»', (
+    tester,
+  ) async {
+    tester.view.devicePixelRatio = 1;
+    tester.view.physicalSize = const Size(420, 1400);
+    addTearDown(tester.view.reset);
+    await tester.pumpWidget(
+      ChangeNotifierProvider<ProviderMarketplaceProvider>.value(
+        value: _Marketplace(const [], loading: true),
+        child: MaterialApp(
+          home: PlanBookingsScreen(weddingPlanId: 'plan-1', now: _now),
+        ),
+      ),
+    );
+    await tester.pump();
+
+    expect(find.text('ما حجزت عند أحد بعد'), findsNothing);
+    expect(find.byKey(const ValueKey('journey-list-loading')), findsOneWidget);
+  });
 }
 
 class _Marketplace extends ProviderMarketplaceProvider {
-  _Marketplace(this._quotes)
+  _Marketplace(this._quotes, {this.loading = false})
     : super(MarketplaceApi(ApiClient(tokenProvider: () async => null)));
 
   final List<QuoteRequest> _quotes;
+  final bool loading;
+
+  @override
+  bool get isLoadingQuoteRequests => loading;
   final asked = <String>[];
 
   @override

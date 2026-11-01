@@ -118,13 +118,17 @@ mixin _MarketplaceProviderDetails on _MarketplaceProviderCore {
     }
   }
 
-  Future<void> toggleFavorite(String providerId) async {
+  /// Saves or removes one heart. Null once saved, or why not. A failed
+  /// heart is not a directory that could not be read, so it leaves the
+  /// directory's error alone.
+  Future<String?> toggleFavorite(String providerId) async {
+    if (!_favoriteTogglesInFlight.add(providerId)) return null;
     _isSubmitting = true;
-    _errorMessage = null;
     _noticeMessage = null;
     notifyListeners();
 
     final wasFavorite = _favoriteProviderIds.contains(providerId);
+    String? failure;
     try {
       if (wasFavorite) {
         await _api.unfavoriteProvider(providerId);
@@ -150,13 +154,15 @@ mixin _MarketplaceProviderDetails on _MarketplaceProviderCore {
         }
       }
     } on ApiException catch (error) {
-      _errorMessage = marketplaceErrorMessage(error.message);
+      failure = marketplaceErrorMessage(error.message);
     } catch (_) {
-      _errorMessage = 'تعذر تحديث المفضلة.';
+      failure = 'ما قدرنا نحفظ المفضلة';
     } finally {
+      _favoriteTogglesInFlight.remove(providerId);
       _isSubmitting = false;
       notifyListeners();
     }
+    return failure;
   }
 
   Future<void> loadFavoriteProviders() async {

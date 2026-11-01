@@ -35,7 +35,8 @@ MarketplaceProvider _venue() {
       MarketplaceService(
         id: 's1',
         providerId: 'fav-1',
-        title: 'قاعة كبرى',        isActive: true,
+        title: 'قاعة كبرى',
+        isActive: true,
         category: ProviderCategory(id: 'c1', nameAr: 'صالات'),
         basePrice: '15000',
         currency: 'SAR',
@@ -43,7 +44,8 @@ MarketplaceProvider _venue() {
       MarketplaceService(
         id: 's2',
         providerId: 'fav-1',
-        title: 'قاعة كبار',        isActive: true,
+        title: 'قاعة كبار',
+        isActive: true,
         category: ProviderCategory(id: 'c1', nameAr: 'صالات'),
         basePrice: '35000',
         currency: 'SAR',
@@ -58,12 +60,14 @@ MarketplaceProvider _photographer() {
     businessName: 'عدسة الريم للتصوير',
     ownerName: 'ريم',
     ratingAverage: 4.7,
-    ratingCount: 76,    city: MarketplaceCity(id: 'city-ryd', nameAr: 'الرياض'),
+    ratingCount: 76,
+    city: MarketplaceCity(id: 'city-ryd', nameAr: 'الرياض'),
     services: [
       MarketplaceService(
         id: 's3',
         providerId: 'fav-2',
-        title: 'باقة تصوير كاملة',        isActive: true,
+        title: 'باقة تصوير كاملة',
+        isActive: true,
         category: ProviderCategory(id: 'c2', nameAr: 'تصوير'),
         basePrice: '6000',
         currency: 'SAR',
@@ -126,7 +130,7 @@ class _PreviewMarketplaceProvider extends ProviderMarketplaceProvider {
       providerDetails(id)?.services ?? const [];
 
   @override
-  Future<void> toggleFavorite(String providerId) async {}
+  Future<String?> toggleFavorite(String providerId) async => null;
 }
 
 void main() {

@@ -16,7 +16,7 @@ import '../../../core/utils/app_clock.dart';
 import '../../account_contexts/account_contexts_api.dart'
     show AccountContextController, AccountContextPersona;
 import '../../auth/auth_api.dart' show AuthActionGuard, AuthController;
-import '../../finance/finance_api.dart' show FinanceProvider;
+import '../../finance/finance_api.dart' show FinanceApi, FinanceProvider;
 import '../../home/home_api.dart'
     show LocalGuestDashboardSummary, LocalGuestDashboardSummarySource;
 import '../../onboarding/onboarding_api.dart'
@@ -26,6 +26,8 @@ import '../../wedding_day/wedding_day_api.dart' show PlanEventsProvider;
 import '../data/mahr_moment_ledger.dart';
 import '../data/plan_bookings_lookup.dart';
 import '../data/wedding_moment_ledger.dart';
+import '../../../core/experience_v3/aarast_v3.dart';
+import '../../../core/widgets/aarast_toast.dart';
 import '../models/dashboard_summary.dart';
 import '../models/wedding_plan_stage.dart';
 import '../providers/dashboard_summary_provider.dart';
@@ -130,6 +132,36 @@ class _WeddingPlanDashboardScreenState extends State<WeddingPlanDashboardScreen>
       _loadedOnce = false;
       WidgetsBinding.instance.addPostFrameCallback((_) => _load());
     }
+  }
+
+  /// D72: «ما أحتاجها» or «بعدين» on a suggestion, saved on its item; the
+  /// home reads the plan again, so the suggestion leaves for every device.
+  Future<void> _answerSuggestion(DashboardEssential item, String choice) async {
+    final categoryId = item.budgetCategoryId;
+    if (categoryId == null) return;
+    try {
+      await context.read<FinanceApi>().setBudgetItemSuggestion(
+        weddingPlanId: widget.weddingPlanId,
+        categoryId: categoryId,
+        choice: choice,
+      );
+    } on Object {
+      if (mounted) {
+        AarastToast.showError(context, 'ما انحفظ جوابك، جرّب مرة ثانية');
+      }
+      return;
+    }
+    if (!mounted) return;
+    AarastToast.showSuccess(
+      context,
+      choice == 'LATER'
+          ? 'بنذكّرك فيها بعد أسبوع'
+          : context.say(
+              'تمام، ترجع لها من بنود المال لو احتجتها',
+              'تمام، ترجعين لها من بنود المال لو احتجتيها',
+            ),
+    );
+    await _load();
   }
 
   Future<void> _load() async {
@@ -498,6 +530,17 @@ class _WeddingPlanDashboardScreenState extends State<WeddingPlanDashboardScreen>
               onOpenReviews: _isLocalGuestPlan
                   ? null
                   : () => context.push(AppRouter.planReviews(selectedPlanId)),
+              // D72: a suggestion opens its item's requests, where it is
+              // booked; the owner may answer it away.
+              onOpenSuggestion: (item) => context.push(
+                AppRouter.providerRequests(
+                  selectedPlanId,
+                  itemKey: item.budgetCategoryId,
+                ),
+              ),
+              onAnswerSuggestion: _isLocalGuestPlan
+                  ? null
+                  : (item, choice) => _answerSuggestion(item, choice),
               userName: auth.user?.name ?? '',
               avatarUrl: auth.user?.avatarUrl,
               // The assistant answers from the server; a device-only plan

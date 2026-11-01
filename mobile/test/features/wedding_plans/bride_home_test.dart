@@ -219,16 +219,15 @@ void main() {
     });
   });
 
-  testWidgets('b01: her first steps in rose and in her words', (tester) async {
+  testWidgets('D72: her next step in rose and in her words', (tester) async {
     await _pump(tester, _summary(budget: '7000000'), JourneyProfile.bride);
 
     expect(_heroColor(tester), AarastV3Color.rose);
-    expect(find.text('الصالة'), findsOneWidget);
-    expect(find.text('أهم حجز، والصالات تمتلي بدري'), findsOneWidget);
-    expect(find.text('ضيفاتك'), findsOneWidget);
-    expect(find.text('كمّلي'), findsOneWidget);
-    expect(find.text('القاعة'), findsNothing);
-    expect(find.text('كمّل'), findsNothing);
+    // No fixed steps: the one missing basic, spoken to her.
+    expect(find.text('أضيفي أول ضيفة'), findsOneWidget);
+    expect(find.text('اختاري من جهات الاتصال'), findsOneWidget);
+    expect(find.text('أضف أول ضيف'), findsNothing);
+    expect(find.text('ثلاث خطوات وعرسك منظم'), findsNothing);
   });
 
   testWidgets('b02: her tiles speak of her guests in the feminine', (
@@ -304,26 +303,6 @@ void main() {
         .single;
     expect(painter.frieze, isTrue);
     expect(painter.centreX, 0.12);
-  });
-
-  testWidgets('b01: the step bar is done green, current rose, the rest white', (
-    tester,
-  ) async {
-    await _pump(tester, _summary(budget: '7000000'), JourneyProfile.bride);
-
-    expect(find.text('7 مليون لعرسك، والمهر لحاله'), findsOneWidget);
-    expect(
-      barColor(tester, 'aarast-dashboard-setup-bar-0'),
-      AarastV3Color.mint,
-    );
-    expect(
-      barColor(tester, 'aarast-dashboard-setup-bar-1'),
-      AarastV3Color.rose,
-    );
-    expect(
-      barColor(tester, 'aarast-dashboard-setup-bar-2'),
-      AarastV3Color.paper,
-    );
   });
 
   testWidgets('b02: after the first steps the countdown is «التجهيز»', (

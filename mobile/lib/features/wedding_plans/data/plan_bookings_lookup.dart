@@ -50,7 +50,10 @@ class PlanBookingsLookup {
 }
 
 /// The bookings made for [day] (compared as calendar days).
-List<PlanBookingDay> bookingsOnDay(List<PlanBookingDay> bookings, DateTime day) {
+List<PlanBookingDay> bookingsOnDay(
+  List<PlanBookingDay> bookings,
+  DateTime day,
+) {
   return bookings
       .where(
         (booking) =>

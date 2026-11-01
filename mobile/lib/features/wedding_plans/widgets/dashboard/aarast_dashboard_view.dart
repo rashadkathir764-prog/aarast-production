@@ -21,9 +21,8 @@ part 'aarast_dashboard_support.dart';
 part 'aarast_dashboard_journey.dart';
 part 'aarast_dashboard_moments.dart';
 part 'aarast_dashboard_tiles.dart';
-part 'aarast_dashboard_setup.dart';
 part 'aarast_dashboard_mahr.dart';
-part 'aarast_dashboard_essentials.dart';
+part 'aarast_dashboard_suggestions.dart';
 
 class AarastDashboardView extends StatelessWidget {
   const AarastDashboardView({
@@ -53,6 +52,8 @@ class AarastDashboardView extends StatelessWidget {
     this.mahr,
     this.onOpenMahr,
     this.onOpenReviews,
+    this.onOpenSuggestion,
+    this.onAnswerSuggestion,
     this.showHijri = true,
     this.events,
     this.weekBookings,
@@ -114,6 +115,13 @@ class AarastDashboardView extends StatelessWidget {
   /// b07 «قيّم مزودينك».
   final VoidCallback? onOpenReviews;
 
+  /// D72: a suggested item, opened where it is booked.
+  final ValueChanged<DashboardEssential>? onOpenSuggestion;
+
+  /// D72: «ما أحتاجها» (`NOT_NEEDED`) or «بعدين» (`LATER`) on a suggestion.
+  final void Function(DashboardEssential item, String choice)?
+  onAnswerSuggestion;
+
   /// g02: the Hijri date next to the Gregorian one.
   final bool showHijri;
 
@@ -128,6 +136,7 @@ class AarastDashboardView extends StatelessWidget {
     final focus = resolveDashboardFocus(
       summary,
       profile: context.journeyProfile,
+      mahrMissing: mahr != null && !mahr!.recorded,
     );
     final planStage = resolveWeddingPlanStage(summary.weddingDate, now: now);
     // b04 and b05: the six days before the wedding and its day.
@@ -198,7 +207,7 @@ class AarastDashboardView extends StatelessWidget {
                     _JourneyHomeHero(
                       summary: summary,
                       stage: planStage,
-                      startingOut: !married && _showsSetupSteps(summary),
+                      startingOut: !married && _startingOut(summary),
                       onTap: onOpenPlan,
                       showHijri: showHijri,
                     ),
@@ -262,16 +271,6 @@ class AarastDashboardView extends StatelessWidget {
                       const SizedBox(height: 12),
                       _RateProvidersCard(onTap: onOpenReviews!),
                     ],
-                  ] else if (_showsSetupSteps(summary)) ...[
-                    const SizedBox(height: 20),
-                    _JourneySetupSteps(
-                      summary: summary,
-                      mahr: mahr,
-                      onOpenMahr: onOpenMahr,
-                      onOpenMoney: onOpenMoney,
-                      onOpenProviders: onOpenProviders,
-                      onOpenGuests: onImportGuests ?? onOpenGuests,
-                    ),
                   ] else ...[
                     const SizedBox(height: 12),
                     _JourneyNextStep(
@@ -305,11 +304,17 @@ class AarastDashboardView extends StatelessWidget {
                         onTap: onOpenMoney,
                       ),
                     ],
-                    if (_JourneyEssentials.shows(summary.essentials)) ...[
+                    if (_homeSuggestions(summary) case final suggestions
+                        when suggestions.isNotEmpty &&
+                            onAnswerSuggestion != null) ...[
                       const SizedBox(height: 12),
-                      _JourneyEssentials(
-                        essentials: summary.essentials,
-                        onOpen: onOpenMoney,
+                      _JourneySuggestions(
+                        suggestions: suggestions,
+                        onOpen: (item) =>
+                            (onOpenSuggestion ?? (_) => onOpenProviders())(
+                              item,
+                            ),
+                        onAnswer: onAnswerSuggestion!,
                       ),
                     ],
                     const SizedBox(height: 12),
@@ -359,10 +364,14 @@ class AarastDashboardView extends StatelessWidget {
         onOpenPlan();
       case AarastDashboardFocusTarget.money:
         onOpenMoney();
+      case AarastDashboardFocusTarget.mahr:
+        (onOpenMahr ?? onOpenMoney)();
       case AarastDashboardFocusTarget.tasks:
         onOpenTasks();
       case AarastDashboardFocusTarget.guests:
         onOpenGuests();
+      case AarastDashboardFocusTarget.firstGuests:
+        (onImportGuests ?? onOpenGuests)();
       case AarastDashboardFocusTarget.providers:
         onOpenProviders();
       case AarastDashboardFocusTarget.sharing:

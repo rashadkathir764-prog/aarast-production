@@ -17,10 +17,39 @@ void main() {
     expect(guestFocus.target, AarastDashboardFocusTarget.guests);
     expect(guestFocus.title, contains('ناقص'));
 
+    // D72: finding providers is a suggestion now, never «خطوتك الجاية».
     expect(
       resolveDashboardFocus(_summary(providerCount: 0)).target,
-      AarastDashboardFocusTarget.providers,
+      isNot(AarastDashboardFocusTarget.providers),
     );
+  });
+
+  test('D72: urgent first, then each missing basic in order', () {
+    // A due payment outranks every basic.
+    expect(
+      resolveDashboardFocus(
+        _summary(duePaymentSchedules: 1, hasBudget: false),
+      ).target,
+      AarastDashboardFocusTarget.money,
+    );
+    // Budget, then the mahr, then the first item.
+    expect(
+      resolveDashboardFocus(
+        _summary(hasBudget: false),
+        mahrMissing: true,
+      ).title,
+      contains('ميزانية'),
+    );
+    expect(
+      resolveDashboardFocus(_summary(), mahrMissing: true).target,
+      AarastDashboardFocusTarget.mahr,
+    );
+    expect(
+      resolveDashboardFocus(_summary(budgetItems: 0)).title,
+      'أضف أول بند',
+    );
+    // An unknown count (no money rights, or an older server) asks nothing.
+    expect(resolveDashboardFocus(_summary()).title, isNot('أضف أول بند'));
   });
 
   test('the next step counts in Arabic and names its action', () {
@@ -53,6 +82,7 @@ DashboardSummary _summary({
   int overdueTasks = 0,
   int incompleteGuests = 0,
   int providerCount = 1,
+  int? budgetItems,
 }) {
   return DashboardSummary(
     planId: 'plan-focus',
@@ -68,6 +98,7 @@ DashboardSummary _summary({
     confirmedGuests: 0,
     incompleteGuestsCount: incompleteGuests,
     providerCount: providerCount,
+    budgetItemsCount: budgetItems,
     quoteRequestsCount: 0,
     unreadNotificationsCount: 0,
     importantItems: const [],

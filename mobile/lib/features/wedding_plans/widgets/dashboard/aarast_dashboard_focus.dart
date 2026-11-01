@@ -10,8 +10,12 @@ enum AarastDashboardFocusTarget {
   item,
   plan,
   money,
+  mahr,
   tasks,
   guests,
+
+  /// The first guests, from the phone's contacts.
+  firstGuests,
   providers,
   sharing,
 }
@@ -48,6 +52,9 @@ class AarastDashboardFocus {
 AarastDashboardFocus resolveDashboardFocus(
   DashboardSummary summary, {
   JourneyProfile profile = JourneyProfile.groom,
+
+  /// A groom's or a bride's plan whose mahr is not recorded yet (b01).
+  bool mahrMissing = false,
 }) {
   final say = profile.say;
   final backendItem = summary.importantItems.firstOrNull;
@@ -124,6 +131,81 @@ AarastDashboardFocus resolveDashboardFocus(
     );
   }
 
+  // The basics everyone needs, each only while it is missing: no fixed
+  // steps hold the home (D72).
+  if (_amount(summary.totalBudgetForDisplay) == null &&
+      summary.permissions.canManageMoney) {
+    return AarastDashboardFocus(
+      eyebrow: say('ابدأ من الأساس', 'ابدئي من الأساس'),
+      title: say('حدّد ميزانية تقريبية', 'حدّدي ميزانية تقريبية'),
+      reason: say(
+        'ابدأ برقم تقريبي، وتقدر تعدّله بعدين.',
+        'ابدئي برقم تقريبي، وتقدرين تعدّلينه بعدين.',
+      ),
+      actionLabel: say('حدّد الميزانية', 'حدّدي الميزانية'),
+      icon: LucideIcons.wallet,
+      tone: AarastDashboardFocusTone.calm,
+      target: AarastDashboardFocusTarget.money,
+    );
+  }
+
+  if (mahrMissing && summary.permissions.canManageMoney) {
+    return AarastDashboardFocus(
+      eyebrow: 'خطوتك الجاية',
+      title: say('اتفقتوا على المهر؟', 'اتفقتوا على المهر؟'),
+      reason: 'نحسبه لحاله، برا ميزانية العرس.',
+      actionLabel: say('سجّل المهر', 'سجّلي المهر'),
+      icon: LucideIcons.heartHandshake,
+      tone: AarastDashboardFocusTone.calm,
+      target: AarastDashboardFocusTarget.mahr,
+    );
+  }
+
+  if (summary.budgetItemsCount == 0 && summary.permissions.canManageMoney) {
+    return AarastDashboardFocus(
+      eyebrow: 'خطوتك الجاية',
+      title: say('أضف أول بند', 'أضيفي أول بند'),
+      reason: say(
+        'القاعة، الذهب، الكسوة… كل شي بتصرف عليه بند.',
+        'الصالة، الذهب، الفستان… كل شي بتصرفين عليه بند.',
+      ),
+      actionLabel: say('أضف بند', 'أضيفي بند'),
+      icon: LucideIcons.wallet,
+      tone: AarastDashboardFocusTone.calm,
+      target: AarastDashboardFocusTarget.money,
+    );
+  }
+
+  if (summary.totalTasks == 0 && summary.permissions.canManageTasks) {
+    return AarastDashboardFocus(
+      eyebrow: 'خطوتك الجاية',
+      title: say('أضف أول مهمة', 'أضيفي أول مهمة'),
+      reason: say(
+        'حوّل أول قرار لمهمة واضحة بموعد ومسؤول.',
+        'حوّلي أول قرار لمهمة واضحة بموعد ومسؤول.',
+      ),
+      actionLabel: say('أضف مهمة', 'أضيفي مهمة'),
+      icon: LucideIcons.listChecks,
+      tone: AarastDashboardFocusTone.calm,
+      target: AarastDashboardFocusTarget.tasks,
+    );
+  }
+
+  if (summary.guestCount == 0 && summary.permissions.canManageGuests) {
+    return AarastDashboardFocus(
+      eyebrow: 'خطوتك الجاية',
+      title: say('أضف أول ضيف', 'أضيفي أول ضيفة'),
+      reason: say(
+        'من جهات الاتصال بضغطة، وعددهم يوضّح احتياج القاعة والضيافة.',
+        'من جهات الاتصال بضغطة، وعددهن يوضّح احتياج الصالة والضيافة.',
+      ),
+      actionLabel: say('اختر من جهات الاتصال', 'اختاري من جهات الاتصال'),
+      icon: LucideIcons.users,
+      tone: AarastDashboardFocusTone.calm,
+      target: AarastDashboardFocusTarget.firstGuests,
+    );
+  }
+
   if (summary.incompleteGuestsCount > 0 &&
       summary.permissions.canManageGuests) {
     return AarastDashboardFocus(
@@ -195,67 +277,6 @@ AarastDashboardFocus resolveDashboardFocus(
       icon: LucideIcons.userPlus,
       tone: AarastDashboardFocusTone.attention,
       target: AarastDashboardFocusTarget.sharing,
-    );
-  }
-
-  if (_amount(summary.totalBudgetForDisplay) == null &&
-      summary.permissions.canManageMoney) {
-    return AarastDashboardFocus(
-      eyebrow: say('ابدأ من الأساس', 'ابدئي من الأساس'),
-      title: say('حدّد ميزانية تقريبية', 'حدّدي ميزانية تقريبية'),
-      reason: say(
-        'ابدأ برقم تقريبي، وتقدر تعدّله بعدين.',
-        'ابدئي برقم تقريبي، وتقدرين تعدّلينه بعدين.',
-      ),
-      actionLabel: say('حدّد الميزانية', 'حدّدي الميزانية'),
-      icon: LucideIcons.wallet,
-      tone: AarastDashboardFocusTone.calm,
-      target: AarastDashboardFocusTarget.money,
-    );
-  }
-
-  if (summary.providerCount == 0 && summary.permissions.canManageProviders) {
-    return AarastDashboardFocus(
-      eyebrow: 'خطوتك التالية',
-      title: say('استكشف أول مزوّد', 'استكشفي أول مزوّد'),
-      reason: say(
-        'قارن الخدمات واطلب عرض حقيقي قبل لا تدخله الخطة.',
-        'قارني الخدمات واطلبي عرض حقيقي قبل لا تدخلينه الخطة.',
-      ),
-      actionLabel: say('شوف المزودين', 'شوفي المزودين'),
-      icon: LucideIcons.store,
-      tone: AarastDashboardFocusTone.calm,
-      target: AarastDashboardFocusTarget.providers,
-    );
-  }
-
-  if (summary.totalTasks == 0 && summary.permissions.canManageTasks) {
-    return AarastDashboardFocus(
-      eyebrow: 'خطوتك التالية',
-      title: say('أضف أول مهمة', 'أضيفي أول مهمة'),
-      reason: say(
-        'حوّل أول قرار لمهمة واضحة بموعد ومسؤول.',
-        'حوّلي أول قرار لمهمة واضحة بموعد ومسؤول.',
-      ),
-      actionLabel: say('أضف مهمة', 'أضيفي مهمة'),
-      icon: LucideIcons.listChecks,
-      tone: AarastDashboardFocusTone.calm,
-      target: AarastDashboardFocusTarget.tasks,
-    );
-  }
-
-  if (summary.guestCount == 0 && summary.permissions.canManageGuests) {
-    return AarastDashboardFocus(
-      eyebrow: 'خطوتك التالية',
-      title: say('ابدأ قائمة الضيوف', 'ابدئي قائمة الضيفات'),
-      reason: say(
-        'عدد الضيوف يوضّح احتياج القاعة والضيافة والميزانية.',
-        'عدد الضيفات يوضّح احتياج الصالة والضيافة والميزانية.',
-      ),
-      actionLabel: say('افتح الضيوف', 'افتحي الضيفات'),
-      icon: LucideIcons.users,
-      tone: AarastDashboardFocusTone.calm,
-      target: AarastDashboardFocusTarget.guests,
     );
   }
 

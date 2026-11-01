@@ -205,6 +205,20 @@ mixin _FinanceBudgetApi on _FinanceApiCore {
     }
   }
 
+  /// D72: the owner's answer to the home suggesting an item: «ما أحتاجها»
+  /// (`NOT_NEEDED`), «بعدين» (`LATER`), or null to suggest it again. The item
+  /// itself does not change. A plan kept on the phone gets no suggestions.
+  Future<void> setBudgetItemSuggestion({
+    required String weddingPlanId,
+    required String categoryId,
+    required String? choice,
+  }) async {
+    if (FinanceLocalDataSource.isLocalGuestPlanId(weddingPlanId)) return;
+    await _mutation('PUT', '/api/v1/budget-categories/$categoryId/suggestion', {
+      'choice': choice,
+    }).send();
+  }
+
   Future<void> deleteBudgetCategory(BudgetCategory category) async {
     if (category.costsCount > 0 || await _local.categoryHasCosts(category.id)) {
       throw const ApiException(

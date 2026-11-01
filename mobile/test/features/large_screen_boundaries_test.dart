@@ -85,7 +85,7 @@ void main() {
       'aarast_dashboard_journey.dart',
       'aarast_dashboard_moments.dart',
       'aarast_dashboard_money_card.dart',
-      'aarast_dashboard_setup.dart',
+      'aarast_dashboard_suggestions.dart',
       'aarast_dashboard_states.dart',
       'aarast_dashboard_tiles.dart',
       'aarast_dashboard_support.dart',

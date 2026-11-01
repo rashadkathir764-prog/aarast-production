@@ -96,6 +96,7 @@ class DashboardSummary {
     this.persona,
     this.bookedServices = DashboardBookedServices.none,
     this.essentials = const [],
+    this.budgetItemsCount,
   });
 
   factory DashboardSummary.fromJson(Map<String, dynamic> json) {
@@ -219,11 +220,16 @@ class DashboardSummary {
       contributionHistory: _intMapOrEmpty(json['contributionHistory']),
       venueSecured: json['venueSecured'] == true,
       persona: json['persona']?.toString(),
+      budgetItemsCount: json['budgetItemsCount'] is num
+          ? (json['budgetItemsCount'] as num).toInt()
+          : null,
       essentials: [
-        for (final item in (json['essentials'] is List
-            ? json['essentials'] as List
-            : const []))
-          if (item is Map) DashboardEssential.fromJson(Map<String, dynamic>.from(item)),
+        for (final item
+            in (json['essentials'] is List
+                ? json['essentials'] as List
+                : const []))
+          if (item is Map)
+            DashboardEssential.fromJson(Map<String, dynamic>.from(item)),
       ],
       bookedServices: DashboardBookedServices.fromJson(
         _mapOrEmpty(json['bookedServices']),
@@ -299,6 +305,11 @@ class DashboardSummary {
   /// rights.
   final List<DashboardEssential> essentials;
 
+  /// The plan's wedding items (the mahr not counted), so the home asks for
+  /// the first one only while there is none; null without money rights or
+  /// before the server sends it.
+  final int? budgetItemsCount;
+
   /// Whose plan it is: `GROOM` or `BRIDE`. A plan kept on the phone has it
   /// only here, so the starters read it from the summary.
   final String? persona;
@@ -373,6 +384,7 @@ class DashboardSummary {
       persona: persona,
       bookedServices: bookedServices,
       essentials: essentials,
+      budgetItemsCount: budgetItemsCount,
     );
   }
 
@@ -464,6 +476,7 @@ class DashboardEssential {
     required this.key,
     required this.status,
     this.budgetCategoryId,
+    this.hidden = false,
   });
 
   factory DashboardEssential.fromJson(Map<String, dynamic> json) =>
@@ -476,12 +489,24 @@ class DashboardEssential {
           _ => DashboardEssentialStatus.none,
         },
         budgetCategoryId: json['budgetCategoryId']?.toString(),
+        hidden: json['hidden'] == true,
       );
 
   /// `VENUE`, `DRESS`, `PHOTO`, `GOLD`, `HOME` or `HONEYMOON`.
   final String key;
   final DashboardEssentialStatus status;
   final String? budgetCategoryId;
+
+  /// The owner answered the home's suggestion of it with «ما أحتاجها» or
+  /// «بعدين» (D72): off the home for now.
+  final bool hidden;
+
+  /// Still open, not answered away, and with an item to answer on: what the
+  /// home suggests.
+  bool get suggested =>
+      status == DashboardEssentialStatus.missing &&
+      !hidden &&
+      budgetCategoryId != null;
 
   bool get isSettled =>
       status == DashboardEssentialStatus.booked ||
@@ -499,15 +524,17 @@ class DashboardBookedServices {
       DashboardBookedServices(
         count: json['count'] is num ? (json['count'] as num).toInt() : 0,
         itemIds: [
-          for (final id in (json['budgetCategoryIds'] is List
-              ? json['budgetCategoryIds'] as List
-              : const []))
+          for (final id
+              in (json['budgetCategoryIds'] is List
+                  ? json['budgetCategoryIds'] as List
+                  : const []))
             id.toString(),
         ],
         quoteRequestIds: [
-          for (final id in (json['quoteRequestIds'] is List
-              ? json['quoteRequestIds'] as List
-              : const []))
+          for (final id
+              in (json['quoteRequestIds'] is List
+                  ? json['quoteRequestIds'] as List
+                  : const []))
             id.toString(),
         ],
       );

@@ -244,6 +244,9 @@ class _GuestListScreenState extends State<GuestListScreen> {
           (guest) => guestGroupLabel(guest, provider.groups) == 'بدون مجموعة',
         )
         .toList();
+    final words = GuestWords.of(context);
+    final remindable = guests.where((guest) => guest.canBeReminded).length;
+    final uninvited = guests.any((guest) => guest.awaitsInvitation);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -251,17 +254,30 @@ class _GuestListScreenState extends State<GuestListScreen> {
           summary: summary,
           onTap: () =>
               context.push(AppRouter.guestAttendance(widget.weddingPlanId)),
-          action: !_isLocalPlan && summary.pending > 0
+          action: _isLocalPlan
+              ? null
+              : remindable > 0
               ? JourneyButton(
                   key: const ValueKey('guests-remind'),
-                  label:
-                      '${context.say('ذكّر', 'ذكّري')} الـ ${summary.pending} على واتساب',
+                  label: remindable == 1
+                      ? '${context.say('ذكّر', 'ذكّري')} ${words.count(1)} على واتساب'
+                      : '${context.say('ذكّر', 'ذكّري')} الـ $remindable على واتساب',
                   icon: LucideIcons.send,
                   background: context.accent.primary,
                   expand: true,
                   onPressed: () => context.push(
                     AppRouter.guestInvite(widget.weddingPlanId, reminder: true),
                   ),
+                )
+              : uninvited
+              ? JourneyButton(
+                  key: const ValueKey('guests-invite-now'),
+                  label: '${context.say('أرسل', 'أرسلي')} الدعوة على واتساب',
+                  icon: LucideIcons.send,
+                  background: context.accent.primary,
+                  expand: true,
+                  onPressed: () =>
+                      context.push(AppRouter.guestInvite(widget.weddingPlanId)),
                 )
               : null,
         ),

@@ -67,9 +67,7 @@ class _GuestInviteScreenState extends State<GuestInviteScreen> {
   List<Guest> _recipients(List<Guest> guests) => [
     for (final guest in guests)
       if (guest.weddingPlanId == widget.weddingPlanId &&
-          (widget.reminder
-              ? guest.isPending && guest.invitationStatus != 'NOT_SENT'
-              : guest.invitationStatus == 'NOT_SENT' && !guest.isDeclined))
+          (widget.reminder ? guest.canBeReminded : guest.awaitsInvitation))
         guest,
   ];
 

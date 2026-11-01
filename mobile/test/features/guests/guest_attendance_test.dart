@@ -15,7 +15,8 @@ void main() {
   testWidgets('shows the real counts, the no-guess note and the reminder', (
     tester,
   ) async {
-    final api = _FakeGuestsApi(_summary(confirmed: 62, pending: 62));
+    final api = _FakeGuestsApi(_summary(confirmed: 62, pending: 62))
+      ..guests = [_guest('g1', 'INVITED', invitation: 'SENT')];
     await _pump(tester, api, '/wedding-plans/plan-1/guests/attendance');
 
     expect(api.summaryCalls, ['plan-1']);
@@ -40,7 +41,7 @@ void main() {
   ) async {
     final api = _FakeGuestsApi(
       _summary(confirmed: 80, pending: 30, declined: 14),
-    );
+    )..guests = [_guest('g1', 'INVITED', invitation: 'SENT')];
     await _pump(tester, api, '/wedding-plans/plan-1/guests/attendance');
 
     expect(find.text('80 أكدوا من 124'), findsOneWidget);
@@ -50,6 +51,20 @@ void main() {
       findsNothing,
     );
     expect(find.text('ذكّر اللي ما ردوا'), findsOneWidget);
+  });
+
+  // R17: nobody can be reminded of an invitation that never went out.
+  testWidgets('nobody invited yet: it sends the invitation instead', (
+    tester,
+  ) async {
+    final api = _FakeGuestsApi(_summary(confirmed: 0, pending: 3))
+      ..guests = [_guest('g1', 'INVITED')];
+    await _pump(tester, api, '/wedding-plans/plan-1/guests/attendance');
+
+    expect(find.text('ذكّر اللي ما ردوا'), findsNothing);
+    await tester.tap(find.text('أرسل الدعوة على واتساب'));
+    await tester.pumpAndSettle();
+    expect(find.text('reminder plan-1 null'), findsOneWidget);
   });
 
   testWidgets('everyone answered: no reminder', (tester) async {
@@ -111,17 +126,19 @@ GuestSummary _summary({
   });
 }
 
-Guest _guest(String id, String status) => Guest(
-  id: id,
-  weddingPlanId: 'plan-1',
-  name: 'ضيف $id',
-  side: 'GROOM',
-  status: status,
-  attendanceStatus: status == 'CONFIRMED' ? 'CONFIRMED' : 'PENDING',
-  seatsCount: 1,
-  createdAt: DateTime(2026, 10, 1),
-  updatedAt: DateTime(2026, 10, 1),
-);
+Guest _guest(String id, String status, {String invitation = 'NOT_SENT'}) =>
+    Guest(
+      id: id,
+      weddingPlanId: 'plan-1',
+      name: 'ضيف $id',
+      side: 'GROOM',
+      status: status,
+      attendanceStatus: status == 'CONFIRMED' ? 'CONFIRMED' : 'PENDING',
+      invitationStatus: invitation,
+      seatsCount: 1,
+      createdAt: DateTime(2026, 10, 1),
+      updatedAt: DateTime(2026, 10, 1),
+    );
 
 Future<void> _pump(
   WidgetTester tester,

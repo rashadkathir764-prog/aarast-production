@@ -27,6 +27,7 @@ class GuestAttendanceScreen extends StatefulWidget {
 
 class _GuestAttendanceScreenState extends State<GuestAttendanceScreen> {
   Future<GuestSummary>? _summary;
+  List<Guest> _guests = const [];
 
   bool get _isLocalPlan =>
       AuthActionGuard.isLocalGuestPlanId(widget.weddingPlanId);
@@ -37,8 +38,16 @@ class _GuestAttendanceScreenState extends State<GuestAttendanceScreen> {
     _summary ??= _load();
   }
 
-  Future<GuestSummary> _load() =>
-      context.read<GuestsApi>().getSummary(weddingPlanId: widget.weddingPlanId);
+  /// The counts are the server's; who the button can reach needs the list.
+  Future<GuestSummary> _load() async {
+    final api = context.read<GuestsApi>();
+    final (summary, guests) = await (
+      api.getSummary(weddingPlanId: widget.weddingPlanId),
+      api.getGuests(widget.weddingPlanId),
+    ).wait;
+    _guests = guests;
+    return summary;
+  }
 
   void _retry() {
     final next = _load();
@@ -91,11 +100,37 @@ class _GuestAttendanceScreenState extends State<GuestAttendanceScreen> {
     );
   }
 
+  /// A reminder for who was invited, else the invitation itself (R17).
+  Widget? _nextAction(GuestWords words) {
+    if (_isLocalPlan) return null;
+    final say = words.profile.say;
+    final reminds = _guests.any((guest) => guest.canBeReminded);
+    if (!reminds && !_guests.any((guest) => guest.awaitsInvitation)) {
+      return null;
+    }
+    return JourneyButton(
+      key: ValueKey(
+        reminds ? 'guest-attendance-remind' : 'guest-attendance-invite',
+      ),
+      // The reader reminds; the guests are the plan's.
+      label: reminds
+          ? '${say('ذكّر', 'ذكّري')} اللي '
+                '${words.profile.plan('ما ردوا', 'ما ردّن')}'
+          : '${say('أرسل', 'أرسلي')} الدعوة على واتساب',
+      icon: LucideIcons.send,
+      background: context.accent.primary,
+      expand: true,
+      large: true,
+      onPressed: () => context.push(
+        AppRouter.guestInvite(widget.weddingPlanId, reminder: reminds),
+      ),
+    );
+  }
+
   List<Widget> _answers(GuestSummary summary) {
     final total = summary.totalGuests;
     final answered = summary.confirmed + summary.declined;
     final words = GuestWords.of(context);
-    final say = words.profile.say;
     final waiting = [
       summary.pending == 0
           ? words.profile.plan('كل ضيوفك ردوا', 'كل ضيفاتك ردّن')
@@ -152,22 +187,9 @@ class _GuestAttendanceScreenState extends State<GuestAttendanceScreen> {
           soft: AarastV3Color.line,
         ),
       ],
-      if (!_isLocalPlan && summary.pending > 0) ...[
+      if (_nextAction(words) case final action?) ...[
         const SizedBox(height: 14),
-        JourneyButton(
-          key: const ValueKey('guest-attendance-remind'),
-          // The reader reminds; the guests are the plan's.
-          label:
-              '${say('ذكّر', 'ذكّري')} اللي '
-              '${words.profile.plan('ما ردوا', 'ما ردّن')}',
-          icon: LucideIcons.send,
-          background: context.accent.primary,
-          expand: true,
-          large: true,
-          onPressed: () => context.push(
-            AppRouter.guestInvite(widget.weddingPlanId, reminder: true),
-          ),
-        ),
+        action,
       ],
     ];
   }

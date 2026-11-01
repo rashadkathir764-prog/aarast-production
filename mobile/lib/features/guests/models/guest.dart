@@ -1,4 +1,4 @@
-﻿import 'guest_invite_text.dart';
+import 'guest_invite_text.dart';
 
 class Guest {
   const Guest({
@@ -61,6 +61,12 @@ class Guest {
   bool get isDeclined => attendanceStatus == 'DECLINED' || status == 'DECLINED';
 
   bool get isPending => !isConfirmed && !isDeclined;
+
+  /// Invited and not answered: who a reminder can reach (e08).
+  bool get canBeReminded => isPending && invitationStatus != 'NOT_SENT';
+
+  /// No invitation has gone out to this guest yet (e04).
+  bool get awaitsInvitation => invitationStatus == 'NOT_SENT' && !isDeclined;
 
   bool get hasPhone => phone?.trim().isNotEmpty == true;
 

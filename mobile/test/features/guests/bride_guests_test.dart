@@ -18,21 +18,30 @@ import 'package:shared_preferences/shared_preferences.dart';
 // women, so «الضيفات», «مدعوة», «أكدن», «ما ردّن», and her invitation is
 // sent by a woman to her women guests (JOURNEY_PROFILE.md).
 
-Guest _guest(String id, String name, String status) => Guest(
+Guest _guest(
+  String id,
+  String name,
+  String status, {
+  String invitation = 'SENT',
+}) => Guest(
   id: id,
   weddingPlanId: 'plan-1',
   name: name,
   side: 'BRIDE',
   status: status,
   attendanceStatus: status == 'CONFIRMED' ? 'CONFIRMED' : 'PENDING',
-  invitationStatus: 'SENT',
+  invitationStatus: invitation,
   seatsCount: 1,
   companionsCount: 0,
   createdAt: DateTime(2026, 10, 1),
   updatedAt: DateTime(2026, 10, 1),
 );
 
-Future<void> _pumpList(WidgetTester tester, JourneyProfile profile) async {
+Future<void> _pumpList(
+  WidgetTester tester,
+  JourneyProfile profile, {
+  List<Guest>? guests,
+}) async {
   tester.view.devicePixelRatio = 1;
   tester.view.physicalSize = const Size(384, 1200);
   addTearDown(tester.view.reset);
@@ -44,10 +53,14 @@ Future<void> _pumpList(WidgetTester tester, JourneyProfile profile) async {
   await database.initialize();
   final offline = OfflineSyncService(database: database, apiClient: apiClient);
   await offline.refreshStatus();
-  final api = _Api(apiClient, [
-    _guest('g1', 'عبير الحمدي', 'CONFIRMED'),
-    _guest('g2', 'هدى السنيدار', 'INVITED'),
-  ]);
+  final api = _Api(
+    apiClient,
+    guests ??
+        [
+          _guest('g1', 'عبير الحمدي', 'CONFIRMED'),
+          _guest('g2', 'هدى السنيدار', 'INVITED'),
+        ],
+  );
   await tester.pumpWidget(
     MultiProvider(
       providers: [
@@ -110,6 +123,34 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  // R17: a reminder cannot reach someone who was never invited, so the main
+  // button must not promise one.
+  testWidgets('guests never invited are invited, not reminded', (tester) async {
+    await _pumpList(
+      tester,
+      JourneyProfile.bride,
+      guests: [_guest('g1', 'هدى', 'INVITED', invitation: 'NOT_SENT')],
+    );
+
+    expect(find.byKey(const ValueKey('guests-remind')), findsNothing);
+    expect(find.byKey(const ValueKey('guests-invite-now')), findsOneWidget);
+    expect(find.text('أرسلي الدعوة على واتساب'), findsOneWidget);
+  });
+
+  testWidgets('the reminder counts only who was invited', (tester) async {
+    await _pumpList(
+      tester,
+      JourneyProfile.bride,
+      guests: [
+        _guest('g1', 'هدى', 'INVITED'),
+        _guest('g2', 'أسماء', 'INVITED'),
+        _guest('g3', 'عبلة', 'INVITED', invitation: 'NOT_SENT'),
+      ],
+    );
+
+    expect(find.text('ذكّري الـ 2 على واتساب'), findsOneWidget);
+  });
+
   testWidgets('e01: the reminder sits in the summary card, the bar is drawn', (
     tester,
   ) async {
@@ -126,7 +167,7 @@ void main() {
       ),
       findsOneWidget,
     );
-    expect(find.text('ذكّري الـ 1 على واتساب'), findsOneWidget);
+    expect(find.text('ذكّري ضيفة وحدة على واتساب'), findsOneWidget);
     // The confirmed and waiting pieces are 10 high, not collapsed.
     final pieces = tester.widgetList<ColoredBox>(
       find.descendant(

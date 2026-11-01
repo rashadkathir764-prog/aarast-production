@@ -58,7 +58,8 @@ class _CategoryChips extends StatelessWidget {
   final String? selectedId;
   final String? error;
   final ValueChanged<String> onSelect;
-  final VoidCallback onCreate;
+  /// A new item, for the plan's owner; null for every other member.
+  final VoidCallback? onCreate;
 
   @override
   Widget build(BuildContext context) {
@@ -77,12 +78,13 @@ class _CategoryChips extends StatelessWidget {
                 selected: category.id == selectedId,
                 onTap: () => onSelect(category.id),
               ),
-            JourneyChip(
-              key: const ValueKey('cost-category-create'),
-              label: 'بند جديد',
-              icon: LucideIcons.plus,
-              onTap: onCreate,
-            ),
+            if (onCreate case final create?)
+              JourneyChip(
+                key: const ValueKey('cost-category-create'),
+                label: 'بند جديد',
+                icon: LucideIcons.plus,
+                onTap: create,
+              ),
           ],
         ),
         if (error != null)

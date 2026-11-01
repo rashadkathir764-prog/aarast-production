@@ -102,6 +102,7 @@ class _OwnerMainShellState extends State<_OwnerMainShell> {
       planId: planId,
       tabIndex: _index,
       canManageMoney: _canManageMoney(planId),
+      canManageBudget: _canManageBudget(planId),
       offerAgreementActions: true,
       signals: summary?.planId == planId
           ? PlanQuickAddSignals.fromDashboard(summary!)
@@ -122,6 +123,12 @@ class _OwnerMainShellState extends State<_OwnerMainShell> {
     if (finance?.loadedPlanId == planId) return finance!.canManageMoney;
     final summary = context.read<DashboardSummaryProvider>().summary;
     return summary?.planId == planId && summary!.permissions.canManageMoney;
+  }
+
+  /// The budget's rights are known once the money is loaded.
+  bool _canManageBudget(String planId) {
+    final finance = context.read<FinanceProvider?>();
+    return finance?.loadedPlanId == planId && finance!.canManageBudget;
   }
 
   @override

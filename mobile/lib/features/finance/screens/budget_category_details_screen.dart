@@ -102,7 +102,7 @@ class _BudgetCategoryDetailsScreenState
               category: category,
               plain: (value) => _plain(value, currency),
             ),
-          if (over > 0 && canManage) ...[
+          if (over > 0 && provider.canManageBudget) ...[
             const SizedBox(height: 8),
             JourneySectionTitle(context.say('ايش تسوي؟', 'ايش تسوين؟')),
             _OverChoices(
@@ -194,7 +194,7 @@ class _BudgetCategoryDetailsScreenState
                       many: 'اتفاق',
                     ),
               onBack: () => context.pop(),
-              trailing: category != null && canManage
+              trailing: category != null && provider.canManageBudget
                   ? _CategoryMenu(
                       onEdit: () => _edit(category),
                       onRemove: () => _remove(category, costs.length),

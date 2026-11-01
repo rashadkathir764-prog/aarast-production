@@ -90,6 +90,24 @@ void main() {
       expect(actions.skip(1).every((action) => !action.recommended), isTrue);
     });
 
+    test('a new item is offered to the owner only (R20)', () {
+      final actions = planQuickAddActions(
+        planId: 'plan-member',
+        tabIndex: 1,
+        canManageMoney: true,
+        canManageBudget: false,
+      );
+
+      expect(
+        actions.map((action) => action.kind),
+        isNot(contains(PlanQuickAddKind.category)),
+      );
+      expect(
+        actions.map((action) => action.kind),
+        contains(PlanQuickAddKind.cost),
+      );
+    });
+
     test('money offers additions but never manages the budget', () {
       expect(
         _labels(

@@ -16,6 +16,7 @@ class PlanQuickAddFlow {
     required this.onAddGuest,
     required this.onFindProviders,
     required this.onChanged,
+    this.canManageBudget = true,
     this.offerAgreementActions = false,
     this.refreshOnReturn = false,
     this.signals,
@@ -24,6 +25,7 @@ class PlanQuickAddFlow {
   final String planId;
   final int tabIndex;
   final bool canManageMoney;
+  final bool canManageBudget;
   final VoidCallback onAddGuest;
   final VoidCallback onFindProviders;
   final Future<void> Function() onChanged;
@@ -35,6 +37,7 @@ class PlanQuickAddFlow {
     planId: planId,
     tabIndex: tabIndex,
     canManageMoney: canManageMoney,
+    canManageBudget: canManageBudget,
     offerAgreementActions: offerAgreementActions,
     signals: signals,
   );

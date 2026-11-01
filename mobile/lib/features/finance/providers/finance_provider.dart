@@ -78,6 +78,10 @@ class FinanceProvider extends ChangeNotifier with SessionScopedNotifier {
   String? get loadedPlanId => _loadedPlanId;
   bool get canViewMoney => _access.canViewMoney;
   bool get canManageMoney => _access.canManageMoney;
+
+  /// The budget and its items are the owner's: the server refuses every other
+  /// member, even one who manages agreements and payments.
+  bool get canManageBudget => _access.isOwner;
   bool get hasMoreCosts => _costsPage < _costsTotalPages;
   bool get hasMorePayments => _paymentsPage < _paymentsTotalPages;
   bool get isLoadingMoreCosts => _isLoadingMoreCosts;
@@ -146,6 +150,15 @@ class FinanceProvider extends ChangeNotifier with SessionScopedNotifier {
 
   List<PaymentSchedule> schedulesForCost(String costId) =>
       List.unmodifiable(_schedulesByCost[costId] ?? const []);
+
+  /// The earliest date still waiting on this agreement.
+  PaymentSchedule? nextPendingSchedule(String costId) {
+    final pending = [
+      for (final schedule in schedulesForCost(costId))
+        if (schedule.isPending) schedule,
+    ]..sort((a, b) => a.dueDate.compareTo(b.dueDate));
+    return pending.firstOrNull;
+  }
 
   Future<void> loadMoney(
     String planId, {

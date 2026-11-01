@@ -365,7 +365,7 @@ class _CostFormScreenState extends State<CostFormScreen> {
                     _categoryId = id;
                     _categoryError = null;
                   }),
-                  onCreate: _createCategory,
+                  onCreate: provider.canManageBudget ? _createCategory : null,
                 ),
                 const SizedBox(height: 16),
                 _PartySection(

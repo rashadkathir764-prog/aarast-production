@@ -62,6 +62,7 @@ class WeddingPlanShell extends StatelessWidget {
       planId: weddingPlanId,
       tabIndex: currentIndex,
       canManageMoney: _canManageMoney(context),
+      canManageBudget: _canManageBudget(context),
       offerAgreementActions: true,
       signals: summary?.planId == weddingPlanId
           ? PlanQuickAddSignals.fromDashboard(summary!)
@@ -83,6 +84,12 @@ class WeddingPlanShell extends StatelessWidget {
     final summary = context.read<DashboardSummaryProvider?>()?.summary;
     return summary?.planId == weddingPlanId &&
         summary!.permissions.canManageMoney;
+  }
+
+  /// The budget's rights are known once the money is loaded.
+  bool _canManageBudget(BuildContext context) {
+    final finance = context.read<FinanceProvider?>();
+    return finance?.loadedPlanId == weddingPlanId && finance!.canManageBudget;
   }
 
   @override

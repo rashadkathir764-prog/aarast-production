@@ -210,6 +210,7 @@ List<PlanQuickAction> planQuickAddActions({
   required String planId,
   required int tabIndex,
   required bool canManageMoney,
+  bool canManageBudget = true,
   bool offerAgreementActions = false,
   PlanQuickAddSignals? signals,
 }) {
@@ -224,7 +225,7 @@ List<PlanQuickAction> planQuickAddActions({
             PlanQuickAddKind.payment,
             PlanQuickAddKind.schedule,
           ],
-          PlanQuickAddKind.category,
+          if (canManageBudget) PlanQuickAddKind.category,
         ]
       : const <PlanQuickAddKind>[];
 

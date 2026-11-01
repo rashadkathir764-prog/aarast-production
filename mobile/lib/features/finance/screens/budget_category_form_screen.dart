@@ -104,6 +104,7 @@ class _BudgetCategoryFormScreenState extends State<BudgetCategoryFormScreen> {
       context: context,
       provider: provider,
       weddingPlanId: widget.weddingPlanId,
+      ownerOnly: true,
     );
     if (accessBlock != null) return accessBlock;
 

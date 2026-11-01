@@ -35,11 +35,13 @@ void main() {
       addTearDown(harness.dispose);
       await _pumpProduct(tester, harness.app);
 
-      expect(find.byKey(const ValueKey('money-funding-unknown')), findsOneWidget);
+      expect(
+        find.byKey(const ValueKey('money-funding-unknown')),
+        findsOneWidget,
+      );
       expect(find.textContaining('يغطون'), findsNothing);
       expect(find.textContaining(' معك '), findsNothing);
     });
-
 
     testWidgets('owner opens real schedule, category, and cost destinations', (
       tester,
@@ -820,6 +822,39 @@ void main() {
       expect(tester.takeException(), isNull);
     });
 
+    // R20: the server keeps the budget and its items to the plan's owner, so
+    // a member who manages money is not offered what it refuses.
+    testWidgets('a money manager records agreements, not the budget', (
+      tester,
+    ) async {
+      final harness = _MoneyProductHarness.moneyManager(
+        initialLocation: AppRouter.money(_planId),
+      );
+      addTearDown(harness.dispose);
+      await _pumpProduct(tester, harness.app);
+
+      expect(harness.provider.canManageMoney, isTrue);
+      expect(harness.provider.canManageBudget, isFalse);
+      await tester.tap(find.byKey(const ValueKey('journey-tab-1')));
+      await tester.pumpAndSettle();
+      expect(find.byKey(const ValueKey('money-empty-add-cost')), findsNothing);
+    });
+
+    testWidgets('the budget page tells a money manager it is the owner\'s', (
+      tester,
+    ) async {
+      final harness = _MoneyProductHarness.moneyManager(
+        initialLocation: AppRouter.moneyBudget(_planId),
+      );
+      addTearDown(harness.dispose);
+      await _pumpProduct(tester, harness.app);
+
+      expect(
+        find.text('الميزانية والبنود يعدّلها صاحب الخطة.'),
+        findsOneWidget,
+      );
+    });
+
     testWidgets(
       'read-only member sees money but cannot enter budget or cost writes',
       (tester) async {
@@ -920,6 +955,27 @@ class _MoneyProductHarness {
           isOwner: false,
           canViewMoney: true,
           canManageMoney: false,
+        ),
+      ),
+    );
+    return _MoneyProductHarness._from(
+      api: api,
+      provider: provider,
+      initialLocation: initialLocation,
+      personaCode: 'GROOM',
+    );
+  }
+
+  factory _MoneyProductHarness.moneyManager({required String initialLocation}) {
+    final api = _MoneyProductApi();
+    final provider = FinanceProvider(
+      api,
+      permissionsApi: _MoneyPermissionsApi(
+        const PlanAccessPermissions(
+          weddingPlanId: _planId,
+          isOwner: false,
+          canViewMoney: true,
+          canManageMoney: true,
         ),
       ),
     );

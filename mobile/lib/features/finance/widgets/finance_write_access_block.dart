@@ -9,6 +9,7 @@ Widget? financeWriteAccessBlock({
   required BuildContext context,
   required FinanceProvider provider,
   required String weddingPlanId,
+  bool ownerOnly = false,
 }) {
   if (AuthActionGuard.isLocalGuestPlanId(weddingPlanId)) return null;
   if (provider.loadedPlanId != weddingPlanId || provider.isLoading) {
@@ -41,6 +42,18 @@ Widget? financeWriteAccessBlock({
         child: AarastEmptyState(
           title: 'العرض فقط',
           message: 'لا تملك صلاحية إدارة المال في هذه الخطة.',
+          icon: LucideIcons.lock,
+        ),
+      ),
+    );
+  }
+  if (ownerOnly && !provider.canManageBudget) {
+    return const AarastScreenFrame(
+      maxWidth: 520,
+      child: Center(
+        child: AarastEmptyState(
+          title: 'لصاحب الخطة',
+          message: 'الميزانية والبنود يعدّلها صاحب الخطة.',
           icon: LucideIcons.lock,
         ),
       ),

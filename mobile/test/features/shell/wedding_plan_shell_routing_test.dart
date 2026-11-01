@@ -580,4 +580,7 @@ class _ShellFinance extends FinanceProvider {
 
   @override
   bool get canManageMoney => canManage;
+
+  @override
+  bool get canManageBudget => canManage;
 }

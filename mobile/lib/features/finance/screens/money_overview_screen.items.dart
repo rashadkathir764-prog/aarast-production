@@ -205,10 +205,10 @@ class _MoneyItemsTab extends StatelessWidget {
             phase: JourneyListPhase.empty,
             section: JourneySection.money,
             emptyTitle: 'ما في بنود بعد',
-            emptyAction: provider.canManageMoney
+            emptyAction: provider.canManageBudget
                 ? context.say('أضف أول بند', 'أضيفي أول بند')
                 : null,
-            onEmptyAction: provider.canManageMoney
+            onEmptyAction: provider.canManageBudget
                 ? () => context.push(AppRouter.moneyCategoryCreate(planId))
                 : null,
           )
@@ -245,7 +245,7 @@ class _MoneyItemsTab extends StatelessWidget {
             ),
           ),
         ],
-        if (provider.canManageMoney) ...[
+        if (provider.canManageBudget) ...[
           const SizedBox(height: 12),
           JourneyBox(
             padding: const EdgeInsets.all(16),

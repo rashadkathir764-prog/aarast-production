@@ -131,7 +131,7 @@ class _MoneyOverviewScreenState extends State<MoneyOverviewScreen> {
           children: [
             _MoneyHeader(
               summary: provider.summary,
-              canManage: provider.canManageMoney,
+              canManage: provider.canManageBudget,
               onShare: provider.summary.hasAnyData
                   ? () => showAarastShareSheet(
                       context: context,
@@ -283,7 +283,7 @@ class _MoneyOverviewScreenState extends State<MoneyOverviewScreen> {
       const SizedBox(height: 12),
       _MoneyBudgetCard(
         summary: summary,
-        canManage: provider.canManageMoney,
+        canManage: provider.canManageBudget,
         onBudget: () =>
             context.push(AppRouter.moneyBudget(widget.weddingPlanId)),
       ),

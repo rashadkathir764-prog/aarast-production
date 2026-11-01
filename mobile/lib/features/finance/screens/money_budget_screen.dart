@@ -88,6 +88,7 @@ class _MoneyBudgetScreenState extends State<MoneyBudgetScreen> {
       context: context,
       provider: provider,
       weddingPlanId: widget.weddingPlanId,
+      ownerOnly: true,
     );
     if (accessBlock != null) return accessBlock;
 

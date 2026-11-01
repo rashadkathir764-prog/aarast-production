@@ -158,7 +158,7 @@ void main() {
     await tester.tap(find.text('البنود'));
     await tester.pumpAndSettle();
 
-    expect(find.text('حجز الصالة'), findsOneWidget);
+    expect(find.text('الصالة'), findsWidgets);
     expect(find.text('أضف بند'), findsNothing);
     expect(tester.takeException(), isNull);
   });

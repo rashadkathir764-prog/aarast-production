@@ -15,6 +15,8 @@ import '../../../core/widgets/aarast_ui.dart';
 import '../../account_contexts/account_contexts_api.dart'
     show AccountContextController;
 import '../../catalogs/catalogs_api.dart' show ReferenceCatalogProvider;
+import '../../marketplace/marketplace_api.dart'
+    show ProviderBoardRow, ProviderMarketplaceProvider, buildProviderBoard;
 import '../../sharing/sharing_api.dart' show SharedMember;
 import '../../wedding_plans/wedding_plans_api.dart'
     show DashboardSummaryProvider, WeddingPlansProvider;
@@ -398,6 +400,16 @@ class _MoneyOverviewScreenState extends State<MoneyOverviewScreen> {
     ];
     final catalogs = context.read<ReferenceCatalogProvider?>();
     if (catalogs != null) futures.add(catalogs.load(refresh: true));
+    final marketplace = context.read<ProviderMarketplaceProvider?>();
+    if (marketplace != null &&
+        !FinanceLocalDataSource.isLocalGuestPlanId(widget.weddingPlanId)) {
+      // «البنود» says how far each item's service got.
+      marketplace.configureAccountScope(
+        includeAccountData: true,
+        weddingPlanId: widget.weddingPlanId,
+      );
+      futures.add(marketplace.loadScopedQuoteRequests());
+    }
     return Future.wait(futures);
   }
 }

@@ -69,6 +69,7 @@ class _MoneyItemsTab extends StatelessWidget {
           if (!have.contains(item.name.trim())) item,
     ].take(3).toList(growable: false);
 
+    final services = _servicesInMotion(context);
     final now = DateTime.now();
     // D59: the owner reads what they did; anyone else reads it unowned.
     final nothingPaid = context.ownerDid(
@@ -85,7 +86,7 @@ class _MoneyItemsTab extends StatelessWidget {
             provider.categoryById(cost.budgetCategoryId)?.name ??
                 cost.categoryName,
           ),
-          title: cost.title,
+          title: _itemTitle(cost),
           amount: _amount(context, cost.totalAmount, currency),
           paidRatio: moneyValue(cost.totalAmount) <= 0
               ? 0
@@ -113,14 +114,21 @@ class _MoneyItemsTab extends StatelessWidget {
               : _amount(context, category.allocatedAmount, currency),
           paidRatio: 0,
           paidLine: nothingPaid,
-          note: ('ما انحجز', AarastV3Color.brandAccentStrong),
-          onTap: provider.canManageMoney
-              ? () => context.push(
-                  AppRouter.moneyCostCreate(planId, categoryId: category.id),
-                )
-              : () => context.push(
-                  AppRouter.moneyCategoryDetails(planId, category.id),
-                ),
+          note: (
+            services[category.id]?.detail ?? 'ما انحجز',
+            AarastV3Color.brandAccentStrong,
+          ),
+          onTap: switch (services[category.id]) {
+            final service? => () => context.push(
+              AppRouter.providerRequests(planId, itemKey: service.key),
+            ),
+            null when provider.canManageMoney => () => context.push(
+              AppRouter.moneyCostCreate(planId, categoryId: category.id),
+            ),
+            null => () => context.push(
+              AppRouter.moneyCategoryDetails(planId, category.id),
+            ),
+          },
         ),
     ];
 
@@ -292,11 +300,67 @@ class _MoneyItemsTab extends StatelessWidget {
     );
   }
 
+  /// c02 names the wedding's item, the name the providers tab uses too. Who
+  /// it is with is on the agreement's page; its own title only tells two
+  /// agreements on one item apart, and stands in for the catch-all «أخرى».
+  String _itemTitle(WeddingCost cost) {
+    final item = provider.categoryById(cost.budgetCategoryId)?.name.trim();
+    if (item == null || item.isEmpty || item == 'أخرى') return cost.title;
+    final shared = provider.costs
+        .where(
+          (other) =>
+              other.budgetCategoryId == cost.budgetCategoryId &&
+              !other.isCancelled,
+        )
+        .length;
+    return shared > 1 ? '$item · ${cost.title}' : item;
+  }
+
+  /// The plan's items whose service has started on the providers tab, with
+  /// that tab's own words.
+  Map<String, ProviderBoardRow> _servicesInMotion(BuildContext context) {
+    final marketplace = context.watch<ProviderMarketplaceProvider?>();
+    if (marketplace == null) return const {};
+    final rows = buildProviderBoard(
+      items: [
+        for (final category in provider.categories)
+          if (!category.isMahr)
+            (
+              id: category.id,
+              name: category.name,
+              providerCategoryIds: provider.providerCategoryIdsFor(category.id),
+            ),
+      ],
+      costs: [
+        for (final cost in provider.costs)
+          (
+            budgetCategoryId: cost.budgetCategoryId,
+            providerId: cost.providerId,
+            partyName: cost.partyName,
+          ),
+      ],
+      costItemById: {
+        for (final cost in provider.costs) cost.id: cost.budgetCategoryId,
+      },
+      reader: context.journeyProfile,
+      quotes: marketplace.quotesForPlan(planId),
+    );
+    return {
+      for (final row in rows)
+        if (row.stage > 0 && row.budgetCategoryId != null)
+          row.budgetCategoryId!: row,
+    };
+  }
+
   /// Who paid what was paid of an agreement (D59): the owner in their own
   /// voice (or named to anyone else), someone who paid for the owner by
   /// their name with the verb agreeing («الوالد دفع», «العروسة دفعت»). The
   /// server says whose money each payer's payments were.
-  String _whoPaid(BuildContext context, MoneySummary summary, WeddingCost cost) {
+  String _whoPaid(
+    BuildContext context,
+    MoneySummary summary,
+    WeddingCost cost,
+  ) {
     final profile = context.journeyProfile;
     final key = payerKey(cost.payer, cost.payerName);
     final group = summary.payers

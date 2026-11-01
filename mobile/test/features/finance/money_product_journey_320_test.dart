@@ -14,6 +14,9 @@ import 'package:aarast_mobile/features/finance/screens/cost_details_screen.dart'
 import 'package:aarast_mobile/features/finance/screens/cost_form_screen.dart';
 import 'package:aarast_mobile/features/finance/screens/money_budget_screen.dart';
 import 'package:aarast_mobile/features/finance/screens/money_overview_screen.dart';
+import 'package:aarast_mobile/features/marketplace/data/marketplace_api.dart';
+import 'package:aarast_mobile/features/marketplace/models/marketplace_models.dart';
+import 'package:aarast_mobile/features/marketplace/providers/marketplace_provider.dart';
 import 'package:aarast_mobile/features/sharing/data/sharing_api.dart';
 import 'package:aarast_mobile/features/sharing/models/plan_access_permissions.dart';
 import 'package:flutter/material.dart';
@@ -822,6 +825,50 @@ void main() {
       expect(tester.takeException(), isNull);
     });
 
+    // R5: one thing has one name across the tabs.
+    testWidgets('an agreement reads by its item, not by who it is with', (
+      tester,
+    ) async {
+      final harness = _MoneyProductHarness.owner(
+        initialLocation: AppRouter.money(_planId),
+      );
+      addTearDown(harness.dispose);
+      await _pumpProduct(tester, harness.app);
+
+      await tester.tap(find.byKey(const ValueKey('journey-tab-1')));
+      await tester.pumpAndSettle();
+      expect(find.text('القاعات'), findsWidgets);
+      expect(find.text('حجز القاعة'), findsNothing);
+    });
+
+    // R16: money and the providers tab tell the same story.
+    testWidgets('an item with offers says so and opens them', (tester) async {
+      final harness = _MoneyProductHarness.owner(
+        initialLocation: AppRouter.money(_planId),
+        photoItem: true,
+      );
+      addTearDown(harness.dispose);
+      final market = _OffersMarketplace();
+      await _pumpProduct(
+        tester,
+        ChangeNotifierProvider<ProviderMarketplaceProvider>.value(
+          value: market,
+          child: harness.app,
+        ),
+      );
+
+      await tester.tap(find.byKey(const ValueKey('journey-tab-1')));
+      await tester.pumpAndSettle();
+      expect(market.loads, 1);
+      expect(find.text('وصلك عرض'), findsOneWidget);
+      expect(find.text('ما انحجز'), findsNothing);
+
+      await tester.tap(find.text('التصوير'));
+      await tester.pumpAndSettle();
+      expect(harness.currentLocation, contains('/providers/requests'));
+      expect(harness.currentLocation, contains('item=category-2'));
+    });
+
     // R20: the server keeps the budget and its items to the plan's owner, so
     // a member who manages money is not offered what it refuses.
     testWidgets('a money manager records agreements, not the budget', (
@@ -877,7 +924,7 @@ void main() {
         // c01: the costs live under «البنود».
         await tester.tap(find.byKey(const ValueKey('journey-tab-1')));
         await tester.pumpAndSettle();
-        expect(find.text('حجز القاعة'), findsOneWidget);
+        expect(find.text('القاعات'), findsWidgets);
         expect(
           find.byKey(const ValueKey('money-add-cost-primary')),
           findsNothing,
@@ -929,10 +976,12 @@ class _MoneyProductHarness {
     String currency = 'YER',
     String personaCode = 'GROOM',
     MoneyFundingSummary? funding,
+    bool photoItem = false,
   }) {
     final api = _MoneyProductApi(
       noBudget: noBudget,
       funding: funding,
+      photoItem: photoItem,
       failSummaryLoads: failSummaryLoads,
       currency: currency,
     );
@@ -997,6 +1046,10 @@ class _MoneyProductHarness {
     router = GoRouter(
       initialLocation: initialLocation,
       routes: [
+        GoRoute(
+          path: '/wedding-plans/:id/providers/requests',
+          builder: (context, state) => const Text('طلبات البند'),
+        ),
         GoRoute(
           path: '/wedding-plans/:id/money',
           builder: (context, state) => MoneyOverviewScreen(
@@ -1074,15 +1127,53 @@ class _MoneyProductHarness {
   }
 }
 
+class _OffersMarketplace extends ProviderMarketplaceProvider {
+  _OffersMarketplace()
+    : super(MarketplaceApi(ApiClient(tokenProvider: () async => null)));
+
+  int loads = 0;
+
+  @override
+  Future<void> loadScopedQuoteRequests() async => loads += 1;
+
+  @override
+  List<QuoteRequest> get quoteRequests => [
+    QuoteRequest(
+      id: 'quote-1',
+      providerId: 'provider-1',
+      weddingPlanId: _planId,
+      status: 'RECEIVED',
+      lifecycleStatus: 'RECEIVED',
+      service: const MarketplaceService(
+        id: 'service-1',
+        providerId: 'provider-1',
+        title: 'صور وفيديو',
+        category: ProviderCategory(id: 'cat-photo', nameAr: 'تصوير'),
+        isActive: true,
+      ),
+      offers: const [
+        QuoteOffer(
+          id: 'offer-1',
+          status: 'PENDING',
+          amount: '550000',
+          currency: 'YER',
+        ),
+      ],
+    ),
+  ];
+}
+
 class _MoneyProductApi extends FinanceApi {
   _MoneyProductApi({
     this.noBudget = false,
     this.failSummaryLoads = 0,
     this.currency = 'YER',
     this.funding,
+    this.photoItem = false,
   }) : super(ApiClient(tokenProvider: () async => null));
 
   final bool noBudget;
+  final bool photoItem;
   final MoneyFundingSummary? funding;
   int failSummaryLoads;
   final String currency;
@@ -1227,8 +1318,8 @@ class _MoneyProductApi extends FinanceApi {
         count: 1,
       ),
       paymentSchedules: MoneySchedulesSummary(upcomingCount: 1, next: schedule),
-      categories: const [
-        MoneyCategorySummary(
+      categories: [
+        const MoneyCategorySummary(
           categoryId: 'category-1',
           name: 'القاعات',
           allocatedAmount: '700000',
@@ -1238,6 +1329,18 @@ class _MoneyProductApi extends FinanceApi {
           remainingAllocation: '200000',
           costsCount: 1,
         ),
+        if (photoItem)
+          const MoneyCategorySummary(
+            categoryId: 'category-2',
+            name: 'التصوير',
+            allocatedAmount: '300000',
+            confirmedCost: '0',
+            paid: '0',
+            outstanding: '0',
+            remainingAllocation: '300000',
+            costsCount: 0,
+            providerCategoryIds: ['cat-photo'],
+          ),
       ],
       permissions: const MoneyPermissions(
         canViewMoney: true,

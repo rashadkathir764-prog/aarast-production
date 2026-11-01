@@ -27,6 +27,7 @@ export 'models/provider_portfolio.dart'
         ProviderPortfolio,
         portfolioSocialLabel,
         portfolioSocialNetworks;
+export 'models/provider_board.dart' show ProviderBoardRow, buildProviderBoard;
 export 'models/provider_budget_match_intent.dart'
     show ProviderBudgetMatchIntent, ProviderQuoteInitialContext;
 export 'providers/marketplace_provider.dart'

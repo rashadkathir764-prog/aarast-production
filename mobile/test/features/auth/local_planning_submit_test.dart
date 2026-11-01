@@ -188,12 +188,12 @@ void main() {
       await tester.tap(find.byKey(const ValueKey('journey-tab-1')));
       await tester.pumpAndSettle();
       await tester.scrollUntilVisible(
-        find.text('دفعة القاعة').first,
+        find.text('الصالة').first,
         240,
         scrollable: find.byType(Scrollable).first,
       );
       await tester.pumpAndSettle();
-      expect(find.text('دفعة القاعة'), findsWidgets);
+      expect(find.text('الصالة'), findsWidgets);
       expect(find.text(cloudMessage), findsNothing);
 
       expect(tester.takeException(), isNull);

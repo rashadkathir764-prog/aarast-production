@@ -106,7 +106,7 @@ class GuestsProvider extends ChangeNotifier with SessionScopedNotifier {
       }
       return true;
     } on ApiException catch (error) {
-      _errorMessage = _guestErrorMessage(error);
+      _errorMessage = _guestErrorMessage(error, savingGuest: true);
       return false;
     } catch (_) {
       _errorMessage = 'تعذر إضافة الضيف.';
@@ -142,7 +142,7 @@ class GuestsProvider extends ChangeNotifier with SessionScopedNotifier {
       }
       return created.length;
     } on ApiException catch (error) {
-      _errorMessage = _guestErrorMessage(error);
+      _errorMessage = _guestErrorMessage(error, savingGuest: true);
       return 0;
     } catch (_) {
       _errorMessage = 'ما قدرنا نضيف الضيوف';
@@ -190,7 +190,7 @@ class GuestsProvider extends ChangeNotifier with SessionScopedNotifier {
       }
       return true;
     } on ApiException catch (error) {
-      _errorMessage = _guestErrorMessage(error);
+      _errorMessage = _guestErrorMessage(error, savingGuest: true);
       return false;
     } catch (_) {
       _errorMessage = 'تعذر تحديث الضيف.';
@@ -309,9 +309,12 @@ bool _isLocalGuestPlanId(String? planId) {
       value.startsWith('local-guest-');
 }
 
-String _guestErrorMessage(ApiException error) {
+/// [savingGuest]: adding or editing a guest, where a conflict (409) means
+/// the guest is already on the list. Elsewhere (removing, reading, groups) a
+/// conflict means something else and keeps the server's own words.
+String _guestErrorMessage(ApiException error, {bool savingGuest = false}) {
   final normalized = error.message.trim();
-  if (error.statusCode == 409 ||
+  if ((savingGuest && error.statusCode == 409) ||
       normalized.contains('هذا الضيف مضاف') ||
       normalized.contains('Guest already exists') ||
       normalized.contains('duplicate')) {

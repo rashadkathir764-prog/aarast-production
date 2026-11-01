@@ -346,15 +346,12 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
   ) async {
     final target = resolveNotificationRouteTarget(notification);
     if (target == null || !isSafeNotificationRouteTarget(target)) return;
-    if (!_isNotificationTargetCompatible(target)) {
-      AarastToast.showError(
-        context,
-        'هذا التنبيه لخطة ثانية غير المفتوحة الحين.',
-      );
-      return;
-    }
     // Being marked read is secondary: a failure (offline) still opens what
     // the notification points to, and it stays unread to be marked later.
+    if (!_isNotificationTargetCompatible(target)) {
+      await _openInItsPlan(provider, notification, target);
+      return;
+    }
     await provider.markRead(notification);
     if (!mounted) return;
     if (isPlanShellNotificationRouteTarget(target)) {
@@ -362,6 +359,54 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
       return;
     }
     await context.push(target);
+  }
+
+  /// A notice for another of the account's plans (the groom's second plan,
+  /// or one he helps in): that plan opens first, then the notice's page, as
+  /// choosing the plan by hand does. A plan no longer reachable says so.
+  Future<void> _openInItsPlan(
+    NotificationsProvider provider,
+    AarastNotification notification,
+    String target,
+  ) async {
+    final planId = _targetPlanId(target);
+    final controller = context.read<AccountContextController?>();
+    final path = planId == null || _isLocalPlanNotifications
+        ? null
+        : controller?.availableContexts
+              .where((path) => path.isPlan && path.weddingPlanId == planId)
+              .firstOrNull;
+    if (controller == null || path == null) {
+      AarastToast.showError(
+        context,
+        'هذا التنبيه لخطة ما عاد توصل لها من هذا الحساب.',
+      );
+      return;
+    }
+    // Read before the switch: switching plans starts the session afresh.
+    await provider.markRead(notification);
+    if (!mounted) return;
+    final router = GoRouter.of(context);
+    final switched = await controller.select(path.contextKey);
+    if (!switched || controller.selectedContext?.weddingPlanId != planId) {
+      if (mounted) {
+        AarastToast.showError(
+          context,
+          controller.errorMessage ?? 'ما قدرنا نفتح الخطة. جرّب مرة ثانية.',
+        );
+      }
+      return;
+    }
+    router.go(target);
+  }
+
+  String? _targetPlanId(String target) {
+    final segments = Uri.tryParse(target)?.pathSegments;
+    return segments != null &&
+            segments.length >= 2 &&
+            segments.first == 'wedding-plans'
+        ? segments[1]
+        : null;
   }
 
   Future<void> _archive(
@@ -377,14 +422,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
   }
 
   bool _isNotificationTargetCompatible(String target) {
-    final targetUri = Uri.tryParse(target);
-    final segments = targetUri?.pathSegments;
-    final targetPlanId =
-        segments != null &&
-            segments.length >= 2 &&
-            segments.first == 'wedding-plans'
-        ? segments[1]
-        : null;
+    final targetPlanId = _targetPlanId(target);
     if (targetPlanId == null) return true;
     if (_isLocalPlanNotifications) {
       return targetPlanId == widget.weddingPlanId;

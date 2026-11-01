@@ -306,6 +306,53 @@ void main() {
     expect(find.text('tasks-opened'), findsOneWidget);
   });
 
+  testWidgets('a tab replaces the home: one tab bar, not two', (tester) async {
+    SharedPreferences.setMockInitialValues({});
+    final preferences = await SharedPreferences.getInstance();
+    final authStorage = AuthStorage(preferences);
+    final summary = LocalGuestDashboardSummary.fromPlan(_guestPlan());
+    final router = GoRouter(
+      initialLocation: '/',
+      routes: [
+        GoRoute(
+          path: '/',
+          builder: (context, state) =>
+              LocalGuestDashboardScreen(summary: summary),
+        ),
+        GoRoute(
+          path: '/wedding-plans/:id/money',
+          builder: (context, state) =>
+              const Scaffold(body: Text('money-opened')),
+        ),
+      ],
+    );
+    addTearDown(router.dispose);
+
+    await tester.pumpWidget(
+      Provider<AuthStorage>.value(
+        value: authStorage,
+        child: MaterialApp.router(routerConfig: router),
+      ),
+    );
+    await tester.tap(
+      find.descendant(
+        of: find.byType(AarastPlanNavigationBar),
+        matching: find.text('المال'),
+      ),
+      warnIfMissed: false,
+    );
+    for (var i = 0; i < 10; i++) {
+      await tester.pump(const Duration(milliseconds: 80));
+    }
+
+    expect(find.text('money-opened'), findsOneWidget);
+    // Pushed, the home and its tab bar stayed underneath the tab's own.
+    expect(
+      find.byType(LocalGuestDashboardScreen, skipOffstage: false),
+      findsNothing,
+    );
+  });
+
   testWidgets('guest opens guests from the tab without a login blocker', (
     tester,
   ) async {

@@ -48,6 +48,12 @@ class WeddingPlanShell extends StatelessWidget {
     if (index >= 0 && index < routes.length) {
       final current = _calculateSelectedIndex(context);
       if (current == index) return;
+      // A plan kept on the phone has one home, at /home: its «الرئيسية»
+      // goes back there, not to a second home inside this shell.
+      if (index == 0 && AuthActionGuard.isLocalGuestPlanId(weddingPlanId)) {
+        context.go(AppRouter.home);
+        return;
+      }
       context.go('/wedding-plans/$weddingPlanId/${routes[index]}');
     }
   }

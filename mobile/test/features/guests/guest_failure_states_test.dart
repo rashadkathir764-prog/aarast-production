@@ -22,6 +22,19 @@ void main() {
     expect(provider.loadErrorMessage, isNull);
   });
 
+  test('a conflict on removal is not «already added»', () async {
+    final api = _Api();
+    final provider = GuestsProvider(api);
+    await provider.loadGuests('plan-1');
+    api.failDelete = true;
+    api.deleteStatus = 409;
+
+    await provider.deleteGuest(api.guest);
+
+    expect(provider.errorMessage, 'ما ينشال الحين');
+    expect(provider.errorMessage, isNot(contains('مضاف')));
+  });
+
   test(
     'a failed read is the only «old copy», cleared by the next one',
     () async {
@@ -42,6 +55,7 @@ class _Api extends GuestsApi {
 
   bool failRead = false;
   bool failDelete = false;
+  int deleteStatus = 400;
 
   final guest = Guest(
     id: 'g1',
@@ -77,6 +91,8 @@ class _Api extends GuestsApi {
 
   @override
   Future<void> deleteGuest(String id) async {
-    if (failDelete) throw const ApiException('ما ينشال الحين', statusCode: 400);
+    if (failDelete) {
+      throw ApiException('ما ينشال الحين', statusCode: deleteStatus);
+    }
   }
 }

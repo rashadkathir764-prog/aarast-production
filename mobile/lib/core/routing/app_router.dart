@@ -155,6 +155,9 @@ class AppRouter {
   /// The provider portal opened on its requests tab, where a request is
   /// answered (a quote event tapped in the provider's chat).
   static const providerRequestsTab = '/provider/dashboard?tab=requests';
+
+  /// The portal's «ملفي», where its services and packages are listed.
+  static const providerProfileTab = '/provider/dashboard?tab=profile';
   static const providerProfileEdit = '/provider/profile/edit';
 
   /// His services and packages, opened from «ملفي» (D39).

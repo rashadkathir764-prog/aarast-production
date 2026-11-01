@@ -32,6 +32,41 @@ void main() {
     expect(find.text('opened tasks'), findsOneWidget);
   });
 
+  testWidgets('a notice for the groom\'s other plan opens that plan', (
+    tester,
+  ) async {
+    final other = accountContext(
+      role: AccountContextRole.owner,
+      planId: 'plan-2',
+    );
+    final controller = await _pump(
+      tester,
+      _Api(target: '/wedding-plans/plan-2/tasks'),
+      others: [other],
+    );
+
+    await tester.tap(find.text('محمد عطاك مهمة'));
+    await tester.pumpAndSettle();
+
+    expect(controller.selectedContext?.weddingPlanId, 'plan-2');
+    expect(find.text('opened tasks'), findsOneWidget);
+  });
+
+  testWidgets('a notice for a plan no longer reachable says so', (
+    tester,
+  ) async {
+    await _pump(tester, _Api(target: '/wedding-plans/plan-gone/tasks'));
+
+    await tester.tap(find.text('محمد عطاك مهمة'));
+    await tester.pumpAndSettle();
+
+    expect(
+      find.text('هذا التنبيه لخطة ما عاد توصل لها من هذا الحساب.'),
+      findsOneWidget,
+    );
+    await tester.pump(const Duration(seconds: 5));
+  });
+
   testWidgets('an archive that fails says so', (tester) async {
     await _pump(tester, _Api(failWrites: true));
 
@@ -43,7 +78,11 @@ void main() {
   });
 }
 
-Future<void> _pump(WidgetTester tester, _Api api) async {
+Future<AccountContextController> _pump(
+  WidgetTester tester,
+  _Api api, {
+  List<AccountContext> others = const [],
+}) async {
   SharedPreferences.setMockInitialValues({});
   final storage = AuthStorage(await SharedPreferences.getInstance());
   await storage.saveSession(
@@ -60,7 +99,7 @@ Future<void> _pump(WidgetTester tester, _Api api) async {
     planId: _planId,
   );
   final controller = AccountContextController(
-    contextsApi: _Gateway(selected),
+    contextsApi: _Gateway([selected, ...others]),
     authStorage: storage,
     setActiveWeddingPlan: (_) async {},
   );
@@ -97,13 +136,15 @@ Future<void> _pump(WidgetTester tester, _Api api) async {
     ),
   );
   await tester.pumpAndSettle();
+  return controller;
 }
 
 class _Api extends NotificationsApi {
-  _Api({this.failWrites = false})
+  _Api({this.failWrites = false, this.target = '/wedding-plans/$_planId/tasks'})
     : super(ApiClient(tokenProvider: () async => 'token'));
 
   final bool failWrites;
+  final String target;
 
   @override
   Future<NotificationsPage> getNotifications({
@@ -121,7 +162,7 @@ class _Api extends NotificationsApi {
           type: 'TASK_ASSIGNED_TEST',
           title: 'محمد عطاك مهمة',
           body: 'رتّب سيارات الزفة',
-          routeTarget: '/wedding-plans/$_planId/tasks',
+          routeTarget: target,
           createdAt: at,
           updatedAt: at,
         ),
@@ -144,18 +185,20 @@ class _Api extends NotificationsApi {
 
   @override
   Future<AarastNotification> archiveNotification(String id) async {
+    if (!failWrites) throw StateError('unexpected archive');
     throw const ApiException('ما وصلنا', isNetworkFailure: true);
   }
 }
 
 class _Gateway implements AccountContextsGateway {
-  const _Gateway(this.context);
+  const _Gateway(this.contexts);
 
-  final AccountContext context;
-
-  @override
-  Future<List<AccountContext>> listContexts() async => [context];
+  final List<AccountContext> contexts;
 
   @override
-  Future<AccountContext> validateContext(String contextKey) async => context;
+  Future<List<AccountContext>> listContexts() async => contexts;
+
+  @override
+  Future<AccountContext> validateContext(String contextKey) async =>
+      contexts.firstWhere((path) => path.contextKey == contextKey);
 }

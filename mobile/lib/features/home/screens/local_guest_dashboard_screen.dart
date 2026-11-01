@@ -77,7 +77,7 @@ class _LocalGuestDashboardScreenState extends State<LocalGuestDashboardScreen> {
           case 3:
             _openLocalBrowse(context, planId, area: 'الضيوف');
           case 4:
-            context.push(AppRouter.planProviders(planId));
+            context.go(AppRouter.planProviders(planId));
         }
       },
       body: AarastDashboardView(
@@ -101,7 +101,7 @@ class _LocalGuestDashboardScreenState extends State<LocalGuestDashboardScreen> {
         ),
         onOpenMoney: () => _openLocalBrowse(context, planId, area: 'المال'),
         onOpenTasks: () => _openLocalBrowse(context, planId, area: 'المهام'),
-        onOpenProviders: () => context.push(AppRouter.planProviders(planId)),
+        onOpenProviders: () => context.go(AppRouter.planProviders(planId)),
         onOpenGuests: () => _openLocalBrowse(context, planId, area: 'الضيوف'),
         // The setup step's promise, on a phone-only plan too.
         onImportGuests: () async {
@@ -189,18 +189,18 @@ class _LocalGuestDashboardScreenState extends State<LocalGuestDashboardScreen> {
     String area, {
     DashboardSummary? dashboardSummary,
   }) async {
+    // A tab replaces this home: pushed, it drew its own tab bar over this
+    // one. Coming back to «الرئيسية» builds the home afresh, so nothing
+    // here has to be refreshed.
     switch (area) {
       case 'المال':
-        await context.push(AppRouter.money(planId));
-        await _refreshSummary();
+        context.go(AppRouter.money(planId));
         return;
       case 'المهام':
-        await context.push(AppRouter.tasks(planId));
-        await _refreshSummary();
+        context.go(AppRouter.tasks(planId));
         return;
       case 'الضيوف':
-        await context.push(AppRouter.guestList(planId));
-        await _refreshSummary();
+        context.go(AppRouter.guestList(planId));
         return;
       case 'الخطة':
       default:

@@ -658,6 +658,25 @@ void main() {
     expect(find.byKey(const ValueKey('providers-favorite-p3')), findsOneWidget);
   });
 
+  testWidgets('a plan that could not be read keeps its own tabs', (
+    tester,
+  ) async {
+    await _pump(
+      tester,
+      _FakeMarketplaceProvider(quoteRequests: [_waitingQuote('quote-waiting')]),
+      planReadFails: true,
+    );
+
+    final tabs = find.byKey(const ValueKey('providers-tabs'));
+    expect(tabs, findsOneWidget);
+    for (final tab in ['طلباتي', 'المحادثات', 'المفضلة']) {
+      expect(
+        find.descendant(of: tabs, matching: find.text(tab)),
+        findsOneWidget,
+      );
+    }
+  });
+
   testWidgets('saved hearts that could not be read are not «nothing saved»', (
     tester,
   ) async {
@@ -818,6 +837,7 @@ Future<GoRouter> _pump(
   _FakeMarketplaceProvider state, {
   String? initialQuoteId,
   FinanceProvider? finance,
+  bool planReadFails = false,
 }) async {
   final router = GoRouter(
     initialLocation: '/providers',
@@ -891,6 +911,7 @@ Future<GoRouter> _pump(
       createdAt: DateTime(2026),
       updatedAt: DateTime(2026),
     ),
+    readFails: planReadFails,
   );
   addTearDown(accountContextController.dispose);
   addTearDown(weddingPlans.dispose);
@@ -917,15 +938,18 @@ Future<GoRouter> _pump(
 }
 
 class _SelectedWeddingPlansProvider extends WeddingPlansProvider {
-  _SelectedWeddingPlansProvider(this.plan)
+  _SelectedWeddingPlansProvider(this.plan, {this.readFails = false})
     : super(
         WeddingPlansApi(ApiClient(tokenProvider: () async => 'test-token')),
       );
 
   final WeddingPlan plan;
 
+  /// A weak network: the plan is never read.
+  final bool readFails;
+
   @override
-  WeddingPlan? get selectedPlan => plan;
+  WeddingPlan? get selectedPlan => readFails ? null : plan;
 
   @override
   Future<void> loadWeddingPlan(String id) async {}

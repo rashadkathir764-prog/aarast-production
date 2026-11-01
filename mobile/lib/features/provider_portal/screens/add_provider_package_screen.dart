@@ -10,6 +10,7 @@ import '../../../core/forms/aarast_form_draft_binding.dart';
 import '../../../core/forms/aarast_form_draft_store.dart';
 import '../../../core/forms/aarast_form_success.dart';
 import '../../../core/routing/app_router.dart';
+import '../../../core/routing/pop_or_go.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/currency_label.dart';
 import '../../../core/widgets/aarast_ui.dart';
@@ -76,9 +77,8 @@ class _AddProviderPackageScreenState extends State<AddProviderPackageScreen> {
       actions: [
         IconButton(
           tooltip: 'رجوع',
-          onPressed: () {
-            if (context.canPop()) context.pop();
-          },
+          // Opened by a link there is no page behind it: back to «ملفي».
+          onPressed: () => context.popOrGo(AppRouter.providerProfileTab),
           icon: const Icon(LucideIcons.chevronRight),
         ),
       ],

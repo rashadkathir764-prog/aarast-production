@@ -549,8 +549,12 @@ class _ProviderMarketplaceScreenState extends State<ProviderMarketplaceScreen> {
             scopedPlan = weddingPlans.selectedPlan;
           }
         }
-        if (scopedPlan != null &&
-            scopedPlan.status.toUpperCase() != 'ARCHIVED') {
+        if (scopedPlan == null) {
+          // The plan could not be read (a weak network): the tab is still
+          // that plan's, with its requests, chats and hearts. Only its
+          // place is unknown, so the directory starts without a city.
+          planId = scopedPlanId;
+        } else if (scopedPlan.status.toUpperCase() != 'ARCHIVED') {
           location = scopedPlan.weddingLocation;
           planId = scopedPlan.id;
         }

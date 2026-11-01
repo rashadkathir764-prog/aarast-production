@@ -206,7 +206,7 @@ class _GuestInviteScreenState extends State<GuestInviteScreen> {
                   JourneyNote(
                     key: const ValueKey('invite-no-phone'),
                     text:
-                        '${words.count(unreachable)} بدون رقم، ${say('ما توصل', 'ما توصلين')}${plan('هم', 'هن')} على واتساب.',
+                        '${words.count(unreachable)} بدون رقم، ${say('ما توصل', 'ما توصلين')}${unreachable == 1 ? plan('ه', 'ها') : plan('هم', 'هن')} على واتساب.',
                     icon: LucideIcons.phoneOff,
                     color: AarastV3Color.brandAccentStrong,
                     soft: AarastV3Color.brandAccentSoft,

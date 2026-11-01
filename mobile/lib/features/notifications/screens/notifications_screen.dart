@@ -349,7 +349,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     if (!_isNotificationTargetCompatible(target)) {
       AarastToast.showError(
         context,
-        'هذا التنبيه لا يطابق مسار الخطة المحدد حاليًا.',
+        'هذا التنبيه لخطة ثانية غير المفتوحة الحين.',
       );
       return;
     }

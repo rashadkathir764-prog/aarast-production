@@ -162,7 +162,7 @@ void main() {
 
     // d01: the header, this week's section, and when · who on the row.
     expect(find.text('المهام'), findsOneWidget);
-    expect(find.text('باقي 1 هذا الأسبوع'), findsOneWidget);
+    expect(find.text('باقي مهمة وحدة هذا الأسبوع'), findsOneWidget);
     expect(find.byKey(const ValueKey('task-group-week')), findsOneWidget);
     expect(find.text('تأكيد القاعة'), findsOneWidget);
     expect(find.text('اليوم · محمد'), findsOneWidget);

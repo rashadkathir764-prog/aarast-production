@@ -300,7 +300,7 @@ class _ProviderDetailsScreenState extends State<ProviderDetailsScreen> {
             quotePlanId != selectedPlanId)) {
       AarastToast.showError(
         context,
-        'هذا العرض لا يطابق مسار الخطة المحدد حاليًا.',
+        'هذا العرض لخطة ثانية غير المفتوحة الحين.',
       );
       return;
     }

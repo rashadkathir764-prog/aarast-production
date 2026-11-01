@@ -30,7 +30,7 @@ class GuestRow extends StatelessWidget {
     final line = [
       groupLabel,
       if (!guest.hasPhone) 'بدون رقم',
-      if (isDuplicate) context.say('رقمه مكرر', 'رقمها مكرر'),
+      if (isDuplicate) context.planWord('رقمه مكرر', 'رقمها مكرر'),
     ].join(' · ');
     return Semantics(
       button: true,

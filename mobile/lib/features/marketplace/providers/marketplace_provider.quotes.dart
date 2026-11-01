@@ -192,8 +192,7 @@ mixin _MarketplaceQuotes on _MarketplaceProviderCore {
       final expectedPlanId = _normalizedOrNull(expectedWeddingPlanId);
       if (expectedPlanId == null ||
           _normalizedOrNull(quote.weddingPlanId) != expectedPlanId) {
-        _quoteRequestsErrorMessage =
-            'هذا الطلب لا يطابق مسار الخطة المحدد حاليًا.';
+        _quoteRequestsErrorMessage = 'هذا الطلب لخطة ثانية غير المفتوحة الحين.';
         return false;
       }
       _quoteRequests = [

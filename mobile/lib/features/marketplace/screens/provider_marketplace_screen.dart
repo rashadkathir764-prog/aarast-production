@@ -236,7 +236,10 @@ class _ProviderMarketplaceScreenState extends State<ProviderMarketplaceScreen> {
                 ),
                 child: JourneyTabHeader(
                   title: 'المزودين',
-                  status: firstVisit != false
+                  // Still reading (null) is not «nothing asked yet».
+                  status: firstVisit == null
+                      ? 'لحظة…'
+                      : firstVisit
                       ? context.say('ما طلبت من أحد بعد', 'ما طلبتِ من أحد بعد')
                       : planMode
                       ? _boardStatus(board)

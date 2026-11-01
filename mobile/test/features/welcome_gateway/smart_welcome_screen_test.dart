@@ -311,6 +311,53 @@ void main() {
     expect(plans.request!.mahr, {'total': '3000000', 'settled': '2000000'});
   });
 
+  testWidgets('a06: a settled part over the mahr is said under it', (
+    tester,
+  ) async {
+    await _pump(tester, signedInPlans: _RecordingPlans(succeed: true));
+    await _tap(tester, 'ابدأ');
+    await _tap(tester, 'التالي');
+    await tester.enterText(find.byType(TextField).first, 'محمد');
+    await tester.pumpAndSettle();
+    await _tap(tester, 'ما حددنا الموعد بعد');
+    await _tap(tester, 'التالي');
+    await _tap(tester, 'صنعاء');
+    await tester.enterText(find.byType(TextField).first, '7000000');
+    await tester.pumpAndSettle();
+    await _tap(tester, 'التالي');
+    await tester.enterText(
+      find.descendant(
+        of: find.byKey(const ValueKey('mahr-total')),
+        matching: find.byType(TextField),
+      ),
+      '1000000',
+    );
+    await tester.enterText(
+      find.descendant(
+        of: find.byKey(const ValueKey('mahr-settled')),
+        matching: find.byType(TextField),
+      ),
+      '2000000',
+    );
+    await tester.pumpAndSettle();
+    await _tap(tester, 'التالي');
+
+    expect(
+      find.descendant(
+        of: find.byKey(const ValueKey('mahr-settled')),
+        matching: find.text('أكثر من المهر نفسه'),
+      ),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(
+        of: find.byKey(const ValueKey('mahr-total')),
+        matching: find.text('أكثر من المهر نفسه'),
+      ),
+      findsNothing,
+    );
+  });
+
   testWidgets('a06: the bride receives her mahr, in her words', (tester) async {
     final finance = _RecordingFinance();
     final storage = await _pump(tester, finance: finance);

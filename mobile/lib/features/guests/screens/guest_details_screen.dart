@@ -461,7 +461,8 @@ class _GuestDetailsScreenState extends State<GuestDetailsScreen> {
         children: [
           JourneyButton(
             key: const ValueKey('guest-delete-confirm'),
-            label: context.say('شيله', 'شيليها'),
+            label:
+                '${context.say('شيل', 'شيلي')}${context.planWord('ه', 'ها')}',
             background: AarastV3Color.danger,
             expand: true,
             large: true,
@@ -484,7 +485,7 @@ class _GuestDetailsScreenState extends State<GuestDetailsScreen> {
       AarastToast.showError(
         context,
         provider.errorMessage ??
-            context.say('ما قدرنا نشيله', 'ما قدرنا نشيلها'),
+            context.planWord('ما قدرنا نشيله', 'ما قدرنا نشيلها'),
       );
     }
   }

@@ -145,7 +145,7 @@ class DashboardSummaryProvider extends ChangeNotifier
       }
     } catch (_) {
       if (generation == _loadGeneration && !isSessionDisposed) {
-        _errorMessage = 'تعذر تحميل بيانات اللوحة.';
+        _errorMessage = 'ما قدرنا نجيب خطتك الحين.';
       }
     } finally {
       if (generation == _loadGeneration && !isSessionDisposed) {

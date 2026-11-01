@@ -222,7 +222,7 @@ class _WeddingPlanDashboardScreenState extends State<WeddingPlanDashboardScreen>
     } catch (_) {
       if (!mounted) return;
       setState(() {
-        _localErrorMessage = 'تعذر تحميل بيانات اللوحة المحلية.';
+        _localErrorMessage = 'ما قدرنا نقرأ خطتك من الجوال.';
       });
     } finally {
       if (mounted) {

@@ -72,9 +72,18 @@ class _LoanRepaymentsSheetState extends State<LoanRepaymentsSheet> {
     if (picked != null && mounted) setState(() => _dueDate = picked);
   }
 
+  String? _amountError;
+
   Future<void> _add() async {
     final amount = _amount.text.replaceAll(',', '').trim();
-    if ((int.tryParse(amount) ?? 0) <= 0 || widget.saving) return;
+    if (widget.saving) return;
+    // An empty or zero amount says so instead of doing nothing.
+    if ((int.tryParse(amount) ?? 0) <= 0) {
+      setState(
+        () => _amountError = context.say('اكتب كم الدفعة', 'اكتبي كم الدفعة'),
+      );
+      return;
+    }
     if (await widget.onAdd(amount, _dueDate) && mounted) {
       _amount.clear();
       setState(() => _dueDate = null);
@@ -228,6 +237,12 @@ class _LoanRepaymentsSheetState extends State<LoanRepaymentsSheet> {
                 keyboardType: TextInputType.number,
                 inputFormatters: const [MoneyInputFormatter()],
                 suffix: currencyLabelAr(widget.currency),
+                errorText: _amountError,
+                onChanged: (_) {
+                  if (_amountError != null) {
+                    setState(() => _amountError = null);
+                  }
+                },
               ),
             ),
             const SizedBox(width: 8),
@@ -487,11 +502,18 @@ class _PledgeCheckSheetState extends State<PledgeCheckSheet> {
                     ),
                   ),
                 ),
-                Text(
-                  _plain(cash),
-                  style: JourneyType.of(
-                    JourneyType.body,
-                    color: AarastV3Color.textMuted,
+                // Two amounts in a narrow box: each shrinks to fit (320,
+                // large text) instead of overflowing the row.
+                Flexible(
+                  child: FittedBox(
+                    fit: BoxFit.scaleDown,
+                    child: Text(
+                      _plain(cash),
+                      style: JourneyType.of(
+                        JourneyType.body,
+                        color: AarastV3Color.textMuted,
+                      ),
+                    ),
                   ),
                 ),
                 Padding(
@@ -502,12 +524,17 @@ class _PledgeCheckSheetState extends State<PledgeCheckSheet> {
                     color: context.accent.primary,
                   ),
                 ),
-                Text(
-                  _plain(cash + amount),
-                  style: JourneyType.of(
-                    JourneyType.bodyLarge,
-                    weight: JourneyType.bold,
-                    color: context.accent.primary,
+                Flexible(
+                  child: FittedBox(
+                    fit: BoxFit.scaleDown,
+                    child: Text(
+                      _plain(cash + amount),
+                      style: JourneyType.of(
+                        JourneyType.bodyLarge,
+                        weight: JourneyType.bold,
+                        color: context.accent.primary,
+                      ),
+                    ),
                   ),
                 ),
               ],

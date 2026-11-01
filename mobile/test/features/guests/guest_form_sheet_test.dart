@@ -4,6 +4,7 @@ import 'package:aarast_mobile/core/storage/sensitive_value_vault.dart';
 import 'package:aarast_mobile/core/widgets/aarast_ui.dart';
 import 'package:aarast_mobile/features/guests/models/guest.dart';
 import 'package:aarast_mobile/features/guests/widgets/guest_form_sheet.dart';
+import 'package:aarast_mobile/core/experience_v3/aarast_v3.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:provider/provider.dart';
@@ -52,6 +53,25 @@ void main() {
       findsOneWidget,
     );
     expect(result, isNull);
+  });
+
+  testWidgets('a bride adding to the groom\'s list: her verb, his guest', (
+    tester,
+  ) async {
+    await _openForm(
+      tester,
+      profile: JourneyProfile.of(
+        planPersona: 'GROOM',
+        readerFeminine: true,
+        readerIsOwner: false,
+      ),
+      onResult: (_) {},
+    );
+
+    await _submit(tester);
+    // She is spoken to; the guest is the groom's plan's.
+    expect(find.text('اكتبي اسمه'), findsOneWidget);
+    expect(find.text('كم معه؟'), findsOneWidget);
   });
 
   testWidgets('cloud form blocks a duplicate phone', (tester) async {
@@ -206,6 +226,7 @@ Future<void> _openForm(
   Future<String?> Function(String name)? onCreateGroup,
   AarastFormDraftStore? draftStore,
   String? draftScope,
+  JourneyProfile profile = JourneyProfile.groom,
   required ValueChanged<GuestFormResult?> onResult,
 }) async {
   tester.view.devicePixelRatio = 1;
@@ -216,6 +237,8 @@ Future<void> _openForm(
     Provider<AarastFormDraftStore?>.value(
       value: draftStore,
       child: MaterialApp(
+        builder: (context, child) =>
+            JourneyProfileScope(profile: profile, child: child!),
         home: Builder(
           builder: (context) => Scaffold(
             body: FilledButton(

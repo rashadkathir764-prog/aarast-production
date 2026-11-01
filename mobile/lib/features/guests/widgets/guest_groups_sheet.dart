@@ -73,7 +73,7 @@ class _GuestGroupsSheetState extends State<GuestGroupsSheet> {
         content: Text(
           count == 0
               ? context.planWord('ما فيها ضيوف.', 'ما فيها ضيفات.')
-              : context.say(
+              : context.planWord(
                   'ضيوفها ($count) يبقون في قائمتك بدون مجموعة.',
                   'ضيفاتها ($count) يبقين في قائمتك بدون مجموعة.',
                 ),
@@ -101,10 +101,9 @@ class _GuestGroupsSheetState extends State<GuestGroupsSheet> {
     final count = GuestWords.of(context).count;
     return JourneySheetBody(
       title: 'المجموعات',
-      subtitle: context.say(
-        'رتّب ضيوفك: الأهل، الأصحاب، زملاء الشغل…',
-        'رتّبي ضيفاتك: الأهل، الصاحبات، زميلات الشغل…',
-      ),
+      subtitle:
+          '${context.say('رتّب', 'رتّبي')} '
+          '${context.planWord('ضيوفك: الأهل، الأصحاب، زملاء الشغل…', 'ضيفاتك: الأهل، الصاحبات، زميلات الشغل…')}',
       children: [
         JourneyBox(
           padding: EdgeInsets.zero,

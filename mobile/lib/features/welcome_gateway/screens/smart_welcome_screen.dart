@@ -82,6 +82,9 @@ class _SmartWelcomeScreenState extends State<SmartWelcomeScreen> {
   final _mahrSettledController = TextEditingController();
   DateTime? _mahrDueDate;
   String? _mahrError;
+
+  /// «أكثر من المهر نفسه» belongs under the settled field, as on c-mahr.
+  String? _mahrSettledError;
   DateTime? _date;
   bool _dateUnknown = false;
   String? _city;
@@ -129,7 +132,7 @@ class _SmartWelcomeScreenState extends State<SmartWelcomeScreen> {
       return;
     }
     if (settled > total) {
-      setState(() => _mahrError = 'أكثر من المهر نفسه');
+      setState(() => _mahrSettledError = 'أكثر من المهر نفسه');
       return;
     }
     _goTo(_WelcomeStep.ready);
@@ -439,8 +442,12 @@ class _SmartWelcomeScreenState extends State<SmartWelcomeScreen> {
             settledController: _mahrSettledController,
             dueDate: _mahrDueDate,
             onPickDueDate: _pickMahrDueDate,
-            onChanged: () => setState(() => _mahrError = null),
+            onChanged: () => setState(() {
+              _mahrError = null;
+              _mahrSettledError = null;
+            }),
             totalError: _mahrError,
+            settledError: _mahrSettledError,
           ),
         ],
       ),

@@ -2,6 +2,7 @@ import 'package:aarast_mobile/core/experience_v3/aarast_v3.dart';
 import 'package:aarast_mobile/features/tasks/models/wedding_task.dart';
 import 'package:aarast_mobile/features/tasks/widgets/task_checklist_section.dart';
 import 'package:aarast_mobile/features/tasks/widgets/task_postpone.dart';
+import 'package:aarast_mobile/core/utils/arabic_date_formatter.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -67,6 +68,23 @@ void main() {
     expect(
       find.text('قسّميها على خطوات صغيرة تخلصينها وحدة وحدة.'),
       findsOneWidget,
+    );
+  });
+
+  testWidgets('postponing a task due later never moves it earlier', (
+    tester,
+  ) async {
+    final today = DateUtils.dateOnly(DateTime.now());
+    final later = _task.copyWith(dueDate: today.add(const Duration(days: 14)));
+    await _pump(tester, JourneyProfile.groom, TaskPostponeSheet(task: later));
+
+    expect(find.text('بكرة'), findsNothing);
+    final first = tester.widget<JourneyListRow>(
+      find.byKey(const ValueKey('task-postpone-بعد يوم')),
+    );
+    expect(
+      first.subtitle,
+      formatArabicWeekdayDayMonth(today.add(const Duration(days: 15))),
     );
   });
 

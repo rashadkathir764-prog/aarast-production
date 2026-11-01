@@ -84,7 +84,7 @@ class _GuestSendSheetState extends State<GuestSendSheet> {
         const SizedBox(height: 16),
         if (_done)
           JourneyNote(
-            text: context.say(
+            text: context.planWord(
               'خلصت. كل واحد يرد من رابطه ويتحدث ردّه في قائمتك.',
               'خلصت. كل وحدة ترد من رابطها ويتحدث ردّها في قائمتك.',
             ),
@@ -154,7 +154,8 @@ class _GuestSendSheetState extends State<GuestSendSheet> {
           Center(
             child: JourneyTextAction(
               key: const ValueKey('guest-send-skip'),
-              label: context.say('تخطّاه', 'تخطّيها'),
+              label:
+                  '${context.say('تخطّا', 'تخطّي')}${context.planWord('ه', 'ها')}',
               onPressed: _busy ? null : () => setState(() => _index++),
             ),
           ),

@@ -99,7 +99,7 @@ void main() {
         find.byKey(const ValueKey('money-settings-schedules')),
         findsNothing,
       );
-      expect(find.text('الميزانية والتصنيفات'), findsOneWidget);
+      expect(find.text('الميزانية والبنود'), findsOneWidget);
       expect(find.text('مواعيد الدفع'), findsNothing);
       // w22: an account's plan keeps receipts, reached from here.
       expect(

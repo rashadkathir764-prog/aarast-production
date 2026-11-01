@@ -3,6 +3,7 @@ import 'package:lucide_icons/lucide_icons.dart';
 
 import '../../../../core/experience_v3/aarast_journey_profile.dart';
 import '../../../../core/experience_v3/aarast_v3_content.dart';
+import '../../../../core/utils/arabic_count.dart';
 import '../../models/dashboard_summary.dart';
 
 enum AarastDashboardFocusTarget {
@@ -60,11 +61,14 @@ AarastDashboardFocus resolveDashboardFocus(
       reason: _safeText(
         backendItem.subtitle,
         fallback: say(
-          'افتح التفاصيل قبل اتخاذ القرار.',
-          'افتحي التفاصيل قبل اتخاذ القرار.',
+          'شوف التفاصيل قبل لا تقرر.',
+          'شوفي التفاصيل قبل لا تقررين.',
         ),
       ),
-      actionLabel: _safeText(backendItem.actionLabel, fallback: 'عرض التفاصيل'),
+      actionLabel: _safeText(
+        backendItem.actionLabel,
+        fallback: say('افتح التفاصيل', 'افتحي التفاصيل'),
+      ),
       icon: _iconForType(backendItem.type),
       tone: _toneFor(backendItem),
       target: AarastDashboardFocusTarget.item,
@@ -77,10 +81,10 @@ AarastDashboardFocus resolveDashboardFocus(
     return AarastDashboardFocus(
       eyebrow: 'يحتاج انتباهك',
       title: count == 1 ? 'موعد دفع قريب' : 'مواعيد دفع قريبة',
-      reason: count == 1
-          ? 'لديك موعد دفع واحد يحتاج مراجعة قبل استحقاقه.'
-          : 'لديك $count مواعيد دفع تحتاج مراجعة قبل استحقاقها.',
-      actionLabel: 'فتح المال',
+      reason:
+          'عندك ${arabicCount(count, one: 'موعد دفع واحد', two: 'موعدين دفع', few: 'مواعيد دفع', many: 'موعد دفع')}، '
+          '${say('شوفها قبل لا يجي وقتها.', 'شوفيها قبل لا يجي وقتها.')}',
+      actionLabel: say('افتح المال', 'افتحي المال'),
       icon: LucideIcons.calendarClock,
       tone: AarastDashboardFocusTone.urgent,
       target: AarastDashboardFocusTarget.money,
@@ -90,14 +94,13 @@ AarastDashboardFocus resolveDashboardFocus(
   if (summary.overdueTasks > 0) {
     return AarastDashboardFocus(
       eyebrow: 'يحتاج انتباهك',
-      title: summary.overdueTasks == 1
-          ? 'مهمة واحدة متأخرة'
-          : '${summary.overdueTasks} مهام متأخرة',
+      title:
+          '${arabicCount(summary.overdueTasks, one: 'مهمة وحدة', two: 'مهمتين', few: 'مهام', many: 'مهمة')} متأخرة',
       reason: say(
-        'رتّب المتأخر أولًا حتى تبقى الخطة تحت السيطرة.',
-        'رتّبي المتأخر أولًا حتى تبقى الخطة تحت السيطرة.',
+        'رتّب المتأخر أول، وبعدها الباقي يمشي.',
+        'رتّبي المتأخر أول، وبعدها الباقي يمشي.',
       ),
-      actionLabel: 'مراجعة المهام',
+      actionLabel: say('رتّب المهام', 'رتّبي المهام'),
       icon: LucideIcons.alarmClock,
       tone: AarastDashboardFocusTone.urgent,
       target: AarastDashboardFocusTarget.tasks,
@@ -109,12 +112,12 @@ AarastDashboardFocus resolveDashboardFocus(
       eyebrow: 'قرار ينتظرك',
       title: summary.receivedQuotes == 1
           ? 'وصلك عرض سعر جديد'
-          : 'وصلتك ${summary.receivedQuotes} عروض أسعار',
+          : 'وصلتك ${arabicCount(summary.receivedQuotes, one: 'عرض', two: 'عرضين', few: 'عروض', many: 'عرض')}',
       reason: say(
-        'قارن التفاصيل بهدوء قبل اختيار المزود الأنسب لخطة زفافك.',
-        'قارني التفاصيل بهدوء قبل اختيار المزود الأنسب لخطة زفافك.',
+        'قارن بهدوء قبل لا تختار المزود.',
+        'قارني بهدوء قبل لا تختارين المزود.',
       ),
-      actionLabel: 'مراجعة العروض',
+      actionLabel: say('شوف العروض', 'شوفي العروض'),
       icon: LucideIcons.inbox,
       tone: AarastDashboardFocusTone.positive,
       target: AarastDashboardFocusTarget.providers,
@@ -128,14 +131,14 @@ AarastDashboardFocus resolveDashboardFocus(
       title: summary.incompleteGuestsCount == 1
           ? say('ضيف واحد ناقص البيانات', 'ضيفة وحدة ناقصة البيانات')
           : say(
-              '${summary.incompleteGuestsCount} ضيوف ناقصو البيانات',
-              '${summary.incompleteGuestsCount} ضيفات ناقصات البيانات',
+              '${arabicCount(summary.incompleteGuestsCount, one: 'ضيف', two: 'ضيفين', few: 'ضيوف', many: 'ضيف')} ناقصة بياناتهم',
+              '${arabicCount(summary.incompleteGuestsCount, one: 'ضيفة', two: 'ضيفتين', few: 'ضيفات', many: 'ضيفة')} ناقصة بياناتهن',
             ),
       reason: say(
-        'أكمل الأسماء أو أرقام التواصل قبل اعتماد القائمة.',
-        'أكملي الأسماء أو أرقام التواصل قبل اعتماد القائمة.',
+        'كمّل الأسماء والأرقام قبل لا تعتمد القائمة.',
+        'كمّلي الأسماء والأرقام قبل لا تعتمدين القائمة.',
       ),
-      actionLabel: 'إكمال البيانات',
+      actionLabel: say('كمّل البيانات', 'كمّلي البيانات'),
       icon: LucideIcons.userCog,
       tone: AarastDashboardFocusTone.attention,
       target: AarastDashboardFocusTarget.guests,
@@ -146,16 +149,16 @@ AarastDashboardFocus resolveDashboardFocus(
     return AarastDashboardFocus(
       eyebrow: 'بانتظار الرد',
       title: summary.pendingGuests == 1
-          ? say('ضيف واحد ينتظر تحديث الرد', 'ضيفة وحدة تنتظر تحديث الرد')
+          ? say('ضيف واحد ما ردّ', 'ضيفة وحدة ما ردّت')
           : say(
-              '${summary.pendingGuests} ضيوف بانتظار الرد',
-              '${summary.pendingGuests} ضيفات بانتظار الرد',
+              '${arabicCount(summary.pendingGuests, one: 'ضيف', two: 'ضيفين', few: 'ضيوف', many: 'ضيف')} ما ردّوا',
+              '${arabicCount(summary.pendingGuests, one: 'ضيفة', two: 'ضيفتين', few: 'ضيفات', many: 'ضيفة')} ما ردّين',
             ),
       reason: say(
-        'حدّث حالة الحضور عندما يصلك الرد لتبقى الأعداد دقيقة.',
-        'حدّثي حالة الحضور عندما يصلك الرد لتبقى الأعداد دقيقة.',
+        'حدّث ردودهم أول بأول عشان يبقى العدد صح.',
+        'حدّثي ردودهن أول بأول عشان يبقى العدد صح.',
       ),
-      actionLabel: say('مراجعة الضيوف', 'مراجعة الضيفات'),
+      actionLabel: say('شوف الضيوف', 'شوفي الضيفات'),
       icon: LucideIcons.userCheck,
       tone: AarastDashboardFocusTone.attention,
       target: AarastDashboardFocusTarget.guests,
@@ -165,14 +168,13 @@ AarastDashboardFocus resolveDashboardFocus(
   if (summary.todayTasks > 0) {
     return AarastDashboardFocus(
       eyebrow: 'خطوة اليوم',
-      title: summary.todayTasks == 1
-          ? 'لديك مهمة واحدة اليوم'
-          : 'لديك ${summary.todayTasks} مهام اليوم',
+      title:
+          'عندك ${arabicCount(summary.todayTasks, one: 'مهمة وحدة', two: 'مهمتين', few: 'مهام', many: 'مهمة')} اليوم',
       reason: say(
-        'ابدأ بالأقرب، ثم أكمل بقية يومك دون تشتيت.',
-        'ابدئي بالأقرب، ثم أكملي بقية يومك دون تشتيت.',
+        'ابدأ بالأقرب، وكمّل يومك على راحتك.',
+        'ابدئي بالأقرب، وكمّلي يومك على راحتك.',
       ),
-      actionLabel: 'فتح مهام اليوم',
+      actionLabel: say('افتح مهام اليوم', 'افتحي مهام اليوم'),
       icon: LucideIcons.listChecks,
       tone: AarastDashboardFocusTone.attention,
       target: AarastDashboardFocusTarget.tasks,
@@ -183,14 +185,13 @@ AarastDashboardFocus resolveDashboardFocus(
       summary.pendingInvites > 0) {
     return AarastDashboardFocus(
       eyebrow: 'بانتظار رد',
-      title: summary.pendingInvites == 1
-          ? 'دعوة مشاركة معلقة'
-          : '${summary.pendingInvites} دعوات مشاركة معلقة',
+      title:
+          '${arabicCount(summary.pendingInvites, one: 'دعوة', two: 'دعوتين', few: 'دعوات', many: 'دعوة')} مشاركة ما انردّت',
       reason: say(
-        'راجع الدعوات والصلاحيات قبل توزيع المزيد من العمل.',
-        'راجعي الدعوات والصلاحيات قبل توزيع المزيد من العمل.',
+        'شوف الدعوات والصلاحيات قبل لا توزع شغل زيادة.',
+        'شوفي الدعوات والصلاحيات قبل لا توزعين شغل زيادة.',
       ),
-      actionLabel: 'إدارة المشاركة',
+      actionLabel: say('شوف المشاركة', 'شوفي المشاركة'),
       icon: LucideIcons.userPlus,
       tone: AarastDashboardFocusTone.attention,
       target: AarastDashboardFocusTarget.sharing,
@@ -203,10 +204,10 @@ AarastDashboardFocus resolveDashboardFocus(
       eyebrow: say('ابدأ من الأساس', 'ابدئي من الأساس'),
       title: say('حدّد ميزانية تقريبية', 'حدّدي ميزانية تقريبية'),
       reason: say(
-        'ابدأ برقم أولي، ويمكنك تعديله لاحقًا.',
-        'ابدئي برقم أولي، ويمكنك تعديله لاحقًا.',
+        'ابدأ برقم تقريبي، وتقدر تعدّله بعدين.',
+        'ابدئي برقم تقريبي، وتقدرين تعدّلينه بعدين.',
       ),
-      actionLabel: 'إعداد الميزانية',
+      actionLabel: say('حدّد الميزانية', 'حدّدي الميزانية'),
       icon: LucideIcons.wallet,
       tone: AarastDashboardFocusTone.calm,
       target: AarastDashboardFocusTarget.money,
@@ -218,10 +219,10 @@ AarastDashboardFocus resolveDashboardFocus(
       eyebrow: 'خطوتك التالية',
       title: say('استكشف أول مزوّد', 'استكشفي أول مزوّد'),
       reason: say(
-        'قارن الخدمات واطلب عرضًا حقيقيًا قبل إدخاله ضمن الخطة.',
-        'قارني الخدمات واطلبي عرضًا حقيقيًا قبل إدخاله ضمن الخطة.',
+        'قارن الخدمات واطلب عرض حقيقي قبل لا تدخله الخطة.',
+        'قارني الخدمات واطلبي عرض حقيقي قبل لا تدخلينه الخطة.',
       ),
-      actionLabel: 'فتح المزوّدين',
+      actionLabel: say('شوف المزودين', 'شوفي المزودين'),
       icon: LucideIcons.store,
       tone: AarastDashboardFocusTone.calm,
       target: AarastDashboardFocusTarget.providers,
@@ -233,10 +234,10 @@ AarastDashboardFocus resolveDashboardFocus(
       eyebrow: 'خطوتك التالية',
       title: say('أضف أول مهمة', 'أضيفي أول مهمة'),
       reason: say(
-        'حوّل أول قرار إلى مهمة واضحة بموعد ومسؤول.',
-        'حوّلي أول قرار إلى مهمة واضحة بموعد ومسؤول.',
+        'حوّل أول قرار لمهمة واضحة بموعد ومسؤول.',
+        'حوّلي أول قرار لمهمة واضحة بموعد ومسؤول.',
       ),
-      actionLabel: 'فتح المهام',
+      actionLabel: say('أضف مهمة', 'أضيفي مهمة'),
       icon: LucideIcons.listChecks,
       tone: AarastDashboardFocusTone.calm,
       target: AarastDashboardFocusTarget.tasks,
@@ -251,7 +252,7 @@ AarastDashboardFocus resolveDashboardFocus(
         'عدد الضيوف يوضّح احتياج القاعة والضيافة والميزانية.',
         'عدد الضيفات يوضّح احتياج الصالة والضيافة والميزانية.',
       ),
-      actionLabel: say('فتح الضيوف', 'فتح الضيفات'),
+      actionLabel: say('افتح الضيوف', 'افتحي الضيفات'),
       icon: LucideIcons.users,
       tone: AarastDashboardFocusTone.calm,
       target: AarastDashboardFocusTarget.guests,
@@ -262,10 +263,10 @@ AarastDashboardFocus resolveDashboardFocus(
     eyebrow: AarastV3Copy.calmEyebrow,
     title: AarastV3Copy.calmPlanTitle,
     reason: say(
-      AarastV3Copy.calmPlanMessage,
-      'لا توجد أولوية عاجلة الآن. راجعي الخطة أو أكملي ما يناسبك.',
+      'ما فيه شي مستعجل الحين. شوف خطتك أو كمّل اللي يناسبك.',
+      'ما فيه شي مستعجل الحين. شوفي خطتك أو كمّلي اللي يناسبك.',
     ),
-    actionLabel: 'مراجعة الخطة',
+    actionLabel: say('شوف الخطة', 'شوفي الخطة'),
     icon: LucideIcons.checkCircle2,
     tone: AarastDashboardFocusTone.calm,
     target: AarastDashboardFocusTarget.plan,

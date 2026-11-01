@@ -9,9 +9,13 @@ extension _CreateTaskPrivacy on _CreateTaskScreenState {
     if (editing != null && editing.isPrivate) {
       return [
         const SizedBox(height: 14),
-        const JourneyNote(
-          key: ValueKey('task-private-banner'),
-          text: 'مهمة خاصة بك: ما يشوفها شريكك ولا تدخل في أرقامه.',
+        JourneyNote(
+          key: const ValueKey('task-private-banner'),
+          // The partner is the plan's other side: the bride in the groom's.
+          text: context.planWord(
+            'مهمة خاصة بك: ما تشوفها شريكتك ولا تدخل في أرقامها.',
+            'مهمة خاصة بك: ما يشوفها شريكك ولا تدخل في أرقامه.',
+          ),
           icon: LucideIcons.lock,
         ),
         Align(
@@ -40,10 +44,7 @@ extension _CreateTaskPrivacy on _CreateTaskScreenState {
         child: SwitchListTile(
           key: const ValueKey('task-private'),
           contentPadding: EdgeInsets.zero,
-          secondary: Icon(
-            LucideIcons.eyeOff,
-            color: context.accent.primary,
-          ),
+          secondary: Icon(LucideIcons.eyeOff, color: context.accent.primary),
           title: Text(
             'خاصة',
             style: JourneyType.of(JourneyType.body, weight: JourneyType.bold),
@@ -75,8 +76,11 @@ extension _CreateTaskPrivacy on _CreateTaskScreenState {
       context: context,
       builder: (dialogContext) => AarastDialog(
         title: Text(context.say('تشاركها مع الخطة؟', 'تشاركينها مع الخطة؟')),
-        content: const Text(
-          'بيشوفها شريكك وتدخل في مهام الخطة، وما ترجع خاصة بعدها.',
+        content: Text(
+          context.planWord(
+            'بتشوفها شريكتك وتدخل في مهام الخطة، وما ترجع خاصة بعدها.',
+            'بيشوفها شريكك وتدخل في مهام الخطة، وما ترجع خاصة بعدها.',
+          ),
         ),
         actions: [
           TextButton(

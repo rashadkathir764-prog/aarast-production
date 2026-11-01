@@ -6,6 +6,7 @@ import 'package:lucide_icons/lucide_icons.dart';
 import 'package:provider/provider.dart';
 
 import '../../../core/config/app_feature_flags.dart';
+import '../../../core/experience_v3/aarast_v3.dart';
 import '../../../core/routing/app_router.dart';
 import '../../../core/theme/aarast_design_tokens.dart';
 import '../../../core/theme/app_theme.dart';
@@ -135,8 +136,7 @@ class _LocalGuestDashboardScreenState extends State<LocalGuestDashboardScreen> {
   Future<bool> _requireAccountForQuote(BuildContext context) {
     return AuthActionGuard.requireAccount(
       context,
-      reason:
-          'طلب عرض سعر يحتاج حساباً حتى نربطه بخطتك ونحفظ ردود المزودين بأمان.',
+      reason: 'طلب عرض السعر يبغى حساب، عشان نربطه بخطتك ونحفظ ردود المزودين.',
     );
   }
 
@@ -263,16 +263,14 @@ class _LocalGuestDashboardScreenState extends State<LocalGuestDashboardScreen> {
     }
     return AuthActionGuard.requireAccount(
       context,
-      reason:
-          'المزامنة والمشاركة تحتاجان حساباً لحفظ الصلاحيات والبيانات بأمان.',
+      reason: 'الحفظ والمشاركة يبغين حساب، عشان نحفظ خطتك ومين يشوف ايش.',
     );
   }
 
   Future<bool> _requireAccountForNotifications(BuildContext context) {
     return AuthActionGuard.requireAccount(
       context,
-      reason:
-          'الإشعارات الحسابية تحتاج حساباً حتى نربط التنبيهات بخطتك ونحفظها بأمان.',
+      reason: 'التنبيهات تبغى حساب، عشان نربطها بخطتك.',
     );
   }
 
@@ -304,27 +302,37 @@ class _LocalSyncNotice extends StatelessWidget {
     return Center(
       child: AarastPressable(
         key: const Key('aarast-local-sync-action'),
-        semanticLabel: needsSync ? 'مزامنة المسودة المحفوظة' : 'مزامنة المسودة',
+        semanticLabel: context.say(
+          'احفظ خطتك برقم جوالك',
+          'احفظي خطتك برقم جوالك',
+        ),
         onTap: onSync,
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          // The plan's colour (D68), not the fixed teal.
           decoration: BoxDecoration(
-            color: AppTheme.brandMuted,
+            color: context.accent.primarySoft,
             borderRadius: BorderRadius.circular(AppTheme.radiusControl),
             border: Border.all(color: AarastSemanticTokens.border),
           ),
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Icon(LucideIcons.cloudOff, color: AppTheme.brand, size: 16),
+              Icon(
+                LucideIcons.cloudOff,
+                color: context.accent.primary,
+                size: 16,
+              ),
               const SizedBox(width: 8),
               Flexible(
+                // In the words of the screen that made the plan (a08).
                 child: Text(
-                  needsSync ? 'مسودة محفوظة على هذا الجهاز' : 'المسودة جاهزة',
+                  'خطتك على جوالك بس',
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                    color: AppTheme.textPrimary,
+                  style: JourneyType.of(
+                    JourneyType.small,
+                    color: AarastV3Color.ink,
                   ),
                 ),
               ),
@@ -332,17 +340,18 @@ class _LocalSyncNotice extends StatelessWidget {
               Container(
                 width: 4,
                 height: 4,
-                decoration: const BoxDecoration(
-                  color: AppTheme.brand,
+                decoration: BoxDecoration(
+                  color: context.accent.primary,
                   shape: BoxShape.circle,
                 ),
               ),
               const SizedBox(width: 8),
               Text(
-                'زامن',
-                style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                  color: AppTheme.brand,
-                  fontWeight: FontWeight.w900,
+                context.say('احفظها برقمك', 'احفظيها برقمك'),
+                style: JourneyType.of(
+                  JourneyType.small,
+                  weight: JourneyType.bold,
+                  color: context.accent.primary,
                 ),
               ),
             ],

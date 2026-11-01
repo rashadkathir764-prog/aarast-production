@@ -219,7 +219,7 @@ class WeddingPlansProvider extends ChangeNotifier with SessionScopedNotifier {
       _errorMessage = error.message;
       return null;
     } catch (_) {
-      _errorMessage = 'تعذر إنشاء خطتك. تأكد من الاتصال وحاول مرة أخرى.';
+      _errorMessage = 'ما انحفظت خطتك، يمكن النت ضعيف.';
       return null;
     } finally {
       _isSubmitting = false;

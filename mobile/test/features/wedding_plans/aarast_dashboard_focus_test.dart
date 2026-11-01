@@ -23,6 +23,21 @@ void main() {
     );
   });
 
+  test('the next step counts in Arabic and names its action', () {
+    final two = resolveDashboardFocus(_summary(overdueTasks: 2));
+    expect(two.title, 'مهمتين متأخرة');
+    expect(two.actionLabel, 'رتّب المهام');
+
+    final eleven = resolveDashboardFocus(_summary(overdueTasks: 11));
+    expect(eleven.title, '11 مهمة متأخرة');
+
+    final money = resolveDashboardFocus(_summary(duePaymentSchedules: 3));
+    expect(money.reason, startsWith('عندك 3 مواعيد دفع'));
+    expect(money.actionLabel, 'افتح المال');
+    // No formal «لديك».
+    expect(money.reason, isNot(contains('لديك')));
+  });
+
   test('missing budget remains more important than discovering providers', () {
     final focus = resolveDashboardFocus(
       _summary(hasBudget: false, providerCount: 0),

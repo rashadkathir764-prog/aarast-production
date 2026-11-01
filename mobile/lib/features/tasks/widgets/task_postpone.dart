@@ -43,8 +43,12 @@ class TaskPostponeSheet extends StatelessWidget {
     final from = task.dueDate != null && !task.dueDate!.isBefore(today)
         ? DateUtils.dateOnly(task.dueDate!)
         : today;
+    // Postponing never moves a task earlier: «بكرة» only when it is due
+    // today or was already late; a later task moves a day from its own.
     final options = [
-      ('بكرة', today.add(const Duration(days: 1))),
+      from == today
+          ? ('بكرة', today.add(const Duration(days: 1)))
+          : ('بعد يوم', from.add(const Duration(days: 1))),
       ('بعد ثلاثة أيام', from.add(const Duration(days: 3))),
       ('بعد أسبوع', from.add(const Duration(days: 7))),
     ];

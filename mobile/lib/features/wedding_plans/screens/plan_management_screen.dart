@@ -115,13 +115,13 @@ class _PlanCenterScreenState extends State<PlanCenterScreen>
           .loadGuestPlan();
       if (!mounted) return;
       if (draft == null) {
-        setState(() => _localError = 'لم يتم العثور على بيانات الخطة المحلية.');
+        setState(() => _localError = 'ما لقينا خطتك على هذا الجوال.');
         return;
       }
       setState(() => _localPlan = _weddingPlanFromDraft(draft));
     } on Object {
       if (mounted) {
-        setState(() => _localError = 'تعذر تحميل بيانات الخطة المحلية.');
+        setState(() => _localError = 'ما قدرنا نقرأ خطتك من الجوال.');
       }
     } finally {
       if (mounted) setState(() => _localLoading = false);
@@ -264,8 +264,8 @@ class _ManagementLoadError extends StatelessWidget {
       padding: const EdgeInsets.all(20),
       children: [
         AarastErrorState(
-          title: 'تعذر تحميل إدارة الخطة',
-          message: message ?? 'لم يتم العثور على بيانات الخطة.',
+          title: 'ما قدرنا نفتح بيانات الخطة',
+          message: message ?? 'ما لقينا الخطة.',
           onRetry: onRetry,
         ),
       ],

@@ -23,14 +23,14 @@ void main() {
     expect(find.text('كم بيحضر؟'), findsOneWidget);
     expect(find.text('من ردود ضيوفك'), findsOneWidget);
     expect(find.text('62 أكدوا من 124'), findsOneWidget);
-    expect(find.text('62 لسا ما ردوا'), findsOneWidget);
+    expect(find.text('62 لسا ما ردّوا'), findsOneWidget);
     expect(
-      find.text('التوقع يطلع لما يرد نص ضيوفك على الأقل. ما نخمّن من عندنا.'),
+      find.text('الأرقام هنا من ردود ضيوفك بس. ما نخمّن كم بيحضر من عندنا.'),
       findsOneWidget,
     );
     expect(tester.takeException(), isNull);
 
-    await tester.tap(find.text('ذكّر اللي ما ردوا'));
+    await tester.tap(find.text('ذكّر اللي ما ردّوا'));
     await tester.pumpAndSettle();
     // e08: the existing reminder flow.
     expect(find.text('reminder plan-1 remind'), findsOneWidget);
@@ -45,12 +45,12 @@ void main() {
     await _pump(tester, api, '/wedding-plans/plan-1/guests/attendance');
 
     expect(find.text('80 أكدوا من 124'), findsOneWidget);
-    expect(find.text('30 لسا ما ردوا · 14 اعتذروا'), findsOneWidget);
+    expect(find.text('30 لسا ما ردّوا · 14 اعتذروا'), findsOneWidget);
     expect(
       find.byKey(const ValueKey('guest-attendance-no-guess')),
       findsNothing,
     );
-    expect(find.text('ذكّر اللي ما ردوا'), findsOneWidget);
+    expect(find.text('ذكّر اللي ما ردّوا'), findsOneWidget);
   });
 
   // R17: nobody can be reminded of an invitation that never went out.
@@ -61,7 +61,7 @@ void main() {
       ..guests = [_guest('g1', 'INVITED')];
     await _pump(tester, api, '/wedding-plans/plan-1/guests/attendance');
 
-    expect(find.text('ذكّر اللي ما ردوا'), findsNothing);
+    expect(find.text('ذكّر اللي ما ردّوا'), findsNothing);
     await tester.tap(find.text('أرسل الدعوة على واتساب'));
     await tester.pumpAndSettle();
     expect(find.text('reminder plan-1 null'), findsOneWidget);
@@ -73,8 +73,8 @@ void main() {
     );
     await _pump(tester, api, '/wedding-plans/plan-1/guests/attendance');
 
-    expect(find.text('كل ضيوفك ردوا · 4 اعتذروا'), findsOneWidget);
-    expect(find.text('ذكّر اللي ما ردوا'), findsNothing);
+    expect(find.text('كل ضيوفك ردّوا · 4 اعتذروا'), findsOneWidget);
+    expect(find.text('ذكّر اللي ما ردّوا'), findsNothing);
   });
 
   testWidgets('a plan kept on the phone has no reminder to send', (
@@ -84,7 +84,7 @@ void main() {
     await _pump(tester, api, '/wedding-plans/local-guest-1/guests/attendance');
 
     expect(find.text('2 أكدوا من 10'), findsOneWidget);
-    expect(find.text('ذكّر اللي ما ردوا'), findsNothing);
+    expect(find.text('ذكّر اللي ما ردّوا'), findsNothing);
   });
 
   testWidgets('a failed load can be tried again', (tester) async {

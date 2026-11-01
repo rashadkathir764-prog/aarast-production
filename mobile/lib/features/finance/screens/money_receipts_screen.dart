@@ -271,7 +271,7 @@ class _MoneyReceiptsScreenState extends State<MoneyReceiptsScreen> {
               title: 'الإيصالات',
               subtitle: payments.isEmpty || _receiptsByCost.isEmpty
                   ? null
-                  : '$covered من ${payments.length} دفعة لها إيصال',
+                  : '$covered من ${payments.length} ${_paymentsWord(payments.length)} لها إيصال',
               onBack: _goBack,
             ),
           ),
@@ -415,4 +415,10 @@ class _ReceiptTile extends StatelessWidget {
       child: AarastPressable(onTap: onTap!, child: content),
     );
   }
+}
+
+/// «دفعات» after 3 to 10, «دفعة» otherwise: «2 من 5 دفعات», «1 من 1 دفعة».
+String _paymentsWord(int count) {
+  final lastTwo = count % 100;
+  return lastTwo >= 3 && lastTwo <= 10 ? 'دفعات' : 'دفعة';
 }

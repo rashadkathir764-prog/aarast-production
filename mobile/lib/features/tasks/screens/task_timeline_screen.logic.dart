@@ -49,7 +49,7 @@ String _statusLine(
     final left = 'باقي ${_taskCountLabel(open.length)}';
     return late == null ? left : '$left، منها $late';
   }
-  final thisWeek = 'باقي $week هذا الأسبوع';
+  final thisWeek = 'باقي ${_taskCountLabel(week)} هذا الأسبوع';
   return late == null ? thisWeek : '$thisWeek، و$late';
 }
 

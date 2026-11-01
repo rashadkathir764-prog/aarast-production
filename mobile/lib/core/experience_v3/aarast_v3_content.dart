@@ -25,8 +25,6 @@ abstract final class AarastV3Copy {
 
   static const calmEyebrow = 'اليوم هادئ';
   static const calmPlanTitle = 'خطتك تحت السيطرة';
-  static const calmPlanMessage =
-      'لا توجد أولوية عاجلة الآن. راجع الخطة أو أكمل ما يناسبك.';
 
   static const quietNotificationsTitle = 'خطتك هادئة الآن';
   static const quietNotificationsMessage =

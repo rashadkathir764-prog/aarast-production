@@ -87,26 +87,28 @@ extension _PlanCenterPlanEdit on _PlanCenterScreenState {
   Future<void> _confirmArchive(WeddingPlan plan) async {
     // G15: say what is still owed before the plan closes. The server keeps
     // reminding of payment dates and loan repayments after archiving.
-    final money = context.read<FinanceProvider>().summary;
+    final finance = context.read<FinanceProvider>();
+    final money = finance.summary;
     final owed =
         moneyValue(money.costs.outstanding) +
         moneyValue(money.funding?.loanOutstanding);
+    // In the reader's words; the amount follows «أخفِ المبالغ» (G17).
     final owedLine = owed > 0
-        ? '\n\nباقي عليك ${formatCompactMoney(owed, currencyCode: money.currency)} من '
+        ? '\n\nباقي عليك ${finance.shownAmount(formatCompactMoney(owed, currencyCode: money.currency))} من '
               'الاتفاقات والسلف. التذكير بمواعيدها يستمر بعد الأرشفة، '
-              'والأفضل تخليها مفتوحة لين تسدّد.'
+              '${context.say('والأفضل تخليها مفتوحة لين تسدّد.', 'والأفضل تخلّينها مفتوحة لين تسدّدين.')}'
         : '';
     final confirmed = await showJourneySheet<bool>(
       context: context,
       builder: (sheetContext) => JourneySheetBody(
-        title: 'تحط الخطة في الأرشيف؟',
+        title: context.say('تحط الخطة في الأرشيف؟', 'تحطين الخطة في الأرشيف؟'),
         subtitle:
             '«${plan.title}» تنتقل للأرشيف وبياناتها تبقى محفوظة، بس ما '
-            'تقدر تفتحها بعدها من التطبيق.$owedLine',
+            '${context.say('تقدر تفتحها', 'تقدرين تفتحينها')} بعدها من التطبيق.$owedLine',
         children: [
           JourneyButton(
             key: const ValueKey('plan-archive-confirm'),
-            label: 'حطها في الأرشيف',
+            label: context.say('حطها في الأرشيف', 'حطيها في الأرشيف'),
             icon: LucideIcons.archive,
             background: AarastV3Color.danger,
             large: true,

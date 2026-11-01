@@ -106,7 +106,7 @@ class _MoneySettingsMenu extends StatelessWidget {
               value: _MoneySettingsAction.budget,
               child: _MoneySettingsItem(
                 icon: LucideIcons.walletCards,
-                label: 'الميزانية والتصنيفات',
+                label: 'الميزانية والبنود',
               ),
             ),
           if (onReceipts != null)

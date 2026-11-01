@@ -115,7 +115,7 @@ class _GuestAttendanceScreenState extends State<GuestAttendanceScreen> {
       // The reader reminds; the guests are the plan's.
       label: reminds
           ? '${say('ذكّر', 'ذكّري')} اللي '
-                '${words.profile.plan('ما ردوا', 'ما ردّن')}'
+                '${words.profile.plan('ما ردّوا', 'ما ردّن')}'
           : '${say('أرسل', 'أرسلي')} الدعوة على واتساب',
       icon: LucideIcons.send,
       background: context.accent.primary,
@@ -133,8 +133,8 @@ class _GuestAttendanceScreenState extends State<GuestAttendanceScreen> {
     final words = GuestWords.of(context);
     final waiting = [
       summary.pending == 0
-          ? words.profile.plan('كل ضيوفك ردوا', 'كل ضيفاتك ردّن')
-          : '${summary.pending} ${words.profile.plan('لسا ما ردوا', 'لسا ما ردّن')}',
+          ? words.profile.plan('كل ضيوفك ردّوا', 'كل ضيفاتك ردّن')
+          : '${summary.pending} ${words.profile.plan('لسا ما ردّوا', 'لسا ما ردّن')}',
       if (summary.declined > 0) '${summary.declined} ${words.declined}',
     ].join(' · ');
     return [
@@ -174,14 +174,14 @@ class _GuestAttendanceScreenState extends State<GuestAttendanceScreen> {
           ],
         ),
       ),
-      // No forecast exists. Up to half answered the note says why there is
-      // none; past half it would promise one, so it goes.
+      // No forecast exists, and the note promises none: up to half answered
+      // it says the numbers are the answers alone.
       if (answered * 2 <= total) ...[
         const SizedBox(height: 12),
         JourneyNote(
           key: const ValueKey('guest-attendance-no-guess'),
           text:
-              'التوقع يطلع لما يرد نص ${words.yourGuests} على الأقل. ما نخمّن من عندنا.',
+              'الأرقام هنا من ردود ${words.yourGuests} بس. ما نخمّن كم بيحضر من عندنا.',
           icon: LucideIcons.barChart3,
           color: AarastV3Color.textMuted,
           soft: AarastV3Color.line,

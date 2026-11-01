@@ -286,7 +286,7 @@ class _SharingScreenState extends State<SharingScreen>
         children: [
           JourneyButton(
             key: ValueKey('pending-invite-cancel-${invite.id}'),
-            label: context.say('الغِ الدعوة', 'الغي الدعوة'),
+            label: context.say('ألغِ الدعوة', 'ألغي الدعوة'),
             background: AarastV3Color.danger,
             large: true,
             expand: true,

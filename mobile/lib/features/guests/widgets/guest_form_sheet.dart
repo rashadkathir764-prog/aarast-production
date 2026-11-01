@@ -231,12 +231,12 @@ class _GuestFormSheetState extends State<GuestFormSheet> {
         widget.blockDuplicatePhone && _duplicatePhoneGuest != null;
     setState(() {
       _nameError = name.isEmpty
-          ? context.say('اكتب اسمه', 'اكتبي اسمها')
+          ? '${context.say('اكتب', 'اكتبي')} ${context.planWord('اسمه', 'اسمها')}'
           : null;
       _phoneError = phone.isInvalid
           ? phone.message ?? PhoneNumberUtils.invalidMessage
           : duplicate
-          ? '${context.say('رقمه', 'رقمها')} عندك لـ${_duplicatePhoneGuest!.name}'
+          ? '${context.planWord('رقمه', 'رقمها')} عندك لـ${_duplicatePhoneGuest!.name}'
           : null;
     });
     if (_nameError != null || _phoneError != null) return;
@@ -287,7 +287,7 @@ class _GuestFormSheetState extends State<GuestFormSheet> {
           label: 'رقم الجوال (اختياري)',
           duplicateMessage: duplicate == null
               ? null
-              : '${context.say('رقمه', 'رقمها')} عندك لـ${duplicate.name}',
+              : '${context.planWord('رقمه', 'رقمها')} عندك لـ${duplicate.name}',
           duplicateIsBlocking: widget.blockDuplicatePhone,
           onDraftChanged: (_) {
             if (!mounted) return;
@@ -344,7 +344,7 @@ class _GuestFormSheetState extends State<GuestFormSheet> {
             ],
           ),
         ],
-        _label(context.say('كم معه؟', 'كم معها؟')),
+        _label(context.planWord('كم معه؟', 'كم معها؟')),
         Wrap(
           spacing: 8,
           runSpacing: 8,
@@ -353,7 +353,7 @@ class _GuestFormSheetState extends State<GuestFormSheet> {
               JourneyChip(
                 key: ValueKey('guest-form-companions-$count'),
                 label: count == 0
-                    ? context.say('لحاله', 'لحالها')
+                    ? context.planWord('لحاله', 'لحالها')
                     : PhoneNumberUtils.isolateLtr('+$count'),
                 selected: _companionsCount == count,
                 selectedColor: context.accent.primary,
@@ -401,15 +401,15 @@ class _GuestFormSheetState extends State<GuestFormSheet> {
                 ),
             ],
           ),
-          _label(context.say('ردّه', 'ردّها')),
+          _label(context.planWord('ردّه', 'ردّها')),
           Wrap(
             spacing: 8,
             runSpacing: 8,
             children: [
               for (final (status, label) in [
-                ('INVITED', context.say('ما ردّ', 'ما ردّت')),
-                ('CONFIRMED', context.say('أكّد', 'أكّدت')),
-                ('DECLINED', context.say('اعتذر', 'اعتذرت')),
+                ('INVITED', context.planWord('ما ردّ', 'ما ردّت')),
+                ('CONFIRMED', context.planWord('أكّد', 'أكّدت')),
+                ('DECLINED', context.planWord('اعتذر', 'اعتذرت')),
               ])
                 JourneyChip(
                   key: ValueKey('guest-form-status-$status'),

@@ -77,7 +77,9 @@ class _MoneyFundingTabState extends State<_MoneyFundingTab> {
                 child: _FundingTotal(
                   label: 'موعود لك',
                   amount: _amount(context, funding.pledged, currency),
-                  line: 'ما نحسبه لين يوصل',
+                  // Counted in «ومع الموعود ناقصك», so it is not «not
+                  // counted»: it has only not arrived.
+                  line: 'ما وصل بعد',
                   color: AarastV3Color.lilac,
                   background: AarastV3Color.lilacSoft,
                 ),

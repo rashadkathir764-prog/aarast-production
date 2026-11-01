@@ -175,7 +175,7 @@ services:
         node scripts/prod/assert-database-identity.cjs
         exec node dist/main.js
     healthcheck:
-      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000/ready').then((r)=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000/ready/core').then((r)=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
       interval: 15s
       timeout: 5s
       retries: 10

@@ -26,6 +26,7 @@ The live system runs on one AWS host in Frankfurt with Docker Compose (`deploy/a
 
 - `GET /live` checks that the API process can serve HTTP.
 - `GET /ready` checks PostgreSQL, Redis, media and OpenWA. It returns names, status and latency only, and fails with `503`. A stopped OpenWA fails `/ready` even when everything else is fine.
+- `GET /ready/core` checks PostgreSQL, Redis and media only. It is the host's health check, so an OpenWA outage neither marks the backend unhealthy nor fails a release.
 
 ## OTP
 

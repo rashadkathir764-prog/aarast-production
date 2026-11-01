@@ -32,4 +32,14 @@ export class HealthController {
     }
     return report;
   }
+
+  /** The host's health check: OpenWA's outage is not the backend's. */
+  @Get('ready/core')
+  async getCoreReadiness() {
+    const report = await this.readiness.checkCore();
+    if (report.status !== 'ready') {
+      throw new ServiceUnavailableException(report);
+    }
+    return report;
+  }
 }

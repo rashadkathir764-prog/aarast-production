@@ -1,0 +1,139 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Aarast hosting - emails when the API or its WhatsApp codes stop working
+
+Parameters:
+  AlertEmail:
+    Type: String
+    Description: Address that receives the alarms.
+  ReadyUrl:
+    Type: String
+    Default: https://api.3-121-198-183.sslip.io/ready
+    Description: The API's readiness address. It names each dependency's state and no secret.
+
+Resources:
+  Topic:
+    Type: AWS::SNS::Topic
+    Properties:
+      TopicName: aarast-uptime
+      Subscription:
+        - Protocol: email
+          Endpoint: !Ref AlertEmail
+
+  ProbeRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal: { Service: lambda.amazonaws.com }
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Policies:
+        - PolicyName: put-uptime-metrics
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action: cloudwatch:PutMetricData
+                Resource: '*'
+                Condition:
+                  StringEquals:
+                    cloudwatch:namespace: Aarast/Uptime
+
+  # Reads /ready from outside the host every five minutes and records two
+  # numbers: Api (database, Redis and media answer) and WhatsApp (OpenWA can
+  # send a code). An unreachable API counts against both.
+  Probe:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: aarast-uptime-probe
+      Runtime: nodejs22.x
+      Handler: index.handler
+      Timeout: 20
+      MemorySize: 128
+      Role: !GetAtt ProbeRole.Arn
+      Environment:
+        Variables:
+          READY_URL: !Ref ReadyUrl
+      Code:
+        ZipFile: |
+          const { CloudWatchClient, PutMetricDataCommand } = require('@aws-sdk/client-cloudwatch');
+          const client = new CloudWatchClient({});
+
+          exports.handler = async () => {
+            let checks = {};
+            try {
+              const response = await fetch(process.env.READY_URL, {
+                signal: AbortSignal.timeout(12000),
+              });
+              checks = (await response.json()).checks ?? {};
+            } catch (error) {
+              console.log('unreachable', error.name);
+            }
+            const up = (...names) =>
+              names.every((name) => checks[name]?.status === 'up') ? 1 : 0;
+            const api = up('database', 'redis', 'media');
+            const whatsapp = up('openwa');
+            console.log(JSON.stringify({ api, whatsapp }));
+            await client.send(
+              new PutMetricDataCommand({
+                Namespace: 'Aarast/Uptime',
+                MetricData: [
+                  { MetricName: 'Api', Value: api },
+                  { MetricName: 'WhatsApp', Value: whatsapp },
+                ],
+              }),
+            );
+          };
+
+  Schedule:
+    Type: AWS::Events::Rule
+    Properties:
+      ScheduleExpression: rate(5 minutes)
+      Targets:
+        - Id: probe
+          Arn: !GetAtt Probe.Arn
+
+  ScheduleInvoke:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref Probe
+      Action: lambda:InvokeFunction
+      Principal: events.amazonaws.com
+      SourceArn: !GetAtt Schedule.Arn
+
+  # Two checks in a row, so one slow answer does not wake anyone. A probe that
+  # stops reporting counts as down.
+  ApiDown:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: aarast-api-down
+      AlarmDescription: The API, or its database, Redis or media, stopped answering.
+      Namespace: Aarast/Uptime
+      MetricName: Api
+      Statistic: Minimum
+      Period: 300
+      EvaluationPeriods: 2
+      Threshold: 1
+      ComparisonOperator: LessThanThreshold
+      TreatMissingData: breaching
+      AlarmActions: [!Ref Topic]
+      OKActions: [!Ref Topic]
+
+  WhatsAppDown:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: aarast-whatsapp-codes-down
+      AlarmDescription: OpenWA cannot send WhatsApp codes. Password sign-in still works.
+      Namespace: Aarast/Uptime
+      MetricName: WhatsApp
+      Statistic: Minimum
+      Period: 300
+      EvaluationPeriods: 2
+      Threshold: 1
+      ComparisonOperator: LessThanThreshold
+      TreatMissingData: breaching
+      AlarmActions: [!Ref Topic]
+      OKActions: [!Ref Topic]

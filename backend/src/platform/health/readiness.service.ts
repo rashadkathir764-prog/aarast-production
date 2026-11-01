@@ -26,8 +26,22 @@ export interface ReadinessReport {
   };
 }
 
+export interface CoreReadinessReport {
+  status: ReadinessReport['status'];
+  service: ReadinessReport['service'];
+  checks: Omit<ReadinessReport['checks'], 'openwa'>;
+}
+
 const dependencyTimeoutMs = 2_500;
 export const READINESS_FETCH = Symbol('READINESS_FETCH');
+
+function readinessOf(
+  checks: Record<string, DependencyReadiness>,
+): ReadinessReport['status'] {
+  return Object.values(checks).every((check) => check.status !== 'down')
+    ? 'ready'
+    : 'not_ready';
+}
 
 @Injectable()
 export class ReadinessService {
@@ -41,18 +55,32 @@ export class ReadinessService {
   ) {}
 
   async check(): Promise<ReadinessReport> {
-    const [database, redis, media, openwa] = await Promise.all([
+    const [core, openwa] = await Promise.all([
+      this.checkCore(),
+      this.checkOpenWa(),
+    ]);
+    const checks = { ...core.checks, openwa };
+    return {
+      status: readinessOf(checks),
+      service: 'aarast-backend',
+      checks,
+    };
+  }
+
+  /**
+   * What the backend cannot serve anyone without. OpenWA is left out: only
+   * WhatsApp codes need it, so its outage must not mark this host unhealthy
+   * or fail a release. `/ready` still reports it.
+   */
+  async checkCore(): Promise<CoreReadinessReport> {
+    const [database, redis, media] = await Promise.all([
       this.checkDependency(() => this.prisma.$queryRawUnsafe('SELECT 1')),
       this.checkRedis(),
       this.checkMedia(),
-      this.checkOpenWa(),
     ]);
-    const checks = { database, redis, media, openwa };
-    const ready = Object.values(checks).every(
-      (check) => check.status !== 'down',
-    );
+    const checks = { database, redis, media };
     return {
-      status: ready ? 'ready' : 'not_ready',
+      status: readinessOf(checks),
       service: 'aarast-backend',
       checks,
     };

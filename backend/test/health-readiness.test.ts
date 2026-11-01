@@ -1,6 +1,8 @@
 import 'reflect-metadata';
 
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { afterEach, test } from 'node:test';
 import { Module, ServiceUnavailableException } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
@@ -153,6 +155,58 @@ test('controller emits 503 for a non-ready report', async () => {
     () => controller.getReadiness(),
     ServiceUnavailableException,
   );
+});
+
+test('a stopped OpenWA leaves the core ready while /ready tells the truth', async () => {
+  process.env.NODE_ENV = 'test';
+  process.env.AUTH_OTP_MODE = 'openwa';
+  process.env.OPENWA_BASE_URL = 'http://openwa:3000';
+  process.env.OPENWA_SESSION_ID = 'aarast-otp';
+  process.env.OPENWA_API_KEY = 'a-secure-openwa-api-key-for-tests-only';
+  const service = new ReadinessService(
+    { $queryRawUnsafe: async () => [{ '?column?': 1 }] } as unknown as PrismaService,
+    { checkReadiness: async () => undefined } as MediaReadinessPort,
+    async () =>
+      new Response(JSON.stringify({ ready: false, transientText: false }), {
+        status: 200,
+        headers: { 'content-type': 'application/json' },
+      }),
+  );
+  const controller = new HealthController(service);
+
+  const core = await controller.getCoreReadiness();
+  assert.equal(core.status, 'ready');
+  assert.deepEqual(Object.keys(core.checks).sort(), ['database', 'media', 'redis']);
+  await assert.rejects(() => controller.getReadiness(), ServiceUnavailableException);
+});
+
+test('the core is not ready without its database', async () => {
+  process.env.NODE_ENV = 'test';
+  const controller = new HealthController(
+    new ReadinessService(
+      {
+        $queryRawUnsafe: async () => {
+          throw new Error('database stopped');
+        },
+      } as unknown as PrismaService,
+      { checkReadiness: async () => undefined } as MediaReadinessPort,
+    ),
+  );
+
+  await assert.rejects(
+    () => controller.getCoreReadiness(),
+    ServiceUnavailableException,
+  );
+});
+
+test('the host judges the backend by its core, never by OpenWA', () => {
+  const compose = readFileSync(
+    join(__dirname, '..', '..', 'deploy', 'aws', 'compose.yml'),
+    'utf8',
+  );
+
+  assert.match(compose, /127\.0\.0\.1:3000\/ready\/core/);
+  assert.doesNotMatch(compose, /127\.0\.0\.1:3000\/ready'/);
 });
 
 test('dependency requirement defaults to production but allows explicit override', () => {

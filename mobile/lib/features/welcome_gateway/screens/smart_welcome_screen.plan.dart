@@ -663,7 +663,8 @@ class _RadioLine extends StatelessWidget {
         selected: selected,
         borderRadius: BorderRadius.circular(12),
         child: ConstrainedBox(
-          constraints: const BoxConstraints(minHeight: 44),
+          // A 48 target (DESIGN_SYSTEM: touch ≥ 48).
+          constraints: const BoxConstraints(minHeight: AarastV3Space.x12),
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
             child: Row(

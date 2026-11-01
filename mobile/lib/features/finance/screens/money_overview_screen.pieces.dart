@@ -121,17 +121,23 @@ class _MoneySettingsMenu extends StatelessWidget {
         ],
         // A round icon like the other header actions: a word beside three
         // buttons does not fit a 320-point phone with large text.
-        child: Container(
-          width: 44,
-          height: 44,
-          decoration: const BoxDecoration(
-            color: AarastV3Color.paper,
-            shape: BoxShape.circle,
-          ),
-          child: const Icon(
-            LucideIcons.slidersHorizontal,
-            size: 18,
-            color: AarastV3Color.ink,
+        // The 44 circle in a 48 target, like the round buttons beside it.
+        child: SizedBox.square(
+          dimension: AarastV3Space.x12,
+          child: Center(
+            child: Container(
+              width: 44,
+              height: 44,
+              decoration: const BoxDecoration(
+                color: AarastV3Color.paper,
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(
+                LucideIcons.slidersHorizontal,
+                size: 18,
+                color: AarastV3Color.ink,
+              ),
+            ),
           ),
         ),
       ),

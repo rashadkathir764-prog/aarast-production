@@ -103,11 +103,17 @@ class _JourneyHomeHeader extends StatelessWidget {
           excludeSemantics: true,
           child: AarastPressable(
             onTap: onProfile,
-            borderRadius: BorderRadius.circular(22),
-            child: JourneyAvatar(
-              letter: name.isEmpty ? 'ع' : name.characters.first,
-              color: AarastV3Color.saffron,
-              size: 44,
+            borderRadius: BorderRadius.circular(24),
+            // The 44 avatar in a 48 target, like the round buttons beside it.
+            child: SizedBox.square(
+              dimension: AarastV3Space.x12,
+              child: Center(
+                child: JourneyAvatar(
+                  letter: name.isEmpty ? 'ع' : name.characters.first,
+                  color: AarastV3Color.saffron,
+                  size: 44,
+                ),
+              ),
             ),
           ),
         ),
@@ -414,7 +420,7 @@ class _JourneyNextStep extends StatelessWidget {
           : 'متأخرة ${arabicCount(-days, one: 'يوم', two: 'يومين', few: 'أيام', many: 'يوم')}';
       eyebrow = 'الخطوة الجاية · $when';
       title = _withAmount(due.title, due.amount);
-      reason ='موعدها ${formatArabicWeekdayDayMonth(due.dueDate)}';
+      reason = 'موعدها ${formatArabicWeekdayDayMonth(due.dueDate)}';
       action = context.say('سجّل الدفعة', 'سجّلي الدفعة');
       icon = LucideIcons.calendarClock;
     } else {

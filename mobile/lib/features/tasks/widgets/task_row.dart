@@ -214,9 +214,13 @@ class _DoneCircle extends StatelessWidget {
     if (onTap == null) return circle;
     // A wider target than the circle itself; screen readers get the same
     // action from the row.
+    // The 26 circle sits in a 48 target (DESIGN_SYSTEM: touch ≥ 48).
     return AarastPressable(
       onTap: onTap!,
-      child: Padding(padding: const EdgeInsets.all(4), child: circle),
+      child: SizedBox.square(
+        dimension: AarastV3Space.x12,
+        child: Align(alignment: Alignment.topCenter, child: circle),
+      ),
     );
   }
 }

@@ -276,8 +276,11 @@ class JourneyButton extends StatelessWidget {
         borderRadius: BorderRadius.circular(16),
         child: Container(
           width: expand ? double.infinity : null,
-          // The prototype's main action: 16 above and below a 17 label.
-          constraints: BoxConstraints(minHeight: large ? 52 : 44),
+          // The prototype's main action: 16 above and below a 17 label. A
+          // smaller one is still a 48 target (DESIGN_SYSTEM: touch ≥ 48).
+          constraints: BoxConstraints(
+            minHeight: large ? 52 : AarastV3Space.x12,
+          ),
           padding: EdgeInsets.symmetric(
             horizontal: 18,
             vertical: large ? 16 : 11,
@@ -319,7 +322,8 @@ class JourneyTextAction extends StatelessWidget {
         onTap: onPressed,
         borderRadius: BorderRadius.circular(12),
         child: ConstrainedBox(
-          constraints: const BoxConstraints(minHeight: 44),
+          // A 48 target (DESIGN_SYSTEM); the words themselves do not grow.
+          constraints: const BoxConstraints(minHeight: AarastV3Space.x12),
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
             child: Row(
@@ -622,7 +626,8 @@ class JourneyLevelSwitch extends StatelessWidget {
   }
 }
 
-/// A round 44px button on the page (back, search, actions).
+/// A round 44px button on the page (back, search, actions), touched in a
+/// 48 square around it (DESIGN_SYSTEM: touch targets ≥ 48).
 class JourneyRoundButton extends StatelessWidget {
   const JourneyRoundButton({
     required this.icon,
@@ -649,14 +654,19 @@ class JourneyRoundButton extends StatelessWidget {
         child: AarastPressable(
           onTap: onPressed,
           borderRadius: BorderRadius.circular(size),
-          child: Container(
-            width: size,
-            height: size,
-            decoration: const BoxDecoration(
-              color: AarastV3Color.paper,
-              shape: BoxShape.circle,
+          child: SizedBox.square(
+            dimension: size < AarastV3Space.x12 ? AarastV3Space.x12 : size,
+            child: Center(
+              child: Container(
+                width: size,
+                height: size,
+                decoration: const BoxDecoration(
+                  color: AarastV3Color.paper,
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(icon, size: 20, color: AarastV3Color.ink),
+              ),
             ),
-            child: Icon(icon, size: 20, color: AarastV3Color.ink),
           ),
         ),
       ),

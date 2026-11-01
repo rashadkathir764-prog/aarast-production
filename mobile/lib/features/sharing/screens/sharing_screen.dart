@@ -765,27 +765,37 @@ class _PendingInviteRowState extends State<_PendingInviteRow> {
                   semanticLabel: remind
                       ? context.say('ذكّره', 'ذكّريه')
                       : context.say('انسخ الرابط', 'انسخي الرابط'),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 12,
-                      vertical: 6,
+                  // The small pill keeps its look in a 48 target, so a near
+                  // miss does not land on the row's cancel sheet.
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(
+                      minHeight: AarastV3Space.x12,
                     ),
-                    decoration: BoxDecoration(
-                      color: remind
-                          ? context.accent.primarySoft
-                          : AarastV3Color.brandAccentSoft,
-                      borderRadius: BorderRadius.circular(14),
-                    ),
-                    child: Text(
-                      remind
-                          ? context.say('ذكّره', 'ذكّريه')
-                          : context.say('انسخ الرابط', 'انسخي الرابط'),
-                      style: JourneyType.of(
-                        JourneyType.small,
-                        weight: JourneyType.bold,
-                        color: remind
-                            ? context.accent.primary
-                            : AarastV3Color.brandAccentStrong,
+                    child: Align(
+                      widthFactor: 1,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 6,
+                        ),
+                        decoration: BoxDecoration(
+                          color: remind
+                              ? context.accent.primarySoft
+                              : AarastV3Color.brandAccentSoft,
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                        child: Text(
+                          remind
+                              ? context.say('ذكّره', 'ذكّريه')
+                              : context.say('انسخ الرابط', 'انسخي الرابط'),
+                          style: JourneyType.of(
+                            JourneyType.small,
+                            weight: JourneyType.bold,
+                            color: remind
+                                ? context.accent.primary
+                                : AarastV3Color.brandAccentStrong,
+                          ),
+                        ),
                       ),
                     ),
                   ),

@@ -640,8 +640,9 @@ class _FavoriteCard extends StatelessWidget {
                           'اختره للمقارنة',
                           'اختاريه للمقارنة',
                         ),
+                        // The 24 box in a 48 target (DESIGN_SYSTEM).
                         child: Padding(
-                          padding: const EdgeInsets.all(8),
+                          padding: const EdgeInsets.all(AarastV3Space.x3),
                           child: Container(
                             width: 24,
                             height: 24,

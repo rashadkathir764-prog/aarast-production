@@ -83,10 +83,7 @@ class _MonthBlock extends StatelessWidget {
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
                   color: now ? context.accent.primary : null,
-                  border: Border.all(
-                    color: context.accent.primary,
-                    width: 2,
-                  ),
+                  border: Border.all(color: context.accent.primary, width: 2),
                 ),
               ),
               const Expanded(
@@ -125,8 +122,11 @@ class _MonthBlock extends StatelessWidget {
                       child: AarastPressable(
                         key: ValueKey('task-month-row-${task.id}'),
                         onTap: () => onOpen(task),
-                        child: Padding(
-                          padding: const EdgeInsets.symmetric(vertical: 6),
+                        // A 48 target per task (DESIGN_SYSTEM).
+                        child: ConstrainedBox(
+                          constraints: const BoxConstraints(
+                            minHeight: AarastV3Space.x12,
+                          ),
                           child: Row(
                             children: [
                               Icon(

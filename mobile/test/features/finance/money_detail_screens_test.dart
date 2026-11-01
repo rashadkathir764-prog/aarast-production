@@ -501,6 +501,33 @@ void main() {
         expect(tester.takeException(), isNull);
       },
     );
+
+    // R18: a failed save left the form silent, as if nothing had happened.
+    testWidgets('a payment that fails to save says so and keeps the amount', (
+      tester,
+    ) async {
+      await _pumpMoneyScreen(
+        tester,
+        const RecordCostPaymentScreen(
+          weddingPlanId: 'plan-1',
+          costId: 'cost-1',
+        ),
+        api: _RefusedPaymentApi(),
+      );
+      await tester.enterText(
+        find.descendant(
+          of: find.byKey(const Key('cost-payment-amount')),
+          matching: find.byType(EditableText),
+        ),
+        '500',
+      );
+      await tester.tap(find.byKey(const ValueKey('payment-save')));
+      await tester.pumpAndSettle();
+
+      expect(find.text(_RefusedPaymentApi.refusal), findsOneWidget);
+      expect(find.byKey(const ValueKey('payment-save')), findsOneWidget);
+      expect(find.text('500'), findsOneWidget);
+    });
   });
 }
 
@@ -538,6 +565,21 @@ class _FailingMoneyDetailsApi extends _MoneyDetailsApi {
       'تعذر الاتصال بالخادم الآن. تحقق من الاتصال وحاول مرة أخرى.',
       isNetworkFailure: true,
     );
+  }
+}
+
+class _RefusedPaymentApi extends _MoneyDetailsApi {
+  static const refusal = 'ما انحفظت الدفعة عند الخادم.';
+
+  @override
+  Future<CostPayment> createPayment({
+    required WeddingCost cost,
+    required String amount,
+    DateTime? paidAt,
+    String? method,
+    String? note,
+  }) async {
+    throw const ApiException(refusal);
   }
 }
 

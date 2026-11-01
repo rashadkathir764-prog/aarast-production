@@ -178,7 +178,19 @@ class _PaymentEntryFormState extends State<PaymentEntryForm> {
       method: _methodController.text.trim(),
       note: _noteController.text.trim(),
     ));
-    if (payment == null || !mounted) return;
+    if (!mounted) return;
+    if (payment == null) {
+      // What was typed stays, so trying again costs nothing.
+      AarastToast.showError(
+        context,
+        context.read<FinanceProvider?>()?.errorMessage ??
+            context.say(
+              'ما انحفظت الدفعة. جرّب مرة ثانية.',
+              'ما انحفظت الدفعة. جرّبي مرة ثانية.',
+            ),
+      );
+      return;
+    }
     await _draft?.clear();
     if (!mounted) return;
     final receipt = _receipt;

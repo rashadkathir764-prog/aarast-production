@@ -266,7 +266,7 @@ mixin _FinanceSchedulesApi on _FinanceApiCore {
     String? note,
   }) async {
     final payload = {
-      if (paidAt != null) 'paidAt': paidAt.toIso8601String(),
+      if (paidAt != null) 'paidAt': _dateOnly(paidAt),
       if (_nullableTrimmed(method) != null) 'method': method!.trim(),
       if (_nullableTrimmed(note) != null) 'note': note!.trim(),
     };

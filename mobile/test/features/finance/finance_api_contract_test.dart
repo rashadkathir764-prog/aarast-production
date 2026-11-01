@@ -134,6 +134,31 @@ void main() {
     },
   );
 
+  // R8: a day sent as a moment without a zone lands on the day before on any
+  // server that is not on UTC.
+  test('a payment is sent as its calendar day', () async {
+    final client = _PaymentDayClient();
+    final api = FinanceApi(client);
+    final cost = WeddingCost(
+      id: 'cost-1',
+      weddingPlanId: 'plan-1',
+      budgetCategoryId: 'category-1',
+      title: 'القاعة',
+      totalAmount: '100',
+      paidAmount: '0',
+      remainingAmount: '100',
+      status: 'OPEN',
+    );
+
+    await api.createPayment(
+      cost: cost,
+      amount: '50',
+      paidAt: DateTime(2026, 7, 14),
+    );
+
+    expect(client.body?['paidAt'], '2026-07-14');
+  });
+
   test('all FinanceApi HTTP paths match the live money controllers', () {
     // FinanceApi spans same-library resource parts (spec M6).
     final source = readLibrarySource(
@@ -166,6 +191,24 @@ void main() {
 }
 
 final _dueDate = DateTime(2026, 8, 1);
+
+class _PaymentDayClient extends _RecordingApiClient {
+  Map<String, dynamic>? body;
+
+  @override
+  Future<Map<String, dynamic>> postJson(
+    String path,
+    Map<String, dynamic> data,
+  ) async {
+    body = data;
+    return {
+      'id': 'payment-1',
+      'costId': 'cost-1',
+      'amount': '50',
+      'paidAt': '2026-07-14T00:00:00.000Z',
+    };
+  }
+}
 
 class _RecordingApiClient extends ApiClient {
   _RecordingApiClient() : super(tokenProvider: () async => null);

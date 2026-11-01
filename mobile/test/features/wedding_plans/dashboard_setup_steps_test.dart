@@ -53,6 +53,8 @@ Future<void> _pump(
   DashboardSummary summary, {
   DashboardHomeMahr? mahr,
   VoidCallback? onOpenMahr,
+  VoidCallback? onOpenGuests,
+  VoidCallback? onImportGuests,
   JourneyProfile profile = JourneyProfile.groom,
 }) async {
   tester.view.devicePixelRatio = 1;
@@ -85,7 +87,8 @@ Future<void> _pump(
               onOpenMoney: () {},
               onOpenTasks: () {},
               onOpenProviders: () {},
-              onOpenGuests: () {},
+              onOpenGuests: onOpenGuests ?? () {},
+              onImportGuests: onImportGuests,
               onOpenSharing: () {},
               onOpenNextStep: () {},
               onOpenImportantItem: (_) {},
@@ -121,6 +124,24 @@ void main() {
       findsOneWidget,
     );
     expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('the guests step opens the contacts it promises', (tester) async {
+    var listed = 0;
+    var imported = 0;
+    await _pump(
+      tester,
+      _summary(),
+      onOpenGuests: () => listed++,
+      onImportGuests: () => imported++,
+    );
+
+    expect(find.text('من جهات الاتصال بضغطة'), findsOneWidget);
+    await tester.tap(find.text('من جهات الاتصال بضغطة'));
+    await tester.pumpAndSettle();
+
+    expect(imported, 1);
+    expect(listed, 0);
   });
 
   testWidgets('a secured venue is done only when the server says so', (

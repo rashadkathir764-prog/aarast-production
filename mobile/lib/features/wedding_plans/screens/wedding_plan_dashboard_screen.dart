@@ -517,6 +517,10 @@ class _WeddingPlanDashboardScreenState extends State<WeddingPlanDashboardScreen>
                   context.go(AppRouter.planProviders(selectedPlanId)),
               onOpenGuests: () =>
                   context.go(AppRouter.guestList(selectedPlanId)),
+              // The setup step keeps its promise: the contacts, in one tap.
+              onImportGuests: () => context.push(
+                AppRouter.guestImport(selectedPlanId, contacts: true),
+              ),
               onOpenSharing: () => _isLocalGuestPlan
                   ? _requireAccountForSharing()
                   : _openSharing(selectedPlanId),

@@ -40,6 +40,7 @@ class AarastDashboardView extends StatelessWidget {
     required this.onOpenTasks,
     required this.onOpenProviders,
     required this.onOpenGuests,
+    this.onImportGuests,
     required this.onOpenSharing,
     required this.onOpenNextStep,
     required this.onOpenImportantItem,
@@ -85,6 +86,10 @@ class AarastDashboardView extends StatelessWidget {
   final VoidCallback onOpenTasks;
   final VoidCallback onOpenProviders;
   final VoidCallback onOpenGuests;
+
+  /// The first guests from the phone's contacts, as the setup step promises
+  /// («من جهات الاتصال بضغطة»); without it the step opens the guest list.
+  final VoidCallback? onImportGuests;
   final VoidCallback onOpenSharing;
   final VoidCallback onOpenNextStep;
   final ValueChanged<DashboardImportantItem> onOpenImportantItem;
@@ -265,7 +270,7 @@ class AarastDashboardView extends StatelessWidget {
                       onOpenMahr: onOpenMahr,
                       onOpenMoney: onOpenMoney,
                       onOpenProviders: onOpenProviders,
-                      onOpenGuests: onOpenGuests,
+                      onOpenGuests: onImportGuests ?? onOpenGuests,
                     ),
                   ] else ...[
                     const SizedBox(height: 12),

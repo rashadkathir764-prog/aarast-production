@@ -103,6 +103,11 @@ class _LocalGuestDashboardScreenState extends State<LocalGuestDashboardScreen> {
         onOpenTasks: () => _openLocalBrowse(context, planId, area: 'المهام'),
         onOpenProviders: () => context.push(AppRouter.planProviders(planId)),
         onOpenGuests: () => _openLocalBrowse(context, planId, area: 'الضيوف'),
+        // The setup step's promise, on a phone-only plan too.
+        onImportGuests: () async {
+          await context.push(AppRouter.guestImport(planId, contacts: true));
+          await _refreshSummary();
+        },
         onOpenSharing: () => _requireAccountForSync(context),
         onOpenImportantItem: (item) =>
             _openLocalDashboardItem(context, planId, item),

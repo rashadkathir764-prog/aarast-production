@@ -77,7 +77,7 @@ class _GuestDetailsScreenState extends State<GuestDetailsScreen> {
       );
     } else if (guest == null) {
       body = JourneyListState(
-        phase: provider.errorMessage == null
+        phase: provider.loadErrorMessage == null
             ? JourneyListPhase.empty
             : JourneyListPhase.error,
         section: JourneySection.guests,

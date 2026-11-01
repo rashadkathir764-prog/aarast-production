@@ -1,4 +1,4 @@
-﻿import 'package:flutter/foundation.dart';
+import 'package:flutter/foundation.dart';
 
 import '../../../core/network/api_client.dart';
 import '../../../core/offline/cache_policy.dart';
@@ -13,7 +13,14 @@ class GuestsProvider extends ChangeNotifier with SessionScopedNotifier {
 
   bool _isLoading = false;
   bool _isSubmitting = false;
+
+  /// The last action that failed (add, save, remove...). Read right after
+  /// the action.
   String? _errorMessage;
+
+  /// The list could not be read, so what shows may be old. Only a load sets
+  /// it, and the next good read clears it.
+  String? _loadErrorMessage;
   String? _noticeMessage;
   List<Guest> _guests = const [];
   List<GuestGroup> _groups = const [];
@@ -26,6 +33,7 @@ class GuestsProvider extends ChangeNotifier with SessionScopedNotifier {
   bool get isLoading => _isLoading;
   bool get isSubmitting => _isSubmitting;
   String? get errorMessage => _errorMessage;
+  String? get loadErrorMessage => _loadErrorMessage;
   String? get noticeMessage => _noticeMessage;
   List<Guest> get guests => _guests;
   List<GuestGroup> get groups => _groups;
@@ -39,7 +47,7 @@ class GuestsProvider extends ChangeNotifier with SessionScopedNotifier {
 
   Future<void> loadGuests(String weddingPlanId) async {
     _isLoading = true;
-    _errorMessage = null;
+    _loadErrorMessage = null;
     _noticeMessage = null;
     notifyListeners();
 
@@ -52,9 +60,9 @@ class GuestsProvider extends ChangeNotifier with SessionScopedNotifier {
         localGroups: _groups,
       );
     } on ApiException catch (error) {
-      _errorMessage = _guestErrorMessage(error);
+      _loadErrorMessage = _guestErrorMessage(error);
     } catch (_) {
-      _errorMessage = 'تعذر تحميل قائمة الضيوف.';
+      _loadErrorMessage = 'تعذر تحميل قائمة الضيوف.';
     } finally {
       _isLoading = false;
       notifyListeners();

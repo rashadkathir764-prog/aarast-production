@@ -39,9 +39,13 @@ class _Api extends GuestsApi {
   _Api(this.guests) : super(ApiClient(tokenProvider: () async => null));
 
   final List<Guest> guests;
+  bool fail = false;
 
   @override
-  Future<List<Guest>> getGuests(String weddingPlanId) async => guests;
+  Future<List<Guest>> getGuests(String weddingPlanId) async {
+    if (fail) throw const ApiException('ما وصلنا', statusCode: 503);
+    return guests;
+  }
 
   @override
   Future<List<GuestGroup>> getGroups(String weddingPlanId) async => const [];
@@ -157,5 +161,40 @@ void main() {
     expect(find.text('أرسل لـ ضيف واحد'), findsOneWidget);
     expect(find.textContaining('هذا رابطك الجديد'), findsOneWidget);
     expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('a list that could not be read is not «nobody to invite»', (
+    tester,
+  ) async {
+    tester.view.devicePixelRatio = 1;
+    tester.view.physicalSize = const Size(320, 1000);
+    addTearDown(tester.view.reset);
+    final api = _Api([_guest('g1', 'ياسر')])..fail = true;
+    final provider = GuestsProvider(api);
+    await tester.pumpWidget(
+      MultiProvider(
+        providers: [
+          Provider<GuestsApi>.value(value: api),
+          ChangeNotifierProvider<GuestsProvider>.value(value: provider),
+        ],
+        child: MaterialApp(
+          builder: (context, child) =>
+              Directionality(textDirection: TextDirection.rtl, child: child!),
+          home: const GuestInviteScreen(weddingPlanId: 'plan-1'),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('ما فيه أحد ما وصلته دعوة.'), findsNothing);
+    expect(find.textContaining('لـ 0'), findsNothing);
+    expect(find.text('حاول مرة ثانية'), findsOneWidget);
+
+    // Retrying reads the list and offers the guest.
+    api.fail = false;
+    await tester.tap(find.text('حاول مرة ثانية'));
+    await tester.pumpAndSettle();
+    expect(find.text('ياسر'), findsOneWidget);
+    expect(find.text('أرسل لـ ضيف واحد'), findsOneWidget);
   });
 }

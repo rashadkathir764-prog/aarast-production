@@ -115,7 +115,7 @@ class _GuestListScreenState extends State<GuestListScreen> {
         phase: JourneyListPhase.loading,
         section: JourneySection.guests,
       );
-    } else if (provider.errorMessage != null && guests.isEmpty) {
+    } else if (provider.loadErrorMessage != null && guests.isEmpty) {
       body = JourneyListState(
         phase: JourneyListPhase.error,
         section: JourneySection.guests,
@@ -209,7 +209,8 @@ class _GuestListScreenState extends State<GuestListScreen> {
                 soft: AarastV3Color.paper,
               ),
               const SizedBox(height: 12),
-            ] else if (provider.errorMessage != null && guests.isNotEmpty) ...[
+            ] else if (provider.loadErrorMessage != null &&
+                guests.isNotEmpty) ...[
               JourneyListNotice(offline: false, onRetry: _load),
               const SizedBox(height: 12),
             ],

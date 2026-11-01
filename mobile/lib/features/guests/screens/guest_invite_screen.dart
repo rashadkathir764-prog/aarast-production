@@ -105,6 +105,13 @@ class _GuestInviteScreenState extends State<GuestInviteScreen> {
     final say = words.profile.say;
     final plan = words.profile.plan;
     final count = words.count(reachable.length);
+    // Before the plan's guests are read, nobody is known to be left out:
+    // the list loads, or says it could not, instead of «ما فيه أحد».
+    final known = provider.guests.any(
+      (guest) => guest.weddingPlanId == widget.weddingPlanId,
+    );
+    final reading = !known && provider.isLoading;
+    final unread = !known && !reading && provider.loadErrorMessage != null;
 
     return AarastScreenFrame(
       maxWidth: 600,
@@ -169,7 +176,18 @@ class _GuestInviteScreenState extends State<GuestInviteScreen> {
                   ),
                   const SizedBox(height: 14),
                 ],
-                if (reachable.isNotEmpty)
+                if (reading)
+                  const JourneyListState(
+                    phase: JourneyListPhase.loading,
+                    section: JourneySection.guests,
+                  )
+                else if (unread)
+                  JourneyListState(
+                    phase: JourneyListPhase.error,
+                    section: JourneySection.guests,
+                    onRetry: () => provider.loadGuests(widget.weddingPlanId),
+                  )
+                else if (reachable.isNotEmpty)
                   Wrap(
                     spacing: 8,
                     runSpacing: 8,
@@ -183,7 +201,7 @@ class _GuestInviteScreenState extends State<GuestInviteScreen> {
                         ),
                     ],
                   ),
-                if (unreachable > 0) ...[
+                if (!reading && !unread && unreachable > 0) ...[
                   const SizedBox(height: 10),
                   JourneyNote(
                     key: const ValueKey('invite-no-phone'),
@@ -194,7 +212,7 @@ class _GuestInviteScreenState extends State<GuestInviteScreen> {
                     soft: AarastV3Color.brandAccentSoft,
                   ),
                 ],
-                if (reachable.isEmpty) ...[
+                if (!reading && !unread && reachable.isEmpty) ...[
                   const SizedBox(height: 10),
                   Text(
                     widget.reminder
@@ -220,9 +238,12 @@ class _GuestInviteScreenState extends State<GuestInviteScreen> {
             padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
             child: JourneyButton(
               key: const ValueKey('invite-send'),
-              label: '${say('أرسل', 'أرسلي')} لـ $count',
+              // No «لـ 0 ضيوف»: with nobody to send to the button only waits.
+              label: reachable.isEmpty
+                  ? say('أرسل', 'أرسلي')
+                  : '${say('أرسل', 'أرسلي')} لـ $count',
               icon: LucideIcons.send,
-              background: AarastV3Color.mint,
+              background: context.accent.primary,
               expand: true,
               large: true,
               onPressed: reachable.isEmpty

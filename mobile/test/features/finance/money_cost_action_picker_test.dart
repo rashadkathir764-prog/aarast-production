@@ -160,6 +160,39 @@ void main() {
       },
     );
 
+    // R19: a free payment leaves the date waiting, so its reminder would keep
+    // coming after the money was paid.
+    testWidgets('an agreement with a date waiting pays that date', (
+      tester,
+    ) async {
+      final finance = _ActionFinance(
+        costs: const [_payableCost],
+        schedules: [
+          PaymentSchedule(
+            id: 'schedule-1',
+            costId: _payableCost.id,
+            weddingPlanId: 'plan-1',
+            amount: '100',
+            dueDate: DateTime(2027, 1, 1),
+            status: 'PENDING',
+          ),
+        ],
+      );
+      await _run(
+        tester,
+        finance,
+        MoneyCostActionIntent.payment,
+        pick: _payableCost.title,
+      );
+
+      expect(
+        find.text(
+          'route:${AppRouter.moneySchedulePay('plan-1', _payableCost.id, 'schedule-1')}',
+        ),
+        findsOneWidget,
+      );
+    });
+
     testWidgets('with no open agreement it opens the new agreement form', (
       tester,
     ) async {
@@ -244,6 +277,11 @@ Future<Future<bool>> _run(
         path: '/wedding-plans/:id/money/costs/:costId/payments/create',
         builder: (context, state) => stub(state),
       ),
+      GoRoute(
+        path:
+            '/wedding-plans/:id/money/costs/:costId/schedules/:scheduleId/pay',
+        builder: (context, state) => stub(state),
+      ),
     ],
   );
   addTearDown(router.dispose);
@@ -262,12 +300,19 @@ Future<Future<bool>> _run(
 
 /// Money not loaded yet: the first load fills it.
 class _ActionFinance extends FinanceProvider {
-  _ActionFinance({required this.costs})
+  _ActionFinance({required this.costs, this.schedules = const []})
     : super(FinanceApi(ApiClient(tokenProvider: () async => null)));
 
   @override
   final List<WeddingCost> costs;
+  final List<PaymentSchedule> schedules;
   int loads = 0;
+
+  @override
+  List<PaymentSchedule> schedulesForCost(String costId) => schedules;
+
+  @override
+  Future<void> loadCostDetails(String costId) async {}
 
   @override
   String? get loadedPlanId => loads == 0 ? null : 'plan-1';

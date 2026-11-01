@@ -125,9 +125,17 @@ Future<bool> openMoneyCostAction(
     changed =
         await context.push<bool>(AppRouter.moneyCostCreate(planId)) == true;
   } else if (intent == MoneyCostActionIntent.payment) {
+    // A date waiting on the agreement takes the payment, so its reminder
+    // stops; the free form is for an agreement with no date.
+    await finance.loadCostDetails(cost.id);
+    if (!context.mounted) return false;
+    final next = finance.nextPendingSchedule(cost.id);
     changed =
         await context.push<bool>(
-          AppRouter.moneyPaymentCreate(planId, cost.id),
+          next == null
+              ? AppRouter.moneyPaymentCreate(planId, cost.id)
+              : AppRouter.moneySchedulePay(planId, cost.id, next.id),
+          extra: next,
         ) ==
         true;
   } else {

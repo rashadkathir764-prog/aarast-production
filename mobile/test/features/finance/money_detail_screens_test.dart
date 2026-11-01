@@ -4,12 +4,15 @@ import 'package:aarast_mobile/features/finance/data/cost_receipts_api.dart';
 import 'package:aarast_mobile/features/finance/data/finance_api.dart';
 import 'package:aarast_mobile/features/finance/models/budget_category.dart';
 import 'package:aarast_mobile/features/finance/models/cost_receipt.dart';
+import 'package:aarast_mobile/features/finance/models/funding_source.dart';
 import 'package:aarast_mobile/features/finance/models/money_summary.dart';
 import 'package:aarast_mobile/features/finance/models/wedding_cost.dart';
 import 'package:aarast_mobile/features/finance/providers/finance_provider.dart';
 import 'package:aarast_mobile/features/finance/screens/cost_details_screen.dart';
 import 'package:aarast_mobile/features/finance/screens/cost_payment_screens.dart';
+import 'package:aarast_mobile/features/finance/screens/money_budget_screen.dart';
 import 'package:aarast_mobile/features/finance/screens/money_receipts_screen.dart';
+import 'package:aarast_mobile/features/finance/widgets/funding_sheets.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
@@ -176,7 +179,10 @@ void main() {
 
       // x14 asks in a journey sheet; the reason is required before anything
       // is reversed.
-      expect(find.byKey(const ValueKey('journey-sheet-handle')), findsOneWidget);
+      expect(
+        find.byKey(const ValueKey('journey-sheet-handle')),
+        findsOneWidget,
+      );
       expect(find.text('تعكس الدفعة؟'), findsOneWidget);
       await tester.tap(find.byKey(const ValueKey('payment-reverse-confirm')));
       await tester.pumpAndSettle();
@@ -270,7 +276,10 @@ void main() {
       await tester.tap(row);
       await tester.pumpAndSettle();
 
-      expect(find.byKey(const ValueKey('journey-sheet-handle')), findsOneWidget);
+      expect(
+        find.byKey(const ValueKey('journey-sheet-handle')),
+        findsOneWidget,
+      );
       expect(find.text('موعد الدفعة'), findsOneWidget);
       expect(find.text('400'), findsOneWidget);
       expect(find.text('ر.ي'), findsOneWidget);
@@ -373,6 +382,118 @@ void main() {
       expect(find.text('provider-profile-provider-1'), findsOneWidget);
       expect(router.state.uri.path, AppRouter.providerDetails('provider-1'));
       expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('an agreement from an accepted offer reaches its booking', (
+      tester,
+    ) async {
+      final router = GoRouter(
+        initialLocation: '/cost',
+        routes: [
+          GoRoute(
+            path: '/cost',
+            builder: (_, _) => const CostDetailsScreen(
+              weddingPlanId: 'plan-1',
+              costId: 'cost-1',
+            ),
+          ),
+          GoRoute(
+            path: '/wedding-plans/:id/providers/requests',
+            builder: (_, _) => const Scaffold(body: Text('booking-page')),
+          ),
+        ],
+      );
+      await _pumpMoneyRouter(
+        tester,
+        router,
+        api: _MoneyDetailsApi(quoteOfferId: 'offer-1'),
+      );
+
+      final link = find.byKey(const ValueKey('cost-booking-link'));
+      await tester.ensureVisible(link);
+      await tester.pumpAndSettle();
+      expect(find.text('الحجز والمحادثة'), findsOneWidget);
+      await tester.tap(link);
+      await tester.pumpAndSettle();
+
+      expect(find.text('booking-page'), findsOneWidget);
+      expect(
+        router.state.uri.toString(),
+        AppRouter.providerRequests('plan-1', itemKey: 'category-1'),
+      );
+    });
+
+    testWidgets('«أخفِ المبالغ» hides what is left on the payment screen', (
+      tester,
+    ) async {
+      final finance = FinanceProvider(_MoneyDetailsApi())
+        ..toggleAmountsVisibility();
+
+      await _pumpMoneyScreen(
+        tester,
+        const RecordCostPaymentScreen(
+          weddingPlanId: 'plan-1',
+          costId: 'cost-1',
+        ),
+        provider: finance,
+      );
+
+      expect(find.textContaining('باقي عليك ••••'), findsOneWidget);
+    });
+
+    testWidgets('«أخفِ المبالغ» hides the budget screen\'s own totals', (
+      tester,
+    ) async {
+      final finance = FinanceProvider(_MoneyDetailsApi())
+        ..toggleAmountsVisibility();
+
+      await _pumpMoneyScreen(
+        tester,
+        const MoneyBudgetScreen(weddingPlanId: 'plan-1'),
+        provider: finance,
+      );
+
+      expect(find.textContaining('•••• لعرسك'), findsOneWidget);
+    });
+
+    testWidgets('«أخفِ المبالغ» hides a promise and the cash it changes', (
+      tester,
+    ) async {
+      final finance = FinanceProvider(_MoneyDetailsApi())
+        ..toggleAmountsVisibility();
+
+      await _pumpMoneyScreen(
+        tester,
+        Scaffold(
+          body: PledgeCheckSheet(
+            source: FundingSource.fromJson(const {
+              'id': 'pledge-1',
+              'weddingPlanId': 'plan-1',
+              'kind': 'GIFT',
+              'status': 'PLEDGED',
+              'amount': '50000',
+              'sourceName': 'العم',
+            }),
+            currency: 'YER',
+            availableCash: '100000',
+          ),
+        ),
+        provider: finance,
+      );
+
+      expect(find.textContaining('وعدك بـ ••••'), findsOneWidget);
+      expect(find.textContaining('50'), findsNothing);
+    });
+
+    testWidgets('an agreement recorded by hand has no booking to reach', (
+      tester,
+    ) async {
+      await _pumpMoneyScreen(
+        tester,
+        const CostDetailsScreen(weddingPlanId: 'plan-1', costId: 'cost-1'),
+      );
+
+      expect(find.byKey(const ValueKey('cost-booking-link')), findsNothing);
     });
 
     testWidgets(
@@ -583,7 +704,11 @@ class _RefusedPaymentApi extends _MoneyDetailsApi {
   }
 }
 
-Future<void> _pumpMoneyRouter(WidgetTester tester, GoRouter router) async {
+Future<void> _pumpMoneyRouter(
+  WidgetTester tester,
+  GoRouter router, {
+  FinanceApi? api,
+}) async {
   tester.view.devicePixelRatio = 1;
   tester.view.physicalSize = const Size(320, 1100);
   addTearDown(tester.view.reset);
@@ -591,7 +716,7 @@ Future<void> _pumpMoneyRouter(WidgetTester tester, GoRouter router) async {
 
   await tester.pumpWidget(
     ChangeNotifierProvider<FinanceProvider>(
-      create: (_) => FinanceProvider(_MoneyDetailsApi()),
+      create: (_) => FinanceProvider(api ?? _MoneyDetailsApi()),
       child: MaterialApp.router(
         routerConfig: router,
         builder: (context, child) => MediaQuery(
@@ -607,11 +732,14 @@ Future<void> _pumpMoneyRouter(WidgetTester tester, GoRouter router) async {
 }
 
 class _MoneyDetailsApi extends FinanceApi {
-  _MoneyDetailsApi() : super(ApiClient(tokenProvider: () async => null));
+  _MoneyDetailsApi({this.quoteOfferId})
+    : super(ApiClient(tokenProvider: () async => null));
 
   static final _now = DateTime(2026, 7, 14, 12);
 
-  final WeddingCost cost = WeddingCost(
+  final String? quoteOfferId;
+
+  late final WeddingCost cost = WeddingCost(
     id: 'cost-1',
     weddingPlanId: 'plan-1',
     budgetCategoryId: 'category-1',
@@ -622,6 +750,7 @@ class _MoneyDetailsApi extends FinanceApi {
     status: 'PARTIALLY_PAID',
     providerId: 'provider-1',
     providerName: 'قاعة السعادة',
+    quoteOfferId: quoteOfferId,
     agreementDate: _now.subtract(const Duration(days: 20)),
     note: 'الاتفاق يشمل تجهيز القاعة.',
     paymentsCount: 1,

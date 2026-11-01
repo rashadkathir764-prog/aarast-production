@@ -46,7 +46,7 @@ String _statusLine(GuestSummary summary, GuestWords words) {
   }
   return [
     '${summary.totalGuests} ${words.invited}',
-    '${summary.confirmed} ${words.confirmed}',
+    if (summary.confirmed > 0) '${summary.confirmed} ${words.confirmed}',
     if (summary.pending > 0) '${summary.pending} ${words.pending}',
   ].join(' · ');
 }

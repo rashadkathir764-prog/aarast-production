@@ -885,7 +885,7 @@ class ApiException implements Exception {
       'DELETION_NOT_PENDING' => 'حسابك ما ينتظر الحذف.',
       'EXPORT_RATE_LIMITED' => 'نزّلت بياناتك كثير اليوم. جرّب بكرة.',
       'PROVIDER_REVIEW_CHANGED' =>
-        'فريق المراجعة غيّر ملاحظاته قبل ما يوصلهم تعديلك. شوف الملاحظات الجديدة تحت، صلّحها وأرسل.',
+        'فريق المراجعة غيّر ملاحظاته قبل ما يوصلهم تعديلك. الملاحظات الجديدة تحت، والإرسال بعد تعديلها.',
       'PROVIDER_JOINING_CURRENCY' => 'سعر خدمتك يكون بالريال اليمني.',
       // V1 checklist 4.10: private costs and tasks.
       'COST_PRIVACY_NOT_ALLOWED' =>

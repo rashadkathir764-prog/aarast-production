@@ -106,10 +106,14 @@ class _BookingMomentScreenState extends State<BookingMomentScreen> {
 
     final service = quote.service?.category?.nameAr ?? quote.service?.title;
     final offer = quote.acceptedOffer;
-    final price = providerMoneyLabel(offer?.amount, offer?.currency);
-    final scheduleAmount = schedule == null
-        ? null
-        : providerMoneyLabel(schedule.amount, offer?.currency);
+    String? shown(String? amount) {
+      final label = providerMoneyLabel(amount, offer?.currency);
+      if (label == null) return null;
+      return finance?.shownAmount(label) ?? label;
+    }
+
+    final price = shown(offer?.amount);
+    final scheduleAmount = schedule == null ? null : shown(schedule.amount);
     final scheduleName = schedule?.note?.trim().isNotEmpty == true
         ? schedule!.note!.trim()
         : 'العربون';

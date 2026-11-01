@@ -96,8 +96,17 @@ void main() {
   test('each side reads the other side\'s name', () {
     expect(_conversation().viewerIsProvider, isTrue);
     expect(_conversation().counterpartName, 'أحمد العريس');
+    // The name on the request, as the requests tab reads it; the account's
+    // first name only stands in without one.
     expect(
       _conversation(
+        counterpart: const ChatUser(id: 'user-2', name: 'أحمد'),
+      ).counterpartName,
+      'أحمد العريس',
+    );
+    expect(
+      _conversation(
+        contactName: null,
         counterpart: const ChatUser(id: 'user-2', name: 'سالم'),
       ).counterpartName,
       'سالم',

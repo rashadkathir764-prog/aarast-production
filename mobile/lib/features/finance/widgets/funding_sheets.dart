@@ -10,6 +10,7 @@ import '../../../core/widgets/aarast_ui.dart';
 import '../models/funding_source.dart';
 import '../models/wedding_cost.dart' show moneyValue;
 import 'money_input_formatter.dart';
+import 'money_widgets.dart' show shownMoney;
 
 /// c13 «السلفة»: what is still owed, the repayments in order, and one
 /// button for the next one. Loan reminders are a fixed server job, so
@@ -50,10 +51,13 @@ class _LoanRepaymentsSheetState extends State<LoanRepaymentsSheet> {
     super.dispose();
   }
 
-  String _plain(Object? value) => compactMoneyParts(
-    moneyValue(value),
-    currencyCode: widget.currency,
-  ).plainText;
+  String _plain(Object? value) => shownMoney(
+    context,
+    compactMoneyParts(
+      moneyValue(value),
+      currencyCode: widget.currency,
+    ).plainText,
+  );
 
   Future<void> _pickDate() async {
     releaseFieldFocus();
@@ -141,7 +145,10 @@ class _LoanRepaymentsSheetState extends State<LoanRepaymentsSheet> {
                   fit: BoxFit.scaleDown,
                   alignment: AlignmentDirectional.centerStart,
                   child: Text(
-                    '${formatMoneyInputValue(owed.round())} ${currencyLabelAr(widget.currency)}',
+                    shownMoney(
+                      context,
+                      '${formatMoneyInputValue(owed.round())} ${currencyLabelAr(widget.currency)}',
+                    ),
                     style: JourneyType.of(
                       JourneyType.display,
                       weight: JourneyType.bold,
@@ -415,8 +422,10 @@ class PledgeCheckSheet extends StatefulWidget {
 class _PledgeCheckSheetState extends State<PledgeCheckSheet> {
   PledgeAnswer _answer = PledgeAnswer.arrived;
 
-  String _plain(num value) =>
-      compactMoneyParts(value, currencyCode: widget.currency).plainText;
+  String _plain(num value) => shownMoney(
+    context,
+    compactMoneyParts(value, currencyCode: widget.currency).plainText,
+  );
 
   @override
   Widget build(BuildContext context) {

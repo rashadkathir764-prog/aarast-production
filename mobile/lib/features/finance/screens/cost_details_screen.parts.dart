@@ -339,6 +339,26 @@ class _CostFacts extends StatelessWidget {
                       AppRouter.providerDetails(cost.providerId!),
                     ),
             ),
+          if (cost.quoteOfferId != null)
+            JourneyListRow(
+              key: const ValueKey('cost-booking-link'),
+              icon: LucideIcons.messageCircle,
+              color: AarastV3Color.cobalt,
+              soft: AarastV3Color.cobaltSoft,
+              title: 'الحجز والمحادثة',
+              subtitle: 'العرض المقبول',
+              trailing: const Icon(
+                LucideIcons.chevronLeft,
+                size: 18,
+                color: AarastV3Color.textFaint,
+              ),
+              onTap: () => context.push(
+                AppRouter.providerRequests(
+                  cost.weddingPlanId,
+                  itemKey: cost.budgetCategoryId,
+                ),
+              ),
+            ),
           if (cost.partyPhone != null)
             JourneyListRow(
               icon: LucideIcons.phone,

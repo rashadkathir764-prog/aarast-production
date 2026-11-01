@@ -229,7 +229,7 @@ void main() {
       expect(find.byType(ProviderChangesScreen), findsOneWidget);
       expect(find.text('يحتاج تعديل بسيط'), findsOneWidget);
       expect(
-        find.text('ملفك قريب. صلّح الملاحظتين تحت وأرسله، ونراجعه أول بأول.'),
+        find.text('ملفك قريب. باقي تعديل الملاحظتين تحت، ونراجعه أول بأول.'),
         findsOneWidget,
       );
       expect(find.byKey(const Key('provider-changes-note')), findsNothing);
@@ -300,7 +300,7 @@ void main() {
       expect(find.byKey(const Key('provider-changes-note')), findsOneWidget);
       expect(find.text('وضّحي الخدمة.'), findsOneWidget);
       expect(
-        find.text('ملفك قريب. صلّح اللي في الملاحظة وأرسله، ونراجعه أول بأول.'),
+        find.text('ملفك قريب. باقي تعديل اللي في الملاحظة، ونراجعه أول بأول.'),
         findsOneWidget,
       );
       // A profile from before B-10 adds its service here.
@@ -350,7 +350,7 @@ void main() {
       expect(find.text('حدد سعر الليلة.'), findsNothing);
       expect(
         find.text(
-          'فريق المراجعة غيّر ملاحظاته قبل ما يوصلهم تعديلك. شوف الملاحظات الجديدة تحت، صلّحها وأرسل.',
+          'فريق المراجعة غيّر ملاحظاته قبل ما يوصلهم تعديلك. الملاحظات الجديدة تحت، والإرسال بعد تعديلها.',
         ),
         findsOneWidget,
       );
@@ -431,7 +431,7 @@ void main() {
 
       expect(find.byKey(const Key('provider-changes-note')), findsNothing);
       expect(
-        find.text('ملفك قريب. صلّح بياناته وأرسله، ونراجعه أول بأول.'),
+        find.text('ملفك قريب. باقي تعديل بياناته، ونراجعه أول بأول.'),
         findsOneWidget,
       );
       expect(find.byKey(const Key('provider-changes-about')), findsNothing);
@@ -453,8 +453,8 @@ void main() {
   });
 
   group('p11 rejected', () {
-    testWidgets('the reason, support, and «صلّح وقدّم من جديد» reopens it '
-        'for fixing (B-02)', (tester) async {
+    testWidgets('the reason, support, and «تعديل الملف وإعادة التقديم» reopens '
+        'it for fixing (B-02)', (tester) async {
       final api = _Api(
         status: 'REJECTED',
         reviewNote: 'الصور مأخوذة من حساب ثاني. نحتاج صور شغلك أنت.',
@@ -464,9 +464,12 @@ void main() {
       expect(find.byType(ProviderRejectedScreen), findsOneWidget);
       expect(find.text('ما قدرنا نوافق الآن'), findsOneWidget);
       expect(
-        find.text('مو نهاية الطريق. صلّح اللي تحت وقدّم من جديد.'),
+        find.text('مو نهاية الطريق. بعد التعديل يرجع الطلب للمراجعة.'),
         findsOneWidget,
       );
+      // No gender is kept for a provider, so these never address one.
+      expect(find.text('التواصل مع الدعم'), findsOneWidget);
+      expect(find.text('تعديل الملف وإعادة التقديم'), findsOneWidget);
       expect(find.text('استوديو ضوء صنعاء'), findsOneWidget);
       expect(find.text('التصوير · صنعاء'), findsOneWidget);
       expect(find.text('السبب'), findsOneWidget);

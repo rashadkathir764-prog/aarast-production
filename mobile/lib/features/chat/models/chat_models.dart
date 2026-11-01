@@ -416,13 +416,14 @@ class ChatConversation {
   bool get viewerIsProvider => !permissions.canManageProviders;
 
   /// The other side's name: the provider's business for the customer, the
-  /// customer for the provider.
+  /// customer for the provider, named as his request is. The account gives
+  /// the provider a first name only (B-14), so it comes second.
   String get counterpartName {
     if (!viewerIsProvider) return provider.businessName;
-    final name = counterpart?.name.trim();
-    if (name != null && name.isNotEmpty) return name;
     final contact = latestQuoteRequest?.contactName?.trim();
     if (contact != null && contact.isNotEmpty) return contact;
+    final name = counterpart?.name.trim();
+    if (name != null && name.isNotEmpty) return name;
     return 'العميل';
   }
 

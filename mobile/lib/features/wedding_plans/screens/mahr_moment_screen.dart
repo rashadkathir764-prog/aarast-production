@@ -61,6 +61,11 @@ class _MahrMomentScreenState extends State<MahrMomentScreen> {
     // The bride receives her mahr (her plan's funding); the groom pays it.
     final receives = mahr?.side.name == 'receives';
     final total = moneyValue(mahr?.total ?? '0');
+    String shown(Object? amount) {
+      final text = _amount(moneyValue(amount));
+      return finance?.shownAmount(text) ?? text;
+    }
+
     final rows = <(IconData, String, String)>[];
     if (receives) {
       final funding = context.watch<FundingProvider?>();
@@ -70,23 +75,27 @@ class _MahrMomentScreenState extends State<MahrMomentScreen> {
           rows.add((
             LucideIcons.checkCircle,
             _name(source.note, source.receivedAt),
-            _amount(moneyValue(source.amount)),
+            shown(source.amount),
           ));
         }
       }
     } else if (finance != null) {
       final costId = _mahrCostId(finance);
       if (costId != null) {
-        final payments = finance.paymentsForCost(costId).where(
-          (payment) =>
-              payment.entryType == 'PAYMENT' && payment.reversedById == null,
-        );
-        for (final payment in payments.toList()
-          ..sort((a, b) => a.paidAt.compareTo(b.paidAt))) {
+        final payments = finance
+            .paymentsForCost(costId)
+            .where(
+              (payment) =>
+                  payment.entryType == 'PAYMENT' &&
+                  payment.reversedById == null,
+            );
+        for (final payment
+            in payments.toList()
+              ..sort((a, b) => a.paidAt.compareTo(b.paidAt))) {
           rows.add((
             LucideIcons.checkCircle,
             _name(payment.note, payment.paidAt),
-            _amount(moneyValue(payment.amount)),
+            shown(payment.amount),
           ));
         }
       }
@@ -99,7 +108,8 @@ class _MahrMomentScreenState extends State<MahrMomentScreen> {
         eyebrow: receives ? 'الاتفاق مع العريس' : 'الاتفاق مع أهل العروسة',
         title: receives ? 'استلمتِ المهر كامل' : 'سلّمت المهر كامل',
         subtitle: [
-          if (total > 0) '${amountInWords(total.round())}، وصلت كلها.',
+          if (total > 0 && finance?.amountsHidden != true)
+            '${amountInWords(total.round())}، وصلت كلها.',
           'هذا الجزء من عرسك خلص، ألف مبروك.',
         ].join('\n'),
         body: Column(
@@ -121,8 +131,9 @@ class _MahrMomentScreenState extends State<MahrMomentScreen> {
           ],
         ),
         action: 'تمام',
-        onAction: () =>
-            context.popOrGo(AppRouter.weddingPlanDashboard(widget.weddingPlanId)),
+        onAction: () => context.popOrGo(
+          AppRouter.weddingPlanDashboard(widget.weddingPlanId),
+        ),
       ),
     );
   }

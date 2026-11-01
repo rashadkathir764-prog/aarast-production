@@ -151,6 +151,18 @@ void main() {
       '/wedding-plans/plan-1/money/costs/cost-band/schedules/schedule-1/pay',
     ]);
   });
+
+  testWidgets('«أخفِ المبالغ» hides the price and the deposit', (tester) async {
+    final finance = FinanceProvider(_Finance());
+    await finance.loadMoney('plan-1');
+    finance.toggleAmountsVisibility();
+
+    await _pump(tester, finance: finance);
+
+    expect(find.text('400,000 ر.ي'), findsNothing);
+    expect(find.text('••••'), findsOneWidget);
+    expect(find.text('•••• · 14 يناير'), findsOneWidget);
+  });
 }
 
 class _Marketplace extends ProviderMarketplaceProvider {

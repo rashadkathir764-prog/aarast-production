@@ -125,7 +125,7 @@ class ProviderSuspendedScreen extends StatelessWidget {
             padding: const EdgeInsets.fromLTRB(20, 8, 20, 16),
             child: JourneyButton(
               key: const Key('provider-suspended-support'),
-              label: 'تكلّم مع الدعم',
+              label: 'التواصل مع الدعم',
               icon: LucideIcons.messageCircle,
               expand: true,
               large: true,

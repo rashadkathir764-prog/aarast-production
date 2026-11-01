@@ -45,16 +45,17 @@ class ProviderChangesScreen extends StatelessWidget {
   final VoidCallback onResubmit;
   final VoidCallback onAccount;
 
-  /// «ملفك قريب. صلّح الملاحظتين تحت وأرسله، ونراجعه أول بأول.»
+  /// «ملفك قريب. باقي تعديل الملاحظتين تحت، ونراجعه أول بأول.» No gender is
+  /// kept for a provider, so this asks without addressing one.
   static String leadLine(int fieldNotes, {required bool general}) {
     final what = switch (fieldNotes) {
-      0 when general => 'صلّح اللي في الملاحظة',
-      0 => 'صلّح بياناته',
-      1 => 'صلّح الملاحظة تحت',
-      2 => 'صلّح الملاحظتين تحت',
-      _ => 'صلّح الملاحظات تحت',
+      0 when general => 'تعديل اللي في الملاحظة',
+      0 => 'تعديل بياناته',
+      1 => 'تعديل الملاحظة تحت',
+      2 => 'تعديل الملاحظتين تحت',
+      _ => 'تعديل الملاحظات تحت',
     };
-    return 'ملفك قريب. $what وأرسله، ونراجعه أول بأول.';
+    return 'ملفك قريب. باقي $what، ونراجعه أول بأول.';
   }
 
   @override

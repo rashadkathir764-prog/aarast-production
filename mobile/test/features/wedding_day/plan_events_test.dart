@@ -1,9 +1,15 @@
 import 'package:aarast_mobile/core/experience_v3/aarast_v3.dart';
 import 'package:aarast_mobile/core/network/api_client.dart';
+import 'package:aarast_mobile/core/utils/app_clock.dart';
+import 'package:aarast_mobile/features/tasks/tasks_api.dart';
 import 'package:aarast_mobile/features/wedding_day/data/plan_events_api.dart';
 import 'package:aarast_mobile/features/wedding_day/models/plan_event.dart';
 import 'package:aarast_mobile/features/wedding_day/providers/plan_events_provider.dart';
 import 'package:aarast_mobile/features/wedding_day/screens/plan_events_screen.dart';
+import 'package:aarast_mobile/features/wedding_plans/data/wedding_plans_api.dart';
+import 'package:aarast_mobile/features/wedding_plans/models/wedding_plan.dart';
+import 'package:aarast_mobile/features/wedding_plans/providers/dashboard_summary_provider.dart';
+import 'package:aarast_mobile/features/wedding_plans/providers/wedding_plans_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:provider/provider.dart';
@@ -46,11 +52,15 @@ class _Api extends PlanEventsApi {
   _Api(this.view) : super(ApiClient(tokenProvider: () async => null));
 
   PlanEventsView view;
+  int reads = 0;
   final created = <(PlanEventType, Map<String, dynamic>)>[];
   final updated = <(String, Map<String, dynamic>)>[];
 
   @override
-  Future<PlanEventsView> list(String weddingPlanId) async => view;
+  Future<PlanEventsView> list(String weddingPlanId) async {
+    reads++;
+    return view;
+  }
 
   @override
   Future<PlanEvent> create(
@@ -73,6 +83,47 @@ class _Api extends PlanEventsApi {
   }
 }
 
+/// What «أجّل العرس» reads behind the wedding's sheet.
+class _Client extends ApiClient {
+  _Client() : super(tokenProvider: () async => 'token');
+
+  @override
+  Future<List<dynamic>> getJsonList(String path) async => const [];
+}
+
+class _Tasks extends TaskTimelineApi {
+  _Tasks(super.apiClient);
+
+  @override
+  Future<List<WeddingTask>> getTasks(String weddingPlanId) async => const [];
+}
+
+class _Plans extends WeddingPlansProvider {
+  _Plans(super.api);
+
+  @override
+  Future<WeddingPlan?> updateWeddingPlan(
+    String id,
+    Map<String, dynamic> data,
+  ) async => WeddingPlan.fromJson({
+    'id': id,
+    'ownerUserId': 'u1',
+    'title': 'عرس محمد',
+    'weddingDate': data['weddingDate'],
+    'currency': 'YER',
+    'status': 'PLANNING',
+    'createdAt': '2026-01-01T00:00:00.000Z',
+    'updatedAt': '2026-01-01T00:00:00.000Z',
+  });
+}
+
+class _Dashboard extends DashboardSummaryProvider {
+  _Dashboard(WeddingPlansApi api) : super(weddingPlansApi: api);
+
+  @override
+  Future<void> loadDashboard(String weddingPlanId, {sharedMember}) async {}
+}
+
 Future<void> _pump(
   WidgetTester tester,
   PlanEventsProvider provider, {
@@ -81,9 +132,20 @@ Future<void> _pump(
   tester.view.devicePixelRatio = 1;
   tester.view.physicalSize = const Size(400, 1600);
   addTearDown(tester.view.reset);
+  final client = _Client();
   await tester.pumpWidget(
-    ChangeNotifierProvider<PlanEventsProvider>.value(
-      value: provider,
+    MultiProvider(
+      providers: [
+        ChangeNotifierProvider<PlanEventsProvider>.value(value: provider),
+        Provider<ApiClient>.value(value: client),
+        Provider<TaskTimelineApi>.value(value: _Tasks(client)),
+        ChangeNotifierProvider<WeddingPlansProvider>.value(
+          value: _Plans(WeddingPlansApi(client)),
+        ),
+        ChangeNotifierProvider<DashboardSummaryProvider>.value(
+          value: _Dashboard(WeddingPlansApi(client)),
+        ),
+      ],
       child: MaterialApp(
         home: JourneyProfileScope(
           profile: profile,
@@ -253,5 +315,35 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('يتغير من «أجّل العرس»'), findsOneWidget);
     expect(find.text('احذف المناسبة'), findsNothing);
+  });
+
+  testWidgets('the wedding day opens «أجّل العرس», and the list follows it', (
+    tester,
+  ) async {
+    pinAppClock(DateTime(2026, 11, 1, 10));
+    final api = _Api(_view());
+    await _pump(tester, PlanEventsProvider(api: api));
+    final readsBefore = api.reads;
+
+    await tester.tap(find.byTooltip('تعديل الزفاف'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('plan-event-main-day')));
+    await tester.pumpAndSettle();
+
+    expect(find.text('تأجيل العرس'), findsOneWidget);
+    expect(find.byKey(const ValueKey('plan-event-save')), findsNothing);
+
+    await tester.tap(find.byKey(const ValueKey('postpone-new-day')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byIcon(Icons.edit_outlined));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byType(TextField).last, '04/15/2027');
+    await tester.tap(find.text('OK'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('postpone-apply')));
+    await tester.pumpAndSettle();
+
+    expect(find.text('تأجيل العرس'), findsNothing);
+    expect(api.reads, readsBefore + 1);
   });
 }

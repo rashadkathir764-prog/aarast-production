@@ -264,7 +264,7 @@ class _ProviderPortalScreenState extends State<ProviderPortalScreen> {
     AarastToast.showSuccess(context, 'وصلنا تعديلك. نراجعه ونبلغك هنا.');
   }
 
-  /// p11 «صلّح وقدّم من جديد» (B-02).
+  /// p11 «تعديل الملف وإعادة التقديم» (B-02).
   void _reopen() {
     unawaited(
       _step(

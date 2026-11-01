@@ -201,12 +201,9 @@ Future<void> runReviewStatesWalk(WidgetTester tester) async {
       walk.fail('ما ظهرت حالة «يحتاج تعديل»');
     }
     walk.expectSee('محلات الأناقة');
-    walk.expectSee('صلّح', why: 'ملاحظات المراجعة ظاهرة له');
+    walk.expectSee('باقي تعديل', why: 'ملاحظات المراجعة ظاهرة له');
     walk.expectSee('45,000', why: 'خدمة «ثوب أبيض» بسعرها');
-    if (!walk.expectSee('أرسل التعديل', why: 'زر إعادة الإرسال (B1)') &&
-        walk.sees('أرسلت التعديل')) {
-      walk.note('الزر مكتوب «أرسلت التعديل» بصيغة الماضي، كأنه خبر مو زر');
-    }
+    walk.expectSee('أرسلت التعديل', why: 'زر إعادة الإرسال بصيغة المتكلم (B1)');
   });
   await signOutFromReview('p09_logout');
 
@@ -217,9 +214,9 @@ Future<void> runReviewStatesWalk(WidgetTester tester) async {
     }
     walk.expectSee('كوافيرة أم ريان');
     walk.expectSee('وضّحتي', why: 'سبب الرفض المحفوظ لها');
-    // The reason speaks to her; the buttons beside it must too.
-    walk.expectSee('صلّحي وقدّمي من جديد', why: 'زر إعادة الفتح بكلامها');
-    walk.expectNotSee('تكلّم مع الدعم', why: 'السبب مؤنث والزر مذكّر');
+    // No gender is kept for a provider, so the buttons address nobody.
+    walk.expectSee('تعديل الملف وإعادة التقديم', why: 'زر إعادة الفتح محايد');
+    walk.expectSee('التواصل مع الدعم', why: 'زر الدعم محايد');
   });
   await signOutFromReview('p11_logout');
 

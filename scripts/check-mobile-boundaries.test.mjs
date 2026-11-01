@@ -1727,7 +1727,7 @@ const r19ProviderPortalApi = Object.freeze({
 // through the auth owner API.
 // +1 (R16): the money items read how far their service got from the
 // marketplace owner API.
-const r19LegalRecordCount = 253;
+const r19LegalRecordCount = 254;
 const trackedOwnerApiContracts = [
   {
     area: 'features/account_contexts',

@@ -229,7 +229,7 @@ class ProviderClaimPendingScreen extends StatelessWidget {
             padding: const EdgeInsets.fromLTRB(20, 8, 20, 16),
             child: JourneyButton(
               key: const Key('provider-claim-pending-support'),
-              label: 'تكلّم مع الدعم',
+              label: 'التواصل مع الدعم',
               icon: LucideIcons.messageCircle,
               background: AarastV3Color.paper,
               foreground: AarastV3Color.primary,

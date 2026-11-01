@@ -20,6 +20,7 @@ Future<void> showPlanEventSheet(
   required PlanEventsProvider provider,
   PlanEvent? event,
   PlanEventType? type,
+  VoidCallback? onMoveDay,
 }) {
   return showJourneySheet<void>(
     context: context,
@@ -28,6 +29,7 @@ Future<void> showPlanEventSheet(
       provider: provider,
       event: event,
       type: type ?? event?.type ?? PlanEventType.custom,
+      onMoveDay: onMoveDay,
     ),
   );
 }
@@ -41,6 +43,7 @@ class PlanEventSheet extends StatefulWidget {
     required this.provider,
     required this.type,
     this.event,
+    this.onMoveDay,
     super.key,
   });
 
@@ -50,6 +53,9 @@ class PlanEventSheet extends StatefulWidget {
 
   /// Null for a new event.
   final PlanEvent? event;
+
+  /// Called once this sheet closes, for the wedding's own day to move.
+  final VoidCallback? onMoveDay;
 
   @override
   State<PlanEventSheet> createState() => _PlanEventSheetState();
@@ -93,6 +99,11 @@ class _PlanEventSheetState extends State<PlanEventSheet> {
       locale: const Locale('ar'),
     );
     if (picked != null && mounted) setState(() => _date = picked);
+  }
+
+  void _moveDay() {
+    Navigator.of(context).pop();
+    widget.onMoveDay!();
   }
 
   Future<void> _pickSlot(PlanEventSlot slot) async {
@@ -236,12 +247,13 @@ class _PlanEventSheetState extends State<PlanEventSheet> {
             Expanded(
               child: _isMain
                   ? JourneyPickerField(
+                      key: const ValueKey('plan-event-main-day'),
                       label: 'اليوم',
                       icon: LucideIcons.calendar,
                       value: date == null ? null : _weekdayDay(date),
                       placeholder: 'موعد العرس',
                       helper: 'يتغير من «أجّل العرس»',
-                      onTap: null,
+                      onTap: widget.onMoveDay == null ? null : _moveDay,
                     )
                   : JourneyPickerField(
                       key: const ValueKey('plan-event-day'),

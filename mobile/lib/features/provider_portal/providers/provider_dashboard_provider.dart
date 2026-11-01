@@ -226,7 +226,7 @@ class ProviderDashboardProvider extends ChangeNotifier
     fallback: 'ما قدرنا نرسل التعديل. جرّب مرة ثانية.',
   );
 
-  /// «صلّح وقدّم من جديد» (B-02): the refused profile opens for fixing,
+  /// «تعديل الملف وإعادة التقديم» (B-02): the refused profile opens for fixing,
   /// with the refusal's reason as its note.
   Future<bool> reopenApplication() => _lifecycleStep(
     _api.reopenApplication,

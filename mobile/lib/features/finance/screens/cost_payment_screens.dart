@@ -21,6 +21,7 @@ import '../models/wedding_cost.dart';
 import '../providers/finance_provider.dart';
 import '../widgets/cost_receipts_section.dart';
 import '../widgets/money_input_formatter.dart';
+import '../widgets/money_widgets.dart' show shownMoney;
 import '../widgets/payment_entry_form.dart';
 import '../widgets/payment_schedule_sheet.dart';
 
@@ -282,10 +283,13 @@ Widget paymentEntryFrame(
 }) {
   final left = cost == null
       ? null
-      : compactMoneyParts(
-          moneyValue(cost.remainingAmount),
-          currencyCode: currency,
-        ).plainText;
+      : shownMoney(
+          context,
+          compactMoneyParts(
+            moneyValue(cost.remainingAmount),
+            currencyCode: currency,
+          ).plainText,
+        );
   return AarastScreenFrame(
     maxWidth: 600,
     backgroundColor: AarastV3Color.canvas,

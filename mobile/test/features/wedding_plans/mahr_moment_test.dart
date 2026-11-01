@@ -47,18 +47,21 @@ Future<List<String>> _pump(WidgetTester tester, FinanceProvider finance) async {
 }
 
 void main() {
-  test('the first look remembers the state; finishing it celebrates once', () async {
-    SharedPreferences.setMockInitialValues({});
-    final ledger = MahrMomentLedger(await SharedPreferences.getInstance());
+  test(
+    'the first look remembers the state; finishing it celebrates once',
+    () async {
+      SharedPreferences.setMockInitialValues({});
+      final ledger = MahrMomentLedger(await SharedPreferences.getInstance());
 
-    // A phone that first sees a mahr already complete does not replay it.
-    expect(await ledger.becameComplete('plan-old', complete: true), isFalse);
-    expect(await ledger.becameComplete('plan-old', complete: true), isFalse);
+      // A phone that first sees a mahr already complete does not replay it.
+      expect(await ledger.becameComplete('plan-old', complete: true), isFalse);
+      expect(await ledger.becameComplete('plan-old', complete: true), isFalse);
 
-    expect(await ledger.becameComplete('plan-1', complete: false), isFalse);
-    expect(await ledger.becameComplete('plan-1', complete: true), isTrue);
-    expect(await ledger.becameComplete('plan-1', complete: true), isFalse);
-  });
+      expect(await ledger.becameComplete('plan-1', complete: false), isFalse);
+      expect(await ledger.becameComplete('plan-1', complete: true), isTrue);
+      expect(await ledger.becameComplete('plan-1', complete: true), isFalse);
+    },
+  );
 
   testWidgets('says the whole mahr arrived, payment by payment', (
     tester,
@@ -91,6 +94,21 @@ void main() {
     await tester.pumpAndSettle();
     // Opened straight from the home's push, «تمام» goes back to the home.
     expect(opened, ['/wedding-plans/plan-1/dashboard']);
+  });
+
+  testWidgets('«أخفِ المبالغ» hides the mahr in figures and in words', (
+    tester,
+  ) async {
+    final finance = FinanceProvider(_Finance());
+    await finance.loadMoney('plan-1');
+    finance.toggleAmountsVisibility();
+
+    await _pump(tester, finance);
+
+    expect(find.text('2,000,000'), findsNothing);
+    expect(find.text('••••'), findsNWidgets(2));
+    expect(find.textContaining('مليون'), findsNothing);
+    expect(find.text('هذا الجزء من عرسك خلص، ألف مبروك.'), findsOneWidget);
   });
 }
 

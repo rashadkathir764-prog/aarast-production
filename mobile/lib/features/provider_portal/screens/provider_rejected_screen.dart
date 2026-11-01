@@ -8,10 +8,11 @@ import '../widgets/provider_join_parts.dart';
 
 /// p11 «ما قدرنا نوافق الآن»: the review team refused the profile.
 ///
-/// The profile stays read-only while refused; «صلّح وقدّم من جديد» reopens
-/// it for fixing (B-02), with the reason as its note on p09, and the fixed
-/// profile goes back to review from there (B-01). Support stays one tap
-/// away for a question about the decision.
+/// The profile stays read-only while refused; «تعديل الملف وإعادة التقديم»
+/// reopens it for fixing (B-02), with the reason as its note on p09, and the
+/// fixed profile goes back to review from there (B-01). Support stays one tap
+/// away for a question about the decision. No gender is kept for a provider,
+/// so these words never address one.
 class ProviderRejectedScreen extends StatelessWidget {
   const ProviderRejectedScreen({
     required this.profile,
@@ -59,7 +60,8 @@ class ProviderRejectedScreen extends StatelessWidget {
                     color: AarastV3Color.danger,
                     soft: AarastV3Color.dangerSoft,
                     title: 'ما قدرنا نوافق الآن',
-                    message: 'مو نهاية الطريق. صلّح اللي تحت وقدّم من جديد.',
+                    message:
+                        'مو نهاية الطريق. بعد التعديل يرجع الطلب للمراجعة.',
                     trailing: ProviderAccountButton(onPressed: onAccount),
                   ),
                   if (reason.isNotEmpty) ...[
@@ -91,7 +93,7 @@ class ProviderRejectedScreen extends StatelessWidget {
                   ],
                   JourneyButton(
                     key: const Key('provider-rejected-support'),
-                    label: 'تكلّم مع الدعم',
+                    label: 'التواصل مع الدعم',
                     icon: LucideIcons.messageCircle,
                     background: AarastV3Color.paper,
                     foreground: AarastV3Color.primary,
@@ -116,7 +118,7 @@ class ProviderRejectedScreen extends StatelessWidget {
             padding: const EdgeInsets.fromLTRB(20, 8, 20, 16),
             child: JourneyButton(
               key: const Key('provider-rejected-reopen'),
-              label: 'صلّح وقدّم من جديد',
+              label: 'تعديل الملف وإعادة التقديم',
               expand: true,
               large: true,
               loading: submitting,

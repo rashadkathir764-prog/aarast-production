@@ -7,6 +7,7 @@ import '../../../core/routing/app_router.dart';
 import '../../../core/routing/pop_or_go.dart';
 import '../../../core/utils/arabic_date_formatter.dart';
 import '../../../core/widgets/aarast_ui.dart';
+import '../../wedding_plans/wedding_plans_api.dart' show showPostponeSheet;
 import '../models/plan_event.dart';
 import '../providers/plan_events_provider.dart';
 import '../widgets/plan_event_sheet.dart';
@@ -35,13 +36,28 @@ class _PlanEventsScreenState extends State<PlanEventsScreen> {
 
   Future<void> _open({PlanEvent? event, PlanEventType? type}) async {
     final provider = context.read<PlanEventsProvider>();
+    final day = event?.date;
     await showPlanEventSheet(
       context,
       weddingPlanId: widget.weddingPlanId,
       provider: provider,
       event: event,
       type: type,
+      onMoveDay: event?.isMain == true && day != null
+          ? () => _postpone(day)
+          : null,
     );
+  }
+
+  /// The wedding's day is the plan's: g03 moves it with the tasks.
+  Future<void> _postpone(DateTime day) async {
+    final provider = context.read<PlanEventsProvider>();
+    final moved = await showPostponeSheet(
+      context,
+      planId: widget.weddingPlanId,
+      weddingDate: day,
+    );
+    if (moved) await provider.load(widget.weddingPlanId);
   }
 
   @override

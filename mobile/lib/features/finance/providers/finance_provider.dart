@@ -10,6 +10,9 @@ import '../models/budget_category.dart';
 import '../models/money_summary.dart';
 import '../models/wedding_cost.dart';
 
+/// What an amount reads as while «أخفِ المبالغ» is on (G17).
+const hiddenMoneyText = '••••';
+
 class FinanceProvider extends ChangeNotifier with SessionScopedNotifier {
   FinanceProvider(
     this._api, {
@@ -87,6 +90,9 @@ class FinanceProvider extends ChangeNotifier with SessionScopedNotifier {
   bool get isLoadingMoreCosts => _isLoadingMoreCosts;
   bool get isLoadingMorePayments => _isLoadingMorePayments;
   bool get amountsHidden => _preferences?.hideAmounts ?? _amountsHidden;
+
+  /// G17: one rule for every money figure, whichever feature draws it.
+  String shownAmount(String text) => amountsHidden ? hiddenMoneyText : text;
 
   void toggleAmountsVisibility() {
     final preferences = _preferences;

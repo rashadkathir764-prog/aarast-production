@@ -12,6 +12,7 @@ import '../../../core/phone/phone_number_utils.dart';
 import '../../../core/routing/app_router.dart';
 import '../../../core/routing/pop_or_go.dart';
 import '../../../core/utils/app_clock.dart';
+import '../../../core/utils/arabic_for.dart';
 import '../../../core/utils/arabic_count.dart';
 import '../../../core/utils/arabic_date_formatter.dart';
 import '../../../core/widgets/aarast_toast.dart';
@@ -218,7 +219,7 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen> {
                 soft: AarastV3Color.dangerSoft,
               ),
             JourneyTag(
-              label: mine ? 'لك' : 'ل${task.responsibleLabel}',
+              label: mine ? 'لك' : arabicFor(task.responsibleLabel),
               color: context.accent.primary,
               soft: context.accent.primarySoft,
             ),

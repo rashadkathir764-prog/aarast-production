@@ -7,6 +7,7 @@ import '../../../core/experience_v3/aarast_v3.dart';
 import '../../../core/network/api_client.dart';
 import '../../../core/preferences/device_preferences.dart';
 import '../../../core/routing/app_router.dart';
+import '../../../core/utils/app_clock.dart';
 import '../../../core/utils/arabic_count.dart';
 import '../../../core/utils/arabic_date_formatter.dart';
 import '../../../core/utils/hijri_date.dart';
@@ -91,7 +92,7 @@ class _PostponeSheetState extends State<_PostponeSheet> {
   int? get _days => weddingDateShiftDays(widget.oldDay, _newDay);
 
   Future<void> _pick() async {
-    final now = DateTime.now();
+    final now = appNow();
     final today = DateTime(now.year, now.month, now.day);
     final picked = await showDatePicker(
       context: context,

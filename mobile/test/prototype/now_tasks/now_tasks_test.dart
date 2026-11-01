@@ -110,7 +110,13 @@ WeddingTask _t(
 
 final _activeTasks = <WeddingTask>[
   _t('t1', 'الاتفاق مع أهل العروسة على المهر والشرط', due: -40, status: 'DONE'),
-  _t('t2', 'حجز قاعة أو مخدرة الرجال', due: -20, status: 'DONE', category: 'VENUE'),
+  _t(
+    't2',
+    'حجز قاعة أو مخدرة الرجال',
+    due: -20,
+    status: 'DONE',
+    category: 'VENUE',
+  ),
   _t(
     't3',
     'تحديد موعد عقد القران',
@@ -122,7 +128,14 @@ final _activeTasks = <WeddingTask>[
       ('بلّغ أهل العروسة', false),
     ],
   ),
-  _t('t4', 'حجز المصور', due: -3, category: 'PHOTOGRAPHY', who: 'صالح', phone: '+967771220914'),
+  _t(
+    't4',
+    'حجز المصور',
+    due: -3,
+    category: 'PHOTOGRAPHY',
+    who: 'صالح',
+    phone: '+967771220914',
+  ),
   _t('t5', 'شراء الشبكة والذهب', due: 0, priority: 'HIGH'),
   _t('t6', 'الاتفاق مع الفنان والفرقة', due: 4),
   _t(
@@ -137,7 +150,13 @@ final _activeTasks = <WeddingTask>[
       ('بطاقة ولي العروسة', false),
     ],
   ),
-  _t('t8', 'الاتفاق على الوليمة والذبائح', due: 40, who: 'الوالد', phone: '+967733445566'),
+  _t(
+    't8',
+    'الاتفاق على الوليمة والذبائح',
+    due: 40,
+    who: 'الوالد',
+    phone: '+967733445566',
+  ),
   _t('t9', 'ترتيب القات والمقيل', at: DateTime(2030, 3, 7)),
   _t('t10', 'ترتيب الزفة والسيارة', at: DateTime(2030, 3, 7), who: 'صالح'),
   _t('t11', 'توزيع الدعوات'),
@@ -247,6 +266,46 @@ void main() {
     );
   });
 
+  // R10: «للوالد», never «لالوالد», on the filter and on the task.
+  testWidgets('a definite name joins «ل» the Arabic way', (tester) async {
+    tester.view.devicePixelRatio = 1;
+    tester.view.physicalSize = const Size(400, 900);
+    addTearDown(tester.view.reset);
+    final task = _t('father', 'كلّم الخياط', who: 'الوالد', due: 5);
+    final provider = await _provider([task]);
+
+    Widget screen(Widget child) =>
+        ChangeNotifierProvider<TaskTimelineProvider>.value(
+          value: provider,
+          child: MaterialApp(
+            theme: AppTheme.light(),
+            locale: const Locale('ar'),
+            supportedLocales: const [Locale('ar')],
+            localizationsDelegates: GlobalMaterialLocalizations.delegates,
+            home: Scaffold(body: SafeArea(child: child)),
+          ),
+        );
+
+    await tester.pumpWidget(
+      screen(const TaskTimelineScreen(weddingPlanId: _plan)),
+    );
+    await tester.pump(const Duration(milliseconds: 600));
+    expect(find.text('للوالد'), findsOneWidget);
+    expect(find.text('لالوالد'), findsNothing);
+
+    await tester.pumpWidget(
+      screen(
+        TaskDetailsScreen(
+          weddingPlanId: _plan,
+          taskId: task.id,
+          initialTask: task,
+        ),
+      ),
+    );
+    await tester.pump(const Duration(milliseconds: 600));
+    expect(find.text('للوالد'), findsOneWidget);
+  });
+
   testWidgets('t04 by month', (tester) async {
     await _shot(
       tester,
@@ -267,7 +326,11 @@ void main() {
     await _shot(
       tester,
       't05_task_menu',
-      TaskDetailsScreen(weddingPlanId: _plan, taskId: task.id, initialTask: task),
+      TaskDetailsScreen(
+        weddingPlanId: _plan,
+        taskId: task.id,
+        initialTask: task,
+      ),
       await _provider(_activeTasks),
       h: 900,
       act: () async {
@@ -284,7 +347,11 @@ void main() {
     await _shot(
       tester,
       't06_delete_confirm',
-      TaskDetailsScreen(weddingPlanId: _plan, taskId: task.id, initialTask: task),
+      TaskDetailsScreen(
+        weddingPlanId: _plan,
+        taskId: task.id,
+        initialTask: task,
+      ),
       await _provider(_activeTasks),
       h: 900,
       act: () async {
@@ -313,7 +380,11 @@ void main() {
     await _shot(
       tester,
       't08_edit_task',
-      CreateTaskScreen(weddingPlanId: _plan, taskId: task.id, initialTask: task),
+      CreateTaskScreen(
+        weddingPlanId: _plan,
+        taskId: task.id,
+        initialTask: task,
+      ),
       await _provider(_activeTasks),
       h: 1600,
     );
@@ -324,7 +395,11 @@ void main() {
     await _shot(
       tester,
       't09_edit_private',
-      CreateTaskScreen(weddingPlanId: _plan, taskId: task.id, initialTask: task),
+      CreateTaskScreen(
+        weddingPlanId: _plan,
+        taskId: task.id,
+        initialTask: task,
+      ),
       await _provider(_activeTasks),
       h: 1400,
     );

@@ -768,7 +768,7 @@ class ProviderDashboardApi {
     return ProviderDashboardProfile.fromJson(json);
   }
 
-  /// «صلّح وقدّم من جديد» (B-02): a refused profile opens for fixing.
+  /// «تعديل الملف وإعادة التقديم» (B-02): a refused profile opens for fixing.
   Future<ProviderDashboardProfile> reopenApplication() async {
     final json = await _apiClient.postJson(
       '/api/v1/provider/me/application/reopen',

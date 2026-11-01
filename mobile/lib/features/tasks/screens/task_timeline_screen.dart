@@ -10,6 +10,7 @@ import '../../../core/routing/app_router.dart';
 import '../../../core/utils/app_clock.dart';
 import '../../../core/utils/arabic_count.dart';
 import '../../../core/utils/arabic_date_formatter.dart';
+import '../../../core/utils/arabic_for.dart';
 import '../../../core/widgets/aarast_share_sheet.dart';
 import '../../../core/widgets/aarast_toast.dart';
 import '../../../core/widgets/aarast_ui.dart';
@@ -468,7 +469,7 @@ class _PeopleFilter extends StatelessWidget {
                 for (final (key, label) in [
                   (_everyone, 'الكل'),
                   (_mine, 'لي'),
-                  for (final name in people) (name, 'ل$name'),
+                  for (final name in people) (name, arabicFor(name)),
                 ]) ...[
                   JourneyChip(
                     key: ValueKey('task-person-${key.isEmpty ? 'all' : key}'),

@@ -78,8 +78,9 @@ void main() {
         await walk.tapText('شوف البند في المال', wait: 5);
         walk.expectSee('الاتفاق');
         await walk.back();
-        if (walk.visibleTexts().isEmpty)
+        if (walk.visibleTexts().isEmpty) {
           walk.fail('شاشة فارغة في المرة الثانية');
+        }
       });
 
       await walk.finish();

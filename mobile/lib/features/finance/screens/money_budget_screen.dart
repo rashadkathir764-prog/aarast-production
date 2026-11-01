@@ -64,8 +64,10 @@ class _MoneyBudgetScreenState extends State<MoneyBudgetScreen> {
     super.dispose();
   }
 
-  String _plain(num value) =>
-      compactMoneyParts(value, currencyCode: _currency).plainText;
+  String _plain(num value) => shownMoney(
+    context,
+    compactMoneyParts(value, currencyCode: _currency).plainText,
+  );
 
   void _changed() {
     setState(() => _formError = null);

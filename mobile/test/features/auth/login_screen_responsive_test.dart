@@ -131,7 +131,9 @@ void main() {
         );
         await tester.pumpAndSettle();
 
-        expect(find.text('خطتك بانتظارك، مثل ما تركتها.'), findsOneWidget);
+        // The same screen greets a provider, who has no wedding plan.
+        expect(find.text('كل شي محفوظ، مثل ما تركته.'), findsOneWidget);
+        expect(find.textContaining('خطتك'), findsNothing);
         expect(find.byType(TextFormField), findsNWidgets(2));
         expect(tester.takeException(), isNull);
 

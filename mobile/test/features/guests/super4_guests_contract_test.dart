@@ -122,6 +122,25 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  // R10: nobody confirmed yet is not a number worth saying.
+  testWidgets('the status line skips «0 أكدوا»', (tester) async {
+    _setPhoneView(tester, height: 900);
+    final harness = await _createHarness();
+    await harness.api.createGuest(
+      weddingPlanId: _localPlanId,
+      name: 'ليلى سالم',
+      phone: '777654321',
+      side: 'BRIDE',
+      status: 'PENDING',
+      seatsCount: 1,
+    );
+
+    await _pumpGuestsScreen(tester, harness, setView: false);
+
+    expect(find.text('1 مدعو · 1 ما ردّوا'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('local guest appears in Super 4 Guests screen without login', (
     tester,
   ) async {

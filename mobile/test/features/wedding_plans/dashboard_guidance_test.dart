@@ -267,4 +267,32 @@ void main() {
       findsNothing,
     );
   });
+
+  testWidgets('the bride\'s suggestions in her words and her rose', (
+    tester,
+  ) async {
+    await _pump(
+      tester,
+      _summary(
+        budget: '5000000',
+        items: 4,
+        tasks: 3,
+        guests: 10,
+        essentials: [_essential('VENUE'), _essential('DRESS')],
+      ),
+      profile: JourneyProfile.bride,
+    );
+
+    expect(find.text('الصالة'), findsOneWidget);
+    expect(find.text('الفستان'), findsOneWidget);
+    expect(find.text('القاعة'), findsNothing);
+    expect(find.text('ما اتفقتِ مع أحد بعد'), findsWidgets);
+    final row = tester.widget<JourneyListRow>(
+      find.descendant(
+        of: find.byKey(const ValueKey('aarast-dashboard-suggestion-VENUE')),
+        matching: find.byType(JourneyListRow),
+      ),
+    );
+    expect(row.color, AarastV3Color.rose);
+  });
 }

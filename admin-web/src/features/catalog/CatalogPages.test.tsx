@@ -246,4 +246,26 @@ describe('ReferenceCatalogsPage (a09)', () => {
       ),
     );
   });
+
+  it('files a task under a category, «تلقائي» leaving it to the app', async () => {
+    vi.mocked(updateReferenceCatalogItem).mockResolvedValue(item('papers', papersDraft, papersPublished));
+    renderCatalogs();
+
+    fireEvent.click(await screen.findByRole('button', { name: 'عدّل' }));
+    const form = screen.getByRole('dialog', { name: 'تعديل أوراق العقد عند الأمين الشرعي' });
+    const category = within(form).getByLabelText('القسم');
+    expect((category as HTMLSelectElement).value).toBe('');
+    fireEvent.change(category, { target: { value: 'DOCUMENTS' } });
+    fireEvent.click(within(form).getByRole('button', { name: 'احفظ مسودة' }));
+
+    await waitFor(() =>
+      expect(updateReferenceCatalogItem).toHaveBeenCalledWith(
+        'tasks.starter',
+        'papers',
+        expect.objectContaining({
+          metadata: { daysBefore: 30, source: 'starter', taskCategory: 'DOCUMENTS' },
+        }),
+      ),
+    );
+  });
 });

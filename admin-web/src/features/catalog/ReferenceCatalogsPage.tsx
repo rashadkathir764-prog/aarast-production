@@ -48,6 +48,29 @@ const ICONS = [
   'wand-2', 'flower-2', 'layout-grid', 'cake-slice', 'music-2', 'flower', 'package-open', 'hotel',
 ];
 
+/**
+ * The task categories the app files a task under (its «القسم»), in the
+ * app's own words. Left empty («تلقائي») the app files a built-in task where
+ * it always has; GENERAL is «عامة» chosen on purpose.
+ */
+const TASK_CATEGORIES: ReadonlyArray<readonly [string, string]> = [
+  ['GENERAL', 'عامة'],
+  ['VENUE', 'القاعة'],
+  ['GUESTS', 'الضيوف'],
+  ['MONEY', 'المال'],
+  ['PROVIDERS', 'المزودين'],
+  ['ATTIRE', 'الملابس'],
+  ['PHOTOGRAPHY', 'التصوير'],
+  ['CATERING', 'الضيافة'],
+  ['DECOR', 'الزينة'],
+  ['DOCUMENTS', 'المستندات'],
+];
+
+function taskCategory(revision: ReferenceCatalogRevision | null): string {
+  const value = revision?.metadata?.taskCategory;
+  return typeof value === 'string' && TASK_CATEGORIES.some(([key]) => key === value) ? value : '';
+}
+
 function daysBefore(revision: ReferenceCatalogRevision | null): number | null {
   const value = revision?.metadata?.daysBefore;
   const days = typeof value === 'number' ? value : Number(value);
@@ -77,6 +100,8 @@ type Draft = {
   groupNameAr: string;
   groupKey: string;
   days: string;
+  /** A task's category; empty leaves it to the app («تلقائي»). */
+  category: string;
   icon: string;
   sortOrder: string;
   showForGroom: boolean;
@@ -90,6 +115,7 @@ const EMPTY: Draft = {
   groupNameAr: '',
   groupKey: '',
   days: '',
+  category: '',
   icon: '',
   sortOrder: '0',
   showForGroom: true,
@@ -169,6 +195,7 @@ export function ReferenceCatalogsPage() {
       groupNameAr: value.groupNameAr ?? '',
       groupKey: value.groupKey ?? '',
       days: days === null ? '' : String(days),
+      category: taskCategory(value),
       icon: value.icon ?? '',
       sortOrder: String(value.sortOrder),
       showForGroom: value.showForGroom,
@@ -183,12 +210,16 @@ export function ReferenceCatalogsPage() {
     setBusy(true);
     setActionError(null);
     const base = editing === 'new' ? null : editing.current;
-    const metadata = isTasks
-      ? {
-          ...(base?.metadata ?? {}),
-          daysBefore: draft.days.trim() === '' ? null : Number(draft.days),
-        }
-      : undefined;
+    let metadata: Record<string, unknown> | undefined;
+    if (isTasks) {
+      metadata = {
+        ...(base?.metadata ?? {}),
+        daysBefore: draft.days.trim() === '' ? null : Number(draft.days),
+      };
+      // «تلقائي» stores nothing: the app keeps its own filing for the task.
+      if (draft.category) metadata.taskCategory = draft.category;
+      else delete metadata.taskCategory;
+    }
     const payload = {
       ...(editing === 'new' && draft.key.trim() ? { key: draft.key.trim() } : {}),
       nameAr: draft.nameAr.trim(),
@@ -356,6 +387,22 @@ export function ReferenceCatalogsPage() {
                   value={draft.days}
                   onChange={(event) => setDraft({ ...draft, days: event.target.value })}
                 />
+              </label>
+            ) : null}
+            {isTasks ? (
+              <label className="desk-field">
+                القسم
+                <select
+                  value={draft.category}
+                  onChange={(event) => setDraft({ ...draft, category: event.target.value })}
+                >
+                  <option value="">تلقائي</option>
+                  {TASK_CATEGORIES.map(([key, label]) => (
+                    <option key={key} value={key}>
+                      {label}
+                    </option>
+                  ))}
+                </select>
               </label>
             ) : null}
             <label className="desk-field">

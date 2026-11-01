@@ -20,7 +20,7 @@ import {
   SharedMemberRole,
 } from "@prisma/client";
 import { BudgetCategoriesService } from "../src/budget-categories/budget-categories.service";
-import { marketplaceService } from "./support/owner-ports";
+import { marketplaceService, catalogWithoutMoneyLinks } from "./support/owner-ports";
 import { contributorActorReference } from "../src/modules/collaboration/internal/contribution-history.service";
 import { buildMoneySummaryInTransaction } from "../src/money/money-summary.service";
 import { WeddingCostsService } from "../src/wedding-costs/wedding-costs.service";
@@ -209,7 +209,7 @@ test("plan quote list restricts a contributor to requests they submitted", async
     prisma as any,
     permissions as any,
     {} as any,
-    lifecycle, new FinancePortService(), {} as any,
+    lifecycle, new FinancePortService(catalogWithoutMoneyLinks), {} as any,
   );
 
   await service.findPlanQuoteRequests(
@@ -347,7 +347,7 @@ test("money summary applies contributor cost and category ids to every aggregate
     tx as any,
     { canViewMoney: () => true, canManageMoney: () => true } as any,
     new PlanReadService(),
-    { listActiveCategories: async () => [] } as any,
+    { listActiveCategories: async () => [], listMoneyCatalogItems: async () => [] } as any,
     contributorContext as any,
     { costIds: ["cost-mine"], categoryIds: ["category-mine"] },
   );

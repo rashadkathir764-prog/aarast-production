@@ -197,7 +197,13 @@ const starterItems = [
   { persona: "BRIDE" as const, nameAr: "الصالة" },
   { persona: "BRIDE" as const, nameAr: "التصوير" },
   { persona: "NEUTRAL" as const, nameAr: "التصوير" },
-];
+].map((item) => ({
+  ...item,
+  // D73: who the item is offered to, and no explicit link: the words decide.
+  showForGroom: item.persona === "GROOM",
+  showForBride: item.persona === "BRIDE",
+  providerCategorySlugs: [],
+}));
 
 function categoryRecord(nameAr: string): any {
   return {
@@ -238,6 +244,8 @@ test("the starter items are the published, active ones with their persona", asyn
     nameAr,
     isActive,
     sortOrder,
+    showForGroom: true,
+    showForBride: false,
     metadata: persona === undefined ? null : { persona },
   });
   const client = {
@@ -254,8 +262,8 @@ test("the starter items are the published, active ones with their persona", asyn
     },
   };
   assert.deepEqual(await new CatalogAdminService().listStarterBudgetItems(client as never), [
-    { persona: "GROOM", nameAr: "القاعة" },
-    { persona: "GROOM", nameAr: "التصوير" },
+    { persona: "GROOM", nameAr: "القاعة", showForGroom: true, showForBride: false, providerCategorySlugs: [] },
+    { persona: "GROOM", nameAr: "التصوير", showForGroom: true, showForBride: false, providerCategorySlugs: [] },
   ]);
 });
 

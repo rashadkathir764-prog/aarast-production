@@ -11,7 +11,7 @@ export interface DefaultReferenceCatalogItem {
   showForGroom: boolean;
   showForBride: boolean;
   isRecommended: boolean;
-  metadata?: Record<string, string>;
+  metadata?: Record<string, string | string[]>;
 }
 
 type GroupSeed = {
@@ -165,6 +165,68 @@ const groups: GroupSeed[] = [
   },
 ];
 
+/**
+ * D73: the provider categories (by slug) each money item is linked to in a
+ * new environment, so «ابحث» and an accepted offer find it without guessing
+ * from words. They are the categories the word matcher filed under each
+ * item when the link was made explicit; `test/money-catalog-links.test.ts`
+ * pins that a new plan files every production category exactly as the
+ * words did. An item left out has no link and keeps the words. Seeding
+ * never rewrites an existing row: an existing environment keeps the words
+ * until the owner sets a link in «الكتالوجات».
+ */
+const moneyStarterProviderCategorySlugs: Readonly<Record<string, readonly string[]>> = {
+  'groom-gold': ['gold'],
+  'groom-venue': ['wedding-halls'],
+  'groom-food': ['catering', 'soft-drinks', 'water', 'refrigerators'],
+  'groom-photo': ['photography', 'photo-session'],
+  'groom-audio': ['sound-lighting', 'lighting'],
+  'groom-zaffa': ['wedding-car', 'wedding-procession'],
+  'groom-qat': ['qat'],
+  'groom-artist': [
+    'female-singer', 'female-vocalist', 'women-band', 'dance-troupe',
+    'male-singer', 'male-vocalist', 'mizmar-folk-band', 'mabra',
+  ],
+  'groom-grooming': ['makeup', 'hair-styling', 'barber'],
+  'groom-accessories': ['accessories'],
+  'groom-clothes': ['dresses', 'clothing'],
+  'groom-perfume': ['perfumes'],
+  'groom-invites': ['invitations'],
+  'groom-gifts': ['wedding-giveaways', 'promotional-bags'],
+  'bride-dress': ['dresses'],
+  'bride-makeup': ['makeup', 'hair-styling'],
+  'bride-care': ['barber'],
+  'bride-gold': ['gold', 'accessories'],
+  'bride-clothes': ['clothing'],
+  'bride-perfume': ['perfumes'],
+  'bride-venue': ['wedding-halls'],
+  'bride-decor': ['stage-decor', 'decoration', 'flowers'],
+  'bride-photo': ['photography', 'photo-session'],
+  'bride-food': ['catering', 'soft-drinks', 'water', 'refrigerators'],
+  'bride-audio': ['sound-lighting', 'lighting', 'wedding-procession'],
+  'bride-invites': ['wedding-giveaways', 'invitations', 'promotional-bags'],
+  'bride-naqsh': ['henna'],
+  'bride-artist': [
+    'female-singer', 'female-vocalist', 'women-band', 'dance-troupe',
+    'male-singer', 'male-vocalist', 'mizmar-folk-band', 'mabra',
+  ],
+  'bride-transport': ['wedding-car'],
+  'neutral-venue': ['wedding-halls'],
+  'neutral-food': ['catering', 'soft-drinks', 'water', 'refrigerators'],
+  'neutral-photo': ['photography', 'photo-session'],
+  'neutral-decor': ['stage-decor', 'wedding-coordination', 'decoration', 'flowers'],
+  'neutral-audio': [
+    'sound-lighting', 'lighting', 'wedding-procession',
+    'female-singer', 'female-vocalist', 'women-band', 'dance-troupe',
+    'male-singer', 'male-vocalist', 'mizmar-folk-band', 'mabra',
+  ],
+  'neutral-qat': ['qat'],
+  'neutral-gold': ['gold'],
+  'neutral-look': ['dresses', 'clothing'],
+  'neutral-invites': ['wedding-giveaways', 'invitations', 'promotional-bags'],
+  'neutral-transport': ['wedding-car'],
+};
+
 export const moneyStarterDefaults: DefaultReferenceCatalogItem[] = groups.flatMap(
   (group, groupIndex) =>
     group.items.map(([key, nameAr, icon, recommended], itemIndex) => ({
@@ -178,7 +240,12 @@ export const moneyStarterDefaults: DefaultReferenceCatalogItem[] = groups.flatMa
       showForGroom: group.persona === 'GROOM',
       showForBride: group.persona === 'BRIDE',
       isRecommended: recommended ?? false,
-      metadata: { persona: group.persona },
+      metadata: {
+        persona: group.persona,
+        ...(moneyStarterProviderCategorySlugs[key]
+          ? { providerCategorySlugs: [...moneyStarterProviderCategorySlugs[key]] }
+          : {}),
+      },
     })),
 );
 

@@ -353,7 +353,7 @@ export function toCityResponse(city: AdminCityRecord) {
  * that no item fits is seen here, not discovered in a customer's money.
  */
 function categoryBudgetItems(
-  categoryName: string,
+  category: { nameAr: string; slug: string },
   starterItems: readonly StarterBudgetItem[],
 ) {
   const of = (persona: StarterBudgetItem['persona']) =>
@@ -361,7 +361,16 @@ function categoryBudgetItems(
       starterItems
         .filter((item) => item.persona === persona)
         .map((item) => item.nameAr),
-      categoryName,
+      category.nameAr,
+      // D73: the catalog's explicit links first, read as acceptance reads
+      // them for a plan of this kind.
+      {
+        providerCategorySlug: category.slug,
+        catalog: {
+          planPersona: persona === 'NEUTRAL' ? null : persona,
+          items: starterItems,
+        },
+      },
     );
   return { groom: of('GROOM'), bride: of('BRIDE'), shared: of('NEUTRAL') };
 }
@@ -373,7 +382,7 @@ export function toCategoryAdminResponse(
 ) {
   return {
     ...toCategoryResponse(category),
-    budgetItems: categoryBudgetItems(category.nameAr, starterItems),
+    budgetItems: categoryBudgetItems(category, starterItems),
   };
 }
 

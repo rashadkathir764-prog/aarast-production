@@ -251,7 +251,7 @@ test("the owner's money summary weighs funding against confirmed costs", async (
   };
   const permissions: any = { canViewMoney: () => true, canManageMoney: () => true };
 
-  const catalog: any = { listActiveCategories: async () => [] };
+  const catalog: any = { listActiveCategories: async () => [], listMoneyCatalogItems: async () => [] };
   const summary = await buildMoneySummaryInTransaction(
     tx,
     permissions,

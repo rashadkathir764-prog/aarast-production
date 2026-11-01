@@ -11,6 +11,11 @@ import {
 } from 'class-validator';
 import { AdministrativeLocalityType } from '@prisma/client';
 
+export type ReferenceCatalogMetadata = Record<
+  string,
+  string | number | boolean | null | string[]
+>;
+
 export class AdminCatalogItemDto {
   @IsString()
   @IsOptional()
@@ -75,9 +80,13 @@ export class AdminCatalogItemDto {
   @IsOptional()
   isActive?: boolean;
 
+  /**
+   * Free-form, but `providerCategorySlugs` (D73, the money catalog's links)
+   * must be a list of provider category slugs.
+   */
   @IsObject()
   @IsOptional()
-  metadata?: Record<string, string | number | boolean | null> | null;
+  metadata?: ReferenceCatalogMetadata | null;
 }
 export class PublishCatalogItemDto {
   @IsInt()

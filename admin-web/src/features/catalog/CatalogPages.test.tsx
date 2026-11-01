@@ -268,4 +268,90 @@ describe('ReferenceCatalogsPage (a09)', () => {
       ),
     );
   });
+
+  describe('the money catalog (D73)', () => {
+    const photo = revision({
+      nameAr: 'التصوير والفيديو',
+      groupNameAr: 'مناسبة الرجال',
+      metadata: { persona: 'GROOM', providerCategorySlugs: ['photography', 'retired-section'] },
+    });
+    const cleaning = revision({ nameAr: 'ترتيب البيت بعد العرس', groupNameAr: 'البيت', metadata: { persona: 'GROOM' } });
+    const money: ReferenceCatalog = {
+      ...tasks,
+      id: 'c2',
+      key: 'money.starter.categories',
+      nameAr: 'تصنيفات الميزانية',
+      items: [item('photo', photo, photo), item('cleaning', cleaning, cleaning)],
+    };
+
+    async function editMoneyItem(name: string) {
+      vi.mocked(getReferenceCatalogs).mockResolvedValue([
+        { id: 'c2', key: 'money.starter.categories', nameAr: 'y', description: null, version: 1, isActive: true, itemsCount: 2, publishedCount: 2, pendingCount: 0, updatedAt: '' },
+      ]);
+      vi.mocked(getReferenceCatalog).mockResolvedValue(money);
+      vi.mocked(getCategories).mockResolvedValue([
+        { ...section('التصوير', true, true), slug: 'photography' },
+        { ...section('خدمات التنظيف', true, true), slug: 'cleaning' },
+        { ...section('قسم موقوف', true, true), slug: 'stopped', isActive: false },
+      ]);
+      vi.mocked(updateReferenceCatalogItem).mockResolvedValue(item('cleaning', cleaning, cleaning));
+      withRouter(<ReferenceCatalogsPage />);
+      fireEvent.click(await screen.findByRole('row', { name: `اقرأ ${name}` }));
+      fireEvent.click(screen.getByRole('button', { name: 'عدّل' }));
+      return screen.getByRole('dialog', { name: `تعديل ${name}` });
+    }
+
+    it('links an item to provider sections, beside the rest of its metadata', async () => {
+      const form = await editMoneyItem('ترتيب البيت بعد العرس');
+      const sections = within(form).getByRole('group', { name: 'أقسام المزودين' });
+      const cleaningBox = await within(sections).findByLabelText('خدمات التنظيف');
+      expect(cleaningBox).not.toBeChecked();
+      // Only the active sections are offered.
+      expect(within(sections).queryByLabelText('قسم موقوف')).not.toBeInTheDocument();
+      fireEvent.click(cleaningBox);
+      fireEvent.click(within(form).getByRole('button', { name: 'احفظ مسودة' }));
+
+      await waitFor(() =>
+        expect(updateReferenceCatalogItem).toHaveBeenCalledWith(
+          'money.starter.categories',
+          'cleaning',
+          expect.objectContaining({
+            metadata: { persona: 'GROOM', providerCategorySlugs: ['cleaning'] },
+          }),
+        ),
+      );
+    });
+
+    it('keeps a link it does not list, and drops the key when none is left', async () => {
+      const form = await editMoneyItem('التصوير والفيديو');
+      const photoBox = await within(form).findByLabelText('التصوير');
+      expect(photoBox).toBeChecked();
+      fireEvent.click(photoBox);
+      fireEvent.click(within(form).getByRole('button', { name: 'احفظ مسودة' }));
+
+      await waitFor(() =>
+        expect(updateReferenceCatalogItem).toHaveBeenCalledWith(
+          'money.starter.categories',
+          'photo',
+          expect.objectContaining({
+            metadata: { persona: 'GROOM', providerCategorySlugs: ['retired-section'] },
+          }),
+        ),
+      );
+    });
+
+    it('stores no link when no section is chosen', async () => {
+      const form = await editMoneyItem('ترتيب البيت بعد العرس');
+      await within(form).findByLabelText('خدمات التنظيف');
+      fireEvent.click(within(form).getByRole('button', { name: 'احفظ مسودة' }));
+
+      await waitFor(() =>
+        expect(updateReferenceCatalogItem).toHaveBeenCalledWith(
+          'money.starter.categories',
+          'cleaning',
+          expect.objectContaining({ metadata: { persona: 'GROOM' } }),
+        ),
+      );
+    });
+  });
 });

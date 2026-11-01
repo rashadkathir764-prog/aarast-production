@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import {
   type BudgetCategory,
   BudgetCategoryKind,
@@ -17,6 +17,10 @@ import {
   OTHER_BUDGET_CATEGORY_NAME,
 } from '../domain/cost-category-matching';
 import { listPlanItemsForProviderSearch } from './budget-item-search.repository';
+import {
+  CATALOG_READ_PORT,
+  type CatalogReadPort,
+} from '../../catalog/public/catalog-read.port';
 import { isVenueBudgetCategoryName } from '../domain/cost-category-matching';
 import { deriveCostStatus } from '../domain/wedding-cost-aggregate';
 import { parseMahrAgreement } from '../public/mahr-agreement';
@@ -53,6 +57,11 @@ import {
 
 @Injectable()
 export class FinancePortService implements FinancePort {
+  constructor(
+    // D73: the money catalog's explicit item-to-category links.
+    @Inject(CATALOG_READ_PORT) private readonly catalog: CatalogReadPort,
+  ) {}
+
   excludeOthersPrivateCosts(
     client: Prisma.TransactionClient,
     weddingPlanId: string,
@@ -658,14 +667,19 @@ export class FinancePortService implements FinancePort {
   ): Promise<WeddingCostWithDetails> {
     // A provider's offer is wedding money, never the mahr (C1). The matcher
     // takes the first item that fits: the plan's own order. The money
-    // summary reads the same items and rule for «ابحث» (G40).
-    const categories = await listPlanItemsForProviderSearch(
-      tx,
-      input.weddingPlanId,
-    );
+    // summary reads the same items and rule for «ابحث» (G40), and the same
+    // money catalog links (D73).
+    const [categories, catalogItems] = await Promise.all([
+      listPlanItemsForProviderSearch(tx, input.weddingPlanId),
+      this.catalog.listMoneyCatalogItems(tx),
+    ]);
     let category = budgetItemForProviderCategory(
       categories,
       input.providerCategoryName,
+      {
+        providerCategorySlug: input.providerCategorySlug,
+        catalog: { planPersona: input.planPersona, items: catalogItems },
+      },
     );
     if (!category) {
       category = await tx.budgetCategory.upsert({

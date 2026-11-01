@@ -240,13 +240,16 @@ export async function acceptQuoteOfferInTransaction(
       const title =
         current.quoteRequest.service?.title.trim() ||
         current.provider.businessName.trim();
+      const category = await relations.offerCategory(tx, current);
       cost = await finance.createCostFromAcceptedOffer(tx, {
         weddingPlanId,
         providerId: current.providerId,
         quoteOfferId: current.id,
         title,
         amount: current.amount,
-        providerCategoryName: await relations.offerCategoryName(tx, current),
+        providerCategoryName: category?.nameAr ?? null,
+        providerCategorySlug: category?.slug ?? null,
+        planPersona: planSeed?.persona ?? null,
       });
     }
 

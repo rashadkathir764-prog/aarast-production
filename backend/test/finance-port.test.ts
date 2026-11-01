@@ -5,6 +5,7 @@ import { test } from 'node:test';
 import { MODULE_METADATA } from '@nestjs/common/constants';
 import { Prisma } from '@prisma/client';
 import { FinancePortService } from '../src/modules/finance/infrastructure/finance-port.service';
+import { catalogWithoutMoneyLinks } from './support/owner-ports';
 import {
   FINANCE_IMPLEMENTATION,
   FinancePortInternalModule,
@@ -35,7 +36,7 @@ function harness(categories: Array<{ id: string; name: string; normalizedName: s
 
 test('the accepted-offer cost is looked up by the offer it links to', async () => {
   const { tx, calls } = harness([]);
-  assert.equal(await new FinancePortService().findCostForAcceptedOffer(tx, 'offer-1'), null);
+  assert.equal(await new FinancePortService(catalogWithoutMoneyLinks).findCostForAcceptedOffer(tx, 'offer-1'), null);
   assert.deepEqual(calls, [
     ['weddingCost.findFirst', { where: { quoteOfferId: 'offer-1' }, include: weddingCostResponseInclude }],
   ]);
@@ -60,7 +61,7 @@ test('the costs linked to a set of offers are read by offer id, none for an empt
       },
     },
   } as unknown as Prisma.TransactionClient;
-  const service = new FinancePortService();
+  const service = new FinancePortService(catalogWithoutMoneyLinks);
 
   assert.deepEqual(await service.listCostsForOffers(client, []), []);
   // B-18: the item and the three totals, never the payments themselves.
@@ -99,7 +100,7 @@ test('the costs linked to a set of offers are read by offer id, none for an empt
 test('an accepted offer creates its cost under the matching plan category', async () => {
   const hall = { id: 'cat-hall', name: 'صالة الأفراح', normalizedName: 'صالة الأفراح' };
   const { tx, calls } = harness([hall]);
-  const created = await new FinancePortService().createCostFromAcceptedOffer(tx, {
+  const created = await new FinancePortService(catalogWithoutMoneyLinks).createCostFromAcceptedOffer(tx, {
     weddingPlanId: 'plan-1',
     providerId: 'provider-1',
     quoteOfferId: 'offer-1',
@@ -133,7 +134,7 @@ test('an accepted offer creates its cost under the matching plan category', asyn
 
 test('without a matching category the cost falls back to أخرى, created when the plan has none', async () => {
   const { tx, calls } = harness([{ id: 'cat-food', name: 'ضيافة', normalizedName: 'ضيافة' }]);
-  await new FinancePortService().createCostFromAcceptedOffer(tx, {
+  await new FinancePortService(catalogWithoutMoneyLinks).createCostFromAcceptedOffer(tx, {
     weddingPlanId: 'plan-1',
     providerId: 'provider-1',
     quoteOfferId: 'offer-1',

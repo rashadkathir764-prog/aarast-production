@@ -131,6 +131,14 @@ export interface CreateCostFromAcceptedOfferInput {
   amount: Prisma.Decimal;
   /** The provider category the accepted service belongs to, if any. */
   providerCategoryName: string | null;
+  /**
+   * D73: that category's slug, which the money catalog's explicit links
+   * name; absent or null, no link names it and its name's words file it
+   * among the items without a link.
+   */
+  providerCategorySlug?: string | null;
+  /** D73: the plan's persona, which picks the catalog items its own came from. */
+  planPersona?: string | null;
 }
 
 // Finance owns `BudgetCategory`, `WeddingCost`, `CostPayment` and

@@ -34,7 +34,7 @@ import { PlanReadService } from "../src/modules/planning/infrastructure/plan-rea
 
 // G40: the money summary reads the directory's categories; these fixtures
 // have none, so every item's `providerCategoryIds` is empty.
-const noCatalog = { listActiveCategories: async () => [] } as any;
+const noCatalog = { listActiveCategories: async () => [], listMoneyCatalogItems: async () => [] } as any;
 
 test("money validation accepts bounded amounts and rejects unsafe values", () => {
   assert.equal(requiredMoneyAmount("1500000", "amount"), "1500000");

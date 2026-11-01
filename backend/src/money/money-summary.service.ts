@@ -117,7 +117,7 @@ export async function buildMoneySummaryInTransaction(
   if (!plan) {
     throw new NotFoundException("Wedding plan not found");
   }
-  const [picture, planItems, providerCategories] = await Promise.all([
+  const [picture, planItems, providerCategories, moneyCatalog] = await Promise.all([
     readMoneyPicture(tx, {
       weddingPlanId,
       persona: plan.persona ?? null,
@@ -134,13 +134,16 @@ export async function buildMoneySummaryInTransaction(
     }),
     listPlanItemsForProviderSearch(tx, weddingPlanId),
     catalog.listActiveCategories(tx),
+    catalog.listMoneyCatalogItems(tx),
   ]);
   // G40: the directory categories «ابحث» on each item searches, by the rule
-  // acceptance files an offer with, over the whole plan's items.
+  // acceptance files an offer with, over the whole plan's items. D73: the
+  // money catalog's explicit links first, the words for the rest.
   const searchCategories = budgetItemSearchCategories(
     planItems,
     providerCategories,
     plan.persona,
+    moneyCatalog,
   );
   return {
     weddingPlanId,

@@ -1,16 +1,14 @@
 import { Injectable } from '@nestjs/common';
 import { type City, Prisma, type ProviderCategory } from '@prisma/client';
-import { MONEY_STARTER_CATALOG_KEY } from '../../../catalogs/reference-catalog.defaults';
 import type {
   CatalogAdminPort,
   CategoryFields,
   CityFields,
   StarterBudgetItem,
-  StarterBudgetPersona,
 } from '../public/catalog-admin.port';
+import { listPublishedMoneyCatalogItems } from './money-catalog.repository';
 
 const CATALOG_ORDER = [{ sortOrder: 'asc' }, { nameAr: 'asc' }] as const;
-const STARTER_PERSONAS: ReadonlySet<string> = new Set(['GROOM', 'BRIDE', 'NEUTRAL']);
 
 @Injectable()
 export class CatalogAdminService implements CatalogAdminPort {
@@ -23,37 +21,9 @@ export class CatalogAdminService implements CatalogAdminPort {
   async listStarterBudgetItems(
     client: Prisma.TransactionClient,
   ): Promise<StarterBudgetItem[]> {
-    const catalog = await client.referenceCatalog.findUnique({
-      where: { key: MONEY_STARTER_CATALOG_KEY },
-      include: {
-        items: {
-          where: { publishedRevision: { gt: 0 } },
-          include: { revisions: true },
-        },
-      },
-    });
-    if (!catalog?.isActive) return [];
-    return catalog.items
-      .flatMap((item) => {
-        const revision = item.revisions.find(
-          (candidate) => candidate.revision === item.publishedRevision,
-        );
-        const metadata = revision?.metadata;
-        const persona =
-          metadata && typeof metadata === 'object' && !Array.isArray(metadata)
-            ? (metadata as Record<string, unknown>).persona
-            : undefined;
-        if (!revision?.isActive || typeof persona !== 'string' || !STARTER_PERSONAS.has(persona)) {
-          return [];
-        }
-        return [{ revision, persona: persona as StarterBudgetPersona }];
-      })
-      .sort(
-        (left, right) =>
-          left.revision.sortOrder - right.revision.sortOrder ||
-          left.revision.nameAr.localeCompare(right.revision.nameAr, 'ar'),
-      )
-      .map(({ revision, persona }) => ({ persona, nameAr: revision.nameAr }));
+    return (await listPublishedMoneyCatalogItems(client)).flatMap(
+      ({ persona, ...item }) => (persona ? [{ persona, ...item }] : []),
+    );
   }
 
   async listCities(client: Prisma.TransactionClient): Promise<City[]> {

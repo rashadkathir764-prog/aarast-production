@@ -1,6 +1,6 @@
 import type { ConversationLifecyclePort } from "../src/modules/messaging/public/conversation-lifecycle.port";
 import { ensureConversationContext, findConversationProviderId, lockConversationForShare, lockConversationForUpdate, recordConversationEvent } from "../src/conversations/conversation-lifecycle";
-import { marketplaceRelations, marketplaceService, ownerPorts, providerDashboardService, withOwnerTables } from "./support/owner-ports";
+import { marketplaceRelations, marketplaceService, ownerPorts, providerDashboardService, withOwnerTables, catalogWithoutMoneyLinks } from "./support/owner-ports";
 
 const lifecycle: ConversationLifecyclePort = {
   ensureConversationContext: (tx, input) => ensureConversationContext(tx, input, { plans: ownerPorts.plans, providers: ownerPorts.providers }),
@@ -181,7 +181,7 @@ test("a new quote request notifies the provider account too", async () => {
   const service = marketplaceService(
     prisma as any,
     {} as any,
-    notifications as any, lifecycle, new FinancePortService(),
+    notifications as any, lifecycle, new FinancePortService(catalogWithoutMoneyLinks),
   );
 
   await service.createQuoteRequest(requester, PROVIDER_ID, {} as any);
@@ -248,7 +248,7 @@ test("a provider without a linked user account takes no quote request", async ()
   const service = marketplaceService(
     prisma as any,
     {} as any,
-    notifications as any, lifecycle, new FinancePortService(),
+    notifications as any, lifecycle, new FinancePortService(catalogWithoutMoneyLinks),
   );
 
   await assert.rejects(
@@ -528,7 +528,7 @@ function acceptanceHarness({
   const service = marketplaceService(
     prisma as any,
     permissions as any,
-    notifications as any, lifecycle, new FinancePortService(),
+    notifications as any, lifecycle, new FinancePortService(catalogWithoutMoneyLinks),
   );
 
   return {
@@ -673,7 +673,7 @@ function acceptedReplayIntegrityHarness({
       {
         createNotificationInTransaction: writeAttempt,
       } as any,
-      new FinancePortService(),
+      new FinancePortService(catalogWithoutMoneyLinks),
       marketplaceRelations(),
       {
         id: OFFER_ID,
@@ -961,7 +961,7 @@ test("rejecting an offer notifies the provider rather than the requester", async
   const service = marketplaceService(
     prisma as any,
     permissions as any,
-    notifications as any, lifecycle, new FinancePortService(),
+    notifications as any, lifecycle, new FinancePortService(catalogWithoutMoneyLinks),
   );
 
   await service.rejectQuoteOffer(requester, OFFER_ID);
@@ -1019,7 +1019,7 @@ test("rejecting an offer succeeds when the provider has no linked user", async (
       assertProviderManageable: async () => ({}),
       assertProviderManageableInTransaction: async () => ({}),
     } as any,
-    notifications as any, lifecycle, new FinancePortService(),
+    notifications as any, lifecycle, new FinancePortService(catalogWithoutMoneyLinks),
   );
 
   const result = await service.rejectQuoteOffer(requester, OFFER_ID);

@@ -259,26 +259,26 @@ test("a request without a service files under the provider's own category", asyn
     {} as never,
   );
   assert.equal(
-    await relations.offerCategoryName({} as never, {
+    (await relations.offerCategory({} as never, {
       quoteRequest: { service: null },
       provider: { primaryCategoryId: "cat-meals" },
-    }),
+    }))?.nameAr ?? null,
     "وجبات",
   );
   assert.equal(
-    await relations.offerCategoryName({} as never, {
+    (await relations.offerCategory({} as never, {
       quoteRequest: {
         service: { category: { nameAr: "تصوير" } as never },
       },
       provider: { primaryCategoryId: "cat-meals" },
-    }),
+    }))?.nameAr ?? null,
     "تصوير",
   );
   assert.equal(
-    await relations.offerCategoryName({} as never, {
+    (await relations.offerCategory({} as never, {
       quoteRequest: { service: null },
       provider: { primaryCategoryId: null },
-    }),
+    }))?.nameAr ?? null,
     null,
   );
 });

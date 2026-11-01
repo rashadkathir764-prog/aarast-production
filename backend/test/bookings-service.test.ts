@@ -400,7 +400,7 @@ test("the provider reads agreed, paid and left on his booking, and the month's t
 
 // F10: a review needs a confirmed booking whose day has passed.
 test("a customer without a completed booking cannot review the provider", async () => {
-  const { marketplaceService } = await import("./support/owner-ports");
+  const { marketplaceService, catalogWithoutMoneyLinks } = await import("./support/owner-ports");
   const { FinancePortService } = await import(
     "../src/modules/finance/infrastructure/finance-port.service"
   );
@@ -416,7 +416,7 @@ test("a customer without a completed booking cannot review the provider", async 
     quoteRequest: { findMany: async () => [{ id: "quote-1" }] },
     booking: { count: async () => completedBookings },
   };
-  const marketplace = marketplaceService(prisma, {} as any, {} as any, {} as any, new FinancePortService());
+  const marketplace = marketplaceService(prisma, {} as any, {} as any, {} as any, new FinancePortService(catalogWithoutMoneyLinks));
 
   await assert.rejects(
     marketplace.createReview(customer, "11111111-1111-4111-8111-111111111111", { rating: 5 } as any),

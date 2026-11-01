@@ -19,7 +19,7 @@ import {
   UserRole,
   UserStatus,
 } from "@prisma/client";
-import { marketplaceService } from "./support/owner-ports";
+import { marketplaceService, catalogWithoutMoneyLinks } from "./support/owner-ports";
 import { FinancePortService } from "../src/modules/finance/infrastructure/finance-port.service";
 
 const source = (relativePath: string) =>
@@ -138,7 +138,7 @@ test("concurrent review creation cannot leave a stale provider rating cache", as
       return null;
     },
   };
-  const service = marketplaceService(prisma, {} as any, notifications, lifecycle, new FinancePortService());
+  const service = marketplaceService(prisma, {} as any, notifications, lifecycle, new FinancePortService(catalogWithoutMoneyLinks));
   const user = (id: string) =>
     ({
       id,

@@ -11,6 +11,7 @@ import {
 import { paidFromOwnerMoney } from '../src/modules/finance/domain/payer-policy';
 import { expectedFundingReminder } from '../src/modules/finance/domain/funding-policy';
 import { FinancePortService } from '../src/modules/finance/infrastructure/finance-port.service';
+import { catalogWithoutMoneyLinks } from './support/owner-ports';
 import { recordMahrInTransaction } from '../src/modules/finance/infrastructure/mahr.repository';
 import { readMoneyPicture } from '../src/modules/finance/infrastructure/money-picture';
 
@@ -325,7 +326,7 @@ test('D59: finance lists the plans\' promised money due by a day, the soonest fi
       },
     },
   } as unknown as Prisma.TransactionClient;
-  const finance = new FinancePortService();
+  const finance = new FinancePortService(catalogWithoutMoneyLinks);
   assert.deepEqual(
     await finance.listDueExpectedFunding(client, { weddingPlanIds: [], dueBefore: day('2026-11-16') }),
     [],

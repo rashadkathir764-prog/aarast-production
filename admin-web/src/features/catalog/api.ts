@@ -179,7 +179,8 @@ export type ReferenceCatalogItemPayload = {
   showForProvider?: boolean;
   isRecommended?: boolean;
   isActive?: boolean;
-  metadata?: Record<string, string | number | boolean | null> | null;
+  /** D73: `providerCategorySlugs` (money catalog) is a list of slugs. */
+  metadata?: Record<string, string | number | boolean | null | string[]> | null;
 };
 
 export type Governorate = {

@@ -15,6 +15,7 @@ import { findConversationProviderId } from '../src/conversations/conversation-li
 import { ContributorScopeService } from '../src/modules/collaboration/internal/contributor-scope.service';
 import { PermissionService } from '../src/modules/collaboration/internal/permission.service';
 import { FinancePortService } from '../src/modules/finance/infrastructure/finance-port.service';
+import { catalogWithoutMoneyLinks } from './support/owner-ports';
 import { ProviderReadService } from '../src/modules/marketplace/infrastructure/provider-read.service';
 import { PlanReadService } from '../src/modules/planning/infrastructure/plan-read.service';
 import { TasksPortService } from '../src/modules/tasks/infrastructure/tasks-port.service';
@@ -155,7 +156,7 @@ test('tasks serves the assigned and due tasks, the contributor visibility check 
 
 test('finance serves the due schedules, the schedules of contributed costs, the visibility check and the row locks', async () => {
   const { tx, calls } = recorder();
-  const finance = new FinancePortService();
+  const finance = new FinancePortService(catalogWithoutMoneyLinks);
   assert.deepEqual(await finance.listDuePaymentSchedules(tx, { weddingPlanIds: [], dueBefore: before }), []);
   assert.deepEqual(await finance.listDuePaymentSchedules(tx, { weddingPlanIds: ['plan-1'], dueBefore: before, scheduleIds: [] }), []);
   assert.equal((await finance.listDuePaymentSchedules(tx, { weddingPlanIds: ['plan-1'], dueBefore: before })).length, 1);

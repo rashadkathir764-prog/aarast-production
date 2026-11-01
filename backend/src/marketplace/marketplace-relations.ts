@@ -315,22 +315,23 @@ export class MarketplaceRelationsService {
   /**
    * The category an accepted offer's cost is filed under (G38): the
    * requested service's, else the provider's own category for a request
-   * made to the provider without a service.
+   * made to the provider without a service. Its slug is what the money
+   * catalog's explicit links name (D73).
    */
-  async offerCategoryName(
+  async offerCategory(
     client: Prisma.TransactionClient,
     offer: {
       quoteRequest: { service: { category: ProviderCategory } | null };
       provider: { primaryCategoryId: string | null };
     },
-  ): Promise<string | null> {
+  ): Promise<Pick<ProviderCategory, "nameAr" | "slug"> | null> {
     if (offer.quoteRequest.service) {
-      return offer.quoteRequest.service.category.nameAr;
+      return offer.quoteRequest.service.category;
     }
     const categoryId = offer.provider.primaryCategoryId;
     if (!categoryId) return null;
     const [category] = await this.catalog.getCategories(client, [categoryId]);
-    return category?.nameAr ?? null;
+    return category ?? null;
   }
 
   async attachReviewUsers<T extends ProviderReview>(

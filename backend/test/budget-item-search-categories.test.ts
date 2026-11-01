@@ -173,6 +173,8 @@ test("the money summary carries each item's categories, read over the whole plan
   const catalog: any = {
     listActiveCategories: async () =>
       categories.map((category) => ({ ...category, isActive: true })),
+    // D73: a money catalog with no explicit link, so the words file them.
+    listMoneyCatalogItems: async () => [],
   };
   const summary = await buildMoneySummaryInTransaction(
     tx as any,

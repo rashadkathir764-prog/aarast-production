@@ -22,7 +22,7 @@ import { ProviderReadService } from '../src/modules/marketplace/infrastructure/p
 import { QuoteReadService } from '../src/modules/marketplace/infrastructure/quote-read.service';
 import { PlanReadService } from '../src/modules/planning/infrastructure/plan-read.service';
 import { TasksPortService } from '../src/modules/tasks/infrastructure/tasks-port.service';
-import { notificationsService } from './support/owner-ports';
+import { notificationsService, catalogWithoutMoneyLinks } from './support/owner-ports';
 
 // The dashboard and timeline (insights owns no tables) used to count and
 // list the plans, tasks, guests, costs, schedules, quotes, provider links,
@@ -62,7 +62,7 @@ test('planning finds the owner\'s current planning plan by wedding date', async 
 
 test('finance serves a plan\'s money picture and pending schedules, narrowed to a contributor\'s costs', async () => {
   const { client, calls } = recorder();
-  const finance = new FinancePortService();
+  const finance = new FinancePortService(catalogWithoutMoneyLinks);
   const query = {
     weddingPlanId: 'plan-1',
     persona: 'GROOM',
@@ -307,7 +307,7 @@ test('finance answers whether a venue agreement is recorded, narrowed to a contr
       { budgetCategory: { name: 'قاعة أو مخدرة الرجال' } },
     ],
   });
-  const finance = new FinancePortService();
+  const finance = new FinancePortService(catalogWithoutMoneyLinks);
   assert.equal(await finance.hasVenueCost(client, 'plan-1', ['cost-1']), true);
   assert.deepEqual(calls, [
     ['weddingCost.findMany', {

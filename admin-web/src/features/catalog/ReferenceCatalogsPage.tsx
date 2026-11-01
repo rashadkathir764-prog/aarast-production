@@ -3,15 +3,20 @@
 // the published version beside the draft. «ارجع للمنشور» waits for A-19 (no
 // call drops a draft). Adding and editing are not drawn and stay, in a
 // window, so the days before the wedding can still change from the panel.
+// D73: a money item names the provider sections its «ابحث» searches and its
+// accepted offers are filed from; none chosen leaves it to the words.
 import { type FormEvent, type ReactNode, useCallback, useEffect, useState } from 'react';
 import {
   createReferenceCatalogItem,
   disableReferenceCatalogItem,
+  getCategories,
   getReferenceCatalog,
   getReferenceCatalogs,
   publishReferenceCatalogItem,
+  type ProviderCategory,
   type ReferenceCatalog,
   type ReferenceCatalogItem,
+  type ReferenceCatalogItemPayload,
   type ReferenceCatalogRevision,
   type ReferenceCatalogSummary,
   updateReferenceCatalogItem,
@@ -34,6 +39,7 @@ import { DeskModal } from '../../design_system/DeskModal';
 import { countUnit } from '../../platform/i18n/deskTime';
 
 const TASKS = 'tasks.starter';
+const MONEY = 'money.starter.categories';
 
 /** The catalog switch as the design names it. */
 const CATALOG_LABELS: Record<string, string> = {
@@ -77,6 +83,12 @@ function daysBefore(revision: ReferenceCatalogRevision | null): number | null {
   return value === undefined || value === null || !Number.isFinite(days) ? null : days;
 }
 
+/** D73: the provider sections (by slug) a money item is linked to. */
+function providerCategorySlugs(revision: ReferenceCatalogRevision | null): string[] {
+  const value = revision?.metadata?.providerCategorySlugs;
+  return Array.isArray(value) ? value.filter((slug): slug is string => typeof slug === 'string') : [];
+}
+
 function daysWords(days: number | null): string {
   return days === null ? '—' : countUnit(days, 'day');
 }
@@ -102,6 +114,8 @@ type Draft = {
   days: string;
   /** A task's category; empty leaves it to the app («تلقائي»). */
   category: string;
+  /** A money item's linked provider sections; empty leaves it to the words. */
+  slugs: string[];
   icon: string;
   sortOrder: string;
   showForGroom: boolean;
@@ -116,6 +130,7 @@ const EMPTY: Draft = {
   groupKey: '',
   days: '',
   category: '',
+  slugs: [],
   icon: '',
   sortOrder: '0',
   showForGroom: true,
@@ -132,6 +147,8 @@ export function ReferenceCatalogsPage() {
   const [editing, setEditing] = useState<ReferenceCatalogItem | 'new' | null>(null);
   const [draft, setDraft] = useState<Draft>(EMPTY);
   const [busy, setBusy] = useState(false);
+  const [sections, setSections] = useState<ProviderCategory[] | null>(null);
+  const [sectionsError, setSectionsError] = useState<string | null>(null);
 
   const open = useCallback(async (key: string) => {
     setError(null);
@@ -164,6 +181,24 @@ export function ReferenceCatalogsPage() {
   }, [load]);
 
   const isTasks = catalog?.key === TASKS;
+  const isMoney = catalog?.key === MONEY;
+
+  // The active provider sections a money item may be linked to.
+  useEffect(() => {
+    if (!isMoney || sections !== null) return;
+    let live = true;
+    setSectionsError(null);
+    getCategories()
+      .then((list) => {
+        if (live) setSections(list.filter((section) => section.isActive));
+      })
+      .catch((value: unknown) => {
+        if (live) setSectionsError(value instanceof Error ? value.message : 'ما قدرنا نحمّل أقسام المزودين.');
+      });
+    return () => {
+      live = false;
+    };
+  }, [isMoney, sections]);
   const selected = catalog?.items.find((item) => item.id === selectedId) ?? null;
 
   async function publish(item: ReferenceCatalogItem) {
@@ -196,6 +231,7 @@ export function ReferenceCatalogsPage() {
       groupKey: value.groupKey ?? '',
       days: days === null ? '' : String(days),
       category: taskCategory(value),
+      slugs: providerCategorySlugs(value),
       icon: value.icon ?? '',
       sortOrder: String(value.sortOrder),
       showForGroom: value.showForGroom,
@@ -220,6 +256,12 @@ export function ReferenceCatalogsPage() {
       if (draft.category) metadata.taskCategory = draft.category;
       else delete metadata.taskCategory;
     }
+    if (isMoney) {
+      metadata = { ...(base?.metadata ?? {}) };
+      // No section chosen stores nothing: the app files the item by its words.
+      if (draft.slugs.length > 0) metadata.providerCategorySlugs = draft.slugs;
+      else delete metadata.providerCategorySlugs;
+    }
     const payload = {
       ...(editing === 'new' && draft.key.trim() ? { key: draft.key.trim() } : {}),
       nameAr: draft.nameAr.trim(),
@@ -230,7 +272,7 @@ export function ReferenceCatalogsPage() {
       showForGroom: draft.showForGroom,
       showForBride: draft.showForBride,
       isRecommended: draft.isRecommended,
-      ...(metadata ? { metadata: metadata as Record<string, string | number | boolean | null> } : {}),
+      ...(metadata ? { metadata: metadata as ReferenceCatalogItemPayload['metadata'] } : {}),
     };
     try {
       if (editing === 'new') {
@@ -425,6 +467,31 @@ export function ReferenceCatalogsPage() {
               />
             </label>
           </div>
+          {isMoney ? (
+            <div className="desk-field" role="group" aria-labelledby="money-sections-label">
+              <span id="money-sections-label">أقسام المزودين</span>
+              {sectionsError ? <DeskNote tone="coral">{sectionsError}</DeskNote> : null}
+              {sections === null && !sectionsError ? <DeskNote>لحظة، نحمّل الأقسام…</DeskNote> : null}
+              {sections?.map((section) => (
+                <label key={section.slug} className="desk-check">
+                  <input
+                    type="checkbox"
+                    checked={draft.slugs.includes(section.slug)}
+                    onChange={(event) =>
+                      setDraft({
+                        ...draft,
+                        slugs: event.target.checked
+                          ? [...draft.slugs, section.slug]
+                          : draft.slugs.filter((slug) => slug !== section.slug),
+                      })
+                    }
+                  />
+                  {section.nameAr}
+                </label>
+              ))}
+              <DeskNote>«ابحث» في البند يدور على هذي الأقسام، والعرض المقبول منها ينحسب عليه. بدون قسم، التطبيق يربطه من اسمه.</DeskNote>
+            </div>
+          ) : null}
           {editing === 'new' ? (
             <label className="desk-field">
               المعرّف الثابت (اختياري)

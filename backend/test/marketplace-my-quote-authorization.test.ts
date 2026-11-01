@@ -21,7 +21,7 @@ import {
   SharedMemberRole,
   WeddingPlanStatus,
 } from "@prisma/client";
-import { marketplaceService } from "./support/owner-ports";
+import { marketplaceService, catalogWithoutMoneyLinks } from "./support/owner-ports";
 import { FinancePortService } from "../src/modules/finance/infrastructure/finance-port.service";
 import { contributorActorReference } from "../src/modules/collaboration/internal/contribution-history.service";
 
@@ -101,7 +101,7 @@ test("my quote list filters plan-linked requests by the caller's current stored 
       },
     } as any,
     {} as any,
-    {} as any, lifecycle, new FinancePortService(),
+    {} as any, lifecycle, new FinancePortService(catalogWithoutMoneyLinks),
   );
 
   await service.findMyQuoteRequests(currentUser(contributorAId));
@@ -142,7 +142,7 @@ test("my quote detail keeps contributor A and B isolated and checks current plan
       },
     } as any,
     {} as any,
-    {} as any, lifecycle, new FinancePortService(),
+    {} as any, lifecycle, new FinancePortService(catalogWithoutMoneyLinks),
   );
 
   await assert.rejects(
@@ -337,7 +337,7 @@ function cancellationHarness(options: {
   const service = marketplaceService(
     prisma as any,
     permissions as any,
-    {} as any, lifecycle, new FinancePortService(),
+    {} as any, lifecycle, new FinancePortService(catalogWithoutMoneyLinks),
   );
 
   return {

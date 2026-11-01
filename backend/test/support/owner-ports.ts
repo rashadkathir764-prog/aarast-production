@@ -14,11 +14,20 @@ import { QuoteReadService } from '../../src/modules/marketplace/infrastructure/q
 import { PlanReadService } from '../../src/modules/planning/infrastructure/plan-read.service';
 import { TasksPortService } from '../../src/modules/tasks/infrastructure/tasks-port.service';
 
+/**
+ * D73: the catalog read port with a money catalog whose items carry no
+ * explicit provider-category link, so a fake client needs no reference
+ * catalog rows and acceptance files an offer by its words, as before D73.
+ */
+export const catalogWithoutMoneyLinks = Object.assign(new CatalogReadService(), {
+  listMoneyCatalogItems: async () => [],
+});
+
 export const ownerPorts = {
   plans: new PlanReadService(),
   catalog: new CatalogReadService(),
   users: new IdentityUserPortService(),
-  finance: new FinancePortService(),
+  finance: new FinancePortService(catalogWithoutMoneyLinks),
   tasks: new TasksPortService(),
   guests: new GuestsPortService(),
   providers: new ProviderReadService(),

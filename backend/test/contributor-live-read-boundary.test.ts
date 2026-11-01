@@ -16,7 +16,7 @@ import { join } from "node:path";
 import { test } from "node:test";
 import { SharedMemberRole } from "@prisma/client";
 import { NotFoundException } from "@nestjs/common";
-import { marketplaceService } from "./support/owner-ports";
+import { marketplaceService, catalogWithoutMoneyLinks } from "./support/owner-ports";
 import { FinancePortService } from "../src/modules/finance/infrastructure/finance-port.service";
 import { PermissionService } from "../src/modules/collaboration/internal/permission.service";
 import { PlanReadService } from "../src/modules/planning/infrastructure/plan-read.service";
@@ -231,7 +231,7 @@ test("quote detail rejects a stale authorized seed when the final live predicate
       canManageProviders: () => true,
       canViewMoney: () => true,
     } as any,
-    {} as any, lifecycle, new FinancePortService(),
+    {} as any, lifecycle, new FinancePortService(catalogWithoutMoneyLinks),
   );
 
   await assert.rejects(

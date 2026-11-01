@@ -1,4 +1,5 @@
 import type { City, Prisma, ProviderCategory } from '@prisma/client';
+import type { MoneyCatalogItem, MoneyCatalogPersona } from './catalog-read.port';
 
 export const CATALOG_ADMIN_PORT = Symbol('CATALOG_ADMIN_PORT');
 
@@ -14,12 +15,14 @@ export interface CategoryFields {
 }
 
 /** Whose new plan a money starter item is offered to. */
-export type StarterBudgetPersona = 'GROOM' | 'BRIDE' | 'NEUTRAL';
+export type StarterBudgetPersona = MoneyCatalogPersona;
 
-/** A published money starter item: what a new plan's budget items are named. */
-export interface StarterBudgetItem {
+/**
+ * A published money starter item offered to a persona: what a new plan's
+ * budget items are named, and the provider categories linked to it (D73).
+ */
+export interface StarterBudgetItem extends MoneyCatalogItem {
   persona: StarterBudgetPersona;
-  nameAr: string;
 }
 
 export interface CityFields {

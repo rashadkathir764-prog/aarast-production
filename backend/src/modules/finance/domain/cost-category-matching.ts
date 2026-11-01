@@ -164,11 +164,176 @@ export function normalizeBudgetCategoryName(value: string): string {
 }
 
 /**
- * The plan's item for a provider category, or null for «أخرى». Among items
- * that share the best word, the first in `categories` wins, so the caller
- * passes them in a stable order.
+ * D73: a money catalog item, whose plans it is offered to, and the provider
+ * categories (by slug) the owner linked it to from the back office.
+ */
+export interface BudgetItemProviderLink {
+  /** The catalog item's name, as a plan's item is created with it. */
+  nameAr: string;
+  showForGroom: boolean;
+  showForBride: boolean;
+  providerCategorySlugs: readonly string[];
+}
+
+/** D73: the money catalog's links, read for a plan of this persona. */
+export interface MoneyCatalogLinks {
+  planPersona: string | null | undefined;
+  items: readonly BudgetItemProviderLink[];
+}
+
+/** A provider category as the explicit link reads it: its slug. */
+export interface ExplicitProviderCategoryLink {
+  providerCategorySlug: string | null | undefined;
+  catalog: MoneyCatalogLinks;
+}
+
+/**
+ * The plan's item for a provider category, or null for «أخرى». D73: an item
+ * the owner linked to categories holds exactly those categories: the first
+ * item (in `categories`' order) linked to this category's slug wins, and a
+ * linked item is never reached by words. Every other item (the user's own,
+ * a catalog item with no slugs, or a link the caller does not pass) is
+ * matched by the words below, as before D73. Among items that share the
+ * best word, the first in `categories` wins, so the caller passes them in a
+ * stable order.
  */
 export function findLogicalBudgetCategory<T extends BudgetCategoryCandidate>(
+  categories: readonly T[],
+  providerCategoryName: string | null | undefined,
+  explicit?: ExplicitProviderCategoryLink,
+): T | null {
+  return matchBudgetCategory(
+    categories,
+    linkedSlugsByItem(categories, explicit?.catalog),
+    providerCategoryName,
+    explicit?.providerCategorySlug,
+  );
+}
+
+/**
+ * The plan's item an accepted offer of this provider category is filed
+ * under: its linked or topic's item, else the plan's «أخرى» (null when the
+ * plan has no «أخرى» yet; acceptance then creates it).
+ */
+export function budgetItemForProviderCategory<T extends BudgetCategoryCandidate>(
+  categories: readonly T[],
+  providerCategoryName: string | null | undefined,
+  explicit?: ExplicitProviderCategoryLink,
+): T | null {
+  return (
+    findLogicalBudgetCategory(categories, providerCategoryName, explicit) ??
+    findOtherBudgetCategory(categories)
+  );
+}
+
+/**
+ * G40: the provider categories each item is searched by, read from the very
+ * rule that files an accepted offer (`budgetItemForProviderCategory`), so
+ * «ابحث» on an item lists exactly the providers whose offers land in it.
+ * Every item is a key, in the plan's order; one no category lands in has an
+ * empty list (no «ابحث»). A category appears under one item at most. D73:
+ * `catalog` holds the money catalog's explicit links.
+ */
+export function providerCategoryIdsByBudgetItem<
+  T extends BudgetCategoryCandidate,
+>(
+  categories: readonly T[],
+  providerCategories: ReadonlyArray<{
+    id: string;
+    nameAr: string;
+    slug?: string | null;
+  }>,
+  catalog?: MoneyCatalogLinks,
+): Map<string, string[]> {
+  const byItem = new Map<string, string[]>(
+    categories.map((category) => [category.id, []]),
+  );
+  const linked = linkedSlugsByItem(categories, catalog);
+  for (const providerCategory of providerCategories) {
+    const item =
+      matchBudgetCategory(
+        categories,
+        linked,
+        providerCategory.nameAr,
+        providerCategory.slug,
+      ) ?? findOtherBudgetCategory(categories);
+    if (item) byItem.get(item.id)?.push(providerCategory.id);
+  }
+  return byItem;
+}
+
+/**
+ * The slugs each of the plan's items is explicitly linked to, keyed by item
+ * id. A plan's item is tied to the catalog items its persona is offered
+ * (mobile's rule: a groom's plan the groom's, a bride's the bride's, any
+ * other plan the items offered to neither) by exact normalized name; an
+ * item with no such match or an empty list is not a key.
+ */
+function linkedSlugsByItem(
+  categories: readonly BudgetCategoryCandidate[],
+  catalog: MoneyCatalogLinks | undefined,
+): Map<string, ReadonlySet<string>> {
+  const slugsByName = new Map<string, Set<string>>();
+  for (const link of catalog?.items ?? []) {
+    if (!offeredTo(link, catalog?.planPersona)) continue;
+    const name = normalizeBudgetCategoryName(link.nameAr);
+    const slugs = slugsByName.get(name) ?? new Set<string>();
+    for (const slug of link.providerCategorySlugs) {
+      if (slug.trim() !== "") slugs.add(slug.trim());
+    }
+    slugsByName.set(name, slugs);
+  }
+  const linked = new Map<string, ReadonlySet<string>>();
+  if (slugsByName.size === 0) return linked;
+  for (const category of categories) {
+    const slugs = slugsByName.get(
+      normalizeBudgetCategoryName(category.normalizedName),
+    );
+    if (slugs && slugs.size > 0) linked.set(category.id, slugs);
+  }
+  return linked;
+}
+
+function offeredTo(
+  item: Pick<BudgetItemProviderLink, "showForGroom" | "showForBride">,
+  planPersona: string | null | undefined,
+): boolean {
+  switch (planPersona) {
+    case "GROOM":
+      return item.showForGroom;
+    case "BRIDE":
+      return item.showForBride;
+    default:
+      return !item.showForGroom && !item.showForBride;
+  }
+}
+
+function matchBudgetCategory<T extends BudgetCategoryCandidate>(
+  categories: readonly T[],
+  linked: ReadonlyMap<string, ReadonlySet<string>>,
+  providerCategoryName: string | null | undefined,
+  providerCategorySlug: string | null | undefined,
+): T | null {
+  const slug = providerCategorySlug?.trim();
+  if (slug) {
+    const item = categories.find((category) =>
+      linked.get(category.id)?.has(slug),
+    );
+    if (item) return item;
+  }
+  return matchByWords(
+    linked.size === 0
+      ? categories
+      : categories.filter((category) => !linked.has(category.id)),
+    providerCategoryName,
+  );
+}
+
+/**
+ * Today's word matching (G38): a provider category's name picks a topic,
+ * the topic's budget words pick the item.
+ */
+function matchByWords<T extends BudgetCategoryCandidate>(
   categories: readonly T[],
   providerCategoryName: string | null | undefined,
 ): T | null {
@@ -197,47 +362,6 @@ export function findLogicalBudgetCategory<T extends BudgetCategoryCandidate>(
     if (match) return match.category;
   }
   return null;
-}
-
-/**
- * The plan's item an accepted offer of this provider category is filed
- * under: its topic's item, else the plan's «أخرى» (null when the plan has
- * no «أخرى» yet; acceptance then creates it).
- */
-export function budgetItemForProviderCategory<T extends BudgetCategoryCandidate>(
-  categories: readonly T[],
-  providerCategoryName: string | null | undefined,
-): T | null {
-  return (
-    findLogicalBudgetCategory(categories, providerCategoryName) ??
-    findOtherBudgetCategory(categories)
-  );
-}
-
-/**
- * G40: the provider categories each item is searched by, read from the very
- * rule that files an accepted offer (`budgetItemForProviderCategory`), so
- * «ابحث» on an item lists exactly the providers whose offers land in it.
- * Every item is a key, in the plan's order; one no category lands in has an
- * empty list (no «ابحث»). A category appears under one item at most.
- */
-export function providerCategoryIdsByBudgetItem<
-  T extends BudgetCategoryCandidate,
->(
-  categories: readonly T[],
-  providerCategories: ReadonlyArray<{ id: string; nameAr: string }>,
-): Map<string, string[]> {
-  const byItem = new Map<string, string[]>(
-    categories.map((category) => [category.id, []]),
-  );
-  for (const providerCategory of providerCategories) {
-    const item = budgetItemForProviderCategory(
-      categories,
-      providerCategory.nameAr,
-    );
-    if (item) byItem.get(item.id)?.push(providerCategory.id);
-  }
-  return byItem;
 }
 
 /** Each word with its «و», «ال», «بال» or «لل» set aside as well. */

@@ -5,6 +5,7 @@ import { test } from 'node:test';
 import { ContributionScopeStatus, type Prisma } from '@prisma/client';
 import { CollaborationErasureService } from '../src/modules/collaboration/infrastructure/collaboration-erasure.service';
 import { FinancePortService } from '../src/modules/finance/infrastructure/finance-port.service';
+import { catalogWithoutMoneyLinks } from './support/owner-ports';
 import { GuestsPortService } from '../src/modules/guests/infrastructure/guests-port.service';
 import { MarketplaceErasureService } from '../src/modules/marketplace/infrastructure/marketplace-erasure.service';
 import { MessagingErasureService } from '../src/modules/messaging/infrastructure/messaging-erasure.service';
@@ -207,7 +208,7 @@ test('collaboration closes tenures, marks scopes deleted, removes members then i
 
 test('finance locks the plan costs in the money mutation order and purges the ledger payments-first', async () => {
   const { tx, calls, statements } = recorder();
-  const service = new FinancePortService();
+  const service = new FinancePortService(catalogWithoutMoneyLinks);
   await service.lockPlanCostsForUpdateInTransaction(tx, ['plan-1']);
   await service.lockPlanCostsForUpdateInTransaction(tx, []);
   await service.purgePlanLedgerInTransaction(tx, ['plan-1']);

@@ -26,7 +26,7 @@ import {
 } from '@prisma/client';
 import { FinancePortService } from '../src/modules/finance/infrastructure/finance-port.service';
 import { WeddingPlansService } from '../src/wedding-plans/wedding-plans.service';
-import { collaborationHistory, collaborationPermissions, conversationsService, marketplaceService, planningOwnerPorts, providerDashboardService, sharingService } from './support/owner-ports';
+import { collaborationHistory, collaborationPermissions, conversationsService, marketplaceService, planningOwnerPorts, providerDashboardService, sharingService, catalogWithoutMoneyLinks } from './support/owner-ports';
 
 const now = new Date('2026-07-26T00:00:00.000Z');
 const weddingPlanId = '11111111-1111-4111-8111-111111111111';
@@ -395,7 +395,7 @@ test('a requester cannot cancel a quote linked to an archived plan', async () =>
       }),
       canManageProviders: () => true,
     } as any,
-    {} as any, lifecycle, new FinancePortService(),
+    {} as any, lifecycle, new FinancePortService(catalogWithoutMoneyLinks),
   );
 
   await assert.rejects(

@@ -9,7 +9,9 @@ import {
 import type {
   ActiveGovernorate,
   CatalogReadPort,
+  MoneyCatalogItem,
 } from '../public/catalog-read.port';
+import { listPublishedMoneyCatalogItems } from './money-catalog.repository';
 
 const CATALOG_ORDER = [{ sortOrder: 'asc' }, { nameAr: 'asc' }] as const;
 
@@ -20,6 +22,12 @@ export class CatalogReadService implements CatalogReadPort {
       where: { isActive: true },
       orderBy: [...CATALOG_ORDER],
     });
+  }
+
+  listMoneyCatalogItems(
+    client: Prisma.TransactionClient,
+  ): Promise<MoneyCatalogItem[]> {
+    return listPublishedMoneyCatalogItems(client);
   }
 
   async listActiveCategories(

@@ -16,11 +16,18 @@ import { AdminPermission } from '../modules/backoffice/public/admin-permission.p
 import { runAuthorizedAdminMutation } from '../modules/backoffice/public/admin-mutation-gate';
 import { PrismaService } from '../platform/database/prisma.service';
 import { ReferenceCatalogRepository } from '../modules/catalog/infrastructure/reference-catalog.repository';
-import { AdminCatalogItemDto } from './dto/admin-reference-catalog.dto';
+import {
+  AdminCatalogItemDto,
+  type ReferenceCatalogMetadata,
+} from './dto/admin-reference-catalog.dto';
 import {
   supportedCatalogIconKeys,
   systemCatalogs,
 } from './reference-catalog.defaults';
+
+/** D73: a money item links to a handful of provider categories, never more. */
+const MAX_PROVIDER_CATEGORY_SLUGS = 50;
+const MAX_PROVIDER_CATEGORY_SLUG_LENGTH = 120;
 
 @Injectable()
 export class ReferenceCatalogService {
@@ -334,7 +341,7 @@ export class ReferenceCatalogService {
       isActive: dto.isActive ?? true,
       ...(dto.metadata === undefined
         ? {}
-        : { metadata: this.jsonInput(dto.metadata) }),
+        : { metadata: this.metadataInput(dto.metadata) }),
     };
   }
 
@@ -394,7 +401,7 @@ export class ReferenceCatalogService {
       metadata:
         dto.metadata === undefined
           ? this.jsonInput(current.metadata)
-          : this.jsonInput(dto.metadata),
+          : this.metadataInput(dto.metadata),
     };
   }
 
@@ -538,11 +545,35 @@ export class ReferenceCatalogService {
       .slice(0, 24);
   }
 
+  /**
+   * D73: an item's `providerCategorySlugs` is the list of provider category
+   * slugs the money catalog links it to; anything else is refused, never
+   * stored to be misread later.
+   */
+  private metadataInput(
+    value: ReferenceCatalogMetadata | null,
+  ): Prisma.InputJsonValue | Prisma.NullTypes.JsonNull {
+    const slugs = value?.providerCategorySlugs;
+    if (
+      slugs !== undefined &&
+      !(
+        Array.isArray(slugs) &&
+        slugs.length <= MAX_PROVIDER_CATEGORY_SLUGS &&
+        slugs.every(
+          (slug) =>
+            typeof slug === 'string' &&
+            slug.trim() !== '' &&
+            slug.length <= MAX_PROVIDER_CATEGORY_SLUG_LENGTH,
+        )
+      )
+    ) {
+      throw new BadRequestException('providerCategorySlugs must be a list of slugs');
+    }
+    return this.jsonInput(value);
+  }
+
   private jsonInput(
-    value:
-      | Prisma.JsonValue
-      | Record<string, string | number | boolean | null>
-      | null,
+    value: Prisma.JsonValue | ReferenceCatalogMetadata | null,
   ): Prisma.InputJsonValue | Prisma.NullTypes.JsonNull {
     return value === null ? Prisma.JsonNull : (value as Prisma.InputJsonValue);
   }

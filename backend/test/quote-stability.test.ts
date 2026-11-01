@@ -1,6 +1,6 @@
 import type { ConversationLifecyclePort } from "../src/modules/messaging/public/conversation-lifecycle.port";
 import { ensureConversationContext, findConversationProviderId, lockConversationForShare, lockConversationForUpdate, recordConversationEvent } from "../src/conversations/conversation-lifecycle";
-import { marketplaceRelations, marketplaceService, ownerPorts, providerDashboardService, withOwnerTables } from "./support/owner-ports";
+import { marketplaceRelations, marketplaceService, ownerPorts, providerDashboardService, withOwnerTables, catalogWithoutMoneyLinks } from "./support/owner-ports";
 
 const lifecycle: ConversationLifecyclePort = {
   ensureConversationContext: (tx, input) => ensureConversationContext(tx, input, { plans: ownerPorts.plans, providers: ownerPorts.providers }),
@@ -292,7 +292,7 @@ test("backend rejects acceptance of an expired pending offer", async () => {
       canManageProviders: () => true,
     } as any,
     {} as any,
-    lifecycle, new FinancePortService(), {} as any,
+    lifecycle, new FinancePortService(catalogWithoutMoneyLinks), {} as any,
   );
   await assert.rejects(
     service.acceptQuoteOffer(requester, offer.id),

@@ -352,7 +352,13 @@ void main() {
       // In the order recorded: the mahr came last.
       sources: [
         source('savings', 'SAVINGS', 'مدخراتي', received: true),
-        source('friend', 'OTHER', 'صاحبتي عبلة', received: false, overdue: true),
+        source(
+          'friend',
+          'OTHER',
+          'صاحبتي عبلة',
+          received: false,
+          overdue: true,
+        ),
         source('mahr-in', 'MAHR', 'المهر من العريس', received: true),
         source('mahr-rest', 'MAHR', 'باقي المهر', received: false),
       ],
@@ -360,10 +366,7 @@ void main() {
     await tester.tap(find.text('من وين'));
     await tester.pumpAndSettle();
 
-    expect(
-      find.text('صرفتِ 1.2 مليون ر.ي · معك 800,000 ر.ي'),
-      findsOneWidget,
-    );
+    expect(find.text('صرفتِ 1.2 مليون ر.ي · معك 800,000 ر.ي'), findsOneWidget);
     double top(String text) => tester.getTopLeft(find.text(text)).dy;
     expect(top('المهر من العريس'), lessThan(top('مدخراتي')));
     expect(top('مدخراتي'), lessThan(top('صاحبتي عبلة')));
@@ -467,6 +470,14 @@ void main() {
       expect(tester.takeException(), isNull);
     });
 
+    testWidgets('«أخفِ المبالغ» hides every payer figure', (tester) async {
+      await _pumpPayers(tester, hideAmounts: true);
+
+      expect(find.text('مين دفع ايش'), findsOneWidget);
+      expect(find.textContaining('••••'), findsWidgets);
+      expect(find.textContaining('ر.ي'), findsNothing);
+    });
+
     test('the payer as the plan\'s owner says it', () {
       expect(payerLabel('GROOM', null, bridePlan: false, owner: true), 'أنا');
       expect(
@@ -482,29 +493,33 @@ void main() {
       expect(payerLabel(null, null, bridePlan: false, owner: true), 'ما تحدد');
     });
 
-    test('D59: the verb agrees with who paid; the avatar drops the article', () {
-      const groom = JourneyProfile.groom;
-      expect(payerPaidLine('BRIDE', 'العروسة', groom), 'العروسة دفعت');
-      expect(payerPaidLine('FAMILY', 'الأهل', groom), 'الأهل دفعوا');
-      expect(payerPaidLine('FAMILY', 'الوالد', groom), 'الوالد دفع');
-      expect(payerPaidLine('GROOM', 'العريس', groom), 'العريس دفع');
-      expect(payerPaidLine('SHARED', 'المشترك', groom), 'المدفوع المشترك');
-      expect(payerPaidLine('GROOM', 'أنا', groom), 'دفعت أنا');
-      expect(payerPaidLine('BRIDE', 'أنا', JourneyProfile.bride), 'دفعتِ أنا');
-      expect(
-        payerLabel('SHARED', null, bridePlan: false, owner: true),
-        'المشترك',
-      );
-      expect(payerAvatarLetter('الوالد'), 'و');
-      expect(payerAvatarLetter('العروسة'), 'ع');
-      expect(payerAvatarLetter('خالي أحمد'), 'خ');
-      expect(payerAvatarLetter('أنا'), 'أ');
-    });
+    test(
+      'D59: the verb agrees with who paid; the avatar drops the article',
+      () {
+        const groom = JourneyProfile.groom;
+        expect(payerPaidLine('BRIDE', 'العروسة', groom), 'العروسة دفعت');
+        expect(payerPaidLine('FAMILY', 'الأهل', groom), 'الأهل دفعوا');
+        expect(payerPaidLine('FAMILY', 'الوالد', groom), 'الوالد دفع');
+        expect(payerPaidLine('GROOM', 'العريس', groom), 'العريس دفع');
+        expect(payerPaidLine('SHARED', 'المشترك', groom), 'المدفوع المشترك');
+        expect(payerPaidLine('GROOM', 'أنا', groom), 'دفعت أنا');
+        expect(
+          payerPaidLine('BRIDE', 'أنا', JourneyProfile.bride),
+          'دفعتِ أنا',
+        );
+        expect(
+          payerLabel('SHARED', null, bridePlan: false, owner: true),
+          'المشترك',
+        );
+        expect(payerAvatarLetter('الوالد'), 'و');
+        expect(payerAvatarLetter('العروسة'), 'ع');
+        expect(payerAvatarLetter('خالي أحمد'), 'خ');
+        expect(payerAvatarLetter('أنا'), 'أ');
+      },
+    );
 
     testWidgets('D59: the groom reads his own payments as his, his father\'s '
-        'as his father\'s', (
-      tester,
-    ) async {
+        'as his father\'s', (tester) async {
       await _pumpPayers(tester, profile: JourneyProfile.groom);
 
       // The owner reads his own payments as his.
@@ -560,13 +575,23 @@ Future<_Api> _pumpMahr(WidgetTester tester, JourneyProfile profile) async {
 
 /// w20 as someone helping in the groom's plan reads it (the parties by
 /// their words), or as [profile] reads it.
-Future<void> _pumpPayers(WidgetTester tester, {JourneyProfile? profile}) async {
+Future<void> _pumpPayers(
+  WidgetTester tester, {
+  JourneyProfile? profile,
+  bool hideAmounts = false,
+}) async {
   tester.view.physicalSize = const Size(390, 1400);
   tester.view.devicePixelRatio = 1;
   addTearDown(tester.view.reset);
   await tester.pumpWidget(
     ChangeNotifierProvider<FinanceProvider>(
-      create: (_) => FinanceProvider(_Api(mahr: _groomMahr, groomItem: true)),
+      create: (_) {
+        final finance = FinanceProvider(
+          _Api(mahr: _groomMahr, groomItem: true),
+        );
+        if (hideAmounts) finance.toggleAmountsVisibility();
+        return finance;
+      },
       child: MaterialApp(
         home: JourneyProfileScope(
           profile:

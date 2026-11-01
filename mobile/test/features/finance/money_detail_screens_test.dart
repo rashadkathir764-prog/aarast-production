@@ -442,6 +442,60 @@ void main() {
       expect(find.textContaining('باقي عليك ••••'), findsOneWidget);
     });
 
+    testWidgets('«أخفِ المبالغ» hides what the payment form offers', (
+      tester,
+    ) async {
+      final finance = FinanceProvider(_MoneyDetailsApi())
+        ..toggleAmountsVisibility();
+
+      await _pumpMoneyScreen(
+        tester,
+        const RecordCostPaymentScreen(
+          weddingPlanId: 'plan-1',
+          costId: 'cost-1',
+        ),
+        provider: finance,
+      );
+
+      expect(find.text('الباقي كامل · ••••'), findsOneWidget);
+      // No figure is spelled; only the typed field keeps its currency label.
+      expect(
+        find.textContaining(RegExp(r'\d[\d,.]* *(ألف|مليون)? *ر\.ي')),
+        findsNothing,
+      );
+    });
+
+    testWidgets('«أخفِ المبالغ» hides a scheduled amount and its words', (
+      tester,
+    ) async {
+      final finance = FinanceProvider(_MoneyDetailsApi())
+        ..toggleAmountsVisibility();
+
+      await _pumpMoneyScreen(
+        tester,
+        const PayPaymentScheduleScreen(
+          weddingPlanId: 'plan-1',
+          costId: 'cost-1',
+          scheduleId: 'schedule-1',
+        ),
+        provider: finance,
+      );
+
+      final fixed = find.byKey(const ValueKey('payment-fixed-amount'));
+      expect(
+        find.descendant(of: fixed, matching: find.text('••••')),
+        findsOneWidget,
+      );
+      expect(
+        find.descendant(of: fixed, matching: find.textContaining('ريال')),
+        findsNothing,
+      );
+      expect(
+        find.descendant(of: fixed, matching: find.textContaining('ر.ي')),
+        findsNothing,
+      );
+    });
+
     testWidgets('«أخفِ المبالغ» hides the budget screen\'s own totals', (
       tester,
     ) async {

@@ -322,7 +322,7 @@ class _QuoteRequestScreenState extends State<QuoteRequestScreen> {
                       toggleKey: const Key('quote-share-budget'),
                       title:
                           '${context.say('شاركهم', 'شاركيهم')} بندك: '
-                          '${_amountLabel(budget.allocatedValue, plans, selectedPlanId)}',
+                          '${_shownAmount(_amountLabel(budget.allocatedValue, plans, selectedPlanId))}',
                       subtitle: 'يساعدهم يعطونك عرض على قدّك',
                       value: _shareBudget,
                       onChanged: (value) {
@@ -391,6 +391,11 @@ class _QuoteRequestScreenState extends State<QuoteRequestScreen> {
     _scheduleDraft();
     if (mounted) setState(() {});
   }
+
+  /// G17: the item's amount follows «أخفِ المبالغ», as on every money
+  /// figure; sharing it stays the user's choice either way.
+  String _shownAmount(String text) =>
+      context.watch<FinanceProvider?>()?.shownAmount(text) ?? text;
 
   /// «1.5 مليون ر.ي» in the open plan's currency.
   String _amountLabel(

@@ -72,8 +72,10 @@ class _PayerPaymentsScreenState extends State<PayerPaymentsScreen> {
           if (_matches(finance.costById(payment.costId), chosen)) payment,
     ]..sort((a, b) => b.paidAt.compareTo(a.paidAt));
     final paid = chosen?.paid ?? summary.costs.paid;
-    String amount(Object? value) =>
-        compactMoneyParts(moneyValue(value), currencyCode: currency).plainText;
+    // G17: «أخفِ المبالغ» hides these figures as on every money screen.
+    String amount(Object? value) => finance.shownAmount(
+      compactMoneyParts(moneyValue(value), currencyCode: currency).plainText,
+    );
 
     return AarastScreenFrame(
       maxWidth: 560,
@@ -136,11 +138,7 @@ class _PayerPaymentsScreenState extends State<PayerPaymentsScreen> {
                     child: Text(
                       chosen == null
                           ? 'اللي انحسب دفعه'
-                          : payerPaidLine(
-                              chosen.payer,
-                              label(chosen),
-                              profile,
-                            ),
+                          : payerPaidLine(chosen.payer, label(chosen), profile),
                       style: JourneyType.of(
                         JourneyType.bodyLarge,
                         weight: JourneyType.bold,

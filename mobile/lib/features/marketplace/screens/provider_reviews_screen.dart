@@ -251,7 +251,9 @@ class _ProviderReviewsScreenState extends State<ProviderReviewsScreen> {
       if (cost.providerId != providerId) continue;
       total += num.tryParse(cost.paidAmount) ?? 0;
     }
-    return total > 0 ? providerMoneyLabel('$total', null) : null;
+    if (total <= 0) return null;
+    final label = providerMoneyLabel('$total', null);
+    return label == null ? null : finance.shownAmount(label);
   }
 
   Future<void> _send(_Booked provider) async {

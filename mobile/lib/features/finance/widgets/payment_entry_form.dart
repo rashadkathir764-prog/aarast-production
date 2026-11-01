@@ -20,6 +20,7 @@ import '../../../core/routing/pop_or_go.dart';
 import '../data/cost_receipts_api.dart';
 import '../models/wedding_cost.dart';
 import '../providers/finance_provider.dart';
+import 'money_widgets.dart' show shownMoney;
 import 'money_input_formatter.dart';
 import 'receipt_flows.dart';
 
@@ -121,8 +122,12 @@ class _PaymentEntryFormState extends State<PaymentEntryForm> {
     unawaited(_draft!.restore());
   }
 
-  String _plain(num value) =>
-      compactMoneyParts(value, currencyCode: widget.currency).plainText;
+  /// G17: the figures the form says follow «أخفِ المبالغ»; the field the
+  /// user types in stays as typed.
+  String _plain(num value) => shownMoney(
+    context,
+    compactMoneyParts(value, currencyCode: widget.currency).plainText,
+  );
 
   int? get _typedAmount =>
       int.tryParse(_amountController.text.replaceAll(',', '').trim());
@@ -374,6 +379,9 @@ class _FixedAmount extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final value = moneyValue(amount).round();
+    final hidden = context.select<FinanceProvider?, bool>(
+      (provider) => provider?.amountsHidden ?? false,
+    );
     return JourneyBox(
       key: const ValueKey('payment-fixed-amount'),
       color: context.accent.primarySoft,
@@ -385,7 +393,9 @@ class _FixedAmount extends StatelessWidget {
             fit: BoxFit.scaleDown,
             alignment: AlignmentDirectional.centerStart,
             child: Text(
-              '${formatMoneyInputValue(value)} ${currencyLabelAr(currency)}',
+              hidden
+                  ? hiddenMoneyText
+                  : '${formatMoneyInputValue(value)} ${currencyLabelAr(currency)}',
               style: JourneyType.of(
                 JourneyType.display,
                 weight: JourneyType.bold,
@@ -393,14 +403,16 @@ class _FixedAmount extends StatelessWidget {
               ),
             ),
           ),
-          Text(
-            amountInWords(value, currency: currencyLabelAr(currency)),
-            style: JourneyType.of(
-              JourneyType.small,
-              weight: JourneyType.bold,
-              color: context.accent.primary,
+          // The words would say the hidden amount.
+          if (!hidden)
+            Text(
+              amountInWords(value, currency: currencyLabelAr(currency)),
+              style: JourneyType.of(
+                JourneyType.small,
+                weight: JourneyType.bold,
+                color: context.accent.primary,
+              ),
             ),
-          ),
           if (line != null) ...[
             const SizedBox(height: 6),
             Text(

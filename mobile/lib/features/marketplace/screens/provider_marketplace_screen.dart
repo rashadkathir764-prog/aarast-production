@@ -422,6 +422,9 @@ class _ProviderMarketplaceScreenState extends State<ProviderMarketplaceScreen> {
             budgetIntent: provider.budgetMatchIntent,
             location: _weddingLocation,
             profile: context.journeyProfile,
+            shownAmount:
+                context.watch<FinanceProvider?>()?.shownAmount ??
+                (text) => text,
           ),
           emptyAction: context.say('امسح الفلتر', 'امسحي الفلتر'),
           onEmptyAction: () => _clearMarketplaceFilters(provider),

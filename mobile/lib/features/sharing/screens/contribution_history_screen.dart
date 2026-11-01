@@ -9,6 +9,7 @@ import '../../../core/utils/arabic_date_formatter.dart';
 import '../../../core/utils/currency_label.dart';
 import '../../../core/utils/money_formatters.dart';
 import '../../../core/widgets/aarast_ui.dart';
+import '../../finance/finance_api.dart' show FinanceProvider;
 import '../models/contribution_history.dart';
 import '../models/shared_member.dart';
 import '../providers/contribution_history_provider.dart';
@@ -311,7 +312,11 @@ class _ActivityRow extends StatelessWidget {
     final actor = activity.actor;
     final self = actor == null;
     final who = self ? 'أنت' : actor.name;
-    final what = activityLine(event, self: self);
+    final what = activityLine(
+      event,
+      self: self,
+      shownAmount: context.watch<FinanceProvider?>()?.shownAmount ?? _asIs,
+    );
     final at = _when(event);
     return Semantics(
       container: true,
@@ -389,7 +394,12 @@ IconData _icon(ContributionHistoryEvent event) {
 /// الغداء 200,000 ر.ي», «خلّص "استلم البدلة"». [self] speaks to the reader
 /// («سجّلت»).
 @visibleForTesting
-String activityLine(ContributionHistoryEvent event, {required bool self}) {
+/// [shownAmount] applies «أخفِ المبالغ» (G17) to the amount in the line.
+String activityLine(
+  ContributionHistoryEvent event, {
+  required bool self,
+  String Function(String text) shownAmount = _asIs,
+}) {
   final s = event.snapshot;
   String? text(String key) {
     final value = s[key];
@@ -404,10 +414,12 @@ String activityLine(ContributionHistoryEvent event, {required bool self}) {
       text('categoryLabel');
   final amountValue = s['amount'] ?? s['paidAmount'] ?? s['totalAmount'];
   final amount = amountValue is num
-      ? stripMoneyDirectionalityMarks(
-          formatCompactMoney(
-            amountValue,
-            currencyCode: text('currency') ?? defaultCurrencyCode,
+      ? shownAmount(
+          stripMoneyDirectionalityMarks(
+            formatCompactMoney(
+              amountValue,
+              currencyCode: text('currency') ?? defaultCurrencyCode,
+            ),
           ),
         )
       : null;
@@ -455,3 +467,5 @@ String activityLine(ContributionHistoryEvent event, {required bool self}) {
     _ => withTitle(verb('سجّل', 'سجّلت')),
   };
 }
+
+String _asIs(String text) => text;

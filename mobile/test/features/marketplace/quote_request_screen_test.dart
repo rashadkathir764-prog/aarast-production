@@ -137,6 +137,15 @@ void main() {
     expect(marketplace.sent.single['guestCount'], 124);
   });
 
+  testWidgets('«أخفِ المبالغ» hides the item\'s amount it offers to share', (
+    tester,
+  ) async {
+    await _pump(tester, _Marketplace(kind: 'فنانين وفرق'), hideAmounts: true);
+
+    expect(find.text('شاركهم بندك: ••••'), findsOneWidget);
+    expect(find.textContaining('500,000'), findsNothing);
+  });
+
   testWidgets('back leaves a request opened with nothing behind it', (
     tester,
   ) async {
@@ -165,6 +174,7 @@ Future<void> _pump(
   WidgetTester tester,
   _Marketplace marketplace, {
   String item = 'الفنان والفرقة',
+  bool hideAmounts = false,
   double width = 384,
   double textScale = 1,
 }) async {
@@ -234,7 +244,7 @@ Future<void> _pump(
           value: marketplace,
         ),
         ChangeNotifierProvider<FinanceProvider>.value(
-          value: _Money(apiClient, item),
+          value: _Money(apiClient, item, hidden: hideAmounts),
         ),
       ],
       child: MaterialApp.router(routerConfig: router),
@@ -283,9 +293,14 @@ class _Plans extends WeddingPlansProvider {
 }
 
 class _Money extends FinanceProvider {
-  _Money(ApiClient client, this.itemName) : super(FinanceApi(client));
+  _Money(ApiClient client, this.itemName, {this.hidden = false})
+    : super(FinanceApi(client));
 
   final String itemName;
+  final bool hidden;
+
+  @override
+  bool get amountsHidden => hidden;
 
   @override
   String? get loadedPlanId => 'plan-1';

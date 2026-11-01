@@ -13,11 +13,14 @@ String _emptyProvidersMessage({
   required ProviderBudgetMatchIntent? budgetIntent,
   required WeddingLocationDraft? location,
   required JourneyProfile profile,
+  // G17: the plan's own amount follows «أخفِ المبالغ».
+  required String Function(String text) shownAmount,
 }) {
   final say = profile.say;
   if (budgetIntent != null) {
+    // The same figure as the item chip on this screen.
     final amount = budgetIntent.hasBudget
-        ? ' على قد ${_formatMoney(budgetIntent.allocatedValue)} ر.ي'
+        ? ' على قد ${shownAmount(compactYemeniMoneyParts(budgetIntent.allocatedValue).plainText)}'
         : '';
     return 'ما ظهر أحد لبند ${budgetIntent.budgetCategoryName}$amount بهذا الفلتر. '
         '${say('امسح الفلتر أو غيّر المدينة.', 'امسحي الفلتر أو غيّري المدينة.')}';

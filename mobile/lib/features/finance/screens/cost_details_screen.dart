@@ -471,10 +471,12 @@ class _CostDetailsScreenState extends State<CostDetailsScreen> {
         title: cost.title,
         paid: active.isEmpty
             ? null
-            : compactMoneyParts(
-                moneyValue(cost.paidAmount),
-                currencyCode: provider.summary.currency,
-              ).plainText,
+            : provider.shownAmount(
+                compactMoneyParts(
+                  moneyValue(cost.paidAmount),
+                  currencyCode: provider.summary.currency,
+                ).plainText,
+              ),
       ),
     );
     if (choice == null || !mounted) return;

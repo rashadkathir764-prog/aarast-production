@@ -59,6 +59,20 @@ void main() {
     expect(find.textContaining('خلّصت'), findsWidgets);
   });
 
+  test('«أخفِ المبالغ» hides the amount in an activity row', () {
+    final payment = _event(
+      'p1',
+      section: 'MONEY',
+      entityType: 'COST_PAYMENT',
+      action: 'PAYMENT_RECORDED',
+      snapshot: {'title': 'الغداء', 'amount': 200000, 'currency': 'YER'},
+    );
+    final line = activityLine(payment, self: false, shownAmount: (_) => '••••');
+    expect(line, startsWith('سجّل دفعة الغداء'));
+    expect(line, contains('••••'));
+    expect(line, isNot(contains('200')));
+  });
+
   test('rows read like the design and never say «أقساط»', () {
     final payment = _event(
       'p1',

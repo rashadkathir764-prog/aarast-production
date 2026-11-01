@@ -144,8 +144,9 @@ class _UnclaimedLine extends StatelessWidget {
 
 /// A page with no provider to show: the way back above [child].
 class _DetailsFrame extends StatelessWidget {
-  const _DetailsFrame({required this.child});
+  const _DetailsFrame({required this.onBack, required this.child});
 
+  final VoidCallback onBack;
   final Widget child;
 
   @override
@@ -159,9 +160,7 @@ class _DetailsFrame extends StatelessWidget {
             key: const ValueKey('provider-details-back'),
             icon: LucideIcons.arrowRight,
             tooltip: 'رجوع',
-            onPressed: () {
-              if (context.canPop()) context.pop();
-            },
+            onPressed: onBack,
           ),
         ),
         const SizedBox(height: 24),

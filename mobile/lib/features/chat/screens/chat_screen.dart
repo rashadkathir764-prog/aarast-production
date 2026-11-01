@@ -8,6 +8,7 @@ import '../../../core/experience_v3/aarast_v3.dart';
 import '../../../core/media/media_upload_api.dart';
 import '../../../core/network/api_client.dart';
 import '../../../core/routing/app_router.dart';
+import '../../../core/routing/pop_or_go.dart';
 import '../../../core/utils/offer_changes.dart';
 import '../../../core/utils/offer_ends.dart';
 import '../../../core/utils/currency_label.dart';
@@ -165,7 +166,9 @@ class _ChatScreenState extends State<ChatScreen> {
     final hasOlder = chat.canLoadOlder(widget.conversationId);
     // The provider's side is drawn in his teal (p34); the customer's keeps
     // the providers section's cobalt (f06).
-    final accent = customerSide ? context.accent.primary : AarastV3Color.primary;
+    final accent = customerSide
+        ? context.accent.primary
+        : AarastV3Color.primary;
     final providerCase = customerSide || conversation == null
         ? null
         : widget.providerCase;
@@ -271,9 +274,7 @@ class _ChatScreenState extends State<ChatScreen> {
               subtitle: customerSide
                   ? _providerLine
                   : providerCase?.subtitle(context, conversation!),
-              onBack: () {
-                if (context.canPop()) context.pop();
-              },
+              onBack: () => context.popOrGo(AppRouter.conversations),
               onTitleTap: conversation == null
                   ? null
                   : () => _openOptions(conversation),
@@ -1057,28 +1058,32 @@ class _Composer extends StatelessWidget {
     ),
   );
 
-  Widget _sendButton(BuildContext context, double size, double icon) => Semantics(
-    button: true,
-    label: 'أرسل',
-    child: AarastPressable(
-      onTap: isBusy ? null : onSend,
-      borderRadius: BorderRadius.circular(size / 2),
-      child: Container(
-        width: size,
-        height: size,
-        decoration: BoxDecoration(color: _accentOf(context), shape: BoxShape.circle),
-        child: isBusy
-            ? const Center(
-                child: AarastInlineSpinner(color: AarastV3Color.onPrimary),
-              )
-            : Icon(
-                LucideIcons.send,
-                size: icon,
-                color: AarastV3Color.onPrimary,
-              ),
-      ),
-    ),
-  );
+  Widget _sendButton(BuildContext context, double size, double icon) =>
+      Semantics(
+        button: true,
+        label: 'أرسل',
+        child: AarastPressable(
+          onTap: isBusy ? null : onSend,
+          borderRadius: BorderRadius.circular(size / 2),
+          child: Container(
+            width: size,
+            height: size,
+            decoration: BoxDecoration(
+              color: _accentOf(context),
+              shape: BoxShape.circle,
+            ),
+            child: isBusy
+                ? const Center(
+                    child: AarastInlineSpinner(color: AarastV3Color.onPrimary),
+                  )
+                : Icon(
+                    LucideIcons.send,
+                    size: icon,
+                    color: AarastV3Color.onPrimary,
+                  ),
+          ),
+        ),
+      );
 
   /// p34: one white bar with a hairline, the field, the picture button and
   /// the send circle inside it.

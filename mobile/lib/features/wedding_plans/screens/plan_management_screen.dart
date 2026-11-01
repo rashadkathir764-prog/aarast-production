@@ -195,6 +195,7 @@ class _PlanCenterScreenState extends State<PlanCenterScreen>
               onChangeDate: canManage && !_isLocalPlan
                   ? () => _postpone(plan)
                   : null,
+              repickStoredDay: canManage && _isLocalPlan,
               onArchive:
                   canManage &&
                       !_isLocalPlan &&

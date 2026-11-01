@@ -34,6 +34,7 @@ class TaskRow extends StatelessWidget {
     required this.onOpen,
     this.showResponsible = true,
     this.selfLetter = 'أ',
+    this.selfUserId,
     this.busy = false,
     this.onPostpone,
     super.key,
@@ -50,6 +51,9 @@ class TaskRow extends StatelessWidget {
 
   /// The letter shown for the plan owner's own tasks.
   final String selfLetter;
+
+  /// The reader's account, to know their own tasks.
+  final String? selfUserId;
   final bool busy;
 
   /// w26: «أجّلها» right on a late task.
@@ -60,7 +64,7 @@ class TaskRow extends StatelessWidget {
     final late = isTaskLate(task);
     final done = task.isDone || task.status == 'CANCELLED';
     final responsible = task.responsibleLabel;
-    final mine = responsible == 'أنا';
+    final mine = task.isMineFor(selfUserId);
     final steps = task.checklist.isEmpty
         ? null
         : '${task.checklistDoneCount} من ${task.checklist.length}';
@@ -161,9 +165,7 @@ class TaskRow extends StatelessWidget {
               const SizedBox(width: 8),
               JourneyAvatar(
                 letter: letter,
-                color: mine
-                    ? context.accent.primary
-                    : context.accent.primary,
+                color: mine ? context.accent.primary : context.accent.primary,
               ),
             ],
           ),

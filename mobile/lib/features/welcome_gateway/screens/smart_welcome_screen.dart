@@ -463,15 +463,26 @@ class _SmartWelcomeScreenState extends State<SmartWelcomeScreen> {
     // plan being made already has its owner, so its steps take that
     // profile (the bride's rose and voice) before the plan exists.
     final shared = _step == _WelcomeStep.start || _step == _WelcomeStep.whose;
-    return AarastScreenFrame(
-      maxWidth: 600,
-      safeAreaBottom: false,
-      backgroundColor: AarastV3Color.canvas,
-      child: JourneyProfileScope(
-        profile: shared ? JourneyProfile.groom : _profile,
-        child: AnimatedSwitcher(
-          duration: AarastV3Motion.standard,
-          child: KeyedSubtree(key: ValueKey(_step), child: page),
+    // System back walks the steps like the arrow does. Only the first step
+    // leaves the page, so answers are not lost to the phone's back key.
+    final leavesPage =
+        _step == _WelcomeStep.start ||
+        (widget.newPlan && _step == _WelcomeStep.whose);
+    return PopScope<Object?>(
+      canPop: leavesPage,
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop) _back();
+      },
+      child: AarastScreenFrame(
+        maxWidth: 600,
+        safeAreaBottom: false,
+        backgroundColor: AarastV3Color.canvas,
+        child: JourneyProfileScope(
+          profile: shared ? JourneyProfile.groom : _profile,
+          child: AnimatedSwitcher(
+            duration: AarastV3Motion.standard,
+            child: KeyedSubtree(key: ValueKey(_step), child: page),
+          ),
         ),
       ),
     );

@@ -567,6 +567,43 @@ void main() {
     expect(find.text('opened:/home'), findsOneWidget);
   });
 
+  testWidgets('the phone\'s back key walks the steps and keeps the answers', (
+    tester,
+  ) async {
+    await _pump(tester);
+    await _answerUpToReady(tester);
+    expect(find.text('ايش اسمك، ومتى العرس؟'), findsNothing);
+
+    // a08 → a06 → a05 → a03, the same path as the arrow.
+    for (var i = 0; i < 2; i++) {
+      await tester.binding.handlePopRoute();
+      await tester.pumpAndSettle();
+    }
+    expect(find.text('وين العرس، وكم ميزانيتك تقريبًا؟'), findsOneWidget);
+    await tester.binding.handlePopRoute();
+    await tester.pumpAndSettle();
+    expect(find.text('ايش اسمك، ومتى العرس؟'), findsOneWidget);
+    // The name typed on a03 is still there.
+    expect(find.text('محمد'), findsWidgets);
+  });
+
+  testWidgets('the back key on a new plan\'s later step stays on the page', (
+    tester,
+  ) async {
+    await _pump(
+      tester,
+      signedInPlans: _RecordingPlans(succeed: true),
+      initialLocation: '/wedding-plans/create',
+    );
+    await _tap(tester, 'التالي');
+    expect(find.text('ايش اسمك، ومتى العرس؟'), findsOneWidget);
+
+    await tester.binding.handlePopRoute();
+    await tester.pumpAndSettle();
+    expect(find.text('خطة مين؟'), findsOneWidget);
+    expect(find.text('opened:/home'), findsNothing);
+  });
+
   testWidgets('every step fits 320 px with doubled text', (tester) async {
     await _pump(tester, size: const Size(320, 1400), textScale: 2);
     expect(tester.takeException(), isNull);

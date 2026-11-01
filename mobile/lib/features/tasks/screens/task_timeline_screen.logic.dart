@@ -5,15 +5,8 @@ part of 'task_timeline_screen.dart';
 const _everyone = '';
 const _mine = 'me';
 
-bool _isMine(WeddingTask task, String? userId) {
-  if (task.assigneeUserId != null && task.assigneeUserId == userId) {
-    return true;
-  }
-  return task.responsibleLabel == 'أنا';
-}
-
 String _personKey(WeddingTask task, String? userId) =>
-    _isMine(task, userId) ? _mine : task.responsibleLabel;
+    task.isMineFor(userId) ? _mine : task.responsibleLabel;
 
 /// Everyone besides the owner who has a task, most tasks first.
 List<String> _people(List<WeddingTask> tasks, String? userId) {

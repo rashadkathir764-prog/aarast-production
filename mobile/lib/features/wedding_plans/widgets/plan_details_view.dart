@@ -23,6 +23,7 @@ class PlanDetailsView extends StatefulWidget {
     required this.onBack,
     required this.onSave,
     this.onChangeDate,
+    this.repickStoredDay = false,
     this.onArchive,
     super.key,
   });
@@ -44,6 +45,10 @@ class PlanDetailsView extends StatefulWidget {
 
   /// Opens g03 for a plan that has a day.
   final VoidCallback? onChangeDate;
+
+  /// A plan kept on the phone has no g03: its day is picked again here and
+  /// saved with the rest. Without g03 or this, a stored day only reads.
+  final bool repickStoredDay;
   final VoidCallback? onArchive;
 
   @override
@@ -98,10 +103,15 @@ class _PlanDetailsViewState extends State<PlanDetailsView> {
   Future<void> _pickFirstDay() async {
     releaseFieldFocus();
     final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final current = _firstDay ?? widget.plan.weddingDate;
     final picked = await showDatePicker(
       context: context,
-      initialDate: _firstDay ?? now.add(const Duration(days: 90)),
-      firstDate: DateTime(now.year, now.month, now.day),
+      // A day already gone cannot open the picker; it starts from today.
+      initialDate: current == null
+          ? now.add(const Duration(days: 90))
+          : (current.isBefore(today) ? today : current),
+      firstDate: today,
       lastDate: DateTime(now.year + 5),
     );
     if (picked == null || !mounted) return;
@@ -135,7 +145,7 @@ class _PlanDetailsViewState extends State<PlanDetailsView> {
   @override
   Widget build(BuildContext context) {
     final plan = widget.plan;
-    final day = plan.weddingDate ?? _firstDay;
+    final day = _firstDay ?? plan.weddingDate;
     final hasStoredDay = plan.weddingDate != null;
     final currency = currencyLabelAr(plan.currency);
     final total = _amount(_cleanBudget);
@@ -166,9 +176,10 @@ class _PlanDetailsViewState extends State<PlanDetailsView> {
                     : '${formatArabicWeekday(day)} '
                           '${formatArabicDate(day, includeWeekday: false)}',
                 placeholder: context.say('اختر اليوم', 'اختاري اليوم'),
-                onTap: hasStoredDay
-                    ? (widget.onChangeDate ?? () {})
-                    : _pickFirstDay,
+                onTap: !hasStoredDay
+                    ? _pickFirstDay
+                    : widget.onChangeDate ??
+                          (widget.repickStoredDay ? _pickFirstDay : null),
               ),
               if (hasStoredDay && widget.onChangeDate != null) ...[
                 const SizedBox(height: 10),

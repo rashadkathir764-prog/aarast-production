@@ -17,6 +17,7 @@ import '../../../core/utils/arabic_count.dart';
 import '../../../core/utils/arabic_date_formatter.dart';
 import '../../../core/widgets/aarast_toast.dart';
 import '../../../core/widgets/aarast_ui.dart';
+import '../../auth/auth_api.dart' show AuthController;
 import '../../finance/finance_api.dart' show FinanceProvider;
 import '../../wedding_plans/wedding_plans_api.dart' show publishTaskPlanPulse;
 import '../models/wedding_task.dart';
@@ -180,7 +181,7 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen> {
 
   Widget _details(TaskTimelineProvider provider, WeddingTask task) {
     final late = isTaskLate(task);
-    final mine = task.responsibleLabel == 'أنا';
+    final mine = task.isMineFor(context.watch<AuthController?>()?.user?.id);
     final due = task.dueDate;
     final lateDays = due == null
         ? 0

@@ -137,6 +137,16 @@ void main() {
     expect(marketplace.sent.single['guestCount'], 124);
   });
 
+  testWidgets('back leaves a request opened with nothing behind it', (
+    tester,
+  ) async {
+    // After signing in the request is resumed with go(), as the only page.
+    await _pump(tester, _Marketplace(kind: 'فنانين وفرق'));
+    await tester.tap(find.byTooltip('رجوع').first);
+    await tester.pumpAndSettle();
+    expect(find.textContaining('opened /providers/p-afrah'), findsOneWidget);
+  });
+
   testWidgets('f07 stays readable at 320px and 1.3 text', (tester) async {
     await _pump(
       tester,
@@ -202,6 +212,10 @@ Future<void> _pump(
         path: '/wedding-plans/:id/providers',
         builder: (_, state) => Text('sent ${state.uri}'),
       ),
+      GoRoute(
+        path: '/providers/:id',
+        builder: (_, state) => Text('opened ${state.uri}'),
+      ),
     ],
   );
   addTearDown(router.dispose);
@@ -212,9 +226,7 @@ Future<void> _pump(
         Provider<AuthStorage>.value(value: authStorage),
         Provider<AuthRepository>.value(value: authRepository),
         ChangeNotifierProvider<AuthController>.value(value: auth),
-        ChangeNotifierProvider<AccountContextController>.value(
-          value: contexts,
-        ),
+        ChangeNotifierProvider<AccountContextController>.value(value: contexts),
         ChangeNotifierProvider<WeddingPlansProvider>.value(
           value: _Plans(apiClient),
         ),
@@ -313,7 +325,8 @@ class _Marketplace extends ProviderMarketplaceProvider {
     businessName: 'فرقة الأفراح',
     ownerName: 'مالك',
     ratingAverage: 4.9,
-    ratingCount: 88,    primaryCategory: _category,
+    ratingCount: 88,
+    primaryCategory: _category,
   );
 
   @override
@@ -321,13 +334,15 @@ class _Marketplace extends ProviderMarketplaceProvider {
     MarketplaceService(
       id: 'service-full',
       providerId: 'p-afrah',
-      title: 'فرقة كاملة',      isActive: true,
+      title: 'فرقة كاملة',
+      isActive: true,
       category: _category,
     ),
     MarketplaceService(
       id: 'service-solo',
       providerId: 'p-afrah',
-      title: 'فنان بس',      isActive: true,
+      title: 'فنان بس',
+      isActive: true,
       category: _category,
     ),
   ];

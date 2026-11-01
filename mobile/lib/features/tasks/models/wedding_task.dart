@@ -129,6 +129,17 @@ class WeddingTask {
     return assigneeId != null && assigneeId.isNotEmpty;
   }
 
+  /// The task is the reader's own: assigned to their account, or with no one
+  /// named. Choosing «أنا» saves the reader's name, so the label alone cannot
+  /// tell.
+  bool isMineFor(String? userId) {
+    final assigneeId = assigneeUserId?.trim();
+    if (assigneeId != null && assigneeId.isNotEmpty && assigneeId == userId) {
+      return true;
+    }
+    return responsibleLabel == 'أنا';
+  }
+
   String get responsibleLabel {
     final manualName = responsibleName?.trim();
     if (manualName != null && manualName.isNotEmpty) return manualName;

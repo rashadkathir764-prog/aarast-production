@@ -309,6 +309,7 @@ class _TaskTimelineScreenState extends State<TaskTimelineScreen> {
       task: task,
       busy: provider.isSubmitting,
       selfLetter: selfLetter,
+      selfUserId: context.read<AuthController?>()?.user?.id,
       showResponsible: person == _everyone,
       onToggle: task.status == 'CANCELLED'
           ? null

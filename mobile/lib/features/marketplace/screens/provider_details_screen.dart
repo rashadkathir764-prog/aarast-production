@@ -10,6 +10,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../../core/experience_v3/aarast_v3.dart';
 import '../../../core/preferences/device_preferences.dart';
 import '../../../core/routing/app_router.dart';
+import '../../../core/routing/pop_or_go.dart';
 import '../../../core/utils/currency_label.dart';
 import '../../../core/widgets/aarast_toast.dart';
 import '../../../core/widgets/aarast_ui.dart';
@@ -78,6 +79,12 @@ class _ProviderDetailsScreenState extends State<ProviderDetailsScreen> {
         .watch<AccountContextController?>()
         ?.selectedContext;
     final selectedPlanId = _matchingSelectedPlanId(selected);
+    // Opened by a link or after signing in there is no page behind it.
+    void back() => context.popOrGo(
+      selectedPlanId == null
+          ? AppRouter.providerMarketplace
+          : AppRouter.planProviders(selectedPlanId),
+    );
     // «ضمن بندك» follows the plan's money items, read once if Money has not.
     final finance = context.watch<FinanceProvider?>();
     if (selectedPlanId != null &&
@@ -118,7 +125,8 @@ class _ProviderDetailsScreenState extends State<ProviderDetailsScreen> {
           );
 
           if (detailsLoading && provider == null) {
-            return const _DetailsFrame(
+            return _DetailsFrame(
+              onBack: back,
               child: JourneyListState(
                 phase: JourneyListPhase.loading,
                 section: JourneySection.providers,
@@ -127,6 +135,7 @@ class _ProviderDetailsScreenState extends State<ProviderDetailsScreen> {
           }
           if (detailsError != null && provider == null) {
             return _DetailsFrame(
+              onBack: back,
               child: JourneyListState(
                 phase: JourneyListPhase.error,
                 section: JourneySection.providers,
@@ -135,7 +144,8 @@ class _ProviderDetailsScreenState extends State<ProviderDetailsScreen> {
             );
           }
           if (provider == null) {
-            return const _DetailsFrame(
+            return _DetailsFrame(
+              onBack: back,
               child: JourneyListState(
                 phase: JourneyListPhase.empty,
                 section: JourneySection.providers,
@@ -151,9 +161,7 @@ class _ProviderDetailsScreenState extends State<ProviderDetailsScreen> {
             packages: state.packagesFor(widget.providerId),
             reviews: state.reviewsFor(widget.providerId),
             portfolio: state.portfolioFor(widget.providerId),
-            onBack: () {
-              if (context.canPop()) context.pop();
-            },
+            onBack: back,
             onOpenOffer: provider.isClaimed
                 ? (serviceId) => _pushOnce(
                     AppRouter.providerQuote(provider.id),

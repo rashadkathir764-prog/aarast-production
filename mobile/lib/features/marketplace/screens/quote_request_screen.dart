@@ -9,6 +9,7 @@ import '../../../core/experience_v3/aarast_v3.dart';
 import '../../../core/forms/aarast_form_draft_store.dart';
 import '../../../core/forms/aarast_form_success.dart';
 import '../../../core/routing/app_router.dart';
+import '../../../core/routing/pop_or_go.dart';
 import '../../../core/utils/arabic_date_formatter.dart';
 import '../../../core/utils/currency_label.dart';
 import '../../../core/utils/money_formatters.dart';
@@ -201,9 +202,13 @@ class _QuoteRequestScreenState extends State<QuoteRequestScreen> {
           JourneySubHeader(
             title: context.say('اطلب عرض سعر', 'اطلبي عرض سعر'),
             subtitle: provider == null ? null : 'إلى ${provider.businessName}',
-            onBack: () {
-              if (context.canPop()) context.pop();
-            },
+            // Resumed after signing in, the request is the only page.
+            onBack: () => context.popOrGo(
+              AppRouter.providerDetails(
+                widget.providerId,
+                weddingPlanId: selectedPlanId,
+              ),
+            ),
           ),
           if (requiresAuth)
             JourneyListState(

@@ -104,7 +104,7 @@ class _SplashScreenState extends State<SplashScreen>
                         ),
                         const SizedBox(height: 14),
                         Text(
-                          'عرسك من أول ريال إلى آخر قسط',
+                          'عرسك من أول ريال إلى آخر دفعة',
                           textAlign: TextAlign.center,
                           style: JourneyType.of(
                             JourneyType.bodyLarge,

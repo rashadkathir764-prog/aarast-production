@@ -24,6 +24,7 @@ Future<List<_Saved>> _pump(
   WidgetTester tester, {
   DateTime? day,
   VoidCallback? onChangeDate,
+  bool repickStoredDay = false,
   VoidCallback? onArchive,
 }) async {
   tester.view.devicePixelRatio = 1;
@@ -49,6 +50,7 @@ Future<List<_Saved>> _pump(
               return true;
             },
             onChangeDate: onChangeDate,
+            repickStoredDay: repickStoredDay,
             onArchive: onArchive,
           ),
         ),
@@ -126,5 +128,38 @@ void main() {
     await tester.tap(find.byKey(const ValueKey('plan-details-day')));
     await tester.pumpAndSettle();
     expect(find.byType(DatePickerDialog), findsOneWidget);
+  });
+
+  testWidgets('a phone plan picks its set day again and saves it', (
+    tester,
+  ) async {
+    final saved = await _pump(
+      tester,
+      day: DateTime(2027, 1, 21),
+      repickStoredDay: true,
+    );
+
+    await tester.tap(find.byKey(const ValueKey('plan-details-day')));
+    await tester.pumpAndSettle();
+    expect(find.byType(DatePickerDialog), findsOneWidget);
+    await tester.tap(find.text('28'));
+    await tester.tap(find.text('OK'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('الخميس 28 يناير 2027'), findsOneWidget);
+    await tester.tap(find.text('حفظ'));
+    await tester.pumpAndSettle();
+    expect(saved.single.firstDay, DateTime(2027, 1, 28));
+  });
+
+  testWidgets('a set day without g03 or a phone plan only reads', (
+    tester,
+  ) async {
+    await _pump(tester, day: DateTime(2027, 1, 21));
+
+    await tester.tap(find.byKey(const ValueKey('plan-details-day')));
+    await tester.pumpAndSettle();
+    expect(find.byType(DatePickerDialog), findsNothing);
+    expect(find.text('غيّر الموعد'), findsNothing);
   });
 }

@@ -33,7 +33,8 @@ final _band = QuoteRequest(
     id: 'service-band',
     providerId: 'provider-band',
     title: 'الزفة',
-    category: ProviderCategory(id: 'cat-band', nameAr: 'الفنان والفرقة'),    isActive: true,
+    category: ProviderCategory(id: 'cat-band', nameAr: 'الفنان والفرقة'),
+    isActive: true,
   ),
   offers: const [
     QuoteOffer(
@@ -56,6 +57,7 @@ final _band = QuoteRequest(
 Future<List<String>> _pump(
   WidgetTester tester, {
   FinanceProvider? finance,
+  _Marketplace? marketplace,
 }) async {
   tester.view.devicePixelRatio = 1;
   tester.view.physicalSize = const Size(400, 860);
@@ -82,7 +84,7 @@ Future<List<String>> _pump(
     MultiProvider(
       providers: [
         ChangeNotifierProvider<ProviderMarketplaceProvider>.value(
-          value: _Marketplace([_band]),
+          value: marketplace ?? _Marketplace([_band]),
         ),
         if (finance != null)
           ChangeNotifierProvider<FinanceProvider>.value(value: finance),
@@ -109,6 +111,13 @@ void main() {
     expect(await ledger.unseen('plan-1', ['old', 'new']), isEmpty);
     // Another plan starts its own record.
     expect(await ledger.unseen('plan-2', ['other']), isEmpty);
+  });
+
+  // R9: a notification can open it before the providers tab read the plan.
+  testWidgets('opened first, it reads its own booking', (tester) async {
+    await _pump(tester, marketplace: _Marketplace(const [], toLoad: [_band]));
+
+    expect(find.text('ليلتك محجوزة\nعند فرقة الأفراح'), findsOneWidget);
   });
 
   testWidgets('says who booked the night and what it costs', (tester) async {
@@ -145,13 +154,25 @@ void main() {
 }
 
 class _Marketplace extends ProviderMarketplaceProvider {
-  _Marketplace(this._quotes)
-    : super(MarketplaceApi(ApiClient(tokenProvider: () async => null)));
+  _Marketplace(
+    List<QuoteRequest> quotes, {
+    List<QuoteRequest> toLoad = const [],
+  }) : _quotes = List.of(quotes),
+       _toLoad = toLoad,
+       super(MarketplaceApi(ApiClient(tokenProvider: () async => null)));
 
   final List<QuoteRequest> _quotes;
+  final List<QuoteRequest> _toLoad;
 
   @override
   List<QuoteRequest> get quoteRequests => _quotes;
+
+  @override
+  Future<void> loadScopedQuoteRequests() async {
+    if (!includesAccountData) return;
+    _quotes.addAll(_toLoad);
+    notifyListeners();
+  }
 }
 
 class _Finance extends FinanceApi {

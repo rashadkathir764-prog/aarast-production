@@ -57,9 +57,7 @@ class _FavoriteProvidersScreenState extends State<FavoriteProvidersScreen> {
   Widget build(BuildContext context) {
     final marketplace = context.watch<ProviderMarketplaceProvider>();
     final ids = _ids(marketplace);
-    final providers = [
-      for (final id in ids) ?marketplace.providerDetails(id),
-    ];
+    final providers = [for (final id in ids) ?marketplace.providerDetails(id)];
     final loading = ids.any(marketplace.isProviderQuoteContextLoading);
     final failed = ids.any(
       (id) =>
@@ -178,10 +176,7 @@ class _CompareColumn extends StatelessWidget {
             semanticLabel: provider.businessName,
             child: Text(
               provider.businessName,
-              style: JourneyType.of(
-                JourneyType.body,
-                weight: JourneyType.bold,
-              ),
+              style: JourneyType.of(JourneyType.body, weight: JourneyType.bold),
             ),
           ),
           const SizedBox(height: 8),

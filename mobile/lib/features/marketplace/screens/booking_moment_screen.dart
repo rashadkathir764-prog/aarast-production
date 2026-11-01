@@ -30,18 +30,32 @@ class BookingMomentScreen extends StatefulWidget {
 }
 
 class _BookingMomentScreenState extends State<BookingMomentScreen> {
+  bool _loading = true;
+
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted) return;
-      final finance = context.read<FinanceProvider?>();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _load());
+  }
+
+  /// A notification can open this first, so it reads the plan itself; the
+  /// route's gate has checked this account.
+  Future<void> _load() async {
+    if (!mounted) return;
+    final finance = context.read<FinanceProvider?>();
+    final marketplace = context.read<ProviderMarketplaceProvider>();
+    marketplace.configureAccountScope(
+      includeAccountData: true,
+      weddingPlanId: widget.weddingPlanId,
+    );
+    await Future.wait([
+      marketplace.loadScopedQuoteRequests(),
       if (finance != null &&
           finance.loadedPlanId != widget.weddingPlanId &&
-          !finance.isLoading) {
-        finance.loadMoney(widget.weddingPlanId);
-      }
-    });
+          !finance.isLoading)
+        finance.loadMoney(widget.weddingPlanId),
+    ]);
+    if (mounted) setState(() => _loading = false);
   }
 
   @override
@@ -53,6 +67,14 @@ class _BookingMomentScreenState extends State<BookingMomentScreen> {
         .firstOrNull;
     final booking = quote?.booking;
     if (quote == null || booking == null) {
+      if (_loading) {
+        return _framed(
+          const JourneyListState(
+            phase: JourneyListPhase.loading,
+            section: JourneySection.providers,
+          ),
+        );
+      }
       return _framed(
         JourneyMoment(
           color: context.accent.primary,

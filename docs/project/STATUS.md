@@ -32,8 +32,6 @@
 
 | الرمز | العطل | الموضع |
 |---|---|---|
-| R9 | تحميل وخطأ ناقصان في `provider_services_screen.dart` و`booking_moment_screen.dart` | الشاشات نفسها |
-| R12 | زر «اختر هذا» يبقى على العرض الثاني بعد اختيار عرض | `provider_requests_screen.dart` |
 
 ### الدرجة الثالثة
 

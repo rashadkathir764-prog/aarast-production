@@ -74,7 +74,18 @@ class ProviderServicesScreen extends StatelessWidget {
               action: 'أضف خدمة',
               onAction: () => context.push(AppRouter.providerServiceNew),
             ),
-            if (services.isEmpty)
+            if (services.isEmpty && dashboard.isLoading)
+              const JourneyListState(
+                phase: JourneyListPhase.loading,
+                section: JourneySection.providers,
+              )
+            else if (services.isEmpty && dashboard.errorMessage != null)
+              JourneyListState(
+                phase: JourneyListPhase.error,
+                section: JourneySection.providers,
+                onRetry: dashboard.loadDashboard,
+              )
+            else if (services.isEmpty)
               const _Empty(
                 key: Key('provider-services-empty'),
                 text: 'ما عندك خدمة لسا. ملفك ما يظهر في الدليل قبل أول خدمة.',

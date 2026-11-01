@@ -241,19 +241,21 @@ class _ProviderRequestsScreenState extends State<ProviderRequestsScreen> {
                     _OffersRow(
                       offers: offers,
                       busy: marketplace.isSubmitting,
-                      onChoose: _choose,
+                      onChoose: accepted.isEmpty ? _choose : null,
                       onDecline: _decline,
                       onChat: _openChat,
                     ),
-                    const SizedBox(height: 12),
-                    JourneyNote(
-                      key: const ValueKey('requests-choose-note'),
-                      text: context.say(
-                        'لما تختار، يصير بند في المال، ونطلب منهم حجز يوم عرسك.',
-                        'لما تختارين، يصير بند في المال، ونطلب منهم حجز يوم عرسك.',
+                    if (accepted.isEmpty) ...[
+                      const SizedBox(height: 12),
+                      JourneyNote(
+                        key: const ValueKey('requests-choose-note'),
+                        text: context.say(
+                          'لما تختار، يصير بند في المال، ونطلب منهم حجز يوم عرسك.',
+                          'لما تختارين، يصير بند في المال، ونطلب منهم حجز يوم عرسك.',
+                        ),
+                        icon: LucideIcons.wallet,
                       ),
-                      icon: LucideIcons.wallet,
-                    ),
+                    ],
                   ],
                   for (final quote in accepted) ...[
                     const SizedBox(height: 12),

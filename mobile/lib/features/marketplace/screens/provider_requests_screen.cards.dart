@@ -12,17 +12,21 @@ class _OffersRow extends StatelessWidget {
 
   final List<QuoteRequest> offers;
   final bool busy;
-  final ValueChanged<QuoteRequest> onChoose;
+
+  /// Null once one of the service's offers was chosen: a second choice would
+  /// put a second agreement on the same item.
+  final ValueChanged<QuoteRequest>? onChoose;
   final ValueChanged<QuoteRequest> onDecline;
   final ValueChanged<QuoteRequest> onChat;
 
   @override
   Widget build(BuildContext context) {
+    final choose = onChoose;
     Widget card(QuoteRequest quote) => _OfferCard(
       key: ValueKey('requests-offer-${quote.id}'),
       quote: quote,
       busy: busy,
-      onChoose: () => onChoose(quote),
+      onChoose: choose == null ? null : () => choose(quote),
       onDecline: () => onDecline(quote),
       onChat: () => onChat(quote),
     );
@@ -71,7 +75,7 @@ class _OfferCard extends StatelessWidget {
 
   final QuoteRequest quote;
   final bool busy;
-  final VoidCallback onChoose;
+  final VoidCallback? onChoose;
   final VoidCallback onDecline;
   final VoidCallback onChat;
 
@@ -224,14 +228,15 @@ class _OfferCard extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 12),
-          JourneyButton(
-            key: ValueKey('requests-choose-${quote.id}'),
-            label: context.say('اختر هذا', 'اختاري هذا'),
-            background: context.accent.primary,
-            expand: true,
-            loading: busy,
-            onPressed: busy ? null : onChoose,
-          ),
+          if (onChoose != null)
+            JourneyButton(
+              key: ValueKey('requests-choose-${quote.id}'),
+              label: context.say('اختر هذا', 'اختاري هذا'),
+              background: context.accent.primary,
+              expand: true,
+              loading: busy,
+              onPressed: busy ? null : onChoose,
+            ),
           const SizedBox(height: 4),
           Wrap(
             spacing: 4,

@@ -26,7 +26,10 @@ class _MarketplaceSearch extends StatelessWidget {
           focusNode: focusNode,
           textInputAction: TextInputAction.search,
           onSubmitted: provider.setSearch,
-          style: JourneyType.of(JourneyType.bodyLarge, weight: JourneyType.bold),
+          style: JourneyType.of(
+            JourneyType.bodyLarge,
+            weight: JourneyType.bold,
+          ),
           cursorColor: context.accent.primary,
           decoration: InputDecoration(
             hintText: context.say(
@@ -176,7 +179,9 @@ class _DirectoryFilterSheet extends StatelessWidget {
                   label: 'الكل',
                   selected:
                       provider.categoryId == null &&
-                      (provider.budgetMatchIntent?.providerCategoryIds
+                      (provider
+                              .budgetMatchIntent
+                              ?.providerCategoryIds
                               .isEmpty ??
                           true),
                   selectedColor: context.accent.primary,
@@ -256,11 +261,7 @@ class _BudgetMatchContextCard extends StatelessWidget {
       padding: const EdgeInsetsDirectional.fromSTEB(14, 6, 4, 6),
       child: Row(
         children: [
-          Icon(
-            LucideIcons.sparkles,
-            size: 18,
-            color: context.accent.primary,
-          ),
+          Icon(LucideIcons.sparkles, size: 18, color: context.accent.primary),
           const SizedBox(width: 8),
           Expanded(
             child: Text(

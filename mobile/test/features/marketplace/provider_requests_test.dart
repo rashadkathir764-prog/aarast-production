@@ -440,6 +440,20 @@ void main() {
     expect(find.byKey(const ValueKey('requests-offer-q1')), findsOneWidget);
   });
 
+  // R12: a second «اختر هذا» would put a second agreement on the same item.
+  testWidgets('a service already chosen offers no second choice', (
+    tester,
+  ) async {
+    await _pump(tester, [
+      _offer('q1', 'ضوء صنعاء', '550000', lifecycle: 'ACCEPTED'),
+      _offer('q2', 'عدسة سبأ', '480000'),
+    ]);
+
+    expect(find.byKey(const ValueKey('requests-offer-q2')), findsOneWidget);
+    expect(find.byKey(const ValueKey('requests-choose-q2')), findsNothing);
+    expect(find.byKey(const ValueKey('requests-decline-q2')), findsOneWidget);
+  });
+
   // R15: the notification can be the first thing opened, before the
   // providers tab ever read the plan's requests.
   testWidgets('a notification opened first loads its offer', (tester) async {

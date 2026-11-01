@@ -81,6 +81,7 @@ class ProfileApi extends RequestsApi {
   });
 
   final List<String> socialNetworks;
+  bool failsServices = false;
 
   final DateTime? featuredStartsAt;
   final DateTime? featuredEndsAt;
@@ -136,7 +137,10 @@ class ProfileApi extends RequestsApi {
       });
 
   @override
-  Future<List<MarketplaceService>> getServices() async => services;
+  Future<List<MarketplaceService>> getServices() async {
+    if (failsServices) throw const ApiException('تعذر التحميل');
+    return services;
+  }
 
   @override
   Future<List<ProviderPackage>> getPackages() async => packageList;
@@ -572,6 +576,17 @@ void main() {
       expect(find.text('الأسعار بريال يمني'), findsOneWidget);
       expect(find.textContaining('الموسم'), findsNothing);
       expect(find.text('الفرق'), findsNothing);
+    });
+
+    // R9: a failed read must not read as «ما عندك خدمة».
+    testWidgets('a failed load offers a retry, not an empty list', (
+      tester,
+    ) async {
+      final api = ProfileApi(services: const [])..failsServices = true;
+      await _pump(tester, api, () => ProviderServicesScreen(now: _now));
+
+      expect(find.byKey(const Key('provider-services-empty')), findsNothing);
+      expect(find.text('حاول مرة ثانية'), findsOneWidget);
     });
 
     testWidgets('a package opens its edit; showing it applies at once and '

@@ -1725,7 +1725,9 @@ const r19ProviderPortalApi = Object.freeze({
 // participant's day (q18) and the wedding moments (y06, y07) read the plan's
 // events through the wedding day owner API, and the moments the account name
 // through the auth owner API.
-const r19LegalRecordCount = 252;
+// +1 (R16): the money items read how far their service got from the
+// marketplace owner API.
+const r19LegalRecordCount = 253;
 const trackedOwnerApiContracts = [
   {
     area: 'features/account_contexts',
@@ -1981,6 +1983,11 @@ const trackedOwnerApiContracts = [
           'portfolioSocialLabel',
           'portfolioSocialNetworks',
         ],
+      },
+      // R16: «البنود» reads a service's progress as the providers tab does.
+      {
+        uri: 'models/provider_board.dart',
+        show: ['ProviderBoardRow', 'buildProviderBoard'],
       },
       {
         uri: 'models/provider_budget_match_intent.dart',
@@ -2748,6 +2755,15 @@ const trackedPlanningBatchContracts = [
     source: 'mobile/lib/features/finance/screens/money_overview_screen.dart',
     target: 'mobile/lib/features/account_contexts/account_contexts_api.dart',
     show: ['AccountContextController'],
+  },
+  {
+    source: 'mobile/lib/features/finance/screens/money_overview_screen.dart',
+    target: 'mobile/lib/features/marketplace/marketplace_api.dart',
+    show: [
+      'ProviderBoardRow',
+      'ProviderMarketplaceProvider',
+      'buildProviderBoard',
+    ],
   },
   {
     source: 'mobile/lib/features/finance/screens/money_overview_screen.dart',

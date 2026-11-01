@@ -66,7 +66,7 @@ class _CostPaymentDetailsScreenState extends State<CostPaymentDetailsScreen> {
         phase: JourneyListPhase.loading,
         section: JourneySection.money,
       );
-    } else if (provider.errorMessage != null && payment == null) {
+    } else if (provider.loadErrorMessage != null && payment == null) {
       body = JourneyListState(
         phase: JourneyListPhase.error,
         section: JourneySection.money,
@@ -157,7 +157,7 @@ class _CostPaymentDetailsScreenState extends State<CostPaymentDetailsScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        if (provider.errorMessage != null) ...[
+        if (provider.loadErrorMessage != null) ...[
           JourneyListNotice(
             offline: false,
             onRetry: () => _load(refreshMoney: true),
@@ -282,17 +282,23 @@ class _CostPaymentDetailsScreenState extends State<CostPaymentDetailsScreen> {
   }
 
   Future<void> _reverse(CostPayment payment, WeddingCost cost) async {
-    final reason = await showJourneySheet<String>(
+    final provider = context.read<FinanceProvider>();
+    // The sheet saves and closes only once it is saved; a failure keeps it
+    // open with the reason typed and says why.
+    final reversed = await showJourneySheet<bool>(
       context: context,
-      builder: (_) => const _ReverseSheet(),
+      builder: (_) => _ReverseSheet(
+        onReverse: (reason) async {
+          final ok = await provider.reversePayment(
+            payment: payment,
+            cost: cost,
+            reason: reason,
+          );
+          return ok ? null : (provider.errorMessage ?? 'ما انعكست الدفعة');
+        },
+      ),
     );
-    if (reason == null || !mounted) return;
-    final ok = await context.read<FinanceProvider>().reversePayment(
-      payment: payment,
-      cost: cost,
-      reason: reason,
-    );
-    if (!mounted || !ok) return;
+    if (reversed != true || !mounted) return;
     AarastToast.showSuccess(
       context,
       context.read<FinanceProvider>().savedMessage('انعكست الدفعة'),
@@ -469,7 +475,10 @@ class _PaymentFact extends StatelessWidget {
 
 /// x14: asks why before reversing; the reason is kept on the record.
 class _ReverseSheet extends StatefulWidget {
-  const _ReverseSheet();
+  const _ReverseSheet({required this.onReverse});
+
+  /// Reverses with the reason: null once saved, or why it was not.
+  final Future<String?> Function(String reason) onReverse;
 
   @override
   State<_ReverseSheet> createState() => _ReverseSheetState();
@@ -478,6 +487,8 @@ class _ReverseSheet extends StatefulWidget {
 class _ReverseSheetState extends State<_ReverseSheet> {
   final _controller = TextEditingController();
   String? _error;
+  String? _failure;
+  bool _saving = false;
 
   @override
   void dispose() {
@@ -485,7 +496,8 @@ class _ReverseSheetState extends State<_ReverseSheet> {
     super.dispose();
   }
 
-  void _confirm() {
+  Future<void> _confirm() async {
+    if (_saving) return;
     final reason = _controller.text.trim();
     if (reason.isEmpty) {
       setState(
@@ -493,7 +505,20 @@ class _ReverseSheetState extends State<_ReverseSheet> {
       );
       return;
     }
-    Navigator.pop(context, reason);
+    setState(() {
+      _saving = true;
+      _failure = null;
+    });
+    final failure = await widget.onReverse(reason);
+    if (!mounted) return;
+    if (failure == null) {
+      Navigator.pop(context, true);
+      return;
+    }
+    setState(() {
+      _saving = false;
+      _failure = failure;
+    });
   }
 
   @override
@@ -516,6 +541,16 @@ class _ReverseSheetState extends State<_ReverseSheet> {
           textInputAction: TextInputAction.done,
           onSubmitted: (_) => _confirm(),
         ),
+        if (_failure != null) ...[
+          const SizedBox(height: AarastV3Space.x3),
+          JourneyNote(
+            key: const ValueKey('payment-reverse-failure'),
+            text: _failure!,
+            icon: LucideIcons.alertCircle,
+            color: AarastV3Color.danger,
+            soft: AarastV3Color.dangerSoft,
+          ),
+        ],
         const SizedBox(height: 16),
         JourneyButton(
           key: const ValueKey('payment-reverse-confirm'),
@@ -523,7 +558,8 @@ class _ReverseSheetState extends State<_ReverseSheet> {
           background: AarastV3Color.danger,
           expand: true,
           large: true,
-          onPressed: _confirm,
+          loading: _saving,
+          onPressed: _saving ? null : _confirm,
         ),
       ],
     );

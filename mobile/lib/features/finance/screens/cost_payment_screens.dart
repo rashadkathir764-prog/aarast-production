@@ -74,7 +74,7 @@ class _RecordCostPaymentScreenState extends State<RecordCostPaymentScreen> {
         phase: JourneyListPhase.loading,
         section: JourneySection.money,
       );
-    } else if (provider.errorMessage != null && cost == null) {
+    } else if (provider.loadErrorMessage != null && cost == null) {
       body = JourneyListState(
         phase: JourneyListPhase.error,
         section: JourneySection.money,
@@ -188,7 +188,7 @@ class _PayPaymentScheduleScreenState extends State<PayPaymentScheduleScreen> {
         phase: JourneyListPhase.loading,
         section: JourneySection.money,
       );
-    } else if (provider.errorMessage != null && schedule == null) {
+    } else if (provider.loadErrorMessage != null && schedule == null) {
       body = JourneyListState(
         phase: JourneyListPhase.error,
         section: JourneySection.money,

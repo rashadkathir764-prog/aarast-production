@@ -18,7 +18,7 @@ Widget? financeWriteAccessBlock({
     );
   }
   if (!provider.hasLoadedMoney) {
-    final error = provider.errorMessage;
+    final error = provider.loadErrorMessage;
     if (error == null) {
       return const AarastScreenLoading(
         label: 'جاري التحقق من صلاحية تعديل المال',

@@ -102,10 +102,20 @@ Widget fundingStateTag(FundingSource source) {
 /// and, for a new loan, how it will be paid back. Tracking only: nothing is
 /// moved.
 class FundingSourceFormSheet extends StatefulWidget {
-  const FundingSourceFormSheet({this.source, this.currency = 'YER', super.key});
+  const FundingSourceFormSheet({
+    this.source,
+    this.currency = 'YER',
+    this.onSave,
+    super.key,
+  });
 
   final FundingSource? source;
   final String currency;
+
+  /// Saves what was typed: null once saved, or why not. The sheet closes
+  /// only once it is saved, so a failure keeps everything typed. Without
+  /// it the sheet only returns what was typed.
+  final Future<String?> Function(FundingFormResult result)? onSave;
 
   @override
   State<FundingSourceFormSheet> createState() => _FundingSourceFormSheetState();
@@ -199,7 +209,11 @@ class _FundingSourceFormSheetState extends State<FundingSourceFormSheet> {
     if (picked != null && mounted) setState(() => _expectedAt = picked);
   }
 
-  void _submit() {
+  bool _saving = false;
+  String? _failure;
+
+  Future<void> _submit() async {
+    if (_saving) return;
     setState(() {
       _nameError = _name.text.trim().isEmpty
           ? context.say('اكتب من مين', 'اكتبي من مين')
@@ -209,21 +223,39 @@ class _FundingSourceFormSheetState extends State<FundingSourceFormSheet> {
           : null;
     });
     if (_nameError != null || _amountError != null) return;
-    Navigator.pop(
-      context,
-      FundingFormResult(
-        kind: _kind,
-        sourceName: _name.text.trim(),
-        amount: '$_typedAmount',
-        status: _pledged && !_isLoan
-            ? FundingStatus.pledged
-            : FundingStatus.received,
-        sourcePhone: _phone.text,
-        note: _note.text,
-        expectedAt: _pledged && !_isLoan ? _expectedAt : widget.source?.expectedAt,
-        repayments: _repayments,
-      ),
+    final result = FundingFormResult(
+      kind: _kind,
+      sourceName: _name.text.trim(),
+      amount: '$_typedAmount',
+      status: _pledged && !_isLoan
+          ? FundingStatus.pledged
+          : FundingStatus.received,
+      sourcePhone: _phone.text,
+      note: _note.text,
+      expectedAt: _pledged && !_isLoan
+          ? _expectedAt
+          : widget.source?.expectedAt,
+      repayments: _repayments,
     );
+    final save = widget.onSave;
+    if (save == null) {
+      Navigator.pop(context, result);
+      return;
+    }
+    setState(() {
+      _saving = true;
+      _failure = null;
+    });
+    final failure = await save(result);
+    if (!mounted) return;
+    if (failure == null) {
+      Navigator.pop(context, result);
+      return;
+    }
+    setState(() {
+      _saving = false;
+      _failure = failure;
+    });
   }
 
   @override
@@ -244,9 +276,10 @@ class _FundingSourceFormSheetState extends State<FundingSourceFormSheet> {
           children: [
             // The mahr is recorded by a06 and a mahr source keeps its kind
             // (D59, as the server rules): editing one shows only its kind.
-            for (final kind in widget.source?.isMahr == true
-                ? const [FundingKind.mahr]
-                : FundingKind.all)
+            for (final kind
+                in widget.source?.isMahr == true
+                    ? const [FundingKind.mahr]
+                    : FundingKind.all)
               JourneyChip(
                 key: ValueKey('funding-kind-$kind'),
                 label: fundingKindChoice(kind, context.journeyProfile),
@@ -398,13 +431,24 @@ class _FundingSourceFormSheetState extends State<FundingSourceFormSheet> {
           const SizedBox(height: 10),
           JourneyTextField(label: 'ملاحظة', controller: _note),
         ],
+        if (_failure != null) ...[
+          const SizedBox(height: AarastV3Space.x3),
+          JourneyNote(
+            key: const ValueKey('funding-save-failure'),
+            text: _failure!,
+            icon: LucideIcons.alertCircle,
+            color: AarastV3Color.danger,
+            soft: AarastV3Color.dangerSoft,
+          ),
+        ],
         const SizedBox(height: 16),
         JourneyButton(
           key: const ValueKey('funding-save'),
           label: 'حفظ',
           expand: true,
           large: true,
-          onPressed: _submit,
+          loading: _saving,
+          onPressed: _saving ? null : _submit,
         ),
         if (_editing) ...[
           const SizedBox(height: 4),

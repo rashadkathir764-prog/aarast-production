@@ -93,7 +93,7 @@ class _MoneyOverviewScreenState extends State<MoneyOverviewScreen> {
           section: JourneySection.money,
         ),
       );
-    } else if (provider.errorMessage != null && !provider.hasLoadedMoney) {
+    } else if (provider.loadErrorMessage != null && !provider.hasLoadedMoney) {
       content = _MoneyRootStateList(
         child: JourneyListState(
           phase: JourneyListPhase.error,
@@ -167,7 +167,7 @@ class _MoneyOverviewScreenState extends State<MoneyOverviewScreen> {
               onSelected: (index) => setState(() => _tab = index),
             ),
             const SizedBox(height: 14),
-            if (provider.errorMessage != null) ...[
+            if (provider.loadErrorMessage != null) ...[
               JourneyListNotice(offline: false, onRetry: _load),
               const SizedBox(height: 12),
             ],

@@ -278,7 +278,7 @@ class _CostFormScreenState extends State<CostFormScreen> {
         provider.loadedPlanId == widget.weddingPlanId &&
         !provider.isLoading &&
         provider.hasLoadedMoney &&
-        provider.errorMessage == null) {
+        provider.loadErrorMessage == null) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted) _resolveQuoteCurrency(provider.summary.currency);
       });
@@ -350,7 +350,7 @@ class _CostFormScreenState extends State<CostFormScreen> {
                   ),
                   const SizedBox(height: 12),
                 ],
-                if (provider.errorMessage != null) ...[
+                if (provider.loadErrorMessage != null) ...[
                   JourneyListNotice(
                     offline: false,
                     onRetry: () => provider.loadMoney(widget.weddingPlanId),

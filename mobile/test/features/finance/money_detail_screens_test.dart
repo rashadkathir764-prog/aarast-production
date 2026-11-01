@@ -2,7 +2,6 @@ import 'package:aarast_mobile/core/network/api_client.dart';
 import 'package:aarast_mobile/core/routing/app_router.dart';
 import 'package:aarast_mobile/features/finance/data/cost_receipts_api.dart';
 import 'package:aarast_mobile/features/finance/data/finance_api.dart';
-import 'package:aarast_mobile/features/finance/models/budget_category.dart';
 import 'package:aarast_mobile/features/finance/models/cost_receipt.dart';
 import 'package:aarast_mobile/features/finance/models/funding_source.dart';
 import 'package:aarast_mobile/features/finance/models/money_summary.dart';
@@ -13,6 +12,8 @@ import 'package:aarast_mobile/features/finance/screens/cost_payment_screens.dart
 import 'package:aarast_mobile/features/finance/screens/money_budget_screen.dart';
 import 'package:aarast_mobile/features/finance/screens/money_receipts_screen.dart';
 import 'package:aarast_mobile/features/finance/widgets/funding_sheets.dart';
+import 'package:aarast_mobile/features/finance/models/budget_category.dart';
+import 'package:aarast_mobile/features/finance/screens/budget_category_form_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
@@ -623,6 +624,76 @@ void main() {
       },
     );
 
+    testWidgets('a reversal that fails keeps the sheet and the reason', (
+      tester,
+    ) async {
+      await _pumpMoneyScreen(
+        tester,
+        const CostPaymentDetailsScreen(
+          weddingPlanId: 'plan-1',
+          paymentId: 'payment-1',
+          costId: 'cost-1',
+        ),
+        api: _RefusedReversalApi(),
+      );
+      final reverse = find.byKey(const ValueKey('payment-reverse'));
+      await tester.ensureVisible(reverse);
+      await tester.pumpAndSettle();
+      await tester.tap(reverse);
+      await tester.pumpAndSettle();
+      await tester.enterText(
+        find.descendant(
+          of: find.byKey(const ValueKey('payment-reverse-reason')),
+          matching: find.byType(EditableText),
+        ),
+        'على الاتفاق الغلط',
+      );
+      await tester.tap(find.byKey(const ValueKey('payment-reverse-confirm')));
+      await tester.pumpAndSettle();
+
+      expect(find.text(_RefusedReversalApi.refusal), findsOneWidget);
+      expect(find.text('تعكس الدفعة؟'), findsOneWidget);
+      expect(find.text('على الاتفاق الغلط'), findsOneWidget);
+    });
+
+    testWidgets('receipts that could not read money are not «no payments»', (
+      tester,
+    ) async {
+      await _pumpMoneyScreen(
+        tester,
+        MoneyReceiptsScreen(weddingPlanId: 'plan-1', api: _ReceiptsFake([])),
+        api: _FailingMoneyDetailsApi(),
+      );
+
+      expect(find.text('ما سجلت دفعات بعد'), findsNothing);
+      expect(find.textContaining('مرة ثانية'), findsWidgets);
+    });
+
+    testWidgets('an item that fails to save says why and keeps the form', (
+      tester,
+    ) async {
+      await _pumpMoneyScreen(
+        tester,
+        const BudgetCategoryFormScreen(weddingPlanId: 'plan-1'),
+        api: _RefusedCategoryApi(),
+      );
+      await tester.enterText(
+        find.descendant(
+          of: find.byKey(const ValueKey('money-category-form-name')),
+          matching: find.byType(EditableText),
+        ),
+        'الذهب',
+      );
+      await tester.tap(find.byKey(const ValueKey('category-save')));
+      await tester.pumpAndSettle();
+
+      expect(find.text(_RefusedCategoryApi.refusal), findsOneWidget);
+      expect(find.text('الذهب'), findsOneWidget);
+      // A refused save is not a page that failed to refresh.
+      expect(find.text('ما قدرنا نحدّثها، وهذي آخر نسخة'), findsNothing);
+      await tester.pump(const Duration(seconds: 5));
+    });
+
     // R18: a failed save left the form silent, as if nothing had happened.
     testWidgets('a payment that fails to save says so and keeps the amount', (
       tester,
@@ -699,6 +770,35 @@ class _RefusedPaymentApi extends _MoneyDetailsApi {
     DateTime? paidAt,
     String? method,
     String? note,
+  }) async {
+    throw const ApiException(refusal);
+  }
+}
+
+class _RefusedCategoryApi extends _MoneyDetailsApi {
+  static const refusal = 'فيه بند بنفس الاسم.';
+
+  // A new item is saved by replacing the whole budget with it added.
+  @override
+  Future<MoneyBudgetReplaceResult> replaceMoneyBudget({
+    required String planId,
+    required String? totalBudget,
+    required String currency,
+    required List<({String? id, String name, String? allocatedAmount})>
+    categories,
+  }) async {
+    throw const ApiException(refusal);
+  }
+}
+
+class _RefusedReversalApi extends _MoneyDetailsApi {
+  static const refusal = 'ما انعكست الدفعة عند الخادم.';
+
+  @override
+  Future<CostPayment> reversePayment({
+    required CostPayment payment,
+    required WeddingCost cost,
+    required String reason,
   }) async {
     throw const ApiException(refusal);
   }

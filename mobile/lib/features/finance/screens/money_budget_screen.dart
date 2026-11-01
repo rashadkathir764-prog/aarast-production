@@ -14,6 +14,7 @@ import '../../../core/routing/pop_or_go.dart';
 import '../../../core/utils/amount_words.dart';
 import '../../../core/utils/currency_label.dart';
 import '../../../core/utils/money_formatters.dart';
+import '../../../core/widgets/aarast_toast.dart';
 import '../../../core/widgets/aarast_ui.dart';
 import '../models/wedding_cost.dart';
 import '../providers/finance_provider.dart';
@@ -81,7 +82,7 @@ class _MoneyBudgetScreenState extends State<MoneyBudgetScreen> {
         !provider.isLoading &&
         provider.loadedPlanId == widget.weddingPlanId &&
         provider.hasLoadedMoney &&
-        provider.errorMessage == null) {
+        provider.loadErrorMessage == null) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted) _hydrate(provider);
       });
@@ -121,7 +122,7 @@ class _MoneyBudgetScreenState extends State<MoneyBudgetScreen> {
             child: ListView(
               padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
               children: [
-                if (provider.errorMessage != null) ...[
+                if (provider.loadErrorMessage != null) ...[
                   JourneyListNotice(
                     offline: false,
                     onRetry: () => provider.loadMoney(widget.weddingPlanId),
@@ -365,7 +366,7 @@ class _MoneyBudgetScreenState extends State<MoneyBudgetScreen> {
     if (_hydrated ||
         provider.loadedPlanId != widget.weddingPlanId ||
         !provider.hasLoadedMoney ||
-        provider.errorMessage != null) {
+        provider.loadErrorMessage != null) {
       return;
     }
     _hydrated = true;
@@ -415,7 +416,7 @@ class _MoneyBudgetScreenState extends State<MoneyBudgetScreen> {
   Future<void> _refreshCategories() async {
     final provider = context.read<FinanceProvider>();
     await provider.loadMoney(widget.weddingPlanId);
-    if (!mounted || provider.errorMessage != null) return;
+    if (!mounted || provider.loadErrorMessage != null) return;
     _replaceRows(provider);
   }
 
@@ -460,7 +461,8 @@ class _MoneyBudgetScreenState extends State<MoneyBudgetScreen> {
     );
     setState(() => _formError = _problem(totalText, total, allocated));
     if (_formError != null) return;
-    final ok = await context.read<FinanceProvider>().saveBudget(
+    final provider = context.read<FinanceProvider>();
+    final ok = await provider.saveBudget(
       planId: widget.weddingPlanId,
       totalBudget: totalText.isEmpty ? null : totalText,
       currency: _currency,
@@ -475,12 +477,18 @@ class _MoneyBudgetScreenState extends State<MoneyBudgetScreen> {
           ),
       ],
     );
-    if (ok && mounted) {
-      await _draft?.clear();
-      if (!mounted) return;
-      AarastFormSuccess.show(context, message: 'انحفظ التوزيع');
-      _close(true);
+    if (!mounted) return;
+    if (!ok) {
+      AarastToast.showError(
+        context,
+        provider.errorMessage ?? 'ما انحفظ التوزيع',
+      );
+      return;
     }
+    await _draft?.clear();
+    if (!mounted) return;
+    AarastFormSuccess.show(context, message: 'انحفظ التوزيع');
+    _close(true);
   }
 
   /// The total, the currency and every share are kept while unsaved.

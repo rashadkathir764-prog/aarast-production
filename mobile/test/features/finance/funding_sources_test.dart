@@ -230,8 +230,8 @@ void main() {
             textDirection: TextDirection.rtl,
             child: Builder(
               builder: (context) => TextButton(
-                onPressed: () async => result =
-                    await showJourneySheet<FundingFormResult>(
+                onPressed: () async =>
+                    result = await showJourneySheet<FundingFormResult>(
                       context: context,
                       builder: (_) => FundingSourceFormSheet(source: source),
                     ),
@@ -291,44 +291,45 @@ void main() {
     expect(api.sentExpectedAt, [day, null]);
   });
 
-  testWidgets('D59: a promise past its day reads «متأخر»; the mahr keeps its kind', (
-    tester,
-  ) async {
-    final api = _FakeFundingApi()
-      ..seed(
-        FundingSource.fromJson({
-          'id': 'late',
-          'weddingPlanId': 'plan-1',
-          'kind': 'GIFT',
-          'sourceName': 'صاحبتي عبلة',
-          'amount': '1200000',
-          'status': 'PLEDGED',
-          'expectedAt': '2026-10-01T00:00:00.000Z',
-          'isOverdue': true,
-        }),
-      )
-      ..seed(
-        FundingSource.fromJson({
-          'id': 'mahr-rest',
-          'weddingPlanId': 'plan-1',
-          'kind': 'MAHR',
-          'sourceName': 'باقي المهر',
-          'amount': '1000000',
-          'status': 'RECEIVED',
-        }),
-      );
-    await _pumpFunding(tester, api);
+  testWidgets(
+    'D59: a promise past its day reads «متأخر»; the mahr keeps its kind',
+    (tester) async {
+      final api = _FakeFundingApi()
+        ..seed(
+          FundingSource.fromJson({
+            'id': 'late',
+            'weddingPlanId': 'plan-1',
+            'kind': 'GIFT',
+            'sourceName': 'صاحبتي عبلة',
+            'amount': '1200000',
+            'status': 'PLEDGED',
+            'expectedAt': '2026-10-01T00:00:00.000Z',
+            'isOverdue': true,
+          }),
+        )
+        ..seed(
+          FundingSource.fromJson({
+            'id': 'mahr-rest',
+            'weddingPlanId': 'plan-1',
+            'kind': 'MAHR',
+            'sourceName': 'باقي المهر',
+            'amount': '1000000',
+            'status': 'RECEIVED',
+          }),
+        );
+      await _pumpFunding(tester, api);
 
-    expect(find.byKey(const ValueKey('funding-overdue')), findsOneWidget);
-    expect(find.text('متأخر'), findsOneWidget);
+      expect(find.byKey(const ValueKey('funding-overdue')), findsOneWidget);
+      expect(find.text('متأخر'), findsOneWidget);
 
-    await tester.tap(find.byKey(const ValueKey('funding-row-mahr-rest')));
-    await tester.pumpAndSettle();
-    expect(find.byKey(const ValueKey('funding-kind-MAHR')), findsOneWidget);
-    expect(find.byKey(const ValueKey('funding-kind-GIFT')), findsNothing);
-    expect(find.byKey(const ValueKey('funding-kind-SAVINGS')), findsNothing);
-    expect(tester.takeException(), isNull);
-  });
+      await tester.tap(find.byKey(const ValueKey('funding-row-mahr-rest')));
+      await tester.pumpAndSettle();
+      expect(find.byKey(const ValueKey('funding-kind-MAHR')), findsOneWidget);
+      expect(find.byKey(const ValueKey('funding-kind-GIFT')), findsNothing);
+      expect(find.byKey(const ValueKey('funding-kind-SAVINGS')), findsNothing);
+      expect(tester.takeException(), isNull);
+    },
+  );
 
   testWidgets('promised money that will not come is removed (x08)', (
     tester,
@@ -400,6 +401,68 @@ void main() {
     expect(find.text('سجّل الدفعة الثانية'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
+
+  testWidgets(
+    'a source that fails to save keeps the sheet and what was typed',
+    (tester) async {
+      FundingFormResult? closedWith;
+      var tries = 0;
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Directionality(
+            textDirection: TextDirection.rtl,
+            child: Builder(
+              builder: (context) => TextButton(
+                onPressed: () async =>
+                    closedWith = await showJourneySheet<FundingFormResult>(
+                      context: context,
+                      builder: (_) => FundingSourceFormSheet(
+                        onSave: (_) async {
+                          tries += 1;
+                          return tries == 1 ? 'ما انحفظ عند الخادم' : null;
+                        },
+                      ),
+                    ),
+                child: const Text('open'),
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.tap(find.text('open'));
+      await tester.pumpAndSettle();
+      await tester.enterText(
+        find.descendant(
+          of: find.byKey(const ValueKey('funding-name')),
+          matching: find.byType(EditableText),
+        ),
+        'أبوي',
+      );
+      await tester.enterText(
+        find.descendant(
+          of: find.byKey(const ValueKey('funding-amount')),
+          matching: find.byType(EditableText),
+        ),
+        '500000',
+      );
+      await tester.ensureVisible(find.byKey(const ValueKey('funding-save')));
+      await tester.tap(find.byKey(const ValueKey('funding-save')));
+      await tester.pumpAndSettle();
+
+      // Still open, with the reason and every field as typed.
+      expect(find.text('ما انحفظ عند الخادم'), findsOneWidget);
+      expect(find.text('أبوي'), findsOneWidget);
+      expect(find.text('500,000'), findsOneWidget);
+      expect(closedWith, isNull);
+
+      // Trying again saves and closes with what was typed.
+      await tester.ensureVisible(find.byKey(const ValueKey('funding-save')));
+      await tester.tap(find.byKey(const ValueKey('funding-save')));
+      await tester.pumpAndSettle();
+      expect(tries, 2);
+      expect(closedWith?.sourceName, 'أبوي');
+    },
+  );
 }
 
 Future<void> _pumpFunding(WidgetTester tester, _FakeFundingApi api) async {

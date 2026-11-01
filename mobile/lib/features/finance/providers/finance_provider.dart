@@ -35,7 +35,13 @@ class FinanceProvider extends ChangeNotifier with SessionScopedNotifier {
   bool _isLoading = false;
   bool _isSubmitting = false;
   bool _hasLoadedMoney = false;
+
+  /// The last save that failed. Read right after the save.
   String? _errorMessage;
+
+  /// Money could not be read (or the access to it was lost), so what shows
+  /// may be old or missing. Only a read sets it; the next good read clears it.
+  String? _loadErrorMessage;
   String? _noticeMessage;
   List<BudgetCategory> _categories = const [];
   List<WeddingCost> _costs = const [];
@@ -63,6 +69,7 @@ class FinanceProvider extends ChangeNotifier with SessionScopedNotifier {
   bool get isSubmitting => _isSubmitting;
   bool get hasLoadedMoney => _hasLoadedMoney;
   String? get errorMessage => _errorMessage;
+  String? get loadErrorMessage => _loadErrorMessage;
   String? get noticeMessage => _noticeMessage;
 
   /// The message to confirm a successful save: [success], unless the save
@@ -179,7 +186,7 @@ class FinanceProvider extends ChangeNotifier with SessionScopedNotifier {
     final costRequest = ++_costRequestGeneration;
     final paymentRequest = ++_paymentRequestGeneration;
     _isLoading = true;
-    _errorMessage = null;
+    _loadErrorMessage = null;
     notifyListeners();
 
     var accessResolved = false;
@@ -194,7 +201,7 @@ class FinanceProvider extends ChangeNotifier with SessionScopedNotifier {
       _access = access;
       if (!access.canViewMoney) {
         _clear(planId);
-        _errorMessage = 'لا تملك صلاحية عرض المال في هذه الخطة.';
+        _loadErrorMessage = 'لا تملك صلاحية عرض المال في هذه الخطة.';
         return;
       }
 
@@ -227,13 +234,13 @@ class FinanceProvider extends ChangeNotifier with SessionScopedNotifier {
       if (!accessResolved || _isPrivateAccessFailure(error)) {
         _clear(planId);
       }
-      _errorMessage = _isPrivateAccessFailure(error)
+      _loadErrorMessage = _isPrivateAccessFailure(error)
           ? 'لم يعد لديك وصول إلى المال في هذه الخطة.'
           : error.message;
     } catch (_) {
       if (!_isCurrent(generation)) return;
       if (!accessResolved) _clear(planId);
-      _errorMessage = 'تعذر تحميل المال الآن. حاول مرة أخرى.';
+      _loadErrorMessage = 'تعذر تحميل المال الآن. حاول مرة أخرى.';
     } finally {
       if (_isCurrent(generation)) {
         _isLoading = false;
@@ -269,9 +276,9 @@ class FinanceProvider extends ChangeNotifier with SessionScopedNotifier {
       if (!_isCurrent(generation) || _loadedPlanId != planId) return;
       if (_isPrivateAccessFailure(error)) {
         _clear(planId);
-        _errorMessage = 'لم يعد لديك وصول إلى المال في هذه الخطة.';
+        _loadErrorMessage = 'لم يعد لديك وصول إلى المال في هذه الخطة.';
       } else {
-        _errorMessage = error.message;
+        _loadErrorMessage = error.message;
       }
       notifyListeners();
     }
@@ -305,7 +312,7 @@ class FinanceProvider extends ChangeNotifier with SessionScopedNotifier {
       if (_isCurrent(planGeneration) &&
           _loadedPlanId == planId &&
           requestGeneration == _costRequestGeneration) {
-        _errorMessage = error.message;
+        _loadErrorMessage = error.message;
       }
     } finally {
       if (_isCurrent(planGeneration) &&
@@ -343,7 +350,7 @@ class FinanceProvider extends ChangeNotifier with SessionScopedNotifier {
       if (_isCurrent(planGeneration) &&
           _loadedPlanId == planId &&
           requestGeneration == _paymentRequestGeneration) {
-        _errorMessage = error.message;
+        _loadErrorMessage = error.message;
       }
     } finally {
       if (_isCurrent(planGeneration) &&
@@ -768,10 +775,12 @@ class FinanceProvider extends ChangeNotifier with SessionScopedNotifier {
       }
       var refreshed = true;
       if (refresh != null) {
+        // Only this refresh's read counts, not an older failed one.
+        _loadErrorMessage = null;
         try {
           await refresh();
-          // loadCostDetails reports its own read failures in _errorMessage.
-          refreshed = _errorMessage == null;
+          // The refresh's reads report their failures in _loadErrorMessage.
+          refreshed = _loadErrorMessage == null;
         } catch (_) {
           refreshed = false;
         }
@@ -782,7 +791,9 @@ class FinanceProvider extends ChangeNotifier with SessionScopedNotifier {
         return false;
       }
       if (!refreshed) {
-        _errorMessage = null;
+        // The save went through: the notice says the view is old, so the
+        // read failure is not shown a second time.
+        _loadErrorMessage = null;
         _noticeMessage = savedButStaleMessage;
       } else if (_isLocalPlan(planId)) {
         _noticeMessage = CachePolicy.localPlanningSaveMessage;
@@ -898,6 +909,7 @@ class FinanceProvider extends ChangeNotifier with SessionScopedNotifier {
 
   void clearMessages() {
     _errorMessage = null;
+    _loadErrorMessage = null;
     _noticeMessage = null;
     notifyListeners();
   }

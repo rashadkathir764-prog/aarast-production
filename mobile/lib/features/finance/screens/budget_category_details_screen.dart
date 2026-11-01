@@ -68,7 +68,7 @@ class _BudgetCategoryDetailsScreenState
       );
     } else if (category == null) {
       body = JourneyListState(
-        phase: provider.errorMessage == null
+        phase: provider.loadErrorMessage == null
             ? JourneyListPhase.empty
             : JourneyListPhase.error,
         section: JourneySection.money,
@@ -87,7 +87,7 @@ class _BudgetCategoryDetailsScreenState
       body = Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          if (provider.errorMessage != null) ...[
+          if (provider.loadErrorMessage != null) ...[
             JourneyListNotice(offline: false, onRetry: _load),
             const SizedBox(height: 12),
           ],

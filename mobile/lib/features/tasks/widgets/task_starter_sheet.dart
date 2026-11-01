@@ -123,7 +123,7 @@ class _TaskStarterSheetState extends State<TaskStarterSheet> {
       children: [
         if (_failure != null)
           Padding(
-            padding: const EdgeInsets.only(top: 8),
+            padding: const EdgeInsets.only(top: AarastV3Space.x2),
             child: JourneyNote(
               key: const ValueKey('task-starter-failure'),
               text: _failure!,

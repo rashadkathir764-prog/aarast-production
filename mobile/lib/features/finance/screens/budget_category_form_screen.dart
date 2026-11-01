@@ -10,6 +10,7 @@ import '../../../core/forms/aarast_form_draft_store.dart';
 import '../../../core/utils/amount_words.dart';
 import '../../../core/utils/currency_label.dart';
 import '../../../core/utils/money_formatters.dart';
+import '../../../core/widgets/aarast_toast.dart';
 import '../../../core/widgets/aarast_ui.dart';
 import '../../../core/routing/app_router.dart';
 import '../../../core/routing/pop_or_go.dart';
@@ -134,7 +135,7 @@ class _BudgetCategoryFormScreenState extends State<BudgetCategoryFormScreen> {
             child: ListView(
               padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
               children: [
-                if (provider.errorMessage != null) ...[
+                if (provider.loadErrorMessage != null) ...[
                   JourneyListNotice(
                     offline: false,
                     onRetry: () => provider.loadMoney(widget.weddingPlanId),
@@ -261,14 +262,20 @@ class _BudgetCategoryFormScreenState extends State<BudgetCategoryFormScreen> {
         name: _nameController.text.trim(),
         allocatedAmount: allocated,
       );
-      if (createdId != null && mounted) {
-        await _draft?.clear();
-        if (mounted) {
-          context.popOrGo<String>(
-            AppRouter.money(widget.weddingPlanId),
-            createdId,
-          );
-        }
+      if (!mounted) return;
+      if (createdId == null) {
+        AarastToast.showError(
+          context,
+          provider.errorMessage ?? 'ما انضاف البند',
+        );
+        return;
+      }
+      await _draft?.clear();
+      if (mounted) {
+        context.popOrGo<String>(
+          AppRouter.money(widget.weddingPlanId),
+          createdId,
+        );
       }
       return;
     }
@@ -277,10 +284,13 @@ class _BudgetCategoryFormScreenState extends State<BudgetCategoryFormScreen> {
       name: _nameController.text.trim(),
       allocatedAmount: allocated,
     );
-    if (saved && mounted) {
-      await _draft?.clear();
-      if (mounted) context.popOrGo(AppRouter.money(widget.weddingPlanId), true);
+    if (!mounted) return;
+    if (!saved) {
+      AarastToast.showError(context, provider.errorMessage ?? 'ما انحفظ البند');
+      return;
     }
+    await _draft?.clear();
+    if (mounted) context.popOrGo(AppRouter.money(widget.weddingPlanId), true);
   }
 
   void _configureDraft() {

@@ -98,7 +98,7 @@ class _MoneyFundingTabState extends State<_MoneyFundingTab> {
           )
         else if (list.isEmpty)
           JourneyListState(
-            phase: sources.errorMessage == null
+            phase: sources.loadErrorMessage == null
                 ? JourneyListPhase.empty
                 : JourneyListPhase.error,
             section: JourneySection.money,

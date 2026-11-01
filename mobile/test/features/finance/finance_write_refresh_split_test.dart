@@ -62,6 +62,25 @@ void main() {
     expect(provider.noticeMessage, isNull);
   });
 
+  test('a rejected write is a failed save, not a failed read', () async {
+    api.rejectWrites = true;
+
+    await provider.recordPayment(cost: api.cost, amount: '100');
+
+    expect(provider.errorMessage, 'المبلغ أكبر من المتبقي.');
+    // Money was read fine: no «old copy» notice follows a failed save.
+    expect(provider.loadErrorMessage, isNull);
+  });
+
+  test('a confirmed save with a failed refresh says so once', () async {
+    api.failReads = true;
+
+    await provider.recordPayment(cost: api.cost, amount: '100');
+
+    expect(provider.noticeMessage, FinanceProvider.savedButStaleMessage);
+    expect(provider.loadErrorMessage, isNull);
+  });
+
   test(
     'every money write keeps a confirmed save when the refresh fails',
     () async {

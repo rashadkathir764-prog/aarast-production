@@ -113,7 +113,7 @@ void main() {
       expect(provider.payments, isEmpty);
       expect(provider.dueSchedules, isEmpty);
       expect(provider.summary.planId, 'plan-b');
-      expect(provider.errorMessage, isNotNull);
+      expect(provider.loadErrorMessage, isNotNull);
     },
   );
 
@@ -143,7 +143,7 @@ void main() {
       expect(provider.payments, isEmpty);
       expect(provider.dueSchedules, isEmpty);
       expect(provider.summary.hasAnyData, isFalse);
-      expect(provider.errorMessage, isNotNull);
+      expect(provider.loadErrorMessage, isNotNull);
     },
   );
 

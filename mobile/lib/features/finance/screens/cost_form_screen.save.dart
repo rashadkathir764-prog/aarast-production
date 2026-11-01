@@ -59,7 +59,14 @@ extension _CostFormSave on _CostFormScreenState {
         agreementDate: _agreementDate,
         note: _noteController.text.trim(),
       );
-      if (!ok || !mounted) return;
+      if (!mounted) return;
+      if (!ok) {
+        AarastToast.showError(
+          context,
+          provider.errorMessage ?? 'ما انحفظ الاتفاق',
+        );
+        return;
+      }
       AarastFormSuccess.show(
         context,
         message: provider.savedMessage('انحفظ الاتفاق'),
@@ -84,7 +91,15 @@ extension _CostFormSave on _CostFormScreenState {
       note: _noteController.text.trim(),
       isPrivate: _isPrivate,
     );
-    if (created == null || !mounted) return;
+    if (!mounted) return;
+    if (created == null) {
+      // The form stays as typed; the reason is the server's.
+      AarastToast.showError(
+        context,
+        provider.errorMessage ?? 'ما انحفظ الاتفاق',
+      );
+      return;
+    }
     await _draft?.clear();
     // The payment dates follow one by one; a failure keeps the agreement
     // and says what is missing.

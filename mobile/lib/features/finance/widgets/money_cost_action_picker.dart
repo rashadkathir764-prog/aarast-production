@@ -6,6 +6,7 @@ import 'package:provider/provider.dart';
 import '../../../core/experience_v3/aarast_v3.dart';
 import '../../../core/routing/app_router.dart';
 import '../../../core/utils/money_formatters.dart';
+import '../../../core/widgets/aarast_toast.dart';
 import '../models/wedding_cost.dart';
 import '../providers/finance_provider.dart';
 import 'payment_schedule_sheet.dart';
@@ -110,6 +111,15 @@ Future<bool> openMoneyCostAction(
     await finance.loadMoney(planId);
   }
   if (!context.mounted) return false;
+  // Money that could not be read is not «no agreement yet»: say so instead
+  // of offering to start the first one.
+  if (!finance.hasLoadedMoney) {
+    AarastToast.showError(
+      context,
+      finance.loadErrorMessage ?? 'ما قدرنا نجيب اتفاقاتك',
+    );
+    return false;
+  }
   final selection = await showMoneyCostActionPicker(
     context,
     intent: intent,

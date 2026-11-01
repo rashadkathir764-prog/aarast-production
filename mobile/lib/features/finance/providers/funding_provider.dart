@@ -15,13 +15,19 @@ class FundingProvider extends ChangeNotifier with SessionScopedNotifier {
   String? _loadedPlanId;
   bool _isLoading = false;
   bool _isSaving = false;
+
+  /// The last save that failed. Read right after the save.
   String? _errorMessage;
+
+  /// The sources could not be read; the next good read clears it.
+  String? _loadErrorMessage;
   List<FundingSource> _sources = const [];
 
   String? get loadedPlanId => _loadedPlanId;
   bool get isLoading => _isLoading;
   bool get isSaving => _isSaving;
   String? get errorMessage => _errorMessage;
+  String? get loadErrorMessage => _loadErrorMessage;
   List<FundingSource> get sources => List.unmodifiable(_sources);
 
   FundingSource? sourceById(String id) {
@@ -37,17 +43,17 @@ class FundingProvider extends ChangeNotifier with SessionScopedNotifier {
       _sources = const [];
     }
     _isLoading = true;
-    _errorMessage = null;
+    _loadErrorMessage = null;
     notifyListeners();
     try {
       final sources = await _api.getFundingSources(weddingPlanId);
       if (_loadedPlanId != weddingPlanId) return;
       _sources = sources;
     } on ApiException catch (error) {
-      if (_loadedPlanId == weddingPlanId) _errorMessage = error.message;
+      if (_loadedPlanId == weddingPlanId) _loadErrorMessage = error.message;
     } catch (_) {
       if (_loadedPlanId == weddingPlanId) {
-        _errorMessage = 'تعذر تحميل مصادر التمويل الآن.';
+        _loadErrorMessage = 'تعذر تحميل مصادر التمويل الآن.';
       }
     } finally {
       if (_loadedPlanId == weddingPlanId) {

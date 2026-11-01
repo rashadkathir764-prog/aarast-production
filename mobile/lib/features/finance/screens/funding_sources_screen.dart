@@ -86,7 +86,7 @@ class _FundingSourcesScreenState extends State<FundingSourcesScreen> {
       );
     } else if (sources.isEmpty) {
       list = JourneyListState(
-        phase: funding.errorMessage == null
+        phase: funding.loadErrorMessage == null
             ? JourneyListPhase.empty
             : JourneyListPhase.error,
         section: JourneySection.money,
@@ -169,7 +169,8 @@ class _FundingSourcesScreenState extends State<FundingSourcesScreen> {
                 physics: const AlwaysScrollableScrollPhysics(),
                 padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
                 children: [
-                  if (funding.errorMessage != null && sources.isNotEmpty) ...[
+                  if (funding.loadErrorMessage != null &&
+                      sources.isNotEmpty) ...[
                     JourneyListNotice(offline: false, onRetry: _load),
                     const SizedBox(height: 12),
                   ],
@@ -235,7 +236,10 @@ class _FundingSourcesScreenState extends State<FundingSourcesScreen> {
       context: context,
       builder: (dialogContext) => AarastDialog(
         title: Text(
-          context.say('تشيل «${source.sourceName}»؟', 'تشيلين «${source.sourceName}»؟'),
+          context.say(
+            'تشيل «${source.sourceName}»؟',
+            'تشيلين «${source.sourceName}»؟',
+          ),
         ),
         content: Text(
           planned > 0
@@ -249,7 +253,9 @@ class _FundingSourcesScreenState extends State<FundingSourcesScreen> {
           ),
           FilledButton(
             key: const ValueKey('funding-delete-confirm'),
-            style: FilledButton.styleFrom(backgroundColor: AarastV3Color.danger),
+            style: FilledButton.styleFrom(
+              backgroundColor: AarastV3Color.danger,
+            ),
             onPressed: () => Navigator.of(dialogContext).pop(true),
             child: Text(context.say('شيله', 'شيليه')),
           ),
@@ -260,44 +266,55 @@ class _FundingSourcesScreenState extends State<FundingSourcesScreen> {
   }
 
   Future<void> _openSourceSheet({FundingSource? source}) async {
+    final funding = context.read<FundingProvider>();
+    // The sheet saves, and closes only once saved: a failure keeps what was
+    // typed in it and says why.
     final result = await showJourneySheet<FundingFormResult>(
       context: context,
-      builder: (_) =>
-          FundingSourceFormSheet(source: source, currency: _currency),
+      builder: (_) => FundingSourceFormSheet(
+        source: source,
+        currency: _currency,
+        onSave: (result) async {
+          final saved = source == null
+              ? await funding.create(
+                  weddingPlanId: widget.weddingPlanId,
+                  kind: result.kind,
+                  sourceName: result.sourceName,
+                  amount: result.amount,
+                  status: result.status,
+                  sourcePhone: result.sourcePhone,
+                  note: result.note,
+                  expectedAt: result.expectedAt,
+                )
+              : await funding.update(
+                  source,
+                  kind: result.kind,
+                  sourceName: result.sourceName,
+                  amount: result.amount,
+                  status: result.status,
+                  sourcePhone: result.sourcePhone,
+                  note: result.note,
+                  expectedAt: result.expectedAt,
+                );
+          return saved
+              ? null
+              : (funding.errorMessage ?? 'ما قدرنا نحفظ التغيير');
+        },
+      ),
     );
     if (result == null || !mounted) return;
-    final funding = context.read<FundingProvider>();
     final bool ok;
     if (result.delete && source != null) {
       if (!await _confirmDelete(source)) return;
       if (!mounted) return;
       ok = await funding.delete(source);
-    } else if (source == null) {
-      ok = await funding.create(
-        weddingPlanId: widget.weddingPlanId,
-        kind: result.kind,
-        sourceName: result.sourceName,
-        amount: result.amount,
-        status: result.status,
-        sourcePhone: result.sourcePhone,
-        note: result.note,
-        expectedAt: result.expectedAt,
-      );
-      if (ok && result.repayments.isNotEmpty) {
+    } else {
+      // Saved by the sheet.
+      ok = true;
+      if (source == null && result.repayments.isNotEmpty) {
         await _addRepayments(funding.sources.last.id, result.repayments);
         return;
       }
-    } else {
-      ok = await funding.update(
-        source,
-        kind: result.kind,
-        sourceName: result.sourceName,
-        amount: result.amount,
-        status: result.status,
-        sourcePhone: result.sourcePhone,
-        note: result.note,
-        expectedAt: result.expectedAt,
-      );
     }
     if (!mounted) return;
     if (ok) {

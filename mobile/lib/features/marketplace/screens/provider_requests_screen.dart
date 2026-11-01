@@ -220,7 +220,8 @@ class _ProviderRequestsScreenState extends State<ProviderRequestsScreen> {
                         section: JourneySection.providers,
                       )
                     else if (marketplace.quoteRequestsErrorMessage != null ||
-                        context.watch<FinanceProvider?>()?.errorMessage != null)
+                        context.watch<FinanceProvider?>()?.loadErrorMessage !=
+                            null)
                       JourneyListState(
                         phase: JourneyListPhase.error,
                         section: JourneySection.providers,

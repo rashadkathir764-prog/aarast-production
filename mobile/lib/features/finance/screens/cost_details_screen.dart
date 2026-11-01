@@ -78,7 +78,7 @@ class _CostDetailsScreenState extends State<CostDetailsScreen> {
         phase: JourneyListPhase.loading,
         section: JourneySection.money,
       );
-    } else if (provider.errorMessage != null && cost == null) {
+    } else if (provider.loadErrorMessage != null && cost == null) {
       body = JourneyListState(
         phase: JourneyListPhase.error,
         section: JourneySection.money,
@@ -257,7 +257,7 @@ class _CostDetailsScreenState extends State<CostDetailsScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        if (provider.errorMessage != null) ...[
+        if (provider.loadErrorMessage != null) ...[
           JourneyListNotice(offline: false, onRetry: _load),
           const SizedBox(height: 12),
         ],

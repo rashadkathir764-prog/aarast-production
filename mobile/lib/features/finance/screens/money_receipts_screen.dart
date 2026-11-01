@@ -59,6 +59,12 @@ class _MoneyReceiptsScreenState extends State<MoneyReceiptsScreen> {
       if (refreshMoney || provider.loadedPlanId != widget.weddingPlanId) {
         await provider.loadMoney(widget.weddingPlanId);
       }
+      // loadMoney keeps its failure instead of throwing: unread payments
+      // are a failed page, not «ما سجلت دفعات بعد».
+      if (!provider.hasLoadedMoney) {
+        if (mounted) setState(() => _failed = true);
+        return;
+      }
       for (
         var page = 0;
         page < _maxPaymentPages && provider.hasMorePayments;

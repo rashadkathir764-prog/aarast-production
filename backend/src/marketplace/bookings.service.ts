@@ -29,7 +29,13 @@ import {
 } from "../modules/notifications/public/notifications.port";
 import * as bookings from "../modules/marketplace/infrastructure/marketplace-booking.repository";
 import * as dashboardStore from "../modules/marketplace/infrastructure/provider-dashboard.repository";
+import { isPlanItemBooked } from "../modules/marketplace/public/plan-booked-services";
 import { assertProviderOperational } from "../modules/marketplace/public/provider-access-policy";
+import {
+  PROVIDER_READ_PORT,
+  type ProviderReadPort,
+} from "../modules/marketplace/public/provider-read.port";
+import { TASKS_PORT, type TasksPort } from "../modules/tasks/public/tasks.port";
 import {
   runRetryableTransaction,
   runSerializableTransaction,
@@ -131,6 +137,10 @@ export class BookingsService {
     private readonly notifications: NotificationsPort,
     @Inject(FINANCE_PORT)
     private readonly finance: FinancePort,
+    @Inject(PROVIDER_READ_PORT)
+    private readonly providers?: ProviderReadPort,
+    @Inject(TASKS_PORT)
+    private readonly tasks?: TasksPort,
   ) {}
 
   // ── Customer ─────────────────────────────────────────────────────────
@@ -845,6 +855,30 @@ export class BookingsService {
         "The booking changed meanwhile; refresh and retry",
       );
     }
+    await this.syncItemTasks(tx, booking);
     return bookings.requireBooking(tx, booking.id);
+  }
+
+  /**
+   * R4: «اختر المصور» ends when the photographer is booked, and comes back
+   * when the booking falls through and nothing else books the item.
+   */
+  private async syncItemTasks(tx: Tx, booking: bookings.BookingWithQuote) {
+    const { providers, tasks } = this;
+    const weddingPlanId = booking.quoteRequest.weddingPlanId;
+    if (!booking.quoteOfferId || !weddingPlanId || !providers || !tasks) return;
+    const [cost] = await this.finance.listCostsForOffers(tx, [booking.quoteOfferId]);
+    if (!cost) return;
+    await tasks.syncLinkedTasks(
+      tx,
+      weddingPlanId,
+      { budgetCategoryId: cost.budgetCategoryId },
+      await isPlanItemBooked(
+        tx,
+        { providers, finance: this.finance },
+        weddingPlanId,
+        cost.budgetCategoryId,
+      ),
+    );
   }
 }

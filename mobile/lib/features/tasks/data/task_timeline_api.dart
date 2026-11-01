@@ -129,6 +129,7 @@ class TaskTimelineApi {
     String status = 'TODO',
     String priority = 'MEDIUM',
     bool isPrivate = false,
+    String? starterKey,
   }) async {
     final payload = <String, dynamic>{
       'title': title.trim(),
@@ -160,6 +161,8 @@ class TaskTimelineApi {
         payload: {...payload, ...localResponsibility},
       );
     }
+    // A plan on the phone has no items yet; imported tasks stay unlinked.
+    if (starterKey != null) payload['starterKey'] = starterKey;
     try {
       final json = await _apiClient.postJson(
         '/api/v1/wedding-plans/$weddingPlanId/tasks',
@@ -676,6 +679,13 @@ class TaskTimelineApi {
       'updatedAt': task.updatedAt.toIso8601String(),
       'checklist': [for (final item in task.checklist) item.toJson()],
       if (task.isPrivate) 'isPrivate': true,
+      if (task.linkedBudgetCategoryId != null)
+        'linkedBudgetCategoryId': task.linkedBudgetCategoryId,
+      if (task.linkedCostId != null) 'linkedCostId': task.linkedCostId,
+      if (task.linkedScheduleId != null)
+        'linkedScheduleId': task.linkedScheduleId,
+      if (task.autoClosedAt != null)
+        'autoClosedAt': task.autoClosedAt!.toIso8601String(),
     };
   }
 

@@ -1,4 +1,4 @@
-import type { PlanBookedServices } from './plan-booked-services';
+import type { PlanBookedServices } from '../modules/marketplace/public/plan-booked-services';
 import type { PlanEssential } from './plan-essentials';
 
 // The home's setup facts (prototype b01). They sit beside the summary

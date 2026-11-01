@@ -49,6 +49,16 @@ import {
   TASK_PERMISSION_REVOKED_MESSAGE,
   seesWholePlan,
 } from "../modules/collaboration/public/collaboration-permission.port";
+import {
+  FINANCE_PORT,
+  type FinancePort,
+} from "../modules/finance/public/finance.port";
+import { isPlanItemBooked } from "../modules/marketplace/public/plan-booked-services";
+import {
+  PROVIDER_READ_PORT,
+  type ProviderReadPort,
+} from "../modules/marketplace/public/provider-read.port";
+import { starterTaskService } from "./task-starter-services";
 import { AssignTaskDto } from "./dto/assign-task.dto";
 import { CreateChecklistItemDto } from "./dto/create-checklist-item.dto";
 import { CreatePlanTaskDto } from "./dto/create-plan-task.dto";
@@ -95,6 +105,20 @@ export interface TaskResponse {
   isPrivate: boolean;
   /** The task's checklist, ordered by sortOrder then creation. */
   checklist: ChecklistItemResponse[];
+  /** R4: what it waits on, for a reader who sees the money. */
+  linkedBudgetCategoryId: string | null;
+  linkedCostId: string | null;
+  linkedScheduleId: string | null;
+  /** R4: when the booking or the payment finished it. */
+  autoClosedAt: Date | null;
+}
+
+/** R4: the link a request asks for, read and checked against the plan. */
+interface TaskLinkValues {
+  linkedBudgetCategoryId: string | null;
+  linkedCostId: string | null;
+  linkedScheduleId: string | null;
+  settled: boolean;
 }
 
 export interface ChecklistItemResponse {
@@ -146,6 +170,10 @@ export class TasksService {
     private readonly contributionHistory: ContributionHistoryService,
     @Inject(COLLABORATION_SCOPE_PORT)
     private readonly contributorScope: ContributorScopeService,
+    @Inject(FINANCE_PORT)
+    private readonly finance?: FinancePort,
+    @Inject(PROVIDER_READ_PORT)
+    private readonly providers?: ProviderReadPort,
   ) {}
 
   async create(
@@ -159,6 +187,7 @@ export class TasksService {
         weddingPlanId,
         currentUser,
       );
+      const link = await this.linkForNewTask(tx, weddingPlanId, dto);
       const created = await createTask(tx, {
           weddingPlanId,
           responsibleName: this.optionalText(dto.responsibleName),
@@ -169,9 +198,15 @@ export class TasksService {
           dueDate: this.optionalDate(dto.dueDate, "dueDate"),
           taskCategory: this.optionalText(dto.taskCategory),
           reminderAt: this.optionalDate(dto.reminderAt, "reminderAt"),
-          status: dto.status ?? WeddingTaskStatus.TODO,
+          status: link?.settled
+            ? WeddingTaskStatus.DONE
+            : (dto.status ?? WeddingTaskStatus.TODO),
           priority: dto.priority ?? WeddingTaskPriority.MEDIUM,
           privateToUserId: this.privateOwnerForNewTask(context, currentUser, dto.isPrivate),
+          linkedBudgetCategoryId: link?.linkedBudgetCategoryId,
+          linkedCostId: link?.linkedCostId,
+          linkedScheduleId: link?.linkedScheduleId,
+          autoClosedAt: link?.settled ? new Date() : null,
       });
       await this.recordTaskContribution(tx, context, created, {
         action: ContributionAction.CREATED,
@@ -258,7 +293,9 @@ export class TasksService {
           task.assigneeUserId === currentUser.id ||
           contributorScope.has(task.id),
       )
-      .map((task) => this.toResponse(task, canManageTasks));
+      .map((task) =>
+        this.toResponse(task, canManageTasks, this.permissions.canViewMoney(context)),
+      );
   }
 
   async findOne(
@@ -299,7 +336,11 @@ export class TasksService {
       { isolationLevel: Prisma.TransactionIsolationLevel.RepeatableRead },
     );
     if (!visibleTask) throw new NotFoundException("Task not found");
-    return this.toResponse(visibleTask, canManageTasks);
+    return this.toResponse(
+      visibleTask,
+      canManageTasks,
+      this.permissions.canViewMoney(context),
+    );
   }
 
   async update(
@@ -331,6 +372,7 @@ export class TasksService {
           message: "A shared task cannot become private",
         });
       }
+      const link = await this.linkForUpdate(tx, existing.weddingPlanId, dto);
       const updated = await updateTask(tx, id, {
           ...(dto.isPrivate === false ? { privateToUserId: null } : {}),
           ...(dto.title !== undefined
@@ -349,8 +391,21 @@ export class TasksService {
           ...(dto.reminderAt !== undefined
             ? { reminderAt: this.optionalDate(dto.reminderAt, "reminderAt") }
             : {}),
-          ...(dto.status !== undefined ? { status: dto.status } : {}),
+          // R4: a status set by hand stays set: no link undoes it later.
+          ...(dto.status !== undefined
+            ? { status: dto.status, autoClosedAt: null }
+            : {}),
           ...(dto.priority !== undefined ? { priority: dto.priority } : {}),
+          ...(link
+            ? {
+                linkedBudgetCategoryId: link.linkedBudgetCategoryId,
+                linkedCostId: link.linkedCostId,
+                linkedScheduleId: link.linkedScheduleId,
+                ...(link.settled && current.status !== WeddingTaskStatus.DONE
+                  ? { status: WeddingTaskStatus.DONE, autoClosedAt: new Date() }
+                  : {}),
+              }
+            : {}),
       });
       const action = this.taskUpdateAction(current.status, updated.status);
       await this.recordTaskContribution(tx, context, updated, {
@@ -1057,6 +1112,7 @@ export class TasksService {
   private toResponse(
     task: WeddingTask & { checklistItems: WeddingTaskChecklistItem[] },
     includeResponsiblePhone = true,
+    includeMoneyLinks = true,
   ): TaskResponse {
     return {
       id: task.id,
@@ -1078,7 +1134,110 @@ export class TasksService {
       checklist: task.checklistItems.map((item) =>
         this.toChecklistItemResponse(item),
       ),
+      // They open the money, which this reader may not see.
+      linkedBudgetCategoryId: includeMoneyLinks ? task.linkedBudgetCategoryId : null,
+      linkedCostId: includeMoneyLinks ? task.linkedCostId : null,
+      linkedScheduleId: includeMoneyLinks ? task.linkedScheduleId : null,
+      autoClosedAt: task.autoClosedAt,
     };
+  }
+
+  /** R4: what a new task waits on: the one asked for, else its template's item. */
+  private async linkForNewTask(
+    tx: Prisma.TransactionClient,
+    weddingPlanId: string,
+    dto: CreatePlanTaskDto,
+  ): Promise<TaskLinkValues | null> {
+    if (dto.linkedBudgetCategoryId || dto.linkedScheduleId) {
+      return this.resolveLink(tx, weddingPlanId, dto);
+    }
+    const service = dto.starterKey ? starterTaskService(dto.starterKey) : null;
+    if (!service || !this.finance) return null;
+    const linkedBudgetCategoryId = await this.finance.findItemForService(
+      tx,
+      weddingPlanId,
+      service,
+    );
+    return linkedBudgetCategoryId
+      ? this.resolveLink(tx, weddingPlanId, { linkedBudgetCategoryId })
+      : null;
+  }
+
+  /** R4: null when the request leaves the link as it is. */
+  private async linkForUpdate(
+    tx: Prisma.TransactionClient,
+    weddingPlanId: string,
+    dto: UpdateTaskDto,
+  ): Promise<TaskLinkValues | null> {
+    if (
+      dto.linkedBudgetCategoryId === undefined &&
+      dto.linkedScheduleId === undefined
+    ) {
+      return null;
+    }
+    return this.resolveLink(tx, weddingPlanId, dto);
+  }
+
+  /** A task waits on one thing: the payment when both are named. */
+  private async resolveLink(
+    tx: Prisma.TransactionClient,
+    weddingPlanId: string,
+    wanted: {
+      linkedBudgetCategoryId?: string | null;
+      linkedScheduleId?: string | null;
+    },
+  ): Promise<TaskLinkValues> {
+    const scheduleId = this.optionalText(wanted.linkedScheduleId);
+    if (scheduleId) {
+      const schedule = await this.finance?.findPlanSchedule(
+        tx,
+        weddingPlanId,
+        scheduleId,
+      );
+      if (!schedule) this.refuseLink();
+      return {
+        linkedBudgetCategoryId: null,
+        linkedCostId: schedule.costId,
+        linkedScheduleId: scheduleId,
+        settled: schedule.settled,
+      };
+    }
+    const budgetCategoryId = this.optionalText(wanted.linkedBudgetCategoryId);
+    if (!budgetCategoryId) {
+      return {
+        linkedBudgetCategoryId: null,
+        linkedCostId: null,
+        linkedScheduleId: null,
+        settled: false,
+      };
+    }
+    const { finance, providers } = this;
+    if (
+      !finance ||
+      !providers ||
+      !(await finance.isPlanItem(tx, weddingPlanId, budgetCategoryId))
+    ) {
+      this.refuseLink();
+    }
+    return {
+      linkedBudgetCategoryId: budgetCategoryId,
+      linkedCostId: null,
+      linkedScheduleId: null,
+      settled: await isPlanItemBooked(
+        tx,
+        { providers, finance },
+        weddingPlanId,
+        budgetCategoryId,
+      ),
+    };
+  }
+
+  private refuseLink(): never {
+    throw new BadRequestException({
+      statusCode: 400,
+      code: "TASK_LINK_NOT_IN_PLAN",
+      message: "A task links to an item or a payment of its own plan",
+    });
   }
 
   private toChecklistItemResponse(

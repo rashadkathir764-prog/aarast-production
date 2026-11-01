@@ -17,11 +17,13 @@ import '../../../core/utils/arabic_count.dart';
 import '../../../core/utils/arabic_date_formatter.dart';
 import '../../../core/widgets/aarast_toast.dart';
 import '../../../core/widgets/aarast_ui.dart';
+import '../../finance/finance_api.dart' show FinanceProvider;
 import '../../wedding_plans/wedding_plans_api.dart' show publishTaskPlanPulse;
 import '../models/wedding_task.dart';
 import '../providers/task_timeline_provider.dart';
 import '../utils/task_display.dart';
 import '../widgets/task_checklist_section.dart';
+import '../widgets/task_link_sheet.dart';
 import '../widgets/task_postpone.dart';
 
 part 'task_details_screen.sheets.dart';
@@ -94,6 +96,7 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen> {
     }
 
     final open = task != null && !task.isDone && task.status != 'CANCELLED';
+    final canLink = context.watch<FinanceProvider?>()?.canViewMoney ?? false;
     return AarastScreenFrame(
       maxWidth: 600,
       backgroundColor: AarastV3Color.canvas,
@@ -109,6 +112,7 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen> {
                   ? null
                   : _TaskMenu(
                       open: open,
+                      canLink: canLink,
                       disabled: provider.isSubmitting,
                       onSelected: (action) => _onMenu(provider, task, action),
                     ),
@@ -264,6 +268,9 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen> {
                   label: 'ملاحظة',
                   value: task.description!.trim(),
                 ),
+              if (task.linkedBudgetCategoryId != null ||
+                  task.linkedCostId != null)
+                _TaskLinkRow(task: task, itemName: _itemName(task)),
             ],
           ),
         ),
@@ -464,10 +471,7 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen> {
     final ok = await provider.setTaskReminder(widget.weddingPlanId, task, at);
     if (!mounted) return;
     if (ok) {
-      AarastToast.showSuccess(
-        context,
-        'بنذكّرك ${_reminderWords(at)}',
-      );
+      AarastToast.showSuccess(context, 'بنذكّرك ${_reminderWords(at)}');
     } else {
       AarastToast.showError(
         context,
@@ -485,6 +489,37 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen> {
     await _reschedule(provider, task, date);
   }
 
+  /// The linked item's name, once this plan's money is read.
+  String? _itemName(WeddingTask task) {
+    final finance = context.watch<FinanceProvider?>();
+    if (finance?.loadedPlanId != widget.weddingPlanId) return null;
+    return finance!.summary.categories
+        .where((item) => item.categoryId == task.linkedBudgetCategoryId)
+        .firstOrNull
+        ?.name;
+  }
+
+  Future<void> _link(TaskTimelineProvider provider, WeddingTask task) async {
+    final finance = context.read<FinanceProvider>();
+    if (finance.loadedPlanId != widget.weddingPlanId) {
+      await finance.loadMoney(widget.weddingPlanId);
+    }
+    if (!mounted) return;
+    final choice = await showTaskLinkSheet(
+      context,
+      finance: finance,
+      task: task,
+    );
+    if (choice == null || !mounted) return;
+    final saved = await provider.linkTask(
+      widget.weddingPlanId,
+      task,
+      budgetCategoryId: choice.budgetCategoryId,
+      scheduleId: choice.scheduleId,
+    );
+    if (saved && mounted) _pulse(provider);
+  }
+
   Future<void> _onMenu(
     TaskTimelineProvider provider,
     WeddingTask task,
@@ -499,6 +534,8 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen> {
         );
       case _TaskAction.moveDate:
         await _pickDate(provider, task);
+      case _TaskAction.link:
+        await _link(provider, task);
       case _TaskAction.reopen:
         await _setStatus(provider, task, 'TODO');
       case _TaskAction.cancel:

@@ -23,6 +23,10 @@ class WeddingTask {
     this.checklist = const [],
     this.isPrivate = false,
     this.reminderAt,
+    this.linkedBudgetCategoryId,
+    this.linkedCostId,
+    this.linkedScheduleId,
+    this.autoClosedAt,
   });
 
   factory WeddingTask.fromJson(Map<String, dynamic> json) {
@@ -67,6 +71,10 @@ class WeddingTask {
       ],
       isPrivate: json['isPrivate'] == true,
       reminderAt: _dateTimeOrNull(json['reminderAt']),
+      linkedBudgetCategoryId: json['linkedBudgetCategoryId']?.toString(),
+      linkedCostId: json['linkedCostId']?.toString(),
+      linkedScheduleId: json['linkedScheduleId']?.toString(),
+      autoClosedAt: _dateTimeOrNull(json['autoClosedAt']),
     );
   }
 
@@ -96,6 +104,18 @@ class WeddingTask {
 
   /// G36 «ذكّرني»: when the server reminds of this task, beside its due date.
   final DateTime? reminderAt;
+
+  /// R4: the money item this task waits on: it ends when the item is booked.
+  final String? linkedBudgetCategoryId;
+
+  /// R4: the payment this task waits on, and the agreement that holds it.
+  final String? linkedScheduleId;
+  final String? linkedCostId;
+
+  /// R4: when the booking or the payment finished it.
+  final DateTime? autoClosedAt;
+
+  bool get closedByLink => autoClosedAt != null;
 
   int get checklistDoneCount => checklist.where((item) => item.isDone).length;
 
@@ -156,6 +176,10 @@ class WeddingTask {
       reminderAt: identical(reminderAt, _unchanged)
           ? this.reminderAt
           : reminderAt as DateTime?,
+      linkedBudgetCategoryId: linkedBudgetCategoryId,
+      linkedCostId: linkedCostId,
+      linkedScheduleId: linkedScheduleId,
+      autoClosedAt: autoClosedAt,
       id: id,
       weddingPlanId: weddingPlanId,
       title: title ?? this.title,

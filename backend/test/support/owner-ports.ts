@@ -248,6 +248,8 @@ export function tasksService(
     notifications as any,
     history as any,
     scope as any,
+    ownerPorts.finance,
+    ownerPorts.providers,
   );
 }
 

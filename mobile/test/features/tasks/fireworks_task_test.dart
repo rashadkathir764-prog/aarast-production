@@ -37,7 +37,7 @@ void main() {
       findsOneWidget,
     );
     expect(find.byKey(const ValueKey('task-detail-done')), findsOneWidget);
-    // Tasks have no money link: no item row and no amount.
+    // Without a link: no item row and no amount.
     expect(find.text('البند'), findsNothing);
     expect(find.textContaining('ألف'), findsNothing);
     expect(find.textContaining('ر.ي'), findsNothing);

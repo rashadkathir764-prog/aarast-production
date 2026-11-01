@@ -47,4 +47,14 @@ export class UpdateTaskDto {
   @IsBoolean()
   @IsOptional()
   isPrivate?: boolean;
+
+  /** R4: the money item it waits on; null takes the link off. */
+  @IsString()
+  @IsOptional()
+  linkedBudgetCategoryId?: string | null;
+
+  /** R4: the payment it waits on; null takes the link off. */
+  @IsString()
+  @IsOptional()
+  linkedScheduleId?: string | null;
 }

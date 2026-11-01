@@ -5,6 +5,7 @@ import type {
   ImportedTaskInput,
   PlanTaskDashboard,
   ReadableTask,
+  TaskLink,
   TaskReadScope,
   TasksPort,
 } from '../public/tasks.port';
@@ -13,6 +14,12 @@ import { visibleToReader } from './task-work.repository';
 const openStatuses = () => ({
   notIn: [WeddingTaskStatus.DONE, WeddingTaskStatus.CANCELLED],
 });
+
+function linkWhere(weddingPlanId: string, link: TaskLink) {
+  return 'scheduleId' in link
+    ? { weddingPlanId, linkedScheduleId: link.scheduleId }
+    : { weddingPlanId, linkedBudgetCategoryId: link.budgetCategoryId };
+}
 
 function scopeWhere(scope: TaskReadScope) {
   switch (scope.kind) {
@@ -275,6 +282,48 @@ export class TasksPortService implements TasksPort {
     if (tasks.length === 0) return;
     await tx.weddingTask.deleteMany({
       where: { id: { in: tasks.map((task) => task.id) } },
+    });
+  }
+
+  async syncLinkedTasks(
+    tx: Prisma.TransactionClient,
+    weddingPlanId: string,
+    link: TaskLink,
+    settled: boolean,
+    at: Date = new Date(),
+  ): Promise<void> {
+    const where = linkWhere(weddingPlanId, link);
+    if (settled) {
+      await tx.weddingTask.updateMany({
+        where: {
+          ...where,
+          status: { in: [WeddingTaskStatus.TODO, WeddingTaskStatus.IN_PROGRESS] },
+        },
+        data: { status: WeddingTaskStatus.DONE, autoClosedAt: at },
+      });
+      return;
+    }
+    await tx.weddingTask.updateMany({
+      where: {
+        ...where,
+        status: WeddingTaskStatus.DONE,
+        autoClosedAt: { not: null },
+      },
+      data: { status: WeddingTaskStatus.TODO, autoClosedAt: null },
+    });
+  }
+
+  async unlinkTasks(
+    tx: Prisma.TransactionClient,
+    weddingPlanId: string,
+    link: TaskLink,
+  ): Promise<void> {
+    await tx.weddingTask.updateMany({
+      where: linkWhere(weddingPlanId, link),
+      data:
+        'scheduleId' in link
+          ? { linkedScheduleId: null, linkedCostId: null, autoClosedAt: null }
+          : { linkedBudgetCategoryId: null, autoClosedAt: null },
     });
   }
 

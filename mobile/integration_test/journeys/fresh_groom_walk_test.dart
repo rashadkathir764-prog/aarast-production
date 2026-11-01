@@ -123,11 +123,13 @@ void main() {
       await walk.step('c02_items', 'الاتفاق ظهر في البنود', () async {
         await walk.tab('المال');
         await walk.tapText('البنود', required: false);
-        walk.expectSee('قاعة التجربة');
+        // The row carries the item's name, and opens the agreement's own.
+        walk.expectSee('قاعة أو مخدرة الرجال');
       });
 
       await walk.step('c07_item', 'افتح الاتفاق', () async {
-        await walk.tapText('قاعة التجربة', wait: 3);
+        await walk.tapText('قاعة أو مخدرة الرجال', wait: 3);
+        walk.expectSee('قاعة التجربة');
         walk.note(walk.visibleTexts().take(24).join(' · '));
       });
 
@@ -160,8 +162,7 @@ void main() {
 
       await walk.step('e06_save_guest', 'احفظ الضيف', () async {
         await fillNth(0, 'ضيف التجربة');
-        await walk.tapText('حفظ', required: false, last: true, wait: 4) ||
-            await walk.tapText('أضف', last: true, wait: 4);
+        await walk.tapKey('guest-form-save', wait: 4);
         walk.note(walk.visibleTexts().take(16).join(' · '));
       });
 

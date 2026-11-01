@@ -358,6 +358,7 @@ class _StarterApi extends TaskTimelineApi {
     String status = 'TODO',
     String priority = 'MEDIUM',
     bool isPrivate = false,
+    String? starterKey,
   }) async {
     if (failAfter != null && created.length >= failAfter!) {
       throw const ApiException('انقطع الاتصال.');

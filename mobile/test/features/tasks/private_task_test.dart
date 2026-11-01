@@ -154,6 +154,7 @@ class _PrivacyApi extends TaskTimelineApi {
     String status = 'TODO',
     String priority = 'MEDIUM',
     bool isPrivate = false,
+    String? starterKey,
   }) async {
     createdPrivate.add(isPrivate);
     final task = _task(isPrivate: isPrivate);

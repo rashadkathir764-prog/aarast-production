@@ -29,6 +29,15 @@ model WeddingTask {
   // V1 checklist 4.10: set when the owner or the partner keeps the task to
   // themselves; only that account sees it.
   privateToUserId   String?
+  // R4: the money item this task waits on (it closes when the item is
+  // booked), or the payment (with its agreement; it closes when paid).
+  // Plain ids: the money is another context.
+  linkedBudgetCategoryId String?
+  linkedCostId      String?
+  linkedScheduleId  String?
+  // Set when the booking or the payment finished the task, so undoing them
+  // reopens it; a manual status change clears it.
+  autoClosedAt      DateTime?
   createdAt         DateTime                   @default(now())
   updatedAt         DateTime                   @updatedAt
   weddingPlan       WeddingPlan                @relation(fields: [weddingPlanId], references: [id], onDelete: Restrict)
@@ -38,6 +47,8 @@ model WeddingTask {
   @@index([weddingPlanId, status])
   @@index([assigneeUserId])
   @@index([weddingPlanId, privateToUserId])
+  @@index([weddingPlanId, linkedBudgetCategoryId])
+  @@index([weddingPlanId, linkedScheduleId])
 }
 
 model WeddingTaskChecklistItem {

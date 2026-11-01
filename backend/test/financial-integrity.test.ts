@@ -462,6 +462,7 @@ test("a direct payment ignores reminder totals and cancels pending reminders whe
       aggregate: async () => {
         throw new Error("pending reminder totals must not be queried");
       },
+      findMany: async () => [],
       updateMany: async (args: any) => {
         reminderUpdates.push(args);
         return { count: 2 };

@@ -52,6 +52,7 @@ test("contributor A never receives contributor B task rows from the plan task li
         },
       }),
       canManageTasks: () => true,
+      canViewMoney: () => false,
     } as any,
     { notifyTaskDue: async () => undefined } as any,
     {} as any,

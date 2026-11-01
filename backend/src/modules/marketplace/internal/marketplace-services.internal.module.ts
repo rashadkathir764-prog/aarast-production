@@ -20,10 +20,15 @@ import { UserReadPublicModule } from '../../identity/public/user-read-public.mod
 import { PlanReadPublicModule } from '../../planning/public/plan-read-public.module';
 import { MediaStoragePublicModule } from '../../media/public/media-storage-public.module';
 import { NotificationsPublicModule } from '../../notifications/public/notifications-public.module';
+import { TasksPublicModule } from '../../tasks/public/tasks-public.module';
+import { ProviderReadPublicModule } from '../public/provider-read-public.module';
 
 @Module({
   imports: [
     PrismaModule,
+    // R4: a confirmed booking closes the tasks waiting on its item.
+    ProviderReadPublicModule,
+    TasksPublicModule,
     ConversationLifecyclePublicModule,
     CollaborationPermissionPublicModule,
     CollaborationHistoryPublicModule,

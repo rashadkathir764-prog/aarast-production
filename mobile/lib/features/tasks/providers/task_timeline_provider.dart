@@ -219,6 +219,7 @@ class TaskTimelineProvider extends ChangeNotifier with SessionScopedNotifier {
             weddingPlanId: weddingPlanId,
             title: template.title,
             taskCategory: template.taskCategory,
+            starterKey: template.key,
             dueDate: taskStarterDueDate(
               weddingDate,
               template.daysBefore,
@@ -274,6 +275,37 @@ class TaskTimelineProvider extends ChangeNotifier with SessionScopedNotifier {
       return false;
     } catch (_) {
       _errorMessage = 'تعذر مشاركة المهمة.';
+      return false;
+    } finally {
+      _isSubmitting = false;
+      notifyListeners();
+    }
+  }
+
+  /// R4: what the task waits on: one item, one payment, or nothing.
+  Future<bool> linkTask(
+    String weddingPlanId,
+    WeddingTask task, {
+    String? budgetCategoryId,
+    String? scheduleId,
+  }) async {
+    _isSubmitting = true;
+    _errorMessage = null;
+    _noticeMessage = null;
+    notifyListeners();
+    try {
+      final updated = await _api.updateTask(task.id, {
+        'linkedBudgetCategoryId': budgetCategoryId,
+        'linkedScheduleId': scheduleId,
+      });
+      _replaceTask(updated);
+      await _refreshTaskData(weddingPlanId);
+      return true;
+    } on ApiException catch (error) {
+      _errorMessage = error.message;
+      return false;
+    } catch (_) {
+      _errorMessage = 'تعذر ربط المهمة.';
       return false;
     } finally {
       _isSubmitting = false;

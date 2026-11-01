@@ -84,6 +84,10 @@ export interface TaskSpec {
   checklist?: Array<{ title: string; done: boolean }>;
   /** The helper who created it (feeds their contribution history). */
   createdByMember?: DemoAccountKey;
+  /** R4: the item it waits on, by the item's key. */
+  linkedItem?: string;
+  /** R4: the payment it waits on, by its agreement's and its schedule's keys. */
+  linkedPayment?: { cost: string; schedule: string };
 }
 
 export interface GuestGroupSpec {
@@ -395,10 +399,10 @@ export const GROOM_PLAN: PlanSpec = {
         { title: 'بلّغ أهل العروسة', done: false },
       ],
     },
-    { key: 'pick-photographer', title: 'اختر المصور', done: false, dueDate: inDays(3), priority: WeddingTaskPriority.HIGH },
-    { key: 'hall-payment', title: 'ادفع دفعة القاعة', done: false, dueDate: inDays(2), description: '500,000 ر.ي', priority: WeddingTaskPriority.HIGH },
+    { key: 'pick-photographer', title: 'اختر المصور', done: false, dueDate: inDays(3), priority: WeddingTaskPriority.HIGH, linkedItem: 'photo' },
+    { key: 'hall-payment', title: 'ادفع دفعة القاعة', done: false, dueDate: inDays(2), description: '500,000 ر.ي', priority: WeddingTaskPriority.HIGH, linkedPayment: { cost: 'hall', schedule: 'hall-s2' } },
     { key: 'lunch', title: 'رتّب الغداء', done: false, dueDate: inDays(3), assignee: 'helperSaleh', description: 'أبو علي' },
-    { key: 'dowry-rest', title: 'سلّم باقي المهر', done: false, dueDate: inDays(21), description: 'لأهل العروسة', priority: WeddingTaskPriority.HIGH },
+    { key: 'dowry-rest', title: 'سلّم باقي المهر', done: false, dueDate: inDays(21), description: 'لأهل العروسة', priority: WeddingTaskPriority.HIGH, linkedPayment: { cost: 'mahr', schedule: 'mahr-rest' } },
     {
       key: 'contract-papers',
       title: 'جهّز أوراق العقد',
@@ -532,8 +536,8 @@ export const BRIDE_PLAN: PlanSpec = {
         { title: 'بلّغي أهل العريس', done: false },
       ],
     },
-    { key: 'pick-photographer', title: 'اختاري المصورة', done: false, dueDate: inDays(3), priority: WeddingTaskPriority.HIGH },
-    { key: 'hall-payment', title: 'ادفعي دفعة الصالة', done: false, dueDate: inDays(2), description: '500,000 ر.ي', priority: WeddingTaskPriority.HIGH },
+    { key: 'pick-photographer', title: 'اختاري المصورة', done: false, dueDate: inDays(3), priority: WeddingTaskPriority.HIGH, linkedItem: 'photo' },
+    { key: 'hall-payment', title: 'ادفعي دفعة الصالة', done: false, dueDate: inDays(2), description: '500,000 ر.ي', priority: WeddingTaskPriority.HIGH, linkedPayment: { cost: 'hall', schedule: 'hall-s2' } },
     { key: 'lunch', title: 'رتّبي الغداء', done: false, dueDate: inDays(3), assignee: 'helperNora', description: 'أم فدوى' },
     { key: 'dowry-rest', title: 'استلمي باقي المهر', done: false, dueDate: inDays(21), description: 'من أهل العريس' },
     {

@@ -1,8 +1,13 @@
+import 'package:aarast_mobile/core/forms/aarast_form_draft_store.dart';
+import 'package:aarast_mobile/core/storage/auth_storage.dart';
+import 'package:aarast_mobile/core/storage/sensitive_value_vault.dart';
 import 'package:aarast_mobile/core/widgets/aarast_ui.dart';
 import 'package:aarast_mobile/features/guests/models/guest.dart';
 import 'package:aarast_mobile/features/guests/widgets/guest_form_sheet.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
   testWidgets('guest form returns normalized product data', (tester) async {
@@ -156,6 +161,40 @@ void main() {
     expect(result!.groupId, 'group-new');
     expect(result!.addAnother, isTrue);
   });
+
+  // A name saved within the autosave's half second came back in the next
+  // form: the sheet wrote its draft after the list had cleared it.
+  testWidgets('a saved guest leaves no draft for the next one', (tester) async {
+    const scope = 'guest:plan-1:new';
+    SharedPreferences.setMockInitialValues({});
+    final storage = AuthStorage(await SharedPreferences.getInstance());
+    final store = AarastFormDraftStore(vault: _Vault(), authStorage: storage);
+    await _openForm(
+      tester,
+      draftStore: store,
+      draftScope: scope,
+      onResult: (_) => store.clear(scope),
+    );
+
+    await tester.enterText(_name, 'سالم أحمد');
+    await tester.tap(find.byKey(const ValueKey('guest-form-save-next')));
+    await tester.pumpAndSettle();
+
+    expect(await store.read(scope), isNull);
+  });
+}
+
+class _Vault implements SensitiveValueVault {
+  final _values = <String, String>{};
+
+  @override
+  Future<void> delete(String key) async => _values.remove(key);
+
+  @override
+  Future<String?> read(String key) async => _values[key];
+
+  @override
+  Future<void> write(String key, String value) async => _values[key] = value;
 }
 
 Future<void> _openForm(
@@ -165,6 +204,8 @@ Future<void> _openForm(
   List<GuestGroup> groups = const [],
   bool blockDuplicatePhone = true,
   Future<String?> Function(String name)? onCreateGroup,
+  AarastFormDraftStore? draftStore,
+  String? draftScope,
   required ValueChanged<GuestFormResult?> onResult,
 }) async {
   tester.view.devicePixelRatio = 1;
@@ -172,25 +213,29 @@ Future<void> _openForm(
   addTearDown(tester.view.reset);
 
   await tester.pumpWidget(
-    MaterialApp(
-      home: Builder(
-        builder: (context) => Scaffold(
-          body: FilledButton(
-            onPressed: () async {
-              final result = await showAarastBottomSheet<GuestFormResult>(
-                context: context,
-                isScrollControlled: true,
-                builder: (_) => GuestFormSheet(
-                  guest: guest,
-                  existingGuests: existingGuests,
-                  groups: groups,
-                  blockDuplicatePhone: blockDuplicatePhone,
-                  onCreateGroup: onCreateGroup,
-                ),
-              );
-              onResult(result);
-            },
-            child: const Text('فتح'),
+    Provider<AarastFormDraftStore?>.value(
+      value: draftStore,
+      child: MaterialApp(
+        home: Builder(
+          builder: (context) => Scaffold(
+            body: FilledButton(
+              onPressed: () async {
+                final result = await showAarastBottomSheet<GuestFormResult>(
+                  context: context,
+                  isScrollControlled: true,
+                  builder: (_) => GuestFormSheet(
+                    guest: guest,
+                    existingGuests: existingGuests,
+                    groups: groups,
+                    blockDuplicatePhone: blockDuplicatePhone,
+                    onCreateGroup: onCreateGroup,
+                    draftScope: draftScope,
+                  ),
+                );
+                onResult(result);
+              },
+              child: const Text('فتح'),
+            ),
           ),
         ),
       ),

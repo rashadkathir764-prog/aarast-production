@@ -169,6 +169,10 @@ async function seedTask(tx: Tx, planKey: string, spec: PlanSpec, task: TaskSpec)
     assigneeUserId: task.assignee ? userId(task.assignee) : null,
     responsibleName: task.responsibleName ?? null,
     privateToUserId: null,
+    linkedBudgetCategoryId: task.linkedItem ? demoId('cat', `${spec.key}-${task.linkedItem}`) : null,
+    linkedCostId: task.linkedPayment ? demoId('cost', `${spec.key}-${task.linkedPayment.cost}`) : null,
+    linkedScheduleId: task.linkedPayment ? demoId('sched', `${spec.key}-${task.linkedPayment.schedule}`) : null,
+    autoClosedAt: null,
   } as const;
   await tx.weddingTask.upsert({ where: { id }, create: { id, ...data }, update: data });
   for (const [index, item] of (task.checklist ?? []).entries()) {

@@ -240,6 +240,9 @@ class _GuestFormSheetState extends State<GuestFormSheet> {
           : null;
     });
     if (_nameError != null || _phoneError != null) return;
+    // The list clears the draft once this guest is saved: nothing is left
+    // pending to write it back when this sheet goes.
+    unawaited(_draft?.flush());
     Navigator.of(context).pop(
       GuestFormResult(
         name: name,

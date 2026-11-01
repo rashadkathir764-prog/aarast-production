@@ -17,6 +17,10 @@ export interface TaskCreateValues {
   priority: WeddingTaskPriority;
   /** V1 checklist 4.10: the one account that sees the task, or null. */
   privateToUserId: string | null;
+  linkedBudgetCategoryId?: string | null;
+  linkedCostId?: string | null;
+  linkedScheduleId?: string | null;
+  autoClosedAt?: Date | null;
 }
 
 /**
@@ -51,6 +55,10 @@ export function createTask(tx: Prisma.TransactionClient, values: TaskCreateValue
       status: values.status,
       priority: values.priority,
       privateToUserId: values.privateToUserId,
+      linkedBudgetCategoryId: values.linkedBudgetCategoryId ?? null,
+      linkedCostId: values.linkedCostId ?? null,
+      linkedScheduleId: values.linkedScheduleId ?? null,
+      autoClosedAt: values.autoClosedAt ?? null,
     },
   });
 }
@@ -138,6 +146,10 @@ export interface TaskUpdateValues {
   priority?: WeddingTaskPriority;
   /** Only ever null: sharing a private task with the plan. */
   privateToUserId?: null;
+  linkedBudgetCategoryId?: string | null;
+  linkedCostId?: string | null;
+  linkedScheduleId?: string | null;
+  autoClosedAt?: Date | null;
 }
 
 export function updateTask(tx: Prisma.TransactionClient, id: string, values: TaskUpdateValues) {
@@ -157,6 +169,14 @@ export function updateTask(tx: Prisma.TransactionClient, id: string, values: Tas
       ...(values.status !== undefined ? { status: values.status } : {}),
       ...(values.priority !== undefined ? { priority: values.priority } : {}),
       ...(values.privateToUserId === null ? { privateToUserId: null } : {}),
+      ...(values.linkedBudgetCategoryId !== undefined
+        ? { linkedBudgetCategoryId: values.linkedBudgetCategoryId }
+        : {}),
+      ...(values.linkedCostId !== undefined ? { linkedCostId: values.linkedCostId } : {}),
+      ...(values.linkedScheduleId !== undefined
+        ? { linkedScheduleId: values.linkedScheduleId }
+        : {}),
+      ...(values.autoClosedAt !== undefined ? { autoClosedAt: values.autoClosedAt } : {}),
     },
   });
 }

@@ -8,9 +8,14 @@
 //
 // Nothing is submitted: sheets and forms are opened, photographed and left,
 // so the seed stays as it was and the walk can be rerun.
+import 'package:aarast_mobile/core/utils/arabic_date_formatter.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'journey_harness.dart';
+
+/// The seed puts the rest of the mahr three weeks after the day it ran.
+String get mahrRestDay =>
+    formatArabicDayMonth(DateTime.now().add(const Duration(days: 21)));
 
 class OwnerPersona {
   const OwnerPersona({
@@ -138,7 +143,7 @@ const groomPersona = OwnerPersona(
   familyPayer: 'الوالد',
   mahr: MahrWalkWords(
     homeCard: 'الاتفاق مع أهل العروسة',
-    homeLine: 'سلّمت 2 من 3 مليون · الباقي 15 نوفمبر',
+    homeLine: 'سلّمت 2 من 3 مليون · الباقي',
     moneyTitle: 'وين تروح الفلوس',
     moneyCard: 'الاتفاق مع أهل العروسة',
     itemsSection: 'الاتفاق مع أهل العروسة',
@@ -177,7 +182,7 @@ const bridePersona = OwnerPersona(
   familyPayer: 'أبوي',
   mahr: MahrWalkWords(
     homeCard: 'الاتفاق مع العريس',
-    homeLine: 'استلمتِ 2 من 3 مليون · الباقي 15 نوفمبر',
+    homeLine: 'استلمتِ 2 من 3 مليون · الباقي',
     moneyTitle: 'المهر وعرسك',
     moneyCard: 'المهر يوصلك',
     itemsSection: 'المهر يوصلك من العريس',
@@ -221,15 +226,22 @@ Future<void> runOwnerWalk(WidgetTester tester, OwnerPersona p) async {
     walk.expectSee(p.say('أكدوا من 124', 'أكدن من 124'));
     walk.expectSee('86');
     walk.expectSee(p.say('20 ما ردّوا', '20 ما ردّن'));
+    // The providers' tile: its number, then «محجوز». An essential's line
+    // above it also says «محجوز», after the essential's name.
     final texts = walk.visibleTexts();
-    final at = texts.indexOf('محجوز');
-    if (at > 0) homeBooked = texts[at - 1];
+    final tile = texts.indexOf('المزودين');
+    if (tile >= 0 && tile + 2 < texts.length && texts[tile + 2] == 'محجوز') {
+      homeBooked = texts[tile + 1];
+    }
   });
   await walk.step('b02_home_mahr', 'الرئيسية: كرت المهر', () async {
     // B5: the mahr agreement stays on the home until it is complete.
     if (!walk.sees(p.mahr.homeCard)) await walk.scroll(pixels: 300);
     walk.expectSee(p.mahr.homeCard, why: 'كرت المهر في b02');
-    walk.expectSee(p.mahr.homeLine, why: 'سلّم 2 من 3 مليون والباقي يوم العقد');
+    walk.expectSee(
+      '${p.mahr.homeLine} $mahrRestDay',
+      why: 'سلّم 2 من 3 مليون والباقي يوم العقد',
+    );
   });
   await walk.scroll(pixels: 600);
   await walk.step('b02_home_more', 'الرئيسية تحت: بعدها وفريق الخطة', () async {
@@ -293,8 +305,12 @@ Future<void> runOwnerWalk(WidgetTester tester, OwnerPersona p) async {
       p.say('سلّمت 2 مليون', 'وصلك 2 مليون'),
       why: 'المسلّم أو الواصل من المهر',
     );
-    walk.expectSee(p.say('دفعت 2.6 مليون', 'دفعتِ 2.6 مليون'),
-        why: 'المدفوع من بنود العرس بدون المهر');
+    // D59: of the 2.6 million paid on the wedding, the family paid 1.3.
+    walk.expectSee(
+      p.say('دفعت 1.3 مليون', 'دفعتِ 1.3 مليون'),
+      why: 'المدفوع من بنود العرس بدون المهر',
+    );
+    walk.expectSee('دفع عنك 1.3 مليون', why: 'نصيب الأهل منفصل');
     // The budget card sits below the mahr: the mahr is outside it (C1).
     if (!walk.sees('من ميزانية 7 مليون')) await walk.scroll(pixels: 500);
     walk.expectSee('من ميزانية 7 مليون');
@@ -307,7 +323,7 @@ Future<void> runOwnerWalk(WidgetTester tester, OwnerPersona p) async {
     // B5: the mahr is its own section above «عرسك».
     walk.expectSee(p.mahr.itemsSection, why: 'قسم المهر في c02');
     walk.expectSee('المهر');
-    walk.expectSee('الباقي 15 نوفمبر', why: 'موعد باقي المهر');
+    walk.expectSee('الباقي $mahrRestDay', why: 'موعد باقي المهر');
     for (final name in p.itemNames) {
       if (!walk.sees(name)) await walk.scroll(pixels: 300);
       walk.expectSee(name, why: 'اسم البند كما في التصميم c02');
@@ -374,7 +390,7 @@ Future<void> runOwnerWalk(WidgetTester tester, OwnerPersona p) async {
       if (!walk.sees('باقي المهر')) await walk.scroll(pixels: 400);
       walk.expectSee('المهر من العريس');
       walk.expectSee('باقي المهر');
-      walk.expectSee('يوصلك 15 نوفمبر', why: 'موعد باقي المهر');
+      walk.expectSee('يوصلك $mahrRestDay', why: 'موعد باقي المهر');
       await walk.scroll(pixels: -1200);
     } else {
       walk.expectNotSee('المهر من العريس', why: 'مهر العريس اتفاق، مو مصدر');

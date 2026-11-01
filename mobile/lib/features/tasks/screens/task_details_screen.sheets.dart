@@ -107,18 +107,61 @@ class _ContactCard extends StatelessWidget {
   }
 }
 
-enum _TaskAction { handOver, moveDate, edit, reopen, cancel, delete }
+/// R4: what the task waits on, leading to it: the item names itself once the
+/// money is read, and the words say how the task ends or how it ended.
+class _TaskLinkRow extends StatelessWidget {
+  const _TaskLinkRow({required this.task, required this.itemName});
+
+  final WeddingTask task;
+  final String? itemName;
+
+  @override
+  Widget build(BuildContext context) {
+    final costId = task.linkedCostId;
+    final itemId = task.linkedBudgetCategoryId;
+    final payment = costId != null;
+    return JourneyListRow(
+      key: const ValueKey('task-link'),
+      icon: payment ? LucideIcons.calendarClock : LucideIcons.tags,
+      color: context.accent.primary,
+      soft: context.accent.primarySoft,
+      title: payment ? 'الدفعة في المال' : itemName ?? 'البند في المال',
+      subtitle: switch ((payment, task.closedByLink)) {
+        (true, true) => 'انتهت لما انسجّلت الدفعة',
+        (true, false) => 'تنتهي لحالها لما تنسجّل الدفعة',
+        (false, true) => 'انتهت لما انحجز البند',
+        (false, false) => 'تنتهي لحالها لما ينحجز البند',
+      },
+      trailing: const Icon(
+        LucideIcons.chevronLeft,
+        size: 18,
+        color: AarastV3Color.textFaint,
+      ),
+      onTap: () => context.push(
+        payment
+            ? AppRouter.moneyCostDetails(task.weddingPlanId, costId)
+            : AppRouter.moneyCategoryDetails(task.weddingPlanId, itemId!),
+      ),
+    );
+  }
+}
+
+enum _TaskAction { handOver, moveDate, link, edit, reopen, cancel, delete }
 
 /// x16: what can be done with a task besides finishing it. A free-text time
 /// («بعد العصر») is not offered: a task keeps a day only.
 class _TaskMenu extends StatelessWidget {
   const _TaskMenu({
     required this.open,
+    required this.canLink,
     required this.disabled,
     required this.onSelected,
   });
 
   final bool open;
+
+  /// R4: linking needs the money in sight.
+  final bool canLink;
   final bool disabled;
   final ValueChanged<_TaskAction> onSelected;
 
@@ -167,6 +210,12 @@ class _TaskMenu extends StatelessWidget {
             LucideIcons.calendarClock,
             context.say('غيّر موعدها', 'غيّري موعدها'),
           ),
+          if (canLink)
+            item(
+              _TaskAction.link,
+              LucideIcons.link,
+              context.say('اربطها ببند أو دفعة', 'اربطيها ببند أو دفعة'),
+            ),
         ],
         item(
           _TaskAction.edit,

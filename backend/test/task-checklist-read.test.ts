@@ -24,6 +24,7 @@ function permissions() {
     assertPlanReadableInTransaction: async () => ownerContext,
     assertTaskManageableInTransaction: async () => ownerContext,
     canManageTasks: () => true,
+    canViewMoney: () => true,
   } as any;
 }
 

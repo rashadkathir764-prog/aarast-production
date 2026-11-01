@@ -63,7 +63,27 @@ export type ReadableTask = Pick<
   'id' | 'title' | 'status' | 'dueDate' | 'assigneeUserId' | 'responsibleName'
 >;
 
+/** R4: what a task waits on: a money item, or one payment. */
+export type TaskLink = { budgetCategoryId: string } | { scheduleId: string };
+
 export interface TasksPort {
+  /**
+   * R4: the link settled (the item booked, the payment paid): its open tasks
+   * close. Unsettled: the tasks it closed reopen, never one closed by hand.
+   */
+  syncLinkedTasks(
+    tx: Prisma.TransactionClient,
+    weddingPlanId: string,
+    link: TaskLink,
+    settled: boolean,
+    at?: Date,
+  ): Promise<void>;
+  /** R4: the item or the payment is gone: its tasks stay, without the link. */
+  unlinkTasks(
+    tx: Prisma.TransactionClient,
+    weddingPlanId: string,
+    link: TaskLink,
+  ): Promise<void>;
   /** D52: the plan's tasks every member reads (not cancelled, never another account's private task), in due order. */
   listReadableTasks(
     client: Prisma.TransactionClient,

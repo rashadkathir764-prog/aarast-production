@@ -15,10 +15,15 @@ import { MediaStoragePublicModule } from "../../media/public/media-storage-publi
 import { QuoteReadPublicModule } from "../../marketplace/public/quote-read-public.module";
 import { PlanReadPublicModule } from "../../planning/public/plan-read-public.module";
 import { PlanningBudgetWritePublicModule } from "../../planning/public/planning-budget-write-public.module";
+import { TasksPublicModule } from "../../tasks/public/tasks-public.module";
+import { FinancePublicModule } from "../public/finance-public.module";
 
 @Module({
   imports: [
     PrismaModule,
+    // R4: a booked item or a paid payment closes the tasks waiting on it.
+    FinancePublicModule,
+    TasksPublicModule,
     CollaborationPermissionPublicModule,
     CollaborationHistoryPublicModule,
     CollaborationScopePublicModule,

@@ -1727,7 +1727,7 @@ const r19ProviderPortalApi = Object.freeze({
 // through the auth owner API.
 // +1 (R16): the money items read how far their service got from the
 // marketplace owner API.
-const r19LegalRecordCount = 254;
+const r19LegalRecordCount = 256;
 const trackedOwnerApiContracts = [
   {
     area: 'features/account_contexts',
@@ -2880,8 +2880,18 @@ const trackedPlanningBatchContracts = [
   },
   {
     source: 'mobile/lib/features/tasks/screens/task_details_screen.dart',
+    target: 'mobile/lib/features/finance/finance_api.dart',
+    show: ['FinanceProvider'],
+  },
+  {
+    source: 'mobile/lib/features/tasks/screens/task_details_screen.dart',
     target: 'mobile/lib/features/wedding_plans/wedding_plans_api.dart',
     show: ['publishTaskPlanPulse'],
+  },
+  {
+    source: 'mobile/lib/features/tasks/widgets/task_link_sheet.dart',
+    target: 'mobile/lib/features/finance/finance_api.dart',
+    show: ['FinanceProvider'],
   },
   {
     source: 'mobile/lib/features/tasks/widgets/create_task_components.dart',

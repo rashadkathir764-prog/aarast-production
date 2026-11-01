@@ -25,6 +25,7 @@ import {
   COLLABORATION_SCOPE_PORT,
   type CollaborationScopePort as ContributorScopeService,
 } from "../modules/collaboration/public/collaboration-scope.port";
+import { TASKS_PORT, type TasksPort } from "../modules/tasks/public/tasks.port";
 import { requiredMoneyAmount } from "../shared-kernel/money/money";
 import { allocationWithinBudgetViolation } from "../modules/finance/domain/budget-allocation-policy";
 import { raiseFinanceViolation } from "../modules/finance/internal/finance-violation.http";
@@ -75,6 +76,8 @@ export class BudgetCategoriesService {
     private readonly contributorScope?: ContributorScopeService,
     @Inject(COLLABORATION_HISTORY_PORT)
     private readonly contributionHistory?: ContributionHistoryService,
+    @Inject(TASKS_PORT)
+    private readonly tasks?: TasksPort,
   ) {}
 
   async create(
@@ -312,6 +315,9 @@ export class BudgetCategoriesService {
         },
       );
       await deleteBudgetCategory(tx, id);
+      await this.tasks?.unlinkTasks(tx, category.weddingPlanId, {
+        budgetCategoryId: id,
+      });
     });
     return { id, deleted: true };
   }

@@ -434,6 +434,61 @@ async function run() {
       check(`removed ${label} endpoint stays absent`, removed.status === 404);
     }
 
+    // R4: a task waits on its item or its payment, and ends and returns with it.
+    const linkItem = await request('POST', `/api/v1/wedding-plans/${planId}/budget-categories`, {
+      name: 'Task link item',
+    }, owner.token);
+    check('task link item is created', linkItem.status === 201);
+    const refusedLink = await request('POST', `/api/v1/wedding-plans/${planId}/tasks`, {
+      title: 'Linked elsewhere',
+      linkedBudgetCategoryId: 'not-this-plan',
+    }, owner.token);
+    check('a task cannot link outside its plan', refusedLink.status === 400 && refusedLink.body?.code === 'TASK_LINK_NOT_IN_PLAN');
+    const itemTask = await request('POST', `/api/v1/wedding-plans/${planId}/tasks`, {
+      title: 'Book the item',
+      linkedBudgetCategoryId: linkItem.body?.id,
+    }, owner.token);
+    check('a task waits on an item', itemTask.status === 201 && itemTask.body?.linkedBudgetCategoryId === linkItem.body?.id && itemTask.body?.status === 'TODO');
+    const outside = await request('POST', `/api/v1/wedding-plans/${planId}/costs`, {
+      budgetCategoryId: linkItem.body?.id,
+      title: 'Outside agreement',
+      totalAmount: '50',
+      partyName: 'Outside party',
+    }, owner.token);
+    check('an outside agreement books the item', outside.status === 201);
+    const closedByItem = await request('GET', `/api/v1/tasks/${itemTask.body?.id}`, null, owner.token);
+    check('booking the item finishes its task', closedByItem.body?.status === 'DONE' && closedByItem.body?.autoClosedAt !== null);
+    await request('POST', `/api/v1/costs/${outside.body?.id}/cancel`, {}, owner.token);
+    const reopenedByItem = await request('GET', `/api/v1/tasks/${itemTask.body?.id}`, null, owner.token);
+    check('cancelling the agreement brings the task back', reopenedByItem.body?.status === 'TODO' && reopenedByItem.body?.autoClosedAt === null);
+
+    const linkedCost = await request('POST', `/api/v1/wedding-plans/${planId}/costs`, {
+      budgetCategoryId: linkItem.body?.id,
+      title: 'Paid agreement',
+      totalAmount: '100',
+    }, owner.token);
+    const linkedSchedule = await request('POST', `/api/v1/costs/${linkedCost.body?.id}/payment-schedules`, {
+      amount: '40',
+      dueDate: dateOffsetIso(3),
+    }, owner.token);
+    const paymentTask = await request('POST', `/api/v1/wedding-plans/${planId}/tasks`, {
+      title: 'Pay the deposit',
+      linkedScheduleId: linkedSchedule.body?.id,
+    }, owner.token);
+    check('a task waits on a payment and keeps its agreement', paymentTask.status === 201 && paymentTask.body?.linkedCostId === linkedCost.body?.id);
+    const paidLink = await request('POST', `/api/v1/payment-schedules/${linkedSchedule.body?.id}/pay`, {
+      paidAt: dateOffsetIso(0),
+    }, owner.token);
+    const closedByPayment = await request('GET', `/api/v1/tasks/${paymentTask.body?.id}`, null, owner.token);
+    check('paying finishes the task', closedByPayment.body?.status === 'DONE');
+    await request('POST', `/api/v1/cost-payments/${paidLink.body?.payment?.id}/reverse`, {
+      reason: 'Task link smoke',
+    }, owner.token);
+    const reopenedByPayment = await request('GET', `/api/v1/tasks/${paymentTask.body?.id}`, null, owner.token);
+    check('reversing the payment brings the task back', reopenedByPayment.body?.status === 'TODO');
+    const reopenByHand = await request('PATCH', `/api/v1/tasks/${paymentTask.body?.id}`, { status: 'DONE' }, owner.token);
+    check('a task closed by hand is not the link\'s to reopen', reopenByHand.body?.status === 'DONE' && reopenByHand.body?.autoClosedAt === null);
+
     const noAuth = await request('GET', `/api/v1/wedding-plans/${planId}/money-summary`);
     check('money summary requires authentication', noAuth.status === 401);
   } finally {

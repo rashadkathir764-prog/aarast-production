@@ -40,7 +40,7 @@ import {
 } from "./dashboard-contributor-scope";
 import { loadDashboardHomeSections } from "./dashboard-home-queries";
 import { loadPlanReadView, type PlanReadViewResponse } from "./plan-read-view";
-import { readPlanBookedServices } from "./plan-booked-services";
+import { readPlanBookedServices } from "../modules/marketplace/public/plan-booked-services";
 import {
   buildFinancialWarnings,
   buildImportantItems,

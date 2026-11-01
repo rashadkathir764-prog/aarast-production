@@ -12,6 +12,7 @@ import {
 } from '@prisma/client';
 import {
   budgetItemForProviderCategory,
+  findLogicalBudgetCategory,
   normalizeBudgetCategoryName,
   OTHER_BUDGET_CATEGORY_NAME,
 } from '../domain/cost-category-matching';
@@ -612,6 +613,43 @@ export class FinancePortService implements FinancePort {
           .map((cost) => cost.budgetCategoryId),
       ),
     ];
+  }
+
+  async findItemForService(
+    client: Prisma.TransactionClient,
+    weddingPlanId: string,
+    serviceName: string,
+  ): Promise<string | null> {
+    const items = await listPlanItemsForProviderSearch(client, weddingPlanId);
+    return findLogicalBudgetCategory(items, serviceName)?.id ?? null;
+  }
+
+  async isPlanItem(
+    client: Prisma.TransactionClient,
+    weddingPlanId: string,
+    budgetCategoryId: string,
+  ): Promise<boolean> {
+    const item = await client.budgetCategory.findFirst({
+      where: { id: budgetCategoryId, weddingPlanId },
+      select: { id: true },
+    });
+    return item !== null;
+  }
+
+  async findPlanSchedule(
+    client: Prisma.TransactionClient,
+    weddingPlanId: string,
+    scheduleId: string,
+  ): Promise<{ costId: string; settled: boolean } | null> {
+    const schedule = await client.paymentSchedule.findFirst({
+      where: { id: scheduleId, weddingCost: { weddingPlanId } },
+      select: { weddingCostId: true, status: true },
+    });
+    if (!schedule) return null;
+    return {
+      costId: schedule.weddingCostId,
+      settled: schedule.status === PaymentScheduleStatus.PAID,
+    };
   }
 
   async createCostFromAcceptedOffer(

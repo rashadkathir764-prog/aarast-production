@@ -1,4 +1,4 @@
-import { IsBoolean, IsOptional } from 'class-validator';
+import { IsBoolean, IsOptional, IsString } from 'class-validator';
 import { CreateTaskDto } from './create-task.dto';
 
 /**
@@ -11,4 +11,19 @@ export class CreatePlanTaskDto extends CreateTaskDto {
   @IsBoolean()
   @IsOptional()
   isPrivate?: boolean;
+
+  /** R4: the starter template it came from; one that names a service waits on that item. */
+  @IsString()
+  @IsOptional()
+  starterKey?: string;
+
+  /** R4: the money item it waits on. */
+  @IsString()
+  @IsOptional()
+  linkedBudgetCategoryId?: string;
+
+  /** R4: the payment it waits on. */
+  @IsString()
+  @IsOptional()
+  linkedScheduleId?: string;
 }

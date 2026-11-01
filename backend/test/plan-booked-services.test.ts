@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { Prisma } from '@prisma/client';
-import { readPlanBookedServices } from '../src/dashboard/plan-booked-services';
+import { readPlanBookedServices } from '../src/modules/marketplace/public/plan-booked-services';
 
 // D60: one definition of «محجوز», read by the home tile and the providers
 // board. The walk found «2 محجوز» on the home and «محجوز 4» on the board:

@@ -1,6 +1,6 @@
 import type { Prisma } from '@prisma/client';
-import type { FinancePort } from '../modules/finance/public/finance.port';
-import type { ProviderReadPort } from '../modules/marketplace/public/provider-read.port';
+import type { FinancePort } from '../../finance/public/finance.port';
+import type { ProviderReadPort } from './provider-read.port';
 
 /**
  * D60, one definition of «محجوز»: a service of the plan is booked when the
@@ -21,12 +21,28 @@ export interface PlanBookedServices {
   quoteRequestIds: string[];
 }
 
+export interface PlanBookedOwners {
+  providers: Pick<ProviderReadPort, 'listPlanConfirmedBookings'>;
+  finance: Pick<FinancePort, 'listCostsForOffers' | 'listOutsidePartyItemIds'>;
+}
+
+/** R4: whether this money item is booked, read for the whole plan. */
+export async function isPlanItemBooked(
+  tx: Prisma.TransactionClient,
+  owners: PlanBookedOwners,
+  weddingPlanId: string,
+  budgetCategoryId: string,
+): Promise<boolean> {
+  const booked = await readPlanBookedServices(tx, owners, weddingPlanId, {
+    quoteRequestIds: null,
+    costIds: null,
+  });
+  return booked.budgetCategoryIds.includes(budgetCategoryId);
+}
+
 export async function readPlanBookedServices(
   tx: Prisma.TransactionClient,
-  owners: {
-    providers: Pick<ProviderReadPort, 'listPlanConfirmedBookings'>;
-    finance: Pick<FinancePort, 'listCostsForOffers' | 'listOutsidePartyItemIds'>;
-  },
+  owners: PlanBookedOwners,
   weddingPlanId: string,
   scope: {
     /** A contributor's requests; null: the plan's. */

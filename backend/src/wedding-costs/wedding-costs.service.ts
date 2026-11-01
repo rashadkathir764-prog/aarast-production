@@ -45,6 +45,12 @@ import {
   PROVIDER_READ_PORT,
   type ProviderReadPort,
 } from "../modules/marketplace/public/provider-read.port";
+import { isPlanItemBooked } from "../modules/marketplace/public/plan-booked-services";
+import {
+  FINANCE_PORT,
+  type FinancePort,
+} from "../modules/finance/public/finance.port";
+import { TASKS_PORT, type TasksPort } from "../modules/tasks/public/tasks.port";
 import {
   QUOTE_READ_PORT,
   type QuoteReadPort,
@@ -217,6 +223,10 @@ export class WeddingCostsService {
     private readonly contributorScope?: ContributorScopeService,
     @Inject(COLLABORATION_HISTORY_PORT)
     private readonly contributionHistory?: ContributionHistoryService,
+    @Inject(FINANCE_PORT)
+    private readonly finance?: FinancePort,
+    @Inject(TASKS_PORT)
+    private readonly tasks?: TasksPort,
   ) {}
 
   async createCost(
@@ -302,6 +312,7 @@ export class WeddingCostsService {
           },
           occurredAt: created.createdAt,
         });
+        await this.syncItemTasks(tx, weddingPlanId, [created.budgetCategoryId]);
         return requireWeddingCost(tx, {
           where: { id: created.id },
           include: weddingCostResponseInclude,
@@ -591,6 +602,10 @@ export class WeddingCostsService {
           },
           occurredAt: updated.updatedAt,
         });
+        await this.syncItemTasks(tx, updated.weddingPlanId, [
+          locked.budgetCategoryId,
+          updated.budgetCategoryId,
+        ]);
         return this.presentCost(tx, updated);
       });
     } catch (error) {
@@ -668,6 +683,9 @@ export class WeddingCostsService {
         );
       }
       raiseFinanceViolation(costCancellationViolation(locked.paidAmount));
+      const dropped = await listPaymentSchedules(tx, {
+        where: { weddingCostId: id, status: PaymentScheduleStatus.PENDING },
+      });
       await updatePaymentSchedules(tx, {
         where: { weddingCostId: id, status: PaymentScheduleStatus.PENDING },
         data: { status: PaymentScheduleStatus.CANCELLED },
@@ -677,6 +695,14 @@ export class WeddingCostsService {
         data: { status: WeddingCostStatus.CANCELLED },
         include: weddingCostResponseInclude,
       });
+      for (const schedule of dropped) {
+        await this.tasks?.unlinkTasks(tx, cancelled.weddingPlanId, {
+          scheduleId: schedule.id,
+        });
+      }
+      await this.syncItemTasks(tx, cancelled.weddingPlanId, [
+        cancelled.budgetCategoryId,
+      ]);
       await this.recordMoneyEvent(tx, context, {
         entityType: ContributionEntityType.WEDDING_COST,
         entityId: cancelled.id,
@@ -964,6 +990,12 @@ export class WeddingCostsService {
           where: { id: payment.paymentScheduleId },
           data: { status: PaymentScheduleStatus.PENDING, paidAt: null },
         });
+        await this.tasks?.syncLinkedTasks(
+          tx,
+          cost.weddingPlanId,
+          { scheduleId: payment.paymentScheduleId },
+          false,
+        );
       }
       await this.recordMoneyEvent(tx, context, {
         entityType: ContributionEntityType.WEDDING_COST,
@@ -1239,6 +1271,9 @@ export class WeddingCostsService {
         },
       });
       await deletePaymentSchedule(tx, { where: { id } });
+      await this.tasks?.unlinkTasks(tx, current.weddingCost.weddingPlanId, {
+        scheduleId: id,
+      });
     });
     return { deleted: true };
   }
@@ -1291,6 +1326,9 @@ export class WeddingCostsService {
         where: { id },
         data: { status: PaymentScheduleStatus.CANCELLED, paidAt: null },
         include: scheduleInclude,
+      });
+      await this.tasks?.unlinkTasks(tx, cancelled.weddingCost.weddingPlanId, {
+        scheduleId: id,
       });
       await this.recordMoneyEvent(tx, context, {
         entityType: ContributionEntityType.PAYMENT_SCHEDULE,
@@ -1396,6 +1434,12 @@ export class WeddingCostsService {
         data: { status: PaymentScheduleStatus.PAID, paidAt },
         include: scheduleInclude,
       });
+      await this.tasks?.syncLinkedTasks(
+        tx,
+        cost.weddingPlanId,
+        { scheduleId: id },
+        true,
+      );
       const paidAmount = cost.paidAmount.plus(schedule.amount);
       const status = deriveCostStatus(cost.totalAmount, paidAmount);
       await updateWeddingCost(tx, {
@@ -1602,6 +1646,13 @@ export class WeddingCostsService {
     status: WeddingCostStatus,
   ) {
     if (!schedulesToCancelOnStatus(status)) return;
+    const closed = await listPaymentSchedules(tx, {
+      where: {
+        weddingCostId: costId,
+        status: PaymentScheduleStatus.PENDING,
+      },
+      select: { id: true, weddingCost: { select: { weddingPlanId: true } } },
+    });
     await updatePaymentSchedules(tx, {
       where: {
         weddingCostId: costId,
@@ -1609,6 +1660,42 @@ export class WeddingCostsService {
       },
       data: { status: PaymentScheduleStatus.CANCELLED, paidAt: null },
     });
+    // R4: the agreement is paid in full, so these payments are settled too.
+    for (const schedule of closed) {
+      await this.tasks?.syncLinkedTasks(
+        tx,
+        schedule.weddingCost.weddingPlanId,
+        { scheduleId: schedule.id },
+        true,
+      );
+    }
+  }
+
+  /**
+   * R4: an agreement with someone outside books its item; cancelling it, or
+   * moving it to another item, may unbook one. `budgetCategoryIds` are the
+   * items this change touched.
+   */
+  private async syncItemTasks(
+    tx: Tx,
+    weddingPlanId: string,
+    budgetCategoryIds: readonly string[],
+  ) {
+    const { finance, tasks } = this;
+    if (!finance || !tasks) return;
+    for (const budgetCategoryId of new Set(budgetCategoryIds)) {
+      await tasks.syncLinkedTasks(
+        tx,
+        weddingPlanId,
+        { budgetCategoryId },
+        await isPlanItemBooked(
+          tx,
+          { providers: this.providers, finance },
+          weddingPlanId,
+          budgetCategoryId,
+        ),
+      );
+    }
   }
 
   /**

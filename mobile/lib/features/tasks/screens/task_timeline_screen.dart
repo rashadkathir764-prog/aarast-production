@@ -108,7 +108,8 @@ class _TaskTimelineScreenState extends State<TaskTimelineScreen> {
     final visible = person == _everyone
         ? tasks
         : tasks.where((task) => _personKey(task, userId) == person).toList();
-    final counted = tasks.where((task) => task.status != 'CANCELLED');
+    // «12 من 20» counts what the filter shows: «لي» or one person.
+    final counted = visible.where((task) => task.status != 'CANCELLED');
     final done = counted.where((task) => task.isDone).length;
 
     final Widget body;

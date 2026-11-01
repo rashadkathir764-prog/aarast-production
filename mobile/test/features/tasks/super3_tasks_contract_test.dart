@@ -268,6 +268,39 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  testWidgets('the done count follows the person filter', (tester) async {
+    final harness = await _createHarness();
+    final provider = TaskTimelineProvider(harness.api);
+    await provider.createTask(weddingPlanId: localPlanId, title: 'حجز القاعة');
+    await provider.markTaskDone(localPlanId, provider.tasks.single);
+    await provider.createTask(
+      weddingPlanId: localPlanId,
+      title: 'اتصل بالمصور',
+      responsibleName: 'صالح',
+      responsibleSource: 'manual',
+    );
+
+    await tester.pumpWidget(
+      _providers(
+        harness,
+        provider,
+        const MaterialApp(home: TaskTimelineScreen(weddingPlanId: localPlanId)),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('1 من 2'), findsOneWidget);
+
+    // «لي»: only the owner's own task, already done.
+    await tester.tap(find.byKey(const ValueKey('task-person-me')));
+    await tester.pumpAndSettle();
+    expect(find.text('1 من 1'), findsOneWidget);
+
+    // صالح's one task, still open.
+    await tester.tap(find.byKey(const ValueKey('task-person-صالح')));
+    await tester.pumpAndSettle();
+    expect(find.text('0 من 1'), findsOneWidget);
+  });
+
   testWidgets('finishing a task moves it to «خلصت» (d01)', (tester) async {
     final harness = await _createHarness();
     await harness.api.createTask(
@@ -435,6 +468,36 @@ void main() {
 
     expect(find.text('تعذر تحديث المهمة.'), findsNothing);
     expect(find.byKey(const ValueKey('task-save-error')), findsNothing);
+  });
+
+  testWidgets('«حوّلها لأحد ثاني» opens the form on «لمين؟»', (tester) async {
+    _setPhoneView(tester, width: 390);
+    final harness = await _createHarness();
+    final provider = TaskTimelineProvider(harness.api);
+    final task = _task(id: 'handover', title: 'تأكيد القاعة');
+
+    await tester.pumpWidget(
+      _providers(
+        harness,
+        provider,
+        MaterialApp.router(
+          routerConfig: _router(
+            start: CreateTaskScreen(
+              weddingPlanId: localPlanId,
+              taskId: task.id,
+              initialTask: task,
+              handOver: true,
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    // Titled for handing over, not «تعديل المهمة», and «لمين؟» in sight.
+    expect(find.text('لمين تحوّلها؟'), findsOneWidget);
+    expect(find.text('تعديل المهمة'), findsNothing);
+    expect(find.text('لمين؟').hitTestable(), findsOneWidget);
   });
 
   testWidgets('Add Task selects an existing participant as responsible', (

@@ -201,6 +201,7 @@ List<RouteBase> _weddingPlanRoutes() => [
           weddingPlanId: id,
           taskId: taskId,
           initialTask: task,
+          handOver: state.uri.queryParameters['focus'] == 'who',
         ),
       );
     },

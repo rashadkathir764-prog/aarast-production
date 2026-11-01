@@ -538,7 +538,11 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen> {
       case _TaskAction.handOver:
       case _TaskAction.edit:
         await context.push(
-          AppRouter.editTask(widget.weddingPlanId, task.id),
+          AppRouter.editTask(
+            widget.weddingPlanId,
+            task.id,
+            handOver: action == _TaskAction.handOver,
+          ),
           extra: task,
         );
       case _TaskAction.moveDate:

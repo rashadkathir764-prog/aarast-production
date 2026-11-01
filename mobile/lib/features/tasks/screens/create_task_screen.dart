@@ -35,12 +35,16 @@ class CreateTaskScreen extends StatefulWidget {
     required this.weddingPlanId,
     this.taskId,
     this.initialTask,
+    this.handOver = false,
     super.key,
   });
 
   final String weddingPlanId;
   final String? taskId;
   final WeddingTask? initialTask;
+
+  /// «حوّلها لأحد ثاني»: the same form, titled for it and opened on «لمين؟».
+  final bool handOver;
 
   @override
   State<CreateTaskScreen> createState() => _CreateTaskScreenState();
@@ -76,9 +80,20 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
   bool _didConfigureDraft = false;
   bool _restoringDraft = false;
 
+  /// Where «لمين؟» starts, to open the form on it for [handOver].
+  final _whoKey = GlobalKey();
+
   @override
   void initState() {
     super.initState();
+    if (widget.handOver) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        final who = _whoKey.currentContext;
+        if (who != null && who.mounted) {
+          Scrollable.ensureVisible(who, duration: AarastV3Motion.standard);
+        }
+      });
+    }
     for (final controller in [
       _titleController,
       _descriptionController,
@@ -145,7 +160,11 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 8, 8, 0),
             child: JourneySubHeader(
-              title: _isEditMode ? 'تعديل المهمة' : 'مهمة جديدة',
+              title: widget.handOver
+                  ? context.say('لمين تحوّلها؟', 'لمين تحوّلينها؟')
+                  : _isEditMode
+                  ? 'تعديل المهمة'
+                  : 'مهمة جديدة',
               onBack: _goBack,
             ),
           ),
@@ -204,7 +223,7 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
                       ),
                     ),
                   ),
-                const SizedBox(height: 16),
+                SizedBox(key: _whoKey, height: AarastV3Space.x4),
                 CreateTaskResponsibleSection(
                   choices: _whoChoices(provider, members, currentUserId),
                   selected: _who,

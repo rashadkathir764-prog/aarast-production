@@ -193,6 +193,27 @@ void main() {
     expect(find.text('مدخراتي'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
+  testWidgets('a source tapped on the money tab opens itself', (tester) async {
+    await tester.pumpWidget(
+      ChangeNotifierProvider<FundingProvider>.value(
+        value: FundingProvider(_FakeFundingApi()),
+        child: const MaterialApp(
+          home: Directionality(
+            textDirection: TextDirection.rtl,
+            child: FundingSourcesScreen(
+              weddingPlanId: 'plan-1',
+              openSourceId: 'source-0',
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    // «الوالد» is promised: its own sheet asks whether it arrived.
+    expect(find.byKey(const ValueKey('pledge-confirm')), findsOneWidget);
+  });
+
   testWidgets('promised money that arrived moves to received (x08)', (
     tester,
   ) async {

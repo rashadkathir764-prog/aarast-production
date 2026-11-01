@@ -254,6 +254,12 @@ void main() {
         find.byKey(const ValueKey('money-due-swipe-schedule-upcoming')),
         findsOneWidget,
       );
+      // The main action in sight, beside the swipe.
+      expect(
+        find.byKey(const ValueKey('money-due-pay-schedule-upcoming')),
+        findsOneWidget,
+      );
+      expect(find.text('سجّل الدفعة'), findsOneWidget);
       expect(tester.takeException(), isNull);
     });
 

@@ -106,8 +106,8 @@ class _MoneyPaymentsTab extends StatelessWidget {
               padding: const EdgeInsetsDirectional.fromSTEB(6, 0, 6, 8),
               child: Text(
                 context.say(
-                  'اسحب الدفعة لما تدفعها',
-                  'اسحبي الدفعة لما تدفعينها',
+                  'سجّل الدفعة لما تدفعها، أو اسحبها',
+                  'سجّلي الدفعة لما تدفعينها، أو اسحبيها',
                 ),
                 style: JourneyType.of(
                   JourneyType.small,
@@ -243,6 +243,18 @@ class _DueRow extends StatelessWidget {
                           JourneyType.small,
                           weight: JourneyType.bold,
                           color: AarastV3Color.danger,
+                        ),
+                      ),
+                    // The main action in sight, not only behind a swipe.
+                    if (onPay != null)
+                      Align(
+                        alignment: AlignmentDirectional.centerStart,
+                        child: JourneyTextAction(
+                          key: ValueKey('money-due-pay-${schedule.id}'),
+                          label: context.say('سجّل الدفعة', 'سجّلي الدفعة'),
+                          icon: LucideIcons.checkCircle2,
+                          color: context.accent.primary,
+                          onPressed: () => onPay!(schedule),
                         ),
                       ),
                   ],

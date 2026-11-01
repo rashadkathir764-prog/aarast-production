@@ -300,8 +300,12 @@ class AppRouter {
     return '/wedding-plans/$id/money/budget';
   }
 
-  static String moneyFunding(String id) {
-    return '/wedding-plans/$id/money/funding';
+  /// c05 «من وين»; with [sourceId], that source opens as it is reached.
+  static String moneyFunding(String id, {String? sourceId}) {
+    final path = '/wedding-plans/$id/money/funding';
+    return sourceId == null
+        ? path
+        : Uri(path: path, queryParameters: {'source': sourceId}).toString();
   }
 
   /// a06 for a plan that exists (b01's mahr step).
@@ -385,8 +389,14 @@ class AppRouter {
     return '/wedding-plans/$weddingPlanId/tasks/$taskId';
   }
 
-  static String editTask(String weddingPlanId, String taskId) {
-    return '/wedding-plans/$weddingPlanId/tasks/$taskId/edit';
+  /// Editing a task; [handOver] opens it on «لمين؟» («حوّلها لأحد ثاني»).
+  static String editTask(
+    String weddingPlanId,
+    String taskId, {
+    bool handOver = false,
+  }) {
+    final path = '/wedding-plans/$weddingPlanId/tasks/$taskId/edit';
+    return handOver ? '$path?focus=who' : path;
   }
 
   static String timeline(String id) {

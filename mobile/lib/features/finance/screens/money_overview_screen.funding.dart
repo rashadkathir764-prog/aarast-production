@@ -122,7 +122,13 @@ class _MoneyFundingTabState extends State<_MoneyFundingTab> {
                   _FundingSourceRow(
                     source: source,
                     amount: _amount(context, source.amount, currency),
-                    onTap: open,
+                    // The source itself, not the top of «من وين».
+                    onTap: () => context.push(
+                      AppRouter.moneyFunding(
+                        widget.planId,
+                        sourceId: source.id,
+                      ),
+                    ),
                   ),
               ],
             ),

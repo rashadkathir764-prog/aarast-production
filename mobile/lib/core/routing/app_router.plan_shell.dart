@@ -163,6 +163,7 @@ List<RouteBase> _planShellRoutes() => [
         builder: (context, state) {
           return FundingSourcesScreen(
             weddingPlanId: state.pathParameters['id'] ?? '',
+            openSourceId: state.uri.queryParameters['source'],
           );
         },
       ),

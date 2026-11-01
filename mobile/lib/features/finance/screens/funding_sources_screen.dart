@@ -22,9 +22,17 @@ import '../widgets/money_widgets.dart' show shownMoney;
 /// rafd and nuqut, pledges, loans with their repayments). The plan owner's
 /// private money picture; tracking only.
 class FundingSourcesScreen extends StatefulWidget {
-  const FundingSourcesScreen({required this.weddingPlanId, super.key});
+  const FundingSourcesScreen({
+    required this.weddingPlanId,
+    this.openSourceId,
+    super.key,
+  });
 
   final String weddingPlanId;
+
+  /// A source tapped elsewhere («من وين» on the money tab): it opens as its
+  /// own row would, once the sources are read.
+  final String? openSourceId;
 
   @override
   State<FundingSourcesScreen> createState() => _FundingSourcesScreenState();
@@ -37,9 +45,29 @@ class _FundingSourcesScreenState extends State<FundingSourcesScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) => unawaited(_load()));
   }
 
+  bool _openedRequested = false;
+
   Future<void> _load() async {
     if (!mounted) return;
-    await context.read<FundingProvider>().load(widget.weddingPlanId);
+    final funding = context.read<FundingProvider>();
+    await funding.load(widget.weddingPlanId);
+    final id = widget.openSourceId;
+    if (!mounted || id == null || _openedRequested) return;
+    _openedRequested = true;
+    final source = funding.sourceById(id);
+    if (source != null) await _openSource(source);
+  }
+
+  /// What tapping a source does: a loan its repayments, a promise its
+  /// arrival, anything else its form.
+  Future<void> _openSource(FundingSource source) async {
+    if (source.isLoan) {
+      await _showLoan(source.id);
+    } else if (source.isPledged) {
+      await _checkPledge(source);
+    } else {
+      await _openSourceSheet(source: source);
+    }
   }
 
   String get _currency {
@@ -131,11 +159,7 @@ class _FundingSourcesScreenState extends State<FundingSourcesScreen> {
                     fundingStateTag(source),
                   ],
                 ),
-                onTap: () => source.isLoan
-                    ? _showLoan(source.id)
-                    : source.isPledged
-                    ? _checkPledge(source)
-                    : _openSourceSheet(source: source),
+                onTap: () => _openSource(source),
               ),
           ],
         ),

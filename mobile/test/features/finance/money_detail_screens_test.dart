@@ -150,7 +150,31 @@ void main() {
       );
       expect(find.byKey(const ValueKey('cost-remove-delete')), findsNothing);
       expect(find.byKey(const ValueKey('cost-remove-cancel')), findsNothing);
+      // The button names the chosen action, not «متابعة».
+      expect(
+        find.descendant(
+          of: find.byKey(const ValueKey('cost-remove-confirm')),
+          matching: find.text('اعكس الدفعة أول'),
+        ),
+        findsOneWidget,
+      );
+      expect(find.text('متابعة'), findsNothing);
       expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('an agreement with no dates offers to add one', (tester) async {
+      await _pumpMoneyScreen(
+        tester,
+        const CostDetailsScreen(weddingPlanId: 'plan-1', costId: 'cost-1'),
+        api: _NoEntriesApi(),
+      );
+
+      final empty = find.byKey(const ValueKey('cost-schedules-empty'));
+      await tester.ensureVisible(empty);
+      expect(
+        find.descendant(of: empty, matching: find.text('أضف موعد')),
+        findsOneWidget,
+      );
     });
 
     testWidgets('payment details stay usable at 320px and 1.3 text scale', (
@@ -827,6 +851,20 @@ class _RefusedPaymentApi extends _MoneyDetailsApi {
   }) async {
     throw const ApiException(refusal);
   }
+}
+
+class _NoEntriesApi extends _MoneyDetailsApi {
+  @override
+  Future<List<CostPayment>> getCostPayments(
+    String costId, {
+    String? planId,
+  }) async => const [];
+
+  @override
+  Future<List<PaymentSchedule>> getCostSchedules(
+    String costId, {
+    String? planId,
+  }) async => const [];
 }
 
 class _RefusedCategoryApi extends _MoneyDetailsApi {

@@ -514,7 +514,8 @@ class _RemoveCostSheetState extends State<_RemoveCostSheet> {
         const SizedBox(height: 6),
         JourneyButton(
           key: const ValueKey('cost-remove-confirm'),
-          label: 'متابعة',
+          // The button names what it does, as the item's remove sheet does.
+          label: options.firstWhere((option) => option.$1 == _choice).$2,
           background: _choice == _RemoveCostChoice.delete
               ? AarastV3Color.danger
               : context.accent.primary,

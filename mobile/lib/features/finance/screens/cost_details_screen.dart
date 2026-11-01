@@ -302,11 +302,19 @@ class _CostDetailsScreenState extends State<CostDetailsScreen> {
           ),
         ),
         if (entries.isEmpty)
-          const JourneyListState(
+          // An empty state says what to do, with the header's own action.
+          JourneyListState(
+            key: const ValueKey('cost-schedules-empty'),
             phase: JourneyListPhase.empty,
             section: JourneySection.money,
             emptyIcon: LucideIcons.calendarPlus,
             emptyTitle: 'ما في دفعات ولا مواعيد بعد',
+            emptyAction: canSchedule
+                ? context.say('أضف موعد', 'أضيفي موعد')
+                : null,
+            onEmptyAction: canSchedule
+                ? () => _openSchedule(cost, currency, null)
+                : null,
           )
         else
           _PaymentTimeline(entries: entries, currency: currency),

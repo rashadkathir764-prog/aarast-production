@@ -13,6 +13,11 @@ export interface PlanEssential {
   status: PlanEssentialStatus;
   /** The plan's item it reads, when there is one. */
   budgetCategoryId: string | null;
+  /**
+   * The owner answered the home's suggestion of this item with «ما أحتاجها»
+   * or «بعدين» (finance's rule, read from the item): off the home for now.
+   */
+  hidden: boolean;
 }
 
 type Persona = 'GROOM' | 'BRIDE' | 'HELPER' | null;
@@ -46,7 +51,13 @@ function words(name: string): string[] {
 export function planEssentials(input: {
   persona: Persona;
   /** The reader's money items; the mahr item never counts. */
-  categories: ReadonlyArray<{ categoryId: string; name: string; kind: string; costsCount: number }>;
+  categories: ReadonlyArray<{
+    categoryId: string;
+    name: string;
+    kind: string;
+    costsCount: number;
+    suggestionHidden?: boolean;
+  }>;
   bookedCategoryIds: readonly string[];
   venueSecured: boolean;
 }): PlanEssential[] {
@@ -67,6 +78,11 @@ export function planEssentials(input: {
     else if (agreedItem) status = 'AGREED';
     else if (matching.length > 0) status = 'MISSING';
     else status = 'NONE';
-    return { key, status, budgetCategoryId: first?.categoryId ?? null };
+    return {
+      key,
+      status,
+      budgetCategoryId: first?.categoryId ?? null,
+      hidden: first?.suggestionHidden ?? false,
+    };
   });
 }

@@ -26,6 +26,7 @@ import type {
   MoneyPictureQuery,
   MoneyWarningType as WarningType,
 } from '../public/money-picture';
+import { isBudgetItemSuggestionHidden } from '../domain/budget-item-suggestion-policy';
 
 /**
  * The plan's money in one read (C1, C2, D59): the wedding budget (WEDDING
@@ -92,7 +93,8 @@ export async function readMoneyPicture(
   const weddingPaid = paidSplit(weddingCosts);
   const allocated = sum(categories, (category) => category.allocatedAmount ?? zero());
   const totalBudget = query.totalBudget;
-  const today = startOfTodayInRiyadh(query.now ?? new Date());
+  const clock = query.now ?? new Date();
+  const today = startOfTodayInRiyadh(clock);
   const dueSoonEnd = new Date(today.getTime() + 7 * 24 * 60 * 60 * 1000);
   const pendingSchedules = schedules.filter(
     (schedule) => schedule.status === PaymentScheduleStatus.PENDING,
@@ -132,6 +134,9 @@ export async function readMoneyPicture(
         category.allocatedAmount === null
           ? null
           : confirmedCost.gt(category.allocatedAmount),
+      suggestion: category.suggestion,
+      suggestionUntil: category.suggestionUntil,
+      suggestionHidden: isBudgetItemSuggestionHidden(category, clock),
     };
   });
 

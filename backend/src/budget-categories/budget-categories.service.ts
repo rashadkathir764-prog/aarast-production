@@ -40,9 +40,11 @@ import {
   deleteBudgetCategory,
   findBudgetCategory,
   listBudgetCategories,
+  setBudgetCategorySuggestion,
   sumOtherBudgetCategoryAllocations,
   updateBudgetCategory,
 } from "../modules/finance/infrastructure/budget-category.repository";
+import { budgetItemSuggestionAnswer } from "../modules/finance/domain/budget-item-suggestion-policy";
 import {
   COLLABORATION_PERMISSION_PORT,
   type CollaborationPermissionPort as PermissionService,
@@ -51,6 +53,7 @@ import {
 } from "../modules/collaboration/public/collaboration-permission.port";
 import { CreateBudgetCategoryDto } from "./dto/create-budget-category.dto";
 import { UpdateBudgetCategoryDto } from "./dto/update-budget-category.dto";
+import { SetBudgetItemSuggestionDto } from "./dto/set-budget-item-suggestion.dto";
 
 type CategoryWithCount = BudgetCategory & { _count: { weddingCosts: number } };
 
@@ -62,6 +65,10 @@ export interface BudgetCategoryResponse {
   kind: BudgetCategoryKind;
   allocatedAmount: string | null;
   costsCount: number;
+  /** The owner's answer to the home suggesting it: «ما أحتاجها» or «بعدين». */
+  suggestion: "NOT_NEEDED" | "LATER" | null;
+  /** Until when «بعدين» keeps it off the home. */
+  suggestionUntil: Date | null;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -270,6 +277,62 @@ export class BudgetCategoriesService {
     }
   }
 
+  /**
+   * The owner answers the home suggesting this item: «ما أحتاجها» keeps it
+   * off this plan's home, «بعدين» for a week; null suggests it again. Only
+   * whoever manages the money answers; the item itself does not change.
+   */
+  async setSuggestion(
+    currentUser: AuthenticatedUser,
+    id: string,
+    dto: SetBudgetItemSuggestionDto,
+    now: Date = new Date(),
+  ): Promise<BudgetCategoryResponse> {
+    const existing = await this.findCategoryOrThrow(id);
+    await this.assertScopedCategory(currentUser, existing.weddingPlanId, id);
+    const answer = budgetItemSuggestionAnswer(dto.choice ?? null, now);
+    try {
+      return await runSerializableTransaction(this.prisma, async (tx) => {
+        const context =
+          await this.permissions.assertMoneyManageableForUpdateInTransaction(
+            tx,
+            existing.weddingPlanId,
+            currentUser,
+          );
+        await this.assertScopedCategoryInTransaction(tx, context, id);
+        const locked = await findBudgetCategory(tx, id);
+        if (!locked || locked.weddingPlanId !== existing.weddingPlanId) {
+          throw new NotFoundException("Budget category not found");
+        }
+        const scopedCostIds = seesWholePlan(context)
+          ? null
+          : await this.requiredContributorScope().qualifyingEntityIdsInTransaction(
+              tx,
+              locked.weddingPlanId,
+              currentUser.id,
+              [ContributionEntityType.WEDDING_COST],
+              [
+                ContributionAction.CREATED,
+                ContributionAction.COMPLETED,
+                ContributionAction.PAYMENT_RECORDED,
+              ],
+            );
+        const category = await setBudgetCategorySuggestion(
+          tx,
+          id,
+          answer.suggestion,
+          answer.suggestionUntil,
+          await excludeOthersPrivateCosts(
+            tx, locked.weddingPlanId, currentUser.id, scopedCostIds,
+          ),
+        );
+        return this.toResponse(category);
+      });
+    } catch (error) {
+      this.rethrowCategoryError(error);
+    }
+  }
+
   async remove(
     currentUser: AuthenticatedUser,
     id: string,
@@ -435,6 +498,8 @@ export class BudgetCategoriesService {
       kind: category.kind,
       allocatedAmount: category.allocatedAmount?.toString() ?? null,
       costsCount: category._count.weddingCosts,
+      suggestion: category.suggestion,
+      suggestionUntil: category.suggestionUntil,
       createdAt: category.createdAt,
       updatedAt: category.updatedAt,
     };

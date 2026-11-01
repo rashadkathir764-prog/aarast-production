@@ -26,4 +26,10 @@ export interface DashboardSetupFacts {
    */
   essentials: PlanEssential[] | null;
   paidByOthers: string | null;
+  /**
+   * The plan's wedding items (the mahr not counted), so the home asks for the
+   * first one only while there is none; null for a reader without money
+   * rights.
+   */
+  budgetItemsCount: number | null;
 }

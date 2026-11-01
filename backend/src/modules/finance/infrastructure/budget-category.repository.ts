@@ -1,4 +1,8 @@
-import { BudgetCategoryKind, type Prisma } from '@prisma/client';
+import {
+  BudgetCategoryKind,
+  type BudgetItemSuggestion,
+  type Prisma,
+} from '@prisma/client';
 
 export function createBudgetCategory(
   tx: Prisma.TransactionClient,
@@ -52,6 +56,29 @@ export function updateBudgetCategory(
   return tx.budgetCategory.update({
     where: { id },
     data: { name, normalizedName, allocatedAmount },
+    include: {
+      _count: {
+        select: {
+          weddingCosts: scopedCostIds
+            ? { where: { id: { in: [...scopedCostIds] } } }
+            : true,
+        },
+      },
+    },
+  });
+}
+
+/** The owner's answer to the home suggesting this item (or none). */
+export function setBudgetCategorySuggestion(
+  tx: Prisma.TransactionClient,
+  id: string,
+  suggestion: BudgetItemSuggestion | null,
+  suggestionUntil: Date | null,
+  scopedCostIds: readonly string[] | null,
+) {
+  return tx.budgetCategory.update({
+    where: { id },
+    data: { suggestion, suggestionUntil },
     include: {
       _count: {
         select: {

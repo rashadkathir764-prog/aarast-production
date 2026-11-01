@@ -512,6 +512,9 @@ export class DashboardService {
             venueSecured: venueCost || venueBooked,
           })
         : null,
+      budgetItemsCount: money
+        ? money.categories.filter((category) => category.kind !== 'MAHR').length
+        : null,
       // D59: beside the closed summary contract (R12B), whose money paid.
       paidByOwner: moneyOrNull(paidByOwnerNumber),
       paidByOthers: moneyOrNull(paidByOthersNumber),

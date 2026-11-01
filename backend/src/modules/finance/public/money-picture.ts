@@ -90,6 +90,12 @@ export interface MoneyPicture {
     costsCount: number;
     paymentSchedulesCount: number;
     overBudget: boolean | null;
+    /** The owner's answer to the home suggesting it: «ما أحتاجها» or «بعدين». */
+    suggestion: 'NOT_NEEDED' | 'LATER' | null;
+    /** Until when «بعدين» keeps it off the home. */
+    suggestionUntil: Date | null;
+    /** The answer keeps it off the home now (finance's one rule). */
+    suggestionHidden: boolean;
   }>;
   /** The plan's mahr, or null before it is recorded or for a reader who may not see it. */
   mahr: MahrPicture | null;

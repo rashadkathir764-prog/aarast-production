@@ -56,16 +56,25 @@ enum BudgetCategoryKind {
   MAHR
 }
 
+/// The owner's answer to the home suggesting an item (the venue, the
+/// photographer...): not needed in this plan, or later (until a date).
+enum BudgetItemSuggestion {
+  NOT_NEEDED
+  LATER
+}
+
 model BudgetCategory {
-  id              String             @id @default(cuid())
+  id              String                @id @default(cuid())
   weddingPlanId   String
   name            String
   normalizedName  String
-  allocatedAmount Decimal?           @db.Decimal(14, 2)
-  kind            BudgetCategoryKind @default(WEDDING)
-  createdAt       DateTime           @default(now())
-  updatedAt       DateTime           @updatedAt
-  weddingPlan     WeddingPlan        @relation(fields: [weddingPlanId], references: [id], onDelete: Restrict)
+  allocatedAmount Decimal?              @db.Decimal(14, 2)
+  kind            BudgetCategoryKind    @default(WEDDING)
+  suggestion      BudgetItemSuggestion?
+  suggestionUntil DateTime?
+  createdAt       DateTime              @default(now())
+  updatedAt       DateTime              @updatedAt
+  weddingPlan     WeddingPlan           @relation(fields: [weddingPlanId], references: [id], onDelete: Restrict)
   weddingCosts    WeddingCost[]
 
   @@unique([weddingPlanId, normalizedName])

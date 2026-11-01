@@ -6,6 +6,7 @@ import {
   Param,
   Patch,
   Post,
+  Put,
   UseGuards,
 } from "@nestjs/common";
 import { AuthenticatedUser } from "../modules/identity/public/identity-session.types";
@@ -14,6 +15,7 @@ import { JwtAuthGuard } from "../modules/identity/public/jwt-auth.guard";
 import { BudgetCategoriesService } from "./budget-categories.service";
 import { CreateBudgetCategoryDto } from "./dto/create-budget-category.dto";
 import { UpdateBudgetCategoryDto } from "./dto/update-budget-category.dto";
+import { SetBudgetItemSuggestionDto } from "./dto/set-budget-item-suggestion.dto";
 
 @Controller("api/v1/wedding-plans/:weddingPlanId/budget-categories")
 @UseGuards(JwtAuthGuard)
@@ -54,6 +56,16 @@ export class BudgetCategoriesController {
     @Body() dto: UpdateBudgetCategoryDto,
   ) {
     return this.budgetCategoriesService.update(currentUser, id, dto);
+  }
+
+  /** The owner's answer to the home suggesting this item. */
+  @Put(":id/suggestion")
+  setSuggestion(
+    @CurrentUser() currentUser: AuthenticatedUser,
+    @Param("id") id: string,
+    @Body() dto: SetBudgetItemSuggestionDto,
+  ) {
+    return this.budgetCategoriesService.setSuggestion(currentUser, id, dto);
   }
 
   @Delete(":id")

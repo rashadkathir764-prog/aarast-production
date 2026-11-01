@@ -69,7 +69,9 @@ Future<void> _openTaskStarterSheet(
           templates: templates,
           weddingDate: weddingDate,
         );
-        return provider.errorMessage == null || count > 0;
+        if (count > 0) return null;
+        // Nothing added: the sheet stays open with the reason.
+        return provider.errorMessage;
       },
     ),
   );
@@ -141,10 +143,7 @@ class _StarterTasksCard extends StatelessWidget {
                   ],
                 ),
               ),
-              Icon(
-                LucideIcons.chevronLeft,
-                color: context.accent.primary,
-              ),
+              Icon(LucideIcons.chevronLeft, color: context.accent.primary),
             ],
           ),
         ),

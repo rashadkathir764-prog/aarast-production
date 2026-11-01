@@ -117,7 +117,7 @@ class _TaskTimelineScreenState extends State<TaskTimelineScreen> {
         phase: JourneyListPhase.loading,
         section: JourneySection.tasks,
       );
-    } else if (provider.errorMessage != null && tasks.isEmpty) {
+    } else if (provider.loadErrorMessage != null && tasks.isEmpty) {
       body = JourneyListState(
         phase: JourneyListPhase.error,
         section: JourneySection.tasks,
@@ -227,7 +227,7 @@ class _TaskTimelineScreenState extends State<TaskTimelineScreen> {
               ],
             ),
             const SizedBox(height: 12),
-            if (provider.errorMessage != null && tasks.isNotEmpty) ...[
+            if (provider.loadErrorMessage != null && tasks.isNotEmpty) ...[
               JourneyListNotice(
                 offline: false,
                 onRetry: () => provider.load(widget.weddingPlanId),
@@ -327,6 +327,8 @@ class _TaskTimelineScreenState extends State<TaskTimelineScreen> {
       key: ValueKey('task-swipe-${task.id}'),
       direction: DismissDirection.startToEnd,
       confirmDismiss: (_) async {
+        // The circle waits while a save runs; the swipe waits with it.
+        if (provider.isSubmitting) return false;
         unawaited(_finish(provider, task));
         return false;
       },

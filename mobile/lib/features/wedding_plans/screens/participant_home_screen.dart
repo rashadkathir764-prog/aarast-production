@@ -337,7 +337,7 @@ class _ParticipantHomeScreenState extends State<ParticipantHomeScreen> {
       } else if (canTasks &&
           taskProvider != null &&
           !taskProvider.isLoading &&
-          taskProvider.errorMessage == null) {
+          taskProvider.loadErrorMessage == null) {
         children.addAll([
           const SizedBox(height: 12),
           const JourneyNote(

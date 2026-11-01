@@ -115,7 +115,9 @@ class _ParticipantTasksScreenState extends State<ParticipantTasksScreen> {
             task.status != 'CANCELLED')
           task,
     ];
-    final done = view == null ? null : '${view.tasksDone} من ${view.tasksTotal}';
+    final done = view == null
+        ? null
+        : '${view.tasksDone} من ${view.tasksTotal}';
 
     // «عرس محمد · معك 3» for whoever works on tasks; «عرس محمد · خلصت 12
     // من 20» for whoever only follows the plan.
@@ -214,7 +216,7 @@ class _ParticipantTasksScreenState extends State<ParticipantTasksScreen> {
         ),
       ];
     }
-    if (provider.errorMessage != null && tasks.isEmpty) {
+    if (provider.loadErrorMessage != null && tasks.isEmpty) {
       return [
         JourneyListState(
           phase: JourneyListPhase.error,
@@ -241,7 +243,7 @@ class _ParticipantTasksScreenState extends State<ParticipantTasksScreen> {
       ];
     }
     return [
-      if (provider.errorMessage != null) ...[
+      if (provider.loadErrorMessage != null) ...[
         const SizedBox(height: 12),
         JourneyListNotice(
           offline: false,
@@ -389,7 +391,9 @@ class _MineRow extends StatelessWidget {
               ),
             ),
             const SizedBox(width: 4),
-            Expanded(child: _TaskText(task: task, meta: meta, late: late)),
+            Expanded(
+              child: _TaskText(task: task, meta: meta, late: late),
+            ),
           ],
         ),
       ),
@@ -424,7 +428,9 @@ class _TaskText extends StatelessWidget {
           overflow: TextOverflow.ellipsis,
           style: JourneyType.of(
             JourneyType.label,
-            color: late && !done ? AarastV3Color.danger : AarastV3Color.textMuted,
+            color: late && !done
+                ? AarastV3Color.danger
+                : AarastV3Color.textMuted,
           ),
         ),
       ],

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 
 import '../../../core/experience_v3/aarast_v3.dart';
+import '../../../core/utils/app_clock.dart';
 import '../../../core/utils/arabic_count.dart';
 import '../../../core/utils/arabic_date_formatter.dart';
 import '../../../core/widgets/aarast_ui.dart';
@@ -29,8 +30,9 @@ class TaskStarterSheet extends StatefulWidget {
   /// Shows each task's day; null shows none.
   final DateTime? weddingDate;
 
-  /// Adds the chosen templates; returns whether the sheet can close.
-  final Future<bool> Function(List<TaskStarterTemplate> templates) onSubmit;
+  /// Adds the chosen templates. Null closes the sheet; a reason keeps it
+  /// open with the choice, and says why nothing was added.
+  final Future<String?> Function(List<TaskStarterTemplate> templates) onSubmit;
 
   @override
   State<TaskStarterSheet> createState() => _TaskStarterSheetState();
@@ -43,6 +45,7 @@ class _TaskStarterSheetState extends State<TaskStarterSheet> {
         if (template.recommended && !_exists(template)) template.key,
   };
   bool _saving = false;
+  String? _failure;
 
   bool _exists(TaskStarterTemplate template) =>
       widget.existingTitles.contains(taskStarterTitleKey(template.title));
@@ -54,20 +57,38 @@ class _TaskStarterSheetState extends State<TaskStarterSheet> {
   ];
 
   Future<void> _submit() async {
-    setState(() => _saving = true);
-    final close = await widget.onSubmit(_chosen);
+    setState(() {
+      _saving = true;
+      _failure = null;
+    });
+    final failure = await widget.onSubmit(_chosen);
     if (!mounted) return;
-    setState(() => _saving = false);
-    if (close) Navigator.of(context).pop(true);
+    setState(() {
+      _saving = false;
+      _failure = failure;
+    });
+    if (failure == null) Navigator.of(context).pop(true);
   }
 
+  /// The day the task is saved with: the same rule as the save, so a short
+  /// engagement shows the compressed days it will really get.
   String? _when(TaskStarterTemplate template) {
     final wedding = widget.weddingDate;
-    final days = template.daysBefore;
-    if (wedding == null || days == null) return null;
-    final date = DateUtils.dateOnly(wedding).subtract(Duration(days: days));
-    final today = DateUtils.dateOnly(DateTime.now());
-    return date.isBefore(today) ? 'الآن' : formatArabicDayMonth(date);
+    if (wedding == null || template.daysBefore == null) return null;
+    var longest = template.daysBefore!;
+    for (final chosen in _chosen) {
+      final days = chosen.daysBefore ?? 0;
+      if (days > longest) longest = days;
+    }
+    final today = DateUtils.dateOnly(appNow());
+    final date = taskStarterDueDate(
+      wedding,
+      template.daysBefore,
+      today,
+      longestDaysBefore: longest,
+    );
+    if (date == null) return null;
+    return date.isAtSameMomentAs(today) ? 'الآن' : formatArabicDayMonth(date);
   }
 
   @override
@@ -100,6 +121,17 @@ class _TaskStarterSheetState extends State<TaskStarterSheet> {
         onPressed: count == 0 || _saving ? null : _submit,
       ),
       children: [
+        if (_failure != null)
+          Padding(
+            padding: const EdgeInsets.only(top: 8),
+            child: JourneyNote(
+              key: const ValueKey('task-starter-failure'),
+              text: _failure!,
+              icon: LucideIcons.alertCircle,
+              color: AarastV3Color.danger,
+              soft: AarastV3Color.dangerSoft,
+            ),
+          ),
         for (final group in widget.groups) ...[
           Padding(
             padding: const EdgeInsets.fromLTRB(6, 14, 6, 8),

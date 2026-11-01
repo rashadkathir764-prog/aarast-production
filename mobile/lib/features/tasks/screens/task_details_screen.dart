@@ -82,7 +82,7 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen> {
       );
     } else if (task == null) {
       body = JourneyListState(
-        phase: provider.errorMessage == null
+        phase: provider.loadErrorMessage == null
             ? JourneyListPhase.empty
             : JourneyListPhase.error,
         section: JourneySection.tasks,
@@ -192,7 +192,7 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        if (provider.errorMessage != null) ...[
+        if (provider.loadErrorMessage != null) ...[
           JourneyListNotice(
             offline: false,
             onRetry: () => provider.load(widget.weddingPlanId),
@@ -320,8 +320,8 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen> {
         const SizedBox(height: 8),
         TaskChecklistSection(
           items: steps,
-          saving: provider.isSubmitting,
-          errorMessage: null,
+          saving: provider.isSavingChecklist,
+          errorMessage: provider.checklistErrorMessage,
           onAdd: (title) => provider.addChecklistItem(task, title),
           onToggle: (item, done) =>
               provider.updateChecklistItem(task, item, isDone: done),
@@ -518,7 +518,15 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen> {
       budgetCategoryId: choice.budgetCategoryId,
       scheduleId: choice.scheduleId,
     );
-    if (saved && mounted) _pulse(provider);
+    if (!mounted) return;
+    if (saved) {
+      _pulse(provider);
+    } else {
+      AarastToast.showError(
+        context,
+        provider.errorMessage ?? 'ما قدرنا نربط المهمة',
+      );
+    }
   }
 
   Future<void> _onMenu(
@@ -547,12 +555,21 @@ class _TaskDetailsScreenState extends State<TaskDetailsScreen> {
           builder: (_) => _DeleteSheet(title: task.title),
         );
         if (confirmed != true || !mounted) return;
-        if (await provider.deleteTask(widget.weddingPlanId, task.id) &&
-            mounted) {
-          _pulse(provider);
-          AarastToast.showSuccess(context, 'انحذفت المهمة');
-          _back();
+        final deleted = await provider.deleteTask(
+          widget.weddingPlanId,
+          task.id,
+        );
+        if (!mounted) return;
+        if (!deleted) {
+          AarastToast.showError(
+            context,
+            provider.errorMessage ?? 'ما قدرنا نحذف المهمة',
+          );
+          return;
         }
+        _pulse(provider);
+        AarastToast.showSuccess(context, 'انحذفت المهمة');
+        _back();
     }
   }
 }

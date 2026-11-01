@@ -36,12 +36,8 @@ void main() {
   test('a short engagement spreads the tasks instead of piling them today', () {
     final today = DateTime(2026, 10, 15);
     final wedding = DateTime(2027, 2, 18); // 126 days away
-    DateTime? due(int days) => taskStarterDueDate(
-      wedding,
-      days,
-      today,
-      longestDaysBefore: 300,
-    );
+    DateTime? due(int days) =>
+        taskStarterDueDate(wedding, days, today, longestDaysBefore: 300);
 
     expect(due(300), today);
     expect(due(180), DateTime(2026, 12, 4)); // 180 * 126 / 300 = 76 days
@@ -272,7 +268,7 @@ void main() {
             hasWeddingDate: true,
             onSubmit: (templates) async {
               submitted = templates;
-              return false;
+              return 'ما انضافت المهام';
             },
           ),
         ),

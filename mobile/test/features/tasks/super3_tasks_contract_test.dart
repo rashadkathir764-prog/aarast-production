@@ -412,6 +412,31 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  testWidgets('a new task form opens without another action\'s error', (
+    tester,
+  ) async {
+    _setPhoneView(tester, width: 390);
+    final harness = await _createHarness();
+    // A swipe that failed before «+» was tapped left its reason behind.
+    final provider = _StaleErrorTaskProvider(harness.api);
+
+    await tester.pumpWidget(
+      _providers(
+        harness,
+        provider,
+        MaterialApp.router(
+          routerConfig: _router(
+            start: const CreateTaskScreen(weddingPlanId: localPlanId),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('تعذر تحديث المهمة.'), findsNothing);
+    expect(find.byKey(const ValueKey('task-save-error')), findsNothing);
+  });
+
   testWidgets('Add Task selects an existing participant as responsible', (
     tester,
   ) async {
@@ -785,6 +810,13 @@ class _FakeAuthController extends AuthController {
 
   @override
   SafeUser? get user => fakeUser;
+}
+
+class _StaleErrorTaskProvider extends TaskTimelineProvider {
+  _StaleErrorTaskProvider(super.api);
+
+  @override
+  String? get errorMessage => 'تعذر تحديث المهمة.';
 }
 
 class _CapturingTaskProvider extends TaskTimelineProvider {

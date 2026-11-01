@@ -66,6 +66,10 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
   bool _isPrivate = false;
   bool _showMore = false;
   String? _titleError;
+
+  /// Why this form's own save failed. An error left by another action
+  /// (a swipe, a delete) is not this form's and does not show here.
+  String? _saveError;
   String? _otherNameError;
   bool _didPrefill = false, _didRequestMembers = false;
   AarastFormDraftCoordinator? _draft;
@@ -244,10 +248,11 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
                     controller: _descriptionController,
                     maxLength: 1000,
                   ),
-                if (provider.errorMessage != null) ...[
+                if (_saveError != null) ...[
                   const SizedBox(height: 10),
                   JourneyNote(
-                    text: provider.errorMessage!,
+                    key: const ValueKey('task-save-error'),
+                    text: _saveError!,
                     icon: LucideIcons.alertCircle,
                     color: AarastV3Color.danger,
                     soft: AarastV3Color.dangerSoft,
@@ -353,6 +358,7 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
       AarastToast.showError(context, 'ما قدرنا نفتح المهمة للتعديل');
       return;
     }
+    if (_saveError != null) setState(() => _saveError = null);
     final saved = task != null
         ? await provider.updateTask(
             weddingPlanId: widget.weddingPlanId,
@@ -388,7 +394,18 @@ class _CreateTaskScreenState extends State<CreateTaskScreen> {
             priority: _priority,
             isPrivate: _isPrivate,
           );
-    if (!saved || !mounted) return;
+    if (!mounted) return;
+    if (!saved) {
+      setState(
+        () => _saveError =
+            provider.errorMessage ??
+            context.say(
+              'ما قدرنا نحفظ المهمة. جرّب مرة ثانية.',
+              'ما قدرنا نحفظ المهمة. جرّبي مرة ثانية.',
+            ),
+      );
+      return;
+    }
     publishTaskPlanPulse(
       context,
       weddingPlanId: widget.weddingPlanId,

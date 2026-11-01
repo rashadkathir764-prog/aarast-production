@@ -17,7 +17,14 @@ class TaskTimelineProvider extends ChangeNotifier with SessionScopedNotifier {
 
   bool _isLoading = false;
   bool _isSubmitting = false;
+
+  /// The last action that failed (save, finish, delete, link...). Read
+  /// right after the action; a fresh form clears it.
   String? _errorMessage;
+
+  /// The tasks could not be read, so what shows may be old. Only a load or
+  /// the refresh after a save sets it, and the next good read clears it.
+  String? _loadErrorMessage;
   String? _noticeMessage;
   List<WeddingTask> _tasks = const [];
   Timeline _timeline = Timeline.empty();
@@ -32,6 +39,7 @@ class TaskTimelineProvider extends ChangeNotifier with SessionScopedNotifier {
   bool get isLoading => _isLoading;
   bool get isSubmitting => _isSubmitting;
   String? get errorMessage => _errorMessage;
+  String? get loadErrorMessage => _loadErrorMessage;
   String? get noticeMessage => _noticeMessage;
   List<WeddingTask> get tasks => _tasks;
   Timeline get timeline => _timeline;
@@ -39,7 +47,7 @@ class TaskTimelineProvider extends ChangeNotifier with SessionScopedNotifier {
 
   Future<void> load(String weddingPlanId) async {
     _isLoading = true;
-    _errorMessage = null;
+    _loadErrorMessage = null;
     notifyListeners();
 
     Object? loadError;
@@ -95,19 +103,19 @@ class TaskTimelineProvider extends ChangeNotifier with SessionScopedNotifier {
           TaskSummary.fromTasks(weddingPlanId: weddingPlanId, tasks: _tasks);
 
       if (loadError != null) {
-        _errorMessage = _loadErrorMessage(loadError!);
+        _loadErrorMessage = _messageForLoadError(loadError!);
       }
     } on ApiException catch (error) {
-      _errorMessage = error.message;
+      _loadErrorMessage = error.message;
     } catch (_) {
-      _errorMessage = 'تعذر تحميل المهام والجدول الزمني.';
+      _loadErrorMessage = 'تعذر تحميل المهام والجدول الزمني.';
     } finally {
       _isLoading = false;
       notifyListeners();
     }
   }
 
-  String _loadErrorMessage(Object error) {
+  String _messageForLoadError(Object error) {
     if (error is ApiException) {
       return error.message;
     }
@@ -624,7 +632,7 @@ class TaskTimelineProvider extends ChangeNotifier with SessionScopedNotifier {
       _checklistErrorMessage = error.message;
       return false;
     } catch (_) {
-      _checklistErrorMessage = 'تعذر حفظ القائمة الفرعية. حاول مرة أخرى.';
+      _checklistErrorMessage = 'ما انحفظت الخطوة، ما تغيّر شي';
       return false;
     } finally {
       _isSavingChecklist = false;
@@ -665,12 +673,14 @@ class TaskTimelineProvider extends ChangeNotifier with SessionScopedNotifier {
     try {
       _timeline = await _api.getTimeline(weddingPlanId);
       _summary = await _api.getTaskSummary(weddingPlanId);
+      _loadErrorMessage = null;
     } on Object catch (error) {
+      // The save itself went through; only the refreshed view is old.
       _summary = TaskSummary.fromTasks(
         weddingPlanId: weddingPlanId,
         tasks: _tasks,
       );
-      _errorMessage = _loadErrorMessage(error);
+      _loadErrorMessage = _messageForLoadError(error);
     }
   }
 

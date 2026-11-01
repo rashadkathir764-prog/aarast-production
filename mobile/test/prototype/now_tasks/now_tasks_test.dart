@@ -428,7 +428,7 @@ void main() {
             groups: groups,
             existingTitles: const {},
             hasWeddingDate: true,
-            onSubmit: (_) async => true,
+            onSubmit: (_) async => null,
           ),
         );
         await tester.pumpAndSettle();

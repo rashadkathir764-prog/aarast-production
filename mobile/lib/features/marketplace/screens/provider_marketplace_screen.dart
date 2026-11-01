@@ -75,7 +75,9 @@ class _ProviderMarketplaceScreenState extends State<ProviderMarketplaceScreen> {
   WeddingLocationDraft? _weddingLocation;
   String? _weddingLocationPlanId;
   String? _focusedQuoteId;
-  int _tab = 0;
+
+  /// The tab chosen by hand; null lets the plan's state choose (D72).
+  String? _tabLabel;
   bool _chatsLoaded = false;
 
   /// x22 gives way to the tabs once a way to start was picked.
@@ -206,17 +208,22 @@ class _ProviderMarketplaceScreenState extends State<ProviderMarketplaceScreen> {
       backgroundColor: AarastV3Color.canvas,
       child: Consumer<ProviderMarketplaceProvider>(
         builder: (context, provider, _) {
-          // f01: the plan's own requests come first; without a plan (or an
-          // account) the tab is the directory alone.
+          // «استكشف» comes first; it opens on «طلباتي» only when something
+          // there waits on the owner. Without a plan (or an account) the tab
+          // is the directory alone.
           final planMode =
               _weddingLocationPlanId != null && provider.includesAccountData;
           final tabs = planMode
-              ? const ['طلباتي', 'استكشف', 'المحادثات', 'المفضلة']
+              ? const ['استكشف', 'طلباتي', 'المحادثات', 'المفضلة']
               : const ['استكشف'];
-          final tab = _tab.clamp(0, tabs.length - 1);
           final board = planMode
               ? _board(provider)
               : const <ProviderBoardRow>[];
+          final selectedLabel =
+              _tabLabel ?? _openingTab(provider, planMode: planMode);
+          final tab = tabs.contains(selectedLabel)
+              ? tabs.indexOf(selectedLabel)
+              : 0;
           if (planMode) _checkNewBookings(provider);
           // x22: nothing asked, booked or saved yet, so the tab is where to
           // start, not an empty board.
@@ -483,8 +490,24 @@ class _ProviderMarketplaceScreenState extends State<ProviderMarketplaceScreen> {
     ];
   }
 
+  /// Where the tab opens: «طلباتي» while a request is under way, or one was
+  /// opened from outside (a notice); else «استكشف»: nothing started yet, or
+  /// all of it booked. Read from the requests, which come with the screen,
+  /// so the tab never jumps when the money items arrive later.
+  String _openingTab(
+    ProviderMarketplaceProvider provider, {
+    required bool planMode,
+  }) {
+    final planId = _weddingLocationPlanId;
+    if (!planMode || planId == null) return 'استكشف';
+    if (_focusedQuoteId != null) return 'طلباتي';
+    return hasRequestUnderWay(provider.quotesForPlan(planId))
+        ? 'طلباتي'
+        : 'استكشف';
+  }
+
   void _selectTab(String label, List<String> tabs) {
-    setState(() => _tab = tabs.indexOf(label));
+    setState(() => _tabLabel = label);
     if (label == 'المحادثات' && !_chatsLoaded) {
       _chatsLoaded = true;
       context.read<ChatProvider>().initialize();

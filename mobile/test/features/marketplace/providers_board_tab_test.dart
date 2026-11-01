@@ -237,6 +237,7 @@ void main() {
       final now = DateTime.now();
       await _pump(
         tester,
+        openRequests: true,
         _FakeMarketplaceProvider(
           quoteRequests: [
             band(
@@ -363,6 +364,7 @@ void main() {
         'غيره» (B-04)', (tester) async {
       await _pump(
         tester,
+        openRequests: true,
         _FakeMarketplaceProvider(
           quoteRequests: [band('hall', 'EXPIRED', provider: 'قاعة سبأ')],
         ),
@@ -483,7 +485,7 @@ void main() {
       quoteRequestsError: aarastBackendConnectionErrorMessage,
     );
 
-    await _pump(tester, state);
+    await _pump(tester, openRequests: true, state);
 
     expect(find.byType(JourneyListNotice), findsOneWidget);
   });
@@ -503,7 +505,7 @@ void main() {
       ],
     );
 
-    await _pump(tester, state, finance: finance);
+    await _pump(tester, openRequests: true, state, finance: finance);
 
     expect(find.text('ما طلبت من أحد بعد'), findsOneWidget);
     expect(find.text('نبدأ بالقاعة'), findsOneWidget);
@@ -529,7 +531,12 @@ void main() {
   testWidgets('x22 «حجزت برا اعّرست» opens the agreement on someone outside', (
     tester,
   ) async {
-    await _pump(tester, _FakeMarketplaceProvider(), finance: _LoadedFinance());
+    await _pump(
+      tester,
+      openRequests: true,
+      _FakeMarketplaceProvider(),
+      finance: _LoadedFinance(),
+    );
 
     await tester.tap(find.text('حجزت برا اعّرست'));
     await tester.pumpAndSettle();
@@ -537,7 +544,12 @@ void main() {
   });
 
   testWidgets('x22 «استكشف كل الخدمات» gives way to the tabs', (tester) async {
-    await _pump(tester, _FakeMarketplaceProvider(), finance: _LoadedFinance());
+    await _pump(
+      tester,
+      openRequests: true,
+      _FakeMarketplaceProvider(),
+      finance: _LoadedFinance(),
+    );
 
     await tester.tap(find.text('استكشف كل الخدمات'));
     await tester.pumpAndSettle();
@@ -571,7 +583,12 @@ void main() {
       ],
     );
 
-    await _pump(tester, _FakeMarketplaceProvider(), finance: finance);
+    await _pump(
+      tester,
+      openRequests: true,
+      _FakeMarketplaceProvider(),
+      finance: finance,
+    );
 
     expect(find.text('نبدأ بالقاعة'), findsNothing);
     expect(find.text('قاعة سبأ · خارج اعّرست'), findsOneWidget);
@@ -656,6 +673,30 @@ void main() {
 
     expect(tester.takeException(), isNull);
     expect(find.byKey(const ValueKey('providers-favorite-p3')), findsOneWidget);
+  });
+
+  testWidgets('D72: «استكشف» comes first and opens when nothing is under way', (
+    tester,
+  ) async {
+    await _pump(tester, _FakeMarketplaceProvider());
+
+    final tabs = tester.widget<JourneyTabSwitch>(
+      find.byKey(const ValueKey('providers-tabs')),
+    );
+    expect(tabs.labels, ['استكشف', 'طلباتي', 'المحادثات', 'المفضلة']);
+    expect(tabs.labels[tabs.selected], 'استكشف');
+  });
+
+  testWidgets('D72: a request under way opens on «طلباتي»', (tester) async {
+    await _pump(
+      tester,
+      _FakeMarketplaceProvider(quoteRequests: [_waitingQuote('quote-waiting')]),
+    );
+
+    final tabs = tester.widget<JourneyTabSwitch>(
+      find.byKey(const ValueKey('providers-tabs')),
+    );
+    expect(tabs.labels[tabs.selected], 'طلباتي');
   });
 
   testWidgets('a plan that could not be read keeps its own tabs', (
@@ -787,6 +828,7 @@ void main() {
   ) async {
     await _pump(
       tester,
+      openRequests: true,
       _FakeMarketplaceProvider(),
       finance: _LoadedFinance(loading: true),
     );
@@ -806,7 +848,12 @@ void main() {
       tester.platformDispatcher.clearTextScaleFactorTestValue();
     });
 
-    await _pump(tester, _FakeMarketplaceProvider(), finance: _LoadedFinance());
+    await _pump(
+      tester,
+      openRequests: true,
+      _FakeMarketplaceProvider(),
+      finance: _LoadedFinance(),
+    );
 
     expect(tester.takeException(), isNull);
     expect(find.text('نبدأ بالقاعة'), findsOneWidget);
@@ -836,6 +883,9 @@ Future<GoRouter> _pump(
   WidgetTester tester,
   _FakeMarketplaceProvider state, {
   String? initialQuoteId,
+  // With nothing under way the tab opens on «استكشف» (D72); these cases
+  // read «طلباتي», so they open it as the owner would.
+  bool openRequests = false,
   FinanceProvider? finance,
   bool planReadFails = false,
 }) async {
@@ -934,6 +984,15 @@ Future<GoRouter> _pump(
     ),
   );
   await tester.pumpAndSettle();
+  if (openRequests) {
+    await tester.tap(
+      find.descendant(
+        of: find.byKey(const ValueKey('providers-tabs')),
+        matching: find.text('طلباتي'),
+      ),
+    );
+    await tester.pumpAndSettle();
+  }
   return router;
 }
 

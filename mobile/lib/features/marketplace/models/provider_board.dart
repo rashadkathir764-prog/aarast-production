@@ -46,7 +46,11 @@ class ProviderBoardRow {
 
 /// A money item the board reads: its id, its name, and the directory
 /// categories whose offers land in it (G40, from the money summary).
-typedef BoardItem = ({String id, String name, List<String> providerCategoryIds});
+typedef BoardItem = ({
+  String id,
+  String name,
+  List<String> providerCategoryIds,
+});
 
 /// A recorded cost the board reads: its item and who it is with.
 typedef BoardCost = ({
@@ -67,13 +71,8 @@ String _providerName(QuoteRequest quote) =>
     ? quote.provider!.businessName.trim()
     : quote.costSuggestion?.providerName ?? 'المزود';
 
-String _requestCount(int count) => arabicCount(
-  count,
-  one: 'واحد',
-  two: 'اثنين',
-  few: 'مزودين',
-  many: 'مزود',
-);
+String _requestCount(int count) =>
+    arabicCount(count, one: 'واحد', two: 'اثنين', few: 'مزودين', many: 'مزود');
 
 String _offerCount(int count) => switch (count) {
   1 => 'وصلك عرض',
@@ -120,8 +119,11 @@ List<ProviderBoardRow> buildProviderBoard({
     }
     if (key == null) {
       final name = _quoteCategoryName(quote)?.trim();
-      key = 'category:${name?.isNotEmpty == true ? name : _providerName(quote)}';
-      extraTitles[key] = name?.isNotEmpty == true ? name! : _providerName(quote);
+      key =
+          'category:${name?.isNotEmpty == true ? name : _providerName(quote)}';
+      extraTitles[key] = name?.isNotEmpty == true
+          ? name!
+          : _providerName(quote);
       if (categoryId != null) extraCategories[key] = categoryId;
     }
     (quotesByKey[key] ??= []).add(quote);
@@ -198,15 +200,7 @@ ProviderBoardRow _row({
   String? outsideParty,
   bool? serverBooked,
 }) {
-  final live = quotes
-      .where(
-        (quote) =>
-            quote.lifecycleStatus != 'REJECTED' &&
-            quote.lifecycleStatus != 'CANCELLED' &&
-            // B-04: ended unanswered after seven days.
-            quote.lifecycleStatus != 'EXPIRED',
-      )
-      .toList();
+  final live = quotes.where(_isLiveQuote).toList();
   final confirmed = live
       .where((quote) => quote.booking?.isConfirmed == true)
       .firstOrNull;
@@ -269,6 +263,19 @@ ProviderBoardRow _row({
   if (asked > 0) return make(1, 'طلبت من ${_requestCount(asked)} · ينتظر الرد');
   return make(0, 'ما بدأت');
 }
+
+/// A request still in play: not declined, cancelled, or ended unanswered
+/// after seven days (B-04).
+bool _isLiveQuote(QuoteRequest quote) =>
+    quote.lifecycleStatus != 'REJECTED' &&
+    quote.lifecycleStatus != 'CANCELLED' &&
+    quote.lifecycleStatus != 'EXPIRED';
+
+/// A request under way: live and not yet a confirmed booking. The providers
+/// tab opens on «طلباتي» while one is, and on «استكشف» otherwise (D72).
+bool hasRequestUnderWay(Iterable<QuoteRequest> quotes) => quotes.any(
+  (quote) => _isLiveQuote(quote) && quote.booking?.isConfirmed != true,
+);
 
 String? _searchCategory(String title, List<QuoteRequest> quotes) {
   for (final quote in quotes) {

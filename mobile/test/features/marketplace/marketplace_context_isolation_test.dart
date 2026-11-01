@@ -263,6 +263,9 @@ class _SeededMarketplaceProvider extends ProviderMarketplaceProvider {
   List<QuoteRequest> get quoteRequests => List.unmodifiable(_quotes);
 
   @override
+  Future<void> loadScopedQuoteRequests() async {}
+
+  @override
   Future<void> loadMarketplace({
     bool? includeAccountData,
     String? weddingPlanId,

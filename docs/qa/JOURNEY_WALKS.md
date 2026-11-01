@@ -14,6 +14,7 @@
 | كل المسارات مباشرة | `route_sweep_walk_test.dart` |
 | من الطلبات إلى البند | `view_cost_from_requests_walk_test.dart` |
 | من العرض إلى الحجز | `offer_to_booking_walk_test.dart`، `offer_confirm_walk_test.dart` |
+| تنبيه العرض قبل فتح المزودين | `notification_open_walk_test.dart` |
 | عريس جديد يحفظ فعلًا | `fresh_groom_walk_test.dart` |
 
 الرحلات الأخيرة تكتب في القاعدة، فلا تعيدها على نفس البيانات. والترتيب: العريس أولًا، ثم العروسة، ثم البقية، و`fresh_groom` آخرًا.

@@ -53,18 +53,34 @@ class ProviderRequestsScreen extends StatefulWidget {
 }
 
 class _ProviderRequestsScreenState extends State<ProviderRequestsScreen> {
+  bool _loading = true;
+
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted) return;
-      final finance = context.read<FinanceProvider?>();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _load());
+  }
+
+  /// A notification can open this page first, so it reads the plan's
+  /// requests and money itself. The route's gate has already checked that
+  /// this account manages the plan's providers.
+  Future<void> _load() async {
+    if (!mounted) return;
+    setState(() => _loading = true);
+    final finance = context.read<FinanceProvider?>();
+    final marketplace = context.read<ProviderMarketplaceProvider>();
+    marketplace.configureAccountScope(
+      includeAccountData: true,
+      weddingPlanId: widget.weddingPlanId,
+    );
+    await Future.wait([
+      marketplace.loadScopedQuoteRequests(),
       if (finance != null &&
           finance.loadedPlanId != widget.weddingPlanId &&
-          !finance.isLoading) {
-        finance.loadMoney(widget.weddingPlanId);
-      }
-    });
+          !finance.isLoading)
+        finance.loadMoney(widget.weddingPlanId),
+    ]);
+    if (mounted) setState(() => _loading = false);
   }
 
   ProviderBoardRow? _row(ProviderMarketplaceProvider marketplace) {
@@ -198,16 +214,29 @@ class _ProviderRequestsScreenState extends State<ProviderRequestsScreen> {
                 padding: const EdgeInsets.fromLTRB(16, 12, 16, 28),
                 children: [
                   if (row == null || quotes.isEmpty)
-                    JourneyBox(
-                      key: const ValueKey('requests-empty'),
-                      child: Text(
-                        'ما في طلبات لهذي الخدمة الآن.',
-                        style: JourneyType.of(
-                          JourneyType.body,
-                          color: AarastV3Color.textMuted,
+                    if (_loading)
+                      const JourneyListState(
+                        phase: JourneyListPhase.loading,
+                        section: JourneySection.providers,
+                      )
+                    else if (marketplace.quoteRequestsErrorMessage != null ||
+                        context.watch<FinanceProvider?>()?.errorMessage != null)
+                      JourneyListState(
+                        phase: JourneyListPhase.error,
+                        section: JourneySection.providers,
+                        onRetry: _load,
+                      )
+                    else
+                      JourneyBox(
+                        key: const ValueKey('requests-empty'),
+                        child: Text(
+                          'ما في طلبات لهذي الخدمة الآن.',
+                          style: JourneyType.of(
+                            JourneyType.body,
+                            color: AarastV3Color.textMuted,
+                          ),
                         ),
                       ),
-                    ),
                   if (offers.isNotEmpty) ...[
                     _OffersRow(
                       offers: offers,

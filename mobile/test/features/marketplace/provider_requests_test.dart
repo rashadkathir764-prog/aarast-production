@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:aarast_mobile/core/network/api_client.dart';
 import 'package:aarast_mobile/features/chat/data/chat_api.dart';
 import 'package:aarast_mobile/features/chat/models/chat_models.dart';
@@ -438,6 +440,53 @@ void main() {
     expect(find.byKey(const ValueKey('requests-offer-q1')), findsOneWidget);
   });
 
+  // R15: the notification can be the first thing opened, before the
+  // providers tab ever read the plan's requests.
+  testWidgets('a notification opened first loads its offer', (tester) async {
+    final marketplace = _Marketplace(
+      const [],
+      toLoad: [_offer('q1', 'ضوء صنعاء', '550000')],
+      holdLoad: true,
+    );
+    await _pump(
+      tester,
+      const [],
+      itemKey: null,
+      quoteId: 'q1',
+      marketplace: marketplace,
+      settle: false,
+    );
+    await tester.pump();
+    expect(find.byKey(const ValueKey('requests-empty')), findsNothing);
+
+    marketplace.finishLoad();
+    await tester.pumpAndSettle();
+    expect(find.byKey(const ValueKey('requests-offer-q1')), findsOneWidget);
+    expect(find.byKey(const ValueKey('requests-empty')), findsNothing);
+  });
+
+  testWidgets('a failed load offers a retry, it never reads as empty', (
+    tester,
+  ) async {
+    final marketplace = _Marketplace(
+      const [],
+      toLoad: [_offer('q1', 'ضوء صنعاء', '550000')],
+      failLoads: 1,
+    );
+    await _pump(
+      tester,
+      const [],
+      itemKey: null,
+      quoteId: 'q1',
+      marketplace: marketplace,
+    );
+    expect(find.byKey(const ValueKey('requests-empty')), findsNothing);
+
+    await tester.tap(find.text('حاول مرة ثانية'));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const ValueKey('requests-offer-q1')), findsOneWidget);
+  });
+
   testWidgets('offers stay readable at 320px and 1.3 text', (tester) async {
     tester.platformDispatcher.textScaleFactorTestValue = 1.3;
     addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
@@ -465,11 +514,13 @@ Future<_Harness> _pump(
   String? quoteId,
   bool chatFails = false,
   double width = 420,
+  _Marketplace? marketplace,
+  bool settle = true,
 }) async {
   tester.view.devicePixelRatio = 1;
   tester.view.physicalSize = Size(width, 1400);
   addTearDown(tester.view.reset);
-  final marketplace = _Marketplace(quotes);
+  marketplace ??= _Marketplace(quotes);
   final finance = FinanceProvider(_Finance());
   await finance.loadMoney('plan-1');
   final chat = _Chat(fails: chatFails);
@@ -505,16 +556,27 @@ Future<_Harness> _pump(
       ),
     ),
   );
-  await tester.pumpAndSettle();
+  if (settle) await tester.pumpAndSettle();
   return _Harness(marketplace, finance, chat);
 }
 
 class _Marketplace extends ProviderMarketplaceProvider {
-  _Marketplace(List<QuoteRequest> quotes)
-    : _quotes = List.of(quotes),
-      super(MarketplaceApi(ApiClient(tokenProvider: () async => null)));
+  _Marketplace(
+    List<QuoteRequest> quotes, {
+    List<QuoteRequest> toLoad = const [],
+    bool holdLoad = false,
+    int failLoads = 0,
+  }) : _quotes = List.of(quotes),
+       _toLoad = List.of(toLoad),
+       _held = holdLoad ? Completer<void>() : null,
+       _failLoads = failLoads,
+       super(MarketplaceApi(ApiClient(tokenProvider: () async => null)));
 
   final List<QuoteRequest> _quotes;
+  final List<QuoteRequest> _toLoad;
+  final Completer<void>? _held;
+  int _failLoads;
+  String? _loadError;
   final acceptedQuoteIds = <String>[];
   final rejectedQuoteIds = <String>[];
   final bookingDays = <DateTime?>[];
@@ -527,8 +589,27 @@ class _Marketplace extends ProviderMarketplaceProvider {
   @override
   bool get isSubmitting => false;
 
+  void finishLoad() => _held?.complete();
+
   @override
-  Future<void> loadScopedQuoteRequests() async {}
+  String? get quoteRequestsErrorMessage => _loadError;
+
+  /// As the real provider: nothing comes back until the account's scope is
+  /// set.
+  @override
+  Future<void> loadScopedQuoteRequests() async {
+    if (!includesAccountData) return;
+    await _held?.future;
+    if (_failLoads > 0) {
+      _failLoads -= 1;
+      _loadError = 'ما قدرنا نوصل للخادم.';
+    } else {
+      _loadError = null;
+      _quotes.addAll(_toLoad);
+      _toLoad.clear();
+    }
+    notifyListeners();
+  }
 
   @override
   Future<bool> acceptQuote(QuoteRequest quote) async {

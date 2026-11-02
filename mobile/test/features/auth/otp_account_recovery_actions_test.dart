@@ -20,6 +20,39 @@ void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
   testWidgets(
+    'D75: an admin number without an app password is offered only another number',
+    (tester) async {
+      final controller = await _controller(
+        registerErrorCode: 'ADMIN_APP_PASSWORD_REQUIRED',
+      );
+      final router = _router(
+        registration: const PendingRegistration(
+          name: 'مستخدم',
+          phone: '+967777123456',
+        ),
+      );
+      addTearDown(router.dispose);
+
+      await _pump(tester, controller: controller, router: router);
+      await tester.enterText(find.byKey(const Key('otp-code-field')), '123456');
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 100));
+
+      expect(find.textContaining('لحساب إدارة في اعّرست'), findsOneWidget);
+      expect(
+        find.byKey(const ValueKey('otp-admin-change-number')),
+        findsOneWidget,
+      );
+      // No way in that cannot work: no sign-in, no password reset.
+      expect(find.byKey(const ValueKey('otp-go-to-login')), findsNothing);
+      expect(
+        find.byKey(const ValueKey('otp-go-to-password-reset')),
+        findsNothing,
+      );
+    },
+  );
+
+  testWidgets(
     'registered phone shows Arabic login and password recovery actions at 320px',
     (tester) async {
       final controller = await _controller(

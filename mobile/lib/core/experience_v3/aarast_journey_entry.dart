@@ -1115,9 +1115,17 @@ class _PhoneGroupsFormatter extends TextInputFormatter {
       buffer.write(digits[i]);
     }
     final text = buffer.toString();
+    // The caret stays after the same digit it was after (a fix in the
+    // middle of the number does not jump to its end).
+    final caret = newValue.selection.baseOffset.clamp(0, newValue.text.length);
+    final before = newValue.text.substring(0, caret).replaceAll(' ', '').length;
+    var offset = 0;
+    for (var seen = 0; offset < text.length && seen < before; offset++) {
+      if (text[offset] != ' ') seen++;
+    }
     return TextEditingValue(
       text: text,
-      selection: TextSelection.collapsed(offset: text.length),
+      selection: TextSelection.collapsed(offset: offset),
     );
   }
 }

@@ -60,14 +60,18 @@ class _ProviderRegisterScreenState extends State<ProviderRegisterScreen> {
 
   String? get _phoneError {
     if (!_submitAttempted) return null;
-    final phone = _phoneController.text.trim();
-    if (phone.isEmpty) return 'رقم الجوال مطلوب';
-    if (!isValidYemeniPhoneInput(phone)) return 'رقم الجوال غير صحيح';
-    return null;
+    return yemeniPhoneInputError(_phoneController.text);
   }
 
+  /// A provider's sign-up is the app's own colour and neutral words, even
+  /// on a phone that keeps a bride's plan.
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context) => JourneyProfileScope(
+    profile: JourneyProfile.groom,
+    child: Builder(builder: _page),
+  );
+
+  Widget _page(BuildContext context) {
     final auth = context.watch<AuthController>();
     final offline = auth.failedOffline;
     final error = auth.errorMessage;

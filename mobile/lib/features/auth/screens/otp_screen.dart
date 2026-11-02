@@ -12,7 +12,7 @@ import '../../../core/routing/app_router.dart';
 import '../../../core/widgets/aarast_otp_field.dart';
 import '../../../core/widgets/aarast_toast.dart';
 import '../../onboarding/onboarding_api.dart'
-    show GuestOnboardingDraft, GuestOnboardingStorage, GuestPersona;
+    show GuestOnboardingDraft, GuestOnboardingStorage;
 import '../models/pending_registration.dart';
 import '../providers/auth_controller.dart';
 
@@ -290,7 +290,7 @@ class _OtpScreenState extends State<OtpScreen> {
     final kept = _keptPlan != null && registration;
     return showJourneySheet<void>(
       context: context,
-      profile: _ownerProfile,
+      profile: _forProvider ? JourneyProfile.groom : null,
       builder: (sheetContext) => JourneyCodeHelpSheet(
         resendSeconds: () => _resendSeconds,
         changeLabel: _changeLabel(registration: registration),
@@ -324,21 +324,19 @@ class _OtpScreenState extends State<OtpScreen> {
   /// neutral «تغيير الرقم» everywhere else.
   String _changeLabel({required bool registration}) =>
       registration && _keptPlan != null && !_forProvider
-      ? _ownerProfile.say('غيّر الرقم', 'غيّري الرقم')
+      ? context.say('غيّر الرقم', 'غيّري الرقم')
       : 'تغيير الرقم';
 
   /// The kept plan's owner: the colour and voice of every line here.
-  JourneyProfile get _ownerProfile => JourneyProfile.fromPersona(
-    _keptPlan?.persona == GuestPersona.bride ? 'BRIDE' : 'GROOM',
-  );
-
   bool get _forProvider =>
       widget.successLocation?.startsWith('/provider/') == true;
 
   @override
   Widget build(BuildContext context) {
+    // The plan kept on this phone gives the colour and voice (the app root,
+    // D75); a provider's code stays on the app's own, before any plan.
     return JourneyProfileScope(
-      profile: _ownerProfile,
+      profile: _forProvider ? JourneyProfile.groom : context.journeyProfile,
       child: Builder(builder: _page),
     );
   }
@@ -358,10 +356,13 @@ class _OtpScreenState extends State<OtpScreen> {
         : delivered
         ? 'أرسلنا لك رمز على واتساب'
         : 'طلبنا لك رمز على واتساب';
+    // An admin's number without an app password has no way in here: only
+    // another number helps, so it is not offered a sign-in.
+    final adminOnly = auth.errorCode == 'ADMIN_APP_PASSWORD_REQUIRED';
     final existingAccount =
         auth.errorCode == 'ACCOUNT_ALREADY_EXISTS' ||
         auth.errorCode == 'ADMIN_APP_PASSWORD_ALREADY_SET' ||
-        auth.errorCode == 'ADMIN_APP_PASSWORD_REQUIRED';
+        adminOnly;
     final missingAccountAfterProof =
         auth.errorCode == 'ACCOUNT_NOT_FOUND_AFTER_PHONE_PROOF';
     final disabledAccountAfterProof =
@@ -429,6 +430,14 @@ class _OtpScreenState extends State<OtpScreen> {
                           );
                         },
                       )
+                    : adminOnly
+                    ? JourneyButton(
+                        key: const ValueKey('otp-admin-change-number'),
+                        label: 'تغيير الرقم',
+                        expand: true,
+                        large: true,
+                        onPressed: _goBack,
+                      )
                     : JourneyButton(
                         key: const ValueKey('otp-go-to-login'),
                         label: 'تسجيل الدخول',
@@ -438,7 +447,7 @@ class _OtpScreenState extends State<OtpScreen> {
                             ? null
                             : () => _goToLogin(phone),
                       ),
-                secondary: existingAccount
+                secondary: existingAccount && !adminOnly
                     ? JourneyEntryLink(
                         key: const ValueKey('otp-go-to-password-reset'),
                         label: context.say(

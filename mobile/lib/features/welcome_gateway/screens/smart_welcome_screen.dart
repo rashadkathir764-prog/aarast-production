@@ -256,6 +256,15 @@ class _SmartWelcomeScreenState extends State<SmartWelcomeScreen> {
       _providerCount = null;
       _providerCountCity = null;
     });
+    if (id == null && _cityIds.isNotEmpty) {
+      // The directory answered and this city (typed by hand) is not in it:
+      // no providers there yet, which is a real answer, not «offline».
+      setState(() {
+        _providerCount = 0;
+        _providerCountCity = city;
+      });
+      return;
+    }
     if (id == null || api == null) return;
     try {
       final page = await api.getProvidersPage(cityId: id, limit: 1);

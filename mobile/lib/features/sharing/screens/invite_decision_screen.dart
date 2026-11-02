@@ -1,11 +1,9 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:provider/provider.dart';
-import 'package:url_launcher/url_launcher.dart';
 
 import '../../../core/experience_v3/aarast_v3.dart';
 import '../../../core/network/api_client.dart'
@@ -15,7 +13,6 @@ import '../../../core/phone/yemeni_phone_normalizer.dart';
 import '../../../core/routing/app_router.dart';
 import '../../../core/routing/pop_or_go.dart';
 import '../../../core/utils/arabic_date_formatter.dart';
-import '../../../core/utils/whatsapp_share.dart';
 import '../../../core/widgets/aarast_otp_field.dart';
 import '../../../core/widgets/aarast_toast.dart';
 import '../../../core/widgets/aarast_ui.dart';
@@ -25,6 +22,7 @@ import '../../auth/auth_api.dart' show AuthController, AuthStatus;
 import '../models/participant_access.dart';
 import '../models/shared_member.dart';
 import '../providers/sharing_provider.dart';
+import '../utils/ask_on_whatsapp.dart';
 
 part 'invite_decision_screen.cards.dart';
 
@@ -69,6 +67,10 @@ class _InviteDecisionScreenState extends State<InviteDecisionScreen> {
   bool _otpDeliveryConfirmed = false;
   String? _nameError;
   String? _phoneError;
+
+  /// The number the last code went to: a code is only for that number, so
+  /// a corrected number asks for a new one.
+  String? _codePhone;
   Timer? _resendTimer;
   int _resendSeconds = 0;
 
@@ -104,16 +106,17 @@ class _InviteDecisionScreenState extends State<InviteDecisionScreen> {
     final auth = context.read<AuthController>();
     if (auth.isSubmitting) return;
     final phone = _phoneController.text.trim();
-    if (phone.isEmpty || !isValidYemeniPhoneInput(phone)) {
-      setState(
-        () => _phoneError = phone.isEmpty
-            ? 'اكتب الرقم اللي وصلتك عليه الدعوة'
-            : 'رقم الجوال غير صحيح',
-      );
+    final phoneError = yemeniPhoneInputError(
+      phone,
+      empty: 'اكتب الرقم اللي وصلتك عليه الدعوة',
+    );
+    if (phoneError != null) {
+      setState(() => _phoneError = phoneError);
       return;
     }
     final result = await auth.requestInviteOtp(token: _token, phone: phone);
     if (!mounted || result == null) return;
+    _codePhone = phone;
     _otpController.clear();
     final needsName =
         result.accountSetupRequired && _nameController.text.trim().isEmpty;
@@ -238,6 +241,7 @@ class _InviteDecisionScreenState extends State<InviteDecisionScreen> {
       _accountSetupRequired = false;
       _nameError = null;
       _phoneError = null;
+      _codePhone = null;
       _step = _InviteStep.phone;
     });
   }
@@ -351,21 +355,7 @@ class _InviteDecisionScreenState extends State<InviteDecisionScreen> {
     }
   }
 
-  Future<void> _askNewInvite() async {
-    bool opened;
-    try {
-      opened = await launchUrl(
-        whatsAppShareUri(_askNewInviteMessage),
-        mode: LaunchMode.externalApplication,
-      );
-    } on Object {
-      opened = false;
-    }
-    if (opened || !mounted) return;
-    await Clipboard.setData(const ClipboardData(text: _askNewInviteMessage));
-    if (!mounted) return;
-    AarastToast.showInfo(context, 'نسخنا لك الرسالة، أرسلها بأي طريقة.');
-  }
+  Future<void> _askNewInvite() => askOnWhatsApp(context, _askNewInviteMessage);
 
   void _showCodeHelp() {
     showJourneySheet<void>(
@@ -444,7 +434,8 @@ class _InviteDecisionScreenState extends State<InviteDecisionScreen> {
         errorText: _phoneError,
         onChanged: (_) {
           if (auth.errorMessage != null) auth.clearError();
-          if (_phoneError != null) setState(() => _phoneError = null);
+          // A changed number shows «أرسل الرمز» again (see _bottom).
+          setState(() => _phoneError = null);
         },
         onSubmitted: (_) => _requestOtp(),
       ),
@@ -668,7 +659,10 @@ class _InviteDecisionScreenState extends State<InviteDecisionScreen> {
   ) {
     switch (_step) {
       case _InviteStep.phone:
-        final codeSent = _accountSetupRequired && _resendSeconds > 0;
+        final codeSent =
+            _accountSetupRequired &&
+            _resendSeconds > 0 &&
+            _phoneController.text.trim() == _codePhone;
         return JourneyEntryActions(
           primary: JourneyButton(
             key: const Key('invite-request-otp-button'),

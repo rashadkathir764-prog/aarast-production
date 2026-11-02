@@ -24,3 +24,16 @@ bool isValidOptionalYemeniPhoneInput(String? input) {
   if (value == null || value.isEmpty) return true;
   return isValidYemeniPhoneInput(value);
 }
+
+/// What is wrong with a typed phone number, in the words every entry field
+/// shows (D75), or null when it can be sent. [empty] names what the field
+/// asks for when nothing is typed.
+String? yemeniPhoneInputError(
+  String input, {
+  String empty = 'رقم الجوال مطلوب',
+}) {
+  final phone = input.trim();
+  if (phone.isEmpty) return empty;
+  if (!isValidYemeniPhoneInput(phone)) return 'رقم الجوال غير صحيح';
+  return null;
+}

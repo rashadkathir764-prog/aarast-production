@@ -60,10 +60,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
   String? get _phoneError {
     if (!_submitAttempted) return null;
-    final phone = _phoneController.text.trim();
-    if (phone.isEmpty) return 'رقم الجوال مطلوب';
-    if (!isValidYemeniPhoneInput(phone)) return 'رقم الجوال غير صحيح';
-    return null;
+    return yemeniPhoneInputError(_phoneController.text);
   }
 
   String? get _passwordError {

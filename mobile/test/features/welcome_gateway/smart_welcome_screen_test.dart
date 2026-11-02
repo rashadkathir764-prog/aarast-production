@@ -667,6 +667,29 @@ void main() {
     expect(marketplace.askedCityIds, ['city-sanaa']);
   });
 
+  testWidgets('a08 says a city typed by hand has no providers yet, online', (
+    tester,
+  ) async {
+    final marketplace = _CountingMarketplace(total: 12);
+    await _pump(tester, marketplace: marketplace);
+    await _answerUpToPlace(tester);
+    await _tap(tester, 'مدينة ثانية');
+    await tester.enterText(find.byType(TextField).last, 'ذمار');
+    await tester.pumpAndSettle();
+    await _tap(tester, 'اختر هذي المدينة');
+    await _tap(tester, 'أكمل بدون ميزانية');
+    await _tap(tester, 'ما اتفقنا بعد');
+
+    // The directory answered and has no such city: a real «none yet», not
+    // a promise for when the internet is back.
+    expect(
+      find.text('ما في مزودين في ذمار بعد. نضيفهم أول ما ينضمون.'),
+      findsOneWidget,
+    );
+    expect(find.textContaining('أول ما يرجع النت'), findsNothing);
+    expect(marketplace.askedCityIds, isEmpty);
+  });
+
   testWidgets('a08 says when the city has no providers yet', (tester) async {
     await _pump(tester, marketplace: _CountingMarketplace(total: 0));
     await _answerUpToReady(tester);

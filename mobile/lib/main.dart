@@ -168,6 +168,9 @@ Future<void> _bootstrapApplication(ObservabilityConfig observability) async {
     preferences,
     sensitiveValueVault: sensitiveValueVault,
   );
+  // D75: whose plan is on this phone, for the colour and words of the
+  // screens before the account.
+  unawaited(guestOnboardingStorage.loadDraft());
   final formDraftStore = AarastFormDraftStore(
     vault: sensitiveValueVault,
     authStorage: authStorage,

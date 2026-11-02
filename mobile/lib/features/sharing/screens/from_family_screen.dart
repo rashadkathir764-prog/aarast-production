@@ -3,14 +3,12 @@ import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:provider/provider.dart';
-import 'package:url_launcher/url_launcher.dart';
 
 import '../../../core/experience_v3/aarast_v3.dart';
 import '../../../core/routing/app_router.dart';
 import '../../../core/routing/pop_or_go.dart';
-import '../../../core/utils/whatsapp_share.dart';
-import '../../../core/widgets/aarast_toast.dart';
 import '../../../core/widgets/aarast_ui.dart';
+import '../utils/ask_on_whatsapp.dart';
 import '../../auth/auth_api.dart' show AuthController, AuthStatus;
 
 /// The message the participant sends the groom or the bride to be added.
@@ -91,21 +89,7 @@ class _FromFamilyScreenState extends State<FromFamilyScreen> {
     context.push(AppRouter.inviteDecision(found));
   }
 
-  Future<void> _askToBeAdded() async {
-    bool opened;
-    try {
-      opened = await launchUrl(
-        whatsAppShareUri(fromFamilyAskMessage),
-        mode: LaunchMode.externalApplication,
-      );
-    } on Object {
-      opened = false;
-    }
-    if (opened || !mounted) return;
-    await Clipboard.setData(const ClipboardData(text: fromFamilyAskMessage));
-    if (!mounted) return;
-    AarastToast.showInfo(context, 'نسخنا لك الرسالة، أرسلها بأي طريقة.');
-  }
+  Future<void> _askToBeAdded() => askOnWhatsApp(context, fromFamilyAskMessage);
 
   void _startOwnPlan() {
     final signedIn =

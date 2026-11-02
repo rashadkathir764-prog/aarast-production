@@ -1,15 +1,29 @@
 ﻿import 'dart:convert';
 
+import 'package:flutter/foundation.dart';
+
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../../core/storage/sensitive_value_vault.dart';
 import '../models/guest_onboarding_draft.dart';
 
 class GuestOnboardingStorage {
-  const GuestOnboardingStorage(
+  GuestOnboardingStorage(
     this._preferences, {
     SensitiveValueVault? sensitiveValueVault,
   }) : _sensitiveValueVault = sensitiveValueVault;
+
+  /// D75: whose plan is kept on this phone (null when none is finished).
+  /// The app root reads it, so every screen before the account (saving the
+  /// plan, the code, the move into the account) wears that owner's colour
+  /// and words without carrying them by hand.
+  final ValueNotifier<GuestPersona?> keptPlanPersona = ValueNotifier(null);
+
+  void _announce(GuestOnboardingDraft? draft) {
+    keptPlanPersona.value = draft?.isCompleteGuestPlan == true
+        ? draft!.persona
+        : null;
+  }
 
   static const draftKey = 'aarast.guest_onboarding_draft.v1';
 
@@ -18,6 +32,7 @@ class GuestOnboardingStorage {
 
   Future<void> saveDraft(GuestOnboardingDraft draft) async {
     final encoded = jsonEncode(draft.toJson());
+    _announce(draft);
     final vault = _sensitiveValueVault;
     if (vault == null) {
       await _preferences.setString(draftKey, encoded);
@@ -44,13 +59,16 @@ class GuestOnboardingStorage {
     try {
       final decoded = jsonDecode(rawDraft);
       if (decoded is! Map<String, dynamic>) return null;
-      return GuestOnboardingDraft.fromJson(decoded);
+      final draft = GuestOnboardingDraft.fromJson(decoded);
+      _announce(draft);
+      return draft;
     } on FormatException {
       return null;
     }
   }
 
   Future<void> clearDraft() async {
+    _announce(null);
     await _sensitiveValueVault?.delete(draftKey);
     await _preferences.remove(draftKey);
   }

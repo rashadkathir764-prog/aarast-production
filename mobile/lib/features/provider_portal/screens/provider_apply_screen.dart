@@ -64,9 +64,15 @@ class _ProviderApplyScreenState extends State<ProviderApplyScreen> {
   String? _claimError;
   AarastFormDraftBinding? _draft;
 
+  /// D75: this sign-up's code was for a number that already had an account.
+  bool _signUpFoundAccount = false;
+
   @override
   void initState() {
     super.initState();
+    final auth = context.read<AuthController>();
+    _signUpFoundAccount = auth.signUpFoundAccount;
+    auth.acknowledgeSignUpFoundAccount();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       context.read<ProviderMarketplaceProvider>().loadReferenceData();
@@ -188,8 +194,7 @@ class _ProviderApplyScreenState extends State<ProviderApplyScreen> {
                   ),
                   // D75: the code was for a number that already had an
                   // account; the joining goes on from that same account.
-                  if (_step == 0 &&
-                      context.watch<AuthController>().signUpFoundAccount) ...[
+                  if (_step == 0 && _signUpFoundAccount) ...[
                     const JourneyEntryNote(
                       key: ValueKey('provider-apply-existing-account'),
                       text:

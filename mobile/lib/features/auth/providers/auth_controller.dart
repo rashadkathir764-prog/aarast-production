@@ -99,6 +99,10 @@ class AuthController extends _AuthControllerCore
   /// account, so it signed in to that account instead.
   bool get signUpFoundAccount => _signUpFoundAccount;
 
+  /// The screen that says so has said it: it is said once, right after the
+  /// sign-up, not on every later visit.
+  void acknowledgeSignUpFoundAccount() => _signUpFoundAccount = false;
+
   /// The number of the account whose session expired, so x18 can offer to
   /// sign that same account in again. Null after any other sign-out.
   String? get expiredSessionPhone => _expiredSessionPhone;

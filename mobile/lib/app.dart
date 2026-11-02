@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart' show ValueListenable;
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter/services.dart';
@@ -23,6 +24,8 @@ import 'features/account_contexts/account_contexts_api.dart'
         AccountContextPersona,
         AccountContextRole;
 import 'features/auth/auth_api.dart' show AuthController, AuthStatus;
+import 'features/onboarding/onboarding_api.dart'
+    show GuestOnboardingStorage, GuestPersona;
 import 'features/settings/settings_api.dart' show DeletionPendingScreen;
 import 'features/wedding_plans/wedding_plans_api.dart'
     show DashboardSummary, DashboardSummaryProvider;
@@ -157,6 +160,7 @@ JourneyProfile planJourneyProfile({
   AccountContext? selected,
   DashboardSummary? summary,
   String? accountPersona,
+  String? keptPlanPersona,
 }) {
   final String? planPersona;
   if (selected != null) {
@@ -170,11 +174,15 @@ JourneyProfile planJourneyProfile({
   } else if (summary != null && summary.isLocalOnly) {
     planPersona = summary.persona;
   } else {
-    planPersona = null;
+    // D75: no plan open, but one kept on this phone (saving it, its code,
+    // moving it into the account): that plan's owner.
+    planPersona = keptPlanPersona;
   }
   // A plan on the phone has no account yet: its owner is the plan's party.
   final reader = selected == null && summary != null && summary.isLocalOnly
       ? summary.persona
+      : selected == null && keptPlanPersona != null
+      ? keptPlanPersona
       : accountPersona;
   return JourneyProfile.of(
     planPersona: planPersona,
@@ -220,13 +228,29 @@ class AarastPlanProfileScope extends StatelessWidget {
     } on ProviderNotFoundException {
       accountPersona = null;
     }
-    return JourneyProfileScope(
+    ValueListenable<GuestPersona?>? kept;
+    try {
+      kept = context.read<GuestOnboardingStorage>().keptPlanPersona;
+    } on ProviderNotFoundException {
+      kept = null;
+    }
+    Widget scoped(GuestPersona? keptPersona) => JourneyProfileScope(
       profile: planJourneyProfile(
         selected: selected,
         summary: summary,
         accountPersona: accountPersona,
+        keptPlanPersona: switch (keptPersona) {
+          GuestPersona.bride => 'BRIDE',
+          GuestPersona.groom => 'GROOM',
+          _ => null,
+        },
       ),
       child: child,
+    );
+    if (kept == null) return scoped(null);
+    return ValueListenableBuilder<GuestPersona?>(
+      valueListenable: kept,
+      builder: (context, persona, _) => scoped(persona),
     );
   }
 }

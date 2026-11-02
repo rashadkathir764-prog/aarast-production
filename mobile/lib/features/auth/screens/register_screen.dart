@@ -9,7 +9,7 @@ import '../../../core/phone/yemeni_phone_normalizer.dart';
 import '../../../core/routing/app_router.dart';
 import '../../../core/utils/arabic_count.dart';
 import '../../onboarding/onboarding_api.dart'
-    show GuestOnboardingDraft, GuestOnboardingStorage, GuestPersona;
+    show GuestOnboardingDraft, GuestOnboardingStorage;
 import '../models/pending_registration.dart';
 import '../providers/auth_controller.dart';
 import 'otp_screen.dart';
@@ -85,10 +85,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
   String? get _phoneError {
     if (!_submitAttempted) return null;
-    final phone = _phoneController.text.trim();
-    if (phone.isEmpty) return 'رقم الجوال مطلوب';
-    if (!isValidYemeniPhoneInput(phone)) return 'رقم الجوال غير صحيح';
-    return null;
+    return yemeniPhoneInputError(_phoneController.text);
   }
 
   void _edited() {
@@ -111,11 +108,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
   @override
   Widget build(BuildContext context) {
     final keptPlan = _keptPlan;
-    final persona = keptPlan?.persona == GuestPersona.bride ? 'BRIDE' : 'GROOM';
-    return JourneyProfileScope(
-      profile: JourneyProfile.fromPersona(persona),
-      child: Builder(builder: (context) => _page(context, keptPlan)),
-    );
+    // The kept plan's owner gives the colour and voice from the app root.
+    return _page(context, keptPlan);
   }
 
   Widget _page(BuildContext context, GuestOnboardingDraft? keptPlan) {

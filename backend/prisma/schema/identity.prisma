@@ -44,9 +44,12 @@ model User {
   name                         String
   phone                        String?                       @unique
   email                        String?                       @unique
-  passwordHash                 String
+  // Null for an application account that signed up by phone code only.
+  passwordHash                 String?
   appPasswordHash              String?
-  appPasswordConfiguredAt      DateTime?
+  // When the application account was activated (phone proven by a sign-up
+  // or invite code, with or without a password). The column keeps its old name.
+  appAccountActivatedAt        DateTime?                     @map("appPasswordConfiguredAt")
   appName                      String?
   appEmail                     String?                       @unique
   appAvatarUrl                 String?

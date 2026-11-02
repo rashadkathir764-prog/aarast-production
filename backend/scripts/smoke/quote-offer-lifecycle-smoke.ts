@@ -109,7 +109,7 @@ async function account(role: string, name: string, userRole: UserRole = UserRole
       phone: scopedPhone(role),
       phoneVerifiedAt: new Date(),
       passwordHash: "managed-smoke-not-a-credential",
-      appPasswordConfiguredAt: new Date(),
+      appAccountActivatedAt: new Date(),
       role: userRole,
       status: UserStatus.ACTIVE,
     },

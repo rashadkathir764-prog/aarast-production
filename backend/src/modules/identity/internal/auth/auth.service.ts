@@ -109,6 +109,16 @@ export interface AuthResponse {
   adminTrustedDevice?: { token: string; expiresAt: Date };
 }
 
+/**
+ * `POST /auth/register/complete`. A phone that already has an activated
+ * application account is signed in by its valid sign-up code instead of being
+ * refused: `existingAccount` is true and the account's name and password are
+ * left as they were. A new account answers `existingAccount: false`.
+ */
+export interface RegistrationAuthResponse extends AuthResponse {
+  existingAccount: boolean;
+}
+
 /** Admin sign-in from a remembered device: password only, no code. */
 export interface AdminLoginTrustedResponse {
   mfaRequired: false;
@@ -161,7 +171,7 @@ export interface AdminPasswordResetPendingResponse {
 }
 
 type RegistrationResult =
-  | { auth: AuthResponse }
+  | { auth: RegistrationAuthResponse }
   | { error: ReturnType<typeof authError> }
   | { otpInvalid: true };
 
@@ -223,11 +233,14 @@ export class AuthService implements IdentityAuthPort {
 
   async completeRegistration(
     dto: CompleteRegistrationDto,
-  ): Promise<AuthResponse> {
+  ): Promise<RegistrationAuthResponse> {
     const phone = PhoneNormalizer.normalizeRequired(dto.phone);
     const phoneVariants = PhoneNormalizer.lookupVariants(phone);
     const now = new Date();
-    const passwordHash = await bcryptjs.hash(dto.password, 10);
+    // Sign-up is phone + code; the password is optional and can be set later
+    // through the reset-by-code flow.
+    const passwordHash =
+      dto.password == null ? null : await bcryptjs.hash(dto.password, 10);
 
     let result: RegistrationResult;
     try {
@@ -275,6 +288,17 @@ export class AuthService implements IdentityAuthPort {
                 ),
               };
             }
+            // An administrator's application identity is still keyed on its
+            // own application password; that flow is unchanged.
+            if (passwordHash === null) {
+              return {
+                error: authError(
+                  HttpStatus.BAD_REQUEST,
+                  AuthErrorCode.ADMIN_APP_PASSWORD_REQUIRED,
+                  "An application password is required for this account",
+                ),
+              };
+            }
             const claimed = await this.users.claimAdminApplicationRegistration(
               tx, existing, phone, dto.name, passwordHash, now,
             );
@@ -288,7 +312,24 @@ export class AuthService implements IdentityAuthPort {
               };
             }
             const user = await this.users.requireById(tx, existing.id);
-            return { auth: await this.createAuthResponse(user, false, tx) };
+            return {
+              auth: {
+                ...(await this.createAuthResponse(user, false, tx)),
+                existingAccount: false,
+              },
+            };
+          }
+
+          if (existing?.phoneVerifiedAt && existing.appAccountActivatedAt) {
+            // The number is already registered: the valid code signs it in,
+            // like a LOGIN code. Name and password stay untouched.
+            const user = await this.users.touchLastLogin(tx, existing.id, now);
+            return {
+              auth: {
+                ...(await this.createAuthResponse(user, false, tx)),
+                existingAccount: true,
+              },
+            };
           }
 
           if (existing) {
@@ -314,13 +355,23 @@ export class AuthService implements IdentityAuthPort {
               };
             }
             const user = await this.users.requireById(tx, existing.id);
-            return { auth: await this.createAuthResponse(user, false, tx) };
+            return {
+              auth: {
+                ...(await this.createAuthResponse(user, false, tx)),
+                existingAccount: false,
+              },
+            };
           }
 
           const user = await this.users.createApplicationUser(
             tx, dto.name, phone, passwordHash, now,
           );
-          return { auth: await this.createAuthResponse(user, false, tx) };
+          return {
+            auth: {
+              ...(await this.createAuthResponse(user, false, tx)),
+              existingAccount: false,
+            },
+          };
         },
       );
     } catch (error) {
@@ -607,7 +658,7 @@ export class AuthService implements IdentityAuthPort {
       !user ||
       !passwordMatch ||
       user.status === "DISABLED" ||
-      (realm === "application" && !user.appPasswordConfiguredAt) ||
+      (realm === "application" && !user.appAccountActivatedAt) ||
       (requiredRole !== undefined && user.role !== requiredRole)
     ) {
       throw authError(
@@ -740,7 +791,7 @@ export class AuthService implements IdentityAuthPort {
         existing.user.status === "DISABLED" ||
         !existing.user.phoneVerifiedAt ||
         (sessionScope === AuthSessionScope.APPLICATION &&
-          !existing.user.appPasswordConfiguredAt) ||
+          !existing.user.appAccountActivatedAt) ||
         (requiredRole !== undefined && existing.user.role !== requiredRole)
       ) {
         throw new UnauthorizedException("Session is invalid or expired");
@@ -1370,7 +1421,9 @@ export class AuthService implements IdentityAuthPort {
     const code = this.requiredText(input.code, "code");
     const name = input.name?.trim() ?? "";
     const password = input.password ?? "";
-    const hasAccountSetup = name.length > 0 && password.length > 0;
+    // Setting up an application account needs the name only; the password is
+    // optional (an administrator's application identity still needs one).
+    const hasAccountSetup = name.length > 0;
     const now = new Date();
     const tokenHash = createHash("sha256").update(cleanToken).digest("hex");
     const inviteSeed = await this.collaboration.findLivePlanInvite(
@@ -1386,7 +1439,7 @@ export class AuthService implements IdentityAuthPort {
       phone,
     );
     if (inviteSeed.acceptedAt) {
-      if (!existingUser || existingUser.appPasswordConfiguredAt) {
+      if (!existingUser || existingUser.appAccountActivatedAt) {
         throw this.inviteNotFoundForPhone();
       }
       const existingMembership = await this.collaboration.getMembership(
@@ -1398,21 +1451,22 @@ export class AuthService implements IdentityAuthPort {
     }
     const accountSetupRequired =
       !existingUser ||
-      !existingUser.appPasswordConfiguredAt ||
+      !existingUser.appAccountActivatedAt ||
       (!existingUser.phoneVerifiedAt &&
         existingUser.role !== UserRole.ADMIN) ||
       (existingUser.role === UserRole.ADMIN && !existingUser.appPasswordHash);
-    if (accountSetupRequired && !hasAccountSetup) {
-      throw authError(
-        HttpStatus.CONFLICT,
-        AuthErrorCode.INVITE_ACCOUNT_SETUP_REQUIRED,
-        "Create an application password to continue this invitation",
-      );
+    if (
+      accountSetupRequired &&
+      (!hasAccountSetup ||
+        (existingUser?.role === UserRole.ADMIN && password.length === 0))
+    ) {
+      throw this.inviteAccountSetupRequired();
     }
 
-    const passwordHash = hasAccountSetup
-      ? await bcryptjs.hash(password, 10)
-      : null;
+    const passwordHash =
+      hasAccountSetup && password.length > 0
+        ? await bcryptjs.hash(password, 10)
+        : null;
 
     let result: InviteOtpVerificationResult;
     try {
@@ -1442,7 +1496,7 @@ export class AuthService implements IdentityAuthPort {
             return { error: this.inviteNotFoundForPhone() };
           }
           if (invite.acceptedAt) {
-            if (!user || user.appPasswordConfiguredAt) {
+            if (!user || user.appAccountActivatedAt) {
               return { error: this.inviteNotFoundForPhone() };
             }
             const existingMembership = await this.collaboration.getMembership(
@@ -1468,17 +1522,15 @@ export class AuthService implements IdentityAuthPort {
 
           const accountSetupRequired =
             !user ||
-            !user.appPasswordConfiguredAt ||
+            !user.appAccountActivatedAt ||
             (!user.phoneVerifiedAt && user.role !== UserRole.ADMIN) ||
             (user.role === UserRole.ADMIN && !user.appPasswordHash);
-          if (accountSetupRequired && (!hasAccountSetup || !passwordHash)) {
-            return {
-              error: authError(
-                HttpStatus.CONFLICT,
-                AuthErrorCode.INVITE_ACCOUNT_SETUP_REQUIRED,
-                "Create an application password to continue this invitation",
-              ),
-            };
+          if (
+            accountSetupRequired &&
+            (!hasAccountSetup ||
+              (user?.role === UserRole.ADMIN && !passwordHash))
+          ) {
+            return { error: this.inviteAccountSetupRequired() };
           }
 
           if (user?.status === "DISABLED") {
@@ -1492,10 +1544,10 @@ export class AuthService implements IdentityAuthPort {
           }
 
           if (!user) {
-            user = await this.users.createApplicationUser(tx, name, phone, passwordHash!, now);
+            user = await this.users.createApplicationUser(tx, name, phone, passwordHash, now);
           } else if (
             user.role === UserRole.ADMIN &&
-            !user.appPasswordConfiguredAt
+            !user.appAccountActivatedAt
           ) {
             const claimed = await this.users.claimInviteAdminApplication(
               tx, user, name, phone, passwordHash!, now,
@@ -1512,10 +1564,10 @@ export class AuthService implements IdentityAuthPort {
             user = await this.users.requireById(tx, user.id);
           } else if (
             !user.phoneVerifiedAt ||
-            !user.appPasswordConfiguredAt
+            !user.appAccountActivatedAt
           ) {
             user = await this.users.completeInviteAccountSetup(
-              tx, user.id, name, phone, passwordHash!, now,
+              tx, user.id, name, phone, passwordHash, now,
             );
           } else {
             user = await this.users.touchLastLogin(tx, user.id, now);
@@ -1566,6 +1618,14 @@ export class AuthService implements IdentityAuthPort {
       refreshToken: result.auth.refreshToken,
       refreshTokenExpiresAt: result.auth.refreshTokenExpiresAt,
     };
+  }
+
+  private inviteAccountSetupRequired() {
+    return authError(
+      HttpStatus.CONFLICT,
+      AuthErrorCode.INVITE_ACCOUNT_SETUP_REQUIRED,
+      "Complete the account setup to continue this invitation",
+    );
   }
 
   /**
@@ -1959,7 +2019,7 @@ export class AuthService implements IdentityAuthPort {
     if (
       user.status === "DISABLED" ||
       !user.phoneVerifiedAt ||
-      (!adminMfa && !user.appPasswordConfiguredAt)
+      (!adminMfa && !user.appAccountActivatedAt)
     ) {
       throw authError(
         HttpStatus.UNAUTHORIZED,

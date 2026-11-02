@@ -149,7 +149,7 @@ export function clearAdministratorApplicationIdentity(
     where: { id: userId },
     data: {
       appPasswordHash: null,
-      appPasswordConfiguredAt: null,
+      appAccountActivatedAt: null,
       appName: null,
       appEmail: null,
       appAvatarUrl: null,

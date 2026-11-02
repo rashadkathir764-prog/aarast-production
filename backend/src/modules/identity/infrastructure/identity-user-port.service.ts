@@ -99,15 +99,15 @@ export class IdentityUserPortService
         role: true,
         phoneVerifiedAt: true,
         appPasswordHash: true,
-        appPasswordConfiguredAt: true,
+        appAccountActivatedAt: true,
       },
     });
     if (!account) return null;
     return {
       id: account.id,
-      appPasswordConfigured: account.appPasswordConfiguredAt !== null,
+      appAccountActivated: account.appAccountActivatedAt !== null,
       accountSetupRequired:
-        !account.appPasswordConfiguredAt ||
+        !account.appAccountActivatedAt ||
         (!account.phoneVerifiedAt && account.role !== UserRole.ADMIN) ||
         (account.role === UserRole.ADMIN && !account.appPasswordHash),
     };

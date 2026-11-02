@@ -22,43 +22,52 @@ export class AuthUserRepository {
     return tx.user.updateMany({
       where: { id: user.id, role: UserRole.ADMIN, status: 'ACTIVE', appPasswordHash: null },
       data: {
-        appPasswordHash: passwordHash, appPasswordConfiguredAt: now,
+        appPasswordHash: passwordHash, appAccountActivatedAt: now,
         appName: name, appEmail: null, appAvatarUrl: null, phone,
         phoneVerifiedAt: user.phoneVerifiedAt ?? now, lastLoginAt: now,
       },
     });
   }
 
-  claimApplicationRegistration(tx: Prisma.TransactionClient, userId: string, phone: string, name: string, passwordHash: string, now: Date) {
+  /**
+   * Claims an unverified row for the phone that just proved its code. The
+   * row's previous password was never proven, so it is replaced, or cleared
+   * when the sign-up chose no password.
+   */
+  claimApplicationRegistration(tx: Prisma.TransactionClient, userId: string, phone: string, name: string, passwordHash: string | null, now: Date) {
     return tx.user.updateMany({
       where: {
         id: userId, role: { in: [UserRole.USER, UserRole.PROVIDER] },
         status: 'ACTIVE', phoneVerifiedAt: null,
       },
       data: {
-        name, phone, passwordHash, appPasswordConfiguredAt: now,
+        name, phone, passwordHash, appAccountActivatedAt: now,
         phoneVerifiedAt: now, lastLoginAt: now,
       },
     });
   }
 
-  createApplicationUser(tx: Prisma.TransactionClient, name: string, phone: string, passwordHash: string, now: Date) {
+  createApplicationUser(tx: Prisma.TransactionClient, name: string, phone: string, passwordHash: string | null, now: Date) {
     return tx.user.create({
       data: {
         name, phone, email: null, passwordHash,
-        appPasswordConfiguredAt: now, phoneVerifiedAt: now, lastLoginAt: now,
+        appAccountActivatedAt: now, phoneVerifiedAt: now, lastLoginAt: now,
       },
     });
   }
 
-  markSuccessfulLogin(tx: Prisma.TransactionClient, user: User, at: Date) {
+  async markSuccessfulLogin(tx: Prisma.TransactionClient, user: User, at: Date) {
+    const credentialHash = user.role === UserRole.ADMIN ? user.appPasswordHash : user.passwordHash;
+    // A password sign-in is only ever pinned to a hash that exists; a
+    // passwordless account must never match a `hash IS NULL` filter.
+    if (credentialHash === null) return { count: 0 };
     const credentialIdentity = user.role === UserRole.ADMIN
-      ? { appPasswordHash: user.appPasswordHash! }
-      : { passwordHash: user.passwordHash! };
+      ? { appPasswordHash: credentialHash }
+      : { passwordHash: credentialHash };
     return tx.user.updateMany({
       where: {
         id: user.id, phone: user.phone, role: user.role, status: 'ACTIVE',
-        phoneVerifiedAt: { not: null }, appPasswordConfiguredAt: { not: null },
+        phoneVerifiedAt: { not: null }, appAccountActivatedAt: { not: null },
         ...credentialIdentity,
       },
       data: { lastLoginAt: at },
@@ -100,21 +109,21 @@ export class AuthUserRepository {
   claimInviteAdminApplication(tx: Prisma.TransactionClient, user: User, name: string, phone: string, passwordHash: string, now: Date) {
     return tx.user.updateMany({
       where: {
-        id: user.id, role: UserRole.ADMIN, status: 'ACTIVE', appPasswordConfiguredAt: null,
+        id: user.id, role: UserRole.ADMIN, status: 'ACTIVE', appAccountActivatedAt: null,
       },
       data: {
-        appPasswordHash: passwordHash, appPasswordConfiguredAt: now,
+        appPasswordHash: passwordHash, appAccountActivatedAt: now,
         appName: name, appEmail: null, appAvatarUrl: null, phone,
         phoneVerifiedAt: user.phoneVerifiedAt ?? now, lastLoginAt: now,
       },
     });
   }
 
-  completeInviteAccountSetup(tx: Prisma.TransactionClient, userId: string, name: string, phone: string, passwordHash: string, now: Date) {
+  completeInviteAccountSetup(tx: Prisma.TransactionClient, userId: string, name: string, phone: string, passwordHash: string | null, now: Date) {
     return tx.user.update({
       where: { id: userId },
       data: {
-        name, phone, passwordHash, appPasswordConfiguredAt: now,
+        name, phone, passwordHash, appAccountActivatedAt: now,
         phoneVerifiedAt: now, lastLoginAt: now,
       },
     });
@@ -129,8 +138,9 @@ export class AuthUserRepository {
       where: { id: user.id },
       data: {
         ...(user.role === UserRole.ADMIN
-          ? { appPasswordHash: passwordHash, appPasswordConfiguredAt: now }
-          : { passwordHash, appPasswordConfiguredAt: now }),
+          ? { appPasswordHash: passwordHash }
+          : { passwordHash }),
+        appAccountActivatedAt: user.appAccountActivatedAt ?? now,
         phoneVerifiedAt: user.phoneVerifiedAt ?? now,
       },
     });

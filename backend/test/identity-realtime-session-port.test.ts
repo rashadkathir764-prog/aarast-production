@@ -21,7 +21,7 @@ const userRow = {
   email: null,
   passwordHash: null,
   appPasswordHash: null,
-  appPasswordConfiguredAt: null,
+  appAccountActivatedAt: null,
   appName: null,
   appEmail: null,
   appAvatarUrl: null,

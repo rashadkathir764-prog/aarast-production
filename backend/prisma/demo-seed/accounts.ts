@@ -103,7 +103,7 @@ export async function seedAccounts(
       phone: account.phone,
       passwordHash: isAdmin ? adminHash : appHash,
       appPasswordHash: null,
-      appPasswordConfiguredAt: isAdmin ? null : now,
+      appAccountActivatedAt: isAdmin ? null : now,
       role: isAdmin ? UserRole.ADMIN : isProvider ? UserRole.PROVIDER : UserRole.USER,
       adminRole: account.adminRole ?? null,
       appRole: isProvider ? AppRole.PROVIDER : AppRole.WEDDING_USER,

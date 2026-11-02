@@ -431,7 +431,7 @@ test("accepted invite OTP is limited to legacy accounts missing a real app passw
           role: "USER",
           phoneVerifiedAt: new Date(),
           appPasswordHash: null,
-          appPasswordConfiguredAt: null,
+          appAccountActivatedAt: null,
         }),
       },
       sharedMember: {
@@ -477,7 +477,7 @@ test("accepted invite OTP is limited to legacy accounts missing a real app passw
           role: "USER",
           phoneVerifiedAt: new Date(),
           appPasswordHash: null,
-          appPasswordConfiguredAt: new Date(),
+          appAccountActivatedAt: new Date(),
         }),
       },
     } as any,

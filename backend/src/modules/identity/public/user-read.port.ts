@@ -24,12 +24,12 @@ export interface AppIdentity {
 
 /**
  * What the invite-OTP flow needs to know about the account registered under
- * an invited phone, decided by identity: whether its application password is
- * configured and whether the account still needs its setup step.
+ * an invited phone, decided by identity: whether its application account is
+ * activated and whether the account still needs its setup step.
  */
 export interface InviteAccountState {
   id: string;
-  appPasswordConfigured: boolean;
+  appAccountActivated: boolean;
   accountSetupRequired: boolean;
 }
 

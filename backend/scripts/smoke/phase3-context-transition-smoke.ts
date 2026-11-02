@@ -154,7 +154,7 @@ async function main(): Promise<void> {
           name: `Phase 3 account ${runId}`,
           phone: phone("account"),
           passwordHash: "managed-smoke-not-a-credential",
-          appPasswordConfiguredAt: new Date(),
+          appAccountActivatedAt: new Date(),
           phoneVerifiedAt: new Date(),
           role: UserRole.USER,
           appRole: AppRole.WEDDING_USER,

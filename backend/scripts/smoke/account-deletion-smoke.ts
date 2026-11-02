@@ -589,7 +589,7 @@ async function main() {
         role: UserRole.ADMIN,
         adminRole: AdminRole.SUPER_ADMIN,
         appPasswordHash: 'application-password-hash',
-        appPasswordConfiguredAt: new Date(),
+        appAccountActivatedAt: new Date(),
         appName: 'ADMIN APPLICATION PERSONA',
         appEmail: `${tag}-app@example.test`,
         appAvatarUrl: `https://app.invalid/${tag}.webp`,

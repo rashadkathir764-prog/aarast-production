@@ -34,7 +34,7 @@ const userRow = {
   email: 'admin@example.com',
   passwordHash: 'secret-hash',
   appPasswordHash: null,
-  appPasswordConfiguredAt: null,
+  appAccountActivatedAt: null,
   appName: 'App Name',
   appEmail: null,
   appAvatarUrl: 'app-avatar',
@@ -142,13 +142,13 @@ test('the user read port decides the invite account setup state without exposing
     role: UserRole.USER,
     phoneVerifiedAt: now,
     appPasswordHash: 'hash',
-    appPasswordConfiguredAt: now,
+    appAccountActivatedAt: now,
     ...overrides,
   });
 
   accounts.push(
     account({}),
-    account({ appPasswordConfiguredAt: null, appPasswordHash: null }),
+    account({ appAccountActivatedAt: null, appPasswordHash: null }),
     account({ phoneVerifiedAt: null }),
     account({ role: UserRole.ADMIN, phoneVerifiedAt: null }),
     account({ role: UserRole.ADMIN, appPasswordHash: null }),
@@ -158,11 +158,11 @@ test('the user read port decides the invite account setup state without exposing
     states.push(await service.findInviteAccountByPhoneVariants(client, ['+967700000001']));
   }
   assert.deepEqual(states, [
-    { id: 'user-1', appPasswordConfigured: true, accountSetupRequired: false },
-    { id: 'user-1', appPasswordConfigured: false, accountSetupRequired: true },
-    { id: 'user-1', appPasswordConfigured: true, accountSetupRequired: true },
-    { id: 'user-1', appPasswordConfigured: true, accountSetupRequired: false },
-    { id: 'user-1', appPasswordConfigured: true, accountSetupRequired: true },
+    { id: 'user-1', appAccountActivated: true, accountSetupRequired: false },
+    { id: 'user-1', appAccountActivated: false, accountSetupRequired: true },
+    { id: 'user-1', appAccountActivated: true, accountSetupRequired: true },
+    { id: 'user-1', appAccountActivated: true, accountSetupRequired: false },
+    { id: 'user-1', appAccountActivated: true, accountSetupRequired: true },
   ]);
   assert.equal(await service.findInviteAccountByPhoneVariants(client, ['+967700000001']), null);
   assert.deepEqual(selected, {
@@ -170,7 +170,7 @@ test('the user read port decides the invite account setup state without exposing
     role: true,
     phoneVerifiedAt: true,
     appPasswordHash: true,
-    appPasswordConfiguredAt: true,
+    appAccountActivatedAt: true,
   });
 });
 

@@ -213,7 +213,7 @@ async function assertSignedAccessRealmsStaySeparated(): Promise<void> {
         where: { id: fixture.actingAdmin.id },
         data: {
           appPasswordHash: await bcryptjs.hash('Phase1 application password', 4),
-          appPasswordConfiguredAt: new Date(),
+          appAccountActivatedAt: new Date(),
         },
       });
       const [adminSession, applicationSession] = await prisma.$transaction([
@@ -325,7 +325,7 @@ async function assertCorrectAndWrongOtpRaceHasOneWinner(): Promise<void> {
         where: { id: fixture.user.id },
         data: {
           appPasswordHash: await bcryptjs.hash('Phase1 OTP application password', 4),
-          appPasswordConfiguredAt: new Date(),
+          appAccountActivatedAt: new Date(),
         },
       });
       const otp = await prisma.otpCode.update({

@@ -93,7 +93,7 @@ async function configurePassword(userId: string, password: string) {
     where: { id: userId },
     data: {
       passwordHash: await bcryptjs.hash(password, 4),
-      appPasswordConfiguredAt: new Date(),
+      appAccountActivatedAt: new Date(),
       status: UserStatus.ACTIVE,
       phoneVerifiedAt: new Date(),
     },

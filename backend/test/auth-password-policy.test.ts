@@ -85,3 +85,21 @@ test("administrator recovery accepts the application password rule", async () =>
   assert.equal((await valid("abcdef")).length, 0);
   assert.ok((await valid("12345")).some((error) => error.property === "newPassword"));
 });
+
+test("registration accepts no password, but a given one still follows the rule", async () => {
+  const base = { name: "User", phone: "777123456", otpCode: "123456" };
+  assert.equal((await errorsFor(CompleteRegistrationDto, base)).length, 0);
+  assert.ok(
+    (await errorsFor(CompleteRegistrationDto, { ...base, password: "12345" }))
+      .some((error) => error.property === "password"),
+  );
+  assert.ok(
+    (await errorsFor(CompleteRegistrationDto, { ...base, password: "" }))
+      .some((error) => error.property === "password"),
+  );
+  assert.equal(
+    (await errorsFor(CompleteRegistrationDto, { ...base, password: "secret123" }))
+      .length,
+    0,
+  );
+});

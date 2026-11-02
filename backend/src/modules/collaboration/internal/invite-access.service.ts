@@ -60,7 +60,7 @@ export class InviteAccessService {
       PhoneNormalizer.lookupVariants(phone),
     );
     if (invite.acceptedAt) {
-      if (!account || account.appPasswordConfigured) {
+      if (!account || account.appAccountActivated) {
         throw this.inviteNotFound();
       }
       const existingMembership = await findInviteMembership(

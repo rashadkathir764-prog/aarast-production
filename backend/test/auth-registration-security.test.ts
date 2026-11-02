@@ -112,7 +112,7 @@ function createHarness() {
           appRole: "WEDDING_USER",
           status: "ACTIVE",
           appPasswordHash: null,
-          appPasswordConfiguredAt: null,
+          appAccountActivatedAt: null,
           appName: null,
           appEmail: null,
           appAvatarUrl: null,
@@ -155,11 +155,11 @@ function createHarness() {
               where.passwordHash === user.passwordHash) &&
             (where.appPasswordHash === undefined ||
               where.appPasswordHash === user.appPasswordHash) &&
-            (where.appPasswordConfiguredAt === undefined ||
-              (where.appPasswordConfiguredAt?.not === null
-                ? user.appPasswordConfiguredAt !== null
-                : where.appPasswordConfiguredAt ===
-                  user.appPasswordConfiguredAt));
+            (where.appAccountActivatedAt === undefined ||
+              (where.appAccountActivatedAt?.not === null
+                ? user.appAccountActivatedAt !== null
+                : where.appAccountActivatedAt ===
+                  user.appAccountActivatedAt));
           if (!matches) continue;
           Object.assign(user, data, { updatedAt: new Date() });
           count += 1;
@@ -283,7 +283,7 @@ function createHarness() {
           phone,
           email,
           passwordHash: await bcryptjs.hash("secret123", 4),
-          appPasswordConfiguredAt: new Date(),
+          appAccountActivatedAt: new Date(),
           phoneVerifiedAt: verified ? new Date() : null,
           lastLoginAt: null,
         },
@@ -579,7 +579,7 @@ test("an admin needs a separate application password for a wedding-app bearer", 
     assert.equal(refreshTokens.length, 0);
 
     admin.appPasswordHash = await bcryptjs.hash("application-secret", 4);
-    admin.appPasswordConfiguredAt = new Date();
+    admin.appAccountActivatedAt = new Date();
     const response = await service.login({
       phone: "777123456",
       password: "application-secret",
@@ -598,7 +598,7 @@ test("general OTP login gives an admin only a standard wedding-app session", asy
     admin.role = 'ADMIN';
     admin.adminRole = 'SUPER_ADMIN';
     admin.appPasswordHash = await bcryptjs.hash('application-secret', 4);
-    admin.appPasswordConfiguredAt = new Date();
+    admin.appAccountActivatedAt = new Date();
     admin.appName = 'Wedding App Admin';
 
     await service.requestOtp({
@@ -885,20 +885,129 @@ test("registration verifies OTP before checking a phone conflict", async () => {
       "identifier lookup must not run until the phone OTP is valid",
     );
 
+    // Owner decision (phone + code sign-up): a registered number with a valid
+    // REGISTER code now signs in instead of answering 409.
+    const response = await service.completeRegistration({
+      name: "Probe",
+      phone: "777123456",
+      password: "secret123",
+      otpCode: "123456",
+    });
+    assert.equal(response.existingAccount, true);
+    assert.deepEqual(
+      lookupEvents,
+      ["user"],
+      "the account is looked up only after valid phone proof",
+    );
+  });
+});
+
+test("a verified phone without an activated application account still answers 409", async () => {
+  await withDevOtp(async () => {
+    const { service, addUser } = createHarness();
+    const existing = await addUser("+967777123456", true);
+    existing.appAccountActivatedAt = null;
+    await service.startRegistration({ name: "Probe", phone: "777123456" });
     await assert.rejects(
       () =>
         service.completeRegistration({
           name: "Probe",
           phone: "777123456",
-          password: "secret123",
           otpCode: "123456",
         }),
-      /An account already exists for this phone/,
+      (error: any) =>
+        error.getResponse?.().code === AuthErrorCode.ACCOUNT_ALREADY_EXISTS,
     );
-    assert.deepEqual(
-      lookupEvents,
-      ["user"],
-      "identifier conflicts are checked only after valid phone proof",
+  });
+});
+
+test("registration without a password creates an activated passwordless account", async () => {
+  await withDevOtp(async () => {
+    const { service, users } = createHarness();
+    await service.startRegistration({ name: "New Couple", phone: "777123456" });
+    const response = await service.completeRegistration({
+      name: "New Couple",
+      phone: "777123456",
+      otpCode: "123456",
+    });
+
+    assert.equal(response.existingAccount, false);
+    assert.ok(response.accessToken);
+    assert.ok(response.refreshToken);
+    assert.equal(users.length, 1);
+    assert.equal(users[0].passwordHash, null);
+    assert.ok(users[0].appAccountActivatedAt);
+    assert.ok(users[0].phoneVerifiedAt);
+  });
+});
+
+test("password sign-in on a passwordless account fails like a wrong password", async () => {
+  await withDevOtp(async () => {
+    const { service } = createHarness();
+    await service.startRegistration({ name: "New Couple", phone: "777123456" });
+    await service.completeRegistration({
+      name: "New Couple",
+      phone: "777123456",
+      otpCode: "123456",
+    });
+
+    const rejection = async (phone: string, password: string) => {
+      try {
+        await service.login({ phone, password });
+      } catch (error: any) {
+        return { status: error.getStatus?.(), body: error.getResponse?.() };
+      }
+      assert.fail("password sign-in must fail");
+    };
+    const passwordless = await rejection("777123456", "anything1");
+    // Exactly what an unknown phone (dummy-hash comparison) answers.
+    const unknown = await rejection("777999888", "anything1");
+    assert.equal(passwordless.body.code, AuthErrorCode.INVALID_CREDENTIALS);
+    assert.deepEqual(passwordless, unknown);
+  });
+});
+
+test("a registered number with a valid REGISTER code signs in without changing name or password", async () => {
+  await withDevOtp(async () => {
+    const { service, users, addUser } = createHarness();
+    const existing = await addUser("+967777123456", true);
+    const originalHash = existing.passwordHash;
+    await service.startRegistration({ name: "Other Name", phone: "777123456" });
+    const before = Date.now();
+    const response = await service.completeRegistration({
+      name: "Other Name",
+      phone: "777123456",
+      password: "different-password",
+      otpCode: "123456",
+    });
+
+    assert.equal(response.existingAccount, true);
+    assert.equal(response.user.id, existing.id);
+    assert.ok(response.accessToken);
+    assert.equal(users.length, 1);
+    assert.equal(existing.name, "Existing User");
+    assert.equal(existing.passwordHash, originalHash);
+    assert.ok(existing.lastLoginAt.getTime() >= before);
+    assert.equal(await bcryptjs.compare("secret123", existing.passwordHash), true);
+  });
+});
+
+test("a registered but disabled number keeps its disabled answer on registration", async () => {
+  await withDevOtp(async () => {
+    const { service, addUser } = createHarness();
+    const existing = await addUser("+967777123456", true);
+    existing.status = "DISABLED";
+    await service.startRegistration({ name: "Probe", phone: "777123456" });
+    await assert.rejects(
+      () =>
+        service.completeRegistration({
+          name: "Probe",
+          phone: "777123456",
+          otpCode: "123456",
+        }),
+      (error: any) =>
+        error.getResponse?.().code ===
+        AuthErrorCode.ACCOUNT_DISABLED_AFTER_PHONE_PROOF,
     );
   });
 });
@@ -1096,6 +1205,66 @@ test("private invite OTP creates a participant with their chosen password and on
   });
 });
 
+test("private invite OTP creates a participant from the name alone, without a password", async () => {
+  await withDevOtp(async () => {
+    const token = TEST_INVITE_TOKEN;
+    const { service, users, refreshTokens, setPlanInvite } = createHarness();
+    setPlanInvite({
+      id: "invite-active",
+      tokenHash: createHash("sha256").update(token).digest("hex"),
+      normalizedPhone: "+967777123456",
+      acceptedAt: null,
+      declinedAt: null,
+      revokedAt: null,
+      expiresAt: new Date(Date.now() + 60_000),
+    });
+
+    await service.requestInviteOtp(
+      "+967777123456",
+      "invite-active",
+      createHash("sha256").update(token).digest("hex"),
+    );
+    const result = await service.verifyInviteOtp({
+      token,
+      phone: "777123456",
+      code: "123456",
+      name: "المساهم أحمد",
+    });
+
+    assert.equal(result.user?.name, "المساهم أحمد");
+    assert.equal(users.length, 1);
+    assert.equal(users[0].passwordHash, null);
+    assert.ok(users[0].appAccountActivatedAt);
+    assert.equal(refreshTokens.length, 1);
+    assert.match(result.refreshToken ?? "", /^aarast_app_/);
+  });
+});
+
+test("an admin cannot enroll an application account without its application password", async () => {
+  await withDevOtp(async () => {
+    const { service, refreshTokens, addUser } = createHarness();
+    const admin = await addUser("+967777123456", true);
+    admin.role = "ADMIN";
+    admin.adminRole = "SUPER_ADMIN";
+    const originalAdminHash = admin.passwordHash;
+
+    await service.startRegistration({ name: "Wedding App Name", phone: "777123456" });
+    await assert.rejects(
+      () =>
+        service.completeRegistration({
+          name: "Wedding App Name",
+          phone: "777123456",
+          otpCode: "123456",
+        }),
+      (error: any) =>
+        error.getResponse?.().code === AuthErrorCode.ADMIN_APP_PASSWORD_REQUIRED,
+    );
+    assert.equal(admin.appPasswordHash, null);
+    assert.equal(admin.passwordHash, originalAdminHash);
+    assert.equal(refreshTokens.length, 0);
+  });
+});
+
 test("private invite setup can reuse the same unconsumed OTP after credentials are requested", async () => {
   await withDevOtp(async () => {
     const token = TEST_INVITE_TOKEN;
@@ -1152,7 +1321,7 @@ test("an accepted legacy invite replaces its generated password and restores a d
     const legacy = await addUser("+967777123456", true);
     legacy.name = "مشارك اعّرست";
     legacy.passwordHash = await bcryptjs.hash("unreachable-random-secret", 4);
-    legacy.appPasswordConfiguredAt = null;
+    legacy.appAccountActivatedAt = null;
     addSharedMember("plan-legacy", legacy.id);
     setPlanInvite({
       id: "invite-accepted-legacy",
@@ -1182,7 +1351,7 @@ test("an accepted legacy invite replaces its generated password and restores a d
     });
 
     assert.equal(legacy.name, "المساهم أحمد");
-    assert.ok(legacy.appPasswordConfiguredAt);
+    assert.ok(legacy.appAccountActivatedAt);
     assert.ok(
       await bcryptjs.compare(
         "chosen-contributor-password",

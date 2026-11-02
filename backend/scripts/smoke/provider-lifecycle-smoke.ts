@@ -109,7 +109,7 @@ async function account(role: string): Promise<User> {
       phoneVerifiedAt: new Date(),
       passwordHash: "managed-smoke-not-a-credential",
       // An application session needs an account that finished signing up.
-      appPasswordConfiguredAt: new Date(),
+      appAccountActivatedAt: new Date(),
       role: UserRole.USER,
       status: UserStatus.ACTIVE,
     },

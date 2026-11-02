@@ -1,5 +1,6 @@
 import {
   IsNotEmpty,
+  IsOptional,
   IsString,
   Length,
   Matches,
@@ -21,10 +22,12 @@ export class CompleteRegistrationDto {
   @MaxLength(40)
   phone!: string;
 
+  // Sign-up is phone + code; a password can be chosen later by reset code.
+  @IsOptional()
   @IsString()
   @MinLength(6)
   @MaxUtf8Bytes(72)
-  password!: string;
+  password?: string;
 
   @IsString()
   @Length(6, 6)

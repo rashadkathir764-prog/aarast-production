@@ -29,10 +29,14 @@ function sign(signingKey: Buffer, payload: string): string {
 }
 
 export function issueAdminTrustedDevice(
-  admin: { id: string; passwordHash: string },
+  admin: { id: string; passwordHash: string | null },
   now: Date,
   environment: NodeJS.ProcessEnv = process.env,
 ): { token: string; expiresAt: Date } {
+  // Only issued after a password + code sign-in, so the hash exists.
+  if (admin.passwordHash === null) {
+    throw new Error('A trusted device needs the administrator password hash');
+  }
   const signingKey = key(environment);
   const expiresAt = new Date(now.getTime() + ADMIN_TRUSTED_DEVICE_TTL_MS);
   const payload = [
@@ -47,11 +51,11 @@ export function issueAdminTrustedDevice(
 /** Whether the token was issued to this admin, is unexpired and predates no password change. */
 export function isAdminTrustedDevice(
   token: string | null | undefined,
-  admin: { id: string; passwordHash: string },
+  admin: { id: string; passwordHash: string | null },
   now: Date,
   environment: NodeJS.ProcessEnv = process.env,
 ): boolean {
-  if (!token || token.length > 512) return false;
+  if (!token || token.length > 512 || admin.passwordHash === null) return false;
   const [encoded, signature, extra] = token.split('.');
   if (!encoded || !signature || extra !== undefined) return false;
   const signingKey = key(environment);

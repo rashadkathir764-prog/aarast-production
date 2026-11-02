@@ -961,7 +961,8 @@ class ApiException implements Exception {
   }
 }
 
-/// D75: an admin's number keeps a password for its app account, so a sign-up
-/// or an invite without one stops here and says where to go.
+/// D75: an admin's number without an app password cannot get an app account
+/// by number and code (its app account needs a password, which no screen
+/// takes), so a sign-up or an invite stops here and says what is left.
 const adminAppPasswordRequiredMessage =
-    'هذا الرقم لحساب إدارة، وحسابه في التطبيق يحتاج كلمة مرور. ادخل من «تسجيل الدخول» بكلمة المرور.';
+    'هذا الرقم لحساب إدارة في اعّرست، وما يتسوى له حساب في التطبيق من هنا. الحل رقم ثاني، أو التواصل مع الدعم.';

@@ -755,6 +755,7 @@ class _JourneyPhoneFieldState extends State<JourneyPhoneField> {
                               RegExp(r'[0-9٠-٩+ ]'),
                             ),
                             LengthLimitingTextInputFormatter(16),
+                            const _PhoneGroupsFormatter(),
                           ],
                           onChanged: widget.onChanged,
                           onSubmitted: widget.onSubmitted,
@@ -955,7 +956,10 @@ class _CodeHelpSheetState extends State<JourneyCodeHelpSheet> {
           _HelpRow(
             icon: LucideIcons.lock,
             label: 'الدخول بكلمة المرور',
-            sub: 'لو حطيت كلمة مرور لحسابك',
+            sub: context.say(
+              'لو حطيت كلمة مرور لحسابك',
+              'لو حطيتي كلمة مرور لحسابك',
+            ),
             onTap: onPassword,
           ),
       ],
@@ -1088,6 +1092,32 @@ class JourneyCodeResendRow extends StatelessWidget {
             onPressed: onHelp,
           ),
       ],
+    );
+  }
+}
+
+/// «777 123 456»: a nine-digit local number in threes as it is typed, the
+/// way it is read out. Anything else (a +967 or 00 prefix pasted in) is left
+/// as typed; the number is normalised before it is sent.
+class _PhoneGroupsFormatter extends TextInputFormatter {
+  const _PhoneGroupsFormatter();
+
+  @override
+  TextEditingValue formatEditUpdate(
+    TextEditingValue oldValue,
+    TextEditingValue newValue,
+  ) {
+    final digits = newValue.text.replaceAll(' ', '');
+    if (!RegExp(r'^[0-9٠-٩]{1,9}$').hasMatch(digits)) return newValue;
+    final buffer = StringBuffer();
+    for (var i = 0; i < digits.length; i++) {
+      if (i == 3 || i == 6) buffer.write(' ');
+      buffer.write(digits[i]);
+    }
+    final text = buffer.toString();
+    return TextEditingValue(
+      text: text,
+      selection: TextSelection.collapsed(offset: text.length),
     );
   }
 }

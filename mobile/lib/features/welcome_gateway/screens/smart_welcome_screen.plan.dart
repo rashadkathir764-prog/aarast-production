@@ -688,7 +688,7 @@ class _ReadyStep extends StatelessWidget {
                               // Only what the directory said: a number, or
                               // none; nothing is promised when it is unknown.
                               subtitle: count == null
-                                  ? 'تشوفهم من صفحة المزودين'
+                                  ? 'نعرف كم مزود في $city أول ما يرجع النت'
                                   : count == 0
                                   ? 'ما في مزودين في $city بعد. نضيفهم أول ما ينضمون.'
                                   : context.say(

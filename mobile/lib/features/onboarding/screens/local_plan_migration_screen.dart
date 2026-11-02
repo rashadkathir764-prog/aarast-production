@@ -214,14 +214,17 @@ class _LocalPlanMigrationScreenState extends State<LocalPlanMigrationScreen> {
       context: context,
       profile: _owner,
       builder: (sheetContext) => JourneySheetBody(
-        title: 'تمسح الخطة اللي على الجوال؟',
+        title: _owner.say(
+          'تمسح الخطة اللي على الجوال؟',
+          'تمسحين الخطة اللي على الجوال؟',
+        ),
         subtitle: _account == null
             ? 'تنحذف من هذا الجوال وما ترجع.'
             : 'تنحذف من هذا الجوال وما ترجع. خطتك اللي في حسابك ما تتأثر.',
         children: [
           JourneyButton(
             key: const ValueKey('local-plan-drop-confirm'),
-            label: 'إيه، امسحها',
+            label: _owner.say('إيه، امسحها', 'إيه، امسحيها'),
             background: AarastV3Color.danger,
             expand: true,
             large: true,
@@ -229,7 +232,7 @@ class _LocalPlanMigrationScreenState extends State<LocalPlanMigrationScreen> {
           ),
           const SizedBox(height: AarastV3Space.x2),
           JourneyButton.quiet(
-            label: 'لا، خلّها',
+            label: _owner.say('لا، خلّها', 'لا، خلّيها'),
             expand: true,
             onPressed: () => Navigator.of(sheetContext).pop(false),
           ),
@@ -330,7 +333,10 @@ class _LocalPlanMigrationScreenState extends State<LocalPlanMigrationScreen> {
                   ? 'نحفظ $saving في حسابك'
                   : 'نفتح حسابك',
               body: _phase == _Phase.saving
-                  ? 'البنود والمهر والموعد، كما سويتها.'
+                  ? context.say(
+                      'البنود والمهر والموعد، كما سويتها.',
+                      'البنود والمهر والموعد، كما سويتيها.',
+                    )
                   : null,
             ),
         ],

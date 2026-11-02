@@ -15,7 +15,7 @@ import '../../auth/auth_api.dart' show AuthController, AuthStatus;
 
 /// The message the participant sends the groom or the bride to be added.
 const fromFamilyAskMessage =
-    'هلا، أشتي أساعد في ترتيب العرس. ممكن إضافتي في تطبيق اعّرست من «المشاركين» وإرسال رابط الدعوة لي؟';
+    'هلا، أشتي أساعد في ترتيب العرس. ممكن تضيفوني في اعّرست من «المشاركين» وترسلوا لي رابط الدعوة؟';
 
 /// The private token inside an invite link, or the token itself when only it
 /// was pasted; null when the text holds no invite.
@@ -104,7 +104,7 @@ class _FromFamilyScreenState extends State<FromFamilyScreen> {
     if (opened || !mounted) return;
     await Clipboard.setData(const ClipboardData(text: fromFamilyAskMessage));
     if (!mounted) return;
-    AarastToast.showInfo(context, 'نسخنا لك الرسالة، أرسلها له بأي طريقة.');
+    AarastToast.showInfo(context, 'نسخنا لك الرسالة، أرسلها بأي طريقة.');
   }
 
   void _startOwnPlan() {

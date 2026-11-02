@@ -293,7 +293,7 @@ class _OtpScreenState extends State<OtpScreen> {
       profile: _ownerProfile,
       builder: (sheetContext) => JourneyCodeHelpSheet(
         resendSeconds: () => _resendSeconds,
-        changeLabel: _changeLabel(context, registration: registration),
+        changeLabel: _changeLabel(registration: registration),
         onResend: () {
           Navigator.of(sheetContext).pop();
           _resendOtp();
@@ -322,9 +322,9 @@ class _OtpScreenState extends State<OtpScreen> {
 
   /// «غيّر الرقم» in the plan owner's words while saving a plan; the
   /// neutral «تغيير الرقم» everywhere else.
-  String _changeLabel(BuildContext context, {required bool registration}) =>
-      registration && _keptPlan != null
-      ? context.say('غيّر الرقم', 'غيّري الرقم')
+  String _changeLabel({required bool registration}) =>
+      registration && _keptPlan != null && !_forProvider
+      ? _ownerProfile.say('غيّر الرقم', 'غيّري الرقم')
       : 'تغيير الرقم';
 
   /// The kept plan's owner: the colour and voice of every line here.
@@ -373,13 +373,13 @@ class _OtpScreenState extends State<OtpScreen> {
         disabledAccountAfterProof;
     final dark = context.accent.primaryDark;
     final after = isRegistration
-        ? _keptPlan != null
+        ? _forProvider
+              ? 'بعد الرمز: طلب الانضمام بأربع خطوات.'
+              : _keptPlan != null
               ? context.say(
                   'أول ما تكمل الأرقام الستة ندخل ونحفظ خطتك.',
                   'أول ما تكملين الأرقام الستة ندخل ونحفظ خطتك.',
                 )
-              : _forProvider
-              ? 'بعد الرمز: طلب الانضمام بأربع خطوات.'
               : 'أول ما تكتمل الأرقام الستة ينحفظ حسابك.'
         : purpose == 'LOGIN'
         ? _keptPlan != null
@@ -398,7 +398,7 @@ class _OtpScreenState extends State<OtpScreen> {
                 primary: missingAccountAfterProof
                     ? JourneyButton(
                         key: const ValueKey('otp-go-to-register'),
-                        label: _keptPlan != null
+                        label: _keptPlan != null && !_forProvider
                             ? context.say(
                                 'احفظ خطتي بهذا الرقم',
                                 'احفظي خطتي بهذا الرقم',
@@ -411,7 +411,16 @@ class _OtpScreenState extends State<OtpScreen> {
                           // A plan on this phone is saved with the number,
                           // never replaced by a new one.
                           context.go(
-                            _keptPlan != null
+                            _forProvider
+                                ? Uri(
+                                    path: AppRouter.register,
+                                    queryParameters: {
+                                      'type': 'provider',
+                                      'phone': phone,
+                                      'resume': widget.successLocation!,
+                                    },
+                                  ).toString()
+                                : _keptPlan != null
                                 ? Uri(
                                     path: AppRouter.register,
                                     queryParameters: {'phone': phone},
@@ -454,7 +463,7 @@ class _OtpScreenState extends State<OtpScreen> {
             Align(
               alignment: AlignmentDirectional.centerStart,
               child: JourneyTextAction(
-                label: _changeLabel(context, registration: isRegistration),
+                label: _changeLabel(registration: isRegistration),
                 color: dark,
                 onPressed: _goBack,
               ),
@@ -497,10 +506,16 @@ class _OtpScreenState extends State<OtpScreen> {
             JourneyEntryNote(
               text: existingAccount
                   ? auth.errorMessage ??
-                        'هذا الرقم عليه حساب من قبل. ادخل عليه برمز واتساب من «تسجيل الدخول».'
+                        context.say(
+                          'هذا الرقم عليه حساب من قبل. ادخل عليه برمز واتساب من «تسجيل الدخول».',
+                          'هذا الرقم عليه حساب من قبل. ادخلي عليه برمز واتساب من «تسجيل الدخول».',
+                        )
                   : missingAccountAfterProof
                   ? _keptPlan != null
-                        ? 'هذا الرقم ما عليه حساب في اعّرست. احفظ خطتك اللي على الجوال بهذا الرقم.'
+                        ? context.say(
+                            'هذا الرقم ما عليه حساب في اعّرست. احفظ خطتك اللي على الجوال بهذا الرقم.',
+                            'هذا الرقم ما عليه حساب في اعّرست. احفظي خطتك اللي على الجوال بهذا الرقم.',
+                          )
                         : 'هذا الرقم ما عليه حساب في اعّرست. ابدأ من البداية، وتسوي خطتك أو تقدم خدمتك.'
                   : auth.errorMessage ?? 'هذا الحساب موقوف.',
               icon: LucideIcons.info,

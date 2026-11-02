@@ -210,6 +210,18 @@ class _LoginScreenState extends State<LoginScreen> {
     if (!mounted) return;
     // A plan already on this phone is saved with a number, never replaced
     // by starting over.
+    final resume = _safeResumeLocation(context);
+    // A provider page sent this person: their own sign-up, keeping the way
+    // back to it.
+    if (resume != null && resume.startsWith('/provider/')) {
+      context.go(
+        Uri(
+          path: AppRouter.register,
+          queryParameters: {'type': 'provider', 'resume': resume},
+        ).toString(),
+      );
+      return;
+    }
     context.go(
       kept?.isCompleteGuestPlan == true
           ? AppRouter.register

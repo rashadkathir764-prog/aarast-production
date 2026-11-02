@@ -328,7 +328,7 @@ void main() {
         find.text('عرس رشاد وسارة · صنعاء · الخميس 21 يناير'),
         findsOneWidget,
       );
-      expect(find.text('دورك: مساعد'), findsOneWidget);
+      expect(find.text('أنت مساعد'), findsOneWidget);
       expect(find.text('موعد العرس'), findsOneWidget);
       // C27: a participant adds tasks and finishes their own.
       expect(find.text('المهام: تضيف مهام وتخلّص اللي عليك'), findsOneWidget);
@@ -383,6 +383,11 @@ void main() {
           of: find.byKey(const ValueKey('invite-inviter-card')),
           matching: find.text(title),
         ),
+        findsOneWidget,
+      );
+      // A bride's plan speaks to the women she invites in their words.
+      expect(
+        find.text(persona == 'BRIDE' ? 'أنتِ مساعدة' : 'أنت مساعد'),
         findsOneWidget,
       );
     });

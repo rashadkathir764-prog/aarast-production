@@ -97,7 +97,6 @@ void main() {
         await invalidHarness.controller.register(
           name: 'أحمد',
           phone: '777123456',
-          password: 'secret123',
           otpCode: '123456',
           resumeInviteToken: 'not-a-private-token',
         ),
@@ -112,7 +111,6 @@ void main() {
         await validHarness.controller.register(
           name: 'أحمد',
           phone: '777123456',
-          password: 'secret123',
           otpCode: '123456',
           resumeInviteToken: token,
         ),
@@ -165,13 +163,16 @@ void main() {
       await _pumpGuestInvite(tester, harness);
 
       expect(find.text('دعوة للمشاركة'), findsOneWidget);
-      expect(find.byKey(const ValueKey('invite-step-0')), findsOneWidget);
-      expect(find.text('رقم الهاتف'), findsWidgets);
-      expect(find.text('التحقق'), findsOneWidget);
-      expect(find.text('الدعوة'), findsOneWidget);
+      expect(find.text('رقم جوالك'), findsOneWidget);
       expect(find.byKey(const Key('invite-phone-field')), findsOneWidget);
       expect(find.text('نفس الرقم اللي وصلته الدعوة عليه.'), findsOneWidget);
-      expect(find.text('إرسال رمز التحقق'), findsOneWidget);
+      // D75: a first visit's name is asked with the number; no password.
+      expect(
+        find.byKey(const ValueKey('invite-account-name-field')),
+        findsOneWidget,
+      );
+      expect(find.textContaining('كلمة المرور'), findsNothing);
+      expect(find.text('أرسل الرمز'), findsOneWidget);
       // Nothing of the plan or the inviter is read before the code (C35).
       expect(find.byKey(const ValueKey('invite-inviter-card')), findsNothing);
       expect(find.textContaining('يشتيك معه'), findsNothing);
@@ -184,25 +185,22 @@ void main() {
     await _pumpGuestInvite(tester, harness);
     await _openOtpStep(tester);
 
-    expect(find.text('رمز التحقق'), findsOneWidget);
+    expect(find.byKey(const Key('invite-otp-field')), findsOneWidget);
     expect(harness.repository.requestCalls, 1);
-    expect(find.text('نعيد الإرسال بعد 1:00'), findsOneWidget);
-    await tester.tap(find.byKey(const ValueKey('invite-otp-resend-button')));
+    expect(find.text('نرسله مرة ثانية بعد 1:00'), findsOneWidget);
+    await tester.tap(find.byKey(const ValueKey('otp-resend-button')));
     await tester.pump();
     expect(harness.repository.requestCalls, 1);
 
     await tester.pump(const Duration(seconds: 59));
-    expect(find.text('نعيد الإرسال بعد 0:01'), findsOneWidget);
+    expect(find.text('نرسله مرة ثانية بعد 0:01'), findsOneWidget);
 
     await tester.pump(const Duration(seconds: 1));
-    expect(find.text('أرسل رمز جديد'), findsOneWidget);
-    await _tapVisible(
-      tester,
-      find.byKey(const ValueKey('invite-otp-resend-button')),
-    );
+    expect(find.text('أرسله مرة ثانية'), findsOneWidget);
+    await _tapVisible(tester, find.byKey(const ValueKey('otp-resend-button')));
     await tester.pump();
     expect(harness.repository.requestCalls, 2);
-    expect(find.text('نعيد الإرسال بعد 1:00'), findsOneWidget);
+    expect(find.text('نرسله مرة ثانية بعد 1:00'), findsOneWidget);
   });
 
   for (final status in ['PENDING', 'UNCERTAIN']) {
@@ -215,7 +213,6 @@ void main() {
       await _openOtpStep(tester);
 
       expect(find.text('طلبنا لك رمز على واتساب'), findsOneWidget);
-      expect(find.text('إذا وصلك على الرقم'), findsOneWidget);
       expect(find.text('أرسلنا لك رمز على واتساب'), findsNothing);
     });
   }
@@ -227,7 +224,6 @@ void main() {
     await _openOtpStep(tester);
 
     expect(find.text('أرسلنا لك رمز على واتساب'), findsOneWidget);
-    expect(find.text('وصل إلى الرقم'), findsOneWidget);
     expect(find.text('طلبنا لك رمز على واتساب'), findsNothing);
   });
 
@@ -256,12 +252,20 @@ void main() {
     await _pumpGuestInvite(tester, harness);
     await _openOtpStep(tester);
 
+    // D75: there is no confirm button; six digits send the code, and the
+    // boxes lock while it is checked.
     await tester.enterText(find.byKey(const Key('invite-otp-field')), '123456');
-    await tester.tap(
-      find.byKey(const Key('invite-verify-otp-button')),
-      warnIfMissed: false,
-    );
+    await tester.pump();
     expect(harness.repository.verifyCalls, 1);
+    expect(find.byKey(const Key('invite-verify-otp-button')), findsNothing);
+    final otpField = tester.widget<TextField>(
+      find.descendant(
+        of: find.byKey(const Key('invite-otp-field')),
+        matching: find.byType(TextField),
+        matchRoot: true,
+      ),
+    );
+    expect(otpField.enabled, isFalse);
 
     harness.repository.verifyGate!.complete();
     await tester.pumpAndSettle();
@@ -312,10 +316,18 @@ void main() {
       );
       await _openVerifiedInvite(tester);
 
-      expect(find.text('الدعوة'), findsWidgets);
-      expect(find.byKey(const ValueKey('invite-step-2')), findsOneWidget);
-      expect(find.text('رشاد يشتيك معه في عرسه'), findsOneWidget);
-      expect(find.text('الخميس 21 يناير · صنعاء'), findsOneWidget);
+      expect(find.text('تأكدنا من رقمك.'), findsOneWidget);
+      expect(
+        find.descendant(
+          of: find.byKey(const ValueKey('invite-inviter-card')),
+          matching: find.text('رشاد يشتيك معه في عرسه'),
+        ),
+        findsOneWidget,
+      );
+      expect(
+        find.text('عرس رشاد وسارة · صنعاء · الخميس 21 يناير'),
+        findsOneWidget,
+      );
       expect(find.text('دورك: مساعد'), findsOneWidget);
       expect(find.text('موعد العرس'), findsOneWidget);
       // C27: a participant adds tasks and finishes their own.
@@ -331,10 +343,6 @@ void main() {
         );
       }
       expect(find.textContaining('الرفد'), findsNothing);
-      expect(
-        find.text('رشاد يقدر يغيّرها، وأنت تقدر تطلع من الخطة متى ما تشتي.'),
-        findsOneWidget,
-      );
       expect(find.byKey(const Key('invite-accept-button')), findsOneWidget);
       expect(find.byKey(const Key('invite-decline-button')), findsOneWidget);
       expect(sharingApi.acceptCalls, 0);
@@ -544,7 +552,6 @@ void main() {
       await harness.controller.register(
         name: 'أحمد',
         phone: '777123456',
-        password: 'secret123',
         otpCode: '123456',
         resumeInviteToken: token,
       ),
@@ -639,69 +646,80 @@ void main() {
     );
 
     await _openOtpStep(tester);
-    expect(find.text('حسابك في اعّرست'), findsOneWidget);
-    expect(find.byKey(const ValueKey('invite-step-1')), findsOneWidget);
-    expect(
-      find.text('أول مرة تدخل؟ نسوي لك حساب، وتقدر بعدين تبدأ خطتك أنت كمان.'),
-      findsOneWidget,
-    );
-    expect(find.text('اسمك'), findsOneWidget);
-    expect(find.text('كلمة المرور'), findsOneWidget);
-    expect(find.text('تأكيد كلمة المرور'), findsOneWidget);
+    // D75: the code is on its way; a first visit names the account on the
+    // same page as the number, and nothing asks for a password.
+    expect(harness.repository.inviteRequestCalls, 1);
+    expect(find.byKey(const Key('invite-otp-field')), findsNothing);
+    expect(find.text('اكتب اسمك، أول مرة تدخل اعّرست'), findsOneWidget);
+    expect(find.text('التالي'), findsOneWidget);
+    expect(find.textContaining('كلمة المرور'), findsNothing);
 
-    // C7: six letters at least, and both must match.
-    await tester.enterText(
-      find.byKey(const ValueKey('invite-account-password-field')),
-      '12345',
-    );
+    // Still no name: the step waits and the code is not asked again.
     await _tapVisible(
       tester,
-      find.byKey(const ValueKey('invite-account-setup-continue')),
+      find.byKey(const Key('invite-request-otp-button')),
     );
     await tester.pumpAndSettle();
-    expect(find.text('اكتب اسمك'), findsOneWidget);
-    expect(find.text('كلمة المرور 6 أحرف أو أكثر'), findsOneWidget);
+    expect(find.byKey(const Key('invite-otp-field')), findsNothing);
+    expect(harness.repository.inviteRequestCalls, 1);
 
     await tester.enterText(
       find.byKey(const ValueKey('invite-account-name-field')),
       'أحمد المساهم',
     );
-    await tester.enterText(
-      find.byKey(const ValueKey('invite-account-password-field')),
-      'contributor-secret',
-    );
-    await tester.enterText(
-      find.byKey(const ValueKey('invite-account-password-confirmation-field')),
-      'contributor-other',
-    );
     await _tapVisible(
       tester,
-      find.byKey(const ValueKey('invite-account-setup-continue')),
+      find.byKey(const Key('invite-request-otp-button')),
     );
     await tester.pumpAndSettle();
-    expect(find.text('الكلمتين مو نفس بعض'), findsOneWidget);
-
-    await tester.enterText(
-      find.byKey(const ValueKey('invite-account-password-confirmation-field')),
-      'contributor-secret',
-    );
-    await _tapVisible(
+    expect(harness.repository.inviteRequestCalls, 1);
+    await _scrollUntilVisible(
       tester,
-      find.byKey(const ValueKey('invite-account-setup-continue')),
+      find.byKey(const Key('invite-otp-field')),
     );
-    await tester.pumpAndSettle();
     await tester.enterText(find.byKey(const Key('invite-otp-field')), '123456');
     await tester.pump(const Duration(milliseconds: 1100));
     await tester.pumpAndSettle();
 
     expect(harness.repository.lastVerifiedInviteToken, token);
     expect(harness.repository.lastAccountName, 'أحمد المساهم');
-    expect(harness.repository.lastAccountPassword, 'contributor-secret');
+    expect(harness.repository.lastAccountPassword, isNull);
     expect(sharingApi.acceptCalls, 0);
     expect(find.byKey(const Key('invite-accept-button')), findsOneWidget);
     expect(find.byKey(const Key('invite-decline-button')), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
+
+  testWidgets(
+    'a code that proves a number the invite does not open with closes it',
+    (tester) async {
+      final token = _testInviteToken();
+      final harness = await _authHarness();
+      harness.repository.verifyErrorCode = 'INVITE_NOT_FOUND_FOR_PHONE';
+      final sharingApi = _FakeSharingApi(invites: [_invite(token: token)]);
+      await _pumpGuestInvite(
+        tester,
+        harness,
+        token: token,
+        sharingApi: sharingApi,
+      );
+
+      await _openVerifiedInvite(tester);
+
+      expect(harness.repository.verifyCalls, 1);
+      expect(find.text('الدعوة ما تفتح بهذا الرقم'), findsOneWidget);
+      expect(find.byKey(const Key('invite-closed')), findsOneWidget);
+      expect(find.byKey(const Key('invite-ask-new')), findsOneWidget);
+      expect(find.byKey(const ValueKey('invite-inviter-card')), findsNothing);
+      expect(find.byKey(const Key('invite-accept-button')), findsNothing);
+      expect(sharingApi.inviteLookupUserIds, isEmpty);
+
+      // «تغيير الرقم» goes back to the number.
+      await _tapVisible(tester, find.text('تغيير الرقم'));
+      await tester.pumpAndSettle();
+      expect(find.byKey(const Key('invite-phone-field')), findsOneWidget);
+    },
+  );
 
   testWidgets('refusing asks first in a journey sheet', (tester) async {
     final token = _testInviteToken();
@@ -1117,7 +1135,6 @@ class _FakeAuthRepository extends AuthRepository {
   Future<AuthResponse> register({
     required String name,
     required String phone,
-    required String password,
     required String otpCode,
   }) async {
     if (!authenticateOnRegister) {

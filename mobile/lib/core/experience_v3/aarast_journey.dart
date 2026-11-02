@@ -4,6 +4,7 @@ import 'package:lucide_icons/lucide_icons.dart';
 
 import '../widgets/aarast_loading_state.dart' show AarastInlineSpinner;
 import '../widgets/aarast_pressable.dart';
+import 'aarast_journey_entry.dart';
 import 'aarast_journey_profile.dart';
 import 'aarast_v3_foundations.dart';
 
@@ -213,7 +214,21 @@ class JourneyButton extends StatelessWidget {
     this.large = false,
     this.loading = false,
     super.key,
-  });
+  }) : outline = false;
+
+  /// A way in that is not the main one (the door's «تسجيل الدخول»): white,
+  /// a hairline, the words in the plan's deep colour.
+  const JourneyButton.outline({
+    required this.label,
+    required this.onPressed,
+    this.icon,
+    this.expand = false,
+    this.large = false,
+    this.loading = false,
+    super.key,
+  }) : background = AarastV3Color.paper,
+       foreground = AarastV3Color.ink,
+       outline = true;
 
   /// The quiet variant used next to a main action.
   const JourneyButton.quiet({
@@ -225,7 +240,8 @@ class JourneyButton extends StatelessWidget {
     this.loading = false,
     super.key,
   }) : background = AarastV3Color.canvas,
-       foreground = AarastV3Color.textMuted;
+       foreground = AarastV3Color.textMuted,
+       outline = false;
 
   final String label;
   final VoidCallback? onPressed;
@@ -237,14 +253,21 @@ class JourneyButton extends StatelessWidget {
   final bool expand;
   final bool large;
   final bool loading;
+  final bool outline;
 
   @override
   Widget build(BuildContext context) {
     final enabled = onPressed != null && !loading;
+    // Not ready yet reads as a pale fill with grey words, never as an
+    // outline (an outline is a live second way).
     final bg = enabled
         ? background ?? context.accent.primary
-        : AarastV3Color.lineStrong;
-    final fg = enabled ? foreground : AarastV3Color.paper;
+        : AarastV3Color.line;
+    final fg = !enabled
+        ? AarastV3Color.textMuted
+        : outline
+        ? context.accent.primaryDark
+        : foreground;
     final content = Row(
       mainAxisSize: expand ? MainAxisSize.max : MainAxisSize.min,
       mainAxisAlignment: MainAxisAlignment.center,
@@ -290,6 +313,9 @@ class JourneyButton extends StatelessWidget {
           decoration: BoxDecoration(
             color: bg,
             borderRadius: BorderRadius.circular(AarastV3Radius.surface),
+            border: outline && enabled
+                ? Border.all(color: AarastV3Color.lineStrong)
+                : null,
           ),
           child: content,
         ),
@@ -364,6 +390,7 @@ class JourneyChip extends StatelessWidget {
     this.icon,
     this.selectedColor,
     this.fontSize = JourneyType.bodySmall,
+    this.large = false,
     super.key,
   });
 
@@ -376,9 +403,14 @@ class JourneyChip extends StatelessWidget {
   final Color? selectedColor;
   final double fontSize;
 
+  /// A chip that is the answer to a question (the city): a full 48 target
+  /// and a round pill.
+  final bool large;
+
   @override
   Widget build(BuildContext context) {
     final fg = selected ? AarastV3Color.onPrimary : AarastV3Color.ink;
+    final radius = large ? AarastV3Radius.pill : AarastV3Radius.surface;
     return Semantics(
       button: onTap != null,
       selected: selected,
@@ -388,15 +420,19 @@ class JourneyChip extends StatelessWidget {
       child: AarastPressable(
         onTap: onTap,
         selected: selected,
-        borderRadius: BorderRadius.circular(AarastV3Radius.surface),
+        borderRadius: BorderRadius.circular(radius),
         child: Container(
-          constraints: const BoxConstraints(minHeight: 36),
-          padding: AarastV3Density.chipInsets,
+          constraints: BoxConstraints(
+            minHeight: large ? AarastV3Space.x12 : 36,
+          ),
+          padding: large
+              ? const EdgeInsets.symmetric(horizontal: AarastV3Space.x4)
+              : AarastV3Density.chipInsets,
           decoration: BoxDecoration(
             color: selected
                 ? selectedColor ?? context.accent.primary
                 : AarastV3Color.paper,
-            borderRadius: BorderRadius.circular(AarastV3Radius.surface),
+            borderRadius: BorderRadius.circular(radius),
             border: selected ? null : Border.all(color: AarastV3Color.line),
           ),
           child: Row(
@@ -643,6 +679,7 @@ class JourneyRoundButton extends StatelessWidget {
     required this.tooltip,
     required this.onPressed,
     this.size = 40,
+    this.onArt = false,
     super.key,
   });
 
@@ -650,6 +687,9 @@ class JourneyRoundButton extends StatelessWidget {
   final String tooltip;
   final VoidCallback? onPressed;
   final double size;
+
+  /// Over a picture (the wedding sky): a see-through white disc, a white icon.
+  final bool onArt;
 
   @override
   Widget build(BuildContext context) {
@@ -669,11 +709,17 @@ class JourneyRoundButton extends StatelessWidget {
               child: Container(
                 width: size,
                 height: size,
-                decoration: const BoxDecoration(
-                  color: AarastV3Color.paper,
+                decoration: BoxDecoration(
+                  color: onArt
+                      ? AarastV3Color.paper.withValues(alpha: 0.2)
+                      : AarastV3Color.paper,
                   shape: BoxShape.circle,
                 ),
-                child: Icon(icon, size: 20, color: AarastV3Color.ink),
+                child: Icon(
+                  icon,
+                  size: 20,
+                  color: onArt ? AarastV3Color.paper : AarastV3Color.ink,
+                ),
               ),
             ),
           ),
@@ -1561,84 +1607,21 @@ class JourneyQuestionPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return JourneyPage(
-      bottom: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          JourneyButton(
-            label: primaryLabel,
-            onPressed: onPrimary,
-            expand: true,
-            large: true,
-            loading: loading,
-          ),
-          if (skipLabel != null) ...[
-            const SizedBox(height: AarastV3Space.x1),
-            JourneyTextAction(label: skipLabel!, onPressed: onSkip),
-          ],
-        ],
+      bottom: JourneyEntryActions(
+        primary: JourneyButton(
+          label: primaryLabel,
+          onPressed: onPrimary,
+          expand: true,
+          large: true,
+          loading: loading,
+        ),
+        secondary: skipLabel == null
+            ? null
+            : JourneyEntryLink(label: skipLabel!, onPressed: onSkip),
       ),
       children: [
-        Padding(
-          padding: const EdgeInsets.fromLTRB(
-            AarastV3Space.x1,
-            AarastV3Space.x1,
-            AarastV3Space.x1,
-            0,
-          ),
-          child: Row(
-            children: [
-              JourneyRoundButton(
-                icon: LucideIcons.arrowRight,
-                tooltip: 'رجوع',
-                onPressed: onBack,
-              ),
-              const SizedBox(width: AarastV3Space.x3),
-              Expanded(
-                child: JourneySegments(total: total, done: step),
-              ),
-              const SizedBox(width: AarastV3Space.x3),
-              Text(
-                '${step + 1} من $total',
-                style: JourneyType.of(
-                  JourneyType.bodySmall,
-                  weight: JourneyType.bold,
-                  color: AarastV3Color.textMuted,
-                ),
-              ),
-            ],
-          ),
-        ),
-        const SizedBox(height: AarastV3Space.x6),
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: AarastV3Space.x1),
-          child: Semantics(
-            header: true,
-            child: Text(
-              question,
-              style: JourneyType.of(
-                JourneyType.question,
-                weight: JourneyType.bold,
-                height: 1.25,
-              ),
-            ),
-          ),
-        ),
-        if (help != null)
-          Padding(
-            padding: const EdgeInsets.fromLTRB(
-              AarastV3Space.x1,
-              AarastV3Space.x2,
-              AarastV3Space.x1,
-              0,
-            ),
-            child: Text(
-              help!,
-              style: JourneyType.of(
-                JourneyType.bodyLarge,
-                color: AarastV3Color.textMuted,
-              ),
-            ),
-          ),
+        JourneyStepBar(onBack: onBack, step: step + 1, total: total),
+        JourneyEntryQuestion(question: question, help: help),
         const SizedBox(height: AarastV3Space.x5),
         ...children,
       ],
@@ -1672,11 +1655,15 @@ class JourneyTextField extends StatefulWidget {
     this.autofillHints,
     this.minLines,
     this.maxLines = 1,
+    this.trailing,
     super.key,
   });
 
   final String label;
   final TextEditingController controller;
+
+  /// An action at the field's far end (the invite link's «لصق»).
+  final Widget? trailing;
   final String? hint;
   final IconData? icon;
   final String? suffix;
@@ -1827,6 +1814,10 @@ class _JourneyTextFieldState extends State<JourneyTextField> {
                     color: AarastV3Color.textMuted,
                   ),
                 ),
+              if (widget.trailing != null) ...[
+                const SizedBox(width: AarastV3Field.iconGap),
+                widget.trailing!,
+              ],
             ],
           ),
         ),
@@ -1877,11 +1868,15 @@ class JourneyPickerField extends StatelessWidget {
     this.placeholder = 'اختر',
     this.helper,
     this.note,
+    this.iconAtEnd = false,
     super.key,
   });
 
   final String label;
   final String? value;
+
+  /// The icon after the words (a day picker), not before them.
+  final bool iconAtEnd;
 
   /// Null shows a value that is read here and changed elsewhere (b13's
   /// Hijri day, the wedding's own day).
@@ -1916,7 +1911,7 @@ class JourneyPickerField extends StatelessWidget {
           children: [
             Row(
               children: [
-                if (icon != null) ...[
+                if (icon != null && !iconAtEnd) ...[
                   Icon(
                     icon,
                     size: AarastV3Icon.md,
@@ -1956,6 +1951,14 @@ class JourneyPickerField extends StatelessWidget {
                     ],
                   ),
                 ),
+                if (icon != null && iconAtEnd) ...[
+                  const SizedBox(width: AarastV3Field.iconGap),
+                  Icon(
+                    icon,
+                    size: AarastV3Icon.md,
+                    color: AarastV3Color.textMuted,
+                  ),
+                ],
               ],
             ),
             if (note != null) ...[

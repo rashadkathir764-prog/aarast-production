@@ -66,8 +66,9 @@ String moneyShareText(
   final biggest = [...summary.weddingCategories]
     ..removeWhere((category) => moneyValue(category.confirmedCost) <= 0)
     ..sort(
-      (left, right) => moneyValue(right.confirmedCost)
-          .compareTo(moneyValue(left.confirmedCost)),
+      (left, right) => moneyValue(
+        right.confirmedCost,
+      ).compareTo(moneyValue(left.confirmedCost)),
     );
   if (biggest.isNotEmpty) {
     lines

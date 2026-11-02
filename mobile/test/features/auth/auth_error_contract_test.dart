@@ -87,7 +87,6 @@ void main() {
       final success = await harness.controller.register(
         name: 'مستخدم',
         phone: '777123456',
-        password: 'secret123',
         otpCode: '123456',
       );
 
@@ -111,7 +110,6 @@ void main() {
       final success = await harness.controller.register(
         name: 'مشرف يستخدم التطبيق',
         phone: '777123456',
-        password: 'secret123',
         otpCode: '123456',
       );
 
@@ -204,7 +202,6 @@ class _FailingAuthRepository extends AuthRepository {
   Future<AuthResponse> register({
     required String name,
     required String phone,
-    required String password,
     required String otpCode,
   }) async {
     throw registerFailure ?? StateError('registerFailure was not configured');

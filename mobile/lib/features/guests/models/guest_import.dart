@@ -42,10 +42,11 @@ List<({String name, String? phone})> parseGuestLines(String text) {
     if (line.isEmpty) continue;
     final match = _phonePattern.firstMatch(line);
     final phone = match?.group(0)?.replaceAll(RegExp(r'[\s-]'), '');
-    final name = (match == null ? line : line.replaceRange(match.start, match.end, ' '))
-        .replaceAll(RegExp(r'[,،:؛;|\-–.]+'), ' ')
-        .replaceAll(RegExp(r'\s+'), ' ')
-        .trim();
+    final name =
+        (match == null ? line : line.replaceRange(match.start, match.end, ' '))
+            .replaceAll(RegExp(r'[,،:؛;|\-–.]+'), ' ')
+            .replaceAll(RegExp(r'\s+'), ' ')
+            .trim();
     if (name.isEmpty) continue;
     people.add((name: name, phone: phone));
   }
@@ -108,9 +109,7 @@ String? guestFamilyOf(String name) {
 }
 
 /// Contacts in families of two or more, the rest together at the end.
-List<({String? family, List<int> members})> groupByFamily(
-  List<String> names,
-) {
+List<({String? family, List<int> members})> groupByFamily(List<String> names) {
   final families = <String, List<int>>{};
   for (var i = 0; i < names.length; i++) {
     final family = guestFamilyOf(names[i]);

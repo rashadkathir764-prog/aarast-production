@@ -5,13 +5,13 @@ import 'package:lucide_icons/lucide_icons.dart';
 import '../../../core/experience_v3/aarast_v3.dart';
 import '../../../core/utils/amount_words.dart';
 import '../../../core/utils/arabic_date_formatter.dart';
+import '../../../core/utils/hijri_date.dart';
 import '../../../core/utils/money_formatters.dart';
 import '../../../core/widgets/release_field_focus.dart';
 import 'money_input_formatter.dart';
 
 /// a06 «اتفقتوا على المهر؟»: the mahr, what was handed over (the groom) or
-/// received (the bride), and the day the rest is due, then the line that
-/// says whose wedding this plan is. One set of fields for the welcome steps
+/// received (the bride), and the day the rest is due. One set of fields for the welcome steps
 /// and for b01's mahr step once the plan exists.
 class MahrFields extends StatelessWidget {
   const MahrFields({
@@ -73,19 +73,37 @@ class MahrFields extends StatelessWidget {
           textDirection: TextDirection.ltr,
           textAlign: TextAlign.right,
           inputFormatters: formatters,
+          suffix: 'ر.ي',
           errorText: totalError,
-          helper: total == null || total <= 0 ? null : amountInWords(total),
           onChanged: (_) => onChanged(),
         ),
-        if (remaining != null && remaining > 0) ...[
+        if (total != null && total > 0) ...[
           const SizedBox(height: AarastV3Space.x2),
-          Align(
-            alignment: AlignmentDirectional.centerStart,
-            child: JourneyTag(
-              key: const ValueKey('mahr-remaining'),
-              label: 'باقي ${mahrWords(remaining)}',
-              color: AarastV3Color.brandAccentStrong,
-              soft: AarastV3Color.brandAccentSoft,
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: AarastV3Space.x1),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    amountInWords(total),
+                    style: JourneyType.of(
+                      JourneyType.bodySmall,
+                      weight: JourneyType.bold,
+                      color: context.accent.primaryDark,
+                    ),
+                  ),
+                ),
+                if (remaining != null && remaining > 0)
+                  Text(
+                    'باقي ${mahrWords(remaining)}',
+                    key: const ValueKey('mahr-remaining'),
+                    style: JourneyType.of(
+                      JourneyType.bodySmall,
+                      weight: JourneyType.bold,
+                      color: context.accent.primaryDark,
+                    ),
+                  ),
+              ],
             ),
           ),
         ],
@@ -96,7 +114,7 @@ class MahrFields extends StatelessWidget {
               ? context.say('سلّمت منه', 'سلّمتِ منه')
               : context.say('استلمت منه', 'استلمتِ منه'),
           controller: settledController,
-          icon: LucideIcons.checkCircle2,
+          suffix: 'ر.ي',
           hint: '0',
           keyboardType: TextInputType.number,
           textDirection: TextDirection.ltr,
@@ -109,37 +127,34 @@ class MahrFields extends StatelessWidget {
           const SizedBox(height: AarastV3Space.x3),
           JourneyPickerField(
             key: const ValueKey('mahr-due-date'),
-            // a06 draws «موعد تسليم الباقي» on both sides.
-            label: 'موعد تسليم الباقي',
-            value: dueDate == null ? null : formatArabicDayMonth(dueDate!),
+            // The groom hands the rest over, the bride receives it.
+            label: pays ? 'موعد تسليم الباقي' : 'موعد استلام الباقي',
+            value: dueDate == null
+                ? null
+                : '${formatArabicWeekdayDayMonth(dueDate!)} ${dueDate!.year}',
+            helper: dueDate == null
+                ? null
+                : HijriDate.fromGregorian(dueDate!)?.full,
             icon: LucideIcons.calendarDays,
+            iconAtEnd: true,
             placeholder: context.say('اختر اليوم', 'اختاري اليوم'),
             onTap: onPickDueDate,
           ),
         ],
-        const SizedBox(height: AarastV3Space.x4),
-        JourneyNote(
-          // Whose wedding the plan is (the plan's side), said to its owner.
-          text: pays
-              ? 'تجهيز العروسة وعرس النساء عند أهلها. '
-                    '${context.say('خطتك لعرسك أنت', 'خطتك لعرسك أنتِ')}: عرس الرجال.'
-              : 'عرس الرجال عند العريس وأهله. '
-                    '${context.say('خطتك لعرسك أنت', 'خطتك لعرسك أنتِ')}: عرس النساء.',
-          icon: LucideIcons.heartHandshake,
-          color: context.accent.primaryDark,
-          soft: context.accent.primarySoft,
-        ),
       ],
     );
   }
 }
 
-/// An amount the way a06 and b01 say it: «مليون», «3 مليون», «500,000».
+/// An amount the way people say it (as amountInWords does): «مليون»,
+/// «مليونين», «3 مليون», «1.5 مليون», «500,000».
 String mahrWords(num amount) {
   final parts = compactMoneyParts(amount, currencyCode: 'YER');
   final unit = parts.millionUnit;
   if (unit == null) return parts.number;
-  return parts.number == '1' ? unit : '${parts.number} $unit';
+  if (parts.number == '1') return unit;
+  if (parts.number == '2') return 'مليونين';
+  return '${parts.number} $unit';
 }
 
 /// The day the rest of the mahr is due, from today on.

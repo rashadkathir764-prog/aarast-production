@@ -21,7 +21,6 @@ void main() {
     final pending = await repository.startRegistration(
       name: 'مستخدم جديد',
       phone: '777123456',
-      password: 'secret123',
     );
 
     expect(pending.purpose, 'REGISTER');
@@ -35,7 +34,6 @@ void main() {
     final completed = await repository.register(
       name: 'مستخدم جديد',
       phone: '777123456',
-      password: 'secret123',
       otpCode: '123456',
     );
 
@@ -43,12 +41,60 @@ void main() {
     expect(adapter.requests.last.data['otpCode'], '123456');
     expect(adapter.requests.last.data, isNot(contains('email')));
     expect(completed.user.phoneVerifiedAt, isNotNull);
+    expect(completed.existingAccount, isFalse);
     expect(await storage.readAccessToken(), 'access-token');
     expect(await storage.readRefreshToken(), 'refresh-token');
+  });
+
+  test('D75: sign-up sends the name, number and code only, no password', () async {
+    SharedPreferences.setMockInitialValues({});
+    final storage = AuthStorage(await SharedPreferences.getInstance());
+    final api = ApiClient(tokenProvider: storage.readAccessToken);
+    final adapter = _RegistrationAdapter();
+    api.dio.httpClientAdapter = adapter;
+    final repository = AuthRepository(api, storage);
+
+    await repository.startRegistration(name: 'سلمى', phone: '777123456');
+    await repository.register(
+      name: 'سلمى',
+      phone: '777123456',
+      otpCode: '123456',
+    );
+
+    expect(
+      Map<String, Object?>.from(adapter.requests.first.data as Map).keys,
+      unorderedEquals(['name', 'phone']),
+    );
+    expect(
+      Map<String, Object?>.from(adapter.requests.last.data as Map).keys,
+      unorderedEquals(['name', 'phone', 'otpCode']),
+    );
+  });
+
+  test('D75: a sign-up code for a number with an account says so', () async {
+    SharedPreferences.setMockInitialValues({});
+    final storage = AuthStorage(await SharedPreferences.getInstance());
+    final api = ApiClient(tokenProvider: storage.readAccessToken);
+    final adapter = _RegistrationAdapter(existingAccount: true);
+    api.dio.httpClientAdapter = adapter;
+    final repository = AuthRepository(api, storage);
+
+    final completed = await repository.register(
+      name: 'سلمى',
+      phone: '777123456',
+      otpCode: '123456',
+    );
+
+    expect(completed.existingAccount, isTrue);
+    expect(await storage.readAccessToken(), 'access-token');
   });
 }
 
 class _RegistrationAdapter implements HttpClientAdapter {
+  _RegistrationAdapter({this.existingAccount});
+
+  /// Sent as `existingAccount` on completion when set.
+  final bool? existingAccount;
   final List<RequestOptions> requests = [];
 
   @override
@@ -73,6 +119,7 @@ class _RegistrationAdapter implements HttpClientAdapter {
         'accessToken': 'access-token',
         'refreshToken': 'refresh-token',
         'refreshTokenExpiresAt': '2026-08-10T12:00:00.000Z',
+        'existingAccount': ?existingAccount,
         'user': {
           'id': 'user-1',
           'name': 'مستخدم جديد',

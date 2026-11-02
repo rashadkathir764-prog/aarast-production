@@ -41,10 +41,18 @@ class LocalPlanSnapshot {
 
 /// What the account's own open plan holds, for w09's «في حسابك» card.
 class AccountPlanCounts {
-  const AccountPlanCounts({required this.items, required this.tasks});
+  const AccountPlanCounts({
+    required this.items,
+    required this.tasks,
+    this.title = '',
+  });
 
   final int items;
   final int tasks;
+
+  /// The account plan by name and city («عرس أحمد · تعز»), so the choice
+  /// is between two plans the person recognises.
+  final String title;
 }
 
 /// Migrates a guest-mode local plan into the authenticated account.
@@ -119,7 +127,14 @@ class LocalPlanMigrationService {
     );
     final items = await financeApi.getBudgetCategories(plan.id);
     final summary = await weddingPlansApi.getDashboardSummary(plan.id);
-    return AccountPlanCounts(items: items.length, tasks: summary.totalTasks);
+    return AccountPlanCounts(
+      items: items.length,
+      tasks: summary.totalTasks,
+      title: [
+        plan.title.trim(),
+        plan.city?.trim() ?? '',
+      ].where((part) => part.isNotEmpty).join(' · '),
+    );
   }
 
   /// Uploads the snapshot into the authenticated account in one idempotent

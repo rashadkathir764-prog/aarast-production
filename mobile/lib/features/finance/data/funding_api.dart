@@ -77,17 +77,19 @@ class FundingApi {
     String? note,
     DateTime? expectedAt,
   }) async {
-    final json = await _apiClient
-        .patchJson('/api/v1/funding-sources/${source.id}', {
-          'kind': kind,
-          'sourceName': sourceName.trim(),
-          'amount': amount,
-          'status': status,
-          'sourcePhone': _trimmedOrNull(sourcePhone),
-          'note': _trimmedOrNull(note),
-          // D59: the promised day is the whole field: null clears it.
-          'expectedAt': _date(expectedAt),
-        });
+    final json = await _apiClient.patchJson(
+      '/api/v1/funding-sources/${source.id}',
+      {
+        'kind': kind,
+        'sourceName': sourceName.trim(),
+        'amount': amount,
+        'status': status,
+        'sourcePhone': _trimmedOrNull(sourcePhone),
+        'note': _trimmedOrNull(note),
+        // D59: the promised day is the whole field: null clears it.
+        'expectedAt': _date(expectedAt),
+      },
+    );
     return FundingSource.fromJson(json);
   }
 

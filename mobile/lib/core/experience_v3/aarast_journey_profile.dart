@@ -221,10 +221,6 @@ extension JourneyProfileContext on BuildContext {
     String feminine, {
     required String groom,
     required String bride,
-  }) => journeyProfile.ownerDid(
-    masculine,
-    feminine,
-    groom: groom,
-    bride: bride,
-  );
+  }) =>
+      journeyProfile.ownerDid(masculine, feminine, groom: groom, bride: bride);
 }

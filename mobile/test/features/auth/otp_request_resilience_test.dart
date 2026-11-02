@@ -20,7 +20,6 @@ void main() {
       await harness.repository.startRegistration(
         name: 'مستخدم جديد',
         phone: '777123456',
-        password: 'secret123',
       );
       await harness.repository.requestOtp(phone: '777123456', purpose: 'LOGIN');
       await harness.repository.requestPasswordReset(phone: '777123456');
@@ -52,7 +51,6 @@ void main() {
     final result = await controller.startRegistration(
       name: 'مستخدم جديد',
       phone: '777123456',
-      password: 'secret123',
     );
 
     expect(result, isNull);
@@ -85,7 +83,6 @@ void main() {
     final result = await controller.startRegistration(
       name: 'مستخدم جديد',
       phone: '777123456',
-      password: 'secret123',
     );
 
     expect(result, isNull);

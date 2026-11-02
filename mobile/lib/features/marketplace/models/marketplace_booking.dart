@@ -57,7 +57,9 @@ class MarketplaceBooking {
           : null,
       weddingPlanId: json['weddingPlanId']?.toString(),
       money: json['money'] is Map
-          ? BookingMoney.fromJson(Map<String, dynamic>.from(json['money'] as Map))
+          ? BookingMoney.fromJson(
+              Map<String, dynamic>.from(json['money'] as Map),
+            )
           : null,
       completedAt: _moment(json['completedAt']),
       notHappenedAt: _moment(json['notHappenedAt']),
@@ -244,18 +246,22 @@ class ProviderLedger {
 
   factory ProviderLedger.fromJson(Map<String, dynamic> json) => ProviderLedger(
     totals: [
-      for (final row in (json['totals'] is List ? json['totals'] as List : const []))
+      for (final row
+          in (json['totals'] is List ? json['totals'] as List : const []))
         if (row is Map)
           ProviderLedgerTotal(
             currency: row['currency']?.toString() ?? 'YER',
             agreed: row['agreed']?.toString() ?? '0',
             paid: row['paid']?.toString() ?? '0',
             left: row['left']?.toString() ?? '0',
-            bookings: row['bookings'] is num ? (row['bookings'] as num).toInt() : 0,
+            bookings: row['bookings'] is num
+                ? (row['bookings'] as num).toInt()
+                : 0,
           ),
     ],
     bookings: [
-      for (final row in (json['bookings'] is List ? json['bookings'] as List : const []))
+      for (final row
+          in (json['bookings'] is List ? json['bookings'] as List : const []))
         if (row is Map)
           ProviderLedgerBooking(
             bookingId: row['bookingId']?.toString() ?? '',
@@ -265,7 +271,9 @@ class ProviderLedger {
                 planDayFromJson(row['eventDate']) ??
                 DateTime.fromMillisecondsSinceEpoch(0),
             money: row['money'] is Map
-                ? BookingMoney.fromJson(Map<String, dynamic>.from(row['money'] as Map))
+                ? BookingMoney.fromJson(
+                    Map<String, dynamic>.from(row['money'] as Map),
+                  )
                 : null,
           ),
     ],
@@ -318,17 +326,23 @@ String? _text(Object? value) {
 }
 
 /// The booking's state in words, from the customer's or the provider's side.
-String bookingStatusLabel(MarketplaceBooking booking, {bool forProvider = false}) {
+String bookingStatusLabel(
+  MarketplaceBooking booking, {
+  bool forProvider = false,
+}) {
   return switch (booking.lifecycleStatus) {
-    'REQUESTED' => forProvider ? 'طلب حجز بانتظار ردّك' : 'بانتظار تأكيد المزوّد',
+    'REQUESTED' =>
+      forProvider ? 'طلب حجز بانتظار ردّك' : 'بانتظار تأكيد المزوّد',
     'CONFIRMED' => 'محجوز',
     'COMPLETED' => 'تمّ',
     'DECLINED' => forProvider ? 'اعتذرت عنه' : 'اعتذر المزوّد',
-    'CANCELLED' => booking.cancelledBy == 'PROVIDER'
-        ? (forProvider ? 'ألغيته' : 'ألغاه المزوّد')
-        : (forProvider ? 'ألغاه العميل' : 'ألغيته'),
+    'CANCELLED' =>
+      booking.cancelledBy == 'PROVIDER'
+          ? (forProvider ? 'ألغيته' : 'ألغاه المزوّد')
+          : (forProvider ? 'ألغاه العميل' : 'ألغيته'),
     // B-42: his account was stopped while the request waited.
-    'EXPIRED' => forProvider ? 'انتهى مع إيقاف حسابك' : 'انتهى، المزوّد موقوف مؤقتًا',
+    'EXPIRED' =>
+      forProvider ? 'انتهى مع إيقاف حسابك' : 'انتهى، المزوّد موقوف مؤقتًا',
     _ => booking.lifecycleStatus,
   };
 }
@@ -336,7 +350,8 @@ String bookingStatusLabel(MarketplaceBooking booking, {bool forProvider = false}
 /// Arabic text for the booking API's error codes.
 String? bookingErrorMessage(String? code) {
   return switch (code) {
-    'BOOKING_DATE_UNAVAILABLE' => 'المزوّد غير متاح في هذا اليوم. اختر يومًا آخر.',
+    'BOOKING_DATE_UNAVAILABLE' =>
+      'المزوّد غير متاح في هذا اليوم. اختر يومًا آخر.',
     'BOOKING_DAY_FULL' => 'المزوّد محجوز بالكامل في هذا اليوم. اختر يومًا آخر.',
     'BOOKING_DATE_HAS_BOOKING' => 'لديك حجز مؤكد في هذا اليوم.',
     'BOOKING_DATE_IN_PAST' => 'هذا اليوم مضى. اختر يومًا قادمًا.',

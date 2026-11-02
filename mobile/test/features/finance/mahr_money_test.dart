@@ -2,6 +2,7 @@ import 'package:aarast_mobile/core/experience_v3/aarast_v3.dart';
 import 'package:aarast_mobile/core/network/api_client.dart';
 import 'package:aarast_mobile/core/routing/app_router.dart';
 import 'package:aarast_mobile/features/finance/data/finance_api.dart';
+import 'package:aarast_mobile/features/finance/finance_api.dart' show mahrWords;
 import 'package:aarast_mobile/features/finance/data/funding_api.dart';
 import 'package:aarast_mobile/features/finance/models/budget_category.dart';
 import 'package:aarast_mobile/features/finance/models/funding_source.dart';
@@ -76,6 +77,12 @@ Future<_Api> _pumpMoney(
 }
 
 void main() {
+  test('mahrWords says amounts the way people say them', () {
+    expect(mahrWords(1000000), 'مليون');
+    expect(mahrWords(2000000), 'مليونين');
+    expect(mahrWords(3000000), '3 مليون');
+  });
+
   group('c01 the mahr beside the wedding', () {
     testWidgets('the groom: where the money goes, his agreement and his '
         'wedding', (tester) async {
@@ -400,7 +407,9 @@ void main() {
         '2000000',
       );
       await tester.pumpAndSettle();
+      // D75: the amount in words and the rest share one row.
       expect(find.text('باقي مليون'), findsOneWidget);
+      expect(find.text('موعد تسليم الباقي'), findsOneWidget);
 
       await tester.tap(find.text('احفظ المهر'));
       await tester.pumpAndSettle();
@@ -424,7 +433,11 @@ void main() {
 
       expect(find.textContaining('اللي بتستلمينه من العريس'), findsOneWidget);
       expect(find.text('استلمتِ منه'), findsOneWidget);
-      expect(find.textContaining('عرس النساء'), findsOneWidget);
+      // D75: she receives the rest, so its day is «استلام», never «تسليم».
+      expect(find.text('موعد استلام الباقي'), findsOneWidget);
+      expect(find.text('موعد تسليم الباقي'), findsNothing);
+      // The «whose wedding» note left the mahr fields.
+      expect(find.textContaining('عرس النساء'), findsNothing);
     });
 
     testWidgets('a groom reading a bride\'s plan: her side, his words', (

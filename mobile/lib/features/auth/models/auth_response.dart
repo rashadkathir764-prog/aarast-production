@@ -6,6 +6,7 @@ class AuthResponse {
     this.refreshToken,
     this.refreshTokenExpiresAt,
     required this.user,
+    this.existingAccount = false,
   });
 
   factory AuthResponse.fromJson(Map<String, dynamic> json) {
@@ -34,6 +35,7 @@ class AuthResponse {
       refreshToken: refreshToken,
       refreshTokenExpiresAt: expiresAt,
       user: SafeUser.fromJson(Map<String, dynamic>.from(user)),
+      existingAccount: json['existingAccount'] == true,
     );
   }
 
@@ -41,4 +43,8 @@ class AuthResponse {
   final String? refreshToken;
   final DateTime? refreshTokenExpiresAt;
   final SafeUser user;
+
+  /// D75: a sign-up code for a number that already has an account signs in
+  /// to that account; this says it was not created now.
+  final bool existingAccount;
 }

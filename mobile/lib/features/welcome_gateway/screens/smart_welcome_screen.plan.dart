@@ -1,26 +1,27 @@
 part of 'smart_welcome_screen.dart';
 
-/// a03: the name and the wedding day. A month opens a day picker inside it;
-/// «ما حددنا الموعد بعد» is a full answer (the date can be set later).
+/// «ايش اسمك، ومتى العرس؟»: the name, and the day inside one of the next
+/// six months (later ones in a sheet). «ما حددنا الموعد بعد» is a full
+/// answer under the main action.
 class _NameDateStep extends StatelessWidget {
   const _NameDateStep({
     required this.controller,
     required this.date,
-    required this.dateUnknown,
     required this.onNameChanged,
     required this.onPickMonth,
-    required this.onDateUnknown,
+    required this.onLaterMonths,
     required this.onNext,
+    required this.onSkipDate,
     required this.onBack,
   });
 
   final TextEditingController controller;
   final DateTime? date;
-  final bool dateUnknown;
   final VoidCallback onNameChanged;
   final ValueChanged<DateTime> onPickMonth;
-  final VoidCallback onDateUnknown;
+  final VoidCallback onLaterMonths;
   final VoidCallback? onNext;
+  final VoidCallback? onSkipDate;
   final VoidCallback onBack;
 
   @override
@@ -28,12 +29,16 @@ class _NameDateStep extends StatelessWidget {
     final name = controller.text.trim();
     final today = DateUtils.dateOnly(appNow());
     final months = [
-      for (var i = 0; i < 6; i++) DateTime(today.year, today.month + i),
+      for (var i = 0; i < _monthsOnScreen; i++)
+        DateTime(today.year, today.month + i),
     ];
-    final hijri = date == null ? null : HijriDate.fromGregorian(date!);
+    final date = this.date;
+    final hijri = date == null ? null : HijriDate.fromGregorian(date);
     final note = date == null
         ? null
-        : _ramadanNote(date!, context.journeyProfile);
+        : _ramadanNote(date, context.journeyProfile);
+    final last = months.last;
+    final later = date != null && DateTime(date.year, date.month).isAfter(last);
     return JourneyQuestionPage(
       step: 0,
       total: _questionCount,
@@ -42,11 +47,12 @@ class _NameDateStep extends StatelessWidget {
       primaryLabel: 'التالي',
       onPrimary: onNext,
       onBack: onBack,
+      skipLabel: 'ما حددنا الموعد بعد',
+      onSkip: onSkipDate,
       children: [
         JourneyTextField(
           label: 'اسمك',
           controller: controller,
-          large: true,
           hint: context.say('محمد', 'سلمى'),
           textInputAction: TextInputAction.done,
           onChanged: (_) => onNameChanged(),
@@ -56,15 +62,11 @@ class _NameDateStep extends StatelessWidget {
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: AarastV3Space.x1),
             child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Padding(
-                  padding: const EdgeInsets.only(top: AarastV3Space.half),
-                  child: Icon(
-                    LucideIcons.sparkles,
-                    color: context.accent.primary,
-                    size: 16,
-                  ),
+                Icon(
+                  LucideIcons.check,
+                  color: context.accent.primary,
+                  size: AarastV3Icon.sm,
                 ),
                 const SizedBox(width: AarastV3Space.x1),
                 Expanded(
@@ -72,16 +74,16 @@ class _NameDateStep extends StatelessWidget {
                     TextSpan(
                       text: 'خطتك بتكون: ',
                       style: JourneyType.of(
-                        JourneyType.small,
+                        JourneyType.body,
                         color: AarastV3Color.textMuted,
                       ),
                       children: [
                         TextSpan(
                           text: 'عرس $name',
                           style: JourneyType.of(
-                            JourneyType.small,
+                            JourneyType.body,
                             weight: JourneyType.bold,
-                            color: context.accent.primary,
+                            color: context.accent.primaryDark,
                           ),
                         ),
                       ],
@@ -92,8 +94,33 @@ class _NameDateStep extends StatelessWidget {
             ),
           ),
         ],
-        const SizedBox(height: AarastV3Space.x4),
-        const _FieldLabel('شهر العرس'),
+        const SizedBox(height: AarastV3Space.x5),
+        Padding(
+          padding: const EdgeInsets.only(bottom: AarastV3Space.x2),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.baseline,
+            textBaseline: TextBaseline.alphabetic,
+            children: [
+              Expanded(
+                child: Text(
+                  'شهر العرس',
+                  style: JourneyType.of(
+                    JourneyType.bodyLarge,
+                    weight: JourneyType.bold,
+                  ),
+                ),
+              ),
+              Text(
+                '${arabicMonthName(months.first.month)} ${months.first.year}'
+                ' – ${arabicMonthName(last.month)} ${last.year}',
+                style: JourneyType.of(
+                  JourneyType.bodySmall,
+                  color: AarastV3Color.textMuted,
+                ),
+              ),
+            ],
+          ),
+        ),
         Builder(
           builder: (context) {
             // Three months a row, two when large text would cut a name. The
@@ -105,9 +132,7 @@ class _NameDateStep extends StatelessWidget {
               children: [
                 for (var start = 0; start < months.length; start += columns)
                   Padding(
-                    padding: EdgeInsets.only(
-                      top: start == 0 ? 0 : AarastV3Space.x2,
-                    ),
+                    padding: const EdgeInsets.only(bottom: AarastV3Space.x2),
                     child: IntrinsicHeight(
                       child: Row(
                         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -120,10 +145,9 @@ class _NameDateStep extends StatelessWidget {
                                   ? _MonthTile(
                                       month: months[i],
                                       selected:
-                                          !dateUnknown &&
                                           date != null &&
-                                          date!.year == months[i].year &&
-                                          date!.month == months[i].month,
+                                          date.year == months[i].year &&
+                                          date.month == months[i].month,
                                       onTap: () => onPickMonth(months[i]),
                                     )
                                   : const SizedBox.shrink(),
@@ -137,31 +161,26 @@ class _NameDateStep extends StatelessWidget {
             );
           },
         ),
-        if (date != null && !dateUnknown) ...[
-          const SizedBox(height: AarastV3Space.x2),
+        _LaterMonthsCell(
+          lastOnScreen: last,
+          chosen: later ? date : null,
+          onTap: onLaterMonths,
+        ),
+        if (date != null) ...[
+          const SizedBox(height: AarastV3Space.x3),
           JourneyPickerField(
-            label: 'اليوم',
-            value: formatArabicWeekdayDayMonth(date!),
+            label: 'يوم العرس',
+            value: '${formatArabicWeekdayDayMonth(date)} ${date.year}',
             helper: hijri?.full,
             icon: LucideIcons.calendarDays,
-            onTap: () => onPickMonth(DateTime(date!.year, date!.month)),
+            iconAtEnd: true,
+            onTap: () => onPickMonth(DateTime(date.year, date.month)),
           ),
         ],
-        if (note != null && !dateUnknown) ...[
-          const SizedBox(height: AarastV3Space.x2),
-          JourneyNote(
-            text: note,
-            icon: LucideIcons.moon,
-            color: AarastV3Color.brandAccentStrong,
-            soft: AarastV3Color.brandAccentSoft,
-          ),
+        if (note != null) ...[
+          const SizedBox(height: AarastV3Space.x3),
+          JourneyEntryNote(text: note, icon: LucideIcons.moon),
         ],
-        const SizedBox(height: AarastV3Space.x1),
-        _RadioLine(
-          label: 'ما حددنا الموعد بعد',
-          selected: dateUnknown,
-          onTap: onDateUnknown,
-        ),
       ],
     );
   }
@@ -178,7 +197,7 @@ class _NameDateStep extends StatelessWidget {
     }
     final days = ramadan.$1.difference(day).inDays;
     if (days > 60) return null;
-    return 'باقي على رمضان ${arabicDays(days)}، والحجوزات تكثر قبله. '
+    return 'عرسك قبل رمضان بـ${arabicDays(days)}، والحجوزات تكثر قبله. '
         '${profile.say('احجز', 'احجزي')} القاعة بدري.';
   }
 }
@@ -189,11 +208,15 @@ class _MonthTile extends StatelessWidget {
     required this.month,
     required this.selected,
     required this.onTap,
+    this.withYear = false,
   });
 
   final DateTime month;
   final bool selected;
   final VoidCallback onTap;
+
+  /// In the later months' sheet, where the year changes.
+  final bool withYear;
 
   @override
   Widget build(BuildContext context) {
@@ -205,8 +228,11 @@ class _MonthTile extends StatelessWidget {
         ? ''
         : first.month == last.month
         ? first.monthName
-        : '${first.monthName} · ${last.monthName}';
+        : '${first.monthName} · ${_secondMonth(first.monthName, last.monthName)}';
     final fg = selected ? AarastV3Color.onPrimary : AarastV3Color.ink;
+    final name = withYear
+        ? '${arabicMonthName(month.month)} ${month.year}'
+        : arabicMonthName(month.month);
     return Semantics(
       button: true,
       selected: selected,
@@ -216,35 +242,49 @@ class _MonthTile extends StatelessWidget {
       child: AarastPressable(
         onTap: onTap,
         selected: selected,
-        borderRadius: BorderRadius.circular(AarastV3Radius.surface),
+        borderRadius: BorderRadius.circular(AarastV3Radius.control),
         child: Container(
+          constraints: const BoxConstraints(minHeight: 56),
           padding: const EdgeInsets.symmetric(
             vertical: AarastV3Space.x2,
             horizontal: AarastV3Space.x1,
           ),
           decoration: BoxDecoration(
             color: selected ? context.accent.primary : AarastV3Color.paper,
-            borderRadius: BorderRadius.circular(AarastV3Radius.surface),
+            borderRadius: BorderRadius.circular(AarastV3Radius.control),
             border: selected ? null : Border.all(color: AarastV3Color.line),
           ),
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Text(
-                arabicMonthName(month.month),
-                style: JourneyType.of(
-                  JourneyType.bodyLarge,
-                  weight: JourneyType.bold,
-                  color: fg,
-                ),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  if (selected) ...[
+                    Icon(LucideIcons.check, size: AarastV3Icon.sm, color: fg),
+                    const SizedBox(width: AarastV3Space.x1),
+                  ],
+                  Flexible(
+                    child: Text(
+                      name,
+                      textAlign: TextAlign.center,
+                      style: JourneyType.of(
+                        JourneyType.bodyLarge,
+                        weight: JourneyType.bold,
+                        color: fg,
+                      ),
+                    ),
+                  ),
+                ],
               ),
+              const SizedBox(height: AarastV3Space.half),
               Text(
                 hijri,
                 textAlign: TextAlign.center,
                 style: JourneyType.of(
-                  JourneyType.caption,
+                  JourneyType.label,
                   color: selected
-                      ? AarastV3Color.onPrimaryMuted
+                      ? AarastV3Color.onPrimary
                       : AarastV3Color.textMuted,
                 ),
               ),
@@ -256,36 +296,152 @@ class _MonthTile extends StatelessWidget {
   }
 }
 
-/// a05: the city (the provider directory's cities) and a rough budget,
-/// typed and spelled out in words.
+/// The second Hijri month of a tile without the word the first one already
+/// said: «جمادى الأولى · الآخرة», «ربيع الأول · الآخر».
+String _secondMonth(String first, String second) {
+  final head = first.split(' ').first;
+  return second.startsWith('$head ')
+      ? second.substring(head.length + 1)
+      : second;
+}
+
+/// «موعدنا بعد أبريل»: the way to a month past the six on the screen. Once
+/// such a month is chosen it shows that month.
+class _LaterMonthsCell extends StatelessWidget {
+  const _LaterMonthsCell({
+    required this.lastOnScreen,
+    required this.chosen,
+    required this.onTap,
+  });
+
+  final DateTime lastOnScreen;
+  final DateTime? chosen;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final chosen = this.chosen;
+    final selected = chosen != null;
+    final label = selected
+        ? '${arabicMonthName(chosen.month)} ${chosen.year}'
+        : 'موعدنا بعد ${arabicMonthName(lastOnScreen.month)}';
+    final fg = selected ? AarastV3Color.onPrimary : context.accent.primaryDark;
+    return Semantics(
+      button: true,
+      selected: selected,
+      label: label,
+      onTap: onTap,
+      excludeSemantics: true,
+      child: AarastPressable(
+        onTap: onTap,
+        selected: selected,
+        borderRadius: BorderRadius.circular(AarastV3Radius.control),
+        child: Container(
+          constraints: const BoxConstraints(minHeight: AarastV3Space.x12),
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            color: selected ? context.accent.primary : AarastV3Color.paper,
+            borderRadius: BorderRadius.circular(AarastV3Radius.control),
+            border: selected ? null : Border.all(color: AarastV3Color.line),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (selected) ...[
+                Icon(LucideIcons.check, size: AarastV3Icon.sm, color: fg),
+                const SizedBox(width: AarastV3Space.x1),
+              ],
+              Text(
+                label,
+                style: JourneyType.of(
+                  JourneyType.body,
+                  weight: JourneyType.bold,
+                  color: fg,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// The eighteen months after the six on the screen, three a row.
+class _LaterMonthsSheet extends StatelessWidget {
+  const _LaterMonthsSheet({required this.first, required this.selected});
+
+  final DateTime first;
+  final DateTime? selected;
+
+  @override
+  Widget build(BuildContext context) {
+    final months = [
+      for (var i = 0; i < 18; i++) DateTime(first.year, first.month + i),
+    ];
+    final selected = this.selected;
+    return JourneySheetBody(
+      title: context.say('اختر شهر العرس', 'اختاري شهر العرس'),
+      children: [
+        for (var start = 0; start < months.length; start += 3)
+          Padding(
+            padding: const EdgeInsets.only(bottom: AarastV3Space.x2),
+            child: IntrinsicHeight(
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  for (var i = start; i < start + 3; i++) ...[
+                    if (i > start) const SizedBox(width: AarastV3Space.x2),
+                    Expanded(
+                      child: _MonthTile(
+                        month: months[i],
+                        withYear: true,
+                        selected:
+                            selected != null &&
+                            selected.year == months[i].year &&
+                            selected.month == months[i].month,
+                        onTap: () => Navigator.of(context).pop(months[i]),
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+          ),
+      ],
+    );
+  }
+}
+
+/// «وين العرس، وكم ميزانيتك تقريبًا؟»: the city (the provider directory's
+/// cities, or another) and a rough budget, spelled out in words. The city
+/// is needed; the budget can wait (the line under the main action).
 class _PlaceBudgetStep extends StatelessWidget {
   const _PlaceBudgetStep({
     required this.cities,
     required this.city,
     required this.budgetController,
-    required this.budgetSkipped,
     required this.onCity,
     required this.onMoreCities,
     required this.onBudgetChanged,
-    required this.onSkipBudget,
     required this.onNext,
+    required this.onSkipBudget,
     required this.onBack,
   });
 
   final List<String> cities;
   final String? city;
   final TextEditingController budgetController;
-  final bool budgetSkipped;
   final ValueChanged<String> onCity;
   final VoidCallback onMoreCities;
   final VoidCallback onBudgetChanged;
-  final VoidCallback onSkipBudget;
   final VoidCallback? onNext;
+  final VoidCallback? onSkipBudget;
   final VoidCallback onBack;
 
   @override
   Widget build(BuildContext context) {
-    final shown = cities.take(7).toList();
+    final shown = cities.take(6).toList();
     final extra = city != null && !shown.contains(city) ? city : null;
     final digits = budgetController.text.replaceAll(RegExp(r'[^0-9]'), '');
     final amount = int.tryParse(digits);
@@ -293,38 +449,48 @@ class _PlaceBudgetStep extends StatelessWidget {
       step: 1,
       total: _questionCount,
       question: 'وين العرس، وكم ميزانيتك تقريبًا؟',
-      help: 'نعرض لك مزودين وأسعار من مدينتك. رقم تقريبي يكفي.',
-      // a06 (the mahr) follows.
+      help: 'نعرض لك مزودين مدينتك، ونقول لك كم باقي من الميزانية.',
       primaryLabel: 'التالي',
       onPrimary: onNext,
       onBack: onBack,
+      skipLabel: context.say('أكمل بدون ميزانية', 'أكملي بدون ميزانية'),
+      onSkip: onSkipBudget,
       children: [
-        const _FieldLabel('المدينة'),
+        Padding(
+          padding: const EdgeInsets.only(bottom: AarastV3Space.x2),
+          child: Text(
+            'المدينة',
+            style: JourneyType.of(
+              JourneyType.bodyLarge,
+              weight: JourneyType.bold,
+            ),
+          ),
+        ),
         Wrap(
-          spacing: 8,
-          runSpacing: 8,
+          spacing: AarastV3Space.x2,
+          runSpacing: AarastV3Space.x2,
           children: [
             for (final name in [...shown, ?extra])
-              // a05 draws the cities a step larger than other chips.
               JourneyChip(
                 label: name,
                 selected: name == city,
-                icon: name == city ? LucideIcons.mapPin : null,
+                icon: name == city ? LucideIcons.check : null,
                 fontSize: JourneyType.body,
+                large: true,
                 onTap: () => onCity(name),
               ),
             JourneyChip(
               label: 'مدينة ثانية',
               icon: LucideIcons.plus,
               fontSize: JourneyType.body,
+              large: true,
               onTap: onMoreCities,
             ),
           ],
         ),
-        const SizedBox(height: AarastV3Space.x4),
-        const _FieldLabel('ميزانية عرسك تقريبًا (بالريال اليمني)'),
+        const SizedBox(height: AarastV3Space.x5),
         JourneyTextField(
-          label: 'المبلغ',
+          label: 'ميزانية عرسك',
           controller: budgetController,
           large: true,
           hint: '7,000,000',
@@ -338,42 +504,37 @@ class _PlaceBudgetStep extends StatelessWidget {
             const MoneyInputFormatter(),
           ],
           helper: amount == null || amount <= 0 ? null : amountInWords(amount),
+          helperColor: context.accent.primaryDark,
           onChanged: (_) => onBudgetChanged(),
         ),
-        const SizedBox(height: AarastV3Space.x1),
-        _RadioLine(
-          label: context.say('أكمل بدون ميزانية', 'أكملي بدون ميزانية'),
-          selected: budgetSkipped,
-          onTap: onSkipBudget,
-        ),
-        const SizedBox(height: AarastV3Space.x2),
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: AarastV3Space.x1),
-          child: Text(
-            // C1: the budget is the wedding only; the mahr is its own
-            // question next (a06), outside the budget.
-            context.say(
-              'الميزانية لعرسك بس، والمهر مش منها. وتقدر تغيّرها بعدين من المال.',
-              'الميزانية لعرسك بس، والمهر مش منها. وتقدرين تغيّرينها بعدين من المال.',
-            ),
-            style: JourneyType.of(
-              JourneyType.small,
-              color: AarastV3Color.textMuted,
-            ),
+        const SizedBox(height: AarastV3Space.x3),
+        JourneyEntryNote(
+          // C1: the budget is the wedding only; the mahr is its own
+          // question next, outside the budget.
+          text: context.say(
+            'الميزانية لعرسك بس، والمهر مش منها. وتقدر تغيّرها بعدين من صفحة المال.',
+            'الميزانية لعرسك بس، والمهر مش منها. وتقدرين تغيّرينها بعدين من صفحة المال.',
           ),
+          icon: LucideIcons.info,
         ),
       ],
     );
   }
 }
 
-/// a08 «خطتك جاهزة»: what the plan starts with, then save it with the
-/// phone number or look around first.
+/// How far the sky reaches down «خطتك جاهزة».
+const _readySkyHeight = 160.0;
+
+/// «خطتك جاهزة يا X»: only what the plan starts with (the items and tasks
+/// from the catalogues, the city's real number of providers), then save it
+/// with the phone number or look around first, and what looking first risks.
 class _ReadyStep extends StatelessWidget {
   const _ReadyStep({
     required this.name,
     required this.subtitle,
+    required this.moneyLine,
     required this.city,
+    required this.providerCount,
     required this.hasDate,
     required this.catalogs,
     required this.signedIn,
@@ -387,9 +548,13 @@ class _ReadyStep extends StatelessWidget {
 
   final String name;
   final String subtitle;
+  final String? moneyLine;
   final String city;
 
-  /// x01: without a date nothing is placed on one yet, so nothing says so.
+  /// The directory's count for the city; null when it is not known.
+  final int? providerCount;
+
+  /// Without a date nothing is placed on one yet, so nothing says so.
   final bool hasDate;
   final ReferenceCatalogData catalogs;
   final bool signedIn;
@@ -406,150 +571,175 @@ class _ReadyStep extends StatelessWidget {
     final itemsLine = items.isEmpty
         ? context.say('تضيف بنودك بنفسك', 'تضيفين بنودك بنفسك')
         : items.length <= 4
-        ? items.join('، ')
+        ? items.join(' و')
         : '${items.take(4).join(' و')} وغيرها';
-    return JourneyPage(
-      bottom: Column(
-        mainAxisSize: MainAxisSize.min,
+    final count = providerCount;
+    final error = this.error;
+    return ColoredBox(
+      color: AarastV3Color.canvas,
+      child: Column(
         children: [
-          if (error != null) ...[
-            JourneyNote(
-              text: error!,
-              icon: LucideIcons.alertCircle,
-              color: AarastV3Color.danger,
-              soft: AarastV3Color.dangerSoft,
-            ),
-            const SizedBox(height: AarastV3Space.x2),
-          ],
-          if (signedIn)
-            JourneyButton(
-              label: 'افتح خطتي',
-              onPressed: saving ? null : onOpenPlan,
-              loading: saving,
-              expand: true,
-              large: true,
-            )
-          else ...[
-            JourneyButton(
-              label: 'احفظ خطتي برقم جوالي',
-              icon: LucideIcons.phoneCall,
-              onPressed: saving ? null : onSaveWithPhone,
-              loading: saving,
-              expand: true,
-              large: true,
-            ),
-            const SizedBox(height: AarastV3Space.x1),
-            JourneyTextAction(
-              label: 'بعدين، خلني أشوف أول',
-              onPressed: saving ? null : onLookFirst,
-            ),
-          ],
-        ],
-      ),
-      children: [
-        JourneySubHeader(title: '', onBack: onBack),
-        const SizedBox(height: AarastV3Space.x2),
-        Center(
-          child: Container(
-            width: 110,
-            height: 110,
-            decoration: BoxDecoration(
-              color: context.accent.primarySoft,
-              shape: BoxShape.circle,
-            ),
-            child: Icon(
-              LucideIcons.partyPopper,
-              size: 44,
-              color: context.accent.primary,
+          Expanded(
+            child: ListView(
+              padding: EdgeInsets.zero,
+              children: [
+                Stack(
+                  children: [
+                    const JourneySkyBand(height: _readySkyHeight),
+                    PositionedDirectional(
+                      top: AarastV3Space.x2,
+                      start: AarastV3Space.x3,
+                      child: SafeArea(
+                        bottom: false,
+                        child: JourneyRoundButton(
+                          icon: LucideIcons.arrowRight,
+                          tooltip: 'رجوع',
+                          onPressed: onBack,
+                          onArt: true,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(
+                    AarastV3Space.x4,
+                    AarastV3Space.x2,
+                    AarastV3Space.x4,
+                    AarastV3Space.x5,
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Semantics(
+                        header: true,
+                        child: Text(
+                          'خطتك جاهزة يا $name',
+                          style: JourneyType.of(
+                            JourneyType.question,
+                            weight: JourneyType.bold,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: AarastV3Space.x1),
+                      Text(
+                        subtitle,
+                        style: JourneyType.of(
+                          JourneyType.body,
+                          color: AarastV3Color.textMuted,
+                        ),
+                      ),
+                      if (moneyLine != null)
+                        Text(
+                          moneyLine!,
+                          style: JourneyType.of(
+                            JourneyType.body,
+                            color: AarastV3Color.textMuted,
+                          ),
+                        ),
+                      const SizedBox(height: AarastV3Space.x4),
+                      JourneyBox(
+                        padding: EdgeInsets.zero,
+                        child: Column(
+                          children: [
+                            JourneyEntryRow(
+                              icon: LucideIcons.wallet,
+                              title:
+                                  '${arabicCount(items.length, one: 'بند واحد', two: 'بندين', few: 'بنود', many: 'بند')} لعرسك',
+                              subtitle: itemsLine,
+                            ),
+                            if (catalogs.taskCount > 0)
+                              JourneyEntryRow(
+                                icon: LucideIcons.listChecks,
+                                title:
+                                    '${arabicCount(catalogs.taskCount, one: 'مهمة واحدة', two: 'مهمتين', few: 'مهام', many: 'مهمة')} مقترحة${hasDate ? ' على موعدك' : ''}',
+                                subtitle: hasDate
+                                    ? context.say(
+                                        'تختار منها اللي يناسبك',
+                                        'تختارين منها اللي يناسبك',
+                                      )
+                                    : context.say(
+                                        'تختار منها اللي يناسبك، وترتبها لما تحدد الموعد',
+                                        'تختارين منها اللي يناسبك، وترتبينها لما تحددين الموعد',
+                                      ),
+                              ),
+                            JourneyEntryRow(
+                              icon: LucideIcons.store,
+                              divider: false,
+                              title: count != null && count > 0
+                                  ? '${arabicCount(count, one: 'مزود واحد', two: 'مزودين', few: 'مزودين', many: 'مزود')} في $city'
+                                  : 'مزودين $city',
+                              subtitle: count == 0
+                                  ? 'ما في مزودين في $city بعد. نضيفهم أول ما ينضمون.'
+                                  : context.say(
+                                      'قاعات ومصورين ومنشدين',
+                                      'صالات ومصورات ومنشدات',
+                                    ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      if (!signedIn) ...[
+                        const SizedBox(height: AarastV3Space.x4),
+                        JourneyEntryNote(
+                          text: context.say(
+                            'خطتك الحين على هذا الجوال بس: لو حذفت التطبيق أو ضاع الجوال تضيع. وطلب العروض ودعوة الأهل تحتاج رقمك.',
+                            'خطتك الحين على هذا الجوال بس: لو حذفتي التطبيق أو ضاع الجوال تضيع. وطلب العروض ودعوة الأهل تحتاج رقمك.',
+                          ),
+                          icon: LucideIcons.smartphone,
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+              ],
             ),
           ),
-        ),
-        const SizedBox(height: AarastV3Space.x4),
-        Center(
-          child: Semantics(
-            header: true,
-            child: Text(
-              'خطتك جاهزة يا $name',
-              textAlign: TextAlign.center,
-              style: JourneyType.of(
-                JourneyType.display,
-                weight: JourneyType.bold,
-              ),
-            ),
-          ),
-        ),
-        const SizedBox(height: AarastV3Space.x1),
-        Center(
-          child: Text(
-            subtitle,
-            textAlign: TextAlign.center,
-            style: JourneyType.of(
-              JourneyType.body,
-              color: AarastV3Color.textMuted,
-            ),
-          ),
-        ),
-        const SizedBox(height: AarastV3Space.x4),
-        JourneyList(
-          dividers: false,
-          children: [
-            JourneyListRow(
-              icon: LucideIcons.wallet,
-              color: context.accent.primary,
-              soft: context.accent.primarySoft,
-              title:
-                  '${arabicCount(items.length, one: 'بند واحد', two: 'بندين', few: 'بنود', many: 'بند')} لعرسك',
-              subtitle: itemsLine,
-            ),
-            if (catalogs.taskCount > 0)
-              JourneyListRow(
-                icon: LucideIcons.listChecks,
-                color: AarastV3Color.brandAccentStrong,
-                soft: AarastV3Color.brandAccentSoft,
-                title:
-                    '${arabicCount(catalogs.taskCount, one: 'مهمة واحدة', two: 'مهمتين', few: 'مهام', many: 'مهمة')} مقترحة${hasDate ? ' على موعدك' : ''}',
-                subtitle: hasDate
-                    ? context.say(
-                        'تختار منها اللي يناسبك بعد الحفظ',
-                        'تختارين منها اللي يناسبك بعد الحفظ',
+          SafeArea(
+            top: false,
+            child: Padding(
+              padding: AarastV3Density.actionInsets,
+              child: JourneyEntryActions(
+                above: error == null
+                    ? null
+                    : JourneyNote(
+                        text: error,
+                        icon: LucideIcons.alertCircle,
+                        color: AarastV3Color.danger,
+                        soft: AarastV3Color.dangerSoft,
+                      ),
+                primary: signedIn
+                    ? JourneyButton(
+                        label: 'افتح خطتي',
+                        onPressed: saving ? null : onOpenPlan,
+                        loading: saving,
+                        expand: true,
+                        large: true,
                       )
-                    : context.say(
-                        'تختار منها اللي يناسبك، وترتبها لما تحدد الموعد',
-                        'تختارين منها اللي يناسبك، وترتبينها لما تحددين الموعد',
+                    : JourneyButton(
+                        key: const ValueKey('ready-save'),
+                        label: 'احفظ خطتي برقم جوالي',
+                        icon: LucideIcons.smartphone,
+                        onPressed: saving ? null : onSaveWithPhone,
+                        loading: saving,
+                        expand: true,
+                        large: true,
+                      ),
+                secondary: signedIn
+                    ? null
+                    : JourneyEntryLink(
+                        key: const ValueKey('ready-later'),
+                        label: context.say(
+                          'بعدين، خلني أشوف أول',
+                          'بعدين، خليني أشوف أول',
+                        ),
+                        onPressed: saving ? null : onLookFirst,
                       ),
               ),
-            JourneyListRow(
-              icon: LucideIcons.store,
-              color: AarastV3Color.cobalt,
-              soft: AarastV3Color.cobaltSoft,
-              title: 'مزودين $city بأسعارهم',
-              subtitle: context.say(
-                'قاعات ومصورين ومنشدين',
-                'صالات ومصورات ومنشدات',
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: AarastV3Space.x3),
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: AarastV3Space.x1),
-          child: Text(
-            hasDate
-                ? context.say(
-                    'تشيل وتضيف براحتك، والمهام تمشي مع الموعد لو تغيّر.',
-                    'تشيلين وتضيفين براحتك، والمهام تمشي مع الموعد لو تغيّر.',
-                  )
-                : context.say(
-                    'تشيل وتضيف براحتك، وتحدد الموعد متى ما ثبت.',
-                    'تشيلين وتضيفين براحتك، وتحددين الموعد متى ما ثبت.',
-                  ),
-            style: JourneyType.of(
-              JourneyType.small,
-              color: AarastV3Color.textMuted,
             ),
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 }
@@ -619,101 +809,6 @@ class _CitySheetState extends State<_CitySheet> {
           expand: true,
         ),
       ],
-    );
-  }
-}
-
-class _FieldLabel extends StatelessWidget {
-  const _FieldLabel(this.text);
-
-  final String text;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(
-        AarastV3Space.x1,
-        0,
-        AarastV3Space.x1,
-        AarastV3Space.x2,
-      ),
-      child: Text(
-        text,
-        style: JourneyType.of(
-          JourneyType.small,
-          weight: JourneyType.bold,
-          color: AarastV3Color.textMuted,
-        ),
-      ),
-    );
-  }
-}
-
-/// A round radio with a label, for the «not yet» answers.
-class _RadioLine extends StatelessWidget {
-  const _RadioLine({
-    required this.label,
-    required this.selected,
-    required this.onTap,
-  });
-
-  final String label;
-  final bool selected;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return Semantics(
-      button: true,
-      selected: selected,
-      label: label,
-      onTap: onTap,
-      excludeSemantics: true,
-      child: AarastPressable(
-        onTap: onTap,
-        selected: selected,
-        borderRadius: BorderRadius.circular(AarastV3Radius.control),
-        child: ConstrainedBox(
-          // A 48 target (DESIGN_SYSTEM: touch ≥ 48).
-          constraints: const BoxConstraints(minHeight: AarastV3Space.x12),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(
-              horizontal: AarastV3Space.x1,
-              vertical: AarastV3Space.x2,
-            ),
-            child: Row(
-              children: [
-                Container(
-                  width: 22,
-                  height: 22,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    border: Border.all(
-                      color: selected
-                          ? context.accent.primary
-                          : AarastV3Color.line,
-                      width: selected ? 7 : 2,
-                    ),
-                  ),
-                ),
-                const SizedBox(width: AarastV3Space.x2),
-                Expanded(
-                  child: Text(
-                    label,
-                    style: JourneyType.of(
-                      JourneyType.body,
-                      weight: JourneyType.bold,
-                      color: selected
-                          ? AarastV3Color.ink
-                          : AarastV3Color.textMuted,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
     );
   }
 }

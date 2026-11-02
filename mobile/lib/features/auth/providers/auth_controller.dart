@@ -91,6 +91,14 @@ class AuthController extends _AuthControllerCore
   /// has no other plan to weigh it against.
   bool get accountJustCreated => _accountJustCreated;
 
+  /// The last request failed because the server could not be reached (no
+  /// connection), not because it said no.
+  bool get failedOffline => _failedOffline;
+
+  /// D75: the last sign-up's code was for a number that already had an
+  /// account, so it signed in to that account instead.
+  bool get signUpFoundAccount => _signUpFoundAccount;
+
   /// The number of the account whose session expired, so x18 can offer to
   /// sign that same account in again. Null after any other sign-out.
   String? get expiredSessionPhone => _expiredSessionPhone;
@@ -143,6 +151,7 @@ class AuthController extends _AuthControllerCore
   void clearError() {
     _errorMessage = null;
     _errorCode = null;
+    _failedOffline = false;
     notifyListeners();
   }
 }
@@ -167,6 +176,8 @@ abstract class _AuthControllerCore extends ChangeNotifier {
   OtpRequestResult? _otpRequest;
   bool _sessionExpired = false;
   bool _accountJustCreated = false;
+  bool _failedOffline = false;
+  bool _signUpFoundAccount = false;
   String? _expiredSessionPhone;
   bool _loginRequestedAfterLogout = false;
   bool _authenticatedEntryPending = false;

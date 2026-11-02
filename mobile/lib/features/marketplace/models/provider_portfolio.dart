@@ -80,9 +80,8 @@ class ProviderPortfolio {
   factory ProviderPortfolio.fromJson(Map<String, dynamic> json) =>
       ProviderPortfolio(
         items: [
-          for (final item in (json['items'] is List
-              ? json['items'] as List
-              : const []))
+          for (final item
+              in (json['items'] is List ? json['items'] as List : const []))
             if (item is Map) PortfolioPhoto.fromJson(Map.from(item)),
         ],
         socialLinks: _links(json['socialLinks']),
@@ -136,9 +135,8 @@ class PublicPortfolio {
   factory PublicPortfolio.fromJson(Map<String, dynamic> json) =>
       PublicPortfolio(
         items: [
-          for (final item in (json['items'] is List
-              ? json['items'] as List
-              : const []))
+          for (final item
+              in (json['items'] is List ? json['items'] as List : const []))
             if (item is Map) PublicPortfolioPhoto.fromJson(Map.from(item)),
         ],
         socialLinks: _links(json['socialLinks']),

@@ -29,7 +29,6 @@ void main() {
         registration: const PendingRegistration(
           name: 'مستخدم',
           phone: '+967777123456',
-          password: 'secret123',
         ),
       );
       addTearDown(router.dispose);
@@ -39,8 +38,10 @@ void main() {
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 100));
 
-      expect(find.text('هذا الرقم عليه حساب من قبل'), findsOneWidget);
-      expect(find.text('هذا حسابك؟'), findsOneWidget);
+      expect(
+        find.text('هذا الرقم عليه حساب من قبل. ادخل عليه بكلمة المرور.'),
+        findsOneWidget,
+      );
       expect(find.textContaining('Phone or email'), findsNothing);
       expect(find.byKey(const ValueKey('otp-go-to-login')), findsOneWidget);
       expect(
@@ -73,14 +74,21 @@ void main() {
       await _pump(tester, controller: controller, router: router);
 
       // A sign-in code speaks of signing in, never of a new account (D7).
-      expect(find.text('أول ما يكتمل الرمز تدخل على حسابك.'), findsOneWidget);
+      await tester.ensureVisible(
+        find.text('بعد الرمز ندخلك حسابك.', skipOffstage: false),
+      );
+      await tester.pump();
+      expect(find.text('بعد الرمز ندخلك حسابك.'), findsOneWidget);
       expect(find.textContaining('ينحفظ حسابك'), findsNothing);
 
       await tester.enterText(find.byKey(const Key('otp-code-field')), '123456');
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 100));
       expect(controller.errorMessage, isNotNull);
+      // D75: a wrong code is said under the boxes, in the reader's words.
+      expect(find.byKey(const ValueKey('otp-wrong')), findsOneWidget);
 
+      await _scrollToTop(tester);
       await tester.tap(find.byTooltip('رجوع'));
       await tester.pump(const Duration(milliseconds: 100));
 
@@ -98,17 +106,23 @@ void main() {
       registration: const PendingRegistration(
         name: 'مستخدم',
         phone: '+967777123456',
-        password: 'secret123',
       ),
     );
     addTearDown(router.dispose);
 
     await _pump(tester, controller: controller, router: router);
 
+    final registerCopy = find.text(
+      'أول ما تكتمل الأرقام الستة ينحفظ حسابك.',
+      skipOffstage: false,
+    );
+    await tester.ensureVisible(registerCopy);
+    await tester.pump();
     expect(
-      find.text('أول ما يكتمل الرمز ينحفظ حسابك وخطتك وتدخل عليها.'),
+      find.text('أول ما تكتمل الأرقام الستة ينحفظ حسابك.'),
       findsOneWidget,
     );
+    await _scrollToTop(tester);
     await tester.tap(find.byTooltip('رجوع'));
     await tester.pump(const Duration(milliseconds: 100));
 
@@ -128,7 +142,6 @@ void main() {
       registration: const PendingRegistration(
         name: 'مستخدم',
         phone: '+967777123456',
-        password: 'secret123',
       ),
     );
     addTearDown(router.dispose);
@@ -175,6 +188,15 @@ void main() {
 
     await _pump(tester, controller: controller, router: router);
     await tester.pumpAndSettle();
+    // D75: sign-in is by code first; the password (and its recovery) is
+    // the second way.
+    expect(
+      find.byKey(const ValueKey('login-forgot-password-action')),
+      findsNothing,
+    );
+    await tester.ensureVisible(find.byKey(const ValueKey('login-mode')));
+    await tester.tap(find.byKey(const ValueKey('login-mode')));
+    await tester.pumpAndSettle();
     final resetAction = find.byKey(
       const ValueKey('login-forgot-password-action'),
     );
@@ -186,35 +208,39 @@ void main() {
     expect(find.text('reset:+967777123456:/invite/example'), findsOneWidget);
   });
 
-  testWidgets(
-    'missing account after phone proof offers registration with the phone',
-    (tester) async {
-      final controller = await _controller(
-        verifyErrorCode: 'ACCOUNT_NOT_FOUND_AFTER_PHONE_PROOF',
-      );
-      final router = _router();
-      addTearDown(router.dispose);
+  testWidgets('missing account after a sign-in code starts again at the door', (
+    tester,
+  ) async {
+    final controller = await _controller(
+      verifyErrorCode: 'ACCOUNT_NOT_FOUND_AFTER_PHONE_PROOF',
+    );
+    final router = _router();
+    addTearDown(router.dispose);
 
-      await _pump(tester, controller: controller, router: router);
-      await tester.enterText(find.byKey(const Key('otp-code-field')), '123456');
-      await tester.pump();
-      await tester.pump(const Duration(milliseconds: 100));
+    await _pump(tester, controller: controller, router: router);
+    await tester.enterText(find.byKey(const Key('otp-code-field')), '123456');
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 100));
 
-      expect(find.textContaining('تم التحقق من الرقم'), findsOneWidget);
-      final registerAction = find.byKey(const ValueKey('otp-go-to-register'));
-      expect(registerAction, findsOneWidget);
-      expect(tester.takeException(), isNull);
+    expect(
+      find.textContaining('هذا الرقم ما عليه حساب في اعّرست'),
+      findsOneWidget,
+    );
+    expect(find.text('ابدأ من هنا'), findsOneWidget);
+    final registerAction = find.byKey(const ValueKey('otp-go-to-register'));
+    expect(registerAction, findsOneWidget);
+    expect(tester.takeException(), isNull);
 
-      await tester.ensureVisible(registerAction);
-      await tester.tap(registerAction);
-      await tester.pump(const Duration(milliseconds: 100));
+    await tester.ensureVisible(registerAction);
+    await tester.tap(registerAction);
+    await tester.pump(const Duration(milliseconds: 100));
 
-      final registerUri = router.routeInformationProvider.value.uri;
-      expect(registerUri.path, '/register');
-      expect(registerUri.queryParameters['phone'], '+967777123456');
-      expect(registerUri.queryParameters['resume'], '/invite/example');
-    },
-  );
+    // D75: there is no account to sign up from here; the door asks
+    // what the person came for (a plan, an invite, a service).
+    final registerUri = router.routeInformationProvider.value.uri;
+    expect(registerUri.path, '/welcome');
+    expect(controller.errorCode, isNull);
+  });
 
   testWidgets(
     'successful registration returns to the private invite with a one-shot resume token',
@@ -225,7 +251,6 @@ void main() {
         registration: const PendingRegistration(
           name: 'مستخدم',
           phone: '+967777123456',
-          password: 'secret123',
         ),
         successLocation: '/invites/$token',
       );
@@ -239,11 +264,48 @@ void main() {
       final postAuthUri = router.routeInformationProvider.value.uri;
       expect(postAuthUri.path, '/invites/$token');
       expect(controller.status, AuthStatus.authenticated);
+      expect(controller.accountJustCreated, isTrue);
+      expect(controller.signUpFoundAccount, isFalse);
       expect(controller.hasPendingInviteResume, isFalse);
       expect(controller.claimPendingInviteResumeRoute(), isNull);
       expect(controller.consumePendingInviteResume(token), isTrue);
     },
   );
+
+  testWidgets(
+    'D75: a sign-up code for a number with an account signs in to it',
+    (tester) async {
+      final controller = await _controller(
+        registrationSucceeds: true,
+        existingAccount: true,
+      );
+      final router = _router(
+        registration: const PendingRegistration(
+          name: 'مستخدم',
+          phone: '+967777123456',
+        ),
+        successLocation: '/home',
+      );
+      addTearDown(router.dispose);
+
+      await _pump(tester, controller: controller, router: router);
+      await tester.enterText(find.byKey(const Key('otp-code-field')), '123456');
+      await tester.pump(const Duration(milliseconds: 1100));
+      await tester.pumpAndSettle();
+
+      expect(controller.status, AuthStatus.authenticated);
+      expect(controller.errorCode, isNull);
+      expect(controller.signUpFoundAccount, isTrue);
+      expect(controller.accountJustCreated, isFalse);
+      expect(find.byKey(const ValueKey('otp-go-to-login')), findsNothing);
+    },
+  );
+}
+
+/// The page scrolls at 320 px and 1.3x text; back is at its top.
+Future<void> _scrollToTop(WidgetTester tester) async {
+  await tester.drag(find.byType(Scrollable).first, const Offset(0, 1000));
+  await tester.pumpAndSettle();
 }
 
 Future<void> _pump(
@@ -315,6 +377,10 @@ GoRouter _router({
         ),
       ),
       GoRoute(
+        path: '/welcome',
+        builder: (context, state) => const Text('welcome'),
+      ),
+      GoRoute(
         path: '/home',
         builder: (context, state) =>
             Text('home:${state.uri.queryParameters['resume']}'),
@@ -332,6 +398,7 @@ Future<AuthController> _controller({
   String? registerErrorCode,
   String? verifyErrorCode,
   bool registrationSucceeds = false,
+  bool existingAccount = false,
 }) async {
   SharedPreferences.setMockInitialValues({});
   final preferences = await SharedPreferences.getInstance();
@@ -344,6 +411,7 @@ Future<AuthController> _controller({
       registerErrorCode: registerErrorCode,
       verifyErrorCode: verifyErrorCode,
       registrationSucceeds: registrationSucceeds,
+      existingAccount: existingAccount,
     ),
   );
   await controller.restoreSession();
@@ -357,24 +425,26 @@ class _RecoveryRepository extends AuthRepository {
     this.registerErrorCode,
     this.verifyErrorCode,
     this.registrationSucceeds = false,
+    this.existingAccount = false,
   });
 
   final String? registerErrorCode;
   final String? verifyErrorCode;
   final bool registrationSucceeds;
+  final bool existingAccount;
 
   @override
   Future<AuthResponse> register({
     required String name,
     required String phone,
-    required String password,
     required String otpCode,
   }) async {
     if (registrationSucceeds) {
-      return const AuthResponse(
+      return AuthResponse(
         accessToken: 'registered-access-token',
         refreshToken: 'registered-refresh-token',
-        user: SafeUser(
+        existingAccount: existingAccount,
+        user: const SafeUser(
           id: 'invitee-1',
           name: 'مستخدم',
           phone: '+967777123456',

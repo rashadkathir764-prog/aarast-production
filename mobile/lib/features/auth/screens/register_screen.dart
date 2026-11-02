@@ -1,23 +1,23 @@
 import 'package:flutter/material.dart';
-import 'package:lucide_icons/lucide_icons.dart';
 import 'package:go_router/go_router.dart';
+import 'package:lucide_icons/lucide_icons.dart';
 import 'package:provider/provider.dart';
 
-import '../../../core/contacts/contact_phone_field_suffix.dart';
 import '../../../core/experience_v3/aarast_v3.dart';
+import '../../../core/widgets/aarast_ui.dart' show AarastScreenFrame;
 import '../../../core/phone/yemeni_phone_normalizer.dart';
 import '../../../core/routing/app_router.dart';
 import '../../../core/utils/arabic_count.dart';
 import '../../onboarding/onboarding_api.dart'
-    show GuestOnboardingDraft, GuestOnboardingStorage;
+    show GuestOnboardingDraft, GuestOnboardingStorage, GuestPersona;
 import '../models/pending_registration.dart';
 import '../providers/auth_controller.dart';
-import '../utils/application_password_policy.dart';
 import 'otp_screen.dart';
-import '../widgets/auth_wedding_widgets.dart';
 
-/// The wedding account (a-series). A provider's account is
-/// [ProviderRegisterScreen] (p01).
+/// «احفظ خطتك» (D75): the plan kept on this phone is saved with the number
+/// and a WhatsApp code, nothing else. The screen wears the plan's colour and
+/// speaks in its owner's words. A provider's account is
+/// [ProviderRegisterScreen].
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({this.initialPhone, super.key});
 
@@ -28,22 +28,16 @@ class RegisterScreen extends StatefulWidget {
 }
 
 class _RegisterScreenState extends State<RegisterScreen> {
-  final _formKey = GlobalKey<FormState>();
   final _nameController = TextEditingController();
   final _phoneController = TextEditingController();
-  final _passwordController = TextEditingController();
 
-  bool _obscurePassword = true;
-
-  /// After a submit showed errors, each field re-checks as it is edited, so
-  /// "required" disappears once the field is filled (field test Q09).
+  /// After a send showed errors, each field re-checks as it is edited.
   bool _submitAttempted = false;
 
-  /// The plan kept on the phone (a08), which this account will save.
+  /// The plan kept on the phone, which this account will save.
   GuestOnboardingDraft? _keptPlan;
 
-  /// The name came with the kept plan and is valid, so it is not asked
-  /// again (a08b). A name that would fail stays in a field to fix.
+  /// The name came with the kept plan («عرس محمد»), so it is not asked again.
   bool _nameFromPlan = false;
 
   @override
@@ -79,185 +73,202 @@ class _RegisterScreenState extends State<RegisterScreen> {
   void dispose() {
     _nameController.dispose();
     _phoneController.dispose();
-    _passwordController.dispose();
     super.dispose();
+  }
+
+  String? get _nameError {
+    if (!_submitAttempted || _nameFromPlan) return null;
+    final name = _nameController.text.trim();
+    if (name.isEmpty) return 'الاسم مطلوب';
+    if (name.length < 3) return 'الاسم قصير جداً';
+    return null;
+  }
+
+  String? get _phoneError {
+    if (!_submitAttempted) return null;
+    final phone = _phoneController.text.trim();
+    if (phone.isEmpty) return 'رقم الجوال مطلوب';
+    if (!isValidYemeniPhoneInput(phone)) return 'رقم الجوال غير صحيح';
+    return null;
+  }
+
+  void _edited() {
+    final auth = context.read<AuthController>();
+    if (auth.errorMessage != null) auth.clearError();
+    if (_submitAttempted) setState(() {});
+  }
+
+  void _back() {
+    context.read<AuthController>().clearError();
+    if (context.canPop()) {
+      context.pop();
+    } else if (_keptPlan != null) {
+      context.go(AppRouter.home);
+    } else {
+      context.go(AppRouter.onboarding);
+    }
   }
 
   @override
   Widget build(BuildContext context) {
-    final auth = context.watch<AuthController>();
     final keptPlan = _keptPlan;
+    final persona = keptPlan?.persona == GuestPersona.bride ? 'BRIDE' : 'GROOM';
+    return JourneyProfileScope(
+      profile: JourneyProfile.fromPersona(persona),
+      child: Builder(builder: (context) => _page(context, keptPlan)),
+    );
+  }
 
-    return AuthWeddingScaffold(
-      leading: AuthBackButton(
-        onPressed: () => context.go(AppRouter.onboarding),
-      ),
-      bottom: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          JourneyButton(
+  Widget _page(BuildContext context, GuestOnboardingDraft? keptPlan) {
+    final auth = context.watch<AuthController>();
+    final offline = auth.failedOffline;
+    final serverError = offline ? null : auth.errorMessage;
+    return AarastScreenFrame(
+      maxWidth: 520,
+      backgroundColor: AarastV3Color.canvas,
+      resizeToAvoidBottomInset: true,
+      child: JourneyPage(
+        bottom: JourneyEntryActions(
+          above: serverError == null
+              ? null
+              : JourneyNote(
+                  text: serverError,
+                  icon: LucideIcons.alertCircle,
+                  color: AarastV3Color.danger,
+                  soft: AarastV3Color.dangerSoft,
+                ),
+          primary: JourneyButton(
             key: const ValueKey('register-submit'),
-            label: keptPlan != null ? 'احفظ خطتي' : 'إنشاء حساب',
+            label: offline ? 'أرسل الرمز مرة ثانية' : 'أرسل الرمز',
             expand: true,
             large: true,
             loading: auth.isSubmitting,
             onPressed: _submit,
           ),
-          AuthFooterLink(
-            prefix: 'لديك حساب؟',
-            action: 'تسجيل الدخول',
-            onTap: () {
-              if (auth.isSubmitting) return;
-              auth.clearError();
-              final resume = _safeResumeLocation(context);
-              context.go(_withResume(AppRouter.login, resumeLocation: resume));
-            },
-          ),
-        ],
-      ),
-      child: Form(
-        key: _formKey,
-        autovalidateMode: _submitAttempted
-            ? AutovalidateMode.onUserInteraction
-            : AutovalidateMode.disabled,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            AuthHeading(
-              title: keptPlan != null
-                  ? context.say('احفظ خطتك', 'احفظي خطتك')
-                  : context.say('أنشئ حسابك', 'أنشئي حسابك'),
-              subtitle: keptPlan != null
-                  ? 'خطتك محفوظة في جوالك، وبالحساب ما تضيع'
-                  : 'حساب واحد لخطتك ولكل خطة تشارك فيها',
-            ),
-            const SizedBox(height: AarastV3Space.x4),
-            if (keptPlan != null) ...[
-              _KeptPlanStrip(plan: keptPlan),
-              const SizedBox(height: AarastV3Space.x3),
-            ],
-            AuthPanel(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  if (!_nameFromPlan) ...[
-                    AuthTextField(
-                      controller: _nameController,
-                      label: 'الاسم',
-                      icon: LucideIcons.user,
-                      textInputAction: TextInputAction.next,
-                      validator: (value) {
-                        if (value == null || value.trim().isEmpty) {
-                          return 'الاسم مطلوب';
-                        }
-                        if (value.trim().length < 3) {
-                          return 'الاسم قصير جداً';
-                        }
-                        return null;
-                      },
-                    ),
-                    const SizedBox(height: AarastV3Space.x2),
-                  ],
-                  AuthTextField(
-                    controller: _phoneController,
-                    label: 'رقم الهاتف',
-                    hint: '777 123 456',
-                    icon: LucideIcons.phone,
-                    keyboardType: TextInputType.phone,
-                    textInputAction: TextInputAction.next,
-                    suffixIcon: ContactPhoneFieldSuffix(
-                      controller: _phoneController,
-                    ),
-                    validator: (value) {
-                      if (value == null || value.trim().isEmpty) {
-                        return 'رقم الهاتف مطلوب';
-                      }
-                      if (!isValidYemeniPhoneInput(value)) {
-                        return 'رقم الهاتف غير صحيح';
-                      }
-                      return null;
-                    },
+          secondary: offline && keptPlan != null
+              ? JourneyEntryLink(
+                  label: context.say(
+                    'بعدين، خلني أشوف أول',
+                    'بعدين، خليني أشوف أول',
                   ),
-                  const SizedBox(height: AarastV3Space.x2),
-                  AuthTextField(
-                    controller: _passwordController,
-                    label: 'كلمة المرور',
-                    icon: LucideIcons.lock,
-                    obscureText: _obscurePassword,
-                    textInputAction: TextInputAction.done,
-                    onFieldSubmitted: (_) => _submit(),
-                    suffixIcon: AuthObscureToggle(
-                      obscured: _obscurePassword,
-                      onPressed: () {
-                        setState(() => _obscurePassword = !_obscurePassword);
-                      },
-                    ),
-                    validator: (value) {
-                      if (value == null || value.isEmpty) {
-                        return 'كلمة المرور مطلوبة';
-                      }
-                      if (value.length < 6) {
-                        return 'كلمة المرور يجب أن تكون 6 أحرف على الأقل';
-                      }
-                      if (!isApplicationPasswordWithinByteLimit(value)) {
-                        return 'كلمة المرور طويلة جدًا. اختصرها ثم حاول مرة أخرى';
-                      }
-                      return null;
-                    },
-                  ),
-                  const SizedBox(height: AarastV3Space.x2),
-                  Padding(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: AarastV3Space.x1,
-                    ),
-                    child: Text(
-                      '6 أحرف أو أكثر. بعدها نرسل لك رمز تأكيد على واتساب.',
-                      style: JourneyType.of(
-                        JourneyType.small,
-                        color: AarastV3Color.textMuted,
-                      ),
-                    ),
-                  ),
-                  if (auth.errorMessage != null) ...[
-                    const SizedBox(height: AarastV3Space.x3),
-                    AuthInlineError(message: auth.errorMessage!),
-                  ],
-                ],
-              ),
+                  onPressed: () => context.go(AppRouter.home),
+                )
+              : JourneyEntryLink(
+                  key: const ValueKey('register-login'),
+                  label: 'عندك حساب؟ تسجيل الدخول',
+                  sub: keptPlan == null
+                      ? null
+                      : context.say(
+                          'ولو حسابك فيه خطة، تختار وين تكون هذي',
+                          'ولو حسابك فيه خطة، تختارين وين تكون هذي',
+                        ),
+                  strong: true,
+                  onPressed: auth.isSubmitting ? null : _login,
+                ),
+        ),
+        children: [
+          JourneyStepBar(onBack: _back),
+          if (offline) ...[
+            const SizedBox(height: AarastV3Space.x2),
+            JourneyEntryNote(
+              key: const ValueKey('register-offline'),
+              text: keptPlan == null
+                  ? 'ما قدرنا نرسل الرمز، النت مقطوع.'
+                  : 'ما قدرنا نرسل الرمز، النت مقطوع. خطتك محفوظة على هذا الجوال.',
+              icon: LucideIcons.wifiOff,
+              tone: JourneyEntryNoteTone.warn,
             ),
           ],
-        ),
+          JourneyEntryQuestion(
+            question: keptPlan != null
+                ? context.say('احفظ خطتك', 'احفظي خطتك')
+                : 'حساب جديد',
+            help: keptPlan != null
+                ? context.say(
+                    'بحسابك ما تضيع، وتفتحها من أي جوال.',
+                    'بحسابك ما تضيع، وتفتحينها من أي جوال.',
+                  )
+                : 'برقم جوالك ورمز على واتساب.',
+          ),
+          if (keptPlan != null) ...[
+            const SizedBox(height: AarastV3Space.x5),
+            JourneyKeptPlanStrip(line: _planLine(keptPlan)),
+          ],
+          const SizedBox(height: AarastV3Space.x5),
+          if (!_nameFromPlan) ...[
+            JourneyTextField(
+              label: 'اسمك',
+              controller: _nameController,
+              textInputAction: TextInputAction.next,
+              errorText: _nameError,
+              onChanged: (_) => _edited(),
+            ),
+            const SizedBox(height: AarastV3Field.gap),
+          ],
+          JourneyPhoneField(
+            controller: _phoneController,
+            errorText: _phoneError,
+            onChanged: (_) => _edited(),
+            onSubmitted: (_) => _submit(),
+          ),
+          const SizedBox(height: AarastV3Space.x3),
+          JourneyEntryNote(
+            text: context.say(
+              'نرسل لك رمز على واتساب. تأكد إن الرقم عليه واتساب.',
+              'نرسل لك رمز على واتساب. تأكدي إن الرقم عليه واتساب.',
+            ),
+            icon: LucideIcons.messageCircle,
+          ),
+        ],
       ),
     );
   }
 
+  /// «عرس محمد · صنعاء · 12 بند».
+  String _planLine(GuestOnboardingDraft plan) {
+    final items = plan.selectedCategoryKeys.length;
+    return [
+      plan.planName?.trim() ?? '',
+      plan.city?.trim() ?? '',
+      if (items > 0)
+        arabicCount(
+          items,
+          one: 'بند واحد',
+          two: 'بندين',
+          few: 'بنود',
+          many: 'بند',
+        ),
+    ].where((part) => part.isNotEmpty).join(' · ');
+  }
+
+  void _login() {
+    final auth = context.read<AuthController>();
+    auth.clearError();
+    final resume = _safeResumeLocation(context);
+    context.go(_withResume(AppRouter.login, resumeLocation: resume));
+  }
+
   Future<void> _submit() async {
     if (!_submitAttempted) setState(() => _submitAttempted = true);
-    if (!_formKey.currentState!.validate()) return;
+    if (_nameError != null || _phoneError != null) return;
 
     final auth = context.read<AuthController>();
+    final name = _nameController.text.trim();
     final normalizedPhone = normalizeYemeniPhone(_phoneController.text);
     final otp = await auth.startRegistration(
-      name: _nameController.text.trim(),
+      name: name,
       phone: normalizedPhone,
-      password: _passwordController.text,
     );
-
     if (otp == null || !mounted) return;
 
-    context.go(
+    context.push(
       AppRouter.otp,
       extra: OtpScreenArgs(
         phone: normalizedPhone,
         purpose: 'REGISTER',
         otpNoticeMessage: otp.noticeMessage,
         successLocation: _safeResumeLocation(context),
-        registration: PendingRegistration(
-          name: _nameController.text.trim(),
-          phone: normalizedPhone,
-          password: _passwordController.text,
-        ),
+        registration: PendingRegistration(name: name, phone: normalizedPhone),
       ),
     );
   }
@@ -274,30 +285,5 @@ class _RegisterScreenState extends State<RegisterScreen> {
     return Uri.parse(
       location,
     ).replace(queryParameters: {'resume': resumeLocation}).toString();
-  }
-}
-
-/// «عرس محمد · صنعاء · 11 بند»: the plan this account will save.
-class _KeptPlanStrip extends StatelessWidget {
-  const _KeptPlanStrip({required this.plan});
-
-  final GuestOnboardingDraft plan;
-
-  @override
-  Widget build(BuildContext context) {
-    final items = plan.selectedCategoryKeys.length;
-    final line = [
-      plan.planName?.trim() ?? '',
-      plan.city?.trim() ?? '',
-      if (items > 0)
-        arabicCount(
-          items,
-          one: 'بند واحد',
-          two: 'بندين',
-          few: 'بنود',
-          many: 'بند',
-        ),
-    ].where((part) => part.isNotEmpty).join(' · ');
-    return JourneyNote(text: line, icon: LucideIcons.checkCircle2);
   }
 }

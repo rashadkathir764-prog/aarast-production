@@ -1030,9 +1030,10 @@ class ProviderDashboardProfile {
       portfolioPhotos: _intOrZero(portfolio['photos']),
       portfolioPending: _intOrZero(portfolio['pending']),
       socialNetworks: [
-        for (final network in (portfolio['socialNetworks'] is List
-            ? portfolio['socialNetworks'] as List
-            : const []))
+        for (final network
+            in (portfolio['socialNetworks'] is List
+                ? portfolio['socialNetworks'] as List
+                : const []))
           network.toString(),
       ],
     );

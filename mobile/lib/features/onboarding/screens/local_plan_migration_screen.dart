@@ -9,6 +9,7 @@ import '../../../core/storage/auth_storage.dart';
 import '../../../core/utils/arabic_count.dart';
 import '../../../core/widgets/aarast_ui.dart';
 import '../data/local_plan_migration.dart';
+import '../models/guest_onboarding_draft.dart' show GuestPersona;
 
 /// w09 «عندك خطة على هذا الجوال»: right after sign-in, a plan made on this
 /// phone before signing in meets the account.
@@ -49,6 +50,11 @@ class LocalPlanMigrationScreen extends StatefulWidget {
 
 enum _Phase { checking, saving, choosing, failed }
 
+/// Fixed dimensions of this layout, not spacing steps (D74): where the
+/// saving or failure sits on the page, and its mark.
+const _outcomeTop = 140.0;
+const _markSize = 72.0;
+
 /// Why saving into the account did not happen, in words for the user.
 class _SaveFailure implements Exception {
   const _SaveFailure(this.message);
@@ -57,8 +63,7 @@ class _SaveFailure implements Exception {
 }
 
 class _LocalPlanMigrationScreenState extends State<LocalPlanMigrationScreen> {
-  static const _saveFailed =
-      'ما قدرنا نحفظها في حسابك. تأكد من النت وجرّب مرة ثانية.';
+  static const _saveFailed = 'تأكد من النت وجرّب مرة ثانية.';
   static const _lookupFailed =
       'ما قدرنا نشوف حسابك. تأكد من النت وجرّب مرة ثانية.';
 
@@ -133,11 +138,15 @@ class _LocalPlanMigrationScreenState extends State<LocalPlanMigrationScreen> {
       isDismissible: false,
       enableDrag: false,
       builder: (_) => _LocalPlanChoiceSheet(
-        local: _counts(
-          widget.snapshot.itemNames.length,
-          widget.snapshot.tasks.length,
-        ),
-        account: _counts(account.items, account.tasks),
+        local: _localTitle.isEmpty
+            ? _counts(
+                widget.snapshot.itemNames.length,
+                widget.snapshot.tasks.length,
+              )
+            : _localTitle,
+        account: account.title.isEmpty
+            ? _counts(account.items, account.tasks)
+            : account.title,
         save: _save,
         confirmDrop: _confirmDrop,
         drop: _drop,
@@ -226,76 +235,143 @@ class _LocalPlanMigrationScreenState extends State<LocalPlanMigrationScreen> {
     widget.onFinished(null);
   }
 
+  /// «عرس محمد · صنعاء», the plan on this phone.
+  String get _localTitle {
+    final draft = widget.snapshot.draft;
+    return [
+      draft.planName?.trim() ?? '',
+      draft.city?.trim() ?? '',
+    ].where((part) => part.isNotEmpty).join(' · ');
+  }
+
   @override
   Widget build(BuildContext context) {
+    final persona = widget.snapshot.draft.persona == GuestPersona.bride
+        ? 'BRIDE'
+        : 'GROOM';
+    return JourneyProfileScope(
+      profile: JourneyProfile.fromPersona(persona),
+      child: Builder(builder: _page),
+    );
+  }
+
+  Widget _page(BuildContext context) {
     final planName = widget.snapshot.draft.planName?.trim();
     final saving = planName == null || planName.isEmpty ? 'خطتك' : planName;
+    final failed = _phase == _Phase.failed;
     return AarastScreenFrame(
       maxWidth: 520,
       backgroundColor: AarastV3Color.canvas,
-      child: ListView(
-        padding: AarastV3Density.pageInsets,
+      child: JourneyPage(
+        bottom: failed
+            ? JourneyEntryActions(
+                primary: JourneyButton(
+                  label: context.say('جرّب مرة ثانية', 'جرّبي مرة ثانية'),
+                  expand: true,
+                  large: true,
+                  onPressed: _busy ? null : _retry,
+                ),
+                secondary: JourneyEntryLink(
+                  label: context.say('امسحها من الجوال', 'امسحيها من الجوال'),
+                  onPressed: _busy ? null : _dropFromFailure,
+                ),
+              )
+            : _phase == _Phase.choosing && !_sheetOpen
+            ? JourneyEntryActions(
+                primary: JourneyButton(
+                  label: 'متابعة',
+                  expand: true,
+                  large: true,
+                  onPressed: _openChoice,
+                ),
+              )
+            : null,
         children: [
-          const SizedBox(height: AarastV3Space.x8),
-          const Center(child: JourneyWordmark(size: 34)),
-          const SizedBox(height: AarastV3Space.x8),
-          if (_phase == _Phase.checking || _phase == _Phase.saving) ...[
-            const Center(child: AarastInlineSpinner(dimension: 32)),
-            if (_phase == _Phase.saving) ...[
-              const SizedBox(height: AarastV3Space.x4),
-              Text(
-                'نحفظ $saving في حسابك',
-                textAlign: TextAlign.center,
-                style: JourneyType.of(
-                  JourneyType.body,
-                  color: AarastV3Color.textMuted,
+          const SizedBox(height: _outcomeTop),
+          if (failed)
+            _Outcome(
+              mark: Container(
+                width: _markSize,
+                height: _markSize,
+                decoration: const BoxDecoration(
+                  color: AarastV3Color.brandAccentSoft,
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(
+                  LucideIcons.alertCircle,
+                  size: AarastV3Space.x8,
+                  color: AarastV3Color.brandAccentStrong,
                 ),
               ),
-            ],
-          ],
-          if (_phase == _Phase.choosing && !_sheetOpen)
-            JourneyButton(
-              label: 'متابعة',
-              expand: true,
-              large: true,
-              onPressed: _openChoice,
-            ),
-          if (_phase == _Phase.failed) ...[
-            JourneyNote(
-              text: _error ?? _saveFailed,
-              icon: LucideIcons.alertCircle,
-              color: AarastV3Color.danger,
-              soft: AarastV3Color.dangerSoft,
-            ),
-            const SizedBox(height: AarastV3Space.x2),
-            Text(
-              'خطتك باقية على هذا الجوال، ما تنحذف لين تنحفظ في حسابك.',
-              style: JourneyType.of(
-                JourneyType.small,
-                color: AarastV3Color.textMuted,
+              title: 'ما قدرنا نحفظها في حسابك',
+              body:
+                  '${_error ?? context.say('تأكد من النت وجرّب مرة ثانية.', 'تأكدي من النت وجرّبي مرة ثانية.')}\n'
+                  'خطتك باقية على هذا الجوال، ما تنحذف لين تنحفظ في حسابك.',
+            )
+          else
+            _Outcome(
+              mark: AarastInlineSpinner(
+                dimension: _markSize,
+                color: context.accent.primary,
               ),
+              title: _phase == _Phase.saving
+                  ? 'نحفظ $saving في حسابك'
+                  : 'نفتح حسابك',
+              body: _phase == _Phase.saving
+                  ? 'البنود والمهر والموعد، كما سويتها.'
+                  : null,
             ),
-            const SizedBox(height: AarastV3Space.x4),
-            JourneyButton(
-              label: 'جرّب مرة ثانية',
-              expand: true,
-              large: true,
-              onPressed: _busy ? null : _retry,
-            ),
-            const SizedBox(height: AarastV3Space.x1),
-            Center(
-              child: JourneyTextAction(
-                label: 'امسحها من الجوال',
-                onPressed: _busy ? null : _dropFromFailure,
-              ),
-            ),
-          ],
         ],
       ),
     );
   }
 }
 
+/// The middle of the page while saving, or when saving failed: a mark, a
+/// title and what it means.
+class _Outcome extends StatelessWidget {
+  const _Outcome({required this.mark, required this.title, this.body});
+
+  final Widget mark;
+  final String title;
+  final String? body;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        mark,
+        const SizedBox(height: AarastV3Space.x6),
+        Semantics(
+          header: true,
+          liveRegion: true,
+          child: Text(
+            title,
+            textAlign: TextAlign.center,
+            style: JourneyType.of(
+              JourneyType.question,
+              weight: JourneyType.bold,
+            ),
+          ),
+        ),
+        if (body != null) ...[
+          const SizedBox(height: AarastV3Space.x2),
+          Text(
+            body!,
+            textAlign: TextAlign.center,
+            style: JourneyType.of(
+              JourneyType.bodyLarge,
+              color: AarastV3Color.textMuted,
+              height: 1.55,
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+}
+
+/// «12 بند · 20 مهمة», when a plan has no name to show.
 String _counts(int items, int tasks) {
   final itemsLine = arabicCount(
     items,
@@ -339,7 +415,8 @@ class _LocalPlanChoiceSheet extends StatefulWidget {
 }
 
 class _LocalPlanChoiceSheetState extends State<_LocalPlanChoiceSheet> {
-  _Choice _choice = _Choice.secondPlan;
+  /// Nothing is chosen for the person: «متابعة» waits for a choice.
+  _Choice? _choice;
   bool _busy = false;
   String? _error;
 
@@ -356,6 +433,7 @@ class _LocalPlanChoiceSheetState extends State<_LocalPlanChoiceSheet> {
       Navigator.of(context).pop((planId: null));
       return;
     }
+    if (_choice == null) return;
     setState(() {
       _busy = true;
       _error = null;
@@ -389,7 +467,7 @@ class _LocalPlanChoiceSheetState extends State<_LocalPlanChoiceSheet> {
           Row(
             children: [
               Expanded(
-                child: _CountCard(label: 'على الجوال', value: widget.local),
+                child: _CountCard(label: 'على هذا الجوال', value: widget.local),
               ),
               const SizedBox(width: AarastV3Space.x2),
               Expanded(
@@ -429,7 +507,7 @@ class _LocalPlanChoiceSheetState extends State<_LocalPlanChoiceSheet> {
             expand: true,
             large: true,
             loading: _busy,
-            onPressed: _continue,
+            onPressed: _choice == null ? null : _continue,
           ),
         ],
       ),
@@ -446,7 +524,12 @@ class _CountCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return JourneyBox(
-      padding: const EdgeInsets.all(AarastV3Space.x3),
+      color: AarastV3Color.canvas,
+      radius: AarastV3Radius.surface,
+      padding: const EdgeInsets.symmetric(
+        horizontal: AarastV3Space.x3,
+        vertical: AarastV3Space.x2,
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [

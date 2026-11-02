@@ -58,7 +58,6 @@ class AuthRepository implements SessionAuthTeardownPort {
   Future<OtpRequestResult> startRegistration({
     required String name,
     required String phone,
-    required String password,
   }) async {
     final normalizedPhone = normalizeYemeniPhone(phone);
     final json = await _apiClient.postJsonWithReceiveTimeout(
@@ -72,7 +71,6 @@ class AuthRepository implements SessionAuthTeardownPort {
   Future<AuthResponse> register({
     required String name,
     required String phone,
-    required String password,
     required String otpCode,
   }) async {
     final sessionEpoch = _authStorage.beginSessionEstablishment();
@@ -81,7 +79,6 @@ class AuthRepository implements SessionAuthTeardownPort {
       final json = await _apiClient.postJson('/api/v1/auth/register/complete', {
         'name': name,
         'phone': normalizedPhone,
-        'password': password,
         'otpCode': otpCode,
       });
       final response = _parseAuthResponse(json, operation: 'register');

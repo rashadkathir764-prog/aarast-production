@@ -23,6 +23,7 @@ import '../../finance/finance_api.dart'
         MahrFields,
         MoneyInputFormatter,
         formatMoneyInputValue,
+        mahrWords,
         moneyStarterPlanItemNames,
         pickMahrDueDate;
 import '../../marketplace/marketplace_api.dart' show MarketplaceApi;
@@ -52,6 +53,9 @@ enum _WelcomeStep { start, whose, nameDate, placeBudget, mahr, ready }
 /// budget, the mahr. a06's «في اليمن ولا برا؟» is after V1 (y01).
 const _questionCount = 3;
 
+/// The months on the screen from this one; later ones are in a sheet.
+const _monthsOnScreen = 6;
+
 /// The cities seeded in the provider directory, used until the live list
 /// arrives (or when offline with nothing cached).
 const _fallbackCities = ['صنعاء', 'عدن', 'تعز', 'إب', 'الحديدة', 'المكلا'];
@@ -72,7 +76,6 @@ class _SmartWelcomeScreenState extends State<SmartWelcomeScreen> {
   late _WelcomeStep _step = widget.newPlan
       ? _WelcomeStep.whose
       : _WelcomeStep.start;
-  bool _wantsProvider = false;
   GuestPersona _persona = GuestPersona.groom;
 
   final _nameController = TextEditingController();
@@ -90,6 +93,14 @@ class _SmartWelcomeScreenState extends State<SmartWelcomeScreen> {
   String? _city;
   bool _budgetSkipped = false;
   List<String> _cities = _fallbackCities;
+
+  /// The directory's id of each city, to count its providers on «جاهزة».
+  Map<String, String> _cityIds = const {};
+
+  /// How many providers the chosen city has; null while unknown (offline,
+  /// a city typed by hand, or not asked yet).
+  int? _providerCount;
+  String? _providerCountCity;
   bool _saving = false;
   String? _error;
 
@@ -127,7 +138,7 @@ class _SmartWelcomeScreenState extends State<SmartWelcomeScreen> {
     final settled = MahrFields.amountOf(_mahrSettledController) ?? 0;
     if (total <= 0) {
       setState(
-        () => _mahrError = context.say('اكتب كم المهر', 'اكتبي كم المهر'),
+        () => _mahrError = _profile.say('اكتب كم المهر', 'اكتبي كم المهر'),
       );
       return;
     }
@@ -135,7 +146,7 @@ class _SmartWelcomeScreenState extends State<SmartWelcomeScreen> {
       setState(() => _mahrSettledError = 'أكثر من المهر نفسه');
       return;
     }
-    _goTo(_WelcomeStep.ready);
+    _toReady();
   }
 
   /// «ما اتفقنا بعد»: a real answer; the home keeps the step to take later.
@@ -143,7 +154,7 @@ class _SmartWelcomeScreenState extends State<SmartWelcomeScreen> {
     _mahrTotalController.clear();
     _mahrSettledController.clear();
     _mahrDueDate = null;
-    _goTo(_WelcomeStep.ready);
+    _toReady();
   }
 
   Future<void> _pickMahrDueDate() async {
@@ -191,12 +202,54 @@ class _SmartWelcomeScreenState extends State<SmartWelcomeScreen> {
     }
   }
 
-  void _start() {
-    if (_wantsProvider) {
-      context.go(AppRouter.providerApply);
-      return;
+  void _choosePersona(GuestPersona persona) {
+    setState(() => _persona = persona);
+    _goTo(_WelcomeStep.nameDate);
+  }
+
+  /// «ما حددنا الموعد بعد»: a full answer, the date is set later.
+  void _skipDate() {
+    setState(() {
+      _dateUnknown = true;
+      _date = null;
+    });
+    _goTo(_WelcomeStep.placeBudget);
+  }
+
+  /// «أكمل بدون ميزانية»: the plan starts without a total.
+  void _skipBudget() {
+    _budgetController.clear();
+    setState(() => _budgetSkipped = true);
+    _goTo(_WelcomeStep.mahr);
+  }
+
+  void _toReady() {
+    _goTo(_WelcomeStep.ready);
+    _countProviders();
+  }
+
+  /// The real number of providers in the chosen city, for «جاهزة». Nothing
+  /// is said about a number the directory did not give.
+  Future<void> _countProviders() async {
+    final city = _city;
+    final id = city == null ? null : _cityIds[city];
+    final api = _maybeRead<MarketplaceApi>();
+    if (city == _providerCountCity) return;
+    setState(() {
+      _providerCount = null;
+      _providerCountCity = null;
+    });
+    if (id == null || api == null) return;
+    try {
+      final page = await api.getProvidersPage(cityId: id, limit: 1);
+      if (!mounted || _city != city) return;
+      setState(() {
+        _providerCount = page.total;
+        _providerCountCity = city;
+      });
+    } on Object {
+      // Offline: the row names the city without a number.
     }
-    _goTo(_WelcomeStep.whose);
   }
 
   T? _maybeRead<T>() {
@@ -212,12 +265,15 @@ class _SmartWelcomeScreenState extends State<SmartWelcomeScreen> {
     if (api == null) return;
     try {
       final cities = await api.getCities();
-      final names = [
+      final ids = {
         for (final city in cities)
-          if (city.nameAr.trim().isNotEmpty) city.nameAr.trim(),
-      ];
-      if (!mounted || names.isEmpty) return;
-      setState(() => _cities = names);
+          if (city.nameAr.trim().isNotEmpty) city.nameAr.trim(): city.id,
+      };
+      if (!mounted || ids.isEmpty) return;
+      setState(() {
+        _cities = ids.keys.toList();
+        _cityIds = ids;
+      });
     } on Object {
       // Offline with nothing cached: the seeded cities stay.
     }
@@ -285,16 +341,22 @@ class _SmartWelcomeScreenState extends State<SmartWelcomeScreen> {
     return auth?.status == AuthStatus.authenticated;
   }
 
-  /// Keeps the plan on the phone, then opens [route]. The items a05
-  /// promised («11 بند لعرسك») go into its money at once, as an account
-  /// plan gets them from the server.
-  Future<void> _keepOnPhone(String route) async {
+  /// The phone plan kept from «جاهزة», so going back and saving again
+  /// keeps the same plan, not a second one.
+  String? _keptPlanId;
+  DateTime? _keptAt;
+
+  /// Keeps the plan on the phone, then opens [route]. The items «جاهزة»
+  /// promised («12 بند لعرسك») go into its money at once, as an account
+  /// plan gets them from the server. Saving with the number opens over this
+  /// screen, so its back arrow returns to «جاهزة» with every answer.
+  Future<void> _keepOnPhone(String route, {bool over = false}) async {
     setState(() {
       _saving = true;
       _error = null;
     });
-    final now = DateTime.now();
-    final planId = 'local-guest-${now.microsecondsSinceEpoch}';
+    final now = _keptAt ?? DateTime.now();
+    final planId = _keptPlanId ?? 'local-guest-${now.microsecondsSinceEpoch}';
     final draft = _draft().copyWith(
       guestPlanId: planId,
       createdAt: now,
@@ -322,8 +384,16 @@ class _SmartWelcomeScreenState extends State<SmartWelcomeScreen> {
       return;
     }
     if (!mounted) return;
-    setState(() => _saving = false);
-    context.go(route);
+    setState(() {
+      _saving = false;
+      _keptPlanId = planId;
+      _keptAt = now;
+    });
+    if (over) {
+      context.push(route);
+    } else {
+      context.go(route);
+    }
   }
 
   /// A signed-in person creating another plan gets it on the server at once.
@@ -377,95 +447,6 @@ class _SmartWelcomeScreenState extends State<SmartWelcomeScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final page = switch (_step) {
-      _WelcomeStep.start => _StartStep(
-        wantsProvider: _wantsProvider,
-        onChoose: (provider) => setState(() => _wantsProvider = provider),
-        onStart: _start,
-        onLogin: () => context.go(AppRouter.login),
-        onInvite: () => context.go(AppRouter.inviteAccess),
-      ),
-      _WelcomeStep.whose => _WhoseStep(
-        persona: _persona,
-        onChoose: (persona) => setState(() => _persona = persona),
-        onNext: () => _goTo(_WelcomeStep.nameDate),
-        onBack: _back,
-      ),
-      _WelcomeStep.nameDate => _NameDateStep(
-        controller: _nameController,
-        date: _date,
-        dateUnknown: _dateUnknown,
-        onNameChanged: () => setState(() {}),
-        onPickMonth: _pickDayInMonth,
-        onDateUnknown: () => setState(() {
-          _dateUnknown = !_dateUnknown;
-          if (_dateUnknown) _date = null;
-        }),
-        onNext: _name.isEmpty || (_date == null && !_dateUnknown)
-            ? null
-            : () => _goTo(_WelcomeStep.placeBudget),
-        onBack: _back,
-      ),
-      _WelcomeStep.placeBudget => _PlaceBudgetStep(
-        cities: _cities,
-        city: _city,
-        budgetController: _budgetController,
-        budgetSkipped: _budgetSkipped,
-        onCity: (city) => setState(() => _city = city),
-        onMoreCities: _pickOtherCity,
-        onBudgetChanged: () => setState(() => _budgetSkipped = false),
-        onSkipBudget: () => setState(() {
-          _budgetSkipped = !_budgetSkipped;
-          if (_budgetSkipped) _budgetController.clear();
-        }),
-        onNext: _city == null || (_budget == null && !_budgetSkipped)
-            ? null
-            : () => _goTo(_WelcomeStep.mahr),
-        onBack: _back,
-      ),
-      _WelcomeStep.mahr => JourneyQuestionPage(
-        step: 2,
-        total: _questionCount,
-        question: 'اتفقتوا على المهر؟',
-        help: _persona == GuestPersona.bride
-            ? 'اللي بتستلمينه من العريس. نحسبه لحاله ونذكرك بموعد استلامه.'
-            : 'اللي بتسلّمه لأهل العروسة. نحسبه لحاله ونذكرك بموعد تسليمه.',
-        primaryLabel: 'التالي',
-        onPrimary: _confirmMahr,
-        onBack: _back,
-        skipLabel: 'ما اتفقنا بعد',
-        onSkip: _skipMahr,
-        children: [
-          MahrFields(
-            pays: _persona != GuestPersona.bride,
-            totalController: _mahrTotalController,
-            settledController: _mahrSettledController,
-            dueDate: _mahrDueDate,
-            onPickDueDate: _pickMahrDueDate,
-            onChanged: () => setState(() {
-              _mahrError = null;
-              _mahrSettledError = null;
-            }),
-            totalError: _mahrError,
-            settledError: _mahrSettledError,
-          ),
-        ],
-      ),
-      _WelcomeStep.ready => _ReadyStep(
-        name: _name,
-        subtitle: _readySubtitle(),
-        city: _city ?? '',
-        hasDate: !_dateUnknown && _date != null,
-        catalogs: _catalogs(),
-        signedIn: _isAuthenticated(),
-        saving: _saving,
-        error: _error,
-        onSaveWithPhone: () => _keepOnPhone(AppRouter.register),
-        onLookFirst: () => _keepOnPhone(AppRouter.home),
-        onOpenPlan: _createAccountPlan,
-        onBack: _back,
-      ),
-    };
     // The start and «خطة مين؟» are the same for everyone. From a03 on the
     // plan being made already has its owner, so its steps take that
     // profile (the bride's rose and voice) before the plan exists.
@@ -486,25 +467,161 @@ class _SmartWelcomeScreenState extends State<SmartWelcomeScreen> {
         backgroundColor: AarastV3Color.canvas,
         child: JourneyProfileScope(
           profile: shared ? JourneyProfile.groom : _profile,
-          child: AnimatedSwitcher(
-            duration: AarastV3Motion.standard,
-            child: KeyedSubtree(key: ValueKey(_step), child: page),
+          // Built under the scope, so every word is in the plan owner's
+          // voice (the bride reads «تسمحين», not «تسمح»).
+          child: Builder(
+            builder: (context) => AnimatedSwitcher(
+              duration: AarastV3Motion.standard,
+              child: KeyedSubtree(key: ValueKey(_step), child: _page(context)),
+            ),
           ),
         ),
       ),
     );
   }
 
+  Widget _page(BuildContext context) {
+    return switch (_step) {
+      _WelcomeStep.start => _StartStep(
+        onPlan: () => _goTo(_WelcomeStep.whose),
+        onInvite: () => context.go(AppRouter.inviteAccess),
+        // A provider without an account goes straight to their own
+        // sign-up, never to a wall written for couples (D75).
+        onProvider: () => context.go(
+          _isAuthenticated()
+              ? AppRouter.providerApply
+              : '${AppRouter.register}?type=provider',
+        ),
+        onLogin: () => context.go(AppRouter.login),
+      ),
+      _WelcomeStep.whose => _WhoseStep(onChoose: _choosePersona, onBack: _back),
+      _WelcomeStep.nameDate => _NameDateStep(
+        controller: _nameController,
+        date: _date,
+        onNameChanged: () => setState(() {}),
+        onPickMonth: _pickDayInMonth,
+        onLaterMonths: _pickLaterMonth,
+        onNext: _name.isEmpty || _date == null
+            ? null
+            : () => _goTo(_WelcomeStep.placeBudget),
+        onSkipDate: _name.isEmpty ? null : _skipDate,
+        onBack: _back,
+      ),
+      _WelcomeStep.placeBudget => _PlaceBudgetStep(
+        cities: _cities,
+        city: _city,
+        budgetController: _budgetController,
+        onCity: (city) => setState(() => _city = city),
+        onMoreCities: _pickOtherCity,
+        onBudgetChanged: () => setState(() => _budgetSkipped = false),
+        onNext: _city == null || _budget == null
+            ? null
+            : () => _goTo(_WelcomeStep.mahr),
+        onSkipBudget: _city == null ? null : _skipBudget,
+        onBack: _back,
+      ),
+      _WelcomeStep.mahr => JourneyQuestionPage(
+        step: 2,
+        total: _questionCount,
+        question: 'اتفقتوا على المهر؟',
+        help: _persona == GuestPersona.bride
+            ? 'اللي بتستلمينه من العريس. نحسبه برّا الميزانية ونقول لك كم باقي.'
+            : 'اللي بتسلّمه لأهل العروسة. نحسبه برّا الميزانية ونقول لك كم باقي.',
+        primaryLabel: 'التالي',
+        onPrimary: _confirmMahr,
+        onBack: _back,
+        skipLabel: 'ما اتفقنا بعد',
+        onSkip: _skipMahr,
+        children: [
+          JourneyEntryNote(
+            text: context.say(
+              'أرقام المهر ما يشوفها غيرك، إلا اللي تسمح له يشوف المال.',
+              'أرقام المهر ما يشوفها غيرك، إلا اللي تسمحين له يشوف المال.',
+            ),
+            icon: LucideIcons.lock,
+            tone: JourneyEntryNoteTone.bare,
+            color: AarastV3Color.textMuted,
+          ),
+          const SizedBox(height: AarastV3Space.x3),
+          MahrFields(
+            pays: _persona != GuestPersona.bride,
+            totalController: _mahrTotalController,
+            settledController: _mahrSettledController,
+            dueDate: _mahrDueDate,
+            onPickDueDate: _pickMahrDueDate,
+            onChanged: () => setState(() {
+              _mahrError = null;
+              _mahrSettledError = null;
+            }),
+            totalError: _mahrError,
+            settledError: _mahrSettledError,
+          ),
+          // A reminder needs a day to remind of, and an account to send
+          // it to: before the account it is a promise kept on saving.
+          if (_mahrDueDate != null && _mahrRemaining > 0) ...[
+            const SizedBox(height: AarastV3Space.x2),
+            JourneyEntryNote(
+              text: _isAuthenticated()
+                  ? 'نذكّرك قبل الموعد.'
+                  : context.say(
+                      'لو حفظت خطتك برقمك، نذكّرك قبل الموعد.',
+                      'لو حفظتي خطتك برقمك، نذكّرك قبل الموعد.',
+                    ),
+              icon: LucideIcons.bell,
+              tone: JourneyEntryNoteTone.bare,
+            ),
+          ],
+        ],
+      ),
+      _WelcomeStep.ready => _ReadyStep(
+        name: _name,
+        subtitle: _readySubtitle(),
+        moneyLine: _readyMoneyLine(),
+        city: _city ?? '',
+        providerCount: _providerCountCity == _city ? _providerCount : null,
+        hasDate: !_dateUnknown && _date != null,
+        catalogs: _catalogs(),
+        signedIn: _isAuthenticated(),
+        saving: _saving,
+        error: _error,
+        onSaveWithPhone: () => _keepOnPhone(AppRouter.register, over: true),
+        onLookFirst: () => _keepOnPhone(AppRouter.home),
+        onOpenPlan: _createAccountPlan,
+        onBack: _back,
+      ),
+    };
+  }
+
   JourneyProfile get _profile => JourneyProfile.fromPersona(_personaCode);
+
+  int get _mahrRemaining =>
+      MahrFields.remainingOf(_mahrTotalController, _mahrSettledController) ?? 0;
 
   String _readySubtitle() {
     final parts = <String>[_planTitle, ?_city];
     if (!_dateUnknown && _date != null) {
-      parts.add(formatArabicDayMonth(_date!));
+      parts.add(formatArabicWeekdayDayMonth(_date!));
       final hijri = HijriDate.fromGregorian(_date!);
       if (hijri != null) parts.add(hijri.dayAndMonth);
     }
     return parts.join(' · ');
+  }
+
+  /// What the plan's money starts with, only what was typed.
+  String? _readyMoneyLine() {
+    final parts = <String>[];
+    final budget = _budgetSkipped ? null : _budget;
+    if (budget != null) parts.add('الميزانية ${mahrWords(budget)}');
+    final mahr = MahrFields.amountOf(_mahrTotalController);
+    if (mahr != null && mahr > 0) {
+      final rest = _mahrRemaining;
+      parts.add(
+        rest > 0
+            ? 'المهر ${mahrWords(mahr)}، باقي ${mahrWords(rest)}'
+            : 'المهر ${mahrWords(mahr)}',
+      );
+    }
+    return parts.isEmpty ? null : parts.join(' · ');
   }
 
   Future<void> _pickDayInMonth(DateTime month) async {
@@ -522,6 +639,21 @@ class _SmartWelcomeScreenState extends State<SmartWelcomeScreen> {
       _date = picked;
       _dateUnknown = false;
     });
+  }
+
+  /// «موعدنا بعد ...»: the eighteen months after the six on the screen.
+  Future<void> _pickLaterMonth() async {
+    releaseFieldFocus();
+    final today = DateUtils.dateOnly(appNow());
+    final month = await showJourneySheet<DateTime>(
+      context: context,
+      builder: (sheetContext) => _LaterMonthsSheet(
+        first: DateTime(today.year, today.month + _monthsOnScreen),
+        selected: _date,
+      ),
+    );
+    if (month == null || !mounted) return;
+    await _pickDayInMonth(month);
   }
 
   Future<void> _pickOtherCity() async {

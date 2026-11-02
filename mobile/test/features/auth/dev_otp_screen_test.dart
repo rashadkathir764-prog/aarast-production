@@ -1,3 +1,4 @@
+import 'package:aarast_mobile/core/experience_v3/aarast_v3.dart';
 import 'package:aarast_mobile/core/network/api_client.dart';
 import 'package:aarast_mobile/core/storage/auth_storage.dart';
 import 'package:aarast_mobile/core/widgets/aarast_pressable.dart';
@@ -76,7 +77,6 @@ void main() {
 
     // D7 wording: «طلبنا», never «أرسلنا» or «وصل» while unconfirmed.
     expect(find.text('طلبنا لك رمز على واتساب'), findsOneWidget);
-    expect(find.text('إذا وصلك على الرقم'), findsOneWidget);
     expect(find.textContaining('أرسلنا'), findsNothing);
     expect(find.text('وصل إلى الرقم'), findsNothing);
   });
@@ -99,7 +99,7 @@ void main() {
     );
 
     expect(find.text('أرسلنا لك رمز على واتساب'), findsOneWidget);
-    expect(find.text('وصل إلى الرقم'), findsOneWidget);
+    expect(find.textContaining('طلبنا'), findsNothing);
   });
 
   testWidgets('OTP clears the stale server error when retry input starts', (
@@ -153,22 +153,23 @@ void main() {
       ),
     );
 
-    expect(find.textContaining('نعيد الإرسال بعد 1:00'), findsOneWidget);
-    final footer = find.byKey(const ValueKey('otp-resend-button'));
+    // D75: while the window runs, the row only says when; nothing to press.
+    final footer = find.byKey(
+      const ValueKey('otp-resend-button'),
+      skipOffstage: false,
+    );
     await tester.ensureVisible(footer);
+    await tester.pump();
+    expect(find.text('نرسله مرة ثانية بعد 1:00'), findsOneWidget);
     expect(
-      tester
-          .widget<AarastPressable>(
-            find.descendant(of: footer, matching: find.byType(AarastPressable)),
-          )
-          .onTap,
-      isNull,
+      find.descendant(of: footer, matching: find.byType(AarastPressable)),
+      findsNothing,
     );
 
     await tester.pump(const Duration(seconds: 59));
-    expect(find.textContaining('نعيد الإرسال بعد 0:01'), findsOneWidget);
+    expect(find.text('نرسله مرة ثانية بعد 0:01'), findsOneWidget);
     await tester.pump(const Duration(seconds: 1));
-    expect(find.text('ما وصلك؟ أرسل رمز جديد'), findsOneWidget);
+    expect(find.text('أرسله مرة ثانية'), findsOneWidget);
     expect(
       tester
           .widget<AarastPressable>(
@@ -177,6 +178,15 @@ void main() {
           .onTap,
       isNotNull,
     );
+
+    // «ما وصلني الرمز» opens what to check, with the same ways out.
+    final help = find.byKey(const ValueKey('otp-code-help'));
+    await tester.ensureVisible(help);
+    await tester.pump();
+    await tester.tap(help);
+    await tester.pumpAndSettle();
+    expect(find.byType(JourneyCodeHelpSheet), findsOneWidget);
+    expect(tester.takeException(), isNull);
   });
 }
 

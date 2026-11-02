@@ -195,13 +195,28 @@ void main() {
             onFinished: (_) {},
           ),
         );
-        await tester.pumpAndSettle();
+        // The page under the sheet keeps its spinner turning, so frames are
+        // pumped for a fixed time instead of settling.
+        await _pumpFrames(tester);
 
         expect(find.text('عندك خطة على هذا الجوال'), findsOneWidget);
-        expect(find.text('بند واحد · مهمة واحدة'), findsOneWidget);
+        // D75: the phone's plan by its name and city; an untitled account
+        // plan by its real counts.
+        expect(
+          find.text('خطة زفاف طويلة الاسم محفوظة على هذا الجهاز بأمان · صنعاء'),
+          findsOneWidget,
+        );
         expect(find.text('14 بند · 23 مهمة'), findsOneWidget);
         expect(tester.takeException(), isNull);
 
+        await tester.scrollUntilVisible(
+          find.text('خلّها خطة ثانية'),
+          240,
+          scrollable: find.byType(Scrollable).last,
+        );
+        await tester.pump();
+        await tester.tap(find.text('خلّها خطة ثانية'));
+        await tester.pump();
         await tester.scrollUntilVisible(
           find.text('متابعة'),
           240,
@@ -215,7 +230,7 @@ void main() {
         expect(tester.takeException(), isNull);
 
         gate.completeError(const ApiException('تعذر استيراد الخطة المحلية.'));
-        await tester.pumpAndSettle();
+        await _pumpFrames(tester);
 
         expect(find.text('تعذر استيراد الخطة المحلية.'), findsOneWidget);
         expect(find.text('متابعة'), findsOneWidget);
@@ -248,13 +263,23 @@ void main() {
       expect(service.migrateCalls, 1);
       expect(service.accountLookups, 0);
       expect(find.text('عندك خطة على هذا الجوال'), findsNothing);
-      expect(find.textContaining('في حسابك'), findsOneWidget);
+      expect(
+        find.text(
+          'نحفظ خطة زفاف طويلة الاسم محفوظة على هذا الجهاز بأمان في حسابك',
+        ),
+        findsOneWidget,
+      );
 
       gate.completeError(const ApiException('تعذر استيراد الخطة المحلية.'));
       await tester.pumpAndSettle();
 
-      expect(find.text('تعذر استيراد الخطة المحلية.'), findsOneWidget);
+      expect(find.text('ما قدرنا نحفظها في حسابك'), findsOneWidget);
+      expect(
+        find.textContaining('تعذر استيراد الخطة المحلية.'),
+        findsOneWidget,
+      );
       expect(find.text('جرّب مرة ثانية'), findsOneWidget);
+      expect(find.text('امسحها من الجوال'), findsOneWidget);
       expect(tester.takeException(), isNull);
     });
   });
@@ -519,6 +544,12 @@ class _FakeLocalPlanMigrationService extends LocalPlanMigrationService {
   Future<OnboardingCompleteResponse> migrate(LocalPlanSnapshot snapshot) {
     migrateCalls += 1;
     return onMigrate();
+  }
+}
+
+Future<void> _pumpFrames(WidgetTester tester) async {
+  for (var i = 0; i < 20; i++) {
+    await tester.pump(const Duration(milliseconds: 50));
   }
 }
 

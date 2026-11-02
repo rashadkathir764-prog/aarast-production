@@ -242,7 +242,14 @@ void main() {
         ),
       ),
     );
-    expect(find.text('2 من 4'), findsOneWidget);
+    // D75: the count from one is spoken on the progress track, not drawn.
+    expect(
+      find.byWidgetPredicate(
+        (w) => w is Semantics && w.properties.label == 'السؤال 2 من 4',
+      ),
+      findsOneWidget,
+    );
+    expect(find.text('2 من 4'), findsNothing);
     expect(find.text('أكمل بدون ميزانية'), findsOneWidget);
   });
 }

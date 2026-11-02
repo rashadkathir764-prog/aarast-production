@@ -26,6 +26,10 @@ class ProviderAuthGate extends StatelessWidget {
 
   static const message = 'ادخل بحسابك عشان ترسل طلب عرض وتتابع الردود.';
 
+  /// A provider page (D75) speaks to the provider, not to a couple.
+  static const providerMessage =
+      'ادخل بحسابك عشان تدير نشاطك وتستقبل طلبات العرسان.';
+
   final Widget child;
   final String resumeLocation;
   final bool embedded;
@@ -86,7 +90,7 @@ class ProviderAuthGate extends StatelessWidget {
       embedded: embedded,
       icon: LucideIcons.lock,
       title: 'ادخل أول',
-      message: message,
+      message: registerAsProvider ? providerMessage : message,
       actions: [
         JourneyButton(
           key: const Key('provider-auth-gate-login'),

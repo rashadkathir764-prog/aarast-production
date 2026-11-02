@@ -24,25 +24,27 @@ void main() {
     final repository = await _repository();
     await _pump(tester, repository);
 
-    expect(find.text('حساب مزود'), findsOneWidget);
-    expect(find.text('ابدأ استقبال طلبات العرسان'), findsOneWidget);
+    expect(find.text('استقبال طلبات العرسان'), findsOneWidget);
     expect(
-      find.text('حسابك أنت. نشاطك وأسعارك نسألك عنها بعدين.'),
+      find.text('مكان لنشاطك في اعّرست، توصل منه طلبات عروض الأسعار.'),
       findsOneWidget,
     );
-    expect(find.text('اسمك'), findsOneWidget);
-    expect(find.text('رقم الهاتف'), findsOneWidget);
-    expect(find.text('كلمة المرور'), findsOneWidget);
-    expect(
-      find.text(
-        'بعدها رمز على واتساب. ونفس الرقم تقدر تسوي فيه خطة عرسك بعدين.',
-      ),
-      findsOneWidget,
-    );
-    expect(
-      find.widgetWithText(JourneyButton, 'إنشاء حساب مزود'),
-      findsOneWidget,
-    );
+    expect(find.text('الاسم'), findsOneWidget);
+    expect(find.text('رقم جوالك'), findsOneWidget);
+    // D75: the account is the number and a WhatsApp code; no password.
+    expect(find.byType(TextField), findsNWidgets(2));
+    expect(find.textContaining('كلمة المرور'), findsNothing);
+    // The four joining steps that follow the code.
+    expect(find.text('بعد رمز واتساب، أربع خطوات'), findsOneWidget);
+    for (final step in [
+      'النشاط ونوعه',
+      'مكان العمل',
+      'الخدمة وسعرها',
+      'معاينة الإعلان وإرساله، ثم المراجعة',
+    ]) {
+      expect(find.text(step), findsOneWidget);
+    }
+    expect(find.widgetWithText(JourneyButton, 'أرسل الرمز'), findsOneWidget);
     // Nothing about the business is asked here any more.
     expect(find.text('المدينة'), findsNothing);
     expect(find.text('اسم النشاط'), findsNothing);
@@ -58,9 +60,8 @@ void main() {
     await tester.tap(find.byKey(const Key('provider-register-submit')));
     await tester.pumpAndSettle();
 
-    expect(find.text('اكتب اسمك'), findsOneWidget);
-    expect(find.text('اكتب رقم هاتفك'), findsOneWidget);
-    expect(find.text('اكتب كلمة المرور'), findsOneWidget);
+    expect(find.text('الاسم مطلوب'), findsOneWidget);
+    expect(find.text('رقم الجوال مطلوب'), findsOneWidget);
     expect(repository.starts, isEmpty);
 
     await tester.enterText(
@@ -68,7 +69,8 @@ void main() {
       'علي الشامي',
     );
     await tester.pumpAndSettle();
-    expect(find.text('اكتب اسمك'), findsNothing);
+    expect(find.text('الاسم مطلوب'), findsNothing);
+    expect(find.text('رقم الجوال مطلوب'), findsOneWidget);
   });
 
   testWidgets('the account is started and the code screen leads to joining', (
@@ -77,7 +79,7 @@ void main() {
     final repository = await _repository();
     final router = await _pump(tester, repository);
 
-    await _fill(tester, password: 'Test123456');
+    await _fill(tester);
     await tester.tap(find.byKey(const Key('provider-register-submit')));
     await tester.pumpAndSettle();
 
@@ -101,7 +103,7 @@ void main() {
       resume: AppRouter.providerDashboard,
     );
 
-    await _fill(tester, password: 'Test123456');
+    await _fill(tester);
     await tester.tap(find.byKey(const Key('provider-register-submit')));
     await tester.pumpAndSettle();
 
@@ -109,24 +111,18 @@ void main() {
     expect(args.successLocation, AppRouter.providerDashboard);
   });
 
-  testWidgets('a password too short or too long is refused on the phone', (
+  // D75 replaced the password length guards: a wrong number is refused on
+  // the phone, and nothing is sent.
+  testWidgets('a number that is not Yemeni is refused on the phone', (
     tester,
   ) async {
     final repository = await _repository();
     await _pump(tester, repository);
 
-    await _fill(tester, password: '123');
+    await _fill(tester, phone: '12345');
     await tester.tap(find.byKey(const Key('provider-register-submit')));
     await tester.pumpAndSettle();
-    expect(find.text('كلمة المرور 6 أحرف أو أكثر'), findsOneWidget);
-
-    await tester.enterText(
-      find.byKey(const Key('provider-register-password')).first,
-      'ك' * 37,
-    );
-    await tester.tap(find.byKey(const Key('provider-register-submit')));
-    await tester.pumpAndSettle();
-    expect(find.textContaining('كلمة المرور طويلة'), findsOneWidget);
+    expect(find.text('رقم الجوال غير صحيح'), findsOneWidget);
     expect(repository.starts, isEmpty);
   });
 
@@ -134,7 +130,7 @@ void main() {
     final repository = await _repository(failStart: true);
     await _pump(tester, repository);
 
-    await _fill(tester, password: 'Test123456');
+    await _fill(tester);
     await tester.tap(find.byKey(const Key('provider-register-submit')));
     await tester.pumpAndSettle();
 
@@ -210,18 +206,14 @@ void main() {
   });
 }
 
-Future<void> _fill(WidgetTester tester, {required String password}) async {
+Future<void> _fill(WidgetTester tester, {String phone = '773210455'}) async {
   await tester.enterText(
     find.byKey(const Key('provider-register-name')).first,
     'علي الشامي',
   );
   await tester.enterText(
     find.byKey(const Key('provider-register-phone')).first,
-    '773210455',
-  );
-  await tester.enterText(
-    find.byKey(const Key('provider-register-password')).first,
-    password,
+    phone,
   );
   await tester.pumpAndSettle();
 }
@@ -300,7 +292,6 @@ class _RecordingRepository extends AuthRepository {
   Future<OtpRequestResult> startRegistration({
     required String name,
     required String phone,
-    required String password,
   }) async {
     if (failStart) throw const ApiException('الرقم مسجّل من قبل.');
     starts.add((name, phone));

@@ -1,16 +1,19 @@
 import 'dart:async';
-import 'dart:convert';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:provider/provider.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../../core/experience_v3/aarast_v3.dart';
 import '../../../core/phone/phone_number_utils.dart';
+import '../../../core/phone/yemeni_phone_normalizer.dart';
 import '../../../core/routing/app_router.dart';
 import '../../../core/routing/pop_or_go.dart';
 import '../../../core/utils/arabic_date_formatter.dart';
+import '../../../core/utils/whatsapp_share.dart';
 import '../../../core/widgets/aarast_otp_field.dart';
 import '../../../core/widgets/aarast_toast.dart';
 import '../../../core/widgets/aarast_ui.dart';
@@ -23,13 +26,20 @@ import '../providers/sharing_provider.dart';
 
 part 'invite_decision_screen.cards.dart';
 
-enum _InviteStep { phone, account, code, invite }
+enum _InviteStep { phone, code, closed, invite }
 
-/// q01 to q03: an invite link opens on the phone it was sent to. The number
-/// is proven with a code first (q01), a new person makes an account on the
-/// way (q02), and only then the invite shows who asks, the role and what
-/// each section allows (q03). Joining or refusing is always an explicit
-/// press; nothing about the plan shows before the code.
+/// The message that asks the plan's owner for a new invite, when this one
+/// does not open with the proven number.
+const _askNewInviteMessage =
+    'هلا، دعوتك في اعّرست ما فتحت معي. ارسل لي دعوة جديدة على رقمي.';
+
+/// An invite link opens on the phone it was sent to (D75). The number (and,
+/// for a first visit, a name; no password) is proven with a WhatsApp code,
+/// and only then the invite shows who asks, the role and what each section
+/// allows. Joining or refusing is always an explicit press; nothing about
+/// the plan shows before the code. A link that does not open with that
+/// number (ended, or sent to another number; the server keeps the two
+/// apart from no one) says both and offers to ask for a new one.
 class InviteDecisionScreen extends StatefulWidget {
   const InviteDecisionScreen({required this.token, super.key});
 
@@ -47,8 +57,6 @@ class _InviteDecisionScreenState extends State<InviteDecisionScreen> {
   final _phoneController = TextEditingController();
   final _otpController = TextEditingController();
   final _nameController = TextEditingController();
-  final _passwordController = TextEditingController();
-  final _confirmationController = TextEditingController();
 
   _InviteStep _step = _InviteStep.phone;
   AarastOtpFieldState _otpFieldState = AarastOtpFieldState.idle;
@@ -58,8 +66,7 @@ class _InviteDecisionScreenState extends State<InviteDecisionScreen> {
   String? _otpNoticeMessage;
   bool _otpDeliveryConfirmed = false;
   String? _nameError;
-  String? _passwordError;
-  String? _confirmationError;
+  String? _phoneError;
   Timer? _resendTimer;
   int _resendSeconds = 0;
 
@@ -88,34 +95,49 @@ class _InviteDecisionScreenState extends State<InviteDecisionScreen> {
     _phoneController.dispose();
     _otpController.dispose();
     _nameController.dispose();
-    _passwordController.dispose();
-    _confirmationController.dispose();
     super.dispose();
   }
 
   Future<void> _requestOtp() async {
     final auth = context.read<AuthController>();
     if (auth.isSubmitting) return;
-    if (_phoneController.text.trim().isEmpty) {
-      AarastToast.showError(context, 'اكتب الرقم اللي وصلتك عليه الدعوة.');
+    final phone = _phoneController.text.trim();
+    if (phone.isEmpty || !isValidYemeniPhoneInput(phone)) {
+      setState(
+        () => _phoneError = phone.isEmpty
+            ? 'اكتب الرقم اللي وصلتك عليه الدعوة'
+            : 'رقم الجوال غير صحيح',
+      );
       return;
     }
-    final result = await auth.requestInviteOtp(
-      token: _token,
-      phone: _phoneController.text.trim(),
-    );
+    final result = await auth.requestInviteOtp(token: _token, phone: phone);
     if (!mounted || result == null) return;
     _otpController.clear();
+    final needsName =
+        result.accountSetupRequired && _nameController.text.trim().isEmpty;
     setState(() {
       _accountSetupRequired = result.accountSetupRequired;
-      _step = result.accountSetupRequired
-          ? _InviteStep.account
-          : _InviteStep.code;
+      // A first visit needs a name for the account: asked here, before
+      // the code is typed, so the same code makes the account.
+      _nameError = needsName ? 'اكتب اسمك، أول مرة تدخل اعّرست' : null;
+      _step = needsName ? _InviteStep.phone : _InviteStep.code;
       _otpFieldState = AarastOtpFieldState.idle;
       _otpNoticeMessage = result.noticeMessage;
       _otpDeliveryConfirmed = result.isDeliveryConfirmed;
     });
     _startResendCooldown();
+  }
+
+  /// The name was missing on a first visit; the code is already on its way.
+  void _continueWithName() {
+    if (_nameController.text.trim().isEmpty) {
+      setState(() => _nameError = 'اكتب اسمك، أول مرة تدخل اعّرست');
+      return;
+    }
+    setState(() {
+      _nameError = null;
+      _step = _InviteStep.code;
+    });
   }
 
   Future<void> _resendOtp() async {
@@ -131,31 +153,6 @@ class _InviteDecisionScreenState extends State<InviteDecisionScreen> {
       _otpDeliveryConfirmed = result.isDeliveryConfirmed;
     });
     _startResendCooldown();
-  }
-
-  /// q02: the account's name and password are checked here, then sent with
-  /// the code, so the same code makes the account and proves the number.
-  void _continueAccount() {
-    final name = _nameController.text.trim();
-    final password = _passwordController.text;
-    setState(() {
-      _nameError = name.isEmpty ? 'اكتب اسمك' : null;
-      _passwordError = password.length < 6
-          ? 'كلمة المرور 6 أحرف أو أكثر'
-          : utf8.encode(password).length > 72
-          ? 'كلمة المرور طويلة، خلّها أقصر'
-          : null;
-      _confirmationError =
-          _passwordError == null && password != _confirmationController.text
-          ? 'الكلمتين مو نفس بعض'
-          : null;
-    });
-    if (_nameError != null ||
-        _passwordError != null ||
-        _confirmationError != null) {
-      return;
-    }
-    setState(() => _step = _InviteStep.code);
   }
 
   Future<void> _verifyOtp() async {
@@ -175,7 +172,6 @@ class _InviteDecisionScreenState extends State<InviteDecisionScreen> {
       code: code,
       resumeInviteToken: _token,
       accountName: _accountSetupRequired ? _nameController.text.trim() : null,
-      accountPassword: _accountSetupRequired ? _passwordController.text : null,
     );
     if (!mounted) return;
     if (!success) {
@@ -184,7 +180,11 @@ class _InviteDecisionScreenState extends State<InviteDecisionScreen> {
         _otpFieldState = AarastOtpFieldState.error;
         if (auth.errorCode == 'INVITE_ACCOUNT_SETUP_REQUIRED') {
           _accountSetupRequired = true;
-          _step = _InviteStep.account;
+          _nameError = 'اكتب اسمك، أول مرة تدخل اعّرست';
+          _step = _InviteStep.phone;
+        } else if (auth.errorCode == 'INVITE_NOT_FOUND_FOR_PHONE') {
+          _resendTimer?.cancel();
+          _step = _InviteStep.closed;
         }
       });
       return;
@@ -197,8 +197,6 @@ class _InviteDecisionScreenState extends State<InviteDecisionScreen> {
     }
     auth.consumePendingInviteResume(_token);
     setState(() => _otpFieldState = AarastOtpFieldState.success);
-    await Future<void>.delayed(AarastOtpField.successHold(context));
-    if (!mounted) return;
     await _loadInvite();
   }
 
@@ -233,8 +231,7 @@ class _InviteDecisionScreenState extends State<InviteDecisionScreen> {
       _otpDeliveryConfirmed = false;
       _accountSetupRequired = false;
       _nameError = null;
-      _passwordError = null;
-      _confirmationError = null;
+      _phoneError = null;
       _step = _InviteStep.phone;
     });
   }
@@ -330,14 +327,9 @@ class _InviteDecisionScreenState extends State<InviteDecisionScreen> {
 
   void _handleBack() {
     switch (_step) {
-      case _InviteStep.account:
-        _returnToPhone();
       case _InviteStep.code:
-        if (_accountSetupRequired) {
-          setState(() => _step = _InviteStep.account);
-        } else {
-          _returnToPhone();
-        }
+      case _InviteStep.closed:
+        _returnToPhone();
       case _InviteStep.phone:
       case _InviteStep.invite:
         context.popOrGo(
@@ -348,6 +340,42 @@ class _InviteDecisionScreenState extends State<InviteDecisionScreen> {
     }
   }
 
+  Future<void> _askNewInvite() async {
+    bool opened;
+    try {
+      opened = await launchUrl(
+        whatsAppShareUri(_askNewInviteMessage),
+        mode: LaunchMode.externalApplication,
+      );
+    } on Object {
+      opened = false;
+    }
+    if (opened || !mounted) return;
+    await Clipboard.setData(const ClipboardData(text: _askNewInviteMessage));
+    if (!mounted) return;
+    AarastToast.showInfo(context, 'نسخنا لك الرسالة، أرسلها له بأي طريقة.');
+  }
+
+  void _showCodeHelp() {
+    showJourneySheet<void>(
+      context: context,
+      builder: (sheetContext) => JourneyCodeHelpSheet(
+        resendSeconds: () => _resendSeconds,
+        changeLabel: 'تغيير الرقم',
+        onResend: () {
+          Navigator.of(sheetContext).pop();
+          _resendOtp();
+        },
+        onChangeNumber: () {
+          Navigator.of(sheetContext).pop();
+          _returnToPhone();
+        },
+        onLater: null,
+        onPassword: null,
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final auth = context.watch<AuthController>();
@@ -356,19 +384,12 @@ class _InviteDecisionScreenState extends State<InviteDecisionScreen> {
         ? context.watch<SharingProvider>()
         : null;
     final invite = sharing?.selectedInvite;
-    final title = switch (_step) {
-      _InviteStep.phone => 'دعوة للمشاركة',
-      _InviteStep.account => 'حسابك في اعّرست',
-      _InviteStep.code => 'رمز التحقق',
-      _InviteStep.invite => 'الدعوة',
-    };
     final children = switch (_step) {
       _InviteStep.phone => _phoneStep(auth),
-      _InviteStep.account => _accountStep(),
       _InviteStep.code => _codeStep(auth),
+      _InviteStep.closed => _closedStep(),
       _InviteStep.invite => _inviteStep(sharing!, invite),
     };
-    final bottom = _bottom(auth, sharing, invite);
 
     return PopScope(
       canPop: false,
@@ -379,188 +400,90 @@ class _InviteDecisionScreenState extends State<InviteDecisionScreen> {
         maxWidth: 520,
         backgroundColor: AarastV3Color.canvas,
         resizeToAvoidBottomInset: true,
-        child: Column(
+        child: JourneyPage(
+          bottom: _bottom(auth, sharing, invite),
           children: [
-            Expanded(
-              child: ListView(
-                padding: AarastV3Density.pageInsets,
-                keyboardDismissBehavior:
-                    ScrollViewKeyboardDismissBehavior.onDrag,
-                children: [
-                  JourneySubHeader(title: title, onBack: _handleBack),
-                  _InviteSteps(
-                    current: switch (_step) {
-                      _InviteStep.phone => 0,
-                      _InviteStep.account || _InviteStep.code => 1,
-                      _InviteStep.invite => 2,
-                    },
-                  ),
-                  const SizedBox(height: AarastV3Space.x4),
-                  ...children,
-                ],
-              ),
-            ),
-            if (bottom != null)
-              Padding(
-                padding: const EdgeInsets.fromLTRB(
-                  AarastV3Space.x4,
-                  AarastV3Space.x2,
-                  AarastV3Space.x4,
-                  AarastV3Space.x4,
-                ),
-                child: bottom,
-              ),
+            JourneyStepBar(onBack: _handleBack),
+            ...children,
           ],
         ),
       ),
     );
   }
 
-  /// q01: the number the invite was sent to. The inviter's line is not shown
-  /// yet: nothing about the plan is read before the code (C35).
+  /// The number the invite was sent to, and a name for a first visit.
+  /// Nothing about the plan is read before the code (C35).
   List<Widget> _phoneStep(AuthController auth) {
+    final error = auth.errorMessage;
     return [
-      JourneyTextField(
+      const JourneyEntryQuestion(
+        question: 'دعوة للمشاركة',
+        help: 'نفس الرقم اللي وصلته الدعوة عليه.',
+      ),
+      const SizedBox(height: AarastV3Space.x5),
+      JourneyPhoneField(
         key: const Key('invite-phone-field'),
-        label: 'رقم الهاتف',
         controller: _phoneController,
-        icon: LucideIcons.phone,
-        hint: '7XX XXX XXX',
-        keyboardType: TextInputType.phone,
-        textInputAction: TextInputAction.done,
-        textDirection: TextDirection.ltr,
-        textAlign: TextAlign.right,
         autofocus: true,
-        errorText: auth.errorMessage,
+        errorText: _phoneError,
         onChanged: (_) {
           if (auth.errorMessage != null) auth.clearError();
+          if (_phoneError != null) setState(() => _phoneError = null);
         },
         onSubmitted: (_) => _requestOtp(),
       ),
-      const SizedBox(height: AarastV3Space.x2),
-      Padding(
-        padding: const EdgeInsets.symmetric(horizontal: AarastV3Space.x1),
-        child: Text(
-          'نفس الرقم اللي وصلته الدعوة عليه.',
-          style: JourneyType.of(
-            JourneyType.small,
-            color: AarastV3Color.textMuted,
-          ),
-        ),
-      ),
-    ];
-  }
-
-  /// q02: a first visit makes the account; the code comes next.
-  List<Widget> _accountStep() {
-    return [
-      Text(
-        'أول مرة تدخل؟ نسوي لك حساب، وتقدر بعدين تبدأ خطتك أنت كمان.',
-        style: JourneyType.of(
-          JourneyType.body,
-          color: AarastV3Color.textMuted,
-          height: 1.5,
-        ),
-      ),
-      const SizedBox(height: AarastV3Space.x3),
+      const SizedBox(height: AarastV3Field.gap),
       JourneyTextField(
         key: const ValueKey('invite-account-name-field'),
-        label: 'اسمك',
+        label: 'الاسم',
+        hint: 'اسمك',
         controller: _nameController,
-        textInputAction: TextInputAction.next,
-        autofocus: true,
+        textInputAction: TextInputAction.done,
         autofillHints: const [AutofillHints.name],
+        helper: 'لو أول مرة تدخل اعّرست',
+        helperColor: AarastV3Color.textMuted,
         errorText: _nameError,
         onChanged: (_) {
           if (_nameError != null) setState(() => _nameError = null);
         },
       ),
-      const SizedBox(height: AarastV3Space.x2),
-      JourneyTextField(
-        key: const ValueKey('invite-account-password-field'),
-        label: 'كلمة المرور',
-        controller: _passwordController,
-        icon: LucideIcons.lock,
-        obscureText: true,
-        textInputAction: TextInputAction.next,
-        autofillHints: const [AutofillHints.newPassword],
-        errorText: _passwordError,
-        onChanged: (_) {
-          if (_passwordError != null) setState(() => _passwordError = null);
-        },
-      ),
-      const SizedBox(height: AarastV3Space.x2),
-      JourneyTextField(
-        key: const ValueKey('invite-account-password-confirmation-field'),
-        label: 'تأكيد كلمة المرور',
-        controller: _confirmationController,
-        icon: LucideIcons.lock,
-        obscureText: true,
-        textInputAction: TextInputAction.done,
-        errorText: _confirmationError,
-        onChanged: (_) {
-          if (_confirmationError != null) {
-            setState(() => _confirmationError = null);
-          }
-        },
-        onSubmitted: (_) => _continueAccount(),
-      ),
+      if (error != null) ...[
+        const SizedBox(height: AarastV3Space.x3),
+        JourneyNote(
+          text: auth.failedOffline ? 'ما قدرنا نرسل الرمز، النت مقطوع.' : error,
+          icon: LucideIcons.alertCircle,
+          color: AarastV3Color.danger,
+          soft: AarastV3Color.dangerSoft,
+        ),
+      ],
     ];
   }
 
-  /// The code (no screen of its own in the design): the step line stays on
-  /// «التحقق», and the copy never claims a delivery the server did not
-  /// confirm.
+  /// The code, as on every code screen; the copy never claims a delivery
+  /// the server did not confirm.
   List<Widget> _codeStep(AuthController auth) {
-    if (_otpFieldState == AarastOtpFieldState.success) {
-      return const [
-        AarastOtpSuccessPanel(
-          title: 'تأكدنا من رقمك',
-          subtitle: 'نفتح لك الدعوة الحين.',
-        ),
-      ];
-    }
-    final phone = PhoneNumberUtils.display(_phoneController.text.trim());
-    final waiting = _resendSeconds > 0;
+    final phone = _phoneController.text.trim();
+    final wrongCode = auth.errorCode == 'OTP_INVALID_OR_EXPIRED';
     return [
-      Text(
-        _otpDeliveryConfirmed
+      JourneyEntryQuestion(
+        question: _otpDeliveryConfirmed
             ? 'أرسلنا لك رمز على واتساب'
             : 'طلبنا لك رمز على واتساب',
-        style: JourneyType.of(JourneyType.title, weight: JourneyType.bold),
+        help: PhoneNumberUtils.directionalDisplay(phone) ?? phone,
       ),
-      const SizedBox(height: AarastV3Space.x1),
-      Wrap(
-        crossAxisAlignment: WrapCrossAlignment.center,
-        spacing: 6,
-        children: [
-          Text(
-            _otpDeliveryConfirmed ? 'وصل إلى الرقم' : 'إذا وصلك على الرقم',
-            style: JourneyType.of(
-              JourneyType.body,
-              color: AarastV3Color.textMuted,
-            ),
-          ),
-          Text(
-            phone ?? _phoneController.text.trim(),
-            textDirection: TextDirection.ltr,
-            style: JourneyType.of(
-              JourneyType.body,
-              color: AarastV3Color.textMuted,
-            ),
-          ),
-          JourneyTextAction(
-            label: 'تغيير',
-            color: AarastV3Color.primary,
-            onPressed: auth.isSubmitting ? null : _returnToPhone,
-          ),
-        ],
+      Align(
+        alignment: AlignmentDirectional.centerStart,
+        child: JourneyTextAction(
+          label: 'تغيير الرقم',
+          color: context.accent.primaryDark,
+          onPressed: auth.isSubmitting ? null : _returnToPhone,
+        ),
       ),
-      const SizedBox(height: AarastV3Space.x4),
       if (_otpNoticeMessage case final notice?) ...[
-        JourneyNote(text: notice, icon: LucideIcons.messageCircle),
-        const SizedBox(height: AarastV3Space.x3),
+        const SizedBox(height: AarastV3Space.x2),
+        JourneyEntryNote(text: notice, icon: LucideIcons.messageCircle),
       ],
+      const SizedBox(height: AarastV3Space.x3),
       AarastOtpField(
         controller: _otpController,
         length: _otpLength,
@@ -570,7 +493,18 @@ class _InviteDecisionScreenState extends State<InviteDecisionScreen> {
         onChanged: _onOtpChanged,
         onCompleted: (_) => _verifyOtp(),
       ),
-      if (auth.errorMessage case final error?) ...[
+      if (wrongCode) ...[
+        const SizedBox(height: AarastV3Space.x3),
+        Text(
+          'الرمز غلط، جرّب مرة ثانية.',
+          textAlign: TextAlign.center,
+          style: JourneyType.of(
+            JourneyType.body,
+            weight: JourneyType.bold,
+            color: AarastV3Color.danger,
+          ),
+        ),
+      ] else if (auth.errorMessage case final error?) ...[
         const SizedBox(height: AarastV3Space.x3),
         JourneyNote(
           text: error,
@@ -579,22 +513,36 @@ class _InviteDecisionScreenState extends State<InviteDecisionScreen> {
           soft: AarastV3Color.dangerSoft,
         ),
       ],
-      const SizedBox(height: AarastV3Space.x3),
-      Center(
-        child: JourneyTextAction(
-          key: const ValueKey('invite-otp-resend-button'),
-          label: waiting
-              ? 'نعيد الإرسال بعد ${_clock(_resendSeconds)}'
-              : 'أرسل رمز جديد',
-          color: AarastV3Color.primary,
-          onPressed: waiting || auth.isSubmitting ? null : _resendOtp,
-        ),
+      const SizedBox(height: AarastV3Space.x4),
+      JourneyCodeResendRow(
+        seconds: _resendSeconds,
+        onResend: auth.isSubmitting ? null : _resendOtp,
+        onHelp: _showCodeHelp,
       ),
     ];
   }
 
-  /// q03: who asks, the role, and what each section allows, built from the
-  /// invite's own flags.
+  /// The proven number does not open this link: it ended, or it was sent
+  /// to another number. Both are said, since the server tells them apart
+  /// to no one.
+  List<Widget> _closedStep() {
+    return const [
+      JourneyEntryQuestion(
+        question: 'الدعوة ما تفتح بهذا الرقم',
+        help:
+            'يا إنها انتهت، يا إنها انرسلت لرقم ثاني. الدعوة تفتح بس بالرقم اللي انرسلت له.',
+      ),
+      SizedBox(height: AarastV3Space.x5),
+      JourneyEntryNote(
+        key: Key('invite-closed'),
+        text: 'رسالة واتساب جاهزة تطلب فيها دعوة جديدة لرقمك.',
+        icon: LucideIcons.messageCircle,
+      ),
+    ];
+  }
+
+  /// Who asks, the role, and what each section allows, from the invite's
+  /// own flags.
   List<Widget> _inviteStep(SharingProvider sharing, PlanInvite? invite) {
     if (sharing.isLoading) {
       return const [
@@ -624,43 +572,61 @@ class _InviteDecisionScreenState extends State<InviteDecisionScreen> {
       ];
     }
     final inviter = invite.inviterName?.trim() ?? '';
+    final planTitle = invite.weddingPlanTitle?.trim() ?? '';
+    final date = invite.weddingDate;
+    final city = invite.weddingCity?.trim() ?? '';
     final ended = invite.hasEndedMembership;
     return [
-      _InviterCard(invite: invite),
+      const SizedBox(height: AarastV3Space.x2),
+      const JourneyEntryNote(
+        text: 'تأكدنا من رقمك.',
+        icon: LucideIcons.check,
+        tone: JourneyEntryNoteTone.bare,
+      ),
+      JourneyEntryQuestion(
+        key: const ValueKey('invite-inviter-card'),
+        question: inviter.isEmpty
+            ? (planTitle.isEmpty ? 'دعوة لخطة عرس' : planTitle)
+            : '$inviter يشتيك معه في عرسه',
+        help: [
+          if (planTitle.isNotEmpty) planTitle,
+          if (city.isNotEmpty) city,
+          if (date != null) formatArabicWeekdayDayMonth(date),
+        ].join(' · '),
+      ),
+      const SizedBox(height: AarastV3Space.x5),
       if (ended)
-        Padding(
-          padding: const EdgeInsets.only(top: AarastV3Space.x3),
-          child: JourneyNote(
-            key: const Key('invite-membership-ended'),
-            text:
-                'قبلت هذي الدعوة من قبل، بس ما عاد لك وصول للخطة. اطلب منه يرسل لك دعوة جديدة.',
-            icon: LucideIcons.userX,
-            color: AarastV3Color.textMuted,
-            soft: AarastV3Color.paper,
-          ),
+        const JourneyEntryNote(
+          key: Key('invite-membership-ended'),
+          text:
+              'قبلت هذي الدعوة من قبل، بس ما عاد لك وصول للخطة. اطلب منه يرسل لك دعوة جديدة.',
+          icon: LucideIcons.userX,
+          color: AarastV3Color.textMuted,
         )
       else ...[
-        JourneySectionTitle('دورك: ${participantRoleLabel(invite.role)}'),
-        _InviteRights(invite: invite),
-        const SizedBox(height: AarastV3Space.x3),
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: AarastV3Space.x1),
-          child: Text(
-            '${inviter.isEmpty ? 'صاحب الخطة' : inviter} يقدر يغيّرها، وأنت تقدر تطلع من الخطة متى ما تشتي.',
-            style: JourneyType.of(
-              JourneyType.detail,
-              color: AarastV3Color.textMuted,
-            ),
+        JourneyBox(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'دورك: ${participantRoleLabel(invite.role)}',
+                style: JourneyType.of(
+                  JourneyType.bodyLarge,
+                  weight: JourneyType.bold,
+                ),
+              ),
+              const SizedBox(height: AarastV3Space.x1),
+              _InviteRights(invite: invite),
+            ],
           ),
         ),
         if (!invite.isPending && !invite.hasActiveMembership) ...[
           const SizedBox(height: AarastV3Space.x3),
-          JourneyNote(
+          JourneyEntryNote(
             key: ValueKey('invite-status-${invite.status}'),
             text: _closedInviteMessage(invite.status),
             icon: LucideIcons.info,
             color: AarastV3Color.textMuted,
-            soft: AarastV3Color.paper,
           ),
         ],
       ],
@@ -683,69 +649,68 @@ class _InviteDecisionScreenState extends State<InviteDecisionScreen> {
   ) {
     switch (_step) {
       case _InviteStep.phone:
-        return JourneyButton(
-          key: const Key('invite-request-otp-button'),
-          label: 'إرسال رمز التحقق',
-          icon: LucideIcons.send,
-          expand: true,
-          large: true,
-          loading: auth.isSubmitting,
-          onPressed: _requestOtp,
-        );
-      case _InviteStep.account:
-        return JourneyButton(
-          key: const ValueKey('invite-account-setup-continue'),
-          label: 'متابعة إلى رمز التحقق',
-          expand: true,
-          large: true,
-          onPressed: _continueAccount,
+        final codeSent = _accountSetupRequired && _resendSeconds > 0;
+        return JourneyEntryActions(
+          primary: JourneyButton(
+            key: const Key('invite-request-otp-button'),
+            label: codeSent ? 'التالي' : 'أرسل الرمز',
+            expand: true,
+            large: true,
+            loading: auth.isSubmitting,
+            onPressed: codeSent ? _continueWithName : _requestOtp,
+          ),
         );
       case _InviteStep.code:
-        if (_otpFieldState == AarastOtpFieldState.success) return null;
-        return JourneyButton(
-          key: const Key('invite-verify-otp-button'),
-          label: 'تأكيد الرمز',
-          expand: true,
-          large: true,
-          loading: _isVerifying || auth.isSubmitting,
-          onPressed: _verifyOtp,
+        return null;
+      case _InviteStep.closed:
+        return JourneyEntryActions(
+          primary: JourneyButton(
+            key: const Key('invite-ask-new'),
+            label: 'طلب دعوة جديدة على واتساب',
+            icon: LucideIcons.messageCircle,
+            expand: true,
+            large: true,
+            onPressed: _askNewInvite,
+          ),
+          secondary: JourneyEntryLink(
+            label: 'تغيير الرقم',
+            strong: true,
+            onPressed: _returnToPhone,
+          ),
         );
       case _InviteStep.invite:
         if (sharing == null || invite == null || sharing.isLoading) {
           return null;
         }
         if (invite.isPending) {
-          return Row(
-            children: [
-              Expanded(
-                child: JourneyButton(
-                  key: const Key('invite-accept-button'),
-                  label: 'قبول والانضمام',
-                  large: true,
-                  loading: sharing.isSubmitting || _openingPlan,
-                  onPressed: () => _accept(invite),
-                ),
-              ),
-              const SizedBox(width: AarastV3Space.x2),
-              JourneyButton.quiet(
-                key: const Key('invite-decline-button'),
-                label: 'رفض الدعوة',
-                large: true,
-                onPressed: sharing.isSubmitting || _openingPlan
-                    ? null
-                    : () => _confirmDecline(invite),
-              ),
-            ],
+          return JourneyEntryActions(
+            primary: JourneyButton(
+              key: const Key('invite-accept-button'),
+              label: 'قبول والانضمام',
+              expand: true,
+              large: true,
+              loading: sharing.isSubmitting || _openingPlan,
+              onPressed: () => _accept(invite),
+            ),
+            secondary: JourneyEntryLink(
+              key: const Key('invite-decline-button'),
+              label: 'رفض الدعوة',
+              onPressed: sharing.isSubmitting || _openingPlan
+                  ? null
+                  : () => _confirmDecline(invite),
+            ),
           );
         }
         if (invite.hasActiveMembership) {
-          return JourneyButton(
-            key: const Key('invite-open-plan-button'),
-            label: 'ادخل الخطة',
-            expand: true,
-            large: true,
-            loading: _openingPlan,
-            onPressed: () => _openPlan(invite),
+          return JourneyEntryActions(
+            primary: JourneyButton(
+              key: const Key('invite-open-plan-button'),
+              label: 'ادخل الخطة',
+              expand: true,
+              large: true,
+              loading: _openingPlan,
+              onPressed: () => _openPlan(invite),
+            ),
           );
         }
         return null;

@@ -27,19 +27,18 @@ import '../data/provider_offer_queue.dart';
 export '../data/provider_offer_queue.dart' show ProviderQueuedOffer;
 
 /// The server's portfolio refusals in his words (B-16).
-String portfolioErrorMessage(ApiException error) =>
-    switch (error.serverCode) {
-      'PORTFOLIO_SOCIAL_LINK_INVALID' =>
-        'الرابط لازم يكون رابط حسابك في تيك توك أو إنستغرام أو فيسبوك، ويبدأ بـ https.',
-      'PORTFOLIO_TOO_MANY_ITEMS' => 'المعرض ياخذ 60 صورة بالكثير.',
-      'PORTFOLIO_WOMEN_PHOTO_NEEDS_NO_FACES' =>
-        'صور «حفلات النساء» لازم تكون بدون وجوه.',
-      'PORTFOLIO_WOMEN_ALBUM_NOT_SERVED' =>
-        'ألبوم «حفلات النساء» لمن عنده قسم يخدم العرائس.',
-      'PORTFOLIO_CHANGED' => 'معرضك تغيّر من جهاز ثاني، حدّث وجرب مرة ثانية.',
-      'PROVIDER_NOT_ACTIVE' => 'الصور تنضاف بعد ما ينقبل ملفك.',
-      _ => marketplaceErrorMessage(error.message),
-    };
+String portfolioErrorMessage(ApiException error) => switch (error.serverCode) {
+  'PORTFOLIO_SOCIAL_LINK_INVALID' =>
+    'الرابط لازم يكون رابط حسابك في تيك توك أو إنستغرام أو فيسبوك، ويبدأ بـ https.',
+  'PORTFOLIO_TOO_MANY_ITEMS' => 'المعرض ياخذ 60 صورة بالكثير.',
+  'PORTFOLIO_WOMEN_PHOTO_NEEDS_NO_FACES' =>
+    'صور «حفلات النساء» لازم تكون بدون وجوه.',
+  'PORTFOLIO_WOMEN_ALBUM_NOT_SERVED' =>
+    'ألبوم «حفلات النساء» لمن عنده قسم يخدم العرائس.',
+  'PORTFOLIO_CHANGED' => 'معرضك تغيّر من جهاز ثاني، حدّث وجرب مرة ثانية.',
+  'PROVIDER_NOT_ACTIVE' => 'الصور تنضاف بعد ما ينقبل ملفك.',
+  _ => marketplaceErrorMessage(error.message),
+};
 
 /// What sending an offer came to.
 enum ProviderOfferSend {

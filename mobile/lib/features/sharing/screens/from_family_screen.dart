@@ -31,9 +31,10 @@ String? inviteTokenFromText(String text) {
 
 final _tokenPattern = RegExp(r'^[A-Za-z0-9_-]{43}$');
 
-/// x04 «تساعد في عرس أحد؟»: the invite link from WhatsApp is pasted (or
-/// found on the clipboard) and opened; without one, a ready message asks the
-/// groom or the bride to add you.
+/// «معك رابط دعوة؟» (D75): the link from WhatsApp is pasted (the clipboard
+/// is read only on «لصق», never on its own) and opened; without one, a ready
+/// WhatsApp message asks the plan's owner for it. The words fit anyone: a
+/// mother, a sister, a friend.
 class FromFamilyScreen extends StatefulWidget {
   const FromFamilyScreen({super.key});
 
@@ -43,14 +44,12 @@ class FromFamilyScreen extends StatefulWidget {
 
 class _FromFamilyScreenState extends State<FromFamilyScreen> {
   final _linkController = TextEditingController();
-  String? _clipboardToken;
   String? _error;
 
   @override
   void initState() {
     super.initState();
     _linkController.addListener(_onLinkChanged);
-    WidgetsBinding.instance.addPostFrameCallback((_) => _checkClipboard());
   }
 
   @override
@@ -62,23 +61,27 @@ class _FromFamilyScreenState extends State<FromFamilyScreen> {
   }
 
   void _onLinkChanged() {
-    if (_error != null) setState(() => _error = null);
-    setState(() {});
+    setState(() => _error = null);
   }
 
-  Future<void> _checkClipboard() async {
+  /// «لصق»: the person asked, so the clipboard is read now.
+  Future<void> _paste() async {
+    String text;
     try {
-      final data = await Clipboard.getData(Clipboard.kTextPlain);
-      final token = inviteTokenFromText(data?.text ?? '');
-      if (!mounted || token == null) return;
-      setState(() => _clipboardToken = token);
+      text = (await Clipboard.getData(Clipboard.kTextPlain))?.text ?? '';
     } on Object {
-      // A phone that refuses the clipboard just shows the field.
+      text = '';
     }
+    if (!mounted) return;
+    if (text.trim().isEmpty) {
+      setState(() => _error = 'ما في شي منسوخ. انسخ الرابط من رسالة واتساب.');
+      return;
+    }
+    _linkController.text = text.trim();
   }
 
-  void _open([String? token]) {
-    final found = token ?? inviteTokenFromText(_linkController.text);
+  void _open() {
+    final found = inviteTokenFromText(_linkController.text);
     if (found == null) {
       setState(
         () => _error = 'هذا مو رابط دعوة. انسخ الرابط كامل من رسالة واتساب.',
@@ -112,144 +115,139 @@ class _FromFamilyScreenState extends State<FromFamilyScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final dark = context.accent.primaryDark;
     return AarastScreenFrame(
       maxWidth: 520,
       backgroundColor: AarastV3Color.canvas,
       resizeToAvoidBottomInset: true,
-      child: Column(
+      child: JourneyPage(
+        bottom: JourneyEntryActions(
+          primary: JourneyButton(
+            key: const ValueKey('from-family-open'),
+            label: 'فتح الرابط',
+            expand: true,
+            large: true,
+            onPressed: _linkController.text.trim().isEmpty ? null : _open,
+          ),
+          secondary: JourneyEntryLink(
+            key: const ValueKey('from-family-own-plan'),
+            label: 'خطة عرس جديدة؟ من هنا',
+            strong: true,
+            onPressed: _startOwnPlan,
+          ),
+        ),
         children: [
-          Expanded(
-            child: ListView(
-              padding: AarastV3Density.pageInsets,
-              keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+          JourneyStepBar(onBack: () => context.popOrGo(AppRouter.welcome)),
+          const JourneyEntryQuestion(
+            question: 'معك رابط دعوة؟',
+            help: 'يوصل على واتساب من صاحب خطة العرس.',
+          ),
+          const SizedBox(height: AarastV3Space.x5),
+          JourneyTextField(
+            key: const ValueKey('from-family-link'),
+            label: 'رابط الدعوة',
+            hint: 'الرابط هنا',
+            controller: _linkController,
+            keyboardType: TextInputType.url,
+            textInputAction: TextInputAction.go,
+            textDirection: TextDirection.ltr,
+            textAlign: TextAlign.right,
+            errorText: _error,
+            onSubmitted: (_) => _open(),
+            trailing: _PasteButton(onPressed: _paste),
+          ),
+          const SizedBox(height: AarastV3Space.x2),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: AarastV3Space.x1),
+            child: Text(
+              'الدخول بنفس الرقم اللي وصلته الدعوة.',
+              style: JourneyType.of(
+                JourneyType.bodySmall,
+                color: AarastV3Color.textMuted,
+              ),
+            ),
+          ),
+          const SizedBox(height: AarastV3Space.x5),
+          JourneyBox(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                JourneySubHeader(
-                  title: '',
-                  onBack: () => context.popOrGo(AppRouter.welcome),
-                ),
-                const SizedBox(height: AarastV3Space.x2),
-                const Center(
-                  child: JourneyIconTile(
-                    icon: LucideIcons.users,
-                    color: AarastV3Color.primary,
-                    soft: AarastV3Color.primarySoft,
-                    size: 64,
-                    radius: 24,
-                  ),
-                ),
-                const SizedBox(height: AarastV3Space.x4),
-                Semantics(
-                  header: true,
-                  child: Text(
-                    'تساعد في عرس أحد؟',
-                    textAlign: TextAlign.center,
-                    style: JourneyType.of(
-                      JourneyType.display,
-                      weight: JourneyType.bold,
-                    ),
+                Text(
+                  'ما في رابط؟',
+                  style: JourneyType.of(
+                    JourneyType.bodyLarge,
+                    weight: JourneyType.bold,
                   ),
                 ),
                 const SizedBox(height: AarastV3Space.x1),
                 Text(
-                  'العريس أو العروسة يضيفونك من خطتهم،\nويوصلك رابط على واتساب.',
-                  textAlign: TextAlign.center,
+                  'رسالة واتساب جاهزة لطلب الدعوة من صاحب الخطة.',
                   style: JourneyType.of(
                     JourneyType.body,
                     color: AarastV3Color.textMuted,
                     height: 1.5,
                   ),
                 ),
-                const SizedBox(height: AarastV3Space.x5),
-                JourneyTextField(
-                  key: const ValueKey('from-family-link'),
-                  label: 'الصق رابط الدعوة',
-                  controller: _linkController,
-                  icon: LucideIcons.link,
-                  keyboardType: TextInputType.url,
-                  textInputAction: TextInputAction.go,
-                  textDirection: TextDirection.ltr,
-                  textAlign: TextAlign.right,
-                  errorText: _error,
-                  onSubmitted: (_) => _open(),
-                ),
-                if (_clipboardToken case final token?) ...[
-                  const SizedBox(height: AarastV3Space.x2),
-                  AarastPressable(
-                    key: const ValueKey('from-family-clipboard'),
-                    onTap: () => _open(token),
-                    semanticLabel: 'لقينا رابط في الحافظة. نفتحه؟',
-                    borderRadius: BorderRadius.circular(AarastV3Radius.surface),
-                    child: const JourneyNote(
-                      text: 'لقينا رابط في الحافظة. نفتحه؟',
-                      icon: LucideIcons.clipboardCheck,
-                    ),
-                  ),
-                ],
-                const SizedBox(height: AarastV3Space.x4),
-                Row(
-                  children: [
-                    const Expanded(child: Divider(color: AarastV3Color.line)),
-                    Padding(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: AarastV3Space.x2,
-                      ),
-                      child: Text(
-                        'ما عندك رابط؟',
-                        style: JourneyType.of(
-                          JourneyType.small,
-                          color: AarastV3Color.textMuted,
-                        ),
-                      ),
-                    ),
-                    const Expanded(child: Divider(color: AarastV3Color.line)),
-                  ],
-                ),
-                const SizedBox(height: AarastV3Space.x3),
-                JourneyBox(
-                  padding: EdgeInsets.zero,
-                  child: JourneyListRow(
-                    key: const ValueKey('from-family-ask'),
-                    icon: LucideIcons.messageCircle,
-                    color: AarastV3Color.mint,
-                    soft: AarastV3Color.mintSoft,
-                    title: 'اطلب منه يضيفك',
-                    subtitle: 'نجهز لك رسالة ترسلها له',
-                    trailing: const Icon(
-                      LucideIcons.chevronLeft,
-                      size: 18,
-                      color: AarastV3Color.textFaint,
-                    ),
-                    onTap: _askToBeAdded,
-                  ),
-                ),
-                const SizedBox(height: AarastV3Space.x2),
-                Center(
-                  child: JourneyTextAction(
-                    key: const ValueKey('from-family-own-plan'),
-                    label: 'أو أنت عريس؟ ابدأ خطتك',
-                    color: AarastV3Color.primary,
-                    onPressed: _startOwnPlan,
-                  ),
+                JourneyTextAction(
+                  key: const ValueKey('from-family-ask'),
+                  label: 'طلب الدعوة على واتساب',
+                  icon: LucideIcons.messageCircle,
+                  color: dark,
+                  onPressed: _askToBeAdded,
                 ),
               ],
             ),
           ),
-          Padding(
-            padding: const EdgeInsets.fromLTRB(
-              AarastV3Space.x4,
-              AarastV3Space.x2,
-              AarastV3Space.x4,
-              AarastV3Space.x4,
-            ),
-            child: JourneyButton(
-              key: const ValueKey('from-family-open'),
-              label: 'افتح الرابط',
-              expand: true,
-              large: true,
-              onPressed: _linkController.text.trim().isEmpty ? null : _open,
-            ),
-          ),
         ],
+      ),
+    );
+  }
+}
+
+/// «لصق» at the end of the link field.
+class _PasteButton extends StatelessWidget {
+  const _PasteButton({required this.onPressed});
+
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    return Semantics(
+      button: true,
+      label: 'لصق الرابط',
+      onTap: onPressed,
+      excludeSemantics: true,
+      child: AarastPressable(
+        key: const ValueKey('from-family-paste'),
+        onTap: onPressed,
+        borderRadius: BorderRadius.circular(AarastV3Radius.control),
+        child: Container(
+          constraints: const BoxConstraints(minHeight: AarastV3Space.x12),
+          padding: const EdgeInsets.symmetric(horizontal: AarastV3Space.x4),
+          decoration: BoxDecoration(
+            color: context.accent.primarySoft,
+            borderRadius: BorderRadius.circular(AarastV3Radius.control),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                LucideIcons.clipboard,
+                size: AarastV3Icon.sm,
+                color: context.accent.primaryDark,
+              ),
+              const SizedBox(width: AarastV3Space.x1),
+              Text(
+                'لصق',
+                style: JourneyType.of(
+                  JourneyType.body,
+                  weight: JourneyType.bold,
+                  color: context.accent.primaryDark,
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }

@@ -66,8 +66,16 @@ void main() {
         ),
       ),
     );
+    expect(_size(tester, 'وين العرس؟'), JourneyType.question);
     expect(_size(tester, 'وين العرس؟'), 25);
-    expect(_size(tester, '1 من 4'), 13.5);
+    // D75: the count is the progress track's spoken label, not drawn text.
+    expect(find.text('1 من 4'), findsNothing);
+    expect(
+      find.byWidgetPredicate(
+        (w) => w is Semantics && w.properties.label == 'السؤال 1 من 4',
+      ),
+      findsOneWidget,
+    );
     expect(_size(tester, 'التالي'), 16);
   });
 
@@ -111,7 +119,10 @@ void main() {
       of: find.text('صنعاء'),
       matching: find.byType(Container),
     );
-    expect(tester.getSize(chip.first).height, closeTo(9 + 13.5 * 1.35 + 9, 0.5));
+    expect(
+      tester.getSize(chip.first).height,
+      closeTo(9 + 13.5 * 1.35 + 9, 0.5),
+    );
     // The outlined one carries its 1-point line on each side.
     final outlined = find.ancestor(
       of: find.text('عدن'),
@@ -197,10 +208,7 @@ void main() {
     final box = find
         .ancestor(of: find.text('اسمك'), matching: find.byType(Container))
         .first;
-    expect(
-      tester.widget<Container>(box).padding,
-      AarastV3Field.padding,
-    );
+    expect(tester.widget<Container>(box).padding, AarastV3Field.padding);
   });
 
   testWidgets('a list row keeps its subtitle to one line', (tester) async {

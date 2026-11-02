@@ -26,21 +26,24 @@ void main() {
   ) async {
     await _pump(tester);
 
-    expect(find.text('تساعد في عرس أحد؟'), findsOneWidget);
+    expect(find.text('معك رابط دعوة؟'), findsOneWidget);
+    expect(find.text('يوصل على واتساب من صاحب خطة العرس.'), findsOneWidget);
+    expect(find.text('رابط الدعوة'), findsOneWidget);
+    expect(find.byKey(const ValueKey('from-family-paste')), findsOneWidget);
+    expect(find.text('لصق'), findsOneWidget);
+    expect(find.text('الدخول بنفس الرقم اللي وصلته الدعوة.'), findsOneWidget);
+    expect(find.text('ما في رابط؟'), findsOneWidget);
     expect(
-      find.text('العريس أو العروسة يضيفونك من خطتهم،\nويوصلك رابط على واتساب.'),
+      find.text('رسالة واتساب جاهزة لطلب الدعوة من صاحب الخطة.'),
       findsOneWidget,
     );
-    expect(find.text('الصق رابط الدعوة'), findsOneWidget);
-    expect(find.text('ما عندك رابط؟'), findsOneWidget);
-    expect(find.text('اطلب منه يضيفك'), findsOneWidget);
-    expect(find.text('نجهز لك رسالة ترسلها له'), findsOneWidget);
-    expect(find.text('أو أنت عريس؟ ابدأ خطتك'), findsOneWidget);
-    // Nothing found on the clipboard: no note.
-    expect(find.byKey(const ValueKey('from-family-clipboard')), findsNothing);
+    expect(find.byKey(const ValueKey('from-family-ask')), findsOneWidget);
+    expect(find.text('طلب الدعوة على واتساب'), findsOneWidget);
+    expect(find.text('خطة عرس جديدة؟ من هنا'), findsOneWidget);
     final open = tester.widget<JourneyButton>(
       find.byKey(const ValueKey('from-family-open')),
     );
+    expect(open.label, 'فتح الرابط');
     expect(open.onPressed, isNull);
   });
 
@@ -75,14 +78,18 @@ void main() {
     expect(find.byKey(const ValueKey('invite-route')), findsNothing);
   });
 
-  testWidgets('an invite link on the clipboard is offered and opens', (
+  // D75: the clipboard is private; it is read only when «لصق» is pressed.
+  testWidgets('the clipboard is read only on «لصق», then the link opens', (
     tester,
   ) async {
+    var clipboardReads = 0;
     tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
       SystemChannels.platform,
-      (call) async => call.method == 'Clipboard.getData'
-          ? {'text': 'https://aarast.shadowgardn.com/invites/$_token'}
-          : null,
+      (call) async {
+        if (call.method != 'Clipboard.getData') return null;
+        clipboardReads += 1;
+        return {'text': 'https://aarast.shadowgardn.com/invites/$_token'};
+      },
     );
     addTearDown(
       () => tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
@@ -92,15 +99,47 @@ void main() {
     );
     await _pump(tester);
 
-    expect(find.text('لقينا رابط في الحافظة. نفتحه؟'), findsOneWidget);
-    await tester.tap(find.byKey(const ValueKey('from-family-clipboard')));
+    expect(clipboardReads, 0);
+    expect(find.byKey(const ValueKey('invite-route')), findsNothing);
+
+    await tester.tap(find.byKey(const ValueKey('from-family-paste')));
+    await tester.pumpAndSettle();
+    expect(clipboardReads, 1);
+    expect(
+      find.text('https://aarast.shadowgardn.com/invites/$_token'),
+      findsOneWidget,
+    );
+    // Pasting fills the field; opening stays the person's own press.
+    expect(find.byKey(const ValueKey('invite-route')), findsNothing);
+
+    await tester.tap(find.byKey(const ValueKey('from-family-open')));
     await tester.pumpAndSettle();
     expect(find.byKey(const ValueKey('invite-route')), findsOneWidget);
   });
 
-  testWidgets('a groom without a link goes back to start his own plan', (
-    tester,
-  ) async {
+  testWidgets('«لصق» with nothing copied says what to do', (tester) async {
+    tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+      SystemChannels.platform,
+      (call) async => null,
+    );
+    addTearDown(
+      () => tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+        SystemChannels.platform,
+        null,
+      ),
+    );
+    await _pump(tester);
+
+    await tester.tap(find.byKey(const ValueKey('from-family-paste')));
+    await tester.pumpAndSettle();
+    expect(
+      find.text('ما في شي منسوخ. انسخ الرابط من رسالة واتساب.'),
+      findsOneWidget,
+    );
+    expect(find.byKey(const ValueKey('invite-route')), findsNothing);
+  });
+
+  testWidgets('without a link, a new plan starts at the door', (tester) async {
     await _pump(tester);
     await tester.ensureVisible(
       find.byKey(const ValueKey('from-family-own-plan')),

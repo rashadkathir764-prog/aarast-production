@@ -1,9 +1,14 @@
+import 'package:aarast_mobile/core/network/api_client.dart';
+import 'package:aarast_mobile/core/offline/offline_sync_service.dart';
+import 'package:aarast_mobile/core/storage/auth_storage.dart';
 import 'package:aarast_mobile/core/theme/app_theme.dart';
-import 'package:aarast_mobile/core/experience_v3/aarast_journey.dart';
+import 'package:aarast_mobile/features/auth/data/auth_repository.dart';
+import 'package:aarast_mobile/features/auth/providers/auth_controller.dart';
 import 'package:aarast_mobile/features/auth/screens/login_screen.dart';
-import 'package:aarast_mobile/features/auth/widgets/auth_wedding_widgets.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../support/preview_fonts.dart';
 
@@ -13,58 +18,31 @@ void main() {
   setUpAll(loadPreviewAppFonts);
 
   // D7: the journey field holds its label inside the box (60 to 76 px);
-  // actions stay one comfortable touch target (48 to 56 px).
-  testWidgets('LoginExperience keeps its fields and actions to size', (
+  // actions stay one comfortable touch target (48 to 56 px). D75: the
+  // number and a WhatsApp code come first; a password is the second way.
+  testWidgets('the sign-in screen keeps its fields and actions to size', (
     tester,
   ) async {
     tester.view.devicePixelRatio = 1;
     tester.view.physicalSize = const Size(390, 844);
     addTearDown(tester.view.reset);
 
-    final phoneController = TextEditingController(text: '777123456');
-    final passwordController = TextEditingController(text: 'password');
-    addTearDown(phoneController.dispose);
-    addTearDown(passwordController.dispose);
+    await _pumpLogin(tester);
 
-    await tester.pumpWidget(
-      MaterialApp(
-        theme: AppTheme.light(),
-        locale: const Locale('ar'),
-        home: AuthWeddingScaffold(
-          maxWidth: 460,
-          padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
-          contentAlignment: Alignment.topCenter,
-          child: Form(
-            child: LoginExperience(
-              phoneController: phoneController,
-              passwordController: passwordController,
-              obscurePassword: true,
-              isSubmitting: false,
-              onSubmit: () {},
-              onRequestOtp: () {},
-              onResetPassword: () {},
-              onTogglePassword: () {},
-              onRegister: () {},
-            ),
-          ),
-        ),
-      ),
+    expect(find.text('بنفس رقم جوالك، ونرسل رمز على واتساب.'), findsOneWidget);
+    expect(find.byType(TextField), findsOneWidget);
+    expect(find.byKey(const ValueKey('login-password')), findsNothing);
+    expect(
+      find.byKey(const ValueKey('login-forgot-password-action')),
+      findsNothing,
     );
-    await tester.pumpAndSettle();
+    _expectFieldsToSize(tester);
 
-    final fields = find.byType(TextFormField);
-    expect(fields, findsNWidgets(2));
-    for (final element in fields.evaluate()) {
-      final height = tester.getSize(find.byWidget(element.widget)).height;
-      expect(height, inInclusiveRange(60, 76));
-    }
-
-    final compactActions = {
-      'primary login': find.widgetWithText(JourneyButton, 'تسجيل الدخول'),
-      'WhatsApp OTP': find.byKey(const ValueKey('login-otp-action')),
-      'register prompt': find.byKey(const ValueKey('login-register-action')),
+    final codeActions = {
+      'send the code': find.byKey(const ValueKey('login-submit')),
+      'no account': find.byKey(const ValueKey('login-register-action')),
     };
-    for (final MapEntry(key: label, value: action) in compactActions.entries) {
+    for (final MapEntry(key: label, value: action) in codeActions.entries) {
       expect(action, findsOneWidget);
       expect(
         tester.getSize(action).height,
@@ -72,90 +50,76 @@ void main() {
         reason: '$label should stay one touch target',
       );
     }
-
-    final fieldIconButtons = find.descendant(
-      of: fields,
-      matching: find.byType(IconButton),
+    expect(
+      find.descendant(
+        of: find.byKey(const ValueKey('login-submit')),
+        matching: find.text('أرسل الرمز'),
+      ),
+      findsOneWidget,
     );
-    expect(fieldIconButtons, findsOneWidget);
-    for (final element in fieldIconButtons.evaluate()) {
-      final style = IconButtonTheme.of(element).style;
-      expect(style?.backgroundColor?.resolve({}), Colors.transparent);
-      expect(style?.side?.resolve({}), BorderSide.none);
-    }
+    expect(find.text('ما عندك حساب؟ ابدأ من هنا'), findsOneWidget);
+
+    await tester.tap(find.byKey(const ValueKey('login-mode')));
+    await tester.pumpAndSettle();
+
+    expect(find.text('برقم جوالك وكلمة المرور.'), findsOneWidget);
+    expect(find.byType(TextField), findsNWidgets(2));
+    _expectFieldsToSize(tester);
+    expect(
+      find.descendant(
+        of: find.byKey(const ValueKey('login-submit')),
+        matching: find.text('تسجيل الدخول'),
+      ),
+      findsOneWidget,
+    );
+    expect(
+      tester.getSize(find.byKey(const ValueKey('login-submit'))).height,
+      inInclusiveRange(48, 56),
+    );
+    expect(
+      find.byKey(const ValueKey('login-forgot-password-action')),
+      findsOneWidget,
+    );
+    expect(find.text('الدخول برمز واتساب'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 
   for (final textScale in [1.3, 2.0]) {
-    testWidgets(
-      'LoginExperience stays RTL-safe at 320px and ${textScale}x text',
-      (tester) async {
-        tester.view.devicePixelRatio = 1;
-        tester.view.physicalSize = const Size(320, 760);
-        addTearDown(tester.view.reset);
+    testWidgets('the sign-in screen stays RTL-safe at 320px and ${textScale}x '
+        'text', (tester) async {
+      tester.view.devicePixelRatio = 1;
+      tester.view.physicalSize = const Size(320, 760);
+      addTearDown(tester.view.reset);
 
-        final phoneController = TextEditingController(text: '777123456');
-        final passwordController = TextEditingController(text: 'password');
-        addTearDown(phoneController.dispose);
-        addTearDown(passwordController.dispose);
+      await _pumpLogin(tester, textScale: textScale);
 
-        await tester.pumpWidget(
-          MaterialApp(
-            theme: AppTheme.light(),
-            locale: const Locale('ar'),
-            builder: (context, child) => MediaQuery(
-              data: MediaQuery.of(
-                context,
-              ).copyWith(textScaler: TextScaler.linear(textScale)),
-              child: child!,
-            ),
-            home: AuthWeddingScaffold(
-              maxWidth: 460,
-              padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
-              contentAlignment: Alignment.topCenter,
-              child: Form(
-                child: LoginExperience(
-                  phoneController: phoneController,
-                  passwordController: passwordController,
-                  obscurePassword: true,
-                  isSubmitting: false,
-                  onSubmit: () {},
-                  onRequestOtp: () {},
-                  onResetPassword: () {},
-                  onTogglePassword: () {},
-                  onRegister: () {},
-                ),
-              ),
-            ),
-          ),
-        );
+      // The same screen greets a provider, who has no wedding plan.
+      expect(find.text('تسجيل الدخول'), findsOneWidget);
+      expect(find.textContaining('خطتك'), findsNothing);
+      expect(find.byType(TextField), findsOneWidget);
+      expect(tester.takeException(), isNull);
+
+      for (final key in [
+        'login-submit',
+        'login-register-action',
+        'login-mode',
+      ]) {
+        final action = find.byKey(ValueKey(key));
+        await tester.ensureVisible(action);
         await tester.pumpAndSettle();
-
-        // The same screen greets a provider, who has no wedding plan.
-        expect(find.text('كل شي محفوظ، مثل ما تركته.'), findsOneWidget);
-        expect(find.textContaining('خطتك'), findsNothing);
-        expect(find.byType(TextFormField), findsNWidgets(2));
+        expect(action, findsOneWidget);
         expect(tester.takeException(), isNull);
+      }
 
-        final submit = find.widgetWithText(JourneyButton, 'تسجيل الدخول');
-        await tester.ensureVisible(submit);
-        await tester.pumpAndSettle();
-        expect(submit, findsOneWidget);
-        expect(tester.takeException(), isNull);
-
-        final otp = find.byKey(const ValueKey('login-otp-action'));
-        await tester.ensureVisible(otp);
-        await tester.pumpAndSettle();
-        expect(otp, findsOneWidget);
-        expect(tester.takeException(), isNull);
-
-        final register = find.byKey(const ValueKey('login-register-action'));
-        await tester.ensureVisible(register);
-        await tester.pumpAndSettle();
-        expect(register, findsOneWidget);
-        expect(tester.takeException(), isNull);
-      },
-    );
+      await tester.tap(find.byKey(const ValueKey('login-mode')));
+      await tester.pumpAndSettle();
+      expect(find.byType(TextField), findsNWidgets(2));
+      final forgot = find.byKey(const ValueKey('login-forgot-password-action'));
+      await tester.ensureVisible(forgot);
+      await tester.pumpAndSettle();
+      expect(forgot, findsOneWidget);
+      expect(tester.takeException(), isNull);
+    });
   }
 
   // x18 (C58): after an expired session, the same account signs in again
@@ -166,44 +130,85 @@ void main() {
     tester.view.devicePixelRatio = 1;
     tester.view.physicalSize = const Size(320, 760);
     addTearDown(tester.view.reset);
-    final phone = TextEditingController(text: '+967777123456');
-    final password = TextEditingController();
-    addTearDown(phone.dispose);
-    addTearDown(password.dispose);
 
-    await tester.pumpWidget(
-      MaterialApp(
-        theme: AppTheme.light(),
-        builder: (context, child) => MediaQuery(
-          data: MediaQuery.of(
-            context,
-          ).copyWith(textScaler: const TextScaler.linear(2)),
-          child: child!,
-        ),
-        home: AuthWeddingScaffold(
-          child: Form(
-            child: LoginExperience(
-              phoneController: phone,
-              passwordController: password,
-              obscurePassword: true,
-              isSubmitting: false,
-              onSubmit: () {},
-              onRequestOtp: () {},
-              onResetPassword: () {},
-              onTogglePassword: () {},
-              onRegister: () {},
-              sessionExpired: true,
-              pendingChanges: 3,
-            ),
-          ),
-        ),
-      ),
+    await _pumpLogin(
+      tester,
+      textScale: 2,
+      sessionExpired: true,
+      pendingChanges: 3,
     );
-    await tester.pumpAndSettle();
 
     expect(find.text('ادخل مرة ثانية'), findsOneWidget);
-    expect(find.text('3 أشياء سجّلتها بدون نت'), findsOneWidget);
+    expect(find.textContaining('3 أشياء سجّلتها بدون نت'), findsOneWidget);
     expect(find.text('أهلًا من جديد'), findsNothing);
     expect(tester.takeException(), isNull);
   });
+}
+
+void _expectFieldsToSize(WidgetTester tester) {
+  for (final key in ['login-phone', 'login-password']) {
+    final field = find.byKey(ValueKey(key));
+    if (field.evaluate().isEmpty) continue;
+    final box = find.descendant(of: field, matching: find.byType(TextField));
+    expect(box, findsOneWidget);
+    expect(
+      tester.getSize(field).height,
+      inInclusiveRange(60, 76),
+      reason: '$key holds its label inside the box',
+    );
+  }
+}
+
+Future<void> _pumpLogin(
+  WidgetTester tester, {
+  double textScale = 1,
+  bool sessionExpired = false,
+  int pendingChanges = 0,
+}) async {
+  SharedPreferences.setMockInitialValues({});
+  final storage = AuthStorage(await SharedPreferences.getInstance());
+  final auth = AuthController(
+    AuthRepository(ApiClient(tokenProvider: storage.readAccessToken), storage),
+  );
+  addTearDown(auth.dispose);
+  final offline = _PendingChanges(pendingChanges);
+  addTearDown(offline.dispose);
+
+  await tester.pumpWidget(
+    MultiProvider(
+      providers: [
+        ChangeNotifierProvider<AuthController>.value(value: auth),
+        ChangeNotifierProvider<OfflineSyncService>.value(value: offline),
+      ],
+      child: MaterialApp(
+        theme: AppTheme.light(),
+        locale: const Locale('ar'),
+        builder: (context, child) => Directionality(
+          textDirection: TextDirection.rtl,
+          child: MediaQuery(
+            data: MediaQuery.of(
+              context,
+            ).copyWith(textScaler: TextScaler.linear(textScale)),
+            child: child!,
+          ),
+        ),
+        home: LoginScreen(
+          initialPhone: '777123456',
+          sessionExpired: sessionExpired,
+        ),
+      ),
+    ),
+  );
+  await tester.pumpAndSettle();
+}
+
+/// Only the count of changes kept on the phone, as x18 reads it.
+class _PendingChanges extends ChangeNotifier implements OfflineSyncService {
+  _PendingChanges(this.pendingCount);
+
+  @override
+  final int pendingCount;
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }

@@ -6,6 +6,7 @@ import 'package:flutter/services.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 
 import '../theme/app_theme.dart';
+import '../experience_v3/aarast_journey.dart' show JourneyType;
 import '../experience_v3/aarast_v3_foundations.dart';
 
 /// The hidden input under the code boxes only carries the digits.
@@ -135,7 +136,7 @@ class AarastOtpField extends StatefulWidget {
 
 class _AarastOtpFieldState extends State<AarastOtpField>
     with TickerProviderStateMixin {
-  static const _boxHeight = 58.0;
+  static const _boxHeight = 52.0;
 
   late final AnimationController _shakeController;
   late final AnimationController _fillController;
@@ -289,13 +290,15 @@ class _AarastOtpFieldState extends State<AarastOtpField>
 
     Widget digit = Text(
       char,
-      style: Theme.of(context).textTheme.titleLarge?.copyWith(
+      style: JourneyType.of(
+        JourneyType.amount,
+        weight: JourneyType.bold,
+        height: 1.2,
         color: switch (widget.state) {
           AarastOtpFieldState.error => AppTheme.danger,
           AarastOtpFieldState.success => AppTheme.success,
           AarastOtpFieldState.idle => AppTheme.textPrimary,
         },
-        fontWeight: FontWeight.w900,
       ),
     );
 

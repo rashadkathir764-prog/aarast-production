@@ -129,19 +129,19 @@ mixin _FinanceCostsApi on _FinanceApiCore {
     _assertPartyChoice(providerId: providerId, partyName: partyName);
     final payload = <String, dynamic>{
       ..._costPayload(
-      budgetCategoryId: budgetCategoryId,
-      title: title,
-      totalAmount: totalAmount,
-      initialPaymentAmount: initialPaymentAmount,
-      providerId: providerId,
-      quoteOfferId: quoteOfferId,
-      partyName: partyName,
-      partyPhone: partyPhone,
-      payer: payer,
-      payerName: payerName,
-      agreementDate: agreementDate,
-      note: note,
-    ),
+        budgetCategoryId: budgetCategoryId,
+        title: title,
+        totalAmount: totalAmount,
+        initialPaymentAmount: initialPaymentAmount,
+        providerId: providerId,
+        quoteOfferId: quoteOfferId,
+        partyName: partyName,
+        partyPhone: partyPhone,
+        payer: payer,
+        payerName: payerName,
+        agreementDate: agreementDate,
+        note: note,
+      ),
       // V1 checklist 4.10: only the owner or partner may send it.
       if (isPrivate) 'isPrivate': true,
     };

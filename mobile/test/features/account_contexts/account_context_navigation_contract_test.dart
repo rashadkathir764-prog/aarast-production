@@ -70,7 +70,7 @@ void main() {
       final loginSubmit = _sourceBetween(
         login,
         'Future<void> _submit()',
-        'Future<void> _requestLoginOtp()',
+        'Future<void> _requestLoginOtp(',
       );
 
       expect(app, contains('class AarastAuthFlowRedirector'));

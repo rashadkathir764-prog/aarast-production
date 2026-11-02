@@ -1,7 +1,6 @@
 // Visual preview for the auth surfaces (login + OTP verification). Renders the
-// shared wedding-styled auth widgets in the same compositions the real
-// LoginScreen / OtpScreen build, with static data (no AuthController), so the
-// auth design language can be inspected as golden PNGs without a backend.
+// real LoginScreen / OtpScreen with an idle AuthController, so the auth design
+// language can be inspected as golden PNGs without a backend.
 //
 // Regenerate with:
 //   flutter test test/auth_preview_test.dart --update-goldens
@@ -21,7 +20,6 @@ import 'package:aarast_mobile/features/auth/screens/login_screen.dart';
 import 'package:aarast_mobile/features/auth/screens/otp_screen.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:aarast_mobile/features/auth/widgets/auth_wedding_widgets.dart';
 
 import 'support/preview_fonts.dart';
 
@@ -48,24 +46,16 @@ Future<void> _pump(
   await tester.pump(const Duration(seconds: 1));
 }
 
-Widget _loginBody() {
-  final phoneController = TextEditingController(text: '777123456');
-  final passwordController = TextEditingController(text: 'password');
-  addTearDown(phoneController.dispose);
-  addTearDown(passwordController.dispose);
-
-  return Form(
-    child: LoginExperience(
-      phoneController: phoneController,
-      passwordController: passwordController,
-      obscurePassword: true,
-      isSubmitting: false,
-      onSubmit: () {},
-      onRequestOtp: () {},
-      onResetPassword: () {},
-      onTogglePassword: () {},
-      onRegister: () {},
-    ),
+/// The real sign-in screen (D75: the number and a WhatsApp code first).
+Future<Widget> _loginScreen() async {
+  SharedPreferences.setMockInitialValues({});
+  final storage = AuthStorage(await SharedPreferences.getInstance());
+  final auth = AuthController(
+    AuthRepository(ApiClient(tokenProvider: storage.readAccessToken), storage),
+  );
+  return ChangeNotifierProvider<AuthController>.value(
+    value: auth,
+    child: const LoginScreen(initialPhone: '777123456'),
   );
 }
 
@@ -84,7 +74,6 @@ Future<Widget> _otpScreen() async {
       registration: const PendingRegistration(
         name: 'محمد',
         phone: '+967777123456',
-        password: 'password',
       ),
     ),
   );
@@ -94,16 +83,7 @@ void main() {
   setUpAll(loadPreviewAppFonts);
 
   testWidgets('auth — login (430)', (tester) async {
-    await _pump(
-      tester,
-      AuthWeddingScaffold(
-        maxWidth: 460,
-        padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
-        contentAlignment: Alignment.topCenter,
-        child: _loginBody(),
-      ),
-      size: const Size(430, 900),
-    );
+    await _pump(tester, await _loginScreen(), size: const Size(430, 900));
     await expectLater(
       find.byType(Scaffold),
       matchesGoldenFile('goldens/auth_login.png'),

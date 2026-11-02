@@ -186,6 +186,18 @@ class _ProviderApplyScreenState extends State<ProviderApplyScreen> {
                     title: 'طلب الانضمام',
                     onBack: _step == 0 ? _leave : _previous,
                   ),
+                  // D75: the code was for a number that already had an
+                  // account; the joining goes on from that same account.
+                  if (_step == 0 &&
+                      context.watch<AuthController>().signUpFoundAccount) ...[
+                    const JourneyEntryNote(
+                      key: ValueKey('provider-apply-existing-account'),
+                      text:
+                          'هذا الرقم عليه حساب في اعّرست. الدخول تم بنفس الحساب، وطلب الانضمام كمزود يكمل منه.',
+                      icon: LucideIcons.info,
+                    ),
+                    const SizedBox(height: AarastV3Space.x3),
+                  ],
                   _JoinSteps(labels: _steps, current: _step),
                   const SizedBox(height: AarastV3Space.x4),
                   ...children,

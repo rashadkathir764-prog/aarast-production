@@ -40,6 +40,7 @@ mixin _AuthSignIn on _AuthControllerCore {
       if (!_isCurrentSessionOperation(operation)) return;
       _status = AuthStatus.authenticated;
       _accountJustCreated = false;
+      _signUpFoundAccount = false;
       _loginRequestedAfterLogout = false;
       _queueAuthenticatedEntry(successLocation);
       unawaited(_offlineSyncService?.syncPendingChanges());
@@ -64,7 +65,6 @@ mixin _AuthSignIn on _AuthControllerCore {
   Future<bool> register({
     required String name,
     required String phone,
-    required String password,
     required String otpCode,
     String? resumeInviteToken,
     String? successLocation,
@@ -79,7 +79,6 @@ mixin _AuthSignIn on _AuthControllerCore {
       final response = await _authRepository.register(
         name: name.trim(),
         phone: phone.trim(),
-        password: password,
         otpCode: otpCode,
       );
       if (!_isCurrentSessionOperation(operation)) return;
@@ -90,7 +89,9 @@ mixin _AuthSignIn on _AuthControllerCore {
       await _offlineSyncService?.cacheCurrentUser(response.user);
       if (!_isCurrentSessionOperation(operation)) return;
       _status = AuthStatus.authenticated;
-      _accountJustCreated = true;
+      // A number that already had an account signed in to it (D75).
+      _accountJustCreated = !response.existingAccount;
+      _signUpFoundAccount = response.existingAccount;
       _loginRequestedAfterLogout = false;
       if (cleanResumeToken != null) {
         _pendingInviteResumeToken = cleanResumeToken;
@@ -107,7 +108,6 @@ mixin _AuthSignIn on _AuthControllerCore {
   Future<OtpRequestResult?> startRegistration({
     required String name,
     required String phone,
-    required String password,
   }) async {
     OtpRequestResult? result;
     final success = await _submit(
@@ -115,7 +115,6 @@ mixin _AuthSignIn on _AuthControllerCore {
         result = await _authRepository.startRegistration(
           name: name.trim(),
           phone: phone.trim(),
-          password: password,
         );
         _otpRequest = result;
       },
@@ -250,6 +249,7 @@ mixin _AuthSignIn on _AuthControllerCore {
     _isSubmitting = true;
     _errorMessage = null;
     _errorCode = null;
+    _failedOffline = false;
     notifyListeners();
 
     try {
@@ -274,6 +274,7 @@ mixin _AuthSignIn on _AuthControllerCore {
       } else if (error.isUnauthorized && unauthorizedMessage != null) {
         _errorMessage = unauthorizedMessage;
       } else if (error.isNetworkFailure) {
+        _failedOffline = true;
         _errorMessage =
             networkFailureMessage ??
             'تعذر تسجيل الدخول الآن. تحقق من الاتصال وحاول مرة أخرى.';

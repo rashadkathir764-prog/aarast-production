@@ -6,13 +6,15 @@ import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
 import '../../../core/experience_v3/aarast_v3.dart';
+import '../../../core/widgets/aarast_ui.dart' show AarastScreenFrame;
 import '../../../core/phone/phone_number_utils.dart';
 import '../../../core/routing/app_router.dart';
 import '../../../core/widgets/aarast_otp_field.dart';
 import '../../../core/widgets/aarast_toast.dart';
+import '../../onboarding/onboarding_api.dart'
+    show GuestOnboardingDraft, GuestOnboardingStorage, GuestPersona;
 import '../models/pending_registration.dart';
 import '../providers/auth_controller.dart';
-import '../widgets/auth_wedding_widgets.dart';
 
 class OtpScreenArgs {
   const OtpScreenArgs({
@@ -62,11 +64,28 @@ class _OtpScreenState extends State<OtpScreen> {
   Timer? _resendTimer;
   int _resendSeconds = _resendCooldown;
 
+  /// The plan kept on this phone, if any: its colour and words, and the
+  /// way to look at it first when the code does not come.
+  GuestOnboardingDraft? _keptPlan;
+
   @override
   void initState() {
     super.initState();
     _otpNoticeMessage = widget.otpNoticeMessage;
     _startResendCooldown();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _readKeptPlan());
+  }
+
+  Future<void> _readKeptPlan() async {
+    final GuestOnboardingStorage storage;
+    try {
+      storage = context.read<GuestOnboardingStorage>();
+    } on ProviderNotFoundException {
+      return;
+    }
+    final draft = await storage.loadDraft();
+    if (!mounted || draft == null || !draft.isCompleteGuestPlan) return;
+    setState(() => _keptPlan = draft);
   }
 
   @override
@@ -159,7 +178,6 @@ class _OtpScreenState extends State<OtpScreen> {
         : await auth.register(
             name: registration.name,
             phone: registration.phone,
-            password: registration.password,
             otpCode: code,
             resumeInviteToken: _privateInviteTokenFromLocation(
               widget.successLocation,
@@ -176,9 +194,9 @@ class _OtpScreenState extends State<OtpScreen> {
       return;
     }
 
-    // نجاح: لوحة تأكيد قصيرة قبل المتابعة (تُتخطى مع تقليل الحركة).
+    // The boxes turn to success; the router then opens what comes next
+    // (saving the plan, the invitation, the joining).
     setState(() => _fieldState = AarastOtpFieldState.success);
-    await Future<void>.delayed(AarastOtpField.successHold(context));
   }
 
   void _goBack() {
@@ -225,17 +243,6 @@ class _OtpScreenState extends State<OtpScreen> {
     );
   }
 
-  void _goToRegistration(String phone) {
-    context.read<AuthController>().clearError();
-    context.go(
-      _authLocation(
-        AppRouter.register,
-        phone: phone,
-        resumeLocation: widget.successLocation,
-      ),
-    );
-  }
-
   String _authLocation(
     String location, {
     required String phone,
@@ -271,32 +278,63 @@ class _OtpScreenState extends State<OtpScreen> {
     return token.isEmpty ? null : token;
   }
 
-  /// w03 «الرمز ما وصل؟»: what to check, then resend, sign in with the
-  /// password, or fix the number.
-  Future<void> _showCodeHelp(String phone) {
+  /// «الرمز ما وصل؟»: what to check, then send it again, fix the number,
+  /// or (with a plan on the phone) look at it first, or sign in with a
+  /// password.
+  Future<void> _showCodeHelp(String phone, {required bool registration}) {
+    final kept = _keptPlan != null && registration;
     return showJourneySheet<void>(
       context: context,
-      builder: (sheetContext) => _CodeHelpSheet(
-        phone: phone,
+      builder: (sheetContext) => JourneyCodeHelpSheet(
         resendSeconds: () => _resendSeconds,
+        changeLabel: _changeLabel(context, registration: registration),
         onResend: () {
           Navigator.of(sheetContext).pop();
           _resendOtp();
-        },
-        onPassword: () {
-          Navigator.of(sheetContext).pop();
-          _goToLogin(phone);
         },
         onChangeNumber: () {
           Navigator.of(sheetContext).pop();
           _goBack();
         },
+        onLater: kept
+            ? () {
+                Navigator.of(sheetContext).pop();
+                context.read<AuthController>().clearError();
+                context.go(AppRouter.home);
+              }
+            : null,
+        onPassword: kept
+            ? null
+            : () {
+                Navigator.of(sheetContext).pop();
+                _goToLogin(phone);
+              },
       ),
     );
   }
 
+  /// «غيّر الرقم» in the plan owner's words while saving a plan; the
+  /// neutral «تغيير الرقم» everywhere else.
+  String _changeLabel(BuildContext context, {required bool registration}) =>
+      registration && _keptPlan != null
+      ? context.say('غيّر الرقم', 'غيّري الرقم')
+      : 'تغيير الرقم';
+
+  bool get _forProvider =>
+      widget.successLocation?.startsWith('/provider/') == true;
+
   @override
   Widget build(BuildContext context) {
+    final persona = _keptPlan?.persona == GuestPersona.bride
+        ? 'BRIDE'
+        : 'GROOM';
+    return JourneyProfileScope(
+      profile: JourneyProfile.fromPersona(persona),
+      child: Builder(builder: _page),
+    );
+  }
+
+  Widget _page(BuildContext context) {
     final auth = context.watch<AuthController>();
     final otpNoticeMessage =
         _otpNoticeMessage ?? auth.otpRequest?.noticeMessage;
@@ -311,7 +349,6 @@ class _OtpScreenState extends State<OtpScreen> {
         : delivered
         ? 'أرسلنا لك رمز على واتساب'
         : 'طلبنا لك رمز على واتساب';
-    final toNumber = delivered ? 'وصل إلى الرقم' : 'إذا وصلك على الرقم';
     final existingAccount =
         auth.errorCode == 'ACCOUNT_ALREADY_EXISTS' ||
         auth.errorCode == 'ADMIN_APP_PASSWORD_ALREADY_SET';
@@ -319,295 +356,157 @@ class _OtpScreenState extends State<OtpScreen> {
         auth.errorCode == 'ACCOUNT_NOT_FOUND_AFTER_PHONE_PROOF';
     final disabledAccountAfterProof =
         auth.errorCode == 'ACCOUNT_DISABLED_AFTER_PHONE_PROOF';
-    final waiting = _resendSeconds > 0;
-    final verifying = _isVerifying || auth.isSubmitting;
+    final wrongCode = auth.errorCode == 'OTP_INVALID_OR_EXPIRED';
+    final stopped =
+        existingAccount ||
+        missingAccountAfterProof ||
+        disabledAccountAfterProof;
+    final dark = context.accent.primaryDark;
+    final after = isRegistration
+        ? _keptPlan != null
+              ? context.say(
+                  'أول ما تكمل الأرقام الستة ندخل ونحفظ خطتك.',
+                  'أول ما تكملين الأرقام الستة ندخل ونحفظ خطتك.',
+                )
+              : _forProvider
+              ? 'بعد الرمز: طلب الانضمام بأربع خطوات.'
+              : 'أول ما تكتمل الأرقام الستة ينحفظ حسابك.'
+        : purpose == 'LOGIN'
+        ? _keptPlan != null
+              ? 'بعد الرمز ندخلك حسابك. ولو على هذا الجوال خطة وحسابك فيه خطة، نسأل وين تكون.'
+              : 'بعد الرمز ندخلك حسابك.'
+        : null;
 
-    return AuthWeddingScaffold(
-      leading: AuthBackButton(onPressed: _goBack),
-      bottom: existingAccount || _fieldState == AarastOtpFieldState.success
-          ? null
-          : missingAccountAfterProof
-          ? JourneyButton(
-              key: const ValueKey('otp-go-to-register'),
-              label: 'إنشاء حساب',
-              expand: true,
-              large: true,
-              onPressed: phone.isEmpty ? null : () => _goToRegistration(phone),
-            )
-          : disabledAccountAfterProof
-          ? JourneyButton(
-              key: const ValueKey('otp-disabled-go-to-login'),
-              label: 'ارجع لتسجيل الدخول',
-              expand: true,
-              large: true,
-              onPressed: phone.isEmpty ? null : () => _goToLogin(phone),
-            )
-          : JourneyButton(
-              key: const ValueKey('otp-confirm'),
-              label: 'تأكيد الرمز',
-              expand: true,
-              large: true,
-              loading: verifying,
-              onPressed: _verifyOtp,
-            ),
-      child: AnimatedSwitcher(
-        duration: MediaQuery.disableAnimationsOf(context)
-            ? Duration.zero
-            : const Duration(milliseconds: 280),
-        child: _fieldState == AarastOtpFieldState.success
-            ? const AarastOtpSuccessPanel()
-            : Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  const SizedBox(height: AarastV3Space.x3),
-                  AuthHeading(title: heading),
-                  if (phone.isNotEmpty) ...[
-                    const SizedBox(height: AarastV3Space.x1),
-                    Wrap(
-                      crossAxisAlignment: WrapCrossAlignment.center,
-                      spacing: 10,
-                      children: [
-                        Text(
-                          toNumber,
-                          style: JourneyType.of(
-                            JourneyType.body,
-                            color: AarastV3Color.textMuted,
-                          ),
-                        ),
-                        Text(
-                          PhoneNumberUtils.display(phone) ?? phone,
-                          textDirection: TextDirection.ltr,
-                          style: JourneyType.of(
-                            JourneyType.body,
-                            color: AarastV3Color.textMuted,
-                          ),
-                        ),
-                        JourneyTextAction(
-                          label: 'تغيير',
-                          color: context.accent.primary,
-                          onPressed: _goBack,
-                        ),
-                      ],
-                    ),
-                  ],
-                  const SizedBox(height: AarastV3Space.x4),
-                  if (otpNoticeMessage != null) ...[
-                    JourneyNote(
-                      key: const ValueKey('otp-notice'),
-                      text: otpNoticeMessage,
-                      icon: LucideIcons.messageCircle,
-                    ),
-                    const SizedBox(height: AarastV3Space.x4),
-                  ],
-                  AarastOtpField(
-                    controller: _codeController,
-                    length: _codeLength,
-                    state: _fieldState,
-                    enabled: !_isVerifying,
-                    fieldKey: const Key('otp-code-field'),
-                    onChanged: _onCodeChanged,
-                    onCompleted: (_) => _verifyOtp(),
-                  ),
-                  const SizedBox(height: AarastV3Space.x4),
-                  if (auth.errorMessage != null && !existingAccount) ...[
-                    AuthInlineError(message: auth.errorMessage!),
-                    const SizedBox(height: AarastV3Space.x3),
-                  ],
-                  if (existingAccount) ...[
-                    // w02: the number already has an account, said only
-                    // after the code proved the number is theirs.
-                    AuthInlineError(message: 'هذا الرقم عليه حساب من قبل'),
-                    const SizedBox(height: AarastV3Space.x3),
-                    _ExistingAccountCard(
-                      onSignIn: phone.isEmpty ? null : () => _goToLogin(phone),
-                    ),
-                    const SizedBox(height: AarastV3Space.x1),
-                    Center(
-                      child: JourneyTextAction(
+    return AarastScreenFrame(
+      maxWidth: 520,
+      backgroundColor: AarastV3Color.canvas,
+      resizeToAvoidBottomInset: true,
+      child: JourneyPage(
+        bottom: !stopped
+            ? null
+            : JourneyEntryActions(
+                primary: missingAccountAfterProof
+                    ? JourneyButton(
+                        key: const ValueKey('otp-go-to-register'),
+                        label: 'ابدأ من هنا',
+                        expand: true,
+                        large: true,
+                        onPressed: () {
+                          auth.clearError();
+                          context.go(AppRouter.welcome);
+                        },
+                      )
+                    : JourneyButton(
+                        key: const ValueKey('otp-go-to-login'),
+                        label: 'تسجيل الدخول',
+                        expand: true,
+                        large: true,
+                        onPressed: phone.isEmpty
+                            ? null
+                            : () => _goToLogin(phone),
+                      ),
+                secondary: existingAccount
+                    ? JourneyEntryLink(
                         key: const ValueKey('otp-go-to-password-reset'),
                         label: context.say(
                           'نسيت كلمة المرور؟',
                           'نسيتِ كلمة المرور؟',
                         ),
-                        icon: LucideIcons.keyRound,
-                        color: context.accent.primary,
                         onPressed: phone.isEmpty
                             ? null
                             : () => _goToPasswordReset(phone),
-                      ),
-                    ),
-                  ] else ...[
-                    Center(
-                      child: AuthFooterLink(
-                        key: const ValueKey('otp-resend-button'),
-                        prefix: 'ما وصلك؟',
-                        action: waiting
-                            ? 'نعيد الإرسال بعد ${_clock(_resendSeconds)}'
-                            : 'أرسل رمز جديد',
-                        onTap: waiting || auth.isSubmitting ? null : _resendOtp,
-                      ),
-                    ),
-                    if (phone.isNotEmpty && purpose != 'LOGIN')
-                      JourneyBox(
-                        padding: EdgeInsets.zero,
-                        child: JourneyListRow(
-                          icon: LucideIcons.messageSquare,
-                          color: context.accent.primary,
-                          soft: context.accent.primarySoft,
-                          title: 'الرمز ما وصل؟',
-                          subtitle: 'شوف ايش تسوي، أو ادخل بكلمة المرور',
-                          trailing: const Icon(
-                            LucideIcons.chevronLeft,
-                            size: 18,
-                            color: AarastV3Color.textFaint,
-                          ),
-                          onTap: () => _showCodeHelp(phone),
-                        ),
-                      ),
-                    if (isRegistration || purpose == 'LOGIN') ...[
-                      const SizedBox(height: AarastV3Space.x3),
-                      JourneyNote(
-                        text: isRegistration
-                            ? 'أول ما يكتمل الرمز ينحفظ حسابك وخطتك وتدخل عليها.'
-                            : 'أول ما يكتمل الرمز تدخل على حسابك.',
-                        icon: LucideIcons.checkCircle2,
-                      ),
-                    ],
-                  ],
-                ],
+                      )
+                    : null,
               ),
-      ),
-    );
-  }
-}
-
-/// «0:42» for a countdown in seconds.
-String _clock(int seconds) =>
-    '${seconds ~/ 60}:${(seconds % 60).toString().padLeft(2, '0')}';
-
-/// w02 «هذا حسابك؟»: sign in to the account that holds this number.
-class _ExistingAccountCard extends StatelessWidget {
-  const _ExistingAccountCard({required this.onSignIn});
-
-  final VoidCallback? onSignIn;
-
-  @override
-  Widget build(BuildContext context) {
-    return JourneyBox(
-      padding: EdgeInsets.zero,
-      child: JourneyListRow(
-        icon: LucideIcons.logIn,
-        color: context.accent.primary,
-        soft: context.accent.primarySoft,
-        title: 'هذا حسابك؟',
-        subtitle:
-            '${context.say('ادخل', 'ادخلي')} عليه، وخطتك اللي على الجهاز '
-            'نسألك عنها بعدها',
-        trailing: JourneyButton.quiet(
-          key: const ValueKey('otp-go-to-login'),
-          label: 'ادخل',
-          onPressed: onSignIn,
-        ),
-        onTap: onSignIn,
-      ),
-    );
-  }
-}
-
-/// w03 «الرمز ما وصل؟». Codes go by WhatsApp only; no lockout line.
-class _CodeHelpSheet extends StatefulWidget {
-  const _CodeHelpSheet({
-    required this.phone,
-    required this.resendSeconds,
-    required this.onResend,
-    required this.onPassword,
-    required this.onChangeNumber,
-  });
-
-  final String phone;
-  final int Function() resendSeconds;
-  final VoidCallback onResend;
-  final VoidCallback onPassword;
-  final VoidCallback onChangeNumber;
-
-  @override
-  State<_CodeHelpSheet> createState() => _CodeHelpSheetState();
-}
-
-class _CodeHelpSheetState extends State<_CodeHelpSheet> {
-  Timer? _tick;
-
-  @override
-  void initState() {
-    super.initState();
-    _tick = Timer.periodic(const Duration(seconds: 1), (_) {
-      if (mounted) setState(() {});
-    });
-  }
-
-  @override
-  void dispose() {
-    _tick?.cancel();
-    super.dispose();
-  }
-
-  Widget _tip(IconData icon, String text) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: AarastV3Space.x2),
-      child: Row(
         children: [
-          Icon(icon, size: 20, color: AarastV3Color.textMuted),
-          const SizedBox(width: AarastV3Space.x3),
-          Expanded(child: Text(text, style: JourneyType.of(JourneyType.body))),
+          JourneyStepBar(onBack: _goBack),
+          JourneyEntryQuestion(
+            question: heading,
+            help: phone.isEmpty
+                ? null
+                : PhoneNumberUtils.directionalDisplay(phone) ?? phone,
+          ),
+          if (phone.isNotEmpty)
+            Align(
+              alignment: AlignmentDirectional.centerStart,
+              child: JourneyTextAction(
+                label: _changeLabel(context, registration: isRegistration),
+                color: dark,
+                onPressed: _goBack,
+              ),
+            ),
+          if (otpNoticeMessage != null) ...[
+            const SizedBox(height: AarastV3Space.x2),
+            JourneyEntryNote(
+              key: const ValueKey('otp-notice'),
+              text: otpNoticeMessage,
+              icon: LucideIcons.messageCircle,
+            ),
+          ],
+          const SizedBox(height: AarastV3Space.x3),
+          AarastOtpField(
+            controller: _codeController,
+            length: _codeLength,
+            state: _fieldState,
+            enabled: !_isVerifying && !stopped,
+            fieldKey: const Key('otp-code-field'),
+            onChanged: _onCodeChanged,
+            onCompleted: (_) => _verifyOtp(),
+          ),
+          if (wrongCode) ...[
+            const SizedBox(height: AarastV3Space.x3),
+            Text(
+              context.say(
+                'الرمز غلط، جرّب مرة ثانية.',
+                'الرمز غلط، جرّبي مرة ثانية.',
+              ),
+              key: const ValueKey('otp-wrong'),
+              textAlign: TextAlign.center,
+              style: JourneyType.of(
+                JourneyType.body,
+                weight: JourneyType.bold,
+                color: AarastV3Color.danger,
+              ),
+            ),
+          ] else if (stopped) ...[
+            const SizedBox(height: AarastV3Space.x4),
+            JourneyEntryNote(
+              text: existingAccount
+                  ? 'هذا الرقم عليه حساب من قبل. ادخل عليه بكلمة المرور.'
+                  : missingAccountAfterProof
+                  ? 'هذا الرقم ما عليه حساب في اعّرست. ابدأ من البداية، وتسوي خطتك أو تقدم خدمتك.'
+                  : auth.errorMessage ?? 'هذا الحساب موقوف.',
+              icon: LucideIcons.info,
+            ),
+          ] else if (auth.errorMessage != null) ...[
+            const SizedBox(height: AarastV3Space.x3),
+            JourneyNote(
+              text: auth.errorMessage!,
+              icon: LucideIcons.alertCircle,
+              color: AarastV3Color.danger,
+              soft: AarastV3Color.dangerSoft,
+            ),
+          ],
+          if (!stopped) ...[
+            const SizedBox(height: AarastV3Space.x4),
+            JourneyCodeResendRow(
+              seconds: _resendSeconds,
+              onResend: auth.isSubmitting ? null : _resendOtp,
+              onHelp: phone.isEmpty
+                  ? null
+                  : () => _showCodeHelp(phone, registration: isRegistration),
+            ),
+            if (after != null) ...[
+              const SizedBox(height: AarastV3Space.x1),
+              JourneyEntryNote(
+                text: after,
+                icon: LucideIcons.info,
+                tone: JourneyEntryNoteTone.bare,
+              ),
+            ],
+          ],
         ],
       ),
-    );
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final seconds = widget.resendSeconds();
-    return JourneySheetBody(
-      title: 'الرمز ما وصل؟',
-      subtitle: 'نرسله على واتساب فقط، وهذا اللي تقدر تسويه',
-      children: [
-        JourneyBox(
-          child: Column(
-            children: [
-              _tip(
-                LucideIcons.smartphone,
-                'تأكد إن واتساب شغّال على '
-                '${PhoneNumberUtils.directionalDisplay(widget.phone) ?? ''}',
-              ),
-              _tip(LucideIcons.wifi, 'تأكد إن النت واصل للجوال'),
-              _tip(LucideIcons.archive, 'شوف المحادثات المؤرشفة في واتساب'),
-            ],
-          ),
-        ),
-        const SizedBox(height: AarastV3Space.x3),
-        JourneyButton.quiet(
-          label: seconds > 0
-              ? 'أعد الإرسال بعد ${_clock(seconds)}'
-              : 'أعد الإرسال',
-          onPressed: seconds > 0 ? null : widget.onResend,
-          expand: true,
-        ),
-        const SizedBox(height: AarastV3Space.x2),
-        JourneyButton.quiet(
-          label: 'الدخول بكلمة المرور',
-          icon: LucideIcons.lock,
-          onPressed: widget.onPassword,
-          expand: true,
-        ),
-        const SizedBox(height: AarastV3Space.x1),
-        Center(
-          child: JourneyTextAction(
-            label: 'الرقم غلط؟ غيّره',
-            color: context.accent.primary,
-            onPressed: widget.onChangeNumber,
-          ),
-        ),
-      ],
     );
   }
 }

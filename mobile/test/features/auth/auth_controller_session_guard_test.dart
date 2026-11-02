@@ -55,7 +55,6 @@ void main() {
           await harness.controller.register(
             name: 'New User',
             phone: '+967700000002',
-            password: 'secret',
             otpCode: '123456',
             successLocation: '/after-register',
           ),
@@ -342,7 +341,6 @@ class _ControlledAuthRepository extends AuthRepository {
   Future<AuthResponse> register({
     required String name,
     required String phone,
-    required String password,
     required String otpCode,
   }) async {
     registerCalls += 1;

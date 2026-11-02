@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:aarast_mobile/core/experience_v3/aarast_v3.dart';
 import 'package:aarast_mobile/core/network/api_client.dart';
 import 'package:aarast_mobile/core/session/safe_user.dart';
 import 'package:aarast_mobile/core/theme/app_theme.dart';
@@ -21,31 +22,54 @@ import 'package:shared_preferences/shared_preferences.dart';
 /// w09 «عندك خطة على هذا الجوال» with the real migration service over fake
 /// plan and money APIs.
 void main() {
-  testWidgets('an account with a plan sees both real counts and two choices', (
-    tester,
-  ) async {
-    final harness = await _Harness.create(tester);
+  testWidgets(
+    'an account with a plan sees both plans by name and two choices',
+    (tester) async {
+      final harness = await _Harness.create(tester);
 
-    expect(find.text('عندك خطة على هذا الجوال'), findsOneWidget);
-    expect(
-      find.text('سويتها قبل ما تدخل. وحسابك فيه خطة من قبل.'),
-      findsOneWidget,
+      expect(find.text('عندك خطة على هذا الجوال'), findsOneWidget);
+      expect(
+        find.text('سويتها قبل ما تدخل. وحسابك فيه خطة من قبل.'),
+        findsOneWidget,
+      );
+      // D75: each plan by the name and city the person gave it.
+      expect(find.text('على هذا الجوال'), findsOneWidget);
+      expect(find.text('عرس محمد · صنعاء'), findsOneWidget);
+      expect(find.text('في حسابك'), findsOneWidget);
+      // The open plan the account owns, not the one changed last.
+      expect(find.text('عرس أحمد · تعز'), findsOneWidget);
+      expect(find.textContaining('عرس سالم'), findsNothing);
+      expect(harness.plans.summaryPlanIds, ['plan-open']);
+      expect(find.text('خلّها خطة ثانية'), findsOneWidget);
+      expect(find.text('مثلًا لو هي لعرس أخوك'), findsOneWidget);
+      expect(find.text('تجاهلها'), findsOneWidget);
+      expect(find.text('تنحذف من الجوال بس'), findsOneWidget);
+      // Nothing is chosen for the person: «متابعة» waits for a choice.
+      final next = find.byKey(const ValueKey('local-plan-continue'));
+      expect(tester.widget<JourneyButton>(next).onPressed, isNull);
+      await tester.tap(next, warnIfMissed: false);
+      await _settle(tester);
+      expect(harness.plans.importCalls, 0);
+      expect(find.text('عندك خطة على هذا الجوال'), findsOneWidget);
+      // There is no merge mode on the server.
+      expect(find.text('ضمّها لخطتي'), findsNothing);
+      expect(tester.takeException(), isNull);
+    },
+  );
+
+  testWidgets('plans without a name show their real counts', (tester) async {
+    final harness = await _Harness.create(
+      tester,
+      plans: [
+        _plan('plan-recent', DateTime(2026, 10, 2), title: '', city: ''),
+        _plan('plan-open', DateTime(2026, 9, 1), title: '', city: ''),
+      ],
+      draft: _draft.copyWith(planName: '', city: ''),
     );
-    expect(find.text('على الجوال'), findsOneWidget);
+
     expect(find.text('5 بنود · 8 مهام'), findsOneWidget);
-    expect(find.text('في حسابك'), findsOneWidget);
-    // The open plan the account owns, not the one changed last.
     expect(find.text('14 بند · 23 مهمة'), findsOneWidget);
     expect(harness.plans.summaryPlanIds, ['plan-open']);
-    expect(find.text('خلّها خطة ثانية'), findsOneWidget);
-    expect(find.text('مثلًا لو هي لعرس أخوك'), findsOneWidget);
-    expect(find.text('تجاهلها'), findsOneWidget);
-    expect(find.text('تنحذف من الجوال بس'), findsOneWidget);
-    expect(find.text('متابعة'), findsOneWidget);
-    // There is no merge mode on the server.
-    expect(find.text('ضمّها لخطتي'), findsNothing);
-    expect(harness.plans.importCalls, 0);
-    expect(tester.takeException(), isNull);
   });
 
   testWidgets('a second plan imports as a new plan, then clears the phone', (
@@ -55,6 +79,8 @@ void main() {
     final gate = Completer<OnboardingCompleteResponse>();
     harness.plans.onImport = () => gate.future;
 
+    await tester.tap(find.text('خلّها خطة ثانية'));
+    await tester.pump();
     await tester.tap(find.text('متابعة'));
     await tester.pump();
 
@@ -64,7 +90,7 @@ void main() {
     expect(await harness.storage.loadGuestPlan(), isNotNull);
 
     gate.complete(_response('plan-new'));
-    await tester.pumpAndSettle();
+    await _settle(tester);
 
     expect(harness.finished, ['plan-new']);
     expect(await harness.storage.loadGuestPlan(), isNull);
@@ -78,8 +104,10 @@ void main() {
     harness.plans.onImport = () =>
         Future.error(const ApiException('تعذر استيراد الخطة المحلية.'));
 
+    await tester.tap(find.text('خلّها خطة ثانية'));
+    await tester.pump();
     await tester.tap(find.text('متابعة'));
-    await tester.pumpAndSettle();
+    await _settle(tester);
 
     expect(find.text('تعذر استيراد الخطة المحلية.'), findsOneWidget);
     expect(find.text('عندك خطة على هذا الجوال'), findsOneWidget);
@@ -95,23 +123,23 @@ void main() {
     await tester.tap(find.text('تجاهلها'));
     await tester.pump();
     await tester.tap(find.text('متابعة'));
-    await tester.pumpAndSettle();
+    await _settle(tester);
 
     // First confirmation was the choice; the second is asked.
     expect(find.text('تمسح الخطة اللي على الجوال؟'), findsOneWidget);
     expect(await harness.storage.loadGuestPlan(), isNotNull);
 
     await tester.tap(find.text('لا، خلّها'));
-    await tester.pumpAndSettle();
+    await _settle(tester);
     expect(find.text('تمسح الخطة اللي على الجوال؟'), findsNothing);
     expect(find.text('عندك خطة على هذا الجوال'), findsOneWidget);
     expect(await harness.storage.loadGuestPlan(), isNotNull);
     expect(harness.finished, isEmpty);
 
     await tester.tap(find.text('متابعة'));
-    await tester.pumpAndSettle();
+    await _settle(tester);
     await tester.tap(find.text('إيه، امسحها'));
-    await tester.pumpAndSettle();
+    await _settle(tester);
 
     expect(harness.finished, [null]);
     expect(harness.plans.importCalls, 0);
@@ -155,20 +183,30 @@ void main() {
     tester,
   ) async {
     final harness = await _Harness.create(tester, listFails: true);
-    await tester.pumpAndSettle();
+    await _settle(tester);
 
+    expect(find.text('ما قدرنا نحفظها في حسابك'), findsOneWidget);
     expect(
-      find.text('ما قدرنا نشوف حسابك. تأكد من النت وجرّب مرة ثانية.'),
+      find.textContaining('ما قدرنا نشوف حسابك. تأكد من النت وجرّب مرة ثانية.'),
       findsOneWidget,
     );
+    expect(find.textContaining('خطتك باقية على هذا الجوال'), findsOneWidget);
     expect(harness.plans.importCalls, 0);
     expect(await harness.storage.loadGuestPlan(), isNotNull);
 
     harness.plans.listFails = false;
     await tester.tap(find.text('جرّب مرة ثانية'));
-    await tester.pumpAndSettle();
+    await _settle(tester);
     expect(find.text('عندك خطة على هذا الجوال'), findsOneWidget);
   });
+}
+
+/// The page under the sheet keeps its spinner turning while the person
+/// chooses, so the frames are pumped for a fixed time instead of settling.
+Future<void> _settle(WidgetTester tester) async {
+  for (var i = 0; i < 20; i++) {
+    await tester.pump(const Duration(milliseconds: 50));
+  }
 }
 
 class _Harness {
@@ -183,11 +221,12 @@ class _Harness {
     List<WeddingPlan>? plans,
     bool listFails = false,
     bool settle = true,
+    GuestOnboardingDraft? draft,
   }) async {
     SharedPreferences.setMockInitialValues({});
     final preferences = await SharedPreferences.getInstance();
     final storage = GuestOnboardingStorage(preferences);
-    await storage.saveDraft(_draft);
+    await storage.saveDraft(draft ?? _draft);
     final api = _FakeWeddingPlansApi(
       plans:
           plans ??
@@ -214,20 +253,34 @@ class _Harness {
         builder: (context, child) =>
             Directionality(textDirection: TextDirection.rtl, child: child!),
         home: LocalPlanMigrationScreen(
-          snapshot: _snapshot,
+          snapshot: draft == null
+              ? _snapshot
+              : LocalPlanSnapshot(
+                  draft: draft,
+                  costs: _snapshot.costs,
+                  costPayments: _snapshot.costPayments,
+                  paymentSchedules: _snapshot.paymentSchedules,
+                  tasks: _snapshot.tasks,
+                  guests: _snapshot.guests,
+                  categoryNameById: _snapshot.categoryNameById,
+                ),
           migrationService: service,
           onFinished: harness.finished.add,
         ),
       ),
     );
     if (settle) {
-      await tester.pumpAndSettle();
+      await _settle(tester);
     } else {
       await tester.pump();
     }
     return harness;
   }
 }
+
+/// The account's plans by name and city, as the server returns them.
+const _planTitles = {'plan-open': 'عرس أحمد', 'plan-recent': 'عرس سالم'};
+const _planCities = {'plan-open': 'تعز', 'plan-recent': 'عدن'};
 
 final _draft = GuestOnboardingDraft(
   guestPlanId: 'local-guest-1',
@@ -269,11 +322,18 @@ final _snapshot = LocalPlanSnapshot(
   },
 );
 
-WeddingPlan _plan(String id, DateTime updatedAt, {String status = 'PLANNING'}) {
+WeddingPlan _plan(
+  String id,
+  DateTime updatedAt, {
+  String status = 'PLANNING',
+  String? title,
+  String? city,
+}) {
   return WeddingPlan(
     id: id,
     ownerUserId: 'user-1',
-    title: id,
+    title: title ?? _planTitles[id] ?? id,
+    city: city ?? _planCities[id],
     currency: 'YER',
     status: status,
     createdAt: DateTime(2026, 1, 1),

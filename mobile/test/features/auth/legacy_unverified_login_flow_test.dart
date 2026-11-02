@@ -28,7 +28,11 @@ void main() {
       addTearDown(router.dispose);
 
       await _pump(tester, harness.controller, router);
-      await tester.enterText(find.byType(TextFormField).at(1), 'correct-pass');
+      await _usePassword(tester);
+      await tester.enterText(
+        find.byKey(const ValueKey('login-password')),
+        'correct-pass',
+      );
       final submit = find.byKey(const ValueKey('login-submit'));
       await tester.ensureVisible(submit);
       await tester.tap(submit);
@@ -58,6 +62,30 @@ void main() {
     },
   );
 
+  testWidgets('D75: sign-in by default sends a LOGIN code without a password', (
+    tester,
+  ) async {
+    final harness = await _LoginHarness.create(
+      loginErrorCode: 'INVALID_CREDENTIALS',
+    );
+    final router = _router();
+    addTearDown(router.dispose);
+
+    await _pump(tester, harness.controller, router);
+    expect(find.byKey(const ValueKey('login-password')), findsNothing);
+    final submit = find.byKey(const ValueKey('login-submit'));
+    await tester.ensureVisible(submit);
+    await tester.tap(submit);
+    await tester.pumpAndSettle();
+
+    expect(harness.repository.loginCalls, 0);
+    expect(harness.repository.otpCalls, 1);
+    expect(harness.repository.lastOtpPurpose, 'LOGIN');
+    expect(harness.repository.lastOtpPhone, '+967777123456');
+    expect(router.state.uri.path, '/otp');
+    expect(find.byType(OtpScreen), findsOneWidget);
+  });
+
   testWidgets('wrong password never requests OTP or reveals account state', (
     tester,
   ) async {
@@ -68,7 +96,11 @@ void main() {
     addTearDown(router.dispose);
 
     await _pump(tester, harness.controller, router);
-    await tester.enterText(find.byType(TextFormField).at(1), 'wrong-pass');
+    await _usePassword(tester);
+    await tester.enterText(
+      find.byKey(const ValueKey('login-password')),
+      'wrong-pass',
+    );
     final submit = find.byKey(const ValueKey('login-submit'));
     await tester.ensureVisible(submit);
     await tester.tap(submit);
@@ -80,6 +112,15 @@ void main() {
     expect(find.textContaining('نسيت كلمة المرور'), findsWidgets);
     expect(find.textContaining('يحتاج حساب التطبيق'), findsNothing);
   });
+}
+
+/// D75: sign-in starts with a WhatsApp code; the password is the second
+/// way, behind «الدخول بكلمة المرور».
+Future<void> _usePassword(WidgetTester tester) async {
+  final mode = find.byKey(const ValueKey('login-mode'));
+  await tester.ensureVisible(mode);
+  await tester.tap(mode);
+  await tester.pumpAndSettle();
 }
 
 Future<void> _pump(

@@ -94,8 +94,11 @@ class MoneySummary {
     for (final warning in warnings)
       if (warning.type == 'CATEGORY_EXCEEDED')
         (
-          name: categories
-                  .where((category) => category.categoryId == warning.categoryId)
+          name:
+              categories
+                  .where(
+                    (category) => category.categoryId == warning.categoryId,
+                  )
                   .firstOrNull
                   ?.name ??
               'بند',

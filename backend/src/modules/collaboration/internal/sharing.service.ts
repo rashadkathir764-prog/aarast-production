@@ -169,7 +169,11 @@ export interface PlanInviteResponse {
     city: string | null;
     weddingDate: Date | null;
     status: string;
+    /** D75: the plan's side, so the invite speaks of its owner in their gender. */
+    persona: WeddingPlan["persona"];
   };
+  /** D75: whether the one inviting owns the plan (not a relative who may invite). */
+  inviterIsOwner?: boolean;
   inviter?: SafeSharedMemberUser;
   invitee?: SafeSharedMemberUser | null;
   delivery: {

@@ -110,11 +110,11 @@ class _LoginScreenState extends State<LoginScreen> {
             loading: auth.isSubmitting,
             onPressed: _withPassword ? _submit : _requestLoginOtp,
           ),
-          secondary: JourneyEntryLink(
+          secondary: JourneyTextAction(
             key: const ValueKey('login-register-action'),
             label: 'ما عندك حساب؟ ابدأ من هنا',
-            strong: true,
             onPressed: auth.isSubmitting ? null : _start,
+            color: context.accent.primaryDark,
           ),
         ),
         children: [
@@ -133,12 +133,12 @@ class _LoginScreenState extends State<LoginScreen> {
           ),
           if (pending > 0) ...[
             const SizedBox(height: AarastV3Space.x4),
-            JourneyEntryNote(
+            JourneyNote(
               text:
                   '${arabicCount(pending, one: 'شي واحد سجّلته بدون نت', two: 'شيئين سجّلتها بدون نت', few: 'أشياء سجّلتها بدون نت', many: 'شي سجّلته بدون نت')}: '
                   'محفوظة في جوالك، وتوصل أول ما تدخل بنفس الحساب.',
               icon: LucideIcons.cloudOff,
-              tone: JourneyEntryNoteTone.warn,
+              tone: JourneyNoteTone.warn,
             ),
           ],
           const SizedBox(height: AarastV3Space.x5),

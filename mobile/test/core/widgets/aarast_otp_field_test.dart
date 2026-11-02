@@ -135,19 +135,6 @@ void main() {
     expect(field.enabled, isFalse);
   });
 
-  testWidgets('success panel renders unified title, subtitle, and badge', (
-    tester,
-  ) async {
-    await tester.pumpWidget(
-      _wrap(const AarastOtpSuccessPanel(subtitle: 'تم التحقق من الرمز.')),
-    );
-    await tester.pumpAndSettle();
-
-    expect(find.byKey(const Key('otp-success-panel')), findsOneWidget);
-    expect(find.text('تم التحقق بنجاح'), findsOneWidget);
-    expect(find.text('تم التحقق من الرمز.'), findsOneWidget);
-  });
-
   testWidgets('successHold is zero when animations are disabled', (
     tester,
   ) async {

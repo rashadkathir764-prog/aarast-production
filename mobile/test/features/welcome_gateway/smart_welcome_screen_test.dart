@@ -17,6 +17,7 @@ import 'package:aarast_mobile/features/auth/data/auth_repository.dart';
 import 'package:aarast_mobile/features/auth/providers/auth_controller.dart';
 import 'package:aarast_mobile/features/onboarding/data/guest_onboarding_storage.dart';
 import 'package:aarast_mobile/features/onboarding/models/guest_onboarding_draft.dart';
+import 'package:aarast_mobile/features/onboarding/models/wedding_location_draft.dart';
 import 'package:aarast_mobile/features/wedding_plans/data/wedding_plans_api.dart';
 import 'package:aarast_mobile/features/wedding_plans/models/onboarding_complete.dart';
 import 'package:aarast_mobile/features/wedding_plans/providers/wedding_plans_provider.dart';
@@ -98,12 +99,14 @@ Future<GuestOnboardingStorage> _pump(
   MarketplaceApi? marketplace,
   bool signedIn = false,
   String initialLocation = '/welcome',
+  GuestOnboardingDraft? keptPlan,
 }) async {
   tester.view.devicePixelRatio = 1;
   tester.view.physicalSize = size;
   addTearDown(tester.view.reset);
   final preferences = await SharedPreferences.getInstance();
   final storage = GuestOnboardingStorage(preferences);
+  if (keptPlan != null) await storage.saveDraft(keptPlan);
   final authStorage = AuthStorage(preferences);
   final apiClient = ApiClient(tokenProvider: () async => null);
   await tester.pumpWidget(
@@ -184,8 +187,8 @@ Finder _progress(String label) => find.byWidgetPredicate(
 JourneyButton _button(WidgetTester tester, String label) =>
     tester.widget<JourneyButton>(find.widgetWithText(JourneyButton, label));
 
-JourneyEntryLink _link(WidgetTester tester, String label) => tester
-    .widget<JourneyEntryLink>(find.widgetWithText(JourneyEntryLink, label));
+JourneyTextAction _link(WidgetTester tester, String label) => tester
+    .widget<JourneyTextAction>(find.widgetWithText(JourneyTextAction, label));
 
 /// The door, «أنت العريس ولا العروسة؟» (one tap), and the name with no
 /// date yet: the city and budget step is open.
@@ -233,6 +236,38 @@ void main() {
     expect(find.text('ابدأ'), findsNothing);
     // C52: no account is promised before there is a plan.
     expect(find.text('أنشئ حسابي'), findsNothing);
+  });
+
+  testWidgets('D75: a plan on the phone opens, or a new one takes its place', (
+    tester,
+  ) async {
+    final kept =
+        GuestOnboardingDraft.quickLocalPlanSetup(
+          planName: 'عرس أمل',
+          persona: GuestPersona.bride,
+          location: WeddingLocationDraft.fromLegacyFields(
+            governorate: 'عدن',
+            city: 'عدن',
+          ),
+          weddingDate: null,
+          currency: 'YER',
+          startingItemNames: const ['فستان العروسة'],
+        ).copyWith(
+          guestPlanId: 'local-guest-9',
+          createdAt: DateTime(2026, 11, 1),
+          isGuestPlan: true,
+          needsSync: true,
+        );
+    final storage = await _pump(tester, keptPlan: kept);
+
+    expect(find.text('افتح خطتي'), findsOneWidget);
+    expect(find.text('عرس أمل، على هذا الجوال'), findsOneWidget);
+    await _tapKey(tester, 'door-replace-plan');
+    expect(find.text('تبدأ خطة جديدة بدل عرس أمل؟'), findsOneWidget);
+    await _tapKey(tester, 'door-replace-confirm');
+
+    expect(find.text('أنت العريس ولا العروسة؟'), findsOneWidget);
+    expect(await storage.loadDraft(), isNull);
   });
 
   testWidgets('signed out, the provider door opens the provider sign-up', (

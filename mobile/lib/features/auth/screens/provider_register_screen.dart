@@ -92,11 +92,11 @@ class _ProviderRegisterScreenState extends State<ProviderRegisterScreen> {
             loading: auth.isSubmitting,
             onPressed: _submit,
           ),
-          secondary: JourneyEntryLink(
+          secondary: JourneyTextAction(
             key: const Key('provider-register-login'),
             label: 'عندك حساب في اعّرست؟ تسجيل الدخول',
-            strong: true,
             onPressed: auth.isSubmitting ? null : _login,
+            color: context.accent.primaryDark,
           ),
         ),
         children: [

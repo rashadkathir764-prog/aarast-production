@@ -190,11 +190,12 @@ class _ProviderApplyScreenState extends State<ProviderApplyScreen> {
                   // account; the joining goes on from that same account.
                   if (_step == 0 &&
                       context.watch<AuthController>().signUpFoundAccount) ...[
-                    const JourneyEntryNote(
+                    const JourneyNote(
                       key: ValueKey('provider-apply-existing-account'),
                       text:
                           'هذا الرقم عليه حساب في اعّرست. الدخول تم بنفس الحساب، وطلب الانضمام كمزود يكمل منه.',
                       icon: LucideIcons.info,
+                      tone: JourneyNoteTone.paper,
                     ),
                     const SizedBox(height: AarastV3Space.x3),
                   ],

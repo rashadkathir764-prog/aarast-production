@@ -10,9 +10,9 @@ class _InviteRights extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final money = invite.canManageMoney
-        ? context.say('المال: تشوف وتسجّل', 'المال: تشوفين وتسجّلين')
+        ? 'المال: مشاهدة وتسجيل'
         : invite.canViewMoney
-        ? context.say('المال: تشوف بس', 'المال: تشوفين بس')
+        ? 'المال: مشاهدة بس'
         : null;
     // A bride's guests are «الضيفات» (B5).
     final guests = context.say('الضيوف', 'الضيفات');
@@ -21,46 +21,21 @@ class _InviteRights extends StatelessWidget {
       invite.canManageTasks
           ? (
               LucideIcons.listChecks,
-              context.say(
-                'المهام: تضيف مهام وتخلّص اللي عليك',
-                'المهام: تضيفين مهام وتخلّصين اللي عليك',
-              ),
+              'المهام: إضافة مهام وإنهاء اللي عليك',
               true,
             )
           : (LucideIcons.listChecks, 'المهام', false),
       invite.canManageGuests
-          ? (
-              LucideIcons.users,
-              '$guests: ${context.say('تضيف وترتب', 'تضيفين وترتبين')}',
-              true,
-            )
+          ? (LucideIcons.users, '$guests: إضافة وترتيب', true)
           : (LucideIcons.users, guests, false),
       (LucideIcons.wallet, money ?? 'المال', money != null),
       invite.canManageProviders
-          ? (
-              LucideIcons.store,
-              context.say(
-                'المزودين: تطلب عروض وتتابعها',
-                'المزودين: تطلبين عروض وتتابعينها',
-              ),
-              true,
-            )
+          ? (LucideIcons.store, 'المزودين: طلب عروض ومتابعتها', true)
           : (LucideIcons.store, 'المزودين', false),
       if (invite.canInviteMembers)
-        (
-          LucideIcons.userPlus,
-          context.say(
-            'المشاركين: تضيف ناس للخطة',
-            'المشاركين: تضيفين ناس للخطة',
-          ),
-          true,
-        ),
+        (LucideIcons.userPlus, 'المشاركين: إضافة ناس للخطة', true),
       if (invite.canEditPlan)
-        (
-          LucideIcons.pencil,
-          context.say('بيانات الخطة: تعدّلها', 'بيانات الخطة: تعدّلينها'),
-          true,
-        ),
+        (LucideIcons.pencil, 'بيانات الخطة: تعديلها', true),
     ];
     return Column(
       key: const ValueKey('invite-rights'),
@@ -105,10 +80,10 @@ class _InviteRights extends StatelessWidget {
 
 String _closedInviteMessage(String status, JourneyProfile owner) =>
     switch (status) {
-      'DECLINED' => owner.say('رفضت هذي الدعوة.', 'رفضتي هذي الدعوة.'),
+      'DECLINED' => 'هذي الدعوة انرفضت.',
       'EXPIRED' => owner.say(
-        'انتهت مدة الدعوة. اطلب دعوة جديدة من صاحب الخطة.',
-        'انتهت مدة الدعوة. اطلبي دعوة جديدة من صاحبة الخطة.',
+        'انتهت مدة الدعوة. الحل دعوة جديدة من صاحب الخطة.',
+        'انتهت مدة الدعوة. الحل دعوة جديدة من صاحبة الخطة.',
       ),
       'CANCELLED' => owner.say(
         'صاحب الخطة لغى هذي الدعوة.',
@@ -117,8 +92,9 @@ String _closedInviteMessage(String status, JourneyProfile owner) =>
       _ => 'هذي الدعوة ما عادت مفتوحة.',
     };
 
-/// The plan's side, which sets the invite's colour and the words it says to
-/// the one invited (a bride's plan speaks to women, as participantRoleTag).
+/// The plan's side: the invite's colour and how its owner is named
+/// («صاحبة الخطة»). The one invited is not known yet, so what is said to
+/// them is in words that fit a man or a woman.
 JourneyProfile _ownerOf(PlanInvite invite) =>
     JourneyProfile.fromPersona(invite.planPersona);
 

@@ -139,14 +139,14 @@ class _RegisterScreenState extends State<RegisterScreen> {
             onPressed: _submit,
           ),
           secondary: offline && keptPlan != null
-              ? JourneyEntryLink(
+              ? JourneyTextAction(
                   label: context.say(
                     'بعدين، خلني أشوف أول',
                     'بعدين، خليني أشوف أول',
                   ),
                   onPressed: () => context.go(AppRouter.home),
                 )
-              : JourneyEntryLink(
+              : JourneyTextAction(
                   key: const ValueKey('register-login'),
                   label: 'عندك حساب؟ تسجيل الدخول',
                   sub: keptPlan == null
@@ -155,21 +155,21 @@ class _RegisterScreenState extends State<RegisterScreen> {
                           'ولو حسابك فيه خطة، تختار وين تكون هذي',
                           'ولو حسابك فيه خطة، تختارين وين تكون هذي',
                         ),
-                  strong: true,
                   onPressed: auth.isSubmitting ? null : _login,
+                  color: context.accent.primaryDark,
                 ),
         ),
         children: [
           JourneyStepBar(onBack: _back),
           if (offline) ...[
             const SizedBox(height: AarastV3Space.x2),
-            JourneyEntryNote(
+            JourneyNote(
               key: const ValueKey('register-offline'),
               text: keptPlan == null
                   ? 'ما قدرنا نرسل الرمز، النت مقطوع.'
                   : 'ما قدرنا نرسل الرمز، النت مقطوع. خطتك محفوظة على هذا الجوال.',
               icon: LucideIcons.wifiOff,
-              tone: JourneyEntryNoteTone.warn,
+              tone: JourneyNoteTone.warn,
             ),
           ],
           JourneyEntryQuestion(
@@ -205,12 +205,13 @@ class _RegisterScreenState extends State<RegisterScreen> {
             onSubmitted: (_) => _submit(),
           ),
           const SizedBox(height: AarastV3Space.x3),
-          JourneyEntryNote(
+          JourneyNote(
             text: context.say(
               'نرسل لك رمز على واتساب. تأكد إن الرقم عليه واتساب.',
               'نرسل لك رمز على واتساب. تأكدي إن الرقم عليه واتساب.',
             ),
             icon: LucideIcons.messageCircle,
+            tone: JourneyNoteTone.paper,
           ),
         ],
       ),

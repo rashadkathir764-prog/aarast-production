@@ -287,15 +287,15 @@ class _InviteDecisionScreenState extends State<InviteDecisionScreen> {
       context: context,
       profile: owner,
       builder: (sheetContext) => JourneySheetBody(
-        title: owner.say('ترفض الدعوة؟', 'ترفضين الدعوة؟'),
+        title: 'رفض الدعوة؟',
         subtitle: owner.say(
-          'ما تنضم للخطة، وصاحبها يقدر يرسل لك دعوة جديدة بعدين.',
-          'ما تنضمين للخطة، وصاحبتها تقدر ترسل لك دعوة جديدة بعدين.',
+          'ما فيه انضمام للخطة، وصاحبها يقدر يرسل دعوة جديدة بعدين.',
+          'ما فيه انضمام للخطة، وصاحبتها تقدر ترسل دعوة جديدة بعدين.',
         ),
         children: [
           JourneyButton(
             key: const Key('invite-confirm-decline-button'),
-            label: owner.say('ارفض الدعوة', 'ارفضي الدعوة'),
+            label: 'رفض الدعوة',
             background: AarastV3Color.danger,
             expand: true,
             large: true,
@@ -498,7 +498,11 @@ class _InviteDecisionScreenState extends State<InviteDecisionScreen> {
       ),
       if (_otpNoticeMessage case final notice?) ...[
         const SizedBox(height: AarastV3Space.x2),
-        JourneyEntryNote(text: notice, icon: LucideIcons.messageCircle),
+        JourneyNote(
+          text: notice,
+          icon: LucideIcons.messageCircle,
+          tone: JourneyNoteTone.paper,
+        ),
       ],
       const SizedBox(height: AarastV3Space.x3),
       AarastOtpField(
@@ -550,10 +554,11 @@ class _InviteDecisionScreenState extends State<InviteDecisionScreen> {
             'يا إنها انتهت، يا إنها انرسلت لرقم ثاني. الدعوة تفتح بس بالرقم اللي انرسلت له.',
       ),
       SizedBox(height: AarastV3Space.x5),
-      JourneyEntryNote(
+      JourneyNote(
         key: Key('invite-closed'),
         text: 'رسالة واتساب جاهزة تطلب فيها دعوة جديدة لرقمك.',
         icon: LucideIcons.messageCircle,
+        tone: JourneyNoteTone.paper,
       ),
     ];
   }
@@ -595,10 +600,10 @@ class _InviteDecisionScreenState extends State<InviteDecisionScreen> {
     final ended = invite.hasEndedMembership;
     return [
       const SizedBox(height: AarastV3Space.x2),
-      const JourneyEntryNote(
+      const JourneyNote(
         text: 'تأكدنا من رقمك.',
         icon: LucideIcons.check,
-        tone: JourneyEntryNoteTone.bare,
+        tone: JourneyNoteTone.bare,
       ),
       JourneyEntryQuestion(
         key: const ValueKey('invite-inviter-card'),
@@ -611,14 +616,15 @@ class _InviteDecisionScreenState extends State<InviteDecisionScreen> {
       ),
       const SizedBox(height: AarastV3Space.x5),
       if (ended)
-        JourneyEntryNote(
+        JourneyNote(
           key: const Key('invite-membership-ended'),
           text: _ownerOf(invite).say(
-            'قبلت هذي الدعوة من قبل، بس ما عاد لك وصول للخطة. اطلب دعوة جديدة من صاحب الخطة.',
-            'قبلتي هذي الدعوة من قبل، بس ما عاد لك وصول للخطة. اطلبي دعوة جديدة من صاحبة الخطة.',
+            'هذي الدعوة انقبلت من قبل، بس ما عاد فيه وصول للخطة. الحل دعوة جديدة من صاحب الخطة.',
+            'هذي الدعوة انقبلت من قبل، بس ما عاد فيه وصول للخطة. الحل دعوة جديدة من صاحبة الخطة.',
           ),
           icon: LucideIcons.userX,
           color: AarastV3Color.textMuted,
+          tone: JourneyNoteTone.paper,
         )
       else ...[
         JourneyBox(
@@ -626,10 +632,7 @@ class _InviteDecisionScreenState extends State<InviteDecisionScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                participantRoleTag(
-                  invite.role,
-                  feminine: _ownerOf(invite).isBride,
-                ),
+                participantRoleDuty(invite.role),
                 style: JourneyType.of(
                   JourneyType.bodyLarge,
                   weight: JourneyType.bold,
@@ -642,11 +645,12 @@ class _InviteDecisionScreenState extends State<InviteDecisionScreen> {
         ),
         if (!invite.isPending && !invite.hasActiveMembership) ...[
           const SizedBox(height: AarastV3Space.x3),
-          JourneyEntryNote(
+          JourneyNote(
             key: ValueKey('invite-status-${invite.status}'),
             text: _closedInviteMessage(invite.status, _ownerOf(invite)),
             icon: LucideIcons.info,
             color: AarastV3Color.textMuted,
+            tone: JourneyNoteTone.paper,
           ),
         ],
       ],
@@ -695,10 +699,10 @@ class _InviteDecisionScreenState extends State<InviteDecisionScreen> {
             large: true,
             onPressed: _askNewInvite,
           ),
-          secondary: JourneyEntryLink(
+          secondary: JourneyTextAction(
             label: 'تغيير الرقم',
-            strong: true,
             onPressed: _returnToPhone,
+            color: context.accent.primaryDark,
           ),
         );
       case _InviteStep.invite:
@@ -715,7 +719,7 @@ class _InviteDecisionScreenState extends State<InviteDecisionScreen> {
               loading: sharing.isSubmitting || _openingPlan,
               onPressed: () => _accept(invite),
             ),
-            secondary: JourneyEntryLink(
+            secondary: JourneyTextAction(
               key: const Key('invite-decline-button'),
               label: 'رفض الدعوة',
               onPressed: sharing.isSubmitting || _openingPlan

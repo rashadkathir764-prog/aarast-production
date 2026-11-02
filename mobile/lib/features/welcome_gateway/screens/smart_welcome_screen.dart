@@ -5,6 +5,7 @@ import 'package:lucide_icons/lucide_icons.dart';
 import 'package:provider/provider.dart';
 
 import '../../../core/experience_v3/aarast_v3.dart';
+import '../../../core/offline/offline_sync_service.dart';
 import '../../../core/routing/app_router.dart';
 import '../../../core/storage/auth_storage.dart';
 import '../../../core/utils/amount_words.dart';
@@ -309,6 +310,49 @@ class _SmartWelcomeScreenState extends State<SmartWelcomeScreen> {
   /// instead of starting a second one over it (the phone keeps one).
   String? _phonePlanTitle;
 
+  /// «مو خطتك؟»: the phone keeps one plan, so a new one takes its place,
+  /// once the person said the other is dropped from this phone.
+  Future<void> _replacePhonePlan() async {
+    final title = _phonePlanTitle ?? 'الخطة اللي على الجوال';
+    final confirmed = await showJourneySheet<bool>(
+      context: context,
+      profile: JourneyProfile.groom,
+      builder: (sheetContext) => JourneySheetBody(
+        title: 'تبدأ خطة جديدة بدل $title؟',
+        subtitle: '$title تنمسح من هذا الجوال وما ترجع.',
+        children: [
+          JourneyButton(
+            key: const ValueKey('door-replace-confirm'),
+            label: 'إيه، ابدأ من جديد',
+            background: AarastV3Color.danger,
+            expand: true,
+            large: true,
+            onPressed: () => Navigator.of(sheetContext).pop(true),
+          ),
+          const SizedBox(height: AarastV3Space.x2),
+          JourneyButton.quiet(
+            label: 'لا، خلّها',
+            expand: true,
+            onPressed: () => Navigator.of(sheetContext).pop(false),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+    final storage = context.read<GuestOnboardingStorage>();
+    final draft = await storage.loadDraft();
+    await storage.clearDraft();
+    final planId = draft?.guestPlanId;
+    final offline = _maybeRead<OfflineSyncService>();
+    if (planId != null && planId.trim().isNotEmpty) {
+      await offline?.database.deletePlanGraph(planId);
+      await offline?.refreshStatus();
+    }
+    if (!mounted) return;
+    setState(() => _phonePlanTitle = null);
+    _goTo(_WelcomeStep.whose);
+  }
+
   Future<void> _loadSavedDraft() async {
     final draft = await context.read<GuestOnboardingStorage>().loadDraft();
     if (!mounted || draft == null) return;
@@ -532,6 +576,7 @@ class _SmartWelcomeScreenState extends State<SmartWelcomeScreen> {
         onPlan: () => _phonePlanTitle != null
             ? context.go(AppRouter.home)
             : _goTo(_WelcomeStep.whose),
+        onReplacePlan: _replacePhonePlan,
         onInvite: () => context.go(AppRouter.inviteAccess),
         // A provider without an account goes straight to their own
         // sign-up, never to a wall written for couples (D75).
@@ -590,13 +635,13 @@ class _SmartWelcomeScreenState extends State<SmartWelcomeScreen> {
         skipLabel: 'ما اتفقنا بعد',
         onSkip: _skipMahr,
         children: [
-          JourneyEntryNote(
+          JourneyNote(
             text: context.say(
               'أرقام المهر ما يشوفها غيرك، إلا اللي تسمح له يشوف المال.',
               'أرقام المهر ما يشوفها غيرك، إلا اللي تسمحين له يشوف المال.',
             ),
             icon: LucideIcons.lock,
-            tone: JourneyEntryNoteTone.bare,
+            tone: JourneyNoteTone.bare,
             color: AarastV3Color.textMuted,
           ),
           const SizedBox(height: AarastV3Space.x3),
@@ -617,7 +662,7 @@ class _SmartWelcomeScreenState extends State<SmartWelcomeScreen> {
           // it to: before the account it is a promise kept on saving.
           if (_mahrDueDate != null && _mahrRemaining > 0) ...[
             const SizedBox(height: AarastV3Space.x2),
-            JourneyEntryNote(
+            JourneyNote(
               text: _isAuthenticated()
                   ? 'نذكّرك قبل الموعد.'
                   : context.say(
@@ -625,7 +670,7 @@ class _SmartWelcomeScreenState extends State<SmartWelcomeScreen> {
                       'لو حفظتي خطتك برقمك، نذكّرك قبل الموعد.',
                     ),
               icon: LucideIcons.bell,
-              tone: JourneyEntryNoteTone.bare,
+              tone: JourneyNoteTone.bare,
             ),
           ],
         ],

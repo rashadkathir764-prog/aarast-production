@@ -7,7 +7,6 @@ import 'package:aarast_mobile/core/storage/auth_storage.dart';
 import 'package:aarast_mobile/features/auth/data/auth_repository.dart';
 import 'package:aarast_mobile/features/auth/models/auth_otp.dart';
 import 'package:aarast_mobile/features/auth/screens/reset_password_screen.dart';
-import 'package:aarast_mobile/features/auth/widgets/auth_wedding_widgets.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
@@ -162,7 +161,6 @@ void main() {
     expect(find.text('رقمك'), findsOneWidget);
     expect(find.text('الرمز'), findsOneWidget);
     expect(find.text('كلمة جديدة'), findsOneWidget);
-    expect(find.byType(AuthBrandMark), findsNothing);
     expect(tester.widget(_primary), isA<JourneyButton>());
 
     await _sendCode(tester);

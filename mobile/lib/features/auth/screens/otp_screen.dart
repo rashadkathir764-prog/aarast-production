@@ -444,7 +444,7 @@ class _OtpScreenState extends State<OtpScreen> {
                             : () => _goToLogin(phone),
                       ),
                 secondary: existingAccount && !adminOnly
-                    ? JourneyEntryLink(
+                    ? JourneyTextAction(
                         key: const ValueKey('otp-go-to-password-reset'),
                         label: context.say(
                           'نسيت كلمة المرور؟',
@@ -475,10 +475,11 @@ class _OtpScreenState extends State<OtpScreen> {
             ),
           if (otpNoticeMessage != null) ...[
             const SizedBox(height: AarastV3Space.x2),
-            JourneyEntryNote(
+            JourneyNote(
               key: const ValueKey('otp-notice'),
               text: otpNoticeMessage,
               icon: LucideIcons.messageCircle,
+              tone: JourneyNoteTone.paper,
             ),
           ],
           const SizedBox(height: AarastV3Space.x3),
@@ -508,7 +509,7 @@ class _OtpScreenState extends State<OtpScreen> {
             ),
           ] else if (stopped) ...[
             const SizedBox(height: AarastV3Space.x4),
-            JourneyEntryNote(
+            JourneyNote(
               text: existingAccount
                   ? auth.errorMessage ??
                         context.say(
@@ -524,6 +525,7 @@ class _OtpScreenState extends State<OtpScreen> {
                         : 'هذا الرقم ما عليه حساب في اعّرست. ابدأ من البداية، وتسوي خطتك أو تقدم خدمتك.'
                   : auth.errorMessage ?? 'هذا الحساب موقوف.',
               icon: LucideIcons.info,
+              tone: JourneyNoteTone.paper,
             ),
           ] else if (auth.errorMessage != null) ...[
             const SizedBox(height: AarastV3Space.x3),
@@ -549,10 +551,10 @@ class _OtpScreenState extends State<OtpScreen> {
             ),
             if (after != null) ...[
               const SizedBox(height: AarastV3Space.x1),
-              JourneyEntryNote(
+              JourneyNote(
                 text: after,
                 icon: LucideIcons.info,
-                tone: JourneyEntryNoteTone.bare,
+                tone: JourneyNoteTone.bare,
               ),
             ],
           ],

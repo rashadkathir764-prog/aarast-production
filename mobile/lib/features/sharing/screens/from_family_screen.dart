@@ -113,11 +113,11 @@ class _FromFamilyScreenState extends State<FromFamilyScreen> {
             large: true,
             onPressed: _linkController.text.trim().isEmpty ? null : _open,
           ),
-          secondary: JourneyEntryLink(
+          secondary: JourneyTextAction(
             key: const ValueKey('from-family-own-plan'),
             label: 'خطة عرس جديدة؟ من هنا',
-            strong: true,
             onPressed: _startOwnPlan,
+            color: context.accent.primaryDark,
           ),
         ),
         children: [

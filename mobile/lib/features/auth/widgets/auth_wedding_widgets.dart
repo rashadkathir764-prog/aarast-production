@@ -83,18 +83,6 @@ class AuthWeddingScaffold extends StatelessWidget {
   }
 }
 
-/// The app's name as everywhere else: «اعّرست» with the saffron dot.
-class AuthBrandMark extends StatelessWidget {
-  const AuthBrandMark({this.compact = false, super.key});
-
-  final bool compact;
-
-  @override
-  Widget build(BuildContext context) {
-    return JourneyWordmark(size: compact ? 26 : 34);
-  }
-}
-
 /// A sign-in screen's title and the line under it (prototype a08b, a10).
 class AuthHeading extends StatelessWidget {
   const AuthHeading({required this.title, this.subtitle, super.key});
@@ -154,24 +142,6 @@ class AuthObscureToggle extends StatelessWidget {
         obscured ? LucideIcons.eye : LucideIcons.eyeOff,
         color: AarastV3Color.textMuted,
       ),
-    );
-  }
-}
-
-/// The fields of a sign-in form. The fields carry their own boxes, so the
-/// panel only spaces them.
-class AuthPanel extends StatelessWidget {
-  const AuthPanel({required this.child, this.padding, super.key});
-
-  final Widget child;
-  final EdgeInsetsGeometry? padding;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding:
-          padding ?? const EdgeInsets.symmetric(vertical: AarastV3Space.x1),
-      child: child,
     );
   }
 }
@@ -358,22 +328,6 @@ class AuthInlineError extends StatelessWidget {
           ),
         ],
       ),
-    );
-  }
-}
-
-/// The round back button of every journey screen.
-class AuthBackButton extends StatelessWidget {
-  const AuthBackButton({required this.onPressed, super.key});
-
-  final VoidCallback onPressed;
-
-  @override
-  Widget build(BuildContext context) {
-    return JourneyRoundButton(
-      icon: LucideIcons.arrowRight,
-      tooltip: 'رجوع',
-      onPressed: onPressed,
     );
   }
 }

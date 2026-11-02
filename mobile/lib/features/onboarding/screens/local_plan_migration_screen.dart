@@ -8,6 +8,7 @@ import '../../../core/offline/offline_sync_service.dart';
 import '../../../core/storage/auth_storage.dart';
 import '../../../core/utils/arabic_count.dart';
 import '../../../core/widgets/aarast_ui.dart';
+import '../../auth/auth_api.dart' show AuthController;
 import '../data/local_plan_migration.dart';
 import '../models/guest_onboarding_draft.dart' show GuestPersona;
 
@@ -72,9 +73,24 @@ class _LocalPlanMigrationScreenState extends State<LocalPlanMigrationScreen> {
 
   /// The phone plan's owner: the colour and voice of this screen and its
   /// sheets.
+  ///
+  /// The words go to the one reading: the plan's owner, unless the plan is
+  /// the other side's, when the account holder reads about someone else's.
   JourneyProfile get _owner => JourneyProfile.fromPersona(
-    widget.snapshot.draft.persona == GuestPersona.bride ? 'BRIDE' : 'GROOM',
+    _otherSide
+        ? _accountPersona
+        : widget.snapshot.draft.persona == GuestPersona.bride
+        ? 'BRIDE'
+        : 'GROOM',
   );
+
+  String? get _accountPersona {
+    try {
+      return context.read<AuthController>().user?.persona;
+    } on ProviderNotFoundException {
+      return null;
+    }
+  }
 
   @override
   void initState() {
@@ -107,8 +123,12 @@ class _LocalPlanMigrationScreenState extends State<LocalPlanMigrationScreen> {
       return;
     }
     if (!mounted) return;
-    if (account == null) return _saveDirectly();
-    _account = account;
+    // The other side's plan is never taken in on its own, even into an
+    // account without a plan: its owner decides (D75).
+    if (account == null && !_otherSide) return _saveDirectly();
+    _account =
+        account ??
+        const AccountPlanCounts(items: 0, tasks: 0, title: _noAccountPlan);
     await _openChoice();
   }
 
@@ -153,6 +173,11 @@ class _LocalPlanMigrationScreenState extends State<LocalPlanMigrationScreen> {
         account: account.title.isEmpty
             ? _counts(account.items, account.tasks)
             : account.title,
+        otherSide: _otherSide,
+        accountHasPlan:
+            account.items > 0 ||
+            account.tasks > 0 ||
+            account.title != _noAccountPlan,
         save: _save,
         confirmDrop: _confirmDrop,
         drop: _drop,
@@ -164,6 +189,21 @@ class _LocalPlanMigrationScreenState extends State<LocalPlanMigrationScreen> {
       return;
     }
     widget.onFinished(outcome.planId);
+  }
+
+  /// The phone's plan is the other side's (the bride's plan on the groom's
+  /// account, or the other way): each makes their own plan (D75), so it is
+  /// not taken in; it stays on the phone for its owner to save by her number.
+  bool get _otherSide {
+    final account = _accountPersona;
+    final plan = switch (widget.snapshot.draft.persona) {
+      GuestPersona.bride => 'BRIDE',
+      GuestPersona.groom => 'GROOM',
+      _ => null,
+    };
+    return (account == 'BRIDE' || account == 'GROOM') &&
+        plan != null &&
+        account != plan;
   }
 
   /// Saves the plan into the account and only then clears it from this
@@ -286,7 +326,7 @@ class _LocalPlanMigrationScreenState extends State<LocalPlanMigrationScreen> {
                   large: true,
                   onPressed: _busy ? null : _retry,
                 ),
-                secondary: JourneyEntryLink(
+                secondary: JourneyTextAction(
                   label: context.say('امسحها من الجوال', 'امسحيها من الجوال'),
                   onPressed: _busy ? null : _dropFromFailure,
                 ),
@@ -408,7 +448,10 @@ String _counts(int items, int tasks) {
   return '$itemsLine · $tasksLine';
 }
 
-enum _Choice { secondPlan, drop }
+enum _Choice { secondPlan, keepForOwner, drop }
+
+/// The account side of the sheet when the account holds no plan yet.
+const _noAccountPlan = 'ما فيه خطة بعد';
 
 /// The w09 sheet: both plans' counts, the two choices and «متابعة». It
 /// stays open while the plan saves, so a failure shows here and the choice
@@ -417,6 +460,8 @@ class _LocalPlanChoiceSheet extends StatefulWidget {
   const _LocalPlanChoiceSheet({
     required this.local,
     required this.account,
+    required this.otherSide,
+    required this.accountHasPlan,
     required this.save,
     required this.confirmDrop,
     required this.drop,
@@ -424,6 +469,11 @@ class _LocalPlanChoiceSheet extends StatefulWidget {
 
   final String local;
   final String account;
+
+  /// The phone's plan belongs to the other side: it is kept for its owner,
+  /// not taken in as a second plan of this account.
+  final bool otherSide;
+  final bool accountHasPlan;
   final Future<String> Function() save;
   final Future<bool> Function(BuildContext context) confirmDrop;
   final Future<void> Function() drop;
@@ -452,6 +502,10 @@ class _LocalPlanChoiceSheetState extends State<_LocalPlanChoiceSheet> {
       return;
     }
     if (_choice == null) return;
+    if (_choice == _Choice.keepForOwner) {
+      Navigator.of(context).pop((planId: null));
+      return;
+    }
     setState(() {
       _busy = true;
       _error = null;
@@ -480,10 +534,12 @@ class _LocalPlanChoiceSheetState extends State<_LocalPlanChoiceSheet> {
       canPop: false,
       child: JourneySheetBody(
         title: 'عندك خطة على هذا الجوال',
-        subtitle: context.say(
-          'سويتها قبل ما تدخل. وحسابك فيه خطة من قبل.',
-          'سويتيها قبل ما تدخلين. وحسابك فيه خطة من قبل.',
-        ),
+        subtitle: widget.accountHasPlan
+            ? context.say(
+                'سويتها قبل ما تدخل. وحسابك فيه خطة من قبل.',
+                'سويتيها قبل ما تدخلين. وحسابك فيه خطة من قبل.',
+              )
+            : context.say('سويتها قبل ما تدخل.', 'سويتيها قبل ما تدخلين.'),
         children: [
           Row(
             children: [
@@ -497,13 +553,28 @@ class _LocalPlanChoiceSheetState extends State<_LocalPlanChoiceSheet> {
             ],
           ),
           const SizedBox(height: AarastV3Space.x3),
-          JourneyOption(
-            key: const ValueKey('local-plan-second'),
-            title: 'خلّها خطة ثانية',
-            subtitle: 'مثلًا لو هي لعرس أخوك',
-            selected: _choice == _Choice.secondPlan,
-            onTap: () => _pick(_Choice.secondPlan),
-          ),
+          if (widget.otherSide)
+            JourneyOption(
+              key: const ValueKey('local-plan-keep-for-owner'),
+              title: context.say(
+                'خلّها على الجوال لصاحبتها',
+                'خلّيها على الجوال لصاحبها',
+              ),
+              subtitle: context.say(
+                'هذي خطة العروسة: تحفظها هي برقمها',
+                'هذي خطة العريس: يحفظها هو برقمه',
+              ),
+              selected: _choice == _Choice.keepForOwner,
+              onTap: () => _pick(_Choice.keepForOwner),
+            )
+          else
+            JourneyOption(
+              key: const ValueKey('local-plan-second'),
+              title: 'خلّها خطة ثانية',
+              subtitle: 'مثلًا لو هي لعرس أخوك',
+              selected: _choice == _Choice.secondPlan,
+              onTap: () => _pick(_Choice.secondPlan),
+            ),
           const SizedBox(height: AarastV3Space.x2),
           JourneyOption(
             key: const ValueKey('local-plan-drop'),

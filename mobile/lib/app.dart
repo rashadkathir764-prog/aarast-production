@@ -228,11 +228,24 @@ class AarastPlanProfileScope extends StatelessWidget {
     } on ProviderNotFoundException {
       accountPersona = null;
     }
-    ValueListenable<GuestPersona?>? kept;
+    // The kept plan's owner speaks only before there is an account (saving
+    // the plan, its code); a signed-in session waits for its own plan, and
+    // the move into the account sets its own profile.
+    bool signedIn;
     try {
-      kept = context.read<GuestOnboardingStorage>().keptPlanPersona;
+      signedIn = context.select<AuthController, bool>(
+        (auth) => auth.status == AuthStatus.authenticated,
+      );
     } on ProviderNotFoundException {
-      kept = null;
+      signedIn = false;
+    }
+    ValueListenable<GuestPersona?>? kept;
+    if (!signedIn) {
+      try {
+        kept = context.read<GuestOnboardingStorage>().keptPlanPersona;
+      } on ProviderNotFoundException {
+        kept = null;
+      }
     }
     Widget scoped(GuestPersona? keptPersona) => JourneyProfileScope(
       profile: planJourneyProfile(

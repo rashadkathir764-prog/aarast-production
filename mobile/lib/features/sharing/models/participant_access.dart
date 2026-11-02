@@ -61,6 +61,19 @@ String participantSummary(PlanRolePermissions permissions) {
   return 'يساعد في ${sections.join(' و')} · $money';
 }
 
+/// An invite's role said to the one invited before we know who they are
+/// (D75): a duty, not a person, so it reads right for a man or a woman
+/// («دورك: مساعدة في الترتيب»).
+String participantRoleDuty(String? role) => switch (role) {
+  'FAMILY' => 'دورك: من الأهل',
+  'HELPER' => 'دورك: مساعدة في الترتيب',
+  'VIEWER' => 'دورك: متابعة بس',
+  'CONTRIBUTOR' => 'دورك: مساهمة في الترتيب',
+  'MANAGER' => 'دورك: إدارة الخطة',
+  'GROOM' || 'BRIDE' => 'دورك: شراكة في الخطة',
+  _ => 'دورك: مشاركة في الخطة',
+};
+
 /// The role word beside a participant's name.
 String participantRoleLabel(String role) {
   final preset = ParticipantPreset.ofRole(role);

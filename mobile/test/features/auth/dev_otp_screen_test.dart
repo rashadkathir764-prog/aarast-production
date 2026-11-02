@@ -6,7 +6,6 @@ import 'package:aarast_mobile/features/auth/data/auth_repository.dart';
 import 'package:aarast_mobile/features/auth/models/auth_otp.dart';
 import 'package:aarast_mobile/features/auth/providers/auth_controller.dart';
 import 'package:aarast_mobile/features/auth/screens/otp_screen.dart';
-import 'package:aarast_mobile/features/auth/widgets/auth_wedding_widgets.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:provider/provider.dart';
@@ -55,7 +54,6 @@ void main() {
       find.textContaining('رمز التحقق مؤقت للتجربة المحلية'),
       findsNothing,
     );
-    expect(find.byType(AuthBrandMark), findsNothing);
   });
 
   testWidgets('OTP copy never claims delivery for an uncertain request', (

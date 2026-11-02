@@ -331,6 +331,7 @@ class JourneyTextAction extends StatelessWidget {
     required this.onPressed,
     this.color = AarastV3Color.textMuted,
     this.icon,
+    this.sub,
     super.key,
   });
 
@@ -339,11 +340,18 @@ class JourneyTextAction extends StatelessWidget {
   final Color color;
   final IconData? icon;
 
+  /// A smaller line under the label (what the way out keeps, D75).
+  final String? sub;
+
   @override
   Widget build(BuildContext context) {
+    final enabled = onPressed != null;
+    final color = enabled ? this.color : AarastV3Color.textFaint;
+    final sub = this.sub;
     return Semantics(
       button: true,
-      label: label,
+      enabled: enabled,
+      label: [label, ?sub].join('، '),
       onTap: onPressed,
       excludeSemantics: true,
       child: AarastPressable(
@@ -362,14 +370,28 @@ class JourneyTextAction extends StatelessWidget {
                   const SizedBox(width: AarastV3Space.x2),
                 ],
                 Flexible(
-                  child: Text(
-                    label,
-                    textAlign: TextAlign.center,
-                    style: JourneyType.of(
-                      JourneyType.body,
-                      weight: JourneyType.bold,
-                      color: color,
-                    ),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        label,
+                        textAlign: TextAlign.center,
+                        style: JourneyType.of(
+                          JourneyType.body,
+                          weight: JourneyType.bold,
+                          color: color,
+                        ),
+                      ),
+                      if (sub != null)
+                        Text(
+                          sub,
+                          textAlign: TextAlign.center,
+                          style: JourneyType.of(
+                            JourneyType.small,
+                            color: AarastV3Color.textMuted,
+                          ),
+                        ),
+                    ],
                   ),
                 ),
               ],
@@ -1004,8 +1026,12 @@ class JourneyListRow extends StatelessWidget {
     this.trailing,
     this.onTap,
     this.iconSize = 42,
+    this.subtitleMaxLines = 1,
     super.key,
   });
+
+  /// A line that names several things (the plan's items) may take more.
+  final int subtitleMaxLines;
 
   final IconData icon;
   final Color color;
@@ -1037,7 +1063,7 @@ class JourneyListRow extends StatelessWidget {
                 ),
                 Text(
                   subtitle,
-                  maxLines: 1,
+                  maxLines: subtitleMaxLines,
                   overflow: TextOverflow.ellipsis,
                   style: JourneyType.of(
                     JourneyType.small,
@@ -1617,7 +1643,7 @@ class JourneyQuestionPage extends StatelessWidget {
         ),
         secondary: skipLabel == null
             ? null
-            : JourneyEntryLink(label: skipLabel!, onPressed: onSkip),
+            : JourneyTextAction(label: skipLabel!, onPressed: onSkip),
       ),
       children: [
         JourneyStepBar(onBack: onBack, step: step + 1, total: total),
@@ -2001,24 +2027,33 @@ class JourneyPickerField extends StatelessWidget {
 }
 
 /// A one-line note on a soft fill, with a leading icon.
+/// How a note sits: on the plan's soft fill (the app's usual note), on white
+/// (information that changes a decision, D75), on saffron (a warning), or
+/// bare (a small aside).
+enum JourneyNoteTone { tinted, paper, warn, bare }
+
 class JourneyNote extends StatelessWidget {
   const JourneyNote({
     required this.text,
     this.icon = LucideIcons.info,
     this.color,
     this.soft,
+    this.tone = JourneyNoteTone.tinted,
     super.key,
   });
 
   final String text;
   final IconData icon;
 
-  /// The words and fill; the plan's colours when null.
+  /// The words and fill (tinted), or the icon (the other tones); the plan's
+  /// colours when null.
   final Color? color;
   final Color? soft;
+  final JourneyNoteTone tone;
 
   @override
   Widget build(BuildContext context) {
+    if (tone != JourneyNoteTone.tinted) return _toned(context);
     final color = this.color ?? context.accent.primary;
     final soft = this.soft ?? context.accent.primarySoft;
     return JourneyBox(
@@ -2037,6 +2072,70 @@ class JourneyNote extends StatelessWidget {
                 JourneyType.small,
                 weight: JourneyType.bold,
                 color: color,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _toned(BuildContext context) {
+    final warn = tone == JourneyNoteTone.warn;
+    final iconColor = warn
+        ? AarastV3Color.brandAccentStrong
+        : color ?? context.accent.primary;
+    if (tone == JourneyNoteTone.bare) {
+      return Padding(
+        padding: const EdgeInsets.symmetric(vertical: AarastV3Space.x1),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Padding(
+              padding: const EdgeInsets.only(top: AarastV3Space.half),
+              child: Icon(icon, size: AarastV3Icon.sm, color: iconColor),
+            ),
+            const SizedBox(width: AarastV3Space.x2),
+            Expanded(
+              child: Text(
+                text,
+                style: JourneyType.of(
+                  JourneyType.small,
+                  color: AarastV3Color.textMuted,
+                  height: 1.55,
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+    return Container(
+      padding: const EdgeInsets.symmetric(
+        horizontal: AarastV3Space.x4,
+        vertical: AarastV3Space.x3,
+      ),
+      decoration: BoxDecoration(
+        color: warn ? AarastV3Color.brandAccentSoft : AarastV3Color.paper,
+        borderRadius: BorderRadius.circular(AarastV3Radius.surface),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.only(top: AarastV3Space.half),
+            child: Icon(icon, size: AarastV3Icon.md, color: iconColor),
+          ),
+          const SizedBox(width: AarastV3Space.x3),
+          Expanded(
+            child: Text(
+              text,
+              style: JourneyType.of(
+                JourneyType.body,
+                color: warn
+                    ? AarastV3Color.brandAccentStrong
+                    : AarastV3Color.textMuted,
+                height: 1.55,
               ),
             ),
           ),

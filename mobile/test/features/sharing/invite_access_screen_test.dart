@@ -328,11 +328,11 @@ void main() {
         find.text('عرس رشاد وسارة · صنعاء · الخميس 21 يناير'),
         findsOneWidget,
       );
-      expect(find.text('أنت مساعد'), findsOneWidget);
+      expect(find.text('دورك: مساعدة في الترتيب'), findsOneWidget);
       expect(find.text('موعد العرس'), findsOneWidget);
       // C27: a participant adds tasks and finishes their own.
-      expect(find.text('المهام: تضيف مهام وتخلّص اللي عليك'), findsOneWidget);
-      expect(find.text('الضيوف: تضيف وترتب'), findsOneWidget);
+      expect(find.text('المهام: إضافة مهام وإنهاء اللي عليك'), findsOneWidget);
+      expect(find.text('الضيوف: إضافة وترتيب'), findsOneWidget);
       for (final closed in ['المال', 'المزودين']) {
         expect(
           find.descendant(
@@ -385,11 +385,8 @@ void main() {
         ),
         findsOneWidget,
       );
-      // A bride's plan speaks to the women she invites in their words.
-      expect(
-        find.text(persona == 'BRIDE' ? 'أنتِ مساعدة' : 'أنت مساعد'),
-        findsOneWidget,
-      );
+      // The one invited is not known yet: words that fit a man or a woman.
+      expect(find.text('دورك: مساعدة في الترتيب'), findsOneWidget);
     });
   }
 
@@ -406,8 +403,8 @@ void main() {
       ),
     );
     await _openVerifiedInvite(tester);
-    expect(find.text('المال: تشوف بس'), findsOneWidget);
-    expect(find.text('المال: تشوف وتسجّل'), findsNothing);
+    expect(find.text('المال: مشاهدة بس'), findsOneWidget);
+    expect(find.text('المال: مشاهدة وتسجيل'), findsNothing);
   });
 
   testWidgets('joining selects the participant path and opens the plan home', (
@@ -563,7 +560,7 @@ void main() {
     await _openVerifiedInvite(tester);
 
     expect(find.byKey(const Key('invite-membership-ended')), findsOneWidget);
-    expect(find.textContaining('ما عاد لك وصول للخطة'), findsOneWidget);
+    expect(find.textContaining('ما عاد فيه وصول للخطة'), findsOneWidget);
     expect(find.byKey(const ValueKey('invite-rights')), findsNothing);
     expect(find.byKey(const Key('invite-open-plan-button')), findsNothing);
     expect(find.byKey(const Key('invite-accept-button')), findsNothing);
@@ -781,14 +778,14 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.byType(JourneySheetBody), findsOneWidget);
-    expect(find.text('ترفض الدعوة؟'), findsOneWidget);
+    expect(find.text('رفض الدعوة؟'), findsOneWidget);
     expect(sharingApi.declineCalls, 0);
 
     await tester.tap(find.byKey(const Key('invite-confirm-decline-button')));
     await tester.pumpAndSettle();
 
     expect(sharingApi.declineCalls, 1);
-    expect(find.text('رفضت هذي الدعوة.'), findsOneWidget);
+    expect(find.text('هذي الدعوة انرفضت.'), findsOneWidget);
     expect(find.byKey(const Key('invite-accept-button')), findsNothing);
     expect(find.byKey(const Key('participant-home')), findsNothing);
   });
@@ -825,8 +822,8 @@ void main() {
     );
     await _openVerifiedInvite(tester);
 
-    expect(find.text('المال: تشوف وتسجّل'), findsOneWidget);
-    expect(find.text('المشاركين: تضيف ناس للخطة'), findsOneWidget);
+    expect(find.text('المال: مشاهدة وتسجيل'), findsOneWidget);
+    expect(find.text('المشاركين: إضافة ناس للخطة'), findsOneWidget);
     expect(find.byKey(const Key('invite-accept-button')), findsOneWidget);
     expect(tester.takeException(), isNull);
   });

@@ -1,4 +1,8 @@
 import 'package:aarast_mobile/app.dart';
+import 'package:aarast_mobile/core/network/api_client.dart';
+import 'package:aarast_mobile/core/storage/auth_storage.dart';
+import 'package:aarast_mobile/features/auth/data/auth_repository.dart';
+import 'package:aarast_mobile/features/auth/providers/auth_controller.dart';
 import 'package:aarast_mobile/core/experience_v3/aarast_v3.dart';
 import 'package:aarast_mobile/features/onboarding/data/guest_onboarding_storage.dart';
 import 'package:aarast_mobile/features/onboarding/models/guest_onboarding_draft.dart';
@@ -30,11 +34,55 @@ GuestOnboardingDraft _keptPlan(GuestPersona persona) =>
       needsSync: true,
     );
 
+class _SignedIn extends AuthController {
+  _SignedIn(super.authRepository);
+
+  @override
+  AuthStatus get status => AuthStatus.authenticated;
+}
+
 void main() {
   test('a kept bride plan, no plan open: her profile', () {
     final profile = planJourneyProfile(keptPlanPersona: 'BRIDE');
     expect(profile.isBride, isTrue);
     expect(profile.say('احفظ', 'احفظي'), 'احفظي');
+  });
+
+  testWidgets('a signed-in session does not wear the phone plan', (
+    tester,
+  ) async {
+    SharedPreferences.setMockInitialValues({});
+    final preferences = await SharedPreferences.getInstance();
+    final storage = GuestOnboardingStorage(preferences);
+    await tester.runAsync(
+      () => storage.saveDraft(_keptPlan(GuestPersona.bride)),
+    );
+    late JourneyProfile seen;
+    await tester.pumpWidget(
+      MultiProvider(
+        providers: [
+          Provider<GuestOnboardingStorage>.value(value: storage),
+          ChangeNotifierProvider<AuthController>(
+            create: (_) => _SignedIn(
+              AuthRepository(
+                ApiClient(tokenProvider: () async => null),
+                AuthStorage(preferences),
+              ),
+            ),
+          ),
+        ],
+        child: AarastPlanProfileScope(
+          child: Builder(
+            builder: (context) {
+              seen = context.journeyProfile;
+              return const SizedBox();
+            },
+          ),
+        ),
+      ),
+    );
+    await tester.pump();
+    expect(seen.isBride, isFalse);
   });
 
   test('nothing kept and nothing open: the app own profile', () {

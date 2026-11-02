@@ -182,7 +182,11 @@ class _NameDateStep extends StatelessWidget {
         ],
         if (note != null) ...[
           const SizedBox(height: AarastV3Space.x3),
-          JourneyEntryNote(text: note, icon: LucideIcons.moon),
+          JourneyNote(
+            text: note,
+            icon: LucideIcons.moon,
+            tone: JourneyNoteTone.paper,
+          ),
         ],
       ],
     );
@@ -524,7 +528,7 @@ class _PlaceBudgetStep extends StatelessWidget {
           onChanged: (_) => onBudgetChanged(),
         ),
         const SizedBox(height: AarastV3Space.x3),
-        JourneyEntryNote(
+        JourneyNote(
           // C1: the budget is the wedding only; the mahr is its own
           // question next, outside the budget.
           text: context.say(
@@ -532,6 +536,7 @@ class _PlaceBudgetStep extends StatelessWidget {
             'الميزانية لعرسك بس، والمهر مش منها. وتقدرين تغيّرينها بعدين من صفحة المال.',
           ),
           icon: LucideIcons.info,
+          tone: JourneyNoteTone.paper,
         ),
       ],
     );
@@ -654,59 +659,65 @@ class _ReadyStep extends StatelessWidget {
                           ),
                         ),
                       const SizedBox(height: AarastV3Space.x4),
-                      JourneyBox(
-                        padding: EdgeInsets.zero,
-                        child: Column(
-                          children: [
-                            JourneyEntryRow(
-                              icon: LucideIcons.wallet,
+                      JourneyList(
+                        children: [
+                          JourneyListRow(
+                            icon: LucideIcons.wallet,
+                            color: context.accent.primary,
+                            soft: context.accent.primarySoft,
+                            title:
+                                '${arabicCount(items.length, one: 'بند واحد', two: 'بندين', few: 'بنود', many: 'بند')} لعرسك',
+                            subtitle: itemsLine,
+                            subtitleMaxLines: 3,
+                          ),
+                          if (catalogs.taskCount > 0)
+                            JourneyListRow(
+                              icon: LucideIcons.listChecks,
+                              color: context.accent.primary,
+                              soft: context.accent.primarySoft,
                               title:
-                                  '${arabicCount(items.length, one: 'بند واحد', two: 'بندين', few: 'بنود', many: 'بند')} لعرسك',
-                              subtitle: itemsLine,
-                            ),
-                            if (catalogs.taskCount > 0)
-                              JourneyEntryRow(
-                                icon: LucideIcons.listChecks,
-                                title:
-                                    '${arabicCount(catalogs.taskCount, one: 'مهمة واحدة', two: 'مهمتين', few: 'مهام', many: 'مهمة')} مقترحة${hasDate ? ' على موعدك' : ''}',
-                                subtitle: hasDate
-                                    ? context.say(
-                                        'تختار منها اللي يناسبك',
-                                        'تختارين منها اللي يناسبك',
-                                      )
-                                    : context.say(
-                                        'تختار منها اللي يناسبك، وترتبها لما تحدد الموعد',
-                                        'تختارين منها اللي يناسبك، وترتبينها لما تحددين الموعد',
-                                      ),
-                              ),
-                            JourneyEntryRow(
-                              icon: LucideIcons.store,
-                              divider: false,
-                              title: count != null && count > 0
-                                  ? '${arabicCount(count, one: 'مزود واحد', two: 'مزودين', few: 'مزودين', many: 'مزود')} في $city'
-                                  : 'مزودين $city',
-                              // Only what the directory said: a number, or
-                              // none; nothing is promised when it is unknown.
-                              subtitle: count == null
-                                  ? 'نعرف كم مزود في $city أول ما يرجع النت'
-                                  : count == 0
-                                  ? 'ما في مزودين في $city بعد. نضيفهم أول ما ينضمون.'
+                                  '${arabicCount(catalogs.taskCount, one: 'مهمة واحدة', two: 'مهمتين', few: 'مهام', many: 'مهمة')} مقترحة${hasDate ? ' على موعدك' : ''}',
+                              subtitle: hasDate
+                                  ? context.say(
+                                      'تختار منها اللي يناسبك',
+                                      'تختارين منها اللي يناسبك',
+                                    )
                                   : context.say(
-                                      'قاعات ومصورين ومنشدين',
-                                      'صالات ومصورات ومنشدات',
+                                      'تختار منها اللي يناسبك، وترتبها لما تحدد الموعد',
+                                      'تختارين منها اللي يناسبك، وترتبينها لما تحددين الموعد',
                                     ),
+                              subtitleMaxLines: 3,
                             ),
-                          ],
-                        ),
+                          JourneyListRow(
+                            icon: LucideIcons.store,
+                            color: context.accent.primary,
+                            soft: context.accent.primarySoft,
+                            title: count != null && count > 0
+                                ? '${arabicCount(count, one: 'مزود واحد', two: 'مزودين', few: 'مزودين', many: 'مزود')} في $city'
+                                : 'مزودين $city',
+                            // Only what the directory said: a number, or
+                            // none; nothing is promised when it is unknown.
+                            subtitle: count == null
+                                ? 'نعرف كم مزود في $city أول ما يرجع النت'
+                                : count == 0
+                                ? 'ما في مزودين في $city بعد. نضيفهم أول ما ينضمون.'
+                                : context.say(
+                                    'قاعات ومصورين ومنشدين',
+                                    'صالات ومصورات ومنشدات',
+                                  ),
+                            subtitleMaxLines: 3,
+                          ),
+                        ],
                       ),
                       if (!signedIn) ...[
                         const SizedBox(height: AarastV3Space.x4),
-                        JourneyEntryNote(
+                        JourneyNote(
                           text: context.say(
                             'خطتك الحين على هذا الجوال بس: لو حذفت التطبيق أو ضاع الجوال تضيع. وطلب العروض ودعوة الأهل تحتاج رقمك.',
                             'خطتك الحين على هذا الجوال بس: لو حذفتي التطبيق أو ضاع الجوال تضيع. وطلب العروض ودعوة الأهل تحتاج رقمك.',
                           ),
                           icon: LucideIcons.smartphone,
+                          tone: JourneyNoteTone.paper,
                         ),
                       ],
                     ],
@@ -747,7 +758,7 @@ class _ReadyStep extends StatelessWidget {
                       ),
                 secondary: signedIn
                     ? null
-                    : JourneyEntryLink(
+                    : JourneyTextAction(
                         key: const ValueKey('ready-later'),
                         label: context.say(
                           'بعدين، خلني أشوف أول',

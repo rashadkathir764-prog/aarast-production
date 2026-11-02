@@ -10,6 +10,7 @@ class _StartStep extends StatelessWidget {
   const _StartStep({
     required this.phonePlanTitle,
     required this.onPlan,
+    required this.onReplacePlan,
     required this.onInvite,
     required this.onProvider,
     required this.onLogin,
@@ -18,6 +19,10 @@ class _StartStep extends StatelessWidget {
   /// A plan already on this phone, opened by the first door.
   final String? phonePlanTitle;
   final VoidCallback onPlan;
+
+  /// A finished plan on this phone that is not this person's (made on a
+  /// shared phone): start a new one in its place, after a confirmation.
+  final VoidCallback onReplacePlan;
   final VoidCallback onInvite;
   final VoidCallback onProvider;
   final VoidCallback onLogin;
@@ -77,6 +82,15 @@ class _StartStep extends StatelessWidget {
                             : '$phonePlanTitle، على هذا الجوال',
                         onTap: onPlan,
                       ),
+                      if (phonePlanTitle != null)
+                        Align(
+                          alignment: AlignmentDirectional.centerStart,
+                          child: JourneyTextAction(
+                            key: const ValueKey('door-replace-plan'),
+                            label: 'مو خطتك؟ ابدأ خطة جديدة بدلها',
+                            onPressed: onReplacePlan,
+                          ),
+                        ),
                       const SizedBox(height: AarastV3Space.x3),
                       JourneyDoor(
                         key: const ValueKey('door-invite'),
@@ -162,10 +176,10 @@ class _WhoseStep extends StatelessWidget {
           onTap: () => onChoose(GuestPersona.bride),
         ),
         const SizedBox(height: AarastV3Space.x4),
-        const JourneyEntryNote(
+        const JourneyNote(
           text: 'العريس والعروسة كل واحد له خطته، والأهل يدخلون بدعوة.',
           icon: LucideIcons.users,
-          tone: JourneyEntryNoteTone.bare,
+          tone: JourneyNoteTone.bare,
           color: AarastV3Color.primary,
         ),
       ],

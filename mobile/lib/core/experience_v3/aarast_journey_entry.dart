@@ -198,192 +198,6 @@ class JourneyEntryActions extends StatelessWidget {
   }
 }
 
-/// The second way out under the main action: a plain line, sometimes with
-/// a smaller line under it.
-class JourneyEntryLink extends StatelessWidget {
-  const JourneyEntryLink({
-    required this.label,
-    required this.onPressed,
-    this.sub,
-    this.strong = false,
-    super.key,
-  });
-
-  final String label;
-  final VoidCallback? onPressed;
-  final String? sub;
-
-  /// In the plan's deep colour (a way forward), not the quiet grey (later).
-  final bool strong;
-
-  @override
-  Widget build(BuildContext context) {
-    final enabled = onPressed != null;
-    final color = !enabled
-        ? AarastV3Color.textFaint
-        : strong
-        ? context.accent.primaryDark
-        : AarastV3Color.textMuted;
-    return Semantics(
-      button: true,
-      enabled: enabled,
-      label: [label, ?sub].join('، '),
-      onTap: onPressed,
-      excludeSemantics: true,
-      child: AarastPressable(
-        onTap: onPressed,
-        borderRadius: BorderRadius.circular(AarastV3Radius.control),
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(minHeight: AarastV3Space.x12),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: AarastV3Space.x2),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Text(
-                  label,
-                  textAlign: TextAlign.center,
-                  style: JourneyType.of(
-                    JourneyType.body,
-                    weight: JourneyType.bold,
-                    color: color,
-                  ),
-                ),
-                if (sub != null)
-                  Text(
-                    sub!,
-                    textAlign: TextAlign.center,
-                    style: JourneyType.of(
-                      JourneyType.small,
-                      color: AarastV3Color.textMuted,
-                    ),
-                  ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-/// How a note sits: on white (information that changes a decision), on
-/// saffron (a warning), or bare (a small aside).
-enum JourneyEntryNoteTone { paper, warn, bare }
-
-/// A note on an entry screen.
-class JourneyEntryNote extends StatelessWidget {
-  const JourneyEntryNote({
-    required this.text,
-    required this.icon,
-    this.tone = JourneyEntryNoteTone.paper,
-    this.color,
-    super.key,
-  });
-
-  final String text;
-  final IconData icon;
-  final JourneyEntryNoteTone tone;
-
-  /// The icon's colour; the plan's colour when null.
-  final Color? color;
-
-  @override
-  Widget build(BuildContext context) {
-    final iconColor = tone == JourneyEntryNoteTone.warn
-        ? AarastV3Color.brandAccentStrong
-        : color ?? context.accent.primary;
-    if (tone == JourneyEntryNoteTone.bare) {
-      return Padding(
-        padding: const EdgeInsets.symmetric(vertical: AarastV3Space.x1),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Padding(
-              padding: const EdgeInsets.only(top: AarastV3Space.half),
-              child: Icon(icon, size: AarastV3Icon.sm, color: iconColor),
-            ),
-            const SizedBox(width: AarastV3Space.x2),
-            Expanded(
-              child: Text(
-                text,
-                style: JourneyType.of(
-                  JourneyType.small,
-                  color: AarastV3Color.textMuted,
-                  height: 1.55,
-                ),
-              ),
-            ),
-          ],
-        ),
-      );
-    }
-    final warn = tone == JourneyEntryNoteTone.warn;
-    return Container(
-      padding: const EdgeInsets.symmetric(
-        horizontal: AarastV3Space.x4,
-        vertical: AarastV3Space.x3,
-      ),
-      decoration: BoxDecoration(
-        color: warn ? AarastV3Color.brandAccentSoft : AarastV3Color.paper,
-        borderRadius: BorderRadius.circular(AarastV3Radius.surface),
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Padding(
-            padding: const EdgeInsets.only(top: AarastV3Space.half),
-            child: Icon(icon, size: AarastV3Icon.md, color: iconColor),
-          ),
-          const SizedBox(width: AarastV3Space.x3),
-          Expanded(
-            child: Text(
-              text,
-              style: JourneyType.of(
-                JourneyType.body,
-                color: warn
-                    ? AarastV3Color.brandAccentStrong
-                    : AarastV3Color.textMuted,
-                height: 1.55,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-/// A rounded square icon on the plan's soft fill.
-class JourneyEntryTile extends StatelessWidget {
-  const JourneyEntryTile({
-    required this.icon,
-    this.size = AarastV3Space.x10,
-    this.background,
-    super.key,
-  });
-
-  final IconData icon;
-  final double size;
-
-  /// The fill; the plan's soft colour when null.
-  final Color? background;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: size,
-      height: size,
-      decoration: BoxDecoration(
-        color: background ?? context.accent.primarySoft,
-        borderRadius: BorderRadius.circular(AarastV3Radius.control),
-      ),
-      child: Icon(icon, size: AarastV3Icon.md, color: context.accent.primary),
-    );
-  }
-}
-
 /// One way in from the door: an icon, what it is, who it is for.
 class JourneyDoor extends StatelessWidget {
   const JourneyDoor({
@@ -418,7 +232,12 @@ class JourneyDoor extends StatelessWidget {
           ),
           child: Row(
             children: [
-              JourneyEntryTile(icon: icon),
+              JourneyIconTile(
+                icon: icon,
+                color: context.accent.primary,
+                soft: context.accent.primarySoft,
+                radius: AarastV3Radius.control,
+              ),
               const SizedBox(width: AarastV3Space.x3),
               Expanded(
                 child: Column(
@@ -577,67 +396,6 @@ class JourneySkyBand extends StatelessWidget {
   }
 }
 
-/// A row of a white list on an entry screen: an icon, a line, a smaller
-/// line under it.
-class JourneyEntryRow extends StatelessWidget {
-  const JourneyEntryRow({
-    required this.icon,
-    required this.title,
-    required this.subtitle,
-    this.divider = true,
-    super.key,
-  });
-
-  final IconData icon;
-  final String title;
-  final String subtitle;
-  final bool divider;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(
-        horizontal: AarastV3Space.x4,
-        vertical: AarastV3Space.x3,
-      ),
-      decoration: BoxDecoration(
-        border: divider
-            ? const Border(bottom: BorderSide(color: AarastV3Color.line))
-            : null,
-      ),
-      child: Row(
-        children: [
-          JourneyEntryTile(icon: icon),
-          const SizedBox(width: AarastV3Space.x3),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title,
-                  style: JourneyType.of(
-                    JourneyType.bodyLarge,
-                    weight: JourneyType.bold,
-                  ),
-                ),
-                const SizedBox(height: AarastV3Space.half),
-                Text(
-                  subtitle,
-                  style: JourneyType.of(
-                    JourneyType.bodySmall,
-                    color: AarastV3Color.textMuted,
-                    height: 1.45,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
 /// «رقم جوالك»: the Yemeni code, then the number, left to right as it is
 /// read and dialled. The app takes Yemeni numbers today, so the code is
 /// fixed, not a picker.
@@ -696,96 +454,105 @@ class _JourneyPhoneFieldState extends State<JourneyPhoneField> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        GestureDetector(
-          onTap: () => _focus.requestFocus(),
-          child: Container(
-            padding: AarastV3Field.padding,
-            decoration: BoxDecoration(
-              color: AarastV3Color.paper,
-              borderRadius: BorderRadius.circular(AarastV3Field.radius),
-              border: Border.all(
-                color: border,
-                width: focused || error != null ? 2 : 1,
-              ),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  widget.label,
-                  style: JourneyType.of(
-                    JourneyType.label,
-                    color: AarastV3Color.textMuted,
-                  ),
+        // One field to a screen reader: «رقم جوالك، +967» and what is typed.
+        MergeSemantics(
+          child: GestureDetector(
+            onTap: () => _focus.requestFocus(),
+            child: Container(
+              padding: AarastV3Field.padding,
+              decoration: BoxDecoration(
+                color: AarastV3Color.paper,
+                borderRadius: BorderRadius.circular(AarastV3Field.radius),
+                border: Border.all(
+                  color: border,
+                  width: focused || error != null ? 2 : 1,
                 ),
-                const SizedBox(height: AarastV3Space.x1),
-                Directionality(
-                  textDirection: TextDirection.ltr,
-                  child: Row(
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.only(right: AarastV3Space.x3),
-                        margin: const EdgeInsets.only(right: AarastV3Space.x3),
-                        decoration: const BoxDecoration(
-                          border: Border(
-                            right: BorderSide(color: AarastV3Color.line),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    widget.label,
+                    style: JourneyType.of(
+                      JourneyType.label,
+                      color: AarastV3Color.textMuted,
+                    ),
+                  ),
+                  const SizedBox(height: AarastV3Space.x1),
+                  Directionality(
+                    textDirection: TextDirection.ltr,
+                    child: Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.only(
+                            right: AarastV3Space.x3,
                           ),
-                        ),
-                        child: Text(
-                          '+967',
-                          style: JourneyType.of(
-                            JourneyType.bodyLarge,
-                            weight: JourneyType.bold,
-                            color: AarastV3Color.textMuted,
+                          margin: const EdgeInsets.only(
+                            right: AarastV3Space.x3,
                           ),
-                        ),
-                      ),
-                      Expanded(
-                        child: TextField(
-                          key: const ValueKey('journey-phone-input'),
-                          controller: widget.controller,
-                          focusNode: _focus,
-                          autofocus: widget.autofocus,
-                          enabled: widget.enabled,
-                          keyboardType: TextInputType.phone,
-                          textInputAction: TextInputAction.done,
-                          autofillHints: const [AutofillHints.telephoneNumber],
-                          inputFormatters: [
-                            FilteringTextInputFormatter.allow(
-                              RegExp(r'[0-9٠-٩+ ]'),
+                          decoration: const BoxDecoration(
+                            border: Border(
+                              right: BorderSide(color: AarastV3Color.line),
                             ),
-                            LengthLimitingTextInputFormatter(16),
-                            const _PhoneGroupsFormatter(),
-                          ],
-                          onChanged: widget.onChanged,
-                          onSubmitted: widget.onSubmitted,
-                          cursorColor: context.accent.primary,
-                          style: JourneyType.of(
-                            JourneyType.lead,
-                            weight: JourneyType.bold,
                           ),
-                          decoration: InputDecoration(
-                            isDense: true,
-                            filled: false,
-                            border: InputBorder.none,
-                            enabledBorder: InputBorder.none,
-                            focusedBorder: InputBorder.none,
-                            disabledBorder: InputBorder.none,
-                            errorBorder: InputBorder.none,
-                            focusedErrorBorder: InputBorder.none,
-                            contentPadding: EdgeInsets.zero,
-                            hintText: '7XX XXX XXX',
-                            hintStyle: JourneyType.of(
+                          child: Text(
+                            '+967',
+                            style: JourneyType.of(
                               JourneyType.bodyLarge,
+                              weight: JourneyType.bold,
                               color: AarastV3Color.textMuted,
                             ),
                           ),
                         ),
-                      ),
-                    ],
+                        Expanded(
+                          child: TextField(
+                            key: const ValueKey('journey-phone-input'),
+                            controller: widget.controller,
+                            focusNode: _focus,
+                            autofocus: widget.autofocus,
+                            enabled: widget.enabled,
+                            keyboardType: TextInputType.phone,
+                            textInputAction: TextInputAction.done,
+                            autofillHints: const [
+                              AutofillHints.telephoneNumber,
+                            ],
+                            inputFormatters: [
+                              FilteringTextInputFormatter.allow(
+                                RegExp(r'[0-9٠-٩+ ]'),
+                              ),
+                              LengthLimitingTextInputFormatter(16),
+                              const _PhoneGroupsFormatter(),
+                            ],
+                            onChanged: widget.onChanged,
+                            onSubmitted: widget.onSubmitted,
+                            cursorColor: context.accent.primary,
+                            style: JourneyType.of(
+                              JourneyType.lead,
+                              weight: JourneyType.bold,
+                            ),
+                            decoration: InputDecoration(
+                              isDense: true,
+                              filled: false,
+                              border: InputBorder.none,
+                              enabledBorder: InputBorder.none,
+                              focusedBorder: InputBorder.none,
+                              disabledBorder: InputBorder.none,
+                              errorBorder: InputBorder.none,
+                              focusedErrorBorder: InputBorder.none,
+                              contentPadding: EdgeInsets.zero,
+                              hintText: '7XX XXX XXX',
+                              hintStyle: JourneyType.of(
+                                JourneyType.bodyLarge,
+                                color: AarastV3Color.textMuted,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
         ),
@@ -829,9 +596,11 @@ class JourneyKeptPlanStrip extends StatelessWidget {
       ),
       child: Row(
         children: [
-          const JourneyEntryTile(
+          JourneyIconTile(
             icon: LucideIcons.smartphone,
-            background: AarastV3Color.paper,
+            color: context.accent.primary,
+            soft: AarastV3Color.paper,
+            radius: AarastV3Radius.control,
           ),
           const SizedBox(width: AarastV3Space.x3),
           Expanded(
@@ -917,18 +686,18 @@ class _CodeHelpSheetState extends State<JourneyCodeHelpSheet> {
     return JourneySheetBody(
       title: 'الرمز ما وصل؟',
       children: [
-        JourneyEntryNote(
+        JourneyNote(
           text: context.say(
             'تأكد إن الرقم عليه واتساب.',
             'تأكدي إن الرقم عليه واتساب.',
           ),
           icon: LucideIcons.messageCircle,
-          tone: JourneyEntryNoteTone.bare,
+          tone: JourneyNoteTone.bare,
         ),
-        JourneyEntryNote(
+        JourneyNote(
           text: context.say('تأكد إن النت شغّال.', 'تأكدي إن النت شغّال.'),
           icon: LucideIcons.wifi,
-          tone: JourneyEntryNoteTone.bare,
+          tone: JourneyNoteTone.bare,
         ),
         const SizedBox(height: AarastV3Space.x2),
         _HelpRow(
@@ -998,9 +767,13 @@ class _HelpRow extends StatelessWidget {
           constraints: const BoxConstraints(minHeight: 56),
           child: Row(
             children: [
-              JourneyEntryTile(
+              JourneyIconTile(
                 icon: icon,
-                background: enabled ? null : AarastV3Color.canvas,
+                color: context.accent.primary,
+                soft: enabled
+                    ? context.accent.primarySoft
+                    : AarastV3Color.canvas,
+                radius: AarastV3Radius.control,
               ),
               const SizedBox(width: AarastV3Space.x3),
               Expanded(

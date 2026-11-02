@@ -3,6 +3,9 @@ import 'dart:async';
 import 'package:aarast_mobile/core/experience_v3/aarast_v3.dart';
 import 'package:aarast_mobile/core/network/api_client.dart';
 import 'package:aarast_mobile/core/session/safe_user.dart';
+import 'package:aarast_mobile/core/storage/auth_storage.dart';
+import 'package:aarast_mobile/features/auth/data/auth_repository.dart';
+import 'package:aarast_mobile/features/auth/providers/auth_controller.dart';
 import 'package:aarast_mobile/core/theme/app_theme.dart';
 import 'package:aarast_mobile/features/finance/data/finance_api.dart';
 import 'package:aarast_mobile/features/finance/models/budget_category.dart';
@@ -17,6 +20,7 @@ import 'package:aarast_mobile/features/wedding_plans/models/onboarding_complete.
 import 'package:aarast_mobile/features/wedding_plans/models/wedding_plan.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 /// w09 «عندك خطة على هذا الجوال» with the real migration service over fake
@@ -54,6 +58,53 @@ void main() {
       // There is no merge mode on the server.
       expect(find.text('ضمّها لخطتي'), findsNothing);
       expect(tester.takeException(), isNull);
+    },
+  );
+
+  testWidgets(
+    "D75: the bride's plan on the groom's account stays for her, not a second plan",
+    (tester) async {
+      final harness = await _Harness.create(
+        tester,
+        accountPersona: 'GROOM',
+        draft: _draft.copyWith(
+          planName: 'عرس سلمى',
+          persona: GuestPersona.bride,
+        ),
+      );
+
+      expect(find.byKey(const ValueKey('local-plan-second')), findsNothing);
+      await tester.tap(find.byKey(const ValueKey('local-plan-keep-for-owner')));
+      await _settle(tester);
+      await tester.tap(find.byKey(const ValueKey('local-plan-continue')));
+      await _settle(tester);
+
+      // Nothing imported, nothing dropped: the plan waits on the phone.
+      expect(harness.plans.importCalls, 0);
+      expect(harness.finished, [null]);
+      expect(await harness.storage.loadGuestPlan(), isNotNull);
+    },
+  );
+
+  testWidgets(
+    "D75: an account without a plan does not take in the other side's plan",
+    (tester) async {
+      final harness = await _Harness.create(
+        tester,
+        plans: const [],
+        accountPersona: 'GROOM',
+        draft: _draft.copyWith(
+          planName: 'عرس سلمى',
+          persona: GuestPersona.bride,
+        ),
+      );
+
+      expect(harness.plans.importCalls, 0);
+      expect(
+        find.byKey(const ValueKey('local-plan-keep-for-owner')),
+        findsOneWidget,
+      );
+      expect(find.text('سويتها قبل ما تدخل.'), findsOneWidget);
     },
   );
 
@@ -222,6 +273,7 @@ class _Harness {
     bool listFails = false,
     bool settle = true,
     GuestOnboardingDraft? draft,
+    String? accountPersona,
   }) async {
     SharedPreferences.setMockInitialValues({});
     final preferences = await SharedPreferences.getInstance();
@@ -247,25 +299,29 @@ class _Harness {
     tester.view.devicePixelRatio = 1;
     tester.view.physicalSize = const Size(390, 844);
     addTearDown(tester.view.reset);
+    final auth = _PersonaAuth(preferences, accountPersona);
     await tester.pumpWidget(
-      MaterialApp(
-        theme: AppTheme.light(),
-        builder: (context, child) =>
-            Directionality(textDirection: TextDirection.rtl, child: child!),
-        home: LocalPlanMigrationScreen(
-          snapshot: draft == null
-              ? _snapshot
-              : LocalPlanSnapshot(
-                  draft: draft,
-                  costs: _snapshot.costs,
-                  costPayments: _snapshot.costPayments,
-                  paymentSchedules: _snapshot.paymentSchedules,
-                  tasks: _snapshot.tasks,
-                  guests: _snapshot.guests,
-                  categoryNameById: _snapshot.categoryNameById,
-                ),
-          migrationService: service,
-          onFinished: harness.finished.add,
+      ChangeNotifierProvider<AuthController>.value(
+        value: auth,
+        child: MaterialApp(
+          theme: AppTheme.light(),
+          builder: (context, child) =>
+              Directionality(textDirection: TextDirection.rtl, child: child!),
+          home: LocalPlanMigrationScreen(
+            snapshot: draft == null
+                ? _snapshot
+                : LocalPlanSnapshot(
+                    draft: draft,
+                    costs: _snapshot.costs,
+                    costPayments: _snapshot.costPayments,
+                    paymentSchedules: _snapshot.paymentSchedules,
+                    tasks: _snapshot.tasks,
+                    guests: _snapshot.guests,
+                    categoryNameById: _snapshot.categoryNameById,
+                  ),
+            migrationService: service,
+            onFinished: harness.finished.add,
+          ),
         ),
       ),
     );
@@ -276,6 +332,28 @@ class _Harness {
     }
     return harness;
   }
+}
+
+/// An account on one side of a wedding (its persona), signed in.
+class _PersonaAuth extends AuthController {
+  _PersonaAuth(SharedPreferences preferences, this.persona)
+    : super(
+        AuthRepository(
+          ApiClient(tokenProvider: () async => null),
+          AuthStorage(preferences),
+        ),
+      );
+
+  final String? persona;
+
+  @override
+  SafeUser? get user => SafeUser(
+    id: 'user-1',
+    name: 'محمد',
+    role: 'USER',
+    status: 'ACTIVE',
+    persona: persona,
+  );
 }
 
 /// The account's plans by name and city, as the server returns them.

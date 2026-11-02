@@ -109,19 +109,20 @@ void main() {
     expect(find.text('بوابة المزود'), findsOneWidget);
   });
 
-  testWidgets('p06 holds the next step until the service and its price are given', (
-    tester,
-  ) async {
-    await _Harness.pump(tester);
+  testWidgets(
+    'p06 holds the next step until the service and its price are given',
+    (tester) async {
+      await _Harness.pump(tester);
 
-    await _business(tester);
-    await _where(tester);
-    await tester.tap(find.byKey(const ValueKey('provider-apply-next')));
-    await tester.pumpAndSettle();
-    expect(find.text('اكتب اسم خدمتك'), findsOneWidget);
-    expect(find.text('اكتب سعر خدمتك'), findsOneWidget);
-    expect(find.text('كذا بيشوفك العرسان'), findsNothing);
-  });
+      await _business(tester);
+      await _where(tester);
+      await tester.tap(find.byKey(const ValueKey('provider-apply-next')));
+      await tester.pumpAndSettle();
+      expect(find.text('اكتب اسم خدمتك'), findsOneWidget);
+      expect(find.text('اكتب سعر خدمتك'), findsOneWidget);
+      expect(find.text('كذا بيشوفك العرسان'), findsNothing);
+    },
+  );
 
   testWidgets('without a shop place only the application is sent', (
     tester,
@@ -256,7 +257,10 @@ void main() {
     harness.api.claimStatus = 'REJECTED';
     await harness.dashboard.loadClaim();
     await tester.pumpAndSettle();
-    expect(find.text('ما قبلنا الاستلام: اتصلنا بالرقم وما رد.'), findsOneWidget);
+    expect(
+      find.text('ما قبلنا الاستلام: اتصلنا بالرقم وما رد.'),
+      findsOneWidget,
+    );
     await tester.tap(find.byKey(const Key('provider-claim-confirm')));
     await tester.pumpAndSettle();
     expect(find.text('طلب الاستلام قيد المراجعة'), findsOneWidget);

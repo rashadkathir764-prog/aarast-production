@@ -163,10 +163,7 @@ void main() {
       expect(find.text('محمد الحمدي'), findsOneWidget);
       // Read only: nothing to remind, confirm or collect.
       expect(find.text('ذكّره'), findsNothing);
-      expect(
-        find.byKey(const Key('provider-ledger-note')),
-        findsOneWidget,
-      );
+      expect(find.byKey(const Key('provider-ledger-note')), findsOneWidget);
 
       await tester.tap(find.byKey(const Key('provider-ledger-next')));
       await tester.pumpAndSettle();

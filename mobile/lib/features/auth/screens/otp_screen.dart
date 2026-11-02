@@ -183,6 +183,7 @@ class _OtpScreenState extends State<OtpScreen> {
               widget.successLocation,
             ),
             successLocation: widget.successLocation,
+            savesKeptPlan: _keptPlan != null && !_forProvider,
           );
 
     if (!mounted) return;
@@ -281,10 +282,15 @@ class _OtpScreenState extends State<OtpScreen> {
   /// «الرمز ما وصل؟»: what to check, then send it again, fix the number,
   /// or (with a plan on the phone) look at it first, or sign in with a
   /// password.
-  Future<void> _showCodeHelp(String phone, {required bool registration}) {
+  Future<void> _showCodeHelp(
+    String phone, {
+    required bool registration,
+    required bool signingIn,
+  }) {
     final kept = _keptPlan != null && registration;
     return showJourneySheet<void>(
       context: context,
+      profile: _ownerProfile,
       builder: (sheetContext) => JourneyCodeHelpSheet(
         resendSeconds: () => _resendSeconds,
         changeLabel: _changeLabel(context, registration: registration),
@@ -303,7 +309,8 @@ class _OtpScreenState extends State<OtpScreen> {
                 context.go(AppRouter.home);
               }
             : null,
-        onPassword: kept
+        // A password is a way in only for signing in; a new account has none.
+        onPassword: !signingIn
             ? null
             : () {
                 Navigator.of(sheetContext).pop();
@@ -320,16 +327,18 @@ class _OtpScreenState extends State<OtpScreen> {
       ? context.say('غيّر الرقم', 'غيّري الرقم')
       : 'تغيير الرقم';
 
+  /// The kept plan's owner: the colour and voice of every line here.
+  JourneyProfile get _ownerProfile => JourneyProfile.fromPersona(
+    _keptPlan?.persona == GuestPersona.bride ? 'BRIDE' : 'GROOM',
+  );
+
   bool get _forProvider =>
       widget.successLocation?.startsWith('/provider/') == true;
 
   @override
   Widget build(BuildContext context) {
-    final persona = _keptPlan?.persona == GuestPersona.bride
-        ? 'BRIDE'
-        : 'GROOM';
     return JourneyProfileScope(
-      profile: JourneyProfile.fromPersona(persona),
+      profile: _ownerProfile,
       child: Builder(builder: _page),
     );
   }
@@ -351,7 +360,8 @@ class _OtpScreenState extends State<OtpScreen> {
         : 'طلبنا لك رمز على واتساب';
     final existingAccount =
         auth.errorCode == 'ACCOUNT_ALREADY_EXISTS' ||
-        auth.errorCode == 'ADMIN_APP_PASSWORD_ALREADY_SET';
+        auth.errorCode == 'ADMIN_APP_PASSWORD_ALREADY_SET' ||
+        auth.errorCode == 'ADMIN_APP_PASSWORD_REQUIRED';
     final missingAccountAfterProof =
         auth.errorCode == 'ACCOUNT_NOT_FOUND_AFTER_PHONE_PROOF';
     final disabledAccountAfterProof =
@@ -388,12 +398,26 @@ class _OtpScreenState extends State<OtpScreen> {
                 primary: missingAccountAfterProof
                     ? JourneyButton(
                         key: const ValueKey('otp-go-to-register'),
-                        label: 'ابدأ من هنا',
+                        label: _keptPlan != null
+                            ? context.say(
+                                'احفظ خطتي بهذا الرقم',
+                                'احفظي خطتي بهذا الرقم',
+                              )
+                            : 'ابدأ من هنا',
                         expand: true,
                         large: true,
                         onPressed: () {
                           auth.clearError();
-                          context.go(AppRouter.welcome);
+                          // A plan on this phone is saved with the number,
+                          // never replaced by a new one.
+                          context.go(
+                            _keptPlan != null
+                                ? Uri(
+                                    path: AppRouter.register,
+                                    queryParameters: {'phone': phone},
+                                  ).toString()
+                                : AppRouter.welcome,
+                          );
                         },
                       )
                     : JourneyButton(
@@ -472,9 +496,12 @@ class _OtpScreenState extends State<OtpScreen> {
             const SizedBox(height: AarastV3Space.x4),
             JourneyEntryNote(
               text: existingAccount
-                  ? 'هذا الرقم عليه حساب من قبل. ادخل عليه بكلمة المرور.'
+                  ? auth.errorMessage ??
+                        'هذا الرقم عليه حساب من قبل. ادخل عليه برمز واتساب من «تسجيل الدخول».'
                   : missingAccountAfterProof
-                  ? 'هذا الرقم ما عليه حساب في اعّرست. ابدأ من البداية، وتسوي خطتك أو تقدم خدمتك.'
+                  ? _keptPlan != null
+                        ? 'هذا الرقم ما عليه حساب في اعّرست. احفظ خطتك اللي على الجوال بهذا الرقم.'
+                        : 'هذا الرقم ما عليه حساب في اعّرست. ابدأ من البداية، وتسوي خطتك أو تقدم خدمتك.'
                   : auth.errorMessage ?? 'هذا الحساب موقوف.',
               icon: LucideIcons.info,
             ),
@@ -494,7 +521,11 @@ class _OtpScreenState extends State<OtpScreen> {
               onResend: auth.isSubmitting ? null : _resendOtp,
               onHelp: phone.isEmpty
                   ? null
-                  : () => _showCodeHelp(phone, registration: isRegistration),
+                  : () => _showCodeHelp(
+                      phone,
+                      registration: isRegistration,
+                      signingIn: purpose == 'LOGIN',
+                    ),
             ),
             if (after != null) ...[
               const SizedBox(height: AarastV3Space.x1),

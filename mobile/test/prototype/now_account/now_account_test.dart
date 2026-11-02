@@ -227,7 +227,9 @@ void main() {
     // g02 draws «عرسي» for the plan's owner and «شكل التطبيق» from the
     // phone's own preferences, so both are provided as the app does.
     final accountContexts = AccountContextController(
-      contextsApi: _Contexts([_ctx(AccountContextRole.owner, _planId, 'عرس محمد')]),
+      contextsApi: _Contexts([
+        _ctx(AccountContextRole.owner, _planId, 'عرس محمد'),
+      ]),
       authStorage: a.storage,
       setActiveWeddingPlan: (_) async {},
     );
@@ -250,8 +252,13 @@ void main() {
 
   // g02 «حسابي».
   testWidgets('a01 more', (tester) async {
-    await _shot(tester, 'a01_more', const MoreScreen(),
-        h: 1300, providers: await moreProviders());
+    await _shot(
+      tester,
+      'a01_more',
+      const MoreScreen(),
+      h: 1300,
+      providers: await moreProviders(),
+    );
     expect(find.text('حسابي'), findsOneWidget);
     expect(find.text('عرسي'), findsOneWidget);
   });
@@ -260,15 +267,23 @@ void main() {
   // (a04) are gone: a229aa97 (D23) removed them, account deletion stays hidden
   // until its 30-day grace exists (C4), so those two shots have no screen.
   testWidgets('a03 logout confirm', (tester) async {
-    await _shot(tester, 'a03_logout_confirm', const MoreScreen(),
-        h: 1300, providers: await moreProviders(), act: () async {
-      await tester.tap(find.byKey(const ValueKey('account-logout')));
-      await tester.pumpAndSettle();
-    });
+    await _shot(
+      tester,
+      'a03_logout_confirm',
+      const MoreScreen(),
+      h: 1300,
+      providers: await moreProviders(),
+      act: () async {
+        await tester.tap(find.byKey(const ValueKey('account-logout')));
+        await tester.pumpAndSettle();
+      },
+    );
   });
 
   // w39 / settings: «التنبيهات».
-  Future<List<SingleChildWidget>> settingsProviders({bool lockOn = false}) async {
+  Future<List<SingleChildWidget>> settingsProviders({
+    bool lockOn = false,
+  }) async {
     final a = await _auth();
     final vault = _Vault();
     final lock = AppLockController(vault: vault, userId: 'user-1');
@@ -284,32 +299,50 @@ void main() {
   }
 
   testWidgets('a05 settings', (tester) async {
-    await _shot(tester, 'a05_settings',
-        const SettingsScreen(devicePushAvailableOverride: true),
-        h: 1500, providers: await settingsProviders());
+    await _shot(
+      tester,
+      'a05_settings',
+      const SettingsScreen(devicePushAvailableOverride: true),
+      h: 1500,
+      providers: await settingsProviders(),
+    );
   });
 
   // The app lock moved out of the settings screen to its own page
   // (`LockSettingsScreen`, reached from «قفل التطبيق» in g02).
   testWidgets('a06 lock on', (tester) async {
-    await _shot(tester, 'a06_lock_on', const LockSettingsScreen(),
-        providers: await settingsProviders(lockOn: true));
+    await _shot(
+      tester,
+      'a06_lock_on',
+      const LockSettingsScreen(),
+      providers: await settingsProviders(lockOn: true),
+    );
     expect(find.text('التطبيق مقفول برمزك'), findsOneWidget);
   });
 
   testWidgets('a07 lock choose code', (tester) async {
-    await _shot(tester, 'a07_lock_choose', const LockSettingsScreen(),
-        providers: await settingsProviders());
+    await _shot(
+      tester,
+      'a07_lock_choose',
+      const LockSettingsScreen(),
+      providers: await settingsProviders(),
+    );
     expect(find.text('اختر رمز من 4 أرقام'), findsOneWidget);
   });
 
   // The change-phone sheet is opened from g02 now, not from settings.
   testWidgets('a08 change phone', (tester) async {
-    await _shot(tester, 'a08_change_phone', const MoreScreen(),
-        h: 1300, providers: await moreProviders(), act: () async {
-      await tester.tap(find.byKey(const ValueKey('account-change-phone')));
-      await tester.pumpAndSettle();
-    });
+    await _shot(
+      tester,
+      'a08_change_phone',
+      const MoreScreen(),
+      h: 1300,
+      providers: await moreProviders(),
+      act: () async {
+        await tester.tap(find.byKey(const ValueKey('account-change-phone')));
+        await tester.pumpAndSettle();
+      },
+    );
   });
 
   testWidgets('a09 lock wrong', (tester) async {
@@ -322,14 +355,18 @@ void main() {
     for (var i = 0; i < 4; i++) {
       await lock.unlock('1111');
     }
-    await _shot(tester, 'a09_lock_wrong',
-        AppLockScreen(lock: lock, onForgotCode: () async {}), act: () async {
-      for (var i = 0; i < 4; i++) {
-        await tester.tap(find.text('1').first);
-        await tester.pump(const Duration(milliseconds: 50));
-      }
-      await tester.pump(const Duration(milliseconds: 300));
-    });
+    await _shot(
+      tester,
+      'a09_lock_wrong',
+      AppLockScreen(lock: lock, onForgotCode: () async {}),
+      act: () async {
+        for (var i = 0; i < 4; i++) {
+          await tester.tap(find.text('1').first);
+          await tester.pump(const Duration(milliseconds: 50));
+        }
+        await tester.pump(const Duration(milliseconds: 300));
+      },
+    );
     await tester.pumpWidget(const SizedBox());
     await tester.pump(const Duration(seconds: 1));
   });
@@ -345,17 +382,27 @@ void main() {
     final a = await _auth();
     final plans = _Plans([
       _plan(date: weddingDate),
-      _plan(id: 'plan-old', title: 'خطة تجربة', status: 'ARCHIVED',
-          date: DateTime(2026, 5, 2)),
+      _plan(
+        id: 'plan-old',
+        title: 'خطة تجربة',
+        status: 'ARCHIVED',
+        date: DateTime(2026, 5, 2),
+      ),
     ]);
     final accountContexts = AccountContextController(
-      contextsApi: _Contexts(contexts ??
-          [
-            _ctx(AccountContextRole.owner, _planId, 'عرس محمد'),
-            _ctx(AccountContextRole.contributor, 'plan-saleh', 'عرس صالح'),
-            _ctx(AccountContextRole.owner, 'plan-old', 'خطة تجربة',
-                lifecycle: 'ARCHIVED'),
-          ]),
+      contextsApi: _Contexts(
+        contexts ??
+            [
+              _ctx(AccountContextRole.owner, _planId, 'عرس محمد'),
+              _ctx(AccountContextRole.contributor, 'plan-saleh', 'عرس صالح'),
+              _ctx(
+                AccountContextRole.owner,
+                'plan-old',
+                'خطة تجربة',
+                lifecycle: 'ARCHIVED',
+              ),
+            ],
+      ),
       authStorage: a.storage,
       setActiveWeddingPlan: (_) async {},
     );
@@ -376,38 +423,56 @@ void main() {
   testWidgets('a11 my plans', (tester) async {
     // «خطتك · 88 يوم» counts from today, so the day follows today.
     final now = DateTime.now();
-    await _shot(tester, 'a11_my_plans', const MyWeddingPlansScreen(),
-        h: 1000,
-        providers: await planProviders(
-          weddingDate: DateTime(now.year, now.month, now.day + 88),
-        ));
+    await _shot(
+      tester,
+      'a11_my_plans',
+      const MyWeddingPlansScreen(),
+      h: 1000,
+      providers: await planProviders(
+        weddingDate: DateTime(now.year, now.month, now.day + 88),
+      ),
+    );
     expect(find.text('خطتك · 88 يوم'), findsOneWidget);
   });
 
   testWidgets('a12 contexts', (tester) async {
-    await _shot(tester, 'a12_contexts', const AccountContextSelectionScreen(),
-        h: 1000, providers: await planProviders());
+    await _shot(
+      tester,
+      'a12_contexts',
+      const AccountContextSelectionScreen(),
+      h: 1000,
+      providers: await planProviders(),
+    );
   });
 
   testWidgets('a13 plan center', (tester) async {
-    await _shot(tester, 'a13_plan_center',
-        const PlanCenterScreen(weddingPlanId: _planId),
-        h: 2000, providers: await planProviders());
+    await _shot(
+      tester,
+      'a13_plan_center',
+      const PlanCenterScreen(weddingPlanId: _planId),
+      h: 2000,
+      providers: await planProviders(),
+    );
   });
 
   // a14 «تعديل البيانات الأساسية» had its own page; w10 (5712617e) edits the
   // plan on the screen itself, so a13 is the edit screen and a14 has no
   // screen of its own.
   testWidgets('a15 archive confirm', (tester) async {
-    await _shot(tester, 'a15_archive_confirm',
-        const PlanCenterScreen(weddingPlanId: _planId),
-        h: 1000, providers: await planProviders(), act: () async {
-      final archive = find.byKey(const ValueKey('plan-details-archive'));
-      await tester.ensureVisible(archive);
-      await tester.pumpAndSettle();
-      await tester.tap(archive);
-      await tester.pumpAndSettle();
-    });
+    await _shot(
+      tester,
+      'a15_archive_confirm',
+      const PlanCenterScreen(weddingPlanId: _planId),
+      h: 1000,
+      providers: await planProviders(),
+      act: () async {
+        final archive = find.byKey(const ValueKey('plan-details-archive'));
+        await tester.ensureVisible(archive);
+        await tester.pumpAndSettle();
+        await tester.tap(archive);
+        await tester.pumpAndSettle();
+      },
+    );
     expect(find.text('تحط الخطة في الأرشيف؟'), findsOneWidget);
   });
 
@@ -415,69 +480,90 @@ void main() {
     final a = await _auth();
     return [
       ...a.providers,
-      ChangeNotifierProvider<SharingProvider>.value(value: SharingProvider(api)),
+      ChangeNotifierProvider<SharingProvider>.value(
+        value: SharingProvider(api),
+      ),
     ];
   }
 
   testWidgets('a16 sharing', (tester) async {
-    await _shot(tester, 'a16_sharing',
-        const SharingScreen(weddingPlanId: _planId),
-        h: 1500,
-        providers: await sharingProviders(
-            _SharingApi(members: _members, invites: [_invite()])));
+    await _shot(
+      tester,
+      'a16_sharing',
+      const SharingScreen(weddingPlanId: _planId),
+      h: 1500,
+      providers: await sharingProviders(
+        _SharingApi(members: _members, invites: [_invite()]),
+      ),
+    );
   });
 
   testWidgets('a17 sharing empty', (tester) async {
-    await _shot(tester, 'a17_sharing_empty',
-        const SharingScreen(weddingPlanId: _planId),
-        providers: await sharingProviders(_SharingApi()));
+    await _shot(
+      tester,
+      'a17_sharing_empty',
+      const SharingScreen(weddingPlanId: _planId),
+      providers: await sharingProviders(_SharingApi()),
+    );
   });
 
   testWidgets('a18 add member', (tester) async {
-    await _shot(tester, 'a18_add_member',
-        const SharingScreen(weddingPlanId: _planId, startAdding: true),
-        h: 1300, providers: await sharingProviders(_SharingApi()));
+    await _shot(
+      tester,
+      'a18_add_member',
+      const SharingScreen(weddingPlanId: _planId, startAdding: true),
+      h: 1300,
+      providers: await sharingProviders(_SharingApi()),
+    );
   });
 
   testWidgets('a19 add member custom', (tester) async {
-    await _shot(tester, 'a19_add_member_custom',
-        const SharingScreen(weddingPlanId: _planId, startAdding: true),
-        h: 1900, providers: await sharingProviders(_SharingApi()),
-        act: () async {
-      await tester.tap(find.text('أهل').last);
-      await tester.pumpAndSettle();
-    });
+    await _shot(
+      tester,
+      'a19_add_member_custom',
+      const SharingScreen(weddingPlanId: _planId, startAdding: true),
+      h: 1900,
+      providers: await sharingProviders(_SharingApi()),
+      act: () async {
+        await tester.tap(find.text('أهل').last);
+        await tester.pumpAndSettle();
+      },
+    );
   });
 
   testWidgets('a20 edit member', (tester) async {
     final a = await _auth();
-    await _shot(tester, 'a20_edit_member',
-        const EditSharedMemberScreen(sharedMemberId: 'm1'),
-        h: 1600,
-        providers: [
-          ...a.providers,
-          ChangeNotifierProvider<SharingProvider>.value(
-            value: _EditSharing(_members.first),
-          ),
-        ]);
+    await _shot(
+      tester,
+      'a20_edit_member',
+      const EditSharedMemberScreen(sharedMemberId: 'm1'),
+      h: 1600,
+      providers: [
+        ...a.providers,
+        ChangeNotifierProvider<SharingProvider>.value(
+          value: _EditSharing(_members.first),
+        ),
+      ],
+    );
   });
 
   testWidgets('a21 history', (tester) async {
-    await _shot(tester, 'a21_history',
-        const ContributionHistoryScreen(weddingPlanId: _planId),
-        h: 1300,
-        providers: [
-          ChangeNotifierProvider<SharingProvider>.value(
-            value: SharingProvider(
-              _SharingApi(history: true, members: _members),
-            ),
+    await _shot(
+      tester,
+      'a21_history',
+      const ContributionHistoryScreen(weddingPlanId: _planId),
+      h: 1300,
+      providers: [
+        ChangeNotifierProvider<SharingProvider>.value(
+          value: SharingProvider(_SharingApi(history: true, members: _members)),
+        ),
+        ChangeNotifierProvider<ContributionHistoryProvider>.value(
+          value: ContributionHistoryProvider(
+            _SharingApi(history: true, members: _members),
           ),
-          ChangeNotifierProvider<ContributionHistoryProvider>.value(
-            value: ContributionHistoryProvider(
-              _SharingApi(history: true, members: _members),
-            ),
-          ),
-        ]);
+        ),
+      ],
+    );
     expect(
       find.textContaining('دفعة التصوير', findRichText: true),
       findsOneWidget,
@@ -485,16 +571,19 @@ void main() {
   });
 
   testWidgets('a22 history empty', (tester) async {
-    await _shot(tester, 'a22_history_empty',
-        const ContributionHistoryScreen(weddingPlanId: _planId),
-        providers: [
-          ChangeNotifierProvider<SharingProvider>.value(
-            value: SharingProvider(_SharingApi()),
-          ),
-          ChangeNotifierProvider<ContributionHistoryProvider>.value(
-            value: ContributionHistoryProvider(_SharingApi()),
-          ),
-        ]);
+    await _shot(
+      tester,
+      'a22_history_empty',
+      const ContributionHistoryScreen(weddingPlanId: _planId),
+      providers: [
+        ChangeNotifierProvider<SharingProvider>.value(
+          value: SharingProvider(_SharingApi()),
+        ),
+        ChangeNotifierProvider<ContributionHistoryProvider>.value(
+          value: ContributionHistoryProvider(_SharingApi()),
+        ),
+      ],
+    );
   });
 }
 
@@ -694,15 +783,26 @@ class _SharingApi extends SharingApi {
     };
     final all = history
         ? [
-            e('e1', 'MONEY', 'COST_PAYMENT', 'PAYMENT_RECORDED',
-                '2026-10-19T07:20:00.000Z',
-                {'title': 'دفعة التصوير', 'amount': '200000'}),
-            e('e2', 'TASKS', 'TASK', 'COMPLETED', '2026-10-18T16:45:00.000Z',
-                {'title': 'استلام البدلة', 'status': 'DONE'}),
-            e('e3', 'GUESTS', 'GUEST', 'CREATED', '2026-10-18T05:05:00.000Z',
-                {'displayName': 'آل السقاف', 'count': '12'}),
-            e('e4', 'TASKS', 'TASK', 'ASSIGNED', '2026-10-17T09:00:00.000Z',
-                {'title': 'حجز القاعة', 'status': 'TODO'}),
+            e(
+              'e1',
+              'MONEY',
+              'COST_PAYMENT',
+              'PAYMENT_RECORDED',
+              '2026-10-19T07:20:00.000Z',
+              {'title': 'دفعة التصوير', 'amount': '200000'},
+            ),
+            e('e2', 'TASKS', 'TASK', 'COMPLETED', '2026-10-18T16:45:00.000Z', {
+              'title': 'استلام البدلة',
+              'status': 'DONE',
+            }),
+            e('e3', 'GUESTS', 'GUEST', 'CREATED', '2026-10-18T05:05:00.000Z', {
+              'displayName': 'آل السقاف',
+              'count': '12',
+            }),
+            e('e4', 'TASKS', 'TASK', 'ASSIGNED', '2026-10-17T09:00:00.000Z', {
+              'title': 'حجز القاعة',
+              'status': 'TODO',
+            }),
           ]
         : const <Map<String, dynamic>>[];
     // The server never names who did an event: the owner asks for each

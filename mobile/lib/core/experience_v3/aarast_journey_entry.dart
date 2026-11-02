@@ -23,6 +23,11 @@ const _personaCardHeight = 112.0;
 /// The width of the picture on a person's card.
 const _personaPictureWidth = 96.0;
 
+/// How much taller the sky is drawn than its band: the band shows the lights
+/// and fireworks, and its cut falls in the sky's solid floor (from 80% of
+/// its height), so no seam shows.
+const _skyOverdraw = 1.25;
+
 /// The thickness of the questions' progress track.
 const _stepTrack = 8.0;
 
@@ -213,9 +218,15 @@ class JourneyEntryLink extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final color = strong ? context.accent.primaryDark : AarastV3Color.textMuted;
+    final enabled = onPressed != null;
+    final color = !enabled
+        ? AarastV3Color.textFaint
+        : strong
+        ? context.accent.primaryDark
+        : AarastV3Color.textMuted;
     return Semantics(
       button: true,
+      enabled: enabled,
       label: [label, ?sub].join('، '),
       onTap: onPressed,
       excludeSemantics: true,
@@ -557,8 +568,8 @@ class JourneySkyBand extends StatelessWidget {
       child: ClipRect(
         child: OverflowBox(
           alignment: Alignment.topCenter,
-          minHeight: height * 1.65,
-          maxHeight: height * 1.65,
+          minHeight: height * _skyOverdraw,
+          maxHeight: height * _skyOverdraw,
           child: const JourneyWeddingSky(base: AarastV3Color.canvas),
         ),
       ),

@@ -23,28 +23,34 @@ void main() {
     expect(dashboard.claimableListing, isNull);
   });
 
-  test('a claim waits for the review team; the account is no provider yet', () async {
-    final api = _ClaimApiFake();
-    final dashboard = ProviderDashboardProvider(api);
-    await dashboard.loadClaimableListing();
+  test(
+    'a claim waits for the review team; the account is no provider yet',
+    () async {
+      final api = _ClaimApiFake();
+      final dashboard = ProviderDashboardProvider(api);
+      await dashboard.loadClaimableListing();
 
-    expect(await dashboard.claimListing(), isTrue);
-    expect(api.claimed, ['provider-1']);
-    expect(dashboard.claim?.isPending, isTrue);
-    expect(dashboard.claim?.providerId, 'provider-1');
-    expect(dashboard.hasProviderProfile, isFalse);
-    expect(dashboard.profile, isNull);
-  });
+      expect(await dashboard.claimListing(), isTrue);
+      expect(api.claimed, ['provider-1']);
+      expect(dashboard.claim?.isPending, isTrue);
+      expect(dashboard.claim?.providerId, 'provider-1');
+      expect(dashboard.hasProviderProfile, isFalse);
+      expect(dashboard.profile, isNull);
+    },
+  );
 
-  test('a claim already waiting (sent from another phone) reads as waiting', () async {
-    final api = _ClaimApiFake()..alreadyPending = true;
-    final dashboard = ProviderDashboardProvider(api);
-    await dashboard.loadClaimableListing();
+  test(
+    'a claim already waiting (sent from another phone) reads as waiting',
+    () async {
+      final api = _ClaimApiFake()..alreadyPending = true;
+      final dashboard = ProviderDashboardProvider(api);
+      await dashboard.loadClaimableListing();
 
-    expect(await dashboard.claimListing(), isTrue);
-    expect(dashboard.claim?.isPending, isTrue);
-    expect(dashboard.errorMessage, isNull);
-  });
+      expect(await dashboard.claimListing(), isTrue);
+      expect(dashboard.claim?.isPending, isTrue);
+      expect(dashboard.errorMessage, isNull);
+    },
+  );
 
   // p02 replaced the claim card (D36); the full flow is in
   // provider_join_test.dart.
@@ -90,7 +96,10 @@ void main() {
         ),
       ),
     );
-    expect(find.text('ما قبلنا الاستلام: اتصلنا بالرقم وما رد.'), findsOneWidget);
+    expect(
+      find.text('ما قبلنا الاستلام: اتصلنا بالرقم وما رد.'),
+      findsOneWidget,
+    );
     expect(find.text('إيه، هذا ملفي'), findsOneWidget);
   });
 

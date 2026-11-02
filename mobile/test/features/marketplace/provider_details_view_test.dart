@@ -64,7 +64,10 @@ void main() {
     expect(find.text('روابط الشغل'), findsOneWidget);
     expect(find.byKey(const ValueKey('provider-social-tiktok')), findsOne);
     expect(find.byKey(const ValueKey('provider-social-facebook')), findsOne);
-    expect(find.byKey(const ValueKey('provider-social-instagram')), findsNothing);
+    expect(
+      find.byKey(const ValueKey('provider-social-instagram')),
+      findsNothing,
+    );
   });
 
   testWidgets('D62: the services\' own photos, never reviewed, are not shown', (
@@ -165,7 +168,9 @@ void main() {
 
   // B-09: the published reviews with the provider's published reply under
   // each (f03 draws no list; undrawn, built on the journey kit).
-  testWidgets('the reviews read with the provider reply under each', (tester) async {
+  testWidgets('the reviews read with the provider reply under each', (
+    tester,
+  ) async {
     await _pumpView(
       tester,
       reviews: [
@@ -174,7 +179,9 @@ void main() {
           rating: 4,
           userName: 'خالد',
           comment: 'الفيلم وصل بعد أسبوعين بالضبط',
-          reply: const ProviderReviewReply(body: 'شكرًا يا خالد، ونعتذر عن التأخير.'),
+          reply: const ProviderReviewReply(
+            body: 'شكرًا يا خالد، ونعتذر عن التأخير.',
+          ),
         ),
         const ProviderReview(id: 'review-2', rating: 5, userName: 'سالم'),
         const ProviderReview(id: 'review-3', rating: 1, status: 'HIDDEN'),
@@ -188,9 +195,15 @@ void main() {
     expect(find.text('«الفيلم وصل بعد أسبوعين بالضبط»'), findsOneWidget);
     expect(find.text('رد استوديو ضوء صنعاء'), findsOneWidget);
     expect(find.text('شكرًا يا خالد، ونعتذر عن التأخير.'), findsOneWidget);
-    expect(find.byKey(const ValueKey('provider-details-review-review-2')), findsOneWidget);
+    expect(
+      find.byKey(const ValueKey('provider-details-review-review-2')),
+      findsOneWidget,
+    );
     // A review the team hid is not shown.
-    expect(find.byKey(const ValueKey('provider-details-review-review-3')), findsNothing);
+    expect(
+      find.byKey(const ValueKey('provider-details-review-review-3')),
+      findsNothing,
+    );
   });
 
   testWidgets('f03 stays readable at 320px and 1.3 text', (tester) async {
@@ -209,7 +222,8 @@ MarketplaceProvider _provider({
   businessName: 'استوديو ضوء صنعاء',
   ownerName: 'مالك الاستوديو',
   ratingAverage: 4.8,
-  ratingCount: 63,  city: const MarketplaceCity(id: 'city-sanaa', nameAr: 'صنعاء'),
+  ratingCount: 63,
+  city: const MarketplaceCity(id: 'city-sanaa', nameAr: 'صنعاء'),
   address: address,
   coverUrl: 'https://img.test/cover.jpg',
   verifiedAt: DateTime(2026, 9, 1),
@@ -226,7 +240,8 @@ MarketplaceService _photoService(String id, String price, DateTime updated) =>
     MarketplaceService(
       id: id,
       providerId: 'provider-1',
-      title: id == 'service-video' ? 'تصوير كامل' : 'تصوير صور',      isActive: true,
+      title: id == 'service-video' ? 'تصوير كامل' : 'تصوير صور',
+      isActive: true,
       basePrice: price,
       currency: 'YER',
       priceUpdatedAt: updated,

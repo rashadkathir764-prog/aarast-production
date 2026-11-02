@@ -8,6 +8,8 @@ import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../../core/experience_v3/aarast_v3.dart';
+import '../../../core/network/api_client.dart'
+    show adminAppPasswordRequiredMessage;
 import '../../../core/phone/phone_number_utils.dart';
 import '../../../core/phone/yemeni_phone_normalizer.dart';
 import '../../../core/routing/app_router.dart';
@@ -31,7 +33,7 @@ enum _InviteStep { phone, code, closed, invite }
 /// The message that asks the plan's owner for a new invite, when this one
 /// does not open with the proven number.
 const _askNewInviteMessage =
-    'هلا، دعوتك في اعّرست ما فتحت معي. ارسل لي دعوة جديدة على رقمي.';
+    'هلا، دعوة اعّرست ما فتحت معي. ممكن دعوة جديدة على رقمي؟';
 
 /// An invite link opens on the phone it was sent to (D75). The number (and,
 /// for a first visit, a name; no password) is proven with a WhatsApp code,
@@ -180,7 +182,11 @@ class _InviteDecisionScreenState extends State<InviteDecisionScreen> {
         _otpFieldState = AarastOtpFieldState.error;
         if (auth.errorCode == 'INVITE_ACCOUNT_SETUP_REQUIRED') {
           _accountSetupRequired = true;
-          _nameError = 'اكتب اسمك، أول مرة تدخل اعّرست';
+          // With a name already given, only an admin's number still needs
+          // more (a password), which this screen does not take.
+          _nameError = _nameController.text.trim().isEmpty
+              ? 'اكتب اسمك، أول مرة تدخل اعّرست'
+              : adminAppPasswordRequiredMessage;
           _step = _InviteStep.phone;
         } else if (auth.errorCode == 'INVITE_NOT_FOUND_FOR_PHONE') {
           _resendTimer?.cancel();
@@ -585,9 +591,7 @@ class _InviteDecisionScreenState extends State<InviteDecisionScreen> {
       ),
       JourneyEntryQuestion(
         key: const ValueKey('invite-inviter-card'),
-        question: inviter.isEmpty
-            ? (planTitle.isEmpty ? 'دعوة لخطة عرس' : planTitle)
-            : '$inviter يشتيك معه في عرسه',
+        question: _inviteTitle(invite, inviter, planTitle),
         help: [
           if (planTitle.isNotEmpty) planTitle,
           if (city.isNotEmpty) city,
@@ -599,7 +603,7 @@ class _InviteDecisionScreenState extends State<InviteDecisionScreen> {
         const JourneyEntryNote(
           key: Key('invite-membership-ended'),
           text:
-              'قبلت هذي الدعوة من قبل، بس ما عاد لك وصول للخطة. اطلب منه يرسل لك دعوة جديدة.',
+              'قبلت هذي الدعوة من قبل، بس ما عاد لك وصول للخطة. اطلب دعوة جديدة من صاحب الخطة.',
           icon: LucideIcons.userX,
           color: AarastV3Color.textMuted,
         )

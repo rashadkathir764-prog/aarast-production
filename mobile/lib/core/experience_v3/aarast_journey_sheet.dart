@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../widgets/aarast_bottom_sheet.dart';
 import 'aarast_journey.dart';
+import 'aarast_journey_profile.dart';
 import 'aarast_v3_foundations.dart';
 
 /// Opens a journey sheet: the prototype's `sheet` shell on the canvas with a
@@ -17,10 +18,18 @@ Future<T?> showJourneySheet<T>({
   bool isDismissible = true,
   bool enableDrag = true,
   bool useRootNavigator = false,
+  JourneyProfile? profile,
 }) {
+  // A sheet is a new route above the screen: it keeps the plan's colour and
+  // voice (the bride's rose and words), taken from [profile] when the
+  // caller's context sits above its own scope.
+  final owner = profile ?? context.journeyProfile;
   return showAarastBottomSheet<T>(
     context: context,
-    builder: builder,
+    builder: (sheetContext) => JourneyProfileScope(
+      profile: owner,
+      child: Builder(builder: builder),
+    ),
     isScrollControlled: true,
     useSafeArea: true,
     backgroundColor: AarastV3Color.canvas,

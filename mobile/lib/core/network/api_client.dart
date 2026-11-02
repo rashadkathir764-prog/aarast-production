@@ -937,7 +937,8 @@ class ApiException implements Exception {
       'INVITE_NOT_FOUND_FOR_PHONE' =>
         'لا توجد دعوة فعّالة مرتبطة بهذا الرقم. تأكد من الرقم أو اطلب دعوة جديدة.',
       'INVITE_ACCOUNT_SETUP_REQUIRED' =>
-        'أنشئ اسمًا وكلمة مرور لحساب المساهم ثم أعد تأكيد الرمز نفسه.',
+        'أول مرة تدخل اعّرست: اكتب اسمك، ونفس الرمز يسوي لك حساب.',
+      'ADMIN_APP_PASSWORD_REQUIRED' => adminAppPasswordRequiredMessage,
       _ => null,
     };
   }
@@ -959,3 +960,8 @@ class ApiException implements Exception {
     return 'تعذر إكمال طلب المصادقة. حاول مرة أخرى.';
   }
 }
+
+/// D75: an admin's number keeps a password for its app account, so a sign-up
+/// or an invite without one stops here and says where to go.
+const adminAppPasswordRequiredMessage =
+    'هذا الرقم لحساب إدارة، وحسابه في التطبيق يحتاج كلمة مرور. ادخل من «تسجيل الدخول» بكلمة المرور.';

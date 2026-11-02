@@ -158,7 +158,11 @@ class _SmartWelcomeScreenState extends State<SmartWelcomeScreen> {
   }
 
   Future<void> _pickMahrDueDate() async {
-    final picked = await pickMahrDueDate(context, _mahrDueDate);
+    final picked = await pickMahrDueDate(
+      context,
+      _mahrDueDate,
+      accent: _profile.accent,
+    );
     if (picked != null && mounted) setState(() => _mahrDueDate = picked);
   }
 
@@ -207,8 +211,17 @@ class _SmartWelcomeScreenState extends State<SmartWelcomeScreen> {
     _goTo(_WelcomeStep.nameDate);
   }
 
+  /// A link tapped before its question has what it needs says what is
+  /// missing, rather than doing nothing.
+  bool _nameMissing = false;
+  bool _cityMissing = false;
+
   /// «ما حددنا الموعد بعد»: a full answer, the date is set later.
   void _skipDate() {
+    if (_name.isEmpty) {
+      setState(() => _nameMissing = true);
+      return;
+    }
     setState(() {
       _dateUnknown = true;
       _date = null;
@@ -218,6 +231,10 @@ class _SmartWelcomeScreenState extends State<SmartWelcomeScreen> {
 
   /// «أكمل بدون ميزانية»: the plan starts without a total.
   void _skipBudget() {
+    if (_city == null) {
+      setState(() => _cityMissing = true);
+      return;
+    }
     _budgetController.clear();
     setState(() => _budgetSkipped = true);
     _goTo(_WelcomeStep.mahr);
@@ -279,9 +296,17 @@ class _SmartWelcomeScreenState extends State<SmartWelcomeScreen> {
     }
   }
 
+  /// A finished plan already on this phone («عرس محمد»): the door opens it
+  /// instead of starting a second one over it (the phone keeps one).
+  String? _phonePlanTitle;
+
   Future<void> _loadSavedDraft() async {
     final draft = await context.read<GuestOnboardingStorage>().loadDraft();
-    if (!mounted || draft == null || draft.isCompleteGuestPlan) return;
+    if (!mounted || draft == null) return;
+    if (draft.isCompleteGuestPlan) {
+      setState(() => _phonePlanTitle = draft.planName?.trim() ?? 'خطتك');
+      return;
+    }
     if (draft.selectedPath == GuestOnboardingPath.provider) {
       context.go(AppRouter.providerApply);
       return;
@@ -379,7 +404,10 @@ class _SmartWelcomeScreenState extends State<SmartWelcomeScreen> {
       if (!mounted) return;
       setState(() {
         _saving = false;
-        _error = 'ما قدرنا نحفظ الخطة على جوالك. حاول مرة ثانية.';
+        _error = _profile.say(
+          'ما قدرنا نحفظ الخطة على جوالك. حاول مرة ثانية.',
+          'ما قدرنا نحفظ الخطة على جوالك. حاولي مرة ثانية.',
+        );
       });
       return;
     }
@@ -400,7 +428,12 @@ class _SmartWelcomeScreenState extends State<SmartWelcomeScreen> {
   Future<void> _createAccountPlan() async {
     final plans = _maybeRead<WeddingPlansProvider>();
     if (plans == null) {
-      setState(() => _error = 'ما قدرنا ننشئ الخطة الآن. حاول مرة ثانية.');
+      setState(
+        () => _error = _profile.say(
+          'ما قدرنا ننشئ الخطة الآن. حاول مرة ثانية.',
+          'ما قدرنا ننشئ الخطة الآن. حاولي مرة ثانية.',
+        ),
+      );
       return;
     }
     final authStorage = _maybeRead<AuthStorage>();
@@ -429,7 +462,10 @@ class _SmartWelcomeScreenState extends State<SmartWelcomeScreen> {
         _saving = false;
         _error =
             plans.errorMessage ??
-            'ما قدرنا ننشئ الخطة. تأكد من النت وحاول مرة ثانية.';
+            _profile.say(
+              'ما قدرنا ننشئ الخطة. تأكد من النت وحاول مرة ثانية.',
+              'ما قدرنا ننشئ الخطة. تأكدي من النت وحاولي مرة ثانية.',
+            );
       });
       return;
     }
@@ -483,7 +519,10 @@ class _SmartWelcomeScreenState extends State<SmartWelcomeScreen> {
   Widget _page(BuildContext context) {
     return switch (_step) {
       _WelcomeStep.start => _StartStep(
-        onPlan: () => _goTo(_WelcomeStep.whose),
+        phonePlanTitle: _phonePlanTitle,
+        onPlan: () => _phonePlanTitle != null
+            ? context.go(AppRouter.home)
+            : _goTo(_WelcomeStep.whose),
         onInvite: () => context.go(AppRouter.inviteAccess),
         // A provider without an account goes straight to their own
         // sign-up, never to a wall written for couples (D75).
@@ -498,26 +537,35 @@ class _SmartWelcomeScreenState extends State<SmartWelcomeScreen> {
       _WelcomeStep.nameDate => _NameDateStep(
         controller: _nameController,
         date: _date,
-        onNameChanged: () => setState(() {}),
+        nameError: _nameMissing
+            ? context.say('اكتب اسمك أول', 'اكتبي اسمك أول')
+            : null,
+        onNameChanged: () => setState(() => _nameMissing = false),
         onPickMonth: _pickDayInMonth,
         onLaterMonths: _pickLaterMonth,
         onNext: _name.isEmpty || _date == null
             ? null
             : () => _goTo(_WelcomeStep.placeBudget),
-        onSkipDate: _name.isEmpty ? null : _skipDate,
+        onSkipDate: _skipDate,
         onBack: _back,
       ),
       _WelcomeStep.placeBudget => _PlaceBudgetStep(
         cities: _cities,
         city: _city,
         budgetController: _budgetController,
-        onCity: (city) => setState(() => _city = city),
+        cityError: _cityMissing
+            ? context.say('اختر المدينة أول', 'اختاري المدينة أول')
+            : null,
+        onCity: (city) => setState(() {
+          _city = city;
+          _cityMissing = false;
+        }),
         onMoreCities: _pickOtherCity,
         onBudgetChanged: () => setState(() => _budgetSkipped = false),
         onNext: _city == null || _budget == null
             ? null
             : () => _goTo(_WelcomeStep.mahr),
-        onSkipBudget: _city == null ? null : _skipBudget,
+        onSkipBudget: _skipBudget,
         onBack: _back,
       ),
       _WelcomeStep.mahr => JourneyQuestionPage(
@@ -628,6 +676,7 @@ class _SmartWelcomeScreenState extends State<SmartWelcomeScreen> {
     releaseFieldFocus();
     final picked = await showJourneySheet<DateTime>(
       context: context,
+      profile: _profile,
       builder: (sheetContext) => _DaySheet(
         month: DateTime(month.year, month.month),
         selected: _date,
@@ -647,6 +696,7 @@ class _SmartWelcomeScreenState extends State<SmartWelcomeScreen> {
     final today = DateUtils.dateOnly(appNow());
     final month = await showJourneySheet<DateTime>(
       context: context,
+      profile: _profile,
       builder: (sheetContext) => _LaterMonthsSheet(
         first: DateTime(today.year, today.month + _monthsOnScreen),
         selected: _date,
@@ -659,6 +709,7 @@ class _SmartWelcomeScreenState extends State<SmartWelcomeScreen> {
   Future<void> _pickOtherCity() async {
     final picked = await showJourneySheet<String>(
       context: context,
+      profile: _profile,
       builder: (sheetContext) => _CitySheet(cities: _cities, selected: _city),
     );
     if (picked == null || !mounted) return;

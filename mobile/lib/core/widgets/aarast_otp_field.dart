@@ -7,6 +7,7 @@ import 'package:lucide_icons/lucide_icons.dart';
 
 import '../theme/app_theme.dart';
 import '../experience_v3/aarast_journey.dart' show JourneyType;
+import '../experience_v3/aarast_journey_profile.dart';
 import '../experience_v3/aarast_v3_foundations.dart';
 
 /// The hidden input under the code boxes only carries the digits.
@@ -267,7 +268,10 @@ class _AarastOtpFieldState extends State<AarastOtpField>
       AarastOtpFieldState.error => AppTheme.danger,
       AarastOtpFieldState.success => AppTheme.success,
       AarastOtpFieldState.idle =>
-        isActive && _focusNode.hasFocus ? AppTheme.brand : AppTheme.border,
+        // The plan's colour (the bride's rose), like every focused field.
+        isActive && _focusNode.hasFocus
+            ? context.accent.primary
+            : AppTheme.border,
     };
   }
 
@@ -319,12 +323,11 @@ class _AarastOtpFieldState extends State<AarastOtpField>
       );
     }
 
+    final lastIndex = widget.length - 1;
     return Expanded(
       child: Padding(
         padding: EdgeInsetsDirectional.only(
-          end: index == widget.length - AarastV3Space.hair
-              ? 0
-              : AarastV3Space.x1,
+          end: index == lastIndex ? 0 : AarastV3Space.x1,
         ),
         child: AnimatedContainer(
           duration: _reduceMotion
@@ -334,7 +337,7 @@ class _AarastOtpFieldState extends State<AarastOtpField>
           alignment: Alignment.center,
           decoration: BoxDecoration(
             color: _fillColor(),
-            borderRadius: BorderRadius.circular(AppTheme.radiusLg),
+            borderRadius: BorderRadius.circular(AarastV3Field.radius),
             border: Border.all(
               color: _borderColor(isActive),
               width: isActive || widget.state != AarastOtpFieldState.idle

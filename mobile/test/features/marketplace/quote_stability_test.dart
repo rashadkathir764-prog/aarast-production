@@ -202,7 +202,8 @@ QuoteRequest _quote(String id, {String? planId}) => QuoteRequest(
 MarketplaceProvider _provider(String id) => MarketplaceProvider(
   id: id,
   businessName: id,
-  ownerName: id,  ratingAverage: 0,
+  ownerName: id,
+  ratingAverage: 0,
   ratingCount: 0,
 );
 

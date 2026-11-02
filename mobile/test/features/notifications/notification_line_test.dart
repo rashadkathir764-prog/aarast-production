@@ -18,14 +18,20 @@ AarastNotification _notice(String body, [Map<String, dynamic>? data]) =>
 void main() {
   // B-38: the server writes no amount in a notice's words; the phone writes
   // the amount the app's one way and leaves it out under «أخفِ المبالغ».
-  test('a money notice reads its amount the app way, before its line (b08)', () {
-    final line = notificationLine(
-      _notice('الجمعة 30 أكتوبر', {'amount': '500000', 'currency': 'YER'}),
-      hideAmounts: false,
-    );
-    expect(stripMoneyDirectionalityMarks(line), '500,000 ر.ي · الجمعة 30 أكتوبر');
-    expect(line, isNot(contains('500000')));
-  });
+  test(
+    'a money notice reads its amount the app way, before its line (b08)',
+    () {
+      final line = notificationLine(
+        _notice('الجمعة 30 أكتوبر', {'amount': '500000', 'currency': 'YER'}),
+        hideAmounts: false,
+      );
+      expect(
+        stripMoneyDirectionalityMarks(line),
+        '500,000 ر.ي · الجمعة 30 أكتوبر',
+      );
+      expect(line, isNot(contains('500000')));
+    },
+  );
 
   test('a million reads «مليون», another currency its own name', () {
     expect(
@@ -48,17 +54,23 @@ void main() {
     );
   });
 
-  test('«أخفِ المبالغ» leaves the amount out; a notice without one is its words', () {
-    expect(
-      notificationLine(
-        _notice('الجمعة 30 أكتوبر', {'amount': '500000', 'currency': 'YER'}),
-        hideAmounts: true,
-      ),
-      'الجمعة 30 أكتوبر',
-    );
-    expect(
-      notificationLine(_notice('وصلتك رسالة في محادثة الطلب.'), hideAmounts: false),
-      'وصلتك رسالة في محادثة الطلب.',
-    );
-  });
+  test(
+    '«أخفِ المبالغ» leaves the amount out; a notice without one is its words',
+    () {
+      expect(
+        notificationLine(
+          _notice('الجمعة 30 أكتوبر', {'amount': '500000', 'currency': 'YER'}),
+          hideAmounts: true,
+        ),
+        'الجمعة 30 أكتوبر',
+      );
+      expect(
+        notificationLine(
+          _notice('وصلتك رسالة في محادثة الطلب.'),
+          hideAmounts: false,
+        ),
+        'وصلتك رسالة في محادثة الطلب.',
+      );
+    },
+  );
 }

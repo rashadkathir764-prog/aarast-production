@@ -76,20 +76,34 @@ void main() {
     expect(isSafeNotificationRouteTarget('/admin/users'), isFalse);
   });
 
-  test('the provider portal, its tabs and the joining screen are safe; other provider paths are not', () {
-    expect(isSafeNotificationRouteTarget('/provider/dashboard'), isTrue);
-    expect(isSafeNotificationRouteTarget('/provider/dashboard?tab=profile'), isTrue);
-    expect(isSafeNotificationRouteTarget('/provider/dashboard?tab=requests'), isTrue);
-    expect(isSafeNotificationRouteTarget('/provider/dashboard?tab=x'), isFalse);
-    expect(
-      isSafeNotificationRouteTarget('/provider/dashboard?tab=profile&next=/x'),
-      isFalse,
-    );
-    // A refused claim is read where he joins (p02).
-    expect(isSafeNotificationRouteTarget('/provider/apply'), isTrue);
-    expect(isSafeNotificationRouteTarget('/provider/apply?next=/x'), isFalse);
-    expect(isSafeNotificationRouteTarget('/provider/dashboard/x'), isFalse);
-  });
+  test(
+    'the provider portal, its tabs and the joining screen are safe; other provider paths are not',
+    () {
+      expect(isSafeNotificationRouteTarget('/provider/dashboard'), isTrue);
+      expect(
+        isSafeNotificationRouteTarget('/provider/dashboard?tab=profile'),
+        isTrue,
+      );
+      expect(
+        isSafeNotificationRouteTarget('/provider/dashboard?tab=requests'),
+        isTrue,
+      );
+      expect(
+        isSafeNotificationRouteTarget('/provider/dashboard?tab=x'),
+        isFalse,
+      );
+      expect(
+        isSafeNotificationRouteTarget(
+          '/provider/dashboard?tab=profile&next=/x',
+        ),
+        isFalse,
+      );
+      // A refused claim is read where he joins (p02).
+      expect(isSafeNotificationRouteTarget('/provider/apply'), isTrue);
+      expect(isSafeNotificationRouteTarget('/provider/apply?next=/x'), isFalse);
+      expect(isSafeNotificationRouteTarget('/provider/dashboard/x'), isFalse);
+    },
+  );
 
   test('only a bare provider request or review path is a safe target', () {
     expect(isSafeNotificationRouteTarget('/provider/requests/quote-7'), isTrue);

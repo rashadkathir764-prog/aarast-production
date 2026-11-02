@@ -260,7 +260,9 @@ void main() {
   });
 
   // B-09 (p42): «تقييم جديد · 4 نجوم من خالد» opens p27.
-  testWidgets('a new review reads as p42 draws it and opens p27', (tester) async {
+  testWidgets('a new review reads as p42 draws it and opens p27', (
+    tester,
+  ) async {
     await _pump(tester, [
       _notice(
         'n9',
@@ -282,33 +284,34 @@ void main() {
   // B-19: his account's notices (no audience: the server shows a provider
   // notice only to an operational provider) and his featured placement's
   // are his too, and open the portal or «ملفي».
-  testWidgets('his account and placement notices are his and open their screens', (
-    tester,
-  ) async {
-    await _pump(tester, [
-      _notice(
-        'n10',
-        'PROVIDER_APPROVED',
-        title: 'اعتمدنا ملفك',
-        body: 'ملف الاستوديو صار ظاهر للعرسان.',
-        quoteId: null,
-        audience: null,
-      ),
-      _notice(
-        'n11',
-        'LISTING_PLAN_CHANGED',
-        title: 'تفعّل ظهورك المميز',
-        body: 'من اليوم لين 31 ديسمبر.',
-        quoteId: null,
-        routeTarget: '/provider/dashboard?tab=profile',
-      ),
-    ]);
-    expect(find.text('اعتمدنا ملفك'), findsOne);
-    expect(find.text('تفعّل ظهورك المميز'), findsOne);
-    await tester.tap(find.byKey(const Key('provider-notice-n11')));
-    await tester.pumpAndSettle();
-    expect(find.text('البوابة profile'), findsOne);
-  });
+  testWidgets(
+    'his account and placement notices are his and open their screens',
+    (tester) async {
+      await _pump(tester, [
+        _notice(
+          'n10',
+          'PROVIDER_APPROVED',
+          title: 'اعتمدنا ملفك',
+          body: 'ملف الاستوديو صار ظاهر للعرسان.',
+          quoteId: null,
+          audience: null,
+        ),
+        _notice(
+          'n11',
+          'LISTING_PLAN_CHANGED',
+          title: 'تفعّل ظهورك المميز',
+          body: 'من اليوم لين 31 ديسمبر.',
+          quoteId: null,
+          routeTarget: '/provider/dashboard?tab=profile',
+        ),
+      ]);
+      expect(find.text('اعتمدنا ملفك'), findsOne);
+      expect(find.text('تفعّل ظهورك المميز'), findsOne);
+      await tester.tap(find.byKey(const Key('provider-notice-n11')));
+      await tester.pumpAndSettle();
+      expect(find.text('البوابة profile'), findsOne);
+    },
+  );
 
   testWidgets('a request not in his list keeps the server\'s words', (
     tester,

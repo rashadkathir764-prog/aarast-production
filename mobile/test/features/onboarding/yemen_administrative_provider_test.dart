@@ -58,7 +58,6 @@ void main() {
       containsAll(<String>['أمانة العاصمة', 'صنعاء', 'سقطرى', 'تعز']),
     );
   });
-
 }
 
 class _FakeYemenAdministrativeApi extends YemenAdministrativeApi {

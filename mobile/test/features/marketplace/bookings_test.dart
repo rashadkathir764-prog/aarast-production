@@ -42,7 +42,10 @@ void main() {
     expect(booking.isRequested, isTrue);
     expect(booking.isOpen, isTrue);
     expect(bookingStatusLabel(booking), 'بانتظار تأكيد المزوّد');
-    expect(bookingStatusLabel(booking, forProvider: true), 'طلب حجز بانتظار ردّك');
+    expect(
+      bookingStatusLabel(booking, forProvider: true),
+      'طلب حجز بانتظار ردّك',
+    );
 
     final completed = MarketplaceBooking.fromJson(
       _bookingJson(status: 'CONFIRMED', lifecycleStatus: 'COMPLETED'),
@@ -56,8 +59,11 @@ void main() {
     expect(bookingStatusLabel(cancelledByProvider), 'ألغاه المزوّد');
     expect(MarketplaceBooking.dayParam(DateTime(2027, 3, 1)), '2027-03-01');
     expect(
-      QuoteRequest.fromJson({'id': 'q', 'providerId': 'p', 'status': 'SENT'})
-          .booking,
+      QuoteRequest.fromJson({
+        'id': 'q',
+        'providerId': 'p',
+        'status': 'SENT',
+      }).booking,
       isNull,
     );
   });
@@ -144,37 +150,40 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('ما أقدر، اعتذر'), findsOneWidget);
-    await tester.tap(find.byKey(const Key('provider-booking-confirm-booking-1')));
+    await tester.tap(
+      find.byKey(const Key('provider-booking-confirm-booking-1')),
+    );
     await tester.pumpAndSettle();
     expect(api.decisions, ['booking-1:confirm']);
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('a provider without a service is told customers cannot see them', (
-    tester,
-  ) async {
-    final api = _BookingsApiFake()..services = const [];
-    final dashboard = ProviderDashboardProvider(api);
-    await dashboard.loadDashboard();
+  testWidgets(
+    'a provider without a service is told customers cannot see them',
+    (tester) async {
+      final api = _BookingsApiFake()..services = const [];
+      final dashboard = ProviderDashboardProvider(api);
+      await dashboard.loadDashboard();
 
-    // p14 replaced the setup checklist (D40).
-    await tester.pumpWidget(
-      MaterialApp(
-        theme: AppTheme.light(),
-        home: Scaffold(
-          body: SingleChildScrollView(
-            child: ProviderFirstSteps(
-              dashboard: dashboard,
-              onOpenProfile: () {},
+      // p14 replaced the setup checklist (D40).
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: AppTheme.light(),
+          home: Scaffold(
+            body: SingleChildScrollView(
+              child: ProviderFirstSteps(
+                dashboard: dashboard,
+                onOpenProfile: () {},
+              ),
             ),
           ),
         ),
-      ),
-    );
+      );
 
-    expect(find.text('أضف خدمة بسعرها'), findsOneWidget);
-    expect(find.text('ملفك ما يظهر في الدليل قبل أول خدمة'), findsOneWidget);
-  });
+      expect(find.text('أضف خدمة بسعرها'), findsOneWidget);
+      expect(find.text('ملفك ما يظهر في الدليل قبل أول خدمة'), findsOneWidget);
+    },
+  );
 }
 
 class _BookingsApiFake extends ProviderDashboardApi {
@@ -188,7 +197,8 @@ class _BookingsApiFake extends ProviderDashboardApi {
     MarketplaceService(
       id: 'service-1',
       providerId: 'provider-1',
-      title: 'زفة كاملة',      isActive: true,
+      title: 'زفة كاملة',
+      isActive: true,
     ),
   ];
 

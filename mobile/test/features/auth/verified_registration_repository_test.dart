@@ -46,30 +46,33 @@ void main() {
     expect(await storage.readRefreshToken(), 'refresh-token');
   });
 
-  test('D75: sign-up sends the name, number and code only, no password', () async {
-    SharedPreferences.setMockInitialValues({});
-    final storage = AuthStorage(await SharedPreferences.getInstance());
-    final api = ApiClient(tokenProvider: storage.readAccessToken);
-    final adapter = _RegistrationAdapter();
-    api.dio.httpClientAdapter = adapter;
-    final repository = AuthRepository(api, storage);
+  test(
+    'D75: sign-up sends the name, number and code only, no password',
+    () async {
+      SharedPreferences.setMockInitialValues({});
+      final storage = AuthStorage(await SharedPreferences.getInstance());
+      final api = ApiClient(tokenProvider: storage.readAccessToken);
+      final adapter = _RegistrationAdapter();
+      api.dio.httpClientAdapter = adapter;
+      final repository = AuthRepository(api, storage);
 
-    await repository.startRegistration(name: 'سلمى', phone: '777123456');
-    await repository.register(
-      name: 'سلمى',
-      phone: '777123456',
-      otpCode: '123456',
-    );
+      await repository.startRegistration(name: 'سلمى', phone: '777123456');
+      await repository.register(
+        name: 'سلمى',
+        phone: '777123456',
+        otpCode: '123456',
+      );
 
-    expect(
-      Map<String, Object?>.from(adapter.requests.first.data as Map).keys,
-      unorderedEquals(['name', 'phone']),
-    );
-    expect(
-      Map<String, Object?>.from(adapter.requests.last.data as Map).keys,
-      unorderedEquals(['name', 'phone', 'otpCode']),
-    );
-  });
+      expect(
+        Map<String, Object?>.from(adapter.requests.first.data as Map).keys,
+        unorderedEquals(['name', 'phone']),
+      );
+      expect(
+        Map<String, Object?>.from(adapter.requests.last.data as Map).keys,
+        unorderedEquals(['name', 'phone', 'otpCode']),
+      );
+    },
+  );
 
   test('D75: a sign-up code for a number with an account says so', () async {
     SharedPreferences.setMockInitialValues({});

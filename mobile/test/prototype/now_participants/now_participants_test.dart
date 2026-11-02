@@ -257,7 +257,10 @@ class _AuthRepo extends AuthRepository {
   Future<void> logout() async {}
 }
 
-Future<AuthController> _auth({bool signedIn = false, bool setup = false}) async {
+Future<AuthController> _auth({
+  bool signedIn = false,
+  bool setup = false,
+}) async {
   final prefs = await SharedPreferences.getInstance();
   final storage = AuthStorage(prefs);
   if (signedIn) {
@@ -536,20 +539,17 @@ Future<(List<SingleChildWidget>, GoRouter)> _workspace({
   bool providers = true,
   bool money = false,
 }) async {
-  final contexts = await _contexts(
-    [
-      _ctx(
-        role: 'CONTRIBUTOR',
-        planId: _planId,
-        name: 'عرس محمد',
-        tasks: tasks,
-        guests: guests,
-        providers: providers,
-        viewMoney: money,
-      ),
-    ],
-    select: 'plan:$_planId:contributor',
-  );
+  final contexts = await _contexts([
+    _ctx(
+      role: 'CONTRIBUTOR',
+      planId: _planId,
+      name: 'عرس محمد',
+      tasks: tasks,
+      guests: guests,
+      providers: providers,
+      viewMoney: money,
+    ),
+  ], select: 'plan:$_planId:contributor');
   final auth = await _auth(signedIn: true);
   final api = _PlansApi(
     _summary(
@@ -901,10 +901,7 @@ void main() {
 
   // q10: the participant's «حسابي».
   testWidgets('p13 account menu', (tester) async {
-    final (p, r) = await _workspace(
-      role: 'HELPER',
-      screen: const MoreScreen(),
-    );
+    final (p, r) = await _workspace(role: 'HELPER', screen: const MoreScreen());
     await _shot(
       tester,
       'p13_account_menu',
@@ -917,10 +914,7 @@ void main() {
   });
 
   testWidgets('p14 leave confirm', (tester) async {
-    final (p, r) = await _workspace(
-      role: 'HELPER',
-      screen: const MoreScreen(),
-    );
+    final (p, r) = await _workspace(role: 'HELPER', screen: const MoreScreen());
     await _shot(
       tester,
       'p14_leave_confirm',
@@ -936,14 +930,16 @@ void main() {
         await tester.pumpAndSettle();
       },
     );
-    expect(find.byKey(const ValueKey('participant-leave-confirm')), findsOneWidget);
+    expect(
+      find.byKey(const ValueKey('participant-leave-confirm')),
+      findsOneWidget,
+    );
   });
 
   testWidgets('p15 section blocked by permission', (tester) async {
-    final c = await _contexts(
-      [_ctx(role: 'CONTRIBUTOR', planId: _planId, name: 'عرس محمد')],
-      select: 'plan:$_planId:contributor',
-    );
+    final c = await _contexts([
+      _ctx(role: 'CONTRIBUTOR', planId: _planId, name: 'عرس محمد'),
+    ], select: 'plan:$_planId:contributor');
     await _shot(
       tester,
       'p15_section_blocked',
@@ -972,10 +968,9 @@ void main() {
   });
 
   testWidgets('p17 removed from plan', (tester) async {
-    final c = await _contexts(
-      [_ctx(role: 'OWNER', planId: 'plan-saleh', name: 'عرس صالح')],
-      select: 'plan:plan-saleh:owner',
-    );
+    final c = await _contexts([
+      _ctx(role: 'OWNER', planId: 'plan-saleh', name: 'عرس صالح'),
+    ], select: 'plan:plan-saleh:owner');
     await _shot(
       tester,
       'p17_removed',

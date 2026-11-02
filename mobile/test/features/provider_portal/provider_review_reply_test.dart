@@ -28,7 +28,10 @@ class _ReplyApi extends ProfileApi {
       userName: review.userName,
       comment: review.comment,
       createdAt: review.createdAt,
-      reply: ProviderReviewReply(body: body.trim(), repliedAt: DateTime(2026, 10, 25)),
+      reply: ProviderReviewReply(
+        body: body.trim(),
+        repliedAt: DateTime(2026, 10, 25),
+      ),
     );
   }
 }
@@ -41,7 +44,10 @@ final _review = ProviderReview(
   createdAt: DateTime(2026, 10, 10),
 );
 
-Future<_ReplyApi> _pump(WidgetTester tester, List<ProviderReview> reviews) async {
+Future<_ReplyApi> _pump(
+  WidgetTester tester,
+  List<ProviderReview> reviews,
+) async {
   tester.view.devicePixelRatio = 1;
   tester.view.physicalSize = const Size(420, 1000);
   addTearDown(tester.view.reset);
@@ -71,7 +77,10 @@ void main() {
     final api = await _pump(tester, [_review]);
     expect(find.text('تقييم جديد'), findsOne);
     expect(find.text('محمد'), findsOne);
-    expect(find.text('«الصور رهيبة، بس الفيلم تأخر أسبوعين عن الموعد.»'), findsOne);
+    expect(
+      find.text('«الصور رهيبة، بس الفيلم تأخر أسبوعين عن الموعد.»'),
+      findsOne,
+    );
     expect(find.text('ردك (مرة وحدة، يشوفه الكل)'), findsOne);
     // Reports wait for B-28: no «بلّغ عنه».
     expect(find.textContaining('بلّغ'), findsNothing);
@@ -104,7 +113,10 @@ void main() {
         id: 'review-1',
         rating: 2,
         userName: 'فهد',
-        reply: const ProviderReviewReply(body: 'العريس لغى قبل يوم', status: 'HIDDEN'),
+        reply: const ProviderReviewReply(
+          body: 'العريس لغى قبل يوم',
+          status: 'HIDDEN',
+        ),
       ),
     ]);
     expect(find.text('التقييم'), findsOne);

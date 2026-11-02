@@ -7,6 +7,7 @@ class _NameDateStep extends StatelessWidget {
   const _NameDateStep({
     required this.controller,
     required this.date,
+    required this.nameError,
     required this.onNameChanged,
     required this.onPickMonth,
     required this.onLaterMonths,
@@ -17,6 +18,7 @@ class _NameDateStep extends StatelessWidget {
 
   final TextEditingController controller;
   final DateTime? date;
+  final String? nameError;
   final VoidCallback onNameChanged;
   final ValueChanged<DateTime> onPickMonth;
   final VoidCallback onLaterMonths;
@@ -54,6 +56,7 @@ class _NameDateStep extends StatelessWidget {
           label: 'اسمك',
           controller: controller,
           hint: context.say('محمد', 'سلمى'),
+          errorText: nameError,
           textInputAction: TextInputAction.done,
           onChanged: (_) => onNameChanged(),
         ),
@@ -421,6 +424,7 @@ class _PlaceBudgetStep extends StatelessWidget {
     required this.cities,
     required this.city,
     required this.budgetController,
+    required this.cityError,
     required this.onCity,
     required this.onMoreCities,
     required this.onBudgetChanged,
@@ -432,6 +436,7 @@ class _PlaceBudgetStep extends StatelessWidget {
   final List<String> cities;
   final String? city;
   final TextEditingController budgetController;
+  final String? cityError;
   final ValueChanged<String> onCity;
   final VoidCallback onMoreCities;
   final VoidCallback onBudgetChanged;
@@ -488,6 +493,17 @@ class _PlaceBudgetStep extends StatelessWidget {
             ),
           ],
         ),
+        if (cityError != null) ...[
+          const SizedBox(height: AarastV3Space.x2),
+          Text(
+            cityError!,
+            style: JourneyType.of(
+              JourneyType.small,
+              weight: JourneyType.bold,
+              color: AarastV3Color.danger,
+            ),
+          ),
+        ],
         const SizedBox(height: AarastV3Space.x5),
         JourneyTextField(
           label: 'ميزانية عرسك',
@@ -669,7 +685,11 @@ class _ReadyStep extends StatelessWidget {
                               title: count != null && count > 0
                                   ? '${arabicCount(count, one: 'مزود واحد', two: 'مزودين', few: 'مزودين', many: 'مزود')} في $city'
                                   : 'مزودين $city',
-                              subtitle: count == 0
+                              // Only what the directory said: a number, or
+                              // none; nothing is promised when it is unknown.
+                              subtitle: count == null
+                                  ? 'تشوفهم من صفحة المزودين'
+                                  : count == 0
                                   ? 'ما في مزودين في $city بعد. نضيفهم أول ما ينضمون.'
                                   : context.say(
                                       'قاعات ومصورين ومنشدين',
@@ -777,13 +797,15 @@ class _CitySheetState extends State<_CitySheet> {
       title: context.say('اختر المدينة', 'اختاري المدينة'),
       children: [
         Wrap(
-          spacing: 8,
-          runSpacing: 8,
+          spacing: AarastV3Space.x2,
+          runSpacing: AarastV3Space.x2,
           children: [
             for (final name in widget.cities)
               JourneyChip(
                 label: name,
                 selected: name == widget.selected,
+                fontSize: JourneyType.body,
+                large: true,
                 onTap: () => Navigator.of(context).pop(name),
               ),
           ],

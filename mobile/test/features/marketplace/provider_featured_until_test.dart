@@ -4,13 +4,14 @@ import 'package:flutter_test/flutter_test.dart';
 // B-43: «مميز» is read from until when the paid placement runs, at the
 // moment it is shown, so a saved (offline) copy drops it once it passed.
 void main() {
-  Map<String, dynamic> json({Object? featuredUntil, bool isFeatured = true}) => {
-    'id': 'p-saba',
-    'businessName': 'قاعة سبأ',
-    'ownerName': 'إدارة القاعة',
-    'isFeatured': isFeatured,
-    'featuredUntil': featuredUntil,
-  };
+  Map<String, dynamic> json({Object? featuredUntil, bool isFeatured = true}) =>
+      {
+        'id': 'p-saba',
+        'businessName': 'قاعة سبأ',
+        'ownerName': 'إدارة القاعة',
+        'isFeatured': isFeatured,
+        'featuredUntil': featuredUntil,
+      };
 
   test('featured until its end, not after', () {
     final provider = MarketplaceProvider.fromJson(

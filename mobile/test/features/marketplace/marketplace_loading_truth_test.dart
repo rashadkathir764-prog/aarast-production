@@ -69,29 +69,26 @@ void main() {
     },
   );
 
-  test(
-    'B-16: a signed-in reader reads the portfolio; its failure is reported '
-    'and keeps the photos read before; a guest never asks',
-    () async {
-      final api = _MarketplaceLoadingTruthApi();
-      final guest = ProviderMarketplaceProvider(api);
-      await guest.loadProviderDetails('provider-1');
-      expect(api.portfolioCalls, 0);
-      expect(guest.portfolioFor('provider-1'), isNull);
-      expect(guest.errorMessage, isNull);
+  test('B-16: a signed-in reader reads the portfolio; its failure is reported '
+      'and keeps the photos read before; a guest never asks', () async {
+    final api = _MarketplaceLoadingTruthApi();
+    final guest = ProviderMarketplaceProvider(api);
+    await guest.loadProviderDetails('provider-1');
+    expect(api.portfolioCalls, 0);
+    expect(guest.portfolioFor('provider-1'), isNull);
+    expect(guest.errorMessage, isNull);
 
-      final marketplace = ProviderMarketplaceProvider(api);
-      await marketplace.loadMarketplace(includeAccountData: true);
-      await marketplace.loadProviderDetails('provider-1');
-      expect(api.portfolioCalls, 1);
-      expect(marketplace.portfolioFor('provider-1')?.items, hasLength(1));
+    final marketplace = ProviderMarketplaceProvider(api);
+    await marketplace.loadMarketplace(includeAccountData: true);
+    await marketplace.loadProviderDetails('provider-1');
+    expect(api.portfolioCalls, 1);
+    expect(marketplace.portfolioFor('provider-1')?.items, hasLength(1));
 
-      api.portfolioError = const ApiException('تعذر تحميل الصور.');
-      await marketplace.loadProviderDetails('provider-1');
-      expect(marketplace.portfolioFor('provider-1')?.items, hasLength(1));
-      expect(marketplace.errorMessage, 'تعذر تحديث الصور. أعد المحاولة.');
-    },
-  );
+    api.portfolioError = const ApiException('تعذر تحميل الصور.');
+    await marketplace.loadProviderDetails('provider-1');
+    expect(marketplace.portfolioFor('provider-1')?.items, hasLength(1));
+    expect(marketplace.errorMessage, 'تعذر تحديث الصور. أعد المحاولة.');
+  });
 
   test(
     'concurrent provider detail refreshes share one in-flight request',
@@ -364,7 +361,8 @@ class _MarketplaceLoadingTruthApi extends MarketplaceApi {
           businessName: 'قاعة الأمل',
           ownerName: 'مالك القاعة',
           ratingAverage: 0,
-          ratingCount: 0,        ),
+          ratingCount: 0,
+        ),
       ),
     ];
   }
@@ -389,7 +387,8 @@ class _MarketplaceLoadingTruthApi extends MarketplaceApi {
       MarketplaceService(
         id: 'service-1',
         providerId: 'provider-1',
-        title: 'خدمة القاعة',        isActive: true,
+        title: 'خدمة القاعة',
+        isActive: true,
       ),
     ];
   }
@@ -421,7 +420,9 @@ class _MarketplaceLoadingTruthApi extends MarketplaceApi {
     final error = portfolioError;
     if (error != null) throw error;
     return const PublicPortfolio(
-      items: [PublicPortfolioPhoto(id: 'photo-1', imageUrl: 'https://x.test/1.jpg')],
+      items: [
+        PublicPortfolioPhoto(id: 'photo-1', imageUrl: 'https://x.test/1.jpg'),
+      ],
       socialLinks: {},
     );
   }
@@ -432,4 +433,5 @@ const _provider = MarketplaceProvider(
   businessName: 'قاعة الأمل',
   ownerName: 'مالك القاعة',
   ratingAverage: 0,
-  ratingCount: 0,);
+  ratingCount: 0,
+);

@@ -57,7 +57,11 @@ void main() {
           }
           ordinaryWait = options.receiveTimeout;
           handler.resolve(
-            Response<Object?>(requestOptions: options, statusCode: 200, data: {}),
+            Response<Object?>(
+              requestOptions: options,
+              statusCode: 200,
+              data: {},
+            ),
           );
         },
       ),
@@ -70,6 +74,9 @@ void main() {
     expect(refreshWait, AuthRepository.refreshReceiveTimeout);
     expect(AuthRepository.refreshReceiveTimeout, const Duration(seconds: 30));
     expect(ordinaryWait, const Duration(seconds: 12));
-    expect(await storage.readRefreshTokenIfEpoch(storage.sessionEpoch), 'refresh-2');
+    expect(
+      await storage.readRefreshTokenIfEpoch(storage.sessionEpoch),
+      'refresh-2',
+    );
   });
 }

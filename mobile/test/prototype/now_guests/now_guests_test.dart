@@ -84,15 +84,60 @@ Guest _g(
 }
 
 final _guests = [
-  _g(1, 'عبدالله الحمدي', phone: '+967733455001', status: 'CONFIRMED', invitation: 'SENT', companions: 1),
-  _g(2, 'أحمد الحمدي', phone: '+967777210334', status: 'CONFIRMED', invitation: 'SENT'),
+  _g(
+    1,
+    'عبدالله الحمدي',
+    phone: '+967733455001',
+    status: 'CONFIRMED',
+    invitation: 'SENT',
+    companions: 1,
+  ),
+  _g(
+    2,
+    'أحمد الحمدي',
+    phone: '+967777210334',
+    status: 'CONFIRMED',
+    invitation: 'SENT',
+  ),
   _g(3, 'علي الحمدي', phone: '+967771908120', invitation: 'SENT'),
   _g(4, 'هاني الحمدي', phone: '+967770112889'),
-  _g(5, 'سالم السقاف', phone: '+967735660210', group: 'g2', side: 'BRIDE', status: 'CONFIRMED', invitation: 'SENT', companions: 2),
+  _g(
+    5,
+    'سالم السقاف',
+    phone: '+967735660210',
+    group: 'g2',
+    side: 'BRIDE',
+    status: 'CONFIRMED',
+    invitation: 'SENT',
+    companions: 2,
+  ),
   _g(6, 'مراد السقاف', group: 'g2', side: 'BRIDE'),
-  _g(7, 'ياسر الأهدل', phone: '+967777881002', group: 'g3', side: 'FRIEND', status: 'DECLINED', invitation: 'SENT'),
-  _g(8, 'فهد ناجي', phone: '+967733445566', group: 'g3', side: 'FRIEND', invitation: 'SENT'),
-  _g(9, 'سامي السنيدار', phone: '+967771234567', group: 'g4', side: 'FRIEND', status: 'CONFIRMED', invitation: 'SENT'),
+  _g(
+    7,
+    'ياسر الأهدل',
+    phone: '+967777881002',
+    group: 'g3',
+    side: 'FRIEND',
+    status: 'DECLINED',
+    invitation: 'SENT',
+  ),
+  _g(
+    8,
+    'فهد ناجي',
+    phone: '+967733445566',
+    group: 'g3',
+    side: 'FRIEND',
+    invitation: 'SENT',
+  ),
+  _g(
+    9,
+    'سامي السنيدار',
+    phone: '+967771234567',
+    group: 'g4',
+    side: 'FRIEND',
+    status: 'CONFIRMED',
+    invitation: 'SENT',
+  ),
   _g(10, 'نبيل العمري', group: 'g4', side: 'FRIEND'),
 ];
 
@@ -148,7 +193,13 @@ void main() {
   setUpAll(loadPreviewAppFonts);
 
   testWidgets('guests empty', (tester) async {
-    await _shot(tester, 'guests_empty', guests: const [], groups: const [], h: 844);
+    await _shot(
+      tester,
+      'guests_empty',
+      guests: const [],
+      groups: const [],
+      h: 844,
+    );
   });
 
   testWidgets('guests list', (tester) async {
@@ -205,10 +256,7 @@ void main() {
       tester,
       'guest_details',
       guests: _guests,
-      home: const GuestDetailsScreen(
-        weddingPlanId: _plan,
-        guestId: 'guest-3',
-      ),
+      home: const GuestDetailsScreen(weddingPlanId: _plan, guestId: 'guest-3'),
       h: 900,
     );
   });
@@ -218,10 +266,7 @@ void main() {
       tester,
       'guest_edit',
       guests: _guests,
-      home: const GuestDetailsScreen(
-        weddingPlanId: _plan,
-        guestId: 'guest-1',
-      ),
+      home: const GuestDetailsScreen(weddingPlanId: _plan, guestId: 'guest-1'),
       h: 1500,
       act: () async {
         // e07: «عدّل بياناته» is in the details menu.
@@ -248,10 +293,7 @@ void main() {
       tester,
       'guest_menu',
       guests: _guests,
-      home: const GuestDetailsScreen(
-        weddingPlanId: _plan,
-        guestId: 'guest-3',
-      ),
+      home: const GuestDetailsScreen(weddingPlanId: _plan, guestId: 'guest-3'),
       h: 900,
       act: () async {
         await tester.tap(find.byKey(const ValueKey('guest-menu')));

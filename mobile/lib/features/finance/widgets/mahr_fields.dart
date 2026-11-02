@@ -4,6 +4,7 @@ import 'package:lucide_icons/lucide_icons.dart';
 
 import '../../../core/experience_v3/aarast_v3.dart';
 import '../../../core/utils/amount_words.dart';
+import '../../../core/utils/app_clock.dart';
 import '../../../core/utils/arabic_date_formatter.dart';
 import '../../../core/utils/hijri_date.dart';
 import '../../../core/utils/money_formatters.dart';
@@ -158,14 +159,30 @@ String mahrWords(num amount) {
 }
 
 /// The day the rest of the mahr is due, from today on.
-Future<DateTime?> pickMahrDueDate(BuildContext context, DateTime? current) {
+/// [accent] is the plan's, when [context] sits above its profile scope.
+Future<DateTime?> pickMahrDueDate(
+  BuildContext context,
+  DateTime? current, {
+  JourneyAccent? accent,
+}) {
   releaseFieldFocus();
-  final today = DateUtils.dateOnly(DateTime.now());
+  final today = DateUtils.dateOnly(appNow());
+  final colours = accent ?? context.accent;
   return showDatePicker(
     context: context,
     initialDate: current != null && !current.isBefore(today) ? current : today,
     firstDate: today,
     lastDate: DateTime(today.year + 5),
     locale: const Locale('ar'),
+    // The plan's colour (the bride's rose), not the app's default teal.
+    builder: (context, child) => Theme(
+      data: Theme.of(context).copyWith(
+        colorScheme: Theme.of(context).colorScheme.copyWith(
+          primary: colours.primary,
+          onPrimary: AarastV3Color.onPrimary,
+        ),
+      ),
+      child: child!,
+    ),
   );
 }

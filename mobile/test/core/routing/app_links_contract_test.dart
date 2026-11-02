@@ -16,7 +16,10 @@ void main() {
     final custom = AppRouter.inviteCustomLink('token-1');
     final https = AppRouter.inviteHttpsLink('token-1');
 
-    expect(custom.toString(), '${AppRouter.inviteCustomScheme}://open/invites/token-1');
+    expect(
+      custom.toString(),
+      '${AppRouter.inviteCustomScheme}://open/invites/token-1',
+    );
     expect(custom.path, AppRouter.inviteDecision('token-1'));
     expect(https.host, AppRouter.inviteAppLinkHost);
     expect(https.path, AppRouter.inviteDecision('token-1'));
@@ -62,16 +65,16 @@ void main() {
       'ios/Runner/Runner.entitlements',
     ).readAsStringSync();
 
-    expect(androidManifest, contains(r'android:scheme="${aarastCustomScheme}"'));
+    expect(
+      androidManifest,
+      contains(r'android:scheme="${aarastCustomScheme}"'),
+    );
     expect(
       androidManifest,
       contains('android:host="${AppRouter.inviteCustomSchemeHost}"'),
     );
     expect(androidManifest, contains('android:pathPrefix="/invites/"'));
-    expect(
-      androidManifest,
-      contains(r'android:host="${aarastInviteHost}"'),
-    );
+    expect(androidManifest, contains(r'android:host="${aarastInviteHost}"'));
     final gradle = File('android/app/build.gradle.kts').readAsStringSync();
     expect(gradle, contains('manifestPlaceholders["aarastInviteHost"]'));
     expect(gradle, contains('manifestPlaceholders["aarastCustomScheme"]'));

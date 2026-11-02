@@ -8,12 +8,15 @@ const _doorSkyHeight = 200.0;
 /// provider). Each way opens with one tap.
 class _StartStep extends StatelessWidget {
   const _StartStep({
+    required this.phonePlanTitle,
     required this.onPlan,
     required this.onInvite,
     required this.onProvider,
     required this.onLogin,
   });
 
+  /// A plan already on this phone, opened by the first door.
+  final String? phonePlanTitle;
   final VoidCallback onPlan;
   final VoidCallback onInvite;
   final VoidCallback onProvider;
@@ -30,6 +33,7 @@ class _StartStep extends StatelessWidget {
               padding: EdgeInsets.zero,
               children: [
                 const JourneySkyBand(height: _doorSkyHeight),
+                const SizedBox(height: AarastV3Space.x4),
                 Padding(
                   padding: const EdgeInsets.symmetric(
                     horizontal: AarastV3Space.x4,
@@ -65,8 +69,12 @@ class _StartStep extends StatelessWidget {
                       JourneyDoor(
                         key: const ValueKey('door-plan'),
                         icon: LucideIcons.checkSquare,
-                        title: 'أسوّي خطة عرسي',
-                        subtitle: 'للعريس أو للعروسة',
+                        title: phonePlanTitle == null
+                            ? 'أسوّي خطة عرسي'
+                            : 'افتح خطتي',
+                        subtitle: phonePlanTitle == null
+                            ? 'للعريس أو للعروسة'
+                            : '$phonePlanTitle، على هذا الجوال',
                         onTap: onPlan,
                       ),
                       const SizedBox(height: AarastV3Space.x3),

@@ -28,12 +28,32 @@ MoneySummary _summary() => MoneySummary.fromJson({
     'count': 4,
   },
   'categories': [
-    {'categoryId': 'hall', 'name': 'القاعة', 'confirmedCost': '1500000', 'paid': '500000'},
-    {'categoryId': 'gold', 'name': 'الذهب', 'confirmedCost': '1700000', 'paid': '500000'},
-    {'categoryId': 'empty', 'name': 'شهر العسل', 'confirmedCost': '0', 'paid': '0'},
+    {
+      'categoryId': 'hall',
+      'name': 'القاعة',
+      'confirmedCost': '1500000',
+      'paid': '500000',
+    },
+    {
+      'categoryId': 'gold',
+      'name': 'الذهب',
+      'confirmedCost': '1700000',
+      'paid': '500000',
+    },
+    {
+      'categoryId': 'empty',
+      'name': 'شهر العسل',
+      'confirmedCost': '0',
+      'paid': '0',
+    },
   ],
   'warnings': [
-    {'type': 'CATEGORY_EXCEEDED', 'severity': 'DANGER', 'categoryId': 'gold', 'amount': '200000'},
+    {
+      'type': 'CATEGORY_EXCEEDED',
+      'severity': 'DANGER',
+      'categoryId': 'gold',
+      'amount': '200000',
+    },
   ],
   'funding': {
     'total': '9000000',
@@ -61,22 +81,33 @@ WeddingTask _task(String title, {String status = 'TODO', DateTime? due}) =>
     });
 
 void main() {
-  test('the budget summary names figures and the biggest items, never loans', () {
-    final text = moneyShareText(_summary(), planTitle: 'عرس أحمد', hideAmounts: false);
+  test(
+    'the budget summary names figures and the biggest items, never loans',
+    () {
+      final text = moneyShareText(
+        _summary(),
+        planTitle: 'عرس أحمد',
+        hideAmounts: false,
+      );
 
-    expect(text, startsWith('ملخص ميزانية «عرس أحمد»'));
-    expect(text, contains('الميزانية: 5 مليون'));
-    expect(text, contains('(64٪ من الميزانية)'));
-    expect(text, contains('• الذهب: 1.7 مليون'));
-    expect(text.indexOf('الذهب'), lessThan(text.indexOf('القاعة')));
-    expect(text, isNot(contains('شهر العسل')));
-    expect(text, contains('⚠ تجاوزت المخصص: الذهب'));
-    expect(text, isNot(contains('777')));
-    expect(text, isNot(contains('9 مليون')));
-  });
+      expect(text, startsWith('ملخص ميزانية «عرس أحمد»'));
+      expect(text, contains('الميزانية: 5 مليون'));
+      expect(text, contains('(64٪ من الميزانية)'));
+      expect(text, contains('• الذهب: 1.7 مليون'));
+      expect(text.indexOf('الذهب'), lessThan(text.indexOf('القاعة')));
+      expect(text, isNot(contains('شهر العسل')));
+      expect(text, contains('⚠ تجاوزت المخصص: الذهب'));
+      expect(text, isNot(contains('777')));
+      expect(text, isNot(contains('9 مليون')));
+    },
+  );
 
   test('with amounts hidden only shares of the budget are sent', () {
-    final text = moneyShareText(_summary(), planTitle: 'عرس أحمد', hideAmounts: true);
+    final text = moneyShareText(
+      _summary(),
+      planTitle: 'عرس أحمد',
+      hideAmounts: true,
+    );
 
     expect(text, contains('استُخدم 64٪ من الميزانية'));
     expect(text, contains('دُفع 31٪ من التكاليف المسجلة'));
@@ -120,36 +151,49 @@ void main() {
         'confirmedCost': '3000000',
         'paid': '2000000',
       },
-      {'categoryId': 'hall', 'name': 'القاعة', 'confirmedCost': '2000000', 'paid': '500000'},
+      {
+        'categoryId': 'hall',
+        'name': 'القاعة',
+        'confirmedCost': '2000000',
+        'paid': '500000',
+      },
     ],
   });
 
-  test('D59: the shared summary is the wedding budget\'s, the mahr its own line', () {
-    final text = moneyShareText(
-      groomWithMahr(),
-      planTitle: 'عرس محمد',
-      hideAmounts: false,
-    );
+  test(
+    'D59: the shared summary is the wedding budget\'s, the mahr its own line',
+    () {
+      final text = moneyShareText(
+        groomWithMahr(),
+        planTitle: 'عرس محمد',
+        hideAmounts: false,
+      );
 
-    // Before D59: «الملتزم به: 7.9 مليون (113٪ من الميزانية)».
-    expect(text, contains('• الملتزم به: 4.9 مليون ر.ي (70٪ من الميزانية)'));
-    expect(text, isNot(contains('7.9')));
-    expect(text, contains('• المدفوع: 2.6 مليون ر.ي'));
-    expect(text, contains('• منه دفعه غير العريس: 1.3 مليون ر.ي'));
-    expect(text, contains('• المتبقي للدفع: 2.3 مليون ر.ي'));
-    expect(text, contains('• المهر (خارج الميزانية): 3 مليون ر.ي، سُلّم منه 2 مليون ر.ي'));
-    // Never among the biggest items.
-    expect(text, isNot(contains('• المهر: ')));
-    expect(text, contains('• القاعة: 2 مليون ر.ي'));
+      // Before D59: «الملتزم به: 7.9 مليون (113٪ من الميزانية)».
+      expect(text, contains('• الملتزم به: 4.9 مليون ر.ي (70٪ من الميزانية)'));
+      expect(text, isNot(contains('7.9')));
+      expect(text, contains('• المدفوع: 2.6 مليون ر.ي'));
+      expect(text, contains('• منه دفعه غير العريس: 1.3 مليون ر.ي'));
+      expect(text, contains('• المتبقي للدفع: 2.3 مليون ر.ي'));
+      expect(
+        text,
+        contains(
+          '• المهر (خارج الميزانية): 3 مليون ر.ي، سُلّم منه 2 مليون ر.ي',
+        ),
+      );
+      // Never among the biggest items.
+      expect(text, isNot(contains('• المهر: ')));
+      expect(text, contains('• القاعة: 2 مليون ر.ي'));
 
-    final hidden = moneyShareText(
-      groomWithMahr(),
-      planTitle: 'عرس محمد',
-      hideAmounts: true,
-    );
-    expect(hidden, contains('استُخدم 70٪ من الميزانية'));
-    expect(hidden, contains('سُلّم 67٪ منه'));
-  });
+      final hidden = moneyShareText(
+        groomWithMahr(),
+        planTitle: 'عرس محمد',
+        hideAmounts: true,
+      );
+      expect(hidden, contains('استُخدم 70٪ من الميزانية'));
+      expect(hidden, contains('سُلّم 67٪ منه'));
+    },
+  );
 
   test('D59: the bride\'s mahr is her money in: never shared', () {
     final bride = MoneySummary.fromJson({
@@ -188,7 +232,10 @@ void main() {
 
     expect(text, contains('أُنجز 1 من 4'));
     expect(text, contains('متأخرة: 1'));
-    expect(text.indexOf('شراء الذهب (1/10)'), lessThan(text.indexOf('دعوة الضيوف (5/11)')));
+    expect(
+      text.indexOf('شراء الذهب (1/10)'),
+      lessThan(text.indexOf('دعوة الضيوف (5/11)')),
+    );
     expect(text.indexOf('دعوة الضيوف'), lessThan(text.indexOf('بلا موعد')));
     expect(text, isNot(contains('ملغاة')));
     expect(text, isNot(contains('وصف خاص')));
@@ -200,7 +247,9 @@ void main() {
     expect(uri.queryParameters['text'], 'مرحبا\nسطر');
   });
 
-  testWidgets('the sheet previews the text and the switch changes it', (tester) async {
+  testWidgets('the sheet previews the text and the switch changes it', (
+    tester,
+  ) async {
     await tester.pumpWidget(
       MaterialApp(
         home: Builder(

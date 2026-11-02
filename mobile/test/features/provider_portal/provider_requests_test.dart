@@ -492,14 +492,18 @@ void main() {
       );
       await pumpHarness(tester, api, initial: '/provider/requests/quote-1');
 
-      await tester.tap(find.byKey(const Key('provider-offer-withdraw-quote-1')));
+      await tester.tap(
+        find.byKey(const Key('provider-offer-withdraw-quote-1')),
+      );
       await tester.pumpAndSettle();
       expect(find.text('تسحب عرضك لمحمد؟'), findsOneWidget);
       await tester.tap(find.byKey(const Key('provider-offer-withdraw-keep')));
       await tester.pumpAndSettle();
       expect(api.withdrawn, isEmpty);
 
-      await tester.tap(find.byKey(const Key('provider-offer-withdraw-quote-1')));
+      await tester.tap(
+        find.byKey(const Key('provider-offer-withdraw-quote-1')),
+      );
       await tester.pumpAndSettle();
       await tester.tap(
         find.byKey(const Key('provider-offer-withdraw-confirm')),
@@ -561,10 +565,7 @@ void main() {
       await pumpHarness(tester, shared, initial: '/provider/requests/quote-2');
       expect(find.text('300,000 لين 600,000 ر.ي'), findsOneWidget);
       expect(find.text('777123456'), findsOneWidget);
-      expect(
-        find.byKey(const Key('provider-request-privacy')),
-        findsNothing,
-      );
+      expect(find.byKey(const Key('provider-request-privacy')), findsNothing);
     });
   });
 

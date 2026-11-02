@@ -216,7 +216,6 @@ void main() {
       matchesGoldenFile('goldens/my_wedding_plans.png'),
     );
   });
-
 }
 
 class _PreviewContextsGateway implements AccountContextsGateway {

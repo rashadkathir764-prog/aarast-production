@@ -55,7 +55,6 @@ class _ProviderRegisterScreenState extends State<ProviderRegisterScreen> {
     if (!_submitAttempted) return null;
     final name = _nameController.text.trim();
     if (name.isEmpty) return 'الاسم مطلوب';
-    if (name.length < 3) return 'الاسم قصير جداً';
     return null;
   }
 

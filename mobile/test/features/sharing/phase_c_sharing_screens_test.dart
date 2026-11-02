@@ -637,7 +637,6 @@ class _FakeSharingApi extends SharingApi {
     return invites;
   }
 
-
   @override
   Future<PlanInvite> reissuePlanInvite({
     required String weddingPlanId,

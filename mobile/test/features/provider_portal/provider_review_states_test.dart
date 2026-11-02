@@ -266,29 +266,30 @@ void main() {
       expect(find.text('وصلنا تعديلك. نراجعه ونبلغك هنا.'), findsOneWidget);
     });
 
-    testWidgets('the service he joined with is fixed in a sheet, with its note', (
-      tester,
-    ) async {
-      final api = _Api(
-        status: 'NEEDS_CHANGES',
-        fieldNotes: const {'SERVICE': 'حدد سعر الليلة.'},
-        service: _joiningService(),
-      );
-      await _pumpPortal(tester, api);
+    testWidgets(
+      'the service he joined with is fixed in a sheet, with its note',
+      (tester) async {
+        final api = _Api(
+          status: 'NEEDS_CHANGES',
+          fieldNotes: const {'SERVICE': 'حدد سعر الليلة.'},
+          service: _joiningService(),
+        );
+        await _pumpPortal(tester, api);
 
-      await tester.tap(find.byKey(const Key('provider-changes-service')));
-      await tester.pumpAndSettle();
-      expect(find.text('خدمتك وسعرها'), findsOneWidget);
-      expect(find.text('حدد سعر الليلة.'), findsNWidgets(2));
-      await tester.enterText(
-        find.byKey(const Key('provider-service-sheet-price')).first,
-        '600000',
-      );
-      await tester.tap(find.byKey(const Key('provider-service-sheet-save')));
-      await tester.pumpAndSettle();
-      expect(api.serviceUpdates, [('صور وفيديو', '600000')]);
-      expect(find.text('600,000 ر.ي'), findsOneWidget);
-    });
+        await tester.tap(find.byKey(const Key('provider-changes-service')));
+        await tester.pumpAndSettle();
+        expect(find.text('خدمتك وسعرها'), findsOneWidget);
+        expect(find.text('حدد سعر الليلة.'), findsNWidgets(2));
+        await tester.enterText(
+          find.byKey(const Key('provider-service-sheet-price')).first,
+          '600000',
+        );
+        await tester.tap(find.byKey(const Key('provider-service-sheet-save')));
+        await tester.pumpAndSettle();
+        expect(api.serviceUpdates, [('صور وفيديو', '600000')]);
+        expect(find.text('600,000 ر.ي'), findsOneWidget);
+      },
+    );
 
     testWidgets('a refusal reopened keeps its reason as the note (B-02)', (
       tester,
@@ -478,7 +479,10 @@ void main() {
         findsOneWidget,
       );
       expect(find.text('الطلبات'), findsNothing);
-      expect(find.byKey(const Key('provider-rejected-support')), findsOneWidget);
+      expect(
+        find.byKey(const Key('provider-rejected-support')),
+        findsOneWidget,
+      );
 
       await tester.tap(find.byKey(const Key('provider-rejected-reopen')));
       await tester.pumpAndSettle();

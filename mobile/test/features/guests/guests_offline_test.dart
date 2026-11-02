@@ -60,7 +60,10 @@ void main() {
     await _pump(tester, harness, planId: 'plan-account-1');
 
     expect(find.byKey(const ValueKey('guests-offline')), findsOneWidget);
-    expect(find.textContaining('الإضافة والدعوات لما يرجع النت'), findsOneWidget);
+    expect(
+      find.textContaining('الإضافة والدعوات لما يرجع النت'),
+      findsOneWidget,
+    );
     // Adding would only fail now, so its button waits too.
     expect(find.byKey(const ValueKey('guests-add')), findsNothing);
     expect(find.byKey(const ValueKey('guests-summary')), findsOneWidget);
@@ -169,7 +172,9 @@ Future<void> _pump(
     MultiProvider(
       providers: [
         Provider<AuthStorage>.value(value: harness.authStorage),
-        ChangeNotifierProvider<OfflineSyncService>.value(value: harness.offline),
+        ChangeNotifierProvider<OfflineSyncService>.value(
+          value: harness.offline,
+        ),
         ChangeNotifierProvider<GuestsProvider>(
           create: (_) => GuestsProvider(harness.api),
         ),

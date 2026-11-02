@@ -342,7 +342,11 @@ void main() {
         final exception = failure(entry.key, const {
           'message': ['title must not be empty'],
         });
-        expect(exception.message, contains(entry.value), reason: '${entry.key}');
+        expect(
+          exception.message,
+          contains(entry.value),
+          reason: '${entry.key}',
+        );
         expect(exception.message, isNot(contains('title')));
         expect(exception.statusCode, entry.key);
       }

@@ -41,20 +41,23 @@ void main() {
     expect(await personaOf(GuestPersona.helper), isNull);
   });
 
-  test('a groom phone plan is never offered the bride tasks or items', () async {
-    final persona = await personaOf(GuestPersona.groom);
+  test(
+    'a groom phone plan is never offered the bride tasks or items',
+    () async {
+      final persona = await personaOf(GuestPersona.groom);
 
-    final taskPersona = taskStarterPersonaFor('guest-plan-persona', [
-      (planId: 'guest-plan-persona', persona: persona),
-    ]);
-    expect(taskPersona, TaskStarterPersona.groom);
-    final groups = taskStarterGroupsFor(null, taskPersona);
-    expect(groups.map((group) => group.key), isNot(contains('bride-tasks')));
-    expect(
-      groups.expand((group) => group.templates).map((task) => task.title),
-      isNot(contains('حجز قاعة النساء')),
-    );
+      final taskPersona = taskStarterPersonaFor('guest-plan-persona', [
+        (planId: 'guest-plan-persona', persona: persona),
+      ]);
+      expect(taskPersona, TaskStarterPersona.groom);
+      final groups = taskStarterGroupsFor(null, taskPersona);
+      expect(groups.map((group) => group.key), isNot(contains('bride-tasks')));
+      expect(
+        groups.expand((group) => group.templates).map((task) => task.title),
+        isNot(contains('حجز قاعة النساء')),
+      );
 
-    expect(moneyStarterPersonaFromCode(persona), MoneyStarterPersona.groom);
-  });
+      expect(moneyStarterPersonaFromCode(persona), MoneyStarterPersona.groom);
+    },
+  );
 }

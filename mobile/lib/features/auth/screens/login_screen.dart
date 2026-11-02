@@ -9,6 +9,8 @@ import '../../../core/offline/offline_sync_service.dart';
 import '../../../core/phone/yemeni_phone_normalizer.dart';
 import '../../../core/utils/arabic_count.dart';
 import '../../../core/routing/app_router.dart';
+import '../../onboarding/onboarding_api.dart'
+    show GuestOnboardingDraft, GuestOnboardingStorage;
 import '../providers/auth_controller.dart';
 import 'otp_screen.dart';
 
@@ -197,9 +199,22 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   /// No account: the door, where a plan is made or a service offered.
-  void _start() {
+  Future<void> _start() async {
     context.read<AuthController>().clearError();
-    context.go(AppRouter.welcome);
+    GuestOnboardingDraft? kept;
+    try {
+      kept = await context.read<GuestOnboardingStorage>().loadDraft();
+    } on ProviderNotFoundException {
+      kept = null;
+    }
+    if (!mounted) return;
+    // A plan already on this phone is saved with a number, never replaced
+    // by starting over.
+    context.go(
+      kept?.isCompleteGuestPlan == true
+          ? AppRouter.register
+          : AppRouter.welcome,
+    );
   }
 
   int _pendingChanges() {

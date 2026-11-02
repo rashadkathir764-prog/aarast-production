@@ -148,7 +148,10 @@ void main() {
     // The reason survives the restart, in Arabic: the server's English
     // validation detail never reaches the user (V1 checklist 5.4).
     expect(restartedService.lastError, contains('راجع البيانات المدخلة'));
-    expect(restartedService.lastError, isNot(contains('title should not be empty')));
+    expect(
+      restartedService.lastError,
+      isNot(contains('title should not be empty')),
+    );
   });
 
   test(

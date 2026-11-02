@@ -8,29 +8,41 @@ import 'package:flutter_test/flutter_test.dart';
 // B-16 (D61): p37's photos are his «معرض الشغل», reviewed before customers
 // see them; service photos are no longer added from p37.
 void main() {
-  test('a saved portfolio replaces his photos and p35\'s line is read again', () async {
-    final api = _PortfolioApi();
-    final dashboard = ProviderDashboardProvider(api);
+  test(
+    'a saved portfolio replaces his photos and p35\'s line is read again',
+    () async {
+      final api = _PortfolioApi();
+      final dashboard = ProviderDashboardProvider(api);
 
-    await dashboard.loadPortfolio();
-    expect(dashboard.portfolio?.items.single.status, 'APPROVED');
+      await dashboard.loadPortfolio();
+      expect(dashboard.portfolio?.items.single.status, 'APPROVED');
 
-    final saved = await dashboard.savePortfolio(
-      items: [
-        {'key': 'provider-portfolio/u/1.jpg', 'album': 'الزفة', 'noFaces': false},
-        {'key': 'provider-portfolio/u/2.jpg', 'album': 'الزفة', 'noFaces': false},
-      ],
-    );
+      final saved = await dashboard.savePortfolio(
+        items: [
+          {
+            'key': 'provider-portfolio/u/1.jpg',
+            'album': 'الزفة',
+            'noFaces': false,
+          },
+          {
+            'key': 'provider-portfolio/u/2.jpg',
+            'album': 'الزفة',
+            'noFaces': false,
+          },
+        ],
+      );
 
-    expect(saved, isTrue);
-    expect(api.sent.single.length, 2);
-    expect(dashboard.portfolio?.items.last.isPending, isTrue);
-    expect(dashboard.profile?.portfolioPhotos, 2);
-    expect(dashboard.profile?.socialNetworks, ['tiktok']);
-  });
+      expect(saved, isTrue);
+      expect(api.sent.single.length, 2);
+      expect(dashboard.portfolio?.items.last.isPending, isTrue);
+      expect(dashboard.profile?.portfolioPhotos, 2);
+      expect(dashboard.profile?.socialNetworks, ['tiktok']);
+    },
+  );
 
   test('the server\'s refusals reach him in his words', () async {
-    final api = _PortfolioApi()..refuseWith = 'PORTFOLIO_WOMEN_PHOTO_NEEDS_NO_FACES';
+    final api = _PortfolioApi()
+      ..refuseWith = 'PORTFOLIO_WOMEN_PHOTO_NEEDS_NO_FACES';
     final dashboard = ProviderDashboardProvider(api);
 
     final saved = await dashboard.savePortfolio(items: const []);
@@ -63,7 +75,11 @@ void main() {
 
     final profile = ProviderDashboardProfile.fromJson({
       'id': 'provider-1',
-      'portfolio': {'photos': 18, 'pending': 1, 'socialNetworks': ['tiktok']},
+      'portfolio': {
+        'photos': 18,
+        'pending': 1,
+        'socialNetworks': ['tiktok'],
+      },
     });
     expect(profile.portfolioPhotos, 18);
     expect(profile.portfolioPending, 1);

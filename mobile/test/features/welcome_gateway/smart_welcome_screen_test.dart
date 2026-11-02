@@ -290,9 +290,11 @@ void main() {
     expect(_progress('السؤال 1 من 3'), findsOneWidget);
     expect(find.text('1 من 3'), findsNothing);
 
-    // No name: neither way on is open.
+    // No name: «التالي» waits; the link says what is missing and stays.
     expect(_button(tester, 'التالي').onPressed, isNull);
-    expect(_link(tester, 'ما حددنا الموعد بعد').onPressed, isNull);
+    await _tap(tester, 'ما حددنا الموعد بعد');
+    expect(find.text('اكتب اسمك أول'), findsOneWidget);
+    expect(find.text('ايش اسمك، ومتى العرس؟'), findsOneWidget);
 
     await tester.enterText(find.byType(TextField).first, 'محمد');
     await tester.pumpAndSettle();
@@ -323,9 +325,11 @@ void main() {
     await tester.enterText(find.byType(TextField).first, '7000000');
     await tester.pumpAndSettle();
     expect(find.text('سبعة مليون ريال'), findsOneWidget);
-    // No city: neither way on is open.
+    // No city: «التالي» waits; the link says what is missing and stays.
     expect(_button(tester, 'التالي').onPressed, isNull);
-    expect(_link(tester, 'أكمل بدون ميزانية').onPressed, isNull);
+    await _tap(tester, 'أكمل بدون ميزانية');
+    expect(find.text('اختر المدينة أول'), findsOneWidget);
+    expect(find.text('وين العرس، وكم ميزانيتك تقريبًا؟'), findsOneWidget);
 
     await _tap(tester, 'صنعاء');
     await _tap(tester, 'التالي');

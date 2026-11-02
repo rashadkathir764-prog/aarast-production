@@ -147,7 +147,9 @@ GoRouter _router(String initial, {bool offline = false}) {
         path: '/wedding-plans/:id/money/costs/create',
         builder: (c, s) => CostFormScreen(
           weddingPlanId: id(s),
-          intent: s.extra is CostDraftIntent ? s.extra! as CostDraftIntent : null,
+          intent: s.extra is CostDraftIntent
+              ? s.extra! as CostDraftIntent
+              : null,
           initialCategoryId: s.uri.queryParameters['categoryId'],
         ),
       ),
@@ -167,7 +169,8 @@ GoRouter _router(String initial, {bool offline = false}) {
         ),
       ),
       GoRoute(
-        path: '/wedding-plans/:id/money/costs/:costId/schedules/:scheduleId/pay',
+        path:
+            '/wedding-plans/:id/money/costs/:costId/schedules/:scheduleId/pay',
         builder: (c, s) => PayPaymentScheduleScreen(
           weddingPlanId: id(s),
           costId: s.pathParameters['costId']!,
@@ -197,7 +200,8 @@ void main() {
   );
   testWidgets(
     'm03 overview no budget',
-    (t) => _shot(t, 'm03_overview_no_budget', _m, mode: _Mode.noBudget, h: 1500),
+    (t) =>
+        _shot(t, 'm03_overview_no_budget', _m, mode: _Mode.noBudget, h: 1500),
   );
   testWidgets('m05 share', (t) async {
     await _shot(
@@ -514,8 +518,7 @@ class _Api extends FinanceApi {
             confirmedCost: c.$4,
             paid: c.$5,
             outstanding: (int.parse(c.$4) - int.parse(c.$5)).toString(),
-            remainingAllocation: (int.parse(c.$3) - int.parse(c.$4))
-                .toString(),
+            remainingAllocation: (int.parse(c.$3) - int.parse(c.$4)).toString(),
             costsCount: c.$6,
           ),
       ],

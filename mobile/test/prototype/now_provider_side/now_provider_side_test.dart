@@ -60,22 +60,21 @@ ProviderDashboardProfile _profile(
   String status, {
   String? note,
   Map<String, String> fieldNotes = const {},
-}) =>
-    ProviderDashboardProfile(
-      id: 'provider-1',
-      businessName: 'استوديو لحظة',
-      status: status,
-      ratingAverage: status == 'ACTIVE' ? 4.7 : 0,
-      ratingCount: status == 'ACTIVE' ? 38 : 0,
-      city: _sanaa,
-      cityId: 'city-sanaa',
-      primaryCategory: _photo,
-      primaryCategoryId: 'cat-photo',
-      phone: '+967773210455',
-      description: 'تصوير أعراس الرجال والنساء في صنعاء. 4 فرق.',
-      reviewNote: note,
-      fieldNotes: fieldNotes,
-    );
+}) => ProviderDashboardProfile(
+  id: 'provider-1',
+  businessName: 'استوديو لحظة',
+  status: status,
+  ratingAverage: status == 'ACTIVE' ? 4.7 : 0,
+  ratingCount: status == 'ACTIVE' ? 38 : 0,
+  city: _sanaa,
+  cityId: 'city-sanaa',
+  primaryCategory: _photo,
+  primaryCategoryId: 'cat-photo',
+  phone: '+967773210455',
+  description: 'تصوير أعراس الرجال والنساء في صنعاء. 4 فرق.',
+  reviewNote: note,
+  fieldNotes: fieldNotes,
+);
 
 MarketplaceService _service(
   String id,
@@ -85,7 +84,8 @@ MarketplaceService _service(
 }) => MarketplaceService(
   id: id,
   providerId: 'provider-1',
-  title: title,  isActive: active,
+  title: title,
+  isActive: active,
   category: _photo,
   categoryId: 'cat-photo',
   description: 'الزفاف كامل، من دخول العريس إلى نهاية الحفل.',
@@ -618,7 +618,10 @@ void main() {
           await tester.pumpAndSettle();
         }
 
-        await pick('provider-apply-category', 'provider-apply-option-cat-photo');
+        await pick(
+          'provider-apply-category',
+          'provider-apply-option-cat-photo',
+        );
         await tester.tap(find.byKey(const ValueKey('provider-apply-next')));
         await tester.pumpAndSettle();
         await pick('provider-apply-city', 'provider-apply-option-city-sanaa');

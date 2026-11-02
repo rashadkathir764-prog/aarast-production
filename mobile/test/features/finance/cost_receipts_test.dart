@@ -41,16 +41,27 @@ Widget _host(Widget child) {
 }
 
 void main() {
-  test('a receipt reads its signed link and the server codes read as actions', () {
-    final receipt = _receipt('r1');
-    expect(receipt.downloadUrl, 'https://media.invalid/r1.png');
-    expect(receipt.costPaymentId, isNull);
-    expect(costReceiptErrorMessage('COST_RECEIPT_LIMIT'), contains('10 إيصالات'));
-    expect(costReceiptErrorMessage('COST_HAS_RECEIPTS'), contains('احذفها أولًا'));
-    expect(costReceiptErrorMessage('OTHER'), isNull);
-  });
+  test(
+    'a receipt reads its signed link and the server codes read as actions',
+    () {
+      final receipt = _receipt('r1');
+      expect(receipt.downloadUrl, 'https://media.invalid/r1.png');
+      expect(receipt.costPaymentId, isNull);
+      expect(
+        costReceiptErrorMessage('COST_RECEIPT_LIMIT'),
+        contains('10 إيصالات'),
+      );
+      expect(
+        costReceiptErrorMessage('COST_HAS_RECEIPTS'),
+        contains('احذفها أولًا'),
+      );
+      expect(costReceiptErrorMessage('OTHER'), isNull);
+    },
+  );
 
-  testWidgets('the section lists receipts and offers to add one', (tester) async {
+  testWidgets('the section lists receipts and offers to add one', (
+    tester,
+  ) async {
     final api = _ReceiptsApiFake([_receipt('r1'), _receipt('r2')]);
     await tester.pumpWidget(
       _host(CostReceiptsSection(costId: 'cost-1', canManage: true, api: api)),
@@ -63,7 +74,9 @@ void main() {
     expect(find.text('أضف إيصال'), findsOneWidget);
   });
 
-  testWidgets('a reader without money rights sees receipts but cannot add', (tester) async {
+  testWidgets('a reader without money rights sees receipts but cannot add', (
+    tester,
+  ) async {
     final api = _ReceiptsApiFake([_receipt('r1')]);
     await tester.pumpWidget(
       _host(CostReceiptsSection(costId: 'cost-1', canManage: false, api: api)),
@@ -92,51 +105,54 @@ void main() {
     expect(find.byKey(const Key('cost-receipt-r1')), findsNothing);
   });
 
-  testWidgets('a payment shows only its own receipts; the limit counts the cost', (
+  testWidgets(
+    'a payment shows only its own receipts; the limit counts the cost',
+    (tester) async {
+      final api = _ReceiptsApiFake([
+        _receipt('r1', paymentId: 'pay-1'),
+        _receipt('r2', paymentId: 'pay-2'),
+        _receipt('r3'),
+      ]);
+      await tester.pumpWidget(
+        _host(
+          CostReceiptsSection(
+            costId: 'cost-1',
+            costPaymentId: 'pay-1',
+            canManage: true,
+            api: api,
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('الإيصال'), findsOneWidget);
+      expect(find.byKey(const Key('cost-receipt-r1')), findsOneWidget);
+      expect(find.byKey(const Key('cost-receipt-r2')), findsNothing);
+      expect(find.byKey(const Key('cost-receipt-r3')), findsNothing);
+      expect(find.text('أضف إيصال'), findsOneWidget);
+
+      // Ten receipts on the cost, none on this payment: no room left.
+      api.receipts = [for (var i = 0; i < 10; i++) _receipt('c$i')];
+      await tester.pumpWidget(
+        _host(
+          CostReceiptsSection(
+            key: const ValueKey('full'),
+            costId: 'cost-1',
+            costPaymentId: 'pay-1',
+            canManage: true,
+            api: api,
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(find.text('أضف إيصال'), findsNothing);
+      expect(find.text('ما في إيصال محفوظ'), findsOneWidget);
+    },
+  );
+
+  testWidgets('without an API client the section stays out of the way', (
     tester,
   ) async {
-    final api = _ReceiptsApiFake([
-      _receipt('r1', paymentId: 'pay-1'),
-      _receipt('r2', paymentId: 'pay-2'),
-      _receipt('r3'),
-    ]);
-    await tester.pumpWidget(
-      _host(
-        CostReceiptsSection(
-          costId: 'cost-1',
-          costPaymentId: 'pay-1',
-          canManage: true,
-          api: api,
-        ),
-      ),
-    );
-    await tester.pumpAndSettle();
-
-    expect(find.text('الإيصال'), findsOneWidget);
-    expect(find.byKey(const Key('cost-receipt-r1')), findsOneWidget);
-    expect(find.byKey(const Key('cost-receipt-r2')), findsNothing);
-    expect(find.byKey(const Key('cost-receipt-r3')), findsNothing);
-    expect(find.text('أضف إيصال'), findsOneWidget);
-
-    // Ten receipts on the cost, none on this payment: no room left.
-    api.receipts = [for (var i = 0; i < 10; i++) _receipt('c$i')];
-    await tester.pumpWidget(
-      _host(
-        CostReceiptsSection(
-          key: const ValueKey('full'),
-          costId: 'cost-1',
-          costPaymentId: 'pay-1',
-          canManage: true,
-          api: api,
-        ),
-      ),
-    );
-    await tester.pumpAndSettle();
-    expect(find.text('أضف إيصال'), findsNothing);
-    expect(find.text('ما في إيصال محفوظ'), findsOneWidget);
-  });
-
-  testWidgets('without an API client the section stays out of the way', (tester) async {
     await tester.pumpWidget(
       _host(const CostReceiptsSection(costId: 'cost-1', canManage: true)),
     );

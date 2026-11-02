@@ -63,16 +63,18 @@ class _SaveFailure implements Exception {
 }
 
 class _LocalPlanMigrationScreenState extends State<LocalPlanMigrationScreen> {
-  static const _saveFailed = 'تأكد من النت وجرّب مرة ثانية.';
-  static const _lookupFailed =
-      'ما قدرنا نشوف حسابك. تأكد من النت وجرّب مرة ثانية.';
-
   _Phase _phase = _Phase.checking;
   String? _error;
   AccountPlanCounts? _account;
   bool _sheetOpen = false;
   bool _busy = false;
   late Future<void> Function() _retry = _start;
+
+  /// The phone plan's owner: the colour and voice of this screen and its
+  /// sheets.
+  JourneyProfile get _owner => JourneyProfile.fromPersona(
+    widget.snapshot.draft.persona == GuestPersona.bride ? 'BRIDE' : 'GROOM',
+  );
 
   @override
   void initState() {
@@ -96,7 +98,10 @@ class _LocalPlanMigrationScreenState extends State<LocalPlanMigrationScreen> {
       if (!mounted) return;
       setState(() {
         _phase = _Phase.failed;
-        _error = _lookupFailed;
+        _error = _owner.say(
+          'ما قدرنا نشوف حسابك. تأكد من النت وجرّب مرة ثانية.',
+          'ما قدرنا نشوف حسابك. تأكدي من النت وجرّبي مرة ثانية.',
+        );
         _retry = _start;
       });
       return;
@@ -135,6 +140,7 @@ class _LocalPlanMigrationScreenState extends State<LocalPlanMigrationScreen> {
     });
     final outcome = await showJourneySheet<({String? planId})>(
       context: context,
+      profile: _owner,
       isDismissible: false,
       enableDrag: false,
       builder: (_) => _LocalPlanChoiceSheet(
@@ -174,7 +180,12 @@ class _LocalPlanMigrationScreenState extends State<LocalPlanMigrationScreen> {
     } on ApiException catch (error) {
       throw _SaveFailure(error.message);
     } on Object {
-      throw const _SaveFailure(_saveFailed);
+      throw _SaveFailure(
+        _owner.say(
+          'تأكد من النت وجرّب مرة ثانية.',
+          'تأكدي من النت وجرّبي مرة ثانية.',
+        ),
+      );
     }
   }
 
@@ -201,6 +212,7 @@ class _LocalPlanMigrationScreenState extends State<LocalPlanMigrationScreen> {
   Future<bool> _confirmDrop(BuildContext context) async {
     final confirmed = await showJourneySheet<bool>(
       context: context,
+      profile: _owner,
       builder: (sheetContext) => JourneySheetBody(
         title: 'تمسح الخطة اللي على الجوال؟',
         subtitle: _account == null
@@ -462,7 +474,10 @@ class _LocalPlanChoiceSheetState extends State<_LocalPlanChoiceSheet> {
       canPop: false,
       child: JourneySheetBody(
         title: 'عندك خطة على هذا الجوال',
-        subtitle: 'سويتها قبل ما تدخل. وحسابك فيه خطة من قبل.',
+        subtitle: context.say(
+          'سويتها قبل ما تدخل. وحسابك فيه خطة من قبل.',
+          'سويتيها قبل ما تدخلين. وحسابك فيه خطة من قبل.',
+        ),
         children: [
           Row(
             children: [
@@ -486,7 +501,7 @@ class _LocalPlanChoiceSheetState extends State<_LocalPlanChoiceSheet> {
           const SizedBox(height: AarastV3Space.x2),
           JourneyOption(
             key: const ValueKey('local-plan-drop'),
-            title: 'تجاهلها',
+            title: context.say('تجاهلها', 'تجاهليها'),
             subtitle: 'تنحذف من الجوال بس',
             selected: _choice == _Choice.drop,
             onTap: () => _pick(_Choice.drop),

@@ -74,7 +74,22 @@ class _InviteRights extends StatelessWidget {
 
 String _closedInviteMessage(String status) => switch (status) {
   'DECLINED' => 'رفضت هذي الدعوة.',
-  'EXPIRED' => 'انتهت مدة الدعوة. اطلب منه يرسل لك دعوة جديدة.',
+  'EXPIRED' => 'انتهت مدة الدعوة. اطلب دعوة جديدة من صاحب الخطة.',
   'CANCELLED' => 'صاحب الخطة لغى هذي الدعوة.',
   _ => 'هذي الدعوة ما عادت مفتوحة.',
 };
+
+/// The invite's heading in the plan owner's gender (D75): «سلمى تشتيك معها
+/// في عرسها» for a bride's plan. A relative who may invite is not the one
+/// marrying, so their invite names the plan instead.
+String _inviteTitle(PlanInvite invite, String inviter, String planTitle) {
+  if (inviter.isEmpty) return planTitle.isEmpty ? 'دعوة لخطة عرس' : planTitle;
+  if (invite.inviterIsOwner == false) {
+    return planTitle.isEmpty
+        ? 'دعوة من $inviter للمشاركة في خطة عرس'
+        : 'دعوة من $inviter للمشاركة في $planTitle';
+  }
+  return invite.planPersona == 'BRIDE'
+      ? '$inviter تشتيك معها في عرسها'
+      : '$inviter يشتيك معه في عرسه';
+}

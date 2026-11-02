@@ -39,7 +39,9 @@ void main() {
       await tester.pump(const Duration(milliseconds: 100));
 
       expect(
-        find.text('هذا الرقم عليه حساب من قبل. ادخل عليه بكلمة المرور.'),
+        find.text(
+          'هذا الرقم عليه حساب من قبل. ادخل عليه برمز واتساب من «تسجيل الدخول».',
+        ),
         findsOneWidget,
       );
       expect(find.textContaining('Phone or email'), findsNothing);
@@ -264,7 +266,8 @@ void main() {
       final postAuthUri = router.routeInformationProvider.value.uri;
       expect(postAuthUri.path, '/invites/$token');
       expect(controller.status, AuthStatus.authenticated);
-      expect(controller.accountJustCreated, isTrue);
+      // No plan on the phone to save: nothing is imported on its own.
+      expect(controller.accountJustCreated, isFalse);
       expect(controller.signUpFoundAccount, isFalse);
       expect(controller.hasPendingInviteResume, isFalse);
       expect(controller.claimPendingInviteResumeRoute(), isNull);

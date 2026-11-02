@@ -62,7 +62,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
     final name = title.startsWith('عرس ') ? title.substring(4).trim() : '';
     setState(() {
       _keptPlan = draft;
-      if (_nameController.text.trim().isEmpty && name.length >= 3) {
+      if (_nameController.text.trim().isEmpty && name.isNotEmpty) {
         _nameController.text = name;
         _nameFromPlan = true;
       }
@@ -80,7 +80,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
     if (!_submitAttempted || _nameFromPlan) return null;
     final name = _nameController.text.trim();
     if (name.isEmpty) return 'الاسم مطلوب';
-    if (name.length < 3) return 'الاسم قصير جداً';
     return null;
   }
 

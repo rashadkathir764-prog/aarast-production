@@ -77,6 +77,9 @@ void main() {
     expect(activity, contains('NotificationManager.IMPORTANCE_HIGH'));
     expect(activity, contains('setShowBadge(true)'));
     expect(notificationIcon, contains('M12,2.4L14.15,9.85'));
-    expect(colors, contains('<color name="notification_accent">#0B6E69</color>'));
+    expect(
+      colors,
+      contains('<color name="notification_accent">#0B6E69</color>'),
+    );
   });
 }

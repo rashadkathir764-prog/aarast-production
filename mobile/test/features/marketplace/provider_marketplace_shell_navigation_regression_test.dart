@@ -211,7 +211,10 @@ void main() {
       // above the still-mounted tab.
       expect(marketplace.lastLoadedQuoteId, _quoteId);
       expect(find.byType(ProviderRequestsScreen), findsOneWidget);
-      expect(find.byKey(const ValueKey('requests-offer-$_quoteId')), findsOneWidget);
+      expect(
+        find.byKey(const ValueKey('requests-offer-$_quoteId')),
+        findsOneWidget,
+      );
       await tester.tap(find.byTooltip('رجوع'));
       await tester.pumpAndSettle();
 
@@ -332,7 +335,8 @@ const _provider = MarketplaceProvider(
     MarketplaceService(
       id: 'service-1',
       providerId: _providerId,
-      title: 'تنسيق القاعة',      isActive: true,
+      title: 'تنسيق القاعة',
+      isActive: true,
       basePrice: '120000',
       currency: 'YER',
     ),

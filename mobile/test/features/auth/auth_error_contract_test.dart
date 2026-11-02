@@ -92,7 +92,7 @@ void main() {
 
       expect(success, isFalse);
       expect(harness.controller.errorCode, 'ACCOUNT_ALREADY_EXISTS');
-      expect(harness.controller.errorMessage, contains('مسجل بالفعل'));
+      expect(harness.controller.errorMessage, contains('عليه حساب من قبل'));
       expect(harness.controller.errorMessage, isNot(contains('Phone')));
     },
   );

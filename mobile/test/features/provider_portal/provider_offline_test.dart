@@ -317,45 +317,46 @@ void main() {
       find.text('ما أرسلنا عرضك المحفوظ لعادل: ألغى الطلب'),
       findsOneWidget,
     );
-    await tester.tap(
-      find.byKey(const Key('provider-dropped-offers-dismiss')),
-    );
+    await tester.tap(find.byKey(const Key('provider-dropped-offers-dismiss')));
     await tester.pump();
     expect(find.byKey(const Key('provider-dropped-offers')), findsNothing);
     await _done(tester, dashboard);
   });
 
-  test('a request whose seven days ended keeps its offer, and says so', () async {
-    final api = _api();
-    final dashboard = ProviderDashboardProvider(
-      api,
-      offerQueue: await _queue(),
-    );
-    await dashboard.loadDashboard();
-    await _offerOffline(dashboard, api);
+  test(
+    'a request whose seven days ended keeps its offer, and says so',
+    () async {
+      final api = _api();
+      final dashboard = ProviderDashboardProvider(
+        api,
+        offerQueue: await _queue(),
+      );
+      await dashboard.loadDashboard();
+      await _offerOffline(dashboard, api);
 
-    // The network comes back after the request's deadline.
-    api
-      ..offline = false
-      ..replaced = [
-        quoteJson(
-          name: 'عادل الريمي',
-          createdAt: DateTime.now().subtract(const Duration(days: 8)),
-        ),
-      ];
-    await dashboard.loadDashboard();
-    expect(api.created, isEmpty);
-    expect(
-      dashboard.droppedOffers.single.reason,
-      ProviderOfferDropReason.expired,
-    );
-    expect(
-      dashboard.quoteRequests.single.status,
-      'EXPIRED',
-      reason: 'the server takes no answer past the deadline',
-    );
-    dashboard.dispose();
-  });
+      // The network comes back after the request's deadline.
+      api
+        ..offline = false
+        ..replaced = [
+          quoteJson(
+            name: 'عادل الريمي',
+            createdAt: DateTime.now().subtract(const Duration(days: 8)),
+          ),
+        ];
+      await dashboard.loadDashboard();
+      expect(api.created, isEmpty);
+      expect(
+        dashboard.droppedOffers.single.reason,
+        ProviderOfferDropReason.expired,
+      );
+      expect(
+        dashboard.quoteRequests.single.status,
+        'EXPIRED',
+        reason: 'the server takes no answer past the deadline',
+      );
+      dashboard.dispose();
+    },
+  );
 
   test(
     'with no place on the phone, an offline offer fails and says so',

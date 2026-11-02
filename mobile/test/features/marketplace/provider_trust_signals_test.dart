@@ -128,10 +128,7 @@ void main() {
     expect(line(15), 'آخر تحديث للسعر قبل أسبوعين');
     expect(line(21), 'آخر تحديث للسعر قبل 3 أسابيع');
     expect(line(64), 'آخر تحديث للسعر قبل شهرين');
-    expect(
-      line(120),
-      'آخر تحديث للسعر قبل 4 شهور · تأكد منه لما تطلب العرض',
-    );
+    expect(line(120), 'آخر تحديث للسعر قبل 4 شهور · تأكد منه لما تطلب العرض');
     expect(
       line(400),
       'آخر تحديث للسعر قبل أكثر من سنة · تأكد منه لما تطلب العرض',
@@ -155,7 +152,8 @@ MarketplaceService _service(String id, DateTime? priceUpdatedAt) {
   return MarketplaceService(
     id: id,
     providerId: 'provider-1',
-    title: 'خدمة $id',    isActive: true,
+    title: 'خدمة $id',
+    isActive: true,
     basePrice: priceUpdatedAt == null ? null : '1000',
     currency: 'YER',
     priceUpdatedAt: priceUpdatedAt,

@@ -198,8 +198,11 @@ export interface PermissionSummaryResponse {
 type PlanInviteWithRelations = PlanInvite & {
   weddingPlan?: Pick<
     WeddingPlan,
-    "id" | "title" | "city" | "weddingDate" | "status"
+    "id" | "title" | "city" | "weddingDate" | "status" | "persona"
   >;
+  // D75: the invite speaks of the plan's owner in their gender, and says
+  // whether the one inviting is the owner or a relative who may invite.
+  inviterIsOwner?: boolean;
   inviter?: ApplicationContactRecord;
   invitee?: ApplicationContactRecord | null;
 };
@@ -1946,13 +1949,17 @@ export class SharingService {
           city: plan.city,
           weddingDate: plan.weddingDate,
           status: plan.status,
+          persona: plan.persona,
         },
       ]),
     );
+    const ownerById = new Map(plans.map((plan) => [plan.id, plan.ownerUserId]));
     const userById = new Map(users.map((user) => [user.id, user]));
     return invites.map((invite) => ({
       ...invite,
       weddingPlan: planById.get(invite.weddingPlanId),
+      inviterIsOwner:
+        ownerById.get(invite.weddingPlanId) === invite.inviterUserId,
       inviter: userById.get(invite.inviterUserId),
       invitee: invite.inviteeUserId
         ? (userById.get(invite.inviteeUserId) ?? null)
@@ -2617,6 +2624,9 @@ export class SharingService {
         ),
       },
       ...(invite.weddingPlan ? { weddingPlan: invite.weddingPlan } : {}),
+      ...(invite.inviterIsOwner !== undefined
+        ? { inviterIsOwner: invite.inviterIsOwner }
+        : {}),
       ...(invite.inviter
         ? { inviter: toApplicationUserContact(invite.inviter) }
         : {}),

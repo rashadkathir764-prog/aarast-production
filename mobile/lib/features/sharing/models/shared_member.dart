@@ -174,6 +174,8 @@ class PlanInvite {
     this.email,
     this.weddingPlanTitle,
     this.inviterName,
+    this.planPersona,
+    this.inviterIsOwner,
     this.weddingDate,
     this.weddingCity,
   });
@@ -211,6 +213,10 @@ class PlanInvite {
       email: json['email']?.toString(),
       weddingPlanTitle: plan is Map ? plan['title']?.toString() : null,
       inviterName: inviter is Map ? inviter['name']?.toString() : null,
+      planPersona: plan is Map ? plan['persona']?.toString() : null,
+      inviterIsOwner: json['inviterIsOwner'] is bool
+          ? json['inviterIsOwner'] as bool
+          : null,
       weddingDate: plan is Map ? planDayFromJson(plan['weddingDate']) : null,
       weddingCity: plan is Map ? plan['city']?.toString() : null,
       deliveryStatus: delivery is Map
@@ -247,6 +253,14 @@ class PlanInvite {
   final String? email;
   final String? weddingPlanTitle;
   final String? inviterName;
+
+  /// D75: the plan's side («GROOM» / «BRIDE»), so the invite speaks of its
+  /// owner in their gender.
+  final String? planPersona;
+
+  /// Whether the one inviting owns the plan; false for a relative who was
+  /// given the right to invite. Null from an older server.
+  final bool? inviterIsOwner;
 
   /// The plan's day and city, sent with the invite once the phone is
   /// proven (q03 «الخميس 21 يناير · صنعاء»).
@@ -312,6 +326,8 @@ class PlanInvite {
       email: email,
       weddingPlanTitle: weddingPlanTitle,
       inviterName: inviterName,
+      planPersona: planPersona,
+      inviterIsOwner: inviterIsOwner,
       weddingDate: weddingDate,
       weddingCity: weddingCity,
     );
@@ -345,6 +361,8 @@ class PlanInvite {
       email: email,
       weddingPlanTitle: weddingPlanTitle,
       inviterName: inviterName,
+      planPersona: planPersona,
+      inviterIsOwner: inviterIsOwner,
       weddingDate: weddingDate,
       weddingCity: weddingCity,
     );
@@ -374,6 +392,8 @@ class PlanInvite {
       email: email,
       weddingPlanTitle: weddingPlanTitle,
       inviterName: inviterName,
+      planPersona: planPersona,
+      inviterIsOwner: inviterIsOwner,
       weddingDate: weddingDate,
       weddingCity: weddingCity,
     );

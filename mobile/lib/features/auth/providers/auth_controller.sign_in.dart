@@ -68,6 +68,7 @@ mixin _AuthSignIn on _AuthControllerCore {
     required String otpCode,
     String? resumeInviteToken,
     String? successLocation,
+    bool savesKeptPlan = false,
   }) async {
     if (_status != AuthStatus.unauthenticated) {
       return false;
@@ -90,7 +91,9 @@ mixin _AuthSignIn on _AuthControllerCore {
       if (!_isCurrentSessionOperation(operation)) return;
       _status = AuthStatus.authenticated;
       // A number that already had an account signed in to it (D75).
-      _accountJustCreated = !response.existingAccount;
+      // Saved at once only when this new account was made to save the plan
+      // on this phone; a provider's sign-up never takes it in (D75).
+      _accountJustCreated = savesKeptPlan && !response.existingAccount;
       _signUpFoundAccount = response.existingAccount;
       _loginRequestedAfterLogout = false;
       if (cleanResumeToken != null) {
@@ -309,7 +312,7 @@ mixin _AuthSignIn on _AuthControllerCore {
       'PHONE_VERIFICATION_REQUIRED' =>
         'يحتاج حساب التطبيق إلى تأكيد رقم الهاتف. استخدم «الدخول برمز تحقق» للمتابعة.',
       'ACCOUNT_ALREADY_EXISTS' =>
-        'هذا الرقم مسجل بالفعل. انتقل إلى تسجيل الدخول أو استعد كلمة المرور.',
+        'هذا الرقم عليه حساب من قبل. ادخل عليه برمز واتساب من «تسجيل الدخول».',
       'ADMIN_APP_PASSWORD_ALREADY_SET' =>
         'تم إعداد حساب التطبيق لهذا الرقم بالفعل. انتقل إلى تسجيل الدخول أو استعد كلمة مرور التطبيق.',
       'OTP_INVALID_OR_EXPIRED' =>
@@ -321,7 +324,8 @@ mixin _AuthSignIn on _AuthControllerCore {
       'INVITE_NOT_FOUND_FOR_PHONE' =>
         'لا توجد دعوة فعّالة مرتبطة بهذا الرقم. تأكد من الرقم أو اطلب دعوة جديدة.',
       'INVITE_ACCOUNT_SETUP_REQUIRED' =>
-        'أنشئ اسمًا وكلمة مرور لحساب المساهم ثم أعد تأكيد الرمز نفسه.',
+        'أول مرة تدخل اعّرست: اكتب اسمك، ونفس الرمز يسوي لك حساب.',
+      'ADMIN_APP_PASSWORD_REQUIRED' => adminAppPasswordRequiredMessage,
       _ => null,
     };
   }

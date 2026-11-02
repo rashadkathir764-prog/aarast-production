@@ -350,6 +350,44 @@ void main() {
     },
   );
 
+  for (final (persona, owner, title) in [
+    ('BRIDE', true, 'سلمى تشتيك معها في عرسها'),
+    ('GROOM', true, 'سلمى يشتيك معه في عرسه'),
+    ('BRIDE', false, 'دعوة من سلمى للمشاركة في عرس سلمى'),
+  ]) {
+    testWidgets('D75: the invite speaks of the owner in their words ($title)', (
+      tester,
+    ) async {
+      final token = _testInviteToken();
+      final harness = await _authHarness();
+      harness.repository.authenticateOnVerify = true;
+      await _pumpGuestInvite(
+        tester,
+        harness,
+        token: token,
+        sharingApi: _FakeSharingApi(
+          invites: [
+            _invite(
+              token: token,
+              inviterName: 'سلمى',
+              weddingPlanTitle: 'عرس سلمى',
+              planPersona: persona,
+              inviterIsOwner: owner,
+            ),
+          ],
+        ),
+      );
+      await _openVerifiedInvite(tester);
+      expect(
+        find.descendant(
+          of: find.byKey(const ValueKey('invite-inviter-card')),
+          matching: find.text(title),
+        ),
+        findsOneWidget,
+      );
+    });
+  }
+
   testWidgets('q03: money shows its real level, never more', (tester) async {
     final token = _testInviteToken();
     final harness = await _authHarness();
@@ -1086,6 +1124,9 @@ PlanInvite _invite({
   bool canManageMoney = false,
   DateTime? weddingDate,
   String? weddingCity,
+  String inviterName = 'رشاد',
+  String? planPersona,
+  bool? inviterIsOwner,
 }) {
   return PlanInvite(
     id: id,
@@ -1105,7 +1146,9 @@ PlanInvite _invite({
     canInviteMembers: canInviteMembers,
     canManageMoney: canManageMoney,
     weddingPlanTitle: weddingPlanTitle,
-    inviterName: 'رشاد',
+    inviterName: inviterName,
+    planPersona: planPersona,
+    inviterIsOwner: inviterIsOwner,
     weddingDate: weddingDate,
     weddingCity: weddingCity,
   );
@@ -1331,6 +1374,8 @@ PlanInvite _withStatus(PlanInvite invite, String status) {
     email: invite.email,
     weddingPlanTitle: invite.weddingPlanTitle,
     inviterName: invite.inviterName,
+    planPersona: invite.planPersona,
+    inviterIsOwner: invite.inviterIsOwner,
     weddingDate: invite.weddingDate,
     weddingCity: invite.weddingCity,
   );

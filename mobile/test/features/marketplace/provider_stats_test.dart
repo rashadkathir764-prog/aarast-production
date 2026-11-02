@@ -33,10 +33,15 @@ void main() {
     expect(stats.acceptanceRate, 50);
     expect(stats.completedBookings, 3);
 
-    expect(ProviderDashboardSummary.fromJson({'servicesCount': 1}).stats, isNull);
     expect(
-      ProviderStats.fromJson({..._statsJson, 'acceptanceRate': null})
-          .acceptanceRate,
+      ProviderDashboardSummary.fromJson({'servicesCount': 1}).stats,
+      isNull,
+    );
+    expect(
+      ProviderStats.fromJson({
+        ..._statsJson,
+        'acceptanceRate': null,
+      }).acceptanceRate,
       isNull,
     );
   });

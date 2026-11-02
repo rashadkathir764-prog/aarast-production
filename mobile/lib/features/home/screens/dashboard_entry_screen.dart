@@ -63,7 +63,14 @@ class _DashboardEntryScreenState extends State<DashboardEntryScreen> {
           if (snapshot.connectionState != ConnectionState.done) {
             return const AarastScaffold(child: AarastScreenLoading());
           }
-          final pending = snapshot.data;
+          final resume = GoRouterState.of(
+            context,
+          ).uri.queryParameters['resume'];
+          // A provider's sign-up goes on to the joining; a couple's plan on
+          // this phone stays there untouched and is offered on the next
+          // plain open (D75).
+          final toProvider = resume?.startsWith('/provider/') == true;
+          final pending = toProvider ? null : snapshot.data;
           final service = _migrationService;
           if (pending != null && service != null) {
             return LocalPlanMigrationScreen(
@@ -86,11 +93,7 @@ class _DashboardEntryScreenState extends State<DashboardEntryScreen> {
               },
             );
           }
-          return AccountContextEntryGate(
-            resumeLocation: GoRouterState.of(
-              context,
-            ).uri.queryParameters['resume'],
-          );
+          return AccountContextEntryGate(resumeLocation: resume);
         },
       );
     }

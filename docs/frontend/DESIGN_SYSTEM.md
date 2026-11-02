@@ -123,7 +123,36 @@ One system, one source (`aarast_v3_foundations.dart`, D74). The legacy
   34, question 25, tab title 24, card title 16.5, main action 16, running
   text 14.5, secondary 12.5.
 - Touch targets are at least 48, the bottom bar's tabs included (bar 58).
-- Every sheet is `showJourneySheet` with a `JourneySheetBody`.
+- Every sheet is `showJourneySheet` with a `JourneySheetBody`. A sheet
+  wears the profile of the context that opens it; a screen whose own scope
+  sits below its State passes `profile:`.
+
+### Entry screens (D75)
+
+The start, saving the plan, signing in, invites and the provider's sign-up
+share one kit (`aarast_journey_entry.dart`) on top of the journey kit:
+
+- `JourneyStepBar` (back, and the three questions' progress: done full,
+  current half), `JourneyEntryQuestion` (question 25, help 15.5) and
+  `JourneyEntryActions` (main button, and a second way out that keeps its
+  room so the button never moves).
+- `JourneyDoor` (72 high, 40 tile), `JourneyPersonaCard` (112 high, 96
+  picture), `JourneySkyBand` (the wedding sky melting into the page, no
+  gradient).
+- `JourneyPhoneField`: one labelled field, +967 then the number left to
+  right, grouped in threes as typed; `JourneyKeptPlanStrip`.
+- `JourneyCodeHelpSheet` and `JourneyCodeResendRow` for every code screen.
+- The journey kit took what these needed instead of copies: `JourneyNote`
+  tones (`tinted`, `paper`, `warn`, `bare`), `JourneyTextAction.sub`,
+  `JourneyListRow.subtitleMaxLines`, `JourneyButton.outline` and a readable
+  disabled state (pale fill, grey words), `JourneyChip.large` (48, pill),
+  `JourneyPickerField.iconAtEnd`, `JourneyTextField.trailing`.
+- Fields 16, typed amounts 24. A bride's small text is `accent.primaryDark`.
+- The profile: before an account, the plan kept on the phone gives the app
+  its owner's colour and voice (`GuestOnboardingStorage.keptPlanPersona`
+  at the root); a provider's sign-up and code are always the app's own
+  (router); an invite wears its plan's colour and speaks to the one invited
+  in words that fit a man or a woman.
 
 No file in `lib` writes a spacing, radius or type-size number by hand: it
 takes a token, or names a fixed layout dimension (a cover's height, a label
